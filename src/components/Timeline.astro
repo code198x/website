@@ -1,0 +1,251 @@
+---
+interface Platform {
+    title: string;
+    year: number;
+    endYear: number;
+    slug: string;
+    type: string;
+    manufacturer: string;
+    description: string;
+}
+
+interface Props {
+    platforms: Platform[];
+}
+
+const { platforms } = Astro.props;
+
+// Sort platforms by start year
+const sortedPlatforms = [...platforms].sort((a, b) => a.year - b.year);
+
+// Find the earliest and latest years to determine timeline bounds
+const earliestYear = Math.min(...platforms.map(p => p.year));
+const latestYear = Math.max(...platforms.map(p => p.endYear));
+const timelineSpan = latestYear - earliestYear + 1;
+
+// Calculate positioning and scaling
+const timelineWidth = 100; // percentage width
+const yearWidth = timelineWidth / timelineSpan;
+
+// Calculate vertical positions to prevent overlapping
+const rows: number[] = [];
+function getVerticalPosition(start: number, end: number): number {
+    let row = 0;
+    while (true) {
+        if (!rows[row]) {
+            rows[row] = end;
+            return row;
+        }
+        if (start > rows[row]) {
+            rows[row] = end;
+            return row;
+        }
+        row++;
+    }
+}
+
+function getLeftPosition(year: number) {
+    return ((year - earliestYear) * yearWidth).toFixed(2);
+}
+
+function getWidth(start: number, end: number) {
+    return ((end - start + 1) * yearWidth).toFixed(2);
+}
+
+// Get color based on system type
+function getTypeColor(type: string): string {
+    const colors: Record<string, string> = {
+        "Home Computer": "#2563eb", // Blue
+        "Game Console": "#dc2626", // Red
+        "Handheld Game Console": "#16a34a", // Green
+        "Home/Personal Computer": "#2563eb", // Blue
+        "Video Game Console": "#dc2626", // Red
+        "Computer Standard": "#7c3aed", // Purple
+    };
+    return colors[type] || "#6b7280"; // Gray default
+}
+
+// Get decade markers
+const decades = Array.from(
+    { length: Math.ceil((latestYear - earliestYear + 1) / 10) },
+    (_, i) => Math.floor(earliestYear / 10) * 10 + i * 10
+).filter(decade => decade >= earliestYear && decade <= latestYear);
+---
+
+<div class="timeline-container">
+    <div class="timeline">
+        <!-- Decade and year markers -->
+        <div class="year-markers">
+            {decades.map(decade => (
+                <div 
+                    class="decade-marker"
+                    style={`left: ${getLeftPosition(decade)}%`}
+                >
+                    <div class="decade-line"></div>
+                    <div class="decade-label">{decade}s</div>
+                </div>
+            ))}
+            {Array.from({ length: timelineSpan }, (_, i) => earliestYear + i).map(year => (
+                <div 
+                    class={`year-marker ${decades.includes(year) ? 'decade-year' : ''}`}
+                    style={`left: ${getLeftPosition(year)}%`}
+                >
+                    {year}
+                </div>
+            ))}
+        </div>
+
+        <!-- Platform bars -->
+        <div class="platform-bars">
+            {sortedPlatforms.map((platform) => {
+                const verticalPos = getVerticalPosition(platform.year, platform.endYear);
+                return (
+                    <div 
+                        class="platform-bar"
+                        style={`
+                            left: ${getLeftPosition(platform.year)}%;
+                            width: ${getWidth(platform.year, platform.endYear)}%;
+                            top: ${verticalPos * 50}px;
+                            background-color: ${getTypeColor(platform.type)};
+                        `}
+                        data-tooltip={`${platform.title} (${platform.manufacturer})
+${platform.description}`}
+                    >
+                        <a href={`/platforms/${platform.slug}`} class="platform-link">
+                            <span class="platform-title">{platform.title}</span>
+                            <span class="platform-years">({platform.year}-{platform.endYear})</span>
+                        </a>
+                    </div>
+                );
+            })}
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline-container {
+        width: 100%;
+        overflow-x: auto;
+        padding: 2rem 0;
+    }
+
+    .timeline {
+        position: relative;
+        width: 100%;
+        padding: 2rem 0;
+    }
+
+    .year-markers {
+        position: relative;
+        height: 40px;
+        border-bottom: 1px solid #ccc;
+        margin-bottom: 2rem;
+    }
+
+    .year-marker {
+        position: absolute;
+        transform: translateX(-50%);
+        font-size: 0.8rem;
+        color: #666;
+        padding-bottom: 0.5rem;
+        bottom: 0;
+    }
+
+    .decade-marker {
+        position: absolute;
+        transform: translateX(-50%);
+        height: 100%;
+    }
+
+    .decade-line {
+        width: 2px;
+        height: 100%;
+        background-color: #666;
+    }
+
+    .decade-label {
+        position: absolute;
+        top: -24px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-weight: 600;
+        color: #333;
+    }
+
+    .decade-year {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .platform-bars {
+        position: relative;
+        min-height: 400px;
+        padding-top: 1rem;
+    }
+
+    .platform-bar {
+        position: absolute;
+        height: 40px;
+        border-radius: 4px;
+        margin: 4px 0;
+        transition: all 0.2s;
+    }
+
+    .platform-bar:hover {
+        filter: brightness(0.9);
+        transform: translateY(-2px);
+    }
+
+    /* Tooltip styles */
+    .platform-bar::before {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-8px);
+        padding: 8px;
+        background: #333;
+        color: white;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        white-space: pre-line;
+        text-align: center;
+        visibility: hidden;
+        opacity: 0;
+        transition: all 0.2s;
+        pointer-events: none;
+        width: max-content;
+        max-width: 300px;
+        z-index: 10;
+    }
+
+    .platform-bar:hover::before {
+        visibility: visible;
+        opacity: 1;
+        transform: translateX(-50%) translateY(-4px);
+    }
+
+    .platform-link {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        height: 100%;
+        padding: 0 0.5rem;
+        color: white;
+        text-decoration: none;
+        font-size: 0.9rem;
+        line-height: 1.2;
+    }
+
+    .platform-title {
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .platform-years {
+        font-size: 0.8rem;
+        opacity: 0.9;
+    }
+</style> 
