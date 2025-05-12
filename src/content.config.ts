@@ -37,6 +37,9 @@ const companies = defineCollection({
   schema: z.object({
     name: z.string(),
     summary: z.string().optional(),
+    role: z.array(z.enum(['manufacturer', 'publisher', 'retailer'])).optional(),
+    systems: z.array(z.string()).optional(),
+    founded: z.string().regex(/^\d{4}(-\d{2}-\d{2})?$/).optional(),
   }),
 });
 
