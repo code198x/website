@@ -9,6 +9,7 @@ release_date: 1976-01-01
 discontinued: 1979-01-01
 emulated: true
 country_of_origin: United States
+image: /images/systems/kim-1.png
 ---
 
 The **KIM-1** (Keyboard Input Monitor) was released by MOS Technology in 1976 as a low-cost development system for the then-new 6502 microprocessor. It was intended for engineers and hobbyists and quickly became one of the most popular training and prototyping systems of its era.
@@ -28,6 +29,6 @@ With just a hexadecimal keypad, six 7-segment LED displays, and 1 KB of RAM, it 
 
 ## 🗃 Related Systems
 
-- [Apple I](./apple-i.md)
-- [Commodore PET](./commodore-pet.md)
-- [Altair 8800](./altair-8800.md)
+- [Apple I](./apple-i)
+- [Commodore PET](./commodore-pet)
+- [Altair 8800](./altair-8800)

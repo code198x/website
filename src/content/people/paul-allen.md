@@ -26,6 +26,6 @@ His legacy includes funding major scientific initiatives, founding the Allen Ins
 
 ## 🗃 Related Figures
 
-- [Bill Gates](./bill-gates.md)
-- [Steve Ballmer](./steve-ballmer.md)
-- [Steve Jobs](./steve-jobs.md)
+- [Bill Gates](./bill-gates)
+- [Steve Ballmer](./steve-ballmer)
+- [Steve Jobs](./steve-jobs)

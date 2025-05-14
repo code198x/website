@@ -26,6 +26,6 @@ Jobs returned to Apple in 1997, rescuing the company from near bankruptcy and le
 
 ## 🗃 Related Figures
 
-- [Steve Wozniak](./steve-wozniak.md)
-- [Bill Gates](./bill-gates.md)
-- [John Sculley](./john-sculley.md)
+- [Steve Wozniak](./steve-wozniak)
+- [Bill Gates](./bill-gates)
+- [John Sculley](./john-sculley)

@@ -9,6 +9,7 @@ release_date: 1982-04-23
 discontinued: 1992-01-01
 emulated: true
 country_of_origin: United Kingdom
+image: /images/systems/zx-spectrum.png
 ---
 
 The **ZX Spectrum** was one of the most iconic and influential home computers of the 1980s, particularly in the UK and Europe. Released in 1982 by Sinclair Research, it followed on from the ZX81 and offered colour graphics, sound, and a full BASIC interpreter at a low price point.
@@ -28,6 +29,6 @@ The Speccy—as it became affectionately known—was instrumental in sparking th
 
 ## 🗃 Related Systems
 
-- [Commodore 64](./commodore-64.md)
-- [Amstrad CPC 464](./amstrad-cpc-464.md)
-- [BBC Micro](./bbc-micro.md)
+- [Commodore 64](./commodore-64)
+- [Amstrad CPC 464](./amstrad-cpc-464)
+- [BBC Micro](./bbc-micro)

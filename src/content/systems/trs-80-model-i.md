@@ -9,6 +9,7 @@ release_date: 1977-01-01
 discontinued: 1981-01-01
 emulated: true
 country_of_origin: United States
+image: /images/systems/trs-80-model-i.png
 ---
 
 The **TRS-80 Model I** was introduced in 1977 by Tandy Corporation through its Radio Shack stores, forming one corner of the "1977 Trinity" of early personal computers alongside the Apple II and Commodore PET 2001.
@@ -30,6 +31,6 @@ The Model I was especially popular in educational and small business settings du
 
 ## 🗃 Related Systems
 
-- [Apple II](./apple-ii.md)
-- [PET 2001](./pet-2001.md)
-- [TRS-80 Model III](./trs-80-model-iii.md)
+- [Apple II](./apple-ii)
+- [PET 2001](./pet-2001)
+- [TRS-80 Model III](./trs-80-model-iii)

@@ -30,6 +30,6 @@ Tandy continued to develop the TRS-80 line through the 1980s, including business
 
 ## 🗃 Related People
 
-- [Don French](../people/don-french.md)
-- [Steve Leininger](../people/steve-leininger.md)
-- [John Roach](../people/john-roach.md)
+- [Don French](../people/don-french)
+- [Steve Leininger](../people/steve-leininger)
+- [John Roach](../people/john-roach)

@@ -25,6 +25,6 @@ After a plane crash in 1981, Wozniak gradually stepped back from Apple and later
 
 ## 🗃 Related Figures
 
-- [Steve Jobs](./steve-jobs.md)
-- [Ronald Wayne](./ronald-wayne.md)
-- [Bill Gates](./bill-gates.md)
+- [Steve Jobs](./steve-jobs)
+- [Ronald Wayne](./ronald-wayne)
+- [Bill Gates](./bill-gates)

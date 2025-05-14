@@ -10,6 +10,7 @@ release_date: 1975-01-01
 discontinued: 1978-01-01
 emulated: true
 country_of_origin: United States
+image: /images/systems/imsai-8080.png
 ---
 
 The **IMSAI 8080** was one of the first widely available microcomputers and gained popularity as a refined alternative to the MITS Altair 8800. It used the Intel 8080 processor and the S-100 bus architecture, offering a flexible platform for hobbyists and early software developers.

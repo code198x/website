@@ -9,6 +9,7 @@ release_date: 1975-01-01
 discontinued: 1978-12-31
 emulated: true
 country_of_origin: United States
+image: /images/systems/altair-8800.png
 ---
 
 Released in January 1975 by [MITS (Micro Instrumentation and Telemetry Systems)](/companies/mits), the Altair 8800 is often credited as the first commercially successful personal computer. It wasn't the first programmable microcomputer, but it was the one that sparked widespread interest among hobbyists and tinkerers - including a couple of guys named [Bill Gates](/people/bill-gates) and [Paul Allen](/people/paul-allen).

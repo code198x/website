@@ -29,6 +29,6 @@ Despite its early success, the company struggled to compete with rising giants l
 
 ## 🗃 Related People
 
-- [Daniel Meyer](../people/daniel-meyer.md)
-- [Chuck Peddle](../people/chuck-peddle.md)
-- [Ed Roberts](../people/ed-roberts.md)
+- [Daniel Meyer](../people/daniel-meyer)
+- [Chuck Peddle](../people/chuck-peddle)
+- [Ed Roberts](../people/ed-roberts)

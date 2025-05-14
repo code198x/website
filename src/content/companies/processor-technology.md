@@ -29,6 +29,6 @@ Processor Technology's innovative designs were unfortunately hampered by busines
 
 ## 🗃 Related People
 
-- [Lee Felsenstein](../people/lee-felsenstein.md)
-- [Gary Ingram](../people/gary-ingram.md)
-- [Bob Marsh](../people/bob-marsh.md)
+- [Lee Felsenstein](../people/lee-felsenstein)
+- [Gary Ingram](../people/gary-ingram)
+- [Bob Marsh](../people/bob-marsh)

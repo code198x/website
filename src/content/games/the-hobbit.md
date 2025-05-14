@@ -1,3 +1,3 @@
 ---
-title: The Hobbit
+name: The Hobbit
 ---

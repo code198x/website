@@ -28,6 +28,6 @@ MITS was acquired by Pertec in 1977, and its influence declined soon after. None
 
 ## 🗃 Related People
 
-- [Ed Roberts](../people/ed-roberts.md)
-- [Bill Gates](../people/bill-gates.md)
-- [Paul Allen](../people/paul-allen.md)
+- [Ed Roberts](../people/ed-roberts)
+- [Bill Gates](../people/bill-gates)
+- [Paul Allen](../people/paul-allen)

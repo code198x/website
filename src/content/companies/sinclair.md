@@ -32,6 +32,6 @@ While later ventures like the **Sinclair QL** and the **C5 electric vehicle** we
 
 ## 🗃 Related People
 
-- [Clive Sinclair](../people/clive-sinclair.md)
-- [Chris Curry](../people/chris-curry.md)
-- [Jim Westwood](../people/jim-westwood.md)
+- [Clive Sinclair](../people/clive-sinclair)
+- [Chris Curry](../people/chris-curry)
+- [Jim Westwood](../people/jim-westwood)

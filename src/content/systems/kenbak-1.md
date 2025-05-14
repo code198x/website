@@ -9,6 +9,7 @@ release_date: 1971-01-01
 discontinued: 1973-01-01
 emulated: true
 country_of_origin: United States
+image: /images/systems/kenbak-1.png
 ---
 
 The **Kenbak-1** is widely regarded as the first personal computer, released in 1971—years before the microprocessor became commercially available. Designed by John Blankenbaker, it used small- and medium-scale TTL (transistor-transistor logic) chips instead of a CPU, making it a purely logic-based machine.
@@ -28,5 +29,5 @@ It featured 256 bytes of memory and was programmed using a series of front-panel
 
 ## 🗃 Related Systems
 
-- [IMSAI 8080](./imsai-8080.md)
-- [Altair 8800](./altair-8800.md)
+- [IMSAI 8080](./imsai-8080)
+- [Altair 8800](./altair-8800)

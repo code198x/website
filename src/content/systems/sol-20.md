@@ -9,6 +9,7 @@ release_date: 1976-01-01
 discontinued: 1979-01-01
 emulated: true
 country_of_origin: United States
+image: /images/systems/sol-20.png
 ---
 
 The **SOL-20** was one of the first computers to come in a complete, usable form with built-in keyboard and video output, released in 1976 by Processor Technology. It was designed by Lee Felsenstein, a key figure in the Homebrew Computer Club and a pioneer of open computing design.
@@ -28,6 +29,6 @@ Unlike many contemporaries that relied on external terminals or toggle switches,
 
 ## 🗃 Related Systems
 
-- [IMSAI 8080](./imsai-8080.md)
-- [Altair 8800](./altair-8800.md)
-- [NorthStar Horizon](./northstar-horizon.md)
+- [IMSAI 8080](./imsai-8080)
+- [Altair 8800](./altair-8800)
+- [NorthStar Horizon](./northstar-horizon)

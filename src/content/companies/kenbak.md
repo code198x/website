@@ -26,5 +26,5 @@ The Kenbak-1 was primarily sold to educational institutions and hobbyists. With 
 
 ## 🗃 Related People
 
-- [John Blankenbaker](../people/john-blankenbaker.md)
-- [Ed Roberts](../people/ed-roberts.md)
+- [John Blankenbaker](../people/john-blankenbaker)
+- [Ed Roberts](../people/ed-roberts)

@@ -35,6 +35,6 @@ Despite its dominance, internal power struggles and poor management decisions in
 
 ## 🗃 Related People
 
-- [Jack Tramiel](../people/jack-tramiel.md)
-- [Chuck Peddle](../people/chuck-peddle.md)
-- [Jay Miner](../people/jay-miner.md)
+- [Jack Tramiel](../people/jack-tramiel)
+- [Chuck Peddle](../people/chuck-peddle)
+- [Jay Miner](../people/jay-miner)

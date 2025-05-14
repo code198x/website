@@ -9,6 +9,7 @@ release_date: 1975-01-01
 discontinued: 1979-01-01
 emulated: true
 country_of_origin: United States
+image: /images/systems/swtpc-6800.png
 ---
 
 The **SWTPc 6800** was one of the earliest computers based on the Motorola 6800 microprocessor, released in 1975 as a kit by Southwest Technical Products Corporation (SWTPc). It was designed for hobbyists and engineers who wanted an affordable, expandable system with good documentation.
@@ -28,6 +29,6 @@ The system included a serial interface for connecting to a terminal and supporte
 
 ## 🗃 Related Systems
 
-- [Altair 8800](./altair-8800.md)
-- [IMSAI 8080](./imsai-8080.md)
-- [Motorola EXORciser](./motorola-exorciser.md)
+- [Altair 8800](./altair-8800)
+- [IMSAI 8080](./imsai-8080)
+- [Motorola EXORciser](./motorola-exorciser)

@@ -16,6 +16,7 @@ const systems = defineCollection({
     units_sold: z.string().optional(),
     emulated: z.boolean().optional(),
     country_of_origin: z.string(),
+    image: z.string().optional(),
   }),
 });
 
@@ -33,7 +34,7 @@ const companies = defineCollection({
 
 const games = defineCollection({
   schema: z.object({
-    title: z.string(),
+    name: z.string(),
   }),
 });
 
@@ -41,13 +42,35 @@ const lessons = defineCollection({
   schema: z.object({
     title: z.string(),
     system: z.string(),
-    tier: z.number(),
-    order: z.number(),
-    slug: z.string().optional(),
-    summary: z.string().optional(),
+    tier: z.string(),
+    lesson_number: z.number(),
+    description: z.string().optional(),
+    image: z.string().optional(),
   }),
 });
 
+const tiers = defineCollection({
+  schema: z.object({
+    title: z.string(),
+    system: z.string(),
+    tier: z.string(), // e.g. "tier-1"
+    order: z.number(), // numeric sort order
+    description: z.string().optional(),
+    image: z.string().optional(), // e.g. "/images/zx-spectrum/tier-1.png"
+  }),
+});
+
+const events = defineCollection({
+  schema: z.object({
+    title: z.string(),
+    date: z.date(),
+    description: z.string().optional(),
+    location: z.string().optional(),
+    category: z.string().optional(),
+    image: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+  }),
+});
 
 export const collections = {
   systems,
@@ -55,4 +78,6 @@ export const collections = {
   companies,
   games,
   lessons,
+  tiers,
+  events
 }; 

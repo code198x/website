@@ -26,6 +26,6 @@ In the 2000s, Gates stepped down from his executive roles and transitioned to fu
 
 ## 🗃 Related Figures
 
-- [Paul Allen](./paul-allen.md)
-- [Steve Jobs](./steve-jobs.md)
-- [Gary Kildall](./gary-kildall.md)
+- [Paul Allen](./paul-allen)
+- [Steve Jobs](./steve-jobs)
+- [Gary Kildall](./gary-kildall)

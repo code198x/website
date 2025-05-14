@@ -25,6 +25,6 @@ After a power struggle at Commodore, Tramiel left in 1984 and acquired Atari's s
 
 ## 🗃 Related Figures
 
-- [Chuck Peddle](./chuck-peddle.md)
-- [Jay Miner](./jay-miner.md)
-- [Steve Jobs](./steve-jobs.md)
+- [Chuck Peddle](./chuck-peddle)
+- [Jay Miner](./jay-miner)
+- [Steve Jobs](./steve-jobs)

@@ -27,6 +27,6 @@ IMSAI later attempted to enter the business computing market with products like 
 
 ## 🗃 Related People
 
-- [William Millard](../people/william-millard.md)
-- [Ed Roberts](../people/ed-roberts.md)
-- [Bill Gates](../people/bill-gates.md)
+- [William Millard](../people/william-millard)
+- [Ed Roberts](../people/ed-roberts)
+- [Bill Gates](../people/bill-gates)

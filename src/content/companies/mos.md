@@ -30,6 +30,6 @@ In addition to the 6502, MOS produced other essential chips like the **KIM-1** d
 
 ## 🗃 Related People
 
-- [Chuck Peddle](../people/chuck-peddle.md)
-- [Jack Tramiel](../people/jack-tramiel.md)
-- [Bill Mensch](../people/bill-mensch.md)
+- [Chuck Peddle](../people/chuck-peddle)
+- [Jack Tramiel](../people/jack-tramiel)
+- [Bill Mensch](../people/bill-mensch)

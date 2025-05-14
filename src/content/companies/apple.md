@@ -36,6 +36,6 @@ After Jobs' return in 1997, Apple was transformed through iconic products like t
 
 ## 🗃 Related People
 
-- [Steve Jobs](../people/steve-jobs.md)
-- [Steve Wozniak](../people/steve-wozniak.md)
-- [Ronald Wayne](../people/ronald-wayne.md)
+- [Steve Jobs](/vault/people/steve-jobs)
+- [Steve Wozniak](/vault/people/steve-wozniak)
+- [Ronald Wayne](/vault/people/ronald-wayne)

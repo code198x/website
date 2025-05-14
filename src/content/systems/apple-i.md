@@ -13,6 +13,7 @@ release_date: 1976-07-01
 discontinued: 1977-09-30
 units_sold: ~200
 emulated: true
+image: /images/systems/apple-i.png
 ---
 
 The Apple I wasn’t just a machine—it was a spark. Assembled by hand and sold to a curious, code-hungry community, it helped ignite the personal computer revolution. It also marked the beginning of one of the world’s most influential tech companies: Apple.

@@ -8,4 +8,7 @@ export default defineConfig({
   site: 'https://code198x.stevehill.xyz',
   output: 'static',
   integrations: [mdx()],
+  markdown: {
+    syntaxHighlight: 'prism',
+  },
 });
