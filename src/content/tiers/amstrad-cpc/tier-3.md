@@ -1,19 +1,18 @@
 ---
-title: "Assembly Unleashed"
+title: "Tier 3: Full Assembly Ahead"
 system: "amstrad-cpc"
 tier: "tier-3"
 order: 3
-description: "Full control. You're now writing in Z80 assembly, not just dabbling."
+description: "Now you’re writing proper programs in Z80. Set up loops, logic, and memory usage to make tight, clean code that’s ready to scale."
 image: "/images/amstrad-cpc/tier-3.png"
 ---
 
-Tier 3: Assembly Unleashed
+Time to live in Z80 full-time.
 
-This tier focuses on the next evolution of your Amstrad CPC dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Build clean Z80 assembly routines (no more inline BASIC)
+- Write loops, branches, and subroutines in pure Z80
+- Use `org`, macros, and assembler syntax for better structure
+- Output to video RAM and interact with hardware ports directly
 
-By the end of this tier, you’ll be significantly closer to professional-level Amstrad CPC development.
+This tier is about structure. By the end, you’ll be writing real programs for a real system — no training wheels.

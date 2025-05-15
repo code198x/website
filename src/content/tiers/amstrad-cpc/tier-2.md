@@ -1,19 +1,18 @@
 ---
-title: "Under the Hood"
+title: "Tier 2: PEEKs, POKEs and Inline Power"
 system: "amstrad-cpc"
 tier: "tier-2"
 order: 2
-description: "Dig into how BASIC works and begin using Z80 code alongside it. A hybrid tier for hybrid learners."
+description: "Explore memory and hardware registers from BASIC. Then take your first steps into Z80 assembly with inline code and USR calls."
 image: "/images/amstrad-cpc/tier-2.png"
 ---
 
-Tier 2: Under the Hood
+This tier gets you talking directly to the hardware.
 
-This tier focuses on the next evolution of your Amstrad CPC dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use `PEEK` and `POKE` to manipulate screen memory and hardware ports
+- Read the keyboard matrix and scan joystick ports
+- Write short inline Z80 routines and call them using `CALL` or `USR`
+- Observe how much faster even simple machine code is compared to BASIC
 
-By the end of this tier, you’ll be significantly closer to professional-level Amstrad CPC development.
+Think of it as learning to whisper in the CPC’s ear instead of shouting from BASIC.

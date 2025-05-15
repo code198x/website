@@ -1,19 +1,18 @@
 ---
-title: "Memory and Machine State"
+title: "Tier 4: Direct to Display"
 system: "amstrad-cpc"
 tier: "tier-4"
 order: 4
-description: "Understand how the Spectrum’s memory is laid out and how to navigate RAM like a local."
+description: "The CPC’s screen memory is fast, flat, and ready for abuse. You’ll learn to address pixels directly and use fast blits and fills."
 image: "/images/amstrad-cpc/tier-4.png"
 ---
 
-Tier 4: Memory and Machine State
+Drawing with code, byte by byte.
 
-This tier focuses on the next evolution of your Amstrad CPC dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Learn how screen memory is laid out in different CPC screen modes
+- Write routines to plot individual pixels and fill areas
+- Create simple animation effects by updating screen data
+- Use lookup tables and bit shifts for speed
 
-By the end of this tier, you’ll be significantly closer to professional-level Amstrad CPC development.
+The CPC’s flat RAM layout makes drawing in Z80 satisfying and fast. You’ll start seeing results immediately.
