@@ -1,19 +1,18 @@
 ---
-title: "Compression and Storage Tricks"
+title: "Tier 12: Build Tools and Workflow"
 system: "commodore-64"
 tier: "tier-12"
 order: 12
-description: "Squeeze every byte. Implement compression for graphics, levels, and even your own code."
-image: "/images/c64/tier-12.png"
+description: "The keyboard isn’t your only tool. Create an external toolchain to assemble, compress, test, and iterate rapidly."
+image: "/images/commodore-64/tier-12.png"
 ---
 
-Tier 12: Compression and Storage Tricks
+Work smarter, not slower.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use external assemblers and Makefiles to streamline development
+- Build tile/sprite/music tools in modern scripting languages
+- Write scripts to convert image/sound data into C64 formats
+- Automate testing and emulator launching
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+This tier bridges 198x and modern dev practice. It’s retro dev with a real pipeline.

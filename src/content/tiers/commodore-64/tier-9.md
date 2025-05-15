@@ -1,19 +1,18 @@
 ---
-title: "Asset Management and Level Data"
+title: "Tier 9: Raster Timing and Scrolling"
 system: "commodore-64"
 tier: "tier-9"
 order: 9
-description: "Design level formats, encode game logic data, and build memory-efficient asset loading."
-image: "/images/c64/tier-9.png"
+description: "Use raster interrupts and fine scrolling to take control of the VIC-II’s timing. This is the beginning of smooth, professional visuals."
+image: "/images/commodore-64/tier-9.png"
 ---
 
-Tier 9: Asset Management and Level Data
+Raster timing makes demos beautiful and games feel smooth.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Learn to hook raster interrupts via `$D012` and `$0314`
+- Use vertical and horizontal scrolling registers
+- Achieve full-screen smooth scrolling
+- Split the screen to show different graphics modes at once
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+These techniques are at the heart of nearly every polished C64 game. And now they’re yours.

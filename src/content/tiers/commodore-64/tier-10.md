@@ -1,19 +1,18 @@
 ---
-title: "Timing, Interrupts, and VBlank Synchronisation"
+title: "Tier 10: Sprite Animation Systems"
 system: "commodore-64"
 tier: "tier-10"
 order: 10
-description: "Synchronise code with screen refresh. Hook into interrupts to update graphics and logic cleanly."
-image: "/images/c64/tier-10.png"
+description: "Go beyond simple sprite display. Create animation systems, collision detection, and even a basic character controller."
+image: "/images/commodore-64/tier-10.png"
 ---
 
-Tier 10: Timing, Interrupts, and VBlank Synchronisation
+This tier gives your sprites life.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Build frame-based animation systems
+- Manage animation timing and frame switching
+- Handle sprite-to-sprite and sprite-to-background collisions
+- Write a simple player input system and movement engine
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+Sprite logic is game logic. Master this, and you’re making real games.
