@@ -22,11 +22,6 @@ With just a hexadecimal keypad, six 7-segment LED displays, and 1 KB of RAM, it 
 - Its design was later used as the foundation for the Commodore PET.
 - Expansion boards added serial ports, displays, keyboards, and more.
 
-## 🖼 Suggested Image
-
-![KIM-1 front view](https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/KIM-1_-_MOS_Technology_1976.jpg/640px-KIM-1_-_MOS_Technology_1976.jpg)
-*The original KIM-1 single-board computer. [Image via Wikimedia Commons](https://commons.wikimedia.org/wiki/File:KIM-1_-_MOS_Technology_1976.jpg)*
-
 ## 🗃 Related Systems
 
 - [Apple I](./apple-i)

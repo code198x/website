@@ -22,11 +22,6 @@ It featured 256 bytes of memory and was programmed using a series of front-panel
 - Its creator, John Blankenbaker, sold it for $750 in 1971 (roughly $5,500 today).
 - Programming it involved entering binary code manually via switches—no keyboard, no monitor.
 
-## 🖼 Suggested Image
-
-![Kenbak-1 front panel](https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Kenbak-1-computer-IMG_9338.jpg/640px-Kenbak-1-computer-IMG_9338.jpg)
-*Kenbak-1 computer, considered the first personal computer. [Image via Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Kenbak-1-computer-IMG_9338.jpg)*
-
 ## 🗃 Related Systems
 
 - [IMSAI 8080](./imsai-8080)

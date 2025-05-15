@@ -22,11 +22,6 @@ The Speccy—as it became affectionately known—was instrumental in sparking th
 - Over 24,000 titles were released for the platform, including games, utilities, and educational software.
 - Many modern UK developers, including the founders of Rare and Codemasters, got their start on the ZX Spectrum.
 
-## 🖼 Suggested Image
-
-![ZX Spectrum](https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/ZX_Spectrum_48K.jpg/640px-ZX_Spectrum_48K.jpg)
-*Original 48K ZX Spectrum. [Image via Wikimedia Commons](https://commons.wikimedia.org/wiki/File:ZX_Spectrum_48K.jpg)*
-
 ## 🗃 Related Systems
 
 - [Commodore 64](./commodore-64)

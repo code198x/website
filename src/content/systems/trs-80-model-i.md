@@ -24,11 +24,6 @@ The Model I was especially popular in educational and small business settings du
 - The original Model I lacked lowercase character support—a major early complaint.
 - It was banned from some schools because its unshielded design caused radio interference.
 
-## 🖼 Suggested Image
-
-![TRS-80 Model I](https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/TRS-80_Model_I_System.jpg/640px-TRS-80_Model_I_System.jpg)
-*TRS-80 Model I with monitor, cassette deck, and expansion interface. [Image via Wikimedia Commons](https://commons.wikimedia.org/wiki/File:TRS-80_Model_I_System.jpg)*
-
 ## 🗃 Related Systems
 
 - [Apple II](./apple-ii)

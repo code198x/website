@@ -22,11 +22,6 @@ The system included a serial interface for connecting to a terminal and supporte
 - Many hobbyists used the system with a Teletype or video terminal and ran software like FLEX, an early disk operating system.
 - SWTPc later introduced the 6809-based SWTPc 6809 and transitioned toward complete turnkey systems.
 
-## 🖼 Suggested Image
-
-![SWTPc 6800 system](https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/SWTPc_6800_Computer_System.jpg/640px-SWTPc_6800_Computer_System.jpg)
-*SWTPc 6800 in a typical configuration with serial terminal. [Image via Wikimedia Commons](https://commons.wikimedia.org/wiki/File:SWTPc_6800_Computer_System.jpg)*
-
 ## 🗃 Related Systems
 
 - [Altair 8800](./altair-8800)

@@ -22,11 +22,6 @@ Unlike many contemporaries that relied on external terminals or toggle switches,
 - It was often used with CP/M or custom monitors depending on configuration and expansion.
 - The SOL Terminal Computer was originally designed as a smart terminal but quickly evolved into a full-fledged microcomputer.
 
-## 🖼 Suggested Image
-
-![SOL-20 Terminal Computer](https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Sol20.jpg/640px-Sol20.jpg)
-*Processor Technology SOL-20 with its characteristic wooden side panels. [Image via Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Sol20.jpg)*
-
 ## 🗃 Related Systems
 
 - [IMSAI 8080](./imsai-8080)
