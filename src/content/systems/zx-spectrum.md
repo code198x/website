@@ -9,7 +9,7 @@ release_date: 1982-04-23
 discontinued: 1992-01-01
 emulated: true
 country_of_origin: United Kingdom
-image: /images/systems/zx-spectrum.png
+image: zx-spectrum.jpg
 ---
 
 The **ZX Spectrum** was one of the most iconic and influential home computers of the 1980s, particularly in the UK and Europe. Released in 1982 by Sinclair Research, it followed on from the ZX81 and offered colour graphics, sound, and a full BASIC interpreter at a low price point.
