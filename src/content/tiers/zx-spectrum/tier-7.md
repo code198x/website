@@ -1,19 +1,18 @@
 ---
-title: "Sound with Nothing but CPU Cycles"
+title: "Tier 7: Input/Output Rage"
 system: "zx-spectrum"
 tier: "tier-7"
 order: 7
-description: "Use loops, timers, and clever maths to create sound from the CPU alone."
+description: "Build real input handling in assembly. You’ll scan the keyboard matrix directly, read ports, and deal with ghosting, masking, and timing issues."
 image: "/images/zx-spectrum/tier-7.png"
 ---
 
-Tier 7: Sound with Nothing but CPU Cycles
+Tier 7 is where interaction becomes real.
 
-This tier focuses on the next evolution of your ZX Spectrum dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Understand the keyboard matrix and how to scan it with IN/OUT
+- Build your own debounce routines
+- Map raw keypresses to game controls or editor commands
+- Learn how to handle multiple simultaneous keypresses
 
-By the end of this tier, you’ll be significantly closer to professional-level Spectrum development.
+This tier sets you up for full game loops and smooth player control — without relying on BASIC polling.

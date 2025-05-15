@@ -1,19 +1,18 @@
 ---
-title: "Video RAM Wizardry"
+title: "Tier 6: Sound by CPU"
 system: "zx-spectrum"
 tier: "tier-6"
 order: 6
-description: "Manipulate the Spectrum’s pixel display directly. Build screen effects the hardware never intended."
+description: "The Spectrum doesn’t have a sound chip — but that won’t stop you. You’ll generate square waves, noise, and even music using timing loops and the BEEP command."
 image: "/images/zx-spectrum/tier-6.png"
 ---
 
-Tier 6: Video RAM Wizardry
+Tier 6 teaches sound the hard way: one cycle at a time.
 
-This tier focuses on the next evolution of your ZX Spectrum dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Create tone and noise using software delay loops
+- Use `BEEP` from BASIC — and then rebuild it in Z80
+- Explore duty cycles and waveform generation using OUT
+- Simulate percussion, melody, and even early music playback
 
-By the end of this tier, you’ll be significantly closer to professional-level Spectrum development.
+All with nothing but the CPU. Welcome to the DIY sound chip experience.

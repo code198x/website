@@ -1,19 +1,18 @@
 ---
-title: "Compression and Storage Tricks"
+title: "Tier 12: Toolchains and Automation"
 system: "zx-spectrum"
 tier: "tier-12"
 order: 12
-description: "Squeeze every byte. Implement compression for graphics, levels, and even your own code."
+description: "You can’t do it all on a rubber keyboard. Build modern tooling to automate asset conversion, map generation, and deployment."
 image: "/images/zx-spectrum/tier-12.png"
 ---
 
-Tier 12: Compression and Storage Tricks
+In Tier 12, you’ll stop working like it’s 198x (just a little).
 
-This tier focuses on the next evolution of your ZX Spectrum dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Write sprite and tile editors for your PC
+- Automate asset conversion for tape loading or binary injection
+- Use Makefiles or scripts to compile, compress, and test
+- Create workflows to speed up iteration and debugging
 
-By the end of this tier, you’ll be significantly closer to professional-level Spectrum development.
+This is how modern retro devs work. Your Spectrum code will still be 8-bit — but your tools won’t be.

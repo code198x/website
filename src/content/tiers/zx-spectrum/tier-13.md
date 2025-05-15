@@ -1,19 +1,18 @@
 ---
-title: "Tooling and Dev Workflow"
+title: "Tier 13: Custom Loaders and ROM Subversion"
 system: "zx-spectrum"
 tier: "tier-13"
 order: 13
-description: "Write tools to help design and test your games: map editors, asset pipelines, and auto-packers."
+description: "Why stop at games when you can build the loader too? In this tier, you’ll hook or override ROM routines, build your own splash screens, and control the load process."
 image: "/images/zx-spectrum/tier-13.png"
 ---
 
-Tier 13: Tooling and Dev Workflow
+Tier 13 puts you in charge of what happens *before* the game even starts.
 
-This tier focuses on the next evolution of your ZX Spectrum dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Write custom tape loaders with visual effects
+- Inject graphics and music into the load screen
+- Override ROM routines with your own entry points
+- Replace the default startup to boot directly into your program
 
-By the end of this tier, you’ll be significantly closer to professional-level Spectrum development.
+It’s a true badge of honour to customise the full loading experience. This is how classics made a first impression.

@@ -1,19 +1,18 @@
 ---
-title: "Sprite Engines and Movement Systems"
+title: "Tier 11: Data Compression and Decompression"
 system: "zx-spectrum"
 tier: "tier-11"
 order: 11
-description: "Build a complete sprite engine, implement sprite masking, and explore animation techniques."
+description: "48K isn’t a lot — so let’s use it wisely. Implement run-length encoding, simple LZ-style compression, and in-place decompressors for screens, sprites, and levels."
 image: "/images/zx-spectrum/tier-11.png"
 ---
 
-Tier 11: Sprite Engines and Movement Systems
+Tier 11 teaches you how to fit more into less.
 
-This tier focuses on the next evolution of your ZX Spectrum dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Explore compression formats used in 80s games
+- Build a simple RLE compressor and decompressor
+- Write your own decompression routines in Z80
+- Compress sprites, level maps, and even sound data
 
-By the end of this tier, you’ll be significantly closer to professional-level Spectrum development.
+This isn’t optional — it’s how pros packed full games into a single side of tape.

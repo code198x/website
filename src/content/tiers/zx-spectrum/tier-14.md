@@ -1,19 +1,18 @@
 ---
-title: "Custom Loaders and Menu Screens"
+title: "Tier 14: Raster Effects and Hardware Abuse"
 system: "zx-spectrum"
 tier: "tier-14"
 order: 14
-description: "Create your own loader, splash screen, and title music. Fully customise the boot experience."
+description: "You’ll go beyond the intended use of the ULA. Explore raster bars, colour splits, timing tricks, and floating bus effects to do what shouldn’t be possible."
 image: "/images/zx-spectrum/tier-14.png"
 ---
 
-Tier 14: Custom Loaders and Menu Screens
+Tier 14 breaks the rules — and the screen border.
 
-This tier focuses on the next evolution of your ZX Spectrum dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use cycle-counted timing to control colour changes per scanline
+- Build raster bars and shimmering effects
+- Harness floating bus reads for display hacks
+- Combine interrupt timing and screen writes for animation tricks
 
-By the end of this tier, you’ll be significantly closer to professional-level Spectrum development.
+These are the techniques that defined the demoscene. Pure black magic, executed one frame at a time.

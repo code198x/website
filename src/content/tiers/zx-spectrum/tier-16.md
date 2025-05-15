@@ -1,19 +1,18 @@
 ---
-title: "Commercial-Level Game Design"
+title: "Tier 16: Final Form"
 system: "zx-spectrum"
 tier: "tier-16"
 order: 16
-description: "Ship a complete, polished game with full performance and visual tricks."
+description: "There are no more limits. Use every byte, every trick, every undocumented feature. This is your legacy tier — show the machine who’s boss."
 image: "/images/zx-spectrum/tier-16.png"
 ---
 
-Tier 16: Commercial-Level Game Design
+Tier 16 is your ZX Spectrum endgame.
 
-This tier focuses on the next evolution of your ZX Spectrum dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Write self-modifying code for space or speed
+- Chain compression and decompression during execution
+- Create multistage loaders for demo/game transitions
+- Exploit undocumented instructions and side effects
 
-By the end of this tier, you’ll be significantly closer to professional-level Spectrum development.
+This is the machine at its absolute limit — and you, fully in control of every cycle, every byte, and every glitch. There’s nothing left to learn but everything left to build.

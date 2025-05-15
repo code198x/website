@@ -1,19 +1,18 @@
 ---
-title: "Raster Effects and Hardware Abuse"
+title: "Tier 15: Commercial-Grade Game Design"
 system: "zx-spectrum"
 tier: "tier-15"
 order: 15
-description: "Explore undocumented Z80 instructions and ULA quirks. Create effects by abusing the hardware."
+description: "Design and build a full game: menus, title screen, level progression, polish, packaging. Work like the pros — with 48K and a tight deadline."
 image: "/images/zx-spectrum/tier-15.png"
 ---
 
-Tier 15: Raster Effects and Hardware Abuse
+Tier 15 is your production pipeline.
 
-This tier focuses on the next evolution of your ZX Spectrum dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Build a full game structure: title screen, levels, win/fail states
+- Use dynamic memory loading and overlays for larger games
+- Add visual polish, UI elements, and music loops
+- Optimise for performance, size, and compatibility
 
-By the end of this tier, you’ll be significantly closer to professional-level Spectrum development.
+This is where everything comes together. It’s the kind of game you could’ve sold in 1986. And maybe still could.

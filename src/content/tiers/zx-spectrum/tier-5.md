@@ -1,19 +1,18 @@
 ---
-title: "Input Without Mercy"
+title: "Tier 5: Memory Games"
 system: "zx-spectrum"
 tier: "tier-5"
 order: 5
-description: "Write responsive input code in Z80. Scan keys directly, debounce them, and map game controls."
+description: "Explore the Spectrum’s memory map and make it work for you. From screen memory to shadow RAM, you’ll know exactly where every byte lives."
 image: "/images/zx-spectrum/tier-5.png"
 ---
 
-Tier 5: Input Without Mercy
+In Tier 5, you're diving into memory management and manipulation.
 
-This tier focuses on the next evolution of your ZX Spectrum dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Learn the layout of RAM and ROM on the 48K Spectrum
+- Use PEEK and POKE intelligently (not just randomly)
+- Write routines to move blocks of memory quickly
+- Explore shadow screen memory and memory paging tricks on later models
 
-By the end of this tier, you’ll be significantly closer to professional-level Spectrum development.
+Understanding the memory map unlocks every other trick. You’ll stop guessing and start commanding.
