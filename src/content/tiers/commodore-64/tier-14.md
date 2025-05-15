@@ -1,19 +1,18 @@
 ---
-title: "Custom Loaders and Menu Screens"
+title: "Tier 14: Raster Wizardry and Effects"
 system: "commodore-64"
 tier: "tier-14"
 order: 14
-description: "Create your own loader, splash screen, and title music. Fully customise the boot experience."
-image: "/images/c64/tier-14.png"
+description: "Split the screen, animate the border, and control every scanline. It’s time for colour splits, scroll zones, and full-screen timing control."
+image: "/images/commodore-64/tier-14.png"
 ---
 
-Tier 14: Custom Loaders and Menu Screens
+Welcome to the demo coder’s playground.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use raster interrupts to change colours mid-frame
+- Mix bitmap and character graphics on screen
+- Animate the border and create timed effects
+- Create basic plasma/rainbow or sprite split visuals
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+Everything the VIC-II lets you do — and a few things it doesn’t — lives here.

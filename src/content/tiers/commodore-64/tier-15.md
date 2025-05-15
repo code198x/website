@@ -1,19 +1,18 @@
 ---
-title: "Raster Effects and Hardware Abuse"
+title: "Tier 15: Game Production Systems"
 system: "commodore-64"
 tier: "tier-15"
 order: 15
-description: "Explore undocumented Z80 instructions and ULA quirks. Create effects by abusing the hardware."
-image: "/images/c64/tier-15.png"
+description: "Menus, levels, lives, scoring, polish — you’ll put everything together into a full working game system, with professional structure and modularity."
+image: "/images/commodore-64/tier-15.png"
 ---
 
-Tier 15: Raster Effects and Hardware Abuse
+This is your production-ready framework.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Build title screens and state machines
+- Create level loading and in-memory overlays
+- Add game over, lives, score tracking, and audio cues
+- Design game loop structure that’s readable and extendable
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+If Tier 12 made you a dev, Tier 15 makes you a publisher.
