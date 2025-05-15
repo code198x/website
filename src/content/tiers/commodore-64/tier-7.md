@@ -1,19 +1,18 @@
 ---
-title: "Sound with Nothing but CPU Cycles"
+title: "Tier 7: Sprite Taming"
 system: "commodore-64"
 tier: "tier-7"
 order: 7
-description: "Use loops, timers, and clever maths to create sound from the CPU alone."
-image: "/images/c64/tier-7.png"
+description: "The VIC-II gives you 8 hardware sprites. This tier teaches you how to position, move, multiplex, and animate them like a 1980s developer with a cartridge to ship."
+image: "/images/commodore-64/tier-7.png"
 ---
 
-Tier 7: Sound with Nothing but CPU Cycles
+Sprites are where C64 games come to life.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Enable and position hardware sprites
+- Change sprite pointers and animate frames
+- Handle collision detection and sprite priorities
+- Experiment with sprite multiplexing for more than 8
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+Forget printing characters — now you’re *moving objects*. Real-time, pixel-perfect, and hardware-accelerated.

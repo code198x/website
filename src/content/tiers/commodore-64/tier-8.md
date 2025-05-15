@@ -1,19 +1,18 @@
 ---
-title: "Structure and Scale"
+title: "Tier 8: Structured Assembly and Scaling Up"
 system: "commodore-64"
 tier: "tier-8"
 order: 8
-description: "Organise your growing codebase. Manage complexity using modular assembly and macros."
-image: "/images/c64/tier-8.png"
+description: "Now that your codebase is growing, you’ll learn to organise, document, and expand your project using macros, modules, and modern assembly practice."
+image: "/images/commodore-64/tier-8.png"
 ---
 
-Tier 8: Structure and Scale
+Clean code wins.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Separate routines into modular source files
+- Use assembler macros, labels, and constants effectively
+- Build utility libraries for graphics, input, and sound
+- Maintain clean zero-page usage and memory maps
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+This tier prepares you for real projects — not one-offs. You’re now coding like a team of 1980s professionals… without the cigarettes.

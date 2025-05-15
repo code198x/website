@@ -1,19 +1,18 @@
 ---
-title: "Assembly Unleashed"
+title: "Tier 3: The Shape of Assembly"
 system: "commodore-64"
 tier: "tier-3"
 order: 3
-description: "Full control. You're now writing in Z80 assembly, not just dabbling."
-image: "/images/c64/tier-3.png"
+description: "This is real programming: structured assembly, meaningful labels, zero-page usage, and clean memory control. We’ll turn short hacks into full programs."
+image: "/images/commodore-64/tier-3.png"
 ---
 
-Tier 3: Assembly Unleashed
+Time to build full applications.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use zero-page memory for efficient variable storage
+- Structure routines into clean call trees
+- Handle program entry, looping, subroutines, and exits
+- Write to screen memory directly and manage system pointers
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+This is where you stop dabbling and start shipping real code.

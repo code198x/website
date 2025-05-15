@@ -23,6 +23,6 @@ The **IMSAI 8080** was one of the first widely available microcomputers and gain
 
 ## Related Systems
 
-- [Altair 8800](./altair-8800.md)
-- [Processor Technology SOL-20](./sol-20.md)
-- [NorthStar Horizon](./northstar-horizon.md)
+- [Altair 8800](./altair-8800)
+- [Processor Technology SOL-20](./sol-20)
+- [NorthStar Horizon](./northstar-horizon)

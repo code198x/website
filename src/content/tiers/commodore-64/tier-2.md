@@ -1,19 +1,18 @@
 ---
-title: "Under the Hood"
+title: "Tier 2: Poking the Beast"
 system: "commodore-64"
 tier: "tier-2"
 order: 2
-description: "Dig into how BASIC works and begin using Z80 code alongside it. A hybrid tier for hybrid learners."
-image: "/images/c64/tier-2.png"
+description: "BASIC 2.0 can’t even multiply two strings — so we’re going deeper. In this tier, you’ll write your first 6502 routines, launch them with SYS, and realise how much faster things can be."
+image: "/images/commodore-64/tier-2.png"
 ---
 
-Tier 2: Under the Hood
+This tier bridges the gap between BASIC and machine code.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Learn 6502 architecture, registers, and addressing modes
+- Use the `SYS` command to jump into memory-resident machine code
+- Write your first routines to manipulate memory and draw patterns
+- Install and use a monitor (like the built-in one in VICE or C64Studio)
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+Once you’ve tasted speed, there’s no going back. You’re about to become a 6502 native speaker.

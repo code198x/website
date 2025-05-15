@@ -1,19 +1,18 @@
 ---
-title: "Video RAM Wizardry"
+title: "Tier 6: SID Symphony"
 system: "commodore-64"
 tier: "tier-6"
 order: 6
-description: "Manipulate the Spectrum’s pixel display directly. Build screen effects the hardware never intended."
-image: "/images/c64/tier-6.png"
+description: "The SID chip is a monster. You’ll generate tones, manipulate waveforms, and play your first multi-voice tune — all in pure assembly."
+image: "/images/commodore-64/tier-6.png"
 ---
 
-Tier 6: Video RAM Wizardry
+It’s time to make the SID sing.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Learn the SID register layout and control schemes
+- Generate square, triangle, sawtooth and noise waveforms
+- Control pitch, volume, envelope, and filter settings
+- Compose simple tunes using patterns or lookup tables
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+The SID chip was ahead of its time. You’re now a 3-channel composer, with a 1MHz orchestra at your command.

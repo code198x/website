@@ -1,19 +1,18 @@
 ---
-title: "Memory and Machine State"
+title: "Tier 4: VIC-II Unleashed"
 system: "commodore-64"
 tier: "tier-4"
 order: 4
-description: "Understand how the Spectrum’s memory is laid out and how to navigate RAM like a local."
-image: "/images/c64/tier-4.png"
+description: "Welcome to the graphics chip that changed everything. In this tier, you’ll draw in character mode, touch bitmaps, and start building visual effects the Commodore way."
+image: "/images/commodore-64/tier-4.png"
 ---
 
-Tier 4: Memory and Machine State
+In this tier, you’ll get your hands on the VIC-II.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Understand screen RAM and colour RAM layout
+- Print characters to screen with assembly
+- Modify the character set for custom fonts and UDGs
+- Switch into bitmap mode and begin drawing raw pixels
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+This is where C64 graphics begin. It’s messy, low-level, and beautiful.

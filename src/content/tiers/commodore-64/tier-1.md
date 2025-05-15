@@ -1,19 +1,18 @@
 ---
-title: "Getting Started the 198x Way"
+title: "Tier 1: Welcome to Commodore Country"
 system: "commodore-64"
 tier: "tier-1"
 order: 1
-description: "Start like it’s 1983: no IDEs, no internet, just a rubber keyboard and a blinking cursor."
-image: "/images/c64/tier-1.png"
+description: "Boot to BASIC and blink at that blinking cursor. In this tier, you’ll load games, type in listings, and feel the 38911 bytes of free RAM stretching ahead of you."
+image: "/images/commodore-64/tier-1.png"
 ---
 
-Tier 1: Getting Started the 198x Way
+Welcome to Tier 1 for the Commodore 64.
 
-This tier focuses on the next evolution of your Commodore 64 dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Load and run programs from tape or disk using `LOAD` and `RUN`
+- Explore the built-in BASIC 2.0 environment and what it *can’t* do
+- Type in listings from magazines and experiment with short edits
+- Learn the quirks of C64 screen codes, character sets, and the function keys
 
-By the end of this tier, you’ll be significantly closer to professional-level Commodore 64 development.
+The goal here isn’t to make art — it’s to get comfy with your keyboard, the screen, and the idea that the border might flash for no good reason. Onward!
