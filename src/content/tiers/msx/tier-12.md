@@ -1,19 +1,18 @@
 ---
-title: "Compression and Storage Tricks"
+title: "Tier 12: Toolchains and Automation"
 system: "msx"
 tier: "tier-12"
 order: 12
-description: "Squeeze every byte. Implement compression for graphics, levels, and even your own code."
+description: "You’re not typing hex anymore. Set up your modern build chain with makefiles, converters, and automated test harnesses."
 image: "/images/msx/tier-12.png"
 ---
 
-Tier 12: Compression and Storage Tricks
+Bring your tools up to speed.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Set up modern Z80 assemblers with symbol support
+- Use Python or Node.js to convert images, maps, and music
+- Launch openMSX or fMSX from build scripts
+- Maintain reusable toolchains for consistent builds
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+Tooling isn't cheating — it's how you get things done faster and better.

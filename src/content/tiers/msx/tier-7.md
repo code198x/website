@@ -1,19 +1,18 @@
 ---
-title: "Sound with Nothing but CPU Cycles"
+title: "Tier 7: Polling Input Devices"
 system: "msx"
 tier: "tier-7"
 order: 7
-description: "Use loops, timers, and clever maths to create sound from the CPU alone."
+description: "Read the keyboard and joystick like a pro. This tier teaches you to scan the matrix, debounce inputs, and handle multiple keys reliably."
 image: "/images/msx/tier-7.png"
 ---
 
-Tier 7: Sound with Nothing but CPU Cycles
+Input makes everything interactive.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use BIOS routines to read the keyboard and joystick
+- Manually scan the keyboard matrix for performance
+- Detect keypresses, releases, and combos
+- Build an input abstraction layer for game logic
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+Whether it's buttons or sticks — your MSX is now listening.

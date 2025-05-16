@@ -1,19 +1,18 @@
 ---
-title: "Input Without Mercy"
+title: "Tier 5: Sprite Systems with the VDP"
 system: "msx"
 tier: "tier-5"
 order: 5
-description: "Write responsive input code in Z80. Scan keys directly, debounce them, and map game controls."
+description: "MSX hardware sprites are fast and flexible. In this tier, you’ll learn to configure, draw, and animate up to 32 objects on screen."
 image: "/images/msx/tier-5.png"
 ---
 
-Tier 5: Input Without Mercy
+Time to make things move.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Define sprite patterns and colours in VRAM
+- Use the sprite attribute table to control position and index
+- Enable sprite display and manage screen priorities
+- Detect sprite collisions using the status register
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+This is the start of real gameplay — hardware-accelerated and flicker-free.

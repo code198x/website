@@ -1,19 +1,18 @@
 ---
-title: "Custom Loaders and Menu Screens"
+title: "Tier 14: Raster Effects and Timing Tricks"
 system: "msx"
 tier: "tier-14"
 order: 14
-description: "Create your own loader, splash screen, and title music. Fully customise the boot experience."
+description: "There’s no raster interrupt, but there is raster *timing*. Use scanline polling to split screens, animate colours, and layer effects."
 image: "/images/msx/tier-14.png"
 ---
 
-Tier 14: Custom Loaders and Menu Screens
+Push the VDP to its limits.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Poll the VDP status to wait for specific scanlines
+- Change palette or scroll registers mid-frame
+- Create vertical splits for UI/gameplay separation
+- Animate colour registers in real-time
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+These are the tricks that made 1980s demos sing on MSX hardware.

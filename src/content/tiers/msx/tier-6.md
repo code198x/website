@@ -1,19 +1,18 @@
 ---
-title: "Video RAM Wizardry"
+title: "Tier 6: AY-3-8910 Sound Programming"
 system: "msx"
 tier: "tier-6"
 order: 6
-description: "Manipulate the Spectrum’s pixel display directly. Build screen effects the hardware never intended."
+description: "Unlock the PSG chip. You’ll write music and sound effects using tone, noise, and envelope generators across three independent channels."
 image: "/images/msx/tier-6.png"
 ---
 
-Tier 6: Video RAM Wizardry
+Get ready to score your games.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Write values to the AY registers via ports `$A0` and `$A1`
+- Generate tone, noise, and mixed output
+- Use amplitude envelopes for fade, pulse, and sweep effects
+- Sequence notes with frequency tables and tempo control
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+Three channels, full control — time to make the MSX sing.

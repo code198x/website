@@ -1,19 +1,18 @@
 ---
-title: "Commercial-Level Game Design"
+title: "Tier 16: Mastering the MSX"
 system: "msx"
 tier: "tier-16"
 order: 16
-description: "Ship a complete, polished game with full performance and visual tricks."
+description: "Bring everything together. You’ll optimise, polish, and build a complete MSX program — from boot screen to final boss."
 image: "/images/msx/tier-16.png"
 ---
 
-Tier 16: Commercial-Level Game Design
+This is the final tier. Show us what the MSX can really do.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Optimise graphics and code for memory and CPU cycles
+- Use self-modifying routines and hand-crafted loops
+- Compress the final build and deploy to .ROM or .DSK
+- Build a full demo or game that showcases everything you’ve learned
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+You’ve got the tools. You’ve got the platform. Now make something unforgettable.

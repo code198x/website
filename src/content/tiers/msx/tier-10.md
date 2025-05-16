@@ -1,19 +1,18 @@
 ---
-title: "Timing, Interrupts, and VBlank Synchronisation"
+title: "Tier 10: Sprite Animation and Logic"
 system: "msx"
 tier: "tier-10"
 order: 10
-description: "Synchronise code with screen refresh. Hook into interrupts to update graphics and logic cleanly."
+description: "Now that sprites move, let’s animate them. Create sprite engines that flip frames, respond to input, and interact with game logic."
 image: "/images/msx/tier-10.png"
 ---
 
-Tier 10: Timing, Interrupts, and VBlank Synchronisation
+Time to make characters come alive.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Define sprite animation frames in VRAM
+- Create control structures for movement and logic
+- Update animation based on game state or input
+- Write collision logic and sprite-layer interaction
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+This is where graphics and gameplay truly merge.

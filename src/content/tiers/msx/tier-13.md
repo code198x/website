@@ -1,19 +1,18 @@
 ---
-title: "Tooling and Dev Workflow"
+title: "Tier 13: Custom Loaders and Boot Sequences"
 system: "msx"
 tier: "tier-13"
 order: 13
-description: "Write tools to help design and test your games: map editors, asset pipelines, and auto-packers."
+description: "Make your own loader. Launch from BASIC, show an intro, and preload code or assets before the game proper begins."
 image: "/images/msx/tier-13.png"
 ---
 
-Tier 13: Tooling and Dev Workflow
+Time to create a proper intro.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Launch code using `BLOAD` or `CALL` from MSX BASIC
+- Display loading screens while decompressing assets
+- Use simple BIOS hooks to set up your launch path
+- Create splash screens with music or scrolling text
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+Your software deserves a dramatic entrance — not just a blinking cursor.

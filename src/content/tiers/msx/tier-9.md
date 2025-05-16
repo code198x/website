@@ -1,19 +1,18 @@
 ---
-title: "Asset Management and Level Data"
+title: "Tier 9: Scrolling and Tilemaps"
 system: "msx"
 tier: "tier-9"
 order: 9
-description: "Design level formats, encode game logic data, and build memory-efficient asset loading."
+description: "The VDP’s tile system is perfect for scrolling games. Learn to build tilemaps, update name tables, and scroll smoothly across a game world."
 image: "/images/msx/tier-9.png"
 ---
 
-Tier 9: Asset Management and Level Data
+The MSX doesn't scroll the screen — you scroll the world.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Create tilemaps and draw them to VRAM dynamically
+- Scroll by shifting name table entries, not pixels
+- Update off-screen rows/columns for seamless motion
+- Build tile-based engines for side-scrolling games
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+Scrolling is hard… unless you let the VDP do the heavy lifting.

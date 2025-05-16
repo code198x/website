@@ -1,19 +1,18 @@
 ---
-title: "Structure and Scale"
+title: "Tier 8: Structured Assembly Projects"
 system: "msx"
 tier: "tier-8"
 order: 8
-description: "Organise your growing codebase. Manage complexity using modular assembly and macros."
+description: "Time to scale. You’ll build modular source layouts with reusable routines, assembler macros, and a build system to keep your projects clean."
 image: "/images/msx/tier-8.png"
 ---
 
-Tier 8: Structure and Scale
+Your MSX projects are growing up.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Split your codebase into modules and labels
+- Define macros and includes for reusable logic
+- Build scripts to assemble and launch with openMSX
+- Maintain memory maps, symbol tables, and versioning
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+This is how serious games got made — and how yours will too.

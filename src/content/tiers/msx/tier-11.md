@@ -1,19 +1,18 @@
 ---
-title: "Sprite Engines and Movement Systems"
+title: "Tier 11: Compression and Data Loading"
 system: "msx"
 tier: "tier-11"
 order: 11
-description: "Build a complete sprite engine, implement sprite masking, and explore animation techniques."
+description: "Memory is tight — time to compress. Pack your maps, sprites, and music, then write decompressors that run cleanly in Z80."
 image: "/images/msx/tier-11.png"
 ---
 
-Tier 11: Sprite Engines and Movement Systems
+Store more, load faster.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Compress tilemaps and sprite data using RLE or simple LZ schemes
+- Write Z80 decompressors that expand to VRAM or RAM
+- Explore BLOAD and BSAVE formats for binary assets
+- Optimise asset pipelines for size and speed
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+Compression isn’t just for big games — it’s for any good one.
