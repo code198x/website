@@ -1,19 +1,18 @@
 ---
-title: "Structure and Scale"
+title: "Tier 8: Structured Projects and Clean Code"
 system: "amstrad-cpc"
 tier: "tier-8"
 order: 8
-description: "Organise your growing codebase. Manage complexity using modular assembly and macros."
+description: "As your programs grow, you need organisation. Learn how to modularise, document, and build maintainable Z80 projects with reusable libraries."
 image: "/images/amstrad-cpc/tier-8.png"
 ---
 
-Tier 8: Structure and Scale
+Time to stop hacking and start building.
 
-This tier focuses on the next evolution of your Amstrad CPC dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Break your codebase into source modules and headers
+- Use assembler macros and constants for readability
+- Create and document a code style and memory map layout
+- Maintain a project structure that supports growth and iteration
 
-By the end of this tier, you’ll be significantly closer to professional-level Amstrad CPC development.
+This is how large games and demos were built — not as monoliths, but as systems. Now yours will be too.

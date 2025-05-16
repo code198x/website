@@ -1,19 +1,18 @@
 ---
-title: "Input Without Mercy"
+title: "Tier 5: Screen Memory and Colour Control"
 system: "amstrad-cpc"
 tier: "tier-5"
 order: 5
-description: "Write responsive input code in Z80. Scan keys directly, debounce them, and map game controls."
+description: "Dig deeper into video RAM. You’ll manipulate colours, change screen modes, and write efficient graphics code by understanding memory layout."
 image: "/images/amstrad-cpc/tier-5.png"
 ---
 
-Tier 5: Input Without Mercy
+Tier 5 gives you total control of what goes onscreen.
 
-This tier focuses on the next evolution of your Amstrad CPC dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Explore the format and address layout of video memory in each screen mode
+- Learn how pixels are packed in Mode 0, 1, and 2
+- Change ink colours via hardware registers
+- Use double buffering and fast memory clears
 
-By the end of this tier, you’ll be significantly closer to professional-level Amstrad CPC development.
+With its linear memory and flexible palette, the CPC rewards precision — and now you’ve got it.

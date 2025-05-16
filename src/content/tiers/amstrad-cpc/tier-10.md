@@ -1,19 +1,18 @@
 ---
-title: "Timing, Interrupts, and VBlank Synchronisation"
+title: "Tier 10: Blitting and Software Sprites"
 system: "amstrad-cpc"
 tier: "tier-10"
 order: 10
-description: "Synchronise code with screen refresh. Hook into interrupts to update graphics and logic cleanly."
+description: "Build your own sprite system from scratch. Mask, move, and animate objects over the screen using fast pixel manipulation."
 image: "/images/amstrad-cpc/tier-10.png"
 ---
 
-Tier 10: Timing, Interrupts, and VBlank Synchronisation
+Make your pixels dance.
 
-This tier focuses on the next evolution of your Amstrad CPC dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Define sprite formats for 1bpp, 2bpp, or 4bpp modes
+- Create fast blitting routines with masking and logic ops
+- Animate sprites with frame tables and movement logic
+- Handle background save/restore for smooth motion
 
-By the end of this tier, you’ll be significantly closer to professional-level Amstrad CPC development.
+The CPC doesn’t give you sprites — so we’ll build them ourselves.

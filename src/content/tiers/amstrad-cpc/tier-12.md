@@ -1,19 +1,18 @@
 ---
-title: "Compression and Storage Tricks"
+title: "Tier 12: Tooling and Automation"
 system: "amstrad-cpc"
 tier: "tier-12"
 order: 12
-description: "Squeeze every byte. Implement compression for graphics, levels, and even your own code."
+description: "Set up your modern build environment. Write and use tools to convert, compile, and launch projects quickly."
 image: "/images/amstrad-cpc/tier-12.png"
 ---
 
-Tier 12: Compression and Storage Tricks
+Make the CPC feel like home.
 
-This tier focuses on the next evolution of your Amstrad CPC dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use modern assemblers (like RASM or SDCC with CPC targets)
+- Create scripts to compile and launch code in emulators
+- Build your own sprite/tile/music editors for modern platforms
+- Maintain your game/project with repeatable builds and debug output
 
-By the end of this tier, you’ll be significantly closer to professional-level Amstrad CPC development.
+No more manual conversions or command-line chaos. You’ll code faster — and better.

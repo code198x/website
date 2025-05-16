@@ -1,19 +1,18 @@
 ---
-title: "Video RAM Wizardry"
+title: "Tier 6: Soundwaves and Speaker Magic"
 system: "amstrad-cpc"
 tier: "tier-6"
 order: 6
-description: "Manipulate the Spectrum’s pixel display directly. Build screen effects the hardware never intended."
+description: "Unlock the sound chip. Use the AY-3-8912 to produce tones, noise, and envelope-shaped audio that’ll make your CPC sing like it’s 1986."
 image: "/images/amstrad-cpc/tier-6.png"
 ---
 
-Tier 6: Video RAM Wizardry
+Time to take on the AY chip.
 
-This tier focuses on the next evolution of your Amstrad CPC dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Understand the structure and purpose of the 14 sound registers
+- Produce tone and noise on one or more channels
+- Create looping or fading effects with amplitude envelopes
+- Experiment with music routines using simple patterns
 
-By the end of this tier, you’ll be significantly closer to professional-level Amstrad CPC development.
+The CPC’s audio is far from silent — and now, neither are you.

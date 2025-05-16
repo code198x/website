@@ -1,19 +1,18 @@
 ---
-title: "Sprite Engines and Movement Systems"
+title: "Tier 11: Compression and Asset Management"
 system: "amstrad-cpc"
 tier: "tier-11"
 order: 11
-description: "Build a complete sprite engine, implement sprite masking, and explore animation techniques."
+description: "You’ve only got 64K — use it wisely. Compress and decompress graphics, maps, and music using custom formats and tools."
 image: "/images/amstrad-cpc/tier-11.png"
 ---
 
-Tier 11: Sprite Engines and Movement Systems
+Fit more game into less RAM.
 
-This tier focuses on the next evolution of your Amstrad CPC dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Implement RLE and bit-packed compression for sprite and tile data
+- Write a Z80 decompressor that runs at load time
+- Split memory layouts for overlayed data sections
+- Use asset converters to generate binary blobs from PNG/music/map files
 
-By the end of this tier, you’ll be significantly closer to professional-level Amstrad CPC development.
+This tier saves space without sacrificing ambition.
