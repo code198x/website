@@ -1,19 +1,18 @@
 ---
-title: "Assembly Unleashed"
+title: "Tier 3: Native Z80 Programming on MSX"
 system: "msx"
 tier: "tier-3"
 order: 3
-description: "Full control. You're now writing in Z80 assembly, not just dabbling."
+description: "Get serious with Z80. You’ll write full programs, bypass or leverage the BIOS, and understand memory layout and calling conventions."
 image: "/images/msx/tier-3.png"
 ---
 
-Tier 3: Assembly Unleashed
+The MSX makes Z80 programming clean — and lets you choose your level of abstraction.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Write Z80 programs that hook into or bypass BIOS routines
+- Use BIOS for screen, keyboard, and sprite access (or not)
+- Explore slot-based memory addressing and RAM/ROM mapping
+- Handle VDP I/O cleanly with status polling and register writes
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+Whether you go high-level or bare metal, you’re now writing real MSX software.

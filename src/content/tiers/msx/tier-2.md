@@ -1,19 +1,18 @@
 ---
-title: "Under the Hood"
+title: "Tier 2: PEEK, POKE and BIOS Calls"
 system: "msx"
 tier: "tier-2"
 order: 2
-description: "Dig into how BASIC works and begin using Z80 code alongside it. A hybrid tier for hybrid learners."
+description: "Start digging deeper. Use PEEK and POKE to interact with hardware, and call BIOS routines directly to perform screen, sound, and I/O operations."
 image: "/images/msx/tier-2.png"
 ---
 
-Tier 2: Under the Hood
+The MSX BIOS makes hardware safer — but not slower.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use `POKE` to write directly to VRAM and key hardware registers
+- Explore the BIOS CALL commands and what they abstract
+- Call assembly routines from BASIC using `USR`
+- Understand how MSX hides hardware differences behind its firmware
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+Tier 2 is about stretching BASIC as far as it can go — and then sneaking into machine code.

@@ -1,19 +1,18 @@
 ---
-title: "Memory and Machine State"
+title: "Tier 4: Direct to VDP"
 system: "msx"
 tier: "tier-4"
 order: 4
-description: "Understand how the Spectrum’s memory is laid out and how to navigate RAM like a local."
+description: "The VDP is your canvas. This tier teaches how to manipulate name tables, tiles, and colour memory directly for better performance and control."
 image: "/images/msx/tier-4.png"
 ---
 
-Tier 4: Memory and Machine State
+The VDP isn't memory-mapped — it's a partner you talk to through ports.
 
-This tier focuses on the next evolution of your MSX dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Write bytes into VRAM via ports `$98` (data) and `$99` (address)
+- Set name table data to control characters on screen
+- Switch modes and palettes via VDP register writes
+- Create tile-based screens and control scrolling manually
 
-By the end of this tier, you’ll be significantly closer to professional-level MSX development.
+This is real graphics programming — indirect, powerful, and deeply MSX.
