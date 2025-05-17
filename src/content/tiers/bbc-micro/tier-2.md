@@ -1,19 +1,18 @@
 ---
-title: "Under the Hood"
+title: "Tier 2: PEEK, POKE, and Inline Assembler"
 system: "bbc-micro"
 tier: "tier-2"
 order: 2
-description: "Dig into how BASIC works and begin using Z80 code alongside it. A hybrid tier for hybrid learners."
+description: "Access memory, control I/O, and start writing assembly directly inside your BASIC programs. It’s powerful, clean, and surprisingly modern."
 image: "/images/bbc-micro/tier-2.png"
 ---
 
-Tier 2: Under the Hood
+Direct control, done the BBC way.
 
-This tier focuses on the next evolution of your BBC Micro dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use `?address` to PEEK and `?address=value` to POKE
+- Explore I/O locations for keyboard, sound, and screen
+- Write inline assembly using `[` and `]` blocks
+- CALL machine code from BASIC, passing variables
 
-By the end of this tier, you’ll be significantly closer to professional-level BBC Micro development.
+This is a system built for learning — and hacking.

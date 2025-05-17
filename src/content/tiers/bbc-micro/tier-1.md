@@ -1,19 +1,18 @@
 ---
-title: "Getting Started the 198x Way"
+title: "Tier 1: Welcome to BBC BASIC"
 system: "bbc-micro"
 tier: "tier-1"
 order: 1
-description: "Start like it’s 1983: no IDEs, no internet, just a rubber keyboard and a blinking cursor."
+description: "You don’t just get BASIC. You get BBC BASIC — structured, powerful, and ready to draw, make sound, and even assemble code inline."
 image: "/images/bbc-micro/tier-1.png"
 ---
 
-Tier 1: Getting Started the 198x Way
+The BBC Micro greets you with serious capability.
 
-This tier focuses on the next evolution of your BBC Micro dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use `MODE` to switch between graphics and text modes
+- Print text and draw lines, boxes, and circles
+- Play sound and change pitch/duration
+- Save and load your programs from DFS, ADFS, or virtual tape
 
-By the end of this tier, you’ll be significantly closer to professional-level BBC Micro development.
+This isn’t just BASIC — it’s structured, well-documented, and designed for real work. Let’s get comfortable.

@@ -1,19 +1,18 @@
 ---
-title: "Structure and Scale"
+title: "Tier 8: Game Loop and State Structure"
 system: "bbc-micro"
 tier: "tier-8"
 order: 8
-description: "Organise your growing codebase. Manage complexity using modular assembly and macros."
+description: "Games need structure — not just code. Write main loops, update/draw cycles, and prepare for real-time gameplay."
 image: "/images/bbc-micro/tier-8.png"
 ---
 
-Tier 8: Structure and Scale
+Your first game skeleton is coming together.
 
-This tier focuses on the next evolution of your BBC Micro dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Build a classic game loop with input, update, and render phases
+- Manage timers and delays for consistent timing
+- Handle transitions between title, game, and end screens
+- Create reusable logic for handling game state
 
-By the end of this tier, you’ll be significantly closer to professional-level BBC Micro development.
+It’s not fancy — yet. But it’s the real deal.

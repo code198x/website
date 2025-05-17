@@ -1,19 +1,18 @@
 ---
-title: "Input Without Mercy"
+title: "Tier 5: Sound and Envelopes"
 system: "bbc-micro"
 tier: "tier-5"
 order: 5
-description: "Write responsive input code in Z80. Scan keys directly, debounce them, and map game controls."
+description: "Play music and sound effects using the BBC’s built-in sound system. Use envelopes and channels to add richness and control."
 image: "/images/bbc-micro/tier-5.png"
 ---
 
-Tier 5: Input Without Mercy
+Time to make some noise.
 
-This tier focuses on the next evolution of your BBC Micro dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use the `SOUND` command for tones, noise, and effects
+- Set envelopes with `ENVELOPE` to control volume and pitch over time
+- Play multi-channel effects with different priorities
+- Trigger sound from BASIC and assembly
 
-By the end of this tier, you’ll be significantly closer to professional-level BBC Micro development.
+The BBC’s audio might be simple — but it’s expressive, especially when layered.

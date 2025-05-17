@@ -1,19 +1,18 @@
 ---
-title: "Timing, Interrupts, and VBlank Synchronisation"
+title: "Tier 10: Custom Fonts and Tiles"
 system: "bbc-micro"
 tier: "tier-10"
 order: 10
-description: "Synchronise code with screen refresh. Hook into interrupts to update graphics and logic cleanly."
+description: "Redefine character sets, build tiles, and lay out maps. It’s time to stop using the Beeb’s defaults and draw your own world."
 image: "/images/bbc-micro/tier-10.png"
 ---
 
-Tier 10: Timing, Interrupts, and VBlank Synchronisation
+Time to draw on your own terms.
 
-This tier focuses on the next evolution of your BBC Micro dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Redefine ASCII characters to make graphics tiles
+- Switch out the character set dynamically
+- Lay out tilemaps using PRINT or direct memory writes
+- Use BASIC and 6502 to mix tile logic and rendering
 
-By the end of this tier, you’ll be significantly closer to professional-level BBC Micro development.
+Custom characters are your first step toward real visuals — and they’re fast.

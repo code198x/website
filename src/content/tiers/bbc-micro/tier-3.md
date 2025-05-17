@@ -1,19 +1,18 @@
 ---
-title: "Assembly Unleashed"
+title: "Tier 3: Real Assembly on Real Hardware"
 system: "bbc-micro"
 tier: "tier-3"
 order: 3
-description: "Full control. You're now writing in Z80 assembly, not just dabbling."
+description: "Write complete 6502 programs with proper loops, logic, and screen output. Call them from BASIC, or run them directly from memory."
 image: "/images/bbc-micro/tier-3.png"
 ---
 
-Tier 3: Assembly Unleashed
+Leave BASIC behind and go full 6502.
 
-This tier focuses on the next evolution of your BBC Micro dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Write loops, subroutines, and conditional branches
+- Use zero page addressing for speed
+- Print to the screen from machine code
+- Create timing loops with `JMP` and `DEC` instructions
 
-By the end of this tier, you’ll be significantly closer to professional-level BBC Micro development.
+Assembly on the BBC is clean and fast — and you’re already making it work.

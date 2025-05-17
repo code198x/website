@@ -1,19 +1,17 @@
 ---
-title: "Custom Loaders and Menu Screens"
+title: "Tier 14: Raster Effects and Interrupt Mastery"
 system: "bbc-micro"
 tier: "tier-14"
 order: 14
-description: "Create your own loader, splash screen, and title music. Fully customise the boot experience."
+description: "Use the 6845 CRTC and interrupts to split the screen, animate colours, and build demo-style effects."
 image: "/images/bbc-micro/tier-14.png"
 ---
 
-Tier 14: Custom Loaders and Menu Screens
+Time to control the beam.
 
-This tier focuses on the next evolution of your BBC Micro dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Hook into VSync and HSync via the CRTC\ n- Change palette or graphics mode mid-frame
+- Create split-screen layouts for gameplay and UI
+- Build smooth raster bars and colour gradients
 
-By the end of this tier, you’ll be significantly closer to professional-level BBC Micro development.
+Mastering interrupts and the CRTC is how you unlock the Beeb’s hidden visual power.

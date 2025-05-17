@@ -1,19 +1,18 @@
 ---
-title: "Tooling and Dev Workflow"
+title: "Tier 13: Custom Start-up and Welcome Screens"
 system: "bbc-micro"
 tier: "tier-13"
 order: 13
-description: "Write tools to help design and test your games: map editors, asset pipelines, and auto-packers."
+description: "Override the default boot and create your own intro routines. Display splash screens, logos, and play music before the main program starts."
 image: "/images/bbc-micro/tier-13.png"
 ---
 
-Tier 13: Tooling and Dev Workflow
+Tier 13 is all about first impressions.
 
-This tier focuses on the next evolution of your BBC Micro dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Patch the OS vectors to redirect the boot process
+- Write inline assembly or BASIC stubs that launch on reset
+- Display graphics and play sound while loading assets
+- Implement multi-stage loaders from disk or tape
 
-By the end of this tier, you’ll be significantly closer to professional-level BBC Micro development.
+By controlling what happens at power-on, you set the tone for everything that follows.

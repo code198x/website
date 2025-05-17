@@ -1,19 +1,18 @@
 ---
-title: "Sound with Nothing but CPU Cycles"
+title: "Tier 7: Structured Assembly and Source Layout"
 system: "bbc-micro"
 tier: "tier-7"
 order: 7
-description: "Use loops, timers, and clever maths to create sound from the CPU alone."
+description: "Start treating your code like a project. Create labelled routines, structure your memory, and set the stage for scalable assembly."
 image: "/images/bbc-micro/tier-7.png"
 ---
 
-Tier 7: Sound with Nothing but CPU Cycles
+From scripts to systems.
 
-This tier focuses on the next evolution of your BBC Micro dev skills.
 You’ll:
-- Apply lessons from earlier tiers in more structured and creative ways
-- Gain insight into how to optimise your programs and manage resources
-- Work with more advanced techniques such as graphics rendering, audio synthesis,
-  memory management, or toolchain improvement depending on the tier
+- Use named labels and subroutines with `JSR`/`RTS`
+- Organise code by function and memory section
+- Use comments, constants, and macros (where supported)
+- Lay out memory maps for RAM, screen, and I/O
 
-By the end of this tier, you’ll be significantly closer to professional-level BBC Micro development.
+Clean assembly code is easier to debug, extend, and share. This is your foundation.
