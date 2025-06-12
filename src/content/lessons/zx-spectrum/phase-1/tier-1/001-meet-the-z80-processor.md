@@ -1,0 +1,256 @@
+---
+title: "Meet the Z80 Processor"
+system: "zx-spectrum"
+phase_number: 1
+tier_number: 1
+lesson_number: 1
+description: "Your first encounter with the heart of the ZX Spectrum - the Z80 processor. Learn about registers, memory, and write your first assembly language instruction."
+learning_objectives:
+  - "Understand what the Z80 processor is and why it's important"
+  - "Learn about the main registers: A, B, C, D, E, H, and L"
+  - "Understand how memory addresses work in the ZX Spectrum"
+  - "Write your first assembly instruction"
+  - "See how assembly relates to machine language"
+concepts:
+  - "Z80 processor architecture"
+  - "Registers (A, B, C, D, E, H, L)"
+  - "Memory addresses"
+  - "Assembly language vs machine language"
+  - "Hexadecimal notation"
+estimated_duration: "30-45 minutes"
+difficulty: "easy"
+code_examples: true
+practical_exercise: true
+order: 1
+---
+
+# Lesson 1: Meet the Z80 Processor
+
+Welcome to the world of Z80 assembly language programming! Today, you'll meet the powerful brain of your ZX Spectrum - the Z80 processor - and learn how to speak its native language.
+
+## What Is the Z80?
+
+The Z80 is the processor that powers your ZX Spectrum. While BASIC programs tell the computer *what* to do, assembly language tells the Z80 processor *exactly how* to do it. When you write assembly, you're programming at the hardware level - the same level that all software ultimately becomes.
+
+The Z80 was designed in 1976 as an enhanced version of the Intel 8080 and became one of the most successful 8-bit processors ever made. It powered incredible machines like:
+- ZX Spectrum (all models)
+- Amstrad CPC 
+- MSX computers
+- CP/M systems
+- Game Boy (modified Z80)
+
+## The Z80's Registers
+
+Think of registers as the processor's hands - they hold the data it's currently working with. The Z80 has more registers than many other 8-bit processors, making it very powerful:
+
+### The A Register (Accumulator)
+- **Purpose**: The main workhorse for arithmetic and most operations
+- **Size**: 8 bits (can hold values 0-255)
+- **Think of it as**: The processor's primary working hand
+
+### The General Purpose Registers (B, C, D, E, H, L)
+- **Purpose**: Store data, act as counters, hold memory addresses
+- **Size**: 8 bits each (can hold values 0-255)
+- **Special feature**: Can be paired together (BC, DE, HL) to hold 16-bit values
+- **Think of them as**: Extra hands for juggling multiple pieces of data
+
+### Register Pairs
+The Z80's clever design lets you use registers in pairs for 16-bit operations:
+- **BC**: B and C registers combined (holds values 0-65535)
+- **DE**: D and E registers combined  
+- **HL**: H and L registers combined (often used for memory addresses)
+
+## Memory in the ZX Spectrum
+
+The ZX Spectrum has different memory configurations depending on the model, but all use the same basic layout:
+
+- **$0000-$3FFF**: ROM (16KB) - Operating system and BASIC interpreter
+- **$4000-$57FF**: Screen memory (6KB) - what you see on screen
+- **$5800-$5AFF**: Attribute memory (768 bytes) - screen colors
+- **$5B00-$FFFF**: RAM - your programs and data
+
+*Note: The $ symbol means hexadecimal (base 16) - we'll learn more about this soon!*
+
+## Your First Assembly Instruction
+
+Let's start with the most basic instruction - loading a value into the A register:
+
+```assembly
+LD A, $41
+```
+
+This instruction means:
+- **LD**: Load (move data)
+- **A**: Into the A register
+- **$41**: The hexadecimal value 41 (which equals 65 in decimal)
+
+<CodeRunner 
+  system="zx-spectrum"
+  title="Your First Assembly Instruction"
+  code="LD A, $41"
+  autoRun={false}
+  language="assembly"
+/>
+
+## What Just Happened?
+
+When you execute `LD A, $41`, the processor:
+1. Takes the value $41 (65 in decimal)
+2. Stores it in the A register
+3. The A register now contains the value 65
+
+In the ASCII character system, 65 is the letter 'A' - so we've loaded the letter 'A' into the A register!
+
+## Hexadecimal - The Language of Computers
+
+You'll notice assembly uses hexadecimal (hex) numbers with the $ prefix. Hex uses digits 0-9 and letters A-F:
+
+```
+Decimal:    0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
+Hex:        0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+```
+
+Common hex values you'll see:
+- **$00**: 0 (minimum 8-bit value)
+- **$FF**: 255 (maximum 8-bit value)
+- **$41**: 65 (letter 'A')
+- **$48**: 72 (letter 'H')
+- **$53**: 83 (letter 'S')
+
+## Loading Different Registers
+
+The Z80's strength is its multiple registers. You can load values into any of them:
+
+```assembly
+LD A, $48    ; Load 'H' into A register
+LD B, $45    ; Load 'E' into B register
+LD C, $4C    ; Load 'L' into C register
+LD D, $4C    ; Load 'L' into D register
+LD E, $4F    ; Load 'O' into E register
+```
+
+<CodeRunner 
+  system="zx-spectrum"
+  title="Loading Different Registers"
+  code="LD A, $48    ; Load 'H' into A register
+LD B, $45    ; Load 'E' into B register
+LD C, $4C    ; Load 'L' into C register
+LD D, $4C    ; Load 'L' into D register
+LD E, $4F    ; Load 'O' into E register"
+  language="assembly"
+/>
+
+*Note: The semicolon (;) starts a comment - text that explains the code but doesn't execute.*
+
+## Register Pairs in Action
+
+Here's where the Z80 gets really powerful - you can load 16-bit values into register pairs:
+
+```assembly
+LD BC, $1234    ; Load $1234 into BC pair (B=$12, C=$34)
+LD DE, $5678    ; Load $5678 into DE pair (D=$56, E=$78)
+LD HL, $4000    ; Load $4000 into HL pair (H=$40, L=$00)
+```
+
+<CodeRunner 
+  system="zx-spectrum"
+  title="Register Pairs"
+  code="LD BC, $1234    ; BC = $1234 (B=$12, C=$34)
+LD DE, $5678    ; DE = $5678 (D=$56, E=$78)
+LD HL, $4000    ; HL = $4000 (H=$40, L=$00) - screen memory start!"
+  language="assembly"
+/>
+
+The HL register pair is especially important because it's often used to point to memory addresses!
+
+## Assembly vs Machine Language
+
+Just like with other processors, assembly language is a human-readable version of machine language. When you write:
+
+```assembly
+LD A, $41
+```
+
+The assembler converts it to machine language bytes:
+```
+3E 41
+```
+
+- **3E**: The machine code for "LD A, immediate value"
+- **41**: The value to load
+
+The processor only understands these raw bytes - assembly is just a friendlier way for humans to write them!
+
+## Moving Data Between Registers
+
+The Z80 is very flexible - you can copy data from one register to another:
+
+```assembly
+LD A, $53    ; Load 'S' into A register
+LD B, A      ; Copy A register contents into B register
+LD C, $50    ; Load 'P' into C register
+LD D, C      ; Copy C register contents into D register
+```
+
+<CodeRunner 
+  system="zx-spectrum"
+  title="Moving Data Between Registers"
+  code="LD A, $53    ; Load 'S' into A register
+LD B, A      ; Copy A into B register
+LD C, $50    ; Load 'P' into C register  
+LD D, C      ; Copy C into D register
+; Now A=B=$53 ('S') and C=D=$50 ('P')"
+  language="assembly"
+/>
+
+## Practice Exercise
+
+Now it's your turn! Write assembly instructions to:
+
+1. Load the letter 'Z' into the A register (hint: 'Z' is $5A)
+2. Load the letter 'X' into the B register (hint: 'X' is $58)
+3. Load the number 128 into the C register (hint: 128 is $80)
+4. Copy the A register into the D register
+5. Load the value $4000 into the HL register pair
+
+<CodeRunner 
+  system="zx-spectrum"
+  title="Practice Exercise - Try Different Values"
+  code="LD A, $5A    ; Load 'Z' into A register
+LD B, $58    ; Load 'X' into B register
+LD C, $80    ; Load 128 into C register
+LD D, A      ; Copy A register into D register
+LD HL, $4000 ; Load $4000 into HL pair"
+  language="assembly"
+/>
+
+## The Z80 Advantage
+
+Why does the Z80 have so many registers? It makes programming much more efficient:
+
+**More storage**: You can keep more data in fast registers instead of slower memory
+**Fewer memory accesses**: Operations between registers are faster
+**Flexible operations**: Many instructions can work with any register
+**16-bit capability**: Register pairs give you 16-bit math and addressing
+
+Compare this to simpler processors that might only have one or two registers!
+
+## What You've Learned
+
+In this foundational lesson, you've discovered:
+
+- The Z80 processor is the brain of the ZX Spectrum
+- The seven main registers: A (accumulator), B, C, D, E, H, and L
+- How registers can be paired (BC, DE, HL) for 16-bit operations
+- Your first assembly instruction: LD (Load)
+- How hexadecimal notation works
+- The relationship between assembly and machine language
+- How to move data between registers
+
+## Looking Ahead
+
+In the next lesson, you'll learn how to store data from registers into memory and read it back - the foundation of all data manipulation. You'll also see your first output on the ZX Spectrum screen!
+
+## Fun Fact
+
+The Z80 processor in your ZX Spectrum runs at 3.5 MHz - that's about 3.5 million operations per second! Despite being designed in 1976, the Z80 was so well-engineered that it remained in production for decades and is still used today in embedded systems. Its rich instruction set and multiple registers made it possible to write incredibly sophisticated software, from operating systems to arcade games, all running on what we'd consider tiny amounts of memory today!

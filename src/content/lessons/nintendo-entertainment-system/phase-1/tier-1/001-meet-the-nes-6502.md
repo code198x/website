@@ -1,0 +1,299 @@
+---
+title: "Meet the NES 6502"
+system: "nintendo-entertainment-system"
+phase_number: 1
+tier_number: 1
+lesson_number: 1
+description: "Your first encounter with the heart of the Nintendo Entertainment System - the 6502 processor. Learn about registers, memory-mapped I/O, and write your first assembly instruction for game development."
+learning_objectives:
+  - "Understand what the 6502 processor is and why it powers the NES"
+  - "Learn about the three main registers: A, X, and Y"
+  - "Understand NES memory organization and memory-mapped I/O"
+  - "Write your first assembly instruction"
+  - "See how assembly relates to game programming"
+concepts:
+  - "6502 processor architecture"
+  - "Registers (A, X, Y)"
+  - "Memory-mapped I/O"
+  - "Assembly language vs machine language"
+  - "Hexadecimal notation"
+estimated_duration: "30-45 minutes"
+difficulty: "easy"
+code_examples: true
+practical_exercise: true
+order: 1
+---
+
+# Lesson 1: Meet the NES 6502
+
+Welcome to the world of game programming at the hardware level! Today, you'll meet the processor that powered countless classic games - the 6502 inside the Nintendo Entertainment System - and learn how to speak its native language.
+
+## What Is the NES 6502?
+
+The Nintendo Entertainment System uses the same 6502 processor that powered home computers like the Apple II and Commodore 64. But in the NES, this processor is dedicated entirely to creating interactive entertainment - no operating system overhead, no BASIC interpreter, just pure game code running directly on the hardware.
+
+The 6502 was perfect for the NES because:
+- **Simple but powerful**: Easy to program but capable of complex operations
+- **Fast execution**: 1.79 MHz was plenty for smooth 60 FPS gameplay
+- **Memory efficient**: Could do amazing things with just 2KB of RAM
+- **Cost effective**: Affordable enough for a consumer game console
+- **Proven technology**: Already battle-tested in successful computers
+
+Famous NES games powered by the 6502:
+- Super Mario Bros.
+- The Legend of Zelda
+- Metroid
+- Mega Man series
+- Castlevania
+
+## The 6502's Registers in Game Context
+
+Just like in other systems, the 6502 has three main registers, but in game programming they serve specific purposes:
+
+### The A Register (Accumulator)
+- **Purpose**: The main workhorse for all calculations and data manipulation
+- **Game use**: Loading graphics data, calculating scores, processing input
+- **Size**: 8 bits (values 0-255)
+- **Think of it as**: Your primary tool for game logic
+
+### The X Register (Index Register)
+- **Purpose**: Counting, indexing through arrays, memory addressing
+- **Game use**: Enemy counters, animation frames, level data indexing
+- **Size**: 8 bits (values 0-255)
+- **Think of it as**: Your counter and pointer
+
+### The Y Register (Index Register)
+- **Purpose**: Similar to X, used for counting and indexing
+- **Game use**: Sprite positioning, table lookups, screen coordinates
+- **Size**: 8 bits (values 0-255)
+- **Think of it as**: Your second counter and coordinate helper
+
+## NES Memory Organization
+
+The NES has a unique memory layout designed specifically for games:
+
+```
+$0000-$07FF : Internal RAM (2KB) - Your program variables
+$2000-$2007 : PPU Registers - Graphics control
+$4000-$4017 : APU & I/O Registers - Sound and input
+$4020-$FFFF : Cartridge Space - Your game code and data
+```
+
+**Key insight**: Unlike computers, the NES uses **memory-mapped I/O** - you control graphics and sound by writing to specific memory addresses!
+
+## Your First NES Assembly Instruction
+
+Let's start with loading a value into the A register, just like other 6502 systems:
+
+```assembly
+LDA #$01
+```
+
+This instruction means:
+- **LDA**: Load the A register
+- **#**: The next value is immediate (a literal number)
+- **$01**: The hexadecimal value 01
+
+<CodeRunner 
+  system="nintendo-entertainment-system"
+  title="Your First NES Assembly Instruction"
+  code="LDA #$01"
+  autoRun={false}
+  language="assembly"
+/>
+
+## Game-Relevant Values
+
+In NES programming, certain values have special meaning:
+
+```assembly
+LDA #$00    ; Load 0 - often used to disable/clear things
+LDA #$01    ; Load 1 - often used to enable/set things  
+LDA #$FF    ; Load 255 - maximum value, often "all on"
+LDA #$80    ; Load 128 - halfway point, center values
+```
+
+## Memory-Mapped I/O Example
+
+Here's what makes NES programming exciting - you can control hardware directly! For example, to write to the graphics system:
+
+```assembly
+LDA #$3F    ; Load graphics data
+STA $2006   ; Write to PPU address register
+LDA #$00    ; Load background color index
+STA $2006   ; Write to PPU address register
+LDA #$0F    ; Load white color
+STA $2007   ; Write to PPU data register (sets background color!)
+```
+
+*Don't worry about understanding this completely yet - we'll learn graphics programming in detail later!*
+
+<CodeRunner 
+  system="nintendo-entertainment-system"
+  title="Memory-Mapped I/O Example"
+  code="LDA #$3F    ; Graphics setup
+STA $2006   ; PPU address high
+LDA #$00    
+STA $2006   ; PPU address low  
+LDA #$0F    ; White color
+STA $2007   ; Write to graphics system"
+  language="assembly"
+/>
+
+## Working with Game Data
+
+Let's practice with values that might appear in games:
+
+```assembly
+LDA #$03    ; Load 3 (maybe 3 lives remaining)
+LDX #$00    ; Load 0 into X (start of level 0)
+LDY #$50    ; Load 80 into Y (player Y position)
+```
+
+<CodeRunner 
+  system="nintendo-entertainment-system"
+  title="Game Data Examples"
+  code="LDA #$03    ; 3 lives remaining
+LDX #$00    ; Level 0 (first level)  
+LDY #$50    ; Y position 80 pixels"
+  language="assembly"
+/>
+
+## Understanding Game Memory
+
+In NES games, every byte of the 2KB RAM is precious:
+
+```assembly
+; Typical game variable usage
+LDA #$05    ; Load starting health
+STA $0200   ; Store in RAM location $0200
+
+LDA #$10    ; Load starting X position  
+STA $0201   ; Store player X coordinate
+
+LDA #$80    ; Load starting Y position
+STA $0202   ; Store player Y coordinate
+```
+
+<CodeRunner 
+  system="nintendo-entertainment-system"
+  title="Game Variables in Memory"
+  code="; Store game state in RAM
+LDA #$05    ; Starting health = 5
+STA $0200   ; Store at memory location $0200
+
+LDA #$10    ; Starting X position = 16
+STA $0201   ; Store player X coordinate  
+
+LDA #$80    ; Starting Y position = 128  
+STA $0202   ; Store player Y coordinate"
+  language="assembly"
+/>
+
+## Hexadecimal in Game Programming
+
+Game programmers love hexadecimal because it maps perfectly to game concepts:
+
+```
+$00 = 0   (off, disabled, empty)
+$01 = 1   (on, enabled, first item)
+$0F = 15  (maximum for 4-bit values)
+$10 = 16  (common for grid positions)
+$FF = 255 (maximum 8-bit value, "all on")
+```
+
+**Graphics values**:
+- **$00-$0F**: Background colors (16 colors)
+- **$20**: Common tile ID for spaces
+- **$FF**: Common tile ID for solid blocks
+
+## Assembly vs Machine Language in Games
+
+When you write:
+```assembly
+LDA #$01
+```
+
+The NES assembler converts it to:
+```
+A9 01
+```
+
+The NES reads these bytes directly and executes them at 1.79 million instructions per second - fast enough for smooth gameplay!
+
+## Game Programming Patterns
+
+Here are patterns you'll use constantly in NES games:
+
+**Loading immediate values** (known data):
+```assembly
+LDA #$01    ; Load known value
+```
+
+**Storing to memory** (saving game state):
+```assembly
+STA $0200   ; Store to RAM
+```
+
+**Storing to hardware** (controlling graphics/sound):
+```assembly
+STA $2007   ; Store to graphics hardware
+```
+
+## Practice Exercise
+
+Create your first game-like program! Set up initial game state:
+
+1. Load 3 into A register (3 lives)
+2. Store it at memory location $0300 (lives counter)
+3. Load 100 into X register (score = 100)  
+4. Load 120 into Y register (player Y position)
+5. Store X at $0301 (score storage)
+6. Store Y at $0302 (position storage)
+
+<CodeRunner 
+  system="nintendo-entertainment-system"
+  title="Practice Exercise - Game State Setup"
+  code="; Initialize game state
+LDA #$03    ; 3 lives
+STA $0300   ; Store lives counter
+
+LDX #$64    ; Score = 100 ($64 in hex)
+STX $0301   ; Store score
+
+LDY #$78    ; Y position = 120 ($78 in hex)  
+STY $0302   ; Store player Y position
+
+; Game state is now initialized!"
+  language="assembly"
+/>
+
+## The Game Development Advantage
+
+Learning assembly on the NES teaches you:
+
+**Direct hardware control**: No operating system between you and the graphics/sound
+**Performance optimization**: Every instruction matters for 60 FPS gameplay
+**Memory management**: Work within strict 2KB RAM limits
+**Real-time programming**: Handle input and graphics in precise timing
+**System architecture**: Understand how game consoles really work
+
+## What You've Learned
+
+In this foundational lesson, you've discovered:
+
+- The 6502 processor powers classic NES games
+- The three main registers: A (accumulator), X and Y (index registers)  
+- NES memory organization with memory-mapped I/O
+- Your first assembly instruction: LDA (Load A register)
+- How hexadecimal relates to game programming values
+- The relationship between assembly and machine language
+- Basic patterns for game state management
+
+## Looking Ahead
+
+In the next lesson, you'll learn how to store data to different types of memory and see how the NES distinguishes between RAM (for variables) and memory-mapped hardware (for graphics and sound control). You'll write your first program that actually affects what you see and hear!
+
+## Fun Fact
+
+The NES 6502 processor runs at 1.79 MHz, executing nearly 1.8 million instructions per second. At 60 frames per second, that gives you about 29,000 instructions per frame to handle all game logic, graphics updates, sound generation, and input processing. Master programmers could create incredibly complex games within this constraint - games that are still fun and challenging today! Learning to program the NES teaches you the same optimization skills that modern game developers use to squeeze maximum performance from current hardware.
