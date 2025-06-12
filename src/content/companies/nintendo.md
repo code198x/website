@@ -1,7 +1,6 @@
 ---
 name: "Nintendo Co., Ltd."
 founded: 1889-09-23
-dissolved: null
 headquarters: "Kyoto, Japan"
 country: "Japan"
 founders: ["Fusajiro Yamauchi"]

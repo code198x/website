@@ -241,7 +241,7 @@ const events = defineCollection({
   schema: z.object({
     title: z.string(),
     date: z.date(),
-    category: z.enum(['computing', 'gaming', 'business', 'cultural', 'political', 'scientific']),
+    category: z.enum(['Technology', 'Gaming History', 'World History', 'Computing', 'Gaming', 'Business', 'Cultural', 'Political', 'Scientific']),
     location: z.string().optional(),
     description: z.string(),
     significance: z.string(),

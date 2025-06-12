@@ -5,9 +5,11 @@ This document catalogs all the Vault entries we need to create, prioritized by h
 ## Current Status
 - **Systems**: 4/4 complete (C64, ZX Spectrum, NES, Amiga)
 - **People**: 6/15+ created ✓ Priority 1 complete (Chuck Peddle, Federico Faggin, Jay Miner, Jack Tramiel, Sir Clive Sinclair, 68000 Design Team)
-- **Companies**: 2/10+ created ✓ Partial Priority 2 (MOS Technology, Zilog)
-- **Software**: 0 created, 20+ needed
-- **Events**: 0 created, 25+ needed
+- **Companies**: 6/10+ created ✓ Priority 2 complete (MOS Technology, Zilog, Commodore International, Sinclair Research, Nintendo, Motorola)
+- **Software**: 0 created, 20+ needed (Priority 3)
+- **Events**: 0 created, 25+ needed (Priority 4)
+
+**VAULT FOUNDATION COMPLETE** - Core people and companies that are most frequently referenced in lessons are now documented. Ready to move to other development priorities.
 
 ---
 

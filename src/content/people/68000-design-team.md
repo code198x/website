@@ -1,7 +1,6 @@
 ---
 name: "Motorola 68000 Design Team"
 birth_date: 1974-01-01  # Project start date
-death_date: null
 nationality: "American"
 occupation: ["Microprocessor designers", "Computer engineers", "Silicon architects"]
 notable_contributions:
