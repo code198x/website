@@ -4,9 +4,9 @@ system: "zx-spectrum"
 phase_number: 1
 tier_number: 1
 lesson_number: 7
-description: "Master Z80 logical operations and advanced shift instructions. Learn bit masking, data manipulation, and efficient algorithms using Z80's powerful logical and shift capabilities."
+description: "Learn Z80 logical operations and advanced shift instructions. Learn bit masking, data manipulation, and efficient algorithms using Z80's powerful logical and shift capabilities."
 learning_objectives:
-  - "Master AND, OR, XOR, and CPL logical operations"
+  - "Learn AND, OR, XOR, and CPL logical operations"
   - "Learn advanced shift and rotate instructions"
   - "Practice bit masking and data filtering techniques"
   - "Build efficient data processing algorithms"
@@ -26,7 +26,7 @@ order: 7
 
 # Lesson 7: Z80 Logical Operations and Shift Instructions
 
-The Z80's logical and shift instructions are among its most powerful features. Today you'll master these operations and learn how they're used to create efficient algorithms, process data, and solve complex programming problems!
+The Z80's logical and shift instructions are among its most powerful features. Today you'll learn these operations and discover how they're used to create efficient algorithms, process data, and solve complex programming problems!
 
 ## Advanced Logical Operations
 
@@ -830,10 +830,10 @@ TestData2:      DB $12, $34, $56, $78, $9A, $BC, $DE, $F0
 
 ## What You've Learned
 
-In this lesson, you've mastered:
+In this lesson, you've learned:
 
 1. **Advanced Logical Operations** - Complex bit manipulation and data filtering
-2. **Shift and Rotate Mastery** - All Z80 shift operations and their applications
+2. **Shift and Rotate Operations** - All Z80 shift operations and their applications
 3. **Data Packing** - Efficient storage of multiple values in minimal space
 4. **Algorithmic Techniques** - Using bit operations for fast algorithms
 5. **Performance Optimization** - Choosing the most efficient operations

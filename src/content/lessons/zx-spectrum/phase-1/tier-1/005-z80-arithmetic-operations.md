@@ -615,7 +615,7 @@ NotTen:
 
 ## What You've Learned
 
-In this lesson, you've mastered:
+In this lesson, you've learned:
 
 1. **Z80 Addition** - ADD and ADC instructions for 8-bit and 16-bit arithmetic
 2. **Z80 Subtraction** - SUB and SBC instructions with proper flag handling

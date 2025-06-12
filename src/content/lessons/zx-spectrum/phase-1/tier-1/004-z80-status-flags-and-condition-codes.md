@@ -613,7 +613,7 @@ RangeTestDone:
 
 ## What You've Learned
 
-In this lesson, you've discovered:
+In this lesson, you've learned:
 
 1. **Z80 Status Flags** - How the Z80 tracks operation results automatically
 2. **Main Flags** - Zero (Z), Carry (C), Sign (S), and Parity/Overflow (P/V)

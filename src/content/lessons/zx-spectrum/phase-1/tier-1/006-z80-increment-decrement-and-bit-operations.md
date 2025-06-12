@@ -610,7 +610,7 @@ GameStatus: DB 0
 
 ## What You've Learned
 
-In this lesson, you've mastered:
+In this lesson, you've learned:
 
 1. **Increment/Decrement** - Efficient counting with INC and DEC instructions
 2. **Bit Testing** - Using BIT instruction to check individual bit states
