@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 7
-description: "Master bit-level operations with AND, OR, and XOR instructions. Learn to manipulate individual bits for graphics, sound, and hardware control."
+description: "Learn bit-level operations with AND, OR, and XOR instructions. Learn to manipulate individual bits for graphics, sound, and hardware control."
 learning_objectives:
   - "Understand binary logic and bit manipulation"
-  - "Master AND instruction for masking and testing bits"
+  - "Learn AND instruction for masking and testing bits"
   - "Learn OR instruction for setting bits"
   - "Practice XOR instruction for toggling bits"
   - "Apply logical operations to graphics and hardware control"
@@ -53,7 +53,7 @@ The 6502 has three logical operations:
   00000011  ($03)
 ```
 
-```assembly
+```text
 LDA #$53    ; Load %01010011
 AND #$2F    ; AND with %00101111
             ; Result: $03 (%00000011)
@@ -77,7 +77,7 @@ STA $0400   ; Store result ($03) on screen"
 
 Use AND to extract specific bits by masking with 1s where you want to keep bits:
 
-```assembly
+```text
 ; Extract the lower 4 bits (nibble)
 LDA #$B7    ; Load %10110111
 AND #$0F    ; Mask with %00001111 (keep lower 4 bits)
@@ -115,7 +115,7 @@ STA $0401   ; Result: $80 (bit 7 was set)"
   01111111  ($7F)
 ```
 
-```assembly
+```text
 LDA #$53    ; Load %01010011
 ORA #$2F    ; OR with %00101111 (note: ORA, not OR!)
             ; Result: $7F (%01111111)
@@ -141,7 +141,7 @@ STA $0400   ; Store result ($7F) on screen"
 
 Use OR to set specific bits to 1:
 
-```assembly
+```text
 ; Set bit 7 (make number negative)
 LDA #$23    ; Load %00100011
 ORA #$80    ; Set bit 7: %10000000
@@ -179,7 +179,7 @@ STA $0401   ; Result: $15"
   01111100  ($7C)
 ```
 
-```assembly
+```text
 LDA #$53    ; Load %01010011
 EOR #$2F    ; XOR with %00101111 (note: EOR, not XOR!)
             ; Result: $7C (%01111100)
@@ -205,7 +205,7 @@ STA $0400   ; Store result ($7C) on screen"
 
 Use XOR to flip specific bits:
 
-```assembly
+```text
 ; Toggle bit 5
 LDA #$20    ; Load %00100000 (bit 5 set)
 EOR #$20    ; Toggle bit 5
@@ -234,37 +234,37 @@ STA $0401   ; Result: $55 (%01010101)"
 
 ## Practical Example: Screen Color Control
 
-The C64's border color is controlled by memory location $D020. Let's manipulate it using logical operations:
+The C64's border colour is controlled by memory location $D020. Let's manipulate it using logical operations:
 
-```assembly
-; Read current border color
-LDA $D020   ; Load current border color (lower 4 bits)
+```text
+; Read current border colour
+LDA $D020   ; Load current border colour (lower 4 bits)
 
 ; Clear upper 4 bits (safety)
-AND #$0F    ; Keep only color bits (0-15)
+AND #$0F    ; Keep only colour bits (0-15)
 
-; Set border to white (color 1)
-ORA #$01    ; Force color to 1
-STA $D020   ; Update border color
+; Set border to white (colour 1)
+ORA #$01    ; Force colour to 1
+STA $D020   ; Update border colour
 
-; Toggle color bit 1
+; Toggle colour bit 1
 LDA $D020
-EOR #$02    ; Toggle bit 1 of color
+EOR #$02    ; Toggle bit 1 of colour
 STA $D020   ; Update border
 ```
 
 <CodeRunner 
   system="commodore-64"
   title="Border Color Manipulation"
-  code="; Manipulate border color using logical operations
-LDA $D020   ; Read current border color
-AND #$0F    ; Keep only color bits (lower 4 bits)
-ORA #$02    ; Set to color 2 (red)
+  code="; Manipulate border colour using logical operations
+LDA $D020   ; Read current border colour
+AND #$0F    ; Keep only colour bits (lower 4 bits)
+ORA #$02    ; Set to colour 2 (red)
 STA $D020   ; Update border
 
 ; Toggle between colors
 LDA $D020
-EOR #$04    ; Toggle bit 2 (changes color)
+EOR #$04    ; Toggle bit 2 (changes colour)
 STA $D020"
   language="assembly"
 />
@@ -273,7 +273,7 @@ STA $D020"
 
 Let's use logical operations to manipulate text characters:
 
-```assembly
+```text
 ; Convert lowercase to uppercase
 LDA #$61    ; Load 'a' (%01100001)
 AND #$DF    ; Clear bit 5 (%11011111)
@@ -314,7 +314,7 @@ STA $0402   ; Display 'c'"
 
 You can chain logical operations for complex bit manipulation:
 
-```assembly
+```text
 ; Extract middle 4 bits and shift them
 LDA #$BC    ; Load %10111100
 AND #$3C    ; Extract bits 2-5: %00111100
@@ -327,7 +327,7 @@ AND #$3C    ; Extract bits 2-5: %00111100
 
 Logical operations affect the Negative and Zero flags:
 
-```assembly
+```text
 LDA #$FF
 AND #$00    ; Result: $00, Zero flag SET
 

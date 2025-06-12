@@ -47,12 +47,12 @@ Finish your comprehensive Amiga assembly project:
 **Lessons 9-16: Assembly Development Tools**
 - Creating development environments using assembly
 - Building debugging and testing tools with assembly
-- Project management and organization using assembly
+- Project management and organisation using assembly
 - Solid assembly tool development
 
 **Lessons 17-24: Assembly Engineering Practices**
 - Assembly software architecture and design
-- Assembly optimization and performance tuning
+- Assembly optimisation and performance tuning
 - Error handling and robustness in assembly
 - Creating maintainable, scalable assembly systems
 
@@ -111,7 +111,7 @@ Completing **Workbench Wizard** demonstrates:
 - **Assembly System Understanding** - Good understanding of system architecture through assembly
 - **Assembly Software Engineering** - Solid assembly development practices
 - **Assembly Multithreaded Programming** - Good concurrent programming using assembly
-- **Assembly System Programming** - Understanding system optimization and management through assembly
+- **Assembly System Programming** - Understanding system optimisation and management through assembly
 - **Assembly Architecture** - Solid system design and engineering using assembly
 
 ## The Ultimate Amiga Achievement

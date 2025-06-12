@@ -14,7 +14,7 @@ concepts_introduced:
   - "Assembly procedural generation algorithms"
   - "Complex assembly system integration"
   - "Assembly-based user interface design"
-  - "Z80 assembly performance optimization techniques"
+  - "Z80 assembly performance optimisation techniques"
   - "Sophisticated assembly software architecture"
 game_project:
   name: "Memory Matrix"
@@ -57,7 +57,7 @@ Finish an intelligent assembly puzzle generation system:
 - Designing engaging progression mechanics through assembly programming
 
 **Lessons 25-32: Complete Assembly System Polish**
-- Final assembly integration and optimization
+- Final assembly integration and optimisation
 - Assembly user interface completion
 - Save/load system implementation using assembly file operations
 - Creating a polished, complete assembly experience

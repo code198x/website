@@ -2,7 +2,7 @@
 title: "BASIC Foundations"
 system: "commodore-64"
 phase_number: 1
-description: "Master the Commodore 64's built-in BASIC interpreter. Learn programming fundamentals, create interactive programs, and build your first games using only BASIC."
+description: "Learn the Commodore 64's built-in BASIC interpreter. Learn programming fundamentals, create interactive programs, and build your first games using only BASIC."
 learning_objectives:
   - "Navigate the BASIC interpreter confidently"
   - "Understand variables, loops, and conditionals"
@@ -25,13 +25,13 @@ order: 1
 
 Phase 1 is your complete introduction to programming through Commodore BASIC 2.0. You'll start from absolute zero and progress to creating complete, polished games using only the built-in BASIC interpreter.
 
-## What You'll Master
+## What You'll Learn
 
 By the end of Phase 1, you'll have:
 
 - Complete fluency in Commodore BASIC 2.0
 - Built four unique games of increasing complexity
-- Mastered program structure and organization
+- Mastered program structure and organisation
 - Learned fundamental programming concepts that apply to all languages
 - Gained confidence in creative problem-solving through code
 
@@ -48,7 +48,7 @@ By the end of Phase 1, you'll have:
 - **Game Project: "Color Cascade"** - A pattern-matching puzzle game
 
 **Tiers 9-12: Data Structures and Logic**
-- Arrays, string manipulation, and data organization
+- Arrays, string manipulation, and data organisation
 - Complex game logic and scoring systems
 - **Game Project: "Logic Labyrinth"** - A maze exploration game
 

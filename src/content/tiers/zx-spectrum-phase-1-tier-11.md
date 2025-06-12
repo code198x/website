@@ -3,16 +3,16 @@ title: "Advanced Programming Techniques"
 system: "zx-spectrum"
 phase_number: 1
 tier_number: 11
-description: "Master advanced programming techniques including subroutines, modular programming, and complex system design. Learn to build sophisticated, well-organized programs."
+description: "Learn advanced programming techniques including subroutines, modular programming, and complex system design. Learn to build sophisticated, well-organised programs."
 learning_objectives:
-  - "Master subroutines and modular programming"
-  - "Understand advanced program organization"
+  - "Learn subroutines and modular programming"
+  - "Understand advanced program organisation"
   - "Learn complex system design principles"
   - "Create reusable and maintainable code"
   - "Build sophisticated program architectures"
 concepts_introduced:
   - "Subroutines with GOSUB and RETURN"
-  - "Modular programming and code organization"
+  - "Modular programming and code organisation"
   - "Advanced program architecture"
   - "Code reusability and maintainability"
   - "Complex system integration"
@@ -22,12 +22,12 @@ order: 11
 
 # Tier 11: Advanced Programming Techniques
 
-Elevate your programming to professional levels! Master advanced techniques for building complex, well-organized programs that are maintainable, reusable, and sophisticated.
+Elevate your programming to professional levels! Learn advanced techniques for building complex, well-organised programs that are maintainable, reusable, and sophisticated.
 
 ## What You'll Learn
 
 Create professional-quality program architecture:
-- Subroutines for code organization and reuse
+- Subroutines for code organisation and reuse
 - Modular programming techniques
 - Advanced system design principles
 - Preparing advanced features for Memory Matrix

@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 13
-description: "Master conditional branching and program flow control. Learn branch instructions, create loops, make decisions, and build dynamic programs that respond to conditions."
+description: "Learn conditional branching and program flow control. Learn branch instructions, create loops, make decisions, and build dynamic programs that respond to conditions."
 learning_objectives:
   - "Understand conditional branching and program flow"
-  - "Master branch instructions (BEQ, BNE, BCC, BCS, etc.)"
+  - "Learn branch instructions (BEQ, BNE, BCC, BCS, etc.)"
   - "Learn to create loops and conditional logic"
   - "Practice building interactive and responsive programs"
   - "Combine branching with flags, subroutines, and memory operations"
@@ -45,7 +45,7 @@ Branching uses the **status flags** you learned in lesson 4:
 3. **If the condition is true**: Jump to a different location
 4. **If the condition is false**: Continue to the next instruction
 
-```assembly
+```text
 LDA #$05        ; Load 5
 CMP #$05        ; Compare with 5 (sets Zero flag)
 BEQ Equal       ; Branch if Equal (Zero flag set)
@@ -75,7 +75,7 @@ The 6502 has eight branch instructions that test different flags:
 
 **BEQ** (Branch if Equal) and **BNE** (Branch if Not Equal) are the most commonly used:
 
-```assembly
+```text
 ; Test if A register equals $42
 LDA #$42        ; Load 'B'
 CMP #$42        ; Compare with 'B'
@@ -112,7 +112,7 @@ Done:"
 
 Create programs that respond to different values:
 
-```assembly
+```text
 ; Display different messages based on value
 LDA #$01        ; Load test value
 CMP #$01        ; Compare with 1
@@ -169,7 +169,7 @@ Done:"
 
 Create a simple counting loop using BNE:
 
-```assembly
+```text
 ; Count from 0 to 4
 LDX #$00        ; Start counter at 0
 Loop:
@@ -203,7 +203,7 @@ Loop:
 
 Use BCC and BCS for arithmetic overflow detection:
 
-```assembly
+```text
 ; Add two numbers and check for overflow
 LDA #$FF        ; Load 255
 CLC             ; Clear carry
@@ -247,7 +247,7 @@ Done:"
 
 Use BMI and BPL to test for positive/negative values:
 
-```assembly
+```text
 ; Test if a value is positive or negative
 LDA #$80        ; Load $80 (128, or -128 in signed)
 BMI Negative    ; Branch if Minus (Negative flag set)
@@ -286,7 +286,7 @@ Done:"
 
 Create more sophisticated loops with multiple conditions:
 
-```assembly
+```text
 ; Fill screen with pattern, stop at edge
 LDX #$00        ; Position counter
 LDA #$2A        ; '*' character
@@ -321,7 +321,7 @@ FillLoop:
 
 Combine loops for more complex patterns:
 
-```assembly
+```text
 ; Nested loop: fill multiple rows
 LDY #$00        ; Row counter (outer loop)
 
@@ -369,7 +369,7 @@ OuterLoop:
 
 Combine branching with subroutines for modular code:
 
-```assembly
+```text
 ; Call different subroutines based on conditions
 LDA #$01        ; Test value
 CMP #$01        ; Is it 1?
@@ -398,7 +398,7 @@ Done:
 
 Create programs that respond to simulated input:
 
-```assembly
+```text
 ; Simulate simple menu system
 LDA #$32        ; Simulate user chose option '2'
 CMP #$31        ; Option 1?
@@ -467,7 +467,7 @@ Done:"
 
 **Important**: Branch instructions can only jump ±127 bytes from the current location!
 
-```assembly
+```text
 ; If your branch target is too far:
 LDA #$05
 CMP #$05
@@ -551,7 +551,7 @@ In this lesson, you've mastered:
 
 ## Looking Ahead
 
-In the next lesson, you'll learn **advanced memory techniques and optimization** - putting together everything you've learned to create efficient, professional-quality assembly programs. You're now ready to build sophisticated software!
+In the next lesson, you'll learn **advanced memory techniques and optimisation** - putting together everything you've learned to create efficient, professional-quality assembly programs. You're now ready to build sophisticated software!
 
 ## Fun Fact
 

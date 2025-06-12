@@ -3,9 +3,9 @@ title: "Multi-Channel Music Programming"
 system: "nintendo-entertainment-system"
 phase_number: 1
 tier_number: 6
-description: "Master advanced NES audio programming with multi-channel music composition, advanced sound synthesis, and sophisticated audio effects in 6502 assembly."
+description: "Learn advanced NES audio programming with multi-channel music composition, advanced sound synthesis, and sophisticated audio effects in 6502 assembly."
 learning_objectives:
-  - "Master multi-channel music composition"
+  - "Learn multi-channel music composition"
   - "Implement advanced sound synthesis techniques"
   - "Create complex audio effects and processing"
   - "Build sophisticated music data structures"
@@ -15,7 +15,7 @@ concepts_introduced:
   - "Advanced waveform synthesis and modulation"
   - "Audio effects programming (vibrato, tremolo, sweeps)"
   - "Music data compression and encoding"
-  - "Real-time audio processing optimization"
+  - "Real-time audio processing optimisation"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 6
 ---

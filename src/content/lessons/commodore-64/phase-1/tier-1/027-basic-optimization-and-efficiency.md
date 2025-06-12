@@ -4,19 +4,19 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 27
-description: "Master fundamental optimization techniques for 6502 assembly programming. Learn memory efficiency, speed optimization, and code size reduction techniques for professional C64 development."
+description: "Learn fundamental optimisation techniques for 6502 assembly programming. Learn memory efficiency, speed optimisation, and code size reduction techniques for professional C64 development."
 learning_objectives:
-  - "Understand basic performance optimization principles"
-  - "Master memory-efficient programming techniques"
-  - "Learn speed optimization and instruction selection"
-  - "Practice code size reduction and space optimization"
+  - "Understand basic performance optimisation principles"
+  - "Learn memory-efficient programming techniques"
+  - "Learn speed optimisation and instruction selection"
+  - "Practice code size reduction and space optimisation"
   - "Build efficient, professional-quality assembly programs"
 concepts:
-  - "Memory access optimization and zero page usage"
-  - "Speed optimization and instruction timing"
+  - "Memory access optimisation and zero page usage"
+  - "Speed optimisation and instruction timing"
   - "Code size reduction and space efficiency"
-  - "Loop optimization and unrolling techniques"
-  - "Professional optimization best practices"
+  - "Loop optimisation and unrolling techniques"
+  - "Professional optimisation best practices"
 estimated_duration: "30-45 minutes"
 difficulty: "medium"
 code_examples: true
@@ -26,19 +26,19 @@ order: 27
 
 # Lesson 27: Basic Optimization and Efficiency
 
-Welcome to optimization fundamentals! Today you'll learn to make your well-structured assembly code run faster, use less memory, and execute more efficiently. These techniques transform good code into professional-quality, high-performance programs.
+Welcome to optimisation fundamentals! Today you'll learn to make your well-structured assembly code run faster, use less memory, and execute more efficiently. These techniques transform good code into professional-quality, high-performance programs.
 
 ## Optimization Principles
 
-**Code optimization** improves program performance without changing functionality:
+**Code optimisation** improves program performance without changing functionality:
 
 - **Speed Optimization**: Making code execute faster
 - **Memory Optimization**: Using less RAM and storage space
 - **Code Size Optimization**: Reducing program size
 - **Readability vs Performance**: Balancing clarity with efficiency
-- **Premature Optimization**: Avoiding optimization before profiling
+- **Premature Optimization**: Avoiding optimisation before profiling
 
-Think of optimization as **tuning a race car** - you keep the same destination but improve how efficiently and quickly you get there.
+Think of optimisation as **tuning a race car** - you keep the same destination but improve how efficiently and quickly you get there.
 
 ## Memory Access Optimization
 
@@ -46,7 +46,7 @@ Think of optimization as **tuning a race car** - you keep the same destination b
 
 The **zero page** ($0000-$00FF) is the fastest memory to access on the 6502:
 
-```assembly
+```text
 ; SLOW: Absolute addressing (3 bytes, 4 cycles)
 LDA $1000           ; Load from regular memory
 STA $1001           ; Store to regular memory
@@ -73,7 +73,7 @@ UpdatePlayer:
 
 Optimize pointer usage for better performance:
 
-```assembly
+```text
 ; SLOW: Recalculating addresses repeatedly
 SlowCopy:
     LDX #$00
@@ -112,7 +112,7 @@ DestPtr = $82       ; Zero page pointer
 
 Organize memory for optimal access patterns:
 
-```assembly
+```text
 ; GOOD: Group related data together
 PlayerData:
     PlayerX:     .byte 0    ; $80
@@ -139,8 +139,8 @@ UpdatePlayerPosition:
 <CodeRunner 
   system="commodore-64"
   title="Memory Access Optimization Demo"
-  code="; Demonstrate memory access optimization techniques
-; Shows difference between optimized and unoptimized approaches
+  code="; Demonstrate memory access optimisation techniques
+; Shows difference between optimised and unoptimized approaches
 
 MemoryOptimizationDemo:
     JSR SetupOptimizationDemo
@@ -302,7 +302,7 @@ FastResult:  .byte 0         ; Optimized result
 TestCounter: .byte 0         ; General counter
 ArrayPtr:    .word 0         ; Zero page pointer (would be in ZP)
 
-; Run the memory optimization demonstration
+; Run the memory optimisation demonstration
 JSR MemoryOptimizationDemo"
   language="assembly"
 />
@@ -313,7 +313,7 @@ JSR MemoryOptimizationDemo"
 
 Choose the fastest instructions for each task:
 
-```assembly
+```text
 ; SLOW: Inefficient instruction choices
 SlowClear:
     LDA #$00
@@ -371,7 +371,7 @@ Flags:   .byte 0
 
 Optimize loops for better performance:
 
-```assembly
+```text
 ; SLOW: Counting up loop
 SlowLoop:
     LDX #$00
@@ -423,7 +423,7 @@ ProcessByte:
 
 Optimize branching for common cases:
 
-```assembly
+```text
 ; SLOW: Inefficient branching
 SlowCheck:
     LDA PlayerState
@@ -462,8 +462,8 @@ PlayerDead:
 <CodeRunner 
   system="commodore-64"
   title="Speed Optimization Techniques Demo"
-  code="; Demonstrate various speed optimization techniques
-; Compare optimized vs unoptimized code patterns
+  code="; Demonstrate various speed optimisation techniques
+; Compare optimised vs unoptimized code patterns
 
 SpeedOptimizationDemo:
     JSR SetupSpeedDemo
@@ -551,7 +551,7 @@ DemoInstructionOptimization:
     RTS
 
 DemoBranchOptimization:
-    ; Show effect of branch optimization
+    ; Show effect of branch optimisation
     
     ; Unoptimized: Rare case first
     LDA TestFlag
@@ -609,7 +609,7 @@ CommonResult:       .byte 0
 RareResult:         .byte 0
 DefaultResult:      .byte 0
 
-; Run the speed optimization demonstration
+; Run the speed optimisation demonstration
 JSR SpeedOptimizationDemo"
   language="assembly"
 />
@@ -620,14 +620,14 @@ JSR SpeedOptimizationDemo"
 
 Use subroutines to reduce code duplication:
 
-```assembly
+```text
 ; LARGE: Repeated code everywhere
 DrawPlayer:
     LDA PlayerX
     STA $D000
     LDA PlayerY
     STA $D001
-    LDA #$01            ; Red color
+    LDA #$01            ; Red colour
     STA $D027
     LDA #%00000001      ; Enable sprite 0
     STA $D015
@@ -638,7 +638,7 @@ DrawEnemy1:
     STA $D002
     LDA Enemy1Y
     STA $D003
-    LDA #$02            ; Green color
+    LDA #$02            ; Green colour
     STA $D028
     LDA #%00000010      ; Enable sprite 1
     ORA $D015
@@ -691,7 +691,7 @@ Enemy1Y: .byte 80
 
 Use tables instead of calculations:
 
-```assembly
+```text
 ; SLOW: Calculate sine values
 SlowSine:
     ; Complex calculation for sine approximation
@@ -722,7 +722,7 @@ SineTable:
 
 Pack multiple operations efficiently:
 
-```assembly
+```text
 ; VERBOSE: Multiple instructions
 VerboseOperations:
     LDA PlayerHealth
@@ -757,7 +757,7 @@ PlayerFullHealth:
 <CodeRunner 
   system="commodore-64"
   title="Code Size Optimization Demo"
-  code="; Demonstrate code size optimization techniques
+  code="; Demonstrate code size optimisation techniques
 ; Show how to reduce program size while maintaining functionality
 
 CodeSizeOptimizationDemo:
@@ -768,7 +768,7 @@ CodeSizeOptimizationDemo:
     RTS
 
 SetupSizeDemo:
-    ; Initialize data for size optimization examples
+    ; Initialize data for size optimisation examples
     LDA #$32            ; 50 in hex
     STA DemoHealth
     LDA #$64            ; 100 in hex
@@ -867,12 +867,12 @@ DemoInstructionPacking:
     JMP HealthNormal
     
 HealthZero:
-    LDA #$02            ; Red color for dead
+    LDA #$02            ; Red colour for dead
     STA ColorResult
     JMP HealthEnd
     
 HealthMax:
-    LDA #$05            ; Green color for full health
+    LDA #$05            ; Green colour for full health
     STA ColorResult
     JMP HealthEnd
     
@@ -904,7 +904,7 @@ SquareResult:   .byte 0
 SquareResult2:  .byte 0
 ColorResult:    .byte 0
 
-; Run the code size optimization demonstration
+; Run the code size optimisation demonstration
 JSR CodeSizeOptimizationDemo"
   language="assembly"
 />
@@ -915,7 +915,7 @@ JSR CodeSizeOptimizationDemo"
 
 Use tables to replace complex logic:
 
-```assembly
+```text
 ; COMPLEX: Multiple branching logic
 ComplexLogic:
     LDA InputValue
@@ -975,7 +975,7 @@ Result: .byte 0
 
 Pack multiple values into single bytes:
 
-```assembly
+```text
 ; INEFFICIENT: One byte per flag
 PlayerFlags1: .byte 0  ; Alive flag
 PlayerFlags2: .byte 0  ; Invulnerable flag
@@ -1034,9 +1034,9 @@ PlayerIsAlive:
 
 ### Self-Modifying Code
 
-Modify code at runtime for optimization:
+Modify code at runtime for optimisation:
 
-```assembly
+```text
 ; Standard approach: Branch based on mode
 StandardSprite:
     LDA SpriteMode
@@ -1089,7 +1089,7 @@ MODE_DOUBLE = 1
 <CodeRunner 
   system="commodore-64"
   title="Advanced Optimization Patterns Demo"
-  code="; Demonstrate advanced optimization patterns
+  code="; Demonstrate advanced optimisation patterns
 ; Table-driven programming and bit-packed data
 
 AdvancedOptimizationDemo:
@@ -1100,7 +1100,7 @@ AdvancedOptimizationDemo:
     RTS
 
 SetupAdvancedDemo:
-    ; Initialize for advanced optimization examples
+    ; Initialize for advanced optimisation examples
     LDA #$02            ; Test input value
     STA TestInput
     
@@ -1123,7 +1123,7 @@ DemoTableDriven:
     LDA ResultTable,X
     STA TableResult
     
-    ; Get color from table
+    ; Get colour from table
     LDA ColorTable,X
     STA TableColor
     
@@ -1179,7 +1179,7 @@ FlagTestDone:
     RTS
 
 DemoResultDisplay:
-    ; Display optimization results
+    ; Display optimisation results
     LDA #$93            ; Clear screen
     JSR $FFD2
     
@@ -1275,7 +1275,7 @@ TableResult:    .byte 0
 TableColor:     .byte 0
 HasKeyResult:   .byte 0
 
-; Run the advanced optimization demonstration
+; Run the advanced optimisation demonstration
 JSR AdvancedOptimizationDemo"
   language="assembly"
 />
@@ -1283,24 +1283,24 @@ JSR AdvancedOptimizationDemo"
 ## Optimization Guidelines and Best Practices
 
 ### 1. Profile Before Optimizing
-```assembly
+```text
 ; Always measure performance before optimizing
 ; Focus on code that runs most frequently
-; Don't optimize rarely-executed code
+; Don't optimise rarely-executed code
 ```
 
 ### 2. Optimize in Order of Impact
-```assembly
-; 1. Algorithm optimization (biggest impact)
+```text
+; 1. Algorithm optimisation (biggest impact)
 ; 2. Memory access patterns
 ; 3. Instruction selection
-; 4. Loop optimization
+; 4. Loop optimisation
 ; 5. Code size reduction
 ```
 
 ### 3. Maintain Readability
-```assembly
-; Document optimized code thoroughly
+```text
+; Document optimised code thoroughly
 ; Use clear variable names
 ; Explain non-obvious optimizations
 
@@ -1322,14 +1322,14 @@ DoubleValue: .byte 0
 ```
 
 ### 4. Consider Trade-offs
-```assembly
+```text
 ; Speed vs Size: Unrolled loops vs compact loops
 ; Speed vs Memory: Lookup tables vs calculations
-; Readability vs Performance: Clear code vs optimized code
+; Readability vs Performance: Clear code vs optimised code
 ```
 
 ### 5. Test Thoroughly
-```assembly
+```text
 ; Optimization can introduce bugs
 ; Test edge cases carefully
 ; Verify functionality matches original
@@ -1354,7 +1354,7 @@ OptimizationChallenge:
     RTS
 
 InitChallenge:
-    ; Setup test data for optimization challenge
+    ; Setup test data for optimisation challenge
     LDX #$00
     LDA #$01
 InitLoop:
@@ -1415,13 +1415,13 @@ UnoptimizedLoop:
     
     RTS
 
-; OPTIMIZED VERSION (apply optimization techniques)
+; OPTIMIZED VERSION (apply optimisation techniques)
 RunOptimizedCode:
     ; Clear result efficiently
     LDA #$00
     STA Result2
     
-    ; Use optimized loop (count down)
+    ; Use optimised loop (count down)
     LDX #$0F            ; Start from last element
 OptimizedLoop:
     ; Load value once
@@ -1467,7 +1467,7 @@ UnoptMsgDone:
     LDA Result1
     JSR ShowHexByte
     
-    ; Show optimized result
+    ; Show optimised result
     LDA #7
     STA $D6
     LDA #2
@@ -1495,7 +1495,7 @@ OptMsgDone:
     CMP Result2
     BEQ ResultsMatch
     
-    ; Results don't match - optimization error!
+    ; Results don't match - optimisation error!
     LDX #0
 ErrorLoop:
     LDA ErrorMsg,X
@@ -1565,20 +1565,20 @@ Result2:        .byte 0     ; Optimized result
 TempResult:     .byte 0     ; Temporary storage
 TempOpt:        .byte 0     ; Optimized temporary
 
-; Run the optimization challenge
+; Run the optimisation challenge
 JSR OptimizationChallenge"
   language="assembly"
 />
 
 ## What You've Learned
 
-In this lesson, you've mastered fundamental optimization techniques:
+In this lesson, you've mastered fundamental optimisation techniques:
 
 - **Memory Access Optimization**: Zero page usage and efficient pointer operations
-- **Speed Optimization**: Instruction selection, loop optimization, and branching efficiency
+- **Speed Optimization**: Instruction selection, loop optimisation, and branching efficiency
 - **Code Size Optimization**: Subroutines, lookup tables, and instruction packing
-- **Advanced Patterns**: Table-driven programming, bit-packed data, and optimization trade-offs
-- **Professional Practices**: Profiling, testing, and maintaining code quality during optimization
+- **Advanced Patterns**: Table-driven programming, bit-packed data, and optimisation trade-offs
+- **Professional Practices**: Profiling, testing, and maintaining code quality during optimisation
 
 ## Looking Ahead
 
@@ -1586,4 +1586,4 @@ In the next lesson, you'll learn **error handling and debugging basics** - essen
 
 ## Fun Fact
 
-The optimization techniques you've learned are the foundation of high-performance programming in any language! The zero page optimization is similar to CPU register allocation in modern compilers. The lookup table techniques are used in graphics cards for texture mapping and color palette operations. The bit-packing methods are essential in embedded systems and network protocols. These 6502 optimization patterns directly translate to modern CPU optimization - cache-friendly memory access, branch prediction optimization, and SIMD instruction usage. You've learned the timeless principles that make the difference between good code and great code!
+The optimisation techniques you've learned are the foundation of high-performance programming in any language! The zero page optimisation is similar to CPU register allocation in modern compilers. The lookup table techniques are used in graphics cards for texture mapping and colour palette operations. The bit-packing methods are essential in embedded systems and network protocols. These 6502 optimisation patterns directly translate to modern CPU optimisation - cache-friendly memory access, branch prediction optimisation, and SIMD instruction usage. You've learned the timeless principles that make the difference between good code and great code!

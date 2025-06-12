@@ -73,7 +73,7 @@ The Commodore 64 has 64KB of memory, addressed from $0000 to $FFFF (hexadecimal)
 
 Let's start with the most basic instruction - loading a value into the A register:
 
-```assembly
+```text
 LDA #$41
 ```
 
@@ -118,7 +118,7 @@ Common hex values you'll see:
 
 Try these instructions to load different values:
 
-```assembly
+```text
 LDA #$48    ; Load 'H' into A register
 LDX #$05    ; Load 5 into X register  
 LDY #$0A    ; Load 10 into Y register
@@ -139,7 +139,7 @@ LDY #$0A    ; Load 10 into Y register"
 
 Here's something fascinating: assembly language is actually a human-readable version of machine language. When you write:
 
-```assembly
+```text
 LDA #$41
 ```
 
@@ -176,7 +176,7 @@ In this foundational lesson, you've discovered:
 
 - The 6502 processor is the brain of the Commodore 64
 - The three main registers: A (accumulator), X and Y (index registers)
-- How memory is organized in the C64
+- How memory is organised in the C64
 - Your first assembly instruction: LDA (Load A register)
 - How hexadecimal notation works
 - The relationship between assembly and machine language

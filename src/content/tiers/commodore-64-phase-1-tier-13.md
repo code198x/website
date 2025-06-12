@@ -3,19 +3,19 @@ title: "Real-Time Programming"
 system: "commodore-64"
 phase_number: 1
 tier_number: 13
-description: "Master real-time programming and smooth animation. Learn to create responsive, fluid gameplay while beginning Retro Racer, your arcade racing masterpiece."
+description: "Learn real-time programming and smooth animation. Learn to create responsive, fluid gameplay while beginning Retro Racer, your arcade racing masterpiece."
 learning_objectives:
   - "Understand real-time programming principles"
   - "Create smooth animation and movement"
   - "Implement responsive user controls"
-  - "Master timing and frame rate management"
+  - "Learn timing and frame rate management"
   - "Build foundation for action games"
 concepts_introduced:
   - "Real-time programming and game loops"
   - "Frame rate and timing control"
   - "Smooth animation techniques"
   - "Input handling and responsiveness"
-  - "Performance optimization for real-time systems"
+  - "Performance optimisation for real-time systems"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 13
 ---

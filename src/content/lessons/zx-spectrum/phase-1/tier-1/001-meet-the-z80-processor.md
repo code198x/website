@@ -75,7 +75,7 @@ The ZX Spectrum has different memory configurations depending on the model, but 
 
 Let's start with the most basic instruction - loading a value into the A register:
 
-```assembly
+```text
 LD A, $41
 ```
 
@@ -121,7 +121,7 @@ Common hex values you'll see:
 
 The Z80's strength is its multiple registers. You can load values into any of them:
 
-```assembly
+```text
 LD A, $48    ; Load 'H' into A register
 LD B, $45    ; Load 'E' into B register
 LD C, $4C    ; Load 'L' into C register
@@ -146,7 +146,7 @@ LD E, $4F    ; Load 'O' into E register"
 
 Here's where the Z80 gets really powerful - you can load 16-bit values into register pairs:
 
-```assembly
+```text
 LD BC, $1234    ; Load $1234 into BC pair (B=$12, C=$34)
 LD DE, $5678    ; Load $5678 into DE pair (D=$56, E=$78)
 LD HL, $4000    ; Load $4000 into HL pair (H=$40, L=$00)
@@ -167,7 +167,7 @@ The HL register pair is especially important because it's often used to point to
 
 Just like with other processors, assembly language is a human-readable version of machine language. When you write:
 
-```assembly
+```text
 LD A, $41
 ```
 
@@ -185,7 +185,7 @@ The processor only understands these raw bytes - assembly is just a friendlier w
 
 The Z80 is very flexible - you can copy data from one register to another:
 
-```assembly
+```text
 LD A, $53    ; Load 'S' into A register
 LD B, A      ; Copy A register contents into B register
 LD C, $50    ; Load 'P' into C register

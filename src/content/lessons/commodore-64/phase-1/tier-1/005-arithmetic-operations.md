@@ -4,9 +4,9 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 5
-description: "Master addition and subtraction in 6502 assembly with ADC and SBC instructions. Learn how the carry flag enables multi-byte arithmetic and overflow detection."
+description: "Learn addition and subtraction in 6502 assembly with ADC and SBC instructions. Learn how the carry flag enables multi-byte arithmetic and overflow detection."
 learning_objectives:
-  - "Master the ADC (Add with Carry) instruction"
+  - "Learn the ADC (Add with Carry) instruction"
   - "Learn the SBC (Subtract with Carry) instruction"
   - "Understand how the carry flag works in arithmetic"
   - "Practice clearing and setting the carry flag"
@@ -44,7 +44,7 @@ You might wonder why the 6502 doesn't have simple ADD and SUB instructions. The 
 
 **ADC** means "Add with Carry." It adds a value to the A register, plus the carry flag.
 
-```assembly
+```text
 LDA #$10    ; Load 16 into A
 CLC         ; Clear carry flag (make it 0)
 ADC #$05    ; Add 5: A = 16 + 5 + 0 = 21 ($15)
@@ -66,7 +66,7 @@ STA $0400   ; Store result on screen (will show ASCII character)"
 
 **CLC** (Clear Carry) sets the carry flag to 0. This is essential before addition when you want a clean result.
 
-```assembly
+```text
 CLC         ; Carry flag = 0
 LDA #$20    ; Load 32
 ADC #$10    ; Add 16: 32 + 16 + 0 = 48
@@ -76,7 +76,7 @@ ADC #$10    ; Add 16: 32 + 16 + 0 = 48
 
 Let's explore different addition scenarios:
 
-```assembly
+```text
 ; Simple addition
 LDA #$30    ; Load 48 ('0' character)
 CLC         ; Clear carry
@@ -111,7 +111,7 @@ STA $0401   ; Store result (will show as ASCII character)"
 
 What happens when addition exceeds 255? The result wraps around and sets the carry flag:
 
-```assembly
+```text
 LDA #$FF    ; Load 255
 CLC         ; Clear carry
 ADC #$02    ; Add 2: 255 + 2 = 257
@@ -135,7 +135,7 @@ The carry flag tells you that the result was larger than 8 bits!
 
 **SBC** means "Subtract with Carry." It subtracts a value from the A register. The carry flag works as a "borrow" indicator.
 
-```assembly
+```text
 LDA #$20    ; Load 32
 SEC         ; Set carry flag (no borrow needed)
 SBC #$10    ; Subtract 16: A = 32 - 16 = 16
@@ -157,7 +157,7 @@ STA $0400   ; Store result on screen"
 
 **SEC** (Set Carry) sets the carry flag to 1. For subtraction, think of this as "no borrow needed."
 
-```assembly
+```text
 SEC         ; Carry flag = 1 (no borrow)
 LDA #$50    ; Load 80
 SBC #$30    ; Subtract 48: 80 - 48 = 32
@@ -165,7 +165,7 @@ SBC #$30    ; Subtract 48: 80 - 48 = 32
 
 ## Subtraction Examples
 
-```assembly
+```text
 ; Simple subtraction
 LDA #$35    ; Load 53 ('5' character)
 SEC         ; Set carry (no borrow)
@@ -200,7 +200,7 @@ STA $0401   ; Store result"
 
 When you subtract a larger number from a smaller one, you get underflow:
 
-```assembly
+```text
 LDA #$05    ; Load 5
 SEC         ; Set carry
 SBC #$10    ; Subtract 16: 5 - 16 = -11
@@ -224,7 +224,7 @@ The carry flag being clear tells you that a borrow was needed (result was negati
 
 Here's where the carry flag shines! You can add 16-bit numbers by adding the low bytes first, then the high bytes with carry:
 
-```assembly
+```text
 ; Add $1234 + $0567 = $179B
 ; Low bytes: $34 + $67
 LDA #$34    ; Load low byte of first number
@@ -260,7 +260,7 @@ STA $81     ; Store high byte result ($17)
 
 Let's create a simple on-screen calculator:
 
-```assembly
+```text
 ; Display first number
 LDA #$33    ; '3'
 STA $0400   ; Screen position 0
@@ -342,20 +342,20 @@ STA $0404   ; Display result"
 ## Common Arithmetic Mistakes
 
 **Mistake 1**: Forgetting to clear/set carry
-```assembly
+```text
 LDA #$10
 ADC #$05    ; WRONG: carry might be set from previous operation
 ```
 
 **Mistake 2**: Using wrong carry state for operation
-```assembly
+```text
 LDA #$10
 CLC         ; WRONG for subtraction
 SBC #$05    ; Should use SEC before SBC
 ```
 
 **Mistake 3**: Not handling overflow/underflow
-```assembly
+```text
 LDA #$FF
 CLC
 ADC #$01    ; Result overflows - check carry flag!

@@ -6,7 +6,7 @@ tier_number: 1
 lesson_number: 2
 description: "Learn how to store data from registers into memory using the STA instruction, and understand how the 6502 moves data between the processor and memory."
 learning_objectives:
-  - "Master the STA (Store A) instruction"
+  - "Learn the STA (Store A) instruction"
   - "Understand how memory addresses work in practice"
   - "Learn about Zero Page memory and why it's special"
   - "Practice moving data between registers and memory"
@@ -34,7 +34,7 @@ Remember how registers are like the processor's hands? Well, memory is like the 
 
 The **STA** instruction stores the contents of the A register into a memory location:
 
-```assembly
+```text
 LDA #$41    ; Load 'A' into the A register
 STA $0400   ; Store A register contents into memory location $0400
 ```
@@ -57,7 +57,7 @@ The 6502 has a special feature: memory locations $0000 to $00FF (0-255) are call
 - Use less memory (only need one byte for the address)
 - Are used by the operating system and efficient programs
 
-```assembly
+```text
 LDA #$42    ; Load 'B' into A register
 STA $80     ; Store to Zero Page location $80 (fast!)
 ```
@@ -76,7 +76,7 @@ Here's where it gets exciting! The C64's screen is actually stored in memory sta
 
 Let's put the letter 'H' in the top-left corner of the screen:
 
-```assembly
+```text
 LDA #$48    ; Load 'H' (ASCII 72, hex $48)
 STA $0400   ; Store it to first screen position
 ```
@@ -106,7 +106,7 @@ Each screen position corresponds to a memory address where you can store a chara
 
 You can also move data from memory back into registers, and between different memory locations:
 
-```assembly
+```text
 LDA #$45    ; Load 'E' into A register
 STA $81     ; Store it in Zero Page location $81
 LDA $81     ; Load the value back from $81 into A
@@ -127,7 +127,7 @@ STA $0401   ; Store it to screen position 2"
 
 Let's write "HELLO" across the top of the screen:
 
-```assembly
+```text
 LDA #$48    ; 'H'
 STA $0400   ; Screen position 0
 LDA #$45    ; 'E'  
@@ -160,7 +160,7 @@ STA $0404   ; Screen position 4"
 
 The X and Y registers have their own store instructions:
 
-```assembly
+```text
 LDX #$10    ; Load 16 into X register
 STX $82     ; Store X register to memory location $82
 
@@ -203,7 +203,7 @@ Create a program that:
 
 Here's a template (replace with your initials):
 
-```assembly
+```text
 ; Store first initial 'S' 
 LDA #$53    ; 'S'
 STA $80     ; Temporarily store in Zero Page

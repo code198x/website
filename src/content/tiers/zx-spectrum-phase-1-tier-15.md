@@ -3,9 +3,9 @@ title: "Advanced System Development"
 system: "zx-spectrum"
 phase_number: 1
 tier_number: 15
-description: "Master advanced system development techniques including complex data management, multi-component integration, and professional-quality software engineering practices."
+description: "Learn advanced system development techniques including complex data management, multi-component integration, and professional-quality software engineering practices."
 learning_objectives:
-  - "Master advanced system development techniques"
+  - "Learn advanced system development techniques"
   - "Understand complex data management systems"
   - "Learn multi-component system integration"
   - "Create professional-quality software engineering"
@@ -22,7 +22,7 @@ order: 15
 
 # Tier 15: Advanced System Development
 
-Develop software like a professional! Master advanced system development techniques to create sophisticated, robust applications with complex functionality and professional engineering.
+Develop software like a professional! Learn advanced system development techniques to create sophisticated, robust applications with complex functionality and professional engineering.
 
 ## What You'll Learn
 
@@ -49,7 +49,7 @@ Build software with professional engineering practices:
 **Lessons 17-24: Professional Engineering Practices**
 - Advanced error handling and recovery
 - Building robust, fault-tolerant systems
-- Professional code organization and documentation
+- Professional code organisation and documentation
 - Creating maintainable, scalable software
 
 **Lessons 25-32: Spectrum Symphony Advanced Features**

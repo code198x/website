@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 32
-description: "Bring together all foundational assembly programming concepts from Phase 1. Master the complete integration of memory, graphics, and audio programming for professional C64 development."
+description: "Bring together all foundational assembly programming concepts from Phase 1. Learn the complete integration of memory, graphics, and audio programming for professional C64 development."
 learning_objectives:
   - "Integrate all Phase 1 programming concepts into complete applications"
-  - "Master professional development patterns and best practices"
+  - "Learn professional development patterns and best practices"
   - "Practice complex system programming combining multiple subsystems"
   - "Build comprehensive understanding of C64 architecture"
   - "Prepare for Phase 2 advanced programming techniques"
@@ -15,7 +15,7 @@ concepts:
   - "Complete system integration and architecture"
   - "Professional development methodologies"
   - "Complex application development patterns"
-  - "Performance optimization and debugging"
+  - "Performance optimisation and debugging"
   - "Advanced programming foundations"
 estimated_duration: "45-60 minutes"
 difficulty: "medium"
@@ -37,11 +37,11 @@ Over the past 32 lessons, you've built a comprehensive foundation in C64 assembl
 - **Memory Management**: Zero page, stack, and advanced memory techniques  
 - **Program Control**: Subroutines, branching, and interrupt handling
 - **Data Manipulation**: All arithmetic, logical, and bit operations
-- **Professional Patterns**: Optimization, debugging, and code organization
+- **Professional Patterns**: Optimization, debugging, and code organisation
 
 ### Graphics and Visual Programming (Lessons 17-20)
 - **VIC-II Architecture**: Complete understanding of the graphics chip
-- **Text and Character Graphics**: Screen modes, custom characters, and color
+- **Text and Character Graphics**: Screen modes, custom characters, and colour
 - **Hardware Sprites**: 8-sprite system with collision detection and animation
 - **Bitmap Graphics**: Pixel-level control and advanced visual effects
 
@@ -66,7 +66,7 @@ Over the past 32 lessons, you've built a comprehensive foundation in C64 assembl
 
 Professional C64 programming requires understanding how all subsystems work together:
 
-```assembly
+```text
 ; Complete system initialization routine
 SystemInit:
     ; 1. Initialize CPU and memory
@@ -110,7 +110,7 @@ ClearScreen:
     LDA #$06        ; Blue background
     STA $D021
     LDA #$0E        ; Light blue text
-    STA $286        ; Current color
+    STA $286        ; Current colour
     
     ; Initialize sprite system
     LDA #$00
@@ -140,8 +140,8 @@ ClearSID:
 
 Professional applications use interrupts to coordinate multiple subsystems:
 
-```assembly
-; Master interrupt handler
+```text
+; Learn interrupt handler
 MainIRQ:
     ; Save CPU state
     PHA
@@ -264,7 +264,7 @@ InitAnimation:
     LDA #100
     STA $D001       ; Y position
     
-    ; Set color
+    ; Set colour
     LDA #$02        ; Red
     STA $D027
     
@@ -382,7 +382,7 @@ JSR CompleteDemo"
 
 ### Multi-Subsystem Communication
 
-```assembly
+```text
 ; Message passing system between subsystems
 MessageQueue = $C000    ; Message buffer start
 QueueHead = $CF         ; Queue head pointer
@@ -460,7 +460,7 @@ HandleSprite:
 
 ### Resource Management System
 
-```assembly
+```text
 ; Memory allocation system for dynamic resources
 MemoryPool = $D000      ; Free memory start
 PoolSize = $1000        ; 4KB pool
@@ -514,7 +514,7 @@ SpriteEnableMask:
 
 ### State Machine Framework
 
-```assembly
+```text
 ; Game state management system
 GameState = $FB         ; Current state
 StateData = $FC         ; State-specific data pointer
@@ -883,13 +883,13 @@ UpdateGraphics:
 DrawMenu:
     ; Draw menu graphics
     LDA #$01        ; White
-    STA $D027       ; Player sprite color
+    STA $D027       ; Player sprite colour
     RTS
 
 DrawGame:
     ; Draw game graphics
     LDA #$0E        ; Light blue
-    STA $D027       ; Player color
+    STA $D027       ; Player colour
     LDA #$02        ; Red
     STA $D028       ; Enemy colors
     STA $D029
@@ -958,8 +958,8 @@ JSR GameFramework"
 
 ### Memory Access Optimization
 
-```assembly
-; High-performance graphics update using optimized patterns
+```text
+; High-performance graphics update using optimised patterns
 FastGraphicsUpdate:
     ; Use zero page for frequently accessed variables
     SpriteXPos = $80
@@ -998,7 +998,7 @@ FastAudioUpdate:
 
 ### Interrupt Optimization
 
-```assembly
+```text
 ; Minimal interrupt handler for maximum performance
 FastIRQ:
     ; Only save registers that are modified
@@ -1124,9 +1124,9 @@ InitSprites:
     
     ; Set colors
     TXA
-    LSR             ; Divide by 2 for color cycling
-    AND #$0F        ; Keep in color range
-    STA $D027,X     ; Set sprite color
+    LSR             ; Divide by 2 for colour cycling
+    AND #$0F        ; Keep in colour range
+    STA $D027,X     ; Set sprite colour
     
     INX
     INX             ; Skip Y register
@@ -1279,14 +1279,14 @@ UpdateGraphics:
     LDA ColorCycle
     LSR
     LSR
-    LSR             ; Slow color change
-    AND #$0F        ; Keep in color range
+    LSR             ; Slow colour change
+    AND #$0F        ; Keep in colour range
     ASL
     ASL
     ASL
     ASL             ; Shift to upper nibble
     ORA #$00        ; Black background
-    STA $0400       ; Update first color block
+    STA $0400       ; Update first colour block
     
     RTS
 
@@ -1364,30 +1364,56 @@ You have now completed comprehensive training in foundational C64 assembly progr
 
 ### Technical Competencies
 - **Write efficient 6502 assembly code** using all instructions and addressing modes
-- **Manage memory effectively** with zero page optimization and stack programming
+- **Manage memory effectively** with zero page optimisation and stack programming
 - **Control program flow** with subroutines, branching, and interrupt handling
 - **Program the VIC-II graphics chip** for text, characters, sprites, and bitmap graphics
 - **Program the SID sound chip** for music, sound effects, and advanced synthesis
 - **Integrate multiple subsystems** into complete, professional applications
-- **Debug and optimize code** using systematic approaches and best practices
+- **Debug and optimise code** using systematic approaches and best practices
 
 ### Professional Skills
-- **Plan and organize complex projects** using systematic development approaches
+- **Plan and organise complex projects** using systematic development approaches
 - **Write maintainable, documented code** following professional standards
-- **Apply performance optimization techniques** for memory and speed efficiency
+- **Apply performance optimisation techniques** for memory and speed efficiency
 - **Understand system architecture** and how components interact
 - **Build complete applications** that demonstrate real-world programming capability
 
-## Preparing for Phase 2
+## Ready for Tier 2: Data Storage and Memory Operations
 
-Phase 1 has established your **foundational competency** in C64 assembly programming. You're now ready for Phase 2, which will cover:
+Phase 1 Tier 1 has established your **foundational understanding** of C64 assembly programming. You're now perfectly prepared for **Tier 2**, which will build directly on everything you've learned:
 
-- **Advanced Graphics Programming**: Complex bitmap effects, raster programming, and advanced VIC-II techniques
-- **Sophisticated Audio Systems**: Multi-track music, real-time synthesis, and professional audio programming
-- **Game Programming Patterns**: Complete game engines, AI systems, and advanced gameplay mechanics
-- **System Programming**: Custom interrupt handlers, memory managers, and operating system interfaces
-- **Cross-Platform Development**: Techniques that apply to other 6502-based systems
-- **Professional Optimization**: Assembly language optimization and advanced performance techniques
+### **What Tier 2 Will Add to Your Skills**
+
+**Building on Your Number Quest Project:**
+- **Zero Page Mastery** - Learn to use the fastest memory locations for critical game data
+- **Advanced Data Storage** - Implement efficient storage for scores, levels, and game state
+- **Memory-Based Input Processing** - Handle keyboard input directly at the hardware level
+- **Interactive Data Validation** - Create robust input validation for your number guessing game
+
+### **Tier 2 Learning Progression** 
+- **Lessons 1-8**: Zero Page Mastery - Understanding C64's fastest memory locations
+- **Lessons 9-16**: Data Manipulation - Moving and processing data efficiently in memory
+- **Lessons 17-24**: Input Processing - Reading keyboard input without BASIC overhead
+- **Lessons 25-32**: Number Quest Data Systems - Complete game state management
+
+### **Your Foundation is Perfect for Advanced Concepts**
+
+The skills you've mastered in Tier 1 provide exactly what you need for Tier 2:
+- ✅ **Complete 6502 knowledge** - Ready for advanced memory management
+- ✅ **Professional development practices** - Essential for complex data systems
+- ✅ **Interrupt handling experience** - Critical for responsive input processing
+- ✅ **System integration skills** - Necessary for coordinating data and graphics
+- ✅ **Number Quest foundation** - Your project is ready for sophisticated enhancements
+
+### **The Natural Progression**
+
+Your progression from Tier 1 to Tier 2 is seamless:
+- **From basic assembly** → **Advanced memory techniques**
+- **From simple programs** → **Data-driven applications**  
+- **From hardware basics** → **Sophisticated I/O programming**
+- **From individual concepts** → **Integrated data systems**
+
+**Tier 2 will feel like a natural evolution of your existing skills, not a difficult jump!**
 
 ## What You've Accomplished
 
@@ -1401,6 +1427,6 @@ In Phase 1, you've mastered the essential foundation of retro computing programm
 
 ## Fun Fact
 
-The skills you've developed in Phase 1 represent the same foundational knowledge that professional C64 developers used to create legendary games, demos, and applications in the 1980s. The programming patterns, optimization techniques, and system integration approaches you've learned are timeless principles that apply to all levels of software development - from embedded systems to modern game engines. You've not just learned retro programming; you've mastered the fundamental disciplines that underlie all computer programming. The systematic thinking, performance optimization, and multi-subsystem integration skills you've developed will serve you well in any programming context, whether you're working on vintage computers, modern applications, or cutting-edge technology. You now possess the foundational competency to tackle any programming challenge with confidence and professional skill!
+The skills you've developed in Phase 1 represent the same foundational knowledge that professional C64 developers used to create legendary games, demos, and applications in the 1980s. The programming patterns, optimisation techniques, and system integration approaches you've learned are timeless principles that apply to all levels of software development - from embedded systems to modern game engines. You've not just learned retro programming; you've mastered the fundamental disciplines that underlie all computer programming. The systematic thinking, performance optimisation, and multi-subsystem integration skills you've developed will serve you well in any programming context, whether you're working on vintage computers, modern applications, or cutting-edge technology. You now possess the foundational competency to tackle any programming challenge with confidence and professional skill!
 
 Congratulations on completing Phase 1 of your Code Like It's 198x journey!

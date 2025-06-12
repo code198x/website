@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 15
-description: "Master interrupt handling and system-level programming on the C64. Learn to work with hardware interrupts, timer events, and the KERNAL operating system for professional system programming."
+description: "Learn interrupt handling and system-level programming on the C64. Learn to work with hardware interrupts, timer events, and the KERNAL operating system for professional system programming."
 learning_objectives:
   - "Understand interrupt concepts and hardware interrupt sources"
-  - "Master interrupt service routines (ISRs) and the RTI instruction"
+  - "Learn interrupt service routines (ISRs) and the RTI instruction"
   - "Learn to work with the C64 KERNAL operating system"
   - "Practice timer interrupts and real-time programming"
   - "Build system-level programs that interact with hardware"
@@ -57,7 +57,7 @@ The 6502 processor supports two types of interrupts:
 - **Vector**: $FFFA/$FFFB contains handler address  
 - **Usage**: Emergency situations, debugging, reset conditions
 
-```assembly
+```text
 ; Interrupt vectors in memory
 ; $FFFA/$FFFB: NMI vector (Non-Maskable Interrupt)
 ; $FFFC/$FFFD: RESET vector (System startup)
@@ -79,7 +79,7 @@ Your interrupt handler must:
 2. **Restore registers** (if modified)
 3. **Execute RTI** (Return from Interrupt)
 
-```assembly
+```text
 ; What happens during interrupt:
 ; 1. Hardware pushes PC high byte to stack
 ; 2. Hardware pushes PC low byte to stack  
@@ -100,7 +100,7 @@ Your interrupt handler must:
 2. Pulls return address from stack
 3. Jumps back to interrupted program
 
-```assembly
+```text
 MyInterruptHandler:
     ; Save registers
     PHA             ; Save A
@@ -136,7 +136,7 @@ InterruptHandler:
     PHA             ; Save Y register
     
     ; Interrupt processing goes here
-    INC $D020       ; Example: Change border color
+    INC $D020       ; Example: Change border colour
     
     ; Clear interrupt source (important!)
     LDA $DC0D       ; Acknowledge CIA1 interrupt
@@ -156,7 +156,7 @@ InterruptHandler:
 
 To install your own interrupt handler:
 
-```assembly
+```text
 ; Disable interrupts while changing vectors
 SEI             ; Set interrupt flag (disable IRQs)
 
@@ -223,7 +223,7 @@ The **CIA** (Complex Interface Adapter) chips provide precise timing:
 - **Serial port**: Communication
 - **Memory banking**: Switch ROM/RAM
 
-```assembly
+```text
 ; Setup CIA1 Timer A for regular interrupts
 LDA #$7F        ; Disable all CIA1 interrupts
 STA $DC0D       ; CIA1 interrupt control
@@ -272,7 +272,7 @@ STA $DC0E       ; CIA1 Timer A control"
 
 Create programs that respond to real-time events:
 
-```assembly
+```text
 ; Global variables for interrupt communication
 FrameCounter    = $80   ; Counts interrupt occurrences
 UpdateFlag      = $81   ; Signals main program to update
@@ -315,7 +315,7 @@ MainLoop:
     ; Update display based on frame counter
     LDA FrameCounter
     AND #$0F            ; Keep low 4 bits
-    STA $D020           ; Change border color
+    STA $D020           ; Change border colour
     
     JMP MainLoop        ; Continue
 ```
@@ -341,7 +341,7 @@ MainLoop:
     ; Update display based on timing
     LDA $80         ; Load frame counter
     AND #$07        ; Keep low 3 bits (0-7)
-    STA $D020       ; Set border color
+    STA $D020       ; Set border colour
     
     ; Increment frame counter (simulating interrupt)
     INC $80         ; Increment counter
@@ -368,7 +368,7 @@ The **KERNAL** is the C64's operating system. Access it through jump table:
 | **$FFC9** | CHKIN | Open input channel |
 | **$FFE4** | GETIN | Get character from input |
 
-```assembly
+```text
 ; Use KERNAL to output character
 LDA #$48        ; 'H'
 JSR $FFD2       ; KERNAL CHROUT routine
@@ -407,7 +407,7 @@ JSR $FFD2       ; Call KERNAL CHROUT
 
 Handle keyboard input through interrupts:
 
-```assembly
+```text
 ; Keyboard interrupt handler
 KeyboardISR:
     PHA                 ; Save registers
@@ -446,7 +446,7 @@ NoKey:
 
 **Critical sections** are code that must not be interrupted:
 
-```assembly
+```text
 ; Critical section - must complete atomically
 SEI                 ; Disable interrupts
 ; Critical code here - update shared data
@@ -460,7 +460,7 @@ CLI                 ; Re-enable interrupts
 
 Always save/restore registers in interrupt handlers:
 
-```assembly
+```text
 InterruptHandler:
     ; Save ALL registers that might be used
     PHA             ; Save A
@@ -485,7 +485,7 @@ InterruptHandler:
 
 Keep interrupt handlers **fast**:
 
-```assembly
+```text
 ; Good: Fast interrupt handler
 FastISR:
     PHA
@@ -517,7 +517,7 @@ FastInterruptHandler:
     ADC #$01        ; Increment
     AND #$0F        ; Keep in range 0-15
     STA $80         ; Store back
-    STA $D020       ; Update border color
+    STA $D020       ; Update border colour
     
     ; Clear interrupt source (essential!)
     LDA $DC0D       ; Acknowledge CIA1 interrupt
@@ -536,7 +536,7 @@ STA $80         ; Start counter at 0"
 
 Here's a complete example of professional interrupt handling:
 
-```assembly
+```text
 ; Complete interrupt system example
 .org $C000          ; Load in RAM area
 
@@ -608,7 +608,7 @@ MyIRQHandler:
     ; Update display every second
     LDA SecondCounter
     AND #$0F        ; Keep in range 0-15
-    STA $D020       ; Change border color
+    STA $D020       ; Change border colour
     
 NotSecond:
     ; Clear interrupt source

@@ -9,12 +9,12 @@ learning_objectives:
   - "Integrate all memory and addressing concepts learned"
   - "Apply advanced techniques to complex programming challenges"
   - "Build sophisticated programs using multiple addressing modes"
-  - "Demonstrate mastery of professional assembly programming"
+  - "Demonstrate understanding of professional assembly programming"
   - "Prepare for advanced programming topics in subsequent tiers"
 concepts:
   - "Integration of all addressing modes"
   - "Memory management best practices"
-  - "Performance optimization techniques"
+  - "Performance optimisation techniques"
   - "System-level programming skills"
   - "Professional development patterns"
 estimated_duration: "45-60 minutes"
@@ -62,9 +62,9 @@ Congratulations! You've completed the **Memory and Addressing** section - one of
 
 ### Lesson 14: Advanced Memory Techniques and Optimization
 - **C64 memory map** and performance characteristics
-- **Zero page optimization** for maximum speed
+- **Zero page optimisation** for maximum speed
 - **Memory-mapped I/O** for hardware control
-- **Performance optimization** and cycle counting
+- **Performance optimisation** and cycle counting
 
 ### Lesson 15: Interrupts and System Programming
 - **Interrupt handling** (IRQ, NMI) and system integration
@@ -81,11 +81,11 @@ Let's build a sophisticated program that uses **ALL** the techniques you've lear
 This project will demonstrate:
 - Multiple addressing modes for different data types
 - Interrupt-driven animation timing
-- Subroutines for modular code organization
-- Memory optimization techniques
+- Subroutines for modular code organisation
+- Memory optimisation techniques
 - System-level programming integration
 
-```assembly
+```text
 ; Advanced Sprite Animation System
 ; Demonstrates integration of all memory/addressing concepts
 
@@ -127,7 +127,7 @@ JumpAnimation:
 
 ; Color animation table (Lesson 9: Indexed addressing)
 ColorSequence:
-    .byte $01, $0F, $0C, $0B, $09, $02, $08, $0A  ; 8-color cycle
+    .byte $01, $0F, $0C, $0B, $09, $02, $08, $0A  ; 8-colour cycle
 
 ;=============================================================================
 ; INTERRUPT SYSTEM (Lesson 15: System Programming)
@@ -359,24 +359,24 @@ DrawSprite:
     LDA CurrentFrameData    ; Get current sprite frame
     STA ($F2),Y             ; Store using indirect indexed addressing
     
-    ; Animate color using indexed addressing (Lesson 9)
+    ; Animate colour using indexed addressing (Lesson 9)
     LDX AnimCounter         ; Use animation counter as index
     TXA
     AND #$07                ; Keep in range 0-7
     TAX
-    LDA ColorSequence,X     ; Get color from table
+    LDA ColorSequence,X     ; Get colour from table
     
-    ; Calculate color RAM position (same as screen position + $D400)
+    ; Calculate colour RAM position (same as screen position + $D400)
     LDA $F2                 ; Screen position low
     STA $F4                 ; Color position low
     LDA $F3                 ; Screen position high  
     CLC
-    ADC #$D0                ; Add color RAM offset ($D800 - $0400 = $D400)
+    ADC #$D0                ; Add colour RAM offset ($D800 - $0400 = $D400)
     STA $F5                 ; Color position high
     
-    ; Set color using indirect addressing
+    ; Set colour using indirect addressing
     LDY #$00
-    STA ($F4),Y             ; Set character color
+    STA ($F4),Y             ; Set character colour
     
     RTS
 
@@ -418,7 +418,7 @@ RestoreSystem:
   title="Integrated Memory and Addressing Demonstration"
   code="; Simplified version demonstrating key integration concepts
 
-; Zero page optimization (Lesson 14)
+; Zero page optimisation (Lesson 14)
 SpriteX    = $80
 SpriteY    = $81  
 Frame      = $82
@@ -465,10 +465,10 @@ SkipUpdate:
     STA $0400,X     ; Display at screen position
     
     ; Color animation (Lesson 9: Data tables)
-    LDA Frame       ; Use frame as color index
+    LDA Frame       ; Use frame as colour index
     CLC
     ADC #$01        ; Colors 1-4
-    STA $D800,X     ; Set character color
+    STA $D800,X     ; Set character colour
     
     JMP MainLoop    ; Continue animation"
   language="assembly"
@@ -479,7 +479,7 @@ SkipUpdate:
 ### Pattern 1: Data-Driven Programming
 Combine multiple concepts for flexible, data-driven systems:
 
-```assembly
+```text
 ; Data-driven entity system
 EntityTable:
     ; Entity 0: X, Y, Type, State
@@ -531,7 +531,7 @@ CallIndirect:
 ### Pattern 2: Memory Pool Management
 Advanced memory management using multiple techniques:
 
-```assembly
+```text
 ; Memory pool system (Lesson 14: Advanced memory techniques)
 PoolStart    = $C000           ; Start of memory pool
 PoolEnd      = $C400           ; End of memory pool  
@@ -581,7 +581,7 @@ NextBlock: .word $0000
 ### Pattern 3: State Machine Implementation
 Integrate branching, subroutines, and data structures:
 
-```assembly
+```text
 ; Game state machine (Lesson 13: Advanced flow control)
 GameState       = $90          ; Current state
 StateChanged    = $91          ; State change flag
@@ -637,9 +637,9 @@ ExecuteGameOver:
 ## Performance Analysis and Optimization
 
 ### Cycle Counting Exercise
-Apply optimization knowledge to real scenarios:
+Apply optimisation knowledge to real scenarios:
 
-```assembly
+```text
 ; Slow version (multiple memory accesses)
 SlowDrawPixel:
     LDA XPosition               ; 4 cycles - absolute
@@ -648,7 +648,7 @@ SlowDrawPixel:
     STA $0401                   ; 4 cycles - absolute
     ; Total: 16 cycles
 
-; Fast version (register optimization)
+; Fast version (register optimisation)
 FastDrawPixel:
     LDA XPosition               ; 3 cycles - zero page
     LDX YPosition               ; 3 cycles - zero page
@@ -709,7 +709,7 @@ Build a complete mini-operating system that demonstrates all concepts:
   code="; Mini Operating System - Complete Integration Exercise
 ; Demonstrates all memory and addressing concepts
 
-; System variables (Lesson 14: Memory organization)
+; System variables (Lesson 14: Memory organisation)
 TaskCount    = $80     ; Number of active tasks
 CurrentTask  = $81     ; Currently executing task
 SystemTimer  = $82     ; System tick counter
@@ -905,7 +905,7 @@ The skills you've mastered are directly applicable to:
 - Automotive and aerospace systems
 
 ### Game Development
-- Engine programming and optimization
+- Engine programming and optimisation
 - Memory management for performance
 - Real-time graphics and animation
 - System-level game features
@@ -926,9 +926,9 @@ The skills you've mastered are directly applicable to:
 
 You have successfully mastered:
 
-1. **Complete memory management** - from basic addressing to advanced optimization
+1. **Complete memory management** - from basic addressing to advanced optimisation
 2. **All 6502 addressing modes** - and when to use each for optimal performance  
-3. **Professional programming patterns** - modular design, error handling, optimization
+3. **Professional programming patterns** - modular design, error handling, optimisation
 4. **System-level programming** - interrupts, hardware interface, OS integration
 5. **Real-world development skills** - that translate directly to modern programming
 
@@ -951,11 +951,11 @@ Design and implement a complete program that demonstrates ALL concepts from less
 - Use at least 5 different addressing modes appropriately
 - Implement interrupt-driven timing or input
 - Create modular subroutines with proper parameter passing
-- Apply memory optimization techniques
+- Apply memory optimisation techniques
 - Include dynamic data structures with pointers
-- Demonstrate professional code organization
+- Demonstrate professional code organisation
 
-This portfolio project will showcase your mastery of professional assembly programming!
+This portfolio project will showcase your understanding of professional assembly programming!
 
 ## Congratulations!
 
@@ -972,7 +972,7 @@ The memory management and addressing techniques you've mastered are **timeless**
 - **Object-oriented programming** uses the same pointer and indirection concepts
 - **Garbage collection** uses advanced versions of the memory management you've learned
 - **Virtual memory systems** extend the addressing concepts to massive scales
-- **Cache optimization** uses the same access pattern principles
+- **Cache optimisation** uses the same access pattern principles
 - **Multithreading** builds on the interrupt and state management you've mastered
 
 You haven't just learned historical programming - you've learned the **eternal principles** that will make you a better programmer in any language, on any system, for decades to come!

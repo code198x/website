@@ -6,14 +6,14 @@ tier_number: 16
 description: "Complete Retro Racer as your comprehensive 6502 assembly project. Solidify assembly programming fundamentals and build confidence for the advanced machine-level techniques coming in Phase 2."
 learning_objectives:
   - "Complete your comprehensive 6502 assembly programming project"
-  - "Understand assembly optimization and code organization"
+  - "Understand assembly optimisation and code organisation"
   - "Create engaging user experiences with direct hardware control"
   - "Build confidence for Phase 2's advanced assembly techniques"
   - "Solidify fundamental assembly programming concepts"
 concepts_introduced:
   - "Assembly software development practices"
-  - "Assembly code organization and structure"
-  - "6502 assembly optimization concepts"
+  - "Assembly code organisation and structure"
+  - "6502 assembly optimisation concepts"
   - "Hardware-level user experience considerations"
   - "Foundation for Phase 2's advanced assembly programming"
 game_project:

@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 24
-description: "Master the complete integration of VIC-II graphics and SID audio programming. Review and combine all I/O concepts from lessons 17-23 into sophisticated multimedia applications."
+description: "Learn the complete integration of VIC-II graphics and SID audio programming. Review and combine all I/O concepts from lessons 17-23 into sophisticated multimedia applications."
 learning_objectives:
   - "Integrate VIC-II graphics and SID audio into complete systems"
-  - "Master advanced hardware control and I/O programming"
+  - "Learn advanced hardware control and I/O programming"
   - "Practice multimedia programming combining all graphics and audio concepts"
   - "Build sophisticated visual and audio effects using hardware features"
   - "Develop professional I/O programming patterns and techniques"
@@ -26,7 +26,7 @@ order: 24
 
 # Lesson 24: I/O and Hardware Control Section Review
 
-Welcome to the culmination of your I/O and Hardware Control education! Today you'll integrate everything from lessons 17-23 into sophisticated multimedia applications that demonstrate professional mastery of the C64's graphics and audio systems.
+Welcome to the culmination of your I/O and Hardware Control education! Today you'll integrate everything from lessons 17-23 into sophisticated multimedia applications that demonstrate professional understanding of the C64's graphics and audio systems.
 
 ## Section Review: What You've Mastered
 
@@ -34,7 +34,7 @@ Over lessons 17-23, you've gained comprehensive control over the C64's multimedi
 
 ### VIC-II Graphics Mastery (Lessons 17-20)
 - **Hardware Architecture**: Complete understanding of the graphics chip
-- **Text and Character Graphics**: Screen modes, custom characters, and color control
+- **Text and Character Graphics**: Screen modes, custom characters, and colour control
 - **Hardware Sprites**: 8-sprite system with collision detection and smooth animation
 - **Bitmap Graphics**: Pixel-level control and advanced visual effects
 
@@ -50,8 +50,8 @@ Over lessons 17-23, you've gained comprehensive control over the C64's multimedi
 
 Professional C64 applications require tight coordination between graphics and audio:
 
-```assembly
-; Master multimedia synchronization system
+```text
+; Learn multimedia synchronization system
 MultimediaEngine:
     ; Initialize both subsystems
     JSR InitGraphicsEngine
@@ -130,7 +130,7 @@ InitAudioEngine:
 InitSyncSystem:
     ; Initialize timing and synchronization
     LDA #$00
-    STA FrameCounter    ; Master frame counter
+    STA FrameCounter    ; Learn frame counter
     STA MusicBeat       ; Music timing
     STA EffectPhase     ; Effect timing
     RTS
@@ -138,7 +138,7 @@ InitSyncSystem:
 
 ### Advanced Graphics-Audio Coordination
 
-```assembly
+```text
 MultimediaLoop:
     ; Update frame counter for synchronization
     INC FrameCounter
@@ -170,8 +170,8 @@ UpdateVisualEffects:
     ; Color effects synchronized to audio
     LDA FrameCounter
     LSR
-    LSR             ; Slow color changes
-    AND #$0F        ; Keep in color range
+    LSR             ; Slow colour changes
+    AND #$0F        ; Keep in colour range
     ASL
     ASL
     ASL
@@ -186,7 +186,7 @@ ColorLoop:
     ADC ColorCycle,Y ; Add variation
     AND #%11110000  ; Keep upper nibble
     ORA #$00        ; Black background
-    STA $0400,Y     ; Update screen color
+    STA $0400,Y     ; Update screen colour
     
     INY
     CPY #40         ; First row
@@ -446,8 +446,8 @@ UpdateGraphicsEffects:
     ; Color cycling effect
     LDA $90
     LSR
-    LSR             ; Slow down color change
-    AND #$0F        ; Keep in color range
+    LSR             ; Slow down colour change
+    AND #$0F        ; Keep in colour range
     TAX
     LDA ColorSequence,X
     ASL
@@ -571,7 +571,7 @@ Sprite3:
     LSR
     LSR
     AND #$0F        ; Color range
-    STA $D02A       ; Sprite 3 color
+    STA $D02A       ; Sprite 3 colour
     
     RTS
 
@@ -646,7 +646,7 @@ JSR IOIntegrationDemo"
 
 ### Real-Time Audio-Visual Synchronization
 
-```assembly
+```text
 ; Professional audio-visual sync system
 AVSyncEngine:
     ; Beat detection and visual response
@@ -668,7 +668,7 @@ ProcessAudioVisualSync:
     ; Trigger sprite burst effect
     JSR TriggerSpriteBurst
     
-    ; Flash border color
+    ; Flash border colour
     LDA BeatCounter
     AND #$0F
     STA $D020
@@ -698,7 +698,7 @@ TriggerSpriteBurst:
 
 ### Complex Graphics State Management
 
-```assembly
+```text
 ; Advanced graphics mode switching
 GraphicsStateEngine:
     CurrentMode = $F3   ; 0=text, 1=bitmap, 2=mixed
@@ -751,7 +751,7 @@ FadeCurrentMode:
     EOR #$0F        ; Invert for fade out
     LSR
     LSR             ; Scale down
-    STA $D021       ; Background color fade
+    STA $D021       ; Background colour fade
     RTS
 
 ActivateNewMode:
@@ -784,7 +784,7 @@ BurstTimer: .byte 0
 
 ### Professional Sound Design Patterns
 
-```assembly
+```text
 ; Advanced sound effect system
 SoundEffectEngine:
     EffectQueue = $C000     ; Effect queue buffer
@@ -955,7 +955,7 @@ ClearAdvancedBitmap:
     ORA #%00010000  ; Enable multicolor
     STA $D016
     
-    ; Advanced color setup
+    ; Advanced colour setup
     LDA #$00        ; Black background
     STA $D021
     LDA #%00010010  ; White/red multicolor
@@ -1023,7 +1023,7 @@ AdvancedSpriteSetup:
     CLC
     ADC $90         ; Color variation
     AND #$0F        ; Keep in range
-    STA $D027,X     ; Sprite color
+    STA $D027,X     ; Sprite colour
     
     INX
     INX             ; Skip Y register
@@ -1035,7 +1035,7 @@ AdvancedSpriteSetup:
 InitMultimediaSync:
     ; Initialize synchronization system
     LDA #$00
-    STA $90         ; Master frame counter
+    STA $90         ; Learn frame counter
     STA $91         ; Music phase
     STA $92         ; Effect phase
     STA $93         ; Color cycle phase
@@ -1044,7 +1044,7 @@ InitMultimediaSync:
 RunAdvancedDemo:
     ; Advanced demo loop with multiple effects
 AdvancedLoop:
-    ; Master timing
+    ; Learn timing
     INC $90         ; Frame counter
     
     ; Update all subsystems
@@ -1074,7 +1074,7 @@ UpdateAdvancedGraphics:
     ; Dynamic multicolor effects
     LDA $90
     LSR
-    LSR             ; Slow color change
+    LSR             ; Slow colour change
     AND #$0F        ; Color range
     ASL
     ASL
@@ -1187,7 +1187,7 @@ AdvancedSpriteLoop:
     LSR
     LSR
     AND #$0F        ; Color range
-    STA $D027,X     ; Sprite color
+    STA $D027,X     ; Sprite colour
     
     ; Scaling effects
     LDA $90
@@ -1325,7 +1325,7 @@ JSR AdvancedMultimediaDemo"
 ## Professional I/O Programming Best Practices
 
 ### 1. Hardware Abstraction
-```assembly
+```text
 ; Create abstraction layers for hardware access
 VICIISetMode:
     ; Input: Mode in A (0=text, 1=bitmap, 2=multicolor)
@@ -1346,7 +1346,7 @@ SetBitmapMode:
 ```
 
 ### 2. Resource Management
-```assembly
+```text
 ; Manage limited hardware resources
 SpriteManager:
     ; Track sprite allocation
@@ -1371,7 +1371,7 @@ Found:
 ```
 
 ### 3. Performance Optimization
-```assembly
+```text
 ; Optimize critical code paths
 FastSpriteUpdate:
     ; Unroll loops for speed
@@ -1403,13 +1403,13 @@ Through lessons 17-23, you've gained professional competency in:
 - **System Architecture**: Understanding how graphics and audio subsystems interact
 - **Resource Management**: Efficient use of limited hardware resources
 - **Complex Application Development**: Building sophisticated multimedia applications
-- **Professional Standards**: Code organization and optimization techniques
+- **Professional Standards**: Code organisation and optimisation techniques
 
 ## Preparing for Essential Programming Skills
 
 You're now ready for the Essential Programming Skills section (lessons 25-31), which will cover:
 - File operations and data management
-- Program organization and structure
+- Program organisation and structure
 - Optimization and efficiency techniques
 - Debugging and error handling
 - Documentation and maintainability
@@ -1418,4 +1418,4 @@ You're now ready for the Essential Programming Skills section (lessons 25-31), w
 
 ## Fun Fact
 
-The multimedia programming techniques you've mastered in this section represent the pinnacle of 8-bit computer capabilities! The C64's combination of advanced graphics (VIC-II) and revolutionary audio (SID) was unmatched in 1982. The synchronization, effects, and integration patterns you've learned are the same techniques used by legendary demoscene programmers and game developers who pushed the C64 to its absolute limits. Modern game engines, audio/video production software, and multimedia frameworks all use these same fundamental concepts - hardware abstraction, resource management, real-time synchronization, and performance optimization. You've not just learned retro programming; you've mastered the timeless principles that power all multimedia programming!
+The multimedia programming techniques you've mastered in this section represent the pinnacle of 8-bit computer capabilities! The C64's combination of advanced graphics (VIC-II) and revolutionary audio (SID) was unmatched in 1982. The synchronization, effects, and integration patterns you've learned are the same techniques used by legendary demoscene programmers and game developers who pushed the C64 to its absolute limits. Modern game engines, audio/video production software, and multimedia frameworks all use these same fundamental concepts - hardware abstraction, resource management, real-time synchronization, and performance optimisation. You've not just learned retro programming; you've mastered the timeless principles that power all multimedia programming!

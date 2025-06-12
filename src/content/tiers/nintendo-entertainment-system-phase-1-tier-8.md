@@ -15,7 +15,7 @@ concepts_introduced:
   - "Assembly audio software development"
   - "Advanced user interface programming"
   - "Music data management and persistence"
-  - "Performance optimization for complex audio systems"
+  - "Performance optimisation for complex audio systems"
 game_project:
   name: "Rhythm Engine"
   description: "A comprehensive music and rhythm game that teaches NES audio programming through interactive music creation, rhythm challenges, and advanced sound synthesis"
@@ -57,7 +57,7 @@ Finish a comprehensive music application:
 - Designing for optimal user experience
 
 **Lessons 25-32: Professional Completion**
-- Final optimization and performance tuning
+- Final optimisation and performance tuning
 - Creating comprehensive help and tutorial systems
 - Building save/load functionality for user content
 - Creating solid presentation and polish

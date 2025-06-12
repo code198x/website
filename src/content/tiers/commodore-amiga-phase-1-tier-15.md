@@ -3,22 +3,22 @@ title: "System Integration and Optimization"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 15
-description: "Near completion of Workbench Wizard with advanced assembly system integration! Learn sophisticated IPC, performance optimization, and professional software architecture using 68000 assembly programming."
+description: "Near completion of Workbench Wizard with advanced assembly system integration! Learn sophisticated IPC, performance optimisation, and professional software architecture using 68000 assembly programming."
 learning_objectives:
   - "Near completion of your comprehensive assembly system programming project"
   - "Learn advanced inter-process communication using assembly"
-  - "Master performance optimization for complex assembly systems"
+  - "Learn performance optimisation for complex assembly systems"
   - "Understand professional software architecture through assembly"
   - "Create integrated assembly development environments"
 concepts_introduced:
   - "Assembly inter-process communication and messaging"
-  - "Assembly performance optimization and profiling"
+  - "Assembly performance optimisation and profiling"
   - "Assembly software architecture and system design"
-  - "Assembly memory management and resource optimization"
+  - "Assembly memory management and resource optimisation"
   - "Assembly integration testing and quality assurance"
 game_project:
   name: "Workbench Wizard"
-  description: "A comprehensive system enhancement and application development suite that demonstrates mastery of AmigaOS programming, multitasking, and professional software development using 68000 assembly with advanced system integration"
+  description: "A comprehensive system enhancement and application development suite that demonstrates understanding of AmigaOS programming, multitasking, and professional software development using 68000 assembly with advanced system integration"
   tier_range: "Tiers 13-16"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 15
@@ -26,13 +26,13 @@ order: 15
 
 # Tier 15: System Integration and Optimization
 
-Near completion of **Workbench Wizard** with advanced assembly system integration! Learn sophisticated IPC, performance optimization, and professional software architecture using 68000 assembly programming.
+Near completion of **Workbench Wizard** with advanced assembly system integration! Learn sophisticated IPC, performance optimisation, and professional software architecture using 68000 assembly programming.
 
 ## What You'll Nearly Complete
 
 Bring your ultimate Amiga assembly programming project near completion:
 - Advanced inter-process communication using assembly
-- Performance optimization for complex assembly systems
+- Performance optimisation for complex assembly systems
 - Professional software architecture through assembly programming
 - Integrated development environment completion using assembly
 
@@ -46,8 +46,8 @@ Bring your ultimate Amiga assembly programming project near completion:
 
 **Lessons 9-16: Assembly Performance Optimization**
 - Profiling and performance analysis using assembly
-- Memory optimization and resource management through assembly
-- Algorithm optimization and efficiency using assembly
+- Memory optimisation and resource management through assembly
+- Algorithm optimisation and efficiency using assembly
 - Building high-performance assembly applications
 
 **Lessons 17-24: Assembly Software Architecture**
@@ -100,7 +100,7 @@ INTER-PROCESS COMMUNICATION:
 
 ASSEMBLY OPTIMIZATIONS:
 ✓ Critical path analysis
-✓ Memory pool optimization
+✓ Memory pool optimisation
 ▒ Blitter routine enhancement (In Progress)
 ░ Cache-friendly data structures
 ░ Interrupt-driven I/O
@@ -146,4 +146,4 @@ Nearing completion of **Workbench Wizard** teaches:
 - **Assembly Innovation** - Creating breakthrough assembly software solutions
 - **Assembly Excellence** - Achieving the highest standards of assembly programming
 
-**Workbench Wizard** nears completion as your journey toward assembly programming mastery reaches its culmination, demonstrating the advanced system integration and optimization skills that define professional assembly software development!
+**Workbench Wizard** nears completion as your journey toward assembly programming understanding reaches its culmination, demonstrating the advanced system integration and optimisation skills that define professional assembly software development!

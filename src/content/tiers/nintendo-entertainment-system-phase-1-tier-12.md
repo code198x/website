@@ -14,7 +14,7 @@ concepts_introduced:
   - "Solid tool development and architecture"
   - "Advanced user interface design and implementation"
   - "File system integration and data persistence"
-  - "Workflow optimization and user experience"
+  - "Workflow optimisation and user experience"
   - "Tool ecosystem design and interoperability"
 game_project:
   name: "Tile Craft"
@@ -57,14 +57,14 @@ Finish a comprehensive development tool:
 - Designing for workflow integration
 
 **Lessons 25-32: Professional Polish and Completion**
-- Final optimization and performance tuning
+- Final optimisation and performance tuning
 - Creating comprehensive help and tutorial systems
 - Building user-friendly workflows
 - Creating solid presentation and polish
 
 ## Your Completed Tile Craft
 
-**Tile Craft** demonstrates advanced programming mastery:
+**Tile Craft** demonstrates advanced programming understanding:
 
 ```
 **** TILE CRAFT v1.0 ****

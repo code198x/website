@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 23
-description: "Master musical composition and sequencing on the SID chip. Learn to create songs, implement music players, and build sophisticated audio systems for games and applications."
+description: "Learn musical composition and sequencing on the SID chip. Learn to create songs, implement music players, and build sophisticated audio systems for games and applications."
 learning_objectives:
   - "Understand musical sequencing and composition programming"
-  - "Master interrupt-driven music players and timing"
+  - "Learn interrupt-driven music players and timing"
   - "Learn pattern-based music systems and data structures"
   - "Practice real-time audio effects and dynamic music"
   - "Build complete musical applications and sound systems"
@@ -46,7 +46,7 @@ Think of musical programming as **conducting an orchestra** where each SID voice
 
 Create a complete table of musical frequencies for all notes:
 
-```assembly
+```text
 ; Complete chromatic note table (C-1 to B-8)
 ; Format: Low byte, High byte for each note
 
@@ -92,7 +92,7 @@ NOTE_B  = 11
 
 ### Note Playing Function
 
-```assembly
+```text
 ; Play note on specified voice
 ; Input: A = note index, X = voice (0,1,2), Y = duration
 PlayNote:
@@ -238,7 +238,7 @@ JSR PlaySimpleMelody"
 
 **Real-time music** requires precise timing using interrupts:
 
-```assembly
+```text
 ; Interrupt-driven music system
 MusicPlayerInit:
     ; Setup music player interrupt
@@ -326,7 +326,7 @@ MusicPlaying:    .byte 0
 
 ### Pattern-Based Music System
 
-```assembly
+```text
 ; Pattern-based music sequencer
 ; Each pattern contains note data for multiple voices
 
@@ -542,7 +542,7 @@ JSR PlayPatternSong"
 
 ### Multi-Voice Harmony
 
-```assembly
+```text
 ; Three-voice harmony system
 PlayHarmony:
     ; Chord data: Root, Third, Fifth
@@ -614,7 +614,7 @@ ChordDelay: ; Implementation depends on timing needs
 
 ### Dynamic Music Effects
 
-```assembly
+```text
 ; Real-time music effects
 MusicEffects:
     ; Vibrato effect on lead voice
@@ -666,7 +666,7 @@ BaseFrequency: .byte 0
 
 ### Arpeggiation and Advanced Patterns
 
-```assembly
+```text
 ; Arpeggiator system
 ArpeggiatorDemo:
     ; Arpeggio pattern (chord notes played in sequence)
@@ -924,7 +924,7 @@ JSR AdvancedMusicDemo"
 
 ### Professional Music Player Structure
 
-```assembly
+```text
 ; Complete music system with all features
 MusicSystem:
     ; System components:
@@ -1013,7 +1013,7 @@ StopSong:
 
 ### Interactive Music Features
 
-```assembly
+```text
 ; Interactive music system
 InteractiveMusic:
     ; Music responds to user input or game events
@@ -1653,14 +1653,14 @@ JSR CompleteMusicalDemo"
 ## Music Programming Best Practices
 
 ### 1. Timing and Synchronization
-```assembly
+```text
 ; Use consistent timing systems
 ; Plan note durations carefully
 ; Consider interrupt-driven playback for precision
 ```
 
 ### 2. Voice Management
-```assembly
+```text
 ; Plan voice assignments:
 ; Voice 1: Lead melodies, effects
 ; Voice 2: Harmony, counter-melodies  
@@ -1668,14 +1668,14 @@ JSR CompleteMusicalDemo"
 ```
 
 ### 3. Data Organization
-```assembly
+```text
 ; Use structured data formats
 ; Separate note data from timing data
 ; Plan for compression and efficiency
 ```
 
 ### 4. Memory Management
-```assembly
+```text
 ; Keep frequently accessed data in zero page
 ; Use lookup tables for complex calculations
 ; Plan memory usage for long compositions

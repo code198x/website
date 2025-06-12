@@ -3,7 +3,7 @@ title: "Arrays and Data"
 system: "commodore-64"
 phase_number: 1
 tier_number: 7
-description: "Master assembly-based data structures and memory management to handle complex information. Store patterns, sequences, and game data efficiently using 6502 assembly while advancing Color Cascade's intelligence."
+description: "Learn assembly-based data structures and memory management to handle complex information. Store patterns, sequences, and game data efficiently using 6502 assembly while advancing Color Cascade's intelligence."
 learning_objectives:
   - "Create and manipulate memory-based data structures for storage"
   - "Implement assembly-based pattern storage and comparison algorithms"
@@ -22,7 +22,7 @@ order: 7
 
 # Tier 7: Arrays and Data
 
-Transform from simple memory locations to sophisticated assembly data management! Master memory-based data structures to handle complex information and give **Color Cascade** the intelligence it needs for advanced gameplay.
+Transform from simple memory locations to sophisticated assembly data management! Learn memory-based data structures to handle complex information and give **Color Cascade** the intelligence it needs for advanced gameplay.
 
 ## What You'll Add to Color Cascade
 
@@ -42,7 +42,7 @@ Implement advanced features requiring data management:
 - Common assembly data operations and patterns
 
 **Lessons 9-16: Assembly Pattern Storage**
-- Representing color sequences in memory structures
+- Representing colour sequences in memory structures
 - Efficient assembly pattern comparison algorithms
 - Dynamic pattern generation using assembly code
 - Pattern difficulty classification through assembly logic
@@ -51,13 +51,13 @@ Implement advanced features requiring data management:
 - High score table implementation using assembly memory management
 - Player statistics tracking through assembly data structures
 - Save/load data structures using assembly file operations
-- Memory-efficient data organization for 6502 architecture
+- Memory-efficient data organisation for 6502 architecture
 
 **Lessons 25-32: Advanced Assembly Color Cascade**
 - Intelligent pattern generation using assembly algorithms
 - Adaptive difficulty systems implemented in assembly
 - Complete data persistence through assembly memory management
-- Performance optimization for large datasets using 6502 techniques
+- Performance optimisation for large datasets using 6502 techniques
 
 ## Key Programming Concepts
 

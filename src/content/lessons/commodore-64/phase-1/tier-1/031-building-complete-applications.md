@@ -4,21 +4,21 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 31
-description: "Master the integration of all Phase 1 skills to build complete, polished assembly applications. Learn to combine graphics, sound, input, and logic into professional-quality C64 programs."
+description: "Learn the integration of all Phase 1 skills to build complete, polished assembly applications. Learn to combine graphics, sound, input, and logic into professional-quality C64 programs."
 learning_objectives:
   - "Understand complete application architecture and design"
-  - "Master integration of multiple system components"
+  - "Learn integration of multiple system components"
   - "Learn user interface design and implementation"
-  - "Practice performance optimization and polish"
+  - "Practice performance optimisation and polish"
   - "Build production-ready assembly applications"
 concepts:
   - "Application architecture and component integration"
   - "User interface design and state management"
-  - "Performance optimization and profiling"
+  - "Performance optimisation and profiling"
   - "Quality assurance and testing"
   - "Deployment and distribution"
 estimated_duration: "45-60 minutes"
-difficulty: "advanced"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 31
@@ -46,7 +46,7 @@ Think of building applications as **conducting an orchestra** - each section (gr
 
 Every complete application needs a solid foundation:
 
-```assembly
+```text
 ; ========================================
 ; COMPLETE APPLICATION FRAMEWORK
 ; ========================================
@@ -586,7 +586,7 @@ InitFrameworkGraphics:
     LDA #$93            ; Clear screen
     JSR $FFD2
     
-    ; Set text color
+    ; Set text colour
     LDA #$0E            ; Light blue
     STA $286
     
@@ -989,7 +989,7 @@ JSR CompleteApplicationDemo"
 
 Coordinate application state across all subsystems:
 
-```assembly
+```text
 ; ========================================
 ; ADVANCED STATE MANAGEMENT
 ; ========================================
@@ -1125,7 +1125,7 @@ NoMessages:
 ; ========================================
 
 PerformanceManager:
-    ; Adaptive performance optimization
+    ; Adaptive performance optimisation
     FrameTimeBudget = 40        ; Cycles per frame
     PerformanceLevel = $D200    ; Current performance setting
     
@@ -1457,7 +1457,7 @@ HandleAudioMessage:
     RTS
 
 DemoPerformanceAdaptation:
-    ; Demonstrate adaptive performance optimization
+    ; Demonstrate adaptive performance optimisation
     
     ; Simulate varying frame times
     LDA #$50            ; High frame time (poor performance)
@@ -2300,7 +2300,7 @@ JSR MiniSpaceGame"
 
 Ensure your application meets professional standards:
 
-```assembly
+```text
 ; QUALITY ASSURANCE CHECKLIST
 ; ========================================
 
@@ -2318,7 +2318,7 @@ QualityStandards:
     ; - User interface intuitive
     
     ; Code Quality Requirements
-    ; - Code well-organized and documented
+    ; - Code well-organised and documented
     ; - No dead code or unused variables
     ; - Consistent naming conventions
     ; - Modular architecture maintained
@@ -2374,28 +2374,28 @@ QualityFlags: .byte 0
 ## Best Practices for Complete Applications
 
 ### 1. Design Before Coding
-```assembly
+```text
 ; Always plan architecture before implementation
 ; Define interfaces between components
 ; Consider scalability and maintainability
 ```
 
 ### 2. Build Incrementally
-```assembly
+```text
 ; Start with core functionality
 ; Add features iteratively
 ; Test continuously throughout development
 ```
 
 ### 3. Optimize Intelligently
-```assembly
+```text
 ; Profile before optimizing
 ; Focus on bottlenecks, not micro-optimizations
 ; Maintain code clarity while optimizing
 ```
 
 ### 4. Test Thoroughly
-```assembly
+```text
 ; Test normal operation
 ; Test edge cases and error conditions
 ; Test performance under load
@@ -2403,7 +2403,7 @@ QualityFlags: .byte 0
 ```
 
 ### 5. Document Comprehensively
-```assembly
+```text
 ; Document architecture decisions
 ; Explain complex algorithms
 ; Provide user and maintenance documentation
@@ -2425,21 +2425,21 @@ In this final lesson, you've mastered the complete application development proce
 You have completed Phase 1 of the Code Like It's 198x curriculum! You've learned the fundamental skills of professional assembly programming on the Commodore 64:
 
 - **Memory Management**: Expert-level understanding of 6502 memory architecture
-- **Graphics Programming**: Complete mastery of VIC-II graphics capabilities
+- **Graphics Programming**: Complete understanding of VIC-II graphics capabilities
 - **Audio Programming**: Professional SID sound synthesis and music
 - **Input Processing**: Robust input handling and user interaction
 - **System Integration**: Combining all components into complete applications
-- **Professional Practices**: Project planning, debugging, optimization, and quality assurance
+- **Professional Practices**: Project planning, debugging, optimisation, and quality assurance
 
 ## Looking Ahead to Phase 2
 
 Phase 2 will expand your skills into advanced topics:
 - Advanced graphics techniques and custom hardware programming
 - Complex audio synthesis and real-time music generation
-- Advanced optimization and performance techniques
+- Advanced optimisation and performance techniques
 - Cross-platform development and portability
 - Advanced project architectures and frameworks
 
 ## Fun Fact
 
-The complete application development skills you've learned are the foundation of all professional software development! The modular architecture patterns are used in modern frameworks like React and Angular. The state management techniques are the basis for Redux and MobX. The component communication patterns are used in microservices and distributed systems. The performance optimization and quality assurance practices are essential in everything from mobile apps to enterprise software. You've learned the timeless principles that make the difference between amateur code and professional software engineering!
+The complete application development skills you've learned are the foundation of all professional software development! The modular architecture patterns are used in modern frameworks like React and Angular. The state management techniques are the basis for Redux and MobX. The component communication patterns are used in microservices and distributed systems. The performance optimisation and quality assurance practices are essential in everything from mobile apps to enterprise software. You've learned the timeless principles that make the difference between amateur code and professional software engineering!

@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 12
-description: "Master subroutines with JSR and RTS instructions. Learn to create reusable code modules, pass parameters, and build structured programs using the stack for function calls."
+description: "Learn subroutines with JSR and RTS instructions. Learn to create reusable code modules, pass parameters, and build structured programs using the stack for function calls."
 learning_objectives:
   - "Understand subroutines and modular programming concepts"
-  - "Master JSR (Jump to Subroutine) instruction"
+  - "Learn JSR (Jump to Subroutine) instruction"
   - "Learn RTS (Return from Subroutine) instruction"
   - "Practice parameter passing and return values"
   - "Build reusable code libraries and structured programs"
@@ -26,7 +26,7 @@ order: 12
 
 # Lesson 12: Subroutines and Function Calls
 
-Welcome to modular programming! Today you'll learn about **subroutines** - reusable blocks of code that you can call from anywhere in your program. Subroutines are the foundation of structured programming and enable you to build complex, organized software.
+Welcome to modular programming! Today you'll learn about **subroutines** - reusable blocks of code that you can call from anywhere in your program. Subroutines are the foundation of structured programming and enable you to build complex, organised software.
 
 ## What Are Subroutines?
 
@@ -48,7 +48,7 @@ Think of subroutines like recipes in a cookbook - you can follow the same recipe
 2. Jumps to the specified address
 3. Execution continues at the subroutine
 
-```assembly
+```text
 JSR PrintHello      ; Call the PrintHello subroutine
 ; When PrintHello finishes, execution continues here
 ```
@@ -63,7 +63,7 @@ JSR PrintHello      ; Call the PrintHello subroutine
 2. Sets Program Counter to return address + 1
 3. Execution continues after the JSR instruction
 
-```assembly
+```text
 PrintHello:
     LDA #$48        ; Load 'H'
     STA $0400       ; Display on screen
@@ -74,7 +74,7 @@ PrintHello:
 
 Let's create a simple subroutine that displays a character:
 
-```assembly
+```text
 ; Main program
 Main:
     JSR DisplayA    ; Call subroutine
@@ -147,7 +147,7 @@ PC: $0803 (continues after JSR)
 
 Pass values to subroutines using registers:
 
-```assembly
+```text
 ; Main program
 Main:
     LDA #$48        ; Parameter: 'H'
@@ -199,7 +199,7 @@ EndProgram:"
 
 Subroutines can call other subroutines! The stack handles multiple return addresses:
 
-```assembly
+```text
 Main:
     JSR PrintWord   ; Call main subroutine
     JMP EndProgram
@@ -252,14 +252,14 @@ EndProgram:"
 
 Good subroutines preserve registers they don't explicitly return:
 
-```assembly
+```text
 ; Good subroutine - preserves A register
 SafeSubroutine:
     PHA             ; Save A register
     
     ; Do work that changes A
     LDA #$FF
-    STA $D020       ; Change border color
+    STA $D020       ; Change border colour
     
     PLA             ; Restore A register
     RTS             ; Return with A unchanged
@@ -267,7 +267,7 @@ SafeSubroutine:
 ; Bad subroutine - destroys A register  
 UnsafeSubroutine:
     LDA #$FF        ; Changes A register
-    STA $D020       ; Change border color
+    STA $D020       ; Change border colour
     RTS             ; Returns with A modified!
 ```
 
@@ -288,7 +288,7 @@ JMP EndProgram
 SafeRoutine:
     PHA             ; Save A
     LDA #$01        ; Change A temporarily
-    STA $D020       ; Use A for border color
+    STA $D020       ; Use A for border colour
     PLA             ; Restore original A
     RTS
 
@@ -305,7 +305,7 @@ EndProgram:"
 
 Return values through registers:
 
-```assembly
+```text
 ; Subroutine that returns a value
 ; Output: A = calculated result
 AddTwoNumbers:
@@ -353,7 +353,7 @@ EndProgram:"
 
 Create reusable utility functions:
 
-```assembly
+```text
 ; Screen utility library
 
 ; Clear screen subroutine
@@ -365,10 +365,10 @@ ClearScreen:
     PLA             ; Restore A
     RTS
 
-; Set border color subroutine  
-; Input: A = color value
+; Set border colour subroutine  
+; Input: A = colour value
 SetBorderColor:
-    STA $D020       ; Set border color register
+    STA $D020       ; Set border colour register
     RTS
 
 ; Display character at cursor subroutine
@@ -384,7 +384,7 @@ DisplayAtPos:
   code="; Using a collection of utility subroutines
 JSR ClearScreen     ; Clear the display
 
-LDA #$02            ; Red color
+LDA #$02            ; Red colour
 JSR SetBorderColor  ; Set border to red
 
 LDA #$48            ; 'H'
@@ -406,7 +406,7 @@ ClearScreen:
     RTS
 
 SetBorderColor:
-    STA $D020       ; Set border color
+    STA $D020       ; Set border colour
     RTS
 
 DisplayAtPos:
@@ -421,7 +421,7 @@ EndProgram:"
 
 For complex parameters, use memory locations:
 
-```assembly
+```text
 ; Parameters in Zero Page
 ParamChar = $80     ; Character to display
 ParamX    = $81     ; X position
@@ -450,7 +450,7 @@ Main:
 
 Subroutines can call themselves (with care!):
 
-```assembly
+```text
 ; Countdown subroutine (simplified recursion)
 Countdown:
     STA $0400       ; Display current number
@@ -469,7 +469,7 @@ Main:
 
 Create a program with these subroutines:
 
-1. **InitSystem**: Sets up initial state (border color, clear screen)
+1. **InitSystem**: Sets up initial state (border colour, clear screen)
 2. **DisplayMessage**: Displays "HI" at specified position  
 3. **WaitABit**: Simple delay loop
 4. **CleanUp**: Restores system to original state

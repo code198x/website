@@ -47,7 +47,7 @@ Build a professional-quality level design system:
 
 **Tile Craft** introduces sophisticated NES programming concepts:
 
-- **Advanced Graphics**: Master the NES background and tile systems
+- **Advanced Graphics**: Learn the NES background and tile systems
 - **Memory Management**: Handle complex data structures efficiently
 - **System Architecture**: Build large, interconnected software systems
 - **Data Compression**: Store maximum content in minimal space
@@ -59,7 +59,7 @@ Leverages the complete NES PPU background capabilities:
 
 - **Pattern Tables**: Design and manipulate tile graphics data
 - **Name Tables**: Control tile placement and screen layout
-- **Attribute Tables**: Manage color palettes and visual effects
+- **Attribute Tables**: Manage colour palettes and visual effects
 - **Scrolling Registers**: Create smooth camera movement
 - **Advanced Techniques**: Split-screen effects and dynamic graphics
 
@@ -154,7 +154,7 @@ ACTIONS:
 
 Building **Tile Craft** teaches:
 
-1. **Advanced Graphics Programming** - Complete mastery of NES background systems
+1. **Advanced Graphics Programming** - Complete understanding of NES background systems
 2. **Complex Data Management** - Sophisticated storage and compression techniques
 3. **System Architecture** - Building large, interconnected software systems
 4. **Performance Optimization** - Maintaining smooth operation with complex graphics

@@ -4,19 +4,19 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 14
-description: "Master advanced 6502 memory management and optimization techniques. Learn memory mapping, efficient data organization, and performance optimization for professional-quality assembly programming."
+description: "Learn advanced 6502 memory management and optimisation techniques. Learn memory mapping, efficient data organisation, and performance optimisation for professional-quality assembly programming."
 learning_objectives:
   - "Understand C64 memory map and bank switching concepts"
-  - "Master memory-mapped I/O and hardware registers"
-  - "Learn efficient data structure organization"
-  - "Practice performance optimization techniques"
+  - "Learn memory-mapped I/O and hardware registers"
+  - "Learn efficient data structure organisation"
+  - "Practice performance optimisation techniques"
   - "Build memory-efficient and fast programs"
 concepts:
   - "C64 memory map ($0000-$FFFF)"
   - "Memory-mapped I/O registers"
-  - "Zero page optimization strategies"
+  - "Zero page optimisation strategies"
   - "Data alignment and packing"
-  - "Performance measurement and optimization"
+  - "Performance measurement and optimisation"
 estimated_duration: "30-45 minutes"
 difficulty: "medium"
 code_examples: true
@@ -26,7 +26,7 @@ order: 14
 
 # Lesson 14: Advanced Memory Techniques and Optimization
 
-Welcome to professional-level assembly programming! Today you'll learn advanced memory management and optimization techniques that separate competent programmers from masters. These skills are essential for creating efficient, fast, and robust programs.
+Welcome to professional-level assembly programming! Today you'll learn advanced memory management and optimisation techniques that separate competent programmers from masters. These skills are essential for creating efficient, fast, and robust programs.
 
 ## Understanding the C64 Memory Map
 
@@ -52,7 +52,7 @@ $E000-$FFFF: KERNAL ROM (8KB) - Operating system
 - **Shorter instructions**: 2 bytes vs 3 bytes
 - **More addressing modes**: Special zero page modes available
 
-```assembly
+```text
 ; Slow: Absolute addressing (3 bytes, 4 cycles)
 LDA $1000       ; Load from $1000
 STA $1001       ; Store to $1001
@@ -86,31 +86,31 @@ The **I/O area** ($D000-$DFFF) contains hardware control registers:
 
 | Address | Register | Purpose |
 |---------|----------|---------|
-| **$D020** | Border Color | Screen border color (0-15) |
-| **$D021** | Background Color | Screen background color |
-| **$D800** | Color RAM | Character color memory |
+| **$D020** | Border Color | Screen border colour (0-15) |
+| **$D021** | Background Color | Screen background colour |
+| **$D800** | Color RAM | Character colour memory |
 | **$DC00** | CIA1 Data A | Keyboard/joystick input |
 | **$DD00** | CIA2 Data A | Serial port, memory banking |
 
-```assembly
+```text
 ; Hardware control examples
-LDA #$02        ; Red color
+LDA #$02        ; Red colour
 STA $D020       ; Set border to red
 STA $D021       ; Set background to red
 
-LDA #$01        ; White color
-STA $D800       ; Set character 0 color to white
+LDA #$01        ; White colour
+STA $D800       ; Set character 0 colour to white
 ```
 
 <CodeRunner 
   system="commodore-64"
   title="Memory-Mapped I/O Control"
   code="; Control hardware through memory-mapped registers
-LDA #$06        ; Blue color
-STA $D020       ; Set border color
+LDA #$06        ; Blue colour
+STA $D020       ; Set border colour
 
-LDA #$0E        ; Light blue color  
-STA $D021       ; Set background color
+LDA #$0E        ; Light blue colour  
+STA $D021       ; Set background colour
 
 ; Set screen character colors
 LDA #$01        ; White
@@ -124,7 +124,7 @@ STA $D801       ; Color for screen position 1"
 ### Structure of Arrays vs Array of Structures
 
 **Array of Structures** (less efficient):
-```assembly
+```text
 ; Player data: X, Y, Score for each player
 ; Player 0: $A0=X, $A1=Y, $A2=Score
 ; Player 1: $A3=X, $A4=Y, $A5=Score
@@ -133,7 +133,7 @@ LDA $A0,X       ; Get Player 0 X (inefficient indexing)
 ```
 
 **Structure of Arrays** (more efficient):
-```assembly
+```text
 ; Separate arrays for each property
 ; X positions: $A0, $A1, $A2...
 ; Y positions: $B0, $B1, $B2...
@@ -174,7 +174,7 @@ STA $81         ; Store for use"
 
 **Page boundaries** matter for performance. Crossing a page boundary adds CPU cycles:
 
-```assembly
+```text
 ; Bad: Data crosses page boundary
 .org $80FF
 DataTable:
@@ -190,7 +190,7 @@ DataTable:
 
 Pack multiple boolean values into single bytes:
 
-```assembly
+```text
 ; Pack 8 boolean flags into one byte
 ; Bit 0: Player alive
 ; Bit 1: Player has key
@@ -239,7 +239,7 @@ Continue:"
 
 ### Minimize Memory Accesses
 
-```assembly
+```text
 ; Slow: Multiple memory accesses
 LDA $80         ; Load value
 ADC #$01        ; Add 1
@@ -256,7 +256,7 @@ STA $0400       ; Display (A still contains value)
 
 ### Use Appropriate Addressing Modes
 
-```assembly
+```text
 ; Slower: Absolute addressing for local data
 LDA $0080       ; 3 bytes, 4 cycles
 STA $0081       ; 3 bytes, 4 cycles
@@ -292,7 +292,7 @@ STA $0400       ; Display 'B' (A+1)"
 
 ### Count Down Instead of Up
 
-```assembly
+```text
 ; Slower: Count up (requires comparison)
 LDX #$00        ; Start at 0
 Loop1:
@@ -311,7 +311,7 @@ Loop2:
 
 ### Unroll Critical Loops
 
-```assembly
+```text
 ; Normal loop (flexible but slower)
 LDX #$04        ; 4 iterations
 Loop:
@@ -353,7 +353,7 @@ CountLoop:
 
 Create a simple memory manager:
 
-```assembly
+```text
 ; Memory manager variables
 MemoryFree = $F0    ; Pointer to next free memory
 MemoryEnd  = $F2    ; Pointer to end of available memory
@@ -410,7 +410,7 @@ Different instructions take different numbers of CPU cycles:
 
 ### Timing Critical Code
 
-```assembly
+```text
 ; Time-critical display routine
 FastDisplay:
     ; Save registers (if needed)
@@ -428,12 +428,12 @@ FastDisplay:
 
 ## Practice Exercise
 
-Create an optimized sprite movement system that:
+Create an optimised sprite movement system that:
 
 1. Uses zero page for sprite coordinates
 2. Implements efficient boundary checking
 3. Uses bit manipulation for sprite flags
-4. Demonstrates performance optimization techniques
+4. Demonstrates performance optimisation techniques
 
 <CodeRunner 
   system="commodore-64"
@@ -489,7 +489,7 @@ StoreX:
     STA SpriteX     ; Store new position
     
     ; Display sprite at current position
-    LDY SpriteY     ; Load Y (could optimize with screen calculation)
+    LDY SpriteY     ; Load Y (could optimise with screen calculation)
     LDX SpriteX     ; Load X
     LDA #$2A        ; '*' character
     STA $0400,X     ; Display (simplified - real version would calculate screen offset)
@@ -509,7 +509,7 @@ JSR UpdateSprite"
 
 Even on the 6502, memory access patterns matter:
 
-```assembly
+```text
 ; Bad: Random memory access
 LDA $80
 LDA $200
@@ -525,7 +525,7 @@ LDA $83
 
 ### Minimize Page Boundary Crossings
 
-```assembly
+```text
 ; Risky: Might cross page boundary
 LDX #$FF
 LDA $0400,X     ; Accesses $04FF, might cross to $0500
@@ -551,10 +551,10 @@ LDA $0400,X     ; Accesses $0428, stays in same region
 In this lesson, you've mastered:
 
 - C64 memory map and the importance of different memory areas
-- Zero page optimization for maximum speed
+- Zero page optimisation for maximum speed
 - Memory-mapped I/O for hardware control
-- Efficient data organization and structure design
-- Performance optimization techniques and cycle counting
+- Efficient data organisation and structure design
+- Performance optimisation techniques and cycle counting
 - Advanced memory management strategies
 - Professional-level assembly programming practices
 
@@ -564,4 +564,4 @@ In the next lesson, you'll learn about **interrupts and system programming** - h
 
 ## Fun Fact
 
-The optimization techniques you've learned aren't just historical curiosities - they're still relevant today! Modern CPUs have cache hierarchies that make memory access patterns matter enormously. Game engines, operating systems, and high-performance applications all use the same fundamental principles you've just mastered: keep frequently accessed data close together, minimize memory accesses, and understand your hardware. You're learning optimization skills that scale from 8-bit to 64-bit and beyond!
+The optimisation techniques you've learned aren't just historical curiosities - they're still relevant today! Modern CPUs have cache hierarchies that make memory access patterns matter enormously. Game engines, operating systems, and high-performance applications all use the same fundamental principles you've just mastered: keep frequently accessed data close together, minimize memory accesses, and understand your hardware. You're learning optimisation skills that scale from 8-bit to 64-bit and beyond!

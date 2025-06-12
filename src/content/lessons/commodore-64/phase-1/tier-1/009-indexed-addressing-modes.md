@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 9
-description: "Master indexed addressing to work with arrays, data tables, and screen memory efficiently. Learn to use X and Y registers as powerful indexing tools for complex data manipulation."
+description: "Learn indexed addressing to work with arrays, data tables, and screen memory efficiently. Learn to use X and Y registers as powerful indexing tools for complex data manipulation."
 learning_objectives:
   - "Understand indexed addressing modes and their syntax"
-  - "Master absolute indexed addressing ($address,X and $address,Y)"
+  - "Learn absolute indexed addressing ($address,X and $address,Y)"
   - "Learn zero page indexed addressing ($zp,X and $zp,Y)"
   - "Create programs that work with arrays and data tables"
   - "Build efficient screen memory manipulation routines"
@@ -50,7 +50,7 @@ This is **essential** for working with:
 **Syntax**: `LDA $1000,X`
 **Meaning**: Load from memory address ($1000 + X register)
 
-```assembly
+```text
 LDX #$05        ; X = 5
 LDA $0400,X     ; Load from $0400 + 5 = $0405 (screen position 5)
 ```
@@ -69,7 +69,7 @@ STA $0400,X     ; Store at screen position 5 ($0400 + 5 = $0405)"
 **Syntax**: `LDA $1000,Y`
 **Meaning**: Load from memory address ($1000 + Y register)
 
-```assembly
+```text
 LDY #$28        ; Y = 40 (one full screen row)
 LDA $0400,Y     ; Load from $0400 + 40 = $0428 (start of row 2)
 ```
@@ -90,7 +90,7 @@ STA $0400,Y     ; Store at start of row 2 ($0400 + 40 = $0428)"
 **Syntax**: `LDA $80,X`
 **Meaning**: Load from Zero Page address ($80 + X register)
 
-```assembly
+```text
 LDX #$03        ; X = 3
 LDA $80,X       ; Load from $80 + 3 = $83
 ```
@@ -111,7 +111,7 @@ STA $80,X       ; Store at $80 + 3 = $83 (fast zero page access)"
 **Syntax**: `LDA $80,Y`
 **Meaning**: Load from Zero Page address ($80 + Y register)
 
-```assembly
+```text
 LDY #$07        ; Y = 7
 STA $90,Y       ; Store at $90 + 7 = $97
 ```
@@ -129,7 +129,7 @@ STA $90,Y       ; Store at $90 + 7 = $97 (fast zero page access)"
 
 Indexed addressing is perfect for arrays. Let's create and manipulate a simple array:
 
-```assembly
+```text
 ; Store array data in Zero Page
 LDA #$41        ; 'A'
 STA $80         ; Array[0] = 'A'
@@ -166,7 +166,7 @@ STA $0400       ; Display 'B' on screen"
 
 The C64 screen is perfect for demonstrating indexed addressing. The screen starts at $0400 and is 40×25 characters:
 
-```assembly
+```text
 ; Fill first row with stars
 LDX #$00        ; Start at position 0
 LDA #$2A        ; Load '*' character
@@ -202,7 +202,7 @@ STA $0400,X     ; Screen position 2"
 
 Indexed addressing enables efficient loops. Here's a pattern for processing multiple data items:
 
-```assembly
+```text
 ; Copy 5 characters from one array to screen
 LDX #$04        ; Start at index 4 (work backwards)
 
@@ -245,7 +245,7 @@ The C64 screen is 40 characters wide, so each row starts at:
 - Row 2: $0450 (80)
 - Row 3: $0478 (120)
 
-```assembly
+```text
 ; Put characters on different rows
 LDY #$00        ; Row 0
 LDA #$31        ; '1'
@@ -282,7 +282,7 @@ STA $0400,Y     ; Display '3' on row 2"
 
 Indexed addressing is perfect for lookup tables:
 
-```assembly
+```text
 ; Color value lookup table in Zero Page
 LDA #$00        ; Black
 STA $A0         ; ColorTable[0]
@@ -291,16 +291,16 @@ STA $A1         ; ColorTable[1]
 LDA #$02        ; Red
 STA $A2         ; ColorTable[2]
 
-; Use table to get color
-LDX #$02        ; Want color index 2
+; Use table to get colour
+LDX #$02        ; Want colour index 2
 LDA $A0,X       ; Load ColorTable[2] = Red
-STA $D020       ; Set border color
+STA $D020       ; Set border colour
 ```
 
 <CodeRunner 
   system="commodore-64"
   title="Color Lookup Table"
-  code="; Setup color lookup table
+  code="; Setup colour lookup table
 LDA #$00        ; Black
 STA $A0         ; ColorTable[0]
 LDA #$01        ; White
@@ -308,10 +308,10 @@ STA $A1         ; ColorTable[1]
 LDA #$02        ; Red
 STA $A2         ; ColorTable[2]
 
-; Use indexed addressing to lookup color
-LDX #$02        ; Want color index 2
+; Use indexed addressing to lookup colour
+LDX #$02        ; Want colour index 2
 LDA $A0,X       ; Load ColorTable[2] = Red ($02)
-STA $D020       ; Set border color to red"
+STA $D020       ; Set border colour to red"
   language="assembly"
 />
 

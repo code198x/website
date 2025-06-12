@@ -3,9 +3,9 @@ title: "Control Flow and Logic"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 3
-description: "Master conditional programming and decision making with 68000 assembly's advanced control structures and logical operations using direct hardware control."
+description: "Learn conditional programming and decision making with 68000 assembly's advanced control structures and logical operations using direct hardware control."
 learning_objectives:
-  - "Master 68000 assembly conditional jumps and branches"
+  - "Learn 68000 assembly conditional jumps and branches"
   - "Understand advanced assembly logical operations"
   - "Create complex assembly decision-making systems"
   - "Implement sophisticated assembly program flow"
@@ -14,7 +14,7 @@ concepts_introduced:
   - "Advanced assembly conditional jump structures"
   - "Assembly jump tables for complex decisions"
   - "Assembly flag-based logic and compound conditions"
-  - "Assembly program flow optimization"
+  - "Assembly program flow optimisation"
   - "Assembly event-driven programming concepts"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 3
@@ -22,7 +22,7 @@ order: 3
 
 # Tier 3: Control Flow and Logic
 
-Create intelligent, responsive programs! Master 68000 assembly's advanced control structures to build sophisticated applications that make complex decisions and respond intelligently using direct hardware control.
+Create intelligent, responsive programs! Learn 68000 assembly's advanced control structures to build sophisticated applications that make complex decisions and respond intelligently using direct hardware control.
 
 ## What You'll Add to Graphics Studio
 
@@ -37,7 +37,7 @@ Implement intelligent features:
 **Lessons 1-8: Advanced Assembly Conditionals**
 - Assembly conditional jump structures and nesting
 - Compound logical conditions using assembly flags
-- Assembly boolean operations and optimization
+- Assembly boolean operations and optimisation
 - Creating efficient assembly decision trees
 
 **Lessons 9-16: Assembly Jump Table Programming**

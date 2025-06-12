@@ -3,7 +3,7 @@ title: "Advanced Programming Patterns"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 10
-description: "Master sophisticated programming techniques and design patterns in 68000 assembly. Learn advanced optimization, debugging, and professional development practices."
+description: "Learn sophisticated programming techniques and design patterns in 68000 assembly. Learn advanced optimisation, debugging, and professional development practices."
 learning_objectives:
   - "Learn advanced 68000 assembly programming techniques"
   - "Learn sophisticated design patterns and architectures"
@@ -12,9 +12,9 @@ learning_objectives:
   - "Apply professional development practices to assembly"
 concepts_introduced:
   - "Advanced assembly programming patterns and techniques"
-  - "Code organization and modular design in assembly"
+  - "Code organisation and modular design in assembly"
   - "Debugging and profiling tools for 68000 assembly"
-  - "Performance optimization and code analysis"
+  - "Performance optimisation and code analysis"
   - "Professional assembly development workflows"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 10
@@ -28,14 +28,14 @@ Advance your assembly programming skills! Learn sophisticated techniques, design
 
 Expand your advanced programming skills:
 - Implement sophisticated design patterns in assembly
-- Learn debugging and optimization techniques
+- Learn debugging and optimisation techniques
 - Build professional development workflows
 - Create maintainable, scalable assembly code
 
 ## Tier Overview
 
 **Lessons 1-8: Advanced Assembly Techniques**
-- Sophisticated addressing modes and instruction optimization
+- Sophisticated addressing modes and instruction optimisation
 - Advanced register management and calling conventions
 - Efficient subroutine design and parameter passing
 - Complex control flow and state machine programming

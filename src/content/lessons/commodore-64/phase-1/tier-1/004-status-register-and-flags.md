@@ -4,13 +4,13 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 4
-description: "Discover the 6502's status register and learn how flags provide crucial information about operations. Master the carry, zero, and negative flags."
+description: "Discover the 6502's status register and learn how flags provide crucial information about operations. Learn the carry, zero, and negative flags."
 learning_objectives:
   - "Understand what the status register is and why it exists"
   - "Learn about the most important flags: Carry, Zero, and Negative"
   - "See how operations automatically set flags"
   - "Practice reading flag states to make decisions"
-  - "Master the CMP instruction for comparisons"
+  - "Learn the CMP instruction for comparisons"
 concepts:
   - "Status register (P register)"
   - "Carry flag (C)"
@@ -63,7 +63,7 @@ Today we'll focus on the three most important flags: **N**, **Z**, and **C**.
 
 The zero flag is set (becomes 1) whenever an operation produces a result of zero.
 
-```assembly
+```text
 LDA #$00    ; Load zero into A register
             ; Zero flag is now SET (Z=1)
 
@@ -89,7 +89,7 @@ LDA #$00    ; Load zero again - sets Zero flag"
 
 The negative flag is set whenever bit 7 (the highest bit) of the result is 1. In two's complement arithmetic, this indicates a negative number.
 
-```assembly
+```text
 LDA #$7F    ; Load 127 ($7F = 01111111 binary)
             ; Negative flag is CLEAR (N=0, bit 7 = 0)
 
@@ -118,7 +118,7 @@ The carry flag is set when an operation produces a carry or borrow. This happens
 - Subtraction requires borrowing
 - Shift operations push a bit out
 
-```assembly
+```text
 LDA #$FF    ; Load 255
 ADC #$01    ; Add 1: 255 + 1 = 256 (but register holds $00)
             ; Carry flag is SET (C=1) because 256 > 255
@@ -135,7 +135,7 @@ ADC #$01    ; Add 1: 255 + 1 = 256 (but register holds $00)
 
 One of the most useful instructions for working with flags is **CMP** (Compare). It subtracts a value from the A register but doesn't store the result - it only sets the flags!
 
-```assembly
+```text
 LDA #$50    ; Load 80 into A register
 CMP #$50    ; Compare with 80
             ; Result: 80 - 80 = 0, so Zero flag SET
@@ -172,7 +172,7 @@ After a CMP instruction, the flags tell you the relationship:
 
 Let's use CMP to check what character is at the first screen position:
 
-```assembly
+```text
 ; Put a character on screen first
 LDA #$41    ; Load 'A'
 STA $0400   ; Store at screen position 0
@@ -204,7 +204,7 @@ CMP #$41    ; Compare with 'A' - Zero flag will be CLEAR"
 
 Many instructions automatically set flags based on their results:
 
-```assembly
+```text
 LDX #$00    ; Load X with 0 - sets Zero flag
 LDY #$FF    ; Load Y with 255 - sets Negative flag
 INC $80     ; Increment memory location - may set Zero/Negative flags
@@ -217,7 +217,7 @@ DEC $81     ; Decrement memory location - may set Zero/Negative flags
 
 Here's a sequence of operations. Try to predict what flags will be set:
 
-```assembly
+```text
 LDA #$7F    ; Load 127
 CMP #$80    ; Compare with 128
 ; Prediction: Zero=CLEAR, Carry=CLEAR (127 < 128)

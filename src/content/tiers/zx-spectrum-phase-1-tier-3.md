@@ -5,7 +5,7 @@ phase_number: 1
 tier_number: 3
 description: "Learn conditional programming with Z80 assembly jump and branch instructions. Create assembly programs that make intelligent decisions and respond differently based on user input and program state."
 learning_objectives:
-  - "Master conditional logic with Z80 assembly jump and branch instructions"
+  - "Learn conditional logic with Z80 assembly jump and branch instructions"
   - "Understand Z80 assembly comparison operations and flag-based logic"
   - "Create assembly programs that make decisions"
   - "Learn assembly branching and program flow control"

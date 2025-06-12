@@ -4,17 +4,17 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 29
-description: "Master professional code documentation and maintainability practices. Learn to write self-documenting code, create comprehensive documentation, and build programs that remain understandable and modifiable over time."
+description: "Learn professional code documentation and maintainability practices. Learn to write self-documenting code, create comprehensive documentation, and build programs that remain understandable and modifiable over time."
 learning_objectives:
   - "Understand principles of self-documenting code and clear naming"
-  - "Master comprehensive commenting and documentation standards"
-  - "Learn code organization for long-term maintainability"
+  - "Learn comprehensive commenting and documentation standards"
+  - "Learn code organisation for long-term maintainability"
   - "Practice version control and change management concepts"
   - "Build documentation systems that support team development"
 concepts:
   - "Self-documenting code and meaningful naming conventions"
   - "Comprehensive commenting and inline documentation"
-  - "Code organization and structural documentation"
+  - "Code organisation and structural documentation"
   - "Version control and change tracking concepts"
   - "Professional documentation standards and practices"
 estimated_duration: "30-45 minutes"
@@ -33,7 +33,7 @@ Welcome to professional code documentation! Today you'll learn to write code tha
 **Self-documenting code** communicates its purpose and function through clear structure and naming:
 
 - **Meaningful Names**: Variables and labels that explain their purpose
-- **Clear Structure**: Logical organization that reveals program flow
+- **Clear Structure**: Logical organisation that reveals program flow
 - **Consistent Patterns**: Predictable conventions throughout the codebase
 - **Appropriate Abstraction**: Functions and modules with single, clear purposes
 - **Minimal Complexity**: Simple solutions that are easy to understand
@@ -42,7 +42,7 @@ Think of self-documenting code as **writing a story** where the code itself is t
 
 ### Meaningful Naming Conventions
 
-```assembly
+```text
 ; BAD: Cryptic and unclear names
 DataProcessing:
     LDA a           ; What is 'a'?
@@ -83,8 +83,8 @@ HandlePlayerDeath:
 
 ### Structured Code Organization
 
-```assembly
-; EXCELLENT: Well-organized, self-documenting structure
+```text
+; EXCELLENT: Well-organised, self-documenting structure
 
 ; ========================================
 ; GAME ENGINE: PLAYER MANAGEMENT SYSTEM
@@ -884,7 +884,7 @@ JSR InitializeAudioMixer"
 
 ### Inline Documentation Best Practices
 
-```assembly
+```text
 ; ========================================
 ; COMPREHENSIVE COMMENTING STANDARDS
 ; ========================================
@@ -950,7 +950,7 @@ ComplexGraphicsOperation:
     ;   - Updates screen display immediately
     ;   - May trigger raster interrupt
     ;   - Disables sprites temporarily during update
-    ;   - Affects background color register
+    ;   - Affects background colour register
     ;
     ; Performance:
     ;   - Execution time: 2000-4000 cycles (mode dependent)
@@ -1053,7 +1053,7 @@ PrepareBackgroundLayer:
     ; PRIVATE: PrepareBackgroundLayer
     ; ====================================
     ; Clear and initialize background graphics layer
-    ; Uses optimized memory fill for performance
+    ; Uses optimised memory fill for performance
     ; Returns carry set on raster timeout
     ; ====================================
     
@@ -1168,7 +1168,7 @@ SortComplete:
 ;   Formula: sprite_data_address = $2000 + (ID * 64)
 ;
 ; Offset 4: Color Index
-;   Range: 0-15 (C64 color palette)
+;   Range: 0-15 (C64 colour palette)
 ;   Mapping: See COLOR_PALETTE table
 ;   Special: Bit 7 = multicolor enable
 ;
@@ -1679,7 +1679,7 @@ JSR InitializeSoundSystem"
 
 ### Modular Code Structure
 
-```assembly
+```text
 ; ========================================
 ; MODULAR CODE ORGANIZATION
 ; ========================================
@@ -1818,7 +1818,7 @@ OptimizedFunction:
     ; ====================================
     ; v1.0 - Original implementation (2024-01-01)
     ; v1.1 - Added bounds checking (2024-01-05)
-    ; v1.2 - Performance optimization: 
+    ; v1.2 - Performance optimisation: 
     ;        Reduced cycles from 200 to 150 (2024-01-10)
     ; v1.3 - Fixed edge case with zero input (2024-01-15)
     ; ====================================
@@ -1848,7 +1848,7 @@ NewOptimizedFunction:
 
 ### Documentation Generation Framework
 
-```assembly
+```text
 ; ========================================
 ; DOCUMENTATION GENERATION FRAMEWORK
 ; ========================================
@@ -1956,7 +1956,7 @@ MovePlayerLeft:
 <CodeRunner 
   system="commodome-64"
   title="Code Organization and Documentation Framework"
-  code="; Complete code organization and documentation framework
+  code="; Complete code organisation and documentation framework
 ; Demonstrates modular structure and comprehensive documentation
 
 ; ========================================
@@ -2368,7 +2368,7 @@ PerformStateRestore:
 ; @type byte
 RequestedState:         .byte 0
 
-; Demonstrate the organized state manager
+; Demonstrate the organised state manager
 JSR InitializeGameStateManager"
   language="assembly"
 />
@@ -2377,7 +2377,7 @@ JSR InitializeGameStateManager"
 
 ### Change Documentation Standards
 
-```assembly
+```text
 ; ========================================
 ; CHANGE MANAGEMENT DOCUMENTATION
 ; ========================================
@@ -2420,7 +2420,7 @@ FunctionWithChangeHistory:
     ;   * Improved readability with better comments
     ;   - Performance: 220 cycles average (slight regression)
     ;
-    ; v1.2.0 (2024-01-10) - Performance optimization
+    ; v1.2.0 (2024-01-10) - Performance optimisation
     ;   * Optimized inner loop using unrolled operations
     ;   * Reduced memory accesses by 30%
     ;   + Performance: 150 cycles average (25% improvement)
@@ -2503,7 +2503,7 @@ NewMemorySystem:
 
 ### Documentation Maintenance Practices
 
-```assembly
+```text
 ; ========================================
 ; DOCUMENTATION MAINTENANCE STANDARDS
 ; ========================================
@@ -2514,7 +2514,7 @@ NewMemorySystem:
 ; Process:
 ;   - Update function headers for changed behavior
 ;   - Update examples if API changes
-;   - Update performance notes if optimization occurs
+;   - Update performance notes if optimisation occurs
 ;   - Add change log entries
 ;   - Update version numbers
 
@@ -2572,7 +2572,7 @@ Create a comprehensive documentation system that demonstrates:
 
 1. Self-documenting code with clear naming
 2. Professional documentation standards
-3. Modular organization with clear interfaces
+3. Modular organisation with clear interfaces
 4. Version control and change tracking
 5. Maintainable code structure
 
@@ -3096,7 +3096,7 @@ JSR ComprehensiveDocumentationDemo"
 ## Documentation Best Practices
 
 ### 1. Write Code that Explains Itself
-```assembly
+```text
 ; Use descriptive names that reveal intent
 ; Organize code in logical, readable structures
 ; Keep functions focused on single responsibilities
@@ -3104,7 +3104,7 @@ JSR ComprehensiveDocumentationDemo"
 ```
 
 ### 2. Document the Why, Not Just the What
-```assembly
+```text
 ; Explain design decisions and trade-offs
 ; Document business logic and requirements
 ; Describe algorithms and their complexity
@@ -3112,7 +3112,7 @@ JSR ComprehensiveDocumentationDemo"
 ```
 
 ### 3. Maintain Documentation Currency
-```assembly
+```text
 ; Update docs with every code change
 ; Review documentation in code reviews
 ; Validate examples and keep them working
@@ -3120,7 +3120,7 @@ JSR ComprehensiveDocumentationDemo"
 ```
 
 ### 4. Create Comprehensive References
-```assembly
+```text
 ; Document all public interfaces thoroughly
 ; Provide usage examples for complex functions
 ; Include error conditions and edge cases
@@ -3139,7 +3139,7 @@ In this lesson, you've mastered professional documentation and maintainability:
 
 ## Looking Ahead
 
-In the next lesson, you'll learn **project planning and development** - how to plan, organize, and execute large programming projects from conception to completion.
+In the next lesson, you'll learn **project planning and development** - how to plan, organise, and execute large programming projects from conception to completion.
 
 ## Fun Fact
 
@@ -3147,4 +3147,4 @@ The documentation techniques you've learned are the foundation of all successful
 
 <function_calls>
 <invoke name="TodoWrite">
-<parameter name="todos">[{"content":"Review existing lesson structure and content organization","status":"completed","priority":"high","id":"1"},{"content":"Examine current lesson templates and formatting","status":"completed","priority":"high","id":"2"},{"content":"Identify which system/tier to start writing lessons for","status":"completed","priority":"high","id":"3"},{"content":"Rewrite C64 lesson 1 to teach 6502 assembly fundamentals","status":"completed","priority":"high","id":"4"},{"content":"Create lesson 2: Store instructions and memory operations","status":"completed","priority":"high","id":"5"},{"content":"Create lesson 3: Understanding addressing modes","status":"completed","priority":"high","id":"6"},{"content":"Create lesson 4: Status register and flags","status":"completed","priority":"high","id":"7"},{"content":"Create lesson 5: Arithmetic operations (ADC/SBC)","status":"completed","priority":"high","id":"8"},{"content":"Create lesson 6: Increment and decrement operations","status":"completed","priority":"high","id":"9"},{"content":"Create lesson 7: Logical operations (AND/OR/XOR)","status":"completed","priority":"high","id":"10"},{"content":"Create lesson 8: Basic data manipulation and review","status":"completed","priority":"high","id":"11"},{"content":"Create lesson 9: Indexed addressing modes","status":"completed","priority":"high","id":"22"},{"content":"Create lesson 10: Indirect addressing and pointers","status":"completed","priority":"high","id":"23"},{"content":"Create lesson 11: Stack operations and memory management","status":"completed","priority":"high","id":"24"},{"content":"Create lesson 12: Subroutines and JSR/RTS","status":"completed","priority":"high","id":"25"},{"content":"Create lesson 13: Branching and program flow control","status":"completed","priority":"high","id":"26"},{"content":"Create lesson 14: Advanced memory techniques and optimization","status":"completed","priority":"high","id":"27"},{"content":"Create lesson 15: Interrupts and system programming","status":"completed","priority":"high","id":"28"},{"content":"Create lesson 16: Memory and addressing section review","status":"completed","priority":"high","id":"29"},{"content":"Plan C64 Tier 1 lessons 17-32 structure and sections","status":"completed","priority":"high","id":"30"},{"content":"Create lesson 17: Introduction to VIC-II graphics chip","status":"completed","priority":"high","id":"31"},{"content":"Create lesson 18: Screen modes and character sets","status":"completed","priority":"high","id":"32"},{"content":"Create lesson 19: Sprites and hardware graphics","status":"completed","priority":"high","id":"33"},{"content":"Create lesson 20: Color and bitmap graphics","status":"completed","priority":"high","id":"34"},{"content":"Create lesson 21: Introduction to SID sound chip","status":"completed","priority":"high","id":"35"},{"content":"Create lesson 22: Sound synthesis and waveforms","status":"completed","priority":"high","id":"36"},{"content":"Create lesson 23: Music and advanced audio programming","status":"completed","priority":"high","id":"37"},{"content":"Create lesson 32: Phase 1 integration and tier review","status":"completed","priority":"high","id":"40"},{"content":"Create lesson 24: I/O and hardware control section review","status":"pending","priority":"high","id":"38"},{"content":"Create lesson 25: File operations and data management","status":"completed","priority":"high","id":"41"},{"content":"Create lesson 26: Program organization and structure","status":"completed","priority":"high","id":"42"},{"content":"Create lesson 27: Basic optimization and efficiency","status":"completed","priority":"high","id":"43"},{"content":"Create lesson 28: Error handling and debugging basics","status":"completed","priority":"high","id":"44"},{"content":"Create lesson 29: Code documentation and maintainability","status":"completed","priority":"high","id":"45"},{"content":"Create lesson 30: Project planning and development","status":"in_progress","priority":"high","id":"46"},{"content":"Create lesson 31: Building complete applications","status":"pending","priority":"high","id":"47"},{"content":"Plan visual enhancement phase for completed lessons","status":"pending","priority":"medium","id":"39"}]
+<parameter name="todos">[{"content":"Review existing lesson structure and content organisation","status":"completed","priority":"high","id":"1"},{"content":"Examine current lesson templates and formatting","status":"completed","priority":"high","id":"2"},{"content":"Identify which system/tier to start writing lessons for","status":"completed","priority":"high","id":"3"},{"content":"Rewrite C64 lesson 1 to teach 6502 assembly fundamentals","status":"completed","priority":"high","id":"4"},{"content":"Create lesson 2: Store instructions and memory operations","status":"completed","priority":"high","id":"5"},{"content":"Create lesson 3: Understanding addressing modes","status":"completed","priority":"high","id":"6"},{"content":"Create lesson 4: Status register and flags","status":"completed","priority":"high","id":"7"},{"content":"Create lesson 5: Arithmetic operations (ADC/SBC)","status":"completed","priority":"high","id":"8"},{"content":"Create lesson 6: Increment and decrement operations","status":"completed","priority":"high","id":"9"},{"content":"Create lesson 7: Logical operations (AND/OR/XOR)","status":"completed","priority":"high","id":"10"},{"content":"Create lesson 8: Basic data manipulation and review","status":"completed","priority":"high","id":"11"},{"content":"Create lesson 9: Indexed addressing modes","status":"completed","priority":"high","id":"22"},{"content":"Create lesson 10: Indirect addressing and pointers","status":"completed","priority":"high","id":"23"},{"content":"Create lesson 11: Stack operations and memory management","status":"completed","priority":"high","id":"24"},{"content":"Create lesson 12: Subroutines and JSR/RTS","status":"completed","priority":"high","id":"25"},{"content":"Create lesson 13: Branching and program flow control","status":"completed","priority":"high","id":"26"},{"content":"Create lesson 14: Advanced memory techniques and optimisation","status":"completed","priority":"high","id":"27"},{"content":"Create lesson 15: Interrupts and system programming","status":"completed","priority":"high","id":"28"},{"content":"Create lesson 16: Memory and addressing section review","status":"completed","priority":"high","id":"29"},{"content":"Plan C64 Tier 1 lessons 17-32 structure and sections","status":"completed","priority":"high","id":"30"},{"content":"Create lesson 17: Introduction to VIC-II graphics chip","status":"completed","priority":"high","id":"31"},{"content":"Create lesson 18: Screen modes and character sets","status":"completed","priority":"high","id":"32"},{"content":"Create lesson 19: Sprites and hardware graphics","status":"completed","priority":"high","id":"33"},{"content":"Create lesson 20: Color and bitmap graphics","status":"completed","priority":"high","id":"34"},{"content":"Create lesson 21: Introduction to SID sound chip","status":"completed","priority":"high","id":"35"},{"content":"Create lesson 22: Sound synthesis and waveforms","status":"completed","priority":"high","id":"36"},{"content":"Create lesson 23: Music and advanced audio programming","status":"completed","priority":"high","id":"37"},{"content":"Create lesson 32: Phase 1 integration and tier review","status":"completed","priority":"high","id":"40"},{"content":"Create lesson 24: I/O and hardware control section review","status":"pending","priority":"high","id":"38"},{"content":"Create lesson 25: File operations and data management","status":"completed","priority":"high","id":"41"},{"content":"Create lesson 26: Program organisation and structure","status":"completed","priority":"high","id":"42"},{"content":"Create lesson 27: Basic optimisation and efficiency","status":"completed","priority":"high","id":"43"},{"content":"Create lesson 28: Error handling and debugging basics","status":"completed","priority":"high","id":"44"},{"content":"Create lesson 29: Code documentation and maintainability","status":"completed","priority":"high","id":"45"},{"content":"Create lesson 30: Project planning and development","status":"in_progress","priority":"high","id":"46"},{"content":"Create lesson 31: Building complete applications","status":"pending","priority":"high","id":"47"},{"content":"Plan visual enhancement phase for completed lessons","status":"pending","priority":"medium","id":"39"}]

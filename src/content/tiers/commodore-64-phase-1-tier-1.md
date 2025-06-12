@@ -7,9 +7,9 @@ description: "Enter the world of 6502 assembly language programming on the Commo
 learning_objectives:
   - "Understand 6502 processor architecture and registers"
   - "Learn basic assembly language syntax and structure"
-  - "Master fundamental addressing modes"
+  - "Learn fundamental addressing modes"
   - "Create simple programs using machine language"
-  - "Understand memory organization and the C64 memory map"
+  - "Understand memory organisation and the C64 memory map"
 concepts_introduced:
   - "6502 processor architecture (A, X, Y registers)"
   - "Assembly language syntax and mnemonics"
@@ -32,7 +32,7 @@ During this tier, you'll work toward creating your first assembly project: **Num
 
 **Lessons 1-8: 6502 Architecture Fundamentals**
 - Understanding the 6502 processor and its registers (A, X, Y)
-- C64 memory map and how RAM, ROM, and I/O are organized
+- C64 memory map and how RAM, ROM, and I/O are organised
 - Your first assembly program - displaying a character on screen
 - Basic load and store instructions (LDA, STA, LDX, STX)
 

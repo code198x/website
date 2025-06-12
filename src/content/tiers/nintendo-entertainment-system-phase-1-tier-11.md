@@ -3,9 +3,9 @@ title: "Memory Management and Optimization"
 system: "nintendo-entertainment-system"
 phase_number: 1
 tier_number: 11
-description: "Master advanced memory management and code optimization for complex NES applications. Learn to maximize performance and functionality within hardware constraints."
+description: "Learn advanced memory management and code optimisation for complex NES applications. Learn to maximize performance and functionality within hardware constraints."
 learning_objectives:
-  - "Master advanced memory management techniques"
+  - "Learn advanced memory management techniques"
   - "Implement sophisticated data compression"
   - "Optimize assembly code for maximum performance"
   - "Create efficient data structures and algorithms"
@@ -13,7 +13,7 @@ learning_objectives:
 concepts_introduced:
   - "Advanced memory mapping and bank switching"
   - "Data compression and efficient storage"
-  - "Performance optimization and profiling"
+  - "Performance optimisation and profiling"
   - "Modular assembly programming"
   - "Scalable system architecture"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
@@ -22,14 +22,14 @@ order: 11
 
 # Tier 11: Memory Management and Optimization
 
-Maximize NES capabilities through expert optimization! Master advanced memory management and performance tuning to create sophisticated applications within hardware constraints.
+Maximize NES capabilities through expert optimisation! Learn advanced memory management and performance tuning to create sophisticated applications within hardware constraints.
 
 ## What You'll Add to Tile Craft
 
 Optimize your graphics system:
 - Implement advanced memory management for large levels
 - Create efficient data compression for graphics storage
-- Build optimized algorithms for real-time editing
+- Build optimised algorithms for real-time editing
 - Develop scalable architecture for complex features
 
 ## Tier Overview
@@ -38,7 +38,7 @@ Optimize your graphics system:
 - Bank switching and memory mapper programming
 - Dynamic memory allocation strategies
 - Efficient data structure design in assembly
-- Memory optimization for complex applications
+- Memory optimisation for complex applications
 
 **Lessons 9-16: Data Compression and Storage**
 - Implementing graphics and level data compression
@@ -47,7 +47,7 @@ Optimize your graphics system:
 - Balancing compression ratio with performance
 
 **Lessons 17-24: Performance Optimization**
-- Assembly code optimization techniques
+- Assembly code optimisation techniques
 - Cycle counting and performance analysis
 - Optimizing critical code paths
 - Achieving smooth operation under load
@@ -58,4 +58,4 @@ Optimize your graphics system:
 - Building maintainable large-scale systems
 - Preparing for master-level programming
 
-Memory management and optimization teach you system-level thinking and performance engineering - fundamental skills for embedded systems, real-time programming, and high-performance software development!
+Memory management and optimisation teach you system-level thinking and performance engineering - fundamental skills for embedded systems, real-time programming, and high-performance software development!

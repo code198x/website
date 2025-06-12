@@ -18,7 +18,7 @@ concepts_introduced:
   - "Assembly inter-process communication"
 game_project:
   name: "Workbench Wizard"
-  description: "A comprehensive system enhancement and application development suite that demonstrates mastery of AmigaOS programming, multitasking, and professional software development using 68000 assembly with direct system integration"
+  description: "A comprehensive system enhancement and application development suite that demonstrates understanding of AmigaOS programming, multitasking, and professional software development using 68000 assembly with direct system integration"
   tier_range: "Tiers 13-16"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 13
@@ -59,7 +59,7 @@ Launch your ultimate Amiga assembly programming project:
 **Lessons 25-32: Assembly Development Infrastructure**
 - Development tool foundations using assembly
 - System monitoring and debugging through assembly
-- Performance analysis and optimization using assembly
+- Performance analysis and optimisation using assembly
 - Preparing for advanced assembly system programming
 
 ## Sample Development Session
@@ -100,7 +100,7 @@ PROGRESS:
 
 ASSEMBLY FEATURES:
 - Direct hardware register access
-- System call optimization
+- System call optimisation
 - Memory-efficient data structures
 - Real-time responsive design
 ```
@@ -125,4 +125,4 @@ Starting **Workbench Wizard** teaches:
 - **System Integration** - Working with all AmigaOS components through assembly
 - **Professional Development** - Commercial-quality assembly software engineering
 
-**Workbench Wizard** begins your journey toward mastery of Amiga system programming, teaching the advanced assembly concepts that enable professional system software development!
+**Workbench Wizard** begins your journey toward understanding of Amiga system programming, teaching the advanced assembly concepts that enable professional system software development!

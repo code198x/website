@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 25
-description: "Master file operations and data management on the C64. Learn to save and load programs, manage data files, and implement robust file handling with proper error checking."
+description: "Learn file operations and data management on the C64. Learn to save and load programs, manage data files, and implement robust file handling with proper error checking."
 learning_objectives:
   - "Understand C64 file system and KERNAL file operations"
-  - "Master loading and saving programs and data"
+  - "Learn loading and saving programs and data"
   - "Learn proper error handling for file operations"
   - "Practice data serialization and file format design"
   - "Build robust data management systems"
@@ -50,7 +50,7 @@ The C64 uses **KERNAL routines** for all file operations:
 
 ### Core File Operations
 
-```assembly
+```text
 ; Essential KERNAL file routines
 SETLFS = $FFBA      ; Set file parameters
 SETNAM = $FFBD      ; Set filename
@@ -102,7 +102,7 @@ FileName:
 
 ### Program Loading
 
-```assembly
+```text
 ; Load a program from disk
 LoadProgram:
     ; Set filename
@@ -138,7 +138,7 @@ ProgramNameEnd:
 
 ### Data File Loading
 
-```assembly
+```text
 ; Load data file with error checking
 LoadDataFile:
     ; Set filename
@@ -241,9 +241,9 @@ DisplayFileInfo:
     ; Display information about file operation
     ; This would show filename, status, etc.
     
-    ; Set text color for file info
+    ; Set text colour for file info
     LDA #$0E        ; Light blue
-    STA $286        ; Current color
+    STA $286        ; Current colour
     
     ; Position cursor for file info display
     LDA #5          ; Row
@@ -278,7 +278,7 @@ FileStatus:
 
 ### Program Saving
 
-```assembly
+```text
 ; Save program to disk
 SaveProgram:
     ; Set filename
@@ -319,7 +319,7 @@ ProgramEnd   = $1000    ; End of program
 
 ### Data File Saving
 
-```assembly
+```text
 ; Save data to file
 SaveDataFile:
     ; Set filename
@@ -382,7 +382,7 @@ GameDataSize = * - GameData
 
 ### Comprehensive Error Handling
 
-```assembly
+```text
 ; Professional error handling system
 FileErrorHandler:
     ; Input: Error code in A
@@ -477,7 +477,7 @@ UnknownErrorMsg:     .text "UNKNOWN FILE ERROR", 13, 0
 
 ### Device Status Checking
 
-```assembly
+```text
 ; Check disk drive status
 CheckDriveStatus:
     ; Open command channel
@@ -589,7 +589,7 @@ InitErrorSystem:
     
     ; Setup error message display
     LDA #$02            ; Red text for errors
-    STA $286            ; Current color
+    STA $286            ; Current colour
     
     RTS
 
@@ -741,7 +741,7 @@ JSR ErrorHandlingDemo"
 
 ### Simple Data Format
 
-```assembly
+```text
 ; Define a simple save game format
 SaveGameFormat:
     ; Header (4 bytes)
@@ -842,7 +842,7 @@ SaveGameData:   .res 100                   ; Save game buffer
 
 ### Advanced File Format with Checksum
 
-```assembly
+```text
 ; Advanced save format with error detection
 AdvancedSaveFormat:
     ; Header: Magic number, version, size, checksum
@@ -952,7 +952,7 @@ SaveDataSize = 64
 
 ### File Manager System
 
-```assembly
+```text
 ; Complete file management system
 FileManager:
     CurrentFiles = $C000    ; File table
@@ -1358,7 +1358,7 @@ JSR FileManagementDemo"
 ## File Operations Best Practices
 
 ### 1. Always Check for Errors
-```assembly
+```text
 ; Proper error checking pattern
 SafeFileOperation:
     JSR OPEN
@@ -1379,7 +1379,7 @@ FileError:
 ```
 
 ### 2. Use Descriptive Filenames
-```assembly
+```text
 ; Good filename conventions
 PlayerSaveFile:     .text "PLAYER01.SAV"
 GameConfigFile:     .text "GAME.CFG"
@@ -1388,7 +1388,7 @@ LevelDataFile:      .text "LEVEL001.DAT"
 ```
 
 ### 3. Implement Backup Systems
-```assembly
+```text
 ; Backup important data
 CreateBackup:
     ; Copy original to backup
@@ -1413,12 +1413,12 @@ In this lesson, you've mastered:
 - **KERNAL File Operations**: Complete understanding of C64 file I/O
 - **Error Handling**: Robust error detection and recovery
 - **Data Management**: Professional file format design and data serialization
-- **File System Integration**: Working with devices and file organization
+- **File System Integration**: Working with devices and file organisation
 - **Professional Practices**: Error checking, backup systems, and file management
 
 ## Looking Ahead
 
-In the next lesson, you'll learn **program organization and structure** - how to organize your code into maintainable, professional modules that scale well as your programs grow in complexity.
+In the next lesson, you'll learn **program organisation and structure** - how to organise your code into maintainable, professional modules that scale well as your programs grow in complexity.
 
 ## Fun Fact
 

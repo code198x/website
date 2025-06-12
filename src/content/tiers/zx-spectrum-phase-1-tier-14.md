@@ -3,16 +3,16 @@ title: "Professional Interface Design"
 system: "zx-spectrum"
 phase_number: 1
 tier_number: 14
-description: "Master professional user interface design and complex system architecture. Learn to create polished, intuitive software with commercial-quality presentation and functionality."
+description: "Learn professional user interface design and complex system architecture. Learn to create polished, intuitive software with commercial-quality presentation and functionality."
 learning_objectives:
-  - "Master professional user interface design"
+  - "Learn professional user interface design"
   - "Understand complex system architecture"
-  - "Learn advanced program organization"
+  - "Learn advanced program organisation"
   - "Create intuitive, polished user experiences"
   - "Build commercial-quality software presentation"
 concepts_introduced:
   - "Professional user interface design principles"
-  - "Complex system architecture and organization"
+  - "Complex system architecture and organisation"
   - "Advanced menu and navigation systems"
   - "Data persistence and file management"
   - "Professional software presentation"
@@ -22,13 +22,13 @@ order: 14
 
 # Tier 14: Professional Interface Design
 
-Create software with commercial-quality polish! Master professional interface design and system architecture to build programs that feel intuitive, polished, and professional.
+Create software with commercial-quality polish! Learn professional interface design and system architecture to build programs that feel intuitive, polished, and professional.
 
 ## What You'll Learn
 
 Design software that users love to use:
 - Professional interface design principles
-- Complex system architecture and organization
+- Complex system architecture and organisation
 - Advanced navigation and menu systems
 - Building the interface for Spectrum Symphony
 

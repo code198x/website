@@ -15,10 +15,10 @@ concepts_introduced:
   - "Assembly game physics and movement"
   - "Assembly level design and data storage"
   - "Assembly game state management"
-  - "Z80 assembly optimization for smooth gameplay"
+  - "Z80 assembly optimisation for smooth gameplay"
 game_project:
   name: "Rainbow Runner"
-  description: "A colorful platform game implemented in Z80 assembly that embraces the Spectrum's unique color system, teaching assembly sprite movement, collision detection, and sound programming through fast-paced gameplay"
+  description: "A colorful platform game implemented in Z80 assembly that embraces the Spectrum's unique colour system, teaching assembly sprite movement, collision detection, and sound programming through fast-paced gameplay"
   tier_range: "Tiers 5-8"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 8
@@ -57,7 +57,7 @@ Finish a fully playable assembly platform game:
 - Adding visual polish and effects through assembly programming
 
 **Lessons 25-32: Assembly Game Completion and Polish**
-- Final assembly integration and optimization
+- Final assembly integration and optimisation
 - Adding sound effects and feedback using assembly
 - Creating game over and victory conditions in assembly
 - Polishing the complete assembly game experience

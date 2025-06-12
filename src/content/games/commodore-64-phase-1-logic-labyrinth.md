@@ -90,7 +90,7 @@ Leverage the C64's capabilities for maze adventures:
 - Multiple maze themes and rulesets
 - Save/load complete game state
 - Statistics tracking and achievements
-- Polish and optimization
+- Polish and optimisation
 
 ## Technical Challenges
 

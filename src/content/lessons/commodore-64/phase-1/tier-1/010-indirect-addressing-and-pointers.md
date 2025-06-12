@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 10
-description: "Master the 6502's most powerful addressing mode - indirect addressing. Learn to use memory locations as pointers for dynamic data access and advanced programming techniques."
+description: "Learn the 6502's most powerful addressing mode - indirect addressing. Learn to use memory locations as pointers for dynamic data access and advanced programming techniques."
 learning_objectives:
   - "Understand indirect addressing and pointer concepts"
-  - "Master zero page indirect addressing ($zp)"
+  - "Learn zero page indirect addressing ($zp)"
   - "Learn indexed indirect addressing (($zp,X))"
   - "Practice indirect indexed addressing (($zp),Y)"
   - "Build dynamic data structures and flexible programs"
@@ -52,7 +52,7 @@ Indirect addressing enables:
 
 The 6502 supports indirect addressing mainly with the JMP instruction:
 
-```assembly
+```text
 ; Setup: Store target address in memory
 LDA #$00        ; Low byte of target address
 STA $80         ; Store at $80
@@ -69,7 +69,7 @@ JMP ($80)       ; Jump to address stored at $80/$81 (jumps to $0400)
 
 While the 6502 doesn't have `LDA ($zp)`, we can simulate indirect loading:
 
-```assembly
+```text
 ; Setup pointer in Zero Page
 LDA #$00        ; Low byte of target
 STA $F0         ; Pointer low byte
@@ -104,7 +104,7 @@ STA ($F0),Y     ; Store at address pointed to by $F0/$F1"
 
 This is the 6502's most powerful addressing mode for data structures!
 
-```assembly
+```text
 ; Setup base pointer
 LDA #$00        ; Screen memory low byte
 STA $F0         
@@ -153,7 +153,7 @@ STA ($F0),Y"
 
 This lets you select different pointers based on X:
 
-```assembly
+```text
 ; Setup multiple pointers
 LDA #$00        ; Screen row 0 low
 STA $F0         
@@ -205,7 +205,7 @@ STA ($F0,X),Y   ; Write to row 1"
 
 Let's create a simple "array of arrays" using indirect addressing:
 
-```assembly
+```text
 ; Setup array of pointers to different data
 ; Pointer table starts at $E0
 LDA #$A0        ; First array at $A0
@@ -279,7 +279,7 @@ STA $0401       ; Display '1'"
 
 Use indirect addressing for flexible screen manipulation:
 
-```assembly
+```text
 ; Setup pointer to current screen position
 LDA #$00        ; Start at screen beginning
 STA $FC         ; Current position low
@@ -331,7 +331,7 @@ STA ($FC),Y     ; Write at new position"
 
 Indirect addressing makes string processing elegant:
 
-```assembly
+```text
 ; Setup pointer to text string
 LDA #<TextString ; Low byte of string address
 STA $FE         
@@ -358,7 +358,7 @@ TextString:
 
 Use pointers for flexible memory allocation:
 
-```assembly
+```text
 ; Memory pool management
 ; $F8/$F9 = pointer to next free memory location
 
@@ -477,7 +477,7 @@ In this lesson, you've mastered:
 
 ## Looking Ahead
 
-In the next lesson, you'll learn about the **stack** - a special memory area that enables subroutines, function calls, and advanced program organization. The stack is where the concepts of pointers and indirect addressing really come together!
+In the next lesson, you'll learn about the **stack** - a special memory area that enables subroutines, function calls, and advanced program organisation. The stack is where the concepts of pointers and indirect addressing really come together!
 
 ## Fun Fact
 

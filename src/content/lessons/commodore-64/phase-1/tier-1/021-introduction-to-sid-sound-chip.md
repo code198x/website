@@ -7,7 +7,7 @@ lesson_number: 21
 description: "Meet the legendary SID sound chip - the revolutionary audio processor that made the C64 famous for music. Learn sound synthesis basics, register programming, and the foundation of C64 audio."
 learning_objectives:
   - "Understand SID architecture and revolutionary capabilities"
-  - "Master basic SID register programming and control"
+  - "Learn basic SID register programming and control"
   - "Learn fundamental sound synthesis concepts"
   - "Practice basic tone generation and audio effects"
   - "Build foundation for advanced audio programming"
@@ -54,7 +54,7 @@ The SID contains sophisticated audio generation hardware:
 │ Voice 3: Oscillator + Envelope + Filter │
 │                                         │
 │ Shared Filter: LP/HP/BP + Resonance     │
-│ Volume Control: Master + Voice Mix      │
+│ Volume Control: Learn + Voice Mix      │
 │ Special Effects: Ring Mod + Sync        │
 └─────────────────────────────────────────┘
          ↓
@@ -136,7 +136,7 @@ Frequency (Hz) = (16-bit value × 1.023 MHz) ÷ 16,777,216
 | B-4 | 493.9 Hz | $8CD8 |
 | C-5 | 523.3 Hz | $9040 |
 
-```assembly
+```text
 ; Play different musical notes
 PlayNote:
     ; Input: Note value in A register
@@ -180,7 +180,7 @@ InitSound:
     LDA #%11110001  ; Sustain=15, Release=1
     STA $D406       ; Voice 1 S/R
     LDA #%00001111  ; Full volume
-    STA $D418       ; Master volume
+    STA $D418       ; Learn volume
     RTS
 
 PlayScale:
@@ -263,7 +263,7 @@ Bit 1: Sync oscillation
 Bit 0: Gate (start/stop note)
 ```
 
-```assembly
+```text
 ; Demonstrate different waveforms
 WaveformDemo:
     ; Setup voice
@@ -415,7 +415,7 @@ Bits 7-4: Sustain level (0=silent, 15=full volume)
 Bits 3-0: Release rate (0=slow, 15=fast)
 ```
 
-```assembly
+```text
 ; Different ADSR envelope examples
 EnvelopeDemo:
     ; Setup frequency (middle C)
@@ -471,7 +471,7 @@ VLDelay2:
 
 SID's **3 voices** can play simultaneously for chords and harmony:
 
-```assembly
+```text
 ; Play a C major chord (C-E-G)
 PlayChord:
     ; Voice 1: C (root note)
@@ -595,7 +595,7 @@ JSR PlayMajorChord"
 SID excels at creating sound effects using its various capabilities:
 
 ### Explosion Effect
-```assembly
+```text
 Explosion:
     ; Use noise waveform with pitch sweep
     LDA #%10000001  ; Noise + Gate
@@ -624,7 +624,7 @@ ExpDelay:
 ```
 
 ### Laser Shot Effect
-```assembly
+```text
 LaserShot:
     ; Quick high-to-low pitch sweep with pulse wave
     LDA #%01000001  ; Pulse + Gate
@@ -651,16 +651,16 @@ LaserDelay:
     RTS
 ```
 
-## Volume and Master Control
+## Volume and Learn Control
 
 The **Volume Register** ($D418) controls overall audio output:
 
 ```
 Bits 7-4: Filter mode and routing
-Bits 3-0: Master volume (0-15)
+Bits 3-0: Learn volume (0-15)
 ```
 
-```assembly
+```text
 ; Volume control examples
 SetVolume:
     ; Input: Volume level (0-15) in A register
@@ -912,7 +912,7 @@ JSR SIDDemo"
 ## SID Programming Best Practices
 
 ### 1. Always Initialize Properly
-```assembly
+```text
 ; Clear all SID registers before use
 InitSID:
     LDX #$00
@@ -926,7 +926,7 @@ ClearSID:
 ```
 
 ### 2. Use Proper Gate Control
-```assembly
+```text
 ; Always turn gate off before changing frequency
 ChangeNote:
     LDA $D404
@@ -947,7 +947,7 @@ ChangeNote:
 ```
 
 ### 3. Plan Voice Usage
-```assembly
+```text
 ; Assign voices by function
 ; Voice 1: Lead melody
 ; Voice 2: Bass line  

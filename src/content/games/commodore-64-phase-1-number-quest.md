@@ -85,7 +85,7 @@ The computer thinks of a number, and you try to guess it. But this isn't just an
 
 By building **Number Quest**, students will:
 
-1. **Master 6502 assembly fundamentals** through practical application
+1. **Learn 6502 assembly fundamentals** through practical application
 2. **Understand program flow** by seeing how games maintain state at the machine level
 3. **Learn debugging skills** by testing edge cases and tracing assembly execution
 4. **Experience software design** by planning features and implementing them in assembly
@@ -99,7 +99,7 @@ The game introduces important programming challenges:
 - **Input validation** to handle invalid entries gracefully
 - **Data persistence** for high scores (save to tape/disk)
 - **User experience design** with clear prompts and feedback
-- **Code organization** as the program grows more complex
+- **Code organisation** as the program grows more complex
 
 ## Sample Gameplay
 

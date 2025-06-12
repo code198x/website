@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 28
-description: "Master systematic debugging and error handling techniques for assembly programming. Learn to identify, isolate, and fix bugs efficiently while building robust error-resistant programs."
+description: "Learn systematic debugging and error handling techniques for assembly programming. Learn to identify, isolate, and fix bugs efficiently while building robust error-resistant programs."
 learning_objectives:
   - "Understand common assembly programming errors and their causes"
-  - "Master systematic debugging techniques and problem isolation"
+  - "Learn systematic debugging techniques and problem isolation"
   - "Learn error detection and prevention strategies"
   - "Practice debugging tools and memory inspection techniques"
   - "Build robust programs with comprehensive error handling"
@@ -42,7 +42,7 @@ Think of debugging as **detective work** - systematically gathering evidence to 
 
 ### Logic and Flow Errors
 
-```assembly
+```text
 ; Common logic error examples and fixes
 
 ; ERROR: Infinite loop due to wrong comparison
@@ -130,7 +130,7 @@ ValueHighEnough:
 
 ### Memory and Addressing Errors
 
-```assembly
+```text
 ; Memory access and addressing mistakes
 
 ; ERROR: Wrong addressing mode
@@ -489,7 +489,7 @@ JSR ErrorDetectionDemo"
 
 ### Step-by-Step Debugging Process
 
-```assembly
+```text
 ; Systematic debugging approach
 
 DebuggingMethodology:
@@ -569,7 +569,7 @@ AnalyzeStatuses:
 
 ### Memory Inspection Techniques
 
-```assembly
+```text
 ; Memory debugging and inspection tools
 
 MemoryInspection:
@@ -940,7 +940,7 @@ JSR MemoryDebuggingDemo"
 
 ### Defensive Programming Techniques
 
-```assembly
+```text
 ; Defensive programming patterns for error prevention
 
 DefensiveProgramming:
@@ -1052,7 +1052,7 @@ StackError: .byte 0
 
 ### Assertion and Testing Framework
 
-```assembly
+```text
 ; Simple assertion and testing system
 
 AssertionFramework:
@@ -1448,7 +1448,7 @@ JSR ErrorPreventionDemo"
 
 ### Simple Debugging Tools
 
-```assembly
+```text
 ; Basic debugging utilities for assembly programs
 
 DebuggingTools:
@@ -1613,7 +1613,7 @@ TraceBufferSize = 32
 
 ### Error Recovery Strategies
 
-```assembly
+```text
 ; Error recovery and graceful degradation
 
 ErrorRecovery:
@@ -2203,7 +2203,7 @@ JSR ComprehensiveDebuggingDemo"
 ## Debugging Best Practices
 
 ### 1. Systematic Approach
-```assembly
+```text
 ; Use methodical debugging process:
 ; 1. Reproduce the problem
 ; 2. Isolate the issue
@@ -2213,7 +2213,7 @@ JSR ComprehensiveDebuggingDemo"
 ```
 
 ### 2. Defensive Programming
-```assembly
+```text
 ; Always validate inputs
 ; Check array bounds
 ; Verify preconditions
@@ -2222,7 +2222,7 @@ JSR ComprehensiveDebuggingDemo"
 ```
 
 ### 3. Code Organization
-```assembly
+```text
 ; Write self-documenting code
 ; Use meaningful labels
 ; Add diagnostic output
@@ -2231,7 +2231,7 @@ JSR ComprehensiveDebuggingDemo"
 ```
 
 ### 4. Testing Strategy
-```assembly
+```text
 ; Test edge cases
 ; Verify error conditions
 ; Use systematic test suites
@@ -2260,4 +2260,4 @@ The debugging techniques you've learned are the foundation of all professional s
 
 <function_calls>
 <invoke name="TodoWrite">
-<parameter name="todos">[{"content":"Review existing lesson structure and content organization","status":"completed","priority":"high","id":"1"},{"content":"Examine current lesson templates and formatting","status":"completed","priority":"high","id":"2"},{"content":"Identify which system/tier to start writing lessons for","status":"completed","priority":"high","id":"3"},{"content":"Rewrite C64 lesson 1 to teach 6502 assembly fundamentals","status":"completed","priority":"high","id":"4"},{"content":"Create lesson 2: Store instructions and memory operations","status":"completed","priority":"high","id":"5"},{"content":"Create lesson 3: Understanding addressing modes","status":"completed","priority":"high","id":"6"},{"content":"Create lesson 4: Status register and flags","status":"completed","priority":"high","id":"7"},{"content":"Create lesson 5: Arithmetic operations (ADC/SBC)","status":"completed","priority":"high","id":"8"},{"content":"Create lesson 6: Increment and decrement operations","status":"completed","priority":"high","id":"9"},{"content":"Create lesson 7: Logical operations (AND/OR/XOR)","status":"completed","priority":"high","id":"10"},{"content":"Create lesson 8: Basic data manipulation and review","status":"completed","priority":"high","id":"11"},{"content":"Create lesson 9: Indexed addressing modes","status":"completed","priority":"high","id":"22"},{"content":"Create lesson 10: Indirect addressing and pointers","status":"completed","priority":"high","id":"23"},{"content":"Create lesson 11: Stack operations and memory management","status":"completed","priority":"high","id":"24"},{"content":"Create lesson 12: Subroutines and JSR/RTS","status":"completed","priority":"high","id":"25"},{"content":"Create lesson 13: Branching and program flow control","status":"completed","priority":"high","id":"26"},{"content":"Create lesson 14: Advanced memory techniques and optimization","status":"completed","priority":"high","id":"27"},{"content":"Create lesson 15: Interrupts and system programming","status":"completed","priority":"high","id":"28"},{"content":"Create lesson 16: Memory and addressing section review","status":"completed","priority":"high","id":"29"},{"content":"Plan C64 Tier 1 lessons 17-32 structure and sections","status":"completed","priority":"high","id":"30"},{"content":"Create lesson 17: Introduction to VIC-II graphics chip","status":"completed","priority":"high","id":"31"},{"content":"Create lesson 18: Screen modes and character sets","status":"completed","priority":"high","id":"32"},{"content":"Create lesson 19: Sprites and hardware graphics","status":"completed","priority":"high","id":"33"},{"content":"Create lesson 20: Color and bitmap graphics","status":"completed","priority":"high","id":"34"},{"content":"Create lesson 21: Introduction to SID sound chip","status":"completed","priority":"high","id":"35"},{"content":"Create lesson 22: Sound synthesis and waveforms","status":"completed","priority":"high","id":"36"},{"content":"Create lesson 23: Music and advanced audio programming","status":"completed","priority":"high","id":"37"},{"content":"Create lesson 32: Phase 1 integration and tier review","status":"completed","priority":"high","id":"40"},{"content":"Create lesson 24: I/O and hardware control section review","status":"pending","priority":"high","id":"38"},{"content":"Create lesson 25: File operations and data management","status":"completed","priority":"high","id":"41"},{"content":"Create lesson 26: Program organization and structure","status":"completed","priority":"high","id":"42"},{"content":"Create lesson 27: Basic optimization and efficiency","status":"completed","priority":"high","id":"43"},{"content":"Create lesson 28: Error handling and debugging basics","status":"completed","priority":"high","id":"44"},{"content":"Create lesson 29: Code documentation and maintainability","status":"in_progress","priority":"high","id":"45"},{"content":"Create lesson 30: Project planning and development","status":"pending","priority":"high","id":"46"},{"content":"Create lesson 31: Building complete applications","status":"pending","priority":"high","id":"47"},{"content":"Plan visual enhancement phase for completed lessons","status":"pending","priority":"medium","id":"39"}]
+<parameter name="todos">[{"content":"Review existing lesson structure and content organisation","status":"completed","priority":"high","id":"1"},{"content":"Examine current lesson templates and formatting","status":"completed","priority":"high","id":"2"},{"content":"Identify which system/tier to start writing lessons for","status":"completed","priority":"high","id":"3"},{"content":"Rewrite C64 lesson 1 to teach 6502 assembly fundamentals","status":"completed","priority":"high","id":"4"},{"content":"Create lesson 2: Store instructions and memory operations","status":"completed","priority":"high","id":"5"},{"content":"Create lesson 3: Understanding addressing modes","status":"completed","priority":"high","id":"6"},{"content":"Create lesson 4: Status register and flags","status":"completed","priority":"high","id":"7"},{"content":"Create lesson 5: Arithmetic operations (ADC/SBC)","status":"completed","priority":"high","id":"8"},{"content":"Create lesson 6: Increment and decrement operations","status":"completed","priority":"high","id":"9"},{"content":"Create lesson 7: Logical operations (AND/OR/XOR)","status":"completed","priority":"high","id":"10"},{"content":"Create lesson 8: Basic data manipulation and review","status":"completed","priority":"high","id":"11"},{"content":"Create lesson 9: Indexed addressing modes","status":"completed","priority":"high","id":"22"},{"content":"Create lesson 10: Indirect addressing and pointers","status":"completed","priority":"high","id":"23"},{"content":"Create lesson 11: Stack operations and memory management","status":"completed","priority":"high","id":"24"},{"content":"Create lesson 12: Subroutines and JSR/RTS","status":"completed","priority":"high","id":"25"},{"content":"Create lesson 13: Branching and program flow control","status":"completed","priority":"high","id":"26"},{"content":"Create lesson 14: Advanced memory techniques and optimisation","status":"completed","priority":"high","id":"27"},{"content":"Create lesson 15: Interrupts and system programming","status":"completed","priority":"high","id":"28"},{"content":"Create lesson 16: Memory and addressing section review","status":"completed","priority":"high","id":"29"},{"content":"Plan C64 Tier 1 lessons 17-32 structure and sections","status":"completed","priority":"high","id":"30"},{"content":"Create lesson 17: Introduction to VIC-II graphics chip","status":"completed","priority":"high","id":"31"},{"content":"Create lesson 18: Screen modes and character sets","status":"completed","priority":"high","id":"32"},{"content":"Create lesson 19: Sprites and hardware graphics","status":"completed","priority":"high","id":"33"},{"content":"Create lesson 20: Color and bitmap graphics","status":"completed","priority":"high","id":"34"},{"content":"Create lesson 21: Introduction to SID sound chip","status":"completed","priority":"high","id":"35"},{"content":"Create lesson 22: Sound synthesis and waveforms","status":"completed","priority":"high","id":"36"},{"content":"Create lesson 23: Music and advanced audio programming","status":"completed","priority":"high","id":"37"},{"content":"Create lesson 32: Phase 1 integration and tier review","status":"completed","priority":"high","id":"40"},{"content":"Create lesson 24: I/O and hardware control section review","status":"pending","priority":"high","id":"38"},{"content":"Create lesson 25: File operations and data management","status":"completed","priority":"high","id":"41"},{"content":"Create lesson 26: Program organisation and structure","status":"completed","priority":"high","id":"42"},{"content":"Create lesson 27: Basic optimisation and efficiency","status":"completed","priority":"high","id":"43"},{"content":"Create lesson 28: Error handling and debugging basics","status":"completed","priority":"high","id":"44"},{"content":"Create lesson 29: Code documentation and maintainability","status":"in_progress","priority":"high","id":"45"},{"content":"Create lesson 30: Project planning and development","status":"pending","priority":"high","id":"46"},{"content":"Create lesson 31: Building complete applications","status":"pending","priority":"high","id":"47"},{"content":"Plan visual enhancement phase for completed lessons","status":"pending","priority":"medium","id":"39"}]

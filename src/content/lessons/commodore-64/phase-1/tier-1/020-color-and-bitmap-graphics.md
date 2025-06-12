@@ -4,19 +4,19 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 20
-description: "Master bitmap graphics and advanced color techniques on the C64. Learn pixel-level drawing, bitmap modes, color management, and sophisticated graphics programming for professional visual effects."
+description: "Learn bitmap graphics and advanced colour techniques on the C64. Learn pixel-level drawing, bitmap modes, colour management, and sophisticated graphics programming for professional visual effects."
 learning_objectives:
   - "Understand bitmap graphics modes and pixel manipulation"
-  - "Master color theory and C64 color limitations"
-  - "Learn bitmap memory organization and addressing"
+  - "Learn colour theory and C64 colour limitations"
+  - "Learn bitmap memory organisation and addressing"
   - "Practice pixel-level drawing and graphics algorithms"
   - "Build advanced graphics effects and visual systems"
 concepts:
   - "Bitmap graphics modes (hi-res and multicolor)"
-  - "Pixel addressing and memory organization"
+  - "Pixel addressing and memory organisation"
   - "Color RAM and attribute management"
   - "Drawing algorithms and graphics primitives"
-  - "Advanced color and visual effects"
+  - "Advanced colour and visual effects"
 estimated_duration: "30-45 minutes"
 difficulty: "medium"
 code_examples: true
@@ -38,7 +38,7 @@ Welcome to pixel-level graphics programming! Today you'll master the C64's bitma
 - **Memory intensive**: Requires 8000 bytes for full-screen bitmap
 - **Complex addressing**: Each pixel maps to specific bit in memory
 
-Unlike character graphics, bitmap mode lets you draw **anything** - limited only by resolution and color constraints.
+Unlike character graphics, bitmap mode lets you draw **anything** - limited only by resolution and colour constraints.
 
 ## Bitmap Mode Selection
 
@@ -84,12 +84,12 @@ STA $D018       ; Bitmap memory configured"
 - **Resolution**: 320×200 pixels (full screen detail)
 - **Colors**: 2 colors per 8×8 pixel block
 - **Memory**: 8000 bytes for bitmap data ($2000-$3F3F)
-- **Screen memory**: Controls color for each 8×8 block
+- **Screen memory**: Controls colour for each 8×8 block
 - **Addressing**: Complex bit-level pixel addressing
 
 ### Bitmap Memory Organization
 
-The bitmap is organized as **25 rows of 40 character blocks**:
+The bitmap is organised as **25 rows of 40 character blocks**:
 - Each **8×8 block** uses 8 bytes (one byte per row)
 - Each **bit** represents one pixel (0=background, 1=foreground)
 - **Total**: 40×25×8 = 8000 bytes
@@ -98,7 +98,7 @@ The bitmap is organized as **25 rows of 40 character blocks**:
 
 To set a pixel at coordinate (X, Y):
 
-```assembly
+```text
 ; Calculate bitmap address for pixel at (X, Y)
 ; Formula: Address = $2000 + (Y & $F8) * 40 + (Y & $07) + (X / 8) * 8
 
@@ -211,17 +211,17 @@ STA $0401       ; Color for second block"
 - **Resolution**: 160×200 pixels (half horizontal resolution)
 - **Colors**: 4 colors per 4×8 pixel block  
 - **Memory**: Same 8000 bytes, but 2 bits per pixel
-- **Color sources**: Background, screen memory, color RAM, $D021
+- **Color sources**: Background, screen memory, colour RAM, $D021
 
 ### Multicolor Pixel Interpretation
 
-In multicolor mode, each **2-bit pair** selects a color:
-- **00**: Background color ($D021)
+In multicolor mode, each **2-bit pair** selects a colour:
+- **00**: Background colour ($D021)
 - **01**: Upper 4 bits of screen memory
 - **10**: Lower 4 bits of screen memory  
 - **11**: Color RAM value
 
-```assembly
+```text
 ; Enable multicolor bitmap mode
 EnableMulticolorBitmap:
     ; Enable bitmap mode with multicolor
@@ -237,7 +237,7 @@ EnableMulticolorBitmap:
 
 ; Set multicolor bitmap colors
 SetMulticolorColors:
-    ; Background color (00)
+    ; Background colour (00)
     LDA #$00        ; Black
     STA $D021
     
@@ -246,7 +246,7 @@ SetMulticolorColors:
     STA $0400       ; Screen memory controls colors 01 and 10
     
     LDA #$05        ; Green
-    STA $D800       ; Color RAM controls color 11
+    STA $D800       ; Color RAM controls colour 11
     
     RTS
 ```
@@ -277,7 +277,7 @@ EnableMulticolorMode:
 SetupMulticolorDemo:
     JSR EnableMulticolorMode
     
-    ; Set background color (pixel value 00)
+    ; Set background colour (pixel value 00)
     LDA #$00        ; Black background
     STA $D021
     
@@ -285,7 +285,7 @@ SetupMulticolorDemo:
     LDA #%00010010  ; Upper nibble=1 (white), lower=2 (red)
     STA $0400       ; Screen memory for first 8x8 block
     
-    LDA #$05        ; Green color
+    LDA #$05        ; Green colour
     STA $D800       ; Color RAM for first block (pixel value 11)
     
     ; Create multicolor pixel pattern
@@ -309,7 +309,7 @@ JSR SetupMulticolorDemo"
 ## Drawing Algorithms
 
 ### Pixel Plotting Routine
-```assembly
+```text
 ; Plot pixel at (X, Y) with error checking
 ; Input: X in $80, Y in $81
 PlotPixel:
@@ -349,7 +349,7 @@ ClearPixel:
 ```
 
 ### Line Drawing (Bresenham Algorithm)
-```assembly
+```text
 ; Draw line from (X1,Y1) to (X2,Y2)
 ; Simplified Bresenham line algorithm
 DrawLine:
@@ -488,7 +488,7 @@ JSR DrawPatterns"
 
 ### C64 Color Palette
 
-The C64 has a **fixed 16-color palette**:
+The C64 has a **fixed 16-colour palette**:
 
 | Value | Color | Value | Color |
 |-------|-------|-------|-------|
@@ -503,7 +503,7 @@ The C64 has a **fixed 16-color palette**:
 
 ### Color Clash Limitations
 
-The C64 has **color clash** - color limitations that affect bitmap graphics:
+The C64 has **colour clash** - colour limitations that affect bitmap graphics:
 
 **Hi-Res Bitmap:**
 - Only **2 colors per 8×8 block**
@@ -513,10 +513,10 @@ The C64 has **color clash** - color limitations that affect bitmap graphics:
 **Multicolor Bitmap:**
 - **4 colors per 4×8 block**
 - More colors but half horizontal resolution
-- Color sources: $D021, screen memory nibbles, color RAM
+- Color sources: $D021, screen memory nibbles, colour RAM
 
-```assembly
-; Manage color clash in hi-res mode
+```text
+; Manage colour clash in hi-res mode
 SetBlockColors:
     ; Set colors for 8x8 block at screen position (X, Y)
     ; Input: Block X in $80, Block Y in $81, Colors in $82
@@ -540,13 +540,13 @@ SetBlockColors:
 
 ### Advanced Color Techniques
 
-```assembly
+```text
 ; Color cycling for animation effects
 ColorCycleDemo:
     LDX #$00        ; Color index
     
 CycleLoop:
-    ; Create cycling color pattern
+    ; Create cycling colour pattern
     TXA
     AND #$0F        ; Keep in palette range
     STA BaseColor
@@ -556,14 +556,14 @@ CycleLoop:
 GradientLoop:
     LDA BaseColor
     CLC
-    ADC #$01        ; Next color
+    ADC #$01        ; Next colour
     AND #$0F        ; Wrap around palette
     ASL             ; Shift to upper nibble (foreground)
     ASL
     ASL
     ASL
     ORA #$00        ; Add black background
-    STA $0400,Y     ; Set block color
+    STA $0400,Y     ; Set block colour
     
     INY
     CPY #$28        ; First row (40 blocks)
@@ -572,7 +572,7 @@ GradientLoop:
     ; Delay
     JSR ShortDelay
     
-    INX             ; Next color base
+    INX             ; Next colour base
     JMP CycleLoop
 
 ShortDelay:
@@ -588,7 +588,7 @@ BaseColor: .byte 0
 <CodeRunner 
   system="commodore-64"
   title="Color Management and Effects"
-  code="; Demonstrate color management and visual effects
+  code="; Demonstrate colour management and visual effects
 
 ; Color palette demonstration
 ColorPaletteDemo:
@@ -597,21 +597,21 @@ ColorPaletteDemo:
     ORA #%00100000  ; Enable bitmap
     STA $D011
     
-    ; Display color palette as colored blocks
+    ; Display colour palette as colored blocks
     LDX #$00        ; Color counter
     LDY #$00        ; Screen position
     
 PaletteLoop:
-    ; Create color byte (same color for fg and bg)
-    TXA             ; Get color index
+    ; Create colour byte (same colour for fg and bg)
+    TXA             ; Get colour index
     ASL             ; Shift to upper nibble
     ASL
     ASL
     ASL
-    STA $85         ; Store shifted color
-    TXA             ; Get color again
+    STA $85         ; Store shifted colour
+    TXA             ; Get colour again
     ORA $85         ; Combine with upper nibble
-    STA $0400,Y     ; Set screen color
+    STA $0400,Y     ; Set screen colour
     
     ; Fill corresponding bitmap area with solid pattern
     TYA             ; Get screen position
@@ -636,18 +636,18 @@ PaletteLoop:
     ADC #$01        ; Next screen position
     TAY
     TXA
-    LSR             ; Restore color index
+    LSR             ; Restore colour index
     LSR
     LSR
     CLC
-    ADC #$01        ; Next color
+    ADC #$01        ; Next colour
     TAX
     CMP #$10        ; All 16 colors done?
     BNE PaletteLoop
     
     RTS
 
-; Animated color effects
+; Animated colour effects
 AnimatedColors:
     LDX #$00        ; Animation frame
     
@@ -656,19 +656,19 @@ AnimLoop:
     LDY #$00        ; Position counter
     
 WaveLoop:
-    ; Calculate color based on position and time
+    ; Calculate colour based on position and time
     TYA             ; Position
     CLC
     ADC #$01        ; Add frame offset
-    AND #$0F        ; Keep in color range
+    AND #$0F        ; Keep in colour range
     
-    ; Create color byte
-    ASL             ; Foreground color
+    ; Create colour byte
+    ASL             ; Foreground colour
     ASL
     ASL
     ASL
     ORA #$00        ; Black background
-    STA $0400,Y     ; Set color
+    STA $0400,Y     ; Set colour
     
     INY             ; Next position
     CPY #$28        ; First row only
@@ -684,7 +684,7 @@ DelayAnim:
     INX             ; Next frame
     JMP AnimLoop
 
-; Run color demonstrations
+; Run colour demonstrations
 JSR ColorPaletteDemo"
   language="assembly"
 />
@@ -692,7 +692,7 @@ JSR ColorPaletteDemo"
 ## Advanced Graphics Techniques
 
 ### Double Buffering
-```assembly
+```text
 ; Double buffering for smooth animation
 Buffer1 = $2000     ; First bitmap buffer
 Buffer2 = $4000     ; Second bitmap buffer
@@ -724,8 +724,8 @@ UseBuffer1:
 ```
 
 ### Raster Effects
-```assembly
-; Raster-timed color changes
+```text
+; Raster-timed colour changes
 RasterColorBars:
     ; Wait for specific raster line
     LDA $D012
@@ -749,7 +749,7 @@ WaitNext:
 ```
 
 ### Mixed Mode Graphics
-```assembly
+```text
 ; Combine bitmap and sprite graphics
 MixedModeDemo:
     ; Setup bitmap background
@@ -866,7 +866,7 @@ MulticolorDemo:
     RTS
 
 ColorEffectsDemo:
-    ; Return to hi-res for color cycling
+    ; Return to hi-res for colour cycling
     LDA $D016
     AND #%11101111  ; Disable multicolor
     STA $D016
@@ -939,7 +939,7 @@ JSR GraphicsDemo"
 ## Bitmap Graphics Best Practices
 
 ### 1. Memory Management
-```assembly
+```text
 ; Always clear bitmap memory before use
 ClearBitmapSafely:
     ; Turn off display during clear
@@ -958,14 +958,14 @@ ClearBitmapSafely:
 ```
 
 ### 2. Color Planning
-```assembly
-; Plan color usage to avoid clash
-; Create color maps before drawing
+```text
+; Plan colour usage to avoid clash
+; Create colour maps before drawing
 ; Test on different displays
 ```
 
 ### 3. Performance Optimization
-```assembly
+```text
 ; Use lookup tables for calculations
 ; Unroll critical drawing loops
 ; Consider double buffering for animation
@@ -976,7 +976,7 @@ ClearBitmapSafely:
 In this lesson, you've mastered:
 
 - Bitmap graphics modes (hi-res and multicolor)
-- Pixel addressing and memory organization
+- Pixel addressing and memory organisation
 - Drawing algorithms and graphics primitives
 - Color management and C64 palette limitations
 - Advanced graphics effects and animation techniques

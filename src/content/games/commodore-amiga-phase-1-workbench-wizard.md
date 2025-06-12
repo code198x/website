@@ -4,7 +4,7 @@ system: "commodore-amiga"
 phase_number: 1
 tier_range: "13-16"
 genre: "System/Productivity"
-description: "The ultimate Amiga programming achievement: a complete system enhancement and application development suite that demonstrates mastery of 68000 assembly programming, AmigaOS integration, multitasking, and professional software development."
+description: "The ultimate Amiga programming achievement: a complete system enhancement and application development suite that demonstrates understanding of 68000 assembly programming, AmigaOS integration, multitasking, and professional software development."
 gameplay_mechanics:
   - "Create complete AmigaOS applications and system enhancements"
   - "Design sophisticated multitasking and windowing systems"
@@ -16,9 +16,9 @@ technical_features:
   - "Advanced multitasking and message passing via assembly"
   - "Professional GUI development with Intuition using assembly"
   - "System library creation and device drivers in 68000 assembly"
-  - "Advanced memory management and optimization through assembly"
+  - "Advanced memory management and optimisation through assembly"
 concepts_demonstrated:
-  - "Complete AmigaOS system programming mastery using 68000 assembly"
+  - "Complete AmigaOS system programming understanding using 68000 assembly"
   - "Advanced multitasking and concurrent programming in assembly"
   - "Professional software architecture and design via assembly"
   - "System integration and inter-process communication through assembly"
@@ -31,7 +31,7 @@ order: 4
 
 # Workbench Wizard
 
-**Workbench Wizard** represents the ultimate demonstration of Amiga programming mastery—a complete system enhancement and development suite that showcases professional-level AmigaOS programming and system integration.
+**Workbench Wizard** represents the ultimate demonstration of Amiga programming understanding—a complete system enhancement and development suite that showcases professional-level AmigaOS programming and system integration.
 
 ## The Game Concept
 
@@ -45,7 +45,7 @@ Create the ultimate Amiga development and enhancement system:
 
 ## Why This Game for Tiers 13-16?
 
-**Workbench Wizard** demonstrates complete mastery of advanced 68000 assembly concepts:
+**Workbench Wizard** demonstrates complete understanding of advanced 68000 assembly concepts:
 
 - **System Programming**: Deep AmigaOS integration and system-level programming in assembly
 - **Multitasking Architecture**: Advanced concurrent programming and IPC via assembly
@@ -79,9 +79,9 @@ Leverages the complete AmigaOS programming environment:
 - Creating sophisticated application architectures
 - Building complete development tools
 
-**Tier 15**: System integration and optimization
+**Tier 15**: System integration and optimisation
 - Advanced IPC and system communication
-- Performance optimization for complex systems
+- Performance optimisation for complex systems
 - Professional software architecture and design
 - Creating integrated development environments
 
@@ -165,7 +165,7 @@ Completing **Workbench Wizard** demonstrates:
 
 **Workbench Wizard** represents the pinnacle of Amiga programming:
 
-- **Technical Excellence** - Demonstrates mastery of every Amiga programming concept
+- **Technical Excellence** - Demonstrates understanding of every Amiga programming concept
 - **Professional Quality** - Commercial-grade software development and engineering
 - **System Mastery** - Complete understanding of AmigaOS and system programming
 - **Creative Innovation** - Building tools that enhance and extend the Amiga experience
@@ -178,11 +178,11 @@ Completing **Workbench Wizard** demonstrates:
 - **Operating System Development** - Deep understanding of system architecture
 - **Multithreaded Programming** - Advanced concurrent and parallel programming
 - **GUI Framework Development** - Professional interface and user experience design
-- **System Administration** - Understanding system optimization and management
+- **System Administration** - Understanding system optimisation and management
 - **Software Architecture** - Large-scale system design and engineering
 
-**Congratulations - you have achieved true mastery of Amiga programming!** 🎆
+**Congratulations - you have achieved true understanding of Amiga programming!** 🎆
 
-**Workbench Wizard** stands as proof that with dedication, creativity, and deep technical knowledge, you can create sophisticated system software that enhances and extends the capabilities of even the most advanced computers. You've built a complete development environment and system enhancement suite, demonstrating that true programming mastery enables you to improve and extend any computing platform!
+**Workbench Wizard** stands as proof that with dedication, creativity, and deep technical knowledge, you can create sophisticated system software that enhances and extends the capabilities of even the most advanced computers. You've built a complete development environment and system enhancement suite, demonstrating that true programming understanding enables you to improve and extend any computing platform!
 
 You're now prepared for any advanced programming challenge, from operating system development to large-scale system architecture, with the confidence that comes from having mastered one of computing's most sophisticated and innovative platforms.

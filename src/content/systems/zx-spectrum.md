@@ -11,7 +11,7 @@ video:
   colors: "8 colors (plus bright variants = 15 total)"
   display_modes:
     - "Text mode (32×24 characters)"
-    - "Bitmap graphics with color attributes (8×8 pixel blocks)"
+    - "Bitmap graphics with colour attributes (8×8 pixel blocks)"
 audio:
   chip: "Built-in beeper"
   channels: 1
@@ -67,14 +67,14 @@ variants:
       global: 1985-09-01
     discontinued: 1987-01-01
     differences: "128KB RAM, improved sound chip (AY-3-8912), built-in tape deck"
-historical_significance: "The ZX Spectrum sparked the British games industry and inspired a generation of bedroom coders. Its unique color system and affordable price made it hugely popular in the UK and Europe."
+historical_significance: "The ZX Spectrum sparked the British games industry and inspired a generation of bedroom coders. Its unique colour system and affordable price made it hugely popular in the UK and Europe."
 image: "/images/systems/zx-spectrum.jpg"
 order: 2
 ---
 
-The **ZX Spectrum** was one of the most iconic and influential home computers of the 1980s, particularly in the UK and Europe. Released in April 1982 by Sinclair Research, it offered color graphics, sound, and a full BASIC interpreter at an incredibly affordable price point.
+The **ZX Spectrum** was one of the most iconic and influential home computers of the 1980s, particularly in the UK and Europe. Released in April 1982 by Sinclair Research, it offered colour graphics, sound, and a full BASIC interpreter at an incredibly affordable price point.
 
-The Spectrum—affectionately known as the "Speccy"—was instrumental in sparking the British games industry and inspiring a generation of bedroom coders. Its unique **attribute-based color system** created the distinctive "Spectrum look" that became synonymous with 1980s gaming.
+The Spectrum—affectionately known as the "Speccy"—was instrumental in sparking the British games industry and inspiring a generation of bedroom coders. Its unique **attribute-based colour system** created the distinctive "Spectrum look" that became synonymous with 1980s gaming.
 
 ## Key Features
 
@@ -86,13 +86,13 @@ The Spectrum—affectionately known as the "Speccy"—was instrumental in sparki
 
 ## The Attribute System
 
-The Spectrum's most distinctive feature was its color attribute system. Each 8×8 pixel character cell could only display two colors—one foreground and one background—leading to the famous "attribute clash" when graphics didn't align to the 8×8 grid. This limitation became a creative constraint that defined the Spectrum's visual aesthetic.
+The Spectrum's most distinctive feature was its colour attribute system. Each 8×8 pixel character cell could only display two colors—one foreground and one background—leading to the famous "attribute clash" when graphics didn't align to the 8×8 grid. This limitation became a creative constraint that defined the Spectrum's visual aesthetic.
 
 ## Cultural Impact
 
 The ZX Spectrum was more than a computer—it was a cultural phenomenon that defined a generation. Its low cost made it accessible to families across the UK, and its simple BASIC interpreter made programming approachable for young enthusiasts.
 
-Many of today's leading game developers, including the founders of Rare, Codemasters, and countless indie studios, got their start on the Spectrum. The machine's limitations forced creativity and optimization skills that remain valuable today.
+Many of today's leading game developers, including the founders of Rare, Codemasters, and countless indie studios, got their start on the Spectrum. The machine's limitations forced creativity and optimisation skills that remain valuable today.
 
 ## Why Learn Spectrum Programming Today?
 
@@ -100,8 +100,8 @@ Programming the ZX Spectrum teaches essential skills:
 
 - **Resource constraints** - Working with limited memory and processing power
 - **Creative problem solving** - Achieving great results within tight limitations
-- **Assembly optimization** - Making the most of the Z80 processor
-- **Graphics programming** - Understanding attribute-based color systems
+- **Assembly optimisation** - Making the most of the Z80 processor
+- **Graphics programming** - Understanding attribute-based colour systems
 - **Sound synthesis** - Creating music and effects with minimal hardware
 - **Retro game development** - Learning the foundations of classic game design
 

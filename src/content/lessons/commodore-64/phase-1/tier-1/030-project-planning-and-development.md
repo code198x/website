@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 30
-description: "Master professional project planning and development methodologies for assembly programming. Learn to break down complex projects, manage scope, and deliver successful software systematically."
+description: "Learn professional project planning and development methodologies for assembly programming. Learn to break down complex projects, manage scope, and deliver successful software systematically."
 learning_objectives:
   - "Understand project planning principles and methodologies"
-  - "Master requirement analysis and scope definition"
+  - "Learn requirement analysis and scope definition"
   - "Learn iterative development and milestone management"
   - "Practice testing strategies and quality assurance"
   - "Build complete projects from conception to delivery"
@@ -46,7 +46,7 @@ Think of project planning as **building a house** - you need blueprints, materia
 
 Define clear, measurable requirements before coding:
 
-```assembly
+```text
 ; PROJECT SPECIFICATION TEMPLATE
 ; ========================================
 ; Project: C64 Space Shooter Game
@@ -95,7 +95,7 @@ ProjectSpecification:
 
 Categorize requirements by importance:
 
-```assembly
+```text
 ; REQUIREMENT PRIORITY MATRIX
 ; ========================================
 ; MUST HAVE (Core Features):
@@ -134,7 +134,7 @@ WontHaveFeatures:
   system="commodore-64"
   title="Project Requirements Analysis Demo"
   code="; Demonstrate systematic requirements analysis
-; Shows how to organize and validate project requirements
+; Shows how to organise and validate project requirements
 
 RequirementsAnalysisDemo:
     JSR InitializeRequirements
@@ -471,7 +471,7 @@ JSR RequirementsAnalysisDemo"
 
 Divide large projects into manageable components:
 
-```assembly
+```text
 ; PROJECT BREAKDOWN STRUCTURE
 ; ========================================
 ; Level 1: Major Systems
@@ -520,7 +520,7 @@ TaskEstimationTable:
 
 Organize development into achievable phases:
 
-```assembly
+```text
 ; DEVELOPMENT PHASE STRUCTURE
 ; ========================================
 
@@ -548,7 +548,7 @@ Phase3Milestones:
 ; Phase 4: Polish and Testing (Week 4)
 Phase4Milestones:
     ; Milestone 4.1: Bug fixes
-    ; Milestone 4.2: Performance optimization
+    ; Milestone 4.2: Performance optimisation
     ; Milestone 4.3: Final testing
     ; Deliverable: Release candidate
 
@@ -596,7 +596,7 @@ Phase1InProgress:
   system="commodore-64"
   title="Project Structure and Milestone Tracking"
   code="; Demonstrate project structure and milestone tracking
-; Shows how to organize and monitor development progress
+; Shows how to organise and monitor development progress
 
 ProjectStructureDemo:
     JSR InitializeProject
@@ -839,7 +839,7 @@ JSR ProjectStructureDemo"
 
 Build projects incrementally with regular testing:
 
-```assembly
+```text
 ; ITERATIVE DEVELOPMENT CYCLE
 ; ========================================
 
@@ -1001,7 +1001,7 @@ TestFailures: .byte 0
 
 Implement comprehensive testing at each level:
 
-```assembly
+```text
 ; TESTING FRAMEWORK
 ; ========================================
 
@@ -1518,7 +1518,7 @@ JSR IterativeDevDemo"
 
 Identify and plan for potential problems:
 
-```assembly
+```text
 ; PROJECT RISK ASSESSMENT
 ; ========================================
 
@@ -1550,7 +1550,7 @@ MitigationPlans:
     ; - Implement compression
     ; - Optimize data structures
     
-    ; Plan 2: Performance optimization
+    ; Plan 2: Performance optimisation
     ; - Profile critical paths
     ; - Optimize hot loops
     ; - Use efficient algorithms
@@ -1588,7 +1588,7 @@ ContingencyPlanning:
 
 Maintain clear documentation throughout development:
 
-```assembly
+```text
 ; DOCUMENTATION TEMPLATE
 ; ========================================
 ; Project: [Name]
@@ -1945,35 +1945,35 @@ JSR ProjectPlanningExercise"
 ## Project Planning Best Practices
 
 ### 1. Start with Clear Requirements
-```assembly
+```text
 ; Always define requirements before coding
 ; Make requirements measurable and testable
 ; Get stakeholder approval before proceeding
 ```
 
 ### 2. Use Iterative Development
-```assembly
+```text
 ; Build in small, working increments
 ; Test frequently and early
 ; Adapt based on feedback and learning
 ```
 
 ### 3. Plan for the Unexpected
-```assembly
+```text
 ; Include buffer time in estimates
 ; Identify risks early and plan mitigation
 ; Have contingency plans for major risks
 ```
 
 ### 4. Maintain Quality Standards
-```assembly
+```text
 ; Test continuously throughout development
 ; Document decisions and changes
 ; Review code and design regularly
 ```
 
 ### 5. Communicate Effectively
-```assembly
+```text
 ; Keep all stakeholders informed
 ; Document progress and issues
 ; Be transparent about challenges

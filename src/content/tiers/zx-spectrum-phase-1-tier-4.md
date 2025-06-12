@@ -3,10 +3,10 @@ title: "Loops and Project Completion"
 system: "zx-spectrum"
 phase_number: 1
 tier_number: 4
-description: "Master loops and repetition in Z80 assembly while completing Pixel Painter, your first creative assembly program! Learn efficient looping techniques and bring your graphics program to professional completion."
+description: "Learn loops and repetition in Z80 assembly while completing Pixel Painter, your first creative assembly program! Learn efficient looping techniques and bring your graphics program to professional completion."
 learning_objectives:
-  - "Master counting loops and iteration in Z80 assembly"
-  - "Understand loop optimization and efficiency"
+  - "Learn counting loops and iteration in Z80 assembly"
+  - "Understand loop optimisation and efficiency"
   - "Complete your first major assembly programming project"
   - "Learn assembly graphics programming techniques"
   - "Apply all fundamental Z80 assembly concepts"
@@ -15,7 +15,7 @@ concepts_introduced:
   - "Counter management and iteration"
   - "Assembly graphics programming"
   - "Project completion and polish"
-  - "Assembly program organization and structure"
+  - "Assembly program organisation and structure"
 game_project:
   name: "Pixel Painter"
   description: "A creative drawing program using Z80 assembly and direct screen manipulation, teaching fundamental assembly programming while celebrating the Spectrum's unique graphics capabilities"
@@ -42,7 +42,7 @@ Finish your first major assembly programming project:
 - Basic counting loops using Z80 registers
 - Efficient loop patterns for Z80 processor
 - Nested loops and complex iteration patterns
-- Loop counter management and optimization
+- Loop counter management and optimisation
 
 **Lessons 9-16: Graphics Loop Techniques**
 - Implementing screen drawing loops
@@ -57,14 +57,14 @@ Finish your first major assembly programming project:
 - Adding assembly-based special effects
 
 **Lessons 25-32: Project Completion**
-- Final integration and assembly optimization
+- Final integration and assembly optimisation
 - Testing and debugging assembly code
 - Creating complete program flow
 - Celebrating your completed assembly graphics program!
 
 ## Your First Assembly Programming Achievement
 
-**Pixel Painter** demonstrates mastery of fundamental Z80 assembly concepts:
+**Pixel Painter** demonstrates understanding of fundamental Z80 assembly concepts:
 
 ```
 **** PIXEL PAINTER v1.0 ****

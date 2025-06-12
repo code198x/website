@@ -3,9 +3,9 @@ title: "String Processing and Algorithms"
 system: "zx-spectrum"
 phase_number: 1
 tier_number: 10
-description: "Master string manipulation and algorithmic thinking. Learn to process text data, create pattern matching systems, and build intelligent programs that understand and manipulate information."
+description: "Learn string manipulation and algorithmic thinking. Learn to process text data, create pattern matching systems, and build intelligent programs that understand and manipulate information."
 learning_objectives:
-  - "Master string manipulation and processing"
+  - "Learn string manipulation and processing"
   - "Understand algorithmic problem solving"
   - "Learn pattern matching and text analysis"
   - "Create intelligent data processing systems"
@@ -22,7 +22,7 @@ order: 10
 
 # Tier 10: String Processing and Algorithms
 
-Teach your programs to understand and manipulate text intelligently! Master string processing and algorithmic thinking to create sophisticated programs that can analyze, process, and generate content.
+Teach your programs to understand and manipulate text intelligently! Learn string processing and algorithmic thinking to create sophisticated programs that can analyse, process, and generate content.
 
 ## What You'll Learn
 
@@ -58,4 +58,4 @@ Create intelligent text-processing programs:
 - Building the foundation for Memory Matrix puzzles
 - Developing content generation systems
 
-String processing and algorithmic thinking enable your programs to understand, analyze, and generate content intelligently, opening the door to truly sophisticated software applications!
+String processing and algorithmic thinking enable your programs to understand, analyse, and generate content intelligently, opening the door to truly sophisticated software applications!

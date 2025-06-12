@@ -3,7 +3,7 @@ title: "Multimedia Integration"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 11
-description: "Combine graphics, audio, and system programming into sophisticated multimedia applications. Master the integration of all Amiga custom chips in complex 68000 assembly projects."
+description: "Combine graphics, audio, and system programming into sophisticated multimedia applications. Learn the integration of all Amiga custom chips in complex 68000 assembly projects."
 learning_objectives:
   - "Integrate graphics, audio, and system components in assembly"
   - "Learn coordinated custom chip programming"

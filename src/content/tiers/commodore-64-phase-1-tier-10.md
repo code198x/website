@@ -55,7 +55,7 @@ Implement intelligent maze generation:
 **Lessons 25-32: Advanced Assembly Generation**
 - Multiple assembly generation algorithms
 - Quality testing and validation using assembly code
-- 6502 assembly performance optimization
+- 6502 assembly performance optimisation
 - Integration with assembly game systems
 
 ## Key Programming Concepts
@@ -83,14 +83,14 @@ Learn to think systematically:
 Algorithmic skills apply everywhere:
 
 - **Game Development** - Procedural worlds, level generation, AI behavior
-- **Data Science** - Processing and analyzing large datasets
+- **Data Science** - Processing and analysing large datasets
 - **Web Services** - Recommendation systems, search algorithms
 - **Automation** - Creating systems that work without human intervention
 - **Problem Solving** - Systematic approaches to any challenge
 
 ## Sample Assembly Maze Generation Algorithm
 
-```assembly
+```text
 ; Simple maze generation algorithm in 6502 assembly
 MAZE_INIT:
     LDX #HEIGHT          ; Initialize Y counter

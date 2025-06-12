@@ -4,7 +4,7 @@ system: "commodore-64"
 phase_number: 1
 tier_range: "13-16"
 genre: "Racing/Action"
-description: "A complete arcade-style racing game that showcases mastery of 6502 assembly programming through smooth scrolling, collision detection, and professional game development techniques."
+description: "A complete arcade-style racing game that showcases understanding of 6502 assembly programming through smooth scrolling, collision detection, and professional game development techniques."
 gameplay_mechanics:
   - "Smooth scrolling road with perspective effects"
   - "Responsive car controls with momentum and physics"
@@ -13,12 +13,12 @@ gameplay_mechanics:
   - "Championship mode with points and progression"
 technical_features:
   - "Pseudo-3D perspective scrolling effects in assembly"
-  - "Real-time collision detection using 6502 optimization"
+  - "Real-time collision detection using 6502 optimisation"
   - "Advanced sprite management through direct memory access"
   - "AI programming for computer opponents in assembly"
   - "Complete game framework with assembly-driven systems"
 concepts_demonstrated:
-  - "Advanced graphics programming and assembly optimization"
+  - "Advanced graphics programming and assembly optimisation"
   - "Real-time programming and smooth animation in 6502"
   - "Game physics simulation using assembly language"
   - "Artificial intelligence and opponent behavior in assembly"
@@ -49,7 +49,7 @@ Create a full-featured racing game that rivals commercial C64 titles:
 **Retro Racer** represents the culmination of Phase 1 learning:
 
 - **Advanced Graphics**: Smooth scrolling and perspective effects using 6502 assembly
-- **Real-time Programming**: Maintaining 50/60 FPS gameplay with optimized assembly
+- **Real-time Programming**: Maintaining 50/60 FPS gameplay with optimised assembly
 - **Game Architecture**: Managing multiple systems through efficient assembly routines
 - **Optimization Mastery**: Achieving professional performance with assembly language
 - **Complete Development**: From concept to finished, distributable assembly software
@@ -90,18 +90,18 @@ Implement classic C64 racing game methods:
 - Championship mode with season progression
 - Complete user interface and menus
 - Save/load functionality for progress
-- Final optimization and polish
+- Final optimisation and polish
 
 ## Technical Achievements
 
-**Retro Racer** demonstrates mastery of:
+**Retro Racer** demonstrates understanding of:
 
 - **Advanced Assembly Optimization**: Achieving smooth animation through efficient 6502 code
-- **Pseudo-3D Graphics**: Creating depth illusions with optimized assembly routines
+- **Pseudo-3D Graphics**: Creating depth illusions with optimised assembly routines
 - **Real-time Systems**: Maintaining consistent frame rates with efficient assembly logic
 - **AI Programming**: Creating believable computer opponents using assembly algorithms
 - **Software Architecture**: Organizing thousands of lines of assembly code into maintainable systems
-- **Performance Engineering**: Making every CPU cycle count through assembly optimization
+- **Performance Engineering**: Making every CPU cycle count through assembly optimisation
 
 ## Sample Gameplay
 
@@ -134,7 +134,7 @@ Time to beat: 2:45.67
 
 ## Learning Outcomes
 
-Completing **Retro Racer** proves mastery of:
+Completing **Retro Racer** proves understanding of:
 
 1. **Complex System Integration** - Making multiple subsystems work together seamlessly
 2. **Performance Optimization** - Achieving professional results within language constraints
@@ -155,7 +155,7 @@ Completing **Retro Racer** proves mastery of:
 
 ## Mastery of Assembly Programming
 
-Completing **Retro Racer** demonstrates your complete mastery of 6502 assembly:
+Completing **Retro Racer** demonstrates your complete understanding of 6502 assembly:
 
 - **Performance Excellence**: Understanding how to achieve maximum performance in assembly
 - **Optimization Mastery**: Deep appreciation for every cycle and byte
@@ -163,4 +163,4 @@ Completing **Retro Racer** demonstrates your complete mastery of 6502 assembly:
 - **Professional Standards**: Commitment to quality and user experience in assembly
 - **Confidence**: Proof that you can tackle any assembly programming challenge
 
-**Retro Racer** stands as the ultimate demonstration that with creativity, determination, and solid assembly programming fundamentals, you can create software that amazes users and showcases true technical mastery through the power of 6502 assembly language!
+**Retro Racer** stands as the ultimate demonstration that with creativity, determination, and solid assembly programming fundamentals, you can create software that amazes users and showcases true technical understanding through the power of 6502 assembly language!

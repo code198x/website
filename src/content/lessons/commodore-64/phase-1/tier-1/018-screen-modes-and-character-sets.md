@@ -4,15 +4,15 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 18
-description: "Master VIC-II display modes and custom character programming. Learn text modes, multicolor graphics, custom character design, and advanced display techniques for professional graphics programming."
+description: "Learn VIC-II display modes and custom character programming. Learn text modes, multicolor graphics, custom character design, and advanced display techniques for professional graphics programming."
 learning_objectives:
   - "Understand all VIC-II display modes and their applications"
-  - "Master custom character set design and implementation"
-  - "Learn multicolor and extended color mode programming"
+  - "Learn custom character set design and implementation"
+  - "Learn multicolor and extended colour mode programming"
   - "Practice character animation and graphics techniques"
   - "Build sophisticated text-based graphics systems"
 concepts:
-  - "VIC-II display modes (text, multicolor, extended color)"
+  - "VIC-II display modes (text, multicolor, extended colour)"
   - "Character ROM vs custom character sets"
   - "Character data format and design"
   - "Mode switching and display control"
@@ -97,7 +97,7 @@ STA $D016       ; Multicolor text mode active"
 
 - **Resolution**: 40×25 characters
 - **Colors**: 16 foreground colors per character
-- **Background**: Single background color for entire screen
+- **Background**: Single background colour for entire screen
 - **Character size**: 8×8 pixels
 - **Total pixels**: 320×200 effective resolution
 
@@ -107,7 +107,7 @@ Each character is defined by **8 bytes** (8×8 pixels):
 - Each bit represents one pixel (0=background, 1=foreground)
 - Stored sequentially: byte 0 = top row, byte 7 = bottom row
 
-```assembly
+```text
 ; Example: Letter 'A' character data
 CharacterA:
     .byte %00111000  ; Row 0:   ■■■   
@@ -130,9 +130,9 @@ CharacterA:
 LDA #$41        ; 'A' character code
 STA $0400       ; Display at top-left
 
-; Set character color to white
-LDA #$01        ; White color
-STA $D800       ; Set color for position 0
+; Set character colour to white
+LDA #$01        ; White colour
+STA $D800       ; Set colour for position 0
 
 ; Character ROM contains the actual pixel data
 ; ROM address for 'A' = $1000 + ($41 * 8) = $1208
@@ -157,7 +157,7 @@ To use custom characters, you must:
 2. **Switch VIC-II to use RAM characters** via $D018
 3. **Design your character graphics**
 
-```assembly
+```text
 ; Setup custom character set at $2000
 SetupCustomChars:
     ; First, copy existing characters from ROM
@@ -248,13 +248,13 @@ In multicolor mode, character data is interpreted differently:
 
 ### Multicolor Color Sources
 
-Each 2-bit pixel value selects a color:
-- **00**: Background color ($D021)
+Each 2-bit pixel value selects a colour:
+- **00**: Background colour ($D021)
 - **01**: Color from bits 0-2 of screen memory
 - **10**: Color from bits 3-6 of screen memory  
 - **11**: Color RAM value ($D800+)
 
-```assembly
+```text
 ; Enable multicolor text mode
 EnableMulticolor:
     LDA $D016           ; Read control register 2
@@ -263,7 +263,7 @@ EnableMulticolor:
     RTS
 
 ; Create multicolor character (4×8 pixels)
-; Each 2-bit value selects a color
+; Each 2-bit value selects a colour
 MultcolorChar:
     .byte %00011011     ; Row 0: 00|01|10|11 = bg|col1|col2|col3
     .byte %01100110     ; Row 1: 01|10|01|10
@@ -284,14 +284,14 @@ LDA $D016           ; Read control register 2
 ORA #%00010000      ; Set multicolor bit (MCM)
 STA $D016           ; Multicolor mode active
 
-; Set background color (color 00)
+; Set background colour (colour 00)
 LDA #$00            ; Black background
 STA $D021
 
 ; Set global multicolor colors
-LDA #$01            ; White for color 01
+LDA #$01            ; White for colour 01
 STA $D022           ; Multicolor register 1
-LDA #$02            ; Red for color 10  
+LDA #$02            ; Red for colour 10  
 STA $D023           ; Multicolor register 2
 
 ; Put multicolor character on screen
@@ -299,15 +299,15 @@ STA $D023           ; Multicolor register 2
 LDA #$A0            ; Character $A0 (high bit set = multicolor)
 STA $0400           ; Display character
 
-; Set character-specific color (color 11)
+; Set character-specific colour (colour 11)
 LDA #$07            ; Yellow
-STA $D800           ; Color RAM - becomes color 11"
+STA $D800           ; Color RAM - becomes colour 11"
   language="assembly"
 />
 
 ## Extended Color Text Mode
 
-**Extended color mode** provides 4 different background colors:
+**Extended colour mode** provides 4 different background colors:
 
 - **Resolution**: 40×25 characters (normal text resolution)
 - **Colors**: 16 foreground colors, 4 selectable background colors
@@ -315,22 +315,22 @@ STA $D800           ; Color RAM - becomes color 11"
 
 ### Extended Color Operation
 
-- **Bits 6-7 of screen memory** select background color
+- **Bits 6-7 of screen memory** select background colour
 - **Bits 0-5 of screen memory** select character (0-63 only)
-- **Color RAM** still controls foreground color
+- **Color RAM** still controls foreground colour
 
 ### Background Color Selection
-- **00**: $D021 (normal background color)
-- **01**: $D022 (extra background color 1)
-- **10**: $D023 (extra background color 2)  
-- **11**: $D024 (extra background color 3)
+- **00**: $D021 (normal background colour)
+- **01**: $D022 (extra background colour 1)
+- **10**: $D023 (extra background colour 2)  
+- **11**: $D024 (extra background colour 3)
 
-```assembly
-; Enable extended color mode
+```text
+; Enable extended colour mode
 EnableExtendedColor:
     LDA $D011           ; Read control register 1
     ORA #%01000000      ; Set ECM bit (bit 6)
-    STA $D011           ; Extended color mode active
+    STA $D011           ; Extended colour mode active
     RTS
 
 ; Set up background colors
@@ -349,21 +349,21 @@ SetupECMColors:
 <CodeRunner 
   system="commodore-64"
   title="Extended Color Mode Programming"
-  code="; Demonstrate extended color text mode
-; Enable extended color mode
+  code="; Demonstrate extended colour text mode
+; Enable extended colour mode
 LDA $D011           ; Read control register 1
 ORA #%01000000      ; Set ECM bit (bit 6)  
-STA $D011           ; Extended color mode active
+STA $D011           ; Extended colour mode active
 
 ; Setup 4 background colors
 LDA #$00            ; Black
-STA $D021           ; Background color 0 (bits 00)
+STA $D021           ; Background colour 0 (bits 00)
 LDA #$01            ; White
-STA $D022           ; Background color 1 (bits 01)
+STA $D022           ; Background colour 1 (bits 01)
 LDA #$02            ; Red  
-STA $D023           ; Background color 2 (bits 10)
+STA $D023           ; Background colour 2 (bits 10)
 LDA #$06            ; Blue
-STA $D024           ; Background color 3 (bits 11)
+STA $D024           ; Background colour 3 (bits 11)
 
 ; Display characters with different backgrounds
 LDA #%00000001      ; Character 1, background 0 (black)
@@ -375,7 +375,7 @@ STA $0402
 LDA #%11000001      ; Character 1, background 3 (blue)
 STA $0403
 
-; Set text color to yellow for visibility
+; Set text colour to yellow for visibility
 LDA #$07            ; Yellow
 STA $D800           ; First character
 STA $D801           ; Second character
@@ -389,7 +389,7 @@ STA $D803           ; Fourth character"
 Custom characters enable smooth animation through character switching:
 
 ### Frame-Based Animation
-```assembly
+```text
 ; Animate spinning character
 SpinAnimation:
     .byte $80, $81, $82, $83    ; Frame sequence
@@ -414,7 +414,7 @@ AnimFrame: .byte $00
 ```
 
 ### Scrolling Text with Custom Characters
-```assembly
+```text
 ; Smooth text scrolling using character redefinition
 ScrollText:
     ; Shift all character data left by one pixel
@@ -453,7 +453,7 @@ NoCarry:
 ### Block Graphics
 Use characters as building blocks for larger graphics:
 
-```assembly
+```text
 ; Create large graphics using character blocks
 DrawBox:
     ; Top border
@@ -640,9 +640,9 @@ DisplayGraphics:
     
     ; Set colors
     LDA #$01        ; White
-    STA $D800       ; First character color
+    STA $D800       ; First character colour
     LDA #$07        ; Yellow  
-    STA $D850       ; Graphics color
+    STA $D850       ; Graphics colour
     STA $D851
     STA $D878
     STA $D879
@@ -657,7 +657,7 @@ ModeText:
 ## Screen Mode Best Practices
 
 ### 1. Mode Switching Timing
-```assembly
+```text
 ; Switch modes during vertical blank
 WaitVBlank:
     LDA $D012
@@ -667,7 +667,7 @@ WaitVBlank:
 ```
 
 ### 2. Character Set Management
-```assembly
+```text
 ; Always preserve original character data
 BackupCharSet:
     ; Copy current characters before modifying
@@ -675,9 +675,9 @@ BackupCharSet:
 ```
 
 ### 3. Color Coordination
-```assembly
-; Plan color palettes for each mode
-; Consider color clash limitations
+```text
+; Plan colour palettes for each mode
+; Consider colour clash limitations
 ; Test on different display types
 ```
 
@@ -687,7 +687,7 @@ In this lesson, you've mastered:
 
 - All VIC-II text display modes and their applications
 - Custom character set design and implementation
-- Character data format and memory organization
+- Character data format and memory organisation
 - Mode switching and display control techniques
 - Character animation and graphics programming
 - Advanced text-based graphics creation

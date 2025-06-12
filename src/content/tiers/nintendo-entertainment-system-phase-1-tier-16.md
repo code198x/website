@@ -13,7 +13,7 @@ learning_objectives:
 concepts_introduced:
   - "Complete system integration and solid foundations"
   - "Solid assembly software development"
-  - "Assembly optimization and performance understanding"
+  - "Assembly optimisation and performance understanding"
   - "Good assembly software development practices"
   - "Preparation for embedded and system programming"
 game_project:
@@ -57,7 +57,7 @@ Finish your comprehensive NES programming project:
 - Building maintainable, extensible architecture
 
 **Lessons 25-32: Foundation Demonstration and Transition**
-- Final optimization and performance validation
+- Final optimisation and performance validation
 - Good testing and quality assurance
 - Creating solid documentation and resources
 - Preparing for Phase 2's advanced assembly programming
@@ -82,7 +82,7 @@ Progress: 100% Complete
 └────────────────────────────────────────┘
 
 ASM PERFORMANCE ANALYSIS:
-Code Size: 47,234 bytes (optimized)
+Code Size: 47,234 bytes (optimised)
 Cycles Used: 1,654/1,789 per frame (92%)
 RAM Usage: 2,043/2,048 bytes (99.8%)
 Bank Usage: 8/8 utilized efficiently
@@ -110,7 +110,7 @@ Completing **Quest Builder** demonstrates:
 
 **Quest Builder** prepares you well for Phase 2 and beyond:
 
-- **Embedded Systems** - Direct hardware control and optimization
+- **Embedded Systems** - Direct hardware control and optimisation
 - **Real-Time Systems** - Precise timing and performance requirements
 - **Game Engine Development** - Complex system architecture and integration
 - **System Programming** - Low-level software and driver development
@@ -130,4 +130,4 @@ Completing **Quest Builder** demonstrates:
 
 **Quest Builder** demonstrates that with dedication, creativity, and solid technical knowledge, you can create sophisticated software using assembly language. You've built a complete game development system in assembly language, proving that good programming foundations enable impressive achievements!
 
-You're now well prepared for Phase 2's advanced assembly challenges and beyond. The skills you've developed - optimization, direct hardware control, and system architecture - form a solid foundation for advanced programming techniques.
+You're now well prepared for Phase 2's advanced assembly challenges and beyond. The skills you've developed - optimisation, direct hardware control, and system architecture - form a solid foundation for advanced programming techniques.

@@ -3,9 +3,9 @@ title: "Control Flow and Logic"
 system: "nintendo-entertainment-system"
 phase_number: 1
 tier_number: 3
-description: "Master 6502 control flow, branching, and logical operations. Learn to create complex program logic and decision-making systems in assembly language."
+description: "Learn 6502 control flow, branching, and logical operations. Learn to create complex program logic and decision-making systems in assembly language."
 learning_objectives:
-  - "Master 6502 branch instructions and conditional logic"
+  - "Learn 6502 branch instructions and conditional logic"
   - "Understand flags and status register operations"
   - "Implement loops and program flow control"
   - "Create complex decision-making systems"
@@ -13,7 +13,7 @@ learning_objectives:
 concepts_introduced:
   - "Branch instructions and conditional execution"
   - "Status register flags and testing"
-  - "Loop construction and optimization"
+  - "Loop construction and optimisation"
   - "Subroutines and stack management"
   - "Logical operations and bit manipulation"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
@@ -22,9 +22,9 @@ order: 3
 
 # Tier 3: Control Flow and Logic
 
-Bring intelligence to your assembly programs! Master conditional logic, loops, and program flow control to create sophisticated, responsive software.
+Bring intelligence to your assembly programs! Learn conditional logic, loops, and program flow control to create sophisticated, responsive software.
 
-## What You'll Add to Sprite Master
+## What You'll Add to Sprite Learn
 
 Implement intelligent sprite behaviors:
 - Create decision-making logic for sprite movement
@@ -44,18 +44,18 @@ Implement intelligent sprite behaviors:
 - Constructing efficient loops
 - Counter-based and condition-based loops
 - Nested loops and complex iteration
-- Loop optimization techniques
+- Loop optimisation techniques
 
 **Lessons 17-24: Subroutines and Functions**
 - JSR and RTS instructions
 - Stack management and parameter passing
 - Creating reusable code modules
-- Function libraries and organization
+- Function libraries and organisation
 
-**Lessons 25-32: Sprite Master Intelligence**
+**Lessons 25-32: Sprite Learn Intelligence**
 - Implementing collision detection logic
 - Creating sprite state machines
 - Building interactive response systems
 - Preparing for advanced game mechanics
 
-Control flow mastery transforms your assembly code from simple sequences into intelligent, responsive programs that can make decisions and adapt to changing conditions!
+Control flow understanding transforms your assembly code from simple sequences into intelligent, responsive programs that can make decisions and adapt to changing conditions!

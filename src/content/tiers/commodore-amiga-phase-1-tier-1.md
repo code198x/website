@@ -7,14 +7,14 @@ description: "Enter the world of professional Amiga programming with 68000 assem
 learning_objectives:
   - "Understand the Motorola 68000 processor architecture"
   - "Learn 68000 assembly language fundamentals"
-  - "Master basic addressing modes and instruction syntax"
+  - "Learn basic addressing modes and instruction syntax"
   - "Create programs that work directly with Amiga hardware"
   - "Understand professional assembly programming concepts"
 concepts_introduced:
   - "68000 processor architecture and registers (D0-D7, A0-A7)"
   - "Assembly language syntax and addressing modes"
   - "Amiga system architecture and custom chips"
-  - "Memory organization and hardware integration"
+  - "Memory organisation and hardware integration"
   - "Professional assembly programming foundations"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 1
@@ -73,7 +73,7 @@ What made the Amiga revolutionary for programming:
 68000 assembly offers unique advantages:
 
 - **Direct Hardware Control** - Unmediated access to Amiga's visual power
-- **Maximum Performance** - Custom chip programming and optimization
+- **Maximum Performance** - Custom chip programming and optimisation
 - **System Integration** - Work directly with Workbench and AmigaOS
 - **Complete Hardware Access** - Control all advanced features through assembly
 - **Professional Development** - Create maximum-performance applications

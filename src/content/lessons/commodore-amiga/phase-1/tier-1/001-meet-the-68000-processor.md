@@ -67,7 +67,7 @@ The 68000 has a much richer register set than simpler processors, giving you tre
 
 What makes the 68000 special is its **orthogonal design** - almost any instruction can work with any register in multiple sizes:
 
-```assembly
+```text
 MOVE.B #$41, D0    ; Move byte (8-bit) $41 into D0
 MOVE.W #$1234, D1  ; Move word (16-bit) $1234 into D1  
 MOVE.L #$12345678, D2  ; Move long (32-bit) $12345678 into D2
@@ -86,7 +86,7 @@ This flexibility is revolutionary compared to 8-bit processors!
 
 Let's start with the fundamental instruction - moving data:
 
-```assembly
+```text
 MOVE.W #$1234, D0
 ```
 
@@ -108,7 +108,7 @@ This instruction means:
 
 The 68000's power shows when you use different sizes with the same register:
 
-```assembly
+```text
 MOVE.L #$12345678, D0  ; Load 32-bit value into D0
 MOVE.W #$ABCD, D0      ; Changes lower 16 bits, D0 = $1234ABCD
 MOVE.B #$EF, D0        ; Changes lower 8 bits, D0 = $1234ABEF
@@ -129,7 +129,7 @@ This flexibility allows precise control over data manipulation!
 
 You can work with all eight data registers simultaneously:
 
-```assembly
+```text
 MOVE.W #$1000, D0    ; Graphics X coordinate
 MOVE.W #$0080, D1    ; Graphics Y coordinate  
 MOVE.W #$001F, D2    ; Color value (red)
@@ -142,7 +142,7 @@ MOVE.B #$FF, D4      ; Byte flag (255 = on)
   title="Using Multiple Data Registers"
   code="MOVE.W #$1000, D0    ; X coordinate = 4096
 MOVE.W #$0080, D1    ; Y coordinate = 128
-MOVE.W #$001F, D2    ; Red color = 31
+MOVE.W #$001F, D2    ; Red colour = 31
 MOVE.L #$12345, D3   ; Counter = 74565
 MOVE.B #$FF, D4      ; Flag = 255 (on)"
   language="assembly"
@@ -152,7 +152,7 @@ MOVE.B #$FF, D4      ; Flag = 255 (on)"
 
 Address registers are designed to hold memory addresses:
 
-```assembly
+```text
 MOVE.L #$000C0000, A0    ; Point to graphics memory
 MOVE.L #$00DFF000, A1    ; Point to custom chip registers
 MOVE.L #$00080000, A2    ; Point to program data
@@ -173,7 +173,7 @@ These addresses point to important areas in Amiga memory!
 
 The real power comes when you use address registers to access memory:
 
-```assembly
+```text
 MOVE.L #$000C0000, A0    ; Point A0 to graphics memory
 MOVE.W #$0F00, (A0)      ; Store $0F00 at the memory A0 points to
 ```
@@ -192,7 +192,7 @@ MOVE.W #$0F00, (A0)      ; Store value at memory location A0 points to"
 
 The 68000 can move data between any registers:
 
-```assembly
+```text
 MOVE.L D0, D1      ; Copy D0 into D1 (32-bit)
 MOVE.W D2, D3      ; Copy lower 16 bits of D2 into D3
 MOVE.L A0, D4      ; Copy address from A0 into D4
@@ -218,7 +218,7 @@ MOVE.L A0, D4      ; Copy address to data register"
 
 Like other processors, the 68000 assembler converts your human-readable code to machine language:
 
-```assembly
+```text
 MOVE.W #$1234, D0
 ```
 
@@ -244,10 +244,10 @@ The 68000 introduces professional programming concepts:
 Create a program that demonstrates the 68000's capabilities:
 
 1. Load a 32-bit graphics coordinate into D0 ($00100080 = X=256, Y=128)
-2. Load a 16-bit color value into D1 ($0F00 = bright red)
+2. Load a 16-bit colour value into D1 ($0F00 = bright red)
 3. Load the graphics memory address into A0 ($C0000)
 4. Copy the coordinate to D2
-5. Copy the color to D3
+5. Copy the colour to D3
 6. Store the coordinate at the graphics memory location
 
 <CodeRunner 
@@ -255,12 +255,12 @@ Create a program that demonstrates the 68000's capabilities:
   title="Practice Exercise - Graphics Programming Setup"
   code="; Graphics programming example
 MOVE.L #$00100080, D0    ; X=256, Y=128 coordinates
-MOVE.W #$0F00, D1        ; Bright red color
+MOVE.W #$0F00, D1        ; Bright red colour
 MOVE.L #$000C0000, A0    ; Graphics memory address
 
 ; Copy values between registers  
 MOVE.L D0, D2            ; Copy coordinates
-MOVE.W D1, D3            ; Copy color
+MOVE.W D1, D3            ; Copy colour
 
 ; Store coordinate at graphics memory
 MOVE.L D0, (A0)          ; Store coordinates to graphics memory"

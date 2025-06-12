@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 11
-description: "Master the 6502 stack - a special memory area for temporary storage, subroutine calls, and interrupt handling. Learn stack operations and memory management fundamentals."
+description: "Learn the 6502 stack - a special memory area for temporary storage, subroutine calls, and interrupt handling. Learn stack operations and memory management fundamentals."
 learning_objectives:
   - "Understand the stack concept and its location in C64 memory"
-  - "Master stack instructions: PHA, PLA, PHP, and PLP"
+  - "Learn stack instructions: PHA, PLA, PHP, and PLP"
   - "Learn about the Stack Pointer (SP) register"
   - "Practice saving and restoring register states"
   - "Understand stack's role in subroutines and interrupts"
@@ -26,7 +26,7 @@ order: 11
 
 # Lesson 11: Stack Operations and Memory Management
 
-Welcome to one of the most important concepts in computing - the **stack**! The stack is a special memory area that enables temporary storage, subroutine calls, and sophisticated program organization. Today you'll master stack operations and understand how they enable advanced programming.
+Welcome to one of the most important concepts in computing - the **stack**! The stack is a special memory area that enables temporary storage, subroutine calls, and sophisticated program organisation. Today you'll master stack operations and understand how they enable advanced programming.
 
 ## What Is the Stack?
 
@@ -50,7 +50,7 @@ The **Stack Pointer** is a special 8-bit register that points to the current top
 - **Increments**: When you pull something off the stack
 - **Full address**: SP always refers to $01xx (page 1)
 
-```assembly
+```text
 ; Stack starts at $01FF (SP = $FF)
 ; After one push: $01FE (SP = $FE)  
 ; After two pushes: $01FD (SP = $FD)
@@ -65,7 +65,7 @@ The **Stack Pointer** is a special 8-bit register that points to the current top
 **Syntax**: `PHA`
 **Effect**: Pushes A register onto stack, decrements SP
 
-```assembly
+```text
 LDA #$42        ; Load 'B' into A
 PHA             ; Push A onto stack
                 ; A is now saved on stack
@@ -87,7 +87,7 @@ LDA #$48        ; Load 'H' into A (overwrites previous value)
 **Syntax**: `PHP`  
 **Effect**: Pushes status register (flags) onto stack
 
-```assembly
+```text
 LDA #$80        ; Load value that sets Negative flag
 PHP             ; Push status register onto stack
                 ; Status flags are now saved
@@ -112,7 +112,7 @@ LDA #$01        ; Load $01 (clears Negative flag)
 **Syntax**: `PLA`
 **Effect**: Pulls value from stack into A register, increments SP
 
-```assembly
+```text
 PLA             ; Pull value from stack into A
                 ; SP incremented by 1
                 ; A now contains the pulled value
@@ -136,7 +136,7 @@ STA $0401       ; Display 'B' on screen"
 **Syntax**: `PLP`
 **Effect**: Pulls status register from stack, restoring flags
 
-```assembly
+```text
 PLP             ; Pull status register from stack
                 ; All flags restored to previous state
 ```
@@ -186,7 +186,7 @@ After PLA:        SP = $FF, A = $42
 
 The stack is perfect for temporarily saving register contents:
 
-```assembly
+```text
 ; Save all registers before complex operation
 PHA             ; Save A
 LDA #$48        ; Use A for something else
@@ -220,7 +220,7 @@ STA $0402       ; Display 'B' - shows original value restored"
 
 Save multiple registers in sequence:
 
-```assembly
+```text
 ; Save current state
 PHA             ; Save A
 PHP             ; Save status flags
@@ -228,7 +228,7 @@ PHP             ; Save status flags
 ; Do complex work here
 LDA #$FF
 AND #$0F
-STA $D020       ; Change border color
+STA $D020       ; Change border colour
 
 ; Restore original state  
 PLP             ; Restore status flags
@@ -247,7 +247,7 @@ PHP             ; Save status flags
 ; Do work that changes everything
 LDA #$FF        ; Load $FF
 AND #$0F        ; AND with $0F (changes flags)
-STA $D020       ; Change border color
+STA $D020       ; Change border colour
 
 ; Restore everything
 PLP             ; Restore status flags  
@@ -261,7 +261,7 @@ STA $0400       ; Display restored 'B'"
 **Stack Overflow**: Pushing too many items (SP goes below $00)
 **Stack Underflow**: Pulling from empty stack (SP goes above $FF)
 
-```assembly
+```text
 ; Stack overflow example (don't do this!)
 ; If you push 256 items without pulling, SP wraps to $FF
 ; This overwrites the bottom of the stack!
@@ -277,7 +277,7 @@ STA $0400       ; Display restored 'B'"
 
 Create a systematic approach to register management:
 
-```assembly
+```text
 SaveRegisters:
     PHA             ; Save A
     PHP             ; Save status
@@ -295,7 +295,7 @@ RestoreRegisters:
 
 ### Temporary Variable Storage
 
-```assembly
+```text
 ; Complex calculation requiring temporary storage
 LDA $80         ; Load first value
 PHA             ; Save it on stack
@@ -344,7 +344,7 @@ STA $0402       ; Display 'A'"
 
 The stack enables nested operations where inner operations don't disturb outer ones:
 
-```assembly
+```text
 OuterOperation:
     PHA             ; Save A for outer operation
     

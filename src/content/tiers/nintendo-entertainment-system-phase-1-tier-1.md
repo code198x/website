@@ -6,7 +6,7 @@ tier_number: 1
 description: "Enter the world of 6502 assembly language programming. Learn registers, addressing modes, and basic operations while beginning your musical journey with Sprite Symphony."
 learning_objectives:
   - "Understand 6502 processor architecture and registers"
-  - "Master basic addressing modes and instruction syntax"
+  - "Learn basic addressing modes and instruction syntax"
   - "Learn to assemble and run simple programs"
   - "Generate basic tones using the NES APU"
   - "Control sprites for visual feedback"
@@ -37,7 +37,7 @@ Begin **Sprite Symphony** development:
 **Lessons 1-8: Processor Fundamentals**
 - Understanding the 6502 architecture
 - Registers and their purposes
-- Memory organization and addressing
+- Memory organisation and addressing
 - Basic instruction execution cycle
 
 **Lessons 9-16: First Instructions**
@@ -83,7 +83,7 @@ The 6502 is perfect for education:
 Assembly programming skills transfer to:
 
 - **Embedded systems** - Microcontrollers and IoT devices
-- **Performance optimization** - Critical sections in any language
+- **Performance optimisation** - Critical sections in any language
 - **Reverse engineering** - Understanding existing software
 - **Game development** - Low-level graphics and audio programming
 - **System programming** - Operating systems and drivers

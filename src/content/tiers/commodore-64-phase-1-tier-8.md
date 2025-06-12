@@ -3,16 +3,16 @@ title: "Polish and Mastery"
 system: "commodore-64"
 phase_number: 1
 tier_number: 8
-description: "Complete Color Cascade with professional assembly polish and advanced features. Master 6502 assembly organization, optimization, and direct hardware control to create software that showcases true machine-level programming."
+description: "Complete Color Cascade with professional assembly polish and advanced features. Learn 6502 assembly organisation, optimisation, and direct hardware control to create software that showcases true machine-level programming."
 learning_objectives:
-  - "Implement professional program organization"
-  - "Master performance optimization techniques"
+  - "Implement professional program organisation"
+  - "Learn performance optimisation techniques"
   - "Create polished user interfaces and experiences"
   - "Handle edge cases and error conditions gracefully"
   - "Complete and document a substantial program"
 concepts_introduced:
   - "Assembly subroutines and modular programming"
-  - "6502 assembly optimization strategies"
+  - "6502 assembly optimisation strategies"
   - "Direct hardware user interface programming"
   - "Assembly-level error handling and validation"
   - "Assembly code documentation and sharing"
@@ -48,8 +48,8 @@ Finish **Color Cascade** as a polished, feature-complete game:
 
 **Lessons 9-16: 6502 Assembly Optimization**
 - Identifying processor bottlenecks and cycle counts
-- Memory usage optimization at the hardware level
-- Speed improvements through optimized assembly code
+- Memory usage optimisation at the hardware level
+- Speed improvements through optimised assembly code
 - Balancing features with 6502 processor limitations
 
 **Lessons 17-24: Assembly Interface Design**

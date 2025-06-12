@@ -25,7 +25,7 @@ order: 2
 
 Phase 2 is your gateway into the world of machine language programming. You'll learn to write assembly code while still leveraging BASIC for high-level program structure, creating the perfect bridge between beginner and advanced programming.
 
-## What You'll Master
+## What You'll Learn
 
 By the end of Phase 2, you'll have:
 
@@ -54,7 +54,7 @@ By the end of Phase 2, you'll have:
 
 **Tiers 13-16: Advanced Integration**
 - Complex hybrid programs
-- Performance optimization techniques
+- Performance optimisation techniques
 - **Game Project: "Turbo Tennis"** - Fast-paced sports game combining BASIC logic with assembly performance
 
 ## The Best of Both Worlds

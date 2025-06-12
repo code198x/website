@@ -3,13 +3,13 @@ title: "Sprite Programming Mastery"
 system: "nintendo-entertainment-system"
 phase_number: 1
 tier_number: 4
-description: "Complete Sprite Master, your first NES game! Master hardware sprite programming, animation systems, and interactive gameplay through direct PPU manipulation."
+description: "Complete Sprite Learn, your first NES game! Learn hardware sprite programming, animation systems, and interactive gameplay through direct PPU manipulation."
 learning_objectives:
-  - "Master NES PPU sprite programming"
+  - "Learn NES PPU sprite programming"
   - "Implement smooth sprite animation systems"
   - "Create responsive input handling"
   - "Build complete interactive games"
-  - "Understand sprite hardware limitations and optimization"
+  - "Understand sprite hardware limitations and optimisation"
 concepts_introduced:
   - "PPU sprite system and OAM manipulation"
   - "Sprite animation and timing systems"
@@ -17,7 +17,7 @@ concepts_introduced:
   - "Sprite multiplexing and hardware limits"
   - "Game loop architecture and timing"
 game_project:
-  name: "Sprite Master"
+  name: "Sprite Learn"
   description: "A sprite control learning system that teaches fundamental NES programming through interactive sprite manipulation, animation, and basic game mechanics"
   tier_range: "Tiers 1-4"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
@@ -26,7 +26,7 @@ order: 4
 
 # Tier 4: Sprite Programming Mastery
 
-Complete **Sprite Master** - your first NES game programmed entirely in 6502 assembly! Master the PPU sprite system and create smooth, responsive gameplay.
+Complete **Sprite Learn** - your first NES game programmed entirely in 6502 assembly! Learn the PPU sprite system and create smooth, responsive gameplay.
 
 ## What You'll Complete
 
@@ -57,14 +57,14 @@ Finish a fully functional sprite-based game:
 - Building user interface systems
 
 **Lessons 25-32: Game Completion**
-- Final integration and optimization
+- Final integration and optimisation
 - Game loop refinement and timing
 - Polish, feedback, and game feel
 - Preparing for advanced NES programming
 
-## Your Completed Sprite Master
+## Your Completed Sprite Learn
 
-**Sprite Master** demonstrates fundamental NES programming skills:
+**Sprite Learn** demonstrates fundamental NES programming skills:
 
 ```
 **** SPRITE MASTER v1.0 ****
@@ -103,7 +103,7 @@ OAM DMA: Ready
 
 ## Assembly Programming Achievement
 
-Completing **Sprite Master** demonstrates:
+Completing **Sprite Learn** demonstrates:
 
 - **Hardware Mastery** - Direct control over NES graphics hardware
 - **Assembly Proficiency** - Complex logic in machine language
@@ -111,4 +111,4 @@ Completing **Sprite Master** demonstrates:
 - **Game Programming** - Complete interactive entertainment software
 - **System Understanding** - Deep knowledge of NES architecture
 
-**Sprite Master** proves you can create engaging, responsive games using nothing but 6502 assembly language and direct hardware manipulation!
+**Sprite Learn** proves you can create engaging, responsive games using nothing but 6502 assembly language and direct hardware manipulation!

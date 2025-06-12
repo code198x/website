@@ -3,10 +3,10 @@ title: "Loops and Repetition"
 system: "zx-spectrum"
 phase_number: 1
 tier_number: 5
-description: "Master loops and repetitive programming with FOR-NEXT and GOTO. Learn to create efficient programs that can repeat actions automatically and handle large amounts of data."
+description: "Learn loops and repetitive programming with FOR-NEXT and GOTO. Learn to create efficient programs that can repeat actions automatically and handle large amounts of data."
 learning_objectives:
   - "Understand loops and repetitive programming"
-  - "Master FOR-NEXT loops with counting and stepping"
+  - "Learn FOR-NEXT loops with counting and stepping"
   - "Learn GOTO for program flow control"
   - "Create efficient, automated programs"
   - "Handle large datasets and repetitive tasks"
@@ -14,7 +14,7 @@ concepts_introduced:
   - "Loop structures and iteration"
   - "FOR-NEXT loops with STEP values"
   - "GOTO statements and labels"
-  - "Loop optimization and efficiency"
+  - "Loop optimisation and efficiency"
   - "Automated data processing"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 5
@@ -26,7 +26,7 @@ Harness the power of repetition! Learn to create programs that can repeat tasks 
 
 ## What You'll Learn
 
-Master the art of automated programming:
+Learn the art of automated programming:
 - FOR-NEXT loops for counted repetition
 - GOTO statements for program flow control
 - Creating efficient, automated processes

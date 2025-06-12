@@ -27,7 +27,7 @@ Bring your assembly programs to life with the legendary SID chip! Learn to creat
 ## What You'll Add to Color Cascade
 
 Enhance your pattern game with audio:
-- Unique musical notes for each color
+- Unique musical notes for each colour
 - Sound effects for correct/incorrect matches
 - Background music during gameplay
 - Audio cues for sequence playback

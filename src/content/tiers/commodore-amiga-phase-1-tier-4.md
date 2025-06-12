@@ -3,10 +3,10 @@ title: "Professional Graphics Applications"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 4
-description: "Complete Graphics Studio, a sophisticated graphics creation system! Master 68000 assembly graphics programming with direct custom chip access and professional application development."
+description: "Complete Graphics Studio, a sophisticated graphics creation system! Learn 68000 assembly graphics programming with direct custom chip access and professional application development."
 learning_objectives:
   - "Complete a professional assembly graphics application"
-  - "Master 68000 assembly graphics programming with custom chip access"
+  - "Learn 68000 assembly graphics programming with custom chip access"
   - "Understand professional assembly interface design"
   - "Create sophisticated drawing and editing tools using assembly"
   - "Build high-quality creative software using assembly"
@@ -14,7 +14,7 @@ concepts_introduced:
   - "Advanced assembly graphics programming and custom chip manipulation"
   - "Professional assembly user interface design"
   - "Assembly file I/O and data persistence"
-  - "Assembly application architecture and organization"
+  - "Assembly application architecture and organisation"
   - "Creative assembly software development practices"
 game_project:
   name: "Graphics Studio"
@@ -26,13 +26,13 @@ order: 4
 
 # Tier 4: Professional Graphics Applications
 
-Complete **Graphics Studio** - a sophisticated graphics creation system implemented in 68000 assembly that demonstrates the Amiga's revolutionary visual capabilities! Master professional assembly graphics programming with direct custom chip access.
+Complete **Graphics Studio** - a sophisticated graphics creation system implemented in 68000 assembly that demonstrates the Amiga's revolutionary visual capabilities! Learn professional assembly graphics programming with direct custom chip access.
 
 ## What You'll Complete
 
 Finish a professional assembly graphics application:
 - Complete drawing and editing tool suite using assembly
-- Advanced color management and palette systems with custom chip programming
+- Advanced colour management and palette systems with custom chip programming
 - Professional file save/load functionality implemented in assembly
 - Animation and visual effects capabilities using direct hardware control
 
@@ -53,11 +53,11 @@ Finish a professional assembly graphics application:
 **Lessons 17-24: Assembly File Management and Persistence**
 - Implementing save and load functionality using assembly
 - Graphics file format support through assembly programming
-- Data compression and optimization using assembly algorithms
+- Data compression and optimisation using assembly algorithms
 - Building robust assembly file management systems
 
 **Lessons 25-32: Assembly Application Completion**
-- Final assembly integration and optimization
+- Final assembly integration and optimisation
 - Animation and advanced effects using custom chip programming
 - Professional polish and presentation through assembly
 - Preparing for advanced assembly multimedia programming
@@ -93,7 +93,7 @@ Completing **Graphics Studio** demonstrates:
 
 - **Advanced Assembly Graphics Programming** - Direct control of Amiga visual capabilities
 - **Professional Assembly Interface Design** - Creating intuitive, powerful creative tools using assembly
-- **Assembly Application Architecture** - Building sophisticated, well-organized assembly software
+- **Assembly Application Architecture** - Building sophisticated, well-organised assembly software
 - **Creative Assembly Tool Development** - Empowering artistic expression through assembly programming
 - **High-Quality Assembly Development** - Professional assembly software engineering practices
 

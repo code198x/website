@@ -14,7 +14,7 @@ gameplay_mechanics:
 technical_features:
   - "Copper coprocessor programming"
   - "Custom chipset manipulation (OCS/ECS)"
-  - "Palette cycling and color animation"
+  - "Palette cycling and colour animation"
   - "Hardware scrolling and sprites"
   - "Intuition GUI integration"
 concepts_demonstrated:
@@ -71,13 +71,13 @@ This game leverages the Amiga's unique architecture:
 
 **Tier 1**: Basic Copper programming
 - Simple palette changes
-- Horizontal color bars
+- Horizontal colour bars
 - Understanding Copper timing
 - Basic effect parameters
 
 **Tier 2**: Enhanced effects
 - Scrolling backgrounds
-- Sine wave color cycling
+- Sine wave colour cycling
 - Sprite integration
 - Mouse-controlled parameters
 
@@ -91,7 +91,7 @@ This game leverages the Amiga's unique architecture:
 - GUI-based effect editor
 - Real-time preview
 - Demo export functionality
-- Performance optimization
+- Performance optimisation
 
 ## Technical Challenges
 
@@ -106,8 +106,8 @@ This game leverages the Amiga's unique architecture:
 
 ## Sample Effect: Rainbow Bars
 
-```assembly
-; Simple Copper list for rainbow color bars
+```text
+; Simple Copper list for rainbow colour bars
 CopperList:
     DC.W $2C01,$FFFE    ; Wait for line 44
     DC.W $0180,$0F00    ; Set background to red
@@ -127,7 +127,7 @@ Building **Copper Dreams** teaches:
 1. **Coprocessor programming** - Understanding parallel processing
 2. **Hardware timing** - Critical for real-time graphics
 3. **Memory-mapped I/O** - Direct hardware manipulation
-4. **Graphics optimization** - Making limited hardware perform miracles
+4. **Graphics optimisation** - Making limited hardware perform miracles
 5. **System programming** - Working within a multitasking OS
 6. **Creative problem-solving** - Achieving impossible effects through clever programming
 
@@ -137,7 +137,7 @@ Building **Copper Dreams** teaches:
 
 - **Historical Context**: Understand how classic effects were created
 - **Creative Tradition**: Join a community that values technical artistry
-- **Technical Excellence**: Learn from the masters of optimization
+- **Technical Excellence**: Learn from the masters of optimisation
 - **Artistic Expression**: Programming as a form of digital art
 - **Community Sharing**: Effects can be shared and built upon
 

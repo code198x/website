@@ -15,7 +15,7 @@ video:
     - "Text mode (40×25 characters)"
     - "High-resolution bitmap (320×200, 2 colors per 8×8 pixel block)"
     - "Multicolor bitmap (160×200, 4 colors per 4×8 pixel block)"
-    - "Extended background color (40×25 text with 4 background colors)"
+    - "Extended background colour (40×25 text with 4 background colors)"
     - "Sprite graphics (hardware-accelerated movable object blocks)"
 audio:
   chip: "SID (Sound Interface Device) 6581/8580"
@@ -92,7 +92,7 @@ The machine's combination of affordability and capability made it accessible to 
 Programming the Commodore 64 teaches fundamental concepts that remain relevant in modern software development:
 
 - **Memory management** - Working within tight constraints
-- **Performance optimization** - Making every byte and cycle count  
+- **Performance optimisation** - Making every byte and cycle count  
 - **Hardware interaction** - Direct programming of chips and registers
 - **Assembly language** - Understanding how computers work at the lowest level
 - **Creative problem solving** - Achieving impressive results with limited resources

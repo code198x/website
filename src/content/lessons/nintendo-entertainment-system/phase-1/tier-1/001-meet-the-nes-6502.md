@@ -8,7 +8,7 @@ description: "Your first encounter with the heart of the Nintendo Entertainment 
 learning_objectives:
   - "Understand what the 6502 processor is and why it powers the NES"
   - "Learn about the three main registers: A, X, and Y"
-  - "Understand NES memory organization and memory-mapped I/O"
+  - "Understand NES memory organisation and memory-mapped I/O"
   - "Write your first assembly instruction"
   - "See how assembly relates to game programming"
 concepts:
@@ -85,7 +85,7 @@ $4020-$FFFF : Cartridge Space - Your game code and data
 
 Let's start with loading a value into the A register, just like other 6502 systems:
 
-```assembly
+```text
 LDA #$01
 ```
 
@@ -106,7 +106,7 @@ This instruction means:
 
 In NES programming, certain values have special meaning:
 
-```assembly
+```text
 LDA #$00    ; Load 0 - often used to disable/clear things
 LDA #$01    ; Load 1 - often used to enable/set things  
 LDA #$FF    ; Load 255 - maximum value, often "all on"
@@ -117,13 +117,13 @@ LDA #$80    ; Load 128 - halfway point, center values
 
 Here's what makes NES programming exciting - you can control hardware directly! For example, to write to the graphics system:
 
-```assembly
+```text
 LDA #$3F    ; Load graphics data
 STA $2006   ; Write to PPU address register
-LDA #$00    ; Load background color index
+LDA #$00    ; Load background colour index
 STA $2006   ; Write to PPU address register
-LDA #$0F    ; Load white color
-STA $2007   ; Write to PPU data register (sets background color!)
+LDA #$0F    ; Load white colour
+STA $2007   ; Write to PPU data register (sets background colour!)
 ```
 
 *Don't worry about understanding this completely yet - we'll learn graphics programming in detail later!*
@@ -135,7 +135,7 @@ STA $2007   ; Write to PPU data register (sets background color!)
 STA $2006   ; PPU address high
 LDA #$00    
 STA $2006   ; PPU address low  
-LDA #$0F    ; White color
+LDA #$0F    ; White colour
 STA $2007   ; Write to graphics system"
   language="assembly"
 />
@@ -144,7 +144,7 @@ STA $2007   ; Write to graphics system"
 
 Let's practice with values that might appear in games:
 
-```assembly
+```text
 LDA #$03    ; Load 3 (maybe 3 lives remaining)
 LDX #$00    ; Load 0 into X (start of level 0)
 LDY #$50    ; Load 80 into Y (player Y position)
@@ -163,7 +163,7 @@ LDY #$50    ; Y position 80 pixels"
 
 In NES games, every byte of the 2KB RAM is precious:
 
-```assembly
+```text
 ; Typical game variable usage
 LDA #$05    ; Load starting health
 STA $0200   ; Store in RAM location $0200
@@ -210,7 +210,7 @@ $FF = 255 (maximum 8-bit value, "all on")
 ## Assembly vs Machine Language in Games
 
 When you write:
-```assembly
+```text
 LDA #$01
 ```
 
@@ -226,17 +226,17 @@ The NES reads these bytes directly and executes them at 1.79 million instruction
 Here are patterns you'll use constantly in NES games:
 
 **Loading immediate values** (known data):
-```assembly
+```text
 LDA #$01    ; Load known value
 ```
 
 **Storing to memory** (saving game state):
-```assembly
+```text
 STA $0200   ; Store to RAM
 ```
 
 **Storing to hardware** (controlling graphics/sound):
-```assembly
+```text
 STA $2007   ; Store to graphics hardware
 ```
 
@@ -273,7 +273,7 @@ STY $0302   ; Store player Y position
 Learning assembly on the NES teaches you:
 
 **Direct hardware control**: No operating system between you and the graphics/sound
-**Performance optimization**: Every instruction matters for 60 FPS gameplay
+**Performance optimisation**: Every instruction matters for 60 FPS gameplay
 **Memory management**: Work within strict 2KB RAM limits
 **Real-time programming**: Handle input and graphics in precise timing
 **System architecture**: Understand how game consoles really work
@@ -284,7 +284,7 @@ In this foundational lesson, you've discovered:
 
 - The 6502 processor powers classic NES games
 - The three main registers: A (accumulator), X and Y (index registers)  
-- NES memory organization with memory-mapped I/O
+- NES memory organisation with memory-mapped I/O
 - Your first assembly instruction: LDA (Load A register)
 - How hexadecimal relates to game programming values
 - The relationship between assembly and machine language
@@ -296,4 +296,4 @@ In the next lesson, you'll learn how to store data to different types of memory 
 
 ## Fun Fact
 
-The NES 6502 processor runs at 1.79 MHz, executing nearly 1.8 million instructions per second. At 60 frames per second, that gives you about 29,000 instructions per frame to handle all game logic, graphics updates, sound generation, and input processing. Master programmers could create incredibly complex games within this constraint - games that are still fun and challenging today! Learning to program the NES teaches you the same optimization skills that modern game developers use to squeeze maximum performance from current hardware.
+The NES 6502 processor runs at 1.79 MHz, executing nearly 1.8 million instructions per second. At 60 frames per second, that gives you about 29,000 instructions per frame to handle all game logic, graphics updates, sound generation, and input processing. Learn programmers could create incredibly complex games within this constraint - games that are still fun and challenging today! Learning to program the NES teaches you the same optimisation skills that modern game developers use to squeeze maximum performance from current hardware.

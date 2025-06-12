@@ -3,9 +3,9 @@ title: "Sound and User Input"
 system: "zx-spectrum"
 phase_number: 1
 tier_number: 7
-description: "Master ZX Spectrum sound programming with the built-in beeper and advanced user input handling. Create responsive programs with audio feedback and precise control systems."
+description: "Learn ZX Spectrum sound programming with the built-in beeper and advanced user input handling. Create responsive programs with audio feedback and precise control systems."
 learning_objectives:
-  - "Master BEEP command for sound programming"
+  - "Learn BEEP command for sound programming"
   - "Learn advanced input handling and key detection"
   - "Create responsive control systems"
   - "Understand timing and synchronization"
@@ -22,7 +22,7 @@ order: 7
 
 # Tier 7: Sound and User Input
 
-Add sound and responsive controls to your programs! Master the ZX Spectrum's beeper and create sophisticated input systems for engaging, interactive experiences.
+Add sound and responsive controls to your programs! Learn the ZX Spectrum's beeper and create sophisticated input systems for engaging, interactive experiences.
 
 ## What You'll Learn
 
@@ -58,4 +58,4 @@ Create programs that sound great and respond perfectly:
 - Building the complete control system
 - Preparing for Rainbow Runner completion
 
-Sound and input mastery transforms your programs from silent, static experiences into dynamic, responsive applications that engage users through multiple senses!
+Sound and input understanding transforms your programs from silent, static experiences into dynamic, responsive applications that engage users through multiple senses!

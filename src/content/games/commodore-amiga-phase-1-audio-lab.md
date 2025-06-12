@@ -47,7 +47,7 @@ Build a professional-quality digital audio workstation:
 
 **Audio Lab** introduces advanced 68000 assembly multimedia programming:
 
-- **Digital Audio**: Master the Amiga's pioneering audio capabilities through assembly
+- **Digital Audio**: Learn the Amiga's pioneering audio capabilities through assembly
 - **Real-Time Processing**: Create responsive, low-latency audio systems in assembly
 - **Advanced Algorithms**: Implement sophisticated audio processing via 68000 assembly
 - **Professional Interfaces**: Build complex, multi-window applications in assembly

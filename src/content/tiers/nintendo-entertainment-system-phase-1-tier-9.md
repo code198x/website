@@ -3,18 +3,18 @@ title: "Background Graphics Programming"
 system: "nintendo-entertainment-system"
 phase_number: 1
 tier_number: 9
-description: "Master NES background graphics and tile-based systems! Learn PPU background programming, pattern tables, and the foundation of NES visual design."
+description: "Learn NES background graphics and tile-based systems! Learn PPU background programming, pattern tables, and the foundation of NES visual design."
 learning_objectives:
-  - "Master NES PPU background programming"
+  - "Learn NES PPU background programming"
   - "Understand pattern tables and tile graphics"
-  - "Learn name table organization and control"
+  - "Learn name table organisation and control"
   - "Implement basic tile-based graphics systems"
   - "Build foundation for complex visual programming"
 concepts_introduced:
   - "PPU background layers and tile systems"
   - "Pattern table design and manipulation"
-  - "Name table addressing and organization"
-  - "Tile graphics creation and optimization"
+  - "Name table addressing and organisation"
+  - "Tile graphics creation and optimisation"
   - "Background scrolling fundamentals"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 9
@@ -22,7 +22,7 @@ order: 9
 
 # Tier 9: Background Graphics Programming
 
-Master the art of NES background graphics! Learn to create stunning tile-based visuals using the PPU's sophisticated background rendering system.
+Learn the art of NES background graphics! Learn to create stunning tile-based visuals using the PPU's sophisticated background rendering system.
 
 ## What You'll Begin with Tile Craft
 
@@ -36,13 +36,13 @@ Start building your graphics editor:
 
 **Lessons 1-8: PPU Background Architecture**
 - Understanding the Picture Processing Unit background system
-- Pattern tables and character ROM organization
+- Pattern tables and character ROM organisation
 - Name tables and screen layout control
-- Attribute tables and color palette management
+- Attribute tables and colour palette management
 
 **Lessons 9-16: Tile Graphics Programming**
 - Creating and editing pattern table data
-- Tile design and graphics optimization
+- Tile design and graphics optimisation
 - Character graphics and visual design principles
 - Building efficient tile management systems
 

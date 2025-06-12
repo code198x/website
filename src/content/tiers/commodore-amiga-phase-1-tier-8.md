@@ -6,16 +6,16 @@ tier_number: 8
 description: "Explore fundamental data structures and algorithms in 68000 assembly. Learn to implement efficient data management and processing systems for Amiga applications."
 learning_objectives:
   - "Implement data structures in 68000 assembly language"
-  - "Learn algorithm design and optimization techniques"
-  - "Learn memory management and data organization"
+  - "Learn algorithm design and optimisation techniques"
+  - "Learn memory management and data organisation"
   - "Create efficient data processing routines"
   - "Build foundation for complex application development"
 concepts_introduced:
   - "Assembly language data structure implementation"
-  - "Algorithm design and optimization in 68000"
+  - "Algorithm design and optimisation in 68000"
   - "Memory management and allocation strategies"
   - "Efficient data processing and manipulation"
-  - "Performance analysis and optimization techniques"
+  - "Performance analysis and optimisation techniques"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 8
 ---
@@ -29,7 +29,7 @@ Explore the fundamental building blocks of programming! Learn to implement effic
 Expand your programming foundation:
 - Implement classic data structures in assembly language
 - Create efficient algorithms for data processing
-- Build memory management systems optimized for 68000
+- Build memory management systems optimised for 68000
 - Develop reusable code libraries and routines
 
 ## Tier Overview
@@ -41,21 +41,21 @@ Expand your programming foundation:
 - Memory allocation and deallocation routines
 
 **Lessons 9-16: Algorithm Fundamentals**
-- Sorting algorithms optimized for 68000 architecture
+- Sorting algorithms optimised for 68000 architecture
 - Search techniques and pattern matching
 - Basic mathematical algorithms and calculations
 - String processing and text manipulation routines
 
 **Lessons 17-24: Advanced Data Management**
 - Hash tables and associative data structures
-- Tree structures and hierarchical data organization
+- Tree structures and hierarchical data organisation
 - Graph algorithms and network data processing
 - Dynamic memory management systems
 
 **Lessons 25-32: Performance Optimization**
 - Algorithm analysis and complexity understanding
-- 68000-specific optimization techniques
-- Memory usage optimization and cache efficiency
+- 68000-specific optimisation techniques
+- Memory usage optimisation and cache efficiency
 - Building efficient, reusable code libraries
 
 Data structures and algorithms in 68000 assembly teach you the fundamental principles of efficient programming and prepare you for building sophisticated applications!

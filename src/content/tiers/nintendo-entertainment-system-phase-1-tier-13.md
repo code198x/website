@@ -3,9 +3,9 @@ title: "Game Engine Architecture"
 system: "nintendo-entertainment-system"
 phase_number: 1
 tier_number: 13
-description: "Master game engine architecture and system design! Learn to build complex, modular game systems that can support multiple types of games and gameplay mechanics."
+description: "Learn game engine architecture and system design! Learn to build complex, modular game systems that can support multiple types of games and gameplay mechanics."
 learning_objectives:
-  - "Master complex software architecture and design"
+  - "Learn complex software architecture and design"
   - "Understand game engine systems and frameworks"
   - "Implement modular, reusable game components"
   - "Create sophisticated state management systems"
@@ -15,14 +15,14 @@ concepts_introduced:
   - "Advanced state management and game loops"
   - "Modular system design and integration"
   - "Entity-component architecture in assembly"
-  - "Performance-critical system optimization"
+  - "Performance-critical system optimisation"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 13
 ---
 
 # Tier 13: Game Engine Architecture
 
-Design and build sophisticated game engines! Master the architecture patterns and system design principles used in professional game development.
+Design and build sophisticated game engines! Learn the architecture patterns and system design principles used in professional game development.
 
 ## What You'll Begin with Quest Builder
 

@@ -6,7 +6,7 @@ tier_range: "9-12"
 genre: "Puzzle/Memory"
 description: "An advanced memory and pattern game that uses complex data structures and algorithmic thinking, teaching Z80 assembly programming through memory manipulation, arrays, and procedural generation."
 gameplay_mechanics:
-  - "Memorize and reproduce complex color and pattern sequences"
+  - "Memorize and reproduce complex colour and pattern sequences"
   - "Navigate through procedurally generated puzzle matrices"
   - "Solve logic puzzles using Spectrum-specific constraints"
   - "Progressive difficulty with adaptive challenge levels"
@@ -15,13 +15,13 @@ technical_features:
   - "Complex data structures using Z80 assembly and memory arrays"
   - "Procedural puzzle generation algorithms in assembly"
   - "Advanced memory manipulation for pattern storage"
-  - "Efficient memory usage within 48K using optimized Z80 code"
+  - "Efficient memory usage within 48K using optimised Z80 code"
   - "Save/load system using Z80 assembly file routines"
 concepts_demonstrated:
   - "Advanced data structures and algorithms in Z80 assembly"
   - "Memory processing and pattern matching via assembly"
   - "Procedural content generation using Z80 instructions"
-  - "Memory optimization techniques in assembly language"
+  - "Memory optimisation techniques in assembly language"
   - "Complex user interface design with assembly routines"
   - "Adaptive difficulty systems programmed in Z80"
 estimated_dev_time: "4-6 lessons"
@@ -58,7 +58,7 @@ Navigate through an ever-changing world of memory and logic challenges:
 
 Leverages the Spectrum's unique characteristics:
 
-- **Attribute-Based Puzzles**: Challenges that work with 8×8 color blocks
+- **Attribute-Based Puzzles**: Challenges that work with 8×8 colour blocks
 - **Compact Storage**: Ingenious data compression for maximum content
 - **Character Graphics**: Rich puzzle visuals using built-in characters
 - **Beeper Patterns**: Audio memory challenges using sound sequences
@@ -72,13 +72,13 @@ Leverages the Spectrum's unique characteristics:
 - Multi-dimensional arrays for puzzle storage
 - String-based pattern representation
 - Basic puzzle generation algorithms
-- Memory-efficient data organization
+- Memory-efficient data organisation
 
 **Tier 10**: Procedural generation
 - Dynamic puzzle creation algorithms
 - Validation systems for solvable puzzles
 - Difficulty scaling and progression
-- Pattern analysis and optimization
+- Pattern analysis and optimisation
 
 **Tier 11**: Advanced features
 - Multiple puzzle types and game modes
@@ -88,7 +88,7 @@ Leverages the Spectrum's unique characteristics:
 
 **Tier 12**: System integration
 - Complete puzzle matrix navigation
-- Performance optimization for complex systems
+- Performance optimisation for complex systems
 - Professional user experience design
 - Final integration and polish
 

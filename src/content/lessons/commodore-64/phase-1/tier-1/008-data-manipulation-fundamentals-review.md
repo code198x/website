@@ -10,12 +10,12 @@ learning_objectives:
   - "Build a practical data manipulation program"
   - "Practice systematic problem-solving with assembly"
   - "Create a foundation project for future learning"
-  - "Demonstrate mastery of 6502 architecture basics"
+  - "Demonstrate understanding of 6502 architecture basics"
 concepts:
   - "Integrated use of all basic instructions"
   - "Systematic program design in assembly"
   - "Data transformation and display"
-  - "Memory organization and efficiency"
+  - "Memory organisation and efficiency"
   - "Foundation for advanced topics"
 estimated_duration: "45-60 minutes"
 difficulty: "easy"
@@ -38,7 +38,7 @@ Over the past seven lessons, you've built an impressive toolkit:
 - Moving data between registers and memory
 
 **Memory Management**:
-- Understanding Zero Page optimization
+- Understanding Zero Page optimisation
 - Working with screen memory for output
 - Using different addressing modes efficiently
 
@@ -55,7 +55,7 @@ Over the past seven lessons, you've built an impressive toolkit:
 **System Understanding**:
 - Status register flags (Zero, Negative, Carry)
 - Hexadecimal and binary number systems
-- C64 memory organization
+- C64 memory organisation
 
 ## Project: Data Processing Center
 
@@ -63,14 +63,14 @@ Let's build a program that acts like a simple data processing center. It will:
 
 1. **Accept input data** (we'll simulate with preset values)
 2. **Process the data** using arithmetic and logical operations
-3. **Display results** on screen in an organized format
+3. **Display results** on screen in an organised format
 4. **Use efficient memory management** with Zero Page storage
 
 ## Project Planning
 
 First, let's plan our memory usage:
 
-```assembly
+```text
 ; Zero Page Variables (fast access)
 ; $80 = Input value storage
 ; $81 = Arithmetic result storage  
@@ -90,7 +90,7 @@ First, let's plan our memory usage:
 
 Let's start with our complete data processing program:
 
-```assembly
+```text
 ; === DATA PROCESSING CENTER ===
 
 ; Initialize system
@@ -194,7 +194,7 @@ STA $04A1       ; Display count"
 
 Let's extend our processor to handle multiple data values:
 
-```assembly
+```text
 ; === MULTI-VALUE DATA PROCESSOR ===
 
 ; Process first data point
@@ -260,7 +260,7 @@ Now it's your turn! Create a program that demonstrates all the concepts:
 
 **Template to get you started**:
 
-```assembly
+```text
 ; Your comprehensive review program
 ; Initialize registers
 LDA #$48        ; Load 'H'
@@ -340,7 +340,7 @@ STA $0405       ; Display 'h'"
 Let's review the efficient techniques you've learned:
 
 **Zero Page Usage**:
-```assembly
+```text
 ; Efficient: Use Zero Page for variables
 STA $80         ; Fast, 2 bytes
 LDA $80         ; Fast, 2 bytes
@@ -351,7 +351,7 @@ LDA $0300       ; Slower, 3 bytes
 ```
 
 **Immediate vs Memory**:
-```assembly
+```text
 ; Efficient: Use immediate for constants
 LDA #$41        ; Fast, 2 bytes
 
@@ -362,7 +362,7 @@ LDA $80         ; Unnecessary extra step
 ```
 
 **Register Usage**:
-```assembly
+```text
 ; Efficient: Use registers for temporary values
 LDX #$05        ; Use X as counter
 INX             ; Fast register operation
@@ -388,20 +388,20 @@ When your assembly programs don't work as expected:
 Here are patterns you'll use repeatedly:
 
 **Loading and displaying a character**:
-```assembly
+```text
 LDA #$41        ; Load character
 STA $0400       ; Display on screen
 ```
 
 **Simple counter**:
-```assembly
+```text
 LDX #$00        ; Initialize counter
 INX             ; Count up
 STX $80         ; Store count
 ```
 
 **Bit manipulation**:
-```assembly
+```text
 LDA $80         ; Load value
 AND #$0F        ; Extract lower 4 bits
 ORA #$30        ; Convert to ASCII digit
@@ -443,4 +443,4 @@ This will be your first complete assembly program that you designed yourself!
 
 ## Fun Fact
 
-The techniques you've learned in these 8 lessons are the same ones used to create legendary C64 games, demos, and applications! Every sprite movement in a game, every color change in a demo, and every calculation in a business application ultimately comes down to these fundamental operations: loading data, manipulating it with arithmetic and logic, and storing the results. You now speak the native language of the Commodore 64!
+The techniques you've learned in these 8 lessons are the same ones used to create legendary C64 games, demos, and applications! Every sprite movement in a game, every colour change in a demo, and every calculation in a business application ultimately comes down to these fundamental operations: loading data, manipulating it with arithmetic and logic, and storing the results. You now speak the native language of the Commodore 64!

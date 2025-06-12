@@ -47,7 +47,7 @@ Create a complete music laboratory and rhythm game:
 
 **Rhythm Engine** teaches sophisticated NES programming concepts:
 
-- **Audio Programming**: Master the NES's advanced sound capabilities
+- **Audio Programming**: Learn the NES's advanced sound capabilities
 - **Real-Time Systems**: Create responsive, precisely-timed applications
 - **Data Compression**: Store complex musical data efficiently
 - **Multi-Channel Coordination**: Manage multiple simultaneous systems
@@ -145,7 +145,7 @@ Next: █░░██░░█ (in 0.5s)
 
 Building **Rhythm Engine** teaches:
 
-1. **Advanced Audio Programming** - Complete mastery of NES sound capabilities
+1. **Advanced Audio Programming** - Complete understanding of NES sound capabilities
 2. **Real-Time Systems** - Precise timing and synchronization programming
 3. **Multi-Channel Coordination** - Managing complex, simultaneous systems
 4. **Data Compression** - Efficient storage and playback of musical data

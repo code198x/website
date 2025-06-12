@@ -4,11 +4,11 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 17
-description: "Master the VIC-II graphics chip - the heart of C64 visual capabilities. Learn memory-mapped graphics control, screen modes, and the foundation of all C64 graphics programming."
+description: "Learn the VIC-II graphics chip - the heart of C64 visual capabilities. Learn memory-mapped graphics control, screen modes, and the foundation of all C64 graphics programming."
 learning_objectives:
   - "Understand VIC-II architecture and capabilities"
-  - "Master VIC-II register programming and memory mapping"
-  - "Learn screen memory organization and control"
+  - "Learn VIC-II register programming and memory mapping"
+  - "Learn screen memory organisation and control"
   - "Practice basic graphics operations and effects"
   - "Build foundation for advanced graphics programming"
 concepts:
@@ -69,9 +69,9 @@ The VIC-II registers occupy $D000-$D3FF in the C64 memory map:
 | **$D011** | Control Register 1 | Screen mode, scrolling |
 | **$D016** | Control Register 2 | Multicolor, horizontal scroll |
 | **$D018** | Memory Control | Screen/character memory pointers |
-| **$D020** | Border Color | Screen border color |
-| **$D021** | Background Color | Screen background color |
-| **$D800-$DFFF** | Color RAM | Character color memory |
+| **$D020** | Border Color | Screen border colour |
+| **$D021** | Background Color | Screen background colour |
+| **$D800-$DFFF** | Color RAM | Character colour memory |
 
 ## Essential VIC-II Registers
 
@@ -87,7 +87,7 @@ Bit 3: RSEL - Row Select (0=24 rows, 1=25 rows)
 Bits 2-0: YSCROLL - Vertical fine scrolling (0-7 pixels)
 ```
 
-```assembly
+```text
 ; Read current VIC-II control register
 LDA $D011       ; Load Control Register 1
 ; Modify specific bits...
@@ -171,7 +171,7 @@ The VIC-II reads two types of memory for text display:
 - **Format**: 8×8 pixel characters, 8 bytes per character
 - **Customizable**: Can use RAM for custom character sets
 
-```assembly
+```text
 ; Screen memory layout (40×25 characters)
 ; Row 0: $0400-$0427 (40 characters)
 ; Row 1: $0428-$044F (40 characters)
@@ -186,7 +186,7 @@ The VIC-II reads two types of memory for text display:
 <CodeRunner 
   system="commodore-64"
   title="Screen Memory Access Patterns"
-  code="; Understanding screen memory organization
+  code="; Understanding screen memory organisation
 ; Fill entire screen with stars
 
 LDX #$00        ; Screen position counter
@@ -208,18 +208,18 @@ FillLoop:
 ## Color RAM and Color Control
 
 ### Color RAM ($D800-$DFFF)
-- **Purpose**: Controls foreground color of each character
+- **Purpose**: Controls foreground colour of each character
 - **Organization**: Matches screen memory (40×25)
 - **Values**: 0-15 (16 colors available)
 - **Special**: Only uses lower 4 bits of each byte
 
 ### Background Colors
-- **$D021**: Background color (color 0)
-- **$D022**: Extra background color 1 (multicolor mode)
-- **$D023**: Extra background color 2 (multicolor mode)
-- **$D024**: Extra background color 3 (multicolor mode)
+- **$D021**: Background colour (colour 0)
+- **$D022**: Extra background colour 1 (multicolor mode)
+- **$D023**: Extra background colour 2 (multicolor mode)
+- **$D024**: Extra background colour 3 (multicolor mode)
 
-```assembly
+```text
 ; C64 Color Palette
 ; 0: Black    1: White     2: Red       3: Cyan
 ; 4: Purple   5: Green     6: Blue      7: Yellow
@@ -230,33 +230,33 @@ FillLoop:
 <CodeRunner 
   system="commodore-64"
   title="Color Control Programming"
-  code="; Demonstrate color control
-; Set background color to blue
-LDA #$06        ; Blue color
-STA $D021       ; Set background color
+  code="; Demonstrate colour control
+; Set background colour to blue
+LDA #$06        ; Blue colour
+STA $D021       ; Set background colour
 
-; Set border color to red
-LDA #$02        ; Red color
-STA $D020       ; Set border color
+; Set border colour to red
+LDA #$02        ; Red colour
+STA $D020       ; Set border colour
 
 ; Set first character to white text
 LDA #$48        ; 'H' character
 STA $0400       ; Put character on screen
-LDA #$01        ; White color
-STA $D800       ; Set character color
+LDA #$01        ; White colour
+STA $D800       ; Set character colour
 
 ; Set second character to yellow text
 LDA #$45        ; 'E'
 STA $0401       ; Second screen position
-LDA #$07        ; Yellow color
-STA $D801       ; Set character color"
+LDA #$07        ; Yellow colour
+STA $D801       ; Set character colour"
   language="assembly"
 />
 
 ## Basic Graphics Effects
 
 ### Screen Clearing
-```assembly
+```text
 ClearScreen:
     LDX #$00        ; Position counter
     LDA #$20        ; Space character
@@ -267,11 +267,11 @@ ClearLoop:
     STA $0600,X     
     STA $0700,X     ; Clear all 1000 positions
     
-    LDA #$01        ; White color
-    STA $D800,X     ; Set color RAM
+    LDA #$01        ; White colour
+    STA $D800,X     ; Set colour RAM
     STA $D900,X
     STA $DA00,X
-    STA $DB00,X     ; Set all color positions
+    STA $DB00,X     ; Set all colour positions
     
     INX
     BNE ClearLoop   ; Continue until done
@@ -279,15 +279,15 @@ ClearLoop:
 ```
 
 ### Color Cycling Effect
-```assembly
+```text
 ColorCycle:
     LDX #$00        ; Color counter
     
 CycleLoop:
-    TXA             ; Use counter as color
+    TXA             ; Use counter as colour
     AND #$0F        ; Keep in range 0-15
-    STA $D020       ; Set border color
-    STA $D021       ; Set background color
+    STA $D020       ; Set border colour
+    STA $D021       ; Set background colour
     
     ; Simple delay
     LDY #$FF
@@ -295,7 +295,7 @@ DelayLoop:
     DEY
     BNE DelayLoop
     
-    INX             ; Next color
+    INX             ; Next colour
     JMP CycleLoop   ; Continue forever
 ```
 
@@ -303,14 +303,14 @@ DelayLoop:
   system="commodore-64"
   title="Basic Graphics Effects"
   code="; Create simple visual effect
-; Animate border color through the palette
+; Animate border colour through the palette
 
 LDX #$00        ; Color index
 
 ColorLoop:
-    TXA             ; Get current color index
+    TXA             ; Get current colour index
     AND #$0F        ; Keep in range 0-15
-    STA $D020       ; Set border color
+    STA $D020       ; Set border colour
     
     ; Create simple delay
     LDY #$80        ; Delay counter
@@ -318,8 +318,8 @@ DelayLoop:
     DEY             ; Count down
     BNE DelayLoop   ; Continue delay
     
-    INX             ; Next color
-    JMP ColorLoop   ; Continue color cycling"
+    INX             ; Next colour
+    JMP ColorLoop   ; Continue colour cycling"
   language="assembly"
 />
 
@@ -334,7 +334,7 @@ The VIC-II operates on **raster timing** - it draws the screen line by line:
 - **Vertical blank**: Time between screen refreshes
 
 ### Reading Raster Position
-```assembly
+```text
 ; Read current raster line
 LDA $D012       ; Raster counter (low 8 bits)
 ; For lines 256+, check bit 7 of $D011
@@ -351,7 +351,7 @@ WaitRaster:
   system="commodore-64"
   title="Raster Timing and Synchronization"
   code="; Demonstrate raster timing
-; Change border color at different screen positions
+; Change border colour at different screen positions
 
 MainLoop:
     ; Wait for top of screen
@@ -359,21 +359,21 @@ MainLoop:
     CMP #$30        ; Top area (line 48)
     BNE CheckMiddle
     LDA #$02        ; Red
-    STA $D020       ; Set border color
+    STA $D020       ; Set border colour
     JMP MainLoop
     
 CheckMiddle:
     CMP #$80        ; Middle area (line 128)
     BNE CheckBottom
     LDA #$05        ; Green
-    STA $D020       ; Set border color
+    STA $D020       ; Set border colour
     JMP MainLoop
     
 CheckBottom:
     CMP #$F0        ; Bottom area (line 240)
     BNE MainLoop
     LDA #$06        ; Blue
-    STA $D020       ; Set border color
+    STA $D020       ; Set border colour
     JMP MainLoop"
   language="assembly"
 />
@@ -394,7 +394,7 @@ The VIC-II supports several display modes:
 ### Mode Selection
 Mode is controlled by bits in $D011 and $D016:
 - **BMM bit** (bit 5 of $D011): 0=text, 1=bitmap
-- **ECM bit** (bit 6 of $D011): Extended color mode
+- **ECM bit** (bit 6 of $D011): Extended colour mode
 - **MCM bit** (bit 4 of $D016): Multicolor mode
 
 ## Advanced VIC-II Features Preview
@@ -423,7 +423,7 @@ Create a program that demonstrates basic VIC-II control:
 
 1. Change border and background colors
 2. Display text with different character colors
-3. Create a simple color animation effect
+3. Create a simple colour animation effect
 4. Demonstrate raster timing synchronization
 
 <CodeRunner 
@@ -439,11 +439,11 @@ InitDisplay:
     
     ; Set border to dark blue
     LDA #$06        ; Blue
-    STA $D020       ; Border color
+    STA $D020       ; Border colour
     
     ; Set background to black  
     LDA #$00        ; Black
-    STA $D021       ; Background color
+    STA $D021       ; Background colour
     
     ; Display title text
     LDX #$00        ; Character position
@@ -453,9 +453,9 @@ DisplayTitle:
     BEQ StartAnimation ; If 0, text is done
     STA $0400,X     ; Put on screen
     
-    ; Set character color to white
+    ; Set character colour to white
     LDA #$01        ; White
-    STA $D800,X     ; Set color
+    STA $D800,X     ; Set colour
     
     INX             ; Next character
     JMP DisplayTitle
@@ -465,7 +465,7 @@ StartAnimation:
     LDX #$00        ; Color counter
     
 AnimationLoop:
-    ; Set border color based on counter
+    ; Set border colour based on counter
     TXA
     AND #$0F        ; Keep in range 0-15
     STA $D020       ; Set border
@@ -473,11 +473,11 @@ AnimationLoop:
     ; Set character colors in sequence
     LDY #$00        ; Position counter
 ColorSetLoop:
-    TXA             ; Get base color
+    TXA             ; Get base colour
     CLC
-    ADC #$01        ; Offset color
+    ADC #$01        ; Offset colour
     AND #$0F        ; Keep in range
-    STA $D800,Y     ; Set character color
+    STA $D800,Y     ; Set character colour
     
     INY             ; Next position
     CPY #$10        ; Color first 16 characters
@@ -486,7 +486,7 @@ ColorSetLoop:
     ; Simple timing delay
     JSR SimpleDelay
     
-    INX             ; Next color cycle
+    INX             ; Next colour cycle
     JMP AnimationLoop
 
 SimpleDelay:
@@ -505,7 +505,7 @@ TitleText:
 ## VIC-II Programming Best Practices
 
 ### 1. Always Check Raster Position
-```assembly
+```text
 ; Don't change graphics during visible area
 WaitVBlank:
     LDA $D012
@@ -514,7 +514,7 @@ WaitVBlank:
 ```
 
 ### 2. Use Display Enable for Updates
-```assembly
+```text
 ; Turn off display for major updates
 LDA $D011
 AND #%11101111  ; Clear DEN bit
@@ -528,7 +528,7 @@ STA $D011       ; Display on
 ```
 
 ### 3. Preserve Register State
-```assembly
+```text
 GraphicsRoutine:
     PHA             ; Save A
     LDA $D011       ; Read VIC register
@@ -544,7 +544,7 @@ In this lesson, you've mastered:
 
 - VIC-II architecture and memory-mapped programming
 - Essential VIC-II registers and their functions
-- Screen memory organization and color control
+- Screen memory organisation and colour control
 - Basic graphics effects and timing concepts
 - Raster synchronization and display timing
 - Foundation concepts for all C64 graphics programming

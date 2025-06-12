@@ -14,8 +14,8 @@ video:
   display_modes:
     - "Background layers with 8×8 pixel tiles"
     - "64 hardware sprites (8×8 or 8×16 pixels)"
-    - "4 color palettes for backgrounds"
-    - "4 color palettes for sprites"
+    - "4 colour palettes for backgrounds"
+    - "4 colour palettes for sprites"
 audio:
   chip: "Audio Processing Unit (APU) built into CPU"
   channels: 5

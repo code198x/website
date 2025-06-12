@@ -3,11 +3,11 @@ title: "Advanced Game Development Systems"
 system: "nintendo-entertainment-system"
 phase_number: 1
 tier_number: 14
-description: "Master advanced game development systems including scripting, content creation tools, and sophisticated gameplay mechanics. Build systems that enable rich, complex games."
+description: "Learn advanced game development systems including scripting, content creation tools, and sophisticated gameplay mechanics. Build systems that enable rich, complex games."
 learning_objectives:
   - "Implement advanced scripting and logic systems"
   - "Create sophisticated content creation tools"
-  - "Master complex gameplay mechanics and systems"
+  - "Learn complex gameplay mechanics and systems"
   - "Build tools for non-technical content creators"
   - "Integrate multiple complex systems seamlessly"
 concepts_introduced:
@@ -15,14 +15,14 @@ concepts_introduced:
   - "Advanced content creation and editing tools"
   - "Complex gameplay mechanics and rule systems"
   - "Asset pipeline and content management"
-  - "Tool integration and workflow optimization"
+  - "Tool integration and workflow optimisation"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 14
 ---
 
 # Tier 14: Advanced Game Development Systems
 
-Create sophisticated game development tools! Master the systems that enable rich, complex games and empower content creators to build without programming.
+Create sophisticated game development tools! Learn the systems that enable rich, complex games and empower content creators to build without programming.
 
 ## What You'll Add to Quest Builder
 

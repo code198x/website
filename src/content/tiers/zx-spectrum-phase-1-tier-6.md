@@ -3,15 +3,15 @@ title: "Screen Graphics and Animation"
 system: "zx-spectrum"
 phase_number: 1
 tier_number: 6
-description: "Master ZX Spectrum graphics programming and animation. Learn screen memory manipulation, color attributes, and character-based animation for smooth visual effects."
+description: "Learn ZX Spectrum graphics programming and animation. Learn screen memory manipulation, colour attributes, and character-based animation for smooth visual effects."
 learning_objectives:
   - "Understand ZX Spectrum screen memory layout"
-  - "Master PRINT AT for precise screen positioning"
-  - "Learn color attributes and INK/PAPER/BRIGHT"
+  - "Learn PRINT AT for precise screen positioning"
+  - "Learn colour attributes and INK/PAPER/BRIGHT"
   - "Create smooth character-based animation"
   - "Build foundation for game graphics"
 concepts_introduced:
-  - "Screen memory organization and addressing"
+  - "Screen memory organisation and addressing"
   - "Character positioning with PRINT AT"
   - "Color attribute system (INK, PAPER, BRIGHT)"
   - "Animation timing and smooth movement"
@@ -22,12 +22,12 @@ order: 6
 
 # Tier 6: Screen Graphics and Animation
 
-Bring your programs to life with graphics and animation! Master the ZX Spectrum's unique display system to create visual programs that move, change, and respond.
+Bring your programs to life with graphics and animation! Learn the ZX Spectrum's unique display system to create visual programs that move, change, and respond.
 
 ## What You'll Learn
 
 Create visually engaging programs:
-- ZX Spectrum screen memory and organization
+- ZX Spectrum screen memory and organisation
 - Precise character positioning and movement
 - Color system and visual effects
 - Smooth animation techniques
@@ -41,7 +41,7 @@ Create visually engaging programs:
 - Creating your first positioned graphics
 
 **Lessons 9-16: Color and Attributes**
-- The ZX Spectrum color system
+- The ZX Spectrum colour system
 - INK, PAPER, and BRIGHT commands
 - Working with 8×8 attribute blocks
 - Creating colorful visual effects
@@ -58,4 +58,4 @@ Create visually engaging programs:
 - Building the visual foundation for Rainbow Runner
 - Preparing for advanced animation challenges
 
-Master Spectrum graphics and you unlock the power to create visually stunning programs that captivate and engage users through beautiful, responsive visual experiences!
+Learn Spectrum graphics and you unlock the power to create visually stunning programs that captivate and engage users through beautiful, responsive visual experiences!

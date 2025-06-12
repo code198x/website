@@ -3,9 +3,9 @@ title: "Branching and Program Flow"
 system: "commodore-64"
 phase_number: 1
 tier_number: 3
-description: "Master conditional branching and program flow control in 6502 assembly. Learn branch instructions, status flags, and how to create intelligent decision-making programs."
+description: "Learn conditional branching and program flow control in 6502 assembly. Learn branch instructions, status flags, and how to create intelligent decision-making programs."
 learning_objectives:
-  - "Master 6502 branch instructions and conditional jumps"
+  - "Learn 6502 branch instructions and conditional jumps"
   - "Understand processor status flags and how they work"
   - "Implement complex decision-making logic in assembly"
   - "Create efficient branching routines"
@@ -48,7 +48,7 @@ Enhance **Number Quest** with intelligent assembly features:
 
 **Lessons 17-24: Complex Decision Logic**
 - Building decision trees with multiple branches
-- Efficient branching patterns and optimization
+- Efficient branching patterns and optimisation
 - Creating state machines in assembly
 - Managing program flow with jumps and branches
 

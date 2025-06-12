@@ -4,9 +4,9 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 22
-description: "Master advanced SID synthesis techniques including filters, pulse width modulation, ring modulation, and oscillator sync. Learn professional sound design and synthesis programming."
+description: "Learn advanced SID synthesis techniques including filters, pulse width modulation, ring modulation, and oscillator sync. Learn professional sound design and synthesis programming."
 learning_objectives:
-  - "Master SID's advanced synthesis features and modulation"
+  - "Learn SID's advanced synthesis features and modulation"
   - "Learn filter programming and frequency response control"
   - "Practice pulse width modulation and waveform shaping"
   - "Understand ring modulation and oscillator sync effects"
@@ -68,7 +68,7 @@ Bit 7: Voice 3 disconnect from output
 Bit 6: High-pass filter enable
 Bit 5: Band-pass filter enable  
 Bit 4: Low-pass filter enable
-Bits 3-0: Master volume (0-15)
+Bits 3-0: Learn volume (0-15)
 ```
 
 <CodeRunner 
@@ -149,7 +149,7 @@ JSR FilterDemo"
 ## Advanced Filter Programming
 
 ### Filter Mode Combinations
-```assembly
+```text
 ; Different filter modes create different timbres
 FilterModes:
     ; Setup basic sound
@@ -209,7 +209,7 @@ MWait:
 ```
 
 ### Resonance Effects
-```assembly
+```text
 ; Demonstrate filter resonance
 ResonanceDemo:
     ; Setup filtered sound
@@ -393,7 +393,7 @@ JSR AdvancedFilters"
 - **Applications**: Vibrato effects, string-like sounds, analog warmth
 
 ### Pulse Width Programming
-```assembly
+```text
 ; Static pulse width examples
 PulseWidthDemo:
     ; Setup pulse wave
@@ -440,7 +440,7 @@ PWait:
 ```
 
 ### Dynamic Pulse Width Modulation
-```assembly
+```text
 ; Animated pulse width for vibrato effect
 PWMVibrato:
     ; Setup pulse wave
@@ -594,7 +594,7 @@ JSR PulseWidthExplorer"
 - **Effect**: Creates sum and difference frequencies, metallic/bell-like sounds
 - **Applications**: Metallic percussion, alien sounds, complex timbres
 
-```assembly
+```text
 ; Ring modulation effects
 RingModDemo:
     ; Setup two voices for ring modulation
@@ -657,10 +657,10 @@ RWait:
 - **Effect**: Creates harmonically rich waveforms, lead synthesizer sounds
 - **Applications**: Lead lines, bass sounds, sync sweeps
 
-```assembly
+```text
 ; Oscillator sync demonstration
 SyncDemo:
-    ; Voice 3: Master oscillator (controls sync)
+    ; Voice 3: Learn oscillator (controls sync)
     LDA #$20        ; Low frequency for sync control
     STA $D40E
     LDA #$30
@@ -788,7 +788,7 @@ RingModulation:
     RTS
 
 OscillatorSync:
-    ; Voice 3: Master oscillator (slow)
+    ; Voice 3: Learn oscillator (slow)
     LDA #$20        ; Low frequency master
     STA $D40E
     LDA #$25
@@ -877,7 +877,7 @@ JSR ModulationDemo"
 ## Advanced Synthesis Techniques
 
 ### Voice Combination Effects
-```assembly
+```text
 ; Combine multiple synthesis techniques
 AdvancedSynthesis:
     ; Create complex patch using all techniques
@@ -970,7 +970,7 @@ CWait:
 ```
 
 ### Creating Instrument Sounds
-```assembly
+```text
 ; Synthesize realistic instrument timbres
 InstrumentDemo:
     ; Brass sound: Sawtooth + filter + envelope
@@ -1403,21 +1403,21 @@ JSR SynthesisShowcase"
 ## Synthesis Best Practices
 
 ### 1. Filter Programming
-```assembly
+```text
 ; Always set cutoff before enabling filter
 ; Use resonance carefully - too much can overload
 ; Plan filter routing for each voice
 ```
 
 ### 2. Modulation Effects
-```assembly
+```text
 ; Ring mod works best with harmonic relationships
 ; Sync requires proper frequency ratios
 ; PWM is most effective on pulse waves
 ```
 
 ### 3. Voice Management
-```assembly
+```text
 ; Plan which voice does what:
 ; Voice 1: Lead/melody (full feature access)
 ; Voice 2: Harmony/effects

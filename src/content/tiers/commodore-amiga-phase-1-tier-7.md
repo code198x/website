@@ -3,9 +3,9 @@ title: "Audio Programming and Paula Chip"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 7
-description: "Master Amiga audio programming through direct Paula chip control in 68000 assembly. Learn digital audio concepts and create sophisticated sound systems."
+description: "Learn Amiga audio programming through direct Paula chip control in 68000 assembly. Learn digital audio concepts and create sophisticated sound systems."
 learning_objectives:
-  - "Master Paula chip programming in 68000 assembly"
+  - "Learn Paula chip programming in 68000 assembly"
   - "Understand digital audio concepts and sampling"
   - "Learn 4-channel audio mixing and control"
   - "Create sophisticated sound effects and music"
@@ -13,7 +13,7 @@ learning_objectives:
 concepts_introduced:
   - "Paula chip architecture and audio channels"
   - "Digital audio programming and sampling"
-  - "68000 assembly audio optimization"
+  - "68000 assembly audio optimisation"
   - "Multi-channel audio mixing and control"
   - "Real-time audio processing techniques"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
@@ -22,7 +22,7 @@ order: 7
 
 # Tier 7: Audio Programming and Paula Chip
 
-Unlock the Amiga's revolutionary audio capabilities! Master Paula chip programming in 68000 assembly to create sophisticated digital audio systems and effects.
+Unlock the Amiga's revolutionary audio capabilities! Learn Paula chip programming in 68000 assembly to create sophisticated digital audio systems and effects.
 
 ## What You'll Begin with Audio Lab
 
@@ -42,7 +42,7 @@ Start building your audio system:
 
 **Lessons 9-16: Digital Audio Programming**
 - Digital sampling and audio data manipulation
-- Audio memory management and optimization
+- Audio memory management and optimisation
 - Creating efficient audio processing routines
 - Real-time audio generation and effects
 

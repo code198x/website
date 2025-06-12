@@ -18,7 +18,7 @@ concepts_introduced:
   - "Assembly development environment creation"
 game_project:
   name: "Workbench Wizard"
-  description: "A comprehensive system enhancement and application development suite that demonstrates mastery of AmigaOS programming, multitasking, and professional software development using 68000 assembly with advanced GUI programming"
+  description: "A comprehensive system enhancement and application development suite that demonstrates understanding of AmigaOS programming, multitasking, and professional software development using 68000 assembly with advanced GUI programming"
   tier_range: "Tiers 13-16"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 14
@@ -109,7 +109,7 @@ ASSEMBLY IMPLEMENTATION:
 
 **Workbench Wizard** explores advanced Amiga assembly capabilities:
 
-- **Professional GUI Programming** - Complete mastery of Intuition through assembly
+- **Professional GUI Programming** - Complete understanding of Intuition through assembly
 - **Advanced Architecture** - Sophisticated application design using assembly
 - **Development Tools** - Creating environments that enhance productivity through assembly
 - **System Integration** - Seamless AmigaOS service utilization using assembly
@@ -135,4 +135,4 @@ Advancing **Workbench Wizard** teaches:
 - **System Integration** - Comprehensive platform utilization through assembly
 - **Performance Engineering** - Optimized, responsive assembly applications
 
-**Workbench Wizard** continues your journey toward assembly programming mastery, teaching the advanced GUI and architecture concepts that enable professional application development!
+**Workbench Wizard** continues your journey toward assembly programming understanding, teaching the advanced GUI and architecture concepts that enable professional application development!

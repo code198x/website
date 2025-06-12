@@ -7,9 +7,9 @@ description: "Enter the world of Z80 assembly language programming on the ZX Spe
 learning_objectives:
   - "Understand Z80 processor architecture and registers"
   - "Learn basic assembly language syntax and structure"
-  - "Master fundamental addressing modes"
+  - "Learn fundamental addressing modes"
   - "Create simple programs using machine language"
-  - "Understand ZX Spectrum memory organization"
+  - "Understand ZX Spectrum memory organisation"
 concepts_introduced:
   - "Z80 processor architecture (A, B, C, D, E, H, L registers)"
   - "Assembly language syntax and mnemonics"
@@ -32,7 +32,7 @@ During this tier, you'll work toward creating your first assembly project: **Pix
 
 **Lessons 1-8: Z80 Architecture Fundamentals**
 - Understanding the Z80 processor and its registers (A, B, C, D, E, H, L)
-- ZX Spectrum memory map and how RAM, ROM, and I/O are organized
+- ZX Spectrum memory map and how RAM, ROM, and I/O are organised
 - Your first assembly program - displaying a character on screen
 - Basic load and store instructions (LD, ADD, SUB, CP)
 
@@ -81,7 +81,7 @@ What makes Z80 assembly programming powerful:
 The Spectrum's unique approach becomes a learning opportunity:
 
 - **Attribute system** - Understanding memory-mapped graphics
-- **Screen memory layout** - How pixels and colors are organized
+- **Screen memory layout** - How pixels and colors are organised
 - **Hardware constraints** - Working efficiently within limitations
 - **Direct manipulation** - Controlling graphics at the lowest level
 - **Optimization techniques** - Making the most of limited resources

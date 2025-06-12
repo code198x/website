@@ -47,7 +47,7 @@ Build a complete multimedia demonstration system:
 
 **Demo Creator** introduces sophisticated 68000 assembly multimedia concepts:
 
-- **Advanced Graphics**: Master copper programming and hardware effects through assembly
+- **Advanced Graphics**: Learn copper programming and hardware effects through assembly
 - **Synchronization Systems**: Coordinate complex audio-visual timing via assembly
 - **Creative Programming**: Express artistic vision through 68000 assembly code
 - **Performance Optimization**: Achieve smooth real-time effects using assembly

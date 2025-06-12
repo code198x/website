@@ -3,16 +3,16 @@ title: "Advanced Graphics and Display"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 6
-description: "Master advanced 68000 graphics programming and Amiga display systems. Learn to program the custom chips directly for sophisticated visual effects and animations."
+description: "Learn advanced 68000 graphics programming and Amiga display systems. Learn to program the custom chips directly for sophisticated visual effects and animations."
 learning_objectives:
-  - "Master advanced graphics programming in 68000 assembly"
+  - "Learn advanced graphics programming in 68000 assembly"
   - "Understand Amiga custom chip programming (Agnus, Denise)"
   - "Learn advanced display modes and visual effects"
   - "Create smooth animations using assembly language"
   - "Build foundation for multimedia programming"
 concepts_introduced:
   - "Advanced custom chip programming and control"
-  - "68000 graphics optimization techniques"
+  - "68000 graphics optimisation techniques"
   - "Animation programming and timing systems"
   - "Advanced display modes and visual effects"
   - "Direct hardware manipulation for graphics"
@@ -22,14 +22,14 @@ order: 6
 
 # Tier 6: Advanced Graphics and Display
 
-Push the Amiga's revolutionary graphics capabilities to their limits! Master advanced 68000 assembly programming to create stunning visual effects through direct custom chip control.
+Push the Amiga's revolutionary graphics capabilities to their limits! Learn advanced 68000 assembly programming to create stunning visual effects through direct custom chip control.
 
 ## What You'll Add to Graphics Studio
 
 Expand your graphics capabilities:
 - Implement advanced animation systems in assembly
 - Create sophisticated visual effects and transitions
-- Build efficient graphics routines optimized for 68000
+- Build efficient graphics routines optimised for 68000
 - Add professional-quality visual programming techniques
 
 ## Tier Overview
@@ -58,4 +58,4 @@ Expand your graphics capabilities:
 - Building professional animation tools
 - Preparing for audio programming in the next tier
 
-Advanced graphics programming in 68000 assembly teaches you sophisticated visual system design and hardware optimization - essential skills for professional graphics programming!
+Advanced graphics programming in 68000 assembly teaches you sophisticated visual system design and hardware optimisation - essential skills for professional graphics programming!

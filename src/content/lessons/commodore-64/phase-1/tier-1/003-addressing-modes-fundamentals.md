@@ -4,10 +4,10 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 3
-description: "Master the different ways the 6502 can access data - immediate, absolute, and zero page addressing modes. Learn when and why to use each mode."
+description: "Learn the different ways the 6502 can access data - immediate, absolute, and zero page addressing modes. Learn when and why to use each mode."
 learning_objectives:
   - "Understand what addressing modes are and why they matter"
-  - "Master immediate addressing mode (#$value)"
+  - "Learn immediate addressing mode (#$value)"
   - "Learn absolute addressing mode ($address)"
   - "Practice zero page addressing mode ($zp)"
   - "Compare the efficiency of different addressing modes"
@@ -46,7 +46,7 @@ The 6502 has several addressing modes, but we'll focus on the three most importa
 
 You've already been using this! When you write `LDA #$41`, you're telling the processor to load the literal value $41 (not what's stored at address $41).
 
-```assembly
+```text
 LDA #$48    ; Load the value $48 (letter 'H')
 LDA #$100   ; ERROR! Can't load values > $FF into 8-bit register
 LDA #65     ; You can use decimal, but hex is more common
@@ -71,10 +71,10 @@ LDY #$20    ; Load the value $20 (32) into Y"
 
 This is how you read from any memory location in the C64's 64KB address space.
 
-```assembly
+```text
 LDA $0400   ; Load whatever character is at screen position 0
 STA $0401   ; Store A register contents to screen position 1
-LDA $D020   ; Load from border color register
+LDA $D020   ; Load from border colour register
 ```
 
 <CodeRunner 
@@ -100,7 +100,7 @@ STA $0401   ; Store it at screen position 1 (copy the character)"
 
 Zero page addressing is special because it's faster and uses less memory than absolute addressing.
 
-```assembly
+```text
 LDA $80     ; Load from Zero Page location $80 (fast!)
 STA $81     ; Store to Zero Page location $81 (fast!)
 LDA $0080   ; Same as LDA $80, but slower absolute addressing
@@ -144,7 +144,7 @@ Here's how the same LDA instruction differs based on addressing mode:
 
 Let's copy the first character on screen to multiple positions using different addressing modes:
 
-```assembly
+```text
 ; Read first screen character (absolute addressing)
 LDA $0400   ; Load from screen position 0
 
@@ -196,19 +196,19 @@ $A000-$FFFF : ROM (read-only, use absolute addressing)
 ## Common Addressing Mode Mistakes
 
 **Mistake 1**: Using immediate when you want absolute
-```assembly
+```text
 LDA #$0400  ; ERROR: Loads value $00 (can't fit $0400 in 8 bits)
 LDA $0400   ; CORRECT: Loads from screen memory
 ```
 
 **Mistake 2**: Using absolute when zero page would work
-```assembly
+```text
 LDA $0080   ; Slower absolute addressing
 LDA $80     ; Faster zero page addressing (same location!)
 ```
 
 **Mistake 3**: Forgetting the # for immediate values
-```assembly
+```text
 LDA $41     ; Loads from memory location $41
 LDA #$41    ; Loads the value $41 ('A')
 ```

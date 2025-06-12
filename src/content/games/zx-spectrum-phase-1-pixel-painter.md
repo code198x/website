@@ -7,7 +7,7 @@ genre: "Creative/Art"
 description: "A creative drawing program that teaches Z80 assembly programming through art, embracing the ZX Spectrum's unique attribute-based graphics system."
 gameplay_mechanics:
   - "Draw pixel art using keyboard controls"
-  - "Work within the Spectrum's color attribute constraints"
+  - "Work within the Spectrum's colour attribute constraints"
   - "Save and load artwork to/from tape"
   - "Gallery mode to view creations"
   - "Collaborative drawing challenges"
@@ -38,7 +38,7 @@ order: 1
 
 Create pixel art masterpieces on the Spectrum's unique 8×8 attribute grid. What makes this special:
 
-- **Embrace the Clash**: Learn to work creatively within the Spectrum's color limitations
+- **Embrace the Clash**: Learn to work creatively within the Spectrum's colour limitations
 - **Gallery Mode**: Save and share your creations
 - **Challenge Mode**: Recreate famous 8-bit scenes within attribute constraints
 - **Collaborative Art**: Multiple players can work on the same canvas
@@ -58,7 +58,7 @@ Create pixel art masterpieces on the Spectrum's unique 8×8 attribute grid. What
 
 This game showcases what makes the ZX Spectrum unique:
 
-- **Attribute System**: Each 8×8 pixel block has one foreground and one background color
+- **Attribute System**: Each 8×8 pixel block has one foreground and one background colour
 - **Character Graphics**: Using CHR$ and PRINT AT for precise positioning
 - **Memory Efficiency**: Working within the Spectrum's tight memory constraints
 - **Tape Storage**: Save/load functionality using the cassette system

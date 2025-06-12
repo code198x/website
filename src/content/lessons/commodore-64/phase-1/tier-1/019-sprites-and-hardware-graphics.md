@@ -4,16 +4,16 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 19
-description: "Master the VIC-II's hardware sprite system - the key to smooth animation and arcade-quality graphics. Learn sprite programming, collision detection, and advanced graphics effects."
+description: "Learn the VIC-II's hardware sprite system - the key to smooth animation and arcade-quality graphics. Learn sprite programming, collision detection, and advanced graphics effects."
 learning_objectives:
   - "Understand hardware sprite architecture and capabilities"
-  - "Master sprite positioning, scaling, and animation"
+  - "Learn sprite positioning, scaling, and animation"
   - "Learn collision detection and sprite interactions"
   - "Practice advanced sprite effects and techniques"
   - "Build smooth, professional graphics applications"
 concepts:
   - "Hardware sprite system (8 sprites)"
-  - "Sprite data format and memory organization"
+  - "Sprite data format and memory organisation"
   - "Sprite positioning and movement"
   - "Collision detection (sprite-sprite, sprite-background)"
   - "Advanced sprite effects (scaling, priorities, multicolor)"
@@ -66,7 +66,7 @@ Each sprite requires **63 bytes** of data (24×21 pixels ÷ 8 bits per byte):
 
 ### Sprite Data Format
 - **24 pixels wide × 21 pixels tall** = 504 pixels
-- **1 bit per pixel** (0=transparent, 1=sprite color)
+- **1 bit per pixel** (0=transparent, 1=sprite colour)
 - **63 bytes total** per sprite (504 ÷ 8 = 63)
 - **Data stored sequentially** - row by row, left to right
 
@@ -76,7 +76,7 @@ Sprites can be located anywhere in memory, but are referenced through **sprite p
 - **Default location**: $07F8-$07FF (screen at $0400)
 - **Pointer value**: Sprite data address ÷ 64
 
-```assembly
+```text
 ; Sprite pointer calculation
 ; If sprite data is at $2000:
 ; Pointer value = $2000 ÷ 64 = $80
@@ -103,9 +103,9 @@ LDA $D015       ; Sprite enable register
 ORA #%00000001  ; Enable sprite 0 (bit 0)
 STA $D015       ; Write back to enable register
 
-; Set sprite 0 color
-LDA #$01        ; White color
-STA $D027       ; Sprite 0 color register"
+; Set sprite 0 colour
+LDA #$01        ; White colour
+STA $D027       ; Sprite 0 colour register"
   language="assembly"
 />
 
@@ -171,7 +171,7 @@ STA $D001       ; Sprite 0 Y position
 Sprite graphics are defined as **24×21 pixel bitmaps**:
 
 ### Designing Sprite Graphics
-```assembly
+```text
 ; Example: Simple arrow sprite pointing right
 ; 24 pixels wide, 21 pixels tall
 
@@ -248,16 +248,16 @@ STA $D000       ; Sprite 0 X
 LDA #100        ; Y position  
 STA $D001       ; Sprite 0 Y
 
-; Set sprite color
+; Set sprite colour
 LDA #$07        ; Yellow
-STA $D027       ; Sprite 0 color"
+STA $D027       ; Sprite 0 colour"
   language="assembly"
 />
 
 ## Sprite Animation
 
 ### Simple Movement
-```assembly
+```text
 ; Animate sprite movement across screen
 AnimateSprite:
     ; Read current X position
@@ -277,7 +277,7 @@ NoWrap:
 ```
 
 ### Sprite Bouncing
-```assembly
+```text
 ; Bouncing sprite with direction tracking
 BounceSprite:
     ; Check direction flag
@@ -338,7 +338,7 @@ InitSprite:
     LDA #100        ; Starting Y
     STA $D001
     
-    ; Set color
+    ; Set colour
     LDA #$02        ; Red
     STA $D027
     
@@ -398,7 +398,7 @@ The VIC-II provides **hardware collision detection**:
 - **$D01F**: Sprite-to-background collision
 
 ### Reading Collision Status
-```assembly
+```text
 CheckCollisions:
     ; Check sprite-to-sprite collisions
     LDA $D01E       ; Sprite-sprite collision register
@@ -431,15 +431,15 @@ HandleBackgroundHit:
 
 Sprites01Collision:
     ; Handle sprite collision
-    LDA #$05        ; Change color to green
-    STA $D027       ; Sprite 0 color
-    STA $D028       ; Sprite 1 color
+    LDA #$05        ; Change colour to green
+    STA $D027       ; Sprite 0 colour
+    STA $D028       ; Sprite 1 colour
     RTS
 ```
 
 ### Clearing Collision Flags
 **Important**: Collision registers are cleared by **reading** them:
-```assembly
+```text
 ; Clear collision flags
 LDA $D01E       ; Reading clears sprite-sprite collisions
 LDA $D01F       ; Reading clears sprite-background collisions
@@ -497,9 +497,9 @@ CollisionDemo:
     BNE NoCollision
     
     ; Collision detected!
-    LDA #$05        ; Green color (collision indicator)
-    STA $D027       ; Change sprite 0 color
-    STA $D028       ; Change sprite 1 color
+    LDA #$05        ; Green colour (collision indicator)
+    STA $D027       ; Change sprite 0 colour
+    STA $D028       ; Change sprite 1 colour
     
     ; Clear collision flag (reading clears it)
     LDA $D01E       ; Clear by reading
@@ -538,7 +538,7 @@ JSR CollisionDemo"
 ### Sprite Scaling ($D017, $D01D)
 Double sprite size in X and/or Y direction:
 
-```assembly
+```text
 ; Enable X scaling for sprite 0
 LDA $D017       ; Sprite X expand register
 ORA #%00000001  ; Set bit 0 (sprite 0)
@@ -553,7 +553,7 @@ STA $D01D       ; Sprite 0 now 42 pixels tall
 ### Sprite Priority ($D01B)
 Control whether sprites appear in front of or behind background:
 
-```assembly
+```text
 ; Make sprite 0 appear behind background characters
 LDA $D01B       ; Sprite priority register
 ORA #%00000001  ; Set bit 0 (sprite 0 behind background)
@@ -566,9 +566,9 @@ STA $D01B
 ```
 
 ### Multicolor Sprites ($D01C)
-Enable 4-color sprites with lower horizontal resolution:
+Enable 4-colour sprites with lower horizontal resolution:
 
-```assembly
+```text
 ; Enable multicolor mode for sprite 0
 LDA $D01C       ; Multicolor sprite register
 ORA #%00000001  ; Set bit 0 (sprite 0 multicolor)
@@ -576,17 +576,17 @@ STA $D01C
 
 ; Set multicolor sprite colors
 LDA #$01        ; White
-STA $D025       ; Multicolor register 0 (color 01)
+STA $D025       ; Multicolor register 0 (colour 01)
 LDA #$02        ; Red  
-STA $D026       ; Multicolor register 1 (color 10)
-; Color 11 comes from sprite color register ($D027+)
+STA $D026       ; Multicolor register 1 (colour 10)
+; Color 11 comes from sprite colour register ($D027+)
 ; Color 00 is always transparent
 ```
 
 ## Sprite Programming Patterns
 
 ### Sprite Object System
-```assembly
+```text
 ; Sprite object structure (8 bytes per sprite)
 ; Offset 0: X position low
 ; Offset 1: Y position  
@@ -637,7 +637,7 @@ NextSprite:
 ```
 
 ### Sprite Animation System
-```assembly
+```text
 ; Frame-based sprite animation
 AnimateSprites:
     LDX #$00            ; Sprite counter
@@ -812,7 +812,7 @@ CheckGameCollisions:
     
     ; Collision detected - change colors
     LDA #$0A        ; Light red
-    STA $D027       ; Player color (collision indicator)
+    STA $D027       ; Player colour (collision indicator)
     
     ; Clear collision register
     LDA $D01E       ; Clear by reading
@@ -829,7 +829,7 @@ JSR GameLoop"
 ## Sprite Programming Best Practices
 
 ### 1. Sprite Data Organization
-```assembly
+```text
 ; Organize sprite data in 64-byte blocks
 SpriteData:
     ; Sprite 0 at $2000 (pointer $80)
@@ -839,7 +839,7 @@ SpriteData:
 ```
 
 ### 2. Collision Handling
-```assembly
+```text
 ; Always clear collision registers after reading
 HandleCollisions:
     LDA $D01E       ; Read sprite-sprite
@@ -849,7 +849,7 @@ HandleCollisions:
 ```
 
 ### 3. Sprite Movement Optimization
-```assembly
+```text
 ; Use lookup tables for smooth movement
 SineTable:
     .byte 128, 131, 134, 137, 140, 143, 146, 149
@@ -861,15 +861,15 @@ SineTable:
 In this lesson, you've mastered:
 
 - Hardware sprite architecture and 8-sprite system
-- Sprite data format and memory organization  
+- Sprite data format and memory organisation  
 - Sprite positioning, movement, and animation techniques
 - Hardware collision detection (sprite-sprite and sprite-background)
 - Advanced sprite features (scaling, priority, multicolor)
-- Professional sprite programming patterns and optimization
+- Professional sprite programming patterns and optimisation
 
 ## Looking Ahead
 
-In the next lesson, you'll learn about **color and bitmap graphics** - pixel-level graphics control that combines with sprites to create sophisticated visual effects and detailed graphics.
+In the next lesson, you'll learn about **colour and bitmap graphics** - pixel-level graphics control that combines with sprites to create sophisticated visual effects and detailed graphics.
 
 ## Fun Fact
 

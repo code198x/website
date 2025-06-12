@@ -4,17 +4,17 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 26
-description: "Master professional program organization and code structure. Learn modular programming, code documentation, and maintainable architecture patterns for large assembly projects."
+description: "Learn professional program organisation and code structure. Learn modular programming, code documentation, and maintainable architecture patterns for large assembly projects."
 learning_objectives:
-  - "Understand modular programming and code organization principles"
-  - "Master subroutine libraries and reusable code modules"
+  - "Understand modular programming and code organisation principles"
+  - "Learn subroutine libraries and reusable code modules"
   - "Learn professional documentation and commenting standards"
-  - "Practice memory organization and data structure design"
+  - "Practice memory organisation and data structure design"
   - "Build maintainable and scalable program architectures"
 concepts:
-  - "Modular programming and code organization"
+  - "Modular programming and code organisation"
   - "Subroutine libraries and reusable modules"
-  - "Memory layout planning and data organization"
+  - "Memory layout planning and data organisation"
   - "Professional documentation standards"
   - "Scalable program architecture patterns"
 estimated_duration: "30-45 minutes"
@@ -26,7 +26,7 @@ order: 26
 
 # Lesson 26: Program Organization and Structure
 
-Welcome to professional program organization! Today you'll learn to structure your assembly code like a professional developer, creating maintainable, scalable, and well-documented programs that can grow in complexity while remaining manageable.
+Welcome to professional program organisation! Today you'll learn to structure your assembly code like a professional developer, creating maintainable, scalable, and well-documented programs that can grow in complexity while remaining manageable.
 
 ## Code Organization Principles
 
@@ -40,8 +40,8 @@ Welcome to professional program organization! Today you'll learn to structure yo
 - **Maintainability**: Easy to understand, modify, and debug
 - **Scalability**: Structure that supports program growth
 
-```assembly
-; Example: Well-organized program structure
+```text
+; Example: Well-organised program structure
 ; ========================================
 ; MAIN PROGRAM
 ; ========================================
@@ -90,7 +90,7 @@ InitSprites:
 
 ### Professional Memory Organization
 
-```assembly
+```text
 ; ========================================
 ; MEMORY LAYOUT DOCUMENTATION
 ; ========================================
@@ -118,7 +118,7 @@ DATA_START      = $2000  ; Data tables
 BUFFER_START    = $3000  ; Work buffers
 GRAPHICS_START  = $4000  ; Graphics data
 
-; Data organization
+; Data organisation
 PlayerData      = DATA_START + $0000     ; Player statistics
 LevelData       = DATA_START + $0100     ; Level information
 SoundData       = DATA_START + $0200     ; Audio data
@@ -127,7 +127,7 @@ GraphicsData    = GRAPHICS_START         ; Sprite and bitmap data
 
 ### Memory Management Module
 
-```assembly
+```text
 ; ========================================
 ; MEMORY MANAGEMENT MODULE
 ; ========================================
@@ -196,7 +196,7 @@ GetBlockAddress:
 <CodeRunner 
   system="commodore-64"
   title="Modular Program Structure Demo"
-  code="; Professional program organization demonstration
+  code="; Professional program organisation demonstration
 ; Shows modular structure and clean interfaces
 
 ; ========================================
@@ -237,7 +237,7 @@ InitDisplaySystem:
     JSR $FFD2       ; CHROUT
     
     LDA #$0E        ; Light blue text
-    STA $286        ; Current color
+    STA $286        ; Current colour
     RTS
 
 InitAudioSystem:
@@ -557,7 +557,7 @@ JSR MainProgram"
 
 ### Math Library Module
 
-```assembly
+```text
 ; ========================================
 ; MATHEMATICS LIBRARY MODULE
 ; ========================================
@@ -633,7 +633,7 @@ RandomSeed: .byte $A5   ; Random number seed
 
 ### String Handling Library
 
-```assembly
+```text
 ; ========================================
 ; STRING LIBRARY MODULE
 ; ========================================
@@ -716,7 +716,7 @@ ConcatDone:
 
 ### Input/Output Library
 
-```assembly
+```text
 ; ========================================
 ; INPUT/OUTPUT LIBRARY MODULE
 ; ========================================
@@ -950,7 +950,7 @@ DisplayDone:
 DemoIOLibrary:
     ; Demonstrate I/O functions
     
-    ; Set text color
+    ; Set text colour
     LDA #$0E        ; Light blue
     JSR SetTextColor
     
@@ -973,9 +973,9 @@ DemoIOLibrary:
     RTS
 
 SetTextColor:
-    ; Set text color
+    ; Set text colour
     ; Input: Color in A
-    STA $286        ; Current color
+    STA $286        ; Current colour
     RTS
 
 PositionCursor:
@@ -1030,7 +1030,7 @@ JSR LibraryDemo"
 
 ### Professional Code Documentation
 
-```assembly
+```text
 ; ========================================
 ; HEADER DOCUMENTATION TEMPLATE
 ; ========================================
@@ -1146,7 +1146,7 @@ PlayerScore:    .word $0000 ; Player score (16-bit)
 
 ### Inline Documentation Standards
 
-```assembly
+```text
 ; ========================================
 ; INLINE DOCUMENTATION EXAMPLES
 ; ========================================
@@ -1205,7 +1205,7 @@ StateUpdateDone:
 
 ### Structured Data Organization
 
-```assembly
+```text
 ; ========================================
 ; STRUCTURED DATA DEFINITIONS
 ; ========================================
@@ -1271,7 +1271,7 @@ EnemyIndex: .byte 0
 
 ### Complex Data Management
 
-```assembly
+```text
 ; ========================================
 ; COMPLEX DATA MANAGEMENT SYSTEM
 ; ========================================
@@ -1407,12 +1407,12 @@ ActiveProjectiles:  .byte 0
   system="commodore-64"
   title="Complete Program Structure Demo"
   code="; Complete program structure demonstration
-; Shows professional organization and documentation
+; Shows professional organisation and documentation
 
 ; ========================================
 ; PROGRAM: STRUCTURED DEMO
 ; VERSION: 1.0
-; DESCRIPTION: Demonstrates professional program organization
+; DESCRIPTION: Demonstrates professional program organisation
 ; ========================================
 
 ; ========================================
@@ -1437,9 +1437,9 @@ InitializeProgram:
     LDA #$93                ; Clear screen
     JSR $FFD2               ; CHROUT
     
-    ; Set text color
+    ; Set text colour
     LDA #$0E                ; Light blue
-    STA $286                ; Current color
+    STA $286                ; Current colour
     
     ; Initialize program data
     JSR InitializeData
@@ -1707,7 +1707,7 @@ JSR StructuredDemo"
 
 ### State Machine Architecture
 
-```assembly
+```text
 ; ========================================
 ; STATE MACHINE ARCHITECTURE
 ; ========================================
@@ -1799,7 +1799,7 @@ StateShutdown:
 
 ### Component System Architecture
 
-```assembly
+```text
 ; ========================================
 ; COMPONENT SYSTEM ARCHITECTURE
 ; ========================================
@@ -1871,7 +1871,7 @@ UpdateAISystem:
 ## Program Organization Best Practices
 
 ### 1. Use Consistent Naming Conventions
-```assembly
+```text
 ; Good naming patterns:
 InitializeGraphics:     ; Verb + Object
 PlayerMovementSpeed:    ; Object + Property
@@ -1880,7 +1880,7 @@ player_x_position:     ; Alternative snake_case
 ```
 
 ### 2. Group Related Functions
-```assembly
+```text
 ; Graphics module functions together
 ClearScreen:
 SetupColors:
@@ -1895,7 +1895,7 @@ UpdateMusic:
 ```
 
 ### 3. Separate Code from Data
-```assembly
+```text
 ; Code section
 ; (All subroutines here)
 
@@ -1915,12 +1915,12 @@ In this lesson, you've mastered:
 - **Documentation Standards**: Professional commenting and documentation practices
 - **Code Architecture**: Scalable patterns for large program development
 - **Library Development**: Creating reusable function libraries
-- **Professional Practices**: Industry-standard organization and structure techniques
+- **Professional Practices**: Industry-standard organisation and structure techniques
 
 ## Looking Ahead
 
-In the next lesson, you'll learn **basic optimization and efficiency** - techniques to make your well-organized code run faster and use memory more efficiently.
+In the next lesson, you'll learn **basic optimisation and efficiency** - techniques to make your well-organised code run faster and use memory more efficiently.
 
 ## Fun Fact
 
-The program organization techniques you've learned are the foundation of all professional software development! The modular programming, documentation standards, and architectural patterns you've implemented are used in everything from operating systems to mobile apps to massive enterprise software. The component systems, state machines, and library patterns you've mastered are the same concepts used in modern game engines, web frameworks, and distributed systems. You've learned the timeless principles of software architecture that scale from small assembly programs to million-line codebases!
+The program organisation techniques you've learned are the foundation of all professional software development! The modular programming, documentation standards, and architectural patterns you've implemented are used in everything from operating systems to mobile apps to massive enterprise software. The component systems, state machines, and library patterns you've mastered are the same concepts used in modern game engines, web frameworks, and distributed systems. You've learned the timeless principles of software architecture that scale from small assembly programs to million-line codebases!

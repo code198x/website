@@ -3,11 +3,11 @@ title: "Advanced Graphics and Physics"
 system: "commodore-64"
 phase_number: 1
 tier_number: 14
-description: "Create sophisticated visual effects and realistic physics simulation. Master advanced graphics programming while enhancing Retro Racer with professional-quality features."
+description: "Create sophisticated visual effects and realistic physics simulation. Learn advanced graphics programming while enhancing Retro Racer with professional-quality features."
 learning_objectives:
   - "Implement pseudo-3D perspective effects"
   - "Create realistic physics simulation in BASIC"
-  - "Master advanced animation techniques"
+  - "Learn advanced animation techniques"
   - "Design sophisticated visual effects"
   - "Optimize complex graphics calculations"
 concepts_introduced:

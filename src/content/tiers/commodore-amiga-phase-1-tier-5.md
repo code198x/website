@@ -3,15 +3,15 @@ title: "Loops and Advanced Control"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 5
-description: "Master 68000 assembly loops and advanced control structures while beginning sophisticated audio programming with direct Paula chip programming and the Amiga's revolutionary sound system."
+description: "Learn 68000 assembly loops and advanced control structures while beginning sophisticated audio programming with direct Paula chip programming and the Amiga's revolutionary sound system."
 learning_objectives:
-  - "Master assembly loop structures and iteration"
+  - "Learn assembly loop structures and iteration"
   - "Understand advanced assembly iteration techniques"
   - "Learn basic Amiga audio programming with direct Paula chip access"
   - "Create efficient assembly repetitive operations"
   - "Build foundation for assembly multimedia programming"
 concepts_introduced:
-  - "Advanced assembly loop structures and optimization"
+  - "Advanced assembly loop structures and optimisation"
   - "Direct Paula chip assembly audio programming"
   - "Efficient assembly algorithm design"
   - "Assembly audio data structures and management"
@@ -22,7 +22,7 @@ order: 5
 
 # Tier 5: Loops and Advanced Control
 
-Harness the power of repetition and automation! Master 68000 assembly loops while beginning to explore the Amiga's revolutionary 4-channel stereo audio system through direct Paula chip programming.
+Harness the power of repetition and automation! Learn 68000 assembly loops while beginning to explore the Amiga's revolutionary 4-channel stereo audio system through direct Paula chip programming.
 
 ## What You'll Begin with Audio Lab
 
@@ -38,7 +38,7 @@ Start building your audio system:
 - Assembly loop patterns with advanced stepping
 - Conditional loops for flexible iteration using assembly
 - Nested loops and complex patterns in assembly
-- Assembly loop optimization for maximum performance
+- Assembly loop optimisation for maximum performance
 
 **Lessons 9-16: Assembly Audio Programming Introduction**
 - Direct Paula audio chip programming using assembly

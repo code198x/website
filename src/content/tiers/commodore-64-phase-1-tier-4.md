@@ -3,17 +3,17 @@ title: "Loops and Project Completion"
 system: "commodore-64"
 phase_number: 1
 tier_number: 4
-description: "Master loops and repetition in 6502 assembly while completing your first assembly game project. Learn efficient looping techniques and bring Number Quest to professional completion."
+description: "Learn loops and repetition in 6502 assembly while completing your first assembly game project. Learn efficient looping techniques and bring Number Quest to professional completion."
 learning_objectives:
-  - "Master counting loops and iteration in assembly"
-  - "Understand loop optimization and efficiency"
+  - "Learn counting loops and iteration in assembly"
+  - "Understand loop optimisation and efficiency"
   - "Implement game loops and main program flow"
   - "Complete and polish Number Quest in assembly"
-  - "Learn assembly program organization and documentation"
+  - "Learn assembly program organisation and documentation"
 concepts_introduced:
   - "Assembly loop patterns and techniques"
   - "Counter management and iteration"
-  - "Loop optimization for 6502 processor"
+  - "Loop optimisation for 6502 processor"
   - "Game loops and program structure"
   - "Assembly code documentation and comments"
 game_project:
@@ -33,7 +33,7 @@ Bring together everything you've learned to complete **Number Quest** - your fir
 Finish **Number Quest** with professional assembly features:
 - Multiple difficulty levels implemented through efficient assembly loops
 - High score tracking using memory-based data structures
-- Statistics display with assembly-optimized calculations
+- Statistics display with assembly-optimised calculations
 - Polished user interface with direct hardware control
 - Data persistence using assembly memory management
 
@@ -43,7 +43,7 @@ Finish **Number Quest** with professional assembly features:
 - Basic counting loops using registers and memory
 - Efficient loop patterns for 6502 processor
 - Nested loops and complex iteration patterns
-- Loop counter management and optimization
+- Loop counter management and optimisation
 
 **Lessons 9-16: Advanced Loop Techniques**  
 - Creating infinite loops with proper exit conditions
@@ -71,7 +71,7 @@ Complete your understanding of assembly fundamentals:
 - **Program Architecture** - Organizing assembly code for clarity and efficiency
 - **Documentation** - Making assembly code understandable through comments and labels
 - **Testing** - Ensuring assembly programs work correctly in all situations
-- **Optimization** - Creating efficient, hardware-optimized code
+- **Optimization** - Creating efficient, hardware-optimised code
 
 ## Your First Complete Assembly Program
 
@@ -90,7 +90,7 @@ By completing this tier, you'll have demonstrated:
 - **Assembly project completion** - Finishing a complex low-level project
 - **Hardware integration** - Making multiple assembly systems work together
 - **Low-level quality assurance** - Testing assembly code thoroughly
-- **Performance optimization** - Creating efficient assembly code
+- **Performance optimisation** - Creating efficient assembly code
 - **Assembly documentation** - Explaining how machine language works
 
 ## Sample Number Quest Features

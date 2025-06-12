@@ -1,5 +1,5 @@
 ---
-title: "Sprite Master"
+title: "Sprite Learn"
 system: "nintendo-entertainment-system"
 phase_number: 1
 tier_range: "1-4"
@@ -9,7 +9,7 @@ gameplay_mechanics:
   - "Control multiple sprites with smooth 8-directional movement"
   - "Learn sprite animation and frame sequences"
   - "Practice collision detection with interactive objects"
-  - "Master the NES controller input system"
+  - "Learn the NES controller input system"
   - "Create simple sprite-based mini-games"
 technical_features:
   - "Hardware sprite programming and OAM manipulation"
@@ -29,9 +29,9 @@ playable_online: true
 order: 1
 ---
 
-# Sprite Master
+# Sprite Learn
 
-**Sprite Master** introduces the fundamental concepts of NES programming through hands-on sprite manipulation and animation, teaching the core skills needed for all NES game development.
+**Sprite Learn** introduces the fundamental concepts of NES programming through hands-on sprite manipulation and animation, teaching the core skills needed for all NES game development.
 
 ## The Game Concept
 
@@ -39,16 +39,16 @@ Create an interactive sprite learning laboratory:
 
 - **Sprite Control Sandbox**: Direct manipulation of NES sprites
 - **Animation Workshop**: Learn sprite animation and timing
-- **Movement Mechanics**: Master smooth, responsive character movement
+- **Movement Mechanics**: Learn smooth, responsive character movement
 - **Collision Learning**: Understand object interaction fundamentals
 - **Mini-Game Creation**: Build simple sprite-based challenges
 
 ## Why This Game for Tiers 1-4?
 
-**Sprite Master** establishes essential NES programming foundations:
+**Sprite Learn** establishes essential NES programming foundations:
 
 - **Hardware Understanding**: Learn how NES sprites actually work
-- **Animation Principles**: Master frame-by-frame animation techniques
+- **Animation Principles**: Learn frame-by-frame animation techniques
 - **Input Systems**: Create responsive, intuitive controls
 - **Game Fundamentals**: Understand basic game object management
 - **Visual Programming**: See immediate results from code changes
@@ -93,13 +93,13 @@ Leverages the NES's unique sprite capabilities:
 
 ## Technical Achievements
 
-**Sprite Master** introduces core NES concepts:
+**Sprite Learn** introduces core NES concepts:
 
 - **PPU Programming**: Understanding the Picture Processing Unit
 - **OAM Manipulation**: Direct sprite memory programming
 - **Timing Systems**: Working with NES frame timing
 - **Input Handling**: Creating responsive control systems
-- **Memory Management**: Efficient sprite data organization
+- **Memory Management**: Efficient sprite data organisation
 
 ## Sample Gameplay Session
 
@@ -143,7 +143,7 @@ movement and proper animation!
 
 ## Learning Outcomes
 
-Building **Sprite Master** teaches:
+Building **Sprite Learn** teaches:
 
 1. **NES Hardware Mastery** - Understanding sprite capabilities and limitations
 2. **Animation Programming** - Creating smooth, professional character movement
@@ -153,7 +153,7 @@ Building **Sprite Master** teaches:
 
 ## Foundation for Advanced Programming
 
-**Sprite Master** perfectly prepares students for more complex NES development:
+**Sprite Learn** perfectly prepares students for more complex NES development:
 
 - **Sprite Confidence** - Complete understanding of NES graphics capabilities
 - **Animation Skills** - Professional-quality character movement systems
@@ -161,4 +161,4 @@ Building **Sprite Master** teaches:
 - **Performance Awareness** - Understanding NES timing and limitations
 - **System Integration** - How sprites work with backgrounds and audio
 
-**Sprite Master** provides the essential foundation that makes all subsequent NES programming both achievable and enjoyable, establishing the core skills that every NES developer must master!
+**Sprite Learn** provides the essential foundation that makes all subsequent NES programming both achievable and enjoyable, establishing the core skills that every NES developer must master!

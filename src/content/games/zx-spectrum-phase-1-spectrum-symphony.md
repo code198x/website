@@ -4,7 +4,7 @@ system: "zx-spectrum"
 phase_number: 1
 tier_range: "13-16"
 genre: "Music/Creative"
-description: "A complete music creation and performance system that showcases mastery of Z80 assembly programming through advanced beeper techniques, real-time performance, and professional software design."
+description: "A complete music creation and performance system that showcases understanding of Z80 assembly programming through advanced beeper techniques, real-time performance, and professional software design."
 gameplay_mechanics:
   - "Compose multi-channel music using advanced beeper techniques"
   - "Real-time performance mode with keyboard as instrument"
@@ -46,7 +46,7 @@ Create a professional music production system for the Spectrum:
 
 ## Why This Game for Tiers 13-16?
 
-**Spectrum Symphony** demonstrates complete Z80 assembly mastery:
+**Spectrum Symphony** demonstrates complete Z80 assembly understanding:
 
 - **Real-Time Programming**: Precise timing for musical accuracy using assembly
 - **Advanced Optimization**: Achieving maximum performance through Z80 assembly
@@ -87,7 +87,7 @@ Push the beeper beyond its intended limits:
 - User interface refinement
 
 **Tier 16**: Mastery and completion
-- Professional-quality optimization
+- Professional-quality optimisation
 - Complete documentation and help systems
 - Final integration and polish
 - Preparation for assembly language transition
@@ -96,10 +96,10 @@ Push the beeper beyond its intended limits:
 
 **Spectrum Symphony** pushes Z80 assembly to its absolute limits:
 
-- **Microsecond Timing**: Precise audio synthesis using optimized assembly code
+- **Microsecond Timing**: Precise audio synthesis using optimised assembly code
 - **Memory Optimization**: Maximum functionality within 48K using efficient assembly
 - **Real-Time Response**: Professional-quality interactive performance via assembly
-- **Complex Architecture**: Thousands of lines of organized, maintainable assembly code
+- **Complex Architecture**: Thousands of lines of organised, maintainable assembly code
 - **User Experience**: Commercial-quality interface and workflow through assembly
 
 ## Sample Composition Session
@@ -136,7 +136,7 @@ Press SPACE to stop, ENTER for metronome
 
 ## Learning Outcomes
 
-Completing **Spectrum Symphony** proves mastery of:
+Completing **Spectrum Symphony** proves understanding of:
 
 1. **Professional Development** - Creating software worthy of commercial release
 2. **Real-Time Programming** - Precise timing and responsive performance
@@ -156,7 +156,7 @@ Completing **Spectrum Symphony** proves mastery of:
 
 ## Mastery of Z80 Assembly
 
-Completing **Spectrum Symphony** demonstrates your complete mastery of Z80 assembly programming:
+Completing **Spectrum Symphony** demonstrates your complete understanding of Z80 assembly programming:
 
 - **Timing Mastery** - Understanding precise performance requirements in assembly
 - **Optimization Expertise** - Knowledge of how to maximize assembly language potential
@@ -164,4 +164,4 @@ Completing **Spectrum Symphony** demonstrates your complete mastery of Z80 assem
 - **Creative Confidence** - Proof that assembly programming can achieve any vision
 - **System Understanding** - Deep knowledge of how complex assembly software works
 
-**Spectrum Symphony** stands as the ultimate demonstration that with creativity, determination, and mastery of Z80 assembly fundamentals, you can create software that transcends the apparent limitations of hardware, achieving results that amaze and inspire through the power of assembly language!
+**Spectrum Symphony** stands as the ultimate demonstration that with creativity, determination, and understanding of Z80 assembly fundamentals, you can create software that transcends the apparent limitations of hardware, achieving results that amaze and inspire through the power of assembly language!

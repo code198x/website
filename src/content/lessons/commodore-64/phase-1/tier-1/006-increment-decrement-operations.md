@@ -4,9 +4,9 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 6
-description: "Learn the INC and DEC instructions for efficient counting and memory manipulation. Master register increments with INX, INY, DEX, and DEY."
+description: "Learn the INC and DEC instructions for efficient counting and memory manipulation. Learn register increments with INX, INY, DEX, and DEY."
 learning_objectives:
-  - "Master INC and DEC instructions for memory locations"
+  - "Learn INC and DEC instructions for memory locations"
   - "Learn INX, INY, DEX, DEY for register operations"
   - "Understand when to use increment/decrement vs addition/subtraction"
   - "Practice building counters and loops"
@@ -41,7 +41,7 @@ Counting by ones is so common in programming that the 6502 designers included de
 
 The **INC** instruction increments (adds 1 to) a memory location:
 
-```assembly
+```text
 LDA #$05    ; Load 5
 STA $80     ; Store in Zero Page location $80
 INC $80     ; Increment $80: now contains 6
@@ -64,7 +64,7 @@ STA $0400   ; Display on screen (ASCII character 6)"
 
 The **DEC** instruction decrements (subtracts 1 from) a memory location:
 
-```assembly
+```text
 LDA #$05    ; Load 5
 STA $80     ; Store in Zero Page location $80
 DEC $80     ; Decrement $80: now contains 4
@@ -88,7 +88,7 @@ For registers, use dedicated increment instructions:
 - **INX**: Increment X register
 - **INY**: Increment Y register
 
-```assembly
+```text
 LDX #$10    ; Load 16 into X
 INX         ; Increment X: now contains 17
 INX         ; Increment X again: now contains 18
@@ -118,7 +118,7 @@ Similarly, for register decrements:
 - **DEX**: Decrement X register
 - **DEY**: Decrement Y register
 
-```assembly
+```text
 LDX #$10    ; Load 16 into X
 DEX         ; Decrement X: now contains 15
 DEX         ; Decrement X again: now contains 14
@@ -145,7 +145,7 @@ STY $0401   ; Display Y on screen"
 
 INC and DEC instructions affect the Zero and Negative flags, but **not** the Carry flag:
 
-```assembly
+```text
 LDA #$FF    ; Load 255
 STA $80     ; Store in memory
 INC $80     ; Increment: $80 = $00, Zero flag SET
@@ -178,7 +178,7 @@ STA $0401   ; Display (will show character 255)"
 
 Let's create a simple counter that increments a value and displays it:
 
-```assembly
+```text
 ; Initialize counter
 LDA #$30    ; Load '0' (ASCII 48)
 STA $80     ; Store counter in Zero Page
@@ -229,7 +229,7 @@ STA $0404"
 
 Here's a practical example - filling screen positions with incrementing characters:
 
-```assembly
+```text
 ; Start with 'A' and count up
 LDA #$41    ; Load 'A'
 STA $80     ; Store in counter
@@ -281,7 +281,7 @@ STA $0404"
 
 Registers X and Y are perfect for counting operations:
 
-```assembly
+```text
 ; Use X register as screen position counter
 LDX #$00    ; Start at screen position 0
 LDA #$2A    ; Load '*' character
@@ -329,7 +329,7 @@ Here's when to use each approach:
 
 Let's create a simple animation by changing a character on screen:
 
-```assembly
+```text
 ; Animation: cycle through characters
 LDA #$41    ; Start with 'A'
 STA $0400   ; Display at top-left
@@ -447,4 +447,4 @@ In the next lesson, you'll learn about **logical operations** - AND, OR, and XOR
 
 ## Fun Fact
 
-The 6502's increment and decrement instructions were inspired by the need for efficient loop counters. In 1975, memory was so expensive that saving even a few bytes per loop could make the difference between a program fitting in memory or not! The designers realized that counting by ones was so common that it deserved special, optimized instructions - a decision that made countless programs faster and smaller.
+The 6502's increment and decrement instructions were inspired by the need for efficient loop counters. In 1975, memory was so expensive that saving even a few bytes per loop could make the difference between a program fitting in memory or not! The designers realized that counting by ones was so common that it deserved special, optimised instructions - a decision that made countless programs faster and smaller.

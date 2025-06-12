@@ -4,7 +4,7 @@ system: "nintendo-entertainment-system"
 phase_number: 1
 tier_range: "13-16"
 genre: "RPG/Adventure"
-description: "The ultimate NES programming achievement: a complete adventure game creation system with RPG mechanics, scripting, and professional development tools that demonstrates mastery of all NES programming concepts."
+description: "The ultimate NES programming achievement: a complete adventure game creation system with RPG mechanics, scripting, and professional development tools that demonstrates understanding of all NES programming concepts."
 gameplay_mechanics:
   - "Create complete RPG adventures with storylines and quests"
   - "Design characters, items, and game systems"
@@ -19,7 +19,7 @@ technical_features:
   - "Optimized performance for complex game systems"
 concepts_demonstrated:
   - "Complete game engine architecture"
-  - "Advanced system integration and optimization"
+  - "Advanced system integration and optimisation"
   - "Professional software development practices"
   - "Complex data management and persistence"
   - "User experience design for creative tools"
@@ -31,7 +31,7 @@ order: 4
 
 # Quest Builder
 
-**Quest Builder** represents the ultimate demonstration of NES programming mastery—a complete adventure game creation system that enables anyone to build professional-quality RPGs without programming knowledge.
+**Quest Builder** represents the ultimate demonstration of NES programming understanding—a complete adventure game creation system that enables anyone to build professional-quality RPGs without programming knowledge.
 
 ## The Game Concept
 
@@ -45,7 +45,7 @@ Create the ultimate game development tool:
 
 ## Why This Game for Tiers 13-16?
 
-**Quest Builder** demonstrates complete mastery of advanced concepts:
+**Quest Builder** demonstrates complete understanding of advanced concepts:
 
 - **Engine Architecture**: Building large-scale, modular software systems
 - **User Interface Design**: Creating tools for non-technical users
@@ -79,7 +79,7 @@ Leverages every aspect of NES hardware and programming:
 - Creating dialogue and story editing systems
 - Developing user-friendly design workflows
 
-**Tier 15**: Advanced features and optimization
+**Tier 15**: Advanced features and optimisation
 - Adding complex RPG systems (combat, magic, inventory)
 - Implementing save/load and game state management
 - Optimizing performance for large, complex games
@@ -157,7 +157,7 @@ BUILD TIME: 2.3 seconds
 
 Completing **Quest Builder** demonstrates:
 
-1. **Master-Level Programming** - Ability to create complex, professional software
+1. **Learn-Level Programming** - Ability to create complex, professional software
 2. **System Architecture** - Designing large, modular, maintainable systems
 3. **User Experience Design** - Creating tools that empower non-technical users
 4. **Performance Engineering** - Optimizing complex systems for smooth operation
@@ -165,7 +165,7 @@ Completing **Quest Builder** demonstrates:
 
 ## The Ultimate Programming Achievement
 
-**Quest Builder** represents the pinnacle of NES programming mastery:
+**Quest Builder** represents the pinnacle of NES programming understanding:
 
 - **Technical Excellence** - Demonstrates command of every NES capability
 - **Creative Innovation** - Enables new forms of game creation and expression
@@ -183,8 +183,8 @@ Completing **Quest Builder** demonstrates:
 - **User Interface Excellence** - Building intuitive, powerful creative tools
 - **System Integration** - Coordinating multiple complex subsystems flawlessly
 
-**Congratulations - you have achieved true mastery of NES programming!** 🏆
+**Congratulations - you have achieved true understanding of NES programming!** 🏆
 
-**Quest Builder** stands as proof that with dedication, creativity, and deep technical knowledge, you can create software that transcends its platform's apparent limitations. You've built a complete game development studio in 48KB of memory, demonstrating that true programming mastery knows no bounds!
+**Quest Builder** stands as proof that with dedication, creativity, and deep technical knowledge, you can create software that transcends its platform's apparent limitations. You've built a complete game development studio in 48KB of memory, demonstrating that true programming understanding knows no bounds!
 
 You're now ready to tackle any programming challenge, from modern game engines to embedded systems, with the confidence that comes from having pushed a classic system to its absolute limits and beyond!

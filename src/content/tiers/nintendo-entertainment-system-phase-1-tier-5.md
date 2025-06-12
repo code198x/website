@@ -3,10 +3,10 @@ title: "Audio Programming Fundamentals"
 system: "nintendo-entertainment-system"
 phase_number: 1
 tier_number: 5
-description: "Dive into NES audio programming! Master the Audio Processing Unit (APU) and learn to create music and sound effects using the 5-channel sound system."
+description: "Dive into NES audio programming! Learn the Audio Processing Unit (APU) and learn to create music and sound effects using the 5-channel sound system."
 learning_objectives:
   - "Understand NES APU architecture and capabilities"
-  - "Master basic sound generation and frequency control"
+  - "Learn basic sound generation and frequency control"
   - "Learn audio timing and synchronization"
   - "Create simple melodies and sound effects"
   - "Build foundation for complex audio systems"
@@ -22,7 +22,7 @@ order: 5
 
 # Tier 5: Audio Programming Fundamentals
 
-Unlock the power of NES audio! Master the sophisticated 5-channel Audio Processing Unit to create rich music and dynamic sound effects in assembly language.
+Unlock the power of NES audio! Learn the sophisticated 5-channel Audio Processing Unit to create rich music and dynamic sound effects in assembly language.
 
 ## What You'll Begin with Rhythm Engine
 

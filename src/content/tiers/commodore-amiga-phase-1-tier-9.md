@@ -3,7 +3,7 @@ title: "System Integration and Libraries"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 9
-description: "Learn to integrate with AmigaOS and create reusable library systems in 68000 assembly. Master system programming and modular code organization."
+description: "Learn to integrate with AmigaOS and create reusable library systems in 68000 assembly. Learn system programming and modular code organisation."
 learning_objectives:
   - "Understand AmigaOS system programming in 68000 assembly"
   - "Learn to create and use system libraries"
@@ -15,7 +15,7 @@ concepts_introduced:
   - "Library creation and dynamic linking in assembly"
   - "System services and API integration"
   - "Inter-process communication using assembly"
-  - "Modular programming and code organization"
+  - "Modular programming and code organisation"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 9
 ---

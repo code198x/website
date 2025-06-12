@@ -3,9 +3,9 @@ title: "Strings and Text Processing"
 system: "commodore-64"
 phase_number: 1
 tier_number: 9
-description: "Master advanced assembly text processing and memory-based string handling. Learn to handle complex data at the machine level while beginning Logic Labyrinth, your algorithmic maze adventure programmed in 6502 assembly."
+description: "Learn advanced assembly text processing and memory-based string handling. Learn to handle complex data at the machine level while beginning Logic Labyrinth, your algorithmic maze adventure programmed in 6502 assembly."
 learning_objectives:
-  - "Master assembly-based text processing and memory manipulation"
+  - "Learn assembly-based text processing and memory manipulation"
   - "Implement assembly text parsing and data conversion"
   - "Create assembly-based data storage systems"
   - "Design user-friendly interfaces using assembly text handling"
@@ -60,7 +60,7 @@ Begin **Logic Labyrinth** development:
 
 ## Key Programming Concepts
 
-Master essential text processing skills:
+Learn essential text processing skills:
 
 - **String Manipulation** - Extracting and combining text data
 - **Data Parsing** - Converting text into usable information

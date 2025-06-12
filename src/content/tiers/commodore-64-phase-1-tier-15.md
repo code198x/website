@@ -8,7 +8,7 @@ learning_objectives:
   - "Implement artificial intelligence for game opponents"
   - "Create complex, interconnected game systems"
   - "Design engaging competitive gameplay"
-  - "Master advanced programming architecture"
+  - "Learn advanced programming architecture"
   - "Build sophisticated game mechanics"
 concepts_introduced:
   - "Artificial intelligence programming"
@@ -55,7 +55,7 @@ Implement intelligent racing features:
 **Lessons 25-32: System Integration**
 - Connecting AI, tracks, and progression
 - Balancing multiple complex systems
-- Performance optimization for AI
+- Performance optimisation for AI
 - Creating cohesive gameplay experience
 
 AI programming and game systems design teach you to create software that feels alive and intelligent - skills essential for any interactive or autonomous system!

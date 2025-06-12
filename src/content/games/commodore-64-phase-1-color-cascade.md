@@ -4,15 +4,15 @@ system: "commodore-64"
 phase_number: 1
 tier_range: "5-8"
 genre: "Puzzle/Memory"
-description: "A mesmerizing pattern-matching game that combines the C64's vibrant color palette with memory challenges and demonstrates 6502 assembly programming."
+description: "A mesmerizing pattern-matching game that combines the C64's vibrant colour palette with memory challenges and demonstrates 6502 assembly programming."
 gameplay_mechanics:
-  - "Watch cascading color sequences"
+  - "Watch cascading colour sequences"
   - "Reproduce patterns using keyboard input"
   - "Increasing sequence length and speed"
-  - "Audio cues for each color"
+  - "Audio cues for each colour"
   - "Bonus rounds with special patterns"
 technical_features:
-  - "C64 color manipulation and PETSCII graphics in assembly"
+  - "C64 colour manipulation and PETSCII graphics in assembly"
   - "Sound effects using 6502 assembly and SID register control"
   - "Animation timing and delays using assembly loops"
   - "Pattern generation algorithms in 6502 assembly"
@@ -32,7 +32,7 @@ order: 2
 
 # Color Cascade
 
-**Color Cascade** harnesses the Commodore 64's legendary 16-color palette to create a hypnotic pattern-matching game that's both beautiful and challenging.
+**Color Cascade** harnesses the Commodore 64's legendary 16-colour palette to create a hypnotic pattern-matching game that's both beautiful and challenging.
 
 ## The Game Concept
 
@@ -41,17 +41,17 @@ Colors flow down the screen in mesmerizing sequences. Your job is to memorize th
 - **Sequences get longer** - Starting with 3 colors, building to 12+
 - **Speed increases** - Less time to memorize each pattern
 - **Special modes** unlock - Rainbow mode, Mirror mode, Chaos mode
-- **Audio joins in** - Each color has its own musical note
+- **Audio joins in** - Each colour has its own musical note
 
 ## Why This Game?
 
 **Color Cascade** is perfect for Tiers 5-8 because it introduces intermediate 6502 assembly concepts while leveraging the C64's strengths:
 
-- **Graphics Programming**: Direct memory access for color and PETSCII manipulation
-- **Arrays**: Storing and manipulating color sequences in memory
+- **Graphics Programming**: Direct memory access for colour and PETSCII manipulation
+- **Arrays**: Storing and manipulating colour sequences in memory
 - **Sound**: Generating tones through SID chip programming
 - **Timing**: Creating smooth animations using assembly timing loops
-- **User Experience**: Polished presentation through optimized assembly code
+- **User Experience**: Polished presentation through optimised assembly code
 
 ## C64-Specific Features
 
@@ -67,7 +67,7 @@ This game could only exist on the Commodore 64:
 
 ### Tiers 5-8 Development Roadmap
 
-**Tier 5**: Basic color display
+**Tier 5**: Basic colour display
 - Show colors using background/border changes
 - Simple pattern generation
 - Basic input handling
@@ -75,7 +75,7 @@ This game could only exist on the Commodore 64:
 
 **Tier 6**: Enhanced presentation
 - PETSCII animations and effects
-- Sound for each color
+- Sound for each colour
 - Smooth timing and delays
 - Better visual feedback
 
@@ -96,7 +96,7 @@ This game could only exist on the Commodore 64:
 **Color Cascade** introduces key programming concepts:
 
 - **Array manipulation** for storing and comparing sequences
-- **Graphics programming** using the C64's color capabilities
+- **Graphics programming** using the C64's colour capabilities
 - **Sound generation** with POKE commands to sound registers
 - **Timing control** for animations and user input windows
 - **String handling** for high score names and formatting
@@ -135,7 +135,7 @@ Building **Color Cascade** teaches:
 2. **Data structures** - Arrays for sequence storage and manipulation
 3. **User interface design** - Creating intuitive, responsive controls
 4. **Audio programming** - Adding sound to enhance gameplay
-5. **Code organization** - Breaking complex programs into manageable pieces
+5. **Code organisation** - Breaking complex programs into manageable pieces
 
 ## The "Wow" Factor
 

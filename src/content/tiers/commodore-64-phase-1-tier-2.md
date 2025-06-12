@@ -3,9 +3,9 @@ title: "Data Storage and Memory Operations"
 system: "commodore-64"
 phase_number: 1
 tier_number: 2
-description: "Learn how to store and manipulate data in 6502 assembly language. Master zero page addressing, data storage techniques, and memory operations essential for interactive programs."
+description: "Learn how to store and manipulate data in 6502 assembly language. Learn zero page addressing, data storage techniques, and memory operations essential for interactive programs."
 learning_objectives:
-  - "Master zero page addressing for efficient data storage"
+  - "Learn zero page addressing for efficient data storage"
   - "Understand different data storage techniques in assembly"
   - "Learn memory operations and data manipulation"
   - "Implement basic data validation in assembly language"

@@ -14,7 +14,7 @@ concepts_introduced:
   - "Assembly software development practices"
   - "Assembly project integration and polish"
   - "Creative assembly programming and artistic expression"
-  - "Z80 assembly optimization for complex systems"
+  - "Z80 assembly optimisation for complex systems"
   - "Preparation for Phase 2's advanced assembly programming"
 game_project:
   name: "Spectrum Symphony"
@@ -41,7 +41,7 @@ Finish your comprehensive ZX Spectrum assembly project:
 **Lessons 1-8: Assembly Integration**
 - Integrating all assembly system components
 - Creating seamless assembly workflows
-- Implementing final Z80 optimization and polish
+- Implementing final Z80 optimisation and polish
 - Building complete, cohesive assembly application
 
 **Lessons 9-16: Assembly Creative System Completion**
@@ -51,7 +51,7 @@ Finish your comprehensive ZX Spectrum assembly project:
 - Building full creative workflow support through assembly code
 
 **Lessons 17-24: Assembly Performance and Polish**
-- Achieving maximum Z80 assembly performance optimization
+- Achieving maximum Z80 assembly performance optimisation
 - Creating engaging user experience through assembly programming
 - Implementing comprehensive help and documentation in assembly
 - Building solid presentation and interface using assembly code
