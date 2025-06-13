@@ -73,6 +73,7 @@ const systems = defineCollection({
       publisher: z.string(),
     })).optional(),
     historical_significance: z.string().optional(),
+    description: z.string().optional(),
     image: z.string(),
     order: z.number(), // For display ordering
   }),

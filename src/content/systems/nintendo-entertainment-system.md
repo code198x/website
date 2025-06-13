@@ -112,6 +112,7 @@ notable_software:
     developer: "Konami"
     publisher: "Konami"
 historical_significance: "The NES single-handedly revived the video game industry after the 1983 crash in North America. It established many conventions of modern gaming and created franchises that remain popular today. Its strict quality control and innovative marketing saved gaming as a medium."
+description: "The console that saved video gaming in North America, featuring scrolling graphics and the 6502 processor variant."
 image: "/images/systems/nintendo-entertainment-system.jpg"
 order: 4
 ---

@@ -68,6 +68,7 @@ variants:
     discontinued: 1987-01-01
     differences: "128KB RAM, improved sound chip (AY-3-8912), built-in tape deck"
 historical_significance: "The ZX Spectrum sparked the British games industry and inspired a generation of bedroom coders. Its unique colour system and affordable price made it hugely popular in the UK and Europe."
+description: "Britain's most popular home computer, bringing affordable colour computing to millions with its distinctive rubber keyboard."
 image: "/images/systems/zx-spectrum.jpg"
 order: 2
 ---

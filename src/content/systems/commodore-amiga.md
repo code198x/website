@@ -119,6 +119,7 @@ variants:
     differences: "32-bit games console based on A1200, CD-ROM drive, AGA chipset, no keyboard"
     model_number: "CD32"
 historical_significance: "The Amiga was years ahead of its time with advanced multimedia capabilities, preemptive multitasking, and custom chips that rivaled dedicated graphics workstations. It dominated video production, gaming, and digital art in the late 1980s and early 1990s."
+description: "A multimedia powerhouse with custom chips for graphics and sound, years ahead of its competition."
 image: "/images/systems/commodore-amiga.jpg"
 order: 3
 ---
