@@ -1,67 +1,67 @@
 ---
-title: "Advanced Graphics & SID Sound Programming"
+title: "Advanced VIC-II Graphics Modes"
 system: "commodore-64"
 phase_number: 4
 tier_number: 1
-description: "Create stunning visual effects and sophisticated audio with advanced VIC-II programming and complete SID chip mastery. Build smooth scrolling worlds, complex animations, and rich musical compositions that showcase the C64's audiovisual capabilities."
+description: "Explore advanced VIC-II graphics capabilities including multicolor modes, bitmap graphics, and mixed-mode programming. Learn to create detailed, colorful graphics that showcase the C64's visual potential."
 learning_objectives:
-  - "Master advanced VIC-II graphics modes and visual effects"
-  - "Program the SID chip for complex music and sound synthesis"
-  - "Create smooth scrolling game worlds and parallax effects"
-  - "Implement sophisticated animation and sprite systems"
-  - "Develop complete audiovisual experiences"
+  - "Program multicolor character and sprite modes"
+  - "Implement bitmap graphics for detailed images"
+  - "Create mixed-mode graphics combinations"
+  - "Design efficient graphics data structures"
+  - "Optimize graphics memory usage"
 concepts_introduced:
-  - "Advanced VIC-II modes (multicolor, bitmap, character graphics)"
-  - "Complete SID programming (oscillators, filters, ADSR, ring modulation)"
-  - "Smooth scrolling techniques and parallax backgrounds"
-  - "Advanced animation systems and sprite management"
-  - "Music composition and sound effect design in assembly"
+  - "Multicolor character mode programming"
+  - "High-resolution and multicolor bitmap modes"
+  - "Mixed graphics mode techniques"
+  - "Graphics memory organization and optimization"
+  - "Color attribute management strategies"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 1
 ---
 
-# Tier 1: Advanced Graphics & SID Sound Programming
+# Tier 1: Advanced VIC-II Graphics Modes
 
-Unlock the C64's legendary audiovisual capabilities! With **32 comprehensive lessons**, you'll master the VIC-II graphics chip and SID sound synthesizer to create stunning visual effects and rich musical compositions that showcase why the C64 became a legend.
+Unlock VIC-II's full potential! With **32 comprehensive lessons**, you'll explore every graphics mode the VIC-II offers, learning to create stunning visuals that demonstrate the true artistic capabilities of the C64.
 
 ## What You'll Build
 
-Develop **Neon Runner** - a visually spectacular arcade platformer featuring smooth parallax scrolling, dynamic lighting effects, custom animated sprites, and a full SID-powered soundtrack that demonstrates professional-level audiovisual programming.
+Begin developing **Neon Runner** - a visually spectacular platformer featuring multicolor character animations, detailed bitmap backgrounds, mixed-mode visual effects, and creative graphics techniques that push the C64's visual boundaries.
 
 ## Tier Overview
 
-**Lessons 1-8: Advanced VIC-II Graphics Modes**
-- Mastering multicolor and bitmap graphics modes
-- Custom character set animation and morphing effects
-- Advanced sprite collision and interaction systems
-- Color cycling and palette animation techniques
+**Lessons 1-8: Multicolor Character Mode**
+- Understanding multicolor character format
+- Creating colorful character sets
+- Animation techniques with multicolor
+- Memory optimization strategies
 
-**Lessons 9-16: SID Sound Synthesis Mastery**
-- Programming SID oscillators, filters, and ADSR envelopes
-- Ring modulation and sync effects for unique sounds
-- Multi-channel music composition and arrangement
-- Sound effect design and audio event management
+**Lessons 9-16: Bitmap Graphics Programming**
+- High-resolution bitmap mode setup
+- Multicolor bitmap implementation
+- Pixel-level drawing algorithms
+- Bitmap compression techniques
 
-**Lessons 17-24: Smooth Scrolling & Animation Systems**
-- Hardware-scrolling and software-scrolling techniques
-- Parallax background systems and multi-layer effects
-- Advanced sprite animation and state management
-- Frame-rate optimization for smooth gameplay
+**Lessons 17-24: Mixed Mode Techniques**
+- Combining different graphics modes
+- Mode switching during display
+- Creative graphics combinations
+- Performance considerations
 
-**Lessons 25-32: Complete Audiovisual Integration**
-- Synchronizing music with visual effects
-- Dynamic audio mixing and real-time sound generation
-- Memory-efficient graphics and audio streaming
-- Creating immersive audiovisual experiences
+**Lessons 25-32: Graphics Optimization**
+- Memory-efficient graphics storage
+- Fast graphics update techniques
+- Color clash avoidance strategies
+- Professional graphics workflows
 
 ## Key Concepts
 
-This tier transforms you into a C64 audiovisual expert:
+This tier expands your graphics programming toolkit:
 
-- **Advanced Graphics Programming** - Complete mastery of VIC-II capabilities
-- **Sound Synthesis** - Professional-level SID programming and music composition
-- **Smooth Animation Systems** - Creating fluid, responsive visual effects
-- **Performance Optimization** - Balancing graphics, sound, and gameplay
-- **Creative Integration** - Combining audio and visuals for maximum impact
+- **Mode Diversity** - Using every VIC-II capability
+- **Visual Quality** - Creating beautiful, detailed graphics
+- **Memory Efficiency** - Fitting more graphics in limited space
+- **Creative Techniques** - Innovative graphics solutions
+- **Professional Workflows** - Efficient graphics development
 
-Master these skills and you'll create games and demos that rival the best commercial C64 software!
+These advanced graphics skills enable stunning visual experiences!
