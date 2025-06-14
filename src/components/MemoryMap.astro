@@ -1,0 +1,213 @@
+---
+export interface Props {
+  system: 'c64' | 'spectrum' | 'nes' | 'amiga';
+  interactive?: boolean;
+}
+
+const { system, interactive = false } = Astro.props;
+
+// Define memory maps for each system
+const memoryMaps = {
+  c64: {
+    name: 'Commodore 64 Memory Map',
+    totalMemory: '64KB',
+    regions: [
+      { start: 0x0000, end: 0x00FF, name: 'Zero Page', type: 'ram', description: 'Fast access RAM, system variables' },
+      { start: 0x0100, end: 0x01FF, name: 'Stack', type: 'ram', description: 'Processor stack (256 bytes)' },
+      { start: 0x0200, end: 0x03FF, name: 'System RAM', type: 'ram', description: 'BASIC input buffer, system use' },
+      { start: 0x0400, end: 0x07FF, name: 'Screen Memory', type: 'screen', description: 'Default text screen (1000 bytes + border)' },
+      { start: 0x0800, end: 0x9FFF, name: 'BASIC Program', type: 'ram', description: 'BASIC program and variables (38KB)' },
+      { start: 0xA000, end: 0xBFFF, name: 'BASIC ROM', type: 'rom', description: 'BASIC interpreter (8KB)' },
+      { start: 0xC000, end: 0xCFFF, name: 'RAM', type: 'ram', description: 'Free RAM (4KB)' },
+      { start: 0xD000, end: 0xDFFF, name: 'I/O & Color', type: 'io', description: 'VIC-II, SID, CIA chips, color RAM' },
+      { start: 0xE000, end: 0xFFFF, name: 'KERNAL ROM', type: 'rom', description: 'Operating system ROM (8KB)' }
+    ]
+  },
+  spectrum: {
+    name: 'ZX Spectrum Memory Map',
+    totalMemory: '48KB + 16KB ROM',
+    regions: [
+      { start: 0x0000, end: 0x3FFF, name: 'ROM', type: 'rom', description: 'System ROM (16KB)' },
+      { start: 0x4000, end: 0x57FF, name: 'Screen Memory', type: 'screen', description: 'Display file (6KB)' },
+      { start: 0x5800, end: 0x5AFF, name: 'Attributes', type: 'screen', description: 'Color attributes (768 bytes)' },
+      { start: 0x5B00, end: 0x5BFF, name: 'Printer Buffer', type: 'ram', description: 'Printer buffer (256 bytes)' },
+      { start: 0x5C00, end: 0x5CBF, name: 'System Variables', type: 'ram', description: 'System variables' },
+      { start: 0x5CC0, end: 0x5CFF, name: 'Reserved', type: 'ram', description: 'Reserved (64 bytes)' },
+      { start: 0x5D00, end: 0xFFFF, name: 'Program/Data', type: 'ram', description: 'User programs and data (42KB)' }
+    ]
+  },
+  nes: {
+    name: 'NES Memory Map',
+    totalMemory: '2KB RAM + PPU + ROM',
+    regions: [
+      { start: 0x0000, end: 0x00FF, name: 'Zero Page', type: 'ram', description: 'Fast access RAM' },
+      { start: 0x0100, end: 0x01FF, name: 'Stack', type: 'ram', description: 'Processor stack' },
+      { start: 0x0200, end: 0x07FF, name: 'RAM', type: 'ram', description: 'General purpose RAM (1.5KB)' },
+      { start: 0x0800, end: 0x1FFF, name: 'RAM Mirror', type: 'mirror', description: 'Mirrors of $0000-$07FF' },
+      { start: 0x2000, end: 0x2007, name: 'PPU Registers', type: 'io', description: 'Picture Processing Unit' },
+      { start: 0x2008, end: 0x3FFF, name: 'PPU Mirror', type: 'mirror', description: 'Mirrors of PPU registers' },
+      { start: 0x4000, end: 0x4017, name: 'APU & I/O', type: 'io', description: 'Audio and controllers' },
+      { start: 0x4018, end: 0x401F, name: 'Test Mode', type: 'io', description: 'CPU test mode registers' },
+      { start: 0x4020, end: 0x7FFF, name: 'Cartridge', type: 'cart', description: 'Cartridge expansion ROM' },
+      { start: 0x8000, end: 0xFFFF, name: 'PRG-ROM', type: 'rom', description: 'Program ROM (32KB)' }
+    ]
+  },
+  amiga: {
+    name: 'Amiga 500 Memory Map',
+    totalMemory: '512KB-8MB + ROM',
+    regions: [
+      { start: 0x000000, end: 0x07FFFF, name: 'Chip RAM', type: 'ram', description: 'Shared with custom chips (512KB)' },
+      { start: 0x080000, end: 0x0FFFFF, name: 'Expansion', type: 'expansion', description: 'Slow RAM expansion' },
+      { start: 0x200000, end: 0x9FFFFF, name: 'Fast RAM', type: 'ram', description: 'CPU-only fast RAM (optional)' },
+      { start: 0xA00000, end: 0xBEFFFF, name: 'Reserved', type: 'reserved', description: 'Reserved space' },
+      { start: 0xBF0000, end: 0xBFFFFF, name: 'CIA Chips', type: 'io', description: 'CIA-A and CIA-B I/O' },
+      { start: 0xC00000, end: 0xDFFFFF, name: 'Custom Chips', type: 'io', description: 'Agnus, Denise, Paula registers' },
+      { start: 0xE00000, end: 0xE7FFFF, name: 'Reserved', type: 'reserved', description: 'Reserved space' },
+      { start: 0xE80000, end: 0xEFFFFF, name: 'AutoConfig', type: 'io', description: 'Expansion board config' },
+      { start: 0xF00000, end: 0xF7FFFF, name: 'Reserved', type: 'reserved', description: 'Reserved space' },
+      { start: 0xF80000, end: 0xFFFFFF, name: 'Kickstart ROM', type: 'rom', description: 'System ROM (512KB)' }
+    ]
+  }
+};
+
+const selectedMap = memoryMaps[system];
+
+// Convert address to hex string
+const toHex = (addr: number, digits: number = 4) => {
+  return '$' + addr.toString(16).toUpperCase().padStart(digits, '0');
+};
+
+// Get color for memory type
+const getColorClass = (type: string) => {
+  switch(type) {
+    case 'ram': return 'bg-green-600';
+    case 'rom': return 'bg-blue-600';
+    case 'screen': return 'bg-yellow-600';
+    case 'io': return 'bg-red-600';
+    case 'cart': return 'bg-purple-600';
+    case 'expansion': return 'bg-orange-600';
+    case 'mirror': return 'bg-gray-600';
+    case 'reserved': return 'bg-gray-700';
+    default: return 'bg-gray-600';
+  }
+};
+
+// Calculate visual height based on memory size
+const getRegionHeight = (start: number, end: number, total: number) => {
+  const size = end - start + 1;
+  const maxAddress = system === 'amiga' ? 0xFFFFFF : 0xFFFF;
+  const percentage = (size / (maxAddress + 1)) * 100;
+  return Math.max(percentage * 4, 20); // Minimum 20px height
+};
+---
+
+<div class="memory-map bg-gray-800 rounded-lg p-6 max-w-4xl mx-auto">
+  <h3 class="text-2xl font-bold text-green-400 mb-2">{selectedMap.name}</h3>
+  <p class="text-gray-400 mb-6">Total addressable: {selectedMap.totalMemory}</p>
+  
+  <div class="flex gap-8">
+    <!-- Visual Memory Map -->
+    <div class="flex-1">
+      <div class="relative bg-gray-900 rounded-lg p-4 h-[600px]">
+        <div class="absolute inset-0 p-4 flex flex-col">
+          {selectedMap.regions.map((region, index) => {
+            const height = getRegionHeight(region.start, region.end, 
+              system === 'amiga' ? 0xFFFFFF : 0xFFFF);
+            return (
+              <div
+                key={index}
+                class={`memory-region relative ${getColorClass(region.type)} 
+                  rounded mb-1 flex-shrink-0 cursor-pointer hover:opacity-80 
+                  transition-opacity ${interactive ? 'interactive' : ''}`}
+                style={`height: ${height}px; min-height: 20px;`}
+                data-start={toHex(region.start, system === 'amiga' ? 6 : 4)}
+                data-end={toHex(region.end, system === 'amiga' ? 6 : 4)}
+                data-name={region.name}
+                data-description={region.description}
+              >
+                <div class="absolute inset-0 flex items-center px-2 text-white text-xs font-mono overflow-hidden">
+                  <span class="truncate">{region.name}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+    
+    <!-- Memory Region Details -->
+    <div class="w-80">
+      <h4 class="text-lg font-semibold text-white mb-4">Memory Regions</h4>
+      <div class="space-y-2 max-h-[560px] overflow-y-auto">
+        {selectedMap.regions.map((region, index) => (
+          <div key={index} class="bg-gray-700 rounded p-3 text-sm">
+            <div class="flex items-center justify-between mb-1">
+              <span class={`inline-block w-3 h-3 rounded ${getColorClass(region.type)} mr-2`}></span>
+              <span class="font-semibold text-white flex-1">{region.name}</span>
+            </div>
+            <div class="font-mono text-xs text-gray-400 mb-1">
+              {toHex(region.start, system === 'amiga' ? 6 : 4)} - 
+              {toHex(region.end, system === 'amiga' ? 6 : 4)}
+            </div>
+            <div class="text-xs text-gray-300">{region.description}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+  
+  <!-- Legend -->
+  <div class="mt-6 flex flex-wrap gap-4 text-xs">
+    <div class="flex items-center"><span class="w-3 h-3 bg-green-600 rounded mr-2"></span>RAM</div>
+    <div class="flex items-center"><span class="w-3 h-3 bg-blue-600 rounded mr-2"></span>ROM</div>
+    <div class="flex items-center"><span class="w-3 h-3 bg-yellow-600 rounded mr-2"></span>Screen</div>
+    <div class="flex items-center"><span class="w-3 h-3 bg-red-600 rounded mr-2"></span>I/O</div>
+    {system === 'nes' && <div class="flex items-center"><span class="w-3 h-3 bg-purple-600 rounded mr-2"></span>Cartridge</div>}
+    {system === 'amiga' && <div class="flex items-center"><span class="w-3 h-3 bg-orange-600 rounded mr-2"></span>Expansion</div>}
+  </div>
+</div>
+
+{interactive && (
+  <script>
+    // Add interactive behavior
+    document.querySelectorAll('.memory-region.interactive').forEach(region => {
+      region.addEventListener('mouseenter', (e) => {
+        const el = e.currentTarget as HTMLElement;
+        const tooltip = document.createElement('div');
+        tooltip.className = 'memory-tooltip';
+        tooltip.innerHTML = `
+          <div class="bg-black text-white p-2 rounded shadow-lg text-xs">
+            <div class="font-bold">${el.dataset.name}</div>
+            <div class="font-mono">${el.dataset.start} - ${el.dataset.end}</div>
+            <div class="mt-1">${el.dataset.description}</div>
+          </div>
+        `;
+        tooltip.style.position = 'absolute';
+        tooltip.style.zIndex = '10';
+        tooltip.style.pointerEvents = 'none';
+        el.appendChild(tooltip);
+      });
+      
+      region.addEventListener('mouseleave', (e) => {
+        const tooltip = e.currentTarget.querySelector('.memory-tooltip');
+        if (tooltip) tooltip.remove();
+      });
+    });
+  </script>
+)}
+
+<style>
+  .memory-region {
+    position: relative;
+    overflow: visible;
+  }
+  
+  .memory-tooltip {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 10px;
+    white-space: nowrap;
+  }
+</style>

@@ -58,10 +58,10 @@ Create **Cosmic Defender** - a fast-paced space shooter that showcases advanced 
 
 This tier gives you comprehensive knowledge of C64 hardware:
 
-- **VIC-II Expertise** - Complete control over the graphics subsystem
-- **CIA Programming** - Master timing, I/O, and system control
+- **VIC-II Programming** - Learning to control the graphics subsystem
+- **CIA Programming** - Learning timing, I/O, and system control
 - **Memory Banking** - Advanced techniques for expanding capability
 - **Hardware Optimization** - Pushing the C64 beyond its intended limits
 - **System Integration** - Understanding how all components work together
 
-With this hardware knowledge, you'll create programs that amaze even experienced C64 users!
+With these hardware skills, you'll create programs that showcase the C64's capabilities!
