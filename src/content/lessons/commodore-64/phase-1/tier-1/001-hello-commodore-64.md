@@ -82,13 +82,9 @@ This instruction means:
 - **#**: The next value is immediate (a literal number)
 - **$41**: The hexadecimal value 41 (which equals 65 in decimal)
 
-<CodeRunner 
-  system="commodore-64"
-  title="Your First Assembly Instruction"
-  code="LDA #$41"
-  autoRun={false}
-  language="assembly"
-/>
+## Interactive Example: Your First Assembly Instruction
+
+Let's see this instruction in action! The interactive example below shows the code, runs it in a real C64 emulator, and visualizes what happens to the processor registers.
 
 ## What Just Happened?
 
@@ -124,14 +120,9 @@ LDX #$05    ; Load 5 into X register
 LDY #$0A    ; Load 10 into Y register
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Loading Different Registers"
-  code="LDA #$48    ; Load 'H' into A register
-LDX #$05    ; Load 5 into X register  
-LDY #$0A    ; Load 10 into Y register"
-  language="assembly"
-/>
+## Interactive Example: Loading Different Registers
+
+Try this example that loads values into all three main registers:
 
 *Note: The semicolon (;) starts a comment - text that explains the code but doesn't execute.*
 
@@ -161,14 +152,9 @@ Now it's your turn! Write assembly instructions to:
 2. Load the number 15 into the X register (hint: 15 is $0F)
 3. Load the number 255 into the Y register (hint: 255 is $FF)
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Try Different Values"
-  code="LDA #$43    ; Load 'C' into A register
-LDX #$0F    ; Load 15 into X register
-LDY #$FF    ; Load 255 into Y register"
-  language="assembly"
-/>
+## Interactive Example: Practice Exercise
+
+Try this practice exercise - notice how the register values change as each instruction executes:
 
 ## What You've Learned
 
@@ -180,6 +166,19 @@ In this foundational lesson, you've discovered:
 - Your first assembly instruction: LDA (Load A register)
 - How hexadecimal notation works
 - The relationship between assembly and machine language
+
+## Want to Code Along?
+
+Ready to try assembly programming yourself? Download our **professional development environment** that includes:
+
+- 🛠️ **Authentic assemblers** (CA65, ACME) used by real C64 developers
+- 💻 **VS Code integration** with one-click builds and debugging
+- 📚 **16 example programs** from Hello World to advanced demos
+- 🎮 **Emulator launchers** to test your programs instantly
+
+**[⬇️ Download Development Environment](/download)** - Set up in 30 seconds!
+
+Or continue with our **interactive lessons** right here in your browser.
 
 ## Looking Ahead
 

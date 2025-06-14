@@ -1,70 +1,51 @@
 ---
-title: "Bridging to Assembly"
+title: "Advanced Assembly Techniques"
 system: "commodore-64"
 phase_number: 2
-description: "Transition from BASIC to assembly language. Learn machine language basics, understand memory management, and create hybrid programs that combine BASIC with assembly routines."
+description: "Learn sophisticated 6502 assembly programming with interrupts, advanced addressing modes, and optimization techniques. Build complex data structures and create responsive, efficient programs."
 learning_objectives:
-  - "Understand binary, hexadecimal, and memory addressing"
-  - "Write simple 6502/6510 assembly routines"
-  - "Call assembly code from BASIC programs"
-  - "Use built-in machine language monitor"
-  - "Optimize BASIC programs with assembly subroutines"
-  - "Understand the C64's memory map and hardware registers"
+  - "Learn interrupt programming and real-time event handling"
+  - "Implement complex data structures in assembly"
+  - "Use advanced addressing modes for sophisticated memory manipulation"
+  - "Apply assembly optimization techniques for maximum performance"
+  - "Create responsive programs using advanced assembly patterns"
 prerequisites:
-  - "Completion of Phase 1 (BASIC Foundations)"
+  - "Completion of Phase 1: 6502 Assembly Foundations"
+  - "Comfortable with basic 6502 assembly programming"
+  - "Understanding of C64 memory map and hardware basics"
 estimated_duration: "12-16 weeks"
 difficulty_level: "intermediate"
 tools_required:
-  - "Commodore 64 (or accurate emulator like VICE)"
-  - "Assembler (built-in monitor or external like ACME/KickAssembler)"
-  - "Reference materials (memory map, instruction set)"
+  - "Advanced assembler with macro support"
+  - "Debugging tools and memory monitors"
+  - "Performance analysis utilities"
 order: 2
 ---
 
-# Phase 2: Bridging to Assembly
+# Phase 2: Advanced Assembly Techniques
 
-Phase 2 is your gateway into the world of machine language programming. You'll learn to write assembly code while still leveraging BASIC for high-level program structure, creating the perfect bridge between beginner and advanced programming.
+Build on your foundational knowledge to become a sophisticated assembly programmer. Phase 2 introduces advanced programming patterns, interrupt handling, complex data structures, and optimization techniques that separate professional developers from hobbyists.
 
-## What You'll Learn
+## What Makes This Different
 
-By the end of Phase 2, you'll have:
+Phase 2 moves beyond simple linear programs to sophisticated software architecture. You'll learn to handle multiple concurrent tasks through interrupts, manage complex data relationships, and optimize code for both speed and memory efficiency.
 
-- Solid understanding of 6502/6510 assembly language
-- Ability to write hybrid BASIC/assembly programs
-- Knowledge of the C64's memory layout and hardware
-- Experience with machine language monitors and assemblers
-- Four games showcasing progressive assembly integration
+This phase emphasizes practical techniques used by professional game developers and system programmers of the 1980s. Every concept is demonstrated through hands-on projects that build real-world programming skills.
 
-## Phase Structure
+## Advanced Programming Concepts
 
-**Tiers 1-4: Assembly Basics**
-- Binary, hexadecimal, and memory concepts
-- First assembly routines called from BASIC
-- **Game Project: "Speed Calculator"** - Math game with assembly-accelerated calculations
+**Interrupt Programming** - Learn to create responsive programs that handle multiple tasks simultaneously. Learn IRQ and NMI interrupts to build real-time applications that feel smooth and professional.
 
-**Tiers 5-8: Graphics Acceleration**
-- Assembly routines for faster graphics
-- Sprite manipulation and screen effects
-- **Game Project: "Plasma Painter"** - Graphics demo with assembly-powered effects
+**Complex Data Structures** - Implement linked lists, trees, and hash tables in assembly. Learn to manage dynamic memory allocation and create efficient data processing algorithms.
 
-**Tiers 9-12: Sound and Timing**
-- SID chip programming in assembly
-- Precise timing and interrupt handling
-- **Game Project: "Rhythm Runner"** - Music game with assembly audio routines
+**Performance Optimization** - Learn cycle counting, memory access optimization, and algorithmic improvements. Learn to profile code and identify bottlenecks just like professional developers.
 
-**Tiers 13-16: Advanced Integration**
-- Complex hybrid programs
-- Performance optimisation techniques
-- **Game Project: "Turbo Tennis"** - Fast-paced sports game combining BASIC logic with assembly performance
+**Advanced Addressing** - Use sophisticated addressing modes and indirect operations to create flexible, maintainable code that can handle complex data relationships.
 
-## The Best of Both Worlds
+## Project Focus
 
-This hybrid approach gives you:
+Phase 2 centers around creating **Mega Maze** - an advanced puzzle game featuring smooth scrolling, real-time effects, and sophisticated AI. This project demonstrates professional-level programming techniques while creating an engaging, polished game experience.
 
-- **BASIC's simplicity** for program structure and game logic
-- **Assembly's power** for performance-critical sections
-- **Gradual learning curve** - assembly complexity introduced slowly
-- **Real-world relevance** - mirrors how commercial games were actually made
-- **Immediate results** - see dramatic performance improvements
+## Skills You'll Develop
 
-By the end of Phase 2, you'll understand why the most successful C64 programmers used exactly this approach—BASIC for what it's good at, assembly for what it's good at.
+By completing Phase 2, you'll have the same advanced assembly programming skills used by professional developers working on commercial C64 software. These techniques transfer directly to modern embedded programming, game engine development, and any field requiring high-performance code.
