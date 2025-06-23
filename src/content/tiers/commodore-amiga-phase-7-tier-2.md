@@ -1,72 +1,72 @@
 ---
-title: "Level Design Mastery: Worlds Players Never Want to Leave!"
+title: "Complex Game Physics: Realistic Movement!"
 system: "commodore-amiga"
 phase_number: 7
 tier_number: 2
-description: "Create worlds that players lose themselves in! Master the art of level design that guides, challenges, and delights. Learn to craft spaces so compelling that exploration becomes pure joy."
+description: "Master complex physics systems that bring games to life! Create realistic movement, collision detection, and physics simulation using 68000 assembly and Amiga's custom chips for smooth, believable game worlds."
 learning_objectives:
-  - "Design levels that guide players naturally without hand-holding"
-  - "Create challenges that feel fair but demanding"
-  - "Build spaces that tell stories through their layout and details"
-  - "Master pacing that creates perfect tension and release"
-  - "Develop the eye for environmental storytelling and world-building"
+  - "Implement advanced physics simulation systems"
+  - "Create realistic collision detection and response"
+  - "Master gravity, momentum, and acceleration systems"
+  - "Design fluid movement and particle systems"
+  - "Optimize physics calculations for smooth Amiga performance"
 concepts_introduced:
-  - "Spatial psychology and player movement patterns"
-  - "Challenge progression and difficulty curve design"
-  - "Environmental storytelling through level architecture"
-  - "Flow state creation and player guidance systems"
-  - "Visual composition and atmosphere in game spaces"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Advanced collision detection algorithms for Amiga"
+  - "Physics simulation using 68000 fixed-point arithmetic"
+  - "Particle systems optimized for Amiga's blitter"
+  - "Realistic movement and momentum calculations"
+  - "Performance optimization for complex physics"
+estimated_duration: "6-8 weeks (32 physics-focused lessons)"
 order: 2
 ---
 
-# Tier 2: Level Design Mastery: Worlds Players Never Want to Leave!
+# Tier 2: Complex Game Physics: Realistic Movement!
 
-Worlds that live in memory! With **32 level design lessons**, you'll learn to craft Amiga environments so perfectly tuned that players explore every corner and remember every detail long after playing.
+Bring realistic physics to your Amiga games! With **32 physics-focused lessons**, you'll master advanced physics programming using 68000 assembly to create smooth, believable movement and collision systems.
 
 ## What You'll Build
 
-Create **AMIGA WORLD ARCHITECT** - your level design masterpiece featuring:
-- Levels that guide players naturally through visual composition
-- Challenges perfectly balanced between difficulty and accessibility
-- Environmental storytelling using Amiga's unique visual capabilities
-- Secrets and rewards that make exploration irresistible
-- Spaces that feel alive and reactive to player presence
+Create **ADVANCED PHYSICS ENGINE** - featuring realistic game physics:
+- Complex collision detection using Amiga's blitter efficiently
+- Realistic gravity, momentum, and acceleration systems
+- Fluid particle systems for explosions and effects
+- Advanced movement mechanics that feel natural
+- Physics-based puzzles and gameplay elements
 
-## Tier Overview
+## Physics Mastery Areas
 
-**Lessons 1-8: "Flow and Movement" - Player Psychology**
-- How players naturally move through 3D and 2D spaces
-- Visual language that guides without pointing arrows
-- Creating desire lines that feel completely natural
-- The psychology of exploration and discovery
+**Lessons 1-8: "Physics Fundamentals" - Mathematical Foundation**
+- Fixed-point arithmetic for accurate physics on 68000
+- Vector mathematics and coordinate transformations
+- Velocity, acceleration, and momentum calculations
+- Efficient physics data structures for Amiga
 
-**Lessons 9-16: "Challenge Architecture" - Difficulty Design**
-- Building challenges that teach before they test
-- Progressive difficulty that never feels overwhelming
-- Creating multiple solution paths for different player types
-- The delicate balance between frustration and satisfaction
+**Lessons 9-16: "Collision Systems" - Detection and Response**
+- Advanced collision detection algorithms
+- Bounding box and circle collision optimization
+- Pixel-perfect collision using Amiga's blitter
+- Collision response and realistic bouncing effects
 
-**Lessons 17-24: "Living Worlds" - Environmental Storytelling**
-- Making every screen tell a story without words
-- Using Amiga's copper effects for atmospheric storytelling
-- Background details that reward careful observation
-- Creating history and depth in your game worlds
+**Lessons 17-24: "Particle Physics" - Dynamic Effects**
+- Particle system architecture and management
+- Explosion and destruction effects
+- Fluid simulation and wave mechanics
+- Weather effects and environmental particles
 
-**Lessons 25-32: "Memorable Moments" - Landmark Design**
-- Crafting spaces that become legendary among players
-- Signature moments that define your game's identity
-- Using Paula sound to enhance spatial atmosphere
-- Creating the perfect marriage of gameplay and environment
+**Lessons 25-32: "Advanced Mechanics" - Complex Physics Systems**
+- Rope and chain physics simulation
+- Realistic vehicle and projectile physics
+- Physics-based puzzle mechanics
+- Performance optimization for complex simulations
 
-## Key Concepts
+## Key Technical Concepts
 
-This tier reveals the secrets of masterful level design:
+This tier develops advanced physics programming:
 
-- **Spatial Flow** - Understanding how players naturally navigate spaces
-- **Progressive Teaching** - Levels that educate through gameplay
-- **Environmental Narrative** - Telling stories through world design
-- **Atmospheric Immersion** - Creating believable, living worlds
-- **Memorable Composition** - Designing spaces that stick in memory
+- **Realistic Movement** - Physics that feels natural and responsive
+- **Efficient Algorithms** - Complex physics optimized for Amiga hardware
+- **Smooth Performance** - Physics systems that maintain frame rate
+- **Interactive Systems** - Physics that enhance gameplay
+- **Visual Impact** - Physics effects that impress players
 
-You'll understand why levels from Turrican and Shadow of the Beast are still talked about decades later - they created worlds players never wanted to leave!
+You'll understand how games like "Lemmings" and "The Chaos Engine" created such satisfying physics!

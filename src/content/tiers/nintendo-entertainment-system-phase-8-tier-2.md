@@ -22,7 +22,7 @@ order: 2
 
 # Tier 2: Technical Artistry: 6502 Code as Pure Expression!
 
-Your code becomes art! 🎨⚡ With **32 artistry-intensive lessons**, you'll master the craft of writing 6502 assembly so elegant that other developers weep at its beauty - technical implementation that serves legendary vision.
+Your code becomes art! With **32 artistry-intensive lessons**, you'll master the craft of writing 6502 assembly so elegant that other developers weep at its beauty - technical implementation that serves legendary vision.
 
 ## What You'll Master
 
@@ -69,4 +69,4 @@ This tier transforms you into a 6502 artist:
 - **Performance Artistry** - Optimization that serves creative vision
 - **Technical Legacy** - Code that inspires and teaches others
 
-You'll write 6502 assembly that honors both the technical masters of the NES era and the artistic vision of your legendary games! 🎯
+You'll write 6502 assembly that honors both the technical masters of the NES era and the artistic vision of your legendary games!

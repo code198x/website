@@ -26,7 +26,7 @@ order: 4
 
 # Tier 4: Legendary Creation Project: Your NES Artistic Masterpiece!
 
-Your moment of NES artistic triumph! 🏆🎮 With **32 intensive creation lessons**, you'll weave together legendary vision, 6502 technical artistry, and creative mastery into the NES game that becomes your artistic legacy.
+Your moment of NES artistic triumph! With **32 intensive creation lessons**, you'll weave together legendary vision, 6502 technical artistry, and creative mastery into the NES game that becomes your artistic legacy.
 
 ## What You'll Create
 
@@ -82,4 +82,4 @@ Upon completion, you'll have created:
 - Proof that NES games can be profound artistic expressions
 - The masterpiece that defines your contribution to the NES medium
 
-This is your artistic statement to the NES world - make it unforgettable! 🎆
+This is your artistic statement to the NES world - make it unforgettable!

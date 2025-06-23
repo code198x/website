@@ -1,72 +1,72 @@
 ---
-title: "Publishing & Distribution: Getting Games to Players!"
+title: "Advanced Game Polish: Professional Finishing!"
 system: "commodore-amiga"
 phase_number: 7
 tier_number: 10
-description: "Bridge the gap between creation and audience! Master the complete journey from finished game to player hands, understanding modern distribution, marketing, and the business of Amiga gaming."
+description: "Master the art of professional game polish! Learn the finishing techniques that transform good games into great ones, creating that final layer of quality that makes games memorable."
 learning_objectives:
-  - "Navigate modern publishing options for Amiga games"
-  - "Master digital distribution and physical media production"
-  - "Build effective marketing strategies for niche gaming audiences"
-  - "Understand the business models that sustain retro gaming"
-  - "Create sustainable revenue streams from Amiga development"
+  - "Master professional game polish and finishing techniques"
+  - "Create seamless user experiences and interfaces"
+  - "Implement advanced visual and audio effects"
+  - "Perfect game balance and difficulty progression"
+  - "Develop quality assurance and testing methodologies"
 concepts_introduced:
-  - "Modern Amiga game publishing and distribution channels"
-  - "Digital and physical media production and logistics"
-  - "Retro gaming market analysis and audience development"
-  - "Marketing strategies for niche and vintage gaming communities"
-  - "Business models and revenue optimization for retro development"
-estimated_duration: "5-7 weeks (32 comprehensive lessons)"
+  - "Professional game polish and quality enhancement"
+  - "Advanced user interface design and implementation"
+  - "Visual effects and presentation optimization"
+  - "Game balance and difficulty tuning techniques"
+  - "Quality assurance and testing methodologies"
+estimated_duration: "8-10 weeks (32 polish-focused lessons)"
 order: 10
 ---
 
-# Tier 10: Publishing & Distribution: Getting Games to Players!
+# Tier 10: Advanced Game Polish: Professional Finishing!
 
-From creation to celebration! With **32 business-focused lessons**, you'll master the complete journey from finished Amiga game to thriving player community, understanding the modern business of retro gaming.
+Transform good games into great ones! With **32 polish-focused lessons**, you'll master the professional finishing techniques that create the final layer of quality that makes games truly memorable and engaging.
 
 ## What You'll Build
 
-Create **AMIGA PUBLISHING EMPIRE** - your distribution mastery featuring:
-- Multi-platform distribution strategy reaching global Amiga audiences
-- Professional marketing campaigns that generate genuine excitement
-- Sustainable business models that fund continued development
-- Community engagement systems that create lasting player relationships
-- Revenue optimization strategies that maximize return on creative investment
+Create **PROFESSIONALLY POLISHED GAME** - your quality masterpiece:
+- Seamless user interfaces that feel intuitive and responsive
+- Advanced visual effects that enhance gameplay without distraction
+- Perfectly balanced difficulty progression and game mechanics
+- Professional audio integration and atmospheric enhancement
+- Quality assurance systems that ensure consistent excellence
 
-## Tier Overview
+## Professional Polish Areas
 
-**Lessons 1-8: "Modern Distribution" - Getting Games to Players**
-- Digital distribution through modern platforms and retro gaming sites
-- Physical media production including floppy disks, CDs, and special editions
-- International distribution and localization considerations
-- Platform-specific optimization for different Amiga configurations
+**Lessons 1-8: "Interface Excellence" - User Experience Mastery**
+- Professional user interface design and implementation
+- Intuitive menu systems and navigation design
+- Responsive control systems and input handling
+- Accessibility features and inclusive design principles
 
-**Lessons 9-16: "Marketing Mastery" - Building Audience Excitement**
-- Content marketing strategies that resonate with retro gaming audiences
-- Social media campaigns that build anticipation and community
-- Press relations and media coverage for niche gaming projects
-- Conference and convention presence for maximum visibility
+**Lessons 9-16: "Visual Polish" - Presentation Enhancement**
+- Advanced visual effects and screen transitions
+- Professional sprite animation and movement systems
+- Color palette optimization and visual harmony
+- Screen layout and composition for maximum impact
 
-**Lessons 17-24: "Business Models" - Sustainable Revenue Streams**
-- Pricing strategies that respect both developers and players
-- Subscription and episodic content models for ongoing revenue
-- Merchandising and ancillary revenue opportunities
-- Crowdfunding and pre-order campaigns that fund development
+**Lessons 17-24: "Audio Integration" - Sound Design Excellence**
+- Professional audio mixing and balance
+- Dynamic audio systems that respond to gameplay
+- Sound effect timing and spatial audio placement
+- Music integration and atmospheric audio design
 
-**Lessons 25-32: "Community Building" - Long-term Success**
-- Building player communities that sustain long-term engagement
-- Customer support systems that create positive player experiences
-- Feedback integration that improves games and builds loyalty
-- Community-driven content and modding support
+**Lessons 25-32: "Game Balance" - Perfecting the Experience**
+- Difficulty progression and challenge balancing
+- Game pacing and flow optimization
+- Player feedback systems and progression indicators
+- Quality assurance testing and bug resolution
 
-## Key Concepts
+## Key Polish Concepts
 
-This tier completes your business education:
+This tier develops professional finishing skills:
 
-- **Distribution Strategy** - Getting games to players through optimal channels
-- **Marketing Excellence** - Building excitement and awareness effectively
-- **Business Acumen** - Creating sustainable revenue from creative work
-- **Community Development** - Building lasting relationships with players
-- **Industry Understanding** - Navigating the modern retro gaming landscape
+- **Professional Quality** - Achieving commercial-level game polish
+- **User Experience** - Creating seamless, intuitive player interactions
+- **Visual Excellence** - Professional presentation and visual design
+- **Audio Integration** - Seamless sound and music implementation
+- **Game Balance** - Perfecting gameplay difficulty and progression
 
-You'll understand how modern Amiga developers successfully reach audiences and build sustainable businesses in today's gaming market!
+You'll understand how professional games achieve that final layer of polish that makes them memorable!

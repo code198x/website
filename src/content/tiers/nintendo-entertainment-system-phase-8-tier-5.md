@@ -22,7 +22,7 @@ order: 5
 
 # Tier 5: Genre Innovation: Creating New Types of NES Magic!
 
-Pioneer the NES future! 🚀✨ With **32 innovation-intensive lessons**, you'll create entirely new types of gaming experiences that redefine what's possible on NES hardware - genres that inspire a new generation of 8-bit innovation.
+Pioneer the NES future! With **32 innovation-intensive lessons**, you'll create entirely new types of gaming experiences that redefine what's possible on NES hardware - genres that inspire a new generation of 8-bit innovation.
 
 ## What You'll Pioneer
 
@@ -89,4 +89,4 @@ This tier establishes you as an NES pioneer:
 - **Future Foundation** - Groundwork for the next generation of NES development
 - **Legendary Influence** - Games that change how people think about NES
 
-You'll join the ranks of the great NES innovators who expanded what gaming could be! 🌟
+You'll join the ranks of the great NES innovators who expanded what gaming could be!

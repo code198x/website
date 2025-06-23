@@ -1,72 +1,72 @@
 ---
-title: "Innovation & Technology: Breaking New Ground!"
+title: "Innovative Game Design: Creating New Gameplay!"
 system: "commodore-amiga"
 phase_number: 7
 tier_number: 9
-description: "Push the boundaries of what's possible! Master cutting-edge techniques that break new ground on Amiga hardware, creating innovations that inspire the entire development community."
+description: "Innovate new types of gameplay! Master the art of creating fresh game mechanics and experiences that push the boundaries of what games can be on Amiga."
 learning_objectives:
-  - "Develop groundbreaking techniques that push Amiga hardware beyond known limits"
-  - "Create innovative solutions to previously unsolved technical challenges"
-  - "Research and implement experimental development approaches"
-  - "Build tools and techniques that benefit the entire Amiga community"
-  - "Establish yourself as a technical innovator and thought leader"
+  - "Design innovative gameplay mechanics and systems"
+  - "Create new types of game experiences and genres"
+  - "Experiment with unconventional game design approaches"
+  - "Master the balance between innovation and playability"
+  - "Build games that inspire other developers"
 concepts_introduced:
-  - "Experimental programming techniques and research methodologies"
-  - "Advanced hardware manipulation and undocumented features"
-  - "Tool development and community contribution strategies"
-  - "Technical innovation and breakthrough development practices"
-  - "Industry leadership and technology evangelism"
-estimated_duration: "6-8 weeks (32 comprehensive lessons)"
+  - "Innovative game design and experimental mechanics"
+  - "Genre-blending and hybrid gameplay systems"
+  - "Unconventional control schemes and interfaces"
+  - "Emergent gameplay and player creativity systems"
+  - "Innovation evaluation and iterative design processes"
+estimated_duration: "8-10 weeks (32 design-focused lessons)"
 order: 9
 ---
 
-# Tier 9: Innovation & Technology: Breaking New Ground!
+# Tier 9: Innovative Game Design: Creating New Gameplay!
 
-Be the pioneer who shows what's possible! With **32 innovation-focused lessons**, you'll learn to push beyond conventional limitations, creating breakthrough techniques that expand what developers thought was possible on Amiga hardware.
+Push the boundaries of what games can be! With **32 design-focused lessons**, you'll master the art of creating innovative gameplay mechanics and experiences that expand what's possible in Amiga gaming.
 
 ## What You'll Build
 
-Create **AMIGA INNOVATION LAB** - your technological breakthrough featuring:
-- Revolutionary techniques that achieve previously impossible effects
-- Experimental tools that unlock new development possibilities
-- Research methodologies that discover undocumented hardware capabilities
-- Community contributions that advance the entire Amiga development scene
-- Technical innovations that become industry standards
+Create **INNOVATIVE GAME PROTOTYPE** - your design breakthrough featuring:
+- Completely new gameplay mechanics never seen before
+- Innovative control schemes that feel natural and intuitive
+- Genre-blending systems that create unique experiences
+- Experimental features that push creative boundaries
+- Prototypes that demonstrate new possibilities for Amiga gaming
 
-## Tier Overview
+## Innovation Design Areas
 
-**Lessons 1-8: "Beyond Limits" - Experimental Programming**
-- Discovering undocumented Amiga hardware features and capabilities
-- Experimental programming techniques that push theoretical boundaries
-- Research methodologies for exploring uncharted technical territory
-- Creating proofs-of-concept that demonstrate new possibilities
+**Lessons 1-8: "Experimental Mechanics" - New Gameplay Concepts**
+- Creating entirely new types of game mechanics
+- Experimenting with unconventional player interactions
+- Designing systems that encourage player creativity
+- Testing and refining innovative gameplay concepts
 
-**Lessons 9-16: "Tool Innovation" - Developer Empowerment**
-- Building advanced development tools that revolutionize workflows
-- Creating libraries and frameworks that simplify complex development
-- Designing debugging and profiling tools for cutting-edge techniques
-- Open source contribution strategies that benefit the community
+**Lessons 9-16: "Genre Innovation" - Blending and Creating**
+- Combining different genres in innovative ways
+- Creating new game genres from scratch
+- Designing hybrid systems that work cohesively
+- Balancing innovation with player accessibility
 
-**Lessons 17-24: "Technical Leadership" - Industry Advancement**
-- Publishing research and sharing breakthrough discoveries
-- Speaking at conferences and establishing thought leadership
-- Mentoring other developers in advanced techniques
-- Building the reputation that attracts industry attention
+**Lessons 17-24: "Interface Innovation" - New Ways to Play**
+- Experimental control schemes and input methods
+- Innovative user interfaces that enhance gameplay
+- Visual and audio design that supports new mechanics
+- Accessibility considerations for innovative designs
 
-**Lessons 25-32: "Innovation Culture" - Community Building**
-- Creating development communities around innovative techniques
-- Fostering collaborative research and knowledge sharing
-- Building networks of innovators who push each other forward
-- Establishing the culture that drives continuous advancement
+**Lessons 25-32: "Prototype Development" - Testing Innovation**
+- Rapid prototyping techniques for game concepts
+- Player testing and feedback integration
+- Iterative design processes for innovative games
+- Refining concepts for maximum impact and playability
 
-## Key Concepts
+## Key Design Concepts
 
-This tier transforms you into a technical pioneer:
+This tier develops innovative game design skills:
 
-- **Experimental Methods** - Pushing beyond known boundaries safely and systematically
-- **Technical Innovation** - Creating breakthrough solutions to previously unsolved problems
-- **Community Leadership** - Sharing knowledge and advancing the entire development community
-- **Tool Development** - Building systems that empower other developers
-- **Industry Influence** - Establishing reputation as a technical thought leader
+- **Creative Innovation** - Creating genuinely new gameplay experiences
+- **Experimental Design** - Testing unconventional ideas systematically
+- **Player-Centered Innovation** - Ensuring innovations serve player enjoyment
+- **Genre Evolution** - Pushing game genres in new directions
+- **Prototype Mastery** - Efficiently testing and refining innovative concepts
 
-You'll understand how innovators like the Bitmap Brothers and Factor 5 consistently pushed Amiga hardware beyond what anyone thought possible!
+You'll understand how games like "Lemmings" and "Populous" created entirely new types of gameplay!

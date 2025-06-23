@@ -69,6 +69,4 @@ This culminating tier represents the pinnacle of professional development:
 - **Legacy Creation** - Building work that continues to inspire and benefit others
 - **Career Culmination** - Representing the achievement of professional mastery
 
-You'll create a master portfolio that not only demonstrates your professional excellence but establishes you as a leader who can guide the future of NES development and beyond - a true master of the craft!
-
-Congratulations on completing your journey to NES development mastery! You've built the skills, relationships, and professional presence needed to lead the industry forward while honoring the incredible legacy of the Nintendo Entertainment System.
+You'll create a master game portfolio that demonstrates the pinnacle of NES development mastery - a collection of games that showcase your complete technical excellence and creative vision!

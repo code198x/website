@@ -1,72 +1,72 @@
 ---
-title: "Level Design Mastery: Crafting Worlds Players Love!"
+title: "Complex Game Physics: Realistic Movement!"
 system: "nintendo-entertainment-system"
 phase_number: 7
 tier_number: 2
-description: "Create unforgettable worlds! Master the art of level design that keeps players engaged, challenged, and amazed. Learn to build NES levels so perfectly crafted that players explore every corner."
+description: "Create lifelike game physics! Master advanced physics programming techniques, implement realistic movement systems, and build collision detection that makes NES games feel incredibly responsive."
 learning_objectives:
-  - "Design levels that teach players through gameplay"
-  - "Create perfect difficulty curves that challenge without frustrating"
-  - "Build worlds that tell stories through environment"
-  - "Master NES hardware constraints for optimal level design"
-  - "Craft secrets and rewards that feel genuinely exciting to discover"
+  - "Master complex physics algorithms for NES game objects"
+  - "Create realistic movement and collision systems in 6502"
+  - "Implement advanced physics simulations within hardware limits"
+  - "Design responsive player controls and object interactions"
+  - "Optimize physics calculations for smooth 60fps gameplay"
 concepts_introduced:
-  - "Player psychology and learning through level progression"
-  - "Environmental storytelling using NES graphics capabilities"
-  - "Difficulty balancing and player skill development"
-  - "NES memory management for large, detailed worlds"
-  - "Hidden content design and reward discovery systems"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Advanced physics simulation and collision detection on NES"
+  - "Realistic movement algorithms and acceleration systems"
+  - "Performance optimization for complex physics calculations"
+  - "Advanced collision response and object interaction systems"
+  - "Physics-based game mechanics and realistic behaviors"
+estimated_duration: "6-8 weeks (32 advanced lessons)"
 order: 2
 ---
 
-# Tier 2: Level Design Mastery: Crafting Worlds Players Love!
+# Tier 2: Complex Game Physics: Realistic Movement!
 
-Worlds that captivate! With **32 design-focused lessons**, you'll master the art of creating NES levels so brilliantly designed that players can't put the controller down - every screen teaches, challenges, and delights.
+Bring realistic physics to your NES games! With **32 advanced lessons**, you'll master sophisticated physics programming techniques using 6502 assembly that create incredibly responsive and lifelike game movement.
 
 ## What You'll Build
 
-Create **NES WORLD ARCHITECT** - your level design masterpiece featuring:
-- Levels that teach players new skills naturally through gameplay
-- Perfect difficulty curves that challenge without overwhelming
-- Environmental storytelling that reveals world history
-- Hidden secrets that reward exploration and curiosity
-- NES level systems that push hardware to its creative limits
+Create **ADVANCED NES PHYSICS ENGINE** - featuring complex systems:
+- Realistic gravity, acceleration, and momentum calculations
+- Advanced collision detection and response systems
+- Physics-based puzzle mechanics and object interactions
+- Smooth movement systems that feel incredibly responsive
+- Performance-optimized physics running at full 60fps
 
-## Tier Overview
+## Technical Mastery Areas
 
-**Lessons 1-8: "Teaching Through Play" - Educational Level Design**
-- How great NES levels teach players without tutorials
-- Introducing new mechanics through intuitive level design
-- Building confidence through perfectly paced challenges
-- Creating "aha!" moments that feel like personal discoveries
+**Lessons 1-8: "Physics Fundamentals" - Core Movement Systems**
+- Advanced physics calculations and mathematical foundations
+- Gravity, acceleration, and velocity systems in 6502 assembly
+- Fixed-point arithmetic for precise physics calculations
+- Memory-efficient physics data structures for NES
 
-**Lessons 9-16: "The Perfect Challenge" - Difficulty Mastery**
-- Designing difficulty curves that feel fair and rewarding
-- Balancing challenge and accessibility for all skill levels
-- Creating optional hard content for dedicated players
-- Using NES hardware limitations as creative design opportunities
+**Lessons 9-16: "Collision Mastery" - Advanced Detection Systems**
+- Sophisticated collision detection algorithms for complex shapes
+- Collision response and realistic object interactions
+- Spatial partitioning systems for performance optimization
+- Multi-object collision handling and resolution
 
-**Lessons 17-24: "Worlds That Speak" - Environmental Storytelling**
-- Using NES graphics to tell rich stories without words
-- Creating atmosphere and mood through visual design
-- Building believable worlds within NES memory constraints
-- Making every screen contribute to the overall narrative
+**Lessons 17-24: "Realistic Behaviors" - Advanced Physics Simulation**
+- Momentum, friction, and energy conservation systems
+- Realistic bouncing, sliding, and rolling mechanics
+- Physics-based animation and procedural movement
+- Advanced object interaction and chain reaction systems
 
-**Lessons 25-32: "Secrets and Surprises" - Discovery Design**
-- Hiding content that feels rewarding to find
-- Creating multiple paths that encourage exploration
-- Designing reward systems that motivate thoroughness
-- Building levels that reveal new details on repeat playthroughs
+**Lessons 25-32: "Performance Physics" - Optimized Game Systems**
+- Performance optimization techniques for complex physics
+- Frame-rate independent physics simulation
+- Physics LOD systems and selective simulation
+- Integration with gameplay systems for responsive controls
 
-## Key Concepts
+## Key Technical Concepts
 
-This tier reveals the secrets of masterful level design:
+This tier develops advanced physics programming skills for NES:
 
-- **Player Psychology** - Understanding how players learn and explore
-- **Teaching Design** - Creating levels that naturally educate players
-- **Environmental Narrative** - Telling stories through world design
-- **NES Optimization** - Maximizing impact within hardware constraints
-- **Discovery Mechanics** - Rewarding curiosity and exploration
+- **Realistic Simulation** - Creating believable physics within NES constraints
+- **Efficient Algorithms** - Implementing complex calculations in 6502
+- **Responsive Controls** - Physics that enhance rather than hinder gameplay
+- **Performance Balance** - Sophisticated physics running smoothly
+- **Gameplay Integration** - Physics that serve game design goals
 
-You'll understand why games like Super Mario Bros. and Metroid created worlds that players still explore decades later!
+You'll understand how classics like "Bionic Commando" and "Blaster Master" created such satisfying physics-based gameplay on the NES!

@@ -1,72 +1,72 @@
 ---
-title: "Performance Mastery: Pushing the C64 to Its Limits!"
+title: "Advanced Game Mechanics: Complex Gameplay Systems!"
 system: "commodore-64"
 phase_number: 7
 tier_number: 6
-description: "Squeeze every last cycle from the C64! Master optimization techniques that make impossible games possible. Learn the dark arts of performance wizardry that separate hobby projects from commercial legends."
+description: "Create sophisticated gameplay systems! Master advanced game mechanics that create deep, engaging experiences. Build complex interactions, systems, and mechanics that define great games."
 learning_objectives:
-  - "Optimize code to achieve 'impossible' performance"
-  - "Master cycle-counting and memory optimization techniques"
-  - "Create effects that make people question if it's really a C64"
-  - "Build systems that scale gracefully under pressure"
-  - "Develop the optimization mindset of legendary programmers"
+  - "Design and implement complex gameplay mechanics and systems"
+  - "Create sophisticated player progression and upgrade systems"
+  - "Build interactive environments with emergent gameplay"
+  - "Implement advanced inventory and resource management systems"
+  - "Develop engaging game loops and player retention mechanics"
 concepts_introduced:
-  - "Advanced optimization techniques and cycle counting"
-  - "Memory management and efficient data structures"
-  - "Performance profiling and bottleneck identification"
-  - "Hardware-specific optimization strategies"
-  - "The art and science of making miracles happen"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Complex gameplay mechanics and system design"
+  - "Player progression systems and character development"
+  - "Emergent gameplay and interactive environments"
+  - "Advanced inventory and resource management"
+  - "Game balance and player retention design"
+estimated_duration: "6-8 weeks (32 advanced lessons)"
 order: 6
 ---
 
-# Tier 6: Performance Mastery: Pushing the C64 to Its Limits!
+# Tier 6: Advanced Game Mechanics: Complex Gameplay Systems!
 
-Time to break the impossible barrier! ⚡🔥 With **32 optimization-focused lessons**, you'll learn the arcane arts of making the C64 do things that shouldn't be possible - the same techniques that made Turrican, Last Ninja, and Impossible Mission truly impossible!
+Create games with depth and sophistication! With **32 advanced lessons**, you'll master complex gameplay mechanics that create engaging, deep experiences that keep players coming back for more.
 
 ## What You'll Build
 
-Create **PERFORMANCE SHOWCASE** - games that make people question reality:
-- Smooth-scrolling worlds that flow like silk
-- Sprite engines that put 20+ moving objects on screen simultaneously  
-- Sound systems that play complex music while handling intense gameplay
-- Effects that make other programmers ask "How did they DO that?!"
-- Games that run faster than they have any right to
+Create **COMPLEX MECHANICS RPG** - featuring sophisticated gameplay systems:
+- Advanced character progression with skills, stats, and abilities
+- Complex inventory system with crafting and equipment management
+- Interactive world with emergent gameplay and dynamic events
+- Sophisticated combat system with tactical depth
+- Engaging quest system with branching narratives and consequences
 
-## Tier Overview
+## Technical Mastery Areas
 
-**Lessons 1-8: "Every Cycle Counts" - Micro-Optimization**
-- Assembly language wizardry and cycle counting
-- Register allocation strategies that squeeze maximum performance
-- Jump table magic and lookup table sorcery
-- The art of making one instruction do the work of three
+**Lessons 1-8: "Player Progression" - Character Development Systems**
+- Experience point systems and level progression mechanics
+- Skill trees and ability unlock systems
+- Character stat management and attribute systems
+- Player choice systems that create meaningful progression
 
-**Lessons 9-16: "Memory Mastery" - Advanced Memory Management**
-- Data structures that fit impossible amounts in tiny spaces
-- Compression techniques that work in real-time
-- Memory pooling and allocation strategies
-- Making 64K feel like 640K
+**Lessons 9-16: "Inventory & Resources" - Management Systems**
+- Advanced inventory management with categories and sorting
+- Crafting systems with recipes and resource requirements
+- Equipment systems with stats and modifications
+- Economy design and resource scarcity management
 
-**Lessons 17-24: "Hardware Harmony" - System-Level Optimization**
-- VIC-II timing tricks that bend the rules of reality
-- Interrupt handlers so efficient they're basically invisible
-- DMA and memory banking techniques for maximum throughput
-- Pushing every chip to its theoretical limits
+**Lessons 17-24: "Interactive Environments" - World Systems**
+- Dynamic world events and environmental storytelling
+- Interactive objects and environmental puzzles
+- Day/night cycles and time-based gameplay elements
+- Emergent gameplay through system interactions
 
-**Lessons 25-32: "Optimization Psychology" - The Mindset of Miracles**
-- Profiling techniques that reveal hidden bottlenecks
-- The art of choosing what NOT to optimize
-- Creating scalable systems that gracefully degrade
-- Building performance headroom for future features
+**Lessons 25-32: "Advanced Gameplay" - Complex Mechanics Integration**
+- Tactical combat systems with positioning and strategy
+- Quest systems with branching narratives and consequences
+- Dialogue systems with personality and relationship tracking
+- Game balance and player retention through sophisticated mechanics
 
-## Key Concepts
+## Key Game Design Concepts
 
-This tier teaches the dark arts of optimization:
+This tier develops advanced gameplay programming skills:
 
-- **Cycle Counting** - Making every processor cycle precious and purposeful
-- **Memory Wizardry** - Fitting infinite possibilities in finite space
-- **Hardware Mastery** - Understanding the C64 at the silicon level
-- **Performance Intuition** - Developing the sixth sense for bottlenecks
-- **Optimization Ethics** - Knowing when fast enough is actually enough
+- **System Design** - Creating interconnected gameplay mechanics
+- **Player Engagement** - Designing mechanics that maintain long-term interest
+- **Emergent Gameplay** - Building systems that create unexpected interactions
+- **Game Balance** - Tuning complex systems for optimal player experience
+- **Technical Implementation** - Programming sophisticated mechanics efficiently
 
-You'll understand how games like Katakis achieved arcade-quality graphics on humble home hardware! 🚀
+You'll understand how games like "Ultima V" and "Bard's Tale" created such deep gameplay!

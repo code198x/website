@@ -1,72 +1,72 @@
 ---
-title: "Performance Mastery: Pushing Amiga to its Limits!"
+title: "Advanced Game Mechanics: Complex Gameplay Systems!"
 system: "commodore-amiga"
 phase_number: 7
 tier_number: 6
-description: "Squeeze every drop of power from your Amiga! Master the advanced optimization techniques that professionals use to create games that push hardware beyond what seems possible."
+description: "Master sophisticated gameplay mechanics! Create complex game systems with deep interactions, emergent gameplay, and mechanics that create engaging player experiences."
 learning_objectives:
-  - "Optimize 68000 assembly code for maximum performance"
-  - "Leverage every aspect of Amiga hardware efficiently"
-  - "Create smooth gameplay even in complex scenarios"
-  - "Master advanced memory management and optimization"
-  - "Build systems that scale elegantly under pressure"
+  - "Design and implement complex gameplay mechanics"
+  - "Create systems with emergent gameplay properties"
+  - "Master game balance and progression systems"
+  - "Implement deep player interaction mechanics"
+  - "Build engaging and replayable game systems"
 concepts_introduced:
-  - "Advanced 68000 optimization and performance profiling"
-  - "Copper, Blitter, and Paula optimization techniques"
-  - "Memory management and cache optimization strategies"
-  - "Real-time performance monitoring and debugging"
-  - "Professional optimization workflows and tools"
-estimated_duration: "5-7 weeks (32 comprehensive lessons)"
+  - "Complex gameplay mechanics and system design"
+  - "Emergent gameplay and system interactions"
+  - "Game balance and progression mathematics"
+  - "Player agency and meaningful choice systems"
+  - "Replayability and depth mechanics"
+estimated_duration: "8-10 weeks (32 mechanics-focused lessons)"
 order: 6
 ---
 
-# Tier 6: Performance Mastery: Pushing Amiga to its Limits!
+# Tier 6: Advanced Game Mechanics: Complex Gameplay Systems!
 
-Unlock the Amiga's true potential! With **32 optimization-focused lessons**, you'll learn the professional techniques that squeeze incredible performance from hardware, creating games that run smoother than players thought possible.
+Create deep, engaging gameplay! With **32 mechanics-focused lessons**, you'll master the design and implementation of sophisticated game systems that create compelling, replayable experiences.
 
 ## What You'll Build
 
-Create **AMIGA PERFORMANCE ENGINE** - your optimization masterpiece featuring:
-- Silky-smooth 50fps gameplay even with complex scenes
-- Advanced effects that rival commercial productions
-- Memory-efficient systems that work on base A500 configurations
-- Scalable performance that adapts to different Amiga models
-- Professional optimization tools for ongoing development
+Create **COMPLEX GAMEPLAY SYSTEM** - featuring sophisticated mechanics:
+- Interlocking game systems with emergent properties
+- Deep progression and character development mechanics
+- Complex resource management and economic systems
+- Sophisticated combat and interaction mechanics
+- Engaging puzzle and problem-solving systems
 
-## Tier Overview
+## Advanced Mechanics Areas
 
-**Lessons 1-8: "68000 Virtuosity" - Assembly Optimization Mastery**
-- Advanced 68000 instruction optimization and cycle counting
-- Register allocation strategies for maximum efficiency
-- Loop unrolling and instruction scheduling techniques
-- Professional assembly debugging and profiling methods
+**Lessons 1-8: "System Design" - Complex Mechanics Architecture**
+- Designing interlocking gameplay systems
+- Creating mechanics that support multiple playstyles
+- Balancing complexity with accessibility
+- Implementing efficient game rule systems
 
-**Lessons 9-16: "Chipset Synergy" - Hardware Optimization**
-- Copper programming for maximum visual impact with minimal CPU load
-- Blitter optimization for ultra-fast graphics operations
-- Paula efficiency for professional audio without performance hits
-- Coordinating all chipsets for symphony-like performance
+**Lessons 9-16: "Emergent Gameplay" - System Interactions**
+- Creating systems that generate unexpected gameplay
+- Designing mechanics that interact in interesting ways
+- Building systems that reward creativity and experimentation
+- Managing complexity to maintain player understanding
 
-**Lessons 17-24: "Memory Mastery" - Advanced Memory Management**
-- Cache-friendly programming techniques for 68020+ systems
-- Memory pooling and allocation strategies
-- Chip/Fast RAM optimization for different Amiga configurations
-- Dynamic memory management for complex game systems
+**Lessons 17-24: "Progression Systems" - Player Growth**
+- Character development and advancement mechanics
+- Skill trees and ability progression systems
+- Resource accumulation and spending mechanics
+- Long-term progression that maintains engagement
 
-**Lessons 25-32: "Real-time Excellence" - Professional Performance Systems**
-- Frame rate management and consistent timing
-- Adaptive quality systems that maintain smooth gameplay
-- Performance monitoring and real-time optimization
-- Professional optimization workflows used by commercial developers
+**Lessons 25-32: "Advanced Interactions" - Deep Gameplay**
+- Complex combat systems with tactical depth
+- Sophisticated puzzle mechanics and problem-solving
+- Economic systems and resource management
+- Social mechanics and player interaction systems
 
-## Key Concepts
+## Key Technical Concepts
 
-This tier transforms you into a performance wizard:
+This tier develops advanced gameplay programming:
 
-- **Assembly Mastery** - Writing 68000 code that rivals hand-optimized libraries
-- **Hardware Harmony** - Making all Amiga chips work together efficiently
-- **Memory Intelligence** - Managing memory like a professional systems programmer
-- **Real-time Optimization** - Maintaining performance under any conditions
-- **Professional Methodology** - Using industry-standard optimization techniques
+- **Complex Systems** - Creating sophisticated interlocking mechanics
+- **Emergent Design** - Systems that generate unexpected gameplay
+- **Player Agency** - Meaningful choices and consequences
+- **Progression Balance** - Satisfying advancement and growth
+- **Mechanical Depth** - Systems that reward mastery and exploration
 
-You'll understand how games like Turrican and Agony achieved seemingly impossible performance on standard Amiga hardware!
+You'll understand how games like "Civilization" and "Pirates!" created such engaging mechanical depth!

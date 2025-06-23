@@ -1,72 +1,72 @@
 ---
-title: "Performance Mastery: Pushing NES to Its Limits!"
+title: "Advanced Game Mechanics: Complex Gameplay Systems!"
 system: "nintendo-entertainment-system"
 phase_number: 7
 tier_number: 6
-description: "Achieve the impossible! Master advanced optimization techniques that squeeze every ounce of power from NES hardware. Learn to create effects that make people wonder how you did it."
+description: "Create sophisticated gameplay! Master advanced game mechanics programming, implement complex gameplay systems, and build interactive elements that create deep, engaging NES game experiences."
 learning_objectives:
-  - "Optimize 6502 assembly code for maximum performance"
-  - "Create visual effects that push NES hardware beyond expectations"
-  - "Master advanced memory management and banking techniques"
-  - "Implement professional profiling and optimization workflows"
-  - "Build systems that maintain 60 FPS under extreme load"
+  - "Design and implement complex gameplay mechanics"
+  - "Create sophisticated interaction systems and game rules"
+  - "Build advanced inventory and progression systems"
+  - "Implement complex puzzle and challenge mechanics"
+  - "Master advanced game state management and logic systems"
 concepts_introduced:
-  - "Advanced 6502 optimization techniques and cycle counting"
-  - "Professional performance profiling and bottleneck analysis"
-  - "Memory banking strategies and advanced mapper usage"
-  - "Visual effect techniques that maximize PPU capabilities"
-  - "Real-time optimization and dynamic performance adjustment"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Advanced gameplay mechanics design and implementation"
+  - "Complex interaction systems and rule-based gameplay"
+  - "Sophisticated progression and character development systems"
+  - "Advanced puzzle mechanics and challenge design"
+  - "Complex game state management and logic programming"
+estimated_duration: "6-8 weeks (32 advanced lessons)"
 order: 6
 ---
 
-# Tier 6: Performance Mastery: Pushing NES to Its Limits!
+# Tier 6: Advanced Game Mechanics: Complex Gameplay Systems!
 
-The impossible made possible! With **32 optimization-focused lessons**, you'll learn to create NES effects so impressive that players assume you're using superior hardware - the art of professional performance optimization.
+Build sophisticated gameplay! With **32 advanced lessons**, you'll master complex game mechanics programming using 6502 assembly that create deep, engaging interactive systems rivaling the best NES games.
 
 ## What You'll Build
 
-Create **NES PERFORMANCE ENGINE** - your optimization masterpiece featuring:
-- Visual effects that make people question what NES can do
-- Code so optimized it runs perfectly at full 60 FPS
-- Memory management that maximizes every available byte
-- Professional profiling tools for continuous optimization
-- Performance techniques that become your signature style
+Create **ADVANCED NES MECHANICS ENGINE** - your gameplay masterpiece featuring:
+- Complex interaction systems that create deep strategic gameplay
+- Sophisticated progression and character development mechanics
+- Advanced inventory and item management systems
+- Intricate puzzle mechanics and challenge design systems
+- Professional game logic architecture supporting complex rules
 
-## Tier Overview
+## Technical Mastery Areas
 
-**Lessons 1-8: "The Art of Speed" - 6502 Optimization Mastery**
-- Advanced 6502 assembly optimization techniques and best practices
-- Cycle counting and performance analysis for critical code paths
-- Register management strategies for maximum efficiency
-- Understanding CPU timing and synchronization with PPU operations
+**Lessons 1-8: "Complex Interactions" - Advanced Gameplay Systems**
+- Sophisticated interaction mechanics and player input processing
+- Complex rule systems and game logic implementation
+- Advanced state machines for gameplay behavior management
+- Multi-layered interaction systems and context-sensitive mechanics
 
-**Lessons 9-16: "Memory Wizardry" - Advanced Memory Management**
-- Professional memory banking strategies and mapper programming
-- Dynamic memory allocation within NES constraints
-- Cache-friendly data structures and access patterns
-- Advanced techniques for managing limited RAM efficiently
+**Lessons 9-16: "Progression Systems" - Character Development**
+- Advanced character progression and skill development systems
+- Complex experience point and leveling mechanics
+- Sophisticated upgrade and enhancement systems
+- Dynamic difficulty scaling based on player progression
 
-**Lessons 17-24: "Visual Impossibilities" - PPU Effect Mastery**
-- Creating visual effects that seem impossible on NES hardware
-- Advanced sprite management and multiplexing techniques
-- Background manipulation tricks for dynamic environments
-- Professional raster effects and mid-frame register changes
+**Lessons 17-24: "Inventory & Items" - Management Systems**
+- Advanced inventory management and item systems
+- Complex crafting and combination mechanics
+- Sophisticated equipment and gear systems
+- Dynamic item generation and randomization systems
 
-**Lessons 25-32: "Professional Optimization" - Industry Workflows**
-- Building profiling tools and performance measurement systems
-- Automated optimization testing and regression detection
-- Balancing visual quality with performance requirements
-- Creating optimization documentation for team collaboration
+**Lessons 25-32: "Puzzle Mechanics" - Challenge Design**
+- Complex puzzle design and solution verification systems
+- Advanced challenge mechanics and difficulty progression
+- Sophisticated hint and assistance systems
+- Multi-layered puzzle interaction and combination mechanics
 
-## Key Concepts
+## Key Technical Concepts
 
-This tier reveals the secrets of professional NES optimization:
+This tier develops advanced gameplay mechanics programming for NES:
 
-- **Cycle Counting** - Understanding exactly how fast your code runs
-- **Memory Mastery** - Maximizing efficiency within hardware constraints
-- **Visual Optimization** - Creating stunning effects through clever programming
-- **Professional Profiling** - Using data to guide optimization decisions
-- **Performance Architecture** - Designing systems for optimal speed
+- **Complex Systems** - Creating sophisticated gameplay mechanics that engage players
+- **Rule Implementation** - Programming complex game logic and interaction systems
+- **Progression Design** - Building character development and advancement systems
+- **System Integration** - Combining multiple mechanics into cohesive gameplay
+- **Challenge Balance** - Creating engaging difficulty and puzzle systems
 
-You'll understand how games like Mega Man 2 and Contra achieved visual effects that still amaze developers today!
+You'll understand how classics like "Final Fantasy" and "Dragon Warrior" created such engaging and complex gameplay mechanics!

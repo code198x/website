@@ -22,7 +22,7 @@ order: 3
 
 # Tier 3: Creative Mastery: Art, Music & Soul for NES!
 
-Your creativity ignites the legend! 🎨🎵 With **32 creative-intensive lessons**, you'll master the artistic disciplines that transform technical excellence into legendary NES experiences that move hearts and inspire souls.
+Your creativity ignites the legend! With **32 creative-intensive lessons**, you'll master the artistic disciplines that transform technical excellence into legendary NES experiences that move hearts and inspire souls.
 
 ## What You'll Create
 
@@ -69,4 +69,4 @@ This tier transforms you into an NES creative master:
 - **Creative Unity** - Integration that makes art serve legendary vision
 - **Artistic Legacy** - Creative work that inspires future NES artists
 
-You'll honor the greatest NES artists while creating your own legendary visual and audio signature! 🎆
+You'll honor the greatest NES artists while creating your own legendary visual and audio signature!

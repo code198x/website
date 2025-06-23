@@ -1,72 +1,91 @@
 ---
-title: "Performance Mastery: Pushing ZX Spectrum to Its Limits!"
+title: "Advanced Game Mechanics: Complex Gameplay Systems!"
 system: "zx-spectrum"
 phase_number: 7
 tier_number: 6
-description: "Achieve the impossible! Master the art of squeezing maximum performance from the ZX Spectrum. Learn to create games that seem impossible on the hardware - making every cycle count and every byte meaningful."
+description: "Create sophisticated gameplay systems! Master advanced game mechanics, implement complex interactions, and design deep gameplay systems that provide rich, engaging experiences on the ZX Spectrum."
 learning_objectives:
-  - "Optimize Z80 assembly code for maximum performance"
-  - "Push the ZX Spectrum hardware beyond its apparent limits"
-  - "Create smooth, responsive gameplay within strict constraints"
-  - "Master memory management and optimization techniques"
-  - "Develop games that showcase true technical excellence"
+  - "Design complex, interconnected gameplay systems"
+  - "Create deep mechanics that reward mastery and exploration"
+  - "Implement sophisticated game interactions in Z80 assembly"
+  - "Balance complexity with accessibility for players"
+  - "Master advanced gameplay programming techniques"
 concepts_introduced:
-  - "Advanced Z80 optimization techniques and cycle counting"
-  - "ZX Spectrum hardware tricks and undocumented features"
-  - "Memory optimization and efficient data structures"
-  - "Performance profiling and bottleneck identification"
-  - "Technical innovation within hardware constraints"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Complex gameplay system design and implementation"
+  - "Advanced interaction mechanics and state management"
+  - "Deep progression systems and player advancement"
+  - "Sophisticated game balance and difficulty scaling"
+  - "Advanced gameplay programming patterns for ZX Spectrum"
+estimated_duration: "6-8 weeks (32 mechanics-focused lessons)"
 order: 6
 ---
 
-# Tier 6: Performance Mastery: Pushing ZX Spectrum to Its Limits!
+# Tier 6: Advanced Game Mechanics: Complex Gameplay Systems!
 
-The impossible made possible! With **32 optimization-focused lessons**, you'll learn to create ZX Spectrum games that seem to defy the laws of hardware - achieving performance that makes players wonder "How did they do that?"
+Master sophisticated gameplay systems! With **32 mechanics-focused lessons**, you'll create complex, interconnected game mechanics that provide deep, rewarding experiences for ZX Spectrum players.
 
 ## What You'll Build
 
-Create **SPECTRUM PERFORMANCE ENGINE** - your optimization masterpiece featuring:
-- Games that run smoothly where others struggle
-- Visual effects that seem impossible on ZX Spectrum hardware
-- Audio and graphics that push the boundaries of what's achievable
-- Code so optimized it becomes a work of art in itself
-- Technical demonstrations that inspire other developers
+Create **ADVANCED GAMEPLAY SYSTEMS** - your mechanics masterpiece:
+- Complex interaction systems that create emergent gameplay
+- Deep progression mechanics that reward player mastery
+- Sophisticated AI behaviors that respond to complex player actions
+- Interconnected systems that create rich gameplay depth
+- Advanced mechanics optimized for ZX Spectrum performance
 
-## Tier Overview
+## Advanced Mechanics Areas
 
-**Lessons 1-8: "Every Cycle Counts" - Z80 Optimization Mastery**
-- Advanced cycle counting and instruction optimization techniques
-- Register usage strategies for maximum efficiency
-- Loop optimization and unrolling for critical code paths
-- The art of choosing the fastest instruction sequences
+**Lessons 1-8: "System Complexity" - Interconnected Mechanics**
+- Designing systems that interact and influence each other
+- Creating emergent gameplay from simple rule combinations
+- Complex state management for sophisticated game mechanics
+- Balancing system complexity with player comprehension
 
-**Lessons 9-16: "Hardware Wizardry" - ZX Spectrum Deep Dive**
-- Exploiting undocumented features and hardware quirks safely
-- Advanced display techniques and border effects
-- Memory mapping tricks and bank switching optimization
-- Using the ULA and other chips beyond their intended purposes
+**Lessons 9-16: "Deep Progression" - Player Advancement Systems**
+- Multi-layered character development and skill systems
+- Complex inventory and item management mechanics
+- Advanced crafting and resource conversion systems
+- Long-term progression that maintains player engagement
 
-**Lessons 17-24: "Memory Mastery" - Efficient Data Management**
-- Advanced memory layout and data structure optimization
-- Compression techniques for graphics and audio data
-- Dynamic memory management within tight constraints  
-- The psychology of memory-efficient algorithm design
+**Lessons 17-24: "Advanced Interactions" - Sophisticated Game Logic**
+- Complex environmental interactions and physics responses
+- Advanced combat systems with tactical depth
+- Sophisticated puzzle mechanics and solution systems
+- Dynamic world systems that respond to player actions
 
-**Lessons 25-32: "Performance Artistry" - Technical Innovation**
-- Creating effects that seem impossible on the hardware
-- Balancing multiple systems for optimal overall performance
-- Profiling and measuring performance with precision
-- The art of graceful degradation when limits are reached
+**Lessons 25-32: "Mechanics Mastery" - System Integration**
+- Integrating all mechanics into cohesive gameplay experience
+- Advanced balancing techniques for complex systems
+- Performance optimization for sophisticated mechanics
+- Testing and refining complex gameplay systems
 
-## Key Concepts
+## Your Advanced Mechanics Showcase
 
-This tier reveals the secrets of technical mastery:
+Your completed systems demonstrate gameplay depth:
 
-- **Optimization Psychology** - Thinking in cycles and bytes, not features
-- **Hardware Intimacy** - Knowing every capability and limitation
-- **Performance Artistry** - Making constraints inspire creativity
-- **Technical Innovation** - Finding new ways to achieve the impossible
-- **Efficiency Mastery** - Getting maximum results from minimum resources
+```
+**** ADVANCED SPECTRUM MECHANICS v1.0 ****
+Sophisticated Gameplay System Design
 
-You'll understand why games like Elite and Ant Attack seemed to perform miracles on the ZX Spectrum!
+Mechanics Portfolio:
+⚙️ Complex Systems: Interconnected gameplay mechanics
+🎯 Deep Progression: Multi-layered player advancement
+🎮 Rich Interactions: Sophisticated game responses
+🔧 System Integration: All mechanics working together
+
+[Demonstrating mastery of complex game design]
+
+Gameplay depth that rewards dedicated players!
+```
+
+## Advanced Gameplay Design Mastery
+
+This tier develops sophisticated game design skills:
+
+- **System Design** - Creating complex, interconnected mechanics
+- **Progression Mastery** - Deep advancement systems that engage players
+- **Interaction Complexity** - Sophisticated game responses and behaviors
+- **Balance Excellence** - Managing complexity while maintaining fun
+- **Performance Integration** - Complex systems running smoothly on Spectrum
+
+You'll understand how classics like "Rebelstar" and "Lords of Midnight" created such deep, engaging gameplay on the ZX Spectrum!

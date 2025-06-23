@@ -1,72 +1,72 @@
 ---
-title: "Master Portfolio: Professional Legacy!"
+title: "Master Game Portfolio: Advanced Game Collection!"
 system: "commodore-amiga"
 phase_number: 7
 tier_number: 16
-description: "Your crowning achievement! Create a comprehensive portfolio that showcases your complete journey from Amiga specialist to industry leader, establishing the professional legacy that defines your career."
+description: "Create your master portfolio! Develop a comprehensive collection of advanced games that showcase complete mastery of all sophisticated development techniques and systems."
 learning_objectives:
-  - "Create a comprehensive portfolio that demonstrates complete professional mastery"
-  - "Integrate all leadership skills into a cohesive professional presentation"
-  - "Build a legacy project that establishes your industry reputation"
-  - "Develop the confidence and presence of a true industry leader"
-  - "Create the professional foundation for a lifetime of opportunities"
+  - "Create a comprehensive portfolio of advanced games"
+  - "Demonstrate mastery across all game development areas"
+  - "Build a collection that showcases technical excellence"
+  - "Complete multiple sophisticated game projects"
+  - "Establish a portfolio that demonstrates complete expertise"
 concepts_introduced:
-  - "Comprehensive portfolio development and professional presentation"
-  - "Legacy project planning and execution strategies"
-  - "Industry positioning and reputation management"
-  - "Long-term career planning and opportunity recognition"
-  - "Professional mentorship and knowledge transfer methodologies"
-estimated_duration: "8-10 weeks (32 comprehensive lessons)"
+  - "Master portfolio development and game collection curation"
+  - "Advanced project completion and presentation"
+  - "Comprehensive skill demonstration across multiple projects"
+  - "Portfolio optimization and professional presentation"
+  - "Game development mastery documentation and showcase"
+estimated_duration: "14-16 weeks (32 portfolio-focused lessons)"
 order: 16
 ---
 
-# Tier 16: Master Portfolio: Professional Legacy!
+# Tier 16: Master Game Portfolio: Advanced Game Collection!
 
-Your professional masterpiece! With **32 culminating lessons**, you'll create a comprehensive portfolio and legacy project that showcases your complete transformation from Amiga enthusiast to industry leader, establishing your place in gaming history.
+Your ultimate showcase! With **32 portfolio-focused lessons**, you'll create a comprehensive collection of advanced games that demonstrates complete mastery of sophisticated Amiga game development across all areas and techniques.
 
 ## What You'll Build
 
-Create **MASTER PROFESSIONAL LEGACY** - your career-defining achievement featuring:
-- Comprehensive portfolio that demonstrates mastery across all professional dimensions
-- Legacy project that establishes your lasting contribution to the industry
-- Professional presence that commands respect and opens unlimited opportunities
-- Mentorship systems that ensure your knowledge benefits future generations
-- Industry reputation as both technical master and visionary leader
+Create **MASTER GAME PORTFOLIO** - your ultimate demonstration:
+- Multiple sophisticated games showcasing different advanced techniques
+- Complete demonstration of AI, physics, audio, and optimization mastery
+- Games that showcase innovation, polish, and technical excellence
+- A collection that proves mastery of all advanced development areas
+- Portfolio presentation that effectively demonstrates your expertise
 
-## Tier Overview
+## Master Portfolio Areas
 
-**Lessons 1-8: "Portfolio Mastery" - Comprehensive Professional Presentation**
-- Creating portfolio presentations that tell your complete professional story
-- Integrating technical mastery, business acumen, and leadership skills seamlessly
-- Building demonstration materials that showcase capability across all domains
-- Professional presentation skills that leave lasting impressions
+**Lessons 1-8: "Portfolio Planning" - Comprehensive Showcase Design**
+- Planning a portfolio that demonstrates all advanced skills
+- Selecting projects that showcase different areas of expertise
+- Designing a collection that tells the story of your mastery
+- Creating a timeline for completing multiple advanced projects
 
-**Lessons 9-16: "Legacy Project" - Defining Industry Contribution**
-- Planning and executing a project that establishes your lasting industry impact
-- Creating work that advances both Amiga preservation and modern development
-- Building initiatives that benefit the entire development community
-- Establishing the professional reputation that defines industry careers
+**Lessons 9-16: "Advanced Project Completion" - Multiple Game Development**
+- Completing multiple sophisticated games efficiently
+- Managing parallel development of diverse game projects
+- Ensuring each project demonstrates specific advanced skills
+- Optimizing development workflow for portfolio creation
 
-**Lessons 17-24: "Industry Positioning" - Professional Recognition**
-- Positioning yourself as the go-to expert for vintage computing and modern development
-- Building speaking engagements and professional opportunities
-- Creating the professional brand that attracts major opportunities
-- Establishing advisory relationships with industry leaders
+**Lessons 17-24: "Technical Excellence" - Mastery Demonstration**
+- Showcasing advanced AI, physics, and audio in different games
+- Demonstrating optimization and performance mastery
+- Showing innovation and boundary-pushing techniques
+- Creating games that rival professional commercial titles
 
-**Lessons 25-32: "Mentorship Legacy" - Knowledge Transfer**
-- Developing systems to mentor the next generation of developers
-- Creating educational content that preserves and advances technical knowledge
-- Building communities that sustain and grow technical expertise
-- Establishing the legacy that ensures your knowledge lives beyond your career
+**Lessons 25-32: "Portfolio Presentation" - Professional Showcase**
+- Creating compelling presentations for your game collection
+- Documenting the technical achievements in each project
+- Building demonstration materials that highlight your expertise
+- Presenting your portfolio for maximum professional impact
 
-## Key Concepts
+## Key Portfolio Concepts
 
-This tier completes your professional transformation:
+This tier completes your advanced game development mastery:
 
-- **Portfolio Excellence** - Presenting complete professional mastery effectively
-- **Legacy Creation** - Building contributions that outlast individual careers
-- **Industry Leadership** - Establishing position as a recognized expert and visionary
-- **Knowledge Preservation** - Ensuring technical expertise benefits future generations
-- **Professional Impact** - Creating the career that inspires others to excellence
+- **Comprehensive Mastery** - Demonstrating expertise across all advanced areas
+- **Multiple Projects** - Completing several sophisticated games successfully
+- **Technical Excellence** - Games that showcase the highest skill levels
+- **Professional Presentation** - Portfolio that effectively communicates mastery
+- **Complete Expertise** - Proof of mastery across all areas of advanced development
 
-You'll emerge as a complete professional - technical master, business leader, and industry visionary - with a portfolio that opens every door and a legacy that advances the entire industry!
+You'll complete Phase 7 with a portfolio that proves complete mastery of advanced Amiga game development!

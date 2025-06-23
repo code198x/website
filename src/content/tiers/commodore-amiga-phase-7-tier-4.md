@@ -1,72 +1,72 @@
 ---
-title: "Professional Showcase: Portfolio Masterpiece!"
+title: "Advanced Game Integration: Complete Game Project!"
 system: "commodore-amiga"
 phase_number: 7
 tier_number: 4
-description: "Create your magnum opus! Combine everything from storytelling, level design, and audio into one stunning portfolio piece that showcases your professional Amiga development mastery to the world."
+description: "Bring it all together! Create a complete sophisticated game that demonstrates mastery of AI, physics, and audio systems. Build a polished Amiga game that showcases advanced development skills."
 learning_objectives:
-  - "Integrate narrative, level design, and audio into a cohesive experience"
-  - "Create a complete game that demonstrates professional polish"
-  - "Build a portfolio piece that opens doors and creates opportunities"
-  - "Master project management for complex creative endeavors"
-  - "Develop the skills to present and pitch your creative work"
+  - "Integrate AI, physics, and audio into a cohesive game"
+  - "Create a complete game with professional polish"
+  - "Master complex system integration and optimization"
+  - "Implement advanced gameplay mechanics and features"
+  - "Develop debugging and testing skills for complex games"
 concepts_introduced:
-  - "Complete game development from concept to completion"
-  - "Professional polish and quality assurance techniques"
-  - "Portfolio presentation and professional documentation"
-  - "Creative project management and deadline execution"
-  - "Professional pitch development and presentation skills"
-estimated_duration: "6-8 weeks (32 comprehensive lessons)"
+  - "Complete game architecture and system integration"
+  - "Advanced debugging and optimization techniques"
+  - "Professional game polish and quality assurance"
+  - "Complex gameplay mechanics and feature implementation"
+  - "Performance optimization for sophisticated games"
+estimated_duration: "8-10 weeks (32 integration-focused lessons)"
 order: 4
 ---
 
-# Tier 4: Professional Showcase: Portfolio Masterpiece!
+# Tier 4: Advanced Game Integration: Complete Game Project!
 
-Your moment to shine! With **32 intensive lessons**, you'll create a complete Amiga game that combines everything you've learned about storytelling, level design, and audio into one stunning professional showcase that proves your mastery.
+Bring advanced systems together! With **32 integration-focused lessons**, you'll create a complete sophisticated Amiga game that demonstrates mastery of AI, physics, and audio systems working in perfect harmony.
 
 ## What You'll Build
 
-Create **AMIGA PORTFOLIO MASTERPIECE** - your career-defining project featuring:
-- A complete narrative experience with memorable characters and choices
-- Perfectly crafted levels that showcase your environmental design mastery
-- Professional audio design that demonstrates Paula's full potential
-- Polish and presentation quality that rivals commercial releases
-- Documentation and presentation materials worthy of any portfolio
+Create **ADVANCED AMIGA GAME** - your technical masterpiece featuring:
+- Intelligent AI opponents with complex behaviors
+- Realistic physics simulation and collision systems
+- Dynamic audio that responds to gameplay events
+- Advanced visual effects using Amiga's custom chips
+- Professional polish and smooth performance
 
-## Tier Overview
+## Integration Mastery Areas
 
-**Lessons 1-8: "Vision to Reality" - Project Planning and Design**
-- Defining your game concept and creative vision
-- Creating professional design documents and development roadmaps
-- Balancing ambition with realistic scope and timeline constraints
-- Building a development process that ensures consistent quality
+**Lessons 1-8: "System Architecture" - Designing Complex Games**
+- Planning game architecture for multiple advanced systems
+- Efficient data structures for AI, physics, and audio integration
+- Memory management for complex multi-system games
+- Performance considerations for sophisticated gameplay
 
-**Lessons 9-16: "Integration Mastery" - Bringing Systems Together**
-- Seamlessly combining narrative, level design, and audio systems
-- Creating cohesive player experiences across all game elements
-- Solving technical challenges that arise from complex integration
-- Professional debugging and quality assurance techniques
+**Lessons 9-16: "Advanced Features" - Sophisticated Gameplay**
+- Implementing complex gameplay mechanics and features
+- Creating engaging player progression and challenge systems
+- Advanced user interface design for complex games
+- Save system and game state management
 
-**Lessons 17-24: "Professional Polish" - Commercial-Quality Presentation**
-- Adding the finishing touches that separate amateur from professional work
-- User interface design that feels intuitive and beautiful
-- Performance optimization for smooth gameplay on all Amiga systems
-- Creating memorable moments that reviewers and players will talk about
+**Lessons 17-24: "Polish and Optimization" - Professional Quality**
+- Performance optimization for smooth gameplay
+- Advanced debugging techniques for complex systems
+- Visual polish and effects that enhance gameplay
+- Audio-visual synchronization and timing perfection
 
-**Lessons 25-32: "Portfolio Presentation" - Showcasing Your Work**
-- Professional documentation that explains your creative and technical choices
-- Creating compelling presentations for potential employers or collaborators
-- Building the marketing materials that get your work noticed
-- Developing the confidence to present your work to industry professionals
+**Lessons 25-32: "Complete Integration" - Bringing It All Together**
+- Final integration of all advanced systems
+- Testing and quality assurance for complex games
+- Performance tuning and optimization strategies
+- Creating a complete, polished gaming experience
 
-## Key Concepts
+## Key Technical Concepts
 
-This tier transforms you into a complete professional:
+This tier develops complete game development mastery:
 
-- **Project Integration** - Bringing complex systems together seamlessly
-- **Professional Standards** - Meeting commercial quality expectations
-- **Portfolio Development** - Creating work that opens career doors
-- **Presentation Skills** - Communicating your vision and expertise effectively
-- **Creative Leadership** - Managing complex creative projects from start to finish
+- **System Integration** - Combining multiple advanced systems seamlessly
+- **Advanced Gameplay** - Creating sophisticated and engaging game mechanics
+- **Performance Mastery** - Optimizing complex games for smooth execution
+- **Professional Polish** - Achieving commercial-quality game presentation
+- **Technical Excellence** - Demonstrating mastery of Amiga game development
 
-You'll emerge with a complete game that demonstrates mastery of every aspect of professional Amiga development - your calling card to the industry!
+You'll create a complete game that rivals classic Amiga titles in sophistication and polish!

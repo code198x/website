@@ -22,7 +22,7 @@ order: 1
 
 # Tier 1: Legendary Game Conception: Dreaming the NES Impossible!
 
-Time to create NES legend! 🌟🎮 With **32 vision-intensive lessons**, you'll learn how to conceive games so extraordinary that they join the pantheon of legendary NES experiences - games people treasure for decades like the classics that defined gaming.
+Time to create NES legend! With **32 vision-intensive lessons**, you'll learn how to conceive games so extraordinary that they join the pantheon of legendary NES experiences - games people treasure for decades like the classics that defined gaming.
 
 ## What You'll Conceive
 
@@ -69,4 +69,4 @@ This tier develops legendary NES game vision:
 - **Timeless Design** - Building games that transcend hardware limitations
 - **Community Inspiration** - Creating experiences that unite NES fans worldwide
 
-You'll understand how visionaries like Shigeru Miyamoto and the Nintendo greats conceived games that still feel fresh decades later! 🏆
+You'll understand how visionaries like Shigeru Miyamoto and the Nintendo greats conceived games that still feel fresh decades later!

@@ -1,72 +1,72 @@
 ---
-title: "Industry Networking & Professional Relationships: Building Your Network!"
+title: "Game Development Tools: Creating Development Solutions!"
 system: "commodore-amiga"
 phase_number: 7
 tier_number: 13
-description: "Success is a team sport! Master the art of professional networking, collaboration, and relationship building that opens doors, creates opportunities, and builds the connections that define successful careers."
+description: "Build tools that empower developers! Master the creation of development utilities, editors, and frameworks that make Amiga game development more efficient and accessible."
 learning_objectives:
-  - "Build meaningful professional relationships in the game industry"
-  - "Master networking strategies that create genuine connections"
-  - "Develop collaboration skills that make you indispensable"
-  - "Create professional presence that attracts opportunities"
-  - "Build the network that sustains and accelerates your career"
+  - "Design and implement game development tools"
+  - "Create editors and utilities for Amiga game development"
+  - "Build frameworks that simplify common development tasks"
+  - "Master tool user interface design and usability"
+  - "Develop debugging and profiling utilities"
 concepts_introduced:
-  - "Professional networking strategies and relationship building"
-  - "Industry event navigation and meaningful connection creation"
-  - "Collaborative project management and partnership development"
-  - "Professional brand building and reputation management"
-  - "Long-term relationship maintenance and mutual value creation"
-estimated_duration: "5-7 weeks (32 networking-focused lessons)"
+  - "Development tool design and implementation"
+  - "Editor and utility programming for game development"
+  - "Framework design and library development"
+  - "Tool user interface design and usability principles"
+  - "Debugging and profiling tool development"
+estimated_duration: "10-12 weeks (32 tool-focused lessons)"
 order: 13
 ---
 
-# Tier 13: Industry Networking & Professional Relationships: Building Your Network!
+# Tier 13: Game Development Tools: Creating Development Solutions!
 
-Great careers are built on great relationships! With **32 networking-focused lessons**, you'll learn how industry legends build the connections that create opportunities, collaborations, and career-defining moments in the Amiga and broader gaming world.
+Empower yourself and other developers! With **32 tool-focused lessons**, you'll master the creation of development utilities, editors, and frameworks that make Amiga game development more efficient, powerful, and accessible.
 
 ## What You'll Build
 
-Create your **PROFESSIONAL NETWORK** - relationships that transform careers:
-- Meaningful connections with Amiga legends and modern industry leaders
-- Collaborative partnerships that multiply your impact and opportunities
-- Professional reputation that attracts exciting opportunities
-- Support network that helps navigate challenges and accelerates growth
-- Industry presence that makes you a recognized voice in retro gaming
+Create **AMIGA DEVELOPMENT TOOLKIT** - your productivity suite:
+- Level editors and map creation tools
+- Sprite and animation management utilities
+- Audio editing and conversion tools
+- Debugging and performance profiling utilities
+- Development frameworks that simplify common tasks
 
-## Network Building Areas
+## Development Tool Areas
 
-**Lessons 1-8: "Making Connections" - Professional Networking Fundamentals**
-- Identifying and connecting with the right people authentically
-- Retro gaming event navigation and meaningful conversation
-- Digital networking and online professional presence
-- Following up and maintaining new professional relationships
+**Lessons 1-8: "Editor Development" - Content Creation Tools**
+- Level and map editor design and implementation
+- Sprite editing and animation tools
+- Tile-based level design systems
+- Visual scripting and event editing interfaces
 
-**Lessons 9-16: "Creating Value" - Mutual Benefit and Collaboration**
-- Offering genuine value before asking for anything
-- Collaborative project identification and partnership development
-- Knowledge sharing and community contribution strategies
-- Building reputation as someone others want to work with
+**Lessons 9-16: "Asset Management" - Resource Development Tools**
+- Graphics format conversion and optimization tools
+- Audio processing and conversion utilities
+- Asset pipeline management systems
+- Batch processing and automation tools
 
-**Lessons 17-24: "Professional Presence" - Industry Recognition**
-- Conference speaking and Amiga community thought leadership
-- Professional writing and content creation for retro gaming audiences
-- Social media strategy for professional visibility in niche markets
-- Building the personal brand that opens doors in specialized industries
+**Lessons 17-24: "Debugging Tools" - Development Assistance**
+- Advanced debugging utilities for Amiga games
+- Performance profiling and optimization tools
+- Memory usage analysis and leak detection
+- Real-time game state inspection utilities
 
-**Lessons 25-32: "Long-term Relationships" - Sustaining Your Network**
-- Maintaining relationships during busy periods and career changes
-- Helping others succeed and creating mutual support systems
-- Navigating industry politics and professional challenges
-- Building the network that lasts an entire career
+**Lessons 25-32: "Framework Development" - Reusable Libraries**
+- Game engine framework design and implementation
+- Common task libraries for Amiga development
+- Cross-project utility libraries
+- Tool integration and workflow optimization
 
-## Key Concepts
+## Key Technical Concepts
 
-This tier develops essential relationship skills:
+This tier develops tool development mastery:
 
-- **Authentic Connection** - Building genuine relationships, not just contacts
-- **Mutual Value** - Creating win-win scenarios that benefit everyone
-- **Professional Presence** - Establishing reputation and thought leadership
-- **Collaborative Spirit** - Making others better while advancing yourself
-- **Long-term Thinking** - Building relationships that span entire careers
+- **Tool Design** - Creating efficient and user-friendly development utilities
+- **Editor Programming** - Building visual content creation tools
+- **Framework Architecture** - Designing reusable development libraries
+- **Debugging Systems** - Creating tools that help identify and fix problems
+- **Workflow Optimization** - Streamlining the game development process
 
-You'll understand how developers like Dave Jones and the DMA Design team built networks that created legendary opportunities!
+You'll understand how to create tools that make Amiga game development faster and more enjoyable!

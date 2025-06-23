@@ -1,72 +1,72 @@
 ---
-title: "Multiplayer Magic: Creating Shared Joy!"
+title: "Game Engine Architecture: Building Reusable Systems!"
 system: "commodore-amiga"
 phase_number: 7
 tier_number: 5
-description: "Bring friends together through Amiga games! Master the art of local multiplayer that creates laughter, competition, and memories. Learn what makes multiplayer experiences magical on the Amiga."
+description: "Build powerful game engines for Amiga! Master the architecture and design patterns that create reusable, efficient game systems. Learn to build the foundation for multiple games."
 learning_objectives:
-  - "Design multiplayer experiences that bring people together"
-  - "Balance competitive gameplay so everyone has fun"
-  - "Create co-op mechanics that encourage teamwork"
-  - "Handle multiple inputs without technical hiccups"
-  - "Add that special sauce that makes multiplayer memorable"
+  - "Design modular game engine architecture"
+  - "Create reusable systems for multiple games"
+  - "Implement efficient resource management systems"
+  - "Master component-based game entity systems"
+  - "Build tools and utilities for game development"
 concepts_introduced:
-  - "Multiplayer game design philosophy and balance"
-  - "Local competitive and cooperative mechanics"
-  - "Amiga input handling for multiple players"
-  - "Social dynamics and player interaction design"
-  - "Performance optimization for multiplayer gameplay"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Game engine architecture and design patterns"
+  - "Modular system design and component architecture"
+  - "Resource management and asset pipeline systems"
+  - "Entity-component systems for Amiga games"
+  - "Development tools and utilities programming"
+estimated_duration: "8-10 weeks (32 architecture-focused lessons)"
 order: 5
 ---
 
-# Tier 5: Multiplayer Magic: Creating Shared Joy!
+# Tier 5: Game Engine Architecture: Building Reusable Systems!
 
-The best memories are shared! With **32 multiplayer-focused lessons**, you'll master the art of bringing friends together through Amiga games that create laughter, competition, and those "just one more game!" moments.
+Build the foundation for multiple games! With **32 architecture-focused lessons**, you'll master the design and implementation of powerful game engines that make creating multiple Amiga games efficient and enjoyable.
 
 ## What You'll Build
 
-Create **AMIGA MULTIPLAYER MASTERPIECE** - games that transform your Amiga into a social hub:
-- Split-screen adventures that test friendships (in the best way!)
-- Turn-based strategy games that make you think twice about trusting friends
-- Cooperative challenges that require true teamwork
-- Local tournaments that crown living room champions
-- Games so fun that joysticks get passed around naturally
+Create **AMIGA GAME ENGINE** - your reusable development foundation:
+- Modular systems that can be combined for different game types
+- Efficient resource management for graphics, audio, and data
+- Component-based entity systems for flexible game objects
+- Development tools that streamline game creation
+- Optimized core systems that maximize Amiga performance
 
-## Tier Overview
+## Engine Architecture Areas
 
-**Lessons 1-8: "Better Together" - Cooperative Game Design**
-- Co-op mechanics that make two players better than one
-- Shared challenges that require communication
-- Assistance systems that help without hand-holding
-- The magic of synchronized victories
+**Lessons 1-8: "Core Architecture" - Foundation Systems**
+- Game engine architecture and design patterns
+- Memory management systems for efficient resource use
+- Event-driven programming and message passing systems
+- Performance profiling and optimization infrastructure
 
-**Lessons 9-16: "Friendly Competition" - Competitive Multiplayer**
-- Head-to-head gameplay that stays fun even when losing
-- Balancing skill gaps so everyone can compete
-- Comeback mechanics that keep games exciting until the end
-- Victory conditions that feel earned, not lucky
+**Lessons 9-16: "Component Systems" - Modular Game Objects**
+- Entity-component system architecture for flexible games
+- Component types for graphics, physics, input, and logic
+- Efficient component storage and access patterns
+- Inter-component communication and data sharing
 
-**Lessons 17-24: "Input Harmony" - Technical Multiplayer Systems**
-- Smooth input handling for multiple players on Amiga
-- Screen sharing techniques that work beautifully
-- Performance optimization for multiplayer scenarios
-- Turn management that feels natural and fair
+**Lessons 17-24: "Resource Management" - Asset Pipeline**
+- Graphics resource management and sprite systems
+- Audio resource management and Paula integration
+- Map and level data management systems
+- Runtime resource loading and memory optimization
 
-**Lessons 25-32: "Social Alchemy" - The Psychology of Fun**
-- Designing moments that create inside jokes
-- Tension and release that builds perfect drama
-- The delicate art of competitive balance
-- Creating experiences people talk about for years
+**Lessons 25-32: "Development Tools" - Productivity Systems**
+- Level editors and map creation tools
+- Sprite and animation management utilities
+- Debugging and diagnostic tools for game development
+- Asset conversion and optimization utilities
 
-## Key Concepts
+## Key Technical Concepts
 
-This tier reveals the secrets of multiplayer magic:
+This tier develops engine programming mastery:
 
-- **Social Design** - Understanding what makes multiplayer experiences memorable
-- **Cooperative Balance** - Making teamwork feel natural and rewarding  
-- **Competitive Fairness** - Ensuring everyone has a chance to shine
-- **Technical Harmony** - Smooth multiplayer systems that never get in the way
-- **Emotional Engineering** - Creating the perfect mix of tension and joy
+- **Modular Design** - Creating reusable systems for multiple games
+- **Efficient Architecture** - Engine design optimized for Amiga hardware
+- **Component Systems** - Flexible game object management
+- **Resource Management** - Efficient handling of game assets
+- **Development Tools** - Utilities that speed up game creation
 
-You'll understand why some Amiga games created lifelong friendships while others caused joystick-throwing arguments!
+You'll understand how to build engines that power multiple games efficiently and elegantly!
