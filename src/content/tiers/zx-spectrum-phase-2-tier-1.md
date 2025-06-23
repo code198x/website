@@ -1,72 +1,72 @@
 ---
-title: "Z80 Power Unleashed: Advanced Assembly Wizardry!"
+title: "Sprite Animation Systems: Making Characters Come Alive! 🎭"
 system: "zx-spectrum"
 phase_number: 2
 tier_number: 1
-description: "Unleash the Z80's hidden power! Discover the sophisticated instructions that most programmers never learn. Master the advanced techniques that separate hobbyists from true Z80 wizards!"
+description: "Transform static sprites into living, breathing characters! Master the art of smooth animation on the ZX Spectrum. Learn the secrets that made Manic Miner's Willy bounce so perfectly!"
 learning_objectives:
-  - "Discover Z80 instructions so powerful they feel like cheating"
-  - "Master block operations that process data at lightning speed"
-  - "Use interrupts to create programs that feel instantly responsive"
-  - "Optimize code so efficiently it runs faster than seems possible"
-  - "Write assembly that makes other programmers say 'How did you DO that?!'"
+  - "Create buttery-smooth sprite animation systems that rival arcade games"
+  - "Master multi-frame animation sequences that bring characters to life"
+  - "Implement efficient sprite caching systems for flicker-free movement"
+  - "Build animation state machines that handle complex character behaviors"
+  - "Optimize sprite rendering to squeeze every ounce of performance from the Z80"
 concepts_introduced:
-  - "Z80 advanced instructions (block operations, bit manipulation)"
-  - "Complex addressing modes and indexed operations"
-  - "Interrupt programming and real-time event handling"
-  - "Advanced data structures and algorithms in Z80 assembly"
-  - "Professional Z80 optimization and cycle counting"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Advanced sprite animation techniques and frame management"
+  - "Multi-directional character animation systems"
+  - "Efficient sprite caching and memory management"
+  - "Animation timing and smooth movement calculations"
+  - "ULA-optimized sprite rendering for maximum performance"
+estimated_duration: "3-4 weeks (32 comprehensive lessons)"
 order: 1
 ---
 
-# Tier 1: Z80 Power Unleashed: Advanced Assembly Wizardry!
+# Tier 1: Sprite Animation Systems: Making Characters Come Alive! 🎭
 
-Welcome to the Z80's secret arsenal! 🧙‍♂️⚡ With **32 electrifying lessons**, you'll discover why the Z80 was considered magical - it has instructions so powerful they seem like supernatural abilities compared to other 8-bit CPUs.
+Welcome to the magical world of sprite animation! 🌟 With **32 spectacular lessons**, you'll learn how to breathe life into pixels and create characters so smooth they seem to leap off the screen - just like the legendary Manic Miner!
 
 ## What You'll Build
 
-Create **SUPER SPECTRUM TOOLKIT** - an impossibly fast utility suite featuring:
-- File operations so quick they seem to bend time
-- Text processing that handles data like magic
-- Memory operations that move mountains of data instantly
-- Programs so responsive they anticipate your thoughts
-- Code so optimized it runs better than the manual says is possible!
+Create **SPECTRUM SPRITE STUDIO** - a complete animation system featuring:
+- Walking, running, and jumping animations smoother than butter 🧈
+- Multi-directional sprites that face the right way every time
+- Character state machines that handle complex behaviors
+- Animation sequences that flow like liquid mercury
+- Performance so good it makes the ZX Spectrum feel like a modern console!
 
 ## Tier Overview
 
-**Lessons 1-8: "Secret Weapons!" - Z80's Hidden Arsenal**
-- LDIR, CPIR, OTIR: The block operations that feel like magic spells
-- Bit manipulation that works miracles with single instructions
-- String processing so fast it seems to violate physics
-- Pattern matching that finds needles in digital haystacks
+**Lessons 1-8: "Pixel Perfect Basics" - Foundation of Great Animation**
+- Single-frame sprite rendering with ULA optimization
+- Sprite masking techniques for clean backgrounds
+- Memory-efficient sprite storage systems
+- Basic movement and positioning calculations
 
-**Lessons 9-16: "Memory Mastery" - Advanced Addressing Wizardry**
-- Indexed addressing that makes complex data structures simple
-- Stack tricks that would make a magician jealous
-- Memory banking strategies that break the 64K barrier
-- Data compression that squeezes impossible amounts into tiny spaces
+**Lessons 9-16: "Smooth as Silk" - Multi-Frame Animation Magic**
+- Frame-by-frame animation sequences that flow naturally
+- Timing systems that make animations feel alive
+- Animation loops and state transitions
+- Character facing and directional changes
 
-**Lessons 17-24: "Lightning Reflexes" - Interrupt Mastery**
-- Interrupt modes that make programs respond instantly to anything
-- Real-time programming that never misses a beat
-- Hardware control that bends devices to your will
-- Timing so precise you could use it as a stopwatch
+**Lessons 17-24: "Advanced Behaviors" - Complex Animation Systems**
+- State machines for walking, jumping, and special moves
+- Animation blending and transition effects
+- Multiple character animation management
+- Collision-responsive animation changes
 
-**Lessons 25-32: "Impossible Speed" - Optimization Mastery**
-- Cycle counting that squeezes every microsecond of performance
-- Code optimization that makes programs run faster than theory allows
-- Memory optimization that uses every byte efficiently
-- Debugging techniques that reveal the deepest secrets
+**Lessons 25-32: "Performance Wizardry" - Optimization Mastery**
+- Sprite caching systems that eliminate flicker
+- Memory-efficient animation data structures
+- Cycle-optimized rendering routines
+- Professional-grade animation debugging tools
 
 ## Key Concepts
 
-This tier transforms you into a Z80 wizard:
+Transform from static to spectacular:
 
-- **Instruction Mastery** - Wielding Z80's full power like a master craftsman
-- **Data Magic** - Moving and processing data at impossible speeds
-- **Interrupt Wizardry** - Creating programs that respond faster than reflexes
-- **Optimization Alchemy** - Making 3.5MHz perform like modern processors
-- **Professional Excellence** - Writing code that amazes even veteran programmers
+- **Frame Management** - Organizing animation sequences like a pro
+- **Timing Systems** - Making animations feel natural and responsive
+- **State Machines** - Handling complex character behaviors elegantly
+- **Performance Optimization** - Squeezing smooth animation from 3.5MHz
+- **Visual Polish** - Creating animations that rival commercial games
 
-You'll emerge with Z80 skills that border on the supernatural! 🚀✨
+You'll emerge with sprite skills that make characters dance! 💃🕺
