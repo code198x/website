@@ -1,67 +1,67 @@
 ---
-title: "PPU Programming & NES Hardware Systems"
+title: "Memory Management Mastery - Advanced NES RAM Techniques"
 system: "nintendo-entertainment-system"
 phase_number: 3
 tier_number: 1
-description: "Learn the NES Picture Processing Unit (PPU) and custom hardware systems. Explore advanced graphics techniques, sprite multiplexing, scroll management, and audio programming with the NES APU for creating polished games."
+description: "Master advanced NES memory management techniques including efficient RAM usage, bank switching, memory mappers, and professional optimization strategies for creating complex games that maximize the NES's capabilities."
 learning_objectives:
-  - "Learn PPU register programming for advanced graphics control"
-  - "Implement sprite multiplexing and flicker reduction techniques"
-  - "Program smooth scrolling and camera systems"
-  - "Use the NES APU for music and sound effects"
-  - "Understand memory mappers and cartridge programming"
+  - "Implement advanced NES memory banking and mapper programming"
+  - "Create efficient memory allocation systems for complex games"
+  - "Master PRG-ROM and CHR-ROM bank switching techniques"
+  - "Develop memory-efficient data structures and algorithms"
+  - "Build professional memory management frameworks"
 concepts_introduced:
-  - "Advanced PPU programming and register control"
-  - "Sprite multiplexing and object management systems"
-  - "Scrolling techniques and camera programming"
-  - "NES APU programming and audio channel management"
-  - "Memory mappers and advanced cartridge systems"
+  - "Advanced NES memory architecture and mapper programming"
+  - "PRG-ROM and CHR-ROM bank switching optimization"
+  - "Dynamic memory allocation and management systems"
+  - "Memory-efficient game object hierarchies"
+  - "Professional memory debugging and profiling techniques"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 1
 ---
 
-# Tier 1: PPU Programming & NES Hardware Systems
+# Tier 1: Memory Management Mastery - Advanced NES RAM Techniques
 
-Explore the NES's sophisticated hardware! With **32 comprehensive lessons**, you'll learn the Picture Processing Unit (PPU), Audio Processing Unit (APU), and memory mapping systems that enable the creation of professional NES games.
+Become a memory wizard! With **32 comprehensive lessons**, you'll master the advanced memory management techniques that separate amateur NES programs from professional-quality games. Learn to squeeze every byte of performance from the NES's memory architecture.
 
 ## What You'll Build
 
-Develop **Pixel Quest** - a feature-rich adventure game showcasing advanced PPU effects, smooth scrolling, complex sprite management, rich audio, and multiple game areas that demonstrate professional NES development techniques.
+Create **MemoryMaster Engine** - a sophisticated memory management system featuring dynamic allocation, smart bank switching, compressed data storage, and efficient object pooling that will serve as the foundation for professional NES game development.
 
 ## Tier Overview
 
-**Lessons 1-8: Advanced PPU Programming**
-- PPU register programming and advanced graphics control
-- Custom palette management and color manipulation
-- Background and sprite interaction techniques
-- Advanced CHR-ROM and CHR-RAM programming
+**Lessons 1-8: Advanced Memory Architecture**
+- Deep dive into NES memory layout and addressing modes
+- Understanding CPU and PPU memory buses
+- Advanced zero-page optimization techniques
+- Stack management and optimization strategies
 
-**Lessons 9-16: Sprite Multiplexing & Object Management**
-- Sprite multiplexing techniques to overcome 8-sprite limit
-- Flicker reduction and priority management systems
-- Complex animation and sprite state management
-- Collision detection optimization for multiple objects
+**Lessons 9-16: Mapper Programming & Bank Switching**
+- MMC1, MMC3, and advanced mapper programming
+- PRG-ROM bank switching for large game worlds
+- CHR-ROM switching for dynamic graphics
+- Mapper timing and hardware considerations
 
-**Lessons 17-24: Scrolling & Camera Systems**
-- Smooth scrolling implementation and nametable management
-- Multi-directional scrolling and large world navigation
-- Split-screen effects and status bar implementation
-- Advanced camera systems and follow algorithms
+**Lessons 17-24: Dynamic Memory Systems**
+- Object pooling and recycling systems
+- Memory-efficient linked lists and data structures
+- Dynamic sprite allocation and management
+- Compressed data storage and decompression
 
-**Lessons 25-32: NES APU & Audio Programming**
-- Programming the NES APU's 5 audio channels
-- Music composition and dynamic audio mixing
-- Sound effect design and audio event management
-- Advanced audio techniques and pulse wave modulation
+**Lessons 25-32: Professional Optimization**
+- Memory profiling and leak detection
+- Performance benchmarking techniques
+- Memory fragmentation management
+- Real-world optimization case studies from classic NES games
 
 ## Key Concepts
 
-This tier develops comprehensive NES hardware programming skills:
+This tier teaches professional memory management:
 
-- **PPU Programming** - Complete control over NES graphics capabilities
-- **Sprite Management** - Professional techniques for complex object systems
-- **Scrolling Systems** - Smooth movement and large game worlds
-- **Audio Programming** - Rich music and sound using the NES APU
-- **Hardware Integration** - Understanding how all NES systems work together
+- **Mapper Mastery** - Advanced bank switching and memory expansion
+- **Dynamic Allocation** - Smart memory usage for complex games
+- **Data Compression** - Storing more content in limited space
+- **Performance Profiling** - Measuring and optimizing memory usage
+- **Professional Practices** - Commercial-grade memory management
 
-Learn these techniques and you'll create NES games that showcase the system's full potential!
+With these skills, you'll create NES games that rival the complexity of professional titles!

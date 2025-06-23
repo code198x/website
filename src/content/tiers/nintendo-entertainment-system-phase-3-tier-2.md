@@ -1,33 +1,67 @@
 ---
-title: "NES Phase 3 Tier 2: Game Development"
+title: "Advanced PPU Programming - Hardware Mastery & Tricks"
 system: "nintendo-entertainment-system"
 phase_number: 3
 tier_number: 2
-description: "Advanced NES game development using 6502 assembly programming."
+description: "Master advanced PPU programming techniques including timing tricks, hardware limitations, advanced graphics modes, and professional optimization strategies that push the NES graphics system to its absolute limits."
 learning_objectives:
-  - "Apply advanced 6502 assembly techniques"
-  - "Create professional NES games"
-  - "Implement commercial development practices"
-  - "Build portfolio-worthy gaming projects"
-  - "Develop NES programming expertise"
+  - "Master PPU timing and synchronization for advanced effects"
+  - "Implement sophisticated graphics techniques and hardware tricks"
+  - "Create advanced sprite multiplexing and management systems"
+  - "Develop professional-grade scrolling and camera systems"
+  - "Build complex graphics pipelines and rendering engines"
 concepts_introduced:
-  - "Advanced 6502 programming methodologies"
-  - "Professional NES game architecture"
-  - "Commercial development practices"
-  - "Portfolio-quality project development"
-  - "Industry-standard NES techniques"
+  - "Advanced PPU timing and synchronization techniques"
+  - "Hardware-level graphics programming and optimization"
+  - "Sophisticated sprite multiplexing and priority systems"
+  - "Professional scrolling techniques and camera algorithms"
+  - "Advanced rendering pipelines and graphics architectures"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 2
 ---
 
-# NES Phase 3 Tier 2: Game Development
+# Tier 2: Advanced PPU Programming - Hardware Mastery & Tricks
 
-Advanced 6502 development\! With **32 comprehensive lessons**, you'll create professional NES gaming experiences using advanced assembly programming.
+Push the PPU to its limits! With **32 comprehensive lessons**, you'll master the advanced PPU programming techniques used in professional NES games. Learn the timing tricks, hardware hacks, and optimization strategies that create stunning visual effects.
+
+## What You'll Build
+
+Develop **PPU Master Engine** - an advanced graphics engine featuring sprite multiplexing, smooth scrolling, raster effects, advanced animations, and visual tricks that demonstrate the absolute pinnacle of NES graphics programming.
+
+## Tier Overview
+
+**Lessons 1-8: PPU Timing & Synchronization**
+- Understanding PPU timing cycles and synchronization
+- Raster interrupt programming for mid-screen effects
+- VBLANK optimization and timing constraints
+- Advanced PPU register manipulation techniques
+
+**Lessons 9-16: Advanced Sprite Techniques**
+- Professional sprite multiplexing with minimal flicker
+- Priority management and Z-order systems
+- Large sprite composition and management
+- Advanced collision detection optimization
+
+**Lessons 17-24: Scrolling & Camera Systems**
+- Multi-directional smooth scrolling techniques
+- Parallax scrolling and depth effects
+- Split-screen and multi-viewport systems
+- Advanced camera algorithms and movement
+
+**Lessons 25-32: Hardware Tricks & Effects**
+- Scanline effects and mid-frame register changes
+- Color cycling and palette animation
+- Hardware-based compression techniques
+- Pushing beyond hardware limitations
 
 ## Key Concepts
 
-- **6502 Programming** - Advanced assembly development
-- **NES Hardware** - Professional PPU, APU, and mapper programming
-- **Game Development** - Commercial-quality projects
-- **Technical Excellence** - Advanced NES expertise
-- **Portfolio Building** - Career-ready development
+This tier teaches advanced PPU mastery:
+
+- **Timing Mastery** - Precise PPU synchronization and control
+- **Hardware Tricks** - Professional techniques for advanced effects
+- **Sprite Systems** - Complex object management and rendering
+- **Scrolling Excellence** - Smooth movement and camera systems
+- **Visual Effects** - Creating stunning graphics within NES constraints
+
+These techniques will make your NES graphics rival the best commercial games!
