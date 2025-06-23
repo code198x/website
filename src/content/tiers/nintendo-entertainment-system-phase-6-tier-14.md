@@ -1,33 +1,72 @@
 ---
-title: "NES Phase 6 Tier 14: Game Development"
+title: "Engine Architecture: Advanced NES Game Engines!"
 system: "nintendo-entertainment-system"
 phase_number: 6
 tier_number: 14
-description: "Advanced NES game development using 6502 assembly programming."
+description: "Master advanced NES game engine architecture! Design sophisticated engine systems, implement professional game frameworks, create scalable architectures, and build comprehensive engines that can power any type of NES game."
 learning_objectives:
-  - "Apply advanced 6502 assembly techniques"
-  - "Create professional NES games"
-  - "Implement commercial development practices"
-  - "Build portfolio-worthy gaming projects"
-  - "Develop NES programming expertise"
+  - "Design sophisticated game engine architectures for NES development"
+  - "Implement professional game frameworks and system architectures"
+  - "Create scalable engine systems that handle complex game requirements"
+  - "Build comprehensive engines supporting multiple game genres"
+  - "Develop engine architectures that maximize NES hardware potential"
 concepts_introduced:
-  - "Advanced 6502 programming methodologies"
-  - "Professional NES game architecture"
-  - "Commercial development practices"
-  - "Portfolio-quality project development"
-  - "Industry-standard NES techniques"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Advanced game engine architecture and design patterns"
+  - "Professional system architecture for NES game development"
+  - "Scalable engine frameworks and component systems"
+  - "Multi-genre engine design and implementation"
+  - "Commercial-grade engine development for NES platforms"
+estimated_duration: "6-8 weeks (32 intensive lessons)"
 order: 14
 ---
 
-# NES Phase 6 Tier 14: Game Development
+# Tier 14: Engine Architecture: Advanced NES Game Engines!
 
-Advanced 6502 development\! With **32 comprehensive lessons**, you'll create professional NES gaming experiences using advanced assembly programming.
+Time to master engine architecture! With **32 intensive lessons**, you'll learn to design and build the sophisticated game engines that powered legendary NES games and enabled rapid development of complex gaming experiences.
+
+## What You'll Build
+
+Create **NES GAME ENGINE FRAMEWORK** - a comprehensive engine system featuring:
+- Advanced modular architecture supporting multiple game genres
+- Sophisticated component systems for flexible game object management
+- Professional resource management and asset streaming systems
+- Comprehensive scripting and behavior frameworks
+- Engine architectures that rival commercial NES development systems
+
+## Tier Overview
+
+**Lessons 1-8: "Foundation Architecture!" - Core Engine Design**
+- Designing scalable engine architectures for NES constraints
+- Creating professional component and entity systems
+- Building efficient resource management frameworks
+- Establishing solid foundations for complex game development
+
+**Lessons 9-16: "System Integration!" - Advanced Engine Systems**
+- Implementing sophisticated graphics and audio systems
+- Creating advanced input and control management frameworks
+- Building professional physics and collision systems
+- Developing integrated systems that work seamlessly together
+
+**Lessons 17-24: "Genre Flexibility!" - Multi-Genre Engine Design**
+- Creating engines that support platformers, RPGs, and shooters
+- Building adaptable frameworks for different game types
+- Implementing genre-specific optimizations and features
+- Designing engines that scale from simple to complex games
+
+**Lessons 25-32: "Professional Framework!" - Commercial Engine Development**
+- Creating comprehensive development frameworks and tools
+- Building professional debugging and profiling systems
+- Implementing advanced optimization and performance systems
+- Developing complete engine ecosystems for professional development
 
 ## Key Concepts
 
-- **6502 Programming** - Advanced assembly development
-- **NES Hardware** - Professional PPU, APU, and mapper programming
-- **Game Development** - Commercial-quality projects
-- **Technical Excellence** - Advanced NES expertise
-- **Portfolio Building** - Career-ready development
+This tier unlocks engine architecture mastery:
+
+- **Engine Design** - Professional game engine architecture and planning
+- **System Architecture** - Sophisticated component and framework design
+- **Scalable Development** - Creating engines that grow with project complexity
+- **Genre Adaptability** - Building engines that support multiple game types
+- **Professional Development** - Commercial-grade engine development practices
+
+You'll understand how legendary NES games achieved such sophisticated gameplay systems!

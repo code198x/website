@@ -1,33 +1,72 @@
 ---
-title: "NES Phase 6 Tier 10: Game Development"
+title: "Data Compression: Advanced Space-Saving Techniques!"
 system: "nintendo-entertainment-system"
 phase_number: 6
 tier_number: 10
-description: "Advanced NES game development using 6502 assembly programming."
+description: "Master advanced data compression for NES! Learn sophisticated compression algorithms, efficient data packing techniques, and space-saving methods that allow massive content to fit in tiny NES cartridges."
 learning_objectives:
-  - "Apply advanced 6502 assembly techniques"
-  - "Create professional NES games"
-  - "Implement commercial development practices"
-  - "Build portfolio-worthy gaming projects"
-  - "Develop NES programming expertise"
+  - "Implement advanced compression algorithms for NES development"
+  - "Master efficient data packing and storage techniques"
+  - "Create sophisticated compression systems for graphics and audio"
+  - "Design space-efficient data structures and formats"
+  - "Achieve commercial-level content density in NES cartridges"
 concepts_introduced:
-  - "Advanced 6502 programming methodologies"
-  - "Professional NES game architecture"
-  - "Commercial development practices"
-  - "Portfolio-quality project development"
-  - "Industry-standard NES techniques"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Advanced compression algorithms adapted for 6502 assembly"
+  - "Sophisticated data packing and bit manipulation techniques"
+  - "Efficient compression for graphics, audio, and level data"
+  - "Professional data format design and optimization"
+  - "Commercial-grade compression systems for NES development"
+estimated_duration: "6-8 weeks (32 intensive lessons)"
 order: 10
 ---
 
-# NES Phase 6 Tier 10: Game Development
+# Tier 10: Data Compression: Advanced Space-Saving Techniques!
 
-Advanced 6502 development\! With **32 comprehensive lessons**, you'll create professional NES gaming experiences using advanced assembly programming.
+Time to master data compression wizardry! With **32 intensive lessons**, you'll learn the sophisticated compression techniques that allowed games like Kirby's Adventure, Final Fantasy, and Mega Man 6 to pack incredible amounts of content into tiny NES cartridges.
+
+## What You'll Build
+
+Create **NES COMPRESSION SUITE** - a comprehensive compression system featuring:
+- Advanced graphics compression for maximum visual variety
+- Sophisticated audio compression for longer soundtracks
+- Efficient level data compression for massive game worlds
+- Professional asset pipeline with automatic compression
+- Commercial-grade compression achieving impossible storage density
+
+## Tier Overview
+
+**Lessons 1-8: "Infinite Graphics!" - Advanced Graphics Compression**
+- Tile-based compression for background graphics
+- Sprite compression techniques for character animation
+- Palette optimization for maximum color efficiency
+- The secrets behind games with seemingly unlimited graphics
+
+**Lessons 9-16: "Endless Music!" - Audio Compression Mastery**
+- Advanced music compression using pattern recognition
+- Sound effect compression and optimization
+- APU data compression for efficient audio storage
+- Creating full soundtracks within tiny memory constraints
+
+**Lessons 17-24: "Massive Worlds!" - Level Data Compression**
+- Map compression algorithms for large game worlds
+- Object placement compression for complex levels
+- Collision data compression for efficient gameplay
+- The mathematics behind fitting infinite content in finite space
+
+**Lessons 25-32: "Professional Pipeline!" - Commercial Compression Systems**
+- Creating professional asset processing tools
+- Automatic compression and optimization systems
+- Advanced debugging tools for compressed data
+- Professional development workflows used by commercial studios
 
 ## Key Concepts
 
-- **6502 Programming** - Advanced assembly development
-- **NES Hardware** - Professional PPU, APU, and mapper programming
-- **Game Development** - Commercial-quality projects
-- **Technical Excellence** - Advanced NES expertise
-- **Portfolio Building** - Career-ready development
+This tier unlocks compression mastery:
+
+- **Graphics Compression** - Maximizing visual content within NES constraints
+- **Audio Compression** - Fitting complex soundtracks in minimal space
+- **Data Optimization** - Professional techniques for efficient data storage
+- **Algorithm Implementation** - Advanced compression algorithms for 6502
+- **Development Tools** - Professional systems for managing compressed assets
+
+You'll understand how games like Kirby's Adventure achieved such incredible content density!

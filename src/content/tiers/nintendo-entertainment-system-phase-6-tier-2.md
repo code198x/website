@@ -1,33 +1,72 @@
 ---
-title: "NES Phase 6 Tier 2: Game Development"
+title: "Audio Excellence: Advanced NES APU Sound Programming!"
 system: "nintendo-entertainment-system"
 phase_number: 6
 tier_number: 2
-description: "Advanced NES game development using 6502 assembly programming."
+description: "Master advanced NES audio programming! Create complex musical compositions, sophisticated sound effects, and audio systems that push the Audio Processing Unit to its absolute limits with professional-grade 6502 sound programming."
 learning_objectives:
-  - "Apply advanced 6502 assembly techniques"
-  - "Create professional NES games"
-  - "Implement commercial development practices"
-  - "Build portfolio-worthy gaming projects"
-  - "Develop NES programming expertise"
+  - "Create complex musical compositions using advanced APU techniques"
+  - "Build sophisticated sound effect systems with precise timing"
+  - "Master advanced audio synthesis and wave manipulation"
+  - "Implement professional audio streaming and compression"
+  - "Design immersive audio experiences that rival commercial games"
 concepts_introduced:
-  - "Advanced 6502 programming methodologies"
-  - "Professional NES game architecture"
-  - "Commercial development practices"
-  - "Portfolio-quality project development"
-  - "Industry-standard NES techniques"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Advanced APU programming and channel manipulation"
+  - "Complex musical composition and arrangement techniques"
+  - "Professional sound effect design and implementation"
+  - "Audio streaming and dynamic music systems"
+  - "Advanced wave synthesis and audio processing"
+estimated_duration: "5-8 weeks (32 comprehensive lessons)"
 order: 2
 ---
 
-# NES Phase 6 Tier 2: Game Development
+# Tier 2: Audio Excellence: Advanced NES APU Sound Programming!
 
-Advanced 6502 development\! With **32 comprehensive lessons**, you'll create professional NES gaming experiences using advanced assembly programming.
+Time to become an NES audio wizard! With **32 comprehensive lessons**, you'll master the techniques that made games like Mega Man, Castlevania, and Final Fantasy sound incredible on simple 8-bit hardware.
+
+## What You'll Build
+
+Create **NES AUDIO MASTERPIECE** - a complete audio showcase featuring:
+- Multi-channel compositions that sound like full orchestras
+- Dynamic sound effects that respond to game events perfectly
+- Advanced audio streaming for longer musical pieces
+- Wave channel synthesis that creates impossible sounds
+- Professional audio polish that rivals commercial game soundtracks
+
+## Tier Overview
+
+**Lessons 1-8: "Orchestra in a Chip!" - Advanced Musical Composition**
+- Complex multi-channel arrangements using all 5 APU channels
+- Advanced pulse wave manipulation for rich harmonies
+- Sophisticated arpeggio and chord progression techniques
+- The secrets behind those unforgettable 8-bit melodies
+
+**Lessons 9-16: "Sound Effects Wizardry" - Professional Audio Design**
+- Layered sound effects using multiple channels simultaneously
+- Precise timing synchronization with visual events
+- Environmental audio that creates immersive atmospheres
+- The art of making simple waveforms sound like real instruments
+
+**Lessons 17-24: "Impossible Sounds!" - Advanced Wave Synthesis**
+- Triangle wave manipulation for bass and lead sounds
+- Noise channel percussion that sounds like real drums
+- DMC sample playback for speech and complex sounds
+- Creating "analog" effects using digital wave manipulation
+
+**Lessons 25-32: "Streaming Audio Magic" - Dynamic Music Systems**
+- Audio compression techniques for longer compositions
+- Dynamic music that changes based on game state
+- Seamless audio transitions and crossfading
+- Professional audio mixing and mastering on NES hardware
 
 ## Key Concepts
 
-- **6502 Programming** - Advanced assembly development
-- **NES Hardware** - Professional PPU, APU, and mapper programming
-- **Game Development** - Commercial-quality projects
-- **Technical Excellence** - Advanced NES expertise
-- **Portfolio Building** - Career-ready development
+This tier unlocks NES audio mastery:
+
+- **APU Mastery** - Complete control over all 5 audio channels
+- **Musical Excellence** - Composing unforgettable 8-bit soundtracks
+- **Sound Design** - Creating professional audio effects and atmospheres
+- **Technical Innovation** - Pushing NES audio beyond its apparent limits
+- **Commercial Quality** - Audio polish that defines legendary games
+
+You'll join the ranks of legendary NES composers like Nobuo Uematsu and Mega Man's audio team!

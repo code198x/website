@@ -1,33 +1,72 @@
 ---
-title: "Amiga Phase 6 Tier 15: Game Development"
+title: "Code Optimization: Professional-Grade Efficiency and Performance Mastery!"
 system: "commodore-amiga"
 phase_number: 6
 tier_number: 15
-description: "Advanced Amiga game development using 68000 assembly programming."
+description: "Master ultimate code optimization! Achieve professional-grade efficiency through advanced 68000 optimization, sophisticated performance tuning, and the legendary optimization techniques that made impossible Amiga performance possible."
 learning_objectives:
-  - "Apply advanced 68000 assembly techniques"
-  - "Create professional Amiga games"
-  - "Implement commercial development practices"
-  - "Build portfolio-worthy gaming projects"
-  - "Develop Amiga programming expertise"
+  - "Create professional-grade code optimization and maximum efficiency"
+  - "Master advanced 68000 optimization techniques and performance tuning"
+  - "Implement sophisticated profiling and optimization workflows"
+  - "Build optimization frameworks that maximize Amiga performance"
+  - "Add optimization mastery that defines legendary Amiga programming"
 concepts_introduced:
-  - "Advanced 68000 programming methodologies"
-  - "Professional Amiga game architecture"
-  - "Commercial development practices"
-  - "Portfolio-quality project development"
-  - "Industry-standard Amiga techniques"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Advanced code optimization and professional-grade efficiency techniques"
+  - "Sophisticated 68000 optimization and performance tuning mastery"
+  - "Professional profiling workflows and optimization development practices"
+  - "Advanced optimization frameworks and performance maximization"
+  - "Commercial-quality optimization and legendary performance techniques"
+estimated_duration: "7-8 weeks (32 comprehensive lessons)"
 order: 15
 ---
 
-# Amiga Phase 6 Tier 15: Game Development
+# Tier 15: Code Optimization: Professional-Grade Efficiency and Performance Mastery!
 
-Advanced 68000 development\! With **32 comprehensive lessons**, you'll create professional Amiga gaming experiences using advanced assembly programming.
+Time to achieve legendary optimization! With **32 intensive lessons**, you'll master the ultimate optimization techniques that made games like Turrican and Wings achieve seemingly impossible performance on standard Amiga hardware.
+
+## What You'll Build
+
+Create **AMIGA OPTIMIZATION MASTER** - a professional optimization framework featuring:
+- Code optimization so advanced it rivals professional compilers
+- Performance tuning techniques that extract every cycle from 68000
+- Sophisticated profiling systems that identify every optimization opportunity
+- Optimization frameworks that create systematic performance improvement
+- Legendary optimization mastery that defines ultimate Amiga efficiency
+
+## Tier Overview
+
+**Lessons 1-8: "Ultimate Efficiency!" - Advanced Code Optimization**
+- Professional-grade 68000 optimization and advanced efficiency techniques
+- Sophisticated instruction selection and optimal code generation
+- Advanced register allocation and memory access optimization
+- The optimization techniques that created legendary Amiga performance
+
+**Lessons 9-16: "Performance Mastery!" - Advanced Tuning Techniques**
+- Professional performance tuning and systematic optimization workflows
+- Advanced profiling integration and performance analysis
+- Sophisticated bottleneck elimination and efficiency maximization
+- The performance tuning that made impossible Amiga speeds possible
+
+**Lessons 17-24: "Optimization Science!" - Professional Development Practices**
+- Advanced optimization methodologies and professional practices
+- Sophisticated performance measurement and validation techniques
+- Professional optimization workflows and systematic efficiency improvement
+- The optimization science that created commercial-quality performance
+
+**Lessons 25-32: "Legendary Performance!" - Master-Level Optimization**
+- Ultimate optimization integration and complete performance mastery
+- Advanced optimization frameworks and systematic efficiency systems
+- Professional performance architecture and legendary optimization techniques
+- The complete mastery that achieves ultimate Amiga performance
 
 ## Key Concepts
 
-- **68000 Programming** - Advanced assembly development
-- **Amiga Hardware** - Professional chipset programming
-- **Game Development** - Commercial-quality projects
-- **Technical Excellence** - Advanced Amiga expertise
-- **Portfolio Building** - Career-ready development
+This tier unlocks ultimate Amiga optimization mastery:
+
+- **Professional Efficiency** - Advanced code optimization and maximum performance techniques
+- **Performance Science** - Sophisticated tuning methodologies and optimization workflows
+- **Systematic Optimization** - Professional frameworks for consistent performance improvement
+- **Legendary Techniques** - The optimization skills that created impossible Amiga performance
+- **Commercial Mastery** - Optimization expertise that rivals professional development tools
+
+You'll master the optimization techniques that created the most efficient Amiga software ever written!
