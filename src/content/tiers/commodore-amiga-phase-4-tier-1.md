@@ -1,67 +1,67 @@
 ---
-title: "Custom Chipset Programming - OCS Graphics & Audio"
+title: "Complete Game Architecture"
 system: "commodore-amiga"
 phase_number: 4
 tier_number: 1
-description: "Learn the Amiga's revolutionary custom chipset programming. Explore the Copper, Blitter, and Paula audio chip to create stunning visual effects, smooth animations, and rich multichannel audio that showcase the Amiga's legendary capabilities."
+description: "Master professional Amiga game development architecture. Learn to structure complete 68000 assembly projects, implement modular game systems, and create robust frameworks that support complex, integrated games."
 learning_objectives:
-  - "Program the Copper for advanced display list effects"
-  - "Use the Blitter for fast graphics operations and animations"
-  - "Implement Paula's 4-channel audio system for rich sound"
-  - "Create complex visual effects using custom chipset coordination"
-  - "Develop smooth animations and real-time graphics systems"
+  - "Design professional Amiga game project structures"
+  - "Implement modular 68000 assembly architecture"
+  - "Create robust memory management systems"
+  - "Build scalable game frameworks and engines"
+  - "Establish professional development workflows"
 concepts_introduced:
-  - "Copper programming and display list management"
-  - "Blitter operations and graphics acceleration"
-  - "Paula audio programming and 4-channel mixing"
-  - "Custom chipset coordination and timing"
-  - "Advanced graphics modes and visual effects"
+  - "Professional game project organization"
+  - "Modular 68000 assembly architecture"
+  - "Memory management and allocation systems"
+  - "Game engine framework design"
+  - "Development workflow optimization"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 1
 ---
 
-# Tier 1: Custom Chipset Programming - OCS Graphics & Audio
+# Tier 1: Complete Game Architecture
 
-Unlock the Amiga's revolutionary custom chipset! With **32 comprehensive lessons**, you'll learn to program the Copper, Blitter, and Paula audio chip to create the stunning visual effects and rich audio that made the Amiga legendary.
+Build like a pro! With **32 comprehensive lessons**, you'll learn to structure complete Amiga games using professional architecture patterns. Master modular design, memory management, and scalable frameworks that support complex, integrated game systems.
 
 ## What You'll Build
 
-Create **Plasma Dreams** - a spectacular audio-visual demo featuring Copper-driven rainbow effects, Blitter-accelerated graphics, smooth sprite animations, and rich 4-channel music that demonstrates the Amiga's custom chipset capabilities.
+Begin developing **Cosmic Defender** - a professional-grade arcade shooter featuring modular architecture, efficient memory management, scalable game systems, and the foundation for complete game integration across multiple tiers.
 
 ## Tier Overview
 
-**Lessons 1-8: Copper Programming & Display Lists**
-- Programming the Copper for real-time register manipulation
-- Creating rainbow effects and color cycling
-- Display list management and timing coordination
-- Advanced Copper tricks and synchronization
+**Lessons 1-8: Professional Project Structure**
+- Organizing large 68000 assembly projects
+- Modular code architecture and separation of concerns
+- Build systems and development workflows
+- Version control and collaborative development
 
-**Lessons 9-16: Blitter Graphics Acceleration**
-- Blitter operations for fast graphics and sprite drawing
-- Line drawing and filled shape algorithms
-- Animation and sprite movement optimization
-- Advanced Blitter techniques and multi-channel operations
+**Lessons 9-16: Memory Management Systems**
+- Dynamic memory allocation and garbage collection
+- Efficient data structures for game objects
+- Memory pooling and optimization techniques
+- Handling Amiga's memory constraints professionally
 
-**Lessons 17-24: Paula Audio System Programming**
-- 4-channel audio programming and sample playback
-- Dynamic audio mixing and real-time sound generation
-- Music composition and tracker-style sequencing
-- Advanced audio effects and filtering techniques
+**Lessons 17-24: Game Engine Framework**
+- Core game loop and timing systems
+- Entity-component-system architecture
+- Scene management and state machines
+- Event handling and messaging systems
 
-**Lessons 25-32: Custom Chipset Coordination**
-- Coordinating Copper, Blitter, and Paula for complex effects
-- Real-time graphics and audio synchronization
-- Performance optimization across all custom chips
-- Creating professional-quality demos and applications
+**Lessons 25-32: Scalable Game Systems**
+- Plugin architecture for game components
+- Resource management and loading systems
+- Performance profiling and optimization
+- Preparing for systems integration
 
 ## Key Concepts
 
-This tier develops advanced Amiga custom chipset skills:
+This tier establishes professional game development foundations:
 
-- **Copper Programming** - Real-time display manipulation and effects
-- **Blitter Operations** - Hardware-accelerated graphics and animation
-- **Paula Audio** - Professional 4-channel audio programming
-- **Chipset Coordination** - Using all custom chips together effectively
-- **Performance Optimization** - Maximizing the OCS chipset's capabilities
+- **Modular Architecture** - Clean, maintainable code structure
+- **Memory Management** - Efficient resource utilization
+- **Game Engine Design** - Scalable framework architecture
+- **Professional Workflows** - Industry-standard development practices
+- **System Integration** - Preparing for complex game systems
 
-Learn these techniques and you'll create Amiga software that demonstrates why this machine was ahead of its time!
+These architectural skills enable you to create games that rival professional Amiga titles!
