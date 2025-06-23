@@ -1,9 +1,9 @@
 ---
-title: "Professional Audio & Music Systems"
+title: "The Complete Masterpiece: Legendary Game Creation!"
 system: "commodore-64"
 phase_number: 6
 tier_number: 4
-description: "Create professional audio systems and dynamic music. Build advanced sound engines, interactive music systems, and audio effects that create immersive soundscapes for professional-quality games."
+description: "Time to create your magnum opus! Combine advanced graphics, audio alchemy, and gameplay psychology into a complete masterpiece that showcases everything you've learned. Make something legendary."
 learning_objectives:
   - "Build advanced multi-channel audio engines"
   - "Create dynamic and interactive music systems"
@@ -17,25 +17,25 @@ concepts_introduced:
   - "Immersive audio environment and soundscape creation"
   - "Advanced SID programming and audio optimization"
 game_project:
-  name: "C64 Pro Engine"
-  description: "Complete your professional game development framework with advanced AI, stunning graphics, dynamic audio, and comprehensive development tools - demonstrating complete commercial-quality game development expertise"
+  name: "Legendary Masterpiece"
+  description: "Create your ultimate showcase combining Visual Masterpiece (advanced graphics), Sonic Symphony (audio alchemy), Fun Formula Lab (gameplay psychology), and Legendary Game (complete integration) - demonstrating true mastery"
   tier_range: "Tiers 1-4"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 4
 ---
 
-# Tier 4: Professional Audio & Music Systems
+# Tier 4: The Complete Masterpiece: Legendary Game Creation!
 
-Create immersive soundscapes! With **32 comprehensive lessons**, you'll build advanced audio systems and dynamic music that creates professional-quality soundtracks and immersive audio experiences.
+Time to make history! 🏆✨ With **32 legendary lessons**, you'll combine everything you've learned into a complete masterpiece that showcases the absolute pinnacle of C64 game development.
 
 ## What You'll Complete
 
-Finish your **C64 Pro Engine** as a complete professional framework:
-- Advanced game engine with modular architecture and professional tools
-- Sophisticated AI with procedural generation and adaptive gameplay
-- Stunning graphics with particle systems and cutting-edge visual effects
-- Professional audio with dynamic music and immersive soundscapes
-- Complete commercial-quality game development platform!
+Create your **Legendary Masterpiece** - the ultimate showcase of advanced C64 development:
+- **Visual Masterpiece**: Graphics that make people say "impossible!"
+- **Sonic Symphony**: Audio that rivals professional synthesizers
+- **Fun Formula Lab**: Gameplay psychology that creates addiction
+- **Complete Integration**: Everything working together in perfect harmony
+- A game so impressive it could have been a commercial legend!
 
 ## Tier Overview
 

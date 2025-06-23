@@ -1,67 +1,72 @@
 ---
-title: "Operating System Design & Implementation"
+title: "Fighting Games: The Art of Digital Combat!"
 system: "commodore-64"
 phase_number: 5
 tier_number: 7
-description: "Design and implement custom operating systems. Learn OS architecture, process management, device drivers, and system services that create complete computing environments."
+description: "Enter the arena! Create fighting games with fluid combat, special moves that feel powerful, and that perfect balance where every fight could go either way. Learn the secrets behind legendary fighting game feel."
 learning_objectives:
-  - "Design operating system architecture and interfaces"
-  - "Implement process management and scheduling"
-  - "Create device drivers and hardware abstraction"
-  - "Build system services and API frameworks"
-  - "Develop complete operating system functionality"
+  - "Create combat that feels visceral and impactful"
+  - "Build special moves that are satisfying to execute"
+  - "Design fighting systems that reward skill and timing"
+  - "Balance characters so every fight feels winnable"
+  - "Add that warrior spirit that makes players feel unstoppable"
 concepts_introduced:
-  - "Operating system architecture and design principles"
-  - "Process management and scheduling algorithms"
-  - "Device driver development and hardware abstraction"
-  - "System service implementation and API design"
-  - "Complete operating system development lifecycle"
+  - "Combat mechanics and hit detection systems"
+  - "Animation state machines and move execution"
+  - "Character balance and fighting game theory"
+  - "Input buffering and combo systems"
+  - "AI opponents and difficulty scaling"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 7
 ---
 
-# Tier 7: Operating System Design & Implementation
+# Tier 7: Fighting Games: The Art of Digital Combat!
 
-Create computing environments! With **32 comprehensive lessons**, you'll design and implement custom operating systems that demonstrate advanced computer science and systems programming expertise.
+Step into the ring! 🥊 With **32 bone-crushing lessons**, you'll create fighting games where every punch feels satisfying, every special move looks awesome, and every victory feels absolutely earned.
 
 ## What You'll Build
 
-Develop a complete operating system including kernel, process manager, device drivers, file system, and user interface that creates a functional computing environment demonstrating professional OS development skills.
+Create **STREET WARRIOR** - an epic fighting game featuring:
+- Combat that makes every hit feel like it has real impact
+- Special moves that look impossible but feel natural to execute  
+- Characters with unique fighting styles and personalities
+- AI opponents that fight smart, not cheap
+- That magical moment when you land the perfect combo
 
 ## Tier Overview
 
-**Lessons 1-8: OS Architecture & Kernel Design**
-- Operating system architecture and design
-- Microkernel vs monolithic kernel design
-- System boot process and initialization
-- Kernel services and system call interface
+**Lessons 1-8: "Feel the Impact!" - Combat Mechanics**
+- Hit detection that feels fair and precise
+- Attack animations that have weight and power
+- Damage systems that create dramatic moments
+- The secret sauce that makes virtual punches feel real
 
-**Lessons 9-16: Process Management & Scheduling**
-- Process creation and lifecycle management
-- Scheduling algorithms and optimization
-- Inter-process communication systems
-- Resource allocation and protection
+**Lessons 9-16: "HADOKEN!" - Special Moves & Commands**
+- Input systems that recognize complex commands reliably
+- Special move execution that feels magical, not frustrating
+- Animation systems that make moves look spectacular
+- The psychology of quarter-circle motions and why they work
 
-**Lessons 17-24: Virtual Device Drivers & Abstraction**
-- Virtual hardware abstraction layer design
-- Emulated device driver architecture and implementation
-- Simulated interrupt handling and device management
-- Virtual resource sharing and coordination
+**Lessons 17-24: "Know Your Enemy" - Character Balance & AI**
+- Character design that creates diverse but balanced matchups
+- AI opponents that fight with strategy, not just reflexes
+- Difficulty progression that builds skill gradually
+- The art of making losing feel like learning
 
-**Lessons 25-32: System Services & Integration**
-- File system implementation and management
-- Memory management and virtual memory
-- User interface and shell development
-- Complete OS integration and testing
+**Lessons 25-32: "FINISH HIM!" - Polish & Presentation**
+- Visual effects that sell the power of each attack
+- Audio design that makes every hit sound devastating
+- Victory animations that make winning feel triumphant
+- The complete package that transforms combat into spectacle
 
 ## Key Concepts
 
-This tier develops complete operating system expertise:
+This tier unlocks the warrior's code:
 
-- **System Design** - Complete operating system architecture
-- **Resource Management** - Process, memory, and device coordination
-- **Virtual Hardware Abstraction** - Emulated device driver and interface design
-- **Software Architecture** - Complex system design and implementation
-- **Computer Science** - Advanced operating system theory and practice
+- **Combat Feel** - Making virtual fighting feel visceral and satisfying
+- **Skill Rewarding** - Systems that make practice pay off without punishing newcomers
+- **Character Balance** - Creating diversity without breaking fairness
+- **Fighting Psychology** - Understanding what makes combat engaging vs frustrating
+- **Digital Choreography** - Making fights look and feel like epic battles
 
-These OS development skills enable creation of complete computing platforms!
+You'll discover why some fighting games become legendary while others are forgotten! ⚔️

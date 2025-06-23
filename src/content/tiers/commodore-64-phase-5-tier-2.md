@@ -1,67 +1,72 @@
 ---
-title: "Advanced Disk Drive Programming & File Systems"
+title: "Platform Games: Jump, Run & Don't Fall!"
 system: "commodore-64"
 phase_number: 5
 tier_number: 2
-description: "Master 1541 disk drive programming and create custom file systems. Learn low-level disk operations, fast loading protocols, and file system design that enables professional data storage solutions."
+description: "Time to channel your inner Mario! Create platform games with pixel-perfect jumping, treacherous platforms, and that magical 'feel' that makes platformers addictive. Learn the physics secrets that separate good jumps from great jumps."
 learning_objectives:
-  - "Program 1541 disk drive with direct commands"
-  - "Implement custom fast loading protocols"
-  - "Create file system management utilities"
-  - "Build data backup and recovery systems"
-  - "Design efficient disk storage solutions"
+  - "Create jumping that feels 'just right' - not floaty, not heavy"
+  - "Build collision detection that handles slopes and corners perfectly"
+  - "Design levels that teach players through gameplay"
+  - "Implement smooth scrolling that doesn't make players dizzy"
+  - "Add that secret platformer magic that makes you want 'just one more jump'"
 concepts_introduced:
-  - "Low-level 1541 disk drive programming"
-  - "Custom fast loading and saving protocols"
-  - "File system design and implementation"
-  - "Data backup and recovery techniques"
-  - "Professional disk utility development"
+  - "Platform physics and momentum systems"
+  - "Tile-based collision detection and slope handling"
+  - "Multi-directional scrolling and camera systems"
+  - "Level design principles and player guidance"
+  - "Character animation and state machines"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 2
 ---
 
-# Tier 2: Advanced Disk Drive Programming & File Systems
+# Tier 2: Platform Games: Jump, Run & Don't Fall!
 
-Master disk operations! With **32 comprehensive lessons**, you'll program the 1541 disk drive directly and create custom file systems that demonstrate professional data storage and retrieval expertise.
+Get ready to create jumping joy! 🦘 With **32 gravity-defying lessons**, you'll build platform games with that perfect "one more jump" feeling that kept players glued to their joysticks through the 80s.
 
 ## What You'll Build
 
-Enhance your **C64 Developer Suite** with advanced disk utilities including a fast loader system, custom file manager, disk backup utility, data recovery tools, and file system optimizer that showcase professional disk programming skills.
+Create **CRYSTAL CAVERNS** - an epic platform adventure featuring:
+- Jumping physics so perfect you'll want to patent them
+- Platforms that challenge but don't frustrate
+- Secrets hidden in every nook and cranny
+- Enemies with personality (even if they're just 16x16 pixels!)
+- That magical moment when players master a tricky section
 
 ## Tier Overview
 
-**Lessons 1-8: Emulated Drive Programming Fundamentals**
-- Emulated 1541 command programming
-- Drive ROM routines and custom protocols
-- Virtual disk management and optimization
-- Track and sector simulation techniques
+**Lessons 1-8: "The Physics of Fun" - Jumping Mechanics**
+- Gravity that feels natural (hint: it's not realistic!)
+- Variable jump height based on button press duration
+- Coyote time: letting players jump after leaving a platform
+- The secret ingredient that makes Super Mario Bros feel perfect
 
-**Lessons 9-16: Fast Loading Protocol Development**
-- Custom fast loading algorithm design
-- Parallel communication protocols
-- Turbo loading and saving systems
-- Performance optimization techniques
+**Lessons 9-16: "Don't Hit Your Head!" - Collision Detection**
+- Tile-based collision that handles corners gracefully
+- Slope walking without getting stuck in walls
+- Moving platforms that don't make players fall through
+- The dark art of making hitboxes feel fair
 
-**Lessons 17-24: File System Design & Implementation**
-- Custom file system architecture
-- Directory structure optimization
-- File allocation and management
-- Disk space optimization algorithms
+**Lessons 17-24: "Where Am I Going?" - Scrolling & Cameras**
+- Smooth scrolling that doesn't induce motion sickness
+- Camera systems that keep players oriented
+- Multi-directional scrolling for expansive worlds
+- Tricks for making small levels feel huge
 
-**Lessons 25-32: Professional Disk Utilities**
-- Complete backup and recovery systems
-- Disk analysis and repair tools
-- File compression and archiving
-- Professional utility interface design
+**Lessons 25-32: "One More Room..." - Level Design Magic**
+- Teaching players without tutorial text
+- Placing collectibles to guide exploration
+- Difficulty curves that build confidence
+- The psychology of "just one more room"
 
 ## Key Concepts
 
-This tier develops professional disk programming expertise:
+This tier unlocks the secrets of platform perfection:
 
-- **Drive Control** - Emulated 1541 programming and optimization
-- **Protocol Design** - Custom data transfer systems
-- **File System Architecture** - Professional storage design
-- **Data Recovery** - Backup and restoration systems
-- **Performance Engineering** - Optimized disk operations
+- **Feel & Polish** - The difference between "okay" and "I can't stop playing"
+- **Player Psychology** - Understanding how small details create big emotions
+- **Technical Mastery** - Collision detection that just works, every time
+- **Design Wisdom** - Level design principles that guide without teaching
+- **Hardware Optimization** - Smooth scrolling on a machine from 1982
 
-These disk programming skills enable professional data management systems!
+You'll emerge knowing why some platformers become classics while others are forgotten! 🎮
