@@ -1,72 +1,72 @@
 ---
-title: "PPU Mastery: Making the NES Graphics Chip Dance!"
+title: "Sprite Animation Systems: Making Characters Come Alive! 🎭"
 system: "nintendo-entertainment-system"
 phase_number: 2
 tier_number: 1
-description: "Unlock the PPU's secret powers! Learn the advanced graphics techniques that made NES games look incredible despite having less memory than a modern email. Time to make pixels DANCE!"
+description: "Transform static sprites into living, breathing characters! Master the art of smooth animation on the NES using advanced 6502 techniques. Learn the secrets that made Mario's walk cycle so perfect!"
 learning_objectives:
-  - "Master PPU tricks that create impossible visual effects"
-  - "Build scrolling engines smoother than Super Mario Bros"
-  - "Create sprite multiplexing that breaks the 8-sprite limit"
-  - "Design graphics that work WITH the hardware limitations"
-  - "Add that special Nintendo magic that made games legendary"
+  - "Create buttery-smooth sprite animation systems that rival arcade games"
+  - "Master multi-frame animation sequences that bring characters to life"
+  - "Implement efficient sprite caching systems for flicker-free movement"
+  - "Build animation state machines that handle complex character behaviors"
+  - "Optimize PPU sprite rendering to squeeze every ounce of performance from 6502"
 concepts_introduced:
-  - "Advanced PPU programming and secret registers"
-  - "Sprite multiplexing and flicker-free techniques"
-  - "Smooth scrolling and split-screen effects"
-  - "CHR-ROM animation and pattern table tricks"
-  - "Professional NES graphics optimization"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Advanced sprite animation techniques and frame management"
+  - "Multi-directional character animation systems"
+  - "Efficient sprite caching and OAM management"
+  - "Animation timing and smooth movement calculations"
+  - "PPU-optimized sprite rendering for maximum performance"
+estimated_duration: "3-4 weeks (32 comprehensive lessons)"
 order: 1
 ---
 
-# Tier 1: PPU Mastery: Making the NES Graphics Chip Dance!
+# Tier 1: Sprite Animation Systems: Making Characters Come Alive! 🎭
 
-Welcome to graphics wizardry, Nintendo style! 🎮✨ With **32 pixel-perfect lessons**, you'll learn why NES games looked so amazing despite having specs that would make a calculator laugh.
+Welcome to the magical world of sprite animation! 🌟 With **32 spectacular lessons**, you'll learn how to breathe life into pixels and create characters so smooth they seem to leap off the screen - just like the legendary Super Mario Bros!
 
 ## What You'll Build
 
-Create **PIXEL PERFECT SHOWCASE** - a stunning graphics demo featuring:
-- Scrolling so smooth it feels like silk
-- More than 8 sprites on a line (yes, it's possible!)
-- Split-screen effects that blow minds
-- Animation that seems to defy the hardware limits
-- That special Nintendo polish that defined a generation
+Create **NES ANIMATION STUDIO** - a complete animation system featuring:
+- Walking, running, and jumping animations smoother than butter 🧈
+- Multi-directional sprites that face the right way every time
+- Character state machines that handle complex behaviors
+- Animation sequences that flow like liquid mercury
+- Performance so good it makes the NES feel like a modern console!
 
 ## Tier Overview
 
-**Lessons 1-8: "Breaking the Rules" - PPU Secret Techniques**
-- Hidden PPU registers Nintendo didn't document
-- Mid-frame PPU manipulation for impossible effects
-- Pattern table animation that creates magic
-- The dark arts of cycle-timed code
+**Lessons 1-8: "Pixel Perfect Basics" - Foundation of Great Animation**
+- Single-frame sprite rendering with PPU optimization
+- Sprite masking techniques for clean backgrounds
+- Memory-efficient sprite storage in CHR-ROM/RAM
+- Basic movement and positioning calculations
 
-**Lessons 9-16: "Smooth as Butter" - Scrolling Mastery**
-- Pixel-perfect scrolling in any direction
-- Split-screen effects that create multiple worlds
-- Parallax scrolling on hardware that "can't" do it
-- The mathematics of making movement feel perfect
+**Lessons 9-16: "Smooth as Silk" - Multi-Frame Animation Magic**
+- Frame-by-frame animation sequences that flow naturally
+- Timing systems that make animations feel alive
+- Animation loops and state transitions
+- Character facing and directional changes
 
-**Lessons 17-24: "More Sprites!" - Multiplexing Magic**
-- Breaking the 8-sprite-per-scanline limit gracefully
-- Flicker-free sprite multiplexing techniques
-- Priority systems that keep important sprites visible
-- Making limitations feel like features, not bugs
+**Lessons 17-24: "Advanced Behaviors" - Complex Animation Systems**
+- State machines for walking, jumping, and special moves
+- Animation blending and transition effects
+- Multiple character animation management
+- Collision-responsive animation changes
 
-**Lessons 25-32: "Nintendo Polish" - Professional Presentation**
-- CHR-ROM animation for fluid character movement
-- Palette cycling that creates impossible colors
-- Screen transitions that feel cinematic
-- The final touches that scream "quality"
+**Lessons 25-32: "Performance Wizardry" - NES Optimization Mastery**
+- OAM sprite caching systems that eliminate flicker
+- Memory-efficient animation data structures
+- 6502 cycle-optimized rendering routines
+- Professional-grade animation debugging tools
 
 ## Key Concepts
 
-This tier reveals the PPU's deepest secrets:
+Transform from static to spectacular:
 
-- **Hardware Mastery** - Exploiting every PPU capability and beyond
-- **Creative Constraints** - Turning limitations into signature style
-- **Technical Artistry** - Making 2KB of video RAM look like 200KB
-- **Nintendo Quality** - That indefinable magic in first-party games
-- **Impossible Effects** - Creating visuals that shouldn't exist
+- **Frame Management** - Organizing animation sequences like a pro
+- **Timing Systems** - Making animations feel natural and responsive
+- **State Machines** - Handling complex character behaviors elegantly
+- **PPU Optimization** - Squeezing smooth animation from NES hardware
+- **Visual Polish** - Creating animations that rival commercial games
 
-You'll understand why NES games still look amazing today! 🌟
+You'll emerge with sprite skills that make characters dance! 💃🕺

@@ -1,33 +1,72 @@
 ---
-title: "ZX Spectrum Phase 6 Tier 9: Game Development"
+title: "Complex Algorithms: Advanced Programming Patterns!"
 system: "zx-spectrum"
 phase_number: 6
 tier_number: 9
-description: "Advanced ZX Spectrum game development using Z80 assembly programming."
+description: "Master complex algorithms and advanced programming patterns on ZX Spectrum! Learn sophisticated data structures, advanced mathematical algorithms, and the complex systems that power professional-grade games and applications."
 learning_objectives:
-  - "Apply advanced Z80 assembly techniques"
-  - "Create professional ZX Spectrum games"
-  - "Implement commercial development practices"
-  - "Build portfolio-worthy gaming projects"
-  - "Develop ZX Spectrum expertise"
+  - "Implement sophisticated algorithms and data structures"
+  - "Master advanced mathematical programming techniques"
+  - "Build complex system architectures and design patterns"
+  - "Create efficient pathfinding and AI algorithms"
+  - "Optimize complex algorithms for Z80 performance"
 concepts_introduced:
-  - "Advanced Z80 programming methodologies"
-  - "Professional ZX Spectrum game architecture"
-  - "Commercial development practices"
-  - "Portfolio-quality project development"
-  - "Industry-standard Z80 techniques"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "Advanced algorithms and complex data structures"
+  - "Mathematical programming and numerical algorithms"
+  - "AI algorithms and intelligent system design"
+  - "Complex system architecture and design patterns"
+  - "Algorithm optimization and performance analysis"
+estimated_duration: "6-8 weeks (32 comprehensive lessons)"
 order: 9
 ---
 
-# ZX Spectrum Phase 6 Tier 9: Game Development
+# Tier 9: Complex Algorithms: Advanced Programming Patterns!
 
-Advanced Z80 development\! With **32 comprehensive lessons**, you'll create professional ZX Spectrum gaming experiences using advanced assembly programming.
+Master sophisticated algorithms! With **32 intensive lessons**, you'll learn the complex programming patterns and algorithms that separate professional developers from hobbyists.
+
+## What You'll Build
+
+Create **ALGORITHM MASTERY SYSTEM** - a comprehensive algorithm library featuring:
+- Advanced pathfinding and AI decision systems
+- Complex mathematical algorithms and numerical processing
+- Sophisticated data structures optimized for Z80
+- Professional design patterns and system architecture
+- The algorithmic foundation for advanced game development
+
+## Tier Overview
+
+**Lessons 1-8: "Smart Systems!" - AI and Decision Algorithms**
+- Pathfinding algorithms (A*, Dijkstra) optimized for Z80
+- State machines and behavior trees for AI
+- Decision-making algorithms and strategic planning
+- Professional AI architecture for game development
+
+**Lessons 9-16: "Mathematical Mastery!" - Numerical Algorithms**
+- Fixed-point mathematics and trigonometric functions
+- Physics simulation and collision detection algorithms
+- Statistical algorithms and random number generation
+- Mathematical optimization for Z80 constraints
+
+**Lessons 17-24: "Data Structures!" - Advanced Organization**
+- Binary trees, heaps, and priority queues
+- Hash tables and efficient lookup systems
+- Graph algorithms and network structures
+- Memory-efficient data organization for limited RAM
+
+**Lessons 25-32: "Design Patterns!" - Professional Architecture**
+- Object-oriented design patterns in assembly
+- State management and system coordination
+- Event-driven architecture and messaging systems
+- Professional code organization and maintainability
 
 ## Key Concepts
 
-- **Z80 Programming** - Advanced assembly development
-- **Spectrum Hardware** - Professional hardware utilization
-- **Game Development** - Commercial-quality projects
-- **Technical Excellence** - Advanced Z80 expertise
-- **Portfolio Building** - Career-ready development
+This tier masters advanced programming algorithms:
+
+- **AI Intelligence** - Creating smart, responsive game behaviors
+- **Mathematical Precision** - Professional numerical programming
+- **Data Mastery** - Efficient organization and access patterns
+- **Design Excellence** - Professional system architecture
+- **Algorithmic Thinking** - The foundation of advanced programming
+
+You'll master the complex algorithms that power sophisticated software systems!

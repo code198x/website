@@ -1,33 +1,72 @@
 ---
-title: "NES Phase 2 Tier 11: Game Development"
+title: "Data Management: Efficient CHR-ROM and PRG-ROM Usage! 💾"
 system: "nintendo-entertainment-system"
 phase_number: 2
 tier_number: 11
-description: "Advanced NES game development using 6502 assembly programming."
+description: "Master NES cartridge data management! Learn the ROM organization and memory mapping techniques that allowed games like Mega Man and Mario to pack so much content into tiny cartridges."
 learning_objectives:
-  - "Apply advanced 6502 assembly techniques"
-  - "Create professional NES games"
-  - "Implement commercial development practices"
-  - "Build portfolio-worthy gaming projects"
-  - "Develop NES programming expertise"
+  - "Master CHR-ROM and PRG-ROM organization for maximum content density"
+  - "Implement memory mappers and bank switching for larger games"
+  - "Create efficient data compression and storage systems"
+  - "Build asset management tools for professional game development"
+  - "Optimize ROM usage to maximize game content within cartridge limits"
 concepts_introduced:
-  - "Advanced 6502 programming methodologies"
-  - "Professional NES game architecture"
-  - "Commercial development practices"
-  - "Portfolio-quality project development"
-  - "Industry-standard NES techniques"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "NES cartridge architecture and memory mapping systems"
+  - "Bank switching techniques and mapper programming"
+  - "Data compression algorithms optimized for NES"
+  - "Asset pipeline and content organization strategies"
+  - "ROM optimization and space-efficient programming techniques"
+estimated_duration: "3-4 weeks (32 comprehensive lessons)"
 order: 11
 ---
 
-# NES Phase 2 Tier 11: Game Development
+# Tier 11: Data Management: Efficient CHR-ROM and PRG-ROM Usage! 💾
 
-Advanced 6502 development\! With **32 comprehensive lessons**, you'll create professional NES gaming experiences using advanced assembly programming.
+Time to become a CARTRIDGE MASTER! 🗃️ With **32 data-focused lessons**, you'll learn to pack incredible amounts of content into tiny NES cartridges using professional data management techniques!
+
+## What You'll Build
+
+Create **MEGA CONTENT SYSTEM** - a comprehensive data management framework featuring:
+- Efficient asset organization that maximizes available space 📦
+- Bank switching systems for games larger than 32KB
+- Data compression that squeezes more content into ROM
+- Professional asset pipeline for streamlined development
+- The kind of data management that made epic NES adventures possible!
+
+## Tier Overview
+
+**Lessons 1-8: "ROM Architecture" - Understanding NES Cartridge Systems**
+- CHR-ROM and PRG-ROM organization and structure
+- Memory mapping and address space management
+- Cartridge types and hardware capabilities
+- ROM size optimization and space budgeting
+
+**Lessons 9-16: "Bank Switching Mastery" - Expanding Beyond Limits**
+- Memory mapper programming (MMC1, MMC3, etc.)
+- Dynamic bank switching for code and graphics
+- Seamless transitions between ROM banks
+- Advanced mapper features and capabilities
+
+**Lessons 17-24: "Compression Wizardry" - Maximizing Content Density**
+- Run-length encoding for graphics compression
+- Level data compression and procedural generation
+- Audio compression and efficient sound storage
+- Custom compression algorithms for specific data types
+
+**Lessons 25-32: "Professional Pipeline" - Asset Management Systems**
+- Build tools for asset conversion and optimization
+- Automated ROM building and organization
+- Version control and asset tracking systems
+- Professional debugging tools for ROM analysis
 
 ## Key Concepts
 
-- **6502 Programming** - Advanced assembly development
-- **NES Hardware** - Professional PPU, APU, and mapper programming
-- **Game Development** - Commercial-quality projects
-- **Technical Excellence** - Advanced NES expertise
-- **Portfolio Building** - Career-ready development
+Become a data management expert:
+
+- **Memory Architecture** - Deep understanding of NES cartridge systems
+- **Space Optimization** - Maximizing content within hardware constraints
+- **Professional Tools** - Build systems that streamline development
+- **Technical Innovation** - Creative solutions to storage limitations
+- **Scalable Systems** - Data management that grows with project complexity
+
+You'll pack more content into NES cartridges than ever thought possible! 🚀
