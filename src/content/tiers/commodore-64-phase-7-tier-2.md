@@ -1,33 +1,72 @@
 ---
-title: "C64 Phase 7 Tier 2: Game Development"
+title: "Level Design Mastery: Crafting Worlds Players Love!"
 system: "commodore-64"
 phase_number: 7
 tier_number: 2
-description: "Advanced C64 game development techniques and professional practices."
+description: "Design levels that teach, challenge, and delight! Master the art and science of creating game worlds that guide players naturally while keeping them engaged for hours. Learn the secrets of legendary level design!"
 learning_objectives:
-  - "Apply advanced C64 development techniques"
-  - "Create professional-quality game systems"
-  - "Implement commercial development practices"
-  - "Build portfolio-worthy gaming projects"
-  - "Develop industry-standard expertise"
+  - "Design levels that teach through play, not tutorials"
+  - "Create difficulty curves that feel natural and rewarding"
+  - "Build memorable locations that players want to explore"
+  - "Master pacing that keeps players in the perfect flow state"
+  - "Add secrets and rewards that make exploration magical"
 concepts_introduced:
-  - "Advanced C64 development methodologies"
-  - "Professional game system architecture"
-  - "Commercial development practices"
-  - "Portfolio-quality project development"
-  - "Industry-standard techniques"
+  - "Level design philosophy and player psychology"
+  - "Environmental storytelling and visual language"
+  - "Difficulty curve mathematics and flow theory"
+  - "Exploration rewards and secret placement psychology"
+  - "Professional level design tools and workflows"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 2
 ---
 
-# C64 Phase 7 Tier 2: Game Development
+# Tier 2: Level Design Mastery: Crafting Worlds Players Love!
 
-Advanced C64 development\! With **32 comprehensive lessons**, you'll apply professional techniques for creating commercial-quality gaming experiences.
+Welcome to the art of world building! 🗺️✨ With **32 world-crafting lessons**, you'll learn why some levels become legendary while others are forgotten, and how to create spaces that players remember forever.
+
+## What You'll Build
+
+Create **LEVEL DESIGN SHOWCASE** - a collection of masterfully crafted levels featuring:
+- Tutorial levels that teach without a single text prompt
+- Challenge rooms that frustrate just enough to be satisfying
+- Exploration spaces filled with "aha!" moments and secrets
+- Boss arenas that feel epic and memorable
+- That perfect final level that brings everything together
+
+## Tier Overview
+
+**Lessons 1-8: "Teaching Without Words" - Natural Learning**
+- Level design that guides players subconsciously
+- Visual language that communicates without text
+- Safe spaces for experimentation and learning
+- The art of the invisible tutorial
+
+**Lessons 9-16: "The Perfect Challenge" - Difficulty Design**
+- Mathematical curves that keep players engaged
+- Challenge rooms that teach through failure
+- Checkpoint placement psychology
+- Making hard feel fair, not cheap
+
+**Lessons 17-24: "Worlds Worth Exploring" - Environmental Design**
+- Creating spaces that beg to be explored
+- Secret placement that rewards curiosity
+- Environmental storytelling through level design
+- Making small spaces feel vast
+
+**Lessons 25-32: "Memorable Moments" - Iconic Level Creation**
+- Set pieces that players never forget
+- Boss arena design that amplifies tension
+- Final levels that feel like culminations
+- The magic that makes levels legendary
 
 ## Key Concepts
 
-- **Advanced Development** - Professional C64 programming
-- **Commercial Quality** - Industry-standard practices  
-- **Portfolio Building** - Career-ready projects
-- **Professional Practice** - Commercial workflows
-- **Technical Excellence** - Advanced C64 expertise
+This tier reveals the psychology of space:
+
+- **Player Guidance** - Leading without hand-holding
+- **Challenge Psychology** - Understanding frustration vs satisfaction
+- **Exploration Rewards** - Making curiosity pay off
+- **Memorable Design** - Creating spaces that stick in minds
+- **Professional Craft** - Level design as an art form
+
+You'll understand why Level 1-1 of Super Mario Bros is still studied today! 🏰
