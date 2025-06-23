@@ -1,33 +1,72 @@
 ---
-title: "ZX Spectrum Phase 4 Tier 11: Game Development"
+title: "User Experience Design"
 system: "zx-spectrum"
 phase_number: 4
 tier_number: 11
-description: "Advanced ZX Spectrum game development using Z80 assembly programming."
+description: "Master player-centered design principles to create intuitive, accessible, and engaging user experiences. Design games that feel natural and enjoyable for all players."
 learning_objectives:
-  - "Apply advanced Z80 assembly techniques"
-  - "Create professional ZX Spectrum games"
-  - "Implement commercial development practices"
-  - "Build portfolio-worthy gaming projects"
-  - "Develop ZX Spectrum expertise"
+  - "Apply user-centered design principles"
+  - "Create intuitive and accessible game interfaces"
+  - "Design engaging player onboarding experiences"
+  - "Implement comprehensive accessibility features"
+  - "Build games that feel natural and enjoyable"
 concepts_introduced:
-  - "Advanced Z80 programming methodologies"
-  - "Professional ZX Spectrum game architecture"
-  - "Commercial development practices"
-  - "Portfolio-quality project development"
-  - "Industry-standard Z80 techniques"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "User experience design principles and methodology"
+  - "Accessibility design and inclusive gaming practices"
+  - "Player psychology and engagement optimization"
+  - "Interface usability and intuitive design patterns"
+  - "Player feedback systems and experience optimization"
+estimated_duration: "4-7 weeks (32 comprehensive lessons)"
 order: 11
 ---
 
-# ZX Spectrum Phase 4 Tier 11: Game Development
+# Tier 11: User Experience Design
 
-Advanced Z80 development\! With **32 comprehensive lessons**, you'll create professional ZX Spectrum gaming experiences using advanced assembly programming.
+Design for players! With **32 comprehensive lessons**, you'll master user experience design principles that create games which feel intuitive, accessible, and engaging for all players, regardless of skill level or ability.
+
+## What You'll Build
+
+Continue developing **Neon Quest** with exceptional user experience:
+- Intuitive interface design and navigation
+- Comprehensive accessibility features
+- Engaging player onboarding and tutorials
+- Responsive feedback systems
+- Player-centered design throughout
+
+## Tier Overview
+
+**Lessons 1-8: User-Centered Design Principles**
+- Understanding player psychology and behavior
+- User research and feedback integration
+- Design thinking and player empathy
+- Iterative design and testing methodologies
+
+**Lessons 9-16: Interface Usability & Accessibility**
+- Intuitive interface design patterns
+- Accessibility features and inclusive design
+- Clear visual communication and feedback
+- Universal design principles
+
+**Lessons 17-24: Player Onboarding & Engagement**
+- Progressive skill introduction and tutorials
+- Player motivation and engagement systems
+- Difficulty curve and accessibility options
+- Player retention and satisfaction optimization
+
+**Lessons 25-32: Experience Optimization**
+- User testing and feedback integration
+- Experience polish and refinement
+- Player journey optimization
+- Complete UX integration and validation
 
 ## Key Concepts
 
-- **Z80 Programming** - Advanced assembly development
-- **Spectrum Hardware** - Professional hardware utilization
-- **Game Development** - Commercial-quality projects
-- **Technical Excellence** - Advanced Z80 expertise
-- **Portfolio Building** - Career-ready development
+This tier creates player-centered experiences:
+
+- **Player Empathy** - Understanding and designing for players
+- **Accessibility** - Games that everyone can enjoy
+- **Intuitive Design** - Interfaces that feel natural
+- **Engagement** - Keeping players motivated and happy
+- **Universal Appeal** - Games that welcome all players
+
+These UX skills create games that players truly love!
