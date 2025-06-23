@@ -1,33 +1,72 @@
 ---
-title: "Amiga Phase 7 Tier 1: Game Development"
+title: "Interactive Storytelling: Games That Touch Hearts!"
 system: "commodore-amiga"
 phase_number: 7
 tier_number: 1
-description: "Advanced Amiga game development using 68000 assembly programming."
+description: "Make players care deeply! Master the art of interactive storytelling that creates genuine emotional connections. Learn to weave narratives so compelling that players remember them for decades."
 learning_objectives:
-  - "Apply advanced 68000 assembly techniques"
-  - "Create professional Amiga games"
-  - "Implement commercial development practices"
-  - "Build portfolio-worthy gaming projects"
-  - "Develop Amiga programming expertise"
+  - "Create stories that players emotionally invest in"
+  - "Design characters so real that players care about their fates"
+  - "Build dialogue systems that feel natural and meaningful"
+  - "Craft branching narratives where choices truly matter"
+  - "Seamlessly integrate story and gameplay into unified experiences"
 concepts_introduced:
-  - "Advanced 68000 programming methodologies"
-  - "Professional Amiga game architecture"
-  - "Commercial development practices"
-  - "Portfolio-quality project development"
-  - "Industry-standard Amiga techniques"
+  - "Emotional storytelling techniques and player psychology"
+  - "Character personality systems and development arcs"
+  - "Natural dialogue creation and conversation flow"
+  - "Meaningful choice design and consequence systems"
+  - "Story-gameplay integration and narrative pacing"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 1
 ---
 
-# Amiga Phase 7 Tier 1: Game Development
+# Tier 1: Interactive Storytelling: Games That Touch Hearts!
 
-Advanced 68000 development\! With **32 comprehensive lessons**, you'll create professional Amiga gaming experiences using advanced assembly programming.
+Stories that change lives! With **32 narrative-focused lessons**, you'll learn the ancient art of storytelling reimagined for interactive media - creating Amiga experiences so emotionally powerful that players carry them forever.
+
+## What You'll Build
+
+Create **AMIGA NARRATIVE ENGINE** - your storytelling masterpiece featuring:
+- Characters so real that players dream about them
+- Dialogue that flows like natural conversation using Amiga's text capabilities
+- Choices that feel genuinely meaningful and impactful
+- Stories that seamlessly blend with Paula sound and copper effects
+- Emotional moments that create tears of joy and heartbreak
+
+## Tier Overview
+
+**Lessons 1-8: "Making Players Care" - Emotional Foundation**
+- The psychology of emotional investment in interactive stories
+- Creating characters that feel like real people with real problems
+- Building empathy through Amiga-specific gameplay and narrative design
+- The secret ingredients that make stories unforgettable
+
+**Lessons 9-16: "Characters That Live" - Personality Systems**
+- Designing characters with depth, flaws, and genuine growth
+- Character motivation systems that drive believable behavior
+- Creating relationships that evolve based on player interaction
+- Making every character feel essential and memorable
+
+**Lessons 17-24: "Conversations That Matter" - Dialogue Excellence**
+- Writing dialogue that sounds natural and reveals character
+- Building conversation systems that feel organic, not scripted
+- Using Amiga's text capabilities for subtext and emotional depth
+- Making every conversation advance character or plot meaningfully
+
+**Lessons 25-32: "Stories in Motion" - Narrative Integration**
+- Weaving story seamlessly into Amiga gameplay without stopping action
+- Environmental storytelling using copper effects and custom graphics
+- Pacing techniques that build tension and deliver satisfying payoffs
+- Creating moments that become legendary among Amiga players
 
 ## Key Concepts
 
-- **68000 Programming** - Advanced assembly development
-- **Amiga Hardware** - Professional chipset programming
-- **Game Development** - Commercial-quality projects
-- **Technical Excellence** - Advanced Amiga expertise
-- **Portfolio Building** - Career-ready development
+This tier reveals the magic of interactive narrative on Amiga:
+
+- **Emotional Design** - Understanding how feelings drive player engagement
+- **Character Psychology** - Creating believable people in digital worlds
+- **Meaningful Choice** - Designing decisions that feel important and consequential
+- **Narrative Flow** - Balancing story and gameplay for perfect pacing
+- **Memorable Moments** - Crafting experiences that stick with players forever
+
+You'll understand why games like The Secret of Monkey Island and Kings Quest created emotional connections that last decades on every platform they touched!
