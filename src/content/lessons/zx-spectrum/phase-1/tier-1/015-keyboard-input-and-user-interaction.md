@@ -26,7 +26,7 @@ order: 15
 
 # Lesson 15: Keyboard Input and User Interaction
 
-Interactive programs need to respond to user input. The ZX Spectrum's keyboard system is elegantly simple but requires understanding of its matrix-based design. In this lesson, you'll learn to read keys, handle multiple inputs, and create responsive user interfaces.
+Interactive programs need to respond to user input. The ZX Spectrum's keyboard system is elegantly simple but requires understanding of its matrix-based design. You'll learn to read keys, handle multiple inputs, and create the responsive interface that will make your Spectrum Saga adventure game engaging to play.
 
 ## The ZX Spectrum Keyboard Matrix
 

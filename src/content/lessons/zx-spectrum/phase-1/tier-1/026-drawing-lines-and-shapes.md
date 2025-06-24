@@ -26,7 +26,7 @@ order: 26
 
 # Lesson 26: Drawing Lines and Shapes
 
-Now that you understand pixel manipulation, let's build sophisticated drawing algorithms! Creating smooth lines and perfect shapes requires clever mathematics and optimization. These fundamental graphics primitives will form the core of our Pixel Painter application.
+Now that you understand pixel manipulation, let's build sophisticated drawing algorithms! Creating smooth lines and perfect shapes requires clever mathematics and optimization. These fundamental graphics primitives will form the core of our Spectrum Saga application.
 
 ## The Challenge of Line Drawing
 
@@ -1748,7 +1748,7 @@ You've mastered essential graphics algorithms:
 
 ## What's Next?
 
-In the next lesson, we'll implement user input handling for our drawing application. You'll learn to track mouse/keyboard input, create interactive drawing modes, and build the user interface for our Pixel Painter!
+In the next lesson, we'll implement user input handling for our adventure game. You'll learn to track mouse/keyboard input, create interactive drawing modes, and build the user interface for our Spectrum Saga!
 
 ## Fun Fact
 

@@ -1,10 +1,10 @@
 ---
-title: "Phase 1 Integration and Tier Review"
+title: "Spectrum Saga Prototype and Tier 1 Review"
 system: "zx-spectrum"
 phase_number: 1
 tier_number: 1
 lesson_number: 32
-description: "Bring together all foundational Z80 assembly programming concepts from Phase 1. Learn the complete integration of memory, graphics, and system programming for professional ZX Spectrum development."
+description: "Create your first Spectrum Saga prototype while reviewing all Tier 1 concepts. Build a basic adventure game framework using Z80 assembly and prepare for advanced graphics programming in Tier 2."
 learning_objectives:
   - "Integrate all Phase 1 Z80 programming concepts into complete applications"
   - "Learn professional Z80 development patterns and best practices"

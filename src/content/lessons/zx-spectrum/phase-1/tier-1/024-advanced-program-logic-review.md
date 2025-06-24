@@ -1595,9 +1595,9 @@ In this comprehensive review, you've demonstrated:
 - Quality assurance practices and systematic testing approaches
 - Master-level assembly programming skills ready for real-world applications
 
-## Looking Ahead to Pixel Painter
+## Looking Ahead to Spectrum Saga
 
-You're now ready to tackle the **Pixel Painter Foundation** section (lessons 25-32), where you'll apply all these advanced programming skills to build a complete graphics application. You'll use:
+You're now ready to tackle the **Spectrum Saga Foundation** section (lessons 25-32), where you'll apply all these advanced programming skills to build a complete graphics application. You'll use:
 
 - **State machines** for managing drawing modes and tool selection
 - **Event handling** for user input and interface interaction  

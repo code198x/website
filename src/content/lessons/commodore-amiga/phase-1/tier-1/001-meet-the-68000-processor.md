@@ -26,7 +26,7 @@ order: 1
 
 # Lesson 1: Meet the 68000 Processor
 
-Welcome to the world of professional programming with the Motorola 68000! Today, you'll meet the processor that made the Amiga revolutionary - a 16/32-bit powerhouse that brought workstation-class computing to home users.
+Welcome to the world of professional programming with the Motorola 68000! Today, you'll meet the processor that made the Amiga revolutionary - a 16/32-bit powerhouse that brought workstation-class computing to home users. Throughout this tier, you'll work toward creating **Copper Dreams** - an impressive multimedia game that showcases the Amiga's unique capabilities through 68000 assembly programming.
 
 ## What Is the 68000?
 

@@ -26,7 +26,7 @@ order: 23
 
 # Lesson 23: Reading Button States
 
-Learn to read specific button states from the NES controller! This lesson teaches you how to interpret controller data to detect individual button presses, creating responsive input systems for your games.
+Learn to read specific button states from the NES controller! This lesson teaches you how to interpret controller data to detect individual button presses, creating responsive input systems for your Sprite Symphony musical game.
 
 ## NES Controller Button Layout
 

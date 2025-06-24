@@ -26,7 +26,21 @@ order: 27
 
 # Lesson 27: Basic Optimization and Efficiency
 
-Welcome to optimisation fundamentals! Today you'll learn to make your well-structured assembly code run faster, use less memory, and execute more efficiently. These techniques transform good code into professional-quality, high-performance programs.
+**Watch how simple optimisation techniques can dramatically improve performance:**
+
+```
+; BEFORE optimisation: Slow, clunky code (12 cycles)
+LDA $1000       ; Slow absolute addressing (4 cycles)
+CLC             ; Clear carry (2 cycles)
+ADC #$01        ; Add one (2 cycles) 
+STA $1000       ; Store back (4 cycles)
+
+; AFTER optimisation: Lightning fast (6 cycles)
+INC $80         ; Zero page increment (6 cycles)
+; That's 50% faster execution!
+```
+
+That's the power of **6502 optimisation** - the same techniques used by professional C64 game developers to create smooth, responsive action games! Today you'll learn to make your Number Quest game run faster and more efficiently than commercial games from 1982.
 
 ## Optimization Principles
 

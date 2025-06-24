@@ -26,7 +26,7 @@ order: 1
 
 # Lesson 1: Meet the Z80 Processor
 
-Welcome to the world of Z80 assembly language programming! Today, you'll meet the powerful brain of your ZX Spectrum - the Z80 processor - and learn how to speak its native language.
+Welcome to the world of Z80 assembly language programming! Today, you'll meet the powerful brain of your ZX Spectrum - the Z80 processor - and learn how to speak its native language. Throughout this tier, you'll build toward creating **Spectrum Saga** - an adventure puzzle game where graphics and logic solve challenges, programmed entirely in Z80 assembly.
 
 ## What Is the Z80?
 

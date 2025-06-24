@@ -1,6 +1,6 @@
 ---
 name: "Sinclair Research"
-founded: 1973-07-25
+founded: 1977-07-25
 dissolved: 1986-04-14
 headquarters: "Cambridge, England"
 country: "United Kingdom"
@@ -21,12 +21,12 @@ external_links:
     url: "https://www.computinghistory.org.uk/det/39973/Sinclair-Research/"
 ---
 
-**Sinclair Research** was a British computer company founded by Sir Clive Sinclair that revolutionised home computing with ultra-affordable, innovative computers. From 1973 to 1986, the company created some of the most influential home computers in history, including the ZX Spectrum, which brought computing to millions of British homes and sparked a generation of programmers and game developers.
+**Sinclair Research** was a British computer company founded by Sir Clive Sinclair that revolutionised home computing with ultra-affordable, innovative computers. From 1977 to 1986, the company created some of the most influential home computers in history, including the ZX Spectrum, which brought computing to millions of British homes and sparked a generation of programmers and game developers.
 
 ## Origins and Foundation
 
-### From Radionics to Research (1973)
-Sinclair Research was founded in 1973 as Sir Clive Sinclair transitioned from his earlier company, Sinclair Radionics. After financial difficulties with Radionics, Sinclair partnered with **Chris Curry** to create a new venture focused on innovative consumer electronics.
+### From Radionics to Research (1977)
+Sinclair Research was founded in 1977 (initially as "Science of Cambridge") as Sir Clive Sinclair transitioned from his earlier company, Sinclair Radionics. After financial difficulties with Radionics, Sinclair partnered with **Chris Curry** to create a new venture focused on innovative consumer electronics, becoming "Sinclair Research" in 1981.
 
 **Initial Focus:**
 - **Consumer electronics**: Calculators, digital watches, and audio equipment

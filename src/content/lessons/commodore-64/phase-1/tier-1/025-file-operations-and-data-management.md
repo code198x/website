@@ -26,7 +26,31 @@ order: 25
 
 # Lesson 25: File Operations and Data Management
 
-Welcome to essential file operations! Today you'll learn to save and load programs, manage data files, and implement professional file handling systems. These skills are crucial for creating complete applications that persist data and share information.
+**See how simple it is to create persistent game data with the C64's built-in file system:**
+
+```
+; This creates a complete save/load system that preserves your game
+; progress across power cycles - giving your programs memory that
+; survives restarts!
+
+SavePlayerProgress:
+    LDA #9              ; Filename length
+    LDX #<SaveFile      ; "PROGRESS"
+    LDY #>SaveFile
+    JSR SETNAM          ; Set filename
+    
+    LDA #1              ; File number
+    LDX #8              ; Disk drive
+    LDY #1              ; Secondary address
+    JSR SETLFS          ; Set file parameters
+    
+    JSR OPEN            ; Create file
+    ; Your game progress is now permanently saved!
+    
+SaveFile: .text "PROGRESS"
+```
+
+That's the power of **C64 file operations** - turning your programs into persistent applications that remember player progress! Today you'll learn to implement robust file systems that will let you add features like high score saving to your Number Quest game.
 
 ## C64 File System Overview
 

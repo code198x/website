@@ -4,7 +4,7 @@ system: "zx-spectrum"
 phase_number: 1
 tier_number: 1
 lesson_number: 30
-description: "Master file operations for saving and loading artwork. Implement custom file formats, compression techniques, and build a complete persistence system for your drawing application."
+description: "Master file operations for saving and loading artwork. Implement custom file formats, compression techniques, and build a complete persistence system for your adventure game."
 learning_objectives:
   - "Implement save and load functionality"
   - "Design custom file formats"
@@ -26,7 +26,7 @@ order: 30
 
 # Lesson 30: File Operations and Persistence
 
-Transform your art into lasting digital memories! The ability to save and load artwork is essential for any serious drawing application. We'll master the ZX Spectrum's file system, create efficient file formats, and build a robust persistence system for our Pixel Painter.
+Transform your adventure progress into lasting digital memories! The ability to save and load game states is essential for any serious adventure game. We'll master the ZX Spectrum's file system, create efficient file formats, and build a robust persistence system for our Spectrum Saga.
 
 ## Understanding ZX Spectrum File Operations
 
@@ -93,7 +93,7 @@ ScreenName: DB "PICTURE   "
 
 ## Custom File Format Design
 
-### Designing a Paint File Format
+### Designing a Game Save Format
 
 <CodeRunner 
   system="zx-spectrum"
@@ -951,7 +951,7 @@ BackupFileName:     DB "BACKUP    "
   system="zx-spectrum"
   title="Advanced File Format"
   code="; Advanced file format with metadata and thumbnails
-; Extended format for professional paint program
+; Extended format for professional adventure game
 
 ; Extended file header (32 bytes)
 ExtFileHeader:
@@ -1586,7 +1586,7 @@ You've mastered file operations and persistence:
 
 ## What's Next?
 
-In the final lesson, we'll integrate everything into a complete Pixel Painter application! You'll combine all the systems you've built into a professional paint program that demonstrates the full power of Z80 assembly graphics programming.
+In the final lesson, we'll integrate everything into a complete Spectrum Saga application! You'll combine all the systems you've built into a professional adventure game that demonstrates the full power of Z80 assembly graphics programming.
 
 ## Fun Fact
 

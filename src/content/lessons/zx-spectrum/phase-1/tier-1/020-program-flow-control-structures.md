@@ -26,7 +26,7 @@ order: 20
 
 # Lesson 20: Program Flow Control Structures
 
-You've mastered individual control elements - conditionals, loops, and subroutines. Now you'll learn to combine them into sophisticated control structures that can handle complex program logic, state management, and event-driven behavior. These patterns form the backbone of professional software architecture.
+You've mastered individual control elements - conditionals, loops, and subroutines. Now you'll learn to combine them into sophisticated control structures for your Spectrum Saga adventure game. These patterns will handle complex game logic, puzzle states, and player interactions that make adventure games engaging.
 
 ## State Machine Fundamentals
 

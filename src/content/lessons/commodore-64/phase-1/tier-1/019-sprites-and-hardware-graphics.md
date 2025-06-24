@@ -26,7 +26,26 @@ order: 19
 
 # Lesson 19: Sprites and Hardware Graphics
 
-Welcome to one of the C64's most exciting features - **hardware sprites**! Today you'll master the VIC-II's sprite system that enables smooth animation, collision detection, and arcade-quality graphics. This is where C64 programming becomes truly spectacular.
+**See how the C64's hardware sprites create smooth animation automatically:**
+
+```
+; This creates 8 smoothly animated sprites with hardware collision detection
+; The VIC-II chip handles all the display work for you!
+
+    LDA #%11111111  ; Enable all 8 sprites
+    STA $D015       ; Sprite enable register
+    
+SpriteLoop:
+    INC $D000       ; Move sprite 0 smoothly across screen  
+    INC $D002       ; Move sprite 1
+    ; ... all 8 sprites moving independently!
+    
+    LDA $D01E       ; Check hardware collision detection
+    BNE Collision   ; Sprites collided - all detected automatically!
+    JMP SpriteLoop
+```
+
+That's the power of **hardware sprites** - the VIC-II handles smooth movement and collision detection automatically! Today you'll learn to use these hardware features to add animated elements and interactive feedback to your Number Quest game.
 
 ## What Are Hardware Sprites?
 

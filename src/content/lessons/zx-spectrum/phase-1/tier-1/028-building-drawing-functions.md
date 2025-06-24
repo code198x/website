@@ -4,18 +4,18 @@ system: "zx-spectrum"
 phase_number: 1
 tier_number: 1
 lesson_number: 28
-description: "Create sophisticated drawing functions including brush tools, patterns, and fills. Implement advanced features like undo/redo and build the core functionality of a paint program."
+description: "Create sophisticated graphics routines for adventure game visuals. Implement map rendering, object graphics, and visual effects. Build the core graphical functionality for your Spectrum Saga adventure game."
 learning_objectives:
-  - "Implement various brush types and sizes"
-  - "Create pattern and texture filling"
-  - "Build undo/redo functionality"
-  - "Develop flood fill algorithms"
-  - "Optimize drawing operations for real-time use"
+  - "Implement adventure game graphics routines"
+  - "Create map and object rendering systems"
+  - "Build visual effects for interactive scenes"
+  - "Develop efficient graphics algorithms"
+  - "Optimize drawing operations for real-time gameplay"
 concepts:
-  - "Brush algorithms and patterns"
-  - "Undo buffer management"
-  - "Flood fill implementation"
-  - "Drawing optimization techniques"
+  - "Adventure game graphics routines"
+  - "Map and scene rendering systems"
+  - "Interactive object graphics"
+  - "Visual effects programming"
   - "Memory-efficient graphics operations"
 estimated_duration: "50-60 minutes"
 difficulty: "advanced"
@@ -26,7 +26,7 @@ order: 28
 
 # Lesson 28: Building Drawing Functions
 
-Now we'll combine everything you've learned to create professional drawing functions! From simple brushes to complex fills, these tools will form the heart of our Pixel Painter. Let's build a drawing engine that rivals commercial paint programs!
+Now we'll combine everything you've learned to create professional adventure game graphics! From map rendering to interactive objects, these systems will form the visual heart of your Spectrum Saga. Let's build graphics routines that create engaging adventure game scenes!
 
 ## Implementing Brush Systems
 
@@ -1630,8 +1630,8 @@ You've built a professional drawing engine with:
 
 ## What's Next?
 
-In the next lesson, we'll create specialized graphics effects like gradients, transparency simulation, and animation. These effects will add polish and sophistication to our Pixel Painter!
+In the next lesson, we'll create specialized graphics effects like gradients, transparency simulation, and animation. These effects will add polish and sophistication to our Spectrum Saga!
 
 ## Fun Fact
 
-The flood fill algorithm was invented by Paul Heckbert in 1979, but similar techniques were used in early paint programs like MacPaint (1984). The ZX Spectrum's limited memory made implementing undo particularly challenging - some programs used clever compression techniques to store multiple undo levels in just a few kilobytes. The spray brush effect was considered revolutionary when it appeared in early paint programs, simulating real airbrush techniques digitally. Many of these algorithms you've implemented are still used today in modern graphics software, just running on hardware millions of times more powerful!
+The flood fill algorithm was invented by Paul Heckbert in 1979, but similar techniques were used in early adventure games like MacPaint (1984). The ZX Spectrum's limited memory made implementing undo particularly challenging - some programs used clever compression techniques to store multiple undo levels in just a few kilobytes. The spray brush effect was considered revolutionary when it appeared in early adventure games, simulating real airbrush techniques digitally. Many of these algorithms you've implemented are still used today in modern graphics software, just running on hardware millions of times more powerful!

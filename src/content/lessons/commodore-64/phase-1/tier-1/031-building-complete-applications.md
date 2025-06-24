@@ -1,10 +1,10 @@
 ---
-title: "Building Complete Applications"
+title: "Number Quest - Complete Game Development"
 system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 31
-description: "Learn the integration of all Phase 1 skills to build complete, polished assembly applications. Learn to combine graphics, sound, input, and logic into professional-quality C64 programs."
+description: "Complete the Number Quest game by integrating all Phase 1 skills. Learn to combine graphics, sound, input, and game logic into a polished number guessing game programmed entirely in 6502 assembly."
 learning_objectives:
   - "Understand complete application architecture and design"
   - "Learn integration of multiple system components"
@@ -24,9 +24,9 @@ practical_exercise: true
 order: 31
 ---
 
-# Lesson 31: Building Complete Applications
+# Lesson 31: Number Quest - Complete Game Development
 
-Welcome to the culmination of Phase 1! Today you'll integrate everything you've learned to build complete, polished assembly applications. This lesson demonstrates how professional developers combine individual skills into cohesive, high-quality software.
+Welcome to the culmination of Phase 1! Today you'll complete your Number Quest game by integrating everything you've learned about 6502 assembly programming. This lesson demonstrates how to build a complete, polished game that showcases professional assembly development techniques.
 
 ## Application Architecture Principles
 

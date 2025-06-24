@@ -26,7 +26,27 @@ order: 24
 
 # Lesson 24: I/O and Hardware Control Section Review
 
-Welcome to the culmination of your I/O and Hardware Control education! Today you'll integrate everything from lessons 17-23 into sophisticated multimedia applications that demonstrate professional understanding of the C64's graphics and audio systems.
+**See how to combine graphics and sound into a complete multimedia system:**
+
+```
+; This creates synchronized graphics, sprites, and music by coordinating
+; the VIC-II and SID chips working together
+
+MultimediaDemo:
+    JSR InitVICII          ; Setup graphics system
+    JSR InitSID            ; Setup audio system  
+    JSR InitSprites        ; Enable 8 sprites with collision detection
+    JSR StartMainLoop      ; Begin coordinated multimedia
+
+MainLoop:
+    JSR UpdateGraphics     ; Animate bitmap graphics
+    JSR UpdateMusic        ; Play 3-voice music
+    JSR UpdateSprites      ; Move sprites smoothly
+    JSR CheckCollisions    ; Handle sprite interactions
+    BNE MainLoop           ; Continue the demo!
+```
+
+That's the power of **coordinated I/O programming** - making the C64's graphics and audio systems work together seamlessly! Today you'll integrate everything from lessons 17-23 into complete multimedia applications for your Number Quest game.
 
 ## Section Review: What You've Mastered
 

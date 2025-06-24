@@ -26,7 +26,7 @@ order: 13
 
 # Lesson 13: Character and Sprite Graphics
 
-Graphics on the ZX Spectrum revolve around 8×8 pixel character cells. In this lesson, you'll learn to create custom character sets, manage sprite graphics, and build efficient routines for displaying text and animated objects.
+Graphics on the ZX Spectrum revolve around 8×8 pixel character cells. You'll learn to create custom character sets, manage sprite graphics, and build efficient routines for displaying the adventure scenes and interactive objects in your Spectrum Saga game.
 
 ## Understanding Character Graphics
 

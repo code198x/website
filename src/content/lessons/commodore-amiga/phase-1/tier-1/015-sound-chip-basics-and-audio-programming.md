@@ -26,7 +26,7 @@ order: 15
 
 # Lesson 15: Sound Chip Basics and Audio Programming
 
-Welcome to the world of Amiga audio! Paula, the Amiga's sound chip, was revolutionary - providing 4-channel digital audio with hardware mixing when most computers could only beep. Today you'll learn to control Paula directly and create sophisticated audio programs.
+Welcome to the world of Amiga audio! Paula, the Amiga's sound chip, was revolutionary - providing 4-channel digital audio with hardware mixing when most computers could only beep. Today you'll learn to control Paula directly and discover how to add immersive audio to your Copper Dreams game.
 
 ## Paula - The Revolutionary Audio Chip
 

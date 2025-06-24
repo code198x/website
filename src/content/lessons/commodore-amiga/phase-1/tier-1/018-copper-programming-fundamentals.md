@@ -26,17 +26,25 @@ order: 18
 
 # Lesson 18: Copper Programming Fundamentals
 
-Welcome to one of the Amiga's most revolutionary features - the Copper coprocessor! The Copper gives you precise control over the display, allowing you to change any hardware register at any point on the screen. This enables effects that were impossible on other home computers.
+**See how the Copper creates smooth colour effects synchronized to the display:**
 
-## What Is the Copper?
+```
+; This creates a rainbow of colours that flows down the screen
+; by changing the background colour at specific screen lines
 
-The Copper (coprocessor) is a simple but powerful programmable device that can:
-- **Wait** for specific screen positions
-- **Move** data into hardware registers
-- Execute these operations in perfect sync with the video beam
+    DC.W $2C01,$FFFE    ; Wait for line 44
+    DC.W $0180,$0F00     ; Set background to bright red
+    DC.W $3001,$FFFE    ; Wait for line 48  
+    DC.W $0180,$0FF0     ; Set background to bright yellow
+    DC.W $3401,$FFFE    ; Wait for line 52
+    DC.W $0180,$00F0     ; Set background to bright green
+```
 
-This synchronization enables:
-- Color changes at any scan line
+This is the **Copper** - a unique coprocessor that made the Amiga special! While other computers could only change colours between frames, the Amiga can change any hardware setting at any specific screen position. This precise timing control enables impressive visual effects. Today you'll learn to program the Copper for your Copper Dreams game.
+
+## Why the Copper Was Revolutionary
+
+The Copper enables effects impossible on other home computers:
 - Resolution changes mid-screen
 - Sprite repositioning during display
 - Complex visual effects with zero CPU overhead

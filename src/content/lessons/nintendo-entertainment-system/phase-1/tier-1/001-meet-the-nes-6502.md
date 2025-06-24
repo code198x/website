@@ -26,7 +26,7 @@ order: 1
 
 # Lesson 1: Meet the NES 6502
 
-Welcome to the world of game programming at the hardware level! Today, you'll meet the processor that powered countless classic games - the 6502 inside the Nintendo Entertainment System - and learn how to speak its native language.
+Welcome to the world of game programming at the hardware level! Today, you'll meet the processor that powered countless classic games - the 6502 inside the Nintendo Entertainment System - and learn how to speak its native language. Throughout this tier, you'll create **Sprite Symphony** - a musical game that demonstrates the NES's unique audio and visual capabilities through 6502 assembly programming.
 
 ## What Is the NES 6502?
 

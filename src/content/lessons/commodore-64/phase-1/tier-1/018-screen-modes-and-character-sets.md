@@ -26,7 +26,23 @@ order: 18
 
 # Lesson 18: Screen Modes and Character Sets
 
-Welcome to advanced display programming! Today you'll master the VIC-II's multiple display modes and learn to create custom graphics through character set programming. This unlocks the full potential of C64 text-based graphics.
+**See how easy it is to design your own custom characters on the C64:**
+
+```
+; This creates custom characters by defining their pixel patterns
+; Each character is 8x8 pixels that you can design however you want
+
+    LDA #%00111100  ; Design custom character data
+    STA $2000       ; Define top rows of pixels
+    LDA #%01100110  ; Each character is 8x8 pixels
+    STA $2001       ; You control every pixel!
+    
+    LDA #$80        ; Display your custom character
+    STA $0400       ; It appears instantly on screen
+    ; Characters can be animated and changed in real-time!
+```
+
+That's the power of **custom character sets** - the VIC-II lets you design your own graphics by defining 8x8 pixel patterns! Today you'll learn to create custom characters and display modes to build an attractive interface for your Number Quest game.
 
 ## VIC-II Display Modes Overview
 

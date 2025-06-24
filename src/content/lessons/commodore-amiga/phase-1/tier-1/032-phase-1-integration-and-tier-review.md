@@ -1,12 +1,12 @@
 ---
-title: "Phase 1 Integration and Tier Review"
+title: "Copper Dreams Prototype and Tier 1 Review"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 1
 lesson_number: 32
-description: "Bring together all foundational 68000 assembly programming concepts from Phase 1. Learn the complete integration of memory, graphics, and custom chip programming for professional Amiga development."
+description: "Create your first Copper Dreams prototype while reviewing all Tier 1 concepts. Build a basic multimedia demonstration using 68000 assembly and prepare for advanced custom chip programming in Tier 2."
 learning_objectives:
-  - "Integrate all Phase 1 68000 programming concepts into complete applications"
+  - "Integrate all Tier 1 68000 programming concepts into complete applications"
   - "Learn professional 68000 development patterns and best practices"
   - "Practice complex 68000 system programming combining multiple custom chips"
   - "Build comprehensive understanding of Amiga architecture"
@@ -24,11 +24,11 @@ practical_exercise: true
 order: 32
 ---
 
-# Lesson 32: Phase 1 Integration and Tier Review
+# Lesson 32: Copper Dreams Prototype and Tier 1 Review
 
-Congratulations! You've reached the culmination of Phase 1. Today you'll integrate everything you've learned about 68000 assembly programming, Amiga custom chips, and multimedia system control into sophisticated applications that demonstrate your foundational competency in Amiga development.
+Congratulations! You've completed Tier 1 of Phase 1. Today you'll create your first Copper Dreams prototype and review everything you've learned about 68000 assembly programming, Amiga custom chips, and multimedia system control. Your prototype demonstrates foundational competency in Amiga development and prepares you for the advanced techniques in Tier 2.
 
-## Phase 1 Achievement Review
+## Tier 1 Achievement Review
 
 Over the past 32 lessons, you've built a comprehensive foundation in Amiga assembly programming:
 

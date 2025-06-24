@@ -26,11 +26,11 @@ Welcome to professional Amiga programming! With **32 comprehensive lessons**, yo
 
 ## What You'll Start Building
 
-Begin **Graphics Studio** development in assembly:
-- Create basic graphics programs using direct hardware control
-- Learn to program the custom chips (Agnus, Denise, Paula) directly
-- Understand the Amiga's advanced architecture through assembly
-- Build foundation for professional assembly programming
+Begin **Copper Dreams** development in assembly:
+- Create an engaging game using direct hardware control
+- Learn to program the custom chips (Agnus, Denise, Paula) for gameplay
+- Understand the Amiga's advanced architecture through game development
+- Build foundation for professional assembly game programming
 
 ## Tier Overview
 
@@ -52,11 +52,11 @@ Begin **Graphics Studio** development in assembly:
 - Color palette and advanced visual concepts in assembly
 - Creating stunning visual programs using 68000 assembly
 
-**Lessons 25-32: Assembly Graphics Studio Foundation**
-- Introduction to assembly graphics programming
-- Basic drawing and visual manipulation using assembly
-- Building foundation for creative assembly applications
-- Preparing for advanced assembly graphics development
+**Lessons 25-32: Copper Dreams Foundation**
+- Introduction to assembly game programming
+- Basic graphics and gameplay mechanics using assembly
+- Building foundation for engaging assembly games
+- Preparing for advanced assembly game development
 
 ## The Amiga Advantage
 
@@ -86,6 +86,6 @@ What made the Amiga revolutionary for programming:
 - **Assembly Graphics Programming** - Professional visual development techniques
 - **Direct Interface Control** - Creating responsive interfaces through hardware control
 - **System Integration** - Professional assembly software development practices
-- **Creative Expression** - Building powerful tools for artistic and creative work
+- **Game Development** - Building engaging and creative games
 
 Programming the Amiga with 68000 assembly introduces you to advanced computing concepts and professional low-level development practices that were years ahead of their time and remain relevant today!

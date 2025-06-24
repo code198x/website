@@ -1,22 +1,22 @@
 ---
-title: "Pixel Painter - Complete Integration"
+title: "Spectrum Saga - Complete Integration"
 system: "zx-spectrum"
 phase_number: 1
 tier_number: 1
 lesson_number: 31
-description: "Bring together all systems into a complete Pixel Painter application. Integrate graphics, input, effects, and file operations into a professional-quality paint program that showcases mastery of Z80 assembly programming."
+description: "Bring together all systems into a complete Spectrum Saga adventure game. Integrate graphics, input, puzzle mechanics, and game logic into an engaging adventure that showcases mastery of Z80 assembly programming."
 learning_objectives:
-  - "Integrate all graphics systems into a unified application"
-  - "Create a professional user interface and workflow"
-  - "Implement complete feature set with robust error handling"
-  - "Optimize performance for real-time drawing"
-  - "Demonstrate mastery of assembly graphics programming"
+  - "Integrate all game systems into a unified adventure experience"
+  - "Create engaging puzzle mechanics and game progression"
+  - "Implement complete game features with robust error handling"
+  - "Optimise performance for real-time gameplay"
+  - "Demonstrate mastery of assembly game programming"
 concepts:
-  - "Application architecture and integration"
-  - "User interface design for graphics applications"
-  - "Real-time performance optimization"
-  - "Professional software development practices"
-  - "Complete system integration and testing"
+  - "Game architecture and integration"
+  - "Interactive puzzle design and game mechanics"
+  - "Real-time performance optimisation"
+  - "Professional game development practices"
+  - "Complete game system integration and testing"
 estimated_duration: "60-70 minutes"
 difficulty: "expert"
 code_examples: true
@@ -24,89 +24,89 @@ practical_exercise: true
 order: 31
 ---
 
-# Lesson 31: Pixel Painter - Complete Integration
+# Lesson 31: Spectrum Saga - Complete Integration
 
-Welcome to the culmination of our journey! Today we'll integrate every system you've mastered into a complete, professional Pixel Painter application. This is where all your Z80 assembly skills come together to create something truly remarkable - a paint program that rivals commercial software of the 1980s!
+Welcome to the culmination of our journey! Today we'll integrate every system you've mastered into a complete adventure game, Spectrum Saga. This is where all your Z80 assembly skills come together to create something truly remarkable - an engaging game that demonstrates professional assembly programming techniques!
 
 ## Application Architecture
 
 ### System Overview
 
-Our Pixel Painter consists of these integrated subsystems:
+Our Spectrum Saga consists of these integrated subsystems:
 
 ```text
-PixelPainter Architecture:
+Spectrum Saga Architecture:
 ┌─────────────────────────────────────────────────────────┐
-│                   Main Application                      │
+│                   Main Game Engine                     │
 ├─────────────────────────────────────────────────────────┤
-│  Input System  │  Drawing Engine  │  Effects Engine    │
-│  - Keyboard    │  - Brushes       │  - Patterns        │
-│  - Cursor      │  - Shapes        │  - Gradients       │
-│  - Modes       │  - Lines         │  - Animation       │
+│  Input System  │  Game Engine     │  Effects Engine    │
+│  - Keyboard    │  - Player        │  - Animation       │
+│  - Movement    │  - Puzzles       │  - Particles       │
+│  - Actions     │  - Objects       │  - Transitions     │
 ├─────────────────────────────────────────────────────────┤
-│  UI System     │  Graphics Core   │  File System       │
-│  - Menus       │  - Pixels        │  - Save/Load       │
-│  - Tools       │  - Screen        │  - Compression     │
-│  - Status      │  - Memory        │  - Recovery        │
+│  UI System     │  Graphics Core   │  Game State        │
+│  - Inventory   │  - Sprites       │  - Save/Load       │
+│  - Messages    │  - Backgrounds   │  - Progress        │
+│  - Status      │  - Screen        │  - Recovery        │
 ├─────────────────────────────────────────────────────────┤
 │             Core System Services                        │
 │  Memory Management │ Error Handling │ Performance       │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Main Application Structure
+### Main Game Structure
 
 <CodeRunner 
   system="zx-spectrum"
-  title="Complete Pixel Painter Application"
-  code="; Complete Pixel Painter Application
-; Integrates all systems into professional paint program
+  title="Complete Spectrum Saga Application"
+  code="; Complete Spectrum Saga Application
+; Integrates all systems into professional adventure game
 
 DISPLAY_FILE    EQU 16384
 ATTR_FILE       EQU 22528
 
-; Application states
-APP_STATE_SPLASH:   EQU 0
-APP_STATE_MAIN:     EQU 1
-APP_STATE_MENU:     EQU 2
-APP_STATE_HELP:     EQU 3
-APP_STATE_EXIT:     EQU 4
+; Game states
+GAME_STATE_INTRO:   EQU 0
+GAME_STATE_PLAY:    EQU 1
+GAME_STATE_MENU:    EQU 2
+GAME_STATE_INVENTORY: EQU 3
+GAME_STATE_PAUSE:   EQU 4
 
-; Tool types
-TOOL_BRUSH:         EQU 0
-TOOL_LINE:          EQU 1
-TOOL_RECTANGLE:     EQU 2
-TOOL_CIRCLE:        EQU 3
-TOOL_FILL:          EQU 4
-TOOL_EYEDROPPER:    EQU 5
+; Action types
+ACTION_MOVE:        EQU 0
+ACTION_EXAMINE:     EQU 1
+ACTION_USE:         EQU 2
+ACTION_TAKE:        EQU 3
+ACTION_TALK:        EQU 4
+ACTION_PUZZLE:      EQU 5
 
-; Application state
-AppState:
-    CurrentState:   DB APP_STATE_SPLASH
-    CurrentTool:    DB TOOL_BRUSH
-    BrushSize:      DB 3
-    BrushType:      DB 1            ; Square brush
-    DrawingMode:    DB 0            ; 0=draw, 1=erase
+; Game state
+GameState:
+    CurrentState:   DB GAME_STATE_INTRO
+    CurrentAction:  DB ACTION_MOVE
+    PlayerX:        DB 3
+    PlayerY:        DB 1            ; Player position
+    GameMode:       DB 0            ; 0=explore, 1=puzzle
     ShowUI:         DB 1
-    Modified:       DB 0            ; File modified flag
+    Modified:       DB 0            ; Save needed flag
     
-; Cursor state
-CursorState:
-    X:              DB 128
-    Y:              DB 96
+; Player state
+PlayerState:
+    ScreenX:        DB 128
+    ScreenY:        DB 96
     LastX:          DB 128
     LastY:          DB 96
     Visible:        DB 1
-    BlinkTimer:     DB 0
+    AnimTimer:      DB 0
 
-; Drawing state
-DrawingState:
-    Active:         DB 0            ; Currently drawing
-    StartX:         DB 0            ; Start of current operation
-    StartY:         DB 0
-    LastDrawX:      DB 0            ; Last pixel drawn
-    LastDrawY:      DB 0
-    PreviewMode:    DB 0            ; Show preview
+; Interaction state
+InteractionState:
+    Active:         DB 0            ; Currently interacting
+    TargetX:        DB 0            ; Target object position
+    TargetY:        DB 0
+    LastInteractX:  DB 0            ; Last interaction point
+    LastInteractY:  DB 0
+    PuzzleMode:     DB 0            ; Show puzzle interface
 
 ; Performance tracking
 PerformanceData:
@@ -1544,8 +1544,8 @@ FreeBuffer:
 
 <CodeRunner 
   system="zx-spectrum"
-  title="Complete Pixel Painter Integration"
-  code="; Complete Pixel Painter - Final Integration Demo
+  title="Complete Spectrum Saga Integration"
+  code="; Complete Spectrum Saga - Final Integration Demo
 ; Shows all systems working together
 
 ; Main application constants
@@ -1938,7 +1938,7 @@ TestInputSystem:
   system="zx-spectrum"
   title="Final System Validation"
   code="; Final integration validation
-; Comprehensive test of complete Pixel Painter
+; Comprehensive test of complete Spectrum Saga
 
 ; Validation framework
 ValidationFramework:
@@ -2317,18 +2317,18 @@ TotalFailures:      DB 0"
 
 ## Key Takeaways
 
-You've created a complete, professional Pixel Painter application that demonstrates mastery of:
+You've created a complete, professional Spectrum Saga application that demonstrates mastery of:
 
 1. **System Integration**: All components working together seamlessly
 2. **Professional Architecture**: Well-structured, maintainable code
 3. **Real-Time Performance**: Optimized for smooth operation
 4. **Robust Error Handling**: Professional error recovery
-5. **Complete Feature Set**: All modern paint program features
+5. **Complete Feature Set**: All modern adventure game features
 6. **Quality Assurance**: Comprehensive testing and validation
 
 ## Journey Complete!
 
-Congratulations! You've mastered Z80 assembly graphics programming and built a complete paint application that rivals commercial software. Your journey from pixels to professional application demonstrates the power and elegance of assembly language programming.
+Congratulations! You've mastered Z80 assembly graphics programming and built a complete adventure game that demonstrates commercial-quality development. Your journey from pixels to professional game demonstrates the power and elegance of assembly language programming.
 
 ## What You've Accomplished
 
@@ -2341,6 +2341,6 @@ Congratulations! You've mastered Z80 assembly graphics programming and built a c
 
 ## Fun Fact
 
-Your Pixel Painter application uses many of the same techniques found in legendary paint programs like Deluxe Paint (Electronic Arts, 1985) and Art Studio (Rainbird, 1985). The ZX Spectrum community created remarkably sophisticated art tools within the constraints of 48K memory and limited processing power. Some of the optimization techniques you've learned - like dirty rectangle updates and efficient line drawing - are still used in modern graphics software today! The complete integration of input, graphics, file handling, and UI in a single 48K memory space represents the pinnacle of efficient programming. You've not just learned to code - you've mastered the art of making every byte count!
+Your Spectrum Saga adventure game uses many of the same techniques found in legendary games like Manic Miner (Bug-Byte, 1983) and Jet Set Willy (Software Projects, 1984). The ZX Spectrum community created remarkably sophisticated games within the constraints of 48K memory and limited processing power. Some of the optimization techniques you've learned - like dirty rectangle updates and efficient line drawing - are still used in modern graphics software today! The complete integration of input, graphics, file handling, and UI in a single 48K memory space represents the pinnacle of efficient programming. You've not just learned to code - you've mastered the art of making every byte count!
 
 Your assembly programming journey continues in Phase 2, where you'll explore advanced systems programming, interrupts, and hardware interfacing. The solid foundation you've built here will serve you well as you tackle even more challenging programming concepts!

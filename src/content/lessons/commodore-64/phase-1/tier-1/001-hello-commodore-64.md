@@ -26,7 +26,7 @@ order: 1
 
 # Lesson 1: Meet the 6502 Processor
 
-Welcome to the world of 6502 assembly language programming! Today, you'll meet the beating heart of your Commodore 64 - the 6502 processor - and learn how to speak its native language.
+Welcome to the world of 6502 assembly language programming! Today, you'll meet the beating heart of your Commodore 64 - the 6502 processor - and learn how to speak its native language. Throughout this tier, you'll work toward creating your first assembly game: **Number Quest** - a number guessing game programmed entirely in 6502 machine language.
 
 ## What Is the 6502?
 

@@ -1,16 +1,16 @@
 ---
-title: "Phase 1 Integration and Tier Review"
+title: "Tier 1 Integration and Review"
 system: "nintendo-entertainment-system"
 phase_number: 1
 tier_number: 1
 lesson_number: 32
-description: "Bring together all foundational 6502 assembly programming concepts from Phase 1. Learn the complete integration of memory, graphics, and audio programming for professional NES development."
+description: "Bring together all foundational 6502 assembly programming concepts from Tier 1. Complete your basic Sprite Symphony prototype and prepare for the advanced techniques in Tier 2."
 learning_objectives:
-  - "Integrate all Phase 1 6502 NES programming concepts into complete applications"
-  - "Learn professional NES development patterns and best practices"
-  - "Practice complex NES system programming combining PPU, APU, and CPU"
-  - "Build comprehensive understanding of NES architecture"
-  - "Prepare for Tier 2 advanced NES programming techniques"
+  - "Integrate all Tier 1 6502 NES programming concepts into your first game prototype"
+  - "Complete a basic but functional version of Sprite Symphony"
+  - "Review foundational NES programming patterns and best practices"
+  - "Prepare for advanced techniques in Tier 2"
+  - "Build confidence with NES assembly programming fundamentals"
 concepts:
   - "Complete NES system integration and architecture"
   - "Professional NES development methodologies"
@@ -24,11 +24,11 @@ practical_exercise: true
 order: 32
 ---
 
-# Lesson 32: Phase 1 Integration and Tier Review
+# Lesson 32: Tier 1 Integration and Review
 
-Congratulations! You've reached the culmination of Phase 1. Today you'll integrate everything you've learned about 6502 assembly programming, NES PPU graphics, and APU audio into sophisticated applications that demonstrate your foundational competency in NES development.
+Congratulations! You've completed Tier 1 of Phase 1. Today you'll integrate everything you've learned in these 32 lessons to create your first working Sprite Symphony prototype. This is just the beginning - you have 15 more exciting tiers ahead in Phase 1!
 
-## Phase 1 Achievement Review
+## Tier 1 Achievement Review
 
 Over the past 32 lessons, you've built a comprehensive foundation in NES assembly programming:
 

@@ -26,11 +26,27 @@ order: 21
 
 # Lesson 21: Introduction to SID Sound Chip
 
-Welcome to the legendary **SID** (Sound Interface Device) - arguably the most revolutionary audio chip ever created! Today you'll meet the processor that gave the C64 its incredible musical reputation and learn the fundamentals of sound synthesis programming.
+**Listen to the rich sound you can create with just a few lines of code:**
 
-## What Makes SID Special?
+```
+; This creates a sweeping electronic bass sound using the SID's
+; built-in synthesizer capabilities
 
-The **SID chip** was groundbreaking for 1982, featuring capabilities that rivaled professional synthesizers:
+LDA #$21        ; Set triangle waveform
+STA $D404       ; Voice 1 control register
+LDA #$00        ; Set attack/decay
+STA $D405       ; Voice 1 ADSR
+LDA #$F9        ; Set sustain/release  
+STA $D406       ; Voice 1 ADSR
+LDA #$10        ; Start the note
+STA $D404       ; Trigger the sound
+```
+
+That's the power of the **SID** (Sound Interface Device) - a sophisticated 3-voice synthesizer built into every C64! The SID's advanced capabilities made the C64 famous for music. Today you'll learn to program this remarkable sound chip for your Number Quest game.
+
+## Why SID Was Groundbreaking
+
+The **SID chip** rivaled professional synthesisers costing thousands of pounds:
 
 - **3 independent voices**: Each capable of complex synthesis
 - **4 waveforms per voice**: Saw, triangle, pulse, noise

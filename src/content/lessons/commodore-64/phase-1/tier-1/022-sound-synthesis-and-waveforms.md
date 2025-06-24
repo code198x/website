@@ -26,7 +26,29 @@ order: 22
 
 # Lesson 22: Sound Synthesis and Waveforms
 
-Welcome to advanced sound synthesis! Today you'll master the SID's most sophisticated features - filters, modulation, and synthesis techniques that rival professional synthesizers. These are the tools that made the C64 legendary in electronic music.
+**Hear how the SID's filter creates classic synthesizer sweeps:**
+
+```
+; This creates a sweeping filter effect using the SID's built-in
+; analog-style filter - the kind of sound that made the C64 famous for music
+
+LDA #%00100001  ; Start rich sawtooth wave
+STA $D404       ; Voice 1 control
+LDA #%00100000  ; Route through filter
+STA $D417       ; Filter routing
+LDA #%00010111  ; Low-pass filter + full volume
+STA $D418       ; Filter mode
+
+; Now sweep the filter for that classic "whoosh" sound
+LDX #$00
+FilterSweep:
+    STX $D415   ; Change filter cutoff
+    JSR Delay   ; Brief pause
+    INX         ; Next frequency
+    BNE FilterSweep
+```
+
+That's the power of **SID's analog filter** - the sophisticated synthesis techniques that made the C64 a serious music-making machine! Today you'll learn filters, modulation, and synthesis techniques to create engaging audio feedback for your Number Quest game.
 
 ## The SID Filter System
 

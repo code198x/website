@@ -1,10 +1,10 @@
 ---
-title: "Project Planning and Development"
+title: "Number Quest - Project Planning and Development"
 system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 30
-description: "Learn professional project planning and development methodologies for assembly programming. Learn to break down complex projects, manage scope, and deliver successful software systematically."
+description: "Plan and begin development of your Number Quest game. Learn professional project planning methodologies for game development, break down the game into manageable components, and start systematic implementation."
 learning_objectives:
   - "Understand project planning principles and methodologies"
   - "Learn requirement analysis and scope definition"
@@ -24,9 +24,25 @@ practical_exercise: true
 order: 30
 ---
 
-# Lesson 30: Project Planning and Development
+# Lesson 30: Number Quest - Project Planning and Development
 
-Welcome to professional project planning! Today you'll learn to approach complex assembly projects systematically, from initial concept to final delivery. These skills transform ambitious ideas into achievable, successful software projects.
+**Watch how professional project planning transforms ambitious game ideas into achievable milestones:**
+
+```
+; This creates a complete development roadmap that takes you from
+; concept to finished game - the same methodology used by
+; commercial C64 game studios in 1982!
+
+NumberQuestProject:
+    JSR AnalyseRequirements     ; Define what the game does
+    JSR BreakdownTasks         ; Split into manageable chunks  
+    JSR PlanMilestones         ; Create achievable goals
+    JSR ImplementIteratively   ; Build incrementally
+    JSR TestSystematically     ; Verify each component
+    ; Professional game development on your C64!
+```
+
+That's the power of **professional project planning** - turning game ideas into systematically developed, polished products! Today you'll learn the project management techniques used by commercial C64 game developers to deliver successful games on time and within scope.
 
 ## Project Planning Fundamentals
 

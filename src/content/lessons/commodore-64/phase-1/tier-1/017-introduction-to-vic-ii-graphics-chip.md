@@ -26,7 +26,20 @@ order: 17
 
 # Lesson 17: Introduction to VIC-II Graphics Chip
 
-Welcome to graphics programming! Today you'll meet the **VIC-II** (Video Interface Chip II) - the powerful graphics processor that makes the C64's visual magic possible. Understanding the VIC-II is your gateway to sprites, advanced graphics, and visual effects.
+**See how simple it is to create smooth colour effects with the VIC-II:**
+
+```
+; This creates a smooth rainbow border that cycles through all 16 colours
+; while the screen continues to display text normally
+
+RainbowLoop:
+    LDX #$00
+    STX $D020       ; Set border colour
+    INX             ; Next colour  
+    BNE RainbowLoop ; Continue forever - 16 colours cycling smoothly!
+```
+
+That's the **VIC-II** (Video Interface Chip II) - the dedicated graphics processor that handles all C64 visual output! Today you'll learn to program this graphics chip to create engaging visual interfaces for your Number Quest game.
 
 ## What Is the VIC-II?
 

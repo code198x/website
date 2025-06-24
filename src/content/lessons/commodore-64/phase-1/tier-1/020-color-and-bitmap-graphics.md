@@ -26,7 +26,24 @@ order: 20
 
 # Lesson 20: Color and Bitmap Graphics
 
-Welcome to pixel-level graphics programming! Today you'll master the C64's bitmap modes, enabling you to draw detailed graphics, create sophisticated visual effects, and build professional graphics applications. This completes your VIC-II graphics education.
+**See how bitmap mode gives you direct control over every pixel:**
+
+```
+; This enables 320x200 bitmap mode where you control each individual pixel
+; by setting bits in memory - much more detailed than character graphics
+
+    LDA $D011
+    ORA #%00100000  ; Enable bitmap mode
+    STA $D011       ; Now you control every pixel!
+    
+    LDA #%11111111  ; Draw horizontal line (8 pixels)
+    STA $2000       ; Direct pixel control
+    LDA #%10000001  ; Draw vertical borders
+    STA $2001       ; Each bit is one pixel
+    ; 320x200 pixels of detailed graphics control!
+```
+
+That's the power of **bitmap graphics** - direct pixel-level control for detailed drawing! Today you'll learn to use bitmap mode to create precise graphics and visual feedback for your Number Quest game.
 
 ## Bitmap Graphics Overview
 

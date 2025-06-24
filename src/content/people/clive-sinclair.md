@@ -72,8 +72,8 @@ Whilst not a commercial success, the MK14 established Sinclair's credibility in 
 The **ZX80** represented Sinclair's vision of truly affordable computing:
 
 **Revolutionary Pricing:**
-- **£99.95 assembled**: First complete computer under £100
-- **£79.95 kit**: Even cheaper for self-assembly
+- **£99.95 assembled** (≈£470 in 2024): First complete computer under £100
+- **£79.95 kit** (≈£375 in 2024): Even cheaper for self-assembly
 - **Mass market**: Available through high-street retailers
 - **Television display**: Used standard TV as monitor
 
@@ -122,8 +122,8 @@ The **ZX Spectrum** became Sinclair's crowning achievement and Britain's most in
 - **ULA chip**: Custom silicon for graphics and cost reduction
 
 **Pricing Strategy:**
-- **£125 (16KB)**: Incredibly affordable for colour computer
-- **£175 (48KB)**: Still cheaper than monochrome competitors
+- **£125 (16KB)** (≈£500 in 2024): Incredibly affordable for colour computer
+- **£175 (48KB)** (≈£700 in 2024): Still cheaper than monochrome competitors
 - **High-street availability**: Sold through major retailers
 - **Payment plans**: Hire purchase made it accessible to families
 
@@ -143,6 +143,13 @@ The ZX Spectrum sparked an explosion in British game development:
 - **Jet Set Willy** (1984): Massive game world in limited memory
 - **Elite** (1984): 3D space trading game (originally BBC, ported to Spectrum)
 - **Knight Lore** (1984): Isometric 3D graphics breakthrough
+
+**Budget Games Market:**
+The Spectrum's affordability created a thriving budget games scene:
+- **£1.99-£3.99 games** (≈£8-£16 today): Pocket money pricing for children
+- **Covertape games**: Free games on magazine covers
+- **Compilation tapes**: Multiple games for under £10 (≈£40 today)
+- **Independent developers**: Bedroom coders could reach mass market
 
 ### Educational Transformation
 The Spectrum's affordability revolutionised computing education:
@@ -208,7 +215,7 @@ Sinclair's approach to product design was characterised by several principles:
 Sinclair consistently targeted the mass consumer market rather than enthusiasts:
 
 **Pricing Strategy:**
-- **Psychological pricing**: £99, £125, £175 price points
+- **Psychological pricing**: £99, £125, £175 price points (equivalent to £470-£700 today)
 - **High-street retail**: Making computers available everywhere
 - **Payment options**: Hire purchase and financing
 - **Gift market**: Computers as presents for children

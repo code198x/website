@@ -26,7 +26,7 @@ order: 25
 
 # Lesson 25: Spectrum Display and Pixel Basics
 
-Welcome to the fascinating world of ZX Spectrum graphics programming! The Spectrum's display system is unique and clever, designed to maximize visual capabilities while minimizing memory usage. Understanding how pixels and colors work at the hardware level is your gateway to creating amazing visual applications, including our Pixel Painter project.
+Welcome to the fascinating world of ZX Spectrum graphics programming! The Spectrum's display system is unique and clever, designed to maximize visual capabilities while minimizing memory usage. Understanding how pixels and colors work at the hardware level is your gateway to creating amazing adventure games, including our Spectrum Saga project.
 
 ## The ZX Spectrum Display System
 
@@ -1105,7 +1105,7 @@ You've mastered the fundamentals of ZX Spectrum graphics:
 
 ## What's Next?
 
-In the next lesson, we'll build on these foundations to create more sophisticated graphics primitives - lines, rectangles, and circles. You'll learn efficient algorithms for drawing these shapes and begin constructing the building blocks of our Pixel Painter application!
+In the next lesson, we'll build on these foundations to create more sophisticated graphics primitives - lines, rectangles, and circles. You'll learn efficient algorithms for drawing these shapes and begin constructing the building blocks of our Spectrum Saga application!
 
 ## Fun Fact
 

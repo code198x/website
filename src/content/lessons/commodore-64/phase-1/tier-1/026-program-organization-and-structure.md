@@ -26,7 +26,25 @@ order: 26
 
 # Lesson 26: Program Organization and Structure
 
-Welcome to professional program organisation! Today you'll learn to structure your assembly code like a professional developer, creating maintainable, scalable, and well-documented programs that can grow in complexity while remaining manageable.
+**Watch how professional code organisation transforms complex programs into elegant systems:**
+
+```
+; This creates a complete game architecture with modular systems -
+; the same organisation techniques used in commercial C64 games
+; costing £25-£30 in 1982!
+
+GameEngine:
+    JSR Graphics.Init       ; Modular graphics system
+    JSR Audio.Init          ; Modular audio system
+    JSR Input.Init          ; Modular input system
+    JSR Game.StartLevel     ; Clean game logic
+    JSR Engine.MainLoop     ; Organised main loop
+    
+; Each module is self-contained and reusable - professional
+; game development architecture on your C64!
+```
+
+That's the power of **professional program organisation** - turning complex games into manageable, maintainable systems! Today you'll learn to structure your Number Quest game code like a professional developer, creating scalable architecture that commercial game studios would recognise.
 
 ## Code Organization Principles
 

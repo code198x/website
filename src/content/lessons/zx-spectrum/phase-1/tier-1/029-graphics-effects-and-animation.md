@@ -1495,7 +1495,7 @@ You've mastered advanced graphics effects:
 
 ## What's Next?
 
-In the next lesson, we'll implement file operations to save and load artwork. You'll learn to persist drawings, create file formats, and build a complete save/load system for our Pixel Painter!
+In the next lesson, we'll implement file operations to save and load artwork. You'll learn to persist drawings, create file formats, and build a complete save/load system for our Spectrum Saga!
 
 ## Fun Fact
 

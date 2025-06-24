@@ -1,16 +1,16 @@
 ---
-title: "Phase 1 Integration and Tier Review"
+title: "Number Quest Prototype and Tier 1 Review"
 system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 32
-description: "Bring together all foundational assembly programming concepts from Phase 1. Learn the complete integration of memory, graphics, and audio programming for professional C64 development."
+description: "Create your first Number Quest prototype while reviewing all Tier 1 concepts. Build a basic but functional version of your number guessing game and prepare for advanced techniques in Tier 2."
 learning_objectives:
-  - "Integrate all Phase 1 programming concepts into complete applications"
+  - "Integrate all Tier 1 programming concepts into complete applications"
   - "Learn professional development patterns and best practices"
   - "Practice complex system programming combining multiple subsystems"
   - "Build comprehensive understanding of C64 architecture"
-  - "Prepare for Phase 2 advanced programming techniques"
+  - "Prepare for Tier 2 advanced programming techniques"
 concepts:
   - "Complete system integration and architecture"
   - "Professional development methodologies"
@@ -24,11 +24,11 @@ practical_exercise: true
 order: 32
 ---
 
-# Lesson 32: Phase 1 Integration and Tier Review
+# Lesson 32: Number Quest Prototype and Tier 1 Review
 
-Congratulations! You've reached the culmination of Phase 1. Today you'll integrate everything you've learned about 6502 assembly programming, VIC-II graphics, and SID audio into sophisticated applications that demonstrate your foundational competency in C64 development.
+Congratulations! You've completed Tier 1 of Phase 1. Today you'll create your first Number Quest prototype and review everything you've learned about 6502 assembly programming, VIC-II graphics, and SID audio. Your prototype demonstrates foundational competency in C64 development and prepares you for the advanced techniques in Tier 2.
 
-## Phase 1 Achievement Review
+## Tier 1 Achievement Review
 
 Over the past 32 lessons, you've built a comprehensive foundation in C64 assembly programming:
 

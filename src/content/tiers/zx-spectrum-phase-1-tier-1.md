@@ -26,7 +26,7 @@ Welcome to authentic ZX Spectrum programming! With **32 comprehensive lessons**,
 
 ## What You'll Build
 
-During this tier, you'll work toward creating your first assembly project: **Pixel Painter** - a simple drawing program programmed entirely in Z80 machine language, demonstrating fundamental programming concepts at the hardware level.
+During this tier, you'll work toward creating your first assembly project: **Spectrum Saga** - an adventure puzzle game where drawing and graphics solve challenges, programmed entirely in Z80 machine language, demonstrating fundamental programming concepts at the hardware level.
 
 ## Tier Overview
 
@@ -48,11 +48,11 @@ During this tier, you'll work toward creating your first assembly project: **Pix
 - Status flags and how the processor makes decisions
 - Creating interactive assembly programs
 
-**Lessons 25-32: Pixel Painter Foundation**
-- Applying assembly concepts to graphics programming
-- Direct screen memory manipulation
-- Keyboard input handling at the hardware level
-- Building toward your first complete assembly graphics program
+**Lessons 25-32: Spectrum Saga Foundation**
+- Applying assembly concepts to game programming
+- Interactive graphics and puzzle mechanics
+- Keyboard input handling for game controls
+- Building toward your first complete assembly adventure game
 
 ## Key Concepts
 

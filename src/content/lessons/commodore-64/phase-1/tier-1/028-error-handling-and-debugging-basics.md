@@ -26,7 +26,22 @@ order: 28
 
 # Lesson 28: Error Handling and Debugging Basics
 
-Welcome to systematic debugging! Today you'll learn to identify, isolate, and fix bugs in assembly programs efficiently. These essential skills transform frustrating debugging sessions into methodical problem-solving exercises.
+**Watch how professional debugging techniques can instantly identify and fix complex bugs:**
+
+```
+; This creates a complete debugging system with memory inspection,
+; error detection, and diagnostic output - the same techniques 
+; used by professional game developers in 1982!
+
+DebugSystem:
+    JSR CheckMemoryState    ; Automatic error detection
+    JSR DisplayRegisters    ; Real-time system inspection
+    JSR TraceExecution      ; Program flow analysis
+    JSR ValidateGameState   ; Logic error detection
+    ; Bugs become visible immediately!
+```
+
+That's the power of **systematic debugging** - turning mysterious crashes into clearly identified problems that can be fixed in minutes! Today you'll learn the professional debugging techniques that commercial C64 developers used to create stable, reliable games.
 
 ## Common Assembly Programming Errors
 

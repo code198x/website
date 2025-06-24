@@ -26,7 +26,29 @@ order: 29
 
 # Lesson 29: Code Documentation and Maintainability
 
-Welcome to professional code documentation! Today you'll learn to write code that tells its own story, create documentation that helps others understand your work, and build programs that remain maintainable over months and years.
+**See how professional documentation transforms cryptic code into readable stories:**
+
+```
+; BEFORE: Mysterious, undocumented code
+L1: LDA $80
+    CMP #$FF
+    BEQ L2
+    JSR L3
+    JMP L1
+L2: RTS
+
+; AFTER: Self-documenting, professional code
+CheckPlayerInput:
+    LDA CurrentKeyPress        ; Read current key
+    CMP #NO_KEY_PRESSED       ; Check if any key pressed  
+    BEQ InputComplete         ; Exit if no input
+    JSR ProcessPlayerAction    ; Handle the player's choice
+    JMP CheckPlayerInput      ; Continue monitoring input
+InputComplete:
+    RTS
+```
+
+That's the power of **professional documentation** - turning assembly code into readable narratives that any programmer can understand and modify! Today you'll learn the documentation techniques used by commercial C64 game development teams.
 
 ## Self-Documenting Code Principles
 

@@ -26,7 +26,21 @@ order: 17
 
 # Lesson 17: Advanced Bitplane Manipulation
 
-Welcome to advanced graphics programming on the Amiga! Today you'll master the bitplane system that made the Amiga's graphics revolutionary. Unlike chunky graphics systems, the Amiga's planar architecture provides incredible flexibility and power for creating stunning visual effects.
+**See how the Amiga's bitplane system creates rich graphics with elegant code:**
+
+```assembly
+; This creates 64 simultaneous colours on screen using just 6 bitplanes
+; by enabling Extra-HalfBrite mode - one of the Amiga's clever graphics tricks
+
+    MOVE.W  #$6200, $DFF100    ; Enable Extra-HalfBrite mode
+    ; 32 base colours + 32 half-bright = 64 colours total
+    
+    MOVE.L  #GRAPHICS_MEM, $DFF0E0  ; Bitplane 1
+    MOVE.L  #GRAPHICS_MEM+8000, $DFF0E4  ; Bitplane 2
+    ; Each bitplane adds exponential colour depth!
+```
+
+That's the power of **planar graphics architecture** - the innovative bitplane system that made Amiga graphics so impressive! Today you'll learn these advanced techniques to create stunning visual effects for your Copper Dreams game.
 
 ## Understanding Planar Graphics Architecture
 

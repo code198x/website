@@ -26,7 +26,7 @@ order: 27
 
 # Lesson 27: User Input for Graphics
 
-Interactive graphics applications require responsive, intuitive input handling. The ZX Spectrum's keyboard offers unique challenges and opportunities for creating engaging user interfaces. Let's build a sophisticated input system for our Pixel Painter!
+Interactive adventure games require responsive, intuitive input handling. The ZX Spectrum's keyboard offers unique challenges and opportunities for creating engaging user interfaces. Let's build a sophisticated input system for our Spectrum Saga!
 
 ## Understanding Spectrum Keyboard Input
 
@@ -1453,7 +1453,7 @@ You've mastered interactive input for graphics applications:
 
 ## What's Next?
 
-In the next lesson, we'll combine pixels, shapes, and input to build core drawing functions. You'll create brush tools, implement undo/redo, and develop the heart of our Pixel Painter application!
+In the next lesson, we'll combine pixels, shapes, and input to build core drawing functions. You'll create brush tools, implement undo/redo, and develop the heart of our Spectrum Saga application!
 
 ## Fun Fact
 

@@ -26,7 +26,24 @@ order: 23
 
 # Lesson 23: Music and Advanced Audio Programming
 
-Welcome to musical composition programming! Today you'll learn to create complete songs, build music players, and implement sophisticated audio systems. This is where SID programming becomes an art form, combining technical skill with musical creativity.
+**Listen to this impossible multi-voice composition created entirely with code:**
+
+```
+; This creates a complete 3-voice musical arrangement with harmony,
+; bass line, and real-time effects - rivalling professional
+; synthesizers and sequencers costing thousands of pounds!
+
+MusicLoop:
+    JSR PlayMelody      ; Voice 1: Lead melody with vibrato
+    JSR PlayHarmony     ; Voice 2: Harmonic accompaniment  
+    JSR PlayBass        ; Voice 3: Walking bass line
+    JSR ApplyFilter     ; Real-time filter sweep
+    BNE MusicLoop       ; Continue seamlessly
+
+; All synchronized perfectly using interrupt-driven timing!
+```
+
+That's the power of **SID musical programming** - creating complete compositions with professional-quality arrangements! Today you'll learn to create background music and dynamic audio systems that will transform your Number Quest game into a complete audiovisual experience.
 
 ## Musical Programming Concepts
 
