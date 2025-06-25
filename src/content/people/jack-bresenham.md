@@ -4,10 +4,20 @@ birth_date: 1937-01-01
 nationality: "American"
 occupation: ["Computer scientist", "Algorithm developer", "Graphics pioneer"]
 notable_contributions:
-  - "Developer of Bresenham's line algorithm (1962)"
-  - "Pioneer in computer graphics and digital plotting"
-  - "Fundamental contributions to raster graphics"
-companies_worked_for: ["IBM"]
+  - contribution: "Developer of Bresenham's line algorithm"
+    year: 1962
+    significance: "Created the fundamental algorithm for drawing lines on raster displays"
+  - contribution: "Pioneer in computer graphics"
+    year: 1962
+    significance: "Early work established foundations of modern computer graphics"
+  - contribution: "Contributions to raster graphics"
+    year: 1965
+    significance: "Developed efficient algorithms for pixel-based display systems"
+companies_worked_for:
+  - company: "IBM"
+    role: "Research scientist"
+    start_year: 1960
+    end_year: 1987
 legacy: "Bresenham's line algorithm remains one of the most widely used algorithms in computer graphics, implemented in virtually every graphics system for efficient line drawing on pixel-based displays."
 ---
 

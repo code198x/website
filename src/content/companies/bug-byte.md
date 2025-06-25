@@ -4,8 +4,28 @@ founded: 1980-01-01
 dissolved: 1985-01-01
 headquarters: "Liverpool"
 country: "United Kingdom"
-founders: ["Tony Baden", "Tony Milner"]
-notable_products: ["Manic Miner", "Jet Set Willy", "3D Monster Maze", "Spectres"]
+founders:
+  - name: "Tony Baden"
+    role: "Co-founder"
+  - name: "Tony Milner"
+    role: "Co-founder"
+notable_products:
+  - name: "Manic Miner"
+    type: "Game"
+    year: 1983
+    significance: "One of the first successful platform games on home computers"
+  - name: "Jet Set Willy"
+    type: "Game"
+    year: 1984
+    significance: "Influential platform game with 60 interconnected rooms"
+  - name: "3D Monster Maze"
+    type: "Game"
+    year: 1981
+    significance: "One of the first 3D games for home computers"
+  - name: "Spectres"
+    type: "Game"
+    year: 1982
+    significance: "Early ZX Spectrum game with impressive graphics"
 business_focus: ["Home computer games", "ZX Spectrum software", "8-bit entertainment"]
 legacy: "Bug-Byte was instrumental in establishing the UK home computer gaming industry, publishing some of the most iconic games of the 8-bit era and helping to define the distinctive style of British computer games."
 ---

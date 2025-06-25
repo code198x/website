@@ -4,12 +4,29 @@ birth_date: 1951-03-17
 nationality: "American"
 occupation: ["Software engineer", "Photographer", "Apple pioneer"]
 notable_contributions:
-  - "Creator of MacPaint and QuickDraw graphics system"
-  - "Developer of breakthrough dithering algorithm (1984)"
-  - "Key architect of original Macintosh user interface"
-  - "Co-creator of HyperCard hypermedia system"
-companies_worked_for: ["Apple Computer"]
-awards: ["Entrepreneur of the Year", "Computer History Museum Fellow"]
+  - contribution: "Creator of MacPaint and QuickDraw graphics system"
+    year: 1984
+    significance: "Established foundation for modern graphical user interfaces and desktop publishing"
+  - contribution: "Developer of breakthrough dithering algorithm"
+    year: 1984
+    significance: "Made photographic images possible on black-and-white computers"
+  - contribution: "Key architect of original Macintosh user interface"
+    year: 1984
+    significance: "Pioneered user-friendly computing with revolutionary GUI design"
+  - contribution: "Co-creator of HyperCard hypermedia system"
+    year: 1987
+    significance: "Invented hypermedia concept that predated the World Wide Web"
+companies_worked_for:
+  - company: "Apple Computer"
+    role: "Software engineer and interface architect"
+    start_year: 1978
+    end_year: 1990
+awards:
+  - name: "Entrepreneur of the Year"
+    year: 1990
+  - name: "Computer History Museum Fellow"
+    organization: "Computer History Museum"
+    year: 2007
 legacy: "Atkinson's dithering algorithm made it possible to display photographic images on early black-and-white computers, whilst his work on MacPaint and QuickDraw established the foundation for modern graphical user interfaces."
 image: "/images/people/bill-atkinson.jpg"
 external_links:

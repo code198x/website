@@ -18,7 +18,7 @@ concepts:
   - "Loading from memory (LD A,(HL))"
   - "Storing to memory (LD (HL),A)"
 estimated_duration: "35-45 minutes"
-difficulty: "easy-medium"
+difficulty: "easy"
 code_examples: true
 practical_exercise: true
 order: 9

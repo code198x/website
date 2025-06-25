@@ -18,7 +18,7 @@ concepts:
   - "Data structure optimization"
   - "Memory layout planning"
 estimated_duration: "40-50 minutes"
-difficulty: "medium-advanced"
+difficulty: "medium"
 code_examples: true
 practical_exercise: true
 order: 16

@@ -47,9 +47,15 @@ country_of_origin: "United Kingdom"
 operating_system: "AMSDOS (for disk systems)"
 emulated: true
 emulators:
-  - "WinAPE"
-  - "CPCE"
-  - "Arnold"
+  - name: "WinAPE"
+    platform: "Windows"
+    accuracy: "high"
+  - name: "CPCE"
+    platform: "Windows"
+    accuracy: "good"
+  - name: "Arnold"
+    platform: "Multi-platform"
+    accuracy: "good"
 variants:
   - name: "CPC 464"
     model_number: "CPC 464"

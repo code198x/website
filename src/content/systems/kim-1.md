@@ -11,7 +11,13 @@ release_date:
 discontinued: 1979-01-01
 country_of_origin: "United States"
 emulated: true
-emulators: ["KIM-1 Simulator", "MAME"]
+emulators:
+  - name: "KIM-1 Simulator"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
+  - name: "MAME"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
 notable_software:
   - name: "KIM Monitor"
     type: "System Monitor"

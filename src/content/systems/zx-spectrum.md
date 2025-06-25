@@ -42,10 +42,18 @@ country_of_origin: "United Kingdom"
 operating_system: "Sinclair BASIC"
 emulated: true
 emulators:
-  - "Fuse"
-  - "ZEsarUX"
-  - "SpectEmu"
-  - "Retro Virtual Machine"
+  - name: "Fuse"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
+  - name: "ZEsarUX"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
+  - name: "SpectEmu"
+    platform: "macOS"
+    accuracy: "high"
+  - name: "Retro Virtual Machine"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
 variants:
   - name: "ZX Spectrum 16K"
     release_date:

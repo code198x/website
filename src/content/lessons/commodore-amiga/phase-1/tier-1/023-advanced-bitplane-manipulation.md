@@ -18,7 +18,7 @@ concepts:
   - "Bitplane-based 3D and perspective effects"
   - "Professional optimization strategies"
 estimated_duration: "45-60 minutes"
-difficulty: "advanced"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 23

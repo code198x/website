@@ -4,12 +4,30 @@ birth_date: 1961-08-13
 nationality: "Japanese"
 occupation: ["Video game composer", "Sound designer", "Nintendo employee"]
 notable_contributions:
-  - "Composer of Super Mario Bros. theme (1985)"
-  - "Creator of The Legend of Zelda soundtrack (1986)"
-  - "Pioneer of interactive video game music"
-  - "Developer of musical techniques for limited sound hardware"
-companies_worked_for: ["Nintendo"]
-awards: ["AIAS Hall of Fame", "Game Audio Network Guild Lifetime Achievement"]
+  - contribution: "Composer of Super Mario Bros. theme"
+    year: 1985
+    significance: "Created the most recognisable video game melody in history"
+  - contribution: "Creator of The Legend of Zelda soundtrack"
+    year: 1986
+    significance: "Established musical storytelling in adventure games"
+  - contribution: "Pioneer of interactive video game music"
+    year: 1985
+    significance: "Developed techniques for dynamic music that responds to gameplay"
+  - contribution: "Innovator of NES sound chip techniques"
+    year: 1985
+    significance: "Maximised limited hardware to create rich musical arrangements"
+companies_worked_for:
+  - company: "Nintendo"
+    role: "Composer and Sound Director"
+    start_year: 1984
+    end_year: 2024
+awards:
+  - name: "AIAS Hall of Fame"
+    organization: "Academy of Interactive Arts & Sciences"
+    year: 2007
+  - name: "Lifetime Achievement Award"
+    organization: "Game Audio Network Guild"
+    year: 2013
 legacy: "Kondo's compositions for Super Mario Bros. and The Legend of Zelda are among the most recognisable melodies in popular culture, establishing video game music as a legitimate art form and demonstrating the creative potential of limited sound hardware."
 image: "/images/people/koji-kondo.jpg"
 ---

@@ -5,12 +5,31 @@ death_date: 2012-04-08
 nationality: "Polish-American"
 occupation: ["Entrepreneur", "Business executive", "Computer industry pioneer"]
 notable_contributions:
-  - "Founder and CEO of Commodore International"
-  - "Pioneer of affordable home computing with 'computers for the masses, not the classes'"
-  - "Driving force behind Commodore PET, VIC-20, and Commodore 64 success"
-  - "Creator of aggressive pricing strategies that democratised computing"
-companies_founded: ["Commodore International"]
-companies_worked_for: ["Commodore International", "Atari Corporation"]
+  - contribution: "Founder and CEO of Commodore International"
+    year: 1958
+    significance: "Built one of the most successful personal computer companies"
+  - contribution: "Pioneer of affordable home computing philosophy"
+    year: 1977
+    significance: "'Computers for the masses, not the classes' transformed the industry"
+  - contribution: "Commodore 64 - best-selling computer model"
+    year: 1982
+    significance: "Sold over 12 million units, making computing accessible worldwide"
+  - contribution: "Aggressive pricing strategies"
+    year: 1980
+    significance: "Revolutionary pricing made home computers affordable for ordinary families"
+companies_founded:
+  - company: "Commodore International"
+    year: 1958
+    role: "Founder and CEO"
+companies_worked_for:
+  - company: "Commodore International"
+    role: "Founder and CEO"
+    start_year: 1958
+    end_year: 1984
+  - company: "Atari Corporation"
+    role: "CEO"
+    start_year: 1984
+    end_year: 1996
 legacy: "Tramiel's vision of affordable computing and aggressive business tactics made home computers accessible to millions. His leadership of Commodore created some of the most successful home computers in history, including the best-selling Commodore 64."
 image: "/images/people/jack-tramiel.jpg"
 external_links:

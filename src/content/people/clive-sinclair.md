@@ -5,13 +5,47 @@ death_date: 2021-09-16
 nationality: "British"
 occupation: ["Inventor", "Entrepreneur", "Electronics engineer", "Computer pioneer"]
 notable_contributions:
-  - "Creator of the ZX Spectrum and ZX series of home computers"
-  - "Pioneer of affordable home computing in Britain"
-  - "Inventor of pocket calculators and digital watches"
-  - "Knight Bachelor for services to British industry"
-companies_founded: ["Sinclair Radionics", "Science of Cambridge", "Sinclair Research"]
-companies_worked_for: ["Sinclair Radionics", "Science of Cambridge", "Sinclair Research"]
-awards: ["Knight Bachelor", "Order of the British Empire", "Fellow of the Royal Society of Arts"]
+  - contribution: "Creator of the ZX Spectrum home computer"
+    year: 1982
+    significance: "Brought computing to millions of British homes and sparked a programming revolution"
+  - contribution: "Pioneer of ultra-affordable home computing"
+    year: 1980
+    significance: "ZX80 was first complete computer under £100"
+  - contribution: "Revolutionary pocket calculator designs"
+    year: 1972
+    significance: "Made electronic calculators affordable for consumers"
+  - contribution: "Knighted for services to British industry"
+    year: 1983
+    significance: "Royal recognition for transforming UK technology sector"
+companies_founded:
+  - company: "Sinclair Radionics"
+    year: 1962
+    role: "Founder"
+  - company: "Science of Cambridge"
+    year: 1977
+    role: "Founder"
+  - company: "Sinclair Research"
+    year: 1979
+    role: "Founder"
+companies_worked_for:
+  - company: "Sinclair Radionics"
+    role: "Founder and Managing Director"
+    start_year: 1962
+    end_year: 1979
+  - company: "Science of Cambridge/Sinclair Research"
+    role: "Founder and Chairman"
+    start_year: 1977
+    end_year: 2021
+awards:
+  - name: "Knight Bachelor"
+    organization: "British Crown"
+    year: 1983
+  - name: "Order of the British Empire"
+    organization: "British Crown"
+    year: 1970
+  - name: "Fellow of the Royal Society of Arts"
+    organization: "Royal Society of Arts"
+    year: 1982
 legacy: "Sinclair's ZX Spectrum brought computing to millions of British homes and sparked a generation of programmers and game developers. His vision of ultra-affordable electronics democratised technology and established Britain as a major force in home computing."
 image: "/images/people/clive-sinclair.jpg"
 external_links:

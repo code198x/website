@@ -3,9 +3,22 @@ name: "IMSAI"
 founded: 1973-01-01
 headquarters: "San Leandro, California"
 country: "United States"
-founders: ["William Millard"]
-key_people: ["William Millard"]
-notable_products: ["IMSAI 8080", "IMSAI VDP-80"]
+founders:
+  - name: "William Millard"
+    role: "Founder"
+key_people:
+  - name: "William Millard"
+    role: "Founder, CEO"
+    tenure: "1973-1984"
+notable_products:
+  - name: "IMSAI 8080"
+    type: "Computer"
+    year: 1975
+    significance: "Successful Altair 8800 clone with improved design"
+  - name: "IMSAI VDP-80"
+    type: "Computer"
+    year: 1978
+    significance: "Business computer with video display terminal"
 business_focus: ["Early microcomputers", "S-100 bus systems"]
 legacy: "IMSAI created one of the most successful Altair 8800 competitors and helped establish the S-100 bus standard. Famous for appearing in the film WarGames."
 logo: "/images/companies/imsai.png"

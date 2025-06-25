@@ -59,10 +59,18 @@ country_of_origin: "United States"
 operating_system: "AmigaOS (Workbench)"
 emulated: true
 emulators:
-  - "WinUAE"
-  - "FS-UAE"
-  - "Amiberry"
-  - "UAE4ARM"
+  - name: "WinUAE"
+    platform: "Windows"
+    accuracy: "cycle_accurate"
+  - name: "FS-UAE"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
+  - name: "Amiberry"
+    platform: "Linux"
+    accuracy: "high"
+  - name: "UAE4ARM"
+    platform: "Android"
+    accuracy: "high"
 variants:
   - name: "Amiga 1000"
     release_date:

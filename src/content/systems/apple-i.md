@@ -14,7 +14,13 @@ discontinued: 1977-09-30
 units_sold: "~200"
 country_of_origin: "United States"
 emulated: true
-emulators: ["Apple 1 Emulator", "MAME"]
+emulators:
+  - name: "Apple 1 Emulator"
+    platform: "Multi-platform"
+    accuracy: "high"
+  - name: "MAME"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
 image: "/images/systems/apple-i.png"
 order: 2
 external_links:

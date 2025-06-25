@@ -12,7 +12,16 @@ discontinued: 1978-01-01
 country_of_origin: "United States"
 operating_system: "CP/M"
 emulated: true
-emulators: ["simh", "IMSAI Guy", "MAME"]
+emulators:
+  - name: "simh"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
+  - name: "IMSAI Guy"
+    platform: "Windows"
+    accuracy: "high"
+  - name: "MAME"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
 notable_software:
   - name: "CP/M"
     type: "Operating System"

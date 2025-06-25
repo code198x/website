@@ -18,7 +18,7 @@ concepts:
   - "Advanced multimedia showcase"
   - "Phase 1 competency completion"
 estimated_duration: "60-90 minutes"
-difficulty: "advanced"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 31

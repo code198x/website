@@ -56,9 +56,15 @@ country_of_origin: "Japan"
 operating_system: "MSX-DOS (disk systems)"
 emulated: true
 emulators:
-  - "openMSX"
-  - "blueMSX"
-  - "fMSX"
+  - name: "openMSX"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
+  - name: "blueMSX"
+    platform: "Windows"
+    accuracy: "high"
+  - name: "fMSX"
+    platform: "Multi-platform"
+    accuracy: "good"
 variants:
   - name: "MSX"
     model_number: "MSX"

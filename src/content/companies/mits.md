@@ -3,9 +3,32 @@ name: "MITS (Micro Instrumentation and Telemetry Systems)"
 founded: 1969-01-01
 headquarters: "Albuquerque, New Mexico"
 country: "United States"
-founders: ["Ed Roberts"]
-key_people: ["Ed Roberts", "Forrest Mims", "Robert Zaller"]
-notable_products: ["Altair 8800", "Altair 8800b", "Altair 680"]
+founders:
+  - name: "Ed Roberts"
+    role: "Founder"
+key_people:
+  - name: "Ed Roberts"
+    role: "Founder, CEO"
+    tenure: "1969-1977"
+  - name: "Forrest Mims"
+    role: "Co-founder"
+    tenure: "1969-1972"
+  - name: "Robert Zaller"
+    role: "Partner"
+    tenure: "1969-1977"
+notable_products:
+  - name: "Altair 8800"
+    type: "Computer"
+    year: 1975
+    significance: "First successful personal computer kit"
+  - name: "Altair 8800b"
+    type: "Computer"
+    year: 1976
+    significance: "Improved version with better front panel"
+  - name: "Altair 680"
+    type: "Computer"
+    year: 1976
+    significance: "Motorola 6800-based computer system"
 business_focus: ["Electronics kits", "Microcomputers", "Personal computing"]
 legacy: "MITS launched the personal computer revolution with the Altair 8800, featured on the cover of Popular Electronics in 1975. Their computer inspired Microsoft's founding and established the S-100 bus standard."
 logo: "/images/companies/mits.png"

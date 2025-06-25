@@ -3,9 +3,42 @@ name: "Intel Corporation"
 founded: 1968-07-18
 headquarters: "Santa Clara, California"
 country: "United States"
-founders: ["Robert Noyce", "Gordon Moore"]
-key_people: ["Andy Grove", "Federico Faggin", "Ted Hoff"]
-notable_products: ["4004 microprocessor", "8008", "8080", "8086", "Memory chips"]
+founders:
+  - name: "Robert Noyce"
+    role: "Co-founder"
+  - name: "Gordon Moore"
+    role: "Co-founder"
+key_people:
+  - name: "Andy Grove"
+    role: "CEO, President"
+    tenure: "1987-1998"
+  - name: "Federico Faggin"
+    role: "Lead Designer, 4004"
+    tenure: "1970-1974"
+  - name: "Ted Hoff"
+    role: "Microprocessor Architect"
+    tenure: "1968-1983"
+notable_products:
+  - name: "4004 microprocessor"
+    type: "Processor"
+    year: 1971
+    significance: "World's first commercial microprocessor"
+  - name: "8008"
+    type: "Processor"
+    year: 1972
+    significance: "First 8-bit microprocessor"
+  - name: "8080"
+    type: "Processor"
+    year: 1974
+    significance: "Foundation for early personal computers"
+  - name: "8086"
+    type: "Processor"
+    year: 1978
+    significance: "Beginning of x86 architecture"
+  - name: "Memory chips"
+    type: "Memory"
+    year: 1969
+    significance: "Early SRAM and DRAM products"
 business_focus: ["Microprocessors", "Memory", "Semiconductors", "Computing technology"]
 legacy: "Intel created the first commercial microprocessor and established the foundation for the modern computing industry, with their processors powering the majority of personal computers and servers worldwide."
 ---

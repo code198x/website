@@ -3,9 +3,61 @@ name: "Nintendo Co., Ltd."
 founded: 1889-09-23
 headquarters: "Kyoto, Japan"
 country: "Japan"
-founders: ["Fusajiro Yamauchi"]
-key_people: ["Fusajiro Yamauchi", "Hiroshi Yamauchi", "Gunpei Yokoi", "Shigeru Miyamoto", "Satoru Iwata", "Shuntaro Furukawa"]
-notable_products: ["Game & Watch", "Nintendo Entertainment System", "Game Boy", "Super Nintendo", "Nintendo 64", "GameCube", "Wii", "Nintendo Switch"]
+founders:
+  - name: "Fusajiro Yamauchi"
+    role: "Founder"
+key_people:
+  - name: "Fusajiro Yamauchi"
+    role: "Founder"
+    tenure: "1889-1929"
+  - name: "Hiroshi Yamauchi"
+    role: "President"
+    tenure: "1949-2002"
+  - name: "Gunpei Yokoi"
+    role: "Game Designer, Hardware Developer"
+    tenure: "1965-1996"
+  - name: "Shigeru Miyamoto"
+    role: "Game Designer, Creative Fellow"
+    tenure: "1977-present"
+  - name: "Satoru Iwata"
+    role: "President, CEO"
+    tenure: "2002-2015"
+  - name: "Shuntaro Furukawa"
+    role: "President"
+    tenure: "2018-present"
+notable_products:
+  - name: "Game & Watch"
+    type: "Handheld"
+    year: 1980
+    significance: "First successful portable gaming device"
+  - name: "Nintendo Entertainment System"
+    type: "Console"
+    year: 1985
+    significance: "Revived the video game industry after the 1983 crash"
+  - name: "Game Boy"
+    type: "Handheld"
+    year: 1989
+    significance: "Best-selling handheld console of its generation"
+  - name: "Super Nintendo"
+    type: "Console"
+    year: 1990
+    significance: "16-bit console with advanced graphics and sound"
+  - name: "Nintendo 64"
+    type: "Console"
+    year: 1996
+    significance: "First major console with analog stick and 4-player support"
+  - name: "GameCube"
+    type: "Console"
+    year: 2001
+    significance: "Compact console with innovative controller design"
+  - name: "Wii"
+    type: "Console"
+    year: 2006
+    significance: "Revolutionary motion control gaming"
+  - name: "Nintendo Switch"
+    type: "Console"
+    year: 2017
+    significance: "Hybrid portable/home console"
 business_focus: ["Video games", "Gaming consoles", "Handheld systems", "Entertainment software", "Amusement devices"]
 legacy: "Nintendo revolutionised the video game industry, creating iconic franchises and innovative gaming systems. The company rescued gaming after the 1983 crash with the NES and established many conventions that define modern gaming."
 logo: "/images/companies/nintendo.png"

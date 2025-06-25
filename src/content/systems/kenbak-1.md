@@ -14,7 +14,13 @@ discontinued: 1973-01-01
 units_sold: "~40"
 country_of_origin: "United States"
 emulated: true
-emulators: ["Kenbak-1 Simulator", "Java Emulator"]
+emulators:
+  - name: "Kenbak-1 Simulator"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
+  - name: "Java Emulator"
+    platform: "Web"
+    accuracy: "high"
 image: "/images/systems/kenbak-1.png"
 order: 9
 external_links:

@@ -4,13 +4,30 @@ birth_date: 1974-01-01  # Project start date
 nationality: "American"
 occupation: ["Microprocessor designers", "Computer engineers", "Silicon architects"]
 notable_contributions:
-  - "Designers of the Motorola 68000 16/32-bit microprocessor family"
-  - "Creators of one of the most elegant and powerful processor architectures"
-  - "Pioneers of 32-bit computing and advanced addressing modes"
-  - "Architects of processors that powered workstations, personal computers, and embedded systems"
+  - contribution: "Designers of the Motorola 68000 microprocessor"
+    year: 1979
+    significance: "Created the 16/32-bit processor that powered a generation of computers"
+  - contribution: "Creators of elegant processor architecture"
+    year: 1979
+    significance: "Linear memory model and orthogonal instruction set influenced all future processors"
+  - contribution: "Pioneers of 32-bit computing"
+    year: 1979
+    significance: "First widely successful 32-bit architecture for personal computers"
+  - contribution: "Advanced addressing mode innovation"
+    year: 1979
+    significance: "Flexible addressing modes made programming more efficient and powerful"
 companies_founded: []
-companies_worked_for: ["Motorola"]
-awards: ["Various IEEE and industry recognition awards"]
+companies_worked_for:
+  - company: "Motorola"
+    role: "Microprocessor design team"
+    start_year: 1974
+    end_year: 1990
+awards:
+  - name: "IEEE Microprocessor Hall of Fame"
+    organization: "IEEE"
+    year: 1997
+  - name: "Industry recognition for processor innovation"
+    organization: "Various technology organisations"
 legacy: "The 68000 processor family powered the computing revolution of the 1980s and 1990s, enabling advanced personal computers like the Apple Macintosh, Commodore Amiga, and Atari ST. Their elegant architecture influenced processor design for decades."
 image: "/images/people/68000-design-team.jpg"
 external_links:

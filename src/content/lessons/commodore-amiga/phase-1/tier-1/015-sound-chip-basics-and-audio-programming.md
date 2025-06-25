@@ -18,7 +18,7 @@ concepts:
   - "Volume control and stereo panning"
   - "Audio interrupts and synchronization"
 estimated_duration: "45-60 minutes"
-difficulty: "intermediate"
+difficulty: "medium"
 code_examples: true
 practical_exercise: true
 order: 15

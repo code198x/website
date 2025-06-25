@@ -18,7 +18,7 @@ concepts:
   - "Artistic and technical demonstration"
   - "Advanced multimedia programming"
 estimated_duration: "60-90 minutes"
-difficulty: "advanced"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 30

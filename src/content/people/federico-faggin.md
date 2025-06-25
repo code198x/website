@@ -4,13 +4,54 @@ birth_date: 1941-12-01
 nationality: "Italian-American"
 occupation: ["Electrical engineer", "Microprocessor designer", "Entrepreneur", "Inventor"]
 notable_contributions:
-  - "Lead designer of the Intel 4004, world's first commercial microprocessor"
-  - "Designer of the Intel 8008 and 8080 microprocessors"
-  - "Founder and designer of the Zilog Z80 microprocessor"
-  - "Pioneer of silicon gate technology"
-companies_founded: ["Zilog", "Cygnet Technologies", "Synaptics"]
-companies_worked_for: ["Fairchild Semiconductor", "Intel", "Zilog"]
-awards: ["IEEE Medal of Honor", "Marconi Prize", "Computer History Museum Fellow", "National Medal of Technology and Innovation"]
+  - contribution: "Lead designer of Intel 4004"
+    year: 1971
+    significance: "Created world's first commercial microprocessor, launching the microprocessor industry"
+  - contribution: "Designer of Intel 8008 and 8080"
+    year: 1972
+    significance: "Advanced 8-bit processors that enabled early personal computers"
+  - contribution: "Founder and designer of Zilog Z80"
+    year: 1976
+    significance: "Created most successful 8-bit processor, powering millions of computers"
+  - contribution: "Pioneer of silicon gate technology"
+    year: 1968
+    significance: "Fundamental innovation that made modern microprocessors possible"
+companies_founded:
+  - company: "Zilog"
+    year: 1974
+    role: "Co-founder"
+  - company: "Cygnet Technologies"
+    year: 1982
+    role: "Founder"
+  - company: "Synaptics"
+    year: 1986
+    role: "Co-founder and CEO"
+companies_worked_for:
+  - company: "Fairchild Semiconductor"
+    role: "Research engineer"
+    start_year: 1968
+    end_year: 1970
+  - company: "Intel"
+    role: "Principal designer"
+    start_year: 1970
+    end_year: 1974
+  - company: "Zilog"
+    role: "Co-founder and CEO"
+    start_year: 1974
+    end_year: 1982
+awards:
+  - name: "IEEE Medal of Honor"
+    organization: "IEEE"
+    year: 2009
+  - name: "Marconi Prize"
+    organization: "Marconi Foundation"
+    year: 1988
+  - name: "Computer History Museum Fellow"
+    organization: "Computer History Museum"
+    year: 1996
+  - name: "National Medal of Technology and Innovation"
+    organization: "United States Government"
+    year: 2010
 legacy: "Faggin's microprocessor designs, particularly the Z80, powered the personal computer revolution and made computing accessible worldwide. His processors were the foundation of countless home computers, gaming systems, and embedded devices."
 image: "/images/people/federico-faggin.jpg"
 external_links:

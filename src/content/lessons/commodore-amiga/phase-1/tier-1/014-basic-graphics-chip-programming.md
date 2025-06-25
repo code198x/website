@@ -18,7 +18,7 @@ concepts:
   - "Basic pixel manipulation in bitplanes"
   - "Color depth and palette relationships"
 estimated_duration: "45-60 minutes"
-difficulty: "intermediate"
+difficulty: "medium"
 code_examples: true
 practical_exercise: true
 order: 14

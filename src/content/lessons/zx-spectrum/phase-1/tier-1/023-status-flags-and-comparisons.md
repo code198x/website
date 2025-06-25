@@ -18,7 +18,7 @@ concepts:
   - "Multi-condition testing patterns"
   - "Signed vs unsigned comparisons"
 estimated_duration: "55-65 minutes"
-difficulty: "advanced"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 23

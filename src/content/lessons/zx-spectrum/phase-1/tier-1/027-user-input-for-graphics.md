@@ -18,7 +18,7 @@ concepts:
   - "Control mapping and modes"
   - "Interactive feedback systems"
 estimated_duration: "45-55 minutes"
-difficulty: "intermediate"
+difficulty: "medium"
 code_examples: true
 practical_exercise: true
 order: 27

@@ -3,9 +3,38 @@ name: "Tandy Corporation / Radio Shack"
 founded: 1919-01-01
 headquarters: "Fort Worth, Texas"
 country: "United States"
-founders: ["Theodore Deutschmann", "Milton Deutschmann"]
-key_people: ["Charles Tandy", "John Roach", "Steve Leininger"]
-notable_products: ["TRS-80 Model I", "TRS-80 Model III", "Color Computer", "Tandy 1000"]
+founders:
+  - name: "Theodore Deutschmann"
+    role: "Co-founder"
+  - name: "Milton Deutschmann"
+    role: "Co-founder"
+key_people:
+  - name: "Charles Tandy"
+    role: "CEO, Chairman"
+    tenure: "1963-1978"
+  - name: "John Roach"
+    role: "President, CEO"
+    tenure: "1978-1993"
+  - name: "Steve Leininger"
+    role: "TRS-80 Designer"
+    tenure: "1976-1982"
+notable_products:
+  - name: "TRS-80 Model I"
+    type: "Computer"
+    year: 1977
+    significance: "One of the first mass-market personal computers"
+  - name: "TRS-80 Model III"
+    type: "Computer"
+    year: 1980
+    significance: "Improved business computer with integrated design"
+  - name: "Color Computer"
+    type: "Computer"
+    year: 1980
+    significance: "6809-based home computer with color graphics"
+  - name: "Tandy 1000"
+    type: "Computer"
+    year: 1984
+    significance: "IBM PC-compatible with enhanced graphics and sound"
 business_focus: ["Consumer electronics", "Personal computers", "Retail distribution"]
 legacy: "Tandy/Radio Shack brought personal computers to the masses through their retail network, making the TRS-80 one of the most widely available early home computers alongside the Apple II and Commodore PET."
 logo: "/images/companies/tandy.png"

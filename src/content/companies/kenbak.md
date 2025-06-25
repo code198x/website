@@ -3,9 +3,18 @@ name: "Kenbak Corporation"
 founded: 1970-01-01
 headquarters: "Los Angeles, California"
 country: "United States"
-founders: ["John Blankenbaker"]
-key_people: ["John Blankenbaker"]
-notable_products: ["Kenbak-1"]
+founders:
+  - name: "John Blankenbaker"
+    role: "Founder"
+key_people:
+  - name: "John Blankenbaker"
+    role: "Founder, Designer"
+    tenure: "1970-1973"
+notable_products:
+  - name: "Kenbak-1"
+    type: "Computer"
+    year: 1971
+    significance: "First personal computer, predated microprocessors"
 business_focus: ["Personal computers", "Educational computing"]
 legacy: "Created the Kenbak-1, widely recognised as the first personal computer (1971), predating microprocessor-based systems by several years. Only about 40 units were produced."
 logo: "/images/companies/kenbak.png"

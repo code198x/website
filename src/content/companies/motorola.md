@@ -4,9 +4,52 @@ founded: 1928-09-25
 dissolved: 2011-01-04  # Split into Motorola Mobility and Motorola Solutions
 headquarters: "Schaumburg, Illinois"
 country: "United States"
-founders: ["Paul Galvin", "Joseph Galvin"]
-key_people: ["Paul Galvin", "Robert Galvin", "68000 Design Team", "Nick Tredennick", "Skip Stritter"]
-notable_products: ["6800 microprocessor", "68000 processor family", "6809 microprocessor", "PowerPC", "Two-way radios", "Mobile phones"]
+founders:
+  - name: "Paul Galvin"
+    role: "Co-founder"
+  - name: "Joseph Galvin"
+    role: "Co-founder"
+key_people:
+  - name: "Paul Galvin"
+    role: "Founder, CEO"
+    tenure: "1928-1959"
+  - name: "Robert Galvin"
+    role: "CEO, Chairman"
+    tenure: "1959-1990"
+  - name: "68000 Design Team"
+    role: "Engineering Team"
+    tenure: "1976-1979"
+  - name: "Nick Tredennick"
+    role: "68000 Project Manager"
+    tenure: "1976-1980"
+  - name: "Skip Stritter"
+    role: "68000 Lead Designer"
+    tenure: "1976-1979"
+notable_products:
+  - name: "6800 microprocessor"
+    type: "Processor"
+    year: 1974
+    significance: "Early 8-bit microprocessor"
+  - name: "68000 processor family"
+    type: "Processor"
+    year: 1979
+    significance: "Revolutionary 16/32-bit processor family"
+  - name: "6809 microprocessor"
+    type: "Processor"
+    year: 1978
+    significance: "Advanced 8-bit processor"
+  - name: "PowerPC"
+    type: "Processor"
+    year: 1992
+    significance: "RISC processor with IBM and Apple"
+  - name: "Two-way radios"
+    type: "Communication"
+    year: 1940
+    significance: "Portable communication devices"
+  - name: "Mobile phones"
+    type: "Communication"
+    year: 1983
+    significance: "First commercial cellular phones"
 business_focus: ["Semiconductors", "Microprocessors", "Communications equipment", "Mobile technology", "Two-way radios"]
 legacy: "Motorola's 68000 processor family revolutionised computing, powering advanced personal computers, workstations, and embedded systems. The company's processors enabled the sophisticated machines that defined 1980s and 1990s computing."
 logo: "/images/companies/motorola.png"

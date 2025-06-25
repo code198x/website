@@ -18,7 +18,7 @@ concepts:
   - "Return value handling"
   - "Code modularity and organization"
 estimated_duration: "50-60 minutes"
-difficulty: "medium-advanced"
+difficulty: "medium"
 code_examples: true
 practical_exercise: true
 order: 19

@@ -56,10 +56,18 @@ country_of_origin: "Japan"
 operating_system: "None (direct hardware programming)"
 emulated: true
 emulators:
-  - "Nestopia"
-  - "FCEUX"
-  - "Mesen"
-  - "RetroArch (multiple NES cores)"
+  - name: "Nestopia"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
+  - name: "FCEUX"
+    platform: "Multi-platform"
+    accuracy: "high"
+  - name: "Mesen"
+    platform: "Windows"
+    accuracy: "cycle_accurate"
+  - name: "RetroArch"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
 variants:
   - name: "Family Computer (Famicom)"
     release_date:

@@ -4,9 +4,47 @@ founded: 1969-09-01
 dissolved: 1982-01-01
 headquarters: "Norristown, Pennsylvania"
 country: "United States"
-founders: ["Allen-Bradley Company", "Chuck Peddle", "Bill Mensch"]
-key_people: ["Chuck Peddle", "Bill Mensch", "Rod Orgill", "John Paivinen"]
-notable_products: ["6502 microprocessor", "6520 PIA", "6522 VIA", "6532 RIOT", "Calculator chips"]
+founders:
+  - name: "Allen-Bradley Company"
+    role: "Parent Company"
+  - name: "Chuck Peddle"
+    role: "Lead Engineer"
+  - name: "Bill Mensch"
+    role: "Co-designer"
+key_people:
+  - name: "Chuck Peddle"
+    role: "Lead Designer, 6502"
+    tenure: "1974-1976"
+  - name: "Bill Mensch"
+    role: "Co-designer, Layout Specialist"
+    tenure: "1974-1982"
+  - name: "Rod Orgill"
+    role: "Circuit Design Engineer"
+    tenure: "1974-1982"
+  - name: "John Paivinen"
+    role: "Process Engineer"
+    tenure: "1974-1982"
+notable_products:
+  - name: "6502 microprocessor"
+    type: "Processor"
+    year: 1975
+    significance: "Revolutionary low-cost 8-bit processor"
+  - name: "6520 PIA"
+    type: "Chip"
+    year: 1975
+    significance: "Peripheral Interface Adaptor for I/O"
+  - name: "6522 VIA"
+    type: "Chip"
+    year: 1976
+    significance: "Versatile Interface Adaptor with timers"
+  - name: "6532 RIOT"
+    type: "Chip"
+    year: 1976
+    significance: "RAM-I/O-Timer combination chip"
+  - name: "Calculator chips"
+    type: "Chip"
+    year: 1970
+    significance: "Early semiconductor products"
 business_focus: ["Microprocessors", "Support chips", "Calculator ICs", "Semiconductor manufacturing"]
 acquired_by: "Commodore International"
 acquisition_date: 1976-10-01

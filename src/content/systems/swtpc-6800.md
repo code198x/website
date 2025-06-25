@@ -12,7 +12,13 @@ discontinued: 1979-01-01
 country_of_origin: "United States"
 operating_system: "FLEX"
 emulated: true
-emulators: ["SWTPc Emulator", "MAME"]
+emulators:
+  - name: "SWTPc Emulator"
+    platform: "Multi-platform"
+    accuracy: "high"
+  - name: "MAME"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
 notable_software:
   - name: "FLEX"
     type: "Operating System"

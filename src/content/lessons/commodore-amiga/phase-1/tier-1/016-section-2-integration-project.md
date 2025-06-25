@@ -18,7 +18,7 @@ concepts:
   - "User input handling and interaction"
   - "Code modularity and reusability"
 estimated_duration: "60-90 minutes"
-difficulty: "intermediate"
+difficulty: "medium"
 code_examples: true
 practical_exercise: true
 order: 16

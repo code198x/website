@@ -18,7 +18,7 @@ concepts:
   - "Cache-friendly algorithm design"
   - "Performance optimization strategies"
 estimated_duration: "45-60 minutes"
-difficulty: "advanced"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 29

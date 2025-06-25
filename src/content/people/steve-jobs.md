@@ -4,9 +4,42 @@ birth_date: 1955-02-24
 death_date: 2011-10-05
 nationality: "American"
 occupation: ["Entrepreneur", "Designer", "Visionary", "CEO"]
-notable_contributions: ["Co-founder of Apple Inc.", "Pioneer of personal computing", "Visionary behind graphical user interfaces", "iPhone and iPad revolutionary"]
-companies_founded: ["Apple Inc.", "NeXT", "Pixar"]
-companies_worked_for: ["Apple Inc.", "NeXT", "Pixar"]
+notable_contributions:
+  - contribution: "Co-founder of Apple Inc."
+    year: 1976
+    significance: "Created company that would become world's most valuable technology firm"
+  - contribution: "Macintosh computer with GUI"
+    year: 1984
+    significance: "Brought graphical user interfaces to mainstream computing"
+  - contribution: "Revolutionary iPhone"
+    year: 2007
+    significance: "Redefined mobile computing and created the smartphone era"
+  - contribution: "iPad tablet computer"
+    year: 2010
+    significance: "Created entirely new product category and transformed mobile computing"
+companies_founded:
+  - company: "Apple Inc."
+    year: 1976
+    role: "Co-founder"
+  - company: "NeXT"
+    year: 1985
+    role: "Founder and CEO"
+  - company: "Pixar"
+    year: 1986
+    role: "Majority owner and CEO"
+companies_worked_for:
+  - company: "Apple Inc."
+    role: "Co-founder and CEO"
+    start_year: 1976
+    end_year: 2011
+  - company: "NeXT"
+    role: "Founder and CEO"
+    start_year: 1985
+    end_year: 1996
+  - company: "Pixar"
+    role: "CEO"
+    start_year: 1986
+    end_year: 2006
 era: "1970s-2010s"
 legacy: "Steve Jobs transformed multiple industries through his focus on user experience, elegant design, and revolutionary products. His vision made computing accessible to everyone and established Apple as one of the world's most valuable companies."
 image: "/images/people/steve-jobs.jpg"

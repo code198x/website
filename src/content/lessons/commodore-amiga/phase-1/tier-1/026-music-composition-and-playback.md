@@ -18,7 +18,7 @@ concepts:
   - "Dynamic music and interactive audio"
   - "Professional music system architecture"
 estimated_duration: "45-60 minutes"
-difficulty: "intermediate"
+difficulty: "medium"
 code_examples: true
 practical_exercise: true
 order: 26

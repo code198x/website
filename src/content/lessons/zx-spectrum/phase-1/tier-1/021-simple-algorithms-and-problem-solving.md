@@ -18,7 +18,7 @@ concepts:
   - "Problem-solving methodologies"
   - "Performance analysis and measurement"
 estimated_duration: "60-70 minutes"
-difficulty: "advanced"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 21

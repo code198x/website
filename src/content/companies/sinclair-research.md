@@ -4,9 +4,46 @@ founded: 1977-07-25
 dissolved: 1986-04-14
 headquarters: "Cambridge, England"
 country: "United Kingdom"
-founders: ["Sir Clive Sinclair"]
-key_people: ["Sir Clive Sinclair", "Chris Curry", "Jim Westwood", "Richard Altwasser", "Steve Vickers"]
-notable_products: ["ZX80", "ZX81", "ZX Spectrum", "QL", "C5 electric vehicle"]
+founders:
+  - name: "Sir Clive Sinclair"
+    role: "Founder"
+key_people:
+  - name: "Sir Clive Sinclair"
+    role: "Founder, Chairman"
+    tenure: "1977-1986"
+  - name: "Chris Curry"
+    role: "Co-founder"
+    tenure: "1977-1979"
+  - name: "Jim Westwood"
+    role: "Chief Engineer"
+    tenure: "1979-1986"
+  - name: "Richard Altwasser"
+    role: "Hardware Designer"
+    tenure: "1980-1986"
+  - name: "Steve Vickers"
+    role: "Software Designer"
+    tenure: "1980-1983"
+notable_products:
+  - name: "ZX80"
+    type: "Computer"
+    year: 1980
+    significance: "First complete computer under £100"
+  - name: "ZX81"
+    type: "Computer"
+    year: 1981
+    significance: "Mass market home computer with over 1.5 million sold"
+  - name: "ZX Spectrum"
+    type: "Computer"
+    year: 1982
+    significance: "Best-selling British computer, over 5 million sold"
+  - name: "QL"
+    type: "Computer"
+    year: 1984
+    significance: "32-bit professional computer with multitasking OS"
+  - name: "C5 electric vehicle"
+    type: "Vehicle"
+    year: 1985
+    significance: "Electric personal transport vehicle"
 business_focus: ["Home computers", "Consumer electronics", "Educational computing", "Personal transport"]
 acquired_by: "Amstrad"
 acquisition_date: 1986-04-14

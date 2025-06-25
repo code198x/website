@@ -4,11 +4,27 @@ birth_date: 1957-12-13
 nationality: "Japanese"
 occupation: ["Video game composer", "Sound programmer", "Nintendo executive"]
 notable_contributions:
-  - "Composer of Metroid soundtrack (1986)"
-  - "Sound designer for Kid Icarus and Dr. Mario"
-  - "Pioneer of atmospheric game music"
-  - "Developer of advanced NES audio programming techniques"
-companies_worked_for: ["Nintendo", "Creatures Inc."]
+  - contribution: "Composer of Metroid soundtrack"
+    year: 1986
+    significance: "Created atmospheric game music that revolutionised video game soundtracks"
+  - contribution: "Sound designer for Kid Icarus"
+    year: 1986
+    significance: "Demonstrated versatility with mythological-themed compositions"
+  - contribution: "Composer for Dr. Mario"
+    year: 1990
+    significance: "Created catchy puzzle game music that became iconic"
+  - contribution: "Pioneer of advanced NES audio techniques"
+    year: 1986
+    significance: "Pushed hardware limits to create unprecedented audio effects"
+companies_worked_for:
+  - company: "Nintendo"
+    role: "Composer and sound programmer"
+    start_year: 1980
+    end_year: 1999
+  - company: "Creatures Inc."
+    role: "Co-founder and President"
+    start_year: 1995
+    end_year: 2002
 legacy: "Tanaka's atmospheric compositions for Metroid established the template for ambient video game music, demonstrating how sound could create mood and tension whilst pushing the technical boundaries of 8-bit audio hardware."
 image: "/images/people/hirokazu-tanaka.jpg"
 ---

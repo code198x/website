@@ -18,7 +18,7 @@ concepts:
   - "Screen coordinate mapping"
   - "Direct video memory manipulation"
 estimated_duration: "45-55 minutes"
-difficulty: "intermediate"
+difficulty: "medium"
 code_examples: true
 practical_exercise: true
 order: 25

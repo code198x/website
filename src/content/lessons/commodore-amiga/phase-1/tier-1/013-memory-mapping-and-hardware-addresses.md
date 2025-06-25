@@ -18,7 +18,7 @@ concepts:
   - "ROM and system resource locations"
   - "Memory allocation strategies for multimedia"
 estimated_duration: "45-60 minutes"
-difficulty: "intermediate"
+difficulty: "medium"
 code_examples: true
 practical_exercise: true
 order: 13

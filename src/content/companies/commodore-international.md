@@ -4,9 +4,50 @@ founded: 1958-01-01
 dissolved: 1994-04-29
 headquarters: "West Chester, Pennsylvania"
 country: "United States"
-founders: ["Jack Tramiel"]
-key_people: ["Jack Tramiel", "Irving Gould", "Chuck Peddle", "Jay Miner", "Mehdi Ali"]
-notable_products: ["Commodore PET", "VIC-20", "Commodore 64", "Commodore 128", "Amiga series", "PC compatibles"]
+founders:
+  - name: "Jack Tramiel"
+    role: "Founder"
+key_people:
+  - name: "Jack Tramiel"
+    role: "Founder, CEO"
+    tenure: "1958-1984"
+  - name: "Irving Gould"
+    role: "Chairman, CEO"
+    tenure: "1984-1994"
+  - name: "Chuck Peddle"
+    role: "Chief Engineer"
+    tenure: "1976-1982"
+  - name: "Jay Miner"
+    role: "Amiga Designer"
+    tenure: "1984-1989"
+  - name: "Mehdi Ali"
+    role: "CEO"
+    tenure: "1990-1994"
+notable_products:
+  - name: "Commodore PET"
+    type: "Computer"
+    year: 1977
+    significance: "First complete all-in-one microcomputer"
+  - name: "VIC-20"
+    type: "Computer"
+    year: 1980
+    significance: "First colour computer under $300"
+  - name: "Commodore 64"
+    type: "Computer"
+    year: 1982
+    significance: "Best-selling single computer model of all time"
+  - name: "Commodore 128"
+    type: "Computer"
+    year: 1985
+    significance: "Advanced 8-bit computer with C64 compatibility"
+  - name: "Amiga series"
+    type: "Computer"
+    year: 1985
+    significance: "Revolutionary multimedia computers"
+  - name: "PC compatibles"
+    type: "Computer"
+    year: 1987
+    significance: "Late entry into IBM PC compatible market"
 business_focus: ["Home computers", "Personal computers", "Gaming systems", "Professional workstations", "Semiconductors"]
 legacy: "Commodore created some of the most beloved and successful home computers in history, including the best-selling Commodore 64. The company pioneered affordable computing and advanced multimedia capabilities, bringing computers to millions of homes worldwide."
 logo: "/images/companies/commodore-international.png"

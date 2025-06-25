@@ -4,10 +4,24 @@ birth_date: 1958-01-01
 nationality: "American"
 occupation: ["Computer scientist", "Graphics researcher", "Algorithm developer"]
 notable_contributions:
-  - "Inventor of the flood fill algorithm (1979)"
-  - "Pioneer in computer graphics and image processing"
-  - "Contributions to texture mapping and antialiasing"
-companies_worked_for: ["Carnegie Mellon University", "Pixar"]
+  - contribution: "Inventor of the flood fill algorithm"
+    year: 1979
+    significance: "Created fundamental algorithm for paint programs and image editing"
+  - contribution: "Pioneer in computer graphics research"
+    year: 1980
+    significance: "Advanced the field of interactive computer graphics"
+  - contribution: "Contributions to texture mapping"
+    year: 1986
+    significance: "Developed efficient algorithms for 3D graphics rendering"
+companies_worked_for:
+  - company: "Carnegie Mellon University"
+    role: "Professor and researcher"
+    start_year: 1987
+    end_year: 2020
+  - company: "Pixar"
+    role: "Research scientist"
+    start_year: 1985
+    end_year: 1987
 legacy: "Heckbert's flood fill algorithm became fundamental to paint programs and image editing software, enabling intuitive area-filling operations that are now standard in all graphics applications."
 ---
 

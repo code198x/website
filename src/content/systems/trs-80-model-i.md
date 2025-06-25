@@ -12,7 +12,13 @@ discontinued: 1981-01-01
 country_of_origin: "United States"
 operating_system: "TRSDOS"
 emulated: true
-emulators: ["TRS32", "MAME"]
+emulators:
+  - name: "TRS32"
+    platform: "Windows"
+    accuracy: "high"
+  - name: "MAME"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
 notable_software:
   - name: "TRSDOS"
     type: "Operating System"

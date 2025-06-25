@@ -3,9 +3,35 @@ name: "Bill Gates"
 birth_date: 1955-10-28
 nationality: "American"
 occupation: ["Software Pioneer", "Entrepreneur", "Philanthropist", "CEO"]
-notable_contributions: ["Co-founder of Microsoft", "MS-DOS and Windows", "Personal computer software pioneer", "Philanthropist"]
-companies_founded: ["Microsoft", "Bill & Melinda Gates Foundation"]
-companies_worked_for: ["Microsoft", "Berkshire Hathaway"]
+notable_contributions:
+  - contribution: "Co-founder of Microsoft"
+    year: 1975
+    significance: "Created the world's largest software company that defined personal computing"
+  - contribution: "MS-DOS operating system"
+    year: 1981
+    significance: "Established the dominant PC operating system standard"
+  - contribution: "Windows operating system"
+    year: 1985
+    significance: "Brought graphical user interfaces to mainstream computing"
+  - contribution: "Philanthropic leadership through Gates Foundation"
+    year: 2000
+    significance: "Transformed global health and education through strategic giving"
+companies_founded:
+  - company: "Microsoft"
+    year: 1975
+    role: "Co-founder"
+  - company: "Bill & Melinda Gates Foundation"
+    year: 2000
+    role: "Co-founder"
+companies_worked_for:
+  - company: "Microsoft"
+    role: "Co-founder, CEO, Chairman"
+    start_year: 1975
+    end_year: 2020
+  - company: "Berkshire Hathaway"
+    role: "Board member"
+    start_year: 2004
+    end_year: 2020
 era: "1970s-present"
 legacy: "Bill Gates made personal computer software ubiquitous through MS-DOS and Windows, establishing Microsoft as the dominant software company. His business acumen and technical vision shaped how the world uses computers."
 image: "/images/people/bill-gates.jpg"

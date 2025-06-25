@@ -4,8 +4,28 @@ founded: 1959-01-01
 dissolved: 2010-01-01
 headquarters: "Anaheim, California"
 country: "United States"
-founders: ["Louis W. Rosenstock", "Mel Friedman"]
-notable_products: ["Digital plotters", "Pen plotters", "Electrostatic plotters", "Graphics terminals"]
+founders:
+  - name: "Louis W. Rosenstock"
+    role: "Co-founder"
+  - name: "Mel Friedman"
+    role: "Co-founder"
+notable_products:
+  - name: "Digital plotters"
+    type: "Hardware"
+    year: 1960
+    significance: "First commercial digital plotting devices"
+  - name: "Pen plotters"
+    type: "Hardware"
+    year: 1965
+    significance: "High-precision mechanical plotting systems"
+  - name: "Electrostatic plotters"
+    type: "Hardware"
+    year: 1980
+    significance: "High-speed raster plotting technology"
+  - name: "Graphics terminals"
+    type: "Hardware"
+    year: 1975
+    significance: "Interactive graphics display systems"
 business_focus: ["Computer peripherals", "Graphics hardware", "CAD systems", "Scientific instruments"]
 legacy: "CalComp pioneered digital plotting technology and was instrumental in the development of computer graphics, with their plotters becoming the standard for technical drawing and CAD applications throughout the 1960s-1980s."
 ---

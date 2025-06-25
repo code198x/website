@@ -18,7 +18,7 @@ concepts:
   - "Visual effects algorithms"
   - "Performance optimization for effects"
 estimated_duration: "50-60 minutes"
-difficulty: "advanced"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 29

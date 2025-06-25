@@ -18,7 +18,7 @@ concepts:
   - "Copper list programming"
   - "Raster timing and effects"
 estimated_duration: "45-60 minutes"
-difficulty: "intermediate"
+difficulty: "medium"
 code_examples: true
 practical_exercise: true
 order: 18

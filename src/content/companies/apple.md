@@ -3,9 +3,65 @@ name: "Apple Computer, Inc."
 founded: 1976-04-01
 headquarters: "Cupertino, California"
 country: "United States"
-founders: ["Steve Jobs", "Steve Wozniak", "Ronald Wayne"]
-key_people: ["Steve Jobs", "Steve Wozniak", "Ronald Wayne", "Mike Markkula", "John Sculley", "Tim Cook"]
-notable_products: ["Apple I", "Apple II", "Lisa", "Macintosh", "iMac", "iPod", "iPhone", "iPad"]
+founders:
+  - name: "Steve Jobs"
+    role: "Co-founder"
+  - name: "Steve Wozniak"
+    role: "Co-founder"
+  - name: "Ronald Wayne"
+    role: "Co-founder"
+key_people:
+  - name: "Steve Jobs"
+    role: "Co-founder, CEO"
+    tenure: "1976-1985, 1997-2011"
+  - name: "Steve Wozniak"
+    role: "Co-founder, Chief Engineer"
+    tenure: "1976-1985"
+  - name: "Ronald Wayne"
+    role: "Co-founder"
+    tenure: "1976"
+  - name: "Mike Markkula"
+    role: "CEO, Chairman"
+    tenure: "1977-1983"
+  - name: "John Sculley"
+    role: "CEO"
+    tenure: "1983-1993"
+  - name: "Tim Cook"
+    role: "CEO"
+    tenure: "2011-present"
+notable_products:
+  - name: "Apple I"
+    type: "Computer"
+    year: 1976
+    significance: "First computer sold by Apple, hand-built by Wozniak"
+  - name: "Apple II"
+    type: "Computer"
+    year: 1977
+    significance: "First mass-produced microcomputer with color graphics"
+  - name: "Lisa"
+    type: "Computer"
+    year: 1983
+    significance: "First personal computer with graphical user interface and mouse"
+  - name: "Macintosh"
+    type: "Computer"
+    year: 1984
+    significance: "Popularised GUI computing and desktop publishing"
+  - name: "iMac"
+    type: "Computer"
+    year: 1998
+    significance: "All-in-one computer that saved Apple from bankruptcy"
+  - name: "iPod"
+    type: "Device"
+    year: 2001
+    significance: "Revolutionised portable music players"
+  - name: "iPhone"
+    type: "Device"
+    year: 2007
+    significance: "Defined modern smartphones"
+  - name: "iPad"
+    type: "Device"
+    year: 2010
+    significance: "Created tablet computing market"
 business_focus: ["Personal computers", "Consumer electronics", "Software", "Digital services"]
 legacy: "Apple revolutionised personal computing with the Apple II and Macintosh, establishing the template for user-friendly computers. The company's focus on design and user experience influenced the entire technology industry and made computing accessible to mainstream consumers."
 logo: "/images/companies/apple.png"

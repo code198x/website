@@ -4,9 +4,34 @@ birth_date: 1953-01-21
 death_date: 2018-10-15
 nationality: "American"
 occupation: ["Technology Pioneer", "Investor", "Philanthropist", "Entrepreneur"]
-notable_contributions: ["Co-founder of Microsoft", "Technology visionary", "Altair BASIC creator", "Philanthropist and investor"]
-companies_founded: ["Microsoft", "Vulcan Inc.", "Allen Institute"]
-companies_worked_for: ["Microsoft"]
+notable_contributions:
+  - contribution: "Co-founder of Microsoft"
+    year: 1975
+    significance: "Helped create the world's largest software company"
+  - contribution: "Co-creator of Altair BASIC"
+    year: 1975
+    significance: "First product that launched the commercial software industry"
+  - contribution: "Strategic vision for MS-DOS acquisition"
+    year: 1980
+    significance: "Key decision that established Microsoft's dominance"
+  - contribution: "Philanthropic leadership in science and technology"
+    year: 2000
+    significance: "Billions invested in brain science, AI, and space exploration"
+companies_founded:
+  - company: "Microsoft"
+    year: 1975
+    role: "Co-founder"
+  - company: "Vulcan Inc."
+    year: 1986
+    role: "Founder"
+  - company: "Allen Institute for Brain Science"
+    year: 2003
+    role: "Founder"
+companies_worked_for:
+  - company: "Microsoft"
+    role: "Co-founder and Executive Vice President"
+    start_year: 1975
+    end_year: 1983
 era: "1970s-2010s"
 legacy: "Paul Allen co-founded Microsoft and helped create the personal computer software industry. His technical vision and entrepreneurial spirit launched the modern era of computing, and his later philanthropic work advanced science and technology research."
 image: "/images/people/paul-allen.jpg"

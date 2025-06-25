@@ -4,8 +4,22 @@ founded: 1982-01-01
 dissolved: 1987-01-01
 headquarters: "Liverpool"
 country: "United Kingdom"
-founders: ["Unknown"]
-notable_products: ["Jet Set Willy", "Jet Set Willy II", "Attack of the Mutant Camels"]
+founders:
+  - name: "Unknown"
+    role: "Founder"
+notable_products:
+  - name: "Jet Set Willy"
+    type: "Game"
+    year: 1984
+    significance: "One of the most influential platform games with 60 rooms"
+  - name: "Jet Set Willy II"
+    type: "Game"
+    year: 1985
+    significance: "Expanded sequel with even larger game world"
+  - name: "Attack of the Mutant Camels"
+    type: "Game"
+    year: 1983
+    significance: "Jeff Minter game distributed by Software Projects"
 business_focus: ["ZX Spectrum games", "Platform games", "Independent development"]
 legacy: "Software Projects published one of the most beloved platform games of the 8-bit era with Jet Set Willy, establishing new standards for game world size and exploration whilst demonstrating the creative potential of independent development."
 ---

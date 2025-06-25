@@ -12,7 +12,16 @@ discontinued: 1978-12-31
 country_of_origin: "United States"
 operating_system: "CP/M (optional)"
 emulated: true
-emulators: ["simh", "Altair32", "MAME"]
+emulators:
+  - name: "simh"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
+  - name: "Altair32"
+    platform: "Windows"
+    accuracy: "high"
+  - name: "MAME"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
 notable_software:
   - name: "Altair BASIC"
     type: "Programming Language"

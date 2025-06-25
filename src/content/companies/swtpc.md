@@ -3,9 +3,29 @@ name: "Southwest Technical Products Corporation"
 founded: 1964-01-01
 headquarters: "San Antonio, Texas"
 country: "United States"
-founders: ["Daniel Meyer"]
-key_people: ["Daniel Meyer", "Robert Uiterwyk"]
-notable_products: ["SWTPc 6800", "SWTPc 6809", "SS-50 bus system"]
+founders:
+  - name: "Daniel Meyer"
+    role: "Founder"
+key_people:
+  - name: "Daniel Meyer"
+    role: "Founder, CEO"
+    tenure: "1964-1982"
+  - name: "Robert Uiterwyk"
+    role: "Engineer"
+    tenure: "1975-1980"
+notable_products:
+  - name: "SWTPc 6800"
+    type: "Computer"
+    year: 1975
+    significance: "Early affordable microcomputer based on Motorola 6800"
+  - name: "SWTPc 6809"
+    type: "Computer"
+    year: 1979
+    significance: "Advanced computer using Motorola 6809 processor"
+  - name: "SS-50 bus system"
+    type: "Hardware"
+    year: 1975
+    significance: "Modular computer bus system"
 business_focus: ["DIY electronics kits", "Microcomputers", "Modular computer systems"]
 legacy: "SWTPc pioneered the SS-50 bus and created affordable microcomputers based on Motorola processors. Their clear documentation and modular approach influenced early computer design."
 logo: "/images/companies/swtpc.png"

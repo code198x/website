@@ -5,13 +5,43 @@ death_date: 2019-12-15
 nationality: "American"
 occupation: ["Computer engineer", "Microprocessor designer", "Entrepreneur"]
 notable_contributions:
-  - "Designer of the MOS Technology 6502 microprocessor"
-  - "Co-founder of MOS Technology"
-  - "Creator of the Commodore PET computer"
-  - "Pioneer of affordable microprocessor design"
-companies_founded: ["MOS Technology"]
-companies_worked_for: ["Motorola", "MOS Technology", "Commodore International", "Victor Technologies"]
-awards: ["Computer History Museum Fellow"]
+  - contribution: "Designer of the MOS Technology 6502 microprocessor"
+    year: 1975
+    significance: "Created the affordable processor that powered the personal computer revolution"
+  - contribution: "Co-founder of MOS Technology"
+    year: 1974
+    significance: "Established company focused on affordable microprocessor development"
+  - contribution: "Creator of the Commodore PET computer"
+    year: 1977
+    significance: "One of the first mass-produced personal computers"
+  - contribution: "Pioneer of affordable microprocessor design"
+    year: 1975
+    significance: "Proved powerful processors could be manufactured at low cost"
+companies_founded:
+  - company: "MOS Technology"
+    year: 1974
+    role: "Co-founder"
+companies_worked_for:
+  - company: "Motorola"
+    role: "Microprocessor designer"
+    start_year: 1960
+    end_year: 1974
+  - company: "MOS Technology"
+    role: "Co-founder and Chief Engineer"
+    start_year: 1974
+    end_year: 1976
+  - company: "Commodore International"
+    role: "Computer designer"
+    start_year: 1976
+    end_year: 1980
+  - company: "Victor Technologies"
+    role: "Engineering consultant"
+    start_year: 1980
+    end_year: 1990
+awards:
+  - name: "Computer History Museum Fellow"
+    organization: "Computer History Museum"
+    year: 2007
 legacy: "The 6502 processor powered the personal computer revolution, enabling affordable home computers like the Apple II, Commodore 64, and Nintendo Entertainment System. Peddle's design philosophy of creating powerful yet inexpensive processors democratised computing."
 image: "/images/people/chuck-peddle.jpg"
 external_links:

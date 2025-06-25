@@ -57,9 +57,15 @@ country_of_origin: "United Kingdom"
 operating_system: "Acorn MOS"
 emulated: true
 emulators:
-  - "BeebEm"
-  - "B-em"
-  - "JSBeeb"
+  - name: "BeebEm"
+    platform: "Multi-platform"
+    accuracy: "high"
+  - name: "B-em"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
+  - name: "JSBeeb"
+    platform: "Web"
+    accuracy: "high"
 variants:
   - name: "BBC Micro Model A"
     model_number: "Model A"

@@ -18,7 +18,7 @@ concepts:
   - "Defensive programming practices"
   - "Testing and verification strategies"
 estimated_duration: "50-60 minutes"
-difficulty: "advanced"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 22

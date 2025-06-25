@@ -18,7 +18,7 @@ concepts:
   - "Professional game development practices"
   - "Complete game system integration and testing"
 estimated_duration: "60-70 minutes"
-difficulty: "expert"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 31

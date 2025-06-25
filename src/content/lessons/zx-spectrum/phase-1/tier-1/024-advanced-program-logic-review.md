@@ -18,7 +18,7 @@ concepts:
   - "Complex state management"
   - "Performance optimization techniques"
 estimated_duration: "60-70 minutes"
-difficulty: "expert"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 24

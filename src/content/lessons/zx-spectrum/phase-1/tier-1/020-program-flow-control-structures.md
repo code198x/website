@@ -18,7 +18,7 @@ concepts:
   - "Control flow patterns and architectures"
   - "Complex conditional structures"
 estimated_duration: "55-65 minutes"
-difficulty: "advanced"
+difficulty: "hard"
 code_examples: true
 practical_exercise: true
 order: 20

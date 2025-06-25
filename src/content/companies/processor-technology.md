@@ -3,9 +3,34 @@ name: "Processor Technology"
 founded: 1975-01-01
 headquarters: "Berkeley, California"
 country: "United States"
-founders: ["Gary Ingram", "Bob Marsh"]
-key_people: ["Gary Ingram", "Bob Marsh", "Lee Felsenstein"]
-notable_products: ["SOL-20", "3P+S S-100 card", "VDM-1 video display module"]
+founders:
+  - name: "Gary Ingram"
+    role: "Co-founder"
+  - name: "Bob Marsh"
+    role: "Co-founder"
+key_people:
+  - name: "Gary Ingram"
+    role: "Co-founder"
+    tenure: "1975-1979"
+  - name: "Bob Marsh"
+    role: "Co-founder"
+    tenure: "1975-1979"
+  - name: "Lee Felsenstein"
+    role: "Designer, SOL-20"
+    tenure: "1976-1977"
+notable_products:
+  - name: "SOL-20"
+    type: "Computer"
+    year: 1976
+    significance: "First all-in-one microcomputer with keyboard and video"
+  - name: "3P+S S-100 card"
+    type: "Hardware"
+    year: 1975
+    significance: "Popular S-100 bus expansion card"
+  - name: "VDM-1 video display module"
+    type: "Hardware"
+    year: 1975
+    significance: "Early consumer video display solution"
 business_focus: ["S-100 expansion cards", "Integrated microcomputers", "Video display systems"]
 legacy: "Processor Technology created the SOL-20, one of the first all-in-one microcomputers with built-in keyboard and video output. Their VDM-1 card was among the first consumer video display solutions."
 logo: "/images/companies/processor-technology.png"

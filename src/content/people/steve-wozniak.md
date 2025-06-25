@@ -3,9 +3,38 @@ name: "Steve Wozniak"
 birth_date: 1950-08-11
 nationality: "American"
 occupation: ["Engineer", "Inventor", "Educator", "Entrepreneur"]
-notable_contributions: ["Co-founder of Apple Inc.", "Designer of Apple I and Apple II", "Pioneer of personal computing", "Engineering genius"]
-companies_founded: ["Apple Inc.", "Wheels of Zeus", "Acquicor Technology"]
-companies_worked_for: ["Apple Inc.", "Hewlett-Packard"]
+notable_contributions:
+  - contribution: "Co-founder of Apple Inc."
+    year: 1976
+    significance: "Established one of the world's most influential technology companies"
+  - contribution: "Designer of Apple I computer"
+    year: 1976
+    significance: "Created elegant single-board computer that launched Apple"
+  - contribution: "Designer of Apple II computer"
+    year: 1977
+    significance: "Revolutionary computer that established the personal computer industry"
+  - contribution: "Pioneer of affordable personal computing"
+    year: 1977
+    significance: "Engineering excellence made powerful computers accessible to everyone"
+companies_founded:
+  - company: "Apple Inc."
+    year: 1976
+    role: "Co-founder"
+  - company: "Wheels of Zeus"
+    year: 2001
+    role: "Founder"
+  - company: "Acquicor Technology"
+    year: 2014
+    role: "Co-founder"
+companies_worked_for:
+  - company: "Hewlett-Packard"
+    role: "Engineer"
+    start_year: 1973
+    end_year: 1976
+  - company: "Apple Inc."
+    role: "Co-founder and Engineer"
+    start_year: 1976
+    end_year: 1987
 era: "1970s-present"
 legacy: "Steve Wozniak's elegant engineering designs made personal computing accessible to everyone. His Apple II computer launched the home computer revolution and established the template for user-friendly technology."
 image: "/images/people/steve-wozniak.jpg"

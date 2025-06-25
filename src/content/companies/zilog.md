@@ -3,9 +3,49 @@ name: "Zilog"
 founded: 1974-07-01
 headquarters: "Campbell, California"
 country: "United States"
-founders: ["Federico Faggin", "Ralph Ungermann"]
-key_people: ["Federico Faggin", "Ralph Ungermann", "Masatoshi Shima", "Shiv Tasker"]
-notable_products: ["Z80 microprocessor", "Z8000 series", "Z180", "Z380", "eZ80", "Microcontrollers"]
+founders:
+  - name: "Federico Faggin"
+    role: "Co-founder, CEO"
+  - name: "Ralph Ungermann"
+    role: "Co-founder"
+key_people:
+  - name: "Federico Faggin"
+    role: "Co-founder, CEO"
+    tenure: "1974-1980"
+  - name: "Ralph Ungermann"
+    role: "Co-founder, President"
+    tenure: "1974-1978"
+  - name: "Masatoshi Shima"
+    role: "Chief Designer, Z80"
+    tenure: "1974-1986"
+  - name: "Shiv Tasker"
+    role: "Logic Design Specialist"
+    tenure: "1974-1985"
+notable_products:
+  - name: "Z80 microprocessor"
+    type: "Processor"
+    year: 1976
+    significance: "Enhanced 8080-compatible processor with advanced features"
+  - name: "Z8000 series"
+    type: "Processor"
+    year: 1979
+    significance: "16-bit and 32-bit processor family"
+  - name: "Z180"
+    type: "Processor"
+    year: 1987
+    significance: "Enhanced Z80 with built-in peripherals"
+  - name: "Z380"
+    type: "Processor"
+    year: 1994
+    significance: "32-bit Z80-compatible processor"
+  - name: "eZ80"
+    type: "Processor"
+    year: 2001
+    significance: "Modern Z80-compatible with 24-bit addressing"
+  - name: "Microcontrollers"
+    type: "Processor"
+    year: 1980
+    significance: "Z8 and other embedded processor families"
 business_focus: ["Microprocessors", "Microcontrollers", "Embedded systems", "Industrial applications"]
 legacy: "Zilog's Z80 microprocessor became one of the most successful processors in computing history, powering countless home computers, gaming systems, and embedded devices. The Z80's sophisticated design and extensive capabilities made it the processor of choice for advanced 8-bit systems worldwide."
 logo: "/images/companies/zilog.png"

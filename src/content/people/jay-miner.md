@@ -5,12 +5,35 @@ death_date: 1994-06-20
 nationality: "American"
 occupation: ["Computer engineer", "Chip designer", "Computer architect"]
 notable_contributions:
-  - "Father of the Amiga computer and its revolutionary custom chipset"
-  - "Designer of the Atari 2600 Television Interface Adaptor (TIA) chip"
-  - "Pioneer of multimedia computing and custom graphics/audio hardware"
-  - "Creator of the Amiga's Agnus, Denise, and Paula custom chips"
-companies_founded: ["Amiga Corporation (co-founder)"]
-companies_worked_for: ["Atari", "Amiga Corporation", "Commodore International"]
+  - contribution: "Father of the Amiga computer"
+    year: 1985
+    significance: "Created revolutionary multimedia computer years ahead of its time"
+  - contribution: "Designer of Atari 2600 TIA chip"
+    year: 1977
+    significance: "Enabled one of the most successful gaming consoles in history"
+  - contribution: "Pioneer of multimedia computing"
+    year: 1985
+    significance: "First computer with dedicated graphics and audio coprocessors"
+  - contribution: "Creator of Amiga custom chipset (Agnus, Denise, Paula)"
+    year: 1985
+    significance: "Hardware acceleration for graphics and sound that wouldn't be matched for years"
+companies_founded:
+  - company: "Amiga Corporation"
+    year: 1982
+    role: "Co-founder and Chief Hardware Designer"
+companies_worked_for:
+  - company: "Atari"
+    role: "Chip designer"
+    start_year: 1975
+    end_year: 1982
+  - company: "Amiga Corporation"
+    role: "Co-founder and Chief Hardware Designer"
+    start_year: 1982
+    end_year: 1984
+  - company: "Commodore International"
+    role: "Hardware architect"
+    start_year: 1984
+    end_year: 1989
 legacy: "Jay Miner's vision of multimedia computing was years ahead of its time. The Amiga's custom chipset enabled graphics, sound, and multitasking capabilities that wouldn't become common until the mid-1990s. His work fundamentally shaped how we think about multimedia computing."
 image: "/images/people/jay-miner.jpg"
 external_links:

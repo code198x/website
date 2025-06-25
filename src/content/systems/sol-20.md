@@ -12,7 +12,13 @@ discontinued: 1979-01-01
 country_of_origin: "United States"
 operating_system: "CP/M compatible"
 emulated: true
-emulators: ["SOL-20 Emulator", "MAME"]
+emulators:
+  - name: "SOL-20 Emulator"
+    platform: "Multi-platform"
+    accuracy: "high"
+  - name: "MAME"
+    platform: "Multi-platform"
+    accuracy: "cycle_accurate"
 notable_software:
   - name: "CP/M"
     type: "Operating System"
