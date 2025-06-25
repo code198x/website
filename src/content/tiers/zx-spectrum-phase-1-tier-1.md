@@ -1,99 +1,80 @@
 ---
-title: "Z80 Assembly Foundations"
+title: "Prism Quest: Dimensional Maze Adventure"
 system: "zx-spectrum"
 phase_number: 1
 tier_number: 1
-description: "Enter the world of Z80 assembly language programming on the ZX Spectrum. Learn the fundamentals of machine language and create your first programs that work directly with the Spectrum's hardware."
+description: "Create your first complete retro adventure! Build 'Prism Quest' - a color-shifting dimensional maze game using authentic Z80 assembly. Learn assembly language through exciting game development that turns the Spectrum's unique attribute system into compelling gameplay."
 learning_objectives:
-  - "Understand Z80 processor architecture and registers"
-  - "Learn basic assembly language syntax and structure"
-  - "Learn fundamental addressing modes"
-  - "Create simple programs using machine language"
-  - "Understand ZX Spectrum memory organisation"
+  - "Create color-shifting dimensional maze worlds using Spectrum graphics hardware"
+  - "Build navigational entities using Z80 registers for position and state tracking"
+  - "Master the attribute system by turning limitations into gameplay features"
+  - "Implement dimensional puzzle mechanics through assembly logic programming"
+  - "Develop complete adventure games with authentic Spectrum aesthetic and feel"
 concepts_introduced:
-  - "Z80 processor architecture (A, B, C, D, E, H, L registers)"
-  - "Assembly language syntax and mnemonics"
-  - "Memory addressing and the Spectrum memory map"
-  - "Basic instructions (LD, ADD, SUB, CP)"
-  - "Assemblers and machine language development"
+  - "Z80 registers through dimensional navigator management"
+  - "Screen memory and attribute manipulation for color-shifting mazes"
+  - "Memory optimization techniques for Spectrum constraints"
+  - "Adventure game logic and state management"
+  - "Puzzle mechanics and dimensional navigation systems"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 1
 ---
 
-# Tier 1: Z80 Assembly Foundations
+# Tier 1: Prism Quest - Dimensional Maze Adventure
 
-Welcome to authentic ZX Spectrum programming! With **32 comprehensive lessons**, you'll have plenty of time to thoroughly learn the fundamentals of Z80 assembly language. Starting with assembly gives you direct control over the hardware and teaches you how the Spectrum really works.
+Welcome to adventure game development on the ZX Spectrum! Create your first complete retro adventure using authentic Z80 assembly language. **Prism Quest** turns the Spectrum's unique attribute system into compelling dimensional puzzle gameplay while teaching you assembly programming through exciting, hands-on game development.
 
 ## What You'll Build
 
-During this tier, you'll work toward creating your first assembly project: **Spectrum Saga** - an adventure puzzle game where drawing and graphics solve challenges, programmed entirely in Z80 machine language, demonstrating fundamental programming concepts at the hardware level.
+**Prism Quest** - A complete dimensional maze adventure game featuring:
+- Color-shifting maze worlds that use attribute clash as a gameplay feature
+- Navigational entities that traverse multiple dimensional layers
+- Puzzle mechanics based on color combinations and dimensional navigation
+- Memory-optimized graphics that showcase Spectrum programming ingenuity
+- Authentic Spectrum visual style with bold, contrasting color schemes
 
-## Tier Overview
+**By Lesson 8**: You'll have a playable adventure prototype with graphics, navigation, and basic puzzle mechanics!
+**By Lesson 32**: You'll have the foundation systems for Prism Quest, ready for advanced development in Tiers 2-4.
+**By Tier 4 Complete**: You'll have a sophisticated maze adventure showcasing advanced Z80 programming and creative constraint utilization.
 
-**Lessons 1-8: Z80 Architecture Fundamentals**
-- Understanding the Z80 processor and its registers (A, B, C, D, E, H, L)
-- ZX Spectrum memory map and how RAM, ROM, and I/O are organised
-- Your first assembly program - displaying a character on screen
-- Basic load and store instructions (LD, ADD, SUB, CP)
+## Adventure Development Journey
 
-**Lessons 9-16: Memory and Addressing**
-- Different addressing modes (immediate, direct, indexed)
-- Understanding how memory addresses work
-- Manipulating screen memory directly
-- Building simple display and character programs
+**✅ Lessons 1-2: COMPLETED - World & Navigator**
+- **Lesson 1**: Create color-shifting dimensional maze world *(COMPLETED)*
+- **Lesson 2**: Add dimensional navigator entity with directional control *(COMPLETED)*
 
-**Lessons 17-24: Program Flow and Logic**
-- Jump instructions and conditional jumps
-- Simple loops and program flow control
-- Status flags and how the processor makes decisions
-- Creating interactive assembly programs
+**Lessons 3-8: Core Adventure Systems**
+- **Lesson 3**: Dimensional Shift - Add color-based puzzle mechanics
+- **Lesson 4**: Maze Challenges - Create interactive puzzle elements and obstacles
+- **Lesson 5**: Attribute Magic - Turn color clash into gameplay advantages
+- **Lesson 6**: Victory Portal - Add goal states and dimensional completion effects
+- **Lesson 7**: Challenge Depths - Multiple maze areas and basic progression
+- **Lesson 8**: Prism Quest Foundation - Playable adventure prototype with core systems
 
-**Lessons 25-32: Spectrum Saga Foundation**
-- Applying assembly concepts to game programming
-- Interactive graphics and puzzle mechanics
-- Keyboard input handling for game controls
-- Building toward your first complete assembly adventure game
+**Lessons 9-16: System Enhancement**
+- Enhanced maze generation algorithms and memory optimization
+- Improved puzzle mechanics with multi-step interactions
+- Efficient graphics routines that maximize Spectrum capabilities
+- Input optimization for responsive navigation control
 
-## Key Concepts
+**Lessons 17-24: Advanced Mechanics**
+- Multi-dimensional maze connections and complex navigation
+- Advanced attribute manipulation for enhanced visual effects
+- Progressive difficulty systems and adaptive puzzle complexity
+- Story elements and basic character progression
 
-This tier introduces the fundamental building blocks of Z80 assembly programming:
+**Lessons 25-32: Tier 1 Mastery**
+- Code organization and modular adventure architecture
+- Memory optimization techniques for complex maze systems
+- Polish and refinement of core adventure mechanics
+- Foundation complete - ready for Tier 2 advanced adventure features
 
-- **Direct Hardware Control** - Programming the processor directly
-- **Memory Management** - Understanding how data is stored and accessed
-- **Processor Architecture** - How the Z80 CPU actually works
-- **Machine Language** - The native language of the Spectrum
-- **Graphics Programming** - Direct screen memory manipulation
+## Why Adventure-First Z80 Learning?
 
-These concepts teach you how the ZX Spectrum really works at the lowest level - knowledge that applies to all modern programming and computer science!
+- **Immediate Exploration**: Navigate fascinating dimensional worlds from lesson 1
+- **Creative Constraints**: Learn how limitations become features through Spectrum programming
+- **Puzzle Logic**: Understand assembly through the same logic used in adventure puzzles
+- **Memory Mastery**: Master optimization through the Spectrum's 48K constraint
+- **Authentic Style**: Experience the creativity that defined Spectrum gaming
 
-## The Z80 Advantage
-
-What makes Z80 assembly programming powerful:
-
-- **Rich instruction set** - More powerful than simpler processors
-- **Multiple registers** - Efficient data handling
-- **Flexible addressing** - Various ways to access memory
-- **Fast execution** - Direct hardware control for maximum speed
-- **Complete control** - No operating system overhead
-
-## Understanding the Spectrum's Graphics
-
-The Spectrum's unique approach becomes a learning opportunity:
-
-- **Attribute system** - Understanding memory-mapped graphics
-- **Screen memory layout** - How pixels and colors are organised
-- **Hardware constraints** - Working efficiently within limitations
-- **Direct manipulation** - Controlling graphics at the lowest level
-- **Optimization techniques** - Making the most of limited resources
-
-## Real-World Applications
-
-Z80 assembly programming skills apply to:
-
-- **Embedded systems** programming for microcontrollers
-- **Game development** requiring high performance
-- **Device drivers** that interface directly with hardware
-- **Real-time systems** where timing is critical
-- **Compiler development** understanding how high-level languages work
-
-Learning assembly on the ZX Spectrum provides insight into how all computers work at the fundamental level!
+Z80 concepts are learned exactly when needed for your adventure, making every technical detail support your creative vision!

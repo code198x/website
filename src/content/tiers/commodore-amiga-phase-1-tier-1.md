@@ -1,91 +1,80 @@
 ---
-title: "68000 Assembly Foundations"
+title: "Crystal Cascade: Professional Parallax Adventure"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 1
-description: "Enter the world of professional Amiga programming with 68000 assembly language! Learn to harness the power of the revolutionary Amiga architecture through direct hardware control and custom chip programming."
+description: "Create your first professional-quality game! Build 'Crystal Cascade' - a stunning multi-layered parallax adventure using authentic 68000 assembly. Learn assembly language through exciting game development that showcases the Amiga's revolutionary custom chip architecture."
 learning_objectives:
-  - "Understand the Motorola 68000 processor architecture"
-  - "Learn 68000 assembly language fundamentals"
-  - "Learn basic addressing modes and instruction syntax"
-  - "Create programs that work directly with Amiga hardware"
-  - "Understand professional assembly programming concepts"
+  - "Create professional multi-layered parallax worlds using Amiga custom chip hardware"
+  - "Build sophisticated floating entities using 68000 registers for complex object management"
+  - "Master copper effects and hardware scrolling for spectacular visual presentation"
+  - "Implement professional game architecture through modular assembly programming"
+  - "Develop commercial-quality games with authentic Amiga aesthetic and technical excellence"
 concepts_introduced:
-  - "68000 processor architecture and registers (D0-D7, A0-A7)"
-  - "Assembly language syntax and addressing modes"
-  - "Amiga system architecture and custom chips"
-  - "Memory organisation and hardware integration"
-  - "Professional assembly programming foundations"
+  - "68000 registers through professional entity management systems"
+  - "Custom chip programming for parallax scrolling and copper effects"
+  - "Professional data structures and memory management techniques"
+  - "Advanced graphics programming and visual effects systems"
+  - "Commercial game architecture and optimization strategies"
 estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 1
 ---
 
-# Tier 1: 68000 Assembly Foundations
+# Tier 1: Crystal Cascade - Professional Parallax Adventure
 
-Welcome to professional Amiga programming! With **32 comprehensive lessons**, you'll learn authentic 68000 assembly language programming on the most advanced home computer ever created. Direct hardware control unlocks the true power of the Amiga's revolutionary architecture.
+Welcome to professional game development on the Amiga! Create your first commercial-quality game using authentic 68000 assembly language. **Crystal Cascade** showcases the Amiga's revolutionary custom chip architecture while teaching you assembly programming through exciting, professional-level game development.
 
-## What You'll Start Building
+## What You'll Build
 
-Begin **Copper Dreams** development in assembly:
-- Create an engaging game using direct hardware control
-- Learn to program the custom chips (Agnus, Denise, Paula) for gameplay
-- Understand the Amiga's advanced architecture through game development
-- Build foundation for professional assembly game programming
+**Crystal Cascade** - A complete professional parallax adventure game featuring:
+- Stunning multi-layered parallax scrolling using custom chip hardware
+- Sophisticated floating entities with complex data management systems
+- Spectacular copper effects and hardware-assisted visual presentation
+- Professional game architecture demonstrating commercial development practices
+- Authentic Amiga technical excellence with smooth animation and rich graphics
 
-## Tier Overview
+**By Lesson 8**: You'll have a playable game prototype with professional graphics, entities, and smooth scrolling!
+**By Lesson 32**: You'll have the foundation systems for Crystal Cascade, ready for advanced development in Tiers 2-4.
+**By Tier 4 Complete**: You'll have a commercially polished adventure showcasing advanced 68000 programming and custom chip mastery.
 
-**Lessons 1-8: Amiga System Introduction**
-- Understanding the Amiga's revolutionary architecture
-- Custom chips (Agnus, Denise, Paula) overview
-- Workbench and AmigaOS introduction
-- Professional computing concepts
+## Professional Development Journey
 
-**Lessons 9-16: 68000 Assembly Fundamentals**
-- 68000 assembly programming environment
-- Advanced assembly features and capabilities
-- Working with sophisticated hardware through assembly
-- Creating professional-quality assembly programs
+**✅ Lessons 1-2: COMPLETED - World & Entities**
+- **Lesson 1**: Create stunning multi-layered parallax world *(COMPLETED)*
+- **Lesson 2**: Add sophisticated floating crystal entities with complex data management *(COMPLETED)*
 
-**Lessons 17-24: Assembly Graphics Introduction**
-- Understanding Amiga's graphics capabilities through assembly
-- Multiple screen modes and resolutions using assembly programming
-- Color palette and advanced visual concepts in assembly
-- Creating stunning visual programs using 68000 assembly
+**Lessons 3-8: Core Professional Systems**
+- **Lesson 3**: Copper Cascade - Add mesmerizing copper effects and color cycling
+- **Lesson 4**: Smooth Scrolling - Implement professional hardware-assisted scrolling
+- **Lesson 5**: Entity Interaction - Create collision systems and interactive gameplay
+- **Lesson 6**: Audio Spectacle - Add 4-channel soundtrack with sample-based effects
+- **Lesson 7**: Professional Polish - Visual effects, transitions, and presentation quality
+- **Lesson 8**: Crystal Cascade Foundation - Playable prototype with professional systems
 
-**Lessons 25-32: Copper Dreams Foundation**
-- Introduction to assembly game programming
-- Basic graphics and gameplay mechanics using assembly
-- Building foundation for engaging assembly games
-- Preparing for advanced assembly game development
+**Lessons 9-16: System Enhancement**
+- Enhanced entity management systems for complex game objects
+- Advanced copper programming for improved visual effects
+- Memory optimization techniques for efficient performance
+- Audio-visual synchronization and dynamic soundtrack integration
 
-## The Amiga Advantage
+**Lessons 17-24: Advanced Architecture**
+- Multi-layer level design with seamless area transitions
+- Enhanced AI systems for intelligent entity behavior
+- Professional user interface and interaction systems
+- Data management and game state persistence
 
-What made the Amiga revolutionary for programming:
+**Lessons 25-32: Tier 1 Mastery**
+- Performance optimization and custom chip utilization
+- Code organization and professional architecture patterns
+- Quality assurance and debugging methodologies
+- Foundation complete - ready for Tier 2 advanced development
 
-- **Advanced Graphics** - 4096 colors and multiple resolutions
-- **Sophisticated Audio** - 4-channel stereo with sampling
-- **True Multitasking** - Multiple programs running simultaneously
-- **Professional Interface** - Workbench GUI and intuitive design
-- **Powerful BASIC** - AmigaBASIC with advanced capabilities
+## Why Professional-First 68000 Learning?
 
-## 68000 Assembly Programming
+- **Immediate Excellence**: See commercial-quality visuals and effects from lesson 1
+- **Professional Context**: Learn assembly through the same techniques used in commercial Amiga games
+- **Hardware Mastery**: Understand why the Amiga was revolutionary through direct custom chip programming
+- **Industry Skills**: Develop professional game development practices and architecture
+- **Technical Excellence**: Experience the sophisticated programming that defined Amiga gaming
 
-68000 assembly offers unique advantages:
-
-- **Direct Hardware Control** - Unmediated access to Amiga's visual power
-- **Maximum Performance** - Custom chip programming and optimisation
-- **System Integration** - Work directly with Workbench and AmigaOS
-- **Complete Hardware Access** - Control all advanced features through assembly
-- **Professional Development** - Create maximum-performance applications
-
-## Why Start with 68000 Assembly?
-
-68000 assembly teaches essential concepts:
-
-- **Low-Level Programming** - Working directly with sophisticated hardware
-- **Assembly Graphics Programming** - Professional visual development techniques
-- **Direct Interface Control** - Creating responsive interfaces through hardware control
-- **System Integration** - Professional assembly software development practices
-- **Game Development** - Building engaging and creative games
-
-Programming the Amiga with 68000 assembly introduces you to advanced computing concepts and professional low-level development practices that were years ahead of their time and remain relevant today!
+68000 concepts are learned exactly when needed for your professional game, making every technical detail contribute to commercial-quality results!
