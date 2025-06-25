@@ -69,10 +69,10 @@ ADD HL, BC              ; HL points to element 5
 LD A, (HL)              ; A = enemy 5's X position
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Basic Array Access"
-  code="; Create array of numbers in memory
+**Basic Array Access:**
+
+```assembly
+; Create array of numbers in memory
 LD HL, $6000            ; Array storage area
 
 ; Initialize array with values
@@ -93,9 +93,8 @@ LD A, (HL)              ; A = 40 (value of element 3)
 ; Modify element 1
 LD HL, $6000            ; Base of array
 INC HL                  ; Point to element 1
-LD (HL), 99             ; Change element 1 to 99"
-  language="assembly"
-/>
+LD (HL), 99             ; Change element 1 to 99
+```
 
 ### Multi-Dimensional Arrays
 
@@ -122,10 +121,10 @@ GetBoardElement:
     LD A, (HL)              ; Get board element
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="2D Array Access"
-  code="; Create 4×4 grid (16 bytes)
+**2D Array Access:**
+
+```assembly
+; Create 4×4 grid (16 bytes)
 LD HL, $6100            ; Grid storage area
 
 ; Initialize 4×4 grid with values
@@ -151,9 +150,8 @@ LD A, (HL)              ; Get value (should be 10)
 LD HL, $6100            ; Grid base
 LD BC, 7                ; Offset for [1,3]
 ADD HL, BC              ; Point to element
-LD (HL), 99             ; Set new value"
-  language="assembly"
-/>
+LD (HL), 99             ; Set new value
+```
 
 ## Table Lookup Systems
 
@@ -203,10 +201,10 @@ MoveInDirection:
     ; Now B = X delta, C = Y delta for direction 3
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Lookup Table Demonstration"
-  code="; Create multiplication table for ×5
+**Lookup Table Demonstration:**
+
+```assembly
+; Create multiplication table for ×5
 LD HL, $6200            ; Table storage
 LD B, 10                ; 10 entries (0-9)
 LD A, 0                 ; Starting value
@@ -240,9 +238,8 @@ CharTable:
 LD HL, $6300            ; Table base
 LD BC, 5                ; Index for 'F'
 ADD HL, BC              ; Point to entry
-LD A, (HL)              ; A = $46 (ASCII 'F')"
-  language="assembly"
-/>
+LD A, (HL)              ; A = $46 (ASCII 'F')
+```
 
 ## Structured Data Records
 
@@ -290,10 +287,10 @@ GetPlayerX:
     LD A, (HL)              ; A = Player 2's X position
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Structured Data Example"
-  code="; Create enemy data structure
+**Structured Data Example:**
+
+```assembly
+; Create enemy data structure
 ; Each enemy: X, Y, Health, Type (4 bytes each)
 LD HL, $6400            ; Enemy data area
 
@@ -325,9 +322,8 @@ INC HL : INC HL         ; Move to health field (+2)
 LD A, (HL)              ; A = enemy 1's health (5)
 
 ; Damage enemy 1 (reduce health)
-DEC (HL)                ; Reduce health by 1"
-  language="assembly"
-/>
+DEC (HL)                ; Reduce health by 1
+```
 
 ## Dynamic Lists and Linked Structures
 
@@ -428,10 +424,10 @@ SwapBuffers:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Game Data Organization"
-  code="; Complete game data example
+**Game Data Organization:**
+
+```assembly
+; Complete game data example
 LD HL, $6500            ; Game data area
 
 ; Player statistics block
@@ -466,9 +462,8 @@ JR NC, NoCarry          ; Check for carry
 INC HL                  ; Point to high byte
 INC (HL)                ; Increment high byte
 NoCarry:
-    ; Score updated successfully"
-  language="assembly"
-/>
+    ; Score updated successfully
+```
 
 ## Memory Management Techniques
 
@@ -531,10 +526,10 @@ Create a complete sprite management system that demonstrates:
 4. Dynamic list management for active/inactive sprites
 5. Efficient data access routines for game updates
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Sprite Management"
-  code="; Sprite management system demonstration
+**Practice Exercise - Sprite Management:**
+
+```assembly
+; Sprite management system demonstration
 ; Sprite data structure: X, Y, Health, Type, Status (5 bytes each)
 LD HL, $6600            ; Sprite data area
 
@@ -591,9 +586,8 @@ LD A, (HL)              ; Get current Y
 ADD A, C                ; Add dy
 LD (HL), A              ; Store new Y
 
-; Sprite 1 has now moved according to its type!"
-  language="assembly"
-/>
+; Sprite 1 has now moved according to its type!
+```
 
 ## Data Structure Best Practices
 

@@ -98,16 +98,15 @@ LDA #$7F    ; Load 127 into A
             ; N flag is CLEAR (bit 7 is 0, looks positive)
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Flag Setting Examples"
-  code="; Watch how different values affect flags
+**Flag Setting Examples:**
+
+```assembly
+; Watch how different values affect flags
 LDA #$00    ; Load 0: Z=1, N=0
 LDA #$80    ; Load 128: Z=0, N=1 (bit 7 set)
 LDA #$7F    ; Load 127: Z=0, N=0 (bit 7 clear)
-LDA #$FF    ; Load 255: Z=0, N=1 (bit 7 set)"
-  language="assembly"
-/>
+LDA #$FF    ; Load 255: Z=0, N=1 (bit 7 set)
+```
 
 ## The Compare Instructions
 
@@ -255,10 +254,10 @@ done:
 STA feature_set
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Multi-Level Feature Unlock"
-  code="; Setup player level
+**Multi-Level Feature Unlock:**
+
+```assembly
+; Setup player level
 LDA #$07    ; Player is level 7
 STA $0310   ; Store level
 
@@ -278,9 +277,8 @@ basic:
 LDA #$01    ; Feature set 1 (basic)
 done:
 STA $0311   ; Store feature set
-; Level 7 player gets feature set 2"
-  language="assembly"
-/>
+; Level 7 player gets feature set 2
+```
 
 ## Flag Manipulation Instructions
 
@@ -309,10 +307,10 @@ ADC #$01    ; Add 1: 255 + 1 = 256
             ; Z = 1 (result is zero)
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Arithmetic Flag Effects"
-  code="; Addition with carry
+**Arithmetic Flag Effects:**
+
+```assembly
+; Addition with carry
 LDA #$FF    ; A = 255
 CLC         ; Clear carry flag
 ADC #$01    ; Add 1
@@ -320,9 +318,8 @@ ADC #$01    ; Add 1
             ; C = 1 (carried out)
             ; Z = 1 (result is zero)
 
-; This is useful for detecting overflow!"
-  language="assembly"
-/>
+; This is useful for detecting overflow!
+```
 
 ## Game Health System with Flags
 
@@ -352,10 +349,10 @@ store_state:
 STA health_state
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Advanced Health System"
-  code="; Setup player health
+**Advanced Health System:**
+
+```assembly
+; Setup player health
 LDA #$03    ; Player has 3 health
 STA $0320   ; Store health
 
@@ -379,9 +376,8 @@ dead:
 LDA #$00    ; Dead state code
 done:
 STA $0321   ; Store health state
-; Health 3 = wounded state (code 2)"
-  language="assembly"
-/>
+; Health 3 = wounded state (code 2)
+```
 
 ## Sprite Symphony Note Comparison
 
@@ -431,10 +427,10 @@ STA $4000
 done:
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Symphony Note Selection"
-  code="; Setup APU
+**Sprite Symphony Note Selection:**
+
+```assembly
+; Setup APU
 LDA #$BF    ; Configure pulse wave
 STA $4000   ; Pulse 1 control
 LDA #$08    ; Enable pulse 1
@@ -472,9 +468,8 @@ play_b:
 LDA #$82    ; B frequency
 STA $4002
 done:
-; G note is now playing!"
-  language="assembly"
-/>
+; G note is now playing!
+```
 
 ## Practical Exercise: Score Ranking System
 
@@ -488,10 +483,10 @@ Create a score ranking system that awards different rankings based on score rang
    - 5000+: Expert (rank 4)
 3. Store the rank at memory location $0400
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Score Ranking System"
-  code="; Setup score (4096 points)
+**Practice: Score Ranking System:**
+
+```assembly
+; Setup score (4096 points)
 LDA #$00    ; High byte of 4096 ($1000)
 STA $0350   ; Store score high byte
 LDA #$10    ; Low byte of 4096
@@ -519,9 +514,8 @@ advanced:
 LDA #$03    ; Advanced rank
 done:
 STA $0400   ; Store final rank
-; Score 4096 gets Advanced rank (3)"
-  language="assembly"
-/>
+; Score 4096 gets Advanced rank (3)
+```
 
 ## Common Flag Patterns
 

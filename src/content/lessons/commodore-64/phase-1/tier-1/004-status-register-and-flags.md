@@ -71,14 +71,13 @@ LDA #$41    ; Load 'A' into A register
             ; Zero flag is now CLEAR (Z=0)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Zero Flag Examples"
-  code="LDA #$00    ; Load zero - sets Zero flag
+**Zero Flag Examples:**
+
+```assembly
+LDA #$00    ; Load zero - sets Zero flag
 LDA #$41    ; Load non-zero - clears Zero flag
-LDA #$00    ; Load zero again - sets Zero flag"
-  language="assembly"
-/>
+LDA #$00    ; Load zero again - sets Zero flag
+```
 
 **When the Zero flag is useful**:
 - Checking if a counter reached zero
@@ -97,14 +96,13 @@ LDA #$80    ; Load 128 ($80 = 10000000 binary)
             ; Negative flag is SET (N=1, bit 7 = 1)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Negative Flag Examples"
-  code="LDA #$7F    ; Load 127 - clears Negative flag (bit 7 = 0)
+**Negative Flag Examples:**
+
+```assembly
+LDA #$7F    ; Load 127 - clears Negative flag (bit 7 = 0)
 LDA #$80    ; Load 128 - sets Negative flag (bit 7 = 1)
-LDA #$41    ; Load 65 - clears Negative flag (bit 7 = 0)"
-  language="assembly"
-/>
+LDA #$41    ; Load 65 - clears Negative flag (bit 7 = 0)
+```
 
 **When the Negative flag is useful**:
 - Checking if a signed number is negative
@@ -186,19 +184,18 @@ CMP #$42    ; Compare with 'B'
             ; Zero flag will be CLEAR (they're different)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Checking Screen Characters"
-  code="; Put 'H' on screen
+**Checking Screen Characters:**
+
+```assembly
+; Put 'H' on screen
 LDA #$48    ; Load 'H'
 STA $0400   ; Store at screen position 0
 
 ; Check what's there
 LDA $0400   ; Load from screen
 CMP #$48    ; Compare with 'H' - Zero flag will be SET
-CMP #$41    ; Compare with 'A' - Zero flag will be CLEAR"
-  language="assembly"
-/>
+CMP #$41    ; Compare with 'A' - Zero flag will be CLEAR
+```
 
 ## Other Instructions That Affect Flags
 
@@ -231,19 +228,18 @@ CMP #$30    ; Compare with 48
 ; Prediction: Zero=CLEAR, Carry=SET (65 > 48)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Flag Prediction Exercise"
-  code="LDA #$7F    ; Load 127
+**Flag Prediction Exercise:**
+
+```assembly
+LDA #$7F    ; Load 127
 CMP #$80    ; Compare with 128 - what flags are set?
 
 LDA #$FF    ; Load 255  
 CMP #$FF    ; Compare with 255 - what flags are set?
 
 LDA #$41    ; Load 65
-CMP #$30    ; Compare with 48 - what flags are set?"
-  language="assembly"
-/>
+CMP #$30    ; Compare with 48 - what flags are set?
+```
 
 ## Practice Exercise
 
@@ -254,10 +250,10 @@ Create a program that:
 3. Compares it with 'A' (should clear Zero flag) 
 4. Stores different letters and tests various comparisons
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Character Comparisons"
-  code="; Store 'M' on screen
+**Practice Exercise - Character Comparisons:**
+
+```assembly
+; Store 'M' on screen
 LDA #$4D    ; Load 'M'
 STA $0400   ; Store at screen position 0
 
@@ -270,9 +266,8 @@ CMP #$41    ; Compare with 'A' - Zero flag should be CLEAR
 LDA #$48    ; Load 'H'
 STA $0401   ; Store at screen position 1
 LDA $0401   ; Load it back
-CMP #$48    ; Compare with 'H' - Zero flag should be SET"
-  language="assembly"
-/>
+CMP #$48    ; Compare with 'H' - Zero flag should be SET
+```
 
 ## Flag Mnemonics
 

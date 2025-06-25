@@ -81,10 +81,10 @@ This project will demonstrate:
 - Logical operations for pattern generation
 - Status flags for program flow control
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Advanced Graphics Pattern Generator"
-  code="; Advanced Graphics Pattern Generator
+**Advanced Graphics Pattern Generator:**
+
+```assembly
+; Advanced Graphics Pattern Generator
 ; Demonstrates integration of all Z80 data manipulation concepts
 
 PatternGenerator:
@@ -536,9 +536,8 @@ Angle:          DB 0
 FrameCounter:   DB 0
 
 ; Execute the complete pattern generator
-CALL PatternGenerator"
-  language="assembly"
-/>
+CALL PatternGenerator
+```
 
 ## Advanced Programming Patterns
 
@@ -589,10 +588,10 @@ GetObjectAddress:
     RET                 ; HL now points to object
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Advanced Programming Patterns"
-  code="; Advanced programming patterns integrating all concepts
+**Advanced Programming Patterns:**
+
+```assembly
+; Advanced programming patterns integrating all concepts
 ; This demonstrates professional Z80 programming techniques
 
 AdvancedPatternsDemo:
@@ -858,9 +857,8 @@ SpritePatterns:
     DB %10000001            ; Enemy pattern
 
 ; Execute the advanced patterns demonstration
-CALL AdvancedPatternsDemo"
-  language="assembly"
-/>
+CALL AdvancedPatternsDemo
+```
 
 ## Professional Code Organization
 
@@ -914,10 +912,10 @@ DivideError:
 
 ## Comprehensive Integration Exercise
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complete Integration Challenge"
-  code="; Complete Integration Challenge: Mini Database System
+**Complete Integration Challenge:**
+
+```assembly
+; Complete Integration Challenge: Mini Database System
 ; Uses ALL concepts learned in Data Manipulation Fundamentals
 
 MiniDatabase:
@@ -1193,9 +1191,8 @@ UpdateResult:    DB 0
 DeleteResult:    DB 0
 
 ; Execute the complete database system
-CALL MiniDatabase"
-  language="assembly"
-/>
+CALL MiniDatabase
+```
 
 ## What You've Learned
 

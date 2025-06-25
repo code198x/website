@@ -512,10 +512,10 @@ The 68000's sophisticated addressing modes enable elegant memory management patt
 - **Memory bandwidth**: Efficient use of memory bus
 - **Prefetch optimisation**: Code organisation for 68000 prefetch
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Addressing Mode Applications"
-  code="; Advanced addressing mode applications for memory management
+**Advanced Addressing Mode Applications:**
+
+```assembly
+; Advanced addressing mode applications for memory management
 ; Demonstrates sophisticated memory access patterns
 
 AdvancedAddressingDemo:
@@ -797,9 +797,8 @@ SparseIndexTable:   DC.L    0, 0, 0, SparseElement3, 0, SparseElement5
 SparseElement3:     DC.L    $33333333
 SparseElement5:     DC.L    $55555555
 SparseElement7:     DC.L    $77777777
-SparseResult:       DC.L    0"
-  language="assembly"
-/>
+SparseResult:       DC.L    0
+```
 
 ## Memory Allocation Strategies
 
@@ -816,10 +815,10 @@ The 68000 and Amiga support sophisticated memory allocation patterns:
 - **Fragmentation prevention**: Allocation strategies
 - **Memory alignment**: Optimising for performance
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Memory Allocation and Management"
-  code="; Memory allocation and management strategies
+**Memory Allocation and Management:**
+
+```assembly
+; Memory allocation and management strategies
 ; Demonstrates advanced memory management techniques
 
 MemoryManagementDemo:
@@ -1050,16 +1049,15 @@ LongAlignedPtr:     DC.L    0
 FreeMemory:         DC.L    0
 MemoryUtilisation:  DC.W    0
 BoundsCheckResult:  DC.B    0
-CompactionComplete: DC.L    0"
-  language="assembly"
-/>
+CompactionComplete: DC.L    0
+```
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Memory Management Practice"
-  code="; Practice Exercise: Amiga Memory Manager System
+**Advanced Memory Management Practice:**
+
+```assembly
+; Practice Exercise: Amiga Memory Manager System
 ; Implement a sophisticated memory management system
 
 AmigaMemoryManager:
@@ -1458,9 +1456,8 @@ FragmentationLevel: DC.L    0
 ; 1. Implement dynamic memory allocation with coalescing
 ; 2. Add memory protection with read/write permissions
 ; 3. Create virtual memory swapping to disk simulation
-; 4. Implement garbage collection for automatic memory management"
-  language="assembly"
-/>
+; 4. Implement garbage collection for automatic memory management
+```
 
 ## What You've Learned
 

@@ -59,14 +59,13 @@ AND #$2F    ; AND with %00101111
             ; Result: $03 (%00000011)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic AND Operation"
-  code="LDA #$53    ; Load %01010011 (binary)
+**Basic AND Operation:**
+
+```assembly
+LDA #$53    ; Load %01010011 (binary)
 AND #$2F    ; AND with %00101111
-STA $0400   ; Store result ($03) on screen"
-  language="assembly"
-/>
+STA $0400   ; Store result ($03) on screen
+```
 
 **Common uses for AND**:
 - **Bit masking**: Extract specific bits
@@ -89,10 +88,10 @@ AND #$80    ; Test bit 7
             ; Result: $80 if bit 7 was set, $00 if clear
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Bit Masking Examples"
-  code="; Extract lower 4 bits
+**Bit Masking Examples:**
+
+```assembly
+; Extract lower 4 bits
 LDA #$B7    ; %10110111
 AND #$0F    ; Mask: %00001111
 STA $0400   ; Result: $07
@@ -100,9 +99,8 @@ STA $0400   ; Result: $07
 ; Test highest bit
 LDA #$80    ; %10000000  
 AND #$80    ; Test bit 7
-STA $0401   ; Result: $80 (bit 7 was set)"
-  language="assembly"
-/>
+STA $0401   ; Result: $80 (bit 7 was set)
+```
 
 ## The OR Instruction
 
@@ -121,14 +119,13 @@ ORA #$2F    ; OR with %00101111 (note: ORA, not OR!)
             ; Result: $7F (%01111111)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic OR Operation"
-  code="LDA #$53    ; Load %01010011
+**Basic OR Operation:**
+
+```assembly
+LDA #$53    ; Load %01010011
 ORA #$2F    ; OR with %00101111 (instruction is ORA)
-STA $0400   ; Store result ($7F) on screen"
-  language="assembly"
-/>
+STA $0400   ; Store result ($7F) on screen
+```
 
 **Note**: The instruction is **ORA**, not OR, to avoid confusion with the word "or"!
 
@@ -153,10 +150,10 @@ ORA #$05    ; Set bits 0 and 2: %00000101
             ; Result: $15 (%00010101)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Setting Bits with OR"
-  code="; Set bit 7 (negative bit)
+**Setting Bits with OR:**
+
+```assembly
+; Set bit 7 (negative bit)
 LDA #$23    ; %00100011
 ORA #$80    ; Set bit 7
 STA $0400   ; Result: $A3
@@ -164,9 +161,8 @@ STA $0400   ; Result: $A3
 ; Set bits 0 and 2
 LDA #$10    ; %00010000
 ORA #$05    ; Set bits 0 and 2
-STA $0401   ; Result: $15"
-  language="assembly"
-/>
+STA $0401   ; Result: $15
+```
 
 ## The XOR Instruction
 
@@ -185,14 +181,13 @@ EOR #$2F    ; XOR with %00101111 (note: EOR, not XOR!)
             ; Result: $7C (%01111100)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic XOR Operation"
-  code="LDA #$53    ; Load %01010011
+**Basic XOR Operation:**
+
+```assembly
+LDA #$53    ; Load %01010011
 EOR #$2F    ; XOR with %00101111 (instruction is EOR)
-STA $0400   ; Store result ($7C) on screen"
-  language="assembly"
-/>
+STA $0400   ; Store result ($7C) on screen
+```
 
 **Note**: The instruction is **EOR** (Exclusive OR), not XOR!
 
@@ -217,10 +212,10 @@ EOR #$FF    ; Toggle all bits
             ; Result: $55 (%01010101)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Toggling Bits with XOR"
-  code="; Toggle bit 5
+**Toggling Bits with XOR:**
+
+```assembly
+; Toggle bit 5
 LDA #$20    ; %00100000
 EOR #$20    ; Toggle bit 5
 STA $0400   ; Result: $00
@@ -228,9 +223,8 @@ STA $0400   ; Result: $00
 ; Toggle all bits
 LDA #$AA    ; %10101010
 EOR #$FF    ; Flip all bits
-STA $0401   ; Result: $55 (%01010101)"
-  language="assembly"
-/>
+STA $0401   ; Result: $55 (%01010101)
+```
 
 ## Practical Example: Screen Color Control
 
@@ -253,10 +247,10 @@ EOR #$02    ; Toggle bit 1 of colour
 STA $D020   ; Update border
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Border Color Manipulation"
-  code="; Manipulate border colour using logical operations
+**Border Color Manipulation:**
+
+```assembly
+; Manipulate border colour using logical operations
 LDA $D020   ; Read current border colour
 AND #$0F    ; Keep only colour bits (lower 4 bits)
 ORA #$02    ; Set to colour 2 (red)
@@ -265,9 +259,8 @@ STA $D020   ; Update border
 ; Toggle between colors
 LDA $D020
 EOR #$04    ; Toggle bit 2 (changes colour)
-STA $D020"
-  language="assembly"
-/>
+STA $D020
+```
 
 ## Character Manipulation
 
@@ -290,10 +283,10 @@ EOR #$20    ; Toggle bit 5
             ; Result: $61 ('a')
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Character Case Conversion"
-  code="; Convert 'a' to 'A'
+**Character Case Conversion:**
+
+```assembly
+; Convert 'a' to 'A'
 LDA #$61    ; 'a'
 AND #$DF    ; Clear bit 5 (uppercase conversion)
 STA $0400   ; Display 'A'
@@ -306,9 +299,8 @@ STA $0401   ; Display 'b'
 ; Toggle case of 'C'
 LDA #$43    ; 'C'
 EOR #$20    ; Toggle bit 5
-STA $0402   ; Display 'c'"
-  language="assembly"
-/>
+STA $0402   ; Display 'c'
+```
 
 ## Combining Operations
 
@@ -348,10 +340,10 @@ Create a program that demonstrates bit manipulation:
 4. Use XOR to toggle bit 0
 5. Display each result on screen
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Bit Manipulation Sequence"
-  code="; Start with %10110101 ($B5)
+**Practice Exercise - Bit Manipulation Sequence:**
+
+```assembly
+; Start with %10110101 ($B5)
 LDA #$B5    ; Load starting value
 STA $0400   ; Display original
 
@@ -367,9 +359,8 @@ STA $0402   ; Result: $F5 (%11110101)
 ; Reload and toggle bit 0
 LDA #$B5    ; Reload original  
 EOR #$01    ; Toggle bit 0
-STA $0403   ; Result: $B4 (%10110100)"
-  language="assembly"
-/>
+STA $0403   ; Result: $B4 (%10110100)
+```
 
 ## Common Bit Patterns
 

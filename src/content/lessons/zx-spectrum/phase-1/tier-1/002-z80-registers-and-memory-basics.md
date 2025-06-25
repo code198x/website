@@ -56,10 +56,10 @@ When you write `LD ($4000), A`, you're telling the Z80: "Take whatever is in the
 
 Let's write a program that puts a character on the ZX Spectrum screen:
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="First Z80 Memory Storage"
-  code="; Your first Z80 assembly program that stores data in memory
+**First Z80 Memory Storage:**
+
+```assembly
+; Your first Z80 assembly program that stores data in memory
 ; This program puts a character on the ZX Spectrum screen
 
 FirstMemoryProgram:
@@ -83,9 +83,8 @@ FirstMemoryProgram:
     LD ($5801), A       ; Store colour for position 1,0
     
     ; End the program
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 Run this program and you'll see two coloured blocks appear at the top-left of the ZX Spectrum screen!
 
@@ -124,10 +123,10 @@ The ZX Spectrum screen is organised in a unique way:
 - **Screen memory**: Starts at $4000, each byte represents one character
 - **Attribute memory**: Starts at $5800, each byte controls colour for one character position
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="ZX Spectrum Screen Memory Demo"
-  code="; Demonstration of ZX Spectrum screen memory organisation
+**ZX Spectrum Screen Memory Demo:**
+
+```assembly
+; Demonstration of ZX Spectrum screen memory organisation
 ; This program draws a pattern across the top of the screen
 
 ScreenMemoryDemo:
@@ -153,9 +152,8 @@ ColourLoop:
     INC HL              ; Move to next colour position
     DJNZ ColourLoop     ; Decrement B and jump if not zero
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Z80 Register Pairs Explained
 
@@ -211,10 +209,10 @@ LD L, 10            ; Column number
 LD (HL), $42        ; Store character
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Memory Access Patterns"
-  code="; Demonstrating different ways to access ZX Spectrum memory
+**Memory Access Patterns:**
+
+```assembly
+; Demonstrating different ways to access ZX Spectrum memory
 ; This program shows sequential and calculated memory access
 
 MemoryAccessDemo:
@@ -255,9 +253,8 @@ SequentialFill:
     LD A, %00000110     ; Yellow characters
     LD (HL), A          ; Colour for 'C'
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Key Z80 Memory Concepts
 
@@ -283,10 +280,10 @@ Understanding the memory map is crucial:
 
 Try this exercise to reinforce your understanding:
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Memory Practice Exercise"
-  code="; Practice Exercise: Create a simple pattern on screen
+**Memory Practice Exercise:**
+
+```assembly
+; Practice Exercise: Create a simple pattern on screen
 ; Try modifying this program to create different patterns
 
 PracticeExercise:
@@ -320,9 +317,8 @@ ColourSetter:
     RET
     
 ; Challenge: Can you modify this to create a larger pattern?
-; Try using loops to make the code more efficient!"
-  language="assembly"
-/>
+; Try using loops to make the code more efficient!
+```
 
 ## What You've Learned
 

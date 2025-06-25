@@ -50,10 +50,10 @@ C, C#, D, D#, E, F, F#, G, G#, A, A#, B
 **Sharps (#)**: Raise a note by a semitone
 **Flats (♭)**: Lower a note by a semitone (C# = D♭)
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Chromatic Scale Demo"
-  code="; Play chromatic scale (12 semitones)
+**Chromatic Scale Demo:**
+
+```assembly
+; Play chromatic scale (12 semitones)
 JSR play_chromatic_scale
 
 play_chromatic_scale:
@@ -111,9 +111,8 @@ delay_loop:
     BNE delay_loop
     RTS
 
-; Chromatic scale ascending!"
-  language="assembly"
-/>
+; Chromatic scale ascending!
+```
 
 ## Octaves and Frequency Relationships
 
@@ -163,10 +162,10 @@ G5  = 783.99 Hz
 G#5 = 830.61 Hz
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Octave Relationships"
-  code="; Demonstrate octave relationships
+**Octave Relationships:**
+
+```assembly
+; Demonstrate octave relationships
 JSR demo_octaves
 
 demo_octaves:
@@ -217,9 +216,8 @@ oct_delay_loop:
     BNE oct_delay_loop
     RTS
 
-; Same note (C) in four different octaves!"
-  language="assembly"
-/>
+; Same note (C) in four different octaves!
+```
 
 ## Complete Musical Note Table
 
@@ -254,10 +252,10 @@ NOTE_AS = 10
 NOTE_B  = 11
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Complete Note Table System"
-  code="; Create complete chromatic note table
+**Complete Note Table System:**
+
+```assembly
+; Create complete chromatic note table
 JSR setup_complete_note_table
 
 setup_complete_note_table:
@@ -350,9 +348,8 @@ test_chromatic:
 ; Play partial chromatic scale
 JSR test_chromatic
 
-; Complete chromatic note table working!"
-  language="assembly"
-/>
+; Complete chromatic note table working!
+```
 
 ## Musical Intervals and Harmony
 
@@ -390,10 +387,10 @@ play_c_major_chord:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Musical Intervals and Chords"
-  code="; Demonstrate musical intervals and chords
+**Musical Intervals and Chords:**
+
+```assembly
+; Demonstrate musical intervals and chords
 JSR demo_intervals_chords
 
 demo_intervals_chords:
@@ -496,9 +493,8 @@ chord_loop:
     BNE chord_loop
     RTS
 
-; C-F-G chord progression playing!"
-  language="assembly"
-/>
+; C-F-G chord progression playing!
+```
 
 ## Creating Scale Tables
 
@@ -610,10 +606,10 @@ Create a complete musical scale system with:
 4. Chord generation (major, minor, diminished)
 5. Scale and chord player functions
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Musical Scale System"
-  code="; Complete Musical Scale System
+**Practice: Musical Scale System:**
+
+```assembly
+; Complete Musical Scale System
 JSR init_musical_system
 
 init_musical_system:
@@ -800,9 +796,8 @@ JSR play_minor_scale
 LDA #$00        ; C root
 JSR play_major_chord
 
-; Complete musical scale system working!"
-  language="assembly"
-/>
+; Complete musical scale system working!
+```
 
 ## What You've Learned
 

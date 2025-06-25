@@ -50,15 +50,14 @@ CLC         ; Clear carry flag (make it 0)
 ADC #$05    ; Add 5: A = 16 + 5 + 0 = 21 ($15)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic Addition with ADC"
-  code="LDA #$10    ; Load 16 into A
+**Basic Addition with ADC:**
+
+```assembly
+LDA #$10    ; Load 16 into A
 CLC         ; Clear carry flag
 ADC #$05    ; Add 5: result = 21 ($15)
-STA $0400   ; Store result on screen (will show ASCII character)"
-  language="assembly"
-/>
+STA $0400   ; Store result on screen (will show ASCII character)
+```
 
 **Important**: Always use `CLC` (Clear Carry) before ADC unless you specifically want to include the carry!
 
@@ -90,10 +89,10 @@ ADC #$32    ; Add 50: result = 150
 STA $80     ; Store in Zero Page
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Addition Examples"
-  code="; Simple addition - convert '0' to '1'
+**Addition Examples:**
+
+```assembly
+; Simple addition - convert '0' to '1'
 LDA #$30    ; Load 48 ('0' character)
 CLC         ; Clear carry
 ADC #$01    ; Add 1: result = 49 ('1' character)
@@ -103,9 +102,8 @@ STA $0400   ; Display on screen
 LDA #$64    ; Load 100
 CLC         ; Clear carry  
 ADC #$32    ; Add 50: result = 150
-STA $0401   ; Store result (will show as ASCII character)"
-  language="assembly"
-/>
+STA $0401   ; Store result (will show as ASCII character)
+```
 
 ## When Addition Overflows
 
@@ -119,15 +117,14 @@ ADC #$02    ; Add 2: 255 + 2 = 257
             ; Carry flag = SET (overflow occurred)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Addition Overflow"
-  code="LDA #$FF    ; Load 255
+**Addition Overflow:**
+
+```assembly
+LDA #$FF    ; Load 255
 CLC         ; Clear carry
 ADC #$02    ; Add 2: 255 + 2 = 257, but A = $01, Carry = SET
-STA $0400   ; Store low byte ($01) on screen"
-  language="assembly"
-/>
+STA $0400   ; Store low byte ($01) on screen
+```
 
 The carry flag tells you that the result was larger than 8 bits!
 
@@ -141,15 +138,14 @@ SEC         ; Set carry flag (no borrow needed)
 SBC #$10    ; Subtract 16: A = 32 - 16 = 16
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic Subtraction with SBC"
-  code="LDA #$20    ; Load 32
+**Basic Subtraction with SBC:**
+
+```assembly
+LDA #$20    ; Load 32
 SEC         ; Set carry flag (no borrow)
 SBC #$10    ; Subtract 16: result = 16
-STA $0400   ; Store result on screen"
-  language="assembly"
-/>
+STA $0400   ; Store result on screen
+```
 
 **Important**: Always use `SEC` (Set Carry) before SBC unless you specifically want to include a borrow!
 
@@ -179,10 +175,10 @@ SBC #$32    ; Subtract 50: result = 50
 STA $0401   ; Store result
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Subtraction Examples"
-  code="; Simple subtraction - convert '5' to '4'
+**Subtraction Examples:**
+
+```assembly
+; Simple subtraction - convert '5' to '4'
 LDA #$35    ; Load 53 ('5' character)
 SEC         ; Set carry (no borrow)
 SBC #$01    ; Subtract 1: result = 52 ('4' character)
@@ -192,9 +188,8 @@ STA $0400   ; Display on screen
 LDA #$64    ; Load 100
 SEC         ; Set carry
 SBC #$32    ; Subtract 50: result = 50
-STA $0401   ; Store result"
-  language="assembly"
-/>
+STA $0401   ; Store result
+```
 
 ## When Subtraction Underflows
 
@@ -208,15 +203,14 @@ SBC #$10    ; Subtract 16: 5 - 16 = -11
             ; Carry flag = CLEAR (borrow occurred)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Subtraction Underflow"
-  code="LDA #$05    ; Load 5
+**Subtraction Underflow:**
+
+```assembly
+LDA #$05    ; Load 5
 SEC         ; Set carry
 SBC #$10    ; Subtract 16: 5 - 16 = -11, but A = $F5, Carry = CLEAR
-STA $0400   ; Store result ($F5) on screen"
-  language="assembly"
-/>
+STA $0400   ; Store result ($F5) on screen
+```
 
 The carry flag being clear tells you that a borrow was needed (result was negative).
 
@@ -238,10 +232,10 @@ ADC #$05    ; Add high byte + carry from previous operation
 STA $81     ; Store high byte result
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="16-bit Addition"
-  code="; Add $1234 + $0567 (16-bit addition)
+**16-bit Addition:**
+
+```assembly
+; Add $1234 + $0567 (16-bit addition)
 ; Low bytes first
 LDA #$34    ; Load $34 (low byte of $1234)
 CLC         ; Clear carry
@@ -252,9 +246,8 @@ STA $80     ; Store low byte result ($9B)
 LDA #$12    ; Load $12 (high byte of $1234)
 ADC #$05    ; Add $05 + carry from low byte
 STA $81     ; Store high byte result ($17)
-; Result: $179B stored as $81=$17, $80=$9B"
-  language="assembly"
-/>
+; Result: $179B stored as $81=$17, $80=$9B
+```
 
 ## Practical Example: Simple Calculator
 
@@ -285,10 +278,10 @@ ADC #$30    ; Convert to ASCII ('0' + result)
 STA $0404   ; Display result
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Simple On-Screen Calculator"
-  code="; Display: 3 + 2 = 5
+**Simple On-Screen Calculator:**
+
+```assembly
+; Display: 3 + 2 = 5
 LDA #$33    ; '3'
 STA $0400   
 LDA #$2B    ; '+'
@@ -303,9 +296,8 @@ LDA #$03    ; Numeric 3
 CLC         
 ADC #$02    ; Add numeric 2 = 5
 ADC #$30    ; Convert to ASCII: 5 + 48 = 53 ('5')
-STA $0404   ; Display result"
-  language="assembly"
-/>
+STA $0404   ; Display result
+```
 
 ## Practice Exercise
 
@@ -316,10 +308,10 @@ Create a program that:
 3. Converts the result to ASCII and displays it
 4. Uses Zero Page memory to store intermediate values
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Subtraction Calculator"
-  code="; Display: 8 - 3 = 5
+**Practice Exercise - Subtraction Calculator:**
+
+```assembly
+; Display: 8 - 3 = 5
 LDA #$38    ; '8'
 STA $0400   
 LDA #$2D    ; '-'
@@ -335,9 +327,8 @@ SEC         ; Set carry (no borrow)
 SBC #$03    ; Subtract numeric 3 = 5
 STA $80     ; Store in Zero Page
 ADC #$30    ; Convert to ASCII: 5 + 48 = 53 ('5')
-STA $0404   ; Display result"
-  language="assembly"
-/>
+STA $0404   ; Display result
+```
 
 ## Common Arithmetic Mistakes
 

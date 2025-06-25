@@ -522,10 +522,10 @@ PatternRotate:
 
 ### Flood Fill Algorithm
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Flood Fill Implementation"
-  code="; Flood fill algorithm for ZX Spectrum
+**Flood Fill Implementation:**
+
+```assembly
+; Flood fill algorithm for ZX Spectrum
 ; Uses stack-based approach for efficiency
 
 DISPLAY_FILE    EQU 16384
@@ -856,9 +856,8 @@ CircleNext:
     CALL FloodFill
     
     LD B, 255           ; Success
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Undo/Redo System
 
@@ -924,10 +923,10 @@ SaveUndoState:
 
 ### Implementing Undo/Redo
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Undo/Redo System"
-  code="; Complete undo/redo system for drawing
+**Undo/Redo System:**
+
+```assembly
+; Complete undo/redo system for drawing
 ; Demonstrates circular buffer approach
 
 DISPLAY_FILE    EQU 16384
@@ -1226,9 +1225,8 @@ Wait5:
     
     ; Return with success
     LD B, 255
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Advanced Drawing Features
 
@@ -1386,10 +1384,10 @@ ResetDirty:
 
 ## Complete Drawing Engine
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complete Drawing Engine"
-  code="; Professional drawing engine combining all features
+**Complete Drawing Engine:**
+
+```assembly
+; Professional drawing engine combining all features
 ; Demonstrates integrated brush, pattern, and undo system
 
 DISPLAY_FILE    EQU 16384
@@ -1614,9 +1612,8 @@ Random:
     ADD A, A
     XOR 45
     LD (RandomSeed), A
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Key Takeaways
 

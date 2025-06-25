@@ -55,14 +55,13 @@ LDX #$05        ; X = 5
 LDA $0400,X     ; Load from $0400 + 5 = $0405 (screen position 5)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Absolute Indexed with X"
-  code="LDX #$05        ; Set X to 5
+**Absolute Indexed with X:**
+
+```assembly
+LDX #$05        ; Set X to 5
 LDA #$48        ; Load 'H'
-STA $0400,X     ; Store at screen position 5 ($0400 + 5 = $0405)"
-  language="assembly"
-/>
+STA $0400,X     ; Store at screen position 5 ($0400 + 5 = $0405)
+```
 
 ### Absolute Indexed with Y Register ($address,Y)
 
@@ -74,14 +73,13 @@ LDY #$28        ; Y = 40 (one full screen row)
 LDA $0400,Y     ; Load from $0400 + 40 = $0428 (start of row 2)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Absolute Indexed with Y"
-  code="LDY #$28        ; Y = 40 (one screen row)
+**Absolute Indexed with Y:**
+
+```assembly
+LDY #$28        ; Y = 40 (one screen row)
 LDA #$57        ; Load 'W'
-STA $0400,Y     ; Store at start of row 2 ($0400 + 40 = $0428)"
-  language="assembly"
-/>
+STA $0400,Y     ; Store at start of row 2 ($0400 + 40 = $0428)
+```
 
 ## Zero Page Indexed Addressing
 
@@ -97,14 +95,13 @@ LDA $80,X       ; Load from $80 + 3 = $83
 
 **Advantage**: Faster than absolute indexed (fewer CPU cycles)
 
-<CodeRunner 
-  system="commodore-64"
-  title="Zero Page Indexed with X"
-  code="LDX #$03        ; X = 3
+**Zero Page Indexed with X:**
+
+```assembly
+LDX #$03        ; X = 3
 LDA #$42        ; Load 'B'
-STA $80,X       ; Store at $80 + 3 = $83 (fast zero page access)"
-  language="assembly"
-/>
+STA $80,X       ; Store at $80 + 3 = $83 (fast zero page access)
+```
 
 ### Zero Page Indexed with Y ($zp,Y)
 
@@ -116,14 +113,13 @@ LDY #$07        ; Y = 7
 STA $90,Y       ; Store at $90 + 7 = $97
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Zero Page Indexed with Y"
-  code="LDY #$07        ; Y = 7
+**Zero Page Indexed with Y:**
+
+```assembly
+LDY #$07        ; Y = 7
 LDA #$43        ; Load 'C'
-STA $90,Y       ; Store at $90 + 7 = $97 (fast zero page access)"
-  language="assembly"
-/>
+STA $90,Y       ; Store at $90 + 7 = $97 (fast zero page access)
+```
 
 ## Working with Arrays
 
@@ -144,10 +140,10 @@ LDA $80,X       ; Load Array[1] = 'B'
 STA $0400       ; Display on screen
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Working with Arrays"
-  code="; Create array in Zero Page
+**Working with Arrays:**
+
+```assembly
+; Create array in Zero Page
 LDA #$41        ; 'A'
 STA $80         ; Array[0] = 'A'
 LDA #$42        ; 'B'  
@@ -158,9 +154,8 @@ STA $82         ; Array[2] = 'C'
 ; Access array element
 LDX #$01        ; Index = 1
 LDA $80,X       ; Load Array[1] = 'B'
-STA $0400       ; Display 'B' on screen"
-  language="assembly"
-/>
+STA $0400       ; Display 'B' on screen
+```
 
 ## Screen Memory Manipulation
 
@@ -180,10 +175,10 @@ STA $0400,X     ; Position 2
 ; ... continue pattern
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Screen Memory with Indexed Addressing"
-  code="; Fill screen positions with different characters
+**Screen Memory with Indexed Addressing:**
+
+```assembly
+; Fill screen positions with different characters
 LDX #$00        ; Start at position 0
 LDA #$2A        ; '*'
 STA $0400,X     ; Screen position 0
@@ -194,9 +189,8 @@ STA $0400,X     ; Screen position 1
 
 LDX #$02        ; Position 2
 LDA #$3D        ; '='
-STA $0400,X     ; Screen position 2"
-  language="assembly"
-/>
+STA $0400,X     ; Screen position 2
+```
 
 ## Efficient Loop Patterns
 
@@ -213,10 +207,10 @@ DEX             ; Decrement index
 ; Repeat until X = 0
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Data Processing with Indexed Addressing"
-  code="; Setup source data
+**Data Processing with Indexed Addressing:**
+
+```assembly
+; Setup source data
 LDA #$48        ; 'H'
 STA $90         
 LDA #$45        ; 'E'
@@ -233,9 +227,8 @@ LDA $90,X       ; Load 'E'
 STA $0400,X     ; Store at screen[1]
 INX
 LDA $90,X       ; Load 'L'
-STA $0400,X     ; Store at screen[2]"
-  language="assembly"
-/>
+STA $0400,X     ; Store at screen[2]
+```
 
 ## Working with Screen Rows
 
@@ -260,10 +253,10 @@ LDA #$33        ; '3'
 STA $0400,Y     ; Third row
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Multi-Row Screen Display"
-  code="; Display on different screen rows
+**Multi-Row Screen Display:**
+
+```assembly
+; Display on different screen rows
 LDY #$00        ; Row 0
 LDA #$31        ; '1'
 STA $0400,Y     ; Display '1' on row 0
@@ -274,9 +267,8 @@ STA $0400,Y     ; Display '2' on row 1
 
 LDY #$50        ; Row 2 (80 = $50)
 LDA #$33        ; '3'
-STA $0400,Y     ; Display '3' on row 2"
-  language="assembly"
-/>
+STA $0400,Y     ; Display '3' on row 2
+```
 
 ## Data Table Lookups
 
@@ -297,10 +289,10 @@ LDA $A0,X       ; Load ColorTable[2] = Red
 STA $D020       ; Set border colour
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Color Lookup Table"
-  code="; Setup colour lookup table
+**Color Lookup Table:**
+
+```assembly
+; Setup colour lookup table
 LDA #$00        ; Black
 STA $A0         ; ColorTable[0]
 LDA #$01        ; White
@@ -311,9 +303,8 @@ STA $A2         ; ColorTable[2]
 ; Use indexed addressing to lookup colour
 LDX #$02        ; Want colour index 2
 LDA $A0,X       ; Load ColorTable[2] = Red ($02)
-STA $D020       ; Set border colour to red"
-  language="assembly"
-/>
+STA $D020       ; Set border colour to red
+```
 
 ## Comparing Addressing Modes
 
@@ -334,10 +325,10 @@ Create a program that:
 3. Creates a number table (1, 2, 3) in Zero Page ($C0, $C1, $C2)  
 4. Uses indexed addressing to display the numbers on screen row 2
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Arrays and Screen Display"
-  code="; Setup character array with initials
+**Practice Exercise - Arrays and Screen Display:**
+
+```assembly
+; Setup character array with initials
 LDA #$53        ; 'S'
 STA $B0         ; InitialsArray[0]
 LDA #$48        ; 'H'  
@@ -368,9 +359,8 @@ STA $C2         ; NumberArray[2]
 LDY #$28        ; Row 1 base (40 chars)
 LDX #$00        ; Array index
 LDA $C0,X       ; Load NumberArray[0]
-STA $0400,Y     ; Display at row 1, position 0"
-  language="assembly"
-/>
+STA $0400,Y     ; Display at row 1, position 0
+```
 
 ## Why Indexed Addressing Matters
 

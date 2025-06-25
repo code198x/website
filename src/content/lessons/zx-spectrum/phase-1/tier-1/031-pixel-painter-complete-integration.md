@@ -56,10 +56,10 @@ Spectrum Saga Architecture:
 
 ### Main Game Structure
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complete Spectrum Saga Application"
-  code="; Complete Spectrum Saga Application
+**Complete Spectrum Saga Application:**
+
+```assembly
+; Complete Spectrum Saga Application
 ; Integrates all systems into professional adventure game
 
 DISPLAY_FILE    EQU 16384
@@ -530,9 +530,8 @@ ClearScreen:
 EffectTimer:        DW 0
 AutoSaveTimer:      DB 180
 LastDrawX:          DB 255
-LastDrawY:          DB 255"
-  language="assembly"
-/>
+LastDrawY:          DB 255
+```
 
 ## Feature Integration
 
@@ -595,10 +594,10 @@ PatternShift:
 
 ### UI System Integration
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complete UI System"
-  code="; Complete user interface system
+**Complete UI System:**
+
+```assembly
+; Complete user interface system
 ; Professional UI with menus, tool palette, and status
 
 ; UI configuration
@@ -1019,9 +1018,8 @@ ToolNames:
     DB 'Rect', 0
     DB 'Circle', 0
     DB 'Fill', 0
-    DB 'Pick', 0"
-  language="assembly"
-/>
+    DB 'Pick', 0
+```
 
 ## Advanced Features Integration
 
@@ -1088,10 +1086,10 @@ UpdateSparkleEffect:
 
 ### File System Integration
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complete File System Integration"
-  code="; Complete file system integration
+**Complete File System Integration:**
+
+```assembly
+; Complete file system integration
 ; Professional save/load with all features
 
 ; File manager state
@@ -1472,12 +1470,8 @@ DrawTestContent:
 ExtendedHeader:     DS 64
 CompressedBuffer:   DS 8192
 CompressionType:    DB 1
-TestFilename:       DB "TESTPIC   "
-LoadErrorMsg:       DB "Load Failed!", 0
-SaveErrorMsg:       DB "Save Failed!", 0
-SaveChangesMsg:     DB "Save Changes?", 0"
-  language="assembly"
-/>
+TestFilename:       DB
+```
 
 ## Performance Optimization
 
@@ -1542,10 +1536,10 @@ FreeBuffer:
 
 ## Complete Integration Demo
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complete Spectrum Saga Integration"
-  code="; Complete Spectrum Saga - Final Integration Demo
+**Complete Spectrum Saga Integration:**
+
+```assembly
+; Complete Spectrum Saga - Final Integration Demo
 ; Shows all systems working together
 
 ; Main application constants
@@ -1881,9 +1875,8 @@ EndFrameTiming:
 ; Simple error display
 ShowErrorMessage:
     ; Would show error in status bar or dialog
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Quality Assurance
 
@@ -1934,10 +1927,10 @@ TestInputSystem:
 
 ### Complete System Validation
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Final System Validation"
-  code="; Final integration validation
+**Final System Validation:**
+
+```assembly
+; Final integration validation
 ; Comprehensive test of complete Spectrum Saga
 
 ; Validation framework
@@ -2311,9 +2304,8 @@ TestScreen:
 
 ; Storage
 TotalPasses:        DB 0
-TotalFailures:      DB 0"
-  language="assembly"
-/>
+TotalFailures:      DB 0
+```
 
 ## Key Takeaways
 

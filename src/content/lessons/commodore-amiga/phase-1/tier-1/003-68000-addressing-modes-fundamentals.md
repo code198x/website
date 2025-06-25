@@ -50,10 +50,10 @@ The 68000 offers 14 different addressing modes, organised into several categorie
 - **Absolute Short**: `$address` (16-bit)
 - **Absolute Long**: `$address` (32-bit)
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Basic Addressing Modes"
-  code="; Demonstration of fundamental 68000 addressing modes
+**Basic Addressing Modes:**
+
+```assembly
+; Demonstration of fundamental 68000 addressing modes
 ; Shows the most commonly used addressing techniques
 
 BasicAddressingDemo:
@@ -217,9 +217,8 @@ PlayerData:
     DC.W    0       ; Health
     DC.W    0       ; Score
     DC.B    0       ; Active flag
-    DC.B    0       ; Padding"
-  language="assembly"
-/>
+    DC.B    0       ; Padding
+```
 
 ## Advanced Addressing Modes
 
@@ -240,10 +239,10 @@ Position-independent addressing:
 - **PC Displaced**: `label(PC)`
 - **PC Indexed**: `label(PC,Xn)`
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Addressing Modes"
-  code="; Demonstration of advanced 68000 addressing modes
+**Advanced Addressing Modes:**
+
+```assembly
+; Demonstration of advanced 68000 addressing modes
 ; Shows sophisticated addressing techniques
 
 AdvancedAddressingDemo:
@@ -425,9 +424,8 @@ STRUCT_SIZE     EQU     16      ; Total size (with padding)
 
 ; Array of structures
 StructArray:
-    DS.B    STRUCT_SIZE*8       ; 8 structures"
-  language="assembly"
-/>
+    DS.B    STRUCT_SIZE*8       ; 8 structures
+```
 
 ## Memory Access Efficiency
 
@@ -630,10 +628,10 @@ NodeCount:          DC.L    0"
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Addressing Modes Practice"
-  code="; Practice Exercise: Amiga Sprite Management System
+**Addressing Modes Practice:**
+
+```assembly
+; Practice Exercise: Amiga Sprite Management System
 ; Use various addressing modes to manage sprite data efficiently
 
 SpriteManagementSystem:
@@ -879,9 +877,8 @@ DisplayListCount:   DC.L    0
 ; 1. Add sprite allocation/deallocation functions
 ; 2. Implement collision detection between sprites
 ; 3. Add sprite animation frame cycling
-; 4. Create sprite grouping/hierarchy system"
-  language="assembly"
-/>
+; 4. Create sprite grouping/hierarchy system
+```
 
 ## What You've Learned
 

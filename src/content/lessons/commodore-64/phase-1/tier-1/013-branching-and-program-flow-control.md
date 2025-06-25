@@ -89,10 +89,10 @@ STA $0400       ; Display "Y" for match
 Done:
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="BEQ and BNE Examples"
-  code="; Test equality
+**BEQ and BNE Examples:**
+
+```assembly
+; Test equality
 LDA #$42        ; Load 'B'
 CMP #$42        ; Compare with 'B'
 BEQ Match       ; Branch if equal
@@ -104,9 +104,8 @@ Match:
 ; Equal case  
 LDA #$59        ; 'Y' for Yes
 STA $0400       ; Display
-Done:"
-  language="assembly"
-/>
+Done:
+```
 
 ## Simple Decision Making
 
@@ -137,10 +136,10 @@ JMP Done
 Done:
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Multi-Way Decision Making"
-  code="; Test with different values
+**Multi-Way Decision Making:**
+
+```assembly
+; Test with different values
 LDA #$02        ; Try value 2
 CMP #$01        ; Is it 1?
 BEQ ShowOne     
@@ -161,9 +160,8 @@ LDA #$32        ; '2'
 STA $0400
 ; Fall through to Done
 
-Done:"
-  language="assembly"
-/>
+Done:
+```
 
 ## Your First Loop
 
@@ -182,10 +180,10 @@ Loop:
 ; Loop ends when X = 5
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Simple Counting Loop"
-  code="; Count from 0 to 4 and display
+**Simple Counting Loop:**
+
+```assembly
+; Count from 0 to 4 and display
 LDX #$00        ; Start at 0
 Loop:
     TXA         ; Copy X to A
@@ -195,9 +193,8 @@ Loop:
     INX         ; Increment counter  
     CPX #$05    ; Compare with 5
     BNE Loop    ; Continue if not 5
-; Displays: 01234"
-  language="assembly"
-/>
+; Displays: 01234
+```
 
 ## Carry Flag Branching
 
@@ -222,10 +219,10 @@ STA $0400
 Done:
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Overflow Detection with BCC/BCS"
-  code="; Test arithmetic overflow
+**Overflow Detection with BCC/BCS:**
+
+```assembly
+; Test arithmetic overflow
 LDA #$FF        ; 255
 CLC
 ADC #$02        ; Add 2 (causes overflow)
@@ -239,9 +236,8 @@ JMP Done
 NoOverflow:
 LDA #$4E        ; 'N' for No overflow  
 STA $0400
-Done:"
-  language="assembly"
-/>
+Done:
+```
 
 ## Negative Flag Branching
 
@@ -263,10 +259,10 @@ STA $0400
 Done:
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Positive/Negative Testing"
-  code="; Test sign of value
+**Positive/Negative Testing:**
+
+```assembly
+; Test sign of value
 LDA #$80        ; Load $80 (negative in signed arithmetic)
 BMI Negative    ; Branch if bit 7 set
 
@@ -278,9 +274,8 @@ JMP Done
 Negative:
 LDA #$2D        ; '-'
 STA $0400
-Done:"
-  language="assembly"
-/>
+Done:
+```
 
 ## Building Complex Loops
 
@@ -300,10 +295,10 @@ FillLoop:
 ; Loop ends when we reach screen edge
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Screen Filling Loop"
-  code="; Fill first row with stars
+**Screen Filling Loop:**
+
+```assembly
+; Fill first row with stars
 LDX #$00        ; Start position
 LDA #$2A        ; '*' character
 
@@ -313,9 +308,8 @@ FillLoop:
     CPX #$0A        ; Stop at position 10 (for demo)
     BCC FillLoop    ; Continue if X < 10
 
-; Result: **********"
-  language="assembly"
-/>
+; Result: **********
+```
 
 ## Nested Loops
 
@@ -340,10 +334,10 @@ RowLoop:
     BNE RowLoop     ; Continue outer loop
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Nested Loop Example"
-  code="; Simple nested loop demonstration
+**Nested Loop Example:**
+
+```assembly
+; Simple nested loop demonstration
 LDY #$00        ; Outer counter
 
 OuterLoop:
@@ -361,9 +355,8 @@ OuterLoop:
     INY         ; Next outer iteration
     CPY #$02    ; 2 iterations
     BNE OuterLoop
-; Result shows pattern based on counters"
-  language="assembly"
-/>
+; Result shows pattern based on counters
+```
 
 ## Conditional Subroutine Calls
 
@@ -430,10 +423,10 @@ STA $0400
 Done:
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Menu System Simulation"
-  code="; Simulate menu selection
+**Menu System Simulation:**
+
+```assembly
+; Simulate menu selection
 LDA #$32        ; Simulate choosing option '2'
 CMP #$31        ; Option 1?
 BEQ Option1
@@ -459,9 +452,8 @@ JMP Done
 Option3:
 LDA #$43        ; 'C'
 STA $0400
-Done:"
-  language="assembly"
-/>
+Done:
+```
 
 ## Branch Range Limitations
 
@@ -497,10 +489,10 @@ Create a program that:
 3. After the loop, displays "DONE" message
 4. Uses proper branching and flow control
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Complete Loop with Branching"
-  code="; Complete counting program with branching
+**Practice Exercise - Complete Loop with Branching:**
+
+```assembly
+; Complete counting program with branching
 LDX #$00        ; Initialize counter
 
 CountLoop:
@@ -525,9 +517,8 @@ CountLoop:
     LDA #$45        ; 'E'
     STA $0408
 
-; Program complete - displays: 01234DONE"
-  language="assembly"
-/>
+; Program complete - displays: 01234DONE
+```
 
 ## Flow Control Best Practices
 

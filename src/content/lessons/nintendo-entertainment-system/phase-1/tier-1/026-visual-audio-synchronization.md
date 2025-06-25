@@ -101,10 +101,10 @@ StartSyncEvent:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Basic Audio-Visual Synchronization"
-  code="; Frame-based synchronization demonstration
+**Basic Audio-Visual Synchronization:**
+
+```assembly
+; Frame-based synchronization demonstration
 Main:
     JSR InitSync
     
@@ -280,9 +280,8 @@ VisualPhase: .byte $00
 CurrentFreq: .byte $80
 
 ; Sprite data
-SpriteData: .byte $FF, $01, $00, $80"
-  language="assembly"
-/>
+SpriteData: .byte $FF, $01, $00, $80
+```
 
 ## Beat-Synchronized Visual Effects
 
@@ -520,10 +519,10 @@ NoteTimer: .byte $00
 NoteActive: .byte $00
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Musical Note Visualization"
-  code="; Musical note visualization with audio sync
+**Musical Note Visualization:**
+
+```assembly
+; Musical note visualization with audio sync
 Main:
     JSR InitMusic
     
@@ -709,9 +708,8 @@ NoteActive: .byte $00
 SequenceIndex: .byte $00
 
 ; Sprite data
-SpriteData: .byte $FF, $10, $00, $30"
-  language="assembly"
-/>
+SpriteData: .byte $FF, $10, $00, $30
+```
 
 ## Rhythm-Based Animation
 
@@ -960,10 +958,10 @@ Create a complete audio-visual synchronization system that demonstrates all conc
 4. Include rhythm-based animations that follow tempo
 5. Build interactive feedback that responds to input with coordinated audio-visual responses
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Audio-Visual Synchronization"
-  code="; Complete audio-visual synchronization demonstration
+**Practice: Complete Audio-Visual Synchronization:**
+
+```assembly
+; Complete audio-visual synchronization demonstration
 Main:
     JSR InitAudioVisual
     
@@ -1424,9 +1422,8 @@ SpriteData:
     .byte $FF, $25, $01, $80  ; Input sprite 4
     .byte $FF, $26, $02, $80  ; Direction sprite 5
     .byte $FF, $20, $03, $80  ; Note sprite 6
-    .byte $FF, $FF, $FF, $FF  ; Unused sprite 7"
-  language="assembly"
-/>
+    .byte $FF, $FF, $FF, $FF  ; Unused sprite 7
+```
 
 ## What You've Learned
 

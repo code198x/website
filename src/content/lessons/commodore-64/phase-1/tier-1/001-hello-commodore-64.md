@@ -156,6 +156,78 @@ Now it's your turn! Write assembly instructions to:
 
 Try this practice exercise - notice how the register values change as each instruction executes:
 
+## Try It Yourself! 
+
+Ready to run this code on a real assembler? Here's how to get started:
+
+### 1. Set Up Your Environment
+
+First, you'll need an assembler and emulator. **[Follow our setup guide](/setup)** for detailed instructions, or use these quick commands:
+
+```bash
+# macOS (using Homebrew)
+brew install acme vice
+
+# Windows (using Chocolatey) 
+choco install acme-crossassembler vice
+
+# Linux (Ubuntu/Debian)
+sudo apt install acme vice
+```
+
+### 2. Create Your First Program
+
+Create a file called `hello.asm`:
+
+**hello.asm:**
+```nasm
+; Your first C64 assembly program
+* = $0801
+
+; BASIC stub (makes program runnable)
+!byte $0c, $08, $0a, $00, $9e, $20, $32, $30, $36, $34, $00, $00, $00
+
+; Your assembly code starts here
+start:
+    lda #$41        ; Load 'A' into accumulator
+    ldx #$05        ; Load 5 into X register
+    ldy #$0a        ; Load 10 into Y register
+    
+    ; Optional: infinite loop to examine registers
+loop:
+    jmp loop        ; Jump to itself (stops program)
+```
+
+### 3. Assemble and Run
+
+```bash
+# Assemble your program
+acme -f cbm -o hello.prg hello.asm
+
+# Run in VICE emulator
+x64sc hello.prg
+
+# In the emulator:
+# 1. Type: RUN
+# 2. Press Alt+H to open monitor/debugger
+# 3. Type: r (to see register values)
+# 4. Type: x (to exit monitor)
+```
+
+### 4. What You Should See
+
+In the VICE monitor, you should see:
+```
+(C:$080d)   A:41 X:05 Y:0a SP:f9 
+```
+
+This shows:
+- **A register**: $41 (which is 'A')
+- **X register**: $05 (which is 5)  
+- **Y register**: $0a (which is 10)
+
+**Congratulations!** You've just run your first 6502 assembly program!
+
 ## What You've Learned
 
 In this foundational lesson, you've discovered:
@@ -169,16 +241,16 @@ In this foundational lesson, you've discovered:
 
 ## Want to Code Along?
 
-Ready to try assembly programming yourself? Download our **professional development environment** that includes:
+Ready to try assembly programming yourself? Our setup guide includes everything you need:
 
-- 🛠️ **Authentic assemblers** (CA65, ACME) used by real C64 developers
-- 💻 **VS Code integration** with one-click builds and debugging
-- 📚 **16 example programs** from Hello World to advanced demos
-- 🎮 **Emulator launchers** to test your programs instantly
+- 🛠️ **Authentic assemblers** (ACME, KickAssembler) used by real C64 developers
+- 💻 **Cross-platform instructions** for Windows, macOS, and Linux
+- 📚 **Complete workflow** from writing code to testing in emulators
+- 🎮 **VICE emulator setup** with debugging instructions
 
-**[⬇️ Download Development Environment](/download)** - Set up in 30 seconds!
+**[🔧 Get Started with Setup Guide](/setup)** - Choose your system and follow along!
 
-Or continue with our **interactive lessons** right here in your browser.
+Already have your environment set up? Continue with our **interactive lessons** right here in your browser.
 
 ## Looking Ahead
 

@@ -70,10 +70,10 @@ Row 2: $4040-$405F (32 bytes)
 Row 7: $40E0-$40FF (32 bytes)
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Basic Screen Memory Access"
-  code="; Draw on the top-left character cell
+**Basic Screen Memory Access:**
+
+```assembly
+; Draw on the top-left character cell
 LD HL, $4000     ; Point to top-left of screen
 LD A, %11111111  ; All pixels on
 LD (HL), A       ; Draw top line of character cell
@@ -81,9 +81,8 @@ LD (HL), A       ; Draw top line of character cell
 ; Draw on next line of same character cell  
 LD HL, $4020     ; Second pixel row of first character cell
 LD A, %10000001  ; Border pattern
-LD (HL), A       ; Draw second line"
-  language="assembly"
-/>
+LD (HL), A       ; Draw second line
+```
 
 ## Understanding Character Cells
 
@@ -113,10 +112,10 @@ To find the screen address for any pixel position:
 2. **Find the row within third**: Y mod 8  
 3. **Calculate address**: $4000 + (third × $800) + (row × $20) + X
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Drawing at Specific Character Positions"
-  code="; Draw at character position (5, 3)
+**Drawing at Specific Character Positions:**
+
+```assembly
+; Draw at character position (5, 3)
 ; Y=3, so third=0, row=3, X=5
 ; Address = $4000 + (0 × $800) + (3 × $20) + 5 = $4065
 LD HL, $4065     ; Character position (5,3)
@@ -128,9 +127,8 @@ LD (HL), A
 ; Address = $4000 + (1 × $800) + (4 × $20) + 10 = $488A
 LD HL, $488A     ; Character position (10,12)
 LD A, %11000011  ; Different pattern
-LD (HL), A"
-  language="assembly"
-/>
+LD (HL), A
+```
 
 ## Drawing Complete Characters
 
@@ -150,10 +148,10 @@ LD (IX+$C0), %01000010  ; Row 6:  █    █
 LD (IX+$E0), %00111100  ; Row 7:   ████  
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Drawing a Complete Character"
-  code="; Draw a diamond pattern at position (2,2)
+**Drawing a Complete Character:**
+
+```assembly
+; Draw a diamond pattern at position (2,2)
 LD IX, $4042     ; Base address for position (2,2)
 
 LD (IX+$00), %00010000  ; Row 0:    █    
@@ -163,9 +161,8 @@ LD (IX+$60), %11111110  ; Row 3: ███████
 LD (IX+$80), %11111110  ; Row 4: ███████ 
 LD (IX+$A0), %01111100  ; Row 5:  █████  
 LD (IX+$C0), %00111000  ; Row 6:   ███   
-LD (IX+$E0), %00010000  ; Row 7:    █    "
-  language="assembly"
-/>
+LD (IX+$E0), %00010000  ; Row 7:    █
+```
 
 ## Attribute Memory ($5800-$5AFF)
 
@@ -194,10 +191,10 @@ Attribute addresses are much simpler than pixel addresses:
 **For character position (X, Y):**
 - **Address** = $5800 + (Y × 32) + X
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Setting Character Colors"
-  code="; Set colors for character at position (5,3)
+**Setting Character Colors:**
+
+```assembly
+; Set colors for character at position (5,3)
 ; Attribute address = $5800 + (3 × 32) + 5 = $5865
 LD HL, $5865     ; Attribute for position (5,3)
 LD A, %00111001  ; Bright yellow ink on blue paper
@@ -207,9 +204,8 @@ LD (HL), A
 ; Attribute address = $5800 + (12 × 32) + 10 = $5A0A  
 LD HL, $5A0A     ; Attribute for position (10,12)
 LD A, %01000010  ; Bright red ink on black paper
-LD (HL), A"
-  language="assembly"
-/>
+LD (HL), A
+```
 
 ## Creating Colored Graphics
 
@@ -234,10 +230,10 @@ LD A, %00100100  ; Green ink on black paper
 LD (HL), A
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Colored Character Block"
-  code="; Draw colored character at position (4,4)
+**Colored Character Block:**
+
+```assembly
+; Draw colored character at position (4,4)
 ; Pixel address calculation: Y=4, third=0, row=4, X=4
 ; Address = $4000 + (0 × $800) + (4 × $20) + 4 = $4084
 LD IX, $4084     ; Pixel base for position (4,4)
@@ -255,9 +251,8 @@ LD (IX+$E0), %01010101  ; Row 7:  █ █ █ █
 ; Set bright cyan ink on black paper
 LD HL, $5884     ; Attribute address = $5800 + (4×32) + 4
 LD A, %01000101  ; Bright cyan on black
-LD (HL), A"
-  language="assembly"
-/>
+LD (HL), A
+```
 
 ## Screen Memory Efficiency Tips
 
@@ -315,10 +310,10 @@ Create a simple pattern that demonstrates your understanding:
 2. Give each character cell different colors
 3. Create a border pattern around the grid
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Pattern Grid"
-  code="; Draw 3×3 pattern grid starting at (10,5)
+**Practice Exercise - Pattern Grid:**
+
+```assembly
+; Draw 3×3 pattern grid starting at (10,5)
 ; Character (10,5) - top-left
 LD IX, $40CA     ; Pixel address for (10,5)
 LD (IX+$00), %11110000  ; Half-filled pattern
@@ -348,9 +343,8 @@ LD A, %00000100  ; Green on black
 LD (HL), A
 
 ; Add more patterns for (12,5), (10,6), (11,6), etc.
-; Try different patterns and colors!"
-  language="assembly"
-/>
+; Try different patterns and colors!
+```
 
 ## The Attribute Color Clash
 

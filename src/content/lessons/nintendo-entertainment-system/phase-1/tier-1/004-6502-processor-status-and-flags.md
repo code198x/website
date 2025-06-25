@@ -415,10 +415,10 @@ Found:
     ; Found the value!
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Smart Loops with Flags"
-  code="; Demonstration of using flags in loops
+**Smart Loops with Flags:**
+
+```assembly
+; Demonstration of using flags in loops
 ; This program shows practical loop patterns
 
 SmartLoopsDemo:
@@ -557,19 +557,8 @@ TestData:
 TestDataSize = 6
 
 MessageString:
-    .byte "Hello World", $00  ; Null-terminated string
-
-NumberArray:
-    .byte 15, 42, 8, 93, 27, 61, 7, 88
-NumberArraySize = 8
-
-Block1:
-    .byte $10, $20, $30, $40
-Block2:
-    .byte $10, $20, $30, $40
-BlockSize = 4"
-  language="assembly"
-/>
+    .byte
+```
 
 ## Advanced Flag Techniques
 
@@ -594,10 +583,10 @@ BCS TooBig      ; Branch if A >= 21
 ; A is between 10 and 20
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Advanced Flag Techniques"
-  code="; Advanced techniques using 6502 flags
+**Advanced Flag Techniques:**
+
+```assembly
+; Advanced techniques using 6502 flags
 ; This program demonstrates complex decision making
 
 AdvancedFlagsDemo:
@@ -812,9 +801,8 @@ Object2Height:  .byte $16
 
 GameFlags:      .byte %00000010  ; Bit 1 set (power-up active)
 ButtonState:    .byte %10000001  ; Left + A button pressed
-LastButtonState: .byte %00000000  ; No buttons last frame"
-  language="assembly"
-/>
+LastButtonState: .byte %00000000  ; No buttons last frame
+```
 
 ## Practice Exercise
 

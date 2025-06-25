@@ -413,10 +413,10 @@ RestoreSystem:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Integrated Memory and Addressing Demonstration"
-  code="; Simplified version demonstrating key integration concepts
+**Integrated Memory and Addressing Demonstration:**
+
+```assembly
+; Simplified version demonstrating key integration concepts
 
 ; Zero page optimisation (Lesson 14)
 SpriteX    = $80
@@ -470,9 +470,8 @@ SkipUpdate:
     ADC #$01        ; Colors 1-4
     STA $D800,X     ; Set character colour
     
-    JMP MainLoop    ; Continue animation"
-  language="assembly"
-/>
+    JMP MainLoop    ; Continue animation
+```
 
 ## Advanced Programming Patterns Integration
 

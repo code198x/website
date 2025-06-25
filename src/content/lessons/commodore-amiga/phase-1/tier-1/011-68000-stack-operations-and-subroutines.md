@@ -47,16 +47,15 @@ MOVE.L #$00081000, A7    ; Initialize stack at address $81000
 MOVE.L #$00081000, SP    ; SP is an alias for A7
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Stack Pointer Initialization"
-  code="; Initialize the stack pointer
+**Stack Pointer Initialization:**
+
+```assembly
+; Initialize the stack pointer
 MOVE.L #$00081000, A7    ; Stack starts at $81000
 
 ; The stack is now ready for use
-; All stack operations will use A7 automatically"
-  language="assembly"
-/>
+; All stack operations will use A7 automatically
+```
 
 ## Basic Stack Operations
 
@@ -69,10 +68,10 @@ MOVE.W D0, -(A7)    ; Push D0 onto stack (pre-decrement)
 MOVE.W (A7)+, D1    ; Pop from stack into D1 (post-increment)
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Manual Stack Push and Pop"
-  code="; Setup stack
+**Manual Stack Push and Pop:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 ; Push values onto stack
@@ -88,9 +87,8 @@ MOVE.W D0, -(A7)    ; Push 300
 ; Pop values from stack
 MOVE.W (A7)+, D1    ; Pop 300 into D1
 MOVE.W (A7)+, D2    ; Pop 200 into D2  
-MOVE.W (A7)+, D3    ; Pop 100 into D3"
-  language="assembly"
-/>
+MOVE.W (A7)+, D3    ; Pop 100 into D3
+```
 
 ## Subroutine Calls with BSR and RTS
 
@@ -108,10 +106,10 @@ SUBROUTINE_NAME:
     RTS                ; Return to caller
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Basic Subroutine Call"
-  code="; Setup stack
+**Basic Subroutine Call:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 ; Main program
@@ -130,18 +128,17 @@ MULTIPLY_BY_2:
     RTS             ; Return to caller
 
 END_PROGRAM:
-    ; Program ends here"
-  language="assembly"
-/>
+    ; Program ends here
+```
 
 ## Parameter Passing via Registers
 
 The simplest way to pass parameters is through registers:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Parameter Passing via Registers"
-  code="; Setup stack
+**Parameter Passing via Registers:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 ; Calculate area of rectangle (width * height)
@@ -159,18 +156,17 @@ CALCULATE_AREA:
     MULU.W D1, D2   ; Multiply by height
     RTS             ; Return with result in D2
 
-END_PROGRAM:"
-  language="assembly"
-/>
+END_PROGRAM:
+```
 
 ## Parameter Passing via Stack
 
 For complex functions, parameters can be passed on the stack:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Stack Parameter Passing"
-  code="; Setup stack
+**Stack Parameter Passing:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 ; Calculate volume of box (width * height * depth)
@@ -193,18 +189,17 @@ CALCULATE_VOLUME:
     ; Result in D0
     RTS
 
-END_PROGRAM:"
-  language="assembly"
-/>
+END_PROGRAM:
+```
 
 ## Local Variables Using Stack Frames
 
 Professional subroutines often need local variables. Create a stack frame:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Stack Frame with Local Variables"
-  code="; Setup stack
+**Stack Frame with Local Variables:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 ; Call function with local variables
@@ -246,9 +241,8 @@ FACTORIAL_DONE:
     UNLK A6             ; Destroy stack frame
     RTS
 
-END_PROGRAM:"
-  language="assembly"
-/>
+END_PROGRAM:
+```
 
 ## The LINK and UNLK Instructions
 
@@ -265,10 +259,10 @@ The LINK instruction:
 2. Copies A7 (stack pointer) to A6 (frame pointer)
 3. Subtracts the displacement from A7 (allocates local space)
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Understanding LINK and UNLK"
-  code="; Setup stack
+**Understanding LINK and UNLK:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 BSR DEMO_FUNCTION
@@ -293,18 +287,17 @@ DEMO_FUNCTION:
     UNLK A6         ; Restore stack and A6
     RTS
 
-END_PROGRAM:"
-  language="assembly"
-/>
+END_PROGRAM:
+```
 
 ## Nested Subroutine Calls
 
 The stack naturally handles nested subroutine calls:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Nested Subroutine Calls"
-  code="; Setup stack
+**Nested Subroutine Calls:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 ; Main program calls Function A, which calls Function B
@@ -323,18 +316,17 @@ FUNCTION_B:
     RTS                 ; Return to Function A
 
 END_PROGRAM:
-    ; Final result: (10 * 3) + 5 = 35"
-  language="assembly"
-/>
+    ; Final result: (10 * 3) + 5 = 35
+```
 
 ## Preserving Registers in Subroutines
 
 Good subroutines preserve registers they modify:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Register Preservation"
-  code="; Setup stack
+**Register Preservation:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 ; Main program has important data in registers
@@ -364,9 +356,8 @@ SAFE_MULTIPLY:
     
     RTS
 
-END_PROGRAM:"
-  language="assembly"
-/>
+END_PROGRAM:
+```
 
 ## Register Save/Restore with MOVEM
 
@@ -378,10 +369,10 @@ MOVEM.L D0-D3/A0-A2, -(A7)    ; Save multiple registers
 MOVEM.L (A7)+, D0-D3/A0-A2    ; Restore multiple registers
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Multiple Register Save/Restore"
-  code="; Setup stack
+**Multiple Register Save/Restore:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 ; Setup some register values
@@ -412,18 +403,17 @@ COMPLEX_FUNCTION:
     
     RTS
 
-END_PROGRAM:"
-  language="assembly"
-/>
+END_PROGRAM:
+```
 
 ## Recursive Subroutines
 
 The stack enables recursive programming:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Recursive Fibonacci Function"
-  code="; Setup stack
+**Recursive Fibonacci Function:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 ; Calculate Fibonacci number F(6)
@@ -464,18 +454,17 @@ FIBONACCI:
 FIB_RETURN:
     RTS
 
-END_PROGRAM:"
-  language="assembly"
-/>
+END_PROGRAM:
+```
 
 ## Practice Exercise: String Length Function
 
 Create a subroutine that calculates the length of a null-terminated string:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: String Length Subroutine"
-  code="; Setup stack
+**Practice: String Length Subroutine:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 ; Test the string length function
@@ -506,18 +495,17 @@ LENGTH_DONE:
 TEST_STRING:
     DC.B 'Hello Amiga World!',0
 
-END_PROGRAM:"
-  language="assembly"
-/>
+END_PROGRAM:
+```
 
 ## Stack-Based Function Calling Convention
 
 Professional assembly often uses calling conventions:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Professional Calling Convention Example"
-  code="; Setup stack
+**Professional Calling Convention Example:**
+
+```assembly
+; Setup stack
 MOVE.L #$00081000, A7
 
 ; Call function using standard convention
@@ -544,9 +532,8 @@ BOX_VOLUME:
     UNLK A6             ; Destroy stack frame
     RTS                 ; Return result in D0
 
-END_PROGRAM:"
-  language="assembly"
-/>
+END_PROGRAM:
+```
 
 ## What You've Learned
 

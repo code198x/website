@@ -72,10 +72,10 @@ Color index = 1101 binary = 13 decimal = COLOR13 register
 
 Understanding memory layout is crucial for efficient graphics programming:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Bitplane Memory Layout Demonstration"
-  code="; Bitplane memory organization example
+**Bitplane Memory Layout Demonstration:**
+
+```assembly
+; Bitplane memory organization example
 ; Each bitplane is 320x200 pixels = 8000 bytes
 
 ; Calculate bitplane size
@@ -109,18 +109,17 @@ SetupBitplanes:
     RTS
 
 GRAPHICS_MEM:
-    DS.B    BITPLANE_SIZE * 4   ; Reserve space for 4 bitplanes"
-  language="assembly"
-/>
+    DS.B    BITPLANE_SIZE * 4   ; Reserve space for 4 bitplanes
+```
 
 ## Screen Mode Configuration
 
 The BPLCON registers control how bitplanes are displayed:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Screen Mode Configuration"
-  code="; Configure various screen modes using BPLCON registers
+**Advanced Screen Mode Configuration:**
+
+```assembly
+; Configure various screen modes using BPLCON registers
 
 ; Standard 16-color mode (4 bitplanes)
 Setup16ColorMode:
@@ -177,9 +176,8 @@ SetupEHBMode:
     MOVE.W  #$6200, $100(A6)    ; 6 bitplanes, color (EHB automatic)
     
     ; Colors 32-63 are half brightness of 0-31
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Efficient Bitplane Drawing Routines
 
@@ -328,10 +326,10 @@ NextPlaneLine:
 
 The modulo registers enable powerful scrolling effects:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Bitplane Scrolling Using Modulo"
-  code="; Advanced scrolling using bitplane modulo
+**Bitplane Scrolling Using Modulo:**
+
+```assembly
+; Advanced scrolling using bitplane modulo
 
 ; Smooth horizontal scrolling
 SmoothHScroll:
@@ -409,18 +407,17 @@ SetupInterleavedBitplanes:
 
 ScrollX:    DC.W    0
 INTERLEAVED_MEM:
-    DS.B    BITPLANE_SIZE * 4   ; Space for interleaved bitplanes"
-  language="assembly"
-/>
+    DS.B    BITPLANE_SIZE * 4   ; Space for interleaved bitplanes
+```
 
 ## Advanced Graphics Techniques
 
 Implement professional graphics effects using bitplane manipulation:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Professional Bitplane Effects"
-  code="; Advanced bitplane manipulation techniques
+**Professional Bitplane Effects:**
+
+```assembly
+; Advanced bitplane manipulation techniques
 
 ; Color cycling using bitplane rotation
 ColorCycle:
@@ -560,18 +557,17 @@ DisplayBuffer:
 FrontBuffer:    DC.L    0
 BackBuffer:     DC.L    0
 ScreenBuffer1:  DS.B    BITPLANE_SIZE * 4
-ScreenBuffer2:  DS.B    BITPLANE_SIZE * 4"
-  language="assembly"
-/>
+ScreenBuffer2:  DS.B    BITPLANE_SIZE * 4
+```
 
 ## Practice Exercise: Create a Bitplane Effects Demo
 
 Build a demonstration showcasing various bitplane techniques:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Bitplane Effects Demonstration"
-  code="; Complete bitplane effects demonstration
+**Practice: Bitplane Effects Demonstration:**
+
+```assembly
+; Complete bitplane effects demonstration
 ; Combine multiple techniques in an interactive demo
 
 BitplaneDemo:
@@ -723,9 +719,8 @@ DiagonalPattern:    DS.B    8
 CheckerPattern:     DS.B    8
 
 ; Execute the demo
-BSR     BitplaneDemo"
-  language="assembly"
-/>
+BSR     BitplaneDemo
+```
 
 ## What You've Learned
 

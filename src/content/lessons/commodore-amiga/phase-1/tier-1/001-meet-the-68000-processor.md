@@ -96,13 +96,11 @@ This instruction means:
 - **#$1234**: The immediate value $1234 (4660 in decimal)
 - **D0**: Into data register 0
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Your First 68000 Assembly Instruction"
-  code="MOVE.W #$1234, D0"
-  autoRun={false}
-  language="assembly"
-/>
+**Your First 68000 Assembly Instruction:**
+
+```nasm
+MOVE.W #$1234, D0
+```
 
 ## Different Sizes, Same Register
 
@@ -114,14 +112,13 @@ MOVE.W #$ABCD, D0      ; Changes lower 16 bits, D0 = $1234ABCD
 MOVE.B #$EF, D0        ; Changes lower 8 bits, D0 = $1234ABEF
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Different Sizes with Same Register"
-  code="MOVE.L #$12345678, D0  ; 32-bit: D0 = $12345678
+**Different Sizes with Same Register:**
+
+```nasm
+MOVE.L #$12345678, D0  ; 32-bit: D0 = $12345678
 MOVE.W #$ABCD, D0      ; 16-bit: D0 = $1234ABCD  
-MOVE.B #$EF, D0        ; 8-bit:  D0 = $1234ABEF"
-  language="assembly"
-/>
+MOVE.B #$EF, D0        ; 8-bit:  D0 = $1234ABEF
+```
 
 This flexibility allows precise control over data manipulation!
 
@@ -137,16 +134,15 @@ MOVE.L #$12345, D3   ; 32-bit counter
 MOVE.B #$FF, D4      ; Byte flag (255 = on)
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Using Multiple Data Registers"
-  code="MOVE.W #$1000, D0    ; X coordinate = 4096
+**Using Multiple Data Registers:**
+
+```nasm
+MOVE.W #$1000, D0    ; X coordinate = 4096
 MOVE.W #$0080, D1    ; Y coordinate = 128
 MOVE.W #$001F, D2    ; Red colour = 31
 MOVE.L #$12345, D3   ; Counter = 74565
-MOVE.B #$FF, D4      ; Flag = 255 (on)"
-  language="assembly"
-/>
+MOVE.B #$FF, D4      ; Flag = 255 (on)
+```
 
 ## Address Registers for Memory
 
@@ -158,14 +154,13 @@ MOVE.L #$00DFF000, A1    ; Point to custom chip registers
 MOVE.L #$00080000, A2    ; Point to program data
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Address Registers for Memory Pointers"
-  code="MOVE.L #$000C0000, A0    ; Graphics memory address
+**Address Registers for Memory Pointers:**
+
+```nasm
+MOVE.L #$000C0000, A0    ; Graphics memory address
 MOVE.L #$00DFF000, A1    ; Custom chips address  
-MOVE.L #$00080000, A2    ; Program data address"
-  language="assembly"
-/>
+MOVE.L #$00080000, A2    ; Program data address
+```
 
 These addresses point to important areas in Amiga memory!
 
@@ -180,13 +175,12 @@ MOVE.W #$0F00, (A0)      ; Store $0F00 at the memory A0 points to
 
 The `(A0)` syntax means "the memory location that A0 points to" - this is **indirect addressing**!
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Indirect Memory Access"
-  code="MOVE.L #$000C0000, A0    ; A0 points to graphics memory
-MOVE.W #$0F00, (A0)      ; Store value at memory location A0 points to"
-  language="assembly"
-/>
+**Indirect Memory Access:**
+
+```nasm
+MOVE.L #$000C0000, A0    ; A0 points to graphics memory
+MOVE.W #$0F00, (A0)      ; Store value at memory location A0 points to
+```
 
 ## Moving Data Between Registers
 
@@ -199,10 +193,10 @@ MOVE.L A0, D4      ; Copy address from A0 into D4
 MOVE.L D5, A1      ; Copy data from D5 into address register A1
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Moving Data Between Registers"
-  code="; Setup some values first
+**Moving Data Between Registers:**
+
+```nasm
+; Setup some values first
 MOVE.L #$12345678, D0
 MOVE.W #$ABCD, D2  
 MOVE.L #$C0000, A0
@@ -210,9 +204,8 @@ MOVE.L #$C0000, A0
 ; Now copy between registers
 MOVE.L D0, D1      ; Copy D0 to D1
 MOVE.W D2, D3      ; Copy D2 to D3 (16-bit)
-MOVE.L A0, D4      ; Copy address to data register"
-  language="assembly"
-/>
+MOVE.L A0, D4      ; Copy address to data register
+```
 
 ## Assembly vs Machine Language
 
@@ -250,10 +243,10 @@ Create a program that demonstrates the 68000's capabilities:
 5. Copy the colour to D3
 6. Store the coordinate at the graphics memory location
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice Exercise - Graphics Programming Setup"
-  code="; Graphics programming example
+**Practice Exercise - Graphics Programming Setup:**
+
+```nasm
+; Graphics programming example
 MOVE.L #$00100080, D0    ; X=256, Y=128 coordinates
 MOVE.W #$0F00, D1        ; Bright red colour
 MOVE.L #$000C0000, A0    ; Graphics memory address
@@ -263,9 +256,8 @@ MOVE.L D0, D2            ; Copy coordinates
 MOVE.W D1, D3            ; Copy colour
 
 ; Store coordinate at graphics memory
-MOVE.L D0, (A0)          ; Store coordinates to graphics memory"
-  language="assembly"
-/>
+MOVE.L D0, (A0)          ; Store coordinates to graphics memory
+```
 
 ## Why the 68000 Was Revolutionary
 
@@ -276,6 +268,83 @@ The 68000 brought workstation power to home computers:
 **Sophisticated instruction set**: Hundreds of powerful instructions
 **Professional development**: Support for structured programming and complex applications
 **Linear memory model**: No complex memory banking or segmentation
+
+## Try It Yourself!
+
+Ready to run this code on a real assembler? Here's how to get started:
+
+### 1. Set Up Your Environment
+
+First, you'll need an assembler and emulator. **[Follow our setup guide](/setup)** for detailed instructions, or use these quick commands:
+
+```bash
+# macOS/Linux: Download and compile VASM
+wget http://sun.hasenbraten.de/vasm/release/vasm.tar.gz
+tar -xzf vasm.tar.gz
+cd vasm
+make CPU=m68k SYNTAX=mot
+sudo cp vasmm68k_mot /usr/local/bin/
+
+# Install FS-UAE emulator
+# Download from https://fs-uae.net/
+```
+
+### 2. Create Your First Program
+
+Create a file called `hello.s`:
+
+**hello.s:**
+```nasm
+; Your first Amiga assembly program
+    SECTION code,CODE
+
+start:
+    ; Load values into data registers
+    move.l  #$12345678, d0  ; Load 32-bit value
+    move.w  #$ABCD, d1      ; Load 16-bit value
+    move.b  #$42, d2        ; Load 8-bit value
+    
+    ; Work with address registers
+    move.l  #$00C00000, a0  ; Custom chip base address
+    move.l  #$00080000, a1  ; RAM address
+    
+    ; Copy between registers
+    move.l  d0, d3          ; Copy data register
+    move.l  a0, a2          ; Copy address register
+    
+    ; Infinite loop to examine registers
+loop:
+    bra.s   loop            ; Branch to self (stops program)
+```
+
+### 3. Assemble and Test
+
+```bash
+# Assemble your program
+vasmm68k_mot -Fhunkexe -o hello hello.s
+
+# To test in FS-UAE:
+# 1. Create Amiga disk image with hello program
+# 2. Boot FS-UAE with Workbench
+# 3. Run program from CLI
+# 4. Use debugger to examine registers
+```
+
+### 4. What You Should See
+
+In the FS-UAE debugger, you should see:
+```
+D0:12345678  D1:0000ABCD  D2:00000042  D3:12345678
+A0:00C00000  A1:00080000  A2:00C00000  A3:????????
+```
+
+This shows:
+- **D0**: $12345678 (32-bit value)
+- **D1**: $0000ABCD (16-bit value, high word cleared)
+- **D2**: $00000042 (8-bit value, upper bits cleared)
+- **A0**: $00C00000 (custom chip base address)
+
+**Congratulations!** You've just run your first 68000 assembly program!
 
 ## What You've Learned
 

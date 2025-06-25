@@ -107,10 +107,10 @@ LDA $D011       ; Load Control Register 1
 STA $D011       ; Write back to VIC-II
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="VIC-II Control Register Programming"
-  code="; Basic VIC-II control register manipulation
+**VIC-II Control Register Programming:**
+
+```assembly
+; Basic VIC-II control register manipulation
 ; Read current control register
 LDA $D011       ; Load VIC-II Control Register 1
 
@@ -120,9 +120,8 @@ STA $D011       ; Display now off
 
 ; Turn display back on
 ORA #%00010000  ; Set bit 4 (DEN - Display Enable)
-STA $D011       ; Display now on"
-  language="assembly"
-/>
+STA $D011       ; Display now on
+```
 
 ### $D016 - Control Register 2
 
@@ -148,10 +147,10 @@ Bit 0: Unused
 - **VM bits point to screen memory**: $0400, $0800, $0C00, etc.
 - **CB bits point to character data**: Character ROM or custom character sets
 
-<CodeRunner 
-  system="commodore-64"
-  title="VIC-II Memory Control"
-  code="; Control where VIC-II reads screen and character data
+**VIC-II Memory Control:**
+
+```assembly
+; Control where VIC-II reads screen and character data
 ; Default setup: screen at $0400, characters from ROM
 
 ; Read current memory control
@@ -164,9 +163,8 @@ AND #%00001111  ; Clear upper bits (VM field)
 ORA #%00010000  ; Set VM to 0001 ($0400)
 STA $D018       ; Update memory control
 
-; Now VIC-II reads screen data from $0400"
-  language="assembly"
-/>
+; Now VIC-II reads screen data from $0400
+```
 
 ## Screen Memory Organization
 
@@ -196,10 +194,10 @@ The VIC-II reads two types of memory for text display:
 ; Address = $0400 + (Y * 40) + X
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Screen Memory Access Patterns"
-  code="; Understanding screen memory organisation
+**Screen Memory Access Patterns:**
+
+```assembly
+; Understanding screen memory organisation
 ; Fill entire screen with stars
 
 LDX #$00        ; Screen position counter
@@ -214,9 +212,8 @@ FillLoop:
     INX             ; Next position
     BNE FillLoop    ; Continue until X wraps to 0
     
-; Screen now filled with stars (partial fill for demo)"
-  language="assembly"
-/>
+; Screen now filled with stars (partial fill for demo)
+```
 
 ## Color RAM and Color Control
 
@@ -240,10 +237,10 @@ FillLoop:
 ; 12: Med Gray 13: Lt Green 14: Lt Blue 15: Lt Gray
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Color Control Programming"
-  code="; Demonstrate colour control
+**Color Control Programming:**
+
+```assembly
+; Demonstrate colour control
 ; Set background colour to blue
 LDA #$06        ; Blue colour
 STA $D021       ; Set background colour
@@ -262,9 +259,8 @@ STA $D800       ; Set character colour
 LDA #$45        ; 'E'
 STA $0401       ; Second screen position
 LDA #$07        ; Yellow colour
-STA $D801       ; Set character colour"
-  language="assembly"
-/>
+STA $D801       ; Set character colour
+```
 
 ## Basic Graphics Effects
 
@@ -312,10 +308,10 @@ DelayLoop:
     JMP CycleLoop   ; Continue forever
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic Graphics Effects"
-  code="; Create simple visual effect
+**Basic Graphics Effects:**
+
+```assembly
+; Create simple visual effect
 ; Animate border colour through the palette
 
 LDX #$00        ; Color index
@@ -332,9 +328,8 @@ DelayLoop:
     BNE DelayLoop   ; Continue delay
     
     INX             ; Next colour
-    JMP ColorLoop   ; Continue colour cycling"
-  language="assembly"
-/>
+    JMP ColorLoop   ; Continue colour cycling
+```
 
 ## VIC-II Timing and Raster
 
@@ -360,10 +355,10 @@ WaitRaster:
     ; Now at raster line 80
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Raster Timing and Synchronization"
-  code="; Demonstrate raster timing
+**Raster Timing and Synchronization:**
+
+```assembly
+; Demonstrate raster timing
 ; Change border colour at different screen positions
 
 MainLoop:
@@ -387,9 +382,8 @@ CheckBottom:
     BNE MainLoop
     LDA #$06        ; Blue
     STA $D020       ; Set border colour
-    JMP MainLoop"
-  language="assembly"
-/>
+    JMP MainLoop
+```
 
 ## Display Modes Overview
 
@@ -439,10 +433,10 @@ Create a program that demonstrates basic VIC-II control:
 3. Create a simple colour animation effect
 4. Demonstrate raster timing synchronization
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - VIC-II Control Program"
-  code="; Complete VIC-II demonstration program
+**Practice Exercise - VIC-II Control Program:**
+
+```assembly
+; Complete VIC-II demonstration program
 ; Shows colors, text, and timing
 
 InitDisplay:
@@ -510,10 +504,8 @@ DelayLoop:
     RTS
 
 TitleText:
-    .text \"VIC-II DEMO\"
-    .byte $00       ; End marker"
-  language="assembly"
-/>
+    .text \
+```
 
 ## VIC-II Programming Best Practices
 

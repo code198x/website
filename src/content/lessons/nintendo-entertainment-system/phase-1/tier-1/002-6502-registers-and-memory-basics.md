@@ -55,10 +55,10 @@ LDY #$0A        ; Load 10 into Y register
 ### Status Register (P)
 **Processor flags** - we'll explore these in detail in lesson 4
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="6502 Register Demonstration"
-  code="; Demonstration of 6502 register operations
+**6502 Register Demonstration:**
+
+```assembly
+; Demonstration of 6502 register operations
 ; This program shows basic register loading and manipulation
 
 RegisterDemo:
@@ -106,9 +106,8 @@ RegisterDemo:
     LDA #%00010000  ; Binary 16
     STA $0302       ; Store binary value (same as above!)
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Understanding NES Memory Layout
 
@@ -128,10 +127,10 @@ The NES has a unique memory organisation that's crucial to understand:
 - **$0100-$01FF**: Stack
 - **$0200-$07FF**: General purpose RAM
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="NES Memory Basics"
-  code="; Understanding NES memory layout and basic operations
+**NES Memory Basics:**
+
+```assembly
+; Understanding NES memory layout and basic operations
 ; This program demonstrates memory addressing on the NES
 
 MemoryDemo:
@@ -183,9 +182,8 @@ ClearBlock:
     CPX #$20        ; Clear 32 bytes
     BNE ClearBlock  ; Continue until done
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## The LD Instruction Family
 
@@ -207,10 +205,10 @@ The 6502's load instructions are your primary tools for moving data:
 - `STX address` - Store X register to memory
 - `STY address` - Store Y register to memory
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="LD Instruction Variants"
-  code="; Comprehensive demonstration of 6502 load and store instructions
+**LD Instruction Variants:**
+
+```assembly
+; Comprehensive demonstration of 6502 load and store instructions
 ; Shows all the ways to move data around
 
 LoadStoreDemo:
@@ -284,9 +282,8 @@ CopyLoop:
     TYA             ; Transfer Y to A  
     STA $0234       ; Store transferred value
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Register Transfer Instructions
 
@@ -307,10 +304,10 @@ TXS             ; Transfer X to Stack pointer
 - **Initialize loop counters** from accumulator
 - **Copy data** between processing contexts
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Register Transfers and Patterns"
-  code="; Advanced register transfer techniques and data patterns
+**Register Transfers and Patterns:**
+
+```assembly
+; Advanced register transfer techniques and data patterns
 ; Demonstrates practical uses of register transfers
 
 TransferDemo:
@@ -389,9 +386,8 @@ FillLoop:
     TYA             ; Get pattern B back
     STA $0503       ; Store fourth
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Working with Different Number Formats
 
@@ -407,10 +403,10 @@ LDA #'*'        ; ASCII character (asterisk = 42)
 
 All of these load the exact same value (42) into the accumulator!
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Number Formats and ASCII"
-  code="; Working with different number formats and ASCII characters
+**Number Formats and ASCII:**
+
+```assembly
+; Working with different number formats and ASCII characters
 ; Demonstrates how the same value can be represented differently
 
 NumberFormatsDemo:
@@ -429,64 +425,8 @@ NumberFormatsDemo:
     STA $0273       ; Store ASCII representation
     
     ; === CREATING ASCII TEXT ===
-    ; Store the word "NES" in memory
-    LDA #'N'        ; Load ASCII 'N' (78)
-    STA $0600       ; Store first character
-    
-    LDA #'E'        ; Load ASCII 'E' (69)
-    STA $0601       ; Store second character
-    
-    LDA #'S'        ; Load ASCII 'S' (83)
-    STA $0602       ; Store third character
-    
-    LDA #$00        ; Load null terminator
-    STA $0603       ; End string with zero
-    
-    ; === HEXADECIMAL PATTERNS ===
-    ; Common hex patterns used in NES programming
-    LDA #$00        ; All bits off
-    STA $0610       ; Store zero pattern
-    
-    LDA #$FF        ; All bits on (255)
-    STA $0611       ; Store all-ones pattern
-    
-    LDA #$55        ; Alternating bits: 01010101
-    STA $0612       ; Store alternating pattern
-    
-    LDA #$AA        ; Opposite alternating: 10101010
-    STA $0613       ; Store opposite pattern
-    
-    ; === BINARY BIT PATTERNS ===
-    ; Using binary notation for clear bit patterns
-    LDA #%11110000  ; Upper nibble set
-    STA $0620       ; Store upper pattern
-    
-    LDA #%00001111  ; Lower nibble set
-    STA $0621       ; Store lower pattern
-    
-    LDA #%10101010  ; Checkerboard pattern
-    STA $0622       ; Store checkerboard
-    
-    LDA #%01010101  ; Inverse checkerboard
-    STA $0623       ; Store inverse checkerboard
-    
-    ; === PRACTICAL NES VALUES ===
-    ; Common values used in NES programming
-    LDA #$20        ; Common PPU address high byte
-    STA $0630       ; Store PPU high byte
-    
-    LDA #$00        ; Common PPU address low byte
-    STA $0631       ; Store PPU low byte
-    
-    LDA #$02        ; Common sprite DMA page
-    STA $0632       ; Store DMA page
-    
-    LDA #$80        ; Common controller read value
-    STA $0633       ; Store controller value
-    
-    RTS"
-  language="assembly"
-/>
+    ; Store the word
+```
 
 ## Zero Page - The Fast Lane
 
@@ -508,10 +448,10 @@ LDA $0310       ; Absolute addressing (slower)
 STA $0311       ; Absolute addressing (slower)
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Zero Page Optimization"
-  code="; Demonstrating zero page optimization techniques
+**Zero Page Optimization:**
+
+```assembly
+; Demonstrating zero page optimization techniques
 ; Shows the performance benefits of zero page addressing
 
 ZeroPageDemo:
@@ -587,16 +527,15 @@ ZeroPageDemo:
     ORA #%10000000  ; Set bit 7
     STA $50         ; Store modified pattern (fast)
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Memory Management Practice"
-  code="; Practice Exercise: NES Memory Manager
+**Memory Management Practice:**
+
+```assembly
+; Practice Exercise: NES Memory Manager
 ; Create a simple system for managing NES memory efficiently
 
 MemoryManagerPractice:
@@ -709,9 +648,8 @@ AllocDone:
 ; 1. Add a deallocation routine that frees memory blocks
 ; 2. Implement a memory defragmentation system
 ; 3. Create a garbage collector for unused memory
-; 4. Add memory protection to prevent overwrites"
-  language="assembly"
-/>
+; 4. Add memory protection to prevent overwrites
+```
 
 ## What You've Learned
 

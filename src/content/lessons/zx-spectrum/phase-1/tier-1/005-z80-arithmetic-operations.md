@@ -54,10 +54,10 @@ ADC A, B            ; A = 0 + 10 + 1 (carry) = 11
 
 ADC is essential for multi-byte arithmetic!
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Z80 Addition Operations"
-  code="; Demonstration of Z80 addition instructions
+**Z80 Addition Operations:**
+
+```assembly
+; Demonstration of Z80 addition instructions
 ; This program shows ADD and ADC in action
 
 AdditionDemo:
@@ -107,9 +107,8 @@ AdditionDemo:
     RET
 
 ; Memory location for temporary storage
-TempValue: DB 0"
-  language="assembly"
-/>
+TempValue: DB 0
+```
 
 ## Z80 Subtraction Instructions
 
@@ -135,10 +134,10 @@ LD B, 5             ; B = 5
 SBC A, B            ; A = 251 - 5 - 1 (carry) = 245
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Z80 Subtraction Operations"
-  code="; Demonstration of Z80 subtraction instructions
+**Z80 Subtraction Operations:**
+
+```assembly
+; Demonstration of Z80 subtraction instructions
 ; This program shows SUB and SBC in action
 
 SubtractionDemo:
@@ -192,9 +191,8 @@ ValuesEqual:
 ComparisonDone:
     LD ($4006), B       ; Display comparison result
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Understanding Arithmetic Flags
 
@@ -307,10 +305,10 @@ OR A                ; Clear carry flag
 SBC HL, DE          ; HL = HL - DE = 2000
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="16-Bit Arithmetic"
-  code="; Demonstration of 16-bit arithmetic operations
+**16-Bit Arithmetic:**
+
+```assembly
+; Demonstration of 16-bit arithmetic operations
 ; Working with larger numbers using register pairs
 
 SixteenBitArithmetic:
@@ -399,9 +397,8 @@ CompareResult:
 ; Data for multi-byte arithmetic
 NumberA:    DB $34, $12, $05    ; 24-bit number: $051234
 NumberB:    DB $78, $56, $03    ; 24-bit number: $035678
-Result:     DB $00, $00, $00    ; Space for 24-bit result"
-  language="assembly"
-/>
+Result:     DB $00, $00, $00    ; Space for 24-bit result
+```
 
 ## Practical Mathematical Programs
 
@@ -434,10 +431,10 @@ DivideLoop:
     JR DivideLoop       ; Continue
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Mathematical Programs"
-  code="; Practical mathematical routines using Z80 arithmetic
+**Mathematical Programs:**
+
+```assembly
+; Practical mathematical routines using Z80 arithmetic
 ; This program implements multiplication and division
 
 MathPrograms:
@@ -534,9 +531,8 @@ Multiply16Loop:
     ADD HL, BC          ; Add multiplicand to result (HL = HL + BC)
     DEC B               ; Decrement multiplier
     JR NZ, Multiply16Loop ; Continue until B = 0
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Binary-Coded Decimal (BCD) Arithmetic
 
@@ -551,10 +547,10 @@ ADD A, $08          ; Add BCD 8: result = $11 (not BCD!)
 DAA                 ; Adjust to BCD: result = $17 (BCD 17)
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="BCD Arithmetic Example"
-  code="; Binary-Coded Decimal arithmetic demonstration
+**BCD Arithmetic Example:**
+
+```assembly
+; Binary-Coded Decimal arithmetic demonstration
 ; Working with decimal numbers in BCD format
 
 BCDArithmetic:
@@ -609,9 +605,8 @@ NotTen:
     ; Display final 99
     LD (HL), A
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## What You've Learned
 

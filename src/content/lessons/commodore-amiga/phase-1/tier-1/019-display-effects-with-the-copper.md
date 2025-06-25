@@ -49,10 +49,10 @@ That's the power of **advanced Copper programming** - creating display effects w
 
 The Copper's precise timing enables effects impossible on other platforms:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Raster Bar Techniques"
-  code="; Create smooth raster bars with sub-line precision
+**Advanced Raster Bar Techniques:**
+
+```assembly
+; Create smooth raster bars with sub-line precision
 
 RasterBars:
     LEA     RasterList, A0
@@ -190,18 +190,17 @@ CreateGradientBar3:
 
 ; Data
 FrameCounter:   DC.W    0
-RasterList:     DS.B    4096    ; Large buffer for complex effects"
-  language="assembly"
-/>
+RasterList:     DS.B    4096    ; Large buffer for complex effects
+```
 
 ## Sprite Multiplexing
 
 Use the Copper to display more than 8 sprites:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Copper Sprite Multiplexing"
-  code="; Display many sprites using Copper repositioning
+**Copper Sprite Multiplexing:**
+
+```assembly
+; Display many sprites using Copper repositioning
 
 SpriteMultiplex:
     ; First, setup sprite data
@@ -326,18 +325,17 @@ InitSpriteLoop:
 
 ; Data
 MultiplexList:  DS.B    2048
-SpriteData:     DS.B    64*8    ; 8 sprites × 64 bytes"
-  language="assembly"
-/>
+SpriteData:     DS.B    64*8    ; 8 sprites × 64 bytes
+```
 
 ## Plasma Effects
 
 Create mesmerizing plasma patterns using the Copper:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Real-time Plasma Effect"
-  code="; Create animated plasma effect using Copper
+**Real-time Plasma Effect:**
+
+```assembly
+; Create animated plasma effect using Copper
 
 PlasmaEffect:
     ; Initialize plasma parameters
@@ -493,18 +491,17 @@ SineTable:
 
 ; Data buffers
 PlasmaList:         DS.B    4096
-InterferenceList:   DS.B    4096"
-  language="assembly"
-/>
+InterferenceList:   DS.B    4096
+```
 
 ## Multi-Directional Scrolling
 
 Implement smooth scrolling in any direction:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="8-Way Scrolling with Copper"
-  code="; Smooth 8-directional scrolling using Copper
+**8-Way Scrolling with Copper:**
+
+```assembly
+; Smooth 8-directional scrolling using Copper
 
 MultiScroll:
     ; Initialize scroll positions
@@ -641,18 +638,17 @@ ScrollY:        DC.W    0
 
 ; Buffers
 ScrollList:     DS.B    2048
-SCROLL_BUFFER:  DS.B    BITPLANE_SIZE * 4 * 2  ; Larger virtual screen"
-  language="assembly"
-/>
+SCROLL_BUFFER:  DS.B    BITPLANE_SIZE * 4 * 2  ; Larger virtual screen
+```
 
 ## Combined Effects Showcase
 
 Create a professional demo combining multiple effects:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Professional Multi-Effect Demo"
-  code="; Complete demo combining all Copper effects
+**Professional Multi-Effect Demo:**
+
+```assembly
+; Complete demo combining all Copper effects
 
 MegaDemo:
     ; Initialize all subsystems
@@ -824,18 +820,17 @@ CombinedList:   DS.B    8192    ; Large buffer for complex scenes
 FinaleList:     DS.B    4096
 
 ; Run the mega demo!
-BSR     MegaDemo"
-  language="assembly"
-/>
+BSR     MegaDemo
+```
 
 ## Practice Exercise: Create Your Own Effect
 
 Design and implement a unique Copper effect:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Design Your Copper Effect"
-  code="; Create your own unique Copper effect
+**Practice: Design Your Copper Effect:**
+
+```assembly
+; Create your own unique Copper effect
 ; Combine techniques to create something new
 
 MyCustomEffect:
@@ -955,9 +950,8 @@ SyncToMusic:
 CustomList:     DS.B    4096
 
 ; Test your effect
-BSR     MyCustomEffect"
-  language="assembly"
-/>
+BSR     MyCustomEffect
+```
 
 ## What You've Learned
 

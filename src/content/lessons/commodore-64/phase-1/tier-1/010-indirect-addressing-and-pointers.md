@@ -81,10 +81,10 @@ STA $F1         ; Pointer high byte
 LDA ($F0),Y     ; Load from address in $F0/$F1 + Y offset
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Simulated Indirect Addressing"
-  code="; Setup pointer to screen memory
+**Simulated Indirect Addressing:**
+
+```assembly
+; Setup pointer to screen memory
 LDA #$00        ; Low byte of $0400
 STA $F0         ; Store in pointer low
 LDA #$04        ; High byte of $0400  
@@ -93,9 +93,8 @@ STA $F1         ; Store in pointer high
 ; Now use indirect indexed to access screen
 LDY #$00        ; Offset 0
 LDA #$48        ; Load 'H'
-STA ($F0),Y     ; Store at address pointed to by $F0/$F1"
-  language="assembly"
-/>
+STA ($F0),Y     ; Store at address pointed to by $F0/$F1
+```
 
 ## Indirect Indexed Addressing (($zp),Y)
 
@@ -122,10 +121,10 @@ LDA #$42        ; 'B'
 STA ($F0),Y     ; Store at $0400 + 1
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Indirect Indexed Addressing"
-  code="; Setup pointer to screen memory
+**Indirect Indexed Addressing:**
+
+```assembly
+; Setup pointer to screen memory
 LDA #$00        ; Low byte
 STA $F0         
 LDA #$04        ; High byte
@@ -142,9 +141,8 @@ STA ($F0),Y
 
 LDY #$02        ; Position 2
 LDA #$43        ; 'C'
-STA ($F0),Y"
-  language="assembly"
-/>
+STA ($F0),Y
+```
 
 ## Indexed Indirect Addressing (($zp,X))
 
@@ -175,10 +173,10 @@ LDA #$32        ; '2'
 STA ($F0,X),Y   ; Use pointer at $F0+X
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Indexed Indirect Addressing"
-  code="; Setup two pointers in Zero Page
+**Indexed Indirect Addressing:**
+
+```assembly
+; Setup two pointers in Zero Page
 LDA #$00        ; Row 0 pointer low
 STA $F0         
 LDA #$04        ; Row 0 pointer high
@@ -197,9 +195,8 @@ STA ($F0,X),Y   ; Write to row 0
 
 LDX #$02        ; Select second pointer  
 LDA #$32        ; '2'
-STA ($F0,X),Y   ; Write to row 1"
-  language="assembly"
-/>
+STA ($F0,X),Y   ; Write to row 1
+```
 
 ## Building a Data Structure
 
@@ -237,10 +234,10 @@ LDA ($E0,X),Y   ; Load 'A' from first array
 STA $0400       ; Display on screen
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Array of Arrays with Indirect Addressing"
-  code="; Setup pointer table at $E0
+**Array of Arrays with Indirect Addressing:**
+
+```assembly
+; Setup pointer table at $E0
 LDA #$A0        ; Point to data at $A0
 STA $E0         
 LDA #$00        
@@ -271,9 +268,8 @@ STA $0400       ; Display 'H'
 LDX #$02        ; Use second pointer
 LDY #$00        ; First element  
 LDA ($E0,X),Y   ; Load from second array
-STA $0401       ; Display '1'"
-  language="assembly"
-/>
+STA $0401       ; Display '1'
+```
 
 ## Dynamic Screen Positioning
 
@@ -300,10 +296,10 @@ NoCarry:
     RTS             ; Return (we'll learn this later)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Dynamic Screen Positioning"
-  code="; Setup screen pointer
+**Dynamic Screen Positioning:**
+
+```assembly
+; Setup screen pointer
 LDA #$00        ; Start at screen position 0
 STA $FC         
 LDA #$04        ; Screen base $0400
@@ -323,9 +319,8 @@ STA ($FC),Y     ; Write at new position
 INC $FC         ; Move to next position
 
 LDA #$59        ; 'Y'
-STA ($FC),Y     ; Write at new position"
-  language="assembly"
-/>
+STA ($FC),Y     ; Write at new position
+```
 
 ## Text String Processing
 
@@ -400,10 +395,10 @@ Create a program that:
 4. Uses indirect indexed addressing to access elements within the selected array
 5. Displays characters from different arrays on screen
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Complete Indirect Addressing"
-  code="; Setup three data arrays
+**Practice Exercise - Complete Indirect Addressing:**
+
+```assembly
+; Setup three data arrays
 LDA #$48        ; 'H'
 STA $A0         
 LDA #$45        ; 'E'
@@ -451,9 +446,8 @@ STA $0401       ; Display
 LDX #$02        ; Select second pointer
 LDY #$00        ; First element
 LDA ($E0,X),Y   ; Load 'L'
-STA $0402       ; Display"
-  language="assembly"
-/>
+STA $0402       ; Display
+```
 
 ## Why Indirect Addressing Matters
 

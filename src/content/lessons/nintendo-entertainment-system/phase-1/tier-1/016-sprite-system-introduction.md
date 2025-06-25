@@ -96,10 +96,10 @@ setup_sprite:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Creating Your First Sprite"
-  code="; Create a sprite in the center of the screen
+**Creating Your First Sprite:**
+
+```assembly
+; Create a sprite in the center of the screen
 JSR setup_first_sprite
 
 setup_first_sprite:
@@ -118,9 +118,8 @@ setup_first_sprite:
     
     RTS
 
-; Sprite is now configured and ready to display!"
-  language="assembly"
-/>
+; Sprite is now configured and ready to display!
+```
 
 ## Sprite Attributes Byte
 
@@ -150,10 +149,10 @@ LDA #%00000010  ; Palette 0, front, horizontal flip
 LDA #%00000011  ; Palette 0, front, both flips
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Attributes Examples"
-  code="; Create sprites with different attributes
+**Sprite Attributes Examples:**
+
+```assembly
+; Create sprites with different attributes
 ; Sprite 0: Normal
 LDA #$60        ; Y position
 STA $0200
@@ -184,9 +183,8 @@ STA $020A
 LDA #$A0        ; X position
 STA $020B
 
-; Three sprites with different attributes!"
-  language="assembly"
-/>
+; Three sprites with different attributes!
+```
 
 ## Moving Sprites
 
@@ -222,10 +220,10 @@ move_sprite_down:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Moving Sprites"
-  code="; Setup initial sprite position
+**Moving Sprites:**
+
+```assembly
+; Setup initial sprite position
 LDA #$80        ; Center Y
 STA $0200
 LDA #$01        ; Tile 1
@@ -249,9 +247,8 @@ move_right:
     STA $0203       ; Store new position
     RTS
 
-; Sprite has moved from X=64 to X=104"
-  language="assembly"
-/>
+; Sprite has moved from X=64 to X=104
+```
 
 ## Sprite Animation
 
@@ -279,10 +276,10 @@ done_animate:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Animation"
-  code="; Setup sprite animation system
+**Sprite Animation:**
+
+```assembly
+; Setup sprite animation system
 LDA #$00        ; Start with frame 0
 STA $0300       ; frame_counter
 
@@ -326,9 +323,8 @@ animate_sprite:
 done:
     RTS
 
-; Sprite animation is working!"
-  language="assembly"
-/>
+; Sprite animation is working!
+```
 
 ## Multiple Sprites
 
@@ -403,10 +399,10 @@ load_sprite_palettes:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Palettes"
-  code="; Load sprite palettes
+**Sprite Palettes:**
+
+```assembly
+; Load sprite palettes
 JSR load_sprite_palettes_demo
 
 load_sprite_palettes_demo:
@@ -438,9 +434,8 @@ load_sprite_palettes_demo:
     
     RTS
 
-; Sprite palettes loaded - ready for colorful sprites!"
-  language="assembly"
-/>
+; Sprite palettes loaded - ready for colorful sprites!
+```
 
 ## OAM DMA Transfer
 
@@ -494,10 +489,10 @@ move_music_cursor:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Symphony Visual Elements"
-  code="; Initialize musical sprites for Sprite Symphony
+**Sprite Symphony Visual Elements:**
+
+```assembly
+; Initialize musical sprites for Sprite Symphony
 JSR init_music_sprites_demo
 
 init_music_sprites_demo:
@@ -531,9 +526,8 @@ move_cursor_right:
     STA $0207       ; Store new cursor position
     RTS
 
-; Musical sprites are ready for interactive display!"
-  language="assembly"
-/>
+; Musical sprites are ready for interactive display!
+```
 
 ## Handling Sprite Limitations
 
@@ -577,10 +571,10 @@ Create a complete player character system with:
 4. Color palette for the player
 5. Boundary checking (don't go off screen)
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Player Character System"
-  code="; Complete Player Character System
+**Practice: Player Character System:**
+
+```assembly
+; Complete Player Character System
 JSR init_player_system
 
 init_player_system:
@@ -680,9 +674,8 @@ JSR move_player_right
 JSR move_player_right
 JSR move_player_left
 
-; Player character system is complete!"
-  language="assembly"
-/>
+; Player character system is complete!
+```
 
 ## What You've Learned
 

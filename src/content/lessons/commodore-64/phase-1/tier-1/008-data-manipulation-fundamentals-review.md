@@ -141,10 +141,10 @@ LDA $83         ; Load final counter value
 STA $04A1       ; Display at row 4, position 9 (COUNT: 3)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Complete Data Processing Center"
-  code="; Data Processing Center - Complete Program
+**Complete Data Processing Center:**
+
+```assembly
+; Data Processing Center - Complete Program
 ; Clear and setup
 LDX #$00        
 LDY #$00        
@@ -186,9 +186,8 @@ INC $83         ; Count: 1
 INC $83         ; Count: 2
 INC $83         ; Count: 3
 LDA $83         
-STA $04A1       ; Display count"
-  language="assembly"
-/>
+STA $04A1       ; Display count
+```
 
 ## Enhanced Version with Multiple Data Points
 
@@ -221,10 +220,10 @@ EOR $81         ; XOR with second input ('5' = 53)
 STA $0402       ; Display combined result
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Multi-Value Data Processor"
-  code="; Multi-value data processing
+**Multi-Value Data Processor:**
+
+```assembly
+; Multi-value data processing
 ; First value: 'A' + 3 = 'D'
 LDA #$41        ; 'A'
 STA $80         
@@ -242,9 +241,8 @@ STA $0401       ; Display '3'
 ; Combine using XOR
 LDA $80         ; 'A' (65)
 EOR $81         ; XOR with '5' (53)  
-STA $0402       ; Display result"
-  language="assembly"
-/>
+STA $0402       ; Display result
+```
 
 ## Comprehensive Review Exercise
 
@@ -299,10 +297,10 @@ STA $0406       ; Display 'M'
 ; Continue with your own operations...
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Your Comprehensive Review Program"
-  code="; Comprehensive review - customize this!
+**Your Comprehensive Review Program:**
+
+```assembly
+; Comprehensive review - customize this!
 ; Initialize with HELLO
 LDA #$48        ; 'H'
 LDX #$45        ; 'E'  
@@ -331,9 +329,8 @@ STA $0403       ; 'L' again
 ; Example: Convert H to lowercase
 LDA $80         ; 'H'
 ORA #$20        ; Set bit 5
-STA $0405       ; Display 'h'"
-  language="assembly"
-/>
+STA $0405       ; Display 'h'
+```
 
 ## Memory Efficiency Techniques
 

@@ -53,10 +53,10 @@ LD B, (IX+1)     ; Load from $5B00 + 1 = $5B01
 LD C, (IX+5)     ; Load from $5B00 + 5 = $5B05
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Basic Indexed Addressing"
-  code="LD IX, $5B00     ; Set IX to base address
+**Basic Indexed Addressing:**
+
+```assembly
+LD IX, $5B00     ; Set IX to base address
 ; First, store some test data
 LD (IX+0), $11   ; Store $11 at $5B00
 LD (IX+1), $22   ; Store $22 at $5B01
@@ -65,9 +65,8 @@ LD (IX+5), $55   ; Store $55 at $5B05
 ; Now read it back
 LD A, (IX+0)     ; A = $11 (from $5B00)
 LD B, (IX+1)     ; B = $22 (from $5B01)  
-LD C, (IX+5)     ; C = $55 (from $5B05)"
-  language="assembly"
-/>
+LD C, (IX+5)     ; C = $55 (from $5B05)
+```
 
 The offset can be any value from -128 to +127, giving you tremendous flexibility!
 
@@ -87,10 +86,10 @@ LD (IX+3), 40    ; Element 3 = 40
 LD (IX+4), 50    ; Element 4 = 50
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Creating an Array"
-  code="; Create array of numbers
+**Creating an Array:**
+
+```assembly
+; Create array of numbers
 LD IX, $5B10     ; IX points to array base
 
 ; Initialize array with values
@@ -103,9 +102,8 @@ LD (IX+4), 50    ; array[4] = 50
 ; Access array elements
 LD A, (IX+2)     ; Load array[2] (30) into A
 LD B, (IX+4)     ; Load array[4] (50) into B  
-; A=30, B=50"
-  language="assembly"
-/>
+; A=30, B=50
+```
 
 ## Using IY for Multiple Arrays
 
@@ -122,10 +120,10 @@ LD (IX+1), $CC   ; First array element 1
 LD (IY+1), $DD   ; Second array element 1
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Two Arrays with IX and IY"
-  code="; Set up two arrays
+**Two Arrays with IX and IY:**
+
+```assembly
+; Set up two arrays
 LD IX, $5B20     ; First array (scores)
 LD IY, $5B30     ; Second array (lives)
 
@@ -141,9 +139,8 @@ LD (IY+2), 3     ; Player 3 lives
 
 ; Get player 2's data
 LD A, (IX+1)     ; A = Player 2 score (200)
-LD B, (IY+1)     ; B = Player 2 lives (2)"
-  language="assembly"
-/>
+LD B, (IY+1)     ; B = Player 2 lives (2)
+```
 
 ## Negative Offsets
 
@@ -156,10 +153,10 @@ LD (IX-5), $88   ; Store at $5B4B (five bytes before base)
 LD A, (IX-1)     ; Load from $5B4F
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Negative Offsets"
-  code="LD IX, $5B50     ; Set base address
+**Negative Offsets:**
+
+```assembly
+LD IX, $5B50     ; Set base address
 
 ; Store using negative offsets
 LD (IX-1), $77   ; Store at $5B4F
@@ -169,9 +166,8 @@ LD (IX-3), $99   ; Store at $5B4D
 ; Read back using negative offsets
 LD A, (IX-1)     ; A = $77 from $5B4F
 LD B, (IX-2)     ; B = $88 from $5B4E
-LD C, (IX-3)     ; C = $99 from $5B4D"
-  language="assembly"
-/>
+LD C, (IX-3)     ; C = $99 from $5B4D
+```
 
 This is useful for data structures that grow in different directions!
 
@@ -200,10 +196,10 @@ LD (IX+14), $44  ; 'D'
 LD (IX+15), $00  ; String terminator
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Character String Table"
-  code="; Create string table
+**Character String Table:**
+
+```assembly
+; Create string table
 LD IX, $5C00     ; Base address
 
 ; Store 'HELLO' at offset 0
@@ -222,9 +218,8 @@ LD A, (IX+0)     ; A = 'H'
 LD B, (IX+4)     ; B = 'O'  
 LD C, (IX+10)    ; C = 'Z'
 LD D, (IX+11)    ; D = 'X'
-; A='H', B='O', C='Z', D='X'"
-  language="assembly"
-/>
+; A='H', B='O', C='Z', D='X'
+```
 
 ## Advanced: Screen Coordinate System
 
@@ -238,10 +233,10 @@ LD (IX+40), $FF  ; Row 1, column 8 (32 bytes + 8)
 LD (IX+72), $FF  ; Row 2, column 8 (64 bytes + 8)
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Screen Graphics with Indexed Addressing"
-  code="LD IX, $4000     ; Point to screen memory
+**Screen Graphics with Indexed Addressing:**
+
+```assembly
+LD IX, $4000     ; Point to screen memory
 
 ; Draw a pattern across the top of screen
 LD (IX+0), %10101010   ; Pattern at position 0
@@ -252,9 +247,8 @@ LD (IX+3), %01010101   ; Alternating pattern at position 3
 ; Draw another pattern 32 bytes down (next screen row)
 LD (IX+32), %11110000  ; Different pattern at start of row 1
 LD (IX+33), %00001111  ; Complementary pattern
-LD (IX+34), %11110000  ; Repeat pattern"
-  language="assembly"
-/>
+LD (IX+34), %11110000  ; Repeat pattern
+```
 
 ## Indexed vs. Indirect Addressing Comparison
 
@@ -335,10 +329,10 @@ Create a high score table that stores 5 player scores (each 2 bytes for scores u
 2. Store some sample scores using indexed addressing
 3. Read back the scores and display the highest one
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="High Score Table Exercise"
-  code="; High score table - 5 entries, 2 bytes each
+**High Score Table Exercise:**
+
+```assembly
+; High score table - 5 entries, 2 bytes each
 LD IX, $5D00     ; Base of high score table
 
 ; Store high scores (2 bytes each, low byte first)
@@ -354,9 +348,8 @@ LD (IX+5), $05   ; Score 3: 1500 (high byte = 5)
 ; Read back score 2 (highest)
 LD A, (IX+2)     ; Low byte of score 2
 LD B, (IX+3)     ; High byte of score 2
-; Score 2 = B*256 + A = 7*256 + 144 = 2000"
-  language="assembly"
-/>
+; Score 2 = B*256 + A = 7*256 + 144 = 2000
+```
 
 ## What You've Learned
 

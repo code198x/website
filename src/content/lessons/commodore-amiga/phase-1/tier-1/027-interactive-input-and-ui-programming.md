@@ -32,10 +32,10 @@ Today you'll master user interface programming for your Copper Dreams game. You'
 
 The Amiga provides sophisticated input handling through CIA chips and custom registers. Master all input devices for responsive user interfaces:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Professional Input System Architecture"
-  code="; Comprehensive Amiga Input Handling System
+**Professional Input System Architecture:**
+
+```assembly
+; Comprehensive Amiga Input Handling System
 
 ; Input manager structure
 InputManager:
@@ -378,17 +378,17 @@ KeyboardState:      dc.l    0       ; Keyboard state
 JoystickState:      dc.w    0       ; Joystick state
 KeyboardMatrix:     ds.b    8       ; Keyboard matrix state
 GUIElementCount:    dc.w    0       ; Number of GUI elements
-GUIElementList:     ds.l    16      ; GUI element pointers"
-/>
+GUIElementList:     ds.l    16      ; GUI element pointers
+```
 
 ## Advanced User Interface Programming
 
 Create sophisticated graphical user interfaces with professional interaction patterns:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Professional GUI Framework with Event System"
-  code="; Advanced GUI Framework for Amiga
+**Professional GUI Framework with Event System:**
+
+```assembly
+; Advanced GUI Framework for Amiga
 
 ; GUI Framework Manager
 GUIFramework:
@@ -725,8 +725,8 @@ EventQueueCount:    dc.w    0
 WindowArray:        ds.b    WINDOW_SIZE*8      ; 8 windows max
 EventQueue:         ds.b    EVENT_SIZE*32      ; 32 events max
 AnimationList:      ds.b    ANIMATION_SIZE*16  ; 16 animations max
-AnimationCount:     dc.w    0"
-/>
+AnimationCount:     dc.w    0
+```
 
 ## What You've Learned
 

@@ -81,10 +81,10 @@ Display modes are controlled by three key bits:
 | 1 | 1 | 0 | **Invalid** |
 | 1 | 1 | 1 | **Invalid** |
 
-<CodeRunner 
-  system="commodore-64"
-  title="Display Mode Switching"
-  code="; Demonstrate switching between display modes
+**Display Mode Switching:**
+
+```assembly
+; Demonstrate switching between display modes
 ; Start in standard text mode
 
 ; Set Standard Text Mode (ECM=0, BMM=0, MCM=0)
@@ -103,9 +103,8 @@ STA $0400       ; Put on screen
 ; Switch to Multicolor Text Mode (ECM=0, BMM=0, MCM=1)
 LDA $D016       ; Read control register 2
 ORA #%00010000  ; Set MCM (bit 4)
-STA $D016       ; Multicolor text mode active"
-  language="assembly"
-/>
+STA $D016       ; Multicolor text mode active
+```
 
 ## Standard Text Mode (Default)
 
@@ -136,10 +135,10 @@ CharacterA:
     .byte %00000000  ; Row 7:         
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Understanding Character Data Format"
-  code="; Examine character data structure
+**Understanding Character Data Format:**
+
+```assembly
+; Examine character data structure
 ; Display character and show its bit pattern
 
 ; Put letter 'A' on screen (character code $41)
@@ -152,9 +151,8 @@ STA $D800       ; Set colour for position 0
 
 ; Character ROM contains the actual pixel data
 ; ROM address for 'A' = $1000 + ($41 * 8) = $1208
-; Each character takes 8 bytes (8 rows × 8 pixels)"
-  language="assembly"
-/>
+; Each character takes 8 bytes (8 rows × 8 pixels)
+```
 
 ## Custom Character Sets
 
@@ -210,10 +208,10 @@ CopyLoop:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Custom Character Set Setup"
-  code="; Setup custom character set (simplified)
+**Custom Character Set Setup:**
+
+```assembly
+; Setup custom character set (simplified)
 ; This example shows the concept - real implementation needs ROM copying
 
 ; Tell VIC-II to use character data at $2000
@@ -243,9 +241,8 @@ STA $2007           ; Character 0, row 7
 
 ; Display the custom character
 LDA #$00            ; Character code 0 (our smiley)
-STA $0400           ; Display on screen"
-  language="assembly"
-/>
+STA $0400           ; Display on screen
+```
 
 ## Multicolor Text Mode
 
@@ -291,10 +288,10 @@ MultcolorChar:
     .byte %11111111     ; Row 7: 11|11|11|11
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Multicolor Text Mode Programming"
-  code="; Demonstrate multicolor text mode
+**Multicolor Text Mode Programming:**
+
+```assembly
+; Demonstrate multicolor text mode
 ; Enable multicolor mode
 LDA $D016           ; Read control register 2  
 ORA #%00010000      ; Set multicolor bit (MCM)
@@ -317,9 +314,8 @@ STA $0400           ; Display character
 
 ; Set character-specific colour (colour 11)
 LDA #$07            ; Yellow
-STA $D800           ; Color RAM - becomes colour 11"
-  language="assembly"
-/>
+STA $D800           ; Color RAM - becomes colour 11
+```
 
 ## Extended Color Text Mode
 
@@ -362,10 +358,10 @@ SetupECMColors:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Extended Color Mode Programming"
-  code="; Demonstrate extended colour text mode
+**Extended Color Mode Programming:**
+
+```assembly
+; Demonstrate extended colour text mode
 ; Enable extended colour mode
 LDA $D011           ; Read control register 1
 ORA #%01000000      ; Set ECM bit (bit 6)  
@@ -396,9 +392,8 @@ LDA #$07            ; Yellow
 STA $D800           ; First character
 STA $D801           ; Second character
 STA $D802           ; Third character  
-STA $D803           ; Fourth character"
-  language="assembly"
-/>
+STA $D803           ; Fourth character
+```
 
 ## Character Animation Techniques
 
@@ -499,10 +494,10 @@ BottomLoop:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Character-Based Graphics"
-  code="; Create graphics using text characters
+**Character-Based Graphics:**
+
+```assembly
+; Create graphics using text characters
 ; Draw a simple border and pattern
 
 ; Draw top border using horizontal line characters
@@ -548,9 +543,8 @@ LDA #$2A            ; Star character
 STA $0429           ; Center area
 STA $042A
 STA $0451
-STA $0452"
-  language="assembly"
-/>
+STA $0452
+```
 
 ## Screen Mode Applications
 
@@ -583,10 +577,10 @@ Create a comprehensive screen mode demonstration that:
 3. Shows character animation techniques
 4. Creates graphics using character blocks
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Complete Screen Mode Demo"
-  code="; Comprehensive screen mode demonstration
+**Practice Exercise - Complete Screen Mode Demo:**
+
+```assembly
+; Comprehensive screen mode demonstration
 ; Shows mode switching, custom characters, and graphics
 
 InitDemo:
@@ -665,10 +659,8 @@ DisplayGraphics:
     RTS
 
 ModeText:
-    .text \"STANDARD TEXT MODE\"
-    .byte $00       ; End marker"
-  language="assembly"
-/>
+    .text \
+```
 
 ## Screen Mode Best Practices
 

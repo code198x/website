@@ -60,10 +60,10 @@ LDA $0600,Y    ; Load from address $0600 + Y
 STA $0700,Y    ; Store to address $0700 + Y
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Basic Indexed Addressing"
-  code="; Setup some test data
+**Basic Indexed Addressing:**
+
+```assembly
+; Setup some test data
 LDA #$10    ; Value $10
 STA $0400   ; Store at $0400 (index 0)
 LDA #$20    ; Value $20  
@@ -74,9 +74,8 @@ STA $0402   ; Store at $0402 (index 2)
 ; Access data using indexed addressing
 LDX #$01    ; Index = 1
 LDA $0400,X ; Load from $0400 + 1 = $0401
-            ; A now contains $20"
-  language="assembly"
-/>
+            ; A now contains $20
+```
 
 ## Creating Your First Table
 
@@ -93,10 +92,10 @@ LDA health_table,X ; Load health value (10)
 STA player_health  ; Set player health
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Health Difficulty Table"
-  code="; Simulate health table data
+**Health Difficulty Table:**
+
+```assembly
+; Simulate health table data
 LDA #$0F    ; Easy health (15)
 STA $0500   ; Store at table index 0
 LDA #$0A    ; Normal health (10)
@@ -108,9 +107,8 @@ STA $0502   ; Store at table index 2
 LDX #$02    ; Choose hard difficulty (index 2)
 LDA $0500,X ; Load health from table
 STA $0400   ; Store as player health
-; Player now has 5 health points"
-  language="assembly"
-/>
+; Player now has 5 health points
+```
 
 ## Sound Frequency Table
 
@@ -132,10 +130,10 @@ play_note:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Musical Note Frequency Table"
-  code="; Setup APU
+**Musical Note Frequency Table:**
+
+```assembly
+; Setup APU
 LDA #$BF    ; Configure pulse wave
 STA $4000   ; Pulse 1 control
 LDA #$0F    ; Enable APU
@@ -157,9 +155,8 @@ LDA $0510,X ; Get frequency from table
 STA $4002   ; Set pulse 1 frequency
 LDA #$01    ; High frequency
 STA $4003   ; Complete frequency
-; Note E is now playing!"
-  language="assembly"
-/>
+; Note E is now playing!
+```
 
 ## Multi-Dimensional Tables
 
@@ -207,10 +204,10 @@ set_sprite_tile:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Graphics Table"
-  code="; Create sprite tile lookup table
+**Sprite Graphics Table:**
+
+```assembly
+; Create sprite tile lookup table
 LDA #$01    ; Player standing tile
 STA $0520   ; Table index 0
 LDA #$02    ; Player walking tile
@@ -226,9 +223,8 @@ STA $0524   ; Table index 4
 LDX #$02    ; Jumping animation
 LDA $0520,X ; Get tile from table
 STA $0201   ; Store to sprite OAM tile
-; Sprite tile is now set to jumping ($04)"
-  language="assembly"
-/>
+; Sprite tile is now set to jumping ($04)
+```
 
 ## Level Data Tables
 
@@ -285,10 +281,10 @@ get_palette_color:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Color Palette Table"
-  code="; Setup palette data (4 colors per palette)
+**Color Palette Table:**
+
+```assembly
+; Setup palette data (4 colors per palette)
 ; Palette 0
 LDA #$0F    ; Background color
 STA $0530   ; Palette 0, color 0
@@ -318,9 +314,8 @@ ADC #$02    ; Add color index 2
 TAX         ; Use as table index
 LDA $0530,X ; Get color from table
 STA $0400   ; Store result
-; Color $1A retrieved from palette 1, color 2"
-  language="assembly"
-/>
+; Color $1A retrieved from palette 1, color 2
+```
 
 ## Game State Tables
 
@@ -379,10 +374,10 @@ copy_loop:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Table Copying"
-  code="; Setup source data
+**Table Copying:**
+
+```assembly
+; Setup source data
 LDA #$11
 STA $0540   ; Source byte 0
 LDA #$22
@@ -405,9 +400,8 @@ BNE copy_loop ; Continue if more to copy
 LDA $0550   ; Should be $11
 LDA $0551   ; Should be $22
 LDA $0552   ; Should be $33
-LDA $0553   ; Should be $44"
-  language="assembly"
-/>
+LDA $0553   ; Should be $44
+```
 
 ## Practical Exercise: Game Item System
 
@@ -422,10 +416,10 @@ Create functions to:
 - Apply item effects
 - Check item rarity
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Game Item System"
-  code="; Item system tables
+**Practice: Game Item System:**
+
+```assembly
+; Item system tables
 ; Item graphics (tile numbers)
 LDA #$30    ; Health potion tile
 STA $0560   ; Item 0 graphics
@@ -471,9 +465,8 @@ STA $0591   ; Store effect result
 LDA $0580,X ; Get rarity level
 STA $0592   ; Store rarity result
 
-; Results: Graphics=$33, Effect=$50, Rarity=$02"
-  language="assembly"
-/>
+; Results: Graphics=$33, Effect=$50, Rarity=$02
+```
 
 ## Advanced Table Techniques
 

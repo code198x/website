@@ -87,10 +87,10 @@ RET C
 RET NC
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Basic Subroutine Example"
-  code="; Simple subroutine demonstration
+**Basic Subroutine Example:**
+
+```assembly
+; Simple subroutine demonstration
 MainCode:
     LD A, 7             ; First number
     LD B, 3             ; Second number
@@ -120,9 +120,8 @@ MultiplyLoop:
     RET                 ; Return with result in A
 
 ; This subroutine can be called from anywhere
-; and will multiply A by B, returning result in A"
-  language="assembly"
-/>
+; and will multiply A by B, returning result in A
+```
 
 ## The Stack System
 
@@ -156,10 +155,10 @@ The Stack Pointer (SP) tracks the top of the stack:
 LD SP, $8000        ; Initialize stack pointer
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Stack Operations Demo"
-  code="; Demonstrate PUSH and POP operations
+**Stack Operations Demo:**
+
+```assembly
+; Demonstrate PUSH and POP operations
 LD SP, $8000        ; Initialize stack pointer
 
 ; Store some values in registers
@@ -200,9 +199,8 @@ SaveAllRegisters:
     POP DE
     POP BC
     POP AF
-    RET             ; All registers restored to original values"
-  language="assembly"
-/>
+    RET             ; All registers restored to original values
+```
 
 ## Parameter Passing Techniques
 
@@ -302,10 +300,10 @@ ProcessData:
     LD HL, (ParamBlock+4)   ; Get result (150)
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Parameter Passing Methods"
-  code="; Demonstrate different parameter passing methods
+**Parameter Passing Methods:**
+
+```assembly
+; Demonstrate different parameter passing methods
 
 ; Method 1: Register parameters
 ; String length calculator (counts until zero terminator)
@@ -391,9 +389,8 @@ TestString:
     DB 'HELLO', 0       ; Test string with terminator
 
 TestArray:
-    DB 1, 2, 3, 4, 5    ; Test array"
-  language="assembly"
-/>
+    DB 1, 2, 3, 4, 5    ; Test array
+```
 
 ## Building Code Libraries
 
@@ -482,10 +479,10 @@ PixelReady:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Code Library Example"
-  code="; Simple utility library with multiple subroutines
+**Code Library Example:**
+
+```assembly
+; Simple utility library with multiple subroutines
 
 ; Library jump table (for easy access)
 UtilityLib:
@@ -627,9 +624,8 @@ DestData:
     DS 5                ; Space for copied data
 
 BufferData:
-    DS 10               ; Buffer for fill test"
-  language="assembly"
-/>
+    DS 10               ; Buffer for fill test
+```
 
 ## Advanced Stack Techniques
 
@@ -755,10 +751,10 @@ Create a comprehensive subroutine library that demonstrates:
 4. Code organization and modularity
 5. Stack management techniques
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Complete Subroutine System"
-  code="; Comprehensive subroutine library demonstration
+**Practice Exercise - Complete Subroutine System:**
+
+```assembly
+; Comprehensive subroutine library demonstration
 
 ; Main program that uses the library
 MainProgram:
@@ -922,9 +918,8 @@ TestArray:
 ; - Nested subroutine calls
 ; - Stack management
 ; - Modular code organization
-; - Return value handling"
-  language="assembly"
-/>
+; - Return value handling
+```
 
 ## Subroutine Best Practices
 

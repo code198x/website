@@ -287,10 +287,10 @@ EffectJumpHi:
     .byte >CircularMotion, >LinearMotion, >ScaleEffect, >ColorCycle
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Complete I/O Integration Demonstration"
-  code="; Complete demonstration of integrated VIC-II and SID programming
+**Complete I/O Integration Demonstration:**
+
+```assembly
+; Complete demonstration of integrated VIC-II and SID programming
 ; Shows all concepts from lessons 17-23 working together
 
 IOIntegrationDemo:
@@ -658,9 +658,8 @@ FreqHi:
     .byte $48, $50, $5A, $60, $6E, $7C, $8C, $90
 
 ; Start the integrated I/O demonstration
-JSR IOIntegrationDemo"
-  language="assembly"
-/>
+JSR IOIntegrationDemo
+```
 
 ## Advanced Multimedia Programming Patterns
 

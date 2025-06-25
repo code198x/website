@@ -101,10 +101,10 @@ INX         ; Next byte
 BNE clear_ram ; Continue until X wraps to 0
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Basic NES Initialization"
-  code="; NES System Initialization
+**Basic NES Initialization:**
+
+```assembly
+; NES System Initialization
 SEI         ; Disable interrupts
 LDX #$FF    ; Stack pointer to top
 TXS         ; Set stack pointer
@@ -122,9 +122,8 @@ STA $0200,X ; Clear OAM RAM
 INX         ; Next byte
 BNE clear_loop ; Continue until done
 
-; System is now initialized!"
-  language="assembly"
-/>
+; System is now initialized!
+```
 
 ## Complete Initialization Routine
 
@@ -194,10 +193,10 @@ init_ppu:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="PPU Initialization"
-  code="; PPU Initialization Routine
+**PPU Initialization:**
+
+```assembly
+; PPU Initialization Routine
 JSR init_ppu_demo
 
 init_ppu_demo:
@@ -216,9 +215,8 @@ init_ppu_demo:
     
     RTS
     
-; PPU is now initialized and ready for graphics!"
-  language="assembly"
-/>
+; PPU is now initialized and ready for graphics!
+```
 
 ## APU Initialization
 
@@ -249,10 +247,10 @@ init_apu:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="APU Initialization"
-  code="; APU Initialization Routine
+**APU Initialization:**
+
+```assembly
+; APU Initialization Routine
 JSR init_apu_demo
 
 init_apu_demo:
@@ -278,9 +276,8 @@ init_apu_demo:
     
     RTS
     
-; APU is now ready for sound generation!"
-  language="assembly"
-/>
+; APU is now ready for sound generation!
+```
 
 ## VBlank Waiting
 
@@ -345,10 +342,10 @@ game_init:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Game Initialization"
-  code="; Game-Specific Initialization
+**Game Initialization:**
+
+```assembly
+; Game-Specific Initialization
 JSR game_init_demo
 
 game_init_demo:
@@ -372,9 +369,8 @@ game_init_demo:
     
     RTS
     
-; Game variables are now initialized!"
-  language="assembly"
-/>
+; Game variables are now initialized!
+```
 
 ## Sprite Symphony Initialization
 
@@ -411,10 +407,10 @@ init_sprite_symphony:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Symphony Initialization"
-  code="; Sprite Symphony Project Initialization
+**Sprite Symphony Initialization:**
+
+```assembly
+; Sprite Symphony Project Initialization
 JSR init_sprite_symphony_demo
 
 init_sprite_symphony_demo:
@@ -446,9 +442,8 @@ init_sprite_symphony_demo:
     
     RTS
     
-; Sprite Symphony is initialized and ready!"
-  language="assembly"
-/>
+; Sprite Symphony is initialized and ready!
+```
 
 ## Error Handling During Initialization
 
@@ -563,10 +558,10 @@ Create a complete initialization routine for a simple game with these requiremen
 5. Set up 4 enemies at positions (50,50), (150,50), (50,150), (150,150)
 6. Initialize sound system for music
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Game Initialization"
-  code="; Complete Game Initialization Exercise
+**Practice: Complete Game Initialization:**
+
+```assembly
+; Complete Game Initialization Exercise
 JSR complete_game_init
 
 complete_game_init:
@@ -643,9 +638,8 @@ clear_ram:
     CLI             ; Enable interrupts
     RTS
     
-; Game is fully initialized and ready to play!"
-  language="assembly"
-/>
+; Game is fully initialized and ready to play!
+```
 
 ## Common Initialization Mistakes
 

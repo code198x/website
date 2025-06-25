@@ -106,10 +106,10 @@ LDA #$80        ; Sprite data at $2000
 STA $07F8       ; Sprite 0 pointer
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Sprite Pointer Setup"
-  code="; Setup sprite pointers for sprite data
+**Sprite Pointer Setup:**
+
+```assembly
+; Setup sprite pointers for sprite data
 ; Place sprite 0 data at address $2000
 
 ; Calculate sprite pointer value
@@ -124,9 +124,8 @@ STA $D015       ; Write back to enable register
 
 ; Set sprite 0 colour
 LDA #$01        ; White colour
-STA $D027       ; Sprite 0 colour register"
-  language="assembly"
-/>
+STA $D027       ; Sprite 0 colour register
+```
 
 ## Essential Sprite Registers
 
@@ -163,10 +162,10 @@ Bit 6: Sprite 6 X coordinate bit 8
 Bit 0: Sprite 0 X coordinate bit 8
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Sprite Positioning"
-  code="; Position sprite 0 at screen coordinates (100, 150)
+**Sprite Positioning:**
+
+```assembly
+; Position sprite 0 at screen coordinates (100, 150)
 
 ; Set X position (100)
 LDA #100        ; X coordinate
@@ -181,9 +180,8 @@ STA $D010       ; Write back
 LDA #150        ; Y coordinate  
 STA $D001       ; Sprite 0 Y position
 
-; Position is now set - sprite will appear at (100, 150)"
-  language="assembly"
-/>
+; Position is now set - sprite will appear at (100, 150)
+```
 
 ## Creating Sprite Data
 
@@ -219,10 +217,10 @@ SpriteArrow:
     .byte %00000000, %00000000, %00000000  ; ........................
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Creating and Displaying Sprite Graphics"
-  code="; Create simple sprite data and display it
+**Creating and Displaying Sprite Graphics:**
+
+```assembly
+; Create simple sprite data and display it
 ; Design a basic smiley face sprite
 
 ; Create sprite data at $2000 (simple pattern for demo)
@@ -269,9 +267,8 @@ STA $D001       ; Sprite 0 Y
 
 ; Set sprite colour
 LDA #$07        ; Yellow
-STA $D027       ; Sprite 0 colour"
-  language="assembly"
-/>
+STA $D027       ; Sprite 0 colour
+```
 
 ## Sprite Animation
 
@@ -464,10 +461,10 @@ LDA $D01E       ; Reading clears sprite-sprite collisions
 LDA $D01F       ; Reading clears sprite-background collisions
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Sprite Collision Detection"
-  code="; Demonstrate sprite collision detection
+**Sprite Collision Detection:**
+
+```assembly
+; Demonstrate sprite collision detection
 ; Setup two sprites and detect when they collide
 
 InitTwoSprites:
@@ -548,9 +545,8 @@ ContinueDemo:
 
 ; Run the demo
 JSR InitTwoSprites
-JSR CollisionDemo"
-  language="assembly"
-/>
+JSR CollisionDemo
+```
 
 ## Advanced Sprite Features
 
@@ -701,10 +697,10 @@ Create a complete sprite-based game element system:
 3. Sprite animation and scaling effects
 4. Interactive sprite control
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Complete Sprite System"
-  code="; Complete sprite demonstration system
+**Practice Exercise - Complete Sprite System:**
+
+```assembly
+; Complete sprite demonstration system
 ; Multiple sprites with collision detection and animation
 
 InitSpriteSystem:
@@ -841,9 +837,8 @@ NoCollisions:
 
 ; Start the sprite system
 JSR InitSpriteSystem
-JSR GameLoop"
-  language="assembly"
-/>
+JSR GameLoop
+```
 
 ## Sprite Programming Best Practices
 

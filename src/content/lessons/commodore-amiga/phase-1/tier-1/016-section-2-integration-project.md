@@ -50,10 +50,10 @@ Before coding, let's plan the program structure:
 5. **Main Loop**: Coordinate all systems
 6. **Effect Generators**: Individual visual/audio effects
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Project Structure and Constants"
-  code="; AmigaVision - Interactive Multimedia Demo
+**Project Structure and Constants:**
+
+```assembly
+; AmigaVision - Interactive Multimedia Demo
 ; Project constants and memory layout
 
 ; Memory layout constants
@@ -78,18 +78,17 @@ SAMPLE_RATE_LOW   EQU 443          ; ~8KHz
 
 ; Effect constants
 NUM_EFFECTS       EQU 4
-EFFECT_TIMER      EQU 60           ; Effect change timing"
-  language="assembly"
-/>
+EFFECT_TIMER      EQU 60           ; Effect change timing
+```
 
 ## System Initialization Module
 
 Let's start with comprehensive system setup:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="System Initialization Module"
-  code="; System initialization module
+**System Initialization Module:**
+
+```assembly
+; System initialization module
 SYSTEM_INIT:
     ; Save system state (for proper cleanup)
     MOVE.L #$00081000, A7        ; Initialize stack
@@ -179,18 +178,17 @@ INPUT_INIT:
     ; Initialize input state variables
     MOVE.L #INPUT_STATE, A0
     MOVE.W #0, (A0)              ; Clear input flags
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Graphics Engine Module
 
 Create a powerful graphics system with multiple effects:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Graphics Engine with Multiple Effects"
-  code="; Graphics engine with multiple visual effects
+**Graphics Engine with Multiple Effects:**
+
+```assembly
+; Graphics engine with multiple visual effects
 
 ; Clear screen function
 CLEAR_SCREEN:
@@ -383,18 +381,17 @@ PLOT_PIXEL_SIMPLE:
     OR.B #$80, (A0)              ; Simple pixel set
     
 PLOT_RTS:
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Audio Engine Module
 
 Create dynamic audio with interactive elements:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Audio Engine with Interactive Music"
-  code="; Audio engine with interactive music system
+**Audio Engine with Interactive Music:**
+
+```assembly
+; Audio engine with interactive music system
 
 ; Create audio samples
 CREATE_SAMPLES:
@@ -526,18 +523,17 @@ SFX_SWOOSH:
 SFX_CLICK:
     MOVE.W #150, $0B6(A6)                ; Medium-high lead
     MOVE.W #40, $0B8(A6)                 ; Medium volume
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Input Handler Module
 
 Process user input for interactive control:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Input Handler for User Interaction"
-  code="; Input handler for user interaction
+**Input Handler for User Interaction:**
+
+```assembly
+; Input handler for user interaction
 
 ; Process input
 PROCESS_INPUT:
@@ -675,18 +671,17 @@ RANDOM_COLOR_LOOP:
     MOVE.W D0, $188(A6,D2.W)     ; Set color register
     
     DBF D1, RANDOM_COLOR_LOOP
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Main Program Loop
 
 Tie everything together in the main execution loop:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Main Program Loop and Complete Integration"
-  code="; Main program entry point and loop
+**Main Program Loop and Complete Integration:**
+
+```assembly
+; Main program entry point and loop
 MAIN_PROGRAM:
     ; Initialize all systems
     BSR SYSTEM_INIT
@@ -787,18 +782,17 @@ PROGRAM_COMPLETE:
 
 ; Entry point - start the demo
 START_DEMO:
-    BRA MAIN_PROGRAM"
-  language="assembly"
-/>
+    BRA MAIN_PROGRAM
+```
 
 ## Practice Exercise: Extend the Demo
 
 Now that you have a complete multimedia demo, extend it with your own features:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Add Your Own Effect"
-  code="; Practice: Add your own custom effect
+**Practice: Add Your Own Effect:**
+
+```assembly
+; Practice: Add your own custom effect
 ; Create Effect 5: Tunnel effect
 
 EFFECT_TUNNEL:
@@ -874,9 +868,8 @@ CIRCLE_SKIP:
 
 YOUR_CUSTOM_EFFECT:
     ; Your code here!
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## What You've Accomplished
 

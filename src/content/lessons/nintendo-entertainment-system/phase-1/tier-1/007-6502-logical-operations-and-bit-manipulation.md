@@ -57,10 +57,10 @@ LDA #%11010110     ; Original data
 EOR #%01010101     ; Toggle specific bits → %10000011
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Basic Logical Operations"
-  code="; Demonstration of 6502 logical operations
+**Basic Logical Operations:**
+
+```assembly
+; Demonstration of 6502 logical operations
 ; These operations are fundamental for bit manipulation in NES programming
 
 LogicalOpsDemo:
@@ -137,9 +137,8 @@ LogicalOpsDemo:
 PPUControl:     .byte 0
 RedValue:       .byte 0
 GreenValue:     .byte 0
-BlueValue:      .byte 0"
-  language="assembly"
-/>
+BlueValue:      .byte 0
+```
 
 ## The BIT Instruction - Non-Destructive Testing
 
@@ -157,10 +156,10 @@ BIT TestByte       ; Test against TestByte
 BEQ NoMatch        ; Branch if no bits match
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="BIT Instruction Demonstration"
-  code="; Demonstration of the BIT instruction for non-destructive testing
+**BIT Instruction Demonstration:**
+
+```assembly
+; Demonstration of the BIT instruction for non-destructive testing
 ; BIT is perfect for testing hardware registers and flags
 
 BITInstructionDemo:
@@ -281,9 +280,8 @@ PPUStatus:      .byte 0
 MultiPattern:   .byte 0
 ButtonTest:     .byte 0
 ControllerData: .byte 0
-DirectionTest:  .byte 0"
-  language="assembly"
-/>
+DirectionTest:  .byte 0
+```
 
 ## Advanced Bit Manipulation Techniques
 
@@ -317,10 +315,10 @@ LSR A
 ; A now contains bits 4-6 in positions 0-2
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Advanced Bit Manipulation"
-  code="; Advanced bit manipulation techniques for NES programming
+**Advanced Bit Manipulation:**
+
+```assembly
+; Advanced bit manipulation techniques for NES programming
 ; Demonstrates data packing, unpacking, and bit field operations
 
 AdvancedBitDemo:
@@ -516,9 +514,8 @@ TileAttr_BR:    .byte 0
 NewAttr:        .byte 0
 
 TestData:       .byte $12, $34, $56, $78, $9A
-TestDataSize = 5"
-  language="assembly"
-/>
+TestDataSize = 5
+```
 
 ## NES Hardware Control with Logical Operations
 
@@ -534,10 +531,10 @@ Logical operations are essential for controlling NES hardware registers:
 - Process multiple buttons efficiently
 - Implement button combination detection
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="NES Hardware Control"
-  code="; NES hardware control using logical operations
+**NES Hardware Control:**
+
+```assembly
+; NES hardware control using logical operations
 ; Demonstrates real-world bit manipulation for NES programming
 
 NESHardwareDemo:
@@ -789,9 +786,8 @@ DiagonalCount:  .byte 0
 
 ; Sprite data
 SpriteAttributes: .byte 0
-FrameCounter:   .byte 0"
-  language="assembly"
-/>
+FrameCounter:   .byte 0
+```
 
 ## Algorithmic Applications
 
@@ -823,10 +819,10 @@ ORA #%00000001      ; Set bit 0 if bit 7 was 1
 NoWrap:
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Algorithmic Applications"
-  code="; Algorithmic applications of logical and bit operations
+**Algorithmic Applications:**
+
+```assembly
+; Algorithmic applications of logical and bit operations
 ; Demonstrates advanced algorithms using bit manipulation
 
 AlgorithmicDemo:
@@ -1040,16 +1036,15 @@ CRCData:        .byte $AB, $CD, $EF, $01
 CRCDataSize = 4
 CRCResult:      .byte 0
 
-FirstBitPos:    .byte 0"
-  language="assembly"
-/>
+FirstBitPos:    .byte 0
+```
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Logical Operations Practice"
-  code="; Practice Exercise: NES Graphics Engine
+**Logical Operations Practice:**
+
+```assembly
+; Practice Exercise: NES Graphics Engine
 ; Use logical operations to implement graphics processing routines
 
 GraphicsEnginePractice:
@@ -1368,9 +1363,8 @@ CompositeLayer:     .byte 0
 
 PatternSeed:        .byte %10110100
 Pattern1:           .byte 0
-Pattern2:           .byte 0"
-  language="assembly"
-/>
+Pattern2:           .byte 0
+```
 
 ## What You've Learned
 

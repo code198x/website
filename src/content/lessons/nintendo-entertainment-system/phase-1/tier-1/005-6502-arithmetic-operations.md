@@ -45,10 +45,10 @@ ADC #5          ; A = A + 5 + 0 = 15
 
 The carry flag is automatically included in every addition, making multi-byte math straightforward.
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="6502 Addition Operations"
-  code="; Demonstration of 6502 addition with ADC instruction
+**6502 Addition Operations:**
+
+```assembly
+; Demonstration of 6502 addition with ADC instruction
 ; This program shows ADC in various scenarios
 
 AdditionDemo:
@@ -122,9 +122,8 @@ AddLoop:
 ; Data for examples
 Value1:         .byte 20
 NumberArray:    .byte 5, 10, 15, 20
-ArraySize = 4"
-  language="assembly"
-/>
+ArraySize = 4
+```
 
 ## 6502 Subtraction - SBC Instruction
 

@@ -46,10 +46,10 @@ The 68000 has a much more comprehensive register set than 8-bit processors:
 - **Program Counter (PC)**: Points to the next instruction
 - **Status Register (SR)**: Contains condition codes and system flags
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="68000 Register Basics"
-  code="; 68000 Register Demonstration
+**68000 Register Basics:**
+
+```assembly
+; 68000 Register Demonstration
 ; Shows basic register usage and data movement
 
 RegisterDemo:
@@ -123,9 +123,8 @@ RegisterDemo:
     MOVE.B  #$EF, D0            ; Modify only low byte
     ; D0 now contains: $1234ABEF
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## 68000 Data Sizes
 
@@ -143,10 +142,10 @@ The 68000 operates on three different data sizes:
 - Range: 0 to 4,294,967,295 (unsigned) or -2,147,483,648 to +2,147,483,647 (signed)
 - Uses the full 32 bits of a register
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Data Size Demonstration"
-  code="; 68000 Data Size Operations
+**Data Size Demonstration:**
+
+```assembly
+; 68000 Data Size Operations
 ; Demonstrates working with different data sizes
 
 DataSizeDemo:
@@ -254,9 +253,8 @@ WordResult:     DC.W    0
 LongResult:     DC.L    0
 RedComponent:   DC.B    0
 GreenComponent: DC.B    0
-BlueComponent:  DC.B    0"
-  language="assembly"
-/>
+BlueComponent:  DC.B    0
+```
 
 ## The MOVE Instruction
 
@@ -278,10 +276,10 @@ MOVE.size source, destination
 - **Register**: `D0`, `A0`, etc.
 - **Memory**: `$address`, `(A0)`, etc.
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="MOVE Instruction Variations"
-  code="; Comprehensive MOVE instruction demonstration
+**MOVE Instruction Variations:**
+
+```assembly
+; Comprehensive MOVE instruction demonstration
 ; Shows all the ways to move data around
 
 MOVEInstructionDemo:
@@ -406,9 +404,8 @@ FillLoop:
 
 ; Data areas for examples
 SourceData:     DC.B    $10,$20,$30,$40,$50,$60,$70,$80
-DestData:       DS.B    8       ; Reserve 8 bytes for destination"
-  language="assembly"
-/>
+DestData:       DS.B    8       ; Reserve 8 bytes for destination
+```
 
 ## 68000 Memory Organization
 
@@ -433,10 +430,10 @@ $DF0000-$DFFFFF  Reserved
 $F80000-$FFFFFF  Kickstart ROM
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Memory Organization and Alignment"
-  code="; Demonstration of 68000 memory organization and alignment
+**Memory Organization and Alignment:**
+
+```assembly
+; Demonstration of 68000 memory organization and alignment
 ; Shows big-endian byte order and alignment considerations
 
 MemoryOrganizationDemo:
@@ -566,16 +563,15 @@ PlayerStruct:
     DC.B    0       ; Padding for alignment
 
 Block1:         DC.B    $01,$02,$03,$04,$05,$06,$07,$08
-Block2:         DC.B    $01,$02,$03,$04,$05,$06,$07,$08"
-  language="assembly"
-/>
+Block2:         DC.B    $01,$02,$03,$04,$05,$06,$07,$08
+```
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="68000 Register and Memory Practice"
-  code="; Practice Exercise: Amiga Graphics Data Processor
+**68000 Register and Memory Practice:**
+
+```assembly
+; Practice Exercise: Amiga Graphics Data Processor
 ; Use 68000 registers and memory operations for graphics processing
 
 GraphicsDataProcessor:
@@ -777,9 +773,8 @@ TempWorkArea:
 ; 1. Add sprite collision detection using coordinate comparison
 ; 2. Implement palette colour cycling/animation
 ; 3. Create more complex pattern generation algorithms
-; 4. Add sprite priority sorting based on Y coordinates"
-  language="assembly"
-/>
+; 4. Add sprite priority sorting based on Y coordinates
+```
 
 ## What You've Learned
 

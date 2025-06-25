@@ -72,10 +72,10 @@ MoveDown:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Immediate Movement Response"
-  code="; Immediate character movement system
+**Immediate Movement Response:**
+
+```assembly
+; Immediate character movement system
 Main:
     JSR ProcessMovement
     JSR UpdateGraphics
@@ -161,9 +161,8 @@ ReadController:
 PlayerX: .byte $80
 PlayerY: .byte $80
 Buttons: .byte $00
-SpriteData: .byte $80, $01, $00, $80"
-  language="assembly"
-/>
+SpriteData: .byte $80, $01, $00, $80
+```
 
 ## Smooth Character Movement
 
@@ -255,10 +254,10 @@ VelocityX: .byte $00
 VelocityY: .byte $00
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Smooth Movement with Velocity"
-  code="; Smooth character movement system
+**Smooth Movement with Velocity:**
+
+```assembly
+; Smooth character movement system
 Main:
     JSR UpdateMovement
     JSR UpdateDisplay
@@ -358,9 +357,8 @@ PlayerY: .byte $80
 VelX: .byte $00
 VelY: .byte $00
 Buttons: .byte $00
-SpriteData: .byte $80, $01, $00, $80"
-  language="assembly"
-/>
+SpriteData: .byte $80, $01, $00, $80
+```
 
 ## Responsive Menu Navigation
 
@@ -454,10 +452,10 @@ MenuMaxItems: .byte $04  ; Number of menu items
 CursorY: .byte $40       ; Cursor Y position
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Responsive Menu Navigation"
-  code="; Responsive menu system with cursor
+**Responsive Menu Navigation:**
+
+```assembly
+; Responsive menu system with cursor
 Main:
     JSR UpdateMenu
     JSR UpdateDisplay
@@ -563,9 +561,8 @@ CurrentButtons: .byte $FF
 PrevButtons: .byte $FF
 NewPresses: .byte $00
 FrameCount: .byte $00
-SpriteData: .byte $60, $7E, $00, $20"
-  language="assembly"
-/>
+SpriteData: .byte $60, $7E, $00, $20
+```
 
 ## Input Buffering for Responsiveness
 
@@ -688,10 +685,10 @@ GameState: .byte $00     ; Current game context
 MovementSpeed: .byte $02 ; Current movement speed
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Variable Speed Movement System"
-  code="; Movement system with variable speeds
+**Variable Speed Movement System:**
+
+```assembly
+; Movement system with variable speeds
 Main:
     JSR UpdateGameState
     JSR ProcessMovement
@@ -794,9 +791,8 @@ GameMode: .byte $00
 MoveSpeed: .byte $02
 StateTimer: .byte $00
 Buttons: .byte $00
-SpriteData: .byte $80, $41, $00, $80"
-  language="assembly"
-/>
+SpriteData: .byte $80, $41, $00, $80
+```
 
 ## Practice Exercise
 
@@ -809,10 +805,10 @@ Create a complete responsive input system that demonstrates all concepts:
 5. Include variable movement speeds
 6. Add audio feedback for all interactions
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Responsive Input System"
-  code="; Complete responsive input demonstration
+**Practice: Complete Responsive Input System:**
+
+```assembly
+; Complete responsive input demonstration
 Main:
     JSR InitSystem
     
@@ -1141,9 +1137,8 @@ InputPattern: .byte $00
 ; Sprite data
 SpriteData: 
     .byte $80, $01, $00, $80  ; Player sprite
-    .byte $50, $7E, $00, $30  ; Menu cursor"
-  language="assembly"
-/>
+    .byte $50, $7E, $00, $30  ; Menu cursor
+```
 
 ## What You've Learned
 

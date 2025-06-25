@@ -96,10 +96,10 @@ CursorPattern:
 
 ### Smooth Cursor Movement
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Smooth Cursor Movement"
-  code="; Smooth cursor movement demonstration
+**Smooth Cursor Movement:**
+
+```assembly
+; Smooth cursor movement demonstration
 ; Shows responsive keyboard control of graphics cursor
 
 DISPLAY_FILE    EQU 16384
@@ -394,9 +394,8 @@ DelayLoop:
     DJNZ MainLoop
     
     LD B, 255           ; Success
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Advanced Input Handling
 
@@ -492,10 +491,10 @@ KeyCombinations: DB 0
 
 ### Mode Management
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Drawing Mode Controls"
-  code="; Drawing mode control system
+**Drawing Mode Controls:**
+
+```assembly
+; Drawing mode control system
 ; Implements various drawing modes with keyboard control
 
 DISPLAY_FILE    EQU 16384
@@ -781,9 +780,8 @@ Delay2:
 
 ; Keyboard defines
 KEY_Q_T:        EQU 0xFBFE
-KEY_A_G:        EQU 0xFDFE"
-  language="assembly"
-/>
+KEY_A_G:        EQU 0xFDFE
+```
 
 ## Building Interactive Menus
 
@@ -851,10 +849,10 @@ CheckSelect:
 
 ### Visual Feedback
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Interactive Menu System"
-  code="; Complete interactive menu system
+**Interactive Menu System:**
+
+```assembly
+; Complete interactive menu system
 ; Shows visual feedback and keyboard navigation
 
 DISPLAY_FILE    EQU 16384
@@ -1122,9 +1120,8 @@ MenuExit:
     POP BC
     LD A, (CurrentItem)
     LD B, A             ; Return selection
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Gesture Recognition
 
@@ -1233,10 +1230,10 @@ ImmediateResponse:
 
 ## Practical Exercise: Complete Input System
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complete Drawing Input System"
-  code="; Complete drawing input system
+**Complete Drawing Input System:**
+
+```assembly
+; Complete drawing input system
 ; Integrates cursor, modes, menus, and drawing
 
 DISPLAY_FILE    EQU 16384
@@ -1437,9 +1434,8 @@ ClearScreen:
 
 ; Mode constants
 MODE_MOVE:      EQU 0
-MODE_DRAW:      EQU 1"
-  language="assembly"
-/>
+MODE_DRAW:      EQU 1
+```
 
 ## Key Takeaways
 

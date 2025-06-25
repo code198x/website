@@ -61,10 +61,10 @@ EIGHTH_NOTE    = 30     ; 0.5 seconds
 SIXTEENTH_NOTE = 15     ; 0.25 seconds
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Basic Melody Timing"
-  code="; Simple melody with frame-based timing
+**Basic Melody Timing:**
+
+```assembly
+; Simple melody with frame-based timing
 JSR play_timed_melody
 
 play_timed_melody:
@@ -143,9 +143,8 @@ play_note_c_high:
     STA $4003
     RTS
 
-; Simple C-E-G-C melody with 1-second notes!"
-  language="assembly"
-/>
+; Simple C-E-G-C melody with 1-second notes!
+```
 
 ## Melody Data Structures
 
@@ -177,10 +176,10 @@ advanced_melody:
     .byte $FF, $00, $00, $00    ; End marker
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Melody Data Structure"
-  code="; Melody using data structure approach
+**Melody Data Structure:**
+
+```assembly
+; Melody using data structure approach
 JSR init_melody_system
 
 init_melody_system:
@@ -294,9 +293,8 @@ melody_finished:
 ; Test melody system
 JSR update_melody
 
-; Melody data structure system working!"
-  language="assembly"
-/>
+; Melody data structure system working!
+```
 
 ## Creating Musical Phrases
 
@@ -325,10 +323,10 @@ motif_2:
     .byte NOTE_D, HALF_NOTE
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Musical Phrases"
-  code="; Create and play musical phrases
+**Musical Phrases:**
+
+```assembly
+; Create and play musical phrases
 JSR demo_musical_phrases
 
 demo_musical_phrases:
@@ -423,9 +421,8 @@ play_phrase_data:
     STA $0573       ; phrase_timer
     RTS
 
-; Musical phrase system ready for use!"
-  language="assembly"
-/>
+; Musical phrase system ready for use!
+```
 
 ## Sprite Symphony Melody Engine
 
@@ -551,10 +548,10 @@ update_sprite_symphony:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Symphony Melody Engine"
-  code="; Sprite Symphony Melody Engine Demo
+**Sprite Symphony Melody Engine:**
+
+```assembly
+; Sprite Symphony Melody Engine Demo
 JSR init_symphony_melody_demo
 
 init_symphony_melody_demo:
@@ -676,9 +673,8 @@ JSR update_symphony_melody
 JSR update_symphony_melody
 JSR update_symphony_melody
 
-; Sprite Symphony melody engine working!"
-  language="assembly"
-/>
+; Sprite Symphony melody engine working!
+```
 
 ## Advanced Melody Techniques
 
@@ -714,10 +710,10 @@ Create a comprehensive melody system with:
 4. Two-channel harmony (melody + bass line)
 5. Tempo control (adjustable playback speed)
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Melody System"
-  code="; Complete Melody System with Multiple Melodies
+**Practice: Complete Melody System:**
+
+```assembly
+; Complete Melody System with Multiple Melodies
 JSR init_complete_melody_system
 
 init_complete_melody_system:
@@ -901,9 +897,8 @@ JSR update_complete_melody
 LDA #$02
 JSR select_melody
 
-; Complete melody system with multiple melodies working!"
-  language="assembly"
-/>
+; Complete melody system with multiple melodies working!
+```
 
 ## What You've Learned
 

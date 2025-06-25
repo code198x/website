@@ -1161,10 +1161,10 @@ EventResult:        DC.L    0"
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Program Flow Control Practice"
-  code="; Practice Exercise: Amiga Game Engine Control System
+**Program Flow Control Practice:**
+
+```assembly
+; Practice Exercise: Amiga Game Engine Control System
 ; Use advanced flow control for game logic management
 
 GameEngineControl:
@@ -1670,9 +1670,8 @@ ProjectileArray:        DS.B    MAX_PROJECTILES*PROJ_SIZE
 ; 1. Add more complex AI state machines with transitions
 ; 2. Implement nested menu systems with multiple levels
 ; 3. Create event-driven programming using jump tables
-; 4. Add save/load game state functionality"
-  language="assembly"
-/>
+; 4. Add save/load game state functionality
+```
 
 ## What You've Learned
 

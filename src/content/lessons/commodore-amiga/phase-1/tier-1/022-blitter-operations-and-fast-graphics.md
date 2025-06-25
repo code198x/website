@@ -39,10 +39,10 @@ The Blitter has three DMA channels and can perform 256 different logical operati
 
 The Blitter combines inputs using programmable logic and outputs the result to the destination.
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Blitter Architecture and Basic Setup"
-  code="; Understanding Blitter registers and basic operations
+**Blitter Architecture and Basic Setup:**
+
+```assembly
+; Understanding Blitter registers and basic operations
 
 ; Blitter register offsets from $DFF000
 BLTCON0     EQU $040        ; Control register 0
@@ -141,18 +141,17 @@ ClearScreen:
 
 ; Example graphics memory area
 GRAPHICS_MEMORY:
-    DS.B    32000               ; Space for 4 bitplanes"
-  language="assembly"
-/>
+    DS.B    32000               ; Space for 4 bitplanes
+```
 
 ## Blitter Logical Operations (Minterms)
 
 The Blitter can perform any of 256 logical operations using minterms:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Blitter Logical Operations and Minterms"
-  code="; Blitter logical operations using minterms
+**Blitter Logical Operations and Minterms:**
+
+```assembly
+; Blitter logical operations using minterms
 ; Each minterm bit represents one combination of A, B, C inputs
 
 ; Common minterm values
@@ -348,9 +347,8 @@ PatternFillLoop:
     DBF     D7, PatternFillLoop
     
     MOVEM.L (SP)+, D2-D7/A2-A3
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Blitter Line Drawing
 
@@ -545,10 +543,10 @@ SineTable:
 
 Implement complex graphics operations for professional applications:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Blitter Graphics Techniques"
-  code="; Advanced Blitter operations for professional graphics
+**Advanced Blitter Graphics Techniques:**
+
+```assembly
+; Advanced Blitter operations for professional graphics
 
 ; Area fill using Blitter (flood fill)
 BlitterAreaFill:
@@ -761,18 +759,17 @@ MAX_SPRITES         EQU 32
 SPRITE_SIZE         EQU 32
 SPRITE_FLAGS        EQU 0
 
-SpriteRenderQueue:  DS.B    SPRITE_SIZE * MAX_SPRITES"
-  language="assembly"
-/>
+SpriteRenderQueue:  DS.B    SPRITE_SIZE * MAX_SPRITES
+```
 
 ## Blitter Synchronization and Optimization
 
 Professional applications require efficient Blitter usage:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Blitter Synchronization and Performance"
-  code="; Professional Blitter synchronization and optimization
+**Blitter Synchronization and Performance:**
+
+```assembly
+; Professional Blitter synchronization and optimization
 
 ; Interrupt-driven Blitter completion
 SetupBlitterInterrupt:
@@ -1017,18 +1014,17 @@ QueueBlitterOp:
     RTS
 
 ProcessBlitterQueue:
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Practice Exercise: Create a Blitter Graphics Engine
 
 Build a complete graphics engine using the Blitter:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Complete Blitter Graphics Engine"
-  code="; Create a comprehensive graphics engine using Blitter
+**Practice: Complete Blitter Graphics Engine:**
+
+```assembly
+; Create a comprehensive graphics engine using Blitter
 ; Demonstrates all major Blitter techniques
 
 BlitterGraphicsEngine:
@@ -1354,9 +1350,8 @@ RectPattern:        DS.B    8        ; Rectangle fill pattern
 BlendMask:          DS.B    8        ; Blending mask pattern
 
 ; Run the graphics engine!
-BSR     BlitterGraphicsEngine"
-  language="assembly"
-/>
+BSR     BlitterGraphicsEngine
+```
 
 ## What You've Learned
 

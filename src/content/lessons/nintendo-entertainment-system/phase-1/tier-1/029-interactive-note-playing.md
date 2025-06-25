@@ -184,10 +184,10 @@ QueueHead: .byte $00
 QueueTail: .byte $00
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Real-Time Musical Triggering"
-  code="; Real-time musical note triggering system
+**Real-Time Musical Triggering:**
+
+```assembly
+; Real-time musical note triggering system
 Main:
     JSR InitMusicSystem
     
@@ -497,9 +497,8 @@ SpriteData:
     .byte $FF, $10, $01, $60  ; Channel 0 sprite
     .byte $FF, $11, $01, $68  ; Channel 1 sprite
     .byte $FF, $12, $01, $70  ; Channel 2 sprite
-    .byte $FF, $13, $01, $78  ; Channel 3 sprite"
-  language="assembly"
-/>
+    .byte $FF, $13, $01, $78  ; Channel 3 sprite
+```
 
 ## Polyphonic Note Management
 
@@ -974,10 +973,10 @@ PentatonicFreqs:
     .byte $FE, $E5, $BA, $A8, $8A, $7E, $72, $65    ; C D F G A C D F
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Expressive Musical Controls"
-  code="; Expressive musical control system for Sprite Symphony
+**Expressive Musical Controls:**
+
+```assembly
+; Expressive musical control system for Sprite Symphony
 Main:
     JSR InitExpressiveSystem
     
@@ -1544,9 +1543,8 @@ SpriteData:
     .byte $FF, $10, $00, $70  ; Channel 0
     .byte $FF, $11, $00, $78  ; Channel 1
     .byte $FF, $12, $00, $80  ; Channel 2
-    .byte $FF, $13, $00, $88  ; Channel 3"
-  language="assembly"
-/>
+    .byte $FF, $13, $00, $88  ; Channel 3
+```
 
 ## Visual Feedback Enhancement
 
@@ -1853,10 +1851,10 @@ Create a complete interactive note playing system that demonstrates all concepts
 4. Build rich visual feedback that responds to musical expression
 5. Integrate everything into the Sprite Symphony foundation
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Interactive Note Playing System"
-  code="; Complete interactive note playing system for Sprite Symphony
+**Practice: Complete Interactive Note Playing System:**
+
+```assembly
+; Complete interactive note playing system for Sprite Symphony
 Main:
     JSR InitInteractiveSystem
     
@@ -2517,9 +2515,8 @@ SpriteOAM:
     .byte $FF, $10, $00, $60  ; Channel 0
     .byte $FF, $11, $00, $68  ; Channel 1
     .byte $FF, $12, $00, $70  ; Channel 2
-    .byte $FF, $13, $00, $78  ; Channel 3"
-  language="assembly"
-/>
+    .byte $FF, $13, $00, $78  ; Channel 3
+```
 
 ## What You've Learned
 

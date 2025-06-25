@@ -193,10 +193,10 @@ BlitterWait:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Complete 68000 System Integration Demo"
-  code="; Integrated demonstration combining all Phase 1 68000 concepts
+**Complete 68000 System Integration Demo:**
+
+```assembly
+; Integrated demonstration combining all Phase 1 68000 concepts
 ; Multi-custom-chip application with graphics, audio, and coordination
 
 CompleteDemo:
@@ -378,9 +378,8 @@ CopperList:
     DC.L    $FFFFFFFE          ; End list
 
 ; Execute the complete demonstration  
-BSR     CompleteDemo"
-  language="assembly"
-/>
+BSR     CompleteDemo
+```
 
 ## Advanced 68000 Integration Patterns
 

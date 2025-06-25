@@ -127,10 +127,10 @@ InitSpriteSymphony:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Symphony Foundation Architecture"
-  code="; Sprite Symphony foundation architecture
+**Sprite Symphony Foundation Architecture:**
+
+```assembly
+; Sprite Symphony foundation architecture
 Main:
     JSR InitSpriteSymphony
     
@@ -540,9 +540,8 @@ SpriteData:
     .byte $FF, $14, $01, $60
     .byte $FF, $15, $01, $68
     .byte $FF, $16, $01, $70
-    .byte $FF, $17, $01, $78"
-  language="assembly"
-/>
+    .byte $FF, $17, $01, $78
+```
 
 ## Musical Note Management System
 
@@ -1024,10 +1023,10 @@ Create the complete Sprite Symphony foundation that integrates all systems:
 4. Build visual feedback that responds to audio timing
 5. Integrate everything into a working musical application foundation
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Sprite Symphony Foundation"
-  code="; Complete Sprite Symphony foundation implementation
+**Practice: Complete Sprite Symphony Foundation:**
+
+```assembly
+; Complete Sprite Symphony foundation implementation
 Main:
     JSR InitSpriteSymphony
     
@@ -1612,9 +1611,8 @@ SpriteOAM:
     .byte $FF, $FF, $FF, $FF
     .byte $FF, $FF, $FF, $FF
     .byte $20, $60, $02, $F0  ; Background effect
-    .byte $20, $44, $03, $10  ; Mode indicator"
-  language="assembly"
-/>
+    .byte $20, $44, $03, $10  ; Mode indicator
+```
 
 ## What You've Learned
 

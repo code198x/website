@@ -70,19 +70,18 @@ Accessed like regular memory using 68000 addressing
 
 Let's explore the key register addresses:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Accessing Custom Chip Registers"
-  code="; Setup custom chip base address
+**Accessing Custom Chip Registers:**
+
+```assembly
+; Setup custom chip base address
 MOVE.L #$00DFF000, A0      ; A0 points to custom chip registers
 
 ; Read some basic status registers
 MOVE.W $01E(A0), D0        ; INTREQR - Interrupt requests
 MOVE.W $002(A0), D1        ; VPOSR - Vertical position  
 MOVE.W $004(A0), D2        ; VHPOSR - Horizontal position
-MOVE.W $016(A0), D3        ; POTINP - Joystick/mouse input"
-  language="assembly"
-/>
+MOVE.W $016(A0), D3        ; POTINP - Joystick/mouse input
+```
 
 ## Important Control Registers
 
@@ -103,10 +102,10 @@ Bit 1:  AUD2EN (Audio channel 2)
 Bit 0:  AUD1EN (Audio channel 1)
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="DMA Control Examples"
-  code="; Setup custom chip base
+**DMA Control Examples:**
+
+```assembly
+; Setup custom chip base
 MOVE.L #$00DFF000, A0
 
 ; Enable master DMA and specific channels
@@ -116,17 +115,16 @@ MOVE.W #$8380, $096(A0)    ; Enable master DMA, bitplanes, sprites
 
 ; Disable all DMA except audio  
 MOVE.W #$0007, $096(A0)    ; Clear all except audio channels
-; SET bit (15) = 0 (clear), keeps only audio bits 0-2"
-  language="assembly"
-/>
+; SET bit (15) = 0 (clear), keeps only audio bits 0-2
+```
 
 ### INTENA ($09A) - Interrupt Enable
 Controls which interrupts are enabled:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Interrupt Control"
-  code="; Setup custom chip base
+**Interrupt Control:**
+
+```assembly
+; Setup custom chip base
 MOVE.L #$00DFF000, A0
 
 ; Enable vertical blank interrupt
@@ -135,9 +133,8 @@ MOVE.W #$8020, $09A(A0)    ; SET bit + VERTB interrupt
 
 ; Enable multiple interrupts
 MOVE.W #$C000, $09A(A0)    ; Enable master interrupt + all
-; Bit 15 = 1 (SET), Bit 14 = 1 (INTEN master enable)"
-  language="assembly"
-/>
+; Bit 15 = 1 (SET), Bit 14 = 1 (INTEN master enable)
+```
 
 ## Graphics Control Registers
 
@@ -157,10 +154,10 @@ Bit 1:      Hires enable
 Bit 0:      Hold and modify (HAM)
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Basic Display Setup"
-  code="; Setup custom chip base
+**Basic Display Setup:**
+
+```assembly
+; Setup custom chip base
 MOVE.L #$00DFF000, A0
 
 ; Setup a basic 4-bitplane, 16-color display
@@ -173,9 +170,8 @@ MOVE.W #$4200, $100(A0)    ; BPLCON0: 4 bitplanes, color enable
 MOVE.W #$2202, $100(A0)    ; BPLCON0: 2 bitplanes, hires, color
 ; Bits: 0010 0010 0000 0010
 ; Bits 11-8 = 0010 (2 bitplanes)  
-; Bit 3 = 1 (color), Bit 1 = 1 (hires)"
-  language="assembly"
-/>
+; Bit 3 = 1 (color), Bit 1 = 1 (hires)
+```
 
 ## Audio Control Registers
 
@@ -187,10 +183,10 @@ Paula provides four independent audio channels. Each channel has several registe
 - **AUD0PER ($0A6)**: Period (playback rate)
 - **AUD0VOL ($0A8)**: Volume (0-64)
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Basic Audio Channel Setup"
-  code="; Setup custom chip base
+**Basic Audio Channel Setup:**
+
+```assembly
+; Setup custom chip base
 MOVE.L #$00DFF000, A0
 
 ; Setup audio channel 0 for sample playback
@@ -200,18 +196,17 @@ MOVE.W #124, $0A6(A0)        ; AUD0PER - Period (affects pitch)
 MOVE.W #64, $0A8(A0)         ; AUD0VOL - Maximum volume
 
 ; Enable audio DMA for channel 0
-MOVE.W #$8201, $096(A0)      ; Enable master DMA + audio channel 0"
-  language="assembly"
-/>
+MOVE.W #$8201, $096(A0)      ; Enable master DMA + audio channel 0
+```
 
 ## Reading Hardware Status
 
 Many registers can be read to get hardware status:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Reading Hardware Status"
-  code="; Setup custom chip base
+**Reading Hardware Status:**
+
+```assembly
+; Setup custom chip base
 MOVE.L #$00DFF000, A0
 
 ; Read current display position
@@ -226,9 +221,8 @@ MOVE.W $01C(A0), D3          ; INTENAR - Enabled interrupts
 
 ; Read joystick/mouse input
 MOVE.W $00A(A0), D4          ; JOY0DAT - Joystick 0 data
-MOVE.W $00C(A0), D5          ; JOY1DAT - Joystick 1 data"
-  language="assembly"
-/>
+MOVE.W $00C(A0), D5          ; JOY1DAT - Joystick 1 data
+```
 
 ## DMA Concepts and Control
 
@@ -240,10 +234,10 @@ Direct Memory Access (DMA) allows custom chips to access memory without CPU inte
 - **Real-time Performance**: Guaranteed timing for audio/video
 - **Advanced Features**: Hardware can perform complex operations independently
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="DMA Channel Management"
-  code="; Setup custom chip base
+**DMA Channel Management:**
+
+```assembly
+; Setup custom chip base
 MOVE.L #$00DFF000, A0
 
 ; Disable all DMA first (safety)
@@ -256,9 +250,8 @@ MOVE.W #$8010, $096(A0)      ; Add sprite DMA
 MOVE.W #$8040, $096(A0)      ; Add copper DMA
 
 ; Full setup: Master + Bitplane + Sprite + Copper
-MOVE.W #$81D0, $096(A0)      ; All graphics DMA enabled"
-  language="assembly"
-/>
+MOVE.W #$81D0, $096(A0)      ; All graphics DMA enabled
+```
 
 ## Color Palette Registers
 
@@ -267,10 +260,10 @@ The Amiga's color system uses dedicated registers:
 - **COLOR00-COLOR31 ($180-$1BE)**: 32 color palette entries
 - Each color is 12-bit RGB (4 bits each for R, G, B)
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Setting Color Palette"
-  code="; Setup custom chip base
+**Setting Color Palette:**
+
+```assembly
+; Setup custom chip base
 MOVE.L #$00DFF000, A0
 
 ; Set background color (COLOR00)
@@ -283,18 +276,17 @@ MOVE.W #$00F0, $186(A0)      ; COLOR03 - Green
 MOVE.W #$000F, $188(A0)      ; COLOR04 - Blue
 MOVE.W #$0FF0, $18A(A0)      ; COLOR05 - Yellow
 MOVE.W #$0F0F, $18C(A0)      ; COLOR06 - Magenta
-MOVE.W #$00FF, $18E(A0)      ; COLOR07 - Cyan"
-  language="assembly"
-/>
+MOVE.W #$00FF, $18E(A0)      ; COLOR07 - Cyan
+```
 
 ## Sprite Control Registers
 
 Hardware sprites have dedicated registers for each of the 8 sprites:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Basic Sprite Setup"
-  code="; Setup custom chip base
+**Basic Sprite Setup:**
+
+```assembly
+; Setup custom chip base
 MOVE.L #$00DFF000, A0
 
 ; Setup sprite 0
@@ -303,18 +295,17 @@ MOVE.W #$5050, $140(A0)      ; SPR0POS - Position (V=$50, H=$50)
 MOVE.W #$A0A0, $142(A0)      ; SPR0CTL - Control word
 
 ; Enable sprite DMA
-MOVE.W #$8010, $096(A0)      ; Enable sprite DMA"
-  language="assembly"
-/>
+MOVE.W #$8010, $096(A0)      ; Enable sprite DMA
+```
 
 ## Copper - The Display List Processor
 
 The Copper is a programmable coprocessor that can modify registers based on beam position:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Simple Copper Program"
-  code="; Setup custom chip base  
+**Simple Copper Program:**
+
+```assembly
+; Setup custom chip base  
 MOVE.L #$00DFF000, A0
 
 ; Point copper to our program
@@ -337,18 +328,17 @@ COPPER_LIST:
     ; End copper program
     DC.W $FFFF, $FFFE          ; END
 
-SKIP_COPPER_DATA:"
-  language="assembly"
-/>
+SKIP_COPPER_DATA:
+```
 
 ## Practice Exercise: System Status Display
 
 Create a program that reads and displays various hardware status values:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Hardware Status Monitor"
-  code="; Hardware status monitoring program
+**Practice: Hardware Status Monitor:**
+
+```assembly
+; Hardware status monitoring program
 MOVE.L #$00DFF000, A0        ; Custom chip base
 
 ; Read comprehensive system status
@@ -378,9 +368,8 @@ SYSTEM_IN_VBLANK:
 MOVE.W #$0F00, $180(A0)      ; Set background red
 
 STATUS_DONE:
-; Status values are now in D0-D7 for analysis"
-  language="assembly"
-/>
+; Status values are now in D0-D7 for analysis
+```
 
 ## Understanding Register Timing
 

@@ -101,10 +101,10 @@ RunSettingsState:
     JMP MainGameLoop
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Basic Game State Machine"
-  code="; Simple game state machine demonstration
+**Basic Game State Machine:**
+
+```assembly
+; Simple game state machine demonstration
 Main:
     JSR InitStates
     
@@ -311,9 +311,8 @@ MenuSelection: .byte $00
 DisplayMode: .byte $01
 
 ; Sprite data
-SpriteData: .byte $60, $54, $00, $80"
-  language="assembly"
-/>
+SpriteData: .byte $60, $54, $00, $80
+```
 
 ## State-Specific Data Management
 
@@ -562,10 +561,10 @@ PrepareFade:
 SlideOffset: .byte $00
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="State Transition System"
-  code="; Game state transition demonstration
+**State Transition System:**
+
+```assembly
+; Game state transition demonstration
 Main:
     JSR InitGame
     
@@ -787,9 +786,8 @@ StateTimer: .byte $00
 CurrentDisplay: .byte $01
 
 ; Sprite data
-SpriteData: .byte $60, $54, $00, $80"
-  language="assembly"
-/>
+SpriteData: .byte $60, $54, $00, $80
+```
 
 ## Resource Management Per State
 
@@ -1024,10 +1022,10 @@ Create a complete game state management system that demonstrates all concepts:
 4. Include input handling that's appropriate for each state
 5. Build a foundation for the Sprite Symphony project with multiple modes
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Game State Management"
-  code="; Complete game state management demonstration
+**Practice: Complete Game State Management:**
+
+```assembly
+; Complete game state management demonstration
 Main:
     JSR InitGameStates
     
@@ -1551,9 +1549,8 @@ SavedPlayerY2: .byte $00
 ; Sprite data
 SpriteData:
     .byte $50, $54, $00, $80  ; Main sprite
-    .byte $70, $7E, $00, $60  ; Cursor sprite"
-  language="assembly"
-/>
+    .byte $70, $7E, $00, $60  ; Cursor sprite
+```
 
 ## What You've Learned
 

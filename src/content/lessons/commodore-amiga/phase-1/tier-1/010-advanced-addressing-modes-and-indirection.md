@@ -49,19 +49,18 @@ MOVE.B 12(A2), D2   ; Load from address A2 + 12
 
 The displacement can be any 16-bit signed value (-32768 to +32767).
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Address Register Indirect with Displacement"
-  code="; Setup a base address pointing to a data structure
+**Address Register Indirect with Displacement:**
+
+```assembly
+; Setup a base address pointing to a data structure
 MOVE.L #$00080000, A0    ; Base address of our data
 
 ; Access different fields in the structure
 MOVE.W 0(A0), D0     ; First field (offset 0)
 MOVE.W 2(A0), D1     ; Second field (offset 2)  
 MOVE.L 4(A0), D2     ; Third field (offset 4)
-MOVE.B 8(A0), D3     ; Fourth field (offset 8)"
-  language="assembly"
-/>
+MOVE.B 8(A0), D3     ; Fourth field (offset 8)
+```
 
 This is perfect for accessing fields in data structures!
 
@@ -78,10 +77,10 @@ Let's create a character data structure with multiple fields:
 ; Offset 9: Level (byte)
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Character Data Structure Access"
-  code="; Setup character data at address $80000
+**Character Data Structure Access:**
+
+```assembly
+; Setup character data at address $80000
 MOVE.L #$00080000, A0
 
 ; Initialize character data
@@ -94,9 +93,8 @@ MOVE.B #5, 9(A0)       ; Level = 5
 ; Read back the character data
 MOVE.W 0(A0), D0       ; Get X coordinate
 MOVE.W 2(A0), D1       ; Get Y coordinate
-MOVE.L 4(A0), D2       ; Get health points"
-  language="assembly"
-/>
+MOVE.L 4(A0), D2       ; Get health points
+```
 
 ## Address Register Indirect with Index
 
@@ -109,10 +107,10 @@ MOVE.L (A1,D1.L), D2    ; Address = A1 + D1 (D1 as long)
 
 The index register can be used as either a word (.W) or long (.L) value.
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Indexed Addressing for Arrays"
-  code="; Setup array base address
+**Indexed Addressing for Arrays:**
+
+```assembly
+; Setup array base address
 MOVE.L #$00080000, A0
 
 ; Store values in array (each element is 2 bytes)
@@ -127,9 +125,8 @@ MOVE.W #300, (A0,D0.W) ; Array[2] = 300
 
 ; Read values back using index
 MOVE.W #2, D0          ; Want element 1
-MOVE.W (A0,D0.W), D1   ; Load Array[1] into D1"
-  language="assembly"
-/>
+MOVE.W (A0,D0.W), D1   ; Load Array[1] into D1
+```
 
 ## Advanced Indexed Addressing with Scale
 
@@ -147,10 +144,10 @@ LSL.W #2, D0               ; Multiply by 4 (shift left twice)
 MOVE.L (A0,D0.W), D2       ; Access element 2
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Scaled Array Access"
-  code="; Long word array (4 bytes per element)
+**Scaled Array Access:**
+
+```assembly
+; Long word array (4 bytes per element)
 MOVE.L #$00080000, A0
 
 ; Store values using scaled indexing
@@ -169,9 +166,8 @@ MOVE.L #$11111111, (A0,D0.W)
 ; Read element 1 back
 MOVE.W #1, D0
 LSL.W #2, D0
-MOVE.L (A0,D0.W), D1       ; D1 = $ABCDEF00"
-  language="assembly"
-/>
+MOVE.L (A0,D0.W), D1       ; D1 = $ABCDEF00
+```
 
 ## Pre-Decrement and Post-Increment Modes
 
@@ -187,10 +183,10 @@ The adjustment amount depends on the operation size:
 - Word operations: ±2
 - Long operations: ±4
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Pre-Decrement and Post-Increment"
-  code="; Setup array with post-increment
+**Pre-Decrement and Post-Increment:**
+
+```assembly
+; Setup array with post-increment
 MOVE.L #$00080000, A0
 
 ; Fill array using post-increment
@@ -204,18 +200,17 @@ MOVE.W #400, (A0)+     ; Store 400, A0 += 2
 MOVE.W -(A0), D0       ; A0 -= 2, load (gets 400)
 MOVE.W -(A0), D1       ; A0 -= 2, load (gets 300)
 MOVE.W -(A0), D2       ; A0 -= 2, load (gets 200)
-MOVE.W -(A0), D3       ; A0 -= 2, load (gets 100)"
-  language="assembly"
-/>
+MOVE.W -(A0), D3       ; A0 -= 2, load (gets 100)
+```
 
 ## Perfect for Stacks and Queues
 
 These modes are ideal for implementing data structures:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Stack Implementation with Pre-Decrement"
-  code="; Stack implementation (grows downward)
+**Stack Implementation with Pre-Decrement:**
+
+```assembly
+; Stack implementation (grows downward)
 MOVE.L #$00081000, A0      ; Stack starts at high address
 
 ; Push values onto stack
@@ -227,9 +222,8 @@ MOVE.W #300, -(A0)         ; Push 300
 ; Pop values from stack
 MOVE.W (A0)+, D0           ; Pop 300
 MOVE.W (A0)+, D1           ; Pop 200
-MOVE.W (A0)+, D2           ; Pop 100"
-  language="assembly"
-/>
+MOVE.W (A0)+, D2           ; Pop 100
+```
 
 ## PC-Relative Addressing
 
@@ -240,10 +234,10 @@ MOVE.W LABEL(PC), D0       ; Load from LABEL relative to PC
 LEA    DATA_TABLE(PC), A0  ; Get address of DATA_TABLE
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="PC-Relative Data Access"
-  code="; Access data relative to program counter
+**PC-Relative Data Access:**
+
+```assembly
+; Access data relative to program counter
 LEA MESSAGE_TEXT(PC), A0   ; A0 points to text
 MOVE.B (A0)+, D0          ; Get first character
 MOVE.B (A0)+, D1          ; Get second character
@@ -255,9 +249,8 @@ MESSAGE_TEXT:
     DC.B 'H','e','l','l','o',0
 
 CONTINUE:
-    ; Program continues here"
-  language="assembly"
-/>
+    ; Program continues here
+```
 
 ## Complex Addressing Mode Combinations
 
@@ -268,10 +261,10 @@ MOVE.W 8(A0,D0.W), D1     ; Address = A0 + D0 + 8
 MOVE.L -4(A1,D1.L), D2    ; Address = A1 + D1 - 4
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Complex Structure Array Access"
-  code="; Array of structures, each 10 bytes long
+**Complex Structure Array Access:**
+
+```assembly
+; Array of structures, each 10 bytes long
 ; Structure: X(2), Y(2), Health(4), Type(1), Level(1)
 MOVE.L #$00080000, A0      ; Base of structure array
 
@@ -283,18 +276,17 @@ MOVE.W 2(A0,D0.W), D1      ; Get Y coordinate of element 2
 ; Access element 1, field Health (offset 4 within structure)  
 MOVE.W #1, D0              ; Element index 1
 MULU.W #10, D0             ; Scale to byte offset
-MOVE.L 4(A0,D0.W), D2      ; Get Health of element 1"
-  language="assembly"
-/>
+MOVE.L 4(A0,D0.W), D2      ; Get Health of element 1
+```
 
 ## Memory-Mapped Hardware Access
 
 Advanced addressing modes are perfect for hardware programming:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Hardware Register Access with Offsets"
-  code="; Amiga custom chip registers base
+**Hardware Register Access with Offsets:**
+
+```assembly
+; Amiga custom chip registers base
 MOVE.L #$00DFF000, A0      ; Custom chip base address
 
 ; Access specific hardware registers
@@ -305,18 +297,17 @@ MOVE.W #$0000, $102(A0)    ; BPLCON1 - Scroll control
 
 ; Read hardware status
 MOVE.W $01E(A0), D0        ; Read INTREQR (interrupt requests)
-MOVE.W $002(A0), D1        ; Read VPOSR (vertical position)"
-  language="assembly"
-/>
+MOVE.W $002(A0), D1        ; Read VPOSR (vertical position)
+```
 
 ## Efficient String Operations
 
 Advanced addressing modes make string processing elegant:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="String Copy with Post-Increment"
-  code="; String copy using post-increment addressing
+**String Copy with Post-Increment:**
+
+```assembly
+; String copy using post-increment addressing
 MOVE.L #SOURCE_STRING, A0   ; Source address
 MOVE.L #DEST_STRING, A1     ; Destination address
 
@@ -330,9 +321,8 @@ SOURCE_STRING:
     DC.B 'Hello Amiga!',0
 
 DEST_STRING:
-    DS.B 20                 ; Reserve 20 bytes for destination"
-  language="assembly"
-/>
+    DS.B 20                 ; Reserve 20 bytes for destination
+```
 
 ## Practice Exercise
 
@@ -345,10 +335,10 @@ Create a program that manages a simple graphics object array. Each object has:
 
 Total structure size: 10 bytes
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Graphics Object Management"
-  code="; Graphics object array management
+**Practice: Graphics Object Management:**
+
+```assembly
+; Graphics object array management
 MOVE.L #$00080000, A0      ; Base address of object array
 
 ; Initialize object 0
@@ -378,9 +368,8 @@ MOVE.W D1, 0(A0,D0.W)      ; Store new X
 
 MOVE.W 2(A0,D0.W), D1      ; Get current Y  
 ADD.W 6(A0,D0.W), D1       ; Add velocity Y
-MOVE.W D1, 2(A0,D0.W)      ; Store new Y"
-  language="assembly"
-/>
+MOVE.W D1, 2(A0,D0.W)      ; Store new Y
+```
 
 ## Performance Benefits
 

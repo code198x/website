@@ -62,13 +62,12 @@ LDA #$42    ; Load 'B' into A register
 STA $80     ; Store to Zero Page location $80 (fast!)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Using Zero Page Memory"
-  code="LDA #$42    ; Load 'B' into A register
-STA $80     ; Store to Zero Page location $80"
-  language="assembly"
-/>
+**Using Zero Page Memory:**
+
+```assembly
+LDA #$42    ; Load 'B' into A register
+STA $80     ; Store to Zero Page location $80
+```
 
 ## Your First Visible Output
 
@@ -81,13 +80,12 @@ LDA #$48    ; Load 'H' (ASCII 72, hex $48)
 STA $0400   ; Store it to first screen position
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Your First Screen Output"
-  code="LDA #$48    ; Load 'H' (ASCII 72, hex $48)
-STA $0400   ; Store it to first screen position"
-  language="assembly"
-/>
+**Your First Screen Output:**
+
+```assembly
+LDA #$48    ; Load 'H' (ASCII 72, hex $48)
+STA $0400   ; Store it to first screen position
+```
 
 You should see the letter 'H' appear in the top-left corner of the screen!
 
@@ -113,15 +111,14 @@ LDA $81     ; Load the value back from $81 into A
 STA $0401   ; Store it to screen position 2
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Moving Data Between Memory and Registers"
-  code="LDA #$45    ; Load 'E' into A register
+**Moving Data Between Memory and Registers:**
+
+```assembly
+LDA #$45    ; Load 'E' into A register
 STA $81     ; Store it in Zero Page location $81
 LDA $81     ; Load the value back from $81 into A
-STA $0401   ; Store it to screen position 2"
-  language="assembly"
-/>
+STA $0401   ; Store it to screen position 2
+```
 
 ## Writing Multiple Characters
 
@@ -140,10 +137,10 @@ LDA #$4F    ; 'O'
 STA $0404   ; Screen position 4
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Writing HELLO to Screen"
-  code="LDA #$48    ; 'H'
+**Writing HELLO to Screen:**
+
+```assembly
+LDA #$48    ; 'H'
 STA $0400   ; Screen position 0
 LDA #$45    ; 'E'  
 STA $0401   ; Screen position 1
@@ -152,9 +149,8 @@ STA $0402   ; Screen position 2
 LDA #$4C    ; 'L'
 STA $0403   ; Screen position 3
 LDA #$4F    ; 'O'
-STA $0404   ; Screen position 4"
-  language="assembly"
-/>
+STA $0404   ; Screen position 4
+```
 
 ## Store Instructions for X and Y
 
@@ -168,15 +164,14 @@ LDY #$20    ; Load 32 into Y register
 STY $83     ; Store Y register to memory location $83
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Storing X and Y Registers"
-  code="LDX #$10    ; Load 16 into X register
+**Storing X and Y Registers:**
+
+```assembly
+LDX #$10    ; Load 16 into X register
 STX $82     ; Store X register to memory location $82
 LDY #$20    ; Load 32 into Y register  
-STY $83     ; Store Y register to memory location $83"
-  language="assembly"
-/>
+STY $83     ; Store Y register to memory location $83
+```
 
 ## Common Character Codes
 
@@ -221,10 +216,10 @@ LDA $81     ; Load it back
 STA $0402   ; Third screen position
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Your Initials"
-  code="; Store first initial 'S' 
+**Practice Exercise - Your Initials:**
+
+```assembly
+; Store first initial 'S' 
 LDA #$53    ; 'S'
 STA $80     ; Temporarily store in Zero Page
 LDA $80     ; Load it back
@@ -238,9 +233,8 @@ STA $0401   ; Second screen position
 LDA #$48    ; 'H' 
 STA $81     ; Temporarily store in Zero Page
 LDA $81     ; Load it back
-STA $0402   ; Third screen position"
-  language="assembly"
-/>
+STA $0402   ; Third screen position
+```
 
 ## What You've Learned
 

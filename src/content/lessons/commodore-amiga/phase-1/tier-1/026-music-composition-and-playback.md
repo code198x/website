@@ -32,10 +32,10 @@ Today you'll master music composition and playback for your Copper Dreams game. 
 
 The Amiga's 4-channel audio system enables sophisticated musical compositions. Each channel can play independent samples with individual volume and period control:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Professional Music System Architecture"
-  code="; Amiga Professional Music System
+**Professional Music System Architecture:**
+
+```assembly
+; Amiga Professional Music System
 
 ; Music engine structure
 MusicEngine:
@@ -373,17 +373,17 @@ SampleTable:        ds.l    31*2
 ChannelData:        ds.w    4*6
 
 ; Pattern data area
-PatternData:        ds.b    65536   ; Space for 64 patterns"
-/>
+PatternData:        ds.b    65536   ; Space for 64 patterns
+```
 
 ## Advanced Music Composition Techniques
 
 Learn to create sophisticated musical arrangements using tracker-style composition:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Professional Music Composition System"
-  code="; Advanced Music Composition Tools
+**Professional Music Composition System:**
+
+```assembly
+; Advanced Music Composition Tools
 
 ; Music composition helper functions
 ComposeMusic:
@@ -586,17 +586,17 @@ DynamicMusicUpdate:
 ; Music data storage
 CompositionData:    ds.b    1024    ; One pattern worth of data
 BassMasterVol:      dc.w    48
-ExtraPercussion:    dc.w    0"
-/>
+ExtraPercussion:    dc.w    0
+```
 
 ## Interactive Music Systems
 
 Learn to create music that responds dynamically to user interaction and program events:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Interactive Music Response System"
-  code="; Interactive Music System
+**Interactive Music Response System:**
+
+```assembly
+; Interactive Music System
 
 ; Music response manager
 MusicResponse:
@@ -836,8 +836,8 @@ VictoryFanfare:
     dc.w    428, 381, 340, 321, 286, 255, 227, 214
     
 ; Music composition workspace
-CompositionWorkspace: ds.b  2048"
-/>
+CompositionWorkspace: ds.b  2048
+```
 
 ## What You've Learned
 

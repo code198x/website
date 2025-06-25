@@ -165,10 +165,10 @@ StoreX:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complete Z80 System Integration Demo"
-  code="; Integrated demonstration combining all Phase 1 Z80 concepts
+**Complete Z80 System Integration Demo:**
+
+```assembly
+; Integrated demonstration combining all Phase 1 Z80 concepts
 ; Multi-subsystem application with graphics, sound, and animation
 
 CompleteDemo:
@@ -348,9 +348,8 @@ SoundDuration:  DB $00
 SoundPitch:     DB $00
 
 ; Execute the complete demonstration
-CALL CompleteDemo"
-  language="assembly"
-/>
+CALL CompleteDemo
+```
 
 ## Advanced Z80 Integration Patterns
 

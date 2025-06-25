@@ -194,10 +194,10 @@ TimerIRQ:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Complete System Integration Demo"
-  code="; Integrated demonstration combining all Phase 1 concepts
+**Complete System Integration Demo:**
+
+```assembly
+; Integrated demonstration combining all Phase 1 concepts
 ; Multi-subsystem application with graphics, audio, and animation
 
 CompleteDemo:
@@ -374,9 +374,8 @@ NoteTable:
     .byte $FF, $FF  ; End marker
 
 ; Start the integrated demonstration
-JSR CompleteDemo"
-  language="assembly"
-/>
+JSR CompleteDemo
+```
 
 ## Advanced Integration Patterns
 
@@ -592,10 +591,10 @@ StateInitHi:
     .byte >InitMenu, >InitPlaying, >InitPaused, >InitGameOver
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Advanced Integration: Game Framework"
-  code="; Advanced integration example: Complete game framework
+**Advanced Integration: Game Framework:**
+
+```assembly
+; Advanced integration example: Complete game framework
 ; Demonstrates professional programming patterns
 
 GameFramework:
@@ -950,9 +949,8 @@ FrameDelay:
     RTS
 
 ; Start the game framework
-JSR GameFramework"
-  language="assembly"
-/>
+JSR GameFramework
+```
 
 ## Performance Optimization Integration
 
@@ -1039,10 +1037,10 @@ UpdateBuffer1:
 
 Create a comprehensive demonstration that showcases all Phase 1 concepts working together in a sophisticated application.
 
-<CodeRunner 
-  system="commodore-64"
-  title="Final Integration Exercise - Complete Multimedia Application"
-  code="; Final Phase 1 integration exercise
+**Final Integration Exercise - Complete Multimedia Application:**
+
+```assembly
+; Final Phase 1 integration exercise
 ; Complete multimedia application demonstrating all concepts
 
 MultimediaDemo:
@@ -1354,9 +1352,8 @@ MusicFrame:     .byte 0
 ColorCycle:     .byte 0
 
 ; Execute the multimedia demonstration
-JSR MultimediaDemo"
-  language="assembly"
-/>
+JSR MultimediaDemo
+```
 
 ## Phase 1 Competency Assessment
 

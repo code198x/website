@@ -44,10 +44,10 @@ The controller uses a **shift register** to send button data:
 - **Polling system**: CPU requests current button states
 - **Active low**: Pressed button = 0, released button = 1
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Basic Controller Reading"
-  code="; Basic controller input reading
+**Basic Controller Reading:**
+
+```assembly
+; Basic controller input reading
 JSR test_controller_input
 
 test_controller_input:
@@ -80,9 +80,8 @@ read_loop:
     LDA $0401       ; Load final button states
     RTS
 
-; Controller reading system working!"
-  language="assembly"
-/>
+; Controller reading system working!
+```
 
 ## Controller Registers
 
@@ -118,10 +117,10 @@ Read 7: Left button
 Read 8: Right button
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Detailed Controller Reading"
-  code="; Detailed controller reading with button identification
+**Detailed Controller Reading:**
+
+```assembly
+; Detailed controller reading with button identification
 JSR detailed_controller_read
 
 detailed_controller_read:
@@ -173,9 +172,8 @@ detailed_controller_read:
     
     RTS
 
-; Individual button states now available in $0410-$0417!"
-  language="assembly"
-/>
+; Individual button states now available in $0410-$0417!
+```
 
 ## Efficient Button Reading
 
@@ -204,10 +202,10 @@ read_buttons:
 ; Bit 4 = Up, Bit 5 = Down, Bit 6 = Left, Bit 7 = Right
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Efficient Controller Reading"
-  code="; Efficient controller reading into single byte
+**Efficient Controller Reading:**
+
+```assembly
+; Efficient controller reading into single byte
 JSR efficient_controller_read
 
 efficient_controller_read:
@@ -230,9 +228,8 @@ read_all_buttons:
     
     RTS
 
-; All buttons read into single byte at $0420!"
-  language="assembly"
-/>
+; All buttons read into single byte at $0420!
+```
 
 ## Button State Testing
 
@@ -275,10 +272,10 @@ start_pressed:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Button State Testing"
-  code="; Test individual button states
+**Button State Testing:**
+
+```assembly
+; Test individual button states
 JSR test_button_states
 
 test_button_states:
@@ -394,9 +391,8 @@ start_not_pressed:
     STA $0445
     RTS
 
-; Button state testing complete!"
-  language="assembly"
-/>
+; Button state testing complete!
+```
 
 ## Input Timing and Debouncing
 
@@ -469,10 +465,10 @@ no_repeat:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Input Timing and Debouncing"
-  code="; Input timing and debouncing system
+**Input Timing and Debouncing:**
+
+```assembly
+; Input timing and debouncing system
 JSR init_input_system
 
 init_input_system:
@@ -568,9 +564,8 @@ JSR update_input_system
 ; $0452 should show new A press
 ; $0453 should be 0 (not held yet)
 
-; Input timing and debouncing system working!"
-  language="assembly"
-/>
+; Input timing and debouncing system working!
+```
 
 ## Game Control Patterns
 
@@ -732,10 +727,10 @@ switch_music_mode:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Symphony Interactive Controls"
-  code="; Interactive controls for Sprite Symphony
+**Sprite Symphony Interactive Controls:**
+
+```assembly
+; Interactive controls for Sprite Symphony
 JSR init_symphony_controls
 
 init_symphony_controls:
@@ -896,9 +891,8 @@ update_note_display:
 ; Test the interactive system
 JSR handle_symphony_input
 
-; Interactive Sprite Symphony controls working!"
-  language="assembly"
-/>
+; Interactive Sprite Symphony controls working!
+```
 
 ## Practical Exercise: Complete Input System
 

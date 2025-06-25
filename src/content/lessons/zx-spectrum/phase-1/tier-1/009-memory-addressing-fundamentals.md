@@ -60,15 +60,14 @@ LD A, ($5B00)    ; Load the byte at address $5B00 into A register
 LD ($5B01), A    ; Store A register into address $5B01
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Direct Memory Access"
-  code="LD A, $42        ; Load value $42 into A
+**Direct Memory Access:**
+
+```assembly
+LD A, $42        ; Load value $42 into A
 LD ($5B00), A    ; Store A into memory address $5B00
 LD B, ($5B00)    ; Load from $5B00 into B register
-; Now both A and B contain $42"
-  language="assembly"
-/>
+; Now both A and B contain $42
+```
 
 ## Indirect Addressing with HL
 
@@ -80,16 +79,15 @@ LD A, (HL)       ; Load the byte that HL points to
 LD (HL), $33     ; Store $33 into the address HL points to
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Indirect Addressing with HL"
-  code="LD HL, $5B00     ; Point HL to memory address $5B00
+**Indirect Addressing with HL:**
+
+```assembly
+LD HL, $5B00     ; Point HL to memory address $5B00
 LD A, $77        ; Load $77 into A register
 LD (HL), A       ; Store A into the memory address HL points to
 LD B, (HL)       ; Load back from memory into B
-; Now memory[$5B00] = $77, and B = $77"
-  language="assembly"
-/>
+; Now memory[$5B00] = $77, and B = $77
+```
 
 The parentheses `(HL)` mean "the memory location that HL points to", not the HL register itself.
 
@@ -106,18 +104,17 @@ INC HL           ; Move to $5B02
 LD (HL), $43     ; Store 'C' there
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Moving Through Memory"
-  code="LD HL, $5B00     ; Start at $5B00
+**Moving Through Memory:**
+
+```assembly
+LD HL, $5B00     ; Start at $5B00
 LD (HL), $41     ; Store 'A' at $5B00
 INC HL           ; HL now points to $5B01
 LD (HL), $42     ; Store 'B' at $5B01  
 INC HL           ; HL now points to $5B02
 LD (HL), $43     ; Store 'C' at $5B02
-; Memory now contains: $5B00='A', $5B01='B', $5B02='C'"
-  language="assembly"
-/>
+; Memory now contains: $5B00='A', $5B01='B', $5B02='C'
+```
 
 This creates a string "ABC" in memory!
 
@@ -132,19 +129,18 @@ LD DE, $5B20     ; Point DE to $5B20
 LD A, (DE)       ; Load from address DE points to
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Using BC and DE for Memory Access"
-  code="LD BC, $5B10     ; BC points to $5B10
+**Using BC and DE for Memory Access:**
+
+```assembly
+LD BC, $5B10     ; BC points to $5B10
 LD A, $88        ; Load $88 into A
 LD (BC), A       ; Store A at address BC points to
 
 LD DE, $5B20     ; DE points to $5B20
 LD A, $99        ; Load $99 into A  
 LD (DE), A       ; Store A at address DE points to
-; Memory $5B10 = $88, Memory $5B20 = $99"
-  language="assembly"
-/>
+; Memory $5B10 = $88, Memory $5B20 = $99
+```
 
 ## Building a Simple Data Table
 
@@ -168,10 +164,10 @@ INC HL
 LD C, (HL)       ; Load third value (48)
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Data Table Example"
-  code="; Create a table of values
+**Data Table Example:**
+
+```assembly
+; Create a table of values
 LD HL, $5B50     ; Point to our data area
 LD (HL), $10     ; Store 16 at $5B50
 INC HL           ; Move to $5B51  
@@ -186,9 +182,8 @@ INC HL
 LD B, (HL)       ; B = 32  
 INC HL
 LD C, (HL)       ; C = 48
-; Now A=16, B=32, C=48"
-  language="assembly"
-/>
+; Now A=16, B=32, C=48
+```
 
 ## Memory Access Patterns
 
@@ -229,18 +224,17 @@ LD A, %11111111  ; All pixels on (a solid block)
 LD (HL), A       ; Put it on screen
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Direct Screen Access"
-  code="LD HL, $4000     ; Point to top-left of screen
+**Direct Screen Access:**
+
+```assembly
+LD HL, $4000     ; Point to top-left of screen
 LD A, %11010110  ; Create a pattern
 LD (HL), A       ; Draw it on screen
 INC HL           ; Move to next screen position
 LD A, %10111011  ; Different pattern
 LD (HL), A       ; Draw second pattern
-; You should see two pattern blocks on screen!"
-  language="assembly"
-/>
+; You should see two pattern blocks on screen!
+```
 
 *Note: `%` prefix means binary notation - each bit represents a pixel*
 
@@ -276,10 +270,10 @@ Create a program that:
 Hint: Use these ASCII values:
 - 'A' = $41, 'B' = $42, 'C' = $43... 'Z' = $5A
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Your Initials"
-  code="; Store initials in memory (example: 'SH')
+**Practice Exercise - Your Initials:**
+
+```assembly
+; Store initials in memory (example: 'SH')
 LD HL, $5C00     ; Point to storage area
 LD (HL), $53     ; Store 'S' 
 INC HL
@@ -296,9 +290,8 @@ LD HL, $4000     ; Point to screen
 LD (HL), A       ; Display first initial
 INC HL
 LD (HL), B       ; Display second initial
-; Modify this with your own initials!"
-  language="assembly"
-/>
+; Modify this with your own initials!
+```
 
 ## Why Memory Addressing Matters
 

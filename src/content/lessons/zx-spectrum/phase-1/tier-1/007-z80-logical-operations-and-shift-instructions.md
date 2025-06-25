@@ -64,10 +64,10 @@ LD A, %00110011     ; Original data
 CPL                 ; Invert all bits → %11001100
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Advanced Logical Operations"
-  code="; Advanced logical operations for data processing
+**Advanced Logical Operations:**
+
+```assembly
+; Advanced logical operations for data processing
 ; This program demonstrates sophisticated bit manipulation techniques
 
 AdvancedLogicalDemo:
@@ -188,9 +188,8 @@ SensorData:  DB $7F, $83, $91, $A5, $B2, $C8, $D4, $E9
 FilteredData: DS 8
 
 TestData:    DB $12, $34, $56, $78, $9A
-TestDataLen  EQU 5"
-  language="assembly"
-/>
+TestDataLen  EQU 5
+```
 
 ## Advanced Shift and Rotate Instructions
 
@@ -220,10 +219,10 @@ LD A, %10110100     ; Original value
 RRC A               ; Result: %01011010 (bit 0 → bit 7)
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Advanced Shift and Rotate"
-  code="; Advanced shift and rotate operations
+**Advanced Shift and Rotate:**
+
+```assembly
+; Advanced shift and rotate operations
 ; Demonstrating specialized bit manipulation techniques
 
 AdvancedShiftDemo:
@@ -333,9 +332,8 @@ ReverseBitsLoop:
     XOR B               ; XOR with original
     LD ($4040), A       ; Display Gray code
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Data Packing and Unpacking
 
@@ -359,10 +357,10 @@ OR 0                ; Add value 4
 ; A now contains all four values: 11|01|10|00
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Data Packing and Unpacking"
-  code="; Efficient data storage using bit packing
+**Data Packing and Unpacking:**
+
+```assembly
+; Efficient data storage using bit packing
 ; Demonstrates how to store multiple values in minimal space
 
 DataPackingDemo:
@@ -512,9 +510,8 @@ YCoord:         DB 0
 TileProperties: DB 0
 TileType:       DB 0
 TileColour:     DB 0
-PackedDate:     DW 0"
-  language="assembly"
-/>
+PackedDate:     DW 0
+```
 
 ## Algorithmic Applications
 
@@ -544,10 +541,10 @@ AND Mask            ; Mask relevant bits
 JR Z, PatternMatches ; Jump if pattern matches
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Algorithmic Applications"
-  code="; Algorithmic applications of logical and shift operations
+**Algorithmic Applications:**
+
+```assembly
+; Algorithmic applications of logical and shift operations
 ; Efficient algorithms using bit manipulation
 
 AlgorithmicDemo:
@@ -697,9 +694,8 @@ ReverseNibble:
     SRL A
     SRL A
     OR B                ; Combine with other bits
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Performance Optimization Tips
 
@@ -720,10 +716,10 @@ ReverseNibble:
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Logical Operations Practice"
-  code="; Practice Exercise: Data Compression System
+**Logical Operations Practice:**
+
+```assembly
+; Practice Exercise: Data Compression System
 ; Implement a simple compression system using bit manipulation
 
 CompressionPractice:
@@ -824,9 +820,8 @@ TestData2:      DB $12, $34, $56, $78, $9A, $BC, $DE, $F0
 ; 1. Implement a bit-packing system for game sprites
 ; 2. Create a fast integer square root using bit operations
 ; 3. Build a pattern matcher for text searching
-; 4. Design a simple encryption system using XOR and shifts"
-  language="assembly"
-/>
+; 4. Design a simple encryption system using XOR and shifts
+```
 
 ## What You've Learned
 

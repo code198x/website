@@ -100,10 +100,10 @@ SID registers occupy **$D400-$D7FF** in the C64 memory map:
 | **$D417** | Filter Resonance & Voice Routing |
 | **$D418** | Volume & Filter Mode |
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic SID Register Access"
-  code="; Demonstrate basic SID register programming
+**Basic SID Register Access:**
+
+```assembly
+; Demonstrate basic SID register programming
 ; Generate simple tone on Voice 1
 
 ; Set frequency for Voice 1 (middle C)
@@ -127,9 +127,8 @@ STA $D406       ; Voice 1 Sustain/Release
 
 ; Set master volume
 LDA #%00001111  ; Maximum volume (15)
-STA $D418       ; Volume register"
-  language="assembly"
-/>
+STA $D418       ; Volume register
+```
 
 ## Understanding Frequency Control
 
@@ -183,10 +182,10 @@ NoteTable:
     .word $9040         ; C (octave higher)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Musical Note Programming"
-  code="; Play a simple musical scale
+**Musical Note Programming:**
+
+```assembly
+; Play a simple musical scale
 ; Demonstrate note frequency programming
 
 InitSound:
@@ -253,9 +252,8 @@ ShortWait:
     RTS
 
 ; Play the scale
-JSR PlayScale"
-  language="assembly"
-/>
+JSR PlayScale
+```
 
 ## SID Waveforms
 
@@ -326,10 +324,10 @@ LongWait2:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="SID Waveform Demonstration"
-  code="; Explore different SID waveforms
+**SID Waveform Demonstration:**
+
+```assembly
+; Explore different SID waveforms
 ; Each waveform has distinct characteristics
 
 WaveformExplorer:
@@ -405,9 +403,8 @@ PauseWait:
     RTS
 
 ; Run the waveform demonstration
-JSR WaveformExplorer"
-  language="assembly"
-/>
+JSR WaveformExplorer
+```
 
 ## ADSR Envelope Control
 
@@ -526,10 +523,10 @@ PlayChord:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Multi-Voice Chord Programming"
-  code="; Demonstrate 3-voice chord playing
+**Multi-Voice Chord Programming:**
+
+```assembly
+; Demonstrate 3-voice chord playing
 ; Play C major chord with different waveforms per voice
 
 PlayMajorChord:
@@ -602,9 +599,8 @@ ChordWait2:
     RTS
 
 ; Play the chord demonstration
-JSR PlayMajorChord"
-  language="assembly"
-/>
+JSR PlayMajorChord
+```
 
 ## Basic Sound Effects
 
@@ -714,10 +710,10 @@ Create a comprehensive SID demonstration that showcases:
 4. Basic sound effects
 5. Volume control and fading
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Complete SID Demo"
-  code="; Comprehensive SID demonstration
+**Practice Exercise - Complete SID Demo:**
+
+```assembly
+; Comprehensive SID demonstration
 ; Shows waveforms, envelopes, chords, and effects
 
 SIDDemo:
@@ -921,9 +917,8 @@ CWait2:
     RTS
 
 ; Start the complete SID demonstration
-JSR SIDDemo"
-  language="assembly"
-/>
+JSR SIDDemo
+```
 
 ## SID Programming Best Practices
 

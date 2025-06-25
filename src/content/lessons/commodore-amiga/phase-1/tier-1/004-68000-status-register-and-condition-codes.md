@@ -59,10 +59,10 @@ T1 T0 S  -  -  I2 I1 I0 -  -  -  X  N  Z  V  C
 +--+--------------------------------------------------- Trace Mode
 ```
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Condition Code Basics"
-  code="; Demonstration of 68000 condition codes
+**Condition Code Basics:**
+
+```assembly
+; Demonstration of 68000 condition codes
 ; Shows how different operations affect the condition flags
 
 ConditionCodeDemo:
@@ -139,9 +139,8 @@ ConditionCodeDemo:
     ADD.L   #1, D2              ; Add to long
     ; Flags set based on bit 31 (long result)
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Conditional Branch Instructions
 
@@ -596,10 +595,10 @@ The 68000 provides sophisticated testing operations:
 - Set Z flag based on tested bit state
 - Atomic operations for multi-tasking safety
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Test Operations and Bit Testing"
-  code="; Demonstration of 68000 test and bit operations
+**Test Operations and Bit Testing:**
+
+```assembly
+; Demonstration of 68000 test and bit operations
 ; Shows comprehensive testing capabilities
 
 TestOperationsDemo:
@@ -851,9 +850,8 @@ ChangeResult1:  DC.B    0
 ChangeResult2:  DC.B    0
 FlagResult1:    DC.B    0
 FlagResult2:    DC.B    0
-StatusResult:   DC.B    0"
-  language="assembly"
-/>
+StatusResult:   DC.B    0
+```
 
 ## Advanced Condition Code Techniques
 
@@ -1104,10 +1102,10 @@ GROUND_LEVEL        EQU     200"
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Condition Codes Practice"
-  code="; Practice Exercise: Amiga Game Logic Engine
+**Condition Codes Practice:**
+
+```assembly
+; Practice Exercise: Amiga Game Logic Engine
 ; Use condition codes to implement complex game logic
 
 GameLogicEngine:
@@ -1501,9 +1499,8 @@ GameFlags:          DC.L    0
 ; 1. Add more sophisticated AI states (fleeing, guarding)
 ; 2. Implement power-ups with condition-based effects
 ; 3. Add combo system using timing conditions
-; 4. Create boss enemy with complex behavior patterns"
-  language="assembly"
-/>
+; 4. Create boss enemy with complex behavior patterns
+```
 
 ## What You've Learned
 

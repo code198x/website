@@ -85,10 +85,10 @@ StateTable:
     DW GameOverState    ; State 3
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Basic State Machine"
-  code="; Simple state machine demonstration
+**Basic State Machine:**
+
+```assembly
+; Simple state machine demonstration
 ; States: 0=Init, 1=Running, 2=Waiting, 3=Done
 
 CurrentState: DB 0
@@ -163,9 +163,8 @@ WaitLoop:
     RET
 
 ; Call RunStateMachine repeatedly to see state transitions
-; B register will contain different codes showing current state"
-  language="assembly"
-/>
+; B register will contain different codes showing current state
+```
 
 ## Event-Driven Programming
 
@@ -244,10 +243,10 @@ NoMoreEvents:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Event-Driven System"
-  code="; Simple event-driven system demonstration
+**Event-Driven System:**
+
+```assembly
+; Simple event-driven system demonstration
 
 ; Event types
 EVENT_NONE      EQU 0
@@ -396,9 +395,8 @@ NoMoreEvents:
     RET
 
 ; Call ProcessEventQueue repeatedly to see event handling
-; B register will show codes for different events processed"
-  language="assembly"
-/>
+; B register will show codes for different events processed
+```
 
 ## Jump Table Dispatch Systems
 
@@ -770,10 +768,10 @@ StateHandlers:
     DW State3Handler
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complex Control Flow Example"
-  code="; Complex game control system demonstration
+**Complex Control Flow Example:**
+
+```assembly
+; Complex game control system demonstration
 
 ; Game entity states
 ENTITY_IDLE     EQU 0
@@ -914,9 +912,8 @@ UpdateAllEntities:
     RET
 
 ; Call UpdateAllEntities repeatedly to see entities
-; change states and behave according to their AI"
-  language="assembly"
-/>
+; change states and behave according to their AI
+```
 
 ## Advanced Flow Control Patterns
 

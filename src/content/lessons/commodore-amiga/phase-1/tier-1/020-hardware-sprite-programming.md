@@ -44,10 +44,10 @@ Sprites are particularly important because they move independently of the backgr
 
 Each sprite consists of control words followed by image data:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Sprite Data Structure"
-  code="; Understanding sprite data format
+**Sprite Data Structure:**
+
+```assembly
+; Understanding sprite data format
 ; Each sprite has: Control words + Image data + End marker
 
 ; Sprite image data structure
@@ -136,18 +136,17 @@ PositionSprite0:
     ; Set control
     MOVE.W  D1, $142(A6)        ; SPR0CTL
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Creating and Animating Sprites
 
 Professional sprite animation requires efficient data management:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Sprite Animation System"
-  code="; Complete sprite animation system
+**Sprite Animation System:**
+
+```assembly
+; Complete sprite animation system
 
 ; Sprite object structure
     RSRESET
@@ -375,18 +374,17 @@ SpriteFrames:
     ; Frames 2 and 3 continue the animation...
 
 ; Data
-SpriteObjects:      DS.B    SPR_SIZE * 8    ; 8 sprite objects"
-  language="assembly"
-/>
+SpriteObjects:      DS.B    SPR_SIZE * 8    ; 8 sprite objects
+```
 
 ## Hardware Collision Detection
 
 The Amiga provides automatic collision detection between sprites and backgrounds:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Hardware Collision Detection System"
-  code="; Hardware collision detection implementation
+**Hardware Collision Detection System:**
+
+```assembly
+; Hardware collision detection implementation
 
 ; Collision detection using hardware registers
 CheckCollisions:
@@ -581,18 +579,17 @@ CollisionType:      DC.W    0
 ; Sample data for collision sound
 CollisionSample:
     DC.B    $7F,$00,$7F,$00,$7F,$00,$7F,$00  ; Simple click sound
-    ; ... continue for 100 bytes"
-  language="assembly"
-/>
+    ; ... continue for 100 bytes
+```
 
 ## Advanced Sprite Techniques
 
 Implement professional sprite effects and optimizations:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Sprite Programming Techniques"
-  code="; Advanced sprite programming for professional games
+**Advanced Sprite Programming Techniques:**
+
+```assembly
+; Advanced sprite programming for professional games
 
 ; Sprite pooling system for efficient memory use
 InitSpritePool:
@@ -826,18 +823,17 @@ PlayerCount:        DC.W    0
 
 ; Data
 SpritePool:         DS.B    SPR_SIZE * MAX_SPRITES
-TempSpriteData:     DS.B    256     ; Buffer for decompressed frames"
-  language="assembly"
-/>
+TempSpriteData:     DS.B    256     ; Buffer for decompressed frames
+```
 
 ## Practice Exercise: Create a Sprite-Based Game
 
 Build a complete mini-game using hardware sprites:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Sprite Blaster Game"
-  code="; Create a simple sprite-based arcade game
+**Practice: Sprite Blaster Game:**
+
+```assembly
+; Create a simple sprite-based arcade game
 ; Player controls a sprite, shoots at enemies, collects powerups
 
 SpriteBlaster:
@@ -1115,9 +1111,8 @@ EnemyList:          DS.W    MAX_ENEMIES * 2     ; X,Y pairs
 BulletList:         DS.W    MAX_BULLETS * 2     ; X,Y pairs
 
 ; Run the game!
-BSR     SpriteBlaster"
-  language="assembly"
-/>
+BSR     SpriteBlaster
+```
 
 ## What You've Learned
 

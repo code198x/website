@@ -42,10 +42,10 @@ You'll create a comprehensive graphics demonstration featuring:
 
 The key to professional Amiga graphics is coordination between all subsystems:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Complete Graphics Engine Framework"
-  code="; AmigaVision Pro - Complete Graphics Integration Engine
+**Complete Graphics Engine Framework:**
+
+```assembly
+; AmigaVision Pro - Complete Graphics Integration Engine
 
 ; Graphics engine structure
 GraphicsEngine:
@@ -244,17 +244,17 @@ FrameCounter:   dc.w    0
 
 ; Screen memory (allocated in Chip RAM)
 ScreenData:     ds.b    40000   ; 5 bitplanes * 320x256
-PlasmaSource:   ds.b    8000    ; Plasma effect data"
-/>
+PlasmaSource:   ds.b    8000    ; Plasma effect data
+```
 
 ## Building the Complete Integration
 
 Let's implement the main application loop that coordinates all systems:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Main Application Loop with Performance Optimization"
-  code="; AmigaVision Pro - Main Application Loop
+**Main Application Loop with Performance Optimization:**
+
+```assembly
+; AmigaVision Pro - Main Application Loop
 
 MainLoop:
     ; Frame timing and synchronization
@@ -422,17 +422,17 @@ CheckPerformance:
 EffectTrigger:      dc.w    0
 FlashCounter:       dc.w    0
 LastFrameRate:      dc.w    50
-QualityReduction:   dc.w    0"
-/>
+QualityReduction:   dc.w    0
+```
 
 ## Professional Graphics Engine Architecture
 
 Your complete graphics engine demonstrates advanced programming patterns:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Modular Graphics System with Resource Management"
-  code="; Professional Graphics Engine Architecture
+**Modular Graphics System with Resource Management:**
+
+```assembly
+; Professional Graphics Engine Architecture
 
 ; Graphics system manager
 GraphicsManager:
@@ -570,8 +570,8 @@ SCREEN_HEIGHT   EQU     256
 ; System variables
 SystemReady:        dc.w    0
 ResourceList:       ds.l    MAX_RESOURCES+1
-PerfStats:          ds.w    4"
-/>
+PerfStats:          ds.w    4
+```
 
 ## Putting It All Together
 
@@ -585,10 +585,10 @@ Your complete integration project demonstrates mastery of:
 
 ## Advanced Optimization Techniques
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Performance Optimization and Memory Management"
-  code="; Advanced optimization techniques for complex graphics
+**Performance Optimization and Memory Management:**
+
+```assembly
+; Advanced optimization techniques for complex graphics
 
 ; Cache-friendly rendering order
 OptimizedRender:
@@ -666,8 +666,8 @@ Buffer1:        ds.b    40000
     CNOP    0, 4
 Buffer2:        ds.b    40000
 CurrentBuffer:  dc.l    0
-BackBuffer:     dc.l    0"
-/>
+BackBuffer:     dc.l    0
+```
 
 ## What You've Learned
 

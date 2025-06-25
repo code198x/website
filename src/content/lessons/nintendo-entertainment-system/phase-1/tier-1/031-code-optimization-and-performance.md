@@ -1166,10 +1166,10 @@ Apply all optimization techniques to create the most efficient version of Sprite
 4. Minimize cycle counts in critical code paths
 5. Create a polished, 60 FPS musical application
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Fully Optimized Sprite Symphony"
-  code="; Fully Optimized Sprite Symphony - Maximum Performance
+**Practice: Fully Optimized Sprite Symphony:**
+
+```assembly
+; Fully Optimized Sprite Symphony - Maximum Performance
 Main:
     JSR InitOptimizedSystem
     
@@ -1633,9 +1633,8 @@ SpriteOAM:
     .byte $FF, $10, $01, $40
     .byte $FF, $11, $01, $50
     .byte $FF, $12, $01, $60
-    .byte $FF, $13, $01, $70"
-  language="assembly"
-/>
+    .byte $FF, $13, $01, $70
+```
 
 ## What You've Learned
 

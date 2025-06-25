@@ -68,10 +68,10 @@ B_NOTE   = $0453    ; B note (~494 Hz)
 C_HIGH   = $03F8    ; C note one octave higher
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Basic Tone Generation"
-  code="; Generate a simple tone on pulse 1
+**Basic Tone Generation:**
+
+```assembly
+; Generate a simple tone on pulse 1
 JSR generate_basic_tone
 
 generate_basic_tone:
@@ -91,9 +91,8 @@ generate_basic_tone:
     
     RTS
 
-; A clear A note (440 Hz) is now playing!"
-  language="assembly"
-/>
+; A clear A note (440 Hz) is now playing!
+```
 
 ## Generating Tones on Different Channels
 
@@ -132,10 +131,10 @@ play_triangle_tone:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Multi-Channel Tone Generation"
-  code="; Generate tones on different channels
+**Multi-Channel Tone Generation:**
+
+```assembly
+; Generate tones on different channels
 JSR demo_multichannel_tones
 
 demo_multichannel_tones:
@@ -169,9 +168,8 @@ demo_multichannel_tones:
     
     RTS
 
-; Three-part harmony playing!"
-  language="assembly"
-/>
+; Three-part harmony playing!
+```
 
 ## Creating Note Tables
 
@@ -196,10 +194,10 @@ play_note_from_table:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Note Table System"
-  code="; Create and use a note frequency table
+**Note Table System:**
+
+```assembly
+; Create and use a note frequency table
 JSR setup_note_table
 
 setup_note_table:
@@ -252,9 +250,8 @@ JSR play_table_note
 LDA #$02        ; Play E note
 JSR play_table_note
 
-; Note table system working!"
-  language="assembly"
-/>
+; Note table system working!
+```
 
 ## Understanding Musical Intervals
 
@@ -275,10 +272,10 @@ C_MIDDLE = $07F1    ; Middle C
 C_HIGH   = $03F8    ; High C (half the period = double frequency)
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Musical Intervals Demo"
-  code="; Demonstrate musical intervals
+**Musical Intervals Demo:**
+
+```assembly
+; Demonstrate musical intervals
 JSR demo_intervals
 
 demo_intervals:
@@ -307,9 +304,8 @@ demo_intervals:
     
     RTS
 
-; Perfect octave harmony playing!"
-  language="assembly"
-/>
+; Perfect octave harmony playing!
+```
 
 ## Tone Duration and Timing
 
@@ -401,10 +397,10 @@ delay_loop:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Simple Melody Generation"
-  code="; Create and play a simple melody
+**Simple Melody Generation:**
+
+```assembly
+; Create and play a simple melody
 JSR play_simple_melody
 
 play_simple_melody:
@@ -464,9 +460,8 @@ delay_outer:
     BNE delay_outer
     RTS
 
-; Simple C major arpeggio melody playing!"
-  language="assembly"
-/>
+; Simple C major arpeggio melody playing!
+```
 
 ## Sprite Symphony Tone System
 
@@ -555,10 +550,10 @@ Create a complete tone generation system with:
 4. Simple melody playback system
 5. Tone duration control
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Tone Generator"
-  code="; Complete Tone Generation System
+**Practice: Complete Tone Generator:**
+
+```assembly
+; Complete Tone Generation System
 JSR init_tone_generator
 
 init_tone_generator:
@@ -708,9 +703,8 @@ JSR play_harmony
 ; Test melody
 JSR play_test_melody
 
-; Complete tone generation system working!"
-  language="assembly"
-/>
+; Complete tone generation system working!
+```
 
 ## What You've Learned
 

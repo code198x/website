@@ -146,10 +146,10 @@ WontHaveFeatures:
     ; Real-time music generation
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Project Requirements Analysis Demo"
-  code="; Demonstrate systematic requirements analysis
+**Project Requirements Analysis Demo:**
+
+```assembly
+; Demonstrate systematic requirements analysis
 ; Shows how to organise and validate project requirements
 
 RequirementsAnalysisDemo:
@@ -477,9 +477,8 @@ RequirementStatus:     .res 16    ; Feasibility status
 RequirementPriority:   .res 16    ; Priority assignments
 
 ; Run the requirements analysis demonstration
-JSR RequirementsAnalysisDemo"
-  language="assembly"
-/>
+JSR RequirementsAnalysisDemo
+```
 
 ## Project Structure and Organization
 
@@ -608,10 +607,10 @@ Phase1InProgress:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Project Structure and Milestone Tracking"
-  code="; Demonstrate project structure and milestone tracking
+**Project Structure and Milestone Tracking:**
+
+```assembly
+; Demonstrate project structure and milestone tracking
 ; Shows how to organise and monitor development progress
 
 ProjectStructureDemo:
@@ -845,9 +844,8 @@ ProjectHealthScore:    .byte 0
 ProjectStatus:         .byte 0      ; 0=healthy, 1=caution, 2=risk
 
 ; Run the project structure demonstration
-JSR ProjectStructureDemo"
-  language="assembly"
-/>
+JSR ProjectStructureDemo
+```
 
 ## Iterative Development and Testing
 
@@ -1216,10 +1214,10 @@ PassRate:       .byte $00
 TestSuiteStatus: .byte $00
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Iterative Development and Testing Framework"
-  code="; Demonstrate iterative development with integrated testing
+**Iterative Development and Testing Framework:**
+
+```assembly
+; Demonstrate iterative development with integrated testing
 ; Shows development cycles with continuous quality assurance
 
 IterativeDevDemo:
@@ -1524,9 +1522,8 @@ QualityStatus:      .byte 0    ; 0=met, FF=not met
 ProgressStatus:     .byte 0    ; 0=complete, 1=incomplete, FF=blocked
 
 ; Run the iterative development demonstration
-JSR IterativeDevDemo"
-  language="assembly"
-/>
+JSR IterativeDevDemo
+```
 
 ## Risk Management and Contingency Planning
 
@@ -1667,10 +1664,10 @@ DocumentationChecklist:
 
 Create a complete project plan for a C64 game:
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Complete Project Planning"
-  code="; Complete project planning exercise
+**Practice Exercise - Complete Project Planning:**
+
+```assembly
+; Complete project planning exercise
 ; Plan a full C64 game development project
 
 ProjectPlanningExercise:
@@ -1954,9 +1951,8 @@ FinalDeliveryFeatures: .byte 0
 DeliverableStatus:     .byte 0
 
 ; Run the project planning exercise
-JSR ProjectPlanningExercise"
-  language="assembly"
-/>
+JSR ProjectPlanningExercise
+```
 
 ## Project Planning Best Practices
 

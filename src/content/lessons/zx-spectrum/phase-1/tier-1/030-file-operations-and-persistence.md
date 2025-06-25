@@ -531,10 +531,10 @@ DecompressDest:     DW 0
 
 ### Dictionary-Based Compression
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Advanced Compression Implementation"
-  code="; Dictionary-based compression for better ratios
+**Advanced Compression Implementation:**
+
+```assembly
+; Dictionary-based compression for better ratios
 ; Uses common pattern dictionary
 
 ; Dictionary compression
@@ -847,9 +847,8 @@ ImageSize:          DW 0
 CompressedData:     DS 128
 DictCompressed:     DS 128
 DecompressedData:   DS 128
-RLESize:           DW 0"
-  language="assembly"
-/>
+RLESize:           DW 0
+```
 
 ## Error Handling and Validation
 
@@ -947,10 +946,10 @@ BackupFileName:     DB "BACKUP    "
 
 ### Metadata and Thumbnails
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Advanced File Format"
-  code="; Advanced file format with metadata and thumbnails
+**Advanced File Format:**
+
+```assembly
+; Advanced file format with metadata and thumbnails
 ; Extended format for professional adventure game
 
 ; Extended file header (32 bytes)
@@ -1238,45 +1237,8 @@ ExtSuccess:
     LD B, 255           ; Success
     RET
 
-SampleTitle:    DB "Test Picture        "
-
-DrawTestPattern:
-    ; Simple test pattern
-    LD HL, 16384
-    LD B, 192
-TestLoop:
-    LD A, B
-    AND 15
-    LD (HL), A
-    INC HL
-    DJNZ TestLoop
-    RET
-
-ClearScreen:
-    LD HL, 16384
-    LD DE, 16385
-    LD BC, 6143
-    LD (HL), 0
-    LDIR
-    RET
-
-CalculateChecksum:
-    LD DE, 0
-ChkLoop:
-    LD A, (HL)
-    ADD E
-    LD E, A
-    JR NC, ChkNext
-    INC D
-ChkNext:
-    INC HL
-    DEC BC
-    LD A, B
-    OR C
-    JR NZ, ChkLoop
-    RET"
-  language="assembly"
-/>
+SampleTitle:    DB
+```
 
 ## Performance Optimization
 
@@ -1312,10 +1274,10 @@ LARGE_BUFFER: DS 8192
 
 ## Complete File System
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complete File System Demo"
-  code="; Complete file system demonstration
+**Complete File System Demo:**
+
+```assembly
+; Complete file system demonstration
 ; Shows save, load, compression, and error handling
 
 ; File manager state
@@ -1558,21 +1520,8 @@ DemoError:
     RET
 
 ; File data
-TestFile:       DB "TESTIMG   "
-AutoSaveFile:   DB "AUTOSAVE  "
-BackupFile1:    DB "BACKUP1   "
-BackupFile2:    DB "BACKUP2   "
-
-FileList:
-    DB "PICTURE1  "
-    DB "DRAWING2  "
-    DB "SKETCH3   "
-    DB "ARTWORK4  "
-    DB "DESIGN5   "
-
-AutoSaveTimer:  DB 60"
-  language="assembly"
-/>
+TestFile:       DB
+```
 
 ## Key Takeaways
 

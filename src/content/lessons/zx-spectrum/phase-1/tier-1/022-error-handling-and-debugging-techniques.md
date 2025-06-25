@@ -88,10 +88,10 @@ ADD A, 1
 LD (Counter), A
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Common Error Examples"
-  code="; Demonstration of common programming errors and fixes
+**Common Error Examples:**
+
+```assembly
+; Demonstration of common programming errors and fixes
 
 ; ERROR EXAMPLE 1: Uninitialized variable
 BadCounter: DS 1    ; Uninitialized storage
@@ -192,9 +192,8 @@ CleanupAndExit:
     RET                 ; Now safe to return
 
 SomeCondition: DB 0
-LongString: DB "This string is too long for the buffer!", 0"
-  language="assembly"
-/>
+LongString: DB
+```
 
 ## Systematic Debugging Approach
 
@@ -296,10 +295,10 @@ ProcessDone:
 InputValue: DB 0
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Debug Tracing System"
-  code="; Simple debug tracing system for tracking program flow
+**Debug Tracing System:**
+
+```assembly
+; Simple debug tracing system for tracking program flow
 
 ; Debug trace buffer
 TraceBuffer:    DS 20   ; Store last 20 trace points
@@ -416,9 +415,8 @@ ExamineLoop:
     RET
 
 TestValue:      DB 0
-TraceResult:    DB 0"
-  language="assembly"
-/>
+TraceResult:    DB 0
+```
 
 ## Error Detection and Validation
 

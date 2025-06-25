@@ -373,10 +373,10 @@ HandleGameOver:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Game State Machine"
-  code="; Simple game state machine
+**Game State Machine:**
+
+```assembly
+; Simple game state machine
 GameState: DB 1    ; Current state: 0=menu, 1=game, 2=pause
 
 ; State transition based on input
@@ -416,9 +416,8 @@ PauseState:
     RET
 
 ; Call ProcessGameState repeatedly to cycle through states
-; B will contain different values based on current state"
-  language="assembly"
-/>
+; B will contain different values based on current state
+```
 
 ## Advanced Flag Operations
 

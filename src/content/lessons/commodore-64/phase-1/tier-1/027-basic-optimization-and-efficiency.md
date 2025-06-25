@@ -473,10 +473,10 @@ PlayerDead:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Speed Optimization Techniques Demo"
-  code="; Demonstrate various speed optimisation techniques
+**Speed Optimization Techniques Demo:**
+
+```assembly
+; Demonstrate various speed optimisation techniques
 ; Compare optimised vs unoptimized code patterns
 
 SpeedOptimizationDemo:
@@ -624,9 +624,8 @@ RareResult:         .byte 0
 DefaultResult:      .byte 0
 
 ; Run the speed optimisation demonstration
-JSR SpeedOptimizationDemo"
-  language="assembly"
-/>
+JSR SpeedOptimizationDemo
+```
 
 ## Code Size Optimization
 
@@ -768,10 +767,10 @@ PlayerFullHealth:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Code Size Optimization Demo"
-  code="; Demonstrate code size optimisation techniques
+**Code Size Optimization Demo:**
+
+```assembly
+; Demonstrate code size optimisation techniques
 ; Show how to reduce program size while maintaining functionality
 
 CodeSizeOptimizationDemo:
@@ -919,9 +918,8 @@ SquareResult2:  .byte 0
 ColorResult:    .byte 0
 
 ; Run the code size optimisation demonstration
-JSR CodeSizeOptimizationDemo"
-  language="assembly"
-/>
+JSR CodeSizeOptimizationDemo
+```
 
 ## Advanced Optimization Patterns
 
@@ -1100,10 +1098,10 @@ MODE_DOUBLE = 1
 ; Use sparingly and document thoroughly
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Advanced Optimization Patterns Demo"
-  code="; Demonstrate advanced optimisation patterns
+**Advanced Optimization Patterns Demo:**
+
+```assembly
+; Demonstrate advanced optimisation patterns
 ; Table-driven programming and bit-packed data
 
 AdvancedOptimizationDemo:
@@ -1279,20 +1277,8 @@ ColorTable:
     .byte $06, $0E, $05, $02    ; Colors for inputs 0-3
 
 ; Messages
-TableMessage:   .text \"TABLE RESULT: $\", 0
-FlagMessage:    .text \"PACKED FLAGS: $\", 0
-
-; Variables
-TestInput:      .byte 0
-PackedFlags:    .byte 0
-TableResult:    .byte 0
-TableColor:     .byte 0
-HasKeyResult:   .byte 0
-
-; Run the advanced optimisation demonstration
-JSR AdvancedOptimizationDemo"
-  language="assembly"
-/>
+TableMessage:   .text \
+```
 
 ## Optimization Guidelines and Best Practices
 
@@ -1354,10 +1340,10 @@ DoubleValue: .byte 0
 
 Optimize the following inefficient code for speed, size, and memory usage:
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Code Optimization Challenge"
-  code="; Optimization Challenge: Improve this inefficient code
+**Practice Exercise - Code Optimization Challenge:**
+
+```assembly
+; Optimization Challenge: Improve this inefficient code
 ; Focus on speed, memory usage, and code size
 
 OptimizationChallenge:
@@ -1567,22 +1553,8 @@ DispLow:
     RTS
 
 ; Messages
-UnoptimizedMsg: .text \"UNOPTIMIZED: $\", 0
-OptimizedMsg:   .text \"OPTIMIZED:   $\", 0
-MatchMsg:       .text \"RESULTS MATCH - SUCCESS!\", 0
-ErrorMsg:       .text \"ERROR - RESULTS DIFFER!\", 0
-
-; Data areas
-ChallengeArray: .res 16
-Result1:        .byte 0     ; Unoptimized result
-Result2:        .byte 0     ; Optimized result
-TempResult:     .byte 0     ; Temporary storage
-TempOpt:        .byte 0     ; Optimized temporary
-
-; Run the optimisation challenge
-JSR OptimizationChallenge"
-  language="assembly"
-/>
+UnoptimizedMsg: .text \
+```
 
 ## What You've Learned
 

@@ -84,13 +84,11 @@ This instruction means:
 - **A**: Into the A register
 - **$41**: The hexadecimal value 41 (which equals 65 in decimal)
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Your First Assembly Instruction"
-  code="LD A, $41"
-  autoRun={false}
-  language="assembly"
-/>
+**Your First Assembly Instruction:**
+
+```nasm
+LD A, $41
+```
 
 ## What Just Happened?
 
@@ -129,16 +127,15 @@ LD D, $4C    ; Load 'L' into D register
 LD E, $4F    ; Load 'O' into E register
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Loading Different Registers"
-  code="LD A, $48    ; Load 'H' into A register
+**Loading Different Registers:**
+
+```nasm
+LD A, $48    ; Load 'H' into A register
 LD B, $45    ; Load 'E' into B register
 LD C, $4C    ; Load 'L' into C register
 LD D, $4C    ; Load 'L' into D register
-LD E, $4F    ; Load 'O' into E register"
-  language="assembly"
-/>
+LD E, $4F    ; Load 'O' into E register
+```
 
 *Note: The semicolon (;) starts a comment - text that explains the code but doesn't execute.*
 
@@ -152,14 +149,13 @@ LD DE, $5678    ; Load $5678 into DE pair (D=$56, E=$78)
 LD HL, $4000    ; Load $4000 into HL pair (H=$40, L=$00)
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Register Pairs"
-  code="LD BC, $1234    ; BC = $1234 (B=$12, C=$34)
+**Register Pairs:**
+
+```nasm
+LD BC, $1234    ; BC = $1234 (B=$12, C=$34)
 LD DE, $5678    ; DE = $5678 (D=$56, E=$78)
-LD HL, $4000    ; HL = $4000 (H=$40, L=$00) - screen memory start!"
-  language="assembly"
-/>
+LD HL, $4000    ; HL = $4000 (H=$40, L=$00) - screen memory start!
+```
 
 The HL register pair is especially important because it's often used to point to memory addresses!
 
@@ -192,16 +188,15 @@ LD C, $50    ; Load 'P' into C register
 LD D, C      ; Copy C register contents into D register
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Moving Data Between Registers"
-  code="LD A, $53    ; Load 'S' into A register
+**Moving Data Between Registers:**
+
+```nasm
+LD A, $53    ; Load 'S' into A register
 LD B, A      ; Copy A into B register
 LD C, $50    ; Load 'P' into C register  
 LD D, C      ; Copy C into D register
-; Now A=B=$53 ('S') and C=D=$50 ('P')"
-  language="assembly"
-/>
+; Now A=B=$53 ('S') and C=D=$50 ('P')
+```
 
 ## Practice Exercise
 
@@ -213,16 +208,15 @@ Now it's your turn! Write assembly instructions to:
 4. Copy the A register into the D register
 5. Load the value $4000 into the HL register pair
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Try Different Values"
-  code="LD A, $5A    ; Load 'Z' into A register
+**Practice Exercise - Try Different Values:**
+
+```nasm
+LD A, $5A    ; Load 'Z' into A register
 LD B, $58    ; Load 'X' into B register
 LD C, $80    ; Load 128 into C register
 LD D, A      ; Copy A register into D register
-LD HL, $4000 ; Load $4000 into HL pair"
-  language="assembly"
-/>
+LD HL, $4000 ; Load $4000 into HL pair
+```
 
 ## The Z80 Advantage
 
@@ -234,6 +228,81 @@ Why does the Z80 have so many registers? It makes programming much more efficien
 **16-bit capability**: Register pairs give you 16-bit math and addressing
 
 Compare this to simpler processors that might only have one or two registers!
+
+## Try It Yourself!
+
+Ready to run this code on a real assembler? Here's how to get started:
+
+### 1. Set Up Your Environment
+
+First, you'll need an assembler and emulator. **[Follow our setup guide](/setup)** for detailed instructions, or use these quick commands:
+
+```bash
+# macOS (using Homebrew)
+brew install z88dk fuse-emulator
+
+# Windows: Download z88dk installer from z88dk.org
+# Download Fuse emulator from fuse-emulator.sourceforge.net
+
+# Linux (Ubuntu/Debian)
+sudo apt install z88dk fuse-emulator
+```
+
+### 2. Create Your First Program
+
+Create a file called `hello.asm`:
+
+**hello.asm:**
+```nasm
+; Your first ZX Spectrum assembly program
+    org 32768       ; Start at address $8000
+
+start:
+    ld a, $5a       ; Load 'Z' into A register
+    ld b, $58       ; Load 'X' into B register  
+    ld c, $80       ; Load 128 into C register
+    ld d, a         ; Copy A into D register
+    ld hl, $4000    ; Load screen memory address
+    
+    ; Infinite loop to examine registers
+loop:
+    jr loop         ; Jump to itself (stops program)
+```
+
+### 3. Assemble and Run
+
+```bash
+# Assemble your program
+z88dk-z80asm -b hello.asm
+
+# Create TAP file for emulator
+z88dk-appmake +zx -b hello.bin -o hello.tap --org 32768 --exec 32768
+
+# Run in Fuse emulator
+fuse hello.tap
+
+# In the emulator:
+# 1. Type: LOAD ""
+# 2. Type: RUN
+# 3. Press F10 to open debugger
+# 4. Check register values
+```
+
+### 4. What You Should See
+
+In the Fuse debugger, you should see:
+```
+A:5a  F:--      BC:5880  DE:5a??  HL:4000
+```
+
+This shows:
+- **A register**: $5a (which is 'Z')
+- **B register**: $58 (which is 'X')
+- **C register**: $80 (which is 128)
+- **D register**: $5a (copied from A)
+- **HL pair**: $4000 (screen memory start)
+
+**Congratulations!** You've just run your first Z80 assembly program!
 
 ## What You've Learned
 

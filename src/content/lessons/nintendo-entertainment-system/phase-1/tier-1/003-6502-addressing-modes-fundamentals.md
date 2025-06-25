@@ -52,10 +52,10 @@ LDX #100        ; Load the number 100
 LDY #%11110000  ; Load binary pattern
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Immediate Addressing Examples"
-  code="; Immediate addressing - loading constant values
+**Immediate Addressing Examples:**
+
+```assembly
+; Immediate addressing - loading constant values
 ; The # symbol means 'the value itself', not 'what's stored at that address'
 
 ImmediateDemo:
@@ -104,9 +104,8 @@ ImmediateDemo:
     STA $0241       ; Clear second location
     STA $0242       ; Clear third location
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Zero Page Addressing ($00-$FF)
 
@@ -120,10 +119,10 @@ LDA $10         ; Load from zero page address $10
 STA $20         ; Store to zero page address $20
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Zero Page Addressing"
-  code="; Zero page addressing - fast access to first 256 bytes
+**Zero Page Addressing:**
+
+```assembly
+; Zero page addressing - fast access to first 256 bytes
 ; Zero page ($00-$FF) is the 6502's 'fast lane'
 
 ZeroPageDemo:
@@ -202,9 +201,8 @@ CounterLoop:
     ORA #%00001000  ; Set bit 3
     STA $50         ; Store updated flags (fast!)
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Absolute Addressing ($0000-$FFFF)
 
@@ -218,10 +216,10 @@ LDA $0200       ; Load from address $0200
 STA $0300       ; Store to address $0300
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Absolute Addressing"
-  code="; Absolute addressing - access to full 64KB memory space
+**Absolute Addressing:**
+
+```assembly
+; Absolute addressing - access to full 64KB memory space
 ; Use when you need to access specific memory locations
 
 AbsoluteDemo:
@@ -279,9 +277,8 @@ AbsoluteDemo:
     LDA #$10        ; Load size value
     STA $0A01       ; Store size information
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Indexed Addressing (with X and Y)
 
@@ -296,10 +293,10 @@ LDA $0200,X     ; Load from $0200 + 5 = $0205
 STA $0300,Y     ; Store to $0300 + Y
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Indexed Addressing"
-  code="; Indexed addressing - powerful array and table access
+**Indexed Addressing:**
+
+```assembly
+; Indexed addressing - powerful array and table access
 ; Use X and Y registers as offsets for flexible data access
 
 IndexedDemo:
@@ -396,20 +393,8 @@ LookupTable:
     .byte $90, $A0, $B0, $C0, $D0, $E0, $F0, $FF
 
 TestString:
-    .byte "HELLO", $00  ; Null-terminated string
-
-Array2D:
-    .byte $01, $02, $03, $04  ; Row 0
-    .byte $05, $06, $07, $08  ; Row 1  
-    .byte $09, $0A, $0B, $0C  ; Row 2
-
-Buffer:
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-BufferSize = 8
-BufferIndex:
-    .byte $00"
-  language="assembly"
-/>
+    .byte
+```
 
 ## Indirect Addressing - The Power Mode
 
@@ -589,10 +574,10 @@ Use indexed when: Processing arrays/tables
 Use indirect when: Dynamic memory access needed
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Addressing Mode Comparison"
-  code="; Comparing different addressing modes for efficiency
+**Addressing Mode Comparison:**
+
+```assembly
+; Comparing different addressing modes for efficiency
 ; This demonstrates when to use each addressing mode
 
 AddressingComparison:
@@ -684,16 +669,15 @@ ArrayData:
     .byte $10, $20, $30, $40, $50, $60, $70, $80
 
 SpriteTemplate:
-    .byte $50, $01, $00, $60  ; Y, Tile, Attr, X"
-  language="assembly"
-/>
+    .byte $50, $01, $00, $60  ; Y, Tile, Attr, X
+```
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Addressing Modes Practice"
-  code="; Practice Exercise: Game Entity Manager
+**Addressing Modes Practice:**
+
+```assembly
+; Practice Exercise: Game Entity Manager
 ; Use different addressing modes appropriately for managing game entities
 
 EntityManagerPractice:
@@ -869,9 +853,8 @@ NotFound:
 ; 1. Add entity collision detection using appropriate addressing modes
 ; 2. Implement entity removal with memory compaction
 ; 3. Create entity sorting by type or position
-; 4. Add entity animation using frame counters"
-  language="assembly"
-/>
+; 4. Add entity animation using frame counters
+```
 
 ## What You've Learned
 

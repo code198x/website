@@ -89,10 +89,10 @@ PLP     ; Pull from stack to status register
         ; Restores all flags
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Basic Stack Operations"
-  code="; Push values onto stack
+**Basic Stack Operations:**
+
+```assembly
+; Push values onto stack
 LDA #$42    ; Load $42 into A
 PHA         ; Push A to stack (A=$42 stored)
 LDA #$7F    ; Load $7F into A  
@@ -101,9 +101,8 @@ PHA         ; Push A to stack (A=$7F stored)
 ; Pull values from stack (LIFO - Last In, First Out)
 PLA         ; Pull to A (A=$7F restored)
 PLA         ; Pull to A (A=$42 restored)
-; Stack is now back to original state"
-  language="assembly"
-/>
+; Stack is now back to original state
+```
 
 ## Why Use the Stack?
 
@@ -151,10 +150,10 @@ PLA             ; Restore score low byte
 STA score_lo
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Preserving Game Data"
-  code="; Setup game score
+**Preserving Game Data:**
+
+```assembly
+; Setup game score
 LDA #$34    ; Score low byte = $34
 STA $0380   ; Store score low
 LDA #$12    ; Score high byte = $12
@@ -177,9 +176,8 @@ PLA         ; Get score high back
 STA $0381   ; Restore it
 PLA         ; Get score low back
 STA $0380   ; Restore it
-; Score is preserved: $1234"
-  language="assembly"
-/>
+; Score is preserved: $1234
+```
 
 ## Introduction to Subroutines
 
@@ -229,10 +227,10 @@ clear_loop:
     RTS                 ; Return to caller
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Screen Clear Subroutine"
-  code="; Main program
+**Screen Clear Subroutine:**
+
+```assembly
+; Main program
 JSR clear_area      ; Call our subroutine
 LDA #$01            ; Main program continues
 STA $0400           ; Store completion flag
@@ -248,9 +246,8 @@ clear_loop:
     BNE clear_loop  ; Continue if not done
     RTS             ; Return to caller
 
-; Memory $0500-$050F is now cleared"
-  language="assembly"
-/>
+; Memory $0500-$050F is now cleared
+```
 
 ## Subroutine Parameters
 
@@ -313,10 +310,10 @@ play_jump_sound:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sound Effect Subroutine"
-  code="; Setup APU
+**Sound Effect Subroutine:**
+
+```assembly
+; Setup APU
 LDA #$0F    ; Enable all channels
 STA $4015
 
@@ -344,9 +341,8 @@ play_sound:
     ; Duration handling would go here in full game
     RTS         ; Return to caller
 
-; Sound is now playing!"
-  language="assembly"
-/>
+; Sound is now playing!
+```
 
 ## Nested Subroutine Calls
 
@@ -424,10 +420,10 @@ play_note:
     JSR play_note   ; Play it
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Symphony Functions"
-  code="; Initialize audio system
+**Sprite Symphony Functions:**
+
+```assembly
+; Initialize audio system
 JSR init_audio
 
 ; Play a sequence of notes
@@ -468,9 +464,8 @@ play_e:
 play_g:
     LDA #$A2    ; G frequency
     STA $4002
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Practical Exercise: Game Utility Functions
 

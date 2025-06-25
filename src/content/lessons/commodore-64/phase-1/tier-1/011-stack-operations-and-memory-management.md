@@ -72,15 +72,14 @@ PHA             ; Push A onto stack
                 ; SP decremented by 1
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Push Accumulator Example"
-  code="LDA #$42        ; Load 'B' into A register
+**Push Accumulator Example:**
+
+```assembly
+LDA #$42        ; Load 'B' into A register
 PHA             ; Push A onto stack (saves 'B')
 LDA #$48        ; Load 'H' into A (overwrites previous value)
-; A now contains 'H', but 'B' is safely stored on stack"
-  language="assembly"
-/>
+; A now contains 'H', but 'B' is safely stored on stack
+```
 
 ### PHP - Push Processor Status
 
@@ -93,15 +92,14 @@ PHP             ; Push status register onto stack
                 ; Status flags are now saved
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Push Processor Status Example"
-  code="LDA #$80        ; Load $80 (sets Negative flag)
+**Push Processor Status Example:**
+
+```assembly
+LDA #$80        ; Load $80 (sets Negative flag)
 PHP             ; Push status register onto stack
 LDA #$01        ; Load $01 (clears Negative flag)
-; Status flags from before are saved on stack"
-  language="assembly"
-/>
+; Status flags from before are saved on stack
+```
 
 ## Pull Operations
 
@@ -118,18 +116,17 @@ PLA             ; Pull value from stack into A
                 ; A now contains the pulled value
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Push and Pull Accumulator"
-  code="LDA #$42        ; Load 'B'
+**Push and Pull Accumulator:**
+
+```assembly
+LDA #$42        ; Load 'B'
 PHA             ; Push 'B' onto stack
 LDA #$48        ; Load 'H' (overwrites A)
 STA $0400       ; Display 'H' on screen
 
 PLA             ; Pull 'B' back from stack into A
-STA $0401       ; Display 'B' on screen"
-  language="assembly"
-/>
+STA $0401       ; Display 'B' on screen
+```
 
 ### PLP - Pull Processor Status
 
@@ -141,15 +138,14 @@ PLP             ; Pull status register from stack
                 ; All flags restored to previous state
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Push and Pull Processor Status"
-  code="LDA #$80        ; Set Negative flag
+**Push and Pull Processor Status:**
+
+```assembly
+LDA #$80        ; Set Negative flag
 PHP             ; Save status flags
 LDA #$01        ; Clear Negative flag
-PLP             ; Restore status flags (Negative flag restored)"
-  language="assembly"
-/>
+PLP             ; Restore status flags (Negative flag restored)
+```
 
 ## Stack Visualization
 
@@ -196,10 +192,10 @@ PLA             ; Restore original A value
 ; A is back to its original state
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Register State Management"
-  code="; Demonstrate saving and restoring registers
+**Register State Management:**
+
+```assembly
+; Demonstrate saving and restoring registers
 LDA #$42        ; Load 'B' into A
 PHA             ; Save A on stack
 
@@ -212,9 +208,8 @@ STA $0401       ; Display 'E'
 
 ; Restore original A value
 PLA             ; Pull 'B' back into A
-STA $0402       ; Display 'B' - shows original value restored"
-  language="assembly"
-/>
+STA $0402       ; Display 'B' - shows original value restored
+```
 
 ## Multiple Register Preservation
 
@@ -236,10 +231,10 @@ PLA             ; Restore A
 ; All registers back to original state
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Multiple Register Preservation"
-  code="; Save multiple things
+**Multiple Register Preservation:**
+
+```assembly
+; Save multiple things
 LDA #$42        ; Load 'B'
 PHA             ; Save A
 PHP             ; Save status flags
@@ -252,9 +247,8 @@ STA $D020       ; Change border colour
 ; Restore everything
 PLP             ; Restore status flags  
 PLA             ; Restore A register
-STA $0400       ; Display restored 'B'"
-  language="assembly"
-/>
+STA $0400       ; Display restored 'B'
+```
 
 ## Stack Overflow and Underflow
 
@@ -313,10 +307,10 @@ PLA             ; Get first value
 STA $83         ; Store result
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Temporary Variable Storage"
-  code="; Setup some data
+**Temporary Variable Storage:**
+
+```assembly
+; Setup some data
 LDA #$41        ; 'A'
 STA $80
 LDA #$42        ; 'B'  
@@ -336,9 +330,8 @@ STA $0400       ; Display
 PLA             ; Get 'B' back
 STA $0401       ; Display 'B'
 PLA             ; Get 'A' back  
-STA $0402       ; Display 'A'"
-  language="assembly"
-/>
+STA $0402       ; Display 'A'
+```
 
 ### Nested Operations
 
@@ -389,10 +382,10 @@ Create a program that:
 3. Pulls the initials back from stack and displays them in reverse order
 4. Demonstrates that stack is LIFO (Last In, First Out)
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Stack LIFO Demonstration"
-  code="; Push initials onto stack
+**Practice Exercise - Stack LIFO Demonstration:**
+
+```assembly
+; Push initials onto stack
 LDA #$53        ; 'S' (first initial)
 PHA             ; Push onto stack
 LDA #$48        ; 'H' (second initial)  
@@ -416,9 +409,8 @@ STA $0405       ; Display 'H'
 PLA             ; Gets 'S' (first pushed, last pulled)
 STA $0406       ; Display 'S'
 
-; Result shows: 123!HS (reverse order due to LIFO)"
-  language="assembly"
-/>
+; Result shows: 123!HS (reverse order due to LIFO)
+```
 
 ## Why the Stack Matters
 

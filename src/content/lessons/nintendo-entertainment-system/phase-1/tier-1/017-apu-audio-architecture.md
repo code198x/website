@@ -74,10 +74,10 @@ The NES APU has exactly 5 sound channels:
 - **Registers**: $4010-$4013
 - **Features**: Sample playback from ROM
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="APU Channel Overview"
-  code="; Enable all APU channels
+**APU Channel Overview:**
+
+```assembly
+; Enable all APU channels
 LDA #%00001111  ; Enable pulse 1, pulse 2, triangle, noise
 STA $4015       ; APU Status/Enable register
 
@@ -98,9 +98,8 @@ STA $400A       ; Triangle frequency low
 LDA #$02        ; Higher frequency for audible sound
 STA $400B       ; Triangle frequency high
 
-; All channels are now configured!"
-  language="assembly"
-/>
+; All channels are now configured!
+```
 
 ## APU Register Map
 
@@ -131,10 +130,10 @@ Bit 0: Pulse 1 Enable (0=disable, 1=enable)
 Bits 5-7: Unused
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="APU Channel Enable/Disable"
-  code="; Different enable combinations
+**APU Channel Enable/Disable:**
+
+```assembly
+; Different enable combinations
 ; Enable only pulse channels (classic chiptune sound)
 LDA #%00000011  ; Pulse 1 and 2 only
 STA $4015
@@ -153,9 +152,8 @@ STA $4015
 
 ; Re-enable for audio
 LDA #%00001111  ; All channels back on
-STA $4015"
-  language="assembly"
-/>
+STA $4015
+```
 
 ## Pulse Wave Channels (1 & 2)
 
@@ -198,10 +196,10 @@ play_simple_tone:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="First Sound Generation"
-  code="; Generate first sound - middle C on pulse 1
+**First Sound Generation:**
+
+```assembly
+; Generate first sound - middle C on pulse 1
 JSR play_simple_tone
 
 play_simple_tone:
@@ -221,9 +219,8 @@ play_simple_tone:
     
     RTS
 
-; Middle C is now playing on pulse 1!"
-  language="assembly"
-/>
+; Middle C is now playing on pulse 1!
+```
 
 ## Understanding Frequency Values
 
@@ -261,10 +258,10 @@ $400A: Frequency Low Byte
 $400B: Length Counter + Frequency High
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Triangle Wave Bass Line"
-  code="; Create bass line using triangle wave
+**Triangle Wave Bass Line:**
+
+```assembly
+; Create bass line using triangle wave
 JSR setup_triangle_bass
 
 setup_triangle_bass:
@@ -284,9 +281,8 @@ setup_triangle_bass:
     
     RTS
 
-; Deep bass note is now playing on triangle!"
-  language="assembly"
-/>
+; Deep bass note is now playing on triangle!
+```
 
 ## Noise Channel
 
@@ -305,10 +301,10 @@ Bit 7: Mode (0=noise, 1=tone)
 Bits 3-0: Period (0-15, lower = higher pitch)
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Noise Channel Percussion"
-  code="; Create drum-like sound with noise channel
+**Noise Channel Percussion:**
+
+```assembly
+; Create drum-like sound with noise channel
 JSR play_drum_sound
 
 play_drum_sound:
@@ -330,9 +326,8 @@ play_drum_sound:
     
     RTS
 
-; Drum hit sound is playing!"
-  language="assembly"
-/>
+; Drum hit sound is playing!
+```
 
 ## Duty Cycles and Timbre
 
@@ -375,10 +370,10 @@ LDA #%10100101  ; Envelope mode, decay rate = 5
 STA $4000
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Volume Control Examples"
-  code="; Demonstrate different volume levels
+**Volume Control Examples:**
+
+```assembly
+; Demonstrate different volume levels
 JSR test_volumes
 
 test_volumes:
@@ -408,9 +403,8 @@ test_volumes:
     
     RTS
 
-; Different volume levels demonstrated!"
-  language="assembly"
-/>
+; Different volume levels demonstrated!
+```
 
 ## Sprite Symphony APU Setup
 
@@ -458,10 +452,10 @@ setup_note_frequencies:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Symphony Audio Setup"
-  code="; Initialize audio system for Sprite Symphony
+**Sprite Symphony Audio Setup:**
+
+```assembly
+; Initialize audio system for Sprite Symphony
 JSR init_sprite_symphony_audio
 
 init_sprite_symphony_audio:
@@ -498,9 +492,8 @@ init_sprite_symphony_audio:
     
     RTS
 
-; Audio system ready for Sprite Symphony!"
-  language="assembly"
-/>
+; Audio system ready for Sprite Symphony!
+```
 
 ## Multi-Channel Music
 
@@ -543,10 +536,10 @@ Create a complete sound system with:
 4. Create a drum function using noise
 5. Play a simple 4-note sequence
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Sound System"
-  code="; Complete Sound System Exercise
+**Practice: Complete Sound System:**
+
+```assembly
+; Complete Sound System Exercise
 JSR init_complete_sound_system
 
 init_complete_sound_system:
@@ -664,9 +657,8 @@ play_sequence:
 ; Test the complete system
 JSR play_sequence
 
-; Complete sound system working with melody, bass, and drums!"
-  language="assembly"
-/>
+; Complete sound system working with melody, bass, and drums!
+```
 
 ## What You've Learned
 

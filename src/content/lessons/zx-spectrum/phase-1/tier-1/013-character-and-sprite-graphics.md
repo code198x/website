@@ -72,10 +72,10 @@ CharacterSet:
     DB %10100101, %10011001, %01000010, %00111100
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Character Set Definition"
-  code="; Define custom character patterns
+**Character Set Definition:**
+
+```assembly
+; Define custom character patterns
 ; Character 0: Solid block
 CharBlock:
     DB %11111111, %11111111, %11111111, %11111111
@@ -91,9 +91,8 @@ CharCross:
     DB %00010000, %00010000, %11111111, %11111111
     DB %11111111, %11111111, %00010000, %00010000
 
-; We'll use these patterns in our display routine"
-  language="assembly"
-/>
+; We'll use these patterns in our display routine
+```
 
 ### Character Display Routine
 
@@ -126,10 +125,10 @@ DrawCharLoop:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Character Display Routine"
-  code="; Simple character display demonstration
+**Character Display Routine:**
+
+```assembly
+; Simple character display demonstration
 ; Place some character data in memory first
 LD HL, $6000        ; Use memory area for character data
 
@@ -165,9 +164,8 @@ DisplayLoop:
     JR NC, NoCarry
     INC D           ; Handle carry to high byte
 NoCarry:
-    DJNZ DisplayLoop"
-  language="assembly"
-/>
+    DJNZ DisplayLoop
+```
 
 ## Text Display System
 
@@ -224,10 +222,10 @@ MessageTable:
     DW MessageHello, MessageScore, MessageLives, MessageGameOver
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Simple Text Display"
-  code="; Simple text display using ASCII values
+**Simple Text Display:**
+
+```assembly
+; Simple text display using ASCII values
 ; Create a message in memory
 LD HL, $6100        ; Message storage area
 LD (HL), $48        ; 'H'
@@ -259,9 +257,8 @@ DisplayText:
     JR DisplayText  ; Continue
 
 TextDone:
-    ; Text display complete"
-  language="assembly"
-/>
+    ; Text display complete
+```
 
 ## Sprite Graphics System
 
@@ -329,10 +326,10 @@ NoSpriteCarry:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Simple Sprite Display"
-  code="; Create and display a simple sprite
+**Simple Sprite Display:**
+
+```assembly
+; Create and display a simple sprite
 ; Define sprite data
 LD HL, $6200        ; Sprite data area
 
@@ -368,9 +365,8 @@ SpriteLoop:
     JR NC, NoCarry2
     INC D           ; Handle carry
 NoCarry2:
-    DJNZ SpriteLoop ; Continue for all rows"
-  language="assembly"
-/>
+    DJNZ SpriteLoop ; Continue for all rows
+```
 
 ## Sprite Animation System
 
@@ -414,10 +410,10 @@ SetFrame:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Animation Frame Demo"
-  code="; Simple 2-frame animation demo
+**Animation Frame Demo:**
+
+```assembly
+; Simple 2-frame animation demo
 ; Frame 0 of sprite
 LD HL, $6300
 LD (HL), %00111100  ; ████
@@ -471,9 +467,8 @@ NoCarry3:
     DJNZ Frame0
 
 ; Simple delay, then show frame 1
-; (In real animation, you'd cycle between frames)"
-  language="assembly"
-/>
+; (In real animation, you'd cycle between frames)
+```
 
 ## Sprite Movement and Collision
 
@@ -588,10 +583,10 @@ Create a complete character and sprite demo that:
 4. Shows an animated sprite moving across the screen
 5. Demonstrates collision detection between sprites
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Graphics Demo"
-  code="; Complete graphics demonstration
+**Practice Exercise - Graphics Demo:**
+
+```assembly
+; Complete graphics demonstration
 ; 1. Define custom characters
 LD HL, $6400        ; Character data area
 
@@ -648,9 +643,8 @@ NoCB2:
     DJNZ DisplayDiamond
 
 ; This creates a simple graphics display
-; Extend this with animation and movement!"
-  language="assembly"
-/>
+; Extend this with animation and movement!
+```
 
 ## What You've Learned
 

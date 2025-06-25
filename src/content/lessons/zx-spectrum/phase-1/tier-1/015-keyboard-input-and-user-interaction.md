@@ -70,10 +70,10 @@ ANotPressed:
 
 *Note: Keyboard bits are 0 when pressed, 1 when not pressed (inverted logic)*
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Basic Key Reading"
-  code="; Read multiple keys and store results
+**Basic Key Reading:**
+
+```assembly
+; Read multiple keys and store results
 ; Check 'Q' key (row $FB, bit 0)
 LD A, $FB           ; Row containing Q,W,E,R,T
 IN A, ($FE)         ; Read keyboard port
@@ -92,9 +92,8 @@ IN A, ($FE)         ; Read keyboard port
 AND %00000001       ; Check bit 0 (SPACE key)
 LD D, A             ; Store SPACE key state in D
 
-; Now B, C, D contain key states (0=pressed, non-zero=not pressed)"
-  language="assembly"
-/>
+; Now B, C, D contain key states (0=pressed, non-zero=not pressed)
+```
 
 ### Key Reading Function
 
@@ -143,10 +142,10 @@ ReadMovement:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Movement Key Reading"
-  code="; Read QAOP movement keys
+**Movement Key Reading:**
+
+```assembly
+; Read QAOP movement keys
 ; Q = Up, A = Down, O = Left, P = Right
 
 ; Read Q (Up) - row $FB, bit 0
@@ -177,9 +176,8 @@ LD E, A             ; Store Right key state
 ; If B=0: moving up
 ; If C=0: moving down  
 ; If D=0: moving left
-; If E=0: moving right"
-  language="assembly"
-/>
+; If E=0: moving right
+```
 
 ### Number Keys
 
@@ -226,10 +224,10 @@ LastKeyState:
     DB $FF              ; Previous key state
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Key Debouncing Example"
-  code="; Simple debouncing for Space key
+**Key Debouncing Example:**
+
+```assembly
+; Simple debouncing for Space key
 ; Storage for previous key state
 LastSpaceState: DB $FF
 
@@ -260,9 +258,8 @@ NoSpacePress:
 
 ; Use this in a loop to detect single presses
 ; Call CheckSpacePress repeatedly
-; It returns 1 only on the first frame of a press"
-  language="assembly"
-/>
+; It returns 1 only on the first frame of a press
+```
 
 ## Multi-Key Input
 
@@ -350,10 +347,10 @@ InputDone:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Multi-Key Input System"
-  code="; Complete input reading system
+**Multi-Key Input System:**
+
+```assembly
+; Complete input reading system
 ReadGameInput:
     LD B, 0             ; Clear input flags
     
@@ -402,9 +399,8 @@ SkipFire:
 
 ; Input state now in A:
 ; Bit 0 = Up, Bit 1 = Down, Bit 2 = Left, 
-; Bit 3 = Right, Bit 4 = Fire"
-  language="assembly"
-/>
+; Bit 3 = Right, Bit 4 = Fire
+```
 
 ## User Interface Elements
 
@@ -668,10 +664,10 @@ Create a complete interactive program that demonstrates:
 4. A simple game loop that responds to user input
 5. User interface elements like selection indicators
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Interactive Demo"
-  code="; Interactive demonstration program
+**Practice Exercise - Interactive Demo:**
+
+```assembly
+; Interactive demonstration program
 ; Player position on screen
 PlayerX: DB 10
 PlayerY: DB 5
@@ -766,9 +762,8 @@ UpdatePlayerPosition:
 HandleMenuInput:
     ; Simple menu input handling
     ; Just check for basic key presses
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Input System Best Practices
 

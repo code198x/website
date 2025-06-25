@@ -52,10 +52,10 @@ DEC B               ; B = 3
 
 These operations are faster and more efficient than using ADD or SUB with 1!
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Increment and Decrement Operations"
-  code="; Demonstration of Z80 increment and decrement instructions
+**Increment and Decrement Operations:**
+
+```assembly
+; Demonstration of Z80 increment and decrement instructions
 ; These operations are essential for counters and loops
 
 IncDecDemo:
@@ -120,9 +120,8 @@ CounterLoop:
     RET
 
 ; Memory location for counter example
-Counter: DB 0"
-  language="assembly"
-/>
+Counter: DB 0
+```
 
 ## Bit Manipulation Instructions
 
@@ -158,10 +157,10 @@ RES 3, A            ; Clear bit 3: A = %11110111
 RES 7, A            ; Clear bit 7: A = %01110111
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Bit Manipulation Instructions"
-  code="; Demonstration of Z80 bit manipulation instructions
+**Bit Manipulation Instructions:**
+
+```assembly
+; Demonstration of Z80 bit manipulation instructions
 ; These give precise control over individual bits
 
 BitManipulationDemo:
@@ -218,37 +217,8 @@ BitTestDone:
     LD A, %00000000     ; Start with no flags set
     
     ; Set some option flags
-    SET 0, A            ; Set \"sound enabled\" flag
-    SET 2, A            ; Set \"graphics mode\" flag
-    SET 5, A            ; Set \"debug mode\" flag
-    LD (OptionsFlags), A ; Store flags
-    
-    ; Later, check specific flags
-    LD A, (OptionsFlags) ; Load flags
-    BIT 0, A            ; Check sound flag
-    JR Z, SoundDisabled
-    LD E, $53           ; 'S' for Sound enabled
-    JR SoundFlagDone
-SoundDisabled:
-    LD E, $4E           ; 'N' for No sound
-SoundFlagDone:
-    LD ($4005), E       ; Display sound flag status
-    
-    BIT 2, A            ; Check graphics flag
-    JR Z, GraphicsOff
-    LD H, $47           ; 'G' for Graphics on
-    JR GraphicsFlagDone
-GraphicsOff:
-    LD H, $4F           ; 'O' for Off
-GraphicsFlagDone:
-    LD ($4006), H       ; Display graphics flag status
-    
-    RET
-
-; Memory for options flags
-OptionsFlags: DB 0"
-  language="assembly"
-/>
+    SET 0, A            ; Set \
+```
 
 ## Shift and Rotate Operations
 
@@ -366,10 +336,10 @@ Each bit is 1 if either corresponding bit is 1
 ### XOR - Logical Exclusive OR
 Each bit is 1 if corresponding bits are different
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Logical Operations"
-  code="; Demonstration of Z80 logical operations
+**Logical Operations:**
+
+```assembly
+; Demonstration of Z80 logical operations
 ; These operations combine bits according to logical rules
 
 LogicalOperationsDemo:
@@ -468,11 +438,8 @@ EncryptLoop:
     RET
 
 ; Data for encryption example
-Message:    DB \"HELLO\"
-MessageLen  EQU 5
-Encrypted:  DS 5        ; Space for encrypted message"
-  language="assembly"
-/>
+Message:    DB \
+```
 
 ## Practical Applications
 
@@ -509,10 +476,10 @@ ADD A, C            ; (× 2) + (× 8) = × 10
 ; A now contains 7 × 10 = 70
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Bit Operations Practice"
-  code="; Practice Exercise: Status Register Simulator
+**Bit Operations Practice:**
+
+```assembly
+; Practice Exercise: Status Register Simulator
 ; Simulate a game status system using bit manipulation
 
 BitOperationsPractice:
@@ -601,12 +568,8 @@ SpecialCheck:
 GameStatus: DB 0
 
 ; Challenge tasks:
-; 1. Add a \"demo mode\" flag and implement toggling
-; 2. Create a function that checks if player has any advantages
-; 3. Implement a bit counter to count how many flags are set
-; 4. Create bit patterns for different game levels"
-  language="assembly"
-/>
+; 1. Add a \
+```
 
 ## What You've Learned
 

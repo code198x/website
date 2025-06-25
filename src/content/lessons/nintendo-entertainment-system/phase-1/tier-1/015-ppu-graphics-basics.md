@@ -86,10 +86,10 @@ $2006 : PPU Address - PPU memory address
 $2007 : PPU Data - PPU memory data
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="PPU Register Access"
-  code="; Basic PPU register usage
+**PPU Register Access:**
+
+```assembly
+; Basic PPU register usage
 ; Set PPU address to $2000 (name table start)
 LDA #$20    ; High byte of address
 STA $2006   ; PPU Address register
@@ -102,9 +102,8 @@ STA $2007   ; PPU Data register (writes to $2000)
 LDA #$02    ; Tile number 2  
 STA $2007   ; PPU Data register (writes to $2001, auto-increments)
 
-; PPU memory at $2000 now contains $01, $02"
-  language="assembly"
-/>
+; PPU memory at $2000 now contains $01, $02
+```
 
 ## Pattern Tables - Graphics Data
 
@@ -140,10 +139,10 @@ Name tables define what appears on screen:
 - Each byte represents a tile number from the pattern table
 - The PPU reads the name table to know which tiles to display
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Writing to Name Table"
-  code="; Write tiles to create a simple pattern
+**Writing to Name Table:**
+
+```assembly
+; Write tiles to create a simple pattern
 ; Set PPU address to name table start ($2000)
 LDA #$20
 STA $2006   ; PPU Address high
@@ -159,9 +158,8 @@ INX
 CPX #$20    ; Written 32 tiles (full row)?
 BNE write_row
 
-; Top row of screen now shows tile $01 repeated"
-  language="assembly"
-/>
+; Top row of screen now shows tile $01 repeated
+```
 
 ## Color Palettes
 
@@ -210,10 +208,10 @@ load_palette:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Loading Color Palette"
-  code="; Load a color palette into PPU
+**Loading Color Palette:**
+
+```assembly
+; Load a color palette into PPU
 JSR load_palette_demo
 
 load_palette_demo:
@@ -235,9 +233,8 @@ load_palette_demo:
 
     RTS
 
-; Palette is now loaded and ready for use!"
-  language="assembly"
-/>
+; Palette is now loaded and ready for use!
+```
 
 ## Drawing Your First Graphics
 
@@ -283,10 +280,10 @@ Bit 2: PPU Address Increment (0=+1, 1=+32)
 Bits 1-0: Name Table Select (0=$2000, 1=$2400, 2=$2800, 3=$2C00)
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="PPU Control Configuration"
-  code="; Configure PPU Control register
+**PPU Control Configuration:**
+
+```assembly
+; Configure PPU Control register
 ; Enable NMI, use pattern table 1 for background, increment by 1
 LDA #%10010000  ; NMI on, background pattern table 1
 STA $2000       ; PPU Control register
@@ -296,9 +293,8 @@ STA $2000       ; PPU Control register
 LDA #%00100100  ; No NMI, 8x16 sprites, vertical increment
 STA $2000       ; PPU Control register
 
-; PPU behavior is now configured"
-  language="assembly"
-/>
+; PPU behavior is now configured
+```
 
 ## PPU Mask Register ($2001)
 
@@ -377,10 +373,10 @@ load_music_palette:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Symphony Graphics"
-  code="; Initialize graphics for Sprite Symphony
+**Sprite Symphony Graphics:**
+
+```assembly
+; Initialize graphics for Sprite Symphony
 JSR init_symphony_graphics_demo
 
 init_symphony_graphics_demo:
@@ -415,9 +411,8 @@ clear_screen:
     
     RTS
 
-; Graphics system ready for musical display!"
-  language="assembly"
-/>
+; Graphics system ready for musical display!
+```
 
 ## Practical Exercise: Graphics Setup
 
@@ -428,10 +423,10 @@ Create a complete graphics initialization routine that:
 3. Draws a border around the screen using tile $FF
 4. Writes "START" in the center using tiles $13,$14,$0A,$15,$14
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Graphics Setup"
-  code="; Complete Graphics Setup Exercise
+**Practice: Complete Graphics Setup:**
+
+```assembly
+; Complete Graphics Setup Exercise
 JSR complete_graphics_setup
 
 complete_graphics_setup:
@@ -480,28 +475,8 @@ border_top:
     CPX #$20    ; 32 tiles across
     BNE border_top
     
-    ; 4. Write \"START\" in center
-    LDA #$21    ; Center area
-    STA $2006
-    LDA #$CB    ; Center position
-    STA $2006
-    
-    LDA #$13    ; 'S' tile
-    STA $2007
-    LDA #$14    ; 'T' tile
-    STA $2007
-    LDA #$0A    ; 'A' tile
-    STA $2007
-    LDA #$15    ; 'R' tile
-    STA $2007
-    LDA #$14    ; 'T' tile
-    STA $2007
-    
-    RTS
-
-; Graphics setup complete with palette, border, and text!"
-  language="assembly"
-/>
+    ; 4. Write \
+```
 
 ## PPU Best Practices
 

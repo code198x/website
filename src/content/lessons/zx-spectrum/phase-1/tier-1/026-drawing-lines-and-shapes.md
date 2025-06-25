@@ -160,10 +160,10 @@ NoYStep:
 Error:      DB 0
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Bresenham Line Drawing"
-  code="; Complete Bresenham line drawing implementation
+**Bresenham Line Drawing:**
+
+```assembly
+; Complete Bresenham line drawing implementation
 ; Draws lines in all directions efficiently
 
 DISPLAY_FILE    EQU 16384
@@ -516,9 +516,8 @@ DrawRadial:
 
 CenterX:    DB 0
 CenterY:    DB 0
-Angle:      DB 0"
-  language="assembly"
-/>
+Angle:      DB 0
+```
 
 ## Drawing Rectangles
 
@@ -698,10 +697,10 @@ EndMask:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Rectangle Drawing Demo"
-  code="; Rectangle drawing demonstration
+**Rectangle Drawing Demo:**
+
+```assembly
+; Rectangle drawing demonstration
 ; Shows outline and filled rectangles
 
 DISPLAY_FILE    EQU 16384
@@ -924,9 +923,8 @@ PatternXLoop:
     RET
 
 PatternX:   DB 0
-PatternY:   DB 0"
-  language="assembly"
-/>
+PatternY:   DB 0
+```
 
 ## Advanced Shape Drawing
 
@@ -1110,10 +1108,10 @@ ClipLine:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Advanced Shapes Demo"
-  code="; Advanced shape drawing with circles and clipping
+**Advanced Shapes Demo:**
+
+```assembly
+; Advanced shape drawing with circles and clipping
 ; Demonstrates various drawing techniques
 
 DISPLAY_FILE    EQU 16384
@@ -1420,9 +1418,8 @@ CirclePatternLoop:
     LD B, 255           ; Success
     RET
 
-PatternX:   DB 0"
-  language="assembly"
-/>
+PatternX:   DB 0
+```
 
 ## Drawing Optimization Techniques
 
@@ -1517,10 +1514,10 @@ DrawShapeCircle:
 
 ## Practical Exercise: Shape Drawing Tool
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Shape Drawing Tool"
-  code="; Interactive shape drawing tool
+**Shape Drawing Tool:**
+
+```assembly
+; Interactive shape drawing tool
 ; Demonstrates all shape drawing capabilities
 
 DISPLAY_FILE    EQU 16384
@@ -1732,9 +1729,8 @@ ClearScreen:
     LD BC, 6143
     LD (HL), 0
     LDIR
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Key Takeaways
 

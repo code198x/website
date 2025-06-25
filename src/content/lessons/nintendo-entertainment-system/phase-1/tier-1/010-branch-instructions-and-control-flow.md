@@ -67,16 +67,15 @@ zero:
 LDA #$01    ; This will execute
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Simple Branch Example"
-  code="LDA #$00    ; Load 0
+**Simple Branch Example:**
+
+```assembly
+LDA #$00    ; Load 0
 BEQ zero    ; Branch to 'zero' label  
 LDA #$FF    ; Skipped!
 zero:
-LDA #$01    ; A now contains $01"
-  language="assembly"
-/>
+LDA #$01    ; A now contains $01
+```
 
 ## How Branching Works
 
@@ -104,10 +103,10 @@ done:
 STA $0201   ; Store status
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Game Health System"
-  code="; Setup: Player has 0 health
+**Game Health System:**
+
+```assembly
+; Setup: Player has 0 health
 LDA #$00    ; Simulate 0 health
 STA $0200   ; Store in health location
 
@@ -120,9 +119,8 @@ JMP done    ; Skip dead code
 dead:
 LDA #$00    ; Dead status = 0
 done:
-STA $0201   ; Store game status"
-  language="assembly"
-/>
+STA $0201   ; Store game status
+```
 
 ## Comparison and Branching
 
@@ -169,10 +167,10 @@ start_game:
 STA $0300   ; Store starting position
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Level Selection System"
-  code="; Level selection system
+**Level Selection System:**
+
+```assembly
+; Level selection system
 LDA #$02    ; Player selects level 2
 CMP #$01    ; Is it level 1?
 BEQ level1
@@ -194,9 +192,8 @@ JMP done
 error:
 LDA #$FF    ; Error value
 done:
-STA $0300   ; Store result"
-  language="assembly"
-/>
+STA $0300   ; Store result
+```
 
 ## Creating Loops
 
@@ -214,10 +211,10 @@ BNE loop    ; Branch back if X ≠ 16
 
 This loop fills memory locations $0400-$040F with values 0-15.
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Memory Fill Loop"
-  code="; Fill memory with counting values
+**Memory Fill Loop:**
+
+```assembly
+; Fill memory with counting values
 LDX #$00    ; Start counter at 0
 loop:
 TXA         ; Copy X to A
@@ -225,9 +222,8 @@ STA $0400,X ; Store at $0400 + X offset
 INX         ; Increment counter
 CPX #$08    ; Compare with 8 (smaller loop)
 BNE loop    ; Continue if not equal
-; Memory $0400-$0407 now contains 0,1,2,3,4,5,6,7"
-  language="assembly"
-/>
+; Memory $0400-$0407 now contains 0,1,2,3,4,5,6,7
+```
 
 ## Sound Generation Loop
 
@@ -250,10 +246,10 @@ CPX #$04    ; 4 tones total?
 BNE sound_loop ; Continue if more tones
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Multi-Tone Sound Loop"
-  code="; Setup APU for sound
+**Multi-Tone Sound Loop:**
+
+```assembly
+; Setup APU for sound
 LDA #$BF    ; Enable pulse wave 1
 STA $4000   ; Pulse 1 control
 
@@ -270,9 +266,8 @@ LDA #$01    ; High frequency byte
 STA $4003   ; Pulse 1 frequency high
 INX         ; Next tone
 CPX #$04    ; Generated 4 tones?
-BNE sound_loop ; Loop if more to do"
-  language="assembly"
-/>
+BNE sound_loop ; Loop if more to do
+```
 
 ## Game Input Checking
 
@@ -294,10 +289,10 @@ input_done:
 ; Continue with game logic
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Controller Input Check"
-  code="; Simulate controller input
+**Controller Input Check:**
+
+```assembly
+; Simulate controller input
 LDA #$01    ; Simulate A button pressed
 AND #$01    ; Check A button bit
 BEQ no_jump ; Branch if not pressed
@@ -309,9 +304,8 @@ no_jump:
 LDA #$00    ; No jump
 STA $0210   ; Zero velocity
 done:
-; Player velocity is now set based on input"
-  language="assembly"
-/>
+; Player velocity is now set based on input
+```
 
 ## Branch Range Limitations
 
@@ -337,10 +331,10 @@ Create a complete player lives system:
 4. If 0 lives: set game over flag ($01) at $0251
 5. If lives remain: set continue flag ($00) at $0251
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Player Lives System"
-  code="; Initialize player lives
+**Practice: Player Lives System:**
+
+```assembly
+; Initialize player lives
 LDA #$03    ; Start with 3 lives
 STA $0250   ; Store at lives location
 
@@ -358,9 +352,8 @@ game_over:
 LDA #$01    ; Game over flag  
 STA $0251   ; Store game over status
 done:
-; Check $0251: $00 = continue, $01 = game over"
-  language="assembly"
-/>
+; Check $0251: $00 = continue, $01 = game over
+```
 
 ## Building Sprite Symphony Logic
 
@@ -392,10 +385,10 @@ done:
 ; Note is now playing!
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Sprite Symphony Note Selection"
-  code="; Setup sound
+**Sprite Symphony Note Selection:**
+
+```assembly
+; Setup sound
 LDA #$BF    ; Configure pulse wave
 STA $4000
 
@@ -425,9 +418,8 @@ play_e:
 LDA #$CA    ; E frequency
 STA $4002
 done:
-; Note D is now playing!"
-  language="assembly"
-/>
+; Note D is now playing!
+```
 
 ## Common Game Patterns
 

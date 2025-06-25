@@ -44,10 +44,10 @@ The 68000 provides comprehensive logical operations for data manipulation:
 - **Bit clearing**: Force specific bits to 0
 - **Data filtering**: Remove unwanted information
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Basic Logical Operations"
-  code="; Demonstration of 68000 logical operations
+**Basic Logical Operations:**
+
+```assembly
+; Demonstration of 68000 logical operations
 ; Shows fundamental bit manipulation techniques
 
 LogicalOperationsDemo:
@@ -201,9 +201,8 @@ RedComponent:       DC.B    0
 GreenComponent:     DC.B    0
 BlueComponent:      DC.B    0
 AlphaComponent:     DC.B    0
-PackedValues:       DC.W    0"
-  language="assembly"
-/>
+PackedValues:       DC.W    0
+```
 
 ## Bit Test and Modify Instructions
 
@@ -221,10 +220,10 @@ The 68000 offers sophisticated bit testing and modification instructions:
 - Set condition codes based on original bit state
 - Can use immediate bit numbers or register bit numbers
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Bit Test and Modify Instructions"
-  code="; Demonstration of 68000 bit test and modify instructions
+**Bit Test and Modify Instructions:**
+
+```assembly
+; Demonstration of 68000 bit test and modify instructions
 ; Shows sophisticated bit manipulation capabilities
 
 BitTestModifyDemo:
@@ -470,9 +469,8 @@ Bit0SecondToggleState:  DC.B    0
 SetBitCount:            DC.L    0
 ObjectState:            DC.B    0
 MemBit15State:          DC.B    0
-ModifiedMemValue:       DC.L    0"
-  language="assembly"
-/>
+ModifiedMemValue:       DC.L    0
+```
 
 ## Shift and Rotate Operations
 
@@ -492,10 +490,10 @@ The 68000 provides comprehensive shift and rotate instructions for bit manipulat
 - **ROXL**: Rotate Left through Extend (include X flag)
 - **ROXR**: Rotate Right through Extend (include X flag)
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Shift and Rotate Operations"
-  code="; Demonstration of 68000 shift and rotate operations
+**Shift and Rotate Operations:**
+
+```assembly
+; Demonstration of 68000 shift and rotate operations
 ; Shows comprehensive bit shifting and rotation capabilities
 
 ShiftRotateDemo:
@@ -712,9 +710,8 @@ SwappedEndian:      DC.L    0
 CalculatedChecksum: DC.L    0
 RandomNumber:       DC.L    0
 Shift64High:        DC.L    0
-Shift64Low:         DC.L    0"
-  language="assembly"
-/>
+Shift64Low:         DC.L    0
+```
 
 ## Advanced Bit Manipulation Techniques
 
@@ -730,10 +727,10 @@ The 68000's bit manipulation capabilities enable sophisticated programming patte
 - Prefer bit operations over arithmetic when appropriate
 - Use immediate values for better performance
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Bit Manipulation Techniques"
-  code="; Advanced bit manipulation programming techniques
+**Advanced Bit Manipulation Techniques:**
+
+```assembly
+; Advanced bit manipulation programming techniques
 ; Demonstrates sophisticated bit manipulation patterns
 
 AdvancedBitManipulation:
@@ -991,16 +988,15 @@ ReversedBits:       DC.L    0
 GrayCodeValue:      DC.L    0
 BinaryFromGray:     DC.L    0
 ParityBit:          DC.B    0
-MortonCode:         DC.L    0"
-  language="assembly"
-/>
+MortonCode:         DC.L    0
+```
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Bit Manipulation Practice"
-  code="; Practice Exercise: Amiga Graphics Bit Manipulation Engine
+**Bit Manipulation Practice:**
+
+```assembly
+; Practice Exercise: Amiga Graphics Bit Manipulation Engine
 ; Use bit operations for advanced graphics programming
 
 GraphicsBitEngine:
@@ -1425,9 +1421,8 @@ BitMirrorTable:
 ; 1. Implement fast bitmap scaling using bit manipulation
 ; 2. Create advanced dithering algorithms
 ; 3. Add compression/decompression using bit packing
-; 4. Implement colour space conversions using bit fields"
-  language="assembly"
-/>
+; 4. Implement colour space conversions using bit fields
+```
 
 ## What You've Learned
 

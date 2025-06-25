@@ -93,10 +93,10 @@ SkipMoveY:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Basic Sprite Positioning"
-  code="; Basic sprite positioning and movement
+**Basic Sprite Positioning:**
+
+```assembly
+; Basic sprite positioning and movement
 Main:
     JSR InitSprites
     
@@ -213,9 +213,8 @@ SpriteData:
     .byte $80, $01, $00, $80  ; Sprite 0
     .byte $60, $02, $01, $60  ; Sprite 1
     .byte $FF, $FF, $FF, $FF  ; Unused sprites
-    .byte $FF, $FF, $FF, $FF"
-  language="assembly"
-/>
+    .byte $FF, $FF, $FF, $FF
+```
 
 ## Smooth Movement with Velocity
 
@@ -292,10 +291,10 @@ NextSprite:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Velocity-Based Sprite Movement"
-  code="; Smooth sprite movement with velocity and bouncing
+**Velocity-Based Sprite Movement:**
+
+```assembly
+; Smooth sprite movement with velocity and bouncing
 Main:
     JSR InitSprites
     
@@ -438,9 +437,8 @@ SpriteData:
     .byte $40, $01, $00, $40  ; Sprite 0
     .byte $60, $02, $01, $C0  ; Sprite 1
     .byte $A0, $03, $02, $60  ; Sprite 2
-    .byte $80, $04, $03, $A0  ; Sprite 3"
-  language="assembly"
-/>
+    .byte $80, $04, $03, $A0  ; Sprite 3
+```
 
 ## Coordinated Multi-Sprite Movement
 
@@ -664,10 +662,10 @@ ExplosionCenterY: .byte $80
 ExpansionDist: .byte $00
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Coordinated Sprite Formation"
-  code="; Formation flying demonstration
+**Coordinated Sprite Formation:**
+
+```assembly
+; Formation flying demonstration
 Main:
     JSR InitFormation
     
@@ -867,9 +865,8 @@ SpriteData:
     .byte $80, $01, $00, $40  ; Leader
     .byte $80, $02, $01, $40  ; Right wing
     .byte $80, $02, $01, $40  ; Left wing
-    .byte $80, $02, $01, $40  ; Tail"
-  language="assembly"
-/>
+    .byte $80, $02, $01, $40  ; Tail
+```
 
 ## Sprite Symphony Foundation
 
@@ -1015,10 +1012,10 @@ Create a complete sprite positioning and movement system that demonstrates all c
 4. Add a visual effect using coordinated sprite animation
 5. Build the foundation for Sprite Symphony's visual feedback system
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Sprite Movement System"
-  code="; Complete sprite positioning and movement demonstration
+**Practice: Complete Sprite Movement System:**
+
+```assembly
+; Complete sprite positioning and movement demonstration
 Main:
     JSR InitAllSprites
     
@@ -1328,9 +1325,8 @@ SpriteData:
     .byte $60, $05, $02, $80
     .byte $60, $06, $03, $80
     .byte $60, $06, $03, $80
-    .byte $60, $06, $03, $80"
-  language="assembly"
-/>
+    .byte $60, $06, $03, $80
+```
 
 ## What You've Learned
 

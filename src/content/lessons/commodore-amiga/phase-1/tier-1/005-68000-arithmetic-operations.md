@@ -189,10 +189,10 @@ The 68000 includes native multiplication and division instructions - a major adv
 - Automatic overflow detection
 - Efficient single-instruction operation
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Multiplication and Division"
-  code="; Demonstration of 68000 multiplication and division
+**Multiplication and Division:**
+
+```assembly
+; Demonstration of 68000 multiplication and division
 ; Shows native hardware multiply and divide operations
 
 MultiplyDivideDemo:
@@ -363,9 +363,8 @@ RectArea:           DC.L    0
 Average:            DC.W    0
 Percentage:         DC.W    0
 OverflowResult:     DC.L    0
-OverflowFlag:       DC.B    0"
-  language="assembly"
-/>
+OverflowFlag:       DC.B    0
+```
 
 ## Multi-Precision Arithmetic
 
@@ -793,10 +792,10 @@ AverageResult:      DC.L    0"
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Arithmetic Operations Practice"
-  code="; Practice Exercise: Amiga Game Physics Engine
+**Arithmetic Operations Practice:**
+
+```assembly
+; Practice Exercise: Amiga Game Physics Engine
 ; Use arithmetic operations to implement game physics calculations
 
 GamePhysicsEngine:
@@ -1144,9 +1143,8 @@ CameraY:            DC.L    0
 ; 1. Add spring forces between connected objects
 ; 2. Implement orbital mechanics with gravitational attraction
 ; 3. Add fluid dynamics simulation
-; 4. Create advanced collision shapes (circles, rectangles)"
-  language="assembly"
-/>
+; 4. Create advanced collision shapes (circles, rectangles)
+```
 
 ## What You've Learned
 

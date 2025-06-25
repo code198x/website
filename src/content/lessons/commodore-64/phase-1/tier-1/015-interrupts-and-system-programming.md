@@ -123,10 +123,10 @@ MyInterruptHandler:
     RTI             ; Return from interrupt
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic Interrupt Handler Structure"
-  code="; Interrupt handler template
+**Basic Interrupt Handler Structure:**
+
+```assembly
+; Interrupt handler template
 InterruptHandler:
     ; Always save registers first
     PHA             ; Save A register
@@ -148,9 +148,8 @@ InterruptHandler:
     TAX             ; Restore X
     PLA             ; Restore A
     
-    RTI             ; Return from interrupt"
-  language="assembly"
-/>
+    RTI             ; Return from interrupt
+```
 
 ## Setting Up Custom Interrupts
 
@@ -176,10 +175,10 @@ STA $0315
 CLI             ; Clear interrupt flag (enable IRQs)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Installing Custom Interrupt Handler"
-  code="; Install custom interrupt handler
+**Installing Custom Interrupt Handler:**
+
+```assembly
+; Install custom interrupt handler
 ; First disable interrupts
 SEI             ; Disable interrupts
 
@@ -204,9 +203,8 @@ LDA $90         ; Original low byte
 STA $0314       ; Restore IRQ vector
 LDA $91         ; Original high byte
 STA $0315       ; Restore IRQ vector
-CLI             ; Re-enable interrupts"
-  language="assembly"
-/>
+CLI             ; Re-enable interrupts
+```
 
 ## CIA Timer Interrupts
 
@@ -242,10 +240,10 @@ LDA #$11        ; Start Timer A, continuous mode
 STA $DC0E       ; Timer A control
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="CIA Timer Setup"
-  code="; Setup CIA1 Timer A for periodic interrupts
+**CIA Timer Setup:**
+
+```assembly
+; Setup CIA1 Timer A for periodic interrupts
 ; Configure timer for 1/60th second intervals
 
 ; Disable all CIA interrupts first
@@ -264,9 +262,8 @@ STA $DC0D       ; CIA1 interrupt control
 
 ; Start timer in continuous mode
 LDA #$11        ; Continuous mode, start timer
-STA $DC0E       ; CIA1 Timer A control"
-  language="assembly"
-/>
+STA $DC0E       ; CIA1 Timer A control
+```
 
 ## Real-Time Programming with Interrupts
 
@@ -320,10 +317,10 @@ MainLoop:
     JMP MainLoop        ; Continue
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Real-Time Programming Example"
-  code="; Real-time programming with interrupt communication
+**Real-Time Programming Example:**
+
+```assembly
+; Real-time programming with interrupt communication
 ; Setup communication variables
 LDA #$00
 STA $80         ; Frame counter
@@ -350,9 +347,8 @@ MainLoop:
     LDA #$01
     STA $81         ; Set update flag
     
-    JMP MainLoop    ; Continue loop"
-  language="assembly"
-/>
+    JMP MainLoop    ; Continue loop
+```
 
 ## KERNAL System Calls
 
@@ -378,10 +374,10 @@ JSR $FFE4       ; KERNAL GETIN routine
 ; A register contains key pressed (or 0 if none)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="KERNAL System Calls"
-  code="; Using KERNAL operating system routines
+**KERNAL System Calls:**
+
+```assembly
+; Using KERNAL operating system routines
 ; Output characters using KERNAL
 
 LDA #$48        ; Load 'H'
@@ -399,9 +395,8 @@ JSR $FFD2       ; Call KERNAL CHROUT
 LDA #$4F        ; Load 'O'
 JSR $FFD2       ; Call KERNAL CHROUT
 
-; KERNAL handles screen positioning, scrolling, etc."
-  language="assembly"
-/>
+; KERNAL handles screen positioning, scrolling, etc.
+```
 
 ## Interrupt-Driven Input/Output
 
@@ -503,10 +498,10 @@ SlowISR:
     RTI
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Interrupt Handler Best Practices"
-  code="; Demonstrate proper interrupt handler design
+**Interrupt Handler Best Practices:**
+
+```assembly
+; Demonstrate proper interrupt handler design
 FastInterruptHandler:
     ; Minimal register saving
     PHA             ; Save only A if that's all we use
@@ -528,9 +523,8 @@ FastInterruptHandler:
 
 ; Initialize counter
 LDA #$00
-STA $80         ; Start counter at 0"
-  language="assembly"
-/>
+STA $80         ; Start counter at 0
+```
 
 ## Building a Complete Interrupt System
 
@@ -643,10 +637,10 @@ Create an interrupt-driven digital clock system that:
 3. Updates the display once per second
 4. Demonstrates proper interrupt handling techniques
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Interrupt-Driven Clock"
-  code="; Interrupt-driven clock system
+**Practice Exercise - Interrupt-Driven Clock:**
+
+```assembly
+; Interrupt-driven clock system
 ; Variables for time keeping
 Hours    = $80      ; 0-23
 Minutes  = $81      ; 0-59  
@@ -735,9 +729,8 @@ ClockDone:
 
 ; Initialize and run one tick
 JSR InitClock
-JSR ClockInterrupt"
-  language="assembly"
-/>
+JSR ClockInterrupt
+```
 
 ## Interrupt Sources on the C64
 

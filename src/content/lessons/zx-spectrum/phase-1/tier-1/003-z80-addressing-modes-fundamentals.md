@@ -81,10 +81,10 @@ LD A, (HL)      ; Load whatever is at the address in HL (i.e., $4000)
 
 This mode is incredibly powerful for working with data structures and arrays.
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Z80 Addressing Modes Demonstration"
-  code="; Demonstration of Z80 addressing modes
+**Z80 Addressing Modes Demonstration:**
+
+```assembly
+; Demonstration of Z80 addressing modes
 ; This program shows immediate, direct, and register indirect addressing
 
 AddressingModesDemo:
@@ -121,9 +121,8 @@ AddressingModesDemo:
     LD ($4001), B       ; Show B on screen  
     LD ($4002), C       ; Show C on screen
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Comparing Z80 Addressing Modes
 
@@ -139,10 +138,10 @@ Let's see how these addressing modes compare in terms of speed and flexibility:
 2. **Register Indirect** - 1 byte (just the instruction)
 3. **Direct** - 3 bytes (instruction + 16-bit address)
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Addressing Mode Efficiency Comparison"
-  code="; Comparing efficiency of different Z80 addressing modes
+**Addressing Mode Efficiency Comparison:**
+
+```assembly
+; Comparing efficiency of different Z80 addressing modes
 ; This program demonstrates the trade-offs between modes
 
 EfficiencyDemo:
@@ -194,9 +193,8 @@ DisplayLoop:
 
 ; Data for our examples
 MessageData:
-    DB $48, $45, $4C, $4C, $4F  ; 'HELLO' in ASCII"
-  language="assembly"
-/>
+    DB $48, $45, $4C, $4C, $4F  ; 'HELLO' in ASCII
+```
 
 ## Advanced Z80 Addressing Features
 
@@ -230,10 +228,10 @@ LD BC, 100          ; Number of bytes
 LDIR                ; Copy 100 bytes from HL to DE
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Advanced Z80 Addressing Features"
-  code="; Demonstration of advanced Z80 addressing capabilities
+**Advanced Z80 Addressing Features:**
+
+```assembly
+; Demonstration of advanced Z80 addressing capabilities
 ; These features make the Z80 exceptionally powerful
 
 AdvancedAddressingDemo:
@@ -286,9 +284,8 @@ AutoIncLoop:
 
 ; Sample data structure
 PlayerData:
-    DB 10, 20, 100      ; X, Y, Score"
-  language="assembly"
-/>
+    DB 10, 20, 100      ; X, Y, Score
+```
 
 ## When to Use Each Addressing Mode
 
@@ -331,10 +328,10 @@ ProcessLoop:
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Addressing Modes Practice"
-  code="; Practice Exercise: Screen Pattern Generator
+**Addressing Modes Practice:**
+
+```assembly
+; Practice Exercise: Screen Pattern Generator
 ; Use different addressing modes to create patterns on screen
 
 PracticeExercise:
@@ -378,9 +375,8 @@ PatternB: DB 0
 PatternC: DB 0
 
 ; Challenge: Can you modify this to create alternating patterns?
-; Try using the different addressing modes creatively!"
-  language="assembly"
-/>
+; Try using the different addressing modes creatively!
+```
 
 ## What You've Learned
 

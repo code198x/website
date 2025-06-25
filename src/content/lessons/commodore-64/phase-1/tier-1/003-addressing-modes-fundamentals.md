@@ -52,14 +52,13 @@ LDA #$100   ; ERROR! Can't load values > $FF into 8-bit register
 LDA #65     ; You can use decimal, but hex is more common
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Immediate Addressing Examples"
-  code="LDA #$48    ; Load the value $48 (letter 'H')
+**Immediate Addressing Examples:**
+
+```assembly
+LDA #$48    ; Load the value $48 (letter 'H')
 LDX #$0F    ; Load the value $0F (15) into X
-LDY #$20    ; Load the value $20 (32) into Y"
-  language="assembly"
-/>
+LDY #$20    ; Load the value $20 (32) into Y
+```
 
 **When to use**: When you know the exact value at programming time.
 
@@ -77,18 +76,17 @@ STA $0401   ; Store A register contents to screen position 1
 LDA $D020   ; Load from border colour register
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Absolute Addressing Examples"
-  code="; First, put something in memory to read
+**Absolute Addressing Examples:**
+
+```assembly
+; First, put something in memory to read
 LDA #$41    ; Load 'A'
 STA $0400   ; Store it at screen position 0
 
 ; Now read it back
 LDA $0400   ; Load whatever is at screen position 0
-STA $0401   ; Store it at screen position 1 (copy the character)"
-  language="assembly"
-/>
+STA $0401   ; Store it at screen position 1 (copy the character)
+```
 
 **When to use**: When accessing screen memory, I/O registers, or any memory location above $FF.
 
@@ -106,10 +104,10 @@ STA $81     ; Store to Zero Page location $81 (fast!)
 LDA $0080   ; Same as LDA $80, but slower absolute addressing
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Zero Page Addressing Examples"
-  code="; Store some values in Zero Page
+**Zero Page Addressing Examples:**
+
+```assembly
+; Store some values in Zero Page
 LDA #$42    ; Load 'B'
 STA $80     ; Store in Zero Page location $80
 LDA #$43    ; Load 'C'  
@@ -119,9 +117,8 @@ STA $81     ; Store in Zero Page location $81
 LDA $80     ; Load from Zero Page $80
 STA $0400   ; Display on screen
 LDA $81     ; Load from Zero Page $81
-STA $0401   ; Display on screen"
-  language="assembly"
-/>
+STA $0401   ; Display on screen
+```
 
 **When to use**: For variables, temporary storage, and frequently accessed data.
 
@@ -161,10 +158,10 @@ LDA $80     ; Load our saved character
 STA $0404   ; Screen position 4
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practical Example: Copying Screen Data"
-  code="; First put a character on screen
+**Practical Example: Copying Screen Data:**
+
+```assembly
+; First put a character on screen
 LDA #$48    ; Load 'H' (immediate addressing)
 STA $0400   ; Store to first screen position (absolute addressing)
 
@@ -176,9 +173,8 @@ STA $0402   ; Copy to screen position 2 (absolute addressing)
 
 ; Demonstrate loading from Zero Page
 LDA $80     ; Load from Zero Page (zero page addressing)
-STA $0403   ; Copy to screen position 3 (absolute addressing)"
-  language="assembly"
-/>
+STA $0403   ; Copy to screen position 3 (absolute addressing)
+```
 
 ## Memory Organization Review
 
@@ -223,10 +219,10 @@ Create a program that demonstrates all three addressing modes:
 4. Use zero page addressing to load it back
 5. Use absolute addressing to display it at screen position 6
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - All Three Addressing Modes"
-  code="; 1. Immediate addressing - load 'M'
+**Practice Exercise - All Three Addressing Modes:**
+
+```assembly
+; 1. Immediate addressing - load 'M'
 LDA #$4D    ; Load 'M' using immediate addressing
 
 ; 2. Zero page addressing - store temporarily  
@@ -239,9 +235,8 @@ STA $0405   ; Display at screen position 5 using absolute addressing
 LDA $85     ; Load from Zero Page using zero page addressing
 
 ; 5. Absolute addressing - display again
-STA $0406   ; Display at screen position 6 using absolute addressing"
-  language="assembly"
-/>
+STA $0406   ; Display at screen position 6 using absolute addressing
+```
 
 ## When to Use Each Mode
 

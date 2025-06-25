@@ -61,10 +61,10 @@ The NES provides 4 different duty cycles for creative sound design.
 - **Use**: Special effects, variation on 25%
 - **Character**: Unique harmonic structure
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Duty Cycle Comparison"
-  code="; Compare different duty cycles on the same note
+**Duty Cycle Comparison:**
+
+```assembly
+; Compare different duty cycles on the same note
 JSR test_duty_cycles
 
 test_duty_cycles:
@@ -96,9 +96,8 @@ test_duty_cycles:
     
     RTS
 
-; Each duty cycle creates a different timbre!"
-  language="assembly"
-/>
+; Each duty cycle creates a different timbre!
+```
 
 ## Frequency Sweep Effects
 
@@ -148,10 +147,10 @@ play_falling_sweep:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Frequency Sweep Effects"
-  code="; Demonstrate frequency sweep effects
+**Frequency Sweep Effects:**
+
+```assembly
+; Demonstrate frequency sweep effects
 JSR demo_sweep_effects
 
 demo_sweep_effects:
@@ -174,9 +173,8 @@ demo_sweep_effects:
     
     RTS
 
-; Sound will sweep upward in pitch automatically!"
-  language="assembly"
-/>
+; Sound will sweep upward in pitch automatically!
+```
 
 ## Volume Envelopes
 
@@ -201,10 +199,10 @@ LDA #%10101111  ; Envelope, slow decay (15)
 LDA #%10110000  ; Envelope, instant decay (0)
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Volume Envelope Effects"
-  code="; Demonstrate different envelope effects
+**Volume Envelope Effects:**
+
+```assembly
+; Demonstrate different envelope effects
 JSR demo_envelopes
 
 demo_envelopes:
@@ -244,9 +242,8 @@ demo_envelopes:
     
     RTS
 
-; Different envelope decay rates demonstrated!"
-  language="assembly"
-/>
+; Different envelope decay rates demonstrated!
+```
 
 ## Sound Effect Programming
 
@@ -309,10 +306,10 @@ play_explosion_sound:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Game Sound Effects"
-  code="; Create classic game sound effects
+**Game Sound Effects:**
+
+```assembly
+; Create classic game sound effects
 JSR demo_sound_effects
 
 demo_sound_effects:
@@ -367,9 +364,8 @@ powerup_sound:
     STA $4003
     RTS
 
-; Classic game sound effects complete!"
-  language="assembly"
-/>
+; Classic game sound effects complete!
+```
 
 ## Advanced Pulse Wave Techniques
 
@@ -458,10 +454,10 @@ play_on_pulse1:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Advanced Sprite Symphony Audio"
-  code="; Advanced audio system for Sprite Symphony
+**Advanced Sprite Symphony Audio:**
+
+```assembly
+; Advanced audio system for Sprite Symphony
 JSR init_advanced_symphony
 
 init_advanced_symphony:
@@ -545,9 +541,8 @@ play_chord:
 ; Test the system
 JSR play_chord
 
-; Advanced Sprite Symphony audio system working!"
-  language="assembly"
-/>
+; Advanced Sprite Symphony audio system working!
+```
 
 ## Practical Exercise: Sound Effect Library
 
@@ -559,10 +554,10 @@ Create a complete sound effect library with:
 4. Power-up sound (rising frequency with vibrato)
 5. Menu beep (short, clear tone)
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Sound Effect Library"
-  code="; Complete Sound Effect Library
+**Practice: Sound Effect Library:**
+
+```assembly
+; Complete Sound Effect Library
 JSR init_sound_library
 
 init_sound_library:
@@ -638,9 +633,8 @@ JSR sfx_explosion
 JSR sfx_powerup
 JSR sfx_menu_beep
 
-; Complete sound effect library ready for use!"
-  language="assembly"
-/>
+; Complete sound effect library ready for use!
+```
 
 ## Advanced Techniques Summary
 

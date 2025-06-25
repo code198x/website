@@ -70,10 +70,10 @@ CheckOtherButtons:
     ; Continue checking other buttons
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Reading A Button State"
-  code="; Read A button state
+**Reading A Button State:**
+
+```assembly
+; Read A button state
 JSR ReadController
 AND #%10000000       ; Check A button (bit 7)
 BEQ AButtonPressed
@@ -109,9 +109,8 @@ ReadLoop:
     LDA ControllerData
     RTS
 
-ControllerData: .byte $00"
-  language="assembly"
-/>
+ControllerData: .byte $00
+```
 
 ## Checking Multiple Buttons
 
@@ -161,10 +160,10 @@ ButtonCheckComplete:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Checking Multiple Buttons"
-  code="; Check multiple button states
+**Checking Multiple Buttons:**
+
+```assembly
+; Check multiple button states
 CheckAllButtons:
     JSR ReadController
     STA ControllerState
@@ -208,9 +207,8 @@ ReadController:
     LDA #$55             ; Test pattern
     RTS
 
-ControllerState: .byte $00"
-  language="assembly"
-/>
+ControllerState: .byte $00
+```
 
 ## Button Press Detection vs Hold Detection
 
@@ -259,10 +257,10 @@ BJustPressed:
 NewButtonPresses: .byte $00
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Button Press vs Hold Detection"
-  code="; Detect new button presses vs holds
+**Button Press vs Hold Detection:**
+
+```assembly
+; Detect new button presses vs holds
 DetectButtonPress:
     LDA CurrentButtons
     STA PreviousButtons
@@ -304,9 +302,8 @@ ReadController:
 
 CurrentButtons: .byte $FF    ; Start with no buttons pressed
 PreviousButtons: .byte $FF
-NewPresses: .byte $00"
-  language="assembly"
-/>
+NewPresses: .byte $00
+```
 
 ## Directional Pad Handling
 
@@ -369,10 +366,10 @@ DirectionLeft: .byte $00
 DirectionRight: .byte $00
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Directional Pad with Conflict Prevention"
-  code="; Handle directional input with conflict prevention
+**Directional Pad with Conflict Prevention:**
+
+```assembly
+; Handle directional input with conflict prevention
 CheckDirections:
     JSR ReadController
     STA ControllerState
@@ -425,9 +422,8 @@ ReadController:
     LDA #%11110110       ; Simulate Up and Left pressed
     RTS
 
-ControllerState: .byte $00"
-  language="assembly"
-/>
+ControllerState: .byte $00
+```
 
 ## Creating a Button Response System
 
@@ -497,10 +493,10 @@ Create a button state checker that displays which buttons are currently pressed:
 4. Handle button press detection (new presses only)
 5. Prevent conflicting directional inputs
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Button State System"
-  code="; Complete button state checking system
+**Practice: Complete Button State System:**
+
+```assembly
+; Complete button state checking system
 Main:
     JSR CheckAllButtonStates
     JSR DetectNewPresses
@@ -590,9 +586,8 @@ ButtonMasks:
     .byte %01000000      ; B
     .byte %10000000      ; A
 
-ControllerState: .byte $00"
-  language="assembly"
-/>
+ControllerState: .byte $00
+```
 
 ## What You've Learned
 

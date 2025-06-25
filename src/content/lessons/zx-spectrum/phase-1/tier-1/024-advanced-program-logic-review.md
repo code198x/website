@@ -173,10 +173,10 @@ RemoveProcessedEvent:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Advanced State Machine"
-  code="; Sophisticated multi-level state machine
+**Advanced State Machine:**
+
+```assembly
+; Sophisticated multi-level state machine
 
 ; System states
 STATE_INIT      EQU 0
@@ -264,141 +264,8 @@ HandleMainMenu:
     AND 31              ; Every 32 ticks, simulate input
     JR NZ, MainMenuDone
     
-    ; Simulate "start game" selection
-    LD A, STATE_GAME
-    LD (MainState), A
-    LD A, GAME_LOADING
-    LD (GameSubState), A
-    LD A, 0
-    LD (StateTimer), A
-    
-MainMenuDone:
-    LD B, 200           ; Main menu indicator
-    RET
-
-HandleOptionsMenu:
-    ; Options menu logic
-    LD B, 201           ; Options menu indicator
-    RET
-
-HandleHighScoreMenu:
-    ; High score menu logic
-    LD B, 202           ; High score menu indicator
-    RET
-
-; Game state with sub-states
-HandleGame:
-    ; Process game sub-states
-    LD A, (GameSubState)
-    OR A
-    JP Z, HandleGameLoading
-    DEC A
-    JP Z, HandleGamePlaying
-    JP HandleGameEnding
-
-HandleGameLoading:
-    ; Loading process
-    LD A, (StateTimer)
-    CP 60               ; Load for 60 ticks
-    JR C, LoadingContinue
-    
-    ; Loading complete - start playing
-    LD A, GAME_PLAYING
-    LD (GameSubState), A
-    LD A, 0
-    LD (StateTimer), A
-    
-LoadingContinue:
-    LD B, 300           ; Loading indicator
-    RET
-
-HandleGamePlaying:
-    ; Main game logic
-    LD A, (StateTimer)
-    CP 200              ; Play for 200 ticks, then end
-    JR C, PlayingContinue
-    
-    ; Game time up - start ending
-    LD A, GAME_ENDING
-    LD (GameSubState), A
-    LD A, 0
-    LD (StateTimer), A
-    
-PlayingContinue:
-    LD B, 301           ; Playing indicator
-    RET
-
-HandleGameEnding:
-    ; Game ending process
-    LD A, (StateTimer)
-    CP 40               ; End sequence for 40 ticks
-    JR C, EndingContinue
-    
-    ; Ending complete - go to game over
-    LD A, STATE_GAMEOVER
-    LD (MainState), A
-    LD A, 0
-    LD (StateTimer), A
-    
-EndingContinue:
-    LD B, 302           ; Ending indicator
-    RET
-
-; Pause state
-HandlePause:
-    ; Pause logic (simplified)
-    LD A, (StateTimer)
-    CP 100              ; Stay paused for 100 ticks
-    JR C, PauseContinue
-    
-    ; Resume game
-    LD A, STATE_GAME
-    LD (MainState), A
-    LD A, GAME_PLAYING
-    LD (GameSubState), A
-    LD A, 0
-    LD (StateTimer), A
-    
-PauseContinue:
-    LD B, 400           ; Pause indicator
-    RET
-
-; Game over state
-HandleGameOver:
-    ; Game over logic
-    LD A, (StateTimer)
-    CP 120              ; Show game over for 120 ticks
-    JR C, GameOverContinue
-    
-    ; Return to menu
-    LD A, STATE_MENU
-    LD (MainState), A
-    LD A, MENU_MAIN
-    LD (MenuSubState), A
-    LD A, 0
-    LD (StateTimer), A
-    
-GameOverContinue:
-    LD B, 500           ; Game over indicator
-    RET
-
-; Test the state machine by running it multiple times
-TestStateMachine:
-    ; Run state machine for many cycles to see transitions
-    LD C, 0             ; Cycle counter
-    
-TestLoop:
-    CALL UpdateStateMachine
-    ; B contains current state indicator
-    INC C
-    LD A, C
-    CP 100              ; Run for 100 cycles
-    JR NZ, TestLoop
-    
-    ; Final state indicators will show progression
-    RET"
-  language="assembly"
-/>
+    ; Simulate
+```
 
 ## Professional Programming Patterns
 
@@ -1224,10 +1091,10 @@ CalculateQualityScore:
 
 Create a complete, professional-grade system that demonstrates mastery of all concepts:
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Master Practice Exercise - Complete Game Engine"
-  code="; Complete mini game engine demonstrating all advanced concepts
+**Master Practice Exercise - Complete Game Engine:**
+
+```assembly
+; Complete mini game engine demonstrating all advanced concepts
 
 ; Engine states
 ENGINE_INIT     EQU 0
@@ -1561,9 +1428,8 @@ EngineTestLoop:
     JR NZ, EngineTestLoop
     
     ; Engine should have run through initialization and started game
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Integration Mastery Checklist
 

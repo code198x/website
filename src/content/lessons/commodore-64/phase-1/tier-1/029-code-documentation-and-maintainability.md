@@ -1233,10 +1233,10 @@ InsertSpriteAtPosition:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Professional Documentation Standards"
-  code="; Professional documentation standards demonstration
+**Professional Documentation Standards:**
+
+```assembly
+; Professional documentation standards demonstration
 ; Complete documentation framework
 
 ; ========================================
@@ -1693,9 +1693,8 @@ SOUND_EXPLOSION         = 1         ; Explosion effect ID
 SOUND_UI_CLICK          = 2         ; UI click effect ID
 
 ; Demonstrate the documented sound system
-JSR InitializeSoundSystem"
-  language="assembly"
-/>
+JSR InitializeSoundSystem
+```
 
 ## Code Organization for Maintainability
 
@@ -1975,10 +1974,10 @@ MovePlayerLeft:
     RTS
 ```
 
-<CodeRunner 
-  system="commodome-64"
-  title="Code Organization and Documentation Framework"
-  code="; Complete code organisation and documentation framework
+**Code Organization and Documentation Framework:**
+
+```assembly
+; Complete code organisation and documentation framework
 ; Demonstrates modular structure and comprehensive documentation
 
 ; ========================================
@@ -2391,9 +2390,8 @@ PerformStateRestore:
 RequestedState:         .byte 0
 
 ; Demonstrate the organised state manager
-JSR InitializeGameStateManager"
-  language="assembly"
-/>
+JSR InitializeGameStateManager
+```
 
 ## Version Control and Change Management
 
@@ -2598,10 +2596,10 @@ Create a comprehensive documentation system that demonstrates:
 4. Version control and change tracking
 5. Maintainable code structure
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Comprehensive Documentation System"
-  code="; Practice Exercise: Complete Documentation Framework
+**Practice Exercise - Comprehensive Documentation System:**
+
+```assembly
+; Practice Exercise: Complete Documentation Framework
 ; Demonstrates all documentation and maintainability principles
 
 ; ========================================
@@ -3111,9 +3109,8 @@ ComprehensiveDocumentationDemo:
     RTS
 
 ; Execute the demonstration
-JSR ComprehensiveDocumentationDemo"
-  language="assembly"
-/>
+JSR ComprehensiveDocumentationDemo
+```
 
 ## Documentation Best Practices
 

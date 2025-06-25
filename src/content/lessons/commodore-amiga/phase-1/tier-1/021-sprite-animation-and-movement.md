@@ -32,10 +32,10 @@ Today you'll master the art of sprite animation and movement on the Amiga. You'l
 
 For smooth movement, especially at slow speeds, you need sub-pixel positioning:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Sub-Pixel Movement System"
-  code="; Sub-pixel positioning for ultra-smooth movement
+**Sub-Pixel Movement System:**
+
+```assembly
+; Sub-pixel positioning for ultra-smooth movement
 
 ; Extended sprite structure with sub-pixel coordinates
     RSRESET
@@ -244,18 +244,17 @@ KeyframeData:
     DC.B    128, 0,300, 2       ; time 128, X=300, Y=100, frame 2
     DC.B    192, 0,200, 1       ; time 192, X=200, Y=100, frame 1
     DC.B    255, 0,100, 0       ; End: time 255, back to start
-    DC.B    $FF                 ; End marker"
-  language="assembly"
-/>
+    DC.B    $FF                 ; End marker
+```
 
 ## Advanced Animation State Machines
 
 Create complex behaviors using state machines:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Animation State Machine System"
-  code="; Sophisticated animation state machine for complex behaviors
+**Animation State Machine System:**
+
+```assembly
+; Sophisticated animation state machine for complex behaviors
 
 ; Animation states
 ANIM_IDLE       EQU 0
@@ -470,18 +469,17 @@ ApplyState:
 ; Character health and game variables
 CharacterHealth:    DC.W    100
 AttackTimer:        DC.W    0
-DeathTimer:         DC.W    0"
-  language="assembly"
-/>
+DeathTimer:         DC.W    0
+```
 
 ## Sprite Scaling and Transformation
 
 Create impressive scaling and rotation effects:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Sprite Scaling and Transformation"
-  code="; Software sprite scaling and transformation effects
+**Sprite Scaling and Transformation:**
+
+```assembly
+; Software sprite scaling and transformation effects
 ; (Hardware sprites are fixed size, so we use software rendering)
 
 ; Scaled sprite structure
@@ -758,18 +756,17 @@ SineTable:
     DC.B    0,0,0,0,1,1,1,2,2,3,4,4,5,6,7,8
     DC.B    9,10,12,13,15,16,18,19,21,23,25,27,29,31,33,35
     DC.B    37,40,42,44,47,49,52,54,57,60,62,65,68,71,74,77
-    DC.B    79,82,85,88,91,94,97,100,104,107,110,113,116,119,122,125"
-  language="assembly"
-/>
+    DC.B    79,82,85,88,91,94,97,100,104,107,110,113,116,119,122,125
+```
 
 ## Background Integration Techniques
 
 Seamlessly combine sprites with scrolling backgrounds:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Sprite-Background Integration"
-  code="; Professional sprite-background integration techniques
+**Sprite-Background Integration:**
+
+```assembly
+; Professional sprite-background integration techniques
 
 ; Parallax scrolling with sprites
 ParallaxSpriteSystem:
@@ -1023,18 +1020,17 @@ ScrollPosition:     DC.W    0
 TrailPositions:     DS.W    TRAIL_LENGTH * 2    ; X,Y pairs
 SpriteDepthList:    DS.B    8 * 6               ; Y + pointer for each sprite
 ParallaxSprites:    DS.B    SPR_EXT_SIZE * 8    ; Extended sprite objects
-BackgroundBitplane: DS.B    8000                ; Background collision map"
-  language="assembly"
-/>
+BackgroundBitplane: DS.B    8000                ; Background collision map
+```
 
 ## Practice Exercise: Advanced Animation Demo
 
 Create a complete animation showcase:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Advanced Animation Showcase"
-  code="; Create a comprehensive sprite animation demonstration
+**Practice: Advanced Animation Showcase:**
+
+```assembly
+; Create a comprehensive sprite animation demonstration
 ; Showcasing all advanced techniques
 
 AnimationShowcase:
@@ -1263,9 +1259,8 @@ InitCollisionSystem:
     RTS
 
 ; Run the showcase!
-BSR     AnimationShowcase"
-  language="assembly"
-/>
+BSR     AnimationShowcase
+```
 
 ## What You've Learned
 

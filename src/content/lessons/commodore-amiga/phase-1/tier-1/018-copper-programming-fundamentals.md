@@ -74,10 +74,10 @@ Bits 16-31: Data to write to register
 ### SKIP Instruction
 Skips next instruction if beam position test fails (advanced use).
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Basic Copper List Structure"
-  code="; Understanding Copper list format
+**Basic Copper List Structure:**
+
+```assembly
+; Understanding Copper list format
 ; Each Copper instruction is 32 bits (2 words)
 
 ; Example Copper list in memory
@@ -113,18 +113,17 @@ ActivateCopper:
     ; Start Copper
     MOVE.W  $088(A6), D0           ; COPJMP1 - restart Copper
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Understanding Video Timing
 
 To program the Copper effectively, you need to understand video timing:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Video Beam Timing Demonstration"
-  code="; Video timing constants for PAL Amiga
+**Video Beam Timing Demonstration:**
+
+```assembly
+; Video timing constants for PAL Amiga
 ; Screen coordinates and timing
 
 ; Vertical positions (PAL)
@@ -183,18 +182,17 @@ ShowBeamPosition:
     ; D0 = vertical position (0-312)
     ; D2 = horizontal position (0-227)
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Creating Color Bar Effects
 
 One of the most common Copper effects is color bars:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Classic Copper Color Bars"
-  code="; Create classic Amiga color bar effect
+**Classic Copper Color Bars:**
+
+```assembly
+; Create classic Amiga color bar effect
 
 CreateColorBars:
     LEA     ColorBarList, A0
@@ -277,18 +275,17 @@ GradientLoop:
 
 ; Data buffers
 ColorBarList:   DS.B    256     ; Space for color bar copper list
-GradientList:   DS.B    1024    ; Space for gradient copper list"
-  language="assembly"
-/>
+GradientList:   DS.B    1024    ; Space for gradient copper list
+```
 
 ## Dynamic Copper Effects
 
 The Copper can create dynamic effects by modifying multiple registers:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Copper Effects"
-  code="; Create complex Copper effects
+**Advanced Copper Effects:**
+
+```assembly
+; Create complex Copper effects
 
 ; Plasma-like effect using Copper
 PlasmaEffect:
@@ -421,18 +418,17 @@ SineTable:
 ; Data buffers
 PlasmaList:     DS.B    512
 SplitList:      DS.B    256
-ScrollList:     DS.B    1024"
-  language="assembly"
-/>
+ScrollList:     DS.B    1024
+```
 
 ## Copper and CPU Synchronization
 
 Coordinate Copper effects with CPU processing:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Copper-CPU Synchronization"
-  code="; Synchronize Copper with CPU for advanced effects
+**Copper-CPU Synchronization:**
+
+```assembly
+; Synchronize Copper with CPU for advanced effects
 
 ; Double-buffered Copper lists
 CopperDoubleBuffer:
@@ -568,18 +564,17 @@ AnimationFrame:     DC.W    0
 
 CopperList1:        DS.B    1024
 CopperList2:        DS.B    1024
-InterruptList:      DS.B    256"
-  language="assembly"
-/>
+InterruptList:      DS.B    256
+```
 
 ## Practice Exercise: Create a Copper Demo
 
 Build a complete Copper effects demonstration:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Complete Copper Demo"
-  code="; Create an impressive Copper effects demo
+**Practice: Complete Copper Demo:**
+
+```assembly
+; Create an impressive Copper effects demo
 ; Combine multiple techniques
 
 CopperDemo:
@@ -781,9 +776,8 @@ FrameCounter:   DC.W    0
 DemoList:       DS.B    2048    ; Large buffer for complex lists
 
 ; Run the demo
-BSR     CopperDemo"
-  language="assembly"
-/>
+BSR     CopperDemo
+```
 
 ## What You've Learned
 

@@ -544,10 +544,10 @@ HandleSlowFrame:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Complete Application Framework Demo"
-  code="; Complete application framework demonstration
+**Complete Application Framework Demo:**
+
+```assembly
+; Complete application framework demonstration
 ; Shows integration of all major subsystems
 
 CompleteApplicationDemo:
@@ -939,49 +939,8 @@ FrameTextDone:
     RTS
 
 ; Text strings
-MenuText:        .text \"PRESS FIRE TO START\", 0
-ScoreText:       .text \"SCORE: $\", 0
-PositionText:    .text \"POS: $\", 0
-StatusTitle:     .text \"APPLICATION STATUS\", 0
-PerformanceText: .text \"PERFORMANCE: $\", 0
-FrameText:       .text \"FRAMES: $\", 0
-
-; Application state
-AppState:        .byte 1     ; 1=menu, 2=game
-AppSubState:     .byte 0
-ErrorFlags:      .byte 0
-PerformanceScore: .byte 0
-
-; Graphics state
-ActiveSprites:   .byte 0
-GraphicsMode:    .byte 0
-RenderFlags:     .byte 0
-
-; Audio state
-MusicPlaying:    .byte 0
-SFXPlaying:      .byte 0
-AudioVolume:     .byte 15
-
-; Input state
-CurrentInput:    .byte 0
-PreviousInput:   .byte 0
-InputBuffer:     .byte 0
-InputEvents:     .byte 0
-
-; Game state
-PlayerHealth:    .byte 100
-PlayerScore:     .word $0000
-PlayerX:         .byte $80
-GameLevel:       .byte 0
-EnemyCount:      .byte 0
-ShotsFired:      .byte 0
-FrameCount:      .byte 0
-FramesRemaining: .byte 0
-
-; Run the complete application demonstration
-JSR CompleteApplicationDemo"
-  language="assembly"
-/>
+MenuText:        .text \
+```
 
 ## Advanced Application Patterns
 
@@ -1193,10 +1152,10 @@ HighPerformance:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Advanced Application Architecture Demo"
-  code="; Advanced application architecture demonstration
+**Advanced Application Architecture Demo:**
+
+```assembly
+; Advanced application architecture demonstration
 ; Shows state management and component communication
 
 AdvancedArchitectureDemo:
@@ -1552,18 +1511,17 @@ CurrentFrameTime:    .byte 0     ; Last frame time
 EnabledFeatures:     .byte 0     ; Currently enabled features
 
 ; Run the advanced architecture demonstration
-JSR AdvancedArchitectureDemo"
-  language="assembly"
-/>
+JSR AdvancedArchitectureDemo
+```
 
 ## Complete Application Example: Mini Space Game
 
 Let's build a complete mini game integrating all systems:
 
-<CodeRunner 
-  system="commodore-64"
-  title="Complete Mini Space Game"
-  code="; Complete mini space game demonstration
+**Complete Mini Space Game:**
+
+```assembly
+; Complete mini space game demonstration
 ; Integrates graphics, audio, input, logic, and UI
 
 MiniSpaceGame:
@@ -2246,53 +2204,8 @@ DisplayChar:
     RTS
 
 ; Text strings
-ScoreUIText:    .text \"SCORE: $\", 0
-ResultsTitle:   .text \"GAME RESULTS\", 0
-FinalScoreText: .text \"FINAL SCORE: $\", 0
-VictoryText:    .text \"VICTORY!\", 0
-GameOverText:   .text \"GAME OVER\", 0
-
-; Game state variables
-GameState:      .byte 1     ; 0=game over, 1=playing, 2=victory
-GameLevel:      .byte 1
-FramesLeft:     .byte 0
-
-; Player variables
-PlayerX:        .byte $50
-PlayerY:        .byte $B0
-PlayerHealth:   .byte 100
-PlayerScore:    .word $0000
-PlayerAlive:    .byte 1
-
-; Input variables
-CurrentInput:   .byte 0
-PreviousInput:  .byte 0
-InputEvents:    .byte 0
-InputBuffer:    .byte 0
-
-; Enemy variables
-EnemyCount:     .byte 3
-Enemy1X:        .byte $20
-Enemy1Y:        .byte $20
-Enemy1Alive:    .byte 1
-Enemy2X:        .byte $50
-Enemy2Y:        .byte $30
-Enemy2Alive:    .byte 1
-Enemy3X:        .byte $80
-Enemy3Y:        .byte $40
-Enemy3Alive:    .byte 1
-
-; Projectile system
-ProjectileCount:   .byte 0
-ProjectileActive:  .res 4      ; 4 projectile slots
-ProjectileX:       .res 4
-ProjectileY:       .res 4
-ProjectileVY:      .res 4      ; Y velocity
-
-; Run the complete mini space game
-JSR MiniSpaceGame"
-  language="assembly"
-/>
+ScoreUIText:    .text \
+```
 
 ## Application Polish and Quality Assurance
 

@@ -584,10 +584,10 @@ ChunkyLookupTable:
 
 Create sophisticated color manipulation techniques:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Color Cycling and Palette Effects"
-  code="; Advanced color cycling and palette manipulation
+**Advanced Color Cycling and Palette Effects:**
+
+```assembly
+; Advanced color cycling and palette manipulation
 
 ; Smooth color interpolation between palettes
 InterpolatePalettes:
@@ -947,18 +947,17 @@ CycleCounter1:      DC.W    0
 CycleCounter2:      DC.W    0
 CycleCounter3:      DC.W    0
 FrameCounter:       DC.W    0
-TempPalette:        DS.W    32      ; Temporary palette buffer"
-  language="assembly"
-/>
+TempPalette:        DS.W    32      ; Temporary palette buffer
+```
 
 ## 3D and Perspective Effects
 
 Implement pseudo-3D effects using bitplane manipulation:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="3D and Perspective Effects with Bitplanes"
-  code="; 3D perspective and pseudo-3D effects using bitplanes
+**3D and Perspective Effects with Bitplanes:**
+
+```assembly
+; 3D perspective and pseudo-3D effects using bitplanes
 
 ; Mode 7-style perspective floor
 PerspectiveFloor:
@@ -1286,18 +1285,17 @@ SampleTexture:
     SNE     D0
     AND.W   #1, D0
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Practice Exercise: Advanced Graphics Demo
 
 Create a comprehensive demonstration of advanced bitplane techniques:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Advanced Bitplane Graphics Showcase"
-  code="; Complete advanced bitplane graphics demonstration
+**Practice: Advanced Bitplane Graphics Showcase:**
+
+```assembly
+; Complete advanced bitplane graphics demonstration
 ; Showcases all advanced techniques in one demo
 
 AdvancedBitplaneDemo:
@@ -1642,9 +1640,8 @@ BasePalette:        DS.W    32
 OutputPalette:      DS.W    32
 
 ; Run the advanced demo!
-BSR     AdvancedBitplaneDemo"
-  language="assembly"
-/>
+BSR     AdvancedBitplaneDemo
+```
 
 ## What You've Learned
 

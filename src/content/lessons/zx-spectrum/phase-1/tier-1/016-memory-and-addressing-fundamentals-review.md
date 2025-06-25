@@ -61,10 +61,10 @@ LD (IX-2), A        ; Store to base - 2
 - **Advantages**: Multiple offsets from same base, negative offsets
 - **Disadvantages**: Slightly more complex syntax
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Addressing Modes Comparison"
-  code="; Demonstrate all three addressing modes working together
+**Addressing Modes Comparison:**
+
+```assembly
+; Demonstrate all three addressing modes working together
 ; Set up test data area
 LD HL, $6000        ; Use $6000 as our data area
 
@@ -88,9 +88,8 @@ LD E, (IX+1)        ; E = 200 (same as second)
 LD H, (IX+2)        ; H = 150 (same as third)
 
 ; All three methods accessed the same data!
-; A=D=100, B=E=200, C=H=150"
-  language="assembly"
-/>
+; A=D=100, B=E=200, C=H=150
+```
 
 ## Screen Memory Mastery Review
 
@@ -139,10 +138,10 @@ CalcScreenAddr:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Screen Memory Challenge"
-  code="; Create a pattern across all three screen thirds
+**Screen Memory Challenge:**
+
+```assembly
+; Create a pattern across all three screen thirds
 ; Draw one pixel in each character position of top row
 
 ; Top third - row 0
@@ -177,9 +176,8 @@ LD HL, $5800        ; Start of attributes
 LD DE, $5801        ; Next attribute
 LD BC, 767          ; 768-1 attributes
 LD (HL), %00000111  ; White ink on black paper
-LDIR                ; Fill all attributes"
-  language="assembly"
-/>
+LDIR                ; Fill all attributes
+```
 
 ## Data Structure Integration
 
@@ -234,10 +232,10 @@ SpriteLoop:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Integrated Data Structure Demo"
-  code="; Game entity system combining all addressing modes
+**Integrated Data Structure Demo:**
+
+```assembly
+; Game entity system combining all addressing modes
 ; Game state (direct addressing)
 PlayerScore:    DW 1000
 PlayerLives:    DB 3
@@ -301,9 +299,8 @@ EnemyBehavior:
     
 PowerupBehavior:
     ; Powerup behavior code would go here
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Advanced Memory Patterns
 
@@ -396,10 +393,10 @@ LD A, (IX+5)        ; Indexed: 3 bytes
 3. **Use direct addressing for frequently accessed globals**
 4. **Cache frequently used addresses in registers**
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Performance Optimization Example"
-  code="; Optimized vs unoptimized data access
+**Performance Optimization Example:**
+
+```assembly
+; Optimized vs unoptimized data access
 ; UNOPTIMIZED: Multiple direct memory accesses
 SlowDataAccess:
     LD A, ($6000)       ; Get X position
@@ -448,9 +445,8 @@ VeryFastDataAccess:
     LD (IX+0), A        ; Store X
     LD (IX+1), B        ; Store Y
     LD (IX+2), C        ; Store health
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Complex Challenge Problems
 
@@ -482,10 +478,10 @@ Implement:
 
 Create a complete mini-system that demonstrates mastery of all addressing concepts:
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Master Integration Exercise"
-  code="; Complete system demonstrating all addressing modes
+**Master Integration Exercise:**
+
+```assembly
+; Complete system demonstrating all addressing modes
 ; System: Simple particle effect manager
 
 ; Particle structure: X, Y, VX, VY, Life, Type (6 bytes each)
@@ -592,9 +588,8 @@ NextParticle:
 ; - Indexed addressing for particle array
 ; - Indirect addressing for type behaviors
 ; - Complex address calculations
-; - Efficient memory usage patterns"
-  language="assembly"
-/>
+; - Efficient memory usage patterns
+```
 
 ## Key Takeaways
 

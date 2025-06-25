@@ -62,10 +62,10 @@ LDA $80         ; Load from $80 (zero page)
 STA $81         ; Store to $81 (zero page)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Zero Page Speed Advantage"
-  code="; Store frequently used data in Zero Page for speed
+**Zero Page Speed Advantage:**
+
+```assembly
+; Store frequently used data in Zero Page for speed
 LDA #$42        ; Load 'B'
 STA $80         ; Store in Zero Page (fast)
 
@@ -74,9 +74,8 @@ STA $1000       ; Store in regular RAM (slower)
 
 ; Access Zero Page data (faster)
 LDA $80         ; Quick zero page access
-STA $0400       ; Display on screen"
-  language="assembly"
-/>
+STA $0400       ; Display on screen
+```
 
 ## Memory-Mapped I/O Registers
 
@@ -102,10 +101,10 @@ LDA #$01        ; White colour
 STA $D800       ; Set character 0 colour to white
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Memory-Mapped I/O Control"
-  code="; Control hardware through memory-mapped registers
+**Memory-Mapped I/O Control:**
+
+```assembly
+; Control hardware through memory-mapped registers
 LDA #$06        ; Blue colour
 STA $D020       ; Set border colour
 
@@ -115,9 +114,8 @@ STA $D021       ; Set background colour
 ; Set screen character colors
 LDA #$01        ; White
 STA $D800       ; Color for screen position 0
-STA $D801       ; Color for screen position 1"
-  language="assembly"
-/>
+STA $D801       ; Color for screen position 1
+```
 
 ## Efficient Data Organization
 
@@ -143,10 +141,10 @@ LDA $A0,X       ; Get X position (efficient indexing)
 LDA $B0,X       ; Get Y position (efficient indexing)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Efficient Data Organization"
-  code="; Structure of Arrays approach
+**Efficient Data Organization:**
+
+```assembly
+; Structure of Arrays approach
 ; Setup player X positions
 LDA #$10        ; Player 0 X position
 STA $A0
@@ -164,9 +162,8 @@ LDX #$01        ; Player 1 index
 LDA $A0,X       ; Get X position (indexed)
 STA $80         ; Store for use
 LDA $B0,X       ; Get Y position (indexed)
-STA $81         ; Store for use"
-  language="assembly"
-/>
+STA $81         ; Store for use
+```
 
 ## Data Alignment and Packing
 
@@ -208,10 +205,10 @@ AND #%00000001  ; Test alive flag
 BEQ PlayerDead  ; Branch if not alive
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Bit Packing for Compact Data"
-  code="; Pack multiple game states into single bytes
+**Bit Packing for Compact Data:**
+
+```assembly
+; Pack multiple game states into single bytes
 ; Setup player flags
 LDA #%00000001  ; Bit 0: Alive
 ORA #%00000100  ; Bit 2: Has weapon
@@ -231,9 +228,8 @@ NoWeapon:
 LDA #$4E        ; 'N' for No weapon
 STA $0400       ; Display
 
-Continue:"
-  language="assembly"
-/>
+Continue:
+```
 
 ## Performance Optimization Techniques
 
@@ -269,10 +265,10 @@ STA $81         ; 2 bytes, 3 cycles
 LDA #$42        ; 2 bytes, 2 cycles (for constants)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Addressing Mode Optimization"
-  code="; Demonstrate different addressing mode speeds
+**Addressing Mode Optimization:**
+
+```assembly
+; Demonstrate different addressing mode speeds
 ; Setup test data
 LDA #$41        ; 'A' - immediate (fastest for constants)
 STA $80         ; Zero page store (fast)
@@ -284,9 +280,8 @@ STA $81         ; Zero page store (fast)
 
 ; Display result
 LDA $81         ; Keep using zero page
-STA $0400       ; Display 'B' (A+1)"
-  language="assembly"
-/>
+STA $0400       ; Display 'B' (A+1)
+```
 
 ## Loop Optimization Strategies
 
@@ -330,10 +325,10 @@ STA $0400       ; Position 0
 ; No loop overhead!
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Loop Optimization Techniques"
-  code="; Optimized countdown loop
+**Loop Optimization Techniques:**
+
+```assembly
+; Optimized countdown loop
 LDX #$05        ; Start from 5
 CountLoop:
     TXA         ; Transfer X to A
@@ -343,9 +338,8 @@ CountLoop:
     DEX         ; Decrement (sets zero flag automatically)
     BNE CountLoop ; Branch if not zero (efficient test)
 
-; Result: Displays numbers 54321 at positions"
-  language="assembly"
-/>
+; Result: Displays numbers 54321 at positions
+```
 
 ## Memory Management Strategies
 
@@ -435,10 +429,10 @@ Create an optimised sprite movement system that:
 3. Uses bit manipulation for sprite flags
 4. Demonstrates performance optimisation techniques
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Optimized Sprite System"
-  code="; Optimized sprite system using advanced techniques
+**Practice Exercise - Optimized Sprite System:**
+
+```assembly
+; Optimized sprite system using advanced techniques
 ; Zero page variables for speed
 SpriteX     = $80    ; X position (zero page for speed)
 SpriteY     = $81    ; Y position  
@@ -499,9 +493,8 @@ InactiveSprite:
 
 ; Call the system
 JSR InitSprite
-JSR UpdateSprite"
-  language="assembly"
-/>
+JSR UpdateSprite
+```
 
 ## Memory Access Patterns
 

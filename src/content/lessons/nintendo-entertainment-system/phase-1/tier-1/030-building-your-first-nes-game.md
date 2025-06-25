@@ -135,10 +135,10 @@ MainGameLoop:
     JMP MainGameLoop
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Complete Game Architecture Foundation"
-  code="; Sprite Symphony - Complete Game Foundation
+**Complete Game Architecture Foundation:**
+
+```assembly
+; Sprite Symphony - Complete Game Foundation
 Main:
     JSR InitGame
     
@@ -878,9 +878,8 @@ SpriteOAM:
     .byte $80, $10, $01, $80  ; Note sprite
     .byte $FF, $FF, $FF, $FF  ; Unused
     .byte $FF, $FF, $FF, $FF  ; Unused
-    .byte $FF, $FF, $FF, $FF  ; Unused"
-  language="assembly"
-/>
+    .byte $FF, $FF, $FF, $FF  ; Unused
+```
 
 ## Multiple Game Modes Implementation
 
@@ -1572,10 +1571,10 @@ Create the complete Sprite Symphony game with all systems integrated:
 4. Include progression system with unlockable content
 5. Build complete game flow from title to gameplay and back
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Sprite Symphony Game"
-  code="; Complete Sprite Symphony NES Game
+**Practice: Complete Sprite Symphony Game:**
+
+```assembly
+; Complete Sprite Symphony NES Game
 Main:
     JSR InitCompleteGame
     
@@ -2416,9 +2415,8 @@ SpriteOAM:
     .byte $C0, $10, $01, $50  ; Note sprites
     .byte $FF, $FF, $FF, $FF
     .byte $FF, $FF, $FF, $FF
-    .byte $FF, $FF, $FF, $FF"
-  language="assembly"
-/>
+    .byte $FF, $FF, $FF, $FF
+```
 
 ## What You've Learned
 

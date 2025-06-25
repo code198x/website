@@ -94,10 +94,10 @@ DisplayB:
     RTS             ; Return to caller
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Your First Subroutines"
-  code="; Main program
+**Your First Subroutines:**
+
+```assembly
+; Main program
 JSR DisplayA    ; Call first subroutine
 JSR DisplayB    ; Call second subroutine
 JMP EndProgram  ; Skip over subroutine definitions
@@ -115,9 +115,8 @@ DisplayB:
     RTS             ; Return to caller
 
 EndProgram:
-    ; Program ends here"
-  language="assembly"
-/>
+    ; Program ends here
+```
 
 ## How JSR and RTS Use the Stack
 
@@ -166,10 +165,10 @@ DisplayChar:
 EndProgram:
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Subroutine with Parameters"
-  code="; Main program - call subroutine with different parameters
+**Subroutine with Parameters:**
+
+```assembly
+; Main program - call subroutine with different parameters
 LDA #$48        ; Load 'H'
 JSR DisplayChar ; Display 'H'
 
@@ -191,9 +190,8 @@ DisplayCharAt:
     STA $0400,X     ; Display at position X
     RTS
 
-EndProgram:"
-  language="assembly"
-/>
+EndProgram:
+```
 
 ## Nested Subroutine Calls
 
@@ -222,10 +220,10 @@ PrintI:
 EndProgram:
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Nested Subroutine Calls"
-  code="; Demonstrate nested subroutine calls
+**Nested Subroutine Calls:**
+
+```assembly
+; Demonstrate nested subroutine calls
 JSR PrintWord   ; Call main subroutine
 JMP EndProgram
 
@@ -244,9 +242,8 @@ PrintI:
     STA $0401       
     RTS             ; Return to PrintWord
 
-EndProgram:"
-  language="assembly"
-/>
+EndProgram:
+```
 
 ## Preserving Registers in Subroutines
 
@@ -271,10 +268,10 @@ UnsafeSubroutine:
     RTS             ; Returns with A modified!
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Register Preservation in Subroutines"
-  code="; Demonstrate register preservation
+**Register Preservation in Subroutines:**
+
+```assembly
+; Demonstrate register preservation
 LDA #$42        ; Load 'B' into A
 JSR SafeRoutine ; Call subroutine that preserves A
 STA $0400       ; Display - should still be 'B'
@@ -297,9 +294,8 @@ UnsafeRoutine:
     STA $D020       ; Use for border  
     RTS             ; Return with A changed!
 
-EndProgram:"
-  language="assembly"
-/>
+EndProgram:
+```
 
 ## Return Values from Subroutines
 
@@ -323,10 +319,10 @@ Main:
     STA $0400       ; Display result
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Subroutines with Return Values"
-  code="; Function that adds 5 to input
+**Subroutines with Return Values:**
+
+```assembly
+; Function that adds 5 to input
 LDA #$10        ; Input: 16
 JSR AddFive     ; Call function
 STA $0400       ; Display result (should be 21)
@@ -345,9 +341,8 @@ AddFive:
     ADC #$05        ; Add 5
     RTS             ; Return result in A
 
-EndProgram:"
-  language="assembly"
-/>
+EndProgram:
+```
 
 ## Building a Subroutine Library
 
@@ -378,10 +373,10 @@ DisplayAtPos:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Subroutine Library Example"
-  code="; Using a collection of utility subroutines
+**Subroutine Library Example:**
+
+```assembly
+; Using a collection of utility subroutines
 JSR ClearScreen     ; Clear the display
 
 LDA #$02            ; Red colour
@@ -413,9 +408,8 @@ DisplayAtPos:
     STA $0400,X     ; Display at position
     RTS
 
-EndProgram:"
-  language="assembly"
-/>
+EndProgram:
+```
 
 ## Advanced Parameter Passing
 
@@ -476,10 +470,10 @@ Create a program with these subroutines:
 
 Use proper parameter passing and register preservation.
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Complete Subroutine Program"
-  code="; Main program using multiple subroutines
+**Practice Exercise - Complete Subroutine Program:**
+
+```assembly
+; Main program using multiple subroutines
 JSR InitSystem      ; Initialize
 JSR DisplayMessage  ; Show message
 JSR WaitABit       ; Pause
@@ -526,9 +520,8 @@ CleanUp:
     PLA
     RTS
 
-EndProgram:"
-  language="assembly"
-/>
+EndProgram:
+```
 
 ## Subroutine Best Practices
 

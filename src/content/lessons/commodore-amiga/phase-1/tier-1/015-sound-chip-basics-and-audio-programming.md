@@ -54,10 +54,10 @@ Each of the 4 audio channels has identical capabilities:
 
 Let's start with a simple example - playing a sample on channel 0:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Basic Audio Channel Setup"
-  code="; Setup audio channel 0 for sample playback
+**Basic Audio Channel Setup:**
+
+```assembly
+; Setup audio channel 0 for sample playback
 MOVE.L #$00DFF000, A0        ; Custom chip base
 
 ; First, create a simple sample in Chip RAM
@@ -74,9 +74,8 @@ MOVE.W #200, $0A6(A0)        ; AUD0PER - Period (controls pitch)
 MOVE.W #64, $0A8(A0)         ; AUD0VOL - Maximum volume
 
 ; Enable audio DMA for channel 0
-MOVE.W #$8201, $096(A0)      ; Master DMA + Audio channel 0"
-  language="assembly"
-/>
+MOVE.W #$8201, $096(A0)      ; Master DMA + Audio channel 0
+```
 
 ## Understanding Audio Periods and Pitch
 
@@ -87,10 +86,10 @@ The period register controls how fast samples are played:
 - **Formula**: Period = 3546895 / Sample_Rate_Hz
 - **Common values**: 124 (≈28KHz), 200 (≈17KHz), 400 (≈8.8KHz)
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Period and Pitch Control"
-  code="; Demonstrate different periods/pitches
+**Period and Pitch Control:**
+
+```assembly
+; Demonstrate different periods/pitches
 MOVE.L #$00DFF000, A0
 
 ; Create a simple tone sample
@@ -127,18 +126,17 @@ WAIT2:
     DBF D0, WAIT2
 
 ; Play at low pitch  
-MOVE.W #400, $0A6(A0)        ; Low pitch (high period)"
-  language="assembly"
-/>
+MOVE.W #400, $0A6(A0)        ; Low pitch (high period)
+```
 
 ## Multi-Channel Audio Programming
 
 Paula's power shows when using multiple channels simultaneously:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="4-Channel Audio Setup"
-  code="; Setup all 4 audio channels for different samples
+**4-Channel Audio Setup:**
+
+```assembly
+; Setup all 4 audio channels for different samples
 MOVE.L #$00DFF000, A0
 
 ; Create different samples for each channel
@@ -201,18 +199,17 @@ MOVE.W #400, $0D6(A0)        ; AUD3PER - Very low pitch
 MOVE.W #24, $0D8(A0)         ; AUD3VOL - Low volume
 
 ; Enable all audio channels
-MOVE.W #$820F, $096(A0)      ; Master DMA + all 4 audio channels"
-  language="assembly"
-/>
+MOVE.W #$820F, $096(A0)      ; Master DMA + all 4 audio channels
+```
 
 ## Stereo Effects and Panning
 
 The Amiga's fixed stereo setup can be enhanced with volume control:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Stereo Effects with Volume Control"
-  code="; Create stereo effects using volume control
+**Stereo Effects with Volume Control:**
+
+```assembly
+; Create stereo effects using volume control
 MOVE.L #$00DFF000, A0
 
 ; Create identical samples for multiple channels
@@ -266,18 +263,17 @@ WAIT_RIGHT:
 MOVE.W #0, $0A8(A0)          ; Left channels - off
 MOVE.W #0, $0D8(A0)
 MOVE.W #64, $0B8(A0)         ; Right channels - full
-MOVE.W #64, $0C8(A0)"
-  language="assembly"
-/>
+MOVE.W #64, $0C8(A0)
+```
 
 ## Audio Interrupts and Synchronization
 
 Paula can generate interrupts when samples finish playing:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Audio Interrupt Setup"
-  code="; Setup audio interrupts for synchronization
+**Audio Interrupt Setup:**
+
+```assembly
+; Setup audio interrupts for synchronization
 MOVE.L #$00DFF000, A0
 
 ; Setup interrupt vectors (simplified example)
@@ -312,18 +308,17 @@ CHECK_INTERRUPT:
 ; Clear interrupt
 MOVE.W #$0080, $09C(A0)      ; INTREQ - Clear audio interrupt
 
-; Interrupt occurred - sample finished playing"
-  language="assembly"
-/>
+; Interrupt occurred - sample finished playing
+```
 
 ## Creating Audio Effects
 
 Let's create some basic audio effects using Paula's capabilities:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Audio Effects Programming"
-  code="; Audio effects demonstration
+**Audio Effects Programming:**
+
+```assembly
+; Audio effects demonstration
 MOVE.L #$00DFF000, A0
 
 ; Effect 1: Echo using multiple channels
@@ -393,18 +388,17 @@ VOLUME_FADE:
     FADE_DELAY:
         DBF D0, FADE_DELAY
     
-    DBF D2, VOLUME_FADE      ; Continue fading"
-  language="assembly"
-/>
+    DBF D2, VOLUME_FADE      ; Continue fading
+```
 
 ## Sample Rate Calculation
 
 Understanding how to calculate periods for specific sample rates:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Sample Rate and Period Calculations"
-  code="; Sample rate calculations and common periods
+**Sample Rate and Period Calculations:**
+
+```assembly
+; Sample rate calculations and common periods
 ; Formula: Period = 3546895 / Desired_Sample_Rate_Hz
 
 ; Common sample rates and their periods:
@@ -444,18 +438,17 @@ CALCULATE_PERIOD:
 PERIOD_EXAMPLE:
     MOVE.W #16000, D0        ; 16KHz sample rate
     BSR CALCULATE_PERIOD     ; Calculate period
-    ; D1 now contains period for 16KHz (≈221)"
-  language="assembly"
-/>
+    ; D1 now contains period for 16KHz (≈221)
+```
 
 ## Advanced Multi-Channel Composition
 
 Create a simple musical composition using all 4 channels:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="4-Channel Musical Composition"
-  code="; Simple 4-channel musical composition
+**4-Channel Musical Composition:**
+
+```assembly
+; Simple 4-channel musical composition
 MOVE.L #$00DFF000, A0
 
 ; Create different waveforms for each channel
@@ -544,18 +537,17 @@ DRUM_PATTERN:
         DBF D0, PATTERN_WAIT
 
     ; Repeat pattern (in real program, use proper timing)
-    BRA DRUM_PATTERN"
-  language="assembly"
-/>
+    BRA DRUM_PATTERN
+```
 
 ## Practice Exercise: Audio-Visual Synchronization
 
 Create a program that synchronizes audio with graphics:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Audio-Visual Sync Demo"
-  code="; Audio-visual synchronization demonstration
+**Practice: Audio-Visual Sync Demo:**
+
+```assembly
+; Audio-visual synchronization demonstration
 AUDIO_VISUAL_DEMO:
     MOVE.L #$00DFF000, A0    ; Custom chips
 
@@ -604,9 +596,8 @@ SYNC_LOOP:
         DBF D0, VISUAL_DELAY
     
     ; Repeat the sync demo
-    BRA SYNC_LOOP"
-  language="assembly"
-/>
+    BRA SYNC_LOOP
+```
 
 ## What You've Learned
 

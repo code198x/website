@@ -171,10 +171,10 @@ NoteFreqLow:     .byte 0
 NoteFreqHigh:    .byte 0
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Musical Note Programming"
-  code="; Demonstrate musical note programming
+**Musical Note Programming:**
+
+```assembly
+; Demonstrate musical note programming
 ; Play a simple melody using note tables
 
 ; Simplified note table (one octave)
@@ -247,9 +247,8 @@ PauseWait:
     RTS
 
 ; Play the demonstration
-JSR PlaySimpleMelody"
-  language="assembly"
-/>
+JSR PlaySimpleMelody
+```
 
 ## Interrupt-Driven Music Player
 
@@ -718,10 +717,10 @@ ArpContinue:
 BaseChordNote: .byte 48    ; C-4 as base
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Advanced Music Programming"
-  code="; Advanced music system with multiple features
+**Advanced Music Programming:**
+
+```assembly
+; Advanced music system with multiple features
 ; Demonstrates harmony, effects, and dynamic control
 
 AdvancedMusicDemo:
@@ -933,9 +932,8 @@ CPWait:
     RTS
 
 ; Start the advanced music demonstration
-JSR AdvancedMusicDemo"
-  language="assembly"
-/>
+JSR AdvancedMusicDemo
+```
 
 ## Complete Music System Architecture
 
@@ -1106,10 +1104,10 @@ Create a complete musical composition system that demonstrates:
 4. Dynamic tempo and instrument changes
 5. Integration of sound effects with music
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Complete Music Composition System"
-  code="; Complete music composition demonstration
+**Practice Exercise - Complete Music Composition System:**
+
+```assembly
+; Complete music composition demonstration
 ; Multi-track song with effects and dynamic control
 
 CompleteMusicalDemo:
@@ -1663,9 +1661,8 @@ FDWait:
     RTS
 
 ; Start the complete musical composition
-JSR CompleteMusicalDemo"
-  language="assembly"
-/>
+JSR CompleteMusicalDemo
+```
 
 ## Music Programming Best Practices
 

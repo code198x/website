@@ -55,10 +55,10 @@ LD (HL), $00     ; Put zero in first byte
 LDIR             ; Copy zero to all screen memory
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Basic Screen Clear"
-  code="; Clear screen memory to black
+**Basic Screen Clear:**
+
+```assembly
+; Clear screen memory to black
 LD HL, $4000     ; Point to start of screen
 LD DE, $4001     ; Point to next byte  
 LD BC, 6143      ; Copy 6143 bytes (6144 - 1)
@@ -70,9 +70,8 @@ LD HL, $5800     ; Start of attributes
 LD DE, $5801     ; One byte after start
 LD BC, 767       ; 768 - 1 bytes to copy
 LD (HL), %00000111  ; White ink on black paper
-LDIR             ; Fill all attributes"
-  language="assembly"
-/>
+LDIR             ; Fill all attributes
+```
 
 ### Method 2: Optimized Clear Using Stack
 
@@ -117,10 +116,10 @@ HLineLoop:
     DJNZ HLineLoop  ; Repeat across row
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Horizontal Line Drawing"
-  code="; Draw horizontal lines at different screen positions
+**Horizontal Line Drawing:**
+
+```assembly
+; Draw horizontal lines at different screen positions
 ; Line at top of screen
 LD HL, $4000        ; Top row
 LD B, 32            ; Full width
@@ -137,9 +136,8 @@ LD A, %10101010     ; Dotted line pattern
 HLine2:
     LD (HL), A
     INC HL
-    DJNZ HLine2"
-  language="assembly"
-/>
+    DJNZ HLine2
+```
 
 ### Vertical Line Drawing
 
@@ -191,10 +189,10 @@ ScrollByteLoop:
     DJNZ ScrollRowLoop
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Simple Horizontal Scroll"
-  code="; Simple left scroll of top screen row
+**Simple Horizontal Scroll:**
+
+```assembly
+; Simple left scroll of top screen row
 LD HL, $4000        ; Top row of screen
 LD B, 32            ; 32 bytes in row
 OR A                ; Clear carry flag
@@ -206,9 +204,8 @@ ScrollLeft:
 
 ; The leftmost pixel of each byte moves into carry
 ; and carry moves into rightmost pixel of next byte
-; This creates a smooth scrolling effect!"
-  language="assembly"
-/>
+; This creates a smooth scrolling effect!
+```
 
 ### Vertical Scrolling (Up)
 
@@ -254,10 +251,10 @@ CopyCharLoop:
     DJNZ CopyCharLoop
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Character Cell Copy"
-  code="; Copy a pattern from one location to another
+**Character Cell Copy:**
+
+```assembly
+; Copy a pattern from one location to another
 ; First, create a pattern at position (1,1)
 LD IX, $4021        ; Character position (1,1)
 LD (IX+$00), %00111100  ; Create a simple pattern
@@ -280,9 +277,8 @@ CopyLoop:
     LD DE, $20      ; Move to next row
     ADD IX, DE      ; Update source pointer
     ADD IY, DE      ; Update dest pointer
-    DJNZ CopyLoop   ; Repeat for all rows"
-  language="assembly"
-/>
+    DJNZ CopyLoop   ; Repeat for all rows
+```
 
 ## Advanced Screen Buffer Techniques
 
@@ -366,10 +362,10 @@ LD (HL), A              ; Store result
 ; Perfect for moving sprites
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="XOR Drawing Demonstration"
-  code="; XOR drawing for easy sprite animation
+**XOR Drawing Demonstration:**
+
+```assembly
+; XOR drawing for easy sprite animation
 LD HL, $4050        ; Screen position
 LD A, %01111110     ; Sprite pattern
 
@@ -385,9 +381,8 @@ LD (HL), A          ; Sprite is now erased!
 INC HL              ; Move to next position
 LD A, %01111110     ; Same pattern
 XOR (HL)            ; Draw at new position
-LD (HL), A          ; Sprite appears at new location"
-  language="assembly"
-/>
+LD (HL), A          ; Sprite appears at new location
+```
 
 ## Practice Exercise
 
@@ -398,10 +393,10 @@ Create a comprehensive screen manipulation program that:
 3. Creates a moving pattern that bounces across the screen
 4. Uses XOR drawing for smooth animation
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Screen Demo"
-  code="; Screen manipulation demo
+**Practice Exercise - Screen Demo:**
+
+```assembly
+; Screen manipulation demo
 ; 1. Clear screen with checkerboard pattern
 LD HL, $4000        ; Start of screen
 LD DE, $4001        ; Next byte
@@ -447,9 +442,8 @@ DelayLoop:
     
     INC HL              ; Move right
     POP BC
-    DJNZ MovePattern    ; Continue moving"
-  language="assembly"
-/>
+    DJNZ MovePattern    ; Continue moving
+```
 
 ## Optimization Tips
 

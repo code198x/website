@@ -54,10 +54,10 @@ DEY             ; Y = 3
 
 These operations are faster and more efficient than using ADC/SBC with 1!
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Increment and Decrement Operations"
-  code="; Demonstration of 6502 increment and decrement instructions
+**Increment and Decrement Operations:**
+
+```assembly
+; Demonstration of 6502 increment and decrement instructions
 ; These operations are essential for counters and loops in NES programming
 
 IncDecDemo:
@@ -148,9 +148,8 @@ FrameOK:
 ; Memory locations for examples
 Counter:        .byte 0
 SpriteIndex:    .byte 0
-FrameCounter:   .byte 0"
-  language="assembly"
-/>
+FrameCounter:   .byte 0
+```
 
 ## Shift Operations
 
@@ -174,10 +173,10 @@ LDA #%01000000  ; Binary 64 (decimal 64)
 LSR A           ; Result: %00100000 (decimal 32)
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Shift Operations"
-  code="; Demonstration of 6502 shift instructions
+**Shift Operations:**
+
+```assembly
+; Demonstration of 6502 shift instructions
 ; These operations are useful for fast arithmetic and bit manipulation
 
 ShiftDemo:
@@ -261,9 +260,8 @@ ShiftDemo:
     RTS
 
 ; Data for examples
-OriginalPattern: .byte 0"
-  language="assembly"
-/>
+OriginalPattern: .byte 0
+```
 
 ## Rotate Operations
 
@@ -275,10 +273,10 @@ Rotates all bits left through carry flag
 ### ROR - Rotate Right through Carry
 Rotates all bits right through carry flag
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Rotate Operations"
-  code="; Demonstration of 6502 rotate instructions
+**Rotate Operations:**
+
+```assembly
+; Demonstration of 6502 rotate instructions
 ; These operations rotate bits through the carry flag
 
 RotateDemo:
@@ -380,9 +378,8 @@ ReverseBitsLoop:
 ; Data for examples
 FrequencyLow:   .byte $80
 TestData:       .byte $12, $34, $56, $78
-TestDataSize = 4"
-  language="assembly"
-/>
+TestDataSize = 4
+```
 
 ## NES-Specific Applications
 
@@ -398,10 +395,10 @@ Shift and increment operations are particularly useful for NES programming:
 - **Volume fading**: Decrement volume levels
 - **Rhythm timing**: Increment beat counters
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="NES-Specific Applications"
-  code="; NES-specific applications of increment, decrement, and shift operations
+**NES-Specific Applications:**
+
+```assembly
+; NES-specific applications of increment, decrement, and shift operations
 ; Demonstrates practical uses in graphics, sound, and game logic
 
 NESApplications:
@@ -650,9 +647,8 @@ RightCounter:      .byte 0
 ; Timer data
 TimerFrames:       .byte 0
 TimerSeconds:      .byte 0
-TimerMinutes:      .byte 0"
-  language="assembly"
-/>
+TimerMinutes:      .byte 0
+```
 
 ## Advanced Techniques
 
@@ -679,10 +675,10 @@ AND #%00000111  ; Mask to 3 bits
 ; A now contains bits 2-4 in positions 0-2
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Advanced Techniques"
-  code="; Advanced techniques combining increment, decrement, and shift operations
+**Advanced Techniques:**
+
+```assembly
+; Advanced techniques combining increment, decrement, and shift operations
 ; Demonstrates sophisticated bit manipulation and arithmetic
 
 AdvancedTechniques:
@@ -939,16 +935,15 @@ DoubledPixels2:    .byte 0
 PackedColor:       .byte 0
 RedComponent:      .byte 0
 GreenComponent:    .byte 0
-BlueComponent:     .byte 0"
-  language="assembly"
-/>
+BlueComponent:     .byte 0
+```
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Increment and Shift Practice"
-  code="; Practice Exercise: NES Game Object Manager
+**Increment and Shift Practice:**
+
+```assembly
+; Practice Exercise: NES Game Object Manager
 ; Use increment, decrement, and shift operations for game object management
 
 GameObjectPractice:
@@ -1200,9 +1195,8 @@ ActiveObjectCount: .byte 0
 ; 1. Add collision detection using bit manipulation
 ; 2. Implement object pooling with efficient allocation
 ; 3. Create particle effects using shift operations
-; 4. Add object sorting by depth using increment operations"
-  language="assembly"
-/>
+; 4. Add object sorting by depth using increment operations
+```
 
 ## What You've Learned
 

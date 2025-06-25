@@ -73,10 +73,10 @@ Zero page ($0000-$00FF) uses **8-bit addresses instead of 16-bit**, making it:
 - **Smaller**: Instructions take less program memory
 - **More flexible**: Special addressing modes available
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Memory Access Speed Comparison"
-  code="; Demonstration of memory access speed differences
+**Memory Access Speed Comparison:**
+
+```assembly
+; Demonstration of memory access speed differences
 ; Shows why zero page is preferred for frequently used variables
 
 MemoryAccessDemo:
@@ -145,9 +145,8 @@ FastLoop:
 PlayerX         = $10    ; Player X coordinate (zero page)
 PlayerY         = $11    ; Player Y coordinate (zero page)
 PlayerHealth    = $12    ; Player health (zero page)
-GameFlags       = $13    ; Game state flags (zero page)"
-  language="assembly"
-/>
+GameFlags       = $13    ; Game state flags (zero page)
+```
 
 ## NES Memory Map
 
@@ -169,10 +168,10 @@ $4020-$FFFF  Cartridge space (ROM, RAM, mappers)
 ### Memory-Mapped Hardware
 The NES uses **memory-mapped I/O** - hardware registers appear as memory addresses:
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="NES Memory Map Exploration"
-  code="; Exploration of NES memory regions and their purposes
+**NES Memory Map Exploration:**
+
+```assembly
+; Exploration of NES memory regions and their purposes
 ; Demonstrates how different memory areas are used
 
 NESMemoryDemo:
@@ -293,9 +292,8 @@ APUPulse1Sim:   .byte $00    ; $4000 simulation
 ControllerSim:  .byte $00    ; $4016 simulation
 
 ; Simulated ROM data
-ROMDataSim:     .byte $0F, $1E, $2D, $3C, $4B, $5A, $69, $78"
-  language="assembly"
-/>
+ROMDataSim:     .byte $0F, $1E, $2D, $3C, $4B, $5A, $69, $78
+```
 
 ## Advanced Addressing Modes
 

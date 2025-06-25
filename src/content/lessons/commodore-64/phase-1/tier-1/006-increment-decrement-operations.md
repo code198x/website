@@ -47,16 +47,15 @@ STA $80     ; Store in Zero Page location $80
 INC $80     ; Increment $80: now contains 6
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic Memory Increment"
-  code="LDA #$05    ; Load 5
+**Basic Memory Increment:**
+
+```assembly
+LDA #$05    ; Load 5
 STA $80     ; Store in Zero Page
 INC $80     ; Increment: $80 now contains 6
 LDA $80     ; Load the result
-STA $0400   ; Display on screen (ASCII character 6)"
-  language="assembly"
-/>
+STA $0400   ; Display on screen (ASCII character 6)
+```
 
 **Important**: INC works directly on memory - it doesn't use the A register!
 
@@ -70,16 +69,15 @@ STA $80     ; Store in Zero Page location $80
 DEC $80     ; Decrement $80: now contains 4
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic Memory Decrement"
-  code="LDA #$05    ; Load 5
+**Basic Memory Decrement:**
+
+```assembly
+LDA #$05    ; Load 5
 STA $80     ; Store in Zero Page
 DEC $80     ; Decrement: $80 now contains 4
 LDA $80     ; Load the result
-STA $0400   ; Display on screen (ASCII character 4)"
-  language="assembly"
-/>
+STA $0400   ; Display on screen (ASCII character 4)
+```
 
 ## Register Increment: INX and INY
 
@@ -97,19 +95,18 @@ LDY #$20    ; Load 32 into Y
 INY         ; Increment Y: now contains 33
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Register Increment"
-  code="LDX #$10    ; Load 16 into X
+**Register Increment:**
+
+```assembly
+LDX #$10    ; Load 16 into X
 INX         ; X = 17
 INX         ; X = 18
 STX $0400   ; Display X on screen
 
 LDY #$20    ; Load 32 into Y  
 INY         ; Y = 33
-STY $0401   ; Display Y on screen"
-  language="assembly"
-/>
+STY $0401   ; Display Y on screen
+```
 
 ## Register Decrement: DEX and DEY
 
@@ -127,19 +124,18 @@ LDY #$20    ; Load 32 into Y
 DEY         ; Decrement Y: now contains 31
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Register Decrement"
-  code="LDX #$10    ; Load 16 into X
+**Register Decrement:**
+
+```assembly
+LDX #$10    ; Load 16 into X
 DEX         ; X = 15
 DEX         ; X = 14
 STX $0400   ; Display X on screen
 
 LDY #$20    ; Load 32 into Y
 DEY         ; Y = 31
-STY $0401   ; Display Y on screen"
-  language="assembly"
-/>
+STY $0401   ; Display Y on screen
+```
 
 ## Flags and Overflow Behavior
 
@@ -155,10 +151,10 @@ STA $81     ; Store in memory
 DEC $81     ; Decrement: $81 = $FF, Negative flag SET
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Increment/Decrement Overflow"
-  code="; Test increment overflow
+**Increment/Decrement Overflow:**
+
+```assembly
+; Test increment overflow
 LDA #$FF    ; Load 255
 STA $80     
 INC $80     ; Increment: wraps to $00, Zero flag set
@@ -170,9 +166,8 @@ LDA #$00    ; Load 0
 STA $81     
 DEC $81     ; Decrement: wraps to $FF
 LDA $81     ; Load result ($FF)
-STA $0401   ; Display (will show character 255)"
-  language="assembly"
-/>
+STA $0401   ; Display (will show character 255)
+```
 
 ## Building a Counter
 
@@ -198,10 +193,10 @@ LDA $80     ; Load it
 STA $0403   ; Display
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Building a Counter"
-  code="; Initialize counter at '0'
+**Building a Counter:**
+
+```assembly
+; Initialize counter at '0'
 LDA #$30    ; ASCII '0'
 STA $80     ; Store in Zero Page
 STA $0400   ; Display
@@ -221,9 +216,8 @@ STA $0403
 
 INC $80     ; '4'
 LDA $80
-STA $0404"
-  language="assembly"
-/>
+STA $0404
+```
 
 ## Screen Position Counter
 
@@ -248,10 +242,10 @@ STA $0402   ; Screen position 2
 INC $80     ; Increment to 'D'
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Alphabet Counter"
-  code="; Display alphabet: A B C D E
+**Alphabet Counter:**
+
+```assembly
+; Display alphabet: A B C D E
 LDA #$41    ; Start with 'A'
 STA $80     ; Counter in Zero Page
 
@@ -273,9 +267,8 @@ STA $0403
 INC $80     
 
 LDA $80     ; 'E'
-STA $0404"
-  language="assembly"
-/>
+STA $0404
+```
 
 ## Using X and Y as Counters
 
@@ -296,10 +289,10 @@ STA $0400,X ; Store at $0402
 
 *Note: The `,X` syntax is indexed addressing - we'll learn this in detail later!*
 
-<CodeRunner 
-  system="commodore-64"
-  title="Using X Register as Counter"
-  code="; Place stars using X as position counter
+**Using X Register as Counter:**
+
+```assembly
+; Place stars using X as position counter
 LDX #$00    ; Start at position 0
 LDA #$2A    ; Load '*' character
 
@@ -310,9 +303,8 @@ STA $0401   ; Position 1
 INX         
 STA $0402   ; Position 2
 INX
-STA $0403   ; Position 3"
-  language="assembly"
-/>
+STA $0403   ; Position 3
+```
 
 ## Comparing INC/DEC vs ADC/SBC
 
@@ -368,10 +360,10 @@ Create a program that:
 3. Uses DEC to count down
 4. Shows the pattern: 9 8 7 6 5 4 3 2 1 0
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Countdown"
-  code="; Countdown from 9 to 0
+**Practice Exercise - Countdown:**
+
+```assembly
+; Countdown from 9 to 0
 LDA #$39    ; Start with '9' (ASCII 57)
 STA $80     ; Store in Zero Page counter
 
@@ -413,9 +405,8 @@ STA $0408
 DEC $80
 
 LDA $80     ; '0'
-STA $0409"
-  language="assembly"
-/>
+STA $0409
+```
 
 ## Summary of Increment/Decrement Instructions
 

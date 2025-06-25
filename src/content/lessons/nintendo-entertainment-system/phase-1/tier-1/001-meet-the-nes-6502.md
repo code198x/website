@@ -94,13 +94,11 @@ This instruction means:
 - **#**: The next value is immediate (a literal number)
 - **$01**: The hexadecimal value 01
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Your First NES Assembly Instruction"
-  code="LDA #$01"
-  autoRun={false}
-  language="assembly"
-/>
+**Your First NES Assembly Instruction:**
+
+```nasm
+LDA #$01
+```
 
 ## Game-Relevant Values
 
@@ -128,17 +126,16 @@ STA $2007   ; Write to PPU data register (sets background colour!)
 
 *Don't worry about understanding this completely yet - we'll learn graphics programming in detail later!*
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Memory-Mapped I/O Example"
-  code="LDA #$3F    ; Graphics setup
+**Memory-Mapped I/O Example:**
+
+```nasm
+LDA #$3F    ; Graphics setup
 STA $2006   ; PPU address high
 LDA #$00    
 STA $2006   ; PPU address low  
 LDA #$0F    ; White colour
-STA $2007   ; Write to graphics system"
-  language="assembly"
-/>
+STA $2007   ; Write to graphics system
+```
 
 ## Working with Game Data
 
@@ -150,14 +147,13 @@ LDX #$00    ; Load 0 into X (start of level 0)
 LDY #$50    ; Load 80 into Y (player Y position)
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Game Data Examples"
-  code="LDA #$03    ; 3 lives remaining
+**Game Data Examples:**
+
+```nasm
+LDA #$03    ; 3 lives remaining
 LDX #$00    ; Level 0 (first level)  
-LDY #$50    ; Y position 80 pixels"
-  language="assembly"
-/>
+LDY #$50    ; Y position 80 pixels
+```
 
 ## Understanding Game Memory
 
@@ -175,10 +171,10 @@ LDA #$80    ; Load starting Y position
 STA $0202   ; Store player Y coordinate
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Game Variables in Memory"
-  code="; Store game state in RAM
+**Game Variables in Memory:**
+
+```nasm
+; Store game state in RAM
 LDA #$05    ; Starting health = 5
 STA $0200   ; Store at memory location $0200
 
@@ -186,9 +182,8 @@ LDA #$10    ; Starting X position = 16
 STA $0201   ; Store player X coordinate  
 
 LDA #$80    ; Starting Y position = 128  
-STA $0202   ; Store player Y coordinate"
-  language="assembly"
-/>
+STA $0202   ; Store player Y coordinate
+```
 
 ## Hexadecimal in Game Programming
 
@@ -251,10 +246,10 @@ Create your first game-like program! Set up initial game state:
 5. Store X at $0301 (score storage)
 6. Store Y at $0302 (position storage)
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice Exercise - Game State Setup"
-  code="; Initialize game state
+**Practice Exercise - Game State Setup:**
+
+```nasm
+; Initialize game state
 LDA #$03    ; 3 lives
 STA $0300   ; Store lives counter
 
@@ -264,9 +259,8 @@ STX $0301   ; Store score
 LDY #$78    ; Y position = 120 ($78 in hex)  
 STY $0302   ; Store player Y position
 
-; Game state is now initialized!"
-  language="assembly"
-/>
+; Game state is now initialized!
+```
 
 ## The Game Development Advantage
 
@@ -277,6 +271,118 @@ Learning assembly on the NES teaches you:
 **Memory management**: Work within strict 2KB RAM limits
 **Real-time programming**: Handle input and graphics in precise timing
 **System architecture**: Understand how game consoles really work
+
+## Try It Yourself!
+
+Ready to run this code on a real assembler? Here's how to get started:
+
+### 1. Set Up Your Environment
+
+First, you'll need an assembler and emulator. **[Follow our setup guide](/setup)** for detailed instructions, or use these quick commands:
+
+```bash
+# macOS (using Homebrew)
+brew install cc65 mesen
+
+# Windows: Download cc65 from cc65.github.io
+# Download Mesen from mesen.ca
+
+# Linux (Ubuntu/Debian)  
+sudo apt install cc65
+# Download Mesen from mesen.ca
+```
+
+### 2. Create Your First Program
+
+Create files `hello.s` and `hello.cfg`:
+
+**hello.s:**
+```nasm
+; Your first NES assembly program
+.segment "HEADER"
+.byte "NES", $1A    ; NES signature
+.byte $02, $01      ; 32K PRG, 8K CHR
+.byte $00, $00      ; Mapper 0
+
+.segment "CODE"
+RESET:
+    ; Initialize the processor
+    sei             ; Disable interrupts
+    cld             ; Clear decimal mode
+    ldx #$FF
+    txs             ; Set up stack
+    
+    ; Your first code!
+    lda #$03        ; 3 lives
+    sta $0300       ; Store lives
+    ldx #$64        ; Score = 100
+    stx $0301       ; Store score
+    ldy #$78        ; Y position = 120
+    sty $0302       ; Store position
+    
+    ; Infinite loop to examine memory
+loop:
+    jmp loop        ; Jump to itself
+
+NMI:
+IRQ:
+    rti
+
+.segment "VECTORS"
+.word NMI, RESET, IRQ
+
+.segment "CHR"
+.res 8192, 0        ; Empty CHR data
+```
+
+**hello.cfg:**
+```
+MEMORY {
+    HDR: start=$0000, size=$0010, type=ro, file=%O, fill=yes;
+    PRG: start=$8000, size=$8000, type=ro, file=%O, fill=yes;
+    CHR: start=$0000, size=$2000, type=ro, file=%O, fill=yes;
+}
+SEGMENTS {
+    HEADER: load=HDR, type=ro;
+    CODE:   load=PRG, type=ro, start=$8000;
+    VECTORS: load=PRG, type=ro, start=$FFFA;
+    CHR:    load=CHR, type=ro;
+}
+```
+
+### 3. Assemble and Run
+
+```bash
+# Assemble your program
+ca65 hello.s -o hello.o
+
+# Link to create NES ROM
+ld65 -C hello.cfg hello.o -o hello.nes
+
+# Run in Mesen emulator
+mesen hello.nes
+
+# In the emulator:
+# 1. Press F11 to open debugger
+# 2. Look at memory $0300-$0302
+# 3. Check register values
+```
+
+### 4. What You Should See
+
+In the Mesen debugger memory viewer at $0300:
+```
+$0300: 03        ; Lives = 3
+$0301: 64        ; Score = 100 ($64)  
+$0302: 78        ; Y position = 120 ($78)
+```
+
+And in registers:
+```
+A:03  X:64  Y:78  SP:FF
+```
+
+**Congratulations!** You've just created your first NES ROM that initialises game state!
 
 ## What You've Learned
 

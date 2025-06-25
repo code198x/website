@@ -42,10 +42,10 @@ The Amiga's graphics system is built around several key concepts:
 
 Let's start by initializing a basic display:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Basic Display Initialization"
-  code="; Initialize Amiga graphics system
+**Basic Display Initialization:**
+
+```assembly
+; Initialize Amiga graphics system
 MOVE.L #$00DFF000, A0        ; Custom chip base address
 
 ; First, disable all DMA for safe setup
@@ -67,18 +67,17 @@ MOVE.W #$0000, $108(A0)      ; BPL1MOD: No skip for bitplane 1
 MOVE.W #$0000, $10A(A0)      ; BPL2MOD: No skip for bitplane 2
 
 ; Enable display DMA
-MOVE.W #$8180, $096(A0)      ; Enable master DMA + bitplane DMA"
-  language="assembly"
-/>
+MOVE.W #$8180, $096(A0)      ; Enable master DMA + bitplane DMA
+```
 
 ## Creating and Using Bitplanes
 
 Netplanes are the foundation of Amiga graphics. Each bitplane contains one bit per pixel:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Single Bitplane Setup"
-  code="; Setup a single bitplane (1-bit, 2 colors)
+**Single Bitplane Setup:**
+
+```assembly
+; Setup a single bitplane (1-bit, 2 colors)
 MOVE.L #$00DFF000, A0        ; Custom chip base
 MOVE.L #$00020000, A1        ; Bitplane memory in Chip RAM
 
@@ -102,18 +101,17 @@ MOVE.W #$0000, $180(A0)      ; COLOR00: Black (background)
 MOVE.W #$0FFF, $182(A0)      ; COLOR01: White (foreground)
 
 ; Enable bitplane DMA
-MOVE.W #$8100, $096(A0)      ; Master DMA + bitplane DMA"
-  language="assembly"
-/>
+MOVE.W #$8100, $096(A0)      ; Master DMA + bitplane DMA
+```
 
 ## Drawing Simple Patterns
 
 Now let's create some visual patterns in the bitplane:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Creating Simple Graphics Patterns"
-  code="; Create patterns in bitplane memory
+**Creating Simple Graphics Patterns:**
+
+```assembly
+; Create patterns in bitplane memory
 MOVE.L #$00020000, A0        ; Bitplane memory
 MOVE.L #$00DFF000, A1        ; Custom chip base
 
@@ -140,18 +138,17 @@ VERTICAL_LOOP:
 
 ; Setup display for our pattern
 MOVE.L #$00020000, $0E0(A1)  ; Point to our bitplane
-MOVE.W #$8100, $096(A1)      ; Enable display"
-  language="assembly"
-/>
+MOVE.W #$8100, $096(A1)      ; Enable display
+```
 
 ## Two-Bitplane Graphics (4 Colors)
 
 Let's create a more colorful display with two bitplanes:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Two Bitplane Setup for 4 Colors"
-  code="; Setup 2 bitplanes for 4-color graphics
+**Two Bitplane Setup for 4 Colors:**
+
+```assembly
+; Setup 2 bitplanes for 4-color graphics
 MOVE.L #$00DFF000, A0        ; Custom chip base
 
 ; Bitplane memory layout
@@ -218,18 +215,17 @@ BOTTOM_RIGHT:
     DBF D0, BOTTOM_RIGHT
 
 ; Enable display
-MOVE.W #$8100, $096(A0)      ; Master DMA + bitplane DMA"
-  language="assembly"
-/>
+MOVE.W #$8100, $096(A0)      ; Master DMA + bitplane DMA
+```
 
 ## Understanding Color Combinations
 
 With multiple bitplanes, colors are formed by combining bits:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Color Bit Combinations"
-  code="; Demonstration of how bitplanes combine to form colors
+**Color Bit Combinations:**
+
+```assembly
+; Demonstration of how bitplanes combine to form colors
 ; With 2 bitplanes, we get 4 possible color combinations:
 
 ; Bitplane 2 | Bitplane 1 | Color Index | Color Register
@@ -282,18 +278,17 @@ COLOR3_LINES:
     MOVE.L #$FFFFFFFF, 4(A2)
     ADD.L #40, A1
     ADD.L #40, A2
-    DBF D0, COLOR3_LINES"
-  language="assembly"
-/>
+    DBF D0, COLOR3_LINES
+```
 
 ## Simple Pixel Plotting
 
 Let's create a function to plot individual pixels:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Pixel Plotting Function"
-  code="; Pixel plotting function for 2-bitplane display
+**Pixel Plotting Function:**
+
+```assembly
+; Pixel plotting function for 2-bitplane display
 ; Input: D0 = X coordinate (0-319)
 ;        D1 = Y coordinate (0-199)  
 ;        D2 = Color (0-3)
@@ -361,9 +356,8 @@ PIXEL_TEST:
     MOVE.W #160, D0          ; X = center
     MOVE.W #150, D1          ; Y = 150
     MOVE.W #3, D2            ; Color 3 (yellow)
-    BSR PLOT_PIXEL"
-  language="assembly"
-/>
+    BSR PLOT_PIXEL
+```
 
 ## Drawing Lines
 
@@ -436,10 +430,10 @@ LINE_TEST:
 
 Building on our line functions, let's draw rectangles:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Rectangle Drawing Function"
-  code="; Rectangle drawing function
+**Rectangle Drawing Function:**
+
+```assembly
+; Rectangle drawing function
 ; Input: D0 = left X, D1 = top Y, D2 = right X, D3 = bottom Y
 ;        D4 = color
 
@@ -500,18 +494,17 @@ RECTANGLE_TEST:
     MOVE.W #200, D2          ; Right X
     MOVE.W #125, D3          ; Bottom Y
     MOVE.W #1, D4            ; Color (blue)
-    BSR DRAW_RECTANGLE"
-  language="assembly"
-/>
+    BSR DRAW_RECTANGLE
+```
 
 ## Practice Exercise: Simple Graphics Demo
 
 Create a comprehensive graphics demonstration:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Complete Graphics Demo"
-  code="; Complete graphics demonstration program
+**Practice: Complete Graphics Demo:**
+
+```assembly
+; Complete graphics demonstration program
 
 GRAPHICS_DEMO:
     ; Initialize display system
@@ -607,9 +600,8 @@ CLEAR_MEMORY:
 
 DEMO_LOOP:
     ; Keep display running
-    BRA DEMO_LOOP"
-  language="assembly"
-/>
+    BRA DEMO_LOOP
+```
 
 ## What You've Learned
 

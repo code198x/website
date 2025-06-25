@@ -594,10 +594,10 @@ ErrorCode:       .byte 0
 DriveErrorFlag:  .byte 0
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="File Error Handling System"
-  code="; Comprehensive file error handling demonstration
+**File Error Handling System:**
+
+```assembly
+; Comprehensive file error handling demonstration
 ; Shows professional error management patterns
 
 ErrorHandlingDemo:
@@ -738,28 +738,8 @@ SummaryDone:
 
 ; Error messages
 FileNotFoundText:
-    .text \"ERROR: FILE NOT FOUND\", 13, 0
-
-DeviceErrorText:
-    .text \"ERROR: DEVICE NOT PRESENT\", 13, 0
-
-GenericErrorText:
-    .text \"ERROR: UNKNOWN FILE ERROR\", 13, 0
-
-SuccessText:
-    .text \"SUCCESS: OPERATION COMPLETED\", 13, 0
-
-SummaryText:
-    .text \"TOTAL ERRORS: \", 0
-
-; Variables
-ErrorCount:     .byte 0
-LastError:      .byte 0
-
-; Run the error handling demonstration
-JSR ErrorHandlingDemo"
-  language="assembly"
-/>
+    .text \
+```
 
 ## Data Serialization and File Formats
 

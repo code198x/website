@@ -705,10 +705,10 @@ CheckLength:    .byte 0
 CompareLength:  .byte 0
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Memory Inspection and Debugging Tools"
-  code="; Memory inspection and debugging tools demonstration
+**Memory Inspection and Debugging Tools:**
+
+```assembly
+; Memory inspection and debugging tools demonstration
 ; Shows techniques for examining program state and data
 
 MemoryDebuggingDemo:
@@ -947,9 +947,8 @@ Operation2Result:   .byte 0
 Operation3Result:   .byte 0
 
 ; Run the memory debugging demonstration
-JSR MemoryDebuggingDemo"
-  language="assembly"
-/>
+JSR MemoryDebuggingDemo
+```
 
 ## Error Detection and Prevention
 
@@ -1139,10 +1138,10 @@ ReportResults:
 TestData: .byte $42
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Error Prevention and Testing Framework"
-  code="; Error prevention and testing framework demonstration
+**Error Prevention and Testing Framework:**
+
+```assembly
+; Error prevention and testing framework demonstration
 ; Shows defensive programming and systematic testing
 
 ErrorPreventionDemo:
@@ -1455,9 +1454,8 @@ ValidationCount:    .byte 0
 OverallResult:      .byte 0
 
 ; Run the error prevention demonstration
-JSR ErrorPreventionDemo"
-  language="assembly"
-/>
+JSR ErrorPreventionDemo
+```
 
 ## Debugging Tools and Techniques
 
@@ -1728,10 +1726,10 @@ Create a comprehensive debugging system that demonstrates:
 4. Defensive programming techniques
 5. Error recovery and graceful degradation
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Comprehensive Debugging System"
-  code="; Complete debugging system demonstration
+**Practice Exercise - Comprehensive Debugging System:**
+
+```assembly
+; Complete debugging system demonstration
 ; Comprehensive error handling and debugging framework
 
 ComprehensiveDebuggingDemo:
@@ -2211,9 +2209,8 @@ OverallHealth:      .byte 0
 ReportReady:        .byte 0
 
 ; Run the comprehensive debugging demonstration
-JSR ComprehensiveDebuggingDemo"
-  language="assembly"
-/>
+JSR ComprehensiveDebuggingDemo
+```
 
 ## Debugging Best Practices
 

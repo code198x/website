@@ -125,10 +125,10 @@ PlotBit:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Basic Pixel Plotting"
-  code="; Demonstrate basic pixel plotting on ZX Spectrum
+**Basic Pixel Plotting:**
+
+```assembly
+; Demonstrate basic pixel plotting on ZX Spectrum
 ; Plot pixels at various coordinates
 
 DISPLAY_FILE    EQU 16384   ; Screen memory start
@@ -273,9 +273,8 @@ SquareLeft:
     
     ; Return success indicator
     LD B, 255
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Color Attributes System
 
@@ -331,10 +330,10 @@ SetAttribute:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Color Attributes Demo"
-  code="; Demonstrate color attribute handling
+**Color Attributes Demo:**
+
+```assembly
+; Demonstrate color attribute handling
 ; Create colorful patterns using the attribute system
 
 ATTR_FILE       EQU 22528   ; Attribute memory start
@@ -487,9 +486,8 @@ GradientSet:
     
     ; Return with pattern indicator
     LD B, 200
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Pixel Manipulation Techniques
 
@@ -609,10 +607,10 @@ MaskLoop:
     RET                 ; A = pixel mask
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Pixel Manipulation Demo"
-  code="; Advanced pixel manipulation demonstration
+**Pixel Manipulation Demo:**
+
+```assembly
+; Advanced pixel manipulation demonstration
 ; Shows reading, clearing, and XOR operations
 
 DISPLAY_FILE    EQU 16384
@@ -785,9 +783,8 @@ ClearLoop:
     JR NZ, ClearLoop
     
     LD B, 250           ; Success indicator
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Practical Graphics Programming Tips
 
@@ -839,10 +836,10 @@ LastByte:
 
 Build a basic drawing tool that demonstrates all concepts:
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Integration Exercise - Simple Drawing Tool"
-  code="; Simple drawing tool demonstrating all pixel concepts
+**Integration Exercise - Simple Drawing Tool:**
+
+```assembly
+; Simple drawing tool demonstrating all pixel concepts
 ; Use a moving cursor to draw patterns
 
 DISPLAY_FILE    EQU 16384
@@ -1089,9 +1086,8 @@ BoxTop:
     CP 150
     JR NZ, BoxTop
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Key Takeaways
 

@@ -71,10 +71,10 @@ Bitmap modes are enabled through VIC-II control registers:
 | 1 | 0 | **Hi-Res Bitmap** | 320×200 | 2 colors per 8×8 block |
 | 1 | 1 | **Multicolor Bitmap** | 160×200 | 4 colors per 4×8 block |
 
-<CodeRunner 
-  system="commodore-64"
-  title="Enabling Bitmap Mode"
-  code="; Enable hi-resolution bitmap mode
+**Enabling Bitmap Mode:**
+
+```assembly
+; Enable hi-resolution bitmap mode
 ; Clear screen and switch to bitmap graphics
 
 ; Enable bitmap mode (BMM=1, MCM=0)
@@ -90,9 +90,8 @@ STA $D016       ; Hi-res bitmap mode active
 LDA $D018       ; Memory control register
 AND #%00000111  ; Clear bitmap pointer bits
 ORA #%00001000  ; Set bitmap at $2000
-STA $D018       ; Bitmap memory configured"
-  language="assembly"
-/>
+STA $D018       ; Bitmap memory configured
+```
 
 ## Hi-Resolution Bitmap Mode
 
@@ -182,10 +181,10 @@ BitMaskTable:
     .byte %00001000, %00000100, %00000010, %00000001
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Bitmap Pixel Addressing"
-  code="; Simplified pixel setting for demonstration
+**Bitmap Pixel Addressing:**
+
+```assembly
+; Simplified pixel setting for demonstration
 ; Set individual pixels in bitmap mode
 
 ; Set bitmap memory at $2000
@@ -217,9 +216,8 @@ LDA #%00010000  ; White foreground (bit 3-0), black background (bit 7-4)
 STA $0400       ; Color for first 8x8 block
 
 LDA #%00100000  ; Red foreground, black background
-STA $0401       ; Color for second block"
-  language="assembly"
-/>
+STA $0401       ; Color for second block
+```
 
 ## Multicolor Bitmap Mode
 
@@ -268,10 +266,10 @@ SetMulticolorColors:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Multicolor Bitmap Mode"
-  code="; Enable and demonstrate multicolor bitmap mode
+**Multicolor Bitmap Mode:**
+
+```assembly
+; Enable and demonstrate multicolor bitmap mode
 
 EnableMulticolorMode:
     ; Enable bitmap mode
@@ -319,9 +317,8 @@ SetupMulticolorDemo:
     RTS
 
 ; Run the demo
-JSR SetupMulticolorDemo"
-  language="assembly"
-/>
+JSR SetupMulticolorDemo
+```
 
 ## Drawing Algorithms
 
@@ -427,10 +424,10 @@ DeltaX: .byte 0
 DeltaY: .byte 0
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic Drawing Algorithms"
-  code="; Simple drawing demonstration
+**Basic Drawing Algorithms:**
+
+```assembly
+; Simple drawing demonstration
 ; Draw basic shapes and patterns
 
 ; Setup bitmap mode for drawing
@@ -497,9 +494,8 @@ DrawPatterns:
     RTS
 
 ; Run the drawing demo
-JSR DrawPatterns"
-  language="assembly"
-/>
+JSR DrawPatterns
+```
 
 ## Color Management
 
@@ -602,10 +598,10 @@ DelayLoop:
 BaseColor: .byte 0
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Color Management and Effects"
-  code="; Demonstrate colour management and visual effects
+**Color Management and Effects:**
+
+```assembly
+; Demonstrate colour management and visual effects
 
 ; Color palette demonstration
 ColorPaletteDemo:
@@ -702,9 +698,8 @@ DelayAnim:
     JMP AnimLoop
 
 ; Run colour demonstrations
-JSR ColorPaletteDemo"
-  language="assembly"
-/>
+JSR ColorPaletteDemo
+```
 
 ## Advanced Graphics Techniques
 
@@ -800,10 +795,10 @@ Create a comprehensive graphics demonstration that showcases:
 4. Animation and visual effects
 5. Integration with sprites
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Complete Graphics Demo"
-  code="; Comprehensive bitmap graphics demonstration
+**Practice Exercise - Complete Graphics Demo:**
+
+```assembly
+; Comprehensive bitmap graphics demonstration
 ; Shows multiple modes, drawing, and effects
 
 GraphicsDemo:
@@ -949,9 +944,8 @@ DelayL2:
     RTS
 
 ; Start the comprehensive demo
-JSR GraphicsDemo"
-  language="assembly"
-/>
+JSR GraphicsDemo
+```
 
 ## Bitmap Graphics Best Practices
 

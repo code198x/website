@@ -93,10 +93,10 @@ Bit 4: Low-pass filter enable
 Bits 3-0: Learn volume (0-15)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic Filter Programming"
-  code="; Demonstrate SID filter effects
+**Basic Filter Programming:**
+
+```assembly
+; Demonstrate SID filter effects
 ; Apply low-pass filter with resonance to sawtooth wave
 
 FilterDemo:
@@ -164,9 +164,8 @@ FDWait:
     RTS
 
 ; Run filter demonstration
-JSR FilterDemo"
-  language="assembly"
-/>
+JSR FilterDemo
+```
 
 ## Advanced Filter Programming
 
@@ -287,10 +286,10 @@ RDWait:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Advanced Filter Techniques"
-  code="; Explore advanced filter programming
+**Advanced Filter Techniques:**
+
+```assembly
+; Explore advanced filter programming
 ; Combines multiple filter modes and resonance effects
 
 AdvancedFilters:
@@ -401,9 +400,8 @@ LDWait2:
     RTS
 
 ; Run advanced filter demo
-JSR AdvancedFilters"
-  language="assembly"
-/>
+JSR AdvancedFilters
+```
 
 ## Pulse Width Modulation (PWM)
 
@@ -511,10 +509,10 @@ PWMWait:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Pulse Width Modulation Programming"
-  code="; Demonstrate pulse width modulation effects
+**Pulse Width Modulation Programming:**
+
+```assembly
+; Demonstrate pulse width modulation effects
 ; Shows static and animated pulse width control
 
 PulseWidthExplorer:
@@ -603,9 +601,8 @@ AnimWait:
     RTS
 
 ; Run pulse width modulation demo
-JSR PulseWidthExplorer"
-  language="assembly"
-/>
+JSR PulseWidthExplorer
+```
 
 ## Ring Modulation
 
@@ -746,10 +743,10 @@ QSWait:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Ring Modulation and Sync Effects"
-  code="; Demonstrate advanced modulation techniques
+**Ring Modulation and Sync Effects:**
+
+```assembly
+; Demonstrate advanced modulation techniques
 ; Ring modulation and oscillator sync
 
 ModulationDemo:
@@ -892,9 +889,8 @@ LPWait2:
     RTS
 
 ; Run modulation demonstrations
-JSR ModulationDemo"
-  language="assembly"
-/>
+JSR ModulationDemo
+```
 
 ## Advanced Synthesis Techniques
 

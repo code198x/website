@@ -78,10 +78,10 @@ LD B, $7F       ; B = 127 (bit 7 = 0), Sign flag is CLEAR
 
 This flag has dual purposes depending on the operation performed.
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Z80 Status Flags Demonstration"
-  code="; Demonstration of Z80 status flags
+**Z80 Status Flags Demonstration:**
+
+```assembly
+; Demonstration of Z80 status flags
 ; This program shows how different operations affect the flags
 
 StatusFlagsDemo:
@@ -121,9 +121,8 @@ StatusFlagsDemo:
     ; C flag = 0 (10 ≥ 5, no borrow needed)
     ; S flag = 0 (10 - 5 = 5, positive result)
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Conditional Jump Instructions
 
@@ -141,10 +140,10 @@ The real power of status flags comes when you use them to make decisions. The Z8
 - `JR M, label` - Jump if Sign flag is set (result is minus/negative)
 - `JR P, label` - Jump if Sign flag is clear (result is plus/positive)
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Conditional Jumps Demo"
-  code="; Demonstration of Z80 conditional jump instructions
+**Conditional Jumps Demo:**
+
+```assembly
+; Demonstration of Z80 conditional jump instructions
 ; This program makes decisions based on flag states
 
 ConditionalJumpsDemo:
@@ -195,9 +194,8 @@ EndDemo:
     LD ($4001), C       ; Show carry test result
     LD ($4002), D       ; Show sign test result
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Using CP (Compare) for Decision Making
 
@@ -211,10 +209,10 @@ CP B                ; Compare A with B register
 
 CP performs A - operand but doesn't store the result - it only sets the flags!
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Compare and Decision Making"
-  code="; Using CP instruction for comparisons and decision making
+**Compare and Decision Making:**
+
+```assembly
+; Using CP instruction for comparisons and decision making
 ; This program creates a simple number classification system
 
 CompareDemo:
@@ -279,9 +277,8 @@ BelowMaximum:
     LD ($4002), D
     
 EndDemo:
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Building Smart Loops with Flags
 
@@ -310,10 +307,10 @@ Found:
     ; Found the value!
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Smart Loops with Flags"
-  code="; Demonstration of using flags in loops
+**Smart Loops with Flags:**
+
+```assembly
+; Demonstration of using flags in loops
 ; This program shows practical loop patterns
 
 SmartLoopsDemo:
@@ -393,9 +390,8 @@ EndDemo:
 
 ; Test data for search example
 TestData:
-    DB $41, $42, $43, $58, $59, $5A, $00  ; 'ABC' + 'X' + 'YZ' + null"
-  language="assembly"
-/>
+    DB $41, $42, $43, $58, $59, $5A, $00  ; 'ABC' + 'X' + 'YZ' + null
+```
 
 ## Advanced Flag Combinations
 
@@ -420,10 +416,10 @@ JR Z, BitClear      ; Jump if bit was 0
 ; Bit was 1
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Advanced Flag Usage"
-  code="; Advanced techniques using Z80 flags
+**Advanced Flag Usage:**
+
+```assembly
+; Advanced techniques using Z80 flags
 ; This program demonstrates complex decision making
 
 AdvancedFlagsDemo:
@@ -503,9 +499,8 @@ EvenParity:
 ParityResult:
     LD ($4004), H       ; Display parity result
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Common Flag Patterns
 

@@ -707,10 +707,10 @@ GetObjectAddress:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Advanced Programming Patterns"
-  code="; Advanced programming patterns integrating all concepts
+**Advanced Programming Patterns:**
+
+```assembly
+; Advanced programming patterns integrating all concepts
 ; This demonstrates professional 6502 programming techniques
 
 AdvancedPatternsDemo:
@@ -965,9 +965,8 @@ ScreenOffset:    .byte 0
 InputFlags:      .byte %00000011  ; Simulate left and right pressed
 
 ; Zero page variables would be defined here in a real program
-; For this demo, we're using absolute addressing"
-  language="assembly"
-/>
+; For this demo, we're using absolute addressing
+```
 
 ## Professional Code Organization
 
@@ -1021,10 +1020,10 @@ DivideError:
 
 ## Comprehensive Integration Exercise
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Complete Integration Challenge"
-  code="; Complete Integration Challenge: NES Game Database System
+**Complete Integration Challenge:**
+
+```assembly
+; Complete Integration Challenge: NES Game Database System
 ; Uses ALL concepts learned in Data Manipulation Fundamentals
 
 NESGameDatabase:
@@ -1320,9 +1319,8 @@ UpdateResult:    .byte 0
 DeleteResult:    .byte 0
 
 ; Execute the complete database system
-; JSR NESGameDatabase"
-  language="assembly"
-/>
+; JSR NESGameDatabase
+```
 
 ## What You've Learned
 

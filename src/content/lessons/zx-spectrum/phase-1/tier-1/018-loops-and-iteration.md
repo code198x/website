@@ -68,10 +68,10 @@ LoopStart:
 - Faster execution (8 cycles vs 12 cycles)
 - Automatically handles counter and condition
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Basic DJNZ Loop"
-  code="; Simple counting loop using DJNZ
+**Basic DJNZ Loop:**
+
+```assembly
+; Simple counting loop using DJNZ
 LD HL, $6000        ; Point to memory area
 LD B, 10            ; Loop 10 times
 LD A, 0             ; Starting value
@@ -94,9 +94,8 @@ ClearLoop:
     INC HL          ; Next screen location
     DJNZ ClearLoop  ; Continue for 256 bytes
 
-; This clears the first 256 bytes of screen memory"
-  language="assembly"
-/>
+; This clears the first 256 bytes of screen memory
+```
 
 ### DJNZ Range Limitations
 
@@ -148,10 +147,10 @@ FoundZero:
     ; String processing complete
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Different Loop Types"
-  code="; Demonstration of counting vs conditional loops
+**Different Loop Types:**
+
+```assembly
+; Demonstration of counting vs conditional loops
 
 ; 1. Counting loop: Initialize array with pattern
 LD HL, $6100        ; Array location
@@ -201,9 +200,8 @@ FoundInLimit:
     ; C contains position where zero was found
 
 SearchDone:
-    ; Search complete"
-  language="assembly"
-/>
+    ; Search complete
+```
 
 ## Nested Loops
 
@@ -260,10 +258,10 @@ ClearColumnLoop:
     DJNZ ClearRowLoop
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Nested Loops Example"
-  code="; Create a pattern using nested loops
+**Nested Loops Example:**
+
+```assembly
+; Create a pattern using nested loops
 ; Draw a 4×4 grid of different patterns
 
 LD IX, $6200        ; Grid storage area
@@ -313,9 +311,8 @@ InnerDJNZ:
     JR NZ, InnerDJNZ
     
     POP BC
-    DJNZ OuterDJNZ"
-  language="assembly"
-/>
+    DJNZ OuterDJNZ
+```
 
 ## Loop Optimization Techniques
 
@@ -435,10 +432,10 @@ FilterLoop:
 PrevSample: DB 0
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practical Loop Applications"
-  code="; Game sprite animation using loops
+**Practical Loop Applications:**
+
+```assembly
+; Game sprite animation using loops
 
 ; Sprite animation data (4 frames, 8 bytes each)
 SpriteFrames:
@@ -502,9 +499,8 @@ NoCarry:
     RET
 
 ; Call AnimateSprite repeatedly in your main loop
-; to see the sprite animate through all 4 frames"
-  language="assembly"
-/>
+; to see the sprite animate through all 4 frames
+```
 
 ## Advanced Loop Patterns
 
@@ -618,10 +614,10 @@ Create a comprehensive loop-based system that demonstrates:
 4. An animation loop with timing control
 5. Performance optimization techniques
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Complete Loop System"
-  code="; Comprehensive loop demonstration: Pattern generator and processor
+**Practice Exercise - Complete Loop System:**
+
+```assembly
+; Comprehensive loop demonstration: Pattern generator and processor
 
 ; 1. Initialize data with counting loop
 InitData:
@@ -741,9 +737,8 @@ ProcessRest:
     DJNZ ProcessRest    ; Continue
     RET
 
-; This system demonstrates all major loop types and patterns!"
-  language="assembly"
-/>
+; This system demonstrates all major loop types and patterns!
+```
 
 ## What You've Learned
 

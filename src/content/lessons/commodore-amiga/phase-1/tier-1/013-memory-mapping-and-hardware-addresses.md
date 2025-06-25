@@ -54,10 +54,10 @@ $F80000-$FFFFFF: Extended ROM space
 
 Chip RAM is special because custom chips can access it directly via DMA:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Understanding Chip RAM"
-  code="; Chip RAM starts at $000000
+**Understanding Chip RAM:**
+
+```assembly
+; Chip RAM starts at $000000
 MOVE.L #$00000000, A0        ; Start of Chip RAM
 
 ; Common Chip RAM areas for graphics
@@ -73,18 +73,17 @@ MOVE.W #$5555, 4(A1)         ; Pattern continues
 ; Store audio sample in Chip RAM  
 MOVE.B #$80, (A2)            ; First sample byte
 MOVE.B #$7F, 1(A2)           ; Second sample byte
-MOVE.B #$00, 2(A2)           ; Third sample byte"
-  language="assembly"
-/>
+MOVE.B #$00, 2(A2)           ; Third sample byte
+```
 
 ## Fast RAM - CPU Processing Memory
 
 Fast RAM is only accessible by the 68000 CPU:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Working with Fast RAM"
-  code="; Fast RAM typically starts around $C00000 (if present)
+**Working with Fast RAM:**
+
+```assembly
+; Fast RAM typically starts around $C00000 (if present)
 MOVE.L #$00C00000, A0        ; Fast RAM area (example)
 
 ; Fast RAM is perfect for:
@@ -98,9 +97,8 @@ MOVE.L #1000, (A0)           ; Store large number
 MOVE.L #2000, 4(A0)          ; Another large number
 MOVE.L (A0), D0              ; Load first number
 MULU.L 4(A0), D0             ; Multiply (32-bit result)
-MOVE.L D0, 8(A0)             ; Store result in Fast RAM"
-  language="assembly"
-/>
+MOVE.L D0, 8(A0)             ; Store result in Fast RAM
+```
 
 ## Graphics Memory Organization
 
@@ -109,10 +107,10 @@ Graphics data must be in Chip RAM for the custom chips to access it:
 ### Bitplane Memory Layout
 Each bitplane is a separate memory area containing one bit per pixel:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Bitplane Memory Organization"
-  code="; Setup bitplane pointers for 320x200, 4 bitplanes
+**Bitplane Memory Organization:**
+
+```assembly
+; Setup bitplane pointers for 320x200, 4 bitplanes
 MOVE.L #$00DFF000, A0        ; Custom chip base
 
 ; Calculate bitplane size: 320x200 = 64000 pixels
@@ -131,18 +129,17 @@ ADD.L #8000, A1
 MOVE.L A1, $0EC(A0)          ; BPL4PT - Bitplane 4 pointer
 
 ; Configure display for 4 bitplanes
-MOVE.W #$4200, $100(A0)      ; BPLCON0: 4 bitplanes, color enable"
-  language="assembly"
-/>
+MOVE.W #$4200, $100(A0)      ; BPLCON0: 4 bitplanes, color enable
+```
 
 ## Audio Memory Requirements
 
 Audio samples must also be in Chip RAM:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Audio Sample Memory Allocation"
-  code="; Allocate audio sample areas in Chip RAM
+**Audio Sample Memory Allocation:**
+
+```assembly
+; Allocate audio sample areas in Chip RAM
 MOVE.L #$00040000, A0        ; Audio sample base area
 
 ; Channel 0 sample (1000 bytes)
@@ -165,18 +162,17 @@ MOVE.L #$00DFF000, A0        ; Custom chip base
 MOVE.L A1, $0A0(A0)          ; AUD0LC - Channel 0 location
 MOVE.L A2, $0B0(A0)          ; AUD1LC - Channel 1 location
 MOVE.L A3, $0C0(A0)          ; AUD2LC - Channel 2 location  
-MOVE.L A4, $0D0(A0)          ; AUD3LC - Channel 3 location"
-  language="assembly"
-/>
+MOVE.L A4, $0D0(A0)          ; AUD3LC - Channel 3 location
+```
 
 ## ROM and System Areas
 
 The Amiga's ROM contains the operating system (Kickstart):
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Accessing ROM and System Areas"
-  code="; ROM area starts at $F80000 (varies by Amiga model)
+**Accessing ROM and System Areas:**
+
+```assembly
+; ROM area starts at $F80000 (varies by Amiga model)
 MOVE.L #$00F80000, A0        ; ROM base address
 
 ; Read ROM identification
@@ -190,9 +186,8 @@ MOVE.L 4(A1), D3             ; Initial program counter
 
 ; Exception vectors
 MOVE.L 8(A1), D4             ; Bus error vector
-MOVE.L 12(A1), D5            ; Address error vector"
-  language="assembly"
-/>
+MOVE.L 12(A1), D5            ; Address error vector
+```
 
 ## Memory Allocation Strategies
 
@@ -211,10 +206,10 @@ Effective memory management requires understanding what goes where:
 3. **Stack** - Can be in Fast RAM
 4. **Temporary buffers** - Ideal for Fast RAM
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Smart Memory Allocation Strategy"
-  code="; Memory allocation strategy example
+**Smart Memory Allocation Strategy:**
+
+```assembly
+; Memory allocation strategy example
 
 ; Chip RAM allocations (required by hardware)
 MOVE.L #$00020000, A0        ; Graphics area base
@@ -235,18 +230,17 @@ MOVE.L A5, A7                ; A7 = Work buffer 2
 ; Example: Process data in Fast RAM, copy to Chip RAM for display
 MOVE.W #$FFFF, (A6)          ; Process in Fast RAM
 MOVE.W (A6), D0              ; Read processed data
-MOVE.W D0, (A1)              ; Copy to Chip RAM for display"
-  language="assembly"
-/>
+MOVE.W D0, (A1)              ; Copy to Chip RAM for display
+```
 
 ## Custom Chip Register Space
 
 The custom chips occupy a specific memory range:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Custom Chip Memory Map"
-  code="; Custom chip registers: $DFF000 - $DFF1FF
+**Custom Chip Memory Map:**
+
+```assembly
+; Custom chip registers: $DFF000 - $DFF1FF
 MOVE.L #$00DFF000, A0        ; Base address
 
 ; Major register groups:
@@ -262,18 +256,17 @@ MOVE.W $002(A0), D0          ; VPOSR (display status)
 MOVE.W $080(A0), D1          ; COP1LC (copper control)
 MOVE.W $100(A0), D2          ; BPLCON0 (bitplane control)
 MOVE.W $140(A0), D3          ; SPR0POS (sprite position)
-MOVE.W $180(A0), D4          ; COLOR00 (background color)"
-  language="assembly"
-/>
+MOVE.W $180(A0), D4          ; COLOR00 (background color)
+```
 
 ## Memory Detection and Sizing
 
 Programs often need to detect available memory:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Basic Memory Detection"
-  code="; Simple memory detection routine
+**Basic Memory Detection:**
+
+```assembly
+; Simple memory detection routine
 MOVE.L #$00000000, A0        ; Start of memory
 
 ; Find end of Chip RAM by testing memory
@@ -293,18 +286,17 @@ MEMORY_TEST_LOOP:
 MEMORY_TEST_DONE:
     ; A1 now points to end of Chip RAM
     SUB.L A0, A1             ; A1 = size of Chip RAM
-    MOVE.L A1, D2            ; D2 = Chip RAM size in bytes"
-  language="assembly"
-/>
+    MOVE.L A1, D2            ; D2 = Chip RAM size in bytes
+```
 
 ## Stack and System Memory
 
 The stack typically resides in upper memory:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Stack Placement Strategy"
-  code="; Setup stack in appropriate memory area
+**Stack Placement Strategy:**
+
+```assembly
+; Setup stack in appropriate memory area
 ; If Fast RAM available, use it for stack
 MOVE.L #$00C80000, A7        ; Stack in Fast RAM (example)
 
@@ -318,18 +310,17 @@ MOVE.L #$00C80000, A7        ; Stack in Fast RAM (example)
 MOVE.W #$1234, -(A7)         ; Push test value
 MOVE.W #$5678, -(A7)         ; Push another value
 MOVE.W (A7)+, D0             ; Pop first (gets $5678)
-MOVE.W (A7)+, D1             ; Pop second (gets $1234)"
-  language="assembly"
-/>
+MOVE.W (A7)+, D1             ; Pop second (gets $1234)
+```
 
 ## Memory-Mapped I/O Integration
 
 The memory map includes various I/O areas:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Memory-Mapped I/O Access"
-  code="; Different I/O areas in memory map
+**Memory-Mapped I/O Access:**
+
+```assembly
+; Different I/O areas in memory map
 
 ; Custom chips ($DFF000)
 MOVE.L #$00DFF000, A0
@@ -346,18 +337,17 @@ MOVE.L (A2), D1              ; Read RTC data
 
 ; Expansion card areas vary by configuration
 MOVE.L #$00E90000, A3        ; Example expansion area
-MOVE.W (A3), D2              ; Read expansion data"
-  language="assembly"
-/>
+MOVE.W (A3), D2              ; Read expansion data
+```
 
 ## Practice Exercise: Memory Management System
 
 Create a simple memory management system that allocates areas for different purposes:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Practice: Memory Manager"
-  code="; Simple memory management system
+**Practice: Memory Manager:**
+
+```assembly
+; Simple memory management system
 
 ; Memory manager state
 CHIP_RAM_BASE    EQU $00020000    ; Start allocating here
@@ -411,9 +401,8 @@ ALLOCATE_FAST_RAM:
     ; In real system, would check Fast RAM limits
     RTS
 
-END_MEMORY_MANAGER:"
-  language="assembly"
-/>
+END_MEMORY_MANAGER:
+```
 
 ## Memory Performance Considerations
 
@@ -435,10 +424,10 @@ Different memory types have different performance characteristics:
 
 Some operations require specific memory alignment:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Memory Alignment Examples"
-  code="; Alignment requirements for different data types
+**Memory Alignment Examples:**
+
+```assembly
+; Alignment requirements for different data types
 
 ; Word alignment (even addresses)
 MOVE.L #$00020000, A0
@@ -457,9 +446,8 @@ MOVE.L A2, $0E0(A0)          ; Setup bitplane pointer
 
 ; Audio sample alignment (any boundary OK for 8-bit)
 MOVE.L #$00040000, A3        ; Audio samples
-MOVE.B #$80, (A3)            ; 8-bit samples don't need alignment"
-  language="assembly"
-/>
+MOVE.B #$80, (A3)            ; 8-bit samples don't need alignment
+```
 
 ## What You've Learned
 

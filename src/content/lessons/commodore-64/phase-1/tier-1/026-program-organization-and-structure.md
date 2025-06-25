@@ -211,10 +211,10 @@ GetBlockAddress:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Modular Program Structure Demo"
-  code="; Professional program organisation demonstration
+**Modular Program Structure Demo:**
+
+```assembly
+; Professional program organisation demonstration
 ; Shows modular structure and clean interfaces
 
 ; ========================================
@@ -556,20 +556,8 @@ ShutdownMemory:
 ; ========================================
 
 ; Text strings
-HealthText:  .text \"HEALTH: \", 0
-ScoreText:   .text \"SCORE: \", 0
-
-; Game variables
-InputState:   .byte 0
-PlayerX:      .byte $80    ; Player X position
-PlayerHealth: .byte $64    ; Player health (100)
-PlayerScore:  .word $0000  ; Player score (16-bit)
-EnemyX:       .byte $40    ; Enemy X position
-
-; Start the modular program demonstration
-JSR MainProgram"
-  language="assembly"
-/>
+HealthText:  .text \
+```
 
 ## Subroutine Libraries and Reusable Modules
 
@@ -1421,10 +1409,10 @@ ActiveEnemies:      .byte 0
 ActiveProjectiles:  .byte 0
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Complete Program Structure Demo"
-  code="; Complete program structure demonstration
+**Complete Program Structure Demo:**
+
+```assembly
+; Complete program structure demonstration
 ; Shows professional organisation and documentation
 
 ; ========================================
@@ -1699,27 +1687,8 @@ ShutdownDone:
 ; ========================================
 
 ; Program constants
-ProgramTitle:   .text \"STRUCTURED PROGRAMMING DEMO\", 0
-FrameText:      .text \"FRAME: \", 0
-PlayerText:     .text \"PLAYER X: \", 0
-ShutdownText:   .text \"PROGRAM TERMINATED\", 0
-
-; Program variables
-FrameCounter:   .byte 0     ; Current frame number
-ObjectCount:    .byte 0     ; Number of active objects
-
-; Data structures
-PlayerData:     .res 8      ; Player data (8 bytes)
-ObjectArray:    .res 32     ; Object array (32 bytes)
-
-; ========================================
-; PROGRAM EXECUTION
-; ========================================
-
-; Start the structured program demonstration
-JSR StructuredDemo"
-  language="assembly"
-/>
+ProgramTitle:   .text \
+```
 
 ## Advanced Organization Patterns
 

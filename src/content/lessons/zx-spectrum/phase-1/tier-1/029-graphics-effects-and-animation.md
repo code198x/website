@@ -130,10 +130,10 @@ DitherPatterns:
 
 ### Drawing Gradients
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Gradient Effects"
-  code="; Gradient drawing demonstration
+**Gradient Effects:**
+
+```assembly
+; Gradient drawing demonstration
 ; Shows various gradient techniques
 
 DISPLAY_FILE    EQU 16384
@@ -336,9 +336,8 @@ DrawVGradient:
 DrawRadialGradient:
     ; Use distance from center to select pattern
     ; (Implementation abbreviated)
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Transparency Simulation
 
@@ -418,10 +417,10 @@ Mask1: DB 0
 Mask2: DB 0
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Transparency Effects"
-  code="; Transparency simulation demonstration
+**Transparency Effects:**
+
+```assembly
+; Transparency simulation demonstration
 ; Shows pattern-based transparency
 
 DISPLAY_FILE    EQU 16384
@@ -629,9 +628,8 @@ NextBack:
     CALL DrawTransRect
     
     LD B, 255           ; Success
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Animation Techniques
 
@@ -680,10 +678,10 @@ GetBuffer2:
 
 ### Sprite Animation
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Sprite Animation"
-  code="; Sprite animation system
+**Sprite Animation:**
+
+```assembly
+; Sprite animation system
 ; Demonstrates smooth character movement
 
 DISPLAY_FILE    EQU 16384
@@ -920,9 +918,8 @@ DelayLoop:
     DJNZ AnimLoop
     
     LD B, 255           ; Success
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Particle Effects
 
@@ -1061,10 +1058,10 @@ NextParticle:
 
 ### Screen Wipe Effects
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Visual Transitions"
-  code="; Screen transition effects
+**Visual Transitions:**
+
+```assembly
+; Screen transition effects
 ; Various wipe and fade effects
 
 DISPLAY_FILE    EQU 16384
@@ -1279,9 +1276,8 @@ Random:
 
 PlotPixel:
     ; (Standard implementation)
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Performance Optimization
 
@@ -1333,10 +1329,10 @@ UpdateDirtyOnly:
 
 ## Complete Effects System
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complete Effects System"
-  code="; Integrated effects demonstration
+**Complete Effects System:**
+
+```assembly
+; Integrated effects demonstration
 ; Combines gradients, transparency, animation, and particles
 
 DISPLAY_FILE    EQU 16384
@@ -1478,9 +1474,8 @@ EffectsDemo:
     ; Would display 'Effects Complete!'
     
     LD B, 255
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Key Takeaways
 
