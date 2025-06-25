@@ -935,10 +935,10 @@ CurrentEffectPriority: .byte 0
 EffectTimer: .byte 0
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Advanced Multimedia Integration Exercise"
-  code="; Advanced multimedia programming exercise
+**Advanced Multimedia Integration Exercise:**
+
+```assembly
+; Advanced multimedia programming exercise
 ; Combines all I/O concepts into a sophisticated demo
 
 AdvancedMultimediaDemo:
@@ -1337,9 +1337,8 @@ AdvancedFreqHi:
     .byte $48, $50, $5A, $60, $6E, $7C, $8C, $90
 
 ; Start the advanced multimedia demonstration
-JSR AdvancedMultimediaDemo"
-  language="assembly"
-/>
+JSR AdvancedMultimediaDemo
+```
 
 ## Professional I/O Programming Best Practices
 

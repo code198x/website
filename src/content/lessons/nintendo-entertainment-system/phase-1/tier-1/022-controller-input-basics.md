@@ -904,10 +904,10 @@ Create a comprehensive input system with:
 4. Special move detection (fighting game style)
 5. Configurable button mapping
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Complete Input System"
-  code="; Complete Input System with Advanced Features
+**Practice: Complete Input System:**
+
+```assembly
+; Complete Input System with Advanced Features
 JSR init_complete_input_system
 
 init_complete_input_system:
@@ -1142,9 +1142,8 @@ JSR update_complete_input
 ; Check if special move was detected
 LDA $0540       ; Should be $01 if special move detected
 
-; Complete advanced input system working!"
-  language="assembly"
-/>
+; Complete advanced input system working!
+```
 
 ## What You've Learned
 

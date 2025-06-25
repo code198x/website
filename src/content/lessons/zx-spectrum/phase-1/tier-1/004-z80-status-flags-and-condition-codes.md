@@ -525,10 +525,10 @@ CCF                 ; Complement (flip) carry flag
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Status Flags Practice"
-  code="; Practice Exercise: Number Analysis Program
+**Status Flags Practice:**
+
+```assembly
+; Practice Exercise: Number Analysis Program
 ; Analyze a number and display information about it
 
 PracticeExercise:
@@ -602,9 +602,8 @@ RangeTestDone:
 ; Can you add more tests? Try:
 ; - Multiple of 10?
 ; - Power of 2?
-; - Prime number?"
-  language="assembly"
-/>
+; - Prime number?
+```
 
 ## What You've Learned
 

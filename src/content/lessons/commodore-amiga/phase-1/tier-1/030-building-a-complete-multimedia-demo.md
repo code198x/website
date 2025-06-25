@@ -41,7 +41,7 @@ In this lesson, you've created a complete multimedia demo:
 
 ## Looking Ahead
 
-Next, you'll complete your Phase 1 journey with the final multimedia showcase project, creating the ultimate demonstration of your foundational Amiga programming mastery!
+Next, you'll advance to the final foundational project of Tier 1, creating an impressive demonstration of your growing Amiga programming skills as you continue building expertise throughout Phase 1!
 
 ## Fun Fact
 

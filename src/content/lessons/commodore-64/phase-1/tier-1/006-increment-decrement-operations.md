@@ -333,10 +333,10 @@ INC $0400   ; Changes 'C' to 'D'
 INC $0400   ; Changes 'D' to 'E'
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Simple Character Animation"
-  code="; Animate character at screen position 0
+**Simple Character Animation:**
+
+```assembly
+; Animate character at screen position 0
 LDA #$41    ; Start with 'A'
 STA $0400   ; Display
 
@@ -345,9 +345,8 @@ INC $0400   ; A -> B
 INC $0400   ; B -> C  
 INC $0400   ; C -> D
 INC $0400   ; D -> E
-INC $0400   ; E -> F"
-  language="assembly"
-/>
+INC $0400   ; E -> F
+```
 
 This technique of incrementing screen memory directly creates instant animation!
 

@@ -153,10 +153,10 @@ After CMP A, value:
 - **C = 0**: A is less than the value
 - **N = 1**: The result would be negative (A < value)
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Comparison Flag Results"
-  code="; Test different comparison scenarios
+**Comparison Flag Results:**
+
+```assembly
+; Test different comparison scenarios
 LDA #$50    ; A = 80
 
 ; Test equal values
@@ -169,9 +169,8 @@ CMP #$30    ; A = 80, compare with 48
 
 ; Test A less than value
 CMP #$90    ; A = 80, compare with 144  
-            ; Z=0 (not equal), C=0 (A<144), N=1"
-  language="assembly"
-/>
+            ; Z=0 (not equal), C=0 (A<144), N=1
+```
 
 ## Game Logic with Comparisons
 
@@ -201,10 +200,10 @@ in_bounds:
 done:
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Player Boundary Checking"
-  code="; Setup player at right edge
+**Player Boundary Checking:**
+
+```assembly
+; Setup player at right edge
 LDA #$F5    ; Player X = 245 (past right edge)
 STA $0300   ; Store player position
 
@@ -226,9 +225,8 @@ LDA #$10    ; Clamp to 16
 STA $0300
 
 done:
-; Player is now within screen bounds"
-  language="assembly"
-/>
+; Player is now within screen bounds
+```
 
 ## Multi-Condition Logic
 

@@ -81,10 +81,10 @@ This project will demonstrate:
 - Logical operations for state management
 - Status flags for program flow control
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Complete NES Game Engine Core"
-  code="; Complete NES Game Engine Core
+**Complete NES Game Engine Core:**
+
+```assembly
+; Complete NES Game Engine Core
 ; Demonstrates integration of all 6502 data manipulation concepts
 
 GameEngineCore:
@@ -652,9 +652,8 @@ EnemyPtr        = $30    ; Pointer for enemy data
 EnemyActiveOffset = 0    ; Offset to active flag in enemy structure
 
 ; Execute the complete game engine
-; JSR GameEngineCore"
-  language="assembly"
-/>
+; JSR GameEngineCore
+```
 
 ## Advanced Programming Patterns
 

@@ -1173,10 +1173,10 @@ Create a comprehensive synthesis demonstration showcasing:
 4. Oscillator sync for lead tones
 5. Combination synthesis patch using multiple techniques
 
-<CodeRunner 
-  system="commodore-64"
-  title="Practice Exercise - Advanced Synthesis Showcase"
-  code="; Complete synthesis technique demonstration
+**Practice Exercise - Advanced Synthesis Showcase:**
+
+```assembly
+; Complete synthesis technique demonstration
 ; Showcases all advanced SID features
 
 SynthesisShowcase:
@@ -1414,9 +1414,8 @@ PTWait:
     RTS
 
 ; Start the synthesis showcase
-JSR SynthesisShowcase"
-  language="assembly"
-/>
+JSR SynthesisShowcase
+```
 
 ## Synthesis Best Practices
 

@@ -814,10 +814,10 @@ SetCursor:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Reusable Library Modules Demo"
-  code="; Demonstration of reusable library modules
+**Reusable Library Modules Demo:**
+
+```assembly
+; Demonstration of reusable library modules
 ; Shows how to create and use function libraries
 
 LibraryDemo:
@@ -1028,9 +1028,8 @@ AddResult:      .byte 0
 StringLength1:  .byte 0
 
 ; Run the library demonstration
-JSR LibraryDemo"
-  language="assembly"
-/>
+JSR LibraryDemo
+```
 
 ## Documentation Standards
 

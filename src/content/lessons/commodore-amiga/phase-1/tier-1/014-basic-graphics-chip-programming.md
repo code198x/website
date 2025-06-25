@@ -363,10 +363,10 @@ PIXEL_TEST:
 
 Let's create a simple line drawing function:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Simple Line Drawing"
-  code="; Simple horizontal line drawing function
+**Simple Line Drawing:**
+
+```assembly
+; Simple horizontal line drawing function
 ; Input: D0 = start X, D1 = end X, D2 = Y, D3 = color
 
 DRAW_HORIZONTAL_LINE:
@@ -422,9 +422,8 @@ LINE_TEST:
     MOVE.W #50, D1           ; Start Y
     MOVE.W #150, D2          ; End Y
     MOVE.W #2, D3            ; Color
-    BSR DRAW_VERTICAL_LINE"
-  language="assembly"
-/>
+    BSR DRAW_VERTICAL_LINE
+```
 
 ## Rectangle Drawing
 

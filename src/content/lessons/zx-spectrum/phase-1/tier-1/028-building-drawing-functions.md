@@ -75,10 +75,10 @@ BrushPatterns:
 
 ### Basic Brush Implementation
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Brush System Implementation"
-  code="; Complete brush system for drawing
+**Brush System Implementation:**
+
+```assembly
+; Complete brush system for drawing
 ; Implements multiple brush types and sizes
 
 DISPLAY_FILE    EQU 16384
@@ -474,9 +474,8 @@ PatternLoop:
     JR NZ, PatternLoop
     
     LD B, 255           ; Success
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Pattern and Texture Filling
 

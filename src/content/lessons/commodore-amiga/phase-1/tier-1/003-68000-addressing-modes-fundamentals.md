@@ -445,10 +445,10 @@ The 68000's addressing modes are designed for maximum efficiency:
 - Use displacement for structure members
 - Choose indexed for arrays and tables
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Addressing Mode Efficiency Examples"
-  code="; Demonstration of efficient addressing mode usage
+**Addressing Mode Efficiency Examples:**
+
+```assembly
+; Demonstration of efficient addressing mode usage
 ; Shows optimal patterns for common programming tasks
 
 EfficiencyDemo:
@@ -622,9 +622,8 @@ Node3:
     DC.L    0               ; Null pointer (end of list)
     DC.L    300             ; Data
 
-NodeCount:          DC.L    0"
-  language="assembly"
-/>
+NodeCount:          DC.L    0
+```
 
 ## Practice Exercise
 

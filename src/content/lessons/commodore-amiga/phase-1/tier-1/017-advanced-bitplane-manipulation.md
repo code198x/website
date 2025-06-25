@@ -183,10 +183,10 @@ SetupEHBMode:
 
 Professional graphics require optimized drawing routines:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Optimized Bitplane Drawing Functions"
-  code="; Professional bitplane drawing routines
+**Optimized Bitplane Drawing Functions:**
+
+```assembly
+; Professional bitplane drawing routines
 
 ; Plot pixel in multiple bitplanes
 ; D0 = X coordinate
@@ -318,9 +318,8 @@ NextPlaneLine:
     
     ; Restore registers
     MOVEM.L (SP)+, D4-D7/A0-A2
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Bitplane Scrolling and Effects
 

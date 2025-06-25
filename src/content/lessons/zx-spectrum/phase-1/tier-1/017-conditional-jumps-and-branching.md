@@ -60,10 +60,10 @@ LD A, 10
 CP 15           ; Compare: A < 15, Carry flag SET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Flag Setting Examples"
-  code="; Demonstrate how different operations set flags
+**Flag Setting Examples:**
+
+```assembly
+; Demonstrate how different operations set flags
 LD A, 10
 SUB 5           ; A = 5, Zero flag clear (result not zero)
 
@@ -80,9 +80,8 @@ LD A, 200
 ADD A, 100      ; A = 44 (300-256), Carry flag set (overflow)
 
 ; These flag settings will be used by conditional jumps
-; to make decisions about program flow"
-  language="assembly"
-/>
+; to make decisions about program flow
+```
 
 ## Basic Conditional Jumps
 
@@ -117,10 +116,10 @@ Continue:
 ; Program continues here regardless of path
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Basic Conditional Jumps"
-  code="; Simple conditional jump example
+**Basic Conditional Jumps:**
+
+```assembly
+; Simple conditional jump example
 LD A, 0         ; Test value (try changing this)
 OR A            ; Set flags based on A value
 JR Z, ZeroCase  ; Jump if A is zero
@@ -154,9 +153,8 @@ AEqual:
 LD D, 3         ; A equals C
 
 Compare_Done:
-; D contains: 1 if A>C, 2 if A<C, 3 if A=C"
-  language="assembly"
-/>
+; D contains: 1 if A>C, 2 if A<C, 3 if A=C
+```
 
 ## JP - Absolute Jump Instructions
 
@@ -215,10 +213,10 @@ RangeCheck_Done:
     ; B contains: 0=too small, 1=in range, 2=too big
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complex Conditional Logic"
-  code="; Multi-way branching example: game collision detection
+**Complex Conditional Logic:**
+
+```assembly
+; Multi-way branching example: game collision detection
 ; Check player position against boundaries
 
 ; Player position
@@ -268,9 +266,8 @@ HitBottom:
 LD B, 4         ; Bottom wall collision
 
 CollisionDone:
-; B contains collision type: 0=none, 1=left, 2=right, 3=top, 4=bottom"
-  language="assembly"
-/>
+; B contains collision type: 0=none, 1=left, 2=right, 3=top, 4=bottom
+```
 
 ## Flag Testing Without Jumps
 
@@ -522,10 +519,10 @@ Create a comprehensive decision-making system that:
 4. Includes error handling for invalid inputs
 5. Demonstrates complex conditional logic
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Menu System"
-  code="; Complete menu system with conditional logic
+**Practice Exercise - Menu System:**
+
+```assembly
+; Complete menu system with conditional logic
 PlayerChoice: DB 5  ; Simulated player input (0-9)
 
 ; Main menu processor
@@ -617,9 +614,8 @@ OutOfRange:
 ; - Input validation with multiple checks
 ; - Range checking with conditional jumps
 ; - Menu processing with decision trees
-; - Error handling with different return codes"
-  language="assembly"
-/>
+; - Error handling with different return codes
+```
 
 ## What You've Learned
 

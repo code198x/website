@@ -571,10 +571,10 @@ ExtractTopResults:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complex Algorithmic System"
-  code="; Advanced data processing system with multiple algorithms
+**Complex Algorithmic System:**
+
+```assembly
+; Advanced data processing system with multiple algorithms
 
 ; Data structure for complex processing
 DataArray:      DB 64, 23, 45, 12, 78, 34, 89, 56, 21, 67
@@ -832,9 +832,8 @@ TestIntelligentProcessor:
     LD D, A             ; Save result count
     
     RET
-    ; Results: C = method used, D = result count"
-  language="assembly"
-/>
+    ; Results: C = method used, D = result count
+```
 
 ## Performance Optimization Integration
 

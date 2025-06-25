@@ -57,10 +57,10 @@ The 68000's memory architecture is revolutionary compared to segmented 8-bit pro
 - **Exception vectors**: $00000000-$000003FF (1KB)
 - **User program area**: $00000400 and above
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="68000 Address Space Exploration"
-  code="; Demonstration of 68000 linear address space concepts
+**68000 Address Space Exploration:**
+
+```assembly
+; Demonstration of 68000 linear address space concepts
 ; Shows how 32-bit addressing enables sophisticated memory organisation
 
 AddressSpaceDemo:
@@ -231,9 +231,8 @@ ReverseOffset:      DC.L    0
 CircularAddress:    DC.L    0
 
 Label1:             DC.W    $1234
-Label2:             DC.W    $5678"
-  language="assembly"
-/>
+Label2:             DC.W    $5678
+```
 
 ## Amiga Memory Architecture
 
@@ -252,10 +251,10 @@ The Amiga's memory system is uniquely sophisticated, designed to support advance
 - **$C00000-$DFFFFF**: Custom chip registers
 - **$E00000-$FFFFFF**: ROM space
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Amiga Memory Map Navigation"
-  code="; Demonstration of Amiga memory map and memory types
+**Amiga Memory Map Navigation:**
+
+```assembly
+; Demonstration of Amiga memory map and memory types
 ; Shows how to work with different memory regions effectively
 
 AmigaMemoryDemo:
@@ -492,9 +491,8 @@ MemoryClass1:       DS.B    8       ; Classifications for test addresses
 ChipRAMSize:        DC.L    0
 FastRAMStart:       DC.L    0
 ChipRAMSpeed:       DC.L    0
-FastRAMSpeed:       DC.L    0"
-  language="assembly"
-/>
+FastRAMSpeed:       DC.L    0
+```
 
 ## Advanced Addressing Modes for Memory Management
 

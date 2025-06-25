@@ -354,10 +354,10 @@ PatternFillLoop:
 
 The Blitter can draw lines using a built-in line algorithm:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Blitter Line Drawing Algorithm"
-  code="; High-speed line drawing using Blitter line mode
+**Blitter Line Drawing Algorithm:**
+
+```assembly
+; High-speed line drawing using Blitter line mode
 
 ; Draw line using Blitter line algorithm
 BlitterLine:
@@ -535,9 +535,8 @@ SineTable:
     DC.B    0,0,0,0,1,1,1,2,2,3,4,4,5,6,7,8
     DC.B    9,10,12,13,15,16,18,19,21,23,25,27,29,31,33,35
     DC.B    37,40,42,44,47,49,52,54,57,60,62,65,68,71,74,77
-    DC.B    79,82,85,88,91,94,97,100,104,107,110,113,116,119,122,125"
-  language="assembly"
-/>
+    DC.B    79,82,85,88,91,94,97,100,104,107,110,113,116,119,122,125
+```
 
 ## Advanced Blitter Techniques
 

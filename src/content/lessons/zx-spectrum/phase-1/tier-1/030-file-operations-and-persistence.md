@@ -95,10 +95,10 @@ ScreenName: DB "PICTURE   "
 
 ### Designing a Game Save Format
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Custom File Format Implementation"
-  code="; Custom paint file format for ZX Spectrum
+**Custom File Format Implementation:**
+
+```assembly
+; Custom paint file format for ZX Spectrum
 ; Implements save/load for artwork with metadata
 
 ; File format specification:
@@ -403,9 +403,8 @@ SimulateSave:
     ; In real implementation, would use:
     ; CALL 1218  ; ROM save routine
     ; For demo, just indicate success
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Data Compression
 

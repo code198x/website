@@ -333,10 +333,10 @@ NoBounce:
 SpriteDirection: .byte $01  ; 0=left, 1=right
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Sprite Animation System"
-  code="; Create animated bouncing sprite
+**Sprite Animation System:**
+
+```assembly
+; Create animated bouncing sprite
 ; Initialize sprite and animate movement
 
 InitSprite:
@@ -401,9 +401,8 @@ DelayLoop:
 
 ; Start the demo
 JSR InitSprite
-JSR AnimateLoop"
-  language="assembly"
-/>
+JSR AnimateLoop
+```
 
 ## Collision Detection
 

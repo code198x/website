@@ -218,10 +218,10 @@ DataBuffer:     .res 256    ; 256-byte data buffer
 DataSize = 100              ; Actual data size
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Basic File Loading Demonstration"
-  code="; Demonstrate basic file loading concepts
+**Basic File Loading Demonstration:**
+
+```assembly
+; Demonstrate basic file loading concepts
 ; Note: This shows the structure - actual disk I/O requires hardware
 
 FileLoadDemo:
@@ -294,9 +294,8 @@ FileMessage:
     .text \"FILE OPERATION DEMO\", 0
 
 FileStatus:
-    .byte 0"
-  language="assembly"
-/>
+    .byte 0
+```
 
 ## Saving Programs and Data
 
@@ -1039,10 +1038,10 @@ RequestedDevice:    .byte 0
 CurrentFileNumber:  .byte 0
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Complete File Management System"
-  code="; Complete file management demonstration
+**Complete File Management System:**
+
+```assembly
+; Complete file management demonstration
 ; Shows professional file handling patterns
 
 FileManagementDemo:
@@ -1355,9 +1354,8 @@ LastOperationResult: .byte 0
 FileStatusTable:     .res 8
 
 ; Run the file management demonstration
-JSR FileManagementDemo"
-  language="assembly"
-/>
+JSR FileManagementDemo
+```
 
 ## File Operations Best Practices
 

@@ -142,10 +142,10 @@ SBC #5          ; A = A - 5 - 0 = 15
 
 **Important**: Always set carry (SEC) before subtraction unless you want to subtract an extra 1!
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="6502 Subtraction Operations"
-  code="; Demonstration of 6502 subtraction with SBC instruction
+**6502 Subtraction Operations:**
+
+```assembly
+; Demonstration of 6502 subtraction with SBC instruction
 ; This program shows SBC in various scenarios
 
 SubtractionDemo:
@@ -245,9 +245,8 @@ LivesUpdated:
 ; Data for examples
 Value2:         .byte 15
 PlayerLives:    .byte 3
-GameOverFlag:   .byte 0"
-  language="assembly"
-/>
+GameOverFlag:   .byte 0
+```
 
 ## Understanding Arithmetic Flags
 
@@ -269,10 +268,10 @@ Arithmetic operations affect status flags in predictable ways:
 - **Set** when signed arithmetic overflow occurs (result changes sign unexpectedly)
 - **Clear** when no signed overflow
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Arithmetic Flags Demonstration"
-  code="; Understanding how arithmetic affects status flags
+**Arithmetic Flags Demonstration:**
+
+```assembly
+; Understanding how arithmetic affects status flags
 ; This program demonstrates flag behavior with arithmetic
 
 ArithmeticFlagsDemo:
@@ -377,9 +376,8 @@ ScoreDone:
     RTS
 
 ; Game variables for examples
-PlayerScore:    .byte 150"
-  language="assembly"
-/>
+PlayerScore:    .byte 150
+```
 
 ## Multi-Byte Arithmetic
 
@@ -409,10 +407,10 @@ SBC HighByte2
 STA ResultHigh
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Multi-Byte Arithmetic"
-  code="; Demonstration of multi-byte arithmetic operations
+**Multi-Byte Arithmetic:**
+
+```assembly
+; Demonstration of multi-byte arithmetic operations
 ; Working with numbers larger than 255
 
 MultiByte Arithmetic:
@@ -570,9 +568,8 @@ Counter16Low:   .byte $FE    ; 16-bit counter: $00FE (254)
 Counter16High:  .byte $00
 
 Score:          .byte $00, $00, $00, $00  ; 32-bit score
-PointsToAdd:    .byte $64    ; Add 100 points"
-  language="assembly"
-/>
+PointsToAdd:    .byte $64    ; Add 100 points
+```
 
 ## Practical Mathematical Routines
 
@@ -614,10 +611,10 @@ DivDone:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Mathematical Routines"
-  code="; Practical mathematical routines for NES programming
+**Mathematical Routines:**
+
+```assembly
+; Practical mathematical routines for NES programming
 ; These implement multiplication, division, and other useful operations
 
 MathRoutines:
@@ -804,9 +801,8 @@ NoCarry:
     
 Mul16Done:
     LDX TempX       ; Restore X
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Binary-Coded Decimal (BCD) Mode
 
@@ -823,10 +819,10 @@ CLD             ; Clear decimal mode
 
 **Important**: The NES 6502 variant (2A03) **does not support decimal mode**! This is disabled in hardware.
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Score and Display Arithmetic"
-  code="; Score handling and display arithmetic for NES games
+**Score and Display Arithmetic:**
+
+```assembly
+; Score handling and display arithmetic for NES games
 ; Since NES doesn't have BCD mode, we implement decimal manually
 
 ScoreArithmetic:
@@ -1013,16 +1009,15 @@ HealthTens:         .byte 0
 HealthUnits:        .byte 0
 
 NewHighScoreFlag:   .byte 0
-TempUnits:          .byte 0"
-  language="assembly"
-/>
+TempUnits:          .byte 0
+```
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Arithmetic Practice"
-  code="; Practice Exercise: NES Game Calculator
+**Arithmetic Practice:**
+
+```assembly
+; Practice Exercise: NES Game Calculator
 ; Implement various mathematical operations for game mechanics
 
 GameCalculatorPractice:
@@ -1303,9 +1298,8 @@ XPComponent2:   .byte 0
 
 CurrentVelocity: .byte 2
 Acceleration:   .byte 1
-MaxVelocity:    .byte 8"
-  language="assembly"
-/>
+MaxVelocity:    .byte 8
+```
 
 ## What You've Learned
 

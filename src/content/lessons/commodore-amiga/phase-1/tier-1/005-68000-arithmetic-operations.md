@@ -46,10 +46,10 @@ The 68000 provides comprehensive arithmetic instructions:
 - **SUBQ**: Subtract quick (1-8 immediate)
 - **SUBX**: Subtract with extend (for multi-precision)
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Basic Arithmetic Operations"
-  code="; Demonstration of 68000 basic arithmetic operations
+**Basic Arithmetic Operations:**
+
+```assembly
+; Demonstration of 68000 basic arithmetic operations
 ; Shows addition and subtraction with different operand types
 
 BasicArithmeticDemo:
@@ -168,9 +168,8 @@ SubResult3:     DC.B    0
 AddrResult1:    DC.L    0
 AddrResult2:    DC.L    0
 MemResult1:     DC.L    0
-MemResult2:     DC.L    0"
-  language="assembly"
-/>
+MemResult2:     DC.L    0
+```
 
 ## Multiplication and Division
 
@@ -380,10 +379,10 @@ The 68000's extend flag enables elegant multi-precision arithmetic for numbers l
 - Process from least significant to most significant
 - Natural for implementing arbitrary precision arithmetic
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Multi-Precision Arithmetic"
-  code="; Demonstration of 68000 multi-precision arithmetic
+**Multi-Precision Arithmetic:**
+
+```assembly
+; Demonstration of 68000 multi-precision arithmetic
 ; Shows how to work with numbers larger than 32 bits
 
 MultiPrecisionDemo:
@@ -564,9 +563,8 @@ Num128Result:       DC.L    0, 0, 0, 0
 BCDResult:          DC.L    0
 Shift64High:        DC.L    0
 Shift64Low:         DC.L    0
-Compare64Result:    DC.B    0"
-  language="assembly"
-/>
+Compare64Result:    DC.B    0
+```
 
 ## Advanced Arithmetic Techniques
 
@@ -582,10 +580,10 @@ The 68000 enables sophisticated arithmetic programming patterns:
 - Detect overflow conditions
 - Validate input ranges
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Arithmetic Techniques"
-  code="; Advanced arithmetic programming techniques
+**Advanced Arithmetic Techniques:**
+
+```assembly
+; Advanced arithmetic programming techniques
 ; Demonstrates sophisticated mathematical operations
 
 AdvancedArithmeticDemo:
@@ -786,9 +784,8 @@ GCDResult:          DC.W    0
 FibArray:           DS.L    12      ; Space for 12 Fibonacci numbers
 SaturatedResult:    DC.L    0
 SaturationFlag:     DC.B    0
-AverageResult:      DC.L    0"
-  language="assembly"
-/>
+AverageResult:      DC.L    0
+```
 
 ## Practice Exercise
 

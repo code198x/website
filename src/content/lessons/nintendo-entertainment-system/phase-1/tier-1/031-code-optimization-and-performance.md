@@ -187,10 +187,10 @@ CycleCounterHigh = $15
 OverrunCounter = $16
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Performance Analysis and Measurement"
-  code="; NES Performance Analysis and Optimization
+**Performance Analysis and Measurement:**
+
+```assembly
+; NES Performance Analysis and Optimization
 Main:
     JSR InitPerformanceSystem
     
@@ -560,9 +560,8 @@ SpriteOAM:
     .byte $FF, $10, $01, $40  ; Sprite 0
     .byte $FF, $11, $01, $50  ; Sprite 1
     .byte $FF, $12, $01, $60  ; Sprite 2
-    .byte $FF, $13, $01, $70  ; Sprite 3"
-  language="assembly"
-/>
+    .byte $FF, $13, $01, $70  ; Sprite 3
+```
 
 ## Memory Optimization Techniques
 

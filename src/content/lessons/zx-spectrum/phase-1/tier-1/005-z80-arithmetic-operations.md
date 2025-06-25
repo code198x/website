@@ -214,10 +214,10 @@ Arithmetic operations affect status flags in predictable ways:
 - **Set** when signed arithmetic overflow occurs
 - **Clear** when no signed overflow
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Arithmetic Flags Demonstration"
-  code="; Understanding how arithmetic affects status flags
+**Arithmetic Flags Demonstration:**
+
+```assembly
+; Understanding how arithmetic affects status flags
 ; This program demonstrates flag behavior with arithmetic
 
 ArithmeticFlagsDemo:
@@ -282,9 +282,8 @@ UnsignedOverflow:
 OverflowDone:
     LD ($4004), H       ; Display unsigned overflow test
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## 16-Bit Arithmetic
 

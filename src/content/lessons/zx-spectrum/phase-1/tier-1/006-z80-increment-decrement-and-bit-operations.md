@@ -236,10 +236,10 @@ Rotates all bits left through carry flag
 ### RR - Rotate Right through Carry
 Rotates all bits right through carry flag
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Shift and Rotate Operations"
-  code="; Demonstration of Z80 shift and rotate instructions
+**Shift and Rotate Operations:**
+
+```assembly
+; Demonstration of Z80 shift and rotate instructions
 ; These operations are useful for multiplication, division, and bit processing
 
 ShiftRotateDemo:
@@ -319,9 +319,8 @@ ShiftRotateDemo:
     SRA A               ; Now bits 4-6 are in positions 0-2
     LD ($4020), A       ; Display extracted bits
     
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Logical Operations
 

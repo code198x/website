@@ -405,10 +405,10 @@ The 6502 has a special addressing mode that uses zero page as a pointer:
 **Speed**: Slower (5+ cycles) but very powerful
 **Use when**: Dynamic memory access, data structures, complex algorithms
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Indirect Addressing"
-  code="; Indirect addressing - using zero page as 16-bit pointers
+**Indirect Addressing:**
+
+```assembly
+; Indirect addressing - using zero page as 16-bit pointers
 ; This is one of the 6502's most powerful addressing modes
 
 IndirectDemo:
@@ -550,9 +550,8 @@ SecondNode:
     .word $0000        ; NULL pointer (end of list)
 
 SourceData:
-    .byte $01, $02, $03, $04, $05, $06, $07, $08"
-  language="assembly"
-/>
+    .byte $01, $02, $03, $04, $05, $06, $07, $08
+```
 
 ## Choosing the Right Addressing Mode
 

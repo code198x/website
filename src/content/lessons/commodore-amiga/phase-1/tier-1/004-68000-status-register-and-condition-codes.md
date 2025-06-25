@@ -166,10 +166,10 @@ The 68000 offers a comprehensive set of conditional branches based on condition 
 - **BVS**: Branch if Overflow Set (V=1)
 - **BVC**: Branch if Overflow Clear (V=0)
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Conditional Branch Instructions"
-  code="; Demonstration of 68000 conditional branch instructions
+**Conditional Branch Instructions:**
+
+```assembly
+; Demonstration of 68000 conditional branch instructions
 ; Shows comprehensive condition testing capabilities
 
 ConditionalBranchDemo:
@@ -340,9 +340,8 @@ ZeroResult:         DC.B    0
 SignResult:         DC.B    0
 OverflowResult:     DC.B    0
 CarryResult:        DC.B    0
-PositiveEvenResult: DC.B    0"
-  language="assembly"
-/>
+PositiveEvenResult: DC.B    0
+```
 
 ## Compare Operations
 
@@ -360,10 +359,10 @@ The 68000 provides several compare instructions for testing values:
 - Original values remain unchanged
 - Supports all data sizes (.B, .W, .L)
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Compare Operations"
-  code="; Demonstration of 68000 compare operations
+**Compare Operations:**
+
+```assembly
+; Demonstration of 68000 compare operations
 ; Shows different types of comparisons and their uses
 
 CompareOperationsDemo:
@@ -575,9 +574,8 @@ CompResult6:    DC.B    0
 SizeResult1:    DC.B    0
 SizeResult2:    DC.B    0
 SearchResult:   DC.B    0
-StringResult:   DC.B    0"
-  language="assembly"
-/>
+StringResult:   DC.B    0
+```
 
 ## Test Operations and Bit Testing
 
@@ -866,10 +864,10 @@ Some instructions preserve condition codes, allowing complex testing sequences.
 ### Efficient Decision Trees
 Multiple conditional branches can create efficient decision-making structures.
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Condition Code Techniques"
-  code="; Advanced condition code programming techniques
+**Advanced Condition Code Techniques:**
+
+```assembly
+; Advanced condition code programming techniques
 ; Demonstrates sophisticated uses of the 68000's condition system
 
 AdvancedConditionDemo:
@@ -1096,9 +1094,8 @@ CurrentState:       DC.L    STATE_IDLE
 InputFlags:         DC.L    %00000100    ; Jump pressed
 PlayerY:            DC.L    200
 PlayerVelocityY:    DC.L    -5           ; Negative = upward
-GROUND_LEVEL        EQU     200"
-  language="assembly"
-/>
+GROUND_LEVEL        EQU     200
+```
 
 ## Practice Exercise
 

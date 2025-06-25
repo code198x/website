@@ -490,10 +490,10 @@ KeyScanTable:
     DB $FE, $FD, $FB, $F7, $EF, $DF, $BF, $7F
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Simple User Interface"
-  code="; Basic menu system demonstration
+**Simple User Interface:**
+
+```assembly
+; Basic menu system demonstration
 ; Menu state: 0=Start, 1=Options, 2=Exit
 MenuState: DB 0
 
@@ -557,9 +557,8 @@ MenuDownOK:
     
 MenuDone:
     CALL DisplayMenu    ; Update display
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Advanced Input Techniques
 

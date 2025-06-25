@@ -150,10 +150,10 @@ UpdatePlayerPosition:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Memory Access Optimization Demo"
-  code="; Demonstrate memory access optimisation techniques
+**Memory Access Optimization Demo:**
+
+```assembly
+; Demonstrate memory access optimisation techniques
 ; Shows difference between optimised and unoptimized approaches
 
 MemoryOptimizationDemo:
@@ -317,9 +317,8 @@ TestCounter: .byte 0         ; General counter
 ArrayPtr:    .word 0         ; Zero page pointer (would be in ZP)
 
 ; Run the memory optimisation demonstration
-JSR MemoryOptimizationDemo"
-  language="assembly"
-/>
+JSR MemoryOptimizationDemo
+```
 
 ## Speed Optimization Techniques
 

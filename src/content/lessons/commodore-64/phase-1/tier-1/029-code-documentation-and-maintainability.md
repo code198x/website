@@ -517,10 +517,10 @@ PerformPlayerAction:
     RTS
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Self-Documenting Code Example"
-  code="; Self-documenting code demonstration
+**Self-Documenting Code Example:**
+
+```assembly
+; Self-documenting code demonstration
 ; Shows clear naming and structure
 
 ; ========================================
@@ -898,9 +898,8 @@ CurrentChannel:         .byte 0
 ActiveChannelCounter:   .byte 0
 
 ; Demonstrate the well-documented mixer
-JSR InitializeAudioMixer"
-  language="assembly"
-/>
+JSR InitializeAudioMixer
+```
 
 ## Comprehensive Documentation Standards
 
@@ -3163,7 +3162,3 @@ In the next lesson, you'll learn **project planning and development** - how to p
 ## Fun Fact
 
 The documentation techniques you've learned are the foundation of all successful software projects! The self-documenting code principles, comprehensive commenting standards, and maintainable architecture patterns you've mastered are used in everything from operating systems to spacecraft software. The version control concepts and change management practices are the basis for tools like Git, which powers all modern software development. You've learned the timeless principles of software craftsmanship that distinguish professional developers from hobbyists - the ability to write code that not only works today but remains understandable and maintainable for years to come!
-
-<function_calls>
-<invoke name="TodoWrite">
-<parameter name="todos">[{"content":"Review existing lesson structure and content organisation","status":"completed","priority":"high","id":"1"},{"content":"Examine current lesson templates and formatting","status":"completed","priority":"high","id":"2"},{"content":"Identify which system/tier to start writing lessons for","status":"completed","priority":"high","id":"3"},{"content":"Rewrite C64 lesson 1 to teach 6502 assembly fundamentals","status":"completed","priority":"high","id":"4"},{"content":"Create lesson 2: Store instructions and memory operations","status":"completed","priority":"high","id":"5"},{"content":"Create lesson 3: Understanding addressing modes","status":"completed","priority":"high","id":"6"},{"content":"Create lesson 4: Status register and flags","status":"completed","priority":"high","id":"7"},{"content":"Create lesson 5: Arithmetic operations (ADC/SBC)","status":"completed","priority":"high","id":"8"},{"content":"Create lesson 6: Increment and decrement operations","status":"completed","priority":"high","id":"9"},{"content":"Create lesson 7: Logical operations (AND/OR/XOR)","status":"completed","priority":"high","id":"10"},{"content":"Create lesson 8: Basic data manipulation and review","status":"completed","priority":"high","id":"11"},{"content":"Create lesson 9: Indexed addressing modes","status":"completed","priority":"high","id":"22"},{"content":"Create lesson 10: Indirect addressing and pointers","status":"completed","priority":"high","id":"23"},{"content":"Create lesson 11: Stack operations and memory management","status":"completed","priority":"high","id":"24"},{"content":"Create lesson 12: Subroutines and JSR/RTS","status":"completed","priority":"high","id":"25"},{"content":"Create lesson 13: Branching and program flow control","status":"completed","priority":"high","id":"26"},{"content":"Create lesson 14: Advanced memory techniques and optimisation","status":"completed","priority":"high","id":"27"},{"content":"Create lesson 15: Interrupts and system programming","status":"completed","priority":"high","id":"28"},{"content":"Create lesson 16: Memory and addressing section review","status":"completed","priority":"high","id":"29"},{"content":"Plan C64 Tier 1 lessons 17-32 structure and sections","status":"completed","priority":"high","id":"30"},{"content":"Create lesson 17: Introduction to VIC-II graphics chip","status":"completed","priority":"high","id":"31"},{"content":"Create lesson 18: Screen modes and character sets","status":"completed","priority":"high","id":"32"},{"content":"Create lesson 19: Sprites and hardware graphics","status":"completed","priority":"high","id":"33"},{"content":"Create lesson 20: Color and bitmap graphics","status":"completed","priority":"high","id":"34"},{"content":"Create lesson 21: Introduction to SID sound chip","status":"completed","priority":"high","id":"35"},{"content":"Create lesson 22: Sound synthesis and waveforms","status":"completed","priority":"high","id":"36"},{"content":"Create lesson 23: Music and advanced audio programming","status":"completed","priority":"high","id":"37"},{"content":"Create lesson 32: Phase 1 integration and tier review","status":"completed","priority":"high","id":"40"},{"content":"Create lesson 24: I/O and hardware control section review","status":"pending","priority":"high","id":"38"},{"content":"Create lesson 25: File operations and data management","status":"completed","priority":"high","id":"41"},{"content":"Create lesson 26: Program organisation and structure","status":"completed","priority":"high","id":"42"},{"content":"Create lesson 27: Basic optimisation and efficiency","status":"completed","priority":"high","id":"43"},{"content":"Create lesson 28: Error handling and debugging basics","status":"completed","priority":"high","id":"44"},{"content":"Create lesson 29: Code documentation and maintainability","status":"completed","priority":"high","id":"45"},{"content":"Create lesson 30: Project planning and development","status":"in_progress","priority":"high","id":"46"},{"content":"Create lesson 31: Building complete applications","status":"pending","priority":"high","id":"47"},{"content":"Plan visual enhancement phase for completed lessons","status":"pending","priority":"medium","id":"39"}]

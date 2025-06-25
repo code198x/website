@@ -26,12 +26,12 @@ order: 23
 
 # Lesson 23: Music and Advanced Audio Programming
 
-**Listen to this impossible multi-voice composition created entirely with code:**
+**See this sophisticated multi-voice composition created entirely with code:**
 
 ```
 ; This creates a complete 3-voice musical arrangement with harmony,
-; bass line, and real-time effects - rivalling professional
-; synthesizers and sequencers costing thousands of pounds!
+; bass line, and real-time effects - demonstrating the SID chip's
+; sophisticated musical capabilities
 
 MusicLoop:
     JSR PlayMelody      ; Voice 1: Lead melody with vibrato
@@ -417,10 +417,10 @@ StopMusic:
 PatternPtr: .word 0
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="Pattern-Based Music Sequencer"
-  code="; Simple pattern-based music system
+**Pattern-Based Music Sequencer:**
+
+```assembly
+; Simple pattern-based music system
 ; Demonstrates structured musical composition
 
 ; Simple song patterns (simplified for demo)
@@ -550,9 +550,8 @@ SimplerNotesHigh:
     .byte $48, $50, $5A, $60, $6E, $7C
 
 ; Start the pattern song demo
-JSR PlayPatternSong"
-  language="assembly"
-/>
+JSR PlayPatternSong
+```
 
 ## Advanced Music Features
 

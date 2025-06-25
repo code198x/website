@@ -51,10 +51,10 @@ All conditional branches use the format `Bcc label` where `cc` represents the co
 - **BHI**: Branch if Higher ((C+Z)=0)
 - **BLS**: Branch if Lower or Same ((C+Z)=1)
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Conditional Branching Fundamentals"
-  code="; Demonstration of 68000 conditional branching
+**Conditional Branching Fundamentals:**
+
+```assembly
+; Demonstration of 68000 conditional branching
 ; Shows comprehensive condition testing and program flow
 
 ConditionalBranchingDemo:
@@ -242,9 +242,8 @@ RangeTest:          DC.B    0
 MultiCondTest:      DC.B    0
 NestedResult1:      DC.B    0
 NestedResult2:      DC.B    0
-RangeClass:         DC.B    0"
-  language="assembly"
-/>
+RangeClass:         DC.B    0
+```
 
 ## Loop Structures
 
@@ -261,10 +260,10 @@ The 68000 provides powerful loop control mechanisms that make iterative programm
 - **Conditional loops**: Use conditional branches with counters
 - **Nested loops**: Multiple DBRA instructions for multi-dimensional iteration
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Loop Structures and Control"
-  code="; Demonstration of 68000 loop structures
+**Loop Structures and Control:**
+
+```assembly
+; Demonstration of 68000 loop structures
 ; Shows various looping patterns and techniques
 
 LoopStructuresDemo:
@@ -491,9 +490,8 @@ DoWhileSum:         DC.L    0
 ForLoopSum:         DC.L    0
 SearchIndex:        DC.L    0
 ProcessedCount:     DC.L    0
-ComplexResult:      DC.L    0"
-  language="assembly"
-/>
+ComplexResult:      DC.L    0
+```
 
 ## Subroutines and Function Calls
 
@@ -509,10 +507,10 @@ The 68000 provides sophisticated subroutine mechanisms for structured programmin
 - **Stack**: Unlimited parameters, follows calling conventions
 - **Memory**: Global variables or parameter blocks
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Subroutines and Function Calls"
-  code="; Demonstration of 68000 subroutine mechanisms
+**Subroutines and Function Calls:**
+
+```assembly
+; Demonstration of 68000 subroutine mechanisms
 ; Shows various parameter passing and function call patterns
 
 SubroutineDemo:
@@ -780,9 +778,8 @@ AddResult:          DC.L    0
 StringLen:          DC.L    0
 SubResult:          DC.L    0
 FactorialResult:    DC.L    0
-SquareResult:       DC.L    0"
-  language="assembly"
-/>
+SquareResult:       DC.L    0
+```
 
 ## Jump Tables and Computed Branches
 
@@ -799,10 +796,10 @@ The 68000 supports sophisticated jump table mechanisms for efficient multi-way b
 - Constant-time dispatch regardless of case count
 - Elegant solution for state machines and interpreters
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Jump Tables and Computed Branches"
-  code="; Demonstration of jump tables and computed branching
+**Jump Tables and Computed Branches:**
+
+```assembly
+; Demonstration of jump tables and computed branching
 ; Shows advanced program flow control techniques
 
 JumpTableDemo:
@@ -1155,9 +1152,8 @@ Timer:              DC.L    1500
 JumpResult1:        DC.L    0
 ComputedResult:     DC.L    0
 MenuResult:         DC.L    0
-EventResult:        DC.L    0"
-  language="assembly"
-/>
+EventResult:        DC.L    0
+```
 
 ## Practice Exercise
 

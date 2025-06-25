@@ -59,10 +59,10 @@ LD A, $FF               ; A = 255
 INC A                   ; A = 0, flags: S=0, Z=1, H=1, P/V=0, N=0, C=0 (note: INC doesn't affect C)
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Flag Register Exploration"
-  code="; Demonstrate how different operations affect flags
+**Flag Register Exploration:**
+
+```assembly
+; Demonstrate how different operations affect flags
 
 ; Test 1: Basic arithmetic flags
 TestArithmetic:
@@ -122,9 +122,8 @@ TestIncDec:
     LD A, 0
     DEC A               ; A = 255
     ; Flags: S=1, Z=0, H=1, P/V=0, N=1, C=? (C unchanged!)
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Advanced Comparison Techniques
 
@@ -206,10 +205,10 @@ OutOfRange:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Advanced Comparison Techniques"
-  code="; Advanced comparison and range checking
+**Advanced Comparison Techniques:**
+
+```assembly
+; Advanced comparison and range checking
 
 ; 16-bit comparison function
 ; Compare HL with DE, return relationship
@@ -319,9 +318,8 @@ TestComparisons:
     LD E, A             ; Save result
     
     RET
-    ; Results: C=2, D=1, E=0"
-  language="assembly"
-/>
+    ; Results: C=2, D=1, E=0
+```
 
 ## Flag Manipulation Instructions
 
@@ -464,10 +462,10 @@ PlayerX: DB 50
 GameFlags: DB 0
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Complex Flag-Based Logic"
-  code="; Complex conditional logic using flag patterns
+**Complex Flag-Based Logic:**
+
+```assembly
+; Complex conditional logic using flag patterns
 
 ; Bit manipulation for flag testing
 GameStatus:     DB %00000000    ; Game status flags
@@ -621,9 +619,8 @@ TestFlagOperations:
     RET
 
 PlayerHealth:   DB 0
-PlayerY:        DB 0"
-  language="assembly"
-/>
+PlayerY:        DB 0
+```
 
 ## Overflow and Parity Detection
 
@@ -760,10 +757,10 @@ Create a comprehensive flag-based system that demonstrates:
 4. Advanced flag manipulation patterns
 5. Optimized conditional structures using flag chaining
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Advanced Flag System"
-  code="; Comprehensive flag-based conditional system
+**Practice Exercise - Advanced Flag System:**
+
+```assembly
+; Comprehensive flag-based conditional system
 
 ; Complex data structure for testing
 PlayerData:
@@ -1030,9 +1027,8 @@ TestCompleteSystem:
     ; D = bit pattern analysis
     ; E = enhanced evaluation (with invulnerability)
     ; H = danger evaluation (in extreme conditions)
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Advanced Flag Patterns
 

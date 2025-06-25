@@ -480,10 +480,10 @@ Parameters:
 - `param2` ($0391) - General parameter 2  
 - `param3` ($0392) - General parameter 3
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Practice: Game Utility Functions"
-  code="; Test the utility functions
+**Practice: Game Utility Functions:**
+
+```assembly
+; Test the utility functions
 
 ; Test 1: Clear memory
 LDA #$05    ; Start at $0500
@@ -541,9 +541,8 @@ check_boundary:
 in_bounds:
     RTS
 
-; Functions are complete and tested!"
-  language="assembly"
-/>
+; Functions are complete and tested!
+```
 
 ## Best Practices for Subroutines
 

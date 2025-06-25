@@ -26,7 +26,7 @@ order: 32
 
 # Lesson 32: Tier 1 Integration and Review
 
-Congratulations! You've completed Tier 1 of Phase 1. Today you'll integrate everything you've learned in these 32 lessons to create your first working Sprite Symphony prototype. This is just the beginning - you have 15 more exciting tiers ahead in Phase 1!
+Congratulations! You've completed the foundational Tier 1 of Phase 1. Today you'll integrate everything you've learned in these 32 lessons to create your first working Sprite Symphony prototype. This foundational learning prepares you for the exciting advanced tiers that continue throughout Phase 1!
 
 ## Tier 1 Achievement Review
 
@@ -187,10 +187,10 @@ SkipNameTable:
     RTS
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Complete NES System Integration Demo"
-  code="; Integrated demonstration combining all Phase 1 NES concepts
+**Complete NES System Integration Demo:**
+
+```assembly
+; Integrated demonstration combining all Phase 1 NES concepts
 ; Multi-subsystem application with graphics, audio, and game logic
 
 CompleteDemo:
@@ -524,9 +524,8 @@ NameTableUpdateFlag: .byte $00
 SpriteData = $0200
 
 ; Execute the complete demonstration
-JSR CompleteDemo"
-  language="assembly"
-/>
+JSR CompleteDemo
+```
 
 ## Advanced NES Integration Patterns
 
@@ -646,7 +645,7 @@ NoUpdates:
 
 ## Ready for Tier 2: Memory and Data Management
 
-Phase 1 Tier 1 has established your **foundational understanding** of NES assembly programming. You're now perfectly prepared for **Tier 2**, which will build directly on everything you've learned:
+Phase 1 Tier 1 has established your **foundational understanding** of NES assembly programming. You're now perfectly prepared for **Tier 2**, which will build directly on everything you've learned as you continue your Phase 1 journey:
 
 ### **What Tier 2 Will Add to Your Sprite Learn**
 
@@ -683,7 +682,7 @@ Your progression from Tier 1 to Tier 2 is seamless:
 
 ## What You've Accomplished
 
-In Phase 1 Tier 1, you've mastered the essential foundation of NES programming:
+In Phase 1 Tier 1, you've built the essential foundation of NES programming that will support all your future learning:
 
 - **32 comprehensive lessons** covering all fundamental aspects of NES development
 - **Complete understanding** of 6502 assembly language and NES architecture
@@ -693,7 +692,7 @@ In Phase 1 Tier 1, you've mastered the essential foundation of NES programming:
 
 ## Professional Competency Assessment
 
-You have now completed comprehensive training in foundational NES assembly programming. You can confidently:
+You have now completed comprehensive foundational training in NES assembly programming. This establishes the essential foundation for your continued Phase 1 learning. You can confidently:
 
 ### Technical Competencies
 - **Write efficient 6502 assembly code** using all instructions and addressing modes
@@ -715,4 +714,4 @@ You have now completed comprehensive training in foundational NES assembly progr
 
 The 6502 assembly and NES programming skills you've developed represent the same foundational knowledge that professional NES developers used to create legendary games like Super Mario Bros., The Legend of Zelda, and Mega Man in the 1980s. The memory optimisation techniques, sprite management patterns, and real-time programming approaches you've learned are sophisticated principles that influenced modern game engines, embedded systems programming, and real-time applications. You've not just learned retro programming; you've mastered fundamental disciplines that underlie all real-time and memory-constrained programming. The systematic thinking, resource optimisation, and real-time coordination skills you've developed will serve you well in any programming context requiring efficiency and precision, whether you're working on embedded systems, mobile games, real-time applications, or modern game development.
 
-Congratulations on completing Phase 1 Tier 1 of your Code Like It's 198x journey with the legendary Nintendo Entertainment System!
+Congratulations on completing the foundational Tier 1 of Phase 1 in your Code Like It's 198x journey with the legendary Nintendo Entertainment System! You've built an excellent foundation for the advanced learning that continues throughout Phase 1 and beyond.

@@ -145,16 +145,15 @@ CMP #$60    ; Compare with 96
             ; Result: 80 - 96 = -16, so Carry flag CLEAR (borrow needed)
 ```
 
-<CodeRunner 
-  system="commodore-64"
-  title="CMP Instruction Examples"
-  code="LDA #$50    ; Load 80 into A register
+**CMP Instruction Examples:**
+
+```assembly
+LDA #$50    ; Load 80 into A register
 
 CMP #$50    ; Compare A with 80: equal (Zero flag set)
 CMP #$30    ; Compare A with 48: A > value (Carry flag set)  
-CMP #$60    ; Compare A with 96: A < value (Carry flag clear)"
-  language="assembly"
-/>
+CMP #$60    ; Compare A with 96: A < value (Carry flag clear)
+```
 
 ## Understanding CMP Results
 

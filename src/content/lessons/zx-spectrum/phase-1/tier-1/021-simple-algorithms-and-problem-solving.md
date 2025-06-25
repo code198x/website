@@ -101,10 +101,10 @@ BubbleDone:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Bubble Sort Implementation"
-  code="; Bubble sort demonstration
+**Bubble Sort Implementation:**
+
+```assembly
+; Bubble sort demonstration
 TestArray:
     DB 64, 34, 25, 12, 22, 11, 90, 5
 
@@ -190,9 +190,8 @@ SortedArray:
     DB 1, 2, 3, 4, 5
 
 ReverseArray:
-    DB 9, 7, 5, 3, 2, 1"
-  language="assembly"
-/>
+    DB 9, 7, 5, 3, 2, 1
+```
 
 ### Selection Sort
 
@@ -336,10 +335,10 @@ InsertDone:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Selection Sort Implementation"
-  code="; Selection sort - finds minimum and swaps to front
+**Selection Sort Implementation:**
+
+```assembly
+; Selection sort - finds minimum and swaps to front
 SelectionSort:
     PUSH BC
     PUSH HL
@@ -459,9 +458,8 @@ NotSmaller:
 
 ; Test data
 TestArray2:
-    DB 5, 2, 8, 1, 9, 3"
-  language="assembly"
-/>
+    DB 5, 2, 8, 1, 9, 3
+```
 
 ## Searching Algorithms
 
@@ -555,10 +553,10 @@ NotFound:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Search Algorithms"
-  code="; Linear and binary search implementations
+**Search Algorithms:**
+
+```assembly
+; Linear and binary search implementations
 
 SearchArray:
     DB 1, 3, 5, 7, 9, 11, 13, 15, 17, 19  ; Sorted array for binary search
@@ -684,9 +682,8 @@ TestSearches:
     LD B, 10
     CALL SimpleBinarySearch ; Should not find it
     LD E, A             ; Save result
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Optimization Techniques
 
@@ -829,10 +826,10 @@ NotMatch:
     RET                 ; A = count
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Algorithm Problem Solving"
-  code="; Collection of useful algorithmic building blocks
+**Algorithm Problem Solving:**
+
+```assembly
+; Collection of useful algorithmic building blocks
 
 TestData:
     DB 3, 7, 2, 9, 1, 8, 4, 6, 5, 7, 2, 7
@@ -991,9 +988,8 @@ TestAlgorithms:
     CALL IsSorted       ; Should return 0 (not sorted)
     LD E, A             ; Save result
     
-    RET                 ; C=max, D=count, E=sorted"
-  language="assembly"
-/>
+    RET                 ; C=max, D=count, E=sorted
+```
 
 ## Performance Analysis
 
@@ -1050,10 +1046,10 @@ Create a comprehensive algorithm toolkit that demonstrates:
 4. Performance optimization techniques
 5. Algorithm selection based on input characteristics
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Algorithm Toolkit"
-  code="; Comprehensive algorithm toolkit
+**Practice Exercise - Algorithm Toolkit:**
+
+```assembly
+; Comprehensive algorithm toolkit
 
 ; Test data sets
 SmallArray:     DB 5, 2, 8, 1, 9           ; 5 elements
@@ -1281,9 +1277,8 @@ TimingLoop:
     POP HL
     INC DE              ; Count iteration
     ; Continue until desired number of iterations
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## What You've Learned
 

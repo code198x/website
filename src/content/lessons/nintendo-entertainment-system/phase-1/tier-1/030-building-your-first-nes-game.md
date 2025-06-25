@@ -2432,7 +2432,7 @@ In this culminating lesson, you've achieved mastery of complete NES game develop
 
 ## Looking Ahead
 
-Congratulations! You've completed your first fully-featured NES game. In the next lesson, you'll learn optimization and performance techniques to make Sprite Symphony run even more efficiently and add final polish to your creation.
+Excellent work! You've built your first foundational NES game. In the next lesson, you'll learn optimization and performance techniques to make Sprite Symphony run even more efficiently and add polish to your creation as you continue developing your Phase 1 skills.
 
 ## Fun Fact
 

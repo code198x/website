@@ -488,10 +488,10 @@ InvalidFunction:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Jump Table Dispatch"
-  code="; Jump table dispatch system demonstration
+**Jump Table Dispatch:**
+
+```assembly
+; Jump table dispatch system demonstration
 
 ; Function table
 FunctionTable:
@@ -615,9 +615,8 @@ ExitGame:   LD A, 5 : RET
 
 ; Test the system:
 ; LD A, 2 : CALL ExecuteFunction -> returns 30
-; LD A, 1 : CALL ExecuteWithParams -> returns 20, B=3, C=4"
-  language="assembly"
-/>
+; LD A, 1 : CALL ExecuteWithParams -> returns 20, B=3, C=4
+```
 
 ## Complex Conditional Structures
 
@@ -1027,10 +1026,10 @@ Create a comprehensive control flow system that demonstrates:
 4. Nested decision structures for AI behavior
 5. Performance-optimized control flow
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Complete Control System"
-  code="; Comprehensive game control system
+**Practice Exercise - Complete Control System:**
+
+```assembly
+; Comprehensive game control system
 
 ; Game modes
 MODE_MENU       EQU 0
@@ -1257,9 +1256,8 @@ GetRandomValue:
 ; Call UpdateGame repeatedly to see complex state management
 ; B register shows different codes for various game situations
 ; Try modifying PlayerHealth, EnemyDistance, PlayerWeapon to see
-; different behavior paths taken"
-  language="assembly"
-/>
+; different behavior paths taken
+```
 
 ## What You've Learned
 

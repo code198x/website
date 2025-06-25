@@ -79,10 +79,10 @@ Your integration project will be a comprehensive **Data Analysis System** that p
 
 This project showcases real-world programming patterns that were commonly used in professional Amiga software development.
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Complete Amiga Data Analysis System"
-  code="; Section 1 Integration Project: Amiga Data Analysis System
+**Complete Amiga Data Analysis System:**
+
+```assembly
+; Section 1 Integration Project: Amiga Data Analysis System
 ; Demonstrates comprehensive 68000 programming techniques
 ; Integrates all skills from lessons 1-7
 
@@ -950,9 +950,8 @@ PayrollHeader:      DC.B    'PAYROLL SUMMARY:',0
 ; 2. Implement department budget calculations
 ; 3. Create employee scheduling optimization
 ; 4. Add multi-criteria sorting capabilities
-; 5. Implement data export to different formats"
-  language="assembly"
-/>
+; 5. Implement data export to different formats
+```
 
 ## Project Analysis and Skills Integration
 

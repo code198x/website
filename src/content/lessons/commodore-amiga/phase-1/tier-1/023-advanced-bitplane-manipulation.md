@@ -32,10 +32,10 @@ Welcome to advanced bitplane programming! Today you'll learn sophisticated techn
 
 Implement advanced transformation algorithms using bitplane manipulation:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Advanced Bitplane Transformation Algorithms"
-  code="; Advanced bitplane transformation and manipulation techniques
+**Advanced Bitplane Transformation Algorithms:**
+
+```assembly
+; Advanced bitplane transformation and manipulation techniques
 
 ; Rotate bitplane using software transformation
 RotateBitplane:
@@ -276,18 +276,17 @@ SineTable:
     DC.B    0,0,0,0,1,1,1,2,2,3,4,4,5,6,7,8
     DC.B    9,10,12,13,15,16,18,19,21,23,25,27,29,31,33,35
     DC.B    37,40,42,44,47,49,52,54,57,60,62,65,68,71,74,77
-    DC.B    79,82,85,88,91,94,97,100,104,107,110,113,116,119,122,125"
-  language="assembly"
-/>
+    DC.B    79,82,85,88,91,94,97,100,104,107,110,113,116,119,122,125
+```
 
 ## Chunky-to-Planar Conversion
 
 Convert chunky pixel data to Amiga planar format efficiently:
 
-<CodeRunner 
-  system="commodore-amiga"
-  title="Efficient Chunky-to-Planar Conversion"
-  code="; High-speed chunky to planar conversion routines
+**Efficient Chunky-to-Planar Conversion:**
+
+```assembly
+; High-speed chunky to planar conversion routines
 
 ; Fast chunky-to-planar conversion for 4-bit pixels
 ; Each chunky pixel = 4 bits (16 colors)
@@ -576,9 +575,8 @@ ChunkyLookupTable:
     ; Color 14: %1110
     DC.B    %00000000, %00001111, %00001111, %00001111
     ; Color 15: %1111
-    DC.B    %00001111, %00001111, %00001111, %00001111"
-  language="assembly"
-/>
+    DC.B    %00001111, %00001111, %00001111, %00001111
+```
 
 ## Advanced Color and Palette Effects
 

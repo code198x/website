@@ -80,10 +80,10 @@ LDA #$FF        ; Load 255
 ADC #$01        ; Add 1: 255 + 1 = 256, but result is $00 with Carry SET
 ```
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="6502 Status Flags Demonstration"
-  code="; Demonstration of 6502 status flags
+**6502 Status Flags Demonstration:**
+
+```assembly
+; Demonstration of 6502 status flags
 ; This program shows how different operations affect the flags
 
 StatusFlagsDemo:
@@ -135,9 +135,8 @@ StatusFlagsDemo:
     ; N flag = 0 (10 - 5 = 5, positive result)
     
     STA $0200       ; Store final result for verification
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Conditional Branch Instructions
 
@@ -159,10 +158,10 @@ The real power of status flags comes when you use them to make decisions. The 65
 - `BVS label` - Branch if Overflow Set
 - `BVC label` - Branch if Overflow Clear
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Conditional Branches Demo"
-  code="; Demonstration of 6502 conditional branch instructions
+**Conditional Branches Demo:**
+
+```assembly
+; Demonstration of 6502 conditional branch instructions
 ; This program makes decisions based on flag states
 
 ConditionalBranchesDemo:
@@ -234,9 +233,8 @@ IsGreater:
 StoreResult:
     STA $0203       ; Store comparison result
     
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Using CMP for Decision Making
 
@@ -255,10 +253,10 @@ CMP performs A - operand but doesn't store the result - it only sets the flags!
 - **C flag**: Set if A ≥ compared value (no borrow needed)
 - **N flag**: Set if the subtraction result would be negative
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Compare and Decision Making"
-  code="; Using CMP instruction for comparisons and decision making
+**Compare and Decision Making:**
+
+```assembly
+; Using CMP instruction for comparisons and decision making
 ; This program creates a number classification system
 
 CompareDemo:
@@ -384,9 +382,8 @@ EndDemo:
 ; Data for array test
 ArrayData:
     .byte $10, $20, $30, $40, $50
-ArraySize = 5"
-  language="assembly"
-/>
+ArraySize = 5
+```
 
 ## Building Smart Loops with Flags
 
@@ -806,10 +803,10 @@ LastButtonState: .byte %00000000  ; No buttons last frame
 
 ## Practice Exercise
 
-<CodeRunner 
-  system="nintendo-entertainment-system"
-  title="Status Flags Practice"
-  code="; Practice Exercise: NES Game State Manager
+**Status Flags Practice:**
+
+```assembly
+; Practice Exercise: NES Game State Manager
 ; Create a comprehensive system using status flags for decision making
 
 GameStatePractice:
@@ -1071,9 +1068,8 @@ ControllerInput: .byte %10000000  ; Simulate left pressed
 ; 1. Add multiple enemies with different collision behaviors
 ; 2. Implement power-ups that affect player state
 ; 3. Create a lives system with game over detection
-; 4. Add sound triggers based on game state changes"
-  language="assembly"
-/>
+; 4. Add sound triggers based on game state changes
+```
 
 ## What You've Learned
 

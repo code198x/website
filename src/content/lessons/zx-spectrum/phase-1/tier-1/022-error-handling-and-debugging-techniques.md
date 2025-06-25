@@ -508,10 +508,10 @@ UnsafeArea:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Error Detection and Validation"
-  code="; Comprehensive error detection and validation system
+**Error Detection and Validation:**
+
+```assembly
+; Comprehensive error detection and validation system
 
 ; Safe array access with bounds checking
 SafeArray:      DB 10, 20, 30, 40, 50, 60, 70, 80, 90, 100
@@ -688,9 +688,8 @@ TestValidation:
     CALL ProtectedOperation ; Should succeed
     LD H, A             ; Save result
     
-    ; Results: C=60, D=0, E=1, H=5 (10÷2)"
-  language="assembly"
-/>
+    ; Results: C=60, D=0, E=1, H=5 (10÷2)
+```
 
 ## Defensive Programming Techniques
 
@@ -951,10 +950,10 @@ NoCollision:
     RET
 ```
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Testing and Validation Framework"
-  code="; Complete testing and validation framework
+**Testing and Validation Framework:**
+
+```assembly
+; Complete testing and validation framework
 
 ; Test result storage
 TestResults:    DS 20   ; Results for up to 20 tests
@@ -1162,9 +1161,8 @@ RunTestSuite:
     LD C, A             ; C = failed
     
     ; Results now in: B = passed, C = failed
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## Common Debugging Patterns
 
@@ -1265,10 +1263,10 @@ Create a comprehensive debugging and error handling system that demonstrates:
 4. Testing framework with multiple test cases
 5. Debug tracing and analysis tools
 
-<CodeRunner 
-  system="zx-spectrum"
-  title="Practice Exercise - Complete Debug System"
-  code="; Comprehensive debugging and error handling system
+**Practice Exercise - Complete Debug System:**
+
+```assembly
+; Comprehensive debugging and error handling system
 
 ; Error codes
 ERROR_NONE          EQU 0
@@ -1542,9 +1540,8 @@ InitAndTest:
     
     ; Debug buffer now contains execution trace
     ; LastError contains final error state
-    RET"
-  language="assembly"
-/>
+    RET
+```
 
 ## What You've Learned
 

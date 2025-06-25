@@ -702,10 +702,10 @@ You've now mastered all the skills needed for professional 6502 assembly program
 
 Build a complete mini-operating system that demonstrates all concepts:
 
-<CodeRunner 
-  system="commodore-64"
-  title="Mini-OS: Complete Integration Exercise"
-  code="; Mini Operating System - Complete Integration Exercise
+**Mini-OS: Complete Integration Exercise**
+
+```assembly
+; Mini Operating System - Complete Integration Exercise
 ; Demonstrates all memory and addressing concepts
 
 ; System variables (Lesson 14: Memory organisation)
@@ -889,9 +889,8 @@ TaskMain:
 StartScheduler:
     ; Start the scheduler - tasks now run
     ; Main scheduler loop would handle task execution
-    RTS"
-  language="assembly"
-/>
+    RTS
+```
 
 ## Real-World Applications
 
