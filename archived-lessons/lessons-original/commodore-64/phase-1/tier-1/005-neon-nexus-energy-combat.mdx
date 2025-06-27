@@ -1,0 +1,761 @@
+---
+title: "Neon Nexus: Energy Combat"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 5
+description: "Add explosive energy weapons to Neon Nexus! Learn to create projectiles that fire across the screen while mastering 6502 loops and basic collision detection - your first taste of interactive combat programming."
+learning_objectives:
+  - "Create firing projectiles that move across the screen"
+  - "Learn 6502 loops through projectile movement animation"
+  - "Implement basic collision detection with screen boundaries"
+  - "Master timing and frame-based game programming"
+  - "Build your first interactive combat system"
+concepts:
+  - "Projectile creation and movement mechanics"
+  - "6502 loops for animation and timing"
+  - "Basic collision detection with boundaries"
+  - "Frame-based timing for smooth animation"
+  - "Interactive combat system fundamentals"
+estimated_duration: "30-45 minutes"
+difficulty: "easy"
+code_examples: true
+practical_exercise: true
+order: 5
+---
+
+# Lesson 5: Neon Nexus - Energy Combat
+
+**Time to add firepower to your neon world!** In the last lesson, you created digital opposition that moves around your arena. Today, you'll add the most exciting element - **energy weapons** that fire projectiles across the screen! Get ready to learn loops through explosive action programming.
+
+## Your First Energy Weapon
+
+Let's start by creating a simple projectile that fires across the screen. This teaches the fundamentals of loops and animation.
+
+### Step 1: Basic Projectile Creation
+
+First, let's create a projectile that appears and moves. Create `weapon-basic.s`:
+
+```asm
+; Neon Nexus - Lesson 5
+; Basic projectile weapon
+
+.segment "LOADADDR"
+.word $0801
+
+.segment "CODE"
+; BASIC program: 10 SYS 2064
+.word $080b
+.word 10
+.byte $9e
+.byte " 2064", 0
+.word 0
+
+start:
+        ; Set up our arena
+        lda #$06        ; Dark blue border
+        sta $d020
+        lda #$00        ; Black background
+        sta $d021
+        
+        ; Clear screen manually
+        lda #$20        ; Space character
+        ldx #$00
+clear_screen:
+        sta $0400,x     ; Clear screen memory
+        sta $0500,x
+        inx
+        bne clear_screen
+        
+        ; Create player at center
+        lda #$5a        ; Diamond player
+        sta $0400 + 512 ; Center position
+        
+        ; Create a projectile
+        lda #$2a        ; Star character (our projectile)
+        sta $0400 + 513 ; Right next to player
+        
+        ; Keep program running
+forever:
+        jmp forever
+```
+
+This creates a static projectile next to your player. Build and test:
+
+```bash
+ca65 weapon-basic.s && ld65 -C c64.cfg weapon-basic.o -o weapon-basic.prg
+```
+
+You'll see your diamond player with a star projectile next to it!
+
+### Step 2: Making the Projectile Move
+
+Static projectiles aren't much fun. Let's make it move using a simple loop. Create `weapon-moving.s`:
+
+```asm
+; Neon Nexus - Lesson 5
+; Moving projectile with basic loop
+
+.segment "LOADADDR"
+.word $0801
+
+.segment "CODE"
+; BASIC program: 10 SYS 2064
+.word $080b
+.word 10
+.byte $9e
+.byte " 2064", 0
+.word 0
+
+start:
+        ; Set up our arena
+        lda #$06        ; Dark blue border
+        sta $d020
+        lda #$00        ; Black background
+        sta $d021
+        
+        ; Clear screen manually
+        lda #$20        ; Space character
+        ldx #$00
+clear_screen:
+        sta $0400,x     ; Clear screen memory
+        sta $0500,x
+        inx
+        bne clear_screen
+        
+        ; Create player at center
+        lda #$5a        ; Diamond player
+        sta $0400 + 512 ; Center position
+        
+        ; Initialize projectile position
+        lda #$01        ; Starting column (next to player)
+        sta $fb         ; Store projectile X position
+        
+        ; Main game loop
+game_loop:
+        ; Clear old projectile position
+        lda #$20        ; Space character
+        ldy $fb         ; Get projectile position
+        sta $0400 + 512,y ; Clear at row 12, column Y
+        
+        ; Move projectile right
+        inc $fb         ; Move projectile X position
+        
+        ; Check if projectile reached screen edge
+        lda $fb         ; Get projectile position
+        cmp #$27        ; Compare with screen width (39)
+        bcc draw_projectile ; Continue if still on screen
+        
+        ; Reset projectile to start
+        lda #$01        ; Reset to starting position
+        sta $fb
+        
+draw_projectile:
+        ; Draw projectile at new position
+        lda #$2a        ; Star character
+        ldy $fb         ; Get projectile position
+        sta $0400 + 512,y ; Draw at row 12, column Y
+        
+        ; Add delay so we can see the movement
+        ldx #$ff        ; Delay counter
+delay_loop:
+        dex             ; Decrement counter
+        bne delay_loop  ; Continue until zero
+        
+        ; Continue main loop
+        jmp game_loop
+```
+
+**New concepts:**
+- We use `$FB` to store the projectile X position
+- The main loop moves, clears, and redraws the projectile
+- Simple delay loop slows down the animation so we can see it
+
+Build and run this - you'll see the star projectile moving across the screen!
+
+### Step 3: Better Timing Control
+
+The delay loop works but isn't very smooth. Let's create better timing. Create `weapon-timed.s`:
+
+```asm
+; Neon Nexus - Lesson 5
+; Timed projectile movement
+
+.segment "LOADADDR"
+.word $0801
+
+.segment "CODE"
+; BASIC program: 10 SYS 2064
+.word $080b
+.word 10
+.byte $9e
+.byte " 2064", 0
+.word 0
+
+start:
+        ; Set up our arena
+        lda #$06        ; Dark blue border
+        sta $d020
+        lda #$00        ; Black background
+        sta $d021
+        
+        ; Clear screen manually
+        lda #$20        ; Space character
+        ldx #$00
+clear_screen:
+        sta $0400,x     ; Clear screen memory
+        sta $0500,x
+        inx
+        bne clear_screen
+        
+        ; Create player at center
+        lda #$5a        ; Diamond player
+        sta $0400 + 512 ; Center position
+        
+        ; Initialize projectile
+        lda #$01        ; Starting X position
+        sta $fb         ; Store projectile X
+        lda #$00        ; Timer for movement
+        sta $fc         ; Store movement timer
+        
+game_loop:
+        ; Increment frame timer
+        inc $fc         ; Increment timer
+        
+        ; Only move projectile every 8 frames
+        lda $fc         ; Get timer
+        and #$07        ; Mask to get remainder when divided by 8
+        bne skip_move   ; Skip movement if not time yet
+        
+        ; Clear old projectile position  
+        lda #$20        ; Space character
+        ldy $fb         ; Get projectile position
+        sta $0400 + 512,y ; Clear old position
+        
+        ; Move projectile right
+        inc $fb         ; Move X position
+        
+        ; Check screen boundary
+        lda $fb         ; Get position
+        cmp #$27        ; Check screen edge
+        bcc draw_projectile ; Continue if on screen
+        
+        ; Reset projectile
+        lda #$01        ; Reset position
+        sta $fb
+        
+draw_projectile:
+        ; Draw projectile at new position
+        lda #$2a        ; Star character
+        ldy $fb         ; Get position
+        sta $0400 + 512,y ; Draw projectile
+        
+skip_move:
+        ; Very short delay between frames
+        ldx #$20        ; Short delay counter
+frame_delay:
+        dex
+        bne frame_delay
+        
+        jmp game_loop
+```
+
+**New concepts:**
+- We use a frame timer (`$FC`) to control movement speed
+- Only move the projectile every 8 frames for smooth motion
+- This gives us consistent timing regardless of CPU speed
+
+### Step 4: Player-Controlled Firing
+
+Now let's make the player control when to fire! Create `weapon-controlled.s`:
+
+```asm
+; Neon Nexus - Lesson 5
+; Player-controlled weapon firing
+
+.segment "LOADADDR"
+.word $0801
+
+.segment "CODE"
+; BASIC program: 10 SYS 2064
+.word $080b
+.word 10
+.byte $9e
+.byte " 2064", 0
+.word 0
+
+start:
+        ; Set up our arena
+        lda #$06        ; Dark blue border
+        sta $d020
+        lda #$00        ; Black background
+        sta $d021
+        
+        ; Clear screen manually
+        lda #$20        ; Space character
+        ldx #$00
+clear_screen:
+        sta $0400,x     ; Clear screen memory
+        sta $0500,x
+        inx
+        bne clear_screen
+        
+        ; Create player at center
+        lda #$5a        ; Diamond player
+        sta $0400 + 512 ; Center position
+        
+        ; Initialize projectile system
+        lda #$00        ; No projectile active initially
+        sta $fb         ; Projectile X position (0 = inactive)
+        lda #$00        ; Frame timer
+        sta $fc         ; Movement timer
+        
+game_loop:
+        ; Check for space bar press (fire weapon)
+        lda $dc01       ; Read keyboard port B
+        and #$10        ; Check bit 4 (space bar)
+        bne check_projectile ; Branch if space not pressed
+        
+        ; Space pressed - fire projectile if none active
+        lda $fb         ; Check if projectile active
+        bne check_projectile ; Skip if already firing
+        
+        ; Fire new projectile
+        lda #$01        ; Starting position (next to player)
+        sta $fb         ; Activate projectile
+        
+check_projectile:
+        ; Only update projectile if one is active
+        lda $fb         ; Check projectile status
+        beq skip_projectile ; Skip if no projectile active
+        
+        ; Increment frame timer
+        inc $fc
+        
+        ; Move projectile every 4 frames (faster than before)
+        lda $fc
+        and #$03        ; Every 4 frames
+        bne skip_projectile
+        
+        ; Clear old position
+        lda #$20        ; Space character
+        ldy $fb         ; Get position
+        sta $0400 + 512,y ; Clear old projectile
+        
+        ; Move projectile right
+        inc $fb
+        
+        ; Check if projectile left screen
+        lda $fb
+        cmp #$27        ; Screen edge
+        bcc draw_projectile ; Still on screen
+        
+        ; Projectile off screen - deactivate
+        lda #$00        ; Mark inactive
+        sta $fb
+        jmp skip_projectile
+        
+draw_projectile:
+        ; Draw projectile at new position
+        lda #$2a        ; Star character
+        ldy $fb         ; Get position
+        sta $0400 + 512,y ; Draw projectile
+        
+skip_projectile:
+        ; Short frame delay
+        ldx #$20
+frame_delay:
+        dex
+        bne frame_delay
+        
+        jmp game_loop
+```
+
+**New concepts:**
+- Read keyboard input with `lda $dc01`
+- Check specific keys by masking bits (`and #$10` for space)
+- Only fire when no projectile is already active
+- Projectile position of 0 means "inactive"
+
+Build and run this - press SPACE to fire projectiles across the screen!
+
+## Understanding Combat Programming
+
+Let's break down what makes this combat system work:
+
+### 6502 Loops in Action
+
+The core of our weapon system uses several types of loops:
+
+**Animation Loop** (main game loop):
+```asm
+game_loop:
+        ; Update input
+        ; Update projectiles  
+        ; Update display
+        jmp game_loop       ; Infinite loop for game
+```
+
+**Timing Loop** (frame delay):
+```asm
+frame_delay:
+        dex                 ; Decrement counter
+        bne frame_delay     ; Branch if Not Equal (continue loop)
+```
+
+**Clear Screen Loop** (initialization):
+```asm
+clear_screen:
+        sta $0400,x         ; Store space character
+        sta $0500,x         ; Clear more screen area
+        inx                 ; Increment X
+        bne clear_screen    ; Continue until X wraps to 0
+```
+
+### Collision Detection Basics
+
+Our weapon system uses simple boundary collision:
+
+```asm
+        lda $fb             ; Get projectile position
+        cmp #$27            ; Compare with screen edge
+        bcc draw_projectile ; Continue if still on screen (Carry Clear)
+```
+
+**How this works:**
+- `CMP` sets flags based on comparison
+- `BCC` (Branch if Carry Clear) continues when A < comparison value
+- This keeps projectiles on screen
+
+## Complete Weapon System
+
+Now let's build a more complete system with multiple projectiles. Create `weapon-complete.s`:
+
+```asm
+;===============================================
+; NEON NEXUS - Lesson 5: Complete Energy Combat
+; Multiple projectiles with collision detection
+;===============================================
+
+.segment "LOADADDR"
+.word $0801
+
+.segment "CODE"
+; BASIC program: 10 SYS 2064
+.word $080b
+.word 10
+.byte $9e
+.byte " 2064", 0
+.word 0
+
+start:
+        ; Set up neon arena
+        jsr setup_arena
+        
+        ; Create player
+        jsr create_player
+        
+        ; Initialize weapon system
+        jsr init_weapons
+        
+        ; Main combat loop
+main_loop:
+        jsr check_input
+        jsr update_projectiles
+        jsr draw_everything
+        jsr frame_delay
+        jmp main_loop
+
+;-----------------------------------------------
+; Setup the arena
+;-----------------------------------------------
+setup_arena:
+        lda #$06        ; Dark blue border
+        sta $d020
+        lda #$00        ; Black background
+        sta $d021
+        
+        ; Clear screen
+        lda #$20        ; Space character
+        ldx #$00
+clear_loop:
+        sta $0400,x
+        sta $0500,x
+        inx
+        bne clear_loop
+        rts
+
+;-----------------------------------------------
+; Create player at center
+;-----------------------------------------------
+create_player:
+        lda #$5a        ; Diamond character
+        sta $0400 + 512 ; Center of screen
+        
+        ; Store player position for reference
+        lda #$14        ; Player X (20)
+        sta $80         ; Store in zero page
+        lda #$0c        ; Player Y (12)  
+        sta $81         ; Store in zero page
+        rts
+
+;-----------------------------------------------
+; Initialize weapon system (4 projectile slots)
+;-----------------------------------------------
+init_weapons:
+        ldx #$03        ; 4 projectiles (0-3)
+clear_projectiles:
+        lda #$00        ; Mark inactive
+        sta $90,x       ; Clear projectile X positions
+        dex
+        bpl clear_projectiles
+        
+        ; Initialize timing
+        lda #$00        ; Reset frame counter
+        sta $85         ; Store frame timer
+        rts
+
+;-----------------------------------------------
+; Check for player input
+;-----------------------------------------------
+check_input:
+        ; Read keyboard
+        lda $dc01       ; Read port B
+        and #$10        ; Check space bar
+        bne input_done  ; Skip if not pressed
+        
+        ; Space pressed - try to fire
+        jsr fire_projectile
+        
+input_done:
+        rts
+
+;-----------------------------------------------
+; Fire a new projectile if slot available
+;-----------------------------------------------
+fire_projectile:
+        ; Find empty projectile slot
+        ldx #$03        ; Check slots 3 down to 0
+find_slot:
+        lda $90,x       ; Check if slot empty
+        beq found_slot  ; Use this slot if empty
+        dex
+        bpl find_slot   ; Keep looking
+        rts             ; No slots available
+
+found_slot:
+        ; Activate projectile at player position + 1
+        lda $80         ; Get player X
+        clc
+        adc #$01        ; Offset right from player
+        sta $90,x       ; Store in projectile slot
+        rts
+
+;-----------------------------------------------
+; Update all active projectiles
+;-----------------------------------------------
+update_projectiles:
+        ; Increment frame timer
+        inc $85
+        
+        ; Only move projectiles every 3 frames
+        lda $85
+        and #$03        ; Every 4 frames
+        bne projectile_update_done
+        
+        ; Update each projectile slot
+        ldx #$03        ; Start with slot 3
+update_loop:
+        lda $90,x       ; Get projectile X position
+        beq skip_projectile ; Skip if inactive (X=0)
+        
+        ; Clear old position
+        jsr clear_projectile
+        
+        ; Move projectile right
+        inc $90,x
+        
+        ; Check if off screen
+        lda $90,x
+        cmp #$27        ; Screen width - 1
+        bcc draw_this_projectile ; Still on screen
+        
+        ; Off screen - deactivate
+        lda #$00
+        sta $90,x
+        jmp skip_projectile
+        
+draw_this_projectile:
+        ; Draw projectile at new position
+        jsr draw_projectile
+        
+skip_projectile:
+        dex
+        bpl update_loop
+        
+projectile_update_done:
+        rts
+
+;-----------------------------------------------
+; Clear projectile from old position
+; Input: X = projectile slot
+;-----------------------------------------------
+clear_projectile:
+        ; Calculate screen position
+        lda $90,x       ; Get X position
+        clc
+        adc #$00        ; Y offset (keeping same row as player)
+        tay             ; Use as index
+        
+        ; Clear character
+        lda #$20        ; Space
+        sta $0400 + 512,y ; Clear from screen
+        rts
+
+;-----------------------------------------------
+; Draw projectile at current position
+; Input: X = projectile slot
+;-----------------------------------------------
+draw_projectile:
+        ; Calculate screen position
+        lda $90,x       ; Get X position
+        tay             ; Use as screen offset
+        
+        ; Draw projectile character
+        lda #$2a        ; Star character
+        sta $0400 + 512,y ; Draw on screen
+        rts
+
+;-----------------------------------------------
+; Draw everything on screen
+;-----------------------------------------------
+draw_everything:
+        ; Redraw player (in case projectile overwrote it)
+        lda #$5a        ; Diamond character
+        sta $0400 + 512 ; Player position
+        
+        ; Color the player yellow
+        lda #$07        ; Yellow
+        sta $d800 + 512 ; Color memory
+        rts
+
+;-----------------------------------------------
+; Frame delay for consistent timing
+;-----------------------------------------------
+frame_delay:
+        ldx #$30        ; Delay amount
+delay_loop:
+        dex
+        bne delay_loop
+        rts
+```
+
+Build and run this complete system:
+
+```bash
+ca65 weapon-complete.s && ld65 -C c64.cfg weapon-complete.o -o weapon-complete.prg
+```
+
+Now you have a full weapon system with multiple projectiles! Press SPACE rapidly to see multiple shots flying across the screen.
+
+## What You've Learned
+
+### 6502 Loop Techniques
+
+**Countdown Loops** (most common):
+```asm
+        ldx #$10        ; Load counter
+loop:   
+        ; Do work here
+        dex             ; Decrement
+        bne loop        ; Continue while not zero
+```
+
+**Infinite Loops** (game main loop):
+```asm
+main_loop:
+        ; Game logic here
+        jmp main_loop   ; Repeat forever
+```
+
+**Conditional Loops** (with early exit):
+```asm
+find_slot:
+        lda $90,x       ; Check condition
+        beq found_slot  ; Exit early if condition met
+        dex
+        bpl find_slot   ; Continue while positive
+```
+
+### Combat System Architecture
+
+Your weapon system demonstrates:
+- **Entity management** - tracking multiple projectiles in arrays
+- **State machines** - projectiles can be active/inactive
+- **Collision detection** - checking boundaries and positions
+- **Timing control** - using frame counters for smooth animation
+
+## Experiment and Learn
+
+Try these modifications:
+
+1. **Change projectile speed:**
+   ```asm
+   and #$01        ; Move every 2 frames (faster)
+   and #$07        ; Move every 8 frames (slower)
+   ```
+
+2. **Different projectile characters:**
+   ```asm
+   lda #$2d        ; Dash character
+   lda #$7e        ; Arrow character
+   lda #$51        ; Circle character
+   ```
+
+3. **Multiple directions:**
+   ```asm
+   ; In fire_projectile, add:
+   lda #$ff        ; Store direction (-1 = left)
+   sta $94,x       ; Direction array
+   
+   ; In update loop:
+   lda $94,x       ; Get direction
+   clc
+   adc $90,x       ; Add to position (moves left if negative)
+   sta $90,x
+   ```
+
+## What You've Accomplished
+
+✅ **Created projectile weapons** with smooth movement animation  
+✅ **Learned 6502 loops** through timing and animation control  
+✅ **Built collision detection** with screen boundary checking  
+✅ **Mastered frame-based timing** for consistent gameplay  
+✅ **Organized code with subroutines** for clean weapon systems  
+
+More importantly, you've built the **foundation of action gaming** - the responsive weapon systems that make games exciting to play.
+
+## Coming Next
+
+In **Lesson 6**, you'll add **targets to destroy**! You'll learn:
+- Creating enemy entities to shoot at
+- Collision detection between projectiles and enemies
+- Score systems and game feedback
+- Building complete combat encounters
+
+Your energy weapons need something to shoot at - time to add some targets!
+
+## Quick Reference
+
+**Loop Instructions:**
+- `DEX` - Decrement X register
+- `BNE loop` - Branch if Not Equal (continue loop)
+- `BPL loop` - Branch if Plus (continue while positive)
+- `BCC continue` - Branch if Carry Clear (less than)
+
+**Memory Layout:**
+- `$90-$93` - Projectile X positions (4 slots)
+- `$85` - Frame timer for movement
+- `$80-$81` - Player X,Y position
+
+Your weapon system is locked and loaded!

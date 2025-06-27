@@ -1,0 +1,958 @@
+---
+title: "Neon Nexus: Digital Opposition"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 4
+description: "Add moving enemy geometric shapes to Neon Nexus! Create digital opposition with basic AI patterns while learning status flags through collision detection and enemy movement logic."
+learning_objectives:
+  - "Create moving enemy geometric shapes with basic AI patterns"
+  - "Add digital opposition that challenges the player entity"
+  - "Learn status flags through collision detection and boundary checking"
+  - "Build enemy movement systems using loops and conditional logic"
+  - "Experience authentic C64 gameplay with multiple moving entities"
+concepts:
+  - "Enemy entity creation and autonomous movement patterns"
+  - "Status flags for collision detection and boundary checking"
+  - "Conditional logic for AI behavior and enemy decisions"
+  - "Multiple entity management and interactive gameplay"
+  - "Authentic C64 game mechanics with challenging opposition"
+estimated_duration: "30-45 minutes"
+difficulty: "easy"
+code_examples: true
+practical_exercise: true
+order: 4
+---
+
+# Lesson 4: Neon Nexus - Digital Opposition
+
+**Your neon world needs an opponent!** In the last lesson, you added player movement to your arena. Today, you'll create your first enemy - a simple moving opponent that challenges the player, teaching basic collision detection and enemy AI patterns.
+
+### Step 1: Simple Stationary Enemy
+
+First, let's add a single enemy that just sits on the screen. Create `enemy-basic.s`:
+
+```asm
+; Neon Nexus - Lesson 4
+; Adding our first enemy
+
+.segment "LOADADDR"
+.word $0801
+
+.segment "CODE"
+; BASIC program: 10 SYS 2064
+.word $080b
+.word 10
+.byte $9e
+.byte " 2064", 0
+.word 0
+
+start:
+        ; Set up our arena
+        lda #$06
+        sta $d020
+        lda #$00
+        sta $d021
+        lda #$93
+        jsr $ffd2
+        
+        ; Create player at center
+        ldx #$14        ; Player X (20)
+        ldy #$0c        ; Player Y (12)
+        stx $80         ; Store player X
+        sty $81         ; Store player Y
+        jsr draw_player
+        
+        ; Create enemy
+        ldx #$20        ; Enemy X (32)
+        ldy #$08        ; Enemy Y (8)
+        stx $82         ; Store enemy X
+        sty $83         ; Store enemy Y
+        jsr draw_enemy
+        
+        ; Simple game loop
+game_loop:
+        jmp game_loop   ; Just display for now
+
+draw_player:
+        jsr calculate_player_position
+        lda #$51        ; Diamond character
+        ldy #$00
+        sta ($84),y
+        rts
+
+draw_enemy:
+        jsr calculate_enemy_position
+        lda #$2a        ; Star character
+        ldy #$00
+        sta ($84),y
+        rts
+
+calculate_player_position:
+        ; Calculate screen position for player
+        lda #$00
+        sta $84
+        lda #$04
+        sta $85
+        
+        ; Add Y offset
+        ldy $81
+        beq add_player_x
+player_y_loop:
+        lda $84
+        clc
+        adc #40
+        sta $84
+        bcc no_player_carry
+        inc $85
+no_player_carry:
+        dey
+        bne player_y_loop
+        
+add_player_x:
+        lda $84
+        clc
+        adc $80
+        sta $84
+        bcc done_player_calc
+        inc $85
+done_player_calc:
+        rts
+
+calculate_enemy_position:
+        ; Calculate screen position for enemy
+        lda #$00
+        sta $84
+        lda #$04
+        sta $85
+        
+        ; Add Y offset
+        ldy $83
+        beq add_enemy_x
+enemy_y_loop:
+        lda $84
+        clc
+        adc #40
+        sta $84
+        bcc no_enemy_carry
+        inc $85
+no_enemy_carry:
+        dey
+        bne enemy_y_loop
+        
+add_enemy_x:
+        lda $84
+        clc
+        adc $82
+        sta $84
+        bcc done_enemy_calc
+        inc $85
+done_enemy_calc:
+        rts
+```
+
+Now you have a player (diamond) and an enemy (star) on screen!
+
+Build and test this first step:
+
+```bash
+ca65 -o enemy-basic.o enemy-basic.s
+ld65 -C c64.cfg -o enemy-basic.prg enemy-basic.o
+x64sc enemy-basic.prg
+```
+
+Type `RUN` - you should see both a player diamond and an enemy star!
+
+### Step 2: Moving Enemy
+
+Now let's make the enemy move back and forth. Create `enemy-moving.s`:
+
+```asm
+; Neon Nexus - Lesson 4
+; Enemy with simple movement
+
+.segment "LOADADDR"
+.word $0801
+
+.segment "CODE"
+; BASIC program: 10 SYS 2064
+.word $080b
+.word 10
+.byte $9e
+.byte " 2064", 0
+.word 0
+
+start:
+        ; Set up our arena
+        lda #$06
+        sta $d020
+        lda #$00
+        sta $d021
+        lda #$93
+        jsr $ffd2
+        
+        ; Create player
+        ldx #$14        ; Player X (20)
+        ldy #$0c        ; Player Y (12)
+        stx $80         ; Store player X
+        sty $81         ; Store player Y
+        
+        ; Create enemy with movement direction
+        ldx #$10        ; Enemy X (16)
+        ldy #$08        ; Enemy Y (8)
+        stx $82         ; Store enemy X
+        sty $83         ; Store enemy Y
+        
+        lda #$01        ; Enemy direction (1=right, 2=left)
+        sta $84         ; Store direction
+        
+        ; Movement timing
+        lda #$20        ; Movement delay counter
+        sta $85         ; Store delay
+        
+game_loop:
+        ; Update enemy position
+        jsr update_enemy
+        
+        ; Clear screen
+        lda #$93
+        jsr $ffd2
+        
+        ; Draw both entities
+        jsr draw_player
+        jsr draw_enemy
+        
+        ; Small delay
+        ldx #$10
+delay_loop:
+        dex
+        bne delay_loop
+        
+        jmp game_loop
+
+update_enemy:
+        ; Decrement movement timer
+        dec $85
+        bne no_enemy_move
+        
+        ; Reset timer
+        lda #$20
+        sta $85
+        
+        ; Move enemy based on direction
+        lda $84         ; Get direction
+        cmp #$01        ; Moving right?
+        beq move_enemy_right
+        
+move_enemy_left:
+        ldx $82         ; Get enemy X
+        dex             ; Move left
+        cpx #$02        ; Hit left boundary?
+        bcs store_enemy_x ; No, store new position
+        
+        ; Hit boundary, change direction
+        ldx #$02        ; Clamp position
+        lda #$01        ; Change to right
+        sta $84
+        jmp store_enemy_x
+        
+move_enemy_right:
+        ldx $82         ; Get enemy X
+        inx             ; Move right
+        cpx #$26        ; Hit right boundary?
+        bcc store_enemy_x ; No, store new position
+        
+        ; Hit boundary, change direction
+        ldx #$25        ; Clamp position
+        lda #$02        ; Change to left
+        sta $84
+        
+store_enemy_x:
+        stx $82         ; Store new enemy X
+
+no_enemy_move:
+        rts
+
+draw_player:
+        jsr calculate_player_position
+        lda #$51        ; Diamond character
+        ldy #$00
+        sta ($86),y
+        rts
+
+draw_enemy:
+        jsr calculate_enemy_position
+        lda #$2a        ; Star character
+        ldy #$00
+        sta ($86),y
+        rts
+
+calculate_player_position:
+        ; Calculate screen position for player
+        lda #$00
+        sta $86
+        lda #$04
+        sta $87
+        
+        ldy $81
+        beq add_player_x
+player_y_loop:
+        lda $86
+        clc
+        adc #40
+        sta $86
+        bcc no_player_carry
+        inc $87
+no_player_carry:
+        dey
+        bne player_y_loop
+        
+add_player_x:
+        lda $86
+        clc
+        adc $80
+        sta $86
+        bcc done_player
+        inc $87
+done_player:
+        rts
+
+calculate_enemy_position:
+        ; Calculate screen position for enemy
+        lda #$00
+        sta $86
+        lda #$04
+        sta $87
+        
+        ldy $83
+        beq add_enemy_x
+enemy_y_loop:
+        lda $86
+        clc
+        adc #40
+        sta $86
+        bcc no_enemy_carry
+        inc $87
+no_enemy_carry:
+        dey
+        bne enemy_y_loop
+        
+add_enemy_x:
+        lda $86
+        clc
+        adc $82
+        sta $86
+        bcc done_enemy
+        inc $87
+done_enemy:
+        rts
+```
+
+Now the enemy moves back and forth across the screen!
+
+### Step 3: Adding Player Control
+
+Let's combine enemy movement with player movement from Lesson 3. Create `player-vs-enemy.s`:
+
+```asm
+; Neon Nexus - Lesson 4
+; Player vs Enemy
+
+.segment "LOADADDR"
+.word $0801
+
+.segment "CODE"
+; BASIC program: 10 SYS 2064
+.word $080b
+.word 10
+.byte $9e
+.byte " 2064", 0
+.word 0
+
+start:
+        ; Set up our arena
+        lda #$06
+        sta $d020
+        lda #$00
+        sta $d021
+        lda #$93
+        jsr $ffd2
+        
+        ; Create player
+        ldx #$14        ; Player X (20)
+        ldy #$0c        ; Player Y (12)
+        stx $80         ; Store player X
+        sty $81         ; Store player Y
+        
+        ; Create enemy
+        ldx #$10        ; Enemy X (16)
+        ldy #$04        ; Enemy Y (4)
+        stx $82         ; Store enemy X
+        sty $83         ; Store enemy Y
+        lda #$01        ; Enemy direction
+        sta $84         ; Store direction
+        lda #$15        ; Enemy movement timer
+        sta $85         ; Store timer
+        
+game_loop:
+        ; Handle player input
+        jsr handle_player_input
+        
+        ; Update enemy
+        jsr update_enemy
+        
+        ; Clear screen and redraw
+        lda #$93
+        jsr $ffd2
+        jsr draw_player
+        jsr draw_enemy
+        
+        ; Small delay
+        ldx #$08
+delay:
+        dex
+        bne delay
+        
+        jmp game_loop
+
+handle_player_input:
+        ; Check for keypress
+        jsr $ffe4       ; GETIN
+        beq no_input    ; No key pressed
+        
+        ; Check movement keys
+        cmp #$91        ; UP
+        beq move_player_up
+        cmp #$11        ; DOWN
+        beq move_player_down
+        cmp #$9d        ; LEFT
+        beq move_player_left
+        cmp #$1d        ; RIGHT
+        beq move_player_right
+        
+no_input:
+        rts
+
+move_player_up:
+        ldy $81         ; Get player Y
+        dey             ; Move up
+        cpy #$02        ; Check boundary
+        bcc no_input    ; Too high
+        sty $81         ; Store new Y
+        rts
+
+move_player_down:
+        ldy $81         ; Get player Y
+        iny             ; Move down
+        cpy #$17        ; Check boundary
+        bcs no_input    ; Too low
+        sty $81         ; Store new Y
+        rts
+
+move_player_left:
+        ldx $80         ; Get player X
+        dex             ; Move left
+        cpx #$01        ; Check boundary
+        bcc no_input    ; Too far left
+        stx $80         ; Store new X
+        rts
+
+move_player_right:
+        ldx $80         ; Get player X
+        inx             ; Move right
+        cpx #$27        ; Check boundary
+        bcs no_input    ; Too far right
+        stx $80         ; Store new X
+        rts
+
+update_enemy:
+        ; Decrement movement timer
+        dec $85
+        bne no_enemy_move
+        
+        ; Reset timer
+        lda #$15
+        sta $85
+        
+        ; Move enemy based on direction
+        lda $84         ; Get direction
+        cmp #$01        ; Moving right?
+        beq move_enemy_right
+        
+move_enemy_left:
+        ldx $82         ; Get enemy X
+        dex             ; Move left
+        cpx #$02        ; Hit left boundary?
+        bcs store_enemy_pos
+        ldx #$02        ; Clamp
+        lda #$01        ; Change direction
+        sta $84
+        jmp store_enemy_pos
+        
+move_enemy_right:
+        ldx $82         ; Get enemy X
+        inx             ; Move right
+        cpx #$26        ; Hit right boundary?
+        bcc store_enemy_pos
+        ldx #$25        ; Clamp
+        lda #$02        ; Change direction
+        sta $84
+        
+store_enemy_pos:
+        stx $82         ; Store new enemy X
+
+no_enemy_move:
+        rts
+
+draw_player:
+        ; Calculate and draw player
+        jsr calc_player_screen
+        lda #$51        ; Diamond
+        ldy #$00
+        sta ($86),y
+        rts
+
+draw_enemy:
+        ; Calculate and draw enemy
+        jsr calc_enemy_screen
+        lda #$2a        ; Star
+        ldy #$00
+        sta ($86),y
+        rts
+
+calc_player_screen:
+        lda #$00
+        sta $86
+        lda #$04
+        sta $87
+        
+        ldy $81
+        beq add_px
+py_loop:
+        lda $86
+        clc
+        adc #40
+        sta $86
+        bcc no_pcarry
+        inc $87
+no_pcarry:
+        dey
+        bne py_loop
+        
+add_px:
+        lda $86
+        clc
+        adc $80
+        sta $86
+        bcc done_pcalc
+        inc $87
+done_pcalc:
+        rts
+
+calc_enemy_screen:
+        lda #$00
+        sta $86
+        lda #$04
+        sta $87
+        
+        ldy $83
+        beq add_ex
+ey_loop:
+        lda $86
+        clc
+        adc #40
+        sta $86
+        bcc no_ecarry
+        inc $87
+no_ecarry:
+        dey
+        bne ey_loop
+        
+add_ex:
+        lda $86
+        clc
+        adc $82
+        sta $86
+        bcc done_ecalc
+        inc $87
+done_ecalc:
+        rts
+```
+
+Now you can control the player with arrow keys while the enemy moves automatically!
+
+### Step 4: Collision Detection
+
+Finally, let's add collision detection so touching the enemy resets the player. Here's the complete collision system - create `complete-game.s`:
+
+```asm
+;===============================================
+; NEON NEXUS - Lesson 4: Complete Enemy System
+; Player vs Enemy with collision detection
+;===============================================
+
+.segment "LOADADDR"
+.word $0801
+
+.segment "CODE"
+; BASIC program: 10 SYS 2064
+.word $080b
+.word 10
+.byte $9e
+.byte " 2064", 0
+.word 0
+
+start:
+        ; Set up arena
+        lda #$06
+        sta $d020
+        lda #$00
+        sta $d021
+        jsr clear_screen
+        
+        ; Initialize player
+        ldx #$14        ; Starting X (20)
+        ldy #$10        ; Starting Y (16)
+        stx $80         ; Store player X
+        sty $81         ; Store player Y
+        
+        ; Initialize enemy
+        ldx #$05        ; Enemy X (5)
+        ldy #$04        ; Enemy Y (4)
+        stx $82         ; Store enemy X
+        sty $83         ; Store enemy Y
+        lda #$01        ; Direction (1=right)
+        sta $84         ; Store direction
+        lda #$10        ; Movement timer
+        sta $85         ; Store timer
+        
+        ; Show instructions
+        jsr show_instructions
+
+main_loop:
+        ; Handle player input
+        jsr handle_input
+        
+        ; Update enemy
+        jsr update_enemy
+        
+        ; Check collision
+        jsr check_collision
+        
+        ; Draw everything
+        jsr draw_screen
+        
+        ; Small delay
+        ldx #$06
+delay:
+        dex
+        bne delay
+        
+        jmp main_loop
+
+handle_input:
+        jsr $ffe4       ; GETIN
+        beq no_key
+        
+        cmp #$91        ; UP
+        beq move_up
+        cmp #$11        ; DOWN
+        beq move_down
+        cmp #$9d        ; LEFT
+        beq move_left
+        cmp #$1d        ; RIGHT
+        beq move_right
+        
+no_key:
+        rts
+
+move_up:
+        ldy $81
+        dey
+        cpy #$03
+        bcc no_key
+        sty $81
+        rts
+
+move_down:
+        ldy $81
+        iny
+        cpy #$16
+        bcs no_key
+        sty $81
+        rts
+
+move_left:
+        ldx $80
+        dex
+        cpx #$01
+        bcc no_key
+        stx $80
+        rts
+
+move_right:
+        ldx $80
+        inx
+        cpx #$27
+        bcs no_key
+        stx $80
+        rts
+
+update_enemy:
+        dec $85
+        bne no_move
+        
+        lda #$10        ; Reset timer
+        sta $85
+        
+        lda $84         ; Get direction
+        cmp #$01
+        beq enemy_right
+        
+enemy_left:
+        ldx $82
+        dex
+        cpx #$02
+        bcs enemy_store
+        ldx #$02
+        lda #$01        ; Change to right
+        sta $84
+        jmp enemy_store
+        
+enemy_right:
+        ldx $82
+        inx
+        cpx #$25
+        bcc enemy_store
+        ldx #$24
+        lda #$02        ; Change to left
+        sta $84
+        
+enemy_store:
+        stx $82
+
+no_move:
+        rts
+
+check_collision:
+        ; Check if player and enemy are at same position
+        lda $80         ; Player X
+        cmp $82         ; Enemy X
+        bne no_collision
+        
+        lda $81         ; Player Y
+        cmp $83         ; Enemy Y
+        bne no_collision
+        
+        ; Collision! Reset player
+        jsr collision_effect
+        ldx #$14        ; Reset player X
+        ldy #$10        ; Reset player Y
+        stx $80
+        sty $81
+        
+no_collision:
+        rts
+
+collision_effect:
+        ; Flash screen red
+        lda #$02
+        sta $d020
+        sta $d021
+        
+        ; Brief delay
+        ldx #$80
+flash_delay:
+        dex
+        bne flash_delay
+        
+        ; Restore colors
+        lda #$06
+        sta $d020
+        lda #$00
+        sta $d021
+        
+        rts
+
+draw_screen:
+        jsr clear_screen
+        jsr draw_player
+        jsr draw_enemy
+        rts
+
+clear_screen:
+        lda #$93
+        jsr $ffd2
+        rts
+
+draw_player:
+        jsr calc_player_pos
+        lda #$51        ; Diamond
+        ldy #$00
+        sta ($86),y
+        rts
+
+draw_enemy:
+        jsr calc_enemy_pos
+        lda #$2a        ; Star
+        ldy #$00
+        sta ($86),y
+        rts
+
+calc_player_pos:
+        lda #$00
+        sta $86
+        lda #$04
+        sta $87
+        
+        ldy $81
+        beq add_player_x
+player_y:
+        lda $86
+        clc
+        adc #40
+        sta $86
+        bcc no_player_carry
+        inc $87
+no_player_carry:
+        dey
+        bne player_y
+        
+add_player_x:
+        lda $86
+        clc
+        adc $80
+        sta $86
+        bcc done_player
+        inc $87
+done_player:
+        rts
+
+calc_enemy_pos:
+        lda #$00
+        sta $86
+        lda #$04
+        sta $87
+        
+        ldy $83
+        beq add_enemy_x
+enemy_y:
+        lda $86
+        clc
+        adc #40
+        sta $86
+        bcc no_enemy_carry
+        inc $87
+no_enemy_carry:
+        dey
+        bne enemy_y
+        
+add_enemy_x:
+        lda $86
+        clc
+        adc $82
+        sta $86
+        bcc done_enemy
+        inc $87
+done_enemy:
+        rts
+
+show_instructions:
+        lda #$13        ; HOME
+        jsr $ffd2
+        
+        ; Simple message
+        lda #'A'
+        jsr $ffd2
+        lda #'V'
+        jsr $ffd2
+        lda #'O'
+        jsr $ffd2
+        lda #'I'
+        jsr $ffd2
+        lda #'D'
+        jsr $ffd2
+        lda #' '
+        jsr $ffd2
+        lda #'S'
+        jsr $ffd2
+        lda #'T'
+        jsr $ffd2
+        lda #'A'
+        jsr $ffd2
+        lda #'R'
+        jsr $ffd2
+        
+        rts
+```
+
+Now you have a complete game - avoid the moving star with your diamond player!
+
+## Visual Progress Check
+
+After running your enhanced code, you should see:
+- Your original neon grid world with electronic pulses as the foundation
+- Multiple enemy shapes moving with distinct AI patterns
+- Horizontal patrol enemy bouncing between boundaries
+- Vertical patrol enemy moving up and down
+- Diagonal enemy moving in complex patterns
+- Collision detection with visual and audio feedback
+- Player reset to starting position when hit by enemies
+
+**Take a screenshot!** Your neon world now has challenging digital opposition.
+
+## What You've Accomplished
+
+In this lesson, you've:
+
+✅ **Created moving enemy entities** with autonomous AI patterns using status flags  
+✅ **Learned status flags** through collision detection and boundary checking logic  
+✅ **Built intelligent opposition** with different movement behaviors and decision-making  
+✅ **Used the Zero flag** for enemy status checking and AI state management  
+✅ **Used the Carry flag** for boundary detection and movement range checking  
+✅ **Used the CMP instruction** for AI decision-making and comparison logic  
+
+More importantly, you've experienced **authentic C64 gameplay** with multiple interactive entities and challenging opposition.
+
+## Game AI Architecture
+
+**Why This Approach Matters**:
+
+Your digital opposition system demonstrates core game AI programming:
+- **Autonomous entity behavior** using status flags for automatic decision-making
+- **Efficient boundary checking** with automatic flag setting for movement limits
+- **Multiple AI patterns** creating diverse and engaging enemy behaviors  
+- **Collision detection systems** providing immediate game feedback
+- **Interactive gameplay** with meaningful challenge and consequences
+
+These same techniques enabled the intelligent enemies that made C64 games engaging and challenging.
+
+## Looking Ahead: Your Electronic Combat Journey
+
+**Next lesson**, you'll add the most essential element - **energy combat**! You'll learn:
+- How to create collision-based combat systems with visual and audio feedback
+- Building weapon systems and projectile mechanics using branching logic
+- Adding energy levels and health systems for extended gameplay
+- Creating explosive visual effects that enhance the electronic combat experience
+
+By **Lesson 8**, you'll have complete interactive combat in a feature-rich electronic game world.
+
+## Ready to Continue?
+
+Your neon world now challenges players with intelligent digital opposition! Multiple enemies patrol with distinct AI patterns, creating engaging gameplay that requires skill and strategy. The next lesson will add combat mechanics to create true interactive gameplay.
+
+But first, **watch your digital opponents in action**. You've just implemented multiple AI entities using authentic 6502 status flags and comparison logic. This demonstrates the intelligent gameplay systems that made C64 games legendary for their engaging opposition.
+
+**Welcome to game AI programming!**
+
+---
+
+### Quick Reference: Today's Status Flag Instructions
+
+- **CMP #value**: Compare register with value (sets flags for decisions)
+- **BEQ label**: Branch if Equal (Zero flag set)
+- **BNE label**: Branch if Not Equal (Zero flag clear)
+- **BCC label**: Branch if Carry Clear (less than comparison)
+- **BCS label**: Branch if Carry Set (greater than or equal)
+
+Save this reference - you'll use these status flags to control all your AI systems!
