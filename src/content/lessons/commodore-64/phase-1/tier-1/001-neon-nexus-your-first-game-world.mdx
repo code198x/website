@@ -136,50 +136,57 @@ Create a new file called `neon1.s` (the `.s` extension is standard for assembly 
 ; Neon Nexus - Lesson 1
 ; Our first C64 program
 
-        .org $0801      ; Start at BASIC area of memory
+.segment "LOADADDR"
+.word $c000             ; Tell C64 to load at $c000 (49152)
 
-; BASIC stub that runs our machine language program
-        .byte $0b,$08   ; Link to next BASIC line
-        .byte $0a,$00   ; Line number 10
-        .byte $9e       ; SYS token
-        .byte $32,$30,$36,$31 ; "2061" in ASCII
-        .byte $00       ; End of BASIC line
-        .byte $00,$00   ; End of BASIC program
-
-; Our machine language program starts here
+.segment "CODE"
 start:
         rts             ; Return to BASIC
 ```
 
 **What's happening here?**
-- `.org $0801` tells the assembler where to put our code in memory
-- The `.byte` lines create a tiny BASIC program that says "10 SYS 2061"
-- `start:` is a label marking where our code begins (at address 2061)
+- `.segment "LOADADDR"` creates the PRG file header
+- `.word $c000` tells the C64 to load our program at address $c000 (49152)
+- `.segment "CODE"` contains our actual program
+- `start:` is a label marking where our code begins
 - `rts` (Return from Subroutine) gives control back to BASIC
+- We'll run this with `SYS 49152` after loading
 
 ## Assembling Your First Program
 
 Now let's turn this source code into a program the C64 can run.
 
-### Step 1: Assemble to Object File
+### Simple Assembly with CA65
 
-Open your terminal/command prompt in your project folder and run:
+For C64 programs, we need two files: our assembly source and a simple memory configuration. 
 
-```bash
-ca65 -t c64 neon1.s -o neon1.o
+First, create `c64.cfg` with this content:
+
+```
+MEMORY {
+    ZP: start = $0002, size = $001A, type = rw, define = yes;
+    LOADADDR: start = $0000, size = $0002, type = ro;
+    RAM: start = $c000, size = $3000, type = rw, define = yes;
+}
+
+SEGMENTS {
+    LOADADDR: load = LOADADDR, type = ro;
+    CODE: load = RAM, type = ro, start = $c000;
+}
+
+FILES {
+    %O: format = bin;
+}
 ```
 
-This creates `neon1.o` - an object file. The `-t c64` tells CA65 we're targeting the C64.
-
-### Step 2: Link to PRG File
-
-Now link it into a C64 program file:
+Now build with these commands:
 
 ```bash
-ld65 -t c64 -o neon1.prg neon1.o
+ca65 -o neon1.o neon1.s
+ld65 -C c64.cfg -o neon1.prg neon1.o
 ```
 
-This creates `neon1.prg` - a file the C64 can actually run!
+The config file tells LD65 to create a proper C64 PRG file with load address header.
 
 ### Step 3: Run in VICE
 
@@ -193,7 +200,11 @@ This creates `neon1.prg` - a file the C64 can actually run!
 x64sc neon1.prg
 ```
 
-The program should load and run automatically. Nothing visible happens - but it worked!
+You'll see "LOADING" then "READY." - but the program hasn't run yet! 
+
+**Type `RUN` and press Enter** to actually execute your program.
+
+Nothing visible happens with this first version - but it worked!
 
 ## Troubleshooting
 
@@ -214,41 +225,85 @@ The program should load and run automatically. Nothing visible happens - but it 
 
 ## Adding Our First Visual Effect
 
-Now let's make something happen. Edit your program to change the border color:
+Now let's make something happen. Create a new file called `neon-red.s`:
 
 ```asm
-; Our machine language program starts here
+; Neon Nexus - Lesson 1
+; Adding color to our first C64 program
+
+.segment "LOADADDR"
+.word $c000             ; Tell C64 to load at $c000 (49152)
+
+.segment "CODE"
 start:
-        lda #$01        ; Load 1 (white) into accumulator
+        lda #$02        ; Load 2 (red) into accumulator  
         sta $d020       ; Store it to border color register
         rts             ; Return to BASIC
 ```
 
 **New concepts:**
 - `lda` (Load Accumulator) puts a value into the A register
-- `#$01` means the literal number 1 (in hex)
+- `#$02` means the literal number 2 (in hex)
 - `sta` (Store Accumulator) saves the A register to memory
 - `$d020` is the C64's border color register
 
-Assemble and run again:
+Assemble and run this version:
 ```bash
-ca65 -t c64 neon1.s -o neon1.o
-ld65 -t c64 -o neon1.prg neon1.o
-x64sc neon1.prg
+ca65 -o neon-red.o neon-red.s
+ld65 -C c64.cfg -o neon-red.prg neon-red.o
+x64sc neon-red.prg
 ```
 
-Your border turns white! Try changing `#$01` to other values:
+After loading, **type `SYS 49152`** and press Enter.
+
+Your border should turn red! 
+
+**If the border didn't change:**
+
+1. First test VICE works: `POKE 53280,2` and press Enter
+   - This should turn the border red - if it doesn't, VICE has an issue
+   
+2. Check our program loaded: `PRINT PEEK(49152)` 
+   - Should show 169 (the LDA #$02 instruction)
+
+3. Try the SYS command again: `SYS 49152`
+
+**Alternative test version with a visible effect - create `neon-increment.s`:**
+```asm
+; Neon Nexus - Lesson 1
+; Increment test version
+
+.segment "LOADADDR"
+.word $c000
+
+.segment "CODE"
+start:
+        inc $d020       ; Increment border color
+        inc $d020       ; Do it twice for visible change
+        rts
+```
+
+This should definitely change the border color by adding 2 to whatever it was.
+
+Try changing `#$02` to other values:
 - `#$00` = black
+- `#$01` = white
 - `#$02` = red  
 - `#$05` = green
 - `#$0e` = light blue
 
 ## Creating the Neon Arena
 
-Let's expand our program to set up a proper game screen:
+Let's expand our program to set up a proper game screen. Create `neon-arena.s`:
 
 ```asm
-; Our machine language program starts here
+; Neon Nexus - Lesson 1
+; Creating our neon arena
+
+.segment "LOADADDR"
+.word $c000
+
+.segment "CODE"
 start:
         ; Set border color to dark blue
         lda #$06     
@@ -273,42 +328,61 @@ start:
 
 ## Making Assembly Easier with a Build Script
 
-Typing two commands every time gets old. Let's create a build script:
+Typing commands every time gets old. Let's create a robust build script:
 
-**Windows (build.bat):**
+**Windows (build-c64.bat):**
 ```batch
 @echo off
-ca65 -t c64 %1.s -o %1.o
+if "%1"=="" (
+    echo Usage: %0 filename (without .s extension)
+    exit /b 1
+)
+echo Building %1 for C64...
+ca65 -o %1.o %1.s
 if %errorlevel% neq 0 exit /b %errorlevel%
-ld65 -t c64 -o %1.prg %1.o
+ld65 -C c64.cfg -o %1.prg %1.o
 if %errorlevel% neq 0 exit /b %errorlevel%
-echo Build complete: %1.prg
+echo Success! Created %1.prg
+echo To run in VICE: x64sc %1.prg then type: SYS 49152
 ```
 
-**macOS/Linux (build.sh):**
+**macOS/Linux (build-c64.sh):**
 ```bash
 #!/bin/bash
-ca65 -t c64 $1.s -o $1.o || exit 1
-ld65 -t c64 -o $1.prg $1.o || exit 1
-echo "Build complete: $1.prg"
+if [ -z "$1" ]; then
+    echo "Usage: $0 filename (without .s extension)"
+    exit 1
+fi
+echo "Building $1 for C64..."
+ca65 -o "$1.o" "$1.s" || exit 1
+ld65 -C c64.cfg -o "$1.prg" "$1.o" || exit 1
+echo "Success! Created $1.prg"
+echo "To run in VICE: x64sc $1.prg then type: SYS 49152"
 ```
 
 Make it executable (macOS/Linux):
 ```bash
-chmod +x build.sh
+chmod +x build-c64.sh
 ```
 
 Now you can build with:
-- Windows: `build neon1`
-- macOS/Linux: `./build.sh neon1`
+- Windows: `build-c64 neon1`  
+- macOS/Linux: `./build-c64.sh neon1`
 
 ## Adding Your Arena Title
 
-Let's display "NEON NEXUS" on screen to complete our foundation:
+Let's display "NEON NEXUS" on screen to complete our foundation. Create `neon-title.s`:
 
 ```asm
+; Neon Nexus - Lesson 1
+; Adding title to our arena
+
+.segment "LOADADDR"
+.word $c000
+
+.segment "CODE"
 start:
-        ; Previous color setup code here...
+        ; Color setup from previous example
         lda #$06     
         sta $d020
         lda #$00
@@ -337,7 +411,7 @@ This is getting repetitive! In future lessons, we'll learn better ways to handle
 
 ## Complete Lesson 1 Program
 
-Here's our complete first program with proper comments:
+Here's our complete first program with proper comments. Create `neon-complete.s`:
 
 ```asm
 ;===============================================
@@ -345,13 +419,10 @@ Here's our complete first program with proper comments:
 ; A simple start to our assembly game
 ;===============================================
 
-        .org $0801      ; Program starts at BASIC area
+.segment "LOADADDR"
+.word $c000             ; Load at $c000 (49152)
 
-; BASIC stub (10 SYS 2061)
-        .byte $0b,$08,$0a,$00,$9e
-        .byte $32,$30,$36,$31
-        .byte $00,$00,$00
-
+.segment "CODE"
 ;-----------------------------------------------
 ; Main Program Entry Point
 ;-----------------------------------------------
@@ -365,6 +436,10 @@ start:
         ; Clear and prepare screen
         lda #$93        ; Clear screen character
         jsr $ffd2       ; KERNAL CHROUT routine
+        
+        ; Position cursor home
+        lda #$13        ; HOME character
+        jsr $ffd2       ; Move cursor to top-left
         
         ; Display title
         lda #'N'
@@ -382,12 +457,78 @@ start:
 ; End of program
 ```
 
+## Bonus: Auto-Running Version
+
+Want your program to run automatically when loaded? Create `neon-autorun.s`:
+
+```asm
+;===============================================
+; NEON NEXUS - Lesson 1: Auto-Running Version
+; Runs automatically when loaded!
+;===============================================
+
+.segment "LOADADDR" 
+.word $0801             ; Load at BASIC program area
+
+.segment "CODE"
+; BASIC program: 10 SYS 2064
+.word $080b             ; Next line pointer
+.word 10                ; Line number 10  
+.byte $9e               ; SYS token
+.byte " 2064", 0        ; Address to call (our machine code)
+.word 0                 ; End of BASIC program
+
+; Our machine code starts here (at address 2064)
+start:
+        ; Set up neon color scheme
+        lda #$06        ; Dark blue border
+        sta $d020       ; VIC-II border color
+        lda #$00        ; Black background
+        sta $d021       ; VIC-II background color
+        
+        ; Clear and prepare screen
+        lda #$93        ; Clear screen character
+        jsr $ffd2       ; KERNAL CHROUT routine
+        
+        ; Position cursor home
+        lda #$13        ; HOME character
+        jsr $ffd2       ; Move cursor to top-left
+        
+        ; Display title
+        lda #'N'
+        jsr $ffd2
+        lda #'E'  
+        jsr $ffd2
+        lda #'O'
+        jsr $ffd2
+        lda #'N'
+        jsr $ffd2
+        
+        ; Done - return to BASIC
+        rts
+
+; End of program
+```
+
+This version includes a BASIC program stub that automatically runs your assembly code!
+
 Build and run your complete program:
 ```bash
-ca65 -t c64 neon1.s -o neon1.o
-ld65 -t c64 -o neon1.prg neon1.o
-x64sc neon1.prg
+ca65 -o neon-complete.o neon-complete.s
+ld65 -C c64.cfg -o neon-complete.prg neon-complete.o
+x64sc neon-complete.prg
 ```
+
+Remember: after loading, **type `SYS 49152`** to execute!
+
+For the auto-running version:
+```bash
+ca65 -o neon-autorun.o neon-autorun.s
+ld65 -C c64.cfg -o neon-autorun.prg neon-autorun.o
+x64sc neon-autorun.prg
+```
+
+The auto-run version executes immediately when loaded - **just type `RUN`** and press Enter!
 
 ## Experiment and Learn
 
