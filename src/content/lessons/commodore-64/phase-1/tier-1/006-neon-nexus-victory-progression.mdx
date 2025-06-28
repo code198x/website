@@ -1,0 +1,655 @@
+---
+title: "Neon Nexus: Victory Progression"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 6
+description: "Complete your arcade game with multiple enemy waves, scoring systems, and victory conditions! Learn to manage game states, track progress, and create satisfying win/lose scenarios."
+learning_objectives:
+  - "Implement multiple enemy waves with increasing difficulty"
+  - "Create a scoring system with proper display"
+  - "Add lives and game over conditions"
+  - "Design wave progression and victory states"
+  - "Polish gameplay with attract mode and high scores"
+concepts:
+  - "Game state machines and flow control"
+  - "BCD arithmetic for score display"
+  - "Wave spawning patterns and difficulty curves"
+  - "Victory and game over conditions"
+  - "Attract mode and demo gameplay"
+estimated_duration: "75-90 minutes"
+difficulty: "easy"
+code_examples: true
+practical_exercise: true
+order: 6
+---
+
+# Lesson 6: Neon Nexus - Victory Progression
+
+Time to transform your combat prototype into a complete arcade game! In this lesson, you'll add scoring, lives, enemy waves, and victory conditions - everything needed for a satisfying gameplay loop.
+
+## Understanding Game Structure
+
+A complete arcade game needs:
+
+1. **Attract Mode** - Draws players in
+2. **Game States** - Menu, playing, game over, victory
+3. **Progression** - Waves that increase in difficulty
+4. **Feedback** - Score, lives, wave counter
+5. **Goals** - Clear victory and defeat conditions
+
+## Step 1: Game States
+
+Let's implement a proper state machine:
+
+```asm6502
+; Game states
+STATE_ATTRACT = 0
+STATE_PLAYING = 1
+STATE_GAME_OVER = 2
+STATE_VICTORY = 3
+
+; Add to variables:
+game_state:     !byte STATE_ATTRACT
+wave_number:    !byte 1
+enemies_left:   !byte 0
+
+; Main game loop modification:
+game_loop:
+        ; Wait for raster
+wait_raster:
+        lda $d012
+        cmp #$ff
+        bne wait_raster
+        
+        ; Branch based on game state
+        lda game_state
+        cmp #STATE_ATTRACT
+        beq run_attract_mode
+        cmp #STATE_PLAYING
+        beq run_game
+        cmp #STATE_GAME_OVER
+        beq run_game_over
+        cmp #STATE_VICTORY
+        beq run_victory
+        
+        jmp game_loop
+
+run_attract_mode:
+        jsr attract_mode
+        jmp game_loop
+        
+run_game:
+        jsr game_playing
+        jmp game_loop
+        
+run_game_over:
+        jsr game_over_screen
+        jmp game_loop
+        
+run_victory:
+        jsr victory_screen
+        jmp game_loop
+```
+
+## Step 2: Score Display
+
+Implement a 6-digit score using BCD (Binary Coded Decimal):
+
+```asm6502
+; Score storage (BCD format)
+score:  !byte 0, 0, 0    ; 000000 (6 digits, 2 per byte)
+
+display_score:
+        ; Position cursor for score
+        lda #<($0400 + 40)      ; Row 1, column 0
+        sta $fb
+        lda #>($0400 + 40)
+        sta $fc
+        
+        ; Display "SCORE:"
+        ldy #0
+score_text_loop:
+        lda score_text,y
+        beq score_digits
+        sta ($fb),y
+        iny
+        bne score_text_loop
+        
+score_digits:
+        ; Display 6 digits
+        ldx #2          ; 3 bytes
+        ldy #6          ; Screen position after "SCORE:"
+        
+score_byte_loop:
+        lda score,x     ; Get BCD byte
+        pha             ; Save it
+        
+        ; High nibble
+        lsr
+        lsr
+        lsr
+        lsr
+        ora #$30        ; Convert to PETSCII digit
+        sta ($fb),y
+        iny
+        
+        ; Low nibble
+        pla
+        and #$0f
+        ora #$30        ; Convert to PETSCII digit
+        sta ($fb),y
+        iny
+        
+        dex
+        bpl score_byte_loop
+        
+        rts
+
+score_text: !text "SCORE:", 0
+
+add_to_score:
+        ; Add 10 points (in A register)
+        sed             ; Set decimal mode
+        clc
+        lda score
+        adc #$10        ; Add 10 in BCD
+        sta score
+        lda score+1
+        adc #$00        ; Handle carry
+        sta score+1
+        lda score+2
+        adc #$00
+        sta score+2
+        cld             ; Clear decimal mode
+        
+        jsr display_score
+        rts
+```
+
+## Step 3: Lives System
+
+Add player lives with visual display:
+
+```asm6502
+; Lives tracking
+player_lives:   !byte 3
+MAX_LIVES = 3
+
+display_lives:
+        ; Position for lives display
+        lda #<($0400 + 40 + 30) ; Row 1, column 30
+        sta $fb
+        lda #>($0400 + 40 + 30)
+        sta $fc
+        
+        ; Display "LIVES:"
+        ldy #0
+lives_text_loop:
+        lda lives_text,y
+        beq show_life_icons
+        sta ($fb),y
+        iny
+        bne lives_text_loop
+        
+show_life_icons:
+        ; Show diamond icons for each life
+        ldx player_lives
+        beq lives_done
+        
+life_icon_loop:
+        lda #$5a        ; Diamond character
+        sta ($fb),y
+        iny
+        dex
+        bne life_icon_loop
+        
+lives_done:
+        ; Clear any remaining old icons
+        lda #$20        ; Space
+clear_lives:
+        cpy #10         ; Max display width
+        beq lives_display_done
+        sta ($fb),y
+        iny
+        bne clear_lives
+        
+lives_display_done:
+        rts
+
+lives_text: !text "LIVES:", 0
+
+lose_life:
+        dec player_lives
+        bmi game_over_state    ; No lives left
+        
+        jsr display_lives
+        
+        ; Reset positions
+        lda #20
+        sta player_x
+        lda #20
+        sta player_y
+        
+        ; Brief invulnerability
+        lda #60         ; 1 second at 60Hz
+        sta invuln_timer
+        
+        rts
+        
+game_over_state:
+        lda #STATE_GAME_OVER
+        sta game_state
+        rts
+```
+
+## Step 4: Wave System
+
+Create enemy waves with increasing difficulty:
+
+```asm6502
+; Wave configuration
+enemies_per_wave: !byte 1, 2, 3, 4, 5    ; Enemies by wave
+enemy_speed:      !byte 10, 8, 6, 5, 4   ; Delay by wave
+
+start_new_wave:
+        ; Check if we've won
+        ldx wave_number
+        cpx #5
+        bcs victory_state       ; 5 waves completed!
+        
+        ; Set up wave
+        lda enemies_per_wave,x
+        sta enemies_left
+        sta total_enemies       ; For spawning
+        
+        lda enemy_speed,x
+        sta enemy_base_delay
+        
+        ; Display wave number
+        jsr display_wave
+        
+        ; Wave start delay
+        lda #120        ; 2 seconds
+        sta wave_start_timer
+        
+        rts
+
+victory_state:
+        lda #STATE_VICTORY
+        sta game_state
+        rts
+
+spawn_enemies:
+        ; Check if we need to spawn
+        lda enemies_spawned
+        cmp total_enemies
+        beq spawn_done
+        
+        ; Simple spawn pattern
+        tax
+        lda enemy_start_x,x
+        sta enemy_x
+        lda enemy_start_y,x  
+        sta enemy_y
+        
+        inc enemies_spawned
+        
+spawn_done:
+        rts
+
+; Spawn positions
+enemy_start_x: !byte 5, 35, 5, 35, 20
+enemy_start_y: !byte 5, 5, 15, 15, 10
+```
+
+## Step 5: Complete Game Flow
+
+Implement the full game loop with all states:
+
+```asm6502
+game_playing:
+        ; Check wave start timer
+        lda wave_start_timer
+        beq normal_gameplay
+        dec wave_start_timer
+        
+        ; Display "WAVE X" message
+        jsr display_wave_message
+        rts
+        
+normal_gameplay:
+        ; Normal game updates
+        jsr read_keyboard
+        jsr update_enemy_movement
+        jsr update_all_bullets
+        jsr check_bullet_collisions
+        jsr update_sounds
+        
+        ; Check for wave completion
+        lda enemies_left
+        bne game_continues
+        
+        ; Wave complete!
+        inc wave_number
+        jsr start_new_wave
+        
+game_continues:
+        ; Update displays
+        lda frame_counter
+        and #$0f
+        bne skip_display_update
+        jsr display_score
+        jsr display_lives
+        jsr display_wave
+        
+skip_display_update:
+        inc frame_counter
+        
+        ; Handle invulnerability flashing
+        lda invuln_timer
+        beq check_movements
+        dec invuln_timer
+        
+        ; Flash player
+        and #$04
+        beq show_player
+        jsr hide_player
+        jmp check_movements
+        
+show_player:
+        jsr draw_player
+        
+check_movements:
+        ; Update entities as before...
+        rts
+```
+
+## Step 6: Attract Mode
+
+Create an eye-catching attract screen:
+
+```asm6502
+attract_mode:
+        ; Display title
+        jsr display_title
+        
+        ; Animate some effects
+        lda frame_counter
+        and #$1f
+        tax
+        lda color_cycle,x
+        sta $d020       ; Animated border
+        
+        ; Check for SPACE to start
+        lda #$7f
+        sta $dc00
+        lda $dc01
+        and #$10
+        bne attract_continues
+        
+        ; Start game!
+        jsr init_new_game
+        lda #STATE_PLAYING
+        sta game_state
+        
+attract_continues:
+        inc frame_counter
+        rts
+
+display_title:
+        ; Center "NEON NEXUS" on screen
+        lda #<($0400 + 12*40 + 15)
+        sta $fb
+        lda #>($0400 + 12*40 + 15)
+        sta $fc
+        
+        ldy #0
+title_loop:
+        lda game_title,y
+        beq title_done
+        sta ($fb),y
+        
+        ; Rainbow colors
+        tya
+        and #$07
+        tax
+        lda rainbow_colors,x
+        sta $d800 + 12*40 + 15,y
+        
+        iny
+        bne title_loop
+        
+title_done:
+        ; Show "PRESS SPACE"
+        lda #<($0400 + 14*40 + 13)
+        sta $fb
+        lda #>($0400 + 14*40 + 13)
+        sta $fc
+        
+        ldy #0
+press_loop:
+        lda press_text,y
+        beq press_done
+        sta ($fb),y
+        iny
+        bne press_loop
+        
+press_done:
+        rts
+
+game_title:     !text "NEON NEXUS", 0
+press_text:     !text "PRESS SPACE TO PLAY", 0
+rainbow_colors: !byte 2, 8, 7, 1, 3, 14, 6, 4
+color_cycle:    !byte 6, 6, 14, 14, 3, 3, 7, 7
+                !byte 1, 1, 7, 7, 3, 3, 14, 14
+                !byte 6, 6, 14, 14, 3, 3, 7, 7
+                !byte 1, 1, 7, 7, 3, 3, 14, 14
+```
+
+## Step 7: Victory and Game Over
+
+Create satisfying end screens:
+
+```asm6502
+victory_screen:
+        ; Clear screen
+        jsr clear_screen
+        
+        ; Big "VICTORY!" message
+        lda #<($0400 + 10*40 + 16)
+        sta $fb
+        lda #>($0400 + 10*40 + 16)
+        sta $fc
+        
+        ldy #0
+victory_loop:
+        lda victory_text,y
+        beq show_final_score
+        sta ($fb),y
+        
+        ; Flash colors
+        lda frame_counter
+        and #$08
+        beq victory_white
+        lda #$07        ; Yellow
+        bne set_victory_color
+victory_white:
+        lda #$01        ; White
+set_victory_color:
+        sta $d800 + 10*40 + 16,y
+        
+        iny
+        bne victory_loop
+        
+show_final_score:
+        ; Display final score
+        jsr display_final_score
+        
+        ; Check for restart
+        jsr check_restart
+        
+        inc frame_counter
+        rts
+
+game_over_screen:
+        ; Similar to victory but with "GAME OVER"
+        jsr clear_screen
+        
+        ; Display message and score
+        jsr display_game_over
+        jsr display_final_score
+        
+        ; Check for restart
+        jsr check_restart
+        
+        rts
+
+check_restart:
+        ; Wait for SPACE release then press
+        lda space_released
+        bne check_space_press
+        
+        ; Check if SPACE is released
+        lda #$7f
+        sta $dc00
+        lda $dc01
+        and #$10
+        beq still_pressed
+        
+        lda #1
+        sta space_released
+        
+still_pressed:
+        rts
+        
+check_space_press:
+        ; Now check for press
+        lda #$7f
+        sta $dc00
+        lda $dc01
+        and #$10
+        bne no_restart
+        
+        ; Restart game
+        jsr init_new_game
+        lda #STATE_PLAYING
+        sta game_state
+        lda #0
+        sta space_released
+        
+no_restart:
+        rts
+
+victory_text:   !text "VICTORY!", 0
+game_over_text: !text "GAME OVER", 0
+```
+
+## Complete Working Examples
+
+All code examples for this lesson are available in our repository:
+
+**[📁 Lesson 6 Code Examples](https://github.com/code198x/code-samples/tree/main/commodore-64/phase-1/tier-1/006-neon-nexus-victory-progression)**
+
+- [`complete.s`](https://github.com/code198x/code-samples/blob/main/commodore-64/phase-1/tier-1/006-neon-nexus-victory-progression/complete.s) - Full game with all features
+- [`step2-score-system.s`](https://github.com/code198x/code-samples/blob/main/commodore-64/phase-1/tier-1/006-neon-nexus-victory-progression/step2-score-system.s) - BCD score implementation
+- [`step3-lives-display.s`](https://github.com/code198x/code-samples/blob/main/commodore-64/phase-1/tier-1/006-neon-nexus-victory-progression/step3-lives-display.s) - Lives system with display
+- [`step6-attract-mode.s`](https://github.com/code198x/code-samples/blob/main/commodore-64/phase-1/tier-1/006-neon-nexus-victory-progression/step6-attract-mode.s) - Complete with attract screen
+
+## Understanding Game Polish
+
+### BCD Arithmetic
+
+Binary Coded Decimal makes score display easy:
+
+```asm6502
+sed             ; Set decimal mode
+clc
+lda #$09
+adc #$01        ; Results in $10, not $0A
+cld             ; Clear decimal mode
+```
+
+Each byte holds two decimal digits (0-9), perfect for score display!
+
+### State Machine Benefits
+
+Clean game flow management:
+- **No spaghetti code** - Each state handles its own logic
+- **Easy transitions** - Just change the state variable
+- **Expandable** - Add new states without breaking existing ones
+
+### Difficulty Progression
+
+Simple but effective:
+- More enemies per wave
+- Faster enemy movement
+- Could add: Different enemy types, bullet patterns, power-ups
+
+## What You've Accomplished
+
+In this lesson, you've created:
+
+✅ **Complete game structure** with multiple states  
+✅ **Scoring system** using BCD arithmetic  
+✅ **Lives and game over** conditions  
+✅ **Wave progression** with increasing difficulty  
+✅ **Attract mode** to draw players in  
+✅ **Victory conditions** and restart functionality  
+
+Your Neon Nexus is now a complete arcade game!
+
+## Experiment and Learn
+
+Try these enhancements:
+
+1. **High score tracking:**
+   ```asm6502
+   high_score: !byte 0, 0, 0
+   ; Compare and update after game over
+   ```
+
+2. **Power-ups between waves:**
+   ```asm6502
+   ; Extra life, rapid fire, shield
+   power_up_type: !byte 0
+   ```
+
+3. **Different enemy types:**
+   ```asm6502
+   enemy_type:     !fill MAX_ENEMIES, 0
+   enemy_health:   !fill MAX_ENEMIES, 1
+   ```
+
+4. **Combo system:**
+   ```asm6502
+   combo_counter:  !byte 0
+   combo_timer:    !byte 0
+   ```
+
+## Common Patterns
+
+**Score Addition:** Always use decimal mode for BCD math.
+
+**State Transitions:** Clear old state completely before entering new one.
+
+**Display Updates:** Don't update every frame - use counters to limit frequency.
+
+## Coming Next
+
+In **Lesson 7**, you'll learn **Data Persistence** - saving high scores and game progress to disk!
+
+## Quick Reference
+
+**Game States:**
+- Attract → Playing (SPACE key)
+- Playing → Game Over (no lives)
+- Playing → Victory (all waves complete)
+- Game Over/Victory → Playing (SPACE key)
+
+**BCD Operations:**
+- `sed` - Set decimal mode
+- `cld` - Clear decimal mode
+- Each byte = 2 digits (00-99)
+
+Ready to save your high scores? Let's learn data persistence! 🎮🏆
