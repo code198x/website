@@ -1,0 +1,1108 @@
+---
+title: "Crystal Cascade: Visual Effects and Polish"
+system: "commodore-amiga"
+phase_number: 1
+tier_number: 1
+lesson_number: 6
+description: "Transform your game into a visual masterpiece! Master the Amiga's advanced graphics capabilities with copper effects, blitter operations, and stunning visual polish that showcases true 1980s game development artistry."
+learning_objectives:
+  - "Master copper list programming for stunning visual effects"
+  - "Implement blitter operations for fast graphics manipulation"
+  - "Create particle systems and dynamic lighting effects"
+  - "Design professional UI elements and transitions"
+  - "Optimize graphics performance using Amiga hardware features"
+concepts:
+  - "Copper list programming for real-time effects"
+  - "Blitter-accelerated graphics operations"
+  - "Particle systems with hardware sprites"
+  - "Dynamic color palette manipulation"
+  - "Screen transitions and visual polish techniques"
+estimated_duration: "75-90 minutes"
+difficulty: "medium"
+code_examples: true
+practical_exercise: true
+order: 6
+---
+
+# Lesson 6: Crystal Cascade - Visual Effects and Polish
+
+Time to make your Amiga game visually stunning! In this lesson, you'll master the advanced graphics capabilities that made Amiga games legendary. You'll create copper effects, implement blitter operations, and add the visual polish that transforms a functional game into a work of art.
+
+## Understanding Amiga Graphics Power
+
+The Amiga's graphics system offers unique capabilities:
+
+1. **Copper Co-processor** - Real-time display list programming
+2. **Blitter** - Hardware-accelerated graphics operations
+3. **HAM Mode** - 4096 colors from 16.7 million palette
+4. **Dual Playfields** - Independent scrolling layers
+5. **Sprite Multiplexing** - More objects than hardware sprites
+
+## Step 1: Copper Effects Programming
+
+Create stunning real-time visual effects:
+
+```m68k
+; Crystal Cascade - Lesson 6
+; Visual effects and polish
+
+        include "hardware/custom.i"
+        include "hardware/dmabits.i"
+
+; Copper effect constants
+RAINBOW_LINES   = 64            ; Lines for rainbow effect
+PLASMA_SPEED    = 2             ; Plasma animation speed
+STARFIELD_STARS = 50            ; Number of stars
+
+        section copper_data,data,chip
+
+; Main copper list with effects
+copper_effects_list:
+        ; Set up initial display
+        dc.w    $0001,$FFFE            ; Wait for top of screen
+        
+        ; Enable bitplanes and sprites
+        dc.w    bplcon0,$5200           ; 2 bitplanes, sprites enabled
+        dc.w    bplcon1,$0000           ; No scroll initially
+        dc.w    bplcon2,$0000           ; Sprites have priority
+        
+        ; Set up bitplane pointers
+        dc.w    bpl1pth,0               ; Will be filled dynamically
+        dc.w    bpl1ptl,0
+        dc.w    bpl2pth,0
+        dc.w    bpl2ptl,0
+        
+        ; Sky gradient effect (top of screen)
+sky_gradient:
+        dc.w    $2001,$FFFE            ; Wait for line 32
+        dc.w    color00,$0357           ; Light blue
+        
+        dc.w    $2801,$FFFE            ; Line 40
+        dc.w    color00,$0468           ; Darker blue
+        
+        dc.w    $3001,$FFFE            ; Line 48
+        dc.w    color00,$0579           ; Even darker
+        
+        dc.w    $4001,$FFFE            ; Line 64
+        dc.w    color00,$0000           ; Black (space)
+        
+        ; Starfield shimmer effect
+starfield_shimmer:
+        dc.w    $5001,$FFFE            ; Line 80
+        dc.w    color01,$0FFF           ; Bright white stars
+        
+        dc.w    $5201,$FFFE            ; Line 82
+        dc.w    color01,$0AAA           ; Dimmer
+        
+        dc.w    $5401,$FFFE            ; Line 84
+        dc.w    color01,$0777           ; Even dimmer
+        
+        dc.w    $5601,$FFFE            ; Line 86
+        dc.w    color01,$0444           ; Dim
+        
+        ; Rainbow palette cycling (middle section)
+rainbow_section:
+        ; This section will be filled dynamically
+        dcb.w   RAINBOW_LINES*4,0       ; Space for rainbow effect
+        
+        ; Crystal glow effect (where crystals appear)
+crystal_glow:
+        dc.w    $A001,$FFFE            ; Line 160
+        dc.w    color02,$0F0F           ; Purple glow
+        
+        dc.w    $A401,$FFFE            ; Line 164
+        dc.w    color02,$0F8F           ; Brighter purple
+        
+        dc.w    $A801,$FFFE            ; Line 168
+        dc.w    color02,$0FFF           ; White core
+        
+        dc.w    $AC01,$FFFE            ; Line 172
+        dc.w    color02,$0F8F           ; Back to purple
+        
+        dc.w    $B001,$FFFE            ; Line 176
+        dc.w    color02,$0F0F           ; Dim purple
+        
+        ; Ground/floor effect
+        dc.w    $E001,$FFFE            ; Line 224
+        dc.w    color00,$0321           ; Ground color
+        
+        dc.w    $E401,$FFFE            ; Line 228
+        dc.w    color00,$0432           ; Slightly different
+        
+        ; End of copper list
+        dc.w    $FFFF,$FFFE
+
+        section code,code
+
+; Initialize visual effects system
+init_visual_effects:
+        ; Set up copper list
+        lea     custom,a5
+        move.l  #copper_effects_list,cop1lc(a5)
+        move.w  #0,copjmp1(a5)
+        
+        ; Initialize effect variables
+        clr.w   rainbow_phase
+        clr.w   plasma_phase
+        clr.w   shimmer_phase
+        move.w  #60,crystal_pulse_timer
+        
+        ; Set up blitter for graphics operations
+        bsr     init_blitter_system
+        
+        ; Initialize particle system
+        bsr     init_particle_system
+        
+        ; Enable copper and sprites
+        move.w  #DMAF_SETCLR|DMAF_MASTER|DMAF_COPPER|DMAF_SPRITE,dmacon(a5)
+        
+        rts
+
+; Update rainbow effect in copper list
+update_rainbow_effect:
+        ; Calculate rainbow colors based on phase
+        move.w  rainbow_phase,d0
+        addq.w  #1,d0
+        and.w   #255,d0                 ; Wrap at 256
+        move.w  d0,rainbow_phase
+        
+        ; Fill rainbow section of copper list
+        lea     rainbow_section,a0
+        move.w  #RAINBOW_LINES-1,d7
+        move.w  #$6001,d1               ; Starting line (96)
+        
+rainbow_loop:
+        ; Calculate color for this line
+        move.w  d7,d2                   ; Line number
+        add.w   d0,d2                   ; Add phase offset
+        and.w   #63,d2                  ; Create cycling pattern
+        
+        ; Convert to RGB color
+        bsr     calculate_rainbow_color
+        
+        ; Write WAIT instruction
+        move.w  d1,(a0)+                ; VPOS/HPOS
+        move.w  #$FFFE,(a0)+            ; Mask
+        
+        ; Write COLOR00 change
+        move.w  #color00,(a0)+          ; Register
+        move.w  d3,(a0)+                ; Color value
+        
+        ; Next line
+        add.w   #$0200,d1               ; Next line (add 2 to high byte)
+        dbf     d7,rainbow_loop
+        
+        rts
+
+; Calculate rainbow color
+; d2 = position in rainbow (0-63)
+; Returns: d3 = RGB color
+calculate_rainbow_color:
+        ; Simple rainbow calculation
+        move.w  d2,d3
+        lsl.w   #2,d3                   ; Scale up
+        
+        cmp.w   #16,d2
+        blt     rainbow_red_yellow
+        cmp.w   #32,d2
+        blt     rainbow_yellow_green
+        cmp.w   #48,d2
+        blt     rainbow_green_blue
+        
+        ; Blue to red
+        move.w  #64,d4
+        sub.w   d2,d4                   ; Invert
+        lsl.w   #4,d4                   ; Red component
+        and.w   #$0F00,d4
+        move.w  #$000F,d3               ; Blue component
+        or.w    d4,d3
+        rts
+        
+rainbow_red_yellow:
+        ; Red to yellow (add green)
+        move.w  d2,d3
+        lsl.w   #4,d3                   ; Green component
+        and.w   #$00F0,d3
+        or.w    #$0F00,d3               ; Full red
+        rts
+        
+rainbow_yellow_green:
+        ; Yellow to green (reduce red)
+        move.w  #32,d4
+        sub.w   d2,d4                   ; Invert within range
+        lsl.w   #8,d4                   ; Red component
+        and.w   #$0F00,d4
+        or.w    #$00F0,d3               ; Full green
+        or.w    d4,d3
+        rts
+        
+rainbow_green_blue:
+        ; Green to blue (reduce green, add blue)
+        move.w  d2,d3
+        sub.w   #32,d3                  ; Offset to start of range
+        move.w  d3,d4
+        not.w   d4                      ; Invert for green
+        and.w   #15,d4
+        lsl.w   #4,d4                   ; Green component
+        and.w   #$00F0,d4
+        and.w   #15,d3                  ; Blue component
+        or.w    d4,d3
+        rts
+
+rainbow_phase:  dc.w    0
+plasma_phase:   dc.w    0
+shimmer_phase:  dc.w    0
+```
+
+## Step 2: Blitter Graphics Operations
+
+Use the blitter for fast graphics manipulation:
+
+```m68k
+; Blitter system initialization
+init_blitter_system:
+        lea     custom,a5
+        
+        ; Wait for blitter to be ready
+        bsr     wait_blitter
+        
+        ; Set up default blitter operation
+        move.w  #$09F0,bltcon0(a5)      ; Copy operation
+        move.w  #$0000,bltcon1(a5)      ; No shift
+        move.w  #$FFFF,bltafwm(a5)      ; First word mask
+        move.w  #$FFFF,bltalwm(a5)      ; Last word mask
+        
+        rts
+
+; Wait for blitter to finish
+wait_blitter:
+        lea     custom,a5
+wait_blit_loop:
+        btst    #14,dmaconr(a5)         ; Check blitter busy flag
+        bne     wait_blit_loop
+        rts
+
+; Fast screen clear using blitter
+clear_screen_blitter:
+        bsr     wait_blitter
+        
+        lea     custom,a5
+        
+        ; Set up blitter for clear operation
+        move.w  #$0100,bltcon0(a5)      ; D = 0 (clear)
+        move.w  #$0000,bltcon1(a5)      ; No special modes
+        
+        ; Set destination
+        move.l  #playfield1_data,bltdpt(a5)
+        move.w  #40,bltdmod(a5)         ; No modulo (40 bytes wide)
+        
+        ; Start clear operation
+        move.w  #$0028,bltsize(a5)      ; 40 words wide, 256 lines
+        
+        rts
+
+; Copy sprite to background using blitter
+copy_sprite_to_background:
+        ; Parameters: a0 = sprite data, d0 = x pos, d1 = y pos
+        bsr     wait_blitter
+        
+        lea     custom,a5
+        
+        ; Calculate destination address
+        move.l  #playfield1_data,a1
+        mulu.w  #40,d1                  ; Y offset
+        add.l   d1,a1
+        move.w  d0,d2
+        lsr.w   #3,d2                   ; X byte offset
+        add.w   d2,a1
+        
+        ; Set up blitter for copy
+        move.w  #$09F0,bltcon0(a5)      ; A OR D -> D
+        move.w  #$0000,bltcon1(a5)
+        
+        ; Set source (sprite)
+        move.l  a0,bltapt(a5)
+        move.w  #0,bltamod(a5)          ; No modulo for 16-pixel sprite
+        
+        ; Set destination (background)
+        move.l  a1,bltdpt(a5)
+        move.w  #38,bltdmod(a5)         ; Skip rest of line (40-2 = 38)
+        
+        ; Start blit (16 pixels wide, 16 lines tall)
+        move.w  #$1002,bltsize(a5)      ; 2 words wide, 16 lines
+        
+        rts
+
+; Create explosion effect using blitter
+create_explosion_effect:
+        ; Parameters: d0 = center X, d1 = center Y, d2 = radius
+        bsr     wait_blitter
+        
+        lea     custom,a5
+        
+        ; Create circular explosion pattern
+        move.w  d2,d3                   ; Save radius
+        
+        ; Set up blitter for area fill
+        move.w  #$0BFA,bltcon0(a5)      ; Complex logic function
+        move.w  #$0000,bltcon1(a5)
+        
+        ; Calculate explosion area
+        sub.w   d2,d0                   ; Top-left X
+        sub.w   d2,d1                   ; Top-left Y
+        
+        ; Clamp to screen bounds
+        tst.w   d0
+        bpl     exp_x_ok
+        clr.w   d0
+exp_x_ok:
+        tst.w   d1
+        bpl     exp_y_ok
+        clr.w   d1
+exp_y_ok:
+        
+        ; Calculate destination address
+        move.l  #playfield1_data,a1
+        mulu.w  #40,d1
+        add.l   d1,a1
+        move.w  d0,d4
+        lsr.w   #3,d4
+        add.w   d4,a1
+        
+        ; Set destination
+        move.l  a1,bltdpt(a5)
+        move.w  #36,bltdmod(a5)         ; Modulo for explosion size
+        
+        ; Start explosion blit
+        lsl.w   #6,d3                   ; Convert radius to blit size
+        or.w    #$0004,d3               ; 4 words wide
+        move.w  d3,bltsize(a5)
+        
+        rts
+```
+
+## Step 3: Particle System Implementation
+
+Create dynamic particle effects:
+
+```m68k
+; Particle system constants
+MAX_PARTICLES   = 64
+PARTICLE_SIZE   = 16            ; Bytes per particle
+
+; Particle structure offsets
+PART_X          = 0             ; Fixed point X position
+PART_Y          = 4             ; Fixed point Y position  
+PART_VX         = 8             ; X velocity
+PART_VY         = 12            ; Y velocity
+PART_LIFE       = 14            ; Life remaining
+PART_TYPE       = 15            ; Particle type
+
+        section particle_data,data
+
+; Particle pool
+particle_pool:
+        dcb.b   MAX_PARTICLES*PARTICLE_SIZE,0
+
+; Particle type data
+particle_types:
+        ; Spark particles
+        dc.w    $0F00                   ; Color (red)
+        dc.w    30                      ; Life span
+        dc.w    $0200                   ; Initial velocity
+        
+        ; Crystal fragments
+        dc.w    $00FF                   ; Color (blue)
+        dc.w    45                      ; Life span
+        dc.w    $0150                   ; Initial velocity
+        
+        ; Explosion particles
+        dc.w    $0FF0                   ; Color (yellow)
+        dc.w    20                      ; Life span
+        dc.w    $0300                   ; Initial velocity
+        
+        ; Trail particles
+        dc.w    $0F0F                   ; Color (purple)
+        dc.w    15                      ; Life span
+        dc.w    $0100                   ; Initial velocity
+
+        section code,code
+
+; Initialize particle system
+init_particle_system:
+        ; Clear all particles
+        lea     particle_pool,a0
+        move.w  #(MAX_PARTICLES*PARTICLE_SIZE/4)-1,d0
+clear_particles:
+        clr.l   (a0)+
+        dbf     d0,clear_particles
+        
+        rts
+
+; Spawn particle effect
+; d0 = X position, d1 = Y position, d2 = type, d3 = count
+spawn_particles:
+        ; Convert position to fixed point
+        lsl.l   #FIXED_SHIFT,d0
+        lsl.l   #FIXED_SHIFT,d1
+        
+        move.w  d3,d7                   ; Particle count
+        subq.w  #1,d7                   ; Adjust for DBF
+        
+spawn_loop:
+        ; Find free particle slot
+        lea     particle_pool,a0
+        move.w  #MAX_PARTICLES-1,d6
+        
+find_slot:
+        tst.b   PART_LIFE(a0)          ; Check if particle is active
+        beq     found_slot
+        add.w   #PARTICLE_SIZE,a0
+        dbf     d6,find_slot
+        
+        ; No free slots
+        bra     spawn_next
+        
+found_slot:
+        ; Initialize particle
+        move.l  d0,PART_X(a0)          ; X position
+        move.l  d1,PART_Y(a0)          ; Y position
+        
+        ; Generate random velocity
+        bsr     get_random_byte
+        ext.w   d4
+        sub.w   #128,d4                 ; -128 to 127
+        lsl.w   #8,d4                   ; Scale velocity
+        move.w  d4,PART_VX(a0)
+        
+        bsr     get_random_byte
+        ext.w   d4
+        sub.w   #128,d4
+        lsl.w   #8,d4
+        move.w  d4,PART_VY(a0)
+        
+        ; Set particle type and life
+        move.b  d2,PART_TYPE(a0)
+        
+        ; Get life span from type table
+        move.w  d2,d4
+        mulu.w  #6,d4                   ; 6 bytes per type entry
+        lea     particle_types,a1
+        move.w  2(a1,d4.w),d5           ; Get life span
+        move.b  d5,PART_LIFE(a0)
+        
+spawn_next:
+        dbf     d7,spawn_loop
+        
+        rts
+
+; Update all particles
+update_particles:
+        lea     particle_pool,a0
+        move.w  #MAX_PARTICLES-1,d7
+        
+particle_loop:
+        tst.b   PART_LIFE(a0)          ; Check if active
+        beq     next_particle
+        
+        ; Update position
+        move.l  PART_X(a0),d0
+        ext.l   PART_VX(a0)
+        add.l   d1,d0
+        move.l  d0,PART_X(a0)
+        
+        move.l  PART_Y(a0),d0
+        ext.l   PART_VY(a0)
+        add.l   d1,d0
+        move.l  d0,PART_Y(a0)
+        
+        ; Apply gravity to Y velocity
+        add.w   #$0040,PART_VY(a0)     ; Gravity constant
+        
+        ; Reduce life
+        subq.b  #1,PART_LIFE(a0)
+        
+        ; Check bounds and deactivate if outside
+        move.l  PART_X(a0),d0
+        asr.l   #FIXED_SHIFT,d0
+        tst.w   d0
+        bmi     deactivate_particle
+        cmp.w   #320,d0
+        bgt     deactivate_particle
+        
+        move.l  PART_Y(a0),d0
+        asr.l   #FIXED_SHIFT,d0
+        cmp.w   #256,d0
+        bgt     deactivate_particle
+        
+        bra     next_particle
+        
+deactivate_particle:
+        clr.b   PART_LIFE(a0)
+        
+next_particle:
+        add.w   #PARTICLE_SIZE,a0
+        dbf     d7,particle_loop
+        
+        rts
+
+; Render particles to screen
+render_particles:
+        lea     particle_pool,a0
+        move.w  #MAX_PARTICLES-1,d7
+        
+render_loop:
+        tst.b   PART_LIFE(a0)
+        beq     next_render
+        
+        ; Get particle position
+        move.l  PART_X(a0),d0
+        asr.l   #FIXED_SHIFT,d0        ; Convert to integer
+        move.l  PART_Y(a0),d1
+        asr.l   #FIXED_SHIFT,d1
+        
+        ; Check if on screen
+        tst.w   d0
+        bmi     next_render
+        cmp.w   #320,d0
+        bge     next_render
+        tst.w   d1
+        bmi     next_render
+        cmp.w   #256,d1
+        bge     next_render
+        
+        ; Draw particle pixel
+        bsr     draw_particle_pixel
+        
+next_render:
+        add.w   #PARTICLE_SIZE,a0
+        dbf     d7,render_loop
+        
+        rts
+
+; Draw single particle pixel
+draw_particle_pixel:
+        ; Calculate screen address
+        move.l  #playfield1_data,a1
+        mulu.w  #40,d1                  ; Y offset
+        add.l   d1,a1
+        move.w  d0,d2
+        lsr.w   #3,d2                   ; Byte offset
+        add.w   d2,a1
+        
+        ; Calculate bit position
+        move.w  d0,d2
+        not.w   d2
+        and.w   #7,d2                   ; Bit position
+        
+        ; Set pixel
+        bset    d2,(a1)
+        
+        rts
+```
+
+## Step 4: Dynamic Lighting and Glow Effects
+
+Create atmospheric lighting:
+
+```m68k
+; Lighting system for atmospheric effects
+update_crystal_glow:
+        ; Animate crystal glow intensity
+        move.w  crystal_pulse_timer,d0
+        subq.w  #1,d0
+        bne     store_pulse_timer
+        move.w  #60,d0                  ; Reset pulse cycle
+        
+store_pulse_timer:
+        move.w  d0,crystal_pulse_timer
+        
+        ; Calculate glow intensity (sine wave approximation)
+        move.w  d0,d1
+        sub.w   #30,d1                  ; Center around 0
+        muls.w  d1,d1                   ; Square for parabola
+        neg.w   d1
+        add.w   #900,d1                 ; Offset
+        lsr.w   #6,d1                   ; Scale down
+        
+        ; Convert to color intensity
+        and.w   #15,d1                  ; 0-15 range
+        lsl.w   #8,d1                   ; Shift to red component
+        or.w    d1,d1                   ; Add to green
+        lsr.w   #4,d1                   ; Less green
+        or.w    d1,d1                   ; Combine
+        
+        ; Update copper list glow colors
+        lea     crystal_glow,a0
+        move.w  d1,6(a0)                ; First glow color
+        lsl.w   #1,d1                   ; Brighter
+        move.w  d1,14(a0)               ; Second glow color
+        lsl.w   #1,d1                   ; Even brighter
+        or.w    #$000F,d1               ; Add blue for white core
+        move.w  d1,22(a0)               ; Core color
+        
+        rts
+
+; Starfield twinkling effect
+update_starfield_shimmer:
+        move.w  shimmer_phase,d0
+        addq.w  #1,d0
+        and.w   #31,d0                  ; 32-frame cycle
+        move.w  d0,shimmer_phase
+        
+        ; Calculate shimmer intensity
+        move.w  d0,d1
+        cmp.w   #16,d1
+        blt     shimmer_bright
+        
+        ; Dimming phase
+        neg.w   d1
+        add.w   #32,d1
+        
+shimmer_bright:
+        ; Convert to color (white with varying intensity)
+        lsl.w   #8,d1                   ; Red component
+        move.w  d1,d2
+        lsl.w   #4,d2                   ; Green component
+        or.w    d2,d1
+        move.w  d1,d2
+        lsr.w   #8,d2                   ; Blue component
+        or.w    d2,d1
+        
+        ; Update starfield colors in copper list
+        lea     starfield_shimmer,a0
+        move.w  d1,6(a0)                ; Bright phase
+        lsr.w   #1,d1
+        move.w  d1,14(a0)               ; Medium phase
+        lsr.w   #1,d1
+        move.w  d1,22(a0)               ; Dim phase
+        lsr.w   #1,d1
+        move.w  d1,30(a0)               ; Very dim phase
+        
+        rts
+
+crystal_pulse_timer:    dc.w    60
+```
+
+## Step 5: Screen Transitions and UI Polish
+
+Create professional transitions and interface elements:
+
+```m68k
+; Screen transition effects
+perform_screen_wipe:
+        ; Vertical wipe effect using copper
+        lea     custom,a5
+        
+        ; Set up transition copper list
+        lea     transition_copper,a0
+        move.w  #$0001,(a0)+            ; Wait for top
+        move.w  #$FFFE,(a0)+
+        
+        ; Create sliding curtain effect
+        move.w  #255,d7                 ; 256 lines
+        move.w  wipe_position,d0        ; Current wipe line
+        
+wipe_loop:
+        cmp.w   d0,d7                   ; Above wipe line?
+        bgt     wipe_visible
+        
+        ; Below wipe line - black
+        move.w  d7,d1
+        lsl.w   #8,d1
+        or.w    #$0001,d1               ; Create WAIT
+        move.w  d1,(a0)+
+        move.w  #$FFFE,(a0)+
+        
+        move.w  #color00,(a0)+          ; Set background color
+        move.w  #$0000,(a0)+            ; Black
+        
+        bra     wipe_next
+        
+wipe_visible:
+        ; Above wipe line - normal colors
+        move.w  d7,d1
+        lsl.w   #8,d1
+        or.w    #$0001,d1
+        move.w  d1,(a0)+
+        move.w  #$FFFE,(a0)+
+        
+        move.w  #color00,(a0)+
+        move.w  #$0357,(a0)+            ; Normal background
+        
+wipe_next:
+        dbf     d7,wipe_loop
+        
+        ; End copper list
+        move.w  #$FFFF,(a0)+
+        move.w  #$FFFE,(a0)+
+        
+        ; Install transition copper list
+        move.l  #transition_copper,cop1lc(a5)
+        move.w  #0,copjmp1(a5)
+        
+        ; Advance wipe position
+        move.w  wipe_position,d0
+        addq.w  #4,d0                   ; Wipe speed
+        cmp.w   #256,d0
+        ble     store_wipe_pos
+        
+        ; Transition complete
+        move.w  #0,d0
+        move.w  #1,transition_complete
+        
+store_wipe_pos:
+        move.w  d0,wipe_position
+        rts
+
+; Fade in/out effect
+perform_fade_effect:
+        ; d0 = fade direction (0=out, 1=in)
+        move.w  fade_level,d1
+        tst.w   d0
+        beq     fade_out
+        
+fade_in:
+        addq.w  #1,d1
+        cmp.w   #15,d1
+        ble     store_fade_level
+        move.w  #15,d1
+        bra     store_fade_level
+        
+fade_out:
+        subq.w  #1,d1
+        bpl     store_fade_level
+        clr.w   d1
+        
+store_fade_level:
+        move.w  d1,fade_level
+        
+        ; Apply fade to all colors
+        move.w  d1,d2
+        lsl.w   #8,d2                   ; Red component
+        move.w  d1,d3
+        lsl.w   #4,d3                   ; Green component
+        or.w    d3,d2
+        or.w    d1,d2                   ; Blue component
+        
+        ; Update master color registers
+        lea     custom,a5
+        move.w  d2,color00(a5)
+        move.w  d2,color01(a5)
+        move.w  d2,color02(a5)
+        move.w  d2,color03(a5)
+        
+        rts
+
+; Professional UI elements
+draw_progress_bar:
+        ; d0 = progress (0-100), d1 = X pos, d2 = Y pos
+        ; Draw progress bar background
+        move.w  d1,-(sp)                ; Save X
+        move.w  d2,-(sp)                ; Save Y
+        
+        ; Draw background rectangle
+        move.w  #102,d3                 ; Width
+        move.w  #8,d4                   ; Height
+        move.w  #$0333,d5               ; Dark color
+        bsr     draw_filled_rectangle
+        
+        ; Draw progress fill
+        move.w  (sp),d2                 ; Restore Y
+        move.w  2(sp),d1                ; Restore X
+        addq.w  #1,d1                   ; Offset for border
+        addq.w  #1,d2
+        
+        move.w  d0,d3                   ; Progress width
+        move.w  #6,d4                   ; Height
+        move.w  #$0F84,d5               ; Progress color (orange)
+        bsr     draw_filled_rectangle
+        
+        addq.l  #4,sp                   ; Clean stack
+        rts
+
+; Draw filled rectangle using blitter
+draw_filled_rectangle:
+        ; d1=X, d2=Y, d3=width, d4=height, d5=color
+        bsr     wait_blitter
+        
+        lea     custom,a5
+        
+        ; Calculate destination address
+        move.l  #playfield1_data,a0
+        mulu.w  #40,d2                  ; Y offset
+        add.l   d2,a0
+        move.w  d1,d6
+        lsr.w   #3,d6                   ; Byte offset
+        add.w   d6,a0
+        
+        ; Set up blitter for rectangle fill
+        move.w  #$09F0,bltcon0(a5)      ; Fill operation
+        move.w  #$0000,bltcon1(a5)
+        
+        move.l  a0,bltdpt(a5)
+        move.w  #36,bltdmod(a5)         ; Modulo
+        
+        ; Convert width to words
+        addq.w  #15,d3
+        lsr.w   #4,d3                   ; Convert to words
+        
+        ; Start fill
+        lsl.w   #6,d4                   ; Height to high bits
+        or.w    d3,d4                   ; Combine with width
+        move.w  d4,bltsize(a5)
+        
+        rts
+
+; Variables for effects
+wipe_position:          dc.w    0
+transition_complete:    dc.w    0
+fade_level:             dc.w    15
+
+        section transition_data,data,chip
+transition_copper:      dcb.w   512,0   ; Space for transition effects
+```
+
+## Step 6: Performance Optimization
+
+Optimize visual effects for smooth gameplay:
+
+```m68k
+; Optimized effect update system
+update_all_effects:
+        ; Update effects based on frame counter for efficiency
+        move.l  frame_counter,d0
+        
+        ; Update rainbow every frame
+        bsr     update_rainbow_effect
+        
+        ; Update crystal glow every 2 frames
+        btst    #0,d0
+        bne     skip_glow_update
+        bsr     update_crystal_glow
+        
+skip_glow_update:
+        ; Update starfield shimmer every 4 frames  
+        and.w   #3,d0
+        bne     skip_shimmer_update
+        bsr     update_starfield_shimmer
+        
+skip_shimmer_update:
+        ; Update particles every frame
+        bsr     update_particles
+        
+        ; Render particles every 2 frames for performance
+        move.l  frame_counter,d0
+        btst    #0,d0
+        bne     skip_particle_render
+        bsr     render_particles
+        
+skip_particle_render:
+        rts
+
+; LOD (Level of Detail) system for effects
+update_effects_lod:
+        ; Reduce effect quality when many objects on screen
+        move.w  active_enemy_count,d0
+        cmp.w   #16,d0
+        blt     high_quality_effects
+        
+        ; Medium quality - reduce particle count
+        move.w  #32,max_active_particles
+        bra     apply_lod
+        
+high_quality_effects:
+        ; High quality - full particle count
+        move.w  #64,max_active_particles
+        
+apply_lod:
+        ; Deactivate excess particles if over limit
+        lea     particle_pool,a0
+        move.w  #0,d1                   ; Active count
+        move.w  #MAX_PARTICLES-1,d7
+        
+count_particles:
+        tst.b   PART_LIFE(a0)
+        beq     next_count
+        
+        addq.w  #1,d1
+        cmp.w   max_active_particles,d1
+        ble     next_count
+        
+        ; Deactivate this particle
+        clr.b   PART_LIFE(a0)
+        
+next_count:
+        add.w   #PARTICLE_SIZE,a0
+        dbf     d7,count_particles
+        
+        rts
+
+max_active_particles:   dc.w    64
+
+; Efficient copper list management
+optimize_copper_list:
+        ; Remove unnecessary WAIT instructions
+        lea     copper_effects_list,a0
+        lea     optimized_copper,a1
+        
+        move.w  #0,d7                   ; Instruction count
+        
+optimize_loop:
+        move.w  (a0)+,d0                ; Get instruction
+        move.w  (a0)+,d1                ; Get parameter
+        
+        ; Check for end of list
+        cmp.w   #$FFFF,d0
+        beq     optimize_done
+        
+        ; Check if this is a redundant WAIT
+        and.w   #$0001,d0               ; Check if WAIT
+        beq     copy_instruction        ; Not a wait - copy it
+        
+        ; Check if previous instruction was also a WAIT
+        tst.w   d7
+        beq     copy_instruction        ; First instruction
+        
+        ; Check previous instruction
+        move.w  -4(a1),d2
+        and.w   #$0001,d2
+        bne     skip_redundant_wait     ; Previous was wait - skip this
+        
+copy_instruction:
+        move.w  d0,(a1)+
+        move.w  d1,(a1)+
+        addq.w  #1,d7
+        bra     optimize_loop
+        
+skip_redundant_wait:
+        bra     optimize_loop
+        
+optimize_done:
+        ; Copy end marker
+        move.w  #$FFFF,(a1)+
+        move.w  #$FFFE,(a1)+
+        
+        ; Install optimized copper list
+        lea     custom,a5
+        move.l  #optimized_copper,cop1lc(a5)
+        move.w  #0,copjmp1(a5)
+        
+        rts
+
+        section optimized_data,data,chip
+optimized_copper:       dcb.w   256,0
+```
+
+## Complete Working Examples
+
+All code examples for this lesson are available in our repository:
+
+**[📁 Lesson 6 Code Examples](https://github.com/code198x/code-samples/tree/main/commodore-amiga/phase-1/tier-1/006-crystal-cascade-visual-effects-and-polish)**
+
+- [`complete.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/006-crystal-cascade-visual-effects-and-polish/complete.s) - Full visual effects system
+- [`step1-copper-effects.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/006-crystal-cascade-visual-effects-and-polish/step1-copper-effects.s) - Copper programming
+- [`step2-blitter.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/006-crystal-cascade-visual-effects-and-polish/step2-blitter.s) - Blitter operations
+- [`step3-particles.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/006-crystal-cascade-visual-effects-and-polish/step3-particles.s) - Particle systems
+
+## Understanding Amiga Graphics Excellence
+
+### Copper Co-processor
+The copper enables real-time display effects:
+- **Display lists**: Change registers at precise scan line positions
+- **Real-time effects**: Rainbow gradients, color cycling, split screens
+- **Synchronized graphics**: Perfect timing with display refresh
+
+### Blitter Acceleration
+Hardware-accelerated graphics operations:
+- **Area fills**: Fast rectangle and polygon filling
+- **Line drawing**: Bresenham algorithm in hardware
+- **BitBLT operations**: Fast image copying and manipulation
+
+### Visual Polish Techniques
+Professional finishing touches:
+- **Smooth transitions**: Fade effects and screen wipes
+- **Dynamic lighting**: Atmospheric glow and shimmer effects
+- **Particle systems**: Explosions, sparks, and environmental effects
+
+## What You've Accomplished
+
+In this lesson, you've mastered:
+
+✅ **Copper programming** for stunning real-time effects  
+✅ **Blitter operations** for fast graphics manipulation  
+✅ **Particle systems** with dynamic visual effects  
+✅ **Dynamic lighting** and atmospheric polish  
+✅ **Screen transitions** and professional UI elements  
+✅ **Performance optimization** for smooth visual effects  
+
+Your Crystal Cascade now has the visual polish of a commercial Amiga game!
+
+## Experiment and Learn
+
+Try these advanced visual techniques:
+
+1. **HAM mode effects**:
+   ```m68k
+   ; 4096 color mode
+   setup_ham_mode:
+       move.w #$0800,bplcon0(a5)  ; Enable HAM
+       bsr setup_ham_palette
+   ```
+
+2. **Copper bars**:
+   ```m68k
+   ; Dynamic color bars
+   copper_bars:
+       dc.w $3001,$FFFE
+       dc.w color00,$0F00    ; Red bar
+   ```
+
+3. **Sprite multiplexing**:
+   ```m68k
+   ; Reuse sprites on different scan lines
+   multiplex_sprites:
+       bsr update_sprite_positions
+       bsr copper_sprite_reuse
+   ```
+
+4. **Plasma effects**:
+   ```m68k
+   ; Mathematical color patterns
+   plasma_calc:
+       bsr sine_cosine_lookup
+       bsr generate_plasma_colors
+   ```
+
+## Advanced Techniques
+
+**Distortion effects**: Sine wave scrolling and perspective corrections.
+
+**Fractal patterns**: Mathematical graphics generation.
+
+**Vector graphics**: Real-time 3D wire frame effects.
+
+**Texture mapping**: Simple polygon texture effects.
+
+## Coming Next
+
+In **Lesson 7**, you'll implement **Data Persistence** with authentic retro save systems!
+
+## Quick Reference
+
+**Copper Instructions:**
+- WAIT: $VVHH,$FFFE (wait for position)
+- MOVE: $RRGG,$DDDD (set register)
+- SKIP: $VVHH,$FFFF (conditional skip)
+
+**Blitter Control:**
+- BLTCON0: Logic function and channel enables
+- BLTSIZE: Width and height (start operation)
+- Modulo: Skip bytes between lines
+
+**Effect Optimization:**
+- Update complex effects every N frames
+- Use LOD for particle counts
+- Optimize copper lists for performance
+
+Your Amiga game now has the visual spectacle that made the platform legendary! ✨🎨

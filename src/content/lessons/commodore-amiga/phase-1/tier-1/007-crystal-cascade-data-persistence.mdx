@@ -1,0 +1,1141 @@
+---
+title: "Crystal Cascade: Data Persistence"
+system: "commodore-amiga"
+phase_number: 1
+tier_number: 1
+lesson_number: 7
+description: "Master authentic 1980s data persistence! Implement access codes, high score tables, and configuration systems using genuine retro techniques that work without disk drives or complex file systems."
+learning_objectives:
+  - "Implement authentic password-based save systems"
+  - "Create persistent high score tables in memory"
+  - "Design configuration systems for game settings"
+  - "Master checksums and data validation techniques"
+  - "Build robust save/load systems using retro methods"
+concepts:
+  - "Password generation and validation algorithms"
+  - "High score persistence using memory techniques"
+  - "Configuration data encoding and storage"
+  - "Checksum algorithms for data integrity"
+  - "Authentic 1980s save system design patterns"
+estimated_duration: "75-90 minutes"
+difficulty: "medium"
+code_examples: true
+practical_exercise: true
+order: 7
+---
+
+# Lesson 7: Crystal Cascade - Data Persistence
+
+Time to implement authentic 1980s save systems! In this lesson, you'll create the data persistence systems that were actually used in the era - password codes, high score tables, and configuration systems that work without relying on disk storage or complex file systems.
+
+## Understanding 1980s Data Persistence
+
+Authentic retro games used clever techniques for data persistence:
+
+1. **Password Systems** - Encode game state in short character codes
+2. **High Score Tables** - Persistent rankings stored in memory
+3. **Configuration Data** - Settings preserved between sessions
+4. **Checksum Validation** - Prevent cheating and corruption
+5. **Memory-Based Storage** - Work without disk drives
+
+## Step 1: Password Generation System
+
+Create authentic password-based save system:
+
+```m68k
+; Crystal Cascade - Lesson 7
+; Data persistence systems
+
+        include "hardware/custom.i"
+
+; Password system constants
+PASSWORD_LENGTH = 8             ; 8-character passwords
+CHECKSUM_SEED   = $A5C3         ; Seed for checksum calculation
+
+; Game state structure for passwords
+game_state:
+        dc.w    0               ; Current level (0-255)
+        dc.w    0               ; Score (0-65535)
+        dc.w    0               ; Lives remaining (0-255)
+        dc.w    0               ; Crystals collected (0-255)
+        dc.w    0               ; Power-ups collected (0-255)
+        dc.w    0               ; Time bonus (0-65535)
+        dc.w    0               ; Special flags (bit field)
+        dc.w    0               ; Checksum
+
+; Password character set (authentic 1980s style)
+password_chars:
+        dc.b    "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ",0
+        even
+
+PASSWORD_CHAR_COUNT = 33        ; No I,O to avoid confusion
+
+        section code,code
+
+; Generate password from current game state
+generate_password:
+        ; Pack game state into 32-bit value
+        move.w  game_state,d0           ; Level
+        lsl.l   #8,d0
+        move.w  game_state+4,d1         ; Lives
+        and.w   #255,d1
+        or.l    d1,d0
+        
+        ; Add score (scaled down)
+        move.w  game_state+2,d1         ; Score
+        lsr.w   #6,d1                   ; Divide by 64 for compactness
+        lsl.l   #8,d0
+        or.l    d1,d0
+        
+        ; Add crystals and power-ups
+        move.w  game_state+6,d1         ; Crystals
+        lsl.l   #8,d0
+        or.l    d1,d0
+        
+        ; Calculate checksum
+        move.l  d0,d2
+        bsr     calculate_checksum
+        
+        ; Combine data with checksum
+        lsl.l   #8,d0                   ; Make room for checksum
+        and.l   #255,d1                 ; 8-bit checksum
+        or.l    d1,d0
+        
+        ; Convert to password string
+        lea     current_password,a0
+        move.w  #PASSWORD_LENGTH-1,d7
+        
+convert_loop:
+        ; Extract character index
+        move.l  d0,d1
+        divu.w  #PASSWORD_CHAR_COUNT,d1
+        swap    d1                      ; Get remainder
+        
+        ; Get character
+        lea     password_chars,a1
+        move.b  (a1,d1.w),d2
+        move.b  d2,(a0)+
+        
+        ; Move to next position
+        divu.w  #PASSWORD_CHAR_COUNT,d0
+        
+        dbf     d7,convert_loop
+        
+        ; Null terminate
+        clr.b   (a0)
+        
+        rts
+
+; Validate and decode password
+validate_password:
+        ; Convert password string back to numeric value
+        lea     input_password,a0
+        move.l  #0,d0                   ; Result
+        move.w  #PASSWORD_LENGTH-1,d7
+        
+decode_loop:
+        ; Get character
+        move.b  (a0)+,d1
+        
+        ; Find character in character set
+        lea     password_chars,a1
+        move.w  #PASSWORD_CHAR_COUNT-1,d6
+        
+find_char:
+        cmp.b   (a1)+,d1
+        beq     found_char
+        dbf     d6,find_char
+        
+        ; Invalid character
+        move.w  #-1,d0                  ; Error code
+        rts
+        
+found_char:
+        ; Calculate position value
+        move.w  #PASSWORD_CHAR_COUNT-1,d2
+        sub.w   d6,d2                   ; Character index
+        
+        ; Add to result
+        mulu.l  #PASSWORD_CHAR_COUNT,d0
+        add.l   d2,d0
+        
+        dbf     d7,decode_loop
+        
+        ; Extract checksum
+        move.l  d0,d2
+        and.l   #255,d2                 ; Low 8 bits = checksum
+        lsr.l   #8,d0                   ; Remove checksum from data
+        
+        ; Validate checksum
+        move.l  d0,d1
+        bsr     calculate_checksum
+        cmp.b   d1,d2
+        bne     invalid_password
+        
+        ; Decode game state
+        move.l  d0,d1
+        
+        ; Extract crystals
+        and.l   #255,d1
+        move.w  d1,game_state+6
+        lsr.l   #8,d0
+        
+        ; Extract score (scaled back up)
+        move.l  d0,d1
+        and.l   #255,d1
+        lsl.w   #6,d1                   ; Multiply by 64
+        move.w  d1,game_state+2
+        lsr.l   #8,d0
+        
+        ; Extract lives
+        move.l  d0,d1
+        and.l   #255,d1
+        move.w  d1,game_state+4
+        lsr.l   #8,d0
+        
+        ; Extract level
+        and.w   #255,d0
+        move.w  d0,game_state
+        
+        ; Password valid
+        move.w  #0,d0                   ; Success
+        rts
+        
+invalid_password:
+        move.w  #-1,d0                  ; Error
+        rts
+
+; Calculate simple checksum
+; d0 = data value
+; Returns: d1 = checksum
+calculate_checksum:
+        move.l  d0,d1
+        move.w  #CHECKSUM_SEED,d2
+        
+        ; Simple XOR-based checksum
+        eor.w   d2,d1                   ; XOR with seed
+        
+        ; Fold 32-bit to 8-bit
+        move.l  d1,d2
+        swap    d2
+        eor.w   d2,d1                   ; XOR high and low words
+        move.w  d1,d2
+        lsr.w   #8,d2
+        eor.b   d2,d1                   ; XOR high and low bytes
+        
+        and.w   #255,d1                 ; Ensure 8-bit result
+        rts
+
+; Password storage
+current_password:       dcb.b   PASSWORD_LENGTH+1,0
+input_password:         dcb.b   PASSWORD_LENGTH+1,0
+```
+
+## Step 2: High Score Table System
+
+Implement persistent high score tracking:
+
+```m68k
+; High score table constants
+MAX_HIGH_SCORES = 10
+SCORE_NAME_LENGTH = 8
+
+; High score entry structure
+score_entry:
+        dc.l    0               ; Score value
+        dcb.b   SCORE_NAME_LENGTH,0  ; Player name
+        dc.w    0               ; Level reached
+        dc.w    0               ; Reserved for expansion
+
+SCORE_ENTRY_SIZE = 16
+
+        section score_data,data
+
+; High score table
+high_score_table:
+        ; Pre-fill with default scores
+        dc.l    50000
+        dc.b    "ALICE   "
+        dc.w    8,0
+        
+        dc.l    45000
+        dc.b    "BOB     "
+        dc.w    7,0
+        
+        dc.l    40000
+        dc.b    "CAROL   "
+        dc.w    6,0
+        
+        dc.l    35000
+        dc.b    "DAVID   "
+        dc.w    5,0
+        
+        dc.l    30000
+        dc.b    "EVE     "
+        dc.w    4,0
+        
+        dc.l    25000
+        dc.b    "FRANK   "
+        dc.w    3,0
+        
+        dc.l    20000
+        dc.b    "GRACE   "
+        dc.w    2,0
+        
+        dc.l    15000
+        dc.b    "HENRY   "
+        dc.w    1,0
+        
+        dc.l    10000
+        dc.b    "IVY     "
+        dc.w    1,0
+        
+        dc.l    5000
+        dc.b    "JACK    "
+        dc.w    1,0
+
+; High score system checksum
+score_table_checksum:   dc.w    0
+
+        section code,code
+
+; Check if score qualifies for high score table
+check_high_score:
+        ; d0 = new score
+        lea     high_score_table,a0
+        move.w  #MAX_HIGH_SCORES-1,d7
+        move.w  #0,d1                   ; Position counter
+        
+check_loop:
+        cmp.l   (a0),d0                 ; Compare with table entry
+        bgt     found_position          ; New score is higher
+        
+        add.w   #SCORE_ENTRY_SIZE,a0
+        addq.w  #1,d1
+        dbf     d7,check_loop
+        
+        ; Score doesn't qualify
+        move.w  #-1,d0                  ; Return -1 (no position)
+        rts
+        
+found_position:
+        move.w  d1,d0                   ; Return position
+        rts
+
+; Insert new high score
+insert_high_score:
+        ; d0 = position (0-9), d1 = score, a0 = name pointer
+        cmp.w   #MAX_HIGH_SCORES,d0
+        bge     insert_failed
+        
+        ; Calculate insertion point
+        mulu.w  #SCORE_ENTRY_SIZE,d0
+        lea     high_score_table,a1
+        add.w   d0,a1                   ; a1 = insertion point
+        
+        ; Shift entries down to make room
+        move.w  #MAX_HIGH_SCORES-1,d2
+        sub.w   d0,d2                   ; Entries to shift
+        beq     no_shift_needed         ; Inserting at end
+        
+        ; Calculate source and destination for shift
+        lea     high_score_table,a2
+        move.w  #(MAX_HIGH_SCORES-1)*SCORE_ENTRY_SIZE,d3
+        add.w   d3,a2                   ; End of table
+        
+        move.l  a2,a3
+        sub.w   #SCORE_ENTRY_SIZE,a3    ; Destination (one entry back)
+        
+shift_loop:
+        ; Copy entry backwards
+        move.w  #(SCORE_ENTRY_SIZE/2)-1,d4
+        move.l  a2,a4                   ; Source entry
+        move.l  a3,a5                   ; Dest entry
+        
+copy_entry:
+        move.w  -(a4),-(a5)
+        dbf     d4,copy_entry
+        
+        ; Move to previous entries
+        sub.w   #SCORE_ENTRY_SIZE,a2
+        sub.w   #SCORE_ENTRY_SIZE,a3
+        
+        dbf     d2,shift_loop
+        
+no_shift_needed:
+        ; Insert new entry
+        move.l  d1,(a1)+                ; Score
+        
+        ; Copy name (8 characters)
+        move.w  #SCORE_NAME_LENGTH-1,d2
+copy_name:
+        move.b  (a0)+,(a1)+
+        dbf     d2,copy_name
+        
+        ; Set level and clear reserved
+        move.w  game_state,(a1)+        ; Current level
+        clr.w   (a1)+                   ; Reserved
+        
+        ; Update checksum
+        bsr     calculate_score_checksum
+        
+        ; Success
+        move.w  #0,d0
+        rts
+        
+insert_failed:
+        move.w  #-1,d0
+        rts
+
+; Calculate high score table checksum
+calculate_score_checksum:
+        lea     high_score_table,a0
+        move.w  #0,d0                   ; Checksum accumulator
+        move.w  #(MAX_HIGH_SCORES*SCORE_ENTRY_SIZE/2)-1,d7
+        
+checksum_loop:
+        add.w   (a0)+,d0                ; Add each word
+        ror.w   #1,d0                   ; Rotate for better distribution
+        dbf     d7,checksum_loop
+        
+        move.w  d0,score_table_checksum
+        rts
+
+; Validate high score table integrity
+validate_score_table:
+        ; Calculate current checksum
+        bsr     calculate_score_checksum
+        
+        ; Compare with stored checksum
+        move.w  score_table_checksum,d1
+        cmp.w   d0,d1
+        beq     table_valid
+        
+        ; Table corrupted - restore defaults
+        bsr     reset_high_scores
+        move.w  #-1,d0                  ; Return error
+        rts
+        
+table_valid:
+        move.w  #0,d0                   ; Return success
+        rts
+
+; Reset high score table to defaults
+reset_high_scores:
+        ; Simple reset - could be more sophisticated
+        lea     high_score_table,a0
+        move.w  #MAX_HIGH_SCORES-1,d7
+        move.l  #1000,d0                ; Starting score
+        
+reset_loop:
+        move.l  d0,(a0)+                ; Score
+        
+        ; Generate default name
+        move.b  #'P',(a0)+
+        move.b  #'L',(a0)+
+        move.b  #'Y',(a0)+
+        move.b  #'R',(a0)+
+        move.w  #MAX_HIGH_SCORES-1,d1
+        sub.w   d7,d1
+        add.b   #'1',d1
+        move.b  d1,(a0)+
+        move.b  #' ',(a0)+
+        move.b  #' ',(a0)+
+        move.b  #' ',(a0)+
+        
+        move.w  #1,(a0)+                ; Level
+        clr.w   (a0)+                   ; Reserved
+        
+        add.l   #1000,d0                ; Next score
+        dbf     d7,reset_loop
+        
+        ; Update checksum
+        bsr     calculate_score_checksum
+        rts
+```
+
+## Step 3: Configuration System
+
+Store game settings and preferences:
+
+```m68k
+; Configuration data structure
+game_config:
+        dc.w    50              ; Music volume (0-100)
+        dc.w    75              ; Sound effects volume (0-100)
+        dc.w    1               ; Difficulty level (0-2)
+        dc.w    0               ; Control scheme (0=keyboard, 1=joystick)
+        dc.w    1               ; Show animations (0=off, 1=on)
+        dc.w    1               ; Show particle effects (0=off, 1=on)
+        dc.w    0               ; Color blind mode (0=off, 1=on)
+        dc.w    1               ; Stereo audio (0=mono, 1=stereo)
+        dc.w    0               ; Reserved for future use
+        dc.w    0               ; Configuration checksum
+
+CONFIG_SIZE = 10                ; Number of configuration words
+
+        section code,code
+
+; Save configuration to encoded string
+save_configuration:
+        ; Calculate configuration checksum
+        lea     game_config,a0
+        move.w  #0,d0
+        move.w  #CONFIG_SIZE-2,d7       ; Exclude checksum itself
+        
+config_checksum_loop:
+        add.w   (a0)+,d0
+        dbf     d7,config_checksum_loop
+        
+        ; Store checksum
+        move.w  d0,game_config+18       ; Last word
+        
+        ; Encode configuration as compact string
+        lea     game_config,a0
+        lea     config_string,a1
+        move.w  #CONFIG_SIZE-1,d7
+        
+encode_config_loop:
+        move.w  (a0)+,d0
+        
+        ; Convert to 2-character hex representation
+        move.w  d0,d1
+        lsr.w   #4,d1
+        and.w   #15,d1
+        cmp.w   #10,d1
+        blt     first_digit
+        add.b   #'A'-10,d1
+        bra     store_first
+first_digit:
+        add.b   #'0',d1
+store_first:
+        move.b  d1,(a1)+
+        
+        and.w   #15,d0
+        cmp.w   #10,d0
+        blt     second_digit
+        add.b   #'A'-10,d0
+        bra     store_second
+second_digit:
+        add.b   #'0',d0
+store_second:
+        move.b  d0,(a1)+
+        
+        dbf     d7,encode_config_loop
+        
+        ; Null terminate
+        clr.b   (a1)
+        rts
+
+; Load configuration from string
+load_configuration:
+        ; Decode hex string back to configuration
+        lea     config_string,a0
+        lea     game_config,a1
+        move.w  #CONFIG_SIZE-1,d7
+        
+decode_config_loop:
+        ; Decode first hex digit
+        move.b  (a0)+,d0
+        bsr     hex_char_to_value
+        lsl.w   #4,d0
+        
+        ; Decode second hex digit
+        move.b  (a0)+,d1
+        bsr     hex_char_to_value
+        or.w    d1,d0
+        
+        ; Store configuration value
+        move.w  d0,(a1)+
+        
+        dbf     d7,decode_config_loop
+        
+        ; Validate configuration checksum
+        lea     game_config,a0
+        move.w  #0,d0
+        move.w  #CONFIG_SIZE-2,d7
+        
+validate_config_loop:
+        add.w   (a0)+,d0
+        dbf     d7,validate_config_loop
+        
+        ; Check against stored checksum
+        cmp.w   game_config+18,d0
+        beq     config_valid
+        
+        ; Configuration corrupted - use defaults
+        bsr     reset_configuration
+        move.w  #-1,d0                  ; Return error
+        rts
+        
+config_valid:
+        move.w  #0,d0                   ; Return success
+        rts
+
+; Convert hex character to numeric value
+hex_char_to_value:
+        ; d0 = character, returns d0 = value
+        cmp.b   #'0',d0
+        blt     hex_invalid
+        cmp.b   #'9',d0
+        ble     hex_digit
+        
+        cmp.b   #'A',d0
+        blt     hex_invalid
+        cmp.b   #'F',d0
+        ble     hex_alpha
+        
+hex_invalid:
+        move.w  #0,d0                   ; Default to 0 for invalid
+        rts
+        
+hex_digit:
+        sub.b   #'0',d0
+        rts
+        
+hex_alpha:
+        sub.b   #'A'-10,d0
+        rts
+
+; Reset configuration to defaults
+reset_configuration:
+        lea     default_config,a0
+        lea     game_config,a1
+        move.w  #CONFIG_SIZE-1,d7
+        
+reset_config_loop:
+        move.w  (a0)+,(a1)+
+        dbf     d7,reset_config_loop
+        
+        ; Recalculate checksum
+        bsr     save_configuration
+        rts
+
+; Default configuration values
+default_config:
+        dc.w    50,75,1,0,1,1,0,1,0,0
+
+; Configuration storage
+config_string:          dcb.b   CONFIG_SIZE*2+1,0
+```
+
+## Step 4: Game Progress Tracking
+
+Track player achievements and progress:
+
+```m68k
+; Progress tracking structure
+game_progress:
+        dc.w    0               ; Levels completed
+        dc.w    0               ; Total crystals collected
+        dc.w    0               ; Total enemies defeated
+        dc.w    0               ; Total playing time (seconds)
+        dc.w    0               ; Number of deaths
+        dc.w    0               ; Power-ups collected
+        dc.l    0               ; Best single level score
+        dc.l    0               ; Total score across all games
+        dc.w    0               ; Achievements unlocked (bit field)
+        dc.w    0               ; Progress checksum
+
+PROGRESS_SIZE = 10
+
+; Achievement flags
+ACHIEVEMENT_FIRST_LEVEL     = 0
+ACHIEVEMENT_NO_DEATHS       = 1
+ACHIEVEMENT_SPEED_RUN       = 2
+ACHIEVEMENT_CRYSTAL_MASTER  = 3
+ACHIEVEMENT_PERFECT_LEVEL   = 4
+
+        section code,code
+
+; Update progress tracking
+update_progress:
+        ; Update levels completed
+        move.w  game_state,d0
+        cmp.w   game_progress,d0
+        ble     no_level_update
+        move.w  d0,game_progress
+        
+        ; Check for first level achievement
+        cmp.w   #1,d0
+        bne     no_first_level
+        bset    #ACHIEVEMENT_FIRST_LEVEL,game_progress+16
+        
+no_first_level:
+no_level_update:
+        ; Update crystals collected
+        move.w  game_state+6,d0
+        add.w   d0,game_progress+2
+        
+        ; Update total score
+        move.w  game_state+2,d0
+        ext.l   d0
+        add.l   d0,game_progress+14
+        
+        ; Check for achievements
+        bsr     check_achievements
+        
+        ; Update progress checksum
+        bsr     calculate_progress_checksum
+        
+        rts
+
+; Check for achievement unlocks
+check_achievements:
+        ; No deaths achievement
+        move.w  game_state+4,d0         ; Lives remaining
+        cmp.w   #3,d0                   ; Started with 3 lives
+        bne     no_no_deaths
+        move.w  game_state,d0           ; Level completed
+        tst.w   d0
+        beq     no_no_deaths
+        bset    #ACHIEVEMENT_NO_DEATHS,game_progress+16
+        
+no_no_deaths:
+        ; Crystal master achievement (100+ crystals)
+        move.w  game_progress+2,d0
+        cmp.w   #100,d0
+        blt     no_crystal_master
+        bset    #ACHIEVEMENT_CRYSTAL_MASTER,game_progress+16
+        
+no_crystal_master:
+        ; Perfect level achievement (all crystals, no damage)
+        move.w  game_state+6,d0         ; Crystals this level
+        cmp.w   #10,d0                  ; Assume 10 crystals per level
+        bne     no_perfect_level
+        move.w  game_state+4,d0         ; Lives remaining
+        cmp.w   #3,d0                   ; No damage taken
+        bne     no_perfect_level
+        bset    #ACHIEVEMENT_PERFECT_LEVEL,game_progress+16
+        
+no_perfect_level:
+        rts
+
+; Calculate progress checksum
+calculate_progress_checksum:
+        lea     game_progress,a0
+        move.w  #0,d0
+        move.w  #PROGRESS_SIZE-1,d7
+        
+progress_checksum_loop:
+        add.w   (a0)+,d0
+        ror.w   #1,d0
+        dbf     d7,progress_checksum_loop
+        
+        move.w  d0,game_progress+18
+        rts
+
+; Display achievements
+display_achievements:
+        move.w  game_progress+16,d0     ; Achievement flags
+        
+        btst    #ACHIEVEMENT_FIRST_LEVEL,d0
+        beq     check_no_deaths
+        ; Display "First Level Complete!" message
+        bsr     show_achievement_message
+        
+check_no_deaths:
+        btst    #ACHIEVEMENT_NO_DEATHS,d0
+        beq     check_speed_run
+        ; Display "Flawless Victory!" message
+        
+check_speed_run:
+        btst    #ACHIEVEMENT_SPEED_RUN,d0
+        beq     check_crystal_master
+        ; Display "Speed Demon!" message
+        
+check_crystal_master:
+        btst    #ACHIEVEMENT_CRYSTAL_MASTER,d0
+        beq     check_perfect_level
+        ; Display "Crystal Master!" message
+        
+check_perfect_level:
+        btst    #ACHIEVEMENT_PERFECT_LEVEL,d0
+        beq     achievements_done
+        ; Display "Perfect Level!" message
+        
+achievements_done:
+        rts
+
+show_achievement_message:
+        ; Simple achievement notification system
+        ; In a full implementation, this would show graphics/text
+        rts
+```
+
+## Step 5: Memory-Based Persistence
+
+Implement memory-resident save system:
+
+```m68k
+; Memory-based persistence using unused RAM areas
+SAVE_DATA_LOCATION = $80000     ; Safe area in expanded memory
+
+; Persistent data header
+persistent_header:
+        dc.l    $C0DE198X       ; Magic number for validation
+        dc.w    1               ; Version number
+        dc.w    0               ; Data size
+        dc.w    0               ; Header checksum
+
+        section code,code
+
+; Save all persistent data to memory
+save_persistent_data:
+        ; Calculate total data size
+        move.w  #(CONFIG_SIZE*2)+(MAX_HIGH_SCORES*SCORE_ENTRY_SIZE)+(PROGRESS_SIZE*2),d0
+        move.w  d0,persistent_header+6
+        
+        ; Copy data to persistent location
+        move.l  #SAVE_DATA_LOCATION,a0
+        
+        ; Copy header
+        lea     persistent_header,a1
+        move.w  #4-1,d7
+copy_header:
+        move.w  (a1)+,(a0)+
+        dbf     d7,copy_header
+        
+        ; Copy configuration
+        lea     game_config,a1
+        move.w  #CONFIG_SIZE-1,d7
+copy_config:
+        move.w  (a1)+,(a0)+
+        dbf     d7,copy_config
+        
+        ; Copy high scores
+        lea     high_score_table,a1
+        move.w  #(MAX_HIGH_SCORES*SCORE_ENTRY_SIZE/2)-1,d7
+copy_scores:
+        move.w  (a1)+,(a0)+
+        dbf     d7,copy_scores
+        
+        ; Copy progress
+        lea     game_progress,a1
+        move.w  #PROGRESS_SIZE-1,d7
+copy_progress:
+        move.w  (a1)+,(a0)+
+        dbf     d7,copy_progress
+        
+        ; Calculate and store overall checksum
+        move.l  #SAVE_DATA_LOCATION+8,a0  ; Skip header
+        move.w  persistent_header+6,d7     ; Data size
+        lsr.w   #1,d7                      ; Convert to words
+        subq.w  #1,d7                      ; Adjust for DBF
+        move.w  #0,d0                      ; Checksum
+        
+calc_overall_checksum:
+        add.w   (a0)+,d0
+        ror.w   #1,d0
+        dbf     d7,calc_overall_checksum
+        
+        ; Store checksum in header
+        move.w  d0,persistent_header+8
+        move.w  d0,SAVE_DATA_LOCATION+8
+        
+        rts
+
+; Load persistent data from memory
+load_persistent_data:
+        ; Validate magic number
+        move.l  SAVE_DATA_LOCATION,d0
+        cmp.l   #$C0DE198X,d0
+        bne     load_failed
+        
+        ; Check version
+        move.w  SAVE_DATA_LOCATION+4,d0
+        cmp.w   #1,d0
+        bne     load_failed
+        
+        ; Validate checksum
+        move.l  #SAVE_DATA_LOCATION+8,a0
+        move.w  SAVE_DATA_LOCATION+6,d7   ; Data size
+        lsr.w   #1,d7                     ; Convert to words
+        subq.w  #1,d7
+        move.w  #0,d0                     ; Checksum
+        
+calc_load_checksum:
+        add.w   (a0)+,d0
+        ror.w   #1,d0
+        dbf     d7,calc_load_checksum
+        
+        cmp.w   SAVE_DATA_LOCATION+8,d0
+        bne     load_failed
+        
+        ; Data is valid - load it
+        move.l  #SAVE_DATA_LOCATION+10,a0  ; Skip header + checksum
+        
+        ; Load configuration
+        lea     game_config,a1
+        move.w  #CONFIG_SIZE-1,d7
+load_config:
+        move.w  (a0)+,(a1)+
+        dbf     d7,load_config
+        
+        ; Load high scores
+        lea     high_score_table,a1
+        move.w  #(MAX_HIGH_SCORES*SCORE_ENTRY_SIZE/2)-1,d7
+load_scores:
+        move.w  (a0)+,(a1)+
+        dbf     d7,load_scores
+        
+        ; Load progress
+        lea     game_progress,a1
+        move.w  #PROGRESS_SIZE-1,d7
+load_progress:
+        move.w  (a0)+,(a1)+
+        dbf     d7,load_progress
+        
+        ; Success
+        move.w  #0,d0
+        rts
+        
+load_failed:
+        ; Initialize with defaults
+        bsr     reset_configuration
+        bsr     reset_high_scores
+        ; Clear progress
+        lea     game_progress,a0
+        move.w  #PROGRESS_SIZE-1,d7
+clear_progress:
+        clr.w   (a0)+
+        dbf     d7,clear_progress
+        
+        move.w  #-1,d0                  ; Return error
+        rts
+```
+
+## Step 6: User Interface Integration
+
+Create user-friendly interfaces for save/load:
+
+```m68k
+; Display password entry screen
+show_password_screen:
+        ; Clear input buffer
+        lea     input_password,a0
+        move.w  #PASSWORD_LENGTH,d7
+clear_input:
+        clr.b   (a0)+
+        dbf     d7,clear_input
+        
+        ; Display password prompt
+        ; (Text rendering code would go here)
+        
+        ; Handle input
+        move.w  #0,input_position
+        
+password_input_loop:
+        ; Wait for keypress
+        bsr     get_keyboard_input
+        tst.w   d0
+        beq     password_input_loop
+        
+        ; Handle backspace
+        cmp.b   #8,d0                   ; Backspace
+        beq     handle_backspace
+        
+        ; Handle enter
+        cmp.b   #13,d0                  ; Enter
+        beq     password_entered
+        
+        ; Handle valid character
+        bsr     is_valid_password_char
+        tst.w   d0
+        beq     password_input_loop
+        
+        ; Add character to password
+        move.w  input_position,d1
+        cmp.w   #PASSWORD_LENGTH,d1
+        bge     password_input_loop     ; Buffer full
+        
+        lea     input_password,a0
+        move.b  d0,(a0,d1.w)
+        addq.w  #1,input_position
+        
+        ; Update display
+        bsr     update_password_display
+        
+        bra     password_input_loop
+        
+handle_backspace:
+        move.w  input_position,d1
+        tst.w   d1
+        beq     password_input_loop
+        subq.w  #1,d1
+        move.w  d1,input_position
+        
+        ; Clear character
+        lea     input_password,a0
+        clr.b   (a0,d1.w)
+        
+        bsr     update_password_display
+        bra     password_input_loop
+        
+password_entered:
+        ; Validate and load password
+        bsr     validate_password
+        tst.w   d0
+        beq     password_valid
+        
+        ; Show error message
+        bsr     show_invalid_password_message
+        bra     password_input_loop
+        
+password_valid:
+        ; Password accepted - continue game
+        rts
+
+; Check if character is valid for password
+is_valid_password_char:
+        ; d0 = character to check
+        lea     password_chars,a0
+        move.w  #PASSWORD_CHAR_COUNT-1,d7
+        
+char_check_loop:
+        cmp.b   (a0)+,d0
+        beq     char_valid
+        dbf     d7,char_check_loop
+        
+        ; Invalid character
+        move.w  #0,d0
+        rts
+        
+char_valid:
+        move.w  #1,d0
+        rts
+
+; Simple keyboard input routine
+get_keyboard_input:
+        ; Simplified keyboard reading
+        ; In a real implementation, this would read CIA keyboard matrix
+        move.w  #0,d0                   ; No key pressed
+        rts
+
+; Update password display
+update_password_display:
+        ; Update on-screen password display
+        ; (Graphics code would go here)
+        rts
+
+; Show invalid password message
+show_invalid_password_message:
+        ; Display error message
+        ; (Graphics/text code would go here)
+        rts
+
+input_position:         dc.w    0
+```
+
+## Complete Working Examples
+
+All code examples for this lesson are available in our repository:
+
+**[📁 Lesson 7 Code Examples](https://github.com/code198x/code-samples/tree/main/commodore-amiga/phase-1/tier-1/007-crystal-cascade-data-persistence)**
+
+- [`complete.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/007-crystal-cascade-data-persistence/complete.s) - Full persistence system
+- [`step1-passwords.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/007-crystal-cascade-data-persistence/step1-passwords.s) - Password generation
+- [`step2-high-scores.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/007-crystal-cascade-data-persistence/step2-high-scores.s) - High score system
+- [`step3-config.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/007-crystal-cascade-data-persistence/step3-config.s) - Configuration system
+
+## Understanding 1980s Persistence
+
+### Password Systems
+Authentic games used clever encoding:
+- **Compact representation**: Fit game state in short codes
+- **Error detection**: Checksums prevent invalid codes
+- **User-friendly**: Avoid confusing characters like I, O, 0
+
+### High Score Tables
+Memory-resident ranking systems:
+- **Persistent storage**: Survive power cycles in expanded memory
+- **Integrity checking**: Detect corruption and tampering
+- **Achievement tracking**: Unlock system for motivation
+
+### Configuration Systems
+User preference storage:
+- **Minimal data**: Store only essential settings
+- **Default fallbacks**: Graceful handling of corruption
+- **Version compatibility**: Handle system upgrades
+
+## What You've Accomplished
+
+In this lesson, you've mastered:
+
+✅ **Password systems** with authentic 1980s encoding  
+✅ **High score tables** with persistent memory storage  
+✅ **Configuration systems** for user preferences  
+✅ **Checksum validation** for data integrity  
+✅ **Achievement tracking** for player motivation  
+✅ **Memory-based persistence** without disk dependencies  
+
+Your Crystal Cascade now has the robust save systems used in classic games!
+
+## Experiment and Learn
+
+Try these advanced persistence techniques:
+
+1. **Compressed passwords**:
+   ```m68k
+   ; Bit-packed game state
+   pack_game_state:
+       lsl.l #3,d0        ; Level (3 bits)
+       or.l  d1,d0        ; Add lives (3 bits)
+   ```
+
+2. **Encrypted saves**:
+   ```m68k
+   ; Simple XOR encryption
+   encrypt_data:
+       eor.w encryption_key,d0
+       ror.w #3,d0        ; Rotate for obfuscation
+   ```
+
+3. **Redundant storage**:
+   ```m68k
+   ; Store multiple copies
+   save_redundant:
+       bsr save_to_location_a
+       bsr save_to_location_b
+   ```
+
+4. **Progressive unlocks**:
+   ```m68k
+   ; Content gated by achievements
+   check_unlock:
+       btst #ACHIEVEMENT_FLAG,progress
+       beq content_locked
+   ```
+
+## Advanced Techniques
+
+**Delta compression**: Store only changes between saves.
+
+**Tamper detection**: Advanced checksums to prevent cheating.
+
+**Cloud simulation**: Use multiple memory locations for redundancy.
+
+**Progressive disclosure**: Unlock features based on progress.
+
+## Coming Next
+
+In **Lesson 8**, you'll complete **Crystal Cascade** with final polish and integration!
+
+## Quick Reference
+
+**Password Character Set:**
+- Exclude: I, O (confusing with 1, 0)
+- Include: 0-9, A-H, J-N, P-Z
+- Length: 6-8 characters optimal
+
+**Checksum Algorithms:**
+- XOR-based: Fast, simple
+- Add-with-carry: Better distribution
+- CRC: Professional grade
+
+**Memory Locations:**
+- Expanded RAM: $80000+ (safe areas)
+- Chip RAM: Avoid (used by system)
+- Fast RAM: Good for temporary storage
+
+Your game now preserves player progress like the classics did! 💾🎮

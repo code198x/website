@@ -1,0 +1,1105 @@
+---
+title: "Crystal Cascade: Enemy AI and Swarms"
+system: "commodore-amiga"
+phase_number: 1
+tier_number: 1
+lesson_number: 4
+description: "Create intelligent enemy behavior and efficient swarm systems! Master object management, AI state machines, and collision optimization using the Amiga's processing power."
+learning_objectives:
+  - "Implement efficient object management for multiple enemies"
+  - "Create AI state machines for intelligent behavior"
+  - "Design swarm systems with flocking algorithms"
+  - "Optimize collision detection for many objects"
+  - "Build scalable enemy spawn and management systems"
+concepts:
+  - "Object pools and efficient memory management"
+  - "AI state machines and behavior trees"
+  - "Swarm intelligence and flocking algorithms"
+  - "Spatial partitioning for collision optimization"
+  - "Dynamic difficulty and enemy scaling"
+estimated_duration: "75-90 minutes"
+difficulty: "medium"
+code_examples: true
+practical_exercise: true
+order: 4
+---
+
+# Lesson 4: Crystal Cascade - Enemy AI and Swarms
+
+Time to populate your crystal world with intelligent enemies! In this lesson, you'll create sophisticated AI systems that make the most of the Amiga's processing power. You'll build swarm behaviors, implement efficient object management, and create enemies that respond intelligently to the player.
+
+## Understanding Amiga Object Management
+
+Efficient enemy systems require careful optimization:
+
+1. **Object Pools** - Pre-allocated memory for fast spawning
+2. **State Machines** - Organized AI behavior systems
+3. **Spatial Partitioning** - Efficient collision detection
+4. **Batch Processing** - Minimize per-object overhead
+5. **Priority Systems** - Focus CPU on important enemies
+
+## Step 1: Object Pool System
+
+Create an efficient foundation for multiple enemies:
+
+```m68k
+; Crystal Cascade - Lesson 4
+; Enemy AI and swarm systems
+
+        include "hardware/custom.i"
+        include "hardware/dmabits.i"
+
+; Object pool constants
+MAX_ENEMIES     = 32
+ENEMY_SIZE      = 32            ; Bytes per enemy object
+
+; Enemy states
+STATE_INACTIVE  = 0
+STATE_SPAWNING  = 1
+STATE_HUNTING   = 2
+STATE_FLEEING   = 3
+STATE_SWARMING  = 4
+STATE_ATTACKING = 5
+STATE_DYING     = 6
+
+; Enemy types
+TYPE_SCOUT      = 0             ; Fast, weak
+TYPE_GUARD      = 1             ; Medium speed, medium strength  
+TYPE_HEAVY      = 2             ; Slow, strong
+TYPE_SWARM      = 3             ; Tiny, many
+
+        section enemy_data,data
+
+; Enemy object structure (32 bytes each)
+enemy_pool:
+        dcb.b   MAX_ENEMIES*ENEMY_SIZE,0
+
+; Enemy object offsets
+ENEMY_STATE     = 0             ; Word - current state
+ENEMY_TYPE      = 2             ; Word - enemy type
+ENEMY_X         = 4             ; Word - X position (16.16 fixed)
+ENEMY_Y         = 6             ; Word - Y position
+ENEMY_VX        = 8             ; Word - X velocity 
+ENEMY_VY        = 10            ; Word - Y velocity
+ENEMY_TARGET_X  = 12            ; Word - target X position
+ENEMY_TARGET_Y  = 14            ; Word - target Y position
+ENEMY_HEALTH    = 16            ; Word - hit points
+ENEMY_TIMER     = 18            ; Word - general purpose timer
+ENEMY_AI_STATE  = 20            ; Word - AI state machine data
+ENEMY_SPRITE    = 22            ; Word - sprite assignment
+ENEMY_FLAGS     = 24            ; Word - behavior flags
+ENEMY_RESERVED  = 26            ; 6 bytes reserved for expansion
+
+        section code,code
+
+; Initialize enemy system
+init_enemy_system:
+        ; Clear all enemy objects
+        lea     enemy_pool,a0
+        move.w  #(MAX_ENEMIES*ENEMY_SIZE/4)-1,d0
+clear_pool_loop:
+        clr.l   (a0)+
+        dbf     d0,clear_pool_loop
+        
+        ; Initialize free list and counters
+        move.w  #0,active_enemy_count
+        move.w  #0,next_spawn_timer
+        
+        ; Set up enemy sprite data
+        bsr     setup_enemy_sprites
+        
+        rts
+
+; Spawn new enemy
+; d0 = enemy type
+; d1 = X position
+; d2 = Y position
+spawn_enemy:
+        ; Find free enemy slot
+        lea     enemy_pool,a0
+        move.w  #MAX_ENEMIES-1,d7
+        
+find_free_slot:
+        tst.w   ENEMY_STATE(a0)         ; Check if inactive
+        beq     found_slot
+        add.w   #ENEMY_SIZE,a0
+        dbf     d7,find_free_slot
+        
+        ; No free slots
+        rts
+        
+found_slot:
+        ; Initialize enemy object
+        move.w  #STATE_SPAWNING,ENEMY_STATE(a0)
+        move.w  d0,ENEMY_TYPE(a0)
+        move.w  d1,ENEMY_X(a0)
+        move.w  d2,ENEMY_Y(a0)
+        clr.w   ENEMY_VX(a0)
+        clr.w   ENEMY_VY(a0)
+        
+        ; Set type-specific properties
+        cmp.w   #TYPE_SCOUT,d0
+        beq     init_scout
+        cmp.w   #TYPE_GUARD,d0
+        beq     init_guard
+        cmp.w   #TYPE_HEAVY,d0
+        beq     init_heavy
+        cmp.w   #TYPE_SWARM,d0
+        beq     init_swarm
+        rts
+        
+init_scout:
+        move.w  #20,ENEMY_HEALTH(a0)
+        move.w  #60,ENEMY_TIMER(a0)     ; Spawn animation time
+        bra     spawn_complete
+        
+init_guard:
+        move.w  #50,ENEMY_HEALTH(a0)
+        move.w  #90,ENEMY_TIMER(a0)
+        bra     spawn_complete
+        
+init_heavy:
+        move.w  #100,ENEMY_HEALTH(a0)
+        move.w  #120,ENEMY_TIMER(a0)
+        bra     spawn_complete
+        
+init_swarm:
+        move.w  #5,ENEMY_HEALTH(a0)
+        move.w  #30,ENEMY_TIMER(a0)
+        
+spawn_complete:
+        addq.w  #1,active_enemy_count
+        rts
+
+; Variables
+active_enemy_count:     dc.w    0
+next_spawn_timer:       dc.w    0
+```
+
+## Step 2: AI State Machine System
+
+Create intelligent enemy behavior:
+
+```m68k
+; Update all enemies
+update_all_enemies:
+        lea     enemy_pool,a0
+        move.w  #MAX_ENEMIES-1,d7
+        
+enemy_update_loop:
+        tst.w   ENEMY_STATE(a0)         ; Skip inactive enemies
+        beq     next_enemy
+        
+        ; Save enemy pointer
+        move.l  a0,a1
+        
+        ; Update based on current state
+        move.w  ENEMY_STATE(a1),d0
+        cmp.w   #STATE_SPAWNING,d0
+        beq     update_spawning
+        cmp.w   #STATE_HUNTING,d0
+        beq     update_hunting
+        cmp.w   #STATE_FLEEING,d0
+        beq     update_fleeing
+        cmp.w   #STATE_SWARMING,d0
+        beq     update_swarming
+        cmp.w   #STATE_ATTACKING,d0
+        beq     update_attacking
+        cmp.w   #STATE_DYING,d0
+        beq     update_dying
+        
+next_enemy:
+        add.w   #ENEMY_SIZE,a0
+        dbf     d7,enemy_update_loop
+        
+        rts
+
+; Spawning state - enemy materializing
+update_spawning:
+        ; Countdown spawn timer
+        subq.w  #1,ENEMY_TIMER(a1)
+        bne     spawning_continue
+        
+        ; Spawn complete - transition to hunting
+        move.w  #STATE_HUNTING,ENEMY_STATE(a1)
+        move.w  #0,ENEMY_AI_STATE(a1)
+        
+spawning_continue:
+        ; Simple spawn animation - slight movement
+        move.w  ENEMY_TIMER(a1),d0
+        and.w   #7,d0                   ; Oscillate every 8 frames
+        cmp.w   #4,d0
+        blt     spawn_move_up
+        
+        addq.w  #1,ENEMY_Y(a1)
+        rts
+        
+spawn_move_up:
+        subq.w  #1,ENEMY_Y(a1)
+        rts
+
+; Hunting state - pursue player
+update_hunting:
+        ; Calculate vector to player
+        move.w  sprite_x,d0
+        sub.w   ENEMY_X(a1),d0          ; dx = player_x - enemy_x
+        move.w  sprite_y,d1
+        sub.w   ENEMY_Y(a1),d1          ; dy = player_y - enemy_y
+        
+        ; Store target position
+        move.w  sprite_x,ENEMY_TARGET_X(a1)
+        move.w  sprite_y,ENEMY_TARGET_Y(a1)
+        
+        ; Calculate distance (Manhattan distance for speed)
+        move.w  d0,d2
+        bpl     dx_positive
+        neg.w   d2
+dx_positive:
+        move.w  d1,d3
+        bpl     dy_positive
+        neg.w   d3
+dy_positive:
+        add.w   d3,d2                   ; Total distance
+        
+        ; Check if too close (switch to fleeing)
+        cmp.w   #30,d2
+        blt     start_fleeing
+        
+        ; Check if very far (reduce pursuit)
+        cmp.w   #200,d2
+        bgt     hunting_wander
+        
+        ; Normal hunting - move toward player
+        bsr     move_toward_target
+        
+        ; Random chance to switch to swarming
+        bsr     get_random_byte
+        cmp.b   #240,d0                 ; ~6% chance
+        bgt     start_swarming
+        
+        rts
+        
+start_fleeing:
+        move.w  #STATE_FLEEING,ENEMY_STATE(a1)
+        move.w  #120,ENEMY_TIMER(a1)    ; Flee for 2 seconds
+        rts
+        
+start_swarming:
+        move.w  #STATE_SWARMING,ENEMY_STATE(a1)
+        move.w  #180,ENEMY_TIMER(a1)    ; Swarm for 3 seconds
+        rts
+        
+hunting_wander:
+        ; Wander randomly when player is far
+        bsr     get_random_byte
+        ext.w   d0
+        asr.w   #6,d0                   ; -2 to +2
+        add.w   d0,ENEMY_VX(a1)
+        
+        bsr     get_random_byte
+        ext.w   d0
+        asr.w   #6,d0
+        add.w   d0,ENEMY_VY(a1)
+        
+        bsr     apply_enemy_movement
+        rts
+
+; Move enemy toward target with type-specific speed
+move_toward_target:
+        ; Get direction to target
+        move.w  ENEMY_TARGET_X(a1),d0
+        sub.w   ENEMY_X(a1),d0          ; dx
+        move.w  ENEMY_TARGET_Y(a1),d1
+        sub.w   ENEMY_Y(a1),d1          ; dy
+        
+        ; Normalize and apply speed based on type
+        move.w  ENEMY_TYPE(a1),d2
+        cmp.w   #TYPE_SCOUT,d2
+        beq     scout_speed
+        cmp.w   #TYPE_GUARD,d2
+        beq     guard_speed
+        cmp.w   #TYPE_HEAVY,d2
+        beq     heavy_speed
+        cmp.w   #TYPE_SWARM,d2
+        beq     swarm_speed
+        rts
+        
+scout_speed:
+        asr.w   #3,d0                   ; Fast movement
+        asr.w   #3,d1
+        bra     apply_speed
+        
+guard_speed:
+        asr.w   #4,d0                   ; Medium movement
+        asr.w   #4,d1
+        bra     apply_speed
+        
+heavy_speed:
+        asr.w   #5,d0                   ; Slow movement
+        asr.w   #5,d1
+        bra     apply_speed
+        
+swarm_speed:
+        asr.w   #2,d0                   ; Very fast
+        asr.w   #2,d1
+        
+apply_speed:
+        add.w   d0,ENEMY_VX(a1)
+        add.w   d1,ENEMY_VY(a1)
+        
+        ; Apply velocity damping
+        move.w  ENEMY_VX(a1),d0
+        asr.w   #4,d0                   ; Divide by 16
+        sub.w   d0,ENEMY_VX(a1)
+        
+        move.w  ENEMY_VY(a1),d0
+        asr.w   #4,d0
+        sub.w   d0,ENEMY_VY(a1)
+        
+        bsr     apply_enemy_movement
+        rts
+
+; Apply movement and boundary checking
+apply_enemy_movement:
+        ; Update position
+        add.w   ENEMY_VX(a1),ENEMY_X(a1)
+        add.w   ENEMY_VY(a1),ENEMY_Y(a1)
+        
+        ; Boundary checking
+        cmp.w   #16,ENEMY_X(a1)
+        bge     check_right
+        move.w  #16,ENEMY_X(a1)
+        neg.w   ENEMY_VX(a1)
+        
+check_right:
+        cmp.w   #304,ENEMY_X(a1)
+        ble     check_top
+        move.w  #304,ENEMY_X(a1)
+        neg.w   ENEMY_VX(a1)
+        
+check_top:
+        cmp.w   #16,ENEMY_Y(a1)
+        bge     check_bottom
+        move.w  #16,ENEMY_Y(a1)
+        neg.w   ENEMY_VY(a1)
+        
+check_bottom:
+        cmp.w   #224,ENEMY_Y(a1)
+        ble     movement_done
+        move.w  #224,ENEMY_Y(a1)
+        neg.w   ENEMY_VY(a1)
+        
+movement_done:
+        rts
+```
+
+## Step 3: Swarm Intelligence System
+
+Create realistic flocking behavior:
+
+```m68k
+; Swarming state - flocking behavior
+update_swarming:
+        ; Countdown swarm timer
+        subq.w  #1,ENEMY_TIMER(a1)
+        beq     end_swarming
+        
+        ; Initialize force vectors
+        clr.w   d3                      ; Separation force X
+        clr.w   d4                      ; Separation force Y
+        clr.w   d5                      ; Alignment force X
+        clr.w   d6                      ; Alignment force Y
+        clr.w   d7                      ; Cohesion neighbor count
+        
+        ; Check all other enemies for flocking
+        lea     enemy_pool,a2
+        move.w  #MAX_ENEMIES-1,d2
+        
+swarm_check_loop:
+        cmp.l   a1,a2                   ; Skip self
+        beq     swarm_next
+        
+        tst.w   ENEMY_STATE(a2)         ; Skip inactive
+        beq     swarm_next
+        
+        ; Only flock with same type
+        move.w  ENEMY_TYPE(a1),d0
+        cmp.w   ENEMY_TYPE(a2),d0
+        bne     swarm_next
+        
+        ; Calculate distance
+        move.w  ENEMY_X(a2),d0
+        sub.w   ENEMY_X(a1),d0          ; dx
+        move.w  ENEMY_Y(a2),d1
+        sub.w   ENEMY_Y(a1),d1          ; dy
+        
+        ; Manhattan distance for speed
+        move.w  d0,-(sp)                ; Save dx
+        move.w  d1,-(sp)                ; Save dy
+        
+        bpl     swarm_dy_pos
+        neg.w   d1
+swarm_dy_pos:
+        move.w  d0,d2
+        bpl     swarm_dx_pos
+        neg.w   d2
+swarm_dx_pos:
+        add.w   d1,d2                   ; Total distance
+        
+        ; Apply flocking rules based on distance
+        cmp.w   #50,d2                  ; Separation distance
+        bgt     check_alignment
+        
+        ; Separation - move away from close neighbors
+        move.w  (sp),d1                 ; Restore dy
+        move.w  2(sp),d0                ; Restore dx
+        
+        ; Invert direction for separation
+        neg.w   d0
+        neg.w   d1
+        
+        ; Add to separation forces
+        add.w   d0,d3
+        add.w   d1,d4
+        bra     swarm_next_with_cleanup
+        
+check_alignment:
+        cmp.w   #100,d2                 ; Alignment distance
+        bgt     check_cohesion
+        
+        ; Alignment - match velocity of neighbors
+        move.w  ENEMY_VX(a2),d0
+        move.w  ENEMY_VY(a2),d1
+        add.w   d0,d5
+        add.w   d1,d6
+        addq.w  #1,d7                   ; Count neighbors
+        bra     swarm_next_with_cleanup
+        
+check_cohesion:
+        cmp.w   #150,d2                 ; Cohesion distance
+        bgt     swarm_next_with_cleanup
+        
+        ; Cohesion - move toward average position
+        move.w  2(sp),d0                ; dx
+        move.w  (sp),d1                 ; dy
+        asr.w   #3,d0                   ; Reduce force
+        asr.w   #3,d1
+        add.w   d0,d3
+        add.w   d1,d4
+        
+swarm_next_with_cleanup:
+        addq.l  #4,sp                   ; Clean up stack
+        
+swarm_next:
+        add.w   #ENEMY_SIZE,a2
+        dbf     d2,swarm_check_loop
+        
+        ; Apply flocking forces
+        asr.w   #2,d3                   ; Scale separation
+        asr.w   #2,d4
+        
+        ; Average alignment forces
+        tst.w   d7
+        beq     no_alignment
+        divs.w  d7,d5
+        divs.w  d7,d6
+        asr.w   #2,d5                   ; Scale alignment
+        asr.w   #2,d6
+        
+no_alignment:
+        ; Combine all forces
+        add.w   d3,ENEMY_VX(a1)         ; Separation
+        add.w   d4,ENEMY_VY(a1)
+        add.w   d5,ENEMY_VX(a1)         ; Alignment
+        add.w   d6,ENEMY_VY(a1)
+        
+        ; Apply movement
+        bsr     apply_enemy_movement
+        rts
+        
+end_swarming:
+        move.w  #STATE_HUNTING,ENEMY_STATE(a1)
+        rts
+
+; Fleeing state - run from player
+update_fleeing:
+        ; Countdown flee timer
+        subq.w  #1,ENEMY_TIMER(a1)
+        beq     end_fleeing
+        
+        ; Move away from player
+        move.w  ENEMY_X(a1),d0
+        sub.w   sprite_x,d0             ; dx = enemy_x - player_x
+        move.w  ENEMY_Y(a1),d1
+        sub.w   sprite_y,d1             ; dy = enemy_y - player_y
+        
+        ; Amplify fleeing direction
+        asr.w   #2,d0                   ; Fast fleeing
+        asr.w   #2,d1
+        
+        add.w   d0,ENEMY_VX(a1)
+        add.w   d1,ENEMY_VY(a1)
+        
+        bsr     apply_enemy_movement
+        rts
+        
+end_fleeing:
+        move.w  #STATE_HUNTING,ENEMY_STATE(a1)
+        rts
+
+; Attacking state - aggressive pursuit
+update_attacking:
+        ; More aggressive movement toward player
+        move.w  sprite_x,ENEMY_TARGET_X(a1)
+        move.w  sprite_y,ENEMY_TARGET_Y(a1)
+        
+        ; Double speed movement
+        bsr     move_toward_target
+        bsr     move_toward_target      ; Apply twice for aggression
+        
+        ; Timer for attack duration
+        subq.w  #1,ENEMY_TIMER(a1)
+        bne     attacking_continue
+        
+        ; Return to hunting
+        move.w  #STATE_HUNTING,ENEMY_STATE(a1)
+        
+attacking_continue:
+        rts
+
+; Dying state - death animation
+update_dying:
+        ; Simple death animation
+        subq.w  #1,ENEMY_TIMER(a1)
+        bne     dying_continue
+        
+        ; Death complete - deactivate
+        clr.w   ENEMY_STATE(a1)
+        subq.w  #1,active_enemy_count
+        rts
+        
+dying_continue:
+        ; Slow down movement
+        asr.w   #1,ENEMY_VX(a1)
+        asr.w   #1,ENEMY_VY(a1)
+        bsr     apply_enemy_movement
+        rts
+```
+
+## Step 4: Collision Optimization
+
+Efficient collision detection for many objects:
+
+```m68k
+; Spatial grid for collision optimization
+GRID_SIZE       = 64            ; 64x64 pixel grid cells
+GRID_WIDTH      = 6             ; 320/64 = 5, rounded up
+GRID_HEIGHT     = 4             ; 256/64 = 4
+
+; Grid cell structure
+grid_cells:
+        dcb.w   GRID_WIDTH*GRID_HEIGHT*8,0  ; 8 objects per cell max
+
+; Update spatial grid
+update_spatial_grid:
+        ; Clear grid
+        lea     grid_cells,a0
+        move.w  #(GRID_WIDTH*GRID_HEIGHT*8)-1,d0
+clear_grid:
+        clr.w   (a0)+
+        dbf     d0,clear_grid
+        
+        ; Add all active enemies to grid
+        lea     enemy_pool,a0
+        move.w  #MAX_ENEMIES-1,d7
+        
+grid_add_loop:
+        tst.w   ENEMY_STATE(a0)
+        beq     grid_next
+        
+        ; Calculate grid position
+        move.w  ENEMY_X(a0),d0
+        lsr.w   #6,d0                   ; Divide by 64
+        cmp.w   #GRID_WIDTH-1,d0
+        ble     grid_x_ok
+        move.w  #GRID_WIDTH-1,d0
+        
+grid_x_ok:
+        move.w  ENEMY_Y(a0),d1
+        lsr.w   #6,d1
+        cmp.w   #GRID_HEIGHT-1,d1
+        ble     grid_y_ok
+        move.w  #GRID_HEIGHT-1,d1
+        
+grid_y_ok:
+        ; Calculate grid cell index
+        mulu.w  #GRID_WIDTH,d1
+        add.w   d0,d1
+        mulu.w  #16,d1                  ; 8 words per cell
+        
+        ; Find free slot in cell
+        lea     grid_cells,a1
+        add.w   d1,a1
+        move.w  #7,d2                   ; Max objects per cell
+        
+find_cell_slot:
+        tst.w   (a1)
+        beq     found_cell_slot
+        addq.l  #2,a1
+        dbf     d2,find_cell_slot
+        bra     grid_next               ; Cell full
+        
+found_cell_slot:
+        ; Store enemy index
+        sub.l   #enemy_pool,a0
+        divu.w  #ENEMY_SIZE,a0
+        move.w  a0,(a1)
+        
+        ; Restore enemy pointer
+        mulu.w  #ENEMY_SIZE,a0
+        add.l   #enemy_pool,a0
+        
+grid_next:
+        add.w   #ENEMY_SIZE,a0
+        dbf     d7,grid_add_loop
+        
+        rts
+
+; Optimized collision detection
+check_enemy_collisions:
+        ; Update spatial grid
+        bsr     update_spatial_grid
+        
+        ; Check player collision with nearby enemies
+        move.w  sprite_x,d0
+        lsr.w   #6,d0                   ; Player grid X
+        move.w  sprite_y,d1
+        lsr.w   #6,d1                   ; Player grid Y
+        
+        ; Check 3x3 grid around player
+        subq.w  #1,d0
+        subq.w  #1,d1
+        move.w  #2,d4                   ; Check 3 rows
+        
+check_grid_row:
+        move.w  d0,d2                   ; Reset column
+        move.w  #2,d3                   ; Check 3 columns
+        
+check_grid_col:
+        ; Validate grid coordinates
+        tst.w   d2
+        bmi     next_grid_col
+        cmp.w   #GRID_WIDTH,d2
+        bge     next_grid_col
+        tst.w   d1
+        bmi     next_grid_col
+        cmp.w   #GRID_HEIGHT,d1
+        bge     next_grid_col
+        
+        ; Check enemies in this cell
+        move.w  d1,d5
+        mulu.w  #GRID_WIDTH,d5
+        add.w   d2,d5
+        mulu.w  #16,d5
+        
+        lea     grid_cells,a0
+        add.w   d5,a0
+        move.w  #7,d6                   ; Max objects per cell
+        
+check_cell_enemies:
+        move.w  (a0)+,d5
+        beq     next_cell_enemy         ; Empty slot
+        
+        ; Get enemy pointer
+        mulu.w  #ENEMY_SIZE,d5
+        lea     enemy_pool,a1
+        add.w   d5,a1
+        
+        ; Check collision with player
+        move.w  sprite_x,d5
+        sub.w   ENEMY_X(a1),d5
+        bpl     dx_positive_col
+        neg.w   d5
+dx_positive_col:
+        cmp.w   #16,d5                  ; Collision distance
+        bgt     next_cell_enemy
+        
+        move.w  sprite_y,d5
+        sub.w   ENEMY_Y(a1),d5
+        bpl     dy_positive_col
+        neg.w   d5
+dy_positive_col:
+        cmp.w   #16,d5
+        bgt     next_cell_enemy
+        
+        ; Collision detected!
+        bsr     handle_player_enemy_collision
+        
+next_cell_enemy:
+        dbf     d6,check_cell_enemies
+        
+next_grid_col:
+        addq.w  #1,d2
+        dbf     d3,check_grid_col
+        
+        addq.w  #1,d1
+        dbf     d4,check_grid_row
+        
+        rts
+
+; Handle player-enemy collision
+handle_player_enemy_collision:
+        ; Damage enemy
+        subq.w  #10,ENEMY_HEALTH(a1)
+        ble     enemy_destroyed
+        
+        ; Enemy enters attack state
+        move.w  #STATE_ATTACKING,ENEMY_STATE(a1)
+        move.w  #60,ENEMY_TIMER(a1)     ; Attack for 1 second
+        
+        ; Play collision sound
+        move.w  #CHAN_SFX1,d0
+        lea     crystal_hit_info,a0
+        bsr     play_sound_effect
+        
+        rts
+        
+enemy_destroyed:
+        ; Start death animation
+        move.w  #STATE_DYING,ENEMY_STATE(a1)
+        move.w  #30,ENEMY_TIMER(a1)     ; Death animation time
+        
+        ; Play destruction sound
+        move.w  #CHAN_SFX2,d0
+        lea     crystal_collect_info,a0
+        bsr     play_sound_effect
+        
+        rts
+```
+
+## Step 5: Dynamic Enemy Spawning
+
+Create adaptive difficulty and spawning:
+
+```m68k
+; Dynamic spawning system
+update_enemy_spawning:
+        ; Countdown spawn timer
+        subq.w  #1,next_spawn_timer
+        bgt     spawning_done
+        
+        ; Check if we should spawn
+        cmp.w   #MAX_ENEMIES,active_enemy_count
+        bge     spawning_done           ; Too many enemies
+        
+        ; Calculate spawn rate based on difficulty
+        move.w  crystal_count,d0        ; Player progress
+        lsr.w   #2,d0                   ; Every 4 crystals = harder
+        add.w   #60,d0                  ; Base spawn delay
+        
+        ; Set next spawn timer
+        move.w  d0,next_spawn_timer
+        
+        ; Choose enemy type based on difficulty
+        move.w  crystal_count,d0
+        cmp.w   #10,d0
+        blt     spawn_scouts_only
+        cmp.w   #20,d0
+        blt     spawn_mixed_easy
+        cmp.w   #40,d0
+        blt     spawn_mixed_hard
+        
+        ; Late game - all types
+        bsr     get_random_byte
+        and.w   #3,d0                   ; 0-3
+        bra     do_spawn
+        
+spawn_scouts_only:
+        move.w  #TYPE_SCOUT,d0
+        bra     do_spawn
+        
+spawn_mixed_easy:
+        bsr     get_random_byte
+        and.w   #1,d0                   ; Scout or Guard
+        bra     do_spawn
+        
+spawn_mixed_hard:
+        bsr     get_random_byte
+        cmp.b   #64,d0                  ; 25% chance
+        blt     spawn_heavy
+        and.w   #1,d0                   ; Otherwise Scout/Guard
+        bra     do_spawn
+        
+spawn_heavy:
+        move.w  #TYPE_HEAVY,d0
+        
+do_spawn:
+        ; Choose spawn position (edge of screen)
+        bsr     get_random_byte
+        and.w   #3,d0                   ; 0-3 for 4 edges
+        
+        cmp.w   #0,d0
+        beq     spawn_top
+        cmp.w   #1,d0
+        beq     spawn_right
+        cmp.w   #2,d0
+        beq     spawn_bottom
+        
+        ; Spawn left
+        move.w  #16,d1                  ; X position
+        bsr     get_random_byte
+        and.w   #192,d2                 ; Y position 0-192
+        add.w   #32,d2
+        bra     spawn_enemy
+        
+spawn_top:
+        bsr     get_random_byte
+        and.w   #288,d1                 ; X position 0-288
+        add.w   #16,d1
+        move.w  #16,d2                  ; Y position
+        bra     spawn_enemy
+        
+spawn_right:
+        move.w  #304,d1                 ; X position
+        bsr     get_random_byte
+        and.w   #192,d2                 ; Y position
+        add.w   #32,d2
+        bra     spawn_enemy
+        
+spawn_bottom:
+        bsr     get_random_byte
+        and.w   #288,d1                 ; X position
+        add.w   #16,d1
+        move.w  #224,d2                 ; Y position
+        bra     spawn_enemy
+        
+spawning_done:
+        rts
+
+; Simple random number generator
+get_random_byte:
+        move.l  random_seed,d0
+        mulu.w  #$41C7,d0
+        addq.l  #1,d0
+        move.l  d0,random_seed
+        lsr.l   #8,d0
+        rts
+
+random_seed:    dc.l    $12345678
+```
+
+## Step 6: Enemy Sprite Management
+
+Assign hardware sprites to enemies efficiently:
+
+```m68k
+; Setup enemy sprite data
+setup_enemy_sprites:
+        ; Set up sprite data for different enemy types
+        lea     sprite1_data,a0         ; Enemy sprites start at sprite 1
+        
+        ; Scout sprite (small, fast)
+        move.w  #$5020,$00(a0)          ; Control words
+        move.w  #$7000,$02(a0)
+        
+        ; Simple enemy sprite pattern
+        move.w  #$0180,$04(a0)          ; Line 0
+        move.w  #$0180,$06(a0)
+        move.w  #$03C0,$08(a0)          ; Line 1
+        move.w  #$0240,$0A(a0)
+        
+        ; Continue with enemy sprite patterns...
+        
+        rts
+
+; Update enemy sprite positions
+update_enemy_sprites:
+        lea     enemy_pool,a0
+        move.w  #MAX_ENEMIES-1,d7
+        move.w  #1,d6                   ; Start with sprite 1
+        
+sprite_update_loop:
+        tst.w   ENEMY_STATE(a0)
+        beq     sprite_next
+        
+        ; Check if we have sprites available
+        cmp.w   #7,d6                   ; Max 7 enemy sprites
+        bgt     sprite_next
+        
+        ; Calculate sprite registers
+        move.w  d6,d0
+        lsl.w   #4,d0                   ; 16 bytes per sprite
+        lea     custom,a5
+        lea     spr0pth(a5,d0.w),a1
+        
+        ; Update sprite position
+        move.w  ENEMY_Y(a0),d0
+        lsl.w   #8,d0                   ; VSTART
+        move.w  ENEMY_X(a0),d1
+        lsr.w   #1,d1                   ; Hardware X coordinate
+        or.w    d1,d0
+        
+        ; Set sprite data pointer based on enemy type
+        move.w  ENEMY_TYPE(a0),d1
+        mulu.w  #$100,d1                ; Offset per type
+        add.l   #sprite1_data,d1
+        
+        move.w  d1,4(a1)                ; SPRxPTL
+        swap    d1
+        move.w  d1,(a1)                 ; SPRxPTH
+        
+        addq.w  #1,d6                   ; Next sprite
+        
+sprite_next:
+        add.w   #ENEMY_SIZE,a0
+        dbf     d7,sprite_update_loop
+        
+        ; Clear unused sprites
+clear_unused_sprites:
+        cmp.w   #8,d6
+        bge     sprites_done
+        
+        move.w  d6,d0
+        lsl.w   #4,d0
+        lea     custom,a5
+        lea     spr0pth(a5,d0.w),a1
+        
+        ; Clear sprite pointer
+        clr.l   (a1)
+        addq.w  #1,d6
+        bra     clear_unused_sprites
+        
+sprites_done:
+        rts
+
+        section sprite_data,data,chip
+
+; Enemy sprite data
+sprite1_data:
+        ; Scout enemy sprite
+        dc.w    $5020,$7000             ; Control
+        dc.w    $0180,$0180             ; **
+        dc.w    $03C0,$0240             ; ****
+        dc.w    $07E0,$0420             ; ******
+        dc.w    $0BD0,$0BD0             ; * ** *
+        dc.w    $07E0,$0420             ; ******
+        dc.w    $03C0,$0240             ; ****
+        dc.w    $0180,$0180             ; **
+        dcb.w   56,$0000                ; Fill rest
+        dc.w    $0000,$0000             ; End
+
+; More enemy sprite types would follow...
+```
+
+## Complete Working Examples
+
+All code examples for this lesson are available in our repository:
+
+**[📁 Lesson 4 Code Examples](https://github.com/code198x/code-samples/tree/main/commodore-amiga/phase-1/tier-1/004-crystal-cascade-enemy-ai-and-swarms)**
+
+- [`complete.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/004-crystal-cascade-enemy-ai-and-swarms/complete.s) - Full enemy AI system
+- [`step1-object-pool.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/004-crystal-cascade-enemy-ai-and-swarms/step1-object-pool.s) - Enemy object management
+- [`step3-swarms.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/004-crystal-cascade-enemy-ai-and-swarms/step3-swarms.s) - Flocking behavior
+- [`step4-optimization.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/004-crystal-cascade-enemy-ai-and-swarms/step4-optimization.s) - Collision optimization
+
+## Understanding Amiga AI Performance
+
+### Memory Management
+Efficient object pools avoid memory fragmentation:
+- **Pre-allocated objects**: No malloc/free overhead
+- **Fixed-size structures**: Predictable memory layout
+- **Array-based storage**: Cache-friendly access patterns
+
+### CPU Optimization
+Smart algorithms minimize processing:
+- **State machines**: Organized, predictable behavior
+- **Spatial partitioning**: Reduce collision checks
+- **Batch processing**: Minimize per-object overhead
+
+### Hardware Utilization
+Make the most of Amiga capabilities:
+- **Sprite multiplexing**: Show more enemies than hardware sprites
+- **DMA coordination**: Let hardware handle sprite positioning
+- **Interrupt timing**: Synchronize updates with display
+
+## What You've Accomplished
+
+In this lesson, you've mastered:
+
+✅ **Object pools** for efficient enemy management  
+✅ **AI state machines** with intelligent behavior  
+✅ **Swarm intelligence** using flocking algorithms  
+✅ **Collision optimization** with spatial partitioning  
+✅ **Dynamic spawning** with adaptive difficulty  
+✅ **Sprite management** for multiple animated enemies  
+
+Your Crystal Cascade now has sophisticated AI that rivals commercial games!
+
+## Experiment and Learn
+
+Try these advanced AI features:
+
+1. **Hierarchical AI**:
+   ```m68k
+   ; Group leaders with followers
+   update_leader:
+       bsr update_formation
+       bsr command_followers
+   ```
+
+2. **Pathfinding**:
+   ```m68k
+   ; Simple A* pathfinding
+   find_path:
+       bsr calculate_heuristic
+       bsr choose_best_node
+   ```
+
+3. **Behavior trees**:
+   ```m68k
+   ; Complex decision making
+   behavior_sequence:
+       bsr check_condition
+       bsr execute_action
+   ```
+
+4. **Learning AI**:
+   ```m68k
+   ; Adapt to player behavior
+   analyze_player:
+       bsr track_movement
+       bsr adjust_difficulty
+   ```
+
+## Advanced Techniques
+
+**Emergent behavior**: Simple rules creating complex patterns.
+
+**Predictive AI**: Anticipate player movement for smarter enemies.
+
+**Group coordination**: Enemies working together strategically.
+
+**Performance scaling**: Adjust AI complexity based on enemy count.
+
+## Coming Next
+
+In **Lesson 5**, you'll add **Precision and Timing** systems for advanced gameplay mechanics!
+
+## Quick Reference
+
+**State Machine Pattern:**
+- Clear state definitions
+- Transition conditions
+- State-specific behaviors
+
+**Flocking Rules:**
+- Separation: Avoid crowding
+- Alignment: Match neighbor velocity  
+- Cohesion: Move toward group center
+
+**Optimization Tips:**
+- Use fixed-point math for speed
+- Batch similar operations
+- Minimize branching in inner loops
+
+Your enemies now move and think like those in professional Amiga games! 🤖⚡

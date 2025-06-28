@@ -1,0 +1,690 @@
+---
+title: "Crystal Cascade: Your Sprite Entity"
+system: "commodore-amiga"
+phase_number: 1
+tier_number: 1
+lesson_number: 2
+description: "Master Amiga hardware sprites and create your first animated game character! Learn sprite DMA, dual playfield graphics, and smooth 50Hz animation using the custom chips."
+learning_objectives:
+  - "Program hardware sprites using sprite DMA channels"
+  - "Create smooth sprite animation with automatic DMA"
+  - "Implement dual playfield scrolling backgrounds"
+  - "Master sprite-to-sprite and sprite-to-playfield collision detection"
+  - "Build a complete animated character with multiple states"
+concepts:
+  - "Hardware sprite system with 8 sprites"
+  - "Sprite DMA and automatic hardware animation"
+  - "Dual playfield mode for layered graphics"
+  - "Collision detection using custom chip hardware"
+  - "68000 interrupt handling for VBlank timing"
+estimated_duration: "75-90 minutes"
+difficulty: "easy"
+code_examples: true
+practical_exercise: true
+order: 2
+---
+
+# Lesson 2: Crystal Cascade - Your Sprite Entity
+
+Time to bring your Amiga to life with hardware sprites! In this lesson, you'll create an animated sprite character using the Amiga's dedicated sprite hardware. You'll learn to program sprite DMA, create smooth animations, and build impressive dual playfield backgrounds.
+
+## Understanding Amiga Sprite Hardware
+
+The Amiga has unique sprite capabilities:
+
+1. **8 Hardware Sprites** - Sprites 0-7 with automatic DMA
+2. **Attached Sprites** - Pairs can combine for 15-color sprites  
+3. **Sprite DMA** - Hardware handles positioning and animation
+4. **Collision Detection** - Built-in sprite and playfield collision
+5. **Priority Control** - Sprites can appear behind or in front of playfields
+
+## Step 1: Basic Sprite Setup
+
+Let's create your first hardware sprite:
+
+```m68k
+; Crystal Cascade - Lesson 2
+; Hardware sprite programming
+
+        include "hardware/custom.i"
+        include "hardware/dmabits.i"
+
+; Chip RAM section for sprite data
+        section sprite_data,data,chip
+
+; Sprite 0 data - Crystal character
+sprite0_data:
+        ; Sprite control words: VSTART.b, HSTART.b, VSTOP.b, CONTROL.b
+        dc.w    $5020   ; Start at V=$50, H=$20
+        dc.w    $9000   ; Stop at V=$90, no attach
+        
+        ; Sprite bitmap data (16 pixels wide, 64 lines tall)
+        ; Each line = 2 words (bitplane 0, bitplane 1)
+crystal_frame1:
+        dc.w    $0000,$0000     ; Line 0: transparent
+        dc.w    $0180,$0180     ; Line 1: **
+        dc.w    $03C0,$03C0     ; Line 2: ****
+        dc.w    $07E0,$07E0     ; Line 3: ******
+        dc.w    $0FF0,$0000     ; Line 4: ****.... (color 1)
+        dc.w    $1FF8,$0000     ; Line 5: *****... (color 1)
+        dc.w    $3FFC,$0000     ; Line 6: ******.. (color 1)
+        dc.w    $3FFC,$3FFC     ; Line 7: ******.. (color 3)
+        dc.w    $7FFE,$0000     ; Line 8: *******. (color 1)
+        dc.w    $7FFE,$7FFE     ; Line 9: *******. (color 3)
+        dc.w    $7FFE,$0000     ; Line 10: *******. (color 1)
+        dc.w    $3FFC,$3FFC     ; Line 11: ******.. (color 3)
+        dc.w    $3FFC,$0000     ; Line 12: ******.. (color 1)
+        dc.w    $1FF8,$0000     ; Line 13: *****... (color 1)
+        dc.w    $0FF0,$0000     ; Line 14: ****.... (color 1)
+        dc.w    $07E0,$07E0     ; Line 15: ****** (color 3)
+        dc.w    $03C0,$03C0     ; Line 16: **** (color 3)
+        dc.w    $0180,$0180     ; Line 17: ** (color 3)
+        dc.w    $0000,$0000     ; Line 18: transparent
+        
+        ; Repeat pattern for full 64-line sprite
+        dcb.w   46*2,$0000      ; Fill remaining lines with transparent
+        
+        ; End of sprite data
+        dc.w    $0000,$0000
+
+        section code,code
+
+start:
+        ; Take over the system
+        move.l  4.w,a6          ; ExecBase
+        jsr     -132(a6)        ; Forbid()
+        
+        ; Save old copper list
+        lea     custom,a5
+        move.l  cop1lc(a5),old_copper
+        
+        ; Set up our copper list
+        move.l  #copper_list,cop1lc(a5)
+        move.w  #0,copjmp1(a5)
+        
+        ; Enable sprite DMA
+        move.w  #DMAF_SETCLR|DMAF_MASTER|DMAF_COPPER|DMAF_SPRITE,dmacon(a5)
+        
+        ; Set sprite 0 pointer
+        move.l  #sprite0_data,d0
+        move.w  d0,spr0ptl(a5)
+        swap    d0
+        move.w  d0,spr0pth(a5)
+        
+        ; Main loop
+main_loop:
+        btst    #6,$bfe001      ; Check left mouse button
+        bne     main_loop
+        
+        ; Restore system
+        move.l  old_copper,cop1lc(a5)
+        move.w  #0,copjmp1(a5)
+        
+        move.l  4.w,a6
+        jsr     -138(a6)        ; Permit()
+        
+        rts
+
+; Copper list for sprite colors and display setup
+        section copper,data,chip
+
+copper_list:
+        ; Wait for start of display
+        dc.w    $0001,$FFFE
+        
+        ; Set up bitplane display
+        dc.w    bplcon0,$1200   ; 1 bitplane, enable color
+        dc.w    bplcon1,$0000   ; No scroll
+        dc.w    bplcon2,$0000   ; Sprites have priority
+        
+        ; Set colors
+        dc.w    color00,$0000   ; Background - black
+        dc.w    color01,$0AAA   ; Playfield - medium gray
+        
+        ; Sprite 0 colors (sprite pair 0)
+        dc.w    color17,$0F00   ; Sprite 0 color 1 - red
+        dc.w    color18,$00F0   ; Sprite 0 color 2 - green  
+        dc.w    color19,$0FF0   ; Sprite 0 color 3 - yellow
+        
+        ; End copper list
+        dc.w    $FFFF,$FFFE
+
+        section vars,bss
+
+old_copper:     ds.l    1
+```
+
+## Step 2: Animated Sprite Frames
+
+Create smooth animation with multiple sprite frames:
+
+```m68k
+; Animation data structure
+anim_crystal:
+        dc.l    crystal_frame1
+        dc.l    crystal_frame2  
+        dc.l    crystal_frame3
+        dc.l    crystal_frame2  ; Back to frame 2
+        dc.l    0               ; End marker
+
+; Additional sprite frames
+crystal_frame2:
+        ; Control words
+        dc.w    $5020,$9000
+        
+        ; Slightly different crystal pattern
+        dc.w    $0000,$0000     ; Transparent
+        dc.w    $0240,$0240     ; **
+        dc.w    $0660,$0660     ; * **
+        dc.w    $0FF0,$0660     ; ****
+        dc.w    $1FF8,$0000     ; *****... (color 1)
+        dc.w    $3FFC,$1FF8     ; ******.. (mixed colors)
+        dc.w    $7FFE,$0000     ; *******. (color 1)
+        dc.w    $7FFE,$7FFE     ; *******. (color 3)
+        dc.w    $FFFF,$0000     ; ******** (color 1)
+        dc.w    $FFFF,$FFFF     ; ******** (color 3)
+        dc.w    $FFFF,$0000     ; ******** (color 1)
+        dc.w    $7FFE,$7FFE     ; *******. (color 3)
+        dc.w    $7FFE,$0000     ; *******. (color 1)
+        dc.w    $3FFC,$1FF8     ; ******.. (mixed)
+        dc.w    $1FF8,$0000     ; *****... (color 1)
+        dc.w    $0FF0,$0660     ; ****
+        dc.w    $0660,$0660     ; * **
+        dc.w    $0240,$0240     ; **
+        dc.w    $0000,$0000     ; Transparent
+        
+        dcb.w   45*2,$0000      ; Fill rest
+        dc.w    $0000,$0000     ; End marker
+
+crystal_frame3:
+        ; Control words  
+        dc.w    $5020,$9000
+        
+        ; Third animation frame - pulsing effect
+        dc.w    $0000,$0000
+        dc.w    $0180,$0000     ; ** (color 1)
+        dc.w    $03C0,$0180     ; **** (mixed)
+        dc.w    $07E0,$03C0     ; ****** (mixed)
+        dc.w    $0FF0,$07E0     ; ******** (mixed)
+        dc.w    $1FF8,$0FF0     ; ********** (mixed)
+        dc.w    $3FFC,$1FF8     ; ************ (mixed)
+        dc.w    $7FFE,$3FFC     ; ************** (mixed)
+        dc.w    $FFFF,$7FFE     ; **************** (mixed)
+        dc.w    $FFFF,$FFFF     ; **************** (color 3)
+        dc.w    $FFFF,$7FFE     ; **************** (mixed)
+        dc.w    $7FFE,$3FFC     ; ************** (mixed)
+        dc.w    $3FFC,$1FF8     ; ************ (mixed)
+        dc.w    $1FF8,$0FF0     ; ********** (mixed)
+        dc.w    $0FF0,$07E0     ; ******** (mixed)
+        dc.w    $07E0,$03C0     ; ****** (mixed)
+        dc.w    $03C0,$0180     ; **** (mixed)
+        dc.w    $0180,$0000     ; ** (color 1)
+        dc.w    $0000,$0000
+        
+        dcb.w   45*2,$0000
+        dc.w    $0000,$0000
+
+; Animation system
+animate_sprite:
+        ; Update animation timer
+        subq.w  #1,anim_timer
+        bne     no_anim_update
+        
+        ; Reset timer
+        move.w  #3,anim_timer   ; Change frame every 3 VBlanks
+        
+        ; Move to next frame
+        move.l  anim_pointer,a0
+        addq.l  #4,a0           ; Next frame pointer
+        move.l  (a0),d0
+        bne     set_frame       ; If not end marker
+        
+        ; Reset to start
+        lea     anim_crystal,a0
+        move.l  (a0),d0
+        
+set_frame:
+        move.l  a0,anim_pointer
+        
+        ; Update sprite pointer
+        lea     custom,a5
+        move.w  d0,spr0ptl(a5)
+        swap    d0
+        move.w  d0,spr0pth(a5)
+        
+no_anim_update:
+        rts
+
+; Animation variables
+anim_pointer:   dc.l    anim_crystal
+anim_timer:     dc.w    3
+```
+
+## Step 3: Sprite Movement and Control
+
+Add smooth movement with joystick control:
+
+```m68k
+; Sprite position variables
+sprite_x:       dc.w    160     ; Center of screen
+sprite_y:       dc.w    100
+sprite_vx:      dc.w    0       ; Velocity X
+sprite_vy:      dc.w    0       ; Velocity Y
+
+; Movement bounds
+MIN_X = 16
+MAX_X = 304
+MIN_Y = 32  
+MAX_Y = 224
+
+update_sprite_movement:
+        ; Read joystick port 1
+        move.w  joy1dat(a5),d0
+        
+        ; Extract X movement (bits 1,9 XOR'd with bit 0,8)
+        move.w  d0,d1
+        lsr.w   #1,d1           ; Get bits 1,9
+        eor.w   d0,d1           ; XOR with bits 0,8
+        andi.w  #$0101,d1       ; Mask movement bits
+        
+        ; Check left/right
+        btst    #0,d1           ; Right?
+        beq     check_left
+        addq.w  #2,sprite_vx    ; Accelerate right
+        bra     check_y
+        
+check_left:
+        btst    #8,d1           ; Left?
+        beq     check_y
+        subq.w  #2,sprite_vx    ; Accelerate left
+        
+check_y:
+        ; Extract Y movement  
+        move.w  d0,d1
+        lsr.w   #1,d1
+        eor.w   d0,d1
+        andi.w  #$0202,d1
+        
+        ; Check up/down
+        btst    #1,d1           ; Down?
+        beq     check_up
+        addq.w  #2,sprite_vy    ; Accelerate down
+        bra     apply_movement
+        
+check_up:
+        btst    #9,d1           ; Up?
+        beq     apply_movement
+        subq.w  #2,sprite_vy    ; Accelerate up
+        
+apply_movement:
+        ; Apply velocity with damping
+        move.w  sprite_vx,d0
+        asr.w   #3,d0           ; Divide by 8 for damping
+        sub.w   d0,sprite_vx    ; Reduce velocity
+        
+        move.w  sprite_vy,d0
+        asr.w   #3,d0
+        sub.w   d0,sprite_vy
+        
+        ; Update position
+        add.w   sprite_vx,sprite_x
+        add.w   sprite_vy,sprite_y
+        
+        ; Boundary checking
+        cmp.w   #MIN_X,sprite_x
+        bge     check_max_x
+        move.w  #MIN_X,sprite_x
+        move.w  #0,sprite_vx    ; Stop at boundary
+        
+check_max_x:
+        cmp.w   #MAX_X,sprite_x
+        ble     check_min_y
+        move.w  #MAX_X,sprite_x
+        move.w  #0,sprite_vx
+        
+check_min_y:
+        cmp.w   #MIN_Y,sprite_y
+        bge     check_max_y
+        move.w  #MIN_Y,sprite_y
+        move.w  #0,sprite_vy
+        
+check_max_y:
+        cmp.w   #MAX_Y,sprite_y
+        ble     update_sprite_pos
+        move.w  #MAX_Y,sprite_y
+        move.w  #0,sprite_vy
+        
+update_sprite_pos:
+        ; Calculate sprite control words
+        move.w  sprite_y,d0
+        lsl.w   #8,d0           ; VSTART in high byte
+        move.w  sprite_x,d1
+        lsr.w   #1,d1           ; Divide by 2 for hardware
+        or.w    d1,d0           ; Combine with HSTART
+        
+        ; Update sprite data with new position
+        move.l  anim_pointer,a0
+        move.l  (a0),a1         ; Get current frame
+        move.w  d0,(a1)         ; Update VSTART/HSTART
+        
+        ; Calculate VSTOP (64 lines below start)
+        move.w  sprite_y,d0
+        add.w   #64,d0          ; Sprite height
+        lsl.w   #8,d0
+        move.w  d0,2(a1)        ; Update VSTOP/CONTROL
+        
+        rts
+```
+
+## Step 4: Dual Playfield Background
+
+Create impressive dual playfield scrolling:
+
+```m68k
+; Dual playfield setup
+setup_dual_playfield:
+        ; Set up copper list for dual playfield
+        lea     custom,a5
+        
+        ; Enable dual playfield mode
+        move.w  #$5200,bplcon0(a5)  ; 2 bitplanes, dual playfield
+        move.w  #$0000,bplcon1(a5)  ; No scroll initially
+        move.w  #$0044,bplcon2(a5)  ; Playfield 2 has priority over sprites
+        
+        ; Set up bitplane pointers
+        move.l  #playfield1_data,d0
+        move.w  d0,bpl1ptl(a5)
+        swap    d0
+        move.w  d0,bpl1pth(a5)
+        
+        move.l  #playfield2_data,d0
+        move.w  d0,bpl2ptl(a5)
+        swap    d0
+        move.w  d0,bpl2pth(a5)
+        
+        rts
+
+; Scrolling playfields
+scroll_playfields:
+        ; Update scroll positions
+        addq.w  #1,pf1_scroll_x
+        andi.w  #15,pf1_scroll_x    ; Wrap at 16 pixels
+        
+        subq.w  #1,pf2_scroll_x
+        andi.w  #15,pf2_scroll_x
+        
+        ; Set hardware scroll registers
+        lea     custom,a5
+        move.w  pf1_scroll_x,d0
+        lsl.w   #4,d0               ; Shift to high nibble
+        or.w    pf2_scroll_x,d0     ; Combine with low nibble
+        move.w  d0,bplcon1(a5)
+        
+        rts
+
+; Playfield data
+        section playfield,data,chip
+
+playfield1_data:
+        ; 40 bytes × 256 lines = background layer
+        dcb.b   40*256,$AA         ; Checkerboard pattern
+
+playfield2_data:  
+        ; Foreground layer with transparency
+        dcb.b   40*128,$00         ; Upper half transparent
+        dcb.b   40*64,$55          ; Middle section with pattern
+        dcb.b   40*64,$00          ; Lower section transparent
+
+; Scroll variables
+pf1_scroll_x:   dc.w    0
+pf2_scroll_x:   dc.w    0
+```
+
+## Step 5: Collision Detection
+
+Implement hardware collision detection:
+
+```m68k
+; Collision detection using hardware registers
+check_collisions:
+        lea     custom,a5
+        
+        ; Read collision registers
+        move.w  clxdat(a5),d0
+        
+        ; Check sprite-to-sprite collisions
+        btst    #0,d0           ; Sprite 0-1 collision?
+        beq     check_sprite_pf
+        bsr     handle_sprite_collision
+        
+check_sprite_pf:
+        ; Check sprite-to-playfield collisions
+        btst    #8,d0           ; Sprite 0 to playfield 1?
+        beq     check_sprite_pf2
+        bsr     handle_pf1_collision
+        
+check_sprite_pf2:
+        btst    #9,d0           ; Sprite 0 to playfield 2?
+        beq     clear_collisions
+        bsr     handle_pf2_collision
+        
+clear_collisions:
+        ; Clear collision registers for next frame
+        move.w  #$7FFF,clxdat(a5)
+        
+        rts
+
+handle_sprite_collision:
+        ; Sprite hit another sprite - bounce effect
+        neg.w   sprite_vx
+        neg.w   sprite_vy
+        
+        ; Flash sprite colors
+        lea     custom,a5
+        move.w  #$0FFF,color17(a5)  ; Flash white
+        move.w  #10,flash_timer
+        
+        rts
+
+handle_pf1_collision:
+        ; Hit playfield 1 - slow down
+        asr.w   #1,sprite_vx
+        asr.w   #1,sprite_vy
+        rts
+
+handle_pf2_collision:
+        ; Hit playfield 2 - stop completely
+        move.w  #0,sprite_vx
+        move.w  #0,sprite_vy
+        rts
+
+; Flash effect for collisions
+update_flash:
+        tst.w   flash_timer
+        beq     no_flash
+        
+        subq.w  #1,flash_timer
+        bne     no_flash
+        
+        ; Restore normal colors
+        lea     custom,a5
+        move.w  #$0F00,color17(a5)  ; Back to red
+        
+no_flash:
+        rts
+
+flash_timer:    dc.w    0
+```
+
+## Step 6: VBlank Interrupt Handler
+
+Synchronize everything with VBlank:
+
+```m68k
+; VBlank interrupt handler
+        section interrupt,code
+
+vblank_handler:
+        movem.l d0-d7/a0-a6,-(sp)
+        
+        ; Update sprite animation
+        bsr     animate_sprite
+        
+        ; Update sprite movement
+        bsr     update_sprite_movement
+        
+        ; Scroll playfields
+        bsr     scroll_playfields
+        
+        ; Check collisions
+        bsr     check_collisions
+        
+        ; Update flash effects
+        bsr     update_flash
+        
+        ; Acknowledge interrupt
+        lea     custom,a5
+        move.w  #INTF_VERTB,intreq(a5)
+        
+        movem.l (sp)+,d0-d7/a0-a6
+        rte
+
+; Install VBlank interrupt
+install_interrupt:
+        move.l  4.w,a6          ; ExecBase
+        
+        ; Disable interrupts
+        jsr     -132(a6)        ; Forbid()
+        
+        ; Save old interrupt
+        move.l  $6c,old_vblank
+        
+        ; Install our handler
+        move.l  #vblank_handler,$6c
+        
+        ; Enable VBlank interrupt
+        lea     custom,a5
+        move.w  #INTF_SETCLR|INTF_INTEN|INTF_VERTB,intena(a5)
+        
+        jsr     -138(a6)        ; Permit()
+        rts
+
+restore_interrupt:
+        move.l  4.w,a6
+        jsr     -132(a6)        ; Forbid()
+        
+        ; Disable VBlank interrupt
+        lea     custom,a5
+        move.w  #INTF_VERTB,intena(a5)
+        
+        ; Restore old handler
+        move.l  old_vblank,$6c
+        
+        jsr     -138(a6)        ; Permit()
+        rts
+
+old_vblank:     dc.l    0
+```
+
+## Complete Working Examples
+
+All code examples for this lesson are available in our repository:
+
+**[📁 Lesson 2 Code Examples](https://github.com/code198x/code-samples/tree/main/commodore-amiga/phase-1/tier-1/002-crystal-cascade-your-sprite-entity)**
+
+- [`complete.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/002-crystal-cascade-your-sprite-entity/complete.s) - Full sprite system with animation
+- [`step1-basic-sprite.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/002-crystal-cascade-your-sprite-entity/step1-basic-sprite.s) - Simple hardware sprite
+- [`step3-movement.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/002-crystal-cascade-your-sprite-entity/step3-movement.s) - Joystick-controlled movement
+- [`step4-dual-playfield.s`](https://github.com/code198x/code-samples/blob/main/commodore-amiga/phase-1/tier-1/002-crystal-cascade-your-sprite-entity/step4-dual-playfield.s) - Scrolling backgrounds
+
+## Understanding Amiga Graphics Hardware
+
+### Sprite System
+The Amiga's sprite hardware is incredibly sophisticated:
+- **Automatic DMA**: Hardware fetches sprite data automatically
+- **Attached sprites**: Combine pairs for 15-color sprites
+- **Priority control**: Sprites can appear behind playfields
+- **Collision detection**: Hardware-accelerated collision registers
+
+### Custom Chip Coordination
+- **Agnus**: Handles DMA and memory access timing
+- **Denise**: Manages display output and collision detection  
+- **Paula**: Provides audio and some I/O functions
+
+### Memory Organization
+- **Chip RAM**: Accessible by custom chips for DMA
+- **Fast RAM**: CPU-only memory for code and variables
+- **Graphics data**: Must be in Chip RAM for hardware access
+
+## What You've Accomplished
+
+In this lesson, you've mastered:
+
+✅ **Hardware sprites** with automatic DMA positioning  
+✅ **Smooth animation** using multiple sprite frames  
+✅ **Joystick control** with velocity and damping  
+✅ **Dual playfield** scrolling backgrounds  
+✅ **Collision detection** using hardware registers  
+✅ **VBlank interrupts** for perfect timing  
+
+Your Amiga sprite system rivals commercial games!
+
+## Experiment and Learn
+
+Try these advanced features:
+
+1. **Attached sprites** for more colors:
+   ```m68k
+   ; Sprite control word with attach bit
+   dc.w    $5020,$9001     ; Attach to next sprite
+   ```
+
+2. **Sprite scaling** with different sizes:
+   ```m68k
+   ; Tall sprites (up to 256 lines)
+   dc.w    $5020,$D000     ; Extended height
+   ```
+
+3. **Multi-sprite characters**:
+   ```m68k
+   ; Use multiple sprites for larger characters
+   sprite_wide:
+       dc.l    sprite0_data,sprite1_data
+   ```
+
+4. **Hardware scrolling**:
+   ```m68k
+   ; Smooth pixel scrolling
+   move.w  scroll_fine,bplcon1(a5)
+   ```
+
+## Advanced Techniques
+
+**Sprite multiplexing**: Reuse sprites on different scanlines for more objects.
+
+**Copper bars**: Use the copper to change sprite colors mid-screen.
+
+**Sprite scaling**: Modify DMA timing for scaling effects.
+
+**Collision response**: Use collision detection for realistic physics.
+
+## Coming Next
+
+In **Lesson 3**, you'll add **Sound and Music** using Paula's 4-channel audio system!
+
+## Quick Reference
+
+**Sprite Control Words:**
+- VSTART.b, HSTART.b: Starting position
+- VSTOP.b, CONTROL.b: Ending position and control bits
+
+**Important Registers:**
+- SPRxPTH/L: Sprite data pointers
+- SPRxPOS/CTL: Sprite position and control
+- CLXDAT: Collision detection data
+
+**DMA Control:**
+- DMAF_SPRITE: Enable sprite DMA
+- DMAF_SETCLR: Set (don't clear) DMA bits
+
+Ready to showcase your animated sprites at the Amiga meeting? The hardware sprites will definitely impress! 🎨✨
