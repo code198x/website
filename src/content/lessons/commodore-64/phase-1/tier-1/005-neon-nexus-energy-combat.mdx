@@ -1,0 +1,489 @@
+---
+title: "Neon Nexus: Energy Combat"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 5
+description: "Add projectile combat to your Neon Nexus game! Learn to implement energy bullets, manage multiple moving objects, and create satisfying hit detection for dynamic arcade action."
+learning_objectives:
+  - "Implement projectile shooting mechanics with proper timing"
+  - "Manage multiple bullets in memory using arrays"
+  - "Create collision detection between bullets and enemies"
+  - "Add visual and audio feedback for combat actions"
+  - "Optimize game loops for smooth multi-object movement"
+concepts:
+  - "Array management for multiple game objects"
+  - "State machines for projectile lifecycle"
+  - "Efficient collision detection algorithms"
+  - "Sound effects using the SID chip"
+  - "Performance optimization for arcade games"
+estimated_duration: "60-75 minutes"
+difficulty: "easy"
+code_examples: true
+practical_exercise: true
+order: 5
+---
+
+# Lesson 5: Neon Nexus - Energy Combat
+
+Time to arm your player with energy weapons! In this lesson, you'll add projectile combat to Neon Nexus, transforming it from a chase game into a full arcade shooter. You'll learn essential techniques for managing multiple moving objects and creating satisfying combat mechanics.
+
+## Understanding Projectile Systems
+
+Before we start coding, let's understand what makes a good projectile system:
+
+1. **Bullet Pool**: Pre-allocated memory for multiple bullets
+2. **State Management**: Track which bullets are active/inactive
+3. **Movement Logic**: Update positions each frame
+4. **Collision Detection**: Check hits against all enemies
+5. **Visual Feedback**: Show impacts and destruction
+
+## Step 1: Single Bullet System
+
+Let's start simple - one bullet at a time:
+
+```asm6502
+; Add to your variable section:
+bullet_active:  !byte 0    ; 0=inactive, 1=active
+bullet_x:       !byte 0    ; Bullet X position
+bullet_y:       !byte 0    ; Bullet Y position
+```
+
+Now add shooting to your keyboard handler:
+
+```asm6502
+check_space:
+        ; Check for SPACE key (fire)
+        lda #$7f        ; Row 7
+        sta $dc00
+        lda $dc01
+        and #$10        ; Bit 4 = SPACE
+        bne done_keys
+        
+        ; Check if bullet already active
+        lda bullet_active
+        bne done_keys   ; Can't shoot if bullet exists
+        
+        ; Fire bullet from player position
+        lda #$01
+        sta bullet_active
+        lda player_x
+        sta bullet_x
+        lda player_y
+        sec
+        sbc #1          ; Start above player
+        sta bullet_y
+```
+
+## Step 2: Bullet Movement
+
+Add bullet update logic to your game loop:
+
+```asm6502
+update_bullet:
+        ; Check if bullet is active
+        lda bullet_active
+        beq bullet_done
+        
+        ; Move bullet up
+        dec bullet_y
+        
+        ; Check if bullet left screen
+        lda bullet_y
+        bpl bullet_still_visible
+        
+        ; Deactivate bullet
+        lda #$00
+        sta bullet_active
+        
+bullet_still_visible:
+        ; Draw bullet at new position
+        jsr draw_bullet
+        
+bullet_done:
+        rts
+
+draw_bullet:
+        ; Calculate screen position for bullet
+        lda bullet_x
+        sta player_x    ; Reuse calculation routine
+        lda bullet_y
+        sta player_y
+        
+        jsr calculate_screen_pos
+        
+        ; Draw bullet character
+        lda #$2e        ; Period/dot character
+        ldy #$00
+        sta ($fb),y
+        
+        ; Set bullet color
+        ; (Calculate color RAM position similarly)
+        lda #$01        ; White
+        sta $d800,x     ; Simplified - use proper calculation
+        
+        rts
+```
+
+## Step 3: Multiple Bullets
+
+Now let's support multiple bullets using arrays:
+
+```asm6502
+; Bullet array system
+MAX_BULLETS = 3
+
+bullet_active:  !fill MAX_BULLETS, 0
+bullet_x:       !fill MAX_BULLETS, 0
+bullet_y:       !fill MAX_BULLETS, 0
+
+; Find inactive bullet slot for firing
+find_bullet_slot:
+        ldx #0
+find_loop:
+        lda bullet_active,x
+        beq found_slot      ; Found inactive bullet
+        inx
+        cpx #MAX_BULLETS
+        bne find_loop
+        
+        ; No free slots
+        ldx #$ff
+        rts
+        
+found_slot:
+        ; X contains free slot index
+        rts
+```
+
+Update the firing code:
+
+```asm6502
+fire_bullet:
+        jsr find_bullet_slot
+        cpx #$ff
+        beq cant_fire       ; No free bullet slots
+        
+        ; Activate bullet in slot X
+        lda #$01
+        sta bullet_active,x
+        
+        lda player_x
+        sta bullet_x,x
+        
+        lda player_y
+        sec
+        sbc #1
+        sta bullet_y,x
+        
+cant_fire:
+        rts
+```
+
+## Step 4: Bullet-Enemy Collision
+
+Add collision detection between bullets and enemies:
+
+```asm6502
+check_bullet_collisions:
+        ldx #0
+bullet_collision_loop:
+        ; Check if this bullet is active
+        lda bullet_active,x
+        beq next_bullet
+        
+        ; Check collision with enemy
+        lda bullet_x,x
+        cmp enemy_x
+        bne next_bullet
+        
+        lda bullet_y,x
+        cmp enemy_y
+        bne next_bullet
+        
+        ; Hit detected!
+        jsr handle_enemy_hit
+        
+        ; Deactivate bullet
+        lda #$00
+        sta bullet_active,x
+        
+next_bullet:
+        inx
+        cpx #MAX_BULLETS
+        bne bullet_collision_loop
+        rts
+
+handle_enemy_hit:
+        ; Flash effect
+        lda #$01        ; White
+        sta $d020       ; Border flash
+        
+        ; Move enemy to new position
+        lda #5
+        sta enemy_x
+        lda #5
+        sta enemy_y
+        
+        ; Could add score here
+        rts
+```
+
+## Step 5: Visual Polish
+
+Let's improve the bullet clearing to avoid trails:
+
+```asm6502
+update_all_bullets:
+        ldx #0
+update_bullet_loop:
+        lda bullet_active,x
+        beq skip_bullet
+        
+        ; Store current position for clearing
+        lda bullet_x,x
+        sta old_bullet_x
+        lda bullet_y,x
+        sta old_bullet_y
+        
+        ; Move bullet
+        dec bullet_y,x
+        
+        ; Check screen boundary
+        lda bullet_y,x
+        bpl bullet_on_screen
+        
+        ; Deactivate off-screen bullet
+        lda #$00
+        sta bullet_active,x
+        
+        ; Clear the old position
+        jsr clear_old_bullet
+        jmp skip_bullet
+        
+bullet_on_screen:
+        ; Clear old position
+        jsr clear_old_bullet
+        
+        ; Draw at new position
+        lda bullet_x,x
+        sta player_x
+        lda bullet_y,x
+        sta player_y
+        jsr draw_bullet
+        
+skip_bullet:
+        inx
+        cpx #MAX_BULLETS
+        bne update_bullet_loop
+        rts
+
+clear_old_bullet:
+        ; Use stored old position
+        lda old_bullet_x
+        sta player_x
+        lda old_bullet_y
+        sta player_y
+        jsr calculate_screen_pos
+        lda #$20        ; Space
+        ldy #$00
+        sta ($fb),y
+        rts
+```
+
+## Step 6: Sound Effects
+
+Add simple sound effects for firing:
+
+```asm6502
+play_fire_sound:
+        ; Quick blast sound
+        lda #15         ; Max volume
+        sta $d418
+        
+        ; Voice 1 setup
+        lda #$00
+        sta $d405       ; Attack/Decay
+        lda #$f0        
+        sta $d406       ; Sustain/Release
+        
+        ; High frequency for laser sound
+        lda #$40
+        sta $d400       ; Frequency low
+        lda #$20
+        sta $d401       ; Frequency high
+        
+        ; Noise waveform for blast
+        lda #$81        ; Noise + gate
+        sta $d404
+        
+        ; Quick gate off (via timer in main loop)
+        rts
+```
+
+## Step 7: Performance Optimization
+
+For smooth gameplay with multiple objects:
+
+```asm6502
+optimized_game_loop:
+        ; Wait for raster
+wait_raster:
+        lda $d012
+        cmp #$ff
+        bne wait_raster
+        
+        ; Update all game objects efficiently
+        jsr read_keyboard
+        
+        ; Only update if movement occurred
+        lda player_moved
+        beq check_enemy_update
+        jsr update_player
+        lda #$00
+        sta player_moved
+        
+check_enemy_update:
+        lda enemy_moved
+        beq update_bullets
+        jsr update_enemy
+        lda #$00
+        sta enemy_moved
+        
+update_bullets:
+        jsr update_all_bullets
+        jsr check_bullet_collisions
+        
+        ; Handle any active sounds
+        jsr update_sounds
+        
+        jmp optimized_game_loop
+```
+
+## Complete Working Examples
+
+All code examples for this lesson are available in our repository:
+
+**[📁 Lesson 5 Code Examples](https://github.com/code198x/code-samples/tree/main/commodore-64/phase-1/tier-1/005-neon-nexus-energy-combat)**
+
+- [`complete.s`](https://github.com/code198x/code-samples/blob/main/commodore-64/phase-1/tier-1/005-neon-nexus-energy-combat/complete.s) - Full combat system with multiple bullets
+- [`step1-single-bullet.s`](https://github.com/code198x/code-samples/blob/main/commodore-64/phase-1/tier-1/005-neon-nexus-energy-combat/step1-single-bullet.s) - Basic single bullet implementation
+- [`step3-multi-bullets.s`](https://github.com/code198x/code-samples/blob/main/commodore-64/phase-1/tier-1/005-neon-nexus-energy-combat/step3-multi-bullets.s) - Array-based bullet system
+- [`step6-with-sound.s`](https://github.com/code198x/code-samples/blob/main/commodore-64/phase-1/tier-1/005-neon-nexus-energy-combat/step6-with-sound.s) - Complete with SID sound effects
+
+## Understanding Combat Mechanics
+
+### Bullet Pool Pattern
+
+The bullet pool is a classic game programming pattern:
+
+```asm6502
+; Instead of creating/destroying bullets:
+; We reuse a fixed pool of bullet slots
+bullet_active:  !fill MAX_BULLETS, 0  ; Status flags
+bullet_x:       !fill MAX_BULLETS, 0  ; X positions
+bullet_y:       !fill MAX_BULLETS, 0  ; Y positions
+```
+
+Benefits:
+- **Fixed memory usage** - No dynamic allocation
+- **Predictable performance** - Always same number of checks
+- **Simple management** - Just toggle active flags
+
+### Collision Detection Optimization
+
+For many objects, consider spatial partitioning:
+
+```asm6502
+; Simple optimization: early exit on Y mismatch
+check_collision:
+        lda bullet_y,x
+        cmp enemy_y
+        bne no_collision    ; Different rows - can't collide
+        
+        lda bullet_x,x
+        cmp enemy_x
+        bne no_collision
+        
+        ; Collision confirmed
+```
+
+### State Management
+
+Each bullet has a simple state machine:
+1. **Inactive** - Available for firing
+2. **Active** - Moving and checking collisions
+3. **Return to Inactive** - When hitting or leaving screen
+
+## What You've Accomplished
+
+In this lesson, you've implemented:
+
+✅ **Projectile firing system** with proper timing control  
+✅ **Array-based object management** for multiple bullets  
+✅ **Collision detection** between bullets and enemies  
+✅ **Visual feedback** with proper clearing and drawing  
+✅ **Sound effects** using the SID chip  
+✅ **Performance optimization** for smooth gameplay  
+
+Your Neon Nexus game now has real combat mechanics!
+
+## Experiment and Learn
+
+Try these enhancements:
+
+1. **Different bullet patterns:**
+   ```asm6502
+   ; Spread shot - fire 3 bullets
+   lda player_x
+   sec
+   sbc #1
+   sta bullet_x,x      ; Left bullet
+   ; etc. for center and right
+   ```
+
+2. **Enemy firing back:**
+   ```asm6502
+   ; Use separate arrays for enemy bullets
+   enemy_bullet_active: !fill MAX_ENEMY_BULLETS, 0
+   ; Move down instead of up
+   ```
+
+3. **Power-ups:**
+   ```asm6502
+   player_fire_rate:  !byte 8   ; Frames between shots
+   player_fire_power: !byte 1   ; Damage per shot
+   ```
+
+4. **Score system:**
+   ```asm6502
+   score_low:  !byte 0
+   score_high: !byte 0
+   ; Add 10 points per hit
+   ```
+
+## Common Issues and Solutions
+
+**Bullets disappearing:** Make sure you're properly clearing old positions before drawing new ones.
+
+**Collision detection missing:** Remember that screen positions must match exactly - consider making hit boxes larger than one character.
+
+**Performance problems:** Limit the number of active objects and optimize your loops.
+
+## Coming Next
+
+In **Lesson 6**, you'll create **Victory Progression** - adding multiple enemy waves, scoring systems, and win conditions to complete your arcade game!
+
+## Quick Reference
+
+**New Techniques:**
+- `!fill` directive - Initialize arrays
+- Indexed addressing - `lda array,x`
+- Object pooling pattern
+- SID sound programming
+
+**Key Addresses:**
+- `$d400-$d418` - SID chip registers
+- Space key: Row `$7f`, bit `$10`
+
+Ready to create enemy waves and victory conditions? Your combat system is locked and loaded! 🎮💥
