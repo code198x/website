@@ -45,6 +45,9 @@ RUN git clone https://github.com/lclevy/ADFlib.git && \
     cd .. && \
     rm -rf ADFlib
 
+# Install amitools (modern ADF creation and manipulation)
+RUN pip3 install amitools
+
 # Install additional Python packages for ADF creation
 RUN pip3 install struct
 
