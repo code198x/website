@@ -18,17 +18,17 @@ concepts:
   - "Copper coprocessor"
   - "Raster beam synchronization"
   - "50Hz PAL timing"
-difficulty: "beginner"
+difficulty: "easy"
 estimated_duration: "45-60 minutes"
 code_examples: true
 practical_exercise: true
 external_resources:
   - title: "Amiga Hardware Reference Manual"
     url: "http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0000.html"
-    type: "reference"
+    type: "documentation"
   - title: "68000 Programmer's Reference Manual"
     url: "https://www.nxp.com/docs/en/reference-manual/M68000PRM.pdf"
-    type: "reference"
+    type: "documentation"
 order: 1
 ---
 

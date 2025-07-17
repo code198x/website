@@ -18,17 +18,17 @@ concepts:
   - "NMI interrupt for timing"
   - "Palette manipulation"
   - "60Hz frame synchronization"
-difficulty: "beginner"
+difficulty: "easy"
 estimated_duration: "45-60 minutes"
 code_examples: true
 practical_exercise: true
 external_resources:
   - title: "NES Dev Wiki"
     url: "https://www.nesdev.org/wiki/Main_Page"
-    type: "reference"
+    type: "documentation"
   - title: "6502 Instruction Reference"
     url: "https://www.nesdev.org/obelisk-6502-guide/reference.html"
-    type: "reference"
+    type: "documentation"
 order: 1
 ---
 

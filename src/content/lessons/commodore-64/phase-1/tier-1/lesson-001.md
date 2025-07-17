@@ -18,17 +18,17 @@ concepts:
   - "6502 registers (A, X, Y)"
   - "Memory addressing modes"
   - "PETSCII character set"
-difficulty: "beginner"
+difficulty: "easy"
 estimated_duration: "45-60 minutes"
 code_examples: true
 practical_exercise: true
 external_resources:
   - title: "C64 Memory Map Reference"
     url: "https://www.c64-wiki.com/wiki/Memory_Map"
-    type: "reference"
+    type: "documentation"
   - title: "PETSCII Character Set"
     url: "https://www.c64-wiki.com/wiki/PETSCII"
-    type: "reference"
+    type: "documentation"
 order: 1
 ---
 

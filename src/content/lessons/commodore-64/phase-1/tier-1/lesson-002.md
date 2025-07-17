@@ -17,17 +17,17 @@ concepts:
   - "Sprite data format and pointers"
   - "Movement physics and boundary detection"
   - "Game loop structure"
-difficulty: "beginner"
+difficulty: "easy"
 estimated_duration: "60-75 minutes"
 code_examples: true
 practical_exercise: true
 external_resources:
   - title: "C64 Sprite Reference"
     url: "https://www.c64-wiki.com/wiki/Sprite"
-    type: "reference"
+    type: "documentation"
   - title: "CIA Chip Documentation"
     url: "https://www.c64-wiki.com/wiki/CIA"
-    type: "reference"
+    type: "documentation"
 order: 2
 ---
 

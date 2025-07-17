@@ -18,17 +18,17 @@ concepts:
   - "HALT instruction for timing"
   - "Bitmap and attribute manipulation"
   - "50Hz interrupt synchronization"
-difficulty: "beginner"
+difficulty: "easy"
 estimated_duration: "45-60 minutes"
 code_examples: true
 practical_exercise: true
 external_resources:
   - title: "ZX Spectrum Memory Map"
     url: "https://worldofspectrum.org/faq/reference/48kreference.htm"
-    type: "reference"
+    type: "documentation"
   - title: "Z80 Instruction Set"
     url: "https://clrhome.org/table/"
-    type: "reference"
+    type: "documentation"
 order: 1
 ---
 
