@@ -23,35 +23,19 @@ order: 1
 
 # Phase 1: Game Development Foundations
 
-Phase 1 is your complete introduction to game development using authentic 6502 assembly on the Commodore 64. You'll create four complete games that showcase different aspects of C64 game programming while learning assembly language through exciting, hands-on development.
+Phase 1 is your complete introduction to game development using authentic 6502 assembly on the Commodore 64. You'll create one complete game that showcases the fundamentals of C64 game programming while learning assembly language through exciting, hands-on development.
 
 ## What You'll Build
 
-**Four Complete Games** across 16 tiers:
+**Complete Game Project** across 16 tiers:
 
-**Game 1: Neon Nexus** (Tiers 1-4) - Electronic geometric arcade action
-- Foundation geometric entities and neon grid worlds
-- Advanced entity systems with smooth movement
-- Electronic SID soundtracks and visual effects
-- Polished arcade gameplay with scoring and challenge
-
-**Game 2: Logic Matrix** (Tiers 5-8) - Strategic puzzle adventure
-- Complex puzzle mechanics and logic systems
-- Advanced graphics programming and visual feedback
-- Strategic gameplay requiring planning and analysis
-- Professional game state management
-
-**Game 3: Retro Racer** (Tiers 9-12) - High-speed action racing
-- Fast-paced graphics with sprite multiplexing
-- Advanced optimization for smooth gameplay
-- Multiple racing environments and vehicle types
-- Championship modes and progression systems
-
-**Game 4: Color Cascade** (Tiers 13-16) - Visual spectacle showcase
-- Advanced VIC-II programming with multiple screen modes
-- Complex color cycling and visual effects
-- Polished presentation and refined gameplay
-- Comprehensive demonstration of C64 game development skills
+**Game 1: Cosmic Harvester** (Tiers 1-16) - Arcade space action
+- Pilot a harvesting ship through dangerous asteroid fields
+- Smooth 8-directional movement with realistic physics
+- Energy crystal collection and scoring system
+- Sprite-based graphics with scrolling backgrounds
+- SID chip music and sound effects
+- Progressive difficulty and multiple asteroid types
 
 ## Game-First Learning Philosophy
 

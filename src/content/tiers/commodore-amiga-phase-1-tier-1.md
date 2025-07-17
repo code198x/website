@@ -1,9 +1,9 @@
 ---
-title: "Crystal Cascade: Professional Parallax Adventure"
+title: "Turbo Horizon: High-Speed Racing Action"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 1
-description: "Create your first professional-quality game! Build 'Crystal Cascade' - a stunning multi-layered parallax adventure using authentic 68000 assembly. Learn assembly language through exciting game development that showcases the Amiga's revolutionary custom chip architecture."
+description: "Create your first professional-quality game! Build 'Turbo Horizon' - a high-speed racing game using authentic 68000 assembly. Learn assembly language through exciting game development that showcases the Amiga's revolutionary custom chip architecture."
 learning_objectives:
   - "Create professional multi-layered parallax worlds using Amiga custom chip hardware"
   - "Build sophisticated floating entities using 68000 registers for complex object management"
@@ -20,22 +20,22 @@ estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 1
 ---
 
-# Tier 1: Crystal Cascade - Professional Parallax Adventure
+# Tier 1: Turbo Horizon - High-Speed Racing Action
 
-Welcome to professional game development on the Amiga! Create your first commercial-quality game using authentic 68000 assembly language. **Crystal Cascade** showcases the Amiga's revolutionary custom chip architecture while teaching you assembly programming through exciting, professional-level game development.
+Welcome to professional game development on the Amiga! Create your first commercial-quality game using authentic 68000 assembly language. **Turbo Horizon** showcases the Amiga's revolutionary custom chip architecture while teaching you assembly programming through exciting, professional-level game development.
 
 ## What You'll Build
 
-**Crystal Cascade** - A complete professional parallax adventure game featuring:
-- Stunning multi-layered parallax scrolling using custom chip hardware
-- Sophisticated floating entities with complex data management systems
-- Spectacular copper effects and hardware-assisted visual presentation
-- Professional game architecture demonstrating commercial development practices
-- Authentic Amiga technical excellence with smooth animation and rich graphics
+**Turbo Horizon** - A complete high-speed racing game featuring:
+- Multi-track racing environments with realistic physics
+- Hardware sprite-based cars with smooth animation
+- Dual-playfield backgrounds for depth and visual richness
+- Copper list effects for horizon and sky rendering
+- 4-channel audio with engine sounds and dynamic music
 
 **By Lesson 8**: You'll have a playable game prototype with professional graphics, entities, and smooth scrolling!
-**By Lesson 32**: You'll have the foundation systems for Crystal Cascade, ready for advanced development in Tiers 2-4.
-**By Tier 4 Complete**: You'll have a commercially polished adventure showcasing advanced 68000 programming and custom chip mastery.
+**By Lesson 32**: You'll have the foundation systems for Turbo Horizon, ready for advanced development in Tiers 2-16.
+**By Tier 16 Complete**: You'll have a commercially polished racing game showcasing advanced 68000 programming and custom chip mastery.
 
 ## Professional Development Journey
 

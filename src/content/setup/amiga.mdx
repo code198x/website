@@ -1,0 +1,382 @@
+---
+title: "Amiga Development Setup"
+description: "Get your Amiga development environment running in minutes with Docker or local tools. Start coding 68000 assembly for the Amiga today!"
+system: "commodore-amiga"
+difficulty: "beginner"
+estimated_time: "20-40 minutes"
+prerequisites: ["Basic understanding of command line"]
+tools_covered: ["VASM assembler", "WinUAE emulator", "Docker"]
+platforms_supported: ["Windows", "macOS", "Linux"]
+docker_image: "stevehill/code198x:amiga"
+order: 3
+---
+
+# Amiga Development Setup
+
+Ready to harness the power of the Amiga? This guide will get you creating games for Commodore's multimedia marvel in no time.
+
+## Option 1: Docker Quick Start (Recommended)
+
+The fastest way to start coding. Everything pre-configured for Amiga development.
+
+### 1. Install Docker
+
+- **macOS/Windows**: Download [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- **Linux**: Use your package manager (`apt install docker.io` or similar)
+
+### 2. Get the Code198x Environment
+
+```bash
+docker pull stevehill/code198x:amiga
+```
+
+### 3. Create Your First Project
+
+```bash
+# Create a project directory
+mkdir amiga-games
+cd amiga-games
+
+# Run the Amiga development environment
+docker run -it -v $(pwd):/workspace stevehill/code198x:amiga
+```
+
+### 4. Test Your Setup
+
+Inside the Docker container, create `hello.s`:
+
+```m68k
+; hello.s - Your first Amiga program!
+        section code,code
+
+start:
+        ; Set background color to dark blue
+        move.w  #$0024,$dff180      ; COLOR00 = dark blue
+        
+        ; Simple copper list
+        lea     copper(pc),a0
+        move.l  a0,$dff080          ; COP1LC
+        move.w  #0,$dff088          ; COPJMP1
+        
+        ; Enable DMA
+        move.w  #$8380,$dff096      ; DMACON - enable copper & bitplane DMA
+        
+        ; Wait for mouse click
+.wait:
+        btst    #6,$bfe001          ; Left mouse button
+        bne.s   .wait
+        
+        ; Exit
+        rts
+
+copper:
+        dc.w    $0180,$0000         ; COLOR00 = black
+        dc.w    $8001,$fffe         ; Wait for line 128
+        dc.w    $0180,$0f00         ; COLOR00 = red
+        dc.w    $a001,$fffe         ; Wait for line 160
+        dc.w    $0180,$00f0         ; COLOR00 = green
+        dc.w    $c001,$fffe         ; Wait for line 192
+        dc.w    $0180,$000f         ; COLOR00 = blue
+        dc.w    $ffff,$fffe         ; End of copper list
+
+        section data,data_c
+        ; Data would go here
+
+        end
+```
+
+Build it:
+```bash
+vasmm68k_mot -Fhunkexe -o hello hello.s
+```
+
+You now have `hello` ready to add to a bootable ADF!
+
+## Option 2: Local Installation
+
+Prefer to install tools directly? Here's how:
+
+### 1. Install vasm Assembler
+
+**All Platforms:**
+1. Download vasm from [vasm Homepage](http://sun.hasenbraten.de/vasm/)
+2. Extract and build:
+```bash
+make CPU=m68k SYNTAX=mot
+```
+3. Copy `vasmm68k_mot` to your PATH
+
+**macOS with Homebrew:**
+```bash
+# Install build tools if needed
+brew install make
+
+# Build vasm
+curl -O http://sun.hasenbraten.de/vasm/release/vasm.tar.gz
+tar xzf vasm.tar.gz
+cd vasm
+make CPU=m68k SYNTAX=mot
+sudo cp vasmm68k_mot /usr/local/bin/
+```
+
+### 2. Install FS-UAE Emulator
+
+**All Platforms:**
+Download from [FS-UAE Homepage](https://fs-uae.net/)
+
+**macOS:**
+```bash
+brew install fs-uae
+```
+
+### 3. Install ADF Tools
+
+**macOS/Linux:**
+```bash
+# Install amitools for ADF manipulation
+pip install amitools
+```
+
+**Windows:**
+Download [ADF Opus](http://adfopus.sourceforge.net/)
+
+### 4. Verify Your Setup
+
+Create the same `hello.s` from above, then:
+
+```bash
+# Assemble
+vasmm68k_mot -Fhunkexe -o hello hello.s
+
+# Create bootable ADF (using amitools)
+xdftool create boot.adf bootable
+xdftool boot.adf write hello
+xdftool boot.adf boot install boot1x
+
+# Run in FS-UAE
+fs-uae boot.adf
+```
+
+You should see colored bars on screen!
+
+## Your First Real Program
+
+Let's create a proper Amiga copper bars effect:
+
+```m68k
+; bars.s - Classic Amiga copper bars
+        section code,code
+
+start:
+        ; Save system state
+        move.l  4.w,a6              ; ExecBase
+        lea     gfxname(pc),a1
+        moveq   #0,d0
+        jsr     -552(a6)            ; OpenLibrary()
+        move.l  d0,gfxbase
+        beq     .exit
+        
+        move.l  d0,a6
+        move.l  34(a6),oldcopper    ; Save old copper list
+        
+        ; Take over the system
+        jsr     -456(a6)            ; OwnBlitter()
+        jsr     -462(a6)            ; WaitBlit()
+        
+        ; Set our copper list
+        lea     copper(pc),a0
+        move.l  a0,$dff080          ; COP1LC
+        move.w  #0,$dff088          ; COPJMP1
+        
+        ; Enable DMA
+        move.w  #$8380,$dff096      ; DMACON
+        
+        ; Main loop
+.loop:
+        ; Wait for vertical blank
+        move.l  $dff004,d0
+        and.l   #$1ff00,d0
+        cmp.l   #300<<8,d0
+        bne.s   .loop
+        
+        ; Animate colors
+        lea     colors(pc),a0
+        move.w  (a0),d0
+        move.w  2(a0),(a0)+
+        move.w  2(a0),(a0)+
+        move.w  2(a0),(a0)+
+        move.w  d0,(a0)
+        
+        ; Check mouse
+        btst    #6,$bfe001
+        bne.s   .loop
+        
+        ; Restore system
+        move.l  gfxbase(pc),a6
+        move.l  oldcopper(pc),$dff080
+        jsr     -462(a6)            ; WaitBlit()
+        jsr     -228(a6)            ; DisownBlitter()
+        
+        move.l  4.w,a6
+        move.l  gfxbase(pc),a1
+        jsr     -414(a6)            ; CloseLibrary()
+        
+.exit:  moveq   #0,d0
+        rts
+
+copper:
+        dc.w    $0180,$0000         ; Background black
+        dc.w    $2001,$fffe         ; Wait for line 32
+        
+        ; Generate copper bars
+y       set     32
+        rept    20
+        dc.w    $0180
+colors: dc.w    $0f00               ; Red
+        dc.w    y<<8+1,$fffe        ; Wait
+        dc.w    $0180,$0000         ; Black
+        dc.w    (y+8)<<8+1,$fffe    ; Wait
+y       set     y+10
+        endr
+        
+        dc.w    $ffff,$fffe         ; End
+
+gfxname:        dc.b    "graphics.library",0
+        even
+gfxbase:        dc.l    0
+oldcopper:      dc.l    0
+
+        end
+```
+
+Build and create ADF:
+```bash
+vasmm68k_mot -Fhunkexe -o bars bars.s
+xdftool create bars.adf bootable
+xdftool bars.adf write bars
+xdftool bars.adf boot install boot1x
+```
+
+Watch the classic Amiga copper bars!
+
+## Creating Bootable ADFs
+
+Our games will be bootable ADFs, not Workbench programs:
+
+```bash
+# Create empty bootable ADF
+xdftool create game.adf bootable
+
+# Add your executable
+xdftool game.adf write gameexe
+
+# Install boot block
+xdftool game.adf boot install boot1x
+
+# Add additional files
+xdftool game.adf write graphics.dat
+xdftool game.adf write music.mod
+```
+
+## Directory Structure
+
+Organize your Amiga projects:
+
+```
+amiga-games/
+├── turbo-horizon/
+│   ├── main.s
+│   ├── copper.s
+│   ├── graphics.s
+│   ├── Makefile
+│   ├── assets/
+│   │   ├── sprites.raw
+│   │   └── music.mod
+│   └── build/
+├── tools/
+│   └── iff2raw/
+└── modules/
+    ├── startup.s
+    ├── input.s
+    └── blitter.s
+```
+
+## Makefile Template
+
+```makefile
+# Amiga game makefile
+AS = vasmm68k_mot
+ASFLAGS = -Fhunkexe -nosym
+TARGET = game
+ADF = $(TARGET).adf
+
+SRCS = main.s copper.s graphics.s
+OBJS = $(TARGET)
+
+all: $(ADF)
+
+$(OBJS): $(SRCS)
+	$(AS) $(ASFLAGS) -o $(OBJS) main.s
+
+$(ADF): $(OBJS)
+	xdftool create $(ADF) bootable
+	xdftool $(ADF) write $(OBJS)
+	xdftool $(ADF) boot install boot1x
+
+clean:
+	rm -f $(OBJS) $(ADF)
+
+run: $(ADF)
+	fs-uae $(ADF)
+```
+
+## Next Steps
+
+You're ready to start Phase 1! Your environment is set up and you've:
+- ✅ Assembled your first Amiga program
+- ✅ Created a bootable ADF
+- ✅ Made copper magic happen
+
+Next lesson: **Creating the Turbo Horizon game screen**
+
+## Troubleshooting
+
+**"Guru Meditation" errors**
+- Always save/restore system state
+- Check address register usage
+- Ensure proper alignment (.even)
+
+**ADF won't boot**
+- Verify boot block installation
+- Check executable is first file
+- Ensure proper hunk format
+
+**No graphics visible**
+- Check copper list termination
+- Verify DMA is enabled
+- Ensure proper display setup
+
+## Quick Reference
+
+**vasm Commands:**
+```bash
+vasmm68k_mot -Fhunkexe -o output input.s    # Standard executable
+vasmm68k_mot -Fbin -o output.bin input.s    # Raw binary
+vasmm68k_mot -L listing.txt input.s         # Generate listing
+```
+
+**ADF Tools:**
+```bash
+xdftool create disk.adf bootable             # Create bootable ADF
+xdftool disk.adf write file                  # Add file
+xdftool disk.adf list                        # List contents
+xdftool disk.adf boot install boot1x         # Install boot block
+```
+
+**FS-UAE Keys:**
+- `F12` - GUI/Menu
+- `Ctrl+F11` - Grab/Release mouse
+- `F12+Q` - Quit
+- `F12+S` - Save state
+
+Ready to push the Amiga to its limits? Let's go! 🌈

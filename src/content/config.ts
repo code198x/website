@@ -251,7 +251,7 @@ const lessons = defineCollection({
   schema: z.object({
     title: z.string(),
     system: z.string(),
-    phase_number: z.number().min(0).max(7),
+    phase_number: z.number().min(1).max(8),
     tier_number: z.number().min(1).max(16),
     lesson_number: z.number().min(1).max(32),
     description: z.string(),
@@ -278,7 +278,7 @@ const games = defineCollection({
   schema: z.object({
     title: z.string(),
     system: z.string(),
-    phase_number: z.number().min(0).max(7),
+    phase_number: z.number().min(1).max(8),
     tier_range: z.string(), // e.g., "1-4", "5-8", etc.
     genre: z.string(),
     description: z.string(),
@@ -700,6 +700,23 @@ const software = defineCollection({
   }),
 });
 
+// Setup collection - Development environment setup guides
+const setup = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),
+    system: z.string(), // References system slug
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).default('beginner'),
+    estimated_time: z.string(), // e.g., "15-30 minutes"
+    prerequisites: z.array(z.string()).optional(),
+    tools_covered: z.array(z.string()).optional(),
+    platforms_supported: z.array(z.string()).optional(), // ["Windows", "macOS", "Linux"]
+    docker_image: z.string().optional(), // Docker image name if applicable
+    order: z.number(),
+  }),
+});
+
 // Events collection - Historical timeline events
 const events = defineCollection({
   type: 'content',
@@ -848,4 +865,5 @@ export const collections = {
   companies,
   software,
   events,
+  setup,
 };

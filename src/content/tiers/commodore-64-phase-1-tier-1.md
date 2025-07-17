@@ -1,9 +1,9 @@
 ---
-title: "Neon Nexus: Electronic Game World Creation"
+title: "Cosmic Harvester: Space Arcade Game Creation"
 system: "commodore-64"
 phase_number: 1
 tier_number: 1
-description: "Create your first complete retro game! Build 'Neon Nexus' - an electronic geometric arcade game using authentic 6502 assembly. Learn assembly language through exciting game development that showcases the C64's unique capabilities."
+description: "Create your first complete retro game! Build 'Cosmic Harvester' - a space arcade game using authentic 6502 assembly. Learn assembly language through exciting game development that showcases the C64's unique capabilities."
 learning_objectives:
   - "Create striking visual game worlds using C64 graphics hardware"
   - "Build controllable game entities using 6502 registers for position tracking"
@@ -20,36 +20,34 @@ estimated_duration: "4-6 weeks (32 comprehensive lessons)"
 order: 1
 ---
 
-# Tier 1: Neon Nexus - Electronic Game World Creation
+# Tier 1: Cosmic Harvester - Space Arcade Game Creation
 
-Welcome to game development on the Commodore 64! Create your first complete retro game using authentic 6502 assembly language. **Neon Nexus** showcases the C64's distinctive electronic aesthetic while teaching you assembly programming through exciting, hands-on game development.
+Welcome to game development on the Commodore 64! Create your first complete retro game using authentic 6502 assembly language. **Cosmic Harvester** showcases classic space arcade action while teaching you assembly programming through exciting, hands-on game development.
 
 ## What You'll Build
 
-**Neon Nexus** - A complete electronic geometric arcade game featuring:
-- Striking neon grid world with wireframe aesthetics
-- Controllable geometric entities with smooth movement
-- Electronic soundtrack using the legendary SID chip
-- Challenging enemy AI and collision-based gameplay
-- Authentic C64 visual style with color cycling effects
+**Cosmic Harvester** - A complete space arcade game featuring:
+- Dangerous asteroid fields with collision detection
+- Smooth 8-directional ship movement with physics
+- Energy crystal collection and scoring system
+- Scrolling star field background
+- SID chip music and sound effects
 
 **By Lesson 8**: You'll have a playable game prototype with graphics, sound, input, and basic gameplay!
-**By Lesson 32**: You'll have the foundation systems for Neon Nexus, ready for advanced development in Tiers 2-4.
-**By Tier 4 Complete**: You'll have a polished, feature-rich arcade game showcasing professional assembly programming techniques.
+**By Lesson 32**: You'll have the foundation systems for Cosmic Harvester, ready for advanced development in Tiers 2-16.
+**By Tier 16 Complete**: You'll have a polished, feature-rich arcade game showcasing professional assembly programming techniques.
 
 ## Game Development Journey
 
-**✅ Lessons 1-2: COMPLETED - Foundation & Entity**
-- **Lesson 1**: Create striking neon grid game world *(COMPLETED)*
-- **Lesson 2**: Add controllable geometric player entity *(COMPLETED)*
-
-**Lessons 3-8: Core Game Systems**
-- **Lesson 3**: Electronic Pulse - Add rhythmic SID soundtrack and visual effects
-- **Lesson 4**: Digital Opposition - Create moving enemy geometric shapes
-- **Lesson 5**: Energy Combat - Implement collision detection and combat system
-- **Lesson 6**: Victory Protocol - Add win conditions and neon celebration effects
-- **Lesson 7**: Challenge Matrix - Game over states, lives system, restart functionality
-- **Lesson 8**: Neon Nexus Foundation - Playable game prototype with core systems
+**Lessons 1-8: Core Game Systems**
+- **Lesson 1**: Create space environment with scrolling star field
+- **Lesson 2**: Add controllable harvesting ship with smooth movement
+- **Lesson 3**: Implement asteroid field with collision detection
+- **Lesson 4**: Add energy crystal collection system
+- **Lesson 5**: Create scoring and gameplay mechanics
+- **Lesson 6**: Add SID chip music and sound effects
+- **Lesson 7**: Implement game over states and restart functionality
+- **Lesson 8**: Cosmic Harvester Foundation - Playable game prototype
 
 **Lessons 9-16: System Enhancement**
 - Enhanced entity systems with arrays and memory management

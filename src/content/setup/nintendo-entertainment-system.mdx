@@ -1,0 +1,398 @@
+---
+title: "NES Development Setup"
+description: "Get your NES development environment running in minutes with Docker or local tools. Start coding 6502 assembly for the Nintendo Entertainment System today!"
+system: "nintendo-entertainment-system"
+difficulty: "beginner"
+estimated_time: "20-35 minutes"
+prerequisites: ["Basic understanding of command line"]
+tools_covered: ["CC65 assembler", "FCEUX emulator", "Docker"]
+platforms_supported: ["Windows", "macOS", "Linux"]
+docker_image: "stevehill/code198x:nes"
+order: 4
+---
+
+# NES Development Setup
+
+Ready to code for the NES? This guide will get you creating games for Nintendo's 8-bit powerhouse in no time.
+
+## Option 1: Docker Quick Start (Recommended)
+
+The fastest way to start coding. Everything pre-configured for NES development.
+
+### 1. Install Docker
+
+- **macOS/Windows**: Download [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- **Linux**: Use your package manager (`apt install docker.io` or similar)
+
+### 2. Get the Code198x Environment
+
+```bash
+docker pull stevehill/code198x:nes
+```
+
+### 3. Create Your First Project
+
+```bash
+# Create a project directory
+mkdir nes-games
+cd nes-games
+
+# Run the NES development environment
+docker run -it -v $(pwd):/workspace stevehill/code198x:nes
+```
+
+### 4. Test Your Setup
+
+Inside the Docker container, create `hello.asm`:
+
+```asm6502
+; hello.asm - Your first NES program!
+.segment "HEADER"
+    .byte "NES", $1A    ; iNES header identifier
+    .byte 2             ; 2x 16KB PRG code
+    .byte 1             ; 1x  8KB CHR data
+    .byte $01, $00      ; mapper 0, vertical mirroring
+
+.segment "VECTORS"
+    .addr nmi_handler
+    .addr reset_handler
+    .addr 0
+
+.segment "STARTUP"
+
+.segment "CODE"
+reset_handler:
+    sei                 ; disable interrupts
+    cld                 ; disable decimal mode
+    ldx #$40
+    stx $4017           ; disable APU frame IRQ
+    ldx #$FF
+    txs                 ; Set up stack
+    inx                 ; now X = 0
+    stx $2000           ; disable NMI
+    stx $2001           ; disable rendering
+    stx $4010           ; disable DMC IRQs
+
+    ; First wait for vblank
+vblankwait1:
+    bit $2002
+    bpl vblankwait1
+
+    ; Clear memory
+clear_memory:
+    lda #$00
+    sta $0000, x
+    sta $0100, x
+    sta $0200, x
+    sta $0300, x
+    sta $0400, x
+    sta $0500, x
+    sta $0600, x
+    sta $0700, x
+    inx
+    bne clear_memory
+
+    ; Second wait for vblank
+vblankwait2:
+    bit $2002
+    bpl vblankwait2
+
+    ; Now we're ready!
+    lda #%10000000      ; Enable NMI
+    sta $2000
+    
+    lda #%00011110      ; Enable sprites and background
+    sta $2001
+
+forever:
+    jmp forever
+
+nmi_handler:
+    rti
+
+.segment "CHARS"
+    ; Include 8KB of CHR-ROM data here
+    .res 8192, $00      ; Fill with zeros for now
+```
+
+Build it:
+```bash
+ca65 hello.asm -o hello.o
+ld65 -C nes.cfg hello.o -o hello.nes
+```
+
+You now have `hello.nes` ready to run on an NES emulator!
+
+## Option 2: Local Installation
+
+Prefer to install tools directly? Here's how:
+
+### 1. Install cc65 Suite
+
+**macOS:**
+```bash
+brew install cc65
+```
+
+**Windows:**
+1. Download cc65 from [GitHub](https://github.com/cc65/cc65/releases)
+2. Extract to `C:\tools\cc65`
+3. Add `C:\tools\cc65\bin` to your PATH
+
+**Linux:**
+```bash
+# Ubuntu/Debian
+sudo apt install cc65
+
+# Or build from source
+git clone https://github.com/cc65/cc65.git
+cd cc65
+make
+sudo make install
+```
+
+### 2. Install FCEUX Emulator
+
+**All Platforms:**
+Download from [FCEUX Homepage](http://fceux.com/)
+
+**macOS Alternative:**
+```bash
+brew install fceux
+```
+
+### 3. Create NES Config File
+
+Save as `nes.cfg`:
+```
+MEMORY {
+    ZP:     start = $00,    size = $100,  type = rw, file = "";
+    OAM:    start = $200,   size = $100,  type = rw, file = "";
+    RAM:    start = $300,   size = $500,  type = rw, file = "";
+    HDR:    start = $0,     size = $10,   type = ro, file = %O, fill = yes;
+    PRG:    start = $8000,  size = $8000, type = ro, file = %O, fill = yes;
+    CHR:    start = $0,     size = $2000, type = ro, file = %O, fill = yes;
+}
+
+SEGMENTS {
+    HEADER:   load = HDR,  type = ro;
+    STARTUP:  load = PRG,  type = ro;
+    CODE:     load = PRG,  type = ro;
+    RODATA:   load = PRG,  type = ro;
+    DATA:     load = PRG,  run = RAM, type = rw, define = yes;
+    VECTORS:  load = PRG,  type = ro, start = $FFFA;
+    CHARS:    load = CHR,  type = ro;
+    BSS:      load = RAM,  type = bss, define = yes;
+    ZEROPAGE: load = ZP,   type = zp;
+    OAM:      load = OAM,  type = bss, define = yes;
+}
+```
+
+### 4. Verify Your Setup
+
+Create the same `hello.asm` from above, then:
+
+```bash
+# Assemble
+ca65 hello.asm -o hello.o
+
+# Link
+ld65 -C nes.cfg hello.o -o hello.nes
+
+# Run in FCEUX
+fceux hello.nes
+```
+
+You should see a blue screen - your first NES program!
+
+## Your First Real Program
+
+Let's create a simple sprite display:
+
+```asm6502
+; sprite.asm - Display a sprite on screen
+.segment "HEADER"
+    .byte "NES", $1A
+    .byte 2
+    .byte 1
+    .byte $01, $00
+
+.segment "VECTORS"
+    .addr nmi_handler
+    .addr reset_handler
+    .addr 0
+
+.segment "STARTUP"
+
+.segment "CODE"
+reset_handler:
+    sei
+    cld
+    ldx #$40
+    stx $4017
+    ldx #$FF
+    txs
+    inx
+    stx $2000
+    stx $2001
+    stx $4010
+
+vblankwait1:
+    bit $2002
+    bpl vblankwait1
+
+clear_memory:
+    lda #$00
+    sta $0000, x
+    sta $0100, x
+    sta $0200, x
+    sta $0300, x
+    sta $0400, x
+    sta $0500, x
+    sta $0600, x
+    sta $0700, x
+    inx
+    bne clear_memory
+
+vblankwait2:
+    bit $2002
+    bpl vblankwait2
+
+    ; Load palette
+    lda $2002           ; read PPU status to reset latch
+    lda #$3F
+    sta $2006           ; write high byte of $3F00
+    lda #$00
+    sta $2006           ; write low byte of $3F00
+    
+    ldx #$00
+load_palette:
+    lda palette_data, x
+    sta $2007
+    inx
+    cpx #$20
+    bne load_palette
+
+    ; Set up sprite
+    lda #$70            ; Y position
+    sta $0200
+    lda #$00            ; tile number
+    sta $0201
+    lda #$00            ; attributes
+    sta $0202
+    lda #$80            ; X position
+    sta $0203
+
+    ; Enable rendering
+    lda #%10000000
+    sta $2000
+    lda #%00011110
+    sta $2001
+
+forever:
+    jmp forever
+
+nmi_handler:
+    ; Copy sprite data
+    lda #$00
+    sta $2003
+    lda #$02
+    sta $4014
+    rti
+
+palette_data:
+    .byte $0F,$31,$32,$33  ; background palette
+    .byte $0F,$35,$36,$37
+    .byte $0F,$39,$3A,$3B
+    .byte $0F,$3D,$3E,$0F
+    .byte $0F,$1C,$15,$14  ; sprite palette
+    .byte $0F,$02,$38,$3C
+    .byte $0F,$30,$37,$1A
+    .byte $0F,$0F,$0F,$0F
+
+.segment "CHARS"
+    ; Simple smiley face tile
+    .byte %00111100
+    .byte %01000010
+    .byte %10100101
+    .byte %10000001
+    .byte %10100101
+    .byte %10011001
+    .byte %01000010
+    .byte %00111100
+    
+    .res 8184, $00      ; Fill rest with zeros
+```
+
+Build and run:
+```bash
+ca65 sprite.asm -o sprite.o
+ld65 -C nes.cfg sprite.o -o sprite.nes
+fceux sprite.nes
+```
+
+You'll see a smiley face sprite on screen!
+
+## Directory Structure
+
+Organize your NES projects:
+
+```
+nes-games/
+├── underground-assault/
+│   ├── main.asm
+│   ├── graphics.asm
+│   ├── levels.asm
+│   ├── nes.cfg
+│   ├── Makefile
+│   └── build/
+├── tools/
+│   └── chr/
+└── modules/
+    ├── controller.asm
+    ├── ppu.asm
+    └── sound.asm
+```
+
+## Next Steps
+
+You're ready to start Phase 1! Your environment is set up and you've:
+- ✅ Assembled your first NES program
+- ✅ Created a valid NES ROM
+- ✅ Displayed a sprite on screen
+
+Next lesson: **Setting up the Underground Assault game screen**
+
+## Troubleshooting
+
+**"Illegal instruction" errors**
+- NES uses 6502 without decimal mode
+- Some 65C02 instructions aren't available
+- Stick to original 6502 opcodes
+
+**Black screen**
+- Check your wait for vblank loops
+- Ensure PPU is properly initialized
+- Verify CHR data is included
+
+**Sprite not showing**
+- Make sure sprite is in visible area (Y: 0-239)
+- Check sprite enable bit in $2001
+- Verify OAM DMA in NMI handler
+
+## Quick Reference
+
+**ca65/ld65 Commands:**
+```bash
+ca65 source.asm -o object.o            # Assemble
+ld65 -C nes.cfg object.o -o game.nes   # Link to NES ROM
+ca65 -l listing.txt source.asm         # Generate listing
+```
+
+**FCEUX Keys:**
+- `F5/F7` - Save/Load state
+- `F10` - Reset
+- `Shift+F4` - Toggle FPS display
+- `F1` - Toggle PPU viewer
+
+Ready to create some Nintendo magic? Let's go! 🎮
