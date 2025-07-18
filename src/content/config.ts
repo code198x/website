@@ -224,9 +224,9 @@ const phases = defineCollection({
   }),
 });
 
-// Tiers collection - 16 tiers per phase
+// Tiers are now nested under phases
 const tiers = defineCollection({
-  type: 'content',
+  type: 'content', 
   schema: z.object({
     title: z.string(),
     system: z.string(),
