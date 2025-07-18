@@ -1,0 +1,270 @@
+---
+title: "Sprite Grid Movement"
+lesson_number: 6
+tier_number: 1
+phase_number: 1
+system: "commodore-64"
+description: "Make sprites jump between grid positions with discrete movement"
+learning_objectives:
+  - "Convert grid coordinates to sprite positions"
+  - "Implement discrete grid movement"
+  - "Use bit shifting for multiplication"
+  - "Create one-move-per-press controls"
+concepts:
+  - "Grid to pixel conversion"
+  - "Bit shifting for multiplication"
+  - "Discrete position movement"
+  - "Input release detection"
+estimated_duration: "30 minutes"
+difficulty: "easy"
+order: 6
+code_examples: true
+practical_exercise: true
+skills:
+  - "Coordinate conversion"
+  - "Discrete movement"
+  - "Input management"
+resources:
+  - name: "Complete Source Code"
+    url: "https://github.com/code198x/code-samples/commodore-64/phase-1/tier-1/lesson-006/"
+  - name: "Grid-Based Games"
+    url: "https://www.c64-wiki.com/wiki/Category:Grid-based_games"
+---
+
+import RegisterView6502 from '../../../../../components/RegisterView6502.astro';
+import MemoryMapC64 from '../../../../../components/MemoryMapC64.astro';
+import VisualConcept from '../../../../../components/VisualConcept.astro';
+import InteractiveExample from '../../../../../components/InteractiveExample.astro';
+
+# Sprite Grid Movement
+
+**Wonder Moment**: "It jumps perfectly to each square!"
+
+## From Pixels to Grid
+
+In lesson 5, we calculated grid position from pixels. Now we reverse the process - the sprite's position is determined by its grid coordinates, creating precise, grid-locked movement.
+
+<VisualConcept
+  title="Grid-Based Movement"
+  description="Sprite jumps between discrete positions"
+>
+```
+Grid Movement vs Pixel Movement
+
+PIXEL (Lesson 4):     GRID (Lesson 6):
+  Smooth path           Jump to cells
+  
+  ···→→→···            □ → □ → □
+  ···→→→···            ↓   ↓   ↓
+  ···→→→···            □ → ● → □
+                       ↓   ↓   ↓
+                       □ → □ → □
+```
+</VisualConcept>
+
+## Grid to Pixel Conversion
+
+Convert grid coordinates to screen position using multiplication:
+
+<InteractiveExample
+  title="Calculate Sprite Position"
+  description="Convert grid to pixel coordinates"
+>
+```asm
+grid_to_sprite_position:
+        ; Convert grid X to sprite X
+        ; sprite_x = GRID_START_X + (grid_x * GRID_CELL_WIDTH)
+        lda grid_x
+        asl                    ; × 2
+        asl                    ; × 4
+        asl                    ; × 8
+        asl                    ; × 16
+        asl                    ; × 32 (GRID_CELL_WIDTH)
+        clc
+        adc #GRID_START_X      ; Add screen offset
+        sta sprite_x
+        
+        ; Convert grid Y to sprite Y (same process)
+        lda grid_y
+        asl                    ; × 2
+        asl                    ; × 4
+        asl                    ; × 8
+        asl                    ; × 16
+        asl                    ; × 32 (GRID_CELL_HEIGHT)
+        clc
+        adc #GRID_START_Y
+        sta sprite_y
+        
+        rts
+```
+</InteractiveExample>
+
+## Multiplication by Shifting
+
+ASL (Arithmetic Shift Left) multiplies by 2:
+
+<VisualConcept
+  title="Bit Shifting for Multiplication"
+  description="How ASL multiplies by 2"
+>
+```
+Original value:  00000101 (5)
+After 1 ASL:     00001010 (10)  × 2
+After 2 ASLs:    00010100 (20)  × 4
+After 3 ASLs:    00101000 (40)  × 8
+After 4 ASLs:    01010000 (80)  × 16
+After 5 ASLs:    10100000 (160) × 32
+
+Grid position 5 → Pixel position 160
+```
+</VisualConcept>
+
+## Discrete Movement
+
+Implement grid-based movement with boundary checking:
+
+<InteractiveExample
+  title="Grid Movement Logic"
+  description="Move one grid cell at a time"
+>
+```asm
+move_grid:
+        ; Check Up
+        lda joystick_state
+        and #$01
+        bne check_grid_down
+        
+        ; Move up one grid position
+        lda grid_y
+        beq check_grid_down    ; Already at top (Y=0)
+        dec grid_y             ; Move up one cell
+        jsr wait_for_release   ; Prevent continuous movement
+        
+check_grid_down:
+        ; Check Down
+        lda joystick_state
+        and #$02
+        bne check_grid_left
+        
+        ; Move down one grid position
+        lda grid_y
+        cmp #GRID_HEIGHT-1     ; Check if at bottom
+        beq check_grid_left    ; Can't move down
+        inc grid_y             ; Move down one cell
+        jsr wait_for_release
+```
+</InteractiveExample>
+
+## One-Move-Per-Press
+
+Prevent continuous jumping with release detection:
+
+<InteractiveExample
+  title="Input Control"
+  description="Wait for joystick release"
+>
+```asm
+wait_for_release:
+        ; Wait for joystick to return to center
+        ; This prevents continuous movement
+wait_loop:
+        jsr read_joystick_only ; Just read hardware
+        lda joystick_state
+        and #$0f               ; Check all directions
+        cmp #$0f               ; All bits high = centered
+        bne wait_loop          ; Keep waiting if pressed
+        rts
+```
+</InteractiveExample>
+
+## Complete Game Loop
+
+Put it all together for grid-based gameplay:
+
+<InteractiveExample
+  title="Main Loop Integration"
+  description="Grid movement game loop"
+>
+```asm
+game_loop:
+        jsr read_joystick          ; Get input
+        jsr move_grid              ; Update grid position
+        jsr grid_to_sprite_position ; Convert to pixels
+        jsr update_sprite_position ; Update hardware
+        jsr display_current_position ; Show coordinates
+        jsr wait_frame
+        jmp game_loop
+```
+</InteractiveExample>
+
+## Movement Characteristics
+
+Grid movement has different properties than pixel movement:
+- **Discrete**: Jumps between positions
+- **Predictable**: Always lands on grid centers
+- **Turn-Based Feel**: One move at a time
+- **Clear Boundaries**: Can't partially leave grid
+
+## Visual Feedback
+
+Show both coordinate systems:
+
+<InteractiveExample
+  title="Display Positions"
+  description="Show grid and pixel coordinates"
+>
+```asm
+; Display like:
+; GRID: 4,3
+; PIXEL: 160,146
+
+display_current_position:
+        ; Show grid position
+        lda grid_x
+        clc
+        adc #48                ; Convert to ASCII
+        sta $0400 + 40*5 + 8   ; Display X
+        
+        lda grid_y
+        clc
+        adc #48
+        sta $0400 + 40*5 + 10  ; Display Y
+```
+</InteractiveExample>
+
+## Practice Exercises
+
+1. **Add Animation**: Smooth movement between grid positions
+2. **Diagonal Movement**: Allow 8-way grid movement
+3. **Variable Grid Size**: Try different cell dimensions
+4. **Grid Visualization**: Draw the grid on screen
+
+## Key Takeaways
+
+- Grid movement creates predictable, discrete positioning
+- Bit shifting efficiently multiplies by powers of 2
+- One-move-per-press prevents unwanted repeats
+- Grid boundaries are naturally enforced
+- This system is perfect for puzzle and strategy games
+
+## Next Lesson Preview
+
+In lesson 7, we'll add movement constraints to create game rules and boundaries!
+
+<VisualConcept
+  title="Coordinate System Complete"
+  description="Both directions of conversion"
+>
+```
+Lesson 5:                    Lesson 6:
+Pixels → Grid               Grid → Pixels
+
+sprite_x ÷ 32 → grid_x     grid_x × 32 → sprite_x
+sprite_y ÷ 32 → grid_y     grid_y × 32 → sprite_y
+
+     Reading                  Writing
+     Position                Position
+```
+</VisualConcept>
+
+Remember: Grid-based movement is the foundation for countless classic games - from chess to Pac-Man to puzzle games!

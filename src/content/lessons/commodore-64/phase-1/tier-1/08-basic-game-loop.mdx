@@ -1,0 +1,376 @@
+---
+title: "Basic Game Loop"
+lesson_number: 8
+tier_number: 1
+phase_number: 1
+system: "commodore-64"
+description: "Create a proper game loop with initialization, update cycle, and timing"
+learning_objectives:
+  - "Implement game initialization"
+  - "Create main update loop"
+  - "Add frame-based timing"
+  - "Track game statistics"
+concepts:
+  - "Game state management"
+  - "Frame synchronization"
+  - "Update loop structure"
+  - "Timing system implementation"
+estimated_duration: "30 minutes"
+difficulty: "easy"
+order: 8
+code_examples: true
+practical_exercise: true
+skills:
+  - "Game structure"
+  - "State management"
+  - "Frame timing"
+resources:
+  - name: "Complete Source Code"
+    url: "https://github.com/code198x/code-samples/commodore-64/phase-1/tier-1/lesson-008/"
+  - name: "Game Programming Patterns"
+    url: "https://gameprogrammingpatterns.com/"
+---
+
+import RegisterView6502 from '../../../../../components/RegisterView6502.astro';
+import MemoryMapC64 from '../../../../../components/MemoryMapC64.astro';
+import VisualConcept from '../../../../../components/VisualConcept.astro';
+import InteractiveExample from '../../../../../components/InteractiveExample.astro';
+
+# Basic Game Loop
+
+**Wonder Moment**: "The game runs smoothly and tracks everything automatically!"
+
+## Why Structure Matters
+
+Professional games separate initialization from the main loop, update in a consistent order, and track timing for smooth gameplay. This structure makes complex games manageable.
+
+<VisualConcept
+  title="Game Loop Structure"
+  description="The heartbeat of every game"
+>
+```
+INITIALIZATION
+     ↓
+┌─→ Wait Frame ←─┐
+│       ↓        │
+│  Read Input    │
+│       ↓        │
+│  Update Game   │
+│       ↓        │
+│ Update Display │
+│       ↓        │
+└────────────────┘
+```
+</VisualConcept>
+
+## Game States
+
+Define clear states for game flow:
+
+<InteractiveExample
+  title="State Management"
+  description="Control game flow with states"
+>
+```asm
+; Game states
+STATE_INIT = 0                 ; Initialization
+STATE_PLAYING = 1              ; Main game
+STATE_PAUSED = 2               ; Paused (future)
+STATE_GAME_OVER = 3            ; Game over (future)
+
+; Main entry point
+main:
+        ; Initialize game state
+        lda #STATE_INIT
+        sta game_state
+        
+        ; Jump to initialization
+        jsr game_init
+        
+        ; Set playing state
+        lda #STATE_PLAYING
+        sta game_state
+        
+        ; Enter main loop
+        jmp game_loop
+```
+</InteractiveExample>
+
+## Initialization Phase
+
+Set up everything before the game starts:
+
+<InteractiveExample
+  title="Game Initialization"
+  description="Prepare all game systems"
+>
+```asm
+game_init:
+        ; Initialize hardware
+        jsr init_screen        ; Colors and clear
+        jsr init_sprites       ; Sprite setup
+        
+        ; Initialize game variables
+        jsr init_game_vars     ; Positions, counters
+        
+        ; Display game UI
+        jsr display_game_ui    ; Title, instructions
+        
+        ; Setup complete
+        rts
+
+init_game_vars:
+        ; Starting position
+        lda #4
+        sta grid_x
+        lda #3
+        sta grid_y
+        
+        ; Reset counters
+        lda #0
+        sta frame_counter
+        sta seconds_counter
+        sta move_count
+        
+        ; Update sprite
+        jsr grid_to_sprite_position
+        jsr update_sprite_position
+        
+        rts
+```
+</InteractiveExample>
+
+## Main Game Loop
+
+The continuous update cycle:
+
+<InteractiveExample
+  title="Update Cycle"
+  description="Consistent frame processing"
+>
+```asm
+game_loop:
+        ; Wait for frame start
+        jsr wait_frame_start
+        
+        ; Update timing
+        jsr update_timing
+        
+        ; Check game state
+        lda game_state
+        cmp #STATE_PLAYING
+        bne skip_game_update
+        
+        ; Game update cycle
+        jsr read_input         ; Get player input
+        jsr update_game        ; Update game logic
+        jsr update_display     ; Update screen
+        
+skip_game_update:
+        ; Continue forever
+        jmp game_loop
+```
+</InteractiveExample>
+
+## Frame Timing
+
+Synchronize with display refresh:
+
+<InteractiveExample
+  title="Frame Synchronization"
+  description="Consistent 50Hz timing (PAL)"
+>
+```asm
+wait_frame_start:
+        ; Wait for specific raster line
+wait_top:
+        lda $d012              ; Current raster line
+        cmp #251               ; Bottom of screen
+        bne wait_top
+        
+        ; Wait for it to pass
+wait_pass:
+        lda $d012
+        cmp #252
+        bne wait_pass
+        
+        rts
+
+update_timing:
+        ; Count frames
+        inc frame_counter
+        
+        ; Check for second elapsed
+        lda frame_counter
+        cmp #50                ; PAL = 50fps
+        bne timing_done
+        
+        ; Reset frame counter
+        lda #0
+        sta frame_counter
+        
+        ; Increment seconds
+        inc seconds_counter
+        
+timing_done:
+        rts
+```
+</InteractiveExample>
+
+## Game Statistics
+
+Track player progress:
+
+<InteractiveExample
+  title="Statistics Display"
+  description="Show time and moves"
+>
+```asm
+update_game_stats:
+        ; Display "TIME: XXX"
+        ldx #0
+display_time:
+        lda time_label,x
+        beq time_done
+        sta $0400 + 40*22 + 2,x
+        inx
+        jmp display_time
+time_done:
+
+        ; Convert seconds to decimal
+        lda seconds_counter
+        jsr display_byte_decimal
+        
+        ; Display "MOVES: XXX"
+        ldx #0
+display_moves:
+        lda moves_label,x
+        beq moves_done
+        sta $0400 + 40*22 + 20,x
+        inx
+        jmp display_moves
+moves_done:
+
+        ; Display move count
+        lda move_count
+        ldx #27                ; Position
+        jsr display_byte_at_x
+        
+        rts
+```
+</InteractiveExample>
+
+## Update Functions
+
+Modular game updates:
+
+<InteractiveExample
+  title="Update Organization"
+  description="Clean separation of concerns"
+>
+```asm
+update_game:
+        ; Update player movement
+        jsr move_grid_constrained
+        
+        ; Convert position
+        jsr grid_to_sprite_position
+        
+        ; Update sprite
+        jsr update_sprite_position
+        
+        ; Update visual feedback
+        jsr update_border_color
+        
+        rts
+
+update_display:
+        ; Update position display
+        jsr display_current_position
+        
+        ; Update game statistics
+        jsr update_game_stats
+        
+        rts
+```
+</InteractiveExample>
+
+## Professional Structure
+
+<VisualConcept
+  title="Code Organization"
+  description="Professional game architecture"
+>
+```
+MAIN PROGRAM
+├── Initialization
+│   ├── Hardware Setup
+│   ├── Game Variables
+│   └── UI Display
+│
+├── Game Loop
+│   ├── Frame Timing
+│   ├── State Check
+│   └── Update Cycle
+│
+├── Update Functions
+│   ├── Input Reading
+│   ├── Game Logic
+│   └── Display Updates
+│
+└── Utility Functions
+    ├── Conversions
+    ├── Display Helpers
+    └── Timing Functions
+```
+</VisualConcept>
+
+## Practice Exercises
+
+1. **Pause State**: Add STATE_PAUSED with space bar toggle
+2. **Speed Options**: Make game run at different speeds
+3. **Debug Display**: Show frame rate and update time
+4. **Reset Function**: Press R to restart game
+
+## Debugging Tips
+
+- Display frame counter to verify timing
+- Show game state on screen
+- Use border color for visual timing
+- Track maximum frame time
+
+## Key Takeaways
+
+- Separate initialization from main loop
+- Update in consistent order every frame
+- Synchronize with display refresh
+- Track statistics for player feedback
+- Use states for game flow control
+
+## Foundation Complete!
+
+You've built a complete game foundation:
+- Hardware sprite control
+- Grid-based movement system
+- Proper game loop structure
+- Professional code organization
+
+<VisualConcept
+  title="What You've Built"
+  description="Foundation for any C64 game"
+>
+```
+Lesson 1: Display Setup     ✓
+Lesson 2: Hardware Sprites  ✓
+Lesson 3: Custom Graphics   ✓
+Lesson 4: Player Input      ✓
+Lesson 5: Grid System       ✓
+Lesson 6: Grid Movement     ✓
+Lesson 7: Constraints       ✓
+Lesson 8: Game Loop         ✓
+
+READY FOR SMOOTH MOVEMENT!
+```
+</VisualConcept>
+
+In the next tier, we'll add smooth animation between grid positions, making the movement feel professional and polished!

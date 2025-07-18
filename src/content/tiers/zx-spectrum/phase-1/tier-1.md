@@ -1,106 +1,139 @@
 ---
-tier_number: 1
-phase_number: 1
+title: "Cursor Quest: Character Movement and Attribute Effects"
 system: "zx-spectrum"
-title: "Core Game Mechanics"
-description: "Build the essential foundation of Quantum Shatter by implementing smooth animations, player controls, and basic combat systems."
+phase_number: 1
+tier_number: 1
+description: "Learn Z80 assembly programming through creating 'Cursor Quest' - a character movement game with attribute-based trail effects. Master the Spectrum's unique text-based graphics and color system."
 learning_objectives:
-  - "Create smooth animations using the ZX Spectrum's display system"
-  - "Implement responsive keyboard input handling"
-  - "Design character-based graphics and sprites"
-  - "Build fundamental game systems like movement and shooting"
+  - "Master Z80 assembly language basics through game development"
+  - "Control Spectrum display and attribute memory systems"
+  - "Implement character-based movement and graphics"
+  - "Create responsive keyboard input handling"
+  - "Build complete game architecture with main loop"
+  - "Add beeper sound effects and visual polish"
 concepts_introduced:
-  - "Z80 assembly language fundamentals"
-  - "Screen memory organization and character graphics"
+  - "Z80 registers and memory addressing"
+  - "Spectrum screen memory layout and character graphics"
   - "Attribute memory and color management"
   - "Keyboard matrix reading and input handling"
-  - "Game loop timing and frame synchronization"
-prerequisites:
-  - "ZX Spectrum development environment set up"
-  - "Basic understanding of Z80 assembly"
-  - "Familiarity with the Spectrum's memory map"
-estimated_duration: "8-12 hours"
-difficulty: "beginner"
-lessons: 4
+  - "Game loop architecture and timing"
+  - "Beeper sound generation"
+estimated_duration: "1 week (32 lessons)"
 order: 1
 ---
 
-# Tier 1: Core Game Mechanics
+# Tier 1: Cursor Quest - Character Movement and Attribute Effects
 
-Welcome to the first tier of ZX Spectrum game development! In these four lessons, you'll build the core mechanics of **Quantum Shatter**, establishing the foundation for a complete arcade game.
+Welcome to your first ZX Spectrum game development project! **Cursor Quest** introduces you to Z80 assembly programming through creating a complete character movement game with attribute-based trail effects. Learn the Spectrum's unique text-based graphics system and color management.
 
-## What You'll Build in This Tier
+## What You'll Build
 
-By the end of Tier 1, you'll have:
+**Cursor Quest** - A complete character movement game featuring:
+- Character-based cursor (@) that moves through text positions
+- Attribute-based trail effects showing movement history
+- Target letter collection system with scoring
+- Keyboard input handling (QAOP keys)
+- Beeper sound effects
+- Professional game loop architecture
 
-- An animated starfield background that brings space to life
-- A player-controlled spaceship with smooth movement
-- A projectile system for firing at enemies
-- Basic collision detection foundations
+## Game Concept
 
-## The ZX Spectrum Approach
+Navigate a cursor character through a field of text, leaving a colored trail using the Spectrum's attribute system. Find and collect specific letter targets while learning the fundamental concepts of Z80 assembly programming and Spectrum game development.
 
-The Spectrum's unique architecture shapes how we build games:
+## Learning Journey (32 Lessons)
 
-### Character-Based Graphics
-Instead of pixel-by-pixel drawing, the Spectrum excels at character-based graphics. You'll learn to:
-- Design custom 8×8 character graphics
-- Use the screen's character grid efficiently
-- Create smooth animation through character updates
+### Foundation (Lessons 1-8)
+- **Lesson 1**: Spectrum setup and screen memory basics
+- **Lesson 2**: Display characters at specific positions
+- **Lesson 3**: Calculate screen addresses and positioning
+- **Lesson 4**: Read keyboard input via matrix scanning
+- **Lesson 5**: Implement cursor movement logic
+- **Lesson 6**: Move cursor character on screen
+- **Lesson 7**: Add boundary checking and constraints
+- **Lesson 8**: Create basic game loop structure
 
-### Attribute System
-The Spectrum's color attribute system is both a limitation and an opportunity:
-- Each 8×8 character block shares the same two colors
-- Creative use of attributes creates distinctive visual styles
-- Efficient attribute management is key to performance
+### Attribute Effects (Lessons 9-16)
+- **Lesson 9**: Understanding attribute memory system
+- **Lesson 10**: Set up trail effect framework
+- **Lesson 11**: Draw colored trail behind cursor
+- **Lesson 12**: Create fading trail effects
+- **Lesson 13**: Add target letter system
+- **Lesson 14**: Implement collision detection
+- **Lesson 15**: Create scoring system
+- **Lesson 16**: Add level progression
 
-### Keyboard Input
-The Spectrum's keyboard matrix provides direct hardware access:
-- Read multiple keys simultaneously
-- Implement responsive controls without OS overhead
-- Handle the classic QAOP control scheme
+### Visual Polish (Lessons 17-24)
+- **Lesson 17**: Add border effects using port 254
+- **Lesson 18**: Create character animation cycles
+- **Lesson 19**: Generate maze layouts with walls
+- **Lesson 20**: Add special color zones
+- **Lesson 21**: Create particle-like character effects
+- **Lesson 22**: Design status display
+- **Lesson 23**: Create title screen
+- **Lesson 24**: Add transition effects
 
-## Lesson Overview
+### Audio and Completion (Lessons 25-32)
+- **Lesson 25**: Beeper basics and tone generation
+- **Lesson 26**: Create movement sound effects
+- **Lesson 27**: Add beeper music
+- **Lesson 28**: Implement difficulty settings
+- **Lesson 29**: Create high score entry system
+- **Lesson 30**: Add power-up system
+- **Lesson 31**: Final polish and optimization
+- **Lesson 32**: Create loading screen
 
-### Lesson 1: Animated Starfield
-Create a mesmerizing space backdrop using the Spectrum's display capabilities. You'll learn about screen memory layout, character graphics, and smooth animation techniques.
+## Core Skills Developed
 
-### Lesson 2: Adding the Player Ship
-Implement a responsive player-controlled ship using custom character graphics. Master keyboard input handling and smooth movement within the character grid.
+**Z80 Assembly Programming**: Learn fundamental assembly concepts through practical application.
 
-### Lesson 3: Laser Weaponry
-Add a projectile system that lets players fire at enemies. Learn about object pooling, efficient collision detection, and managing multiple moving objects.
+**Character-Based Graphics**: Master the Spectrum's unique text-mode display system.
 
-### Lesson 4: Collision Detection
-Implement the foundations of collision detection between game objects. Understand boundary checking and efficient collision algorithms.
+**Attribute System**: Control the Spectrum's color attribute memory for visual effects.
 
-## Technical Concepts Covered
+**Keyboard Input**: Handle the Spectrum's keyboard matrix for responsive controls.
 
-Throughout this tier, you'll master:
+**Memory Management**: Efficient use of screen and attribute memory areas.
 
-- **Screen Memory Organization**: How the Spectrum arranges display data
-- **Character Graphics**: Creating and animating 8×8 pixel characters
-- **Attribute Memory**: Managing colors and visual effects
-- **Keyboard Matrix**: Direct hardware keyboard reading
-- **Game Loop Design**: Creating smooth, responsive gameplay
-- **Assembly Optimization**: Writing efficient Z80 code
+**Audio Programming**: Generate sound effects using the beeper system.
 
-## Development Tips
+## Why Character Movement?
 
-### Start Simple
-Each lesson builds on the previous one. Don't skip ahead—master each concept before moving on.
+Character movement is the perfect introduction to Spectrum programming because it teaches:
+- **Screen memory layout**: Understanding the Spectrum's unique display system
+- **Attribute control**: Managing colors and visual effects
+- **Input handling**: Responsive keyboard controls
+- **Memory efficiency**: Working within the 48K constraint
+- **Visual effects**: Creative use of the attribute system
 
-### Test Frequently
-Run your code often in the emulator. Small, incremental changes are easier to debug.
+## Technical Highlights
 
-### Understand the Hardware
-The Spectrum's limitations foster creativity. Embrace them rather than fighting them.
+- **Character Graphics**: Direct control of screen memory
+- **Attribute Effects**: Creative use of INK/PAPER/BRIGHT/FLASH
+- **Keyboard Matrix**: Hardware-level input reading
+- **Beeper Sound**: Simple but effective audio generation
+- **Memory Layout**: Efficient organization of game data
+- **Performance**: Smooth gameplay within constraints
 
-### Comment Your Code
-Z80 assembly can be cryptic. Clear comments help you understand your code later.
+## Spectrum-Specific Features
 
-## Ready to Start?
+**Attribute System**: Learn to work with and around color clash.
 
-Lesson 1 awaits! You'll begin by creating an animated starfield that sets the stage for epic space battles. Fire up your assembler, load your emulator, and let's bring Quantum Shatter to life!
+**Character Mode**: Efficient 8×8 character-based graphics.
 
-Remember: every great Spectrum game started with someone learning these exact concepts. Your journey into retro game development begins now! 🎮
+**Keyboard Matrix**: Direct hardware keyboard reading.
+
+**Beeper Sound**: Simple but creative audio generation.
+
+**Memory Banking**: Understanding 48K vs 128K models.
+
+## Project Outcomes
+
+By completing Cursor Quest, you will have:
+- Created your first complete Spectrum game
+- Mastered fundamental Z80 assembly programming
+- Learned character-based graphics and attribute control
+- Built a reusable game architecture framework
+- Developed professional game development skills
+- Created a polished, playable game for your portfolio
+
+This project establishes the foundation for all future Spectrum game development, teaching you the essential skills needed to create increasingly complex and impressive games throughout Phase 1.

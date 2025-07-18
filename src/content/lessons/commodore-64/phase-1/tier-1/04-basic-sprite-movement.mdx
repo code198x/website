@@ -1,0 +1,283 @@
+---
+title: "Basic Sprite Movement"
+lesson_number: 4
+tier_number: 1
+phase_number: 1
+system: "commodore-64"
+description: "Make your sprite respond to joystick input with smooth movement"
+learning_objectives:
+  - "Read joystick input from port 2"
+  - "Map input to sprite movement"
+  - "Implement continuous movement"
+  - "Update sprite position smoothly"
+estimated_duration: "30 minutes"
+difficulty: "easy"
+order: 4
+code_examples: true
+practical_exercise: true
+concepts:
+  - "CIA joystick registers"
+  - "Bit masking for input"
+  - "Sprite position updates"
+  - "Movement speed control"
+skills:
+  - "Input handling"
+  - "Sprite positioning"
+  - "Game controls"
+resources:
+  - name: "Complete Source Code"
+    url: "https://github.com/code198x/code-samples/commodore-64/phase-1/tier-1/lesson-004/"
+  - name: "C64 Joystick Reference"
+    url: "https://www.c64-wiki.com/wiki/Joystick"
+---
+
+import RegisterView6502 from '../../../../../components/RegisterView6502.astro';
+import MemoryMapC64 from '../../../../../components/MemoryMapC64.astro';
+import VisualConcept from '../../../../../components/VisualConcept.astro';
+import InteractiveExample from '../../../../../components/InteractiveExample.astro';
+
+# Basic Sprite Movement
+
+**Wonder Moment**: "I can control it! My sprite moves where I want!"
+
+## The Joy of Control
+
+In lesson 4, we bring your sprite to life with player control. This is the moment when your creation becomes interactive - when pressing the joystick makes something happen on screen!
+
+<VisualConcept
+  title="Joystick Input Mapping"
+  description="How joystick positions map to sprite movement"
+>
+```
+     UP ($FE)
+      ↑
+LEFT ← → RIGHT
+($FB)    ($F7)
+      ↓
+    DOWN ($FD)
+
+Port 2 ($DC00):
+Bit 0: Up    (0 = pressed)
+Bit 1: Down  (0 = pressed)
+Bit 2: Left  (0 = pressed)
+Bit 3: Right (0 = pressed)
+Bit 4: Fire  (0 = pressed)
+```
+</VisualConcept>
+
+## Reading the Joystick
+
+The C64 reads joystick input through the CIA chip. Port 2 is the standard game port:
+
+<InteractiveExample
+  title="Reading Joystick Input"
+  description="Simple joystick state reading"
+>
+```asm
+read_joystick:
+        ; Read joystick port 2 (CIA1 Port A)
+        lda $dc00              ; Read CIA1 Port A
+        sta joystick_state     ; Store current state
+        
+        ; The bits are "active low" - 0 means pressed
+        ; Bit pattern: xxxFRLDU (Fire, Right, Left, Down, Up)
+        
+        rts
+```
+</InteractiveExample>
+
+## Moving the Sprite
+
+With joystick state read, we can move the sprite based on which direction is pressed:
+
+<InteractiveExample
+  title="Sprite Movement Logic"
+  description="Convert joystick input to sprite motion"
+>
+```asm
+move_sprite:
+        ; Check Up (bit 0 clear means pressed)
+        lda joystick_state
+        and #$01               ; Isolate bit 0
+        bne check_down         ; If not 0, button not pressed
+        
+        ; Move up
+        lda sprite_y
+        sec                    ; Set carry for subtraction
+        sbc #2                 ; Move 2 pixels up
+        sta sprite_y
+        
+check_down:
+        ; Check Down (bit 1 clear means pressed)
+        lda joystick_state
+        and #$02               ; Isolate bit 1
+        bne check_left         ; If not 0, button not pressed
+        
+        ; Move down
+        lda sprite_y
+        clc                    ; Clear carry for addition
+        adc #2                 ; Move 2 pixels down
+        sta sprite_y
+```
+</InteractiveExample>
+
+## Complete Movement System
+
+Here's the full movement routine handling all four directions:
+
+<InteractiveExample
+  title="Complete Movement Handler"
+  description="Full 4-directional movement"
+>
+```asm
+check_left:
+        ; Check Left (bit 2 clear means pressed)
+        lda joystick_state
+        and #$04
+        bne check_right
+        
+        ; Move left
+        lda sprite_x
+        sec
+        sbc #2                 ; Move 2 pixels left
+        sta sprite_x
+        
+check_right:
+        ; Check Right (bit 3 clear means pressed)
+        lda joystick_state
+        and #$08
+        bne move_done
+        
+        ; Move right
+        lda sprite_x
+        clc
+        adc #2                 ; Move 2 pixels right
+        sta sprite_x
+        
+move_done:
+        rts
+```
+</InteractiveExample>
+
+## Updating Sprite Position
+
+After calculating new positions, update the hardware sprite registers:
+
+<InteractiveExample
+  title="Hardware Position Update"
+  description="Apply position to sprite hardware"
+>
+```asm
+update_sprite_position:
+        ; Set sprite X position
+        lda sprite_x
+        sta $d000              ; Sprite 0 X position
+        
+        ; Set sprite Y position
+        lda sprite_y
+        sta $d001              ; Sprite 0 Y position
+        
+        ; Handle X position > 255
+        lda sprite_x
+        cmp #255
+        bcc no_msb             ; If < 255, no MSB needed
+        
+        ; Set X MSB bit
+        lda $d010
+        ora #$01               ; Set bit 0 for sprite 0
+        sta $d010
+        jmp msb_done
+        
+no_msb:
+        ; Clear X MSB bit
+        lda $d010
+        and #$fe               ; Clear bit 0
+        sta $d010
+        
+msb_done:
+        rts
+```
+</InteractiveExample>
+
+## Game Loop Integration
+
+Put it all together in your main game loop:
+
+<InteractiveExample
+  title="Main Game Loop"
+  description="Complete control flow"
+>
+```asm
+game_loop:
+        jsr read_joystick          ; Get input state
+        jsr move_sprite            ; Calculate movement
+        jsr update_sprite_position ; Update hardware
+        jsr wait_frame             ; Wait for next frame
+        jmp game_loop              ; Continue forever
+```
+</InteractiveExample>
+
+## Movement Characteristics
+
+Our movement system has these properties:
+- **Speed**: 2 pixels per frame (smooth but controllable)
+- **Diagonal**: Can combine directions for 8-way movement
+- **Continuous**: Sprite moves while button held
+- **Immediate**: No delay or acceleration
+
+## Keyboard Support
+
+For development and emulators, add keyboard controls:
+
+<InteractiveExample
+  title="Keyboard Alternative"
+  description="QAOP keyboard mapping"
+>
+```asm
+; After reading joystick, check keyboard
+; Q = Up, A = Down, O = Left, P = Right
+
+; This modifies joystick_state to include keyboard input
+jsr check_keyboard_input
+```
+</InteractiveExample>
+
+## Practice Exercises
+
+1. **Change Speed**: Try different movement speeds (1, 3, or 4 pixels)
+2. **Add Inertia**: Make sprite continue moving briefly after release
+3. **Diagonal Speed**: Adjust speed when moving diagonally
+4. **Screen Wrap**: Make sprite wrap to opposite edge
+
+## Debugging Tips
+
+- Use border color changes to visualize input reading
+- Display joystick state value on screen
+- Add sound effects to confirm movement
+- Test with both joystick and keyboard
+
+## Key Takeaways
+
+- Joystick input uses "active low" logic (0 = pressed)
+- Movement is simple position arithmetic
+- Smooth movement needs consistent timing
+- Always handle the X position MSB for positions > 255
+- Test input with multiple methods
+
+## Next Lesson Preview
+
+In lesson 5, we'll add a grid position system to organize sprite movement into discrete positions, preparing for game logic!
+
+<VisualConcept
+  title="Movement Flow"
+  description="How input becomes motion"
+>
+```
+Player Input → CIA Chip → Your Code → Sprite Position
+     ↓            ↓           ↓            ↓
+  Joystick    Port $DC00   Movement    VIC-II
+   Press       Bit = 0    Calculation  Registers
+```
+</VisualConcept>
+
+Remember: This simple movement system is the foundation for every game you'll make. Master it here, and you'll use these concepts forever!

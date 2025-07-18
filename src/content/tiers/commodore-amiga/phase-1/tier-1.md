@@ -1,80 +1,140 @@
 ---
-title: "Turbo Horizon: High-Speed Racing Action"
+title: "Copper Chase: Color Bar Movement and Copper Mastery"
 system: "commodore-amiga"
 phase_number: 1
 tier_number: 1
-description: "Create your first professional-quality game! Build 'Turbo Horizon' - a high-speed racing game using authentic 68000 assembly. Learn assembly language through exciting game development that showcases the Amiga's revolutionary custom chip architecture."
+description: "Learn 68000 assembly programming through creating 'Copper Chase' - a copper coprocessor-based game. Master the Amiga's unique custom chip architecture and the fundamentals of Amiga game development."
 learning_objectives:
-  - "Create professional multi-layered parallax worlds using Amiga custom chip hardware"
-  - "Build sophisticated floating entities using 68000 registers for complex object management"
-  - "Master copper effects and hardware scrolling for spectacular visual presentation"
-  - "Implement professional game architecture through modular assembly programming"
-  - "Develop commercial-quality games with authentic Amiga aesthetic and technical excellence"
+  - "Master 68000 assembly language basics through game development"
+  - "Control Amiga custom chips: Copper, Blitter, and Paula"
+  - "Implement copper-based graphics and color control"
+  - "Create responsive input handling (keyboard/mouse)"
+  - "Build complete game architecture with VBlank timing"
+  - "Add 4-channel audio effects and samples"
 concepts_introduced:
-  - "68000 registers through professional entity management systems"
-  - "Custom chip programming for parallax scrolling and copper effects"
-  - "Professional data structures and memory management techniques"
-  - "Advanced graphics programming and visual effects systems"
-  - "Commercial game architecture and optimization strategies"
-estimated_duration: "4-6 weeks (32 comprehensive lessons)"
+  - "68000 registers and memory addressing"
+  - "Amiga custom chip architecture"
+  - "Copper coprocessor programming"
+  - "Color register manipulation"
+  - "VBlank interrupts and timing"
+  - "Input handling (keyboard/mouse)"
+  - "Paula audio system"
+estimated_duration: "1 week (32 lessons)"
 order: 1
 ---
 
-# Tier 1: Turbo Horizon - High-Speed Racing Action
+# Tier 1: Copper Chase - Color Bar Movement and Copper Mastery
 
-Welcome to professional game development on the Amiga! Create your first commercial-quality game using authentic 68000 assembly language. **Turbo Horizon** showcases the Amiga's revolutionary custom chip architecture while teaching you assembly programming through exciting, professional-level game development.
+Welcome to your first Amiga game development project! **Copper Chase** introduces you to 68000 assembly programming through creating a complete copper coprocessor-based game. Learn the Amiga's revolutionary custom chip architecture and the fundamentals of professional Amiga game development.
 
 ## What You'll Build
 
-**Turbo Horizon** - A complete high-speed racing game featuring:
-- Multi-track racing environments with realistic physics
-- Hardware sprite-based cars with smooth animation
-- Dual-playfield backgrounds for depth and visual richness
-- Copper list effects for horizon and sky rendering
-- 4-channel audio with engine sounds and dynamic music
+**Copper Chase** - A complete copper-based movement game featuring:
+- Horizontal color bar controlled by player input
+- Pure copper coprocessor programming (no sprites)
+- Copper-generated obstacles and targets
+- Responsive keyboard/mouse controls
+- 4-channel Paula audio effects
+- Professional VBlank-synchronized game loop
 
-**By Lesson 8**: You'll have a playable game prototype with professional graphics, entities, and smooth scrolling!
-**By Lesson 32**: You'll have the foundation systems for Turbo Horizon, ready for advanced development in Tiers 2-16.
-**By Tier 16 Complete**: You'll have a commercially polished racing game showcasing advanced 68000 programming and custom chip mastery.
+## Game Concept
 
-## Professional Development Journey
+Control a horizontal color bar that moves up and down the screen using the Amiga's copper coprocessor. Navigate through copper-generated obstacles while collecting targets, all created using pure hardware programming without sprites or traditional graphics.
 
-**✅ Lessons 1-2: COMPLETED - World & Entities**
-- **Lesson 1**: Create stunning multi-layered parallax world *(COMPLETED)*
-- **Lesson 2**: Add sophisticated floating crystal entities with complex data management *(COMPLETED)*
+## Learning Journey (32 Lessons)
 
-**Lessons 3-8: Core Professional Systems**
-- **Lesson 3**: Copper Cascade - Add mesmerizing copper effects and color cycling
-- **Lesson 4**: Smooth Scrolling - Implement professional hardware-assisted scrolling
-- **Lesson 5**: Entity Interaction - Create collision systems and interactive gameplay
-- **Lesson 6**: Audio Spectacle - Add 4-channel soundtrack with sample-based effects
-- **Lesson 7**: Professional Polish - Visual effects, transitions, and presentation quality
-- **Lesson 8**: Crystal Cascade Foundation - Playable prototype with professional systems
+### Foundation (Lessons 1-8)
+- **Lesson 1**: Amiga system setup and custom chips
+- **Lesson 2**: Understanding the copper coprocessor
+- **Lesson 3**: Create basic copper lists
+- **Lesson 4**: Control vertical positioning
+- **Lesson 5**: Manipulate color registers
+- **Lesson 6**: Read keyboard/mouse input
+- **Lesson 7**: Create dynamic copper lists
+- **Lesson 8**: Add boundary limits
 
-**Lessons 9-16: System Enhancement**
-- Enhanced entity management systems for complex game objects
-- Advanced copper programming for improved visual effects
-- Memory optimization techniques for efficient performance
-- Audio-visual synchronization and dynamic soundtrack integration
+### Copper Programming (Lessons 9-16)
+- **Lesson 9**: Create multiple copper objects
+- **Lesson 10**: Add animated copper effects
+- **Lesson 11**: Implement collision detection
+- **Lesson 12**: Create scoring system
+- **Lesson 13**: Add moving obstacles
+- **Lesson 14**: Implement target collection
+- **Lesson 15**: Add level progression
+- **Lesson 16**: Create lives system
 
-**Lessons 17-24: Advanced Architecture**
-- Multi-layer level design with seamless area transitions
-- Enhanced AI systems for intelligent entity behavior
-- Professional user interface and interaction systems
-- Data management and game state persistence
+### Visual Enhancement (Lessons 17-24)
+- **Lesson 17**: Add copper gradient effects
+- **Lesson 18**: Create copper starfield
+- **Lesson 19**: Implement advanced copper effects
+- **Lesson 20**: Add copper-based "sprites"
+- **Lesson 21**: Create screen transitions
+- **Lesson 22**: Add status display
+- **Lesson 23**: Create title screen
+- **Lesson 24**: Add copper particle effects
 
-**Lessons 25-32: Tier 1 Mastery**
-- Performance optimization and custom chip utilization
-- Code organization and professional architecture patterns
-- Quality assurance and debugging methodologies
-- Foundation complete - ready for Tier 2 advanced development
+### Audio and Completion (Lessons 25-32)
+- **Lesson 25**: Paula audio basics
+- **Lesson 26**: Create sample-based sound effects
+- **Lesson 27**: Add 4-channel music
+- **Lesson 28**: Implement game options
+- **Lesson 29**: Create high score system
+- **Lesson 30**: Add power-up effects
+- **Lesson 31**: Performance optimization
+- **Lesson 32**: Complete game packaging
 
-## Why Professional-First 68000 Learning?
+## Core Skills Developed
 
-- **Immediate Excellence**: See commercial-quality visuals and effects from lesson 1
-- **Professional Context**: Learn assembly through the same techniques used in commercial Amiga games
-- **Hardware Mastery**: Understand why the Amiga was revolutionary through direct custom chip programming
-- **Industry Skills**: Develop professional game development practices and architecture
-- **Technical Excellence**: Experience the sophisticated programming that defined Amiga gaming
+**68000 Assembly Programming**: Learn fundamental assembly concepts through practical application.
 
-68000 concepts are learned exactly when needed for your professional game, making every technical detail contribute to commercial-quality results!
+**Custom Chip Programming**: Master the Amiga's legendary custom chip architecture.
+
+**Copper Coprocessor**: Control the unique copper chip for real-time display effects.
+
+**Color Manipulation**: Advanced color register control and palette effects.
+
+**Audio Programming**: 4-channel sample playback using Paula.
+
+**System Programming**: Direct hardware control and timing.
+
+## Why Copper Programming?
+
+Copper programming is the perfect introduction to Amiga development because it teaches:
+- **Custom chip architecture**: Understanding the Amiga's revolutionary design
+- **Hardware acceleration**: Direct control of specialized processors
+- **Real-time effects**: Frame-perfect timing and synchronization
+- **Memory efficiency**: Working with DMA and custom chip memory
+- **Parallel processing**: Multiple chips working together
+
+## Technical Highlights
+
+- **Pure Hardware**: No CPU-based graphics, only custom chips
+- **Copper Lists**: Real-time display list programming
+- **Color Effects**: Dynamic color manipulation
+- **Paula Audio**: Direct DMA audio programming
+- **VBlank Timing**: Professional frame synchronization
+- **Memory Management**: Chip RAM vs Fast RAM optimization
+
+## Amiga-Specific Features
+
+**Custom Chip Architecture**: Master Agnus, Denise, and Paula chips.
+
+**Copper Coprocessor**: Real-time display list programming.
+
+**Color Registers**: 32-color palette manipulation.
+
+**Paula Audio**: 4-channel DMA-based sound system.
+
+**Memory Types**: Chip RAM vs Fast RAM considerations.
+
+## Project Outcomes
+
+By completing Copper Chase, you will have:
+- Created your first complete Amiga game
+- Mastered fundamental 68000 assembly programming
+- Learned copper coprocessor programming
+- Built a reusable Amiga game architecture framework
+- Developed professional game development skills
+- Created a polished, playable game for your portfolio
+
+This project establishes the foundation for all future Amiga game development, teaching you the essential skills needed to create increasingly complex and impressive games throughout Phase 1, from basic copper effects to advanced blitter operations and beyond.

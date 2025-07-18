@@ -1,0 +1,269 @@
+---
+title: "Movement Constraints"
+lesson_number: 7
+tier_number: 1
+phase_number: 1
+system: "commodore-64"
+description: "Add boundary checking to keep sprites within valid grid positions"
+learning_objectives:
+  - "Validate movement before execution"
+  - "Implement boundary constraints"
+  - "Add visual feedback for collisions"
+  - "Create optional wrap-around mode"
+concepts:
+  - "Boundary validation"
+  - "Movement constraint checking"
+  - "Visual feedback systems"
+  - "Wrap-around logic"
+estimated_duration: "30 minutes"
+difficulty: "easy"
+order: 7
+code_examples: true
+practical_exercise: true
+skills:
+  - "Boundary checking"
+  - "Movement validation"
+  - "User feedback"
+resources:
+  - name: "Complete Source Code"
+    url: "https://github.com/code198x/code-samples/commodore-64/phase-1/tier-1/lesson-007/"
+  - name: "Game Design Patterns"
+    url: "https://gameprogrammingpatterns.com/"
+---
+
+import RegisterView6502 from '../../../../../components/RegisterView6502.astro';
+import MemoryMapC64 from '../../../../../components/MemoryMapC64.astro';
+import VisualConcept from '../../../../../components/VisualConcept.astro';
+import InteractiveExample from '../../../../../components/InteractiveExample.astro';
+
+# Movement Constraints
+
+**Wonder Moment**: "The boundaries feel natural and the feedback is instant!"
+
+## Why Constraints Matter
+
+Without boundaries, sprites can move off-screen or into invalid positions. Constraints define the playable space and create game rules, while feedback helps players understand limits.
+
+<VisualConcept
+  title="Constraint Types"
+  description="Different ways to handle boundaries"
+>
+```
+HARD STOP:          WRAP AROUND:         BOUNCE BACK:
+┌─────────┐        ┌─────────┐          ┌─────────┐
+│ →→→→→→│X│        │→→→→→→→┐ │          │ →→→→←←← │
+│         │        └───────┘ │          │         │
+│         │        ┌───────┐ │          │         │
+│         │        │ ←←←←←←└─│          │         │
+└─────────┘        └─────────┘          └─────────┘
+```
+</VisualConcept>
+
+## Boundary Constants
+
+Define clear limits for movement:
+
+<InteractiveExample
+  title="Setting Boundaries"
+  description="Define movement constraints"
+>
+```asm
+; Movement constraints
+MIN_GRID_X = 0                 ; Leftmost column
+MAX_GRID_X = GRID_WIDTH - 1    ; Rightmost column (7)
+MIN_GRID_Y = 0                 ; Top row
+MAX_GRID_Y = GRID_HEIGHT - 1   ; Bottom row (5)
+
+; Configuration option
+WRAP_MODE = 0                  ; 0 = hard stop, 1 = wrap around
+```
+</InteractiveExample>
+
+## Movement Validation
+
+Check boundaries before allowing movement:
+
+<InteractiveExample
+  title="Validate Before Moving"
+  description="Check if movement is valid"
+>
+```asm
+try_move_up:
+        lda grid_y
+        cmp #MIN_GRID_Y        ; At top edge?
+        beq check_wrap_up      ; Handle boundary
+        
+        ; Valid move - execute it
+        dec grid_y
+        jsr wait_for_release
+        rts
+        
+check_wrap_up:
+        lda #WRAP_MODE         ; Check mode
+        beq hit_boundary       ; Mode 0 = stop
+        
+        ; Mode 1 = wrap to bottom
+        lda #MAX_GRID_Y
+        sta grid_y
+        jsr wait_for_release
+        rts
+
+hit_boundary:
+        ; Visual feedback for hitting boundary
+        lda #$02               ; Red color
+        sta boundary_hit       ; Set flash timer
+        jsr wait_for_release
+        rts
+```
+</InteractiveExample>
+
+## Visual Feedback
+
+Provide immediate feedback when hitting boundaries:
+
+<InteractiveExample
+  title="Border Flash Feedback"
+  description="Visual indication of collision"
+>
+```asm
+update_border_color:
+        ; Flash border red when hitting boundary
+        lda boundary_hit
+        beq normal_border
+        
+        ; Red border for boundary hit
+        lda #$02               ; Red
+        sta $d020              ; Border color
+        
+        ; Decrement flash timer
+        dec boundary_hit
+        rts
+        
+normal_border:
+        ; Normal white border
+        lda #$01               ; White
+        sta $d020
+        rts
+```
+</InteractiveExample>
+
+## Complete Movement System
+
+All four directions with constraints:
+
+<InteractiveExample
+  title="Full Constrained Movement"
+  description="Complete movement validation"
+>
+```asm
+move_grid_constrained:
+        ; Store old position (for future features)
+        lda grid_x
+        sta old_grid_x
+        lda grid_y
+        sta old_grid_y
+        
+        ; Check each direction
+        lda joystick_state
+        and #$01
+        bne check_grid_down
+        jsr try_move_up
+        
+check_grid_down:
+        lda joystick_state
+        and #$02
+        bne check_grid_left
+        jsr try_move_down
+        
+        ; ... continues for all directions
+```
+</InteractiveExample>
+
+## Wrap-Around Implementation
+
+Optional mode for different game styles:
+
+<VisualConcept
+  title="Wrap-Around Behavior"
+  description="Moving off one edge brings you to the opposite"
+>
+```
+Normal Grid:         With Wrap:
+0 1 2 3 4 5 6 7     7←0 1 2 3 4 5 6 7→0
+┌─┬─┬─┬─┬─┬─┬─┬─┐   ┌─┬─┬─┬─┬─┬─┬─┬─┐
+│ │ │ │●│ │ │ │ │   │ │ │ │●→→→→→→→→●│
+└─┴─┴─┴─┴─┴─┴─┴─┘   └─┴─┴─┴─┴─┴─┴─┴─┘
+  Can't go left        Wraps to right
+```
+</VisualConcept>
+
+## Configuration Options
+
+Make your constraints flexible:
+
+<InteractiveExample
+  title="Mode Display"
+  description="Show current constraint mode"
+>
+```asm
+display_mode_text:
+        ; Show "MODE: CONSTRAIN" or "MODE: WRAP"
+        lda #WRAP_MODE
+        beq show_constrain
+        
+        ; Display "WRAP"
+        ldx #0
+show_wrap_loop:
+        lda wrap_text,x
+        beq done
+        sta $0400 + 40*4 + 8,x
+        inx
+        jmp show_wrap_loop
+```
+</InteractiveExample>
+
+## Practice Exercises
+
+1. **Bounce Mode**: Make sprite bounce back from edges
+2. **Soft Boundaries**: Slow down near edges
+3. **Different Limits**: Make top/bottom different from left/right
+4. **Sound Feedback**: Add sound when hitting boundary
+
+## Debugging Constraints
+
+- Display boundary hit counter
+- Show current mode on screen
+- Use different border colors for each edge
+- Log position before and after moves
+
+## Key Takeaways
+
+- Always validate movement before execution
+- Provide clear feedback for invalid moves
+- Make constraints configurable when possible
+- Visual feedback prevents player frustration
+- Different games need different boundary behaviors
+
+## Next Lesson Preview
+
+In lesson 8, we'll create a proper game loop structure with initialization, update, and timing!
+
+<VisualConcept
+  title="Constraint Decision Flow"
+  description="How movement validation works"
+>
+```
+Input Received
+      ↓
+Check New Position
+      ↓
+    Valid? ──No──→ Check Wrap Mode
+      │                    ↓
+     Yes            Wrap? ──No──→ Flash Border
+      │              │
+      ↓             Yes
+Execute Move ←───────┘
+```
+</VisualConcept>
+
+Remember: Good constraints feel natural, not restrictive. The player should understand why they can't move somewhere!
