@@ -21,6 +21,7 @@ prerequisites:
   - "Lesson 3: Sprite projectiles"
   - "Understanding of hardware sprites"
   - "Basic 68000 assembly"
+order: 4
 ---
 
 # Lesson 4: Hardware Collision Detection

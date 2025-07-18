@@ -21,6 +21,7 @@ prerequisites:
   - "Lesson 3: Projectile systems"
   - "Understanding of sprite system"
   - "Basic 6502 assembly"
+order: 4
 ---
 
 # Lesson 4: Collision Detection

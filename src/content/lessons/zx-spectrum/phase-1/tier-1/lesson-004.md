@@ -21,6 +21,7 @@ prerequisites:
   - "Lesson 3: Projectile systems"
   - "Understanding of Z80 registers"
   - "Basic game state concepts"
+order: 4
 ---
 
 # Lesson 4: Collision Detection

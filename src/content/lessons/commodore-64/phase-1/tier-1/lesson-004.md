@@ -21,6 +21,7 @@ prerequisites:
   - "Lesson 3: Shooting mechanics"
   - "Understanding of object arrays"
   - "Basic game state concepts"
+order: 4
 ---
 
 # Lesson 4: Collision Detection
