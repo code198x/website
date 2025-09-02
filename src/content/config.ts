@@ -207,19 +207,25 @@ const systems = defineCollection({
   }),
 });
 
-// Phases collection - 8 phases per system (1-8)
+// Phases collection - 8 phases per system (0-8, Phase 0 is foundation)
 const phases = defineCollection({
   type: 'content',
   schema: z.object({
     title: z.string(),
     system: z.string(), // References system slug
-    phase_number: z.number().min(1).max(8),
+    phase_number: z.number().min(0).max(8), // Allow Phase 0
     description: z.string(),
     learning_objectives: z.array(z.string()),
     prerequisites: z.array(z.string()).optional(),
     estimated_duration: z.string(), // e.g., "8-12 weeks"
     difficulty_level: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
     tools_required: z.array(z.string()).optional(),
+    
+    // Phase 0 specific fields
+    is_foundation: z.boolean().default(false), // True for Phase 0
+    programming_language: z.enum(['basic', 'asm', 'forth', 'amos', 'mixed']).optional(),
+    total_lessons: z.number().optional(), // Total lessons in phase (128 for Phase 0)
+    
     order: z.number(),
   }),
 });
@@ -230,12 +236,17 @@ const tiers = defineCollection({
   schema: z.object({
     title: z.string(),
     system: z.string(),
-    phase_number: z.number().min(1).max(8),
+    phase_number: z.number().min(0).max(8), // Allow Phase 0
     tier_number: z.number().min(1).max(16),
     description: z.string(),
     learning_objectives: z.array(z.string()),
     concepts_introduced: z.array(z.string()),
     estimated_duration: z.string(), // e.g., "1-2 weeks"
+    
+    // Phase 0 specific fields
+    programming_language: z.enum(['basic', 'asm', 'forth', 'amos', 'mixed']).optional(),
+    lessons_count: z.number().default(16), // 16 lessons per tier in Phase 0
+    
     game_project: z.object({
       name: z.string(),
       description: z.string(),
@@ -251,23 +262,54 @@ const lessons = defineCollection({
   schema: z.object({
     title: z.string(),
     system: z.string(),
-    phase_number: z.number().min(1).max(8),
+    phase_number: z.number().min(0).max(8), // Allow Phase 0
     tier_number: z.number().min(1).max(16),
     lesson_number: z.number().min(1).max(32),
-    description: z.string(),
-    learning_objectives: z.array(z.string()),
-    concepts: z.array(z.string()),
-    estimated_duration: z.string(), // e.g., "30-45 minutes"
-    difficulty: z.enum(['easy', 'medium', 'hard']),
+    
+    // Phase 0 specific fields (using platform instead of system for consistency)
+    platform: z.string().optional(), // For Phase 0 lessons
+    phase: z.number().min(0).max(8).optional(), // For Phase 0 lessons
+    tier: z.number().min(1).max(16).optional(), // For Phase 0 lessons  
+    lesson: z.number().min(1).max(32).optional(), // For Phase 0 lessons
+    
+    description: z.string().optional(), // Optional for Phase 0 format
+    learning_objectives: z.array(z.string()).optional(),
+    concepts: z.array(z.string()).optional(),
+    estimated_duration: z.string().optional(), // e.g., "30-45 minutes"
+    difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
     prerequisites: z.array(z.string()).optional(),
-    code_examples: z.boolean().default(false),
-    practical_exercise: z.boolean().default(false),
+    code_examples: z.boolean().default(true), // Default true for Phase 0
+    practical_exercise: z.boolean().default(true), // Default true for Phase 0
     related_lessons: z.array(z.string()).optional(), // References to other lesson slugs
     external_resources: z.array(z.object({
       title: z.string(),
       url: z.string(),
       type: z.enum(['documentation', 'video', 'article', 'tool']),
     })).optional(),
+    
+    // Phase 0 lesson structure
+    programs: z.array(z.object({
+      number: z.number(),
+      title: z.string(),
+      code: z.string(),
+      explanation: z.string(),
+      language: z.enum(['basic', 'asm', 'forth', 'amos']).default('basic'),
+    })).optional(),
+    
+    challenges: z.array(z.string()).optional(),
+    common_problems: z.array(z.object({
+      problem: z.string(),
+      solution: z.string(),
+    })).optional(),
+    
+    fun_fact: z.string().optional(),
+    next_lesson_preview: z.string().optional(),
+    download_links: z.array(z.object({
+      name: z.string(),
+      url: z.string(),
+      type: z.enum(['bas', 'asm', 'prg', 'tap', 'disk', 'rom']),
+    })).optional(),
+    
     order: z.number(),
   }),
 });
