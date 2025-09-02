@@ -1,0 +1,332 @@
+---
+title: "Smooth Linear Interpolation"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 9
+description: "Add smooth movement between grid positions using linear interpolation"
+learning_objectives:
+  - "Implement linear interpolation for smooth movement"
+  - "Create movement state machine (IDLE/MOVING)"
+  - "Handle MSB transitions during interpolation"
+  - "Experience professional movement feel"
+concepts:
+  - "Linear interpolation - gradual value transitions"
+  - "State machines - managing movement phases"
+  - "Position buffering - current vs target tracking"
+  - "MSB-aware interpolation - smooth 256-boundary crossing"
+estimated_duration: "30-45 minutes"
+difficulty: "moderate"
+prerequisites:
+  - "Lesson 8: Complete Patrol System"
+code_examples: true
+practical_exercise: true
+order: 9
+---
+
+# Smooth Linear Interpolation
+**"My sprite glides smoothly between positions!"**
+
+Welcome to professional movement! In this lesson, you'll transform your Grid Protocol system from instant snapping to smooth, graceful movement. Watch as your sprite glides seamlessly from cell to cell.
+
+## What You'll Build
+
+**"Smooth as silk - no more teleportation!"**
+
+By the end of this lesson, your sprite will slide smoothly between grid positions at 2 pixels per frame. The movement will feel responsive yet controlled, with proper handling of the tricky 256-pixel boundary.
+
+## Why Interpolation Matters
+
+**"This is the difference between amateur and professional!"**
+
+Linear interpolation provides:
+- **Visual smoothness** - No jarring position changes
+- **Professional feel** - Games feel polished and complete
+- **Better feedback** - Players can track movement easily
+- **Modern standards** - Expected in quality games
+
+## Understanding Linear Interpolation
+
+Before we code, let's understand the concept:
+
+### The Problem with Instant Movement
+```
+Frame 1: Sprite at grid 3 (pixel 106)
+Frame 2: Sprite at grid 4 (pixel 132)
+Result: 26-pixel jump - jarring!
+```
+
+### The Interpolation Solution
+```
+Frame 1: Sprite at pixel 106 (start)
+Frame 2: Sprite at pixel 108 (+2)
+Frame 3: Sprite at pixel 110 (+2)
+...13 frames later...
+Frame 14: Sprite at pixel 132 (complete)
+Result: Smooth glide across 26 pixels
+```
+
+## Building the Interpolation System
+
+Let's add smooth movement to our Grid Protocol!
+
+### Step 1: Movement State Machine
+**"Track whether we're moving or ready for input!"**
+
+```assembly
+; Movement states
+STATE_IDLE = 0         ; Ready for new input
+STATE_MOVING = 1       ; Currently interpolating
+
+movement_state: !byte 0
+interp_step:    !byte 0
+```
+
+**Key Point**: Only accept new movement when IDLE!
+
+### Step 2: Separate Position Tracking
+**"Current position vs where we're going!"**
+
+```assembly
+; Grid positions
+grid_x:         !byte 6
+grid_y:         !byte 4
+target_grid_x:  !byte 6
+target_grid_y:  !byte 4
+
+; Pixel positions (target)
+pixel_x:        !byte 0
+pixel_x_msb:    !byte 0
+pixel_y:        !byte 0
+
+; Current interpolated positions
+current_x:      !byte 0
+current_x_msb:  !byte 0
+current_y:      !byte 0
+```
+
+**Key Point**: Three levels of position tracking!
+
+### Step 3: MSB-Aware Interpolation
+**"Handle the 256-pixel boundary correctly!"**
+
+```assembly
+interpolate_position:
+        ; Check if MSBs are different
+        lda current_x_msb
+        cmp pixel_x_msb
+        beq same_msb_x
+        
+        ; Different MSB - handle boundary
+        bcc move_right_with_msb
+        
+        ; Moving left across boundary (MSB 1->0)
+        lda current_x
+        sec
+        sbc #INTERP_SPEED
+        sta current_x
+        bcs done
+        lda #0
+        sta current_x_msb
+        jmp done
+        
+move_right_with_msb:
+        ; Moving right across boundary (MSB 0->1)
+        lda current_x
+        clc
+        adc #INTERP_SPEED
+        sta current_x
+        bcc done
+        lda #1
+        sta current_x_msb
+```
+
+**Key Point**: Check MSB first to detect boundary crossings!
+
+### Step 4: Process Movement Requests
+**"Only start new movement when idle!"**
+
+```assembly
+process_movement:
+        ; Only process if idle
+        lda movement_state
+        cmp #STATE_IDLE
+        bne movement_done
+        
+        ; Check for input and set target
+        lda joystick_state
+        and #$01              ; Up?
+        bne check_down
+        dec target_grid_y
+        jmp start_interpolation
+        
+start_interpolation:
+        ; Begin movement
+        lda #STATE_MOVING
+        sta movement_state
+        
+        ; Update grid position
+        lda target_grid_x
+        sta grid_x
+        lda target_grid_y
+        sta grid_y
+        
+        ; Calculate pixel target
+        jsr grid_to_pixels
+```
+
+**Key Point**: Set state to MOVING to block new input!
+
+### Step 5: Completion Detection
+**"Know when we've arrived!"**
+
+```assembly
+check_complete:
+        ; Check MSB first
+        lda current_x_msb
+        cmp pixel_x_msb
+        bne not_complete
+        
+        ; Check X position
+        lda current_x
+        cmp pixel_x
+        bne not_complete
+        
+        ; Check Y position
+        lda current_y
+        cmp pixel_y
+        bne not_complete
+        
+        ; Movement complete!
+        lda #STATE_IDLE
+        sta movement_state
+```
+
+**Key Point**: Must check MSB for proper completion!
+
+## Create Your Smooth Movement
+
+Build and experience the difference!
+
+### Build Your Interpolated Movement
+
+1. **Create the program**: All code is in `grid-protocol-09.asm`
+2. **Build it**: Run `make clean && make all`
+3. **Experience smoothness**: Execute `make run`
+
+### Expected Results
+
+When you run this program, you'll see:
+- **Smooth gliding**: Sprite slides between grid cells
+- **No input lag**: Instant response when idle
+- **Queued movement**: Can't interrupt mid-movement
+- **Visual indicator**: Asterisk (*) shows when moving
+- **Seamless boundaries**: Smooth crossing at pixel 256
+
+## Understanding the Smoothness
+
+### Interpolation Speed
+At 2 pixels per frame:
+- **Short moves**: 13 frames for adjacent cells (26 pixels)
+- **Long moves**: Up to 128 frames for full width
+- **50 FPS**: Smooth motion at PAL refresh rate
+
+### The MSB Challenge Solved
+Moving from grid 8 to 9:
+- **Grid 8**: X = 236, MSB = 0 (actual: 236)
+- **Grid 9**: X = 6, MSB = 1 (actual: 262)
+- **Solution**: Detect MSB difference, interpolate right to 262
+
+Without MSB awareness, sprite would move LEFT from 236 to 6!
+
+## Make It Even Better
+
+Ready to enhance the interpolation?
+
+### Challenge 1: Variable Speed
+**Goal**: "Faster or slower movement!"
+
+Add speed control:
+```assembly
+INTERP_SPEED_SLOW = 1
+INTERP_SPEED_NORMAL = 2
+INTERP_SPEED_FAST = 4
+```
+
+### Challenge 2: Easing Functions
+**Goal**: "Acceleration and deceleration!"
+
+Instead of linear speed:
+```assembly
+; Start slow, speed up, slow down
+; Creates more natural movement
+```
+
+### Challenge 3: Diagonal Interpolation
+**Goal**: "True diagonal paths!"
+
+Allow diagonal movement:
+```assembly
+; Interpolate both X and Y simultaneously
+; Creates 45-degree paths
+```
+
+## What You've Achieved
+
+🎉 **Well Done!** You've added professional polish to movement!
+
+### What You Built
+- ✨ **Linear interpolation** - Smooth position transitions
+- ✨ **State machine** - Proper movement phase management
+- ✨ **MSB handling** - Seamless 256-boundary crossing
+- ✨ **Visual feedback** - Movement state indicator
+- ✨ **Professional feel** - No more amateur snapping
+
+### Your Programming Progress
+You've implemented the same smoothing technique used in professional games. This interpolation system is fundamental to creating polished, commercial-quality movement.
+
+### Historical Context
+This interpolation technique is similar to:
+- **Arcade games** - Smooth sprite movement
+- **Console ports** - Fluid character control
+- **Modern games** - Still use interpolation for smoothness
+
+## What's Next?
+
+**"Ready to make your sprite come alive with animation?"**
+
+In Lesson 10, you'll add sprite animation frames. Your sprite will cycle through different patterns while moving, creating the illusion of walking or running. Combined with interpolation, this creates truly professional character movement!
+
+### Coming Up
+- Multiple sprite frames for animation
+- Frame cycling during movement
+- Idle vs moving animation states
+- Direction-specific animations
+
+**Ready to animate your sprite?** Let's bring it to life!
+
+---
+
+## Technical Reference
+
+### Movement States
+- **STATE_IDLE (0)**: Ready for input
+- **STATE_MOVING (1)**: Currently interpolating
+
+### Interpolation Settings
+- **INTERP_SPEED**: 2 pixels per frame
+- **Frame rate**: 50 FPS (PAL)
+
+### Position Variables
+- **grid_x/y**: Current grid position
+- **target_grid_x/y**: Destination grid position
+- **pixel_x/y**: Target pixel position
+- **current_x/y**: Interpolated pixel position
+- **x_msb variables**: Handle positions > 255
+
+### MSB Boundary
+- **Positions 0-8**: MSB = 0 (pixels 28-236)
+- **Positions 9-11**: MSB = 1 (pixels 262-314)
+- **Boundary**: Between positions 8 and 9
+
+This smooth movement system transforms your Grid Protocol from functional to professional!
