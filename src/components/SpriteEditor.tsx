@@ -133,20 +133,20 @@ export default function SpriteEditor({
   const exportData = getExportData();
   
   return (
-    <div className="sprite-editor bg-gray-900 p-4 rounded-lg">
+    <div className="sprite-editor bg-slate-900 p-4 rounded-lg">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-white text-lg font-bold">Sprite Editor</h3>
         <div className="flex gap-2">
           <button
             onClick={() => setShowGrid(!showGrid)}
-            className="px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs hover:bg-gray-600"
+            className="px-2 py-1 bg-slate-700 text-slate-300 rounded text-xs hover:bg-slate-600"
           >
             Grid {showGrid ? 'ON' : 'OFF'}
           </button>
           <select
             value={scale}
             onChange={(e) => setScale(Number(e.target.value))}
-            className="px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs"
+            className="px-2 py-1 bg-slate-700 text-slate-300 rounded text-xs"
           >
             <option value="1">1x</option>
             <option value="2">2x</option>
@@ -158,14 +158,14 @@ export default function SpriteEditor({
       
       {/* Color Palette */}
       <div className="color-palette mb-4">
-        <div className="text-gray-400 text-xs mb-2">Colors</div>
+        <div className="text-slate-400 text-xs mb-2">Colors</div>
         <div className="flex flex-wrap gap-1">
           {platformColors.slice(0, multicolor ? 4 : 2).map((color, i) => (
             <button
               key={i}
               onClick={() => setCurrentColor(i)}
               className={`w-8 h-8 rounded border-2 ${
-                currentColor === i ? 'border-white' : 'border-gray-600'
+                currentColor === i ? 'border-white' : 'border-slate-600'
               }`}
               style={{ backgroundColor: color }}
               title={`Color ${i}`}
@@ -177,7 +177,7 @@ export default function SpriteEditor({
       {/* Drawing Grid */}
       <div className="drawing-area mb-4">
         <div 
-          className="inline-block bg-gray-800 p-2 rounded"
+          className="inline-block bg-slate-800 p-2 rounded"
           onMouseLeave={() => setIsDrawing(false)}
         >
           {pixels.map((row, y) => (
@@ -185,7 +185,7 @@ export default function SpriteEditor({
               {row.map((pixel, x) => (
                 <div
                   key={`${x}-${y}`}
-                  className={`pixel ${showGrid ? 'border border-gray-700' : ''}`}
+                  className={`pixel ${showGrid ? 'border border-slate-700' : ''}`}
                   style={{
                     width: 16 * scale + 'px',
                     height: 16 * scale + 'px',
@@ -231,24 +231,24 @@ export default function SpriteEditor({
       
       {/* Data Output */}
       <div className="data-output space-y-2">
-        <div className="text-gray-400 text-xs">Sprite Data</div>
+        <div className="text-slate-400 text-xs">Sprite Data</div>
         
-        <div className="bg-gray-800 p-2 rounded">
-          <div className="text-xs text-gray-500 mb-1">Hex:</div>
+        <div className="bg-slate-800 p-2 rounded">
+          <div className="text-xs text-slate-500 mb-1">Hex:</div>
           <code className="text-xs text-green-400 font-mono break-all">
             {exportData.hex}
           </code>
         </div>
         
-        <div className="bg-gray-800 p-2 rounded">
-          <div className="text-xs text-gray-500 mb-1">BASIC:</div>
+        <div className="bg-slate-800 p-2 rounded">
+          <div className="text-xs text-slate-500 mb-1">BASIC:</div>
           <code className="text-xs text-blue-400 font-mono">
             {exportData.basic}
           </code>
         </div>
         
-        <div className="bg-gray-800 p-2 rounded">
-          <div className="text-xs text-gray-500 mb-1">Assembly:</div>
+        <div className="bg-slate-800 p-2 rounded">
+          <div className="text-xs text-slate-500 mb-1">Assembly:</div>
           <code className="text-xs text-yellow-400 font-mono">
             {exportData.assembly}
           </code>

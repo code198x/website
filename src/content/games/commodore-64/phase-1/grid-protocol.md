@@ -55,7 +55,7 @@ Learn the Grid Protocol - a basic 12×8 grid movement system that teaches VIC-II
 
 ## What You'll Learn
 
-Through building Pixel Patrol, you'll master:
+Through building Grid Protocol, you'll master:
 
 - **6502 Assembly Programming**: Complete instruction set, addressing modes, and programming techniques
 - **Hardware Sprite Control**: Direct manipulation of VIC-II sprite registers
@@ -66,13 +66,13 @@ Through building Pixel Patrol, you'll master:
 
 ## Development Progression
 
-### Foundation (Lessons 1-8)
+### Foundation (Lessons 1-10)
 - Set up C64 development environment and VIC-II basics
 - Create and display custom hardware sprites
 - Implement joystick input reading with debouncing
 - Master Grid Protocol system with MSB positioning
 
-### Smooth Movement (Lessons 9-16)
+### Smooth Movement (Lessons 11-16) - UPCOMING
 - Implement linear interpolation for smooth animation
 - Create movement state machine
 - Add sprite animation frames
@@ -111,7 +111,7 @@ Grid-based movement is a good introduction to C64 game programming because it te
 - **Timing Control**: Frame-synchronized movement and animation
 - **Collision Detection**: Simple boundary and target detection
 
-## Current Learning Features (First 8 Lessons)
+## Current Learning Features (First 10 Lessons)
 
 - **Basic Grid Movement**: Hardware sprite moves around 12×8 grid positions
 - **Boundary Detection**: Visual feedback when hitting grid edges
@@ -119,16 +119,17 @@ Grid-based movement is a good introduction to C64 game programming because it te
 - **Basic Statistics**: Time elapsed display
 - **Working Architecture**: Basic game loop structure
 - **MSB Learning**: Introduction to VIC-II 9-bit positioning
+- **Complete Basic Game Loop**: Working game architecture with statistics tracking
 
 ## Educational Value
 
-Pixel Patrol serves as your foundation for all future C64 game development. The skills you learn here—hardware sprite control, smooth animation, input handling, and game architecture—will be essential for creating more complex games throughout Phase 1.
+Grid Protocol serves as your foundation for all future C64 game development. The skills you learn here—hardware sprite control, smooth animation, input handling, and game architecture—will be essential for creating more complex games throughout Phase 1.
 
 This project establishes the core techniques used in classic C64 games while teaching modern programming practices and optimization strategies.
 
 ## Portfolio Impact
 
-By completing Pixel Patrol, you'll have:
+By completing Grid Protocol, you'll have:
 - Your first complete C64 game
 - Fundamental 6502 assembly programming concepts
 - Basic game development skills

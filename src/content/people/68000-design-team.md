@@ -164,7 +164,7 @@ The 68000's **orthogonal design** meant that most instructions could work with m
 - **Learning ease**: Regular patterns reduce complexity
 
 **Examples of Orthogonality:**
-```assembly
+```text
 MOVE.L D0, D1        ; Register to register
 MOVE.L D0, (A0)      ; Register to memory indirect
 MOVE.L D0, 100(A0)   ; Register to indexed memory

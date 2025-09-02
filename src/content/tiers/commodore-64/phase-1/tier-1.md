@@ -1,9 +1,9 @@
 ---
-title: "Pixel Patrol: Grid-Based Movement Mastery"
+title: "Grid Protocol: Grid-Based Movement Mastery"
 system: "commodore-64"
 phase_number: 1
 tier_number: 1
-description: "Learn 6502 assembly programming through creating 'Pixel Patrol' - a grid-based movement game. Master hardware sprite control, smooth interpolation, and the fundamentals of C64 game development."
+description: "Learn 6502 assembly programming through creating 'Grid Protocol' - a grid-based movement game. Master hardware sprite control, smooth interpolation, and the fundamentals of C64 game development."
 learning_objectives:
   - "Master 6502 assembly language basics through game development"
   - "Control VIC-II hardware sprites with precision positioning"
@@ -23,13 +23,13 @@ estimated_duration: "1 week (32 lessons)"
 order: 1
 ---
 
-# Tier 1: Pixel Patrol - Grid-Based Movement Mastery
+# Tier 1: Grid Protocol - Grid-Based Movement Mastery
 
-Welcome to your first C64 game development project! **Pixel Patrol** introduces you to 6502 assembly programming through creating a complete grid-based movement game. Learn hardware sprite control, smooth animation, and game architecture fundamentals.
+Welcome to your first C64 game development project! **Grid Protocol** introduces you to 6502 assembly programming through creating a complete grid-based movement game. Learn hardware sprite control, smooth animation, and game architecture fundamentals.
 
 ## What You'll Build
 
-**Pixel Patrol** - A complete grid-based movement game featuring:
+**Grid Protocol** - A complete grid-based movement game featuring:
 - Hardware sprite character with smooth movement between grid positions
 - Responsive joystick and keyboard controls
 - Target collection system with scoring
@@ -43,7 +43,7 @@ Control a sprite character that moves smoothly between grid positions on the scr
 
 ## Learning Journey (32 Lessons)
 
-### Foundation (Lessons 1-8)
+### Foundation (Lessons 1-10)
 - **Lesson 1**: C64 setup and VIC-II basics
 - **Lesson 2**: Create and display your first hardware sprite
 - **Lesson 3**: Design custom sprite graphics
@@ -52,16 +52,16 @@ Control a sprite character that moves smoothly between grid positions on the scr
 - **Lesson 6**: Move sprite between grid positions
 - **Lesson 7**: Add boundary checking and constraints
 - **Lesson 8**: Create basic game loop structure
+- **Lesson 9**: Add enhanced movement features
+- **Lesson 10**: Complete basic patrol system with statistics
 
-### Smooth Movement (Lessons 9-16)
-- **Lesson 9**: Set up movement animation framework
-- **Lesson 10**: Implement linear interpolation
-- **Lesson 11**: Create movement state machine
-- **Lesson 12**: Add sprite animation frames
-- **Lesson 13**: Design target positions and markers
-- **Lesson 14**: Create scoring system
-- **Lesson 15**: Add level progression
-- **Lesson 16**: Polish movement with easing
+### Smooth Movement (Lessons 11-16) - UPCOMING
+- **Lesson 11**: Set up movement animation framework
+- **Lesson 12**: Implement linear interpolation
+- **Lesson 13**: Create movement state machine
+- **Lesson 14**: Add sprite animation frames
+- **Lesson 15**: Design target positions and markers
+- **Lesson 16**: Create scoring system
 
 ### Visual Enhancement (Lessons 17-24)
 - **Lesson 17**: Enable multicolor sprite mode
@@ -117,7 +117,7 @@ Grid-based movement is the perfect introduction to game programming because it t
 
 ## Project Outcomes
 
-By completing Pixel Patrol, you will have:
+By completing Grid Protocol, you will have:
 - Created your first complete C64 game
 - Mastered fundamental 6502 assembly programming
 - Learned hardware sprite control and animation

@@ -51,12 +51,12 @@ export default function RegisterDisplay({ registers, previousRegisters, platform
   };
   
   return (
-    <div className="register-display bg-gray-900 p-4 rounded-lg font-mono">
+    <div className="register-display bg-slate-900 p-4 rounded-lg font-mono">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-white text-lg font-bold">CPU Registers</h3>
         <button
           onClick={() => setHighlightChanges(!highlightChanges)}
-          className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+          className="text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded hover:bg-slate-600"
         >
           {highlightChanges ? 'Highlighting ON' : 'Highlighting OFF'}
         </button>
@@ -65,42 +65,42 @@ export default function RegisterDisplay({ registers, previousRegisters, platform
       {/* Main Registers */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className={`register-box ${hasChanged('A') ? 'changed' : ''}`}>
-          <div className="text-gray-400 text-xs">A</div>
+          <div className="text-slate-400 text-xs">A</div>
           <div className="text-white text-lg">${hex8(registers.A)}</div>
-          <div className="text-gray-500 text-xs">{registers.A}</div>
+          <div className="text-slate-500 text-xs">{registers.A}</div>
         </div>
         
         <div className={`register-box ${hasChanged('X') ? 'changed' : ''}`}>
-          <div className="text-gray-400 text-xs">X</div>
+          <div className="text-slate-400 text-xs">X</div>
           <div className="text-white text-lg">${hex8(registers.X)}</div>
-          <div className="text-gray-500 text-xs">{registers.X}</div>
+          <div className="text-slate-500 text-xs">{registers.X}</div>
         </div>
         
         <div className={`register-box ${hasChanged('Y') ? 'changed' : ''}`}>
-          <div className="text-gray-400 text-xs">Y</div>
+          <div className="text-slate-400 text-xs">Y</div>
           <div className="text-white text-lg">${hex8(registers.Y)}</div>
-          <div className="text-gray-500 text-xs">{registers.Y}</div>
+          <div className="text-slate-500 text-xs">{registers.Y}</div>
         </div>
       </div>
       
       {/* Stack Pointer and Program Counter */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className={`register-box ${hasChanged('SP') ? 'changed' : ''}`}>
-          <div className="text-gray-400 text-xs">SP</div>
+          <div className="text-slate-400 text-xs">SP</div>
           <div className="text-white text-lg">${hex8(registers.SP)}</div>
-          <div className="text-gray-500 text-xs">$01{hex8(registers.SP)}</div>
+          <div className="text-slate-500 text-xs">$01{hex8(registers.SP)}</div>
         </div>
         
         <div className={`register-box ${hasChanged('PC') ? 'changed' : ''}`}>
-          <div className="text-gray-400 text-xs">PC</div>
+          <div className="text-slate-400 text-xs">PC</div>
           <div className="text-white text-lg">${hex16(registers.PC)}</div>
-          <div className="text-gray-500 text-xs">{registers.PC}</div>
+          <div className="text-slate-500 text-xs">{registers.PC}</div>
         </div>
       </div>
       
       {/* Status Flags */}
       <div className="status-flags">
-        <div className="text-gray-400 text-xs mb-2">Status Flags (P)</div>
+        <div className="text-slate-400 text-xs mb-2">Status Flags (P)</div>
         <div className="flex gap-2 mb-2">
           {['N', 'V', '-', 'B', 'D', 'I', 'Z', 'C'].map((flag, i) => {
             if (flag === '-') {
@@ -121,14 +121,14 @@ export default function RegisterDisplay({ registers, previousRegisters, platform
             );
           })}
         </div>
-        <div className="text-gray-500 text-xs">
+        <div className="text-slate-500 text-xs">
           ${hex8(getStatusByte())} = %{getStatusByte().toString(2).padStart(8, '0')}
         </div>
       </div>
       
       {/* Instruction Hint */}
-      <div className="mt-4 p-2 bg-gray-800 rounded">
-        <div className="text-xs text-gray-400">
+      <div className="mt-4 p-2 bg-slate-800 rounded">
+        <div className="text-xs text-slate-400">
           Last Instruction Effect:
         </div>
         {previousRegisters && (

@@ -24,7 +24,7 @@ import { useState } from 'react';
 
 export default function AssemblyStepThrough() {
   return (
-    <div className="assembly-step-through bg-gray-900 p-4 rounded-lg">
+    <div className="assembly-step-through bg-slate-900 p-4 rounded-lg">
       <h3 className="text-white text-lg font-bold mb-4">Assembly Step-Through</h3>
       {/* TODO(human): Implement the step-through debugger here */}
     </div>

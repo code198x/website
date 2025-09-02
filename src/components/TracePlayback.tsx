@@ -76,7 +76,7 @@ export default function TracePlayback({
   const currentPC = currentState.PC;
   
   return (
-    <div className="trace-playback bg-gray-900 p-4 rounded-lg">
+    <div className="trace-playback bg-slate-900 p-4 rounded-lg">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-white text-lg font-bold">CPU Trace Playback</h3>
         <div className="flex gap-2">
@@ -106,8 +106,8 @@ export default function TracePlayback({
         
         {/* Disassembly View */}
         <div className="disassembly">
-          <h4 className="text-gray-400 text-sm mb-2">Program</h4>
-          <div className="bg-gray-800 rounded p-2 h-64 overflow-y-auto font-mono text-xs">
+          <h4 className="text-slate-400 text-sm mb-2">Program</h4>
+          <div className="bg-slate-800 rounded p-2 h-64 overflow-y-auto font-mono text-xs">
             {disassembly.map((line, i) => {
               const addr = parseInt(line.substring(1, 5), 16);
               const isCurrentLine = addr === currentPC;
@@ -118,7 +118,7 @@ export default function TracePlayback({
                   key={i}
                   className={`py-0.5 px-1 ${
                     isCurrentLine ? 'bg-yellow-900 text-yellow-300' :
-                    hasBeenExecuted ? 'text-green-400' : 'text-gray-500'
+                    hasBeenExecuted ? 'text-green-400' : 'text-slate-500'
                   }`}
                 >
                   {isCurrentLine && '→ '}
@@ -131,10 +131,10 @@ export default function TracePlayback({
         
         {/* Trace History */}
         <div className="trace-history">
-          <h4 className="text-gray-400 text-sm mb-2">Execution Trace</h4>
-          <div className="bg-gray-800 rounded p-2 h-64 overflow-y-auto">
+          <h4 className="text-slate-400 text-sm mb-2">Execution Trace</h4>
+          <div className="bg-slate-800 rounded p-2 h-64 overflow-y-auto">
             {trace.length === 0 ? (
-              <div className="text-gray-600 text-xs">
+              <div className="text-slate-600 text-xs">
                 Press "Step" or "Play" to begin execution
               </div>
             ) : (
@@ -142,13 +142,13 @@ export default function TracePlayback({
                 <div
                   key={i}
                   className={`mb-2 p-2 rounded text-xs ${
-                    i === currentStep ? 'bg-gray-700' : ''
+                    i === currentStep ? 'bg-slate-700' : ''
                   }`}
                 >
                   <div className="text-green-400 font-mono">
                     ${entry.pc.toString(16).toUpperCase().padStart(4, '0')}: {entry.mnemonic}
                   </div>
-                  <div className="text-gray-400 mt-1">
+                  <div className="text-slate-400 mt-1">
                     A=${entry.state.A.toString(16).toUpperCase().padStart(2, '0')} 
                     X=${entry.state.X.toString(16).toUpperCase().padStart(2, '0')} 
                     Y=${entry.state.Y.toString(16).toUpperCase().padStart(2, '0')} 
@@ -170,28 +170,28 @@ export default function TracePlayback({
       </div>
       
       {/* Current State Summary */}
-      <div className="mt-4 p-3 bg-gray-800 rounded">
-        <h4 className="text-gray-400 text-sm mb-2">Current State</h4>
+      <div className="mt-4 p-3 bg-slate-800 rounded">
+        <h4 className="text-slate-400 text-sm mb-2">Current State</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-mono">
-          <div className="text-gray-300">
+          <div className="text-slate-300">
             PC: <span className="text-white">${currentState.PC.toString(16).toUpperCase().padStart(4, '0')}</span>
           </div>
-          <div className="text-gray-300">
+          <div className="text-slate-300">
             A: <span className="text-white">${currentState.A.toString(16).toUpperCase().padStart(2, '0')}</span>
           </div>
-          <div className="text-gray-300">
+          <div className="text-slate-300">
             X: <span className="text-white">${currentState.X.toString(16).toUpperCase().padStart(2, '0')}</span>
           </div>
-          <div className="text-gray-300">
+          <div className="text-slate-300">
             Y: <span className="text-white">${currentState.Y.toString(16).toUpperCase().padStart(2, '0')}</span>
           </div>
-          <div className="text-gray-300">
+          <div className="text-slate-300">
             SP: <span className="text-white">${currentState.SP.toString(16).toUpperCase().padStart(2, '0')}</span>
           </div>
-          <div className="text-gray-300">
+          <div className="text-slate-300">
             Cycles: <span className="text-white">{currentState.cycles}</span>
           </div>
-          <div className="text-gray-300">
+          <div className="text-slate-300">
             Flags: <span className="text-white">
               {currentState.N ? 'N' : '-'}
               {currentState.V ? 'V' : '-'}
@@ -199,7 +199,7 @@ export default function TracePlayback({
               {currentState.C ? 'C' : '-'}
             </span>
           </div>
-          <div className="text-gray-300">
+          <div className="text-slate-300">
             Status: <span className={currentState.halted ? 'text-red-400' : 'text-green-400'}>
               {currentState.halted ? 'HALTED' : 'RUNNING'}
             </span>

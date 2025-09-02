@@ -30,7 +30,7 @@ Phase 1 introduces you to 6502 assembly programming through creating 16 complete
 
 Each game in Phase 1 focuses on a single core programming concept:
 
-1. **Pixel Patrol** - Grid-based movement and sprite positioning
+1. **Grid Protocol** - Grid-based movement and sprite positioning
 2. **Dot Gather** - Collision detection and object collection
 3. **Meteor Dodge** - Animation and object movement
 4. **Beat Box** - Sound generation and rhythm
