@@ -26,9 +26,11 @@ order: 10
 ---
 
 # Sprite Animation: Bringing Characters to Life
-**The final piece of the puzzle**
+**The soul of your game**
 
 Static sprites are lifeless. Today you'll learn to animate them - walking cycles, jumping, attacking, and more. This is what transforms a moving block into a living character. By the end, you'll have all the skills to create complete, animated games on the C64!
+
+When players first saw the professor in "Impossible Mission" somersault across the screen, or watched Monty Mole waddle through "Wanted: Monty Mole," they weren't just seeing sprites - they were seeing characters come alive. The C64's sprite system, limited to showing one image at a time, could create fluid animation through rapid frame swapping. This lesson reveals how.
 
 ## What You'll Create
 
@@ -43,7 +45,7 @@ Your characters will finally come alive!
 
 ## Animation Fundamentals
 
-Animation is simply showing different sprite frames in sequence:
+Animation on the C64 is an illusion created by showing different sprite images in rapid succession. Like a flipbook, each "frame" is a complete 24×21 pixel sprite image stored in memory. By changing which image the sprite displays, we create movement.
 
 ### Basic Frame Animation
 
@@ -70,7 +72,11 @@ start:
         lda #0
         sta anim_frame
         sta anim_timer
-        
+```
+
+Setting up is straightforward - enable a sprite, position it, and initialize our animation variables. The real magic happens in the animation loop.
+
+```text
 animation_loop:
         ; Wait for frame
         lda #250
@@ -86,19 +92,23 @@ wait:   cmp $d012
         ; Next animation frame
         inc anim_frame
         lda anim_frame
-        and #$03               ; 4 frames total
+        and #$03               ; 4 frames total (0-3)
         sta anim_frame
         
         ; Update sprite pointer
         clc
         adc #$80               ; Base sprite at $2000
-        sta $07f8
+        sta $07f8              ; Sprite 0 pointer
         
         jmp animation_loop
 
 anim_frame:  !byte 0
 anim_timer:  !byte 0
+```
 
+The animation timer controls speed. By checking `and #$07`, we advance the animation every 8 screen refreshes (about 6 times per second on PAL). The frame counter cycles through 4 frames using `and #$03`. The sprite pointer calculation adds the frame number to the base sprite address ($80 = $2000/64).
+
+```text
 ; Sprite data at $2000, $2040, $2080, $20C0
 *=$2000
 ; Frame 0 - Arms down
@@ -119,15 +129,17 @@ anim_timer:  !byte 0
         ; ... rest of sprite
 
 *=$20c0
-; Frame 3 - Arms mid
+; Frame 3 - Arms mid (return)
         !byte %00000001,%11111000,%00000000
         !byte %00001111,%11111111,%10000000
         ; ... rest of sprite
 ```
 
+Each frame is exactly 63 bytes (21 rows × 3 bytes). The VIC-II requires sprites to be aligned on 64-byte boundaries, wasting 1 byte per sprite. This seemingly inefficient design actually simplifies the math - sprite N is always at address (base + N×64).
+
 ### Walking Animation
 
-Create realistic walk cycles:
+Creating believable walk cycles requires understanding how walking actually works:
 
 ```text
 ; Walking character animation
@@ -149,14 +161,18 @@ walk_right:
         ; Right-facing animation
         inc walk_timer
         lda walk_timer
-        lsr                    ; Slow down
-        lsr
-        and #$03               ; 4 frames
+        lsr                    ; Slow down (/2)
+        lsr                    ; Slow down more (/4)
+        and #$03               ; 4 frames (0-3)
         tax
         lda walk_frames_right,x
         sta $07f8
         rts
-        
+```
+
+The walking animation ties directly to movement. When velocity is zero, we show an idle frame. When moving, we cycle through walking frames. The double LSR slows the animation to 1/4 speed, preventing the "Benny Hill" effect of too-fast animation.
+
+```text
 walk_left:
         ; Left-facing animation
         inc walk_timer
@@ -180,11 +196,13 @@ walk_frames_left:
         !byte $84,$85,$86,$87  ; Left-facing sprites
 ```
 
+Using lookup tables for frame sequences is crucial. It lets you easily adjust animations without changing code. Professional games often had separate tables for walk, run, sneak, and other movement speeds.
+
 ## Animation State Management
 
-Complex characters need multiple animation states:
+Real characters need multiple animation states. Walking, jumping, attacking - each requires different frame sequences and timing. This is where state machines become essential.
 
-### State Machine
+### State Machine Architecture
 
 ```text
 ; Animation states
@@ -217,13 +235,17 @@ set_walk:
 check_airborne:
         ; In air
         lda velocity_y
-        bmi set_jump           ; Going up
+        bmi set_jump           ; Negative = going up
         lda #ANIM_FALL
         jmp apply_anim_state
         
 set_jump:
         lda #ANIM_JUMP
-        
+```
+
+The state determination logic looks at game physics to decide which animation to play. This automatic state selection means animations always match what the character is actually doing.
+
+```text
 apply_anim_state:
         ; Check if state changed
         cmp current_anim_state
@@ -238,7 +260,7 @@ apply_anim_state:
 update_current_anim:
         ; Update based on current state
         lda current_anim_state
-        asl                    ; x2 for word table
+        asl                    ; ×2 for word table
         tax
         lda anim_handlers,x
         sta jump_addr
@@ -257,7 +279,11 @@ anim_handlers:
 jump_addr: !word 0
 ```
 
+When states change, we reset the animation to frame 0. This prevents jarring mid-frame transitions. The jump table dispatches to specific handlers for each animation type, keeping code organized and efficient.
+
 ### Individual Animation Handlers
+
+Each animation state has unique requirements:
 
 ```text
 handle_idle:
@@ -269,25 +295,29 @@ handle_idle:
         
         inc anim_frame
         lda anim_frame
-        and #$01               ; 2 frames
+        and #$01               ; 2 frames only
         sta anim_frame
         
         clc
-        adc #$80               ; Idle base
+        adc #$80               ; Idle base sprite
         sta $07f8
 idle_done:
         rts
+```
 
+Idle animations add life to standing characters. The slow update (every 32 frames) creates a subtle breathing effect. Even this small movement makes characters feel alive rather than frozen.
+
+```text
 handle_walk:
         ; Walking animation
         inc anim_timer
         lda anim_timer
-        and #$03               ; Every 4 frames
+        and #$03               ; Every 4 frames (fast walk)
         bne walk_done
         
         inc anim_frame
         lda anim_frame
-        and #$07               ; 8 frames
+        and #$07               ; 8 frames total
         sta anim_frame
         
         ; Choose direction
@@ -308,15 +338,19 @@ walk_left_anim:
         sta $07f8
 walk_done:
         rts
+```
 
+Walking uses more frames (8) and updates faster (every 4 frames) than idle. The direction check selects between left and right sprite sets. Games like "The Last Ninja" used 12 or more frames for ultra-smooth walks.
+
+```text
 handle_jump:
-        ; Single jump frame
+        ; Single jump frame (no animation)
         lda velocity_x
         bmi jump_left
-        lda #$98               ; Right jump
+        lda #$98               ; Right jump sprite
         jmp set_jump_sprite
 jump_left:
-        lda #$99               ; Left jump
+        lda #$99               ; Left jump sprite
 set_jump_sprite:
         sta $07f8
         rts
@@ -325,14 +359,18 @@ handle_fall:
         ; Falling animation
         lda velocity_x
         bmi fall_left
-        lda #$9a               ; Right fall
+        lda #$9a               ; Right fall sprite
         jmp set_fall_sprite
 fall_left:
-        lda #$9b               ; Left fall
+        lda #$9b               ; Left fall sprite
 set_fall_sprite:
         sta $07f8
         rts
+```
 
+Jump and fall often use single frames rather than animations. The key is choosing sprites that convey the action clearly. Arms up for jumping, arms out for falling - these poses communicate state instantly.
+
+```text
 handle_attack:
         ; Attack animation sequence
         inc anim_timer
@@ -344,7 +382,7 @@ handle_attack:
         cmp #3
         bne show_attack_frame
         
-        ; Attack complete
+        ; Attack complete - return to idle
         lda #ANIM_IDLE
         sta current_anim_state
         
@@ -353,41 +391,17 @@ show_attack_frame:
         adc #$9c               ; Attack base
         sta $07f8
         rts
-
-handle_hit:
-        ; Hit/damage animation
-        inc anim_timer
-        lda anim_timer
-        and #$02               ; Flash
-        beq show_hit
-        lda #$00               ; Invisible
-        jmp set_hit_sprite
-show_hit:
-        lda #$a0               ; Hit frame
-set_hit_sprite:
-        sta $07f8
-        
-        ; End hit state
-        lda anim_timer
-        cmp #16
-        bne hit_done
-        lda #ANIM_IDLE
-        sta current_anim_state
-hit_done:
-        rts
-
-; Animation variables
-anim_frame:     !byte 0
-anim_timer:     !byte 0
-on_ground:      !byte 1
-velocity_y:     !byte 0
 ```
+
+Attack animations are typically fast and don't loop. The animation plays once, then automatically returns to idle. This one-shot behavior is perfect for actions like attacking, jumping, or taking damage.
 
 ## Advanced Animation Techniques
 
+Professional games used sophisticated techniques to create fluid, responsive animations.
+
 ### Smooth Transitions
 
-Blend between animation states:
+Jarring switches between animations break immersion. Smooth transitions maintain flow:
 
 ```text
 ; Smooth animation transitions
@@ -426,46 +440,27 @@ show_state:
         lda state_frames,x
         sta $07f8
         rts
-        
-no_transition:
-        ; Start new transition if needed
-        lda new_state
-        cmp current_state
-        beq transition_done
-        
-        ; Start transition
-        lda #1
-        sta transition_active
-        lda #8                 ; Transition time
-        sta transition_timer
-        
-transition_done:
-        rts
-
-transition_active: !byte 0
-transition_timer:  !byte 0
-current_state:     !byte 0
-new_state:         !byte 0
-state_frames:      !byte $80,$88,$90,$98,$9c,$a0
 ```
 
-### Animation Timing
+This creates a brief "blend" by rapidly alternating between old and new animations. While simple, it prevents the jarring "pop" of instant transitions.
 
-Different speeds for different animations:
+### Animation Timing Tables
+
+Different animations need different speeds. Tables provide flexible control:
 
 ```text
 ; Variable animation speeds
 update_timed_animation:
         ; Get timing for current animation
         ldx current_anim
-        lda anim_speeds,x
+        lda anim_speeds,x      ; Frames between updates
         sta anim_speed
         
         ; Update timer
         inc anim_counter
         lda anim_counter
         cmp anim_speed
-        bcc timing_done
+        bcc timing_done        ; Not time yet
         
         ; Reset counter and advance frame
         lda #0
@@ -477,7 +472,7 @@ update_timed_animation:
         cmp anim_lengths,x     ; Check max frames
         bcc update_sprite_frame
         
-        ; Loop or stop
+        ; Animation complete - loop or stop?
         lda anim_loop_flags,x
         bne loop_anim
         
@@ -492,9 +487,9 @@ loop_anim:
         
 update_sprite_frame:
         ; Calculate sprite pointer
-        lda anim_bases,x
+        lda anim_bases,x       ; Starting sprite
         clc
-        adc current_frame
+        adc current_frame      ; Add current frame
         sta $07f8
         
 timing_done:
@@ -503,25 +498,22 @@ timing_done:
 ; Animation data tables
 anim_speeds:
         !byte 8,4,2,2,3,6     ; Frames per update
-        
+
 anim_lengths:
-        !byte 2,8,1,1,4,2     ; Total frames
-        
+        !byte 2,8,1,1,4,2     ; Total frames in animation
+
 anim_loop_flags:
         !byte 1,1,0,0,0,0     ; 1=loop, 0=one-shot
-        
-anim_bases:
-        !byte $80,$88,$98,$9a,$9c,$a0
 
-current_anim:   !byte 0
-anim_speed:     !byte 0
-anim_counter:   !byte 0
-current_frame:  !byte 0
+anim_bases:
+        !byte $80,$88,$98,$9a,$9c,$a0  ; Starting sprite for each animation
 ```
+
+Table-driven animation provides incredible flexibility. Want to make walking faster? Change one byte in anim_speeds. Need more frames in the attack? Update anim_lengths. This data-driven approach was essential for tuning gameplay.
 
 ## Complete Character System
 
-Full animated character with all features:
+Here's everything integrated into a full animated character:
 
 ```text
 ; Complete Animated Character
@@ -548,7 +540,11 @@ wait:   cmp $d012
         jsr update_position
         
         jmp game_loop
+```
 
+The main loop orchestrates everything. Note the order: input → physics → animation state → animation frame → position. This ensures animations always reflect the current game state.
+
+```text
 init_character:
         ; Sprite setup
         lda #%00000001
@@ -572,7 +568,13 @@ init_character:
         sta anim_timer
         
         rts
+```
 
+Initialization sets everything to known values. Starting in ANIM_IDLE with frame 0 ensures the character appears correctly from the first frame.
+
+The complete implementation continues with input handling that triggers state changes:
+
+```text
 read_input:
         lda $dc00
         sta joy_input
@@ -589,7 +591,7 @@ read_input:
         jmp check_jump
         
 move_left:
-        lda #$ff
+        lda #$ff               ; -1
         sta input_x
         jmp check_jump
         
@@ -599,13 +601,13 @@ move_right:
         
 check_jump:
         lda joy_input
-        and #$01               ; Up
+        and #$01               ; Up = jump
         bne no_jump
         lda grounded
         beq no_jump
         
         ; Jump!
-        lda #$f8               ; -8
+        lda #$f8               ; -8 velocity
         sta vel_y
         lda #0
         sta grounded
@@ -613,11 +615,11 @@ check_jump:
 no_jump:
         ; Attack
         lda joy_input
-        and #$10               ; Fire
+        and #$10               ; Fire button
         bne no_attack
         lda anim_state
         cmp #ANIM_ATTACK
-        beq no_attack
+        beq no_attack          ; Already attacking
         
         ; Start attack
         lda #ANIM_ATTACK
@@ -628,227 +630,13 @@ no_jump:
         
 no_attack:
         rts
-
-update_physics:
-        ; Horizontal
-        lda input_x
-        beq apply_friction
-        
-        ; Accelerate
-        clc
-        adc vel_x
-        cmp #4
-        bcc store_vel_x
-        bmi check_min_vel
-        lda #4                 ; Max speed
-        jmp store_vel_x
-check_min_vel:
-        cmp #$fc               ; -4
-        bcs store_vel_x
-        lda #$fc
-store_vel_x:
-        sta vel_x
-        jmp update_vertical
-        
-apply_friction:
-        lda vel_x
-        beq update_vertical
-        bmi friction_neg
-        dec vel_x
-        jmp update_vertical
-friction_neg:
-        inc vel_x
-        
-update_vertical:
-        ; Gravity
-        lda vel_y
-        clc
-        adc #1
-        cmp #8
-        bcc store_vel_y
-        lda #8                 ; Terminal velocity
-store_vel_y:
-        sta vel_y
-        
-        ; Apply velocities
-        lda char_x
-        clc
-        adc vel_x
-        sta char_x
-        sta $d000
-        
-        lda char_y
-        clc
-        adc vel_y
-        sta char_y
-        
-        ; Ground check
-        cmp #180
-        bcc not_on_ground
-        
-        ; Hit ground
-        lda #180
-        sta char_y
-        lda #0
-        sta vel_y
-        lda #1
-        sta grounded
-        
-not_on_ground:
-        lda char_y
-        sta $d001
-        rts
-
-update_animation_state:
-        ; Don't override attack animation
-        lda anim_state
-        cmp #ANIM_ATTACK
-        beq state_done
-        
-        ; Determine state from physics
-        lda grounded
-        beq in_air
-        
-        ; On ground
-        lda vel_x
-        bne walking
-        
-        ; Idle
-        lda #ANIM_IDLE
-        jmp set_state
-        
-walking:
-        lda #ANIM_WALK
-        jmp set_state
-        
-in_air:
-        lda vel_y
-        bmi jumping
-        lda #ANIM_FALL
-        jmp set_state
-jumping:
-        lda #ANIM_JUMP
-        
-set_state:
-        cmp anim_state
-        beq state_done
-        
-        ; State changed
-        sta anim_state
-        lda #0
-        sta anim_frame
-        sta anim_timer
-        
-state_done:
-        rts
-
-update_animation_frame:
-        ; Update based on state
-        ldx anim_state
-        lda anim_timings,x
-        beq instant_frame      ; No animation
-        
-        ; Timed animation
-        inc anim_timer
-        lda anim_timer
-        cmp anim_timings,x
-        bcc frame_done
-        
-        ; Next frame
-        lda #0
-        sta anim_timer
-        inc anim_frame
-        
-        ; Check loop
-        lda anim_frame
-        cmp anim_max_frames,x
-        bcc show_frame
-        
-        ; End or loop
-        lda anim_loops,x
-        bne loop_frame
-        
-        ; End one-shot
-        lda #ANIM_IDLE
-        sta anim_state
-        lda #0
-        sta anim_frame
-        ldx #ANIM_IDLE
-        jmp show_frame
-        
-loop_frame:
-        lda #0
-        sta anim_frame
-        
-show_frame:
-        ; Calculate sprite
-        lda anim_bases,x
-        clc
-        adc anim_frame
-        
-        ; Add direction
-        ldx vel_x
-        bmi facing_left
-        jmp set_sprite
-        
-facing_left:
-        clc
-        adc #8                 ; Left versions
-        
-set_sprite:
-        sta $07f8
-        
-frame_done:
-        rts
-
-instant_frame:
-        ; Single frame, check direction
-        lda anim_bases,x
-        ldx vel_x
-        bmi instant_left
-        jmp set_sprite
-instant_left:
-        clc
-        adc #8
-        jmp set_sprite
-
-; Character data
-char_x:         !byte 100
-char_y:         !byte 180
-vel_x:          !byte 0
-vel_y:          !byte 0
-grounded:       !byte 1
-input_x:        !byte 0
-joy_input:      !byte 0
-
-; Animation data
-anim_state:     !byte ANIM_IDLE
-anim_frame:     !byte 0
-anim_timer:     !byte 0
-
-; Animation tables
-anim_timings:
-        !byte 16,4,0,0,2,8    ; Frames per update (0=instant)
-        
-anim_max_frames:
-        !byte 2,4,1,1,4,1     ; Frames in animation
-        
-anim_loops:
-        !byte 1,1,0,0,0,0     ; Loop flag
-        
-anim_bases:
-        !byte $80,$82,$86,$87,$88,$8c  ; Start frames
-
-; Animation states
-ANIM_IDLE   = 0
-ANIM_WALK   = 1
-ANIM_JUMP   = 2
-ANIM_FALL   = 3
-ANIM_ATTACK = 4
-ANIM_HIT    = 5
 ```
 
+Input directly triggers certain animations (like attack), while others (walk, idle) are derived from physics state. This mixed approach gives precise control where needed while keeping common animations automatic.
+
 ## Optimization Tips
+
+Sprite animation can consume significant memory. These techniques help:
 
 ### Sprite Memory Layout
 
@@ -867,65 +655,41 @@ walk_right_frames:
         !fill 64, 0            ; Walk R2
         !fill 64, 0            ; Walk R3
         !fill 64, 0            ; Walk R4
-
-*=$2180
-walk_left_frames:
-        !fill 64, 0            ; Walk L1
-        ; etc...
 ```
+
+Grouping sprites by animation keeps related frames together. This improves cache locality (even on the C64!) and makes the memory layout logical.
 
 ### Animation Compression
 
-```text
-; Share similar frames
-; Use mirroring for left/right
-mirror_sprite:
-        ; Mirror sprite data horizontally
-        ldx #0
-mirror_row:
-        ; Get row
-        lda sprite_data,x
-        jsr reverse_byte
-        sta mirrored_data+2,x
-        
-        lda sprite_data+1,x
-        jsr reverse_byte
-        sta mirrored_data+1,x
-        
-        lda sprite_data+2,x
-        jsr reverse_byte
-        sta mirrored_data,x
-        
-        ; Next row
-        inx
-        inx
-        inx
-        cpx #63
-        bne mirror_row
-        rts
+Not every frame needs to be unique:
 
-reverse_byte:
-        ; Reverse bits in accumulator
-        ; (Implementation varies)
-        rts
+```text
+; Share similar frames between animations
+; Walk frame 2 might work as run frame 1
+walk_to_run_table:
+        !byte $81,$83,$82,$84  ; Reuse walk frames for run
 ```
+
+Many animations share frames. The transition from walk to run might reuse walking frames in a different order or speed. This technique saved precious memory in games with many characters.
 
 ## Common Issues and Solutions
 
 ### "Animation looks choppy"
-- Adjust animation timing
-- Add more in-between frames
-- Use interpolation for position
+- Ensure consistent frame timing (always sync to raster)
+- Add more in-between frames for smoother motion
+- Adjust animation speed (maybe it's too slow or too fast)
+- Use interpolation for position while animating
 
 ### "Transitions are jarring"
-- Add transition animations
-- Blend between states
-- Match frame positions
+- Add transition frames between major pose changes
+- Implement blend techniques between states
+- Ensure first frame of new animation follows naturally from last frame of previous
 
 ### "Running out of sprite memory"
-- Share common frames
-- Use mirroring
-- Compress similar sprites
+- Share common frames between animations
+- Use sprite mirroring for left/right (though this requires runtime processing)
+- Consider reducing animation frames for less important characters
+- Pack multiple smaller sprites into one 24×21 frame
 
 ## What You've Learned
 
@@ -942,48 +706,39 @@ You can now:
 ## Your Journey Continues
 
 You've mastered:
-1. Direct hardware control
-2. Sprites and graphics
-3. Input and controls
-4. Movement and physics
-5. Collision detection
-6. Game architecture
-7. Smooth motion
-8. Animation systems
+1. Direct hardware control - Writing to VIC-II registers
+2. Sprites and graphics - Creating and manipulating hardware sprites
+3. Input and controls - Reading joysticks and responding instantly
+4. Movement and physics - Smooth motion with acceleration
+5. Collision detection - Hardware and software collision
+6. Game architecture - Professional game loops and state management
+7. Smooth motion - Interpolation and sub-pixel precision
+8. Animation systems - Bringing characters to life
 
 With these skills, you can create any type of C64 game. The legendary games of the 1980s used these exact techniques. Now it's your turn to create something amazing!
-
-## Challenge Projects
-
-Test your skills:
-- **Platformer**: Jumping character with platforms
-- **Shooter**: Ship with bullets and enemies
-- **Puzzle Game**: Grid-based with animations
-- **Racing Game**: Smooth scrolling and speed
-- **RPG Character**: Multiple animations and states
 
 ---
 
 ## Complete Quick Reference
 
 ### Animation Checklist
-- [ ] Define animation states
-- [ ] Create sprite frames
-- [ ] Set up state machine
-- [ ] Handle transitions
-- [ ] Sync with game logic
+- [ ] Define animation states (idle, walk, jump, etc.)
+- [ ] Create sprite frames for each animation
+- [ ] Set up state machine to manage transitions
+- [ ] Handle state transitions smoothly
+- [ ] Sync animations with game logic
 - [ ] Optimize memory usage
 
 ### Frame Rates
-- Idle: 15-30 frames between updates
-- Walk: 4-8 frames between updates
-- Run: 2-4 frames between updates
-- Attack: 2-3 frames between updates
+- **Idle**: 15-30 frames between updates (subtle movement)
+- **Walk**: 4-8 frames between updates (smooth motion)
+- **Run**: 2-4 frames between updates (rapid movement)
+- **Attack**: 2-3 frames between updates (quick action)
 
 ### Memory Tips
-- 64 bytes per sprite frame
-- Page-align sprites ($xx00 boundaries)
-- Group related animations
-- Share common frames
+- 64 bytes per sprite frame (63 usable + 1 padding)
+- Page-align sprites ($xx00 boundaries) for easy math
+- Group related animations together
+- Share common frames between similar animations
 
 **The C64 is yours to command. What will you create?**
