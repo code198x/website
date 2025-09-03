@@ -209,7 +209,7 @@ The dev container includes these helpful extensions:
 
 - **Discord**: [Code Like It's 198x Community](https://discord.gg/code198x)
 - **GitHub Issues**: [Report bugs and request features](https://github.com/code198x/website/issues)
-- **Documentation**: [Full lesson documentation](https://www.codelikeits198x.com/docs)
+- **Website**: [Lessons and learning materials](https://code198x.stevehill.xyz/lessons)
 
 ## Contributing
 

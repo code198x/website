@@ -1,0 +1,618 @@
+---
+title: "Grid-Based Movement: Tile Perfect Control"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 5
+description: "Implement grid-based movement systems for puzzle games, RPGs, and strategy games"
+learning_objectives:
+  - "Create tile-based movement systems"
+  - "Implement grid coordinate calculations"
+  - "Handle sprite positioning on a grid"
+  - "Build foundation for tile-based games"
+concepts:
+  - "Grid coordinate systems"
+  - "Tile-based movement logic"
+  - "Lookup tables for positioning"
+  - "Screen-to-grid coordinate mapping"
+estimated_duration: "30-45 minutes"
+difficulty: "easy"
+prerequisites:
+  - "Lesson 4: Movement Patterns"
+code_examples: true
+practical_exercise: true
+order: 5
+---
+
+# Grid-Based Movement: Tile Perfect Control
+**Perfect for puzzle games, RPGs, and strategy games**
+
+Many classic C64 games use grid-based movement - think Boulder Dash, Sokoban, or chess. Today you'll learn to constrain sprite movement to a grid, making precise tile-based games possible. This is the foundation for puzzle games, turn-based strategy, and tile-based adventures.
+
+## What You'll Build
+
+A complete grid movement system with:
+- Clean snap-to-grid movement
+- Smooth transitions between tiles
+- Grid coordinate to screen position conversion
+- Foundation for tile-based game logic
+
+## Understanding Grid Systems
+
+The C64 screen can be divided into grids of various sizes. Common choices:
+- **8×8 tiles**: 40×25 character grid (matches screen characters)
+- **16×16 tiles**: 20×12 grid (good for detailed graphics)
+- **24×21 tiles**: 13×11 grid (matches sprite size)
+
+### Why Use Grids?
+
+Grid-based movement provides:
+- **Precise positioning** - Perfect alignment with background tiles
+- **Simple collision** - Check grid coordinates, not pixels
+- **Clean logic** - Game rules based on grid positions
+- **Memory efficient** - Store level as grid array
+
+## Basic Grid Movement
+
+Let's create a 16×16 pixel grid system (20×12 tiles):
+
+### Step 1: Grid Setup
+
+```text
+*=$0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+*=$080d
+start:
+        ; Initialize
+        lda #$00
+        sta $d020              ; Black border
+        lda #$0b               ; Dark gray background
+        sta $d021
+        
+        ; Setup sprite
+        lda #$80
+        sta $07f8              ; Sprite pointer
+        lda #%00000001
+        sta $d015              ; Enable sprite 0
+        lda #$01               ; White sprite
+        sta $d027
+        
+        ; Initial grid position (5, 5)
+        lda #5
+        sta grid_x
+        sta grid_y
+        
+        ; Convert to screen position
+        jsr grid_to_screen
+        
+main_loop:
+        ; Wait for input
+        lda #250
+wait:   cmp $d012
+        bne wait
+        
+        ; Read joystick
+        lda $dc00
+        sta joy_state
+        
+        ; Handle input with delay
+        dec input_delay
+        bne main_loop
+        lda #10                ; Reset delay
+        sta input_delay
+        
+        ; Check directions
+        jsr check_grid_input
+        jsr grid_to_screen
+        
+        jmp main_loop
+
+; Data
+grid_x:         !byte 5
+grid_y:         !byte 5
+joy_state:      !byte 0
+input_delay:    !byte 10
+```
+
+### Step 2: Grid to Screen Conversion
+
+Convert grid coordinates to pixel positions:
+
+```text
+grid_to_screen:
+        ; X position = grid_x * 16 + 24 (border offset)
+        lda grid_x
+        asl                    ; * 2
+        asl                    ; * 4
+        asl                    ; * 8
+        asl                    ; * 16
+        clc
+        adc #24                ; Add border offset
+        sta $d000              ; Sprite X position
+        
+        ; Handle X MSB if needed
+        lda #0
+        sta $d010              ; Clear MSB initially
+        lda $d000
+        bmi set_msb            ; If negative (>255)
+        jmp calc_y
+set_msb:
+        lda #%00000001
+        sta $d010              ; Set sprite 0 MSB
+        
+calc_y:
+        ; Y position = grid_y * 16 + 50 (top offset)
+        lda grid_y
+        asl                    ; * 2
+        asl                    ; * 4
+        asl                    ; * 8
+        asl                    ; * 16
+        clc
+        adc #50                ; Add top offset
+        sta $d001              ; Sprite Y position
+        
+        rts
+```
+
+### Step 3: Grid Input Handling
+
+Move one tile at a time:
+
+```text
+check_grid_input:
+        ; Check UP
+        lda joy_state
+        lsr
+        bcs no_up
+        lda grid_y
+        beq no_up              ; Already at top
+        dec grid_y
+no_up:
+        ; Check DOWN
+        lsr
+        bcs no_down
+        lda grid_y
+        cmp #11                ; Bottom of 12-high grid
+        beq no_down
+        inc grid_y
+no_down:
+        ; Check LEFT
+        lsr
+        bcs no_left
+        lda grid_x
+        beq no_left            ; Already at left
+        dec grid_x
+no_left:
+        ; Check RIGHT
+        lsr
+        bcs no_right
+        lda grid_x
+        cmp #19                ; Right edge of 20-wide grid
+        beq no_right
+        inc grid_x
+no_right:
+        rts
+```
+
+## Smooth Grid Movement
+
+Instead of snapping instantly, animate between tiles:
+
+```text
+smooth_grid_movement:
+        ; Check if already moving
+        lda moving_flag
+        bne continue_move
+        
+        ; Start new move if input
+        jsr check_for_input
+        lda moving_flag
+        beq done_smooth        ; No movement
+        
+continue_move:
+        ; Interpolate position
+        lda move_progress
+        clc
+        adc #2                 ; Move 2 pixels per frame
+        sta move_progress
+        
+        cmp #16                ; Reached destination?
+        bcc interpolate
+        
+        ; Movement complete
+        lda #0
+        sta moving_flag
+        sta move_progress
+        
+        ; Update grid position
+        lda new_grid_x
+        sta grid_x
+        lda new_grid_y
+        sta grid_y
+        
+        jmp done_smooth
+        
+interpolate:
+        ; Calculate intermediate position
+        ; X = old_x + (new_x - old_x) * progress / 16
+        
+        ; For X coordinate
+        lda new_grid_x
+        sec
+        sbc grid_x             ; Delta X
+        beq no_x_move          ; No horizontal movement
+        
+        bmi move_left_smooth
+        ; Moving right
+        lda move_progress
+        jmp apply_x_move
+move_left_smooth:
+        ; Moving left
+        lda #16
+        sec
+        sbc move_progress
+        eor #$ff
+        clc
+        adc #1
+        
+apply_x_move:
+        clc
+        adc grid_x
+        asl
+        asl
+        asl
+        asl
+        clc
+        adc #24
+        sta $d000
+        
+no_x_move:
+        ; Similar for Y...
+        
+done_smooth:
+        rts
+
+; Movement data
+moving_flag:    !byte 0
+move_progress:  !byte 0
+new_grid_x:     !byte 0
+new_grid_y:     !byte 0
+```
+
+## Using Lookup Tables
+
+For faster conversion, use pre-calculated tables:
+
+```text
+; Fast grid to screen using tables
+fast_grid_to_screen:
+        ; X position from table
+        ldx grid_x
+        lda x_position_table,x
+        sta $d000
+        lda x_msb_table,x
+        sta $d010
+        
+        ; Y position from table
+        ldx grid_y
+        lda y_position_table,x
+        sta $d001
+        
+        rts
+
+; Pre-calculated position tables
+x_position_table:
+        !byte 24,40,56,72,88,104,120,136
+        !byte 152,168,184,200,216,232,248,8
+        !byte 24,40,56,72                    ; Wraps for X>255
+
+x_msb_table:
+        !byte 0,0,0,0,0,0,0,0
+        !byte 0,0,0,0,0,0,0,1
+        !byte 1,1,1,1                        ; MSB set for X>255
+
+y_position_table:
+        !byte 50,66,82,98,114,130,146,162
+        !byte 178,194,210,226
+```
+
+## Grid-Based Collision
+
+Check grid positions instead of pixels:
+
+```text
+check_grid_collision:
+        ; Check if target position is blocked
+        ldx new_grid_y
+        lda row_addresses,x
+        sta temp_ptr
+        lda row_addresses+1,x
+        sta temp_ptr+1
+        
+        ldy new_grid_x
+        lda (temp_ptr),y       ; Get tile at position
+        
+        cmp #WALL_TILE         ; Is it a wall?
+        beq blocked
+        cmp #ENEMY_TILE        ; Is it an enemy?
+        beq enemy_collision
+        
+        ; Clear - allow movement
+        lda #0
+        rts
+        
+blocked:
+        lda #1                 ; Block movement
+        rts
+        
+enemy_collision:
+        lda #2                 ; Special collision
+        rts
+
+; Constants
+WALL_TILE = 1
+ENEMY_TILE = 2
+EMPTY_TILE = 0
+
+; Level data (12 rows of 20 tiles)
+level_data:
+        !byte 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+        !byte 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+        !byte 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+        ; ... more level data
+
+row_addresses:
+        !word level_data, level_data+20, level_data+40
+        ; ... addresses for each row
+```
+
+## Complete Grid Game Example
+
+Here's a simple grid-based game:
+
+```text
+; Grid Movement Game
+; Move around, collect items, avoid enemies
+
+*=$0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+*=$080d
+start:
+        jsr init_game
+        
+game_loop:
+        ; Wait for frame
+        lda #250
+wait:   cmp $d012
+        bne wait
+        
+        ; Handle input
+        dec input_timer
+        bne skip_input
+        
+        lda #8                 ; Input delay
+        sta input_timer
+        
+        jsr read_joystick
+        jsr try_move
+        
+skip_input:
+        ; Update animations
+        jsr animate_enemies
+        jsr update_sprite
+        
+        ; Check win condition
+        lda items_collected
+        cmp #total_items
+        beq game_won
+        
+        jmp game_loop
+
+try_move:
+        ; Save current position
+        lda grid_x
+        sta old_x
+        lda grid_y
+        sta old_y
+        
+        ; Try to move based on input
+        lda $dc00
+        sta temp
+        
+        lsr temp
+        bcs no_up_move
+        dec grid_y
+no_up_move:
+        lsr temp
+        bcs no_down_move
+        inc grid_y
+no_down_move:
+        lsr temp
+        bcs no_left_move
+        dec grid_x
+no_left_move:
+        lsr temp
+        bcs no_right_move
+        inc grid_x
+no_right_move:
+        
+        ; Check boundaries
+        lda grid_x
+        bmi restore_pos
+        cmp #20
+        bcs restore_pos
+        
+        lda grid_y
+        bmi restore_pos
+        cmp #12
+        bcs restore_pos
+        
+        ; Check collision with level
+        jsr check_tile_at_position
+        cmp #WALL_TILE
+        beq restore_pos
+        
+        cmp #ITEM_TILE
+        bne not_item
+        
+        ; Collected item!
+        inc items_collected
+        jsr clear_tile
+        jsr play_collect_sound
+        
+not_item:
+        ; Valid move - update sprite
+        jsr grid_to_sprite
+        rts
+        
+restore_pos:
+        ; Invalid move - restore position
+        lda old_x
+        sta grid_x
+        lda old_y
+        sta grid_y
+        rts
+
+; Game data
+grid_x:         !byte 1
+grid_y:         !byte 1
+old_x:          !byte 0
+old_y:          !byte 0
+input_timer:    !byte 0
+items_collected: !byte 0
+total_items:    !byte 5
+temp:           !byte 0
+```
+
+## Advanced Grid Techniques
+
+### Multi-Tile Sprites
+
+Handle sprites that occupy multiple grid cells:
+
+```text
+check_2x2_collision:
+        ; Check all 4 tiles the sprite overlaps
+        ldx grid_y
+        ldy grid_x
+        jsr check_tile         ; Top-left
+        bne collision
+        
+        iny
+        jsr check_tile         ; Top-right
+        bne collision
+        
+        inx
+        ldy grid_x
+        jsr check_tile         ; Bottom-left
+        bne collision
+        
+        iny
+        jsr check_tile         ; Bottom-right
+        
+collision:
+        rts
+```
+
+### Scrolling Grids
+
+For large worlds, scroll the grid view:
+
+```text
+scroll_grid_view:
+        ; Calculate visible portion
+        lda world_x            ; World scroll position
+        lsr
+        lsr
+        lsr
+        lsr                    ; Divide by 16 for tile
+        sta view_left
+        
+        ; Draw visible tiles
+        ldx #0
+draw_row:
+        ldy #0
+draw_col:
+        ; Calculate world tile position
+        tya
+        clc
+        adc view_left
+        tax
+        
+        ; Get and draw tile
+        lda world_map,x
+        jsr draw_tile
+        
+        iny
+        cpy #20                ; Screen width in tiles
+        bne draw_col
+        
+        inx
+        cpx #12                ; Screen height in tiles
+        bne draw_row
+        
+        rts
+```
+
+## Common Issues and Solutions
+
+### "Movement feels sluggish"
+- Reduce input delay timer
+- Increase movement speed for smooth interpolation
+- Consider diagonal movement
+
+### "Sprite doesn't align with tiles"
+- Check your multiplication in grid_to_screen
+- Verify border/offset calculations
+- Ensure sprite hot spot is considered
+
+### "Collision detection is off"
+- Make sure grid coordinates match level data
+- Check boundary conditions
+- Consider sprite size vs tile size
+
+## What You've Learned
+
+You can now:
+- ✅ Implement grid-based movement systems
+- ✅ Convert between grid and screen coordinates
+- ✅ Create smooth tile-to-tile transitions
+- ✅ Handle grid-based collision detection
+- ✅ Use lookup tables for optimization
+- ✅ Build tile-based game foundations
+
+Grid movement opens up entire genres of games!
+
+## Next: Advanced Sprite Control
+
+In the next lesson, you'll learn advanced sprite techniques - multiplexing, animation, and special effects that push the C64 to its limits.
+
+**Ready to master sprites?**
+
+---
+
+## Quick Reference
+
+### Grid Formulas
+```text
+; Screen to grid
+grid_x = (sprite_x - border_offset) / tile_width
+grid_y = (sprite_y - top_offset) / tile_height
+
+; Grid to screen
+sprite_x = grid_x * tile_width + border_offset
+sprite_y = grid_y * tile_height + top_offset
+
+; Grid to memory offset
+offset = grid_y * grid_width + grid_x
+```
+
+### Common Grid Sizes
+- **8×8**: Character-based, 40×25 grid
+- **16×16**: Balanced detail, 20×12 grid  
+- **24×21**: Sprite-sized, 13×11 grid
+- **32×32**: Large tiles, 10×6 grid
+
+Remember: Grids make complex games manageable. Choose the right size for your game!

@@ -1,0 +1,773 @@
+---
+title: "Power-ups and Collectibles"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 16
+date: 2024-12-10
+author: Steve Hill
+---
+
+import MemoryMap from '@/components/MemoryMap.astro';
+import RegisterView from '@/components/RegisterView.astro';
+
+# Power-ups and Collectibles
+
+Power-ups transform gameplay, adding strategy and excitement. From simple score bonuses to game-changing abilities, collectibles reward exploration and create memorable moments.
+
+## Item System Architecture
+
+Build a flexible system for managing collectibles:
+
+```asm
+; Item structure (8 bytes each)
+ITEM_TYPE     = 0  ; Item type ID
+ITEM_X        = 1  ; X position
+ITEM_Y        = 2  ; Y position
+ITEM_VALUE    = 3  ; Points/duration/strength
+ITEM_SPRITE   = 4  ; Sprite index (255=character)
+ITEM_CHAR     = 5  ; Character code if not sprite
+ITEM_COLOR    = 6  ; Color
+ITEM_FLAGS    = 7  ; Behavior flags
+
+; Item types
+TYPE_COIN     = 0
+TYPE_DIAMOND  = 1
+TYPE_POWERUP  = 2
+TYPE_WEAPON   = 3
+TYPE_SHIELD   = 4
+TYPE_SPEED    = 5
+TYPE_LIFE     = 6
+TYPE_KEY      = 7
+
+; Max 16 items on screen
+MAX_ITEMS = 16
+item_table:
+    .res MAX_ITEMS * 8
+
+spawn_item:
+    ; A = type, X = x pos, Y = y pos
+    sta temp_type
+    stx temp_x
+    sty temp_y
+    
+    ; Find free slot
+    ldx #0
+find_item_slot:
+    txa
+    asl
+    asl
+    asl             ; ×8 for offset
+    tay
+    
+    lda item_table+ITEM_TYPE,y
+    cmp #$FF        ; Empty slot
+    beq found_item_slot
+    
+    inx
+    cpx #MAX_ITEMS
+    bne find_item_slot
+    
+    ; No free slots
+    rts
+    
+found_item_slot:
+    ; Initialize item
+    lda temp_type
+    sta item_table+ITEM_TYPE,y
+    lda temp_x
+    sta item_table+ITEM_X,y
+    lda temp_y
+    sta item_table+ITEM_Y,y
+    
+    ; Set type-specific properties
+    tax
+    lda item_values,x
+    sta item_table+ITEM_VALUE,y
+    lda item_sprites,x
+    sta item_table+ITEM_SPRITE,y
+    lda item_chars,x
+    sta item_table+ITEM_CHAR,y
+    lda item_colors,x
+    sta item_table+ITEM_COLOR,y
+    
+    ; Activate animation
+    lda #$01
+    sta item_table+ITEM_FLAGS,y
+    rts
+
+; Item data tables
+item_values:
+    .byte 10,50,0,0,0,0,0,0    ; Points for coins/diamonds
+    
+item_sprites:
+    .byte 255,255,4,5,6,7,255,255  ; Sprite indices
+    
+item_chars:
+    .byte $2A,$7F,$00,$00,$00,$00,$58,$4B  ; Character codes
+    
+item_colors:
+    .byte $07,$03,$04,$0E,$0C,$01,$02,$05  ; Yellow,Cyan,Purple,etc
+```
+
+## Collision with Items
+
+Check if player collects items:
+
+```asm
+check_item_collection:
+    ; Get player position
+    lda player_x
+    sta px
+    lda player_y
+    sta py
+    
+    ldx #0
+item_check_loop:
+    txa
+    asl
+    asl
+    asl
+    tay
+    
+    ; Check if item exists
+    lda item_table+ITEM_TYPE,y
+    cmp #$FF
+    beq next_item
+    
+    ; Check collision (8-pixel tolerance)
+    lda item_table+ITEM_X,y
+    sec
+    sbc px
+    bpl check_positive_x
+    eor #$FF        ; Make positive
+    clc
+    adc #1
+    
+check_positive_x:
+    cmp #8
+    bcs next_item   ; Too far
+    
+    lda item_table+ITEM_Y,y
+    sec
+    sbc py
+    bpl check_positive_y
+    eor #$FF
+    clc
+    adc #1
+    
+check_positive_y:
+    cmp #8
+    bcs next_item   ; Too far
+    
+    ; Collision detected!
+    jsr collect_item
+    
+    ; Remove item
+    lda #$FF
+    sta item_table+ITEM_TYPE,y
+    
+next_item:
+    inx
+    cpx #MAX_ITEMS
+    bne item_check_loop
+    rts
+
+collect_item:
+    ; Y register has item offset
+    lda item_table+ITEM_TYPE,y
+    
+    cmp #TYPE_COIN
+    beq collect_coin
+    cmp #TYPE_DIAMOND
+    beq collect_diamond
+    cmp #TYPE_POWERUP
+    beq collect_powerup
+    cmp #TYPE_WEAPON
+    beq collect_weapon
+    cmp #TYPE_SHIELD
+    beq collect_shield
+    cmp #TYPE_SPEED
+    beq collect_speed
+    cmp #TYPE_LIFE
+    beq collect_life
+    cmp #TYPE_KEY
+    beq collect_key
+    rts
+    
+collect_coin:
+    lda item_table+ITEM_VALUE,y
+    jsr add_score
+    jsr play_coin_sound
+    rts
+    
+collect_powerup:
+    jsr activate_powerup
+    jsr play_powerup_sound
+    rts
+```
+
+## Power-up Effects
+
+Implement temporary and permanent upgrades:
+
+```asm
+; Player power-up states
+powerup_timer:   .byte 0
+powerup_type:    .byte 0
+shield_active:   .byte 0
+speed_bonus:     .byte 0
+weapon_level:    .byte 0
+
+activate_powerup:
+    lda item_table+ITEM_TYPE,y
+    sta powerup_type
+    
+    lda #180        ; 3 seconds at 60fps
+    sta powerup_timer
+    
+    ; Apply immediate effects
+    lda powerup_type
+    cmp #TYPE_SHIELD
+    beq activate_shield
+    cmp #TYPE_SPEED
+    beq activate_speed
+    cmp #TYPE_WEAPON
+    beq upgrade_weapon
+    rts
+    
+activate_shield:
+    lda #1
+    sta shield_active
+    
+    ; Visual indicator
+    lda #$0D        ; Light green
+    sta $D027       ; Player sprite color
+    
+    ; Show message
+    lda #<msg_shield
+    ldy #>msg_shield
+    jsr show_message
+    rts
+
+activate_speed:
+    lda #2          ; Double speed
+    sta speed_bonus
+    
+    ; Visual effect
+    lda #$07        ; Yellow
+    sta $D027
+    
+    lda #<msg_speed
+    ldy #>msg_speed
+    jsr show_message
+    rts
+
+upgrade_weapon:
+    inc weapon_level
+    lda weapon_level
+    cmp #4
+    bcc weapon_ok
+    lda #3          ; Max level
+    sta weapon_level
+    
+weapon_ok:
+    lda #<msg_weapon
+    ldy #>msg_weapon
+    jsr show_message
+    rts
+
+update_powerups:
+    lda powerup_timer
+    beq no_powerup
+    
+    dec powerup_timer
+    bne powerup_active
+    
+    ; Power-up expired
+    jsr deactivate_powerup
+    
+powerup_active:
+    ; Flash player when power-up is ending
+    lda powerup_timer
+    cmp #60         ; Last second
+    bcs no_flash
+    
+    and #$04        ; Flash every 4 frames
+    beq normal_color
+    lda #$01        ; White flash
+    jmp set_player_color
+normal_color:
+    lda #$0F        ; Normal color
+set_player_color:
+    sta $D027
+    
+no_flash:
+no_powerup:
+    rts
+
+deactivate_powerup:
+    lda powerup_type
+    cmp #TYPE_SHIELD
+    beq deactivate_shield
+    cmp #TYPE_SPEED
+    beq deactivate_speed
+    rts
+    
+deactivate_shield:
+    lda #0
+    sta shield_active
+    lda #$0F        ; Normal color
+    sta $D027
+    rts
+    
+deactivate_speed:
+    lda #0
+    sta speed_bonus
+    lda #$0F
+    sta $D027
+    rts
+
+; Messages
+msg_shield:  .text "SHIELD!"
+             .byte 0
+msg_speed:   .text "SPEED UP!"
+             .byte 0
+msg_weapon:  .text "POWER UP!"
+             .byte 0
+```
+
+## Animated Collectibles
+
+Make items visually appealing:
+
+```asm
+; Animation for floating items
+item_animation_timer: .byte 0
+item_bob_offset:      .byte 0
+
+animate_items:
+    inc item_animation_timer
+    lda item_animation_timer
+    and #$03        ; Every 4 frames
+    bne anim_done
+    
+    ; Update bobbing offset
+    inc item_bob_offset
+    lda item_bob_offset
+    and #$0F        ; 16-frame cycle
+    sta item_bob_offset
+    
+    ldx #0
+animate_loop:
+    txa
+    asl
+    asl
+    asl
+    tay
+    
+    ; Check if item exists
+    lda item_table+ITEM_TYPE,y
+    cmp #$FF
+    beq next_anim
+    
+    ; Apply bobbing motion
+    lda item_bob_offset
+    lsr             ; /2 for smaller movement
+    tax
+    lda sine_table_small,x
+    clc
+    adc item_table+ITEM_Y,y
+    
+    ; Update display position
+    pha
+    lda item_table+ITEM_SPRITE,y
+    cmp #255
+    beq character_item
+    
+    ; Sprite item
+    tax
+    pla
+    sta $D001,x     ; Update sprite Y
+    jmp next_anim
+    
+character_item:
+    ; Calculate screen position
+    pla
+    ; ... update character position ...
+    
+next_anim:
+    inx
+    cpx #MAX_ITEMS
+    bne animate_loop
+    
+anim_done:
+    rts
+
+sine_table_small:
+    .byte 0,1,2,2,3,2,2,1
+    .byte 0,-1,-2,-2,-3,-2,-2,-1
+
+; Sparkle effect for valuable items
+sparkle_effect:
+    lda item_animation_timer
+    and #$07
+    tax
+    lda sparkle_colors,x
+    
+    ; Apply to diamonds
+    ldx #0
+sparkle_loop:
+    txa
+    asl
+    asl
+    asl
+    tay
+    
+    lda item_table+ITEM_TYPE,y
+    cmp #TYPE_DIAMOND
+    bne next_sparkle
+    
+    lda sparkle_colors,x
+    sta item_table+ITEM_COLOR,y
+    
+next_sparkle:
+    inx
+    cpx #MAX_ITEMS
+    bne sparkle_loop
+    rts
+
+sparkle_colors:
+    .byte $01,$07,$03,$05,$04,$02,$06,$01
+```
+
+## Combo System
+
+Reward quick collection:
+
+```asm
+combo_counter:  .byte 0
+combo_timer:    .byte 0
+combo_multi:    .byte 1
+
+collect_with_combo:
+    ; Called when collecting scoring items
+    lda combo_timer
+    beq start_combo
+    
+    ; Continue combo
+    inc combo_counter
+    lda combo_counter
+    lsr             ; /2
+    clc
+    adc #1
+    cmp #8
+    bcc set_multi
+    lda #8          ; Max 8x
+    
+set_multi:
+    sta combo_multi
+    
+    ; Reset timer
+    lda #120        ; 2 seconds
+    sta combo_timer
+    
+    ; Show combo message
+    jsr display_combo
+    jmp apply_combo
+    
+start_combo:
+    lda #1
+    sta combo_counter
+    sta combo_multi
+    lda #120
+    sta combo_timer
+    
+apply_combo:
+    ; Multiply score by combo
+    lda item_table+ITEM_VALUE,y
+    ldx combo_multi
+multiply_loop:
+    dex
+    beq mult_done
+    clc
+    adc item_table+ITEM_VALUE,y
+    jmp multiply_loop
+mult_done:
+    jsr add_score
+    rts
+
+update_combo:
+    lda combo_timer
+    beq combo_done
+    
+    dec combo_timer
+    bne combo_done
+    
+    ; Combo expired
+    lda #0
+    sta combo_counter
+    lda #1
+    sta combo_multi
+    
+combo_done:
+    rts
+
+display_combo:
+    ; Show "COMBO x2!" etc
+    lda combo_multi
+    cmp #2
+    bcc no_combo_display
+    
+    ora #$30        ; Convert to ASCII
+    sta combo_text+6
+    
+    lda #<combo_text
+    ldy #>combo_text
+    jsr show_message
+    
+no_combo_display:
+    rts
+
+combo_text: .text "COMBO x !"
+            .byte 0
+```
+
+## Item Spawning Logic
+
+Control when and where items appear:
+
+```asm
+spawn_manager:
+    ; Check spawn conditions
+    lda spawn_timer
+    beq check_spawn
+    dec spawn_timer
+    rts
+    
+check_spawn:
+    ; Random spawn chance
+    lda $D41B       ; Random number
+    and #$1F
+    cmp #$05        ; ~15% chance
+    bcs no_spawn
+    
+    ; Determine item type based on game state
+    jsr choose_item_type
+    
+    ; Find spawn position
+    jsr find_spawn_position
+    
+    ; Spawn the item
+    jsr spawn_item
+    
+    ; Set cooldown
+    lda #60         ; 1 second minimum between spawns
+    sta spawn_timer
+    
+no_spawn:
+    rts
+
+choose_item_type:
+    ; Weighted random selection
+    lda $D41B
+    and #$0F
+    
+    cmp #8
+    bcc spawn_coin      ; 50% coins
+    cmp #12
+    bcc spawn_diamond    ; 25% diamonds
+    cmp #14
+    bcc spawn_powerup    ; 12.5% power-ups
+    
+    ; 12.5% special items
+    lda player_lives
+    cmp #2
+    bcc spawn_life       ; Low on lives
+    
+    lda weapon_level
+    cmp #3
+    bcs spawn_shield     ; Max weapon, give shield
+    
+    lda #TYPE_WEAPON
+    rts
+    
+spawn_coin:
+    lda #TYPE_COIN
+    rts
+spawn_diamond:
+    lda #TYPE_DIAMOND
+    rts
+spawn_powerup:
+    lda #TYPE_SPEED
+    rts
+spawn_life:
+    lda #TYPE_LIFE
+    rts
+spawn_shield:
+    lda #TYPE_SHIELD
+    rts
+
+find_spawn_position:
+    ; Place items in accessible locations
+    lda $D41B       ; Random X
+    and #$F8        ; Align to grid
+    clc
+    adc #24         ; Margin
+    tax
+    
+    lda #50         ; Fixed Y for now
+    tay
+    rts
+
+spawn_timer: .byte 0
+```
+
+## Complete Power-up Example
+
+Everything working together:
+
+```asm
+* = $0801
+    .byte $0C,$08,$0A,$00,$9E,$32,$30,$36,$31,$00,$00,$00
+
+* = $080D
+main:
+    jsr init_screen
+    jsr init_items
+    jsr init_player
+    
+game_loop:
+    jsr wait_frame
+    jsr handle_input
+    jsr update_player
+    jsr update_powerups
+    jsr check_item_collection
+    jsr animate_items
+    jsr sparkle_effect
+    jsr update_combo
+    jsr spawn_manager
+    jsr draw_items
+    jmp game_loop
+
+init_items:
+    ; Clear item table
+    ldx #MAX_ITEMS*8-1
+    lda #$FF
+clear_items:
+    sta item_table,x
+    dex
+    bpl clear_items
+    
+    ; Place some initial items
+    lda #TYPE_COIN
+    ldx #100
+    ldy #100
+    jsr spawn_item
+    
+    lda #TYPE_DIAMOND
+    ldx #200
+    ldy #80
+    jsr spawn_item
+    
+    lda #TYPE_POWERUP
+    ldx #150
+    ldy #150
+    jsr spawn_item
+    rts
+
+draw_items:
+    ldx #0
+draw_item_loop:
+    txa
+    asl
+    asl
+    asl
+    tay
+    
+    lda item_table+ITEM_TYPE,y
+    cmp #$FF
+    beq next_draw
+    
+    ; Check if sprite or character
+    lda item_table+ITEM_SPRITE,y
+    cmp #255
+    beq draw_char_item
+    
+    ; Draw as sprite
+    tax
+    lda item_table+ITEM_X,y
+    sta $D000,x
+    lda item_table+ITEM_Y,y
+    sta $D001,x
+    lda item_table+ITEM_COLOR,y
+    sta $D027,x
+    jmp next_draw
+    
+draw_char_item:
+    ; Calculate screen position and draw character
+    lda item_table+ITEM_Y,y
+    lsr
+    lsr
+    lsr             ; /8 for character row
+    tax
+    lda row_table_lo,x
+    sta screen_ptr
+    lda row_table_hi,x
+    sta screen_ptr+1
+    
+    lda item_table+ITEM_X,y
+    lsr
+    lsr
+    lsr             ; /8 for character column
+    tay
+    
+    lda item_table+ITEM_CHAR,x
+    sta (screen_ptr),y
+    
+    lda item_table+ITEM_COLOR,x
+    sta (color_ptr),y
+    
+next_draw:
+    inx
+    cpx #MAX_ITEMS
+    bne draw_item_loop
+    rts
+
+; Player variables
+player_x:    .byte 160
+player_y:    .byte 200
+px:          .byte 0
+py:          .byte 0
+
+; Screen row lookup tables
+row_table_lo:
+    .byte <$0400,<$0428,<$0450,<$0478
+    ; ... continue for 25 rows
+    
+row_table_hi:
+    .byte >$0400,>$0428,>$0450,>$0478
+    ; ... continue for 25 rows
+
+screen_ptr:  .word 0
+color_ptr:   .word $D800
+```
+
+## Key Concepts
+
+1. **Item Tables**: Organize collectibles in structured arrays
+2. **Collection Detection**: Efficient collision checking with tolerances
+3. **Power-up States**: Track active effects and timers
+4. **Visual Feedback**: Animations, colors, and messages reinforce collection
+5. **Spawning Logic**: Controlled item generation based on game state
+
+## Experiment and Discover
+
+Try these enhancements:
+- Create magnetic collection (items attracted to player)
+- Add rare, powerful items with special effects
+- Implement item chains that must be collected in order
+- Design risk/reward items (e.g., points but enemies spawn)
+- Build an inventory system for collected items
+
+Power-ups and collectibles add layers of strategy and reward. They transform simple movement into purposeful exploration!

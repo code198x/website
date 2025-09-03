@@ -1,0 +1,989 @@
+---
+title: "Sprite Animation: Bringing Characters to Life"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 10
+description: "Master sprite animation - frame cycling, animation states, and bringing your characters to life"
+learning_objectives:
+  - "Create smooth animation cycles"
+  - "Manage multiple animation states"
+  - "Synchronize animation with movement"
+  - "Build complete character systems"
+concepts:
+  - "Frame-based animation"
+  - "Animation state machines"
+  - "Sprite sheet management"
+  - "Animation timing and blending"
+estimated_duration: "45 minutes"
+difficulty: "medium"
+prerequisites:
+  - "Lesson 2: Sprites"
+  - "Lesson 4: Movement Patterns"
+code_examples: true
+practical_exercise: true
+order: 10
+---
+
+# Sprite Animation: Bringing Characters to Life
+**The final piece of the puzzle**
+
+Static sprites are lifeless. Today you'll learn to animate them - walking cycles, jumping, attacking, and more. This is what transforms a moving block into a living character. By the end, you'll have all the skills to create complete, animated games on the C64!
+
+## What You'll Create
+
+Complete character animation including:
+- Walking and running cycles
+- Jumping and falling animations
+- Idle animations with personality
+- Attack and action animations
+- Smooth transitions between states
+
+Your characters will finally come alive!
+
+## Animation Fundamentals
+
+Animation is simply showing different sprite frames in sequence:
+
+### Basic Frame Animation
+
+```text
+; Simple animation cycle
+*=$0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+*=$080d
+start:
+        ; Initialize
+        lda #%00000001
+        sta $d015              ; Enable sprite 0
+        lda #$05               ; Green
+        sta $d027
+        
+        ; Position
+        lda #160
+        sta $d000
+        lda #125
+        sta $d001
+        
+        ; Animation setup
+        lda #0
+        sta anim_frame
+        sta anim_timer
+        
+animation_loop:
+        ; Wait for frame
+        lda #250
+wait:   cmp $d012
+        bne wait
+        
+        ; Update animation timer
+        inc anim_timer
+        lda anim_timer
+        and #$07               ; Every 8 frames
+        bne animation_loop
+        
+        ; Next animation frame
+        inc anim_frame
+        lda anim_frame
+        and #$03               ; 4 frames total
+        sta anim_frame
+        
+        ; Update sprite pointer
+        clc
+        adc #$80               ; Base sprite at $2000
+        sta $07f8
+        
+        jmp animation_loop
+
+anim_frame:  !byte 0
+anim_timer:  !byte 0
+
+; Sprite data at $2000, $2040, $2080, $20C0
+*=$2000
+; Frame 0 - Arms down
+        !byte %00000001,%11111000,%00000000
+        !byte %00000001,%11111000,%00000000
+        ; ... rest of sprite
+
+*=$2040
+; Frame 1 - Arms mid
+        !byte %00000001,%11111000,%00000000
+        !byte %00001111,%11111111,%10000000
+        ; ... rest of sprite
+
+*=$2080
+; Frame 2 - Arms up
+        !byte %00001111,%11111111,%10000000
+        !byte %00001111,%11111111,%10000000
+        ; ... rest of sprite
+
+*=$20c0
+; Frame 3 - Arms mid
+        !byte %00000001,%11111000,%00000000
+        !byte %00001111,%11111111,%10000000
+        ; ... rest of sprite
+```
+
+### Walking Animation
+
+Create realistic walk cycles:
+
+```text
+; Walking character animation
+walk_animation:
+        ; Check if moving
+        lda velocity_x
+        bne is_walking
+        
+        ; Standing still - idle frame
+        lda #$80
+        sta $07f8
+        rts
+        
+is_walking:
+        ; Determine direction
+        bmi walk_left
+        
+walk_right:
+        ; Right-facing animation
+        inc walk_timer
+        lda walk_timer
+        lsr                    ; Slow down
+        lsr
+        and #$03               ; 4 frames
+        tax
+        lda walk_frames_right,x
+        sta $07f8
+        rts
+        
+walk_left:
+        ; Left-facing animation
+        inc walk_timer
+        lda walk_timer
+        lsr
+        lsr
+        and #$03
+        tax
+        lda walk_frames_left,x
+        sta $07f8
+        rts
+
+walk_timer:  !byte 0
+velocity_x:  !byte 0
+
+; Animation frame tables
+walk_frames_right:
+        !byte $80,$81,$82,$83  ; Right-facing sprites
+
+walk_frames_left:
+        !byte $84,$85,$86,$87  ; Left-facing sprites
+```
+
+## Animation State Management
+
+Complex characters need multiple animation states:
+
+### State Machine
+
+```text
+; Animation states
+ANIM_IDLE     = 0
+ANIM_WALK     = 1
+ANIM_JUMP     = 2
+ANIM_FALL     = 3
+ANIM_ATTACK   = 4
+ANIM_HIT      = 5
+
+current_anim_state: !byte ANIM_IDLE
+
+update_animation:
+        ; Determine state based on game logic
+        lda on_ground
+        beq check_airborne
+        
+        ; On ground
+        lda velocity_x
+        bne set_walk
+        
+        ; Standing still
+        lda #ANIM_IDLE
+        jmp apply_anim_state
+        
+set_walk:
+        lda #ANIM_WALK
+        jmp apply_anim_state
+        
+check_airborne:
+        ; In air
+        lda velocity_y
+        bmi set_jump           ; Going up
+        lda #ANIM_FALL
+        jmp apply_anim_state
+        
+set_jump:
+        lda #ANIM_JUMP
+        
+apply_anim_state:
+        ; Check if state changed
+        cmp current_anim_state
+        beq update_current_anim
+        
+        ; State changed - reset animation
+        sta current_anim_state
+        lda #0
+        sta anim_frame
+        sta anim_timer
+        
+update_current_anim:
+        ; Update based on current state
+        lda current_anim_state
+        asl                    ; x2 for word table
+        tax
+        lda anim_handlers,x
+        sta jump_addr
+        lda anim_handlers+1,x
+        sta jump_addr+1
+        jmp (jump_addr)
+
+anim_handlers:
+        !word handle_idle
+        !word handle_walk
+        !word handle_jump
+        !word handle_fall
+        !word handle_attack
+        !word handle_hit
+
+jump_addr: !word 0
+```
+
+### Individual Animation Handlers
+
+```text
+handle_idle:
+        ; Idle animation - subtle breathing
+        inc anim_timer
+        lda anim_timer
+        and #$1f               ; Every 32 frames
+        bne idle_done
+        
+        inc anim_frame
+        lda anim_frame
+        and #$01               ; 2 frames
+        sta anim_frame
+        
+        clc
+        adc #$80               ; Idle base
+        sta $07f8
+idle_done:
+        rts
+
+handle_walk:
+        ; Walking animation
+        inc anim_timer
+        lda anim_timer
+        and #$03               ; Every 4 frames
+        bne walk_done
+        
+        inc anim_frame
+        lda anim_frame
+        and #$07               ; 8 frames
+        sta anim_frame
+        
+        ; Choose direction
+        lda velocity_x
+        bmi walk_left_anim
+        
+        ; Right walk
+        lda anim_frame
+        clc
+        adc #$88               ; Right walk base
+        sta $07f8
+        rts
+        
+walk_left_anim:
+        lda anim_frame
+        clc
+        adc #$90               ; Left walk base
+        sta $07f8
+walk_done:
+        rts
+
+handle_jump:
+        ; Single jump frame
+        lda velocity_x
+        bmi jump_left
+        lda #$98               ; Right jump
+        jmp set_jump_sprite
+jump_left:
+        lda #$99               ; Left jump
+set_jump_sprite:
+        sta $07f8
+        rts
+
+handle_fall:
+        ; Falling animation
+        lda velocity_x
+        bmi fall_left
+        lda #$9a               ; Right fall
+        jmp set_fall_sprite
+fall_left:
+        lda #$9b               ; Left fall
+set_fall_sprite:
+        sta $07f8
+        rts
+
+handle_attack:
+        ; Attack animation sequence
+        inc anim_timer
+        lda anim_timer
+        lsr                    ; Faster animation
+        and #$03               ; 4 frames
+        sta anim_frame
+        
+        cmp #3
+        bne show_attack_frame
+        
+        ; Attack complete
+        lda #ANIM_IDLE
+        sta current_anim_state
+        
+show_attack_frame:
+        clc
+        adc #$9c               ; Attack base
+        sta $07f8
+        rts
+
+handle_hit:
+        ; Hit/damage animation
+        inc anim_timer
+        lda anim_timer
+        and #$02               ; Flash
+        beq show_hit
+        lda #$00               ; Invisible
+        jmp set_hit_sprite
+show_hit:
+        lda #$a0               ; Hit frame
+set_hit_sprite:
+        sta $07f8
+        
+        ; End hit state
+        lda anim_timer
+        cmp #16
+        bne hit_done
+        lda #ANIM_IDLE
+        sta current_anim_state
+hit_done:
+        rts
+
+; Animation variables
+anim_frame:     !byte 0
+anim_timer:     !byte 0
+on_ground:      !byte 1
+velocity_y:     !byte 0
+```
+
+## Advanced Animation Techniques
+
+### Smooth Transitions
+
+Blend between animation states:
+
+```text
+; Smooth animation transitions
+transition_animation:
+        ; Check if transitioning
+        lda transition_active
+        beq no_transition
+        
+        ; Blend between old and new
+        dec transition_timer
+        bne show_transition
+        
+        ; Transition complete
+        lda #0
+        sta transition_active
+        lda new_state
+        sta current_state
+        rts
+        
+show_transition:
+        ; Alternate between states
+        lda transition_timer
+        and #$02
+        beq show_old_state
+        
+        ; Show new state
+        lda new_state
+        jmp show_state
+        
+show_old_state:
+        lda current_state
+        
+show_state:
+        ; Display appropriate frame
+        tax
+        lda state_frames,x
+        sta $07f8
+        rts
+        
+no_transition:
+        ; Start new transition if needed
+        lda new_state
+        cmp current_state
+        beq transition_done
+        
+        ; Start transition
+        lda #1
+        sta transition_active
+        lda #8                 ; Transition time
+        sta transition_timer
+        
+transition_done:
+        rts
+
+transition_active: !byte 0
+transition_timer:  !byte 0
+current_state:     !byte 0
+new_state:         !byte 0
+state_frames:      !byte $80,$88,$90,$98,$9c,$a0
+```
+
+### Animation Timing
+
+Different speeds for different animations:
+
+```text
+; Variable animation speeds
+update_timed_animation:
+        ; Get timing for current animation
+        ldx current_anim
+        lda anim_speeds,x
+        sta anim_speed
+        
+        ; Update timer
+        inc anim_counter
+        lda anim_counter
+        cmp anim_speed
+        bcc timing_done
+        
+        ; Reset counter and advance frame
+        lda #0
+        sta anim_counter
+        
+        ; Next frame
+        inc current_frame
+        lda current_frame
+        cmp anim_lengths,x     ; Check max frames
+        bcc update_sprite_frame
+        
+        ; Loop or stop
+        lda anim_loop_flags,x
+        bne loop_anim
+        
+        ; One-shot animation done
+        lda #ANIM_IDLE
+        sta current_anim
+        rts
+        
+loop_anim:
+        lda #0
+        sta current_frame
+        
+update_sprite_frame:
+        ; Calculate sprite pointer
+        lda anim_bases,x
+        clc
+        adc current_frame
+        sta $07f8
+        
+timing_done:
+        rts
+
+; Animation data tables
+anim_speeds:
+        !byte 8,4,2,2,3,6     ; Frames per update
+        
+anim_lengths:
+        !byte 2,8,1,1,4,2     ; Total frames
+        
+anim_loop_flags:
+        !byte 1,1,0,0,0,0     ; 1=loop, 0=one-shot
+        
+anim_bases:
+        !byte $80,$88,$98,$9a,$9c,$a0
+
+current_anim:   !byte 0
+anim_speed:     !byte 0
+anim_counter:   !byte 0
+current_frame:  !byte 0
+```
+
+## Complete Character System
+
+Full animated character with all features:
+
+```text
+; Complete Animated Character
+*=$0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+*=$080d
+start:
+        jsr init_character
+        
+game_loop:
+        ; Timing
+        lda #250
+wait:   cmp $d012
+        bne wait
+        
+        ; Input
+        jsr read_input
+        
+        ; Update
+        jsr update_physics
+        jsr update_animation_state
+        jsr update_animation_frame
+        jsr update_position
+        
+        jmp game_loop
+
+init_character:
+        ; Sprite setup
+        lda #%00000001
+        sta $d015
+        lda #$07               ; Yellow
+        sta $d027
+        
+        ; Initial position
+        lda #100
+        sta char_x
+        sta $d000
+        lda #180
+        sta char_y
+        sta $d001
+        
+        ; Initial state
+        lda #ANIM_IDLE
+        sta anim_state
+        lda #0
+        sta anim_frame
+        sta anim_timer
+        
+        rts
+
+read_input:
+        lda $dc00
+        sta joy_input
+        
+        ; Horizontal movement
+        lsr
+        lsr
+        lsr
+        bcc move_left
+        lsr
+        bcc move_right
+        lda #0
+        sta input_x
+        jmp check_jump
+        
+move_left:
+        lda #$ff
+        sta input_x
+        jmp check_jump
+        
+move_right:
+        lda #1
+        sta input_x
+        
+check_jump:
+        lda joy_input
+        and #$01               ; Up
+        bne no_jump
+        lda grounded
+        beq no_jump
+        
+        ; Jump!
+        lda #$f8               ; -8
+        sta vel_y
+        lda #0
+        sta grounded
+        
+no_jump:
+        ; Attack
+        lda joy_input
+        and #$10               ; Fire
+        bne no_attack
+        lda anim_state
+        cmp #ANIM_ATTACK
+        beq no_attack
+        
+        ; Start attack
+        lda #ANIM_ATTACK
+        sta anim_state
+        lda #0
+        sta anim_frame
+        sta anim_timer
+        
+no_attack:
+        rts
+
+update_physics:
+        ; Horizontal
+        lda input_x
+        beq apply_friction
+        
+        ; Accelerate
+        clc
+        adc vel_x
+        cmp #4
+        bcc store_vel_x
+        bmi check_min_vel
+        lda #4                 ; Max speed
+        jmp store_vel_x
+check_min_vel:
+        cmp #$fc               ; -4
+        bcs store_vel_x
+        lda #$fc
+store_vel_x:
+        sta vel_x
+        jmp update_vertical
+        
+apply_friction:
+        lda vel_x
+        beq update_vertical
+        bmi friction_neg
+        dec vel_x
+        jmp update_vertical
+friction_neg:
+        inc vel_x
+        
+update_vertical:
+        ; Gravity
+        lda vel_y
+        clc
+        adc #1
+        cmp #8
+        bcc store_vel_y
+        lda #8                 ; Terminal velocity
+store_vel_y:
+        sta vel_y
+        
+        ; Apply velocities
+        lda char_x
+        clc
+        adc vel_x
+        sta char_x
+        sta $d000
+        
+        lda char_y
+        clc
+        adc vel_y
+        sta char_y
+        
+        ; Ground check
+        cmp #180
+        bcc not_on_ground
+        
+        ; Hit ground
+        lda #180
+        sta char_y
+        lda #0
+        sta vel_y
+        lda #1
+        sta grounded
+        
+not_on_ground:
+        lda char_y
+        sta $d001
+        rts
+
+update_animation_state:
+        ; Don't override attack animation
+        lda anim_state
+        cmp #ANIM_ATTACK
+        beq state_done
+        
+        ; Determine state from physics
+        lda grounded
+        beq in_air
+        
+        ; On ground
+        lda vel_x
+        bne walking
+        
+        ; Idle
+        lda #ANIM_IDLE
+        jmp set_state
+        
+walking:
+        lda #ANIM_WALK
+        jmp set_state
+        
+in_air:
+        lda vel_y
+        bmi jumping
+        lda #ANIM_FALL
+        jmp set_state
+jumping:
+        lda #ANIM_JUMP
+        
+set_state:
+        cmp anim_state
+        beq state_done
+        
+        ; State changed
+        sta anim_state
+        lda #0
+        sta anim_frame
+        sta anim_timer
+        
+state_done:
+        rts
+
+update_animation_frame:
+        ; Update based on state
+        ldx anim_state
+        lda anim_timings,x
+        beq instant_frame      ; No animation
+        
+        ; Timed animation
+        inc anim_timer
+        lda anim_timer
+        cmp anim_timings,x
+        bcc frame_done
+        
+        ; Next frame
+        lda #0
+        sta anim_timer
+        inc anim_frame
+        
+        ; Check loop
+        lda anim_frame
+        cmp anim_max_frames,x
+        bcc show_frame
+        
+        ; End or loop
+        lda anim_loops,x
+        bne loop_frame
+        
+        ; End one-shot
+        lda #ANIM_IDLE
+        sta anim_state
+        lda #0
+        sta anim_frame
+        ldx #ANIM_IDLE
+        jmp show_frame
+        
+loop_frame:
+        lda #0
+        sta anim_frame
+        
+show_frame:
+        ; Calculate sprite
+        lda anim_bases,x
+        clc
+        adc anim_frame
+        
+        ; Add direction
+        ldx vel_x
+        bmi facing_left
+        jmp set_sprite
+        
+facing_left:
+        clc
+        adc #8                 ; Left versions
+        
+set_sprite:
+        sta $07f8
+        
+frame_done:
+        rts
+
+instant_frame:
+        ; Single frame, check direction
+        lda anim_bases,x
+        ldx vel_x
+        bmi instant_left
+        jmp set_sprite
+instant_left:
+        clc
+        adc #8
+        jmp set_sprite
+
+; Character data
+char_x:         !byte 100
+char_y:         !byte 180
+vel_x:          !byte 0
+vel_y:          !byte 0
+grounded:       !byte 1
+input_x:        !byte 0
+joy_input:      !byte 0
+
+; Animation data
+anim_state:     !byte ANIM_IDLE
+anim_frame:     !byte 0
+anim_timer:     !byte 0
+
+; Animation tables
+anim_timings:
+        !byte 16,4,0,0,2,8    ; Frames per update (0=instant)
+        
+anim_max_frames:
+        !byte 2,4,1,1,4,1     ; Frames in animation
+        
+anim_loops:
+        !byte 1,1,0,0,0,0     ; Loop flag
+        
+anim_bases:
+        !byte $80,$82,$86,$87,$88,$8c  ; Start frames
+
+; Animation states
+ANIM_IDLE   = 0
+ANIM_WALK   = 1
+ANIM_JUMP   = 2
+ANIM_FALL   = 3
+ANIM_ATTACK = 4
+ANIM_HIT    = 5
+```
+
+## Optimization Tips
+
+### Sprite Memory Layout
+
+```text
+; Efficient sprite organization
+; Group by animation, not by frame number
+
+*=$2000
+idle_frames:
+        !fill 64, 0            ; Idle 1
+        !fill 64, 0            ; Idle 2
+
+*=$2080
+walk_right_frames:
+        !fill 64, 0            ; Walk R1
+        !fill 64, 0            ; Walk R2
+        !fill 64, 0            ; Walk R3
+        !fill 64, 0            ; Walk R4
+
+*=$2180
+walk_left_frames:
+        !fill 64, 0            ; Walk L1
+        ; etc...
+```
+
+### Animation Compression
+
+```text
+; Share similar frames
+; Use mirroring for left/right
+mirror_sprite:
+        ; Mirror sprite data horizontally
+        ldx #0
+mirror_row:
+        ; Get row
+        lda sprite_data,x
+        jsr reverse_byte
+        sta mirrored_data+2,x
+        
+        lda sprite_data+1,x
+        jsr reverse_byte
+        sta mirrored_data+1,x
+        
+        lda sprite_data+2,x
+        jsr reverse_byte
+        sta mirrored_data,x
+        
+        ; Next row
+        inx
+        inx
+        inx
+        cpx #63
+        bne mirror_row
+        rts
+
+reverse_byte:
+        ; Reverse bits in accumulator
+        ; (Implementation varies)
+        rts
+```
+
+## Common Issues and Solutions
+
+### "Animation looks choppy"
+- Adjust animation timing
+- Add more in-between frames
+- Use interpolation for position
+
+### "Transitions are jarring"
+- Add transition animations
+- Blend between states
+- Match frame positions
+
+### "Running out of sprite memory"
+- Share common frames
+- Use mirroring
+- Compress similar sprites
+
+## What You've Learned
+
+You can now:
+- ✅ Create smooth animation cycles
+- ✅ Manage animation states
+- ✅ Synchronize animation with movement
+- ✅ Build character state machines
+- ✅ Handle complex animations
+- ✅ Optimize sprite memory
+
+**Congratulations!** You now have all the fundamental skills for C64 game development!
+
+## Your Journey Continues
+
+You've mastered:
+1. Direct hardware control
+2. Sprites and graphics
+3. Input and controls
+4. Movement and physics
+5. Collision detection
+6. Game architecture
+7. Smooth motion
+8. Animation systems
+
+With these skills, you can create any type of C64 game. The legendary games of the 1980s used these exact techniques. Now it's your turn to create something amazing!
+
+## Challenge Projects
+
+Test your skills:
+- **Platformer**: Jumping character with platforms
+- **Shooter**: Ship with bullets and enemies
+- **Puzzle Game**: Grid-based with animations
+- **Racing Game**: Smooth scrolling and speed
+- **RPG Character**: Multiple animations and states
+
+---
+
+## Complete Quick Reference
+
+### Animation Checklist
+- [ ] Define animation states
+- [ ] Create sprite frames
+- [ ] Set up state machine
+- [ ] Handle transitions
+- [ ] Sync with game logic
+- [ ] Optimize memory usage
+
+### Frame Rates
+- Idle: 15-30 frames between updates
+- Walk: 4-8 frames between updates
+- Run: 2-4 frames between updates
+- Attack: 2-3 frames between updates
+
+### Memory Tips
+- 64 bytes per sprite frame
+- Page-align sprites ($xx00 boundaries)
+- Group related animations
+- Share common frames
+
+**The C64 is yours to command. What will you create?**

@@ -1,0 +1,596 @@
+---
+title: "Custom Character Sets"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 14
+date: 2024-12-10
+author: Steve Hill
+---
+
+import MemoryMap from '@/components/MemoryMap.astro';
+import RegisterView from '@/components/RegisterView.astro';
+
+# Custom Character Sets
+
+The C64's character graphics aren't fixed in stone. By creating custom character sets, you can transform the entire look of your game, create tile-based worlds, and even animate background elements.
+
+## Understanding Character Memory
+
+Each character is an 8×8 pixel bitmap, using 8 bytes:
+
+```asm
+; Character ROM location and structure
+; Default charset at $D000-$D7FF (with VIC bank switching)
+; Each character = 8 bytes
+; 256 characters × 8 bytes = 2048 bytes total
+
+; Example: Letter 'A' (character code 1)
+; $D008: %00011000 = ...**...
+; $D009: %00111100 = ..****..
+; $D00A: %01100110 = .**..**. 
+; $D00B: %01111110 = .******. 
+; $D00C: %01100110 = .**..**. 
+; $D00D: %01100110 = .**..**. 
+; $D00E: %01100110 = .**..**. 
+; $D00F: %00000000 = ........
+```
+
+## Creating Custom Characters
+
+Let's design our own character set:
+
+```asm
+; Copy ROM charset to RAM and modify it
+copy_charset:
+    ; Tell VIC-II to use RAM charset at $3000
+    lda #$15        ; $3000-$37FF for charset
+    sta $D018
+    
+    ; Copy ROM characters to RAM
+    sei             ; Disable interrupts
+    
+    lda #$33        ; Enable character ROM
+    sta $01
+    
+    ; Copy 2048 bytes
+    ldx #0
+copy_loop:
+    lda $D000,x
+    sta $3000,x
+    lda $D100,x
+    sta $3100,x
+    lda $D200,x
+    sta $3200,x
+    lda $D300,x
+    sta $3300,x
+    lda $D400,x
+    sta $3400,x
+    lda $D500,x
+    sta $3500,x
+    lda $D600,x
+    sta $3600,x
+    lda $D700,x
+    sta $3700,x
+    inx
+    bne copy_loop
+    
+    lda #$37        ; Restore normal memory config
+    sta $01
+    cli             ; Re-enable interrupts
+    
+    ; Now modify some characters
+    jsr create_game_tiles
+    rts
+
+create_game_tiles:
+    ; Character 128: Solid block
+    ldx #0
+block_loop:
+    lda #$FF        ; All pixels on
+    sta $3000+(128*8),x
+    inx
+    cpx #8
+    bne block_loop
+    
+    ; Character 129: Brick pattern
+    lda #%11111111
+    sta $3000+(129*8)+0
+    lda #%10111011
+    sta $3000+(129*8)+1
+    lda #%10111011
+    sta $3000+(129*8)+2
+    lda #%11111111
+    sta $3000+(129*8)+3
+    lda #%11101110
+    sta $3000+(129*8)+4
+    lda #%11101110
+    sta $3000+(129*8)+5
+    lda #%11101110
+    sta $3000+(129*8)+6
+    lda #%11111111
+    sta $3000+(129*8)+7
+    
+    ; Character 130: Grass tile
+    lda #%00010100
+    sta $3000+(130*8)+0
+    lda #%01010001
+    sta $3000+(130*8)+1
+    lda #%00100100
+    sta $3000+(130*8)+2
+    lda #%10001001
+    sta $3000+(130*8)+3
+    lda #%00100010
+    sta $3000+(130*8)+4
+    lda #%10010100
+    sta $3000+(130*8)+5
+    lda #%01001000
+    sta $3000+(130*8)+6
+    lda #%11111111
+    sta $3000+(130*8)+7
+    rts
+```
+
+<RegisterView 
+  title="Character Set Control"
+  registers={[
+    { name: "$D018", value: "VIC Memory", bits: "VM13|VM12|VM11|VM10|CB13|CB12|CB11|-" },
+    { name: "Bits 4-7", value: "Screen RAM", bits: "Location × $0400" },
+    { name: "Bits 1-3", value: "Charset", bits: "Location × $0800" }
+  ]}
+/>
+
+## Animated Background Tiles
+
+Create animated elements using character cycling:
+
+```asm
+; Animated water tiles
+water_frames:
+    ; Frame 1
+    .byte %10001000
+    .byte %00100010
+    .byte %10001000
+    .byte %00100010
+    .byte %10001000
+    .byte %00100010
+    .byte %10001000
+    .byte %00100010
+    
+    ; Frame 2
+    .byte %00100010
+    .byte %10001000
+    .byte %00100010
+    .byte %10001000
+    .byte %00100010
+    .byte %10001000
+    .byte %00100010
+    .byte %10001000
+    
+    ; Frame 3
+    .byte %01000100
+    .byte %00010001
+    .byte %01000100
+    .byte %00010001
+    .byte %01000100
+    .byte %00010001
+    .byte %01000100
+    .byte %00010001
+
+animate_water:
+    inc water_timer
+    lda water_timer
+    and #$07        ; Every 8 frames
+    bne anim_done
+    
+    ; Update water tile (character 131)
+    inc water_frame
+    lda water_frame
+    and #$03        ; 4 frames
+    
+    ; Calculate source offset
+    asl
+    asl
+    asl             ; × 8 bytes per frame
+    tax
+    
+    ; Copy frame to character
+    ldy #0
+copy_water:
+    lda water_frames,x
+    sta $3000+(131*8),y
+    inx
+    iny
+    cpy #8
+    bne copy_water
+    
+anim_done:
+    rts
+
+water_timer  .byte 0
+water_frame  .byte 0
+```
+
+## Tile-Based Level Design
+
+Use custom characters as building blocks:
+
+```asm
+; Tile definitions
+TILE_EMPTY   = $20  ; Space
+TILE_BLOCK   = 128  ; Solid block
+TILE_BRICK   = 129  ; Brick wall
+TILE_GRASS   = 130  ; Grass
+TILE_WATER   = 131  ; Animated water
+TILE_SPIKE   = 132  ; Hazard
+TILE_COIN    = 133  ; Collectible
+
+; Level data (10×5 section)
+level_data:
+    .byte TILE_EMPTY,TILE_EMPTY,TILE_EMPTY,TILE_COIN,TILE_EMPTY
+    .byte TILE_EMPTY,TILE_EMPTY,TILE_EMPTY,TILE_EMPTY,TILE_EMPTY
+    .byte TILE_BRICK,TILE_BRICK,TILE_EMPTY,TILE_BRICK,TILE_BRICK
+    .byte TILE_EMPTY,TILE_EMPTY,TILE_EMPTY,TILE_EMPTY,TILE_EMPTY
+    .byte TILE_EMPTY,TILE_COIN,TILE_EMPTY,TILE_COIN,TILE_EMPTY
+    .byte TILE_BRICK,TILE_BRICK,TILE_SPIKE,TILE_BRICK,TILE_BRICK
+    .byte TILE_EMPTY,TILE_EMPTY,TILE_EMPTY,TILE_EMPTY,TILE_EMPTY
+    .byte TILE_EMPTY,TILE_EMPTY,TILE_EMPTY,TILE_EMPTY,TILE_EMPTY
+    .byte TILE_GRASS,TILE_GRASS,TILE_WATER,TILE_GRASS,TILE_GRASS
+    .byte TILE_BLOCK,TILE_BLOCK,TILE_BLOCK,TILE_BLOCK,TILE_BLOCK
+
+draw_level_section:
+    ; Draw at position (10, 10)
+    lda #10         ; Start row
+    sta row
+    
+    ldx #0          ; Index into level data
+draw_row:
+    lda #10         ; Start column
+    sta col
+    
+    ldy #0          ; Column counter
+draw_col:
+    ; Calculate screen position
+    lda row
+    asl
+    asl
+    asl             ; × 8
+    clc
+    adc row
+    asl             ; × 40 total
+    adc col
+    sta screen_ptr
+    lda #>$0400
+    sta screen_ptr+1
+    
+    ; Draw tile
+    lda level_data,x
+    ldy #0
+    sta (screen_ptr),y
+    
+    ; Set color based on tile type
+    lda level_data,x
+    cmp #TILE_WATER
+    bne check_grass
+    lda #$0E        ; Light blue
+    jmp set_color
+    
+check_grass:
+    cmp #TILE_GRASS
+    bne check_coin
+    lda #$05        ; Green
+    jmp set_color
+    
+check_coin:
+    cmp #TILE_COIN
+    bne default_color
+    lda #$07        ; Yellow
+    jmp set_color
+    
+default_color:
+    lda #$0B        ; Dark gray
+    
+set_color:
+    ldy #0
+    sta (color_ptr),y
+    
+    inc col
+    inx
+    
+    lda col
+    cmp #15         ; 5 columns done?
+    bne draw_col
+    
+    inc row
+    lda row
+    cmp #12         ; 2 rows done?
+    bne draw_row
+    rts
+
+row   .byte 0
+col   .byte 0
+```
+
+## Creating Game Fonts
+
+Design custom fonts for your game's UI:
+
+```asm
+; Custom number font (larger, more stylish)
+create_number_font:
+    ; '0' at character position 48
+    lda #%00111100  ; ..****..
+    sta $3000+(48*8)+0
+    lda #%01100110  ; .**..**. 
+    sta $3000+(48*8)+1
+    lda #%01101110  ; .**.***.
+    sta $3000+(48*8)+2
+    lda #%01110110  ; .***.**.
+    sta $3000+(48*8)+3
+    lda #%01100110  ; .**..**. 
+    sta $3000+(48*8)+4
+    lda #%01100110  ; .**..**. 
+    sta $3000+(48*8)+5
+    lda #%00111100  ; ..****..
+    sta $3000+(48*8)+6
+    lda #%00000000  ; ........
+    sta $3000+(48*8)+7
+    
+    ; '1' at character position 49
+    lda #%00011000  ; ...**...
+    sta $3000+(49*8)+0
+    lda #%00111000  ; ..***...
+    sta $3000+(49*8)+1
+    lda #%00011000  ; ...**...
+    sta $3000+(49*8)+2
+    lda #%00011000  ; ...**...
+    sta $3000+(49*8)+3
+    lda #%00011000  ; ...**...
+    sta $3000+(49*8)+4
+    lda #%00011000  ; ...**...
+    sta $3000+(49*8)+5
+    lda #%01111110  ; .******. 
+    sta $3000+(49*8)+6
+    lda #%00000000  ; ........
+    sta $3000+(49*8)+7
+    
+    ; Continue for other digits...
+    rts
+```
+
+## Multi-Character Objects
+
+Combine characters to create larger graphics:
+
+```asm
+; 2×2 character heart
+heart_data:
+    ; Top-left
+    .byte %00011100
+    .byte %00111110
+    .byte %01111111
+    .byte %01111111
+    .byte %01111111
+    .byte %01111111
+    .byte %00111111
+    .byte %00011111
+    
+    ; Top-right
+    .byte %00111000
+    .byte %01111100
+    .byte %11111110
+    .byte %11111110
+    .byte %11111110
+    .byte %11111110
+    .byte %11111100
+    .byte %11111000
+    
+    ; Bottom-left
+    .byte %00001111
+    .byte %00000111
+    .byte %00000011
+    .byte %00000001
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+    
+    ; Bottom-right
+    .byte %11110000
+    .byte %11100000
+    .byte %11000000
+    .byte %10000000
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+
+draw_heart:
+    ; Draw at position (19,12) - center of screen
+    ; Top-left
+    lda #140        ; Custom character
+    sta $0400+492
+    lda #$02        ; Red
+    sta $D800+492
+    
+    ; Top-right
+    lda #141
+    sta $0400+493
+    lda #$02
+    sta $D800+493
+    
+    ; Bottom-left
+    lda #142
+    sta $0400+532
+    lda #$02
+    sta $D800+532
+    
+    ; Bottom-right
+    lda #143
+    sta $0400+533
+    lda #$02
+    sta $D800+533
+    rts
+```
+
+## Complete Character Set Example
+
+Here's a working example with custom tiles:
+
+```asm
+* = $0801
+    .byte $0C,$08,$0A,$00,$9E,$32,$30,$36,$31,$00,$00,$00
+
+* = $080D
+main:
+    jsr setup_custom_charset
+    jsr clear_screen
+    jsr draw_game_screen
+    
+game_loop:
+    jsr wait_frame
+    jsr animate_tiles
+    jsr handle_input
+    jmp game_loop
+
+setup_custom_charset:
+    ; Copy and modify charset
+    jsr copy_charset
+    jsr create_game_tiles
+    jsr create_special_chars
+    rts
+
+draw_game_screen:
+    ; Draw game border
+    ldx #0
+border_top:
+    lda #TILE_BRICK
+    sta $0400,x
+    lda #$08        ; Orange
+    sta $D800,x
+    inx
+    cpx #40
+    bne border_top
+    
+    ; Draw side walls
+    ldx #0
+walls:
+    lda #TILE_BRICK
+    sta $0400+40,x  ; Left wall
+    sta $0400+79,x  ; Right wall
+    lda #$08
+    sta $D800+40,x
+    sta $D800+79,x
+    
+    txa
+    clc
+    adc #40
+    tax
+    cpx #920        ; 23 rows
+    bcc walls
+    
+    ; Draw floor
+    ldx #0
+floor:
+    lda #TILE_GRASS
+    sta $0400+960,x
+    lda #$05        ; Green
+    sta $D800+960,x
+    inx
+    cpx #40
+    bne floor
+    rts
+
+create_special_chars:
+    ; Character 134: Player facing right
+    lda #%00011000
+    sta $3000+(134*8)+0
+    lda #%00011000
+    sta $3000+(134*8)+1
+    lda #%00011000
+    sta $3000+(134*8)+2
+    lda #%11111110
+    sta $3000+(134*8)+3
+    lda #%00011000
+    sta $3000+(134*8)+4
+    lda #%00101000
+    sta $3000+(134*8)+5
+    lda #%01001100
+    sta $3000+(134*8)+6
+    lda #%10000110
+    sta $3000+(134*8)+7
+    
+    ; Character 135: Enemy
+    lda #%00111100
+    sta $3000+(135*8)+0
+    lda #%01011010
+    sta $3000+(135*8)+1
+    lda #%11111111
+    sta $3000+(135*8)+2
+    lda #%10111101
+    sta $3000+(135*8)+3
+    lda #%11111111
+    sta $3000+(135*8)+4
+    lda #%01111110
+    sta $3000+(135*8)+5
+    lda #%00111100
+    sta $3000+(135*8)+6
+    lda #%01100110
+    sta $3000+(135*8)+7
+    rts
+
+animate_tiles:
+    ; Animate water, coins, etc.
+    inc anim_timer
+    lda anim_timer
+    and #$0F
+    bne anim_done
+    
+    ; Cycle coin animation
+    inc coin_frame
+    lda coin_frame
+    and #$03
+    tax
+    
+    ldy #0
+coin_anim:
+    lda coin_frames,x
+    sta $3000+(133*8),y
+    inx
+    iny
+    cpy #8
+    bne coin_anim
+    
+anim_done:
+    rts
+
+; Variables
+anim_timer    .byte 0
+coin_frame    .byte 0
+screen_ptr    .word 0
+color_ptr     .word $D800
+
+; Animation frames
+coin_frames:
+    .byte %00111100,%01000010,%01011010,%01000010
+    .byte %01000010,%01011010,%01000010,%00111100
+```
+
+## Key Concepts
+
+1. **Character Memory**: 8×8 pixel bitmaps, 8 bytes per character
+2. **RAM Charset**: Copy ROM to RAM for modification
+3. **VIC Bank Switching**: Control where character data is read from
+4. **Tile-Based Design**: Use characters as level building blocks
+5. **Animation**: Update character definitions for animated backgrounds
+
+## Experiment and Discover
+
+Try these character set challenges:
+- Create a complete tileset for a platformer
+- Design animated fire or explosion effects
+- Build a text adventure with custom fonts
+- Make pseudo-3D effects using character perspective
+- Create smooth transitions between tile types
+
+Custom character sets let you completely transform the C64's visual appearance. Every screen becomes your canvas!

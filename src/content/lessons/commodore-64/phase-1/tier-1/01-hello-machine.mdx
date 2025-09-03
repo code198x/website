@@ -1,0 +1,378 @@
+---
+title: "Your First C64 Program: Hello Machine!"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 1
+description: "Write your first 6502 assembly program and take direct control of the Commodore 64's hardware"
+learning_objectives:
+  - "Understand how assembly programs run on the C64"
+  - "Control screen and border colors with direct memory writes"
+  - "Display your first message using screen memory"
+concepts:
+  - "VIC-II chip - the C64's graphics processor"
+  - "Screen memory - where characters appear"
+  - "BASIC stub - launching assembly from BASIC"
+  - "6502 assembly - the C64's native language"
+estimated_duration: "30-45 minutes"
+difficulty: "easy"
+prerequisites:
+  - "None - this is your starting point!"
+code_examples: true
+practical_exercise: true
+order: 1
+---
+
+# Your First C64 Program: Hello Machine!
+**Take direct control of the Commodore 64**
+
+Welcome to assembly programming on the Commodore 64! Today you'll write your first program in 6502 assembly - the native language of the C64. No layers, no interpreters - just you talking directly to the hardware.
+
+By the end of this lesson, you'll have written a complete assembly program that controls the screen colors and displays a message. This is the foundation everything else builds on.
+
+## What You'll Create
+
+Your first assembly program will:
+- Change the border color to cyan
+- Set the background to black  
+- Clear the entire screen
+- Display "HELLO C64!" in the center
+
+Simple? Yes. But you're doing it at the hardware level - writing directly to the chips that control the display. This is the power that made the C64 legendary.
+
+![Your first assembly program running](/images/c64-foundation-lesson-01.png)
+
+## Understanding the Hardware
+
+The Commodore 64 gives you direct access to its hardware through memory-mapped I/O. This means specific memory addresses connect directly to hardware functions. Write a value to the right address, and the hardware responds instantly.
+
+### The VIC-II Chip
+
+The VIC-II (Video Interface Chip II) is the C64's graphics processor. It handles everything you see on screen:
+
+- **16 colors** - Each with a specific code (0-15)
+- **40×25 text display** - 1000 character positions
+- **Hardware sprites** - 8 independent moving objects
+- **Smooth scrolling** - Hardware-accelerated movement
+
+Key VIC-II registers we'll use today:
+```
+$D020: Border color (0-15)
+$D021: Background color (0-15)
+```
+
+### Screen Memory
+
+The C64's screen is a grid of 40 columns × 25 rows = 1000 characters. Each position on screen corresponds to a byte in memory:
+
+```
+$0400-$07E7: Screen memory (what character to display)
+$D800-$DBE7: Color memory (what color to use)
+```
+
+When you write a value to screen memory, a character appears. It's that direct!
+
+### The 6502 Processor
+
+The 6502 is an 8-bit processor with:
+- **Accumulator (A)**: Main working register
+- **X and Y registers**: Index registers for loops
+- **256-byte pages**: Memory organized in pages
+- **Simple, elegant instruction set**: Easy to learn, powerful to use
+
+## Your First Assembly Program
+
+Let's build your program step by step. Each piece has a purpose, and understanding why we write each line will give you the foundation for everything that follows.
+
+### Step 1: The BASIC Launcher
+
+Here's something fascinating: the C64 always boots into BASIC, expecting BASIC programs. But we're writing assembly! The clever solution? We trick BASIC into launching our assembly code by disguising it as a BASIC program.
+
+Think of this as a trojan horse - a tiny BASIC program whose only job is to say "jump to the assembly code." Once BASIC makes that jump, our assembly takes complete control of the machine.
+
+```text
+; Start at the beginning of BASIC memory
+*=$0801
+
+; This creates: 10 SYS 2061
+        !byte $0b,$08          ; Next line pointer
+        !byte $0a,$00          ; Line number: 10
+        !byte $9e              ; SYS token
+        !byte $32,$30,$36,$31  ; "2061" in PETSCII
+        !byte $00              ; End of line
+        !byte $00,$00          ; End of program
+
+; Our assembly code starts here (2061 = $080D)
+*=$080d
+
+start:
+        ; Your assembly code goes here!
+```
+
+This creates the smallest possible BASIC program: `10 SYS 2061`. When you type `RUN`, BASIC jumps to address 2061 where your assembly code begins.
+
+### Step 2: Changing Colors - Your First Hardware Control
+
+Now for the magic moment - you're about to control the C64's hardware directly. No operating system calls, no library functions. Just you writing a number to a memory address that connects straight to the VIC-II chip.
+
+```text
+        ; Set border color to cyan
+        lda #$03               ; Load 3 (cyan) into accumulator
+        sta $d020              ; Store to border color register
+        
+        ; Set background to black
+        lda #$00               ; Load 0 (black) into accumulator
+        sta $d021              ; Store to background register
+```
+
+Let's understand what's happening here:
+
+1. **`lda #$03`** - Load the value 3 into the accumulator (the 6502's main working register). The `#` means "immediate mode" - use this actual number, not a memory address.
+
+2. **`sta $d020`** - Store the accumulator's value to memory address $D020. But $D020 isn't regular memory - it's wired directly to the VIC-II's border color circuit. The instant this instruction executes, the border changes color!
+
+This is fundamentally different from modern programming. You're not asking an API to change colors. You're not calling a function. You're literally flipping electronic switches inside the VIC-II chip by writing to its control registers. This direct hardware access is what made the C64 so responsive and what enabled programmers to achieve "impossible" effects.
+
+### Step 3: Clearing the Screen - Understanding Memory Layout
+
+The C64 screen is a 40×25 grid of characters - that's 1000 positions total. Each position needs two things: what character to show (screen memory) and what color to use (color memory). We need to clear both.
+
+Here's where assembly shines. Instead of clearing 1000 positions one by one, we use a clever trick:
+
+```text
+        ; Clear all 1000 screen positions
+        ldx #0                 ; Start at position 0
+clear_loop:
+        lda #$20               ; Space character (blank)
+        sta $0400,x            ; Screen positions 0-255
+        sta $0500,x            ; Screen positions 256-511
+        sta $0600,x            ; Screen positions 512-767
+        sta $0700,x            ; Screen positions 768-999
+        
+        ; Also set color to white
+        lda #$01               ; White color code
+        sta $d800,x            ; Color positions 0-255
+        sta $d900,x            ; Color positions 256-511
+        sta $da00,x            ; Color positions 512-767
+        sta $db00,x            ; Color positions 768-999
+        
+        inx                    ; Next position
+        bne clear_loop         ; Loop until X wraps to 0
+```
+
+This is brilliant optimization! We write to four different pages of memory in each loop iteration. The X register counts from 0 to 255, and when it increments past 255, it wraps back to 0. The `bne` (branch if not equal to zero) instruction detects this wraparound and exits the loop.
+
+With just 256 iterations, we clear all 1000 screen positions (the last 24 positions of $0700 get cleared even though we only need 232 of them - but that's fine). This same technique appears in countless C64 programs because it's so efficient.
+
+**Historical Note**: This screen-clearing technique was documented in the Commodore 64 Programmer's Reference Guide and became the standard way to clear the screen in assembly. It's 4x faster than clearing each position individually!
+
+### Step 4: Displaying Your Message
+
+Time to show "HELLO C64!" on screen:
+
+```text
+        ; Display message in center of screen
+        ldx #0                 ; Message index
+message_loop:
+        lda message_text,x     ; Get character from message
+        beq done               ; If 0, we're done
+        sta $0400+12*40+15,x   ; Row 12, Column 15
+        inx                    ; Next character
+        jmp message_loop       ; Continue
+        
+done:
+        ; Program complete - infinite loop
+        jmp done               ; Stay here forever
+
+; Our message using screen codes (not ASCII!)
+message_text:
+        !byte 8,5,12,12,15,32      ; "HELLO "
+        !byte 3,54,52,33            ; "C64!"
+        !byte 0                     ; End marker
+```
+
+Screen codes are different from ASCII:
+- A = 1, B = 2, C = 3, etc.
+- Numbers start at 48
+- Space = 32
+
+### Complete Program
+
+Here's everything together:
+
+```text
+; My First C64 Assembly Program
+; Changes colors and displays a message
+
+*=$0801
+        ; BASIC launcher
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+*=$080d
+start:
+        ; Set colors
+        lda #$03               ; Cyan border
+        sta $d020
+        lda #$00               ; Black background
+        sta $d021
+        
+        ; Clear screen
+        ldx #0
+clear_loop:
+        lda #$20               ; Space character
+        sta $0400,x
+        sta $0500,x
+        sta $0600,x
+        sta $0700,x
+        lda #$01               ; White color
+        sta $d800,x
+        sta $d900,x
+        sta $da00,x
+        sta $db00,x
+        inx
+        bne clear_loop
+        
+        ; Display message
+        ldx #0
+message_loop:
+        lda message_text,x
+        beq done
+        sta $0400+12*40+15,x   ; Centered position
+        inx
+        jmp message_loop
+        
+done:
+        jmp done               ; Infinite loop
+
+message_text:
+        !byte 8,5,12,12,15,32,3,54,52,33,0
+```
+
+## Experimenting and Learning
+
+Now that you have a working program, try these modifications:
+
+### Change the Colors
+
+The C64 has 16 colors. Try different combinations:
+```text
+0 = Black        8 = Orange
+1 = White        9 = Brown
+2 = Red         10 = Light Red
+3 = Cyan        11 = Dark Gray
+4 = Purple      12 = Medium Gray
+5 = Green       13 = Light Green
+6 = Blue        14 = Light Blue
+7 = Yellow      15 = Light Gray
+```
+
+Change line 2 to `lda #$06` for a blue border, or `lda #$07` for yellow!
+
+### Move the Message
+
+The formula for screen position is: `$0400 + row*40 + column`
+
+Try:
+- `$0400+0*40+0` - Top left corner
+- `$0400+24*40+30` - Bottom right area
+- `$0400+10*40+10` - Different center position
+
+### Add More Text
+
+Extend the message:
+```text
+message_text:
+        !byte 8,5,12,12,15,32      ; "HELLO "
+        !byte 3,54,52,33,32,32      ; "C64!  "
+        !byte 6,18,15,13,32         ; "FROM "
+        !byte 1,19,13,33            ; "ASM!"
+        !byte 0
+```
+
+### Create Patterns
+
+Instead of clearing with spaces, try filling with characters:
+```text
+lda #$66               ; Checkerboard character
+sta $0400,x            ; Creates a pattern!
+```
+
+## Understanding What Just Happened
+
+You've just done something remarkable - you wrote a program that talks directly to the C64's hardware. No operating system, no BASIC interpreter - just your code and the chips.
+
+When you typed `RUN`:
+1. BASIC executed `SYS 2061`
+2. The CPU jumped to your assembly code
+3. Your code wrote directly to VIC-II registers
+4. The hardware responded instantly
+
+This direct control is what made the C64 special. Games could push the hardware to its limits. Demos could do "impossible" things. And now you're part of that tradition.
+
+## Common Issues and Solutions
+
+### "Nothing happens when I RUN"
+- Check your BASIC stub bytes are exactly right
+- Make sure you're assembling to $0801
+- Verify the SYS address matches your code start
+
+### "Wrong colors appear"
+- Remember: color codes are 0-15
+- Some assemblers need decimal, others hex
+- `#03` in some assemblers, `#$03` in others
+
+### "Garbage on screen"
+- Screen codes aren't ASCII!
+- A=1, B=2, not A=65, B=66
+- Use the screen code reference table
+
+### "Program crashes"
+- Make sure your infinite loop is in place
+- Check you're not writing past screen memory
+- Verify all branches and jumps are correct
+
+## What You've Learned
+
+You can now:
+- ✅ Write 6502 assembly for the C64
+- ✅ Create BASIC launchers for assembly programs
+- ✅ Control VIC-II hardware registers
+- ✅ Manipulate screen and color memory
+- ✅ Use loops to process large memory areas
+- ✅ Display messages using screen codes
+
+These are the fundamental skills for C64 programming. Everything else builds on this foundation.
+
+## Next: Hardware Sprites
+
+In the next lesson, you'll bring graphics to life with hardware sprites - independent objects that can move smoothly across the screen. The C64's sprites are legendary for good reason. You'll see why!
+
+**Ready to make things move?**
+
+---
+
+## Quick Reference
+
+### Essential 6502 Instructions
+- **LDA #value**: Load A with immediate value
+- **STA address**: Store A to memory address  
+- **LDX #value**: Load X register
+- **INX**: Increment X
+- **BNE label**: Branch if not zero
+- **BEQ label**: Branch if zero
+- **JMP label**: Jump to label
+
+### Key Memory Locations
+- **$0801**: BASIC program start
+- **$0400-$07E7**: Screen memory
+- **$D800-$DBE7**: Color memory
+- **$D020**: Border color
+- **$D021**: Background color
+
+### Screen Codes
+```
+A-Z: 1-26        0-9: 48-57
+Space: 32        ! = 33
+```
+
+Remember: The C64 is waiting for your commands. What will you create next?

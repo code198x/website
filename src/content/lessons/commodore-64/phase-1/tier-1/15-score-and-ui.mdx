@@ -1,0 +1,724 @@
+---
+title: "Score Systems and User Interface"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 15
+date: 2024-12-10
+author: Steve Hill
+---
+
+import MemoryMap from '@/components/MemoryMap.astro';
+import RegisterView from '@/components/RegisterView.astro';
+
+# Score Systems and User Interface
+
+Every game needs to communicate with the player. Scores, lives, timers, and status indicators turn raw gameplay into meaningful experiences. Let's build professional UI systems for the C64.
+
+## BCD Score System
+
+Binary Coded Decimal makes score display easy:
+
+```asm
+; 6-digit score in BCD format (3 bytes)
+score:      .byte $00,$00,$00  ; 000000
+hi_score:   .byte $01,$23,$45  ; 012345
+
+; Add points to score
+; A = points to add (BCD)
+add_score:
+    sed             ; Set decimal mode
+    clc
+    adc score+2     ; Add to lowest byte
+    sta score+2
+    lda score+1
+    adc #0          ; Add carry
+    sta score+1
+    lda score
+    adc #0          ; Add carry
+    sta score
+    cld             ; Clear decimal mode
+    
+    ; Check for new high score
+    jsr check_high_score
+    jsr display_score
+    rts
+
+; Display score at top of screen
+display_score:
+    ; "SCORE: 000000"
+    ldx #0
+    ldy #6          ; Position on screen
+    
+    ; Display "SCORE: "
+score_text:
+    lda score_label,x
+    sta $0400,y
+    lda #1          ; White
+    sta $D800,y
+    iny
+    inx
+    cpx #7
+    bne score_text
+    
+    ; Display digits
+    lda score       ; High byte
+    lsr
+    lsr
+    lsr
+    lsr             ; High nibble
+    ora #$30        ; Convert to ASCII
+    sta $0407
+    
+    lda score
+    and #$0F        ; Low nibble
+    ora #$30
+    sta $0408
+    
+    lda score+1     ; Middle byte
+    lsr
+    lsr
+    lsr
+    lsr
+    ora #$30
+    sta $0409
+    
+    lda score+1
+    and #$0F
+    ora #$30
+    sta $040A
+    
+    lda score+2     ; Low byte
+    lsr
+    lsr
+    lsr
+    lsr
+    ora #$30
+    sta $040B
+    
+    lda score+2
+    and #$0F
+    ora #$30
+    sta $040C
+    rts
+
+score_label:
+    .text "SCORE: "
+
+check_high_score:
+    ; Compare score with hi_score
+    lda score
+    cmp hi_score
+    bcc not_high    ; Score lower
+    bne new_high    ; Score higher
+    
+    ; First bytes equal, check second
+    lda score+1
+    cmp hi_score+1
+    bcc not_high
+    bne new_high
+    
+    ; Second bytes equal, check third
+    lda score+2
+    cmp hi_score+2
+    bcc not_high
+    
+new_high:
+    ; Copy score to hi_score
+    lda score
+    sta hi_score
+    lda score+1
+    sta hi_score+1
+    lda score+2
+    sta hi_score+2
+    
+    ; Flash message
+    jsr flash_new_high_score
+    
+not_high:
+    rts
+```
+
+## Lives Display
+
+Show remaining lives with sprites or characters:
+
+```asm
+player_lives: .byte 3
+max_lives:    .byte 5
+
+display_lives:
+    ; Draw at top-right corner
+    ldx #35         ; Screen position
+    ldy player_lives
+    beq no_lives
+    
+draw_life:
+    lda #$E0        ; Heart character
+    sta $0400,x
+    lda #$02        ; Red
+    sta $D800,x
+    inx
+    dey
+    bne draw_life
+    
+no_lives:
+    ; Clear remaining positions
+    cpy max_lives
+    beq lives_done
+    
+clear_life:
+    lda #$20        ; Space
+    sta $0400,x
+    inx
+    iny
+    cpy max_lives
+    bne clear_life
+    
+lives_done:
+    rts
+
+lose_life:
+    dec player_lives
+    bpl still_alive
+    
+    ; Game over
+    jsr game_over_sequence
+    rts
+    
+still_alive:
+    jsr display_lives
+    jsr death_animation
+    jsr respawn_player
+    rts
+
+add_life:
+    lda player_lives
+    cmp max_lives
+    beq max_reached
+    
+    inc player_lives
+    jsr display_lives
+    jsr bonus_sound
+    
+max_reached:
+    rts
+```
+
+## Timer Systems
+
+Implement countdown timers and time bonuses:
+
+```asm
+; Timer in BCD format (minutes:seconds)
+timer_min:  .byte $02  ; 2 minutes
+timer_sec:  .byte $30  ; 30 seconds
+timer_tick: .byte 60   ; Frame counter
+
+update_timer:
+    dec timer_tick
+    bne timer_done
+    
+    lda #60         ; Reset frame counter
+    sta timer_tick
+    
+    ; Decrement seconds
+    sed
+    lda timer_sec
+    sec
+    sbc #$01
+    sta timer_sec
+    cld
+    
+    ; Check for underflow
+    cmp #$99        ; BCD underflow
+    bne display_time
+    
+    ; Borrow from minutes
+    lda timer_min
+    beq time_up
+    
+    sed
+    sec
+    sbc #$01
+    sta timer_min
+    cld
+    
+    lda #$59        ; Reset seconds
+    sta timer_sec
+    
+display_time:
+    jsr show_timer
+    
+    ; Warning when low on time
+    lda timer_min
+    bne timer_done
+    lda timer_sec
+    cmp #$10        ; Less than 10 seconds
+    bcs timer_done
+    
+    ; Flash timer
+    jsr flash_timer
+    
+timer_done:
+    rts
+
+time_up:
+    jsr time_over_sequence
+    rts
+
+show_timer:
+    ; Display "TIME: 0:00" at position
+    ldx #20         ; Screen position
+    
+    ; Minutes
+    lda timer_min
+    and #$0F
+    ora #$30
+    sta $0400+20
+    
+    ; Colon
+    lda #$3A        ; ':'
+    sta $0400+21
+    
+    ; Seconds tens
+    lda timer_sec
+    lsr
+    lsr
+    lsr
+    lsr
+    ora #$30
+    sta $0400+22
+    
+    ; Seconds ones
+    lda timer_sec
+    and #$0F
+    ora #$30
+    sta $0400+23
+    
+    ; Color based on time remaining
+    lda timer_min
+    bne normal_color
+    lda timer_sec
+    cmp #$10
+    bcs normal_color
+    
+    lda #$02        ; Red for low time
+    jmp set_timer_color
+    
+normal_color:
+    lda #$01        ; White
+    
+set_timer_color:
+    ldx #4
+color_loop:
+    sta $D800+20,x
+    dex
+    bpl color_loop
+    rts
+```
+
+## Status Bar
+
+Create a complete game status bar:
+
+```asm
+; Status bar layout (top 2 rows)
+; Row 0: SCORE:000000  GRID EXPLORER  HI:000000
+; Row 1: LIVES:♥♥♥    TIME:2:30      LEVEL:01
+
+draw_status_bar:
+    ; Clear status area
+    ldx #79         ; Two rows
+    lda #$20
+clear_status:
+    sta $0400,x
+    dex
+    bpl clear_status
+    
+    ; Draw separator line
+    ldx #39
+    lda #$C0        ; Horizontal line character
+separator:
+    sta $0400+80,x
+    lda #$0C        ; Gray
+    sta $D800+80,x
+    dex
+    bpl separator
+    
+    ; Score
+    jsr display_score
+    
+    ; Game title (centered)
+    ldx #0
+title_loop:
+    lda game_title,x
+    beq title_done
+    sta $0400+13,x
+    lda #$07        ; Yellow
+    sta $D800+13,x
+    inx
+    jmp title_loop
+title_done:
+    
+    ; High score
+    ldx #0
+hi_label:
+    lda hi_text,x
+    sta $0400+28,x
+    lda #$01
+    sta $D800+28,x
+    inx
+    cpx #3
+    bne hi_label
+    
+    jsr display_hi_score
+    
+    ; Second row items
+    jsr display_lives_row2
+    jsr show_timer_row2
+    jsr display_level
+    rts
+
+game_title: .text "GRID EXPLORER"
+            .byte 0
+hi_text:    .text "HI:"
+
+display_level:
+    ; "LEVEL:01"
+    ldx #0
+level_label:
+    lda level_text,x
+    sta $0400+70,x
+    lda #$05        ; Green
+    sta $D800+70,x
+    inx
+    cpx #6
+    bne level_label
+    
+    ; Level number
+    lda current_level
+    lsr
+    lsr
+    lsr
+    lsr
+    ora #$30
+    sta $0400+76
+    
+    lda current_level
+    and #$0F
+    ora #$30
+    sta $0400+77
+    
+    lda #$05
+    sta $D800+76
+    sta $D800+77
+    rts
+
+level_text: .text "LEVEL:"
+current_level: .byte $01
+```
+
+## Popup Messages
+
+Display temporary messages and notifications:
+
+```asm
+; Message system
+message_timer:  .byte 0
+message_ptr:    .word 0
+
+show_message:
+    ; A/Y = message address
+    sta message_ptr
+    sty message_ptr+1
+    
+    lda #120        ; Display for 2 seconds
+    sta message_timer
+    
+    jsr draw_message
+    rts
+
+draw_message:
+    ; Draw centered message box
+    ; Clear box area (10×3 at center)
+    ldx #0
+    lda #$20
+clear_box:
+    sta $0400+450,x  ; Row 11, col 15
+    sta $0400+490,x  ; Row 12, col 15
+    sta $0400+530,x  ; Row 13, col 15
+    inx
+    cpx #10
+    bne clear_box
+    
+    ; Draw border
+    lda #$C0        ; Border character
+    ldx #0
+border_loop:
+    sta $0400+449,x  ; Top
+    sta $0400+569,x  ; Bottom
+    inx
+    cpx #12
+    bne border_loop
+    
+    ; Draw message
+    ldy #0
+msg_loop:
+    lda (message_ptr),y
+    beq msg_done
+    sta $0400+491,y  ; Center of box
+    lda #$01         ; White
+    sta $D800+491,y
+    iny
+    cpy #10
+    bne msg_loop
+msg_done:
+    rts
+
+update_messages:
+    lda message_timer
+    beq no_message
+    
+    dec message_timer
+    bne no_message
+    
+    ; Clear message
+    jsr clear_message_box
+    
+no_message:
+    rts
+
+; Common messages
+msg_ready:      .text "GET READY!"
+                .byte 0
+msg_game_over:  .text "GAME OVER"
+                .byte 0
+msg_well_done:  .text "WELL DONE!"
+                .byte 0
+msg_bonus:      .text "BONUS 1000"
+                .byte 0
+```
+
+## Animated UI Elements
+
+Make your UI come alive:
+
+```asm
+; Pulsing score when increased
+pulse_score:
+    lda pulse_timer
+    beq start_pulse
+    
+    dec pulse_timer
+    lda pulse_timer
+    lsr
+    lsr             ; /4 for slower pulse
+    and #$01
+    beq bright
+    
+    lda #$01        ; Normal white
+    jmp set_pulse
+bright:
+    lda #$07        ; Yellow (bright)
+    
+set_pulse:
+    ldx #6
+pulse_loop:
+    sta $D800+7,x   ; Score digits color
+    dex
+    bpl pulse_loop
+    rts
+
+start_pulse:
+    lda #32         ; Pulse duration
+    sta pulse_timer
+    rts
+
+pulse_timer: .byte 0
+
+; Sliding transition for level complete
+slide_transition:
+    ldx #0
+slide_loop:
+    ; Fill from left
+    lda #$A0        ; Block
+    sta $0400,x
+    sta $0400+40,x
+    sta $0400+80,x
+    ; ... continue for all rows
+    
+    lda #$00        ; Black
+    sta $D800,x
+    sta $D800+40,x
+    sta $D800+80,x
+    
+    ; Small delay
+    ldy #3
+delay:
+    jsr wait_frame
+    dey
+    bne delay
+    
+    inx
+    cpx #40
+    bne slide_loop
+    
+    ; Show level complete message
+    lda #<msg_complete
+    ldy #>msg_complete
+    jsr show_message
+    rts
+
+msg_complete: .text "COMPLETE!"
+              .byte 0
+```
+
+## Complete UI Example
+
+Here's everything integrated:
+
+```asm
+* = $0801
+    .byte $0C,$08,$0A,$00,$9E,$32,$30,$36,$31,$00,$00,$00
+
+* = $080D
+main:
+    jsr init_game
+    jsr draw_status_bar
+    jsr draw_play_area
+    
+game_loop:
+    jsr wait_frame
+    jsr handle_input
+    jsr update_game
+    jsr update_ui
+    jsr check_milestones
+    jmp game_loop
+
+init_game:
+    ; Initialize scores
+    lda #0
+    sta score
+    sta score+1
+    sta score+2
+    
+    ; Set lives
+    lda #3
+    sta player_lives
+    
+    ; Set timer
+    lda #$01        ; 1 minute
+    sta timer_min
+    lda #$00        ; 00 seconds
+    sta timer_sec
+    
+    ; Level 1
+    lda #$01
+    sta current_level
+    rts
+
+update_ui:
+    jsr update_timer
+    jsr update_messages
+    
+    ; Update pulsing effects
+    lda pulse_timer
+    beq no_pulse
+    jsr pulse_score
+no_pulse:
+    rts
+
+check_milestones:
+    ; Every 10,000 points
+    lda score+1
+    cmp last_bonus
+    beq no_bonus
+    
+    sta last_bonus
+    
+    ; Award extra life
+    jsr add_life
+    
+    ; Show bonus message
+    lda #<msg_extra_life
+    ldy #>msg_extra_life
+    jsr show_message
+    
+no_bonus:
+    rts
+
+handle_pickup:
+    ; Called when player collects item
+    ; X = item type
+    cpx #ITEM_COIN
+    beq pickup_coin
+    cpx #ITEM_DIAMOND
+    beq pickup_diamond
+    cpx #ITEM_CLOCK
+    beq pickup_clock
+    rts
+    
+pickup_coin:
+    lda #$10        ; 10 points (BCD)
+    jsr add_score
+    jsr coin_sound
+    rts
+    
+pickup_diamond:
+    lda #$50        ; 50 points (BCD)
+    jsr add_score
+    jsr start_pulse
+    jsr diamond_sound
+    rts
+    
+pickup_clock:
+    ; Add 30 seconds
+    sed
+    lda timer_sec
+    clc
+    adc #$30
+    sta timer_sec
+    cld
+    
+    ; Handle overflow
+    cmp #$60
+    bcc clock_done
+    
+    sec
+    sbc #$60
+    sta timer_sec
+    inc timer_min
+    
+clock_done:
+    jsr clock_sound
+    rts
+
+; Variables
+last_bonus:     .byte 0
+ITEM_COIN       = 0
+ITEM_DIAMOND    = 1  
+ITEM_CLOCK      = 2
+
+msg_extra_life: .text "EXTRA LIFE"
+                .byte 0
+```
+
+## Key Concepts
+
+1. **BCD Arithmetic**: Simplifies score display with decimal mode
+2. **Status Bars**: Organize information in consistent screen locations
+3. **Visual Feedback**: Pulse, flash, and animate UI elements
+4. **Message Systems**: Temporary notifications that don't interrupt gameplay
+5. **State Tracking**: Manage scores, lives, timers, and levels
+
+## Experiment and Discover
+
+Try these UI enhancements:
+- Create a combo multiplier system
+- Add achievement notifications
+- Build an options menu
+- Implement a minimap display
+- Design transition effects between levels
+
+A polished UI transforms a prototype into a professional game. Every number, icon, and message helps tell your game's story!

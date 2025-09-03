@@ -1,0 +1,696 @@
+---
+title: "Advanced Sprite Techniques: Pushing the Limits"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 6
+description: "Master advanced sprite techniques - multiplexing, priority, expansion, and multicolor modes"
+learning_objectives:
+  - "Understand sprite priority and layering"
+  - "Use sprite expansion for bigger graphics"
+  - "Implement multicolor sprites"
+  - "Learn sprite multiplexing basics"
+concepts:
+  - "Sprite priority and background interaction"
+  - "X/Y expansion for double-size sprites"
+  - "Multicolor mode for detailed graphics"
+  - "Sprite multiplexing fundamentals"
+estimated_duration: "45-60 minutes"
+difficulty: "medium"
+prerequisites:
+  - "Lesson 2: Sprites"
+  - "Understanding of VIC-II registers"
+code_examples: true
+practical_exercise: true
+order: 6
+---
+
+# Advanced Sprite Techniques: Pushing the Limits
+**Unlock the full power of C64 sprites**
+
+You know the basics of sprites - now it's time to master the advanced techniques that made C64 games legendary. Today you'll learn sprite priority, expansion, multicolor mode, and even the basics of multiplexing - displaying more than 8 sprites on screen!
+
+These are the techniques that separated bedroom coders from professional developers. When "Impossible Mission" used sprite priority to cast realistic shadows, when "Mayhem in Monsterland" displayed dozens of enemies using multiplexing, when "Turrican" created massive bosses from multiple sprites - they were using exactly what you're about to learn.
+
+## What You'll Master
+
+Advanced sprite techniques including:
+- Layer sprites behind and in front of backgrounds
+- Double sprite size with expansion
+- Create detailed multicolor sprites
+- Begin to break the 8-sprite limit
+
+These techniques are what separated amateur games from professional ones on the C64.
+
+## Sprite Priority and Layering
+
+The C64 lets you control whether sprites appear in front of or behind the background, and how sprites layer with each other. This simple feature enabled sophisticated visual effects that still impress today.
+
+### Understanding Priority - The Z-Order System
+
+The VIC-II chip implements a fixed priority system that determines which graphics appear on top. Think of it as layers of transparent film stacked on top of each other:
+
+Two types of priority:
+1. **Sprite-to-sprite**: Lower numbered sprites appear in front (Sprite 0 is always on top)
+2. **Sprite-to-background**: Each sprite can be individually set to appear behind or in front
+
+This system is brilliantly simple - no complex sorting algorithms, just a single bit per sprite. Yet it enabled effects like shadows, reflections, and layered explosions that defined the C64's visual style.
+
+### Sprite-to-Background Priority
+
+```text
+; Sprite Priority Demo
+*=$0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+*=$080d
+start:
+        ; Setup screen with some background
+        lda #$00
+        sta $d020              ; Black border
+        sta $d021              ; Black background
+        
+        ; Draw some background characters
+        ldx #0
+draw_bg:
+        lda #160               ; Solid block character
+        sta $0400+10*40,x      ; Row 10
+        sta $0400+11*40,x      ; Row 11
+        sta $0400+12*40,x      ; Row 12
+        lda #$06               ; Blue color
+        sta $d800+10*40,x
+        sta $d800+11*40,x
+        sta $d800+12*40,x
+        inx
+        cpx #40
+        bne draw_bg
+```
+
+We're creating a blue platform across the middle of the screen. This will be our "ground" that sprites can appear in front of or behind. The character 160 is a solid block - one of the C64's built-in graphics characters.
+
+```text
+        ; Setup two sprites
+        lda #$80
+        sta $07f8              ; Sprite 0 pointer
+        sta $07f9              ; Sprite 1 pointer
+        
+        lda #%00000011         ; Enable sprites 0 and 1
+        sta $d015
+        
+        ; Different colors
+        lda #$01               ; White
+        sta $d027              ; Sprite 0
+        lda #$07               ; Yellow
+        sta $d028              ; Sprite 1
+        
+        ; Position sprites
+        lda #100
+        sta $d000              ; Sprite 0 X
+        lda #120
+        sta $d001              ; Sprite 0 Y (will be in front)
+        
+        lda #150
+        sta $d002              ; Sprite 1 X
+        lda #120
+        sta $d003              ; Sprite 1 Y (will be behind)
+        
+        ; Priority control - the magic register
+        lda #%00000010         ; Sprite 1 behind background
+        sta $d01b              ; Sprite 0 stays in front
+```
+
+Register $D01B is the priority control. Each bit corresponds to a sprite. When a bit is 0, that sprite appears in front of the background. When it's 1, the sprite appears behind. This single register enabled effects like:
+- Characters walking behind trees
+- Shadows cast on the ground
+- Explosions appearing inside buildings
+- Reflections in water
+
+```text
+main_loop:
+        ; Animate sprites across background
+        inc $d000              ; Move sprite 0
+        inc $d000
+        inc $d002              ; Move sprite 1
+        
+        ; Simple delay
+        ldx #0
+        ldy #0
+delay:  iny
+        bne delay
+        inx
+        bne delay
+        
+        jmp main_loop
+```
+
+As the sprites move, you'll see the white sprite (0) pass in front of the blue platform, while the yellow sprite (1) passes behind it. This creates the illusion of depth with just one bit!
+
+### Practical Priority Uses
+
+```text
+; Priority for game effects
+setup_game_sprites:
+        ; Player sprite - always on top
+        lda $d01b
+        and #%11111110         ; Clear bit 0
+        sta $d01b              ; Sprite 0 in front
+        
+        ; Shadow sprite - behind everything
+        lda $d01b
+        ora #%00000010         ; Set bit 1
+        sta $d01b              ; Sprite 1 behind
+        
+        ; Projectiles - in front
+        lda $d01b
+        and #%11110011         ; Sprites 2-3 in front
+        sta $d01b
+        
+        rts
+```
+
+This pattern - player on top, shadow behind, projectiles in front - was used in countless C64 games. "Impossible Mission" famously used this for its realistic shadow effect that followed the player character.
+
+## Sprite Expansion - Making Things Big
+
+The VIC-II can double the size of any sprite in the X and/or Y direction. This doesn't add detail - it just makes each pixel twice as large. But clever programmers used this for zoom effects, boss characters, and visual emphasis.
+
+### Basic Expansion
+
+```text
+; Sprite Expansion Demo
+expansion_demo:
+        ; Setup sprite
+        lda #$80
+        sta $07f8
+        lda #%00000001
+        sta $d015              ; Enable sprite 0
+        
+        ; Normal size initially
+        lda #0
+        sta $d017              ; Y expansion off
+        sta $d01d              ; X expansion off
+        
+        ; Position sprite
+        lda #160
+        sta $d000
+        lda #100
+        sta $d001
+```
+
+Registers $D017 (Y expansion) and $D01D (X expansion) control sprite sizing. Like most VIC-II registers, each bit controls one sprite. This per-sprite control means you can have normal enemies and a double-sized boss on screen simultaneously.
+
+```text
+expand_loop:
+        ; Wait for key press
+        jsr wait_for_space
+        
+        ; Cycle through expansion modes
+        inc expansion_mode
+        lda expansion_mode
+        and #$03               ; Keep in range 0-3
+        sta expansion_mode
+        
+        ; Apply expansion
+        tax
+        lda expansion_table_x,x
+        sta $d01d              ; X expansion
+        lda expansion_table_y,x
+        sta $d017              ; Y expansion
+        
+        jmp expand_loop
+
+expansion_mode: !byte 0
+
+expansion_table_x:
+        !byte %00000000        ; Normal
+        !byte %00000001        ; X expanded
+        !byte %00000000        ; Normal
+        !byte %00000001        ; Both expanded
+
+expansion_table_y:
+        !byte %00000000        ; Normal
+        !byte %00000000        ; Normal
+        !byte %00000001        ; Y expanded
+        !byte %00000001        ; Both expanded
+```
+
+The table-driven approach makes it easy to cycle through all four expansion combinations. This technique was often used for power-ups - when you grabbed a mushroom in a platform game, your character might briefly expand to show the effect.
+
+### Expansion for Effects
+
+```text
+; Zoom effect
+zoom_sprite:
+        ; Start small (normal size)
+        lda #0
+        sta $d017
+        sta $d01d
+        
+        ; Wait a bit
+        jsr delay_frames
+        
+        ; Expand!
+        lda #%00000001
+        sta $d017              ; Y expand
+        sta $d01d              ; X expand
+        
+        ; Adjust position to keep centered
+        lda $d000
+        sec
+        sbc #12                ; Half sprite width
+        sta $d000
+        
+        lda $d001
+        sec
+        sbc #10                ; Half sprite height
+        sta $d001
+        
+        rts
+```
+
+When you expand a sprite, it grows from its top-left corner. To keep it centered (like for an explosion effect), you need to adjust its position. The math here compensates for the doubling in size.
+
+```text
+; Squash and stretch animation
+squash_stretch:
+        lda animation_frame
+        and #$0f
+        tax
+        
+        ; First half - squash
+        cpx #8
+        bcs do_stretch
+        
+        ; Squash (Y normal, X expanded)
+        lda #%00000001
+        sta $d01d              ; X expand
+        lda #0
+        sta $d017              ; Y normal
+        jmp done_squash
+        
+do_stretch:
+        ; Stretch (Y expanded, X normal)
+        lda #0
+        sta $d01d              ; X normal
+        lda #%00000001
+        sta $d017              ; Y expand
+        
+done_squash:
+        inc animation_frame
+        rts
+
+animation_frame: !byte 0
+```
+
+This creates a cartoon-like squash and stretch effect. When something lands, it squashes horizontally and compresses vertically. When it jumps, it stretches vertically. This principle, borrowed from animation, makes movement feel more dynamic and alive.
+
+## Multicolor Sprites - Trading Resolution for Color
+
+Multicolor mode is a clever compromise. You get 4 colors per sprite instead of 2, but horizontal resolution drops from 24 to 12 pixels. Each pixel becomes 2 bits instead of 1, letting you choose from 4 colors for each "fat pixel."
+
+### Setting Up Multicolor
+
+```text
+; Multicolor Sprite Setup
+setup_multicolor:
+        ; Enable multicolor for sprite 0
+        lda #%00000001
+        sta $d01c              ; Multicolor mode register
+        
+        ; Set the four colors
+        lda #$01               ; White - background (transparent)
+        ; (Color 00 is always transparent)
+        
+        lda #$02               ; Red - shared color 1
+        sta $d025              ; Multicolor register 1 (01)
+        
+        lda #$06               ; Blue - sprite color
+        sta $d027              ; Sprite 0 color (10)
+        
+        lda #$0e               ; Light blue - shared color 2
+        sta $d026              ; Multicolor register 2 (11)
+        
+        ; Point to multicolor sprite data
+        lda #$81
+        sta $07f8
+        
+        rts
+```
+
+The multicolor system is elegant: two colors ($D025 and $D026) are shared by all multicolor sprites, while each sprite keeps its own individual color. The fourth "color" is transparency. This means multicolor sprites can share a consistent palette while still having unique colors.
+
+```text
+; Multicolor sprite data (2 bits per pixel)
+*=$2040
+multicolor_sprite:
+        ; Each pair of bits selects a color:
+        ; 00 = transparent
+        ; 01 = color from $d025 (shared 1)
+        ; 10 = color from $d027 (sprite specific)
+        ; 11 = color from $d026 (shared 2)
+        
+        ; Example: colorful ball
+        !byte %00000000,%01010101,%00000000  ; Row 1
+        !byte %00000001,%10101010,%01000000  ; Row 2
+        !byte %00000110,%10101010,%10010000  ; Row 3
+        !byte %00011010,%10101010,%10100100  ; Row 4
+        !byte %00011010,%10101010,%10100100  ; Row 5
+        !byte %01101010,%10101010,%10101001  ; Row 6
+        !byte %01101010,%10101010,%10101001  ; Row 7
+        !byte %10101010,%10101010,%10101010  ; Row 8
+        !byte %10101010,%10101010,%10101010  ; Row 9
+        !byte %10101010,%10101010,%10101010  ; Row 10
+        !byte %10101010,%10101010,%10101010  ; Row 11
+        !byte %10101010,%10101010,%10101010  ; Row 12
+        !byte %10101010,%10101010,%10101010  ; Row 13
+        !byte %01101010,%10101010,%10101001  ; Row 14
+        !byte %01101010,%10101010,%10101001  ; Row 15
+        !byte %00011010,%10101010,%10100100  ; Row 16
+        !byte %00011010,%10101010,%10100100  ; Row 17
+        !byte %00000110,%10101010,%10010000  ; Row 18
+        !byte %00000001,%10101010,%01000000  ; Row 19
+        !byte %00000000,%01010101,%00000000  ; Row 20
+        !byte %00000000,%00000000,%00000000  ; Row 21
+```
+
+Designing multicolor sprites is an art. You're painting with bit patterns. The pattern %10101010 creates alternating pixels of the sprite's individual color. Pattern %01010101 uses shared color 1. Artists would plan their sprites around the available colors, often using graph paper to sketch out bit patterns.
+
+## Sprite Multiplexing Basics - Breaking the 8-Sprite Limit
+
+The C64 can only display 8 hardware sprites, but games often showed dozens of objects. How? Multiplexing - reusing the same sprite at different positions during a single screen refresh. This is time-critical programming at its finest.
+
+### Simple Multiplexing Concept
+
+```text
+; Basic sprite multiplexing
+; Shows same sprite at multiple Y positions
+multiplex_simple:
+        ; Setup sprite
+        lda #$80
+        sta $07f8
+        lda #%00000001
+        sta $d015
+        lda #$01
+        sta $d027
+        
+        ; First position
+        lda #100
+        sta $d000              ; X stays same
+        lda #50
+        sta $d001              ; Y position 1
+        
+        ; Wait for raster to pass sprite
+wait_pos1:
+        lda $d012
+        cmp #80                ; Past first sprite (50 + sprite height)
+        bcc wait_pos1
+```
+
+The key insight: once the TV's electron beam has drawn a sprite, you can move that sprite to a new position further down the screen. The viewer sees multiple sprites, but it's actually the same sprite being repositioned during the screen draw.
+
+```text
+        ; Move to second position
+        lda #100
+        sta $d001              ; Y position 2
+        
+        ; Wait for raster to pass
+wait_pos2:
+        lda $d012
+        cmp #130               ; Past second sprite
+        bcc wait_pos2
+        
+        ; Move to third position
+        lda #150
+        sta $d001              ; Y position 3
+        
+        ; Wait for end of frame
+wait_frame:
+        lda $d012
+        cmp #250
+        bcc wait_frame
+        
+        ; Loop back
+        jmp multiplex_simple
+```
+
+This simple example displays the same sprite three times vertically. The $D012 register tells us which line the raster beam is currently drawing. By waiting for specific lines and repositioning sprites, we create the illusion of multiple sprites.
+
+### Practical Multiplexing
+
+```text
+; Multiplex for game objects
+; Display 16 sprites using 8 hardware sprites
+multiplex_game:
+        ; Sort sprites by Y position first
+        jsr sort_sprites
+        
+        ; Start with first 8
+        ldx #0
+setup_first_8:
+        lda sprite_x_pos,x
+        sta $d000,x
+        lda sprite_y_pos,x
+        sta $d001,x
+        inx
+        inx
+        cpx #16
+        bne setup_first_8
+        
+        ; Enable all 8
+        lda #$ff
+        sta $d015
+```
+
+Real multiplexing requires sorting sprites by Y position. You display the topmost 8 sprites first, then reuse those hardware sprites for the next 8 as the raster beam moves down the screen. This is how games like "Armalyte" could display dozens of enemies.
+
+The sorting step is crucial - sprites must be displayed in top-to-bottom order or they'll flicker or disappear. Many games spent significant CPU time just sorting sprites for multiplexing.
+
+## Combining Techniques
+
+The real power comes from combining these techniques. A boss character might use multiple sprites, expansion, multicolor mode, and priority effects all at once.
+
+### Boss Sprite
+
+```text
+; Large boss using 4 sprites
+create_boss:
+        ; Enable 4 sprites
+        lda #%00001111
+        sta $d015
+        
+        ; All expanded
+        sta $d017              ; Y expansion
+        sta $d01d              ; X expansion
+        
+        ; Arrange in 2x2 grid
+        lda #100               ; Base X
+        sta $d000              ; Top-left
+        sta $d004              ; Bottom-left
+        clc
+        adc #24                ; Sprite width
+        sta $d002              ; Top-right
+        sta $d006              ; Bottom-right
+```
+
+Creating a large boss from multiple sprites requires careful positioning. Each expanded sprite is 48×42 pixels, but they need to overlap slightly to create a seamless image. The math here positions four sprites in a 2×2 grid.
+
+```text
+        lda #80                ; Base Y
+        sta $d001              ; Top-left
+        sta $d003              ; Top-right
+        clc
+        adc #21                ; Sprite height
+        sta $d005              ; Bottom-left
+        sta $d007              ; Bottom-right
+        
+        ; Different graphics for each part
+        lda #$80
+        sta $07f8              ; Top-left
+        lda #$81
+        sta $07f9              ; Top-right
+        lda #$82
+        sta $07fa              ; Bottom-left
+        lda #$83
+        sta $07fb              ; Bottom-right
+        
+        ; Make it multicolor
+        lda #%00001111
+        sta $d01c
+        
+        ; Behind some background elements
+        lda #%00001100         ; Bottom sprites behind
+        sta $d01b
+        
+        rts
+```
+
+This boss uses every technique: multiple sprites create size, expansion doubles that size, multicolor adds detail, and priority makes the bottom half appear behind platforms. This is exactly how games created memorable boss battles.
+
+### Particle Effects
+
+```text
+; Explosion using all techniques
+explosion_effect:
+        ; Start small
+        lda #0
+        sta $d017
+        sta $d01d
+        sta explosion_frame
+        
+explosion_animate:
+        lda explosion_frame
+        
+        ; Expand over time
+        cmp #4
+        bcc no_expand
+        lda #%00000001
+        sta $d017
+        sta $d01d
+```
+
+Explosions often started small and expanded. This creates a sense of force and impact. The expansion happens after a few frames, making the explosion appear to grow.
+
+```text
+no_expand:
+        ; Change colors
+        lsr
+        lsr
+        and #$0f
+        sta $d027
+        
+        ; Update graphic
+        lda explosion_frame
+        lsr
+        lsr
+        clc
+        adc #$80
+        sta $07f8              ; Animation frame
+        
+        ; Fade by going behind background
+        lda explosion_frame
+        cmp #12
+        bcc in_front
+        lda #%00000001
+        sta $d01b              ; Behind background
+        
+in_front:
+        inc explosion_frame
+        lda explosion_frame
+        cmp #16
+        bne explosion_animate
+        
+        ; Disable sprite
+        lda #0
+        sta $d015
+        
+        rts
+
+explosion_frame: !byte 0
+```
+
+The explosion changes graphics (animation), changes colors (flash effect), expands (growth), and finally goes behind the background (fading out). This layered approach creates a convincing explosion from a single sprite.
+
+## Performance Considerations
+
+Advanced sprite techniques require efficient code. Every cycle counts when you're racing the raster beam.
+
+### Register Optimization
+
+```text
+; Efficient multi-sprite update
+fast_sprite_update:
+        ; Use indexed addressing
+        ldx #0
+update_loop:
+        lda positions_x,x
+        sta $d000,x            ; X positions
+        lda positions_y,x
+        sta $d001,x            ; Y positions
+        inx
+        inx
+        cpx #16                ; 8 sprites * 2
+        bne update_loop
+```
+
+Indexed addressing is your friend. Instead of individual LDA/STA for each sprite, use loops with indexed addressing. This is faster and uses less code space.
+
+```text
+        ; Batch register updates
+        lda all_sprite_colors
+        sta $d027
+        sta $d028
+        sta $d029
+        ; etc...
+        
+        rts
+
+positions_x:    !fill 8, 0
+positions_y:    !fill 8, 0
+all_sprite_colors: !byte $01
+```
+
+When multiple sprites share the same color, set them all at once. Every saved cycle matters when implementing advanced effects.
+
+## Common Problems and Solutions
+
+### "Sprite disappeared"
+- Check expansion doesn't push sprite off screen (expanded sprites need different positioning)
+- Verify priority settings (sprite might be behind background)
+- Ensure sprite is enabled in $D015
+
+### "Multicolor looks wrong"
+- Remember pixels are double-width (12 pixels, not 24)
+- Check color register assignments ($D025, $D026, sprite color)
+- Verify multicolor bit is set for that sprite in $D01C
+
+### "Multiplexing flickers"
+- Sort sprites by Y position before displaying
+- Time raster interrupts correctly (account for sprite height)
+- Don't try to reuse sprite too quickly (need 21+ scanlines between uses)
+
+## What You've Learned
+
+You can now:
+- ✅ Control sprite priority and layering
+- ✅ Use sprite expansion for size effects
+- ✅ Create detailed multicolor sprites
+- ✅ Understand multiplexing basics
+- ✅ Combine techniques for advanced effects
+- ✅ Optimize sprite operations
+
+You're now using sprites like a pro C64 developer! These techniques are what made games like "Turrican," "Mayhem in Monsterland," and "Armalyte" possible.
+
+## Next: Collision and Boundaries
+
+In the next lesson, you'll master collision detection - both hardware-based sprite collision and boundary checking for complete game mechanics.
+
+**Ready to make things interact?**
+
+---
+
+## Quick Reference
+
+### Sprite Control Registers
+- **$D015**: Enable (bit per sprite)
+- **$D017**: Y expansion
+- **$D01B**: Background priority
+- **$D01C**: Multicolor mode
+- **$D01D**: X expansion
+- **$D025**: Multicolor 1 (shared)
+- **$D026**: Multicolor 2 (shared)
+- **$D027-$D02E**: Individual sprite colors
+
+### Multicolor Bit Patterns
+```
+00 = Transparent (background)
+01 = Color from $D025
+10 = Color from sprite's own register
+11 = Color from $D026
+```
+
+### Priority Rules
+- Lower sprite numbers appear in front
+- $D01B controls background priority
+- 0 = sprite in front, 1 = sprite behind
+
+Remember: These advanced techniques are what made C64 games special! Master them and you'll create magic.

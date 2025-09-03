@@ -1,0 +1,894 @@
+---
+title: "Smooth Motion: Professional Movement Techniques"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 9
+description: "Master smooth motion techniques - interpolation, sub-pixel precision, and professional movement"
+learning_objectives:
+  - "Implement interpolation for smooth movement"
+  - "Use sub-pixel precision techniques"
+  - "Create acceleration and deceleration"
+  - "Build professional motion systems"
+concepts:
+  - "Linear interpolation (lerp)"
+  - "Sub-pixel precision movement"
+  - "Acceleration and physics"
+  - "Smooth scrolling techniques"
+estimated_duration: "45 minutes"
+difficulty: "medium-hard"
+prerequisites:
+  - "Lesson 4: Movement Patterns"
+  - "Understanding of basic math"
+code_examples: true
+practical_exercise: true
+order: 9
+---
+
+# Smooth Motion: Professional Movement Techniques
+**The difference between amateur and professional**
+
+Jerky movement ruins games. Today you'll learn the techniques that made C64 games feel smooth and professional - interpolation, sub-pixel precision, acceleration curves, and more. These are the secrets that separated great games from mediocre ones.
+
+## What You'll Master
+
+Professional motion techniques:
+- Silky-smooth interpolation between positions
+- Sub-pixel precision for ultra-smooth movement
+- Natural acceleration and deceleration
+- Smooth scrolling and camera movement
+
+This is the polish that makes games feel amazing!
+
+## Linear Interpolation (Lerp)
+
+The foundation of smooth motion - gradually moving between two points:
+
+### Basic Interpolation
+
+```text
+; Simple interpolation
+*=$0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+*=$080d
+start:
+        ; Setup sprite
+        lda #$80
+        sta $07f8
+        lda #%00000001
+        sta $d015
+        lda #$07               ; Yellow
+        sta $d027
+        
+        ; Starting position
+        lda #50
+        sta current_x
+        sta $d000
+        lda #100
+        sta current_y
+        sta $d001
+        
+        ; Target position
+        lda #200
+        sta target_x
+        lda #150
+        sta target_y
+        
+interpolate_loop:
+        ; Wait for frame
+        lda #250
+wait:   cmp $d012
+        bne wait
+        
+        ; Interpolate X
+        lda target_x
+        sec
+        sbc current_x          ; Distance to target
+        beq x_done             ; Already there
+        
+        ; Move 1/8 of distance
+        lsr                    ; /2
+        lsr                    ; /4
+        lsr                    ; /8
+        bne apply_x
+        lda #1                 ; Minimum 1 pixel
+apply_x:
+        clc
+        adc current_x
+        sta current_x
+        sta $d000
+        
+x_done:
+        ; Interpolate Y
+        lda target_y
+        sec
+        sbc current_y
+        beq y_done
+        
+        lsr
+        lsr
+        lsr
+        bne apply_y
+        lda #1
+apply_y:
+        clc
+        adc current_y
+        sta current_y
+        sta $d001
+        
+y_done:
+        ; Check for new target (joystick)
+        lda $dc00
+        and #$10               ; Fire button
+        bne interpolate_loop
+        
+        ; Set new random target
+        lda $d012              ; Use raster as random
+        sta target_x
+        lda $d012
+        sta target_y
+        
+        jmp interpolate_loop
+
+current_x:  !byte 50
+current_y:  !byte 100
+target_x:   !byte 200
+target_y:   !byte 150
+```
+
+### Smooth Following
+
+Make sprites follow targets smoothly:
+
+```text
+; Smooth follow camera/cursor
+smooth_follow:
+        ; Calculate X difference
+        lda target_x
+        sec
+        sbc follower_x
+        sta x_diff
+        
+        ; Check direction
+        bpl moving_right
+        
+        ; Moving left (negative)
+        eor #$ff
+        clc
+        adc #1                 ; Make positive
+        lsr
+        lsr                    ; Divide by 4
+        beq follow_y           ; Too small
+        
+        ; Subtract from position
+        sta temp
+        lda follower_x
+        sec
+        sbc temp
+        sta follower_x
+        jmp follow_y
+        
+moving_right:
+        lsr
+        lsr                    ; Divide by 4
+        beq follow_y
+        
+        clc
+        adc follower_x
+        sta follower_x
+        
+follow_y:
+        ; Same for Y coordinate
+        lda target_y
+        sec
+        sbc follower_y
+        sta y_diff
+        
+        bpl moving_down
+        
+        eor #$ff
+        clc
+        adc #1
+        lsr
+        lsr
+        beq update_sprite
+        
+        sta temp
+        lda follower_y
+        sec
+        sbc temp
+        sta follower_y
+        jmp update_sprite
+        
+moving_down:
+        lsr
+        lsr
+        beq update_sprite
+        
+        clc
+        adc follower_y
+        sta follower_y
+        
+update_sprite:
+        lda follower_x
+        sta $d000
+        lda follower_y
+        sta $d001
+        rts
+
+follower_x: !byte 100
+follower_y: !byte 100
+x_diff:     !byte 0
+y_diff:     !byte 0
+temp:       !byte 0
+```
+
+## Sub-Pixel Precision
+
+For ultra-smooth movement, track fractional pixels:
+
+### 16-Bit Precision Movement
+
+```text
+; Sub-pixel precision system
+; Position stored as 16-bit fixed point (8.8)
+; High byte = pixel position
+; Low byte = sub-pixel fraction
+
+sub_pixel_movement:
+        ; Initialize 16-bit position
+        lda #100
+        sta x_pos_hi           ; 100 pixels
+        lda #0
+        sta x_pos_lo           ; .0 fraction
+        
+        ; Velocity with fraction
+        lda #1
+        sta x_vel_hi           ; 1 pixel
+        lda #$40               ; + 0.25 pixels
+        sta x_vel_lo
+        
+move_with_precision:
+        ; Add velocity to position
+        clc
+        lda x_pos_lo
+        adc x_vel_lo
+        sta x_pos_lo
+        lda x_pos_hi
+        adc x_vel_hi
+        sta x_pos_hi
+        
+        ; Apply to sprite (only high byte)
+        sta $d000
+        
+        ; Acceleration example
+        clc
+        lda x_vel_lo
+        adc #$08               ; Tiny acceleration
+        sta x_vel_lo
+        lda x_vel_hi
+        adc #0                 ; Carry if needed
+        sta x_vel_hi
+        
+        rts
+
+x_pos_hi:   !byte 100
+x_pos_lo:   !byte 0
+x_vel_hi:   !byte 1
+x_vel_lo:   !byte $40
+```
+
+### Fixed-Point Math
+
+```text
+; 8.8 fixed point arithmetic
+; $0100 = 1.0
+; $0080 = 0.5
+; $0040 = 0.25
+
+multiply_fixed:
+        ; Multiply two 8.8 numbers
+        ; Result in 16.16, extract middle 16 bits
+        
+        ; Example: 1.5 * 2.25
+        lda #$01
+        sta multiplicand_hi
+        lda #$80               ; 1.5
+        sta multiplicand_lo
+        
+        lda #$02
+        sta multiplier_hi
+        lda #$40               ; 2.25
+        sta multiplier_lo
+        
+        ; (Multiplication routine here)
+        ; Result: $0340 = 3.25
+        
+        rts
+
+; Sine table in fixed point
+sine_table_fixed:
+        !byte $00,$00  ; 0.0
+        !byte $00,$32  ; 0.195
+        !byte $00,$61  ; 0.383
+        !byte $00,$8E  ; 0.556
+        !byte $00,$B5  ; 0.707
+        !byte $00,$D4  ; 0.831
+        !byte $00,$EC  ; 0.924
+        !byte $00,$FA  ; 0.981
+        !byte $01,$00  ; 1.0
+```
+
+## Acceleration and Physics
+
+Natural movement with acceleration:
+
+### Acceleration System
+
+```text
+; Physics-based movement
+physics_movement:
+        ; Apply acceleration
+        lda input_x            ; -1, 0, or 1
+        beq apply_friction
+        
+        ; Accelerate
+        bmi accel_left
+        
+        ; Accelerate right
+        clc
+        lda velocity_x
+        adc #ACCELERATION
+        cmp #MAX_VELOCITY
+        bcc store_vel
+        lda #MAX_VELOCITY
+        jmp store_vel
+        
+accel_left:
+        sec
+        lda velocity_x
+        sbc #ACCELERATION
+        cmp #256-MAX_VELOCITY  ; Negative max
+        bcs store_vel
+        lda #256-MAX_VELOCITY
+        
+store_vel:
+        sta velocity_x
+        jmp apply_velocity
+        
+apply_friction:
+        ; No input - apply friction
+        lda velocity_x
+        beq apply_velocity     ; Already stopped
+        bmi friction_left
+        
+        ; Moving right - slow down
+        sec
+        sbc #FRICTION
+        bcs store_friction
+        lda #0                 ; Stopped
+        jmp store_friction
+        
+friction_left:
+        ; Moving left - slow down
+        clc
+        adc #FRICTION
+        bcc store_friction
+        lda #0                 ; Stopped
+        
+store_friction:
+        sta velocity_x
+        
+apply_velocity:
+        ; Add velocity to position
+        lda position_x
+        clc
+        adc velocity_x
+        sta position_x
+        sta $d000
+        
+        rts
+
+ACCELERATION = 2
+MAX_VELOCITY = 8
+FRICTION = 1
+
+input_x:    !byte 0
+velocity_x: !byte 0
+position_x: !byte 100
+```
+
+### Gravity and Jumping
+
+```text
+; Smooth jumping physics
+jump_physics:
+        ; Check jump input
+        lda $dc00
+        and #$01               ; Up = jump
+        bne apply_gravity
+        
+        ; Can we jump?
+        lda on_ground
+        beq apply_gravity      ; Must be on ground
+        
+        ; Start jump
+        lda #JUMP_VELOCITY
+        sta y_velocity
+        lda #0
+        sta on_ground
+        
+apply_gravity:
+        ; Always apply gravity
+        lda y_velocity
+        clc
+        adc #GRAVITY
+        sta y_velocity
+        
+        ; Terminal velocity
+        cmp #MAX_FALL_SPEED
+        bcc apply_y_vel
+        lda #MAX_FALL_SPEED
+        sta y_velocity
+        
+apply_y_vel:
+        ; Apply to position
+        lda y_position
+        clc
+        adc y_velocity
+        sta y_position
+        
+        ; Check ground
+        cmp #GROUND_LEVEL
+        bcc not_on_ground
+        
+        ; Hit ground
+        lda #GROUND_LEVEL
+        sta y_position
+        lda #0
+        sta y_velocity
+        lda #1
+        sta on_ground
+        
+not_on_ground:
+        ; Update sprite
+        lda y_position
+        sta $d001
+        
+        rts
+
+JUMP_VELOCITY = 256-12  ; Negative (up)
+GRAVITY = 1
+MAX_FALL_SPEED = 10
+GROUND_LEVEL = 200
+
+y_velocity:  !byte 0
+y_position:  !byte 200
+on_ground:   !byte 1
+```
+
+## Smooth Scrolling
+
+Professional scrolling techniques:
+
+### Pixel-Perfect Scrolling
+
+```text
+; Smooth horizontal scroll
+smooth_scroll:
+        ; Fine scroll register (0-7 pixels)
+        lda scroll_x_fine
+        sta $d016
+        
+        ; Scroll one pixel
+        inc scroll_x_fine
+        lda scroll_x_fine
+        and #$07
+        sta scroll_x_fine
+        bne scroll_done
+        
+        ; Wrapped - shift characters
+        jsr shift_screen_left
+        
+scroll_done:
+        rts
+
+shift_screen_left:
+        ; Move all characters left
+        ldx #0
+shift_row:
+        ldy #0
+shift_char:
+        lda $0401,y            ; Get next char
+        sta $0400,y            ; Move left
+        iny
+        cpy #39
+        bne shift_char
+        
+        ; New character on right
+        lda new_column_data,x
+        sta $0400+39
+        
+        ; Next row
+        clc
+        lda shift_row+1        ; Self-modify
+        adc #40
+        sta shift_row+1
+        lda shift_row+2
+        adc #0
+        sta shift_row+2
+        
+        inx
+        cpx #25
+        bne shift_row
+        
+        ; Reset self-mod code
+        lda #<$0401
+        sta shift_row+1
+        lda #>$0401
+        sta shift_row+2
+        
+        rts
+
+scroll_x_fine: !byte 0
+new_column_data: !fill 25, 32
+```
+
+### Parallax Scrolling
+
+```text
+; Multi-layer parallax
+parallax_scroll:
+        ; Background layer (slow)
+        inc frame_counter
+        lda frame_counter
+        and #$03               ; Every 4 frames
+        bne skip_bg
+        
+        inc bg_scroll
+        lda bg_scroll
+        and #$07
+        sta $d016              ; Fine scroll
+        
+skip_bg:
+        ; Midground (medium)
+        lda frame_counter
+        and #$01               ; Every 2 frames
+        bne skip_mid
+        
+        jsr scroll_midground
+        
+skip_mid:
+        ; Foreground (fast)
+        jsr scroll_foreground  ; Every frame
+        
+        rts
+
+frame_counter: !byte 0
+bg_scroll:     !byte 0
+```
+
+## Easing Functions
+
+Different acceleration curves for professional feel:
+
+### Ease In/Out
+
+```text
+; Smooth start and stop
+ease_in_out:
+        ; Calculate progress (0-255)
+        lda animation_time
+        sta progress
+        
+        ; Ease in/out curve
+        cmp #128
+        bcs ease_out
+        
+ease_in:
+        ; Accelerate (squared)
+        lsr                    ; /2
+        tax
+        lda square_table,x
+        jmp apply_ease
+        
+ease_out:
+        ; Decelerate
+        eor #$ff               ; Invert
+        lsr
+        tax
+        lda square_table,x
+        eor #$ff               ; Invert result
+        
+apply_ease:
+        ; Apply to position
+        sta temp
+        lda start_pos
+        clc
+        adc temp
+        sta $d000
+        
+        inc animation_time
+        rts
+
+animation_time: !byte 0
+progress:       !byte 0
+start_pos:      !byte 50
+
+; Precalculated squares /256
+square_table:
+        !byte 0,0,0,0,0,0,0,1
+        !byte 1,1,2,2,3,3,4,5
+        !byte 6,7,8,9,10,12,13,15
+        ; ... etc
+```
+
+## Complete Smooth Motion Demo
+
+Putting it all together:
+
+```text
+; Professional Motion Demo
+*=$0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+*=$080d
+start:
+        jsr init_motion
+        
+main_loop:
+        ; Timing
+        jsr wait_frame
+        
+        ; Input
+        jsr read_smooth_input
+        
+        ; Physics
+        jsr update_physics
+        jsr apply_acceleration
+        jsr apply_velocity
+        
+        ; Interpolation
+        jsr interpolate_position
+        
+        ; Rendering
+        jsr update_display
+        
+        jmp main_loop
+
+update_physics:
+        ; Horizontal movement
+        lda input_x
+        beq apply_x_friction
+        
+        ; Accelerate
+        asl                    ; x2 for acceleration
+        clc
+        adc velocity_x_lo
+        sta velocity_x_lo
+        lda velocity_x_hi
+        adc input_x
+        sta velocity_x_hi
+        
+        ; Clamp velocity
+        jsr clamp_velocity
+        jmp vertical_physics
+        
+apply_x_friction:
+        ; Friction (reduce by 1/16)
+        lda velocity_x_hi
+        bmi negative_friction
+        
+        ; Positive velocity
+        lda velocity_x_lo
+        sec
+        sbc #$10
+        sta velocity_x_lo
+        lda velocity_x_hi
+        sbc #0
+        sta velocity_x_hi
+        bpl vertical_physics
+        
+        ; Stopped
+        lda #0
+        sta velocity_x_hi
+        sta velocity_x_lo
+        jmp vertical_physics
+        
+negative_friction:
+        ; Negative velocity
+        lda velocity_x_lo
+        clc
+        adc #$10
+        sta velocity_x_lo
+        lda velocity_x_hi
+        adc #0
+        sta velocity_x_hi
+        bmi vertical_physics
+        
+        ; Stopped
+        lda #0
+        sta velocity_x_hi
+        sta velocity_x_lo
+        
+vertical_physics:
+        ; Jump/gravity
+        lda input_jump
+        beq apply_grav
+        lda grounded
+        beq apply_grav
+        
+        ; Jump!
+        lda #$00
+        sta velocity_y_lo
+        lda #$f8               ; -8 pixels
+        sta velocity_y_hi
+        lda #0
+        sta grounded
+        
+apply_grav:
+        ; Gravity
+        clc
+        lda velocity_y_lo
+        adc #$20               ; 0.125 pixels
+        sta velocity_y_lo
+        lda velocity_y_hi
+        adc #0
+        sta velocity_y_hi
+        
+        rts
+
+apply_velocity:
+        ; X position
+        clc
+        lda position_x_lo
+        adc velocity_x_lo
+        sta position_x_lo
+        lda position_x_hi
+        adc velocity_x_hi
+        sta position_x_hi
+        
+        ; Y position
+        clc
+        lda position_y_lo
+        adc velocity_y_lo
+        sta position_y_lo
+        lda position_y_hi
+        adc velocity_y_hi
+        sta position_y_hi
+        
+        ; Ground check
+        lda position_y_hi
+        cmp #180
+        bcc not_grounded
+        
+        ; On ground
+        lda #180
+        sta position_y_hi
+        lda #0
+        sta position_y_lo
+        sta velocity_y_hi
+        sta velocity_y_lo
+        lda #1
+        sta grounded
+        
+not_grounded:
+        rts
+
+interpolate_position:
+        ; Smooth display position
+        lda position_x_hi
+        sec
+        sbc display_x
+        beq x_interp_done
+        
+        ; Move 1/4 toward target
+        lsr
+        lsr
+        bne apply_x_interp
+        lda #1
+apply_x_interp:
+        clc
+        adc display_x
+        sta display_x
+        sta $d000
+        
+x_interp_done:
+        ; Same for Y
+        lda position_y_hi
+        sec
+        sbc display_y
+        beq y_interp_done
+        
+        lsr
+        lsr
+        bne apply_y_interp
+        lda #1
+apply_y_interp:
+        clc
+        adc display_y
+        sta display_y
+        sta $d001
+        
+y_interp_done:
+        rts
+
+; Motion variables (16-bit fixed point)
+position_x_hi:  !byte 100
+position_x_lo:  !byte 0
+position_y_hi:  !byte 100
+position_y_lo:  !byte 0
+
+velocity_x_hi:  !byte 0
+velocity_x_lo:  !byte 0
+velocity_y_hi:  !byte 0
+velocity_y_lo:  !byte 0
+
+display_x:      !byte 100
+display_y:      !byte 100
+
+input_x:        !byte 0
+input_jump:     !byte 0
+grounded:       !byte 1
+```
+
+## Common Issues and Solutions
+
+### "Movement still feels jerky"
+- Ensure consistent frame timing
+- Use interpolation for display position
+- Increase sub-pixel precision
+
+### "Acceleration feels wrong"
+- Tune acceleration/friction values
+- Use non-linear curves
+- Add momentum caps
+
+### "Scrolling tears"
+- Sync scroll updates to raster
+- Update during vertical blank
+- Use double buffering
+
+## What You've Learned
+
+You can now:
+- ✅ Implement smooth interpolation
+- ✅ Use sub-pixel precision
+- ✅ Create natural acceleration
+- ✅ Build physics systems
+- ✅ Smooth scrolling techniques
+- ✅ Professional easing functions
+
+Your games now have professional polish!
+
+## Next: Sprite Animation
+
+In the final lesson, you'll master sprite animation - bringing your characters to life!
+
+**Ready for the final lesson?**
+
+---
+
+## Quick Reference
+
+### Interpolation Formula
+```text
+new_pos = current_pos + (target_pos - current_pos) / smoothing_factor
+```
+
+### Fixed Point (8.8)
+```text
+$0100 = 1.0
+$0080 = 0.5
+$0040 = 0.25
+$0010 = 0.0625
+```
+
+### Physics Constants
+- Gravity: 0.125-0.25 pixels/frame²
+- Friction: 0.0625-0.125 reduction/frame
+- Max velocity: 4-8 pixels/frame
+- Jump velocity: -6 to -12 pixels/frame
+
+Remember: Smooth motion makes good games great!

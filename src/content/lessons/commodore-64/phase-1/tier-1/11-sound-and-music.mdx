@@ -1,0 +1,502 @@
+---
+title: "Sound and Music: The SID Chip"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 11
+date: 2024-12-10
+author: Steve Hill
+---
+
+import MemoryMap from '@/components/MemoryMap.astro';
+import RegisterView from '@/components/RegisterView.astro';
+
+# Sound and Music: The SID Chip
+
+The Commodore 64's Sound Interface Device (SID) chip was revolutionary in 1982. While other computers could beep and buzz, the SID offered three independent voices, each capable of generating waveforms, filters, and envelopes that rivaled professional synthesizers.
+
+## Understanding the SID
+
+The SID chip (6581/8580) lives at memory addresses $D400-$D41C and provides:
+- 3 independent voices with 8-octave range
+- 4 waveforms per voice (triangle, sawtooth, pulse, noise)
+- ADSR envelope control
+- Programmable filters
+- Ring modulation and sync
+
+Let's make some noise!
+
+## Your First Sound
+
+```asm
+; Simple beep using Voice 1
+init_sound:
+    lda #$0F        ; Maximum volume
+    sta $D418       ; Volume and filter register
+    
+    ; Set up Voice 1
+    lda #$00        ; Low frequency byte
+    sta $D400
+    lda #$10        ; High frequency byte (middle C)
+    sta $D401
+    
+    ; ADSR envelope (Attack/Decay/Sustain/Release)
+    lda #$00        ; Fast attack, fast decay
+    sta $D405
+    lda #$F0        ; High sustain, fast release
+    sta $D406
+    
+    ; Start the note
+    lda #$11        ; Triangle wave + gate bit
+    sta $D404
+    
+    ; Play for a while
+    ldx #60
+delay:
+    jsr wait_frame
+    dex
+    bne delay
+    
+    ; Stop the note
+    lda #$10        ; Triangle wave, gate off
+    sta $D404
+    rts
+```
+
+## Creating Musical Notes
+
+The SID uses frequency values, not note names. Here's how to play a scale:
+
+```asm
+; Note frequency table (high bytes)
+note_table_hi:
+    .byte $01,$01,$01,$01,$02,$02,$02,$02  ; C,D,E,F,G,A,B,C
+    
+note_table_lo:
+    .byte $17,$27,$39,$4B,$63,$7C,$98,$B5  ; Low bytes
+
+play_scale:
+    lda #$0F
+    sta $D418       ; Set volume
+    
+    ; Configure Voice 1
+    lda #$10
+    sta $D405       ; Quick attack
+    lda #$F0
+    sta $D406       ; Sustain and release
+    
+    ldx #0
+play_note:
+    lda note_table_lo,x
+    sta $D400       ; Frequency low
+    lda note_table_hi,x
+    sta $D401       ; Frequency high
+    
+    lda #$21        ; Sawtooth wave + gate on
+    sta $D404
+    
+    ldy #20         ; Note duration
+note_delay:
+    jsr wait_frame
+    dey
+    bne note_delay
+    
+    lda #$20        ; Gate off
+    sta $D404
+    
+    inx
+    cpx #8
+    bne play_note
+    rts
+```
+
+<RegisterView 
+  title="SID Voice 1 Registers"
+  registers={[
+    { name: "$D400-01", value: "Frequency", bits: "16-bit frequency value" },
+    { name: "$D402-03", value: "Pulse Width", bits: "12-bit pulse width" },
+    { name: "$D404", value: "Control", bits: "Noise|Pulse|Saw|Tri|Test|Ring|Sync|Gate" },
+    { name: "$D405", value: "Attack/Decay", bits: "AAAA|DDDD" },
+    { name: "$D406", value: "Sustain/Release", bits: "SSSS|RRRR" }
+  ]}
+/>
+
+## Sound Effects
+
+Game sound effects require different approaches than music:
+
+```asm
+; Explosion sound effect
+explosion_sound:
+    lda #$0F
+    sta $D418       ; Max volume
+    
+    ; Use noise waveform
+    lda #$00
+    sta $D405       ; Instant attack
+    lda #$08        ; Quick decay, no sustain
+    sta $D406
+    
+    lda #$FF        ; Maximum frequency
+    sta $D400
+    sta $D401
+    
+    lda #$81        ; Noise + gate on
+    sta $D404
+    
+    ; Sweep frequency down
+    ldx #$FF
+explosion_loop:
+    stx $D401       ; Decrease frequency
+    
+    txa
+    lsr
+    lsr
+    lsr
+    lsr
+    sta $D418       ; Fade volume
+    
+    jsr wait_frame
+    dex
+    cpx #$10
+    bne explosion_loop
+    
+    lda #$80        ; Gate off
+    sta $D404
+    rts
+
+; Laser sound effect
+laser_sound:
+    lda #$0F
+    sta $D418
+    
+    lda #$00        ; Fast envelope
+    sta $D405
+    lda #$09
+    sta $D406
+    
+    ; Sweep from high to low
+    ldx #$40
+laser_loop:
+    stx $D401       ; High frequency byte
+    lda #$00
+    sta $D400       ; Low byte
+    
+    lda #$11        ; Triangle wave
+    sta $D404
+    
+    jsr wait_frame
+    
+    dex
+    cpx #$02
+    bne laser_loop
+    
+    lda #$10        ; Gate off
+    sta $D404
+    rts
+```
+
+## Multi-Voice Harmony
+
+Using all three voices creates rich sounds:
+
+```asm
+; Three-voice chord
+play_chord:
+    lda #$0F
+    sta $D418       ; Volume
+    
+    ; Voice 1 - Root note (C)
+    lda #$17
+    sta $D400
+    lda #$01
+    sta $D401
+    
+    ; Voice 2 - Major third (E)
+    lda #$39
+    sta $D407
+    lda #$01
+    sta $D408
+    
+    ; Voice 3 - Fifth (G)
+    lda #$63
+    sta $D40E
+    lda #$02
+    sta $D40F
+    
+    ; Set same envelope for all voices
+    lda #$10
+    sta $D405
+    sta $D40C
+    sta $D413
+    
+    lda #$F8
+    sta $D406
+    sta $D40D
+    sta $D414
+    
+    ; Start all voices (sawtooth)
+    lda #$21
+    sta $D404
+    sta $D40B
+    sta $D412
+    
+    ; Let chord ring
+    ldx #120
+chord_hold:
+    jsr wait_frame
+    dex
+    bne chord_hold
+    
+    ; Stop all voices
+    lda #$20
+    sta $D404
+    sta $D40B
+    sta $D412
+    rts
+```
+
+## Simple Music Player
+
+Let's build a basic music sequencer:
+
+```asm
+; Music data format: duration, note (255 = end)
+song_data:
+    .byte 30,$10  ; Note 1
+    .byte 30,$12  ; Note 2
+    .byte 30,$14  ; Note 3
+    .byte 30,$15  ; Note 4
+    .byte 60,$17  ; Note 5 (longer)
+    .byte 30,$15  ; Note 4
+    .byte 30,$14  ; Note 3
+    .byte 60,$12  ; Note 2 (longer)
+    .byte 255     ; End marker
+
+; Frequency lookup table (simplified)
+freq_table_lo:
+    .byte $17,$27,$39,$4B,$63,$7C,$98,$B5
+    .byte $D2,$F3,$17,$3E,$68,$96,$C7,$FD
+    .byte $37,$75,$B8,$FF,$4E,$A1,$FB,$5F
+    
+freq_table_hi:
+    .byte $01,$01,$01,$01,$02,$02,$02,$02
+    .byte $03,$03,$04,$04,$05,$05,$06,$07
+    .byte $08,$09,$0A,$0B,$0D,$0E,$10,$12
+
+play_song:
+    lda #$0F
+    sta $D418       ; Volume
+    
+    ; Set up voice
+    lda #$10
+    sta $D405
+    lda #$F0
+    sta $D406
+    
+    ldy #0          ; Song position
+song_loop:
+    lda song_data,y
+    cmp #255        ; Check for end
+    beq song_done
+    
+    tax             ; Duration in X
+    iny
+    
+    lda song_data,y
+    pha             ; Save note
+    
+    ; Look up frequency
+    and #$1F        ; Limit to table size
+    tax
+    lda freq_table_lo,x
+    sta $D400
+    lda freq_table_hi,x
+    sta $D401
+    
+    ; Start note
+    lda #$21        ; Sawtooth
+    sta $D404
+    
+    pla
+    tax             ; Duration back in X
+note_hold:
+    jsr wait_frame
+    dex
+    bne note_hold
+    
+    ; Stop note
+    lda #$20
+    sta $D404
+    
+    iny
+    jmp song_loop
+    
+song_done:
+    rts
+```
+
+## Integrating Sound with Gameplay
+
+Sound should respond to game events:
+
+```asm
+; Sound manager
+sound_priority   .byte 0  ; Current sound priority
+sound_timer      .byte 0  ; Frames remaining
+
+; Priority levels
+PRIORITY_LOW     = 1      ; Background music
+PRIORITY_MEDIUM  = 2      ; Player actions
+PRIORITY_HIGH    = 3      ; Collisions/explosions
+
+trigger_sound:
+    ; A = sound ID, X = priority
+    cpx sound_priority
+    bcc skip_sound    ; Lower priority, skip
+    
+    stx sound_priority
+    
+    ; Branch to sound routine based on ID
+    cmp #SOUND_JUMP
+    beq play_jump
+    cmp #SOUND_SHOOT
+    beq play_shoot
+    cmp #SOUND_HIT
+    beq play_hit
+skip_sound:
+    rts
+
+update_sound:
+    lda sound_timer
+    beq sound_done
+    dec sound_timer
+    bne sound_active
+    
+sound_done:
+    lda #0
+    sta sound_priority  ; Clear priority
+    ; Stop all voices
+    lda #$00
+    sta $D404
+    sta $D40B
+    sta $D412
+sound_active:
+    rts
+```
+
+## Putting It All Together
+
+Here's a complete example with sound integrated into sprite movement:
+
+```asm
+* = $0801
+    .byte $0C,$08,$0A,$00,$9E,$32,$30,$36,$31,$00,$00,$00
+
+* = $080D
+main:
+    jsr init_screen
+    jsr init_sprites
+    jsr init_sound_system
+    
+game_loop:
+    jsr wait_frame
+    jsr read_joystick
+    jsr update_sprites
+    jsr update_sounds
+    jsr check_collisions
+    jmp game_loop
+
+init_sound_system:
+    lda #$0F
+    sta $D418       ; Set volume
+    lda #0
+    sta sound_state
+    sta music_index
+    rts
+
+update_sounds:
+    ; Update current sound effect
+    lda sound_state
+    beq check_music
+    dec sound_timer
+    bne check_music
+    jsr stop_effect
+    
+check_music:
+    ; Simple background music
+    dec music_timer
+    bne done_sounds
+    jsr play_next_note
+done_sounds:
+    rts
+
+handle_jump:
+    ; Play jump sound when player jumps
+    lda #SOUND_JUMP
+    jsr trigger_effect
+    ; ... jump logic ...
+    rts
+
+handle_collision:
+    ; Play collision sound
+    lda #SOUND_COLLISION
+    jsr trigger_effect
+    ; ... collision logic ...
+    rts
+
+; Sound effect library
+trigger_effect:
+    sta current_sound
+    
+    cmp #SOUND_JUMP
+    bne check_shoot
+    jsr setup_jump_sound
+    jmp effect_started
+    
+check_shoot:
+    cmp #SOUND_SHOOT
+    bne check_collision
+    jsr setup_shoot_sound
+    jmp effect_started
+    
+check_collision:
+    jsr setup_collision_sound
+    
+effect_started:
+    lda #30         ; Effect duration
+    sta sound_timer
+    lda #1
+    sta sound_state
+    rts
+
+; Data
+sound_state     .byte 0
+sound_timer     .byte 0
+current_sound   .byte 0
+music_timer     .byte 0
+music_index     .byte 0
+
+SOUND_JUMP      = 1
+SOUND_SHOOT     = 2
+SOUND_COLLISION = 3
+```
+
+## Key Concepts
+
+1. **SID Architecture**: Three independent voices with full synthesis capabilities
+2. **ADSR Envelopes**: Attack, Decay, Sustain, Release shape your sounds
+3. **Waveforms**: Triangle for soft tones, sawtooth for brass, pulse for hollow sounds, noise for effects
+4. **Frequency Control**: Convert musical notes to frequency values
+5. **Sound Priority**: Manage multiple simultaneous sound requests
+
+## Experiment and Discover
+
+Try these challenges:
+- Create a drum sound using the noise waveform
+- Build an arpeggiator that cycles through chord notes
+- Make a siren effect by oscillating frequency
+- Design unique sound effects for different game events
+- Compose a simple melody using the music player
+
+The SID chip turns your C64 into a synthesizer. Every beep, boom, and melody adds personality to your game!

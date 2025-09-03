@@ -1,0 +1,626 @@
+---
+title: "Managing Multiple Sprites"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 12
+date: 2024-12-10
+author: Steve Hill
+---
+
+import MemoryMap from '@/components/MemoryMap.astro';
+import RegisterView from '@/components/RegisterView.astro';
+
+# Managing Multiple Sprites
+
+The C64 gives us 8 hardware sprites, but managing them efficiently requires organization. As your game grows more complex, you need systems to track sprite states, handle updates, and coordinate animations.
+
+## Sprite Management Table
+
+Instead of hardcoding sprite behavior, let's build a flexible sprite system:
+
+```asm
+; Sprite data structure (8 bytes per sprite)
+SPRITE_ACTIVE    = 0  ; Active flag (0=inactive, 1=active)
+SPRITE_X_LO      = 1  ; X position low byte
+SPRITE_X_HI      = 2  ; X position high byte (bit 0 only)
+SPRITE_Y         = 3  ; Y position
+SPRITE_COLOR     = 4  ; Color
+SPRITE_POINTER   = 5  ; Current frame pointer
+SPRITE_ANIM      = 6  ; Animation ID
+SPRITE_STATE     = 7  ; State/behavior flags
+
+; 8 sprites × 8 bytes = 64 bytes total
+sprite_table:
+    .res 64
+
+init_sprite_system:
+    ; Clear sprite table
+    ldx #63
+    lda #0
+clear_loop:
+    sta sprite_table,x
+    dex
+    bpl clear_loop
+    
+    ; Enable all sprites
+    lda #$FF
+    sta $D015
+    
+    ; Set up sprite pointers
+    ldx #7
+pointer_loop:
+    lda #$80        ; Default sprite shape
+    sta $07F8,x
+    dex
+    bpl pointer_loop
+    rts
+```
+
+## Updating All Sprites
+
+A single routine handles all sprite updates:
+
+```asm
+update_all_sprites:
+    ldx #7          ; Start with sprite 7
+    
+sprite_loop:
+    txa
+    asl             ; × 8 for table offset
+    asl
+    asl
+    tay
+    
+    ; Check if sprite is active
+    lda sprite_table+SPRITE_ACTIVE,y
+    beq next_sprite
+    
+    ; Update position
+    lda sprite_table+SPRITE_X_LO,y
+    sta $D000,x
+    sta $D000,x     ; X position (hardware register)
+    
+    lda sprite_table+SPRITE_Y,y
+    txa
+    asl             ; × 2 for Y register offset
+    tay
+    sta $D001,y     ; Y position
+    
+    ; Handle X high bit
+    ldx current_sprite
+    lda sprite_table+SPRITE_X_HI,y
+    beq clear_msb
+    
+    ; Set MSB
+    lda $D010
+    ora bit_table,x
+    sta $D010
+    jmp update_color
+    
+clear_msb:
+    lda $D010
+    and bit_clear_table,x
+    sta $D010
+    
+update_color:
+    lda sprite_table+SPRITE_COLOR,y
+    sta $D027,x
+    
+    ; Update sprite pointer
+    lda sprite_table+SPRITE_POINTER,y
+    sta $07F8,x
+    
+next_sprite:
+    dex
+    bpl sprite_loop
+    rts
+
+; Bit manipulation tables
+bit_table:
+    .byte $01,$02,$04,$08,$10,$20,$40,$80
+    
+bit_clear_table:
+    .byte $FE,$FD,$FB,$F7,$EF,$DF,$BF,$7F
+```
+
+## Spawning and Destroying Sprites
+
+Dynamic sprite allocation lets you create and remove objects:
+
+```asm
+; Spawn a new sprite
+; A = sprite type, X = start X, Y = start Y
+spawn_sprite:
+    sta temp_type
+    stx temp_x
+    sty temp_y
+    
+    ; Find inactive sprite slot
+    ldx #0
+find_slot:
+    txa
+    asl
+    asl
+    asl
+    tay
+    
+    lda sprite_table+SPRITE_ACTIVE,y
+    beq found_slot
+    
+    inx
+    cpx #8
+    bne find_slot
+    
+    ; No free slots
+    sec             ; Set carry (error)
+    rts
+    
+found_slot:
+    ; Initialize sprite
+    lda #1
+    sta sprite_table+SPRITE_ACTIVE,y
+    
+    lda temp_x
+    sta sprite_table+SPRITE_X_LO,y
+    lda #0
+    sta sprite_table+SPRITE_X_HI,y
+    
+    lda temp_y
+    sta sprite_table+SPRITE_Y,y
+    
+    ; Set type-specific data
+    lda temp_type
+    cmp #TYPE_ENEMY
+    beq setup_enemy
+    cmp #TYPE_BULLET
+    beq setup_bullet
+    cmp #TYPE_POWERUP
+    beq setup_powerup
+    
+setup_enemy:
+    lda #2          ; Red
+    sta sprite_table+SPRITE_COLOR,y
+    lda #$81        ; Enemy sprite
+    sta sprite_table+SPRITE_POINTER,y
+    jmp spawn_done
+    
+setup_bullet:
+    lda #1          ; White
+    sta sprite_table+SPRITE_COLOR,y
+    lda #$82        ; Bullet sprite
+    sta sprite_table+SPRITE_POINTER,y
+    jmp spawn_done
+    
+setup_powerup:
+    lda #7          ; Yellow
+    sta sprite_table+SPRITE_COLOR,y
+    lda #$83        ; Powerup sprite
+    sta sprite_table+SPRITE_POINTER,y
+    
+spawn_done:
+    clc             ; Clear carry (success)
+    rts
+
+; Destroy a sprite
+; X = sprite index
+destroy_sprite:
+    txa
+    asl
+    asl
+    asl
+    tay
+    
+    lda #0
+    sta sprite_table+SPRITE_ACTIVE,y
+    
+    ; Move sprite off-screen
+    lda #0
+    sta $D000,x     ; X position
+    sta $D001,x     ; Y position
+    rts
+```
+
+## Sprite Behaviors
+
+Different sprite types need different update routines:
+
+```asm
+; Behavior system
+update_sprite_behaviors:
+    ldx #7
+behavior_loop:
+    txa
+    asl
+    asl
+    asl
+    tay
+    
+    lda sprite_table+SPRITE_ACTIVE,y
+    beq next_behavior
+    
+    lda sprite_table+SPRITE_STATE,y
+    and #$F0        ; High nibble = behavior type
+    
+    cmp #BEHAVIOR_PATROL
+    beq do_patrol
+    cmp #BEHAVIOR_CHASE
+    beq do_chase
+    cmp #BEHAVIOR_PROJECTILE
+    beq do_projectile
+    jmp next_behavior
+    
+do_patrol:
+    jsr update_patrol
+    jmp next_behavior
+    
+do_chase:
+    jsr update_chase
+    jmp next_behavior
+    
+do_projectile:
+    jsr update_projectile
+    
+next_behavior:
+    dex
+    bpl behavior_loop
+    rts
+
+; Patrol behavior - move back and forth
+update_patrol:
+    lda sprite_table+SPRITE_STATE,y
+    and #$0F        ; Low nibble = direction
+    beq patrol_right
+    
+patrol_left:
+    dec sprite_table+SPRITE_X_LO,y
+    lda sprite_table+SPRITE_X_LO,y
+    cmp #30         ; Left boundary
+    bcs patrol_done
+    
+    ; Switch direction
+    lda sprite_table+SPRITE_STATE,y
+    and #$F0
+    sta sprite_table+SPRITE_STATE,y
+    jmp patrol_done
+    
+patrol_right:
+    inc sprite_table+SPRITE_X_LO,y
+    lda sprite_table+SPRITE_X_LO,y
+    cmp #250        ; Right boundary
+    bcc patrol_done
+    
+    ; Switch direction
+    lda sprite_table+SPRITE_STATE,y
+    ora #$01
+    sta sprite_table+SPRITE_STATE,y
+    
+patrol_done:
+    rts
+
+; Projectile behavior - straight line movement
+update_projectile:
+    lda sprite_table+SPRITE_STATE,y
+    and #$0F        ; Direction
+    
+    cmp #DIR_UP
+    beq proj_up
+    cmp #DIR_DOWN
+    beq proj_down
+    cmp #DIR_LEFT
+    beq proj_left
+    cmp #DIR_RIGHT
+    beq proj_right
+    rts
+    
+proj_up:
+    lda sprite_table+SPRITE_Y,y
+    sec
+    sbc #4          ; Speed
+    sta sprite_table+SPRITE_Y,y
+    cmp #30         ; Top boundary
+    bcs proj_done
+    jmp destroy_projectile
+    
+proj_down:
+    lda sprite_table+SPRITE_Y,y
+    clc
+    adc #4
+    sta sprite_table+SPRITE_Y,y
+    cmp #220        ; Bottom boundary
+    bcc proj_done
+    jmp destroy_projectile
+    
+proj_left:
+    ; Similar for left/right
+    rts
+    
+proj_right:
+    rts
+    
+destroy_projectile:
+    txa
+    pha
+    jsr destroy_sprite
+    pla
+    tax
+proj_done:
+    rts
+```
+
+## Collision Detection Between Sprites
+
+Check collisions between different sprite groups:
+
+```asm
+check_sprite_collisions:
+    ; Check player (sprite 0) against enemies (sprites 1-4)
+    lda $D01E       ; Sprite-sprite collision
+    and #$01        ; Player collided?
+    beq no_player_collision
+    
+    ; Find which enemy hit the player
+    lda $D01E
+    and #$1E        ; Check sprites 1-4
+    
+    ldx #1
+find_collider:
+    lsr
+    bcs found_collider
+    inx
+    cpx #5
+    bne find_collider
+    jmp no_player_collision
+    
+found_collider:
+    ; Handle player-enemy collision
+    jsr player_hit
+    jsr destroy_sprite  ; X = enemy sprite
+    
+no_player_collision:
+    ; Check bullets (sprites 5-6) against enemies (1-4)
+    ldx #5
+bullet_check:
+    txa
+    asl
+    asl
+    asl
+    tay
+    
+    lda sprite_table+SPRITE_ACTIVE,y
+    beq next_bullet
+    
+    ; Check this bullet's collisions
+    lda $D01E
+    and bit_table,x
+    beq next_bullet
+    
+    ; Bullet hit something
+    jsr handle_bullet_collision
+    
+next_bullet:
+    inx
+    cpx #7
+    bne bullet_check
+    rts
+```
+
+## Sprite Pooling System
+
+Efficiently reuse sprites for similar objects:
+
+```asm
+; Bullet pool management
+MAX_BULLETS = 3
+bullet_pool:
+    .byte 5,6,7     ; Sprite indices for bullets
+
+fire_bullet:
+    ; Find available bullet sprite
+    ldx #0
+find_bullet:
+    ldy bullet_pool,x
+    tya
+    asl
+    asl
+    asl
+    tay
+    
+    lda sprite_table+SPRITE_ACTIVE,y
+    beq found_bullet
+    
+    inx
+    cpx #MAX_BULLETS
+    bne find_bullet
+    
+    ; No bullets available
+    rts
+    
+found_bullet:
+    ; Set up bullet at player position
+    ldy bullet_pool,x
+    
+    ; Get player position
+    lda sprite_table+SPRITE_X_LO
+    clc
+    adc #12         ; Center of player sprite
+    tax
+    
+    lda sprite_table+SPRITE_Y
+    sec
+    sbc #10         ; Above player
+    tay
+    
+    lda #TYPE_BULLET
+    jsr spawn_sprite
+    
+    ; Set bullet direction (up)
+    tya
+    asl
+    asl
+    asl
+    tay
+    lda #BEHAVIOR_PROJECTILE|DIR_UP
+    sta sprite_table+SPRITE_STATE,y
+    
+    ; Play shoot sound
+    lda #SOUND_SHOOT
+    jsr play_sound
+    rts
+```
+
+## Complete Multi-Sprite Example
+
+Here's everything working together:
+
+```asm
+* = $0801
+    .byte $0C,$08,$0A,$00,$9E,$32,$30,$36,$31,$00,$00,$00
+
+* = $080D
+main:
+    jsr init_screen
+    jsr init_sprite_system
+    jsr setup_game_sprites
+    
+game_loop:
+    jsr wait_frame
+    jsr read_input
+    jsr update_player
+    jsr update_sprite_behaviors
+    jsr update_all_sprites
+    jsr check_sprite_collisions
+    jsr spawn_enemies
+    jmp game_loop
+
+setup_game_sprites:
+    ; Player sprite (sprite 0)
+    lda #TYPE_PLAYER
+    ldx #160        ; Center X
+    ldy #200        ; Near bottom
+    jsr spawn_sprite
+    
+    ; Initial enemies
+    lda #TYPE_ENEMY
+    ldx #50
+    ldy #60
+    jsr spawn_sprite
+    
+    lda #TYPE_ENEMY
+    ldx #200
+    ldy #60
+    jsr spawn_sprite
+    rts
+
+update_player:
+    ; Sprite 0 is always the player
+    ldy #0          ; Sprite 0 offset
+    
+    lda $DC00       ; Read joystick
+    and #$01        ; Up
+    bne check_down
+    
+    dec sprite_table+SPRITE_Y,y
+    
+check_down:
+    lda $DC00
+    and #$02
+    bne check_left
+    
+    inc sprite_table+SPRITE_Y,y
+    
+check_left:
+    lda $DC00
+    and #$04
+    bne check_right
+    
+    dec sprite_table+SPRITE_X_LO,y
+    
+check_right:
+    lda $DC00
+    and #$08
+    bne check_fire
+    
+    inc sprite_table+SPRITE_X_LO,y
+    
+check_fire:
+    lda $DC00
+    and #$10
+    bne player_done
+    
+    lda fire_cooldown
+    bne player_done
+    
+    jsr fire_bullet
+    lda #10         ; Cooldown frames
+    sta fire_cooldown
+    
+player_done:
+    lda fire_cooldown
+    beq cooldown_done
+    dec fire_cooldown
+cooldown_done:
+    rts
+
+spawn_enemies:
+    dec enemy_timer
+    bne spawn_done
+    
+    lda #120        ; Reset timer
+    sta enemy_timer
+    
+    ; Random X position
+    lda $D41B       ; Random number
+    and #$7F
+    clc
+    adc #40
+    tax
+    
+    ldy #30         ; Top of screen
+    lda #TYPE_ENEMY
+    jsr spawn_sprite
+    
+spawn_done:
+    rts
+
+; Variables
+fire_cooldown   .byte 0
+enemy_timer     .byte 60
+temp_type       .byte 0
+temp_x          .byte 0
+temp_y          .byte 0
+
+; Constants
+TYPE_PLAYER     = 0
+TYPE_ENEMY      = 1
+TYPE_BULLET     = 2
+TYPE_POWERUP    = 3
+
+BEHAVIOR_PATROL     = $10
+BEHAVIOR_CHASE      = $20
+BEHAVIOR_PROJECTILE = $30
+
+DIR_UP          = 0
+DIR_DOWN        = 1
+DIR_LEFT        = 2
+DIR_RIGHT       = 3
+```
+
+## Key Concepts
+
+1. **Sprite Tables**: Organize sprite data in structured arrays for easy access
+2. **Dynamic Allocation**: Find and assign available sprites as needed
+3. **Behavior Systems**: Different sprite types follow different movement patterns
+4. **Pooling**: Reuse sprites efficiently for similar objects like bullets
+5. **Batch Updates**: Process all sprites in organized loops
+
+## Experiment and Discover
+
+Try these enhancements:
+- Add sprite priority sorting (draw closer sprites on top)
+- Create formation patterns for enemy groups
+- Implement sprite "families" that move together
+- Add particle effects using rapid sprite recycling
+- Build a sprite multiplexer for more than 8 sprites
+
+Managing multiple sprites efficiently is the foundation of complex C64 games. Master this, and you can create rich, dynamic game worlds!

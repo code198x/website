@@ -1,0 +1,604 @@
+---
+title: "Background Scrolling Techniques"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 13
+date: 2024-12-10
+author: Steve Hill
+---
+
+import MemoryMap from '@/components/MemoryMap.astro';
+import RegisterView from '@/components/RegisterView.astro';
+
+# Background Scrolling Techniques
+
+Scrolling backgrounds create the illusion of movement through vast game worlds. The C64's hardware scrolling registers make smooth scrolling possible, transforming a static 40×25 screen into a window onto infinite landscapes.
+
+## Hardware Scrolling Basics
+
+The VIC-II chip provides pixel-precise scrolling control:
+
+```asm
+; VIC-II scrolling registers
+; $D011: Vertical scroll (bits 0-2) + control bits
+; $D016: Horizontal scroll (bits 0-2) + control bits
+
+simple_scroll:
+    ; Horizontal scroll right
+    ldx #0
+scroll_loop:
+    txa
+    and #$07        ; Keep 0-7 range
+    sta $D016       ; Set horizontal scroll
+    
+    jsr wait_frame
+    jsr wait_frame  ; Slow it down
+    
+    inx
+    jmp scroll_loop
+```
+
+<RegisterView 
+  title="VIC-II Scroll Registers"
+  registers={[
+    { name: "$D011", value: "Control", bits: "RST8|ECM|BMM|DEN|RSEL|Y2|Y1|Y0" },
+    { name: "$D016", value: "Control", bits: "--|--|RES|MCM|CSEL|X2|X1|X0" }
+  ]}
+/>
+
+## Smooth Horizontal Scrolling
+
+Combining pixel scrolling with character shifting creates endless scrolling:
+
+```asm
+; Smooth right scroll with character shifting
+scroll_position .byte 0
+scroll_fine     .byte 0
+
+scroll_right:
+    ; Update fine scroll (0-7 pixels)
+    inc scroll_fine
+    lda scroll_fine
+    and #$07
+    sta scroll_fine
+    sta $D016       ; Update hardware scroll
+    
+    ; Check if we need to shift characters
+    cmp #0
+    bne scroll_done
+    
+    ; Shift screen contents left
+    jsr shift_screen_left
+    
+    ; Add new column on the right
+    jsr draw_new_column
+    
+    ; Update coarse position
+    inc scroll_position
+    
+scroll_done:
+    rts
+
+shift_screen_left:
+    ; Shift each row
+    ldx #0
+row_loop:
+    ldy #0
+char_loop:
+    lda $0401,y     ; Read from column 1
+    sta $0400,y     ; Write to column 0
+    iny
+    cpy #39         ; 39 characters to shift
+    bne char_loop
+    
+    ; Next row
+    clc
+    lda row_ptr_lo
+    adc #40
+    sta row_ptr_lo
+    lda row_ptr_hi
+    adc #0
+    sta row_ptr_hi
+    
+    inx
+    cpx #25         ; 25 rows
+    bne row_loop
+    rts
+
+draw_new_column:
+    ; Draw new tiles in rightmost column
+    ldx #0
+    lda scroll_position
+    and #$0F        ; Tile pattern repeats
+    tay
+    
+column_loop:
+    lda tile_patterns,y
+    sta $0427,x     ; Column 39
+    
+    ; Color memory
+    lda tile_colors,y
+    sta $D827,x
+    
+    ; Next row
+    txa
+    clc
+    adc #40
+    tax
+    
+    iny
+    tya
+    and #$0F
+    tay
+    
+    cpx #25*40      ; All rows done?
+    bcc column_loop
+    rts
+
+; Tile data
+tile_patterns:
+    .byte $20,$20,$20,$A0  ; Empty, empty, empty, block
+    .byte $20,$5F,$20,$20  ; Empty, platform, empty, empty
+    .byte $A0,$A0,$20,$20  ; Wall pattern
+    .byte $20,$20,$55,$20  ; Decoration
+
+tile_colors:
+    .byte $0E,$0E,$0E,$09  ; Light blue and brown
+    .byte $0E,$01,$0E,$0E
+    .byte $09,$09,$0E,$0E
+    .byte $0E,$0E,$05,$0E
+```
+
+## Vertical Scrolling
+
+Vertical scrolling follows similar principles:
+
+```asm
+vertical_scroll:
+    ; Fine scroll (0-7 pixels)
+    inc v_scroll_fine
+    lda v_scroll_fine
+    and #$07
+    
+    ; Set in high bits of $D011
+    ora #$10        ; Keep screen on
+    sta $D011
+    
+    ; Check for character boundary
+    cmp #0
+    bne v_scroll_done
+    
+    ; Shift screen up
+    jsr shift_screen_up
+    jsr draw_new_row
+    
+v_scroll_done:
+    rts
+
+shift_screen_up:
+    ; Copy from row 1 to row 0, etc.
+    ldx #0          ; Source: row 1
+    ldy #0          ; Dest: row 0
+    
+copy_rows:
+    lda $0428,x     ; Row 1
+    sta $0400,y     ; Row 0
+    
+    inx
+    iny
+    
+    cpx #24*40      ; 24 rows to copy
+    bne copy_rows
+    rts
+
+draw_new_row:
+    ; Draw new content at bottom
+    ldx #0
+bottom_row:
+    lda terrain_data,x
+    sta $07C0,x     ; Row 24
+    
+    lda terrain_colors,x
+    sta $DBC0,x
+    
+    inx
+    cpx #40
+    bne bottom_row
+    
+    ; Advance terrain pointer
+    clc
+    lda terrain_ptr
+    adc #40
+    sta terrain_ptr
+    lda terrain_ptr+1
+    adc #0
+    sta terrain_ptr+1
+    rts
+```
+
+## Bidirectional Scrolling
+
+Supporting scrolling in multiple directions:
+
+```asm
+; 8-way scrolling engine
+scroll_x        .byte 0  ; Fine X (0-7)
+scroll_y        .byte 0  ; Fine Y (0-7)
+world_x         .word 0  ; Coarse X position
+world_y         .word 0  ; Coarse Y position
+
+update_scrolling:
+    lda $DC00       ; Read joystick
+    sta joy_state
+    
+    ; Check horizontal movement
+    lsr joy_state
+    bcs check_down  ; Not up
+    jsr scroll_up
+    
+check_down:
+    lsr joy_state
+    bcs check_left  ; Not down
+    jsr scroll_down
+    
+check_left:
+    lsr joy_state
+    bcs check_right ; Not left
+    jsr scroll_left
+    
+check_right:
+    lsr joy_state
+    bcs update_done ; Not right
+    jsr scroll_right_new
+    
+update_done:
+    ; Update hardware registers
+    lda scroll_x
+    sta $D016
+    
+    lda scroll_y
+    ora #$10        ; Screen on
+    sta $D011
+    rts
+
+scroll_left:
+    dec scroll_x
+    lda scroll_x
+    and #$07
+    sta scroll_x
+    cmp #$07        ; Wrapped?
+    bne no_shift_left
+    
+    ; Shift screen right, add column on left
+    jsr shift_screen_right
+    dec world_x
+    jsr draw_left_column
+    
+no_shift_left:
+    rts
+
+scroll_up:
+    dec scroll_y
+    lda scroll_y
+    and #$07
+    sta scroll_y
+    cmp #$07        ; Wrapped?
+    bne no_shift_up
+    
+    ; Shift screen down, add row on top
+    jsr shift_screen_down
+    dec world_y
+    jsr draw_top_row
+    
+no_shift_up:
+    rts
+```
+
+## Parallax Scrolling
+
+Multiple layers scrolling at different speeds create depth:
+
+```asm
+; Multi-layer scrolling
+layer1_scroll   .byte 0  ; Background (slow)
+layer2_scroll   .byte 0  ; Midground (medium)
+layer3_scroll   .byte 0  ; Foreground (fast)
+
+update_parallax:
+    ; Move based on player speed
+    lda player_velocity
+    
+    ; Foreground moves at full speed
+    clc
+    adc layer3_scroll
+    sta layer3_scroll
+    
+    ; Midground at half speed
+    lsr             ; Divide by 2
+    clc
+    adc layer2_scroll
+    sta layer2_scroll
+    
+    ; Background at quarter speed
+    lsr             ; Divide by 4 total
+    clc
+    adc layer1_scroll
+    sta layer1_scroll
+    
+    ; Update each layer
+    jsr draw_background
+    jsr draw_midground
+    jsr draw_foreground
+    rts
+
+draw_background:
+    ; Draw distant mountains
+    lda layer1_scroll
+    lsr
+    lsr
+    lsr             ; Convert to character offset
+    tax
+    
+    ldy #0
+bg_loop:
+    lda mountain_data,x
+    sta $0400,y     ; Top rows
+    inx
+    iny
+    cpy #80         ; 2 rows
+    bne bg_loop
+    rts
+
+draw_midground:
+    ; Draw trees/buildings
+    lda layer2_scroll
+    lsr
+    lsr
+    lsr
+    tax
+    
+    ldy #0
+mg_loop:
+    lda scenery_data,x
+    sta $0400+320,y ; Middle rows
+    inx
+    iny
+    cpy #120        ; 3 rows
+    bne mg_loop
+    rts
+```
+
+## Color RAM Scrolling
+
+Don't forget to scroll color memory:
+
+```asm
+scroll_with_color:
+    ; Shift both screen and color RAM
+    ldx #0
+shift_both:
+    ; Screen memory
+    lda $0401,x
+    sta $0400,x
+    
+    ; Color memory
+    lda $D801,x
+    sta $D800,x
+    
+    inx
+    cpx #999        ; Screen size minus one column
+    bne shift_both
+    
+    ; Add new column with color
+    ldx #0
+new_column:
+    lda new_tile,x
+    sta $0427,x     ; Rightmost screen column
+    
+    lda new_color,x
+    sta $D827,x     ; Rightmost color column
+    
+    txa
+    clc
+    adc #40
+    tax
+    cpx #1000       ; 25 rows × 40
+    bcc new_column
+    rts
+```
+
+## Scrolling Window Technique
+
+Create a scrolling viewport within the screen:
+
+```asm
+; Scroll only part of the screen
+WINDOW_TOP    = 5
+WINDOW_HEIGHT = 15
+WINDOW_LEFT   = 5
+WINDOW_WIDTH  = 30
+
+scroll_window:
+    ; Calculate starting position
+    lda #WINDOW_TOP
+    ldx #40
+    jsr multiply    ; A×X -> A
+    clc
+    adc #WINDOW_LEFT
+    sta window_ptr
+    lda #>$0400
+    sta window_ptr+1
+    
+    ; Scroll window content
+    ldy #0
+window_row:
+    ldx #0
+window_col:
+    lda (window_ptr),y
+    iny             ; Next position
+    sta (window_ptr),y
+    dey             ; Back to current
+    
+    iny
+    inx
+    cpx #WINDOW_WIDTH-1
+    bne window_col
+    
+    ; Next row
+    clc
+    lda window_ptr
+    adc #40
+    sta window_ptr
+    lda window_ptr+1
+    adc #0
+    sta window_ptr+1
+    
+    iny
+    cpy #WINDOW_HEIGHT
+    bne window_row
+    rts
+```
+
+## Complete Scrolling Example
+
+A working side-scrolling game framework:
+
+```asm
+* = $0801
+    .byte $0C,$08,$0A,$00,$9E,$32,$30,$36,$31,$00,$00,$00
+
+* = $080D
+main:
+    jsr init_screen
+    jsr init_level
+    
+game_loop:
+    jsr wait_frame
+    jsr read_input
+    jsr update_player
+    jsr update_scrolling
+    jsr check_collisions
+    jsr spawn_enemies
+    jmp game_loop
+
+init_level:
+    ; Set up scrolling
+    lda #0
+    sta scroll_x
+    sta scroll_y
+    sta world_x
+    sta world_x+1
+    
+    ; Initial level draw
+    jsr draw_full_screen
+    rts
+
+update_scrolling:
+    ; Auto-scroll right
+    inc scroll_counter
+    lda scroll_counter
+    and #$03        ; Every 4 frames
+    bne no_scroll
+    
+    inc scroll_x
+    lda scroll_x
+    and #$07
+    sta scroll_x
+    sta $D016
+    
+    ; Check for character boundary
+    cmp #0
+    bne no_scroll
+    
+    ; Shift and add new column
+    jsr shift_screen_left
+    inc world_x
+    jsr generate_level_column
+    
+no_scroll:
+    rts
+
+generate_level_column:
+    ; Procedural level generation
+    lda world_x
+    and #$0F
+    tax
+    
+    ldy #0
+gen_column:
+    ; Ground at bottom
+    cpy #20
+    bcc sky_tile
+    
+    lda #$A0        ; Solid block
+    jmp set_tile
+    
+sky_tile:
+    ; Random platforms
+    lda $D41B       ; Random
+    cmp #$20
+    bcs empty_tile
+    
+    lda #$5F        ; Platform
+    jmp set_tile
+    
+empty_tile:
+    lda #$20        ; Space
+    
+set_tile:
+    sta $0427,y     ; Rightmost column
+    
+    ; Set color
+    pha
+    cmp #$20
+    beq sky_color
+    lda #$09        ; Brown
+    jmp set_color
+sky_color:
+    lda #$0E        ; Light blue
+set_color:
+    sta $D827,y
+    pla
+    
+    ; Next row
+    tya
+    clc
+    adc #40
+    tay
+    cpy #1000
+    bcc gen_column
+    rts
+
+; Variables
+scroll_counter  .byte 0
+joy_state       .byte 0
+window_ptr      .word 0
+terrain_ptr     .word terrain_data
+v_scroll_fine   .byte 0
+
+; Level data
+terrain_data:
+    .byte $20,$20,$20,$20,$20,$20,$20,$20
+    .byte $20,$20,$A0,$A0,$20,$20,$20,$20
+    ; ... more level data ...
+```
+
+## Key Concepts
+
+1. **Fine Scrolling**: Hardware registers provide pixel-precise movement (0-7 pixels)
+2. **Coarse Scrolling**: Character shifting when crossing 8-pixel boundaries  
+3. **Double Buffering**: Prepare new content off-screen before scrolling it in
+4. **Parallax Layers**: Different scroll speeds create depth perception
+5. **Memory Management**: Efficiently shift both screen and color RAM
+
+## Experiment and Discover
+
+Try these scrolling challenges:
+- Create a four-way scrolling map viewer
+- Implement smooth diagonal scrolling
+- Build a split-screen with different scroll zones
+- Add animated tiles that update while scrolling
+- Create a "camera" that follows the player
+
+Scrolling transforms the C64's fixed screen into a window onto vast worlds. Master these techniques to create expansive game environments!

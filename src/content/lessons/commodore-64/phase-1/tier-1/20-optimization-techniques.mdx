@@ -1,0 +1,584 @@
+---
+title: "Optimization Techniques"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 20
+date: 2024-12-10
+author: Steve Hill
+---
+
+import MemoryMap from '@/components/MemoryMap.astro';
+import RegisterView from '@/components/RegisterView.astro';
+
+# Optimization Techniques
+
+The C64's 1MHz processor demands efficient code. Every cycle counts when you're racing the raster beam. Master these optimization techniques to squeeze maximum performance from minimal hardware.
+
+## Cycle Counting
+
+Understanding instruction timing:
+
+```asm
+; Instruction cycle counts
+; Immediate:    2 cycles - LDA #$00
+; Zero page:    3 cycles - LDA $00  
+; Zero page,X:  4 cycles - LDA $00,X
+; Absolute:     4 cycles - LDA $0400
+; Absolute,X:   4-5 cycles - LDA $0400,X (+1 if page crossed)
+; Indirect,Y:   5-6 cycles - LDA ($00),Y (+1 if page crossed)
+
+; Slow version (19 cycles)
+slow_clear:
+    ldx #10         ; 2 cycles
+loop1:
+    lda #0          ; 2 cycles
+    sta $0400,x     ; 5 cycles  
+    dex             ; 2 cycles
+    bne loop1       ; 3/2 cycles
+    
+; Faster version (15 cycles per iteration)
+fast_clear:
+    lda #0          ; 2 cycles (outside loop!)
+    ldx #10         ; 2 cycles
+loop2:
+    sta $0400,x     ; 5 cycles
+    dex             ; 2 cycles
+    bne loop2       ; 3/2 cycles
+    
+; Even faster - unrolled (no loop overhead)
+unrolled_clear:
+    lda #0          ; 2 cycles
+    sta $0400       ; 4 cycles
+    sta $0401       ; 4 cycles
+    sta $0402       ; 4 cycles
+    sta $0403       ; 4 cycles
+    ; Total: 18 cycles for 4 bytes vs 60 for loop
+```
+
+## Loop Unrolling
+
+Trade memory for speed:
+
+```asm
+; Slow: 8 iterations × 11 cycles = 88 cycles
+copy_slow:
+    ldx #7
+copy_loop:
+    lda source,x
+    sta dest,x
+    dex
+    bpl copy_loop
+    
+; Fast: No loop overhead = 48 cycles
+copy_fast:
+    lda source
+    sta dest
+    lda source+1
+    sta dest+1
+    lda source+2
+    sta dest+2
+    lda source+3
+    sta dest+3
+    lda source+4
+    sta dest+4
+    lda source+5
+    sta dest+5
+    lda source+6
+    sta dest+6
+    lda source+7
+    sta dest+7
+    
+; Partially unrolled (balance)
+copy_partial:
+    ldx #6          ; 0,2,4,6
+partial_loop:
+    lda source,x
+    sta dest,x
+    lda source+1,x  ; Unroll by 2
+    sta dest+1,x
+    dex
+    dex
+    bpl partial_loop
+```
+
+## Lookup Tables
+
+Precalculate expensive operations:
+
+```asm
+; Slow multiplication (40+ cycles)
+multiply_slow:
+    ; A × 40 (screen row)
+    sta temp
+    asl             ; ×2
+    asl             ; ×4
+    asl             ; ×8
+    sta result
+    lda temp
+    asl             ; ×2
+    asl             ; ×4
+    asl             ; ×8
+    asl             ; ×16
+    asl             ; ×32
+    clc
+    adc result      ; 8+32=40
+    rts
+    
+; Fast lookup (6 cycles)
+multiply_fast:
+    ; A = row number
+    tax
+    lda row_table_lo,x  ; 4 cycles
+    sta ptr
+    lda row_table_hi,x  ; 4 cycles
+    sta ptr+1
+    rts
+    
+; Precalculated tables
+row_table_lo:
+    .byte <$0400,<$0428,<$0450,<$0478
+    .byte <$04A0,<$04C8,<$04F0,<$0518
+    ; ... all 25 rows
+    
+row_table_hi:
+    .byte >$0400,>$0428,>$0450,>$0478
+    .byte >$04A0,>$04C8,>$04F0,>$0518
+    ; ... all 25 rows
+
+; Sine table for smooth movement
+sine_table:
+    .byte 128,134,140,146,152,158,164,170
+    .byte 176,181,187,192,197,202,207,211
+    .byte 216,220,224,227,231,234,236,239
+    .byte 241,243,245,246,247,248,249,249
+    ; ... full sine wave
+```
+
+## Zero Page Optimization
+
+Use precious zero page wisely:
+
+```asm
+; Zero page is faster!
+; Zero page: 3 cycles
+; Absolute: 4 cycles
+
+; Reserve zero page for critical variables
+.alias sprite_x     = $F0  ; 8 bytes
+.alias sprite_y     = $F8  ; 8 bytes
+.alias temp_ptr     = $FB  ; 2 bytes
+.alias frame_count  = $FD
+.alias joy_state    = $FE
+.alias game_flags   = $FF
+
+; Fast sprite update using ZP
+fast_sprite_update:
+    ldx #7
+sprite_zp_loop:
+    lda sprite_x,x      ; 4 cycles (ZP indexed)
+    asl
+    sta $D000,x         ; Sprite hardware
+    lda sprite_y,x      
+    sta $D001,x
+    dex
+    bpl sprite_zp_loop
+    
+; Compare to absolute addressing
+slow_sprite_update:
+    ldx #7
+sprite_abs_loop:
+    lda sprite_table,x  ; 5 cycles (absolute indexed)
+    asl
+    sta $D000,x
+    lda sprite_table+8,x
+    sta $D001,x
+    dex
+    bpl sprite_abs_loop
+    
+sprite_table:
+    .res 16  ; Not in zero page
+```
+
+## Self-Modifying Code
+
+Change code at runtime for speed:
+
+```asm
+; Dynamic jump table
+set_behavior:
+    ; A = behavior type
+    asl
+    tax
+    lda behavior_table,x
+    sta behavior_jmp+1
+    lda behavior_table+1,x
+    sta behavior_jmp+2
+    rts
+    
+update_entity:
+    ; Self-modifying jump
+behavior_jmp:
+    jsr $0000       ; Address modified above
+    rts
+    
+; Fill screen with value
+; Self-modifying is faster than indexed
+fast_fill:
+    ; A = fill value
+    sta fill_value+1  ; Modify immediate value!
+    
+    ldx #0
+fill_loop:
+fill_value:
+    lda #$00        ; This value gets modified
+    sta $0400,x
+    sta $0500,x
+    sta $0600,x
+    sta $0700,x
+    inx
+    bne fill_loop
+    rts
+    
+; Even better: modify destination
+clear_any_page:
+    ; A/Y = destination address
+    sta clear_dest+2
+    sta clear_dest+5
+    sta clear_dest+8
+    sta clear_dest+11
+    
+    lda #0
+    ldx #0
+clear_dest:
+    sta $FF00,x     ; Modified addresses
+    sta $FF00+256,x
+    sta $FF00+512,x
+    sta $FF00+768,x
+    inx
+    bne clear_dest
+    rts
+```
+
+## Memory Access Patterns
+
+Optimize for sequential access:
+
+```asm
+; Bad: Random access pattern
+bad_pattern:
+    lda $0400
+    sta $0500
+    lda $0401
+    sta $0580
+    lda $0402
+    sta $0501
+    ; Jumps around memory
+    
+; Good: Sequential access
+good_pattern:
+    ; Process in order
+    ldx #0
+sequential:
+    lda $0400,x
+    ; Process...
+    sta $0500,x
+    inx
+    bne sequential
+    
+; Cache-friendly sprite collision
+; Check only active sprites
+check_collisions:
+    lda active_sprite_mask
+    sta mask
+    
+    ldx #0
+collision_loop:
+    lsr mask        ; Check bit
+    bcc skip_sprite ; Inactive
+    
+    ; Active sprite - check it
+    jsr check_one_sprite
+    
+skip_sprite:
+    inx
+    cpx #8
+    bne collision_loop
+    rts
+    
+mask: .byte 0
+active_sprite_mask: .byte %00111111  ; Sprites 0-5 active
+```
+
+## Raster Time Management
+
+Distribute work across frames:
+
+```asm
+; Spread updates across frames
+frame_counter: .byte 0
+
+main_loop:
+    jsr wait_frame
+    
+    ; Always do critical updates
+    jsr read_input
+    jsr update_player
+    
+    ; Distribute other work
+    lda frame_counter
+    and #$03        ; Every 4 frames
+    
+    cmp #0
+    beq update_enemies
+    cmp #1
+    beq update_particles
+    cmp #2
+    beq update_animations
+    ; Frame 3: light frame
+    
+continue_main:
+    jsr render_sprites
+    inc frame_counter
+    jmp main_loop
+    
+update_enemies:
+    jsr update_all_enemies
+    jmp continue_main
+    
+update_particles:
+    jsr update_particle_system
+    jmp continue_main
+    
+update_animations:
+    jsr update_background_anims
+    jmp continue_main
+```
+
+## Algorithm Optimization
+
+Choose efficient algorithms:
+
+```asm
+; Linear search: O(n) - slow
+find_enemy_linear:
+    ldx #0
+linear_search:
+    lda enemy_ids,x
+    cmp target_id
+    beq found_enemy
+    inx
+    cpx #MAX_ENEMIES
+    bne linear_search
+    ; Not found
+    ldx #$FF
+found_enemy:
+    rts
+    
+; Binary subdivision for collision
+; Instead of checking all sprites
+spatial_partition:
+    ; Divide screen into zones
+    lda player_x
+    lsr
+    lsr
+    lsr
+    lsr             ; /16 for zone
+    sta player_zone
+    
+    ; Only check enemies in nearby zones
+    ldx player_zone
+    dex             ; Check left zone
+    jsr check_zone
+    inx
+    jsr check_zone  ; Check player zone
+    inx
+    jsr check_zone  ; Check right zone
+    rts
+    
+; Fast distance check (Manhattan)
+manhattan_distance:
+    ; Faster than true distance
+    lda enemy_x
+    sec
+    sbc player_x
+    bpl x_positive
+    eor #$FF
+    clc
+    adc #1
+x_positive:
+    sta temp_dist
+    
+    lda enemy_y
+    sec
+    sbc player_y
+    bpl y_positive
+    eor #$FF
+    clc
+    adc #1
+y_positive:
+    clc
+    adc temp_dist   ; Manhattan distance
+    
+    cmp #20         ; Range check
+    rts             ; Carry set if in range
+
+target_id: .byte 0
+player_zone: .byte 0
+temp_dist: .byte 0
+```
+
+## Complete Optimization Example
+
+Optimized sprite multiplexer:
+
+```asm
+; Efficient sprite multiplexer
+; Reuses 8 hardware sprites for many objects
+
+sprites_per_zone = 4
+zone_height = 50
+
+multiplex_sprites:
+    ; Sort sprites by Y position (optimized bubble sort)
+    ldx #num_virtual_sprites-1
+sort_outer:
+    ldy #0
+    sty swapped
+sort_inner:
+    lda virtual_y,y
+    cmp virtual_y+1,y
+    bcc no_swap
+    
+    ; Swap sprites (unrolled)
+    ldx virtual_y,y
+    lda virtual_y+1,y
+    sta virtual_y,y
+    stx virtual_y+1,y
+    
+    ldx virtual_x,y
+    lda virtual_x+1,y
+    sta virtual_x,y
+    stx virtual_x+1,y
+    
+    inc swapped
+    
+no_swap:
+    iny
+    cpy #num_virtual_sprites-1
+    bne sort_inner
+    
+    lda swapped
+    bne sort_outer  ; Keep sorting if swapped
+    
+    ; Assign hardware sprites
+    lda #0
+    sta current_hw_sprite
+    sta current_zone
+    
+    ldx #0
+assign_loop:
+    ; Check zone
+    lda virtual_y,x
+    cmp current_zone
+    bcc same_zone
+    
+    ; New zone
+    clc
+    adc #zone_height
+    sta current_zone
+    lda #0
+    sta current_hw_sprite
+    
+same_zone:
+    ldy current_hw_sprite
+    cpy #8
+    bcs skip_sprite  ; No hardware sprites left
+    
+    ; Assign to hardware sprite
+    lda virtual_x,x
+    sta $D000,y
+    lda virtual_y,x
+    sta $D001,y
+    
+    inc current_hw_sprite
+    
+skip_sprite:
+    inx
+    cpx #num_virtual_sprites
+    bne assign_loop
+    rts
+
+; Data
+swapped: .byte 0
+current_hw_sprite: .byte 0
+current_zone: .byte 0
+num_virtual_sprites = 16
+
+virtual_x: .res 16
+virtual_y: .res 16
+```
+
+## Performance Monitoring
+
+Measure your optimizations:
+
+```asm
+; Raster time visualization
+measure_routine:
+    lda #1          ; White
+    sta $D020       ; Border color
+    
+    jsr routine_to_measure
+    
+    lda #0          ; Black
+    sta $D020
+    
+    ; Border shows execution time
+    rts
+    
+; Frame rate counter
+frame_counter:  .byte 0
+last_second:    .byte 0
+current_fps:    .byte 0
+
+update_fps:
+    inc frame_counter
+    
+    ; Check if second elapsed
+    lda $DC09       ; TOD seconds
+    cmp last_second
+    beq fps_done
+    
+    ; New second
+    sta last_second
+    lda frame_counter
+    sta current_fps
+    lda #0
+    sta frame_counter
+    
+    ; Display FPS
+    jsr show_fps
+    
+fps_done:
+    rts
+```
+
+## Key Concepts
+
+1. **Cycle Counting**: Know the cost of every instruction
+2. **Loop Unrolling**: Trade memory for speed when needed
+3. **Lookup Tables**: Precalculate expensive operations
+4. **Zero Page**: Use fast memory for critical variables
+5. **Work Distribution**: Spread updates across multiple frames
+
+## Experiment and Discover
+
+Try these optimization challenges:
+- Profile your game to find bottlenecks
+- Implement a fast sprite sorter
+- Create optimized collision detection
+- Build a fast line drawing routine
+- Optimize screen clearing and filling
+
+Optimization is an art form on the C64. Every saved cycle lets you add more features, enemies, or effects. Push the hardware to its limits!

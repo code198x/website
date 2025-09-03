@@ -1,0 +1,250 @@
+---
+title: "Sprite Multiplexing Mastery"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 25
+date: 2024-12-10
+author: Steve Hill
+---
+
+import MemoryMap from '@/components/MemoryMap.astro';
+import RegisterView from '@/components/RegisterView.astro';
+
+# Sprite Multiplexing Mastery
+
+Break the 8-sprite limit! With clever multiplexing, you can display dozens of sprites on screen, creating bullet-hell shooters and crowded game worlds.
+
+## Understanding Sprite Multiplexing
+
+The VIC-II can only display 8 hardware sprites, but by repositioning them during screen refresh, we create the illusion of many more:
+
+```asm
+; Basic multiplexer concept
+; Reuse sprites as the raster beam moves down
+VIRTUAL_SPRITES = 32
+
+; Virtual sprite data
+vsprite_x:      .res VIRTUAL_SPRITES
+vsprite_y:      .res VIRTUAL_SPRITES
+vsprite_ptr:    .res VIRTUAL_SPRITES
+vsprite_color:  .res VIRTUAL_SPRITES
+vsprite_enable: .res VIRTUAL_SPRITES
+
+; Sort sprites by Y position
+sort_sprites:
+    ; Bubble sort (simple for small numbers)
+    ldx #VIRTUAL_SPRITES-1
+sort_outer:
+    ldy #0
+    sty swapped
+sort_inner:
+    lda vsprite_y,y
+    cmp vsprite_y+1,y
+    bcc no_swap
+    
+    ; Swap sprites
+    tax
+    lda vsprite_y+1,y
+    sta vsprite_y,y
+    stx vsprite_y+1,y
+    
+    ; Swap other properties too
+    lda vsprite_x,y
+    tax
+    lda vsprite_x+1,y
+    sta vsprite_x,y
+    stx vsprite_x+1,y
+    
+    inc swapped
+    
+no_swap:
+    iny
+    cpy #VIRTUAL_SPRITES-1
+    bne sort_inner
+    
+    lda swapped
+    bne sort_outer
+    rts
+
+swapped: .byte 0
+```
+
+## Zone-Based Multiplexing
+
+Divide screen into zones for sprite reuse:
+
+```asm
+; Screen divided into zones
+ZONE_HEIGHT = 50
+NUM_ZONES = 4
+
+; Assign sprites to zones
+assign_zones:
+    lda #0
+    sta current_zone
+    sta hw_sprite
+    
+    ldx #0
+assign_loop:
+    lda vsprite_enable,x
+    beq skip_sprite
+    
+    ; Calculate zone
+    lda vsprite_y,x
+    lsr
+    lsr
+    lsr
+    lsr             ; /16 for zone
+    cmp current_zone
+    beq same_zone
+    
+    ; New zone - reset hardware sprites
+    sta current_zone
+    lda #0
+    sta hw_sprite
+    
+same_zone:
+    ; Assign to hardware sprite
+    ldy hw_sprite
+    cpy #8
+    bcs skip_sprite ; No more hw sprites
+    
+    txa
+    sta zone_map,y  ; Virtual sprite index
+    inc hw_sprite
+    
+skip_sprite:
+    inx
+    cpx #VIRTUAL_SPRITES
+    bne assign_loop
+    rts
+
+current_zone: .byte 0
+hw_sprite:    .byte 0
+zone_map:     .res 8
+```
+
+## Complete Multiplexer
+
+Full implementation with interrupts:
+
+```asm
+* = $0801
+    .byte $0C,$08,$0A,$00,$9E,$32,$30,$36,$31,$00,$00,$00
+
+* = $080D
+main:
+    jsr init_multiplexer
+    
+game_loop:
+    jsr update_virtual_sprites
+    jsr sort_sprites
+    jsr prepare_multiplex
+    jsr wait_frame
+    jmp game_loop
+
+init_multiplexer:
+    sei
+    
+    ; Set up first interrupt
+    lda #<multiplex_irq
+    sta $FFFE
+    lda #>multiplex_irq
+    sta $FFFF
+    
+    lda #0
+    sta irq_index
+    sta $D012
+    
+    lda #$01
+    sta $D01A
+    
+    cli
+    rts
+
+multiplex_irq:
+    pha
+    txa
+    pha
+    tya
+    pha
+    
+    ; Position sprites for current zone
+    ldx irq_index
+    lda zone_start,x
+    sta sprite_index
+    
+    ldy #0
+position_sprites:
+    ldx sprite_index
+    lda vsprite_enable,x
+    beq next_hw_sprite
+    
+    ; Set position
+    lda vsprite_x,x
+    sta $D000,y
+    lda vsprite_y,x
+    sta $D001,y
+    
+    ; Set pointer and color
+    lda vsprite_ptr,x
+    sta $07F8,y
+    lda vsprite_color,x
+    sta $D027,y
+    
+    inc sprite_index
+    
+next_hw_sprite:
+    iny
+    iny
+    cpy #16
+    bne position_sprites
+    
+    ; Next zone
+    inc irq_index
+    lda irq_index
+    cmp #NUM_ZONES
+    bcc setup_next
+    
+    lda #0
+    sta irq_index
+    
+setup_next:
+    tax
+    lda zone_raster,x
+    sta $D012
+    
+    asl $D019
+    pla
+    tay
+    pla
+    tax
+    pla
+    rti
+
+irq_index:    .byte 0
+sprite_index: .byte 0
+
+zone_start:   .byte 0,8,16,24
+zone_raster:  .byte 0,60,120,180
+```
+
+## Key Concepts
+
+1. **Virtual Sprites**: Software representation of many sprites
+2. **Zone Division**: Reuse hardware sprites in screen regions
+3. **Y-Sorting**: Order sprites for efficient multiplexing
+4. **Raster Timing**: Precise interrupts for sprite repositioning
+5. **Flicker Management**: Minimize visual artifacts
+
+## Experiment and Discover
+
+Try these multiplexing challenges:
+- Create a 64-sprite particle system
+- Build a bullet-hell shooter with hundreds of bullets
+- Implement priority sorting for important sprites
+- Design a crowd scene with many characters
+- Make a starfield with parallax layers
+
+Sprite multiplexing opens up game designs that seemed impossible on the C64!

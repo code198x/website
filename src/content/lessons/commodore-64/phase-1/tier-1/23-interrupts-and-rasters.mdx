@@ -1,0 +1,792 @@
+---
+title: "Interrupts and Raster Magic"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 23
+date: 2024-12-10
+author: Steve Hill
+---
+
+import MemoryMap from '@/components/MemoryMap.astro';
+import RegisterView from '@/components/RegisterView.astro';
+
+# Interrupts and Raster Magic
+
+Interrupts let you synchronize with the video beam, create impossible effects, and run multiple tasks simultaneously. Master raster interrupts to unlock the C64's hidden powers.
+
+## Understanding Interrupts
+
+The C64's interrupt system:
+
+```asm
+; Interrupt vectors
+IRQ_VECTOR = $0314  ; IRQ handler (60Hz)
+NMI_VECTOR = $0318  ; NMI handler (RESTORE key)
+BRK_VECTOR = $0316  ; BRK instruction handler
+
+; Install custom IRQ handler
+install_irq:
+    sei             ; Disable interrupts
+    
+    ; Save old handler
+    lda IRQ_VECTOR
+    sta old_irq
+    lda IRQ_VECTOR+1
+    sta old_irq+1
+    
+    ; Install new handler
+    lda #<custom_irq
+    sta IRQ_VECTOR
+    lda #>custom_irq
+    sta IRQ_VECTOR+1
+    
+    cli             ; Enable interrupts
+    rts
+
+custom_irq:
+    ; Your code here
+    inc $D020       ; Flash border
+    
+    ; Call original handler
+    jmp (old_irq)
+
+old_irq: .word 0
+
+; Direct hardware IRQ (bypassing KERNAL)
+install_hardware_irq:
+    sei
+    
+    ; Point hardware vector
+    lda #<hardware_irq
+    sta $FFFE
+    lda #>hardware_irq
+    sta $FFFF
+    
+    ; Disable KERNAL IRQ
+    lda #$7F
+    sta $DC0D       ; Disable CIA interrupts
+    lda $DC0D       ; Clear pending
+    
+    ; Enable VIC interrupts
+    lda #$01
+    sta $D01A       ; Enable raster interrupt
+    
+    ; Set raster line
+    lda #50
+    sta $D012
+    lda $D011
+    and #$7F        ; Clear high bit
+    sta $D011
+    
+    cli
+    rts
+
+hardware_irq:
+    pha             ; Save registers
+    txa
+    pha
+    tya
+    pha
+    
+    ; Your code
+    inc $D020
+    dec $D020
+    
+    ; Acknowledge interrupt
+    asl $D019
+    
+    pla             ; Restore registers
+    tay
+    pla
+    tax
+    pla
+    rti             ; Return from interrupt
+```
+
+<RegisterView 
+  title="VIC-II Interrupt Registers"
+  registers={[
+    { name: "$D012", value: "Raster Line", bits: "Line number (0-311)" },
+    { name: "$D011", value: "Control", bits: "RST8|ECM|BMM|DEN|RSEL|YSCROLL" },
+    { name: "$D019", value: "IRQ Status", bits: "--|--|--|--|ILP|IMMC|IMBC|IRST" },
+    { name: "$D01A", value: "IRQ Enable", bits: "--|--|--|--|ELP|EMMC|EMBC|ERST" }
+  ]}
+/>
+
+## Raster Interrupts
+
+Synchronize with specific scan lines:
+
+```asm
+; Stable raster interrupt
+stable_raster_irq:
+    pha
+    txa
+    pha
+    tya
+    pha
+    
+    ; Stabilize raster (remove jitter)
+    lda $D012
+    cmp $D012
+    beq *+2         ; Sync with beam
+    
+    ; Now we're stable - exact timing!
+    
+    ; Example: Color bar effect
+    ldx #0
+color_loop:
+    lda color_table,x
+    sta $D020
+    sta $D021
+    
+    ; Wait exact cycles for next line
+    ldy #9
+delay:
+    dey
+    bne delay
+    nop
+    nop
+    
+    inx
+    cpx #8
+    bne color_loop
+    
+    ; Reset colors
+    lda #0
+    sta $D020
+    lda #6
+    sta $D021
+    
+    ; Set next interrupt
+    lda #250
+    sta $D012
+    
+    asl $D019       ; Acknowledge
+    
+    pla
+    tay
+    pla
+    tax
+    pla
+    rti
+
+color_table:
+    .byte 0,1,2,3,4,5,6,7
+
+; Multiple raster interrupts
+multi_raster_init:
+    sei
+    
+    lda #<raster1
+    sta $FFFE
+    lda #>raster1
+    sta $FFFF
+    
+    lda #50         ; First split at line 50
+    sta $D012
+    
+    lda #$1B
+    sta $D011
+    lda #$01
+    sta $D01A
+    
+    cli
+    rts
+
+raster1:
+    pha
+    
+    ; Top of screen effect
+    lda #$18        ; Multicolor mode
+    sta $D016
+    
+    ; Set up next interrupt
+    lda #<raster2
+    sta $FFFE
+    lda #>raster2
+    sta $FFFF
+    
+    lda #150        ; Next split
+    sta $D012
+    
+    asl $D019
+    pla
+    rti
+
+raster2:
+    pha
+    
+    ; Middle screen effect
+    lda #$08        ; Normal mode
+    sta $D016
+    
+    ; Set up next interrupt
+    lda #<raster3
+    sta $FFFE
+    lda #>raster3
+    sta $FFFF
+    
+    lda #250
+    sta $D012
+    
+    asl $D019
+    pla
+    rti
+
+raster3:
+    pha
+    
+    ; Bottom screen effect
+    lda #$38        ; 38 column mode
+    sta $D016
+    
+    ; Back to first interrupt
+    lda #<raster1
+    sta $FFFE
+    lda #>raster1
+    sta $FFFF
+    
+    lda #50
+    sta $D012
+    
+    asl $D019
+    pla
+    rti
+```
+
+## Screen Splitting
+
+Different graphics modes on one screen:
+
+```asm
+; Text/bitmap split screen
+split_screen_irq:
+    pha
+    lda $D012
+    cmp #100
+    beq switch_to_bitmap
+    
+switch_to_text:
+    ; Top half: text mode
+    lda #$1B        ; Text mode
+    sta $D011
+    lda #$15        ; Screen at $0400
+    sta $D018
+    
+    ; Next interrupt at line 100
+    lda #100
+    sta $D012
+    jmp irq_done
+    
+switch_to_bitmap:
+    ; Bottom half: bitmap mode
+    lda #$3B        ; Bitmap mode
+    sta $D011
+    lda #$18        ; Bitmap at $2000
+    sta $D018
+    
+    ; Next interrupt at line 250
+    lda #250
+    sta $D012
+    
+irq_done:
+    asl $D019
+    pla
+    rti
+
+; Scrolling split
+scroll_split_irq:
+    pha
+    
+    lda split_zone
+    beq zone_top
+    
+zone_bottom:
+    ; Static UI area (no scroll)
+    lda #$C8        ; No scroll
+    sta $D016
+    
+    lda #0
+    sta split_zone
+    lda #180        ; UI starts here
+    sta $D012
+    jmp split_done
+    
+zone_top:
+    ; Scrolling game area
+    lda scroll_x
+    and #$07
+    ora #$C0        ; Add control bits
+    sta $D016
+    
+    lda #1
+    sta split_zone
+    lda #50         ; Game area
+    sta $D012
+    
+split_done:
+    asl $D019
+    pla
+    rti
+
+split_zone: .byte 0
+scroll_x:   .byte 0
+```
+
+## Timer Interrupts
+
+CIA timer-based interrupts:
+
+```asm
+; Set up CIA timer interrupt
+setup_timer_irq:
+    sei
+    
+    ; CIA 1 Timer A
+    lda #<timer_irq
+    sta $FFFE
+    lda #>timer_irq
+    sta $FFFF
+    
+    ; Set timer value (PAL: 985248 Hz)
+    ; For 60Hz: 985248/60 = 16420
+    lda #<16420
+    sta $DC04       ; Timer A low
+    lda #>16420
+    sta $DC05       ; Timer A high
+    
+    ; Start timer
+    lda #$11        ; Start timer, generate interrupts
+    sta $DC0E
+    
+    ; Enable timer interrupt
+    lda #$81
+    sta $DC0D
+    
+    cli
+    rts
+
+timer_irq:
+    pha
+    
+    ; This runs at exactly 60Hz
+    inc frame_counter
+    
+    ; Update music/sound
+    jsr music_player
+    
+    ; Acknowledge
+    lda $DC0D
+    
+    pla
+    rti
+
+frame_counter: .byte 0
+
+; NMI for pause (RESTORE key)
+setup_nmi:
+    lda #<pause_nmi
+    sta $FFFA
+    lda #>pause_nmi
+    sta $FFFB
+    
+    ; NMI is always enabled
+    rts
+
+pause_nmi:
+    pha
+    
+    ; Toggle pause
+    lda paused
+    eor #$01
+    sta paused
+    
+    beq unpause
+    
+    ; Pause: dim screen
+    lda #$00
+    sta $D020
+    jmp nmi_done
+    
+unpause:
+    ; Restore border
+    lda #$0E
+    sta $D020
+    
+nmi_done:
+    pla
+    rti
+
+paused: .byte 0
+```
+
+## Advanced Raster Effects
+
+Create impossible-looking effects:
+
+```asm
+; Open border (remove border completely)
+open_border_irq:
+    pha
+    
+    lda $D012
+    cmp #$F9
+    bne not_bottom
+    
+    ; Open bottom border
+    lda $D011
+    and #$F7        ; Clear DEN bit
+    sta $D011
+    
+    ; Wait and restore
+    ldx #20
+wait1:
+    dex
+    bne wait1
+    
+    lda $D011
+    ora #$08        ; Set DEN bit
+    sta $D011
+    
+    lda #$2F
+    sta $D012
+    jmp border_done
+    
+not_bottom:
+    ; Open top border
+    lda $D011
+    and #$F7
+    sta $D011
+    
+    ldx #10
+wait2:
+    dex
+    bne wait2
+    
+    lda $D011
+    ora #$08
+    sta $D011
+    
+    lda #$F9
+    sta $D012
+    
+border_done:
+    asl $D019
+    pla
+    rti
+
+; FLD (Flexible Line Distance) effect
+fld_effect:
+    pha
+    txa
+    pha
+    
+    ldx #0
+fld_loop:
+    lda $D012
+    cmp $D012
+    beq *+2         ; Stabilize
+    
+    lda $D011
+    and #$F8
+    ora sine_table,x
+    sta $D011       ; Modify badline
+    
+    ; Wait for next line
+    ldy #8
+fld_wait:
+    dey
+    bne fld_wait
+    
+    inx
+    cpx #100
+    bne fld_loop
+    
+    ; Restore normal
+    lda #$1B
+    sta $D011
+    
+    asl $D019
+    pla
+    tax
+    pla
+    rti
+
+; Tech-tech effect (line crunch)
+tech_tech:
+    pha
+    
+    ldx #0
+crunch_loop:
+    lda $D012
+    cmp #50
+    bne no_crunch
+    
+    ; Crunch line
+    lda $D011
+    and #$F8
+    ora #$03
+    sta $D011
+    
+    ; Quick restore
+    lda #$1B
+    sta $D011
+    
+no_crunch:
+    inx
+    cpx #20
+    bne crunch_loop
+    
+    asl $D019
+    pla
+    rti
+```
+
+## Multiplexed Sprites
+
+More than 8 sprites on screen:
+
+```asm
+; Sprite multiplexer interrupt
+MAX_VIRTUAL = 24    ; 24 virtual sprites
+
+multiplex_irq:
+    pha
+    txa
+    pha
+    
+    ; Current sprite zone
+    ldx current_zone
+    
+    ; Position hardware sprites for this zone
+    ldy #0
+position_loop:
+    lda sprite_zones,x
+    cmp #$FF
+    beq zone_done
+    
+    ; Get virtual sprite index
+    tax
+    lda virtual_sprite_x,x
+    sta $D000,y
+    lda virtual_sprite_y,x
+    sta $D001,y
+    lda virtual_sprite_color,x
+    sta $D027,y
+    
+    iny
+    iny
+    inc current_zone
+    cpy #16         ; 8 sprites × 2
+    bne position_loop
+    
+zone_done:
+    ; Set next interrupt
+    inc zone_index
+    lda zone_index
+    cmp #3          ; 3 zones
+    bcc set_next_zone
+    
+    lda #0
+    sta zone_index
+    
+set_next_zone:
+    tax
+    lda zone_raster_lines,x
+    sta $D012
+    
+    asl $D019
+    pla
+    tax
+    pla
+    rti
+
+current_zone:   .byte 0
+zone_index:     .byte 0
+
+zone_raster_lines:
+    .byte 50,120,190
+
+sprite_zones:
+    ; Zone 0: sprites 0-7
+    .byte 0,1,2,3,4,5,6,7
+    ; Zone 1: sprites 8-15
+    .byte 8,9,10,11,12,13,14,15
+    ; Zone 2: sprites 16-23
+    .byte 16,17,18,19,20,21,22,23
+    .byte $FF
+
+virtual_sprite_x:     .res 24
+virtual_sprite_y:     .res 24
+virtual_sprite_color: .res 24
+```
+
+## Complete Interrupt System
+
+Full featured interrupt framework:
+
+```asm
+* = $0801
+    .byte $0C,$08,$0A,$00,$9E,$32,$30,$36,$31,$00,$00,$00
+
+* = $080D
+main:
+    jsr init_interrupts
+    
+    ; Main loop runs while interrupts handle everything
+main_loop:
+    lda paused
+    bne main_loop   ; Do nothing if paused
+    
+    jsr game_logic
+    jmp main_loop
+
+init_interrupts:
+    sei
+    
+    ; Disable CIA interrupts
+    lda #$7F
+    sta $DC0D
+    sta $DD0D
+    lda $DC0D
+    lda $DD0D
+    
+    ; Set up raster interrupt chain
+    lda #<irq_main
+    sta $FFFE
+    lda #>irq_main
+    sta $FFFF
+    
+    ; First interrupt at top of screen
+    lda #0
+    sta $D012
+    lda $D011
+    and #$7F
+    sta $D011
+    
+    ; Enable raster interrupt
+    lda #$01
+    sta $D01A
+    
+    ; Set up NMI for pause
+    lda #<nmi_handler
+    sta $FFFA
+    lda #>nmi_handler
+    sta $FFFB
+    
+    cli
+    rts
+
+irq_main:
+    ; Save everything
+    pha
+    txa
+    pha
+    tya
+    pha
+    
+    ; Which interrupt?
+    ldx irq_index
+    lda irq_table_lo,x
+    sta irq_jump+1
+    lda irq_table_hi,x
+    sta irq_jump+2
+    
+irq_jump:
+    jsr $0000       ; Modified
+    
+    ; Next interrupt
+    inc irq_index
+    lda irq_index
+    cmp #NUM_IRQS
+    bcc irq_ok
+    lda #0
+    sta irq_index
+    
+irq_ok:
+    ; Set next raster line
+    tax
+    lda irq_lines,x
+    sta $D012
+    
+    ; Acknowledge
+    asl $D019
+    
+    ; Restore everything
+    pla
+    tay
+    pla
+    tax
+    pla
+    rti
+
+; IRQ chain
+irq_index: .byte 0
+NUM_IRQS = 4
+
+irq_table_lo:
+    .byte <irq_top,<irq_sprites,<irq_bottom,<irq_music
+
+irq_table_hi:
+    .byte >irq_top,>irq_sprites,>irq_bottom,>irq_music
+
+irq_lines:
+    .byte 0,100,200,250
+
+irq_top:
+    ; Top of screen tasks
+    jsr update_score_display
+    rts
+
+irq_sprites:
+    ; Multiplex sprites
+    jsr position_virtual_sprites
+    rts
+
+irq_bottom:
+    ; Bottom border effects
+    jsr open_border
+    rts
+
+irq_music:
+    ; Music/sound update
+    jsr play_music
+    inc frame_counter
+    rts
+
+nmi_handler:
+    ; RESTORE key pressed
+    pha
+    
+    lda paused
+    eor #$01
+    sta paused
+    
+    pla
+    rti
+
+; Variables
+frame_counter: .byte 0
+paused:        .byte 0
+```
+
+## Key Concepts
+
+1. **IRQ vs NMI**: Maskable vs non-maskable interrupts
+2. **Raster Timing**: Synchronize with the video beam
+3. **Stable Rasters**: Remove jitter for precise effects
+4. **Screen Splitting**: Multiple graphics modes on one screen
+5. **Interrupt Chains**: Multiple interrupts per frame
+
+## Experiment and Discover
+
+Try these interrupt challenges:
+- Create a plasma effect with color cycling
+- Build a full-screen scroller with splits
+- Implement sprite multiplexing for 32+ sprites
+- Make a raster bar music visualizer
+- Design "impossible" border effects
+
+Interrupts are the secret to C64 demo effects and advanced games. Master the raster, and you control the screen!

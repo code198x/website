@@ -1,0 +1,192 @@
+---
+title: "Data Persistence and Storage"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 26
+date: 2024-12-10
+author: Steve Hill
+---
+
+import MemoryMap from '@/components/MemoryMap.astro';
+import RegisterView from '@/components/RegisterView.astro';
+
+# Data Persistence and Storage
+
+Save games, high scores, and player progress. Learn to work with the C64's disk drive and tape systems to create persistent game experiences.
+
+## Disk Operations
+
+Basic disk I/O operations:
+
+```asm
+; Save high scores to disk
+save_highscores:
+    ; Open file for write
+    lda #1          ; File number
+    ldx #8          ; Device (disk drive)
+    ldy #1          ; Secondary address (write)
+    jsr $FFBA       ; SETLFS
+    
+    lda #filename_end-filename
+    ldx #<filename
+    ldy #>filename
+    jsr $FFBD       ; SETNAM
+    
+    jsr $FFC0       ; OPEN
+    
+    ; Select file for output
+    ldx #1
+    jsr $FFC9       ; CHKOUT
+    
+    ; Write data
+    ldx #0
+write_loop:
+    lda highscore_data,x
+    jsr $FFD2       ; CHROUT
+    inx
+    cpx #10         ; 10 bytes
+    bne write_loop
+    
+    ; Close file
+    lda #1
+    jsr $FFC3       ; CLOSE
+    jsr $FFCC       ; CLRCHN
+    rts
+
+filename: .text "SCORES,S,W"
+filename_end:
+
+highscore_data: .res 10
+
+; Load high scores
+load_highscores:
+    lda #1
+    ldx #8
+    ldy #0          ; Read mode
+    jsr $FFBA
+    
+    lda #filename_end-filename
+    ldx #<filename
+    ldy #>filename
+    jsr $FFBD
+    
+    jsr $FFC0       ; OPEN
+    
+    ldx #1
+    jsr $FFC6       ; CHKIN
+    
+    ; Read data
+    ldx #0
+read_loop:
+    jsr $FFE4       ; GETIN
+    sta highscore_data,x
+    inx
+    cpx #10
+    bne read_loop
+    
+    lda #1
+    jsr $FFC3       ; CLOSE
+    jsr $FFCC       ; CLRCHN
+    rts
+```
+
+## Save Game System
+
+Complete save/load implementation:
+
+```asm
+; Save game state
+save_game:
+    ; Serialize game data
+    jsr pack_game_state
+    
+    ; Save to disk
+    lda #2
+    ldx #8
+    ldy #2
+    jsr $FFBA
+    
+    lda #savename_end-savename
+    ldx #<savename
+    ldy #>savename
+    jsr $FFBD
+    
+    jsr $FFC0
+    
+    ldx #2
+    jsr $FFC9
+    
+    ; Write save data
+    ldy #0
+save_write:
+    lda save_buffer,y
+    jsr $FFD2
+    iny
+    cpy #SAVE_SIZE
+    bne save_write
+    
+    lda #2
+    jsr $FFC3
+    jsr $FFCC
+    
+    ; Show confirmation
+    jsr show_save_message
+    rts
+
+savename: .text "SAVEGAME,S,W"
+savename_end:
+SAVE_SIZE = 64
+save_buffer: .res SAVE_SIZE
+
+pack_game_state:
+    ; Pack all game variables
+    ldx #0
+    
+    ; Player data
+    lda player_x
+    sta save_buffer,x
+    inx
+    lda player_y
+    sta save_buffer,x
+    inx
+    lda player_health
+    sta save_buffer,x
+    inx
+    lda player_lives
+    sta save_buffer,x
+    inx
+    
+    ; Game progress
+    lda current_level
+    sta save_buffer,x
+    inx
+    lda game_flags
+    sta save_buffer,x
+    inx
+    
+    ; Score (3 bytes)
+    lda score
+    sta save_buffer,x
+    inx
+    lda score+1
+    sta save_buffer,x
+    inx
+    lda score+2
+    sta save_buffer,x
+    
+    ; Add checksum
+    jsr calculate_checksum
+    sta save_buffer+63
+    rts
+```
+
+## Key Concepts
+
+1. **KERNAL I/O**: Use ROM routines for disk access
+2. **File Management**: Open, read, write, close operations
+3. **Data Serialization**: Pack game state efficiently
+4. **Error Handling**: Check for disk errors
+5. **Checksums**: Verify save data integrity
+
+This gives you a taste of disk operations for game saves!
