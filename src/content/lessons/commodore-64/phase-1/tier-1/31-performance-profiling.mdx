@@ -1,0 +1,1396 @@
+---
+title: "Performance Profiling and Optimization"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 31
+date: 2024-12-10
+author: Steve Hill
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 31
+description: "Measure, analyze, and optimize your code's performance to squeeze every cycle from the C64"
+learning_objectives:
+  - "Build visual profiling tools using border colors"
+  - "Implement cycle-accurate timing measurements"
+  - "Create memory access pattern analyzers"
+  - "Optimize critical code paths for maximum speed"
+concepts:
+  - "Raster time visualization"
+  - "CIA timer-based profiling"
+  - "Hot spot analysis"
+  - "Cycle counting and optimization"
+estimated_duration: "60-90 minutes"
+difficulty: "hard"
+prerequisites:
+  - "Understanding of C64 architecture"
+  - "Knowledge of interrupt programming"
+code_examples: true
+practical_exercise: true
+order: 31
+---
+
+# Performance Profiling and Optimization
+
+Every cycle matters on the C64. At 1MHz, you have just 19,656 cycles per frame (PAL). Games like "Armalyte," "Mayhem in Monsterland," and "Turrican" achieved the impossible through meticulous optimization. Today you'll learn their secrets.
+
+## What You'll Build
+
+This lesson teaches you to create:
+1. **Visual profiler** using border colors to see performance
+2. **Cycle-accurate timer** for precise measurements
+3. **Hot spot analyzer** to find bottlenecks
+4. **Optimization toolkit** for maximum speed
+
+These tools reveal exactly where your cycles go and how to reclaim them.
+
+## The Reality of C64 Performance
+
+The C64's constraints are severe:
+- 985,248 cycles per second (PAL)
+- 19,656 cycles per frame at 50Hz
+- 312 raster lines, ~63 cycles each
+- VIC steals cycles during bad lines
+- Sprite DMA steals more cycles
+
+Professional developers counted every cycle. Let's build the tools they used.
+
+## Visual Performance Profiling
+
+The border color technique shows performance in real-time:
+
+```asm
+; Complete visual profiler system
+; Shows where cycles are spent using border colors
+
+    * = $0801
+    ; BASIC stub
+    !byte $0b,$08,$0a,$00,$9e
+    !text "2061"
+    !byte $00,$00,$00
+
+    * = $080d
+
+; Color codes for different systems
+COLOR_IDLE      = 0    ; Black - waiting
+COLOR_SPRITES   = 1    ; White - sprite processing
+COLOR_COLLISION = 2    ; Red - collision detection
+COLOR_AI        = 3    ; Cyan - AI logic
+COLOR_AUDIO     = 4    ; Purple - sound processing
+COLOR_RENDER    = 5    ; Green - screen rendering
+COLOR_INPUT     = 6    ; Blue - input handling
+COLOR_PHYSICS   = 7    ; Yellow - physics
+
+main:
+    jsr init_profiler
+    
+main_loop:
+    ; Wait for raster
+    lda #250
+wait_raster:
+    cmp $D012
+    bne wait_raster
+    
+    ; Start frame profiling
+    lda #COLOR_IDLE
+    sta $D020
+    
+    ; Profile each subsystem
+    jsr profile_frame
+    
+    ; Show statistics
+    jsr update_stats_display
+    
+    jmp main_loop
+
+; Initialize profiling system
+init_profiler:
+    ; Clear stats
+    ldx #7
+    lda #0
+clear_stats:
+    sta time_per_system,x
+    sta time_per_system+8,x
+    dex
+    bpl clear_stats
+    
+    ; Set up display
+    jsr init_stats_display
+    
+    ; Configure CIA timer
+    lda #$FF
+    sta $DD04       ; Timer A low
+    sta $DD05       ; Timer A high
+    
+    rts
+
+; Profile one frame
+profile_frame:
+    ; Input handling
+    lda #COLOR_INPUT
+    sta $D020
+    jsr measure_start
+    jsr read_input
+    jsr measure_end
+    ldx #COLOR_INPUT
+    jsr accumulate_time
+    
+    ; Sprite updates
+    lda #COLOR_SPRITES
+    sta $D020
+    jsr measure_start
+    jsr update_sprites
+    jsr measure_end
+    ldx #COLOR_SPRITES
+    jsr accumulate_time
+    
+    ; Collision detection
+    lda #COLOR_COLLISION
+    sta $D020
+    jsr measure_start
+    jsr check_all_collisions
+    jsr measure_end
+    ldx #COLOR_COLLISION
+    jsr accumulate_time
+    
+    ; AI processing
+    lda #COLOR_AI
+    sta $D020
+    jsr measure_start
+    jsr update_ai
+    jsr measure_end
+    ldx #COLOR_AI
+    jsr accumulate_time
+    
+    ; Physics simulation
+    lda #COLOR_PHYSICS
+    sta $D020
+    jsr measure_start
+    jsr update_physics
+    jsr measure_end
+    ldx #COLOR_PHYSICS
+    jsr accumulate_time
+    
+    ; Audio update
+    lda #COLOR_AUDIO
+    sta $D020
+    jsr measure_start
+    jsr update_audio
+    jsr measure_end
+    ldx #COLOR_AUDIO
+    jsr accumulate_time
+    
+    ; Screen rendering
+    lda #COLOR_RENDER
+    sta $D020
+    jsr measure_start
+    jsr render_screen
+    jsr measure_end
+    ldx #COLOR_RENDER
+    jsr accumulate_time
+    
+    ; Back to idle
+    lda #COLOR_IDLE
+    sta $D020
+    
+    rts
+
+; Start timing measurement
+measure_start:
+    ; Start CIA timer
+    lda #$01
+    sta $DD0E       ; Start timer, continuous mode
+    rts
+
+; End timing measurement
+measure_end:
+    ; Stop timer
+    lda #$00
+    sta $DD0E
+    
+    ; Calculate cycles used
+    lda #$FF
+    sec
+    sbc $DD04
+    sta last_cycles
+    lda #$FF
+    sbc $DD05
+    sta last_cycles+1
+    
+    ; Reset timer for next measurement
+    lda #$FF
+    sta $DD04
+    sta $DD05
+    
+    rts
+
+last_cycles: .word 0
+
+; Accumulate time for system X
+accumulate_time:
+    ; Add to total
+    lda time_per_system,x
+    clc
+    adc last_cycles
+    sta time_per_system,x
+    lda time_per_system+8,x
+    adc last_cycles+1
+    sta time_per_system+8,x
+    rts
+
+time_per_system: .res 16  ; 8 systems × 2 bytes
+
+; Display statistics on screen
+init_stats_display:
+    ; Clear screen
+    lda #147
+    jsr $FFD2
+    
+    ; Headers
+    ldx #0
+show_header:
+    lda header_text,x
+    beq header_done
+    jsr $FFD2
+    inx
+    jmp show_header
+header_done:
+    rts
+
+header_text:
+    !text "PERFORMANCE PROFILER",13
+    !text "====================",13,13,0
+
+; Update statistics display
+update_stats_display:
+    ; Position cursor
+    lda #19         ; Home
+    jsr $FFD2
+    lda #13
+    jsr $FFD2
+    jsr $FFD2
+    jsr $FFD2
+    
+    ; Show each system
+    ldx #0
+show_system:
+    ; System name
+    txa
+    asl
+    asl
+    asl
+    tay
+    
+show_name:
+    lda system_names,y
+    beq show_time
+    jsr $FFD2
+    iny
+    jmp show_name
+
+show_time:
+    ; Align
+    lda #':'
+    jsr $FFD2
+    lda #' '
+    jsr $FFD2
+    
+    ; Show cycles
+    lda time_per_system+8,x
+    jsr print_hex
+    lda time_per_system,x
+    jsr print_hex
+    
+    ; Calculate percentage
+    jsr calc_percentage
+    
+    ; Show bar graph
+    lda #' '
+    jsr $FFD2
+    jsr show_bar
+    
+    lda #13
+    jsr $FFD2
+    
+    ; Clear for next frame
+    lda #0
+    sta time_per_system,x
+    sta time_per_system+8,x
+    
+    inx
+    cpx #8
+    bne show_system
+    
+    rts
+
+system_names:
+    !text "IDLE    ",0
+    !text "SPRITES ",0
+    !text "COLLISN ",0
+    !text "AI      ",0
+    !text "AUDIO   ",0
+    !text "RENDER  ",0
+    !text "INPUT   ",0
+    !text "PHYSICS ",0
+
+; Calculate percentage of frame time
+calc_percentage:
+    ; Simplified - just show relative bar
+    lda time_per_system+8,x
+    lsr
+    lsr
+    sta bar_length
+    rts
+
+bar_length: .byte 0
+
+; Show bar graph
+show_bar:
+    ldy bar_length
+    beq bar_done
+bar_loop:
+    lda #$A0        ; Block character
+    jsr $FFD2
+    dey
+    bne bar_loop
+bar_done:
+    rts
+
+; Print hex byte
+print_hex:
+    pha
+    lsr
+    lsr
+    lsr
+    lsr
+    jsr print_nibble
+    pla
+    and #$0F
+    jsr print_nibble
+    rts
+
+print_nibble:
+    cmp #10
+    bcc is_digit
+    clc
+    adc #'A'-10
+    jmp print_char
+is_digit:
+    clc
+    adc #'0'
+print_char:
+    jsr $FFD2
+    rts
+
+; Dummy game systems for profiling
+read_input:
+    lda $DC00       ; Read joystick
+    sta player_input
+    rts
+
+update_sprites:
+    ; Simulate sprite processing
+    ldx #7
+sprite_loop:
+    lda sprite_x,x
+    clc
+    adc sprite_vx,x
+    sta sprite_x,x
+    sta $D000,x
+    dex
+    bpl sprite_loop
+    rts
+
+check_all_collisions:
+    ; Simulate collision checks
+    ldx #7
+coll_outer:
+    ldy #7
+coll_inner:
+    ; Check X overlap
+    lda sprite_x,x
+    sec
+    sbc sprite_x,y
+    cmp #16
+    bcs no_collision
+    ; Check Y overlap
+    lda sprite_y,x
+    sec
+    sbc sprite_y,y
+    cmp #16
+no_collision:
+    dey
+    bpl coll_inner
+    dex
+    bpl coll_outer
+    rts
+
+update_ai:
+    ; Simulate AI thinking
+    ldx #15
+ai_loop:
+    jsr ai_think
+    dex
+    bpl ai_loop
+    rts
+
+ai_think:
+    ; Fake AI computation
+    lda $D41B       ; Random
+    and #$03
+    sta enemy_state,x
+    rts
+
+update_physics:
+    ; Simulate physics
+    ldx #7
+phys_loop:
+    lda sprite_vy,x
+    clc
+    adc #1          ; Gravity
+    sta sprite_vy,x
+    lda sprite_y,x
+    clc
+    adc sprite_vy,x
+    sta sprite_y,x
+    dex
+    bpl phys_loop
+    rts
+
+update_audio:
+    ; Simulate audio processing
+    inc music_counter
+    lda music_counter
+    and #$0F
+    tax
+    lda music_data,x
+    sta $D400       ; Frequency
+    rts
+
+render_screen:
+    ; Simulate screen rendering
+    ldx #0
+render_loop:
+    lda screen_buffer,x
+    sta $0400,x
+    lda screen_buffer+256,x
+    sta $0500,x
+    inx
+    bne render_loop
+    rts
+
+; Game data
+player_input:   .byte 0
+sprite_x:       .res 8
+sprite_y:       .res 8
+sprite_vx:      .res 8
+sprite_vy:      .res 8
+enemy_state:    .res 16
+music_counter:  .byte 0
+music_data:     .res 16
+screen_buffer:  .res 512
+```
+
+## Cycle-Accurate Timing
+
+Measure exact cycle counts for critical code:
+
+```asm
+; Precision cycle counter
+; Measures code down to single cycles
+
+; Macro for easy timing
+!macro time_code .label {
+    jsr timer_start
+    jsr .label
+    jsr timer_stop
+    jsr display_cycles
+}
+
+; High-precision timer using CIA
+timer_start:
+    ; Sync to raster for consistency
+    lda $D012
+sync_raster:
+    cmp $D012
+    beq sync_raster
+    
+    ; Configure CIA 2 Timer A
+    lda #$00
+    sta $DD0E       ; Stop timer
+    
+    lda #$FF        ; Maximum count
+    sta $DD04
+    sta $DD05
+    
+    ; Start counting
+    lda #$01        ; Start, continuous
+    sta $DD0E
+    
+    rts
+
+timer_stop:
+    ; Stop immediately
+    lda #$00
+    sta $DD0E
+    
+    ; Read timer value
+    lda $DD04
+    sta timer_value
+    lda $DD05
+    sta timer_value+1
+    
+    ; Calculate cycles
+    lda #$FF
+    sec
+    sbc timer_value
+    sta cycles_used
+    lda #$FF
+    sbc timer_value+1
+    sta cycles_used+1
+    
+    rts
+
+timer_value: .word 0
+cycles_used: .word 0
+
+; Display cycle count
+display_cycles:
+    ; Position cursor
+    lda #13
+    jsr $FFD2
+    
+    ; Show label
+    ldx #0
+show_cycles_label:
+    lda cycles_label,x
+    beq show_count
+    jsr $FFD2
+    inx
+    jmp show_cycles_label
+
+show_count:
+    ; Show hex cycles
+    lda cycles_used+1
+    jsr print_hex
+    lda cycles_used
+    jsr print_hex
+    
+    lda #' '
+    jsr $FFD2
+    
+    ; Convert to decimal
+    jsr cycles_to_decimal
+    
+    ; Show decimal
+    lda #'('
+    jsr $FFD2
+    
+    lda decimal_thou
+    beq skip_thou
+    clc
+    adc #'0'
+    jsr $FFD2
+skip_thou:
+    
+    lda decimal_hund
+    clc
+    adc #'0'
+    jsr $FFD2
+    
+    lda decimal_tens
+    clc
+    adc #'0'
+    jsr $FFD2
+    
+    lda decimal_ones
+    clc
+    adc #'0'
+    jsr $FFD2
+    
+    lda #')'
+    jsr $FFD2
+    
+    rts
+
+cycles_label: !text "Cycles: ",0
+
+; Convert 16-bit hex to decimal
+cycles_to_decimal:
+    ; Simple conversion for display
+    lda cycles_used+1
+    lsr
+    lsr
+    sta decimal_thou
+    
+    lda cycles_used+1
+    and #$03
+    sta temp
+    lda cycles_used
+    
+    ; Divide by 10 repeatedly
+    ldx #0
+    ldy #0
+convert_loop:
+    ; ... simplified conversion ...
+    sta decimal_ones
+    stx decimal_tens
+    sty decimal_hund
+    rts
+
+decimal_thou: .byte 0
+decimal_hund: .byte 0
+decimal_tens: .byte 0
+decimal_ones: .byte 0
+temp: .byte 0
+
+; Benchmark different implementations
+benchmark_implementations:
+    ; Test unrolled loop
+    jsr timer_start
+    jsr unrolled_clear
+    jsr timer_stop
+    lda cycles_used
+    sta unrolled_time
+    lda cycles_used+1
+    sta unrolled_time+1
+    
+    ; Test normal loop
+    jsr timer_start
+    jsr loop_clear
+    jsr timer_stop
+    lda cycles_used
+    sta loop_time
+    lda cycles_used+1
+    sta loop_time+1
+    
+    ; Test indexed loop
+    jsr timer_start
+    jsr indexed_clear
+    jsr timer_stop
+    lda cycles_used
+    sta indexed_time
+    lda cycles_used+1
+    sta indexed_time+1
+    
+    ; Display results
+    jsr show_benchmark_results
+    rts
+
+; Different clear implementations
+unrolled_clear:
+    lda #0
+    sta $0400
+    sta $0401
+    sta $0402
+    sta $0403
+    sta $0404
+    sta $0405
+    sta $0406
+    sta $0407
+    ; ... continue unrolled
+    rts
+
+loop_clear:
+    lda #0
+    ldx #0
+loop_clear1:
+    sta $0400,x
+    inx
+    cpx #255
+    bne loop_clear1
+    rts
+
+indexed_clear:
+    lda #0
+    ldy #255
+indexed_clear1:
+    sta $0400,y
+    dey
+    bne indexed_clear1
+    sta $0400
+    rts
+
+unrolled_time: .word 0
+loop_time:     .word 0
+indexed_time:  .word 0
+```
+
+## Hot Spot Analysis
+
+Find where your code spends most time:
+
+```asm
+; Sampling profiler
+; Identifies hot spots in code
+
+; Sample collection
+MAX_SAMPLES = 1000
+sample_count:    .word 0
+sample_buffer:   .res MAX_SAMPLES * 2
+
+; Install sampling interrupt
+install_sampler:
+    sei
+    
+    ; Set up NMI handler
+    lda #<sample_handler
+    sta $FFFA
+    lda #>sample_handler
+    sta $FFFB
+    
+    ; Configure CIA 2 Timer B for sampling
+    lda #<1000      ; Sample rate
+    sta $DD06
+    lda #>1000
+    sta $DD07
+    
+    ; Enable timer NMI
+    lda #$82
+    sta $DD0D
+    
+    ; Start timer
+    lda #$01
+    sta $DD0F
+    
+    cli
+    rts
+
+; Sampling interrupt handler
+sample_handler:
+    pha
+    txa
+    pha
+    
+    ; Get interrupted PC from stack
+    tsx
+    lda $0104,x     ; PC high
+    sta sample_high
+    lda $0103,x     ; PC low
+    sta sample_low
+    
+    ; Store sample
+    ldx sample_count
+    cpx #MAX_SAMPLES*2
+    bcs sample_full
+    
+    lda sample_low
+    sta sample_buffer,x
+    inx
+    lda sample_high
+    sta sample_buffer,x
+    inx
+    stx sample_count
+    
+sample_full:
+    pla
+    tax
+    pla
+    rti
+
+sample_high: .byte 0
+sample_low:  .byte 0
+
+; Analyze collected samples
+analyze_samples:
+    ; Build histogram of addresses
+    jsr build_histogram
+    
+    ; Find hot spots
+    jsr find_hotspots
+    
+    ; Display results
+    jsr show_hotspots
+    rts
+
+; Build histogram of code pages
+histogram: .res 256
+
+build_histogram:
+    ; Clear histogram
+    ldx #255
+    lda #0
+clear_hist:
+    sta histogram,x
+    dex
+    bne clear_hist
+    
+    ; Count samples per page
+    ldx #0
+count_samples:
+    cpx sample_count
+    bcs histogram_done
+    
+    ; Get high byte (page)
+    lda sample_buffer+1,x
+    tay
+    
+    ; Increment count
+    inc histogram,y
+    
+    ; Next sample
+    inx
+    inx
+    jmp count_samples
+
+histogram_done:
+    rts
+
+; Find hottest code pages
+hotspot_count: .byte 5
+hotspot_pages: .res 5
+hotspot_hits:  .res 5
+
+find_hotspots:
+    ; Clear results
+    ldx #4
+    lda #0
+clear_hotspots:
+    sta hotspot_pages,x
+    sta hotspot_hits,x
+    dex
+    bpl clear_hotspots
+    
+    ; Find top 5 pages
+    ldy #0          ; Page counter
+find_loop:
+    lda histogram,y
+    
+    ; Compare with current hotspots
+    ldx #0
+compare_loop:
+    cmp hotspot_hits,x
+    bcc next_compare
+    
+    ; Insert here
+    jsr insert_hotspot
+    jmp next_page
+    
+next_compare:
+    inx
+    cpx #5
+    bne compare_loop
+    
+next_page:
+    iny
+    bne find_loop
+    
+    rts
+
+; Insert new hotspot at position X
+insert_hotspot:
+    ; Shift lower entries down
+    pha
+    tya
+    pha
+    
+    ldy #3
+shift_loop:
+    cpy x_save
+    bcc insert_new
+    
+    lda hotspot_pages,y
+    sta hotspot_pages+1,y
+    lda hotspot_hits,y
+    sta hotspot_hits+1,y
+    
+    dey
+    bpl shift_loop
+    
+insert_new:
+    pla
+    sta hotspot_pages,x
+    pla
+    sta hotspot_hits,x
+    
+    rts
+
+x_save: .byte 0
+
+; Display hotspot analysis
+show_hotspots:
+    ; Clear and show header
+    lda #147
+    jsr $FFD2
+    
+    ldx #0
+show_hot_header:
+    lda hotspot_header,x
+    beq show_hot_list
+    jsr $FFD2
+    inx
+    jmp show_hot_header
+
+show_hot_list:
+    ; Show top 5 hotspots
+    ldx #0
+show_spot:
+    ; Rank
+    txa
+    clc
+    adc #'1'
+    jsr $FFD2
+    lda #'.'
+    jsr $FFD2
+    lda #' '
+    jsr $FFD2
+    
+    ; Page address
+    lda #'$'
+    jsr $FFD2
+    lda hotspot_pages,x
+    jsr print_hex
+    lda #'0'
+    jsr $FFD2
+    lda #'0'
+    jsr $FFD2
+    
+    ; Sample count
+    lda #' '
+    jsr $FFD2
+    lda #'('
+    jsr $FFD2
+    lda hotspot_hits,x
+    jsr print_hex
+    lda #' '
+    jsr $FFD2
+    lda #'h'
+    jsr $FFD2
+    lda #'i'
+    jsr $FFD2
+    lda #'t'
+    jsr $FFD2
+    lda #'s'
+    jsr $FFD2
+    lda #')'
+    jsr $FFD2
+    
+    lda #13
+    jsr $FFD2
+    
+    inx
+    cpx #5
+    bne show_spot
+    
+    rts
+
+hotspot_header:
+    !text "CODE HOTSPOTS:",13
+    !text "==============",13,13,0
+```
+
+## Memory Access Optimization
+
+Analyze and optimize memory patterns:
+
+```asm
+; Memory access profiler
+; Tracks read/write patterns
+
+; Access tracking
+access_map:     .res 256  ; Track page access frequency
+write_map:      .res 256  ; Track write frequency
+
+; Track memory access
+track_access:
+    ; Hook into memory operations
+    ; (Simplified - real implementation would patch code)
+    
+    ; Track reads
+    inc access_map,x
+    
+    ; Track writes
+    inc write_map,x
+    
+    rts
+
+; Analyze access patterns
+analyze_access:
+    ; Find most accessed pages
+    ldx #0
+    ldy #0
+    sty max_access
+find_max_access:
+    lda access_map,x
+    cmp max_access
+    bcc not_max_access
+    sta max_access
+    stx max_page
+not_max_access:
+    inx
+    bne find_max_access
+    
+    ; Find most written pages
+    ldx #0
+    sty max_writes
+find_max_write:
+    lda write_map,x
+    cmp max_writes
+    bcc not_max_write
+    sta max_writes
+    stx write_page
+not_max_write:
+    inx
+    bne find_max_write
+    
+    rts
+
+max_access: .byte 0
+max_page:   .byte 0
+max_writes: .byte 0
+write_page: .byte 0
+
+; Optimize memory layout based on access
+optimize_layout:
+    ; Move frequently accessed data to zero page
+    ldx max_page
+    cpx #2          ; Already in ZP?
+    bcc already_optimal
+    
+    ; Suggest optimization
+    jsr suggest_zp_move
+    
+already_optimal:
+    rts
+
+suggest_zp_move:
+    ; Display suggestion
+    ldx #0
+show_suggest:
+    lda suggest_text,x
+    beq suggest_done
+    jsr $FFD2
+    inx
+    jmp show_suggest
+suggest_done:
+    lda max_page
+    jsr print_hex
+    rts
+
+suggest_text:
+    !text "Move data from page $",0
+```
+
+## Optimization Techniques
+
+Common optimization patterns:
+
+```asm
+; Optimization pattern library
+
+; Loop unrolling example
+; Before: 532 cycles
+normal_copy:
+    ldx #0
+copy_loop1:
+    lda source,x
+    sta dest,x
+    inx
+    cpx #32
+    bne copy_loop1  ; 3 cycles per iteration
+    rts
+
+; After: 288 cycles
+unrolled_copy:
+    ldx #0
+unroll_loop:
+    lda source,x    ; 4 cycles × 8
+    sta dest,x      ; 5 cycles × 8
+    lda source+1,x
+    sta dest+1,x
+    lda source+2,x
+    sta dest+2,x
+    lda source+3,x
+    sta dest+3,x
+    lda source+4,x
+    sta dest+4,x
+    lda source+5,x
+    sta dest+5,x
+    lda source+6,x
+    sta dest+6,x
+    lda source+7,x
+    sta dest+7,x
+    
+    txa
+    clc
+    adc #8
+    tax
+    cpx #32
+    bne unroll_loop
+    rts
+
+; Self-modifying code example
+; Faster than indexed addressing
+self_mod_clear:
+    lda #0
+    ldx #0
+modify_loop:
+    sta clear_addr
+    
+    lda #<$0400
+    clc
+    adc x_counter
+    sta clear_addr+1
+    lda #>$0400
+    adc #0
+    sta clear_addr+2
+    
+clear_addr:
+    sta $0400       ; Modified
+    
+    inc x_counter
+    bne modify_loop
+    rts
+
+x_counter: .byte 0
+
+; Table lookup instead of calculation
+; Before: 38 cycles
+calculate_mult:
+    ; Multiply A by 40
+    sta temp
+    asl
+    asl
+    asl             ; ×8
+    sta result
+    lda temp
+    asl
+    asl
+    asl
+    asl
+    asl             ; ×32
+    clc
+    adc result      ; 8+32=40
+    rts
+
+; After: 8 cycles
+table_mult:
+    tax
+    lda mult_40_lo,x
+    sta result
+    lda mult_40_hi,x
+    sta result+1
+    rts
+
+mult_40_lo: .byte 0,40,80,120,160,200,240,24,64,104,144,184,224,8,48,88
+mult_40_hi: .byte 0,0,0,0,0,0,0,1,1,1,1,1,1,2,2,2
+
+result: .word 0
+
+; Zero page optimization
+; Before: 4 cycles per access
+normal_access:
+    lda data_ptr
+    sta $1000
+    rts
+
+data_ptr: .word $1234
+
+; After: 3 cycles per access
+zp_access:
+    lda zp_ptr
+    sta $1000
+    rts
+
+    * = $80
+zp_ptr: .word $1234
+```
+
+## Complete Performance Suite
+
+Integrated profiling system:
+
+```asm
+; Complete performance analysis suite
+; Run comprehensive profiling
+
+run_performance_suite:
+    ; Visual profiling
+    jsr init_visual_profiler
+    
+    ; Cycle timing
+    jsr run_benchmarks
+    
+    ; Hotspot analysis  
+    jsr collect_samples
+    jsr analyze_samples
+    
+    ; Memory patterns
+    jsr track_memory_access
+    
+    ; Generate report
+    jsr generate_report
+    rts
+
+; Generate performance report
+generate_report:
+    lda #147
+    jsr $FFD2
+    
+    ; Title
+    ldx #0
+show_report_title:
+    lda report_title,x
+    beq show_metrics
+    jsr $FFD2
+    inx
+    jmp show_report_title
+
+show_metrics:
+    ; Frame time
+    jsr show_frame_time
+    
+    ; Bottlenecks
+    jsr show_bottlenecks
+    
+    ; Recommendations
+    jsr show_recommendations
+    
+    rts
+
+report_title:
+    !text "PERFORMANCE REPORT",13
+    !text "==================",13,13,0
+
+show_frame_time:
+    ldx #0
+show_frame_label:
+    lda frame_label,x
+    beq show_frame_value
+    jsr $FFD2
+    inx
+    jmp show_frame_label
+
+show_frame_value:
+    ; Calculate total frame time
+    ldx #0
+    lda #0
+    sta frame_total
+    sta frame_total+1
+calc_frame:
+    lda time_per_system,x
+    clc
+    adc frame_total
+    sta frame_total
+    lda time_per_system+8,x
+    adc frame_total+1
+    sta frame_total+1
+    inx
+    cpx #8
+    bne calc_frame
+    
+    ; Display
+    lda frame_total+1
+    jsr print_hex
+    lda frame_total
+    jsr print_hex
+    
+    ; Check if over budget
+    lda frame_total+1
+    cmp #>19656     ; PAL frame cycles
+    bcc within_budget
+    
+    ; Warning!
+    ldx #0
+show_warning:
+    lda over_budget,x
+    beq frame_done
+    jsr $FFD2
+    inx
+    jmp show_warning
+
+within_budget:
+    ldx #0
+show_ok:
+    lda budget_ok,x
+    beq frame_done
+    jsr $FFD2
+    inx
+    jmp show_ok
+
+frame_done:
+    lda #13
+    jsr $FFD2
+    rts
+
+frame_label:  !text "Frame cycles: ",0
+frame_total:  .word 0
+over_budget:  !text " - OVER BUDGET!",0
+budget_ok:    !text " - OK",0
+
+show_bottlenecks:
+    ; Identify biggest time consumers
+    ldx #0
+find_biggest:
+    ; ... find system using most cycles
+    rts
+
+show_recommendations:
+    ; Suggest optimizations
+    ldx #0
+show_rec_text:
+    lda recommendations,x
+    beq rec_done
+    jsr $FFD2
+    inx
+    jmp show_rec_text
+rec_done:
+    rts
+
+recommendations:
+    !text 13,"RECOMMENDATIONS:",13
+    !text "- Unroll critical loops",13
+    !text "- Move data to zero page",13
+    !text "- Use lookup tables",13
+    !text "- Optimize sprite multiplexing",13,0
+
+source: .res 32
+dest:   .res 32
+```
+
+## Historical Context
+
+**"Armalyte" (1988)** - Cyberdyne Systems achieved 50fps action through obsessive optimization, counting every cycle.
+
+**"Mayhem in Monsterland" (1993)** - Apex Computer Productions used every optimization trick to create smooth scrolling that seemed impossible.
+
+**"Turrican" series** - Manfred Trenz profiled every routine, optimizing until the games ran like magic.
+
+**Demo scene** - Groups like Censor Design and Booze Design pushed optimization to artistic levels, doing things Commodore engineers thought impossible.
+
+## Challenge: Optimize Your Game
+
+Using these profiling tools:
+1. Profile your entire game loop
+2. Identify the top 3 bottlenecks
+3. Optimize each by at least 20%
+4. Verify improvements with measurements
+5. Document optimization techniques used
+
+Remember: Premature optimization is evil, but on the C64, every cycle saved is sacred.
+
+## Optimization Checklist
+
+Before shipping:
+- [ ] Profile all major routines
+- [ ] Eliminate unnecessary calculations
+- [ ] Unroll critical loops
+- [ ] Use lookup tables where possible
+- [ ] Move frequently accessed data to zero page
+- [ ] Optimize memory access patterns
+- [ ] Remove dead code
+- [ ] Verify frame rate stability
+- [ ] Test on real hardware
+- [ ] Document performance characteristics
+
+## Next Steps
+
+With profiling and optimization skills:
+- Push the C64 beyond perceived limits
+- Create smooth 50fps action
+- Handle more sprites and effects
+- Build more ambitious games
+- Join the ranks of optimization legends
+
+Performance is the difference between a game that struggles and one that sings. Now you have the tools to make your code fly.

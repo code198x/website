@@ -1,0 +1,1675 @@
+---
+title: "Game State Management"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 19
+date: 2024-12-10
+author: Steve Hill
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 19
+order: 19
+---
+
+# Game State Management
+
+Professional games flow seamlessly between menus, gameplay, and game over screens. Managing these states cleanly transforms a collection of routines into a polished experience.
+
+## State Machine Architecture
+
+Build a robust state system that controls your entire game flow:
+
+```asm
+; Game states
+STATE_INIT      = 0
+STATE_MENU      = 1
+STATE_PLAYING   = 2
+STATE_PAUSED    = 3
+STATE_GAME_OVER = 4
+STATE_VICTORY   = 5
+STATE_OPTIONS   = 6
+
+game_state:     .byte STATE_INIT
+previous_state: .byte STATE_INIT
+state_timer:    .byte 0
+
+; State function pointers
+state_update_lo:
+    .byte <update_init
+    .byte <update_menu
+    .byte <update_playing
+    .byte <update_paused
+    .byte <update_game_over
+    .byte <update_victory
+    .byte <update_options
+    
+state_update_hi:
+    .byte >update_init
+    .byte >update_menu
+    .byte >update_playing
+    .byte >update_paused
+    .byte >update_game_over
+    .byte >update_victory
+    .byte >update_options
+
+main_loop:
+    jsr wait_frame
+    
+    ; Call current state update
+    ldx game_state
+    lda state_update_lo,x
+    sta jump_addr+1
+    lda state_update_hi,x
+    sta jump_addr+2
+    
+jump_addr:
+    jsr $0000       ; Modified address
+    
+    ; Update state timer
+    lda state_timer
+    beq no_timer
+    dec state_timer
+no_timer:
+    
+    jmp main_loop
+
+change_state:
+    ; A = new state
+    ldx game_state
+    stx previous_state
+    sta game_state
+    
+    ; Call exit handler for old state
+    jsr call_state_exit
+    
+    ; Call enter handler for new state
+    jsr call_state_enter
+    
+    ; Reset timer
+    lda #0
+    sta state_timer
+    rts
+```
+
+## Menu State
+
+Create an engaging main menu:
+
+```asm
+menu_option:    .byte 0
+menu_max:       .byte 3
+
+update_menu:
+    ; Draw menu if needed
+    lda menu_drawn
+    bne check_menu_input
+    jsr draw_menu
+    inc menu_drawn
+    
+check_menu_input:
+    lda $DC00       ; Read joystick
+    cmp #$FF
+    beq menu_done
+    
+    ; Check up
+    and #$01
+    bne check_menu_down
+    
+    lda menu_debounce
+    bne menu_done
+    
+    dec menu_option
+    bpl update_menu_display
+    lda menu_max
+    sta menu_option
+    jmp update_menu_display
+    
+check_menu_down:
+    lda $DC00
+    and #$02
+    bne check_menu_fire
+    
+    lda menu_debounce
+    bne menu_done
+    
+    inc menu_option
+    lda menu_option
+    cmp menu_max
+    bcc update_menu_display
+    beq update_menu_display
+    lda #0
+    sta menu_option
+    
+update_menu_display:
+    jsr highlight_menu_option
+    lda #10         ; Debounce timer
+    sta menu_debounce
+    jmp menu_done
+    
+check_menu_fire:
+    lda $DC00
+    and #$10
+    bne menu_done
+    
+    ; Select option
+    ldx menu_option
+    cpx #0
+    beq start_game
+    cpx #1
+    beq show_options
+    cpx #2
+    beq show_high_scores
+    cpx #3
+    beq quit_game
+    
+menu_done:
+    lda menu_debounce
+    beq menu_exit
+    dec menu_debounce
+menu_exit:
+    rts
+
+start_game:
+    lda #STATE_PLAYING
+    jsr change_state
+    rts
+    
+show_options:
+    lda #STATE_OPTIONS
+    jsr change_state
+    rts
+
+draw_menu:
+    jsr clear_screen
+    
+    ; Title
+    ldx #0
+title_loop:
+    lda game_title,x
+    beq title_done
+    sta $0400+244,x  ; Center of screen
+    lda #$07         ; Yellow
+    sta $D800+244,x
+    inx
+    jmp title_loop
+title_done:
+    
+    ; Menu options
+    ldx #0
+option_loop:
+    lda menu_text,x
+    sta $0400+450,x
+    lda #$01         ; White
+    sta $D800+450,x
+    inx
+    cpx #80          ; 4 lines
+    bne option_loop
+    
+    jsr highlight_menu_option
+    rts
+
+highlight_menu_option:
+    ; Clear all highlights
+    ldx #0
+    lda #$01        ; White
+clear_highlights:
+    sta $D800+450,x
+    inx
+    cpx #80
+    bne clear_highlights
+    
+    ; Highlight selected option
+    lda menu_option
+    asl
+    asl
+    asl
+    asl
+    asl             ; ×40 for row
+    adc #10         ; Offset to text
+    tax
+    
+    ldy #0
+highlight_loop:
+    lda #$07        ; Yellow
+    sta $D800+450,x
+    inx
+    iny
+    cpy #20         ; Option width
+    bne highlight_loop
+    rts
+
+menu_drawn:     .byte 0
+menu_debounce:  .byte 0
+
+game_title:
+    .text "GRID EXPLORER"
+    .byte 0
+    
+menu_text:
+    .text "          START GAME                  "
+    .text "          OPTIONS                     "
+    .text "          HIGH SCORES                 "
+    .text "          QUIT                        "
+```
+
+## Playing State
+
+Main gameplay management:
+
+```asm
+update_playing:
+    ; Core game logic
+    jsr read_input
+    jsr update_player
+    jsr update_enemies
+    jsr update_projectiles
+    jsr check_collisions
+    jsr update_score
+    jsr update_timer
+    
+    ; Check for pause
+    lda $DC01       ; Keyboard
+    cmp #$01        ; Run/Stop key
+    bne check_game_conditions
+    
+    lda #STATE_PAUSED
+    jsr change_state
+    rts
+    
+check_game_conditions:
+    ; Check game over
+    lda player_lives
+    bne check_victory
+    
+    lda #STATE_GAME_OVER
+    jsr change_state
+    rts
+    
+check_victory:
+    ; Check level complete
+    jsr check_level_complete
+    bcc playing_continue
+    
+    jsr next_level
+    
+playing_continue:
+    rts
+
+enter_playing:
+    ; Initialize game
+    jsr init_player
+    jsr init_level
+    jsr init_enemies
+    
+    ; Reset scores
+    lda #0
+    sta score
+    sta score+1
+    sta score+2
+    
+    ; Set lives
+    lda #3
+    sta player_lives
+    
+    ; Start music
+    jsr start_game_music
+    rts
+
+exit_playing:
+    ; Clean up
+    jsr stop_music
+    rts
+```
+
+## Pause State
+
+Implement pause functionality:
+
+```asm
+pause_flash:    .byte 0
+
+update_paused:
+    ; Flash pause text
+    inc pause_flash
+    lda pause_flash
+    and #$20        ; Flash every 32 frames
+    beq hide_pause
+    
+    ; Show pause text
+    ldx #0
+show_pause_loop:
+    lda pause_text,x
+    sta $0400+492,x  ; Center screen
+    lda #$01         ; White
+    sta $D800+492,x
+    inx
+    cpx #6
+    bne show_pause_loop
+    jmp check_unpause
+    
+hide_pause:
+    ; Hide pause text
+    ldx #0
+hide_pause_loop:
+    lda #$20         ; Space
+    sta $0400+492,x
+    inx
+    cpx #6
+    bne hide_pause_loop
+    
+check_unpause:
+    ; Check for unpause
+    lda $DC01        ; Keyboard
+    cmp #$01         ; Run/Stop
+    bne pause_done
+    
+    lda pause_debounce
+    bne pause_done
+    
+    ; Return to game
+    lda #STATE_PLAYING
+    jsr change_state
+    
+pause_done:
+    lda pause_debounce
+    beq pause_exit
+    dec pause_debounce
+pause_exit:
+    rts
+
+enter_paused:
+    ; Dim screen
+    ldx #0
+dim_loop:
+    lda $D800,x
+    and #$0F        ; Keep color
+    ora #$00        ; Darken
+    sta $D800,x
+    lda $D800+256,x
+    and #$0F
+    sta $D800+256,x
+    lda $D800+512,x
+    and #$0F
+    sta $D800+512,x
+    lda $D800+768,x
+    and #$0F
+    sta $D800+768,x
+    inx
+    bne dim_loop
+    
+    ; Pause music
+    jsr pause_music
+    
+    lda #20
+    sta pause_debounce
+    rts
+
+exit_paused:
+    ; Restore screen
+    jsr restore_colors
+    
+    ; Resume music
+    jsr resume_music
+    rts
+
+pause_text:
+    .text "PAUSED"
+pause_debounce: .byte 0
+```
+
+## Game Over State
+
+Handle game endings:
+
+```asm
+game_over_phase: .byte 0
+
+update_game_over:
+    lda game_over_phase
+    cmp #0
+    beq phase_death_anim
+    cmp #1
+    beq phase_show_score
+    cmp #2
+    beq phase_enter_name
+    cmp #3
+    beq phase_return_menu
+    rts
+    
+phase_death_anim:
+    ; Play death animation
+    jsr update_death_animation
+    
+    dec state_timer
+    bne game_over_done
+    
+    ; Move to next phase
+    inc game_over_phase
+    lda #60
+    sta state_timer
+    
+    jsr draw_game_over_screen
+    rts
+    
+phase_show_score:
+    ; Display final score
+    dec state_timer
+    bne game_over_done
+    
+    ; Check for high score
+    jsr check_high_score
+    bcc not_high_score
+    
+    ; New high score!
+    inc game_over_phase
+    jsr draw_name_entry
+    rts
+    
+not_high_score:
+    ; Skip name entry
+    lda #3
+    sta game_over_phase
+    lda #120
+    sta state_timer
+    rts
+    
+phase_enter_name:
+    jsr handle_name_entry
+    
+    lda name_complete
+    beq game_over_done
+    
+    ; Save high score
+    jsr save_high_score
+    
+    inc game_over_phase
+    lda #120
+    sta state_timer
+    rts
+    
+phase_return_menu:
+    dec state_timer
+    bne check_skip
+    
+return_to_menu:
+    lda #STATE_MENU
+    jsr change_state
+    rts
+    
+check_skip:
+    ; Allow skip with fire button
+    lda $DC00
+    and #$10
+    bne game_over_done
+    jmp return_to_menu
+    
+game_over_done:
+    rts
+
+draw_game_over_screen:
+    ; Clear center area
+    ldx #0
+clear_area:
+    lda #$20
+    sta $0400+400,x
+    inx
+    cpx #200
+    bne clear_area
+    
+    ; Draw "GAME OVER"
+    ldx #0
+game_over_loop:
+    lda game_over_text,x
+    sta $0400+452,x
+    lda #$02         ; Red
+    sta $D800+452,x
+    inx
+    cpx #9
+    bne game_over_loop
+    
+    ; Show final score
+    jsr display_final_score
+    rts
+
+game_over_text:
+    .text "GAME OVER"
+name_complete:  .byte 0
+```
+
+## State Transitions
+
+Smooth transitions between states:
+
+```asm
+; Transition effects
+transition_type: .byte 0
+
+TRANS_NONE      = 0
+TRANS_FADE      = 1
+TRANS_SLIDE     = 2
+TRANS_DISSOLVE  = 3
+
+perform_transition:
+    lda transition_type
+    cmp #TRANS_FADE
+    beq do_fade
+    cmp #TRANS_SLIDE
+    beq do_slide
+    cmp #TRANS_DISSOLVE
+    beq do_dissolve
+    rts
+    
+do_fade:
+    ; Fade to black
+    ldx #15
+fade_loop:
+    stx $D020        ; Border
+    stx $D021        ; Background
+    
+    ldy #3
+fade_delay:
+    jsr wait_frame
+    dey
+    bne fade_delay
+    
+    dex
+    bpl fade_loop
+    
+    ; Screen is black, safe to change
+    rts
+    
+do_slide:
+    ; Slide screen off
+    ldx #0
+slide_loop:
+    ; Shift screen left
+    jsr shift_screen_left
+    
+    ; Fill right column
+    ldy #0
+fill_col:
+    lda #$20
+    sta $0427,y
+    tya
+    clc
+    adc #40
+    tay
+    cpy #25*40
+    bcc fill_col
+    
+    jsr wait_frame
+    jsr wait_frame
+    
+    inx
+    cpx #40
+    bne slide_loop
+    rts
+    
+do_dissolve:
+    ; Random dissolve effect
+    ldx #0
+dissolve_loop:
+    ; Random position
+    lda $D41B
+    and #$03
+    tax
+    lda $D41B
+    sta $0400,x
+    
+    inx
+    bne dissolve_loop
+    rts
+```
+
+## Advanced State Patterns
+
+Professional patterns for complex games:
+
+```asm
+; Hierarchical state machine
+; Main states with sub-states
+
+STATE_MENU       = $10
+STATE_MENU_MAIN  = $11
+STATE_MENU_NEW   = $12
+STATE_MENU_LOAD  = $13
+STATE_MENU_OPTS  = $14
+
+STATE_GAME       = $20
+STATE_GAME_PLAY  = $21
+STATE_GAME_INV   = $22
+STATE_GAME_MAP   = $23
+STATE_GAME_SHOP  = $24
+
+current_state:    .byte STATE_MENU_MAIN
+parent_state:     .byte STATE_MENU
+sub_state:        .byte 0
+
+update_hierarchical:
+    ; Get parent state
+    lda current_state
+    and #$F0
+    sta parent_state
+    
+    ; Get sub-state
+    lda current_state
+    and #$0F
+    sta sub_state
+    
+    ; Dispatch to parent handler
+    lda parent_state
+    cmp #STATE_MENU
+    beq handle_menu_states
+    cmp #STATE_GAME
+    beq handle_game_states
+    rts
+
+handle_menu_states:
+    lda sub_state
+    asl
+    tax
+    lda menu_handlers,x
+    sta handler+1
+    lda menu_handlers+1,x
+    sta handler+2
+handler:
+    jmp $0000
+
+menu_handlers:
+    .word handle_main_menu
+    .word handle_new_game
+    .word handle_load_game
+    .word handle_options
+
+; State stack for nested menus
+state_stack:      .res 8
+stack_pointer:    .byte 0
+
+push_state:
+    ; Push current state onto stack
+    ldx stack_pointer
+    cpx #8
+    beq stack_full
+    
+    lda current_state
+    sta state_stack,x
+    inc stack_pointer
+stack_full:
+    rts
+
+pop_state:
+    ; Pop state from stack
+    ldx stack_pointer
+    beq stack_empty
+    
+    dec stack_pointer
+    ldx stack_pointer
+    lda state_stack,x
+    jsr change_state
+stack_empty:
+    rts
+
+; State timers and delays
+state_enter_time:  .word 0
+state_duration:    .word 0
+
+set_state_timer:
+    ; A/X = duration in frames
+    sta state_duration
+    stx state_duration+1
+    
+    ; Record entry time
+    lda frame_counter
+    sta state_enter_time
+    lda frame_counter+1
+    sta state_enter_time+1
+    rts
+
+check_state_timer:
+    ; Returns carry set if timer expired
+    sec
+    lda frame_counter
+    sbc state_enter_time
+    sta temp_time
+    lda frame_counter+1
+    sbc state_enter_time+1
+    sta temp_time+1
+    
+    ; Compare to duration
+    lda temp_time+1
+    cmp state_duration+1
+    bcc timer_running
+    bne timer_expired
+    lda temp_time
+    cmp state_duration
+    bcc timer_running
+    
+timer_expired:
+    sec
+    rts
+timer_running:
+    clc
+    rts
+
+temp_time: .word 0
+frame_counter: .word 0
+```
+
+## Level State Management
+
+Handle level progression and checkpoints:
+
+```asm
+; Level state system
+current_level:     .byte 0
+current_section:   .byte 0
+checkpoint_level:  .byte 0
+checkpoint_section:.byte 0
+checkpoint_x:      .byte 0
+checkpoint_y:      .byte 0
+
+level_states:
+    .byte LEVEL_INTRO
+    .byte LEVEL_PLAYING
+    .byte LEVEL_COMPLETE
+    .byte LEVEL_FAILED
+
+level_state:       .byte LEVEL_INTRO
+
+LEVEL_INTRO    = 0
+LEVEL_PLAYING  = 1
+LEVEL_COMPLETE = 2
+LEVEL_FAILED   = 3
+
+update_level_state:
+    lda level_state
+    asl
+    tax
+    lda level_handlers,x
+    sta level_jump+1
+    lda level_handlers+1,x
+    sta level_jump+2
+level_jump:
+    jmp $0000
+
+level_handlers:
+    .word handle_level_intro
+    .word handle_level_playing
+    .word handle_level_complete
+    .word handle_level_failed
+
+handle_level_intro:
+    ; Show level name/intro
+    dec intro_timer
+    bne intro_wait
+    
+    ; Start level
+    lda #LEVEL_PLAYING
+    sta level_state
+    jsr start_level_gameplay
+    
+intro_wait:
+    rts
+
+handle_level_playing:
+    ; Normal gameplay
+    jsr update_game_logic
+    
+    ; Check completion
+    lda objectives_complete
+    cmp objectives_total
+    bne check_failure
+    
+    ; Level complete!
+    lda #LEVEL_COMPLETE
+    sta level_state
+    lda #120
+    sta complete_timer
+    rts
+    
+check_failure:
+    ; Check failure conditions
+    lda player_health
+    bne level_continue
+    
+    ; Level failed
+    lda #LEVEL_FAILED
+    sta level_state
+    lda #90
+    sta failed_timer
+    
+level_continue:
+    rts
+
+handle_level_complete:
+    ; Show completion screen
+    dec complete_timer
+    bne complete_wait
+    
+    ; Next level
+    inc current_level
+    lda current_level
+    cmp total_levels
+    bcc load_next_level
+    
+    ; Game complete!
+    lda #STATE_VICTORY
+    jsr change_state
+    rts
+    
+load_next_level:
+    jsr load_level
+    lda #LEVEL_INTRO
+    sta level_state
+    lda #60
+    sta intro_timer
+    
+complete_wait:
+    rts
+
+handle_level_failed:
+    ; Show failure screen
+    dec failed_timer
+    bne failed_wait
+    
+    ; Check lives
+    dec player_lives
+    bne restart_checkpoint
+    
+    ; Game over
+    lda #STATE_GAME_OVER
+    jsr change_state
+    rts
+    
+restart_checkpoint:
+    ; Restore checkpoint
+    lda checkpoint_level
+    sta current_level
+    lda checkpoint_section
+    sta current_section
+    lda checkpoint_x
+    sta player_x
+    lda checkpoint_y
+    sta player_y
+    
+    jsr load_level
+    lda #LEVEL_INTRO
+    sta level_state
+    lda #30
+    sta intro_timer
+    
+failed_wait:
+    rts
+
+save_checkpoint:
+    ; Save current position as checkpoint
+    lda current_level
+    sta checkpoint_level
+    lda current_section
+    sta checkpoint_section
+    lda player_x
+    sta checkpoint_x
+    lda player_y
+    sta checkpoint_y
+    
+    ; Visual feedback
+    lda #$01        ; White flash
+    sta $D020
+    ldx #5
+checkpoint_flash:
+    jsr wait_frame
+    dex
+    bne checkpoint_flash
+    lda #$00
+    sta $D020
+    
+    rts
+
+intro_timer:       .byte 60
+complete_timer:    .byte 0
+failed_timer:      .byte 0
+objectives_complete: .byte 0
+objectives_total:    .byte 5
+total_levels:        .byte 10
+```
+
+## Dialog State System
+
+Manage in-game conversations:
+
+```asm
+; Dialog state management
+dialog_active:     .byte 0
+dialog_speaker:    .byte 0
+dialog_text_ptr:   .word 0
+dialog_choice_ptr: .word 0
+dialog_line:       .byte 0
+dialog_char_index: .byte 0
+dialog_speed:      .byte 2
+
+start_dialog:
+    ; A = speaker ID
+    ; X/Y = text pointer
+    sta dialog_speaker
+    stx dialog_text_ptr
+    sty dialog_text_ptr+1
+    
+    lda #1
+    sta dialog_active
+    lda #0
+    sta dialog_line
+    sta dialog_char_index
+    
+    ; Save game state
+    jsr push_state
+    
+    ; Switch to dialog state
+    lda #STATE_DIALOG
+    jsr change_state
+    
+    ; Draw dialog box
+    jsr draw_dialog_box
+    rts
+
+update_dialog:
+    ; Animate text display
+    dec dialog_speed
+    bne check_dialog_input
+    
+    ; Reset speed
+    lda #2
+    sta dialog_speed
+    
+    ; Get next character
+    ldy dialog_char_index
+    lda (dialog_text_ptr),y
+    beq dialog_line_complete
+    cmp #$FF
+    beq dialog_complete
+    
+    ; Display character
+    jsr display_dialog_char
+    inc dialog_char_index
+    
+    ; Play text sound
+    jsr play_text_sound
+    
+check_dialog_input:
+    ; Check for skip/advance
+    lda $DC00
+    and #$10
+    bne dialog_continue
+    
+    lda dialog_debounce
+    bne dialog_continue
+    
+    ; Advance dialog
+    jsr advance_dialog
+    lda #10
+    sta dialog_debounce
+    
+dialog_continue:
+    lda dialog_debounce
+    beq dialog_done
+    dec dialog_debounce
+dialog_done:
+    rts
+
+dialog_line_complete:
+    ; Wait for input to continue
+    lda $DC00
+    and #$10
+    bne dialog_done
+    
+    ; Next line
+    jsr next_dialog_line
+    rts
+
+dialog_complete:
+    ; End dialog
+    lda #0
+    sta dialog_active
+    
+    ; Return to previous state
+    jsr pop_state
+    
+    ; Clear dialog box
+    jsr clear_dialog_box
+    rts
+
+draw_dialog_box:
+    ; Draw border
+    ldx #0
+draw_top_border:
+    lda #$40        ; Horizontal line
+    sta $0400+680,x
+    lda #$01
+    sta $D800+680,x
+    inx
+    cpx #40
+    bne draw_top_border
+    
+    ; Draw sides and content area
+    ldx #0
+draw_dialog_sides:
+    lda #$5D        ; Vertical line
+    sta $0400+720,x
+    sta $0400+759,x
+    lda #$01
+    sta $D800+720,x
+    sta $D800+759,x
+    
+    txa
+    clc
+    adc #40
+    tax
+    cpx #200
+    bne draw_dialog_sides
+    
+    ; Draw bottom border
+    ldx #0
+draw_bottom_border:
+    lda #$40
+    sta $0400+920,x
+    lda #$01
+    sta $D800+920,x
+    inx
+    cpx #40
+    bne draw_bottom_border
+    
+    ; Draw speaker name
+    jsr draw_speaker_name
+    rts
+
+dialog_debounce: .byte 0
+
+; Dialog choices
+choice_count:      .byte 0
+choice_selected:   .byte 0
+
+show_dialog_choices:
+    ; Display multiple choice options
+    ldy #0
+    sty choice_selected
+    
+    ; Count choices
+    ldy #0
+count_choices:
+    lda (dialog_choice_ptr),y
+    beq choices_counted
+    iny
+    jmp count_choices
+choices_counted:
+    sty choice_count
+    
+    ; Display choices
+    jsr draw_choices
+    
+    ; Enter choice mode
+    lda #STATE_DIALOG_CHOICE
+    sta game_state
+    rts
+
+update_dialog_choice:
+    ; Handle choice selection
+    lda $DC00
+    and #$01        ; Up
+    bne check_choice_down
+    
+    lda choice_selected
+    beq check_choice_fire
+    dec choice_selected
+    jsr highlight_choice
+    
+check_choice_down:
+    lda $DC00
+    and #$02        ; Down
+    bne check_choice_fire
+    
+    lda choice_selected
+    cmp choice_count
+    bcs check_choice_fire
+    inc choice_selected
+    jsr highlight_choice
+    
+check_choice_fire:
+    lda $DC00
+    and #$10
+    bne choice_done
+    
+    ; Make choice
+    ldx choice_selected
+    jsr handle_dialog_choice
+    
+choice_done:
+    rts
+```
+
+## Complete State System
+
+Everything working together:
+
+```asm
+* = $0801
+    .byte $0C,$08,$0A,$00,$9E,$32,$30,$36,$31,$00,$00,$00
+
+* = $080D
+start:
+    jsr init_system
+    
+    ; Start at menu
+    lda #STATE_MENU
+    jsr change_state
+    
+    jmp main_loop
+
+init_system:
+    ; Set up screen
+    jsr init_screen
+    
+    ; Initialize subsystems
+    jsr init_sound
+    jsr init_sprites
+    
+    ; Load high scores
+    jsr load_high_scores
+    
+    rts
+
+call_state_enter:
+    ldx game_state
+    cpx #STATE_PLAYING
+    beq enter_playing
+    cpx #STATE_PAUSED
+    beq enter_paused
+    cpx #STATE_MENU
+    beq enter_menu
+    cpx #STATE_GAME_OVER
+    beq enter_game_over
+    cpx #STATE_OPTIONS
+    beq enter_options
+    rts
+    
+call_state_exit:
+    ldx previous_state
+    cpx #STATE_PLAYING
+    beq exit_playing
+    cpx #STATE_PAUSED
+    beq exit_paused
+    cpx #STATE_MENU
+    beq exit_menu
+    rts
+
+enter_menu:
+    lda #0
+    sta menu_drawn
+    sta menu_option
+    
+    ; Menu music
+    jsr play_menu_music
+    rts
+    
+exit_menu:
+    jsr stop_music
+    jsr clear_screen
+    rts
+
+enter_options:
+    jsr draw_options_screen
+    rts
+    
+enter_game_over:
+    lda #0
+    sta game_over_phase
+    lda #60
+    sta state_timer
+    
+    ; Game over music
+    jsr play_game_over_music
+    rts
+
+; State persistence
+save_game_state:
+    ; Save current game
+    lda game_state
+    sta saved_state
+    lda player_x
+    sta saved_player_x
+    lda player_y
+    sta saved_player_y
+    lda player_lives
+    sta saved_lives
+    ; ... save more state
+    rts
+
+restore_game_state:
+    ; Restore saved game
+    lda saved_state
+    sta game_state
+    lda saved_player_x
+    sta player_x
+    lda saved_player_y
+    sta player_y
+    lda saved_lives
+    sta player_lives
+    ; ... restore more state
+    rts
+
+; Saved state variables
+saved_state:     .byte 0
+saved_player_x:  .byte 0
+saved_player_y:  .byte 0
+saved_lives:     .byte 0
+```
+
+## Save State System
+
+Implement game saves and persistence:
+
+```asm
+; Save game structure
+save_signature:    .text "C64SAVE"
+save_version:      .byte 1
+save_slot:         .byte 0
+
+save_data:
+    ; Game progress
+    .byte 0         ; Current level
+    .byte 0         ; Current section
+    .word 0         ; Score
+    .byte 0         ; Lives
+    .byte 0         ; Health
+    
+    ; Player stats
+    .byte 0         ; Experience
+    .byte 0         ; Gold
+    .res 8          ; Inventory
+    
+    ; Flags
+    .res 32         ; Game flags
+    
+    ; Timestamp
+    .byte 0,0,0     ; Hours, minutes, seconds
+    
+save_checksum:     .word 0
+
+save_game:
+    ; Calculate checksum
+    jsr calculate_checksum
+    
+    ; Open file
+    lda #save_name_len
+    ldx #<save_name
+    ldy #>save_name
+    jsr SETNAM
+    
+    lda #$01        ; File number
+    ldx #$08        ; Device 8
+    ldy #$01        ; Secondary address
+    jsr SETLFS
+    
+    jsr OPEN
+    bcs save_error
+    
+    ; Write signature
+    ldx #$01
+    jsr CHKOUT
+    
+    ldx #0
+write_signature:
+    lda save_signature,x
+    jsr CHROUT
+    inx
+    cpx #7
+    bne write_signature
+    
+    ; Write version
+    lda save_version
+    jsr CHROUT
+    
+    ; Write save data
+    ldx #0
+write_save_data:
+    lda save_data,x
+    jsr CHROUT
+    inx
+    cpx #save_data_size
+    bne write_save_data
+    
+    ; Write checksum
+    lda save_checksum
+    jsr CHROUT
+    lda save_checksum+1
+    jsr CHROUT
+    
+    ; Close file
+    lda #$01
+    jsr CLOSE
+    jsr CLRCHN
+    
+    ; Success message
+    jsr show_save_success
+    rts
+    
+save_error:
+    jsr show_save_error
+    rts
+
+load_game:
+    ; Open file
+    lda #save_name_len
+    ldx #<save_name
+    ldy #>save_name
+    jsr SETNAM
+    
+    lda #$01
+    ldx #$08
+    ldy #$00
+    jsr SETLFS
+    
+    jsr OPEN
+    bcs load_error
+    
+    ; Read and verify signature
+    ldx #$01
+    jsr CHKIN
+    
+    ldx #0
+read_signature:
+    jsr CHRIN
+    cmp save_signature,x
+    bne load_invalid
+    inx
+    cpx #7
+    bne read_signature
+    
+    ; Check version
+    jsr CHRIN
+    cmp save_version
+    bne load_version_error
+    
+    ; Read save data
+    ldx #0
+read_save_data:
+    jsr CHRIN
+    sta save_data,x
+    inx
+    cpx #save_data_size
+    bne read_save_data
+    
+    ; Read and verify checksum
+    jsr CHRIN
+    sta temp_checksum
+    jsr CHRIN
+    sta temp_checksum+1
+    
+    jsr calculate_checksum
+    lda save_checksum
+    cmp temp_checksum
+    bne load_corrupt
+    lda save_checksum+1
+    cmp temp_checksum+1
+    bne load_corrupt
+    
+    ; Close file
+    lda #$01
+    jsr CLOSE
+    jsr CLRCHN
+    
+    ; Apply loaded data
+    jsr apply_save_data
+    jsr show_load_success
+    rts
+    
+load_error:
+load_invalid:
+load_version_error:
+load_corrupt:
+    jsr show_load_error
+    rts
+
+calculate_checksum:
+    ; Simple checksum
+    lda #0
+    sta save_checksum
+    sta save_checksum+1
+    
+    ldx #0
+checksum_loop:
+    clc
+    lda save_checksum
+    adc save_data,x
+    sta save_checksum
+    lda save_checksum+1
+    adc #0
+    sta save_checksum+1
+    inx
+    cpx #save_data_size
+    bne checksum_loop
+    rts
+
+apply_save_data:
+    ; Restore game state from save
+    lda save_data+0
+    sta current_level
+    lda save_data+1
+    sta current_section
+    lda save_data+2
+    sta score
+    lda save_data+3
+    sta score+1
+    lda save_data+4
+    sta player_lives
+    lda save_data+5
+    sta player_health
+    ; ... continue restoring
+    rts
+
+save_name:      .text "SAVEGAME.DAT"
+save_name_len = 12
+save_data_size = 64
+temp_checksum:  .word 0
+
+; Quick save/load
+quick_save:
+    ; Save to memory for quick access
+    ldx #0
+quick_save_loop:
+    lda save_data,x
+    sta quick_save_buffer,x
+    inx
+    cpx #save_data_size
+    bne quick_save_loop
+    
+    lda #$05        ; Green flash
+    sta $D020
+    ldx #3
+quick_flash:
+    jsr wait_frame
+    dex
+    bne quick_flash
+    lda #$00
+    sta $D020
+    rts
+
+quick_load:
+    ; Restore from memory
+    ldx #0
+quick_load_loop:
+    lda quick_save_buffer,x
+    sta save_data,x
+    inx
+    cpx #save_data_size
+    bne quick_load_loop
+    
+    jsr apply_save_data
+    
+    lda #$07        ; Yellow flash
+    sta $D020
+    ldx #3
+quick_flash2:
+    jsr wait_frame
+    dex
+    bne quick_flash2
+    lda #$00
+    sta $D020
+    rts
+
+quick_save_buffer: .res 64
+```
+
+## State Debug System
+
+Tools for debugging state transitions:
+
+```asm
+; State debugging
+DEBUG_STATES = 1
+
+state_history:     .res 16
+history_index:     .byte 0
+state_trace:       .byte 0
+
+.if DEBUG_STATES
+
+log_state_change:
+    ; Record state transitions
+    ldx history_index
+    lda game_state
+    sta state_history,x
+    inx
+    txa
+    and #$0F
+    sta history_index
+    
+    ; Display on screen if tracing
+    lda state_trace
+    beq no_trace
+    
+    jsr display_state_info
+    
+no_trace:
+    rts
+
+display_state_info:
+    ; Show current state at top of screen
+    lda #'S'
+    sta $0400
+    lda #':'
+    sta $0401
+    
+    lda game_state
+    lsr
+    lsr
+    lsr
+    lsr
+    tax
+    lda hex_digits,x
+    sta $0402
+    
+    lda game_state
+    and #$0F
+    tax
+    lda hex_digits,x
+    sta $0403
+    
+    ; Show state name
+    lda game_state
+    asl
+    tax
+    lda state_names,x
+    sta name_ptr
+    lda state_names+1,x
+    sta name_ptr+1
+    
+    ldy #0
+show_name:
+    lda (name_ptr),y
+    beq name_done
+    sta $0405,y
+    iny
+    cpy #20
+    bne show_name
+name_done:
+    rts
+
+hex_digits: .text "0123456789ABCDEF"
+name_ptr: .word 0
+
+state_names:
+    .word name_init, name_menu, name_playing
+    .word name_paused, name_gameover, name_victory
+    
+name_init:     .text "INIT",0
+name_menu:     .text "MENU",0
+name_playing:  .text "PLAYING",0
+name_paused:   .text "PAUSED",0
+name_gameover: .text "GAME OVER",0
+name_victory:  .text "VICTORY",0
+
+; State timing analysis
+state_entry_time:  .res 7
+state_exit_time:   .res 7
+state_frame_count: .res 7
+
+record_state_entry:
+    ldx game_state
+    lda frame_counter
+    sta state_entry_time,x
+    lda #0
+    sta state_frame_count,x
+    rts
+
+record_state_exit:
+    ldx game_state
+    lda frame_counter
+    sta state_exit_time,x
+    
+    ; Calculate duration
+    sec
+    sbc state_entry_time,x
+    sta state_frame_count,x
+    rts
+
+show_state_stats:
+    ; Display state statistics
+    ldx #0
+stats_loop:
+    ; State number
+    txa
+    clc
+    adc #'0'
+    sta $0400,x
+    
+    ; Frame count
+    lda state_frame_count,x
+    jsr display_hex_byte
+    
+    inx
+    cpx #7
+    bne stats_loop
+    rts
+
+.endif
+```
+
+## Key Concepts
+
+1. **State Machines**: Organize game flow into discrete states
+2. **State Transitions**: Clean enter/exit handlers for each state
+3. **Input Handling**: Different input schemes for different states
+4. **State Persistence**: Save and restore game state
+5. **Visual Feedback**: Transitions and effects between states
+
+## Experiment and Discover
+
+Try these state management enhancements:
+- Add sub-states for complex menus
+- Create a state stack for nested menus
+- Implement save/load game functionality
+- Add cutscene states between levels
+- Create a state history for debugging
+
+Clean state management is the backbone of professional games. It separates concerns and makes complex game flow manageable!

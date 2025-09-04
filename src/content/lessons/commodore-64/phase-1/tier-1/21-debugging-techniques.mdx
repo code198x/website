@@ -1,0 +1,845 @@
+---
+title: "Debugging Techniques"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 21
+date: 2024-12-10
+author: Steve Hill
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 21
+order: 21
+---
+
+# Debugging Techniques
+
+Debugging on the C64 requires creativity. Without modern debuggers, you'll use the screen, border colors, and clever tricks to track down bugs and understand your code's behavior.
+
+## Border Color Debugging
+
+The simplest debugging tool - the border:
+
+```asm
+; Visual execution tracking
+debug_routine:
+    lda #2          ; Red border - entering routine
+    sta $D020
+    
+    ; Your code here
+    jsr complex_calculation
+    
+    lda #5          ; Green border - calculation done
+    sta $D020
+    
+    jsr update_sprites
+    
+    lda #14         ; Light blue - sprites updated
+    sta $D020
+    
+    rts
+
+; Performance profiling with border
+profile_code:
+    lda #1          ; White = start
+    sta $D020
+    
+    jsr routine_to_profile
+    
+    lda $D012       ; Current raster line
+    sta profiler_result
+    
+    lda #0          ; Black = done
+    sta $D020
+    
+    ; Border width shows execution time
+    rts
+
+profiler_result: .byte 0
+
+; State visualization
+show_game_state:
+    lda game_state
+    ; Different colors for different states
+    tax
+    lda state_colors,x
+    sta $D020
+    rts
+
+state_colors:
+    .byte 0   ; Black = init
+    .byte 6   ; Blue = menu
+    .byte 5   ; Green = playing
+    .byte 7   ; Yellow = paused
+    .byte 2   ; Red = game over
+```
+
+## Screen Memory Debugging
+
+Use screen characters to display values:
+
+```asm
+; Display byte as hex
+show_hex:
+    ; A = value to display
+    ; X = screen position
+    pha
+    lsr
+    lsr
+    lsr
+    lsr             ; High nibble
+    tay
+    lda hex_chars,y
+    sta $0400,x
+    
+    pla
+    and #$0F        ; Low nibble
+    tay
+    lda hex_chars,y
+    sta $0401,x
+    rts
+
+hex_chars:
+    .text "0123456789ABCDEF"
+
+; Debug panel at bottom of screen
+debug_panel:
+    ; Show important variables
+    ldx #0          ; Screen position 960
+    
+    ; Player position
+    lda #'X'
+    sta $0400+960,x
+    inx
+    lda #':'
+    sta $0400+960,x
+    inx
+    lda player_x
+    jsr show_hex
+    inx
+    inx
+    
+    lda #' '
+    sta $0400+960,x
+    inx
+    
+    lda #'Y'
+    sta $0400+960,x
+    inx
+    lda #':'
+    sta $0400+960,x
+    inx
+    lda player_y
+    jsr show_hex
+    
+    ; Show state
+    ldx #20
+    lda #'S'
+    sta $0400+960,x
+    inx
+    lda #':'
+    sta $0400+960,x
+    inx
+    lda game_state
+    jsr show_hex
+    rts
+
+; Memory dump display
+dump_memory:
+    ; $FB-FC = start address
+    ldy #0
+dump_loop:
+    lda ($FB),y
+    
+    ; Calculate screen position
+    tya
+    and #$0F        ; 16 bytes per row
+    asl             ; ×2 for hex display
+    tax
+    
+    tya
+    lsr
+    lsr
+    lsr
+    lsr             ; Row number
+    
+    ; Display byte
+    jsr calculate_row_address
+    lda ($FB),y
+    jsr show_hex
+    
+    iny
+    cpy #64         ; Show 64 bytes
+    bne dump_loop
+    rts
+
+; Binary display for flags
+show_binary:
+    ; A = byte to display
+    ; X = screen position
+    sta temp_byte
+    ldy #8
+.bit_loop:
+    lda #'0'
+    asl temp_byte
+    bcc .show_bit
+    lda #'1'
+.show_bit:
+    sta $0400,x
+    inx
+    dey
+    bne .bit_loop
+    rts
+
+temp_byte: .byte 0
+
+; Decimal display (0-99)
+show_decimal:
+    ; A = value (0-99)
+    ldx #0
+    sec
+.tens:
+    sbc #10
+    bcc .ones
+    inx
+    bne .tens
+.ones:
+    adc #10
+    pha
+    txa
+    clc
+    adc #'0'
+    sta $0400
+    pla
+    clc
+    adc #'0'
+    sta $0401
+    rts
+
+; Live memory monitor
+memory_monitor:
+    ; Monitor 256 bytes at ($fb)
+    ldy #0
+.monitor_loop:
+    lda ($fb),y
+    
+    ; Convert to screen position
+    tya
+    pha
+    and #$0f        ; X position
+    asl
+    tax
+    pla
+    lsr
+    lsr
+    lsr
+    lsr             ; Y position
+    
+    ; Calculate screen address
+    jsr calc_screen_pos
+    lda ($fb),y
+    jsr show_hex
+    
+    iny
+    bne .monitor_loop
+    rts
+
+; Sprite debugger overlay
+sprite_debugger:
+    ldx #0
+.sprite_loop:
+    ; Show sprite X,Y coords
+    txa
+    asl
+    tay
+    
+    ; X position
+    lda $d000,y
+    lsr
+    lsr
+    lsr             ; Divide by 8 for char position
+    sta temp_x
+    
+    ; Y position
+    lda $d001,y
+    lsr
+    lsr
+    lsr             ; Divide by 8
+    
+    ; Draw sprite number at position
+    jsr calc_screen_pos
+    txa
+    clc
+    adc #'0'
+    ldy #0
+    sta ($fb),y
+    
+    inx
+    cpx #8
+    bne .sprite_loop
+    rts
+
+temp_x: .byte 0
+
+calc_screen_pos:
+    ; A = row, temp_x = column
+    ; Returns $fb/$fc = screen address
+    sta temp
+    lda #0
+    sta $fc
+    lda temp
+    
+    ; Multiply by 40
+    asl
+    asl
+    asl             ; *8
+    sta $fb
+    asl
+    asl             ; *32
+    clc
+    adc $fb         ; *40
+    sta $fb
+    lda $fc
+    adc #0
+    sta $fc
+    
+    ; Add column
+    lda temp_x
+    clc
+    adc $fb
+    sta $fb
+    lda $fc
+    adc #$04        ; Screen at $0400
+    sta $fc
+    rts
+
+temp: .byte 0
+```
+
+## Breakpoint Simulation
+
+Create manual breakpoints:
+
+```asm
+; Conditional breakpoint
+debug_break:
+    ; Check condition
+    lda player_health
+    cmp #0
+    bne no_break
+    
+    ; Hit breakpoint - flash border
+    ldx #0
+flash_loop:
+    stx $D020
+    
+    ; Wait for key press
+wait_key:
+    lda $DC01
+    cmp #$FF
+    beq wait_key
+    
+    inx
+    cpx #16
+    bne flash_loop
+    
+no_break:
+    rts
+
+; Assert macro for testing
+assert:
+    ; X = expected value
+    ; A = actual value
+    stx assert_expected
+    cmp assert_expected
+    beq assert_ok
+    
+    ; Assertion failed!
+    sta assert_actual
+    
+    ; Show error
+    lda #2          ; Red border
+    sta $D020
+    
+    ; Display values
+    ldx #0
+    lda #'E'        ; Expected
+    sta $0400,x
+    lda assert_expected
+    jsr show_hex
+    
+    ldx #4
+    lda #'A'        ; Actual
+    sta $0400,x
+    lda assert_actual
+    jsr show_hex
+    
+    ; Halt
+halt:
+    jmp halt
+    
+assert_ok:
+    rts
+
+assert_expected: .byte 0
+assert_actual:   .byte 0
+```
+
+## Trace Logging
+
+Create execution traces:
+
+```asm
+; Trace buffer in memory
+trace_buffer = $C000  ; Use 4K at $C000-$CFFF
+trace_ptr:    .word trace_buffer
+
+; Log routine entry
+trace_enter:
+    ; A = routine ID
+    ldx #'>'        ; Enter marker
+    jsr trace_write
+    jsr trace_write_a
+    rts
+
+; Log routine exit
+trace_exit:
+    ; A = routine ID
+    ldx #'<'        ; Exit marker
+    jsr trace_write
+    jsr trace_write_a
+    rts
+
+trace_write:
+    ; X = byte to write
+    pha
+    tya
+    pha
+    
+    ldy #0
+    txa
+    sta (trace_ptr),y
+    
+    ; Increment pointer
+    inc trace_ptr
+    bne trace_no_carry
+    inc trace_ptr+1
+    
+    ; Wrap at $D000
+    lda trace_ptr+1
+    cmp #$D0
+    bne trace_no_carry
+    lda #$C0
+    sta trace_ptr+1
+    
+trace_no_carry:
+    pla
+    tay
+    pla
+    rts
+
+trace_write_a:
+    tax
+    jsr trace_write
+    rts
+
+; View trace on screen
+show_trace:
+    lda #<trace_buffer
+    sta $FB
+    lda #>trace_buffer
+    sta $FC
+    
+    ldx #0
+show_trace_loop:
+    ldy #0
+show_line:
+    lda ($FB),y
+    sta $0400,x
+    inx
+    iny
+    cpy #40
+    bne show_line
+    
+    ; Next trace line
+    clc
+    lda $FB
+    adc #40
+    sta $FB
+    lda $FC
+    adc #0
+    sta $FC
+    
+    cpx #1000       ; Full screen
+    bne show_trace_loop
+    rts
+```
+
+## State Inspection
+
+Monitor game state changes:
+
+```asm
+; Watch for variable changes
+watch_variable:
+    lda watched_value
+    cmp last_watched
+    beq no_change
+    
+    ; Value changed!
+    sta last_watched
+    
+    ; Log the change
+    ldx #'W'        ; Watch marker
+    jsr trace_write
+    lda watched_value
+    jsr trace_write
+    
+    ; Flash to indicate change
+    lda #7          ; Yellow
+    sta $D020
+    ldx #10
+flash_delay:
+    jsr wait_frame
+    dex
+    bne flash_delay
+    lda #0
+    sta $D020
+    
+no_change:
+    rts
+
+watched_value: .byte 0
+last_watched:  .byte 0
+
+; State history tracking
+state_history:  .res 16
+history_index:  .byte 0
+
+record_state:
+    ldx history_index
+    lda game_state
+    sta state_history,x
+    
+    inx
+    txa
+    and #$0F        ; Circular buffer
+    sta history_index
+    rts
+
+; Check for state loops
+detect_state_loop:
+    ldx #0
+    lda game_state
+loop_check:
+    cmp state_history,x
+    beq found_repeat
+    inx
+    cpx #16
+    bne loop_check
+    
+    clc             ; No loop
+    rts
+    
+found_repeat:
+    sec             ; Loop detected
+    stx loop_position
+    rts
+
+loop_position: .byte 0
+```
+
+## Error Handlers
+
+Catch and report errors:
+
+```asm
+; Safe memory access
+safe_read:
+    ; $FB-FC = address
+    ; Check if valid
+    lda $FC
+    cmp #$D0        ; Don't read I/O
+    bcc read_ok
+    cmp #$E0
+    bcs read_ok
+    
+    ; Invalid address
+    lda #'!'        ; Error marker
+    sta $0400
+    lda #$FF        ; Return error value
+    rts
+    
+read_ok:
+    ldy #0
+    lda ($FB),y
+    rts
+
+; Stack overflow detection
+check_stack:
+    tsx
+    cpx #$10        ; Minimum stack
+    bcs stack_ok
+    
+    ; Stack overflow!
+    lda #2          ; Red
+    sta $D020
+    
+    ; Show stack pointer
+    txa
+    ldx #20
+    jsr show_hex
+    
+    ; Halt
+    jmp *
+    
+stack_ok:
+    rts
+
+; Error codes
+ERROR_NONE      = 0
+ERROR_OVERFLOW  = 1
+ERROR_UNDERFLOW = 2
+ERROR_BOUNDS    = 3
+ERROR_NULL      = 4
+
+last_error:     .byte 0
+
+set_error:
+    sta last_error
+    
+    ; Display error
+    tax
+    lda error_messages_lo,x
+    sta $FB
+    lda error_messages_hi,x
+    sta $FC
+    
+    jsr display_message
+    rts
+
+error_messages_lo:
+    .byte <msg_none,<msg_overflow,<msg_underflow
+    .byte <msg_bounds,<msg_null
+    
+error_messages_hi:
+    .byte >msg_none,>msg_overflow,>msg_underflow
+    .byte >msg_bounds,>msg_null
+
+msg_none:      .text "OK",0
+msg_overflow:  .text "OVERFLOW",0
+msg_underflow: .text "UNDERFLOW",0
+msg_bounds:    .text "OUT OF BOUNDS",0
+msg_null:      .text "NULL POINTER",0
+```
+
+## Test Harness
+
+Build testing infrastructure:
+
+```asm
+; Unit test framework
+run_tests:
+    lda #0
+    sta tests_passed
+    sta tests_failed
+    
+    ; Run each test
+    jsr test_addition
+    jsr test_collision
+    jsr test_movement
+    
+    ; Show results
+    jsr show_test_results
+    rts
+
+test_addition:
+    ; Test: 5 + 3 = 8
+    lda #5
+    clc
+    adc #3
+    cmp #8
+    beq test1_pass
+    
+    inc tests_failed
+    rts
+    
+test1_pass:
+    inc tests_passed
+    rts
+
+show_test_results:
+    ; Display pass/fail count
+    ldx #0
+    lda #'P'
+    sta $0400,x
+    lda #':'
+    sta $0401,x
+    lda tests_passed
+    ldx #2
+    jsr show_hex
+    
+    ldx #10
+    lda #'F'
+    sta $0400,x
+    lda #':'
+    sta $0401,x
+    lda tests_failed
+    ldx #12
+    jsr show_hex
+    
+    ; Color based on results
+    lda tests_failed
+    beq all_passed
+    lda #2          ; Red - failures
+    jmp set_result_color
+all_passed:
+    lda #5          ; Green - success
+set_result_color:
+    sta $D020
+    rts
+
+tests_passed:  .byte 0
+tests_failed:  .byte 0
+```
+
+## Complete Debug System
+
+Integrated debugging tools:
+
+```asm
+* = $0801
+    .byte $0C,$08,$0A,$00,$9E,$32,$30,$36,$31,$00,$00,$00
+
+* = $080D
+
+; Debug build flag
+DEBUG = 1
+
+main:
+    jsr init
+    
+.if DEBUG
+    jsr init_debug
+.endif
+    
+game_loop:
+    jsr wait_frame
+    
+.if DEBUG
+    jsr debug_panel
+    jsr check_watches
+    lda $DC01       ; Check for debug key
+    cmp #$FE        ; F1 key
+    bne no_debug_key
+    jsr debug_menu
+no_debug_key:
+.endif
+    
+    jsr update_game
+    jsr render
+    jmp game_loop
+
+init_debug:
+    ; Set up debug display
+    ldx #39
+clear_debug_line:
+    lda #$20
+    sta $0400+960,x
+    lda #$0F        ; Light gray
+    sta $D800+960,x
+    dex
+    bpl clear_debug_line
+    
+    ; Initialize trace
+    lda #<trace_buffer
+    sta trace_ptr
+    lda #>trace_buffer
+    sta trace_ptr+1
+    rts
+
+debug_menu:
+    ; Simple debug menu
+    jsr clear_screen
+    
+    ; Show options
+    ldx #0
+menu_text_loop:
+    lda debug_menu_text,x
+    beq menu_done
+    sta $0400+200,x
+    inx
+    jmp menu_text_loop
+    
+menu_done:
+    ; Wait for selection
+debug_wait:
+    lda $DC01
+    cmp #$FF
+    beq debug_wait
+    
+    ; Process selection
+    cmp #$FD        ; 1 - Show trace
+    beq show_trace_screen
+    cmp #$FB        ; 2 - Memory dump
+    beq show_memory_dump
+    cmp #$F7        ; 3 - Continue
+    beq exit_debug
+    
+    jmp debug_wait
+    
+show_trace_screen:
+    jsr show_trace
+    jsr wait_for_key
+    jmp exit_debug
+    
+show_memory_dump:
+    jsr dump_memory
+    jsr wait_for_key
+    jmp exit_debug
+    
+exit_debug:
+    jsr clear_screen
+    jsr restore_game_screen
+    rts
+
+debug_menu_text:
+    .text "DEBUG MENU",$0D
+    .text "1-TRACE 2-MEMORY 3-CONTINUE"
+    .byte 0
+
+wait_for_key:
+    lda $DC01
+    cmp #$FF
+    bne wait_for_key
+wait_release:
+    lda $DC01
+    cmp #$FF
+    beq wait_release
+    rts
+
+; Conditional compilation
+.if DEBUG
+    .warn "Debug build - remove for release!"
+.endif
+```
+
+## Key Concepts
+
+1. **Visual Debugging**: Use border and screen for immediate feedback
+2. **Trace Logging**: Record execution flow for analysis
+3. **State Inspection**: Monitor variables and state changes
+4. **Error Handling**: Catch and report problems gracefully
+5. **Test Infrastructure**: Build tests alongside your code
+
+## Experiment and Discover
+
+Try these debugging techniques:
+- Create a memory monitor that shows live updates
+- Build a sprite debugger showing positions and states
+- Implement a checkpoint system for testing
+- Add performance counters for bottleneck analysis
+- Create visual collision box overlays
+
+Good debugging tools are essential for C64 development. The time invested in debugging infrastructure pays off when tracking down elusive bugs!

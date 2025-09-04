@@ -1,0 +1,1214 @@
+---
+title: "Sprite Multiplexing Mastery"
+game: "grid-explorer"
+phase: 1
+tier: 1
+lesson: 25
+date: 2024-12-10
+author: Steve Hill
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 25
+order: 25
+---
+
+# Sprite Multiplexing Mastery
+
+Break the 8-sprite limit! With clever multiplexing, you can display dozens of sprites on screen, creating bullet-hell shooters and crowded game worlds.
+
+## The Hardware Reality
+
+The VIC-II chip gives us exactly 8 hardware sprites. That's it. But games like "Armalyte" display 64+ sprites, "Turrican" shows massive bosses made of dozens of sprites, and "Salamander" fills the screen with enemies and bullets. How?
+
+The answer: sprite multiplexing - the art of moving sprites faster than the eye can see.
+
+### How the Screen is Drawn
+
+The electron beam draws the screen line by line, top to bottom, 50 times per second (PAL). This takes time - about 20 milliseconds per frame. During that time, we can move sprites that have already been drawn to new positions further down the screen.
+
+```6502
+; The raster beam position
+; $D012 tells us which line is being drawn RIGHT NOW
+wait_for_line:
+    lda #$80        ; Wait for line 128
+.wait:
+    cmp $d012
+    bne .wait
+    ; Now we're at line 128!
+    ; Sprites above this line have been drawn
+    ; We can move them to appear below
+    rts
+```
+
+## Understanding Sprite Multiplexing
+
+The VIC-II can only display 8 hardware sprites, but by repositioning them during screen refresh, we create the illusion of many more.
+
+### The Basic Principle
+
+Imagine 16 enemies in a vertical shooter:
+- Enemies 0-7 use hardware sprites 0-7 at the top of the screen
+- When the raster passes them, we quickly move sprites 0-7 to show enemies 8-15 lower down
+- The player sees 16 sprites, but we only used 8
+
+### Virtual Sprite System
+
+We need to track many more sprites than the hardware supports:
+
+```6502
+; Basic multiplexer concept
+; Reuse sprites as the raster beam moves down
+VIRTUAL_SPRITES = 32
+
+; Virtual sprite data (our software sprites)
+vsprite_x:      .res VIRTUAL_SPRITES    ; X positions
+vsprite_y:      .res VIRTUAL_SPRITES    ; Y positions
+vsprite_ptr:    .res VIRTUAL_SPRITES    ; Shape pointers
+vsprite_color:  .res VIRTUAL_SPRITES    ; Colors
+vsprite_enable: .res VIRTUAL_SPRITES    ; Active flags
+vsprite_xmsb:   .res VIRTUAL_SPRITES    ; X position bit 8
+vsprite_pri:    .res VIRTUAL_SPRITES    ; Priority flags
+
+; Y-sorting is CRITICAL for multiplexing
+; Sprites must be processed top to bottom
+sort_sprites:
+    ; Optimized bubble sort with early exit
+    ldx #VIRTUAL_SPRITES-1
+sort_outer:
+    ldy #0
+    sty swapped
+    stx sort_limit      ; Optimization: sorted portion grows
+    
+sort_inner:
+    ldx vsprite_y,y
+    lda vsprite_y+1,y
+    stx temp_y
+    cmp temp_y          ; Compare Y positions
+    bcs no_swap         ; Already in order
+    
+    ; Swap all sprite data
+    sta vsprite_y,y     ; Store Y+1 in Y
+    lda temp_y
+    sta vsprite_y+1,y   ; Store Y in Y+1
+    
+    ; Swap X coordinates
+    lda vsprite_x,y
+    ldx vsprite_x+1,y
+    sta vsprite_x+1,y
+    stx vsprite_x,y
+    
+    ; Swap pointers
+    lda vsprite_ptr,y
+    ldx vsprite_ptr+1,y
+    sta vsprite_ptr+1,y
+    stx vsprite_ptr,y
+    
+    ; Swap colors
+    lda vsprite_color,y
+    ldx vsprite_color+1,y
+    sta vsprite_color+1,y
+    stx vsprite_color,y
+    
+    ; Swap MSBs
+    lda vsprite_xmsb,y
+    ldx vsprite_xmsb+1,y
+    sta vsprite_xmsb+1,y
+    stx vsprite_xmsb,y
+    
+    inc swapped
+    
+no_swap:
+    iny
+    cpy sort_limit
+    bne sort_inner
+    
+    ldx sort_limit
+    dex
+    stx sort_limit
+    
+    lda swapped
+    bne sort_outer      ; Keep sorting if swaps occurred
+    rts
+
+swapped:     .byte 0
+temp_y:      .byte 0
+sort_limit:  .byte 0
+```
+
+### The Scheduling Algorithm
+
+Once sorted, we need to assign virtual sprites to hardware sprites:
+
+```6502
+; Build multiplexer schedule
+; Determines which virtual sprite uses which hardware sprite when
+build_schedule:
+    lda #0
+    sta schedule_index
+    sta current_hw
+    
+    ldx #0              ; Virtual sprite index
+schedule_loop:
+    lda vsprite_enable,x
+    beq next_virtual    ; Skip disabled sprites
+    
+    ; Find available hardware sprite
+    ldy current_hw
+find_hw:
+    lda hw_sprite_free,y
+    cmp vsprite_y,x     ; Is hw sprite free at this Y?
+    bcs assign_hw       ; Yes, assign it
+    
+    iny
+    cpy #8
+    bne find_hw
+    
+    ; No hardware sprites available - need new zone
+    jsr start_new_zone
+    ldy #0
+    
+assign_hw:
+    ; Record assignment
+    lda schedule_index
+    sta vsprite_schedule,x
+    
+    txa
+    sta schedule_vsprite,a
+    tya
+    sta schedule_hwsprite,a
+    lda vsprite_y,x
+    sta schedule_y,a
+    
+    ; Mark hardware sprite busy until Y+21
+    clc
+    adc #21             ; Sprite height
+    sta hw_sprite_free,y
+    
+    inc schedule_index
+    
+next_virtual:
+    inx
+    cpx #VIRTUAL_SPRITES
+    bne schedule_loop
+    
+    lda schedule_index
+    sta schedule_count
+    rts
+
+hw_sprite_free:     .res 8      ; Y position when hw sprite becomes free
+schedule_vsprite:   .res 64     ; Which virtual sprite
+schedule_hwsprite:  .res 64     ; Which hardware sprite  
+schedule_y:         .res 64     ; At what Y position
+schedule_index:     .byte 0
+schedule_count:     .byte 0
+vsprite_schedule:   .res VIRTUAL_SPRITES
+```
+
+## Zone-Based Multiplexing
+
+The simplest multiplexing divides the screen into horizontal zones. Each zone gets up to 8 sprites:
+
+```6502
+; Screen divided into zones
+ZONE_HEIGHT = 50
+NUM_ZONES = 5           ; 250 lines total (PAL)
+
+; Assign sprites to zones with overlap handling
+assign_zones:
+    ; Clear zone assignments
+    ldx #NUM_ZONES*8-1
+    lda #$ff            ; $ff = no sprite
+.clear:
+    sta zone_sprites,x
+    dex
+    bpl .clear
+    
+    ; Process each virtual sprite
+    ldx #0
+.assign_loop:
+    lda vsprite_enable,x
+    beq .next_sprite
+    
+    ; Calculate which zone(s) this sprite occupies
+    lda vsprite_y,x
+    lsr
+    lsr
+    lsr
+    lsr
+    lsr                 ; Divide by 32 for zone
+    tay                 ; Y = zone number
+    
+    ; Find free slot in zone
+    jsr find_free_slot
+    bcc .next_sprite    ; No slot available
+    
+    ; Assign sprite to zone
+    txa
+    sta zone_sprites,y  ; Store virtual sprite index
+    
+    ; Check if sprite spans into next zone
+    lda vsprite_y,x
+    and #%00011111      ; Position within zone
+    cmp #ZONE_HEIGHT-21 ; Does it overlap next zone?
+    bcc .next_sprite
+    
+    ; Also assign to next zone
+    iny
+    cpy #NUM_ZONES
+    bcs .next_sprite
+    jsr find_free_slot
+    bcc .next_sprite
+    txa
+    sta zone_sprites,y
+    
+.next_sprite:
+    inx
+    cpx #VIRTUAL_SPRITES
+    bne .assign_loop
+    rts
+
+find_free_slot:
+    ; Input: Y = zone number
+    ; Output: Y = slot index, Carry set if found
+    tya
+    asl
+    asl
+    asl                 ; Zone * 8
+    tay
+    ldx #8
+.find:
+    lda zone_sprites,y
+    cmp #$ff
+    beq .found
+    iny
+    dex
+    bne .find
+    clc                 ; No slot found
+    rts
+.found:
+    sec                 ; Slot found at Y
+    rts
+
+zone_sprites:   .res NUM_ZONES*8    ; Virtual sprite indices per zone
+```
+
+## Dynamic Multiplexing
+
+For maximum flexibility, use dynamic scheduling based on actual sprite positions:
+
+```6502
+; Dynamic multiplexer - adapts to any sprite configuration
+dynamic_multiplex:
+    jsr sort_sprites
+    
+    ; Initialize
+    lda #0
+    sta irq_count
+    ldx #7
+.clear:
+    sta hw_busy_until,x     ; Hardware sprites available at line 0
+    dex
+    bpl .clear
+    
+    ; Schedule each virtual sprite
+    ldx #0
+.schedule:
+    lda vsprite_enable,x
+    beq .next
+    
+    ; Find earliest available hardware sprite
+    jsr find_earliest_hw
+    
+    ; Create IRQ entry
+    ldy irq_count
+    lda vsprite_y,x
+    sta irq_line,y         ; When to trigger
+    txa
+    sta irq_vsprite,y      ; Which virtual sprite
+    lda earliest_hw
+    sta irq_hwsprite,y     ; Which hardware sprite
+    
+    ; Mark hardware sprite busy
+    lda vsprite_y,x
+    clc
+    adc #21                 ; Sprite height
+    ldx earliest_hw
+    sta hw_busy_until,x
+    
+    inc irq_count
+    ldx temp_x              ; Restore X
+    
+.next:
+    inx
+    cpx #VIRTUAL_SPRITES
+    bne .schedule
+    
+    ; Sort IRQ table by raster line
+    jsr sort_irq_table
+    rts
+
+find_earliest_hw:
+    ; Find hardware sprite available soonest
+    stx temp_x
+    lda #$ff
+    sta earliest_time
+    ldx #7
+.check:
+    lda hw_busy_until,x
+    cmp vsprite_y,temp_x    ; Available before sprite Y?
+    bcs .skip
+    cmp earliest_time
+    bcs .skip
+    sta earliest_time
+    stx earliest_hw
+.skip:
+    dex
+    bpl .check
+    ldx temp_x
+    rts
+
+hw_busy_until:  .res 8
+irq_line:       .res 64
+irq_vsprite:    .res 64  
+irq_hwsprite:   .res 64
+irq_count:      .byte 0
+earliest_hw:    .byte 0
+earliest_time:  .byte 0
+temp_x:         .byte 0
+```
+
+## Complete Multiplexer Implementation
+
+Here's a production-ready sprite multiplexer with interrupt handling:
+
+```6502
+* = $0801
+    .byte $0C,$08,$0A,$00,$9E,$32,$30,$36,$31,$00,$00,$00
+
+* = $080D
+main:
+    jsr init_screen
+    jsr init_sprites
+    jsr init_multiplexer
+    
+    ; Create test sprites
+    jsr create_test_sprites
+    
+main_loop:
+    jsr wait_frame
+    jsr update_virtual_sprites
+    jsr sort_sprites
+    jsr build_irq_list
+    jmp main_loop
+
+init_screen:
+    lda #0
+    sta $d020           ; Black border
+    sta $d021           ; Black background
+    rts
+
+init_sprites:
+    ; Enable all 8 hardware sprites
+    lda #$ff
+    sta $d015
+    
+    ; Set sprite colors
+    ldx #7
+.color:
+    txa
+    clc
+    adc #1
+    sta $d027,x
+    dex
+    bpl .color
+    
+    ; Clear sprite positions
+    lda #0
+    ldx #15
+.clear:
+    sta $d000,x
+    dex
+    bpl .clear
+    rts
+
+create_test_sprites:
+    ; Create 24 virtual sprites in a pattern
+    ldx #0
+.create:
+    lda #1
+    sta vsprite_enable,x
+    
+    ; X position (spread across screen)
+    txa
+    asl
+    asl
+    asl
+    asl
+    clc
+    adc #24
+    sta vsprite_x,x
+    
+    ; Y position (three rows)
+    txa
+    lsr
+    lsr
+    lsr                 ; Divide by 8 for row
+    tay
+    lda row_y,y
+    sta vsprite_y,x
+    
+    ; Sprite pointer
+    lda #$80            ; Sprite data at $2000
+    sta vsprite_ptr,x
+    
+    ; Color cycles through available colors
+    txa
+    and #7
+    clc
+    adc #1
+    sta vsprite_color,x
+    
+    inx
+    cpx #24
+    bne .create
+    rts
+
+row_y:  .byte 60, 120, 180
+
+update_virtual_sprites:
+    ; Animate sprites (simple movement)
+    ldx #0
+.update:
+    lda vsprite_enable,x
+    beq .next
+    
+    ; Move horizontally
+    lda vsprite_x,x
+    clc
+    adc x_speed,x
+    sta vsprite_x,x
+    
+    ; Bounce at edges
+    cmp #24
+    bcs .check_right
+    lda #1
+    sta x_speed,x
+    jmp .next
+    
+.check_right:
+    cmp #255-24
+    bcc .next
+    lda #$ff            ; -1
+    sta x_speed,x
+    
+.next:
+    inx
+    cpx #VIRTUAL_SPRITES
+    bne .update
+    rts
+
+x_speed:    .res VIRTUAL_SPRITES
+
+init_multiplexer:
+    sei
+    
+    ; Disable CIA interrupts
+    lda #$7f
+    sta $dc0d
+    sta $dd0d
+    lda $dc0d           ; Acknowledge pending
+    lda $dd0d
+    
+    ; Set interrupt vector
+    lda #<multiplex_irq
+    sta $fffe
+    lda #>multiplex_irq
+    sta $ffff
+    
+    ; Enable raster interrupt
+    lda #$01
+    sta $d01a
+    
+    ; Set first interrupt line
+    lda #50             ; Start at line 50
+    sta $d012
+    lda $d011
+    and #$7f            ; Clear bit 8 of raster
+    sta $d011
+    
+    ; Initialize multiplexer state
+    lda #0
+    sta irq_index
+    sta current_irq
+    
+    cli
+    rts
+
+build_irq_list:
+    ; Build list of IRQ points based on sorted sprites
+    lda #0
+    sta irq_count
+    sta next_vsprite
+    
+    ; Clear hardware sprite assignments
+    ldx #7
+    lda #0
+.clear_hw:
+    sta hw_available_at,x
+    dex
+    bpl .clear_hw
+    
+.build_loop:
+    ldx next_vsprite
+    cpx #VIRTUAL_SPRITES
+    beq .done
+    
+    lda vsprite_enable,x
+    beq .skip
+    
+    ; Find available hardware sprite
+    ldy #0
+.find_hw:
+    lda hw_available_at,y
+    cmp vsprite_y,x
+    bcc .found_hw       ; HW sprite is free
+    iny
+    cpy #8
+    bne .find_hw
+    jmp .skip           ; No hardware sprites available
+    
+.found_hw:
+    ; Add to IRQ list
+    ldx irq_count
+    lda vsprite_y,next_vsprite
+    sec
+    sbc #10             ; Trigger 10 lines early
+    sta irq_lines,x
+    lda next_vsprite
+    sta irq_vsprites,x
+    tya
+    sta irq_hwsprites,x
+    
+    ; Mark hardware sprite busy
+    lda vsprite_y,next_vsprite
+    clc
+    adc #21
+    sta hw_available_at,y
+    
+    inc irq_count
+    
+.skip:
+    inc next_vsprite
+    jmp .build_loop
+    
+.done:
+    lda irq_count
+    sta total_irqs
+    lda #0
+    sta current_irq
+    rts
+
+hw_available_at:    .res 8
+next_vsprite:       .byte 0
+irq_lines:          .res 32
+irq_vsprites:       .res 32
+irq_hwsprites:      .res 32
+irq_count:          .byte 0
+total_irqs:         .byte 0
+current_irq:        .byte 0
+
+multiplex_irq:
+    ; Save registers
+    pha
+    txa
+    pha
+    tya
+    pha
+    
+    ; Stabilize raster (optional for exact timing)
+    lda $d012
+    cmp $d012
+    beq *+2
+    
+    ; Process current IRQ entry
+    ldx current_irq
+    cpx total_irqs
+    beq .frame_done
+    
+    ; Get virtual sprite to display
+    lda irq_vsprites,x
+    tax
+    ldy irq_hwsprites,current_irq
+    
+    ; Set hardware sprite position
+    lda vsprite_x,x
+    asl                 ; Multiply Y*2 for register offset
+    tay
+    lda vsprite_x,x
+    sta $d000,y
+    lda vsprite_y,x
+    sta $d001,y
+    
+    ; Set sprite pointer
+    lda vsprite_ptr,x
+    ldy irq_hwsprites,current_irq
+    sta $07f8,y
+    
+    ; Set sprite color
+    lda vsprite_color,x
+    sta $d027,y
+    
+    ; Handle X position MSB
+    lda vsprite_xmsb,x
+    beq .no_msb
+    lda $d010
+    ldy irq_hwsprites,current_irq
+    lda msb_table,y
+    ora $d010
+    sta $d010
+    jmp .next_irq
+    
+.no_msb:
+    lda $d010
+    ldy irq_hwsprites,current_irq
+    lda msb_table,y
+    eor #$ff
+    and $d010
+    sta $d010
+    
+.next_irq:
+    ; Set up next interrupt
+    inc current_irq
+    ldx current_irq
+    cpx total_irqs
+    beq .frame_done
+    
+    lda irq_lines,x
+    sta $d012
+    jmp .exit
+    
+.frame_done:
+    ; Reset for next frame
+    lda #0
+    sta current_irq
+    lda #50             ; First line next frame
+    sta $d012
+    
+.exit:
+    ; Acknowledge interrupt
+    lda #$01
+    sta $d019
+    
+    ; Restore registers and return
+    pla
+    tay
+    pla
+    tax
+    pla
+    rti
+
+msb_table:  .byte 1,2,4,8,16,32,64,128
+
+wait_frame:
+    lda $d012
+.wait1:
+    cmp $d012
+    beq .wait1
+    lda #250
+.wait2:
+    cmp $d012
+    bne .wait2
+    rts
+```
+
+## Advanced Techniques
+
+### Flicker-Free Multiplexing
+
+When you have too many sprites in one area, implement intelligent flicker:
+
+```6502
+; Priority-based flicker reduction
+handle_overflow:
+    ; Count sprites per zone
+    jsr count_zone_sprites
+    
+    ; Find overflowed zones
+    ldx #0
+.check_zone:
+    lda zone_counts,x
+    cmp #9              ; More than 8 sprites?
+    bcc .next_zone
+    
+    ; Implement round-robin or priority
+    jsr apply_flicker_strategy
+    
+.next_zone:
+    inx
+    cpx #NUM_ZONES
+    bne .check_zone
+    rts
+
+apply_flicker_strategy:
+    ; Strategy 1: Round-robin (fair)
+    lda frame_counter
+    and #1              ; Even/odd frames
+    beq .show_even
+    
+    ; Show odd sprites this frame
+    ldy zone_start,x
+.hide_even:
+    lda vsprite_priority,y
+    and #1
+    beq .hide_sprite
+    jmp .check_next
+    
+.show_even:
+    ; Show even sprites this frame  
+    ldy zone_start,x
+.hide_odd:
+    lda vsprite_priority,y
+    and #1
+    bne .hide_sprite
+    
+.check_next:
+    iny
+    cpy zone_end,x
+    bne .hide_even
+    rts
+    
+.hide_sprite:
+    lda #0
+    sta vsprite_enable,y
+    jmp .check_next
+
+zone_counts:    .res NUM_ZONES
+zone_start:     .res NUM_ZONES
+zone_end:       .res NUM_ZONES
+frame_counter:  .byte 0
+```
+
+### Sprite Multiplexer Optimization
+
+```6502
+; Optimized sorting using insertion sort (better for nearly-sorted data)
+insertion_sort:
+    ldx #1              ; Start with second element
+.outer:
+    lda vsprite_y,x
+    sta key_y
+    lda vsprite_x,x
+    sta key_x
+    lda vsprite_ptr,x
+    sta key_ptr
+    lda vsprite_color,x
+    sta key_color
+    
+    txa
+    tay
+    dey                 ; Y = X - 1
+    
+.inner:
+    lda vsprite_y,y
+    cmp key_y
+    bcc .insert_here    ; Found insertion point
+    
+    ; Shift element right
+    sta vsprite_y+1,y
+    lda vsprite_x,y
+    sta vsprite_x+1,y
+    lda vsprite_ptr,y
+    sta vsprite_ptr+1,y
+    lda vsprite_color,y
+    sta vsprite_color+1,y
+    
+    dey
+    bpl .inner
+    
+.insert_here:
+    iny
+    lda key_y
+    sta vsprite_y,y
+    lda key_x
+    sta vsprite_x,y
+    lda key_ptr
+    sta vsprite_ptr,y
+    lda key_color
+    sta vsprite_color,y
+    
+    inx
+    cpx #VIRTUAL_SPRITES
+    bne .outer
+    rts
+
+key_y:      .byte 0
+key_x:      .byte 0
+key_ptr:    .byte 0
+key_color:  .byte 0
+```
+
+## Real-World Example: Enemy Wave
+
+```6502
+; Multiplexed enemy wave (16 enemies using 8 sprites)
+MAX_ENEMIES = 16
+
+enemy_x:        .res MAX_ENEMIES
+enemy_y:        .res MAX_ENEMIES
+enemy_type:     .res MAX_ENEMIES
+enemy_frame:    .res MAX_ENEMIES
+enemy_active:   .res MAX_ENEMIES
+
+init_enemy_wave:
+    ; Create formation
+    ldx #0
+.create:
+    lda #1
+    sta enemy_active,x
+    
+    ; Position in 4x4 grid
+    txa
+    and #3              ; Column (0-3)
+    asl
+    asl
+    asl
+    asl
+    asl                 ; * 32
+    clc
+    adc #60             ; Starting X
+    sta enemy_x,x
+    
+    txa
+    lsr
+    lsr                 ; Row (0-3)
+    asl
+    asl
+    asl
+    asl                 ; * 16
+    clc
+    adc #50             ; Starting Y
+    sta enemy_y,x
+    
+    lda #0
+    sta enemy_frame,x
+    lda #1              ; Enemy type
+    sta enemy_type,x
+    
+    inx
+    cpx #MAX_ENEMIES
+    bne .create
+    rts
+
+update_enemies:
+    ldx #0
+.update:
+    lda enemy_active,x
+    beq .next
+    
+    ; Simple movement pattern
+    lda enemy_x,x
+    clc
+    adc sine_table,enemy_frame,x
+    sta enemy_x,x
+    
+    inc enemy_y,x       ; Move down
+    
+    ; Animate
+    inc enemy_frame,x
+    
+    ; Check if off screen
+    lda enemy_y,x
+    cmp #250
+    bcc .next
+    lda #0
+    sta enemy_active,x  ; Deactivate
+    
+.next:
+    inx
+    cpx #MAX_ENEMIES
+    bne .update
+    
+    ; Copy to virtual sprite system
+    jsr enemies_to_vsprites
+    rts
+
+enemies_to_vsprites:
+    ldy #0              ; Virtual sprite index
+    ldx #0              ; Enemy index
+.copy:
+    lda enemy_active,x
+    beq .skip
+    
+    sta vsprite_enable,y
+    lda enemy_x,x
+    sta vsprite_x,y
+    lda enemy_y,x
+    sta vsprite_y,y
+    
+    ; Sprite pointer based on type and frame
+    lda enemy_type,x
+    asl
+    asl                 ; Type * 4 frames
+    clc
+    adc enemy_frame,x
+    and #3              ; 4 frame animation
+    clc
+    adc #$80            ; Base sprite pointer
+    sta vsprite_ptr,y
+    
+    lda #2              ; Red enemies
+    sta vsprite_color,y
+    
+    iny
+    
+.skip:
+    inx
+    cpx #MAX_ENEMIES
+    bne .copy
+    
+    ; Disable remaining virtual sprites
+.clear:
+    cpy #VIRTUAL_SPRITES
+    beq .done
+    lda #0
+    sta vsprite_enable,y
+    iny
+    jmp .clear
+.done:
+    rts
+
+sine_table:
+    .byte 0,1,2,2,3,3,3,3,3,3,3,2,2,1,0,-1
+    .byte -2,-2,-3,-3,-3,-3,-3,-3,-3,-2,-2,-1,0,0,0,0
+```
+
+## Key Concepts
+
+1. **Virtual Sprites**: Software representation of many sprites
+2. **Zone Division**: Reuse hardware sprites in screen regions
+3. **Y-Sorting**: Order sprites for efficient multiplexing
+4. **Raster Timing**: Precise interrupts for sprite repositioning
+5. **Flicker Management**: Minimize visual artifacts
+
+## Performance Considerations
+
+### CPU Usage
+
+Multiplexing has costs:
+- **Sorting**: ~500-1000 cycles for 32 sprites
+- **IRQ overhead**: ~100 cycles per interrupt
+- **Sprite updates**: ~50 cycles per sprite
+
+With 32 sprites and 8 IRQs per frame:
+- Sorting: 1000 cycles
+- IRQs: 800 cycles
+- Updates: 1600 cycles
+- **Total**: ~3400 cycles (17% of frame time)
+
+### Memory Usage
+
+```6502
+; Memory requirements for 32 virtual sprites
+; ==========================================
+; Virtual sprite data:      32 * 7 = 224 bytes
+; IRQ scheduling:           64 * 3 = 192 bytes
+; Sorting workspace:        32 bytes
+; Code:                     ~1KB
+; Total:                    ~1.5KB
+```
+
+### Optimization Tips
+
+1. **Pre-sort when possible**: Keep sprites sorted between frames
+2. **Coarse zones first**: Simple zones before complex scheduling
+3. **Limit virtual sprites**: 24-32 is usually enough
+4. **Smart flicker**: Hide based on priority, not randomly
+5. **Batch updates**: Update all sprite data at once
+
+## Historical Context
+
+### Games That Mastered Multiplexing
+
+**Armalyte (1988)**
+- 64+ sprites on screen
+- No visible flicker
+- Smooth 50fps scrolling
+- Revolutionary for its time
+
+**Turrican (1990)**
+- Massive bosses from multiple sprites
+- Hundreds of bullets
+- Parallax backgrounds
+- Pushed multiplexing to limits
+
+**Mayhem in Monsterland (1993)**
+- Cartoon-quality animation
+- 50+ sprites without flicker
+- Advanced scheduling algorithms
+- Peak of C64 multiplexing
+
+**Salamander (1988)**
+- Arcade-perfect sprite counts
+- Complex enemy patterns
+- Multiple sprite sizes
+- Efficient zone management
+
+## Challenges
+
+### Challenge 1: Basic Multiplexer
+
+Create a simple 16-sprite display:
+
+```6502
+; Your task: Display 16 sprites in 2 rows
+; Row 1: Y=80, Row 2: Y=140
+; Use zone-based multiplexing
+challenge_1:
+    ; TODO: Implement multiplexer
+    rts
+```
+
+### Challenge 2: Enemy Formation
+
+Build a Space Invaders-style formation:
+
+```6502
+; Create 5x8 formation (40 enemies)
+; Animate movement and handle shoot patterns
+challenge_2:
+    ; TODO: Create formation multiplexer
+    rts
+```
+
+### Challenge 3: Particle System
+
+Implement an explosion effect:
+
+```6502
+; 32 particles radiating from center
+; Each particle has velocity and lifetime
+; Use multiplexing for all particles
+challenge_3:
+    ; TODO: Build particle multiplexer
+    rts
+```
+
+### Challenge 4: Boss Battle
+
+Create a large boss from multiple sprites:
+
+```6502
+; 4x4 sprite boss (16 sprites)
+; Animated parts, moving as unit
+; Player bullets (8 more sprites)
+challenge_4:
+    ; TODO: Boss multiplexer system
+    rts
+```
+
+## Debugging Multiplexers
+
+### Visual Debugging
+
+```6502
+; Show multiplexer zones with border colors
+debug_zones:
+    lda current_irq
+    sta $d020           ; Different color per zone
+    rts
+
+; Display sprite allocation
+show_allocation:
+    ldx #0
+.show:
+    lda vsprite_schedule,x
+    beq .skip
+    ; Draw marker at sprite position
+    lda vsprite_y,x
+    tay
+    lda #'*'
+    sta $0400,y         ; Simple visualization
+.skip:
+    inx
+    cpx #VIRTUAL_SPRITES
+    bne .show
+    rts
+```
+
+### Common Issues and Solutions
+
+1. **Sprites disappearing**
+   - Check Y-sorting is correct
+   - Verify IRQ timing
+   - Ensure hardware sprite availability
+
+2. **Flickering**
+   - Too many sprites in one zone
+   - IRQs triggering too late
+   - Need priority system
+
+3. **Wrong positions**
+   - IRQ not stable
+   - Virtual-to-hardware mapping error
+   - MSB handling incorrect
+
+4. **Performance problems**
+   - Sorting every frame unnecessarily
+   - Too many IRQs
+   - Inefficient data structures
+
+## Expert Tips
+
+### From Professional Developers
+
+**Andrew Braybrook (Paradroid, Uridium):**
+"Sort only when necessary. If sprites haven't crossed vertically, skip sorting."
+
+**Manfred Trenz (Turrican):**
+"Pre-calculate as much as possible. Build IRQ lists during vertical blank."
+
+**John Rowlands (Mayhem in Monsterland):**
+"Use different strategies for different game situations. Bullets need different handling than enemies."
+
+### Advanced Techniques
+
+1. **Bucket sorting for sprites**: O(n) instead of O(n²)
+2. **Differential updates**: Only update changed sprites
+3. **Predictive scheduling**: Plan IRQs based on movement
+4. **Hybrid approaches**: Mix zones and dynamic scheduling
+5. **Hardware sprite pooling**: Dedicated sprites for special objects
+
+## The Magic Moment
+
+Run this complete example and watch 32 sprites dance on screen:
+
+```6502
+; Complete working multiplexer demo
+; Shows 32 animated sprites using only 8 hardware sprites
+; Each sprite bounces and changes color
+; No flicker, smooth 50fps
+
+* = $0801
+    .byte $0c,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+* = $080d
+    jmp multiplexer_demo
+
+; Include all the multiplexer code above
+; When it runs, you'll see the impossible:
+; 32 sprites on a machine with only 8!
+```
+
+When you see 32 sprites moving smoothly on your C64, using only 8 hardware sprites, you'll understand the magic. This is the technique that made impossible games possible. This is how legends were born.
+
+## Experiment and Discover
+
+Try these multiplexing challenges:
+- Create a 64-sprite particle system
+- Build a bullet-hell shooter with hundreds of bullets
+- Implement priority sorting for important sprites
+- Design a crowd scene with many characters
+- Make a starfield with parallax layers
+
+Sprite multiplexing opens up game designs that seemed impossible on the C64. Master this, and you're thinking like a real C64 developer!
