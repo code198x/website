@@ -1,0 +1,450 @@
+---
+title: "Momentum & Inertia"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 24
+description: "Build a lunar lander with realistic thrust, momentum, and inertia"
+difficulty: "easy"
+order: 24
+tags: ["physics", "momentum", "thrust", "acceleration"]
+prerequisites: ["physics basics", "smooth movement", "gravity"]
+objectives:
+  - "Implement acceleration and deceleration"
+  - "Create thrust-based movement"
+  - "Add rotational physics"
+  - "Build a lunar lander game"
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Momentum & Inertia
+
+Objects in motion stay in motion! We'll build a lunar lander where thrust creates acceleration, momentum carries you forward, and careful control is needed to land safely.
+
+## Understanding Momentum
+
+Unlike instant movement, momentum builds up gradually:
+
+<CodeBlock title="Momentum System" code={`; Momentum variables (8.8 fixed point)
+ship_x_pos:     !word $8000  ; Position
+ship_y_pos:     !word $3000
+ship_x_vel:     !word $0000  ; Velocity (momentum)
+ship_y_vel:     !word $0000
+ship_angle:     .byte 0       ; 0-255 (0=up, 64=right, 128=down, 192=left)
+
+; Physics constants
+THRUST_POWER    = $0030  ; Acceleration per frame
+GRAVITY         = $0010  ; Downward pull
+MAX_VELOCITY    = $0300  ; Speed limit
+ROTATION_SPEED  = 4      ; Angle change per frame
+
+; Apply thrust based on ship angle
+apply_thrust:
+    lda thrust_on
+    beq no_thrust
+    
+    ; Calculate thrust vector from angle
+    ldx ship_angle
+    
+    ; X component = sin(angle) * thrust
+    lda sine_table,x
+    ; Sign extend
+    bpl positive_x
+    ora #$FF00      ; Negative
+positive_x:
+    sta thrust_x
+    
+    ; Y component = -cos(angle) * thrust
+    lda cosine_table,x
+    eor #$FF        ; Negate for screen coords
+    bpl positive_y
+    ora #$FF00
+positive_y:
+    sta thrust_y
+    
+    ; Apply thrust to velocity
+    lda ship_x_vel
+    clc
+    adc thrust_x
+    sta ship_x_vel
+    lda ship_x_vel+1
+    adc thrust_x+1
+    sta ship_x_vel+1
+    
+    lda ship_y_vel
+    clc
+    adc thrust_y
+    sta ship_y_vel
+    lda ship_y_vel+1
+    adc thrust_y+1
+    sta ship_y_vel+1
+    
+no_thrust:
+    rts
+
+thrust_on:  .byte 0
+thrust_x:   .word 0
+thrust_y:   .word 0`} language="asm" />
+
+## Rotational Inertia
+
+Add realistic rotation with angular momentum:
+
+<CodeBlock title="Rotation Physics" code={`; Rotation variables
+angular_vel:    .byte 0   ; Rotation speed
+angular_accel:  .byte 0   ; Rotation acceleration
+
+; Handle rotation input
+handle_rotation:
+    ; Check left/right for rotation
+    lda $DC00
+    and #$04        ; Left
+    beq rotate_left
+    
+    lda $DC00
+    and #$08        ; Right
+    beq rotate_right
+    
+    ; No rotation - apply friction
+    lda angular_vel
+    beq rotation_done
+    bmi negative_spin
+    
+    ; Positive spin - slow down
+    dec angular_vel
+    jmp apply_rotation
+    
+negative_spin:
+    inc angular_vel
+    jmp apply_rotation
+    
+rotate_left:
+    ; Add counter-clockwise acceleration
+    lda angular_vel
+    sec
+    sbc #ROTATION_SPEED
+    cmp #-16        ; Max spin speed
+    bcs store_angular
+    lda #-16
+    
+store_angular:
+    sta angular_vel
+    jmp apply_rotation
+    
+rotate_right:
+    ; Add clockwise acceleration
+    lda angular_vel
+    clc
+    adc #ROTATION_SPEED
+    cmp #16         ; Max spin speed
+    bcc store_angular2
+    lda #16
+    
+store_angular2:
+    sta angular_vel
+    
+apply_rotation:
+    ; Apply angular velocity to angle
+    lda ship_angle
+    clc
+    adc angular_vel
+    sta ship_angle
+    
+    ; Update sprite frame
+    lsr
+    lsr
+    lsr
+    lsr
+    lsr             ; Divide by 32 for 8 rotation frames
+    and #$07
+    clc
+    adc #64         ; Base sprite frame
+    sta $07F8       ; Sprite pointer
+    
+rotation_done:
+    rts`} language="asm" />
+
+## Complete Lunar Lander
+
+Put it together into a challenging game:
+
+<CodeBlock title="Lunar Lander Game" code={`* = $0801
+    !byte $0B,$08,$0A,$00,$9E
+    !text "2061"
+    !byte $00,$00,$00
+
+* = $080D
+
+main:
+    jsr init_game
+    jsr init_display
+    jsr create_terrain
+    jsr show_hud
+    
+game_loop:
+    lda #251
+wait:
+    cmp $D012
+    bne wait
+    
+    ; Update physics
+    jsr handle_input
+    jsr apply_thrust
+    jsr apply_gravity_physics
+    jsr update_position
+    jsr check_landing
+    jsr update_fuel
+    jsr draw_ship
+    jsr draw_thrust_flame
+    
+    jmp game_loop
+
+; Apply gravity to ship
+apply_gravity_physics:
+    ; Add gravity to Y velocity
+    lda ship_y_vel
+    clc
+    adc #GRAVITY
+    sta ship_y_vel
+    lda ship_y_vel+1
+    adc #0
+    sta ship_y_vel+1
+    rts
+
+; Update ship position from velocity
+update_position:
+    ; Update X
+    lda ship_x_pos
+    clc
+    adc ship_x_vel
+    sta ship_x_pos
+    lda ship_x_pos+1
+    adc ship_x_vel+1
+    sta ship_x_pos+1
+    
+    ; Update Y
+    lda ship_y_pos
+    clc
+    adc ship_y_vel
+    sta ship_y_pos
+    lda ship_y_pos+1
+    adc ship_y_vel+1
+    sta ship_y_pos+1
+    
+    ; Convert to sprite coords
+    lda ship_x_pos+1
+    sta $D000
+    lda ship_y_pos+1
+    sta $D001
+    rts
+
+; Check landing conditions
+check_landing:
+    ; Check if near landing pad
+    lda ship_y_pos+1
+    cmp #200        ; Ground level
+    bcc not_landing
+    
+    ; Check landing speed
+    lda ship_y_vel+1
+    cmp #$01        ; Max safe landing speed
+    bcs crash_landing
+    
+    ; Check angle (must be upright)
+    lda ship_angle
+    cmp #8
+    bcc good_angle
+    cmp #248
+    bcs good_angle
+    
+crash_landing:
+    jsr explosion_sequence
+    jmp reset_game
+    
+good_angle:
+    ; Check X position for landing pad
+    lda ship_x_pos+1
+    cmp #100
+    bcc crash_landing
+    cmp #140
+    bcs crash_landing
+    
+    ; Successful landing!
+    jsr landing_sequence
+    
+not_landing:
+    rts
+
+; Handle player input
+handle_input:
+    lda $DC00
+    
+    ; Fire button = thrust
+    and #$10
+    bne no_thrust_input
+    
+    lda fuel
+    beq no_thrust_input
+    
+    lda #1
+    sta thrust_on
+    dec fuel
+    jmp input_done
+    
+no_thrust_input:
+    lda #0
+    sta thrust_on
+    
+input_done:
+    jsr handle_rotation
+    rts
+
+; Visual effects
+draw_thrust_flame:
+    lda thrust_on
+    beq no_flame
+    
+    ; Draw flame sprite under ship
+    lda #$03        ; Enable sprite 1
+    sta $D015
+    
+    ; Position under ship
+    lda ship_x_pos+1
+    sta $D002
+    lda ship_y_pos+1
+    clc
+    adc #12
+    sta $D003
+    
+    ; Flame animation
+    inc flame_anim
+    lda flame_anim
+    and #$04
+    beq flame1
+    lda #66         ; Flame frame 2
+    jmp set_flame
+flame1:
+    lda #65         ; Flame frame 1
+set_flame:
+    sta $07F9
+    
+    lda #2          ; Red
+    sta $D028
+    rts
+    
+no_flame:
+    lda #$01        ; Disable flame sprite
+    sta $D015
+    rts
+
+; Create moon surface
+create_terrain:
+    ; Draw landing pad
+    ldx #100/8
+pad_loop:
+    lda #160        ; Solid block
+    sta $0400+25*40,x
+    lda #1          ; White
+    sta $D800+25*40,x
+    inx
+    cpx #140/8
+    bne pad_loop
+    
+    ; Draw rough terrain
+    ldx #0
+terrain_loop:
+    lda $D012       ; Random height
+    and #$03
+    tay
+    lda #102        ; Rock character
+    sta $0400+22*40,x,y
+    lda #11         ; Gray
+    sta $D800+22*40,x,y
+    inx
+    cpx #40
+    bne terrain_loop
+    rts
+
+; HUD display
+show_hud:
+    ; Fuel gauge
+    ldx #0
+fuel_text:
+    lda fuel_label,x
+    beq show_fuel_bar
+    jsr $FFD2
+    inx
+    bne fuel_text
+    
+show_fuel_bar:
+    lda fuel
+    lsr
+    lsr
+    tax
+fuel_bar:
+    lda #160
+    jsr $FFD2
+    dex
+    bne fuel_bar
+    
+    ; Velocity display
+    ; (simplified)
+    rts
+
+; Success sequence
+landing_sequence:
+    ldx #0
+success_msg:
+    lda landing_text,x
+    beq success_done
+    jsr $FFD2
+    inx
+    bne success_msg
+success_done:
+    ; Wait and reset
+    rts
+
+; Explosion sequence
+explosion_sequence:
+    ; Flash and sound
+    lda #2
+    sta $D020
+    ; Explosion sound
+    lda #$80
+    sta $D400
+    lda #$10
+    sta $D401
+    lda #$81
+    sta $D404
+    rts
+
+; Variables
+fuel:           .byte 255
+flame_anim:     .byte 0
+
+; Text
+fuel_label:     !text "FUEL: ",0
+landing_text:   !text "PERFECT LANDING!",0
+
+; Sine/cosine tables for thrust calculation
+sine_table:
+    !byte 0,6,13,19,25,31,37,43,49,54,60,65,70,75,80,85
+    !byte 89,94,98,102,105,109,112,115,117,120,122,124,126,127,128,129
+    ; (... full 256-entry table)
+    
+cosine_table:
+    !byte 127,129,128,127,126,124,122,120,117,115,112,109,105,102,98,94
+    ; (... full 256-entry table)`} language="asm" />
+
+## What You've Learned
+
+You've mastered momentum-based movement with:
+- **Thrust vectors** for realistic spacecraft control
+- **Angular momentum** for rotation physics
+- **Acceleration/deceleration** instead of instant speed
+- **Combined forces** (thrust + gravity)
+
+## What's Next
+
+Next, we'll create projectile systems for shooting games!

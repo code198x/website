@@ -1,128 +1,108 @@
 ---
-title: "Grid Protocol: Grid-Based Movement Mastery"
+title: "Assembly Foundations"
 system: "commodore-64"
 phase_number: 1
 tier_number: 1
-description: "Learn 6502 assembly programming through creating 'Grid Protocol' - a grid-based movement game. Master hardware sprite control, smooth interpolation, and the fundamentals of C64 game development."
+description: "Begin your journey into 6502 assembly programming. Learn the fundamentals of low-level programming, understand processor architecture, and write your first C64 programs."
 learning_objectives:
-  - "Master 6502 assembly language basics through game development"
-  - "Control VIC-II hardware sprites with precision positioning"
-  - "Implement smooth grid-based movement with interpolation"
-  - "Create responsive joystick/keyboard input handling"
-  - "Build complete game architecture with main loop"
-  - "Add SID sound effects and visual polish"
+  - "Set up a modern C64 development environment"
+  - "Understand 6502 processor architecture and registers"
+  - "Write and assemble your first programs"
+  - "Manipulate screen memory and colors"
+  - "Use basic assembly instructions and addressing modes"
+  - "Debug programs using VICE monitor"
 concepts_introduced:
-  - "6502 registers and memory addressing"
-  - "VIC-II sprite system and hardware control"
-  - "Game loop architecture and timing"
-  - "Grid coordinate systems and position mapping"
-  - "Linear interpolation for smooth movement"
-  - "Input handling and state management"
-  - "SID chip basics and sound generation"
-estimated_duration: "1 week (32 lessons)"
+  - "Assembly language basics"
+  - "6502 registers (A, X, Y)"
+  - "Memory addressing"
+  - "Screen memory ($0400)"
+  - "Color memory ($D800)"
+  - "PETSCII character set"
+  - "Basic I/O operations"
+  - "Program counter and stack"
+estimated_duration: "1-2 weeks"
 order: 1
+game_project:
+  name: "Simple Demo"
+  description: "Create a basic demo that displays text, cycles colors, and shows simple animations"
+  tier_range: "8 foundational lessons available (more coming soon)"
 ---
 
-# Tier 1: Grid Protocol - Grid-Based Movement Mastery
+# Tier 1: Assembly Foundations
 
-Welcome to your first C64 game development project! **Grid Protocol** introduces you to 6502 assembly programming through creating a complete grid-based movement game. Learn hardware sprite control, smooth animation, and game architecture fundamentals.
+Welcome to 6502 assembly programming! This tier introduces you to the fundamentals of Commodore 64 programming, taking you from complete beginner to writing working assembly programs.
 
-## What You'll Build
+## What You'll Learn
 
-**Grid Protocol** - A complete grid-based movement game featuring:
-- Hardware sprite character with smooth movement between grid positions
-- Responsive joystick and keyboard controls
-- Target collection system with scoring
-- Visual effects using multicolor sprites
-- SID chip sound effects
-- Professional game loop architecture
+This tier focuses on core concepts that form the foundation of all C64 programming:
 
-## Game Concept
+- How the 6502 processor works
+- Writing assembly code with ACME
+- Manipulating screen and color memory
+- Creating simple visual effects
+- Understanding the C64 memory map
 
-Control a sprite character that moves smoothly between grid positions on the screen. Navigate to collect targets while learning the fundamental concepts of C64 assembly programming and game development.
+## Your Journey Through 14 Lessons
 
-## Learning Journey (32 Lessons)
+### Getting Started (Lessons 1-3)
+Begin with the absolute basics - what assembly is, why it matters, and how to write your first program that actually does something visible on screen.
 
-### Foundation (Lessons 1-10)
-- **Lesson 1**: C64 setup and VIC-II basics
-- **Lesson 2**: Create and display your first hardware sprite
-- **Lesson 3**: Design custom sprite graphics
-- **Lesson 4**: Read joystick input and detect movement
-- **Lesson 5**: Implement grid position system
-- **Lesson 6**: Move sprite between grid positions
-- **Lesson 7**: Add boundary checking and constraints
-- **Lesson 8**: Create basic game loop structure
-- **Lesson 9**: Add enhanced movement features
-- **Lesson 10**: Complete basic patrol system with statistics
+### Building Skills (Lessons 4-7)
+Learn about processor registers, memory addressing, and how to control what appears on the C64's screen through direct memory manipulation.
 
-### Smooth Movement (Lessons 11-16) - UPCOMING
-- **Lesson 11**: Set up movement animation framework
-- **Lesson 12**: Implement linear interpolation
-- **Lesson 13**: Create movement state machine
-- **Lesson 14**: Add sprite animation frames
-- **Lesson 15**: Design target positions and markers
-- **Lesson 16**: Create scoring system
+### Creating Effects (Lessons 8-10)
+Put your skills together to create color effects, screen patterns, and understand how the C64's unique hardware works.
 
-### Visual Enhancement (Lessons 17-24)
-- **Lesson 17**: Enable multicolor sprite mode
-- **Lesson 18**: Draw background grid display
-- **Lesson 19**: Add color ramp effects
-- **Lesson 20**: Create sprite shadows
-- **Lesson 21**: Add particle effects
-- **Lesson 22**: Design screen borders
-- **Lesson 23**: Create title screen
-- **Lesson 24**: Add transition effects
+### Mini Project (Lessons 11-14)
+Combine everything you've learned to create a simple demo program featuring text display, color cycling, and basic animation.
 
-### Audio and Polish (Lessons 25-32)
-- **Lesson 25**: SID chip basics and tone generation
-- **Lesson 26**: Create movement sound effects
-- **Lesson 27**: Add background music
-- **Lesson 28**: Implement difficulty settings
-- **Lesson 29**: Create high score table
-- **Lesson 30**: Add performance timer
-- **Lesson 31**: Final polish and optimization
-- **Lesson 32**: Create professional loading screen
+## Lesson Overview
 
-## Core Skills Developed
+1. **Your First C64 Program: Hello Machine!** - Write and run your first assembly program
+2. **Commodore 64 Architecture Deep Dive** - Understand the hardware you're programming
+3. **Assembly Language Essentials** - Learn syntax and basic instructions
+4. **Working with Registers** - Master the A, X, and Y registers
+5. **Memory Addressing Modes** - Different ways to access memory
+6. **Screen Memory Manipulation** - Put characters on screen
+7. **Color Memory and Visual Effects** - Add color to your programs
+8. **PETSCII and Character Sets** - Work with C64's character system
+9. **Simple Loops and Counters** - Repeat operations efficiently
+10. **Basic Animation Techniques** - Make things move on screen
+11. **Combining Visual Effects** - Create complex screen displays
+12. **Introduction to Timing** - Control animation speed
+13. **Creating a Title Screen** - Design an attractive display
+14. **Your First Complete Demo** - Put it all together
 
-**6502 Assembly Programming**: Learn fundamental assembly concepts through practical application.
+## Why Start Here?
 
-**Hardware Sprite Control**: Master the VIC-II sprite system with precise positioning and animation.
+**Immediate Visual Feedback**: Every program you write produces visible results on screen, making learning tangible and rewarding.
 
-**Game Architecture**: Build proper game loops, state management, and modular code organization.
+**Foundation for Everything**: These concepts underpin all C64 programming, from games to demos to applications.
 
-**Smooth Animation**: Implement interpolation techniques for professional-quality movement.
+**Modern Tools, Classic Hardware**: Learn using contemporary development practices while mastering vintage hardware.
 
-**Input Handling**: Create responsive controls using joystick and keyboard input.
+**Hands-On Learning**: Every lesson includes working code you can modify and experiment with.
 
-**Audio Programming**: Generate sound effects using the SID chip's capabilities.
+## Technical Skills Developed
 
-## Why Grid-Based Movement?
+- **6502 Assembly**: Core instruction set and programming patterns
+- **Memory Management**: Understanding and using the C64 memory map
+- **Screen Control**: Direct manipulation of display memory
+- **Development Workflow**: Modern cross-development techniques
+- **Debugging Skills**: Using VICE monitor to troubleshoot code
+- **Optimization Basics**: Writing efficient assembly code
 
-Grid-based movement is the perfect introduction to game programming because it teaches:
-- **Discrete positioning**: Clear, predictable movement rules
-- **State management**: Character position and movement states
-- **Interpolation**: Smooth animation between discrete positions
-- **Timing control**: Frame-perfect movement and animation
-- **Collision detection**: Simple boundary and target detection
+## Prerequisites
 
-## Technical Highlights
+Before starting, ensure you have:
+- Completed the [C64 Setup Guide](/setup/c64)
+- ACME assembler installed
+- VICE emulator running
+- A text editor configured
+- Basic understanding of hexadecimal numbers
 
-- **Hardware Sprites**: Direct control of VIC-II sprite registers
-- **Smooth Interpolation**: Professional animation techniques
-- **Multicolor Graphics**: Advanced sprite display modes
-- **SID Programming**: Sound generation and music
-- **Memory Management**: Efficient sprite data organization
-- **Performance Optimization**: Cycle-accurate timing
+## What's Next?
 
-## Project Outcomes
+After completing Tier 1, you'll have a solid foundation in 6502 assembly and be ready to tackle more advanced topics like sprites, sound programming, and interrupt handling in future tiers.
 
-By completing Grid Protocol, you will have:
-- Created your first complete C64 game
-- Mastered fundamental 6502 assembly programming
-- Learned hardware sprite control and animation
-- Built a reusable game architecture framework
-- Developed professional game development skills
-- Created a polished, playable game for your portfolio
-
-This project establishes the foundation for all future C64 game development, teaching you the essential skills needed to create increasingly complex and impressive games throughout Phase 1.
+Ready to begin? Let's start with Lesson 1 and write your first C64 program!

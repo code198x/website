@@ -1,0 +1,1133 @@
+---
+title: "Targets & Destruction"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 26
+description: "Create satisfying combat with hit detection, score tracking, and spectacular destruction effects"
+difficulty: "easy"
+order: 26
+tags: ["combat", "destruction", "scoring", "effects"]
+prerequisites: ["projectiles", "collision detection", "sprites"]
+objectives:
+  - "Implement precise hit detection"
+  - "Create destruction animations"
+  - "Build score tracking system"
+  - "Add satisfying combat feedback"
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Targets & Destruction
+
+Make things explode spectacularly! We'll build a combat system with precise hit detection, satisfying destruction effects, and rewarding score mechanics.
+
+## Hit Detection System
+
+Create pixel-perfect collision detection:
+
+<CodeBlock title="Advanced Hit Detection" code={`; Hit detection constants
+HIT_BOX_PLAYER  = 6     ; Player collision radius
+HIT_BOX_ENEMY   = 8     ; Enemy collision radius  
+HIT_BOX_BULLET  = 2     ; Bullet collision radius
+
+; Enhanced collision check with bounding boxes
+check_collision:
+    ; Input: X = object1 index, Y = object2 index
+    ; Output: Carry = 1 if collision
+    
+    ; Get object 1 position and type
+    lda object_x,x
+    sta obj1_x
+    lda object_y,x
+    sta obj1_y
+    lda object_type,x
+    sta obj1_type
+    
+    ; Get object 2 position and type
+    lda object_x,y
+    sta obj2_x
+    lda object_y,y
+    sta obj2_y
+    lda object_type,y
+    sta obj2_type
+    
+    ; Calculate distance between centers
+    lda obj2_x
+    sec
+    sbc obj1_x
+    bpl positive_x
+    eor #$FF            ; Make absolute
+    clc
+    adc #1
+positive_x:
+    sta distance_x
+    
+    lda obj2_y
+    sec
+    sbc obj1_y
+    bpl positive_y
+    eor #$FF
+    clc
+    adc #1
+positive_y:
+    sta distance_y
+    
+    ; Get collision radii
+    ldx obj1_type
+    lda hit_box_sizes,x
+    sta radius1
+    
+    ldx obj2_type
+    lda hit_box_sizes,x
+    sta radius2
+    
+    ; Combined radius
+    lda radius1
+    clc
+    adc radius2
+    sta total_radius
+    
+    ; Check X distance
+    lda distance_x
+    cmp total_radius
+    bcs no_collision
+    
+    ; Check Y distance
+    lda distance_y
+    cmp total_radius
+    bcs no_collision
+    
+    ; Collision detected!
+    sec
+    rts
+    
+no_collision:
+    clc
+    rts
+
+; Object type constants
+TYPE_PLAYER     = 0
+TYPE_ENEMY      = 1
+TYPE_BULLET     = 2
+TYPE_POWERUP    = 3
+
+; Collision radius lookup
+hit_box_sizes:
+    .byte HIT_BOX_PLAYER    ; TYPE_PLAYER
+    .byte HIT_BOX_ENEMY     ; TYPE_ENEMY
+    .byte HIT_BOX_BULLET    ; TYPE_BULLET
+    .byte 6                 ; TYPE_POWERUP
+
+; Working variables
+obj1_x:         .byte 0
+obj1_y:         .byte 0
+obj1_type:      .byte 0
+obj2_x:         .byte 0
+obj2_y:         .byte 0
+obj2_type:      .byte 0
+distance_x:     .byte 0
+distance_y:     .byte 0
+radius1:        .byte 0
+radius2:        .byte 0
+total_radius:   .byte 0`} language="asm" />
+
+## Destruction Effects
+
+Create spectacular explosions and destruction:
+
+<CodeBlock title="Explosion System" code={`; Explosion pool
+MAX_EXPLOSIONS  = 8
+EXPLOSION_FRAMES = 12
+
+; Explosion structure (4 bytes each)
+; Byte 0: Active flag
+; Byte 1: X position
+; Byte 2: Y position
+; Byte 3: Animation frame
+
+explosion_pool: !fill MAX_EXPLOSIONS * 4, 0
+
+; Create explosion at position
+create_explosion:
+    ; Input: A = X pos, Y = Y pos
+    sta temp_x
+    sty temp_y
+    
+    ; Find free explosion slot
+    ldx #0
+    ldy #0
+find_explosion_slot:
+    lda explosion_pool,y
+    beq found_slot
+    
+    ; Next slot
+    tya
+    clc
+    adc #4
+    tay
+    inx
+    cpx #MAX_EXPLOSIONS
+    bne find_explosion_slot
+    
+    ; No free slots
+    rts
+    
+found_slot:
+    ; Initialize explosion
+    lda #1
+    sta explosion_pool,y    ; Active
+    
+    lda temp_x
+    sta explosion_pool+1,y  ; X position
+    
+    lda temp_y
+    sta explosion_pool+2,y  ; Y position
+    
+    lda #0
+    sta explosion_pool+3,y  ; Start frame
+    
+    ; Explosion sound effect
+    jsr play_explosion_sound
+    
+    ; Screen shake effect
+    inc screen_shake
+    lda #8
+    sta shake_duration
+    
+    rts
+
+; Update all explosions
+update_explosions:
+    ldx #0
+    ldy #0
+    
+explosion_loop:
+    lda explosion_pool,y
+    beq next_explosion
+    
+    ; Advance animation frame
+    inc explosion_pool+3,y
+    lda explosion_pool+3,y
+    cmp #EXPLOSION_FRAMES
+    bcc animation_ok
+    
+    ; Animation finished
+    lda #0
+    sta explosion_pool,y    ; Deactivate
+    jmp next_explosion
+    
+animation_ok:
+    ; Draw explosion frame
+    jsr draw_explosion_frame
+    
+next_explosion:
+    tya
+    clc
+    adc #4
+    tay
+    inx
+    cpx #MAX_EXPLOSIONS
+    bne explosion_loop
+    
+    ; Update screen shake
+    lda shake_duration
+    beq no_shake
+    dec shake_duration
+    
+    ; Apply screen shake
+    lda frame_counter
+    and #$01
+    beq shake_left
+    lda #1
+    jmp apply_shake
+shake_left:
+    lda #255
+apply_shake:
+    clc
+    adc $D016           ; Horizontal scroll
+    sta $D016
+    
+no_shake:
+    rts
+
+; Draw explosion animation
+draw_explosion_frame:
+    ; Y register contains explosion pool offset
+    
+    ; Calculate screen position
+    lda explosion_pool+1,y  ; X
+    lsr
+    lsr
+    lsr                     ; Convert to character
+    tax
+    
+    lda explosion_pool+2,y  ; Y
+    lsr
+    lsr
+    lsr
+    
+    ; Get screen address
+    jsr calc_screen_address
+    
+    ; Get animation frame
+    lda explosion_pool+3,y
+    lsr
+    lsr                     ; Divide by 4 for slower anim
+    tax
+    
+    ; Draw explosion character
+    lda explosion_chars,x
+    sta (screen_ptr),0
+    
+    ; Set explosion color
+    lda explosion_colors,x
+    sta (color_ptr),0
+    
+    ; Multi-character explosion for larger frames
+    cpx #2
+    bcc small_explosion
+    
+    ; Draw 2x2 explosion
+    lda explosion_chars,x
+    sta (screen_ptr),1      ; Right
+    sta (color_ptr),1
+    
+    ; Next row
+    lda screen_ptr
+    clc
+    adc #40
+    sta screen_ptr
+    lda screen_ptr+1
+    adc #0
+    sta screen_ptr+1
+    
+    lda explosion_chars,x
+    sta (screen_ptr),0      ; Bottom left
+    sta (screen_ptr),1      ; Bottom right
+    
+    lda explosion_colors,x
+    sta (color_ptr),0
+    sta (color_ptr),1
+    
+small_explosion:
+    rts
+
+; Explosion animation frames
+explosion_chars:
+    .byte 46    ; Period (spark)
+    .byte 42    ; Asterisk (small blast)
+    .byte 81    ; Large circle (fireball)
+    .byte 79    ; Solid block (smoke)
+
+; Explosion colors (bright to dark)
+explosion_colors:
+    .byte 1     ; White (initial flash)
+    .byte 7     ; Yellow (fire)
+    .byte 2     ; Red (ember)
+    .byte 11    ; Gray (smoke)
+
+; Sound effect
+play_explosion_sound:
+    ; Explosion sound - noise with decay
+    lda #$80
+    sta $D400       ; Low frequency
+    lda #$00
+    sta $D401       ; Very low
+    
+    lda #$80        ; Noise waveform
+    sta $D404       ; Start sound
+    
+    ; Envelope for realistic explosion
+    lda #$08        ; Quick attack
+    sta $D405
+    lda #$90        ; Long decay
+    sta $D406
+    
+    rts
+
+; Variables
+temp_x:         .byte 0
+temp_y:         .byte 0
+screen_shake:   .byte 0
+shake_duration: .byte 0
+frame_counter:  .byte 0`} language="asm" />
+
+## Score System
+
+Track and display player achievements:
+
+<CodeBlock title="Score Tracking System" code={`; Score system with multipliers
+score_low:      .byte 0     ; Score (BCD format)
+score_mid:      .byte 0
+score_high:     .byte 0
+multiplier:     .byte 1     ; Score multiplier
+combo_count:    .byte 0     ; Consecutive hits
+combo_timer:    .byte 0     ; Time until combo resets
+
+; Point values for different targets
+POINTS_ENEMY    = $10       ; 10 points (BCD)
+POINTS_BONUS    = $50       ; 50 points
+POINTS_POWERUP  = $25       ; 25 points
+
+; Add points to score
+add_score:
+    ; Input: A = points to add (BCD)
+    
+    ; Apply multiplier
+    ldx multiplier
+    beq score_done      ; No multiplier = 0
+    
+multiply_loop:
+    clc
+    adc score_low
+    sta score_low
+    
+    ; Handle BCD carry
+    cmp #$A0            ; >= $A0 in BCD?
+    bcc no_carry_low
+    
+    sec
+    sbc #$A0            ; Subtract 100 (BCD)
+    sta score_low
+    
+    ; Carry to middle byte
+    lda score_mid
+    clc
+    adc #1
+    sta score_mid
+    
+    cmp #$A0
+    bcc no_carry_mid
+    
+    sec
+    sbc #$A0
+    sta score_mid
+    
+    ; Carry to high byte
+    inc score_high
+    
+no_carry_mid:
+no_carry_low:
+    dex
+    bne multiply_loop
+    
+    ; Update combo system
+    inc combo_count
+    lda #60             ; 1 second combo window
+    sta combo_timer
+    
+    ; Increase multiplier based on combo
+    lda combo_count
+    cmp #5
+    bcc check_combo_3
+    lda #4              ; 4x multiplier
+    jmp store_multiplier
+    
+check_combo_3:
+    cmp #3
+    bcc check_combo_2
+    lda #3              ; 3x multiplier
+    jmp store_multiplier
+    
+check_combo_2:
+    cmp #2
+    bcc no_multiplier
+    lda #2              ; 2x multiplier
+    
+store_multiplier:
+    sta multiplier
+    
+no_multiplier:
+score_done:
+    jsr display_score
+    rts
+
+; Update combo timer
+update_combo:
+    lda combo_timer
+    beq combo_done
+    
+    dec combo_timer
+    bne combo_active
+    
+    ; Combo expired
+    lda #0
+    sta combo_count
+    lda #1
+    sta multiplier
+    
+combo_active:
+    ; Flash multiplier display
+    lda combo_timer
+    and #$08
+    beq flash_off
+    
+    ; Show multiplier
+    jsr display_multiplier
+    
+flash_off:
+combo_done:
+    rts
+
+; Display score on screen
+display_score:
+    ; Position cursor at top right
+    lda #147            ; Clear screen (if first call)
+    
+    ; Convert BCD to screen characters
+    ldx #0              ; Character position
+    
+    ; High byte
+    lda score_high
+    and #$0F            ; Low nibble
+    clc
+    adc #48             ; Convert to ASCII '0'-'9'
+    sta score_display,x
+    inx
+    
+    ; Mid byte - high nibble
+    lda score_mid
+    lsr
+    lsr
+    lsr
+    lsr
+    clc
+    adc #48
+    sta score_display,x
+    inx
+    
+    ; Mid byte - low nibble
+    lda score_mid
+    and #$0F
+    clc
+    adc #48
+    sta score_display,x
+    inx
+    
+    ; Low byte - high nibble  
+    lda score_low
+    lsr
+    lsr
+    lsr
+    lsr
+    clc
+    adc #48
+    sta score_display,x
+    inx
+    
+    ; Low byte - low nibble
+    lda score_low
+    and #$0F
+    clc
+    adc #48
+    sta score_display,x
+    inx
+    
+    ; Null terminator
+    lda #0
+    sta score_display,x
+    
+    ; Display on screen (top right corner)
+    ldx #0
+print_score:
+    lda score_text,x
+    beq start_digits
+    jsr $FFD2           ; CHROUT
+    inx
+    bne print_score
+    
+start_digits:
+    ldx #0
+print_digits:
+    lda score_display,x
+    beq score_displayed
+    jsr $FFD2
+    inx
+    bne print_digits
+    
+score_displayed:
+    rts
+
+; Display active multiplier
+display_multiplier:
+    ; Show "X2", "X3", "X4" etc.
+    lda #88             ; 'X'
+    jsr $FFD2
+    
+    lda multiplier
+    clc
+    adc #48             ; Convert to ASCII
+    jsr $FFD2
+    
+    rts
+
+; Text strings
+score_text:     !text "SCORE: ",0
+score_display:  !fill 6, 0      ; 5 digits + null`} language="asm" />
+
+## Target Destruction Logic
+
+Handle different target types with unique behaviors:
+
+<CodeBlock title="Target Type System" code={`; Target types and health
+TARGET_WEAK     = 0     ; 1 hit to destroy
+TARGET_MEDIUM   = 1     ; 2 hits to destroy
+TARGET_STRONG   = 2     ; 3 hits to destroy
+TARGET_ARMORED  = 3     ; Immune to small bullets
+
+; Target data arrays
+target_active:  !fill 16, 0     ; Active flags
+target_x:       !fill 16, 0     ; X positions  
+target_y:       !fill 16, 0     ; Y positions
+target_type:    !fill 16, 0     ; Target types
+target_health:  !fill 16, 0     ; Current health
+target_max_hp:  !fill 16, 0     ; Maximum health
+
+; Initialize target
+spawn_target:
+    ; Input: X = target index, A = type
+    sta target_type,x
+    
+    ; Set health based on type
+    tay
+    lda target_health_table,y
+    sta target_health,x
+    sta target_max_hp,x
+    
+    ; Mark as active
+    lda #1
+    sta target_active,x
+    
+    ; Random position
+    lda frame_counter
+    and #$7F
+    clc
+    adc #40
+    sta target_x,x
+    
+    lda #20
+    sta target_y,x
+    
+    rts
+
+; Handle target being hit
+hit_target:
+    ; Input: X = target index, Y = damage amount
+    
+    ; Check if target is active
+    lda target_active,x
+    beq hit_done
+    
+    ; Apply damage
+    lda target_health,x
+    sec
+    sbc damage_amount
+    sta target_health,x
+    bpl not_destroyed
+    
+    ; Target destroyed!
+    jsr destroy_target
+    jmp hit_done
+    
+not_destroyed:
+    ; Visual hit feedback
+    jsr flash_target
+    jsr play_hit_sound
+    
+    ; Damage number popup
+    jsr show_damage_number
+    
+hit_done:
+    rts
+
+; Destroy target with effects
+destroy_target:
+    ; Input: X = target index
+    
+    ; Create explosion
+    lda target_x,x
+    ldy target_y,x
+    jsr create_explosion
+    
+    ; Award points based on target type
+    ldy target_type,x
+    lda target_points,y
+    jsr add_score
+    
+    ; Special effects for tough targets
+    ldy target_type,x
+    cpy #TARGET_STRONG
+    bcc simple_destroy
+    
+    ; Multiple explosions for strong targets
+    lda target_x,x
+    clc
+    adc #8
+    ldy target_y,x
+    jsr create_explosion
+    
+    lda target_x,x
+    sec
+    sbc #8
+    ldy target_y,x
+    jsr create_explosion
+    
+simple_destroy:
+    ; Drop powerup chance
+    jsr roll_powerup_drop
+    
+    ; Deactivate target
+    lda #0
+    sta target_active,x
+    
+    rts
+
+; Visual hit feedback
+flash_target:
+    ; Flash target white for hit feedback
+    ; (Implementation depends on sprite/char system)
+    
+    ; Store original color
+    ldy target_type,x
+    lda target_colors,y
+    sta original_color
+    
+    ; Set to white
+    lda #1
+    sta $D027,x         ; Assuming sprite colors
+    
+    ; Set flash timer
+    lda #5
+    sta flash_timer,x
+    
+    rts
+
+; Update target flashing
+update_target_flash:
+    ldx #0
+flash_loop:
+    lda flash_timer,x
+    beq next_flash
+    
+    dec flash_timer,x
+    bne next_flash
+    
+    ; Restore original color
+    ldy target_type,x
+    lda target_colors,y
+    sta $D027,x
+    
+next_flash:
+    inx
+    cpx #16
+    bne flash_loop
+    rts
+
+; Data tables
+target_health_table:
+    .byte 1         ; TARGET_WEAK
+    .byte 2         ; TARGET_MEDIUM  
+    .byte 3         ; TARGET_STRONG
+    .byte 5         ; TARGET_ARMORED
+
+target_points:
+    .byte $10       ; 10 points - weak
+    .byte $20       ; 20 points - medium
+    .byte $50       ; 50 points - strong
+    .byte $99       ; 99 points - armored
+
+target_colors:
+    .byte 5         ; Green - weak
+    .byte 7         ; Yellow - medium
+    .byte 2         ; Red - strong
+    .byte 11        ; Gray - armored
+
+; Variables
+damage_amount:  .byte 1
+flash_timer:    !fill 16, 0
+original_color: .byte 0`} language="asm" />
+
+## Satisfying Feedback System
+
+Make destruction feel impactful:
+
+<CodeBlock title="Combat Feedback Effects" code={`; Screen effects for big hits
+create_impact_effect:
+    ; Input: X = impact strength (1-4)
+    
+    ; Screen flash
+    lda impact_colors,x
+    sta $D020           ; Border flash
+    sta $D021           ; Background flash
+    
+    lda #8
+    sta flash_duration
+    
+    ; Camera shake
+    stx shake_intensity
+    lda #12
+    sta shake_duration
+    
+    ; Slow motion effect for big hits
+    cpx #3
+    bcc no_slowmo
+    
+    lda #30             ; Half second slow-mo
+    sta slowmo_timer
+    
+no_slowmo:
+    ; Particle effects
+    jsr spawn_debris_particles
+    
+    rts
+
+; Update visual effects
+update_effects:
+    ; Handle screen flash
+    lda flash_duration
+    beq no_flash
+    
+    dec flash_duration
+    bne flash_active
+    
+    ; Restore normal colors
+    lda #0
+    sta $D020
+    lda #6              ; Blue background
+    sta $D021
+    jmp flash_done
+    
+flash_active:
+    ; Pulsing flash
+    lda flash_duration
+    and #$02
+    bne flash_done
+    
+    lda #0
+    sta $D020
+    sta $D021
+    
+flash_done:
+no_flash:
+    
+    ; Handle slow motion
+    lda slowmo_timer
+    beq normal_speed
+    
+    dec slowmo_timer
+    
+    ; Skip every other frame
+    lda frame_counter
+    and #$01
+    beq normal_speed
+    
+    ; Return without updating game logic
+    ; (caller handles this)
+    sec
+    rts
+    
+normal_speed:
+    clc
+    rts
+
+; Debris particle system
+spawn_debris_particles:
+    ldx #0
+particle_spawn:
+    ; Find free particle
+    lda particle_active,x
+    bne next_particle
+    
+    ; Activate particle
+    lda #1
+    sta particle_active,x
+    
+    ; Position near explosion
+    lda impact_x
+    clc
+    adc debris_offsets,x
+    sta particle_x,x
+    
+    lda impact_y
+    clc
+    adc debris_offsets+8,x
+    sta particle_y,x
+    
+    ; Random velocity
+    lda frame_counter
+    clc
+    adc x
+    and #$0F
+    sec
+    sbc #8              ; -8 to +7 range
+    sta particle_vel_x,x
+    
+    lda frame_counter
+    eor x
+    and #$0F
+    sec
+    sbc #12             ; Upward bias
+    sta particle_vel_y,x
+    
+    ; Lifetime
+    lda #30
+    sta particle_life,x
+    
+next_particle:
+    inx
+    cpx #8
+    bne particle_spawn
+    rts
+
+; Update particles
+update_particles:
+    ldx #0
+particle_loop:
+    lda particle_active,x
+    beq next_part
+    
+    ; Update position
+    lda particle_x,x
+    clc
+    adc particle_vel_x,x
+    sta particle_x,x
+    
+    lda particle_y,x
+    clc
+    adc particle_vel_y,x
+    sta particle_y,x
+    
+    ; Gravity on Y velocity
+    inc particle_vel_y,x
+    
+    ; Update lifetime
+    dec particle_life,x
+    bne draw_particle
+    
+    ; Particle died
+    lda #0
+    sta particle_active,x
+    jmp next_part
+    
+draw_particle:
+    ; Draw particle as character
+    lda particle_x,x
+    lsr
+    lsr
+    lsr
+    tay
+    
+    lda particle_y,x
+    lsr
+    lsr
+    lsr
+    jsr calc_screen_pos
+    
+    lda #46             ; Period character
+    sta ($FB),y
+    
+next_part:
+    inx
+    cpx #8
+    bne particle_loop
+    rts
+
+; Data
+impact_colors:
+    .byte 0, 1, 7, 2, 10    ; Black, white, yellow, red, light red
+
+debris_offsets:
+    .byte 0, 4, -4, 8, -8, 2, -2, 6
+    .byte 0, -4, 4, -8, 8, -2, 2, -6
+
+; Variables
+flash_duration:     .byte 0
+shake_intensity:    .byte 0
+slowmo_timer:       .byte 0
+impact_x:           .byte 0
+impact_y:           .byte 0
+
+; Particle system
+particle_active:    !fill 8, 0
+particle_x:         !fill 8, 0
+particle_y:         !fill 8, 0
+particle_vel_x:     !fill 8, 0
+particle_vel_y:     !fill 8, 0
+particle_life:      !fill 8, 0`} language="asm" />
+
+## Complete Combat Demo
+
+Put it all together for satisfying destruction:
+
+<CodeBlock title="Main Combat System" code={`* = $0801
+    !byte $0B,$08,$0A,$00,$9E
+    !text "2061"
+    !byte $00,$00,$00
+
+* = $080D
+
+main:
+    jsr init_combat_system
+    jsr spawn_initial_targets
+    
+combat_loop:
+    ; Frame timing
+    lda #251
+wait_combat:
+    cmp $D012
+    bne wait_combat
+    
+    ; Check for slow motion
+    jsr update_effects
+    bcs skip_update     ; Slow-mo frame skip
+    
+    ; Update game systems
+    jsr handle_player_input
+    jsr update_bullets
+    jsr check_all_collisions
+    jsr update_explosions
+    jsr update_particles
+    jsr update_target_flash
+    jsr update_combo
+    
+    ; Spawn new targets
+    jsr spawn_wave_manager
+    
+skip_update:
+    ; Always update visuals
+    jsr draw_all_objects
+    jsr draw_hud
+    
+    inc frame_counter
+    jmp combat_loop
+
+; Collision detection master
+check_all_collisions:
+    ; Check bullets vs targets
+    ldx #0              ; Bullet index
+bullet_check:
+    lda bullet_active,x
+    beq next_bullet_check
+    
+    ldy #0              ; Target index
+target_check:
+    lda target_active,y
+    beq next_target_check
+    
+    ; Check collision
+    jsr check_collision
+    bcc next_target_check
+    
+    ; Hit! Deactivate bullet
+    lda #0
+    sta bullet_active,x
+    
+    ; Damage target
+    lda #1              ; Bullet damage
+    sta damage_amount
+    tyx                 ; Target index to X
+    jsr hit_target
+    
+    ; Create impact effect
+    lda target_x,x
+    sta impact_x
+    lda target_y,x
+    sta impact_y
+    ldx #1              ; Small impact
+    jsr create_impact_effect
+    
+next_target_check:
+    iny
+    cpy #16
+    bne target_check
+    
+next_bullet_check:
+    inx
+    cpx #16
+    bne bullet_check
+    
+    rts
+
+; Wave management
+spawn_wave_manager:
+    ; Simple wave spawner
+    dec wave_timer
+    bne wave_done
+    
+    ; Reset timer
+    lda #120            ; 2 seconds
+    sta wave_timer
+    
+    ; Spawn enemy wave
+    jsr spawn_enemy_formation
+    
+wave_done:
+    rts
+
+; Spawn formation of enemies
+spawn_enemy_formation:
+    ldx #0
+formation_loop:
+    jsr find_free_target
+    cmp #$FF
+    beq formation_done
+    
+    tax
+    lda #TARGET_WEAK    ; Start with weak enemies
+    jsr spawn_target
+    
+    ; Set formation position
+    txa
+    and #$07
+    asl                 ; * 2
+    asl                 ; * 4  
+    asl                 ; * 8 for spacing
+    clc
+    adc #40
+    sta target_x,x
+    
+formation_done:
+    rts
+
+find_free_target:
+    ldx #0
+find_target_loop:
+    lda target_active,x
+    beq found_target
+    inx
+    cpx #16
+    bne find_target_loop
+    
+    lda #$FF            ; No free slots
+    rts
+    
+found_target:
+    txa
+    rts
+
+; Variables
+wave_timer: .byte 60`} language="asm" />
+
+## What You've Learned
+
+You've built a comprehensive combat system with:
+- **Precise hit detection** with bounding boxes
+- **Spectacular destruction effects** with explosions and particles
+- **Progressive scoring system** with combos and multipliers  
+- **Visual feedback** including screen flash and camera shake
+- **Multiple target types** with different health and behaviors
+
+This creates satisfying, impactful combat that feels rewarding!
+
+## Practice Challenges
+
+1. Add critical hits with extra damage and effects
+2. Create chain explosions that spread to nearby targets
+3. Implement different weapon types with unique effects
+4. Add boss enemies with multiple hit zones
+5. Create environmental destruction (destructible cover)
+
+## What's Next
+
+Next lesson, we'll build intelligent enemy patterns with AI movement and behaviors!

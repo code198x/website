@@ -1,0 +1,767 @@
+---
+title: "Multiple Sprites: Bring Your World to Life"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 6
+description: "Transform a lonely single sprite into a bustling world of interactive objects and characters"
+learning_objectives:
+  - "Manage arrays of sprite data and positions"
+  - "Create independent movement patterns for different objects"
+  - "Use all 8 hardware sprites efficiently"
+  - "Build the foundation for complex game worlds"
+concepts:
+  - "Sprite data management - arrays and structures"
+  - "Independent object behavior - different movement patterns"
+  - "Hardware sprite allocation - using all 8 VIC-II sprites"
+  - "Game object organization - enemies, collectibles, projectiles"
+estimated_duration: "45-60 minutes"
+difficulty: "medium"
+prerequisites:
+  - "Lesson 5: Sprite Animation"
+code_examples: true
+practical_exercise: true
+order: 6
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Multiple Sprites: Bring Your World to Life
+**From lonely character to bustling game world**
+
+Picture this: Summer 1983, you're playing "Jumpman" for the first time. The screen isn't just showing your character—it's alive with moving platforms, bouncing bullets, deadly robots patrolling their routes, and collectible treasures scattered everywhere. Eight independent objects, each following its own behavior, creating a complex interactive world that feels genuinely alive.
+
+Your single sprite from Lesson 4 works perfectly, but it's lonely. Today you'll populate your world with multiple objects: enemies that patrol, collectibles that bob and weave, projectiles that fly, and obstacles that move in patterns. By the end of this lesson, your screen will buzz with activity—the foundation of every great C64 game.
+
+This is the moment your programming transforms from "tech demo" to "game world."
+
+## What You'll Create
+
+Building on your joystick-controlled sprite, you'll add:
+- **Collectible coins** - Scattered treasures that rotate and sparkle
+- **Patrolling enemies** - Guards that move in predictable patterns  
+- **Moving obstacles** - Barriers that slide back and forth
+- **Player projectiles** - Bullets fired with the joystick button
+- **Dynamic management** - All 8 sprites working in harmony
+
+![Multiple sprites creating a living world](/images/c64-multiple-sprites.png)
+
+## Understanding Multi-Sprite Architecture
+
+### The C64's Eight-Sprite Advantage
+
+In 1982, most computers struggled to move even one graphic object smoothly. The C64's VIC-II chip could handle eight sprites simultaneously with zero CPU overhead for the graphics themselves—a revolutionary capability that enabled the complex game worlds we remember today.
+
+**Professional games used this architecture:**
+- **"Impossible Mission"** - Player, elevators, robots, falling objects
+- **"Jumpman"** - Character, bullets, moving platforms, collectibles  
+- **"Beach Head"** - Ships, planes, explosions, projectiles
+- **"The Last Ninja"** - Character, enemies, weapons, environmental objects
+
+### Sprite Allocation Strategy
+
+Professional C64 programmers developed standard sprite allocation patterns:
+
+<CodeBlock title="Professional Sprite Allocation" code={`Sprite 0: Player character (always active)
+Sprite 1: Player projectile/weapon
+Sprite 2-4: Enemy objects (3 max on screen)  
+Sprite 5-6: Collectible items (coins, power-ups)
+Sprite 7: Special effects (explosions, indicators)`} />
+
+This isn't arbitrary—it reflects 40+ years of game design wisdom about what creates engaging gameplay without overwhelming the player.
+
+## Managing Multiple Objects
+
+### Data Structure Design
+
+The foundation of multi-sprite programming is organizing your data efficiently:
+
+<CodeBlock title="Sprite Data Arrays" language="asm" code={`; Position arrays for all sprites
+sprite_x_pos:
+        !byte 100,200,80,160,50,250,120,180  ; X positions
+sprite_y_pos:
+        !byte 100,60,150,80,200,120,180,90   ; Y positions
+
+; Movement data
+sprite_x_vel:
+        !byte 1,2,-1,0,1,-2,0,1              ; X velocities
+sprite_y_vel:
+        !byte 0,1,0,-1,2,0,1,-1              ; Y velocities
+
+; Object types and states
+sprite_type:
+        !byte 0,1,1,2,2,3,3,1                ; 0=player, 1=enemy, 2=coin, 3=projectile
+sprite_active:
+        !byte 1,1,1,1,1,1,0,0                ; Active flags`} />
+
+### The Master Update Loop
+
+Professional games use a centralized system to update all sprites:
+
+<CodeBlock title="Professional Multi-Sprite Update System" language="asm" code={`        ; BASIC launcher
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+start:
+        jsr init_sprites
+        jsr init_game_world
+        
+main_loop:
+        ; Raster sync for smooth animation
+        lda #250
+wait:   cmp $d012
+        bne wait
+        
+        ; Handle player input
+        jsr handle_player_input
+        
+        ; Update all game objects
+        jsr update_all_sprites
+        
+        ; Update hardware registers
+        jsr update_sprite_hardware
+        
+        jmp main_loop
+
+init_sprites:
+        ; Enable all 8 sprites
+        lda #$ff               ; All sprites on
+        sta $d015              ; Sprite enable register
+        
+        ; Set sprite pointers (all using same data for now)
+        ldx #7
+init_pointers:
+        lda #$80               ; Point to sprite data at $2000
+        sta $07f8,x            ; Set sprite pointer
+        dex
+        bpl init_pointers
+        
+        ; Set sprite colors
+        ldx #7
+init_colors:
+        lda sprite_colors,x
+        sta $d027,x            ; Set sprite color
+        dex
+        bpl init_colors
+        
+        rts
+
+update_all_sprites:
+        ldx #7                 ; Process all 8 sprites
+update_loop:
+        ; Check if sprite is active
+        lda sprite_active,x
+        beq skip_sprite        ; Skip if inactive
+        
+        ; Update based on sprite type
+        lda sprite_type,x
+        cmp #0
+        beq update_player      ; Type 0 = player (skip, handled separately)
+        cmp #1
+        beq update_enemy       ; Type 1 = enemy
+        cmp #2  
+        beq update_collectible ; Type 2 = collectible
+        cmp #3
+        beq update_projectile  ; Type 3 = projectile
+        
+skip_sprite:
+        dex
+        bpl update_loop
+        rts`} />
+
+## Different Sprite Behaviors
+
+### Enemy Patrol Patterns
+
+<CodeBlock title="Enemy Patrol AI" language="asm" code={`update_enemy:
+        ; Store current sprite index for subroutines
+        stx current_sprite_index
+        
+        ; Update X position
+        lda sprite_x_pos,x
+        clc
+        adc sprite_x_vel,x     ; Add velocity
+        sta sprite_x_pos,x
+        
+        ; Check boundaries and reverse if needed
+        cmp #24                ; Left edge?
+        bcc reverse_enemy_x
+        cmp #296               ; Right edge?
+        bcs reverse_enemy_x
+        jmp enemy_y_movement
+        
+reverse_enemy_x:
+        ; Reverse X direction
+        lda sprite_x_vel,x
+        eor #$ff               ; Invert bits
+        clc
+        adc #1                 ; Two's complement
+        sta sprite_x_vel,x
+        
+        ; Keep enemy on screen
+        lda sprite_x_pos,x
+        cmp #24
+        bcs check_right_bound
+        lda #24
+        sta sprite_x_pos,x
+        jmp enemy_y_movement
+        
+check_right_bound:
+        lda #296
+        sta sprite_x_pos,x
+        
+enemy_y_movement:
+        ; Simple vertical oscillation using frame counter
+        lda frame_counter
+        clc
+        adc current_sprite_index ; Each enemy offset differently
+        and #31                  ; Keep in 0-31 range
+        tax                      ; Use as sine table index
+        
+        lda sine_table_small,x
+        clc
+        adc #100                 ; Base Y position
+        ldx current_sprite_index ; Restore sprite index
+        sta sprite_y_pos,x
+        
+        rts`} />
+
+### Collectible Item Animation
+
+<CodeBlock title="Floating Collectible Animation" language="asm" code={`update_collectible:
+        ; Collectibles bob up and down using sine waves
+        stx current_sprite_index
+        
+        ; Each collectible bobs at different phase
+        lda frame_counter
+        clc
+        adc current_sprite_index
+        asl                      ; Double speed for faster bobbing
+        and #63                  ; Keep in sine table range
+        tax
+        
+        lda sine_table,x
+        lsr                      ; Reduce amplitude
+        lsr
+        clc
+        adc collectible_base_y,x ; Add to base position
+        
+        ldx current_sprite_index
+        sta sprite_y_pos,x
+        
+        ; Slowly rotate through colors for sparkle effect
+        lda frame_counter
+        clc
+        adc current_sprite_index
+        lsr
+        lsr
+        lsr                      ; Slow color change
+        and #$0f                 ; Keep in color range
+        clc
+        adc #1                   ; Skip black
+        sta sprite_colors,x
+        
+        rts
+
+; Base Y positions for collectibles (so they bob at different heights)
+collectible_base_y:
+        !byte 80,120,160,100,140,180,60,200`} />
+
+### Player Projectiles
+
+<CodeBlock title="Projectile Management System" language="asm" code={`handle_player_input:
+        ; Handle movement (same as Lesson 4)
+        lda $dc00
+        sta joystick_state
+        
+        ; Movement code here (UP/DOWN/LEFT/RIGHT)...
+        
+        ; Check fire button
+        lda joystick_state
+        and #$10               ; Fire button bit
+        bne no_fire
+        
+        ; Fire button pressed - create projectile
+        jsr create_projectile
+        
+no_fire:
+        rts
+
+create_projectile:
+        ; Find unused sprite for projectile
+        ldx #1                 ; Start checking from sprite 1
+find_free_sprite:
+        lda sprite_active,x
+        beq found_free_sprite
+        inx
+        cpx #8                 ; Check all sprites except 0 (player)
+        bne find_free_sprite
+        rts                    ; No free sprites
+        
+found_free_sprite:
+        ; Activate projectile
+        lda #1
+        sta sprite_active,x
+        lda #3                 ; Type 3 = projectile
+        sta sprite_type,x
+        
+        ; Position at player location
+        lda sprite_x_pos       ; Player X position
+        clc
+        adc #12                ; Center of sprite
+        sta sprite_x_pos,x
+        
+        lda sprite_y_pos       ; Player Y position  
+        sta sprite_y_pos,x
+        
+        ; Set projectile velocity (upward)
+        lda #0
+        sta sprite_x_vel,x     ; No horizontal movement
+        lda #248               ; -8 in two's complement (upward)
+        sta sprite_y_vel,x
+        
+        rts
+
+update_projectile:
+        ; Move projectile
+        lda sprite_y_pos,x
+        clc
+        adc sprite_y_vel,x     ; Add velocity (negative = upward)
+        sta sprite_y_pos,x
+        
+        ; Check if off-screen
+        cmp #30                ; Top edge?
+        bcs projectile_active
+        
+        ; Deactivate projectile
+        lda #0
+        sta sprite_active,x
+        
+projectile_active:
+        rts`} />
+
+## Hardware Register Updates
+
+### Efficient Hardware Synchronization
+
+<CodeBlock title="Optimized Hardware Update System" language="asm" code={`update_sprite_hardware:
+        ; Update all sprite positions efficiently
+        ldx #7
+hardware_loop:
+        ; Check if sprite is active
+        lda sprite_active,x
+        beq skip_hardware_update
+        
+        ; Calculate hardware register addresses
+        txa
+        asl                    ; Multiply by 2 (each sprite uses 2 registers)
+        tay                    ; Use Y as register offset
+        
+        ; Update X position
+        lda sprite_x_pos,x
+        sta $d000,y            ; Store X position
+        
+        ; Update Y position  
+        lda sprite_y_pos,x
+        sta $d001,y            ; Store Y position
+        
+        ; Update sprite color
+        lda sprite_colors,x
+        sta $d027,x            ; Store color
+        
+skip_hardware_update:
+        dex
+        bpl hardware_loop
+        
+        ; Handle X MSB (for sprites beyond X=255)
+        lda #0                 ; Clear MSB register
+        sta $d010
+        
+        ldx #7
+msb_loop:
+        lda sprite_x_pos,x
+        cmp #255               ; Beyond normal range?
+        bcc no_msb
+        
+        ; Set MSB bit for this sprite
+        txa
+        tax                    ; Get bit position
+        lda msb_table,x        ; Get bit mask
+        ora $d010              ; Set the bit
+        sta $d010
+        
+no_msb:
+        dex
+        bpl msb_loop
+        rts
+
+; Bit masks for X MSB register
+msb_table:
+        !byte $01,$02,$04,$08,$10,$20,$40,$80`} />
+
+## Advanced Multi-Sprite Techniques
+
+### Sprite Multiplexing Preview
+
+<CodeBlock title="Professional Sprite Multiplexing Concept" language="asm" code={`; Advanced technique: More than 8 sprites using raster interrupts
+; (We'll cover this fully in a later lesson)
+
+sprite_multiplex_setup:
+        ; This is a preview of advanced techniques
+        ; Professional games like "Turrican" used this to display
+        ; dozens of sprites by rapidly switching sprite data
+        ; during different parts of the screen refresh
+        
+        ; Basic concept:
+        ; 1. Show sprites 0-7 in top half of screen
+        ; 2. At middle of screen, change sprite pointers
+        ; 3. Show different sprites 8-15 in bottom half
+        ; 4. Creates illusion of 16+ sprites
+        
+        ; We'll implement this fully in Lesson 12!
+        rts`} />
+
+### Object Type Management
+
+<CodeBlock title="Complete Game Object System" language="asm" code={`init_game_world:
+        ; Set up a complete game world
+        
+        ; Player sprite (always sprite 0)
+        lda #0
+        sta sprite_type         ; Type 0 = player
+        lda #1  
+        sta sprite_active       ; Always active
+        lda #160
+        sta sprite_x_pos        ; Center screen
+        lda #125
+        sta sprite_y_pos
+        
+        ; Create 2 patrolling enemies
+        lda #1                  ; Type 1 = enemy
+        sta sprite_type+1
+        sta sprite_type+2
+        sta sprite_active+1
+        sta sprite_active+2
+        
+        ; Enemy positions and velocities
+        lda #50
+        sta sprite_x_pos+1
+        lda #80  
+        sta sprite_y_pos+1
+        lda #2                  ; Moving right
+        sta sprite_x_vel+1
+        
+        lda #250
+        sta sprite_x_pos+2
+        lda #160
+        sta sprite_y_pos+2
+        lda #254                ; Moving left (-2 in two's complement)
+        sta sprite_x_vel+2
+        
+        ; Create 3 collectible coins
+        lda #2                  ; Type 2 = collectible
+        sta sprite_type+3
+        sta sprite_type+4
+        sta sprite_type+5
+        sta sprite_active+3
+        sta sprite_active+4  
+        sta sprite_active+5
+        
+        ; Scatter coins around screen
+        lda #100
+        sta sprite_x_pos+3
+        lda #100
+        sta sprite_y_pos+3
+        
+        lda #200
+        sta sprite_x_pos+4
+        lda #80
+        sta sprite_y_pos+4
+        
+        lda #80
+        sta sprite_x_pos+5
+        lda #180
+        sta sprite_y_pos+5
+        
+        ; Initialize frame counter
+        lda #0
+        sta frame_counter
+        
+        rts
+
+; Update frame counter each cycle
+update_frame_counter:
+        inc frame_counter
+        rts
+
+; Global variables
+frame_counter:          !byte 0
+current_sprite_index:   !byte 0
+joystick_state:         !byte 0
+
+; Color table for variety
+sprite_colors:
+        !byte $07,$02,$05,$03,$06,$04,$0e,$0a
+
+; Small sine table for enemy movement
+sine_table_small:
+        !byte 8,12,16,19,22,24,25,24,22,19,16,12,8,4,0,3
+        !byte 6,8,9,8,6,3,0,4,8,12,16,19,22,24,25,24`} />
+
+## Complete Multi-Sprite Program
+
+<CodeBlock title="Complete Living Game World" language="asm" code={`; Multi-Sprite Game World Demo
+; Shows player, enemies, collectibles working together
+
+        ; BASIC launcher
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+start:
+        jsr init_display
+        jsr init_sprites
+        jsr init_game_world
+        
+main_loop:
+        ; Smooth 50Hz timing
+        lda #250
+wait:   cmp $d012
+        bne wait
+        
+        jsr update_frame_counter
+        jsr handle_player_input
+        jsr update_all_sprites
+        jsr update_sprite_hardware
+        
+        jmp main_loop
+
+init_display:
+        lda #$00               ; Black border
+        sta $d020
+        lda #$06               ; Blue background  
+        sta $d021
+        rts
+
+init_sprites:
+        ; Enable all sprites
+        lda #$ff
+        sta $d015
+        
+        ; Set all sprite pointers to same data
+        ldx #7
+pointer_loop:
+        lda #$80               ; Sprite data at $2000
+        sta $07f8,x
+        dex
+        bpl pointer_loop
+        
+        ; Clear X MSB register
+        lda #$00
+        sta $d010
+        rts
+
+handle_player_input:
+        ; Read joystick
+        lda $dc00
+        sta joystick_state
+        
+        ; UP
+        lsr
+        bcs check_down
+        lda sprite_y_pos
+        sec
+        sbc #2                 ; Move up 2 pixels
+        cmp #50                ; Top boundary
+        bcc no_up_move
+        sta sprite_y_pos
+no_up_move:
+        
+check_down:
+        lsr
+        bcs check_left
+        lda sprite_y_pos
+        clc
+        adc #2                 ; Move down 2 pixels
+        cmp #229               ; Bottom boundary
+        bcs no_down_move
+        sta sprite_y_pos
+no_down_move:
+
+check_left:
+        lsr
+        bcs check_right
+        lda sprite_x_pos
+        sec
+        sbc #2                 ; Move left 2 pixels
+        cmp #24                ; Left boundary
+        bcc no_left_move
+        sta sprite_x_pos
+no_left_move:
+
+check_right:
+        lsr
+        bcs check_fire
+        lda sprite_x_pos
+        clc
+        adc #2                 ; Move right 2 pixels
+        cmp #296               ; Right boundary  
+        bcs no_right_move
+        sta sprite_x_pos
+no_right_move:
+
+check_fire:
+        lsr
+        bcs input_done
+        jsr create_projectile
+        
+input_done:
+        rts
+
+update_all_sprites:
+        ldx #1                 ; Skip sprite 0 (player)
+sprite_update_loop:
+        lda sprite_active,x
+        beq next_sprite
+        
+        lda sprite_type,x
+        cmp #1
+        beq do_enemy_update
+        cmp #2
+        beq do_collectible_update
+        cmp #3
+        beq do_projectile_update
+        jmp next_sprite
+        
+do_enemy_update:
+        jsr update_enemy
+        jmp next_sprite
+        
+do_collectible_update:
+        jsr update_collectible
+        jmp next_sprite
+        
+do_projectile_update:
+        jsr update_projectile
+        
+next_sprite:
+        inx
+        cpx #8
+        bne sprite_update_loop
+        rts
+
+; All the update routines from previous examples...
+; (update_enemy, update_collectible, update_projectile)
+; (create_projectile, update_sprite_hardware)
+
+; Sprite data - simple filled circle
+        !org $2000
+sprite_data:
+        !byte %00000111,%11100000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00111111,%11111100,%00000000
+        !byte %01111111,%11111110,%00000000
+        !byte %01111111,%11111110,%00000000
+        !byte %11111111,%11111111,%00000000
+        !byte %11111111,%11111111,%00000000
+        !byte %11111111,%11111111,%00000000
+        !byte %11111111,%11111111,%00000000
+        !byte %11111111,%11111111,%00000000
+        !byte %11111111,%11111111,%00000000
+        !byte %11111111,%11111111,%00000000
+        !byte %11111111,%11111111,%00000000
+        !byte %01111111,%11111110,%00000000
+        !byte %01111111,%11111110,%00000000
+        !byte %00111111,%11111100,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00000111,%11100000,%00000000
+        !byte %00000000,%00000000,%00000000
+        !byte %00000000,%00000000,%00000000
+        !byte %00000000,%00000000,%00000000
+        !byte 0`} />
+
+## Experimentation Challenges
+
+### Classic Game Recreations
+
+**"Frogger" Traffic Pattern:**
+- Sprites moving horizontally at different speeds
+- Gaps between objects that player must navigate
+- Multiple lanes with different patterns
+
+**"Galaga" Formation Flying:**  
+- Enemy sprites that move in complex mathematical curves
+- Group behaviors where sprites follow a leader
+- Attack patterns where enemies break formation
+
+**"Centipede" Segmented Movement:**
+- Chain of sprites that follow each other
+- Head sprite determines path, others follow
+- Collision with any segment affects the whole chain
+
+### Advanced Experiments
+
+<CodeBlock title="Professional Challenge Ideas" language="asm" code={`; Flocking behavior (like "Swarm")
+; Each sprite tries to:
+; 1. Stay close to neighbors
+; 2. Avoid crowding  
+; 3. Match average direction of group
+
+; State machines for enemies
+; PATROL -> ALERT -> CHASE -> ATTACK -> RETURN
+
+; Projectile trails
+; Previous positions create visual trail effect
+
+; Sprite pooling system
+; Reuse inactive sprites efficiently`} />
+
+## What You've Learned
+
+You can now:
+- ✅ **Manage complex sprite arrays** - Position, velocity, and state data
+- ✅ **Create independent behaviors** - Each sprite follows its own AI
+- ✅ **Use all 8 hardware sprites** - Maximum visual complexity
+- ✅ **Build living game worlds** - Multiple objects creating dynamic scenes
+- ✅ **Organize game object systems** - Professional data management
+- ✅ **Handle sprite lifecycle** - Creation, activation, deactivation
+
+Your screen is no longer empty—it's a bustling world of activity!
+
+**WOW Moment:** You've just created what looks and feels like a real game world! Your screen is alive with independent characters, each following their own behavior patterns. Enemies patrol their territories, collectibles bob and sparkle, projectiles fly through the air, and everything moves in harmony. This is the exact moment when your programming crosses from "tech demo" into "interactive entertainment"—you've built the foundation that every classic C64 game was built upon!
+
+## What's Next?
+
+In the next lesson, we'll add collision detection so all these beautifully moving objects can actually interact with each other. Your patrolling enemies will be able to catch the player, projectiles will hit targets, and collectibles will be gathered. The living world you've created will become truly interactive!
+
+Your sprites can move independently and look amazing. Now let's make them smart enough to interact!
+
+## Quick Reference
+
+<CodeBlock title="Multi-Sprite Essentials" language="asm" code={`; Sprite enable register
+$D015: Enable/disable each sprite (bit per sprite)
+
+; Position registers (X,Y pairs)  
+$D000-D001: Sprite 0 X,Y
+$D002-D003: Sprite 1 X,Y
+...
+$D00E-D00F: Sprite 7 X,Y
+
+; Color registers
+$D027-D02E: Individual sprite colors
+
+; Sprite pointers
+$07F8-07FF: Sprite data locations`} />
+
+<CodeBlock title="Multi-Object Update Pattern" language="asm" code={`; Standard game loop pattern
+main_loop:
+        jsr wait_for_raster
+        jsr handle_input
+        jsr update_all_objects
+        jsr update_hardware
+        jmp main_loop
+
+; Object array structure
+object_x:     !byte pos0,pos1,pos2...
+object_y:     !byte pos0,pos1,pos2...  
+object_type:  !byte type0,type1,type2...
+object_state: !byte state0,state1,state2...`} />
+
+**Living Worlds:** You're now programming the same multi-object systems that powered every classic C64 game from "Jumpman" to "The Last Ninja"!

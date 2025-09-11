@@ -1,0 +1,1137 @@
+---
+title: "Collectibles & Pickups"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 28
+description: "Create rewarding gameplay with power-ups, coins, inventory systems, and special abilities"
+difficulty: "easy"
+order: 28
+tags: ["collectibles", "powerups", "inventory", "rewards"]
+prerequisites: ["sprites", "collision detection", "scoring"]
+objectives:
+  - "Build power-up spawn systems"
+  - "Create inventory management"
+  - "Implement temporary and permanent upgrades"
+  - "Design reward feedback loops"
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Collectibles & Pickups
+
+Make every discovery exciting! We'll build a comprehensive collectible system with power-ups, coins, keys, and special abilities that enhance gameplay and reward exploration.
+
+## Power-Up System
+
+Create collectibles that enhance player abilities:
+
+<CodeBlock title="Power-Up Core System" code={`; Power-up types
+POWERUP_COIN        = 0     ; Score points
+POWERUP_HEALTH      = 1     ; Restore health
+POWERUP_SPEED       = 2     ; Increase movement speed
+POWERUP_WEAPON      = 3     ; Weapon upgrade
+POWERUP_SHIELD      = 4     ; Temporary invincibility
+POWERUP_LIFE        = 5     ; Extra life
+POWERUP_KEY         = 6     ; Key for doors
+POWERUP_MAGNET      = 7     ; Attract other pickups
+
+; Power-up pool (6 bytes each)
+MAX_POWERUPS        = 16
+; Byte 0: Active flag
+; Byte 1: Type
+; Byte 2: X position
+; Byte 3: Y position
+; Byte 4: Animation frame
+; Byte 5: Timer/value
+
+powerup_pool:       !fill MAX_POWERUPS * 6, 0
+
+; Spawn power-up at location
+spawn_powerup:
+    ; Input: A = type, X = X position, Y = Y position
+    sta temp_type
+    stx temp_x
+    sty temp_y
+    
+    ; Find free slot
+    ldx #0
+    ldy #0
+find_powerup_slot:
+    lda powerup_pool,y
+    beq found_powerup_slot
+    
+    ; Next slot
+    tya
+    clc
+    adc #6
+    tay
+    inx
+    cpx #MAX_POWERUPS
+    bne find_powerup_slot
+    
+    ; No free slots
+    rts
+    
+found_powerup_slot:
+    ; Initialize power-up
+    lda #1
+    sta powerup_pool,y      ; Active
+    
+    lda temp_type
+    sta powerup_pool+1,y    ; Type
+    
+    lda temp_x
+    sta powerup_pool+2,y    ; X position
+    
+    lda temp_y
+    sta powerup_pool+3,y    ; Y position
+    
+    lda #0
+    sta powerup_pool+4,y    ; Animation frame
+    
+    ; Set initial timer/value based on type
+    ldx temp_type
+    lda powerup_values,x
+    sta powerup_pool+5,y
+    
+    ; Spawn sound effect
+    jsr play_spawn_sound
+    
+    rts
+
+; Update all power-ups
+update_powerups:
+    ldx #0
+    ldy #0
+    
+powerup_loop:
+    lda powerup_pool,y
+    beq next_powerup
+    
+    ; Animate power-up
+    inc powerup_pool+4,y    ; Animation frame
+    
+    ; Bobbing motion
+    lda powerup_pool+4,y
+    and #$0F
+    tax
+    lda sine_table_small,x
+    clc
+    adc powerup_pool+3,y    ; Add to Y position
+    sta display_y
+    
+    ; Check for player collision
+    jsr check_powerup_collision
+    bcc no_pickup
+    
+    ; Collected!
+    jsr collect_powerup
+    
+    ; Deactivate
+    lda #0
+    sta powerup_pool,y
+    jmp next_powerup
+    
+no_pickup:
+    ; Timeout check for temporary powerups
+    lda powerup_pool+1,y    ; Type
+    cmp #POWERUP_COIN
+    beq no_timeout          ; Coins don't timeout
+    
+    dec powerup_pool+5,y    ; Decrement timer
+    bne no_timeout
+    
+    ; Timed out - remove with warning flash
+    jsr powerup_timeout_effect
+    lda #0
+    sta powerup_pool,y
+    
+no_timeout:
+next_powerup:
+    tya
+    clc
+    adc #6
+    tay
+    inx
+    cpx #MAX_POWERUPS
+    bne powerup_loop
+    
+    rts
+
+; Check collision with player
+check_powerup_collision:
+    ; Y register = powerup pool offset
+    ; Returns carry set if collision
+    
+    ; Get powerup position
+    lda powerup_pool+2,y    ; Powerup X
+    sec
+    sbc #8                  ; Collision box
+    cmp $D000               ; Player X
+    bcs no_collision
+    
+    lda powerup_pool+2,y
+    clc
+    adc #8
+    cmp $D000
+    bcc no_collision
+    
+    ; Check Y
+    lda powerup_pool+3,y    ; Powerup Y
+    sec
+    sbc #8
+    cmp $D001               ; Player Y
+    bcs no_collision
+    
+    lda powerup_pool+3,y
+    clc
+    adc #8
+    cmp $D001
+    bcc no_collision
+    
+    ; Collision detected
+    sec
+    rts
+    
+no_collision:
+    clc
+    rts
+
+; Initial values for power-up types
+powerup_values:
+    .byte 10        ; POWERUP_COIN - 10 points
+    .byte 25        ; POWERUP_HEALTH - 25 HP
+    .byte 300       ; POWERUP_SPEED - 5 second duration
+    .byte 1         ; POWERUP_WEAPON - level increase
+    .byte 180       ; POWERUP_SHIELD - 3 second duration
+    .byte 1         ; POWERUP_LIFE - 1 extra life
+    .byte 1         ; POWERUP_KEY - quantity
+    .byte 240       ; POWERUP_MAGNET - 4 second duration
+
+; Working variables
+temp_type:      .byte 0
+temp_x:         .byte 0
+temp_y:         .byte 0
+display_y:      .byte 0
+
+; Small sine table for bobbing animation
+sine_table_small:
+    .byte 0, 1, 2, 2, 2, 2, 1, 0, 0, -1, -2, -2, -2, -2, -1, 0`} language="asm" />
+
+## Collection & Effects
+
+Handle different power-up effects when collected:
+
+<CodeBlock title="Power-Up Collection System" code={`; Collect power-up and apply effects
+collect_powerup:
+    ; Y register = powerup pool offset
+    
+    ; Get power-up type
+    lda powerup_pool+1,y
+    
+    ; Jump to appropriate handler
+    cmp #POWERUP_COIN
+    beq collect_coin
+    cmp #POWERUP_HEALTH
+    beq collect_health
+    cmp #POWERUP_SPEED
+    beq collect_speed
+    cmp #POWERUP_WEAPON
+    beq collect_weapon
+    cmp #POWERUP_SHIELD
+    beq collect_shield
+    cmp #POWERUP_LIFE
+    beq collect_life
+    cmp #POWERUP_KEY
+    beq collect_key
+    cmp #POWERUP_MAGNET
+    beq collect_magnet
+    
+    rts
+
+collect_coin:
+    ; Add to score
+    lda powerup_pool+5,y    ; Point value
+    jsr add_score
+    
+    ; Coin sound
+    lda #$40
+    sta $D400
+    lda #$20
+    sta $D401
+    lda #$11                ; Triangle wave
+    sta $D404
+    
+    ; Update coin counter
+    inc coin_count
+    
+    ; Every 100 coins = extra life
+    lda coin_count
+    cmp #100
+    bcc coin_done
+    
+    lda #0
+    sta coin_count
+    inc lives
+    jsr extra_life_fanfare
+    
+coin_done:
+    rts
+
+collect_health:
+    ; Restore health
+    lda player_health
+    clc
+    adc powerup_pool+5,y    ; Health amount
+    cmp max_health
+    bcc store_health
+    lda max_health          ; Cap at maximum
+    
+store_health:
+    sta player_health
+    
+    ; Health sound
+    lda #$20
+    sta $D400
+    lda #$30
+    sta $D401
+    lda #$21                ; Pulse wave
+    sta $D404
+    
+    ; Flash health bar
+    lda #10
+    sta health_flash_timer
+    
+    rts
+
+collect_speed:
+    ; Boost movement speed
+    lda powerup_pool+5,y    ; Duration
+    sta speed_boost_timer
+    
+    lda #3                  ; Increased speed
+    sta player_speed
+    
+    ; Speed sound
+    lda #$60
+    sta $D400
+    lda #$40
+    sta $D401
+    lda #$41                ; Sawtooth
+    sta $D404
+    
+    ; Visual indicator
+    lda #7                  ; Yellow player
+    sta $D027
+    
+    rts
+
+collect_weapon:
+    ; Upgrade weapon
+    lda weapon_level
+    clc
+    adc powerup_pool+5,y    ; Upgrade amount
+    cmp #4                  ; Max weapon level
+    bcc store_weapon
+    lda #4
+    
+store_weapon:
+    sta weapon_level
+    
+    ; Weapon sound
+    lda #$00
+    sta $D407
+    lda #$50
+    sta $D408
+    lda #$21
+    sta $D40B
+    
+    ; Show weapon level indicator
+    jsr display_weapon_level
+    
+    rts
+
+collect_shield:
+    ; Temporary invincibility
+    lda powerup_pool+5,y    ; Duration
+    sta shield_timer
+    
+    lda #1
+    sta shield_active
+    
+    ; Shield sound
+    lda #$80
+    sta $D407
+    lda #$30
+    sta $D408
+    lda #$11
+    sta $D40B
+    
+    ; Visual feedback
+    lda #1                  ; White flashing
+    sta shield_flash_color
+    
+    rts
+
+collect_life:
+    ; Extra life
+    inc lives
+    jsr extra_life_fanfare
+    
+    rts
+
+collect_key:
+    ; Add key to inventory
+    lda keys_carried
+    clc
+    adc powerup_pool+5,y
+    sta keys_carried
+    
+    ; Key sound
+    lda #$10
+    sta $D400
+    lda #$60
+    sta $D401
+    lda #$41
+    sta $D404
+    
+    ; Flash border
+    lda #7                  ; Yellow
+    sta $D020
+    
+    rts
+
+collect_magnet:
+    ; Attract nearby powerups
+    lda powerup_pool+5,y    ; Duration
+    sta magnet_timer
+    
+    lda #1
+    sta magnet_active
+    
+    ; Magnet sound
+    lda #$C0
+    sta $D407
+    lda #$80
+    sta $D408
+    lda #$81
+    sta $D40B
+    
+    rts
+
+; Extra life fanfare
+extra_life_fanfare:
+    ; Play ascending notes
+    ldx #0
+life_sound_loop:
+    lda life_melody,x
+    beq life_sound_done
+    
+    sta $D400
+    lda life_melody+1,x
+    sta $D401
+    lda #$11
+    sta $D404
+    
+    ; Wait
+    ldy #20
+life_wait:
+    dey
+    bne life_wait
+    
+    ; Stop sound
+    lda #$10
+    sta $D404
+    
+    inx
+    inx
+    jmp life_sound_loop
+    
+life_sound_done:
+    rts
+
+; Extra life melody (frequency pairs)
+life_melody:
+    .byte $20, $30   ; C
+    .byte $40, $40   ; E  
+    .byte $60, $50   ; G
+    .byte $80, $60   ; C (high)
+    .byte 0, 0       ; End
+
+; Player stats
+player_health:      .byte 100
+max_health:         .byte 100
+player_speed:       .byte 2
+weapon_level:       .byte 1
+lives:              .byte 3
+keys_carried:       .byte 0
+coin_count:         .byte 0
+
+; Temporary effect timers
+speed_boost_timer:  .byte 0
+shield_timer:       .byte 0
+magnet_timer:       .byte 0
+health_flash_timer: .byte 0
+
+; Effect flags
+shield_active:      .byte 0
+magnet_active:      .byte 0
+shield_flash_color: .byte 0`} language="asm" />
+
+## Magnet & Auto-Collection
+
+Make collection more dynamic with attraction effects:
+
+<CodeBlock title="Magnetic Collection System" code={`; Update magnet effect
+update_magnet_effect:
+    lda magnet_active
+    beq magnet_done
+    
+    ; Decrement timer
+    dec magnet_timer
+    bne magnet_still_active
+    
+    ; Magnet expired
+    lda #0
+    sta magnet_active
+    jmp magnet_done
+    
+magnet_still_active:
+    ; Attract nearby powerups to player
+    ldx #0
+    ldy #0
+    
+magnet_loop:
+    lda powerup_pool,y
+    beq next_magnet_check
+    
+    ; Calculate distance to player
+    lda powerup_pool+2,y    ; Powerup X
+    sec
+    sbc $D000               ; Player X
+    bpl magnet_pos_x
+    eor #$FF                ; Make positive
+    clc
+    adc #1
+magnet_pos_x:
+    cmp #60                 ; Magnet range
+    bcs next_magnet_check
+    
+    ; Within range - attract
+    lda powerup_pool+2,y    ; Powerup X
+    cmp $D000               ; Player X
+    bcs magnet_move_left
+    
+    ; Move right toward player
+    inc powerup_pool+2,y
+    jmp check_magnet_y
+    
+magnet_move_left:
+    dec powerup_pool+2,y
+    
+check_magnet_y:
+    lda powerup_pool+3,y    ; Powerup Y
+    cmp $D001               ; Player Y
+    bcs magnet_move_up
+    
+    ; Move down toward player
+    inc powerup_pool+3,y
+    jmp next_magnet_check
+    
+magnet_move_up:
+    dec powerup_pool+3,y
+    
+next_magnet_check:
+    tya
+    clc
+    adc #6
+    tay
+    inx
+    cpx #MAX_POWERUPS
+    bne magnet_loop
+    
+magnet_done:
+    rts
+
+; Smart powerup spawning based on player needs
+smart_spawn_powerup:
+    ; Check what player needs most
+    lda player_health
+    cmp #30                 ; Low health?
+    bcc spawn_health_priority
+    
+    lda weapon_level
+    cmp #2                  ; Weak weapon?
+    bcc spawn_weapon_priority
+    
+    lda shield_timer
+    bne normal_spawn        ; Already have shield
+    
+    ; Random chance for shield
+    lda frame_counter
+    and #$1F
+    bne normal_spawn
+    
+    lda #POWERUP_SHIELD
+    jmp execute_spawn
+    
+spawn_health_priority:
+    ; 50% chance for health when low
+    lda frame_counter
+    and #$01
+    bne normal_spawn
+    
+    lda #POWERUP_HEALTH
+    jmp execute_spawn
+    
+spawn_weapon_priority:
+    ; 30% chance for weapon upgrade
+    lda frame_counter
+    and #$03
+    bne normal_spawn
+    
+    lda #POWERUP_WEAPON
+    jmp execute_spawn
+    
+normal_spawn:
+    ; Random powerup type
+    lda frame_counter
+    and #$07
+    
+execute_spawn:
+    ; Spawn at random location
+    ldx frame_counter
+    and #$7F
+    clc
+    adc #40                 ; Keep on screen
+    tax
+    
+    ldy #50                 ; Fixed Y for now
+    jsr spawn_powerup
+    
+    rts
+
+; Powerup chain reactions
+create_powerup_explosion:
+    ; Input: X = explosion center X, Y = explosion center Y
+    stx explosion_x
+    sty explosion_y
+    
+    ; Spawn multiple coins in circle
+    ldx #0
+coin_burst_loop:
+    lda explosion_x
+    clc
+    adc coin_offsets_x,x
+    tay                     ; Y = spawn X
+    
+    lda explosion_y
+    clc
+    adc coin_offsets_y,x
+    tax                     ; X = spawn Y
+    
+    lda #POWERUP_COIN
+    jsr spawn_powerup
+    
+    inx
+    cpx #8                  ; 8 coins in circle
+    bne coin_burst_loop
+    
+    rts
+
+; Coin burst pattern offsets
+coin_offsets_x:
+    .byte 0, 8, 12, 8, 0, -8, -12, -8
+coin_offsets_y:
+    .byte -12, -8, 0, 8, 12, 8, 0, -8
+
+explosion_x:    .byte 0
+explosion_y:    .byte 0`} language="asm" />
+
+## Inventory System
+
+Track collected items and manage inventory:
+
+<CodeBlock title="Inventory Management" code={`; Inventory system
+MAX_INVENTORY_ITEMS = 8
+
+; Inventory slots (2 bytes each)
+; Byte 0: Item type (0 = empty)
+; Byte 1: Quantity
+inventory_slots:    !fill MAX_INVENTORY_ITEMS * 2, 0
+
+; Item types
+ITEM_NONE           = 0
+ITEM_KEY_RED        = 1
+ITEM_KEY_BLUE       = 2
+ITEM_KEY_YELLOW     = 3
+ITEM_BOMB           = 4
+ITEM_POTION         = 5
+ITEM_SCROLL         = 6
+ITEM_GEM            = 7
+
+; Add item to inventory
+add_to_inventory:
+    ; Input: A = item type, X = quantity
+    sta item_type
+    stx item_quantity
+    
+    ; Check if item already exists (stackable)
+    jsr find_inventory_item
+    bcc item_not_found
+    
+    ; Item exists - add to existing stack
+    txa                     ; X = slot index from find routine
+    asl                     ; Convert to byte offset
+    tay
+    
+    lda inventory_slots+1,y ; Current quantity
+    clc
+    adc item_quantity       ; Add new amount
+    cmp #99                 ; Max stack size
+    bcc store_quantity
+    lda #99                 ; Cap at 99
+    
+store_quantity:
+    sta inventory_slots+1,y
+    sec                     ; Success
+    rts
+    
+item_not_found:
+    ; Find empty slot
+    jsr find_empty_slot
+    bcc inventory_full
+    
+    ; Store in empty slot
+    txa                     ; X = empty slot index
+    asl
+    tay
+    
+    lda item_type
+    sta inventory_slots,y
+    lda item_quantity
+    sta inventory_slots+1,y
+    
+    sec                     ; Success
+    rts
+    
+inventory_full:
+    clc                     ; Failed - inventory full
+    rts
+
+; Find item in inventory
+find_inventory_item:
+    ; Input: item_type set
+    ; Output: Carry = found, X = slot index
+    
+    ldx #0
+find_loop:
+    lda inventory_slots,x
+    cmp item_type
+    beq found_item
+    
+    inx
+    inx                     ; Skip quantity byte
+    cpx #MAX_INVENTORY_ITEMS * 2
+    bne find_loop
+    
+    clc                     ; Not found
+    rts
+    
+found_item:
+    txa
+    lsr                     ; Convert back to slot index
+    tax
+    sec                     ; Found
+    rts
+
+; Find empty inventory slot
+find_empty_slot:
+    ; Output: Carry = found, X = slot index
+    
+    ldx #0
+empty_loop:
+    lda inventory_slots,x
+    beq found_empty
+    
+    inx
+    inx
+    cpx #MAX_INVENTORY_ITEMS * 2
+    bne empty_loop
+    
+    clc                     ; No empty slots
+    rts
+    
+found_empty:
+    txa
+    lsr
+    tax
+    sec                     ; Found empty slot
+    rts
+
+; Use item from inventory
+use_inventory_item:
+    ; Input: A = item type
+    sta item_type
+    
+    jsr find_inventory_item
+    bcc item_not_available
+    
+    ; Item found - check quantity
+    txa
+    asl
+    tay
+    
+    lda inventory_slots+1,y ; Quantity
+    beq item_not_available
+    
+    ; Use one item
+    dec inventory_slots+1,y
+    bne item_still_has_some
+    
+    ; Quantity reached zero - remove from inventory
+    lda #ITEM_NONE
+    sta inventory_slots,y
+    
+item_still_has_some:
+    ; Apply item effect
+    lda item_type
+    jsr apply_item_effect
+    
+    sec                     ; Success
+    rts
+    
+item_not_available:
+    clc                     ; Failed
+    rts
+
+; Apply effects when items are used
+apply_item_effect:
+    ; Input: A = item type
+    
+    cmp #ITEM_KEY_RED
+    beq use_red_key
+    cmp #ITEM_KEY_BLUE
+    beq use_blue_key
+    cmp #ITEM_KEY_YELLOW
+    beq use_yellow_key
+    cmp #ITEM_BOMB
+    beq use_bomb
+    cmp #ITEM_POTION
+    beq use_potion
+    cmp #ITEM_SCROLL
+    beq use_scroll
+    cmp #ITEM_GEM
+    beq use_gem
+    
+    rts
+
+use_red_key:
+    lda #1
+    sta red_door_unlocked
+    rts
+
+use_blue_key:
+    lda #1
+    sta blue_door_unlocked
+    rts
+
+use_yellow_key:
+    lda #1
+    sta yellow_door_unlocked
+    rts
+
+use_bomb:
+    ; Create explosion at player location
+    lda $D000
+    tax
+    lda $D001
+    tay
+    jsr create_explosion
+    rts
+
+use_potion:
+    ; Full heal
+    lda max_health
+    sta player_health
+    
+    ; Sparkle effect
+    jsr create_heal_sparkles
+    rts
+
+use_scroll:
+    ; Reveal map or show hint
+    jsr reveal_map_section
+    rts
+
+use_gem:
+    ; Big score bonus
+    lda #$50                ; 50 points
+    jsr add_score
+    rts
+
+; Display inventory
+display_inventory:
+    ; Show inventory at bottom of screen
+    ldx #0
+display_loop:
+    lda inventory_slots,x
+    beq display_empty_slot
+    
+    ; Show item sprite/character
+    jsr draw_inventory_item
+    
+    ; Show quantity if > 1
+    lda inventory_slots+1,x
+    cmp #2
+    bcc next_display_slot
+    
+    jsr draw_item_quantity
+    
+next_display_slot:
+    inx
+    inx
+    cpx #MAX_INVENTORY_ITEMS * 2
+    bne display_loop
+    
+    rts
+
+display_empty_slot:
+    ; Draw empty slot indicator
+    jsr draw_empty_slot
+    jmp next_display_slot
+
+; Working variables
+item_type:      .byte 0
+item_quantity:  .byte 0
+
+; Door unlock flags
+red_door_unlocked:      .byte 0
+blue_door_unlocked:     .byte 0
+yellow_door_unlocked:   .byte 0`} language="asm" />
+
+## Complete Collection Demo
+
+Put it all together for a rewarding collection system:
+
+<CodeBlock title="Master Collectible System" code={`* = $0801
+    !byte $0B,$08,$0A,$00,$9E
+    !text "2061"
+    !byte $00,$00,$00
+
+* = $080D
+
+main:
+    jsr init_collection_system
+    jsr spawn_initial_powerups
+    
+collection_loop:
+    lda #251
+wait_collection:
+    cmp $D012
+    bne wait_collection
+    
+    ; Update all systems
+    jsr update_powerups
+    jsr update_magnet_effect
+    jsr update_temporary_effects
+    
+    ; Handle player input
+    jsr handle_player_input
+    jsr check_inventory_usage
+    
+    ; Spawn new collectibles
+    jsr manage_collectible_spawning
+    
+    ; Visual updates
+    jsr draw_powerups
+    jsr draw_hud_with_inventory
+    jsr update_effect_visuals
+    
+    inc frame_counter
+    jmp collection_loop
+
+; Initialize collection system
+init_collection_system:
+    ; Clear all arrays
+    ldx #0
+    lda #0
+clear_collectibles:
+    sta powerup_pool,x
+    sta inventory_slots,x
+    inx
+    cpx #MAX_POWERUPS * 6
+    bne clear_collectibles
+    
+    ; Initialize player stats
+    lda #100
+    sta player_health
+    sta max_health
+    
+    lda #2
+    sta player_speed
+    
+    lda #1
+    sta weapon_level
+    
+    lda #3
+    sta lives
+    
+    rts
+
+; Spawn initial powerups around level
+spawn_initial_powerups:
+    ; Health potion
+    lda #POWERUP_HEALTH
+    ldx #80
+    ldy #60
+    jsr spawn_powerup
+    
+    ; Weapon upgrade
+    lda #POWERUP_WEAPON
+    ldx #160
+    ldy #80
+    jsr spawn_powerup
+    
+    ; Some coins
+    lda #POWERUP_COIN
+    ldx #120
+    ldy #40
+    jsr spawn_powerup
+    
+    lda #POWERUP_COIN
+    ldx #200
+    ldy #100
+    jsr spawn_powerup
+    
+    ; Key
+    lda #POWERUP_KEY
+    ldx #240
+    ldy #120
+    jsr spawn_powerup
+    
+    rts
+
+; Update temporary effects
+update_temporary_effects:
+    ; Speed boost
+    lda speed_boost_timer
+    beq check_shield
+    
+    dec speed_boost_timer
+    bne check_shield
+    
+    ; Speed boost expired
+    lda #2                  ; Normal speed
+    sta player_speed
+    lda #6                  ; Blue player color
+    sta $D027
+    
+check_shield:
+    lda shield_timer
+    beq check_health_flash
+    
+    dec shield_timer
+    bne shield_still_active
+    
+    ; Shield expired
+    lda #0
+    sta shield_active
+    lda #6                  ; Normal color
+    sta $D027
+    jmp check_health_flash
+    
+shield_still_active:
+    ; Flash shield effect
+    lda shield_timer
+    and #$04
+    bne shield_white
+    
+    lda #6                  ; Blue
+    jmp shield_color_set
+    
+shield_white:
+    lda #1                  ; White
+    
+shield_color_set:
+    sta $D027
+    
+check_health_flash:
+    lda health_flash_timer
+    beq effects_done
+    
+    dec health_flash_timer
+    
+effects_done:
+    rts
+
+; Manage spawning new collectibles
+manage_collectible_spawning:
+    ; Spawn timer
+    dec spawn_timer
+    bne spawn_done
+    
+    ; Reset timer
+    lda #180                ; 3 seconds
+    sta spawn_timer
+    
+    ; Smart spawning based on game state
+    jsr smart_spawn_powerup
+    
+spawn_done:
+    rts
+
+; Check for inventory usage
+check_inventory_usage:
+    ; Check function keys for item usage
+    lda $DC00
+    and #$10                ; Fire button + directions for items
+    bne no_item_use
+    
+    ; Use first available item
+    lda inventory_slots
+    beq no_item_use
+    
+    jsr use_inventory_item
+    
+no_item_use:
+    rts
+
+; Variables
+spawn_timer:    .byte 60
+frame_counter:  .byte 0`} language="asm" />
+
+## Advanced Collection Features
+
+Enhance your collection system with these patterns:
+
+- **Combo multipliers** for collecting items quickly
+- **Set bonuses** for collecting complete sets
+- **Rare drops** with special animations
+- **Trading systems** between different item types
+- **Achievement unlocks** for collection milestones
+
+## What You've Learned
+
+You've built a comprehensive collectible system featuring:
+- **Multiple power-up types** with unique effects
+- **Smart spawning** based on player needs  
+- **Magnetic attraction** for dynamic collection
+- **Inventory management** for strategic item use
+- **Temporary and permanent** upgrades
+- **Visual and audio feedback** for satisfying collection
+
+This creates engaging reward loops that motivate exploration and skill progression!
+
+## Practice Challenges
+
+1. Add combo systems for collecting multiple items quickly
+2. Create rare golden versions of items with special effects
+3. Implement item crafting - combine items to create new ones
+4. Add collection achievements with unlock rewards
+5. Build a shop system where collected coins buy upgrades
+
+## What's Next
+
+Next lesson, we'll organize game data using tables and efficient data structures!

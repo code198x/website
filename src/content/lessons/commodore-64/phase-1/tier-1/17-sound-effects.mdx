@@ -1,0 +1,882 @@
+---
+title: "Sound Effects: Your First Beeps and Boops"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 17
+description: "Discover the legendary SID chip and create your first sound effects - jumps, collects, explosions, and more"
+learning_objectives:
+  - "Understand the SID chip's basic operation"
+  - "Control the three voice channels"
+  - "Create simple game sound effects"
+  - "Use different waveforms for different sounds"
+  - "Implement volume and basic timing"
+concepts:
+  - "SID chip - the 6581/8580 sound synthesizer"
+  - "Voice registers - frequency, waveform, ADSR"
+  - "Waveforms - triangle, sawtooth, pulse, noise"
+  - "Gate bit - starting and stopping sounds"
+  - "Master volume - the global sound control"
+estimated_duration: "45 minutes"
+difficulty: "easy"
+prerequisites:
+  - "Lesson 16: Visual Effects"
+code_examples: true
+practical_exercise: true
+order: 17
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Sound Effects: Your First Beeps and Boops
+**Unleash the power of the legendary SID chip**
+
+The C64's SID (Sound Interface Device) chip was revolutionary. While other computers beeped, the C64 sang. This single chip, designed by Bob Yannes (who later founded Ensoniq), gave the C64 a 3-voice synthesizer that rivaled dedicated music keyboards. It's why C64 music became legendary—from Rob Hubbard's masterpieces to Martin Galway's innovations to the modern demoscene.
+
+But before you can compose symphonies, you need to make your first beep. Today you'll learn the fundamentals: how to wake up the SID chip, how to make it produce sound, and how to create the essential sound effects every game needs. A jump sound. A collect sound. An explosion. These building blocks will grow into the rich soundscapes that made the C64 famous.
+
+This is your first step into the world of C64 audio—where every game had a voice.
+
+## What You'll Create
+
+By lesson's end, you'll:
+- Make the SID chip produce its first sounds
+- Create essential game sound effects
+- Control pitch, volume, and waveforms
+- Trigger sounds from game events
+- Build a basic sound effects library
+
+## Understanding the SID Chip
+
+### The 6581/8580 Architecture
+
+The SID chip is a complete 3-voice synthesizer:
+
+<CodeBlock title="SID Chip Memory Map" code={`SID Registers: $D400-$D41C
+
+Voice 1: $D400-$D406
+$D400-01: Frequency (low/high)
+$D402-03: Pulse width (low/high)
+$D404: Control register (waveform, gate)
+$D405: Attack/Decay
+$D406: Sustain/Release
+
+Voice 2: $D407-$D40D
+(Same structure as Voice 1)
+
+Voice 3: $D40E-$D414
+(Same structure as Voice 1)
+
+Filter: $D415-$D417
+$D415-16: Filter cutoff
+$D417: Filter resonance/control
+
+Volume & Filter Select: $D418
+Bits 0-3: Master volume (0-15)
+Bits 4-7: Filter enables
+
+Special: $D419-$D41C
+$D419-1A: Paddle readings
+$D41B-1C: Voice 3 oscillator/envelope output`} />
+
+### Waveform Types
+
+Each voice can produce four waveforms:
+
+<CodeBlock title="SID Waveforms" code={`Waveform Control (Register $D404, $D40B, $D412):
+Bit 0: Gate (1=start, 0=release)
+Bit 1: Sync (sync to voice 1/2)
+Bit 2: Ring modulation
+Bit 3: Test bit (disable oscillator)
+Bit 4: Triangle waveform
+Bit 5: Sawtooth waveform
+Bit 6: Pulse waveform
+Bit 7: Noise waveform
+
+Waveform Characteristics:
+Triangle ($10): Smooth, flute-like
+Sawtooth ($20): Bright, brass-like
+Pulse ($40): Variable, hollow to nasal
+Noise ($80): Random, percussion/effects
+
+Note: Only one waveform bit should be set!`} />
+
+## Your First Sound
+
+<CodeBlock title="Making Your First Beep" language="asm" code={`; First sound on the C64
+; The "Hello World" of SID programming
+
+        * = $0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+        * = $080d
+start:
+        ; Initialize SID
+        jsr init_sid
+        
+        ; Make a simple beep
+        jsr beep
+        
+        ; Wait for keypress
+        jsr $ffe4
+        beq *-3
+        
+        ; Silence
+        jsr silence_sid
+        rts
+
+init_sid:
+        ; Clear all SID registers
+        ldx #$18
+        lda #0
+clear_sid:
+        sta $d400,x
+        dex
+        bpl clear_sid
+        
+        ; Set master volume
+        lda #15         ; Maximum volume
+        sta $d418
+        
+        rts
+
+beep:
+        ; Simple beep sound
+        
+        ; Set frequency (middle C = 262 Hz)
+        ; Frequency = Hz * 0.0596
+        ; 262 * 0.0596 = 15.6 ≈ $0F9B
+        lda #$9b
+        sta $d400       ; Voice 1 frequency low
+        lda #$0f
+        sta $d401       ; Voice 1 frequency high
+        
+        ; Set ADSR envelope
+        ; Attack=2, Decay=8
+        lda #$28
+        sta $d405
+        ; Sustain=15, Release=9
+        lda #$f9
+        sta $d406
+        
+        ; Set waveform and gate
+        lda #$11        ; Triangle wave + gate
+        sta $d404
+        
+        ; Let it play
+        ldx #30
+beep_wait:
+        lda #250
+wait:   cmp $d012
+        bne wait
+        dex
+        bne beep_wait
+        
+        ; Release (gate off)
+        lda #$10        ; Triangle wave, gate off
+        sta $d404
+        
+        rts
+
+silence_sid:
+        ; Turn off all voices
+        lda #0
+        sta $d404       ; Voice 1 off
+        sta $d40b       ; Voice 2 off
+        sta $d412       ; Voice 3 off
+        rts`} />
+
+## Essential Game Sound Effects
+
+### Jump Sound
+
+<CodeBlock title="Classic Jump Sound Effect" language="asm" code={`jump_sound:
+        ; Classic platform game jump sound
+        ; Rising pitch sweep
+        
+        ; Initial frequency (low)
+        lda #$00
+        sta $d400
+        lda #$08
+        sta $d401
+        
+        ; Fast attack, slow decay
+        lda #$09        ; Attack=0, Decay=9
+        sta $d405
+        lda #$00        ; Sustain=0, Release=0
+        sta $d406
+        
+        ; Pulse wave for hollow sound
+        lda #$00
+        sta $d402       ; Pulse width low
+        lda #$08        ; 50% duty cycle
+        sta $d403       ; Pulse width high
+        
+        ; Start sound
+        lda #$41        ; Pulse + gate
+        sta $d404
+        
+        ; Sweep up
+        ldx #0
+jump_sweep:
+        ; Increase frequency
+        lda $d400
+        clc
+        adc #$20
+        sta $d400
+        lda $d401
+        adc #0
+        sta $d401
+        
+        ; Small delay
+        ldy #2
+jump_delay:
+        lda #250
+jw:     cmp $d012
+        bne jw
+        dey
+        bne jump_delay
+        
+        inx
+        cpx #20
+        bne jump_sweep
+        
+        ; Gate off
+        lda #$40
+        sta $d404
+        
+        rts`} />
+
+### Collect Sound
+
+<CodeBlock title="Pickup/Collect Sound Effect" language="asm" code={`collect_sound:
+        ; Bright collect/pickup sound
+        ; Quick high-pitched ding
+        
+        ; High frequency
+        lda #$00
+        sta $d400
+        lda #$20        ; High pitch
+        sta $d401
+        
+        ; Very fast envelope
+        lda #$00        ; Attack=0, Decay=0
+        sta $d405
+        lda #$f0        ; Sustain=15, Release=0
+        sta $d406
+        
+        ; Triangle for pure tone
+        lda #$11        ; Triangle + gate
+        sta $d404
+        
+        ; Brief duration
+        ldx #5
+collect_wait:
+        lda #250
+cw:     cmp $d012
+        bne cw
+        dex
+        bne collect_wait
+        
+        ; Quick release
+        lda #$10
+        sta $d404
+        
+        ; Second ding (higher)
+        lda #$40
+        sta $d401
+        
+        lda #$11
+        sta $d404
+        
+        ldx #5
+collect_wait2:
+        lda #250
+cw2:    cmp $d012
+        bne cw2
+        dex
+        bne collect_wait2
+        
+        lda #$10
+        sta $d404
+        
+        rts`} />
+
+### Explosion Sound
+
+<CodeBlock title="Explosion Sound Effect" language="asm" code={`explosion_sound:
+        ; Explosion using noise waveform
+        
+        ; Low frequency for rumble
+        lda #$00
+        sta $d400
+        lda #$04
+        sta $d401
+        
+        ; Explosion envelope
+        lda #$00        ; Attack=0, Decay=0
+        sta $d405
+        lda #$f8        ; Sustain=15, Release=8
+        sta $d406
+        
+        ; Noise waveform
+        lda #$81        ; Noise + gate
+        sta $d404
+        
+        ; Let it decay naturally
+        ldx #30
+exp_wait:
+        ; Vary frequency for rumble
+        lda $d400
+        eor #$80
+        sta $d400
+        
+        lda #250
+ew:     cmp $d012
+        bne ew
+        dex
+        bne exp_wait
+        
+        ; Gate off
+        lda #$80
+        sta $d404
+        
+        rts`} />
+
+### Laser Sound
+
+<CodeBlock title="Laser/Shoot Sound Effect" language="asm" code={`laser_sound:
+        ; Classic pew-pew laser sound
+        ; Descending pitch sweep
+        
+        ; Start high
+        lda #$00
+        sta $d400
+        lda #$30
+        sta $d401
+        
+        ; Laser envelope
+        lda #$08        ; Attack=0, Decay=8
+        sta $d405
+        lda #$00        ; Sustain=0, Release=0
+        sta $d406
+        
+        ; Sawtooth for brightness
+        lda #$21        ; Sawtooth + gate
+        sta $d404
+        
+        ; Sweep down
+        ldx #30
+laser_sweep:
+        ; Decrease frequency
+        lda $d401
+        sec
+        sbc #$02
+        sta $d401
+        
+        ; Very brief delay
+        lda #250
+lw:     cmp $d012
+        bne lw
+        
+        dex
+        bne laser_sweep
+        
+        ; Gate off
+        lda #$20
+        sta $d404
+        
+        rts`} />
+
+## Sound Effect Library
+
+### Complete Sound System
+
+<CodeBlock title="Full Sound Effects System" language="asm" code={`; Complete sound effects library
+; Ready-to-use game sounds
+
+        * = $0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+        * = $080d
+main:
+        ; Initialize
+        jsr init_sound_system
+        jsr show_menu
+        
+sound_loop:
+        ; Get input
+        jsr $ffe4
+        beq sound_loop
+        
+        ; Play sound based on key
+        cmp #'1'
+        beq play_jump
+        cmp #'2'
+        beq play_collect
+        cmp #'3'
+        beq play_explosion
+        cmp #'4'
+        beq play_laser
+        cmp #'5'
+        beq play_damage
+        cmp #'6'
+        beq play_powerup
+        cmp #'7'
+        beq play_menu
+        cmp #'8'
+        beq play_error
+        cmp #'Q'
+        beq quit
+        
+        jmp sound_loop
+
+quit:
+        jsr silence_all
+        rts
+
+play_jump:
+        jsr jump_sound
+        jmp sound_loop
+
+play_collect:
+        jsr collect_sound
+        jmp sound_loop
+
+play_explosion:
+        jsr explosion_sound
+        jmp sound_loop
+
+play_laser:
+        jsr laser_sound
+        jmp sound_loop
+
+play_damage:
+        jsr damage_sound
+        jmp sound_loop
+
+play_powerup:
+        jsr powerup_sound
+        jmp sound_loop
+
+play_menu:
+        jsr menu_sound
+        jmp sound_loop
+
+play_error:
+        jsr error_sound
+        jmp sound_loop
+
+init_sound_system:
+        ; Clear and setup SID
+        ldx #$18
+        lda #0
+init_clear:
+        sta $d400,x
+        dex
+        bpl init_clear
+        
+        ; Set volume
+        lda #15
+        sta $d418
+        
+        ; Clear screen
+        lda #147
+        jsr $ffd2
+        
+        rts
+
+damage_sound:
+        ; Hit/damage sound
+        ; Low thud
+        
+        lda #$00
+        sta $d400
+        lda #$02        ; Very low
+        sta $d401
+        
+        lda #$08
+        sta $d405
+        lda #$f0
+        sta $d406
+        
+        ; Noise for impact
+        lda #$81
+        sta $d404
+        
+        ldx #10
+damage_wait:
+        lda #250
+dw:     cmp $d012
+        bne dw
+        dex
+        bne damage_wait
+        
+        lda #$80
+        sta $d404
+        rts
+
+powerup_sound:
+        ; Power-up sound
+        ; Rising arpeggio
+        
+        ; Note 1
+        lda #$5d
+        sta $d400
+        lda #$0c
+        sta $d401
+        
+        lda #$00
+        sta $d405
+        lda #$f0
+        sta $d406
+        
+        lda #$11
+        sta $d404
+        
+        ldx #8
+p1:     lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne p1
+        
+        ; Note 2
+        lda #$b3
+        sta $d400
+        lda #$0f
+        sta $d401
+        
+        ldx #8
+p2:     lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne p2
+        
+        ; Note 3
+        lda #$1c
+        sta $d400
+        lda #$13
+        sta $d401
+        
+        ldx #8
+p3:     lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne p3
+        
+        lda #$10
+        sta $d404
+        rts
+
+menu_sound:
+        ; Menu select sound
+        ; Quick blip
+        
+        lda #$00
+        sta $d400
+        lda #$10
+        sta $d401
+        
+        lda #$08
+        sta $d405
+        lda #$00
+        sta $d406
+        
+        lda #$41        ; Pulse
+        sta $d404
+        
+        ldx #3
+menu_wait:
+        lda #250
+mw:     cmp $d012
+        bne mw
+        dex
+        bne menu_wait
+        
+        lda #$40
+        sta $d404
+        rts
+
+error_sound:
+        ; Error/invalid sound
+        ; Descending buzz
+        
+        lda #$00
+        sta $d400
+        lda #$08
+        sta $d401
+        
+        lda #$00
+        sta $d405
+        lda #$f0
+        sta $d406
+        
+        ; Pulse with narrow width
+        lda #$00
+        sta $d402
+        lda #$02        ; Narrow pulse
+        sta $d403
+        
+        lda #$41
+        sta $d404
+        
+        ; Descend
+        ldx #3
+error_loop:
+        ldy #10
+err_wait:
+        lda #250
+errw:   cmp $d012
+        bne errw
+        dey
+        bne err_wait
+        
+        ; Lower pitch
+        dec $d401
+        dec $d401
+        
+        dex
+        bne error_loop
+        
+        lda #$40
+        sta $d404
+        rts
+
+silence_all:
+        ; Turn off all voices
+        lda #0
+        sta $d404
+        sta $d40b
+        sta $d412
+        sta $d418       ; Volume to 0
+        rts
+
+show_menu:
+        ; Display sound menu
+        ldx #0
+menu_text:
+        lda menu_string,x
+        beq menu_done
+        jsr $ffd2
+        inx
+        bne menu_text
+menu_done:
+        rts
+
+menu_string:
+        !text "SOUND EFFECTS LIBRARY",13,13
+        !text "1 - JUMP",13
+        !text "2 - COLLECT",13
+        !text "3 - EXPLOSION",13
+        !text "4 - LASER",13
+        !text "5 - DAMAGE",13
+        !text "6 - POWER-UP",13
+        !text "7 - MENU SELECT",13
+        !text "8 - ERROR",13,13
+        !text "Q - QUIT",13
+        !byte 0`} />
+
+## Timing and Triggers
+
+### Syncing Sound with Action
+
+<CodeBlock title="Sound Triggering System" language="asm" code={`; Sound trigger system
+; Queue and play sounds without conflicts
+
+init_sound_queue:
+        lda #0
+        sta sound_queue
+        sta sound_playing
+        sta sound_timer
+        rts
+
+queue_sound:
+        ; Input: A = sound ID
+        ; Add sound to queue
+        
+        ora sound_queue
+        sta sound_queue
+        rts
+
+process_sounds:
+        ; Called every frame
+        
+        ; Check if sound playing
+        lda sound_playing
+        beq check_queue
+        
+        ; Decrement timer
+        dec sound_timer
+        bne sounds_done
+        
+        ; Sound finished
+        lda #0
+        sta sound_playing
+        jsr silence_voice1
+        
+check_queue:
+        ; Check for queued sounds
+        lda sound_queue
+        beq sounds_done
+        
+        ; Priority system
+        lsr
+        bcc not_jump
+        jsr trigger_jump
+        lda #JUMP_DURATION
+        sta sound_timer
+        lda #1
+        sta sound_playing
+        jmp clear_sound
+        
+not_jump:
+        lsr
+        bcc not_collect
+        jsr trigger_collect
+        lda #COLLECT_DURATION
+        sta sound_timer
+        lda #2
+        sta sound_playing
+        jmp clear_sound
+        
+not_collect:
+        lsr
+        bcc not_damage
+        jsr trigger_damage
+        lda #DAMAGE_DURATION
+        sta sound_timer
+        lda #3
+        sta sound_playing
+        
+clear_sound:
+        ; Clear from queue
+        lda sound_queue
+        and #$f8        ; Clear processed bit
+        sta sound_queue
+        
+sounds_done:
+        rts
+
+trigger_jump:
+        ; Start jump sound
+        lda #$00
+        sta $d400
+        lda #$08
+        sta $d401
+        lda #$09
+        sta $d405
+        lda #$00
+        sta $d406
+        lda #$41
+        sta $d404
+        rts
+
+trigger_collect:
+        ; Start collect sound
+        lda #$00
+        sta $d400
+        lda #$20
+        sta $d401
+        lda #$00
+        sta $d405
+        lda #$f0
+        sta $d406
+        lda #$11
+        sta $d404
+        rts
+
+trigger_damage:
+        ; Start damage sound
+        lda #$00
+        sta $d400
+        lda #$02
+        sta $d401
+        lda #$08
+        sta $d405
+        lda #$f0
+        sta $d406
+        lda #$81
+        sta $d404
+        rts
+
+silence_voice1:
+        lda #0
+        sta $d404
+        rts
+
+; Sound system variables
+sound_queue:    !byte 0
+sound_playing:  !byte 0
+sound_timer:    !byte 0
+
+; Duration constants
+JUMP_DURATION:    = 20
+COLLECT_DURATION: = 10
+DAMAGE_DURATION:  = 15`} />
+
+## What You've Learned
+
+You can now:
+- ✅ **Initialize the SID chip** for sound output
+- ✅ **Create basic sound effects** using waveforms
+- ✅ **Control pitch and volume** for different effects
+- ✅ **Trigger sounds from game events** properly
+- ✅ **Build a sound library** for your games
+
+Your games now have voice—the first steps into C64 audio!
+
+## Quick Reference
+
+<CodeBlock title="SID Quick Reference" code={`Essential SID Registers:
+Voice 1: $D400-$D406
+$D400-01: Frequency (low/high)
+$D402-03: Pulse width
+$D404: Control (waveform + gate)
+$D405: Attack/Decay
+$D406: Sustain/Release
+
+Master: $D418
+Bits 0-3: Volume (0-15)
+
+Waveform Values:
+$10: Triangle (smooth)
+$20: Sawtooth (bright)
+$40: Pulse (variable)
+$80: Noise (random)
+
+Common Frequencies:
+C:  $0F9B (middle C)
+D:  $1125
+E:  $1339
+F:  $1416
+G:  $1714
+A:  $1A51
+B:  $1CD6
+C:  $1F36 (high C)
+
+ADSR Tips:
+Attack: 0=instant, 15=slow
+Decay: Rate to sustain level
+Sustain: 0-15 volume level
+Release: Rate after gate off
+
+Sound Design:
+Jump: Rising frequency sweep
+Collect: High pitched ding
+Explosion: Noise with decay
+Laser: Descending sawtooth
+Damage: Low frequency thud`} />
+
+**WOW Moment:** Your C64 speaks! Listen as it beeps, boops, zaps, and explodes. These aren't just random noises—they're the same foundational sound effects used in every C64 game. The jump sound from "Mario Bros," the collect sound from "Pac-Man," the explosion from "Commando"—they all started with these same basic techniques. You've unlocked the legendary SID chip and taken your first steps into the world that made C64 audio famous!
+
+## What's Next?
+
+With basic sound effects mastered, continue with:
+- **Lesson 18**: Note Generation - Musical tones and scales
+- **Lesson 19**: Sound Envelopes - ADSR in detail
+- **Lesson 20**: Sound Timing - Syncing audio with gameplay
+
+Your journey into C64 audio has begun!

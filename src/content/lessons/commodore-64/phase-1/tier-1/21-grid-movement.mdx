@@ -1,0 +1,702 @@
+---
+title: "Grid Movement"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 21
+description: "Build a maze explorer with tile-based movement and collision detection"
+difficulty: "easy"
+order: 21
+tags: ["movement", "grid", "tiles", "collision"]
+prerequisites: ["screen memory", "joystick input", "character graphics"]
+objectives:
+  - "Implement tile-based movement"
+  - "Handle grid collision detection"
+  - "Create navigable mazes"
+  - "Track player position on grid"
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Grid Movement
+
+Transform the C64 screen into a navigable grid world! We'll build a maze explorer where the player moves through corridors, collects treasures, and reaches the exit - all using clean, tile-based movement.
+
+## Understanding the Grid
+
+The C64 screen is already a grid - 40 columns × 25 rows of characters. Perfect for tile-based games!
+
+<CodeBlock title="Grid Coordinate System" code={`; Screen dimensions
+SCREEN_WIDTH    = 40
+SCREEN_HEIGHT   = 25
+SCREEN_RAM      = $0400
+COLOR_RAM       = $D800
+
+; Convert X,Y coordinates to screen address
+; Input: X register = column (0-39)
+;        Y register = row (0-24)
+; Output: Address in zero page pointers $FB/$FC
+calc_screen_pos:
+    ; Start with base address
+    lda #<SCREEN_RAM
+    sta $FB
+    lda #>SCREEN_RAM
+    sta $FC
+    
+    ; Add Y * 40 for row offset
+    cpy #0
+    beq add_column
+    
+calc_row:
+    lda $FB
+    clc
+    adc #40
+    sta $FB
+    bcc no_carry
+    inc $FC
+no_carry:
+    dey
+    bne calc_row
+    
+add_column:
+    ; Add X for column
+    txa
+    clc
+    adc $FB
+    sta $FB
+    bcc done
+    inc $FC
+done:
+    rts`} language="asm" />
+
+## The Maze Explorer
+
+Let's build our maze with different tile types:
+
+<CodeBlock title="Maze Tile Definitions" code={`; Tile types (using PETSCII characters)
+TILE_EMPTY      = 32    ; Space - walkable
+TILE_WALL       = 166   ; Solid block - not walkable
+TILE_PLAYER     = 81    ; Ball character - the player
+TILE_TREASURE   = 42    ; Asterisk - collectible
+TILE_EXIT       = 88    ; X marks the spot
+TILE_KEY        = 75    ; K for key
+TILE_DOOR       = 68    ; D for locked door
+
+; Tile colors
+COLOR_WALL      = 11    ; Dark gray
+COLOR_PLAYER    = 7     ; Yellow
+COLOR_TREASURE  = 5     ; Green
+COLOR_EXIT      = 13    ; Light green
+COLOR_KEY       = 2     ; Red
+COLOR_DOOR      = 2     ; Red (locked)
+
+; Player position
+player_x:       .byte 1     ; Starting column
+player_y:       .byte 1     ; Starting row
+treasures:      .byte 0     ; Treasures collected
+has_key:        .byte 0     ; Key possession flag
+
+; Initialize maze
+init_maze:
+    ; Clear screen with walls
+    ldx #0
+fill_screen:
+    lda #TILE_WALL
+    sta SCREEN_RAM,x
+    sta SCREEN_RAM+256,x
+    sta SCREEN_RAM+512,x
+    sta SCREEN_RAM+768,x
+    lda #COLOR_WALL
+    sta COLOR_RAM,x
+    sta COLOR_RAM+256,x
+    sta COLOR_RAM+512,x
+    sta COLOR_RAM+768,x
+    inx
+    bne fill_screen
+    
+    ; Carve out maze paths
+    jsr create_maze_layout
+    
+    ; Place player at start
+    lda player_x
+    tax
+    lda player_y
+    tay
+    jsr calc_screen_pos
+    ldy #0
+    lda #TILE_PLAYER
+    sta ($FB),y
+    lda #COLOR_PLAYER
+    sta ($FD),y     ; Color RAM pointer
+    
+    rts`} language="asm" />
+
+## Grid-Based Movement
+
+Movement happens one tile at a time - clean and precise:
+
+<CodeBlock title="Player Movement System" code={`; Handle player movement
+move_player:
+    ; Read joystick port 2
+    lda $DC00
+    and #$1F
+    cmp #$1F
+    beq no_move     ; No input
+    
+    ; Store old position
+    lda player_x
+    sta old_x
+    lda player_y
+    sta old_y
+    
+    ; Check directions
+    lsr             ; Test right
+    bcs check_left
+    inc player_x
+    jmp validate_move
+    
+check_left:
+    lsr             ; Test left
+    bcs check_down
+    dec player_x
+    jmp validate_move
+    
+check_down:
+    lsr             ; Test down
+    bcs check_up
+    inc player_y
+    jmp validate_move
+    
+check_up:
+    lsr             ; Test up
+    bcs no_move
+    dec player_y
+    
+validate_move:
+    ; Check bounds
+    lda player_x
+    cmp #SCREEN_WIDTH
+    bcc x_ok
+    lda old_x       ; Restore if out of bounds
+    sta player_x
+    jmp no_move
+    
+x_ok:
+    lda player_y
+    cmp #SCREEN_HEIGHT
+    bcc y_ok
+    lda old_y
+    sta player_y
+    jmp no_move
+    
+y_ok:
+    ; Check collision with walls
+    ldx player_x
+    ldy player_y
+    jsr calc_screen_pos
+    ldy #0
+    lda ($FB),y
+    
+    ; Check what we're moving into
+    cmp #TILE_WALL
+    beq blocked
+    cmp #TILE_DOOR
+    beq check_door
+    
+    ; Movement is valid
+    jsr clear_old_position
+    jsr check_pickup
+    jsr draw_player
+    jsr check_win
+    
+    ; Add movement delay
+    ldx #10         ; Adjust for movement speed
+delay_loop:
+    lda $D012       ; Wait for raster
+    cmp #251
+    bne *-3
+    dex
+    bne delay_loop
+    
+no_move:
+    rts
+
+blocked:
+    ; Restore old position
+    lda old_x
+    sta player_x
+    lda old_y
+    sta player_y
+    
+    ; Flash border for collision feedback
+    lda #2          ; Red
+    sta $D020
+    ldx #5
+flash_delay:
+    dex
+    bne flash_delay
+    lda #0          ; Black
+    sta $D020
+    rts
+
+check_door:
+    ; Can only pass if we have key
+    lda has_key
+    beq blocked     ; No key = blocked
+    
+    ; Remove door
+    ldy #0
+    lda #TILE_EMPTY
+    sta ($FB),y
+    jmp y_ok        ; Continue movement
+
+old_x:  .byte 0
+old_y:  .byte 0`} language="asm" />
+
+## Collision & Interaction
+
+Check what the player touches and respond:
+
+<CodeBlock title="Tile Interaction System" code={`; Check for pickups at current position
+check_pickup:
+    ldx player_x
+    ldy player_y
+    jsr calc_screen_pos
+    ldy #0
+    lda ($FB),y
+    
+    ; Check tile type
+    cmp #TILE_TREASURE
+    beq pickup_treasure
+    cmp #TILE_KEY
+    beq pickup_key
+    rts
+    
+pickup_treasure:
+    ; Increment score
+    inc treasures
+    
+    ; Play pickup sound
+    lda #$50
+    sta $D400       ; Frequency low
+    lda #$30
+    sta $D401       ; Frequency high
+    lda #$11        ; Triangle wave
+    sta $D404       ; Gate on
+    
+    ; Update display
+    jsr show_score
+    rts
+
+pickup_key:
+    ; Set key flag
+    lda #1
+    sta has_key
+    
+    ; Special key sound
+    lda #$00
+    sta $D400
+    lda #$40
+    sta $D401
+    lda #$21        ; Pulse wave
+    sta $D404
+    
+    ; Flash border yellow
+    lda #7
+    sta $D020
+    rts
+
+; Clear player's old position
+clear_old_position:
+    ldx old_x
+    ldy old_y
+    jsr calc_screen_pos
+    ldy #0
+    lda #TILE_EMPTY
+    sta ($FB),y
+    rts
+
+; Draw player at new position
+draw_player:
+    ldx player_x
+    ldy player_y
+    jsr calc_screen_pos
+    ldy #0
+    lda #TILE_PLAYER
+    sta ($FB),y
+    
+    ; Set color
+    lda $FB
+    sta $FD
+    lda $FC
+    clc
+    adc #$D4        ; Color RAM offset
+    sta $FE
+    lda #COLOR_PLAYER
+    sta ($FD),y
+    rts`} language="asm" />
+
+## Creating the Maze
+
+Design a simple but interesting maze layout:
+
+<CodeBlock title="Maze Layout Generator" code={`; Create maze layout
+create_maze_layout:
+    ; Create horizontal corridors
+    ldy #5          ; Row 5
+    ldx #1
+corridor1:
+    jsr calc_screen_pos
+    ldy #0
+    lda #TILE_EMPTY
+    sta ($FB),y
+    inx
+    cpx #20
+    bne corridor1
+    
+    ; Vertical connector
+    ldx #20
+    ldy #5
+vertical1:
+    jsr calc_screen_pos
+    ldy #0
+    lda #TILE_EMPTY
+    sta ($FB),y
+    iny
+    cpy #15
+    bne vertical1
+    
+    ; Another horizontal
+    ldy #15
+    ldx #5
+corridor2:
+    jsr calc_screen_pos
+    ldy #0
+    lda #TILE_EMPTY
+    sta ($FB),y
+    inx
+    cpx #35
+    bne corridor2
+    
+    ; Place treasures
+    ldx #10
+    ldy #5
+    jsr place_item
+    lda #TILE_TREASURE
+    sta ($FB),y
+    lda #COLOR_TREASURE
+    sta ($FD),y
+    
+    ldx #25
+    ldy #15
+    jsr place_item
+    lda #TILE_TREASURE
+    sta ($FB),y
+    lda #COLOR_TREASURE
+    sta ($FD),y
+    
+    ; Place key
+    ldx #30
+    ldy #15
+    jsr place_item
+    lda #TILE_KEY
+    sta ($FB),y
+    lda #COLOR_KEY
+    sta ($FD),y
+    
+    ; Place locked door
+    ldx #15
+    ldy #10
+    jsr place_item
+    lda #TILE_DOOR
+    sta ($FB),y
+    lda #COLOR_DOOR
+    sta ($FD),y
+    
+    ; Place exit
+    ldx #35
+    ldy #20
+    jsr place_item
+    lda #TILE_EXIT
+    sta ($FB),y
+    lda #COLOR_EXIT
+    sta ($FD),y
+    
+    rts
+
+; Helper to place items with color
+place_item:
+    jsr calc_screen_pos
+    ; Also calculate color RAM address
+    lda $FB
+    sta $FD
+    lda $FC
+    clc
+    adc #$D4
+    sta $FE
+    ldy #0
+    rts`} language="asm" />
+
+## Complete Maze Game
+
+Put it all together into a playable game:
+
+<CodeBlock title="Main Game Loop" code={`* = $0801
+    !byte $0B,$08,$0A,$00,$9E
+    !text "2061"
+    !byte $00,$00,$00
+
+* = $080D
+
+main:
+    ; Setup
+    lda #147        ; Clear screen
+    jsr $FFD2
+    
+    ; Initialize SID
+    lda #$0F
+    sta $D418       ; Max volume
+    lda #$00
+    sta $D405       ; Attack/Decay
+    lda #$F0
+    sta $D406       ; Sustain/Release
+    
+    ; Setup game
+    jsr init_maze
+    jsr show_instructions
+    jsr show_score
+    
+game_loop:
+    ; Wait for frame
+    lda #251
+wait_raster:
+    cmp $D012
+    bne wait_raster
+    
+    ; Game update
+    jsr move_player
+    
+    ; Check win condition
+    jsr check_win
+    
+    jmp game_loop
+
+; Check if player reached exit
+check_win:
+    ldx player_x
+    ldy player_y
+    jsr calc_screen_pos
+    ldy #0
+    lda ($FB),y
+    cmp #TILE_EXIT
+    bne not_win
+    
+    ; Victory!
+    jsr victory_sequence
+    
+not_win:
+    rts
+
+; Victory celebration
+victory_sequence:
+    ; Clear screen
+    lda #147
+    jsr $FFD2
+    
+    ; Print message
+    ldx #0
+print_victory:
+    lda victory_msg,x
+    beq victory_done
+    jsr $FFD2
+    inx
+    bne print_victory
+    
+victory_done:
+    ; Victory sound
+    ldx #0
+victory_sound:
+    txa
+    sta $D400       ; Rising frequency
+    lda #$40
+    sta $D401
+    lda #$11
+    sta $D404
+    
+    ; Rainbow border
+    txa
+    and #$0F
+    sta $D020
+    
+    ; Delay
+    ldy #10
+vdelay:
+    dey
+    bne vdelay
+    
+    inx
+    bne victory_sound
+    
+    ; Wait for fire button
+wait_restart:
+    lda $DC00
+    and #$10
+    bne wait_restart
+    
+    ; Restart game
+    jmp main
+
+; Display instructions
+show_instructions:
+    ldx #0
+print_inst:
+    lda instructions,x
+    beq inst_done
+    jsr $FFD2
+    inx
+    bne print_inst
+inst_done:
+    rts
+
+; Show score
+show_score:
+    ; Position cursor
+    lda #19         ; HOME
+    jsr $FFD2
+    
+    ; Print score label
+    ldx #0
+print_score:
+    lda score_text,x
+    beq show_count
+    jsr $FFD2
+    inx
+    bne print_score
+    
+show_count:
+    lda treasures
+    clc
+    adc #'0'        ; Convert to ASCII
+    jsr $FFD2
+    
+    ; Show key status
+    lda has_key
+    beq no_key_display
+    
+    ldx #0
+print_key:
+    lda key_text,x
+    beq key_done
+    jsr $FFD2
+    inx
+    bne print_key
+    
+no_key_display:
+key_done:
+    rts
+
+; Data
+instructions:
+    !text "MAZE EXPLORER",13
+    !text "USE JOYSTICK TO MOVE",13
+    !text "COLLECT TREASURES: *",13
+    !text "FIND KEY: K",13
+    !text "UNLOCK DOOR: D",13
+    !text "REACH EXIT: X",13,13
+    !byte 0
+
+score_text:
+    !text "TREASURES: ",0
+
+key_text:
+    !text "  [KEY]",0
+
+victory_msg:
+    !text "YOU ESCAPED!",13,13
+    !text "TREASURES FOUND: ",0`} language="asm" />
+
+## Advanced Grid Techniques
+
+Enhance your grid games with these patterns:
+
+<CodeBlock title="Smooth Grid Animation" code={`; Animate movement between tiles
+smooth_move:
+    ; Instead of instant position change,
+    ; interpolate between grid positions
+    
+    lda #8          ; 8 animation frames
+    sta anim_counter
+    
+anim_loop:
+    ; Calculate intermediate position
+    ; (Implementation depends on using sprites
+    ; or custom character animation)
+    
+    dec anim_counter
+    bne anim_loop
+    
+    ; Update grid position
+    lda new_x
+    sta player_x
+    lda new_y
+    sta player_y
+    rts
+
+anim_counter: .byte 0
+new_x: .byte 0
+new_y: .byte 0`} language="asm" />
+
+<CodeBlock title="Pathfinding Hint System" code={`; Show hint arrow pointing to exit
+show_hint:
+    ; Calculate direction to exit
+    lda #35         ; Exit X
+    sec
+    sbc player_x
+    bmi point_left
+    beq check_vertical
+    
+    ; Point right
+    lda #62         ; Right arrow
+    jmp show_arrow
+    
+point_left:
+    lda #60         ; Left arrow
+    
+show_arrow:
+    sta SCREEN_RAM  ; Top-left corner
+    lda #1          ; White
+    sta COLOR_RAM
+    
+check_vertical:
+    ; Similar for up/down
+    rts`} language="asm" />
+
+## Memory Map
+
+**Game Variables:**
+- `$0340-$0350`: Player state and position
+- `$0400-$07E7`: Screen RAM (maze display)
+- `$D800-$DBE7`: Color RAM (tile colors)
+
+## What You've Learned
+
+You've built a complete maze game demonstrating:
+- **Grid coordinate systems** for tile-based games
+- **Collision detection** using tile types
+- **Interactive objects** (keys, doors, treasures)
+- **Win conditions** and game flow
+- **Tile-based level design**
+
+This foundation works for puzzle games, RPGs, strategy games, and more!
+
+## Practice Challenges
+
+1. Add enemies that patrol corridors
+2. Create multiple maze levels
+3. Add a time limit with countdown
+4. Implement fog of war (hidden areas)
+5. Create a level editor
+
+## What's Next
+
+Next lesson, we'll explore smooth pixel-perfect movement - perfect for action games and shooters!

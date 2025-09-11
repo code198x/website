@@ -1,0 +1,726 @@
+---
+title: "Sprite Animation: Bringing Characters to Life"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 5
+description: "Learn to animate sprites with simple frame switching, creating walking characters and living objects with just two frames"
+learning_objectives:
+  - "Understand sprite pointer manipulation for animation"
+  - "Create smooth 2-frame walking animations"
+  - "Time animations with frame counting"
+  - "Coordinate animation with movement"
+  - "Design effective sprite frames for animation"
+concepts:
+  - "Sprite pointers - switching between frames"
+  - "Animation timing - controlling frame rate"
+  - "Frame design - creating animation illusion"
+  - "State tracking - managing animation state"
+  - "Visual persistence - how animation works"
+estimated_duration: "45 minutes"
+difficulty: "easy"
+prerequisites:
+  - "Lesson 4: Joystick Input"
+code_examples: true
+practical_exercise: true
+order: 5
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Sprite Animation: Bringing Characters to Life
+**Transform static sprites into living, breathing characters**
+
+You've displayed a sprite. You've moved it around the screen with the joystick. But something's missing—your character glides across the screen like a statue on wheels. Real characters don't slide; they walk, they run, they come alive through animation. Today you'll learn the fundamental magic trick that brought every C64 character to life: frame animation.
+
+In 1982, animating a sprite meant you couldn't just play a video or use complex graphics libraries. You had exactly 64 bytes to define a sprite, and that's it. Yet games like "Impossible Mission" created smooth-running characters, "Bruce Lee" showed martial arts moves, and "The Last Ninja" displayed fluid combat. How? Through the elegant technique of frame switching—showing different images in sequence fast enough to fool the eye into seeing movement.
+
+This is the moment your sprite stops being a static image and becomes a character.
+
+## What You'll Create
+
+By lesson's end, you'll have:
+- A character that walks when moving (not slides!)
+- Smooth 2-frame animation synced with movement
+- Understanding of animation timing and control
+- The foundation for any sprite animation effect
+
+## Understanding Sprite Animation
+
+### The Illusion of Movement
+
+Animation is pure illusion. Show two slightly different images quickly enough, and the brain sees movement. The C64's sprites work perfectly for this:
+
+**The Animation Process:**
+1. **Frame 1**: Show sprite in position A
+2. **Wait**: Let the eye register the image
+3. **Frame 2**: Show sprite in position B  
+4. **Wait**: Let the eye register the change
+5. **Repeat**: The brain sees continuous movement
+
+### Sprite Pointer Magic
+
+Remember: sprite pointers tell the VIC-II chip which 64 bytes of memory contain the sprite's image. Animation is simply changing that pointer:
+
+<CodeBlock title="How Sprite Animation Works" code={`Sprite Memory Layout:
+$2000-$203F: Frame 1 (walking position 1)
+$2040-$207F: Frame 2 (walking position 2)
+
+Animation Process:
+1. Point sprite to $2000 (frame 1)
+2. Wait 8 screen updates
+3. Point sprite to $2040 (frame 2)
+4. Wait 8 screen updates
+5. Repeat forever
+
+Result: Walking animation!`} />
+
+## Creating Your First Animation
+
+Let's build a walking character step by step:
+
+<CodeBlock title="Basic 2-Frame Animation" language="asm" code={`; 2-Frame Walking Animation Demo
+; Shows fundamental sprite animation technique
+
+        * = $0801
+        ; BASIC launcher
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+        * = $080d
+start:
+        ; Clear screen
+        lda #$93
+        jsr $ffd2
+        
+        ; Set up sprite
+        jsr init_sprite
+        jsr init_animation
+        
+main_loop:
+        ; Wait for raster line
+        lda #250
+wait:   cmp $d012
+        bne wait
+        
+        ; Read joystick
+        jsr read_joystick
+        
+        ; Update animation
+        jsr update_animation
+        
+        jmp main_loop
+
+init_sprite:
+        ; Enable sprite 0
+        lda #$01
+        sta $d015
+        
+        ; Position sprite
+        lda #100
+        sta $d000       ; X position
+        lda #100
+        sta $d001       ; Y position
+        
+        ; Set color
+        lda #$01        ; White
+        sta $d027
+        
+        ; Point to first frame
+        lda #$80        ; $2000 / 64
+        sta $07f8       ; Sprite 0 pointer
+        
+        ; Copy sprite data to $2000
+        jsr copy_sprite_frames
+        rts
+
+copy_sprite_frames:
+        ; Copy frame 1 to $2000
+        ldx #62
+copy_frame1:
+        lda sprite_frame1,x
+        sta $2000,x
+        dex
+        bpl copy_frame1
+        
+        ; Copy frame 2 to $2040
+        ldx #62
+copy_frame2:
+        lda sprite_frame2,x
+        sta $2040,x
+        dex
+        bpl copy_frame2
+        rts
+
+init_animation:
+        lda #0
+        sta animation_timer
+        sta current_frame
+        sta is_moving
+        rts
+
+update_animation:
+        ; Only animate if moving
+        lda is_moving
+        beq no_animation
+        
+        ; Increment timer
+        inc animation_timer
+        lda animation_timer
+        and #$07        ; Every 8 frames
+        bne no_animation
+        
+        ; Switch frames
+        lda current_frame
+        eor #$01        ; Toggle between 0 and 1
+        sta current_frame
+        
+        ; Update sprite pointer
+        beq show_frame1
+        
+show_frame2:
+        lda #$81        ; $2040 / 64
+        sta $07f8
+        jmp no_animation
+        
+show_frame1:
+        lda #$80        ; $2000 / 64
+        sta $07f8
+        
+no_animation:
+        ; Reset movement flag
+        lda #0
+        sta is_moving
+        rts
+
+read_joystick:
+        ; Read joystick port 2
+        lda $dc00
+        sta joystick_state
+        
+        ; Check if any direction pressed
+        and #$0f
+        cmp #$0f
+        beq not_moving
+        
+        ; We're moving - set flag
+        lda #1
+        sta is_moving
+        
+not_moving:
+        ; Check right
+        lda joystick_state
+        lsr
+        lsr
+        lsr
+        bcs not_right
+        inc $d000       ; Move right
+not_right:
+        
+        ; Check left
+        lsr
+        bcs not_left
+        dec $d000       ; Move left
+not_left:
+        
+        ; Check down
+        lda joystick_state
+        lsr
+        bcs not_down
+        inc $d001       ; Move down
+not_down:
+        
+        ; Check up
+        lsr
+        bcs not_up
+        dec $d001       ; Move up
+not_up:
+        rts
+
+; Sprite data - Frame 1 (arms down)
+sprite_frame1:
+        !byte %00000011,%11000000,%00000000
+        !byte %00000111,%11100000,%00000000
+        !byte %00000111,%11100000,%00000000
+        !byte %00000011,%11000000,%00000000
+        !byte %00000001,%10000000,%00000000
+        !byte %00000011,%11000000,%00000000
+        !byte %00000111,%11100000,%00000000
+        !byte %00001111,%11110000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00001111,%11110000,%00000000
+        !byte %00000111,%11100000,%00000000
+        !byte %00000111,%11100000,%00000000
+        !byte %00001111,%11110000,%00000000
+        !byte %00011101,%10111000,%00000000
+        !byte %00011001,%10011000,%00000000
+        !byte %00011001,%10011000,%00000000
+        !byte %00011101,%10111000,%00000000
+        !byte %00001111,%11110000,%00000000
+        !byte 0
+
+; Sprite data - Frame 2 (arms up)
+sprite_frame2:
+        !byte %00000011,%11000000,%00000000
+        !byte %00000111,%11100000,%00000000
+        !byte %00000111,%11100000,%00000000
+        !byte %00000011,%11000000,%00000000
+        !byte %00000001,%10000000,%00000000
+        !byte %00111011,%11011100,%00000000
+        !byte %01111111,%11111110,%00000000
+        !byte %01111111,%11111110,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00001111,%11110000,%00000000
+        !byte %00000111,%11100000,%00000000
+        !byte %00000111,%11100000,%00000000
+        !byte %00001111,%11110000,%00000000
+        !byte %00011001,%10011000,%00000000
+        !byte %00111001,%10011100,%00000000
+        !byte %00111001,%10011100,%00000000
+        !byte %00011001,%10011000,%00000000
+        !byte %00001110,%01110000,%00000000
+        !byte 0
+
+; Variables
+animation_timer:  !byte 0
+current_frame:    !byte 0
+is_moving:        !byte 0
+joystick_state:   !byte 0`} />
+
+## Animation Timing Techniques
+
+### Frame Rate Control
+
+The speed of animation is crucial. Too fast looks jittery, too slow looks robotic:
+
+<CodeBlock title="Different Animation Speeds" language="asm" code={`; Animation timing examples
+; Each creates different visual effects
+
+fast_animation:
+        inc animation_timer
+        lda animation_timer
+        and #$03        ; Every 4 frames (fast)
+        bne skip_fast
+        jsr switch_frame
+skip_fast:
+        rts
+
+normal_animation:
+        inc animation_timer
+        lda animation_timer
+        and #$07        ; Every 8 frames (normal)
+        bne skip_normal
+        jsr switch_frame
+skip_normal:
+        rts
+
+slow_animation:
+        inc animation_timer
+        lda animation_timer
+        and #$0f        ; Every 16 frames (slow)
+        bne skip_slow
+        jsr switch_frame
+skip_slow:
+        rts
+
+; For running vs walking
+adaptive_animation:
+        lda player_speed
+        cmp #2          ; Running?
+        beq fast_animation
+        jmp normal_animation`} />
+
+### Synchronized Animation
+
+Animation should match movement speed:
+
+<CodeBlock title="Movement-Synchronized Animation" language="asm" code={`; Sync animation with movement distance
+; Character takes "steps" instead of sliding
+
+synchronized_walk:
+        ; Check if moving
+        lda joystick_state
+        and #$0f
+        cmp #$0f
+        beq stop_animation
+        
+        ; Move the sprite
+        jsr move_sprite
+        
+        ; Count pixels moved
+        inc pixels_moved
+        lda pixels_moved
+        cmp #4          ; Every 4 pixels
+        bne no_step
+        
+        ; Take a "step"
+        lda #0
+        sta pixels_moved
+        jsr switch_frame
+        
+no_step:
+        rts
+
+stop_animation:
+        ; Reset to standing frame
+        lda #$80
+        sta $07f8
+        lda #0
+        sta pixels_moved
+        sta current_frame
+        rts
+
+pixels_moved: !byte 0`} />
+
+## Creating Effective Animation Frames
+
+### Design Principles
+
+Good 2-frame animation requires strategic differences between frames:
+
+<CodeBlock title="Effective Walking Animation" code={`Frame Design Strategy:
+
+Frame 1:                    Frame 2:
+- Right leg forward        - Left leg forward
+- Left arm back           - Right arm back  
+- Body centered           - Body shifted
+
+Key Differences:
+- Leg positions reversed
+- Arm positions reversed
+- Slight body shift
+- Head remains stable
+
+Result: Brain sees walking motion!`} />
+
+### Multiple Animation States
+
+Different actions need different animations:
+
+<CodeBlock title="Multiple Animation States" language="asm" code={`; Animation state machine
+; Different animations for different actions
+
+update_animation_state:
+        lda player_state
+        
+        cmp #STATE_IDLE
+        bne not_idle
+        jmp show_idle_frame
+        
+not_idle:
+        cmp #STATE_WALKING
+        bne not_walking
+        jmp animate_walking
+        
+not_walking:
+        cmp #STATE_JUMPING
+        bne not_jumping
+        jmp show_jump_frame
+        
+not_jumping:
+        cmp #STATE_FALLING
+        bne not_falling
+        jmp animate_falling
+        
+not_falling:
+        rts
+
+; State constants
+STATE_IDLE:     = 0
+STATE_WALKING:  = 1
+STATE_JUMPING:  = 2
+STATE_FALLING:  = 3
+
+player_state: !byte STATE_IDLE`} />
+
+## Advanced Animation Patterns
+
+### Idle Animation
+
+Even standing characters can be alive:
+
+<CodeBlock title="Idle Animation (Breathing Effect)" language="asm" code={`; Subtle idle animation
+; Character "breathes" when standing still
+
+idle_animation:
+        inc idle_timer
+        lda idle_timer
+        and #$1f        ; Every 32 frames
+        bne skip_idle
+        
+        ; Toggle between idle frames
+        lda idle_frame
+        eor #$01
+        sta idle_frame
+        
+        beq idle1
+        lda #$83        ; Idle frame 2 (chest expanded)
+        jmp set_idle
+idle1:
+        lda #$80        ; Idle frame 1 (chest normal)
+set_idle:
+        sta $07f8
+skip_idle:
+        rts
+
+idle_timer: !byte 0
+idle_frame: !byte 0`} />
+
+### Direction-Based Animation
+
+Different sprites for different directions:
+
+<CodeBlock title="4-Direction Animation" language="asm" code={`; Use different sprite frames for each direction
+; Creates more realistic movement
+
+update_directional_animation:
+        lda facing_direction
+        
+        cmp #DIR_RIGHT
+        bne not_facing_right
+        lda current_frame
+        beq right1
+        lda #$85        ; Right walk frame 2
+        jmp set_dir_frame
+right1:
+        lda #$84        ; Right walk frame 1
+        jmp set_dir_frame
+        
+not_facing_right:
+        cmp #DIR_LEFT
+        bne not_facing_left
+        lda current_frame
+        beq left1
+        lda #$87        ; Left walk frame 2
+        jmp set_dir_frame
+left1:
+        lda #$86        ; Left walk frame 1
+        jmp set_dir_frame
+        
+not_facing_left:
+        cmp #DIR_UP
+        bne not_facing_up
+        lda current_frame
+        beq up1
+        lda #$89        ; Up walk frame 2
+        jmp set_dir_frame
+up1:
+        lda #$88        ; Up walk frame 1
+        jmp set_dir_frame
+        
+not_facing_up:
+        ; Must be facing down
+        lda current_frame
+        beq down1
+        lda #$8b        ; Down walk frame 2
+        jmp set_dir_frame
+down1:
+        lda #$8a        ; Down walk frame 1
+        
+set_dir_frame:
+        sta $07f8
+        rts
+
+; Direction constants
+DIR_RIGHT: = 0
+DIR_LEFT:  = 1
+DIR_UP:    = 2
+DIR_DOWN:  = 3
+
+facing_direction: !byte DIR_RIGHT`} />
+
+## Complete Animation Example
+
+<CodeBlock title="Full Walking Character with Animation" language="asm" code={`; Complete animated character
+; Walks in 4 directions with proper animation
+
+        * = $0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+        * = $080d
+start:
+        jsr init_screen
+        jsr init_sprites
+        jsr copy_all_frames
+        
+game_loop:
+        ; Sync with raster
+        lda #250
+sync:   cmp $d012
+        bne sync
+        
+        ; Update game
+        jsr read_input
+        jsr update_movement
+        jsr update_animation
+        
+        ; Show debug info
+        jsr display_status
+        
+        jmp game_loop
+
+update_movement:
+        lda joystick_state
+        sta old_joystick
+        
+        ; Read current state
+        lda $dc00
+        sta joystick_state
+        
+        ; Check each direction
+        lsr
+        bcs no_up
+        dec $d001
+        lda #DIR_UP
+        sta facing_direction
+        inc is_moving
+no_up:
+        
+        lsr
+        bcs no_down
+        inc $d001
+        lda #DIR_DOWN
+        sta facing_direction
+        inc is_moving
+no_down:
+        
+        lsr
+        bcs no_left
+        dec $d000
+        lda #DIR_LEFT
+        sta facing_direction
+        inc is_moving
+no_left:
+        
+        lsr
+        bcs no_right
+        inc $d000
+        lda #DIR_RIGHT
+        sta facing_direction
+        inc is_moving
+no_right:
+        rts
+
+update_animation:
+        ; Check if moving
+        lda is_moving
+        bne do_animation
+        
+        ; Not moving - show idle
+        jsr show_idle_sprite
+        jmp done_animation
+        
+do_animation:
+        ; Animate based on movement
+        inc animation_counter
+        lda animation_counter
+        and #$07
+        bne same_frame
+        
+        ; Switch animation frame
+        lda current_frame
+        eor #$01
+        sta current_frame
+        
+        ; Update sprite based on direction
+        jsr update_directional_sprite
+        
+same_frame:
+done_animation:
+        ; Reset movement flag
+        lda #0
+        sta is_moving
+        rts
+
+; Variables
+joystick_state:    !byte 0
+old_joystick:      !byte 0
+facing_direction:  !byte 0
+current_frame:     !byte 0
+animation_counter: !byte 0
+is_moving:         !byte 0`} />
+
+## Debugging Your Animation
+
+<CodeBlock title="Animation Debugging Helper" language="asm" code={`display_debug:
+        ; Show animation state on screen
+        
+        ; Display current frame number
+        lda current_frame
+        ora #$30        ; Convert to ASCII
+        sta $0400       ; Top-left corner
+        
+        ; Display animation timer
+        lda animation_timer
+        lsr
+        lsr
+        lsr
+        lsr
+        ora #$30
+        sta $0401
+        
+        ; Display direction
+        lda facing_direction
+        ora #$30
+        sta $0402
+        
+        ; Display movement flag
+        lda is_moving
+        ora #$30
+        sta $0403
+        
+        ; Color the debug text
+        lda #$01        ; White
+        sta $d800
+        sta $d801
+        sta $d802
+        sta $d803
+        rts`} />
+
+## What You've Learned
+
+You can now:
+- ✅ **Switch sprite frames** for animation
+- ✅ **Control animation timing** with frame counters
+- ✅ **Synchronize animation** with movement
+- ✅ **Create walking effects** with just 2 frames
+- ✅ **Design effective** animation frames
+
+Your sprites are no longer static—they're alive!
+
+## Sprite Animation Principles
+
+<CodeBlock title="Quick Reference: Animation Checklist" code={`Perfect 2-Frame Animation:
+□ Frames show clear position change
+□ Timing matches movement speed
+□ Animation stops when not moving
+□ Frames are visually distinct
+□ Smooth transitions between frames
+
+Common Animation Speeds:
+- Very Fast: AND #$03 (4 frames)
+- Fast: AND #$07 (8 frames)  
+- Normal: AND #$0F (16 frames)
+- Slow: AND #$1F (32 frames)
+
+Memory Layout:
+- Frame 1: $2000-$203F
+- Frame 2: $2040-$207F
+- Frame 3: $2080-$20BF
+- Frame 4: $20C0-$20FF`} />
+
+**WOW Moment:** Move the joystick and watch your character actually WALK across the screen! Not slide, not glide, but take steps with arms swinging and legs moving. This is the exact technique that brought every C64 game character to life—from the athletes in "Summer Games" to the ninja in "The Last Ninja." With just two frames and perfect timing, you've crossed the threshold from displaying graphics to creating living characters!
+
+## What's Next?
+
+With animated sprites mastered, you're ready for:
+- **Lesson 6**: Multiple sprites on screen
+- **Lesson 7**: Collision detection between sprites
+- **Lesson 8**: Sprite colors and multicolor mode
+
+Your character can walk—next, let's give them friends and foes to interact with!

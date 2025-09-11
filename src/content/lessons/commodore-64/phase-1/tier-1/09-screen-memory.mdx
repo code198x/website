@@ -1,0 +1,725 @@
+---
+title: "Screen Memory: Understanding the C64's Display System"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 9
+description: "Master the fundamentals of screen and color memory, learning how the C64 organizes its 40×25 character display"
+learning_objectives:
+  - "Understand screen memory organization at $0400"
+  - "Master color memory manipulation at $D800"
+  - "Learn to calculate screen positions efficiently"
+  - "Create colorful text displays and patterns"
+  - "Understand the relationship between screen and color RAM"
+concepts:
+  - "Screen memory - 1000 bytes of character codes"
+  - "Color memory - 1000 nybbles of color data"
+  - "40×25 grid - the C64 display layout"
+  - "Memory mapping - calculating positions"
+  - "Direct screen manipulation - bypassing KERNAL"
+estimated_duration: "45 minutes"
+difficulty: "easy"
+prerequisites:
+  - "Lesson 8: Sprite Colors"
+code_examples: true
+practical_exercise: true
+order: 9
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Screen Memory: Understanding the C64's Display System
+**Master the foundation of all C64 graphics - the screen and color RAM**
+
+Before you can create custom characters or build game worlds, you need to understand how the C64 organizes its display. Unlike modern systems with pixel buffers, the C64 uses a character-based display: 40 columns by 25 rows of characters, each with its own color. This elegant system powered every text adventure, every RPG dialog, every high score table.
+
+Understanding screen memory is like learning the street layout of a city. Once you know that screen memory starts at $0400 and color memory at $D800, once you can calculate any position instantly, you gain direct control over every character on screen. This is how "Elite" displayed its trading screens, how "Zork" rendered its text, how "Boulder Dash" built its caves.
+
+This lesson unlocks the C64's display system at its most fundamental level.
+
+## What You'll Create
+
+By lesson's end, you'll:
+- Write directly to any screen position
+- Paint individual characters with color
+- Create animated text effects
+- Build colorful screen layouts
+- Understand the memory map that controls the display
+
+## The C64 Display Architecture
+
+### Screen Memory ($0400-$07E7)
+
+The screen is a grid of 1000 character positions:
+
+<CodeBlock title="Screen Memory Layout" code={`Screen Organization:
+- 40 columns × 25 rows = 1000 characters
+- Memory: $0400 to $07E7 (1000 bytes)
+- Each byte = one character code
+
+Memory Map:
+$0400-$0427: Row 0 (top of screen)
+$0428-$044F: Row 1
+$0450-$0477: Row 2
+...
+$07C0-$07E7: Row 24 (bottom)
+
+Character Codes:
+$00-$1F: Control codes
+$20-$3F: Numbers and symbols
+$40-$5F: Uppercase letters
+$60-$7F: Graphic symbols
+$80-$FF: Reversed versions`} />
+
+### Color Memory ($D800-$DBE7)
+
+Each character has an associated color:
+
+<CodeBlock title="Color Memory Layout" code={`Color RAM Organization:
+- Same layout as screen memory
+- Memory: $D800 to $DBE7 (1000 locations)
+- Only lower 4 bits used (16 colors)
+
+Color Values:
+$0: Black      $8: Orange
+$1: White      $9: Brown
+$2: Red        $A: Light Red
+$3: Cyan       $B: Dark Gray
+$4: Purple     $C: Medium Gray
+$5: Green      $D: Light Green
+$6: Blue       $E: Light Blue
+$7: Yellow     $F: Light Gray`} />
+
+## Direct Screen Manipulation
+
+<CodeBlock title="Writing to Screen Memory" language="asm" code={`; Direct screen writing demonstration
+; Shows fundamental screen control
+
+        * = $0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+        * = $080d
+start:
+        ; Clear the screen
+        jsr clear_screen
+        
+        ; Write "HELLO" at position (10,5)
+        jsr write_hello
+        
+        ; Color it rainbow
+        jsr color_hello
+        
+        ; Create a border
+        jsr draw_border
+        
+        ; Fill pattern
+        jsr fill_pattern
+        
+endless:
+        jmp endless
+
+clear_screen:
+        ; Clear screen and color memory
+        ldx #0
+clear_loop:
+        lda #$20        ; Space character
+        sta $0400,x
+        sta $0500,x
+        sta $0600,x
+        sta $06e8,x
+        
+        lda #$01        ; White
+        sta $d800,x
+        sta $d900,x
+        sta $da00,x
+        sta $dae8,x
+        
+        inx
+        bne clear_loop
+        rts
+
+write_hello:
+        ; Calculate position: row 5, column 10
+        ; Position = $0400 + (row * 40) + column
+        ; Position = $0400 + (5 * 40) + 10
+        ; Position = $0400 + 200 + 10 = $04D2
+        
+        lda #'H'        ; PETSCII 'H'
+        sta $04d2
+        lda #'E'
+        sta $04d3
+        lda #'L'
+        sta $04d4
+        sta $04d5       ; Second 'L'
+        lda #'O'
+        sta $04d6
+        rts
+
+color_hello:
+        ; Color each letter differently
+        lda #$02        ; Red
+        sta $d8d2
+        lda #$07        ; Yellow
+        sta $d8d3
+        lda #$05        ; Green
+        sta $d8d4
+        lda #$06        ; Blue
+        sta $d8d5
+        lda #$04        ; Purple
+        sta $d8d6
+        rts`} />
+
+### Position Calculation
+
+<CodeBlock title="Screen Position Formula" language="asm" code={`; Calculate any screen position
+; Input: X = column (0-39), Y = row (0-24)
+; Output: Address in screen_ptr
+
+calculate_position:
+        ; Save column
+        stx temp_x
+        
+        ; Calculate row offset (Y * 40)
+        lda #0
+        sta screen_ptr+1
+        tya
+        
+        ; Multiply by 40
+        asl             ; × 2
+        asl             ; × 4
+        asl             ; × 8
+        sta screen_ptr
+        
+        tya
+        asl             ; × 2
+        asl             ; × 4
+        asl             ; × 8
+        asl             ; × 16
+        asl             ; × 32
+        clc
+        adc screen_ptr  ; 8Y + 32Y = 40Y
+        sta screen_ptr
+        
+        ; Add column
+        lda temp_x
+        clc
+        adc screen_ptr
+        sta screen_ptr
+        
+        ; Add base address ($0400)
+        lda screen_ptr+1
+        adc #$04
+        sta screen_ptr+1
+        
+        rts
+
+; Faster version using lookup table
+fast_calculate:
+        ; Use pre-calculated row table
+        tya
+        asl             ; × 2 for word index
+        tay
+        lda row_table_lo,y
+        sta screen_ptr
+        lda row_table_hi,y
+        sta screen_ptr+1
+        
+        ; Add column
+        txa
+        clc
+        adc screen_ptr
+        sta screen_ptr
+        bcc no_carry
+        inc screen_ptr+1
+no_carry:
+        rts
+
+; Variables
+temp_x:      !byte 0
+screen_ptr:  !word 0
+
+; Lookup tables for each row
+row_table_lo:
+        !byte <$0400, <$0428, <$0450, <$0478, <$04a0
+        !byte <$04c8, <$04f0, <$0518, <$0540, <$0568
+        !byte <$0590, <$05b8, <$05e0, <$0608, <$0630
+        !byte <$0658, <$0680, <$06a8, <$06d0, <$06f8
+        !byte <$0720, <$0748, <$0770, <$0798, <$07c0
+
+row_table_hi:
+        !byte >$0400, >$0428, >$0450, >$0478, >$04a0
+        !byte >$04c8, >$04f0, >$0518, >$0540, >$0568
+        !byte >$0590, >$05b8, >$05e0, >$0608, >$0630
+        !byte >$0658, >$0680, >$06a8, >$06d0, >$06f8
+        !byte >$0720, >$0748, >$0770, >$0798, >$07c0`} />
+
+## Creating Screen Effects
+
+### Drawing Borders and Boxes
+
+<CodeBlock title="Border Drawing Routine" language="asm" code={`draw_border:
+        ; Draw a border around the screen
+        
+        ; Top row
+        ldx #39
+top_loop:
+        lda #$40        ; Horizontal line character
+        sta $0400,x
+        lda #$0e        ; Light blue
+        sta $d800,x
+        dex
+        bpl top_loop
+        
+        ; Bottom row
+        ldx #39
+bottom_loop:
+        lda #$40
+        sta $07c0,x
+        lda #$0e
+        sta $dbc0,x
+        dex
+        bpl bottom_loop
+        
+        ; Left and right columns
+        ldy #23         ; Rows 1-23
+side_loop:
+        ; Calculate row position
+        tya
+        asl
+        tax
+        lda row_table_lo,x
+        sta screen_ptr
+        lda row_table_hi,x
+        sta screen_ptr+1
+        
+        ; Left side
+        lda #$5d        ; Vertical line character
+        ldy #0
+        sta (screen_ptr),y
+        
+        ; Right side
+        ldy #39
+        sta (screen_ptr),y
+        
+        ; Color both sides
+        lda screen_ptr+1
+        clc
+        adc #$d4        ; Color RAM offset
+        sta screen_ptr+1
+        
+        lda #$0e        ; Light blue
+        ldy #0
+        sta (screen_ptr),y
+        ldy #39
+        sta (screen_ptr),y
+        
+        ; Next row
+        dey
+        bpl side_loop
+        
+        ; Corners
+        lda #$70        ; Corner character
+        sta $0400       ; Top-left
+        sta $0427       ; Top-right
+        sta $07c0       ; Bottom-left
+        sta $07e7       ; Bottom-right
+        
+        rts`} />
+
+### Color Gradients and Patterns
+
+<CodeBlock title="Creating Visual Effects" language="asm" code={`create_gradient:
+        ; Fill screen with color gradient
+        ldx #0
+        ldy #0
+gradient_loop:
+        ; Calculate color based on position
+        tya
+        lsr             ; Divide by 2
+        and #$0f        ; Keep in color range
+        sta $d800,x
+        sta $d900,x
+        sta $da00,x
+        sta $dae8,x
+        
+        ; Increment and loop
+        inx
+        iny
+        cpx #0
+        bne gradient_loop
+        rts
+
+checkerboard_pattern:
+        ; Create checkerboard pattern
+        ldy #24         ; Row counter
+check_row:
+        ldx #39         ; Column counter
+check_col:
+        ; Calculate if even or odd square
+        txa
+        eor row_counter
+        and #$01
+        beq white_square
+        
+black_square:
+        lda #$a0        ; Solid block
+        jmp store_square
+        
+white_square:
+        lda #$20        ; Space
+        
+store_square:
+        ; Calculate position and store
+        pha
+        jsr calculate_position
+        pla
+        ldy #0
+        sta (screen_ptr),y
+        
+        ; Next column
+        dex
+        bpl check_col
+        
+        ; Next row
+        dec row_counter
+        ldy row_counter
+        bpl check_row
+        rts
+
+row_counter: !byte 24`} />
+
+## Text Display Techniques
+
+### Printing Strings
+
+<CodeBlock title="String Output Routine" language="asm" code={`print_string:
+        ; Print null-terminated string
+        ; Input: string_ptr = address of string
+        ;        X = column, Y = row
+        
+        jsr calculate_position
+        
+        ldy #0
+print_loop:
+        lda (string_ptr),y
+        beq print_done  ; Null terminator
+        
+        ; Convert ASCII to PETSCII if needed
+        cmp #$40
+        bcc no_convert
+        cmp #$60
+        bcs no_convert
+        sec
+        sbc #$40        ; Convert to PETSCII
+        
+no_convert:
+        sta (screen_ptr),y
+        iny
+        jmp print_loop
+        
+print_done:
+        rts
+
+; Example usage
+display_message:
+        ; Set up string pointer
+        lda #<message
+        sta string_ptr
+        lda #>message
+        sta string_ptr+1
+        
+        ; Print at position (5,10)
+        ldx #5
+        ldy #10
+        jsr print_string
+        rts
+
+message:
+        !text "HELLO C64 WORLD!"
+        !byte 0         ; Null terminator
+
+string_ptr: !word 0`} />
+
+### Scrolling Text
+
+<CodeBlock title="Text Scrolling Effects" language="asm" code={`scroll_line_left:
+        ; Scroll a single line left
+        ; Input: Y = row number
+        
+        ; Calculate row start
+        tya
+        asl
+        tax
+        lda row_table_lo,x
+        sta screen_ptr
+        lda row_table_hi,x
+        sta screen_ptr+1
+        
+        ; Scroll characters
+        ldy #0
+scroll_char:
+        iny
+        lda (screen_ptr),y
+        dey
+        sta (screen_ptr),y
+        iny
+        cpy #39
+        bne scroll_char
+        
+        ; Blank last character
+        lda #$20
+        sta (screen_ptr),y
+        
+        ; Scroll colors too
+        lda screen_ptr+1
+        clc
+        adc #$d4
+        sta screen_ptr+1
+        
+        ldy #0
+scroll_color:
+        iny
+        lda (screen_ptr),y
+        dey
+        sta (screen_ptr),y
+        iny
+        cpy #39
+        bne scroll_color
+        
+        rts
+
+smooth_scroll_message:
+        ; Smooth scroll using hardware register
+        dec scroll_counter
+        bpl no_scroll
+        
+        ; Reset counter
+        lda #7
+        sta scroll_counter
+        
+        ; Shift message
+        jsr scroll_line_left
+        
+        ; Add next character
+        inc message_index
+        ldx message_index
+        lda scroll_message,x
+        bne not_end
+        
+        ; Reset message
+        ldx #0
+        stx message_index
+        lda scroll_message,x
+        
+not_end:
+        ; Store at right edge
+        ldy #12         ; Row 12
+        tya
+        asl
+        tax
+        lda row_table_lo,x
+        sta screen_ptr
+        lda row_table_hi,x
+        sta screen_ptr+1
+        
+        ldy #39
+        lda scroll_message,x
+        sta (screen_ptr),y
+        
+no_scroll:
+        rts
+
+scroll_counter:  !byte 7
+message_index:   !byte 0
+scroll_message:
+        !text "  WELCOME TO THE C64!  THIS IS SCROLLING TEXT...  "
+        !byte 0`} />
+
+## Color RAM Tricks
+
+### Dynamic Color Changes
+
+<CodeBlock title="Color Animation" language="asm" code={`animate_colors:
+        ; Cycle colors for visual effect
+        inc color_timer
+        lda color_timer
+        and #$07
+        bne no_color_change
+        
+        ; Cycle through rainbow
+        ldx #39
+rainbow_loop:
+        ; Get current color
+        lda $d800,x
+        ; Increment with wrap
+        clc
+        adc #1
+        and #$0f
+        sta $d800,x
+        
+        dex
+        bpl rainbow_loop
+        
+no_color_change:
+        rts
+
+flash_text:
+        ; Flash important text
+        lda flash_state
+        eor #$01
+        sta flash_state
+        beq normal_color
+        
+        ; Bright color
+        lda #$01        ; White
+        jmp set_flash
+        
+normal_color:
+        lda #$02        ; Red
+        
+set_flash:
+        ; Color "GAME OVER" at center
+        ldx #8
+flash_loop:
+        sta $d8d0,x     ; Row 12, starting column 16
+        dex
+        bpl flash_loop
+        rts
+
+color_timer: !byte 0
+flash_state: !byte 0`} />
+
+## Complete Screen Demo
+
+<CodeBlock title="Full Screen Memory Demo" language="asm" code={`; Complete demonstration of screen memory
+; Shows all techniques combined
+
+        * = $0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+        * = $080d
+main:
+        jsr setup_screen
+        
+demo_loop:
+        ; Wait for raster
+        lda #250
+wait:   cmp $d012
+        bne wait
+        
+        ; Update effects
+        jsr animate_colors
+        jsr scroll_bottom_line
+        jsr flash_title
+        
+        jmp demo_loop
+
+setup_screen:
+        ; Clear screen
+        jsr clear_screen
+        
+        ; Draw title
+        ldx #10
+        ldy #2
+        lda #<title_text
+        sta string_ptr
+        lda #>title_text
+        sta string_ptr+1
+        jsr print_string
+        
+        ; Draw border
+        jsr draw_border
+        
+        ; Create gradient background
+        jsr create_gradient
+        
+        ; Display info
+        ldx #5
+        ldy #10
+        lda #<info_text
+        sta string_ptr
+        lda #>info_text
+        sta string_ptr+1
+        jsr print_string
+        
+        rts
+
+; Text data
+title_text:
+        !text "SCREEN MEMORY MASTERY"
+        !byte 0
+
+info_text:
+        !text "40x25 CHARACTERS = 1000 BYTES"
+        !byte 0
+
+; Include all previous routines here...`} />
+
+## Memory-Efficient Techniques
+
+<CodeBlock title="Optimization Strategies" code={`Screen Memory Tips:
+
+1. Use lookup tables for row addresses
+   - Faster than multiplication
+   - 50 bytes for huge speed gain
+
+2. Combine operations when possible
+   - Write character and color together
+   - Use indexed addressing modes
+
+3. Unroll loops for critical sections
+   - 4x unrolling for screen clear
+   - Trade size for speed
+
+4. Use character codes efficiently
+   - PETSCII graphics for borders
+   - Reversed characters for effects
+
+5. Color RAM peculiarities
+   - Only lower 4 bits matter
+   - Can't be saved/restored easily
+   - Always at $D800 (can't move)`} />
+
+## What You've Learned
+
+You can now:
+- ✅ **Write directly to screen memory** at any position
+- ✅ **Manipulate color RAM** for each character
+- ✅ **Calculate screen positions** efficiently
+- ✅ **Create text effects** like scrolling and flashing
+- ✅ **Build screen layouts** with borders and patterns
+
+You have mastered the fundamental display system!
+
+## Quick Reference
+
+<CodeBlock title="Screen Memory Essentials" code={`Key Addresses:
+Screen RAM: $0400-$07E7 (default)
+Color RAM:  $D800-$DBE7 (fixed)
+
+Position Formula:
+Address = $0400 + (row × 40) + column
+
+PETSCII Codes:
+$00-$1F: Control characters
+$20-$3F: Numbers, punctuation
+$40-$5F: Uppercase, symbols
+$60-$7F: Graphics characters
+$80-$FF: Reversed versions
+
+Common Characters:
+$20: Space
+$40: Horizontal line
+$5D: Vertical line
+$A0: Solid block`} />
+
+**WOW Moment:** Type a character at ANY position on screen instantly! Watch as you paint the display with rainbow gradients, scroll messages smoothly, and flash important text. This is the foundation that EVERY C64 program uses—from the simplest BASIC program to the most complex game. You're no longer limited to PRINT statements; you control every pixel of every character on the entire screen!
+
+## What's Next?
+
+Now that you understand screen memory, you're ready for:
+- **Lesson 10**: Custom Character Sets - Redefine the characters themselves
+- **Lesson 11**: Background Graphics - Build game worlds with tiles
+- **Lesson 12**: Text Display - Advanced text output techniques
+
+The path to complete display mastery continues!

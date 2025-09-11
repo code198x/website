@@ -1,0 +1,622 @@
+---
+title: "Sprite Colors: Painting Your Digital World"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 8
+description: "Master sprite coloring with single-color and multicolor modes, creating vibrant characters with the C64's palette"
+learning_objectives:
+  - "Understand single-color vs multicolor sprite modes"
+  - "Configure sprite color registers correctly"
+  - "Design effective multicolor sprites"
+  - "Use color strategically for game design"
+  - "Combine multiple sprites for more colors"
+concepts:
+  - "Color registers - individual sprite colors"
+  - "Multicolor mode - 3 colors per sprite"
+  - "Shared colors - multicolor registers"
+  - "Color limitations - working within constraints"
+  - "Visual design - effective color choices"
+estimated_duration: "45 minutes"
+difficulty: "easy"
+prerequisites:
+  - "Lesson 7: Collision Detection"
+code_examples: true
+practical_exercise: true
+order: 8
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Sprite Colors: Painting Your Digital World
+**Transform monochrome sprites into vibrant, colorful characters**
+
+You've created sprites. You've animated them. You've detected collisions. But they're all single colors—like watching TV with the color turned down. The C64's sprites can display multiple colors simultaneously, creating rich, detailed characters that pop off the screen. Today you'll master both sprite color modes and learn the tricks that made C64 games visually distinctive.
+
+In 1982, most computers displayed sprites in one color. The C64 revolutionized gaming by offering multicolor sprites—each sprite could display three colors plus transparency. Games like "Impossible Mission" used this for detailed characters, "Bubble Bobble" created cute dragons, and "The Last Ninja" rendered complex warriors. The secret? Understanding the VIC-II's two sprite modes and how to maximize their potential.
+
+This is where your sprites gain their visual identity.
+
+## What You'll Create
+
+By lesson's end, you'll have:
+- Sprites using single-color mode for sharp details
+- Multicolor sprites with 3 colors for rich graphics
+- Understanding of color register configuration
+- Techniques for maximizing color variety
+- Knowledge of when to use each mode
+
+## Understanding Sprite Color Modes
+
+### Single-Color Mode (High Resolution)
+
+In single-color mode, each pixel is either on or off:
+
+<CodeBlock title="Single-Color Sprite Structure" code={`Single-Color Mode:
+- Resolution: 24×21 pixels
+- Colors: 1 color + transparent
+- Each bit = 1 pixel
+- Bit 0 = transparent
+- Bit 1 = sprite color
+
+Memory Layout (per row):
+Byte 0: [7][6][5][4][3][2][1][0] = 8 pixels
+Byte 1: [7][6][5][4][3][2][1][0] = 8 pixels  
+Byte 2: [7][6][5][4][3][2][1][0] = 8 pixels
+Total: 24 pixels wide
+
+Best for: Text, thin lines, detailed graphics`} />
+
+### Multicolor Mode (Lower Resolution, More Colors)
+
+Multicolor mode trades resolution for colors:
+
+<CodeBlock title="Multicolor Sprite Structure" code={`Multicolor Mode:
+- Resolution: 12×21 pixels (half width)
+- Colors: 3 colors + transparent
+- Each pixel pair = 1 multicolor pixel
+- 00 = transparent
+- 01 = Multicolor register 0 ($D025)
+- 10 = Sprite color register
+- 11 = Multicolor register 1 ($D026)
+
+Memory Layout (per row):
+Byte 0: [76][54][32][10] = 4 multicolor pixels
+Byte 1: [76][54][32][10] = 4 multicolor pixels
+Byte 2: [76][54][32][10] = 4 multicolor pixels
+Total: 12 multicolor pixels wide
+
+Best for: Characters, enemies, colorful objects`} />
+
+## Configuring Sprite Colors
+
+<CodeBlock title="Basic Color Configuration" language="asm" code={`; Complete sprite color setup
+; Demonstrates both single and multicolor modes
+
+        * = $0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+        * = $080d
+start:
+        ; Clear screen
+        lda #$93
+        jsr $ffd2
+        
+        ; Set up sprites
+        jsr init_single_color_sprite
+        jsr init_multicolor_sprite
+        jsr display_color_info
+        
+main_loop:
+        ; Wait for raster
+        lda #250
+wait:   cmp $d012
+        bne wait
+        
+        ; Cycle colors for demo
+        jsr cycle_colors
+        
+        jmp main_loop
+
+init_single_color_sprite:
+        ; Enable sprite 0
+        lda #$01
+        sta $d015
+        
+        ; Position sprite 0
+        lda #60
+        sta $d000       ; X position
+        lda #100
+        sta $d001       ; Y position
+        
+        ; Set single-color mode (bit 0 = 0)
+        lda $d01c
+        and #$fe        ; Clear bit 0
+        sta $d01c
+        
+        ; Set sprite 0 color
+        lda #$01        ; White
+        sta $d027       ; Sprite 0 color
+        
+        ; Set sprite pointer
+        lda #$80
+        sta $07f8
+        
+        ; Copy single-color sprite data
+        ldx #62
+copy_single:
+        lda single_color_sprite,x
+        sta $2000,x
+        dex
+        bpl copy_single
+        rts
+
+init_multicolor_sprite:
+        ; Enable sprite 1
+        lda $d015
+        ora #$02        ; Enable sprite 1
+        sta $d015
+        
+        ; Position sprite 1
+        lda #140
+        sta $d002       ; X position
+        lda #100
+        sta $d003       ; Y position
+        
+        ; Set multicolor mode for sprite 1
+        lda $d01c
+        ora #$02        ; Set bit 1
+        sta $d01c
+        
+        ; Configure multicolor registers
+        lda #$0a        ; Light red
+        sta $d025       ; Multicolor 0 (shared)
+        
+        lda #$02        ; Red
+        sta $d026       ; Multicolor 1 (shared)
+        
+        ; Set sprite 1's individual color
+        lda #$07        ; Yellow
+        sta $d028       ; Sprite 1 color
+        
+        ; Set sprite pointer
+        lda #$81
+        sta $07f9
+        
+        ; Copy multicolor sprite data
+        ldx #62
+copy_multi:
+        lda multicolor_sprite,x
+        sta $2040,x
+        dex
+        bpl copy_multi
+        rts
+
+; Single-color sprite (sharp robot)
+single_color_sprite:
+        !byte %00000001,%10000000,%00000000
+        !byte %00000011,%11000000,%00000000
+        !byte %00000011,%11000000,%00000000
+        !byte %00000111,%11100000,%00000000
+        !byte %00001111,%11110000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00111111,%11111100,%00000000
+        !byte %01111111,%11111110,%00000000
+        !byte %01110011,%11001110,%00000000
+        !byte %01110011,%11001110,%00000000
+        !byte %01111111,%11111110,%00000000
+        !byte %00111111,%11111100,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte %00001111,%11110000,%00000000
+        !byte %00001111,%11110000,%00000000
+        !byte %00001111,%11110000,%00000000
+        !byte %00001111,%11110000,%00000000
+        !byte %00011111,%11111000,%00000000
+        !byte 0
+
+; Multicolor sprite (colorful character)
+multicolor_sprite:
+        ; Using bit pairs: 00=trans, 01=MC0, 10=sprite color, 11=MC1
+        !byte %00010100,%01010100,%00010100
+        !byte %00010110,%11111001,%01010100
+        !byte %00010110,%11111001,%01010100
+        !byte %00000110,%11111001,%01000000
+        !byte %00000101,%10101001,%01000000
+        !byte %00000110,%10101001,%10000000
+        !byte %00010110,%10101001,%10010000
+        !byte %01101010,%10101010,%10100100
+        !byte %01101010,%01010110,%10100100
+        !byte %01101010,%01010110,%10100100
+        !byte %01101010,%10101010,%10100100
+        !byte %00010110,%10101001,%10010000
+        !byte %00000110,%10101001,%10000000
+        !byte %00000110,%10101001,%10000000
+        !byte %00000110,%11111001,%10000000
+        !byte %00010110,%11111001,%10010000
+        !byte %00011001,%10101001,%01100000
+        !byte %00011001,%10101001,%01100000
+        !byte %00011001,%01010101,%01100000
+        !byte %00011001,%01010101,%01100000
+        !byte %00010101,%00000001,%01010000
+        !byte 0`} />
+
+## Color Design Strategies
+
+### Maximizing Color Variety
+
+<CodeBlock title="Using Multiple Sprites for More Colors" language="asm" code={`; Overlay technique - combine sprites for more colors
+; Each sprite adds its colors to the total
+
+create_colorful_character:
+        ; Base sprite (body)
+        lda #$04        ; Enable sprites 2 and 3
+        ora #$08
+        sta $d015
+        
+        ; Position both sprites at same location
+        lda #100
+        sta $d004       ; Sprite 2 X
+        sta $d006       ; Sprite 3 X
+        lda #100
+        sta $d005       ; Sprite 2 Y
+        sta $d007       ; Sprite 3 Y
+        
+        ; Sprite 2: Main body (multicolor)
+        lda $d01c
+        ora #$04        ; Multicolor for sprite 2
+        sta $d01c
+        
+        lda #$0f        ; Light gray
+        sta $d029       ; Sprite 2 color
+        
+        ; Sprite 3: Details overlay (single color)
+        lda $d01c
+        and #$f7        ; Single color for sprite 3
+        sta $d01c
+        
+        lda #$00        ; Black
+        sta $d02a       ; Sprite 3 color
+        
+        ; Set different patterns
+        lda #$82        ; Body pattern
+        sta $07fa       ; Sprite 2 pointer
+        
+        lda #$83        ; Detail pattern
+        sta $07fb       ; Sprite 3 pointer
+        
+        rts
+
+; Priority layering for color effects
+set_sprite_priorities:
+        ; Sprite 3 in front of sprite 2
+        lda $d01b
+        and #$fb        ; Sprite 2 behind
+        ora #$08        ; Sprite 3 in front
+        sta $d01b
+        rts`} />
+
+### Color Cycling Effects
+
+<CodeBlock title="Dynamic Color Changes" language="asm" code={`; Cycle colors for visual effects
+; Creates pulsing, flashing, or rainbow effects
+
+cycle_colors:
+        inc color_timer
+        lda color_timer
+        and #$07        ; Every 8 frames
+        bne no_cycle
+        
+        ; Cycle sprite color
+        inc current_color
+        lda current_color
+        and #$0f        ; 16 colors
+        sta $d027       ; Update sprite 0 color
+        
+        ; Pulse multicolor registers
+        lda pulse_direction
+        beq brighten
+        
+darken:
+        dec multicolor_value
+        lda multicolor_value
+        cmp #$00
+        bne update_multi
+        lda #$00
+        sta pulse_direction
+        jmp update_multi
+        
+brighten:
+        inc multicolor_value
+        lda multicolor_value
+        cmp #$0f
+        bne update_multi
+        lda #$01
+        sta pulse_direction
+        
+update_multi:
+        lda multicolor_value
+        sta $d025       ; Update multicolor 0
+        rts
+        
+no_cycle:
+        rts
+
+color_timer:       !byte 0
+current_color:     !byte 1
+pulse_direction:   !byte 0
+multicolor_value:  !byte 8`} />
+
+## Designing Effective Multicolor Sprites
+
+### Planning Your Color Usage
+
+<CodeBlock title="Multicolor Sprite Design Template" code={`Multicolor Design Strategy:
+
+Color Allocation:
+- Transparent: Background shows through
+- Color 1 ($D025): Shared outline color (black)
+- Color 2 (sprite): Main character color
+- Color 3 ($D026): Shared highlight color (white)
+
+Design Grid (12×21):
+  0123456789AB
+0 ....XXXX....  (head)
+1 ...XXXXXX...
+2 ..XXX..XXX..  (eyes)
+3 ..XXXXXXXX..
+4 ...XXXXXX...  (body)
+5 ..XXXXXXXX..
+6 .XXXXXXXXXX.
+7 .XXXX..XXXX.  (arms)
+8 .XXXX..XXXX.
+9 .XXXXXXXXXX.
+A ..XXXXXXXX..  (legs)
+B ..XXX..XXX..
+C ..XXX..XXX..
+
+Bit Patterns:
+. = 00 (transparent)
+X = 10 (sprite color)
+O = 01 (multicolor 0)
+# = 11 (multicolor 1)`} />
+
+### Converting High-Res to Multicolor
+
+<CodeBlock title="Sprite Mode Conversion" language="asm" code={`; Switch sprite between modes at runtime
+; Useful for different game states
+
+toggle_sprite_mode:
+        lda sprite_mode
+        eor #$01
+        sta sprite_mode
+        
+        beq set_single_color
+        
+set_multicolor:
+        ; Switch to multicolor
+        lda $d01c
+        ora #$01        ; Set bit 0
+        sta $d01c
+        
+        ; Load multicolor pattern
+        lda #$81        ; Multicolor sprite
+        sta $07f8
+        
+        ; Set up colors
+        lda #$00        ; Black
+        sta $d025
+        lda #$01        ; White
+        sta $d026
+        
+        jmp mode_done
+        
+set_single_color:
+        ; Switch to single color
+        lda $d01c
+        and #$fe        ; Clear bit 0
+        sta $d01c
+        
+        ; Load single color pattern
+        lda #$80        ; Single color sprite
+        sta $07f8
+        
+mode_done:
+        rts
+
+sprite_mode: !byte 0`} />
+
+## C64 Color Palette Reference
+
+<CodeBlock title="Complete C64 Color Values" code={`C64 Color Palette:
+$00 = Black         $08 = Orange
+$01 = White         $09 = Brown
+$02 = Red           $0A = Light Red
+$03 = Cyan          $0B = Dark Gray
+$04 = Purple        $0C = Medium Gray
+$05 = Green         $0D = Light Green
+$06 = Blue          $0E = Light Blue
+$07 = Yellow        $0F = Light Gray
+
+Color Combination Tips:
+- Black outline + any color = definition
+- White highlight + any color = depth
+- Complementary pairs: Red/Green, Blue/Orange
+- Gradient sets: Dark Gray/Gray/Light Gray
+- High contrast: Black/White/Bright Color`} />
+
+## Complete Color Demo
+
+<CodeBlock title="Full Sprite Color Demonstration" language="asm" code={`; Complete demo showing all color techniques
+; Shows single color, multicolor, and effects
+
+        * = $0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+        * = $080d
+start:
+        jsr setup_screen
+        jsr create_all_sprites
+        
+demo_loop:
+        lda #250
+vsync:  cmp $d012
+        bne vsync
+        
+        ; Update effects
+        jsr rainbow_cycle
+        jsr pulse_multicolors
+        jsr flash_on_collision
+        
+        ; Handle input
+        jsr check_mode_switch
+        
+        jmp demo_loop
+
+create_all_sprites:
+        ; Create 4 demo sprites
+        lda #$0f        ; Enable sprites 0-3
+        sta $d015
+        
+        ; Sprite 0: Single color
+        lda #50
+        sta $d000
+        lda #80
+        sta $d001
+        lda #$07        ; Yellow
+        sta $d027
+        
+        ; Sprite 1: Multicolor
+        lda #100
+        sta $d002
+        lda #80
+        sta $d003
+        lda #$02        ; Set multicolor
+        sta $d01c
+        lda #$05        ; Green
+        sta $d028
+        
+        ; Sprite 2: Rainbow cycling
+        lda #150
+        sta $d004
+        lda #80
+        sta $d005
+        lda #$01        ; Start white
+        sta $d029
+        
+        ; Sprite 3: Flashing
+        lda #200
+        sta $d006
+        lda #80
+        sta $d007
+        lda #$02        ; Red
+        sta $d02a
+        
+        ; Set multicolor registers
+        lda #$00        ; Black
+        sta $d025
+        lda #$01        ; White
+        sta $d026
+        
+        rts
+
+rainbow_cycle:
+        inc rainbow_timer
+        lda rainbow_timer
+        lsr
+        lsr
+        lsr
+        and #$0f
+        sta $d029       ; Update sprite 2
+        rts
+
+pulse_multicolors:
+        inc pulse_timer
+        lda pulse_timer
+        lsr
+        lsr
+        and #$0f
+        tax
+        lda pulse_table,x
+        sta $d025
+        rts
+
+flash_on_collision:
+        ; Check collision
+        lda $d01e       ; Sprite-sprite collision
+        beq no_flash
+        
+        ; Flash sprite 3
+        lda flash_state
+        eor #$01
+        sta flash_state
+        beq flash_off
+        
+        lda #$01        ; White
+        sta $d02a
+        jmp flash_done
+        
+flash_off:
+        lda #$02        ; Red
+        sta $d02a
+        
+flash_done:
+        ; Clear collision
+        lda $d01e
+        
+no_flash:
+        rts
+
+; Data
+rainbow_timer:  !byte 0
+pulse_timer:    !byte 0
+flash_state:    !byte 0
+
+pulse_table:
+        !byte $00,$06,$0b,$0c
+        !byte $0f,$01,$0f,$0c
+        !byte $0b,$06,$00,$00
+        !byte $00,$00,$00,$00`} />
+
+## What You've Learned
+
+You can now:
+- ✅ **Configure sprite colors** using individual registers
+- ✅ **Enable multicolor mode** for 3-color sprites
+- ✅ **Design multicolor graphics** effectively
+- ✅ **Create color effects** like cycling and pulsing
+- ✅ **Combine sprites** for additional colors
+
+Your sprites now have full color control!
+
+## Quick Reference
+
+<CodeBlock title="Sprite Color Registers" code={`Single Color Mode:
+$D027-$D02E: Individual sprite colors (sprites 0-7)
+
+Multicolor Mode:
+$D01C: Multicolor mode flags (bit per sprite)
+$D025: Shared multicolor 0 (all sprites)
+$D026: Shared multicolor 1 (all sprites)
+$D027-$D02E: Individual sprite color
+
+Color Setup Checklist:
+1. Enable sprite ($D015)
+2. Set mode ($D01C)
+3. Set individual color ($D027+)
+4. If multicolor, set $D025 and $D026
+5. Design sprite with correct bit pairs`} />
+
+**WOW Moment:** Watch as your sprites transform from simple single-color shapes into rich, multicolored characters! See the robot with metallic highlights, the character with skin tones and clothing, the rainbow cycling through all 16 colors. This is how C64 games created their distinctive visual style—not through high resolution, but through clever use of color. You now control the same color system that painted every C64 game from "Bubble Bobble" to "The Last Ninja"!
+
+## What's Next?
+
+With sprites fully mastered, you're ready to explore character graphics:
+- **Lesson 9**: Screen memory and color RAM
+- **Lesson 10**: Custom character sets  
+- **Lesson 11**: Background graphics with tiles
+- **Lesson 12**: Text display and PETSCII
+
+Your journey into the C64's display system continues!

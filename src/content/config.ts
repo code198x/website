@@ -202,6 +202,22 @@ const systems = defineCollection({
       type: z.enum(['system_photo', 'motherboard', 'packaging', 'advertisement']).optional(),
     })).optional(),
     
+    // Platform Classification (Olympic Medal System)
+    medal_tier: z.enum(['platinum', 'gold', 'silver', 'bronze']).optional(),
+    total_lessons: z.number().optional(), // 4096, 2048, 1024, or 512
+    total_games: z.number().optional(), // 30-40, 20-25, 12-15, or 6-8
+    estimated_duration: z.string().optional(), // "6-12 months", "3-6 months", etc.
+    cpu_architecture: z.string().optional(), // "6502", "Z80", "68000", etc.
+    prerequisite_platforms: z.array(z.string()).optional(), // Other platforms to complete first
+    difficulty_level: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).optional(),
+    
+    // Platform Status
+    status: z.enum(['active', 'vault']).default('active'), // 'active' = full curriculum, 'vault' = historical reference
+    
+    // Learning Path Information
+    architecture_family: z.string().optional(), // For grouping in architecture tracks
+    recommended_next: z.array(z.string()).optional(), // Suggested platforms to learn next
+    
     // Metadata
     order: z.number(), // For display ordering
   }),

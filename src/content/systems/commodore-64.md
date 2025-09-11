@@ -3,6 +3,14 @@ name: "Commodore 64"
 slug: "commodore-64"
 manufacturer: "Commodore Business Machines (CBM)"
 model_number: "C64"
+medal_tier: "platinum"
+total_lessons: 4096
+total_games: 35
+estimated_duration: "6-12 months"
+cpu_architecture: "6502"
+difficulty_level: "beginner"
+architecture_family: "6502"
+recommended_next: ["apple-ii", "nintendo-entertainment-system", "atari-800"]
 cpu: "MOS Technology 6510 (based on 6502)"
 clock_speed: "0.985 MHz (PAL) / 1.023 MHz (NTSC)"
 ram: "64 KB"

@@ -1,0 +1,976 @@
+---
+title: "Sound Envelopes: Shaping Sound with ADSR"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 19
+description: "Master the ADSR envelope generator to transform simple tones into rich, expressive sounds that mimic real instruments"
+learning_objectives:
+  - "Understand ADSR envelope stages"
+  - "Control attack and release rates"
+  - "Shape sustain levels and decay"
+  - "Create instrument-like sounds"
+  - "Design custom envelope patterns"
+concepts:
+  - "ADSR - Attack, Decay, Sustain, Release"
+  - "Envelope shaping - sound over time"
+  - "Gate control - triggering envelopes"
+  - "Volume dynamics - expression in sound"
+  - "Instrument synthesis - mimicking real sounds"
+estimated_duration: "45 minutes"
+difficulty: "medium"
+prerequisites:
+  - "Lesson 18: Note Generation"
+code_examples: true
+practical_exercise: true
+order: 19
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Sound Envelopes: Shaping Sound with ADSR
+**Transform beeps into bells, organs, and drums**
+
+A piano key struck hard sounds different than one pressed gently. A guitar string plucked sharply has a different character than one strummed softly. A drum hit has an instant attack while a violin builds gradually. These differences aren't about pitch or waveform—they're about how the sound evolves over time. This evolution is controlled by the envelope.
+
+The SID chip's ADSR envelope generator is its secret weapon. Those four parameters—Attack, Decay, Sustain, Release—transform simple waveforms into expressive instruments. Rob Hubbard didn't just write melodies; he programmed envelopes that made the SID sound like guitars, drums, and synthesizers. Today you'll master this crucial aspect of sound design, learning to shape sounds from harsh stabs to smooth pads.
+
+This is where your sounds gain character and expression—the difference between mechanical beeps and living music.
+
+## What You'll Create
+
+By lesson's end, you'll:
+- Shape sounds with precise ADSR control
+- Create percussive and sustained instruments
+- Design custom envelopes for unique sounds
+- Build a library of instrument presets
+- Understand the mathematics of envelope timing
+
+## Understanding ADSR
+
+### The Four Stages
+
+Every SID sound follows the ADSR envelope:
+
+<CodeBlock title="ADSR Envelope Stages" code={`The ADSR Envelope:
+
+Volume
+  ^
+15|     /\
+  |    /  \___________  <- Sustain Level
+  |   /    \          \
+  |  /      \          \
+  | /        \          \
+0 |/__________\__________\____> Time
+  | A    D    S     R
+  |
+  Gate ON         Gate OFF
+
+Attack (A): Time to reach maximum volume
+- 0 = 2ms (instant)
+- 15 = 8 seconds (very slow)
+
+Decay (D): Time to fall to sustain level
+- 0 = 6ms
+- 15 = 24 seconds
+
+Sustain (S): Volume level while gate is on
+- 0 = silent
+- 15 = maximum
+
+Release (R): Time to fade to silence after gate off
+- 0 = 6ms
+- 15 = 24 seconds
+
+Register Format:
+$D405/$D40C/$D413: AAAADDDD (Attack/Decay)
+$D406/$D40D/$D414: SSSSRRRR (Sustain/Release)`} />
+
+### ADSR Timing Tables
+
+<CodeBlock title="Precise ADSR Timing Values" code={`Attack Times (milliseconds):
+0: 2      8: 100
+1: 8      9: 250
+2: 16     A: 500
+3: 24     B: 800
+4: 38     C: 1000
+5: 56     D: 3000
+6: 68     E: 5000
+7: 80     F: 8000
+
+Decay/Release Times (milliseconds):
+0: 6       8: 300
+1: 24      9: 750
+2: 48      A: 1500
+3: 72      B: 2400
+4: 114     C: 3000
+5: 168     D: 9000
+6: 204     E: 15000
+7: 240     F: 24000
+
+Common Combinations:
+Pluck: A=0, D=6, S=0, R=6
+Piano: A=0, D=9, S=0, R=9
+Organ: A=2, D=0, S=F, R=2
+Strings: A=9, D=4, S=C, R=9
+Brass: A=6, D=6, S=9, R=6
+Drum: A=0, D=4, S=0, R=4`} />
+
+## Envelope Programming
+
+### Basic Envelope Control
+
+<CodeBlock title="ADSR Envelope Programming" language="asm" code={`; ADSR envelope demonstration
+; Shape sounds with precision
+
+        * = $0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+        * = $080d
+start:
+        ; Initialize
+        jsr init_envelope_demo
+        
+        ; Show different envelopes
+        jsr demo_piano
+        jsr wait_key
+        
+        jsr demo_organ
+        jsr wait_key
+        
+        jsr demo_strings
+        jsr wait_key
+        
+        jsr demo_drum
+        jsr wait_key
+        
+        jsr demo_brass
+        jsr wait_key
+        
+        rts
+
+init_envelope_demo:
+        ; Clear SID
+        ldx #$18
+        lda #0
+clear_env:
+        sta $d400,x
+        dex
+        bpl clear_env
+        
+        ; Set volume
+        lda #15
+        sta $d418
+        
+        ; Set frequency (middle C)
+        lda #$68
+        sta $d400
+        lda #$11
+        sta $d401
+        
+        ; Clear screen
+        lda #147
+        jsr $ffd2
+        
+        rts
+
+demo_piano:
+        ; Piano envelope - quick attack, gradual release
+        
+        jsr show_label
+        !text "PIANO: INSTANT ATTACK, LONG RELEASE",13,0
+        
+        ; ADSR: A=0, D=9, S=0, R=9
+        lda #$09        ; Attack=0, Decay=9
+        sta $d405
+        lda #$09        ; Sustain=0, Release=9
+        sta $d406
+        
+        ; Triangle wave for mellow tone
+        lda #$11        ; Triangle + gate on
+        sta $d404
+        
+        ; Hold briefly
+        ldx #30
+piano_wait:
+        lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne piano_wait
+        
+        ; Release
+        lda #$10        ; Gate off
+        sta $d404
+        
+        ; Let release play out
+        ldx #60
+piano_release:
+        lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne piano_release
+        
+        rts
+
+demo_organ:
+        ; Organ envelope - sustained tone
+        
+        jsr show_label
+        !text "ORGAN: SOFT ATTACK, FULL SUSTAIN",13,0
+        
+        ; ADSR: A=2, D=0, S=F, R=2
+        lda #$20        ; Attack=2, Decay=0
+        sta $d405
+        lda #$f2        ; Sustain=15, Release=2
+        sta $d406
+        
+        ; Pulse wave for organ sound
+        lda #$00
+        sta $d402       ; Pulse width low
+        lda #$08        ; 50% duty cycle
+        sta $d403
+        
+        lda #$41        ; Pulse + gate on
+        sta $d404
+        
+        ; Hold for sustained note
+        ldx #100
+organ_wait:
+        lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne organ_wait
+        
+        ; Release
+        lda #$40
+        sta $d404
+        
+        ; Quick release
+        ldx #20
+organ_release:
+        lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne organ_release
+        
+        rts
+
+demo_strings:
+        ; String envelope - slow attack
+        
+        jsr show_label
+        !text "STRINGS: SLOW ATTACK, GRADUAL DECAY",13,0
+        
+        ; ADSR: A=9, D=4, S=C, R=9
+        lda #$94        ; Attack=9, Decay=4
+        sta $d405
+        lda #$c9        ; Sustain=12, Release=9
+        sta $d406
+        
+        ; Sawtooth for string brightness
+        lda #$21        ; Sawtooth + gate on
+        sta $d404
+        
+        ; Long hold for slow attack
+        ldx #150
+strings_wait:
+        lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne strings_wait
+        
+        ; Release
+        lda #$20
+        sta $d404
+        
+        ; Long release
+        ldx #100
+strings_release:
+        lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne strings_release
+        
+        rts
+
+demo_drum:
+        ; Drum envelope - instant attack, quick decay
+        
+        jsr show_label
+        !text "DRUM: INSTANT HIT, QUICK DECAY",13,0
+        
+        ; Use lower frequency for drum
+        lda #$00
+        sta $d400
+        lda #$04
+        sta $d401
+        
+        ; ADSR: A=0, D=4, S=0, R=4
+        lda #$04        ; Attack=0, Decay=4
+        sta $d405
+        lda #$04        ; Sustain=0, Release=4
+        sta $d406
+        
+        ; Noise for drum
+        lda #$81        ; Noise + gate on
+        sta $d404
+        
+        ; Very brief
+        ldx #10
+drum_wait:
+        lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne drum_wait
+        
+        ; Release
+        lda #$80
+        sta $d404
+        
+        ; Let decay finish
+        ldx #30
+drum_release:
+        lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne drum_release
+        
+        ; Restore frequency
+        lda #$68
+        sta $d400
+        lda #$11
+        sta $d401
+        
+        rts
+
+demo_brass:
+        ; Brass envelope - moderate attack, bright sustain
+        
+        jsr show_label
+        !text "BRASS: MEDIUM ATTACK, BRIGHT TONE",13,0
+        
+        ; ADSR: A=6, D=6, S=9, R=6
+        lda #$66        ; Attack=6, Decay=6
+        sta $d405
+        lda #$96        ; Sustain=9, Release=6
+        sta $d406
+        
+        ; Sawtooth for brass
+        lda #$21        ; Sawtooth + gate on
+        sta $d404
+        
+        ; Medium hold
+        ldx #80
+brass_wait:
+        lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne brass_wait
+        
+        ; Release
+        lda #$20
+        sta $d404
+        
+        ; Medium release
+        ldx #50
+brass_release:
+        lda #250
+        cmp $d012
+        bne *-3
+        dex
+        bne brass_release
+        
+        rts
+
+show_label:
+        ; Display text after JSR
+        pla
+        sta text_ptr
+        pla
+        sta text_ptr+1
+        
+        ldy #0
+label_loop:
+        inc text_ptr
+        bne no_inc
+        inc text_ptr+1
+no_inc:
+        lda (text_ptr),y
+        beq label_done
+        jsr $ffd2
+        jmp label_loop
+        
+label_done:
+        lda text_ptr+1
+        pha
+        lda text_ptr
+        pha
+        rts
+
+wait_key:
+        jsr $ffe4
+        beq wait_key
+        rts
+
+text_ptr: !word 0`} />
+
+## Instrument Design
+
+### Creating Realistic Instruments
+
+<CodeBlock title="Instrument Preset Library" language="asm" code={`; Instrument preset library
+; Ready-to-use ADSR settings
+
+set_instrument:
+        ; Input: A = instrument number
+        asl             ; × 2 for word index
+        tax
+        
+        ; Get ADSR values
+        lda instrument_table,x
+        sta $d405       ; Attack/Decay
+        lda instrument_table+1,x
+        sta $d406       ; Sustain/Release
+        
+        ; Get recommended waveform
+        lda instrument_waveforms,x
+        sta current_waveform
+        
+        rts
+
+; Instrument ADSR table
+instrument_table:
+        ; Piano
+        !byte $09, $09  ; A=0, D=9, S=0, R=9
+        
+        ; Electric Piano
+        !byte $08, $48  ; A=0, D=8, S=4, R=8
+        
+        ; Organ
+        !byte $20, $f2  ; A=2, D=0, S=F, R=2
+        
+        ; Strings
+        !byte $94, $c9  ; A=9, D=4, S=C, R=9
+        
+        ; Brass
+        !byte $66, $96  ; A=6, D=6, S=9, R=6
+        
+        ; Flute
+        !byte $82, $a6  ; A=8, D=2, S=A, R=6
+        
+        ; Guitar
+        !byte $02, $86  ; A=0, D=2, S=8, R=6
+        
+        ; Bass
+        !byte $00, $f9  ; A=0, D=0, S=F, R=9
+        
+        ; Lead Synth
+        !byte $00, $f0  ; A=0, D=0, S=F, R=0
+        
+        ; Pad Synth
+        !byte $a8, $fa  ; A=A, D=8, S=F, R=A
+        
+        ; Kick Drum
+        !byte $00, $04  ; A=0, D=0, S=0, R=4
+        
+        ; Snare Drum
+        !byte $04, $04  ; A=0, D=4, S=0, R=4
+        
+        ; Hi-Hat
+        !byte $00, $02  ; A=0, D=0, S=0, R=2
+        
+        ; Bell
+        !byte $06, $0a  ; A=0, D=6, S=0, R=A
+        
+        ; Xylophone
+        !byte $02, $06  ; A=0, D=2, S=0, R=6
+        
+        ; Violin
+        !byte $a6, $b8  ; A=A, D=6, S=B, R=8
+
+; Recommended waveforms for each instrument
+instrument_waveforms:
+        !byte $10       ; Piano - Triangle
+        !byte $10       ; Electric Piano - Triangle
+        !byte $40       ; Organ - Pulse
+        !byte $20       ; Strings - Sawtooth
+        !byte $20       ; Brass - Sawtooth
+        !byte $10       ; Flute - Triangle
+        !byte $40       ; Guitar - Pulse
+        !byte $10       ; Bass - Triangle
+        !byte $20       ; Lead - Sawtooth
+        !byte $40       ; Pad - Pulse
+        !byte $80       ; Kick - Noise
+        !byte $80       ; Snare - Noise
+        !byte $80       ; Hi-Hat - Noise
+        !byte $10       ; Bell - Triangle
+        !byte $10       ; Xylophone - Triangle
+        !byte $20       ; Violin - Sawtooth
+
+; Instrument constants
+INST_PIANO      = 0
+INST_EPIANO     = 1
+INST_ORGAN      = 2
+INST_STRINGS    = 3
+INST_BRASS      = 4
+INST_FLUTE      = 5
+INST_GUITAR     = 6
+INST_BASS       = 7
+INST_LEAD       = 8
+INST_PAD        = 9
+INST_KICK       = 10
+INST_SNARE      = 11
+INST_HIHAT      = 12
+INST_BELL       = 13
+INST_XYLO       = 14
+INST_VIOLIN     = 15
+
+current_waveform: !byte 0`} />
+
+## Dynamic Envelopes
+
+### Changing Envelopes in Real-Time
+
+<CodeBlock title="Dynamic Envelope Control" language="asm" code={`; Dynamic envelope modification
+; Change sound character during playback
+
+velocity_sensitive:
+        ; Simulate velocity by changing attack
+        ; Input: A = velocity (0-15)
+        
+        ; Invert for attack (high velocity = fast attack)
+        eor #$0f
+        asl
+        asl
+        asl
+        asl             ; Move to upper nibble
+        
+        ora #$09        ; Keep decay at 9
+        sta $d405
+        
+        rts
+
+expression_control:
+        ; Change sustain level dynamically
+        ; Input: A = expression (0-15)
+        
+        asl
+        asl
+        asl
+        asl             ; Move to upper nibble
+        
+        ora #$06        ; Keep release at 6
+        sta $d406
+        
+        rts
+
+morphing_envelope:
+        ; Gradually change envelope over time
+        
+        lda morph_position
+        lsr
+        lsr
+        lsr             ; Divide by 8
+        tax
+        
+        ; Interpolate between two presets
+        lda morph_table_ad,x
+        sta $d405
+        lda morph_table_sr,x
+        sta $d406
+        
+        inc morph_position
+        
+        rts
+
+tremolo_effect:
+        ; Vary sustain level for tremolo
+        
+        lda tremolo_phase
+        lsr
+        lsr
+        and #$07
+        tax
+        lda tremolo_table,x
+        
+        asl
+        asl
+        asl
+        asl
+        ora #$06        ; Keep release
+        sta $d406
+        
+        inc tremolo_phase
+        
+        rts
+
+; Dynamic envelope data
+morph_position:   !byte 0
+tremolo_phase:    !byte 0
+
+morph_table_ad:
+        !byte $09,$19,$29,$39,$49,$59,$69,$79
+        !byte $89,$99,$a9,$b9,$c9,$d9,$e9,$f9
+
+morph_table_sr:
+        !byte $09,$19,$29,$39,$49,$59,$69,$79
+        !byte $89,$99,$a9,$b9,$c9,$d9,$e9,$f9
+
+tremolo_table:
+        !byte $08,$0a,$0c,$0e,$0f,$0e,$0c,$0a`} />
+
+## Envelope Effects
+
+### Special Envelope Techniques
+
+<CodeBlock title="Advanced Envelope Effects" language="asm" code={`; Special envelope effects
+; Creative use of ADSR
+
+auto_wah_effect:
+        ; Sweep through different decay rates
+        
+        lda wah_position
+        and #$0f
+        ora #$00        ; Attack = 0
+        sta $d405
+        
+        ; Update position
+        inc wah_position
+        
+        rts
+
+gate_stutter:
+        ; Rapid gate on/off for stuttering
+        
+        lda stutter_counter
+        and #$03
+        bne stutter_off
+        
+stutter_on:
+        lda current_waveform
+        ora #$01        ; Gate on
+        sta $d404
+        jmp stutter_done
+        
+stutter_off:
+        lda current_waveform
+        sta $d404       ; Gate off
+        
+stutter_done:
+        inc stutter_counter
+        rts
+
+envelope_sweep:
+        ; Sweep all parameters
+        
+        inc sweep_timer
+        lda sweep_timer
+        
+        ; Change attack every 16 frames
+        and #$f0
+        ora #$08        ; Decay = 8
+        sta $d405
+        
+        ; Change sustain continuously
+        lda sweep_timer
+        lsr
+        lsr
+        and #$0f
+        asl
+        asl
+        asl
+        asl
+        ora #$08        ; Release = 8
+        sta $d406
+        
+        rts
+
+reverse_envelope:
+        ; Simulate reverse sound
+        
+        ; Start with no attack, full sustain
+        lda #$0f        ; Attack=0, Decay=15
+        sta $d405
+        lda #$f0        ; Sustain=15, Release=0
+        sta $d406
+        
+        ; Gate on
+        lda #$11
+        sta $d404
+        
+        ; Gradually reduce sustain
+        ldx #15
+reverse_loop:
+        txa
+        asl
+        asl
+        asl
+        asl
+        ora #$00        ; Release=0
+        sta $d406
+        
+        ; Wait
+        ldy #10
+rev_wait:
+        lda #250
+        cmp $d012
+        bne *-3
+        dey
+        bne rev_wait
+        
+        dex
+        bpl reverse_loop
+        
+        ; Gate off
+        lda #$10
+        sta $d404
+        
+        rts
+
+; Effect variables
+wah_position:     !byte 0
+stutter_counter:  !byte 0
+sweep_timer:      !byte 0`} />
+
+## Complete Envelope System
+
+<CodeBlock title="Full ADSR Demonstration" language="asm" code={`; Complete envelope system
+; All techniques demonstrated
+
+        * = $0801
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+        * = $080d
+main:
+        jsr init_adsr_system
+        jsr show_menu
+        
+menu_loop:
+        jsr $ffe4
+        beq menu_loop
+        
+        cmp #'1'
+        beq demo_instruments
+        cmp #'2'
+        beq demo_dynamics
+        cmp #'3'
+        beq demo_effects
+        cmp #'4'
+        beq demo_music
+        cmp #'Q'
+        beq quit
+        
+        jmp menu_loop
+
+quit:
+        jsr silence
+        rts
+
+demo_instruments:
+        ; Play note with each instrument
+        ldx #0
+inst_loop:
+        txa
+        pha
+        
+        ; Set instrument
+        jsr set_instrument
+        
+        ; Play note
+        lda #NOTE_C4
+        jsr play_with_envelope
+        
+        ; Wait
+        ldx #60
+        jsr wait_frames
+        
+        pla
+        tax
+        inx
+        cpx #16
+        bne inst_loop
+        
+        jmp main
+
+demo_dynamics:
+        ; Show dynamic control
+        
+        ; Velocity demo
+        ldx #0
+vel_loop:
+        txa
+        jsr velocity_sensitive
+        
+        lda #NOTE_C4
+        jsr play_with_envelope
+        
+        ldy #30
+        jsr wait_frames
+        
+        inx
+        cpx #16
+        bne vel_loop
+        
+        ; Expression demo
+        ldx #100
+expr_loop:
+        jsr morphing_envelope
+        
+        ldy #2
+        jsr wait_frames
+        
+        dex
+        bne expr_loop
+        
+        jsr silence
+        jmp main
+
+demo_effects:
+        ; Special effects
+        
+        jsr auto_wah_demo
+        jsr gate_stutter_demo
+        jsr reverse_envelope
+        
+        jmp main
+
+demo_music:
+        ; Play melody with envelopes
+        jsr play_envelope_song
+        jmp main
+
+init_adsr_system:
+        ; Initialize system
+        ldx #$18
+        lda #0
+init_sid:
+        sta $d400,x
+        dex
+        bpl init_sid
+        
+        lda #15
+        sta $d418
+        
+        lda #147
+        jsr $ffd2
+        
+        rts
+
+play_with_envelope:
+        ; Play note with current envelope
+        tax
+        lda note_freq_lo,x
+        sta $d400
+        lda note_freq_hi,x
+        sta $d401
+        
+        lda current_waveform
+        ora #$01        ; Gate on
+        sta $d404
+        
+        rts
+
+silence:
+        lda #0
+        sta $d404
+        rts
+
+wait_frames:
+        ; Wait Y frames
+wf_loop:
+        lda #250
+        cmp $d012
+        bne *-3
+        dey
+        bne wf_loop
+        rts
+
+show_menu:
+        ldx #0
+menu_txt:
+        lda menu_string,x
+        beq menu_done
+        jsr $ffd2
+        inx
+        bne menu_txt
+menu_done:
+        rts
+
+menu_string:
+        !text "ADSR ENVELOPE SYSTEM",13,13
+        !text "1 - INSTRUMENTS",13
+        !text "2 - DYNAMICS",13
+        !text "3 - EFFECTS",13
+        !text "4 - MUSIC",13,13
+        !text "Q - QUIT",13
+        !byte 0
+
+NOTE_C4 = 48`} />
+
+## What You've Learned
+
+You can now:
+- ✅ **Program ADSR envelopes** with precision
+- ✅ **Create instrument sounds** from piano to drums
+- ✅ **Control dynamics** with velocity and expression
+- ✅ **Design unique envelopes** for custom sounds
+- ✅ **Apply envelope effects** for creative sound design
+
+Your sounds now have shape, character, and expression!
+
+## Quick Reference
+
+<CodeBlock title="ADSR Quick Reference" code={`Register Layout:
+$D405: AAAADDDD (Attack/Decay)
+$D406: SSSSRRRR (Sustain/Release)
+
+Common Instruments:
+Piano:    A=0 D=9 S=0 R=9
+Organ:    A=2 D=0 S=F R=2
+Strings:  A=9 D=4 S=C R=9
+Brass:    A=6 D=6 S=9 R=6
+Flute:    A=8 D=2 S=A R=6
+Guitar:   A=0 D=2 S=8 R=6
+Bass:     A=0 D=0 S=F R=9
+Drums:    A=0 D=4 S=0 R=4
+
+Envelope Tips:
+- Fast attack (0-2) for percussive
+- Slow attack (8-F) for pads/strings
+- High sustain (C-F) for held notes
+- Low sustain (0-4) for plucked
+- Long release (8-F) for reverb
+- Short release (0-4) for staccato
+
+Effects:
+Tremolo: Vary sustain level
+Wah: Sweep decay rate
+Stutter: Rapid gate on/off
+Reverse: Start high, decay down
+
+Best Practices:
+- Match envelope to waveform
+- Consider note duration
+- Use velocity for expression
+- Keep drums short
+- Let pads breathe`} />
+
+**WOW Moment:** Your SID chip transforms into an orchestra! Listen as the same note becomes a piano, then strings, then brass—all through ADSR control. Watch sounds swell gradually or hit instantly, sustain forever or decay to silence. This is the secret that made C64 music legendary—not just playing notes, but shaping them with the expressive control of real instruments. You now wield the same envelope techniques that created every classic C64 soundtrack!
+
+## What's Next?
+
+With envelopes mastered, continue with:
+- **Lesson 20**: Sound Timing - Syncing with gameplay
+- **Lesson 21**: Grid Movement - Tile-based movement
+- **Lesson 22**: Smooth Movement - Pixel-perfect control
+
+You're nearly mastering the sound basics!

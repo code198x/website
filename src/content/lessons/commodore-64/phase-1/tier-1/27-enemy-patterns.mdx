@@ -1,0 +1,993 @@
+---
+title: "Enemy Patterns"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 27
+description: "Create intelligent enemies with AI movement, patrol routes, and chase behavior"
+difficulty: "easy"
+order: 27
+tags: ["ai", "patterns", "movement", "behavior"]
+prerequisites: ["sprites", "movement", "collision detection"]
+objectives:
+  - "Implement AI state machines"
+  - "Create patrol route systems"
+  - "Build chase and flee behaviors"
+  - "Design formation flying patterns"
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Enemy Patterns
+
+Bring your enemies to life with intelligent behavior! We'll build AI systems that make enemies patrol, chase, flee, and work together in formations.
+
+## AI State Machine
+
+Create intelligent behavior using state-based AI:
+
+<CodeBlock title="Enemy AI State System" code={`; AI state constants
+STATE_IDLE      = 0
+STATE_PATROL    = 1
+STATE_CHASE     = 2
+STATE_FLEE      = 3
+STATE_ATTACK    = 4
+STATE_DEAD      = 5
+
+; Enemy data structure (8 bytes per enemy)
+; Byte 0: Active flag
+; Byte 1: X position
+; Byte 2: Y position
+; Byte 3: AI state
+; Byte 4: State timer
+; Byte 5: Target X (for movement)
+; Byte 6: Target Y (for movement)
+; Byte 7: Speed/behavior flags
+
+MAX_ENEMIES     = 12
+enemy_data:     !fill MAX_ENEMIES * 8, 0
+
+; Update AI for all enemies
+update_enemy_ai:
+    ldx #0              ; Enemy index
+    ldy #0              ; Data offset
+    
+ai_loop:
+    ; Check if enemy is active
+    lda enemy_data,y
+    beq next_enemy
+    
+    ; Get current state
+    lda enemy_data+3,y
+    
+    ; Jump to appropriate state handler
+    cmp #STATE_IDLE
+    beq handle_idle
+    cmp #STATE_PATROL
+    beq handle_patrol
+    cmp #STATE_CHASE
+    beq handle_chase
+    cmp #STATE_FLEE
+    beq handle_flee
+    cmp #STATE_ATTACK
+    beq handle_attack
+    
+    jmp next_enemy
+    
+handle_idle:
+    jsr ai_idle_state
+    jmp next_enemy
+    
+handle_patrol:
+    jsr ai_patrol_state
+    jmp next_enemy
+    
+handle_chase:
+    jsr ai_chase_state
+    jmp next_enemy
+    
+handle_flee:
+    jsr ai_flee_state
+    jmp next_enemy
+    
+handle_attack:
+    jsr ai_attack_state
+    
+next_enemy:
+    ; Move to next enemy
+    tya
+    clc
+    adc #8              ; 8 bytes per enemy
+    tay
+    inx
+    cpx #MAX_ENEMIES
+    bne ai_loop
+    
+    rts
+
+; Idle state - look for player
+ai_idle_state:
+    ; Y register = enemy data offset
+    
+    ; Decrement state timer
+    dec enemy_data+4,y
+    bne idle_done
+    
+    ; Timer expired - check for player
+    jsr check_player_distance
+    cmp #60             ; Detection range
+    bcs stay_idle
+    
+    ; Player detected! Switch to chase
+    lda #STATE_CHASE
+    sta enemy_data+3,y
+    lda #120            ; Chase for 2 seconds
+    sta enemy_data+4,y
+    jmp idle_done
+    
+stay_idle:
+    ; Reset idle timer
+    lda #30             ; Half second idle time
+    sta enemy_data+4,y
+    
+idle_done:
+    rts
+
+; Patrol state - follow waypoints
+ai_patrol_state:
+    ; Move toward current patrol point
+    jsr move_toward_target
+    
+    ; Check if reached patrol point
+    lda enemy_data+1,y  ; Enemy X
+    sec
+    sbc enemy_data+5,y  ; Target X
+    bpl abs_diff_x
+    eor #$FF
+    clc
+    adc #1
+abs_diff_x:
+    cmp #4              ; Close enough?
+    bcs patrol_moving
+    
+    lda enemy_data+2,y  ; Enemy Y
+    sec
+    sbc enemy_data+6,y  ; Target Y
+    bpl abs_diff_y
+    eor #$FF
+    clc
+    adc #1
+abs_diff_y:
+    cmp #4
+    bcs patrol_moving
+    
+    ; Reached waypoint - get next one
+    jsr get_next_patrol_point
+    
+    ; Set new target
+    sta enemy_data+5,y  ; New target X
+    stx enemy_data+6,y  ; New target Y (X reg from subroutine)
+    
+patrol_moving:
+    ; Check if player is nearby
+    jsr check_player_distance
+    cmp #40             ; Closer detection while patrolling
+    bcs patrol_done
+    
+    ; Switch to chase mode
+    lda #STATE_CHASE
+    sta enemy_data+3,y
+    lda #180            ; Chase for 3 seconds
+    sta enemy_data+4,y
+    
+patrol_done:
+    rts
+
+; Chase state - hunt the player
+ai_chase_state:
+    ; Set player position as target
+    lda $D000           ; Player sprite X
+    sta enemy_data+5,y
+    lda $D001           ; Player sprite Y
+    sta enemy_data+6,y
+    
+    ; Move toward player
+    jsr move_toward_target
+    
+    ; Check distance to player
+    jsr check_player_distance
+    cmp #12             ; Attack range
+    bcs not_in_range
+    
+    ; Close enough to attack!
+    lda #STATE_ATTACK
+    sta enemy_data+3,y
+    lda #30             ; Attack duration
+    sta enemy_data+4,y
+    jmp chase_done
+    
+not_in_range:
+    ; Decrement chase timer
+    dec enemy_data+4,y
+    bne chase_done
+    
+    ; Chase timeout - return to patrol
+    lda #STATE_PATROL
+    sta enemy_data+3,y
+    jsr get_next_patrol_point
+    sta enemy_data+5,y
+    stx enemy_data+6,y
+    
+chase_done:
+    rts
+
+; Move enemy toward target position
+move_toward_target:
+    ; Calculate direction to target
+    lda enemy_data+5,y  ; Target X
+    sec
+    sbc enemy_data+1,y  ; Enemy X
+    bpl target_right
+    
+    ; Move left
+    dec enemy_data+1,y
+    jmp check_y_movement
+    
+target_right:
+    beq check_y_movement
+    ; Move right
+    inc enemy_data+1,y
+    
+check_y_movement:
+    lda enemy_data+6,y  ; Target Y
+    sec
+    sbc enemy_data+2,y  ; Enemy Y
+    bpl target_down
+    
+    ; Move up
+    dec enemy_data+2,y
+    rts
+    
+target_down:
+    beq movement_done
+    ; Move down
+    inc enemy_data+2,y
+    
+movement_done:
+    rts
+
+; Check distance to player
+check_player_distance:
+    ; Y register = enemy data offset
+    ; Returns distance in A register (Manhattan distance)
+    
+    lda $D000           ; Player X
+    sec
+    sbc enemy_data+1,y  ; Enemy X
+    bpl pos_x_diff
+    eor #$FF
+    clc
+    adc #1
+pos_x_diff:
+    sta temp_dist
+    
+    lda $D001           ; Player Y
+    sec
+    sbc enemy_data+2,y  ; Enemy Y
+    bpl pos_y_diff
+    eor #$FF
+    clc
+    adc #1
+pos_y_diff:
+    clc
+    adc temp_dist
+    
+    rts
+
+temp_dist: .byte 0`} language="asm" />
+
+## Patrol Route System
+
+Create enemies that follow predefined paths:
+
+<CodeBlock title="Waypoint Navigation" code={`; Patrol route data
+; Each route is a list of X,Y coordinates ending with $FF
+patrol_route_1:
+    .byte 60, 40    ; Waypoint 1
+    .byte 120, 40   ; Waypoint 2  
+    .byte 120, 80   ; Waypoint 3
+    .byte 60, 80    ; Waypoint 4
+    .byte $FF       ; End marker
+
+patrol_route_2:
+    .byte 40, 60
+    .byte 80, 30
+    .byte 160, 50
+    .byte 200, 90
+    .byte 160, 130
+    .byte 40, 100
+    .byte $FF
+
+; Route assignment table
+enemy_routes:
+    .word patrol_route_1    ; Enemy 0
+    .word patrol_route_2    ; Enemy 1
+    .word patrol_route_1    ; Enemy 2
+    .word patrol_route_2    ; Enemy 3
+    ; ... more routes
+
+; Current waypoint index for each enemy
+waypoint_index: !fill MAX_ENEMIES, 0
+
+; Get next patrol point for current enemy
+get_next_patrol_point:
+    ; Y register = enemy data offset
+    ; Returns: A = X coordinate, X = Y coordinate
+    
+    ; Convert data offset to enemy index
+    tya
+    lsr
+    lsr
+    lsr                 ; Divide by 8
+    tax                 ; X = enemy index
+    
+    ; Get current waypoint index
+    lda waypoint_index,x
+    tay                 ; Y = waypoint index
+    
+    ; Get route pointer
+    lda enemy_routes,x
+    sta route_ptr
+    lda enemy_routes+1,x
+    sta route_ptr+1
+    
+    ; Navigate to current waypoint
+    lda #0
+    sta waypoint_counter
+    
+find_waypoint:
+    ldy waypoint_counter
+    lda (route_ptr),y
+    cmp #$FF
+    beq route_end
+    
+    ; Check if this is our target waypoint
+    cpy waypoint_index,x
+    beq found_waypoint
+    
+    ; Skip X,Y pair
+    inc waypoint_counter
+    inc waypoint_counter
+    jmp find_waypoint
+    
+found_waypoint:
+    ; Get X coordinate
+    lda (route_ptr),y
+    sta return_x
+    
+    ; Get Y coordinate
+    iny
+    lda (route_ptr),y
+    sta return_y
+    
+    ; Advance to next waypoint
+    inc waypoint_index,x
+    inc waypoint_index,x ; Skip both X and Y
+    
+    ; Load return values
+    lda return_x
+    ldx return_y
+    rts
+    
+route_end:
+    ; Reached end of route - loop back to start
+    lda #0
+    sta waypoint_index,x
+    jmp get_next_patrol_point
+
+; Working variables
+route_ptr:          .word 0
+waypoint_counter:   .byte 0
+return_x:           .byte 0
+return_y:           .byte 0`} language="asm" />
+
+## Formation Flying
+
+Create groups of enemies that move together:
+
+<CodeBlock title="Formation Flight System" code={`; Formation data
+FORMATION_LINE      = 0
+FORMATION_V         = 1
+FORMATION_CIRCLE    = 2
+
+; Formation assignment
+enemy_formation:    !fill MAX_ENEMIES, 0
+formation_role:     !fill MAX_ENEMIES, 0    ; Position in formation
+formation_leader:   !fill MAX_ENEMIES, 0    ; Which enemy is leader
+
+; Update formation movement
+update_formations:
+    ldx #0              ; Enemy index
+    ldy #0              ; Data offset
+    
+formation_loop:
+    ; Skip inactive enemies
+    lda enemy_data,y
+    beq next_formation
+    
+    ; Check if this enemy is a leader
+    lda formation_leader,x
+    cmp #$FF            ; $FF = is leader
+    beq update_leader
+    
+    ; Follower - maintain formation relative to leader
+    jsr maintain_formation_position
+    jmp next_formation
+    
+update_leader:
+    ; Leader updates independently (patrol, chase, etc.)
+    ; Formation followers will follow automatically
+    
+next_formation:
+    tya
+    clc
+    adc #8
+    tay
+    inx
+    cpx #MAX_ENEMIES
+    bne formation_loop
+    
+    rts
+
+; Maintain position in formation
+maintain_formation_position:
+    ; X = follower index, Y = data offset
+    
+    ; Get leader index
+    lda formation_leader,x
+    tax                 ; X = leader index
+    
+    ; Calculate leader data offset
+    txa
+    asl
+    asl
+    asl                 ; Multiply by 8
+    sta leader_offset
+    
+    ; Get formation type
+    ldx follower_index  ; Restore follower index
+    lda enemy_formation,x
+    
+    cmp #FORMATION_LINE
+    beq line_formation
+    cmp #FORMATION_V
+    beq v_formation
+    cmp #FORMATION_CIRCLE
+    beq circle_formation
+    
+    rts
+    
+line_formation:
+    ; Horizontal line behind leader
+    lda formation_role,x ; Position in line (0, 1, 2, ...)
+    asl
+    asl
+    asl                 ; Multiply by 8 for spacing
+    sta formation_x_offset
+    lda #0
+    sta formation_y_offset
+    jmp apply_formation_offset
+    
+v_formation:
+    ; V formation
+    lda formation_role,x
+    and #$01            ; Even/odd determines side
+    beq v_left_side
+    
+    ; Right side of V
+    lda formation_role,x
+    lsr                 ; Divide by 2 for distance from center
+    asl
+    asl                 ; Multiply by 4 for spacing
+    sta formation_x_offset
+    lda formation_role,x
+    lsr
+    asl
+    asl
+    asl                 ; Y offset
+    sta formation_y_offset
+    jmp apply_formation_offset
+    
+v_left_side:
+    ; Left side of V
+    lda formation_role,x
+    lsr
+    asl
+    asl
+    eor #$FF            ; Negative X offset
+    clc
+    adc #1
+    sta formation_x_offset
+    lda formation_role,x
+    lsr
+    asl
+    asl
+    asl
+    sta formation_y_offset
+    jmp apply_formation_offset
+    
+circle_formation:
+    ; Circular formation using lookup tables
+    lda formation_role,x
+    and #$07            ; 8 positions max
+    tax
+    lda circle_x_offsets,x
+    sta formation_x_offset
+    lda circle_y_offsets,x
+    sta formation_y_offset
+    
+apply_formation_offset:
+    ; Get leader position
+    ldx leader_offset
+    lda enemy_data+1,x  ; Leader X
+    clc
+    adc formation_x_offset
+    sta desired_x
+    
+    lda enemy_data+2,x  ; Leader Y
+    clc
+    adc formation_y_offset
+    sta desired_y
+    
+    ; Move toward desired position
+    lda desired_x
+    sta enemy_data+5,y  ; Set as target
+    lda desired_y
+    sta enemy_data+6,y
+    
+    jsr move_toward_target
+    
+    rts
+
+; Circular formation lookup tables
+circle_x_offsets:
+    .byte 0, 12, 8, 0, -8, -12, -8, 0     ; Sine * radius
+circle_y_offsets:
+    .byte -12, 0, 8, 12, 8, 0, -8, -12    ; Cosine * radius
+
+; Working variables
+leader_offset:          .byte 0
+follower_index:         .byte 0
+formation_x_offset:     .byte 0
+formation_y_offset:     .byte 0
+desired_x:              .byte 0
+desired_y:              .byte 0`} language="asm" />
+
+## Smart Behaviors
+
+Add intelligence to enemy actions:
+
+<CodeBlock title="Advanced AI Behaviors" code={`; Flee behavior - run from player
+ai_flee_state:
+    ; Run opposite direction from player
+    lda $D000           ; Player X
+    sec
+    sbc enemy_data+1,y  ; Enemy X
+    bpl player_right
+    
+    ; Player is left, flee right
+    lda enemy_data+1,y
+    clc
+    adc #2              ; Flee speed
+    sta enemy_data+1,y
+    jmp flee_y_check
+    
+player_right:
+    ; Player is right, flee left
+    lda enemy_data+1,y
+    sec
+    sbc #2
+    sta enemy_data+1,y
+    
+flee_y_check:
+    lda $D001           ; Player Y
+    sec
+    sbc enemy_data+2,y  ; Enemy Y
+    bpl player_below
+    
+    ; Player is above, flee down
+    lda enemy_data+2,y
+    clc
+    adc #2
+    sta enemy_data+2,y
+    jmp flee_check_distance
+    
+player_below:
+    ; Player is below, flee up
+    lda enemy_data+2,y
+    sec
+    sbc #2
+    sta enemy_data+2,y
+    
+flee_check_distance:
+    ; Stop fleeing when far enough away
+    jsr check_player_distance
+    cmp #80             ; Safe distance
+    bcc still_fleeing
+    
+    ; Safe! Return to patrol
+    lda #STATE_PATROL
+    sta enemy_data+3,y
+    jsr get_next_patrol_point
+    sta enemy_data+5,y
+    stx enemy_data+6,y
+    
+still_fleeing:
+    ; Decrement flee timer
+    dec enemy_data+4,y
+    bne flee_done
+    
+    ; Flee timeout - become aggressive
+    lda #STATE_CHASE
+    sta enemy_data+3,y
+    lda #240            ; Long chase time
+    sta enemy_data+4,y
+    
+flee_done:
+    rts
+
+; Attack state - offensive behavior
+ai_attack_state:
+    ; Stop moving and fire at player
+    lda attack_cooldown
+    bne attack_wait
+    
+    ; Fire bullet toward player
+    jsr spawn_enemy_bullet
+    
+    ; Set cooldown
+    lda #20             ; 1/3 second between shots
+    sta attack_cooldown
+    
+attack_wait:
+    dec attack_cooldown
+    
+    ; Check if player moved away
+    jsr check_player_distance
+    cmp #20             ; Minimum attack range
+    bcs attack_continue
+    
+    ; Player too close - switch to flee
+    lda #STATE_FLEE
+    sta enemy_data+3,y
+    lda #90             ; Flee for 1.5 seconds
+    sta enemy_data+4,y
+    jmp attack_done
+    
+attack_continue:
+    cmp #60             ; Maximum attack range
+    bcc attack_in_range
+    
+    ; Player too far - chase
+    lda #STATE_CHASE
+    sta enemy_data+3,y
+    lda #120
+    sta enemy_data+4,y
+    jmp attack_done
+    
+attack_in_range:
+    ; Decrement attack timer
+    dec enemy_data+4,y
+    bne attack_done
+    
+    ; Attack finished - return to patrol
+    lda #STATE_PATROL
+    sta enemy_data+3,y
+    
+attack_done:
+    rts
+
+; Spawn bullet from enemy toward player
+spawn_enemy_bullet:
+    ; Find free enemy bullet slot
+    jsr find_free_enemy_bullet
+    cmp #$FF
+    beq bullet_spawn_failed
+    
+    tax                 ; X = bullet index
+    
+    ; Activate bullet
+    lda #1
+    sta enemy_bullet_active,x
+    
+    ; Set position
+    lda enemy_data+1,y  ; Enemy X
+    sta enemy_bullet_x,x
+    lda enemy_data+2,y  ; Enemy Y
+    sta enemy_bullet_y,x
+    
+    ; Calculate velocity toward player
+    lda $D000           ; Player X
+    sec
+    sbc enemy_data+1,y
+    bpl bullet_right
+    
+    lda #-2             ; Left velocity
+    jmp store_bullet_vx
+    
+bullet_right:
+    lda #2              ; Right velocity
+    
+store_bullet_vx:
+    sta enemy_bullet_vx,x
+    
+    ; Y velocity
+    lda $D001           ; Player Y
+    sec
+    sbc enemy_data+2,y
+    bpl bullet_down
+    
+    lda #-2             ; Up velocity
+    jmp store_bullet_vy
+    
+bullet_down:
+    lda #2              ; Down velocity
+    
+store_bullet_vy:
+    sta enemy_bullet_vy,x
+    
+    ; Enemy shoot sound
+    lda #$30
+    sta $D407           ; Voice 3 frequency
+    lda #$20
+    sta $D408
+    lda #$81            ; Noise waveform
+    sta $D40B
+    
+bullet_spawn_failed:
+    rts
+
+; Predictive targeting - aim where player will be
+predictive_targeting:
+    ; Calculate player velocity (simple)
+    lda $D000
+    sec
+    sbc player_old_x
+    sta player_vel_x
+    
+    lda $D001
+    sec
+    sbc player_old_y
+    sta player_vel_y
+    
+    ; Store current position for next frame
+    lda $D000
+    sta player_old_x
+    lda $D001
+    sta player_old_y
+    
+    ; Predict where player will be in 10 frames
+    lda $D000
+    clc
+    adc player_vel_x    ; Add velocity
+    adc player_vel_x    ; Multiply by prediction time
+    adc player_vel_x
+    adc player_vel_x
+    adc player_vel_x    ; 5x velocity = 5 frame prediction
+    sta predicted_x
+    
+    lda $D001
+    clc
+    adc player_vel_y
+    adc player_vel_y
+    adc player_vel_y
+    adc player_vel_y
+    adc player_vel_y
+    sta predicted_y
+    
+    ; Use predicted position as target
+    lda predicted_x
+    sta enemy_data+5,y
+    lda predicted_y
+    sta enemy_data+6,y
+    
+    rts
+
+; Variables
+attack_cooldown:    .byte 0
+player_old_x:       .byte 0
+player_old_y:       .byte 0
+player_vel_x:       .byte 0
+player_vel_y:       .byte 0
+predicted_x:        .byte 0
+predicted_y:        .byte 0
+
+; Enemy bullet system
+MAX_ENEMY_BULLETS   = 8
+enemy_bullet_active: !fill MAX_ENEMY_BULLETS, 0
+enemy_bullet_x:      !fill MAX_ENEMY_BULLETS, 0
+enemy_bullet_y:      !fill MAX_ENEMY_BULLETS, 0
+enemy_bullet_vx:     !fill MAX_ENEMY_BULLETS, 0
+enemy_bullet_vy:     !fill MAX_ENEMY_BULLETS, 0`} language="asm" />
+
+## Complete Enemy AI System
+
+Put it all together for intelligent opposition:
+
+<CodeBlock title="Master AI Controller" code={`* = $0801
+    !byte $0B,$08,$0A,$00,$9E
+    !text "2061"
+    !byte $00,$00,$00
+
+* = $080D
+
+main:
+    jsr init_ai_system
+    jsr spawn_enemy_squad
+    
+ai_game_loop:
+    lda #251
+wait_ai:
+    cmp $D012
+    bne wait_ai
+    
+    ; Update all AI systems
+    jsr update_enemy_ai
+    jsr update_formations
+    jsr update_enemy_bullets
+    
+    ; Handle player input
+    jsr handle_player_movement
+    
+    ; Check collisions
+    jsr check_ai_collisions
+    
+    ; Spawn reinforcements
+    jsr ai_spawn_manager
+    
+    ; Visual updates
+    jsr draw_all_enemies
+    jsr draw_enemy_bullets
+    jsr update_ai_hud
+    
+    inc frame_counter
+    jmp ai_game_loop
+
+; Initialize AI system
+init_ai_system:
+    ; Clear all enemy data
+    ldx #0
+    lda #0
+clear_ai:
+    sta enemy_data,x
+    sta waypoint_index,x
+    sta enemy_formation,x
+    sta formation_role,x
+    sta formation_leader,x
+    inx
+    cpx #MAX_ENEMIES * 8  ; Clear all arrays
+    bne clear_ai
+    
+    ; Set up initial formations
+    jsr setup_initial_formations
+    
+    rts
+
+; Spawn a squad of enemies
+spawn_enemy_squad:
+    ; Leader enemy
+    ldx #0
+    ldy #0
+    jsr spawn_single_enemy
+    lda #STATE_PATROL
+    sta enemy_data+3,y
+    lda #$FF
+    sta formation_leader  ; This enemy is a leader
+    
+    ; Followers
+    ldx #1
+    ldy #8
+    jsr spawn_single_enemy
+    lda #STATE_PATROL
+    sta enemy_data+3,y
+    lda #0              ; Follow enemy 0
+    sta formation_leader+1
+    lda #1              ; Position 1 in formation
+    sta formation_role+1
+    
+    ; More followers...
+    ldx #2
+    ldy #16
+    jsr spawn_single_enemy
+    lda #STATE_PATROL
+    sta enemy_data+3,y
+    lda #0
+    sta formation_leader+2
+    lda #2
+    sta formation_role+2
+    
+    rts
+
+; Spawn individual enemy
+spawn_single_enemy:
+    ; X = enemy index, Y = data offset
+    lda #1
+    sta enemy_data,y    ; Active
+    
+    ; Random starting position
+    lda frame_counter
+    clc
+    adc enemy_index
+    and #$3F
+    clc
+    adc #40
+    sta enemy_data+1,y  ; X position
+    
+    lda #30
+    sta enemy_data+2,y  ; Y position
+    
+    ; Default state
+    lda #STATE_IDLE
+    sta enemy_data+3,y
+    
+    lda #60             ; Initial timer
+    sta enemy_data+4,y
+    
+    rts
+
+; AI difficulty scaling
+adjust_ai_difficulty:
+    ; Increase aggression over time
+    lda difficulty_level
+    cmp #3
+    bcs max_difficulty
+    
+    ; Check time/score for level up
+    lda game_timer
+    cmp #1200           ; 20 seconds
+    bcc no_level_up
+    
+    inc difficulty_level
+    lda #0
+    sta game_timer      ; Reset timer
+    
+    ; Make enemies more aggressive
+    jsr increase_ai_aggression
+    
+no_level_up:
+max_difficulty:
+    rts
+
+increase_ai_aggression:
+    ; Reduce detection distance (more sensitive)
+    ; Increase chase duration
+    ; Add more attack patterns
+    rts
+
+; Variables
+difficulty_level:   .byte 0
+game_timer:         .word 0
+enemy_index:        .byte 0`} language="asm" />
+
+## What You've Learned
+
+You've created sophisticated AI enemies with:
+- **State machine AI** for complex behaviors
+- **Patrol route systems** for predictable movement patterns
+- **Formation flying** for coordinated group movement
+- **Chase, flee, and attack** behaviors for dynamic combat
+- **Predictive targeting** for challenging opponents
+
+Your enemies now feel alive and intelligent!
+
+## Practice Challenges
+
+1. Add flanking behavior where enemies try to surround the player
+2. Create pack hunting AI where enemies coordinate attacks
+3. Implement line-of-sight checks for more realistic detection
+4. Add different enemy types with unique AI personalities
+5. Build a boss enemy with multiple AI phases
+
+## What's Next
+
+Next lesson, we'll create collectible items and power-up systems to reward the player!
