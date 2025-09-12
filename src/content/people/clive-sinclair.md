@@ -106,8 +106,8 @@ Whilst not a commercial success, the MK14 established Sinclair's credibility in 
 The **ZX80** represented Sinclair's vision of truly affordable computing:
 
 **Revolutionary Pricing:**
-- **£99.95 assembled** (≈£470 in 2024): First complete computer under £100
-- **£79.95 kit** (≈£375 in 2024): Even cheaper for self-assembly
+- **£99.95 assembled** (≈£485 in 2025): First complete computer under £100
+- **£79.95 kit** (≈£390 in 2025): Even cheaper for self-assembly
 - **Mass market**: Available through high-street retailers
 - **Television display**: Used standard TV as monitor
 
@@ -156,8 +156,8 @@ The **ZX Spectrum** became Sinclair's crowning achievement and Britain's most in
 - **ULA chip**: Custom silicon for graphics and cost reduction
 
 **Pricing Strategy:**
-- **£125 (16KB)** (≈£500 in 2024): Incredibly affordable for colour computer
-- **£175 (48KB)** (≈£700 in 2024): Still cheaper than monochrome competitors
+- **£125 (16KB)** (≈£520 in 2025): Incredibly affordable for colour computer
+- **£175 (48KB)** (≈£725 in 2025): Still cheaper than monochrome competitors
 - **High-street availability**: Sold through major retailers
 - **Payment plans**: Hire purchase made it accessible to families
 

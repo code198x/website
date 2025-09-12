@@ -20,7 +20,6 @@ companies_worked_for:
   - company: "Nintendo"
     role: "Composer and Sound Director"
     start_year: 1984
-    end_year: 2024
 awards:
   - name: "AIAS Hall of Fame"
     organization: "Academy of Interactive Arts & Sciences"

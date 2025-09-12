@@ -5,7 +5,7 @@ phase_number: 1
 description: "Learn 6502 assembly programming from the ground up. Start with basic concepts and build to creating working programs on the Commodore 64."
 learning_objectives:
   - "Understand 6502 processor architecture and instruction set"
-  - "Master memory addressing modes and data manipulation"
+  - "Learn memory addressing modes and data manipulation"
   - "Learn to use ACME assembler and VICE emulator"
   - "Write and debug assembly programs"
   - "Control C64 hardware through memory-mapped I/O"
@@ -43,18 +43,18 @@ Phase 1 takes you from zero assembly knowledge to writing working C64 programs. 
 Our curriculum is structured to build concepts progressively:
 
 ### Foundation (Tier 1)
-Start with the absolute basics - what assembly is, how to set up your development environment, and your first working program. Learn about registers, basic instructions, and how to manipulate screen memory.
+Start with the absolute basics through 32 comprehensive lessons covering assembly fundamentals, graphics programming, sound programming, and game development. Learn about registers, basic instructions, screen manipulation, sprites, SID sound chip, and build your first complete game.
 
 ### Building Skills (Tiers 2-4) - Coming Soon
 Expand into loops, branching, subroutines, and data structures. Learn to organize larger programs and implement common algorithms in assembly.
 
-### Hardware Mastery (Tiers 5-8) - Coming Soon
+### Hardware Programming (Tiers 5-8) - Coming Soon
 Dive deep into the VIC-II graphics chip, SID sound chip, and advanced techniques like raster interrupts and sprite multiplexing.
 
 ### Advanced Topics (Tiers 9-16) - Coming Soon
 Explore optimization techniques, demo effects, compression algorithms, and professional development practices.
 
-## Why Learn Assembly in 2024?
+## Why Learn Assembly in 2025?
 
 **Understanding Fundamentals**: Assembly programming teaches you how computers actually work, knowledge that transcends languages and platforms.
 
@@ -68,15 +68,17 @@ Explore optimization techniques, demo effects, compression algorithms, and profe
 
 ## Your First Programs
 
-In Tier 1, you'll create several small but complete programs:
+In Tier 1, you'll create programs ranging from simple to sophisticated:
 
 - **Hello Machine**: Display your first message on screen
 - **Memory Explorer**: Peek and poke memory locations
 - **Color Cycler**: Manipulate screen and border colors
-- **Character Designer**: Create custom characters
-- **Simple Animation**: Move objects on screen
+- **Sprite Animator**: Hardware-accelerated graphics objects
+- **Sound Synthesizer**: Generate tones with the SID chip
+- **Physics Engine**: Gravity and momentum systems
+- **Neon Nexus Game**: Complete cyberpunk-themed interactive game
 
-Each program builds on the previous, reinforcing concepts while introducing new techniques.
+Each program builds on the previous, reinforcing concepts while introducing new techniques across the full spectrum of C64 capabilities.
 
 ## Modern Development Approach
 

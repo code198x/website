@@ -1,5 +1,5 @@
 ---
-title: "Assembly Foundations"
+title: "C64 Programming Foundations"
 system: "commodore-64"
 phase_number: 1
 tier_number: 1
@@ -23,12 +23,12 @@ concepts_introduced:
 estimated_duration: "1-2 weeks"
 order: 1
 game_project:
-  name: "Simple Demo"
-  description: "Create a basic demo that displays text, cycles colors, and shows simple animations"
-  tier_range: "8 foundational lessons available (more coming soon)"
+  name: "Neon Nexus"
+  description: "Build a complete cyberpunk-themed game with movement, graphics, sound, and interactive gameplay"
+  tier_range: "32 comprehensive lessons covering assembly to game development"
 ---
 
-# Tier 1: Assembly Foundations
+# Tier 1: C64 Programming Foundations
 
 Welcome to 6502 assembly programming! This tier introduces you to the fundamentals of Commodore 64 programming, taking you from complete beginner to writing working assembly programs.
 
@@ -42,36 +42,20 @@ This tier focuses on core concepts that form the foundation of all C64 programmi
 - Creating simple visual effects
 - Understanding the C64 memory map
 
-## Your Journey Through 14 Lessons
+## Your Journey Through 32 Lessons
 
-### Getting Started (Lessons 1-3)
-Begin with the absolute basics - what assembly is, why it matters, and how to write your first program that actually does something visible on screen.
+### Assembly Foundations (Lessons 1-8)
+Begin with the absolute basics - what assembly is, why it matters, and how to write your first programs. Learn about processor registers, memory addressing, and how to control what appears on the C64's screen through direct memory manipulation.
 
-### Building Skills (Lessons 4-7)
-Learn about processor registers, memory addressing, and how to control what appears on the C64's screen through direct memory manipulation.
+### Graphics Programming (Lessons 9-16)
+Explore the VIC-II graphics chip, sprites, backgrounds, and color effects. Learn to create visual displays and understand how the C64's unique hardware works.
 
-### Creating Effects (Lessons 8-10)
-Put your skills together to create color effects, screen patterns, and understand how the C64's unique hardware works.
+### Sound Programming (Lessons 17-24)
+Discover the SID sound chip and audio programming. Create sound effects, music, and learn about advanced audio techniques like filters and envelopes.
 
-### Mini Project (Lessons 11-14)
-Combine everything you've learned to create a simple demo program featuring text display, color cycling, and basic animation.
+### Game Development (Lessons 25-32)
+Apply everything you've learned to create interactive programs. Implement movement systems, game mechanics, and build your first complete game project.
 
-## Lesson Overview
-
-1. **Your First C64 Program: Hello Machine!** - Write and run your first assembly program
-2. **Commodore 64 Architecture Deep Dive** - Understand the hardware you're programming
-3. **Assembly Language Essentials** - Learn syntax and basic instructions
-4. **Working with Registers** - Master the A, X, and Y registers
-5. **Memory Addressing Modes** - Different ways to access memory
-6. **Screen Memory Manipulation** - Put characters on screen
-7. **Color Memory and Visual Effects** - Add color to your programs
-8. **PETSCII and Character Sets** - Work with C64's character system
-9. **Simple Loops and Counters** - Repeat operations efficiently
-10. **Basic Animation Techniques** - Make things move on screen
-11. **Combining Visual Effects** - Create complex screen displays
-12. **Introduction to Timing** - Control animation speed
-13. **Creating a Title Screen** - Design an attractive display
-14. **Your First Complete Demo** - Put it all together
 
 ## Why Start Here?
 
