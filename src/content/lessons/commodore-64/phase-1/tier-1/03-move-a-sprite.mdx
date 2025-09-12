@@ -27,25 +27,22 @@ order: 3
 import CodeBlock from '../../../../../components/CodeBlock.astro';
 
 # Animate Your Sprite: From Static to Spectacular
-**Transform your sprite into silky-smooth animation**
+**Learn the timing techniques that create smooth animation**
 
-Your sprite from Lesson 2 sits perfectly on screen—but it's motionless, lifeless. Time to bring it to life!
+Animation is the art of creating movement through rapid display of sequential images. On the C64, smooth animation requires precise timing - updating sprite positions at exactly the right moment in the screen refresh cycle.
 
-Picture this: Summer 1985, PCW Show at Olympia. You're watching Andrew Braybrook demonstrate "Uridium" for the first time. As the massive Manta ship glides effortlessly across alien landscapes, you realize you're witnessing something revolutionary. While other programmers struggle with jerky, flickering movement, Braybrook's sprite flows like silk across the screen.
+Picture this: Summer 1985, PCW Show at Olympia. You're watching Andrew Braybrook demonstrate "Uridium" for the first time. As the massive Manta ship glides effortlessly across alien dreadnought battlecruisers, you realize you're witnessing something revolutionary. While other programmers struggle with jerky, flickering movement, Braybrook's sprite flows like silk across the screen.
 
-The secret? **Professional timing techniques** that separated legendary C64 games from amateur efforts. Today, you'll master the same raster synchronization methods used in "The Last Ninja," "Wizball," and "Impossible Mission."
+The secret? **Professional timing techniques** that separated legendary C64 games from amateur efforts. Today, you'll learn the same raster synchronization methods used in "The Last Ninja," "Wizball," and "Impossible Mission."
 
-No more basic sprite setup—that's behind you. Now we're diving straight into the animation techniques that made the C64 legendary.
+## What You'll Learn
 
-## What You'll Master
-
-Building on your sprite from Lesson 2, you'll learn:
-- **Raster timing**: The foundation of all smooth animation
-- **Movement mathematics**: Velocity, acceleration, and trajectory control  
-- **Classic patterns**: Linear motion, sine waves, and bouncing physics
-- **Professional optimization**: 50Hz animation with zero flicker
-
-![Smooth sprite animation](/images/c64-smooth-animation.png)
+In this lesson, you'll discover:
+- **Raster timing** - Synchronizing with the screen refresh for smooth motion
+- **The $D012 register** - Reading the current scan line position
+- **Movement patterns** - Linear, sine wave, and bouncing animations
+- **Velocity and acceleration** - Basic physics for realistic motion
+- **50Hz/60Hz timing** - Frame-perfect animation on PAL and NTSC systems
 
 ## The Raster Revolution: Why Timing Is Everything
 
@@ -93,24 +90,28 @@ wait_raster:
 
 ### Linear Movement: The Foundation
 
-Let's start with your sprite from Lesson 2 and add smooth horizontal movement:
+Linear movement means constant velocity - the sprite moves the same distance each frame. This is the simplest form of animation:
 
-<CodeBlock title="Smooth Horizontal Movement" language="asm" code={`        ; BASIC launcher from Lesson 2
+<CodeBlock title="Basic Linear Movement" language="asm" code={`        ; BASIC launcher
         !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
 
 start:
+        ; First, recreate our title screen from Lesson 1
+        jsr setup_title_screen
+        
         ; Setup sprite (assuming sprite data already at $2000)
         lda #$80               ; Point to sprite data
         sta $07f8              ; Sprite 0 pointer
         lda #$01               ; Enable sprite 0  
         sta $d015
-        lda #$07               ; Yellow color
+        lda #$03               ; Cyan color (our theme!)
         sta $d027
         
-        ; Initial position
-        lda #24                ; Start at left edge
-        sta sprite_x
-        lda #100               ; Vertical center
+        ; Initial position - centered below title
+        lda #$AC               ; Center X position
+        sta $d000
+        lda #$C8               ; Base Y position
+        sta sprite_base_y
         sta $d001
 
 animation_loop:
@@ -120,24 +121,33 @@ wait_raster:
         cmp $d012
         bne wait_raster
         
-        ; Move sprite right
-        inc sprite_x           ; Increment X position
-        lda sprite_x
-        sta $d000              ; Update hardware
+        ; Create floating effect using sine wave
+        inc frame_counter
+        lda frame_counter
+        lsr                    ; Slow it down
+        lsr
+        lsr
+        and #31                ; Keep in range 0-31
+        tax
+        lda float_table,x      ; Get Y offset
+        clc
+        adc sprite_base_y      ; Add to base position
+        sta $d001              ; Update sprite Y
         
-        ; Check for edge wrapping
-        lda sprite_x
-        cmp #320               ; Right edge?
-        bne continue
-        lda #24                ; Reset to left
-        sta sprite_x
-        
-continue:
         jmp animation_loop
 
 ; Variables
-sprite_x:
-        !byte 24               ; Current X position`} />
+sprite_base_y:
+        !byte $C8              ; Base Y position
+frame_counter:
+        !byte 0                ; Animation frame
+
+; Gentle floating motion table (32 values)
+float_table:
+        !byte 0,1,2,3,4,5,6,7
+        !byte 8,9,10,11,12,12,13,13
+        !byte 13,13,12,12,11,10,9,8
+        !byte 7,6,5,4,3,2,1,0`} />
 
 ### Bouncing Physics: Adding Realism
 
@@ -210,7 +220,11 @@ velocity_y:   !byte 0         ; Vertical speed (signed)`} />
 
 ### Sine Wave Motion: Mathematical Elegance
 
-The most impressive animations used mathematical functions. Here's how "Wizball" created those mesmerizing wave patterns:
+**What's a sine wave?** Imagine drawing a smooth wave that goes up and down repeatedly - like ocean waves or a snake slithering. Mathematically, it's a curve that smoothly oscillates between maximum and minimum values. In animation, sine waves create natural-looking motion because many things in nature move this way: floating objects, breathing, pendulums, and gentle bobbing.
+
+Instead of calculating sine values (which requires complex math the 6502 can't do quickly), we pre-calculate them and store them in a table. Each value represents a Y position along the wave.
+
+The floating effect we just created is a simplified sine wave. For more complex patterns, like the mesmerizing animations in "Wizball," you can use full sine tables:
 
 <CodeBlock title="Sine Wave Animation (Wizball Style)" language="asm" code={`animation_loop:
         ; Raster sync
@@ -249,18 +263,18 @@ frame_counter:
         !byte 0
 
 ; Pre-calculated sine table (64 values for smooth waves)
+; Values range from 0-255 (byte limit), centered around 128
+; Creates smooth up/down motion when used for Y position
 sine_table:
-        !byte 128,140,152,164,176,188,199,210
-        !byte 220,230,240,249,257,265,272,279
-        !byte 285,290,295,299,302,304,306,307
-        !byte 307,306,304,302,299,295,290,285
-        !byte 279,272,265,257,249,240,230,220
-        !byte 210,199,188,176,164,152,140,128
-        !byte 115,103,91,79,67,56,45,35
-        !byte 25,15,6,1,7,15,22,29
-        !byte 36,41,46,50,53,55,57,58
-        !byte 58,57,55,53,50,46,41,36
-        !byte 29,22,15,7,1,6,15,25`} />
+        !byte 128,140,152,163,174,184,194,203
+        !byte 211,218,225,230,235,239,242,244
+        !byte 246,247,247,246,244,242,239,235
+        !byte 230,225,218,211,203,194,184,174
+        !byte 163,152,140,128,115,103,91,80
+        !byte 70,61,52,44,37,30,25,20
+        !byte 16,13,11,9,8,8,9,11
+        !byte 13,16,20,25,30,37,44,52
+        !byte 61,70,80,91,103,115,128,128`} />
 
 ## Professional Animation Patterns
 
@@ -520,14 +534,15 @@ sta $d000               ; Copy to hardware`} />
 
 ## What's Next?
 
-You've now mastered the animation techniques that powered the greatest C64 games. In our next lesson, we'll add joystick control to let players interact with your smooth, professional animations.
+Your Neon Nexus title screen now has professional polish with its floating player sprite! In our next lesson, we'll add joystick input so players can press fire to start the game - and later, control the sprite during gameplay.
 
-But first, experiment with these movement patterns:
-- Can you create a "Breakout" style paddle that follows the joystick smoothly?
-- Try combining sine waves with linear motion for "asteroid" style movement
-- Implement a simple "Pong" ball that bounces realistically off walls
+But first, experiment with your title screen animation:
+- Try different floating speeds by adjusting the shift operations
+- Create a pulsing effect by also changing the sprite color
+- Add a second sprite that floats in the opposite phase
+- Make the "PRESS FIRE TO START" text flash in sync with the sprite
 
-**Remember:** The techniques you've just learned are the same ones used by legendary programmers like Andrew Braybrook, Jeff Minter, and Martin Walker. You're not just learning programming—you're mastering the art that defined an era of gaming.
+**Remember:** The techniques you've just learned are the same ones used by legendary programmers like Andrew Braybrook, Jeff Minter, and Martin Walker. Your title screen is starting to look like something from a real C64 game!
 
 **WOW Moment:** Your sprites now move with the same silky smoothness that amazed gamers in the 1980s! You've unlocked the professional animation secrets that separated classic C64 games from the competition.
 

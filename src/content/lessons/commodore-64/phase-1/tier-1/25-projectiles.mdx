@@ -4,42 +4,54 @@ system: "commodore-64"
 phase_number: 1
 tier_number: 1
 lesson_number: 25
-description: "Build a space shooter with multiple bullets, spread patterns, and homing missiles"
+description: "Build shooting systems with object pooling, multiple projectile types, and collision detection"
 difficulty: "easy"
 order: 25
-tags: ["projectiles", "bullets", "patterns", "shooting"]
+tags: ["projectiles", "shooting", "bullets", "collision"]
 prerequisites: ["sprites", "momentum", "collision detection"]
 objectives:
-  - "Create bullet management systems"
-  - "Implement spread fire patterns"
-  - "Build homing missile AI"
-  - "Handle multiple projectiles efficiently"
+  - "Implement object pooling for projectiles"
+  - "Create multiple projectile types"
+  - "Handle projectile collision detection"
+  - "Build efficient shooting systems"
 ---
 
 import CodeBlock from '../../../../../components/CodeBlock.astro';
 
-# Projectiles
+# Projectiles: Object Pooling and Shooting Systems
+**Learn to manage multiple projectiles efficiently in action games**
 
-Fill the screen with blazing laser bolts! We'll build a complete projectile system with rapid-fire bullets, spread patterns, and smart-seeking missiles that hunt down targets.
+Shooting games need to track many projectiles simultaneously - bullets flying, missiles homing, explosions expanding. Rather than creating and destroying objects constantly, we use object pooling: pre-allocating a fixed number of projectiles and reusing them. This technique is essential for performance and forms the foundation of any action game.
 
-## Bullet Pool System
+## What You'll Learn
 
-Instead of creating/destroying bullets, use a pool for efficiency:
+In this lesson, you'll discover:
+- **Object pooling** - Efficiently managing multiple game objects
+- **Projectile lifecycle** - Spawning, updating, and deactivating
+- **Velocity and trajectories** - Moving projectiles in any direction
+- **Collision detection** - Checking if projectiles hit targets
+- **Multiple weapon types** - Different firing patterns and behaviors
+- **Performance optimization** - Handling many objects smoothly
 
-<CodeBlock title="Bullet Management System" code={`; Bullet pool constants
+## Projectile Pool System
+
+Instead of constantly allocating memory, we pre-allocate a pool of projectiles:
+
+<CodeBlock title="Network Packet Management" code={`; Projectile constants
 MAX_BULLETS     = 16        ; Maximum bullets on screen
-BULLET_SPEED    = 4         ; Pixels per frame
+BULLET_SPEED    = 5         ; Pixels per frame
+BULLET_LIFETIME = 60        ; Frames before despawn
 
 ; Bullet structure (5 bytes each)
 ; Byte 0: Active flag (0=inactive, 1=active)
 ; Byte 1: X position (low)
-; Byte 2: X position (high)
+; Byte 2: X position (high)  
 ; Byte 3: Y position
-; Byte 4: Direction/velocity
+; Byte 4: Y velocity (signed)
 
 bullet_pool:    !fill MAX_BULLETS * 5, 0
 
-; Find free bullet slot
+; Find free bullet slot  
 find_free_bullet:
     ldx #0
     ldy #0              ; Pool index
@@ -77,12 +89,12 @@ spawn_bullet:
     sta bullet_pool,x
     
     ; Set position (from player sprite)
-    lda $D000           ; Player X
+    lda $D000           ; Player sprite X
     sta bullet_pool+1,x
     lda #0
     sta bullet_pool+2,x ; High byte
     
-    lda $D001           ; Player Y
+    lda $D001           ; Player sprite Y
     sec
     sbc #8              ; Above player
     sta bullet_pool+3,x
@@ -91,22 +103,22 @@ spawn_bullet:
     lda #-BULLET_SPEED
     sta bullet_pool+4,x
     
-    ; Bullet sound
-    lda #$20
+    ; Shooting sound effect
+    lda #$10
     sta $D400
-    lda #$40
+    lda #$80
     sta $D401
-    lda #$11            ; Triangle wave
+    lda #$81            ; Noise for laser
     sta $D404
     
 spawn_failed:
     rts`} language="asm" />
 
-## Update All Bullets
+## Update Projectiles
 
-Process the entire bullet pool each frame:
+Process all active bullets each frame:
 
-<CodeBlock title="Bullet Update Loop" code={`; Update all active bullets
+<CodeBlock title="Network Packet Processing" code={`; Update all active bullets
 update_bullets:
     ldx #0              ; Bullet counter
     ldy #0              ; Pool offset
@@ -115,21 +127,24 @@ bullet_loop:
     lda bullet_pool,y
     beq next_bullet     ; Skip inactive
     
-    ; Move bullet
-    lda bullet_pool+3,y ; Y position
+    ; Update Y position
+    lda bullet_pool+3,y ; Current Y
     clc
     adc bullet_pool+4,y ; Add velocity
     sta bullet_pool+3,y
     
-    ; Check bounds
-    cmp #240            ; Off bottom
-    bcs deactivate_bullet
-    cmp #20             ; Off top
+    ; Check if off screen
+    cmp #10             ; Top boundary
     bcc deactivate_bullet
+    cmp #240            ; Bottom boundary
+    bcs deactivate_bullet
     
-    ; Check collision with targets
+    ; Check collision with enemies
     jsr check_bullet_collision
     bcc next_bullet     ; No hit
+    
+    ; Hit something - deactivate
+    jsr handle_bullet_hit
     
 deactivate_bullet:
     ; Mark as inactive
@@ -137,7 +152,7 @@ deactivate_bullet:
     sta bullet_pool,y
     
 next_bullet:
-    ; Move to next bullet
+    ; Move to next bullet (5 bytes each)
     tya
     clc
     adc #5
@@ -148,84 +163,141 @@ next_bullet:
     
     rts
 
-; Check if bullet hit any target
-check_bullet_collision:
-    ; Get bullet position
-    lda bullet_pool+1,y ; X
-    sta temp_x
-    lda bullet_pool+3,y ; Y  
-    sta temp_y
+; Route packet through network topology
+route_packet:
+    ; Y register contains packet pool offset
     
-    ; Check against all enemies
-    ldx #0
-enemy_check_loop:
-    lda enemy_active,x
-    beq next_enemy
+    ; Get target node position
+    lda packet_pool+5,y ; Target node ID
+    tax
+    lda node_x_positions,x
+    sta target_x
+    lda node_y_positions,x
+    sta target_y
     
-    ; Check X range
-    lda enemy_x,x
+    ; Calculate direction to target
+    lda target_x
     sec
-    sbc #8
-    cmp temp_x
-    bcs next_enemy
-    lda enemy_x,x
-    clc
-    adc #8
-    cmp temp_x
-    bcc next_enemy
+    sbc packet_pool+1,y ; Current X
+    bpl move_right
     
-    ; Check Y range
-    lda enemy_y,x
+    ; Move left toward target
+    lda packet_pool+1,y
     sec
-    sbc #8
-    cmp temp_y
-    bcs next_enemy
-    lda enemy_y,x
-    clc
-    adc #8
-    cmp temp_y
-    bcc next_enemy
+    sbc #PACKET_SPEED
+    sta packet_pool+1,y
+    jmp check_y_movement
     
-    ; Hit! 
-    jsr destroy_enemy
-    sec                 ; Carry set = hit
+move_right:
+    beq check_y_movement ; Already at target X
+    lda packet_pool+1,y
+    clc
+    adc #PACKET_SPEED
+    sta packet_pool+1,y
+    
+check_y_movement:
+    lda target_y
+    sec
+    sbc packet_pool+3,y ; Current Y
+    bpl move_down
+    
+    ; Move up toward target
+    lda packet_pool+3,y
+    sec
+    sbc #PACKET_SPEED
+    sta packet_pool+3,y
     rts
     
-next_enemy:
-    inx
-    cpx #8              ; Max enemies
-    bne enemy_check_loop
+move_down:
+    beq routing_done    ; Already at target Y
+    lda packet_pool+3,y
+    clc
+    adc #PACKET_SPEED
+    sta packet_pool+3,y
     
-    clc                 ; No hit
+routing_done:
     rts
 
-temp_x: .byte 0
-temp_y: .byte 0`} language="asm" />
+; Check if packet reached destination
+check_packet_arrival:
+    ; Y register contains packet pool offset
+    ; Returns carry set if arrived
+    
+    ; Get current position
+    lda packet_pool+1,y
+    sta current_x
+    lda packet_pool+3,y
+    sta current_y
+    
+    ; Get target position
+    lda packet_pool+5,y ; Target node ID
+    tax
+    lda node_x_positions,x
+    sta target_x
+    lda node_y_positions,x
+    sta target_y
+    
+    ; Check if within arrival threshold (±4 pixels)
+    lda current_x
+    sec
+    sbc target_x
+    bpl abs_x_diff
+    eor #$FF
+    clc
+    adc #1
+abs_x_diff:
+    cmp #5              ; Arrival threshold
+    bcs not_arrived
+    
+    lda current_y
+    sec
+    sbc target_y
+    bpl abs_y_diff
+    eor #$FF
+    clc
+    adc #1
+abs_y_diff:
+    cmp #5
+    bcs not_arrived
+    
+    ; Packet has arrived!
+    sec
+    rts
+    
+not_arrived:
+    clc
+    rts
 
-## Spread Fire Patterns
+; Working variables
+current_x:  .byte 0
+current_y:  .byte 0
+target_x:   .byte 0
+target_y:   .byte 0`} language="asm" />
 
-Create impressive bullet patterns:
+## Multiple Weapon Types
 
-<CodeBlock title="Spread Shot System" code={`; Different firing patterns
-PATTERN_SINGLE  = 0
-PATTERN_DOUBLE  = 1
-PATTERN_TRIPLE  = 2
-PATTERN_SPREAD  = 3
+Create different firing patterns for variety:
 
-current_pattern: .byte PATTERN_SINGLE
-pattern_timer:   .byte 0
+<CodeBlock title="Network Diagnostic Tools" code={`; Weapon types
+WEAPON_SINGLE   = 0     ; Single shot
+WEAPON_DOUBLE   = 1     ; Twin shots
+WEAPON_SPREAD   = 2     ; Three-way spread
+WEAPON_RAPID    = 3     ; Machine gun
 
-; Spawn bullets based on current pattern
+current_weapon: .byte WEAPON_SINGLE
+fire_cooldown: .byte 0
+
+; Fire pattern based on current weapon
 fire_pattern:
-    lda current_pattern
-    cmp #PATTERN_SINGLE
+    lda current_weapon
+    cmp #WEAPON_SINGLE
     beq fire_single
-    cmp #PATTERN_DOUBLE
+    cmp #WEAPON_DOUBLE
     beq fire_double
-    cmp #PATTERN_TRIPLE
-    beq fire_triple
-    cmp #PATTERN_SPREAD
+    cmp #WEAPON_SPREAD
     beq fire_spread
+    cmp #WEAPON_RAPID
+    beq fire_rapid
     rts
 
 fire_single:
@@ -341,9 +413,9 @@ fire_triple:
 triple_done:
     rts`} language="asm" />
 
-## Homing Missiles
+## Homing Projectiles
 
-Create smart projectiles that track targets:
+Create missiles that track their targets:
 
 <CodeBlock title="Homing Missile AI" code={`; Missile pool (separate from bullets)
 MAX_MISSILES    = 4
@@ -826,23 +898,72 @@ Enhance your shooting system:
 
 ## What You've Learned
 
-You've built a complete projectile system featuring:
-- **Efficient bullet pooling** for performance
-- **Multiple firing patterns** for variety
-- **Homing missile AI** for smart weapons
-- **Collision detection** for all projectiles
-- **Visual effects** and sound integration
+You've built a complete projectile system demonstrating:
+- **Efficient object pooling** for managing many projectiles
+- **Multiple weapon types** with different firing patterns
+- **Projectile physics** with velocity and trajectories
+- **Collision detection** between projectiles and targets
+- **Performance optimization** for smooth gameplay
 
-Perfect for shooters, space games, and action titles!
+## Applying to Your Game
+
+### Network Packet System for Neon Nexus
+
+Apply projectile concepts to create network diagnostic packets for our cyberpunk game:
+
+<CodeBlock title="Network Packet System" language="asm" code={`; Network packet projectiles for Neon Nexus
+init_network_packets:
+        ; Initialize packet pool for network diagnostics
+        lda #0
+        ldx #0
+clear_packets:
+        sta packet_pool,x
+        inx
+        cpx #MAX_PACKETS * 5
+        bne clear_packets
+        rts
+
+launch_diagnostic_packet:
+        ; Launch a network diagnostic packet
+        jsr find_free_packet
+        cmp #$FF
+        beq packet_failed
+        
+        tax
+        ; Configure as network packet
+        lda #1
+        sta packet_pool,x      ; Activate
+        
+        ; Set starting position at terminal
+        lda player_x
+        sta packet_pool+1,x
+        lda player_y
+        sta packet_pool+3,x
+        
+        ; Target network node
+        lda target_node
+        sta packet_pool+4,x
+        
+        ; Digital transmission sound
+        jsr play_transmission_sound
+        
+packet_failed:
+        rts
+
+; Packet pool for network diagnostics
+packet_pool: !fill MAX_PACKETS * 5, 0
+target_node: !byte 0`} />
+
+**Network Integration:** Your Neon Nexus now has diagnostic packets that travel through the network! These projectiles visualize data flow and network probing, using the same efficient pooling system as traditional projectiles.
 
 ## Practice Challenges
 
-1. Add bouncing bullets that reflect off screen edges
-2. Create a laser beam that sweeps across the screen
-3. Implement bullet time slow-motion effects
-4. Add projectile trails and particle effects
-5. Build a boss that fires complex bullet patterns
+1. Add homing missiles that track targets
+2. Create bouncing projectiles that ricochet off walls
+3. Implement charge shots that grow stronger when held
+4. Add area-effect explosions when projectiles hit
+5. Create beam weapons with continuous damage
 
 ## What's Next
 
-Next lesson, we'll add targets and destruction effects to create satisfying combat!
+Next lesson, we'll add power-ups to enhance your weapons and abilities!
