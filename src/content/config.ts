@@ -209,10 +209,10 @@ const systems = defineCollection({
     estimated_duration: z.string().optional(), // "6-12 months", "3-6 months", etc.
     cpu_architecture: z.string().optional(), // "6502", "Z80", "68000", etc.
     prerequisite_platforms: z.array(z.string()).optional(), // Other platforms to complete first
-    difficulty_level: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).optional(),
+    difficulty_level: z.enum(['beginner', 'intermediate', 'advanced', 'expert', 'historical']).optional(),
     
     // Platform Status
-    status: z.enum(['active', 'vault']).default('active'), // 'active' = full curriculum, 'vault' = historical reference
+    status: z.enum(['active', 'planned', 'vault']).default('planned'), // 'active' = has lessons, 'planned' = future curriculum, 'vault' = historical reference only
     
     // Learning Path Information
     architecture_family: z.string().optional(), // For grouping in architecture tracks
