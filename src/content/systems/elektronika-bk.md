@@ -28,7 +28,8 @@ video:
   processor: "Custom video controller"
   resolution: "512×256"
   colors: "Monochrome (green phosphor)"
-  display_modes: ["512×256 bitmap", "64×32 character text", "Mixed graphics/text", "Hardware scrolling"]
+  display_modes:
+    ["512×256 bitmap", "64×32 character text", "Mixed graphics/text", "Hardware scrolling"]
   sprites:
     count: 0
     size: "Software only"
@@ -40,7 +41,13 @@ video:
 audio:
   chip: "Covox-compatible DAC"
   channels: 1
-  features: ["8-bit digital audio", "Software sound generation", "Covox Sound Master support", "Cassette interface"]
+  features:
+    [
+      "8-bit digital audio",
+      "Software sound generation",
+      "Covox Sound Master support",
+      "Cassette interface",
+    ]
   sample_playback: true
   synthesis_types: ["Software synthesis", "Digital samples"]
 
@@ -48,11 +55,12 @@ audio:
 storage: ["Cassette tape", "ROM cartridge", "Floppy disk"]
 storage_details:
   built_in: ["Cassette interface"]
-  expansion: ["5.25\" floppy disk (BK-0011)"]
+  expansion: ['5.25" floppy disk (BK-0011)']
   typical_capacity:
     cassette: "Variable"
 
-io_ports: ["Soviet keyboard", "Joystick ports", "Cassette interface", "Printer port", "Expansion slots"]
+io_ports:
+  ["Soviet keyboard", "Joystick ports", "Cassette interface", "Printer port", "Expansion slots"]
 expansion_options: ["Floppy disk interface", "Memory cards", "I/O cards"]
 
 # Commercial information
@@ -69,8 +77,20 @@ market_positioning: "Minicomputer power for the masses"
 competition: ["Western home computers (limited availability)", "Other Soviet computers"]
 
 # Educational relevance
-learning_advantages: ["16-bit minicomputer architecture", "PDP-11 instruction set", "Operating system programming", "Soviet computing history"]
-common_beginner_projects: ["Assembly language programs", "Graphics applications", "Educational software", "System utilities"]
+learning_advantages:
+  [
+    "16-bit minicomputer architecture",
+    "PDP-11 instruction set",
+    "Operating system programming",
+    "Soviet computing history",
+  ]
+common_beginner_projects:
+  [
+    "Assembly language programs",
+    "Graphics applications",
+    "Educational software",
+    "System utilities",
+  ]
 
 # Modern preservation and emulation
 emulated: true
@@ -87,7 +107,6 @@ hardware_availability: "rare"
 
 # Media
 description: "The Soviet home computer based on PDP-11 architecture that brought minicomputer power to the masses."
-image: "/images/systems/elektronika-bk.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -102,7 +121,7 @@ order: 63
 
 # Elektronika BK
 
-*Coming Soon*
+_Coming Soon_
 
 The Elektronika BK series represents one of the most fascinating chapters in computing history—the Soviet Union's successful adaptation of Digital Equipment Corporation's PDP-11 minicomputer architecture into an affordable home computer. This system brought genuine 16-bit minicomputer power to Soviet households.
 
@@ -120,9 +139,10 @@ The BK's PDP-11 architecture offers unique programming challenges not found in t
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the BK curriculum will include:
+
 - PDP-11 assembly language programming fundamentals
 - RT-11SJ operating system interaction and system calls
 - Memory management and bank switching techniques

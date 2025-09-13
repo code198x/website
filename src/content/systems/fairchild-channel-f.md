@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The world's first programmable ROM cartridge-based video game console, predating the Atari 2600."
-image: "/images/systems/channel-f.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 103
 
 # Channel F
 
-*Historical Reference*
+_Historical Reference_
 
 The Fairchild Channel F was the world's first programmable ROM cartridge-based video game console, beating the Atari 2600 to market by nearly a year. It introduced the concept of swappable game cartridges that would define gaming for decades.
 
@@ -60,4 +59,4 @@ Before the Channel F, video game consoles had built-in games that couldn't be ch
 
 While the Channel F was quickly overshadowed by the Atari 2600, its fundamental innovation - the game cartridge - became the foundation of the entire console gaming industry. Every cartridge-based system that followed owes a debt to Fairchild's pioneering design.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

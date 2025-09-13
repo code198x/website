@@ -31,24 +31,28 @@ Create **AmigaMemPro** - a sophisticated memory management system featuring dyna
 ## Tier Overview
 
 **Lessons 1-8: Amiga Memory Architecture Mastery**
+
 - Deep dive into Amiga memory layout: Chip RAM, Fast RAM, and ROM
 - Understanding DMA conflicts and memory access timing
 - Advanced addressing modes and memory mapping techniques
 - Memory banking strategies for large games and applications
 
 **Lessons 9-16: Dynamic Memory Systems**
+
 - Building efficient memory allocators for different data types
 - Object pooling and recycling systems for sprites and game objects
 - Memory-efficient linked lists, trees, and hash tables
 - Custom memory managers for audio samples and graphics data
 
 **Lessons 17-24: Chip RAM Optimization**
+
 - Maximizing precious Chip RAM for graphics and audio
 - Smart buffer management for screen memory and sprites
 - Audio sample memory optimization and streaming
 - Graphics data compression and efficient storage
 
 **Lessons 25-32: Professional Memory Management**
+
 - Memory leak detection and prevention systems
 - Real-time memory profiling and performance monitoring
 - Memory fragmentation analysis and defragmentation

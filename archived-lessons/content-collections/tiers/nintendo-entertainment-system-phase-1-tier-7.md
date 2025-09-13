@@ -27,6 +27,7 @@ Create living, breathing audio! Learn real-time audio programming to build syste
 ## What You'll Add to Rhythm Engine
 
 Implement interactive audio features:
+
 - Create real-time music performance systems
 - Build responsive sound effects and feedback
 - Implement dynamic music that adapts to gameplay
@@ -35,24 +36,28 @@ Implement interactive audio features:
 ## Tier Overview
 
 **Lessons 1-8: Real-Time Audio Response**
+
 - Processing controller input for musical performance
 - Creating responsive audio feedback systems
 - Building low-latency audio processing
 - Implementing precise timing for musical accuracy
 
 **Lessons 9-16: Dynamic Music Systems**
+
 - Adaptive music that changes with gameplay
 - Interactive composition and improvisation
 - Layered music systems with dynamic mixing
 - Creating musical variations and arrangements
 
 **Lessons 17-24: Audio-Visual Synchronization**
+
 - Synchronizing sound with graphics and animation
 - Creating visual feedback for audio events
 - Building rhythm-based visual systems
 - Implementing precise timing relationships
 
 **Lessons 25-32: Rhythm Engine Interaction**
+
 - Implementing complete interactive music performance
 - Creating rhythm game mechanics and scoring
 - Building user interfaces for music creation

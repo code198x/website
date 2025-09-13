@@ -45,7 +45,7 @@ audio:
   synthesis_types: ["Square wave"]
 
 # Storage and I/O
-storage: ["5.25\" floppy", "Hard disk"]
+storage: ['5.25" floppy', "Hard disk"]
 storage_details:
   built_in: ["None standard"]
   expansion: ["Floppy controller", "Hard disk controller"]
@@ -88,7 +88,6 @@ hardware_availability: "available"
 
 # Media
 description: "The business computer that established the PC standard and created the modern computing industry."
-image: "/images/systems/ibm-pc.jpg"
 
 # Platform Classification
 medal_tier: "gold"
@@ -103,7 +102,7 @@ order: 26
 
 # IBM PC
 
-*Coming Soon*
+_Coming Soon_
 
 The IBM PC didn't just enter the computer market - it defined it. IBM's decision to use off-the-shelf parts and publish the specifications created the PC-compatible industry that dominates computing today.
 
@@ -120,9 +119,10 @@ The IBM PC established x86 as the dominant architecture. Understanding DOS, BIOS
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the IBM PC curriculum will include:
+
 - 8086/8088 assembly programming
 - DOS interrupt programming
 - CGA graphics and Mode 13h

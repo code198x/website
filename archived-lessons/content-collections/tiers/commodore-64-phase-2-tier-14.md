@@ -31,24 +31,28 @@ Enhance **Stellar Command** to run on multiple platforms - C64, Apple II, and At
 ## Tier Overview
 
 **Lessons 1-8: Abstraction Layer Design**
+
 - Creating hardware abstraction interfaces
 - Platform capability detection
 - Unified API design
 - Performance considerations
 
 **Lessons 9-16: Conditional Assembly Mastery**
+
 - Advanced conditional compilation
 - Platform-specific code sections
 - Feature flags and capabilities
 - Build configuration management
 
 **Lessons 17-24: Cross-Platform Libraries**
+
 - Portable graphics routines
 - Audio abstraction systems
 - Input handling across platforms
 - File system compatibility
 
 **Lessons 25-32: Multi-Platform Optimization**
+
 - Platform-specific performance tuning
 - Memory layout adaptation
 - Testing across emulators

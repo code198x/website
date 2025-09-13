@@ -31,24 +31,28 @@ Develop **PPU Master Engine** - an advanced graphics engine featuring sprite mul
 ## Tier Overview
 
 **Lessons 1-8: PPU Timing & Synchronization**
+
 - Understanding PPU timing cycles and synchronization
 - Raster interrupt programming for mid-screen effects
 - VBLANK optimization and timing constraints
 - Advanced PPU register manipulation techniques
 
 **Lessons 9-16: Advanced Sprite Techniques**
+
 - Professional sprite multiplexing with minimal flicker
 - Priority management and Z-order systems
 - Large sprite composition and management
 - Advanced collision detection optimization
 
 **Lessons 17-24: Scrolling & Camera Systems**
+
 - Multi-directional smooth scrolling techniques
 - Parallax scrolling and depth effects
 - Split-screen and multi-viewport systems
 - Advanced camera algorithms and movement
 
 **Lessons 25-32: Hardware Tricks & Effects**
+
 - Scanline effects and mid-frame register changes
 - Color cycling and palette animation
 - Hardware-based compression techniques

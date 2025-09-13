@@ -27,6 +27,7 @@ Connect your assembly programs to the powerful AmigaOS! Learn system programming
 ## What You'll Add to System Lab
 
 Build your system programming toolkit:
+
 - Create reusable libraries in 68000 assembly
 - Integrate with AmigaOS services and APIs
 - Build modular application architectures
@@ -35,24 +36,28 @@ Build your system programming toolkit:
 ## Tier Overview
 
 **Lessons 1-8: AmigaOS System Programming**
+
 - Understanding the AmigaOS kernel and system architecture
 - Working with tasks, processes, and system memory
 - Using system calls and services from assembly
 - Basic system programming and process management
 
 **Lessons 9-16: Library Development**
+
 - Creating shared libraries in 68000 assembly
 - Dynamic linking and library loading systems
 - Building reusable code modules and frameworks
 - Interface design and API development
 
 **Lessons 17-24: System Services Integration**
+
 - File system access and disk operations
 - Device drivers and hardware integration
 - System resource management and allocation
 - Inter-process communication and messaging
 
 **Lessons 25-32: Advanced System Programming**
+
 - Memory management and virtual memory systems
 - Multitasking and synchronization techniques
 - System monitoring and diagnostic tools

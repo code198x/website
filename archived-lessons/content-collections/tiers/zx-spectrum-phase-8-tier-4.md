@@ -31,6 +31,7 @@ Create your first legendary ZX Spectrum game! With **32 legendary creation lesso
 ## What You'll Create
 
 Build your **LEGENDARY ZX SPECTRUM GAME** - your first legendary achievement:
+
 - **Legendary Concepts**: Game ideas worthy of joining the pantheon of classics
 - **Technical Artistry**: Z80 code so elegant it becomes art in service of gameplay
 - **Innovative Mechanics**: Revolutionary gameplay that creates new possibilities
@@ -40,24 +41,28 @@ Build your **LEGENDARY ZX SPECTRUM GAME** - your first legendary achievement:
 ## Legendary Game Development Process
 
 **Lessons 1-8: "Legendary Foundation" - Building Legendary Game Architecture**
+
 - Integrating legendary concepts with technical artistry and innovative mechanics
 - Creating the architectural foundation for a truly legendary gaming experience
 - Planning legendary game development within ZX Spectrum constraints
 - Establishing systems that support legendary gameplay and technical excellence
 
 **Lessons 9-16: "Legendary Implementation" - Bringing Legendary Vision to Life**
+
 - Implementing legendary concepts using elegant Z80 technical artistry
 - Integrating innovative mechanics with legendary game design principles
 - Creating gameplay that feels both revolutionary and perfectly crafted
 - Building technical systems that enable legendary gaming experiences
 
 **Lessons 17-24: "Legendary Polish" - Achieving Legendary Quality**
+
 - Applying legendary-level polish and refinement to all game elements
 - Integrating innovative mechanics seamlessly with elegant technical implementation
 - Creating the level of quality that distinguishes legendary games from great ones
 - Testing and validating that the game achieves truly legendary status
 
 **Lessons 25-32: "Legendary Completion" - Finalizing Your Legendary Achievement**
+
 - Completing final polish and optimization for legendary-quality experience
 - Preparing the game for community reception and legendary status validation
 - Documenting the legendary development process for future developers

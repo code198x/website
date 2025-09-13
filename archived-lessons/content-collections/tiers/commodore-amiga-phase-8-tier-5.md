@@ -27,6 +27,7 @@ Define the future of gaming! With **32 genre-innovation lessons**, you'll master
 ## What You'll Pioneer
 
 Create **GENRE-DEFINING AMIGA GAMES** that establish new categories:
+
 - Games that create entirely new types of interactive experiences
 - Innovative gameplay mechanics that define new game categories
 - Experiences that other developers study and emulate
@@ -36,24 +37,28 @@ Create **GENRE-DEFINING AMIGA GAMES** that establish new categories:
 ## Genre Innovation Areas
 
 **Lessons 1-8: "New Genre Concepts" - Defining Unprecedented Gaming**
+
 - Understanding what makes a game genre-defining
 - Analyzing how legendary games created new categories
 - Identifying opportunities for new types of gaming experiences
 - Building frameworks for genre-defining innovation
 
 **Lessons 9-16: "Innovative Mechanics" - Gameplay That Defines Categories**
+
 - Creating gameplay mechanics that feel revolutionary yet accessible
 - Building game systems that inspire other developers
 - Developing interactions that become templates for new genres
 - Understanding how to balance innovation with player understanding
 
 **Lessons 17-24: "Genre Establishment" - Creating New Standards**
+
 - Designing games that establish new standards for their categories
 - Building experiences that other games will be measured against
 - Creating gameplay templates that inspire entire genres
 - Understanding how to make innovations feel natural and logical
 
 **Lessons 25-32: "Innovation Legacy" - Games That Inspire Generations**
+
 - Creating genre-defining experiences that influence future development
 - Building innovations that become fundamental to gaming
 - Understanding how to create games that inspire communities

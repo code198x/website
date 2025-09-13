@@ -31,24 +31,28 @@ Create **EngineCore Pro** - a professional game engine framework featuring modul
 ## Tier Overview
 
 **Lessons 1-8: Engine Architecture & Design**
+
 - Professional game engine architecture and design patterns
 - Modular system design and component-based frameworks
 - Advanced software engineering principles and practices
 - Scalable and maintainable code organization
 
 **Lessons 9-16: Core Engine Systems**
+
 - Reusable rendering and graphics management systems
 - Modular audio engine and sound management
 - Universal input handling and control systems
 - Cross-game resource management and loading
 
 **Lessons 17-24: Advanced Engine Features**
+
 - Flexible scripting and behavior systems
 - Professional debugging and profiling tools
 - Advanced asset pipeline and content management
 - Multi-platform compatibility and optimization
 
 **Lessons 25-32: Professional Development Tools**
+
 - Integrated development environment and editors
 - Asset creation and management tools
 - Professional build system and deployment

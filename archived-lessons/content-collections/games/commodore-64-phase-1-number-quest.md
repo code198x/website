@@ -58,24 +58,28 @@ The computer thinks of a number, and you try to guess it. But this isn't just an
 ### Tiers 1-4 Development Roadmap
 
 **Tier 1**: Basic guessing game
+
 - Generate random number
 - Accept player input
 - Provide higher/lower feedback
 - Count attempts
 
 **Tier 2**: Enhanced feedback
+
 - Input validation
 - Better user interface
 - Play again functionality
 - Basic scoring
 
 **Tier 3**: Multiple difficulty levels
+
 - Adjustable number ranges
 - Time pressure mode
 - Hint system
 - Score persistence
 
 **Tier 4**: Intelligence and polish
+
 - Adaptive difficulty based on performance
 - Multiple game modes
 - High score table

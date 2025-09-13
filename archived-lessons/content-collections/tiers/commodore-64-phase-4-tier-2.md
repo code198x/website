@@ -31,24 +31,28 @@ Enhance **Neon Runner** with professional audio including dynamic background mus
 ## Tier Overview
 
 **Lessons 1-8: SID Oscillator Programming**
+
 - Understanding SID architecture
 - Programming oscillators and frequencies
 - Waveform selection and control
 - Oscillator synchronization
 
 **Lessons 9-16: ADSR Envelope Control**
+
 - Attack, Decay, Sustain, Release programming
 - Creating expressive instrument sounds
 - Envelope timing and optimization
 - Musical expression techniques
 
 **Lessons 17-24: Filter Programming**
+
 - Low-pass, high-pass, and band-pass filters
 - Filter frequency and resonance control
 - Audio processing effects
 - Creative filter usage
 
 **Lessons 25-32: Sound Design & Optimization**
+
 - Sound effect creation techniques
 - Musical instrument synthesis
 - Real-time audio performance

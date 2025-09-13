@@ -31,24 +31,28 @@ Create **Logic Master** - a comprehensive game logic framework featuring state m
 ## Tier Overview
 
 **Lessons 1-8: State Machine Architecture**
+
 - Understanding finite state machines in games
 - Implementing game state management systems
 - Character and object state machines
 - Hierarchical state machine design
 
 **Lessons 9-16: Event-Driven Programming**
+
 - Event system design and implementation
 - Message passing and communication systems
 - Observer pattern and notification systems
 - Decoupled system architecture
 
 **Lessons 17-24: Advanced Game Algorithms**
+
 - Pathfinding and navigation algorithms
 - Collision detection optimization
 - Resource management systems
 - Complex scoring and progression systems
 
 **Lessons 25-32: Rule Systems & Mechanics**
+
 - Game rule engines and interpreters
 - Dynamic content generation
 - Complex interaction systems

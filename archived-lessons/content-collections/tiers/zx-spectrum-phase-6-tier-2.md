@@ -27,6 +27,7 @@ Transform your ZX Spectrum into a musical powerhouse! With **32 comprehensive le
 ## What You'll Build
 
 Create **SPECTRUM SYMPHONY** - a comprehensive audio showcase featuring:
+
 - Complex beeper routines that create rich, layered sounds
 - Full AY chip orchestration with professional music composition
 - Dynamic sound effects that respond to player actions
@@ -36,24 +37,28 @@ Create **SPECTRUM SYMPHONY** - a comprehensive audio showcase featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Beeper Mastery!" - Advanced 1-Bit Audio**
+
 - Complex waveform synthesis using precise timing
 - Multi-tone effects through rapid frequency switching
 - Percussion and drum sounds from simple square waves
 - The legendary beeper techniques used in games like Manic Miner
 
 **Lessons 9-16: "AY Chip Orchestra!" - 128K Sound Programming**
+
 - Complete AY-3-8912 programming and register control
 - Multi-channel composition and harmonic layering
 - Advanced envelope shaping and volume modulation
 - Professional music composition techniques for chip audio
 
 **Lessons 17-24: "Dynamic Audio!" - Interactive Sound Design**
+
 - Sound effects that change based on game state
 - Audio feedback systems that enhance gameplay
 - Music that dynamically adapts to player actions
 - Creating emotional impact through strategic audio design
 
 **Lessons 25-32: "Audio Architecture!" - Professional Systems**
+
 - Efficient audio mixing and channel management
 - Memory-optimized music storage and playback
 - Audio compression techniques for maximum content

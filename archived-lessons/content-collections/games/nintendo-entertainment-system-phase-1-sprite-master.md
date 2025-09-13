@@ -68,24 +68,28 @@ Leverages the NES's unique sprite capabilities:
 ### Tiers 1-4 Development Roadmap
 
 **Tier 1**: Basic sprite display and positioning
+
 - Loading sprite data into OAM
 - Positioning sprites on screen
 - Understanding sprite attributes
 - Creating your first moving sprite
 
 **Tier 2**: Animation and frame sequences
+
 - Multi-frame sprite animation
 - Animation timing and speed control
 - Creating walking and action sequences
 - Building an animation system
 
 **Tier 3**: Controller input and movement
+
 - Reading NES controller states
 - Implementing 8-directional movement
 - Creating responsive control systems
 - Adding movement acceleration and smoothing
 
 **Tier 4**: Collision and interaction
+
 - Sprite-to-sprite collision detection
 - Interactive objects and collection
 - Simple game mechanics implementation

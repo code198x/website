@@ -31,24 +31,28 @@ Transform **Crystal Caverns** into an expansive adventure with massive interconn
 ## Tier Overview
 
 **Lessons 1-8: Hardware Scrolling Basics**
+
 - Understanding scroll registers
 - Horizontal scrolling implementation
 - Vertical scrolling techniques
 - Handling edge cases
 
 **Lessons 9-16: Multi-Directional Scrolling**
+
 - 8-way scrolling systems
 - Diagonal movement handling
 - Smooth pixel precision
 - Performance optimization
 
 **Lessons 17-24: World Management**
+
 - Tile-based world systems
 - Efficient data structures
 - Streaming from storage
 - Memory management
 
 **Lessons 25-32: Advanced Techniques**
+
 - Parallax scrolling layers
 - Split-screen scrolling
 - Camera systems

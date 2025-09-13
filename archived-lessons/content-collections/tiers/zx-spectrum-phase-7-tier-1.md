@@ -27,6 +27,7 @@ Bring your ZX Spectrum games to life with intelligent opponents! With **32 advan
 ## What You'll Build
 
 Create **INTELLIGENT SPECTRUM STRATEGY GAME** - featuring advanced AI systems:
+
 - Smart opponents with complex decision-making abilities in Z80
 - Adaptive AI that learns from player behavior within memory limits
 - Advanced pathfinding and tactical movement on Spectrum
@@ -36,24 +37,28 @@ Create **INTELLIGENT SPECTRUM STRATEGY GAME** - featuring advanced AI systems:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "AI Fundamentals" - Core Intelligence Systems**
+
 - Advanced state machines and behavior modeling in Z80 assembly
 - Decision trees and strategic planning algorithms for Spectrum
 - Memory-efficient AI data structures within 48K/128K limits
 - Real-time decision making under ZX Spectrum constraints
 
 **Lessons 9-16: "Pathfinding & Navigation" - Movement Intelligence**
-- A* pathfinding algorithm implementation in Z80
+
+- A\* pathfinding algorithm implementation in Z80
 - Navigation mesh generation and optimization for Spectrum games
 - Dynamic obstacle avoidance systems using efficient assembly
 - Multi-unit coordination and formation movement
 
 **Lessons 17-24: "Adaptive Behaviors" - Dynamic AI Systems**
+
 - Player behavior analysis and adaptation on ZX Spectrum
 - Dynamic difficulty scaling algorithms in Z80
 - Learning AI that improves over time within memory constraints
 - Personality systems for varied opponent types
 
 **Lessons 25-32: "Strategic AI" - Advanced Game Intelligence**
+
 - Long-term strategic planning and goal setting in Z80
 - Resource management and economic AI for Spectrum games
 - Multi-layered decision hierarchies optimized for performance

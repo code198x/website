@@ -31,24 +31,28 @@ Create **AudioMaster Pro** - an advanced audio programming suite featuring sophi
 ## Tier Overview
 
 **Lessons 1-8: Advanced Paula Programming**
+
 - Deep Paula architecture understanding and optimization
 - Advanced DMA audio programming and timing
 - Multi-channel coordination and synchronization
 - Real-time audio parameter manipulation and control
 
 **Lessons 9-16: Sophisticated Audio Effects**
+
 - Advanced audio synthesis and waveform generation
 - Complex audio filtering and signal processing
 - Real-time audio effects: reverb, delay, chorus, and distortion
 - Dynamic audio processing and envelope shaping
 
 **Lessons 17-24: Multi-Channel Audio Systems**
+
 - Professional multi-track audio composition systems
 - Advanced audio mixing and channel management
 - Complex audio sequencing and pattern systems
 - Real-time audio performance and live manipulation
 
 **Lessons 25-32: Professional Audio Development**
+
 - Professional audio tool and synthesizer development
 - Advanced audio file format support and conversion
 - Audio mastering and final production techniques

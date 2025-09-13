@@ -27,6 +27,7 @@ Back to the roots! With **32 nostalgic lessons**, you'll recreate arcade classic
 ## What You'll Build
 
 Create **NEON ARCADE** - a collection of enhanced classics:
+
 - Maze chase games with procedural layouts
 - Fixed shooter games with modern particle effects
 - Collect-em-up games with progressive difficulty
@@ -36,24 +37,28 @@ Create **NEON ARCADE** - a collection of enhanced classics:
 ## Tier Overview
 
 **Lessons 1-8: "Core Mechanics" - What Makes Classics Tick**
+
 - Tight control schemes and instant feedback
 - Simple rules with complex emergent behavior
 - Progressive difficulty that teaches through play
 - Visual clarity and readable game states
 
 **Lessons 9-16: "Procedural Content" - Endless Variety**
+
 - Maze generation algorithms
 - Pattern-based enemy behavior
 - Procedural power-up placement
 - Dynamic difficulty adjustment
 
 **Lessons 17-24: "Amiga Enhancement" - Beyond the Originals**
+
 - 4-channel audio for immersive soundscapes
 - Smooth animations at 50Hz
 - Enhanced particle effects and juice
 - Multiple simultaneous sound effects
 
 **Lessons 25-32: "Score Attack" - Competitive Gaming**
+
 - High score table implementation
 - Combo systems and scoring multipliers
 - Replay systems for record runs

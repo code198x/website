@@ -43,7 +43,7 @@ GameLoop:
 ProcessInput:
     JSR ReadController
     STA ControllerState
-    
+
     ; Immediate movement response
     AND #%00001000       ; Up pressed?
     BEQ MoveUp
@@ -62,7 +62,7 @@ MoveUp:
     STA PlayerY
     JSR UpdatePlayerSprite
     RTS
-    
+
 MoveDown:
     LDA PlayerY
     CLC
@@ -84,13 +84,13 @@ Main:
 ProcessMovement:
     JSR ReadController
     STA Buttons
-    
+
     ; Check all directions simultaneously
     LDA Buttons
     AND #%00001000       ; Up
     BEQ CheckUp
     JMP CheckDown
-    
+
 CheckUp:
     LDA PlayerY
     SEC
@@ -98,13 +98,13 @@ CheckUp:
     CMP #$20             ; Top boundary
     BCC CheckDown
     STA PlayerY
-    
+
 CheckDown:
     LDA Buttons
     AND #%00000100       ; Down
     BEQ CheckDownMove
     JMP CheckLeft
-    
+
 CheckDownMove:
     LDA PlayerY
     CLC
@@ -112,13 +112,13 @@ CheckDownMove:
     CMP #$D0             ; Bottom boundary
     BCS CheckLeft
     STA PlayerY
-    
+
 CheckLeft:
     LDA Buttons
     AND #%00000010       ; Left
     BEQ CheckLeftMove
     JMP CheckRight
-    
+
 CheckLeftMove:
     LDA PlayerX
     SEC
@@ -126,13 +126,13 @@ CheckLeftMove:
     CMP #$08             ; Left boundary
     BCC CheckRight
     STA PlayerX
-    
+
 CheckRight:
     LDA Buttons
     AND #%00000001       ; Right
     BEQ CheckRightMove
     JMP MovementDone
-    
+
 CheckRightMove:
     LDA PlayerX
     CLC
@@ -140,7 +140,7 @@ CheckRightMove:
     CMP #$F0             ; Right boundary
     BCS MovementDone
     STA PlayerX
-    
+
 MovementDone:
     RTS
 
@@ -175,55 +175,55 @@ UpdatePlayerMovement:
     LDA #$00
     STA VelocityX
     STA VelocityY
-    
+
     ; Check held directions
     LDA ControllerState
     AND #%00001000       ; Up held?
     BEQ AddUpVelocity
     JMP CheckDownVelocity
-    
+
 AddUpVelocity:
     LDA VelocityY
     SEC
     SBC #$02             ; Upward velocity
     STA VelocityY
-    
+
 CheckDownVelocity:
     LDA ControllerState
     AND #%00000100       ; Down held?
     BEQ AddDownVelocity
     JMP CheckLeftVelocity
-    
+
 AddDownVelocity:
     LDA VelocityY
     CLC
     ADC #$02             ; Downward velocity
     STA VelocityY
-    
+
 CheckLeftVelocity:
     LDA ControllerState
     AND #%00000010       ; Left held?
     BEQ AddLeftVelocity
     JMP CheckRightVelocity
-    
+
 AddLeftVelocity:
     LDA VelocityX
     SEC
     SBC #$02             ; Leftward velocity
     STA VelocityX
-    
+
 CheckRightVelocity:
     LDA ControllerState
     AND #%00000001       ; Right held?
     BEQ AddRightVelocity
     JMP ApplyVelocity
-    
+
 AddRightVelocity:
     LDA VelocityX
     CLC
     ADC #$02             ; Rightward velocity
     STA VelocityX
-    
+
 ApplyVelocity:
     ; Apply X velocity with bounds checking
     LDA PlayerX
@@ -234,7 +234,7 @@ ApplyVelocity:
     CMP #$F0             ; Right boundary
     BCS SkipXUpdate
     STA PlayerX
-    
+
 SkipXUpdate:
     ; Apply Y velocity with bounds checking
     LDA PlayerY
@@ -245,7 +245,7 @@ SkipXUpdate:
     CMP #$D0             ; Bottom boundary
     BCS SkipYUpdate
     STA PlayerY
-    
+
 SkipYUpdate:
     RTS
 
@@ -266,12 +266,12 @@ Main:
 UpdateMovement:
     JSR ReadController
     STA Buttons
-    
+
     ; Reset velocity
     LDA #$00
     STA VelX
     STA VelY
-    
+
     ; Build velocity based on input
     LDA Buttons
     AND #%00001000       ; Up
@@ -282,7 +282,7 @@ AddUpVel:
     SEC
     SBC #$01             ; Slow smooth movement
     STA VelY
-    
+
 CheckDown:
     LDA Buttons
     AND #%00000100       ; Down
@@ -293,7 +293,7 @@ AddDownVel:
     CLC
     ADC #$01
     STA VelY
-    
+
 CheckLeft:
     LDA Buttons
     AND #%00000010       ; Left
@@ -304,7 +304,7 @@ AddLeftVel:
     SEC
     SBC #$01
     STA VelX
-    
+
 CheckRight:
     LDA Buttons
     AND #%00000001       ; Right
@@ -315,7 +315,7 @@ AddRightVel:
     CLC
     ADC #$01
     STA VelX
-    
+
 ApplyMovement:
     ; Apply X movement
     LDA PlayerX
@@ -325,7 +325,7 @@ ApplyMovement:
     CMP #$F8
     BCS SkipX
     STA PlayerX
-    
+
 SkipX:
     ; Apply Y movement
     LDA PlayerY
@@ -335,7 +335,7 @@ SkipX:
     CMP #$E0
     BCS SkipY
     STA PlayerY
-    
+
 SkipY:
     RTS
 
@@ -368,7 +368,7 @@ Create menu systems that respond immediately to directional input:
 ; Menu navigation system
 UpdateMenu:
     JSR DetectNewButtonPresses
-    
+
     ; Check for menu navigation
     LDA NewPresses
     AND #%00001000       ; Up pressed?
@@ -388,7 +388,7 @@ MenuUp:
     JSR UpdateMenuCursor
     JSR PlayMenuSound
     RTS
-    
+
 MenuUpWrap:
     LDA MenuMaxItems
     SEC
@@ -406,7 +406,7 @@ MenuDown:
     JSR UpdateMenuCursor
     JSR PlayMenuSound
     RTS
-    
+
 MenuDownWrap:
     LDA #$00
     STA MenuIndex
@@ -436,7 +436,7 @@ UpdateMenuCursor:
     CLC
     ADC #$40             ; Base Y position
     STA CursorY
-    
+
     ; Update cursor sprite
     LDA CursorY
     STA SpriteData+0     ; Cursor Y position
@@ -464,7 +464,7 @@ Main:
 UpdateMenu:
     JSR ReadController
     JSR DetectNewPresses
-    
+
     ; Check menu navigation
     LDA NewPresses
     AND #%00001000       ; Up
@@ -480,7 +480,7 @@ MenuUp:
     BEQ WrapToBottom
     DEC MenuPos
     JMP UpdateCursor
-    
+
 WrapToBottom:
     LDA #$03             ; 4 items (0-3)
     STA MenuPos
@@ -492,16 +492,16 @@ MenuDown:
     BEQ WrapToTop
     INC MenuPos
     JMP UpdateCursor
-    
+
 WrapToTop:
     LDA #$00
     STA MenuPos
-    
+
 UpdateCursor:
     ; Calculate cursor Y position
     LDA MenuPos
     ASL                  ; * 2
-    ASL                  ; * 4  
+    ASL                  ; * 4
     ASL                  ; * 8
     ASL                  ; * 16 (16 pixels between items)
     CLC
@@ -520,11 +520,11 @@ DetectNewPresses:
     ; Save previous buttons
     LDA CurrentButtons
     STA PrevButtons
-    
+
     ; Read current buttons
     JSR ReadController
     STA CurrentButtons
-    
+
     ; Calculate new presses (current AND NOT previous)
     EOR PrevButtons      ; XOR to find changes
     AND CurrentButtons   ; AND with current to get new presses
@@ -581,11 +581,11 @@ ShiftLoop:
     STA InputBuffer,X
     DEX
     BPL ShiftLoop
-    
+
     ; Add new input to end
     JSR ReadController
     STA InputBuffer+3
-    
+
     ; Check for buffered inputs
     JSR ProcessBufferedInputs
     RTS
@@ -600,7 +600,7 @@ BufferLoop:
     DEX
     BPL BufferLoop
     RTS
-    
+
 CheckBufferedA:
     ; Verify this is a new press (not held)
     CPX #$00
@@ -611,11 +611,11 @@ CheckBufferedA:
     DEX
     BPL BufferLoop
     RTS
-    
+
 ExecuteA:
     ; Execute A button action
     JSR HandleAButton
-    
+
     ; Clear the buffer entry to prevent repeat
     LDA InputBuffer,X
     AND #%01111111       ; Clear A button bit
@@ -651,12 +651,12 @@ NormalSpeed:
     LDA #$02             ; 2 pixels per frame
     STA MovementSpeed
     RTS
-    
+
 PrecisionSpeed:
     LDA #$01             ; 1 pixel per frame
     STA MovementSpeed
     RTS
-    
+
 FastSpeed:
     LDA #$04             ; 4 pixels per frame
     STA MovementSpeed
@@ -676,7 +676,7 @@ MoveRight:
     CMP #$F0             ; Boundary check
     BCS SkipMove
     STA PlayerX
-    
+
 SkipMove:
     RTS
 
@@ -701,7 +701,7 @@ UpdateGameState:
     LDA StateTimer
     CMP #$3C             ; 60 frames
     BNE KeepState
-    
+
     LDA #$00
     STA StateTimer
     INC GameMode
@@ -710,7 +710,7 @@ UpdateGameState:
     BNE KeepState
     LDA #$00
     STA GameMode
-    
+
 KeepState:
     ; Set movement speed based on mode
     LDA GameMode
@@ -726,12 +726,12 @@ SlowMode:
     LDA #$01             ; 1 pixel per frame
     STA MoveSpeed
     RTS
-    
+
 NormalMode:
     LDA #$02             ; 2 pixels per frame
     STA MoveSpeed
     RTS
-    
+
 FastMode:
     LDA #$04             ; 4 pixels per frame
     STA MoveSpeed
@@ -740,7 +740,7 @@ FastMode:
 ProcessMovement:
     JSR ReadController
     STA Buttons
-    
+
     ; Apply movement with current speed
     LDA Buttons
     AND #%00000001       ; Right
@@ -758,7 +758,7 @@ MoveRight:
     STA PlayerX
 SkipRight:
     RTS
-    
+
 MoveLeft:
     LDA PlayerX
     SEC
@@ -773,7 +773,7 @@ UpdateGraphics:
     ; Update sprite position
     LDA PlayerX
     STA SpriteData+3
-    
+
     ; Visual indicator of current mode
     LDA GameMode
     CLC
@@ -799,7 +799,7 @@ SpriteData: .byte $80, $41, $00, $80
 Create a complete responsive input system that demonstrates all concepts:
 
 1. Implement immediate movement response
-2. Add smooth acceleration and deceleration  
+2. Add smooth acceleration and deceleration
 3. Create a menu system with cursor
 4. Add input buffering for frame-perfect timing
 5. Include variable movement speeds
@@ -811,7 +811,7 @@ Create a complete responsive input system that demonstrates all concepts:
 ; Complete responsive input demonstration
 Main:
     JSR InitSystem
-    
+
 GameLoop:
     JSR ProcessInput
     JSR UpdateGameLogic
@@ -836,23 +836,23 @@ ProcessInput:
     JSR ReadController
     JSR BufferInput
     JSR DetectNewPresses
-    
+
     ; Route input based on game state
     LDA MenuActive
     BEQ ProcessGameInput
     JSR ProcessMenuInput
     RTS
-    
+
 ProcessGameInput:
     ; Check for menu activation
     LDA NewPresses
     AND #%00010000       ; Start button
     BEQ ActivateMenu
-    
+
     ; Process movement
     JSR ProcessMovement
     RTS
-    
+
 ActivateMenu:
     LDA #$01
     STA MenuActive
@@ -912,7 +912,7 @@ ProcessMovement:
     ; Smooth acceleration-based movement
     JSR ReadController
     STA CurrentInput
-    
+
     ; Process horizontal movement
     LDA CurrentInput
     AND #%00000001       ; Right
@@ -922,7 +922,7 @@ ProcessMovement:
     ; No horizontal input, decelerate
     JSR DecelX
     JMP CheckVertical
-    
+
 AccelRight:
     LDA VelocityX
     CLC
@@ -933,7 +933,7 @@ AccelRight:
 StoreVelX:
     STA VelocityX
     JMP CheckVertical
-    
+
 AccelLeft:
     LDA VelocityX
     SEC
@@ -943,7 +943,7 @@ AccelLeft:
     LDA #$FD
 StoreVelX2:
     STA VelocityX
-    
+
 CheckVertical:
     ; Process vertical movement
     LDA CurrentInput
@@ -953,7 +953,7 @@ CheckVertical:
     BEQ AccelDown
     JSR DecelY
     JMP ApplyMovement
-    
+
 AccelUp:
     LDA VelocityY
     SEC
@@ -964,7 +964,7 @@ AccelUp:
 StoreVelY:
     STA VelocityY
     JMP ApplyMovement
-    
+
 AccelDown:
     LDA VelocityY
     CLC
@@ -974,14 +974,14 @@ AccelDown:
     LDA #$03
 StoreVelY2:
     STA VelocityY
-    
+
 ApplyMovement:
     ; Apply velocity to position
     LDA PlayerX
     CLC
     ADC VelocityX
     STA PlayerX
-    
+
     LDA PlayerY
     CLC
     ADC VelocityY
@@ -1028,7 +1028,7 @@ DetectNewPresses:
     STA CurrentButtons
     LDA InputBuffer+1    ; Previous
     STA PrevButtons
-    
+
     ; Find new presses
     LDA CurrentButtons
     EOR PrevButtons      ; XOR to find changes
@@ -1042,11 +1042,11 @@ UpdateGraphics:
     STA SpriteData+3
     LDA PlayerY
     STA SpriteData+0
-    
+
     ; Update menu cursor if active
     LDA MenuActive
     BEQ GraphicsDone
-    
+
     ; Position menu cursor
     LDA MenuIndex
     ASL
@@ -1059,7 +1059,7 @@ UpdateGraphics:
     STA SpriteData+7     ; Menu cursor X
     LDA #$7E             ; Arrow tile
     STA SpriteData+5
-    
+
 GraphicsDone:
     RTS
 
@@ -1068,16 +1068,16 @@ UpdateAudio:
     LDA SoundTimer
     BEQ AudioDone
     DEC SoundTimer
-    
+
     ; Generate simple tone while timer active
     LDA SoundTimer
     AND #$01
     BEQ AudioDone
-    
+
     ; Play tone (simplified)
     LDA #$08
     STA $4003            ; Set frequency
-    
+
 AudioDone:
     RTS
 
@@ -1135,7 +1135,7 @@ SoundTimer: .byte $00
 InputPattern: .byte $00
 
 ; Sprite data
-SpriteData: 
+SpriteData:
     .byte $80, $01, $00, $80  ; Player sprite
     .byte $50, $7E, $00, $30  ; Menu cursor
 ```

@@ -27,6 +27,7 @@ Maximize NES capabilities through expert optimisation! Learn advanced memory man
 ## What You'll Add to Tile Craft
 
 Optimize your graphics system:
+
 - Implement advanced memory management for large levels
 - Create efficient data compression for graphics storage
 - Build optimised algorithms for real-time editing
@@ -35,24 +36,28 @@ Optimize your graphics system:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Memory Management**
+
 - Bank switching and memory mapper programming
 - Dynamic memory allocation strategies
 - Efficient data structure design in assembly
 - Memory optimisation for complex applications
 
 **Lessons 9-16: Data Compression and Storage**
+
 - Implementing graphics and level data compression
 - Efficient encoding schemes for tile data
 - Run-length encoding and pattern compression
 - Balancing compression ratio with performance
 
 **Lessons 17-24: Performance Optimization**
+
 - Assembly code optimisation techniques
 - Cycle counting and performance analysis
 - Optimizing critical code paths
 - Achieving smooth operation under load
 
 **Lessons 25-32: System Architecture**
+
 - Modular assembly programming techniques
 - Creating reusable code libraries
 - Building maintainable large-scale systems

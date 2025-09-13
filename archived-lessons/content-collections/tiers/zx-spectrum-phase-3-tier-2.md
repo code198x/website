@@ -31,24 +31,28 @@ Create **ULA Master** - a comprehensive hardware demonstration featuring perfect
 ## Tier Overview
 
 **Lessons 1-8: ULA Architecture & Direct Programming**
+
 - Understanding the ULA chip design and capabilities
 - Direct port programming and hardware control
 - Memory contention patterns and timing
 - Video signal generation and synchronization
 
 **Lessons 9-16: Advanced Timing Techniques**
+
 - Precise timing loops and cycle counting
 - Interrupt-driven programming and timing
 - Contended memory optimization strategies
 - Hardware-synchronized effects programming
 
 **Lessons 17-24: Graphics & Video Effects**
+
 - Advanced screen manipulation techniques
 - Smooth scrolling without tearing
 - Raster effects and border manipulation
 - Attribute clash solutions and workarounds
 
 **Lessons 25-32: Sound & I/O Programming**
+
 - Advanced beeper programming techniques
 - Multi-channel sound synthesis
 - Keyboard scanning and input optimization

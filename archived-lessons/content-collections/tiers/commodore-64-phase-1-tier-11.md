@@ -27,6 +27,7 @@ Design intelligent challenges that adapt to players! Learn to create logic puzzl
 ## What You'll Add to Logic Labyrinth
 
 Implement the puzzle mechanics:
+
 - Logic-based door locks and challenges
 - Progressive puzzle difficulty
 - Hint systems for stuck players
@@ -35,24 +36,28 @@ Implement the puzzle mechanics:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Puzzle Design**
+
 - Creating logic puzzles using assembly programming
 - Mathematical sequences and patterns in assembly
 - Assembly-based puzzles and challenges
 - Balancing challenge and fairness through assembly logic
 
 **Lessons 9-16: Assembly State Management**
+
 - Tracking what the player has done using memory
 - Managing inventory and progress through assembly
 - Implementing save/load systems in assembly
 - Handling complex game state with memory management
 
 **Lessons 17-24: Assembly Adaptive Systems**
+
 - Adjusting difficulty based on performance using assembly logic
 - Providing hints when needed through assembly code
 - Creating progressive challenge curves with assembly algorithms
 - Player behavior analysis using assembly data processing
 
 **Lessons 25-32: Assembly Integration and Polish**
+
 - Connecting puzzles to maze progression using assembly
 - Creating satisfying puzzle solutions through assembly code
 - Balancing challenge with accessibility using assembly logic

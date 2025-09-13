@@ -31,24 +31,28 @@ Enhance **Cosmic Defender** with advanced display effects including smooth paral
 ## Tier Overview
 
 **Lessons 1-8: Raster Interrupt Fundamentals**
+
 - Understanding VIC-II display timing
 - Setting up stable raster interrupts
 - Dealing with interrupt jitter
 - Creating your first raster effects
 
 **Lessons 9-16: Advanced Raster Techniques**
+
 - Multiple raster splits per frame
 - Color bar and gradient effects
 - Screen mode switching mid-frame
 - Synchronized sprite positioning
 
 **Lessons 17-24: Display Timing Mastery**
+
 - Understanding bad lines and timing
 - Cycle-exact raster programming
 - Eliminating visual artifacts
 - Frame-perfect synchronization
 
 **Lessons 25-32: Complex Effect Chains**
+
 - Building multi-effect systems
 - Raster effect scheduling
 - Performance optimization

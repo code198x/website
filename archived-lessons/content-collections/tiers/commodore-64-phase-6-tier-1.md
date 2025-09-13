@@ -27,6 +27,7 @@ Welcome to the advanced class! ✨ With **32 mind-blowing lessons**, you'll lear
 ## What You'll Build
 
 Create **VISUAL MASTERPIECE** - a stunning graphics showcase featuring:
+
 - Particle effects that look like they belong on a 16-bit machine
 - Scrolling so smooth people will think you've got hidden hardware
 - Color cycling that creates impossible rainbows and flowing water
@@ -36,24 +37,28 @@ Create **VISUAL MASTERPIECE** - a stunning graphics showcase featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Impossible Colors!" - Advanced Raster Magic**
+
 - Raster interrupts that create impossible color combinations
 - Hardware sprite overlays that break the 16-color limit
 - Color cycling that makes static images come alive
 - The secret techniques behind those "impossible" demo effects
 
 **Lessons 9-16: "Floating Like a Cloud" - Smooth Scrolling Mastery**
+
 - Hardware scrolling that's butter-smooth in all directions
 - Parallax layers that create stunning depth illusions
 - Character-based scrolling that doesn't flicker or jerk
 - The mathematics of making movement feel magical
 
 **Lessons 17-24: "Sparks and Explosions!" - Particle System Wizardry**
+
 - Particle effects using character graphics and sprites
 - Fire, smoke, and explosion effects that look stunning
 - Starfield effects that create infinite depth
 - Making simple pixels behave like complex physics
 
 **Lessons 25-32: "The Final Touch" - Polish That Dazzles**
+
 - Screen transitions that make scenes flow beautifully
 - Animation techniques that bring sprites to life
 - Visual feedback that makes every action feel satisfying

@@ -74,7 +74,6 @@ emulators:
     accuracy: "good"
 historical_significance: "The Acorn Archimedes was the first home computer built around ARM processors, introducing RISC architecture to desktop computing and launching what would become the world's most successful processor architecture. It established the foundation for modern mobile computing and influenced GUI design principles."
 description: "The first ARM-powered computer that launched the RISC revolution—a glimpse into the future of computing architecture."
-image: "/images/systems/acorn-archimedes.jpg"
 order: 49
 ---
 
@@ -83,7 +82,9 @@ The **Acorn Archimedes** was the first home computer built around ARM (Acorn RIS
 ## The ARM Revolution Begins
 
 ### RISC Architecture Pioneer
+
 The Archimedes introduced revolutionary processor design:
+
 - **32-bit RISC processor** running at 8 MHz
 - **Load/store architecture** with simplified instruction set
 - **27 instructions total** vs hundreds in CISC processors
@@ -91,7 +92,9 @@ The Archimedes introduced revolutionary processor design:
 - **Conditional execution** on every instruction for efficiency
 
 ### Performance Revolution
+
 Despite modest clock speed, the ARM2 delivered impressive performance:
+
 - **4 MIPS performance** from 8 MHz clock
 - **Efficient instruction pipeline** design
 - **Low power consumption** enabling compact designs
@@ -100,14 +103,18 @@ Despite modest clock speed, the ARM2 delivered impressive performance:
 ## RISC OS: Advanced Desktop Computing
 
 ### Desktop GUI Environment
+
 RISC OS provided sophisticated graphical computing:
+
 - **Full windowing system** with overlapping windows
 - **Cooperative multitasking** operating system
 - **Vector-based fonts** and scalable graphics
 - **Advanced file management** with type-specific handling
 
 ### Innovative User Interface
+
 The interface introduced several advanced concepts:
+
 - **Three-button mouse** interaction model
 - **Context-sensitive menus** throughout the system
 - **Drag-and-drop operations** for intuitive file management
@@ -116,14 +123,18 @@ The interface introduced several advanced concepts:
 ## Graphics and Sound Excellence
 
 ### VIDC Graphics Controller
+
 Advanced graphics capabilities for the era:
+
 - **Hardware-accelerated 2D graphics**
 - **Variable resolution** up to 640×480
 - **256 colors from 4096-color palette**
 - **Hardware scrolling** and sprite capabilities
 
 ### Advanced Sound System
+
 Sophisticated audio processing:
+
 - **8-channel stereo synthesis**
 - **8-bit logarithmic samples** for quality audio
 - **Hardware sound mixing** and filtering
@@ -132,21 +143,27 @@ Sophisticated audio processing:
 ## Why Study Archimedes Development
 
 ### RISC Programming Mastery
+
 Learn principles of RISC architecture programming that now power billions of devices:
+
 - **ARM assembly language** fundamentals
 - **Register optimization** techniques
 - **Pipeline efficiency** considerations
 - **Memory hierarchy** management
 
 ### GUI Application Development
+
 Master sophisticated desktop programming:
+
 - **Event-driven programming** models
 - **Window management** systems
 - **Graphics programming** with hardware acceleration
 - **User interface design** principles
 
 ### Historical Foundation
+
 Understanding the Archimedes provides crucial insights:
+
 - **RISC vs CISC** architectural decisions
 - **GUI evolution** from command-line systems
 - **British computing** innovation and design philosophy
@@ -155,14 +172,18 @@ Understanding the Archimedes provides crucial insights:
 ## Notable Software and Innovations
 
 ### System Software
+
 Advanced applications demonstrated capabilities:
+
 - **!Draw** - Vector graphics application
 - **!Paint** - Bitmap graphics editor
 - **!Edit** - Sophisticated text editor
 - **!Calc** - Scientific calculator with graphing
 
 ### Games and Entertainment
+
 Creative games showcased unique capabilities:
+
 - **Zarch (Virus)** - Revolutionary 3D landscape game
 - **Chocks Away** - World War I flight simulator
 - **Elite+** - Enhanced space trading epic
@@ -171,14 +192,18 @@ Creative games showcased unique capabilities:
 ## Technical Architecture
 
 ### ARM2 Processor Design
+
 The ARM processor was specifically designed for efficiency:
+
 - **Simple instruction set** reducing complexity
 - **Orthogonal design** with consistent operation formats
 - **Barrel shifter** for efficient data manipulation
 - **Fast interrupt response** for real-time applications
 
 ### Custom Chip Integration
+
 Sophisticated system design with custom components:
+
 - **VIDC** - Video and sound controller
 - **IOC** - Input/output controller
 - **MEMC** - Memory controller with protection
@@ -187,14 +212,18 @@ Sophisticated system design with custom components:
 ## Programming Environment
 
 ### RISC OS Programming
+
 Sophisticated development environment:
+
 - **BASIC V interpreter** with ARM assembly integration
 - **Modular programming** with relocatable code
 - **Dynamic link libraries** and shared resources
 - **Interactive development** environment
 
 ### ARM Assembly Language
+
 Learning ARM assembly provides modern relevance:
+
 - **Load/store architecture** programming
 - **Conditional execution** optimization
 - **Register allocation** strategies
@@ -203,14 +232,18 @@ Learning ARM assembly provides modern relevance:
 ## Educational and Market Impact
 
 ### Educational Adoption
+
 The Archimedes was widely adopted in education:
+
 - **UK schools** standardized on Archimedes systems
 - **Programming education** introduced RISC concepts
 - **GUI development** training for new programmers
 - **Technical innovation** inspiring next generation developers
 
 ### Industry Influence
+
 The Archimedes launched technologies that shaped computing:
+
 - **ARM architecture** now powers mobile devices globally
 - **RISC design principles** influenced processor development
 - **GUI concepts** from RISC OS appeared in later systems
@@ -219,14 +252,18 @@ The Archimedes launched technologies that shaped computing:
 ## Modern Relevance
 
 ### ARM Legacy
+
 ARM processors descended from the Archimedes now power:
+
 - **Smartphones and tablets** - iPhone, iPad, Android devices
 - **Embedded systems** - IoT devices, automotive systems
 - **Server processors** - Modern ARM server chips
 - **Desktop computers** - Apple Silicon Macs
 
 ### Programming Concepts
+
 Archimedes development teaches skills relevant today:
+
 - **RISC programming** principles for modern processors
 - **GUI application** development patterns
 - **Performance optimization** through architecture awareness
@@ -235,6 +272,7 @@ Archimedes development teaches skills relevant today:
 ## Development Philosophy
 
 Archimedes programming emphasizes:
+
 - **Efficiency and elegance** over brute force solutions
 - **User experience** as primary design consideration
 - **Clean architecture** enabling maintainable code
@@ -245,18 +283,21 @@ Archimedes programming emphasizes:
 Our curriculum covers comprehensive Archimedes development:
 
 ### Foundation (256 lessons)
+
 - ARM assembly language programming
 - RISC OS system programming
 - Basic GUI application development
 - Graphics and sound programming basics
 
 ### Intermediate (384 lessons)
+
 - Advanced ARM optimization techniques
 - Complex GUI application frameworks
 - VIDC programming for graphics and audio
 - File systems and data management
 
 ### Advanced (384 lessons)
+
 - System-level programming and modules
 - Network programming and communications
 - Advanced graphics and multimedia applications

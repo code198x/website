@@ -22,7 +22,7 @@ These bytes are our variables. Unlike BASIC, we manually manage every byte of me
 
 ### Calculating Screen Position
 
-The screen is linear in memory. Position = Y * 40 + X:
+The screen is linear in memory. Position = Y \* 40 + X:
 
 ```assembly
 draw_player:
@@ -31,18 +31,18 @@ draw_player:
     ; We need to multiply by 40
     ; 40 = 32 + 8, so we can use shifts
     asl             ; *2
-    asl             ; *4  
+    asl             ; *4
     asl             ; *8
     sta temp        ; Save *8
     asl             ; *16
     asl             ; *32
     clc             ; Clear carry for addition
     adc temp        ; *32 + *8 = *40
-    
+
     ; Add X position
     clc
     adc player_x
-    
+
     ; Add screen base ($0400)
     clc
     adc #$00
@@ -62,21 +62,21 @@ move_right:
     ldy #0
     lda #$20        ; Space character
     sta (screen_lo),y
-    
+
     ; Move position
     inc player_x    ; Increment X position
-    
+
     ; Check boundary
     lda player_x
     cmp #40         ; Right edge?
     bne draw_new
     lda #0          ; Wrap to left
     sta player_x
-    
+
 draw_new:
     jsr draw_player
-    
-    ; Draw at new position  
+
+    ; Draw at new position
     ldy #0
     lda #$2a        ; Star character
     sta (screen_lo),y
@@ -101,7 +101,9 @@ delay_inner:
 ## Interactive Elements
 
 ### Experiment 1: Speed Control
+
 Adjust the delay values:
+
 ```assembly
 ldx #$20    ; Faster
 ldx #$80    ; Slower
@@ -109,14 +111,18 @@ ldx #$FF    ; Very slow
 ```
 
 ### Experiment 2: Different Directions
+
 Try vertical movement:
+
 ```assembly
 inc player_y    ; Move down
 dec player_y    ; Move up
 ```
 
 ### Experiment 3: Diagonal Movement
+
 Move both X and Y:
+
 ```assembly
 inc player_x
 inc player_y    ; Diagonal down-right
@@ -152,6 +158,7 @@ row_table_hi:
 ## Challenge Extensions
 
 1. **Bouncing Ball**: Reverse direction at edges
+
    ```assembly
    lda player_x
    cmp #39         ; At right edge?
@@ -176,8 +183,9 @@ row_table_hi:
 ## Performance Notes
 
 Our current method:
+
 - Clear old: ~20 cycles
-- Calculate position: ~50 cycles  
+- Calculate position: ~50 cycles
 - Draw new: ~20 cycles
 - Delay: ~16,000 cycles
 
@@ -186,6 +194,7 @@ The delay dominates! This is why games use interrupts (coming later).
 ## Historical Context
 
 Early movement techniques:
+
 - **Space Invaders (1978)**: Moved entire formations as one
 - **Pac-Man (1980)**: Tile-based movement (8×8 pixel jumps)
 - **Defender (1981)**: Pixel-smooth horizontal scrolling

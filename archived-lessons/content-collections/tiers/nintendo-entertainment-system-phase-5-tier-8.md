@@ -27,6 +27,7 @@ Time to think big! With **32 project-focused lessons**, you'll combine everythin
 ## What You'll Build
 
 Create **KINGDOM COMMANDER** - a strategy epic featuring:
+
 - Overworld exploration with resource discovery
 - Real-time elements mixed with turn-based battles
 - Multiple victory paths and strategies
@@ -36,24 +37,28 @@ Create **KINGDOM COMMANDER** - a strategy epic featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Grand Design" - Architecture Planning**
+
 - Structuring code for multiple game modes
 - Transitioning smoothly between gameplay styles
 - Managing complex game states
 - Planning content scope realistically
 
 **Lessons 9-16: "Campaign Creation" - Content Pipeline**
+
 - Designing missions that teach and challenge
 - Creating memorable characters and story
 - Balancing difficulty across long campaigns
 - Keeping players engaged for hours
 
 **Lessons 17-24: "AI Excellence" - Smart Opponents**
+
 - AI that uses different strategies
 - Difficulty that adapts to player skill
 - Making every battle feel unique
 - Testing AI behavior exhaustively
 
 **Lessons 25-32: "Strategic Polish" - Ship Ready**
+
 - Professional menu systems
 - Comprehensive tutorials that don't bore
 - Battery save for campaign progress

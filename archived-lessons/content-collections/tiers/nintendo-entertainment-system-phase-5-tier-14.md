@@ -27,6 +27,7 @@ Time to think outside the cartridge! With **32 creative lessons**, you'll build 
 ## What You'll Build
 
 Create **PIXEL STUDIO SUITE** - a creative toolkit featuring:
+
 - An art program with stamps and animations
 - A music composer with save/share features
 - Educational mini-games that teach through play
@@ -36,24 +37,28 @@ Create **PIXEL STUDIO SUITE** - a creative toolkit featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Digital Canvas" - Art Creation**
+
 - Drawing tools with NES constraints
 - Stamp and pattern systems
 - Animation basics for user art
 - Saving masterpieces to battery RAM
 
 **Lessons 9-16: "8-Bit Orchestra" - Music Making**
+
 - Note entry and playback systems
 - Visual music notation
 - Composing within NES sound limits
 - Making music creation approachable
 
 **Lessons 17-24: "Learning Through Play" - Education**
+
 - Math games that don't feel like homework
 - Language learning with visual feedback
 - Science concepts through experimentation
 - Making education addictive
 
 **Lessons 25-32: "Creator's Toolkit" - Meta Gaming**
+
 - Level editors for action games
 - Sharing creations (passwords!)
 - User testing and feedback

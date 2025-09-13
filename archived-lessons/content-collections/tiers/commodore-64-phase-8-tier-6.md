@@ -27,6 +27,7 @@ Games that transcend time itself! With **32 timeless-design lessons**, you'll ma
 ## What You'll Create
 
 Develop **TIMELESS GAMES** that never feel dated:
+
 - Games that remain compelling and fresh across decades
 - Gameplay that transcends trends and feels eternally relevant
 - Design that improves with age rather than becoming obsolete
@@ -36,24 +37,28 @@ Develop **TIMELESS GAMES** that never feel dated:
 ## Timeless Design Mastery
 
 **Lessons 1-8: "Universal Design Principles" - Games That Transcend Time**
+
 - Designing mechanics that are easy to learn but endlessly deep
 - Creating gameplay that feels fresh regardless of when it's played
 - Building games around universal human experiences and emotions
 - Understanding what makes C64 games feel timeless rather than dated
 
 **Lessons 9-16: "Ageless Gameplay" - Mechanics That Never Get Old**
+
 - Creating core gameplay loops that remain engaging across decades
 - Designing challenge systems that feel fair and rewarding always
 - Building mechanics that improve with player mastery over time
 - Crafting gameplay that generates endless discovery and replay value
 
 **Lessons 17-24: "Eternal Appeal" - Design That Transcends Trends**
+
 - Creating aesthetic choices that age gracefully
 - Designing interfaces and controls that always feel intuitive
 - Understanding how to avoid trend-dependent design decisions
 - Building games that each generation can appreciate on their own terms
 
 **Lessons 25-32: "Timeless Legacy" - Games That Define Excellence**
+
 - Creating games that become reference points for quality
 - Designing experiences that inspire future developers
 - Building games that are studied and celebrated decades later

@@ -80,16 +80,19 @@ Peddle's team achieved the 6502's low cost through innovative manufacturing tech
 The 6502's affordability enabled numerous landmark computers:
 
 ### Home Computing Pioneers
+
 - **Apple II** (1977) - Used 6502, became best-selling personal computer
 - **Commodore PET** (1977) - Peddle's own design using 6502
 - **Atari 8-bit series** (1979) - Gaming-focused home computers
 
-### Mass Market Success  
+### Mass Market Success
+
 - **Commodore 64** (1982) - Best-selling single computer model ever
 - **Nintendo Entertainment System** (1985) - Used 6502 variant, revived gaming
 - **BBC Micro** (1981) - Educational computing standard in UK
 
 ### Professional Applications
+
 - **Industrial control systems** - 6502's reliability and cost-effectiveness
 - **Embedded systems** - Long production life and simplicity
 - **Scientific instruments** - Affordable computing for research
@@ -99,6 +102,7 @@ The 6502's affordability enabled numerous landmark computers:
 After MOS Technology was acquired by Commodore in 1976, Peddle joined Commodore and designed the **Commodore PET** (Personal Electronic Transactor), one of the "1977 Trinity" of personal computers along with the Apple II and TRS-80.
 
 The PET showcased Peddle's complete vision of affordable computing:
+
 - Integrated design with built-in monitor and keyboard
 - Chiclet keyboard (later improved based on user feedback)
 - BASIC programming language in ROM
@@ -109,16 +113,19 @@ The PET showcased Peddle's complete vision of affordable computing:
 Peddle's design philosophy emphasised:
 
 ### Simplicity and Efficiency
+
 - Minimal transistor count to reduce cost
 - Orthogonal instruction set for easier programming
 - Efficient memory addressing modes
 
 ### Developer-Friendly Design
+
 - Predictable timing for real-time applications
 - Clean interrupt system
 - Extensive addressing mode support
 
 ### Manufacturing Pragmatism
+
 - Design for yield - circuits that could be manufactured reliably
 - Cost-conscious component choices
 - Simplified support circuitry requirements
@@ -126,6 +133,7 @@ Peddle's design philosophy emphasised:
 ## Later Career
 
 After leaving Commodore, Peddle continued to work in the computer industry:
+
 - **Victor Technologies** - Worked on portable computers
 - **Consulting** - Advised various technology companies
 - **Speaking and Teaching** - Shared knowledge of early computing history
@@ -135,15 +143,19 @@ After leaving Commodore, Peddle continued to work in the computer industry:
 Chuck Peddle's impact on computing extends far beyond the 6502 processor:
 
 ### Democratising Computing
+
 His low-cost philosophy made computers accessible to millions of people who couldn't afford expensive systems, launching the home computer revolution.
 
 ### Educational Impact
+
 The 6502's clean architecture and extensive documentation made it an excellent teaching processor, used in computer science education for decades.
 
 ### Long-Term Influence
+
 The 6502 remained in production for over 40 years, with variants still used in embedded systems today. Its influence can be seen in later processor designs that emphasised efficiency and simplicity.
 
 ### Industry Recognition
+
 - **Computer History Museum Fellow** - Honoured for contributions to computing
 - **Pioneer Award** - Recognised by IEEE Computer Society
 - **Hall of Fame** - Microprocessor Hall of Fame inductee
@@ -153,6 +165,7 @@ The 6502 remained in production for over 40 years, with variants still used in e
 In Code Like It's 198x, students encounter Peddle's design philosophy firsthand when learning 6502 assembly programming on the Commodore 64 and Nintendo Entertainment System. The processor's elegant simplicity makes it an ideal introduction to assembly programming, whilst its historical significance provides context for understanding how computing became accessible to everyone.
 
 ### Educational Value
+
 - **Clean Architecture**: The 6502's orthogonal design teaches fundamental processor concepts
 - **Historical Context**: Understanding how cost considerations shaped design decisions
 - **Programming Skills**: Assembly techniques that translate to other processors

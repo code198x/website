@@ -32,7 +32,7 @@ order: 27
 ; BEFORE optimisation: Slow, clunky code (12 cycles)
 LDA $1000       ; Slow absolute addressing (4 cycles)
 CLC             ; Clear carry (2 cycles)
-ADC #$01        ; Add one (2 cycles) 
+ADC #$01        ; Add one (2 cycles)
 STA $1000       ; Store back (4 cycles)
 
 ; AFTER optimisation: Lightning fast (6 cycles)
@@ -109,7 +109,7 @@ FastCopy:
     STA SourcePtr+1  ; $81
     LDA #$30
     STA DestPtr+1    ; $83
-    
+
     LDY #$00
 FastCopyLoop:
     LDA (SourcePtr),Y ; Indirect indexed (5 cycles)
@@ -142,7 +142,7 @@ UpdatePlayerPosition:
     CLC
     ADC $02,X           ; Add PlayerVX (PlayerX + 2)
     STA $00,X           ; Store new PlayerX
-    
+
     LDA $01,X           ; PlayerY (PlayerX + 1)
     CLC
     ADC $03,X           ; Add PlayerVY (PlayerX + 3)
@@ -167,7 +167,7 @@ SetupOptimizationDemo:
     ; Initialize test data
     LDA #$00
     STA TestCounter     ; Clear counter
-    
+
     ; Setup test array with pattern
     LDX #$00
     LDA #$01
@@ -178,38 +178,38 @@ TestDataSetup:
     INX
     CPX #$10            ; 16 bytes
     BNE TestDataSetup
-    
+
     RTS
 
 DemoSlowAccess:
     ; Unoptimized approach - absolute addressing
     LDA #$00
     STA SlowResult      ; Clear result
-    
+
     LDX #$00            ; Array index
 SlowLoop:
     LDA TestArray,X     ; Absolute indexed (4 cycles)
     CLC
     ADC SlowResult      ; Add to running total
     STA SlowResult      ; Store result
-    
+
     INX
     CPX #$10            ; Process 16 elements
     BNE SlowLoop
-    
+
     RTS
 
 DemoFastAccess:
     ; Optimized approach - zero page pointers
     LDA #$00
     STA FastResult      ; Clear result
-    
+
     ; Setup zero page pointer
     LDA #<TestArray     ; Array address low
     STA ArrayPtr        ; Zero page pointer low
-    LDA #>TestArray     ; Array address high  
+    LDA #>TestArray     ; Array address high
     STA ArrayPtr+1      ; Zero page pointer high
-    
+
     LDY #$00            ; Index register
 FastLoop:
     LDA (ArrayPtr),Y    ; Indirect indexed (5 cycles)
@@ -217,24 +217,24 @@ FastLoop:
     CLC
     ADC FastResult      ; Add to running total
     STA FastResult      ; Store result
-    
+
     INY
     CPY #$10            ; Process 16 elements
     BNE FastLoop
-    
+
     RTS
 
 CompareResults:
     ; Display comparison results
     LDA #$93            ; Clear screen
     JSR $FFD2
-    
+
     ; Position cursor
     LDA #5              ; Row 5
     STA $D6
     LDA #2              ; Column 2
     STA $D3
-    
+
     ; Display slow result
     LDX #0
 SlowResultLoop:
@@ -244,16 +244,16 @@ SlowResultLoop:
     INX
     JMP SlowResultLoop
 SlowResultDone:
-    
+
     LDA SlowResult
     JSR DisplayHexByte
-    
+
     ; Position for fast result
     LDA #6              ; Row 6
     STA $D6
     LDA #2              ; Column 2
     STA $D3
-    
+
     ; Display fast result
     LDX #0
 FastResultLoop:
@@ -263,16 +263,16 @@ FastResultLoop:
     INX
     JMP FastResultLoop
 FastResultDone:
-    
+
     LDA FastResult
     JSR DisplayHexByte
-    
+
     RTS
 
 DisplayHexByte:
     ; Display A register as hex
     PHA                 ; Save value
-    
+
     ; Display high nibble
     LSR
     LSR
@@ -288,7 +288,7 @@ HighDigit:
     ADC #$30            ; Convert 0-9
 DisplayHigh:
     JSR $FFD2
-    
+
     ; Display low nibble
     PLA                 ; Restore value
     AND #$0F            ; Keep low nibble
@@ -302,7 +302,7 @@ LowDigit:
     ADC #$30            ; Convert 0-9
 DisplayLow:
     JSR $FFD2
-    
+
     RTS
 
 ; Text messages
@@ -392,7 +392,7 @@ SlowLoopStart:
     ; Process array element
     LDA DataArray,X
     JSR ProcessByte
-    
+
     INX
     CPX #ArraySize  ; Compare with limit
     BNE SlowLoopStart
@@ -405,7 +405,7 @@ FastLoopStart:
     ; Process array element
     LDA DataArray,X
     JSR ProcessByte
-    
+
     DEX
     BPL FastLoopStart   ; Branch while positive (faster)
     RTS
@@ -493,7 +493,7 @@ SetupSpeedDemo:
     STA TestValue2
     LDA #$01
     STA TestFlag
-    
+
     ; Initialize test array
     LDX #$00
     LDA #$42            ; Test pattern
@@ -502,12 +502,12 @@ ArrayInit:
     INX
     CPX #$08            ; 8 elements
     BNE ArrayInit
-    
+
     RTS
 
 DemoLoopOptimization:
     ; Compare counting up vs counting down loops
-    
+
     ; Counting up loop (slower)
     LDA #$00
     STA UpLoopResult
@@ -520,7 +520,7 @@ UpLoop:
     INX
     CPX #$08            ; Compare with constant (slower)
     BNE UpLoop
-    
+
     ; Counting down loop (faster)
     LDA #$00
     STA DownLoopResult
@@ -532,12 +532,12 @@ DownLoop:
     STA DownLoopResult
     DEX
     BPL DownLoop        ; Branch while positive (faster)
-    
+
     RTS
 
 DemoInstructionOptimization:
     ; Compare different ways to accomplish same task
-    
+
     ; Inefficient: Multiple loads
     LDA #$00
     STA SlowClearTarget1
@@ -545,27 +545,27 @@ DemoInstructionOptimization:
     STA SlowClearTarget2
     LDA #$00            ; Unnecessary reload
     STA SlowClearTarget3
-    
+
     ; Efficient: Reuse accumulator
     LDA #$00
     STA FastClearTarget1
     STA FastClearTarget2    ; Reuse loaded value
     STA FastClearTarget3    ; Reuse loaded value
-    
+
     ; Inefficient: Addition for increment
     LDA SlowIncTarget
     CLC
     ADC #$01
     STA SlowIncTarget
-    
+
     ; Efficient: Use increment instruction
     INC FastIncTarget
-    
+
     RTS
 
 DemoBranchOptimization:
     ; Show effect of branch optimisation
-    
+
     ; Unoptimized: Rare case first
     LDA TestFlag
     CMP #$00            ; Rare case
@@ -573,28 +573,28 @@ DemoBranchOptimization:
     CMP #$01            ; Common case tested last
     BEQ CommonCase
     JMP DefaultCase
-    
+
 CommonCase:
     ; This is the common execution path
     LDA #$FF
     STA CommonResult
     JMP BranchEnd
-    
+
 RareCase:
     ; This rarely executes
     LDA #$AA
     STA RareResult
     JMP BranchEnd
-    
+
 DefaultCase:
     ; Default handling
     LDA #$55
     STA DefaultResult
-    
+
 BranchEnd:
     ; Optimized version would put CommonCase first
     ; to minimize average execution time
-    
+
     RTS
 
 ; Data areas
@@ -662,17 +662,17 @@ DrawSprite:
     ; Input: A=sprite number, X=X position, Y=Y position
     ; Carry set=enable, clear=disable
     PHA                 ; Save sprite number
-    
+
     ; Calculate register offsets
     ASL                 ; Multiply by 2 (X,Y pairs)
     TAZ                 ; Use as index (concept - real 6502 would use different approach)
-    
+
     ; Set position
     TXA
     STA $D000,Z         ; Sprite X position
     TYA
     STA $D001,Z         ; Sprite Y position
-    
+
     ; Handle enable/disable
     PLA                 ; Restore sprite number
     ; ... implementation for sprite enable
@@ -685,7 +685,7 @@ DrawAllSprites:
     LDY PlayerY         ; Y position
     SEC                 ; Enable
     JSR DrawSprite
-    
+
     LDA #$01            ; Sprite 1
     LDX Enemy1X
     LDY Enemy1Y
@@ -785,27 +785,27 @@ SetupSizeDemo:
     STA DemoHealth
     LDA #$64            ; 100 in hex
     STA DemoMaxHealth
-    
+
     ; Initialize position data
     LDA #$50            ; 80
     STA DemoX
     LDA #$60            ; 96
     STA DemoY
-    
+
     RTS
 
 DemoSubroutineOptimization:
     ; Show reusable subroutine vs duplicated code
-    
+
     ; Instead of duplicating positioning code,
     ; use a general purpose routine
-    
+
     ; Set sprite 0
     LDA #$00            ; Sprite number
     LDX DemoX           ; X position
     LDY DemoY           ; Y position
     JSR SetSpritePosition
-    
+
     ; Set sprite 1 (different position)
     LDA #$01            ; Sprite number
     LDX DemoX
@@ -814,33 +814,33 @@ DemoSubroutineOptimization:
     LDY DemoY
     INY                 ; Offset Y
     JSR SetSpritePosition
-    
+
     RTS
 
 SetSpritePosition:
     ; Reusable sprite positioning subroutine
     ; Input: A=sprite number, X=X pos, Y=Y pos
     ; This saves code size vs duplicating for each sprite
-    
+
     ; Calculate sprite register offset
     ASL                 ; Multiply by 2 (X,Y register pairs)
     TAX                 ; Use as offset (conceptual)
-    
+
     ; In real implementation, would use a lookup table
     ; or calculate actual register addresses
-    
+
     ; For demo, just show the concept
     CMP #$00
     BEQ SetSprite0
     CMP #$01
     BEQ SetSprite1
     RTS
-    
+
 SetSprite0:
     STX $D000           ; Sprite 0 X (from X register)
     STY $D001           ; Sprite 0 Y (from Y register)
     RTS
-    
+
 SetSprite1:
     STX $D002           ; Sprite 1 X
     STY $D003           ; Sprite 1 Y
@@ -848,27 +848,27 @@ SetSprite1:
 
 DemoLookupTableOptimization:
     ; Show lookup table vs calculation
-    
+
     ; Instead of calculating squares (slow):
     ; Result = Input * Input
-    
+
     ; Use precomputed table (fast):
     LDA #$05            ; Input value
     TAX
     LDA SquareTable,X   ; Get square from table
     STA SquareResult
-    
+
     ; Similarly for other math operations
     LDA #$10            ; Another input
     TAX
     LDA SquareTable,X
     STA SquareResult2
-    
+
     RTS
 
 DemoInstructionPacking:
     ; Show efficient instruction usage
-    
+
     ; Inefficient: Multiple loads
     LDA DemoHealth
     CMP #$00
@@ -877,28 +877,28 @@ DemoInstructionPacking:
     CMP DemoMaxHealth
     BCS HealthMax
     JMP HealthNormal
-    
+
 HealthZero:
     LDA #$02            ; Red colour for dead
     STA ColorResult
     JMP HealthEnd
-    
+
 HealthMax:
     LDA #$05            ; Green colour for full health
     STA ColorResult
     JMP HealthEnd
-    
+
 HealthNormal:
     LDA #$0E            ; Light blue for normal
     STA ColorResult
-    
+
 HealthEnd:
     ; More efficient version would:
     ; 1. Load DemoHealth once
     ; 2. Use BEQ immediately after load
     ; 3. Reuse loaded value for comparison
     ; 4. Use instruction side effects
-    
+
     RTS
 
 ; Lookup table for squares (0-15 squared)
@@ -996,7 +996,7 @@ PlayerFlags4: .byte 0  ; Can jump flag
 ; EFFICIENT: Pack into single byte
 PlayerFlags: .byte 0
 ; Bit 0: Alive
-; Bit 1: Invulnerable  
+; Bit 1: Invulnerable
 ; Bit 2: Has key
 ; Bit 3: Can jump
 ; Bits 4-7: Unused
@@ -1114,92 +1114,92 @@ SetupAdvancedDemo:
     ; Initialize for advanced optimisation examples
     LDA #$02            ; Test input value
     STA TestInput
-    
+
     LDA #%00000101      ; Set some flags (alive + has key)
     STA PackedFlags
-    
+
     RTS
 
 DemoTableDriven:
     ; Show table-driven programming
-    
+
     ; Traditional approach would use multiple branches
     ; Table approach uses single lookup
-    
+
     LDX TestInput       ; Use input as index
     CPX #$04            ; Check bounds
     BCS BadInput
-    
+
     ; Get result from table
     LDA ResultTable,X
     STA TableResult
-    
+
     ; Get colour from table
     LDA ColorTable,X
     STA TableColor
-    
+
     JMP TableDone
-    
+
 BadInput:
     LDA #$00            ; Default result
     STA TableResult
     LDA #$02            ; Red for error
     STA TableColor
-    
+
 TableDone:
     RTS
 
 DemoBitPacking:
     ; Show bit-packed flag operations
-    
+
     ; Test if player is alive (bit 0)
     LDA PackedFlags
     AND #%00000001      ; Mask for alive bit
     BEQ PlayerDead
-    
+
     ; Player is alive, test other flags
     LDA PackedFlags
     AND #%00000100      ; Mask for has_key bit
     BEQ NoKey
-    
+
     ; Player has key
     LDA #$FF
     STA HasKeyResult
     JMP FlagTestDone
-    
+
 NoKey:
     LDA #$00
     STA HasKeyResult
     JMP FlagTestDone
-    
+
 PlayerDead:
     LDA #$AA            ; Special value for dead
     STA HasKeyResult
-    
+
 FlagTestDone:
     ; Demo setting a flag
     LDA PackedFlags
     ORA #%00001000      ; Set can_jump flag (bit 3)
     STA PackedFlags
-    
+
     ; Demo clearing a flag
     LDA PackedFlags
     AND #%11111011      ; Clear has_key flag (bit 2)
     STA PackedFlags
-    
+
     RTS
 
 DemoResultDisplay:
     ; Display optimisation results
     LDA #$93            ; Clear screen
     JSR $FFD2
-    
+
     ; Show table result
     LDA #5              ; Row 5
     STA $D6
     LDA #2              ; Column 2
     STA $D3
-    
+
     LDX #0
 TableMsgLoop:
     LDA TableMessage,X
@@ -1208,16 +1208,16 @@ TableMsgLoop:
     INX
     JMP TableMsgLoop
 TableMsgDone:
-    
+
     LDA TableResult
     JSR DisplayHexValue
-    
+
     ; Show flag result
     LDA #7              ; Row 7
     STA $D6
     LDA #2              ; Column 2
     STA $D3
-    
+
     LDX #0
 FlagMsgLoop:
     LDA FlagMessage,X
@@ -1226,16 +1226,16 @@ FlagMsgLoop:
     INX
     JMP FlagMsgLoop
 FlagMsgDone:
-    
+
     LDA PackedFlags
     JSR DisplayHexValue
-    
+
     RTS
 
 DisplayHexValue:
     ; Display A register as 2-digit hex
     PHA                 ; Save value
-    
+
     ; High nibble
     LSR
     LSR
@@ -1251,7 +1251,7 @@ HighNum:
     ADC #$30            ; 0-9
 ShowHigh:
     JSR $FFD2
-    
+
     ; Low nibble
     PLA
     AND #$0F
@@ -1265,7 +1265,7 @@ LowNum:
     ADC #$30            ; 0-9
 ShowLow:
     JSR $FFD2
-    
+
     RTS
 
 ; Lookup tables for table-driven programming
@@ -1282,6 +1282,7 @@ TableMessage:   .text \
 ## Optimization Guidelines and Best Practices
 
 ### 1. Profile Before Optimizing
+
 ```text
 ; Always measure performance before optimizing
 ; Focus on code that runs most frequently
@@ -1289,6 +1290,7 @@ TableMessage:   .text \
 ```
 
 ### 2. Optimize in Order of Impact
+
 ```text
 ; 1. Algorithm optimisation (biggest impact)
 ; 2. Memory access patterns
@@ -1298,6 +1300,7 @@ TableMessage:   .text \
 ```
 
 ### 3. Maintain Readability
+
 ```text
 ; Document optimised code thoroughly
 ; Use clear variable names
@@ -1321,6 +1324,7 @@ DoubleValue: .byte 0
 ```
 
 ### 4. Consider Trade-offs
+
 ```text
 ; Speed vs Size: Unrolled loops vs compact loops
 ; Speed vs Memory: Lookup tables vs calculations
@@ -1328,6 +1332,7 @@ DoubleValue: .byte 0
 ```
 
 ### 5. Test Thoroughly
+
 ```text
 ; Optimization can introduce bugs
 ; Test edge cases carefully
@@ -1363,11 +1368,11 @@ InitLoop:
     INX
     CPX #$10            ; 16 elements
     BNE InitLoop
-    
+
     LDA #$00
     STA Result1
     STA Result2
-    
+
     RTS
 
 ; UNOPTIMIZED VERSION (many inefficiencies)
@@ -1375,43 +1380,43 @@ RunUnoptimizedCode:
     ; Clear result
     LDA #$00
     STA Result1
-    
+
     ; Process array inefficiently
     LDX #$00
 UnoptimizedLoop:
     ; Load same value multiple times
     LDA ChallengeArray,X
     PHA                 ; Unnecessary stack use
-    
+
     ; Inefficient multiplication by 2
     LDA ChallengeArray,X ; Load again!
     CLC
     ADC ChallengeArray,X ; A + A = A * 2
     STA TempResult
-    
+
     ; Inefficient addition
     PLA                 ; Get original value
     CLC
     ADC TempResult      ; Add doubled value
     STA TempResult      ; Now have A * 3
-    
+
     ; Add to running total inefficiently
     LDA Result1
     CLC
     ADC TempResult
     STA Result1
-    
+
     ; Inefficient loop increment
     TXA
     CLC
     ADC #$01
     TAX
-    
+
     ; Inefficient comparison
     TXA
     CMP #$10
     BNE UnoptimizedLoop
-    
+
     RTS
 
 ; OPTIMIZED VERSION (apply optimisation techniques)
@@ -1419,41 +1424,41 @@ RunOptimizedCode:
     ; Clear result efficiently
     LDA #$00
     STA Result2
-    
+
     ; Use optimised loop (count down)
     LDX #$0F            ; Start from last element
 OptimizedLoop:
     ; Load value once
     LDA ChallengeArray,X
-    
+
     ; Efficient multiplication by 3 using shifts and adds
     STA TempOpt         ; Save original (A)
     ASL                 ; A * 2
     CLC
     ADC TempOpt         ; A * 2 + A = A * 3
-    
+
     ; Add to running total
     CLC
     ADC Result2
     STA Result2
-    
+
     ; Efficient loop decrement
     DEX
     BPL OptimizedLoop   ; Branch while positive (faster)
-    
+
     RTS
 
 CompareResults:
     ; Display comparison of results
     LDA #$93            ; Clear screen
     JSR $FFD2
-    
+
     ; Show unoptimized result
     LDA #5
     STA $D6
     LDA #2
     STA $D3
-    
+
     LDX #0
 UnoptMsgLoop:
     LDA UnoptimizedMsg,X
@@ -1462,16 +1467,16 @@ UnoptMsgLoop:
     INX
     JMP UnoptMsgLoop
 UnoptMsgDone:
-    
+
     LDA Result1
     JSR ShowHexByte
-    
+
     ; Show optimised result
     LDA #7
     STA $D6
     LDA #2
     STA $D3
-    
+
     LDX #0
 OptMsgLoop:
     LDA OptimizedMsg,X
@@ -1480,20 +1485,20 @@ OptMsgLoop:
     INX
     JMP OptMsgLoop
 OptMsgDone:
-    
+
     LDA Result2
     JSR ShowHexByte
-    
+
     ; Show if results match
     LDA #9
     STA $D6
     LDA #2
     STA $D3
-    
+
     LDA Result1
     CMP Result2
     BEQ ResultsMatch
-    
+
     ; Results don't match - optimisation error!
     LDX #0
 ErrorLoop:
@@ -1504,7 +1509,7 @@ ErrorLoop:
     JMP ErrorLoop
 ErrorDone:
     RTS
-    
+
 ResultsMatch:
     LDX #0
 MatchLoop:
@@ -1519,7 +1524,7 @@ MatchDone:
 ShowHexByte:
     ; Display byte in hex format
     PHA
-    
+
     ; High nibble
     LSR
     LSR
@@ -1535,7 +1540,7 @@ HighDig:
     ADC #$30
 DispHigh:
     JSR $FFD2
-    
+
     ; Low nibble
     PLA
     AND #$0F

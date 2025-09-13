@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The world's first color handheld game console with hardware scaling and networking capabilities."
-image: "/images/systems/atari-lynx.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 112
 
 # Atari Lynx
 
-*Historical Reference*
+_Historical Reference_
 
 The Atari Lynx was the world's first handheld game console with a color LCD display. Developed by Epyx and released by Atari in 1989, it was technically superior to the Game Boy but suffered from poor battery life and limited software support.
 
@@ -59,6 +58,7 @@ The Lynx pioneered handheld gaming technology with features that wouldn't become
 ## Commercial Failure
 
 Despite technical superiority:
+
 - 4-6 hours battery life vs Game Boy's 30+
 - $179 vs Game Boy's $89
 - Limited third-party support
@@ -68,4 +68,4 @@ Despite technical superiority:
 
 The Lynx showed that technical superiority doesn't guarantee success in portable gaming. Its innovations influenced future handhelds, but it proved that battery life and game library matter more than raw power in the portable market.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

@@ -31,24 +31,28 @@ Create **ChipMaster Pro** - an advanced custom chip programming suite featuring 
 ## Tier Overview
 
 **Lessons 1-8: Advanced Copper Programming**
+
 - Complex Copper list programming and optimization
 - Multi-layered display effects and smooth color cycling
 - Advanced palette manipulation and HAM mode tricks
 - Real-time Copper list generation and modification
 
 **Lessons 9-16: Blitter Mastery & Optimization**
+
 - Advanced Blitter operations: area fill, line drawing, and polygon fills
 - Multi-pass Blitter effects and chaining operations
 - Optimized sprite and animation systems using the Blitter
 - Custom Blitter microcode programming techniques
 
 **Lessons 17-24: DMA Channel Coordination**
+
 - Advanced DMA timing and channel priority management
 - Audio/Video DMA synchronization for perfect effects
 - Bitplane DMA optimization for smooth scrolling
 - Advanced sprite DMA programming and multiplexing
 
 **Lessons 25-32: Hardware Tricks & Professional Effects**
+
 - Undocumented chipset features and timing exploits
 - Creating impossible effects through hardware manipulation
 - Advanced interrupt programming and precise timing

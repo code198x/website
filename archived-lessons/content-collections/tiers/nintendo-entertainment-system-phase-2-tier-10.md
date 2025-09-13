@@ -27,6 +27,7 @@ Time to make controls feel PERFECT! ⚡ With **32 precision-focused lessons**, y
 ## What You'll Build
 
 Create **CONTROL PERFECTION SYSTEM** - an advanced input framework featuring:
+
 - Frame-perfect timing that never misses a beat ⏱️
 - Complex combo and special move detection
 - Multi-player input management for up to 4 controllers
@@ -36,24 +37,28 @@ Create **CONTROL PERFECTION SYSTEM** - an advanced input framework featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Perfect Timing" - Frame-Perfect Input Systems**
+
 - Ultra-fast controller polling and state detection
 - Input buffering for responsive button presses
 - Frame-perfect timing for competitive gaming
 - Eliminating input lag and maximizing responsiveness
 
 **Lessons 9-16: "Complex Commands" - Advanced Input Recognition**
+
 - Combo detection for fighting game-style moves
 - Gesture recognition and directional input patterns
 - Special move sequences and command recognition
 - Input validation and noise filtering
 
 **Lessons 17-24: "Multi-Player Magic" - Controller Management**
+
 - Simultaneous multi-controller input handling
 - Player assignment and controller hot-swapping
 - Input priority and conflict resolution
 - Cooperative and competitive input scenarios
 
 **Lessons 25-32: "Accessibility Excellence" - Inclusive Input Design**
+
 - Alternative control schemes and button remapping
 - Accessibility features for different physical abilities
 - Input assistance and auto-repeat systems

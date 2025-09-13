@@ -31,18 +31,21 @@ Create **AdventureMaster Epic** - your personal adventure game masterpiece featu
 ## Adventure Game Options
 
 **Option 1: Classic Point-and-Click Adventure**
+
 - Large multi-screen world with smooth scrolling
 - Intelligent NPCs with personality-driven AI
 - Complex inventory and object interaction systems
 - Sophisticated save/load system with multiple save slots
 
 **Option 2: Action-Adventure Epic**
+
 - Real-time combat with intelligent AI opponents
 - Vast scrolling world with seamless area transitions
 - Complex character progression and equipment systems
 - Advanced data management for world persistence
 
 **Option 3: Puzzle-Adventure Mystery**
+
 - Intricate puzzle systems with complex logic
 - Branching storylines with multiple solutions
 - Advanced dialog system with character relationships
@@ -51,24 +54,28 @@ Create **AdventureMaster Epic** - your personal adventure game masterpiece featu
 ## Tier Overview
 
 **Lessons 1-8: Adventure Game Architecture**
+
 - Integrating world systems, AI, and data management
 - Adventure game design patterns and organization
 - Professional game loop and state management
 - Advanced debugging and development tools
 
 **Lessons 9-16: Core Adventure Systems**
+
 - Complex inventory and object interaction systems
 - Advanced dialog and conversation systems
 - Sophisticated puzzle mechanics and progression
 - Character and story management systems
 
 **Lessons 17-24: Advanced Adventure Features**
+
 - Multiple endings and branching storylines
 - Complex character relationships and interactions
 - Advanced save/load system with story persistence
 - Professional user interface and menu systems
 
 **Lessons 25-32: Polish & Professional Presentation**
+
 - Professional game balancing and playtesting
 - Advanced debugging and optimization
 - User experience polish and accessibility

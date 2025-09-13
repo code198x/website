@@ -1,5 +1,5 @@
 ---
-name: "Game Boy"
+name: "Nintendo Game Boy"
 full_name: "Nintendo Game Boy"
 manufacturer: "Nintendo"
 model_number: "DMG-01"
@@ -87,7 +87,6 @@ hardware_availability: "common"
 
 # Media
 description: "The portable console that proved gaming didn't need color or power - just great games and a long battery life."
-image: "/images/systems/game-boy.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -102,7 +101,7 @@ order: 13
 
 # Game Boy
 
-*Coming Soon*
+_Coming Soon_
 
 The Game Boy proved that technical specs don't determine success. With its blurry green screen and modest power, it outsold every competitor by focusing on what mattered: portability, battery life, and amazing games.
 
@@ -119,9 +118,10 @@ The Game Boy's Z80-like processor and tile-based graphics system offer the perfe
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Game Boy curriculum will include:
+
 - LR35902 assembly (Z80-based)
 - Tile and sprite graphics
 - Audio programming with 4 channels

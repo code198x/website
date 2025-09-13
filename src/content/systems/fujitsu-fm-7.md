@@ -1,5 +1,5 @@
 ---
-name: "FM-7"
+name: "Fujitsu FM-7"
 full_name: "Fujitsu FM-7 (Fujitsu Micro 7)"
 manufacturer: "Fujitsu"
 model_number: "FM-7"
@@ -28,7 +28,13 @@ video:
   processor: "Custom graphics subsystem"
   resolution: "640×200 / 320×200"
   colors: "8 colors / 4096 colors"
-  display_modes: ["Text 80×25/40×25", "Graphics 640×200 (8 colors)", "Graphics 320×200 (4096 colors)", "Mixed text/graphics"]
+  display_modes:
+    [
+      "Text 80×25/40×25",
+      "Graphics 640×200 (8 colors)",
+      "Graphics 320×200 (4096 colors)",
+      "Mixed text/graphics",
+    ]
   sprites:
     count: 0
     size: "Software sprites"
@@ -40,21 +46,37 @@ video:
 audio:
   chip: "MC6840 / YM2203 OPN"
   channels: 3
-  features: ["PSG sound synthesis", "FM synthesis (FM77AV)", "Envelope control", "Noise generation", "Music programming"]
+  features:
+    [
+      "PSG sound synthesis",
+      "FM synthesis (FM77AV)",
+      "Envelope control",
+      "Noise generation",
+      "Music programming",
+    ]
   sample_playback: false
   synthesis_types: ["PSG", "FM synthesis"]
 
 # Storage and I/O
-storage: ["Cassette tape", "5.25\" floppy", "3.5\" floppy", "Bubble memory"]
+storage: ["Cassette tape", '5.25" floppy', '3.5" floppy', "Bubble memory"]
 storage_details:
   built_in: ["Cassette interface"]
   expansion: ["Floppy disk drives", "Bubble memory units"]
   typical_capacity:
     cassette: "~100KB per side"
-    floppy: "320KB (5.25\"), 720KB (3.5\")"
+    floppy: '320KB (5.25"), 720KB (3.5")'
 
-io_ports: ["2 joystick ports", "Printer port", "Serial port", "Cassette interface", "Expansion slots", "Light pen"]
-expansion_options: ["Memory expansion", "Floppy controllers", "Modem cards", "Sound cards", "Graphics cards"]
+io_ports:
+  [
+    "2 joystick ports",
+    "Printer port",
+    "Serial port",
+    "Cassette interface",
+    "Expansion slots",
+    "Light pen",
+  ]
+expansion_options:
+  ["Memory expansion", "Floppy controllers", "Modem cards", "Sound cards", "Graphics cards"]
 
 # Commercial information
 release_date:
@@ -70,8 +92,20 @@ market_positioning: "High-end Japanese business computer with advanced graphics"
 competition: ["PC-8801", "MSX", "Sharp X1", "NEC PC-98"]
 
 # Educational relevance
-learning_advantages: ["Advanced multi-plane graphics", "6809 processor mastery", "Japanese computing culture", "Business application development"]
-common_beginner_projects: ["Multi-plane graphics demos", "High-resolution artwork", "Business calculators", "Music composition"]
+learning_advantages:
+  [
+    "Advanced multi-plane graphics",
+    "6809 processor mastery",
+    "Japanese computing culture",
+    "Business application development",
+  ]
+common_beginner_projects:
+  [
+    "Multi-plane graphics demos",
+    "High-resolution artwork",
+    "Business calculators",
+    "Music composition",
+  ]
 
 # Modern preservation and emulation
 emulated: true
@@ -88,7 +122,6 @@ hardware_availability: "rare"
 
 # Media
 description: "Fujitsu's sophisticated Japanese computer featuring advanced multi-plane graphics, business capabilities, and the powerful 6809 processor."
-image: "/images/systems/fm-7.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -103,7 +136,7 @@ order: 33
 
 # Fujitsu FM-7
 
-*Coming Soon*
+_Coming Soon_
 
 The Fujitsu FM-7 series represented Japan's bold entry into advanced personal computing, offering sophisticated multi-plane graphics capabilities and business-oriented features that were years ahead of international competition. Built around the powerful 6809 processor, it demonstrated Japanese engineering excellence.
 
@@ -121,9 +154,10 @@ The FM-7's unique multi-plane graphics system and advanced 6809 architecture off
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the FM-7 curriculum will include:
+
 - Advanced 6809 assembly and F-BASIC programming
 - Multi-plane graphics programming and layered visual effects
 - Sound synthesis from PSG to FM synthesis (FM77AV)

@@ -27,6 +27,7 @@ Time to create! With **32 inspiring lessons**, you'll build the kind of creative
 ## What You'll Build
 
 Create **SPECTRUM STUDIO** - a comprehensive creative suite featuring:
+
 - Pixel art editor with drawing tools and color palettes
 - Music composer with note entry and playback systems
 - Animation tools for creating moving graphics
@@ -36,24 +37,28 @@ Create **SPECTRUM STUDIO** - a comprehensive creative suite featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Digital Canvas" - Graphics & Drawing Tools**
+
 - Pixel-level editing with brush and drawing tools
 - Color palette management and attribute editing
 - Zoom and pan systems for detailed artwork
 - Layer systems and image composition tools
 
 **Lessons 9-16: "Sound Studio" - Music Composition Systems**
+
 - Note entry systems and musical notation
 - Multi-channel composition and arrangement
 - Sound effect creation and synthesis tools
 - Tempo control and playback systems
 
 **Lessons 17-24: "Animation Workshop" - Moving Art Creation**
+
 - Frame-by-frame animation systems
 - Onion skinning and animation preview tools
 - Timing control and playback systems
 - Export systems for animated sequences
 
 **Lessons 25-32: "Creative Community" - Sharing & Showcase**
+
 - File format design for creative works
 - Save/load systems with compression
 - Gallery browsers and sharing systems

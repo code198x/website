@@ -31,24 +31,28 @@ Continue developing **Performance Showcase** - adding advanced audio systems wit
 ## Tier Overview
 
 **Lessons 1-8: Advanced Beeper Programming**
+
 - Multi-channel beeper synthesis techniques
 - Advanced waveform generation and modulation
 - Rhythm and percussion programming
 - Beeper music composition and sequencing
 
 **Lessons 9-16: AY-3-8912 Sound Chip Mastery**
+
 - Complete AY chip programming and control
 - Advanced envelope and noise generation
 - Multi-voice composition and orchestration
 - Sound effect synthesis and processing
 
 **Lessons 17-24: Audio Engine Development**
+
 - Professional music playback systems
 - Sound effect prioritization and mixing
 - Audio compression and streaming
 - Real-time audio processing and effects
 
 **Lessons 25-32: Advanced Audio Techniques**
+
 - Audio-visual synchronization systems
 - Dynamic music and adaptive audio
 - Advanced synthesis and sound design
@@ -61,7 +65,7 @@ This tier creates professional audio:
 - **Multi-Channel Synthesis** - Complex sound from simple hardware
 - **Professional Composition** - Commercial-quality music systems
 - **Advanced Effects** - Sophisticated sound processing
-- **Audio-Visual Sync** - Perfect timing coordination 
+- **Audio-Visual Sync** - Perfect timing coordination
 - **Sound Design** - Creative audio synthesis techniques
 
 These audio skills create games with unforgettable soundtracks!

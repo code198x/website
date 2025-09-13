@@ -12,13 +12,17 @@ This directory contains lessons that were moved from Tier 1 because they were to
 - `32-tier-1-complete.mdx` → Wrong numbering system, doesn't fit new structure
 
 ## Usage:
+
 These lessons contain valuable content but need to be:
+
 1. Simplified for appropriate tier placement
 2. Moved to correct tier directories when ready
 3. Used as reference for writing proper foundational lessons
 
 ## Current Tier 1 Philosophy:
+
 "Teach LEGO blocks, not how to build the Death Star"
+
 - Individual techniques only
 - No complete games or complex systems
 - True foundations that prepare for later tiers

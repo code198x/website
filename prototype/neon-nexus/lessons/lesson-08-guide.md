@@ -35,27 +35,27 @@ The 6502's secret weapon - the X and Y registers as array indices:
 ```assembly
 update_all_enemies:
     ldx #0              ; Start with enemy 0
-    
+
 enemy_loop:
     ; Check if active
     lda enemy_active,x  ; Array access!
     beq next_enemy      ; Skip if inactive
-    
+
     ; Update this enemy
     dec enemy_x,x       ; Move left
     lda enemy_x,x
     cmp #255           ; Wrapped?
     bne next_enemy
-    
+
     ; Respawn at right
     lda #39
     sta enemy_x,x
-    
+
 next_enemy:
     inx                 ; Next enemy
     cpx #MAX_ENEMIES
     bne enemy_loop      ; Continue until done
-    
+
     rts
 ```
 
@@ -68,11 +68,11 @@ Same principle for rendering:
 ```assembly
 draw_all_enemies:
     ldx #0
-    
+
 draw_loop:
     lda enemy_active,x
     beq skip_draw
-    
+
     ; Calculate screen position
     lda enemy_y,x       ; Get Y for this enemy
     asl
@@ -83,10 +83,10 @@ draw_loop:
     asl
     clc
     adc temp           ; Y * 40
-    
+
     clc
     adc enemy_x,x      ; Add X position
-    
+
     ; Store position
     clc
     adc #$00
@@ -94,17 +94,17 @@ draw_loop:
     lda #$04
     adc #$00
     sta screen_hi
-    
+
     ; Draw enemy
     ldy #0
     lda #$55           ; Enemy character
     sta (screen_lo),y
-    
+
 skip_draw:
     inx
     cpx #MAX_ENEMIES
     bne draw_loop
-    
+
     rts
 ```
 
@@ -116,32 +116,32 @@ When spawning new enemies:
 spawn_enemy:
     ; Find inactive enemy slot
     ldx #0
-    
+
 find_slot:
     lda enemy_active,x
     beq found_slot      ; Found empty slot!
     inx
     cpx #MAX_ENEMIES
     bne find_slot
-    
+
     ; No free slots
     rts
-    
+
 found_slot:
     ; Initialize enemy in slot X
     lda #1
     sta enemy_active,x
-    
+
     lda #39             ; Start position
     sta enemy_x,x
-    
+
     ; Random Y position
     lda frame_counter
     and #$0f           ; 0-15
     clc
     adc #5             ; 5-20
     sta enemy_y,x
-    
+
     rts
 ```
 
@@ -152,40 +152,42 @@ Check player against all enemies:
 ```assembly
 check_all_collisions:
     ldx #0
-    
+
 collision_loop:
     lda enemy_active,x
     beq next_collision
-    
+
     ; Check X position
     lda player_x
     cmp enemy_x,x
     bne next_collision
-    
+
     ; Check Y position
     lda player_y
     cmp enemy_y,x
     bne next_collision
-    
+
     ; Collision detected!
     jsr handle_collision
-    
+
     ; Deactivate this enemy
     lda #0
     sta enemy_active,x
-    
+
 next_collision:
     inx
     cpx #MAX_ENEMIES
     bne collision_loop
-    
+
     rts
 ```
 
 ## Interactive Elements
 
 ### Experiment 1: Array Sizes
+
 Try different maximum enemies:
+
 ```assembly
 MAX_ENEMIES = 4   ; Conservative
 MAX_ENEMIES = 16  ; Challenging
@@ -193,7 +195,9 @@ MAX_ENEMIES = 32  ; Chaos!
 ```
 
 ### Experiment 2: Enemy Patterns
+
 Use array index for behavior:
+
 ```assembly
 ; Even enemies move straight
 ; Odd enemies wave
@@ -204,7 +208,9 @@ beq straight_move
 ```
 
 ### Experiment 3: Chain Reactions
+
 Destroy adjacent enemies:
+
 ```assembly
 ; When enemy X dies, check X-1 and X+1
 dex
@@ -254,18 +260,21 @@ enemy_data:
 ## Challenge Extensions
 
 1. **Enemy Formations**: Synchronized movement
+
    ```assembly
    formation_x: !byte 20  ; Base position
    ; All enemies offset from base
    ```
 
 2. **Priority System**: Important enemies update first
+
    ```assembly
    ; Sort by distance to player
    ; Update nearest enemies more often
    ```
 
 3. **Object Pooling**: Reuse slots efficiently
+
    ```assembly
    next_slot: !byte 0
    ; Round-robin allocation
@@ -288,6 +297,7 @@ enemy_data:
 ## Performance Analysis
 
 Array processing performance:
+
 ```assembly
 ; 8 enemies, full update:
 ; 8 * 50 cycles = 400 cycles
@@ -321,6 +331,7 @@ enemy_data:   !fill 8, 0
 ## Historical Techniques
 
 How classic games managed objects:
+
 - **Space Invaders**: Fixed grid, bit flags for alive/dead
 - **Galaga**: Circular buffers for bullets
 - **Robotron**: Separate arrays by enemy type
@@ -344,7 +355,7 @@ skip_count:
     inx
     cpx #MAX_ENEMIES
     bne count_loop
-    
+
 ; Y = active enemies
 tya
 clc

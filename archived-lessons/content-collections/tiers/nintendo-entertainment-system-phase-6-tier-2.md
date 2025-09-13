@@ -27,6 +27,7 @@ Time to become an NES audio wizard! With **32 comprehensive lessons**, you'll ma
 ## What You'll Build
 
 Create **NES AUDIO MASTERPIECE** - a complete audio showcase featuring:
+
 - Multi-channel compositions that sound like full orchestras
 - Dynamic sound effects that respond to game events perfectly
 - Advanced audio streaming for longer musical pieces
@@ -36,24 +37,28 @@ Create **NES AUDIO MASTERPIECE** - a complete audio showcase featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Orchestra in a Chip!" - Advanced Musical Composition**
+
 - Complex multi-channel arrangements using all 5 APU channels
 - Advanced pulse wave manipulation for rich harmonies
 - Sophisticated arpeggio and chord progression techniques
 - The secrets behind those unforgettable 8-bit melodies
 
 **Lessons 9-16: "Sound Effects Wizardry" - Professional Audio Design**
+
 - Layered sound effects using multiple channels simultaneously
 - Precise timing synchronization with visual events
 - Environmental audio that creates immersive atmospheres
 - The art of making simple waveforms sound like real instruments
 
 **Lessons 17-24: "Impossible Sounds!" - Advanced Wave Synthesis**
+
 - Triangle wave manipulation for bass and lead sounds
 - Noise channel percussion that sounds like real drums
 - DMC sample playback for speech and complex sounds
 - Creating "analog" effects using digital wave manipulation
 
 **Lessons 25-32: "Streaming Audio Magic" - Dynamic Music Systems**
+
 - Audio compression techniques for longer compositions
 - Dynamic music that changes based on game state
 - Seamless audio transitions and crossfading

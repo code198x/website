@@ -27,6 +27,7 @@ Prepare for takeoff! With **32 immersive lessons**, you'll create the kind of si
 ## What You'll Build
 
 Create **SPECTRUM FLIGHT** - a comprehensive flight simulation featuring:
+
 - Realistic aircraft physics and flight dynamics
 - Weather systems that affect flight performance
 - Navigation systems with radio beacons and landmarks
@@ -36,24 +37,28 @@ Create **SPECTRUM FLIGHT** - a comprehensive flight simulation featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Physics Engine" - Real-World Modeling**
+
 - Aircraft physics simulation with lift, drag, and thrust
 - Weather modeling and environmental effects
 - Mathematical models for realistic flight behavior
 - Performance calculations and system limitations
 
 **Lessons 9-16: "Control Systems" - Human-Machine Interface**
+
 - Intuitive flight controls and instrument panels
 - Real-time data visualization and feedback systems
 - Emergency procedures and system failure simulation
 - Autopilot systems and automated flight management
 
 **Lessons 17-24: "Economic Simulation" - Resource Management**
+
 - Fuel consumption and cost management systems
 - Cargo and passenger management mechanics
 - Route planning and profitability calculations
 - Market simulation and economic decision-making
 
 **Lessons 25-32: "Training & Scenarios" - Educational Systems**
+
 - Progressive difficulty and skill-building scenarios
 - Performance evaluation and feedback systems
 - Historical missions and real-world flight challenges

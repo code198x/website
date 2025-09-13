@@ -31,6 +31,7 @@ Advance **Workbench Wizard** with sophisticated assembly GUI programming! Learn 
 ## What You'll Advance
 
 Enhance your ultimate Amiga assembly programming project:
+
 - Professional Intuition GUI programming using assembly
 - Advanced windowing and interface systems through assembly
 - Sophisticated application architectures using assembly
@@ -39,24 +40,28 @@ Enhance your ultimate Amiga assembly programming project:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Intuition Programming**
+
 - Professional windowing and GUI design using assembly
 - Event handling and user interaction through assembly
 - Menu systems and interface controls using assembly
 - Building responsive assembly GUI applications
 
 **Lessons 9-16: Assembly Application Architecture**
+
 - Advanced software design patterns using assembly
 - Modular application frameworks through assembly programming
 - Data management and persistence using assembly
 - Building scalable assembly application systems
 
 **Lessons 17-24: Assembly Development Tools**
+
 - Creating integrated development environments using assembly
 - Code editing and project management through assembly
 - Debugging and testing frameworks using assembly
 - Building professional assembly development workflows
 
 **Lessons 25-32: Assembly System Integration**
+
 - Seamless AmigaOS integration using assembly
 - File system and device access through assembly programming
 - Network and communication services using assembly

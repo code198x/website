@@ -27,6 +27,7 @@ Bring your assembly programs to life with the legendary SID chip! Learn to creat
 ## What You'll Add to Color Cascade
 
 Enhance your pattern game with audio:
+
 - Unique musical notes for each colour
 - Sound effects for correct/incorrect matches
 - Background music during gameplay
@@ -36,24 +37,28 @@ Enhance your pattern game with audio:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Sound Generation**
+
 - Understanding the SID chip architecture at the hardware level
 - Direct register manipulation for sound control
 - Creating simple tones and beeps with assembly code
 - Controlling volume and duration through assembly programming
 
 **Lessons 9-16: Assembly Musical Programming**
+
 - Assembly-based frequency values for musical notes
 - Creating scales and melodies with assembly code
 - Assembly rhythm programming techniques
 - Multi-voice harmony using assembly control
 
 **Lessons 17-24: Assembly Sound Effects**
+
 - Designing game sound effects with assembly code
 - Assembly-based noise generation for percussion
 - Programming attack/decay envelopes in assembly
 - Creating recognizable audio cues through machine code
 
 **Lessons 25-32: Assembly Audio-Visual Integration**
+
 - Synchronizing sound with Color Cascade using assembly timing
 - Musical feedback for user actions implemented in assembly
 - Background audio loops programmed in assembly

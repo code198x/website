@@ -31,24 +31,28 @@ Create **Cosmic Defender** - a fast-paced space shooter that showcases advanced 
 ## Tier Overview
 
 **Lessons 1-8: VIC-II Graphics Programming**
+
 - Programming VIC-II registers for advanced graphics modes
 - Custom character sets and dynamic font generation
 - Advanced sprite programming and collision detection
 - Raster interrupts for multi-layer visual effects
 
 **Lessons 9-16: CIA Timer & I/O Control**
+
 - CIA timer programming for precise timing control
 - Keyboard and joystick interfacing at hardware level
 - Serial bus communication and disk drive control
 - Real-time clock and interval timer applications
 
 **Lessons 17-24: Memory Banking & Expansion**
+
 - Understanding C64 memory banking and switching
 - RAM expansion programming techniques
 - Cartridge development and ROM programming
 - Advanced memory management strategies
 
 **Lessons 25-32: Hardware Tricks & Optimization**
+
 - Undocumented VIC-II features and timing tricks
 - Sprite multiplexing and display list interrupts
 - Hardware-based compression and data streaming

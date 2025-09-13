@@ -30,24 +30,28 @@ Phase 1 is your complete introduction to console game development using authenti
 **Four Complete Console Games** across 16 tiers:
 
 **Game 1: Circuit Surge** (Tiers 1-4) - Digital circuit adventure
+
 - Digital circuit worlds with precise electrical current visualization
 - Controllable current conductors with accurate flow physics
 - Electronic sound effects using distinctive NES audio channels
 - Console-quality timing and responsive control systems
 
 **Game 2: Tile Craft** (Tiers 5-8) - Strategic construction simulation
+
 - Advanced PPU programming with multiple background layers
 - Complex tile-based world building and manipulation systems
 - Strategic gameplay requiring planning and resource management
 - Professional console game state management and progression
 
 **Game 3: Sprite Master** (Tiers 9-12) - High-performance action showcase
+
 - Advanced sprite management with flicker-free display
 - Fast-paced gameplay demonstrating console optimization techniques
 - Multiple action sequences with smooth scrolling and animation
 - Performance optimization for consistent 60 FPS gameplay
 
 **Game 4: Quest Builder** (Tiers 13-16) - RPG adventure development
+
 - Engaging game systems with multiple interconnected mechanics
 - Effective memory management and data persistence
 - Polished presentation and intuitive user interface

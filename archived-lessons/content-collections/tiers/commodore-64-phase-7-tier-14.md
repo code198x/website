@@ -27,6 +27,7 @@ Push the boundaries of possibility! With **32 advanced lessons**, you'll master 
 ## What You'll Build
 
 Create **TECHNICAL SHOWCASE GAME** - featuring cutting-edge techniques:
+
 - Advanced visual effects that seem impossible on C64 hardware
 - Sophisticated AI using cutting-edge algorithms and techniques
 - Innovative audio programming with advanced synthesis methods
@@ -36,24 +37,28 @@ Create **TECHNICAL SHOWCASE GAME** - featuring cutting-edge techniques:
 ## Cutting-Edge Technique Areas
 
 **Lessons 1-8: "Advanced Algorithms" - Sophisticated Programming**
+
 - Cutting-edge algorithms for game programming
 - Advanced data structures and optimization techniques
 - Sophisticated mathematical programming for games
 - Professional-level algorithm implementation and optimization
 
 **Lessons 9-16: "Visual Innovation" - Advanced Graphics Techniques**
+
 - Cutting-edge visual effects and rendering techniques
 - Advanced sprite manipulation and graphics programming
 - Innovative use of VIC-II capabilities and timing
 - Boundary-pushing visual programming methods
 
 **Lessons 17-24: "Audio Innovation" - Advanced Sound Programming**
+
 - Cutting-edge SID programming and synthesis techniques
 - Advanced audio effects and real-time processing
 - Innovative music programming and generation methods
 - Sophisticated audio-visual synchronization techniques
 
 **Lessons 25-32: "Experimental Methods" - Boundary-Pushing Development**
+
 - Experimental programming techniques and approaches
 - Innovation in game mechanics and interaction design
 - Advanced optimization and performance engineering

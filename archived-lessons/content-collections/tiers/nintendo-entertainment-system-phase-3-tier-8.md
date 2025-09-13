@@ -31,24 +31,28 @@ Develop **Epic Quest Adventure** - a comprehensive adventure game featuring expa
 ## Tier Overview
 
 **Lessons 1-8: Adventure Game Architecture**
+
 - Designing comprehensive adventure game systems
 - Integrating multi-screen worlds with complex narratives
 - Character progression and RPG mechanics
 - Quest systems and story management
 
 **Lessons 9-16: Advanced Game Systems Integration**
+
 - Combining AI, data, and world systems seamlessly
 - Battle systems and combat mechanics
 - Magic and special ability systems
 - Equipment and character customization
 
 **Lessons 17-24: Content Creation & World Building**
+
 - Creating rich, detailed game worlds and environments
 - Designing compelling characters and storylines
 - Balancing gameplay and difficulty progression
 - Implementing dynamic events and branching narratives
 
 **Lessons 25-32: Polish & Professional Presentation**
+
 - Advanced user interface and experience design
 - Audio integration and atmospheric sound design
 - Performance optimization and bug fixing

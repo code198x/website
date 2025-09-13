@@ -27,6 +27,7 @@ Harness the power of repetition! Learn to create programs that can repeat tasks 
 ## What You'll Learn
 
 Learn the art of automated programming:
+
 - FOR-NEXT loops for counted repetition
 - GOTO statements for program flow control
 - Creating efficient, automated processes
@@ -35,24 +36,28 @@ Learn the art of automated programming:
 ## Tier Overview
 
 **Lessons 1-8: Basic Loop Structures**
+
 - Understanding the FOR-NEXT loop structure
 - Simple counting loops and basic iteration
 - Using loop variables for calculations
 - Creating your first automated programs
 
 **Lessons 9-16: Advanced Loop Control**
+
 - STEP values for custom counting increments
 - Nested loops for complex patterns
 - GOTO statements and program labels
 - Creating dynamic and flexible loop structures
 
 **Lessons 17-24: Data Processing**
+
 - Processing arrays and lists with loops
 - Generating patterns and sequences
 - Creating mathematical calculations
 - Building efficient data handling routines
 
 **Lessons 25-32: Rainbow Runner Foundations**
+
 - Applying loops to game programming
 - Creating movement and animation loops
 - Building the foundation for sprite movement

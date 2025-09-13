@@ -27,8 +27,9 @@ This is it - your first COMPLETE game! With **32 intensive lessons**, you'll com
 ## What You'll Build
 
 Create **NEON STRIKER** - a genre-blending action extravaganza:
+
 - Platforming sections with exploration and secrets
-- Shoot 'em up stages with epic boss battles  
+- Shoot 'em up stages with epic boss battles
 - Puzzle rooms that unlock new abilities
 - A complete game with intro, ending, and credits
 - Professional polish that screams "buy me!"
@@ -36,24 +37,28 @@ Create **NEON STRIKER** - a genre-blending action extravaganza:
 ## Tier Overview
 
 **Lessons 1-8: "Architecture Matters" - Building the Framework**
+
 - Game state management for complex projects
 - Module loading system for large games
 - Memory management across multiple levels
 - Asset pipeline for graphics and audio
 
 **Lessons 9-16: "Genre Fusion" - Blending Gameplay Styles**
+
 - Seamless transitions between game modes
 - Shared systems across different genres
 - Consistent controls that work everywhere
 - Difficulty balancing across varied gameplay
 
 **Lessons 17-24: "Professional Polish" - Menu & Meta-Game**
+
 - Animated main menu with options
 - Save game system using disk access
 - High score table with name entry
 - Sound test and bonus features
 
 **Lessons 25-32: "Ship It!" - Testing & Refinement**
+
 - Playtesting methodology and feedback loops
 - Bug tracking and systematic fixes
 - Performance optimization for consistent framerate

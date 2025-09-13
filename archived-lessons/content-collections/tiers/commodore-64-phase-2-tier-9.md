@@ -31,24 +31,28 @@ Begin developing **Quest Master** - an epic RPG requiring sophisticated save gam
 ## Tier Overview
 
 **Lessons 1-8: File Format Design**
+
 - Designing efficient binary file formats
 - Structuring save game data layouts
 - Version compatibility and migration
 - Platform-specific considerations
 
 **Lessons 9-16: Save/Load Implementation**
+
 - Sequential file access techniques
 - Random access file systems
 - Buffered I/O for performance
 - Atomic save operations
 
 **Lessons 17-24: Data Integrity & Recovery**
+
 - Checksum implementation and validation
 - Error detection and correction
 - Backup and recovery strategies
 - Corrupted data handling
 
 **Lessons 25-32: Advanced Persistence**
+
 - Compression for save files
 - Incremental saving techniques
 - Memory card and device support

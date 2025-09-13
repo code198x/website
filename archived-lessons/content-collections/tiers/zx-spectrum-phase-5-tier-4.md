@@ -27,6 +27,7 @@ This is it - the big one! With **32 intensive lessons**, you'll combine everythi
 ## What You'll Build
 
 Create **SPECTRUM WARRIOR** - a multi-genre action epic featuring:
+
 - Side-scrolling shoot 'em up levels with epic boss battles
 - Platform adventure sections with puzzle-solving elements
 - Block-puzzle challenges that unlock new areas
@@ -36,24 +37,28 @@ Create **SPECTRUM WARRIOR** - a multi-genre action epic featuring:
 ## Project Overview
 
 **Lessons 1-8: "Architecture Master Class" - System Integration**
+
 - Game engine architecture that handles multiple genres
 - Memory management for complex, multi-mode games
 - State machines that seamlessly transition between game types
 - Asset management systems for large-scale projects
 
 **Lessons 9-16: "Content Creation" - Building Your World**
+
 - Level design principles that create compelling progression
 - Enemy AI that adapts to different gameplay contexts
 - Weapon systems and power-up mechanics
 - Environmental storytelling through visual design
 
 **Lessons 17-24: "Polish & Presentation" - Professional Standards**
+
 - Title screens, menus, and user interface design
 - High score systems and player progression tracking
 - Visual effects and screen transitions
 - Sound design that enhances every action
 
 **Lessons 25-32: "Distribution Ready" - Going Commercial**
+
 - Code optimization for maximum performance
 - Save system implementation and data management
 - Playtesting feedback integration and balance tuning

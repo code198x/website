@@ -10,7 +10,7 @@ learning_objectives:
   - "Develop cycle-exact timing for complex effects"
   - "Build games with unprecedented technical sophistication"
   - "Understand hardware exploitation at the deepest level"
-prerequisites: 
+prerequisites:
   - "Phases 1-5: Complete technical, professional, and creative foundation"
   - "Twenty complete games of increasing complexity"
   - "Strong understanding of creative development approaches"
@@ -27,7 +27,7 @@ order: 6
 
 # Phase 6: Technical Innovation & Demo Techniques
 
-*Coming Soon*
+_Coming Soon_
 
 Push the C64 beyond its limits! Learn the demo scene techniques and extreme programming methods that created the stunning effects of 1990-1991 and apply them to game development.
 
@@ -47,15 +47,19 @@ Phase 6 focuses on extreme technical achievement and demo scene innovations:
 ## Learning Path
 
 ### Demo Effects in Games (Tiers 1-4)
+
 Learn fundamental demo scene effects and how to integrate them into playable games without compromising gameplay.
 
 ### Extreme Optimization (Tiers 5-8)
+
 Study size-coding techniques, mathematical optimizations, and the tricks that squeeze maximum performance from minimal code.
 
 ### Impossible Techniques (Tiers 9-12)
+
 Implement effects that push the C64 beyond documented capabilities using hardware exploits and timing tricks.
 
 ### Technical Showcases (Tiers 13-16)
+
 Create games that combine multiple advanced techniques while maintaining playability and stability.
 
 ## Your Phase 6 Projects
@@ -100,6 +104,7 @@ Learn from the demo scene's greatest innovations:
 ## Prerequisites
 
 Before starting Phase 6, ensure you have:
+
 - Completed Phases 1-5 (2560 lessons)
 - Twenty complete games demonstrating progression
 - Creative development and innovation experience
@@ -109,4 +114,4 @@ Before starting Phase 6, ensure you have:
 
 After completing Phase 6, you'll be ready for Phase 7: Ambitious Projects, where you'll create large-scale games rivaling the best ever made for the C64.
 
-*This phase contains 512 lessons across 16 tiers and is currently in development.*
+_This phase contains 512 lessons across 16 tiers and is currently in development._

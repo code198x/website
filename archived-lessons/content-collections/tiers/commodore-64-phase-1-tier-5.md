@@ -27,6 +27,7 @@ Learn the power of modular programming in 6502 assembly! This tier teaches you s
 ## What You'll Start Building
 
 Begin **Color Cascade** development:
+
 - Modular subroutines for display and colour control
 - Organized assembly code structure
 - Reusable graphics routines
@@ -35,24 +36,28 @@ Begin **Color Cascade** development:
 ## Tier Overview
 
 **Lessons 1-8: Subroutine Fundamentals**
+
 - JSR (Jump to Subroutine) instruction
 - RTS (Return from Subroutine) instruction
 - Understanding the call/return mechanism
 - Creating your first assembly subroutines
 
-**Lessons 9-16: Stack Operations**  
+**Lessons 9-16: Stack Operations**
+
 - How the 6502 stack works
 - Stack pointer management
 - Preserving registers in subroutines
 - Parameter passing techniques
 
 **Lessons 17-24: Code Organization**
+
 - Structuring assembly programs with subroutines
 - Creating reusable code modules
 - Label organisation and naming conventions
 - Building function libraries
 
 **Lessons 25-32: Color Cascade Architecture**
+
 - Designing the game's subroutine structure
 - Creating display and colour control routines
 - Building input handling subroutines

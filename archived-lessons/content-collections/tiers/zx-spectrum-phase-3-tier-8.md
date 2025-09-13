@@ -31,24 +31,28 @@ Complete **Lost Kingdoms** - a full adventure game featuring interconnected mult
 ## Tier Overview
 
 **Lessons 1-8: System Integration**
+
 - Integrating multi-screen navigation with AI systems
 - Coordinating data systems with world management
 - Performance optimization for integrated systems
 - Debugging complex system interactions
 
 **Lessons 9-16: Adventure Game Mechanics**
+
 - Dialogue systems and branching conversations
 - Inventory management and item interactions
 - Quest systems and progress tracking
 - Puzzle design and implementation
 
 **Lessons 17-24: Polish & User Experience**
+
 - User interface design and implementation
 - Audio integration and sound design
 - Visual effects and screen transitions
 - Help systems and player guidance
 
 **Lessons 25-32: Professional Completion**
+
 - Final optimization and performance tuning
 - Bug testing and quality assurance
 - Documentation and code organization

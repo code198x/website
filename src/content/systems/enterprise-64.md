@@ -87,7 +87,6 @@ hardware_availability: "rare"
 
 # Media
 description: "The technically superior computer that arrived too late to challenge the established UK market."
-image: "/images/systems/enterprise.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -102,7 +101,7 @@ order: 56
 
 # Enterprise 64/128
 
-*Coming Soon*
+_Coming Soon_
 
 The Enterprise was designed as "the machine Sinclair should have made" - a technically superior computer with advanced graphics, sound, and expandability. Despite impressive capabilities, it arrived too late to make an impact in the established UK market.
 
@@ -119,12 +118,13 @@ The Enterprise's Nick and Dave custom chips offer unique programming challenges 
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Enterprise curriculum will include:
+
 - Z80 assembly with custom chip programming
 - Nick graphics processor techniques
-- Dave sound chip programming  
+- Dave sound chip programming
 - EXOS system programming
 - Complete demo project showcasing capabilities
 

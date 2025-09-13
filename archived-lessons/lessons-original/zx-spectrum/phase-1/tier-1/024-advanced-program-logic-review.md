@@ -35,7 +35,7 @@ You've mastered the individual elements of program flow - conditionals, loops, s
 You now have mastery of:
 
 1. **Conditional Logic**: Complex decision trees with flag-based branching
-2. **Iteration**: Efficient loops with DJNZ and conditional structures  
+2. **Iteration**: Efficient loops with DJNZ and conditional structures
 3. **Modularity**: Subroutines with parameter passing and error handling
 4. **Algorithms**: Sorting, searching, and optimization techniques
 5. **Debugging**: Error detection, validation, and systematic troubleshooting
@@ -49,20 +49,20 @@ DataProcessor:
     ; 1. Input validation (defensive programming)
     CALL ValidateInputData
     JR C, ProcessorError
-    
+
     ; 2. Algorithmic processing (sorting/searching)
     CALL SortInputData
     CALL FilterValidData
-    
+
     ; 3. State-based control flow
     LD A, (ProcessorState)
     CALL DispatchProcessorState
-    
+
     ; 4. Error handling and reporting
     LD A, (LastError)
     OR A
     JR NZ, HandleProcessorError
-    
+
     ; 5. Performance monitoring (optional)
     CALL UpdatePerformanceMetrics
     RET
@@ -112,7 +112,7 @@ HandleActiveSubState:
     DEC A
     JP Z, HandleExecuteMicroState
     JP Z, HandleCleanupMicroState
-    
+
     RET
 
 HandleInitializationState:
@@ -144,7 +144,7 @@ AddPriorityEvent:
     LD A, (EventCount)
     CP 32
     RET NC              ; Queue full
-    
+
     ; Find insertion point based on priority
     CALL FindInsertionPoint
     ; Insert event at correct priority position
@@ -156,12 +156,12 @@ ProcessPriorityEvents:
     LD A, (EventCount)
     OR A
     RET Z               ; No events
-    
+
     ; Get highest priority event (head of queue)
     CALL GetHighestPriorityEvent
     CALL DispatchEvent
     CALL RemoveProcessedEvent
-    
+
     ; Continue processing
     JR ProcessPriorityEvents
 
@@ -207,7 +207,7 @@ UpdateStateMachine:
     LD A, (StateTimer)
     INC A
     LD (StateTimer), A
-    
+
     ; Dispatch to main state handler
     LD A, (MainState)
     ; Use computed jump for efficiency
@@ -235,7 +235,7 @@ HandleInit:
     LD A, (StateTimer)
     CP 30               ; Initialize for 30 ticks
     JR C, InitContinue
-    
+
     ; Initialization complete - transition to menu
     LD A, STATE_MENU
     LD (MainState), A
@@ -243,7 +243,7 @@ HandleInit:
     LD (StateTimer), A  ; Reset timer
     LD A, MENU_MAIN
     LD (MenuSubState), A
-    
+
 InitContinue:
     LD B, 100           ; Init state indicator
     RET
@@ -263,7 +263,7 @@ HandleMainMenu:
     LD A, (StateTimer)
     AND 31              ; Every 32 ticks, simulate input
     JR NZ, MainMenuDone
-    
+
     ; Simulate
 ```
 
@@ -421,7 +421,7 @@ RegisterObserver:
     LD A, (ObserverCount)
     CP 16
     RET NC              ; Too many observers
-    
+
     ; Add observer to list
     SLA A               ; × 2 for addresses
     LD BC, 0
@@ -433,7 +433,7 @@ RegisterObserver:
     LD (DE), L          ; Store address
     INC DE
     LD (DE), H
-    
+
     ; Increment count
     LD HL, ObserverCount
     INC (HL)
@@ -445,24 +445,24 @@ NotifyObservers:
     LD A, (ObserverCount)
     OR A
     RET Z               ; No observers
-    
+
     LD C, A             ; C = observer count
     LD HL, ObserverList
-    
+
 NotifyLoop:
     ; Call each observer
     LD A, (HL)          ; Get address low
     INC HL
     LD H, (HL)          ; Get address high
     LD L, A             ; HL = observer address
-    
+
     PUSH BC
     PUSH HL
     LD A, B             ; Restore event type
     CALL CallObserver   ; Call observer function
     POP HL
     POP BC
-    
+
     INC HL              ; Next observer
     DEC C
     JR NZ, NotifyLoop
@@ -480,11 +480,11 @@ CallObserver:
 ; Intelligent sort that chooses algorithm based on data characteristics
 IntelligentSort:
     ; Input: HL = array, B = size
-    
+
     ; Analyze data characteristics first
     CALL AnalyzeDataPattern
     ; A = 0 (random), 1 (mostly sorted), 2 (reverse sorted), 3 (many duplicates)
-    
+
     ; Choose optimal algorithm
     OR A
     JP Z, UseQuickSort       ; Random data - use quicksort
@@ -499,18 +499,18 @@ AnalyzeDataPattern:
     ; Analyze data to determine best sorting approach
     PUSH BC
     PUSH HL
-    
+
     ; Check for sorted pattern
     CALL CheckSortedness
     LD D, A             ; D = sortedness score
-    
+
     ; Check for duplicates
     CALL CheckDuplicates
     LD E, A             ; E = duplicate score
-    
+
     ; Combine analysis results
     ; Implementation details...
-    
+
     POP HL
     POP BC
     RET
@@ -530,18 +530,18 @@ UseDuplicateOptimizedSort:
 ; Advanced search with multiple criteria and ranking
 MultiCriteriaSearch:
     ; Input: HL = data array, B = size, DE = criteria structure
-    
+
     ; Initialize result ranking system
     CALL InitializeRanking
-    
+
     ; Apply each search criterion
     CALL ApplyCriterion1
     CALL ApplyCriterion2
     CALL ApplyCriterion3
-    
+
     ; Sort results by ranking
     CALL SortByRanking
-    
+
     ; Return top results
     CALL ExtractTopResults
     RET
@@ -587,7 +587,7 @@ ProcessDataIntelligently:
     ; Stage 1: Analyze data characteristics
     CALL AnalyzeData
     LD C, A             ; Save analysis result
-    
+
     ; Stage 2: Choose processing strategy based on analysis
     OR A
     JP Z, ProcessSmallData
@@ -600,18 +600,18 @@ AnalyzeData:
     LD A, (ArraySize)
     CP 20               ; Size threshold
     JR C, SmallDataSet
-    
+
     ; Large data set - check for patterns
     CALL CheckDataPatterns
     OR A
     JR Z, LargeDataSet
     LD A, 2             ; Special pattern detected
     RET
-    
+
 SmallDataSet:
     LD A, 0             ; Small data
     RET
-    
+
 LargeDataSet:
     LD A, 1             ; Large data
     RET
@@ -621,18 +621,18 @@ CheckDataPatterns:
     LD HL, DataArray
     LD B, ArraySize
     DEC B               ; Check B-1 pairs
-    
+
 PatternLoop:
     LD A, (HL)
     INC HL
     CP (HL)             ; Compare adjacent elements
     JR NC, NotSorted    ; Not in ascending order
     DJNZ PatternLoop
-    
+
     ; Found sorted pattern
     LD A, 1
     RET
-    
+
 NotSorted:
     LD A, 0             ; No special pattern
     RET
@@ -641,7 +641,7 @@ ProcessSmallData:
     ; Optimized processing for small data sets
     LD HL, DataArray
     LD B, ArraySize
-    
+
     ; Use simple linear search for multiple criteria
     CALL LinearSearchMultiple
     LD B, 100           ; Small data processing code
@@ -651,7 +651,7 @@ ProcessLargeData:
     ; Optimized processing for large data sets
     LD HL, DataArray
     LD B, ArraySize
-    
+
     ; Sort first, then use binary search
     CALL QuickSort
     CALL BinarySearchMultiple
@@ -662,7 +662,7 @@ ProcessSpecialData:
     ; Optimized processing for special patterns
     LD HL, DataArray
     LD B, ArraySize
-    
+
     ; Use pattern-specific optimizations
     CALL PatternOptimizedSearch
     LD B, 300           ; Special data processing code
@@ -673,26 +673,26 @@ LinearSearchMultiple:
     ; Search for elements matching multiple criteria
     LD C, 0             ; Result count
     LD DE, SearchResults
-    
+
 LinearMultiLoop:
     LD A, (HL)          ; Get element
-    
+
     ; Apply multiple criteria
     CALL TestCriterion1
     JR NC, LinearNext   ; Skip if doesn't match
-    
+
     CALL TestCriterion2
     JR NC, LinearNext   ; Skip if doesn't match
-    
+
     ; Element matches all criteria
     LD (DE), A          ; Store result
     INC DE
     INC C               ; Increment result count
-    
+
 LinearNext:
     INC HL              ; Next element
     DJNZ LinearMultiLoop
-    
+
     LD A, C
     LD (ResultCount), A
     RET
@@ -702,7 +702,7 @@ BinarySearchMultiple:
     ; Simplified implementation
     LD C, 0             ; Result count
     LD DE, SearchResults
-    
+
     ; Search for each criterion value
     LD A, 45            ; Search for 45
     CALL BinarySearchSingle
@@ -710,7 +710,7 @@ BinarySearchMultiple:
     LD (DE), A
     INC DE
     INC C
-    
+
 BinaryNext1:
     LD A, 67            ; Search for 67
     CALL BinarySearchSingle
@@ -718,7 +718,7 @@ BinaryNext1:
     LD (DE), A
     INC DE
     INC C
-    
+
 BinaryNext2:
     LD A, C
     LD (ResultCount), A
@@ -728,12 +728,12 @@ PatternOptimizedSearch:
     ; Optimized search for known patterns
     LD C, 0             ; Result count
     LD DE, SearchResults
-    
+
     ; Since data is sorted, use range search
     CALL FindRangeStart
     CALL FindRangeEnd
     CALL ExtractRange
-    
+
     LD A, C
     LD (ResultCount), A
     RET
@@ -756,7 +756,7 @@ BinarySearchSingle:
     ; Output: Carry set if found
     PUSH BC
     PUSH HL
-    
+
     ; Simple linear search for demonstration
     LD C, A             ; Save search value
 BinaryLoop:
@@ -765,14 +765,14 @@ BinaryLoop:
     JR Z, BinaryFound
     INC HL
     DJNZ BinaryLoop
-    
+
     ; Not found
     OR A                ; Clear carry
     JR BinaryDone
-    
+
 BinaryFound:
     SCF                 ; Set carry
-    
+
 BinaryDone:
     LD A, C             ; Restore search value
     POP HL
@@ -791,30 +791,30 @@ QuickSort:
     LD A, B
     DEC A
     RET Z               ; Skip if <= 1 element
-    
+
     LD C, A             ; Number of passes
-    
+
 QuickPassLoop:
     PUSH BC
     PUSH HL
     LD B, C             ; Comparisons this pass
-    
+
 QuickCompareLoop:
     LD A, (HL)
     INC HL
     CP (HL)
     JR C, QuickNoSwap   ; Already in order
-    
+
     ; Swap elements
     LD D, (HL)
     LD (HL), A
     DEC HL
     LD (HL), D
     INC HL
-    
+
 QuickNoSwap:
     DJNZ QuickCompareLoop
-    
+
     POP HL
     POP BC
     DEC C
@@ -826,11 +826,11 @@ TestIntelligentProcessor:
     CALL ProcessDataIntelligently
     ; B contains processing method used
     LD C, B             ; Save method
-    
+
     ; Check results
     LD A, (ResultCount)
     LD D, A             ; Save result count
-    
+
     RET
     ; Results: C = method used, D = result count
 ```
@@ -845,35 +845,35 @@ OptimizedDataProcessing:
     ; Principle 1: Sequential access is faster than random access
     LD HL, DataStart
     LD B, DataSize
-    
+
 SequentialLoop:
     ; Process data sequentially
     LD A, (HL)
     ; Process A
     INC HL              ; Sequential access
     DJNZ SequentialLoop
-    
+
     ; Principle 2: Batch similar operations
     LD HL, DataStart
     LD B, DataSize
-    
+
     ; First pass: Read and validate all data
 ValidationPass:
     LD A, (HL)
     CALL ValidateElement
     INC HL
     DJNZ ValidationPass
-    
+
     ; Second pass: Process all validated data
     LD HL, DataStart
     LD B, DataSize
-    
+
 ProcessingPass:
     LD A, (HL)
     CALL ProcessElement
     INC HL
     DJNZ ProcessingPass
-    
+
     RET
 
 ValidateElement:
@@ -891,18 +891,18 @@ DataSize: EQU 100
 OptimizedLoops:
     ; Technique 1: Loop unrolling for small, fixed loops
     LD HL, Buffer
-    
+
     ; Unrolled loop (faster for small, known iterations)
     LD (HL), 0 : INC HL
     LD (HL), 0 : INC HL
     LD (HL), 0 : INC HL
     LD (HL), 0 : INC HL
-    
+
     ; Technique 2: Strength reduction (replace expensive operations)
     LD HL, Array
     LD DE, 0            ; Index counter
     LD B, 10            ; Loop count
-    
+
 StrengthReduced:
     ; Instead of: LD A, index : CALL Multiply by 3 : ADD HL, A
     ; Use: ADD HL, 3 (much faster)
@@ -914,18 +914,18 @@ StrengthReduced:
     INC H
 NoCarry:
     DJNZ StrengthReduced
-    
+
     ; Technique 3: Loop invariant motion
     LD HL, Array
     LD A, (ConstantValue)   ; Move constant load outside loop
     LD B, 10
-    
+
 InvariantLoop:
     ADD A, (HL)         ; Use pre-loaded constant
     LD (HL), A
     INC HL
     DJNZ InvariantLoop
-    
+
     RET
 
 Buffer: DS 16
@@ -940,7 +940,7 @@ ConstantValue: DB 5
 PerformanceAwareProcessing:
     ; Input: HL = data, B = size, A = performance requirement
     ; 0 = minimum memory, 1 = balanced, 2 = maximum speed
-    
+
     OR A
     JP Z, MinimumMemoryPath
     DEC A
@@ -983,16 +983,16 @@ HashTableLookup:
 TestFramework:
     ; Initialize test environment
     CALL InitializeTests
-    
+
     ; Run unit tests
     CALL RunUnitTests
-    
+
     ; Run integration tests
     CALL RunIntegrationTests
-    
+
     ; Run performance tests
     CALL RunPerformanceTests
-    
+
     ; Generate test report
     CALL GenerateTestReport
     RET
@@ -1058,13 +1058,13 @@ TestMemoryUsage:
 QualityMetrics:
     ; Measure code complexity
     CALL MeasureCyclomaticComplexity
-    
+
     ; Check coding standards compliance
     CALL CheckCodingStandards
-    
+
     ; Analyze performance characteristics
     CALL AnalyzePerformance
-    
+
     ; Generate quality score
     CALL CalculateQualityScore
     RET
@@ -1126,35 +1126,35 @@ TargetFPS:      DB 50
 RunGameEngine:
     ; Performance monitoring start
     CALL StartFrameTimer
-    
+
     ; Update engine state
     CALL UpdateEngineState
-    
+
     ; Process entities
     CALL UpdateAllEntities
-    
+
     ; Handle collisions
     CALL ProcessCollisions
-    
+
     ; Render frame
     CALL RenderFrame
-    
+
     ; Performance monitoring end
     CALL EndFrameTimer
-    
+
     ; Check frame rate
     CALL CheckFrameRate
-    
+
     ; Update frame counter
     LD HL, (FrameCounter)
     INC HL
     LD (FrameCounter), HL
-    
+
     ; Continue engine loop
     LD A, (EngineState)
     CP ENGINE_SHUTDOWN
     JR NZ, RunGameEngine
-    
+
     RET
 
 ; Advanced state management
@@ -1183,7 +1183,7 @@ HandleEngineInit:
     CALL InitializeEntitySystem
     CALL InitializeGraphics
     CALL InitializeAudio
-    
+
     ; Transition to menu
     LD A, ENGINE_MENU
     LD (EngineState), A
@@ -1193,16 +1193,16 @@ HandleEngineMenu:
     ; Menu logic
     CALL ProcessMenuInput
     CALL UpdateMenuAnimations
-    
+
     ; Check for game start
     CALL CheckStartGame
     JR NC, MenuContinue
-    
+
     ; Start game
     LD A, ENGINE_GAME
     LD (EngineState), A
     CALL InitializeGameSession
-    
+
 MenuContinue:
     RET
 
@@ -1211,28 +1211,28 @@ HandleEngineGame:
     CALL ProcessGameInput
     CALL UpdateGameLogic
     CALL UpdateAI
-    
+
     ; Check for pause
     CALL CheckPauseGame
     JR NC, GameContinue
-    
+
     LD A, ENGINE_PAUSE
     LD (EngineState), A
-    
+
 GameContinue:
     RET
 
 HandleEnginePause:
     ; Pause logic
     CALL ProcessPauseInput
-    
+
     ; Check for resume
     CALL CheckResumeGame
     JR NC, PauseContinue
-    
+
     LD A, ENGINE_GAME
     LD (EngineState), A
-    
+
 PauseContinue:
     RET
 
@@ -1248,10 +1248,10 @@ UpdateAllEntities:
     LD A, (EntityCount)
     OR A
     RET Z               ; No entities
-    
+
     LD B, A             ; Entity count
     LD HL, EntityArray  ; Entity data
-    
+
 EntityUpdateLoop:
     ; Get entity type
     LD A, (HL)          ; Entity type
@@ -1263,25 +1263,25 @@ EntityUpdateLoop:
     JP Z, UpdateBullet
     CP ENTITY_POWERUP
     JP Z, UpdatePowerup
-    
+
     ; Unknown entity type - skip
     JR NextEntity
-    
+
 UpdatePlayer:
     CALL UpdatePlayerEntity
     JR NextEntity
-    
+
 UpdateEnemy:
     CALL UpdateEnemyEntity
     JR NextEntity
-    
+
 UpdateBullet:
     CALL UpdateBulletEntity
     JR NextEntity
-    
+
 UpdatePowerup:
     CALL UpdatePowerupEntity
-    
+
 NextEntity:
     ; Move to next entity (4 bytes per entity)
     INC HL : INC HL : INC HL : INC HL
@@ -1293,15 +1293,15 @@ ProcessCollisions:
     LD A, (EntityCount)
     CP 2
     RET C               ; Need at least 2 entities
-    
+
     ; Nested loop for collision checking
     LD B, A             ; Outer loop counter
     LD HL, EntityArray  ; First entity
-    
+
 OuterCollisionLoop:
     PUSH BC
     PUSH HL
-    
+
     ; Inner loop starting from next entity
     LD DE, HL
     INC DE : INC DE : INC DE : INC DE  ; Next entity
@@ -1309,25 +1309,25 @@ OuterCollisionLoop:
     DEC A               ; Inner loop counter
     JR Z, EndInnerLoop  ; Skip if no more entities
     LD C, A
-    
+
 InnerCollisionLoop:
     ; Check collision between (HL) and (DE)
     CALL CheckEntityCollision
     JR NC, NoCollision
-    
+
     ; Handle collision
     CALL HandleEntityCollision
-    
+
 NoCollision:
     ; Move to next inner entity
     INC DE : INC DE : INC DE : INC DE
     DEC C
     JR NZ, InnerCollisionLoop
-    
+
 EndInnerLoop:
     POP HL
     POP BC
-    
+
     ; Move to next outer entity
     INC HL : INC HL : INC HL : INC HL
     DJNZ OuterCollisionLoop
@@ -1354,10 +1354,10 @@ CheckFrameRate:
     LD A, (TargetFPS)
     CP B
     JR NC, FrameRateOK
-    
+
     ; Frame rate too slow - optimize
     CALL OptimizePerformance
-    
+
 FrameRateOK:
     RET
 
@@ -1367,7 +1367,7 @@ OptimizePerformance:
     LD A, (EntityCount)
     CP 2
     RET C               ; Don't reduce below 2
-    
+
     DEC A
     LD (EntityCount), A
     RET
@@ -1420,12 +1420,12 @@ CleanupAudio:
 TestGameEngine:
     ; Initialize and run for several frames
     LD B, 10            ; Run 10 frames
-    
+
 EngineTestLoop:
     CALL RunGameEngine
     DEC B
     JR NZ, EngineTestLoop
-    
+
     ; Engine should have run through initialization and started game
     RET
 ```
@@ -1439,7 +1439,7 @@ EngineTestLoop:
 ✓ **Subroutine Design**: Modular code with proper parameter passing  
 ✓ **Algorithm Implementation**: Optimized sorting, searching, and processing  
 ✓ **Error Handling**: Comprehensive validation and defensive programming  
-✓ **Flag Utilization**: Advanced comparison and state management techniques  
+✓ **Flag Utilization**: Advanced comparison and state management techniques
 
 ### Advanced Patterns
 
@@ -1447,7 +1447,7 @@ EngineTestLoop:
 ✓ **Event Systems**: Priority-based event processing  
 ✓ **MVC Architecture**: Separation of concerns in complex systems  
 ✓ **Performance Optimization**: Cache-friendly and optimized code patterns  
-✓ **Quality Assurance**: Testing frameworks and code quality metrics  
+✓ **Quality Assurance**: Testing frameworks and code quality metrics
 
 ## What You've Mastered
 
@@ -1465,7 +1465,7 @@ In this comprehensive review, you've demonstrated:
 You're now ready to tackle the **Spectrum Saga Foundation** section (lessons 25-32), where you'll apply all these advanced programming skills to build a complete graphics application. You'll use:
 
 - **State machines** for managing drawing modes and tool selection
-- **Event handling** for user input and interface interaction  
+- **Event handling** for user input and interface interaction
 - **Advanced algorithms** for graphics operations and image processing
 - **Performance optimization** for smooth real-time drawing
 - **Error handling** for robust user experience

@@ -10,7 +10,8 @@ cpu: "68000"
 cpu_details:
   architecture: "16/32-bit"
   instruction_set: "Motorola 68000"
-  addressing_modes: ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
+  addressing_modes:
+    ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
   registers: "8 data registers (D0-D7), 8 address registers (A0-A7)"
 
 clock_speed: "8 MHz"
@@ -28,7 +29,8 @@ video:
   processor: "Shifter"
   resolution: "320×200 to 640×400"
   colors: "512 color palette"
-  display_modes: ["Low res 320×200 16 colors", "Medium res 640×200 4 colors", "High res 640×400 mono"]
+  display_modes:
+    ["Low res 320×200 16 colors", "Medium res 640×200 4 colors", "High res 640×400 mono"]
   sprites:
     count: 0
     size: "Software sprites only"
@@ -45,9 +47,9 @@ audio:
   synthesis_types: ["PSG", "DMA sound (STe)"]
 
 # Storage and I/O
-storage: ["3.5\" floppy", "Hard disk"]
+storage: ['3.5" floppy', "Hard disk"]
 storage_details:
-  built_in: ["3.5\" floppy drive"]
+  built_in: ['3.5" floppy drive']
   expansion: ["Hard disk", "External floppy"]
   typical_capacity:
     floppy: "720KB-1.44MB"
@@ -87,7 +89,6 @@ hardware_availability: "available"
 
 # Media
 description: "The musician's computer that brought 16-bit power and built-in MIDI to the masses."
-image: "/images/systems/atari-st.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -102,7 +103,7 @@ order: 18
 
 # Atari ST
 
-*Coming Soon*
+_Coming Soon_
 
 The Atari ST was Jack Tramiel's revenge on Commodore. With a 68000 processor, built-in MIDI ports, and an aggressive price, it became the computer of choice for musicians and desktop publishers who couldn't afford a Mac.
 
@@ -119,9 +120,10 @@ The ST offers clean 68000 programming without the complexity of the Amiga's cust
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Atari ST curriculum will include:
+
 - 68000 assembly programming
 - GEM application development
 - MIDI programming and sequencing

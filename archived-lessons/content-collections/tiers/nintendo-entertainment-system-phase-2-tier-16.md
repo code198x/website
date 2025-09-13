@@ -27,6 +27,7 @@ Time to create your NES MASTERPIECE! 🌟 With **32 culminating lessons**, you'l
 ## What You'll Build
 
 Create **YOUR SIGNATURE NES GAME** - a complete portfolio project featuring:
+
 - Every advanced technique learned throughout Phase 2 🎮
 - Professional-quality gameplay, graphics, and audio
 - Smooth performance and polished presentation
@@ -36,24 +37,28 @@ Create **YOUR SIGNATURE NES GAME** - a complete portfolio project featuring:
 ## Project Overview
 
 **Week 1: "Vision and Planning" - Project Design and Architecture**
+
 - Defining your game concept and technical requirements
 - Creating comprehensive game design documentation
 - Setting up professional development workflow and version control
 - Planning asset creation and development timeline
 
 **Week 2: "Core Systems Integration" - Bringing Everything Together**
+
 - Integrating sprite animation, collision detection, and physics systems
 - Implementing AI, power-ups, and advanced movement mechanics
 - Setting up game state management and menu systems
 - Creating the foundation for your complete game experience
 
 **Weeks 3-4: "Content Creation and Polish" - Building Your World**
+
 - Creating multiple levels with increasing difficulty and complexity
 - Implementing all visual effects, advanced graphics, and audio systems
 - Adding performance optimizations and professional polish
 - Comprehensive playtesting and iterative improvement
 
 **Weeks 5-6: "Professional Finishing" - Portfolio Presentation**
+
 - Final optimization and bug fixing passes
 - Creating professional documentation and presentation materials
 - Building cartridge-ready ROM with proper memory mapping
@@ -64,16 +69,19 @@ Create **YOUR SIGNATURE NES GAME** - a complete portfolio project featuring:
 Your portfolio project will demonstrate mastery of:
 
 **Programming Excellence:**
+
 - Advanced 6502 assembly optimization and performance mastery
 - Professional game architecture and code organization
 - Complex system integration and memory management
 
 **Visual Artistry:**
+
 - Advanced graphics techniques and PPU mastery
 - Professional animation and visual effects
 - Artistic composition and visual polish
 
 **Audio Mastery:**
+
 - Complex musical composition and APU programming
 - Dynamic audio systems and professional sound design
 - Audio-visual integration and emotional impact

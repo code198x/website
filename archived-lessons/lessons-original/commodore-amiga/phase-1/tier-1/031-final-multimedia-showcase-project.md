@@ -33,6 +33,7 @@ Congratulations on reaching the final foundational project of Tier 1! Today you'
 ## What You've Accomplished
 
 In this final showcase project, you've demonstrated:
+
 - **Strong foundational mastery** of essential Tier 1 concepts
 - **Growing programming skills** with system integration
 - **Creative and technical development** in multimedia programming
@@ -42,6 +43,7 @@ In this final showcase project, you've demonstrated:
 ## Tier 1 Complete - Looking Ahead to Tier 2
 
 You've now completed the foundational tier of Phase 1 Amiga programming! In Tier 2, you'll tackle more advanced topics while continuing to build your Phase 1 foundation:
+
 - **Advanced Memory Management** and efficient data handling
 - **Enhanced Graphics Programming** with sophisticated effects
 - **Complex Audio Systems** and multi-channel sound

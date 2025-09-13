@@ -27,6 +27,7 @@ Welcome to the science of doing more with less! 📊 With **32 optimization-pack
 ## What You'll Build
 
 Create **AMIGA DATA ENGINE** - a comprehensive data management system featuring:
+
 - Memory management that squeezes maximum performance from limited RAM 💻
 - Disk streaming systems that load levels seamlessly in the background
 - Compression algorithms that store twice the data in half the space
@@ -36,24 +37,28 @@ Create **AMIGA DATA ENGINE** - a comprehensive data management system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Memory Mastery" - Efficient RAM Management**
+
 - Advanced memory allocation and deallocation strategies
 - Memory pooling and fragmentation prevention
 - Chip RAM vs. Fast RAM optimization strategies
 - Memory debugging and leak detection tools
 
 **Lessons 9-16: "Disk Optimization" - Seamless Data Streaming**
+
 - Efficient disk I/O and file management systems
 - Background loading and streaming techniques
 - Disk caching strategies for improved performance
 - Cross-platform file format design and compatibility
 
 **Lessons 17-24: "Compression Systems" - Maximum Storage Efficiency**
+
 - Data compression algorithms optimized for real-time decompression
 - Graphics and audio compression techniques
 - Selective compression strategies for different data types
 - Memory-efficient decompression and buffering systems
 
 **Lessons 25-32: "Dynamic Resource Management" - Professional Asset Systems**
+
 - Resource loading and unloading state machines
 - Garbage collection and automatic memory management
 - Asset dependency tracking and management

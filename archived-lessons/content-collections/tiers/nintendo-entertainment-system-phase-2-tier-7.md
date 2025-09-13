@@ -27,6 +27,7 @@ Time to make collecting power-ups IRRESISTIBLE! ✨ With **32 empowering lessons
 ## What You'll Build
 
 Create **POWER-UP PARADISE** - a comprehensive upgrade system featuring:
+
 - Collectible power-ups that dramatically enhance gameplay 🎁
 - Temporary boosts that create strategic decision-making
 - Permanent upgrades that show meaningful progression
@@ -36,24 +37,28 @@ Create **POWER-UP PARADISE** - a comprehensive upgrade system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Foundation of Power" - Core Power-up Architecture**
+
 - Power-up entity systems and spawn management
 - Collection detection and player interaction
 - Basic temporary and permanent effect systems
 - Memory-efficient power state management
 
 **Lessons 9-16: "Ability Enhancement" - Player Modification Systems**
+
 - Speed boosts, jump improvements, and movement upgrades
 - Weapon systems and attack modifications
 - Health and shield enhancement mechanics
 - Multi-stacking effects and ability combinations
 
 **Lessons 17-24: "Feedback and Polish" - Making Collection Satisfying**
+
 - Particle effects and visual feedback for collection
 - Audio design that makes power-ups feel impactful
 - Screen effects and UI updates for power acquisition
 - Anticipation and reward psychology implementation
 
 **Lessons 25-32: "Strategic Design" - Advanced Power Systems**
+
 - Risk/reward power-up placement strategies
 - Limited-time power-ups that create urgency
 - Power-up chains and combo collection systems

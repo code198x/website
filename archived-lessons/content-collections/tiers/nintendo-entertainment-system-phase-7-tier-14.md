@@ -27,6 +27,7 @@ Master the impossible! With **32 advanced lessons**, you'll learn the most sophi
 ## What You'll Build
 
 Create **CUTTING-EDGE NES PROGRAMMING LIBRARY** - your technique masterpiece featuring:
+
 - Advanced 6502 programming techniques that seem impossible on NES
 - Sophisticated algorithms implemented with maximum efficiency
 - Programming frameworks that enable complex game development
@@ -36,24 +37,28 @@ Create **CUTTING-EDGE NES PROGRAMMING LIBRARY** - your technique masterpiece fea
 ## Technical Mastery Areas
 
 **Lessons 1-8: "Advanced Algorithms" - Computational Mastery**
+
 - Implementing sophisticated algorithms with maximum 6502 efficiency
 - Advanced mathematical computations and fixed-point arithmetic
 - Complex data structure implementation within memory constraints
 - Algorithmic optimization techniques for performance-critical code
 
 **Lessons 9-16: "Hardware Maximization" - Pushing NES Limits**
+
 - Exploiting every capability of NES hardware for maximum effect
 - Advanced PPU programming and undocumented feature utilization
 - Sophisticated memory banking and mapper programming techniques
 - Real-time hardware manipulation and precise timing control
 
 **Lessons 17-24: "Framework Development" - Reusable Programming**
+
 - Building sophisticated programming frameworks for NES development
 - Creating reusable code libraries and modular programming systems
 - Advanced macro programming and code generation techniques
 - Building programming tools that enhance development capability
 
 **Lessons 25-32: "Innovation Techniques" - Boundary-Pushing Programming**
+
 - Developing new programming techniques that seem impossible
 - Creating code that inspires and educates other developers
 - Pushing the boundaries of what's considered achievable on NES

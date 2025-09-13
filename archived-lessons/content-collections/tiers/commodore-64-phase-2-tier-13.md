@@ -31,24 +31,28 @@ Begin developing **Stellar Command** - a complex space strategy game leveraging 
 ## Tier Overview
 
 **Lessons 1-8: Advanced Macro Fundamentals**
+
 - Parameterized macro design
 - Variable argument handling
 - Macro composition and nesting
 - Debugging macro expansions
 
 **Lessons 9-16: Code Generation Techniques**
+
 - Table-driven code generation
 - Automated handler creation
 - Loop unrolling generators
 - Optimization templates
 
 **Lessons 17-24: Domain-Specific Languages**
+
 - Creating mini-languages for game data
 - Parser implementation in macros
 - Declarative programming styles
 - Configuration languages
 
 **Lessons 25-32: Metaprogramming Patterns**
+
 - Generic programming in assembly
 - Type-safe macro systems
 - Compile-time computation

@@ -27,6 +27,7 @@ Create intelligent, living game worlds! Learn to program computer opponents that
 ## What You'll Add to Retro Racer
 
 Implement intelligent racing features:
+
 - AI opponents with distinct driving personalities
 - Multiple race tracks with unique challenges
 - Championship progression and statistics
@@ -35,24 +36,28 @@ Implement intelligent racing features:
 ## Tier Overview
 
 **Lessons 1-8: Artificial Intelligence**
+
 - Creating computer opponents that feel real
 - Decision-making algorithms and behavior trees
 - Personality systems for varied AI behavior
 - Balancing AI challenge and fairness
 
 **Lessons 9-16: Complex Game Systems**
+
 - Multi-track championship progression
 - Statistics tracking and analysis
 - Unlockable content and achievements
 - Interconnected game mechanics
 
 **Lessons 17-24: Advanced Gameplay**
+
 - Power-ups and special abilities
 - Dynamic track conditions and obstacles
 - Lap timing and performance analysis
 - Creating meaningful player choices
 
 **Lessons 25-32: System Integration**
+
 - Connecting AI, tracks, and progression
 - Balancing multiple complex systems
 - Performance optimisation for AI

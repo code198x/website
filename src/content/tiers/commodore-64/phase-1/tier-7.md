@@ -30,7 +30,7 @@ order: 7
 
 # Tier 7: Temple Mysteries & Advanced Graphics
 
-*Coming Soon*
+_Coming Soon_
 
 Enter the ancient temples! Push the C64's graphics capabilities to their limits while creating atmospheric temple complexes filled with mysterious puzzles and hidden chambers. Learn the advanced VIC-II techniques that separated professional games from amateur projects.
 
@@ -48,15 +48,19 @@ This tier focuses on advanced graphics programming and complex environmental des
 ## Your Journey Through 32 Lessons
 
 ### Advanced Graphics Techniques (Lessons 1-8)
+
 Learn raster interrupts, advanced character set manipulation, and VIC-II tricks that create professional-quality visual effects within C64 limitations.
 
 ### Temple Interior Design (Lessons 9-16)
+
 Create atmospheric temple environments: stone corridors, chamber halls, hidden passages, underground waterways. Master environmental storytelling through graphics.
 
 ### Puzzle System Implementation (Lessons 17-24)
+
 Build complex puzzle mechanics: pressure plates, rotating statues, light beam redirections, sequence locks. Create mentally engaging challenges.
 
 ### Visual Effects & Polish (Lessons 25-32)
+
 Add the spectacular effects that make temple exploration memorable: flickering torchlight, water reflections, mysterious glows, atmospheric particles.
 
 ## Your Temple Complex
@@ -74,7 +78,7 @@ By the end of this tier, Jungle Explorer will feature:
 This tier demonstrates advanced C64 programming:
 
 - **Raster Interrupts**: Dynamic color changes, lighting effects, visual polish
-- **Advanced Character Graphics**: Detailed temple architecture within character limitations  
+- **Advanced Character Graphics**: Detailed temple architecture within character limitations
 - **Complex State Management**: Puzzles that affect multiple areas and objects
 - **Performance Optimization**: Maintaining smooth gameplay with advanced effects
 
@@ -91,6 +95,7 @@ This tier demonstrates advanced C64 programming:
 ## Prerequisites
 
 Before starting Tier 7, you should have completed:
+
 - [Tier 6: Jungle Hazards & Creatures](/lessons/commodore-64/phase-1/tier-6)
 - Strong foundation in sprite management and animation
 - Understanding of complex game state management
@@ -100,4 +105,4 @@ Before starting Tier 7, you should have completed:
 
 After completing Tier 7, you'll be ready for Tier 8: Commercial Polish & Release Quality, where you'll transform your jungle adventure into a complete, professional-quality game that could compete with the best 1983-84 C64 releases.
 
-*This tier contains 32 lessons and is currently in development. Check back soon for updates on availability.*
+_This tier contains 32 lessons and is currently in development. Check back soon for updates on availability._

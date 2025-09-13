@@ -27,6 +27,7 @@ Master sophisticated gameplay systems! With **32 mechanics-focused lessons**, yo
 ## What You'll Build
 
 Create **ADVANCED GAMEPLAY SYSTEMS** - your mechanics masterpiece:
+
 - Complex interaction systems that create emergent gameplay
 - Deep progression mechanics that reward player mastery
 - Sophisticated AI behaviors that respond to complex player actions
@@ -36,24 +37,28 @@ Create **ADVANCED GAMEPLAY SYSTEMS** - your mechanics masterpiece:
 ## Advanced Mechanics Areas
 
 **Lessons 1-8: "System Complexity" - Interconnected Mechanics**
+
 - Designing systems that interact and influence each other
 - Creating emergent gameplay from simple rule combinations
 - Complex state management for sophisticated game mechanics
 - Balancing system complexity with player comprehension
 
 **Lessons 9-16: "Deep Progression" - Player Advancement Systems**
+
 - Multi-layered character development and skill systems
 - Complex inventory and item management mechanics
 - Advanced crafting and resource conversion systems
 - Long-term progression that maintains player engagement
 
 **Lessons 17-24: "Advanced Interactions" - Sophisticated Game Logic**
+
 - Complex environmental interactions and physics responses
 - Advanced combat systems with tactical depth
 - Sophisticated puzzle mechanics and solution systems
 - Dynamic world systems that respond to player actions
 
 **Lessons 25-32: "Mechanics Mastery" - System Integration**
+
 - Integrating all mechanics into cohesive gameplay experience
 - Advanced balancing techniques for complex systems
 - Performance optimization for sophisticated mechanics

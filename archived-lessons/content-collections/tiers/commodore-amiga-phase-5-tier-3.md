@@ -27,6 +27,7 @@ Time to make players scratch their heads and smile! With **32 mind-bending lesso
 ## What You'll Build
 
 Create **BLOCK BRIGADE** - a multi-mode puzzle game featuring:
+
 - Action puzzles where timing meets thinking
 - Logic puzzles that make players feel genius
 - Physics-based challenges using real-world rules
@@ -36,24 +37,28 @@ Create **BLOCK BRIGADE** - a multi-mode puzzle game featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Puzzle Foundations" - Core Mechanics**
+
 - Grid systems and piece management
 - State tracking and move validation
 - Undo/redo implementation that never fails
 - Win condition checking and solution detection
 
 **Lessons 9-16: "Physics & Logic" - Advanced Systems**
+
 - Simple physics for falling blocks and liquids
 - Chain reactions and cascade effects
 - Timing puzzles with moving elements
 - Environmental hazards and helpers
 
 **Lessons 17-24: "Polish & Presentation" - Making It Shine**
+
 - Satisfying feedback for every action
 - Visual hints without spoiling solutions
 - Music that enhances thinking (not annoys!)
 - Particle effects for that "eureka!" moment
 
 **Lessons 25-32: "Content Creation" - Endless Puzzles**
+
 - Level editor with intuitive controls
 - Data compression for hundreds of levels
 - Difficulty analysis and auto-rating

@@ -28,7 +28,8 @@ video:
   processor: "Motorola 6845 CRTC"
   resolution: "512×256"
   colors: "8 colors"
-  display_modes: ["80×25 text", "64×16 chunky graphics", "512×256 high resolution", "Mixed text/graphics"]
+  display_modes:
+    ["80×25 text", "64×16 chunky graphics", "512×256 high resolution", "Mixed text/graphics"]
   sprites:
     count: 0
     size: "Software only"
@@ -40,12 +41,18 @@ video:
 audio:
   chip: "Speaker + tone generator"
   channels: 1
-  features: ["Square wave generation", "Programmable frequency", "Sound effects", "Cassette interface audio"]
+  features:
+    [
+      "Square wave generation",
+      "Programmable frequency",
+      "Sound effects",
+      "Cassette interface audio",
+    ]
   sample_playback: false
   synthesis_types: ["Square wave"]
 
 # Storage and I/O
-storage: ["Cassette tape", "5.25\" floppy", "ROM cartridge"]
+storage: ["Cassette tape", '5.25" floppy', "ROM cartridge"]
 storage_details:
   built_in: ["Cassette interface (1200 baud)"]
   expansion: ["Floppy disk drives"]
@@ -53,7 +60,15 @@ storage_details:
     cassette: "Variable"
     floppy: "180KB-360KB"
 
-io_ports: ["Full QWERTY keyboard", "Function keys F1-F12", "Numeric keypad", "Parallel printer", "Serial RS-232", "Light pen"]
+io_ports:
+  [
+    "Full QWERTY keyboard",
+    "Function keys F1-F12",
+    "Numeric keypad",
+    "Parallel printer",
+    "Serial RS-232",
+    "Light pen",
+  ]
 expansion_options: ["Floppy controllers", "Memory expansion", "Interface cards"]
 
 # Commercial information
@@ -70,8 +85,15 @@ market_positioning: "Educational computer with professional features"
 competition: ["Apple II", "Commodore 64", "BBC Micro"]
 
 # Educational relevance
-learning_advantages: ["Educational programming focus", "Multiple built-in languages", "Professional keyboard", "Australian computing history"]
-common_beginner_projects: ["Educational games", "BASIC programming", "Logo turtle graphics", "Database applications"]
+learning_advantages:
+  [
+    "Educational programming focus",
+    "Multiple built-in languages",
+    "Professional keyboard",
+    "Australian computing history",
+  ]
+common_beginner_projects:
+  ["Educational games", "BASIC programming", "Logo turtle graphics", "Database applications"]
 
 # Modern preservation and emulation
 emulated: true
@@ -88,7 +110,6 @@ hardware_availability: "rare"
 
 # Media
 description: "Australia's educational computer champion with professional features and strong BASIC programming focus."
-image: "/images/systems/microbee.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -103,7 +124,7 @@ order: 62
 
 # Applied Technology Microbee
 
-*Coming Soon*
+_Coming Soon_
 
 The Microbee stands as Australia's most successful home computer, designed specifically for educational markets with professional-grade features and extensive programming capabilities. This Z80-based system demonstrated how regional manufacturers could create computers perfectly tailored to local educational needs.
 
@@ -121,9 +142,10 @@ The Microbee's educational focus and multi-language environment (BASIC, Logo, As
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Microbee curriculum will include:
+
 - Enhanced BASIC programming for educational applications
 - Logo turtle graphics programming and visual learning concepts
 - Z80 assembly language in educational context

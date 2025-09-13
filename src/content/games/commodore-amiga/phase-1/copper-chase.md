@@ -39,6 +39,7 @@ order: 1
 ---
 
 # Copper Chase
+
 **"I programmed the copper coprocessor!"**
 
 Your first complete Amiga game! **Copper Chase** is where you'll experience the magic of programming a dedicated coprocessor. Watch as the legendary copper chip creates stunning color effects automatically, giving you a taste of the revolutionary technology that made Amiga games legendary!
@@ -67,24 +68,28 @@ Through building Copper Chase, you'll master:
 ## Development Progression
 
 ### Foundation (Lessons 1-8)
+
 - Set up Amiga development environment and custom chip basics
 - Learn copper coprocessor programming and list creation
 - Implement color register control and vertical positioning
 - Add keyboard and mouse input handling
 
 ### Copper Programming (Lessons 9-16)
+
 - Create multiple copper objects and animated effects
 - Implement collision detection between copper elements
 - Add scoring system and moving obstacles
 - Create target collection and level progression
 
 ### Visual Enhancement (Lessons 17-24)
+
 - Add copper gradient effects and starfield
 - Implement advanced copper techniques
 - Create copper-based "sprites" and particle effects
 - Design title screen and screen transitions
 
 ### Audio and Completion (Lessons 25-32)
+
 - Program Paula for sample-based sound effects
 - Add 4-channel music composition
 - Implement game options and high score system
@@ -141,6 +146,7 @@ This project teaches the distinctive programming techniques that made Amiga game
 ## Portfolio Impact
 
 By completing Copper Chase, you'll have:
+
 - Your first complete Amiga game
 - Mastery of fundamental 68000 assembly programming
 - Understanding of custom chip architecture and copper programming

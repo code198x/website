@@ -27,6 +27,7 @@ Welcome to the world of visual magic! 🎨 With **32 dazzling lessons**, you'll 
 ## What You'll Build
 
 Create **VISUAL EFFECTS WIZARD** - a spectacular effects library featuring:
+
 - Screen transitions so smooth they feel like movie magic 🎬
 - Particle explosions that light up the screen with excitement
 - Color effects that make the 16-color palette feel infinite
@@ -36,24 +37,28 @@ Create **VISUAL EFFECTS WIZARD** - a spectacular effects library featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Transition Magic" - Smooth Screen Effects**
+
 - Screen wipe effects (horizontal, vertical, circular, diagonal)
 - Fade in/out effects using clever color manipulation
 - Page flipping and smooth screen transitions
 - Loading screen effects and progress indicators
 
 **Lessons 9-16: "Particle Power" - Dynamic Visual Elements**
+
 - Simple particle systems for explosions and sparks
 - Efficient particle management and memory optimization
 - Star fields and scrolling background effects
 - Smoke, fire, and magical effect simulation
 
 **Lessons 17-24: "Color Wizardry" - Maximizing the Palette**
+
 - Palette cycling for animated textures and water effects
 - Color flashing for damage feedback and power-ups
 - Attribute zone effects and clever color usage
 - Creating the illusion of more colors through timing
 
 **Lessons 25-32: "Polish and Integration" - Professional Finish**
+
 - Screen shake systems for impact and feedback
 - Visual effect integration with game events
 - Performance profiling and effect optimization

@@ -27,6 +27,7 @@ Optimize like legends! With **32 comprehensive lessons**, you'll master advanced
 ## What You'll Build
 
 Perfect **Retro Arcade** with professional optimization:
+
 - Advanced performance profiling tools for real-time analysis
 - Sophisticated memory management and optimization systems
 - Professional CPU usage monitoring and optimization
@@ -36,24 +37,28 @@ Perfect **Retro Arcade** with professional optimization:
 ## Tier Overview
 
 **Lessons 1-8: Professional Profiling Tools**
+
 - Real-time performance monitoring and analysis
 - Advanced CPU cycle counting and optimization
 - Professional memory usage tracking and analysis
 - Sophisticated debugging and profiling frameworks
 
 **Lessons 9-16: Advanced Optimization Techniques**
+
 - CPU optimization and cycle-perfect programming
 - Memory optimization and efficient data structures
 - Advanced graphics optimization and PPU efficiency
 - Professional audio optimization and APU performance
 
 **Lessons 17-24: Sophisticated Analysis Systems**
+
 - Professional bottleneck identification and resolution
 - Advanced performance metrics and monitoring
 - Sophisticated optimization verification and validation
 - Professional performance testing and benchmarking
 
 **Lessons 25-32: Commercial Optimization Workflows**
+
 - Professional optimization documentation and processes
 - Commercial-grade performance standards and compliance
 - Advanced optimization tools and automation

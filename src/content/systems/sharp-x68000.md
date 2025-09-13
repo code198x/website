@@ -1,5 +1,5 @@
 ---
-name: "X68000"
+name: "Sharp X68000"
 full_name: "Sharp X68000"
 manufacturer: "Sharp Corporation"
 model_number: "CZ-600C"
@@ -10,7 +10,8 @@ cpu: "68000"
 cpu_details:
   architecture: "16/32-bit"
   instruction_set: "Motorola 68000"
-  addressing_modes: ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
+  addressing_modes:
+    ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
   registers: "8 data registers (D0-D7), 8 address registers (A0-A7)"
 
 clock_speed: "10 MHz"
@@ -45,9 +46,9 @@ audio:
   synthesis_types: ["FM", "ADPCM"]
 
 # Storage and I/O
-storage: ["5.25\" floppy", "Hard disk", "SASI"]
+storage: ['5.25" floppy', "Hard disk", "SASI"]
 storage_details:
-  built_in: ["Two 5.25\" floppy drives"]
+  built_in: ['Two 5.25" floppy drives']
   expansion: ["SASI/SCSI hard disk"]
   typical_capacity:
     floppy: "1.2MB"
@@ -87,7 +88,6 @@ hardware_availability: "rare"
 
 # Media
 description: "Japan's legendary hobbyist computer with arcade-perfect graphics and the birthplace of Street Fighter II."
-image: "/images/systems/x68000.jpg"
 
 # Platform Classification
 medal_tier: "gold"
@@ -102,7 +102,7 @@ order: 19
 
 # Sharp X68000
 
-*Coming Soon*
+_Coming Soon_
 
 The Sharp X68000 was Japan's ultimate home computer - a no-compromise machine with arcade-quality graphics, professional sound, and a price tag to match. Capcom developed Street Fighter II on the X68000, and many arcade games had pixel-perfect ports.
 
@@ -119,9 +119,10 @@ The X68000 represents the pinnacle of 68000-based home computing. Its powerful s
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the X68000 curriculum will include:
+
 - 68000 assembly optimization
 - Sprite and background programming
 - YM2151 FM synthesis

@@ -35,7 +35,7 @@ order: 28
     MOVE.W  #$8010, INTENA(A6)  ; Enable VBlank interrupt
     LEA     SyncedAnimation, A0
     MOVE.L  A0, $6C.W           ; Install VBlank handler
-    
+
 SyncedAnimation:
     BSR     UpdateSprites       ; Move sprites smoothly
     BSR     UpdateCopper        ; Change colours in sync
@@ -50,6 +50,7 @@ That's the power of **Amiga synchronization** - coordinating multiple custom chi
 ## What You've Learned
 
 In this lesson, you've mastered animation timing and synchronization:
+
 - **Precise timing control** using vertical blank and interrupts
 - **Multi-system coordination** for smooth multimedia experiences
 - **Professional animation frameworks** with frame-rate independence

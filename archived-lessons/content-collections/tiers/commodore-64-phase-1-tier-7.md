@@ -27,6 +27,7 @@ Transform from simple memory locations to sophisticated assembly data management
 ## What You'll Add to Color Cascade
 
 Implement advanced features requiring data management:
+
 - Pattern libraries with hundreds of sequences
 - High score tables with multiple entries
 - Player statistics and progress tracking
@@ -36,24 +37,28 @@ Implement advanced features requiring data management:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Data Structure Fundamentals**
+
 - Creating memory-based data structures
 - Storing and retrieving data using assembly addressing
 - Memory indexing and bounds checking
 - Common assembly data operations and patterns
 
 **Lessons 9-16: Assembly Pattern Storage**
+
 - Representing colour sequences in memory structures
 - Efficient assembly pattern comparison algorithms
 - Dynamic pattern generation using assembly code
 - Pattern difficulty classification through assembly logic
 
 **Lessons 17-24: Assembly Game Data Management**
+
 - High score table implementation using assembly memory management
 - Player statistics tracking through assembly data structures
 - Save/load data structures using assembly file operations
 - Memory-efficient data organisation for 6502 architecture
 
 **Lessons 25-32: Advanced Assembly Color Cascade**
+
 - Intelligent pattern generation using assembly algorithms
 - Adaptive difficulty systems implemented in assembly
 - Complete data persistence through assembly memory management

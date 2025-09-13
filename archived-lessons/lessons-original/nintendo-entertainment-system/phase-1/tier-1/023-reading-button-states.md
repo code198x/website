@@ -34,7 +34,7 @@ The NES controller has 8 buttons that are read as a single byte:
 
 ```
 Bit 7: A Button (rightmost button)
-Bit 6: B Button (left of A button)  
+Bit 6: B Button (left of A button)
 Bit 5: Select Button
 Bit 4: Start Button
 Bit 3: Up Direction
@@ -65,7 +65,7 @@ AButtonPressed:
     LDA #$01
     STA ButtonAState
     ; Add A button response code here
-    
+
 CheckOtherButtons:
     ; Continue checking other buttons
 ```
@@ -83,11 +83,11 @@ AButtonPressed:
     LDA #$01
     STA $0200          ; Store pressed state
     JMP ButtonCheckDone
-    
+
 AButtonNotPressed:
     LDA #$00
     STA $0200          ; Store not pressed state
-    
+
 ButtonCheckDone:
     RTS
 
@@ -97,7 +97,7 @@ ReadController:
     STA $4016          ; Strobe controller
     LDA #$00
     STA $4016
-    
+
     LDX #$08           ; Read 8 bits
 ReadLoop:
     LDA $4016          ; Read bit
@@ -105,7 +105,7 @@ ReadLoop:
     ROL ControllerData ; Rotate into result
     DEX
     BNE ReadLoop
-    
+
     LDA ControllerData
     RTS
 
@@ -120,18 +120,18 @@ You can check multiple buttons efficiently by testing each bit:
 CheckAllButtons:
     JSR ReadController    ; Get controller state
     STA ControllerState  ; Store for multiple checks
-    
+
     ; Check A button (bit 7)
     AND #%10000000
     BEQ AButtonPressed
     LDA #$00
     STA ButtonA_State
     JMP CheckBButton
-    
+
 AButtonPressed:
     LDA #$01
     STA ButtonA_State
-    
+
 CheckBButton:
     LDA ControllerState  ; Reload controller state
     AND #%01000000       ; Check B button (bit 6)
@@ -139,11 +139,11 @@ CheckBButton:
     LDA #$00
     STA ButtonB_State
     JMP CheckStartButton
-    
+
 BButtonPressed:
     LDA #$01
     STA ButtonB_State
-    
+
 CheckStartButton:
     LDA ControllerState
     AND #%00010000       ; Check Start button (bit 4)
@@ -151,11 +151,11 @@ CheckStartButton:
     LDA #$00
     STA ButtonStart_State
     JMP ButtonCheckComplete
-    
+
 StartButtonPressed:
     LDA #$01
     STA ButtonStart_State
-    
+
 ButtonCheckComplete:
     RTS
 ```
@@ -167,7 +167,7 @@ ButtonCheckComplete:
 CheckAllButtons:
     JSR ReadController
     STA ControllerState
-    
+
     ; Check A button
     AND #%10000000
     BEQ APressed
@@ -177,8 +177,8 @@ APressed:
     LDA #$01
 StoreA:
     STA $0200
-    
-    ; Check B button  
+
+    ; Check B button
     LDA ControllerState
     AND #%01000000
     BEQ BPressed
@@ -188,7 +188,7 @@ BPressed:
     LDA #$01
 StoreB:
     STA $0201
-    
+
     ; Check directional pad
     LDA ControllerState
     AND #%00001000       ; Up
@@ -199,7 +199,7 @@ UpPressed:
     LDA #$01
 StoreUp:
     STA $0202
-    
+
     RTS
 
 ReadController:
@@ -217,39 +217,39 @@ There's a difference between detecting when a button is pressed vs when it's bei
 ```assembly
 ; Current frame button states
 CurrentButtons: .byte $00
-; Previous frame button states  
+; Previous frame button states
 PreviousButtons: .byte $00
 
 DetectButtonPress:
     ; Save previous state
     LDA CurrentButtons
     STA PreviousButtons
-    
+
     ; Read current state
     JSR ReadController
     STA CurrentButtons
-    
+
     ; Detect new button presses (pressed now, not pressed before)
     EOR PreviousButtons   ; XOR with previous
     AND CurrentButtons    ; AND with current (pressed now)
     STA NewButtonPresses  ; Store new presses
-    
+
     ; Check if A was just pressed
     AND #%10000000
     BEQ AJustPressed
     JMP CheckOtherPresses
-    
+
 AJustPressed:
     ; Handle A button press (only triggers once)
     JSR HandleAButtonPress
-    
+
 CheckOtherPresses:
     ; Check other new button presses
     LDA NewButtonPresses
     AND #%01000000       ; B button
     BEQ BJustPressed
     ; Continue with other buttons
-    
+
 BJustPressed:
     JSR HandleBButtonPress
     RTS
@@ -264,15 +264,15 @@ NewButtonPresses: .byte $00
 DetectButtonPress:
     LDA CurrentButtons
     STA PreviousButtons
-    
+
     JSR ReadController
     STA CurrentButtons
-    
+
     ; Find newly pressed buttons
     EOR PreviousButtons    ; XOR previous state
     AND CurrentButtons     ; AND current state
     STA NewPresses
-    
+
     ; Check for new A press
     AND #%10000000
     BEQ NewAPress
@@ -282,7 +282,7 @@ NewAPress:
     LDA #$01
 StoreNewA:
     STA $0203             ; New A press indicator
-    
+
     ; Check if A is currently held
     LDA CurrentButtons
     AND #%10000000
@@ -293,7 +293,7 @@ ACurrentlyHeld:
     LDA #$01
 StoreHeldA:
     STA $0204             ; A held indicator
-    
+
     RTS
 
 ReadController:
@@ -313,21 +313,21 @@ The directional pad requires special attention to prevent invalid combinations:
 CheckDirections:
     JSR ReadController
     STA ControllerState
-    
+
     ; Initialize direction states
     LDA #$00
     STA DirectionUp
     STA DirectionDown
     STA DirectionLeft
     STA DirectionRight
-    
+
     ; Check Up (bit 3)
     LDA ControllerState
     AND #%00001000
     BNE CheckDown         ; Branch if not pressed
     LDA #$01
     STA DirectionUp
-    
+
 CheckDown:
     LDA ControllerState
     AND #%00000100        ; Check Down (bit 2)
@@ -337,7 +337,7 @@ CheckDown:
     BNE SkipDown          ; Skip if Up already pressed
     LDA #$01
     STA DirectionDown
-    
+
 SkipDown:
 CheckLeft:
     LDA ControllerState
@@ -345,7 +345,7 @@ CheckLeft:
     BNE CheckRight
     LDA #$01
     STA DirectionLeft
-    
+
 CheckRight:
     LDA ControllerState
     AND #%00000001        ; Check Right (bit 0)
@@ -355,7 +355,7 @@ CheckRight:
     BNE DirectionComplete  ; Skip if Left already pressed
     LDA #$01
     STA DirectionRight
-    
+
 DirectionComplete:
     RTS
 
@@ -373,21 +373,21 @@ DirectionRight: .byte $00
 CheckDirections:
     JSR ReadController
     STA ControllerState
-    
+
     ; Clear all directions
     LDA #$00
     STA $0210            ; Up state
-    STA $0211            ; Down state  
+    STA $0211            ; Down state
     STA $0212            ; Left state
     STA $0213            ; Right state
-    
+
     ; Check Up
     LDA ControllerState
     AND #%00001000
     BNE CheckDown
     LDA #$01
     STA $0210
-    
+
 CheckDown:
     LDA ControllerState
     AND #%00000100
@@ -397,14 +397,14 @@ CheckDown:
     BNE CheckLeft        ; Skip Down if Up pressed
     LDA #$01
     STA $0211
-    
+
 CheckLeft:
     LDA ControllerState
     AND #%00000010
     BNE CheckRight
     LDA #$01
     STA $0212
-    
+
 CheckRight:
     LDA ControllerState
     AND #%00000001
@@ -414,7 +414,7 @@ CheckRight:
     BNE Done             ; Skip Right if Left pressed
     LDA #$01
     STA $0213
-    
+
 Done:
     RTS
 
@@ -432,28 +432,28 @@ Build a complete system that responds to button presses:
 ```assembly
 ProcessInput:
     JSR DetectButtonPress
-    
+
     ; Process A button
     LDA NewButtonPresses
     AND #%10000000
     BEQ ProcessAButton
     JMP ProcessBButton
-    
+
 ProcessAButton:
     ; A button was just pressed
     JSR PlaySelectSound
     JSR AdvanceMenuOption
-    
+
 ProcessBButton:
     LDA NewButtonPresses
     AND #%01000000
     BEQ ProcessBButtonAction
     JMP ProcessDirections
-    
+
 ProcessBButtonAction:
     JSR PlayCancelSound
     JSR GoBackMenu
-    
+
 ProcessDirections:
     ; Handle directional movement
     LDA DirectionUp
@@ -465,19 +465,19 @@ ProcessDirections:
     LDA DirectionRight
     BEQ MoveRight
     RTS
-    
+
 MoveUp:
     JSR MoveCursorUp
     RTS
-    
+
 MoveDown:
     JSR MoveCursorDown
     RTS
-    
+
 MoveLeft:
     JSR MoveCursorLeft
     RTS
-    
+
 MoveRight:
     JSR MoveCursorRight
     RTS
@@ -488,7 +488,7 @@ MoveRight:
 Create a button state checker that displays which buttons are currently pressed:
 
 1. Read the controller state
-2. Check each button individually  
+2. Check each button individually
 3. Store the results in memory locations $0200-$0207
 4. Handle button press detection (new presses only)
 5. Prevent conflicting directional inputs
@@ -506,11 +506,11 @@ Main:
 CheckAllButtonStates:
     JSR ReadController
     STA ControllerState
-    
+
     ; Check all 8 buttons
     LDX #$08             ; 8 buttons to check
     LDY #$00             ; Start with bit 0
-    
+
 ButtonLoop:
     LDA ControllerState
     AND ButtonMasks,Y    ; Mask for current button
@@ -546,7 +546,7 @@ NextButton:
     INY
     DEX
     BNE NewPressLoop
-    
+
     ; Copy current to previous
     LDX #$08
     LDY #$00
@@ -563,12 +563,12 @@ HandleButtonResponses:
     LDA $0210            ; New A press?
     BEQ CheckB
     ; Handle A button action
-    
+
 CheckB:
     LDA $0211            ; New B press?
     BEQ Done
     ; Handle B button action
-    
+
 Done:
     RTS
 

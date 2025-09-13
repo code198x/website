@@ -27,6 +27,7 @@ Build games of massive scope! With **32 advanced lessons**, you'll master large-
 ## What You'll Build
 
 Create **LARGE-SCALE NES GAME ARCHITECTURE** - your complexity masterpiece featuring:
+
 - Massive interconnected game systems working seamlessly together
 - Complex data management supporting extensive game content
 - Sophisticated system architectures that scale with game complexity
@@ -36,24 +37,28 @@ Create **LARGE-SCALE NES GAME ARCHITECTURE** - your complexity masterpiece featu
 ## Technical Mastery Areas
 
 **Lessons 1-8: "System Architecture" - Large-Scale Design**
+
 - Designing complex game system architectures for NES
 - Planning system interactions and dependency management
 - Creating modular architectures that support extensive content
 - Advanced memory management for large-scale game systems
 
 **Lessons 9-16: "Data Management" - Complex Content Systems**
+
 - Advanced data organization and content management systems
 - Sophisticated save/load systems and persistent game state
 - Dynamic content loading and streaming for large games
 - Complex database-like systems within NES memory constraints
 
 **Lessons 17-24: "System Integration" - Complex Interactions**
+
 - Managing complex interactions between multiple game systems
 - Advanced event systems and inter-system communication
 - Sophisticated state management for complex game scenarios
 - Performance optimization with multiple complex systems active
 
 **Lessons 25-32: "Scalability & Maintenance" - Professional Systems**
+
 - Building systems that scale with increasing game complexity
 - Advanced debugging techniques for complex system interactions
 - Maintenance and update strategies for large-scale games

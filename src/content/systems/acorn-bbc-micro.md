@@ -1,6 +1,6 @@
 ---
 name: "BBC Micro"
-full_name: "Acorn BBC Micro"  
+full_name: "Acorn BBC Micro"
 manufacturer: "Acorn Computers"
 model_number: "Model B"
 alternative_names: ["Beeb", "BBC Model B"]
@@ -26,7 +26,6 @@ country_of_origin: "United Kingdom"
 
 # Media
 description: "The educational computer that taught Britain to code, backed by the BBC and deployed in schools nationwide."
-image: "/images/systems/bbc-micro.jpg"
 
 # Platform Classification
 medal_tier: "platinum"
@@ -41,6 +40,6 @@ order: 5
 
 # BBC Micro
 
-*Coming Soon*
+_Coming Soon_
 
 The BBC Micro was Britain's educational computing revolution. Created for the BBC's Computer Literacy Project, it introduced structured programming to a generation and established computing education standards that influenced curricula worldwide.

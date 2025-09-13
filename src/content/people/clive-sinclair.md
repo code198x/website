@@ -68,9 +68,11 @@ His early articles and technical writing demonstrated a deep understanding of el
 ## Sinclair Radionics: The Foundation Years
 
 ### Company Formation (1962)
+
 At just 22, Sinclair founded **Sinclair Radionics** with a loan of £25. The company initially focused on mail-order electronic kits and components, targeting electronics enthusiasts and hobbyists.
 
 ### Early Innovations
+
 **Micro6 Radio (1962):** One of the world's smallest transistor radios, demonstrating Sinclair's commitment to miniaturisation.
 
 **Audio Equipment:** High-quality, affordable amplifiers and hi-fi equipment that established Sinclair's reputation for innovative design.
@@ -78,9 +80,11 @@ At just 22, Sinclair founded **Sinclair Radionics** with a loan of £25. The com
 **Electronic Calculators:** Pioneering pocket calculators that were dramatically smaller and cheaper than existing models.
 
 ### The Cambridge Calculator Revolution
+
 The **Sinclair Cambridge** calculator, launched in 1973, epitomised Sinclair's philosophy:
+
 - **Ultra-thin design**: Revolutionary form factor
-- **Low cost**: Affordable for consumers, not just businesses  
+- **Low cost**: Affordable for consumers, not just businesses
 - **Mass production**: High-volume manufacturing for global markets
 - **Technical innovation**: Advanced integrated circuits and power management
 
@@ -89,10 +93,13 @@ This success established Sinclair as a major player in consumer electronics and 
 ## Transition to Computing
 
 ### Science of Cambridge (1977)
+
 After financial difficulties with Sinclair Radionics, Sinclair founded **Science of Cambridge** (later **Sinclair Research**) to focus on the emerging personal computer market.
 
 ### The MK14 Microcomputer Kit
+
 The **MK14**, launched in 1977, was Sinclair's first computer product:
+
 - **SC/MP processor**: Simple but capable 8-bit processor
 - **Kit format**: Self-assembly for electronics enthusiasts
 - **Educational focus**: Teaching computer programming and hardware
@@ -103,36 +110,43 @@ Whilst not a commercial success, the MK14 established Sinclair's credibility in 
 ## The ZX Revolution
 
 ### ZX80: The £99 Computer (1980)
+
 The **ZX80** represented Sinclair's vision of truly affordable computing:
 
 **Revolutionary Pricing:**
+
 - **£99.95 assembled** (≈£485 in 2025): First complete computer under £100
 - **£79.95 kit** (≈£390 in 2025): Even cheaper for self-assembly
 - **Mass market**: Available through high-street retailers
 - **Television display**: Used standard TV as monitor
 
 **Technical Innovation:**
+
 - **Z80 processor**: Powerful 8-bit processor from Zilog
 - **Minimal design**: Reduced components to absolute essentials
 - **Flat membrane keyboard**: Ultra-low-cost input method
 - **1KB RAM**: Tiny by today's standards but sufficient for BASIC
 
 **Market Impact:**
+
 - Sold over 50,000 units in first year
 - Established Sinclair as computer manufacturer
 - Proved market existed for ultra-cheap computers
 - Inspired numerous competitors and imitators
 
 ### ZX81: Refinement and Mass Appeal (1981)
+
 The **ZX81** improved on the ZX80's success:
 
 **Enhanced Design:**
+
 - **Better BASIC**: More sophisticated programming language
 - **Improved reliability**: More stable operation
 - **Lower cost**: Even cheaper than ZX80
 - **Global reach**: Sold worldwide, including as Timex Sinclair 1000 in US
 
 **Commercial Success:**
+
 - Over 1.5 million units sold globally
 - Mass-market breakthrough for home computing
 - Extensive software library development
@@ -143,6 +157,7 @@ The **ZX81** improved on the ZX80's success:
 The **ZX Spectrum** became Sinclair's crowning achievement and Britain's most influential home computer:
 
 **Technical Specifications:**
+
 - **Z80A processor**: 3.5 MHz operation
 - **16KB or 48KB RAM**: Substantial memory for the price
 - **Colour graphics**: 8 colours with attribute-based display
@@ -150,12 +165,14 @@ The **ZX Spectrum** became Sinclair's crowning achievement and Britain's most in
 - **Compact design**: Distinctive flat keyboard and rainbow stripe
 
 **Revolutionary Features:**
+
 - **Colour display**: First affordable colour computer in Britain
 - **Advanced BASIC**: Sophisticated programming environment
 - **Membrane keyboard**: Controversial but cost-effective
 - **ULA chip**: Custom silicon for graphics and cost reduction
 
 **Pricing Strategy:**
+
 - **£125 (16KB)** (≈£520 in 2025): Incredibly affordable for colour computer
 - **£175 (48KB)** (≈£725 in 2025): Still cheaper than monochrome competitors
 - **High-street availability**: Sold through major retailers
@@ -164,15 +181,18 @@ The **ZX Spectrum** became Sinclair's crowning achievement and Britain's most in
 ## Cultural and Educational Impact
 
 ### The British Gaming Revolution
+
 The ZX Spectrum sparked an explosion in British game development:
 
 **Bedroom Coders:**
+
 - Teenage programmers creating commercial games
 - One-person development teams
 - Innovative gameplay despite hardware limitations
 - Foundation of British gaming industry
 
 **Landmark Games:**
+
 - **Manic Miner** (1983): Platformer that showcased Spectrum capabilities
 - **Jet Set Willy** (1984): Massive game world in limited memory
 - **Elite** (1984): 3D space trading game (originally BBC, ported to Spectrum)
@@ -180,36 +200,43 @@ The ZX Spectrum sparked an explosion in British game development:
 
 **Budget Games Market:**
 The Spectrum's affordability created a thriving budget games scene:
+
 - **£1.99-£3.99 games** (≈£8-£16 today): Pocket money pricing for children
 - **Covertape games**: Free games on magazine covers
 - **Compilation tapes**: Multiple games for under £10 (≈£40 today)
 - **Independent developers**: Bedroom coders could reach mass market
 
 ### Educational Transformation
+
 The Spectrum's affordability revolutionised computing education:
 
 **School Adoption:**
+
 - Widespread use in British schools
 - Programming education for entire generation
 - Computer studies as mainstream subject
 - Foundation for IT curriculum development
 
 **Home Learning:**
+
 - Families could afford home computers
 - Programming magazines with type-in listings
 - Learning through games and creativity
 - Self-taught programmers and designers
 
 ### Cultural Phenomenon
+
 The Spectrum became more than a computer—it was a cultural icon:
 
 **Magazine Culture:**
+
 - **Sinclair User**, **Your Sinclair**, **CRASH**: Popular magazines
 - Type-in programs and game reviews
 - Community building around platform
 - Technical articles and programming tutorials
 
 **Demoscene:**
+
 - Underground programming community
 - Technical demonstrations pushing hardware limits
 - Art, music, and coding competitions
@@ -220,24 +247,28 @@ The Spectrum became more than a computer—it was a cultural icon:
 Sinclair's approach to product design was characterised by several principles:
 
 ### Radical Cost Reduction
+
 - **Essential functionality**: Include only what's absolutely necessary
 - **Innovative materials**: Using novel materials and manufacturing methods
 - **Integrated design**: Custom silicon to reduce component count
 - **Volume manufacturing**: Designing for mass production
 
 ### Miniaturisation
+
 - **Compact form factors**: Making devices as small as possible
 - **Efficient layouts**: Maximising functionality in minimal space
 - **Thermal management**: Dealing with heat in small enclosures
 - **Power efficiency**: Battery life and low power consumption
 
 ### User Interface Innovation
+
 - **Membrane keyboards**: Controversial but effective cost reduction
 - **Colour coding**: Visual cues to aid operation
 - **Simplified operation**: Minimising user confusion
 - **Clear documentation**: Excellent manuals and learning materials
 
 ### Technical Elegance
+
 - **Minimal architectures**: Achieving maximum with minimum resources
 - **Clever engineering**: Innovative solutions to cost constraints
 - **Custom silicon**: ULA chips optimised for specific applications
@@ -246,21 +277,25 @@ Sinclair's approach to product design was characterised by several principles:
 ## Business Strategy and Market Vision
 
 ### Mass Market Focus
+
 Sinclair consistently targeted the mass consumer market rather than enthusiasts:
 
 **Pricing Strategy:**
+
 - **Psychological pricing**: £99, £125, £175 price points (equivalent to £470-£700 today)
 - **High-street retail**: Making computers available everywhere
 - **Payment options**: Hire purchase and financing
 - **Gift market**: Computers as presents for children
 
 **Marketing Innovation:**
+
 - **Television advertising**: Mainstream media promotion
 - **Demonstration emphasis**: Showing capabilities, not specifications
 - **Aspirational messaging**: Computing for everyone
 - **Educational angle**: Learning and creativity focus
 
 ### Vertical Integration
+
 - **Custom silicon**: ULA chips designed specifically for Sinclair computers
 - **Manufacturing control**: Ownership of production processes
 - **Software ecosystem**: Encouraging third-party development
@@ -269,24 +304,29 @@ Sinclair consistently targeted the mass consumer market rather than enthusiasts:
 ## Later Ventures and Legacy
 
 ### Beyond Computing
+
 After the Spectrum's success, Sinclair pursued other innovations:
 
 **C5 Electric Vehicle (1985):**
+
 - Battery-powered personal transport
 - Ahead of its time but commercially unsuccessful
 - Demonstrated Sinclair's continued innovation drive
 
 **Flat-screen Television:**
+
 - Pocket TV development
 - Miniaturisation technology advancement
 - Consumer electronics innovation
 
 **Digital Watch Calculators:**
+
 - Continued calculator innovation
 - Wearable technology pioneer
 - Mass-market electronics
 
 ### Lasting Influence
+
 - **British computing industry**: Foundation for UK technology sector
 - **Programming education**: Inspired generation of developers
 - **Gaming culture**: Established Britain as gaming powerhouse
@@ -295,11 +335,13 @@ After the Spectrum's success, Sinclair pursued other innovations:
 ## Recognition and Honours
 
 ### Official Recognition
+
 - **Knight Bachelor (1983)**: For services to British industry
 - **Order of the British Empire**: Earlier recognition for electronics innovation
 - **Fellow of the Royal Society of Arts**: Academic and cultural recognition
 
 ### Industry Honours
+
 - **Computer History Museum**: Recognition for computing contributions
 - **Various lifetime achievement awards**: Technology industry recognition
 - **Gaming industry honours**: Acknowledgement of role in game development
@@ -309,18 +351,21 @@ After the Spectrum's success, Sinclair pursued other innovations:
 Sinclair was known for his unique approach to business and technology:
 
 ### Innovation Over Convention
+
 - Willingness to challenge established norms
 - Focus on radical solutions rather than incremental improvements
 - Risk-taking in product development
 - Long-term vision despite short-term criticism
 
 ### Accessibility Champion
+
 - Belief that technology should be available to everyone
 - Opposition to elitist approach to computing
 - Focus on education and learning
 - Democratic vision of technology
 
 ### Perfectionist Tendencies
+
 - Obsessive attention to design details
 - High standards for product quality
 - Continuous refinement of products
@@ -331,18 +376,21 @@ Sinclair was known for his unique approach to business and technology:
 In Code Like It's 198x, students learning ZX Spectrum programming directly experience Sinclair's vision of accessible computing. The Spectrum's constraints and capabilities shape the learning experience in fundamental ways.
 
 ### Educational Benefits
+
 - **Resource constraints**: Learning to program efficiently within limitations
 - **Creative problem-solving**: Working around hardware restrictions
 - **Historical context**: Understanding how constraints drive innovation
 - **British computing culture**: Experiencing the foundation of UK tech industry
 
 ### Programming Skills
+
 - **Efficient coding**: Making the most of limited memory and processing power
 - **Graphics programming**: Understanding attribute-based colour systems
 - **Sound programming**: Creating music and effects with minimal hardware
 - **Assembly optimisation**: Writing fast, compact code
 
 ### Cultural Understanding
+
 - **Computing democratisation**: How affordable technology changes society
 - **Creative constraints**: How limitations can inspire innovation
 - **Community development**: How platforms create ecosystems

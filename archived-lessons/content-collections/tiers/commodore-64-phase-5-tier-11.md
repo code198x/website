@@ -31,24 +31,28 @@ Create advanced graphics and geometry systems including computational geometry e
 ## Tier Overview
 
 **Lessons 1-8: Computational Geometry Fundamentals**
+
 - Geometric algorithm design and analysis
 - Point, line, and polygon algorithms
 - Convex hull and triangulation algorithms
 - Spatial data structures and optimization
 
 **Lessons 9-16: Advanced Graphics Mathematics**
+
 - 3D transformation mathematics
 - Projection and viewing transformations
 - Curve and surface mathematics
 - Advanced lighting and shading algorithms
 
 **Lessons 17-24: Geometric Modeling & Visualization**
+
 - Parametric curve and surface design
 - Constructive solid geometry
 - Mesh generation and processing
 - Scientific and mathematical visualization
 
 **Lessons 25-32: Computer-Aided Design Systems**
+
 - CAD system architecture and design
 - Interactive geometric editing tools
 - Precision mathematical computation

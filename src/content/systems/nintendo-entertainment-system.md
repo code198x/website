@@ -87,7 +87,6 @@ hardware_availability: "common"
 
 # Media
 description: "The console that saved video gaming in North America and established Nintendo as a household name."
-image: "/images/systems/nes.jpg"
 
 # Platform Classification
 medal_tier: "platinum"
@@ -103,7 +102,7 @@ order: 3
 
 # Nintendo Entertainment System
 
-*Coming Soon*
+_Coming Soon_
 
 The NES didn't just save the video game industry after the 1983 crash - it redefined what home gaming could be. With its powerful PPU, sophisticated scrolling capabilities, and innovative mapper chips, the NES became the canvas for some of gaming's most iconic experiences.
 
@@ -120,9 +119,10 @@ The NES uses a 6502 variant similar to the C64, but with a completely different 
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the NES curriculum will include:
+
 - 6502 assembly for the Ricoh 2A03
 - PPU programming and graphics techniques
 - APU sound and music programming

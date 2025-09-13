@@ -27,6 +27,7 @@ Time to master engine architecture! With **32 intensive lessons**, you'll learn 
 ## What You'll Build
 
 Create **NES GAME ENGINE FRAMEWORK** - a comprehensive engine system featuring:
+
 - Advanced modular architecture supporting multiple game genres
 - Sophisticated component systems for flexible game object management
 - Professional resource management and asset streaming systems
@@ -36,24 +37,28 @@ Create **NES GAME ENGINE FRAMEWORK** - a comprehensive engine system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Foundation Architecture!" - Core Engine Design**
+
 - Designing scalable engine architectures for NES constraints
 - Creating professional component and entity systems
 - Building efficient resource management frameworks
 - Establishing solid foundations for complex game development
 
 **Lessons 9-16: "System Integration!" - Advanced Engine Systems**
+
 - Implementing sophisticated graphics and audio systems
 - Creating advanced input and control management frameworks
 - Building professional physics and collision systems
 - Developing integrated systems that work seamlessly together
 
 **Lessons 17-24: "Genre Flexibility!" - Multi-Genre Engine Design**
+
 - Creating engines that support platformers, RPGs, and shooters
 - Building adaptable frameworks for different game types
 - Implementing genre-specific optimizations and features
 - Designing engines that scale from simple to complex games
 
 **Lessons 25-32: "Professional Framework!" - Commercial Engine Development**
+
 - Creating comprehensive development frameworks and tools
 - Building professional debugging and profiling systems
 - Implementing advanced optimization and performance systems

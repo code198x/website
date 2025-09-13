@@ -27,6 +27,7 @@ Time to become a ZX Spectrum graphics wizard! With **32 mind-blowing lessons**, 
 ## What You'll Build
 
 Create **SPECTRUM SHOWCASE** - a stunning graphics demonstration featuring:
+
 - Multicolor effects that break the "color clash" rules
 - Scrolling so smooth people will think you've added hardware
 - Particle effects using clever character manipulation
@@ -36,24 +37,28 @@ Create **SPECTRUM SHOWCASE** - a stunning graphics demonstration featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Breaking the Color Rules!" - Multicolor Mastery**
+
 - Attribute manipulation to create multicolor sprites
 - Character redefinition for smooth color transitions
 - Screen splitting techniques for different graphic modes
 - The legendary "multicolor" effect that amazed players
 
 **Lessons 9-16: "Smooth as Silk" - Hardware Scrolling Magic**
+
 - Character-based scrolling without flicker
 - Parallax effects using multiple screen layers
 - Diagonal scrolling that flows in all directions
 - The mathematics behind buttery-smooth movement
 
 **Lessons 17-24: "Sparks and Magic!" - Particle System Wizardry**
+
 - Fire and explosion effects using character graphics
 - Starfield systems that create infinite depth
 - Animated sprites that seem to have more colors
 - Making simple pixels behave like complex physics
 
 **Lessons 25-32: "Professional Polish" - Visual Excellence**
+
 - Screen transitions that flow beautifully
 - Animation techniques that bring graphics to life
 - Visual feedback systems that feel satisfying

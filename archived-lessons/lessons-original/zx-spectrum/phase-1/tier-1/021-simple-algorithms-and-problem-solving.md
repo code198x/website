@@ -60,41 +60,41 @@ Bubble sort repeatedly compares adjacent elements and swaps them if they're in t
 BubbleSort:
     PUSH BC
     PUSH HL
-    
+
     ; Outer loop: number of passes
     LD A, B
     DEC A               ; Need n-1 passes
     JR Z, BubbleDone    ; Skip if 0 or 1 element
     LD C, A             ; C = number of passes
-    
+
 BubblePassLoop:
     PUSH BC             ; Save pass counter
     PUSH HL             ; Save array start
-    
+
     ; Inner loop: compare adjacent elements
     LD B, C             ; B = elements to check this pass
-    
+
 BubbleCompareLoop:
     LD A, (HL)          ; Get first element
     INC HL              ; Point to second element
     CP (HL)             ; Compare with second element
     JR C, NoSwap        ; Skip if already in order (A < (HL))
-    
+
     ; Swap elements
     LD D, (HL)          ; Save second element
     LD (HL), A          ; Put first in second position
     DEC HL              ; Back to first position
     LD (HL), D          ; Put second in first position
     INC HL              ; Back to second position
-    
+
 NoSwap:
     DJNZ BubbleCompareLoop ; Continue inner loop
-    
+
     POP HL              ; Restore array start
     POP BC              ; Restore pass counter
     DEC C               ; One less pass needed
     JR NZ, BubblePassLoop ; Continue outer loop
-    
+
 BubbleDone:
     POP HL
     POP BC
@@ -120,48 +120,48 @@ BubbleSort:
     PUSH BC
     PUSH HL
     PUSH DE
-    
+
     ; Check for trivial cases
     LD A, B
     CP 2
     JR C, SortDone      ; Skip if 0 or 1 element
-    
+
     ; Outer loop: B-1 passes
     DEC B               ; Need size-1 passes
     LD C, B             ; C = number of passes remaining
-    
+
 PassLoop:
     PUSH BC             ; Save counters
     PUSH HL             ; Save array start
-    
+
     ; Inner loop: compare adjacent pairs
     LD B, C             ; B = comparisons this pass
-    
+
 CompareLoop:
     LD A, (HL)          ; Get first element
     INC HL              ; Point to next element
     LD D, (HL)          ; Get second element
-    
+
     ; Compare: is A > D? (need to swap?)
     CP D
     JR C, InOrder       ; Jump if A < D (already in order)
     JR Z, InOrder       ; Jump if A = D (equal, no swap needed)
-    
+
     ; A > D, need to swap
     LD (HL), A          ; Put larger element in second position
     DEC HL              ; Back to first position
     LD (HL), D          ; Put smaller element in first position
     INC HL              ; Forward to second position again
-    
+
 InOrder:
     DJNZ CompareLoop    ; Continue for all comparisons in this pass
-    
+
     ; End of pass
     POP HL              ; Restore array start
     POP BC              ; Restore counters
     DEC C               ; One fewer pass needed
     JR NZ, PassLoop     ; Continue if more passes needed
-    
+
 SortDone:
     POP DE
     POP HL
@@ -174,12 +174,12 @@ TestSort:
     LD HL, TestArray
     LD B, 8
     CALL BubbleSort
-    
+
     ; Test 2: Already sorted
     LD HL, SortedArray
     LD B, 5
     CALL BubbleSort
-    
+
     ; Test 3: Reverse sorted
     LD HL, ReverseArray
     LD B, 6
@@ -204,52 +204,52 @@ SelectionSort:
     PUSH BC
     PUSH HL
     PUSH DE
-    
+
     ; Outer loop: for each position
     LD A, B
     DEC A               ; Need n-1 iterations
     JR Z, SelectDone    ; Skip if 0 or 1 element
     LD C, A             ; C = positions left to fill
-    
+
 SelectPositionLoop:
     PUSH BC             ; Save counters
     PUSH HL             ; Save current position
-    
+
     ; Find minimum in remaining array
     LD D, (HL)          ; Current minimum value
     LD E, 0             ; Offset to minimum element
     INC HL              ; Start searching from next element
-    
+
     ; Inner loop: find minimum
     LD A, C             ; Elements left to check
     DEC A               ; Already have first element
     JR Z, FoundMin      ; Skip if no more elements
     LD B, A             ; B = elements to check
     LD A, 1             ; Current offset
-    
+
 FindMinLoop:
     CP (HL)             ; Compare current min with this element
     JR C, NotSmaller    ; Skip if current min is smaller
-    
+
     ; Found new minimum
     LD D, (HL)          ; New minimum value
     LD E, A             ; New minimum offset
-    
+
 NotSmaller:
     INC HL              ; Next element
     INC A               ; Next offset
     DJNZ FindMinLoop    ; Continue search
-    
+
 FoundMin:
     ; Swap minimum with current position
     POP HL              ; Restore current position
     LD A, (HL)          ; Get element at current position
     CP D                ; Compare with minimum found
     JR Z, NoSwapNeeded  ; Skip if already the minimum
-    
+
     ; Perform swap
     LD (HL), D          ; Put minimum at current position
-    
+
     ; Find minimum's original location and put current element there
     PUSH HL             ; Save current position
     LD A, E             ; Offset to minimum
@@ -260,13 +260,13 @@ FoundMin:
 NoCarry1:
     LD (HL), A          ; Store original element at minimum's location
     POP HL              ; Restore current position
-    
+
 NoSwapNeeded:
     INC HL              ; Next position
     POP BC              ; Restore counters
     DEC C               ; One fewer position to fill
     JR NZ, SelectPositionLoop
-    
+
 SelectDone:
     POP DE
     POP HL
@@ -285,23 +285,23 @@ InsertionSort:
     PUSH BC
     PUSH HL
     PUSH DE
-    
+
     ; Start from second element (index 1)
     LD A, B
     CP 2
     JR C, InsertDone    ; Skip if less than 2 elements
-    
+
     INC HL              ; Start from second element
     DEC B               ; One fewer element to process
-    
+
 InsertLoop:
     LD A, (HL)          ; Current element to insert
     LD C, A             ; Save current element
-    
+
     ; Find insertion position by comparing backwards
     PUSH HL             ; Save current position
     PUSH BC             ; Save element and counter
-    
+
     ; Compare with previous elements
 InsertSearchLoop:
     DEC HL              ; Previous element
@@ -309,25 +309,25 @@ InsertSearchLoop:
     CP C                ; Compare with element to insert
     JR C, InsertHere    ; If previous < current, insert after it
     JR Z, InsertHere    ; If equal, insert after it
-    
+
     ; Previous element is larger, need to shift it right
     INC HL              ; Back to current position
     LD (HL), A          ; Move larger element right
     DEC HL              ; Back to previous position
-    
+
     ; Check if we've reached the beginning
     ; (This is simplified - real version needs boundary checking)
     JR InsertSearchLoop ; Continue searching backwards
-    
+
 InsertHere:
     INC HL              ; Move to insertion position
     LD (HL), C          ; Insert the element
-    
+
     POP BC              ; Restore counters
     POP HL              ; Restore current position
     INC HL              ; Next element to process
     DJNZ InsertLoop     ; Continue for all elements
-    
+
 InsertDone:
     POP DE
     POP HL
@@ -343,32 +343,32 @@ SelectionSort:
     PUSH BC
     PUSH HL
     PUSH DE
-    
+
     ; Outer loop: for each position from start
     LD A, B
     DEC A               ; Need n-1 passes
     JR Z, SelectionDone
     LD C, A             ; C = passes remaining
-    
+
 SelectionPassLoop:
     PUSH BC             ; Save pass counter
     PUSH HL             ; Save current position
-    
+
     ; Find minimum in remaining unsorted portion
     LD A, (HL)          ; Assume first element is minimum
     LD D, A             ; D = minimum value found so far
     LD E, 0             ; E = offset to minimum element
-    
+
     ; Search remaining elements
     PUSH HL             ; Save start of search
     LD B, C             ; B = elements left to check
     LD A, 0             ; A = current offset
-    
+
 FindMinimumLoop:
     LD A, (HL)          ; Get current element
     CP D                ; Compare with current minimum
     JR NC, NotNewMin    ; Skip if >= current minimum
-    
+
     ; Found new minimum
     LD D, A             ; Update minimum value
     LD A, L             ; Calculate offset
@@ -376,32 +376,32 @@ FindMinimumLoop:
     PUSH BC             ; Save it again
     SUB C               ; Offset = current - start
     LD E, A             ; Save offset
-    
+
 NotNewMin:
     INC HL              ; Next element
     DJNZ FindMinimumLoop ; Continue search
-    
+
     ; Swap minimum with current position
     POP HL              ; Restore start of search
     POP BC              ; Restore current position
     PUSH BC             ; Save it
-    
+
     LD A, (BC)          ; Get element at current position
     LD (BC), D          ; Put minimum at current position
-    
+
     ; Put original element at minimum's position
     LD B, 0
     LD C, E             ; BC = offset to minimum
     ADD HL, BC          ; Point to minimum's original position
     LD (HL), A          ; Store original element
-    
+
     ; Move to next position
     POP HL              ; Restore current position
     INC HL              ; Next position
     POP BC              ; Restore counters
     DEC C               ; One fewer pass needed
     JR NZ, SelectionPassLoop
-    
+
 SelectionDone:
     POP DE
     POP HL
@@ -412,33 +412,33 @@ SelectionDone:
 SimpleSelectionSort:
     PUSH BC
     PUSH HL
-    
+
     ; For each position (except last)
     LD A, B
     DEC A
     LD C, A             ; C = positions to process
-    
+
 SimpleOuterLoop:
     PUSH BC
     PUSH HL
-    
+
     ; Find smallest in remaining array
     LD A, (HL)          ; Current smallest
     LD D, L : LD E, H   ; Address of smallest
     LD B, C             ; Elements to check
-    
+
 SimpleFindLoop:
     INC HL              ; Next element
     LD A, (HL)          ; Get element
     CP (DE)             ; Compare with current smallest
     JR NC, NotSmaller   ; Skip if not smaller
-    
+
     ; Found smaller element
     LD D, L : LD E, H   ; Update address of smallest
-    
+
 NotSmaller:
     DJNZ SimpleFindLoop
-    
+
     ; Swap smallest with current position
     POP HL              ; Current position
     LD A, (HL)          ; Get current element
@@ -446,12 +446,12 @@ NotSmaller:
     LD (HL), B          ; Put smallest at current
     LD A, (DE)
     LD (DE), A          ; Put current at smallest's position
-    
+
     INC HL              ; Next position
     POP BC
     DEC C
     JR NZ, SimpleOuterLoop
-    
+
     POP HL
     POP BC
     RET
@@ -473,18 +473,18 @@ Linear search checks each element until the target is found:
 ; Output: Carry clear if found (HL points to element), carry set if not found
 LinearSearch:
     PUSH BC
-    
+
 LinearSearchLoop:
     CP (HL)             ; Compare search value with current element
     JR Z, Found         ; Jump if found
     INC HL              ; Next element
     DJNZ LinearSearchLoop ; Continue if more elements
-    
+
     ; Not found
     SCF                 ; Set carry flag (not found)
     POP BC
     RET
-    
+
 Found:
     OR A                ; Clear carry flag (found)
     POP BC
@@ -497,19 +497,19 @@ Binary search works on sorted arrays by repeatedly dividing the search space in 
 
 ```text
 ; Binary search implementation (requires sorted array)
-; Input: HL = array start, DE = array end, A = search value  
+; Input: HL = array start, DE = array end, A = search value
 ; Output: Carry clear if found (HL points to element), carry set if not found
 BinarySearch:
     PUSH BC
     PUSH DE
-    
+
 BinarySearchLoop:
     ; Check if search space is empty
     OR A                ; Clear carry
     SBC HL, DE          ; HL = start - end
     ADD HL, DE          ; Restore HL
     JR NC, NotFound     ; If start >= end, not found
-    
+
     ; Calculate middle position
     PUSH HL             ; Save start
     OR A                ; Clear carry
@@ -518,34 +518,34 @@ BinarySearchLoop:
     RR L
     NEG                 ; HL = -(start - end) / 2 = (end - start) / 2
     ADD HL, DE          ; HL = end + (end - start) / 2 = middle
-    
+
     ; Compare middle element with search value
     LD B, (HL)          ; Get middle element
     CP B                ; Compare search value with middle
     JR Z, BinaryFound   ; Found it!
     JR C, SearchLeft    ; Search value < middle, search left half
-    
+
     ; Search right half
     INC HL              ; Start = middle + 1
     EX DE, HL           ; DE = new start
     POP HL              ; HL = old start (discard)
     EX DE, HL           ; HL = new start, DE = end
     JR BinarySearchLoop
-    
+
 SearchLeft:
     ; Search left half
     POP DE              ; DE = start (end = middle - 1)
     DEC HL              ; HL = middle - 1 (new end)
     EX DE, HL           ; HL = start, DE = new end
     JR BinarySearchLoop
-    
+
 BinaryFound:
     POP BC              ; Clean up stack
     OR A                ; Clear carry (found)
     POP DE
     POP BC
     RET
-    
+
 NotFound:
     SCF                 ; Set carry (not found)
     POP DE
@@ -566,73 +566,73 @@ SearchArray:
 ; Output: Z flag set if found, HL points to element
 LinearSearch:
     PUSH BC
-    
+
 LinearLoop:
     CP (HL)             ; Compare with current element
     JR Z, LinearFound   ; Found it!
     INC HL              ; Next element
     DJNZ LinearLoop     ; Continue if more elements
-    
+
     ; Not found
     OR 1                ; Clear Z flag (not found)
     POP BC
     RET
-    
+
 LinearFound:
     XOR A               ; Set Z flag (found)
     POP BC
     RET
 
 ; Simplified binary search for sorted arrays
-; Input: HL = array start, B = size, A = value to find  
+; Input: HL = array start, B = size, A = value to find
 ; Output: Z flag set if found
 SimpleBinarySearch:
     PUSH BC
     PUSH DE
     PUSH HL
-    
+
     LD C, 0             ; Low index
     LD D, B             ; High index
     DEC D               ; Make it 0-based
-    
+
 BinaryLoop:
     ; Check if search space is empty
     LD A, C
     CP D
     JR Z, CheckLast     ; If low == high, check that element
     JR NC, BinaryNotFound ; If low > high, not found
-    
+
     ; Calculate middle index: mid = (low + high) / 2
     LD A, C             ; A = low
     ADD A, D            ; A = low + high
     SRL A               ; A = (low + high) / 2
     LD E, A             ; E = middle index
-    
+
     ; Get middle element
     POP HL              ; Restore array start
     PUSH HL
     LD B, 0
     LD C, E             ; BC = middle index
     ADD HL, BC          ; HL points to middle element
-    
+
     ; Compare with search value
     LD A, (SearchValue) ; Get search value
     CP (HL)             ; Compare with middle element
     JR Z, BinaryFound   ; Found it!
     JR C, SearchLower   ; Search value < middle, search lower half
-    
+
     ; Search upper half
     LD C, E             ; Low = middle
     INC C               ; Low = middle + 1
     JR BinaryLoop
-    
+
 SearchLower:
-    ; Search lower half  
+    ; Search lower half
     LD A, E             ; High = middle
     DEC A               ; High = middle - 1
     LD D, A
     JR BinaryLoop
-    
+
 CheckLast:
     ; Check the last remaining element
     POP HL              ; Restore array start
@@ -642,14 +642,14 @@ CheckLast:
     LD A, (SearchValue)
     CP (HL)
     JR Z, BinaryFound
-    
+
 BinaryNotFound:
     OR 1                ; Clear Z flag (not found)
     JR BinaryExit
-    
+
 BinaryFound:
     XOR A               ; Set Z flag (found)
-    
+
 BinaryExit:
     POP HL
     POP DE
@@ -666,15 +666,15 @@ TestSearches:
     LD A, 7             ; Search for 7
     CALL LinearSearch   ; Should find it
     LD C, A             ; Save result (Z flag state)
-    
-    ; Test binary search  
+
+    ; Test binary search
     LD A, 13            ; Search for 13
     LD (SearchValue), A
     LD HL, SearchArray
     LD B, 10
     CALL SimpleBinarySearch ; Should find it
     LD D, A             ; Save result
-    
+
     ; Test search for non-existent value
     LD A, 6             ; Search for 6 (not in array)
     LD (SearchValue), A
@@ -723,7 +723,7 @@ SlowAccess:
     LD C, (Array + 80)
     LD D, (Array + 15)
 
-; FAST: Sequential memory access  
+; FAST: Sequential memory access
 FastAccess:
     LD HL, Array
     LD A, (HL + 10)     ; Use indexed addressing
@@ -738,7 +738,7 @@ FastAccess:
 ; Choose algorithm based on data characteristics
 
 ; For small arrays (< 20 elements): Insertion sort
-; For medium arrays (20-100 elements): Selection sort  
+; For medium arrays (20-100 elements): Selection sort
 ; For large arrays (> 100 elements): Consider quicksort or mergesort
 
 SmartSort:
@@ -747,15 +747,15 @@ SmartSort:
     JR C, UseInsertion
     CP 100
     JR C, UseSelection
-    
+
     ; Use more advanced sort for large arrays
     CALL AdvancedSort
     RET
-    
+
 UseInsertion:
     CALL InsertionSort
     RET
-    
+
 UseSelection:
     CALL SelectionSort
     RET
@@ -775,15 +775,15 @@ FindMinMax:
     INC HL              ; Start from second element
     DEC B               ; One fewer element to check
     JR Z, MinMaxDone    ; Exit if only one element
-    
+
 MinMaxLoop:
     LD D, (HL)          ; Get current element
-    
+
     ; Check if new maximum
     CP D
     JR NC, CheckMin     ; Skip if current max >= element
     LD A, D             ; New maximum
-    
+
 CheckMin:
     ; Check if new minimum
     LD E, C             ; Current minimum
@@ -792,11 +792,11 @@ CheckMin:
     JR NC, NextElement  ; Skip if element >= current min
     LD C, A             ; New minimum
     LD A, E             ; Restore maximum to A
-    
+
 NextElement:
     INC HL              ; Next element
     DJNZ MinMaxLoop
-    
+
 MinMaxDone:
     RET                 ; A = max, C = min
 ```
@@ -810,7 +810,7 @@ MinMaxDone:
 CountOccurrences:
     LD C, A             ; Save search value
     LD A, 0             ; Initialize counter
-    
+
 CountLoop:
     LD D, (HL)          ; Get array element
     LD E, A             ; Save counter
@@ -819,7 +819,7 @@ CountLoop:
     LD A, E             ; Restore counter
     JR NZ, NotMatch     ; Skip if no match
     INC A               ; Increment counter
-    
+
 NotMatch:
     INC HL              ; Next element
     DJNZ CountLoop      ; Continue for all elements
@@ -842,7 +842,7 @@ FindMaximum:
     INC HL              ; Start from second element
     DEC B               ; One fewer to check
     RET Z               ; Return if only one element
-    
+
 MaxLoop:
     CP (HL)             ; Compare current max with array element
     JR NC, NotBigger    ; Skip if current max >= element
@@ -857,7 +857,7 @@ NotBigger:
 ; Output: A = count
 CountValue:
     LD A, 0             ; Initialize counter
-    
+
 CountLoop:
     LD D, (HL)          ; Get array element
     LD E, A             ; Save counter
@@ -876,21 +876,21 @@ NoMatch:
 ReverseArray:
     PUSH BC
     PUSH HL
-    
+
     ; Calculate end address
     LD C, B             ; Size in C
     LD B, 0             ; BC = size
     ADD HL, BC          ; HL = end + 1
     DEC HL              ; HL = last element
-    
+
     ; DE = start, HL = end
     POP DE              ; DE = start
     POP BC              ; BC = size
-    
+
     ; Swap elements from both ends moving inward
     SRL B               ; B = size / 2 (number of swaps needed)
     RET Z               ; Return if empty array
-    
+
 ReverseLoop:
     LD A, (DE)          ; Get element from start
     LD C, (HL)          ; Get element from end
@@ -908,23 +908,23 @@ IsSorted:
     LD A, B
     CP 2
     JR C, ArraySorted   ; Arrays with 0 or 1 element are sorted
-    
+
     DEC B               ; Need to check B-1 pairs
-    
+
 SortedCheckLoop:
     LD A, (HL)          ; Get current element
     INC HL              ; Point to next element
     CP (HL)             ; Compare with next element
     JR Z, SameElements  ; Equal elements are OK
     JR C, SameElements  ; Current < next is OK
-    
+
     ; Current > next - not sorted
     LD A, 0             ; Not sorted
     RET
-    
+
 SameElements:
     DJNZ SortedCheckLoop ; Check next pair
-    
+
 ArraySorted:
     LD A, 1             ; Array is sorted
     RET
@@ -936,18 +936,18 @@ RemoveDuplicates:
     LD A, B
     CP 2
     RET C               ; Nothing to do for 0 or 1 element
-    
+
     PUSH HL             ; Save start of array
     LD C, 1             ; Write position (keep first element)
     LD A, (HL)          ; Previous element
     INC HL              ; Start from second element
     DEC B               ; One fewer to check
-    
+
 DuplicateLoop:
     LD D, (HL)          ; Current element
     CP D                ; Compare with previous
     JR Z, IsDuplicate   ; Skip if same as previous
-    
+
     ; Different element - keep it
     PUSH HL             ; Save read position
     POP HL              ; Restore start
@@ -958,11 +958,11 @@ DuplicateLoop:
     PUSH HL
     INC C               ; Advance write position
     LD A, D             ; Update previous element
-    
+
 IsDuplicate:
     INC HL              ; Next element
     DJNZ DuplicateLoop
-    
+
     LD B, C             ; Return new size
     POP HL              ; Restore array start
     RET
@@ -974,20 +974,20 @@ TestAlgorithms:
     LD B, 12
     CALL FindMaximum    ; Should return 9
     LD C, A             ; Save max
-    
+
     ; Test count occurrences (count 7s)
     LD HL, TestData
     LD B, 12
     LD C, 7             ; Count 7s
     CALL CountValue     ; Should return 3
     LD D, A             ; Save count
-    
+
     ; Test if sorted
     LD HL, TestData
     LD B, 12
     CALL IsSorted       ; Should return 0 (not sorted)
     LD E, A             ; Save result
-    
+
     RET                 ; C=max, D=count, E=sorted
 ```
 
@@ -1060,26 +1060,26 @@ SortedArray:    DB 1, 3, 5, 7, 9, 11, 13, 15           ; 8 elements
 SmartSort:
     ; Input: HL = array, B = size
     ; Automatically choose best sorting algorithm
-    
+
     ; Check if already sorted (use optimized check)
     CALL QuickSortedCheck
     RET Z               ; Return if already sorted
-    
+
     ; Choose algorithm based on size
     LD A, B
     CP 8                ; Small array threshold
     JR C, UseInsertion
     CP 20               ; Medium array threshold
     JR C, UseSelection
-    
+
     ; For large arrays, use bubble sort (best we have)
     CALL BubbleSort
     RET
-    
+
 UseInsertion:
     CALL SimpleInsertionSort
     RET
-    
+
 UseSelection:
     CALL SimpleSelectionSort
     RET
@@ -1089,23 +1089,23 @@ QuickSortedCheck:
     LD A, B
     CP 2
     RET C               ; Arrays <= 1 element are sorted
-    
+
     DEC B               ; Check B-1 adjacent pairs
-    
+
 QuickSortLoop:
     LD A, (HL)          ; Current element
     INC HL              ; Next element
     CP (HL)             ; Compare current with next
     JR Z, QuickContinue ; Equal is OK
     JR C, QuickContinue ; Current < next is OK
-    
+
     ; Found out-of-order pair
     OR 1                ; Clear Z flag (not sorted)
     RET
-    
+
 QuickContinue:
     DJNZ QuickSortLoop
-    
+
     XOR A               ; Set Z flag (is sorted)
     RET
 
@@ -1113,47 +1113,47 @@ QuickContinue:
 SimpleInsertionSort:
     PUSH BC
     PUSH HL
-    
+
     LD A, B
     CP 2
     JR C, InsertionDone ; Skip if <= 1 element
-    
+
     INC HL              ; Start from second element
     DEC B               ; One fewer to process
-    
+
 InsertionMainLoop:
     LD A, (HL)          ; Element to insert
     PUSH HL             ; Save current position
     PUSH BC             ; Save counter
-    
+
     ; Find insertion point by searching backwards
     LD C, A             ; Save element to insert
-    
+
 InsertionSearchBack:
     DEC HL              ; Look at previous element
     LD A, (HL)          ; Get previous element
     CP C                ; Compare with element to insert
     JR C, InsertionFound ; Previous < current, insert here
     JR Z, InsertionFound ; Previous = current, insert here
-    
+
     ; Previous > current, need to shift it
     INC HL              ; Back to current position
     LD (HL), A          ; Move previous element forward
     DEC HL              ; Back to previous position
-    
+
     ; Check if we're at the beginning
     ; (Simplified boundary check)
     JR InsertionSearchBack
-    
+
 InsertionFound:
     INC HL              ; Move to insertion point
     LD (HL), C          ; Insert the element
-    
+
     POP BC              ; Restore counter
     POP HL              ; Restore position
     INC HL              ; Next element to process
     DJNZ InsertionMainLoop
-    
+
 InsertionDone:
     POP HL
     POP BC
@@ -1163,24 +1163,24 @@ InsertionDone:
 SimpleSelectionSort:
     PUSH BC
     PUSH HL
-    
+
     LD A, B
     DEC A
     JR Z, SelectionDone
     LD C, A             ; C = passes needed
-    
+
 SelectionMainLoop:
     PUSH BC
     PUSH HL
-    
+
     ; Find minimum in remaining array
     LD A, (HL)          ; Current minimum
     LD D, A
     LD E, 0             ; Offset to minimum
-    
+
     LD B, C             ; Elements left to check
     LD A, 0             ; Current offset
-    
+
 SelectionFindMin:
     INC HL
     INC A
@@ -1189,19 +1189,19 @@ SelectionFindMin:
     CP C                ; Compare
     LD A, C             ; Restore element
     JR C, SelectionNotMin ; Skip if current min < element
-    
+
     ; Found new minimum
     LD D, A             ; New minimum value
     LD E, B             ; Save offset (reverse calculation)
-    
+
 SelectionNotMin:
     DJNZ SelectionFindMin
-    
+
     ; Swap minimum with first position
     POP HL              ; Restore start position
     LD A, (HL)          ; Get first element
     LD (HL), D          ; Put minimum first
-    
+
     ; Calculate address of minimum element
     PUSH HL
     LD A, C
@@ -1211,12 +1211,12 @@ SelectionNotMin:
     ADD HL, BC          ; Point to minimum's position
     LD (HL), A          ; Put first element there
     POP HL
-    
+
     INC HL              ; Next position
     POP BC
     DEC C
     JR NZ, SelectionMainLoop
-    
+
 SelectionDone:
     POP HL
     POP BC
@@ -1226,16 +1226,16 @@ SelectionDone:
 SmartSearch:
     ; Input: HL = array, B = size, A = search value
     ; Output: Z flag set if found
-    
+
     PUSH AF             ; Save search value
     CALL QuickSortedCheck ; Check if array is sorted
     POP AF              ; Restore search value
     JR NZ, UseLinearSearch ; Use linear search if not sorted
-    
+
     ; Use binary search for sorted array
     CALL SimpleBinarySearch
     RET
-    
+
 UseLinearSearch:
     CALL LinearSearch
     RET
@@ -1246,21 +1246,21 @@ TestToolkit:
     LD HL, SmallArray
     LD B, 5
     CALL SmartSort      ; Should use insertion sort
-    
+
     ; Test 2: Sort medium array
     LD HL, MediumArray
     LD B, 10
     CALL SmartSort      ; Should use selection sort
-    
+
     ; Test 3: Search in sorted array
     LD HL, SortedArray
     LD B, 8
     LD A, 7             ; Search for 7
     CALL SmartSearch    ; Should use binary search
-    
+
     ; Test 4: Performance comparison
     ; Time bubble sort vs selection sort on same data
-    
+
     RET
 
 ; Performance testing framework
@@ -1268,7 +1268,7 @@ TimeSort:
     ; Simple timing by counting iterations
     ; (Real timing would use hardware timer)
     LD DE, 0            ; Iteration counter
-    
+
 TimingLoop:
     PUSH HL
     PUSH BC

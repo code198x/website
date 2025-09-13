@@ -31,6 +31,7 @@ Join the legends! With **32 comprehensive lessons**, you'll complete **Retro Arc
 ## What You'll Complete
 
 Finish **Retro Arcade** and launch your professional career:
+
 - Complete arcade collection with professional testing and optimization
 - Comprehensive professional portfolio showcasing all your skills
 - Established independent development studio with commercial capabilities
@@ -40,24 +41,28 @@ Finish **Retro Arcade** and launch your professional career:
 ## Tier Overview
 
 **Lessons 1-8: Portfolio Completion**
+
 - Professional portfolio development and presentation
 - Complete project documentation and case studies
 - Advanced demonstration and presentation techniques
 - Professional branding and identity development
 
 **Lessons 9-16: Studio Establishment**
+
 - Independent development studio setup and management
 - Professional business development and planning
 - Advanced project management and workflow systems
 - Commercial capabilities and service offerings
 
 **Lessons 17-24: Industry Integration**
+
 - Professional networking and community engagement
 - Industry recognition and expert positioning
 - Advanced collaboration and partnership development
 - Professional speaking and teaching opportunities
 
 **Lessons 25-32: Legacy & Future**
+
 - Complete mastery demonstration and certification
 - Professional legacy and contribution to retro gaming
 - Advanced mentoring and knowledge sharing

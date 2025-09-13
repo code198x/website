@@ -35,24 +35,28 @@ Begin developing **Quantum Odyssey** - an epic space exploration adventure featu
 ## Tier Overview
 
 **Lessons 1-8: Real-Time Animation Fundamentals**
+
 - Frame-rate independent animation systems
 - Precise timing and synchronization
 - Smooth interpolation algorithms
 - Animation state management
 
 **Lessons 9-16: Advanced Motion Graphics**
+
 - Easing and transition algorithms
 - Complex animation sequences
 - Layered animation systems
 - Professional motion design
 
 **Lessons 17-24: Performance Optimization**
+
 - Real-time rendering optimization
 - Memory-efficient animation data
 - CPU cycle management for graphics
 - Smooth 50Hz animation techniques
 
 **Lessons 25-32: Professional Animation Systems**
+
 - Complete animation frameworks
 - Reusable animation components
 - Professional quality control

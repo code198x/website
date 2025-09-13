@@ -87,7 +87,6 @@ hardware_availability: "rare"
 
 # Media
 description: "The British computer that conquered France with colorful graphics and distinctive serial attributes system."
-image: "/images/systems/oric-atmos.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -102,7 +101,7 @@ order: 24
 
 # Oric Atmos
 
-*Coming Soon*
+_Coming Soon_
 
 The Oric Atmos was the refined version of the Oric-1, fixing its predecessor's keyboard issues and adding a better BASIC. While it struggled in the UK against the Spectrum, it found massive success in France, where it became a cultural phenomenon.
 
@@ -119,9 +118,10 @@ The Oric's unique serial attributes system for color graphics and its AY sound c
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the introductory Oric curriculum will include:
+
 - 6502 assembly basics
 - Serial attributes and HIRES graphics
 - AY-3-8912 sound programming

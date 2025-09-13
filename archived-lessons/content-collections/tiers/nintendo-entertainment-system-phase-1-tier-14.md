@@ -27,6 +27,7 @@ Create sophisticated game development tools! Learn the systems that enable rich,
 ## What You'll Add to Quest Builder
 
 Expand your game creation capabilities:
+
 - Implement visual scripting systems for non-programmers
 - Create advanced content creation and editing tools
 - Build sophisticated asset management systems
@@ -35,24 +36,28 @@ Expand your game creation capabilities:
 ## Tier Overview
 
 **Lessons 1-8: Scripting and Logic Systems**
+
 - Implementing visual scripting for game logic
 - Creating event-driven programming systems
 - Building conditional logic and decision trees
 - Designing user-friendly programming interfaces
 
 **Lessons 9-16: Content Creation Tools**
+
 - Advanced character and item creation systems
 - World and level design tools
 - Dialogue and story editing systems
 - Asset creation and management workflows
 
 **Lessons 17-24: Complex Gameplay Systems**
+
 - RPG mechanics (combat, inventory, progression)
 - Quest and mission management systems
 - Interactive dialogue and story systems
 - Game balance and mechanics tuning tools
 
 **Lessons 25-32: Tool Integration and Workflow**
+
 - Integrating multiple creation tools seamlessly
 - Building efficient content creation workflows
 - Creating user-friendly interfaces for complex systems

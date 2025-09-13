@@ -27,6 +27,7 @@ Insert coin to continue! With **32 retro-inspired lessons**, you'll create games
 ## What You'll Build
 
 Create **ARCADE LEGENDS COLLECTION** - featuring remixes of:
+
 - A maze chase game with smart ghost AI
 - A climbing game with pattern-based obstacles
 - A space defender with endless waves
@@ -36,24 +37,28 @@ Create **ARCADE LEGENDS COLLECTION** - featuring remixes of:
 ## Tier Overview
 
 **Lessons 1-8: "Arcade Philosophy" - Pure Gameplay**
+
 - Stripping games to their essential fun
 - Creating immediate understanding
 - The psychology of "just one more game"
 - Making failure fun and retry instant
 
 **Lessons 9-16: "Classic Mechanics" - Timeless Design**
+
 - Maze algorithms and optimal paths
 - Pattern-based enemy behaviors
 - Collision that feels fair
 - Power-ups that change everything
 
 **Lessons 17-24: "Difficulty Mastery" - The Perfect Curve**
+
 - Ramping challenge without frustration
 - Speed increases that feel natural
 - New patterns that surprise veterans
 - Making every game feel winnable
 
 **Lessons 25-32: "Score Attack Glory" - Competition**
+
 - Scoring systems that reward skill
 - Risk/reward mechanics
 - Battery-backed high score tables

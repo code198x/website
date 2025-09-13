@@ -31,6 +31,7 @@ Create immersive worlds! With **32 comprehensive lessons**, you'll develop RPG a
 ## What You'll Complete
 
 Finish your **Epic Game Collection** with comprehensive genre coverage:
+
 - Fast-paced action with Neon Blaster showcasing arcade precision
 - Epic adventure with Crystal Caverns Quest featuring exploration and story
 - Strategic thinking with Mind Maze demonstrating puzzle and strategy design
@@ -40,24 +41,28 @@ Finish your **Epic Game Collection** with comprehensive genre coverage:
 ## Tier Overview
 
 **Lessons 1-8: Character & Progression Systems**
+
 - Character statistics and attribute systems
 - Experience points and level progression
 - Skill trees and character customization
 - Character class and role design
 
 **Lessons 9-16: World Simulation & Dynamics**
+
 - Dynamic world systems and AI inhabitants
 - Economic simulation and resource management
 - Weather, time, and environmental systems
 - Emergent world behavior and events
 
 **Lessons 17-24: Complex Game Systems**
+
 - Inventory and equipment management
 - Crafting and item creation systems
 - Quest and objective management
 - Save game and persistence systems
 
 **Lessons 25-32: Player Engagement & Depth**
+
 - Long-term progression and goals
 - Player choice and meaningful decisions
 - Replayability and content variety

@@ -69,24 +69,28 @@ The game celebrates what makes the Spectrum unique:
 ### Tiers 5-8 Development Roadmap
 
 **Tier 5**: Basic movement and display
+
 - Character-based sprite movement
 - Simple collision detection
 - Basic level representation
 - Player controls and feedback
 
 **Tier 6**: Sound and effects
+
 - Beeper sound effects for actions
 - Visual feedback for collisions
 - Power-up collection mechanics
 - Basic animation sequences
 
 **Tier 7**: Level design and progression
+
 - Multiple levels with increasing difficulty
 - Color-based puzzle elements
 - Save/load progress functionality
 - Performance optimisation
 
 **Tier 8**: Polish and completion
+
 - Smooth gameplay refinement
 - Complete level progression
 - High score tracking

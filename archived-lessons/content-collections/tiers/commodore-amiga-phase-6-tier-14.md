@@ -27,6 +27,7 @@ Time to architect legendary game engines! With **32 comprehensive lessons**, you
 ## What You'll Build
 
 Create **AMIGA GAME ENGINE** - a professional engine framework featuring:
+
 - Modular architecture that supports multiple game types
 - Sophisticated component systems that maximize code reuse
 - Professional engine frameworks that streamline game development
@@ -36,24 +37,28 @@ Create **AMIGA GAME ENGINE** - a professional engine framework featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Engine Foundation!" - Advanced Architecture Design**
+
 - Professional game engine architecture and design patterns
 - Sophisticated module systems and component-based design
 - Advanced engine initialization and resource management
 - The architectural foundation that made professional Amiga engines possible
 
 **Lessons 9-16: "Component Systems!" - Advanced Engine Organization**
+
 - Professional component-based architecture and entity systems
 - Advanced scene management and game object coordination
 - Sophisticated engine subsystem integration and communication
 - The organizational systems that created maintainable Amiga engines
 
 **Lessons 17-24: "Scalable Frameworks!" - Professional Engine Design**
+
 - Advanced engine frameworks that support multiple game types
 - Professional plugin systems and extensible architecture
 - Sophisticated data-driven design and configuration systems
 - The scalable architecture that made studio development efficient
 
 **Lessons 25-32: "Complete Engine!" - Master-Level Architecture**
+
 - Professional engine integration and complete system coordination
 - Advanced engine optimization and performance architecture
 - Commercial-quality engine documentation and development tools

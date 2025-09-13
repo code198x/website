@@ -27,6 +27,7 @@ Optimize sophisticated games for ZX Spectrum! With **32 optimization-focused les
 ## What You'll Build
 
 Create **SPECTRUM PERFORMANCE OPTIMIZER** - your optimization masterpiece:
+
 - Advanced profiling tools that identify performance bottlenecks
 - Optimization techniques that dramatically improve game performance
 - Memory management systems that maximize available resources
@@ -36,24 +37,28 @@ Create **SPECTRUM PERFORMANCE OPTIMIZER** - your optimization masterpiece:
 ## Performance Mastery Areas
 
 **Lessons 1-8: "Performance Analysis" - Profiling and Measurement**
+
 - Advanced performance profiling techniques for ZX Spectrum games
 - CPU cycle analysis and timing measurement in Z80 assembly
 - Memory usage analysis and optimization opportunity identification
 - Bottleneck identification in complex game systems
 
 **Lessons 9-16: "Algorithm Optimization" - Efficient Code Techniques**
+
 - Advanced algorithm optimization for game-specific calculations
 - Loop optimization and unrolling for critical performance paths
 - Register allocation strategies for maximum efficiency
 - Advanced instruction selection for optimal performance
 
 **Lessons 17-24: "Memory Optimization" - Resource Management**
+
 - Advanced memory layout optimization for complex games
 - Data structure optimization for memory and performance
 - Compression techniques for graphics and audio assets
 - Dynamic memory management within ZX Spectrum constraints
 
 **Lessons 25-32: "System Optimization" - Holistic Performance**
+
 - Multi-system optimization balancing CPU, memory, and I/O
 - Frame-rate optimization and consistent timing systems
 - Advanced caching strategies for improved performance

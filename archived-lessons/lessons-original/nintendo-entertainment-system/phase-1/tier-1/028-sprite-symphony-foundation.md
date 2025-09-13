@@ -80,7 +80,7 @@ AudioEngine:
         EnvelopePhase: .byte    ; Envelope progression
     .endstruct
 
-; Visual system  
+; Visual system
 VisualEngine:
     .struct
         ActiveSprites: .byte    ; Number of active sprites
@@ -117,11 +117,11 @@ InitSpriteSymphony:
     JSR InitInputEngine
     JSR InitNoteSystem
     JSR InitGameState
-    
+
     ; Set initial mode
     LDA #SYMPHONY_MODE_DEMO
     STA CurrentMode
-    
+
     ; Start demo sequence
     JSR StartDemoMode
     RTS
@@ -133,7 +133,7 @@ InitSpriteSymphony:
 ; Sprite Symphony foundation architecture
 Main:
     JSR InitSpriteSymphony
-    
+
 MainLoop:
     JSR UpdateInput
     JSR UpdateAudio
@@ -153,13 +153,13 @@ InitAudioSystem:
     ; Set up NES APU for music
     LDA #%00000001       ; Enable pulse channel 1
     STA $4015
-    
+
     ; Initialize audio variables
     LDA #$00
     STA CurrentNote
     STA AudioTimer
     STA ChannelActive
-    
+
     ; Set default envelope
     LDA #%10111111       ; Duty, length counter, envelope
     STA $4000
@@ -173,7 +173,7 @@ InitVisualSystem:
     STA ActiveSprites
     STA AnimPhase
     STA EffectTimer
-    
+
     ; Clear all sprites
     LDX #$00
     LDA #$FF             ; Y = 255 hides sprites
@@ -185,7 +185,7 @@ ClearSprites:
     INX
     CPX #$80             ; 32 sprites * 4 bytes
     BNE ClearSprites
-    
+
     RTS
 
 InitNoteManager:
@@ -194,7 +194,7 @@ InitNoteManager:
     STA ActiveNoteCount
     STA CurrentScale
     STA SequencePosition
-    
+
     ; Clear note arrays
     LDX #$07             ; 8 notes max
 ClearNotes:
@@ -205,7 +205,7 @@ ClearNotes:
     STA NoteSpriteY,X    ; Hide note sprites
     DEX
     BPL ClearNotes
-    
+
     RTS
 
 InitDemoMode:
@@ -213,7 +213,7 @@ InitDemoMode:
     LDA #$00
     STA DemoStep
     STA DemoTimer
-    
+
     ; Start first demo note
     JSR StartDemoSequence
     RTS
@@ -222,16 +222,16 @@ UpdateInput:
     ; Read controller and detect new presses
     JSR ReadController
     STA CurrentButtons
-    
+
     ; Detect new button presses
     EOR PreviousButtons
     AND CurrentButtons
     STA NewPresses
-    
+
     ; Save for next frame
     LDA CurrentButtons
     STA PreviousButtons
-    
+
     ; Process demo input (auto-generates input)
     JSR ProcessDemoInput
     RTS
@@ -242,10 +242,10 @@ ProcessDemoInput:
     LDA DemoTimer
     AND #$1F             ; Every 32 frames
     BNE DemoInputDone
-    
+
     ; Trigger next demo action
     JSR TriggerDemoNote
-    
+
 DemoInputDone:
     RTS
 
@@ -255,14 +255,14 @@ TriggerDemoNote:
     LDA DemoSequence,X
     CMP #$FF             ; End marker?
     BEQ ResetDemoSequence
-    
+
     ; Play this note
     JSR PlayMusicalNote
-    
+
     ; Advance sequence
     INC SequencePosition
     RTS
-    
+
 ResetDemoSequence:
     ; Loop demo sequence
     LDA #$00
@@ -272,21 +272,21 @@ ResetDemoSequence:
 PlayMusicalNote:
     ; A = note index (0-7)
     TAX
-    
+
     ; Set audio frequency
     LDA NoteFrequencies,X
     STA $4002            ; Frequency low
     LDA NoteFreqHigh,X
     STA $4003            ; Frequency high
-    
+
     ; Reset envelope
     LDA #%10111111
     STA $4000
-    
+
     ; Set note duration
     LDA #$20             ; 32 frames
     STA AudioTimer
-    
+
     ; Create visual note
     JSR CreateNoteSprite
     RTS
@@ -306,18 +306,18 @@ FindSprite:
     CPY #$20             ; Check 8 sprites
     BNE FindSprite
     RTS                  ; No available sprites
-    
+
 FoundSprite:
     ; Set sprite position based on note
     LDA NotePosY,X       ; Y position based on pitch
     STA SpriteData+0,Y
-    
+
     LDA NoteTiles,X      ; Tile based on note
     STA SpriteData+1,Y
-    
+
     LDA #%00000001       ; Palette 1
     STA SpriteData+2,Y
-    
+
     LDA SequencePosition ; X position based on sequence
     ASL                  ; * 2
     ASL                  ; * 4
@@ -325,42 +325,42 @@ FoundSprite:
     CLC
     ADC #$40             ; Base X position
     STA SpriteData+3,Y
-    
+
     ; Mark note as active
     LDA #$01
     STA NoteActive,X
     LDA #$20
     STA NoteTimers,X
-    
+
     ; Store sprite index for this note
     TYA
     LSR                  ; Divide by 4 to get sprite number
     LSR
     STA NoteSpriteIndex,X
-    
+
     RTS
 
 UpdateAudio:
     ; Update audio system
     LDA AudioTimer
     BEQ AudioSilent
-    
+
     DEC AudioTimer
-    
+
     ; Check if note should end
     LDA AudioTimer
     BNE AudioDone
-    
+
     ; Silence audio
     LDA #$00
     STA $4000
     JMP AudioDone
-    
+
 AudioSilent:
     ; Ensure audio is off
     LDA #$00
     STA $4000
-    
+
 AudioDone:
     RTS
 
@@ -377,16 +377,16 @@ UpdateNoteSprites:
 UpdateNoteLoop:
     LDA NoteActive,X
     BEQ NextNoteSprite
-    
+
     ; Update this note's timer
     DEC NoteTimers,X
     LDA NoteTimers,X
     BNE AnimateNote
-    
+
     ; Note finished - hide sprite
     LDA #$00
     STA NoteActive,X
-    
+
     ; Hide the sprite
     LDA NoteSpriteIndex,X
     ASL                  ; * 2
@@ -395,34 +395,34 @@ UpdateNoteLoop:
     LDA #$FF
     STA SpriteData,Y     ; Hide sprite
     JMP NextNoteSprite
-    
+
 AnimateNote:
     ; Animate the note sprite
     LDA NoteSpriteIndex,X
     ASL
     ASL
     TAY
-    
+
     ; Pulsing animation
     LDA AnimPhase
     AND #$07             ; 8-frame pulse
     CMP #$04
     BCC PulseUp
-    
+
     ; Pulse down
     LDA NotePosY,X
     CLC
     ADC #$02
     JMP StoreNoteY
-    
+
 PulseUp:
     LDA NotePosY,X
     SEC
     SBC #$02
-    
+
 StoreNoteY:
     STA SpriteData,Y     ; Update Y position
-    
+
 NextNoteSprite:
     DEX
     BPL UpdateNoteLoop
@@ -432,9 +432,9 @@ UpdateVisualEffects:
     ; Update background visual effects
     LDA EffectTimer
     BEQ EffectsDone
-    
+
     DEC EffectTimer
-    
+
     ; Simple background sprite animation
     LDA AnimPhase
     LSR                  ; Slower animation
@@ -442,7 +442,7 @@ UpdateVisualEffects:
     CLC
     ADC #$60             ; Base tile
     STA BackgroundTile
-    
+
 EffectsDone:
     RTS
 
@@ -456,14 +456,14 @@ UpdateSequencer:
     ; Update music sequencer
     LDA AudioTimer
     BNE SequencerDone
-    
+
     ; Check if we should play next note
     LDA DemoTimer
     AND #$1F
     BNE SequencerDone
-    
+
     ; Time for next note handled in input
-    
+
 SequencerDone:
     RTS
 
@@ -471,11 +471,11 @@ UpdateEffectTimers:
     ; Update various effect timers
     LDA EffectTimer
     BNE EffectTimerDone
-    
+
     ; Restart effect
     LDA #$40             ; 64 frame effect
     STA EffectTimer
-    
+
 EffectTimerDone:
     RTS
 
@@ -561,36 +561,36 @@ NoteManager:
 CreateMusicalNote:
     ; Create a new musical note
     ; A = note index (0-7), X = duration, Y = velocity
-    
+
     ; Check if note slot is available
     STA TempNoteIndex
     TAX
     LDA ActiveNotes
     AND NoteBitMasks,X
     BNE NoteSlotBusy        ; Note already active
-    
+
     ; Activate note
     LDA ActiveNotes
     ORA NoteBitMasks,X
     STA ActiveNotes
-    
+
     ; Set note properties
     LDX TempNoteIndex
     TYA                     ; Velocity
     STA NoteVelocities,X
     TXA                     ; Duration (passed in X)
     STA NoteDurations,X
-    
+
     ; Initialize visual state
     LDA #$00
     STA VisualStates,X
-    
+
     ; Create associated sprite
     JSR CreateNoteSprite
-    
+
     ; Start audio for this note
     JSR StartNoteAudio
-    
+
     RTS
 
 NoteSlotBusy:
@@ -600,15 +600,15 @@ NoteSlotBusy:
 UpdateAllNotes:
     ; Update all active musical notes
     LDX #$07                ; 8 possible notes
-    
+
 UpdateNoteLoop:
     LDA ActiveNotes
     AND NoteBitMasks,X
     BEQ NextNote            ; Note not active
-    
+
     ; Update this note
     JSR UpdateSingleNote
-    
+
 NextNote:
     DEX
     BPL UpdateNoteLoop
@@ -619,18 +619,18 @@ UpdateSingleNote:
     ; Decrement duration
     LDA NoteDurations,X
     BEQ DeactivateNote      ; Duration expired
-    
+
     DEC NoteDurations,X
-    
+
     ; Update visual animation
     INC VisualStates,X
-    
+
     ; Update sprite animation
     JSR UpdateNoteSprite
-    
+
     ; Update audio envelope
     JSR UpdateNoteAudio
-    
+
     RTS
 
 DeactivateNote:
@@ -640,7 +640,7 @@ DeactivateNote:
     EOR #$FF                ; Invert bit mask
     AND ActiveNotes         ; Clear the bit
     STA ActiveNotes
-    
+
     ; Hide associated sprite
     LDA SpriteIndices,X
     ASL
@@ -648,12 +648,12 @@ DeactivateNote:
     TAY
     LDA #$FF                ; Y = 255 hides sprite
     STA SpriteData,Y
-    
+
     ; Stop audio if no other notes active
     LDA ActiveNotes
     BNE SomeNotesActive
     JSR StopAllAudio
-    
+
 SomeNotesActive:
     RTS
 
@@ -700,12 +700,12 @@ UpdateBeatPhase:
     LDA BeatTimer
     AND #$1F                ; 32-frame beat cycle
     STA BeatPhase
-    
+
     ; Trigger beat visualization
     LDA BeatPhase
     BNE BeatPhaseDone
     JSR TriggerBeatVisual
-    
+
 BeatPhaseDone:
     RTS
 
@@ -714,10 +714,10 @@ TriggerBeatVisual:
     LDA VisualizationType
     CMP #VIZ_BEAT_PULSE
     BNE BeatVisualDone
-    
+
     ; Create pulsing beat sprites
     JSR CreateBeatPulseSprites
-    
+
 BeatVisualDone:
     RTS
 
@@ -725,7 +725,7 @@ CreateBeatPulseSprites:
     ; Create sprites that pulse with the beat
     LDX #$04                ; Start with sprite 4 (after note sprites)
     LDY #$00                ; Effect counter
-    
+
 BeatSpriteLoop:
     ; Position sprites in formation
     LDA BeatFormationX,Y
@@ -736,7 +736,7 @@ BeatSpriteLoop:
     STA SpriteData+1,X      ; Tile
     LDA #%00000010          ; Beat palette
     STA SpriteData+2,X      ; Attributes
-    
+
     ; Next sprite
     TXA
     CLC
@@ -745,30 +745,30 @@ BeatSpriteLoop:
     INY
     CPY #$04                ; 4 beat sprites
     BNE BeatSpriteLoop
-    
+
     ; Set beat effect duration
     LDA #$10                ; 16 frames
     STA BeatEffectTimer
-    
+
     RTS
 
 UpdateVisualizationEffects:
     ; Update active visual effects
     LDA BeatEffectTimer
     BEQ VisualizationDone
-    
+
     DEC BeatEffectTimer
-    
+
     ; Animate beat effect sprites
     JSR AnimateBeatSprites
-    
+
     ; Check if effect finished
     LDA BeatEffectTimer
     BNE VisualizationDone
-    
+
     ; Hide beat sprites
     JSR HideBeatSprites
-    
+
 VisualizationDone:
     RTS
 
@@ -778,11 +778,11 @@ AnimateBeatSprites:
     SEC
     SBC BeatEffectTimer     ; Calculate expansion
     STA ExpansionRadius
-    
+
     ; Update beat sprite positions
     LDX #$10                ; Sprite 4 data offset
     LDY #$00                ; Formation index
-    
+
 AnimateBeatLoop:
     ; Expand from center
     LDA #$80                ; Center X
@@ -791,14 +791,14 @@ AnimateBeatLoop:
     CLC
     ADC ExpansionRadius
     STA SpriteData+3,X
-    
+
     LDA #$80                ; Center Y
     CLC
     ADC BeatExpansionY,Y
     CLC
     ADC ExpansionRadius
     STA SpriteData+0,X
-    
+
     ; Next sprite
     TXA
     CLC
@@ -807,14 +807,14 @@ AnimateBeatLoop:
     INY
     CPY #$04
     BNE AnimateBeatLoop
-    
+
     RTS
 
 HideBeatSprites:
     ; Hide beat effect sprites
     LDX #$10                ; Start at sprite 4
     LDY #$04                ; 4 sprites to hide
-    
+
 HideBeatLoop:
     LDA #$FF                ; Y = 255 hides sprite
     STA SpriteData,X
@@ -824,7 +824,7 @@ HideBeatLoop:
     TAX
     DEY
     BNE HideBeatLoop
-    
+
     RTS
 
 ; Beat formation data
@@ -877,12 +877,12 @@ ProcessDemoMode:
     LDA NewPresses
     AND #%10000000          ; A button
     BEQ DemoModeDone
-    
+
     ; Switch to play mode
     LDA #MODE_PLAY
     STA InteractionMode
     JSR InitPlayMode
-    
+
 DemoModeDone:
     RTS
 
@@ -891,21 +891,21 @@ ProcessPlayMode:
     LDA NewPresses
     AND #%00001111          ; Directional buttons
     BEQ CheckPlayModeSwitch
-    
+
     ; Map directions to notes
     JSR MapInputToNote
     JSR PlayInteractiveNote
-    
+
 CheckPlayModeSwitch:
     LDA NewPresses
     AND #%01000000          ; B button
     BEQ PlayModeDone
-    
+
     ; Switch to sequence mode
     LDA #MODE_SEQUENCE
     STA InteractionMode
     JSR InitSequenceMode
-    
+
 PlayModeDone:
     RTS
 
@@ -916,31 +916,31 @@ MapInputToNote:
     BEQ CheckDown
     LDA #$07                ; Highest note
     JMP StoreSelectedNote
-    
+
 CheckDown:
     LDA NewPresses
     AND #%00000100          ; Down
     BEQ CheckLeft
     LDA #$00                ; Lowest note
     JMP StoreSelectedNote
-    
+
 CheckLeft:
     LDA NewPresses
     AND #%00000010          ; Left
     BEQ CheckRight
     LDA #$02                ; Mid-low note
     JMP StoreSelectedNote
-    
+
 CheckRight:
     LDA NewPresses
     AND #%00000001          ; Right
     BEQ NoNoteSelected
     LDA #$05                ; Mid-high note
-    
+
 StoreSelectedNote:
     STA SelectedNote
     RTS
-    
+
 NoNoteSelected:
     LDA #$FF                ; No note
     STA SelectedNote
@@ -951,7 +951,7 @@ PlayInteractiveNote:
     LDA SelectedNote
     CMP #$FF
     BEQ InteractiveNoteDone
-    
+
     ; Create note with user timing
     TAX                     ; Note index
     LDA #$30                ; Default duration
@@ -960,7 +960,7 @@ PlayInteractiveNote:
     TAX                     ; Velocity in X
     LDA SelectedNote        ; Note index in A
     JSR CreateMusicalNote
-    
+
 InteractiveNoteDone:
     RTS
 
@@ -968,7 +968,7 @@ InitPlayMode:
     ; Initialize interactive play mode
     LDA #$FF
     STA SelectedNote
-    
+
     ; Visual feedback for mode change
     JSR ShowPlayModeIndicator
     RTS
@@ -978,7 +978,7 @@ InitSequenceMode:
     LDA #$00
     STA SequenceEditPosition
     STA SequenceLength
-    
+
     ; Visual feedback for mode change
     JSR ShowSequenceModeIndicator
     RTS
@@ -1029,7 +1029,7 @@ Create the complete Sprite Symphony foundation that integrates all systems:
 ; Complete Sprite Symphony foundation implementation
 Main:
     JSR InitSpriteSymphony
-    
+
 MainLoop:
     JSR UpdateInput
     JSR UpdateAudioSystem
@@ -1050,12 +1050,12 @@ InitAudio:
     ; Initialize audio system
     LDA #%00000001       ; Enable pulse 1
     STA $4015
-    
+
     LDA #$00
     STA AudioChannel
     STA MasterVolume
     STA CurrentTone
-    
+
     ; Set up pulse channel
     LDA #%10111111       ; Duty, envelope
     STA $4000
@@ -1069,7 +1069,7 @@ InitVisuals:
     STA VisualMode
     STA AnimationPhase
     STA EffectActive
-    
+
     ; Clear all sprites
     LDX #$00
     LDA #$FF
@@ -1081,7 +1081,7 @@ ClearAllSprites:
     INX
     CPX #$80             ; 32 sprites max
     BNE ClearAllSprites
-    
+
     ; Initialize background effects
     JSR InitBackgroundEffects
     RTS
@@ -1092,7 +1092,7 @@ InitNotes:
     STA ActiveNotesMask
     STA NoteSequencePos
     STA SequenceTimer
-    
+
     ; Clear note data
     LDX #$07
 ClearNoteData:
@@ -1103,7 +1103,7 @@ ClearNoteData:
     STA NoteSpriteY,X
     DEX
     BPL ClearNoteData
-    
+
     RTS
 
 InitInteraction:
@@ -1112,7 +1112,7 @@ InitInteraction:
     STA InteractionMode
     STA UserInput
     STA PrevInput
-    
+
     ; Set up mode indicator
     JSR UpdateModeDisplay
     RTS
@@ -1135,12 +1135,12 @@ UpdateInput:
     STA PrevInput
     JSR ReadController
     STA UserInput
-    
+
     ; Calculate new presses
     EOR PrevInput
     AND UserInput
     STA NewInputs
-    
+
     ; Process mode-specific input
     JSR ProcessModeInput
     RTS
@@ -1149,19 +1149,19 @@ ProcessModeInput:
     ; Process input based on current mode
     LDA InteractionMode
     BNE CheckPlayMode
-    
+
     ; Demo mode
     JSR ProcessDemoInput
     RTS
-    
+
 CheckPlayMode:
     CMP #$01
     BNE CheckSequenceMode
-    
+
     ; Play mode
     JSR ProcessPlayInput
     RTS
-    
+
 CheckSequenceMode:
     ; Future: sequence mode
     RTS
@@ -1172,21 +1172,21 @@ ProcessDemoInput:
     LDA SequenceTimer
     AND #$1F             ; Every 32 frames
     BNE CheckModeSwitch
-    
+
     ; Play next demo note
     JSR PlayDemoNote
-    
+
 CheckModeSwitch:
     ; Check for mode switch
     LDA NewInputs
     AND #%10000000       ; A button
     BEQ DemoInputDone
-    
+
     ; Switch to play mode
     LDA #$01
     STA InteractionMode
     JSR UpdateModeDisplay
-    
+
 DemoInputDone:
     RTS
 
@@ -1195,21 +1195,21 @@ ProcessPlayInput:
     LDA NewInputs
     AND #%00001111       ; Directions
     BEQ CheckPlayModeSwitch
-    
+
     ; Map input to note
     JSR MapInputToNote
     JSR PlayUserNote
-    
+
 CheckPlayModeSwitch:
     LDA NewInputs
     AND #%01000000       ; B button
     BEQ PlayInputDone
-    
+
     ; Switch back to demo
     LDA #$00
     STA InteractionMode
     JSR UpdateModeDisplay
-    
+
 PlayInputDone:
     RTS
 
@@ -1219,14 +1219,14 @@ PlayDemoNote:
     LDA DemoScale,X
     CMP #$FF             ; End marker?
     BEQ ResetDemoSequence
-    
+
     ; Play this note
     JSR CreateNote
-    
+
     ; Advance sequence
     INC NoteSequencePos
     RTS
-    
+
 ResetDemoSequence:
     LDA #$00
     STA NoteSequencePos
@@ -1239,31 +1239,31 @@ MapInputToNote:
     BEQ CheckDownInput
     LDA #$07             ; High note
     JMP StoreNote
-    
+
 CheckDownInput:
     LDA NewInputs
     AND #%00000100       ; Down
     BEQ CheckLeftInput
     LDA #$00             ; Low note
     JMP StoreNote
-    
+
 CheckLeftInput:
     LDA NewInputs
     AND #%00000010       ; Left
     BEQ CheckRightInput
     LDA #$02             ; Mid-low note
     JMP StoreNote
-    
+
 CheckRightInput:
     LDA NewInputs
     AND #%00000001       ; Right
     BEQ NoNote
     LDA #$05             ; Mid-high note
     JMP StoreNote
-    
+
 NoNote:
     LDA #$FF
-    
+
 StoreNote:
     STA SelectedNote
     RTS
@@ -1273,38 +1273,38 @@ PlayUserNote:
     LDA SelectedNote
     CMP #$FF
     BEQ UserNoteDone
-    
+
     JSR CreateNote
-    
+
 UserNoteDone:
     RTS
 
 CreateNote:
     ; Create musical note (A = note index)
     TAX
-    
+
     ; Set audio frequency
     LDA ScaleFreqLow,X
     STA $4002
     LDA ScaleFreqHigh,X
     STA $4003
-    
+
     ; Reset envelope
     LDA #%10111111
     STA $4000
-    
+
     ; Set note duration
     LDA #$20
     STA NoteDuration,X
-    
+
     ; Create visual note
     JSR CreateNoteVisual
-    
+
     ; Mark note as active
     LDA NoteBitMask,X
     ORA ActiveNotesMask
     STA ActiveNotesMask
-    
+
     RTS
 
 CreateNoteVisual:
@@ -1314,7 +1314,7 @@ CreateNoteVisual:
     ASL
     ASL                  ; * 4 bytes per sprite
     TAY
-    
+
     ; Set sprite data
     LDA ScalePosY,X      ; Y position based on pitch
     STA SpriteOAM,Y
@@ -1322,11 +1322,11 @@ CreateNoteVisual:
     STA SpriteOAM+1,Y
     LDA #%00000001       ; Note palette
     STA SpriteOAM+2,Y
-    
+
     ; X position based on sequence or input
     LDA InteractionMode
     BNE UserNotePos
-    
+
     ; Demo mode - position by sequence
     LDA NoteSequencePos
     ASL
@@ -1335,11 +1335,11 @@ CreateNoteVisual:
     CLC
     ADC #$40
     JMP StoreNoteX
-    
+
 UserNotePos:
     ; User mode - center position
     LDA #$80
-    
+
 StoreNoteX:
     STA SpriteOAM+3,Y
     RTS
@@ -1351,18 +1351,18 @@ UpdateAudioLoop:
     LDA NoteBitMask,X
     AND ActiveNotesMask
     BEQ NextAudioNote
-    
+
     ; Update this note's duration
     DEC NoteDuration,X
     LDA NoteDuration,X
     BNE NextAudioNote
-    
+
     ; Note finished
     LDA NoteBitMask,X
     EOR #$FF
     AND ActiveNotesMask
     STA ActiveNotesMask
-    
+
     ; Hide visual
     TXA
     ASL
@@ -1370,19 +1370,19 @@ UpdateAudioLoop:
     TAY
     LDA #$FF
     STA SpriteOAM,Y
-    
+
 NextAudioNote:
     DEX
     BPL UpdateAudioLoop
-    
+
     ; Check if any notes still active
     LDA ActiveNotesMask
     BNE AudioSystemDone
-    
+
     ; No notes active - silence audio
     LDA #$00
     STA $4000
-    
+
 AudioSystemDone:
     RTS
 
@@ -1400,19 +1400,19 @@ UpdateBackgroundEffects:
     CLC
     ADC #$60             ; Base tile
     STA SpriteOAM+65     ; Background effect tile
-    
+
     ; Pulse position
     LDA AnimationPhase
     AND #$07
     CMP #$04
     BCC BGEffectUp
-    
+
     LDA #$24             ; Lower position
     JMP StoreBGY
-    
+
 BGEffectUp:
     LDA #$1C             ; Higher position
-    
+
 StoreBGY:
     STA SpriteOAM+64
     RTS
@@ -1424,32 +1424,32 @@ AnimateLoop:
     LDA NoteBitMask,X
     AND ActiveNotesMask
     BEQ NextAnimation
-    
+
     ; Animate this note
     TXA
     ASL
     ASL
     TAY
-    
+
     ; Pulsing animation
     LDA AnimationPhase
     AND #$07
     CMP #$04
     BCC NotePulseUp
-    
+
     LDA ScalePosY,X
     CLC
     ADC #$02
     JMP StoreNoteY
-    
+
 NotePulseUp:
     LDA ScalePosY,X
     SEC
     SBC #$02
-    
+
 StoreNoteY:
     STA SpriteOAM,Y
-    
+
 NextAnimation:
     DEX
     BPL AnimateLoop
@@ -1464,20 +1464,20 @@ UpdateModeEffects:
     ; Update visual effects based on mode
     LDA InteractionMode
     BNE PlayModeEffects
-    
+
     ; Demo mode effects
     LDA AnimationPhase
     AND #$1F
     BNE ModeEffectsDone
     JSR TriggerDemoEffect
     JMP ModeEffectsDone
-    
+
 PlayModeEffects:
     ; Play mode effects
     LDA NewInputs
     BEQ ModeEffectsDone
     JSR TriggerInputEffect
-    
+
 ModeEffectsDone:
     RTS
 
@@ -1497,18 +1497,18 @@ UpdateModeDisplay:
     ; Update mode indicator sprite
     LDA InteractionMode
     BNE ShowPlayMode
-    
+
     ; Demo mode
     LDA #$44             ; 'D' tile
     JMP StoreModeIndicator
-    
+
 ShowPlayMode:
     ; Play mode
     LDA #$50             ; 'P' tile
-    
+
 StoreModeIndicator:
     STA SpriteOAM+69     ; Mode indicator tile
-    
+
     ; Position mode indicator
     LDA #$20
     STA SpriteOAM+68     ; Y position
@@ -1537,15 +1537,15 @@ ReadController:
     BEQ SimB
     LDA #$FF             ; No input
     RTS
-    
+
 SimA:
     LDA #%01111111       ; A pressed
     RTS
-    
+
 SimUp:
     LDA #%11110111       ; Up pressed
     RTS
-    
+
 SimB:
     LDA #%10111111       ; B pressed
     RTS

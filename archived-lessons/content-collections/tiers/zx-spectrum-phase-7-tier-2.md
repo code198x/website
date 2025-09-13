@@ -27,6 +27,7 @@ Master realistic physics for ZX Spectrum games! With **32 physics-focused lesson
 ## What You'll Build
 
 Create **SPECTRUM PHYSICS ENGINE** - your advanced physics masterpiece:
+
 - Realistic gravity, momentum, and acceleration systems in Z80
 - Sophisticated collision detection that handles complex scenarios
 - Smooth, responsive movement that feels natural and precise
@@ -36,24 +37,28 @@ Create **SPECTRUM PHYSICS ENGINE** - your advanced physics masterpiece:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "Physics Fundamentals" - Core Movement Systems**
+
 - Advanced vector mathematics in Z80 assembly for Spectrum
 - Gravity, acceleration, and velocity calculations optimized for performance
 - Friction, drag, and resistance systems within memory constraints
 - Real-time physics updates and smooth interpolation techniques
 
 **Lessons 9-16: "Collision Mastery" - Advanced Detection Systems**
+
 - Pixel-perfect collision detection algorithms for ZX Spectrum
 - Bounding box and circular collision optimization techniques
 - Complex polygon collision detection in efficient Z80 code
 - Collision response and realistic physics reactions
 
 **Lessons 17-24: "Dynamic Interactions" - Multi-Object Physics**
+
 - Physics interactions between multiple moving objects
 - Chain reactions and cascading physics effects on Spectrum
 - Particle systems and dynamic debris simulation
 - Advanced momentum transfer and realistic impact responses
 
 **Lessons 25-32: "Performance Physics" - Optimized Calculations**
+
 - Memory-efficient physics data structures for ZX Spectrum
 - Frame-rate independent physics updates and timing
 - Advanced optimization techniques for complex physics systems

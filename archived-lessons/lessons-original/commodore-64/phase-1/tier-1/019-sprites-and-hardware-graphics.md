@@ -34,12 +34,12 @@ order: 19
 
     LDA #%11111111  ; Enable all 8 sprites
     STA $D015       ; Sprite enable register
-    
+
 SpriteLoop:
-    INC $D000       ; Move sprite 0 smoothly across screen  
+    INC $D000       ; Move sprite 0 smoothly across screen
     INC $D002       ; Move sprite 1
     ; ... all 8 sprites moving independently!
-    
+
     LDA $D01E       ; Check hardware collision detection
     BNE Collision   ; Sprites collided - all detected automatically!
     JMP SpriteLoop
@@ -84,13 +84,16 @@ The VIC-II sprite system consists of several components:
 Each sprite requires **63 bytes** of data (24×21 pixels ÷ 8 bits per byte):
 
 ### Sprite Data Format
+
 - **24 pixels wide × 21 pixels tall** = 504 pixels
 - **1 bit per pixel** (0=transparent, 1=sprite colour)
 - **63 bytes total** per sprite (504 ÷ 8 = 63)
 - **Data stored sequentially** - row by row, left to right
 
 ### Sprite Pointers
+
 Sprites can be located anywhere in memory, but are referenced through **sprite pointers**:
+
 - **Sprite pointers**: Located at screen memory + $3F8-$3FF
 - **Default location**: $07F8-$07FF (screen at $0400)
 - **Pointer value**: Sprite data address ÷ 64
@@ -130,31 +133,36 @@ STA $D027       ; Sprite 0 colour register
 ## Essential Sprite Registers
 
 ### Sprite Enable Register ($D015)
+
 Controls which sprites are visible:
+
 ```
 Bit 7: Sprite 7 enable (1=on, 0=off)
 Bit 6: Sprite 6 enable
 ...
-Bit 1: Sprite 1 enable  
+Bit 1: Sprite 1 enable
 Bit 0: Sprite 0 enable
 ```
 
 ### Sprite Positioning Registers
+
 Each sprite has X and Y position registers:
 
 | Sprite | X Position | Y Position |
-|--------|------------|------------|
-| 0 | $D000 | $D001 |
-| 1 | $D002 | $D003 |
-| 2 | $D004 | $D005 |
-| 3 | $D006 | $D007 |
-| 4 | $D008 | $D009 |
-| 5 | $D00A | $D00B |
-| 6 | $D00C | $D00D |
-| 7 | $D00E | $D00F |
+| ------ | ---------- | ---------- |
+| 0      | $D000      | $D001      |
+| 1      | $D002      | $D003      |
+| 2      | $D004      | $D005      |
+| 3      | $D006      | $D007      |
+| 4      | $D008      | $D009      |
+| 5      | $D00A      | $D00B      |
+| 6      | $D00C      | $D00D      |
+| 7      | $D00E      | $D00F      |
 
 ### Extended X Position ($D010)
+
 For X coordinates > 255:
+
 ```
 Bit 7: Sprite 7 X coordinate bit 8
 Bit 6: Sprite 6 X coordinate bit 8
@@ -177,7 +185,7 @@ AND #%11111110  ; Clear bit 0 (sprite 0 X high bit)
 STA $D010       ; Write back
 
 ; Set Y position (150)
-LDA #150        ; Y coordinate  
+LDA #150        ; Y coordinate
 STA $D001       ; Sprite 0 Y position
 
 ; Position is now set - sprite will appear at (100, 150)
@@ -188,6 +196,7 @@ STA $D001       ; Sprite 0 Y position
 Sprite graphics are defined as **24×21 pixel bitmaps**:
 
 ### Designing Sprite Graphics
+
 ```text
 ; Example: Simple arrow sprite pointing right
 ; 24 pixels wide, 21 pixels tall
@@ -195,7 +204,7 @@ Sprite graphics are defined as **24×21 pixel bitmaps**:
 SpriteArrow:
     ; Row 0: 24 pixels = 3 bytes
     .byte %00000000, %00000000, %00000000  ; ........................
-    .byte %00000000, %00000000, %00000000  ; ........................  
+    .byte %00000000, %00000000, %00000000  ; ........................
     .byte %00000000, %00000000, %00000000  ; ........................
     .byte %00000000, %00000000, %00000000  ; ........................
     .byte %00000000, %01000000, %00000000  ; ......■.................
@@ -262,7 +271,7 @@ STA $D015       ; Sprite enable register
 ; Position sprite at center
 LDA #160        ; X position (screen center)
 STA $D000       ; Sprite 0 X
-LDA #100        ; Y position  
+LDA #100        ; Y position
 STA $D001       ; Sprite 0 Y
 
 ; Set sprite colour
@@ -273,6 +282,7 @@ STA $D027       ; Sprite 0 colour
 ## Sprite Animation
 
 ### Simple Movement
+
 ```text
 ; Animate sprite movement across screen
 AnimateSprite:
@@ -281,52 +291,53 @@ AnimateSprite:
     CLC
     ADC #$01        ; Move right by 1 pixel
     STA $D000       ; Update position
-    
+
     ; Check for screen edge
     CMP #320        ; Right edge of screen
     BNE NoWrap
     LDA #$00        ; Reset to left side
     STA $D000
-    
+
 NoWrap:
     RTS
 ```
 
 ### Sprite Bouncing
+
 ```text
 ; Bouncing sprite with direction tracking
 BounceSprite:
     ; Check direction flag
     LDA SpriteDirection
     BEQ MoveLeft
-    
+
 MoveRight:
     ; Move sprite right
     LDA $D000       ; Current X position
     CLC
     ADC #$02        ; Move right by 2 pixels
     STA $D000
-    
+
     ; Check right boundary
     CMP #300        ; Near right edge
     BCC NoBounce    ; If less than 300, continue
     LDA #$00        ; Change direction to left
     STA SpriteDirection
     JMP NoBounce
-    
+
 MoveLeft:
     ; Move sprite left
     LDA $D000       ; Current X position
     SEC
     SBC #$02        ; Move left by 2 pixels
     STA $D000
-    
+
     ; Check left boundary
     CMP #$20        ; Near left edge
     BCS NoBounce    ; If >= 32, continue
     LDA #$01        ; Change direction to right
     STA SpriteDirection
-    
+
 NoBounce:
     RTS
 
@@ -343,21 +354,21 @@ InitSprite:
     ; Setup sprite data pointer
     LDA #$80        ; Point to $2000
     STA $07F8       ; Sprite 0 pointer
-    
+
     ; Enable sprite
     LDA #%00000001  ; Enable sprite 0
     STA $D015
-    
+
     ; Set initial position
     LDA #50         ; Starting X
     STA $D000
     LDA #100        ; Starting Y
     STA $D001
-    
+
     ; Set colour
     LDA #$02        ; Red
     STA $D027
-    
+
     ; Initialize direction
     LDA #$01        ; Moving right
     STA $90         ; Store direction flag
@@ -367,7 +378,7 @@ AnimateLoop:
     ; Check direction
     LDA $90         ; Load direction flag
     BEQ MoveLeft
-    
+
     ; Move right
     LDA $D000       ; Current X position
     CLC
@@ -378,25 +389,25 @@ AnimateLoop:
     LDA #$00        ; Reverse direction
     STA $90
     JMP ContinueAnim
-    
+
 MoveLeft:
     ; Move left
     LDA $D000       ; Current X position
     SEC
-    SBC #$02        ; Move left 2 pixels  
+    SBC #$02        ; Move left 2 pixels
     STA $D000
     CMP #50         ; Check boundary
     BCS ContinueAnim ; If >= 50, continue
     LDA #$01        ; Reverse direction
     STA $90
-    
+
 ContinueAnim:
     ; Simple delay
     LDX #$FF
 DelayLoop:
     DEX
     BNE DelayLoop
-    
+
     JMP AnimateLoop ; Continue animation
 
 ; Start the demo
@@ -409,32 +420,34 @@ JSR AnimateLoop
 The VIC-II provides **hardware collision detection**:
 
 ### Collision Registers
+
 - **$D01E**: Sprite-to-sprite collision
 - **$D01F**: Sprite-to-background collision
 
 ### Reading Collision Status
+
 ```text
 CheckCollisions:
     ; Check sprite-to-sprite collisions
     LDA $D01E       ; Sprite-sprite collision register
     BEQ NoSpriteCol ; If zero, no collisions
-    
+
     ; Collision occurred - check which sprites
     AND #%00000011  ; Check sprites 0 and 1
     CMP #%00000011  ; Both bits set?
     BEQ Sprites01Collision
-    
+
 NoSpriteCol:
     ; Check sprite-to-background collisions
     LDA $D01F       ; Sprite-background collision register
     BEQ NoBackCol   ; If zero, no collisions
-    
+
     ; Background collision occurred
     AND #%00000001  ; Check sprite 0
     BEQ NoBackCol
     ; Sprite 0 hit background
     JSR HandleBackgroundHit
-    
+
 NoBackCol:
     RTS
 
@@ -453,7 +466,9 @@ Sprites01Collision:
 ```
 
 ### Clearing Collision Flags
+
 **Important**: Collision registers are cleared by **reading** them:
+
 ```text
 ; Clear collision flags
 LDA $D01E       ; Reading clears sprite-sprite collisions
@@ -470,31 +485,31 @@ InitTwoSprites:
     ; Setup sprite 0
     LDA #$80        ; Sprite data at $2000
     STA $07F8       ; Sprite 0 pointer
-    
-    ; Setup sprite 1  
+
+    ; Setup sprite 1
     LDA #$81        ; Sprite data at $2040 (next 64-byte block)
     STA $07F9       ; Sprite 1 pointer
-    
+
     ; Enable both sprites
     LDA #%00000011  ; Enable sprites 0 and 1
     STA $D015
-    
+
     ; Position sprite 0
     LDA #100        ; X position
     STA $D000
     LDA #100        ; Y position
     STA $D001
-    
+
     ; Position sprite 1
     LDA #200        ; X position
     STA $D002
     LDA #100        ; Y position (same row)
     STA $D003
-    
+
     ; Set colors
     LDA #$02        ; Red
     STA $D027       ; Sprite 0
-    LDA #$06        ; Blue  
+    LDA #$06        ; Blue
     STA $D028       ; Sprite 1
     RTS
 
@@ -504,33 +519,33 @@ CollisionDemo:
     CLC
     ADC #$01        ; Move right
     STA $D000
-    
+
     ; Check for sprite collision
     LDA $D01E       ; Read collision register
     AND #%00000011  ; Check sprites 0 and 1
     CMP #%00000011  ; Both bits set?
     BNE NoCollision
-    
+
     ; Collision detected!
     LDA #$05        ; Green colour (collision indicator)
     STA $D027       ; Change sprite 0 colour
     STA $D028       ; Change sprite 1 colour
-    
+
     ; Clear collision flag (reading clears it)
     LDA $D01E       ; Clear by reading
-    
+
 NoCollision:
     ; Simple delay
     LDY #$80
 DelayLoop2:
     DEY
     BNE DelayLoop2
-    
+
     ; Check if sprite reached edge
     LDA $D000
     CMP #250
     BNE ContinueDemo
-    
+
     ; Reset position
     LDA #100
     STA $D000
@@ -538,7 +553,7 @@ DelayLoop2:
     STA $D027
     LDA #$06        ; Reset to blue
     STA $D028
-    
+
 ContinueDemo:
     JMP CollisionDemo
 
@@ -550,6 +565,7 @@ JSR CollisionDemo
 ## Advanced Sprite Features
 
 ### Sprite Scaling ($D017, $D01D)
+
 Double sprite size in X and/or Y direction:
 
 ```text
@@ -558,13 +574,14 @@ LDA $D017       ; Sprite X expand register
 ORA #%00000001  ; Set bit 0 (sprite 0)
 STA $D017       ; Sprite 0 now 48 pixels wide
 
-; Enable Y scaling for sprite 0  
+; Enable Y scaling for sprite 0
 LDA $D01D       ; Sprite Y expand register
 ORA #%00000001  ; Set bit 0 (sprite 0)
 STA $D01D       ; Sprite 0 now 42 pixels tall
 ```
 
 ### Sprite Priority ($D01B)
+
 Control whether sprites appear in front of or behind background:
 
 ```text
@@ -574,12 +591,13 @@ ORA #%00000001  ; Set bit 0 (sprite 0 behind background)
 STA $D01B
 
 ; Make sprite 0 appear in front of background
-LDA $D01B       ; Sprite priority register  
+LDA $D01B       ; Sprite priority register
 AND #%11111110  ; Clear bit 0 (sprite 0 in front)
 STA $D01B
 ```
 
 ### Multicolor Sprites ($D01C)
+
 Enable 4-colour sprites with lower horizontal resolution:
 
 ```text
@@ -591,7 +609,7 @@ STA $D01C
 ; Set multicolor sprite colors
 LDA #$01        ; White
 STA $D025       ; Multicolor register 0 (colour 01)
-LDA #$02        ; Red  
+LDA #$02        ; Red
 STA $D026       ; Multicolor register 1 (colour 10)
 ; Color 11 comes from sprite colour register ($D027+)
 ; Color 00 is always transparent
@@ -600,10 +618,11 @@ STA $D026       ; Multicolor register 1 (colour 10)
 ## Sprite Programming Patterns
 
 ### Sprite Object System
+
 ```text
 ; Sprite object structure (8 bytes per sprite)
 ; Offset 0: X position low
-; Offset 1: Y position  
+; Offset 1: Y position
 ; Offset 2: X velocity
 ; Offset 3: Y velocity
 ; Offset 4: Status flags
@@ -615,7 +634,7 @@ SpriteObjects = $C000   ; Base address for sprite data
 
 UpdateAllSprites:
     LDX #$00            ; Sprite counter
-    
+
 UpdateLoop:
     ; Calculate sprite object address
     TXA
@@ -623,26 +642,26 @@ UpdateLoop:
     ASL
     ASL
     TAY                 ; Use as offset
-    
+
     ; Check if sprite is active
     LDA SpriteObjects+4,Y   ; Load status flags
     AND #%00000001      ; Check active bit
     BEQ NextSprite      ; Skip if inactive
-    
+
     ; Update position based on velocity
     LDA SpriteObjects+0,Y   ; Load X position
     CLC
     ADC SpriteObjects+2,Y   ; Add X velocity
     STA SpriteObjects+0,Y   ; Store new X position
     STA $D000,X         ; Update hardware register
-    
+
     ; Update Y position
     LDA SpriteObjects+1,Y   ; Load Y position
-    CLC  
+    CLC
     ADC SpriteObjects+3,Y   ; Add Y velocity
     STA SpriteObjects+1,Y   ; Store new Y position
     STA $D001,X         ; Update hardware register
-    
+
 NextSprite:
     INX                 ; Next sprite
     CPX #$08            ; Check all 8 sprites
@@ -651,35 +670,36 @@ NextSprite:
 ```
 
 ### Sprite Animation System
+
 ```text
 ; Frame-based sprite animation
 AnimateSprites:
     LDX #$00            ; Sprite counter
-    
+
 AnimLoop:
     ; Get sprite object address
     TXA
     ASL
-    ASL  
+    ASL
     ASL
     TAY
-    
+
     ; Check if sprite needs animation
     LDA SpriteObjects+4,Y   ; Status flags
     AND #%00000010      ; Check animation bit
     BEQ NextAnim
-    
+
     ; Advance animation frame
     INC SpriteObjects+5,Y   ; Increment frame counter
     LDA SpriteObjects+5,Y
     AND #%00000011      ; Keep frames 0-3
     STA SpriteObjects+5,Y
-    
+
     ; Update sprite pointer based on frame
     CLC
     ADC SpriteObjects+7,Y   ; Add base sprite pointer
     STA $07F8,X         ; Update hardware pointer
-    
+
 NextAnim:
     INX
     CPX #$08
@@ -706,15 +726,15 @@ InitSpriteSystem:
     ; Setup multiple sprites
     LDA #$80        ; Base sprite pointer
     STA $07F8       ; Sprite 0
-    LDA #$81        
+    LDA #$81
     STA $07F9       ; Sprite 1
     LDA #$82
     STA $07FA       ; Sprite 2
-    
+
     ; Enable first 3 sprites
     LDA #%00000111  ; Enable sprites 0, 1, 2
     STA $D015
-    
+
     ; Setup sprite 0 (player)
     LDA #160        ; Center X
     STA $D000
@@ -722,7 +742,7 @@ InitSpriteSystem:
     STA $D001
     LDA #$0E        ; Light blue
     STA $D027
-    
+
     ; Setup sprite 1 (enemy 1)
     LDA #100        ; Left side
     STA $D002
@@ -730,15 +750,15 @@ InitSpriteSystem:
     STA $D003
     LDA #$02        ; Red
     STA $D028
-    
-    ; Setup sprite 2 (enemy 2)  
+
+    ; Setup sprite 2 (enemy 2)
     LDA #220        ; Right side
     STA $D004
     LDA #50         ; Top area
     STA $D005
     LDA #$02        ; Red
     STA $D029
-    
+
     ; Initialize movement variables
     LDA #$01        ; Moving right
     STA $90         ; Enemy 1 direction
@@ -749,23 +769,23 @@ InitSpriteSystem:
 GameLoop:
     ; Move enemies
     JSR MoveEnemies
-    
+
     ; Check collisions
     JSR CheckGameCollisions
-    
+
     ; Simple delay
     LDX #$80
 GameDelay:
     DEX
     BNE GameDelay
-    
+
     JMP GameLoop
 
 MoveEnemies:
     ; Move enemy 1 (sprite 1)
     LDA $90         ; Direction flag
     BEQ MoveEnemy1Left
-    
+
     ; Move right
     LDA $D002       ; Current X
     CLC
@@ -776,7 +796,7 @@ MoveEnemies:
     LDA #$00        ; Change direction
     STA $90
     JMP CheckEnemy2
-    
+
 MoveEnemy1Left:
     ; Move left
     LDA $D002       ; Current X
@@ -787,12 +807,12 @@ MoveEnemy1Left:
     BCS CheckEnemy2
     LDA #$01        ; Change direction
     STA $90
-    
+
 CheckEnemy2:
     ; Move enemy 2 (sprite 2) - similar logic
     LDA $91         ; Direction flag
     BNE MoveEnemy2Right
-    
+
     ; Move left
     LDA $D004       ; Current X
     SEC
@@ -803,7 +823,7 @@ CheckEnemy2:
     LDA #$01        ; Change direction
     STA $91
     JMP EndMove
-    
+
 MoveEnemy2Right:
     ; Move right
     LDA $D004       ; Current X
@@ -814,7 +834,7 @@ MoveEnemy2Right:
     BCC EndMove
     LDA #$00        ; Change direction
     STA $91
-    
+
 EndMove:
     RTS
 
@@ -823,14 +843,14 @@ CheckGameCollisions:
     LDA $D01E       ; Read collision register
     AND #%00000111  ; Check first 3 sprites
     BEQ NoCollisions
-    
+
     ; Collision detected - change colors
     LDA #$0A        ; Light red
     STA $D027       ; Player colour (collision indicator)
-    
+
     ; Clear collision register
     LDA $D01E       ; Clear by reading
-    
+
 NoCollisions:
     RTS
 
@@ -842,16 +862,18 @@ JSR GameLoop
 ## Sprite Programming Best Practices
 
 ### 1. Sprite Data Organization
+
 ```text
 ; Organize sprite data in 64-byte blocks
 SpriteData:
     ; Sprite 0 at $2000 (pointer $80)
-    ; Sprite 1 at $2040 (pointer $81)  
+    ; Sprite 1 at $2040 (pointer $81)
     ; Sprite 2 at $2080 (pointer $82)
     ; etc.
 ```
 
 ### 2. Collision Handling
+
 ```text
 ; Always clear collision registers after reading
 HandleCollisions:
@@ -862,6 +884,7 @@ HandleCollisions:
 ```
 
 ### 3. Sprite Movement Optimization
+
 ```text
 ; Use lookup tables for smooth movement
 SineTable:
@@ -874,7 +897,7 @@ SineTable:
 In this lesson, you've mastered:
 
 - Hardware sprite architecture and 8-sprite system
-- Sprite data format and memory organisation  
+- Sprite data format and memory organisation
 - Sprite positioning, movement, and animation techniques
 - Hardware collision detection (sprite-sprite and sprite-background)
 - Advanced sprite features (scaling, priority, multicolor)

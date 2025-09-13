@@ -27,6 +27,7 @@ Maximize your content potential! With **32 comprehensive lessons**, you'll maste
 ## What You'll Build
 
 Create **COMPRESSION EXCELLENCE SYSTEM** - a comprehensive compression toolkit featuring:
+
 - Advanced compression algorithms optimized for Z80 performance
 - Custom compression schemes for graphics, audio, and text
 - Efficient decompression routines with minimal memory overhead
@@ -36,24 +37,28 @@ Create **COMPRESSION EXCELLENCE SYSTEM** - a comprehensive compression toolkit f
 ## Tier Overview
 
 **Lessons 1-8: "Compression Fundamentals!" - Core Algorithms**
+
 - Run-length encoding and dictionary-based compression
 - Huffman coding and statistical compression methods
 - LZ77/LZ78 variants optimized for Z80 architecture
 - Professional compression algorithm implementation
 
 **Lessons 9-16: "Graphics Compression!" - Visual Data Optimization**
+
 - Sprite and character graphics compression techniques
 - Palette optimization and color reduction methods
 - Animation compression and frame differencing
 - Professional graphics data packing
 
 **Lessons 17-24: "Audio Compression!" - Sound Data Optimization**
+
 - Music and sound effect compression algorithms
 - Sample compression and audio data packing
 - Procedural audio generation vs. compressed storage
 - Professional audio optimization techniques
 
 **Lessons 25-32: "Custom Schemes!" - Specialized Compression**
+
 - Game-specific compression tailored to content types
 - Real-time compression and decompression systems
 - Compression ratio optimization and trade-off analysis

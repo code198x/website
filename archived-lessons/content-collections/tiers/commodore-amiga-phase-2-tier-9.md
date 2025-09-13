@@ -27,6 +27,7 @@ Welcome to the magic of visual spectacle! 🎆 With **32 dazzling lessons**, you
 ## What You'll Build
 
 Create **AMIGA EFFECTS SHOWCASE** - a visual effects library featuring:
+
 - Copper effects that bend the laws of display physics 🌈
 - Blitter operations that manipulate graphics in real-time
 - Palette cycling that creates animation without moving pixels
@@ -36,24 +37,28 @@ Create **AMIGA EFFECTS SHOWCASE** - a visual effects library featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Copper Wizardry" - Display List Magic**
+
 - Advanced Copper list programming for complex effects
 - Mid-screen palette changes and color gradients
 - Raster bar effects and synchronized color changes
 - Copper-driven animations and display manipulations
 
 **Lessons 9-16: "Blitter Mastery" - Real-time Graphics Magic**
+
 - Advanced Blitter operations for dynamic graphics
 - Real-time sprite manipulation and transformation
 - Cookie-cutting effects and complex masking operations
 - Blitter-based particle systems and dynamic elements
 
 **Lessons 17-24: "Color and Animation" - Palette Perfection**
+
 - Advanced palette cycling and color animation techniques
 - Multi-layer color effects and blending simulation
 - Dynamic palette generation and color theory application
 - Memory-efficient animation through palette manipulation
 
 **Lessons 25-32: "Polish Systems" - Professional Visual Finish**
+
 - Screen transitions and scene change effects
 - User interface polish and feedback systems
 - Performance-optimized effect combination techniques

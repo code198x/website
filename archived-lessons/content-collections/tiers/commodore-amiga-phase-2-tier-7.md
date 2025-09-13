@@ -27,6 +27,7 @@ Welcome to the evolution of power! ⚡ With **32 empowering lessons**, you'll cr
 ## What You'll Build
 
 Create **AMIGA POWER CORE** - a comprehensive upgrade system featuring:
+
 - Power-ups that fundamentally change how the game plays 🎆
 - Stacking abilities that combine in interesting ways
 - Visual effects that make every upgrade feel impactful
@@ -36,24 +37,28 @@ Create **AMIGA POWER CORE** - a comprehensive upgrade system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Power-up Fundamentals" - The Joy of Enhancement**
+
 - Basic power-up collection and activation systems
 - Temporary vs. permanent upgrade mechanics
 - Visual feedback systems for power acquisition
 - Power-up spawning and distribution algorithms
 
 **Lessons 9-16: "Ability Stacking" - Combinations and Synergies**
+
 - Multi-layered ability systems that stack effects
 - Power-up combinations that create new abilities
 - Duration management for temporary enhancements
 - Ability conflict resolution and priority systems
 
 **Lessons 17-24: "Progressive Systems" - Long-term Growth**
+
 - Experience and leveling systems for character growth
 - Persistent upgrades that survive between sessions
 - Unlock systems that reward skilled play
 - Meta-progression that encourages replay
 
 **Lessons 25-32: "Balance Mastery" - Perfect Progression**
+
 - Difficulty scaling that adapts to player power level
 - Power curve design for optimal challenge progression
 - Testing and balancing methodologies

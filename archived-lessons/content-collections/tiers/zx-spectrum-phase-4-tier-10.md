@@ -27,6 +27,7 @@ Visuals that dazzle! With **32 comprehensive lessons**, you'll create stunning v
 ## What You'll Build
 
 Continue developing **Neon Quest** with breathtaking visual polish:
+
 - Advanced particle systems and visual effects
 - Professional graphics polish throughout
 - Cinematic cutscenes and transitions
@@ -36,24 +37,28 @@ Continue developing **Neon Quest** with breathtaking visual polish:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Visual Effects**
+
 - Particle system design and implementation
 - Advanced sprite effects and animations
 - Visual impact and screen effects
 - Performance-optimized effects programming
 
 **Lessons 9-16: Professional Graphics Polish**
+
 - Consistent visual style development
 - Advanced color palette optimization
 - Professional sprite and background polish
 - Visual hierarchy and composition
 
 **Lessons 17-24: Cinematic Presentation**
+
 - Cutscene design and implementation
 - Smooth transitions and scene changes
 - Camera effects and visual storytelling
 - Professional presentation techniques
 
 **Lessons 25-32: Atmospheric & Lighting Effects**
+
 - Dynamic lighting simulation
 - Atmospheric effects and mood creation
 - Environmental visual storytelling

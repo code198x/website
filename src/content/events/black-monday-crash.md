@@ -13,6 +13,7 @@ On 19th October 1987, stock markets around the world crashed spectacularly, with
 ## Technology's Double-Edged Sword
 
 Black Monday highlighted technology's growing influence on global finance:
+
 - **Program Trading**: Computer-automated trading systems accelerated the sell-off
 - **Global Connectivity**: Electronic networks spread the crash worldwide within hours
 - **System Overload**: Trading systems struggled to handle the volume
@@ -21,6 +22,7 @@ Black Monday highlighted technology's growing influence on global finance:
 ## Tech Industry Resilience
 
 Despite the financial turmoil, the technology sector showed remarkable resilience:
+
 - Personal computer sales continued to grow
 - Software development remained strong
 - The Amiga and ST markets thrived in Europe

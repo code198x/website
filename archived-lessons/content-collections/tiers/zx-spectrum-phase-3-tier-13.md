@@ -31,24 +31,28 @@ Begin developing **Spectrum Engine** - a comprehensive game development framewor
 ## Tier Overview
 
 **Lessons 1-8: Engine Architecture & Design**
+
 - Game engine architecture and design patterns
 - Modular system design and component architecture
 - API design and interface development
 - System integration and coordination patterns
 
 **Lessons 9-16: Core Systems Development**
+
 - Graphics engine and rendering pipeline
 - Audio system and music framework
 - Input handling and control systems
 - Memory management and resource systems
 
 **Lessons 17-24: Development Tools & Utilities**
+
 - Level editors and content creation tools
 - Asset pipeline and data conversion utilities
 - Debugging tools and performance profilers
 - Build systems and project management tools
 
 **Lessons 25-32: Professional Practices**
+
 - Code documentation and API reference
 - Version control and collaborative development
 - Testing frameworks and quality assurance

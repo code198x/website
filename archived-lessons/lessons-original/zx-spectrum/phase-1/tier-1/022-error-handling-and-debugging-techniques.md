@@ -139,7 +139,7 @@ BadLoop:
     LD HL, Array
     LD B, 5             ; B = loop counter
     LD A, 0             ; A = sum accumulator
-    
+
 BadLoopBody:
     ADD A, (HL)
     INC HL
@@ -152,7 +152,7 @@ GoodLoop:
     LD HL, Array
     LD B, 5             ; B = loop counter
     LD A, 0             ; A = sum accumulator
-    
+
 GoodLoopBody:
     ADD A, (HL)
     INC HL
@@ -168,7 +168,7 @@ BadStackFunction:
     LD A, (SomeCondition)
     OR A
     RET Z               ; BUG: Returns without POPing
-    
+
     POP DE              ; Only pops one register
     RET                 ; BUG: Stack still has BC on it
 
@@ -180,12 +180,12 @@ GoodStackFunction:
     LD A, (SomeCondition)
     OR A
     JR Z, CleanupAndExit ; Jump to cleanup instead of direct return
-    
+
     ; Normal exit path
     POP DE
     POP BC
     RET
-    
+
 CleanupAndExit:
     POP DE              ; Clean up stack
     POP BC
@@ -216,16 +216,16 @@ LongString: DB
 MainProgram:
     CALL InitializeData     ; Add test point here
     ; TEST: Does program work up to this point?
-    
+
     CALL ProcessInput       ; Add test point here
     ; TEST: Does input processing work correctly?
-    
-    CALL UpdateGameLogic    ; Add test point here  
+
+    CALL UpdateGameLogic    ; Add test point here
     ; TEST: Is game logic updating properly?
-    
+
     CALL RenderScreen       ; Add test point here
     ; TEST: Is rendering working?
-    
+
     RET
 
 ; Add temporary debug output at each test point
@@ -260,7 +260,7 @@ AddTrace:
     LD C, B
     ADD HL, BC          ; Point to current position
     LD (HL), A          ; Store trace value
-    
+
     ; Update index
     LD HL, TraceIndex
     INC (HL)
@@ -275,19 +275,19 @@ TraceOK:
 ; Use trace points in your code
 ProcessData:
     TRACE_POINT 10      ; Entry point
-    
+
     ; Some processing
     LD A, (InputValue)
     TRACE_POINT 11      ; After input read
-    
+
     CP 50
     JR C, LowValue
     TRACE_POINT 12      ; High value path
     JR ProcessDone
-    
+
 LowValue:
     TRACE_POINT 13      ; Low value path
-    
+
 ProcessDone:
     TRACE_POINT 14      ; Exit point
     RET
@@ -310,7 +310,7 @@ TraceCount:     DB 0    ; Total traces recorded
 AddTracePoint:
     PUSH BC
     PUSH HL
-    
+
     ; Store trace point
     LD HL, TracePos
     LD B, (HL)          ; Get current position
@@ -318,7 +318,7 @@ AddTracePoint:
     LD C, B
     ADD HL, BC          ; Point to storage location
     LD (HL), A          ; Store trace ID
-    
+
     ; Update position (circular buffer)
     LD HL, TracePos
     INC (HL)            ; Move to next position
@@ -327,7 +327,7 @@ AddTracePoint:
     JR C, PosOK
     LD (HL), 0          ; Wrap to beginning
 PosOK:
-    
+
     ; Update count (max 20)
     LD HL, TraceCount
     LD A, (HL)
@@ -335,7 +335,7 @@ PosOK:
     JR Z, CountMax
     INC (HL)            ; Increment count
 CountMax:
-    
+
     POP HL
     POP BC
     RET
@@ -344,38 +344,38 @@ CountMax:
 BuggyFunction:
     LD A, 1             ; Entry trace
     CALL AddTracePoint
-    
+
     LD A, (TestValue)
     LD A, 2             ; After value read
     CALL AddTracePoint
-    
+
     CP 50
     JR C, LowPath
-    
+
     ; High value path
     LD A, 3             ; High path trace
     CALL AddTracePoint
-    
+
     ; Simulate some processing
     LD B, 10
 HighLoop:
     LD A, 4             ; Loop trace
     CALL AddTracePoint
     DJNZ HighLoop
-    
+
     JR FunctionEnd
-    
+
 LowPath:
     LD A, 5             ; Low path trace
     CALL AddTracePoint
-    
+
     ; Simulate different processing
     LD B, 3
 LowLoop:
     LD A, 6             ; Different loop trace
     CALL AddTracePoint
     DJNZ LowLoop
-    
+
 FunctionEnd:
     LD A, 7             ; Exit trace
     CALL AddTracePoint
@@ -387,12 +387,12 @@ TestDebugging:
     LD A, 75
     LD (TestValue), A
     CALL BuggyFunction
-    
+
     ; Test case 2: Low value
     LD A, 25
     LD (TestValue), A
     CALL BuggyFunction
-    
+
     ; Now TraceBuffer contains execution trace
     ; Examine trace to see which path was taken
     RET
@@ -404,7 +404,7 @@ ExamineTrace:
     LD B, A             ; B = number of traces to show
     OR A
     RET Z               ; Return if no traces
-    
+
 ExamineLoop:
     LD A, (HL)          ; Get trace point
     ; In real system, you'd display this
@@ -430,15 +430,15 @@ ValidateInput:
     ; Check lower bound
     CP 1
     JR C, InvalidInput  ; Less than 1
-    
-    ; Check upper bound  
+
+    ; Check upper bound
     CP 101
     JR NC, InvalidInput ; Greater than 100
-    
+
     ; Valid input
     OR A                ; Clear carry flag
     RET
-    
+
 InvalidInput:
     SCF                 ; Set carry flag
     RET
@@ -447,11 +447,11 @@ InvalidInput:
 SafeFunction:
     CALL ValidateInput
     JR C, HandleError   ; Jump if invalid input
-    
+
     ; Input is valid - proceed normally
     ; ... normal processing ...
     RET
-    
+
 HandleError:
     ; Handle invalid input appropriately
     LD A, 255           ; Error code
@@ -468,16 +468,16 @@ SafeArrayAccess:
     ; Check if index is within bounds
     CP B                ; Compare index with array size
     JR NC, OutOfBounds  ; Index >= size is invalid
-    
+
     ; Calculate array element address
     LD C, A             ; Index in C
     LD A, 0             ; Clear A for calculation
     ADD HL, BC          ; HL points to element
     LD A, (HL)          ; Get element value
-    
+
     OR A                ; Clear carry (success)
     RET
-    
+
 OutOfBounds:
     SCF                 ; Set carry (error)
     LD A, 0             ; Return default value
@@ -497,12 +497,12 @@ SafeMemoryCopy:
     JR C, UnsafeArea
     CP $80              ; Above $8000?
     JR NC, UnsafeArea
-    
+
     ; Safe area - perform copy
     LDIR
     OR A                ; Clear carry (success)
     RET
-    
+
 UnsafeArea:
     SCF                 ; Set carry (error)
     RET
@@ -524,17 +524,17 @@ SafeArrayRead:
     ; Validate index
     CP ArraySize        ; Compare with array size
     JR NC, ArrayError   ; Jump if index >= size
-    
+
     ; Index is valid
     LD HL, SafeArray
     LD C, A             ; Index in C
     LD B, 0             ; BC = index
     ADD HL, BC          ; Point to element
     LD A, (HL)          ; Get value
-    
+
     OR 1                ; Clear Z flag (success, A != 0)
     RET
-    
+
 ArrayError:
     LD A, 0             ; Return 0 for invalid index
     XOR A               ; Set Z flag (error indicator)
@@ -545,39 +545,39 @@ ArrayError:
 ; Output: A = 1 if safe, 0 if unsafe
 CheckMemorySafety:
     LD A, H             ; Get high byte of address
-    
+
     ; Check if in ROM area ($0000-$3FFF) - read-only
     CP $40
     JR C, ReadOnlyArea
-    
+
     ; Check if in screen area ($4000-$57FF) - special handling
     CP $58
     JR C, ScreenArea
-    
+
     ; Check if in attribute area ($5800-$5AFF) - special handling
     CP $5B
     JR C, AttributeArea
-    
+
     ; Check if in safe RAM area ($5B00-$7FFF)
     CP $80
     JR C, SafeRAM
-    
+
     ; Above $8000 - potentially unsafe (stack, system area)
     LD A, 0             ; Unsafe
     RET
-    
+
 ReadOnlyArea:
     LD A, 0             ; Unsafe for writing
     RET
-    
+
 ScreenArea:
     LD A, 1             ; Safe for screen operations
     RET
-    
+
 AttributeArea:
     LD A, 1             ; Safe for attribute operations
     RET
-    
+
 SafeRAM:
     LD A, 1             ; Safe for general use
     RET
@@ -591,7 +591,7 @@ ProtectedOperation:
     JR C, InvalidOp     ; Less than 1
     CP 4
     JR NC, InvalidOp    ; Greater than 3
-    
+
     ; Valid operation - dispatch
     DEC A               ; Convert to 0-based
     SLA A               ; × 2 for word table
@@ -602,11 +602,11 @@ ProtectedOperation:
     INC HL
     LD H, (HL)
     LD L, A             ; HL = operation address
-    
+
     ; Call operation with parameter validation
     LD A, B             ; Get parameter
     JP (HL)             ; Jump to operation
-    
+
 InvalidOp:
     SCF                 ; Set error flag
     LD A, 255           ; Error code
@@ -623,12 +623,12 @@ Operation1:
     ; Validate parameter (must be 0-100)
     CP 101
     JR NC, Param1Error
-    
+
     ; Valid parameter - double it
     SLA A               ; × 2
     OR A                ; Clear carry (success)
     RET
-    
+
 Param1Error:
     SCF
     LD A, 254           ; Parameter error code
@@ -638,13 +638,13 @@ Operation2:
     ; Validate parameter (must be even)
     AND 1               ; Check low bit
     JR NZ, Param2Error  ; Error if odd
-    
+
     ; Valid parameter - halve it
     LD A, B
     SRL A               ; ÷ 2
     OR A                ; Clear carry
     RET
-    
+
 Param2Error:
     SCF
     LD A, 253           ; Parameter error code
@@ -655,12 +655,12 @@ Operation3:
     LD A, B
     OR A
     JR Z, Param3Error
-    
+
     ; Valid parameter - increment it
     INC A
     OR A                ; Clear carry
     RET
-    
+
 Param3Error:
     SCF
     LD A, 252           ; Parameter error code
@@ -672,22 +672,22 @@ TestValidation:
     LD A, 5             ; Valid index
     CALL SafeArrayRead  ; Should return 60
     LD C, A             ; Save result
-    
+
     LD A, 15            ; Invalid index
     CALL SafeArrayRead  ; Should return 0 with error
     LD D, A             ; Save result
-    
+
     ; Test 2: Memory safety check
     LD HL, $6000        ; Safe RAM address
     CALL CheckMemorySafety ; Should return 1
     LD E, A             ; Save result
-    
+
     ; Test 3: Protected operation
     LD A, 2             ; Valid operation
     LD B, 10            ; Valid parameter for operation 2 (even)
     CALL ProtectedOperation ; Should succeed
     LD H, A             ; Save result
-    
+
     ; Results: C=60, D=0, E=1, H=5 (10÷2)
 ```
 
@@ -700,43 +700,43 @@ TestValidation:
 SafeStringLength:
     ; Input: HL = string pointer
     ; Output: A = length, Carry set if error
-    
+
     ; Validate pointer is not null (not $0000)
     LD A, H
     OR L
     JR Z, NullPointer
-    
+
     ; Validate pointer is in valid memory range
     LD A, H
     CP $40              ; Must be >= $4000
     JR C, InvalidPointer
-    
+
     ; Calculate string length with maximum limit
     LD B, 0             ; Length counter
     LD DE, 255          ; Maximum length to prevent infinite loop
-    
+
 LengthLoop:
     LD A, (HL)          ; Get character
     OR A                ; Check for terminator
     JR Z, LengthFound   ; Found end
-    
+
     INC HL              ; Next character
     INC B               ; Increment length
     DEC DE              ; Decrement safety counter
     LD A, D
     OR E
     JR NZ, LengthLoop   ; Continue if safety counter not zero
-    
+
     ; String too long
     SCF                 ; Set error flag
     LD A, 255           ; Error: string too long
     RET
-    
+
 LengthFound:
     LD A, B             ; Return length
     OR A                ; Clear carry (success)
     RET
-    
+
 NullPointer:
 InvalidPointer:
     SCF                 ; Set error flag
@@ -755,17 +755,17 @@ SafeGameOperation:
     LD A, (GameState)
     CP 1                ; Check if in playing state
     JR NZ, InvalidState
-    
+
     ; Check if player is alive
     LD A, (PlayerHealth)
     OR A
     JR Z, PlayerDead
-    
+
     ; State is valid - proceed with operation
     ; ... operation code ...
     OR A                ; Clear carry (success)
     RET
-    
+
 InvalidState:
 PlayerDead:
     SCF                 ; Set error flag
@@ -786,15 +786,15 @@ AllocateResource:
     LD A, (ResourceCount)
     CP MaxResources
     JR NC, NoResources
-    
+
     ; Allocate resource
     INC A
     LD (ResourceCount), A
-    
+
     ; Return resource ID (current count)
     OR A                ; Clear carry (success)
     RET
-    
+
 NoResources:
     SCF                 ; Set error flag
     LD A, 0             ; No resource allocated
@@ -807,13 +807,13 @@ FreeResource:
     LD A, (ResourceCount)
     OR A
     JR Z, NoResourcesAllocated
-    
+
     ; Free resource (simplified - just decrement count)
     DEC A
     LD (ResourceCount), A
     OR A                ; Clear carry (success)
     RET
-    
+
 NoResourcesAllocated:
     SCF                 ; Set error flag
     RET
@@ -832,22 +832,22 @@ TestCount:   DB 0       ; Number of tests run
 ; Input: HL = test function address, A = expected result
 RunTest:
     PUSH AF             ; Save expected result
-    
+
     ; Call test function
     CALL CallHL         ; Call function at HL
-    
+
     ; Compare result with expected
     POP BC              ; B = expected result
     CP B                ; Compare actual with expected
     JR Z, TestPassed
-    
+
     ; Test failed
     LD A, 0             ; Failed
     JR RecordResult
-    
+
 TestPassed:
     LD A, 1             ; Passed
-    
+
 RecordResult:
     ; Store result
     LD HL, TestResults
@@ -855,7 +855,7 @@ RecordResult:
     LD C, B
     ADD HL, BC
     LD (HL), A
-    
+
     ; Increment test count
     LD HL, TestCount
     INC (HL)
@@ -880,11 +880,11 @@ RunAllTests:
     LD HL, TestAddition
     LD A, 8             ; Expected result
     CALL RunTest
-    
+
     LD HL, TestSubtraction
     LD A, 6             ; Expected result
     CALL RunTest
-    
+
     RET
 ```
 
@@ -895,14 +895,14 @@ RunAllTests:
 TestGameSystem:
     ; Initialize game state
     CALL InitializeGame
-    
+
     ; Test player movement
     LD A, 1             ; Move right command
     CALL ProcessPlayerInput
     LD A, (PlayerX)
     CP 51               ; Should be 51 (50 + 1)
     JR NZ, MovementTestFailed
-    
+
     ; Test collision detection
     LD A, 100           ; Move to collision position
     LD (PlayerX), A
@@ -910,11 +910,11 @@ TestGameSystem:
     LD A, (CollisionFlag)
     OR A
     JR Z, CollisionTestFailed
-    
+
     ; All tests passed
     LD A, 1
     RET
-    
+
 MovementTestFailed:
 CollisionTestFailed:
     LD A, 0
@@ -966,11 +966,11 @@ AssertEqual:
     ; Input: A = actual result, B = expected result
     CP B                ; Compare actual with expected
     JR Z, AssertPassed
-    
+
     ; Test failed
     CALL RecordFailure
     RET
-    
+
 AssertPassed:
     CALL RecordSuccess
     RET
@@ -984,7 +984,7 @@ RecordSuccess:
     LD B, 0
     ADD HL, BC          ; Point to result slot
     LD (HL), 1          ; Mark as passed
-    
+
     ; Update counters
     LD HL, TestsRun
     INC (HL)
@@ -1001,7 +1001,7 @@ RecordFailure:
     LD B, 0
     ADD HL, BC          ; Point to result slot
     LD (HL), 0          ; Mark as failed
-    
+
     ; Update counter
     LD HL, TestsRun
     INC (HL)
@@ -1014,13 +1014,13 @@ TestMath:
     ADD A, 3
     LD B, 8             ; Expected result
     CALL AssertEqual
-    
+
     ; Test 2: Subtraction
     LD A, 10
     SUB 4
     LD B, 6             ; Expected result
     CALL AssertEqual
-    
+
     ; Test 3: Multiplication (using addition)
     LD A, 0
     LD C, 4             ; Multiply 3 × 4
@@ -1042,12 +1042,12 @@ TestArrayOps:
     LD B, 60            ; Expected value at index 5
     CALL AssertEqual
     JR BoundsTest1Done
-    
+
 BoundsTest1Fail:
     LD A, 0             ; Actual: failed
     LD B, 1             ; Expected: success
     CALL AssertEqual
-    
+
 BoundsTest1Done:
     ; Test 2: Array bounds checking with invalid index
     LD A, 15            ; Invalid index
@@ -1057,12 +1057,12 @@ BoundsTest1Done:
     LD B, 1             ; Expected: failure
     CALL AssertEqual
     JR TestArrayDone
-    
+
 BoundsTest2Pass:
     LD A, 1             ; Actual: failed (correct)
     LD B, 1             ; Expected: failure
     CALL AssertEqual
-    
+
 TestArrayDone:
     RET
 
@@ -1075,7 +1075,7 @@ SafeArrayAccess:
     ; Output: A = value, Carry set if error
     CP TestArraySize
     JR NC, ArrayError
-    
+
     LD HL, TestArray
     LD C, A
     LD B, 0
@@ -1083,7 +1083,7 @@ SafeArrayAccess:
     LD A, (HL)
     OR A                ; Clear carry
     RET
-    
+
 ArrayError:
     SCF                 ; Set carry
     LD A, 0
@@ -1096,15 +1096,15 @@ TestErrorHandling:
     CALL ValidatePointer
     JR C, NullTest1Pass ; Should fail
     LD A, 0             ; Actual: success (wrong)
-    LD B, 1             ; Expected: failure  
+    LD B, 1             ; Expected: failure
     CALL AssertEqual
     JR NullTest1Done
-    
+
 NullTest1Pass:
     LD A, 1             ; Actual: failed (correct)
     LD B, 1             ; Expected: failure
     CALL AssertEqual
-    
+
 NullTest1Done:
     ; Test 2: Valid pointer
     LD HL, $6000        ; Valid pointer
@@ -1114,12 +1114,12 @@ NullTest1Done:
     LD B, 1             ; Expected: success
     CALL AssertEqual
     JR TestErrorDone
-    
+
 ValidTest2Fail:
     LD A, 0             ; Actual: failed (wrong)
     LD B, 1             ; Expected: success
     CALL AssertEqual
-    
+
 TestErrorDone:
     RET
 
@@ -1129,14 +1129,14 @@ ValidatePointer:
     LD A, H
     OR L
     JR Z, InvalidPtr    ; Null pointer
-    
+
     LD A, H
     CP $40              ; Must be >= $4000
     JR C, InvalidPtr
-    
+
     OR A                ; Clear carry (valid)
     RET
-    
+
 InvalidPtr:
     SCF                 ; Set carry (invalid)
     RET
@@ -1147,19 +1147,19 @@ RunTestSuite:
     LD A, 0
     LD (TestsRun), A
     LD (TestsPassed), A
-    
+
     ; Run all test categories
     CALL TestMath
     CALL TestArrayOps
     CALL TestErrorHandling
-    
+
     ; Calculate results
     LD A, (TestsPassed)
     LD B, A             ; B = passed
     LD A, (TestsRun)
     SUB B               ; A = failed
     LD C, A             ; C = failed
-    
+
     ; Results now in: B = passed, C = failed
     RET
 ```
@@ -1174,7 +1174,7 @@ RunTestSuite:
 DumpMemory:
     PUSH BC
     PUSH HL
-    
+
 DumpLoop:
     LD A, (HL)          ; Get byte
     ; In real system, display in hex format
@@ -1182,7 +1182,7 @@ DumpLoop:
     CALL StoreDumpByte
     INC HL              ; Next byte
     DJNZ DumpLoop       ; Continue for all bytes
-    
+
     POP HL
     POP BC
     RET
@@ -1203,15 +1203,15 @@ CheckStackIntegrity:
     LD DE, 100          ; Maximum stack usage
     OR A
     SBC HL, DE          ; HL = minimum expected SP
-    
+
     LD DE, 0            ; Get current SP
     ADD HL, SP          ; Compare current SP with minimum
     JR C, StackOverflow ; SP below minimum = overflow
-    
+
     ; Stack OK
     OR A                ; Clear carry
     RET
-    
+
 StackOverflow:
     SCF                 ; Set carry (error)
     RET
@@ -1240,14 +1240,14 @@ StopPerformanceTimer:
 ; Use around code sections to measure performance
 MeasuredFunction:
     CALL StartPerformanceTimer
-    
+
     ; Code to measure
     LD B, 100
 TestLoop:
     NOP                 ; Placeholder operations
     NOP
     DJNZ TestLoop
-    
+
     CALL StopPerformanceTimer
     ; Performance result in PerformanceCounter
     RET
@@ -1287,58 +1287,58 @@ DebugPos:           DB 0
 SafeStringCopy:
     ; Input: HL = source, DE = dest, BC = max bytes
     ; Output: A = bytes copied, LastError set if error
-    
+
     ; Validate pointers
     LD A, H
     OR L
     JR Z, StringCopyError1  ; Null source
-    
+
     LD A, D
     OR E
     JR Z, StringCopyError1  ; Null destination
-    
+
     ; Validate count
     LD A, B
     OR C
     JR Z, StringCopyError2  ; Zero count
-    
+
     ; Perform safe copy with bounds checking
     LD A, 0                 ; Bytes copied counter
-    
+
 StringCopyLoop:
     ; Check if we've hit maximum
     LD A, B
     OR C
     JR Z, StringCopyDone    ; Hit limit
-    
+
     ; Copy one byte
     LD A, (HL)              ; Get source byte
     LD (DE), A              ; Store to destination
-    
+
     ; Check for string terminator
     OR A
     JR Z, StringCopyDone    ; Found terminator
-    
+
     ; Update pointers and counters
     INC HL                  ; Next source
     INC DE                  ; Next destination
     DEC BC                  ; Decrement count
-    
+
     ; Update bytes copied (simplified)
     JR StringCopyLoop
-    
+
 StringCopyDone:
     LD A, ERROR_NONE
     LD (LastError), A
     LD A, 1                 ; Return success
     RET
-    
+
 StringCopyError1:
     LD A, ERROR_NULL_POINTER
     LD (LastError), A
     LD A, 0                 ; Return failure
     RET
-    
+
 StringCopyError2:
     LD A, ERROR_INVALID_PARAM
     LD (LastError), A
@@ -1349,15 +1349,15 @@ StringCopyError2:
 SafeAdd:
     ; Input: A = first operand, B = second operand
     ; Output: A = result, LastError set if overflow
-    
+
     ADD A, B                ; Perform addition
     JR C, AddOverflow       ; Jump if carry (overflow)
-    
+
     ; No overflow
     LD B, ERROR_NONE
     LD (LastError), B
     RET
-    
+
 AddOverflow:
     LD B, ERROR_OVERFLOW
     LD (LastError), B
@@ -1371,23 +1371,23 @@ LogDebugMessage:
     LD A, (DebugLevel)      ; Get system debug level
     CP C                    ; Compare with message level
     RET C                   ; Don't log if message level > system level
-    
+
     ; Log the message
     LD A, (DebugPos)
     CP 45                   ; Check buffer space
     JR NC, DebugBufferFull
-    
+
     ; Store message in buffer
     LD HL, DebugBuffer
     LD C, A                 ; Position
     ADD HL, BC              ; Point to storage location
     LD (HL), B              ; Store message code
-    
+
     ; Update position
     LD HL, DebugPos
     INC (HL)
     RET
-    
+
 DebugBufferFull:
     ; Buffer full - reset position (circular buffer)
     LD A, 0
@@ -1398,31 +1398,31 @@ DebugBufferFull:
 RobustCalculation:
     ; Input: A = x, B = y
     ; Calculate (x + y) * 2 with full error checking
-    
+
     ; Log function entry
     PUSH AF
     LD A, 3                 ; Info level
     LD B, 100               ; Entry message code
     CALL LogDebugMessage
     POP AF
-    
+
     ; Validate inputs
     CP 128                  ; Check if x > 127 (would overflow when doubled)
     JR NC, CalcParamError
-    
+
     LD C, A                 ; Save x
     LD A, B
     CP 128                  ; Check if y > 127
     JR NC, CalcParamError
     LD A, C                 ; Restore x
-    
+
     ; Perform addition with overflow check
     CALL SafeAdd
     LD C, A                 ; Save result
     LD A, (LastError)
     CP ERROR_NONE
     JR NZ, CalcAddError
-    
+
     ; Double the result (multiply by 2)
     LD A, C
     CALL SafeAdd            ; Add to itself
@@ -1430,33 +1430,33 @@ RobustCalculation:
     LD A, (LastError)
     CP ERROR_NONE
     JR NZ, CalcMulError
-    
+
     ; Success
     LD A, 3                 ; Info level
     LD B, 101               ; Success message code
     CALL LogDebugMessage
-    
+
     LD A, C                 ; Return result
     LD B, ERROR_NONE
     LD (LastError), B
     RET
-    
+
 CalcParamError:
     LD A, 1                 ; Error level
     LD B, 201               ; Parameter error message
     CALL LogDebugMessage
-    
+
     LD A, ERROR_INVALID_PARAM
     LD (LastError), A
     LD A, 0                 ; Return 0
     RET
-    
+
 CalcAddError:
 CalcMulError:
     LD A, 1                 ; Error level
     LD B, 202               ; Calculation error message
     CALL LogDebugMessage
-    
+
     ; Error already in LastError
     LD A, 0                 ; Return 0
     RET
@@ -1469,55 +1469,55 @@ TestRobustSystem:
     CALL RobustCalculation  ; Should return 30: (10+5)*2
     CP 30
     JR Z, Test1Pass
-    
+
     ; Test failed
     LD A, 1                 ; Error level
     LD B, 250               ; Test failure message
     CALL LogDebugMessage
     JR Test1Done
-    
+
 Test1Pass:
     LD A, 3                 ; Info level
     LD B, 251               ; Test success message
     CALL LogDebugMessage
-    
+
 Test1Done:
     ; Test 2: Overflow condition
     LD A, 100               ; x = 100
     LD B, 100               ; y = 100
     CALL RobustCalculation  ; Should detect overflow
-    
+
     LD A, (LastError)
     CP ERROR_OVERFLOW
     JR Z, Test2Pass
-    
+
     ; Test failed
     LD A, 1                 ; Error level
     LD B, 252               ; Test failure message
     CALL LogDebugMessage
     JR Test2Done
-    
+
 Test2Pass:
     LD A, 3                 ; Info level
     LD B, 253               ; Test success message
     CALL LogDebugMessage
-    
+
 Test2Done:
     ; Test 3: Parameter validation
     LD A, 150               ; x = 150 (too large)
     LD B, 10                ; y = 10
     CALL RobustCalculation  ; Should detect parameter error
-    
+
     LD A, (LastError)
     CP ERROR_INVALID_PARAM
     JR Z, Test3Pass
-    
+
     ; Test failed
     LD A, 1                 ; Error level
     LD B, 254               ; Test failure message
     CALL LogDebugMessage
     RET
-    
+
 Test3Pass:
     LD A, 3                 ; Info level
     LD B, 255               ; Test success message
@@ -1529,15 +1529,15 @@ InitAndTest:
     ; Set debug level to capture all messages
     LD A, 3
     LD (DebugLevel), A
-    
+
     ; Clear debug buffer
     LD A, 0
     LD (DebugPos), A
     LD (LastError), A
-    
+
     ; Run comprehensive tests
     CALL TestRobustSystem
-    
+
     ; Debug buffer now contains execution trace
     ; LastError contains final error state
     RET

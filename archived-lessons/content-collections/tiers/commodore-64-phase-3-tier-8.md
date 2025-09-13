@@ -31,6 +31,7 @@ Push beyond the manual! With **32 comprehensive lessons**, you'll learn the undo
 ## What You'll Complete
 
 Finish **Rhythm Master** with impressive features:
+
 - Visual effects using hardware tricks
 - Precise timing through CIA mastery
 - Expanded content via memory banking
@@ -40,24 +41,28 @@ Finish **Rhythm Master** with impressive features:
 ## Tier Overview
 
 **Lessons 1-8: Undocumented VIC-II Features**
+
 - VSP (Variable Screen Position) scrolling
 - FLD (Flexible Line Distance) effects
 - Sprite stretching techniques
 - Border removal tricks
 
 **Lessons 9-16: Illegal Opcodes**
+
 - Understanding undocumented instructions
 - Safe usage patterns
 - Performance benefits
 - Compatibility considerations
 
 **Lessons 17-24: Advanced Display Tricks**
+
 - FLI (Flexible Line Interpretation)
 - AFLI (Advanced FLI) graphics
 - Interlace modes
 - Mixed mode techniques
 
 **Lessons 25-32: Demo Scene Techniques**
+
 - Opening the borders
 - Sprite multiplexing tricks
 - Color bar techniques

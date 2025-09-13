@@ -27,6 +27,7 @@ Welcome to the fun stuff! 🚀 With **32 action-packed lessons**, you'll create 
 ## What You'll Build
 
 Create **PLASMA STORM** - an epic vertical scrolling shooter featuring:
+
 - Enemies that swarm like angry space bees
 - Bullet patterns so beautiful they're almost art (but still deadly)
 - Explosions that make you go "BOOM!" out loud
@@ -36,24 +37,28 @@ Create **PLASMA STORM** - an epic vertical scrolling shooter featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Holy Sprites, Batman!" - Multiplexing Madness**
+
 - Sprite multiplexing: Because 8 sprites aren't nearly enough
 - Hardware sprite wizardry and timing tricks
 - Making 50 enemies appear when you only have 8 sprites
 - The dark arts of raster interrupt sprite management
 
 **Lessons 9-16: "Bullet Hell Paradise" - Pattern Programming**
+
 - Bullet patterns that look impossible but run smoothly
 - Sine wave movements that make enemies dance
 - Collision detection that doesn't kill your frame rate
 - The mathematics of making players sweat (but not rage quit)
 
 **Lessons 17-24: "BOOM Goes the Dynamite!" - Effects & Feedback**
+
 - Explosions that feel meaty and satisfying
 - Screen shake that adds impact without causing seizures
 - Particle effects using character graphics
 - Sound effects that make players go "Did the C64 just DO that?"
 
 **Lessons 25-32: "Boss Fight Bonanza" - AI & Challenge**
+
 - Boss AI that's smart but not cheaply difficult
 - Attack patterns that teach players through gameplay
 - Difficulty curves that keep players coming back

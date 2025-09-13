@@ -69,7 +69,6 @@ emulators:
     accuracy: "good"
 historical_significance: "The Mattel Aquarius was infamously called 'the system for the seventies' when it was released in 1983, representing one of computing's most spectacular mistimings. Despite featuring respectable TMS9918A graphics and Microsoft BASIC, it arrived just as the market was moving toward 16-bit systems, becoming a cautionary tale about market timing and product positioning in rapidly evolving technology sectors."
 description: "The system for the seventies—released in 1983 when everyone wanted the eighties, a perfect example of catastrophic market timing."
-image: "/images/systems/mattel-aquarius.jpg"
 order: 47
 ---
 
@@ -78,7 +77,9 @@ The **Mattel Aquarius** stands as one of computing history's most perfectly mist
 ## The Great Mistiming
 
 ### Released Too Late
+
 By 1983, the home computer market had evolved far beyond what the Aquarius offered:
+
 - **Commodore 64** provided superior sound and graphics for similar price
 - **Apple IIe** dominated the serious computing market
 - **IBM PC** was establishing professional standards
@@ -87,7 +88,9 @@ By 1983, the home computer market had evolved far beyond what the Aquarius offer
 The Aquarius felt like a 1979 computer released in 1983.
 
 ### Marketing Disaster
+
 Mattel's advertising campaign inadvertently highlighted the problem:
+
 - **"The system for the seventies"** slogan when it was 1983
 - **Emphasis on simplicity** when users wanted sophistication
 - **Toy company image** conflicting with serious computing
@@ -96,21 +99,27 @@ Mattel's advertising campaign inadvertently highlighted the problem:
 ## Technical Specifications and Reality
 
 ### Solid Foundation Hardware
+
 Despite timing issues, the Aquarius used proven components:
+
 - **Z80A at 3.58 MHz** - reliable and well-understood processor
 - **TMS9918A video chip** - same quality graphics as MSX and ColecoVision
 - **SN76489A sound** - multi-channel audio with good capabilities
 - **Microsoft Extended BASIC** - professional programming environment
 
 ### Memory Limitations
+
 The base system was minimal even for 1983:
+
 - **4 KB RAM** standard (Commodore 64 had 64 KB)
 - **32 KB maximum** with expensive RAM expansion
 - **8 KB ROM BASIC** providing programming environment
 - **Video RAM integrated** in the TMS9918A chip
 
 ### Build Quality Issues
+
 Cost reduction affected usability:
+
 - **Membrane keyboard** difficult for serious programming
 - **Expansion connectors** prone to connection problems
 - **Undersized power supply** for fully expanded systems
@@ -119,14 +128,18 @@ Cost reduction affected usability:
 ## Notable Software Legacy
 
 ### Lock 'N' Chase
+
 Mattel's premier arcade conversion demonstrated the system's potential:
+
 - **Smooth sprite animation** using the TMS9918A capabilities
 - **Multi-directional scrolling** gameplay
 - **Synchronized sound effects** with four-channel audio
 - **Professional game design** despite hardware limitations
 
 ### Advanced Dungeons & Dragons
+
 An ambitious text adventure that showcased:
+
 - **Complex game logic** implemented in BASIC
 - **Save/load functionality** using cassette storage
 - **Interactive storytelling** with branching narratives
@@ -135,21 +148,27 @@ An ambitious text adventure that showcased:
 ## Historical Impact and Lessons
 
 ### What the Aquarius Got Right
+
 The technical foundation was actually solid:
+
 - **TMS9918A graphics** were competitive for the era
 - **Microsoft BASIC** was sophisticated and full-featured
 - **Modular expansion** allowed system growth
 - **Affordable entry price** made computing accessible
 
 ### What Went Wrong
+
 The failures were primarily market-related:
+
 - **Catastrophic timing** - obsolete before launch
 - **Poor positioning** - neither toy nor serious computer
 - **Membrane keyboard** unsuitable for programming
 - **Brand perception** - toy company making computers
 
 ### Long-Term Influence
+
 Despite commercial failure, the Aquarius influenced:
+
 - **Budget computer** design in later systems
 - **TMS9918A adoption** in other platforms like MSX
 - **Microsoft BASIC** standardization across platforms
@@ -158,6 +177,7 @@ Despite commercial failure, the Aquarius influenced:
 ## Why Study Aquarius History
 
 Understanding the Aquarius provides crucial insights:
+
 - **Market timing** importance in technology products
 - **Consumer perception** vs. technical capabilities
 - **Brand positioning** in competitive markets
@@ -166,6 +186,7 @@ Understanding the Aquarius provides crucial insights:
 ## The Perfect Storm of Failure
 
 The Aquarius failed due to multiple converging factors:
+
 - **Late market entry** when competitors were established
 - **Obsolete positioning** just as 16-bit era began
 - **Build quality issues** that hurt user experience
@@ -175,6 +196,7 @@ The Aquarius failed due to multiple converging factors:
 ## Technical Legacy
 
 Despite commercial failure, the Aquarius contributed to computing history:
+
 - **Proven component integration** - TMS9918A and Z80 combination
 - **Microsoft BASIC** advancement and standardization
 - **Budget computing** concepts for mass market

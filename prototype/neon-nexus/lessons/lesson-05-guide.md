@@ -32,7 +32,7 @@ move_right:
     lda player_x
     cmp #40         ; At right boundary?
     bcc draw_player ; If less than 40, we're OK
-    
+
     ; Hit boundary - handle it
     lda #39         ; Stay at edge
     sta player_x
@@ -55,28 +55,28 @@ check_boundaries:
     bcc check_left
     lda #39         ; Clamp to edge
     sta player_x
-    
+
 check_left:
     lda player_x
     cmp #255        ; Wrapped around from 0?
     bne check_top
     lda #0          ; Clamp to left edge
     sta player_x
-    
+
 check_top:
     lda player_y
     cmp #255        ; Wrapped from 0?
     bne check_bottom
     lda #0
     sta player_y
-    
+
 check_bottom:
     lda player_y
     cmp #25         ; Past bottom?
     bcc boundaries_done
     lda #24         ; Clamp to bottom
     sta player_y
-    
+
 boundaries_done:
     rts
 ```
@@ -107,7 +107,9 @@ inc player_x    ; Now X=40
 ## Interactive Elements
 
 ### Experiment 1: Wrapping vs Clamping
+
 Try different boundary behaviors:
+
 ```assembly
 ; Wrapping (Pac-Man style)
 cmp #40
@@ -123,7 +125,9 @@ sta player_x
 ```
 
 ### Experiment 2: Screen Shake on Impact
+
 Add visual feedback:
+
 ```assembly
 hit_boundary:
     inc $d020       ; Flash border
@@ -131,7 +135,9 @@ hit_boundary:
 ```
 
 ### Experiment 3: Boundary Zones
+
 Create "soft" boundaries:
+
 ```assembly
 ; Slow down near edges
 lda player_x
@@ -143,11 +149,13 @@ lsr movement_speed  ; Half speed
 ## Deep Dive: Off-By-One Errors
 
 The classic fence post problem:
+
 - 40 columns numbered 0-39
 - Position 40 is actually the 41st position
 - Common mistake: `cmp #39` when you need `cmp #40`
 
 Visual representation:
+
 ```
 Columns: |0|1|2|...|38|39|
 Valid X:  ✓ ✓ ✓ ... ✓  ✓
@@ -166,6 +174,7 @@ $0800: Start of BASIC program!
 ```
 
 Writing past boundaries can:
+
 - Corrupt sprite pointers
 - Crash BASIC
 - Create mysterious bugs
@@ -173,6 +182,7 @@ Writing past boundaries can:
 ## Challenge Extensions
 
 1. **Toroidal Wrapping**: Top wraps to bottom, left to right
+
    ```assembly
    ; Leaving top edge appears at bottom
    lda player_y
@@ -216,6 +226,7 @@ clamp_table:
 ## Historical Examples
 
 Boundary handling in classic games:
+
 - **Asteroids**: Screen wrapping in all directions
 - **Defender**: Horizontal wrapping only
 - **Robotron**: Hard walls with visual feedback

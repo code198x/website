@@ -27,6 +27,7 @@ Time to define new genres! With **32 innovation-focused lessons**, you'll master
 ## What You'll Pioneer
 
 Develop **GENRE-DEFINING INNOVATION** that creates new gaming categories:
+
 - Breakthrough C64 games that establish entirely new genres
 - Revolutionary mechanics that feel natural yet unprecedented
 - Hybrid experiences that blend familiar elements in innovative ways
@@ -36,24 +37,28 @@ Develop **GENRE-DEFINING INNOVATION** that creates new gaming categories:
 ## Innovation Mastery Areas
 
 **Lessons 1-8: "C64 Genre Analysis" - Understanding What Makes Genres**
+
 - Analyzing legendary C64 games to understand their genre-defining elements
 - Identifying opportunities for new genres within C64's capabilities
 - Finding the gaps between existing genres where innovation can flourish
 - Understanding what makes C64 games become genre-defining classics
 
 **Lessons 9-16: "Innovation Fusion" - Combining Elements into New Genres**
+
 - Blending mechanics from different genres in revolutionary ways
 - Creating entirely new C64 gameplay mechanics and systems
 - Balancing innovation with accessibility for breakthrough appeal
 - Designing core gameplay loops that feel completely fresh
 
 **Lessons 17-24: "C64 Innovation Mastery" - Pushing Platform Boundaries**
+
 - Creating games that showcase previously unknown C64 possibilities
 - Designing innovative experiences that maximize the platform's potential
 - Building games that use the C64 in unprecedented ways
 - Pioneering new types of C64 gaming experiences
 
 **Lessons 25-32: "Genre Establishment" - Creating New Gaming Categories**
+
 - Creating C64 games so distinctive they establish new genres
 - Understanding how to introduce revolutionary concepts to players
 - Building the foundational games that define new categories

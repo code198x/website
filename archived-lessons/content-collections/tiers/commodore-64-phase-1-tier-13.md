@@ -27,6 +27,7 @@ Enter the world of real-time programming! Learn to create smooth, responsive sof
 ## What You'll Start Building
 
 Begin **Retro Racer** development:
+
 - Smooth scrolling road display
 - Responsive car movement and controls
 - Real-time collision detection
@@ -35,24 +36,28 @@ Begin **Retro Racer** development:
 ## Tier Overview
 
 **Lessons 1-8: Real-Time Fundamentals**
+
 - Understanding real-time vs batch programming
 - Game loops and main program structure
 - Timing control and frame rate management
 - Balancing calculation and display time
 
 **Lessons 9-16: Smooth Animation**
+
 - Creating fluid movement with BASIC
 - Interpolation and smooth transitions
 - Managing multiple moving objects
 - Optimizing animation performance
 
 **Lessons 17-24: Responsive Controls**
+
 - Immediate input response
 - Control sensitivity and acceleration
 - Predictive input handling
 - Creating natural-feeling interactions
 
 **Lessons 25-32: Racing Engine Foundation**
+
 - Basic scrolling road implementation
 - Car movement and physics basics
 - Simple collision detection

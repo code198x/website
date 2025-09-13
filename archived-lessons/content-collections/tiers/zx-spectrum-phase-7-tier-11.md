@@ -27,6 +27,7 @@ Master large-scale game development for ZX Spectrum! With **32 architecture-focu
 ## What You'll Build
 
 Create **COMPLEX SPECTRUM ARCHITECTURE** - your system masterpiece:
+
 - Large-scale game architectures that manage multiple interconnected systems
 - Complex gameplay mechanics that interact and influence each other
 - Advanced memory management systems for sophisticated games
@@ -36,24 +37,28 @@ Create **COMPLEX SPECTRUM ARCHITECTURE** - your system masterpiece:
 ## Large-Scale Architecture Areas
 
 **Lessons 1-8: "System Architecture" - Large-Scale Design Patterns**
+
 - Complex game architecture design and planning methodologies
 - System interdependency analysis and management techniques
 - Modular design patterns for large-scale ZX Spectrum games
 - Advanced code organization and structure for complex projects
 
 **Lessons 9-16: "Component Systems" - Modular Game Frameworks**
+
 - Advanced component-based entity systems in Z80 assembly
 - Flexible game object frameworks that support complex behaviors
 - Data-driven design patterns for configurable game systems
 - Reusable component libraries for rapid development
 
 **Lessons 17-24: "Integration Mastery" - Connecting Complex Systems**
+
 - Advanced system integration and communication protocols
 - Event-driven architecture for loose system coupling
 - Performance optimization for interconnected systems
 - Testing and validation of complex system interactions
 
 **Lessons 25-32: "Scalable Architecture" - Growth and Optimization**
+
 - Memory management strategies for large, complex games
 - Performance profiling and optimization of complex architectures
 - Scalability planning and system expansion techniques

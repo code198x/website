@@ -27,6 +27,7 @@ Polish the experience! With **32 comprehensive lessons**, you'll create professi
 ## What You'll Build
 
 Enhance **Cosmic Defender** with a complete interface system:
+
 - Professional main menu with animated elements
 - In-game HUD with real-time information display
 - Settings screens with live preview
@@ -36,24 +37,28 @@ Enhance **Cosmic Defender** with a complete interface system:
 ## Tier Overview
 
 **Lessons 1-8: Professional Menu Design**
+
 - UI/UX principles for game interfaces
 - Menu hierarchy and navigation systems
 - Visual design and layout techniques
 - Amiga-specific interface considerations
 
 **Lessons 9-16: Input Handling Systems**
+
 - Mouse and keyboard input processing
 - Joystick and gamepad support
 - Input mapping and customization
 - Event-driven input architecture
 
 **Lessons 17-24: Visual Interface Elements**
+
 - Button, slider, and control widgets
 - Animation and visual feedback systems
 - Icon design and visual consistency
 - Color schemes and accessibility
 
 **Lessons 25-32: Advanced UI Systems**
+
 - Dynamic UI updates and real-time display
 - Context-sensitive help systems
 - Interface customization and themes

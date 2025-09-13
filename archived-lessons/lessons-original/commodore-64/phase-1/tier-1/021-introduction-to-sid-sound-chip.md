@@ -36,7 +36,7 @@ LDA #$21        ; Set triangle waveform
 STA $D404       ; Voice 1 control register
 LDA #$00        ; Set attack/decay
 STA $D405       ; Voice 1 ADSR
-LDA #$F9        ; Set sustain/release  
+LDA #$F9        ; Set sustain/release
 STA $D406       ; Voice 1 ADSR
 LDA #$10        ; Start the note
 STA $D404       ; Trigger the sound
@@ -66,7 +66,7 @@ The SID contains sophisticated audio generation hardware:
 │                   SID                   │
 ├─────────────────────────────────────────┤
 │ Voice 1: Oscillator + Envelope + Filter │
-│ Voice 2: Oscillator + Envelope + Filter │  
+│ Voice 2: Oscillator + Envelope + Filter │
 │ Voice 3: Oscillator + Envelope + Filter │
 │                                         │
 │ Shared Filter: LP/HP/BP + Resonance     │
@@ -82,23 +82,25 @@ The SID contains sophisticated audio generation hardware:
 SID registers occupy **$D400-$D7FF** in the C64 memory map:
 
 ### Voice Registers (Repeated for each voice)
-| Offset | Voice 1 | Voice 2 | Voice 3 | Purpose |
-|--------|---------|---------|---------|---------|
-| +$00 | $D400 | $D407 | $D40E | Frequency Low |
-| +$01 | $D401 | $D408 | $D40F | Frequency High |
-| +$02 | $D402 | $D409 | $D410 | Pulse Width Low |
-| +$03 | $D403 | $D40A | $D411 | Pulse Width High |
-| +$04 | $D404 | $D40B | $D412 | Control Register |
-| +$05 | $D405 | $D40C | $D413 | Attack/Decay |
-| +$06 | $D406 | $D40D | $D414 | Sustain/Release |
+
+| Offset | Voice 1 | Voice 2 | Voice 3 | Purpose          |
+| ------ | ------- | ------- | ------- | ---------------- |
+| +$00   | $D400   | $D407   | $D40E   | Frequency Low    |
+| +$01   | $D401   | $D408   | $D40F   | Frequency High   |
+| +$02   | $D402   | $D409   | $D410   | Pulse Width Low  |
+| +$03   | $D403   | $D40A   | $D411   | Pulse Width High |
+| +$04   | $D404   | $D40B   | $D412   | Control Register |
+| +$05   | $D405   | $D40C   | $D413   | Attack/Decay     |
+| +$06   | $D406   | $D40D   | $D414   | Sustain/Release  |
 
 ### Global Registers
-| Address | Purpose |
-|---------|---------|
-| **$D415** | Filter Cutoff Low |
-| **$D416** | Filter Cutoff High |
+
+| Address   | Purpose                          |
+| --------- | -------------------------------- |
+| **$D415** | Filter Cutoff Low                |
+| **$D416** | Filter Cutoff High               |
 | **$D417** | Filter Resonance & Voice Routing |
-| **$D418** | Volume & Filter Mode |
+| **$D418** | Volume & Filter Mode             |
 
 **Basic SID Register Access:**
 
@@ -112,7 +114,7 @@ SID registers occupy **$D400-$D7FF** in the C64 memory map:
 
 LDA #$20        ; Frequency low byte
 STA $D400       ; Voice 1 frequency low
-LDA #$48        ; Frequency high byte  
+LDA #$48        ; Frequency high byte
 STA $D401       ; Voice 1 frequency high
 
 ; Configure Voice 1 waveform and control
@@ -135,40 +137,42 @@ STA $D418       ; Volume register
 SID frequency is controlled by a **16-bit value** that determines oscillator speed:
 
 ### Frequency Calculation
+
 ```
 Frequency (Hz) = (16-bit value × 1.023 MHz) ÷ 16,777,216
 ```
 
 ### Common Musical Notes
-| Note | Frequency | SID Value | 
-|------|-----------|-----------|
-| C-4 (Middle C) | 261.6 Hz | $4820 |
-| D-4 | 293.7 Hz | $50C4 |
-| E-4 | 329.6 Hz | $5A82 |
-| F-4 | 349.2 Hz | $60B4 |
-| G-4 | 392.0 Hz | $6E18 |
-| A-4 | 440.0 Hz | $7CD6 |
-| B-4 | 493.9 Hz | $8CD8 |
-| C-5 | 523.3 Hz | $9040 |
+
+| Note           | Frequency | SID Value |
+| -------------- | --------- | --------- |
+| C-4 (Middle C) | 261.6 Hz  | $4820     |
+| D-4            | 293.7 Hz  | $50C4     |
+| E-4            | 329.6 Hz  | $5A82     |
+| F-4            | 349.2 Hz  | $60B4     |
+| G-4            | 392.0 Hz  | $6E18     |
+| A-4            | 440.0 Hz  | $7CD6     |
+| B-4            | 493.9 Hz  | $8CD8     |
+| C-5            | 523.3 Hz  | $9040     |
 
 ```text
 ; Play different musical notes
 PlayNote:
     ; Input: Note value in A register
     ; 0=C, 1=D, 2=E, etc.
-    
+
     ASL                 ; Multiply by 2 (2 bytes per note)
     TAX                 ; Use as index
-    
+
     LDA NoteTable,X     ; Get frequency low byte
     STA $D400           ; Set Voice 1 frequency low
     LDA NoteTable+1,X   ; Get frequency high byte
     STA $D401           ; Set Voice 1 frequency high
-    
+
     ; Trigger note
     LDA #%00010001      ; Triangle wave + Gate
     STA $D404           ; Start note
-    
+
     RTS
 
 NoteTable:
@@ -200,41 +204,41 @@ InitSound:
 
 PlayScale:
     JSR InitSound
-    
+
     ; Play C major scale
     LDX #$00        ; Note counter
-    
+
 ScaleLoop:
     ; Get note frequency from table
     LDA NotesLow,X  ; Low byte
     STA $D400       ; Voice 1 freq low
     LDA NotesHigh,X ; High byte
     STA $D401       ; Voice 1 freq high
-    
+
     ; Start note
     LDA #%00010001  ; Triangle wave + Gate on
     STA $D404       ; Voice 1 control
-    
+
     ; Hold note
     JSR NoteDelay
-    
+
     ; Stop note
     LDA #%00010000  ; Triangle wave + Gate off
     STA $D404       ; Voice 1 control
-    
+
     ; Short pause
     JSR ShortDelay
-    
+
     ; Next note
     INX
     CPX #$08        ; 8 notes in scale
     BNE ScaleLoop
-    
+
     RTS
 
 NotesLow:
     .byte $20, $C4, $82, $B4, $18, $D6, $D8, $40  ; C,D,E,F,G,A,B,C
-NotesHigh:  
+NotesHigh:
     .byte $48, $50, $5A, $60, $6E, $7C, $8C, $90
 
 NoteDelay:
@@ -260,15 +264,17 @@ JSR PlayScale
 Each SID voice can generate **4 basic waveforms**:
 
 ### Waveform Types
+
 1. **Triangle Wave** (bit 4): Smooth, mellow sound
-2. **Sawtooth Wave** (bit 5): Bright, buzzy sound  
+2. **Sawtooth Wave** (bit 5): Bright, buzzy sound
 3. **Pulse Wave** (bit 6): Variable width, classic synthesizer sound
 4. **Noise** (bit 7): Random noise for percussion and effects
 
 ### Control Register Format ($D404, $D40B, $D412)
+
 ```
 Bit 7: Noise waveform
-Bit 6: Pulse waveform  
+Bit 6: Pulse waveform
 Bit 5: Sawtooth waveform
 Bit 4: Triangle waveform
 Bit 3: Test bit (disable oscillator)
@@ -285,31 +291,31 @@ WaveformDemo:
     STA $D400
     LDA #$48        ; Middle C frequency high
     STA $D401
-    
+
     ; Triangle wave
     LDA #%00010001  ; Triangle + Gate
     STA $D404
     JSR LongDelay
-    
+
     ; Sawtooth wave
     LDA #%00100001  ; Sawtooth + Gate
     STA $D404
     JSR LongDelay
-    
+
     ; Pulse wave
     LDA #%01000001  ; Pulse + Gate
     STA $D404
     JSR LongDelay
-    
+
     ; Noise
     LDA #%10000001  ; Noise + Gate
     STA $D404
     JSR LongDelay
-    
+
     ; Stop sound
     LDA #%00000000  ; All off
     STA $D404
-    
+
     RTS
 
 LongDelay:
@@ -336,56 +342,56 @@ WaveformExplorer:
     STA $D400
     LDA #$48        ; Frequency high
     STA $D401
-    
+
     ; Fast envelope for clear waveform hearing
     LDA #%11111111  ; Fast attack/decay
     STA $D405
     LDA #%11110000  ; Full sustain, no release
     STA $D406
-    
+
     ; Set volume
     LDA #%00001111  ; Full volume
     STA $D418
-    
+
     ; Triangle wave (smooth, mellow)
     LDA #%00010001  ; Triangle + Gate
     STA $D404
     JSR WaveDelay
-    
+
     ; Turn off
     LDA #%00010000  ; Triangle, Gate off
     STA $D404
     JSR ShortPause
-    
-    ; Sawtooth wave (bright, buzzy) 
+
+    ; Sawtooth wave (bright, buzzy)
     LDA #%00100001  ; Sawtooth + Gate
     STA $D404
     JSR WaveDelay
-    
+
     ; Turn off
     LDA #%00100000  ; Sawtooth, Gate off
     STA $D404
     JSR ShortPause
-    
+
     ; Pulse wave (classic synth sound)
     LDA #%01000001  ; Pulse + Gate
     STA $D404
     JSR WaveDelay
-    
+
     ; Turn off
     LDA #%01000000  ; Pulse, Gate off
     STA $D404
     JSR ShortPause
-    
+
     ; Noise (for percussion/effects)
     LDA #%10000001  ; Noise + Gate
     STA $D404
     JSR WaveDelay
-    
+
     ; Turn off completely
     LDA #%00000000  ; All off
     STA $D404
-    
+
     RTS
 
 WaveDelay:
@@ -416,13 +422,16 @@ JSR WaveformExplorer
 - **Release**: How quickly note fades when key released
 
 ### ADSR Register Format
+
 **Attack/Decay Register** ($D405, $D40C, $D413):
+
 ```
 Bits 7-4: Attack rate (0=slow, 15=fast)
 Bits 3-0: Decay rate (0=slow, 15=fast)
 ```
 
 **Sustain/Release Register** ($D406, $D40D, $D414):
+
 ```
 Bits 7-4: Sustain level (0=silent, 15=full volume)
 Bits 3-0: Release rate (0=slow, 15=fast)
@@ -434,38 +443,38 @@ EnvelopeDemo:
     ; Setup frequency (middle C)
     LDA #$20
     STA $D400
-    LDA #$48  
+    LDA #$48
     STA $D401
-    
+
     ; Slow attack, slow decay
     LDA #%00010001  ; Attack=1, Decay=1 (slow)
     STA $D405
     LDA #%10000001  ; Sustain=8, Release=1
     STA $D406
-    
+
     ; Start note and hold
     LDA #%00010001  ; Triangle + Gate
     STA $D404
     JSR VeryLongDelay
-    
+
     ; Release note
     LDA #%00010000  ; Triangle, Gate off
     STA $D404
     JSR LongDelay
-    
+
     ; Fast attack, fast decay (percussive)
     LDA #%11111111  ; Attack=15, Decay=15 (fast)
     STA $D405
     LDA #%00001111  ; Sustain=0, Release=15
     STA $D406
-    
+
     ; Quick percussive hit
     LDA #%00010001  ; Triangle + Gate
     STA $D404
     JSR ShortDelay
     LDA #%00010000  ; Gate off
     STA $D404
-    
+
     RTS
 
 VeryLongDelay:
@@ -494,7 +503,7 @@ PlayChord:
     STA $D401
     LDA #%00010001  ; Triangle + Gate
     STA $D404
-    
+
     ; Voice 2: E (third)
     LDA #$82        ; E frequency low
     STA $D407
@@ -502,7 +511,7 @@ PlayChord:
     STA $D408
     LDA #%00100001  ; Sawtooth + Gate
     STA $D40B
-    
+
     ; Voice 3: G (fifth)
     LDA #$18        ; G frequency low
     STA $D40E
@@ -510,16 +519,16 @@ PlayChord:
     STA $D40F
     LDA #%01000001  ; Pulse + Gate
     STA $D412
-    
+
     ; Hold chord
     JSR VeryLongDelay
-    
+
     ; Stop all voices
     LDA #%00000000
     STA $D404       ; Voice 1 off
-    STA $D40B       ; Voice 2 off  
+    STA $D40B       ; Voice 2 off
     STA $D412       ; Voice 3 off
-    
+
     RTS
 ```
 
@@ -535,34 +544,34 @@ PlayMajorChord:
     STA $D405       ; Voice 1 A/D
     STA $D40C       ; Voice 2 A/D
     STA $D413       ; Voice 3 A/D
-    
+
     LDA #%11110010  ; Full sustain, medium release
     STA $D406       ; Voice 1 S/R
     STA $D40D       ; Voice 2 S/R
     STA $D414       ; Voice 3 S/R
-    
+
     ; Set master volume
     LDA #%00001111  ; Full volume
     STA $D418
-    
+
     ; Voice 1: C (root) - Triangle wave
     LDA #$20        ; C frequency low
     STA $D400
     LDA #$48        ; C frequency high
     STA $D401
-    
-    ; Voice 2: E (third) - Sawtooth wave  
+
+    ; Voice 2: E (third) - Sawtooth wave
     LDA #$82        ; E frequency low
     STA $D407
     LDA #$5A        ; E frequency high
     STA $D408
-    
+
     ; Voice 3: G (fifth) - Pulse wave
     LDA #$18        ; G frequency low
     STA $D40E
     LDA #$6E        ; G frequency high
     STA $D40F
-    
+
     ; Start all voices simultaneously
     LDA #%00010001  ; Triangle + Gate
     STA $D404       ; Voice 1
@@ -570,10 +579,10 @@ PlayMajorChord:
     STA $D40B       ; Voice 2
     LDA #%01000001  ; Pulse + Gate
     STA $D412       ; Voice 3
-    
+
     ; Hold chord for a while
     JSR ChordDelay
-    
+
     ; Stop all voices
     LDA #%00010000  ; Triangle, Gate off
     STA $D404
@@ -581,10 +590,10 @@ PlayMajorChord:
     STA $D40B
     LDA #%01000000  ; Pulse, Gate off
     STA $D412
-    
+
     ; Let notes fade out
     JSR ChordDelay
-    
+
     RTS
 
 ChordDelay:
@@ -607,28 +616,29 @@ JSR PlayMajorChord
 SID excels at creating sound effects using its various capabilities:
 
 ### Explosion Effect
+
 ```text
 Explosion:
     ; Use noise waveform with pitch sweep
     LDA #%10000001  ; Noise + Gate
     STA $D404
-    
+
     ; Start high pitch and sweep down
     LDX #$FF
 ExplosionLoop:
     STX $D400       ; Frequency low = X
     LDA #$10
     STA $D401       ; Frequency high
-    
+
     ; Short delay
     LDY #$20
 ExpDelay:
     DEY
     BNE ExpDelay
-    
+
     DEX             ; Lower pitch
     BNE ExplosionLoop
-    
+
     ; Stop sound
     LDA #%00000000
     STA $D404
@@ -636,28 +646,29 @@ ExpDelay:
 ```
 
 ### Laser Shot Effect
+
 ```text
 LaserShot:
     ; Quick high-to-low pitch sweep with pulse wave
     LDA #%01000001  ; Pulse + Gate
     STA $D404
-    
+
     LDX #$FF        ; Start high
 LaserLoop:
     STX $D400       ; Set frequency
     LDA #$80
     STA $D401
-    
+
     ; Very short delay for fast sweep
     LDY #$05
 LaserDelay:
     DEY
     BNE LaserDelay
-    
+
     DEX
     CPX #$20        ; Stop at low frequency
     BNE LaserLoop
-    
+
     LDA #%00000000
     STA $D404
     RTS
@@ -685,9 +696,9 @@ FadeOut:
 FadeLoop:
     TXA
     JSR SetVolume   ; Set current volume level
-    
+
     JSR FadeDelay   ; Wait between steps
-    
+
     DEX             ; Decrease volume
     BPL FadeLoop    ; Continue until volume = 0
     RTS
@@ -705,7 +716,7 @@ FWait:
 Create a comprehensive SID demonstration that showcases:
 
 1. All four waveforms with clear timing
-2. Different ADSR envelope effects  
+2. Different ADSR envelope effects
 3. Multi-voice chord progression
 4. Basic sound effects
 5. Volume control and fading
@@ -718,7 +729,7 @@ Create a comprehensive SID demonstration that showcases:
 
 SIDDemo:
     JSR WaveformShow
-    JSR EnvelopeShow  
+    JSR EnvelopeShow
     JSR ChordShow
     JSR EffectsShow
     JMP SIDDemo     ; Loop forever
@@ -729,7 +740,7 @@ WaveformShow:
     STA $D400
     LDA #$60
     STA $D401
-    
+
     ; Quick envelope
     LDA #%11111111  ; Fast attack/decay
     STA $D405
@@ -737,7 +748,7 @@ WaveformShow:
     STA $D406
     LDA #%00001111  ; Full volume
     STA $D418
-    
+
     ; Triangle
     LDA #%00010001
     STA $D404
@@ -745,7 +756,7 @@ WaveformShow:
     LDA #%00010000
     STA $D404
     JSR ShortPause
-    
+
     ; Sawtooth
     LDA #%00100001
     STA $D404
@@ -753,7 +764,7 @@ WaveformShow:
     LDA #%00100000
     STA $D404
     JSR ShortPause
-    
+
     ; Pulse
     LDA #%01000001
     STA $D404
@@ -761,14 +772,14 @@ WaveformShow:
     LDA #%01000000
     STA $D404
     JSR ShortPause
-    
+
     ; Noise
     LDA #%10000001
     STA $D404
     JSR MediumDelay
     LDA #%10000000
     STA $D404
-    
+
     RTS
 
 EnvelopeShow:
@@ -777,32 +788,32 @@ EnvelopeShow:
     STA $D400
     LDA #$48
     STA $D401
-    
+
     ; Slow attack
     LDA #%00010001  ; Slow attack/decay
     STA $D405
     LDA #%11110001  ; Full sustain, slow release
     STA $D406
-    
+
     LDA #%00010001  ; Triangle + Gate
     STA $D404
     JSR LongDelay
     LDA #%00010000  ; Gate off
     STA $D404
     JSR LongDelay
-    
+
     ; Fast percussive
     LDA #%11111111  ; Fast attack/decay
     STA $D405
     LDA #%00001111  ; No sustain, fast release
     STA $D406
-    
+
     LDA #%00010001  ; Triangle + Gate
     STA $D404
     JSR ShortDelay
     LDA #%00010000  ; Gate off
     STA $D404
-    
+
     RTS
 
 ChordShow:
@@ -816,7 +827,7 @@ ChordShow:
     STA $D406
     STA $D40D
     STA $D414
-    
+
     ; C major chord
     LDA #$20
     STA $D400       ; C
@@ -830,21 +841,21 @@ ChordShow:
     STA $D40E       ; G
     LDA #$6E
     STA $D40F
-    
+
     ; Start chord
     LDA #%00010001
     STA $D404
     STA $D40B
     STA $D412
-    
+
     JSR ChordDelay
-    
+
     ; Stop chord
     LDA #%00010000
     STA $D404
     STA $D40B
     STA $D412
-    
+
     RTS
 
 EffectsShow:
@@ -852,25 +863,25 @@ EffectsShow:
     ; Sweep effect
     LDA #%00100001  ; Sawtooth + Gate
     STA $D404
-    
+
     LDX #$FF
 SweepLoop:
     STX $D400
     LDA #$40
     STA $D401
-    
+
     LDY #$10
 SweepDelay:
     DEY
     BNE SweepDelay
-    
+
     DEX
     CPX #$20
     BNE SweepLoop
-    
+
     LDA #%00000000
     STA $D404
-    
+
     RTS
 
 MediumDelay:
@@ -923,6 +934,7 @@ JSR SIDDemo
 ## SID Programming Best Practices
 
 ### 1. Always Initialize Properly
+
 ```text
 ; Clear all SID registers before use
 InitSID:
@@ -937,19 +949,20 @@ ClearSID:
 ```
 
 ### 2. Use Proper Gate Control
+
 ```text
 ; Always turn gate off before changing frequency
 ChangeNote:
     LDA $D404
     AND #%11111110  ; Clear gate bit
     STA $D404       ; Gate off
-    
+
     ; Change frequency
     LDA NewFreqLow
     STA $D400
     LDA NewFreqHigh
     STA $D401
-    
+
     ; Gate back on
     LDA $D404
     ORA #%00000001  ; Set gate bit
@@ -958,10 +971,11 @@ ChangeNote:
 ```
 
 ### 3. Plan Voice Usage
+
 ```text
 ; Assign voices by function
 ; Voice 1: Lead melody
-; Voice 2: Bass line  
+; Voice 2: Bass line
 ; Voice 3: Effects/harmony
 ```
 

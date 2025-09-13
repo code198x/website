@@ -27,6 +27,7 @@ Welcome to the symphony of code! 🎼 With **32 harmonious lessons**, you'll tra
 ## What You'll Build
 
 Create **AUDIO ARCHITECT** - a complete sound production system featuring:
+
 - Multi-track sequencers that rival professional studio equipment 🎹
 - Synthesis engines that create rich, complex waveforms
 - Real-time effects processing that transforms simple sounds
@@ -36,24 +37,28 @@ Create **AUDIO ARCHITECT** - a complete sound production system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Synthesis Mastery" - Advanced Waveform Generation**
+
 - Complex waveform synthesis using mathematical functions
 - FM synthesis techniques adapted for Z80 processing
 - Envelope generators and amplitude modulation
 - Noise synthesis and percussion generation
 
 **Lessons 9-16: "Sequencer Symphony" - Professional Music Production**
+
 - Multi-track sequencer design and implementation
 - Pattern-based composition systems
 - Dynamic music arrangement and song structure
 - MIDI-like event scheduling and timing precision
 
 **Lessons 17-24: "Effects Processing" - Real-Time Audio Transformation**
+
 - Delay and echo effects with feedback control
 - Filtering techniques for frequency manipulation
 - Chorus and flanging effects for richness
 - Real-time pitch shifting and time stretching
 
 **Lessons 25-32: "Multimedia Mastery" - Audio-Visual Integration**
+
 - Perfect audio-visual synchronization techniques
 - Interactive audio that responds to player actions
 - Dynamic mixing and audio level management

@@ -30,24 +30,24 @@ Our main loop becomes a dispatcher:
 ```assembly
 main_loop:
     lda game_state
-    
+
     cmp #STATE_MENU
     bne check_playing
     jsr handle_menu
     jmp main_loop
-    
+
 check_playing:
     cmp #STATE_PLAYING
     bne check_gameover
     jsr handle_playing
     jmp main_loop
-    
+
 check_gameover:
     cmp #STATE_GAMEOVER
     bne check_highscore
     jsr handle_gameover
     jmp main_loop
-    
+
 check_highscore:
     jsr handle_highscore
     jmp main_loop
@@ -62,9 +62,9 @@ handle_menu:
     ; Clear screen once
     lda menu_drawn
     bne wait_for_key
-    
+
     jsr clear_screen
-    
+
     ; Draw title
     ldx #0
 title_loop:
@@ -76,7 +76,7 @@ title_loop:
     inx
     jmp title_loop
 title_done:
-    
+
     ; Draw "PRESS SPACE TO START"
     ldx #0
 start_loop:
@@ -88,10 +88,10 @@ start_loop:
     inx
     jmp start_loop
 start_done:
-    
+
     lda #1
     sta menu_drawn
-    
+
 wait_for_key:
     ; Check for space bar
     lda #%01111111     ; Row 7
@@ -99,17 +99,17 @@ wait_for_key:
     lda $dc01
     and #%00010000     ; Column 4
     bne flash_text
-    
+
     ; Space pressed! Start game
     lda #STATE_PLAYING
     sta game_state
     lda #0
     sta menu_drawn     ; Reset flag
-    
+
     ; Initialize game
     jsr init_game
     rts
-    
+
 flash_text:
     ; Make "PRESS START" flash
     lda flash_timer
@@ -125,7 +125,7 @@ flash_loop:
     sta $d800+480,x
     dex
     bpl flash_loop
-    
+
     inc flash_timer
     rts
 ```
@@ -142,15 +142,15 @@ handle_playing:
     jsr update_enemies
     jsr check_collisions
     jsr update_display
-    
+
     ; Check game over condition
     lda lives
     bne still_playing
-    
+
     ; No lives left!
     lda #STATE_GAMEOVER
     sta game_state
-    
+
 still_playing:
     rts
 ```
@@ -164,11 +164,11 @@ handle_gameover:
     ; First time in game over?
     lda gameover_timer
     bne update_gameover
-    
+
     ; Initialize game over sequence
     lda #120           ; 2 seconds
     sta gameover_timer
-    
+
     ; Flash screen effect
     ldx #5
 flash_screen:
@@ -176,7 +176,7 @@ flash_screen:
     jsr delay
     dex
     bne flash_screen
-    
+
 update_gameover:
     ; Draw "GAME OVER"
     ldx #0
@@ -184,26 +184,26 @@ gameover_loop:
     lda gameover_text,x
     beq gameover_done
     sta $0400+492,x    ; Center screen
-    
+
     ; Pulsing color effect
     lda gameover_timer
     and #$0f
     sta $d800+492,x
-    
+
     inx
     jmp gameover_loop
 gameover_done:
-    
+
     ; Count down timer
     dec gameover_timer
     bne still_gameover
-    
+
     ; Timer expired - back to menu
     lda #STATE_MENU
     sta game_state
     lda #0
     sta gameover_timer
-    
+
 still_gameover:
     rts
 ```
@@ -222,26 +222,28 @@ init_game:
     sta lives
     lda #1
     sta level
-    
+
     ; Clear screen
     jsr clear_screen
-    
+
     ; Set up game display
     jsr init_display
-    
+
     ; Place player
     lda #20
     sta player_x
     lda #12
     sta player_y
-    
+
     rts
 ```
 
 ## Interactive Elements
 
 ### Experiment 1: Pause State
+
 Add a pause feature:
+
 ```assembly
 STATE_PAUSED = 4
 
@@ -252,7 +254,9 @@ sta previous_state  ; Remember where we were
 ```
 
 ### Experiment 2: Attract Mode
+
 Demo gameplay in menu:
+
 ```assembly
 ; After 10 seconds in menu
 lda #STATE_DEMO
@@ -261,7 +265,9 @@ sta game_state
 ```
 
 ### Experiment 3: Difficulty Selection
+
 Menu with options:
+
 ```assembly
 ; Up/down to select
 ; Different starting speeds/lives
@@ -298,6 +304,7 @@ game_memory:
 ## Challenge Extensions
 
 1. **Level Complete State**: Celebration between levels
+
    ```assembly
    STATE_LEVELCOMPLETE = 5
    ; Bonus points countdown
@@ -305,6 +312,7 @@ game_memory:
    ```
 
 2. **Options Menu**: Configure controls/sound
+
    ```assembly
    ; Nested state machine for menus
    MENU_MAIN = 0
@@ -312,6 +320,7 @@ game_memory:
    ```
 
 3. **Continue System**: Insert coin to continue
+
    ```assembly
    continues: !byte 3
    ; In game over, offer continue
@@ -333,6 +342,7 @@ game_memory:
 ## Performance Patterns
 
 State machines are efficient:
+
 ```assembly
 ; Bad: Check everything every frame
 jsr check_menu_input
@@ -347,6 +357,7 @@ lda game_state
 ## Historical Examples
 
 Classic C64 state systems:
+
 - **Impossible Mission**: Elevator scenes between gameplay
 - **Paradroid**: Transfer minigame state
 - **Boulder Dash**: Title → Cave Select → Playing → Bonus
@@ -370,6 +381,7 @@ STATE_DEBUG = 255
 ## Polish Details
 
 State transitions need style:
+
 - Fade effects between states
 - Music changes
 - Screen wipes

@@ -27,6 +27,7 @@ Create games that never age! With **32 timeless-design lessons**, you'll master 
 ## What You'll Master
 
 Create **TIMELESS AMIGA GAMING EXPERIENCES**:
+
 - Games that remain fresh and compelling decades after creation
 - Gameplay that transcends technological limitations through design excellence
 - Experiences that inspire new generations of players and developers
@@ -36,24 +37,28 @@ Create **TIMELESS AMIGA GAMING EXPERIENCES**:
 ## Timeless Design Areas
 
 **Lessons 1-8: "Eternal Fundamentals" - Design That Transcends Time**
+
 - Understanding what makes games timeless rather than trendy
 - Analyzing how classic games achieved their lasting appeal
 - Building design principles that remain relevant across eras
 - Creating gameplay that feels as fresh today as when conceived
 
 **Lessons 9-16: "Pure Gameplay Excellence" - Mechanics That Never Fade**
+
 - Designing gameplay that remains engaging regardless of visual evolution
 - Creating mechanical depth that rewards mastery across generations
 - Building interaction systems that feel eternally satisfying
 - Understanding how perfect gameplay loops create lasting appeal
 
 **Lessons 17-24: "Classic Appeal" - Features That Endure**
+
 - Creating game features that transcend technical specifications
 - Understanding how design vision outlasts technological limitations
 - Building gameplay choices that remain engaging across changing tastes
 - Developing game styles that become instantly recognizable
 
 **Lessons 25-32: "Gaming Permanence" - Games That Define Excellence**
+
 - Creating experiences that become permanent parts of gaming history
 - Understanding how games achieve status as timeless classics
 - Building games that define what excellence means for gaming

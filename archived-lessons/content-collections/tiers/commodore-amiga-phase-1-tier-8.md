@@ -27,6 +27,7 @@ Explore the fundamental building blocks of programming! Learn to implement effic
 ## What You'll Add to Code Portfolio
 
 Expand your programming foundation:
+
 - Implement classic data structures in assembly language
 - Create efficient algorithms for data processing
 - Build memory management systems optimised for 68000
@@ -35,24 +36,28 @@ Expand your programming foundation:
 ## Tier Overview
 
 **Lessons 1-8: Fundamental Data Structures**
+
 - Arrays and lists in 68000 assembly memory
 - Stacks and queues using assembly addressing modes
 - Basic linked data structures and pointer manipulation
 - Memory allocation and deallocation routines
 
 **Lessons 9-16: Algorithm Fundamentals**
+
 - Sorting algorithms optimised for 68000 architecture
 - Search techniques and pattern matching
 - Basic mathematical algorithms and calculations
 - String processing and text manipulation routines
 
 **Lessons 17-24: Advanced Data Management**
+
 - Hash tables and associative data structures
 - Tree structures and hierarchical data organisation
 - Graph algorithms and network data processing
 - Dynamic memory management systems
 
 **Lessons 25-32: Performance Optimization**
+
 - Algorithm analysis and complexity understanding
 - 68000-specific optimisation techniques
 - Memory usage optimisation and cache efficiency

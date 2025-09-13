@@ -88,7 +88,6 @@ hardware_availability: "available"
 
 # Media
 description: "The computer that launched the personal computer revolution and made computing accessible to everyone."
-image: "/images/systems/apple-ii.jpg"
 
 # Platform Classification
 medal_tier: "gold"
@@ -103,7 +102,7 @@ order: 10
 
 # Apple II
 
-*Coming Soon*
+_Coming Soon_
 
 The Apple II wasn't just a computer - it was the spark that ignited the personal computer revolution. Steve Wozniak's elegant design brought color graphics, sound, and expandability to the masses, while VisiCalc turned it into the first must-have business machine.
 
@@ -120,9 +119,10 @@ The Apple II's clean 6502 architecture and Wozniak's clever tricks (like artifac
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Apple II curriculum will include:
+
 - 6502 assembly fundamentals
 - Wozniak's graphics tricks and artifact color
 - Disk II programming and copy protection

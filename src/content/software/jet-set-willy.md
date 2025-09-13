@@ -40,6 +40,7 @@ order: 2
 Players control Willy, who must clean up his mansion after a wild party by collecting all the items scattered throughout 60 rooms. The game's revolutionary design allowed players to move freely between rooms, creating a sense of exploration that was unprecedented in platform games of the era.
 
 ### Core Gameplay
+
 - **60 Interconnected Rooms**: Massive mansion to explore
 - **Non-Linear Progression**: Players choose their own path through the world
 - **Item Collection**: All objects must be collected to complete the game
@@ -47,6 +48,7 @@ Players control Willy, who must clean up his mansion after a wild party by colle
 - **Exploration Focus**: Discovery and navigation as primary mechanics
 
 ### Game Structure
+
 - **Mansion Layout**: Logical room connections creating believable architecture
 - **Room Variety**: Each area with unique challenges and themes
 - **Secret Areas**: Hidden passages and unexpected connections
@@ -57,18 +59,21 @@ Players control Willy, who must clean up his mansion after a wild party by colle
 Jet Set Willy represented a massive technical undertaking for the ZX Spectrum:
 
 ### Memory Management
+
 - **60 Room Data**: Fitting vast game world into 48K RAM
 - **Efficient Compression**: Compact representation of room layouts
 - **Dynamic Loading**: Seamless room transitions without loading pauses
 - **State Persistence**: Tracking item collection and room changes
 
 ### World Design Programming
+
 - **Room Connections**: Complex system of exits and entrances
 - **Coordinate System**: Consistent positioning across room boundaries
 - **Object Management**: Tracking hundreds of collectible items
 - **Navigation Logic**: Preventing players from becoming trapped
 
 ### Graphics and Animation
+
 - **Consistent Art Style**: Unified visual design across all rooms
 - **Character Animation**: Smooth Willy sprite movement and animation
 - **Environmental Details**: Rich background graphics and decoration
@@ -79,18 +84,21 @@ Jet Set Willy represented a massive technical undertaking for the ZX Spectrum:
 Jet Set Willy pioneered several concepts that became standard in platform games:
 
 ### Non-Linear World Design
+
 - **Exploration Emphasis**: Discovery as core gameplay mechanic
 - **Player Agency**: Choice in progression path and exploration order
 - **Interconnected Spaces**: Logical world layout encouraging exploration
 - **Backtracking Mechanics**: Revisiting areas with new abilities or knowledge
 
 ### Environmental Storytelling
+
 - **Room Themes**: Each area telling part of the mansion's story
 - **Visual Narrative**: Graphics conveying character and atmosphere
 - **Contextual Humour**: British wit expressed through room design
 - **Cultural References**: Contemporary pop culture embedded in design
 
 ### Progressive Difficulty
+
 - **Gentle Introduction**: Starting areas teaching basic mechanics
 - **Skill Gating**: Difficult areas requiring advanced techniques
 - **Optional Challenges**: Rooms offering varying difficulty levels
@@ -101,18 +109,21 @@ Jet Set Willy pioneered several concepts that became standard in platform games:
 Jet Set Willy became a cultural phenomenon that extended beyond gaming:
 
 ### Commercial Success
+
 - **Sales Achievement**: Over 300,000 copies sold on ZX Spectrum
 - **Critical Acclaim**: Universally praised by gaming press
 - **Genre Influence**: Established template for exploration-based platform games
 - **Developer Recognition**: Cemented Matthew Smith's reputation as premier designer
 
 ### Social and Cultural Influence
+
 - **British Gaming Icon**: Became synonymous with ZX Spectrum gaming
 - **Cultural References**: Rooms and characters entering popular culture
 - **Community Engagement**: Active player communities sharing strategies
 - **Educational Impact**: Teaching spatial reasoning and problem-solving
 
 ### Technical Recognition
+
 - **Programming Achievement**: Recognised as outstanding technical accomplishment
 - **Industry Influence**: Inspiring other developers to attempt large-scale projects
 - **Design Innovation**: Non-linear structure influencing game design philosophy
@@ -123,18 +134,21 @@ Jet Set Willy became a cultural phenomenon that extended beyond gaming:
 Jet Set Willy offers exceptional learning opportunities for vintage computing students:
 
 ### Advanced Assembly Programming
+
 - **Large-Scale Software**: Managing complex, multi-part programs
 - **Memory Optimisation**: Sophisticated techniques for resource management
 - **Data Structures**: Efficient representation of complex game worlds
 - **Modular Programming**: Organising code for maintainability
 
 ### Game Programming Concepts
+
 - **World Persistence**: Maintaining game state across transitions
 - **Collision Systems**: Complex interaction between player and environment
 - **Navigation Programming**: Managing player movement between areas
 - **User Interface**: Displaying information efficiently within hardware constraints
 
 ### Software Engineering
+
 - **Project Scale**: Understanding large software development challenges
 - **Testing and Debugging**: Quality assurance for complex interactive systems
 - **Performance Optimisation**: Balancing features with hardware limitations
@@ -145,18 +159,21 @@ Jet Set Willy offers exceptional learning opportunities for vintage computing st
 Jet Set Willy's 60 rooms demonstrate sophisticated level design principles:
 
 ### Memorable Rooms
+
 - **The Bathroom**: Starting area teaching basic movement
 - **The Kitchen**: Vertical navigation challenges
 - **The Attic**: Complex platforming requiring precision
 - **The Yacht**: Outdoor environment with different aesthetic
 
 ### Design Principles
+
 - **Visual Identity**: Each room immediately recognisable
 - **Functional Layout**: Platforms serving both gameplay and aesthetic purposes
 - **Difficulty Variation**: Rooms offering different challenge levels
 - **Thematic Consistency**: Maintaining mansion setting throughout
 
 ### Technical Implementation
+
 - **Screen Composition**: Optimal use of display area
 - **Collision Boundaries**: Precise platform and hazard definition
 - **Visual Hierarchy**: Important elements clearly distinguished
@@ -167,12 +184,14 @@ Jet Set Willy's 60 rooms demonstrate sophisticated level design principles:
 Jet Set Willy's original release contained several significant bugs that became part of gaming folklore:
 
 ### Notable Issues
+
 - **The Attic Bug**: Room that was impossible to complete as released
 - **Teleport Glitches**: Unintended warping between rooms
 - **Collision Problems**: Certain areas with imprecise hit detection
 - **Infinite Lives**: Exploitable conditions for extra lives
 
 ### Community Solutions
+
 - **Player Fixes**: Community-developed patches and corrections
 - **Strategy Guides**: Detailed maps and walkthroughs
 - **Technical Analysis**: Deep investigation of game's programming
@@ -183,18 +202,21 @@ Jet Set Willy's original release contained several significant bugs that became 
 Jet Set Willy's influence on game design cannot be overstated:
 
 ### Genre Evolution
+
 - **Metroidvania Template**: Interconnected world exploration becoming standard
 - **Non-Linear Design**: Influencing countless adventure and platform games
 - **World Building**: Demonstrating power of environmental storytelling
 - **Player Agency**: Emphasising choice and exploration in game design
 
 ### Technical Legacy
+
 - **Memory Management**: Techniques for handling large game worlds
 - **Data Compression**: Efficient storage of complex level data
 - **Modular Design**: Programming approaches for large interactive systems
 - **Optimisation Methods**: Balancing features with hardware constraints
 
 ### Educational Value
+
 - **Game Design**: Teaching non-linear world construction
 - **Programming Techniques**: Advanced assembly language methods
 - **Project Management**: Understanding large software development
@@ -205,18 +227,21 @@ Jet Set Willy's influence on game design cannot be overstated:
 Jet Set Willy continues to be studied and enjoyed decades after its release:
 
 ### Emulation and Analysis
+
 - **Accurate Emulation**: Faithful reproduction on modern systems
 - **Debug Tools**: Modern analysis of programming techniques
 - **Level Editors**: Tools for creating new room layouts
 - **Technical Documentation**: Detailed analysis of game systems
 
 ### Educational Applications
+
 - **Computer Science**: Teaching large-scale programming concepts
 - **Game Design**: Demonstrating timeless design principles
 - **Cultural Studies**: Understanding 1980s computing culture
 - **Software Engineering**: Case study in complex system development
 
 ### Community Preservation
+
 - **Source Code Analysis**: Reverse engineering and documentation
 - **Historical Context**: Preserving development history and cultural impact
 - **Modern Adaptations**: Contemporary games inspired by design principles
@@ -225,12 +250,14 @@ Jet Set Willy continues to be studied and enjoyed decades after its release:
 ## Technical Specifications
 
 ### System Requirements
+
 - **ZX Spectrum 48K**: Minimum system requirements
 - **Cassette Storage**: Original distribution medium
 - **Keyboard Control**: Simple but precise input scheme
 - **Memory Usage**: Nearly full utilisation of 48K RAM
 
 ### Programming Achievement
+
 - **Assembly Language**: Pure Z80 assembly implementation
 - **Code Optimisation**: Highly efficient memory and processor usage
 - **Data Compression**: Sophisticated level data storage

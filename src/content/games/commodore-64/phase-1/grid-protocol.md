@@ -39,6 +39,7 @@ order: 1
 ---
 
 # Grid Protocol
+
 **"I made my first sprite character!"**
 
 Your foundational C64 sprite movement system! **Grid Protocol** is where you'll learn the basics - creating a hardware sprite that responds to your joystick and moves around a 12×8 grid without bugs. This is where C64 programming starts to make sense.
@@ -67,24 +68,28 @@ Through building Grid Protocol, you'll master:
 ## Development Progression
 
 ### Foundation (Lessons 1-10)
+
 - Set up C64 development environment and VIC-II basics
 - Create and display custom hardware sprites
 - Implement joystick input reading with debouncing
 - Master Grid Protocol system with MSB positioning
 
 ### Smooth Movement (Lessons 11-16) - UPCOMING
+
 - Implement linear interpolation for smooth animation
 - Create movement state machine
 - Add sprite animation frames
 - Design target collection system with scoring
 
 ### Visual Enhancement (Lessons 17-24)
+
 - Enable multicolor sprite mode for detailed graphics
 - Add background grid display
 - Implement color ramp effects using raster interrupts
 - Create particle effects and visual polish
 
 ### Audio and Polish (Lessons 25-32) - UPCOMING
+
 - Will program SID chip for sound effects and music
 - Will add difficulty settings and high score system
 - Will implement performance optimization
@@ -130,6 +135,7 @@ This project establishes the core techniques used in classic C64 games while tea
 ## Portfolio Impact
 
 By completing Grid Protocol, you'll have:
+
 - Your first complete C64 game
 - Fundamental 6502 assembly programming concepts
 - Basic game development skills

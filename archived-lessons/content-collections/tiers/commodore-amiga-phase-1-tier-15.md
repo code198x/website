@@ -31,6 +31,7 @@ Near completion of **Workbench Wizard** with advanced assembly system integratio
 ## What You'll Nearly Complete
 
 Bring your ultimate Amiga assembly programming project near completion:
+
 - Advanced inter-process communication using assembly
 - Performance optimisation for complex assembly systems
 - Professional software architecture through assembly programming
@@ -39,24 +40,28 @@ Bring your ultimate Amiga assembly programming project near completion:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Inter-Process Communication**
+
 - Advanced messaging and synchronization using assembly
 - Process coordination and resource sharing through assembly
 - Signal handling and event management using assembly
 - Building robust assembly communication systems
 
 **Lessons 9-16: Assembly Performance Optimization**
+
 - Profiling and performance analysis using assembly
 - Memory optimisation and resource management through assembly
 - Algorithm optimisation and efficiency using assembly
 - Building high-performance assembly applications
 
 **Lessons 17-24: Assembly Software Architecture**
+
 - Large-scale system design using assembly
 - Modular architecture and component design through assembly
 - Maintainability and extensibility using assembly
 - Building professional assembly software frameworks
 
 **Lessons 25-32: Assembly Integration and Testing**
+
 - System integration testing using assembly
 - Quality assurance and reliability through assembly programming
 - Documentation and deployment using assembly

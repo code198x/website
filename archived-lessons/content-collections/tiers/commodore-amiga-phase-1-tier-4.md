@@ -31,6 +31,7 @@ Complete **Graphics Studio** - a sophisticated graphics creation system implemen
 ## What You'll Complete
 
 Finish a professional assembly graphics application:
+
 - Complete drawing and editing tool suite using assembly
 - Advanced colour management and palette systems with custom chip programming
 - Professional file save/load functionality implemented in assembly
@@ -39,24 +40,28 @@ Finish a professional assembly graphics application:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Assembly Graphics Programming**
+
 - Programming Amiga graphics modes and capabilities using assembly
 - Advanced drawing algorithms and techniques in assembly
 - Efficient graphics rendering and display using custom chips
 - Building professional assembly graphics frameworks
 
 **Lessons 9-16: Professional Assembly Interface Design**
+
 - Creating intuitive user interfaces using assembly
 - Menu systems and tool palettes implemented in assembly
 - Responsive control schemes using direct hardware access
 - Professional assembly application workflow design
 
 **Lessons 17-24: Assembly File Management and Persistence**
+
 - Implementing save and load functionality using assembly
 - Graphics file format support through assembly programming
 - Data compression and optimisation using assembly algorithms
 - Building robust assembly file management systems
 
 **Lessons 25-32: Assembly Application Completion**
+
 - Final assembly integration and optimisation
 - Animation and advanced effects using custom chip programming
 - Professional polish and presentation through assembly

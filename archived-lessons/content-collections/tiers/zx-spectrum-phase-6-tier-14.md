@@ -27,6 +27,7 @@ Build the foundation for multiple games! With **32 comprehensive lessons**, you'
 ## What You'll Build
 
 Create **SPECTRUM ENGINE FRAMEWORK** - a professional game engine featuring:
+
 - Modular system architecture supporting multiple game genres
 - Advanced rendering, audio, and input management systems
 - Flexible scripting and configuration systems
@@ -36,24 +37,28 @@ Create **SPECTRUM ENGINE FRAMEWORK** - a professional game engine featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Engine Foundation!" - Core Architecture Design**
+
 - Professional engine architecture and design patterns
 - Modular system design and component separation
 - Engine initialization and resource management
 - Professional code organization and maintainability
 
 **Lessons 9-16: "System Integration!" - Advanced Engine Systems**
+
 - Rendering engine with advanced graphics capabilities
 - Audio engine supporting beeper and AY chip systems
 - Input management and control abstraction layers
 - Professional system coordination and messaging
 
 **Lessons 17-24: "Flexibility Mastery!" - Configurable Engine Design**
+
 - Data-driven configuration and scripting systems
 - Scene management and state handling architecture
 - Asset pipeline integration and resource loading
 - Professional engine customization and extensibility
 
 **Lessons 25-32: "Engine Excellence!" - Professional Optimization**
+
 - Performance profiling and engine optimization
 - Memory management and resource pooling
 - Engine debugging tools and development support

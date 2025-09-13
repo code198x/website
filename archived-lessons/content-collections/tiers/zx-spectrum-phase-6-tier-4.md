@@ -27,6 +27,7 @@ Time to show off your advanced skills! With **32 comprehensive lessons**, you'll
 ## What You'll Build
 
 Create **SPECTRUM TECHNICAL SHOWCASE** - an impressive demonstration featuring:
+
 - All advanced graphics techniques working together seamlessly
 - Complex audio systems with both beeper and AY chip integration
 - Memory-optimized code that maximizes 48K and 128K capabilities
@@ -36,24 +37,28 @@ Create **SPECTRUM TECHNICAL SHOWCASE** - an impressive demonstration featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Grand Integration!" - Combining All Techniques**
+
 - Integrating advanced graphics with optimized memory usage
 - Synchronizing complex audio with visual effects
 - Managing system resources across multiple advanced features
 - Creating seamless technical integration
 
 **Lessons 9-16: "Performance Excellence!" - Optimization Mastery**
+
 - Profiling and optimizing the complete integrated system
 - Balancing graphics, audio, and memory for peak performance
 - Advanced debugging techniques for complex systems
 - Frame-rate optimization and smooth gameplay
 
 **Lessons 17-24: "Professional Polish!" - Commercial-Quality Presentation**
+
 - User interface design and professional presentation
 - Loading screens, menus, and navigation systems
 - Error handling and robust system architecture
 - Professional documentation and code organization
 
 **Lessons 25-32: "Portfolio Masterpiece!" - Showcase Completion**
+
 - Creating compelling demonstrations of technical features
 - Recording and presenting your technical achievements
 - Building a professional development portfolio

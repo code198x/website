@@ -27,6 +27,7 @@ Learn sophisticated assembly data handling on the Amiga! Learn to efficiently ma
 ## What You'll Add to Graphics Studio
 
 Expand your graphics capabilities:
+
 - Implement efficient data storage for graphics
 - Create colour palette management systems
 - Build reusable graphics data structures
@@ -35,24 +36,28 @@ Expand your graphics capabilities:
 ## Tier Overview
 
 **Lessons 1-8: 68000 Assembly Memory Management**
+
 - Advanced memory allocation and data organisation
 - Assembly text handling and manipulation
 - Numeric precision and calculations in assembly
 - Memory scope and organisation
 
 **Lessons 9-16: Hardware Memory Management**
+
 - Understanding Chip RAM vs Fast RAM at hardware level
 - Efficient assembly memory usage techniques
 - Data organisation for assembly graphics applications
 - Assembly memory optimisation strategies
 
 **Lessons 17-24: Advanced Assembly Data Structures**
+
 - Assembly arrays and multi-dimensional data
 - Records and complex assembly data organisation
 - File-based data storage using assembly
 - Building reusable assembly data systems
 
 **Lessons 25-32: Assembly Graphics Studio Data Systems**
+
 - Implementing palette and colour management in assembly
 - Creating efficient assembly graphics data storage
 - Building tool configuration systems using assembly

@@ -27,6 +27,7 @@ Master sophisticated game architecture! With **32 architecture-focused lessons**
 ## What You'll Build
 
 Create **LARGE-SCALE GAME SYSTEM** - your architecture masterpiece:
+
 - Complex game worlds with multiple interacting systems
 - Sophisticated data management and persistence systems
 - Scalable architecture that supports game expansion
@@ -36,24 +37,28 @@ Create **LARGE-SCALE GAME SYSTEM** - your architecture masterpiece:
 ## System Architecture Areas
 
 **Lessons 1-8: "System Design" - Large-Scale Architecture**
+
 - Designing architecture for complex multi-system games
 - Component interaction and dependency management
 - Scalable system design for expandable games
 - Performance considerations for large-scale systems
 
 **Lessons 9-16: "Data Management" - Complex Game State**
+
 - Advanced save/load systems for complex games
 - Efficient data structures for large game worlds
 - Database-like systems for game data management
 - Memory optimization for complex data systems
 
 **Lessons 17-24: "System Communication" - Inter-Component Coordination**
+
 - Event-driven architecture for complex games
 - Message passing systems and communication protocols
 - Synchronization and timing for multiple systems
 - Error handling and recovery in complex architectures
 
 **Lessons 25-32: "Code Organization" - Maintainable Complexity**
+
 - Code organization strategies for large projects
 - Modular design and component isolation
 - Documentation and maintenance for complex systems

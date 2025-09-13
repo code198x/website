@@ -31,24 +31,28 @@ Begin developing **Space Trader** - a complex space trading simulation that requ
 ## Tier Overview
 
 **Lessons 1-8: Memory Pool Allocators**
+
 - Designing fixed-size memory pools
 - Fast allocation and deallocation algorithms
 - Pool management for different object types
 - Eliminating fragmentation through pooling
 
 **Lessons 9-16: Dynamic Heap Management**
+
 - Implementing malloc/free in assembly
 - First-fit, best-fit, and custom allocation strategies
 - Heap compaction and defragmentation
 - Memory usage tracking and debugging
 
 **Lessons 17-24: Overlay & Dynamic Loading**
+
 - Code overlay techniques for large programs
 - Dynamic loading from disk or tape
 - Overlay management and caching strategies
 - Seamless transitions between program sections
 
 **Lessons 25-32: Compression & Optimization**
+
 - Real-time data compression algorithms
 - Memory-efficient data structures
 - Compressed asset storage and loading

@@ -27,6 +27,7 @@ Time to roll for initiative! With **32 quest-filled lessons**, you'll create rol
 ## What You'll Build
 
 Create **CRYSTAL DUNGEONS** - a first-person RPG featuring:
+
 - Party-based adventuring with unique characters
 - Deep stat systems and character progression
 - Grid-based dungeon exploration
@@ -36,24 +37,28 @@ Create **CRYSTAL DUNGEONS** - a first-person RPG featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Character Creation" - RPG Foundations**
+
 - Character classes and stat systems
 - Level progression and experience curves
 - Skill trees and ability unlocking
 - Party management and formation
 
 **Lessons 9-16: "Dungeon Delving" - World Building**
+
 - First-person grid movement
 - Texture-mapped wall rendering
 - Automap systems for navigation
 - Secret doors and hidden treasures
 
 **Lessons 17-24: "Combat Chronicles" - Battle Systems**
+
 - Turn-based combat mechanics
 - Spell systems with visual effects
 - Enemy AI and encounter design
 - Status effects and combat modifiers
 
 **Lessons 25-32: "Epic Quests" - Story & Progression**
+
 - Quest tracking and journal systems
 - NPC dialogue and choices
 - Procedural quest generation

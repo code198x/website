@@ -88,7 +88,6 @@ hardware_availability: "available"
 
 # Media
 description: "The 8-bit computer with custom chips that delivered arcade-quality graphics and sound years ahead of its time."
-image: "/images/systems/atari-800.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -103,7 +102,7 @@ order: 15
 
 # Atari 800
 
-*Coming Soon*
+_Coming Soon_
 
 The Atari 800 was a technological marvel in 1979, featuring custom chips (ANTIC, GTIA, POKEY) that gave it graphics and sound capabilities years ahead of the competition. Its Display List architecture influenced future graphics systems.
 
@@ -120,9 +119,10 @@ The Atari 800's custom chips teach advanced concepts in hardware acceleration an
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Atari 800 curriculum will include:
+
 - 6502 assembly with custom chip integration
 - ANTIC Display List programming
 - GTIA graphics modes and effects

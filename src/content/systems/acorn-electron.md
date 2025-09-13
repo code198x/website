@@ -26,7 +26,6 @@ country_of_origin: "United Kingdom"
 
 # Media
 description: "The budget BBC Micro that compromised too much and struggled against the Spectrum."
-image: "/images/systems/acorn-electron.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 117
 
 # Acorn Electron
 
-*Historical Reference*
+_Historical Reference_
 
 The Acorn Electron was designed as the budget version of the successful BBC Micro. While it maintained software compatibility, cost-cutting measures severely compromised performance, making it struggle against the ZX Spectrum in the UK home market.
 
@@ -52,6 +51,7 @@ The Electron represented Acorn's attempt to compete in the budget home computer 
 ## Technical Compromises
 
 To reach the £199 price point, Acorn made several compromises:
+
 - **Slower Graphics**: Shared memory bandwidth crippled performance
 - **No Expansion Slots**: Unlike the BBC Micro's versatility
 - **Cassette Only**: No disk interface built-in
@@ -65,4 +65,4 @@ The Electron's saving grace was near-perfect BBC Micro compatibility, giving it 
 
 The Electron proved that brand recognition couldn't overcome technical limitations. While it sold reasonably well initially, performance issues and strong competition from the Spectrum limited its success. It remains a footnote in UK computing history.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

@@ -27,6 +27,7 @@ Time to become an NES graphics master! With **32 mind-blowing lessons**, you'll 
 ## What You'll Build
 
 Create **NES VISUAL SHOWCASE** - a stunning graphics demonstration featuring:
+
 - Sprite multiplexing that breaks the 8-sprites-per-scanline limit
 - Background effects that create impossible depth and movement
 - Palette cycling that brings static graphics to life
@@ -36,24 +37,28 @@ Create **NES VISUAL SHOWCASE** - a stunning graphics demonstration featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Breaking the Sprite Limit!" - Advanced Sprite Techniques**
+
 - Sprite multiplexing to display dozens of sprites simultaneously
 - Advanced sprite 0 hit detection for precise timing
 - Sprite priority manipulation for complex layering effects
 - The legendary techniques behind bullet-hell shooters
 
 **Lessons 9-16: "Impossible Backgrounds" - Advanced Background Magic**
+
 - CHR-ROM bank switching for animated backgrounds
 - Advanced attribute table manipulation
 - Background collision detection at pixel precision
 - The secrets behind those "animated" static backgrounds
 
 **Lessons 17-24: "Colors Come Alive!" - Advanced Palette Techniques**
+
 - Palette cycling for water, fire, and energy effects
 - Mid-frame palette changes using precise timing
 - Advanced color manipulation for atmospheric effects
 - Creating "more colors" than the NES technically supports
 
 **Lessons 25-32: "Silky Smooth Motion" - Professional Scrolling Systems**
+
 - Multi-directional scrolling with perfect timing
 - Parallax effects using background layer tricks
 - Screen transitions that flow seamlessly

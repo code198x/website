@@ -27,6 +27,7 @@ Your second complete game - and it's huge! With **32 empire-building lessons**, 
 ## What You'll Build
 
 Create **SILICON EMPIRES** - a genre-blending strategy epic:
+
 - World map with explorable territories
 - Real-time battles with tactical depth
 - Diplomatic adventures with other factions
@@ -36,24 +37,28 @@ Create **SILICON EMPIRES** - a genre-blending strategy epic:
 ## Tier Overview
 
 **Lessons 1-8: "Grand Design" - Architecture for Complexity**
+
 - Modular system design for large games
 - State management across game modes
 - Memory organization for massive worlds
 - Loading systems for smooth transitions
 
 **Lessons 9-16: "Mode Integration" - Seamless Gameplay**
+
 - Switching between strategy and action
 - Shared systems across different modes
 - Consistent UI/UX throughout
 - Performance optimization for mode switches
 
 **Lessons 17-24: "Campaign Creator" - Long-Form Gaming**
+
 - Mission structure and unlocking
 - Persistent world state
 - Story integration with gameplay
 - Difficulty progression and pacing
 
 **Lessons 25-32: "Community Features" - Beyond the Game**
+
 - Map editor with validation
 - Scenario sharing system
 - Multiplayer infrastructure

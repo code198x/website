@@ -27,6 +27,7 @@ Time to make movement feel AMAZING! ⚡ With **32 physics-focused lessons**, you
 ## What You'll Build
 
 Create **PHYSICS PLAYGROUND** - an advanced movement system featuring:
+
 - Momentum-based movement that feels incredibly natural 🏃‍♂️
 - Variable jump heights based on button pressure
 - Wall-jumping, air-dashing, and advanced techniques
@@ -36,24 +37,28 @@ Create **PHYSICS PLAYGROUND** - an advanced movement system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Mathematical Magic" - Physics Foundations**
+
 - Fixed-point mathematics for precise NES calculations
 - Velocity, acceleration, and momentum systems
 - Frame-rate independent movement calculations
 - Efficient 6502 math routines for real-time physics
 
 **Lessons 9-16: "Gravity and Grace" - Jump Mechanics Mastery**
+
 - Variable jump heights and air control
 - Realistic gravity simulation and terminal velocity
 - Coyote time and jump buffering for responsive controls
 - Landing mechanics and impact absorption
 
 **Lessons 17-24: "Advanced Techniques" - Complex Movement States**
+
 - Wall-jumping and wall-sliding mechanics
 - Air-dashing and momentum preservation
 - Movement state machines and smooth transitions
 - Environmental interaction and surface properties
 
 **Lessons 25-32: "Performance Physics" - Optimization Mastery**
+
 - Cycle-optimized physics calculations
 - Efficient collision integration with movement
 - Predictive movement for better responsiveness

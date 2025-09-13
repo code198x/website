@@ -31,6 +31,7 @@ Develop **AudioMaster Pro** - a comprehensive audio engine featuring advanced mu
 ## Tier Overview
 
 **Lessons 1-8: Advanced APU Channel Mastery**
+
 - Deep programming of all five APU channels
 - Advanced pulse wave programming and duty cycle control
 - Triangle wave optimization for bass and melody
@@ -38,18 +39,21 @@ Develop **AudioMaster Pro** - a comprehensive audio engine featuring advanced mu
 - DMC channel for samples and advanced techniques
 
 **Lessons 9-16: Music Composition Systems**
+
 - Creating tracker-style music composition systems
 - Advanced pattern-based music programming
 - Multi-track composition and arrangement
 - Dynamic music systems and adaptive soundtracks
 
 **Lessons 17-24: Sound Effect Design**
+
 - Professional sound effect creation and implementation
 - Real-time audio parameter manipulation
 - Advanced synthesis techniques within APU constraints
 - Audio event systems and priority management
 
 **Lessons 25-32: Advanced Audio Processing**
+
 - Multi-channel audio mixing and processing
 - Audio compression and optimization techniques
 - Real-time audio effects and filtering

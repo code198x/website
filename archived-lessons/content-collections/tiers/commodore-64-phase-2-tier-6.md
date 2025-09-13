@@ -31,24 +31,28 @@ Enhance **Space Trader** with intelligent trade route planning, dynamic market a
 ## Tier Overview
 
 **Lessons 1-8: Sorting Algorithm Mastery**
+
 - Implementing quicksort in 6502 assembly
 - Radix sort for specific data types
 - Insertion sort for nearly-sorted data
 - Hybrid sorting strategies
 
 **Lessons 9-16: Searching & Data Retrieval**
+
 - Binary search implementation
 - Hash-based lookup algorithms
 - Skip lists and fast searching
 - Database-style indexing
 
 **Lessons 17-24: Pathfinding & Graph Algorithms**
-- A* pathfinding for game AI
+
+- A\* pathfinding for game AI
 - Dijkstra's algorithm adaptation
 - Graph traversal techniques
 - Navigation mesh systems
 
 **Lessons 25-32: Mathematical Algorithms**
+
 - Fixed-point arithmetic systems
 - Fast trigonometry using lookup tables
 - Pseudo-random number generation

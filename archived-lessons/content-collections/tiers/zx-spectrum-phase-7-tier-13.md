@@ -27,6 +27,7 @@ Empower ZX Spectrum development! With **32 tool-focused lessons**, you'll create
 ## What You'll Build
 
 Create **SPECTRUM DEVELOPMENT TOOLKIT** - your tool mastery suite:
+
 - Professional debugging and profiling tools for Z80 assembly
 - Advanced asset pipeline tools for graphics and audio creation
 - Workflow automation tools that speed up development cycles
@@ -36,24 +37,28 @@ Create **SPECTRUM DEVELOPMENT TOOLKIT** - your tool mastery suite:
 ## Tool Development Areas
 
 **Lessons 1-8: "Development Tool Fundamentals" - Core Tool Design**
+
 - Game development tool architecture and design principles
 - User interface design for development tools and workflow efficiency
 - Tool integration with existing ZX Spectrum development environments
 - Performance requirements and optimization for development tools
 
 **Lessons 9-16: "Debugging & Profiling Tools" - Advanced Development Support**
+
 - Advanced debugging tools for Z80 assembly and ZX Spectrum games
 - Performance profiling tools for optimization and bottleneck identification
 - Memory analysis tools for efficient resource management
 - Real-time game state inspection and debugging interfaces
 
 **Lessons 17-24: "Asset Pipeline Tools" - Content Creation Workflow**
+
 - Graphics conversion and optimization tools for ZX Spectrum formats
 - Audio processing tools for beeper and AY chip optimization
 - Level editor and game data management tools
 - Automated asset pipeline and build system development
 
 **Lessons 25-32: "Community Tools" - Ecosystem Enhancement**
+
 - Cross-platform tool development for modern and retro environments
 - Documentation and tutorial systems for tool distribution
 - Open source development practices and community contribution

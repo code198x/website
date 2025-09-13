@@ -69,24 +69,28 @@ Implement classic C64 racing game methods:
 ### Tiers 13-16 Development Roadmap
 
 **Tier 13**: Core racing engine
+
 - Scrolling road display system
 - Basic car movement and controls
 - Simple collision detection
 - Fundamental game loop structure
 
 **Tier 14**: Advanced graphics and physics
+
 - Perspective effects and road curves
 - Car momentum and realistic handling
 - Environmental effects (weather, time of day)
 - Advanced animation techniques
 
 **Tier 15**: AI and multiple features
+
 - Computer opponent behaviors
 - Multiple race tracks
 - Power-ups and obstacles
 - Lap timing and race progression
 
 **Tier 16**: Professional completion
+
 - Championship mode with season progression
 - Complete user interface and menus
 - Save/load functionality for progress

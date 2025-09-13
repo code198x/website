@@ -31,6 +31,7 @@ Complete **Memory Matrix** - a sophisticated assembly puzzle system that generat
 ## What You'll Complete
 
 Finish an intelligent assembly puzzle generation system:
+
 - Assembly procedural puzzle creation algorithms
 - Adaptive difficulty based on player performance using assembly logic
 - Multiple puzzle types and game modes implemented in assembly
@@ -39,24 +40,28 @@ Finish an intelligent assembly puzzle generation system:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Procedural Generation**
+
 - Implementing complex assembly generation algorithms
 - Creating validation systems for solvable puzzles using assembly
 - Building dynamic content creation systems in Z80 assembly
 - Ensuring varied and engaging puzzle experiences through assembly
 
 **Lessons 9-16: Advanced Assembly System Integration**
+
 - Connecting multiple complex assembly systems
 - Managing program state and data flow using assembly memory management
 - Creating seamless user experiences through assembly programming
 - Optimizing Z80 performance for complex calculations
 
 **Lessons 17-24: Assembly Adaptive Intelligence**
+
 - Implementing difficulty adjustment algorithms in assembly
 - Creating player performance analysis using assembly data processing
 - Building intelligent response systems with assembly logic
 - Designing engaging progression mechanics through assembly programming
 
 **Lessons 25-32: Complete Assembly System Polish**
+
 - Final assembly integration and optimisation
 - Assembly user interface completion
 - Save/load system implementation using assembly file operations

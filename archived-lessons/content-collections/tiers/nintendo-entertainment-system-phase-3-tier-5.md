@@ -31,24 +31,28 @@ Create **World Explorer Engine** - a comprehensive multi-screen adventure system
 ## Tier Overview
 
 **Lessons 1-8: Multi-screen Architecture**
+
 - Designing large-scale world layouts and screen systems
 - Advanced screen transition and loading techniques
 - World coordinate systems and navigation algorithms
 - Memory management for large world data
 
 **Lessons 9-16: Advanced Scrolling Systems**
+
 - Multi-directional smooth scrolling implementation
 - Screen-to-screen transition effects and animations
 - Parallax scrolling for depth and atmosphere
 - Camera systems for large world exploration
 
 **Lessons 17-24: World Data Management**
+
 - Efficient world data compression and storage
 - Dynamic loading and streaming techniques
 - World state persistence and save systems
 - Procedural content generation within NES constraints
 
 **Lessons 25-32: Navigation & Exploration**
+
 - Player guidance and waypoint systems
 - Map systems and world visualization
 - Exploration mechanics and discovery systems

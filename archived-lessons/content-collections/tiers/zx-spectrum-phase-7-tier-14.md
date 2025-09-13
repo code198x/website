@@ -27,6 +27,7 @@ Push ZX Spectrum to its absolute limits! With **32 advanced technique lessons**,
 ## What You'll Build
 
 Create **CUTTING-EDGE SPECTRUM TECHNIQUES** - your technical mastery showcase:
+
 - Advanced Z80 assembly techniques that maximize every CPU cycle
 - Sophisticated visual effects that seem impossible on ZX Spectrum
 - Advanced audio synthesis that pushes beeper and AY chip boundaries
@@ -36,24 +37,28 @@ Create **CUTTING-EDGE SPECTRUM TECHNIQUES** - your technical mastery showcase:
 ## Advanced Technique Areas
 
 **Lessons 1-8: "Z80 Assembly Mastery" - Cutting-Edge CPU Techniques**
+
 - Advanced Z80 instruction optimization and cycle-perfect programming
 - Sophisticated register management and memory access optimization
 - Advanced interrupt handling and timing-critical code techniques
 - Cutting-edge assembly patterns for maximum performance
 
 **Lessons 9-16: "Visual Innovation" - Advanced Graphics Techniques**
+
 - Sophisticated sprite multiplexing and advanced animation systems
 - Advanced raster effects and hardware manipulation techniques
 - Complex 3D graphics and perspective calculations on ZX Spectrum
 - Innovative display techniques that maximize visual impact
 
 **Lessons 17-24: "Audio Excellence" - Advanced Sound Techniques**
+
 - Sophisticated multi-channel audio synthesis using beeper techniques
 - Advanced AY chip programming and complex music composition
 - Innovative sound effect generation and real-time audio processing
 - Advanced audio compression and streaming techniques
 
 **Lessons 25-32: "Algorithm Innovation" - Advanced Programming Methods**
+
 - Sophisticated AI algorithms optimized for ZX Spectrum constraints
 - Advanced compression and data optimization techniques
 - Complex mathematical calculations using optimized fixed-point arithmetic

@@ -69,24 +69,28 @@ Leverage the C64's capabilities for maze adventures:
 ### Tiers 9-12 Development Roadmap
 
 **Tier 9**: Basic maze representation
+
 - String-based maze storage and display
 - Simple maze navigation
 - Basic collision detection
 - Key/door mechanics
 
 **Tier 10**: Procedural generation
+
 - Maze generation algorithms
 - Random but solvable maze creation
 - Different maze sizes and complexity
 - Ensuring all areas are reachable
 
 **Tier 11**: Logic puzzles
+
 - Door mechanisms requiring logic solutions
 - Combination locks and pattern puzzles
 - Progressive puzzle difficulty
 - Hint systems for stuck players
 
 **Tier 12**: Advanced features
+
 - Multiple maze themes and rulesets
 - Save/load complete game state
 - Statistics tracking and achievements

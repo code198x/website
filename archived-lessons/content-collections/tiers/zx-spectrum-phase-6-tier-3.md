@@ -27,6 +27,7 @@ Master the art of memory wizardry! With **32 intensive lessons**, you'll learn t
 ## What You'll Build
 
 Create **MEMORY MASTERPIECE** - an advanced memory management system featuring:
+
 - Dynamic memory allocation and garbage collection
 - Advanced data compression saving 50%+ space
 - Bank switching systems maximizing 128K potential
@@ -36,24 +37,28 @@ Create **MEMORY MASTERPIECE** - an advanced memory management system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Every Byte Counts!" - Memory Layout Mastery**
+
 - Optimal memory organization and segment management
 - Stack management and efficient parameter passing
 - Memory-mapped I/O optimization techniques
 - The legendary memory tricks used in commercial games
 
 **Lessons 9-16: "128K Powerhouse!" - Bank Switching Excellence**
+
 - Complete 128K memory banking and paging systems
 - Dynamic code loading and overlay techniques
 - Multi-bank data management and caching
 - Professional memory architecture for large projects
 
 **Lessons 17-24: "Compression Magic!" - Data Packing Mastery**
+
 - Advanced compression algorithms for game data
 - Graphics and audio compression techniques
 - Runtime decompression with minimal overhead
 - Custom compression schemes optimized for Z80
 
 **Lessons 25-32: "Dynamic Systems!" - Advanced Memory Management**
+
 - Self-modifying code and runtime optimization
 - Dynamic memory allocation and defragmentation
 - Memory pooling and efficient resource management

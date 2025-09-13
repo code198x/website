@@ -35,24 +35,28 @@ Begin your **Innovation Showcase** - experimental games that explore new gamepla
 ## Tier Overview
 
 **Lessons 1-8: Experimental Gameplay Design**
+
 - Innovative mechanics and unique concepts
 - Experimental control schemes and interaction
 - Novel game objectives and progression
 - Creative rule systems and emergent gameplay
 
 **Lessons 9-16: Artistic Game Expression**
+
 - Games as artistic medium and expression
 - Visual storytelling and artistic design
 - Emotional impact through gameplay
 - Abstract and experimental aesthetics
 
 **Lessons 17-24: Creative Technical Innovation**
+
 - Pushing hardware limitations creatively
 - Innovative programming techniques
 - Creative use of constraints and limitations
 - Technical artistry and craftsmanship
 
 **Lessons 25-32: Unique Experience Design**
+
 - Creating memorable and impactful experiences
 - Player emotion and psychological engagement
 - Innovative narrative and storytelling

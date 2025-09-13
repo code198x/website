@@ -27,6 +27,7 @@ Unlock the Amiga's revolutionary audio capabilities! Learn Paula chip programmin
 ## What You'll Begin with Audio Lab
 
 Start building your audio system:
+
 - Create basic audio playback using Paula chip programming
 - Implement 4-channel audio mixing in assembly
 - Build foundation for digital audio manipulation
@@ -35,24 +36,28 @@ Start building your audio system:
 ## Tier Overview
 
 **Lessons 1-8: Paula Chip Architecture**
+
 - Understanding the Paula audio architecture
 - Direct register programming and audio control
 - 4-channel audio system fundamentals
 - Basic audio playback in 68000 assembly
 
 **Lessons 9-16: Digital Audio Programming**
+
 - Digital sampling and audio data manipulation
 - Audio memory management and optimisation
 - Creating efficient audio processing routines
 - Real-time audio generation and effects
 
 **Lessons 17-24: Multi-Channel Audio Systems**
+
 - 4-channel audio mixing and coordination
 - Stereo positioning and audio spatialization
 - Advanced audio effects programming
 - Building sophisticated audio frameworks
 
 **Lessons 25-32: Audio Lab Foundation**
+
 - Implementing complete audio playback systems
 - Creating professional audio effects
 - Building foundation for advanced audio programming

@@ -27,6 +27,7 @@ Push Amiga hardware to its limits! With **32 optimization-focused lessons**, you
 ## What You'll Build
 
 Create **PERFORMANCE OPTIMIZATION SUITE** - your efficiency masterpiece:
+
 - Advanced profiling tools to identify performance bottlenecks
 - Optimized game loops that maintain consistent frame rates
 - Efficient memory management systems for complex games
@@ -36,24 +37,28 @@ Create **PERFORMANCE OPTIMIZATION SUITE** - your efficiency masterpiece:
 ## Optimization Mastery Areas
 
 **Lessons 1-8: "Profiling and Analysis" - Performance Measurement**
+
 - Advanced profiling techniques for Amiga games
 - Cycle counting and instruction timing analysis
 - Memory usage profiling and optimization identification
 - Performance bottleneck analysis and resolution
 
 **Lessons 9-16: "68000 Optimization" - Assembly Mastery**
+
 - Advanced 68000 instruction optimization
 - Register allocation and instruction scheduling
 - Loop unrolling and code optimization techniques
 - Cache-friendly programming for 68020+ systems
 
 **Lessons 17-24: "Custom Chip Efficiency" - Hardware Utilization**
+
 - Copper optimization for complex visual effects
 - Blitter optimization for high-performance graphics
 - Paula optimization for efficient audio processing
 - Coordinated chip usage for maximum throughput
 
 **Lessons 25-32: "System Integration" - Holistic Performance**
+
 - Frame rate management and timing systems
 - Adaptive quality systems for consistent performance
 - Memory management optimization for complex games

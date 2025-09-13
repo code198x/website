@@ -27,6 +27,7 @@ Design for players! With **32 comprehensive lessons**, you'll master user experi
 ## What You'll Build
 
 Continue developing **Neon Quest** with exceptional user experience:
+
 - Intuitive interface design and navigation
 - Comprehensive accessibility features
 - Engaging player onboarding and tutorials
@@ -36,24 +37,28 @@ Continue developing **Neon Quest** with exceptional user experience:
 ## Tier Overview
 
 **Lessons 1-8: User-Centered Design Principles**
+
 - Understanding player psychology and behavior
 - User research and feedback integration
 - Design thinking and player empathy
 - Iterative design and testing methodologies
 
 **Lessons 9-16: Interface Usability & Accessibility**
+
 - Intuitive interface design patterns
 - Accessibility features and inclusive design
 - Clear visual communication and feedback
 - Universal design principles
 
 **Lessons 17-24: Player Onboarding & Engagement**
+
 - Progressive skill introduction and tutorials
 - Player motivation and engagement systems
 - Difficulty curve and accessibility options
 - Player retention and satisfaction optimization
 
 **Lessons 25-32: Experience Optimization**
+
 - User testing and feedback integration
 - Experience polish and refinement
 - Player journey optimization

@@ -31,24 +31,28 @@ Develop an intelligent software suite including AI decision engine, expert syste
 ## Tier Overview
 
 **Lessons 1-8: AI Fundamentals & Algorithms**
+
 - Artificial intelligence theory and concepts
 - Search algorithms and pathfinding
 - Decision trees and logic systems
 - AI programming patterns and techniques
 
 **Lessons 9-16: Knowledge Representation**
+
 - Knowledge base design and implementation
 - Rule-based reasoning systems
 - Semantic networks and ontologies
 - Inference engines and logical reasoning
 
 **Lessons 17-24: Expert Systems & Reasoning**
+
 - Expert system architecture and design
 - Forward and backward chaining algorithms
 - Uncertainty handling and fuzzy logic
 - Explanation and justification systems
 
 **Lessons 25-32: Machine Learning & Pattern Recognition**
+
 - Basic machine learning algorithms
 - Pattern recognition and classification
 - Neural network fundamentals

@@ -31,24 +31,28 @@ Enhance **Synth Explorer** with stunning visual depth including multi-layer para
 ## Tier Overview
 
 **Lessons 1-8: Parallax Theory & Implementation**
+
 - Understanding parallax and depth perception
 - Basic two-layer parallax scrolling
 - Speed calculations and coordination
 - Memory organization for layers
 
 **Lessons 9-16: Multi-Layer Systems**
+
 - Three and four-layer parallax
 - Dynamic layer enable/disable
 - Layer priority management
 - Complex scrolling patterns
 
 **Lessons 17-24: Advanced Coordination**
+
 - Synchronizing layers with gameplay
 - Smooth acceleration and deceleration
 - Non-linear scrolling patterns
 - Performance optimization
 
 **Lessons 25-32: Visual Polish & Effects**
+
 - Atmospheric depth effects
 - Dynamic layer transparency simulation
 - Environmental animation layers

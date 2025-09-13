@@ -27,6 +27,7 @@ Develop software like a professional! Learn advanced system development techniqu
 ## What You'll Learn
 
 Build software with professional engineering practices:
+
 - Advanced data management and persistence
 - Multi-component system integration
 - Professional software engineering techniques
@@ -35,24 +36,28 @@ Build software with professional engineering practices:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Data Management**
+
 - Complex data persistence and storage
 - Advanced file format design and implementation
 - Data integrity and validation systems
 - Building robust data management systems
 
 **Lessons 9-16: Multi-Component Integration**
+
 - Integrating multiple complex software components
 - Managing inter-component communication
 - Creating seamless system integration
 - Building cohesive, unified applications
 
 **Lessons 17-24: Professional Engineering Practices**
+
 - Advanced error handling and recovery
 - Building robust, fault-tolerant systems
 - Professional code organisation and documentation
 - Creating maintainable, scalable software
 
 **Lessons 25-32: Spectrum Symphony Advanced Features**
+
 - Implementing advanced musical composition tools
 - Creating professional recording and editing features
 - Building complete music creation workflows

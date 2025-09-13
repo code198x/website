@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The dual-processor computer that could run C64, C128, and CP/M software."
-image: "/images/systems/c128.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 107
 
 # Commodore 128
 
-*Historical Reference*
+_Historical Reference_
 
 The Commodore 128 was Commodore's ambitious attempt to create a business computer while maintaining C64 compatibility. With dual processors (8502 and Z80), three operating modes, and 80-column display, it was three computers in one.
 
@@ -60,6 +59,7 @@ The C128 represented the end of the 8-bit era at Commodore. While technically im
 ## The Triple Threat
 
 The C128's three personalities:
+
 1. **C128 Mode**: Enhanced BASIC, 80-column text, 2MHz operation
 2. **C64 Mode**: 100% compatibility with C64 software
 3. **CP/M Mode**: Ran business software via Z80 processor
@@ -68,4 +68,4 @@ The C128's three personalities:
 
 While the C128 sold reasonably well, most users primarily used it in C64 mode. Its complex architecture and late arrival limited native software development. However, it remains a fascinating example of backward compatibility and multi-processor design.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

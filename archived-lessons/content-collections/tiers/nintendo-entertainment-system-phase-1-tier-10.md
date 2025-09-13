@@ -27,6 +27,7 @@ Push NES graphics to their limits! Learn advanced techniques including smooth sc
 ## What You'll Add to Tile Craft
 
 Expand your graphics capabilities:
+
 - Implement smooth scrolling and camera systems
 - Create advanced tile manipulation tools
 - Build dynamic graphics loading systems
@@ -35,24 +36,28 @@ Expand your graphics capabilities:
 ## Tier Overview
 
 **Lessons 1-8: Scrolling Systems**
+
 - Hardware scrolling registers and control
 - Creating smooth camera movement
 - Multi-directional scrolling implementation
 - Scrolling optimisation and performance
 
 **Lessons 9-16: Advanced Tile Manipulation**
+
 - Dynamic pattern table updates
 - Real-time tile graphics modification
 - Advanced tile animation techniques
 - Efficient graphics data streaming
 
 **Lessons 17-24: Visual Effects Programming**
+
 - Split-screen effects and advanced timing
 - Palette cycling and colour effects
 - Advanced attribute table manipulation
 - Creating dynamic visual transitions
 
 **Lessons 25-32: Graphics System Integration**
+
 - Integrating scrolling with tile editing
 - Building efficient graphics pipelines
 - Creating reusable graphics frameworks

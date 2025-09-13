@@ -31,6 +31,7 @@ Complete **Pixel Painter** - your first creative assembly masterpiece! Apply eve
 ## What You'll Complete
 
 Finish your first major assembly programming project:
+
 - A fully functional drawing program written in Z80 assembly
 - Direct screen memory manipulation for graphics
 - Assembly-based user interface with multiple tools
@@ -39,24 +40,28 @@ Finish your first major assembly programming project:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Loop Fundamentals**
+
 - Basic counting loops using Z80 registers
 - Efficient loop patterns for Z80 processor
 - Nested loops and complex iteration patterns
 - Loop counter management and optimisation
 
 **Lessons 9-16: Graphics Loop Techniques**
+
 - Implementing screen drawing loops
 - Efficient pixel manipulation routines
 - Color and attribute loop processing
 - Building reusable graphics subroutines
 
 **Lessons 17-24: Advanced Assembly Features**
+
 - Memory management for save and load functionality
 - Implementing undo systems with assembly
 - Creating pattern generation loops
 - Adding assembly-based special effects
 
 **Lessons 25-32: Project Completion**
+
 - Final integration and assembly optimisation
 - Testing and debugging assembly code
 - Creating complete program flow

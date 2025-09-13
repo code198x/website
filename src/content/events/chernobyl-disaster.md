@@ -22,6 +22,7 @@ While not directly related to personal computing, Chernobyl had significant impl
 ## Cultural Impact
 
 The disaster occurred during the height of the home computer revolution:
+
 - Many computer games addressed nuclear war and disaster themes
 - Public interest in technology's risks as well as benefits increased
 - Emphasis on the importance of proper system design and testing

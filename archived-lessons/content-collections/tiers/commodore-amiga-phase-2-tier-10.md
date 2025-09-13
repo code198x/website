@@ -27,6 +27,7 @@ Welcome to the art of perfect response! ⚡ With **32 precision-tuned lessons**,
 ## What You'll Build
 
 Create **AMIGA INPUT ENGINE** - a comprehensive control system featuring:
+
 - Joystick handling with zero perceivable input lag 🎯
 - Mouse controls that feel pixel-perfect and natural
 - Customizable control schemes that adapt to player preferences
@@ -36,24 +37,28 @@ Create **AMIGA INPUT ENGINE** - a comprehensive control system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Joystick Mastery" - Digital Control Perfection**
+
 - CIA chip programming for ultra-responsive joystick reading
 - Interrupt-driven input processing for minimal lag
 - Multi-button joystick support and button mapping
 - Joystick calibration and dead-zone management
 
 **Lessons 9-16: "Mouse Magic" - Analog Precision Control**
+
 - Mouse hardware interface and movement tracking
 - Acceleration curves and sensitivity adjustment
 - Mouse button handling and gesture recognition
 - Combining mouse and joystick for hybrid control schemes
 
 **Lessons 17-24: "Advanced Input Systems" - Professional Control Architecture**
+
 - Customizable control mapping and player preferences
 - Input context switching for different game modes
 - Macro systems and complex input sequences
 - Input buffering and command queueing systems
 
 **Lessons 25-32: "Performance Optimization" - Lightning-Fast Response**
+
 - Interrupt optimization for minimal input latency
 - Input polling strategies for maximum responsiveness
 - Memory-efficient input data structures

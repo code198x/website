@@ -27,6 +27,7 @@ Make impossible games possible! With **32 advanced lessons**, you'll master the 
 ## What You'll Build
 
 Create **OPTIMIZED ACTION GAME** - featuring maximum performance:
+
 - Smooth 50fps gameplay with complex game systems running simultaneously
 - Efficient AI that doesn't slow down during intense action sequences
 - Optimized physics that handles multiple objects without frame drops
@@ -36,24 +37,28 @@ Create **OPTIMIZED ACTION GAME** - featuring maximum performance:
 ## Technical Optimization Areas
 
 **Lessons 1-8: "Performance Fundamentals" - Core Optimization Principles**
+
 - Advanced assembly optimization and cycle counting techniques
 - Efficient algorithm design for real-time game constraints
 - Memory access pattern optimization for maximum throughput
 - Performance profiling and bottleneck identification methods
 
 **Lessons 9-16: "System Optimization" - Game Component Efficiency**
+
 - AI system optimization for real-time decision making
 - Physics calculation optimization for smooth interactions
 - Graphics rendering optimization for complex scenes
 - Audio processing optimization for multi-channel mixing
 
 **Lessons 17-24: "Advanced Techniques" - Professional Optimization**
+
 - Memory management optimization for large game systems
 - Interrupt handler optimization for seamless system integration
 - DMA and bank switching optimization for maximum data flow
 - Advanced data structure design for optimal performance
 
 **Lessons 25-32: "Professional Tools" - Optimization Workflow**
+
 - Performance profiling tools and analysis techniques
 - Automated optimization testing and validation
 - Scalable optimization strategies for varying complexity

@@ -27,6 +27,7 @@ Welcome to the world of meaningful progression! 🚀 With **32 empowering lesson
 ## What You'll Build
 
 Create **POWER-UP PARADISE** - an addictive progression system featuring:
+
 - Collectible power-ups that transform gameplay instantly ⭐
 - Permanent upgrades that make players feel their progress
 - Visual effects that make every collection feel like a victory
@@ -36,24 +37,28 @@ Create **POWER-UP PARADISE** - an addictive progression system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Collection Magic" - Basic Power-up Systems**
+
 - Collectible item spawning and placement systems
 - Player-item collision detection and collection feedback
 - Visual and audio effects that make collection feel rewarding
 - Basic temporary power-up effects and timing
 
 **Lessons 9-16: "Temporary Powers" - Time-Limited Abilities**
+
 - Temporary invincibility and super-speed systems
 - Weapon upgrades and enhanced abilities
 - Power-up stacking and combination effects
 - Timer management and effect countdown systems
 
 **Lessons 17-24: "Permanent Progress" - Lasting Upgrades**
+
 - Player statistics and permanent ability increases
 - Upgrade trees and progression pathways
 - Save system integration for persistent upgrades
 - Visual indicators for permanent improvements
 
 **Lessons 25-32: "Balance and Polish" - Professional Progression**
+
 - Gameplay balance and difficulty curve management
 - Power-up distribution and pacing optimization
 - Player psychology and motivation systems

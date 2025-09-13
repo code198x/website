@@ -31,24 +31,28 @@ Transform **Neon City** into a real-time masterpiece with frame-perfect gameplay
 ## Tier Overview
 
 **Lessons 1-8: Real-Time Architecture**
+
 - Real-time system design principles
 - Deterministic behavior patterns
 - Response time analysis
 - Priority-based scheduling
 
 **Lessons 9-16: Hardware Coordination**
+
 - Multi-chip synchronization
 - Resource sharing strategies
 - Conflict resolution systems
 - Performance guarantees
 
 **Lessons 17-24: Responsive Interface Design**
+
 - User input handling with guarantees
 - Visual feedback systems
 - Audio responsiveness
 - Professional UX patterns
 
 **Lessons 25-32: Professional Implementation**
+
 - Real-time testing methodologies
 - Performance verification
 - Quality assurance practices

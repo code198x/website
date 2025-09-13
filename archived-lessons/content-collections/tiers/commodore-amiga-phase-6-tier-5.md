@@ -27,6 +27,7 @@ Time to become a hardware wizard! With **32 intensive lessons**, you'll master d
 ## What You'll Build
 
 Create **AMIGA HARDWARE CONTROLLER** - a low-level hardware mastery demonstration featuring:
+
 - Direct register programming of all custom chips with precise timing
 - Custom chipset configurations that push hardware beyond normal limits
 - Advanced DMA coordination that eliminates all bottlenecks
@@ -36,24 +37,28 @@ Create **AMIGA HARDWARE CONTROLLER** - a low-level hardware mastery demonstratio
 ## Tier Overview
 
 **Lessons 1-8: "Agnus Mastery!" - Advanced Display and Memory Control**
+
 - Direct Agnus register programming for display list generation
 - Advanced bitplane DMA configuration and memory management
 - Custom display modes and resolution programming
 - The deepest secrets of Amiga's master timing chip
 
 **Lessons 9-16: "Denise Wizardry!" - Advanced Graphics and Video Control**
+
 - Direct Denise register programming for advanced graphics modes
 - Custom palette programming and color manipulation
 - Advanced sprite control and collision detection at hardware level
 - HAM and EHB mode programming with precise timing control
 
 **Lessons 17-24: "Paula Excellence!" - Advanced Audio and DMA Control**
+
 - Direct Paula register programming for advanced audio control
 - Custom audio DMA configurations and sample manipulation
 - Advanced interrupt programming and hardware coordination
 - The legendary techniques behind impossible Amiga audio
 
 **Lessons 25-32: "Complete Hardware Control!" - Master-Level Integration**
+
 - Advanced chipset coordination and timing synchronization
 - Custom hardware configurations and specialized modes
 - Professional hardware debugging and optimization techniques

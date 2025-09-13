@@ -27,6 +27,7 @@ Ready to go pro? With **32 sporting lessons**, you'll create games that capture 
 ## What You'll Build
 
 Create **SUPER PIXEL LEAGUE** - a multi-sport game featuring:
+
 - Multiple sports with unique mechanics
 - Teams with different strengths and play styles
 - Season modes with stats tracking
@@ -36,24 +37,28 @@ Create **SUPER PIXEL LEAGUE** - a multi-sport game featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Rules of the Game" - Sports Mechanics**
+
 - Translating real sports to 8-bit rules
 - Physics that feel right (even if not realistic)
 - Control schemes that make sense instantly
 - Making complex sports accessible
 
 **Lessons 9-16: "Team Spirit" - AI Players**
+
 - Teammate AI that helps (not hinders)
 - Opponent AI with personality
 - Different difficulty levels that feel fair
 - Strategic depth in simple systems
 
 **Lessons 17-24: "Season Glory" - Long-term Play**
+
 - Tournament brackets and progression
 - Stat tracking within memory limits
 - Team management between games
 - Creating investment in outcomes
 
 **Lessons 25-32: "Stadium Experience" - Atmosphere**
+
 - Crowd reactions and sound effects
 - Instant replays (yes, on NES!)
 - Victory celebrations

@@ -27,6 +27,7 @@ Time to create LEGENDARY SOUNDTRACKS! 🎼 With **32 harmonically-focused lesson
 ## What You'll Build
 
 Create **AUDIO MASTERPIECE ENGINE** - an advanced sound system featuring:
+
 - Complex musical compositions that rival professional soundtracks 🎹
 - Dynamic audio that changes based on gameplay situations
 - Advanced sound effects that enhance every game action
@@ -36,24 +37,28 @@ Create **AUDIO MASTERPIECE ENGINE** - an advanced sound system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "APU Mastery" - Advanced Hardware Programming**
+
 - Complex channel coordination and advanced mixing techniques
 - Advanced envelope control and sound shaping
 - Custom waveform generation and sound synthesis
 - High-precision timing and musical accuracy
 
 **Lessons 9-16: "Dynamic Composition" - Adaptive Music Systems**
+
 - Music that changes based on player actions and game state
 - Seamless transitions between musical themes and moods
 - Layered composition techniques for rich, complex soundscapes
 - Interactive music systems that respond to gameplay
 
 **Lessons 17-24: "Effects Mastery" - Advanced Sound Design**
+
 - Complex sound effect synthesis and processing
 - Environmental audio and spatial sound techniques
 - Advanced mixing and mastering for NES limitations
 - Audio compression and efficient sound storage
 
 **Lessons 25-32: "Professional Production" - Audio Development Tools**
+
 - Building professional audio editing and composition tools
 - Automated audio pipeline and asset management
 - Advanced debugging and audio analysis techniques

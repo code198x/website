@@ -31,6 +31,7 @@ Integrate all advanced systems into one masterpiece! With **32 integration-focus
 ## What You'll Complete
 
 Create your **ADVANCED SPECTRUM MASTERPIECE** - integrating all systems:
+
 - **Intelligent AI**: Advanced opponents with strategic behaviors
 - **Complex Physics**: Realistic movement and collision systems
 - **Dynamic Audio**: Adaptive music that responds to gameplay
@@ -40,24 +41,28 @@ Create your **ADVANCED SPECTRUM MASTERPIECE** - integrating all systems:
 ## Technical Integration Areas
 
 **Lessons 1-8: "System Architecture" - Combining Complex Systems**
+
 - Integrating AI, physics, and audio into cohesive architecture
 - Memory management for multiple complex systems on ZX Spectrum
 - Performance balancing between competing system demands
 - Modular design patterns for sophisticated Z80 games
 
 **Lessons 9-16: "Advanced Optimization" - Performance Mastery**
+
 - Frame-rate optimization for multiple complex systems
 - Advanced memory allocation and management techniques
 - CPU cycle optimization for AI, physics, and audio simultaneously
 - Profiling and performance analysis for ZX Spectrum games
 
 **Lessons 17-24: "Gameplay Integration" - Cohesive Game Design**
+
 - Designing gameplay that showcases all technical systems
 - Creating synergy between AI behavior, physics, and audio
 - Advanced game mechanics that utilize all systems effectively
 - Polishing gameplay for professional-quality experience
 
 **Lessons 25-32: "Masterpiece Completion" - Final Integration**
+
 - Complete testing and debugging of complex integrated systems
 - Final optimization and performance tuning for ZX Spectrum
 - Quality assurance for sophisticated multi-system games

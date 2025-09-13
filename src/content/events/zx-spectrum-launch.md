@@ -20,6 +20,7 @@ On 23rd April 1982, Sinclair Research launched the ZX Spectrum at the Earl's Cou
 ## Cultural Impact
 
 The Spectrum's influence extended far beyond technology:
+
 - Created the "bedroom coder" phenomenon
 - Launched the British gaming industry
 - Taught programming to millions

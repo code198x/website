@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The first 16-bit game console with sophisticated graphics and the unique disc controller."
-image: "/images/systems/intellivision.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 106
 
 # Intellivision
 
-*Historical Reference*
+_Historical Reference_
 
 The Intellivision was Mattel's ambitious entry into video gaming, featuring a 16-bit processor in 1979 and graphics that outclassed the Atari 2600. Its unique disc controller and numeric keypad overlays offered more complex gameplay than competitors.
 
@@ -60,4 +59,4 @@ The Intellivision was the first real challenger to Atari's dominance. With super
 
 While the Intellivision couldn't match Atari's market penetration, it pushed the industry forward with better graphics and more sophisticated gameplay. Many of its innovations, like voice synthesis (Intellivoice) and downloadable games (PlayCable), were years ahead of their time.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

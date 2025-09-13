@@ -30,7 +30,7 @@ order: 28
 
 ```
 ; This creates a complete debugging system with memory inspection,
-; error detection, and diagnostic output - the same techniques 
+; error detection, and diagnostic output - the same techniques
 ; used by professional game developers in 1982!
 
 DebugSystem:
@@ -67,7 +67,7 @@ LoopStart:
     ; Process data
     LDA DataArray,X
     JSR ProcessByte
-    
+
     ; WRONG: This will never reach zero
     INX                 ; Should be DEX
     BNE LoopStart      ; Will loop forever
@@ -80,7 +80,7 @@ LoopStart:
     ; Process data
     LDA DataArray,X
     JSR ProcessByte
-    
+
     ; CORRECT: Decrement toward zero
     DEX
     BPL LoopStart      ; Loop while positive/zero
@@ -91,11 +91,11 @@ BadConditional:
     LDA PlayerHealth
     CMP #$00
     BNE PlayerAlive    ; WRONG: Should be BEQ for "equal to zero"
-    
+
     ; Dead player code
     JSR HandlePlayerDeath
     RTS
-    
+
 PlayerAlive:
     ; Alive player code
     JSR UpdatePlayer
@@ -106,11 +106,11 @@ GoodConditional:
     LDA PlayerHealth
     CMP #$00
     BEQ PlayerDead     ; CORRECT: Branch if equal to zero
-    
+
     ; Alive player code
     JSR UpdatePlayer
     RTS
-    
+
 PlayerDead:
     ; Dead player code
     JSR HandlePlayerDeath
@@ -121,7 +121,7 @@ BadFlagCheck:
     LDA #$80
     CMP #$7F
     BCC ValueTooLow    ; WRONG: $80 > $7F, but this treats as signed
-    
+
     ; Handle high value
     RTS
 
@@ -134,7 +134,7 @@ GoodFlagCheck:
     LDA #$80
     CMP #$7F
     BCS ValueHighEnough  ; CORRECT: For unsigned comparison
-    
+
     ; Handle low value
     RTS
 
@@ -171,7 +171,7 @@ GoodIndexing:
     LDX #$10
     CPX #ArraySize     ; Check bounds first
     BCS IndexError     ; Branch if index >= size
-    
+
     LDA DataArray,X    ; Safe to access
     RTS
 
@@ -186,10 +186,10 @@ BadPointer:
     STA $FB
     LDA #>DataArray
     STA $FC            ; Setup pointer
-    
+
     LDY #$00
     LDA ($FB),Y        ; Read data
-    
+
     ; WRONG: Accidentally modify pointer
     INC $FB            ; Corrupts pointer low byte
     LDA ($FB),Y        ; Now reading wrong location
@@ -201,10 +201,10 @@ GoodPointer:
     STA $FB
     LDA #>DataArray
     STA $FC            ; Setup pointer
-    
+
     LDY #$00
     LDA ($FB),Y        ; Read first byte
-    
+
     ; CORRECT: Use index instead of modifying pointer
     INY
     LDA ($FB),Y        ; Read second byte
@@ -229,58 +229,58 @@ ErrorDetectionDemo:
 
 DemoLogicErrors:
     ; Demonstrate logic error detection
-    
+
     ; Test 1: Check loop bounds
     JSR TestLoopBounds
-    
+
     ; Test 2: Check conditional logic
     JSR TestConditionals
-    
+
     ; Test 3: Check flag handling
     JSR TestFlags
-    
+
     RTS
 
 TestLoopBounds:
     ; Test proper loop termination
     LDX #$05        ; Start counter
     LDA #$00        ; Clear accumulator
-    
+
 BoundsTestLoop:
     ; Add index to accumulator
     STX $90         ; Save X
     TXA
     CLC
     ADC $90         ; Add saved X (demonstrates register preservation)
-    
+
     ; Check for termination
     DEX
     BPL BoundsTestLoop  ; Continue while positive
-    
+
     ; Store result for verification
     STA LoopResult
-    
+
     RTS
 
 TestConditionals:
     ; Test conditional branching logic
     LDA #$50        ; Test value
     STA TestValue
-    
+
     ; Test greater than
     CMP #$40
     BCC NotGreater  ; Branch if less than
-    
+
     ; Greater than or equal
     LDA #$01
     STA ConditionResult
     JMP ConditionalEnd
-    
+
 NotGreater:
     ; Less than
     LDA #$00
     STA ConditionResult
-    
+
 ConditionalEnd:
     RTS
 
@@ -289,53 +289,53 @@ TestFlags:
     LDA #$FF        ; Load maximum value
     CLC             ; Clear carry
     ADC #$01        ; Add 1 (should set carry and zero flags)
-    
+
     ; Check if overflow occurred correctly
     BCS OverflowDetected
-    
+
     ; No overflow (error condition)
     LDA #$FF
     STA FlagResult
     JMP FlagEnd
-    
+
 OverflowDetected:
     ; Overflow detected correctly
     LDA #$00        ; Should be zero after $FF + $01
     STA FlagResult
-    
+
 FlagEnd:
     RTS
 
 DemoMemoryErrors:
     ; Demonstrate memory error detection
-    
+
     ; Test 1: Array bounds checking
     JSR TestArrayBounds
-    
+
     ; Test 2: Pointer validation
     JSR TestPointers
-    
+
     ; Test 3: Data integrity
     JSR TestDataIntegrity
-    
+
     RTS
 
 TestArrayBounds:
     ; Demonstrate safe array access
     LDX #$00        ; Array index
-    
+
 ArrayAccessLoop:
     ; Check bounds before access
     CPX #TestArraySize
     BCS ArrayAccessDone  ; Exit if index >= size
-    
+
     ; Safe to access array
     LDA TestArray,X
     STA $80,X       ; Copy to workspace
-    
+
     INX
     JMP ArrayAccessLoop
-    
+
 ArrayAccessDone:
     ; Set success indicator
     LDA #$01
@@ -344,26 +344,26 @@ ArrayAccessDone:
 
 TestPointers:
     ; Demonstrate pointer validation and safe usage
-    
+
     ; Setup pointer to test array
     LDA #<TestArray
     STA $FB         ; Pointer low
     LDA #>TestArray
     STA $FC         ; Pointer high
-    
+
     ; Validate pointer (basic check)
     LDA $FB
     ORA $FC         ; Check if pointer is non-zero
     BEQ PointerError
-    
+
     ; Use pointer safely
     LDY #$00
     LDA ($FB),Y     ; Read first element
     STA PointerResult
-    
+
     CLC             ; Success
     RTS
-    
+
 PointerError:
     ; Handle null pointer
     LDA #$FF
@@ -374,18 +374,18 @@ PointerError:
 TestDataIntegrity:
     ; Demonstrate data validation
     LDA TestArray   ; Get first element
-    
+
     ; Validate data is in expected range
     CMP #$10        ; Minimum valid value
     BCC DataError
     CMP #$F0        ; Maximum valid value
     BCS DataError
-    
+
     ; Data is valid
     STA IntegrityResult
     CLC
     RTS
-    
+
 DataError:
     ; Data out of range
     LDA #$00
@@ -395,13 +395,13 @@ DataError:
 
 DemoRegisterErrors:
     ; Demonstrate register preservation and usage errors
-    
+
     ; Test 1: Register preservation
     JSR TestRegisterPreservation
-    
+
     ; Test 2: Register state tracking
     JSR TestRegisterStates
-    
+
     RTS
 
 TestRegisterPreservation:
@@ -409,10 +409,10 @@ TestRegisterPreservation:
     LDA #$42        ; Important value in A
     LDX #$24        ; Important value in X
     LDY #$84        ; Important value in Y
-    
+
     ; Call subroutine that should preserve registers
     JSR PreservingSubroutine
-    
+
     ; Verify registers are preserved
     CMP #$42
     BNE RegPreserveError
@@ -420,12 +420,12 @@ TestRegisterPreservation:
     BNE RegPreserveError
     CPY #$84
     BNE RegPreserveError
-    
+
     ; Success
     LDA #$01
     STA PreserveResult
     RTS
-    
+
 RegPreserveError:
     ; Register preservation failed
     LDA #$00
@@ -439,41 +439,41 @@ PreservingSubroutine:
     PHA             ; Save X
     TYA
     PHA             ; Save Y
-    
+
     ; Do some work that modifies registers
     LDA #$00
     LDX #$00
     LDY #$00
-    
+
     ; Restore registers in reverse order
     PLA
     TAY             ; Restore Y
     PLA
     TAX             ; Restore X
     PLA             ; Restore A
-    
+
     RTS
 
 TestRegisterStates:
     ; Demonstrate tracking register states
-    
+
     ; Clear all flags for consistent starting state
     CLD             ; Clear decimal mode
     CLC             ; Clear carry
     CLV             ; Clear overflow
-    
+
     ; Perform operation that affects flags
     LDA #$7F
     ADC #$01        ; Should set overflow flag
-    
+
     ; Check if overflow occurred as expected
     BVS OverflowOK
-    
+
     ; Overflow flag not set (unexpected)
     LDA #$00
     STA StateResult
     RTS
-    
+
 OverflowOK:
     ; Overflow flag set correctly
     LDA #$01
@@ -525,22 +525,22 @@ IsolateProblem:
     ; Divide program into sections
     ; Test each section independently
     ; Use status indicators to track execution
-    
+
     LDA #$01
     STA Section1Status  ; Mark section 1 entry
     JSR Section1Code
     LDA #$02
     STA Section1Status  ; Mark section 1 exit
-    
+
     LDA #$01
     STA Section2Status  ; Mark section 2 entry
     JSR Section2Code
     LDA #$02
     STA Section2Status  ; Mark section 2 exit
-    
+
     ; Check which section failed
     JSR AnalyzeStatuses
-    
+
     RTS
 
 ; Step 3: Add diagnostic instrumentation
@@ -548,17 +548,17 @@ AddDiagnostics:
     ; Insert checkpoints to track program state
     ; Use unused memory locations as debug variables
     ; Add markers for critical operations
-    
+
     DebugCounter = $C0      ; Debug counter location
     DebugState = $C1        ; Current state marker
     DebugError = $C2        ; Error condition flag
-    
+
     ; Example: Track loop iterations
     INC DebugCounter        ; Count executions
     LDA DebugCounter
     CMP #$FF               ; Check for runaway loop
     BEQ RunawayLoop
-    
+
     ; Continue normal execution
     RTS
 
@@ -595,59 +595,59 @@ DumpMemoryRange:
     ; Input: Start address in $FB/$FC, length in A
     STA DumpLength
     LDY #$00
-    
+
 DumpLoop:
     LDA ($FB),Y         ; Read memory byte
     JSR DisplayHexByte  ; Show in hex format
-    
+
     ; Add space between bytes
     LDA #$20            ; Space character
     JSR $FFD2           ; CHROUT
-    
+
     ; Next byte
     INY
     DEC DumpLength
     BNE DumpLoop
-    
+
     ; Add newline
     LDA #$0D            ; Carriage return
     JSR $FFD2
-    
+
     RTS
 
 DisplayHexByte:
     ; Display byte in A as hex
     PHA                 ; Save original value
-    
+
     ; Display high nibble
     LSR
     LSR
     LSR
     LSR                 ; Shift high nibble down
     JSR DisplayHexNibble
-    
+
     ; Display low nibble
     PLA                 ; Restore original
     AND #$0F            ; Keep low nibble
     JSR DisplayHexNibble
-    
+
     RTS
 
 DisplayHexNibble:
     ; Display nibble (0-15) as hex digit
     CMP #$0A
     BCC DisplayDigit
-    
+
     ; A-F
     CLC
     ADC #$37            ; Convert to ASCII A-F
     JMP ShowChar
-    
+
 DisplayDigit:
     ; 0-9
     CLC
     ADC #$30            ; Convert to ASCII 0-9
-    
+
 ShowChar:
     JSR $FFD2           ; CHROUT
     RTS
@@ -658,18 +658,18 @@ ChecksumMemory:
     STA CheckLength
     LDA #$00
     STA Checksum        ; Clear checksum
-    
+
     LDY #$00
 ChecksumLoop:
     LDA ($FB),Y
     CLC
     ADC Checksum        ; Add to running total
     STA Checksum
-    
+
     INY
     DEC CheckLength
     BNE ChecksumLoop
-    
+
     ; Return checksum in A
     LDA Checksum
     RTS
@@ -679,16 +679,16 @@ CompareMemory:
     ; Input: Addr1 in $FB/$FC, Addr2 in $FD/$FE, length in A
     STA CompareLength
     LDY #$00
-    
+
 CompareLoop:
     LDA ($FB),Y         ; Read from first region
     CMP ($FD),Y         ; Compare with second region
     BNE MemoryDifference
-    
+
     INY
     DEC CompareLength
     BNE CompareLoop
-    
+
     ; Memory regions are identical
     CLC
     RTS
@@ -719,7 +719,7 @@ MemoryDebuggingDemo:
 
 SetupDebugData:
     ; Create test data for debugging demonstrations
-    
+
     ; Fill test array with pattern
     LDX #$00
     LDA #$10
@@ -730,91 +730,91 @@ TestDataLoop:
     INX
     CPX #$08            ; 8 bytes
     BNE TestDataLoop
-    
+
     ; Setup debug tracking variables
     LDA #$00
     STA DebugPhase      ; Current debug phase
     STA ErrorCount      ; Number of errors found
     STA ExecutionCount  ; Execution counter
-    
+
     RTS
 
 DemoMemoryInspection:
     ; Demonstrate memory examination techniques
-    
+
     ; Phase 1: Inspect test data
     LDA #$01
     STA DebugPhase
-    
+
     ; Examine our test array
     JSR InspectTestArray
-    
+
     ; Phase 2: Check data integrity
     LDA #$02
     STA DebugPhase
-    
+
     JSR ValidateTestData
-    
+
     RTS
 
 InspectTestArray:
     ; Examine test array contents
     LDX #$00
-    
+
 InspectLoop:
     LDA TestData,X      ; Get array element
     STA CurrentByte     ; Store for analysis
-    
+
     ; Validate this byte
     CMP #$10            ; First element should be $10
     BCC InvalidData     ; Less than expected minimum
     CMP #$80            ; Last element should be $70
     BCS InvalidData     ; Greater than expected maximum
-    
+
     ; Data appears valid for this element
     JMP NextElement
-    
+
 InvalidData:
     ; Found invalid data
     INC ErrorCount
     STX ErrorLocation   ; Record where error found
-    
+
 NextElement:
     INX
     CPX #$08            ; Check all 8 elements
     BNE InspectLoop
-    
+
     RTS
 
 ValidateTestData:
     ; Perform comprehensive data validation
-    
+
     ; Test 1: Check array bounds
     LDX #$08            ; Try to access beyond array
     LDA TestData,X      ; This accesses undefined memory
     ; In real debugging, this would be caught by bounds checking
-    
+
     ; Test 2: Verify data pattern
     LDX #$00
     LDA #$10            ; Expected first value
-    
+
 PatternCheck:
     CMP TestData,X      ; Check if matches expected pattern
     BNE PatternError
-    
+
     ; Calculate next expected value
     CLC
     ADC #$10            ; Each element increases by $10
-    
+
     INX
     CPX #$08
     BNE PatternCheck
-    
+
     ; Pattern is correct
     LDA #$01
     STA PatternResult
     RTS
-    
+
 PatternError:
     ; Pattern validation failed
     LDA #$00
@@ -825,21 +825,21 @@ PatternError:
 
 DemoDataValidation:
     ; Demonstrate data validation techniques
-    
+
     ; Test data integrity using checksums
     JSR CalculateDataChecksum
-    
+
     ; Compare with expected checksum
     LDA DataChecksum
     CMP #$C0            ; Expected checksum for our test pattern
     BEQ ChecksumOK
-    
+
     ; Checksum mismatch - data corruption detected
     INC ErrorCount
     LDA #$FF
     STA ChecksumResult
     RTS
-    
+
 ChecksumOK:
     LDA #$00
     STA ChecksumResult
@@ -849,50 +849,50 @@ CalculateDataChecksum:
     ; Calculate simple checksum of test data
     LDA #$00
     STA DataChecksum    ; Clear checksum
-    
+
     LDX #$00
 ChecksumLoop:
     LDA TestData,X
     CLC
     ADC DataChecksum    ; Add to running total
     STA DataChecksum
-    
+
     INX
     CPX #$08
     BNE ChecksumLoop
-    
+
     RTS
 
 DemoStateTracking:
     ; Demonstrate program state tracking
-    
+
     ; Track execution through multiple phases
     LDA #$00
     STA ExecutionPhase
-    
+
     ; Phase A
     INC ExecutionPhase  ; Mark phase entry
     JSR TrackableOperation1
     INC ExecutionCount  ; Count executions
-    
-    ; Phase B  
+
+    ; Phase B
     INC ExecutionPhase  ; Mark phase entry
     JSR TrackableOperation2
     INC ExecutionCount  ; Count executions
-    
+
     ; Phase C
     INC ExecutionPhase  ; Mark phase entry
     JSR TrackableOperation3
     INC ExecutionCount  ; Count executions
-    
+
     ; Verify all phases completed
     LDA ExecutionPhase
     CMP #$03            ; Should be 3 after all phases
     BEQ AllPhasesComplete
-    
+
     ; Execution tracking error
     INC ErrorCount
-    
+
 AllPhasesComplete:
     RTS
 
@@ -906,13 +906,13 @@ TrackableOperation2:
     ; Simulated operation with state tracking
     LDA #$B2            ; Operation signature
     STA Operation2Result
-    
+
     ; Simulate potential error condition
     LDA ExecutionCount
     CMP #$02            ; If this is second execution
     BEQ SimulateError
     RTS
-    
+
 SimulateError:
     ; Demonstrate error detection
     INC ErrorCount
@@ -969,7 +969,7 @@ ValidateInput:
     BCC InputTooLow
     CMP #$F0
     BCS InputTooHigh
-    
+
     ; Input is valid
     CLC
     RTS
@@ -991,7 +991,7 @@ SafeArrayAccess:
     ; Input: Index in X, array base in $FB/$FC
     CPX #MaxArraySize
     BCS ArrayIndexError
-    
+
     ; Safe to access
     LDA ($FB),X
     CLC
@@ -1008,7 +1008,7 @@ SafeDivision:
     ; Input: Dividend in A, divisor in X
     CPX #$00
     BEQ DivisionByZero
-    
+
     ; Perform division (simplified)
     ; Real implementation would do actual division
     RTS
@@ -1023,15 +1023,15 @@ StackBalanceCheck:
     ; Verify stack operations are balanced
     TSX                 ; Get current stack pointer
     STX StackBefore     ; Save initial stack state
-    
+
     ; Perform operations that use stack
     JSR StackUsingOperation
-    
+
     ; Verify stack is balanced
     TSX
     CPX StackBefore
     BEQ StackBalanced
-    
+
     ; Stack imbalance detected
     LDA #$FF
     STA StackError
@@ -1047,11 +1047,11 @@ StackUsingOperation:
     PHA                 ; Push A
     TXA
     PHA                 ; Push X
-    
+
     ; Do some work
     LDA #$42
     LDX #$24
-    
+
     ; Restore in reverse order
     PLA
     TAX                 ; Restore X
@@ -1072,7 +1072,7 @@ AssertionFramework:
     ; Implement basic assertions for testing
     TestCount = $D0         ; Number of tests run
     FailCount = $D1         ; Number of failures
-    
+
 InitTesting:
     LDA #$00
     STA TestCount
@@ -1083,10 +1083,10 @@ Assert:
     ; Input: Expected value in A, actual value in X
     ; Sets carry if assertion fails
     INC TestCount
-    
+
     CMP X               ; Compare expected with actual (conceptual)
     BEQ AssertPass
-    
+
     ; Assertion failed
     INC FailCount
     SEC
@@ -1100,25 +1100,25 @@ AssertPass:
 TestSuite:
     ; Example test suite
     JSR InitTesting
-    
+
     ; Test 1: Basic arithmetic
     LDA #$05            ; Expected result
     LDX #$05            ; Actual result (2+3)
     JSR Assert
     BCS Test1Failed
-    
+
     ; Test 2: Memory operations
     LDA #$42            ; Expected value
     LDX TestData        ; Actual value from memory
     JSR Assert
     BCS Test2Failed
-    
+
     ; Test 3: Range validation
     LDA #$01            ; Expected: in range
     LDX #$01            ; Actual: validation result
     JSR Assert
     BCS Test3Failed
-    
+
     ; All tests completed
     JSR ReportResults
     RTS
@@ -1157,62 +1157,62 @@ InitializeFramework:
     STA TestsFailed     ; Number of tests failed
     STA TotalErrors     ; Total errors detected
     STA ValidationCount ; Number of validations performed
-    
+
     RTS
 
 DemoDefensiveProgramming:
     ; Demonstrate defensive programming techniques
-    
+
     ; Test 1: Input validation
     JSR TestInputValidation
-    
+
     ; Test 2: Bounds checking
     JSR TestBoundsChecking
-    
+
     ; Test 3: Error condition handling
     JSR TestErrorHandling
-    
+
     RTS
 
 TestInputValidation:
     ; Test input validation with various values
-    
+
     ; Valid input test
     LDA #$50            ; Valid input (in range $10-$F0)
     JSR ValidateInputRange
     BCS InvalidInput1
-    
+
     INC TestsPassed
     JMP InputTest2
-    
+
 InvalidInput1:
     INC TestsFailed
     INC TotalErrors
-    
+
 InputTest2:
     ; Invalid input test (too low)
     LDA #$05            ; Invalid input (below $10)
     JSR ValidateInputRange
     BCC UnexpectedValid1 ; Should have failed
-    
+
     ; Correctly detected invalid input
     INC TestsPassed
     JMP InputTest3
-    
+
 UnexpectedValid1:
     INC TestsFailed
     INC TotalErrors
-    
+
 InputTest3:
     ; Invalid input test (too high)
     LDA #$FF            ; Invalid input (above $F0)
     JSR ValidateInputRange
     BCC UnexpectedValid2 ; Should have failed
-    
+
     ; Correctly detected invalid input
     INC TestsPassed
     RTS
-    
+
 UnexpectedValid2:
     INC TestsFailed
     INC TotalErrors
@@ -1222,47 +1222,47 @@ ValidateInputRange:
     ; Validate input is in range $10-$F0
     ; Input: Value in A
     ; Output: Carry clear = valid, set = invalid
-    
+
     INC ValidationCount
-    
+
     CMP #$10
     BCC ValidationFailed    ; Below minimum
     CMP #$F0
     BCS ValidationFailed    ; Above maximum
-    
+
     ; Input is valid
     CLC
     RTS
-    
+
 ValidationFailed:
     SEC
     RTS
 
 TestBoundsChecking:
     ; Test array bounds checking
-    
+
     ; Valid index test
     LDX #$03            ; Valid index (0-7 range)
     JSR SafeArrayAccess
     BCS BoundsError1
-    
+
     INC TestsPassed
     JMP BoundsTest2
-    
+
 BoundsError1:
     INC TestsFailed
     INC TotalErrors
-    
+
 BoundsTest2:
     ; Invalid index test
     LDX #$10            ; Invalid index (beyond array)
     JSR SafeArrayAccess
     BCC UnexpectedAccess ; Should have failed
-    
+
     ; Correctly detected bounds error
     INC TestsPassed
     RTS
-    
+
 UnexpectedAccess:
     INC TestsFailed
     INC TotalErrors
@@ -1272,16 +1272,16 @@ SafeArrayAccess:
     ; Safe array access with bounds checking
     ; Input: Index in X
     ; Output: Carry clear = success, set = bounds error
-    
+
     CPX #$08            ; Array size is 8 (indices 0-7)
     BCS BoundsViolation
-    
+
     ; Safe to access array
     LDA SafeTestArray,X
     STA LastArrayValue
     CLC
     RTS
-    
+
 BoundsViolation:
     ; Index out of bounds
     LDA #$FF            ; Error indicator
@@ -1291,26 +1291,26 @@ BoundsViolation:
 
 TestErrorHandling:
     ; Test error condition handling
-    
+
     ; Test division by zero handling
     LDA #$10            ; Dividend
     LDX #$00            ; Divisor (zero)
     JSR SafeDivision
     BCC UnexpectedSuccess ; Should have detected error
-    
+
     ; Correctly handled division by zero
     INC TestsPassed
-    
+
     ; Test normal division
     LDA #$10            ; Dividend
     LDX #$02            ; Divisor (non-zero)
     JSR SafeDivision
     BCS UnexpectedError  ; Should have succeeded
-    
+
     ; Division completed successfully
     INC TestsPassed
     RTS
-    
+
 UnexpectedSuccess:
 UnexpectedError:
     INC TestsFailed
@@ -1321,16 +1321,16 @@ SafeDivision:
     ; Safe division with zero checking
     ; Input: Dividend in A, divisor in X
     ; Output: Carry clear = success, set = error
-    
+
     CPX #$00
     BEQ DivideByZeroError
-    
+
     ; Perform division (simplified - just return dividend/2)
     LSR                 ; Divide by 2 for demonstration
     STA DivisionResult
     CLC
     RTS
-    
+
 DivideByZeroError:
     LDA #$FF            ; Error value
     STA DivisionResult
@@ -1339,35 +1339,35 @@ DivideByZeroError:
 
 DemoTestingFramework:
     ; Demonstrate systematic testing framework
-    
+
     ; Test arithmetic operations
     JSR TestArithmetic
-    
+
     ; Test memory operations
     JSR TestMemoryOperations
-    
+
     ; Test control flow
     JSR TestControlFlow
-    
+
     RTS
 
 TestArithmetic:
     ; Test basic arithmetic operations
-    
+
     ; Test addition
     LDA #$10
     CLC
     ADC #$20
     CMP #$30            ; Expected result
     BEQ AdditionOK
-    
+
     INC TestsFailed
     INC TotalErrors
     JMP TestSubtraction
-    
+
 AdditionOK:
     INC TestsPassed
-    
+
 TestSubtraction:
     ; Test subtraction
     LDA #$50
@@ -1375,46 +1375,46 @@ TestSubtraction:
     SBC #$20
     CMP #$30            ; Expected result
     BEQ SubtractionOK
-    
+
     INC TestsFailed
     INC TotalErrors
     RTS
-    
+
 SubtractionOK:
     INC TestsPassed
     RTS
 
 TestMemoryOperations:
     ; Test memory read/write operations
-    
+
     ; Test memory write/read
     LDA #$42
     STA TestMemoryLocation
     LDA TestMemoryLocation
     CMP #$42
     BEQ MemoryOK
-    
+
     INC TestsFailed
     INC TotalErrors
     RTS
-    
+
 MemoryOK:
     INC TestsPassed
     RTS
 
 TestControlFlow:
     ; Test branching and control flow
-    
+
     ; Test conditional branch
     LDA #$80
     CMP #$40
     BCS BranchTaken     ; Should branch (carry set)
-    
+
     ; Branch not taken (error)
     INC TestsFailed
     INC TotalErrors
     RTS
-    
+
 BranchTaken:
     ; Branch taken correctly
     INC TestsPassed
@@ -1423,16 +1423,16 @@ BranchTaken:
 ReportFrameworkResults:
     ; Display testing results (simplified)
     ; In real implementation, would show detailed results
-    
+
     ; Check if any tests failed
     LDA TestsFailed
     BEQ AllTestsPassed
-    
+
     ; Some tests failed
     LDA #$FF
     STA OverallResult
     RTS
-    
+
 AllTestsPassed:
     ; All tests passed
     LDA #$00
@@ -1475,7 +1475,7 @@ MemoryDump:
     STA DumpBytes
     LDA #$00
     STA ByteCounter
-    
+
 DumpLine:
     ; Print address
     LDA $FC             ; High byte of address
@@ -1486,30 +1486,30 @@ DumpLine:
     JSR $FFD2
     LDA #' '
     JSR $FFD2
-    
+
     ; Print 8 bytes per line
     LDY #$00
-    
+
 DumpBytes:
     LDA ($FB),Y
     JSR PrintHexByte
     LDA #' '
     JSR $FFD2
-    
+
     INY
     INC ByteCounter
     LDA ByteCounter
     CMP DumpBytes
     BEQ DumpComplete
-    
+
     TYA
     AND #$07            ; 8 bytes per line
     BNE DumpBytes
-    
+
     ; New line
     LDA #$0D
     JSR $FFD2
-    
+
     ; Update address for next line
     TYA
     CLC
@@ -1518,7 +1518,7 @@ DumpBytes:
     BCC DumpLine
     INC $FC
     JMP DumpLine
-    
+
 DumpComplete:
     RTS
 
@@ -1554,14 +1554,14 @@ RegisterSnapshot:
     STA SavedA
     STX SavedX
     STY SavedY
-    
+
     PHP                 ; Push processor status
     PLA                 ; Pull it to A
     STA SavedStatus
-    
+
     TSX                 ; Get stack pointer
     STX SavedStack
-    
+
     RTS
 
 DisplayRegisters:
@@ -1576,13 +1576,13 @@ TraceExecution:
     STA TraceBuffer,X
     INX
     STX TraceIndex
-    
+
     ; Wrap around if buffer full
     CPX #TraceBufferSize
     BNE TraceEnd
     LDX #$00
     STX TraceIndex
-    
+
 TraceEnd:
     RTS
 
@@ -1595,16 +1595,16 @@ SimulateBreakpoint:
     LDA $FC
     CMP $FE
     BNE NoBreakpoint
-    
+
     ; Breakpoint hit
     JSR RegisterSnapshot
     JSR DisplayRegisters
-    
+
     ; Wait for user input or continue
     JSR $FFE4           ; GETIN
     CMP #$00
     BEQ SimulateBreakpoint  ; Wait for keypress
-    
+
 NoBreakpoint:
     RTS
 
@@ -1641,7 +1641,7 @@ RecoverFromError:
     BEQ RecoverInputError
     CMP #ERROR_TIMEOUT
     BEQ RecoverTimeoutError
-    
+
     ; Unknown error - use generic recovery
     JMP GenericRecovery
 
@@ -1649,13 +1649,13 @@ RecoverMemoryError:
     ; Memory error recovery
     ; Clear potentially corrupted data
     JSR ClearWorkspace
-    
+
     ; Reinitialize data structures
     JSR InitializeData
-    
+
     ; Set safe defaults
     JSR SetDefaults
-    
+
     CLC                 ; Recovery successful
     RTS
 
@@ -1663,13 +1663,13 @@ RecoverInputError:
     ; Input error recovery
     ; Clear input buffers
     JSR FlushInputBuffers
-    
+
     ; Reset input state
     JSR ResetInputState
-    
+
     ; Prompt for new input
     JSR PromptRetry
-    
+
     CLC
     RTS
 
@@ -1677,10 +1677,10 @@ RecoverTimeoutError:
     ; Timeout error recovery
     ; Reset timing systems
     JSR ResetTimers
-    
+
     ; Restore last known good state
     JSR RestoreLastState
-    
+
     CLC
     RTS
 
@@ -1688,10 +1688,10 @@ GenericRecovery:
     ; Generic error recovery
     ; Reset to minimal working state
     JSR EmergencyReset
-    
+
     ; Log error for analysis
     JSR LogError
-    
+
     ; Continue with reduced functionality
     SEC                 ; Indicate degraded mode
     RTS
@@ -1740,31 +1740,31 @@ ComprehensiveDebuggingDemo:
 
 InitializeDebuggingSystem:
     ; Setup complete debugging framework
-    
+
     ; Clear all counters and flags
     LDA #$00
     STA ErrorsDetected
     STA TestsExecuted
     STA RecoveryAttempts
     STA SystemStatus
-    
+
     ; Initialize debug buffers
     JSR ClearDebugBuffers
-    
+
     ; Setup error tracking
     JSR InitializeErrorTracking
-    
+
     ; Enable debug mode
     LDA #$01
     STA DebugMode
-    
+
     RTS
 
 ClearDebugBuffers:
     ; Clear all debugging data structures
     LDX #$00
     LDA #$00
-    
+
 ClearLoop:
     STA DebugBuffer,X
     STA ErrorLog,X
@@ -1772,7 +1772,7 @@ ClearLoop:
     INX
     CPX #$20            ; Clear 32 bytes of each buffer
     BNE ClearLoop
-    
+
     RTS
 
 InitializeErrorTracking:
@@ -1782,56 +1782,56 @@ InitializeErrorTracking:
     STA MemoryErrors
     STA InputErrors
     STA SystemErrors
-    
+
     RTS
 
 RunDebuggingTests:
     ; Execute comprehensive test suite with error injection
-    
+
     ; Test 1: Logic error detection
     JSR TestLogicErrorDetection
-    
+
     ; Test 2: Memory error detection
     JSR TestMemoryErrorDetection
-    
+
     ; Test 3: Input validation
     JSR TestInputValidation
-    
+
     ; Test 4: System state tracking
     JSR TestSystemStateTracking
-    
+
     ; Test 5: Error recovery
     JSR TestErrorRecovery
-    
+
     RTS
 
 TestLogicErrorDetection:
     ; Test detection of logic errors
     INC TestsExecuted
-    
+
     ; Simulate logic error: infinite loop detection
     LDA #$00
     STA LoopCounter
-    
+
     ; Monitored loop with runaway detection
     LDX #$10
 LogicTestLoop:
     INC LoopCounter
-    
+
     ; Check for runaway condition
     LDA LoopCounter
     CMP #$FF            ; Runaway threshold
     BEQ RunawayDetected
-    
+
     ; Normal loop operation
     DEX
     BPL LogicTestLoop
-    
+
     ; Loop completed normally
     LDA #$00
     STA LogicErrorStatus
     RTS
-    
+
 RunawayDetected:
     ; Runaway loop detected
     INC LogicErrors
@@ -1844,28 +1844,28 @@ RunawayDetected:
 TestMemoryErrorDetection:
     ; Test memory integrity checking
     INC TestsExecuted
-    
+
     ; Setup test data with known pattern
     JSR SetupTestPattern
-    
+
     ; Calculate initial checksum
     JSR CalculateMemoryChecksum
     STA OriginalChecksum
-    
+
     ; Simulate memory corruption
     LDA #$FF
     STA TestMemory+5    ; Corrupt one byte
-    
+
     ; Verify checksum detects corruption
     JSR CalculateMemoryChecksum
     CMP OriginalChecksum
     BEQ MemoryTestFailed
-    
+
     ; Corruption detected successfully
     LDA #$00
     STA MemoryErrorStatus
     RTS
-    
+
 MemoryTestFailed:
     ; Failed to detect memory corruption
     INC MemoryErrors
@@ -1879,59 +1879,59 @@ SetupTestPattern:
     ; Create known test pattern in memory
     LDX #$00
     LDA #$AA
-    
+
 PatternLoop:
     STA TestMemory,X
     EOR #$FF            ; Alternate pattern
     INX
     CPX #$10            ; 16 bytes
     BNE PatternLoop
-    
+
     RTS
 
 CalculateMemoryChecksum:
     ; Calculate simple checksum of test memory
     LDA #$00
     STA MemoryChecksum
-    
+
     LDX #$00
 ChecksumLoop:
     LDA TestMemory,X
     CLC
     ADC MemoryChecksum
     STA MemoryChecksum
-    
+
     INX
     CPX #$10
     BNE ChecksumLoop
-    
+
     LDA MemoryChecksum
     RTS
 
 TestInputValidation:
     ; Test input validation and bounds checking
     INC TestsExecuted
-    
+
     ; Test valid input
     LDA #$50            ; Valid value
     JSR ValidateInput
     BCS InputTest1Failed
-    
+
     ; Test invalid input (too low)
     LDA #$05            ; Invalid value
     JSR ValidateInput
     BCC InputTest2Failed
-    
+
     ; Test invalid input (too high)
     LDA #$FF            ; Invalid value
     JSR ValidateInput
     BCC InputTest3Failed
-    
+
     ; All input tests passed
     LDA #$00
     STA InputErrorStatus
     RTS
-    
+
 InputTest1Failed:
 InputTest2Failed:
 InputTest3Failed:
@@ -1947,15 +1947,15 @@ ValidateInput:
     ; Validate input range ($10-$F0)
     ; Input: Value in A
     ; Output: Carry clear = valid, set = invalid
-    
+
     CMP #$10
     BCC InputInvalid
     CMP #$F0
     BCS InputInvalid
-    
+
     CLC                 ; Valid
     RTS
-    
+
 InputInvalid:
     SEC                 ; Invalid
     RTS
@@ -1963,40 +1963,40 @@ InputInvalid:
 TestSystemStateTracking:
     ; Test system state monitoring
     INC TestsExecuted
-    
+
     ; Record initial state
     JSR RecordSystemState
-    
+
     ; Perform state-changing operations
     JSR StateChangingOperation1
     JSR RecordSystemState
-    
+
     JSR StateChangingOperation2
     JSR RecordSystemState
-    
+
     JSR StateChangingOperation3
     JSR RecordSystemState
-    
+
     ; Verify state transitions are tracked
     JSR VerifyStateHistory
-    
+
     RTS
 
 RecordSystemState:
     ; Record current system state
     LDX StateHistoryIndex
-    
+
     ; Record key system values
     LDA SystemStatus
     STA StateHistory,X
     INX
-    
+
     LDA ErrorsDetected
     STA StateHistory,X
     INX
-    
+
     STX StateHistoryIndex
-    
+
     RTS
 
 StateChangingOperation1:
@@ -2024,7 +2024,7 @@ VerifyStateHistory:
     LDA StateHistoryIndex
     CMP #$08            ; Should have 8 entries (4 operations × 2 values)
     BEQ StateTrackingOK
-    
+
     ; State tracking failed
     INC SystemErrors
     INC ErrorsDetected
@@ -2032,7 +2032,7 @@ VerifyStateHistory:
     STA StateErrorStatus
     JSR LogError
     RTS
-    
+
 StateTrackingOK:
     LDA #$00
     STA StateErrorStatus
@@ -2041,20 +2041,20 @@ StateTrackingOK:
 TestErrorRecovery:
     ; Test error recovery mechanisms
     INC TestsExecuted
-    
+
     ; Simulate error condition
     LDA #$01            ; Error type: memory error
     JSR SimulateError
-    
+
     ; Attempt recovery
     JSR AttemptRecovery
     BCS RecoveryFailed
-    
+
     ; Recovery successful
     LDA #$00
     STA RecoveryStatus
     RTS
-    
+
 RecoveryFailed:
     ; Recovery attempt failed
     INC RecoveryAttempts
@@ -2067,44 +2067,44 @@ SimulateError:
     ; Simulate various error conditions
     ; Input: Error type in A
     STA CurrentErrorType
-    
+
     ; Set error flag
     LDA #$FF
     STA ErrorFlag
-    
+
     RTS
 
 AttemptRecovery:
     ; Attempt to recover from current error
     INC RecoveryAttempts
-    
+
     LDA CurrentErrorType
     CMP #$01            ; Memory error
     BEQ RecoverMemoryError
-    
+
     ; Generic recovery
     JSR GenericErrorRecovery
     RTS
-    
+
 RecoverMemoryError:
     ; Specific memory error recovery
     JSR ResetMemoryState
-    
+
     ; Clear error flag
     LDA #$00
     STA ErrorFlag
-    
+
     CLC                 ; Recovery successful
     RTS
 
 GenericErrorRecovery:
     ; Generic error recovery procedure
     JSR ResetSystemState
-    
+
     ; Clear error flag
     LDA #$00
     STA ErrorFlag
-    
+
     CLC                 ; Recovery successful
     RTS
 
@@ -2122,37 +2122,37 @@ ResetSystemState:
 LogError:
     ; Log error to error buffer
     LDX ErrorLogIndex
-    
+
     ; Store error type and location
     LDA CurrentErrorType
     STA ErrorLog,X
     INX
-    
+
     LDA TestsExecuted
     STA ErrorLog,X
     INX
-    
+
     STX ErrorLogIndex
-    
+
     RTS
 
 AnalyzeResults:
     ; Analyze test results and error patterns
-    
+
     ; Calculate error rate
     LDA ErrorsDetected
     STA ErrorRate       ; Simplified - would be percentage in real system
-    
+
     ; Determine overall system health
     LDA ErrorsDetected
     CMP #$05            ; Error threshold
     BCS SystemUnhealthy
-    
+
     ; System is healthy
     LDA #$00
     STA OverallHealth
     RTS
-    
+
 SystemUnhealthy:
     ; System has too many errors
     LDA #$01
@@ -2162,11 +2162,11 @@ SystemUnhealthy:
 DisplayDebugReport:
     ; Display comprehensive debug report
     ; (In real implementation, would format and display results)
-    
+
     ; Set indicator that report is ready
     LDA #$01
     STA ReportReady
-    
+
     RTS
 
 ; Data areas
@@ -2214,6 +2214,7 @@ JSR ComprehensiveDebuggingDemo
 ## Debugging Best Practices
 
 ### 1. Systematic Approach
+
 ```text
 ; Use methodical debugging process:
 ; 1. Reproduce the problem
@@ -2224,6 +2225,7 @@ JSR ComprehensiveDebuggingDemo
 ```
 
 ### 2. Defensive Programming
+
 ```text
 ; Always validate inputs
 ; Check array bounds
@@ -2233,6 +2235,7 @@ JSR ComprehensiveDebuggingDemo
 ```
 
 ### 3. Code Organization
+
 ```text
 ; Write self-documenting code
 ; Use meaningful labels
@@ -2242,6 +2245,7 @@ JSR ComprehensiveDebuggingDemo
 ```
 
 ### 4. Testing Strategy
+
 ```text
 ; Test edge cases
 ; Verify error conditions

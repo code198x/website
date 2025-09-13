@@ -27,6 +27,7 @@ Build bridges between hearts! With **32 community-focused lessons**, you'll mast
 ## What You'll Build
 
 Create **COMMUNITY LEGEND EXPERIENCES** that bring people together:
+
 - Games that naturally encourage sharing, collaboration, and friendly competition
 - Experiences that honor Spectrum heritage while welcoming newcomers to the community
 - Social features that work within the constraints of 8-bit hardware and retro culture
@@ -36,24 +37,28 @@ Create **COMMUNITY LEGEND EXPERIENCES** that bring people together:
 ## Community Building Areas
 
 **Lessons 1-8: "Social Design Fundamentals" - Games That Naturally Connect People**
+
 - Understanding how game mechanics can foster community and shared experiences
 - Creating content that players naturally want to share and discuss with others
 - Designing achievement and progression systems that encourage community participation
 - Building experiences that are enhanced by social interaction and collaboration
 
 **Lessons 9-16: "Cross-Generational Appeal" - Bridging Past and Present**
+
 - Creating games that honor original Spectrum traditions while attracting new players
 - Understanding how to communicate Spectrum heritage in ways that inspire curiosity
 - Designing tutorials and learning experiences that work for both veterans and newcomers
 - Building games that become bridges between different generations of players
 
 **Lessons 17-24: "Inclusive Community Design" - Making Everyone Feel Welcome**
+
 - Creating experiences that work for players of different skill levels and backgrounds
 - Designing social features that encourage support and mentorship rather than exclusion
 - Building accessibility features that make games welcoming to players with different needs
 - Understanding how inclusive design makes communities stronger and more vibrant
 
 **Lessons 25-32: "Legacy Community Building" - Creating Lasting Social Connections**
+
 - Designing systems that help communities self-organize and support each other
 - Creating content that encourages long-term engagement and community growth
 - Building frameworks that help communities preserve and share their history

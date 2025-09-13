@@ -27,6 +27,7 @@ Enter the realm of storytelling! With **32 immersive lessons**, you'll create th
 ## What You'll Build
 
 Create **SPECTRUM QUEST** - an epic text/graphics adventure featuring:
+
 - Rich, descriptive text that paints vivid pictures
 - Intelligent command parser that understands natural language
 - Interconnected world with secrets and hidden passages
@@ -36,24 +37,28 @@ Create **SPECTRUM QUEST** - an epic text/graphics adventure featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Parser Power" - Command Systems**
+
 - Text parsing that understands player intentions
 - Verb-noun command structures and synonyms
 - Error handling that guides rather than frustrates
 - Memory-efficient text storage and compression
 
 **Lessons 9-16: "World Building" - Environment Design**
+
 - Location networks and navigation systems
 - Room descriptions that spark imagination
 - Object placement and interaction systems
 - Hidden passages and secret discoveries
 
 **Lessons 17-24: "Puzzle Mastery" - Challenge Design**
+
 - Inventory puzzles that feel logical and fair
 - Object combination and transformation systems
 - Hint systems that don't spoil the fun
 - Multiple solution paths for creative players
 
 **Lessons 25-32: "Narrative Excellence" - Storytelling**
+
 - Character development and dialogue systems
 - Story branching based on player choices
 - Atmospheric descriptions and mood setting

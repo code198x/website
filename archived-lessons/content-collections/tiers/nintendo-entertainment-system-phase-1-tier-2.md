@@ -27,6 +27,7 @@ Learn the art of 6502 memory management! Learn to efficiently organise and manip
 ## What You'll Add to Sprite Learn
 
 Expand your sprite control system:
+
 - Implement efficient sprite data tables
 - Create memory-optimised animation sequences
 - Build reusable data management routines
@@ -35,24 +36,28 @@ Expand your sprite control system:
 ## Tier Overview
 
 **Lessons 1-8: Addressing Modes Mastery**
+
 - Zero page addressing for fast access
 - Absolute addressing for general memory
 - Indexed addressing with X and Y registers
 - Indirect addressing techniques
 
 **Lessons 9-16: NES Memory Architecture**
+
 - Understanding the NES memory map
 - RAM, ROM, and memory-mapped I/O
 - Bank switching and memory mappers
 - Optimizing memory usage patterns
 
 **Lessons 17-24: Data Structures in Assembly**
+
 - Creating and managing data tables
 - Array access and manipulation
 - String handling in assembly language
 - Efficient data organisation techniques
 
 **Lessons 25-32: Sprite Learn Data Systems**
+
 - Implementing sprite attribute tables
 - Animation frame data organisation
 - Creating efficient lookup systems

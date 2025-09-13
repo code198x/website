@@ -27,6 +27,7 @@ Time to become a content creation wizard! With **32 innovative lessons**, you'll
 ## What You'll Build
 
 Create **AMIGA PROCEDURAL MASTER** - an algorithmic content generation demonstration featuring:
+
 - Procedural worlds so vast they seem infinite yet fit in minimal memory
 - Dynamic content generation that creates unique experiences every time
 - Algorithmic graphics and audio that produce endless variety
@@ -36,24 +37,28 @@ Create **AMIGA PROCEDURAL MASTER** - an algorithmic content generation demonstra
 ## Tier Overview
 
 **Lessons 1-8: "Infinite Worlds!" - Advanced World Generation**
+
 - Procedural landscape and terrain generation algorithms
 - Dynamic level design and algorithmic architecture
 - Advanced random number generation and deterministic chaos
 - The world generation techniques that created legendary Amiga universes
 
 **Lessons 9-16: "Dynamic Content!" - Algorithmic Asset Creation**
+
 - Procedural graphics generation and algorithmic art
 - Dynamic sprite and texture creation from mathematical formulas
 - Algorithmic animation and procedural movement patterns
 - The content generation that made small games feel massive
 
 **Lessons 17-24: "Algorithmic Audio!" - Procedural Sound Generation**
+
 - Procedural music composition and algorithmic soundtracks
 - Dynamic sound effect generation and audio synthesis
 - Advanced mathematical audio generation using Paula
 - The procedural audio that created infinite musical variety
 
 **Lessons 25-32: "Complete Generation!" - Master-Level Procedural Systems**
+
 - Advanced procedural game design and emergent gameplay
 - Professional procedural generation tools and systems
 - Commercial-quality algorithmic content creation

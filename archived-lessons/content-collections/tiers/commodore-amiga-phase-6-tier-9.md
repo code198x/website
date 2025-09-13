@@ -27,6 +27,7 @@ Time to become an algorithmic wizard! With **32 intensive lessons**, you'll mast
 ## What You'll Build
 
 Create **AMIGA ALGORITHM MASTER** - a sophisticated programming demonstration featuring:
+
 - AI systems so intelligent they seem to think and learn
 - Physics simulation that creates realistic movement and interaction
 - Pathfinding algorithms that navigate complex environments efficiently
@@ -36,24 +37,28 @@ Create **AMIGA ALGORITHM MASTER** - a sophisticated programming demonstration fe
 ## Tier Overview
 
 **Lessons 1-8: "Artificial Intelligence!" - Advanced AI Programming**
+
 - Sophisticated AI state machines and behavioral programming
 - Advanced decision trees and intelligent agent systems
 - Machine learning algorithms adapted for 68000 assembly
 - The AI techniques that made Amiga games feel alive and intelligent
 
 **Lessons 9-16: "Physics Simulation!" - Advanced Mathematical Modeling**
+
 - Real-time physics simulation and collision detection
 - Advanced mathematics for realistic movement and interaction
 - Optimization techniques for complex mathematical calculations
 - The physics systems that made Amiga games feel realistic
 
 **Lessons 17-24: "Pathfinding Mastery!" - Advanced Spatial Algorithms**
-- A* pathfinding and advanced navigation algorithms
+
+- A\* pathfinding and advanced navigation algorithms
 - Spatial optimization and efficient map representation
 - Dynamic pathfinding for moving obstacles and changing environments
 - The navigation systems that made complex Amiga games possible
 
 **Lessons 25-32: "Mathematical Excellence!" - Advanced Optimization Techniques**
+
 - Advanced mathematical optimization and numerical methods
 - Complex problem solving and algorithmic efficiency
 - Professional algorithm design and implementation

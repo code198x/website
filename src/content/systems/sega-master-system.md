@@ -26,7 +26,6 @@ country_of_origin: "Japan"
 
 # Media
 description: "Sega's 8-bit console that challenged Nintendo with superior hardware but couldn't overcome the NES's market dominance."
-image: "/images/systems/master-system.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 108
 
 # Sega Master System
 
-*Historical Reference*
+_Historical Reference_
 
 The Sega Master System was technically superior to the NES but arrived too late to challenge Nintendo's dominance in North America and Japan. However, it found success in Europe and Brazil, where it competed effectively.
 
@@ -60,4 +59,4 @@ The Master System established Sega as Nintendo's primary rival, setting up the f
 
 The Master System's technology lived on in the Game Gear and influenced the Genesis's backward compatibility. In Brazil, it remained popular into the 2000s, with new games still being produced. It proved that technical superiority doesn't guarantee market success.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

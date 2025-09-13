@@ -31,24 +31,28 @@ Enhance **RetroEngine** with advanced AI systems including intelligent enemy beh
 ## Tier Overview
 
 **Lessons 1-8: Game AI Fundamentals**
+
 - Game-specific AI algorithms and pathfinding
 - Finite state machines for game characters
 - Behavior trees and decision systems
 - AI performance optimization for real-time games
 
 **Lessons 9-16: Intelligent Character Systems**
+
 - Advanced enemy AI and combat behaviors
 - NPC interaction and dialogue systems
 - Adaptive AI that learns from player behavior
 - AI personality and character development
 
 **Lessons 17-24: Procedural Content Generation**
+
 - Procedural level and world generation
 - Algorithmic game content creation
 - Random generation with controlled parameters
 - Procedural narrative and quest systems
 
 **Lessons 25-32: Dynamic Gameplay Systems**
+
 - Adaptive difficulty and challenge scaling
 - Emergent gameplay mechanics
 - Dynamic event and encounter systems

@@ -76,24 +76,28 @@ Each game in Phase 1 focuses on a single core programming concept:
 Each game follows the same learning pattern over 32 lessons:
 
 ### Foundation (Lessons 1-8)
+
 - Set up the game structure and memory layout
 - Create pattern table graphics and sprites
 - Implement core mechanics and controls
 - Add controller input handling
 
 ### Enhancement (Lessons 9-16)
+
 - Add visual polish with sprite animations
 - Implement game state management
 - Create scoring and progression systems
 - Add collision detection and physics
 
 ### Polish (Lessons 17-24)
+
 - Integrate APU sound effects and music
 - Optimize performance for smooth gameplay
 - Add advanced PPU effects
 - Create menus and user interface
 
 ### Mastery (Lessons 25-32)
+
 - Professional-quality polish and refinement
 - Advanced optimization techniques
 - Special effects and visual tricks
@@ -149,6 +153,7 @@ By completing Phase 1, you will:
 ## Assessment
 
 Progress is measured through:
+
 - Completion of each game (playable and engaging)
 - Code quality, organization, and documentation
 - Understanding of concepts demonstrated in code

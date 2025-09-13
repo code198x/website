@@ -30,7 +30,7 @@ order: 4
 
 # Tier 4: Commercial Release Quality
 
-*Coming Soon*
+_Coming Soon_
 
 Transform your Neon Nexus from a promising prototype into a polished game that could have sat alongside Jupiter Lander and Gorf on store shelves in 1982. Learn the final touches that separate amateur projects from commercial releases.
 
@@ -48,15 +48,19 @@ This tier focuses on the professional polish and commercial presentation that de
 ## Your Journey Through 32 Lessons
 
 ### Multi-Level Design (Lessons 1-8)
+
 Create 8-12 network levels with escalating complexity, introducing new mechanics gradually while maintaining the core gameplay that makes Neon Nexus fun.
 
 ### Professional Presentation (Lessons 9-16)
+
 Build title screens, attract modes, instruction screens, and menu systems that match the presentation quality of successful 1982 C64 releases.
 
 ### Polish and Feedback (Lessons 17-24)
+
 Add the "game juice" that makes interactions satisfying: visual feedback, audio cues, score animations, and the subtle touches that create professional feel.
 
 ### Commercial Standards (Lessons 25-32)
+
 Apply rigorous testing, balancing, and debugging to achieve the stability and polish expected of commercial software. Learn what makes a game truly complete.
 
 ## Your Complete Commercial Game
@@ -82,8 +86,9 @@ By the end of this tier, Neon Nexus will feature:
 ## Prerequisites
 
 Before starting Tier 4, you should have completed:
+
 - [Tier 1: C64 Programming Foundations](/lessons/commodore-64/phase-1/tier-1) - Basic Neon Nexus
-- [Tier 2: Enhanced Game Logic](/lessons/commodore-64/phase-1/tier-2) - Minigames and smarter security  
+- [Tier 2: Enhanced Game Logic](/lessons/commodore-64/phase-1/tier-2) - Minigames and smarter security
 - [Tier 3: Network Optimization & Data Systems](/lessons/commodore-64/phase-1/tier-3) - Scalable architecture
 - A fully functional Neon Nexus game ready for final polish
 
@@ -91,4 +96,4 @@ Before starting Tier 4, you should have completed:
 
 After completing Tier 4, you'll have created a commercial-quality game and mastered the fundamentals of C64 programming. You'll be ready for Phase 1 Tiers 5-8: Hardware Programming, where you'll learn the advanced techniques that pushed the C64's capabilities in 1983 and beyond.
 
-*This tier contains 32 lessons and is currently in development. Check back soon for updates on availability.*
+_This tier contains 32 lessons and is currently in development. Check back soon for updates on availability._

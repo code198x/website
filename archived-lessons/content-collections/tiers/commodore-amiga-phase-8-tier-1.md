@@ -27,6 +27,7 @@ Create games worthy of the Amiga's legendary library! With **32 concept-focused 
 ## What You'll Conceive
 
 Develop **LEGENDARY GAME CONCEPTS** that define excellence:
+
 - Game ideas that maximize the Amiga's unique capabilities
 - Innovative gameplay mechanics that feel fresh and exciting
 - Concepts that create memorable, lasting gaming experiences
@@ -36,24 +37,28 @@ Develop **LEGENDARY GAME CONCEPTS** that define excellence:
 ## Legendary Vision Areas
 
 **Lessons 1-8: "Amiga Game Vision" - Concepts That Maximize Hardware**
+
 - Understanding what makes Amiga games truly special and memorable
 - Conceiving games that leverage the Amiga's unique sound and graphics
 - Creating concepts that feel authentic to the Amiga's gaming legacy
 - Designing around the Amiga's strengths to create amazing experiences
 
 **Lessons 9-16: "Innovative Gameplay" - Mechanics That Amaze**
+
 - Creating gameplay mechanics that feel fresh and innovative
 - Designing game systems that are easy to learn but deep to master
 - Building concepts around compelling core gameplay loops
 - Developing mechanics that create "just one more try" experiences
 
 **Lessons 17-24: "Memorable Experiences" - Games That Last**
+
 - Designing games that create lasting emotional connections
 - Building concepts that encourage mastery and replayability
 - Creating experiences that feel rewarding and satisfying
 - Understanding what makes games memorable decades later
 
 **Lessons 25-32: "Legendary Potential" - Concepts Worth Greatness**
+
 - Evaluating game concepts for their legendary potential
 - Refining ideas to maximize their impact and appeal
 - Understanding what transforms good concepts into great games

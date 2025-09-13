@@ -27,6 +27,7 @@ The ultimate strategic masterpiece! With **32 intensively strategic lessons**, y
 ## What You'll Build
 
 Create **SPECTRUM COMMANDER** - the ultimate strategy experience featuring:
+
 - Campaign mode with interconnected strategic challenges
 - Multiple game modes that require different strategic approaches
 - Resource management combined with tactical combat
@@ -36,24 +37,28 @@ Create **SPECTRUM COMMANDER** - the ultimate strategy experience featuring:
 ## Project Overview
 
 **Lessons 1-8: "Grand Strategy Architecture" - Complex System Design**
+
 - Multi-layered game architecture for complex strategy games
 - Campaign progression and scenario management systems
 - Save/load functionality for long-term strategic games
 - Memory management for vast strategic data sets
 
 **Lessons 9-16: "Strategic Integration" - Combining Game Elements**
+
 - Adventure elements within strategic frameworks
 - Resource management with racing/timing elements
 - Turn-based combat with real-time strategic pressure
 - Diplomatic systems and negotiation mechanics
 
 **Lessons 17-24: "AI Command Center" - Advanced Computer Strategy**
+
 - Multi-layered AI that handles different strategic aspects
 - AI personality systems for different computer opponents
 - Strategic AI that adapts to player tactics and strategies
 - Coordinated AI behavior across complex game systems
 
 **Lessons 25-32: "Campaign Mastery" - Epic Strategic Experience**
+
 - Scenario design for compelling strategic narratives
 - Victory condition systems and strategic objectives
 - Balance testing and difficulty progression systems

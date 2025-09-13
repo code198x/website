@@ -27,6 +27,7 @@ Start your engines! 🏎️ With **32 adrenaline-fueled lessons**, you'll create
 ## What You'll Build
 
 Create **TURBO CIRCUIT** - a high-speed racing game featuring:
+
 - Tracks that feel fast even when you're not going that fast
 - AI opponents with personality (the aggressive one, the steady one, the unpredictable one)
 - Car handling that's realistic enough to matter, arcade enough to be fun
@@ -36,24 +37,28 @@ Create **TURBO CIRCUIT** - a high-speed racing game featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Zoom! The Magic of Speed" - Perspective & Movement**
+
 - Pseudo-3D tricks that make the C64 look like it has a 3D chip
 - Creating the illusion of speed through clever graphics
 - Track perspective that draws players into the race
 - The secret of making 2D sprites feel like 3D cars
 
 **Lessons 9-16: "Threading the Needle" - Track Design & Physics**
+
 - Track layouts that reward skill and create overtaking opportunities
 - Car physics that feel right: not too slidey, not too grippy
 - Corner design that creates those "thread the needle" moments
 - The fine art of making mistakes feel like learning experiences
 
 **Lessons 17-24: "They're On My Tail!" - AI Opponents & Competition**
+
 - AI that races instead of just following a script
 - Rubber-band AI that keeps races exciting without feeling unfair
 - Opponent personalities that make each race feel different
 - The psychology of competition and why we love to win
 
 **Lessons 25-32: "Photo Finish!" - Polish & Excitement**
+
 - Visual effects that sell the speed and impact
 - Audio feedback that makes engines roar and tires screech
 - Race presentation that builds tension and celebrates victories

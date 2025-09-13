@@ -27,6 +27,7 @@ Worlds that amaze! With **32 comprehensive lessons**, you'll create compelling g
 ## What You'll Build
 
 Continue developing **Cyber Realm** with stunning world creation:
+
 - Handcrafted levels with perfect gameplay flow
 - Procedural generation for infinite replayability
 - Interactive environmental elements and puzzles
@@ -36,24 +37,28 @@ Continue developing **Cyber Realm** with stunning world creation:
 ## Tier Overview
 
 **Lessons 1-8: Level Design Principles**
+
 - Professional level design methodology
 - Gameplay flow and pacing optimization
 - Visual composition and environmental storytelling
 - Player guidance and navigation design
 
 **Lessons 9-16: Procedural Generation**
+
 - Algorithm design for dynamic level creation
 - Noise functions and terrain generation
 - Rule-based generation systems
 - Balancing randomness with playability
 
 **Lessons 17-24: Interactive Environments**
+
 - Dynamic environmental elements
 - Puzzle and obstacle design
 - Interactive object programming
 - Environmental storytelling techniques
 
 **Lessons 25-32: Level Management Systems**
+
 - Efficient level loading and streaming
 - Memory management for large worlds
 - Level transition and connectivity

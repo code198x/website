@@ -27,6 +27,7 @@ Become an audio wizard! 🎵✨ With **32 symphonic lessons**, you'll unlock the
 ## What You'll Build
 
 Create **SONIC SYMPHONY** - an advanced audio showcase featuring:
+
 - Music that changes based on what's happening in the game
 - Sound effects so crisp and punchy they sound like they're from the future
 - Bass lines that make speakers rumble in ways that shouldn't be possible
@@ -36,24 +37,28 @@ Create **SONIC SYMPHONY** - an advanced audio showcase featuring:
 ## Tier Overview
 
 **Lessons 1-8: "The SID Whisperer" - Advanced Synthesis**
+
 - Unlocking hidden waveforms and synthesis techniques
 - Filter manipulation that creates impossible sounds
 - Ring modulation and sync effects that bend reality
 - The secret registers that most programmers never find
 
 **Lessons 9-16: "Music That Lives" - Dynamic Audio Systems**
+
 - Music that responds to player actions and game state
 - Seamless transitions between musical themes
 - Layered composition that builds and fades naturally
 - The art of making music feel alive and responsive
 
 **Lessons 17-24: "Sounds Like Magic" - Professional Effects**
+
 - Sound effects that punch through any mix
 - Multi-channel coordination for complex audio scenes
 - Echo, reverb, and spatial effects on 3 channels
 - Making 8-bit sounds that rival 16-bit machines
 
 **Lessons 25-32: "Audio-Visual Harmony" - Perfect Integration**
+
 - Synchronizing audio perfectly with visual events
 - Sound design that enhances emotional impact
 - Audio feedback that makes every action satisfying

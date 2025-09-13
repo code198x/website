@@ -13,6 +13,7 @@ On 30th April 1975, the Fall of Saigon marked the end of the Vietnam War, fundam
 ## Technology Context
 
 The end of the Vietnam War coincided with crucial developments in computing:
+
 - Military technology and expertise began transitioning to civilian applications
 - Defence contractors shifted focus to commercial electronics
 - Veterans with technical training entered the civilian workforce

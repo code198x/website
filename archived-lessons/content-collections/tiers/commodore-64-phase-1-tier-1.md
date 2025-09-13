@@ -27,6 +27,7 @@ Welcome to game development on the Commodore 64! Create your first complete retr
 ## What You'll Build
 
 **Neon Nexus** - A complete electronic geometric arcade game featuring:
+
 - Striking neon grid world with wireframe aesthetics
 - Controllable geometric entities with smooth movement
 - Electronic soundtrack using the legendary SID chip
@@ -40,10 +41,12 @@ Welcome to game development on the Commodore 64! Create your first complete retr
 ## Game Development Journey
 
 **✅ Lessons 1-2: COMPLETED - Foundation & Entity**
-- **Lesson 1**: Create striking neon grid game world *(COMPLETED)*
-- **Lesson 2**: Add controllable geometric player entity *(COMPLETED)*
+
+- **Lesson 1**: Create striking neon grid game world _(COMPLETED)_
+- **Lesson 2**: Add controllable geometric player entity _(COMPLETED)_
 
 **Lessons 3-8: Core Game Systems**
+
 - **Lesson 3**: Electronic Pulse - Add rhythmic SID soundtrack and visual effects
 - **Lesson 4**: Digital Opposition - Create moving enemy geometric shapes
 - **Lesson 5**: Energy Combat - Implement collision detection and combat system
@@ -52,18 +55,21 @@ Welcome to game development on the Commodore 64! Create your first complete retr
 - **Lesson 8**: Neon Nexus Foundation - Playable game prototype with core systems
 
 **Lessons 9-16: System Enhancement**
+
 - Enhanced entity systems with arrays and memory management
 - Dynamic scoring with visual feedback and multipliers
 - Smooth movement optimization using interrupts and timing
 - Precision control systems for responsive gameplay
 
 **Lessons 17-24: Advanced Mechanics**
+
 - Multi-level progression and increasing difficulty
 - Advanced visual effects and screen transitions
 - Enhanced AI systems with varied enemy behaviors
 - Audio-visual integration for immersive gameplay
 
 **Lessons 25-32: Tier 1 Mastery**
+
 - Code organization and modular architecture
 - Performance optimization and memory efficiency
 - Polish and refinement of core game systems

@@ -27,6 +27,7 @@ Advance your assembly programming skills! Learn sophisticated techniques, design
 ## What You'll Add to Developer Toolkit
 
 Expand your advanced programming skills:
+
 - Implement sophisticated design patterns in assembly
 - Learn debugging and optimisation techniques
 - Build professional development workflows
@@ -35,24 +36,28 @@ Expand your advanced programming skills:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Assembly Techniques**
+
 - Sophisticated addressing modes and instruction optimisation
 - Advanced register management and calling conventions
 - Efficient subroutine design and parameter passing
 - Complex control flow and state machine programming
 
 **Lessons 9-16: Design Patterns and Architecture**
+
 - Object-oriented concepts in assembly language
 - Event-driven programming and callback systems
 - Plugin architectures and modular design
 - Resource management and abstraction layers
 
 **Lessons 17-24: Debugging and Profiling**
+
 - Assembly debugging techniques and tools
 - Performance profiling and bottleneck analysis
 - Memory debugging and leak detection
 - Code coverage and testing strategies
 
 **Lessons 25-32: Professional Development**
+
 - Version control and collaborative development
 - Documentation and code maintenance
 - Cross-platform compatibility considerations

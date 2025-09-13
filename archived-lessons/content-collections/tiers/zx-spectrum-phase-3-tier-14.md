@@ -31,24 +31,28 @@ Continue developing **Spectrum Engine** - implementing platform-specific optimiz
 ## Tier Overview
 
 **Lessons 1-8: Complete Hardware Reference**
+
 - Comprehensive Z80 processor analysis and optimization
 - Complete ULA chip reference and undocumented features
 - Memory system analysis and advanced banking techniques
 - I/O port reference and hardware interaction mastery
 
 **Lessons 9-16: System ROM Mastery**
+
 - Complete ROM disassembly and routine analysis
 - ROM routine exploitation and enhancement
 - Custom ROM development and modification
 - System call optimization and replacement
 
 **Lessons 17-24: Hardware Variations & Compatibility**
+
 - 48K vs 128K model differences and optimization
 - Plus models and additional hardware features
 - Interface compatibility and expansion systems
 - Cross-model development and testing strategies
 
 **Lessons 25-32: Expert-Level Analysis & Debugging**
+
 - Advanced debugging techniques and tools
 - Hardware fault diagnosis and workarounds
 - Reverse engineering techniques and analysis

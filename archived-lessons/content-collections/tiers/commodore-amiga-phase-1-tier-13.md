@@ -31,6 +31,7 @@ Begin **Workbench Wizard** - a comprehensive system enhancement and development 
 ## What You'll Start
 
 Launch your ultimate Amiga assembly programming project:
+
 - System enhancement utilities using assembly
 - AmigaOS integration and services through assembly programming
 - Multitasking and task management using assembly
@@ -39,24 +40,28 @@ Launch your ultimate Amiga assembly programming project:
 ## Tier Overview
 
 **Lessons 1-8: Assembly AmigaOS Foundations**
+
 - Understanding AmigaOS architecture and services through assembly
 - System library development and integration using assembly
 - Device programming and hardware access through assembly
 - Building foundation assembly system components
 
 **Lessons 9-16: Assembly Multitasking Programming**
+
 - Task creation and management using assembly
 - Inter-process communication through assembly programming
 - Message passing and coordination using assembly
 - Building responsive assembly multitasking systems
 
 **Lessons 17-24: Assembly System Libraries**
+
 - Creating reusable assembly system components
 - Library development and linking using assembly
 - System service integration through assembly programming
 - Building foundation assembly development frameworks
 
 **Lessons 25-32: Assembly Development Infrastructure**
+
 - Development tool foundations using assembly
 - System monitoring and debugging through assembly
 - Performance analysis and optimisation using assembly

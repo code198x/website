@@ -38,15 +38,15 @@ SavePlayerProgress:
     LDX #<SaveFile      ; "PROGRESS"
     LDY #>SaveFile
     JSR SETNAM          ; Set filename
-    
+
     LDA #1              ; File number
     LDX #8              ; Disk drive
     LDY #1              ; Secondary address
     JSR SETLFS          ; Set file parameters
-    
+
     JSR OPEN            ; Create file
     ; Your game progress is now permanently saved!
-    
+
 SaveFile: .text "PROGRESS"
 ```
 
@@ -63,12 +63,13 @@ The C64 uses **KERNAL routines** for all file operations:
 - **Error Channels**: Device status and error reporting
 
 ### Device Numbers
-| Device | Description | Typical Use |
-|--------|-------------|-------------|
-| 1 | Cassette tape | Program storage |
-| 4 | Printer | Output device |
-| 8 | Disk drive | Programs and data |
-| 9 | Disk drive | Second drive |
+
+| Device | Description   | Typical Use       |
+| ------ | ------------- | ----------------- |
+| 1      | Cassette tape | Program storage   |
+| 4      | Printer       | Output device     |
+| 8      | Disk drive    | Programs and data |
+| 9      | Disk drive    | Second drive      |
 
 ## Essential KERNAL File Routines
 
@@ -95,23 +96,23 @@ SimpleFileDemo:
     LDX #<FileName  ; Filename address low
     LDY #>FileName  ; Filename address high
     JSR SETNAM
-    
+
     ; Set file parameters
     LDA #1          ; File number
     LDX #8          ; Device (disk drive)
     LDY #1          ; Secondary address
     JSR SETLFS
-    
+
     ; Open file
     JSR OPEN
     BCS FileError   ; Check for error
-    
+
     ; File operations would go here
-    
+
     ; Close file
     LDA #1          ; File number
     JSR CLOSE
-    
+
     RTS
 
 FileError:
@@ -134,18 +135,18 @@ LoadProgram:
     LDX #<ProgramName
     LDY #>ProgramName
     JSR SETNAM
-    
+
     ; Set device and addressing
     LDA #0          ; Use filename (not file number)
     LDX #8          ; Disk drive
     LDY #1          ; Load to address in file
     JSR SETLFS
-    
+
     ; Load file
     LDA #0          ; 0=load, 1=verify
     JSR LOAD
     BCS LoadError
-    
+
     ; Program loaded successfully
     ; Start address in $AE/$AF
     RTS
@@ -170,21 +171,21 @@ LoadDataFile:
     LDX #<DataName
     LDY #>DataName
     JSR SETNAM
-    
+
     ; Set file parameters
     LDA #2          ; File number for data
     LDX #8          ; Disk drive
     LDY #2          ; Secondary address for data files
     JSR SETLFS
-    
+
     ; Open file for reading
     JSR OPEN
     BCS DataLoadError
-    
+
     ; Set input channel to our file
     LDX #2          ; File number
     JSR CHKIN
-    
+
     ; Read data bytes
     LDY #0          ; Data index
 LoadLoop:
@@ -193,14 +194,14 @@ LoadLoop:
     INY
     CPY #DataSize   ; Check if all data read
     BNE LoadLoop
-    
+
     ; Restore default input
     JSR CLRCHN
-    
+
     ; Close file
     LDA #2
     JSR CLOSE
-    
+
     RTS
 
 DataLoadError:
@@ -231,50 +232,50 @@ FileLoadDemo:
 DemoFileOperations:
     ; Simulate file loading process
     ; (Real implementation would use KERNAL routines)
-    
+
     ; Setup filename
     LDA #9          ; Length of filename
     LDX #<TestFile  ; Address low
     LDY #>TestFile  ; Address high
     ; JSR SETNAM    ; Would set filename
-    
-    ; Setup file parameters  
+
+    ; Setup file parameters
     LDA #1          ; File number
     LDX #8          ; Device number (disk)
     LDY #0          ; Secondary address
     ; JSR SETLFS    ; Would set file parameters
-    
+
     ; Simulate opening file
     ; JSR OPEN      ; Would open the file
     ; BCS OpenError ; Would check for errors
-    
+
     ; Simulate successful file operation
     LDA #$00        ; Success indicator
     STA FileStatus  ; Store status
-    
+
     ; Show file operation structure
     JSR DisplayFileInfo
-    
+
     ; Simulate closing file
     ; LDA #1        ; File number
     ; JSR CLOSE     ; Would close the file
-    
+
     RTS
 
 DisplayFileInfo:
     ; Display information about file operation
     ; This would show filename, status, etc.
-    
+
     ; Set text colour for file info
     LDA #$0E        ; Light blue
     STA $286        ; Current colour
-    
+
     ; Position cursor for file info display
     LDA #5          ; Row
     STA $D6         ; Cursor row
-    LDA #5          ; Column  
+    LDA #5          ; Column
     STA $D3         ; Cursor column
-    
+
     ; Display file operation message
     LDX #0
 FileInfoLoop:
@@ -283,7 +284,7 @@ FileInfoLoop:
     JSR $FFD2       ; CHROUT - display character
     INX
     JMP FileInfoLoop
-    
+
 FileInfoDone:
     RTS
 
@@ -309,13 +310,13 @@ SaveProgram:
     LDX #<SaveName
     LDY #>SaveName
     JSR SETNAM
-    
+
     ; Set file parameters
     LDA #0          ; Use filename
     LDX #8          ; Disk drive
     LDY #0          ; Secondary address
     JSR SETLFS
-    
+
     ; Save program
     LDA #<ProgramStart  ; Start address low
     LDX #>ProgramStart  ; Start address high
@@ -324,7 +325,7 @@ SaveProgram:
     ; Note: Proper implementation needs both start and end
     JSR SAVE
     BCS SaveError
-    
+
     ; Save successful
     RTS
 
@@ -350,21 +351,21 @@ SaveDataFile:
     LDX #<SaveDataName
     LDY #>SaveDataName
     JSR SETNAM
-    
+
     ; Set file parameters
     LDA #3          ; File number
     LDX #8          ; Disk drive
     LDY #3          ; Secondary address
     JSR SETLFS
-    
+
     ; Open file for writing
     JSR OPEN
     BCS SaveDataError
-    
+
     ; Set output channel
     LDX #3          ; File number
     JSR CHKOUT
-    
+
     ; Write data
     LDY #0
 SaveDataLoop:
@@ -373,14 +374,14 @@ SaveDataLoop:
     INY
     CPY #GameDataSize
     BNE SaveDataLoop
-    
+
     ; Restore default output
     JSR CLRCHN
-    
+
     ; Close file
     LDA #3
     JSR CLOSE
-    
+
     RTS
 
 SaveDataError:
@@ -410,7 +411,7 @@ GameDataSize = * - GameData
 FileErrorHandler:
     ; Input: Error code in A
     PHA                 ; Save error code
-    
+
     ; Check error type
     CMP #$02            ; File not found?
     BEQ FileNotFound
@@ -426,7 +427,7 @@ FileErrorHandler:
     BEQ MissingFilename
     CMP #$09            ; Illegal device?
     BEQ IllegalDevice
-    
+
     ; Unknown error
     JMP UnknownError
 
@@ -474,7 +475,7 @@ DisplayError:
     ; X/Y point to message
     STX $FB
     STY $FC
-    
+
     LDY #0
 ErrorMsgLoop:
     LDA ($FB),Y
@@ -508,17 +509,17 @@ CheckDriveStatus:
     LDX #8          ; Disk drive
     LDY #15         ; Secondary address
     JSR SETLFS
-    
+
     LDA #0          ; No filename
     JSR SETNAM
-    
+
     JSR OPEN
     BCS StatusError
-    
+
     ; Set input to command channel
     LDX #15
     JSR CHKIN
-    
+
     ; Read status
     LDY #0
 StatusLoop:
@@ -533,17 +534,17 @@ StatusLoop:
 StatusDone:
     LDA #0
     STA StatusBuffer,Y  ; Null terminate
-    
+
     ; Restore input
     JSR CLRCHN
-    
+
     ; Close command channel
     LDA #15
     JSR CLOSE
-    
+
     ; Parse status
     JSR ParseDriveStatus
-    
+
     RTS
 
 StatusError:
@@ -552,7 +553,7 @@ StatusError:
 ParseDriveStatus:
     ; Parse status string in StatusBuffer
     ; Format: "ERROR CODE,MESSAGE,TRACK,SECTOR"
-    
+
     LDA StatusBuffer    ; First character
     CMP #'0'            ; Check first digit
     BNE DriveError
@@ -570,14 +571,14 @@ DriveError:
     CLC
     ASL
     STA ErrorCode
-    
+
     LDA StatusBuffer+1
     SEC
     SBC #'0'
     CLC
     ADC ErrorCode
     STA ErrorCode
-    
+
     ; Set error flag
     LDA #$FF
     STA DriveErrorFlag
@@ -609,41 +610,41 @@ InitErrorSystem:
     LDA #$00
     STA ErrorCount      ; Clear error counter
     STA LastError       ; Clear last error
-    
+
     ; Setup error message display
     LDA #$02            ; Red text for errors
     STA $286            ; Current colour
-    
+
     RTS
 
 TestErrorHandling:
     ; Simulate various file errors for demonstration
-    
+
     ; Test 1: File not found error
     LDA #$02            ; File not found error code
     JSR SimulateFileError
-    
+
     ; Test 2: Device not present error
     LDA #$05            ; Device not present error code
     JSR SimulateFileError
-    
+
     ; Test 3: Successful operation
     LDA #$00            ; No error
     JSR SimulateFileError
-    
+
     ; Display error summary
     JSR DisplayErrorSummary
-    
+
     RTS
 
 SimulateFileError:
     ; Input: Error code in A
     STA LastError       ; Store error code
-    
+
     ; Check if this is an error
     CMP #$00
     BEQ NoError
-    
+
     ; Handle the error
     JSR ProcessFileError
     INC ErrorCount      ; Increment error counter
@@ -659,13 +660,13 @@ ErrorEnd:
 ProcessFileError:
     ; Process file error based on error code
     LDA LastError
-    
+
     ; Check error type and display appropriate message
     CMP #$02            ; File not found?
     BEQ ShowFileNotFound
     CMP #$05            ; Device not present?
     BEQ ShowDeviceError
-    
+
     ; Default error message
     JMP ShowGenericError
 
@@ -723,16 +724,16 @@ SummaryLoop:
     INX
     JMP SummaryLoop
 SummaryDone:
-    
+
     ; Display error count
     LDA ErrorCount
     CLC
     ADC #'0'            ; Convert to ASCII
     JSR $FFD2           ; Display digit
-    
+
     LDA #13             ; Carriage return
     JSR $FFD2
-    
+
     RTS
 
 ; Error messages
@@ -759,15 +760,15 @@ SaveGame:
     ; Create save game data
     LDA #$01            ; Format version
     STA SaveGameData+0
-    
+
     LDA PlayerLevel
     STA SaveGameData+1
-    
+
     LDA PlayerScore+1   ; High byte
     STA SaveGameData+2
     LDA PlayerScore     ; Low byte
     STA SaveGameData+3
-    
+
     ; Copy player name
     LDY #0
 NameCopyLoop:
@@ -776,7 +777,7 @@ NameCopyLoop:
     INY
     CPY #16
     BNE NameCopyLoop
-    
+
     ; Copy game state
     LDY #0
 GameStateCopyLoop:
@@ -785,31 +786,31 @@ GameStateCopyLoop:
     INY
     CPY #80             ; 80 bytes of game state
     BNE GameStateCopyLoop
-    
+
     ; Now save to file
     JSR SaveDataToFile
-    
+
     RTS
 
 LoadGame:
     ; Load save game data
     JSR LoadDataFromFile
     BCS LoadGameError
-    
+
     ; Verify format version
     LDA SaveGameData+0
     CMP #$01
     BNE LoadGameError
-    
+
     ; Extract data
     LDA SaveGameData+1
     STA PlayerLevel
-    
+
     LDA SaveGameData+2
     STA PlayerScore+1
     LDA SaveGameData+3
     STA PlayerScore
-    
+
     ; Copy player name back
     LDY #0
 NameRestoreLoop:
@@ -818,7 +819,7 @@ NameRestoreLoop:
     INY
     CPY #16
     BNE NameRestoreLoop
-    
+
     ; Copy game state back
     LDY #0
 GameStateRestoreLoop:
@@ -827,7 +828,7 @@ GameStateRestoreLoop:
     INY
     CPY #80
     BNE GameStateRestoreLoop
-    
+
     CLC                 ; Success
     RTS
 
@@ -850,24 +851,24 @@ SaveGameData:   .res 100                   ; Save game buffer
 AdvancedSaveFormat:
     ; Header: Magic number, version, size, checksum
     ; Data: Compressed game state
-    
+
 CreateAdvancedSave:
     ; Write magic number
     LDA #$C6            ; Magic byte 1
     STA AdvancedSaveBuffer+0
     LDA #$64            ; Magic byte 2 (C64)
     STA AdvancedSaveBuffer+1
-    
+
     ; Write version
     LDA #$10            ; Version 1.0
     STA AdvancedSaveBuffer+2
-    
+
     ; Write data size
     LDA #<SaveDataSize
     STA AdvancedSaveBuffer+3
     LDA #>SaveDataSize
     STA AdvancedSaveBuffer+4
-    
+
     ; Copy game data
     LDY #0
 AdvancedDataCopy:
@@ -876,21 +877,21 @@ AdvancedDataCopy:
     INY
     CPY #SaveDataSize
     BNE AdvancedDataCopy
-    
+
     ; Calculate checksum
     JSR CalculateChecksum
     STA AdvancedSaveBuffer+5    ; Store checksum
-    
+
     ; Save to file
     JSR SaveAdvancedData
-    
+
     RTS
 
 LoadAdvancedSave:
     ; Load advanced save file
     JSR LoadAdvancedData
     BCS AdvancedLoadError
-    
+
     ; Verify magic number
     LDA AdvancedSaveBuffer+0
     CMP #$C6
@@ -898,11 +899,11 @@ LoadAdvancedSave:
     LDA AdvancedSaveBuffer+1
     CMP #$64
     BNE AdvancedLoadError
-    
+
     ; Verify checksum
     JSR VerifyChecksum
     BCS AdvancedLoadError
-    
+
     ; Extract data
     LDY #0
 AdvancedDataRestore:
@@ -911,7 +912,7 @@ AdvancedDataRestore:
     INY
     CPY #SaveDataSize
     BNE AdvancedDataRestore
-    
+
     CLC                 ; Success
     RTS
 
@@ -931,7 +932,7 @@ ChecksumLoop:
     INY
     CPY #SaveDataSize
     BNE ChecksumLoop
-    
+
     TXA                 ; Return checksum in A
     RTS
 
@@ -960,7 +961,7 @@ SaveDataSize = 64
 FileManager:
     CurrentFiles = $C000    ; File table
     MaxFiles = 8            ; Maximum open files
-    
+
 InitFileManager:
     ; Initialize file tracking
     LDX #0
@@ -975,20 +976,20 @@ ClearFileTable:
 OpenManagedFile:
     ; Input: Filename in FileNameBuffer, device in A
     STA RequestedDevice
-    
+
     ; Find free file slot
     JSR FindFreeFileSlot
     BMI NoFreeSlots
-    
+
     ; Store file info
     TXA
     STA CurrentFiles,X      ; Mark as used
     STX CurrentFileNumber
-    
+
     ; Open file using KERNAL
     JSR OpenFileKernal
     BCS OpenManagedError
-    
+
     ; Success
     LDX CurrentFileNumber
     CLC
@@ -1002,14 +1003,14 @@ OpenManagedError:
 CloseManagedFile:
     ; Input: File number in A
     TAX
-    
+
     ; Close via KERNAL
     JSR CLOSE
-    
+
     ; Mark slot as free
     LDA #$00
     STA CurrentFiles,X
-    
+
     RTS
 
 FindFreeFileSlot:
@@ -1020,7 +1021,7 @@ FindSlotLoop:
     INX
     CPX #MaxFiles
     BNE FindSlotLoop
-    
+
     LDX #$FF            ; No free slot
     RTS
 
@@ -1054,7 +1055,7 @@ InitFileSystem:
     LDA #$00
     STA FileCount       ; Number of files processed
     STA ErrorCount      ; Number of errors encountered
-    
+
     ; Initialize file status table
     LDX #$00
 ClearFileStatus:
@@ -1062,62 +1063,62 @@ ClearFileStatus:
     INX
     CPX #8              ; 8 possible files
     BNE ClearFileStatus
-    
+
     RTS
 
 DemoFileOperations:
     ; Demonstrate various file operations
-    
+
     ; Operation 1: Create data file
     JSR CreateDataFile
-    
+
     ; Operation 2: Load configuration
     JSR LoadConfiguration
-    
+
     ; Operation 3: Save game state
     JSR SaveGameState
-    
+
     ; Operation 4: Backup data
     JSR BackupData
-    
+
     ; Display operation summary
     JSR DisplayOperationSummary
-    
+
     RTS
 
 CreateDataFile:
     ; Simulate creating a new data file
     LDA #$01            ; File operation type
     STA CurrentOperation
-    
+
     ; Setup file parameters
     LDA #9              ; Filename length
     LDX #<DataFileName
     LDY #>DataFileName
     ; JSR SETNAM        ; Would set filename in real implementation
-    
+
     ; Simulate file creation
     JSR SimulateFileOperation
-    
+
     ; Update file count
     INC FileCount
-    
+
     RTS
 
 LoadConfiguration:
     ; Simulate loading configuration file
     LDA #$02            ; File operation type
     STA CurrentOperation
-    
+
     ; Setup configuration file
     LDA #11             ; Filename length
     LDX #<ConfigFileName
     LDY #>ConfigFileName
     ; JSR SETNAM        ; Would set filename
-    
+
     ; Simulate loading
     JSR SimulateFileOperation
-    
+
     INC FileCount
     RTS
 
@@ -1125,16 +1126,16 @@ SaveGameState:
     ; Simulate saving game state
     LDA #$03            ; File operation type
     STA CurrentOperation
-    
+
     ; Setup save file
-    LDA #8              ; Filename length  
+    LDA #8              ; Filename length
     LDX #<SaveFileName
     LDY #>SaveFileName
     ; JSR SETNAM        ; Would set filename
-    
+
     ; Simulate saving
     JSR SimulateFileOperation
-    
+
     INC FileCount
     RTS
 
@@ -1142,28 +1143,28 @@ BackupData:
     ; Simulate backing up data
     LDA #$04            ; File operation type
     STA CurrentOperation
-    
+
     ; Setup backup file
     LDA #10             ; Filename length
     LDX #<BackupFileName
     LDY #>BackupFileName
     ; JSR SETNAM        ; Would set filename
-    
+
     ; Simulate backup operation
     JSR SimulateFileOperation
-    
+
     INC FileCount
     RTS
 
 SimulateFileOperation:
     ; Simulate file operation with random success/failure
     ; In real implementation, this would be actual KERNAL calls
-    
+
     ; Use operation type to determine success probability
     LDA CurrentOperation
     CMP #$02            ; Load config - might fail
     BEQ MightFail
-    
+
     ; Most operations succeed
     LDA #$00            ; Success
     JMP OperationResult
@@ -1173,7 +1174,7 @@ MightFail:
     LDA FileCount
     AND #$01            ; Fail every other time for demo
     BEQ OperationSuccess
-    
+
     ; Simulate failure
     LDA #$02            ; File not found error
     INC ErrorCount
@@ -1184,17 +1185,17 @@ OperationSuccess:
 
 OperationResult:
     STA LastOperationResult
-    
+
     ; Display operation result
     JSR DisplayOperationResult
-    
+
     RTS
 
 DisplayOperationResult:
     ; Display the result of the file operation
     LDA LastOperationResult
     BEQ ShowSuccess
-    
+
     ; Show error
     LDX #0
 ErrorLoop:
@@ -1204,7 +1205,7 @@ ErrorLoop:
     INX
     JMP ErrorLoop
 ErrorDone:
-    
+
     ; Show operation type
     JSR ShowOperationType
     JMP ResultEnd
@@ -1219,7 +1220,7 @@ SuccessLoop:
     INX
     JMP SuccessLoop
 SuccessDone:
-    
+
     ; Show operation type
     JSR ShowOperationType
 
@@ -1295,13 +1296,13 @@ SummaryHeaderLoop:
     INX
     JMP SummaryHeaderLoop
 SummaryHeaderDone:
-    
+
     ; Display file count
     LDA FileCount
     CLC
     ADC #'0'
     JSR $FFD2
-    
+
     LDX #0
 FileCountTextLoop:
     LDA FileCountText,X
@@ -1310,13 +1311,13 @@ FileCountTextLoop:
     INX
     JMP FileCountTextLoop
 FileCountTextDone:
-    
+
     ; Display error count
     LDA ErrorCount
     CLC
     ADC #'0'
     JSR $FFD2
-    
+
     LDX #0
 ErrorCountTextLoop:
     LDA ErrorCountText,X
@@ -1325,7 +1326,7 @@ ErrorCountTextLoop:
     INX
     JMP ErrorCountTextLoop
 ErrorCountTextDone:
-    
+
     RTS
 
 ; Filenames
@@ -1360,14 +1361,15 @@ JSR FileManagementDemo
 ## File Operations Best Practices
 
 ### 1. Always Check for Errors
+
 ```text
 ; Proper error checking pattern
 SafeFileOperation:
     JSR OPEN
     BCS FileError       ; Always check carry flag
-    
+
     ; Perform file operations
-    
+
     LDA #FileNumber
     JSR CLOSE
     CLC                 ; Success
@@ -1381,6 +1383,7 @@ FileError:
 ```
 
 ### 2. Use Descriptive Filenames
+
 ```text
 ; Good filename conventions
 PlayerSaveFile:     .text "PLAYER01.SAV"
@@ -1390,16 +1393,17 @@ LevelDataFile:      .text "LEVEL001.DAT"
 ```
 
 ### 3. Implement Backup Systems
+
 ```text
 ; Backup important data
 CreateBackup:
     ; Copy original to backup
     JSR LoadOriginalFile
     BCS BackupError
-    
+
     JSR SaveBackupFile
     BCS BackupError
-    
+
     CLC                 ; Success
     RTS
 

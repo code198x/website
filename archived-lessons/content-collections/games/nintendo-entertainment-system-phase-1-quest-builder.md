@@ -68,24 +68,28 @@ Leverages every aspect of NES hardware and programming:
 ### Tiers 13-16 Development Roadmap
 
 **Tier 13**: Game engine architecture
+
 - Designing modular, extensible game systems
 - Implementing core RPG mechanics and frameworks
 - Building foundation systems for characters and worlds
 - Creating efficient data management architectures
 
 **Tier 14**: Scripting and creation tools
+
 - Implementing visual scripting for non-programmers
 - Building intuitive asset creation interfaces
 - Creating dialogue and story editing systems
 - Developing user-friendly design workflows
 
 **Tier 15**: Advanced features and optimisation
+
 - Adding complex RPG systems (combat, magic, inventory)
 - Implementing save/load and game state management
 - Optimizing performance for large, complex games
 - Creating advanced special effects and polish
 
 **Tier 16**: Professional integration and completion
+
 - Final system integration and testing
 - Creating comprehensive help and tutorial systems
 - Implementing ROM generation and distribution

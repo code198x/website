@@ -35,24 +35,28 @@ Begin developing **RetroEngine** - a comprehensive game development framework fe
 ## Tier Overview
 
 **Lessons 1-8: Game Engine Architecture**
+
 - Modular game engine design principles
 - Core engine systems and subsystem integration
 - Performance-oriented architecture patterns
 - Scalable game framework development
 
 **Lessons 9-16: Entity-Component-System Framework**
+
 - ECS architecture design and implementation
 - Component-based game object systems
 - Entity management and lifecycle
 - System processing and update optimization
 
 **Lessons 17-24: Game Development Tools**
+
 - Asset pipeline and management systems
 - Level editor and game creation tools
 - Debugging and profiling utilities
 - Development workflow optimization
 
 **Lessons 25-32: Professional Game Framework**
+
 - Game state management systems
 - Scene graph and rendering architecture
 - Audio system integration

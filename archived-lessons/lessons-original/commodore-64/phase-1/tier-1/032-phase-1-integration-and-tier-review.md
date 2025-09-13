@@ -33,25 +33,29 @@ Congratulations! You've completed Tier 1 of Phase 1. Today you'll create your fi
 Over the past 32 lessons, you've built a comprehensive foundation in C64 assembly programming:
 
 ### Memory and CPU Mastery (Lessons 1-16)
+
 - **6502 Assembly Language**: Complete instruction set and addressing modes
-- **Memory Management**: Zero page, stack, and advanced memory techniques  
+- **Memory Management**: Zero page, stack, and advanced memory techniques
 - **Program Control**: Subroutines, branching, and interrupt handling
 - **Data Manipulation**: All arithmetic, logical, and bit operations
 - **Professional Patterns**: Optimization, debugging, and code organisation
 
 ### Graphics and Visual Programming (Lessons 17-20)
+
 - **VIC-II Architecture**: Complete understanding of the graphics chip
 - **Text and Character Graphics**: Screen modes, custom characters, and colour
 - **Hardware Sprites**: 8-sprite system with collision detection and animation
 - **Bitmap Graphics**: Pixel-level control and advanced visual effects
 
 ### Audio and Sound Programming (Lessons 21-24)
+
 - **SID Architecture**: Revolutionary sound synthesis chip programming
 - **Sound Generation**: Waveforms, envelopes, and basic audio effects
 - **Advanced Synthesis**: Filters, modulation, and complex timbres
 - **Musical Programming**: Sequencing, composition, and complete audio systems
 
 ### Professional Development Skills (Lessons 25-31)
+
 - **File Operations**: Loading, saving, and data management
 - **Code Organization**: Modular programming and maintainable code
 - **Optimization**: Memory efficiency and performance techniques
@@ -74,22 +78,22 @@ SystemInit:
     CLD                 ; Clear decimal mode
     LDX #$FF
     TXS                 ; Reset stack pointer
-    
+
     ; 2. Initialize VIC-II
     JSR InitGraphics
-    
+
     ; 3. Initialize SID
     JSR InitAudio
-    
+
     ; 4. Setup memory management
     JSR InitMemory
-    
+
     ; 5. Install interrupt handlers
     JSR SetupInterrupts
-    
+
     ; 6. Initialize application state
     JSR InitApplication
-    
+
     CLI                 ; Re-enable interrupts
     RTS
 
@@ -105,20 +109,20 @@ ClearScreen:
     STA $0700,X
     INX
     BNE ClearScreen
-    
+
     ; Setup default colors
     LDA #$06        ; Blue background
     STA $D021
     LDA #$0E        ; Light blue text
     STA $286        ; Current colour
-    
+
     ; Initialize sprite system
     LDA #$00
     STA $D015       ; Disable all sprites initially
-    
+
     RTS
 
-; Audio subsystem initialization  
+; Audio subsystem initialization
 InitAudio:
     ; Clear all SID registers
     LDX #$00
@@ -128,11 +132,11 @@ ClearSID:
     INX
     CPX #$19        ; 25 SID registers
     BNE ClearSID
-    
+
     ; Set master volume
     LDA #$0F        ; Full volume
     STA $D418
-    
+
     RTS
 ```
 
@@ -149,24 +153,24 @@ MainIRQ:
     PHA
     TYA
     PHA
-    
+
     ; Check interrupt sources
     LDA $D019       ; VIC-II interrupt register
     AND #$01        ; Check raster interrupt
     BEQ CheckOtherIRQ
-    
+
     ; Handle raster interrupt
     JSR RasterHandler
-    
+
     ; Acknowledge VIC-II interrupt
     LDA #$01
     STA $D019
-    
+
 CheckOtherIRQ:
     ; Check CIA interrupts if needed
     LDA $DC0D       ; CIA1 interrupt register
     BMI TimerIRQ    ; Timer interrupt occurred
-    
+
 ExitIRQ:
     ; Restore CPU state
     PLA
@@ -179,13 +183,13 @@ ExitIRQ:
 RasterHandler:
     ; Update graphics effects
     JSR UpdateRasterEffects
-    
+
     ; Update sprite animations
     JSR UpdateSprites
-    
+
     ; Process audio sequencer
     JSR UpdateMusic
-    
+
     RTS
 
 TimerIRQ:
@@ -208,7 +212,7 @@ CompleteDemo:
 SystemSetup:
     ; Initialize all subsystems
     JSR InitDisplay
-    JSR InitSound  
+    JSR InitSound
     JSR InitAnimation
     RTS
 
@@ -217,7 +221,7 @@ InitDisplay:
     LDA $D011
     ORA #%00100000  ; Enable bitmap mode
     STA $D011
-    
+
     ; Clear bitmap
     LDX #$00
     LDA #$00
@@ -228,7 +232,7 @@ ClearBitmap:
     STA $2300,X
     INX
     BNE ClearBitmap
-    
+
     ; Setup colors
     LDA #%00010000  ; White on black
     LDX #$00
@@ -237,7 +241,7 @@ SetColors:
     INX
     CPX #$FF
     BNE SetColors
-    
+
     RTS
 
 InitSound:
@@ -254,35 +258,35 @@ InitAnimation:
     ; Setup sprite system
     LDA #$80        ; Sprite data at $2000
     STA $07F8       ; Sprite 0 pointer
-    
+
     LDA #%00000001  ; Enable sprite 0
     STA $D015
-    
+
     ; Initial position
     LDA #100
     STA $D000       ; X position
     LDA #100
     STA $D001       ; Y position
-    
+
     ; Set colour
     LDA #$02        ; Red
     STA $D027
-    
+
     RTS
 
 MainLoop:
     ; Update graphics
     JSR UpdateGraphics
-    
+
     ; Update audio
     JSR UpdateAudio
-    
+
     ; Update animation
     JSR UpdateAnimation
-    
+
     ; Synchronization delay
     JSR SyncDelay
-    
+
     JMP MainLoop
 
 UpdateGraphics:
@@ -291,10 +295,10 @@ UpdateGraphics:
     ASL
     ASL
     TAX
-    
+
     LDA SineTable,X ; Get sine value
     STA $2000       ; Update bitmap
-    
+
     INC $90         ; Next frame
     RTS
 
@@ -304,15 +308,15 @@ UpdateAudio:
     LDA NoteTable,X ; Get frequency
     CMP #$FF        ; End marker?
     BEQ ResetMusic
-    
+
     STA $D400       ; Set frequency low
     LDA NoteTable+1,X
     STA $D401       ; Set frequency high
-    
+
     ; Start note
     LDA #%00100001  ; Sawtooth + Gate
     STA $D404
-    
+
     ; Next note
     INC $91
     INC $91         ; 2 bytes per note
@@ -331,7 +335,7 @@ UpdateAnimation:
     CLC
     ADC #160        ; Add center X
     STA $D000       ; Update sprite X
-    
+
     LDA $92
     CLC
     ADC #64         ; Phase offset for Y
@@ -340,7 +344,7 @@ UpdateAnimation:
     CLC
     ADC #100        ; Add center Y
     STA $D001       ; Update sprite Y
-    
+
     INC $92         ; Next angle
     RTS
 
@@ -395,7 +399,7 @@ MSG_CHANGE_COLOR = $03
 SendMessage:
     ; Input: Message type in A, data in X/Y
     PHA                 ; Save message type
-    
+
     ; Calculate queue position
     LDX QueueHead
     STA MessageQueue,X  ; Store message type
@@ -407,7 +411,7 @@ SendMessage:
     STA MessageQueue,X
     INX
     STX QueueHead       ; Update head pointer
-    
+
     PLA                 ; Restore A
     RTS
 
@@ -416,7 +420,7 @@ ProcessMessages:
     LDA QueueTail
     CMP QueueHead
     BEQ NoMessages      ; Queue empty
-    
+
     ; Get message
     TAX
     LDA MessageQueue,X  ; Message type
@@ -425,14 +429,14 @@ ProcessMessages:
     CMP #MSG_MOVE_SPRITE
     BEQ HandleSprite
     ; ... handle other message types
-    
+
     ; Advance tail pointer
     INX
     INX
     INX                 ; Skip message (3 bytes)
     STX QueueTail
     JMP ProcessMessages ; Process next message
-    
+
 NoMessages:
     RTS
 
@@ -485,7 +489,7 @@ FoundFree:
     ; Mark sprite as used
     LDA #$01
     STA SpritesInUse,X
-    
+
     ; Return sprite number in A
     TXA
     RTS
@@ -495,7 +499,7 @@ FreeSprite:
     TAX
     LDA #$00
     STA SpritesInUse,X  ; Mark as free
-    
+
     ; Disable sprite
     LDA SpriteEnableMask,X
     EOR #$FF            ; Invert mask
@@ -528,7 +532,7 @@ UpdateGameState:
     LDA GameState
     ASL                 ; Multiply by 2 for word table
     TAX
-    
+
     ; Call state-specific update function
     LDA StateUpdateLo,X
     STA $80
@@ -574,7 +578,7 @@ UpdateGameOver:
 ChangeState:
     ; Input: New state in A
     STA GameState
-    
+
     ; Call state initialization
     ASL
     TAX
@@ -615,11 +619,11 @@ InitGraphicsEngine:
     LDA $D011
     ORA #%00100000  ; Enable bitmap
     STA $D011
-    
+
     ; Initialize sprite system
     LDA #%11111111  ; Enable all sprites
     STA $D015
-    
+
     ; Setup sprite data pointers
     LDX #$00
 SpriteSetup:
@@ -627,7 +631,7 @@ SpriteSetup:
     CLC
     ADC #$80        ; Base sprite pointer
     STA $07F8,X     ; Set sprite pointer
-    
+
     ; Position sprites in formation
     TXA
     ASL
@@ -639,15 +643,15 @@ SpriteSetup:
     ADC #50         ; Add left margin
     STA $D000,X     ; Set X position
     STA $D000,X
-    
+
     LDA #100        ; Standard Y position
     STA $D001,X
-    
+
     INX
     INX             ; Skip Y register
     CPX #16         ; 8 sprites * 2 registers
     BNE SpriteSetup
-    
+
     RTS
 
 InitAudioEngine:
@@ -657,23 +661,23 @@ InitAudioEngine:
     STA $D405
     LDA #%11110010  ; Full sustain, medium release
     STA $D406
-    
+
     ; Voice 2: Harmony/effects
-    LDA #%00100010  ; Slow attack/decay  
+    LDA #%00100010  ; Slow attack/decay
     STA $D40C
     LDA #%10100010  ; Medium sustain/release
     STA $D40D
-    
+
     ; Voice 3: Bass/percussion
     LDA #%11110000  ; Fast attack, no decay
     STA $D413
     LDA #%11110000  ; Full sustain, no release
     STA $D414
-    
+
     ; Set master volume
     LDA #%00001111  ; Full volume
     STA $D418
-    
+
     RTS
 
 InitInputSystem:
@@ -695,19 +699,19 @@ InitGameLogic:
 MainGameLoop:
     ; Process input
     JSR ProcessInput
-    
+
     ; Update game logic based on state
     JSR UpdateGameState
-    
+
     ; Update graphics
     JSR UpdateGraphics
-    
+
     ; Update audio
     JSR UpdateAudio
-    
+
     ; Synchronize frame rate
     JSR WaitFrame
-    
+
     JMP MainGameLoop
 
 ProcessInput:
@@ -731,12 +735,12 @@ UpdateMenu:
     LDA $90         ; Input state
     AND #%00010000  ; Fire button pressed?
     BEQ MenuEnd
-    
+
     ; Start game
     LDA #$01        ; Change to playing state
     STA $92
     JSR StartGame
-    
+
 MenuEnd:
     RTS
 
@@ -752,7 +756,7 @@ UpdatePlayer:
     LDA $90         ; Input state
     AND #%00000001  ; Up pressed?
     BEQ CheckDown
-    
+
     ; Move player up
     LDA $D001       ; Player Y (sprite 0)
     SEC
@@ -760,12 +764,12 @@ UpdatePlayer:
     CMP #50         ; Top boundary
     BCC CheckDown
     STA $D001
-    
+
 CheckDown:
     LDA $90
     AND #%00000010  ; Down pressed?
     BEQ CheckLeft
-    
+
     ; Move player down
     LDA $D001
     CLC
@@ -773,12 +777,12 @@ CheckDown:
     CMP #200        ; Bottom boundary
     BCS CheckLeft
     STA $D001
-    
+
 CheckLeft:
     LDA $90
     AND #%00000100  ; Left pressed?
     BEQ CheckRight
-    
+
     ; Move player left
     LDA $D000       ; Player X
     SEC
@@ -786,12 +790,12 @@ CheckLeft:
     CMP #24         ; Left boundary
     BCC CheckRight
     STA $D000
-    
+
 CheckRight:
     LDA $90
     AND #%00001000  ; Right pressed?
     BEQ PlayerEnd
-    
+
     ; Move player right
     LDA $D000
     CLC
@@ -799,7 +803,7 @@ CheckRight:
     CMP #320        ; Right boundary (need 16-bit check in real code)
     BCS PlayerEnd
     STA $D000
-    
+
 PlayerEnd:
     RTS
 
@@ -812,28 +816,28 @@ EnemyLoop:
     CMP $D000,X     ; Enemy X
     BCC MoveEnemyLeft
     BEQ EnemyYCheck
-    
+
     ; Move enemy right
     INC $D000,X
     JMP EnemyYCheck
-    
+
 MoveEnemyLeft:
     DEC $D000,X
-    
+
 EnemyYCheck:
     ; Y movement
     LDA $D001       ; Player Y
     CMP $D001,X     ; Enemy Y
     BCC MoveEnemyUp
     BEQ NextEnemy
-    
+
     ; Move enemy down
     INC $D001,X
     JMP NextEnemy
-    
+
 MoveEnemyUp:
     DEC $D001,X
-    
+
 NextEnemy:
     INX
     INX             ; Skip to next sprite (X,Y pairs)
@@ -846,26 +850,26 @@ CheckCollisions:
     LDA $D01E       ; Collision register
     AND #%00000111  ; Check player vs enemies
     BEQ NoCollision
-    
+
     ; Collision detected
     DEC $94         ; Lose a life
     LDA $94
     BNE ResetPosition
-    
+
     ; Game over
     LDA #$02        ; Game over state
     STA $92
-    
+
 ResetPosition:
     ; Reset player position
     LDA #160        ; Center X
     STA $D000
     LDA #180        ; Bottom Y
     STA $D001
-    
+
     ; Clear collision register
     LDA $D01E       ; Clear by reading
-    
+
 NoCollision:
     RTS
 
@@ -907,7 +911,7 @@ PlayGameMusic:
     LDA $95         ; Music counter
     AND #%00111111  ; 64-frame cycle
     BNE MusicEnd
-    
+
     ; Play note
     LDA #$40        ; Frequency
     STA $D400
@@ -915,7 +919,7 @@ PlayGameMusic:
     STA $D401
     LDA #%00100001  ; Sawtooth + Gate
     STA $D404
-    
+
 MusicEnd:
     INC $95         ; Advance music counter
     RTS
@@ -926,18 +930,18 @@ StartGame:
     STA $D000
     LDA #180
     STA $D001
-    
+
     ; Position enemies
     LDA #50
     STA $D002       ; Enemy 1 X
     LDA #50
     STA $D003       ; Enemy 1 Y
-    
+
     LDA #270
     STA $D004       ; Enemy 2 X
     LDA #100
     STA $D005       ; Enemy 2 Y
-    
+
     RTS
 
 WaitFrame:
@@ -963,22 +967,22 @@ FastGraphicsUpdate:
     SpriteXPos = $80
     SpriteYPos = $81
     FrameCounter = $82
-    
+
     ; Unrolled loops for critical operations
     LDX #$00
     LDA SineTable,X
     STA $D000       ; Sprite 0 X
     LDA SineTable+64,X
     STA $D001       ; Sprite 0 Y
-    
+
     INX
     LDA SineTable,X
     STA $D002       ; Sprite 1 X
     LDA SineTable+64,X
     STA $D003       ; Sprite 1 Y
-    
+
     ; Continue pattern for all 8 sprites...
-    
+
     RTS
 
 ; Optimized audio processing
@@ -990,7 +994,7 @@ FastAudioUpdate:
     STA $D401
     LDA #%00100001  ; Gate trigger
     STA $D404
-    
+
     RTS
 ```
 
@@ -1001,16 +1005,16 @@ FastAudioUpdate:
 FastIRQ:
     ; Only save registers that are modified
     PHA
-    
+
     ; Single critical update
     LDA RasterColor
     STA $D021
     INC RasterColor
-    
+
     ; Acknowledge interrupt
     LDA #$01
     STA $D019
-    
+
     PLA
     RTI
 
@@ -1019,13 +1023,13 @@ DoubleBufferUpdate:
     ; Check which buffer is active
     LDA ActiveBuffer
     BEQ UpdateBuffer1
-    
+
 UpdateBuffer2:
     ; Update buffer 2 while buffer 1 displays
     JSR UpdateGraphicsBuffer2
     JSR SwapToBuffer2
     RTS
-    
+
 UpdateBuffer1:
     ; Update buffer 1 while buffer 2 displays
     JSR UpdateGraphicsBuffer1
@@ -1085,7 +1089,7 @@ InitGraphics:
     LDA $D011
     ORA #%00100000  ; Set bitmap mode
     STA $D011
-    
+
     ; Clear bitmap memory
     LDX #$00
     LDA #$00
@@ -1096,11 +1100,11 @@ ClearBitmapMem:
     STA $2300,X
     INX
     BNE ClearBitmapMem
-    
+
     ; Setup sprite system
     LDA #%11111111  ; Enable all 8 sprites
     STA $D015
-    
+
     ; Initialize sprite pointers
     LDX #$00
 InitSprites:
@@ -1108,7 +1112,7 @@ InitSprites:
     CLC
     ADC #$80        ; Base sprite data
     STA $07F8,X     ; Set sprite pointer
-    
+
     ; Set initial positions in circle formation
     TXA
     ASL
@@ -1119,18 +1123,18 @@ InitSprites:
     STA $D000,X     ; Set X position
     LDA CircleY,Y
     STA $D001,X     ; Set Y position
-    
+
     ; Set colors
     TXA
     LSR             ; Divide by 2 for colour cycling
     AND #$0F        ; Keep in colour range
     STA $D027,X     ; Set sprite colour
-    
+
     INX
     INX             ; Skip Y register
     CPX #16         ; 8 sprites * 2 registers
     BNE InitSprites
-    
+
     RTS
 
 InitAudio:
@@ -1140,25 +1144,25 @@ InitAudio:
     STA $D405
     LDA #%11110010  ; Full sustain, medium release
     STA $D406
-    
+
     ; Voice 2: Harmony
     LDA #%00100010  ; Slow attack/decay
     STA $D40C
     LDA #%10100010  ; Medium sustain/release
     STA $D40D
-    
+
     ; Voice 3: Bass
     LDA #%11110000  ; Fast attack, no decay
     STA $D413
     LDA #%11110000  ; Full sustain, no release
     STA $D414
-    
+
     ; Setup filter
     LDA #%11100000  ; All voices to filter
     STA $D417
     LDA #%00010111  ; Low-pass + full volume
     STA $D418
-    
+
     RTS
 
 InitInput:
@@ -1197,25 +1201,25 @@ AnimateSprites:
     ADC #$10        ; Phase offset per sprite
     AND #$FF        ; Keep in range
     TAY
-    
+
     ; Update X position
     LDA CircleX,Y
     CLC
     ADC #160        ; Center on screen
     STA $D000,X
-    
-    ; Update Y position  
+
+    ; Update Y position
     LDA CircleY,Y
     CLC
     ADC #100        ; Center on screen
     STA $D001,X
-    
+
     ; Next sprite
     INX
     INX             ; Skip Y register
     CPX #16         ; All 8 sprites
     BNE AnimateSprites
-    
+
     ; Advance animation
     INC AnimFrame
     RTS
@@ -1223,12 +1227,12 @@ AnimateSprites:
 UpdateAudio:
     ; Musical sequencer
     LDX MusicFrame
-    
+
     ; Voice 1: Melody
     LDA MelodyNotes,X
     CMP #$FF        ; End of sequence?
     BEQ ResetMusic
-    
+
     TAY
     LDA FreqTableLo,Y
     STA $D400
@@ -1236,7 +1240,7 @@ UpdateAudio:
     STA $D401
     LDA #%00100001  ; Sawtooth + Gate
     STA $D404
-    
+
     ; Voice 2: Harmony (third above)
     LDA MelodyNotes,X
     CLC
@@ -1249,7 +1253,7 @@ UpdateAudio:
     STA $D408
     LDA #%01000001  ; Pulse + Gate
     STA $D40B
-    
+
     ; Advance music
     INC MusicFrame
     RTS
@@ -1265,13 +1269,13 @@ UpdateGraphics:
     LSR
     LSR             ; Slow down bitmap animation
     TAX
-    
+
     ; Create animated pattern
     LDA SineWave,X
     STA $2000       ; Update bitmap
     LDA SineWave+64,X
     STA $2140       ; Different area
-    
+
     ; Color cycling
     INC ColorCycle
     LDA ColorCycle
@@ -1285,7 +1289,7 @@ UpdateGraphics:
     ASL             ; Shift to upper nibble
     ORA #$00        ; Black background
     STA $0400       ; Update first colour block
-    
+
     RTS
 
 UpdateInput:
@@ -1293,16 +1297,16 @@ UpdateInput:
     LDA $DC00       ; Read joystick port 2
     EOR #$FF        ; Invert (active low)
     STA InputState
-    
+
     ; Process input changes
     AND #%00010000  ; Fire button
     BEQ NoFire
-    
+
     ; Fire button pressed - change effect
     LDA $D016
     EOR #%00010000  ; Toggle multicolor mode
     STA $D016
-    
+
 NoFire:
     RTS
 
@@ -1360,6 +1364,7 @@ JSR MultimediaDemo
 You have now completed comprehensive training in foundational C64 assembly programming. You can confidently:
 
 ### Technical Competencies
+
 - **Write efficient 6502 assembly code** using all instructions and addressing modes
 - **Manage memory effectively** with zero page optimisation and stack programming
 - **Control program flow** with subroutines, branching, and interrupt handling
@@ -1369,6 +1374,7 @@ You have now completed comprehensive training in foundational C64 assembly progr
 - **Debug and optimise code** using systematic approaches and best practices
 
 ### Professional Skills
+
 - **Plan and organise complex projects** using systematic development approaches
 - **Write maintainable, documented code** following professional standards
 - **Apply performance optimisation techniques** for memory and speed efficiency
@@ -1382,12 +1388,14 @@ Phase 1 Tier 1 has established your **foundational understanding** of C64 assemb
 ### **What Tier 2 Will Add to Your Skills**
 
 **Building on Your Number Quest Project:**
+
 - **Zero Page Mastery** - Learn to use the fastest memory locations for critical game data
 - **Advanced Data Storage** - Implement efficient storage for scores, levels, and game state
 - **Memory-Based Input Processing** - Handle keyboard input directly at the hardware level
 - **Interactive Data Validation** - Create robust input validation for your number guessing game
 
-### **Tier 2 Learning Progression** 
+### **Tier 2 Learning Progression**
+
 - **Lessons 1-8**: Zero Page Mastery - Understanding C64's fastest memory locations
 - **Lessons 9-16**: Data Manipulation - Moving and processing data efficiently in memory
 - **Lessons 17-24**: Input Processing - Reading keyboard input without BASIC overhead
@@ -1396,6 +1404,7 @@ Phase 1 Tier 1 has established your **foundational understanding** of C64 assemb
 ### **Your Foundation is Perfect for Advanced Concepts**
 
 The skills you've mastered in Tier 1 provide exactly what you need for Tier 2:
+
 - ✅ **Complete 6502 knowledge** - Ready for advanced memory management
 - ✅ **Professional development practices** - Essential for complex data systems
 - ✅ **Interrupt handling experience** - Critical for responsive input processing
@@ -1405,8 +1414,9 @@ The skills you've mastered in Tier 1 provide exactly what you need for Tier 2:
 ### **The Natural Progression**
 
 Your progression from Tier 1 to Tier 2 is seamless:
+
 - **From basic assembly** → **Advanced memory techniques**
-- **From simple programs** → **Data-driven applications**  
+- **From simple programs** → **Data-driven applications**
 - **From hardware basics** → **Sophisticated I/O programming**
 - **From individual concepts** → **Integrated data systems**
 
@@ -1417,7 +1427,7 @@ Your progression from Tier 1 to Tier 2 is seamless:
 In Phase 1, you've mastered the essential foundation of retro computing programming:
 
 - **32 comprehensive lessons** covering all fundamental aspects of C64 development
-- **Complete understanding** of 6502 assembly language and C64 architecture  
+- **Complete understanding** of 6502 assembly language and C64 architecture
 - **Professional programming practices** that apply to modern development
 - **Integrated system programming** combining CPU, graphics, and audio
 - **Real-world application development** using industry-standard patterns

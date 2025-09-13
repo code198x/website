@@ -31,24 +31,28 @@ Transform **Neon Runner** with advanced animation including fluid character move
 ## Tier Overview
 
 **Lessons 1-8: Frame Animation Systems**
+
 - Sprite sheet organization and management
 - Frame timing and interpolation
 - Smooth animation playback
 - Animation compression techniques
 
 **Lessons 9-16: Sprite Transformation Effects**
+
 - Sprite scaling and rotation simulation
 - Morphing between different sprites
 - Color cycling animations
 - Perspective and 3D effects
 
 **Lessons 17-24: Particle Systems**
+
 - Particle generation and management
 - Physics simulation for particles
 - Visual effects (explosions, smoke, rain)
 - Performance optimization for many particles
 
 **Lessons 25-32: Complex Animation Architecture**
+
 - Animation state machines
 - Behavior-driven animation
 - Interactive animation systems

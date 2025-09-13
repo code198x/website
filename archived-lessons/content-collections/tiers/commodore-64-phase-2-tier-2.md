@@ -31,24 +31,28 @@ Continue developing **Mega Maze** by implementing smooth player movement, real-t
 ## Tier Overview
 
 **Lessons 1-8: Advanced ISR Programming**
+
 - Proper state preservation in interrupt handlers
 - Nested interrupt handling and priority management
 - Critical section protection and atomic operations
 - ISR optimization for minimal latency
 
 **Lessons 9-16: Multiple Interrupt Coordination**
+
 - Managing IRQ and NMI interrupts simultaneously
 - Timer-based interrupts for precise timing
 - Raster interrupts for display synchronization
 - Interrupt priority and conflict resolution
 
 **Lessons 17-24: Real-Time Systems Development**
+
 - Task scheduling using interrupt-driven timing
 - Event queue management and processing
 - Real-time response guarantees
 - Smooth animation and movement systems
 
 **Lessons 25-32: Debugging & Optimization**
+
 - Debugging interrupt-driven programs effectively
 - Measuring and optimizing interrupt latency
 - Profiling real-time system performance

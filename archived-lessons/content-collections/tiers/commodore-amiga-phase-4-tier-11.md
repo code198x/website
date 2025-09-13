@@ -27,6 +27,7 @@ Design for players! With **32 comprehensive lessons**, you'll master user experi
 ## What You'll Build
 
 Perfect **Nexus Station** with exceptional user experience:
+
 - Intuitive onboarding and tutorial systems
 - Accessibility features for diverse players
 - Smooth gameplay flow and user satisfaction optimization
@@ -36,24 +37,28 @@ Perfect **Nexus Station** with exceptional user experience:
 ## Tier Overview
 
 **Lessons 1-8: Player-Centered Design**
+
 - Understanding player psychology and motivations
 - User journey mapping and experience design
 - Playtesting methodologies and feedback collection
 - Iterative design and user-centered development
 
 **Lessons 9-16: Accessibility & Inclusion**
+
 - Designing for players with different abilities
 - Visual, auditory, and motor accessibility features
 - Inclusive design principles and implementation
 - Testing accessibility and gathering diverse feedback
 
 **Lessons 17-24: Onboarding & Guidance**
+
 - Effective tutorial design and implementation
 - Progressive skill building and learning curves
 - Contextual help and guidance systems
 - Reducing player frustration and learning barriers
 
 **Lessons 25-32: Flow & Satisfaction**
+
 - Optimizing gameplay flow and pacing
 - Creating satisfying feedback loops and rewards
 - Measuring and improving user satisfaction

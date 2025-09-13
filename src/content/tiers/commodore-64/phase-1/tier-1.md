@@ -45,17 +45,20 @@ This tier focuses on core concepts that form the foundation of all C64 programmi
 ## Your Journey Through 32 Lessons
 
 ### Assembly Foundations (Lessons 1-8)
+
 Begin with the absolute basics - what assembly is, why it matters, and how to write your first programs. Learn about processor registers, memory addressing, and how to control what appears on the C64's screen through direct memory manipulation.
 
 ### Graphics Programming (Lessons 9-16)
+
 Explore the VIC-II graphics chip, sprites, backgrounds, and color effects. Learn to create visual displays and understand how the C64's unique hardware works.
 
 ### Sound Programming (Lessons 17-24)
+
 Discover the SID sound chip and audio programming. Create sound effects, music, and learn about advanced audio techniques like filters and envelopes.
 
 ### Game Development (Lessons 25-32)
-Apply everything you've learned to create interactive programs. Implement movement systems, game mechanics, and build your first complete game project.
 
+Apply everything you've learned to create interactive programs. Implement movement systems, game mechanics, and build your first complete game project.
 
 ## Why Start Here?
 
@@ -79,6 +82,7 @@ Apply everything you've learned to create interactive programs. Implement moveme
 ## Prerequisites
 
 Before starting, ensure you have:
+
 - Completed the [C64 Setup Guide](/setup/c64)
 - ACME assembler installed
 - VICE emulator running

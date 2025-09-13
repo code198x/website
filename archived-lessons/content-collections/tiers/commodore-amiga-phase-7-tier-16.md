@@ -27,6 +27,7 @@ Your ultimate showcase! With **32 portfolio-focused lessons**, you'll create a c
 ## What You'll Build
 
 Create **MASTER GAME PORTFOLIO** - your ultimate demonstration:
+
 - Multiple sophisticated games showcasing different advanced techniques
 - Complete demonstration of AI, physics, audio, and optimization mastery
 - Games that showcase innovation, polish, and technical excellence
@@ -36,24 +37,28 @@ Create **MASTER GAME PORTFOLIO** - your ultimate demonstration:
 ## Master Portfolio Areas
 
 **Lessons 1-8: "Portfolio Planning" - Comprehensive Showcase Design**
+
 - Planning a portfolio that demonstrates all advanced skills
 - Selecting projects that showcase different areas of expertise
 - Designing a collection that tells the story of your mastery
 - Creating a timeline for completing multiple advanced projects
 
 **Lessons 9-16: "Advanced Project Completion" - Multiple Game Development**
+
 - Completing multiple sophisticated games efficiently
 - Managing parallel development of diverse game projects
 - Ensuring each project demonstrates specific advanced skills
 - Optimizing development workflow for portfolio creation
 
 **Lessons 17-24: "Technical Excellence" - Mastery Demonstration**
+
 - Showcasing advanced AI, physics, and audio in different games
 - Demonstrating optimization and performance mastery
 - Showing innovation and boundary-pushing techniques
 - Creating games that rival professional commercial titles
 
 **Lessons 25-32: "Portfolio Presentation" - Professional Showcase**
+
 - Creating compelling presentations for your game collection
 - Documenting the technical achievements in each project
 - Building demonstration materials that highlight your expertise

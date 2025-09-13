@@ -31,6 +31,7 @@ Achieve professional quality! With **32 comprehensive lessons**, you'll integrat
 ## What You'll Complete
 
 Finish **Neon City** as a professional product:
+
 - Seamless hardware integration across all chips
 - Real-time performance with guaranteed responsiveness
 - Professional user experience and interface polish
@@ -40,24 +41,28 @@ Finish **Neon City** as a professional product:
 ## Tier Overview
 
 **Lessons 1-8: Complete System Integration**
+
 - Coordinating VIC-II, CIA, and SID systems
 - Memory management across all components
 - Performance optimization holistically
 - Professional architecture patterns
 
 **Lessons 9-16: Quality Assurance & Testing**
+
 - Comprehensive testing strategies
 - Performance validation
 - User experience testing
 - Commercial quality standards
 
 **Lessons 17-24: Professional Polish**
+
 - User interface refinement
 - Audio-visual consistency
 - Error handling and recovery
 - Professional user experience
 
 **Lessons 25-32: Distribution Preparation**
+
 - Final optimization passes
 - Documentation completion
 - Package preparation

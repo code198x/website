@@ -31,6 +31,7 @@ Time to create your legendary programming portfolio! With **32 masterful lessons
 ## What You'll Complete
 
 Create your **AMIGA TECHNICAL EXCELLENCE PORTFOLIO** - the ultimate programming masterpiece:
+
 - **Dev Suite**: Professional development tools that rival commercial software
 - **Game Engine**: Advanced architecture that powers multiple game types
 - **Optimization Master**: Legendary efficiency that maximizes every cycle
@@ -40,24 +41,28 @@ Create your **AMIGA TECHNICAL EXCELLENCE PORTFOLIO** - the ultimate programming 
 ## Tier Overview
 
 **Lessons 1-8: "Master Integration!" - Ultimate System Coordination**
+
 - Integrating development tools, engine architecture, and optimization mastery
 - Professional master architecture and complete system coordination
 - Advanced technical excellence and legendary programming integration
 - Creating seamless interaction between all master-level programming systems
 
 **Lessons 9-16: "Legendary Excellence!" - Ultimate Technical Achievement**
+
 - Achieving the absolute pinnacle of Amiga programming performance
 - Advanced technical mastery that pushes every aspect to its limits
 - Professional excellence that rivals the greatest commercial software
 - Demonstrating technical mastery that defines legendary programming
 
 **Lessons 17-24: "Portfolio Mastery!" - Professional Showcase Development**
+
 - Advanced portfolio development and professional presentation
 - Master-level documentation and technical communication
 - Commercial-quality showcase and professional portfolio standards
 - The final presentation that demonstrates complete programming mastery
 
 **Lessons 25-32: "Complete Mastery!" - Ultimate Programming Achievement**
+
 - Ultimate programming integration and complete technical mastery
 - Advanced master architecture and legendary programming excellence
 - Professional mastery coordination and ultimate technical achievement

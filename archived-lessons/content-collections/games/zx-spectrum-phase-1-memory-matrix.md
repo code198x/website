@@ -69,24 +69,28 @@ Leverages the Spectrum's unique characteristics:
 ### Tiers 9-12 Development Roadmap
 
 **Tier 9**: Data structures foundation
+
 - Multi-dimensional arrays for puzzle storage
 - String-based pattern representation
 - Basic puzzle generation algorithms
 - Memory-efficient data organisation
 
 **Tier 10**: Procedural generation
+
 - Dynamic puzzle creation algorithms
 - Validation systems for solvable puzzles
 - Difficulty scaling and progression
 - Pattern analysis and optimisation
 
 **Tier 11**: Advanced features
+
 - Multiple puzzle types and game modes
 - Adaptive difficulty based on performance
 - Complex user interface systems
 - Save/load functionality for progress
 
 **Tier 12**: System integration
+
 - Complete puzzle matrix navigation
 - Performance optimisation for complex systems
 - Professional user experience design

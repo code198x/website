@@ -27,6 +27,7 @@ Time to create VISUAL MASTERPIECES! 🖼️ With **32 artistically-focused lesso
 ## What You'll Build
 
 Create **GRAPHICS SHOWCASE SPECTACULAR** - an advanced visual demo featuring:
+
 - Graphics so detailed they seem impossible on NES hardware 🎭
 - Smooth character animation with dozens of frames
 - Complex background effects that create depth and atmosphere
@@ -36,24 +37,28 @@ Create **GRAPHICS SHOWCASE SPECTACULAR** - an advanced visual demo featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Pixel Perfection" - Advanced Sprite Techniques**
+
 - High-detail character sprites with intricate animation
 - Multi-sprite character construction for large, detailed figures
 - Advanced sprite priorities and layering for complex scenes
 - Flicker-free techniques for crowded visual scenarios
 
 **Lessons 9-16: "Background Brilliance" - Sophisticated Environment Graphics**
+
 - Dynamic tile animation for living, breathing environments
 - Advanced scrolling techniques with multiple parallax layers
 - Pattern table manipulation for real-time graphics changes
 - Complex tile arrangements that create detailed scenes
 
 **Lessons 17-24: "Effects Wizardry" - Advanced Visual Effects**
+
 - Pseudo-3D effects using clever PPU manipulation
 - Advanced lighting simulation and atmospheric effects
 - Water simulation, fire effects, and environmental dynamics
 - Screen distortion and special visual techniques
 
 **Lessons 25-32: "Artistic Mastery" - Professional Visual Polish**
+
 - Color theory and palette optimization for maximum impact
 - Artistic composition and visual flow in game graphics
 - Advanced animation principles applied to pixel art

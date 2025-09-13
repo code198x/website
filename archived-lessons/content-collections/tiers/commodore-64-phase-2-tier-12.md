@@ -31,6 +31,7 @@ Protect your software! With **32 comprehensive lessons**, you'll learn the secur
 ## What You'll Complete
 
 Finish **Quest Master** with professional polish:
+
 - Encrypted save games protecting player progress
 - Network security for multiplayer sessions
 - Copy protection for distribution
@@ -40,24 +41,28 @@ Finish **Quest Master** with professional polish:
 ## Tier Overview
 
 **Lessons 1-8: Encryption Fundamentals**
+
 - XOR encryption implementation
 - Simple substitution ciphers
 - Block cipher concepts
 - Key management strategies
 
 **Lessons 9-16: Software Protection Schemes**
+
 - Code checksumming techniques
 - Self-decrypting code sections
 - Anti-analysis techniques
 - Software fingerprinting methods
 
 **Lessons 17-24: Code Protection**
+
 - Self-modifying code techniques
 - Obfuscation strategies
 - Anti-debugging measures
 - Integrity checking
 
 **Lessons 25-32: Analysis & Ethics**
+
 - Protection analysis methods
 - Common bypass techniques
 - Ethics of copy protection

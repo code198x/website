@@ -27,6 +27,7 @@ Build on your 6502 foundation by learning how to store and manipulate data in as
 ## What You'll Build
 
 Continue developing **Number Quest** by adding:
+
 - Data storage for game state and user input
 - Memory-based input validation routines
 - Efficient data manipulation using zero page
@@ -35,24 +36,28 @@ Continue developing **Number Quest** by adding:
 ## Tier Overview
 
 **Lessons 1-8: Zero Page Mastery**
+
 - Understanding zero page advantages and addressing
 - Storing program data efficiently
 - Working with memory locations as variables
 - Zero page addressing modes and techniques
 
-**Lessons 9-16: Data Manipulation**  
+**Lessons 9-16: Data Manipulation**
+
 - Moving data between memory locations
 - Basic arithmetic operations on stored data
 - Comparing values and making decisions
 - Building data processing routines
 
 **Lessons 17-24: Input Processing**
+
 - Reading keyboard input at the hardware level
 - Converting input to usable data
 - Validating user input in assembly
 - Error handling and user feedback
 
 **Lessons 25-32: Number Quest Data Systems**
+
 - Implementing game state storage
 - Building input validation for number guessing
 - Creating data-driven game logic

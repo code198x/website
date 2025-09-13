@@ -45,9 +45,9 @@ audio:
   synthesis_types: ["Additive", "Digital sampling", "Real-time synthesis"]
 
 # Storage and I/O
-storage: ["8\" floppy", "Hard disk"]
+storage: ['8" floppy', "Hard disk"]
 storage_details:
-  built_in: ["Dual 8\" floppy drives"]
+  built_in: ['Dual 8" floppy drives']
   expansion: ["Hard disk", "Digital tape"]
   typical_capacity:
     floppy: "1MB"
@@ -81,7 +81,6 @@ hardware_availability: "extremely_rare"
 
 # Media
 description: "The $25,000 sampler that created the sound of the 1980s and launched the digital music revolution."
-image: "/images/systems/fairlight-cmi.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -96,7 +95,7 @@ order: 115
 
 # Fairlight CMI
 
-*Historical Reference*
+_Historical Reference_
 
 The Fairlight Computer Musical Instrument was the Holy Grail of 1980s music production. At $25,000-$200,000, it was impossibly expensive for most, but it single-handedly launched the digital sampling revolution and defined the sound of an era.
 
@@ -115,6 +114,7 @@ The CMI was the first commercially successful digital sampler, transforming musi
 ## Cultural Impact
 
 The CMI's distinctive sound defined 1980s music:
+
 - "ORCH5" orchestral hit sample became iconic
 - Peter Gabriel's "Sledgehammer"
 - Art of Noise's entire aesthetic
@@ -124,4 +124,4 @@ The CMI's distinctive sound defined 1980s music:
 
 The Fairlight proved that computers could be musical instruments. It pioneered concepts that became standard in all modern DAWs: sampling, sequencing, and non-linear editing. Though few could afford one, its influence shaped all music technology that followed.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

@@ -31,24 +31,28 @@ Create **VisualMaster Pro** - an advanced graphics programming suite featuring c
 ## Tier Overview
 
 **Lessons 1-8: Advanced Graphics Programming**
+
 - Deep graphics architecture understanding and optimization
 - Advanced bitplane manipulation and optimization
 - Sophisticated sprite systems and multiplexing
 - Complex graphics data structures and management
 
 **Lessons 9-16: Cutting-Edge Visual Effects**
+
 - Advanced 3D graphics and perspective effects
 - Sophisticated morphing and transformation systems
 - Complex visual filters and image processing
 - Real-time visual effects and particle systems
 
 **Lessons 17-24: HAM Mode Mastery & Color Techniques**
+
 - HAM mode programming and optimization
 - Advanced color cycling and palette effects
 - Sophisticated color compression and dithering
 - Professional color management and conversion
 
 **Lessons 25-32: Professional Graphics Development**
+
 - Professional graphics tool and editor development
 - Advanced image format support and conversion
 - Graphics optimization and performance tuning

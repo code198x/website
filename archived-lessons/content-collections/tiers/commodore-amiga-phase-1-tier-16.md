@@ -31,6 +31,7 @@ Complete **Workbench Wizard** - a comprehensive demonstration of Amiga assembly 
 ## What You'll Complete
 
 Finish your comprehensive Amiga assembly project:
+
 - System enhancement and utility suite using assembly
 - Application development tools implemented in assembly
 - Multitasking and system integration using assembly programming
@@ -39,24 +40,28 @@ Finish your comprehensive Amiga assembly project:
 ## Tier Overview
 
 **Lessons 1-8: Assembly System Integration**
+
 - AmigaOS system programming foundations using assembly
 - Multitasking and task coordination using assembly
 - Inter-process communication and messaging through assembly
 - Building solid assembly system software
 
 **Lessons 9-16: Assembly Development Tools**
+
 - Creating development environments using assembly
 - Building debugging and testing tools with assembly
 - Project management and organisation using assembly
 - Solid assembly tool development
 
 **Lessons 17-24: Assembly Engineering Practices**
+
 - Assembly software architecture and design
 - Assembly optimisation and performance tuning
 - Error handling and robustness in assembly
 - Creating maintainable, scalable assembly systems
 
 **Lessons 25-32: Foundation Achievement**
+
 - Final assembly system integration and completion
 - Assembly packaging and distribution
 - Comprehensive assembly documentation and support

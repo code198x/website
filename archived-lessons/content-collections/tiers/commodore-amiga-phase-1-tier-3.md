@@ -27,6 +27,7 @@ Create intelligent, responsive programs! Learn 68000 assembly's advanced control
 ## What You'll Add to Graphics Studio
 
 Implement intelligent features:
+
 - Create smart tool selection and modes
 - Build responsive user interface logic
 - Implement intelligent drawing behaviors
@@ -35,24 +36,28 @@ Implement intelligent features:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Assembly Conditionals**
+
 - Assembly conditional jump structures and nesting
 - Compound logical conditions using assembly flags
 - Assembly boolean operations and optimisation
 - Creating efficient assembly decision trees
 
 **Lessons 9-16: Assembly Jump Table Programming**
+
 - Jump tables for complex assembly decisions
 - Menu and option handling using assembly
 - Assembly state management systems
 - Building professional assembly control structures
 
 **Lessons 17-24: Advanced Assembly Logic Systems**
+
 - Assembly event-driven programming concepts
 - Responsive user interface logic using assembly
 - Assembly error handling and validation
 - Building robust assembly applications
 
 **Lessons 25-32: Assembly Graphics Studio Intelligence**
+
 - Implementing smart drawing tools using assembly
 - Creating adaptive user interfaces with assembly
 - Building intelligent response systems using assembly

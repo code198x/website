@@ -31,6 +31,7 @@ Complete **Quest Builder** - a comprehensive demonstration of NES assembly progr
 ## What You'll Complete
 
 Finish your comprehensive NES programming project:
+
 - Complete game development system with visual scripting
 - Solid tools for users
 - Full integration of graphics, audio, and gameplay systems
@@ -39,24 +40,28 @@ Finish your comprehensive NES programming project:
 ## Tier Overview
 
 **Lessons 1-8: System Integration**
+
 - Integrating all engine systems into cohesive application
 - Creating good user experience across all tools
 - Optimizing entire system for good performance
 - Building solid software architecture
 
 **Lessons 9-16: Complete Feature Implementation**
+
 - Finalizing all game creation and editing features
 - Implementing comprehensive export and distribution
 - Creating complete help and tutorial systems
 - Adding professional polish and presentation
 
 **Lessons 17-24: Quality Polish**
+
 - Achieving solid reliability and performance
 - Implementing good error handling
 - Creating solid user experience design
 - Building maintainable, extensible architecture
 
 **Lessons 25-32: Foundation Demonstration and Transition**
+
 - Final optimisation and performance validation
 - Good testing and quality assurance
 - Creating solid documentation and resources

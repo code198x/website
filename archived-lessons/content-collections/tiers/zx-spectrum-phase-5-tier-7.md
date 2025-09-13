@@ -27,6 +27,7 @@ Time to engage those brain cells! With **32 strategically-crafted lessons**, you
 ## What You'll Build
 
 Create **SPECTRUM STRATEGY** - a collection of strategic masterpieces featuring:
+
 - Chess-like tactical combat with unique pieces and rules
 - Reversi/Othello games with perfect AI opponents
 - Custom strategy games with original mechanics
@@ -36,24 +37,28 @@ Create **SPECTRUM STRATEGY** - a collection of strategic masterpieces featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Game Logic Foundation" - Core Systems**
+
 - Turn-based architecture and game state management
 - Board representation using efficient data structures
 - Move generation and validation systems
 - Undo/redo functionality and game history
 
 **Lessons 9-16: "AI Brain Power" - Computer Intelligence**
+
 - Minimax algorithms with alpha-beta pruning
 - Position evaluation and strategic heuristics
 - AI personality systems and difficulty scaling
 - Opening books and endgame databases
 
 **Lessons 17-24: "User Interface Design" - Player Experience**
+
 - Intuitive piece selection and movement interfaces
 - Visual feedback for valid moves and threats
 - Animation systems for piece movement
 - Status displays and game information panels
 
 **Lessons 25-32: "Strategic Depth" - Advanced Gameplay**
+
 - Custom rule systems and game variants
 - Handicap systems for fair play across skill levels
 - Tournament modes and rating systems

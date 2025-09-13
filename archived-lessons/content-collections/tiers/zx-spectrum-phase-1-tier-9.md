@@ -27,6 +27,7 @@ Organize and manage complex data like a professional! Learn arrays and data stru
 ## What You'll Learn
 
 Handle complex data with confidence:
+
 - Arrays for storing multiple related values
 - Multi-dimensional data structures
 - Efficient data organisation and access
@@ -35,24 +36,28 @@ Handle complex data with confidence:
 ## Tier Overview
 
 **Lessons 1-8: Basic Arrays**
+
 - Understanding arrays and indexed data storage
 - DIM statement for array declaration
 - Storing and retrieving array values
 - Creating your first data-driven programs
 
 **Lessons 9-16: Multi-Dimensional Arrays**
+
 - Two-dimensional arrays and matrices
 - Creating grids and table structures
 - Navigating complex data relationships
 - Building efficient data access patterns
 
 **Lessons 17-24: Data Organization**
+
 - Organizing data for optimal access
 - Memory-efficient storage techniques
 - Creating reusable data structures
 - Building robust data handling systems
 
 **Lessons 25-32: Memory Matrix Foundation**
+
 - Applying arrays to puzzle generation
 - Creating dynamic data structures
 - Building the foundation for procedural content

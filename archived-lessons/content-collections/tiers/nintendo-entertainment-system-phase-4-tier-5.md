@@ -27,6 +27,7 @@ Create legendary gameplay! With **32 comprehensive lessons**, you'll implement s
 ## What You'll Build
 
 Begin developing **Star Fighter** - an advanced shoot-em-up featuring:
+
 - Complex physics with realistic momentum and gravity
 - Sophisticated enemy AI with multiple behavior patterns
 - Dynamic weapon systems with upgrades and combinations
@@ -36,24 +37,28 @@ Begin developing **Star Fighter** - an advanced shoot-em-up featuring:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Physics Systems**
+
 - Sophisticated collision detection algorithms
 - Realistic momentum and acceleration systems
 - Advanced gravity and environmental physics
 - Performance-optimized physics calculations
 
 **Lessons 9-16: Intelligent AI Systems**
+
 - Advanced enemy behavior programming
 - State machine implementation for complex AI
 - Group coordination and formation flying
 - Adaptive difficulty and player response systems
 
 **Lessons 17-24: Dynamic Gameplay Mechanics**
+
 - Complex weapon systems and power-ups
 - Dynamic level hazards and interactive elements
 - Advanced scoring and combo systems
 - Emergent gameplay through system interactions
 
 **Lessons 25-32: Character Abilities & Progression**
+
 - Sophisticated player ability systems
 - Temporary power-ups and transformations
 - Advanced character progression mechanics

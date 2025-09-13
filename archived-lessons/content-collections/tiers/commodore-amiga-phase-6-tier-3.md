@@ -27,6 +27,7 @@ Time to master Amiga memory like a pro! With **32 intensive lessons**, you'll le
 ## What You'll Build
 
 Create **AMIGA MEMORY MASTERPIECE** - an advanced memory management demonstration featuring:
+
 - Dynamic memory allocation that maximizes both Chip and Fast RAM usage
 - Asset streaming systems that load content seamlessly during gameplay
 - Memory compression techniques that double your effective storage
@@ -36,24 +37,28 @@ Create **AMIGA MEMORY MASTERPIECE** - an advanced memory management demonstratio
 ## Tier Overview
 
 **Lessons 1-8: "Chip vs Fast!" - Advanced Memory Architecture**
+
 - Optimal Chip RAM usage for graphics, audio, and custom chip DMA
 - Fast RAM utilization for 68000 code and non-DMA data
 - Memory mapping strategies for maximum performance
 - The art of balancing memory types for optimal game performance
 
 **Lessons 9-16: "DMA Mastery!" - Custom Chip Memory Optimization**
+
 - Advanced DMA programming for Blitter, Copper, and Paula
 - Memory bandwidth optimization and DMA channel coordination
 - Custom chip memory access patterns for maximum throughput
 - Eliminating memory contention and optimizing bus usage
 
 **Lessons 17-24: "Dynamic Loading!" - Advanced Asset Management**
+
 - Real-time asset streaming and dynamic loading systems
 - Memory compression and decompression algorithms
 - Intelligent caching systems for frequently accessed data
 - Professional asset pipeline and memory management
 
 **Lessons 25-32: "Maximum Efficiency!" - Professional Memory Architecture**
+
 - Advanced memory debugging and profiling techniques
 - Memory fragmentation prevention and management
 - Professional memory allocation strategies

@@ -1,5 +1,5 @@
 ---
-name: "Genesis"
+name: "Sega Genesis / Mega Drive"
 full_name: "Sega Genesis / Mega Drive"
 manufacturer: "Sega"
 model_number: "MK-1601"
@@ -10,7 +10,8 @@ cpu: "68000"
 cpu_details:
   architecture: "16/32-bit"
   instruction_set: "Motorola 68000"
-  addressing_modes: ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
+  addressing_modes:
+    ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
   registers: "8 data registers (D0-D7), 8 address registers (A0-A7)"
 
 clock_speed: "7.6 MHz"
@@ -87,7 +88,6 @@ hardware_availability: "common"
 
 # Media
 description: "Sega's 16-bit powerhouse that brought arcade-quality gaming home with blast processing."
-image: "/images/systems/genesis.jpg"
 
 # Platform Classification
 medal_tier: "gold"
@@ -102,7 +102,7 @@ order: 14
 
 # Sega Genesis / Mega Drive
 
-*Coming Soon*
+_Coming Soon_
 
 The Genesis brought "blast processing" and arcade-perfect ports to the 16-bit console wars. With its 68000 processor and Yamaha FM synthesis chip, it delivered experiences that defined a generation of gaming.
 
@@ -119,9 +119,10 @@ The Genesis offers a perfect introduction to 68000 assembly and professional gam
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Genesis curriculum will include:
+
 - 68000 assembly programming
 - VDP graphics and sprite management
 - YM2612 FM synthesis programming

@@ -31,24 +31,28 @@ Begin developing **Rhythm Master** - a music rhythm game requiring precise timin
 ## Tier Overview
 
 **Lessons 1-8: CIA Timer Fundamentals**
+
 - Understanding CIA timer architecture
 - Timer modes and configuration
 - Basic timing measurement
 - Interrupt generation
 
 **Lessons 9-16: Advanced Timer Techniques**
+
 - Chained timer operations
 - High-resolution timing
 - Timer synchronization
 - Multiple timer coordination
 
 **Lessons 17-24: Real-Time Applications**
+
 - Time-of-day clock usage
 - Event scheduling systems
 - Precise delay generation
 - Timer-based animations
 
 **Lessons 25-32: Music & Synchronization**
+
 - Music tempo detection
 - Beat synchronization
 - Audio-visual timing

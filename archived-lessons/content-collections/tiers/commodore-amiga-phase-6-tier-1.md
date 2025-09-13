@@ -27,6 +27,7 @@ Time to become an Amiga graphics wizard! With **32 mind-blowing lessons**, you'l
 ## What You'll Build
 
 Create **AMIGA VISUAL MASTERPIECE** - a stunning graphics demonstration featuring:
+
 - Copper list effects that create impossible color gradients and raster bars
 - Blitter operations so fast they make other computers look like they're standing still
 - Dual-playfield tricks that create incredible depth and parallax
@@ -36,24 +37,28 @@ Create **AMIGA VISUAL MASTERPIECE** - a stunning graphics demonstration featurin
 ## Tier Overview
 
 **Lessons 1-8: "Copper Magic!" - Advanced Display List Programming**
+
 - Copper list programming for raster bars and color cycling
 - Advanced WAIT and MOVE instructions for precise timing
 - Creating impossible color gradients and plasma effects
 - The legendary techniques behind Amiga demo scene effects
 
 **Lessons 9-16: "Blitter Bliss!" - Hardware Graphics Acceleration**
+
 - Advanced Blitter operations for lightning-fast graphics
 - Line drawing and area fill using hardware acceleration
 - Cookie-cut operations for complex sprite management
 - Making graphics operations 100x faster than software
 
 **Lessons 17-24: "Dual-Playfield Depth!" - Advanced Background Systems**
+
 - Dual-playfield programming for incredible parallax effects
 - HAM mode techniques for thousands of simultaneous colors
 - Advanced sprite overlay and collision detection
 - Creating depth effects that rival 16-bit consoles
 
 **Lessons 25-32: "Visual Polish!" - Professional Presentation**
+
 - Screen transitions that flow like liquid
 - Advanced animation techniques using hardware sprites
 - Visual feedback that makes every action satisfying

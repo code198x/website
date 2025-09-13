@@ -43,6 +43,7 @@ Famous NES sprites include Mario, Goombas, fireballs, coins, and power-ups!
 ## NES Sprite Capabilities
 
 **What sprites can do:**
+
 - 64 total sprites available
 - 8x8 or 8x16 pixel sizes
 - 4 different color palettes
@@ -51,6 +52,7 @@ Famous NES sprites include Mario, Goombas, fireballs, coins, and power-ups!
 - Precise pixel positioning
 
 **Sprite limitations:**
+
 - Only 8 sprites per scanline (horizontal row)
 - Exceeding 8 causes flickering
 - Limited to 4 colors per sprite (including transparency)
@@ -59,6 +61,7 @@ Famous NES sprites include Mario, Goombas, fireballs, coins, and power-ups!
 ## OAM - Object Attribute Memory
 
 Sprite data is stored in OAM (Object Attribute Memory):
+
 - **Location**: $0200-$02FF in CPU memory (256 bytes)
 - **Capacity**: 64 sprites × 4 bytes each = 256 bytes
 - **Structure**: Each sprite needs exactly 4 bytes
@@ -83,16 +86,16 @@ setup_sprite:
     ; Sprite 0 data at $0200-$0203
     LDA #$80        ; Y position = 128 (middle of screen)
     STA $0200       ; Store Y position
-    
+
     LDA #$01        ; Tile number 1
     STA $0201       ; Store tile number
-    
+
     LDA #$00        ; Attributes: palette 0, normal priority, no flip
     STA $0202       ; Store attributes
-    
-    LDA #$80        ; X position = 128 (middle of screen)  
+
+    LDA #$80        ; X position = 128 (middle of screen)
     STA $0203       ; Store X position
-    
+
     RTS
 ```
 
@@ -106,16 +109,16 @@ setup_first_sprite:
     ; Sprite 0 data (OAM starts at $0200)
     LDA #$78        ; Y position = 120
     STA $0200       ; Sprite 0 Y position
-    
+
     LDA #$01        ; Use tile number 1
     STA $0201       ; Sprite 0 tile number
-    
+
     LDA #$00        ; Attributes: palette 0, no flipping
     STA $0202       ; Sprite 0 attributes
-    
+
     LDA #$80        ; X position = 128 (center)
     STA $0203       ; Sprite 0 X position
-    
+
     RTS
 
 ; Sprite is now configured and ready to display!
@@ -129,7 +132,7 @@ The attributes byte (byte 2) controls several sprite properties:
 Bit 7-6: Palette (0-3) - Which sprite palette to use
 Bit 5: Priority (0=in front of background, 1=behind background)
 Bit 4: Unused
-Bit 3: Unused  
+Bit 3: Unused
 Bit 2: Unused
 Bit 1: Horizontal Flip (0=normal, 1=flipped)
 Bit 0: Vertical Flip (0=normal, 1=flipped)
@@ -157,7 +160,7 @@ LDA #%00000011  ; Palette 0, front, both flips
 LDA #$60        ; Y position
 STA $0200
 LDA #$01        ; Tile 1
-STA $0201  
+STA $0201
 LDA #%00000000  ; Palette 0, normal
 STA $0202
 LDA #$60        ; X position
@@ -176,7 +179,7 @@ STA $0207
 ; Sprite 2: Horizontally flipped
 LDA #$60        ; Y position
 STA $0208
-LDA #$01        ; Same tile  
+LDA #$01        ; Same tile
 STA $0209
 LDA #%00000010  ; Palette 0, horizontal flip
 STA $020A
@@ -264,7 +267,7 @@ animate_sprite:
     TAX                 ; Use as index
     LDA walk_frames,X   ; Get tile for this frame
     STA $0201          ; Update sprite tile
-    
+
     ; Advance to next frame
     INC frame_counter
     LDA frame_counter
@@ -312,7 +315,7 @@ animate_sprite:
     LDX $0300       ; Load frame counter
     LDA $0310,X     ; Get tile for current frame
     STA $0201       ; Update sprite tile
-    
+
     ; Advance frame
     INC $0300       ; Next frame
     LDA $0300
@@ -334,7 +337,7 @@ Managing multiple sprites requires organizing the OAM data:
 ; Player sprite (sprite 0)
 player_sprite = $0200
 
-; Enemy sprites (sprites 1-4)  
+; Enemy sprites (sprites 1-4)
 enemy1_sprite = $0204
 enemy2_sprite = $0208
 enemy3_sprite = $020C
@@ -350,7 +353,7 @@ setup_game_sprites:
     STA player_sprite+2     ; Attributes
     LDA #$80        ; Center X
     STA player_sprite+3     ; X position
-    
+
     ; Setup enemy 1
     LDA #$40        ; Top area
     STA enemy1_sprite+0     ; Y position
@@ -360,7 +363,7 @@ setup_game_sprites:
     STA enemy1_sprite+2     ; Attributes
     LDA #$40        ; Left side
     STA enemy1_sprite+3     ; X position
-    
+
     RTS
 ```
 
@@ -375,7 +378,7 @@ load_sprite_palettes:
     STA $2006
     LDA #$10        ; Sprite palette start
     STA $2006
-    
+
     ; Sprite palette 0 (player)
     LDA #$0F        ; Transparent (not used)
     STA $2007
@@ -385,7 +388,7 @@ load_sprite_palettes:
     STA $2007
     LDA #$12        ; Blue
     STA $2007
-    
+
     ; Sprite palette 1 (enemies)
     LDA #$0F        ; Transparent
     STA $2007
@@ -395,7 +398,7 @@ load_sprite_palettes:
     STA $2007
     LDA #$0F        ; Black
     STA $2007
-    
+
     RTS
 ```
 
@@ -411,17 +414,17 @@ load_sprite_palettes_demo:
     STA $2006
     LDA #$10        ; Sprite palette start
     STA $2006
-    
+
     ; Sprite palette 0 (player colors)
     LDA #$0F        ; Transparent
     STA $2007
     LDA #$30        ; White
     STA $2007
-    LDA #$16        ; Red  
+    LDA #$16        ; Red
     STA $2007
     LDA #$12        ; Blue
     STA $2007
-    
+
     ; Sprite palette 1 (enemy colors)
     LDA #$0F        ; Transparent
     STA $2007
@@ -431,7 +434,7 @@ load_sprite_palettes_demo:
     STA $2007
     LDA #$07        ; Brown
     STA $2007
-    
+
     RTS
 
 ; Sprite palettes loaded - ready for colorful sprites!
@@ -467,7 +470,7 @@ init_music_sprites:
     STA $0202
     LDA #$40        ; X position
     STA $0203
-    
+
     ; Cursor sprite (shows current note)
     LDA #$58        ; Y position (slightly above staff)
     STA $0204
@@ -477,7 +480,7 @@ init_music_sprites:
     STA $0206
     LDA #$40        ; X position (same as note)
     STA $0207
-    
+
     RTS
 
 move_music_cursor:
@@ -505,7 +508,7 @@ init_music_sprites_demo:
     STA $0202       ; Note sprite attributes
     LDA #$40        ; Starting X position
     STA $0203       ; Note sprite X
-    
+
     ; Cursor sprite (shows current position)
     LDA #$58        ; Y position (above staff)
     STA $0204       ; Cursor sprite Y
@@ -515,7 +518,7 @@ init_music_sprites_demo:
     STA $0206       ; Cursor sprite attributes
     LDA #$40        ; Same X as note
     STA $0207       ; Cursor sprite X
-    
+
     RTS
 
 ; Move cursor to next note position
@@ -539,7 +542,7 @@ flicker_sprites:
     LDA frame_counter
     AND #$01        ; Every other frame
     BNE show_odd_sprites
-    
+
 show_even_sprites:
     ; Show sprites 0,2,4,6,8...
     LDX #$00
@@ -554,7 +557,7 @@ even_loop:
     CPX #$40        ; Done with even sprites?
     BNE even_loop
     RTS
-    
+
 show_odd_sprites:
     ; Show sprites 1,3,5,7,9...
     ; Similar code for odd sprites
@@ -587,13 +590,13 @@ init_player_system:
     STA $0202       ; Player attributes
     LDA #$80        ; X position (center)
     STA $0203       ; Player X
-    
+
     ; Initialize animation system
     LDA #$00        ; Start with frame 0
     STA $0300       ; animation_frame
     LDA #$00        ; Animation timer
     STA $0301       ; animation_timer
-    
+
     ; Create walk cycle frames
     LDA #$10        ; Standing frame
     STA $0310       ; walk_frames[0]
@@ -603,7 +606,7 @@ init_player_system:
     STA $0312       ; walk_frames[2]
     LDA #$12        ; Walking frame 2
     STA $0313       ; walk_frames[3]
-    
+
     RTS
 
 ; Move player left with animation
@@ -612,33 +615,33 @@ move_player_left:
     LDA $0203       ; Current X position
     CMP #$08        ; Left boundary
     BCC no_move     ; Don't move if at edge
-    
+
     ; Move left
     SEC
     SBC #$02        ; Move 2 pixels left
     STA $0203       ; Store new position
-    
+
     ; Animate
     JSR animate_player
-    
+
 no_move:
     RTS
 
-; Move player right with animation  
+; Move player right with animation
 move_player_right:
     ; Check boundary
     LDA $0203       ; Current X position
     CMP #$F0        ; Right boundary
     BCS no_move_right ; Don't move if at edge
-    
+
     ; Move right
     CLC
     ADC #$02        ; Move 2 pixels right
     STA $0203       ; Store new position
-    
+
     ; Animate
     JSR animate_player
-    
+
 no_move_right:
     RTS
 
@@ -649,7 +652,7 @@ animate_player:
     LDA $0301
     CMP #$08        ; Change frame every 8 calls?
     BNE no_frame_change
-    
+
     ; Reset timer and advance frame
     LDA #$00
     STA $0301       ; Reset timer
@@ -659,13 +662,13 @@ animate_player:
     BNE update_sprite
     LDA #$00        ; Reset to frame 0
     STA $0300
-    
+
 update_sprite:
     ; Update sprite tile based on current frame
     LDX $0300       ; Get current frame
     LDA $0310,X     ; Get tile for this frame
     STA $0201       ; Update player sprite tile
-    
+
 no_frame_change:
     RTS
 

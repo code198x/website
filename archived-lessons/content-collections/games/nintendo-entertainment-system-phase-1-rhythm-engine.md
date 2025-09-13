@@ -68,24 +68,28 @@ Leverages the complete NES APU (Audio Processing Unit):
 ### Tiers 5-8 Development Roadmap
 
 **Tier 5**: Basic audio programming
+
 - Understanding NES APU architecture
 - Programming individual audio channels
 - Creating simple melodies and sound effects
 - Basic music playback systems
 
 **Tier 6**: Multi-channel composition
+
 - Coordinating multiple audio channels
 - Creating harmonies and bass lines
 - Advanced waveform manipulation
 - Building a music tracker interface
 
 **Tier 7**: Interactive rhythm gameplay
+
 - Real-time input timing and scoring
 - Visual representation of musical patterns
 - Rhythm game mechanics and challenges
 - Audio-visual synchronization
 
 **Tier 8**: Advanced synthesis and performance
+
 - Complex sound effect creation
 - Real-time audio manipulation
 - Performance mode and improvisation

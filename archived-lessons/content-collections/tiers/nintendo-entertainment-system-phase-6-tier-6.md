@@ -27,6 +27,7 @@ Time to become a performance optimization master! With **32 intensive lessons**,
 ## What You'll Build
 
 Create **NES PERFORMANCE ANALYZER** - a comprehensive optimization system featuring:
+
 - Assembly code optimization that maximizes every CPU cycle
 - Graphics optimization achieving consistent 60fps performance
 - Audio systems that run with minimal CPU overhead
@@ -36,24 +37,28 @@ Create **NES PERFORMANCE ANALYZER** - a comprehensive optimization system featur
 ## Tier Overview
 
 **Lessons 1-8: "Every Cycle Counts!" - 6502 Assembly Optimization**
+
 - Advanced instruction selection for minimum cycle usage
 - Loop optimization and unrolling techniques
 - Memory access optimization for fastest performance
 - The science behind writing lightning-fast 6502 code
 
 **Lessons 9-16: "Graphics at Light Speed!" - Visual Performance Mastery**
+
 - Sprite management optimization for complex scenes
 - Background rendering optimization for smooth scrolling
 - Graphics pipeline optimization for consistent frame rates
 - Advanced techniques for managing complex visual effects
 
 **Lessons 17-24: "Silent Efficiency!" - Audio Performance Optimization**
+
 - APU programming with minimal CPU overhead
 - Efficient audio mixing and channel management
 - Music engine optimization for complex compositions
 - Sound effect optimization for real-time performance
 
 **Lessons 25-32: "Professional Profiling!" - Performance Analysis Tools**
+
 - Creating performance profiling tools for NES development
 - Identifying bottlenecks and optimization opportunities
 - Advanced debugging techniques for performance issues

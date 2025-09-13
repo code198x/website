@@ -27,6 +27,7 @@ Test like Nintendo! With **32 comprehensive lessons**, you'll master professiona
 ## What You'll Build
 
 Begin developing **Retro Arcade** - a comprehensive arcade collection featuring:
+
 - Professional automated testing systems for all game components
 - Systematic quality assurance workflows and documentation
 - Comprehensive bug tracking and resolution processes
@@ -36,24 +37,28 @@ Begin developing **Retro Arcade** - a comprehensive arcade collection featuring:
 ## Tier Overview
 
 **Lessons 1-8: Professional Testing Methodologies**
+
 - Comprehensive unit testing for NES game components
 - Integration testing for complex system interactions
 - Professional test planning and documentation
 - Systematic testing workflows and automation
 
 **Lessons 9-16: Quality Assurance Systems**
+
 - Commercial-grade QA standards and processes
 - Professional bug tracking and resolution workflows
 - Comprehensive regression testing systems
 - Performance testing and optimization validation
 
 **Lessons 17-24: Automated Testing Frameworks**
+
 - Building automated testing tools for NES development
 - Professional testing infrastructure and CI/CD systems
 - Comprehensive validation and verification processes
 - Advanced testing techniques and methodologies
 
 **Lessons 25-32: Commercial Quality Standards**
+
 - Professional certification and validation processes
 - Commercial quality standards and compliance
 - Professional documentation and reporting systems

@@ -1,5 +1,5 @@
 ---
-name: "Neo Geo"
+name: "SNK Neo Geo"
 full_name: "SNK Neo Geo AES/MVS"
 manufacturer: "SNK"
 model_number: "NEO-AES"
@@ -10,7 +10,8 @@ cpu: "68000"
 cpu_details:
   architecture: "16/32-bit"
   instruction_set: "Motorola 68000"
-  addressing_modes: ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
+  addressing_modes:
+    ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
   registers: "8 data registers (D0-D7), 8 address registers (A0-A7)"
 
 clock_speed: "12 MHz"
@@ -87,7 +88,6 @@ hardware_availability: "rare"
 
 # Media
 description: "The $650 console that was literally an arcade machine in your home, with perfect ports and massive sprites."
-image: "/images/systems/neo-geo.jpg"
 
 # Platform Classification
 medal_tier: "gold"
@@ -102,7 +102,7 @@ order: 25
 
 # Neo Geo
 
-*Coming Soon*
+_Coming Soon_
 
 The Neo Geo was SNK's audacious gamble: sell actual arcade hardware to consumers for $650. No ports, no compromises - the exact same games that ran in arcades. It created a legend that endures today.
 
@@ -119,9 +119,10 @@ The Neo Geo represents arcade programming at its peak. With massive sprites, mul
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Neo Geo curriculum will include:
+
 - 68000 assembly for arcade hardware
 - Sprite and fix layer management
 - YM2610 sound programming

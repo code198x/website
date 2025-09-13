@@ -27,6 +27,7 @@ Bring your Amiga games to life with intelligent opponents! With **32 advanced le
 ## What You'll Build
 
 Create **INTELLIGENT STRATEGY GAME** - featuring advanced AI systems:
+
 - Smart opponents with complex decision-making using 68000 assembly
 - Adaptive AI that learns from player behavior
 - Advanced pathfinding optimized for Amiga's custom chips
@@ -36,24 +37,28 @@ Create **INTELLIGENT STRATEGY GAME** - featuring advanced AI systems:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "AI Fundamentals" - Core Intelligence Systems**
+
 - Advanced state machines and behavior modeling in 68000
 - Decision trees and strategic planning algorithms
 - Memory-efficient AI data structures for Amiga
 - Real-time decision making leveraging Amiga's multitasking
 
 **Lessons 9-16: "Pathfinding & Navigation" - Movement Intelligence**
-- A* pathfinding algorithm implementation in 68000
+
+- A\* pathfinding algorithm implementation in 68000
 - Navigation mesh generation using Amiga's blitter
 - Dynamic obstacle avoidance systems
 - Multi-unit coordination and formation movement
 
 **Lessons 17-24: "Adaptive Behaviors" - Dynamic AI Systems**
+
 - Player behavior analysis and adaptation
 - Dynamic difficulty scaling algorithms
 - Learning AI that improves over time
 - Personality systems for varied opponent types
 
 **Lessons 25-32: "Strategic AI" - Advanced Game Intelligence**
+
 - Long-term strategic planning and goal setting
 - Resource management and economic AI
 - Multi-layered decision hierarchies

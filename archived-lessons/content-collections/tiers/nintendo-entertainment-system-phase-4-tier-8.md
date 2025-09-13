@@ -31,6 +31,7 @@ Master the arcade! With **32 comprehensive lessons**, you'll complete **Star Fig
 ## What You'll Complete
 
 Finish **Star Fighter** with arcade excellence:
+
 - Complete shoot-em-up with 8 unique levels and boss battles
 - Advanced mechanics with physics, AI, and dynamic systems
 - Sophisticated procedural and hand-crafted level design
@@ -40,24 +41,28 @@ Finish **Star Fighter** with arcade excellence:
 ## Tier Overview
 
 **Lessons 1-8: Complete Integration**
+
 - Integrating mechanics, levels, and balancing systems
 - Managing complex gameplay interactions and dependencies
 - Professional system coordination and performance optimization
 - Advanced integration testing and quality assurance
 
 **Lessons 9-16: Arcade Experience Implementation**
+
 - Complete arcade-style progression and scoring
 - Professional boss battle design and implementation
 - Advanced visual effects and screen-shake systems
 - Sophisticated audio integration and dynamic music
 
 **Lessons 17-24: Professional Polish**
+
 - Performance optimization for consistent 60fps
 - Visual and audio polish with professional effects
 - User experience refinement and accessibility features
 - Advanced debugging and quality control systems
 
 **Lessons 25-32: Commercial Completion**
+
 - Final integration testing and optimization
 - Professional deployment and distribution preparation
 - Comprehensive documentation and maintenance workflows

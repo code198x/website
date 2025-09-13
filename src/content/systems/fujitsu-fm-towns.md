@@ -47,7 +47,7 @@ audio:
 # Storage and I/O
 storage: ["CD-ROM", "Floppy disk", "Hard disk"]
 storage_details:
-  built_in: ["CD-ROM drive", "3.5\" floppy"]
+  built_in: ["CD-ROM drive", '3.5" floppy']
   expansion: ["SCSI hard disk"]
   typical_capacity:
     cdrom: "650MB"
@@ -88,7 +88,6 @@ hardware_availability: "rare"
 
 # Media
 description: "Japan's pioneering multimedia computer with built-in CD-ROM and 32-bit power in 1989."
-image: "/images/systems/fm-towns.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -103,7 +102,7 @@ order: 52
 
 # Fujitsu FM Towns
 
-*Coming Soon*
+_Coming Soon_
 
 The FM Towns was Japan's vision of the multimedia future - a 32-bit computer with built-in CD-ROM drive in 1989, years before multimedia PCs became common. It pioneered CD-ROM gaming and digital audio integration.
 
@@ -120,9 +119,10 @@ The FM Towns bridges 16-bit and 32-bit computing with sophisticated multimedia c
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the FM Towns curriculum will include:
+
 - 80386 assembly programming
 - TownsOS system programming
 - CD-ROM and multimedia integration

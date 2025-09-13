@@ -40,78 +40,78 @@ Paula provides unprecedented audio capabilities for its era:
 ; Audio system initialization with full control
 InitAdvancedAudio:
     LEA     $DFF000, A6
-    
+
     ; Disable all audio DMA initially
     MOVE.W  #$000F, $096(A6)    ; Clear audio bits in DMACON
-    
+
     ; Setup audio interrupts for precise timing
     MOVE.W  #$C010, $09A(A6)    ; Enable audio interrupt
-    
+
     ; Initialize all 4 channels
     BSR     InitChannel0        ; Bass/drums
     BSR     InitChannel1        ; Lead/melody
     BSR     InitChannel2        ; Harmony/effects
     BSR     InitChannel3        ; Percussion/samples
-    
+
     ; Install custom audio interrupt handler
     LEA     AudioInterruptHandler, A0
     MOVE.L  A0, AudioIntVector
-    
+
     ; Enable audio DMA
     MOVE.W  #$820F, $096(A6)    ; Enable all audio channels
-    
+
     RTS
 
 ; Channel 0: Advanced bass/drum programming
 InitChannel0:
     LEA     $DFF000, A6
-    
+
     ; Create dynamic bass sample
     BSR     GenerateBassWave
-    
+
     ; Setup channel with advanced parameters
     MOVE.L  #BassWaveData, $0A0(A6)     ; AUD0LC
     MOVE.W  #BASS_SAMPLE_LENGTH, $0A4(A6) ; AUD0LEN
     MOVE.W  #BASS_PERIOD, $0A6(A6)      ; AUD0PER (low frequency)
     MOVE.W  #MAX_VOLUME, $0A8(A6)       ; AUD0VOL
-    
+
     ; Setup for modulation effects
     MOVE.W  #0, BassMod
     MOVE.W  #BASS_PERIOD, BasePeriod
-    
+
     RTS
 
 ; Dynamic wave generation for realistic bass
 GenerateBassWave:
     LEA     BassWaveData, A0
     MOVE.W  #BASS_SAMPLE_LENGTH-1, D7
-    
+
     ; Generate sawtooth wave with harmonics
     MOVEQ   #0, D6              ; Phase accumulator
-    
+
 BassWaveLoop:
     ; Primary sawtooth
     MOVE.W  D6, D0
     ASR.W   #2, D0              ; Scale
     MOVE.B  D0, D1
-    
+
     ; Add second harmonic
     MOVE.W  D6, D2
     LSL.W   #1, D2              ; Double frequency
     ASR.W   #3, D2              ; Lower amplitude
     ADD.B   D2, D1
-    
+
     ; Add third harmonic
     MOVE.W  D6, D3
     MULU    #3, D3              ; Triple frequency
     ASR.W   #4, D3              ; Even lower amplitude
     ADD.B   D3, D1
-    
+
     ; Apply amplitude envelope for attack/decay
     MOVE.W  D7, D4
     CMP.W   #BASS_SAMPLE_LENGTH/4, D4
     BLT     BassDecay
-    
+
     ; Attack phase
     MOVE.W  #BASS_SAMPLE_LENGTH, D5
     SUB.W   D7, D5              ; Position in attack
@@ -119,55 +119,55 @@ BassWaveLoop:
     MULS    D5, D1
     ASR.L   #8, D1
     BRA     BassStore
-    
+
 BassDecay:
     ; Decay phase
     MULS    D7, D1              ; Multiply by remaining samples
     DIVU    #BASS_SAMPLE_LENGTH/4, D1
-    
+
 BassStore:
     MOVE.B  D1, (A0)+
     ADD.W   #256, D6            ; Increment phase
     DBF     D7, BassWaveLoop
-    
+
     RTS
 
 ; Real-time audio effects processing
 ProcessAudioEffects:
     ; Called every frame to update audio
     MOVEM.L D0-D7/A0-A3, -(SP)
-    
+
     ; Update bass modulation
     BSR     UpdateBassModulation
-    
+
     ; Process lead channel effects
     BSR     UpdateLeadEffects
-    
+
     ; Handle dynamic percussion
     BSR     UpdatePercussion
-    
+
     ; Coordinate with graphics events
     BSR     AudioVisualSync
-    
+
     MOVEM.L (SP)+, D0-D7/A0-A3
     RTS
 
 UpdateBassModulation:
     ; Dynamic bass frequency modulation
     LEA     $DFF000, A6
-    
+
     ; Calculate modulation based on music position
     MOVE.W  MusicPosition, D0
     AND.W   #$3F, D0            ; 64-step cycle
     LEA     SineTable, A0
     MOVE.B  (A0,D0.W), D1       ; Get sine value
-    
+
     ; Apply modulation to bass period
     EXT.W   D1
     SUB.W   #128, D1            ; Center around 0
     ASR.W   #4, D1              ; Scale modulation depth
     ADD.W   BasePeriod, D1      ; Add to base period
-    
+
     ; Ensure valid range
     CMP.W   #MIN_PERIOD, D1
     BGE     BassModOK
@@ -177,29 +177,29 @@ BassModOK:
     BLE     BassModOK2
     MOVE.W  #MAX_PERIOD, D1
 BassModOK2:
-    
+
     ; Apply to hardware
     MOVE.W  D1, $0A6(A6)        ; AUD0PER
-    
+
     RTS
 
 ; Advanced lead synthesis with real-time control
 UpdateLeadEffects:
     LEA     $DFF000, A6
-    
+
     ; Get current note from music data
     MOVE.W  MusicPosition, D0
     LSR.W   #4, D0              ; Note changes every 16 frames
     AND.W   #$1F, D0            ; 32 notes in sequence
     LEA     MelodyData, A0
     MOVE.B  (A0,D0.W), D1       ; Get note value
-    
+
     ; Convert note to period
     AND.W   #$3F, D1            ; Ensure valid note
     LEA     NoteTable, A0
     LSL.W   #1, D1              ; Convert to word offset
     MOVE.W  (A0,D1.W), D2       ; Get period for note
-    
+
     ; Apply vibrato effect
     MOVE.W  MusicPosition, D0
     LSL.W   #2, D0              ; Faster vibrato
@@ -210,10 +210,10 @@ UpdateLeadEffects:
     SUB.W   #128, D3
     ASR.W   #6, D3              ; Small vibrato depth
     ADD.W   D3, D2              ; Apply to period
-    
+
     ; Update channel 1
     MOVE.W  D2, $0B6(A6)        ; AUD1PER
-    
+
     ; Dynamic volume envelope
     MOVE.W  MusicPosition, D0
     AND.W   #$0F, D0            ; 16-frame envelope
@@ -221,77 +221,77 @@ UpdateLeadEffects:
     MOVE.B  (A0,D0.W), D3       ; Get envelope value
     EXT.W   D3
     MOVE.W  D3, $0B8(A6)        ; AUD1VOL
-    
+
     RTS
 
 ; Interactive percussion system
 UpdatePercussion:
     LEA     $DFF000, A6
-    
+
     ; Check for percussion triggers
     MOVE.W  PercussionTrigger, D0
     BEQ     NoPercussion
-    
+
     ; Clear trigger
     CLR.W   PercussionTrigger
-    
+
     ; Select percussion sample based on trigger type
     AND.W   #$07, D0            ; 8 different percussion sounds
     LSL.W   #2, D0              ; Convert to longword offset
     LEA     PercussionTable, A0
     MOVE.L  (A0,D0.W), A1       ; Get sample address
-    
+
     ; Setup channel 3 for percussion
     MOVE.L  A1, $0D0(A6)        ; AUD3LC
     MOVE.W  #PERC_LENGTH, $0D4(A6) ; AUD3LEN
     MOVE.W  #PERC_PERIOD, $0D6(A6) ; AUD3PER
     MOVE.W  #PERC_VOLUME, $0D8(A6) ; AUD3VOL
-    
+
     ; Trigger sample playback
     MOVE.W  #$8208, $096(A6)    ; Enable channel 3 DMA
-    
+
 NoPercussion:
     RTS
 
 ; Audio-visual synchronization
 AudioVisualSync:
     ; Synchronize audio events with graphics
-    
+
     ; Check for bass hits to trigger visual effects
     MOVE.W  MusicPosition, D0
     AND.W   #$0F, D0            ; Check every 16 frames
     BNE     NoBassTrigger
-    
+
     ; Trigger visual effect on bass hit
     MOVE.W  #1, FlashTrigger
     MOVE.W  #FLASH_DURATION, FlashTimer
-    
+
 NoBassTrigger:
-    
+
     ; Analyze audio levels for real-time visualization
     BSR     AnalyzeAudioLevels
-    
+
     ; Update spectrum display data
     BSR     UpdateSpectrumData
-    
+
     RTS
 
 ; Audio interrupt handler for precise timing
 AudioInterruptHandler:
     MOVEM.L D0-D1/A0-A1, -(SP)
-    
+
     ; Clear audio interrupt
     LEA     $DFF000, A6
     MOVE.W  #$0010, $09C(A6)    ; Clear AUDIO in INTREQ
-    
+
     ; Update music position
     MOVE.W  MusicPosition, D0
     ADDQ.W  #1, D0
     MOVE.W  D0, MusicPosition
-    
+
     ; Process timed audio events
     BSR     ProcessTimedEvents
-    
+
     MOVEM.L (SP)+, D0-D1/A0-A1
     RTE
 
@@ -301,17 +301,17 @@ MelodyData:
     DC.B    36,38,40,36,36,38,40,36,40,41,43,40,41,43    ; Frere Jacques
     DC.B    43,45,43,41,40,36,43,45,43,41,40,36          ; melody
     DC.B    36,31,36,36,31,36                            ; ding dong
-    
+
 NoteTable:
     ; Period values for notes (PAL)
     DC.W    856,808,762,720,678,640,604,570,538,508,480,453  ; C3-B3
     DC.W    428,404,381,360,339,320,302,285,269,254,240,226  ; C4-B4
     DC.W    214,202,190,180,170,160,151,143,135,127,120,113  ; C5-B5
-    
+
 VolumeEnvelope:
     ; ADSR envelope (16 steps)
     DC.B    0,16,32,48,64,64,60,56,52,48,44,40,36,32,28,24
-    
+
 PercussionTable:
     ; Pointers to different percussion samples
     DC.L    KickSample, SnareSample, HiHatSample, CrashSample

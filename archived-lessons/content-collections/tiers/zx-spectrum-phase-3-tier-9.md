@@ -31,24 +31,28 @@ Begin developing **Performance Showcase** - an extreme technical demonstration f
 ## Tier Overview
 
 **Lessons 1-8: Extreme Z80 Optimization**
+
 - Cycle-accurate programming and instruction timing
 - Register usage optimization and scheduling
 - Code size optimization and compression techniques
 - Unrolled loops and performance-critical code patterns
 
 **Lessons 9-16: Memory & Cache Optimization**
+
 - Memory access pattern optimization
 - Cache-friendly data structure design
 - Contended memory avoidance strategies
 - Bank switching optimization for 128K systems
 
 **Lessons 17-24: Graphics Performance Tuning**
+
 - Maximum-speed screen updates and blitting
 - Hardware-synchronized graphics routines
 - Attribute manipulation optimization
 - Advanced sprite and animation optimization
 
 **Lessons 25-32: Undocumented Features & Exploits**
+
 - Undocumented Z80 instructions and behaviors
 - ULA timing exploits and hardware glitches
 - System ROM exploitation and modification

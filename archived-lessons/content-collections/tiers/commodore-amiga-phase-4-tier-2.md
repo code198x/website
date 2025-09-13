@@ -12,7 +12,7 @@ learning_objectives:
   - "Handle multiple save slots and user data"
 concepts_introduced:
   - "AmigaDOS filesystem programming"
-  - "Game state serialization and deserialization" 
+  - "Game state serialization and deserialization"
   - "Disk I/O operations and error handling"
   - "Data compression and optimization"
   - "User data management systems"
@@ -27,6 +27,7 @@ Preserve the adventure! With **32 comprehensive lessons**, you'll master Amiga d
 ## What You'll Build
 
 Expand **Cosmic Defender** with comprehensive save/load functionality:
+
 - Multiple save slots with game state persistence
 - High score tables and player statistics
 - Settings and configuration storage
@@ -36,24 +37,28 @@ Expand **Cosmic Defender** with comprehensive save/load functionality:
 ## Tier Overview
 
 **Lessons 1-8: AmigaDOS Filesystem Programming**
+
 - Understanding Amiga filesystem structure
 - File operations and directory management
 - Device access and disk handling
 - Error handling and recovery systems
 
 **Lessons 9-16: Game State Serialization**
+
 - Designing serializable game objects
 - Binary data format specification
 - Versioning and compatibility systems
 - Memory-efficient data structures
 
 **Lessons 17-24: Robust Save/Load Implementation**
+
 - Save file format design and validation
 - Multiple save slot management
 - Atomic save operations and rollback
 - Corruption detection and recovery
 
 **Lessons 25-32: Advanced Data Management**
+
 - Data compression and optimization
 - Settings and configuration systems
 - User profile and statistics tracking

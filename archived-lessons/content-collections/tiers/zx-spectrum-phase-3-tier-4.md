@@ -31,24 +31,28 @@ Create **Spectrum Showcase** - a complete action-puzzle game featuring advanced 
 ## Tier Overview
 
 **Lessons 1-8: Project Architecture & Design**
+
 - Planning a complex game project
 - System architecture and component design
 - Memory allocation and resource planning
 - Technical specification and documentation
 
 **Lessons 9-16: Core System Implementation**
+
 - Integrating memory management systems
 - Implementing ULA-based graphics and timing
 - Building the core game logic framework
 - Creating efficient data structures
 
 **Lessons 17-24: Advanced Features & Effects**
+
 - Sophisticated visual effects and animations
 - Complex sound design and music integration
 - Advanced user interface and controls
 - Performance optimization and fine-tuning
 
 **Lessons 25-32: Polish & Professional Presentation**
+
 - Bug testing and quality assurance
 - Code documentation and commenting
 - Performance profiling and optimization

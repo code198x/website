@@ -27,6 +27,7 @@ Create sophisticated music systems! Learn to coordinate all 5 NES audio channels
 ## What You'll Add to Rhythm Engine
 
 Expand your audio capabilities:
+
 - Implement full 5-channel music composition
 - Create advanced sound synthesis and effects
 - Build complex rhythm and harmony systems
@@ -35,24 +36,28 @@ Expand your audio capabilities:
 ## Tier Overview
 
 **Lessons 1-8: Multi-Channel Coordination**
+
 - Coordinating multiple audio channels simultaneously
 - Creating harmony and counterpoint
 - Managing channel priorities and mixing
 - Building polyphonic music systems
 
 **Lessons 9-16: Advanced Synthesis**
+
 - Pulse wave duty cycle modulation
 - Triangle wave frequency sweeps
 - Noise channel percussion programming
 - DMC sample playback and manipulation
 
 **Lessons 17-24: Audio Effects Programming**
+
 - Vibrato and tremolo effects
 - Frequency and volume sweeps
 - Dynamic audio modulation
 - Creating expressive musical performance
 
 **Lessons 25-32: Music System Architecture**
+
 - Efficient music data storage and compression
 - Real-time music sequencing and playback
 - Building modular audio programming frameworks

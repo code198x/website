@@ -27,6 +27,7 @@ Transform the world! With **32 globally-focused lessons**, you'll learn to exten
 ## What You'll Globalize
 
 Create **WORLDWIDE ZX SPECTRUM INFLUENCE** that transcends borders:
+
 - International initiatives that introduce ZX Spectrum development to new cultures
 - Cross-cultural collaboration networks that unite developers across continents
 - Global educational programs that spread technical knowledge and creative inspiration
@@ -36,24 +37,28 @@ Create **WORLDWIDE ZX SPECTRUM INFLUENCE** that transcends borders:
 ## Global Influence Areas
 
 **Lessons 1-8: "Cross-Cultural Design" - Creating Universal Appeal**
+
 - Understanding how to create ZX Spectrum games that resonate across different cultures
 - Developing design principles that work regardless of cultural background
 - Creating educational materials that translate effectively to different languages and contexts
 - Building games and tools that feel native to users regardless of their cultural origin
 
 **Lessons 9-16: "International Collaboration" - Uniting Global Communities**
+
 - Establishing collaboration networks that connect ZX Spectrum developers worldwide
 - Creating communication systems that overcome language and cultural barriers
 - Developing project management approaches that work across different time zones and cultures
 - Understanding how to build trust and shared vision among internationally distributed teams
 
 **Lessons 17-24: "Global Education" - Spreading Knowledge Worldwide**
+
 - Creating educational initiatives that adapt to different learning cultures and preferences
 - Developing curriculum that works in various educational systems and contexts
 - Building mentorship networks that connect experienced developers with newcomers globally
 - Understanding how to make technical knowledge accessible across language and cultural barriers
 
 **Lessons 25-32: "Worldwide Movement Building" - Creating Global Change**
+
 - Establishing international organizations that support ZX Spectrum development
 - Creating events and initiatives that celebrate retro gaming culture globally
 - Building recognition and award systems that honor excellence across all cultures

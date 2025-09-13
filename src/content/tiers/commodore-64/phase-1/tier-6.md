@@ -30,7 +30,7 @@ order: 6
 
 # Tier 6: Jungle Hazards & Creatures
 
-*Coming Soon*
+_Coming Soon_
 
 The jungle comes alive! Transform your peaceful exploration game into a thrilling survival adventure. Add dangerous creatures, environmental hazards, and expand your world with new mysterious areas that challenge both your programming skills and your players.
 
@@ -48,15 +48,19 @@ This tier focuses on bringing your jungle world to life with dynamic, dangerous 
 ## Your Journey Through 32 Lessons
 
 ### Creature AI Systems (Lessons 1-8)
+
 Create jungle wildlife with distinct behaviors: prowling jaguars, territorial snakes, aggressive spiders. Learn to make each creature feel alive and dangerous.
 
 ### Environmental Hazards (Lessons 9-16)
+
 Add jungle dangers: quicksand pits, poisonous plants, unstable terrain, falling rocks. Create tension through environmental storytelling.
 
 ### World Expansion (Lessons 17-24)
+
 Expand to 12+ interconnected screens with new areas: swamplands, cliff faces, underground caverns, deeper temple chambers.
 
 ### Survival Polish (Lessons 25-32)
+
 Implement health systems, creature interactions, and the fine-tuning that makes survival games engaging rather than frustrating.
 
 ## Your Expanded Adventure
@@ -82,6 +86,7 @@ By the end of this tier, Jungle Explorer will feature:
 ## Prerequisites
 
 Before starting Tier 6, you should have completed:
+
 - [Tier 5: Multi-Screen Adventure Foundations](/lessons/commodore-64/phase-1/tier-5)
 - Understanding of flip-screen navigation and world management
 - Experience with environmental graphics and character animation
@@ -91,4 +96,4 @@ Before starting Tier 6, you should have completed:
 
 After completing Tier 6, you'll be ready for Tier 7: Temple Mysteries & Advanced Graphics, where you'll add complex temple interiors with puzzles and learn advanced VIC-II techniques for stunning visual effects.
 
-*This tier contains 32 lessons and is currently in development. Check back soon for updates on availability.*
+_This tier contains 32 lessons and is currently in development. Check back soon for updates on availability._

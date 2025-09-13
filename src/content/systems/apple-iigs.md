@@ -45,10 +45,10 @@ audio:
   synthesis_types: ["Wavetable", "Sample playback"]
 
 # Storage and I/O
-storage: ["3.5\" floppy", "5.25\" floppy", "Hard disk"]
+storage: ['3.5" floppy', '5.25" floppy', "Hard disk"]
 storage_details:
-  built_in: ["3.5\" 800KB floppy"]
-  expansion: ["5.25\" floppy", "SCSI hard disk"]
+  built_in: ['3.5" 800KB floppy']
+  expansion: ['5.25" floppy', "SCSI hard disk"]
   typical_capacity:
     floppy35: "800KB"
     floppy525: "140KB"
@@ -88,7 +88,6 @@ hardware_availability: "available"
 
 # Media
 description: "The 16-bit Apple II that brought stunning graphics and sound while maintaining perfect backward compatibility."
-image: "/images/systems/apple-iigs.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -103,7 +102,7 @@ order: 23
 
 # Apple IIgs
 
-*Coming Soon*
+_Coming Soon_
 
 The Apple IIgs was Apple's love letter to the Apple II community - a 16-bit powerhouse that maintained perfect backward compatibility while adding stunning graphics and revolutionary sound. Though Apple deliberately limited it to avoid competing with the Macintosh, the IIgs remains beloved.
 
@@ -120,9 +119,10 @@ The 65816 processor bridges 8-bit and 16-bit programming, making it perfect for 
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the IIgs curriculum will include:
+
 - 65816 assembly with 16-bit operations
 - VGC graphics and palette cycling
 - Ensoniq DOC programming

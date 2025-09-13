@@ -31,6 +31,7 @@ Prepare for legendary adventures! 🐉⚔️ With **32 epic lessons**, you'll cr
 ## What You'll Complete
 
 Finish your **Genre Master Collection** with **DRAGON'S QUEST** - the ultimate RPG/strategy hybrid:
+
 - **Turbo Circuit**: Racing perfection with speed and thrills
 - **Championship Soccer**: Sports excellence with team strategy
 - **Street Warrior**: Fighting mastery with visceral combat
@@ -40,24 +41,28 @@ Finish your **Genre Master Collection** with **DRAGON'S QUEST** - the ultimate R
 ## Tier Overview
 
 **Lessons 1-8: "Level Up!" - Character Progression Magic**
+
 - Stat systems that make every level feel meaningful
 - Skill trees that give players exciting choices
 - Equipment progression that creates "just one more upgrade" addiction
 - The psychology of making numbers feel like power
 
 **Lessons 9-16: "Think Three Moves Ahead" - Tactical Combat**
+
 - Turn-based combat that rewards strategy over speed
 - Positioning and terrain that matter strategically
 - Unit abilities that create interesting tactical decisions
 - The art of making thinking feel as exciting as action
 
 **Lessons 17-24: "A World Worth Exploring" - Living Worlds**
+
 - World generation that creates believable places
 - NPCs with personality and purpose
 - Side quests that feel meaningful, not like busy work
 - The magic of making 8-bit worlds feel alive
 
 **Lessons 25-32: "Your Choices Matter" - Epic Storytelling**
+
 - Branching narratives that respond to player decisions
 - Plot pacing that builds to satisfying climaxes
 - Character development that makes players care

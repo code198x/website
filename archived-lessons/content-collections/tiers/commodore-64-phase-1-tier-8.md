@@ -31,6 +31,7 @@ Bring **Color Cascade** to completion with professional-level polish! Transform 
 ## What You'll Complete
 
 Finish **Color Cascade** as a polished, feature-complete game:
+
 - Multiple game modes (Classic, Speed, Memory, Zen)
 - Progressive difficulty with 20+ challenging levels
 - Complete high score system with rankings
@@ -41,24 +42,28 @@ Finish **Color Cascade** as a polished, feature-complete game:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Program Architecture**
+
 - Organizing complex assembly programs with subroutines
 - Creating maintainable, readable assembly code
 - Modular design principles in machine language
 - Assembly code reusability techniques
 
 **Lessons 9-16: 6502 Assembly Optimization**
+
 - Identifying processor bottlenecks and cycle counts
 - Memory usage optimisation at the hardware level
 - Speed improvements through optimised assembly code
 - Balancing features with 6502 processor limitations
 
 **Lessons 17-24: Assembly Interface Design**
+
 - Creating intuitive interfaces using direct hardware control
 - Implementing smooth transitions with assembly timing
 - Designing for accessibility through efficient machine code
 - Testing assembly programs with real users
 
 **Lessons 25-32: Assembly Polish and Completion**
+
 - Adding final game modes implemented in assembly
 - Comprehensive testing and assembly debugging
 - Creating documentation for assembly code

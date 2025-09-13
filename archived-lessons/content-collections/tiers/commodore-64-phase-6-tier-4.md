@@ -31,6 +31,7 @@ Time to make history! 🏆✨ With **32 legendary lessons**, you'll combine ever
 ## What You'll Complete
 
 Create your **Legendary Masterpiece** - the ultimate showcase of advanced C64 development:
+
 - **Visual Masterpiece**: Graphics that make people say "impossible!"
 - **Sonic Symphony**: Audio that rivals professional synthesizers
 - **Fun Formula Lab**: Gameplay psychology that creates addiction
@@ -40,24 +41,28 @@ Create your **Legendary Masterpiece** - the ultimate showcase of advanced C64 de
 ## Tier Overview
 
 **Lessons 1-8: Advanced Audio Engine**
+
 - Multi-channel SID mixing and audio architecture
 - Professional audio streaming and buffering
 - Real-time audio processing and effects
 - Audio memory management and optimization
 
 **Lessons 9-16: Dynamic Music Systems**
+
 - Interactive music that responds to gameplay
 - Procedural music generation and composition
 - Seamless music transitions and layering
 - Adaptive music based on game state
 
 **Lessons 17-24: Professional Sound Design**
+
 - Advanced sound effect synthesis and processing
 - Environmental audio and 3D sound simulation
 - Audio compression and optimization techniques
 - Professional audio asset pipeline
 
 **Lessons 25-32: Complete Audio Integration**
+
 - Engine integration and audio system coordination
 - Professional audio mixing and mastering
 - Audio debugging tools and optimization

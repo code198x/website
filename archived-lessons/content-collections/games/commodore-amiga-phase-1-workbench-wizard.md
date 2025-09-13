@@ -68,24 +68,28 @@ Leverages the complete AmigaOS programming environment:
 ### Tiers 13-16 Development Roadmap
 
 **Tier 13**: System programming foundations
+
 - Understanding AmigaOS architecture and services
 - Basic system library and device programming
 - Multitasking and task management
 - Building foundation system components
 
 **Tier 14**: Advanced GUI and application development
+
 - Professional Intuition programming
 - Advanced windowing and interface design
 - Creating sophisticated application architectures
 - Building complete development tools
 
 **Tier 15**: System integration and optimisation
+
 - Advanced IPC and system communication
 - Performance optimisation for complex systems
 - Professional software architecture and design
 - Creating integrated development environments
 
 **Tier 16**: Commercial-quality completion
+
 - Final system integration and polish
 - Professional packaging and distribution
 - Complete documentation and support systems

@@ -27,6 +27,7 @@ Unlock the power of NES audio! Learn the sophisticated 5-channel Audio Processin
 ## What You'll Begin with Rhythm Engine
 
 Start building your music system:
+
 - Program individual APU channels
 - Create basic melodies and rhythms
 - Implement sound effect generation
@@ -35,6 +36,7 @@ Start building your music system:
 ## Tier Overview
 
 **Lessons 1-8: APU Architecture**
+
 - Understanding the 5-channel audio system
 - Pulse wave channels (2) for melody and harmony
 - Triangle wave channel for bass and percussion
@@ -42,18 +44,21 @@ Start building your music system:
 - DMC channel for digital samples
 
 **Lessons 9-16: Sound Generation**
+
 - Frequency control and pitch programming
 - Volume control and amplitude modulation
 - Duty cycle control for pulse waves
 - Creating basic tones and musical notes
 
 **Lessons 17-24: Timing and Synchronization**
+
 - Audio frame timing and sequencing
 - Synchronizing sound with game logic
 - Creating rhythmic patterns and beats
 - Building timing-critical audio systems
 
 **Lessons 25-32: Rhythm Engine Foundation**
+
 - Implementing basic music playback
 - Creating sound effect libraries
 - Building audio data structures

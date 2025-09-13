@@ -27,6 +27,7 @@ Get ready to create jumping joy! 🦘 With **32 gravity-defying lessons**, you'l
 ## What You'll Build
 
 Create **CRYSTAL CAVERNS** - an epic platform adventure featuring:
+
 - Jumping physics so perfect you'll want to patent them
 - Platforms that challenge but don't frustrate
 - Secrets hidden in every nook and cranny
@@ -36,24 +37,28 @@ Create **CRYSTAL CAVERNS** - an epic platform adventure featuring:
 ## Tier Overview
 
 **Lessons 1-8: "The Physics of Fun" - Jumping Mechanics**
+
 - Gravity that feels natural (hint: it's not realistic!)
 - Variable jump height based on button press duration
 - Coyote time: letting players jump after leaving a platform
 - The secret ingredient that makes Super Mario Bros feel perfect
 
 **Lessons 9-16: "Don't Hit Your Head!" - Collision Detection**
+
 - Tile-based collision that handles corners gracefully
 - Slope walking without getting stuck in walls
 - Moving platforms that don't make players fall through
 - The dark art of making hitboxes feel fair
 
 **Lessons 17-24: "Where Am I Going?" - Scrolling & Cameras**
+
 - Smooth scrolling that doesn't induce motion sickness
 - Camera systems that keep players oriented
 - Multi-directional scrolling for expansive worlds
 - Tricks for making small levels feel huge
 
 **Lessons 25-32: "One More Room..." - Level Design Magic**
+
 - Teaching players without tutorial text
 - Placing collectibles to guide exploration
 - Difficulty curves that build confidence

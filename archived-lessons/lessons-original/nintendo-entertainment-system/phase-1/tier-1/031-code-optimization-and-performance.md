@@ -89,28 +89,28 @@ AnalyzeCriticalPath:
     ; 2. Audio update (real-time requirements)
     ; 3. Input processing (responsiveness)
     ; 4. Main game loop (60 FPS target)
-    
+
     ; Measure cycle usage for each section
     JSR MeasureNMIPerformance
     JSR MeasureAudioPerformance
     JSR MeasureInputPerformance
     JSR MeasureMainLoopPerformance
-    
+
     RTS
 
 MeasureNMIPerformance:
     ; Measure NMI handler performance
     ; Critical: Must complete within ~2,270 cycles
-    
+
     ; Start measurement
     LDA CycleCounterLow
     STA StartCycles
     LDA CycleCounterHigh
     STA StartCycles+1
-    
+
     ; Execute NMI tasks
     JSR OptimizedNMIHandler
-    
+
     ; End measurement
     LDA CycleCounterLow
     SEC
@@ -119,25 +119,25 @@ MeasureNMIPerformance:
     LDA CycleCounterHigh
     SBC StartCycles+1
     STA NMICycles+1
-    
+
     ; Check for VBlank overrun
     LDA NMICycles+1
     BNE VBlankOverrun
     LDA NMICycles
     CMP #$DE            ; ~2,270 cycles in hex
     BCC VBlankOK
-    
+
 VBlankOverrun:
     ; VBlank budget exceeded - optimization needed
     INC OverrunCounter
-    
+
 VBlankOK:
     RTS
 
 ; Optimized NMI handler
 OptimizedNMIHandler:
     ; Highly optimized VBlank processing
-    
+
     ; Save registers (6 cycles)
     PHA                 ; 3 cycles
     TXA                 ; 2 cycles
@@ -145,29 +145,29 @@ OptimizedNMIHandler:
     TYA                 ; 2 cycles
     PHA                 ; 3 cycles
                         ; Total: 13 cycles
-    
+
     ; OAM DMA transfer (513 cycles + 1-2 for alignment)
     LDA #$02            ; 2 cycles
     STA $4014           ; 4 cycles
                         ; OAM DMA: 513 cycles
                         ; Total: 519 cycles
-    
+
     ; Optimized scroll update (12 cycles)
     LDA ScrollX         ; 3 cycles (zero page)
     STA $2005           ; 4 cycles
     LDA ScrollY         ; 3 cycles (zero page)
     STA $2005           ; 4 cycles
                         ; Total: 14 cycles
-    
+
     ; Optimized palette updates (if needed)
     LDA PaletteUpdateFlag   ; 3 cycles (zero page)
     BEQ SkipPalette         ; 2 cycles (not taken)
     JSR FastPaletteUpdate   ; ~200 cycles if needed
-    
+
 SkipPalette:
     ; Frame completion flag
     INC FrameComplete   ; 5 cycles (zero page)
-    
+
     ; Restore registers (9 cycles)
     PLA                 ; 4 cycles
     TAY                 ; 2 cycles
@@ -176,9 +176,9 @@ SkipPalette:
     PLA                 ; 4 cycles
     RTI                 ; 6 cycles
                         ; Total: 22 cycles
-    
+
     ; Total worst case: ~750 cycles (well within budget)
-    
+
 ; Performance measurement variables (in zero page)
 StartCycles = $10       ; Zero page for fast access
 NMICycles = $12
@@ -193,7 +193,7 @@ OverrunCounter = $16
 ; NES Performance Analysis and Optimization
 Main:
     JSR InitPerformanceSystem
-    
+
 OptimizedGameLoop:
     JSR StartFrameTiming
     JSR ProcessInputOptimized
@@ -223,44 +223,44 @@ StartFrameTiming:
 ProcessInputOptimized:
     ; Optimized input processing
     ; Using zero page for speed
-    
+
     ; Fast controller read (optimized)
     LDA #$01            ; 2 cycles
     STA $4016           ; 4 cycles - strobe
     LDA #$00            ; 2 cycles
     STA $4016           ; 4 cycles - release
-    
+
     ; Optimized 8-bit read using loop unrolling
     ; Instead of loop, unroll for speed
     LDA $4016           ; 4 cycles - bit 0
     ROR                 ; 2 cycles
     ROR InputData       ; 5 cycles
-    
+
     LDA $4016           ; 4 cycles - bit 1
     ROR                 ; 2 cycles
     ROR InputData       ; 5 cycles
-    
+
     LDA $4016           ; 4 cycles - bit 2
     ROR                 ; 2 cycles
     ROR InputData       ; 5 cycles
-    
+
     LDA $4016           ; 4 cycles - bit 3
     ROR                 ; 2 cycles
     ROR InputData       ; 5 cycles
-    
+
     ; Continue for all 8 bits...
     ; Total: ~80 cycles vs ~120 cycles for loop
-    
+
     ; Fast input change detection
     LDA InputData       ; 3 cycles (zero page)
     EOR PrevInput       ; 3 cycles (zero page)
     AND InputData       ; 3 cycles
     STA NewPresses      ; 3 cycles (zero page)
-    
+
     ; Store for next frame
     LDA InputData       ; 3 cycles
     STA PrevInput       ; 3 cycles
-    
+
     RTS
 
 UpdateGameOptimized:
@@ -272,121 +272,121 @@ UpdateGameOptimized:
 
 UpdateAudioOptimized:
     ; Highly optimized audio update
-    
+
     ; Fast active note check using bit manipulation
     LDA ActiveNotes     ; 3 cycles (zero page)
     BEQ AudioDone       ; 2 cycles if no notes active
-    
+
     ; Process only active notes
     LDX #$00            ; 2 cycles
-    
+
 AudioUpdateLoop:
     ; Check if this note is active
     ASL ActiveNotes     ; 5 cycles (shift left, bit 7 to carry)
     BCC NextNote        ; 2 cycles if not active
-    
+
     ; Update active note
     DEC NoteTimers,X    ; 6 cycles
     BNE NextNote        ; 2 cycles if still active
-    
+
     ; Note finished - clear from active mask
     LDA NoteBitMasks,X  ; 4 cycles
     EOR #$FF            ; 2 cycles (invert)
     AND ActiveNotesMask ; 3 cycles (zero page)
     STA ActiveNotesMask ; 3 cycles
-    
+
 NextNote:
     INX                 ; 2 cycles
     CPX #$04            ; 2 cycles
     BNE AudioUpdateLoop ; 3 cycles
-    
+
 AudioDone:
     RTS
 
 UpdateSpritesOptimized:
     ; Optimized sprite update using efficient loops
-    
+
     ; Use zero page pointer for fast sprite access
     LDA #<SpriteOAM     ; 2 cycles
     STA SpritePtr       ; 3 cycles (zero page)
     LDA #>SpriteOAM     ; 2 cycles
     STA SpritePtr+1     ; 3 cycles
-    
+
     ; Process sprites efficiently
     LDY #$00            ; 2 cycles
     LDX #$00            ; 2 cycles
-    
+
 SpriteUpdateLoop:
     ; Check if sprite is active
     LDA ActiveSprites   ; 3 cycles (zero page)
     AND SpriteBitMasks,X ; 4 cycles
     BEQ NextSprite      ; 2 cycles if inactive
-    
+
     ; Update active sprite using pointer
     LDA SpriteY,X       ; 4 cycles
     STA (SpritePtr),Y   ; 6 cycles - Y position
     INY                 ; 2 cycles
-    
+
     LDA SpriteTile,X    ; 4 cycles
     STA (SpritePtr),Y   ; 6 cycles - Tile
     INY                 ; 2 cycles
-    
+
     LDA SpriteAttr,X    ; 4 cycles
     STA (SpritePtr),Y   ; 6 cycles - Attributes
     INY                 ; 2 cycles
-    
+
     LDA SpriteX,X       ; 4 cycles
     STA (SpritePtr),Y   ; 6 cycles - X position
     INY                 ; 2 cycles
-    
+
     JMP SpriteUpdated   ; 3 cycles
-    
+
 NextSprite:
     ; Skip inactive sprite
     INY                 ; 2 cycles
     INY                 ; 2 cycles
     INY                 ; 2 cycles
     INY                 ; 2 cycles (skip 4 bytes)
-    
+
 SpriteUpdated:
     INX                 ; 2 cycles
     CPX #$08            ; 2 cycles (8 sprites max)
     BNE SpriteUpdateLoop ; 3 cycles
-    
+
     RTS
 
 UpdateGameStateOptimized:
     ; Optimized game state updates
-    
+
     ; Fast mode checking using jump table
     LDA GameMode        ; 3 cycles (zero page)
     ASL                 ; 2 cycles (multiply by 2 for word addresses)
     TAY                 ; 2 cycles
-    
+
     ; Jump table dispatch (faster than multiple CMP/BEQ)
     LDA ModeJumpTable,Y ; 4 cycles
     STA JumpAddr        ; 3 cycles (zero page)
     LDA ModeJumpTable+1,Y ; 4 cycles
     STA JumpAddr+1      ; 3 cycles
-    
+
     JMP (JumpAddr)      ; 5 cycles - indirect jump
-    
+
 UpdateModeDemo:
     ; Optimized demo mode update
     INC DemoTimer       ; 5 cycles (zero page)
     LDA DemoTimer       ; 3 cycles
     AND #$1F            ; 2 cycles (every 32 frames)
     BNE DemoDone        ; 2 cycles
-    
+
     ; Play next demo note
     LDY DemoPosition    ; 3 cycles (zero page)
     LDA DemoSequence,Y  ; 4 cycles
     CMP #$FF            ; 2 cycles
     BEQ ResetDemo       ; 2 cycles
-    
+
     JSR PlayNoteOptimized ; Call optimized note player
     INC DemoPosition    ; 5 cycles (zero page)
-    
+
 DemoDone:
     RTS
 
@@ -408,7 +408,7 @@ UpdateModeCompose:
 PlayNoteOptimized:
     ; Highly optimized note playing
     TAX                 ; 2 cycles
-    
+
     ; Direct register writes (fastest)
     LDA NoteFreqLow,X   ; 4 cycles
     STA $4002           ; 4 cycles
@@ -416,10 +416,10 @@ PlayNoteOptimized:
     STA $4003           ; 4 cycles
     LDA #%10111111      ; 2 cycles
     STA $4000           ; 4 cycles
-    
+
     ; Fast visual update
     JSR CreateNoteVisualOptimized
-    
+
     RTS
 
 CreateNoteVisualOptimized:
@@ -428,7 +428,7 @@ CreateNoteVisualOptimized:
     ASL                 ; 2 cycles
     ASL                 ; 2 cycles (multiply by 4)
     TAY                 ; 2 cycles
-    
+
     ; Direct sprite data writes
     LDA NotePosY,X      ; 4 cycles
     STA SpriteOAM,Y     ; 5 cycles
@@ -438,17 +438,17 @@ CreateNoteVisualOptimized:
     STA SpriteOAM+2,Y   ; 5 cycles
     LDA #$80            ; 2 cycles
     STA SpriteOAM+3,Y   ; 5 cycles
-    
+
     RTS
 
 WaitForVBlank:
     ; Efficient VBlank wait
     LDA FrameComplete   ; 3 cycles (zero page flag set by NMI)
     BEQ WaitForVBlank   ; 2 cycles (loop until NMI sets flag)
-    
+
     LDA #$00            ; 2 cycles
     STA FrameComplete   ; 3 cycles (clear flag)
-    
+
     RTS
 
 AnalyzeFramePerformance:
@@ -457,12 +457,12 @@ AnalyzeFramePerformance:
     SEC                 ; 2 cycles
     SBC FrameStart      ; 3 cycles
     STA CurrentFrameCycles ; 3 cycles
-    
+
     ; Check for new peak
     CMP PeakCycles      ; 3 cycles
     BCC AnalyzeDone     ; 2 cycles
     STA PeakCycles      ; 3 cycles
-    
+
 AnalyzeDone:
     RTS
 
@@ -470,22 +470,22 @@ ProcessPlayInputOptimized:
     ; Optimized play input processing
     LDA NewPresses      ; 3 cycles (zero page)
     BEQ PlayInputDone   ; 2 cycles
-    
+
     ; Fast input mapping using lookup table
     LDX #$03            ; 2 cycles
-    
+
 InputMapLoop:
     ASL NewPresses      ; 5 cycles (shift left, bit 7 to carry)
     BCC NextInputBit    ; 2 cycles
-    
+
     ; This bit is pressed - play corresponding note
     LDA InputToNote,X   ; 4 cycles
     JSR PlayNoteOptimized
-    
+
 NextInputBit:
     DEX                 ; 2 cycles
     BPL InputMapLoop    ; 3 cycles
-    
+
 PlayInputDone:
     RTS
 
@@ -581,12 +581,12 @@ ZeroPageVars:
     InputCurrent = $11      ; Current input (accessed every frame)
     InputPrevious = $12     ; Previous input (accessed every frame)
     FrameCount = $13        ; Frame counter (accessed every frame)
-    
+
     ; Pointers for indirect addressing
     DataPtr = $14           ; General purpose pointer (2 bytes)
     SpritePtr = $16         ; Sprite data pointer (2 bytes)
     AudioPtr = $18          ; Audio data pointer (2 bytes)
-    
+
     ; Temporary calculation variables
     TempA = $1A             ; Temporary storage
     TempB = $1B             ; Temporary storage
@@ -661,18 +661,18 @@ AllocateNote:
     ; Find free note slot efficiently
     LDA ActiveNotes
     LDX #$00
-    
+
 FindFreeNote:
     LSR                 ; Shift right, bit 0 to carry
     BCC FoundFreeNote   ; Carry clear = bit was 0 = free
     INX
     CPX #MAX_NOTES
     BNE FindFreeNote
-    
+
     ; No free notes
     LDX #$FF
     RTS
-    
+
 FoundFreeNote:
     ; X contains free note index
     ; Mark as allocated
@@ -738,9 +738,9 @@ RenderMenuText:
     ASL
     ASL                 ; * 4 (assume 4 chars per item)
     TAY
-    
+
     LDX #$00
-    
+
 RenderTextLoop:
     LDA MenuText,Y
     BEQ TextDone        ; Terminator found
@@ -749,7 +749,7 @@ RenderTextLoop:
     INX
     CPX #$04            ; Max 4 characters
     BNE RenderTextLoop
-    
+
 TextDone:
     RTS
 
@@ -776,13 +776,13 @@ CheckMemoryUsage:
     CLC
     ADC AudioDataUsed
     STA TotalMemoryUsed
-    
+
     ; Calculate free memory
     LDA #$00            ; Total RAM = 2048 bytes = $800
     SEC
     SBC TotalMemoryUsed
     STA FreeMemory
-    
+
     RTS
 
 ; Bit manipulation utilities
@@ -810,33 +810,33 @@ Implement algorithms optimized for real-time NES performance:
 SortNotesByPriority:
     ; Sort 8 notes by priority (small dataset)
     LDX #$01            ; Start with second element
-    
+
 SortOuterLoop:
     LDA NotePriorities,X    ; Current element
     STA SortKey
     STX SortIndex
-    
+
     ; Find insertion position
     LDY SortIndex
     DEY                 ; Y = index - 1
-    
+
 SortInnerLoop:
     CPY #$FF            ; Check if Y wrapped to 255 (was 0)
     BEQ InsertHere
-    
+
     LDA NotePriorities,Y
     CMP SortKey
     BCC InsertHere      ; Found position
-    
+
     ; Shift element right
     LDA NotePriorities,Y
     STA NotePriorities+1,Y
     LDA NoteIndices,Y
     STA NoteIndices+1,Y
-    
+
     DEY
     JMP SortInnerLoop
-    
+
 InsertHere:
     INY                 ; Adjust for insertion position
     LDA SortKey
@@ -844,11 +844,11 @@ InsertHere:
     LDX SortIndex
     LDA NoteIndices,X
     STA NoteIndices,Y
-    
+
     INX
     CPX #$08            ; 8 notes total
     BNE SortOuterLoop
-    
+
     RTS
 
 ; 2. Fast Collision Detection
@@ -857,54 +857,54 @@ InsertHere:
 CheckSpriteCollision:
     ; Check collision between sprites A and B
     ; Input: X = sprite A index, Y = sprite B index
-    
+
     ; Get sprite A bounds
     LDA SpriteX,X
     STA SpriteALeft
     CLC
     ADC #$08            ; Assume 8x8 sprites
     STA SpriteARight
-    
+
     LDA SpriteY,X
     STA SpriteATop
     CLC
     ADC #$08
     STA SpriteABottom
-    
+
     ; Get sprite B bounds
     LDA SpriteX,Y
     STA SpriteBLeft
     CLC
     ADC #$08
     STA SpriteBRight
-    
+
     LDA SpriteY,Y
     STA SpriteBTop
     CLC
     ADC #$08
     STA SpriteBBottom
-    
+
     ; Check for separation (no collision)
     LDA SpriteARight
     CMP SpriteBLeft
     BCC NoCollision     ; A is left of B
-    
+
     LDA SpriteBRight
     CMP SpriteALeft
     BCC NoCollision     ; B is left of A
-    
+
     LDA SpriteABottom
     CMP SpriteBTop
     BCC NoCollision     ; A is above B
-    
+
     LDA SpriteBBottom
     CMP SpriteATop
     BCC NoCollision     ; B is above A
-    
+
     ; Collision detected
     LDA #$01
     RTS
-    
+
 NoCollision:
     LDA #$00
     RTS
@@ -926,19 +926,19 @@ EnqueueAudioEvent:
     LDX QueueCount
     CPX #QUEUE_SIZE
     BCS QueueFull       ; Queue is full
-    
+
     LDY QueueTail
     STA QueueData,Y
-    
+
     ; Advance tail pointer
     INY
     TYA
     AND #$0F            ; Wrap at 16
     STA QueueTail
-    
+
     INC QueueCount
     RTS
-    
+
 QueueFull:
     ; Handle queue overflow
     RTS
@@ -947,21 +947,21 @@ DequeueAudioEvent:
     ; Remove and return event from queue
     LDA QueueCount
     BEQ QueueEmpty      ; Queue is empty
-    
+
     LDY QueueHead
     LDA QueueData,Y
     PHA                 ; Save return value
-    
+
     ; Advance head pointer
     INY
     TYA
     AND #$0F            ; Wrap at 16
     STA QueueHead
-    
+
     DEC QueueCount
     PLA                 ; Restore return value
     RTS
-    
+
 QueueEmpty:
     LDA #$FF            ; Return error value
     RTS
@@ -973,58 +973,58 @@ BinarySearchFreqTable:
     ; Search for frequency value in sorted table
     ; Input: A = target frequency
     ; Output: X = index, or $FF if not found
-    
+
     STA SearchTarget
     LDA #$00
     STA SearchLow
     LDA #$1F            ; 32 entries - 1
     STA SearchHigh
-    
+
 BinarySearchLoop:
     ; Check if search range is valid
     LDA SearchLow
     CMP SearchHigh
     BEQ CheckLastElement
     BCS NotFound
-    
+
     ; Calculate middle index
     LDA SearchLow
     CLC
     ADC SearchHigh
     LSR                 ; Divide by 2
     STA SearchMid
-    
+
     ; Compare with target
     TAX
     LDA FrequencyTable,X
     CMP SearchTarget
     BEQ Found           ; Exact match
     BCC SearchUpper     ; Target is higher
-    
+
     ; Target is lower
     LDA SearchMid
     SEC
     SBC #$01
     STA SearchHigh
     JMP BinarySearchLoop
-    
+
 SearchUpper:
     LDA SearchMid
     CLC
     ADC #$01
     STA SearchLow
     JMP BinarySearchLoop
-    
+
 CheckLastElement:
     LDX SearchLow
     LDA FrequencyTable,X
     CMP SearchTarget
     BEQ Found
-    
+
 NotFound:
     LDX #$FF
     RTS
-    
+
 Found:
     ; X already contains the index
     RTS
@@ -1053,47 +1053,47 @@ OptimizedStateMachine:
     LDA CurrentState
     ASL                 ; Multiply by 2 for word table
     TAY
-    
+
     LDA StateFunctionTable,Y
     STA StateFunction
     LDA StateFunctionTable+1,Y
     STA StateFunction+1
-    
+
     JSR CallStateFunction
-    
+
     ; Process state transitions
     JSR ProcessStateTransitions
-    
+
     RTS
 
 ProcessStateTransitions:
     ; Check transition table
     LDY #$00
-    
+
 TransitionLoop:
     LDA StateTransitionTable,Y
     CMP #$FF            ; End of table?
     BEQ TransitionDone
-    
+
     CMP CurrentState    ; Match current state?
     BNE NextTransition
-    
+
     INY
     LDA StateTransitionTable,Y  ; Check input
     AND NewInput        ; Mask with current input
     BEQ NextTransition
-    
+
     INY
     LDA StateTransitionTable,Y  ; Get next state
     STA CurrentState
     RTS
-    
+
 NextTransition:
     INY
     INY
     INY                 ; Skip to next entry (3 bytes each)
     JMP TransitionLoop
-    
+
 TransitionDone:
     RTS
 
@@ -1103,13 +1103,13 @@ CallStateFunction:
 ; State handler stubs
 HandleStateTitle:
     RTS
-    
+
 HandleStateMenu:
     RTS
-    
+
 HandleStatePlay:
     RTS
-    
+
 HandleStateCompose:
     RTS
 
@@ -1171,7 +1171,7 @@ Apply all optimization techniques to create the most efficient version of Sprite
 ; Fully Optimized Sprite Symphony - Maximum Performance
 Main:
     JSR InitOptimizedSystem
-    
+
 OptimizedMainLoop:
     JSR MeasureFrameStart
     JSR ProcessInputOptimized
@@ -1192,7 +1192,7 @@ InitHardwareOptimized:
     ; Optimized hardware initialization
     LDA #%00001111       ; Enable all audio channels
     STA $4015
-    
+
     ; Initialize critical zero page variables
     LDA #$00
     STA GameState        ; ZP: $10
@@ -1201,7 +1201,7 @@ InitHardwareOptimized:
     STA InputPrevious    ; ZP: $13
     STA ActiveNotes      ; ZP: $14
     STA VBlankFlag       ; ZP: $15
-    
+
     RTS
 
 InitZeroPageVars:
@@ -1212,17 +1212,17 @@ ZPClearLoop:
     STA $10,X
     DEX
     BPL ZPClearLoop
-    
+
     ; Initialize specific values
     LDA #$FF
     STA InputCurrent     ; No buttons pressed initially
     STA InputPrevious
-    
+
     RTS
 
 InitDataStructures:
     ; Initialize optimized data structures
-    
+
     ; Initialize note pool
     LDA #$00
     STA ActiveNotes      ; No active notes
@@ -1232,7 +1232,7 @@ InitNotePool:
     STA NoteFreqs,X
     DEX
     BPL InitNotePool
-    
+
     ; Initialize sprite pool using SoA layout
     LDX #$07
 InitSpritePool:
@@ -1246,7 +1246,7 @@ InitSpritePool:
     STA SpriteX,X
     DEX
     BPL InitSpritePool
-    
+
     RTS
 
 InitPerformanceTracking:
@@ -1256,7 +1256,7 @@ InitPerformanceTracking:
     STA FrameTime
     STA PeakFrameTime
     STA OverrunCount
-    
+
     RTS
 
 MeasureFrameStart:
@@ -1268,74 +1268,74 @@ MeasureFrameStart:
 
 ProcessInputOptimized:
     ; Highly optimized input processing
-    
+
     ; Fast controller read with unrolled loop
     LDA #$01             ; 2 cycles
     STA $4016            ; 4 cycles
     LSR                  ; 2 cycles (A = 0)
     STA $4016            ; 4 cycles
-    
+
     ; Unrolled 8-bit read for maximum speed
     LDA $4016            ; 4 cycles - A button
     AND #$01             ; 2 cycles
     STA TempInput        ; 3 cycles (ZP)
-    
-    LDA $4016            ; 4 cycles - B button  
+
+    LDA $4016            ; 4 cycles - B button
     AND #$01             ; 2 cycles
     ASL                  ; 2 cycles
     ORA TempInput        ; 3 cycles (ZP)
     STA TempInput        ; 3 cycles
-    
+
     ; Continue for all 8 buttons...
     ; (Abbreviated for space - full version would read all 8)
-    
+
     ; Store current input
     LDA InputCurrent     ; 3 cycles (ZP)
     STA InputPrevious    ; 3 cycles (ZP)
     LDA TempInput        ; 3 cycles (ZP)
     STA InputCurrent     ; 3 cycles (ZP)
-    
+
     ; Calculate new presses efficiently
     EOR InputPrevious    ; 3 cycles (ZP)
     AND InputCurrent     ; 3 cycles (ZP)
     STA NewPresses       ; 3 cycles (ZP)
-    
+
     RTS
 
 UpdateGameOptimized:
     ; Optimized game update using jump tables
-    
+
     ; State machine optimization
     LDA GameState        ; 3 cycles (ZP)
     ASL                  ; 2 cycles
     TAY                  ; 2 cycles
-    
+
     LDA StateUpdateTable,Y    ; 4 cycles
     STA JumpAddr         ; 3 cycles (ZP)
     LDA StateUpdateTable+1,Y  ; 4 cycles
     STA JumpAddr+1       ; 3 cycles (ZP)
-    
+
     JMP (JumpAddr)       ; 5 cycles
-    
+
 StateUpdateDemo:
     ; Optimized demo update
     INC DemoTimer        ; 5 cycles (ZP)
     LDA DemoTimer        ; 3 cycles (ZP)
     AND #$1F             ; 2 cycles (every 32 frames)
     BNE DemoUpdateDone   ; 2 cycles
-    
+
     ; Play next demo note
     LDY DemoPosition     ; 3 cycles (ZP)
     LDA DemoSequence,Y   ; 4 cycles
     CMP #$FF             ; 2 cycles
     BEQ ResetDemoSeq     ; 2 cycles
-    
+
     JSR PlayNoteOptimized ; Optimized note playing
     INC DemoPosition     ; 5 cycles (ZP)
-    
+
 DemoUpdateDone:
     JMP UpdateAudioOptimized
-    
+
 ResetDemoSeq:
     LDA #$00             ; 2 cycles
     STA DemoPosition     ; 3 cycles (ZP)
@@ -1355,21 +1355,21 @@ ProcessPlayInputOptimized:
     ; Fast input to note mapping
     LDA NewPresses       ; 3 cycles (ZP)
     BEQ PlayInputDone    ; 2 cycles
-    
+
     ; Use lookup table for fast mapping
     LDX #$03             ; 2 cycles
 InputMappingLoop:
     ASL NewPresses       ; 5 cycles (ZP) - shift left, bit 7 to carry
     BCC NextInputBit     ; 2 cycles
-    
+
     ; This input is active - play note
     LDA InputToNoteTable,X ; 4 cycles
     JSR PlayNoteOptimized
-    
+
 NextInputBit:
     DEX                  ; 2 cycles
     BPL InputMappingLoop ; 3 cycles
-    
+
 PlayInputDone:
     RTS
 
@@ -1380,7 +1380,7 @@ ProcessComposeInputOptimized:
 PlayNoteOptimized:
     ; Highly optimized note playing
     TAX                  ; 2 cycles
-    
+
     ; Direct hardware register writes
     LDA OptimizedFreqLow,X ; 4 cycles
     STA $4002            ; 4 cycles
@@ -1388,19 +1388,19 @@ PlayNoteOptimized:
     STA $4003            ; 4 cycles
     LDA #%10111111       ; 2 cycles
     STA $4000            ; 4 cycles
-    
+
     ; Set note timer
     LDA #$20             ; 2 cycles
     STA NoteTimers,X     ; 4 cycles
-    
+
     ; Mark note as active
     LDA NoteBitMasks,X   ; 4 cycles
     ORA ActiveNotes      ; 3 cycles (ZP)
     STA ActiveNotes      ; 3 cycles (ZP)
-    
+
     ; Create optimized visual
     JSR CreateVisualOptimized
-    
+
     RTS
 
 CreateVisualOptimized:
@@ -1409,7 +1409,7 @@ CreateVisualOptimized:
     ASL                  ; 2 cycles
     ASL                  ; 2 cycles
     TAY                  ; 2 cycles
-    
+
     ; Direct OAM writes
     LDA OptimizedNotePosY,X ; 4 cycles
     STA SpriteOAM,Y      ; 5 cycles
@@ -1419,30 +1419,30 @@ CreateVisualOptimized:
     STA SpriteOAM+2,Y    ; 5 cycles
     LDA OptimizedNoteX,X ; 4 cycles
     STA SpriteOAM+3,Y    ; 5 cycles
-    
+
     RTS
 
 UpdateAudioOptimized:
     ; Optimized audio update
     LDA ActiveNotes      ; 3 cycles (ZP)
     BEQ AudioUpdateDone  ; 2 cycles
-    
+
     ; Process active notes efficiently
     LDX #$00             ; 2 cycles
 AudioUpdateLoop:
     ASL ActiveNotes      ; 5 cycles (ZP) - shift left
     BCC NextAudioNote   ; 2 cycles
-    
+
     ; Update this active note
     DEC NoteTimers,X     ; 6 cycles
     BNE NextAudioNote   ; 2 cycles
-    
+
     ; Note finished - remove from active list
     LDA NoteBitMasks,X   ; 4 cycles
     EOR #$FF             ; 2 cycles
     AND ActiveNotesMask  ; 3 cycles
     STA ActiveNotesMask  ; 3 cycles
-    
+
     ; Hide sprite
     TXA                  ; 2 cycles
     ASL                  ; 2 cycles
@@ -1450,12 +1450,12 @@ AudioUpdateLoop:
     TAY                  ; 2 cycles
     LDA #$FF             ; 2 cycles
     STA SpriteOAM,Y      ; 5 cycles
-    
+
 NextAudioNote:
     INX                  ; 2 cycles
     CPX #$04             ; 2 cycles
     BNE AudioUpdateLoop  ; 3 cycles
-    
+
 AudioUpdateDone:
     ; Update sprite positions for active notes
     JSR UpdateSpritesOptimized
@@ -1469,27 +1469,27 @@ SpriteUpdateLoop:
     LDA SpriteY,X        ; 4 cycles
     CMP #$FF             ; 2 cycles
     BEQ NextSpriteUpdate ; 2 cycles
-    
+
     ; Animate active sprite
     LDA AnimCounter      ; 3 cycles (ZP)
     AND #$07             ; 2 cycles
     CMP #$04             ; 2 cycles
     BCC SpritePulseUp    ; 2 cycles
-    
+
     ; Pulse down
     LDA OptimizedNotePosY,X ; 4 cycles
     CLC                  ; 2 cycles
     ADC #$02             ; 2 cycles
     JMP StoreSpriteY     ; 3 cycles
-    
+
 SpritePulseUp:
     LDA OptimizedNotePosY,X ; 4 cycles
     SEC                  ; 2 cycles
     SBC #$02             ; 2 cycles
-    
+
 StoreSpriteY:
     STA SpriteY,X        ; 4 cycles
-    
+
     ; Update OAM
     TXA                  ; 2 cycles
     ASL                  ; 2 cycles
@@ -1497,12 +1497,12 @@ StoreSpriteY:
     TAY                  ; 2 cycles
     LDA SpriteY,X        ; 4 cycles
     STA SpriteOAM,Y      ; 5 cycles
-    
+
 NextSpriteUpdate:
     INX                  ; 2 cycles
     CPX #$08             ; 2 cycles
     BNE SpriteUpdateLoop ; 3 cycles
-    
+
     INC AnimCounter      ; 5 cycles (ZP)
     RTS
 
@@ -1511,7 +1511,7 @@ WaitForVBlankOptimized:
 VBlankWait:
     LDA VBlankFlag       ; 3 cycles (ZP, set by NMI)
     BEQ VBlankWait       ; 2 cycles
-    
+
     LDA #$00             ; 2 cycles
     STA VBlankFlag       ; 3 cycles (ZP)
     RTS
@@ -1522,17 +1522,17 @@ MeasureFrameEnd:
     SEC                  ; 2 cycles
     SBC FrameStart       ; 3 cycles (ZP)
     STA FrameTime        ; 3 cycles
-    
+
     ; Check for new peak
     CMP PeakFrameTime    ; 3 cycles
     BCC MeasureDone      ; 2 cycles
     STA PeakFrameTime    ; 3 cycles
-    
+
     ; Check for overrun
     CMP #$E8             ; 2 cycles (232 cycles = danger zone)
     BCC MeasureDone      ; 2 cycles
     INC OverrunCount     ; 5 cycles
-    
+
 MeasureDone:
     RTS
 
@@ -1542,20 +1542,20 @@ NMIHandlerOptimized:
     PHA                  ; 3 cycles
     TXA                  ; 2 cycles
     PHA                  ; 3 cycles
-    
+
     ; OAM DMA
     LDA #$02             ; 2 cycles
     STA $4014            ; 4 cycles (+ 513 for DMA)
-    
+
     ; Set VBlank flag
     INC VBlankFlag       ; 5 cycles (ZP)
-    
+
     ; Restore and return
     PLA                  ; 4 cycles
     TAX                  ; 2 cycles
     PLA                  ; 4 cycles
     RTI                  ; 6 cycles
-    
+
     ; Total: ~545 cycles (well within budget)
 
 ; Optimized data tables

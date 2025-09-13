@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The hand-built computer that started Apple, sold from Steve Jobs' garage for $666.66."
-image: "/images/systems/apple-i.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 100
 
 # Apple I
 
-*Historical Reference*
+_Historical Reference_
 
 The Apple I was where it all began. Hand-built by Steve Wozniak and sold by Steve Jobs, only about 200 were ever made. Today, working units sell for hundreds of thousands of dollars at auction.
 
@@ -60,4 +59,4 @@ The Apple I represented the birth of personal computing as we know it. Unlike th
 
 While too rare and primitive for a modern curriculum, the Apple I's influence cannot be overstated. Every principle Wozniak applied here would be refined in the Apple II, which truly brought computing to the masses.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

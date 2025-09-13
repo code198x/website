@@ -27,6 +27,7 @@ Unlock the power of assembly text processing! Memory-based text handling isn't j
 ## What You'll Start Building
 
 Begin **Logic Labyrinth** development:
+
 - Represent maze structures as strings
 - Parse and process maze data
 - Create text-based maze generation
@@ -35,24 +36,28 @@ Begin **Logic Labyrinth** development:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Text Processing Mastery**
+
 - Assembly routines for extracting text substrings
 - Memory-based text length calculation
 - Assembly text concatenation techniques
 - Converting between text and numeric data in assembly
 
 **Lessons 9-16: Assembly Text Processing Techniques**
+
 - Assembly parsing of structured data
 - Extracting information from formatted text using assembly
 - Building text dynamically in memory
 - Assembly text validation and error checking
 
 **Lessons 17-24: Assembly Data Representation**
+
 - Storing complex information in memory structures
 - Creating readable data formats using assembly
 - Assembly encoding and decoding techniques
 - Efficient memory-based data storage
 
 **Lessons 25-32: Assembly Logic Labyrinth Foundation**
+
 - Representing mazes in memory structures
 - Assembly maze parsing and display routines
 - Memory-based coordinate systems

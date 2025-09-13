@@ -10,7 +10,7 @@ learning_objectives:
   - "Create sophisticated animation and sprite systems"
   - "Build games using the most advanced known techniques"
   - "Document and share technical discoveries"
-prerequisites: 
+prerequisites:
   - "Phases 1-7: Complete C64 programming journey"
   - "Twenty-eight complete games of increasing sophistication"
   - "Experience with large-scale ambitious projects"
@@ -27,7 +27,7 @@ order: 8
 
 # Phase 8: Advanced Technical Showcases
 
-*Coming Soon*
+_Coming Soon_
 
 The culmination of your C64 journey! Study, understand, and recreate the techniques that powered the platform's most legendary games, creating your own showcases of advanced technical achievement.
 
@@ -47,15 +47,19 @@ Phase 8 focuses on understanding and implementing the most sophisticated techniq
 ## Learning Path
 
 ### Classic Analysis (Tiers 1-4)
+
 Study and understand how legendary C64 games achieved their impressive effects through careful analysis and recreation.
 
 ### Technique Recreation (Tiers 5-8)
+
 Implement the specific techniques that made famous games possible, from scrolling engines to sprite systems.
 
 ### Advanced Integration (Tiers 9-12)
+
 Combine multiple advanced techniques to create games with unprecedented technical quality.
 
 ### Original Showcases (Tiers 13-16)
+
 Create your own technical showcases that demonstrate complete understanding of C64 capabilities.
 
 ## Your Phase 8 Projects
@@ -100,6 +104,7 @@ Bringing together everything learned:
 ## Prerequisites
 
 Before starting Phase 8, ensure you have:
+
 - Completed Phases 1-7 (3584 lessons)
 - Twenty-eight complete games
 - All technical skills from previous phases
@@ -108,10 +113,11 @@ Before starting Phase 8, ensure you have:
 ## Your Achievement
 
 Upon completing Phase 8, you will have:
+
 - Created 32 complete C64 games
 - Learned every major technique in C64 programming
 - Built a portfolio spanning from 1982 basics to peak technical achievement
 - Gained deep understanding of one of computing's most important platforms
 - Developed skills applicable to any programming challenge
 
-*This phase contains 512 lessons across 16 tiers and is currently in development.*
+_This phase contains 512 lessons across 16 tiers and is currently in development._

@@ -31,24 +31,28 @@ Develop **NES Technical Showcase** - a comprehensive project featuring advanced 
 ## Tier Overview
 
 **Lessons 1-8: Project Architecture & Planning**
+
 - Advanced project planning and architectural design
 - Technical requirements analysis and specification
 - Code organization and modular design patterns
 - Development workflow and version control strategies
 
 **Lessons 9-16: Core System Implementation**
+
 - Integrating advanced memory management techniques
 - Implementing sophisticated PPU and graphics systems
 - Building complex game logic and state management
 - Creating professional-grade audio and sound systems
 
 **Lessons 17-24: Advanced Features & Polish**
+
 - Implementing cutting-edge visual effects and animations
 - Adding sophisticated gameplay mechanics and features
 - Optimizing performance and memory usage
 - Creating professional user interface and experience
 
 **Lessons 25-32: Testing, Debugging & Presentation**
+
 - Comprehensive testing strategies and quality assurance
 - Professional debugging techniques and optimization
 - Documentation and code presentation standards

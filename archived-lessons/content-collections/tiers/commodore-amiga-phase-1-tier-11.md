@@ -27,6 +27,7 @@ Unite all of the Amiga's capabilities! Learn to coordinate graphics, audio, and 
 ## What You'll Build in Multimedia Studio
 
 Create integrated multimedia experiences:
+
 - Combine graphics, audio, and animation systems
 - Build interactive multimedia presentations
 - Create sophisticated visual and audio effects
@@ -35,24 +36,28 @@ Create integrated multimedia experiences:
 ## Tier Overview
 
 **Lessons 1-8: Multimedia System Coordination**
+
 - Synchronizing graphics, audio, and system components
 - Coordinated custom chip programming and timing
 - Real-time multimedia processing and performance
 - Building multimedia application frameworks
 
 **Lessons 9-16: Interactive Multimedia Applications**
+
 - User interface integration with multimedia content
 - Interactive graphics and audio control systems
 - Real-time user input and multimedia response
 - Building engaging multimedia experiences
 
 **Lessons 17-24: Advanced Multimedia Effects**
+
 - Complex visual and audio effect combinations
 - Real-time multimedia processing and synthesis
 - Advanced animation and transition systems
 - Creating professional multimedia presentations
 
 **Lessons 25-32: Multimedia Studio Development**
+
 - Building complete multimedia authoring tools
 - Advanced multimedia file format support
 - Real-time multimedia editing and composition

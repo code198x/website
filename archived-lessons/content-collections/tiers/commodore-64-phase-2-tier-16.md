@@ -31,6 +31,7 @@ Build like a professional! With **32 comprehensive lessons**, you'll master larg
 ## What You'll Complete
 
 Finish **Stellar Command** as a professional product:
+
 - Sophisticated strategy gameplay with advanced AI
 - Cross-platform compatibility (C64, Apple II, Atari)
 - Optimized performance handling complex scenarios
@@ -40,24 +41,28 @@ Finish **Stellar Command** as a professional product:
 ## Tier Overview
 
 **Lessons 1-8: Project Architecture**
+
 - Large-scale code organization
 - Module dependency management
 - Interface design principles
 - Extensibility planning
 
 **Lessons 9-16: Professional Documentation**
+
 - Code documentation standards
 - API reference generation
 - User manual creation
 - Technical documentation
 
 **Lessons 17-24: Quality Assurance**
+
 - Systematic testing approaches
 - Bug tracking and resolution
 - Performance validation
 - Compatibility testing
 
 **Lessons 25-32: Release Management**
+
 - Build automation systems
 - Version control practices
 - Distribution preparation

@@ -27,6 +27,7 @@ Time to think strategically! With **32 tactical lessons**, you'll create real-ti
 ## What You'll Build
 
 Create **DESERT COMMAND** - an RTS masterpiece featuring:
+
 - Real-time unit control with mouse selection
 - Base building with tech trees
 - Resource management and economy
@@ -36,24 +37,28 @@ Create **DESERT COMMAND** - an RTS masterpiece featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Unit Control" - Command Your Forces**
+
 - Mouse box selection for multiple units
 - Group formation and movement
 - Unit states and command queuing
 - Smooth scrolling across large maps
 
 **Lessons 9-16: "Pathfinding Pro" - Smart Movement**
-- A* implementation for optimal paths
+
+- A\* implementation for optimal paths
 - Dynamic obstacle avoidance
 - Formation preservation during movement
 - Traffic management for many units
 
 **Lessons 17-24: "Base Builder" - Economic Systems**
+
 - Building placement and construction
 - Resource gathering and management
 - Tech trees and unit production
 - Power grids and base defense
 
 **Lessons 25-32: "AI Commander" - Worthy Opponents**
+
 - Strategic AI decision making
 - Build order optimization
 - Attack pattern variety

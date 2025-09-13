@@ -16,7 +16,7 @@ video:
   colors: "128 colors"
 
 # Storage and I/O
-storage: ["3.5\" floppy", "Cassette"]
+storage: ['3.5" floppy', "Cassette"]
 
 # Commercial information
 release_date:
@@ -26,7 +26,6 @@ country_of_origin: "United Kingdom"
 
 # Media
 description: "The Spectrum-compatible computer that arrived too late but showed what 8-bit machines could achieve."
-image: "/images/systems/sam-coupe.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 110
 
 # SAM Coupé
 
-*Historical Reference*
+_Historical Reference_
 
 The SAM Coupé was designed as the spiritual successor to the ZX Spectrum, offering Spectrum compatibility with vastly superior graphics and sound. Created by Miles Gordon Technology (makers of Spectrum peripherals), it arrived in 1989 just as the world was moving to 16-bit machines.
 
@@ -65,4 +64,4 @@ Despite its impressive specifications, the SAM arrived just as the Amiga and ST 
 
 The SAM Coupé proved that 8-bit machines still had untapped potential. Its small but devoted community continues to develop for it, creating demos and games that showcase what this remarkable machine could do. It remains the ultimate "what if" of 8-bit computing.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

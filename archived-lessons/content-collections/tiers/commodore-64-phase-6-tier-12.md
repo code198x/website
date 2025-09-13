@@ -31,6 +31,7 @@ Work like the pros! With **32 comprehensive lessons**, you'll learn professional
 ## What You'll Complete
 
 Finish your **Collaborative Game Suite** with complete professional capabilities:
+
 - Commercial publishing with professional polish and distribution
 - Advanced performance optimization pushing hardware to limits
 - Engaging multiplayer with competitive and cooperative features
@@ -40,24 +41,28 @@ Finish your **Collaborative Game Suite** with complete professional capabilities
 ## Tier Overview
 
 **Lessons 1-8: Development Workflow Design**
+
 - Professional development process design
 - Code review and quality assurance
 - Automated testing and validation
 - Continuous integration practices
 
 **Lessons 9-16: Version Control & Asset Management**
+
 - Source code version control systems
 - Asset pipeline and management
 - Branch management and merging
 - Release and deployment processes
 
 **Lessons 17-24: Team Communication & Coordination**
+
 - Project management and task tracking
 - Team communication frameworks
 - Documentation and knowledge sharing
 - Remote collaboration techniques
 
 **Lessons 25-32: Professional Project Management**
+
 - Agile development methodologies
 - Sprint planning and execution
 - Risk management and problem solving

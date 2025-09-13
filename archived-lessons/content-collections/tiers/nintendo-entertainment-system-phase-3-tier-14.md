@@ -31,24 +31,28 @@ Develop **NES Master Reference** - a comprehensive platform mastery demonstratio
 ## Tier Overview
 
 **Lessons 1-8: Complete Hardware Mastery**
+
 - Deep understanding of CPU, PPU, and APU internals
 - Hardware timing and synchronization mastery
 - Understanding hardware quirks and limitations
 - Professional-level hardware debugging and analysis
 
 **Lessons 9-16: Undocumented Features & Exploits**
+
 - Discovering and exploiting undocumented hardware features
 - Understanding hardware bugs and working around limitations
 - Advanced hardware manipulation techniques
 - Creating impossible effects through hardware exploitation
 
 **Lessons 17-24: Advanced Mapper Programming**
+
 - Complete understanding of all major mapper types
 - Advanced mapper programming and optimization
 - Creating custom mapper behaviors and effects
 - Professional mapper selection and utilization
 
 **Lessons 25-32: Professional Platform Expertise**
+
 - Creating comprehensive development resources and documentation
 - Building professional testing and validation tools
 - Understanding commercial development practices and standards

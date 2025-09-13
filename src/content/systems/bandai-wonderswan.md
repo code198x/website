@@ -1,5 +1,5 @@
 ---
-name: "WonderSwan"
+name: "Bandai WonderSwan"
 full_name: "Bandai WonderSwan"
 manufacturer: "Bandai"
 model_number: "WSC-001"
@@ -28,7 +28,8 @@ video:
   processor: "Custom LCD controller"
   resolution: "224×144"
   colors: "4 shades / 241 colors"
-  display_modes: ["224×144 main display", "Tile-based 40×28", "Hardware sprites", "Dual background layers"]
+  display_modes:
+    ["224×144 main display", "Tile-based 40×28", "Hardware sprites", "Dual background layers"]
   sprites:
     count: 128
     size: "8×8 to 64×64 pixels"
@@ -40,7 +41,8 @@ video:
 audio:
   chip: "Custom sound unit"
   channels: 4
-  features: ["Wave sample playback", "Noise generation", "Stereo output", "Volume control", "Pan control"]
+  features:
+    ["Wave sample playback", "Noise generation", "Stereo output", "Volume control", "Pan control"]
   sample_playback: true
   synthesis_types: ["Wave samples", "Noise"]
 
@@ -69,8 +71,15 @@ market_positioning: "Nintendo Game Boy alternative with superior battery life"
 competition: ["Game Boy Color", "Neo Geo Pocket", "Atari Lynx"]
 
 # Educational relevance
-learning_advantages: ["x86 handheld programming", "Dual-orientation design", "Power-efficient coding", "Unique hardware features"]
-common_beginner_projects: ["Orientation-aware games", "Battery-efficient apps", "Sprite animations", "Audio programming"]
+learning_advantages:
+  [
+    "x86 handheld programming",
+    "Dual-orientation design",
+    "Power-efficient coding",
+    "Unique hardware features",
+  ]
+common_beginner_projects:
+  ["Orientation-aware games", "Battery-efficient apps", "Sprite animations", "Audio programming"]
 
 # Modern preservation and emulation
 emulated: true
@@ -90,7 +99,6 @@ hardware_availability: "available"
 
 # Media
 description: "Gunpei Yokoi's final handheld masterpiece with innovative vertical/horizontal play modes and x86 architecture."
-image: "/images/systems/wonderswan.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -105,7 +113,7 @@ order: 64
 
 # Bandai WonderSwan
 
-*Coming Soon*
+_Coming Soon_
 
 The Bandai WonderSwan represents Gunpei Yokoi's final handheld design, featuring innovative dual-orientation gameplay, remarkable battery life, and the unique combination of x86 architecture in a portable gaming system. Despite modest specifications, it achieved technical excellence through brilliant engineering.
 
@@ -123,9 +131,10 @@ The WonderSwan's unique features offer programming challenges found nowhere else
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the WonderSwan curriculum will include:
+
 - x86 assembly programming on constrained hardware
 - Dual-orientation interface and game design
 - Power-efficient programming techniques for maximum battery life

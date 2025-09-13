@@ -31,24 +31,28 @@ Begin developing **Lost Kingdoms** - an epic multi-screen adventure featuring in
 ## Tier Overview
 
 **Lessons 1-8: Multi-screen Architecture**
+
 - Designing large game world systems
 - Screen transition and navigation systems
 - Memory management for large worlds
 - Map data structure optimization
 
 **Lessons 9-16: Dynamic Content Systems**
+
 - Content streaming and loading techniques
 - Dynamic asset management
 - Efficient data compression for maps
 - Background loading and caching
 
 **Lessons 17-24: World State Management**
+
 - Persistent world state systems
 - Object placement and tracking
 - Progress and completion tracking
 - Save/load system implementation
 
 **Lessons 25-32: Navigation & Exploration**
+
 - Advanced pathfinding algorithms
 - Mini-map and navigation systems
 - Exploration mechanics and rewards

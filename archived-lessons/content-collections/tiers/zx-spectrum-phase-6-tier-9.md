@@ -27,6 +27,7 @@ Master sophisticated algorithms! With **32 intensive lessons**, you'll learn the
 ## What You'll Build
 
 Create **ALGORITHM MASTERY SYSTEM** - a comprehensive algorithm library featuring:
+
 - Advanced pathfinding and AI decision systems
 - Complex mathematical algorithms and numerical processing
 - Sophisticated data structures optimized for Z80
@@ -36,24 +37,28 @@ Create **ALGORITHM MASTERY SYSTEM** - a comprehensive algorithm library featurin
 ## Tier Overview
 
 **Lessons 1-8: "Smart Systems!" - AI and Decision Algorithms**
-- Pathfinding algorithms (A*, Dijkstra) optimized for Z80
+
+- Pathfinding algorithms (A\*, Dijkstra) optimized for Z80
 - State machines and behavior trees for AI
 - Decision-making algorithms and strategic planning
 - Professional AI architecture for game development
 
 **Lessons 9-16: "Mathematical Mastery!" - Numerical Algorithms**
+
 - Fixed-point mathematics and trigonometric functions
 - Physics simulation and collision detection algorithms
 - Statistical algorithms and random number generation
 - Mathematical optimization for Z80 constraints
 
 **Lessons 17-24: "Data Structures!" - Advanced Organization**
+
 - Binary trees, heaps, and priority queues
 - Hash tables and efficient lookup systems
 - Graph algorithms and network structures
 - Memory-efficient data organization for limited RAM
 
 **Lessons 25-32: "Design Patterns!" - Professional Architecture**
+
 - Object-oriented design patterns in assembly
 - State management and system coordination
 - Event-driven architecture and messaging systems

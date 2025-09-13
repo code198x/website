@@ -28,7 +28,8 @@ video:
   processor: "6845 CRTC + Gate Array"
   resolution: "640×200"
   colors: "27 colors"
-  display_modes: ["Mode 0: 160×200 16 colors", "Mode 1: 320×200 4 colors", "Mode 2: 640×200 2 colors"]
+  display_modes:
+    ["Mode 0: 160×200 16 colors", "Mode 1: 320×200 4 colors", "Mode 2: 640×200 2 colors"]
   sprites:
     count: 0
     size: "Software sprites only"
@@ -45,9 +46,9 @@ audio:
   synthesis_types: ["PSG"]
 
 # Storage and I/O
-storage: ["Cassette", "3\" floppy disk"]
+storage: ["Cassette", '3" floppy disk']
 storage_details:
-  built_in: ["Cassette (464)", "3\" floppy (6128)"]
+  built_in: ["Cassette (464)", '3" floppy (6128)']
   expansion: ["External disk drive"]
   typical_capacity:
     cassette: "Variable"
@@ -88,7 +89,6 @@ hardware_availability: "available"
 
 # Media
 description: "The all-in-one computer that brought affordable color computing to Europe with a built-in monitor."
-image: "/images/systems/amstrad-cpc.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -103,7 +103,7 @@ order: 20
 
 # Amstrad CPC
 
-*Coming Soon*
+_Coming Soon_
 
 The Amstrad CPC brought affordable computing to Europe with an all-in-one design that included a built-in monitor. Popular in the UK, France, and Spain, it competed directly with the Spectrum and C64 with colorful graphics and impressive sound.
 
@@ -120,9 +120,10 @@ The CPC's Gate Array and CRTC combination offers unique opportunities for visual
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the CPC curriculum will include:
+
 - Z80 assembly programming
 - Gate Array and CRTC tricks
 - Hardware scrolling and overscan

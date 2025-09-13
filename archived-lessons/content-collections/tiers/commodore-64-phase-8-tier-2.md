@@ -27,6 +27,7 @@ When 6502 assembly becomes poetry! With **32 artistry-focused lessons**, you'll 
 ## What You'll Create
 
 Develop **CODE ARTISTRY** that serves legendary games:
+
 - 6502 assembly so elegant it reads like poetry
 - Optimizations so clever they enable impossible-seeming games
 - Technical solutions that create amazing gameplay experiences
@@ -36,24 +37,28 @@ Develop **CODE ARTISTRY** that serves legendary games:
 ## Technical Artistry Areas
 
 **Lessons 1-8: "Elegant 6502 Expression" - Assembly as Literature**
+
 - Writing 6502 assembly that flows like natural language
 - Creating code structure that reveals game logic beautifully
 - Designing assembly organization that serves gameplay perfectly
 - Making complex game algorithms feel simple and inevitable
 
 **Lessons 9-16: "Perfect Game Performance" - Optimization Artistry**
+
 - Achieving C64 performance limits to enable amazing games
 - Finding optimal solutions that create smooth, responsive gameplay
 - Creating code so efficient it enables seemingly impossible games
 - Balancing code clarity with maximum game performance
 
 **Lessons 17-24: "Creative Game Solutions" - Technical Innovation**
+
 - Solving "impossible" game programming challenges
 - Creating techniques that enable innovative gameplay mechanics
 - Finding elegant solutions to complex game programming problems
 - Building code that serves amazing game experiences
 
 **Lessons 25-32: "Legendary Code Craft" - Artistry That Enables Games**
+
 - Creating code so beautiful it serves legendary game creation
 - Building technical foundations that enable amazing games
 - Writing assembly that inspires other game developers

@@ -27,6 +27,7 @@ Empower yourself and other developers! With **32 tool-focused lessons**, you'll 
 ## What You'll Build
 
 Create **AMIGA DEVELOPMENT TOOLKIT** - your productivity suite:
+
 - Level editors and map creation tools
 - Sprite and animation management utilities
 - Audio editing and conversion tools
@@ -36,24 +37,28 @@ Create **AMIGA DEVELOPMENT TOOLKIT** - your productivity suite:
 ## Development Tool Areas
 
 **Lessons 1-8: "Editor Development" - Content Creation Tools**
+
 - Level and map editor design and implementation
 - Sprite editing and animation tools
 - Tile-based level design systems
 - Visual scripting and event editing interfaces
 
 **Lessons 9-16: "Asset Management" - Resource Development Tools**
+
 - Graphics format conversion and optimization tools
 - Audio processing and conversion utilities
 - Asset pipeline management systems
 - Batch processing and automation tools
 
 **Lessons 17-24: "Debugging Tools" - Development Assistance**
+
 - Advanced debugging utilities for Amiga games
 - Performance profiling and optimization tools
 - Memory usage analysis and leak detection
 - Real-time game state inspection utilities
 
 **Lessons 25-32: "Framework Development" - Reusable Libraries**
+
 - Game engine framework design and implementation
 - Common task libraries for Amiga development
 - Cross-project utility libraries

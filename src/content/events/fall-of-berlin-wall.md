@@ -22,6 +22,7 @@ The fall of the Berlin Wall and subsequent opening of Eastern Europe created new
 ## Technology Context
 
 By 1989, the personal computer revolution was in full swing:
+
 - The Commodore 64 was still popular, especially in Europe
 - The Amiga and Atari ST were competing for the 16-bit market
 - Nintendo had revived the gaming industry with the NES

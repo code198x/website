@@ -27,6 +27,7 @@ Design and build sophisticated game engines! Learn the architecture patterns and
 ## What You'll Begin with Quest Builder
 
 Start building your game creation system:
+
 - Design modular game engine architecture
 - Implement core game systems and frameworks
 - Create reusable components for different game types
@@ -35,24 +36,28 @@ Start building your game creation system:
 ## Tier Overview
 
 **Lessons 1-8: Engine Architecture Design**
+
 - Understanding game engine architecture patterns
 - Designing modular, extensible systems
 - Creating component-based architectures in assembly
 - Building scalable framework foundations
 
 **Lessons 9-16: Core Game Systems**
+
 - Implementing game loops and timing systems
 - Creating entity management and component systems
 - Building physics and collision frameworks
 - Developing input and control abstractions
 
 **Lessons 17-24: State Management and Flow**
+
 - Advanced game state management
 - Scene and level management systems
 - Save/load architecture and persistence
 - Creating robust game flow control
 
 **Lessons 25-32: Performance and Integration**
+
 - Optimizing engine systems for real-time performance
 - Integrating graphics, audio, and input systems
 - Building efficient resource management

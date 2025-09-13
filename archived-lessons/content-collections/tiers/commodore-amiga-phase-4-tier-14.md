@@ -27,6 +27,7 @@ Optimize to perfection! With **32 comprehensive lessons**, you'll master advance
 ## What You'll Build
 
 Enhance **Stellar Legacy** with peak performance optimization:
+
 - Advanced profiling tools and performance monitoring systems
 - Sophisticated optimization strategies for complex game systems
 - Real-time performance analysis and bottleneck resolution
@@ -36,24 +37,28 @@ Enhance **Stellar Legacy** with peak performance optimization:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Profiling Tools**
+
 - Professional performance profiling system design
 - Real-time performance monitoring and analysis
 - CPU, memory, and custom chipset utilization tracking
 - Performance metrics collection and visualization
 
 **Lessons 9-16: Bottleneck Identification**
+
 - Complex performance problem diagnosis
 - Memory bandwidth and latency optimization
 - CPU cycle optimization and instruction scheduling
 - Custom chipset coordination and timing optimization
 
 **Lessons 17-24: Sophisticated Optimization**
+
 - Advanced code optimization techniques
 - Memory layout optimization and cache efficiency
 - Graphics pipeline optimization and acceleration
 - Audio processing optimization and efficiency
 
 **Lessons 25-32: Professional Debugging**
+
 - Advanced debugging tool development
 - Real-time system monitoring and diagnostics
 - Performance regression testing and validation

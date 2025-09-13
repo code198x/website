@@ -27,6 +27,7 @@ Unite creative forces! With **32 collaboration-focused lessons**, you'll master 
 ## What You'll Build
 
 Create **LEGENDARY COLLABORATIVE TEAMS** for ZX Spectrum development:
+
 - Teams that combine programming, art, music, and design into unified creative visions
 - Collaborative processes that amplify rather than diminish individual creativity
 - Projects that showcase the unique strengths of each team member
@@ -36,24 +37,28 @@ Create **LEGENDARY COLLABORATIVE TEAMS** for ZX Spectrum development:
 ## Collaboration Mastery Areas
 
 **Lessons 1-8: "Team Formation" - Assembling Your Creative Dream Team**
+
 - Identifying complementary skills and talents for ZX Spectrum projects
 - Understanding personality types and working styles in creative collaboration
 - Creating team cultures that encourage both individual expression and collective goals
 - Building trust and communication systems that support creative collaboration
 
 **Lessons 9-16: "Creative Vision Unification" - Many Talents, One Voice**
+
 - Developing unified creative visions that honor individual contributions
 - Creating design documents and style guides for collaborative ZX Spectrum projects
 - Understanding how to maintain creative coherence across different disciplines
 - Building feedback and iteration processes that strengthen rather than compromise vision
 
 **Lessons 17-24: "Collaborative Workflow Design" - Efficient Creative Processes**
+
 - Designing development workflows adapted to ZX Spectrum hardware constraints
 - Creating asset sharing and version control systems for 8-bit development
 - Understanding how to coordinate programming, art, and music creation efficiently
 - Building testing and integration processes that maintain quality throughout development
 
 **Lessons 25-32: "Creative Leadership" - Bringing Out the Best in Everyone**
+
 - Learning to lead creative teams without stifling individual expression
 - Understanding how to resolve creative conflicts constructively
 - Creating environments where team members feel valued and inspired

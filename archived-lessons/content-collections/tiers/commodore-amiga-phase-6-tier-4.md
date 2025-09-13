@@ -31,6 +31,7 @@ Time to create your Amiga legend! With **32 masterful lessons**, you'll combine 
 ## What You'll Complete
 
 Create your **AMIGA TECHNICAL SHOWCASE** - the ultimate demonstration of advanced Amiga development:
+
 - **Visual Masterpiece**: Custom chip graphics that push every boundary
 - **Sonic Masterpiece**: Paula audio programming that defines legendary sound
 - **Memory Masterpiece**: Optimization techniques that maximize every byte
@@ -40,24 +41,28 @@ Create your **AMIGA TECHNICAL SHOWCASE** - the ultimate demonstration of advance
 ## Tier Overview
 
 **Lessons 1-8: "System Integration!" - Advanced Component Coordination**
+
 - Integrating advanced graphics, audio, and memory systems
 - Professional system architecture and component coordination
 - Advanced timing and synchronization techniques
 - Creating seamless interaction between all Amiga subsystems
 
 **Lessons 9-16: "Performance Mastery!" - Maximum Optimization**
+
 - Advanced performance profiling and optimization techniques
 - 68000 assembly optimization for maximum speed
 - Custom chip coordination for optimal throughput
 - Professional performance tuning and system efficiency
 
 **Lessons 17-24: "Professional Polish!" - Commercial-Quality Presentation**
+
 - Advanced user interface and presentation systems
 - Professional asset pipeline and content management
 - Commercial-quality testing and debugging techniques
 - The final polish that creates legendary Amiga software
 
 **Lessons 25-32: "Legendary Integration!" - Master-Level Development**
+
 - Advanced engine architecture and system design
 - Professional development practices and code organization
 - Master-level optimization and performance techniques

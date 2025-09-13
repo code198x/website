@@ -31,6 +31,7 @@ Build tools that build better programs! With **32 comprehensive lessons**, you'l
 ## What You'll Complete
 
 Finish **Space Trader** using professional development practices:
+
 - Custom debugging tools for complex AI troubleshooting
 - Performance profilers ensuring smooth operation
 - Memory analyzers optimizing resource usage
@@ -40,24 +41,28 @@ Finish **Space Trader** using professional development practices:
 ## Tier Overview
 
 **Lessons 1-8: Debugging Monitor Development**
+
 - Building interactive debugging monitors
 - Breakpoint and watchpoint systems
 - Register and memory inspection
 - Single-step execution engines
 
 **Lessons 9-16: Performance Profiling Tools**
+
 - Creating execution time profilers
 - Memory usage analyzers
 - Hotspot detection utilities
 - Visual performance reporting
 
 **Lessons 17-24: Development Utilities**
+
 - Memory dump and comparison tools
 - Automated build systems
 - Symbol table management
 - Cross-reference generators
 
 **Lessons 25-32: Testing & Quality Assurance**
+
 - Unit testing frameworks for assembly
 - Integration test automation
 - Regression testing systems
@@ -78,7 +83,7 @@ Development Statistics:
 - Memory Usage: Dynamic (48-62KB)
 - Debug Build: Available
 
-[Professional-quality space trading with 
+[Professional-quality space trading with
  complex economy and smooth multitasking]
 
 Built with custom C64 development tools!

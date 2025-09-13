@@ -75,7 +75,6 @@ emulators:
 
 # Media
 description: "The IMSAI 8080 was one of the first widely available microcomputers and gained popularity as a refined alternative to the MITS Altair 8800. It used the Intel 8080 processor and the S-100 bus architecture, offering a flexible platform for hobbyists and early software developers."
-image: "/images/systems/imsai-8080.png"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -99,7 +98,7 @@ order: 29
 
 # IMSAI 8080
 
-*Historical Reference Only*
+_Historical Reference Only_
 
 The **IMSAI 8080** was one of the first widely available microcomputers and gained popularity as a refined alternative to the MITS Altair 8800. It used the Intel 8080 processor and the S-100 bus architecture, offering a flexible platform for hobbyists and early software developers.
 
@@ -109,7 +108,7 @@ The IMSAI 8080 represents a crucial moment in personal computing history:
 
 - **Microcomputer Evolution**: One of the first commercially successful alternatives to the Altair 8800
 - **S-100 Bus Standard**: Helped establish the S-100 bus as an industry standard for expansion
-- **Pop Culture Icon**: The distinctive front panel became iconic, featured in films like *WarGames* (1983)
+- **Pop Culture Icon**: The distinctive front panel became iconic, featured in films like _WarGames_ (1983)
 - **CP/M Platform**: One of the earliest machines to run CP/M, the dominant OS before MS-DOS
 
 ## Technical Innovation
@@ -121,7 +120,7 @@ The IMSAI 8080 represents a crucial moment in personal computing history:
 
 ## Did You Know?
 
-- The front panel of the IMSAI 8080 became iconic, often featured in films like *WarGames* (1983)
+- The front panel of the IMSAI 8080 became iconic, often featured in films like _WarGames_ (1983)
 - It was one of the earliest machines to run CP/M, the dominant OS before MS-DOS
 - The S-100 bus standard it used became the backbone for many hobbyist systems of the era
 - Many early software companies developed their first products on IMSAI systems

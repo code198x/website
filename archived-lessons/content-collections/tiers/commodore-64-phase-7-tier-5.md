@@ -27,6 +27,7 @@ Build the foundation for multiple games! With **32 advanced lessons**, you'll ma
 ## What You'll Build
 
 Create **MODULAR GAME ENGINE** - a complete game development framework:
+
 - Reusable graphics engine with sprite and screen management
 - Flexible audio system supporting multiple music and sound types
 - Efficient input handling system for various control schemes
@@ -36,24 +37,28 @@ Create **MODULAR GAME ENGINE** - a complete game development framework:
 ## Technical Architecture Areas
 
 **Lessons 1-8: "Engine Foundation" - Core Architecture Design**
+
 - Game engine design patterns and architectural principles
 - Component-based entity systems for flexible game objects
 - Memory management and resource allocation strategies
 - Efficient update loops and system coordination
 
 **Lessons 9-16: "Graphics Engine" - Visual System Architecture**
+
 - Modular graphics pipeline and rendering systems
 - Sprite management and animation frameworks
 - Screen management and scene rendering systems
 - Efficient graphics resource management and caching
 
 **Lessons 17-24: "Audio & Input Systems" - Interactive Framework**
+
 - Reusable audio engine supporting multiple game types
 - Flexible input handling for various gameplay styles
 - Event-driven system communication and messaging
 - Performance optimization for real-time game systems
 
 **Lessons 25-32: "Professional Tools" - Development Environment**
+
 - Game state management and scene systems
 - Professional debugging tools and performance monitoring
 - Asset pipeline and resource management systems

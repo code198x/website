@@ -30,7 +30,7 @@ order: 5
 
 # Tier 5: Multi-Screen Adventure Foundations
 
-*Coming Soon*
+_Coming Soon_
 
 Step into the jungle! After mastering single-screen games with Neon Nexus, you're ready to create sprawling adventure worlds that span multiple interconnected areas. Learn the techniques that powered classic 1983-84 exploration games.
 
@@ -48,15 +48,19 @@ This tier introduces the fundamental concepts of larger game worlds:
 ## Your Journey Through 32 Lessons
 
 ### Screen Transition Systems (Lessons 1-8)
+
 Learn to create smooth flip-screen transitions that make multiple areas feel like one continuous world. Understand the technical challenges of moving between screens.
 
 ### Environmental Graphics (Lessons 9-16)
+
 Create lush jungle environments using advanced character set techniques. Design screens that feel atmospheric and immersive within C64 limitations.
 
 ### World Design & Navigation (Lessons 17-24)
+
 Plan interconnected areas that create engaging exploration. Learn to guide players through larger worlds without overwhelming them.
 
 ### Adventure Game Systems (Lessons 25-32)
+
 Implement the core systems that make exploration games engaging: item collection, area unlocking, and environmental storytelling.
 
 ## Your First Multi-Screen Adventure
@@ -82,6 +86,7 @@ By the end of this tier, Jungle Explorer will feature:
 ## Prerequisites
 
 Before starting Tier 5, you should have completed:
+
 - [Tiers 1-4: Complete Neon Nexus](/lessons/commodore-64/phase-1/tier-4)
 - Strong foundation in sprite graphics and sound programming
 - Understanding of game loops and state management
@@ -91,4 +96,4 @@ Before starting Tier 5, you should have completed:
 
 After completing Tier 5, you'll be ready for Tier 6: Jungle Hazards & Creatures, where you'll add dangerous wildlife, environmental hazards, and expand your jungle world with new areas and challenges.
 
-*This tier contains 32 lessons and is currently in development. Check back soon for updates on availability.*
+_This tier contains 32 lessons and is currently in development. Check back soon for updates on availability._

@@ -30,7 +30,7 @@ order: 2
 
 # Tier 2: Programming Logic & Control
 
-*Coming Soon*
+_Coming Soon_
 
 Building on your C64 programming foundations, this tier introduces the essential logic structures that make programs truly interactive and intelligent. You'll learn to make decisions, repeat operations, and organize code like a professional developer.
 
@@ -39,7 +39,7 @@ Building on your C64 programming foundations, this tier introduces the essential
 This tier focuses on programming logic concepts that work on any computer, taught through hands-on C64 assembly:
 
 - How computers make decisions with branching
-- Creating efficient loops for repetitive tasks  
+- Creating efficient loops for repetitive tasks
 - Writing reusable subroutines and functions
 - Managing program flow and user interaction
 - Debugging logical errors and flow problems
@@ -47,15 +47,19 @@ This tier focuses on programming logic concepts that work on any computer, taugh
 ## Your Journey Through 32 Lessons
 
 ### Conditional Logic (Lessons 1-8)
+
 Learn how programs make decisions using the 6502's condition codes and branching instructions. Build programs that respond intelligently to different inputs and situations.
 
-### Loop Programming (Lessons 9-16)  
+### Loop Programming (Lessons 9-16)
+
 Implement counting loops, conditional loops, and nested loops. Create programs that efficiently process data and repeat operations with precise control.
 
 ### Subroutines & Organization (Lessons 17-24)
+
 Break large programs into manageable pieces using subroutines. Learn proper stack management and create reusable code modules.
 
 ### Advanced Flow Control (Lessons 25-32)
+
 Combine all concepts to create sophisticated program logic. Build interactive systems that handle complex user input and multiple execution paths.
 
 ## Why This Matters
@@ -71,6 +75,7 @@ Combine all concepts to create sophisticated program logic. Build interactive sy
 ## Prerequisites
 
 Before starting Tier 2, you should have completed:
+
 - [Tier 1: C64 Programming Foundations](/lessons/commodore-64/phase-1/tier-1)
 - Comfort with basic assembly syntax and 6502 registers
 - Understanding of screen memory and simple graphics operations
@@ -79,4 +84,4 @@ Before starting Tier 2, you should have completed:
 
 After completing Tier 2, you'll be ready for Tier 3: Data Structures & Memory Management, where you'll learn to handle complex data and optimize memory usage for larger programs.
 
-*This tier contains 32 lessons and is currently in development. Check back soon for updates on availability.*
+_This tier contains 32 lessons and is currently in development. Check back soon for updates on availability._

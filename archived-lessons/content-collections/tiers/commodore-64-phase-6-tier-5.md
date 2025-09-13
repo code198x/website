@@ -31,24 +31,28 @@ Create **Neon Blaster** - a high-energy arcade shooter featuring lightning-fast 
 ## Tier Overview
 
 **Lessons 1-8: Action Game Fundamentals**
+
 - Fast-paced gameplay mechanics and timing
 - Precision movement and control systems
 - Real-time collision detection optimization
 - Frame-perfect input responsiveness
 
 **Lessons 9-16: Combat & Shooting Systems**
+
 - Weapon systems and projectile mechanics
 - Enemy spawn patterns and AI behaviors
 - Power-up systems and temporary abilities
 - Damage systems and visual feedback
 
 **Lessons 17-24: Progression & Scoring**
+
 - Addictive scoring and combo systems
 - Difficulty progression and challenge curves
 - Achievement systems and player goals
 - High score tracking and competition
 
 **Lessons 25-32: Arcade Polish & Feel**
+
 - Screen shake, particle effects, and juice
 - Audio feedback and impact sounds
 - Visual polish and arcade aesthetics

@@ -27,6 +27,7 @@ Time to build your first COMPLETE NES game! 🌟 With **32 project-focused lesso
 ## What You'll Build
 
 Create **PIXEL QUEST ADVENTURE** - a complete NES platform game featuring:
+
 - Smooth character animation with multiple states 🏃‍♂️
 - Pixel-perfect collision detection that feels fair
 - Memorable soundtrack and satisfying sound effects 🎵
@@ -36,18 +37,21 @@ Create **PIXEL QUEST ADVENTURE** - a complete NES platform game featuring:
 ## Project Overview
 
 **Weeks 1-2: "Foundation Building" - Core Game Systems**
+
 - Setting up game architecture and main loop
 - Integrating sprite animation system from Tier 1
 - Implementing collision detection from Tier 2
 - Adding audio system from Tier 3
 
 **Weeks 3-4: "Content Creation" - Levels and Gameplay**
+
 - Designing engaging levels with proper difficulty progression
 - Creating enemy AI and behavior patterns
 - Implementing power-up and item collection systems
 - Adding game states (title screen, game over, victory)
 
 **Week 5: "Polish and Perfection" - Professional Finishing**
+
 - Screen transitions and visual effects
 - Audio mixing and final sound implementation
 - Performance optimization and ROM banking
@@ -56,12 +60,14 @@ Create **PIXEL QUEST ADVENTURE** - a complete NES platform game featuring:
 ## Technical Highlights
 
 **Advanced Integration Techniques:**
+
 - Seamless system communication between animation, collision, and audio
 - Efficient memory management for sprites, sounds, and level data
 - Professional game loop architecture
 - ROM banking for larger game content
 
 **NES-Specific Features:**
+
 - Smooth scrolling backgrounds
 - Sprite multiplexing for complex scenes
 - APU audio that enhances gameplay

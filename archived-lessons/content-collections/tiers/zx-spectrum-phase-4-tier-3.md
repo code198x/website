@@ -27,6 +27,7 @@ Polish and professionalism! With **32 comprehensive lessons**, you'll create bea
 ## What You'll Build
 
 Continue developing **Vector Storm** with stunning interface design:
+
 - Professional main menu with animated elements
 - In-game HUD with real-time information display
 - Settings and options screens with intuitive controls
@@ -36,24 +37,28 @@ Continue developing **Vector Storm** with stunning interface design:
 ## Tier Overview
 
 **Lessons 1-8: Menu System Architecture**
+
 - Professional menu system design patterns
 - State management for complex interfaces
 - Navigation flow and user experience planning
 - Modular interface component architecture
 
 **Lessons 9-16: Visual Design Mastery**
+
 - Working creatively within ZX Spectrum constraints
 - Color palette optimization for interfaces
 - Typography and text layout techniques
 - Icon design and visual hierarchy
 
 **Lessons 17-24: Interactive Elements**
+
 - Button and control implementation
 - Animated interface elements
 - User feedback and response systems
 - Keyboard and joystick input handling
 
 **Lessons 25-32: Professional Polish**
+
 - Interface performance optimization
 - Accessibility considerations
 - Consistent visual style development

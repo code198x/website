@@ -1,5 +1,5 @@
 ---
-name: "Macintosh"
+name: "Apple Macintosh"
 full_name: "Apple Macintosh"
 manufacturer: "Apple Computer"
 model_number: "M0001"
@@ -10,7 +10,8 @@ cpu: "68000"
 cpu_details:
   architecture: "16/32-bit"
   instruction_set: "Motorola 68000"
-  addressing_modes: ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
+  addressing_modes:
+    ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
   registers: "8 data registers (D0-D7), 8 address registers (A0-A7)"
 
 clock_speed: "8 MHz"
@@ -45,9 +46,9 @@ audio:
   synthesis_types: ["Software synthesis"]
 
 # Storage and I/O
-storage: ["3.5\" floppy", "External drive"]
+storage: ['3.5" floppy', "External drive"]
 storage_details:
-  built_in: ["3.5\" 400KB floppy"]
+  built_in: ['3.5" 400KB floppy']
   expansion: ["External floppy", "Hard disk"]
   typical_capacity:
     floppy: "400KB-800KB"
@@ -87,7 +88,6 @@ hardware_availability: "available"
 
 # Media
 description: "The computer that made graphical interfaces mainstream and changed how we interact with computers forever."
-image: "/images/systems/macintosh.jpg"
 
 # Platform Classification
 medal_tier: "gold"
@@ -102,7 +102,7 @@ order: 42
 
 # Apple Macintosh
 
-*Coming Soon*
+_Coming Soon_
 
 The original Macintosh revolutionized personal computing by making graphical user interfaces accessible to everyone. With its built-in screen, mouse, and innovative System software, it changed how we think about human-computer interaction.
 
@@ -119,9 +119,10 @@ The Macintosh introduced event-driven programming and the Toolbox - concepts tha
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Macintosh curriculum will include:
+
 - 68000 assembly and Toolbox programming
 - QuickDraw graphics system
 - Event-driven programming model

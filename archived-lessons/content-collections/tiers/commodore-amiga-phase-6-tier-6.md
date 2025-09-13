@@ -27,6 +27,7 @@ Time to unlock maximum Amiga performance! With **32 intensive lessons**, you'll 
 ## What You'll Build
 
 Create **AMIGA PERFORMANCE ENGINE** - an ultra-optimized demonstration featuring:
+
 - 68000 assembly code optimized to the cycle level for maximum speed
 - Advanced profiling systems that identify and eliminate every bottleneck
 - Sophisticated caching strategies that minimize memory access delays
@@ -36,24 +37,28 @@ Create **AMIGA PERFORMANCE ENGINE** - an ultra-optimized demonstration featuring
 ## Tier Overview
 
 **Lessons 1-8: "Cycle Perfect!" - Advanced 68000 Instruction Optimization**
+
 - Cycle-level 68000 instruction optimization and timing analysis
 - Advanced addressing mode selection for maximum efficiency
 - Register allocation strategies and instruction pipeline optimization
 - The art of writing assembly code that executes at theoretical maximum speed
 
 **Lessons 9-16: "Bottleneck Elimination!" - Performance Analysis and Profiling**
+
 - Advanced performance profiling and bottleneck identification
 - Real-time performance monitoring and analysis tools
 - Memory access pattern optimization and cache-friendly code design
 - Professional debugging techniques for performance optimization
 
 **Lessons 17-24: "Ultra-Efficient Algorithms!" - Advanced Algorithm Optimization**
+
 - High-performance algorithm design and implementation
 - Advanced data structure optimization for speed and memory efficiency
 - Mathematical optimization and lookup table techniques
 - The legendary algorithms that made impossible Amiga performance possible
 
 **Lessons 25-32: "Maximum Performance!" - Professional Optimization Mastery**
+
 - Complete system optimization and performance tuning
 - Advanced compiler-like optimization techniques in assembly
 - Professional performance benchmarking and validation

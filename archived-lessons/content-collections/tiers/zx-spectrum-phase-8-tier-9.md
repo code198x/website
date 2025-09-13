@@ -27,6 +27,7 @@ Transform the world through code! With **32 impact-focused lessons**, you'll lea
 ## What You'll Create
 
 Develop **CULTURALLY TRANSFORMATIVE EXPERIENCES** on the ZX Spectrum:
+
 - Games that address important social issues in thoughtful, meaningful ways
 - Interactive experiences that bridge cultural divides and promote understanding
 - Stories that inspire empathy, compassion, and positive action in players
@@ -36,24 +37,28 @@ Develop **CULTURALLY TRANSFORMATIVE EXPERIENCES** on the ZX Spectrum:
 ## Cultural Impact Areas
 
 **Lessons 1-8: "Universal Human Themes" - Stories That Unite Us All**
+
 - Identifying universal human experiences that transcend cultural boundaries
 - Creating narratives that speak to fundamental human needs and emotions
 - Designing characters and conflicts that resonate across different backgrounds
 - Understanding how simple stories can carry profound meaning
 
 **Lessons 9-16: "Social Awareness Design" - Entertainment That Educates**
+
 - Integrating important social themes into engaging gameplay mechanics
 - Creating experiences that increase awareness without being preachy or heavy-handed
 - Designing systems that encourage reflection and discussion
 - Understanding how interactive media can be more powerful than passive consumption
 
 **Lessons 17-24: "Cross-Cultural Bridge Building" - Games That Connect Worlds**
+
 - Creating experiences that work across different cultural contexts
 - Designing universal gameplay that doesn't require specific cultural knowledge
 - Building games that celebrate diversity while finding common ground
 - Understanding how ZX Spectrum games can reach global audiences
 
 **Lessons 25-32: "Positive Change Inspiration" - From Entertainment to Action**
+
 - Designing experiences that inspire players to take positive action in their lives
 - Creating communities around games that extend into real-world positive impact
 - Understanding how entertainment can be a force for social good

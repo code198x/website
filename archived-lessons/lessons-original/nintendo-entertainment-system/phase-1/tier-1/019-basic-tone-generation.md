@@ -46,6 +46,7 @@ The NES uses a unique frequency system:
 **Formula**: `APU_Frequency = CPU_CLOCK / (16 * (period + 1))`
 
 Where:
+
 - **CPU_CLOCK**: 1,789,773 Hz (NTSC NES)
 - **period**: The 11-bit value you write to frequency registers
 - **Actual frequency**: What you hear as a musical note
@@ -59,7 +60,7 @@ Where:
 ; (These create recognizable musical pitches)
 
 C_NOTE   = $07F1    ; C note (~261 Hz)
-D_NOTE   = $0780    ; D note (~294 Hz)  
+D_NOTE   = $0780    ; D note (~294 Hz)
 E_NOTE   = $06F1    ; E note (~330 Hz)
 F_NOTE   = $0682    ; F note (~349 Hz)
 G_NOTE   = $05C7    ; G note (~392 Hz)
@@ -78,17 +79,17 @@ generate_basic_tone:
     ; Enable pulse 1
     LDA #%00000001
     STA $4015       ; APU enable
-    
+
     ; Configure pulse 1 for clear tone
     LDA #%10111111  ; 50% duty, constant volume 15
     STA $4000       ; Pulse 1 control
-    
+
     ; Generate A note (440 Hz approximately)
     LDA #$06        ; Frequency low byte
     STA $4002       ; Pulse 1 frequency low
     LDA #$05        ; Frequency high byte (period = $0506)
     STA $4003       ; Pulse 1 frequency high
-    
+
     RTS
 
 ; A clear A note (440 Hz) is now playing!
@@ -99,6 +100,7 @@ generate_basic_tone:
 Each APU channel can generate tones with different characteristics:
 
 ### Pulse Wave Tones
+
 ```text
 ; Generate tone on pulse 1
 play_pulse1_tone:
@@ -109,7 +111,7 @@ play_pulse1_tone:
     ; Set frequency registers $4002/$4003
     RTS
 
-; Generate tone on pulse 2  
+; Generate tone on pulse 2
 play_pulse2_tone:
     LDA #%00000010  ; Enable pulse 2
     STA $4015
@@ -120,6 +122,7 @@ play_pulse2_tone:
 ```
 
 ### Triangle Wave Tones
+
 ```text
 ; Generate smooth tone on triangle
 play_triangle_tone:
@@ -141,7 +144,7 @@ demo_multichannel_tones:
     ; Enable multiple channels
     LDA #%00000111  ; Pulse 1, pulse 2, triangle
     STA $4015
-    
+
     ; Setup pulse 1 - high tone
     LDA #%10111111  ; 50% duty, max volume
     STA $4000
@@ -149,15 +152,15 @@ demo_multichannel_tones:
     STA $4002
     LDA #$01
     STA $4003
-    
-    ; Setup pulse 2 - medium tone  
+
+    ; Setup pulse 2 - medium tone
     LDA #%01111000  ; 25% duty, medium volume
     STA $4004
     LDA #$CA        ; Medium frequency
     STA $4006
     LDA #$01
     STA $4007
-    
+
     ; Setup triangle - low tone
     LDA #%11000000  ; Triangle control
     STA $4008
@@ -165,7 +168,7 @@ demo_multichannel_tones:
     STA $400A
     LDA #$01
     STA $400B
-    
+
     RTS
 
 ; Three-part harmony playing!
@@ -180,7 +183,7 @@ Organizing frequencies in tables makes musical programming easier:
 note_freq_lo:
     .byte $F1, $80, $F1, $82, $C7, $06, $53, $F8  ; C,D,E,F,G,A,B,C
 
-; Note frequency table (high bytes)  
+; Note frequency table (high bytes)
 note_freq_hi:
     .byte $07, $07, $06, $06, $05, $05, $04, $03  ; C,D,E,F,G,A,B,C
 
@@ -206,32 +209,32 @@ setup_note_table:
     STA $4015
     LDA #%10111111  ; Configure pulse 1
     STA $4000
-    
+
     ; Create note table in memory
     ; C note
     LDA #$F1        ; C low byte
     STA $0380
     LDA #$07        ; C high byte
     STA $0388
-    
+
     ; D note
     LDA #$80        ; D low byte
     STA $0381
     LDA #$07        ; D high byte
     STA $0389
-    
+
     ; E note
     LDA #$F1        ; E low byte
     STA $0382
     LDA #$06        ; E high byte
     STA $038A
-    
+
     ; G note
     LDA #$C7        ; G low byte
     STA $0383
     LDA #$05        ; G high byte
     STA $038B
-    
+
     RTS
 
 ; Play note from table (A = note index)
@@ -258,6 +261,7 @@ JSR play_table_note
 Musical intervals are the relationships between different pitches:
 
 ### Basic Intervals
+
 - **Unison**: Same note (frequency ratio 1:1)
 - **Octave**: Double frequency (ratio 2:1)
 - **Fifth**: 3:2 frequency ratio (very harmonious)
@@ -265,10 +269,11 @@ Musical intervals are the relationships between different pitches:
 - **Major Third**: 5:4 frequency ratio
 
 ### NES Octaves
+
 ```text
 ; Same note in different octaves
 C_LOW    = $0FE2    ; Low C
-C_MIDDLE = $07F1    ; Middle C  
+C_MIDDLE = $07F1    ; Middle C
 C_HIGH   = $03F8    ; High C (half the period = double frequency)
 ```
 
@@ -282,26 +287,26 @@ demo_intervals:
     ; Enable pulse 1 and 2
     LDA #%00000011
     STA $4015
-    
+
     ; Configure both channels
     LDA #%10111111  ; Pulse 1 setup
     STA $4000
     LDA #%01111000  ; Pulse 2 setup
     STA $4004
-    
+
     ; Perfect octave (C and high C)
     ; Low C on pulse 2
     LDA #$F1        ; C low frequency
     STA $4006       ; Pulse 2 freq low
     LDA #$07        ; C high frequency
     STA $4007       ; Pulse 2 freq high
-    
+
     ; High C on pulse 1 (double frequency)
     LDA #$F8        ; High C low (half the period)
     STA $4002       ; Pulse 1 freq low
     LDA #$03        ; High C high
     STA $4003       ; Pulse 1 freq high
-    
+
     RTS
 
 ; Perfect octave harmony playing!
@@ -312,17 +317,18 @@ demo_intervals:
 Controlling how long tones play is crucial for music:
 
 ### Simple Duration Control
+
 ```text
 play_timed_tone:
     ; Start the tone
     JSR start_tone
-    
+
     ; Wait for duration
     LDX #$60        ; Duration counter
 wait_loop:
     DEX
     BNE wait_loop
-    
+
     ; Stop the tone
     JSR stop_tone
     RTS
@@ -334,6 +340,7 @@ stop_tone:
 ```
 
 ### Frame-Based Timing
+
 ```text
 ; Using frame counter for precise timing
 tone_timer = $0390
@@ -342,7 +349,7 @@ play_timed_note:
     ; Set duration (60 frames = 1 second)
     LDA #$3C        ; 60 frames
     STA tone_timer
-    
+
     ; Start tone
     JSR start_tone
     RTS
@@ -353,7 +360,7 @@ update_tone_timer:
     BEQ timer_done  ; Already finished
     DEC tone_timer  ; Decrease timer
     BNE timer_done  ; Still playing
-    
+
     ; Timer reached 0, stop tone
     JSR stop_tone
 timer_done:
@@ -371,22 +378,22 @@ simple_melody:
     LDA #$00        ; Note index 0 (C)
     JSR play_table_note
     JSR short_delay
-    
+
     ; Note 2: E
     LDA #$02        ; Note index 2 (E)
     JSR play_table_note
     JSR short_delay
-    
+
     ; Note 3: G
     LDA #$04        ; Note index 4 (G)
     JSR play_table_note
     JSR short_delay
-    
+
     ; Note 4: C (higher)
     LDA #$07        ; Note index 7 (high C)
     JSR play_table_note
     JSR short_delay
-    
+
     RTS
 
 short_delay:
@@ -409,7 +416,7 @@ play_simple_melody:
     STA $4015
     LDA #%10111111  ; Configure pulse 1
     STA $4000
-    
+
     ; Play C-E-G-C melody
     JSR play_c
     JSR note_delay
@@ -419,7 +426,7 @@ play_simple_melody:
     JSR note_delay
     JSR play_c_high
     JSR note_delay
-    
+
     RTS
 
 play_c:
@@ -472,15 +479,15 @@ init_symphony_tones:
     ; Initialize tone generation system
     LDA #%00000011  ; Enable pulse 1 and 2
     STA $4015
-    
+
     ; Configure pulse 1 for melody
     LDA #%10111111  ; 50% duty, max volume
     STA $4000
-    
+
     ; Configure pulse 2 for harmony
-    LDA #%01111000  ; 25% duty, medium volume  
+    LDA #%01111000  ; 25% duty, medium volume
     STA $4004
-    
+
     ; Setup symphony note table
     JSR setup_symphony_notes
     RTS
@@ -492,31 +499,31 @@ setup_symphony_notes:
     STA symphony_notes_lo+0
     LDA #$07
     STA symphony_notes_hi+0
-    
+
     ; D note (index 1)
     LDA #$80
     STA symphony_notes_lo+1
     LDA #$07
     STA symphony_notes_hi+1
-    
+
     ; E note (index 2)
     LDA #$F1
     STA symphony_notes_lo+2
     LDA #$06
     STA symphony_notes_hi+2
-    
+
     ; F note (index 3)
     LDA #$82
     STA symphony_notes_lo+3
     LDA #$06
     STA symphony_notes_hi+3
-    
+
     ; G note (index 4)
     LDA #$C7
     STA symphony_notes_lo+4
     LDA #$05
     STA symphony_notes_hi+4
-    
+
     RTS
 
 play_symphony_note:
@@ -524,14 +531,14 @@ play_symphony_note:
     TAY                     ; Save note index
     CPX #$00
     BEQ use_pulse1
-    
+
     ; Use pulse 2
     LDA symphony_notes_lo,Y
     STA $4006              ; Pulse 2 freq low
     LDA symphony_notes_hi,Y
     STA $4007              ; Pulse 2 freq high
     RTS
-    
+
 use_pulse1:
     LDA symphony_notes_lo,Y
     STA $4002              ; Pulse 1 freq low
@@ -563,43 +570,43 @@ init_tone_generator:
     STA $03A0
     LDA #$07        ; C high
     STA $03B0
-    
+
     ; D note (index 1)
     LDA #$80        ; D low
     STA $03A1
     LDA #$07        ; D high
     STA $03B1
-    
+
     ; E note (index 2)
     LDA #$F1        ; E low
     STA $03A2
     LDA #$06        ; E high
     STA $03B2
-    
+
     ; F note (index 3)
     LDA #$82        ; F low
     STA $03A3
     LDA #$06        ; F high
     STA $03B3
-    
+
     ; G note (index 4)
     LDA #$C7        ; G low
     STA $03A4
     LDA #$05        ; G high
     STA $03B4
-    
+
     ; A note (index 5)
     LDA #$06        ; A low
     STA $03A5
     LDA #$05        ; A high
     STA $03B5
-    
+
     ; B note (index 6)
     LDA #$53        ; B low
     STA $03A6
     LDA #$04        ; B high
     STA $03B6
-    
+
     ; Enable channels
     LDA #%00000011  ; Pulse 1 and 2
     STA $4015
@@ -607,7 +614,7 @@ init_tone_generator:
     STA $4000
     LDA #%01111000  ; Configure pulse 2
     STA $4004
-    
+
     RTS
 
 ; 2. Play note on specific channel
@@ -616,14 +623,14 @@ play_note_on_channel:
     TAY             ; Save note index
     CPX #$00        ; Check channel
     BEQ channel_1
-    
+
     ; Channel 2 (pulse 2)
     LDA $03A0,Y     ; Get frequency low
     STA $4006       ; Pulse 2 freq low
     LDA $03B0,Y     ; Get frequency high
     STA $4007       ; Pulse 2 freq high
     RTS
-    
+
 nchannel_1:
     ; Channel 1 (pulse 1)
     LDA $03A0,Y     ; Get frequency low
@@ -637,17 +644,17 @@ play_harmony:
     ; A = note 1, Y = note 2
     STA $03C0       ; Store note 1
     STY $03C1       ; Store note 2
-    
+
     ; Play note 1 on pulse 1
     LDA $03C0       ; Get note 1
     LDX #$00        ; Channel 0
     JSR play_note_on_channel
-    
+
     ; Play note 2 on pulse 2
     LDA $03C1       ; Get note 2
     LDX #$01        ; Channel 1
     JSR play_note_on_channel
-    
+
     RTS
 
 ; 4. Simple delay for melody timing
@@ -668,31 +675,31 @@ play_test_melody:
     LDX #$00        ; Channel 0
     JSR play_note_on_channel
     JSR melody_delay
-    
+
     ; Note D
     LDA #$01        ; Note index 1
     LDX #$00        ; Channel 0
     JSR play_note_on_channel
     JSR melody_delay
-    
+
     ; Note E
     LDA #$02        ; Note index 2
     LDX #$00        ; Channel 0
     JSR play_note_on_channel
     JSR melody_delay
-    
+
     ; Note F
     LDA #$03        ; Note index 3
     LDX #$00        ; Channel 0
     JSR play_note_on_channel
     JSR melody_delay
-    
+
     ; Note G
     LDA #$04        ; Note index 4
     LDX #$00        ; Channel 0
     JSR play_note_on_channel
     JSR melody_delay
-    
+
     RTS
 
 ; Test harmony (C and E together)

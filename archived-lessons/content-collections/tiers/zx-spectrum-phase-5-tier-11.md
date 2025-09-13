@@ -27,6 +27,7 @@ Play ball! With **32 action-packed lessons**, you'll create the kind of sports g
 ## What You'll Build
 
 Create **SPECTRUM SPORTS** - a comprehensive sports game collection featuring:
+
 - Football (soccer) with realistic ball physics and team tactics
 - Tennis with precise timing and strategic shot placement
 - Athletics events with Olympic-style competition
@@ -36,24 +37,28 @@ Create **SPECTRUM SPORTS** - a comprehensive sports game collection featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Physics & Movement" - Realistic Athletic Simulation**
+
 - Ball physics with realistic bounce, spin, and trajectory
 - Player movement with momentum and acceleration
 - Collision detection for fair and consistent gameplay
 - Environmental factors like wind and field conditions
 
 **Lessons 9-16: "Team Management" - Strategy & Statistics**
+
 - Player statistics and performance tracking
 - Team formation systems and tactical adjustments
 - Player fatigue and substitution mechanics
 - Training systems and skill development
 
 **Lessons 17-24: "AI Competition" - Computer Opponents**
+
 - AI players with different skill levels and playing styles
 - Team AI that adapts tactics based on game situation
 - Difficulty progression that remains challenging but fair
 - Personality systems for distinctive computer opponents
 
 **Lessons 25-32: "Tournament Systems" - Competitive Structure**
+
 - League tables and knockout tournament brackets
 - Season progression with meaningful match outcomes
 - Transfer markets and player acquisition systems

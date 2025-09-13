@@ -31,6 +31,7 @@ Achieve perfection! With **32 comprehensive lessons**, you'll complete your thir
 ## What You'll Complete
 
 Finish **Nexus Station** with professional polish:
+
 - Immersive audio landscapes perfectly synchronized with visuals
 - Spectacular graphics that showcase Amiga's capabilities
 - Exceptional user experience with accessibility and flow
@@ -40,24 +41,28 @@ Finish **Nexus Station** with professional polish:
 ## Tier Overview
 
 **Lessons 1-8: Complete Integration**
+
 - Seamlessly integrating audio, visual, and UX systems
 - Resolving conflicts and optimizing integrated performance
 - Professional system coordination and communication
 - Final architecture refinement and optimization
 
 **Lessons 9-16: Commercial Standards**
+
 - Achieving commercial-quality presentation standards
 - Professional asset creation and management workflows
 - Quality assurance and comprehensive testing protocols
 - Documentation and user support system creation
 
 **Lessons 17-24: Professional Testing**
+
 - Systematic testing across all Amiga configurations
 - User acceptance testing and feedback integration
 - Performance validation and optimization verification
 - Accessibility testing and inclusive design validation
 
 **Lessons 25-32: Release Excellence**
+
 - Final polish and presentation refinement
 - Professional packaging and distribution preparation
 - Marketing materials and portfolio presentation

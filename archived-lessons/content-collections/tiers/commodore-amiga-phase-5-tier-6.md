@@ -27,6 +27,7 @@ Start your engines! With **32 high-octane lessons**, you'll create racing games 
 ## What You'll Build
 
 Create **TURBO RUSH** - a multi-mode racing game featuring:
+
 - Pseudo-3D roads with hills and curves
 - Split-screen competitive racing
 - Multiple tracks from city to countryside
@@ -36,24 +37,28 @@ Create **TURBO RUSH** - a multi-mode racing game featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Road Warriors" - Pseudo-3D Rendering**
+
 - Perspective projection for 3D roads
 - Curve generation for twisting tracks
 - Hill rendering for elevation changes
 - Roadside object placement and scaling
 
 **Lessons 9-16: "Feel the Physics" - Car Handling**
+
 - Acceleration and braking dynamics
 - Drift mechanics and tire grip
 - Collision detection with track edges
 - AI opponents that race realistically
 
 **Lessons 17-24: "Split Decision" - Multiplayer Magic**
+
 - Split-screen rendering techniques
 - Maintaining 50Hz with two viewports
 - Camera systems for each player
 - Fair rubber-band AI for close races
 
 **Lessons 25-32: "Championship Circuit" - Game Modes**
+
 - Track editor with validation
 - Career mode with car upgrades
 - Replay system for epic moments

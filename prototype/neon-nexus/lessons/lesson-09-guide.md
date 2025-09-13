@@ -28,12 +28,12 @@ check_collisions:
     lda player_x
     cmp enemy_x
     bne no_collision
-    
+
     ; Check if Y positions are the same
     lda player_y
     cmp enemy_y
     bne no_collision
-    
+
     ; Collision detected!
     lda #30         ; Stop movement for 30 frames
     sta collision_flag
@@ -49,7 +49,7 @@ When a collision occurs, we need to tell the player immediately:
     ; Flash border white
     lda #$01        ; White
     sta $d020       ; Border color register
-    
+
     ; Decrement lives
     dec lives
     beq game_over   ; No lives left?
@@ -66,20 +66,27 @@ Try it: position the player and enemy so they're one space apart, moving toward 
 ## Interactive Elements
 
 ### Experiment 1: Collision Timing
+
 Change the collision freeze duration:
+
 ```assembly
 lda #30  ; Try 10, 60, or 120 instead
 ```
+
 How does this affect gameplay feel?
 
 ### Experiment 2: Different Feedback
+
 Instead of a white flash, try:
+
 - Yellow (#$07) for a warning feel
 - Cyan (#$03) for a shield effect
 - Multiple colors in sequence
 
 ### Experiment 3: Collision Zone
+
 What if we detected "near misses"? Add this after the exact position check:
+
 ```assembly
     ; Check if within 1 space
     lda player_x

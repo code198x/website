@@ -31,6 +31,7 @@ Complete **Rhythm Engine** - a music creation system that demonstrates solid NES
 ## What You'll Complete
 
 Finish a comprehensive music application:
+
 - Complete 5-channel music composition system
 - Interactive rhythm games with precise timing
 - Advanced audio synthesis and effects
@@ -39,24 +40,28 @@ Finish a comprehensive music application:
 ## Tier Overview
 
 **Lessons 1-8: System Integration**
+
 - Integrating all audio systems and components
 - Creating seamless user experience and workflow
 - Optimizing performance for complex operations
 - Building solid software architecture
 
 **Lessons 9-16: Advanced Features**
+
 - Implementing complete music composition tools
 - Creating sophisticated rhythm game mechanics
 - Building advanced audio effects and processing
 - Adding professional features and polish
 
 **Lessons 17-24: User Interface Mastery**
+
 - Creating intuitive, responsive user interfaces
 - Building visual feedback and audio visualization
 - Implementing efficient menu and navigation systems
 - Designing for optimal user experience
 
 **Lessons 25-32: Professional Completion**
+
 - Final optimisation and performance tuning
 - Creating comprehensive help and tutorial systems
 - Building save/load functionality for user content

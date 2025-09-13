@@ -31,6 +31,7 @@ Achieve mastery! With **32 comprehensive lessons**, you'll complete your profess
 ## What You'll Complete
 
 Finish **Spectrum Legends** and your complete developer portfolio:
+
 - Epic RPG with comprehensive testing and QA
 - Optimal performance and professional optimization
 - Complete commercial release and distribution
@@ -40,24 +41,28 @@ Finish **Spectrum Legends** and your complete developer portfolio:
 ## Tier Overview
 
 **Lessons 1-8: Final Project Integration**
+
 - Complete game finalization and integration
 - Final testing and quality assurance validation
 - Performance optimization and final polish
 - Commercial release preparation completion
 
 **Lessons 9-16: Portfolio Development**
+
 - Comprehensive portfolio planning and structure
 - Project documentation and presentation
 - Technical demonstration and showcase
 - Professional presentation materials
 
 **Lessons 17-24: Master-Level Demonstration**
+
 - Complete technical expertise demonstration
 - Creative and artistic vision showcase
 - Problem-solving and innovation examples
 - Professional workflow and process documentation
 
 **Lessons 25-32: Professional Certification**
+
 - Final portfolio review and refinement
 - Career preparation and positioning
 - Industry networking and presentation

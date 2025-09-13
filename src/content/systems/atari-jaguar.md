@@ -22,7 +22,7 @@ video:
   display_modes:
     - "320×240 (60 Hz)"
     - "320×480 interlaced"
-    - "640×480 interlaced" 
+    - "640×480 interlaced"
     - "Variable resolution support"
 audio:
   chip: "Jerry (Digital Signal Processor)"
@@ -67,14 +67,13 @@ emulators:
     platform: "Windows"
     accuracy: "high"
   - name: "Virtual Jaguar"
-    platform: "Multi-platform" 
+    platform: "Multi-platform"
     accuracy: "good"
   - name: "Phoenix"
     platform: "Multi-platform"
     accuracy: "good"
 historical_significance: "Atari's final console represented ambitious multi-processor architecture that was technically advanced but notoriously difficult to program. Despite marketing claims of '64-bit' performance, the Jaguar's complex hybrid architecture and poor development tools made it a fascinating study in over-engineering that couldn't compete with simpler, more accessible systems."
 description: "The '64-bit' console with revolutionary multi-chip architecture that proved too complex for its own good—Atari's ambitious swan song."
-image: "/images/systems/atari-jaguar.jpg"
 order: 43
 ---
 
@@ -83,6 +82,7 @@ The **Atari Jaguar** stands as one of gaming's most technically ambitious failur
 ## The "64-Bit" Marketing Myth
 
 Atari aggressively marketed the Jaguar as the world's first 64-bit game console:
+
 - **"Do the Math" campaign** - direct attacks on 16-bit competition
 - **Technical reality** - dual 32-bit processors, not true 64-bit architecture
 - **Data bus width** - 64-bit external bus for memory access
@@ -93,28 +93,34 @@ This marketing deception would haunt Atari as developers discovered the truth ab
 ## Revolutionary Multi-Chip Architecture
 
 ### The Three-Processor System
+
 The Jaguar featured an unprecedented multi-processor design:
 
 **Motorola 68000** (13.295 MHz)
+
 - **System controller** - handles initialization and I/O
 - **Compatibility layer** - familiar programming environment
 - **Memory management** - coordinates between processors
 - **Slowest component** - often became bottleneck
 
 **"Tom" - Tractor Object Processor** (26.59 MHz)
+
 - **Graphics processing unit** - bitmap manipulation and rendering
 - **Object processor** - hardware sprite and scaling engine
 - **Video controller** - display generation and timing
 - **RISC architecture** - custom 32-bit instruction set
 
-**"Jerry" - Digital Signal Processor** (26.59 MHz)  
+**"Jerry" - Digital Signal Processor** (26.59 MHz)
+
 - **Audio processing** - 32-channel digital sound mixing
 - **General computation** - additional processing power
 - **Joystick controller** - input device management
 - **RISC architecture** - custom 32-bit instruction set
 
 ### The CRY Colorspace Innovation
+
 The Jaguar introduced a unique color system:
+
 - **CRY encoding** - Chrominance, Red, Luminance
 - **16-bit color depth** - 65,536 simultaneous colors
 - **Hardware conversion** - automatic RGB translation
@@ -131,21 +137,27 @@ The Jaguar introduced a unique color system:
 ## Historical Impact and Lessons
 
 ### What Was Revolutionary
+
 The Jaguar pioneered several concepts:
+
 - **Multi-processor gaming** - distributed computing in consoles
 - **Custom color encoding** - CRY colorspace optimization
 - **Flexible resolution** - variable display modes
 - **Extensive controller** - numeric keypad for complex inputs
 
 ### What Went Wrong
+
 The Jaguar's problems were fundamental:
+
 - **Architectural complexity** - too difficult for most developers
 - **Poor development tools** - inadequate software support
 - **Bus contention** - processors fighting for memory access
 - **68000 bottleneck** - slower processor limited overall performance
 
 ### Long-Term Impact
+
 Despite commercial failure, the Jaguar influenced:
+
 - **Multi-core gaming** - modern consoles use multiple processors
 - **Custom audio processors** - dedicated sound chips became standard
 - **Development tool importance** - industry learned to prioritize developer support
@@ -154,6 +166,7 @@ Despite commercial failure, the Jaguar influenced:
 ## Why Study Jaguar History
 
 The Jaguar provides crucial insights for modern technology development:
+
 - **Over-engineering consequences** - when complexity kills usability
 - **Marketing vs. reality** - technical truth in product positioning
 - **Development ecosystem importance** - tools matter as much as hardware

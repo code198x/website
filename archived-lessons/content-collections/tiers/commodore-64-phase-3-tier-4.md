@@ -31,6 +31,7 @@ Create stunning graphics! With **32 comprehensive lessons**, you'll master custo
 ## What You'll Complete
 
 Finish **Cosmic Defender** with professional graphics:
+
 - Custom character sets for unique visual style
 - Smooth 8-way scrolling backgrounds
 - Mixed graphics modes for optimal quality
@@ -40,24 +41,28 @@ Finish **Cosmic Defender** with professional graphics:
 ## Tier Overview
 
 **Lessons 1-8: Character Set Design**
+
 - Creating custom character graphics
 - Character ROM banking techniques
 - Animated character effects
 - Font and symbol design
 
 **Lessons 9-16: Advanced Screen Modes**
+
 - Multicolor character mode mastery
 - Bitmap mode for detailed graphics
 - Mixed mode techniques
 - Mode switching effects
 
 **Lessons 17-24: Hardware Scrolling**
+
 - Smooth horizontal scrolling
 - Vertical scrolling techniques
 - 8-way scrolling implementation
 - Large world navigation
 
 **Lessons 25-32: Graphics Optimization**
+
 - Memory-efficient graphics storage
 - Compression techniques
 - Dynamic tile systems

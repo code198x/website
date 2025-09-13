@@ -79,18 +79,18 @@ InitializeApplication:
     JSR InitInputSystem
     JSR InitGameLogic
     JSR InitUserInterface
-    
+
     ; Set initial application state
     LDA #APP_STATE_INIT
     STA ApplicationState
     STA PreviousState
-    
+
     ; Clear performance counters
     LDA #$00
     STA FrameCounter
     STA ErrorCount
     STA PerformanceFlags
-    
+
     RTS
 
 RunApplicationLoop:
@@ -98,26 +98,26 @@ RunApplicationLoop:
 ApplicationLoop:
     ; Performance monitoring
     JSR StartFrameTimer
-    
+
     ; Core loop operations
     JSR ProcessInput
     JSR UpdateApplicationState
     JSR UpdateGraphics
     JSR UpdateAudio
     JSR UpdateUserInterface
-    
+
     ; Performance and quality checks
     JSR CheckPerformance
     JSR HandleErrors
-    
+
     ; Frame synchronization
     JSR SynchronizeFrame
-    
+
     ; Check for application exit
     LDA ApplicationState
     CMP #APP_STATE_SHUTDOWN
     BNE ApplicationLoop
-    
+
     RTS
 
 ; ========================================
@@ -130,12 +130,12 @@ InitMemoryManager:
     STA AllocatedBlocks
     STA MemoryUsage
     STA FragmentationLevel
-    
+
     ; Initialize memory pools
     JSR InitZeroPagePool
     JSR InitMainMemoryPool
     JSR InitGraphicsMemoryPool
-    
+
     RTS
 
 InitZeroPagePool:
@@ -153,15 +153,15 @@ AllocateMemory:
     ; Output: Address in $FC/$FD, carry set if failed
     CMP #$80            ; Large allocation?
     BCS AllocateLarge
-    
+
     ; Small allocation - try zero page first
     JSR TryZeroPageAlloc
     BCC AllocationSuccess
-    
+
     ; Fall back to main memory
 AllocateLarge:
     JSR AllocateMainMemory
-    
+
 AllocationSuccess:
     INC AllocatedBlocks
     RTS
@@ -173,7 +173,7 @@ TryZeroPageAlloc:
     ADC AllocSize       ; Size in A
     CMP #$04            ; Only 4 bytes available
     BCS ZeroPageFull
-    
+
     ; Allocation successful
     LDA ZeroPageStart
     CLC
@@ -181,15 +181,15 @@ TryZeroPageAlloc:
     STA $FC             ; Return address
     LDA #$00
     STA $FD
-    
+
     LDA ZeroPageUsed
     CLC
     ADC AllocSize
     STA ZeroPageUsed
-    
+
     CLC                 ; Success
     RTS
-    
+
 ZeroPageFull:
     SEC                 ; Failed
     RTS
@@ -204,21 +204,21 @@ InitGraphicsSystem:
     JSR InitSpriteSystem
     JSR InitBackgroundSystem
     JSR InitAnimationSystem
-    
+
     RTS
 
 SetupVideoMode:
     ; Configure optimal video mode
     LDA #$1B            ; Enable multicolor, 40 columns
     STA $D011           ; VIC control register 1
-    
+
     LDA #$C8            ; Enable multicolor
     STA $D016           ; VIC control register 2
-    
+
     ; Set memory pointers
     LDA #$18            ; Screen at $0400, charset at $2000
     STA $D018           ; Memory setup register
-    
+
     RTS
 
 InitSpriteSystem:
@@ -226,7 +226,7 @@ InitSpriteSystem:
     LDA #$00
     STA ActiveSprites   ; No sprites active initially
     STA SpriteCollisions
-    
+
     ; Initialize sprite data structures
     LDX #$00
     LDA #$FF            ; Invalid position marker
@@ -235,7 +235,7 @@ ClearSpriteLoop:
     INX
     CPX #$40            ; 8 sprites × 8 bytes each
     BNE ClearSpriteLoop
-    
+
     RTS
 
 UpdateGraphics:
@@ -254,13 +254,13 @@ SpriteUpdateLoop:
     LDA SpriteData,X
     CMP #$FF
     BEQ NextSprite
-    
+
     ; Update sprite position
     JSR UpdateSpritePosition
-    
+
     ; Update sprite animation
     JSR UpdateSpriteAnimation
-    
+
 NextSprite:
     TXA
     CLC
@@ -268,7 +268,7 @@ NextSprite:
     TAX
     CMP #$40            ; All 8 sprites checked?
     BNE SpriteUpdateLoop
-    
+
     RTS
 
 ; ========================================
@@ -280,7 +280,7 @@ InitAudioSystem:
     JSR SilenceAllVoices
     JSR InitMusicSystem
     JSR InitSoundEffects
-    
+
     RTS
 
 SilenceAllVoices:
@@ -292,11 +292,11 @@ SIDClearLoop:
     INX
     CPX #$1D            ; 29 SID registers
     BNE SIDClearLoop
-    
+
     ; Set volume
     LDA #$0F            ; Maximum volume
     STA $D418
-    
+
     RTS
 
 UpdateAudio:
@@ -328,7 +328,7 @@ InitInputSystem:
     STA PreviousInput
     STA InputBuffer
     STA KeyRepeatTimer
-    
+
     RTS
 
 ProcessInput:
@@ -344,20 +344,20 @@ ReadJoystick:
     LDA $DC00
     EOR #$FF            ; Active low to active high
     STA RawJoystick
-    
+
     ; Debounce input
     JSR DebounceInput
-    
+
     ; Detect input changes
     LDA DebouncedInput
     EOR PreviousInput
     AND DebouncedInput  ; Only new presses
     STA InputEvents
-    
+
     ; Update previous input
     LDA DebouncedInput
     STA PreviousInput
-    
+
     RTS
 
 DebounceInput:
@@ -365,11 +365,11 @@ DebounceInput:
     LDA RawJoystick
     CMP DebounceBuffer
     BNE InputChanged
-    
+
     ; Input stable, update debounced value
     STA DebouncedInput
     RTS
-    
+
 InputChanged:
     ; Input changed, start debounce timer
     STA DebounceBuffer
@@ -387,7 +387,7 @@ InitGameLogic:
     JSR InitEnemySystem
     JSR InitCollisionSystem
     JSR InitScoreSystem
-    
+
     RTS
 
 UpdateApplicationState:
@@ -417,19 +417,19 @@ UpdatePlayer:
     AND #JOY_LEFT
     BEQ CheckRight
     JSR MovePlayerLeft
-    
+
 CheckRight:
     LDA InputEvents
     AND #JOY_RIGHT
     BEQ CheckFire
     JSR MovePlayerRight
-    
+
 CheckFire:
     LDA InputEvents
     AND #JOY_FIRE
     BEQ PlayerUpdateDone
     JSR PlayerFire
-    
+
 PlayerUpdateDone:
     RTS
 
@@ -442,7 +442,7 @@ InitUserInterface:
     JSR InitMenuSystem
     JSR InitHUD
     JSR InitDialogs
-    
+
     RTS
 
 UpdateUserInterface:
@@ -467,7 +467,7 @@ DisplayScore:
     STA $D6
     LDA #2              ; Column 2
     STA $D3
-    
+
     LDX #0
 ScoreTextLoop:
     LDA ScoreText,X
@@ -476,13 +476,13 @@ ScoreTextLoop:
     INX
     JMP ScoreTextLoop
 ScoreTextDone:
-    
+
     ; Display score value
     LDA PlayerScore+1   ; High byte
     JSR DisplayByte
     LDA PlayerScore     ; Low byte
     JSR DisplayByte
-    
+
     RTS
 
 ; ========================================
@@ -501,17 +501,17 @@ CheckPerformance:
     SEC
     SBC FrameStartTime
     STA FrameTime
-    
+
     ; Check if frame took too long
     CMP #$40            ; Performance threshold
     BCC PerformanceOK
-    
+
     ; Performance issue detected
     INC PerformanceIssues
     LDA PerformanceFlags
     ORA #PERF_SLOW_FRAME
     STA PerformanceFlags
-    
+
 PerformanceOK:
     INC FrameCounter
     RTS
@@ -520,18 +520,18 @@ HandleErrors:
     ; Check for and handle application errors
     LDA PerformanceFlags
     BEQ NoErrors
-    
+
     ; Handle performance issues
     AND #PERF_SLOW_FRAME
     BEQ CheckMemoryErrors
     JSR HandleSlowFrame
-    
+
 CheckMemoryErrors:
     LDA MemoryUsage
     CMP #$C0            ; Memory threshold
     BCC NoErrors
     JSR HandleMemoryPressure
-    
+
 NoErrors:
     RTS
 
@@ -558,7 +558,7 @@ CompleteApplicationDemo:
 
 InitializeFramework:
     ; Initialize complete application framework
-    
+
     ; Setup application state
     LDA #$01            ; Menu state
     STA AppState
@@ -566,13 +566,13 @@ InitializeFramework:
     STA AppSubState
     STA ErrorFlags
     STA PerformanceScore
-    
+
     ; Initialize subsystems
     JSR InitFrameworkGraphics
     JSR InitFrameworkAudio
     JSR InitFrameworkInput
     JSR InitFrameworkLogic
-    
+
     RTS
 
 InitFrameworkGraphics:
@@ -581,15 +581,15 @@ InitFrameworkGraphics:
     STA ActiveSprites
     STA GraphicsMode
     STA RenderFlags
-    
+
     ; Setup basic graphics
     LDA #$93            ; Clear screen
     JSR $FFD2
-    
+
     ; Set text colour
     LDA #$0E            ; Light blue
     STA $286
-    
+
     RTS
 
 InitFrameworkAudio:
@@ -598,13 +598,13 @@ InitFrameworkAudio:
     STA MusicPlaying
     STA SFXPlaying
     STA AudioVolume
-    
+
     ; Clear SID (simplified)
     LDA #$00
     STA $D400           ; Clear voice 1 frequency
     LDA #$0F            ; Set volume
     STA $D418
-    
+
     RTS
 
 InitFrameworkInput:
@@ -614,7 +614,7 @@ InitFrameworkInput:
     STA PreviousInput
     STA InputBuffer
     STA InputEvents
-    
+
     RTS
 
 InitFrameworkLogic:
@@ -626,35 +626,35 @@ InitFrameworkLogic:
     STA PlayerScore+1
     STA GameLevel
     STA EnemyCount
-    
+
     RTS
 
 RunMiniApplication:
     ; Run simplified application loop
     LDX #$10            ; Run for 16 frames
-    
+
 ApplicationLoop:
     ; Store frame counter
     STX FramesRemaining
-    
+
     ; Application loop components
     JSR ProcessFrameworkInput
     JSR UpdateFrameworkLogic
     JSR UpdateFrameworkGraphics
     JSR UpdateFrameworkAudio
     JSR MonitorPerformance
-    
+
     ; Simple frame delay
     LDY #$20
 FrameDelay:
     DEY
     BNE FrameDelay
-    
+
     ; Continue loop
     LDX FramesRemaining
     DEX
     BNE ApplicationLoop
-    
+
     RTS
 
 ProcessFrameworkInput:
@@ -662,16 +662,16 @@ ProcessFrameworkInput:
     LDA $DC00           ; Joystick port 2
     EOR #$FF            ; Invert (active low to high)
     STA CurrentInput
-    
+
     ; Detect changes (new button presses)
     EOR PreviousInput
     AND CurrentInput    ; Only new presses
     STA InputEvents
-    
+
     ; Update previous input
     LDA CurrentInput
     STA PreviousInput
-    
+
     RTS
 
 UpdateFrameworkLogic:
@@ -688,13 +688,13 @@ UpdateMenuLogic:
     LDA InputEvents
     AND #%00010000      ; Fire button
     BEQ MenuLogicDone
-    
+
     ; Start game
     LDA #$02
     STA AppState
     LDA #$01
     STA GameLevel
-    
+
 MenuLogicDone:
     RTS
 
@@ -703,7 +703,7 @@ UpdateGameLogic:
     LDA InputEvents
     AND #%00000100      ; Left
     BEQ CheckRight
-    
+
     ; Move left (simulate)
     LDA PlayerX
     SEC
@@ -711,12 +711,12 @@ UpdateGameLogic:
     CMP #$20
     BCC CheckRight
     STA PlayerX
-    
+
 CheckRight:
     LDA InputEvents
     AND #%00001000      ; Right
     BEQ CheckFire
-    
+
     ; Move right (simulate)
     LDA PlayerX
     CLC
@@ -724,15 +724,15 @@ CheckRight:
     CMP #$C0
     BCS CheckFire
     STA PlayerX
-    
+
 CheckFire:
     LDA InputEvents
     AND #%00010000      ; Fire button
     BEQ GameLogicDone
-    
+
     ; Fire (simulate)
     INC ShotsFired
-    
+
     ; Add to score
     LDA PlayerScore
     CLC
@@ -740,7 +740,7 @@ CheckFire:
     STA PlayerScore
     BCC GameLogicDone
     INC PlayerScore+1
-    
+
 GameLogicDone:
     RTS
 
@@ -759,7 +759,7 @@ DisplayMenu:
     STA $D6
     LDA #8              ; Column 8
     STA $D3
-    
+
     LDX #0
 MenuTextLoop:
     LDA MenuText,X
@@ -776,7 +776,7 @@ DisplayGame:
     STA $D6
     LDA #2              ; Column 2
     STA $D3
-    
+
     LDX #0
 ScoreDisplayLoop:
     LDA ScoreText,X
@@ -785,19 +785,19 @@ ScoreDisplayLoop:
     INX
     JMP ScoreDisplayLoop
 ScoreDisplayDone:
-    
+
     ; Display score value
     LDA PlayerScore+1
     JSR DisplayHexNibble
     LDA PlayerScore
     JSR DisplayHexByte
-    
+
     ; Display player position
     LDA #5              ; Row 5
     STA $D6
     LDA #2              ; Column 2
     STA $D3
-    
+
     LDX #0
 PosTextLoop:
     LDA PositionText,X
@@ -806,10 +806,10 @@ PosTextLoop:
     INX
     JMP PosTextLoop
 PosTextDone:
-    
+
     LDA PlayerX
     JSR DisplayHexByte
-    
+
     RTS
 
 DisplayHexByte:
@@ -844,12 +844,12 @@ UpdateFrameworkAudio:
     LDA AppState
     CMP #$02            ; Only play audio in game
     BNE AudioDone
-    
+
     ; Simple beep when firing
     LDA InputEvents
     AND #%00010000      ; Fire button
     BEQ AudioDone
-    
+
     ; Play simple tone
     LDA #$10
     STA $D400           ; Voice 1 frequency low
@@ -857,26 +857,26 @@ UpdateFrameworkAudio:
     STA $D401           ; Voice 1 frequency high
     LDA #%00010001      ; Pulse wave
     STA $D404           ; Voice 1 control
-    
+
 AudioDone:
     RTS
 
 MonitorPerformance:
     ; Monitor application performance
     INC FrameCount
-    
+
     ; Check for performance issues
     LDA FrameCount
     AND #$07            ; Every 8 frames
     BNE PerformanceDone
-    
+
     ; Calculate simple performance score
     LDA PlayerScore
     LSR                 ; Divide by 2
     CLC
     ADC FrameCount
     STA PerformanceScore
-    
+
 PerformanceDone:
     RTS
 
@@ -884,13 +884,13 @@ DisplayApplicationStatus:
     ; Display final application status
     LDA #$93            ; Clear screen
     JSR $FFD2
-    
+
     ; Display title
     LDA #2
     STA $D6
     LDA #5
     STA $D3
-    
+
     LDX #0
 StatusTitleLoop:
     LDA StatusTitle,X
@@ -899,13 +899,13 @@ StatusTitleLoop:
     INX
     JMP StatusTitleLoop
 StatusTitleDone:
-    
+
     ; Display performance score
     LDA #4
     STA $D6
     LDA #2
     STA $D3
-    
+
     LDX #0
 PerfTextLoop:
     LDA PerformanceText,X
@@ -914,16 +914,16 @@ PerfTextLoop:
     INX
     JMP PerfTextLoop
 PerfTextDone:
-    
+
     LDA PerformanceScore
     JSR DisplayHexByte
-    
+
     ; Display frame count
     LDA #6
     STA $D6
     LDA #2
     STA $D3
-    
+
     LDX #0
 FrameTextLoop:
     LDA FrameText,X
@@ -932,10 +932,10 @@ FrameTextLoop:
     INX
     JMP FrameTextLoop
 FrameTextDone:
-    
+
     LDA FrameCount
     JSR DisplayHexByte
-    
+
     RTS
 
 ; Text strings
@@ -958,7 +958,7 @@ StateManager:
     GlobalState = $D000
     StateHistory = $D001    ; Previous 16 states
     StateTimer = $D011      ; Time in current state
-    
+
     ; State change management
     StateTransitions = $D020
     PendingStateChange = $D021
@@ -968,23 +968,23 @@ UpdateGlobalState:
     ; Manage state transitions and coordination
     LDA PendingStateChange
     BEQ NoStateChange
-    
+
     ; Execute state transition
     JSR ExecuteStateTransition
-    
+
 NoStateChange:
     ; Update state timer
     INC StateTimer
-    
+
     ; Check for automatic state transitions
     JSR CheckAutomaticTransitions
-    
+
     RTS
 
 ExecuteStateTransition:
     ; Change application state safely
     ; Input: New state in PendingStateChange
-    
+
     ; Store previous state in history
     LDX StateHistoryIndex
     LDA GlobalState
@@ -993,23 +993,23 @@ ExecuteStateTransition:
     TXA
     AND #$0F            ; Wrap at 16 entries
     STA StateHistoryIndex
-    
+
     ; Execute exit handlers for current state
     LDA GlobalState
     JSR ExecuteStateExit
-    
+
     ; Change to new state
     LDA PendingStateChange
     STA GlobalState
-    
+
     ; Execute entry handlers for new state
     JSR ExecuteStateEntry
-    
+
     ; Reset state timer
     LDA #$00
     STA StateTimer
     STA PendingStateChange
-    
+
     RTS
 
 RequestStateChange:
@@ -1046,7 +1046,7 @@ ProcessMessages:
     ; Process all pending messages
     LDA MessageCount
     BEQ NoMessages
-    
+
     LDX #$00
 MessageLoop:
     ; Get message components
@@ -1060,22 +1060,22 @@ MessageLoop:
     TAY
     INX
     STX MessageIndex
-    
+
     ; Dispatch message
     PLA                  ; Data
     TAX
     PLA                  ; Message type
     JSR DispatchMessage
-    
+
     ; Continue with next message
     LDX MessageIndex
     CPX MessageCount
     BNE MessageLoop
-    
+
     ; Clear message queue
     LDA #$00
     STA MessageCount
-    
+
 NoMessages:
     RTS
 
@@ -1087,32 +1087,32 @@ PerformanceManager:
     ; Adaptive performance optimisation
     FrameTimeBudget = 40        ; Cycles per frame
     PerformanceLevel = $D200    ; Current performance setting
-    
+
 AdaptiveOptimization:
     ; Adjust performance based on frame time
     LDA LastFrameTime
     CMP #FrameTimeBudget
     BCC PerformanceGood
-    
+
     ; Performance poor - reduce quality
     LDA PerformanceLevel
     BEQ MinPerformance
     DEC PerformanceLevel
     JSR ApplyPerformanceSettings
     RTS
-    
+
 PerformanceGood:
     ; Performance good - try to increase quality
     LDA LastFrameTime
     CMP #(FrameTimeBudget - 10)
     BCS NoImprovement
-    
+
     LDA PerformanceLevel
     CMP #$03            ; Maximum level
     BCS NoImprovement
     INC PerformanceLevel
     JSR ApplyPerformanceSettings
-    
+
 NoImprovement:
 MinPerformance:
     RTS
@@ -1174,23 +1174,23 @@ InitializeArchitecture:
     STA MessageCount
     STA PerformanceLevel
     STA ComponentStatus
-    
+
     ; Initialize component states
     LDA #%11111111      ; All components active
     STA ActiveComponents
-    
+
     RTS
 
 DemoStateManagement:
     ; Demonstrate state management system
-    
+
     ; Simulate state progression
     JSR ProcessStateInit
     JSR TransitionToMenu
     JSR ProcessStateMenu
     JSR TransitionToGame
     JSR ProcessStateGame
-    
+
     RTS
 
 ProcessStateInit:
@@ -1198,17 +1198,17 @@ ProcessStateInit:
     LDA ApplicationState
     CMP #$01            ; INIT state
     BNE InitDone
-    
+
     ; Perform initialization tasks
     INC StateTimer
     LDA StateTimer
     CMP #$05            ; Initialize for 5 cycles
     BCC InitDone
-    
+
     ; Ready to transition to menu
     LDA #$02            ; MENU state
     JSR RequestStateTransition
-    
+
 InitDone:
     RTS
 
@@ -1216,24 +1216,24 @@ TransitionToMenu:
     ; Transition from INIT to MENU
     LDA PendingTransition
     BEQ NoTransition
-    
+
     ; Execute state change
     LDA ApplicationState
     STA PreviousState
     LDA PendingTransition
     STA ApplicationState
-    
+
     ; Reset state timer
     LDA #$00
     STA StateTimer
     STA PendingTransition
-    
+
     ; Send state change message to components
     LDA #$10            ; State change message
     LDX ApplicationState ; New state data
     LDY #$FF            ; Broadcast to all components
     JSR QueueMessage
-    
+
 NoTransition:
     RTS
 
@@ -1242,17 +1242,17 @@ ProcessStateMenu:
     LDA ApplicationState
     CMP #$02            ; MENU state
     BNE MenuDone
-    
+
     ; Simulate user interaction
     INC StateTimer
     LDA StateTimer
     CMP #$08            ; Menu timeout
     BCC MenuDone
-    
+
     ; Transition to game
     LDA #$03            ; GAME state
     JSR RequestStateTransition
-    
+
 MenuDone:
     RTS
 
@@ -1266,22 +1266,22 @@ ProcessStateGame:
     LDA ApplicationState
     CMP #$03            ; GAME state
     BNE GameDone
-    
+
     ; Game logic simulation
     INC StateTimer
     INC GameProgress
-    
+
     ; Check for game events
     LDA GameProgress
     CMP #$10
     BCC GameDone
-    
+
     ; Game event occurred
     LDA #$20            ; Game event message
     LDX #$05            ; Event data
     LDY #$01            ; Send to graphics component
     JSR QueueMessage
-    
+
 GameDone:
     RTS
 
@@ -1293,33 +1293,33 @@ RequestStateTransition:
 
 DemoComponentCommunication:
     ; Demonstrate inter-component messaging
-    
+
     ; Graphics component sends message to audio
     LDA #$30            ; Graphics update message
     LDX #$42            ; Graphics data
     LDY #$02            ; Audio component ID
     JSR QueueMessage
-    
+
     ; Audio component responds to graphics
     LDA #$31            ; Audio response message
     LDX #$24            ; Audio data
     LDY #$01            ; Graphics component ID
     JSR QueueMessage
-    
+
     ; Process all queued messages
     JSR ProcessMessageQueue
-    
+
     RTS
 
 QueueMessage:
     ; Queue message for processing
     ; Input: A = message type, X = data, Y = target component
-    
+
     ; Check queue space
     LDA MessageCount
     CMP #$20            ; Maximum 32 messages
     BCS QueueFull
-    
+
     ; Add message to queue
     LDZ MessageCount
     STA MessageQueue,Z   ; Message type
@@ -1331,7 +1331,7 @@ QueueMessage:
     STA MessageQueue,Z   ; Target
     INZ
     STZ MessageCount
-    
+
 QueueFull:
     RTS
 
@@ -1339,7 +1339,7 @@ ProcessMessageQueue:
     ; Process all queued messages
     LDA MessageCount
     BEQ NoMessages
-    
+
     LDX #$00
 ProcessLoop:
     ; Extract message
@@ -1353,29 +1353,29 @@ ProcessLoop:
     TAY
     INX
     STX MessageIndex
-    
+
     ; Process message based on type
     PLA                  ; Data in A
     TAX                  ; Data in X
     PLA                  ; Message type in A
     JSR ProcessSingleMessage
-    
+
     ; Continue to next message
     LDX MessageIndex
     CPX MessageCount
     BNE ProcessLoop
-    
+
     ; Clear message queue
     LDA #$00
     STA MessageCount
-    
+
 NoMessages:
     RTS
 
 ProcessSingleMessage:
     ; Process individual message
     ; Input: A = message type, X = data, Y = target component
-    
+
     CMP #$10            ; State change message
     BEQ HandleStateChange
     CMP #$20            ; Game event message
@@ -1417,46 +1417,46 @@ HandleAudioMessage:
 
 DemoPerformanceAdaptation:
     ; Demonstrate adaptive performance optimisation
-    
+
     ; Simulate varying frame times
     LDA #$50            ; High frame time (poor performance)
     JSR AdaptToPerformance
-    
+
     LDA #$20            ; Low frame time (good performance)
     JSR AdaptToPerformance
-    
+
     LDA #$35            ; Medium frame time
     JSR AdaptToPerformance
-    
+
     RTS
 
 AdaptToPerformance:
     ; Adapt performance based on frame time
     ; Input: A = frame time
     STA CurrentFrameTime
-    
+
     ; Compare with performance target
     CMP #$40            ; Target frame time
     BCC GoodPerformance
-    
+
     ; Poor performance - reduce quality
     LDA PerformanceLevel
     BEQ MinimumLevel
     DEC PerformanceLevel
     JSR ApplyOptimizations
     RTS
-    
+
 GoodPerformance:
     ; Good performance - try to increase quality
     CMP #$30            ; Excellent performance threshold
     BCS PerformanceDone
-    
+
     LDA PerformanceLevel
     CMP #$03            ; Maximum level
     BCS PerformanceDone
     INC PerformanceLevel
     JSR ApplyOptimizations
-    
+
 MinimumLevel:
 PerformanceDone:
     RTS
@@ -1470,22 +1470,22 @@ ApplyOptimizations:
     BEQ ApplyMediumPerformance
     CMP #$02
     BEQ ApplyHighPerformance
-    
+
     ; Maximum performance
     LDA #%11111111      ; Enable all features
     STA EnabledFeatures
     RTS
-    
+
 ApplyLowPerformance:
     LDA #%00000001      ; Essential features only
     STA EnabledFeatures
     RTS
-    
+
 ApplyMediumPerformance:
     LDA #%00001111      ; Half features
     STA EnabledFeatures
     RTS
-    
+
 ApplyHighPerformance:
     LDA #%01111111      ; Most features
     STA EnabledFeatures
@@ -1532,13 +1532,13 @@ MiniSpaceGame:
 
 InitializeGame:
     ; Initialize complete game system
-    
+
     ; Clear screen and setup display
     LDA #$93            ; Clear screen
     JSR $FFD2
     LDA #$0E            ; Light blue text
     STA $286
-    
+
     ; Initialize game state
     LDA #$01            ; Game state: PLAYING
     STA GameState
@@ -1550,7 +1550,7 @@ InitializeGame:
     STA EnemyCount
     STA ProjectileCount
     STA GameLevel
-    
+
     ; Initialize player
     LDA #$50            ; Center X
     STA PlayerX
@@ -1558,26 +1558,26 @@ InitializeGame:
     STA PlayerY
     LDA #$01
     STA PlayerAlive
-    
+
     ; Initialize input system
     LDA #$00
     STA CurrentInput
     STA PreviousInput
     STA InputBuffer
-    
+
     ; Initialize enemies
     JSR SpawnInitialEnemies
-    
+
     ; Display initial UI
     JSR DrawGameUI
-    
+
     RTS
 
 SpawnInitialEnemies:
     ; Create initial enemy formation
     LDA #$03            ; 3 enemies
     STA EnemyCount
-    
+
     ; Enemy 1
     LDA #$20
     STA Enemy1X
@@ -1585,7 +1585,7 @@ SpawnInitialEnemies:
     STA Enemy1Y
     LDA #$01
     STA Enemy1Alive
-    
+
     ; Enemy 2
     LDA #$50
     STA Enemy2X
@@ -1593,7 +1593,7 @@ SpawnInitialEnemies:
     STA Enemy2Y
     LDA #$01
     STA Enemy2Alive
-    
+
     ; Enemy 3
     LDA #$80
     STA Enemy3X
@@ -1601,35 +1601,35 @@ SpawnInitialEnemies:
     STA Enemy3Y
     LDA #$01
     STA Enemy3Alive
-    
+
     RTS
 
 RunGameLoop:
     ; Main game loop - run for demonstration
     LDX #$20            ; Run for 32 frames
-    
+
 GameLoop:
     STX FramesLeft
-    
+
     ; Core game loop
     JSR ProcessGameInput
     JSR UpdateGameLogic
     JSR UpdateGameGraphics
     JSR UpdateGameAudio
     JSR CheckGameConditions
-    
+
     ; Frame synchronization
     JSR GameFrameDelay
-    
+
     ; Check if game should continue
     LDA GameState
     CMP #$00            ; GAME_OVER
     BEQ GameLoopEnd
-    
+
     LDX FramesLeft
     DEX
     BNE GameLoop
-    
+
 GameLoopEnd:
     RTS
 
@@ -1638,16 +1638,16 @@ ProcessGameInput:
     LDA $DC00           ; Read joystick port 2
     EOR #$FF            ; Convert active low to high
     STA CurrentInput
-    
+
     ; Detect new button presses
     EOR PreviousInput
     AND CurrentInput
     STA InputEvents
-    
+
     ; Update previous input
     LDA CurrentInput
     STA PreviousInput
-    
+
     RTS
 
 UpdateGameLogic:
@@ -1662,39 +1662,39 @@ UpdatePlayer:
     ; Update player based on input
     LDA PlayerAlive
     BEQ PlayerUpdateDone
-    
+
     ; Handle movement
     LDA CurrentInput
     AND #%00000100      ; Left
     BEQ CheckPlayerRight
-    
+
     LDA PlayerX
     SEC
     SBC #$02            ; Move left
     CMP #$10            ; Left boundary
     BCC CheckPlayerRight
     STA PlayerX
-    
+
 CheckPlayerRight:
     LDA CurrentInput
     AND #%00001000      ; Right
     BEQ CheckPlayerFire
-    
+
     LDA PlayerX
     CLC
     ADC #$02            ; Move right
     CMP #$F0            ; Right boundary
     BCS CheckPlayerFire
     STA PlayerX
-    
+
 CheckPlayerFire:
     LDA InputEvents
     AND #%00010000      ; Fire button (new press only)
     BEQ PlayerUpdateDone
-    
+
     ; Fire projectile
     JSR FirePlayerProjectile
-    
+
 PlayerUpdateDone:
     RTS
 
@@ -1703,7 +1703,7 @@ FirePlayerProjectile:
     LDA ProjectileCount
     CMP #$04            ; Maximum 4 projectiles
     BCS CannotFire
-    
+
     ; Find empty projectile slot
     LDX #$00
 FindProjectileSlot:
@@ -1713,7 +1713,7 @@ FindProjectileSlot:
     CPX #$04
     BNE FindProjectileSlot
     RTS                 ; No slots available
-    
+
 FoundSlot:
     ; Create projectile
     LDA #$01
@@ -1726,9 +1726,9 @@ FoundSlot:
     STA ProjectileY,X
     LDA #$FB            ; Upward velocity
     STA ProjectileVY,X
-    
+
     INC ProjectileCount
-    
+
 CannotFire:
     RTS
 
@@ -1742,7 +1742,7 @@ UpdateEnemies:
 UpdateEnemy1:
     LDA Enemy1Alive
     BEQ Enemy1Done
-    
+
     ; Simple enemy movement
     LDA Enemy1X
     CLC
@@ -1752,7 +1752,7 @@ UpdateEnemy1:
     LDA #$10            ; Reset to left
 StoreEnemy1X:
     STA Enemy1X
-    
+
     ; Move down slowly
     LDA Enemy1Y
     CLC
@@ -1762,14 +1762,14 @@ StoreEnemy1X:
     LDA #$20            ; Reset to top
 StoreEnemy1Y:
     STA Enemy1Y
-    
+
 Enemy1Done:
     RTS
 
 UpdateEnemy2:
     LDA Enemy2Alive
     BEQ Enemy2Done
-    
+
     ; Different movement pattern
     LDA Enemy2X
     SEC
@@ -1779,7 +1779,7 @@ UpdateEnemy2:
     LDA #$E0            ; Reset to right
 StoreEnemy2X:
     STA Enemy2X
-    
+
     LDA Enemy2Y
     CLC
     ADC #$01
@@ -1788,14 +1788,14 @@ StoreEnemy2X:
     LDA #$30
 StoreEnemy2Y:
     STA Enemy2Y
-    
+
 Enemy2Done:
     RTS
 
 UpdateEnemy3:
     LDA Enemy3Alive
     BEQ Enemy3Done
-    
+
     ; Vertical movement only
     LDA Enemy3Y
     CLC
@@ -1805,7 +1805,7 @@ UpdateEnemy3:
     LDA #$40            ; Reset to top
 StoreEnemy3Y:
     STA Enemy3Y
-    
+
 Enemy3Done:
     RTS
 
@@ -1815,27 +1815,27 @@ UpdateProjectiles:
 ProjectileLoop:
     LDA ProjectileActive,X
     BEQ NextProjectile
-    
+
     ; Move projectile
     LDA ProjectileY,X
     CLC
     ADC ProjectileVY,X  ; VY is negative for upward movement
     STA ProjectileY,X
-    
+
     ; Check if projectile is off-screen
     CMP #$10            ; Top of screen
     BCS NextProjectile
-    
+
     ; Remove projectile
     LDA #$00
     STA ProjectileActive,X
     DEC ProjectileCount
-    
+
 NextProjectile:
     INX
     CPX #$04
     BNE ProjectileLoop
-    
+
     RTS
 
 CheckCollisions:
@@ -1844,25 +1844,25 @@ CheckCollisions:
 ProjectileCollisionLoop:
     LDA ProjectileActive,X
     BEQ NextProjectileCollision
-    
+
     ; Check collision with each enemy
     JSR CheckProjectileEnemyCollision
-    
+
 NextProjectileCollision:
     INX
     CPX #$04
     BNE ProjectileCollisionLoop
-    
+
     RTS
 
 CheckProjectileEnemyCollision:
     ; Check projectile X vs enemies
     ; Simplified collision detection
-    
+
     ; Check Enemy 1
     LDA Enemy1Alive
     BEQ CheckEnemy2Collision
-    
+
     LDA ProjectileX,X
     SEC
     SBC Enemy1X
@@ -1873,7 +1873,7 @@ CheckProjectileEnemyCollision:
 Enemy1XPositive:
     CMP #$08            ; Collision threshold
     BCS CheckEnemy2Collision
-    
+
     LDA ProjectileY,X
     SEC
     SBC Enemy1Y
@@ -1884,16 +1884,16 @@ Enemy1XPositive:
 Enemy1YPositive:
     CMP #$08
     BCS CheckEnemy2Collision
-    
+
     ; Collision detected!
     JSR DestroyEnemy1
     JSR DestroyProjectile
     JSR AddScore
-    
+
 CheckEnemy2Collision:
     ; Similar logic for other enemies
     ; Simplified for demo
-    
+
     RTS
 
 DestroyEnemy1:
@@ -1931,7 +1931,7 @@ DrawPlayer:
     ; Draw player at current position
     LDA PlayerAlive
     BEQ PlayerDrawDone
-    
+
     ; Position cursor
     LDA PlayerY
     LSR                 ; Scale Y to screen rows
@@ -1942,11 +1942,11 @@ DrawPlayer:
     LSR                 ; Scale X to screen columns
     LSR
     STA $D3             ; Cursor column
-    
+
     ; Draw player character
     LDA #'@'            ; Player symbol
     JSR $FFD2
-    
+
 PlayerDrawDone:
     RTS
 
@@ -1954,7 +1954,7 @@ DrawEnemies:
     ; Draw all alive enemies
     LDA Enemy1Alive
     BEQ SkipEnemy1Draw
-    
+
     LDA Enemy1Y
     LSR
     LSR
@@ -1966,11 +1966,11 @@ DrawEnemies:
     STA $D3
     LDA #'X'            ; Enemy symbol
     JSR $FFD2
-    
+
 SkipEnemy1Draw:
     LDA Enemy2Alive
     BEQ SkipEnemy2Draw
-    
+
     LDA Enemy2Y
     LSR
     LSR
@@ -1982,11 +1982,11 @@ SkipEnemy1Draw:
     STA $D3
     LDA #'X'
     JSR $FFD2
-    
+
 SkipEnemy2Draw:
     LDA Enemy3Alive
     BEQ DrawEnemiesDone
-    
+
     LDA Enemy3Y
     LSR
     LSR
@@ -1998,7 +1998,7 @@ SkipEnemy2Draw:
     STA $D3
     LDA #'X'
     JSR $FFD2
-    
+
 DrawEnemiesDone:
     RTS
 
@@ -2008,7 +2008,7 @@ DrawProjectiles:
 DrawProjectileLoop:
     LDA ProjectileActive,X
     BEQ NextProjectileDraw
-    
+
     ; Position and draw projectile
     LDA ProjectileY,X
     LSR
@@ -2021,12 +2021,12 @@ DrawProjectileLoop:
     STA $D3
     LDA #'|'            ; Projectile symbol
     JSR $FFD2
-    
+
 NextProjectileDraw:
     INX
     CPX #$04
     BNE DrawProjectileLoop
-    
+
     RTS
 
 DrawGameUI:
@@ -2035,7 +2035,7 @@ DrawGameUI:
     STA $D6
     LDA #2              ; Left column
     STA $D3
-    
+
     LDX #0
 ScoreUILoop:
     LDA ScoreUIText,X
@@ -2044,13 +2044,13 @@ ScoreUILoop:
     INX
     JMP ScoreUILoop
 ScoreUIDone:
-    
+
     ; Display score
     LDA PlayerScore+1
     JSR DisplayHexByte
     LDA PlayerScore
     JSR DisplayHexByte
-    
+
     RTS
 
 UpdateGameUI:
@@ -2064,7 +2064,7 @@ UpdateGameAudio:
     LDA InputEvents
     AND #%00010000      ; Fire button
     BEQ AudioDone
-    
+
     ; Play fire sound effect
     LDA #$20
     STA $D400           ; Voice 1 frequency low
@@ -2072,7 +2072,7 @@ UpdateGameAudio:
     STA $D401           ; Voice 1 frequency high
     LDA #%00010001      ; Pulse wave
     STA $D404           ; Voice 1 control
-    
+
 AudioDone:
     RTS
 
@@ -2080,21 +2080,21 @@ CheckGameConditions:
     ; Check for game over conditions
     LDA EnemyCount
     BNE GameContinues
-    
+
     ; All enemies destroyed - victory!
     LDA #$02            ; VICTORY state
     STA GameState
     RTS
-    
+
 GameContinues:
     ; Check player health
     LDA PlayerHealth
     BNE GameStillActive
-    
+
     ; Player dead - game over
     LDA #$00            ; GAME_OVER state
     STA GameState
-    
+
 GameStillActive:
     RTS
 
@@ -2110,13 +2110,13 @@ DisplayFinalResults:
     ; Display final game results
     LDA #$93            ; Clear screen
     JSR $FFD2
-    
+
     ; Display title
     LDA #5
     STA $D6
     LDA #8
     STA $D3
-    
+
     LDX #0
 ResultsTitleLoop:
     LDA ResultsTitle,X
@@ -2125,13 +2125,13 @@ ResultsTitleLoop:
     INX
     JMP ResultsTitleLoop
 ResultsTitleDone:
-    
+
     ; Display final score
     LDA #7
     STA $D6
     LDA #5
     STA $D3
-    
+
     LDX #0
 FinalScoreLoop:
     LDA FinalScoreText,X
@@ -2140,22 +2140,22 @@ FinalScoreLoop:
     INX
     JMP FinalScoreLoop
 FinalScoreDone:
-    
+
     LDA PlayerScore+1
     JSR DisplayHexByte
     LDA PlayerScore
     JSR DisplayHexByte
-    
+
     ; Display game result
     LDA #9
     STA $D6
     LDA #5
     STA $D3
-    
+
     LDA GameState
     CMP #$02            ; Victory?
     BEQ DisplayVictory
-    
+
     ; Game over
     LDX #0
 GameOverLoop:
@@ -2164,7 +2164,7 @@ GameOverLoop:
     JSR $FFD2
     INX
     JMP GameOverLoop
-    
+
 DisplayVictory:
     LDX #0
 VictoryLoop:
@@ -2173,7 +2173,7 @@ VictoryLoop:
     JSR $FFD2
     INX
     JMP VictoryLoop
-    
+
 ResultsDone:
     RTS
 
@@ -2223,13 +2223,13 @@ QualityStandards:
     ; - Memory usage under limit
     ; - No memory leaks
     ; - Responsive input handling
-    
+
     ; Functionality Requirements
     ; - All features work as specified
     ; - Error conditions handled gracefully
     ; - Edge cases tested and working
     ; - User interface intuitive
-    
+
     ; Code Quality Requirements
     ; - Code well-organised and documented
     ; - No dead code or unused variables
@@ -2242,7 +2242,7 @@ QualityAssurance:
     JSR CheckMemoryUsage
     JSR CheckCodeQuality
     JSR CheckUserExperience
-    
+
     ; Generate quality report
     JSR GenerateQualityReport
     RTS
@@ -2252,11 +2252,11 @@ CheckPerformanceStandards:
     LDA AverageFrameTime
     CMP #MaxAllowedFrameTime
     BCC PerformanceGood
-    
+
     LDA QualityFlags
     ORA #QUALITY_PERF_ISSUE
     STA QualityFlags
-    
+
 PerformanceGood:
     RTS
 
@@ -2265,11 +2265,11 @@ CheckMemoryUsage:
     LDA CurrentMemoryUsage
     CMP #MaxMemoryLimit
     BCC MemoryGood
-    
+
     LDA QualityFlags
     ORA #QUALITY_MEMORY_ISSUE
     STA QualityFlags
-    
+
 MemoryGood:
     RTS
 
@@ -2287,6 +2287,7 @@ QualityFlags: .byte 0
 ## Best Practices for Complete Applications
 
 ### 1. Design Before Coding
+
 ```text
 ; Always plan architecture before implementation
 ; Define interfaces between components
@@ -2294,6 +2295,7 @@ QualityFlags: .byte 0
 ```
 
 ### 2. Build Incrementally
+
 ```text
 ; Start with core functionality
 ; Add features iteratively
@@ -2301,6 +2303,7 @@ QualityFlags: .byte 0
 ```
 
 ### 3. Optimize Intelligently
+
 ```text
 ; Profile before optimizing
 ; Focus on bottlenecks, not micro-optimizations
@@ -2308,6 +2311,7 @@ QualityFlags: .byte 0
 ```
 
 ### 4. Test Thoroughly
+
 ```text
 ; Test normal operation
 ; Test edge cases and error conditions
@@ -2316,6 +2320,7 @@ QualityFlags: .byte 0
 ```
 
 ### 5. Document Comprehensively
+
 ```text
 ; Document architecture decisions
 ; Explain complex algorithms
@@ -2347,6 +2352,7 @@ You have completed Phase 1 of the Code Like It's 198x curriculum! You've learned
 ## Looking Ahead to Phase 2
 
 Phase 2 will expand your skills into advanced topics:
+
 - Advanced graphics techniques and custom hardware programming
 - Complex audio synthesis and real-time music generation
 - Advanced optimisation and performance techniques

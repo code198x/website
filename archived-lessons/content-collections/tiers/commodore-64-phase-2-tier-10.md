@@ -31,24 +31,28 @@ Transform **Quest Master** with intelligent NPCs featuring complex behavior patt
 ## Tier Overview
 
 **Lessons 1-8: State Machine Architecture**
+
 - Finite state machine implementation
 - Hierarchical state machines
 - State transition management
 - Concurrent state systems
 
 **Lessons 9-16: AI Behavior Trees**
+
 - Behavior tree architecture in assembly
 - Decision node implementation
 - Action and condition systems
 - AI personality parameters
 
 **Lessons 17-24: Game Rule Engines**
+
 - Rule-based system design
 - Condition-action patterns
 - Dynamic rule modification
 - Conflict resolution systems
 
 **Lessons 25-32: Event-Driven Architecture**
+
 - Event system implementation
 - Message passing between systems
 - Observer patterns in assembly

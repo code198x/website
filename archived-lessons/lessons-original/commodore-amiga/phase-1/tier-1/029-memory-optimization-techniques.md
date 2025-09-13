@@ -33,6 +33,7 @@ Today you'll master advanced memory optimization techniques for the Amiga. You'l
 ## What You've Learned
 
 In this lesson, you've mastered memory optimization techniques:
+
 - **Advanced memory architecture** understanding and optimization
 - **Chip RAM and Fast RAM** strategic usage and management
 - **Sophisticated memory systems** with efficient allocation

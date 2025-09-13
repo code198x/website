@@ -31,24 +31,28 @@ Begin developing **Crystal Caverns** - a puzzle adventure game featuring dynamic
 ## Tier Overview
 
 **Lessons 1-8: Color RAM Fundamentals**
+
 - Understanding color memory organization
 - Fast color RAM access techniques
 - Color attribute system mastery
 - Working with the 16-color palette
 
 **Lessons 9-16: Color Animation Techniques**
+
 - Smooth color cycling implementation
 - Palette fade in/out effects
 - Rainbow and gradient effects
 - Dynamic color transitions
 
 **Lessons 17-24: Advanced Color Effects**
+
 - Plasma and fire effects
 - Water and transparency illusions
 - Color-based sprite techniques
 - Atmospheric lighting effects
 
 **Lessons 25-32: Optimization & Design**
+
 - Memory-efficient color storage
 - Color clash prevention
 - Visual design principles

@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "Arguably the first personal computer, predating the Altair by four years with its innovative design."
-image: "/images/systems/kenbak-1.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 122
 
 # Kenbak-1
 
-*Historical Reference*
+_Historical Reference_
 
 The Kenbak-1, created by John Blankenbaker in 1971, is widely considered the first personal computer. Predating the Altair 8800 by four years, it used TTL logic instead of a microprocessor and was designed for educational use.
 
@@ -60,8 +59,9 @@ The Kenbak-1 established the concept of a personal computer before microprocesso
 ## Technical Innovation
 
 Without a microprocessor, Blankenbaker created:
+
 - Custom instruction set using TTL logic
-- 8-bit word length with 256 memory locations  
+- 8-bit word length with 256 memory locations
 - Three addressing modes
 - Input/output capabilities
 - Serial interface for paper tape
@@ -69,6 +69,7 @@ Without a microprocessor, Blankenbaker created:
 ## Commercial Failure
 
 Despite its innovation, the Kenbak-1 failed commercially:
+
 - Too early - market wasn't ready for personal computers
 - Limited software and peripherals
 - No established distribution channels
@@ -78,4 +79,4 @@ Despite its innovation, the Kenbak-1 failed commercially:
 
 The Kenbak-1 proved that personal computers were possible and practical. Its educational focus and affordable design philosophy influenced every personal computer that followed. Today, originals are priceless artifacts of computing history.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

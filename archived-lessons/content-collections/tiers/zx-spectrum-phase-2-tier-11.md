@@ -27,6 +27,7 @@ Welcome to the art of data mastery! 🗄 With **32 comprehensive lessons**, you'
 ## What You'll Build
 
 Create **DATA MASTER** - a complete data management system featuring:
+
 - Compression systems that fit massive amounts into tiny spaces 🗃️
 - Lightning-fast lookup tables for instant data access
 - Procedural generation systems that create infinite content
@@ -36,24 +37,28 @@ Create **DATA MASTER** - a complete data management system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Compression Magic" - Fitting More in Less**
+
 - Run-length encoding for repetitive game data
 - Bit-packing techniques for efficient storage
 - Dictionary compression for text and level data
 - Custom compression algorithms optimized for game content
 
 **Lessons 9-16: "Speed Structures" - Lightning-Fast Data Access**
+
 - Hash tables and lookup systems for instant retrieval
 - Sorted arrays and binary search optimization
 - Cache-friendly data layout for Z80 architecture
 - Memory pool management and allocation strategies
 
 **Lessons 17-24: "Procedural Power" - Infinite Content from Finite Data**
+
 - Seed-based random generation systems
 - Procedural level and world generation algorithms
 - Data-driven content creation systems
 - Parametric generation with minimal storage requirements
 
 **Lessons 25-32: "Persistent Systems" - Professional Save/Load**
+
 - Efficient save file formats and versioning
 - Incremental saving and checkpoint systems
 - Data integrity checks and error recovery

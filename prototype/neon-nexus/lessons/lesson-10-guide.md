@@ -35,7 +35,7 @@ update_enemies:
     ; Update enemy 1
     lda enemy1_active
     beq skip_enemy1     ; Not active? Skip it
-    
+
     dec enemy1_x        ; Move left
     lda enemy1_x
     cmp #255           ; Wrapped around?
@@ -60,7 +60,7 @@ check_enemy1_collision:
     bne no_enemy1_collision
     jsr handle_collision
 no_enemy1_collision:
-    
+
     ; Repeat for enemy2 and enemy3...
 ```
 
@@ -74,7 +74,7 @@ What makes multiple enemies interesting is variety:
     and #$01           ; Every other frame
     bne skip_enemy2
     dec enemy2_x
-    
+
     ; Enemy 3 moves fast
     dec enemy3_x
     dec enemy3_x       ; Move 2 pixels!
@@ -83,7 +83,9 @@ What makes multiple enemies interesting is variety:
 ## Interactive Elements
 
 ### Experiment 1: Enemy Patterns
+
 Try these movement patterns:
+
 ```assembly
 ; Sine wave movement
 lda frame_counter
@@ -98,7 +100,9 @@ inc enemy2_y
 ```
 
 ### Experiment 2: Spawn Timing
+
 Control when enemies appear:
+
 ```assembly
 lda frame_counter
 cmp #60         ; After 1 second
@@ -108,7 +112,9 @@ sta enemy2_active
 ```
 
 ### Experiment 3: Difficulty Scaling
+
 Make enemies faster as the game progresses:
+
 ```assembly
 lda level
 clc
@@ -119,6 +125,7 @@ sta enemy3_x    ; Speed increases with level
 ## Deep Dive: The Cost of Multiple Objects
 
 Every enemy costs us:
+
 - 3 bytes for position and state
 - ~20 bytes of update code
 - ~15 bytes of collision code
@@ -144,6 +151,7 @@ See how our data is organized? Later we'll learn how to use indexed addressing t
 ## Challenge Extensions
 
 1. **Enemy Formations**: Make enemies move in synchronized patterns
+
    ```assembly
    lda enemy1_x
    clc
@@ -167,7 +175,8 @@ See how our data is organized? Later we'll learn how to use indexed addressing t
 
 The pros would use these techniques:
 
-1. **Indexed Addressing**: 
+1. **Indexed Addressing**:
+
    ```assembly
    ldx #0
    loop:

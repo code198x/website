@@ -27,6 +27,7 @@ Time to make history! With **32 groundbreaking lessons**, you'll create games th
 ## What You'll Build
 
 Create **REALITY SHIFT** - a collection of experimental games:
+
 - Multi-dimensional puzzle games using all four bitplanes
 - Sound-reactive games that respond to microphone input
 - Fractal-based explorers with infinite zoom
@@ -36,24 +37,28 @@ Create **REALITY SHIFT** - a collection of experimental games:
 ## Tier Overview
 
 **Lessons 1-8: "Hardware Hacking" - Beyond Normal Limits**
+
 - Custom chip combinations that shouldn't work
 - Using Paula for non-audio calculations
 - Copper programs that break the rules
 - Memory techniques that squeeze every byte
 
 **Lessons 9-16: "Input Innovation" - New Ways to Play**
+
 - Light pen games for precise drawing
 - Microphone-controlled sound games
 - Serial port networking for multiplayer
 - Custom controller interfaces
 
 **Lessons 17-24: "Genre Genesis" - Creating New Categories**
+
 - Time-manipulation puzzle games
 - Emotion-based AI interactions
 - Quantum logic gate games
 - Collaborative storytelling engines
 
 **Lessons 25-32: "Mind Benders" - Conceptual Breakthroughs**
+
 - Games that modify themselves
 - Recursive game-within-game structures
 - AI that writes its own levels

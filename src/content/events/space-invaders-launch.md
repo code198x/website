@@ -20,6 +20,7 @@ Space Invaders, created by Tomohiro Nishikado and released by Taito in June 1978
 ## Influence on Home Computing
 
 Space Invaders' massive success directly influenced the home computer revolution:
+
 - Proved that games could drive hardware sales
 - Inspired ports to every major home computer platform
 - Established gaming as a primary use case for home computers

@@ -27,6 +27,7 @@ Time to play God! With **32 world-building lessons**, you'll create simulation g
 ## What You'll Build
 
 Create **MICRO METROPOLIS** - a city simulation featuring:
+
 - Growing cities with realistic traffic and commerce
 - Natural disasters and crisis management
 - Economic models that respond to player decisions
@@ -36,24 +37,28 @@ Create **MICRO METROPOLIS** - a city simulation featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Systems Thinking" - Simulation Foundations**
+
 - Cellular automata for traffic and growth
 - Resource flow modeling (power, water, money)
 - Population dynamics and happiness
 - Supply and demand economics
 
 **Lessons 9-16: "Emergent Complexity" - Advanced Systems**
+
 - Crime and police response
 - Education and cultural development
 - Environmental effects and pollution
 - Transportation networks and congestion
 
 **Lessons 17-24: "Data Visualization" - Making Numbers Fun**
+
 - Graphs and charts that tell stories
 - Map overlays for different data views
 - Advisors with animated personalities
 - Notifications and event handling
 
 **Lessons 25-32: "Scenario Design" - Directed Gameplay**
+
 - Historical scenarios and challenges
 - Natural disaster simulation
 - Budget crises and political events

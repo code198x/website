@@ -32,11 +32,11 @@ Our first smart behavior - enemies that bob and weave:
 enemy1_wave:
     ; Sine wave movement
     dec enemy1_x        ; Still moving left
-    
+
     lda frame_counter
     and #$08           ; Check bit 3 (changes every 8 frames)
     beq enemy1_wave_down
-    
+
     dec enemy1_y       ; Move up
     lda enemy1_y
     cmp #8             ; Top boundary
@@ -44,7 +44,7 @@ enemy1_wave:
     lda #8
     sta enemy1_y
     jmp check_enemy1_bounds
-    
+
 enemy1_wave_down:
     inc enemy1_y       ; Move down
     lda enemy1_y
@@ -64,15 +64,15 @@ Now for something scarier - enemies that follow you:
 enemy1_tracking:
     ; Move toward player Y position
     dec enemy1_x        ; Still moving left
-    
+
     lda player_y
     cmp enemy1_y
     beq check_enemy1_bounds  ; Already aligned
     bcc enemy1_move_up       ; Player is above
-    
+
     inc enemy1_y        ; Move down toward player
     jmp check_enemy1_bounds
-    
+
 enemy1_move_up:
     dec enemy1_y        ; Move up toward player
 ```
@@ -87,19 +87,19 @@ The ultimate predator - fast and relentless:
 enemy1_homing:
     ; Aggressive pursuit mode
     dec enemy1_x
-    
+
     ; Move faster every other frame
     lda frame_counter
     and #$01
     beq skip_extra_move
     dec enemy1_x        ; Double speed!
-    
+
 skip_extra_move:
     ; Track Y position but with delay
     lda frame_counter
     and #$03           ; Only adjust every 4 frames
     bne check_enemy1_bounds
-    
+
     ; Now track Y like before...
 ```
 
@@ -114,14 +114,14 @@ spawn_wave:
     sta enemy1_x
     sta enemy2_x
     sta enemy3_x
-    
+
     lda #10
     sta enemy1_y
     lda #15
     sta enemy2_y       ; Staggered Y positions
     lda #20
     sta enemy3_y
-    
+
     ; All use wave behavior
     lda #1
     sta enemy1_behavior
@@ -132,7 +132,9 @@ spawn_wave:
 ## Interactive Elements
 
 ### Experiment 1: Behavior Mixing
+
 Combine behaviors for complex patterns:
+
 ```assembly
 ; Wave + Tracking = Serpentine hunter
 lda frame_counter
@@ -145,7 +147,9 @@ jsr enemy1_tracking
 ```
 
 ### Experiment 2: Formation Movement
+
 Make enemies move as a group:
+
 ```assembly
 ; Enemy 2 follows enemy 1
 lda enemy1_y
@@ -155,7 +159,9 @@ sta enemy2_y
 ```
 
 ### Experiment 3: Adaptive AI
+
 Make enemies smarter over time:
+
 ```assembly
 ; Increase tracking speed with level
 lda level
@@ -171,7 +177,7 @@ Professional game AI uses state machines. Here's a simple example:
 ```assembly
 ; Enemy states
 ; 0 = Patrol
-; 1 = Chase  
+; 1 = Chase
 ; 2 = Retreat
 ; 3 = Attack
 
@@ -182,7 +188,7 @@ enemy_ai:
     cmp #1
     beq chase_mode
     ; etc...
-    
+
 patrol_mode:
     ; Check if player is near
     lda player_x
@@ -190,7 +196,7 @@ patrol_mode:
     sbc enemy_x
     cmp #10         ; Within 10 pixels?
     bcs keep_patrol
-    
+
     ; Switch to chase mode!
     lda #1
     sta enemy_state
@@ -203,7 +209,7 @@ The sine wave table saves precious cycles:
 ```assembly
 sine_table:
     !byte 128,131,134,137,140,143,146,149...
-    
+
 ; Using the table:
 ldx enemy1_x
 lda sine_table,x
@@ -219,6 +225,7 @@ Pre-calculated values are always faster than real-time math!
 ## Challenge Extensions
 
 1. **Personality System**: Give each enemy slot a permanent personality
+
    ```assembly
    ; Enemy 1 is always aggressive
    ; Enemy 2 is always cautious
@@ -226,12 +233,14 @@ Pre-calculated values are always faster than real-time math!
    ```
 
 2. **Coordinated Attacks**: Enemies work together
+
    ```assembly
    ; If enemy1 is above player, enemy2 goes below
    ; Pincer movement!
    ```
 
 3. **Learning AI**: Track player habits
+
    ```assembly
    player_prefers_top: !byte 0
    ; Increment when player stays in top half
@@ -255,6 +264,7 @@ Pre-calculated values are always faster than real-time math!
 ## Historical Examples
 
 Classic C64 enemy behaviors:
+
 - **Choplifter**: Tanks that aim at your future position
 - **Beach Head**: Planes that dive-bomb in curves
 - **Fort Apocalypse**: Robots with patrol routes
@@ -265,8 +275,9 @@ Each pushed the 1MHz processor to create believable opponents.
 ## Optimization Notes
 
 Our behavior system costs:
+
 - Standard movement: ~10 cycles
-- Wave movement: ~30 cycles  
+- Wave movement: ~30 cycles
 - Tracking: ~25 cycles
 - Homing: ~40 cycles
 

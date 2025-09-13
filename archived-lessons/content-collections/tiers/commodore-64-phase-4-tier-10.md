@@ -31,24 +31,28 @@ Enhance **Prism Quest** with 3D visual elements including rotating geometric puz
 ## Tier Overview
 
 **Lessons 1-8: 3D Mathematics Fundamentals**
+
 - 3D coordinate systems and transformations
 - Perspective projection algorithms
 - Distance and depth calculations
 - Basic 3D object representation
 
 **Lessons 9-16: Object Rendering Systems**
+
 - Wireframe 3D object rendering
 - Hidden line removal algorithms
 - 3D object data structures
 - Efficient rendering pipelines
 
 **Lessons 17-24: Transformation & Animation**
+
 - 3D rotation and translation
 - Matrix mathematics optimization
 - 3D animation and interpolation
 - Performance optimization techniques
 
 **Lessons 25-32: Advanced 3D Effects**
+
 - Filled polygon rendering
 - Texture mapping simulation
 - Advanced perspective effects

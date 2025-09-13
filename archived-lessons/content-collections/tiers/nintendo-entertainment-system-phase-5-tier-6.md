@@ -27,6 +27,7 @@ Start your engines! With **32 high-octane lessons**, you'll create racing games 
 ## What You'll Build
 
 Create **TURBO CHAMPIONSHIP** - a racing game featuring:
+
 - Pseudo-3D roads that feel like you're really driving
 - Multiple tracks with different challenges
 - AI opponents that put up a real fight
@@ -36,24 +37,28 @@ Create **TURBO CHAMPIONSHIP** - a racing game featuring:
 ## Tier Overview
 
 **Lessons 1-8: "The Need for Speed" - Creating Motion**
+
 - Raster tricks to create road perspective
 - Sprite positioning for 3D illusion
 - Background scrolling for speed sensation
 - Making 20mph feel like 200mph
 
 **Lessons 9-16: "Track Design Masters" - Building Worlds**
+
 - Efficient track data storage
 - Curves, hills, and obstacles
 - Trackside objects that whiz by
 - Creating variety within constraints
 
 **Lessons 17-24: "AI Racing Rivals" - Competition Code**
+
 - Opponent AI that feels human
 - Rubber-band mechanics done right
 - Different AI personalities
 - Making races exciting to the finish
 
 **Lessons 25-32: "Arcade Polish" - The Full Experience**
+
 - Car selection and upgrades
 - Championship progression
 - Two-player split-screen modes

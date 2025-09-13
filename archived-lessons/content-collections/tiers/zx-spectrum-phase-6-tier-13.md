@@ -27,6 +27,7 @@ Build the tools that build games! With **32 comprehensive lessons**, you'll crea
 ## What You'll Build
 
 Create **DEVELOPER TOOLKIT SUITE** - a comprehensive development environment featuring:
+
 - Advanced code editors with syntax highlighting and assembly assistance
 - Professional debuggers with real-time analysis and breakpoint systems
 - Graphics and audio editing tools optimized for ZX Spectrum
@@ -36,24 +37,28 @@ Create **DEVELOPER TOOLKIT SUITE** - a comprehensive development environment fea
 ## Tier Overview
 
 **Lessons 1-8: "Code Tools!" - Advanced Development Utilities**
+
 - Professional assembly code editors and syntax highlighters
 - Intelligent code completion and error detection systems
 - Advanced macro systems and code generation tools
 - Professional source code management and organization
 
 **Lessons 9-16: "Debug Masters!" - Analysis and Debugging Tools**
+
 - Real-time debuggers with emulator integration
 - Performance profilers and cycle-accurate analysis
 - Memory debuggers and leak detection systems
 - Professional testing and validation frameworks
 
 **Lessons 17-24: "Asset Tools!" - Content Creation Utilities**
+
 - Graphics editors optimized for ZX Spectrum constraints
 - Audio composition and editing tools for beeper and AY
 - Level editors and game content creation utilities
 - Professional asset pipeline and conversion tools
 
 **Lessons 25-32: "Workflow Excellence!" - Development Automation**
+
 - Build systems and automated compilation tools
 - Project templates and scaffolding systems
 - Deployment and distribution automation

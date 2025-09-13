@@ -114,12 +114,12 @@ InitCompleteGame:
     JSR InitVisualEngine
     JSR InitUserInterface
     JSR LoadGameData
-    
+
     ; Start in title mode
     LDA #MODE_TITLE
     STA CurrentMode
     JSR InitTitleMode
-    
+
     RTS
 
 MainGameLoop:
@@ -131,7 +131,7 @@ MainGameLoop:
     JSR UpdateTransitions
     JSR UpdateUI
     JSR RenderFrame
-    
+
     JMP MainGameLoop
 ```
 
@@ -141,7 +141,7 @@ MainGameLoop:
 ; Sprite Symphony - Complete Game Foundation
 Main:
     JSR InitGame
-    
+
 GameLoop:
     JSR UpdateInput
     JSR UpdateGameMode
@@ -161,14 +161,14 @@ InitSystems:
     ; Initialize all game systems
     LDA #%00001111       ; Enable all audio
     STA $4015
-    
+
     ; Initialize game state
     LDA #$00             ; Start in title mode
     STA GameMode
     STA GameTimer
     STA TransitionActive
     STA MenuCursor
-    
+
     ; Initialize scores
     LDA #$00
     STA Score
@@ -176,13 +176,13 @@ InitSystems:
     LDA #$50             ; Default high score
     STA HighScore
     STA HighScore+1
-    
+
     ; Initialize player progress
     LDA #$01             ; Start with just demo unlocked
     STA UnlockedModes
     LDA #$01             ; Player level 1
     STA PlayerLevel
-    
+
     RTS
 
 InitData:
@@ -200,7 +200,7 @@ LoadScaleLoop:
     STA CurrentScale,X
     DEX
     BPL LoadScaleLoop
-    
+
     ; Load demo sequence
     LDX #$0F
 LoadSequenceLoop:
@@ -216,7 +216,7 @@ InitVisualData:
     STA VisualMode
     STA ParticleCount
     STA EffectTimer
-    
+
     ; Clear sprites
     LDX #$00
     LDA #$FF
@@ -236,7 +236,7 @@ SetupMenuData:
     STA MenuItems
     LDA #$00
     STA MenuCursor
-    
+
     ; Menu item positions
     LDX #$03
 MenuPosLoop:
@@ -257,7 +257,7 @@ UpdateInput:
     STA PreviousInput
     JSR ReadController
     STA CurrentInput
-    
+
     ; Calculate new presses
     EOR PreviousInput
     AND CurrentInput
@@ -281,13 +281,13 @@ UpdateTitle:
     ; Update title screen
     INC GameTimer
     JSR ProcessTitleInput
-    
+
     ; Auto-advance after delay
     LDA GameTimer
     CMP #$78             ; 2 seconds
     BNE TitleDone
     JSR TransitionToMenu
-    
+
 TitleDone:
     RTS
 
@@ -297,7 +297,7 @@ ProcessTitleInput:
     AND #%10000000       ; A button
     BEQ TitleInputDone
     JSR TransitionToMenu
-    
+
 TitleInputDone:
     RTS
 
@@ -319,13 +319,13 @@ ProcessMenuInput:
     LDA NewPresses
     AND #%00001000       ; Up
     BEQ CheckMenuDown
-    
+
     LDA MenuCursor
     BEQ WrapMenuUp
     DEC MenuCursor
     JSR PlayMenuSound
     JMP MenuInputDone
-    
+
 WrapMenuUp:
     LDA MenuItems
     SEC
@@ -333,32 +333,32 @@ WrapMenuUp:
     STA MenuCursor
     JSR PlayMenuSound
     JMP MenuInputDone
-    
+
 CheckMenuDown:
     LDA NewPresses
     AND #%00000100       ; Down
     BEQ CheckMenuSelect
-    
+
     LDA MenuCursor
     CMP MenuItems
     BEQ WrapMenuDown
     INC MenuCursor
     JSR PlayMenuSound
     JMP MenuInputDone
-    
+
 WrapMenuDown:
     LDA #$00
     STA MenuCursor
     JSR PlayMenuSound
     JMP MenuInputDone
-    
+
 CheckMenuSelect:
     LDA NewPresses
     AND #%10000000       ; A button
     BEQ MenuInputDone
-    
+
     JSR SelectMenuItem
-    
+
 MenuInputDone:
     RTS
 
@@ -386,11 +386,11 @@ SelectPlay:
     LDA UnlockedModes
     AND #%00000010       ; Play mode bit
     BEQ MenuSelectDone
-    
+
     LDA #$03             ; Play mode
     STA TargetMode
     JSR StartTransition
-    
+
 MenuSelectDone:
     RTS
 
@@ -399,7 +399,7 @@ SelectCompose:
     LDA UnlockedModes
     AND #%00000100       ; Compose mode bit
     BEQ MenuSelectDone
-    
+
     LDA #$04             ; Compose mode
     STA TargetMode
     JSR StartTransition
@@ -410,7 +410,7 @@ SelectChallenge:
     LDA UnlockedModes
     AND #%00001000       ; Challenge mode bit
     BEQ MenuSelectDone
-    
+
     LDA #$05             ; Challenge mode
     STA TargetMode
     JSR StartTransition
@@ -428,20 +428,20 @@ PlayDemoSequence:
     LDA GameTimer
     AND #$1F             ; Every 32 frames
     BNE DemoSequenceDone
-    
+
     LDX SequencePosition
     LDA GameSequence,X
     CMP #$FF             ; End marker?
     BEQ ResetDemoSequence
-    
+
     JSR PlayNote
     INC SequencePosition
     JMP DemoSequenceDone
-    
+
 ResetDemoSequence:
     LDA #$00
     STA SequencePosition
-    
+
 DemoSequenceDone:
     RTS
 
@@ -450,17 +450,17 @@ ProcessDemoInput:
     LDA NewPresses
     AND #%01000000       ; B button to return
     BEQ DemoInputDone
-    
+
     ; Return to menu
     LDA #$01             ; Menu mode
     STA TargetMode
     JSR StartTransition
-    
+
     ; Unlock play mode
     LDA UnlockedModes
     ORA #%00000010
     STA UnlockedModes
-    
+
 DemoInputDone:
     RTS
 
@@ -476,23 +476,23 @@ ProcessPlayInput:
     LDA NewPresses
     AND #%00001111       ; Directions
     BEQ CheckPlayExit
-    
+
     JSR MapInputToNote
     CMP #$FF
     BEQ CheckPlayExit
-    
+
     JSR PlayInteractiveNote
     JSR AddToScore
-    
+
 CheckPlayExit:
     LDA NewPresses
     AND #%01000000       ; B to exit
     BEQ PlayInputDone
-    
+
     LDA #$01             ; Return to menu
     STA TargetMode
     JSR StartTransition
-    
+
 PlayInputDone:
     RTS
 
@@ -503,28 +503,28 @@ MapInputToNote:
     BEQ CheckPlayDown
     LDA #$07
     RTS
-    
+
 CheckPlayDown:
     LDA NewPresses
     AND #%00000100       ; Down
     BEQ CheckPlayLeft
     LDA #$00
     RTS
-    
+
 CheckPlayLeft:
     LDA NewPresses
     AND #%00000010       ; Left
     BEQ CheckPlayRight
     LDA #$02
     RTS
-    
+
 CheckPlayRight:
     LDA NewPresses
     AND #%00000001       ; Right
     BEQ NoPlayNote
     LDA #$04
     RTS
-    
+
 NoPlayNote:
     LDA #$FF
     RTS
@@ -533,7 +533,7 @@ PlayInteractiveNote:
     ; Play note with scoring
     JSR PlayNote
     JSR CreateNoteVisual
-    
+
     ; Check for combo scoring
     JSR CheckCombo
     RTS
@@ -547,7 +547,7 @@ PlayNote:
     STA $4003
     LDA #%10111111
     STA $4000
-    
+
     ; Set note timer
     LDA #$20
     STA NoteTimer
@@ -560,7 +560,7 @@ CreateNoteVisual:
     ASL
     ASL
     TAX
-    
+
     LDA NotePosY,Y
     STA SpriteOAM,X
     LDA NoteTiles,Y
@@ -607,23 +607,23 @@ CheckNewHighScore:
     CMP HighScore+1
     BCC NoNewHighScore
     BNE NewHighScore
-    
+
     LDA Score
     CMP HighScore
     BCC NoNewHighScore
-    
+
 NewHighScore:
     ; New high score!
     LDA Score
     STA HighScore
     LDA Score+1
     STA HighScore+1
-    
+
     ; Unlock compose mode
     LDA UnlockedModes
     ORA #%00000100
     STA UnlockedModes
-    
+
 NoNewHighScore:
     RTS
 
@@ -639,20 +639,20 @@ UpdateAudio:
     ; Update audio system
     LDA NoteTimer
     BEQ AudioSilent
-    
+
     DEC NoteTimer
     LDA NoteTimer
     BNE AudioDone
-    
+
     ; Note finished
     LDA #$00
     STA $4000
     JMP AudioDone
-    
+
 AudioSilent:
     LDA #$00
     STA $4000
-    
+
 AudioDone:
     RTS
 
@@ -667,19 +667,19 @@ UpdateSprites:
     ; Update sprite animations
     LDA NoteTimer
     BEQ HideNoteSprites
-    
+
     ; Animate active note
     LDA VisualCounter
     AND #$07
     CMP #$04
     BCC NotePulseUp
-    
+
     ; Pulse effect
     RTS
-    
+
 NotePulseUp:
     RTS
-    
+
 HideNoteSprites:
     ; Hide finished note sprites
     LDA #$FF
@@ -690,9 +690,9 @@ UpdateEffects:
     ; Update visual effects
     LDA EffectTimer
     BEQ EffectsDone
-    
+
     DEC EffectTimer
-    
+
 EffectsDone:
     RTS
 
@@ -708,7 +708,7 @@ UpdateMenuCursor:
     LDA GameMode
     CMP #$01             ; Menu mode
     BNE MenuCursorDone
-    
+
     LDX MenuCursor
     LDA MenuItemY,X
     STA SpriteOAM+60     ; Cursor Y
@@ -719,7 +719,7 @@ UpdateMenuCursor:
     LDA #$30
     STA SpriteOAM+63     ; Cursor X
     JMP MenuCursorDone
-    
+
 MenuCursorDone:
     RTS
 
@@ -729,7 +729,7 @@ UpdateModeIndicator:
     CLC
     ADC #$40             ; Mode tiles start at $40
     STA SpriteOAM+65
-    
+
     LDA #$20
     STA SpriteOAM+64     ; Y position
     LDA #%00000011
@@ -748,7 +748,7 @@ UpdateScoreDisplay:
     CLC
     ADC #$30
     STA SpriteOAM+73
-    
+
     ; Position score sprites
     LDA #$20
     STA SpriteOAM+68
@@ -765,14 +765,14 @@ UpdateMenuVisuals:
     AND #$0F
     CMP #$08
     BCC MenuVisualDim
-    
+
     ; Bright menu
     LDA #%00000000
     JMP StoreMenuPalette
-    
+
 MenuVisualDim:
     LDA #%00100000       ; Dim
-    
+
 StoreMenuPalette:
     STA SpriteOAM+62     ; Cursor attributes
     RTS
@@ -785,7 +785,7 @@ PlayMenuSound:
     STA $4003
     LDA #%10110000
     STA $4000
-    
+
     LDA #$08
     STA SoundTimer
     RTS
@@ -814,15 +814,15 @@ ReadController:
     BEQ SimGameB
     LDA #$FF
     RTS
-    
+
 SimGameA:
     LDA #%01111111       ; A
     RTS
-    
+
 SimGameUp:
     LDA #%11110111       ; Up
     RTS
-    
+
 SimGameB:
     LDA #%10111111       ; B
     RTS
@@ -910,7 +910,7 @@ UpdateDemoSequence:
     LDA DemoTimer
     AND #$1F                ; 32-frame intervals
     BNE DemoSequenceDone
-    
+
     ; Play next note in demo
     LDX DemoPosition
     LDA DemoScript,X
@@ -918,53 +918,53 @@ UpdateDemoSequence:
     BEQ LoopDemo
     CMP #$FF                ; End marker?
     BEQ EndDemo
-    
+
     ; Play this note
     JSR PlayDemoNote
     INC DemoPosition
     JMP DemoSequenceDone
-    
+
 LoopDemo:
     LDA #$00
     STA DemoPosition
     JMP DemoSequenceDone
-    
+
 EndDemo:
     ; Demo complete - unlock play mode
     LDA ModeUnlockFlags
     ORA #%00000010          ; Unlock play mode
     STA ModeUnlockFlags
-    
+
     ; Transition to menu
     LDA #MODE_MENU
     STA TargetMode
     JSR StartTransition
-    
+
 DemoSequenceDone:
     RTS
 
 PlayDemoNote:
     ; Play demo note A with visual flair
     STA CurrentDemoNote
-    
+
     ; Enhanced audio with effects
     TAX
     LDA DemoNoteFreqs,X
     STA $4002
     LDA DemoNoteFreqHigh,X
     STA $4003
-    
+
     ; Demo uses special envelope
     LDA #%10111111
     STA $4000
-    
+
     ; Create spectacular visual
     JSR CreateDemoVisual
-    
+
     ; Set demo note duration
     LDA #$30                ; Longer notes for demo
     STA DemoNoteTimer
-    
+
     RTS
 
 CreateDemoVisual:
@@ -973,7 +973,7 @@ CreateDemoVisual:
     ASL
     ASL
     TAY
-    
+
     ; Main note sprite
     LDA DemoNotePosY,A
     STA SpriteOAM,Y
@@ -987,10 +987,10 @@ CreateDemoVisual:
     CLC
     ADC #$40
     STA SpriteOAM+3,Y
-    
+
     ; Create accompanying particle effects
     JSR CreateDemoParticles
-    
+
     RTS
 
 ; Play Mode - Interactive musical playing
@@ -1006,22 +1006,22 @@ ProcessPlayInput:
     ; Enhanced input processing for play mode
     LDA NewPresses
     BEQ PlayInputDone
-    
+
     ; Map input to musical notes
     JSR MapPlayInput
     CMP #$FF
     BEQ CheckPlaySpecial
-    
+
     ; Play note with velocity sensitivity
     JSR CalculateVelocity
     JSR PlayScoredNote
     JMP PlayInputDone
-    
+
 CheckPlaySpecial:
     ; Check for special combinations
     JSR CheckChordInput
     JSR CheckScaleChange
-    
+
 PlayInputDone:
     RTS
 
@@ -1030,20 +1030,20 @@ CalculateVelocity:
     LDA InputTiming
     CMP #$04                ; Quick press
     BCC HighVelocity
-    CMP #$08                ; Medium press  
+    CMP #$08                ; Medium press
     BCC MediumVelocity
-    
+
     ; Slow press
     LDA #$04
     JMP StoreVelocity
-    
+
 MediumVelocity:
     LDA #$08
     JMP StoreVelocity
-    
+
 HighVelocity:
     LDA #$0C
-    
+
 StoreVelocity:
     STA CurrentVelocity
     RTS
@@ -1051,26 +1051,26 @@ StoreVelocity:
 PlayScoredNote:
     ; Play note with scoring calculation
     STA PlayedNote
-    
+
     ; Configure audio with velocity
     TAX
     LDA PlayNoteFreqs,X
     STA $4002
-    LDA PlayNoteFreqHigh,X  
+    LDA PlayNoteFreqHigh,X
     STA $4003
-    
+
     ; Set volume based on velocity
     LDA CurrentVelocity
     ASL
     ORA #%10110000
     STA $4000
-    
+
     ; Calculate score based on timing and velocity
     JSR CalculateNoteScore
-    
+
     ; Create visual with velocity feedback
     JSR CreateVelocityVisual
-    
+
     RTS
 
 CalculateNoteScore:
@@ -1081,7 +1081,7 @@ CalculateNoteScore:
     ADC TimingBonus         ; Add timing bonus
     CLC
     ADC ComboMultiplier     ; Add combo bonus
-    
+
     ; Add to total score
     CLC
     ADC PlayScore
@@ -1089,10 +1089,10 @@ CalculateNoteScore:
     LDA PlayScore+1
     ADC #$00
     STA PlayScore+1
-    
+
     ; Update combo
     JSR UpdateCombo
-    
+
     RTS
 
 ; Compose Mode - Musical sequence creation
@@ -1108,12 +1108,12 @@ ProcessComposeInput:
     LDA NewPresses
     AND #%00001111          ; Directional pad
     BEQ CheckComposeSpecial
-    
+
     ; Add note to composition
     JSR MapComposeInput
     JSR AddNoteToComposition
     JMP ComposeInputDone
-    
+
 CheckComposeSpecial:
     ; Check for compose mode controls
     LDA NewPresses
@@ -1121,13 +1121,13 @@ CheckComposeSpecial:
     BEQ CheckComposeDelete
     JSR PlayComposition
     JMP ComposeInputDone
-    
+
 CheckComposeDelete:
     LDA NewPresses
     AND #%01000000          ; B = delete last note
     BEQ ComposeInputDone
     JSR DeleteLastNote
-    
+
 ComposeInputDone:
     RTS
 
@@ -1136,13 +1136,13 @@ AddNoteToComposition:
     LDX CompositionLength
     CPX #$20                ; Max 32 notes
     BCS CompositionFull
-    
+
     STA CompositionData,X
     INC CompositionLength
-    
+
     ; Play note for feedback
     JSR PlayComposeNote
-    
+
 CompositionFull:
     RTS
 
@@ -1269,19 +1269,19 @@ UpdateMenuSystem:
     LDA GameMode
     CMP #MODE_MENU
     BNE MenuSystemDone
-    
+
     ; Update menu animation
     INC MenuAnimation
-    
+
     ; Update cursor animation
     JSR UpdateMenuCursor
-    
+
     ; Update menu item highlights
     JSR UpdateMenuHighlights
-    
+
     ; Update unlock indicators
     JSR UpdateUnlockIndicators
-    
+
 MenuSystemDone:
     RTS
 
@@ -1294,18 +1294,18 @@ UpdateMenuCursor:
     AND #$07                ; 8-frame oscillation
     CMP #$04
     BCC CursorPulseIn
-    
+
     ; Cursor pulse out
     LDA MenuPositions,X
     CLC
     ADC #$02
     JMP StoreCursorY
-    
+
 CursorPulseIn:
     LDA MenuPositions,X
     SEC
     SBC #$02
-    
+
 StoreCursorY:
     STA SpriteOAM+0         ; Cursor sprite Y
     LDA #$7E                ; Arrow tile
@@ -1314,19 +1314,19 @@ StoreCursorY:
     STA SpriteOAM+2
     LDA #$28                ; Cursor X
     STA SpriteOAM+3
-    
+
     RTS
 
 UpdateMenuHighlights:
     ; Highlight available menu options
     LDX #$00
-    
+
 HighlightLoop:
     ; Check if mode is unlocked
     LDA UnlockBitMasks,X
     AND ModeUnlockFlags
     BEQ DimOption
-    
+
     ; Option available - bright display
     TXA
     ASL
@@ -1335,7 +1335,7 @@ HighlightLoop:
     LDA #%00000001          ; Bright palette
     STA SpriteOAM+6,Y       ; Menu item sprite
     JMP NextHighlight
-    
+
 DimOption:
     ; Option locked - dim display
     TXA
@@ -1344,18 +1344,18 @@ DimOption:
     TAY
     LDA #%00100000          ; Dim palette
     STA SpriteOAM+6,Y
-    
+
 NextHighlight:
     INX
     CPX #$04                ; 4 menu options
     BNE HighlightLoop
-    
+
     RTS
 
 UpdateUnlockIndicators:
     ; Show unlock progress indicators
     LDX #$00
-    
+
 UnlockIndicatorLoop:
     ; Position unlock indicator
     TXA
@@ -1365,30 +1365,30 @@ UnlockIndicatorLoop:
     CLC
     ADC #$70                ; Base Y
     STA UnlockIndicatorY,X
-    
+
     ; Check unlock status
     LDA UnlockBitMasks,X
     AND ModeUnlockFlags
     BEQ ShowLockedIndicator
-    
+
     ; Show unlocked indicator
     LDA #$55                ; Checkmark tile
     STA UnlockIndicatorTile,X
     JMP NextUnlockIndicator
-    
+
 ShowLockedIndicator:
     ; Show locked indicator
     LDA #$58                ; Lock tile
     STA UnlockIndicatorTile,X
-    
+
 NextUnlockIndicator:
     INX
     CPX #$04
     BNE UnlockIndicatorLoop
-    
+
     ; Update sprites
     JSR RenderUnlockIndicators
-    
+
     RTS
 
 UpdateStatusDisplay:
@@ -1404,31 +1404,31 @@ DisplayCurrentScore:
     LDA Score+1             ; High byte
     JSR ConvertToDisplay
     STA ScoreDisplay+1
-    
+
     LDA Score               ; Low byte
     JSR ConvertToDisplay
     STA ScoreDisplay
-    
+
     ; Position score sprites
     LDA #$20                ; Score Y position
     STA SpriteOAM+40
     STA SpriteOAM+44
-    
+
     LDA ScoreDisplay+1
     CLC
     ADC #$30                ; Number tiles start at $30
     STA SpriteOAM+41
-    
+
     LDA ScoreDisplay
     CLC
     ADC #$30
     STA SpriteOAM+45
-    
+
     LDA #$D0                ; Score X position
     STA SpriteOAM+43
     LDA #$D8
     STA SpriteOAM+47
-    
+
     RTS
 
 DisplayPlayerLevel:
@@ -1437,14 +1437,14 @@ DisplayPlayerLevel:
     CLC
     ADC #$30                ; Convert to tile
     STA SpriteOAM+49        ; Level tile
-    
+
     LDA #$30                ; Level Y
     STA SpriteOAM+48
     LDA #%00000010          ; Level palette
     STA SpriteOAM+50
     LDA #$C0                ; Level X
     STA SpriteOAM+51
-    
+
     RTS
 
 UpdateHelpSystem:
@@ -1454,20 +1454,20 @@ UpdateHelpSystem:
     BEQ ShowPlayHelp
     CMP #MODE_COMPOSE
     BEQ ShowComposeHelp
-    
+
     ; Hide help
     JSR HideHelpDisplay
     JMP HelpSystemDone
-    
+
 ShowPlayHelp:
     ; Show play mode help
     JSR DisplayPlayHelp
     JMP HelpSystemDone
-    
+
 ShowComposeHelp:
     ; Show compose mode help
     JSR DisplayComposeHelp
-    
+
 HelpSystemDone:
     RTS
 
@@ -1481,64 +1481,64 @@ DisplayPlayHelp:
     STA SpriteOAM+62
     LDA #$20                ; Help X position
     STA SpriteOAM+63
-    
+
     RTS
 
 UpdateTransitionEffects:
     ; Update transition visual effects
     LDA TransitionActive
     BEQ TransitionEffectsDone
-    
+
     ; Create transition effect
     LDA TransitionTimer
     CMP #$10                ; Midpoint
     BCS FadeOut
-    
+
     ; Fade in effect
     JSR ApplyFadeIn
     JMP TransitionEffectsDone
-    
+
 FadeOut:
     ; Fade out effect
     JSR ApplyFadeOut
-    
+
 TransitionEffectsDone:
     RTS
 
 ApplyFadeOut:
     ; Apply fade out effect to all sprites
     LDX #$00
-    
+
 FadeOutLoop:
     LDA SpriteOAM+2,X       ; Get current attributes
     ORA #%01000000          ; Set fade bit
     STA SpriteOAM+2,X
-    
+
     TXA
     CLC
     ADC #$04                ; Next sprite
     TAX
     CPX #$80                ; All sprites processed?
     BNE FadeOutLoop
-    
+
     RTS
 
 ApplyFadeIn:
     ; Apply fade in effect
     LDX #$00
-    
+
 FadeInLoop:
     LDA SpriteOAM+2,X       ; Get current attributes
     AND #%10111111          ; Clear fade bit
     STA SpriteOAM+2,X
-    
+
     TXA
     CLC
     ADC #$04
     TAX
     CPX #$80
     BNE FadeInLoop
-    
+
     RTS
 
 ConvertToDisplay:
@@ -1577,7 +1577,7 @@ Create the complete Sprite Symphony game with all systems integrated:
 ; Complete Sprite Symphony NES Game
 Main:
     JSR InitCompleteGame
-    
+
 MainGameLoop:
     JSR UpdateInput
     JSR UpdateGameState
@@ -1599,13 +1599,13 @@ InitHardware:
     ; Initialize NES hardware
     LDA #%00001111       ; Enable all audio channels
     STA $4015
-    
+
     ; Initialize system variables
     LDA #$00             ; Start in title mode
     STA GameMode
     STA GameTimer
     STA TransitionActive
-    
+
     RTS
 
 InitGameData:
@@ -1616,18 +1616,18 @@ InitGameData:
     LDA #$64             ; High score = 100
     STA HighScore
     STA HighScore+1
-    
+
     ; Initialize progression
     LDA #%00000001       ; Only demo unlocked initially
     STA UnlockedModes
     LDA #$01
     STA PlayerLevel
-    
+
     ; Initialize mode-specific data
     JSR InitDemoData
     JSR InitPlayData
     JSR InitComposeData
-    
+
     RTS
 
 InitDemoData:
@@ -1659,7 +1659,7 @@ InitUI:
     LDA #$00
     STA MenuCursor
     STA UIAnimation
-    
+
     ; Clear all sprites
     LDX #$00
     LDA #$FF
@@ -1671,7 +1671,7 @@ ClearUISprites:
     INX
     CPX #$80
     BNE ClearUISprites
-    
+
     RTS
 
 SetupTitleScreen:
@@ -1692,21 +1692,21 @@ UpdateInput:
     STA PreviousInput
     JSR ReadController
     STA CurrentInput
-    
+
     ; Calculate new presses
     EOR PreviousInput
     AND CurrentInput
     STA NewPresses
-    
+
     ; Update input timing
     INC InputTimer
-    
+
     RTS
 
 UpdateGameState:
     ; Update based on current game mode
     INC GameTimer
-    
+
     LDA GameMode
     CMP #$00             ; Title
     BEQ UpdateTitle
@@ -1723,13 +1723,13 @@ UpdateGameState:
 UpdateTitle:
     ; Update title screen
     JSR ProcessTitleInput
-    
+
     ; Auto-advance after 3 seconds
     LDA GameTimer
     CMP #$B4
     BNE TitleDone
     JSR TransitionToMenu
-    
+
 TitleDone:
     RTS
 
@@ -1738,9 +1738,9 @@ ProcessTitleInput:
     LDA NewPresses
     AND #%10000000       ; A button
     BEQ TitleInputDone
-    
+
     JSR TransitionToMenu
-    
+
 TitleInputDone:
     RTS
 
@@ -1762,25 +1762,25 @@ ProcessMenuInput:
     LDA NewPresses
     AND #%00001000       ; Up
     BEQ CheckMenuDown
-    
+
     ; Move cursor up
     LDA MenuCursor
     BEQ WrapMenuToBottom
     DEC MenuCursor
     JSR PlayMenuSound
     JMP MenuInputDone
-    
+
 WrapMenuToBottom:
     LDA #$03             ; 4 menu items (0-3)
     STA MenuCursor
     JSR PlayMenuSound
     JMP MenuInputDone
-    
+
 CheckMenuDown:
     LDA NewPresses
     AND #%00000100       ; Down
     BEQ CheckMenuSelect
-    
+
     ; Move cursor down
     LDA MenuCursor
     CMP #$03
@@ -1788,20 +1788,20 @@ CheckMenuDown:
     INC MenuCursor
     JSR PlayMenuSound
     JMP MenuInputDone
-    
+
 WrapMenuToTop:
     LDA #$00
     STA MenuCursor
     JSR PlayMenuSound
     JMP MenuInputDone
-    
+
 CheckMenuSelect:
     LDA NewPresses
     AND #%10000000       ; A button
     BEQ MenuInputDone
-    
+
     JSR SelectMenuOption
-    
+
 MenuInputDone:
     RTS
 
@@ -1830,11 +1830,11 @@ SelectPlay:
     LDA UnlockedModes
     AND #%00000010
     BEQ MenuSelectDone
-    
+
     LDA #$03             ; Play mode
     STA TargetMode
     JSR StartTransition
-    
+
 MenuSelectDone:
     RTS
 
@@ -1843,7 +1843,7 @@ SelectCompose:
     LDA UnlockedModes
     AND #%00000100
     BEQ MenuSelectDone
-    
+
     LDA #$04             ; Compose mode
     STA TargetMode
     JSR StartTransition
@@ -1864,26 +1864,26 @@ RunDemoSequence:
     LDA GameTimer
     AND #$1F             ; Every 32 frames
     BNE DemoSequenceDone
-    
+
     LDX DemoPosition
     LDA DemoSequence,X
     CMP #$FF             ; End marker?
     BEQ RestartDemo
-    
+
     ; Play this note
     JSR PlayDemoNote
     INC DemoPosition
     JMP DemoSequenceDone
-    
+
 RestartDemo:
     LDA #$00
     STA DemoPosition
-    
+
     ; Unlock play mode after first demo loop
     LDA UnlockedModes
     ORA #%00000010
     STA UnlockedModes
-    
+
 DemoSequenceDone:
     RTS
 
@@ -1896,14 +1896,14 @@ PlayDemoNote:
     STA $4003
     LDA #%10111111
     STA $4000
-    
+
     ; Create visual
     JSR CreateDemoVisual
-    
+
     ; Set note timer
     LDA #$20
     STA NoteTimer
-    
+
     RTS
 
 CreateDemoVisual:
@@ -1912,7 +1912,7 @@ CreateDemoVisual:
     ASL
     ASL
     TAY
-    
+
     LDA DemoNotePosY,A
     STA SpriteOAM,Y
     LDA DemoNoteTiles,A
@@ -1932,12 +1932,12 @@ ProcessDemoInput:
     LDA NewPresses
     AND #%01000000       ; B button
     BEQ DemoInputDone
-    
+
     ; Return to menu
     LDA #$01
     STA TargetMode
     JSR StartTransition
-    
+
 DemoInputDone:
     RTS
 
@@ -1953,28 +1953,28 @@ ProcessPlayInput:
     LDA NewPresses
     AND #%00001111       ; Directions
     BEQ CheckPlayExit
-    
+
     ; Map input to note
     JSR MapPlayInput
     CMP #$FF
     BEQ CheckPlayExit
-    
+
     JSR PlayInteractiveNote
     JSR AddPlayScore
-    
+
 CheckPlayExit:
     LDA NewPresses
     AND #%01000000       ; B to exit
     BEQ PlayInputDone
-    
+
     ; Check score for unlocks
     JSR CheckPlayUnlocks
-    
+
     ; Return to menu
     LDA #$01
     STA TargetMode
     JSR StartTransition
-    
+
 PlayInputDone:
     RTS
 
@@ -1985,28 +1985,28 @@ MapPlayInput:
     BEQ CheckPlayDown
     LDA #$07
     RTS
-    
+
 CheckPlayDown:
     LDA NewPresses
     AND #%00000100       ; Down
     BEQ CheckPlayLeft
     LDA #$00
     RTS
-    
+
 CheckPlayLeft:
     LDA NewPresses
     AND #%00000010       ; Left
     BEQ CheckPlayRight
     LDA #$02
     RTS
-    
+
 CheckPlayRight:
     LDA NewPresses
     AND #%00000001       ; Right
     BEQ NoPlayNote
     LDA #$04
     RTS
-    
+
 NoPlayNote:
     LDA #$FF
     RTS
@@ -2020,14 +2020,14 @@ PlayInteractiveNote:
     STA $4003
     LDA #%10111111
     STA $4000
-    
+
     ; Create visual feedback
     JSR CreatePlayVisual
-    
+
     ; Set note timer
     LDA #$18
     STA NoteTimer
-    
+
     RTS
 
 CreatePlayVisual:
@@ -2036,7 +2036,7 @@ CreatePlayVisual:
     ASL
     ASL
     TAY
-    
+
     LDA PlayNotePosY,A
     STA SpriteOAM,Y
     LDA PlayNoteTiles,A
@@ -2065,13 +2065,13 @@ CheckPlayUnlocks:
     LDA PlayScore
     CMP #$32             ; 50 points
     BCC NoPlayUnlock
-    
+
 HighScore:
     ; Unlock compose mode
     LDA UnlockedModes
     ORA #%00000100
     STA UnlockedModes
-    
+
     ; Update high score if needed
     LDA PlayScore+1
     CMP HighScore+1
@@ -2080,13 +2080,13 @@ HighScore:
     LDA PlayScore
     CMP HighScore
     BCC NoPlayUnlock
-    
+
 NewHighScore:
     LDA PlayScore
     STA HighScore
     LDA PlayScore+1
     STA HighScore+1
-    
+
 NoPlayUnlock:
     RTS
 
@@ -2100,11 +2100,11 @@ ProcessComposeInput:
     LDA NewPresses
     AND #%01000000       ; B to exit
     BEQ ComposeInputDone
-    
+
     LDA #$01             ; Return to menu
     STA TargetMode
     JSR StartTransition
-    
+
 ComposeInputDone:
     RTS
 
@@ -2120,15 +2120,15 @@ UpdateAudio:
     ; Update audio system
     LDA NoteTimer
     BEQ SilenceAudio
-    
+
     DEC NoteTimer
     LDA NoteTimer
     BNE AudioDone
-    
+
 SilenceAudio:
     LDA #$00
     STA $4000
-    
+
 AudioDone:
     RTS
 
@@ -2142,19 +2142,19 @@ UpdateSpriteAnimations:
     ; Update sprite animations
     LDA NoteTimer
     BEQ HideNoteSprites
-    
+
     ; Animate active note sprites
     LDA UIAnimation
     AND #$07
     CMP #$04
     BCC NotePulseUp
-    
+
     ; Note sprites pulse effect
     RTS
-    
+
 NotePulseUp:
     RTS
-    
+
 HideNoteSprites:
     ; Hide finished note sprites
     LDA #$FF
@@ -2176,7 +2176,7 @@ UpdateMenuCursor:
     LDA GameMode
     CMP #$01             ; Menu mode
     BNE CursorDone
-    
+
     LDX MenuCursor
     LDA MenuPositions,X
     STA SpriteOAM+60     ; Cursor Y
@@ -2187,7 +2187,7 @@ UpdateMenuCursor:
     LDA #$20
     STA SpriteOAM+63     ; Cursor X
     JMP CursorDone
-    
+
 CursorDone:
     RTS
 
@@ -2201,13 +2201,13 @@ UpdateScoreDisplay:
     CLC
     ADC #$30             ; Number tile
     STA SpriteOAM+65
-    
+
     LDA PlayScore
     AND #$0F             ; Low nibble
     CLC
     ADC #$30
     STA SpriteOAM+69
-    
+
     ; Position score
     LDA #$20
     STA SpriteOAM+64
@@ -2224,7 +2224,7 @@ UpdateModeIndicator:
     CLC
     ADC #$40             ; Mode tiles
     STA SpriteOAM+73
-    
+
     LDA #$20
     STA SpriteOAM+72
     LDA #%00000011
@@ -2242,21 +2242,21 @@ ProcessTransitions:
     ; Process mode transitions
     LDA TransitionActive
     BEQ TransitionsDone
-    
+
     DEC TransitionTimer
     LDA TransitionTimer
     BNE TransitionsDone
-    
+
     ; Transition complete
     LDA TargetMode
     STA GameMode
     LDA #$00
     STA TransitionActive
     STA GameTimer
-    
+
     ; Initialize new mode
     JSR InitNewMode
-    
+
 TransitionsDone:
     RTS
 
@@ -2303,10 +2303,10 @@ MenuDisplayLoop:
     CLC
     ADC #$70             ; Base Y
     STA MenuSpriteY,X
-    
+
     LDA MenuTiles,X
     STA MenuSpriteTile,X
-    
+
     DEX
     BPL MenuDisplayLoop
     RTS
@@ -2319,7 +2319,7 @@ PlayMenuSound:
     STA $4003
     LDA #%10110000
     STA $4000
-    
+
     LDA #$08
     STA SoundTimer
     RTS
@@ -2336,15 +2336,15 @@ ReadController:
     BEQ SimB
     LDA #$FF
     RTS
-    
+
 SimA:
     LDA #%01111111       ; A
     RTS
-    
+
 SimUp:
     LDA #%11110111       ; Up
     RTS
-    
+
 SimB:
     LDA #%10111111       ; B
     RTS

@@ -27,6 +27,7 @@ Push the boundaries of what games can be! With **32 design-focused lessons**, yo
 ## What You'll Build
 
 Create **INNOVATIVE GAME PROTOTYPE** - your design breakthrough featuring:
+
 - Completely new gameplay mechanics never seen before
 - Innovative control schemes that feel natural and intuitive
 - Genre-blending systems that create unique experiences
@@ -36,24 +37,28 @@ Create **INNOVATIVE GAME PROTOTYPE** - your design breakthrough featuring:
 ## Innovation Design Areas
 
 **Lessons 1-8: "Experimental Mechanics" - New Gameplay Concepts**
+
 - Creating entirely new types of game mechanics
 - Experimenting with unconventional player interactions
 - Designing systems that encourage player creativity
 - Testing and refining innovative gameplay concepts
 
 **Lessons 9-16: "Genre Innovation" - Blending and Creating**
+
 - Combining different genres in innovative ways
 - Creating new game genres from scratch
 - Designing hybrid systems that work cohesively
 - Balancing innovation with player accessibility
 
 **Lessons 17-24: "Interface Innovation" - New Ways to Play**
+
 - Experimental control schemes and input methods
 - Innovative user interfaces that enhance gameplay
 - Visual and audio design that supports new mechanics
 - Accessibility considerations for innovative designs
 
 **Lessons 25-32: "Prototype Development" - Testing Innovation**
+
 - Rapid prototyping techniques for game concepts
 - Player testing and feedback integration
 - Iterative design processes for innovative games

@@ -31,6 +31,7 @@ Complete **Logic Labyrinth** as a sophisticated maze adventure that showcases ad
 ## What You'll Complete
 
 Finish **Logic Labyrinth** with professional features:
+
 - Multiple maze themes (Forest, Castle, Space Station)
 - Advanced save/load with complete progress tracking
 - Achievement system and statistics
@@ -40,24 +41,28 @@ Finish **Logic Labyrinth** with professional features:
 ## Tier Overview
 
 **Lessons 1-8: Assembly System Integration**
+
 - Connecting maze generation, puzzles, and progression using assembly
 - Managing complex interactions between assembly subsystems
 - Ensuring consistent game state through memory management
 - Optimizing 6502 performance across assembly features
 
 **Lessons 9-16: Advanced Assembly Features**
+
 - Multiple maze themes with unique mechanics in assembly
 - Achievement tracking and unlockables using memory structures
 - Statistics and progress analysis through assembly calculations
 - Custom maze editor implemented in assembly language
 
 **Lessons 17-24: Assembly Data Persistence**
+
 - Complete save/load system using assembly file operations
 - Progress tracking across sessions with memory management
 - High score and achievement storage in assembly data structures
 - Data validation and error recovery at the assembly level
 
 **Lessons 25-32: Assembly Final Polish**
+
 - Professional user interface using direct hardware control
 - Complete help and tutorial systems in assembly
 - Final 6502 optimisation and assembly debugging

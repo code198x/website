@@ -26,7 +26,6 @@ country_of_origin: "Japan"
 
 # Media
 description: "Sega's color handheld that had everything except good battery life in the Game Boy era."
-image: "/images/systems/game-gear.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 118
 
 # Sega Game Gear
 
-*Historical Reference*
+_Historical Reference_
 
 The Sega Game Gear was Sega's ambitious attempt to challenge Nintendo's Game Boy with superior technology. With a full-color backlit LCD and Master System compatibility, it should have succeeded but was hampered by poor battery life and limited software support.
 
@@ -52,6 +51,7 @@ The Game Gear represented the classic battle between technical superiority and p
 ## Technical Advantages
 
 The Game Gear outclassed the Game Boy in almost every way:
+
 - **Full Color**: 32 colors on-screen from 4,096
 - **Backlit Screen**: Playable in any lighting
 - **Better Sound**: Superior audio capabilities
@@ -60,6 +60,7 @@ The Game Gear outclassed the Game Boy in almost every way:
 ## Fatal Flaw
 
 The Game Gear's Achilles' heel was battery life:
+
 - 3-5 hours on 6 AA batteries
 - Game Boy: 30+ hours on 4 AAs
 - Made portable gaming expensive and inconvenient
@@ -68,4 +69,4 @@ The Game Gear's Achilles' heel was battery life:
 
 The Game Gear proved that portable gaming prioritizes battery life over graphics. Its lessons influenced all future handhelds, showing that efficiency matters more than raw power in portable devices.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

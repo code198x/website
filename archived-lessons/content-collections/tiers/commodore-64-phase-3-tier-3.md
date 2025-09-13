@@ -31,24 +31,28 @@ Transform **Cosmic Defender** with massive space battles featuring 50+ enemy spr
 ## Tier Overview
 
 **Lessons 1-8: Multiplexing Fundamentals**
+
 - Understanding the 8-sprite hardware limit
 - Basic sprite multiplexing theory
 - Raster-based sprite repositioning
 - First multiplexing implementation
 
 **Lessons 9-16: Advanced Multiplexing Systems**
+
 - Y-sorted sprite display lists
 - Efficient sorting algorithms
 - Zone-based multiplexing
 - Handling sprite overflow
 
 **Lessons 17-24: Animation Systems**
+
 - Multi-frame sprite animation
 - Animation state machines
 - Compressed animation data
 - Smooth motion interpolation
 
 **Lessons 25-32: Optimization & Polish**
+
 - Maximum sprite count techniques
 - Flicker reduction strategies
 - Priority-based display systems

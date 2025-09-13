@@ -27,6 +27,7 @@ Welcome to the realm of visual impossibility! 🎆 With **32 mind-bending lesson
 ## What You'll Build
 
 Create **GRAPHICS WIZARD** - an advanced rendering system featuring:
+
 - Sprites so advanced they seem to break the hardware rules 🎭
 - Scrolling so smooth it rivals arcade machines
 - 3D effects that make the ZX Spectrum feel like a supercomputer
@@ -36,24 +37,28 @@ Create **GRAPHICS WIZARD** - an advanced rendering system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Sprite Sorcery" - Advanced Sprite Techniques**
+
 - Hardware sprite multiplexing for more sprites than should be possible
 - Large sprite composition and management systems
 - Animated sprite chains and complex movement patterns
 - Sprite priority systems and advanced layering techniques
 
 **Lessons 9-16: "Scrolling Mastery" - Fluid Background Movement**
+
 - Multi-directional scrolling with attribute management
 - Parallax scrolling for depth and visual interest
 - Tile-based scrolling optimization and memory management
 - Smooth scrolling techniques that maintain perfect frame rates
 
 **Lessons 17-24: "3D Magic" - Perspective and Transformation**
+
 - 3D mathematics adapted for Z80 integer arithmetic
 - Wireframe 3D rendering and hidden line removal
 - Pseudo-3D effects like mode 7 racing game roads
 - Perspective-correct texture mapping techniques
 
 **Lessons 25-32: "Hardware Hacking" - Beyond Normal Limits**
+
 - ULA timing manipulation for extra colors and effects
 - Border manipulation and full-screen graphics
 - Undocumented graphics modes and hardware tricks

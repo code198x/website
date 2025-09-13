@@ -30,24 +30,28 @@ Phase 1 is your complete introduction to adventure game development using authen
 **Four Complete Adventure Games** across 16 tiers:
 
 **Game 1: Prism Quest** (Tiers 1-4) - Dimensional maze adventure
+
 - Color-shifting maze worlds using attribute system as gameplay
 - Dimensional navigation with multi-layer puzzle mechanics
 - Creative constraint solutions showcasing Spectrum ingenuity
 - Progressive difficulty with increasing maze complexity
 
 **Game 2: Memory Matrix** (Tiers 5-8) - Strategic memory puzzle
+
 - Advanced memory optimization techniques as gameplay elements
 - Complex puzzle chains requiring strategic thinking
 - Multiple solution paths demonstrating algorithmic creativity
 - Professional game state management within 48K constraints
 
 **Game 3: Rainbow Runner** (Tiers 9-12) - Color-based action adventure
+
 - Fast-paced graphics using advanced Spectrum techniques
 - Color-clash mechanics as central gameplay features
 - Multiple adventure areas with unique visual challenges
 - Speed optimization for smooth real-time gameplay
 
 **Game 4: Spectrum Symphony** (Tiers 13-16) - Audio-visual adventure showcase
+
 - Creative Spectrum programming with beeper music integration
 - Engaging adventure narratives with interactive storytelling
 - Polished presentation showcasing creative constraint solutions

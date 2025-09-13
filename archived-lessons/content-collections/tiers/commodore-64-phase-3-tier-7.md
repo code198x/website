@@ -31,24 +31,28 @@ Transform **Rhythm Master** into an expansive music experience with multiple son
 ## Tier Overview
 
 **Lessons 1-8: Memory Configuration Control**
+
 - Understanding $01 register control
 - Switching between ROM and RAM
 - Accessing KERNAL routines efficiently
 - Creating custom banking schemes
 
 **Lessons 9-16: Advanced Banking Techniques**
+
 - Code execution across banks
 - Data sharing between banks
 - Interrupt handling with banking
 - Fast bank switching methods
 
 **Lessons 17-24: RAM Expansion Programming**
+
 - REU detection and initialization
 - DMA transfer programming
 - Large data management
 - Virtual memory concepts
 
 **Lessons 25-32: Overlay Systems**
+
 - Dynamic code loading
 - Overlay management frameworks
 - Memory-efficient architectures

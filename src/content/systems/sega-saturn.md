@@ -26,7 +26,6 @@ country_of_origin: "Japan"
 
 # Media
 description: "Sega's complex but powerful 32-bit console that pioneered 2D perfection but struggled with 3D."
-image: "/images/systems/saturn.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 114
 
 # Sega Saturn
 
-*Historical Reference*
+_Historical Reference_
 
 The Sega Saturn was Sega's ambitious entry into 32-bit gaming. With dual SH-2 processors and exceptional 2D capabilities, it created some of the most beautiful 2D games ever made, but its complex architecture made 3D development challenging.
 
@@ -59,6 +58,7 @@ The Saturn represented Sega's last major console effort. Despite technical brill
 ## Programming Challenges
 
 The Saturn's architecture was notoriously difficult:
+
 - Dual CPUs required careful synchronization
 - Multiple graphics chips needed coordination
 - 3D capabilities were limited compared to PlayStation
@@ -68,4 +68,4 @@ The Saturn's architecture was notoriously difficult:
 
 Despite commercial failure in the West, the Saturn is beloved for its incredible 2D games and represents the pinnacle of sprite-based gaming. Its complex architecture influenced later multi-core processor designs.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

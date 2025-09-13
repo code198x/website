@@ -31,24 +31,28 @@ Optimize **Stellar Command** to achieve incredible performance with 100+ units o
 ## Tier Overview
 
 **Lessons 1-8: Advanced Profiling Tools**
+
 - Cycle-accurate profiler development
 - Heat map visualization
 - Bottleneck identification systems
 - Automated performance testing
 
 **Lessons 9-16: Systematic Optimization**
+
 - Optimization methodology
 - Performance budgeting
 - Trade-off analysis
 - Incremental improvement tracking
 
 **Lessons 17-24: Advanced Techniques**
+
 - Cache optimization for C64
 - Pipeline-aware coding
 - Memory bandwidth optimization
 - Computation/memory trade-offs
 
 **Lessons 25-32: Dynamic Optimization**
+
 - Self-tuning algorithms
 - Adaptive quality systems
 - Load balancing techniques

@@ -27,6 +27,7 @@ Welcome to the mind games! 🧠 With **32 intelligence-packed lessons**, you'll 
 ## What You'll Build
 
 Create **AMIGA AI BRAIN** - an intelligent enemy system featuring:
+
 - Enemy AI that learns and adapts to player behavior patterns 🧠
 - Pathfinding systems that navigate complex environments
 - Group behaviors that coordinate multiple enemies
@@ -36,24 +37,28 @@ Create **AMIGA AI BRAIN** - an intelligent enemy system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "AI Foundations" - The Building Blocks of Intelligence**
+
 - Finite state machines for enemy behavior control
 - Basic pathfinding and navigation algorithms
 - Player detection and tracking systems
 - Decision-making frameworks for AI logic
 
 **Lessons 9-16: "Behavior Systems" - Creating Personality**
+
 - AI behavior trees for complex decision-making
 - Personality systems that make enemies feel unique
 - Reaction systems that respond to player actions
 - Difficulty scaling and adaptive AI challenges
 
 **Lessons 17-24: "Advanced Intelligence" - Sophisticated Behaviors**
+
 - Advanced pathfinding with obstacle avoidance
 - Player prediction and anticipation algorithms
 - AI communication and coordination systems
 - Learning behaviors that adapt to player strategies
 
 **Lessons 25-32: "Group AI" - Coordinated Opposition**
+
 - Flocking and swarming behaviors for group enemies
 - Leader-follower relationships and hierarchy systems
 - Coordinated attacks and tactical AI formations

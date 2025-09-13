@@ -27,6 +27,7 @@ Welcome to the science of perfect timing! ⚙️ With **32 precision-engineered 
 ## What You'll Build
 
 Create **AMIGA COLLISION ENGINE** - a comprehensive detection system featuring:
+
 - Pixel-perfect collision that never lies or cheats 🎆
 - Lightning-fast Blitter-based hit detection
 - Multi-layer collision systems for complex environments
@@ -36,24 +37,28 @@ Create **AMIGA COLLISION ENGINE** - a comprehensive detection system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Collision Fundamentals" - The Science of Contact**
+
 - Bounding box collision with 68000-optimized mathematics
 - Circle collision detection using fast approximations
 - Point-in-polygon tests for complex shapes
 - Collision normal calculation for realistic responses
 
 **Lessons 9-16: "Blitter Collision Magic" - Hardware-Accelerated Detection**
+
 - Using Blitter operations for bitmap collision testing
 - Cookie-cut collision masks for irregular shapes
 - Hardware-accelerated overlap detection
 - Custom chip collision optimization techniques
 
 **Lessons 17-24: "Advanced Systems" - Professional Collision Architecture**
+
 - Spatial partitioning and quadtree systems
 - Multi-layer collision for platforms, enemies, and pickups
 - Continuous collision detection for fast-moving objects
 - Collision prediction and prevention systems
 
 **Lessons 25-32: "Performance Mastery" - Collision at Light Speed**
+
 - Collision culling and early-exit optimizations
 - Memory-efficient collision data structures
 - Frame-rate independent collision systems

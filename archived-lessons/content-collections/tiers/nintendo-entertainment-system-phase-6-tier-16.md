@@ -27,6 +27,7 @@ Time to create your ultimate masterpiece! With **32 intensive lessons**, you'll 
 ## What You'll Build
 
 Create **NES MASTERY PORTFOLIO** - the ultimate demonstration featuring:
+
 - Professional development tools that rival commercial NES development suites
 - Sophisticated game engines capable of powering any type of NES game
 - Ultra-optimized code achieving impossible performance on NES hardware
@@ -36,18 +37,21 @@ Create **NES MASTERY PORTFOLIO** - the ultimate demonstration featuring:
 ## Portfolio Architecture
 
 **Development Tools Showcase:**
+
 - Complete NES development environment with professional-grade tools
 - Advanced graphics, audio, and code editing tools
 - Sophisticated debugging and profiling systems
 - Comprehensive asset pipeline and project management tools
 
 **Engine Excellence:**
+
 - Multi-genre game engine supporting platformers, RPGs, and shooters
 - Advanced component systems and modular architecture
 - Professional resource management and optimization frameworks
 - Scalable systems that demonstrate architectural mastery
 
 **Optimization Mastery:**
+
 - Ultra-efficient 6502 assembly code achieving maximum performance
 - Professional optimization frameworks and analysis tools
 - Commercial-grade code quality and efficiency standards
@@ -56,24 +60,28 @@ Create **NES MASTERY PORTFOLIO** - the ultimate demonstration featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Professional Development!" - Tool Integration Excellence**
+
 - Integrating all development tools into one cohesive environment
 - Creating professional workflows and development processes
 - Building comprehensive asset management and build systems
 - Demonstrating tool development mastery and professional practices
 
 **Lessons 9-16: "Engine Mastery!" - Architecture Excellence**
+
 - Showcasing advanced engine architecture and design principles
 - Demonstrating multi-genre engine capabilities and flexibility
 - Creating professional system integration and performance optimization
 - Building engines that prove architectural and technical mastery
 
 **Lessons 17-24: "Optimization Excellence!" - Performance Mastery**
+
 - Demonstrating ultra-efficient code and optimization techniques
 - Creating performance benchmarks that showcase technical excellence
 - Building optimization frameworks that prove professional expertise
 - Achieving efficiency standards that rival commercial NES development
 
 **Lessons 25-32: "Technical Mastery!" - Portfolio Completion**
+
 - Creating comprehensive technical documentation and presentations
 - Building professional portfolio presentation and demonstration systems
 - Implementing final polish and professional-grade quality assurance

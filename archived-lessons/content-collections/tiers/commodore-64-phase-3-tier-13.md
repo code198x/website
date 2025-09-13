@@ -31,24 +31,28 @@ Begin developing **Neon City** - a complex action game requiring advanced debugg
 ## Tier Overview
 
 **Lessons 1-8: Hardware State Monitoring**
+
 - VIC-II register monitoring tools
 - CIA state analysis utilities
 - Real-time hardware display
 - Register change detection
 
 **Lessons 9-16: Timing Analysis Tools**
+
 - Cycle-accurate profiling
 - Raster timing analyzers
 - Interrupt latency measurement
 - Performance bottleneck detection
 
 **Lessons 17-24: Advanced Debugging Features**
+
 - Hardware breakpoint systems
 - State machine debugging
 - Memory access tracking
 - Custom debugging protocols
 
 **Lessons 25-32: Professional Debugging Workflows**
+
 - Integrated debugging environments
 - Automated testing systems
 - Bug tracking and analysis

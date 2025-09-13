@@ -27,6 +27,7 @@ Bring your games to life with intelligent opponents! With **32 advanced lessons*
 ## What You'll Build
 
 Create **INTELLIGENT STRATEGY GAME** - featuring advanced AI systems:
+
 - Smart opponents with complex decision-making abilities
 - Adaptive AI that learns from player behavior
 - Advanced pathfinding and tactical movement
@@ -36,24 +37,28 @@ Create **INTELLIGENT STRATEGY GAME** - featuring advanced AI systems:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "AI Fundamentals" - Core Intelligence Systems**
+
 - Advanced state machines and behavior modeling
 - Decision trees and strategic planning algorithms
 - Memory-efficient AI data structures
 - Real-time decision making under C64 constraints
 
 **Lessons 9-16: "Pathfinding & Navigation" - Movement Intelligence**
-- A* pathfinding algorithm implementation
+
+- A\* pathfinding algorithm implementation
 - Navigation mesh generation and optimization
 - Dynamic obstacle avoidance systems
 - Multi-unit coordination and formation movement
 
 **Lessons 17-24: "Adaptive Behaviors" - Dynamic AI Systems**
+
 - Player behavior analysis and adaptation
 - Dynamic difficulty scaling algorithms
 - Learning AI that improves over time
 - Personality systems for varied opponent types
 
 **Lessons 25-32: "Strategic AI" - Advanced Game Intelligence**
+
 - Long-term strategic planning and goal setting
 - Resource management and economic AI
 - Multi-layered decision hierarchies

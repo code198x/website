@@ -27,6 +27,7 @@ Paint with pixels! With **32 comprehensive lessons**, you'll master advanced NES
 ## What You'll Build
 
 Polish **Neon Legends** with stunning visual excellence:
+
 - Advanced PPU effects including parallax scrolling and mode switching
 - Professional character animation with fluid, lifelike movement
 - Sophisticated particle systems for explosions and environmental effects
@@ -36,24 +37,28 @@ Polish **Neon Legends** with stunning visual excellence:
 ## Tier Overview
 
 **Lessons 1-8: Advanced PPU Programming**
+
 - Sophisticated background effects and parallax scrolling
 - Advanced sprite management and multiplexing techniques
 - Professional mode switching and display optimization
 - Complex pattern table manipulation and dynamic graphics
 
 **Lessons 9-16: Professional Animation**
+
 - Fluid character animation with multiple frames
 - Advanced sprite animation and transformation techniques
 - Professional keyframe animation and tweening
 - Complex animation state management and transitions
 
 **Lessons 17-24: Visual Effects Systems**
+
 - Sophisticated particle systems and environmental effects
 - Screen shake, flash, and impact effects
 - Advanced color cycling and palette manipulation
 - Professional visual feedback and screen transitions
 
 **Lessons 25-32: Cinematic Presentation**
+
 - Professional cutscene programming and visual storytelling
 - Advanced camera work and framing techniques
 - Cinematic timing and pacing for maximum impact

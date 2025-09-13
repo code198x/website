@@ -27,6 +27,7 @@ Achieve optimization perfection! With **32 intensive lessons**, you'll master th
 ## What You'll Build
 
 Create **OPTIMIZATION MASTERY FRAMEWORK** - the ultimate efficiency system featuring:
+
 - Self-optimizing code that adapts to improve performance automatically
 - Professional optimization tools and analysis frameworks
 - Master-level code efficiency across all ZX Spectrum systems
@@ -36,24 +37,28 @@ Create **OPTIMIZATION MASTERY FRAMEWORK** - the ultimate efficiency system featu
 ## Tier Overview
 
 **Lessons 1-8: "Efficiency Perfection!" - Ultimate Optimization Techniques**
+
 - Master-level assembly optimization and code craftsmanship
 - Advanced compiler-like optimizations in hand-written code
 - Perfect register allocation and instruction scheduling
 - The optimization techniques that achieve legendary performance
 
 **Lessons 9-16: "Adaptive Systems!" - Self-Optimizing Code**
+
 - Self-modifying code that optimizes based on runtime patterns
 - Adaptive algorithms that improve performance over time
 - Dynamic optimization and runtime code generation
 - Professional adaptive system architecture
 
 **Lessons 17-24: "Analysis Mastery!" - Professional Optimization Tools**
+
 - Advanced performance analysis and bottleneck identification
 - Professional optimization verification and measurement
 - Automated optimization suggestion and implementation
 - Master-level optimization workflow and practices
 
 **Lessons 25-32: "Code Artistry!" - Master-Level Programming**
+
 - Code elegance and professional craftsmanship
 - Optimization as an art form and technical achievement
 - Master-level code review and optimization consulting

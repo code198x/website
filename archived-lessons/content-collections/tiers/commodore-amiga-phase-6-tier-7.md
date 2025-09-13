@@ -27,6 +27,7 @@ Time to master Amiga input like a pro! With **32 comprehensive lessons**, you'll
 ## What You'll Build
 
 Create **AMIGA INPUT MASTER** - an advanced input demonstration featuring:
+
 - Mouse control so precise it feels like an extension of your thoughts
 - Multi-joystick systems that support complex multiplayer configurations
 - CD32 gamepad integration with advanced button mapping and combinations
@@ -36,24 +37,28 @@ Create **AMIGA INPUT MASTER** - an advanced input demonstration featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Pixel Perfect!" - Advanced Mouse Programming**
+
 - High-precision mouse tracking and acceleration control
 - Advanced mouse button programming and gesture recognition
 - Professional mouse sensitivity and response customization
 - The techniques that made Amiga the preferred platform for precision gaming
 
 **Lessons 9-16: "Joystick Mastery!" - Multi-Controller Programming**
+
 - Advanced joystick programming and multi-stick support
 - Custom controller configuration and button mapping systems
 - Analog input handling and digital conversion techniques
 - Professional multiplayer input coordination and management
 
 **Lessons 17-24: "CD32 Excellence!" - Advanced Gamepad Integration**
+
 - CD32 gamepad programming and advanced button combinations
 - Custom button mapping and configuration systems
 - Advanced input buffering and command recognition
 - The definitive Amiga gamepad programming techniques
 
 **Lessons 25-32: "Custom Input!" - Professional Input Device Integration**
+
 - Custom input device drivers and hardware integration
 - Advanced input filtering and response optimization
 - Professional input device detection and configuration

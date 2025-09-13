@@ -27,6 +27,7 @@ Perfect the feel! With **32 comprehensive lessons**, you'll master the subtle ar
 ## What You'll Build
 
 Perfect **Star Fighter** with professional balancing:
+
 - Precisely tuned physics that feel responsive and natural
 - Perfectly balanced difficulty curve that challenges without frustrating
 - Dynamic difficulty adjustment that adapts to player skill
@@ -36,24 +37,28 @@ Perfect **Star Fighter** with professional balancing:
 ## Tier Overview
 
 **Lessons 1-8: Professional Game Feel**
+
 - Physics tuning for responsive, satisfying movement
 - Input response optimization and lag elimination
 - Visual and audio feedback enhancement
 - Professional "juice" and game feel techniques
 
 **Lessons 9-16: Difficulty Balancing**
+
 - Difficulty curve design and player progression
 - Challenge escalation and skill development
 - Professional playtesting methodologies
 - Data-driven balancing and iteration techniques
 
 **Lessons 17-24: Dynamic Systems**
+
 - Adaptive difficulty and player skill assessment
 - Dynamic enemy behavior based on performance
 - Intelligent power-up distribution and pacing
 - Professional player engagement optimization
 
 **Lessons 25-32: Professional Polish**
+
 - Fine-tuning through comprehensive testing
 - Professional QA and feedback integration
 - Performance optimization and smooth framerates

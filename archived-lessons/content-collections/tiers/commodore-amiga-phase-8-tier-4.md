@@ -27,6 +27,7 @@ Create your first legendary game! With **32 legendary-creation lessons**, you'll
 ## Your Legendary Game
 
 Create **YOUR FIRST LEGENDARY AMIGA GAME**:
+
 - A complete game that demonstrates legendary concepts and technical excellence
 - An experience that showcases innovative mechanics and elegant programming
 - A game that feels uniquely yours while honoring Amiga's gaming legacy
@@ -36,24 +37,28 @@ Create **YOUR FIRST LEGENDARY AMIGA GAME**:
 ## Legendary Creation Areas
 
 **Lessons 1-8: "Concept to Reality" - Building Your Legendary Vision**
+
 - Transforming your legendary game concept into concrete development plans
 - Building the technical foundation for your legendary game
 - Creating development workflows for legendary game creation
 - Understanding how to balance ambition with achievable scope
 
 **Lessons 9-16: "Technical Excellence" - Implementing Legendary Features**
+
 - Implementing elegant 68000 assembly programming for your game
 - Creating innovative game mechanics and systems
 - Building optimization techniques for smooth legendary performance
 - Developing code architecture that supports your legendary vision
 
 **Lessons 17-24: "Game Integration" - Uniting All Elements**
+
 - Integrating all game systems into a cohesive experience
 - Creating memorable moments and engaging gameplay
 - Building interactive experiences that feel polished and complete
 - Developing presentation techniques that enhance your game
 
 **Lessons 25-32: "Legendary Polish" - Achieving Legendary Quality**
+
 - Polishing every aspect of your game to legendary standards
 - Understanding what transforms good games into memorable experiences
 - Creating games that players will treasure and replay

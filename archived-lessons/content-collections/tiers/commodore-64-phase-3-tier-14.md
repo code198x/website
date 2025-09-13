@@ -31,24 +31,28 @@ Enhance **Neon City** with portable architecture supporting multiple 6502 system
 ## Tier Overview
 
 **Lessons 1-8: Abstraction Layer Design**
+
 - Interface design principles
 - Hardware capability detection
 - Feature abstraction strategies
 - Performance consideration
 
 **Lessons 9-16: Graphics Abstraction**
+
 - Portable graphics interfaces
 - Platform-specific optimization hooks
 - Unified sprite and tile systems
 - Cross-platform visual consistency
 
 **Lessons 17-24: Audio & Input Abstraction**
+
 - Portable audio interfaces
 - Input device abstraction
 - Platform-specific enhancements
 - Capability-based feature selection
 
 **Lessons 25-32: Build System Integration**
+
 - Conditional compilation systems
 - Platform-specific optimization
 - Automated multi-platform builds

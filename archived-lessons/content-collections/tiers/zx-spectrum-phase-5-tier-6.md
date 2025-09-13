@@ -27,6 +27,7 @@ Start your engines! With **32 high-octane lessons**, you'll create the kind of r
 ## What You'll Build
 
 Create **SPECTRUM SPEEDWAY** - a thrilling racing game featuring:
+
 - Pseudo-3D tracks that stretch into the horizon
 - Realistic car physics that respond to every input
 - AI opponents with distinct racing personalities
@@ -36,24 +37,28 @@ Create **SPECTRUM SPEEDWAY** - a thrilling racing game featuring:
 ## Tier Overview
 
 **Lessons 1-8: "3D Illusion" - Perspective Graphics**
+
 - Pseudo-3D techniques using clever scaling and rotation
 - Horizon effects and depth perception tricks
 - Road rendering that curves and climbs realistically
 - Background parallax scrolling for immersion
 
 **Lessons 9-16: "Physics Engine" - Vehicle Dynamics**
+
 - Car physics that feel responsive and realistic
 - Acceleration, braking, and steering mechanics
 - Momentum conservation and collision response
 - Tire grip simulation and sliding effects
 
 **Lessons 17-24: "AI Opponents" - Computer Racers**
+
 - AI drivers with different racing styles and skills
 - Pathfinding for complex track navigation
 - Rubber-band AI that keeps races competitive
 - Opponent collision and passing behaviors
 
 **Lessons 25-32: "Championship Mode" - Complete Racing Experience**
+
 - Track design tools and varied circuit layouts
 - Weather systems and changing conditions
 - Upgrade systems and vehicle customization

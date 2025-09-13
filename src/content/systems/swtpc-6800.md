@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The first 6800-based computer kit that introduced many to Motorola's elegant processor architecture."
-image: "/images/systems/swtpc-6800.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 121
 
 # SWTPC 6800
 
-*Historical Reference*
+_Historical Reference_
 
 The Southwest Technical Products 6800 was one of the first personal computers based on Motorola's 6800 processor. As a kit computer, it introduced many hobbyists to the elegant 6800 architecture and influenced the design of later systems.
 
@@ -59,6 +58,7 @@ The SWTPC 6800 was crucial in establishing the 6800 processor family in personal
 ## Educational Impact
 
 As a kit computer, the SWTPC 6800 taught many hobbyists:
+
 - Digital electronics and computer architecture
 - Assembly language programming
 - System integration and troubleshooting
@@ -67,6 +67,7 @@ As a kit computer, the SWTPC 6800 taught many hobbyists:
 ## Influence on Later Systems
 
 The SWTPC 6800's success influenced several important developments:
+
 - Demonstrated viability of 6800 architecture
 - Influenced Ohio Scientific and other manufacturers
 - Led to improved 6809 processor development
@@ -76,4 +77,4 @@ The SWTPC 6800's success influenced several important developments:
 
 The SWTPC 6800 may not be as famous as the Altair, but it played a crucial role in establishing Motorola processors in personal computing. Its influence can be traced through the 6809, 68000, and ultimately to modern ARM processors.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

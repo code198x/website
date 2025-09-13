@@ -27,7 +27,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The first 16-bit home computer, featuring advanced architecture hobbled by cost-cutting decisions."
-image: "/images/systems/ti-994a.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -42,7 +41,7 @@ order: 104
 
 # TI-99/4A
 
-*Historical Reference*
+_Historical Reference_
 
 The TI-99/4A was a technological paradox: the first 16-bit home computer in 1979, yet hamstrung by design decisions that prevented it from reaching its potential. Its TMS9900 processor was genuinely advanced, but the system architecture limited its capabilities.
 
@@ -60,6 +59,7 @@ Texas Instruments, a semiconductor giant, entered the home computer market with 
 ## The Paradox
 
 Despite its 16-bit processor, the TI-99/4A was crippled by:
+
 - 8-bit data bus that halved processor efficiency
 - GPL interpreter that slowed everything down
 - Limited RAM access through VDP chip
@@ -69,4 +69,4 @@ Despite its 16-bit processor, the TI-99/4A was crippled by:
 
 The TI-99/4A proved that raw specifications don't determine success. Its failure taught the industry that openness, expandability, and developer support matter more than processor bits. Many of its technologies, particularly the TMS9918A video chip, found success in other systems like the MSX and ColecoVision.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

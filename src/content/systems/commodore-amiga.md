@@ -10,7 +10,8 @@ cpu: "68000"
 cpu_details:
   architecture: "16/32-bit"
   instruction_set: "Motorola 68000"
-  addressing_modes: ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
+  addressing_modes:
+    ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
   registers: "8 data registers (D0-D7), 8 address registers (A0-A7)"
 
 clock_speed: "7.16 MHz (NTSC) / 7.09 MHz (PAL)"
@@ -45,9 +46,9 @@ audio:
   synthesis_types: ["PCM samples"]
 
 # Storage and I/O
-storage: ["3.5\" floppy disk", "Hard drive (optional)"]
+storage: ['3.5" floppy disk', "Hard drive (optional)"]
 storage_details:
-  built_in: ["3.5\" DD floppy drive"]
+  built_in: ['3.5" DD floppy drive']
   expansion: ["Hard drives", "Additional floppy drives"]
   typical_capacity:
     floppy: "880KB"
@@ -87,7 +88,6 @@ hardware_availability: "available"
 
 # Media
 description: "The multimedia powerhouse that brought arcade-quality graphics and CD-quality sound to home computers."
-image: "/images/systems/amiga.jpg"
 
 # Platform Classification
 medal_tier: "platinum"
@@ -103,7 +103,7 @@ order: 4
 
 # Commodore Amiga
 
-*Coming Soon*
+_Coming Soon_
 
 The Amiga was a quantum leap in home computer technology. With custom chips for graphics and sound, preemptive multitasking, and capabilities that wouldn't become standard on PCs for years, the Amiga was the ultimate creative machine of its era.
 
@@ -120,9 +120,10 @@ The 68000 processor and custom chip architecture offer a completely different pr
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Amiga curriculum will include:
+
 - 68000 assembly programming
 - Custom chip programming (Copper, Blitter, Paula)
 - AmigaOS system programming

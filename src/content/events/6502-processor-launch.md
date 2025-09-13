@@ -20,6 +20,7 @@ At the WESCON trade show in September 1975, MOS Technology stunned the industry 
 ## Lasting Impact
 
 The 6502 went on to power:
+
 - Apple II (1977)
 - Commodore PET (1977)
 - Atari 8-bit computers (1979)

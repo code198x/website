@@ -31,6 +31,7 @@ Your moment of legendary triumph! With **32 intensive creation lessons**, you'll
 ## What You'll Create
 
 Build your **FIRST LEGENDARY GAME** - a game worthy of the C64's greatest titles:
+
 - A legendary concept that demonstrates your mastery of game design
 - Technical implementation so elegant it showcases your programming artistry
 - Innovative mechanics that create amazing and memorable gameplay
@@ -40,6 +41,7 @@ Build your **FIRST LEGENDARY GAME** - a game worthy of the C64's greatest titles
 ## Legendary Game Development Process
 
 This isn't just game development - it's legendary creation:
+
 - **Legendary Concept**: A game idea worthy of the C64's greatest titles
 - **Technical Artistry**: Code architecture that is both powerful and elegant
 - **Innovative Mechanics**: Gameplay systems that feel fresh and exciting
@@ -49,24 +51,28 @@ This isn't just game development - it's legendary creation:
 ## Creation Journey
 
 **Lessons 1-8: "Legendary Vision" - Making Your Concept Real**
+
 - Transforming your legendary concept into concrete development plans
 - Solving the technical challenges that bring amazing gameplay to life
 - Creating the architectural foundation for legendary game excellence
 - Building systems that serve both gameplay and technical innovation
 
 **Lessons 9-16: "Technical Excellence" - Code as Game Artistry**
+
 - Implementing your game with code so elegant it becomes legendary
 - Pushing optimization to achieve gameplay that seems impossible
 - Creating technical solutions that enhance rather than constrain gameplay
 - Building performance that makes amazing gameplay possible
 
 **Lessons 17-24: "Mechanic Integration" - Weaving Gameplay Excellence**
+
 - Integrating innovative mechanics that perfectly serve your game's goals
 - Creating gameplay systems that feel natural and intuitive
 - Building mechanical harmony that makes every moment feel intentional
 - Adding the gameplay touches that transform good into legendary
 
 **Lessons 25-32: "Legendary Completion" - Finishing Your First Legend**
+
 - Adding the final polish that elevates games to legendary status
 - Creating documentation that preserves your development process
 - Preparing your legendary game for the world to experience

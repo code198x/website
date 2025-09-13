@@ -27,6 +27,7 @@ Achieve ultimate ZX Spectrum performance! With **32 intensive lessons**, you'll 
 ## What You'll Build
 
 Create **PERFORMANCE POWERHOUSE** - an optimization framework featuring:
+
 - Cycle-accurate code that runs at maximum efficiency
 - Performance profiling tools that identify bottlenecks
 - Self-optimizing systems that adapt to different hardware
@@ -36,24 +37,28 @@ Create **PERFORMANCE POWERHOUSE** - an optimization framework featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Cycle Perfect!" - Timing and Execution Mastery**
+
 - Cycle-accurate Z80 programming and instruction timing
 - Optimizing for ULA contention and memory timing
 - Pipeline optimization and instruction scheduling
 - The mathematics of perfect timing
 
 **Lessons 9-16: "Memory Speed!" - Access Pattern Optimization**
+
 - Memory access pattern optimization and cache-friendly code
 - Bank switching optimization for 128K models
 - Stack usage optimization and efficient parameter passing
 - Professional memory layout for maximum speed
 
 **Lessons 17-24: "Code Efficiency!" - Advanced Optimization Techniques**
+
 - Self-modifying code for runtime optimization
 - Loop unrolling and algorithmic optimization
 - Lookup table optimization and precomputed values
 - Advanced assembly techniques for maximum efficiency
 
 **Lessons 25-32: "Performance Tools!" - Professional Analysis**
+
 - Performance profiling and bottleneck identification
 - Real-time performance monitoring systems
 - Optimization verification and testing frameworks

@@ -41,6 +41,7 @@ external_links:
 Bill Atkinson joined Apple in the late 1970s and became one of the key developers of the original Macintosh computer. His work extended far beyond graphics into the fundamental architecture of the Mac's revolutionary user interface.
 
 ### Key Projects at Apple
+
 - **QuickDraw**: The fundamental graphics system underlying the Mac OS
 - **MacPaint**: Revolutionary bitmap graphics editor
 - **HyperCard**: Pioneering hypermedia development environment
@@ -57,6 +58,7 @@ The original Macintosh had a 512×342 pixel black-and-white display. To show pho
 ### Atkinson's Innovation
 
 Atkinson's dithering algorithm improved upon existing techniques by:
+
 - **Error Diffusion**: Distributing quantisation errors to neighbouring pixels
 - **Directional Pattern**: Creating a distinctive diagonal pattern that reduced visual artifacts
 - **Perceptual Quality**: Producing images that appeared to have more gray levels than were actually possible
@@ -65,6 +67,7 @@ Atkinson's dithering algorithm improved upon existing techniques by:
 ### Technical Implementation
 
 The algorithm works by:
+
 1. **Processing pixels sequentially** from left to right, top to bottom
 2. **Quantising each pixel** to either black or white
 3. **Calculating the error** between the original and quantised values
@@ -76,12 +79,15 @@ The algorithm works by:
 Atkinson's dithering algorithm had profound effects on the development of computer graphics:
 
 ### Enabling Desktop Publishing
+
 The algorithm made it possible to include photographic images in early desktop publishing systems, contributing to the Mac's success in the publishing industry.
 
 ### Display Technology Bridge
+
 The technique provided a bridge between limited display technology and users' desire to work with photographic content, buying time for hardware to advance.
 
 ### Algorithm Adoption
+
 The "Atkinson dithering" pattern became widely recognised and was implemented in numerous graphics applications beyond MacPaint.
 
 ## MacPaint and QuickDraw
@@ -89,12 +95,14 @@ The "Atkinson dithering" pattern became widely recognised and was implemented in
 Beyond dithering, Atkinson's work on MacPaint and QuickDraw established fundamental concepts in computer graphics:
 
 ### MacPaint Features
+
 - **Bitmap editing**: Direct manipulation of individual pixels
 - **Tool palette**: Brushes, patterns, and selection tools
 - **Flood fill**: Implementation of efficient area-filling algorithms
 - **Copy and paste**: Revolutionary content manipulation paradigms
 
 ### QuickDraw Architecture
+
 - **Vector graphics**: Scalable drawing primitives
 - **Coordinate systems**: Mathematical foundation for graphics
 - **Clipping regions**: Efficient rendering within boundaries
@@ -105,13 +113,17 @@ Beyond dithering, Atkinson's work on MacPaint and QuickDraw established fundamen
 Atkinson's techniques are highly relevant to understanding vintage computing:
 
 ### Assembly Programming Context
+
 The efficiency requirements of his algorithms made them ideal case studies for assembly language programming, where every instruction counted.
 
 ### Hardware Constraints
+
 His work demonstrates how software innovation can overcome hardware limitations - a key theme in vintage computing.
 
 ### Graphics Programming Fundamentals
+
 The algorithms teach core concepts that remain relevant in modern graphics programming:
+
 - **Pixel manipulation**
 - **Error diffusion**
 - **Pattern dithering**
@@ -122,11 +134,13 @@ The algorithms teach core concepts that remain relevant in modern graphics progr
 Atkinson's techniques were adapted for various vintage computers:
 
 ### 8-bit Systems
+
 - **Commodore 64**: Dithering used in graphics software and games
 - **ZX Spectrum**: Black-and-white systems benefited from dithering techniques
 - **Apple II**: Early implementations of error diffusion
 
 ### 16-bit Systems
+
 - **Amiga**: Advanced dithering in paint programs like Deluxe Paint
 - **Atari ST**: Graphics applications implementing Atkinson-style algorithms
 - **PC**: Early Windows applications using dithering for grayscale display
@@ -134,6 +148,7 @@ Atkinson's techniques were adapted for various vintage computers:
 ## HyperCard Innovation
 
 Atkinson's creation of HyperCard in 1987 was equally revolutionary:
+
 - **Hypermedia**: Linked information predating the World Wide Web
 - **Scripting**: Accessible programming for non-programmers
 - **Interactive Media**: Combining graphics, text, and user interaction
@@ -148,16 +163,19 @@ After leaving Apple, Atkinson became a renowned nature photographer, applying hi
 Bill Atkinson's contributions to computing extend far beyond any single algorithm:
 
 ### Technical Impact
+
 - **Graphics Foundation**: His work underlies modern graphics systems
 - **User Interface Pioneer**: Helped establish graphical computing paradigms
 - **Algorithm Innovation**: Created techniques still used today
 
 ### Educational Value
+
 - **Problem-Solving**: Demonstrates creative solutions to hardware constraints
 - **Interdisciplinary Thinking**: Combines mathematics, computer science, and visual arts
 - **Innovation Mindset**: Shows how constraints can drive breakthrough innovations
 
 ### Industry Recognition
+
 - **Computer History Museum Fellow**: Honoured for contributions to computing
 - **Continuing Influence**: His techniques still taught in computer graphics courses
 - **Inspiration**: Model for combining technical excellence with artistic vision

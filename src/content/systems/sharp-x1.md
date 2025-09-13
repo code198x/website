@@ -48,7 +48,7 @@ audio:
 storage: ["Cassette", "Floppy disk", "Cartridge"]
 storage_details:
   built_in: ["Cassette interface"]
-  expansion: ["5.25\" floppy drive"]
+  expansion: ['5.25" floppy drive']
   typical_capacity:
     cassette: "Variable"
     cartridge: "Up to 64KB"
@@ -88,7 +88,6 @@ hardware_availability: "rare"
 
 # Media
 description: "Sharp's high-resolution Japanese home computer with an innovative expansion system."
-image: "/images/systems/sharp-x1.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -103,7 +102,7 @@ order: 55
 
 # Sharp X1
 
-*Coming Soon*
+_Coming Soon_
 
 The Sharp X1 was one of Japan's most successful home computers, known for its high-resolution graphics and innovative expansion system. Popular with hobbyists and small businesses, it carved out a significant niche in the Japanese market.
 
@@ -120,9 +119,10 @@ The X1's clean Z80 architecture and high-resolution graphics make it excellent f
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the X1 curriculum will include:
+
 - Z80 assembly programming
 - High-resolution graphics programming
 - AY sound chip programming

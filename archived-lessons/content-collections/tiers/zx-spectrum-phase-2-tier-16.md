@@ -27,6 +27,7 @@ Time to create your magnum opus! 🎆 With **32 epic lessons**, you'll build a g
 ## What You'll Build
 
 Create **"YOUR SPECTRUM LEGEND"** - a complete masterpiece featuring:
+
 - Optimized performance from Tier 13 that runs like silk 🚀
 - Advanced graphics from Tier 14 that push hardware limits 🎨
 - Rich audio from Tier 15 that rivals professional productions 🎵
@@ -36,18 +37,21 @@ Create **"YOUR SPECTRUM LEGEND"** - a complete masterpiece featuring:
 ## Project Overview
 
 **Weeks 1-3: "Vision and Foundation" - Designing Your Masterpiece**
+
 - Concept development and technical specification
 - Advanced architecture design integrating all Phase 2 systems
 - Asset creation pipeline and professional development workflow
 - Project planning and milestone scheduling
 
 **Weeks 3-5: "Implementation Excellence" - Building Your Legend**
+
 - Core gameplay implementation with optimized performance
 - Advanced graphics integration with stunning visual effects
 - Rich audio implementation with professional sound design
 - System integration and performance optimization
 
 **Weeks 6-8: "Professional Polish" - Career-Ready Presentation**
+
 - Extensive testing and quality assurance
 - Professional documentation and code commenting
 - Portfolio presentation and marketing materials
@@ -85,6 +89,7 @@ You'll also master:
 ## Your ZX Spectrum Legacy
 
 By the end of this tier, you'll have:
+
 - A complete game that rivals classic ZX Spectrum titles
 - A portfolio that proves your professional readiness
 - Skills that would have made you a legend in 1987

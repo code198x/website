@@ -31,24 +31,28 @@ Continue developing **Lost Kingdoms** - adding intelligent NPCs, smart enemies w
 ## Tier Overview
 
 **Lessons 1-8: AI Decision Systems**
+
 - Decision tree implementation and optimization
 - Rule-based AI systems and expert systems
 - Probability-based decision making
 - AI personality and behavior variation
 
 **Lessons 9-16: Pathfinding & Navigation**
-- A* pathfinding algorithm implementation
+
+- A\* pathfinding algorithm implementation
 - Dynamic obstacle avoidance
 - Multi-agent pathfinding coordination
 - Efficient pathfinding optimization
 
 **Lessons 17-24: Behavior Systems**
+
 - State machine-based AI behavior
 - Behavior trees and modular AI
 - Group AI and flocking behaviors
 - Context-sensitive AI responses
 
 **Lessons 25-32: Adaptive & Learning AI**
+
 - Player pattern recognition systems
 - Adaptive difficulty and AI scaling
 - Learning algorithms for improved AI

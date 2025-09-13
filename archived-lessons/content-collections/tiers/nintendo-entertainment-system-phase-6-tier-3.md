@@ -27,6 +27,7 @@ Time to become a memory management master! With **32 intensive lessons**, you'll
 ## What You'll Build
 
 Create **NES MEMORY OPTIMIZER** - a comprehensive memory management system featuring:
+
 - Advanced bank switching that handles massive game worlds
 - Memory compression that fits impossible amounts of data
 - Code optimization that runs blazingly fast in minimal space
@@ -36,24 +37,28 @@ Create **NES MEMORY OPTIMIZER** - a comprehensive memory management system featu
 ## Tier Overview
 
 **Lessons 1-8: "Every Byte Counts!" - Advanced Memory Mapping**
+
 - Sophisticated bank switching using MMC3, MMC5, and other mappers
 - Dynamic memory allocation within NES constraints
 - Advanced PRG-ROM and CHR-ROM management techniques
 - The secrets behind games that seemed to have unlimited content
 
 **Lessons 9-16: "Code Like Lightning!" - 6502 Optimization Mastery**
+
 - Advanced 6502 instruction optimization and cycle counting
 - Memory-efficient algorithms and data structures
 - Self-modifying code techniques for dynamic behavior
 - Professional code profiling and performance analysis
 
 **Lessons 17-24: "Compression Wizardry!" - Advanced Data Packing**
+
 - Level data compression using sophisticated algorithms
 - Graphics compression for maximum visual variety
 - Audio compression techniques for longer soundtracks
 - The mathematics behind fitting infinite content in finite space
 
 **Lessons 25-32: "Professional Memory Management" - Commercial Development**
+
 - Memory pooling systems for dynamic object management
 - Advanced garbage collection techniques for 6502
 - Memory leak detection and debugging tools

@@ -27,6 +27,7 @@ Achieve ultimate technical mastery! With **32 technical-mastery lessons**, you'l
 ## What You'll Master
 
 Create **IMPOSSIBLE AMIGA GAMING EXPERIENCES**:
+
 - Games that push Amiga hardware beyond what seems possible
 - Technical implementations that amaze other developers
 - Performance optimizations that achieve legendary efficiency
@@ -36,24 +37,28 @@ Create **IMPOSSIBLE AMIGA GAMING EXPERIENCES**:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "Ultimate Optimization" - Legendary Performance**
+
 - Master-level 68000 optimization and efficiency techniques
 - Advanced memory management for impossible performance
 - Ultimate timing optimization and hardware coordination
 - Programming techniques that squeeze maximum performance
 
 **Lessons 9-16: "Impossible Effects" - Beyond Hardware Limits**
+
 - Creating visual effects that seem impossible on Amiga
 - Advanced custom chip programming and coordination
 - Implementing features that push hardware beyond specifications
 - Building systems that achieve the seemingly impossible
 
 **Lessons 17-24: "System Mastery" - Complete Hardware Control**
+
 - Master-level understanding of all Amiga systems
 - Advanced hardware manipulation and low-level control
 - Creating games that utilize every aspect of Amiga architecture
 - Building technical foundations for legendary games
 
 **Lessons 25-32: "Programming Excellence" - Legendary Implementation**
+
 - Implementing complex game systems with ultimate efficiency
 - Creating code that other developers study and admire
 - Building technical solutions that enable legendary games

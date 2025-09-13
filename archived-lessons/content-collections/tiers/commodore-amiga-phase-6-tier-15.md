@@ -27,6 +27,7 @@ Time to achieve legendary optimization! With **32 intensive lessons**, you'll ma
 ## What You'll Build
 
 Create **AMIGA OPTIMIZATION MASTER** - a professional optimization framework featuring:
+
 - Code optimization so advanced it rivals professional compilers
 - Performance tuning techniques that extract every cycle from 68000
 - Sophisticated profiling systems that identify every optimization opportunity
@@ -36,24 +37,28 @@ Create **AMIGA OPTIMIZATION MASTER** - a professional optimization framework fea
 ## Tier Overview
 
 **Lessons 1-8: "Ultimate Efficiency!" - Advanced Code Optimization**
+
 - Professional-grade 68000 optimization and advanced efficiency techniques
 - Sophisticated instruction selection and optimal code generation
 - Advanced register allocation and memory access optimization
 - The optimization techniques that created legendary Amiga performance
 
 **Lessons 9-16: "Performance Mastery!" - Advanced Tuning Techniques**
+
 - Professional performance tuning and systematic optimization workflows
 - Advanced profiling integration and performance analysis
 - Sophisticated bottleneck elimination and efficiency maximization
 - The performance tuning that made impossible Amiga speeds possible
 
 **Lessons 17-24: "Optimization Science!" - Professional Development Practices**
+
 - Advanced optimization methodologies and professional practices
 - Sophisticated performance measurement and validation techniques
 - Professional optimization workflows and systematic efficiency improvement
 - The optimization science that created commercial-quality performance
 
 **Lessons 25-32: "Legendary Performance!" - Master-Level Optimization**
+
 - Ultimate optimization integration and complete performance mastery
 - Advanced optimization frameworks and systematic efficiency systems
 - Professional performance architecture and legendary optimization techniques

@@ -33,12 +33,15 @@ Welcome to interactive programming! Today you'll learn how to read NES controlle
 The NES controller is a simple but clever device:
 
 ### Physical Buttons
+
 - **D-Pad**: Up, Down, Left, Right (directional movement)
 - **Action Buttons**: A, B (jump, fire, confirm, cancel)
 - **System Buttons**: Select, Start (menu, pause)
 
 ### Internal Structure
+
 The controller uses a **shift register** to send button data:
+
 - **8 buttons** = 8 bits of data
 - **Serial transmission**: One bit at a time
 - **Polling system**: CPU requests current button states
@@ -53,10 +56,10 @@ JSR test_controller_input
 test_controller_input:
     ; Read controller 1
     JSR read_controller
-    
+
     ; Store result for inspection
     STA $0400       ; Store button states
-    
+
     RTS
 
 read_controller:
@@ -65,18 +68,18 @@ read_controller:
     STA $4016       ; Strobe controller (start reading)
     LDA #$00
     STA $4016       ; Stop strobe (begin serial data)
-    
+
     ; Read 8 button states
     LDX #$08        ; 8 buttons to read
     LDA #$00        ; Clear accumulator
-    
+
 read_loop:
     LDA $4016       ; Read controller port 1
     LSR A           ; Shift right, button state into carry
     ROL $0401       ; Rotate carry into result byte
     DEX
     BNE read_loop   ; Continue for all 8 buttons
-    
+
     LDA $0401       ; Load final button states
     RTS
 
@@ -88,10 +91,12 @@ read_loop:
 The NES uses two memory-mapped registers for controller input:
 
 ### $4016 - Controller 1 & Strobe
+
 - **Write**: Strobe bit (1=start reading, 0=read data)
 - **Read**: Controller 1 button data (one bit per read)
 
 ### $4017 - Controller 2 & Frame Counter
+
 - **Read**: Controller 2 button data
 - **Write**: Frame counter control (audio system)
 
@@ -105,10 +110,12 @@ Reading NES controllers requires a specific sequence:
 4. **Process Data**: Interpret button states for gameplay
 
 ### Button Order
+
 The buttons are read in this specific order:
+
 ```text
 Read 1: A button
-Read 2: B button  
+Read 2: B button
 Read 3: Select button
 Read 4: Start button
 Read 5: Up button
@@ -129,47 +136,47 @@ detailed_controller_read:
     STA $4016       ; Strobe on
     LDA #$00
     STA $4016       ; Strobe off
-    
+
     ; Read A button
     LDA $4016
     AND #$01        ; Mask off other bits
     STA $0410       ; Store A button state (0=pressed, 1=released)
-    
+
     ; Read B button
     LDA $4016
     AND #$01
     STA $0411       ; Store B button state
-    
+
     ; Read Select button
     LDA $4016
     AND #$01
     STA $0412       ; Store Select button state
-    
+
     ; Read Start button
     LDA $4016
     AND #$01
     STA $0413       ; Store Start button state
-    
+
     ; Read Up button
     LDA $4016
     AND #$01
     STA $0414       ; Store Up button state
-    
+
     ; Read Down button
     LDA $4016
     AND #$01
     STA $0415       ; Store Down button state
-    
+
     ; Read Left button
     LDA $4016
     AND #$01
     STA $0416       ; Store Left button state
-    
+
     ; Read Right button
     LDA $4016
     AND #$01
     STA $0417       ; Store Right button state
-    
+
     RTS
 
 ; Individual button states now available in $0410-$0417!
@@ -187,14 +194,14 @@ read_controller_fast:
     STA controller_buttons  ; Store $01 as initial value
     LSR A           ; A = $00
     STA $4016       ; End strobe
-    
+
     ; Read all 8 buttons into single byte
 read_buttons:
     LDA $4016       ; Read button state
     LSR A           ; Move button bit to carry
     ROL controller_buttons  ; Rotate into button byte
     BCC read_buttons        ; Continue until original $01 bit rotates back
-    
+
     RTS
 
 ; Result: controller_buttons contains all button states
@@ -215,17 +222,17 @@ efficient_controller_read:
     STA $0420       ; Use $0420 as button accumulator
     LSR A           ; A = $00
     STA $4016       ; End strobe
-    
+
 read_all_buttons:
     LDA $4016       ; Read controller port
     LSR A           ; Button state into carry
     ROL $0420       ; Rotate carry into button byte
     BCC read_all_buttons ; Continue until original $01 bit returns
-    
+
     ; Now $0420 contains all button states in one byte
     ; Bit 0 = A, Bit 1 = B, Bit 2 = Select, Bit 3 = Start
     ; Bit 4 = Up, Bit 5 = Down, Bit 6 = Left, Bit 7 = Right
-    
+
     RTS
 
 ; All buttons read into single byte at $0420!
@@ -251,12 +258,12 @@ test_specific_buttons:
     LDA controller_buttons
     AND #BUTTON_A
     BEQ a_pressed       ; 0 = pressed
-    
+
     ; Test if Start button is pressed
     LDA controller_buttons
     AND #BUTTON_START
     BEQ start_pressed   ; 0 = pressed
-    
+
     RTS
 
 a_pressed:
@@ -264,7 +271,7 @@ a_pressed:
     LDA #$01
     STA player_jumping
     RTS
-    
+
 start_pressed:
     ; Handle Start button press
     LDA #$01
@@ -281,12 +288,12 @@ JSR test_button_states
 test_button_states:
     ; Read controller first
     JSR read_controller_simple
-    
+
     ; Test individual buttons
     JSR test_a_button
     JSR test_direction_buttons
     JSR test_start_button
-    
+
     RTS
 
 read_controller_simple:
@@ -295,7 +302,7 @@ read_controller_simple:
     STA $4016
     LDA #$00
     STA $4016
-    
+
     ; Read 8 buttons
     LDX #$08
     LDA #$00
@@ -307,7 +314,7 @@ read_simple_loop:
     ROL A           ; Carry to accumulator
     DEX
     BNE read_simple_loop
-    
+
     STA $0430       ; Store button states
     RTS
 
@@ -316,12 +323,12 @@ test_a_button:
     LDA $0430
     AND #%10000000  ; A button mask
     BNE a_not_pressed
-    
+
     ; A button is pressed
     LDA #$FF
     STA $0440       ; Set A pressed flag
     RTS
-    
+
 a_not_pressed:
     LDA #$00
     STA $0440       ; Clear A pressed flag
@@ -330,7 +337,7 @@ a_not_pressed:
 test_direction_buttons:
     ; Test directional buttons
     LDA $0430
-    
+
     ; Test Up (bit 3)
     AND #%00001000
     BNE not_up
@@ -340,7 +347,7 @@ test_direction_buttons:
 not_up:
     LDA #$00
     STA $0441
-    
+
 test_down:
     LDA $0430
     ; Test Down (bit 2)
@@ -352,7 +359,7 @@ test_down:
 not_down:
     LDA #$00
     STA $0442
-    
+
 test_left:
     LDA $0430
     ; Test Left (bit 1)
@@ -364,7 +371,7 @@ test_left:
 not_left:
     LDA #$00
     STA $0443
-    
+
 test_right:
     LDA $0430
     ; Test Right (bit 0)
@@ -399,6 +406,7 @@ start_not_pressed:
 Raw controller input can be noisy and need proper timing:
 
 ### Button Debouncing
+
 Prevent multiple triggers from single button press:
 
 ```text
@@ -412,28 +420,29 @@ update_input:
     ; Save previous frame's buttons
     LDA curr_buttons
     STA prev_buttons
-    
+
     ; Read current buttons
     JSR read_controller_fast
     STA curr_buttons
-    
+
     ; Calculate newly pressed buttons
     ; new_buttons = curr_buttons AND NOT prev_buttons
     LDA prev_buttons
     EOR #$FF            ; Invert previous
     AND curr_buttons    ; AND with current
     STA new_buttons     ; Store newly pressed
-    
+
     ; Calculate held buttons
     ; held_buttons = curr_buttons AND prev_buttons
     LDA prev_buttons
     AND curr_buttons
     STA held_buttons
-    
+
     RTS
 ```
 
 ### Repeat Rate Control
+
 For menu navigation, implement repeat timing:
 
 ```text
@@ -446,21 +455,21 @@ handle_repeat_input:
     LDA held_buttons
     AND #(BUTTON_UP | BUTTON_DOWN | BUTTON_LEFT | BUTTON_RIGHT)
     BEQ no_repeat
-    
+
     ; Direction held, check timer
     DEC button_repeat_timer
     BNE no_repeat
-    
+
     ; Reset timer and treat as new press
     LDA button_repeat_rate
     STA button_repeat_timer
-    
+
     ; Add held directions to new_buttons
     LDA held_buttons
     AND #(BUTTON_UP | BUTTON_DOWN | BUTTON_LEFT | BUTTON_RIGHT)
     ORA new_buttons
     STA new_buttons
-    
+
 no_repeat:
     RTS
 ```
@@ -478,37 +487,37 @@ init_input_system:
     STA $0451       ; curr_buttons
     STA $0452       ; new_buttons
     STA $0453       ; held_buttons
-    
+
     ; Initialize repeat system
     LDA #$0F        ; 15 frame repeat rate
     STA $0461       ; button_repeat_rate
     STA $0460       ; button_repeat_timer
-    
+
     RTS
 
 update_input_system:
     ; Save previous buttons
     LDA $0451       ; curr_buttons
     STA $0450       ; prev_buttons
-    
+
     ; Read current controller state
     JSR read_controller_debounced
     STA $0451       ; curr_buttons
-    
+
     ; Calculate new presses (just pressed this frame)
     LDA $0450       ; prev_buttons
     EOR #$FF        ; Invert (NOT prev_buttons)
     AND $0451       ; AND with current
     STA $0452       ; new_buttons = curr AND NOT prev
-    
+
     ; Calculate held buttons
     LDA $0450       ; prev_buttons
     AND $0451       ; AND with current
     STA $0453       ; held_buttons = curr AND prev
-    
+
     ; Handle repeat for held directions
     JSR handle_direction_repeat
-    
+
     RTS
 
 read_controller_debounced:
@@ -517,7 +526,7 @@ read_controller_debounced:
     STA $4016
     LDA #$00
     STA $4016
-    
+
     LDX #$08
     LDA #$00
 debounce_loop:
@@ -528,7 +537,7 @@ debounce_loop:
     ROL A
     DEX
     BNE debounce_loop
-    
+
     RTS
 
 handle_direction_repeat:
@@ -536,21 +545,21 @@ handle_direction_repeat:
     LDA $0453       ; held_buttons
     AND #%00001111  ; Direction bits (Up,Down,Left,Right)
     BEQ no_direction_repeat
-    
+
     ; Direction held, decrease timer
     DEC $0460       ; button_repeat_timer
     BNE no_direction_repeat
-    
+
     ; Timer expired, reset and add to new_buttons
     LDA $0461       ; button_repeat_rate
     STA $0460       ; Reset timer
-    
+
     ; Add held directions to new presses
     LDA $0453       ; held_buttons
     AND #%00001111  ; Direction mask
     ORA $0452       ; OR with new_buttons
     STA $0452       ; Store combined new buttons
-    
+
 no_direction_repeat:
     RTS
 
@@ -572,6 +581,7 @@ JSR update_input_system
 Different game types need different input handling:
 
 ### Platform Game Controls
+
 ```text
 handle_platform_input:
     ; Left/Right movement
@@ -579,24 +589,25 @@ handle_platform_input:
     AND #BUTTON_LEFT
     BEQ check_right
     JSR move_player_left
-    
+
 check_right:
     LDA new_buttons
     AND #BUTTON_RIGHT
     BEQ check_jump
     JSR move_player_right
-    
+
 check_jump:
     LDA new_buttons
     AND #BUTTON_A
     BEQ done_platform
     JSR player_jump
-    
+
 done_platform:
     RTS
 ```
 
 ### Menu Navigation
+
 ```text
 handle_menu_input:
     ; Up/Down for menu selection
@@ -604,19 +615,19 @@ handle_menu_input:
     AND #BUTTON_UP
     BEQ check_menu_down
     JSR menu_up
-    
+
 check_menu_down:
     LDA new_buttons
     AND #BUTTON_DOWN
     BEQ check_menu_select
     JSR menu_down
-    
+
 check_menu_select:
     LDA new_buttons
     AND #BUTTON_A
     BEQ done_menu
     JSR menu_select
-    
+
 done_menu:
     RTS
 ```
@@ -629,27 +640,27 @@ Let's create interactive controls for our music project:
 init_sprite_symphony_input:
     ; Initialize input system for musical interaction
     JSR init_input_system
-    
+
     ; Initialize musical control state
     LDA #$00
     STA current_note_selection  ; Which note is selected
     STA music_mode             ; 0=play, 1=edit
-    
+
     ; Setup note selection limits
     LDA #$07                   ; 8 notes available (0-7)
     STA max_note_selection
-    
+
     RTS
 
 handle_sprite_symphony_input:
     ; Update input system
     JSR update_input_system
-    
+
     ; Handle different modes
     LDA music_mode
     BEQ handle_play_mode
     JMP handle_edit_mode
-    
+
 handle_play_mode:
     ; Play mode: Simple controls
     ; A button = play current note
@@ -657,30 +668,30 @@ handle_play_mode:
     AND #BUTTON_A
     BEQ check_note_selection
     JSR play_selected_note
-    
+
 check_note_selection:
     ; Left/Right = change note selection
     LDA new_buttons
     AND #BUTTON_LEFT
     BEQ check_right_note
     JSR select_previous_note
-    
+
 check_right_note:
     LDA new_buttons
     AND #BUTTON_RIGHT
     BEQ check_mode_switch
     JSR select_next_note
-    
+
 check_mode_switch:
     ; Start = switch modes
     LDA new_buttons
     AND #BUTTON_START
     BEQ done_play_input
     JSR switch_music_mode
-    
+
 done_play_input:
     RTS
-    
+
 handle_edit_mode:
     ; Edit mode: Advanced controls
     ; (More complex editing features)
@@ -690,7 +701,7 @@ play_selected_note:
     ; Play the currently selected note
     LDA current_note_selection
     JSR play_symphony_note
-    
+
     ; Update visual feedback
     JSR update_note_sprite
     RTS
@@ -739,18 +750,18 @@ init_symphony_controls:
     STA $0480       ; prev_buttons
     STA $0481       ; curr_buttons
     STA $0482       ; new_buttons
-    
+
     ; Setup musical control state
     LDA #$00
     STA $0490       ; current_note (0-7)
     STA $0491       ; music_playing (0=stopped, 1=playing)
-    
+
     ; Setup audio
     LDA #%00000001  ; Enable pulse 1
     STA $4015
     LDA #%10111111  ; Configure pulse 1
     STA $4000
-    
+
     ; Create note frequency table
     ; C, D, E, F, G, A, B, C
     LDA #$F1        ; C
@@ -769,31 +780,31 @@ init_symphony_controls:
     STA $04A6
     LDA #$78        ; High C
     STA $04A7
-    
+
     RTS
 
 ; Handle Symphony input (call every frame)
 handle_symphony_input:
     ; Update input
     JSR update_symphony_input
-    
+
     ; Handle controls
     JSR check_note_selection
     JSR check_play_controls
-    
+
     RTS
 
 update_symphony_input:
     ; Save previous
     LDA $0481
     STA $0480
-    
+
     ; Read current
     LDA #$01
     STA $4016
     LDA #$00
     STA $4016
-    
+
     LDX #$08
     LDA #$00
 input_loop:
@@ -804,15 +815,15 @@ input_loop:
     ROL A
     DEX
     BNE input_loop
-    
+
     STA $0481       ; Store current buttons
-    
+
     ; Calculate new presses
     LDA $0480       ; Previous
     EOR #$FF        ; NOT previous
     AND $0481       ; AND current
     STA $0482       ; Store new presses
-    
+
     RTS
 
 check_note_selection:
@@ -820,7 +831,7 @@ check_note_selection:
     LDA $0482       ; new_buttons
     AND #%00000010  ; Left button (bit 1)
     BEQ check_right_arrow
-    
+
     ; Move to previous note
     DEC $0490       ; current_note--
     LDA $0490
@@ -829,13 +840,13 @@ check_note_selection:
     STA $0490
 note_ok:
     JSR update_note_display
-    
+
 check_right_arrow:
     ; Right arrow = next note
     LDA $0482
     AND #%00000001  ; Right button (bit 0)
     BEQ done_note_selection
-    
+
     ; Move to next note
     INC $0490       ; current_note++
     LDA $0490
@@ -845,7 +856,7 @@ check_right_arrow:
     STA $0490
 next_note_ok:
     JSR update_note_display
-    
+
 done_note_selection:
     RTS
 
@@ -854,32 +865,32 @@ check_play_controls:
     LDA $0482       ; new_buttons
     AND #%10000000  ; A button (bit 7)
     BEQ check_stop
-    
+
     ; Play current note
     LDX $0490       ; current_note
     LDA $04A0,X     ; Get frequency
     STA $4002       ; Set frequency low
     LDA #$05        ; High byte (simplified)
     STA $4003       ; Set frequency high
-    
+
     LDA #$01
     STA $0491       ; Set playing flag
-    
+
 check_stop:
     ; B button = stop sound
     LDA $0482
     AND #%01000000  ; B button (bit 6)
     BEQ done_play_controls
-    
+
     ; Stop sound
     LDA #%00000000
     STA $4015       ; Disable APU
     LDA #%00000001
     STA $4015       ; Re-enable APU (stops current note)
-    
+
     LDA #$00
     STA $0491       ; Clear playing flag
-    
+
 done_play_controls:
     RTS
 
@@ -919,7 +930,7 @@ init_complete_input_system:
     STA $0503       ; p2_prev_buttons
     STA $0504       ; p2_curr_buttons
     STA $0505       ; p2_new_buttons
-    
+
     ; 2. Initialize repeat timing
     LDA #$0C        ; 12 frame initial delay
     STA $0510       ; p1_repeat_delay
@@ -930,13 +941,13 @@ init_complete_input_system:
     LDA #$00
     STA $0514       ; p1_repeat_timer
     STA $0515       ; p2_repeat_timer
-    
+
     ; 3. Initialize input history (3 frames)
     LDA #$00
     STA $0520       ; p1_history[0] (current)
     STA $0521       ; p1_history[1] (1 frame ago)
     STA $0522       ; p1_history[2] (2 frames ago)
-    
+
     ; 4. Initialize button mapping
     LDA #%10000000  ; A button default
     STA $0530       ; jump_button
@@ -944,26 +955,26 @@ init_complete_input_system:
     STA $0531       ; fire_button
     LDA #%00001000  ; Start button default
     STA $0532       ; pause_button
-    
+
     RTS
 
 ; Update complete input system (call every frame)
 update_complete_input:
     ; 1. Read both controllers
     JSR read_both_controllers
-    
+
     ; 2. Update button history
     JSR update_input_history
-    
+
     ; 3. Handle debouncing
     JSR update_debouncing
-    
+
     ; 4. Handle repeat timing
     JSR update_repeat_timing
-    
+
     ; 5. Detect special moves
     JSR detect_special_moves
-    
+
     RTS
 
 read_both_controllers:
@@ -972,7 +983,7 @@ read_both_controllers:
     STA $4016       ; Strobe both controllers
     LDA #$00
     STA $4016       ; End strobe
-    
+
     ; Read controller 1 (port $4016)
     LDX #$08
     LDA #$00
@@ -984,9 +995,9 @@ read_p1_loop:
     ROL A
     DEX
     BNE read_p1_loop
-    
+
     STA $0501       ; Store P1 current buttons
-    
+
     ; Read controller 2 (port $4017)
     LDX #$08
     LDA #$00
@@ -998,7 +1009,7 @@ read_p2_loop:
     ROL A
     DEX
     BNE read_p2_loop
-    
+
     STA $0504       ; Store P2 current buttons
     RTS
 
@@ -1010,7 +1021,7 @@ update_input_history:
     STA $0521       ; history[1] = history[0]
     LDA $0501       ; current buttons
     STA $0520       ; history[0] = current
-    
+
     RTS
 
 update_debouncing:
@@ -1019,20 +1030,20 @@ update_debouncing:
     EOR #$FF        ; NOT prev
     AND $0501       ; AND current
     STA $0502       ; new_buttons
-    
+
     ; Update previous for next frame
     LDA $0501       ; current
     STA $0500       ; becomes previous
-    
+
     ; Same for P2
     LDA $0503       ; p2_prev
     EOR #$FF
     AND $0504       ; p2_current
     STA $0505       ; p2_new
-    
+
     LDA $0504       ; p2_current
     STA $0503       ; becomes p2_previous
-    
+
     RTS
 
 update_repeat_timing:
@@ -1040,41 +1051,41 @@ update_repeat_timing:
     LDA $0501       ; current buttons
     AND #%00001111  ; Direction mask
     BEQ p1_no_repeat
-    
+
     ; Direction held
     LDA $0514       ; repeat_timer
     BEQ p1_trigger_repeat
     DEC $0514       ; Decrease timer
     JMP p1_no_repeat
-    
+
 p1_trigger_repeat:
     ; Timer expired, add to new buttons
     LDA $0501       ; current
     AND #%00001111  ; directions only
     ORA $0502       ; OR with new buttons
     STA $0502       ; store combined
-    
+
     ; Reset timer
     LDA $0512       ; repeat_rate
     STA $0514       ; reset timer
     JMP check_p2_repeat
-    
+
 p1_no_repeat:
     ; No direction held, reset timer
     LDA $0510       ; repeat_delay
     STA $0514       ; reset to initial delay
-    
+
 check_p2_repeat:
     ; Same logic for P2
     LDA $0504       ; p2_current
     AND #%00001111  ; Direction mask
     BEQ p2_no_repeat
-    
+
     LDA $0515       ; p2_repeat_timer
     BEQ p2_trigger_repeat
     DEC $0515
     JMP done_repeat
-    
+
 p2_trigger_repeat:
     LDA $0504
     AND #%00001111
@@ -1083,11 +1094,11 @@ p2_trigger_repeat:
     LDA $0513       ; p2_repeat_rate
     STA $0515
     JMP done_repeat
-    
+
 p2_no_repeat:
     LDA $0511       ; p2_repeat_delay
     STA $0515
-    
+
 done_repeat:
     RTS
 
@@ -1095,25 +1106,25 @@ detect_special_moves:
     ; 4. Detect special move patterns
     ; Example: Down, Forward, Punch (quarter circle forward)
     ; Check if pattern exists in history
-    
+
     ; Look for Down -> Right -> A button sequence
     LDA $0522       ; 2 frames ago
     AND #%00000100  ; Down button
     BEQ no_special_move
-    
+
     LDA $0521       ; 1 frame ago
     AND #%00000001  ; Right button
     BEQ no_special_move
-    
+
     LDA $0502       ; New buttons this frame
     AND $0530       ; Jump button (A)
     BEQ no_special_move
-    
+
     ; Special move detected!
     LDA #$01
     STA $0540       ; special_move_triggered
     RTS
-    
+
 no_special_move:
     LDA #$00
     STA $0540

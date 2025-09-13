@@ -31,24 +31,28 @@ Create **LogicMaster Engine** - a sophisticated game logic framework featuring a
 ## Tier Overview
 
 **Lessons 1-8: Advanced State Machines**
+
 - Multi-layered state machine architectures
 - Hierarchical state systems and state inheritance
 - Complex state transitions and event handling
 - Real-time state machine debugging and visualization
 
 **Lessons 9-16: Behavior Trees & AI Logic**
+
 - Advanced behavior tree programming and execution
 - Complex decision-making systems and logic patterns
 - Modular behavior composition and reusability
 - Performance optimization for complex logic systems
 
 **Lessons 17-24: Event Systems & Timing**
+
 - Sophisticated event-driven programming patterns
 - Complex timing systems and synchronization
 - Priority-based event queuing and processing
 - Advanced scheduling and delayed execution systems
 
 **Lessons 25-32: Professional Game Architecture**
+
 - Modular game system design and organization
 - Component-based entity systems
 - Advanced debugging and profiling tools

@@ -27,6 +27,7 @@ Ready for adventure? With **32 exploration-filled lessons**, you'll create world
 ## What You'll Build
 
 Create **CRYSTAL KINGDOMS** - an adventure epic featuring:
+
 - An overworld with hidden secrets in every screen
 - Four unique dungeons with themed challenges
 - Items that unlock new areas and abilities
@@ -36,24 +37,28 @@ Create **CRYSTAL KINGDOMS** - an adventure epic featuring:
 ## Tier Overview
 
 **Lessons 1-8: "World Building 101" - Creating Your Kingdom**
+
 - Screen-based map systems that feel connected
 - Transitions that maintain player orientation
 - Hiding secrets in plain sight
 - Making 256 screens feel like a vast world
 
 **Lessons 9-16: "Inventory Wizardry" - Items & Equipment**
+
 - Item systems that expand gameplay possibilities
 - Weapons with different properties and uses
 - Key items that gate progression
 - The UI challenge of showing everything clearly
 
 **Lessons 17-24: "Dungeon Delving" - Labyrinth Design**
+
 - Multi-room dungeons that players can navigate
 - Puzzles that make players think (but not rage)
 - Boss encounters that test item mastery
 - That "aha!" moment when everything clicks
 
 **Lessons 25-32: "The Hero's Journey" - Complete Adventure**
+
 - Save systems using battery backup or passwords
 - NPCs and story elements that guide players
 - Secrets that reward thorough exploration

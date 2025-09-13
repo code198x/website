@@ -27,6 +27,7 @@ Complete your legendary legacy! With **32 legacy-completion lessons**, you'll cr
 ## Your Eternal Legacy
 
 Create **YOUR LEGENDARY GAME COLLECTION** - the ultimate demonstration:
+
 - A complete portfolio of games that showcases every aspect of legendary mastery
 - A collection that demonstrates the full range of your development expertise
 - Games that establish your permanent place among legendary Amiga developers
@@ -36,24 +37,28 @@ Create **YOUR LEGENDARY GAME COLLECTION** - the ultimate demonstration:
 ## Legacy Completion Areas
 
 **Lessons 1-8: "Portfolio Mastery" - Demonstrating Complete Expertise**
+
 - Creating a portfolio that showcases every aspect of legendary development
 - Building a collection that demonstrates the full range of your skills
 - Organizing your games to tell the story of your legendary journey
 - Understanding how to present your mastery most effectively
 
 **Lessons 9-16: "Legendary Collection" - Games Worth Eternal Status**
+
 - Completing games that achieve legendary status individually
 - Creating a collection that represents the pinnacle of Amiga development
 - Building games that other developers study and admire
 - Understanding how to achieve legendary quality consistently
 
 **Lessons 17-24: "Master Recognition" - Establishing Your Legendary Status**
+
 - Presenting your collection to demonstrate legendary mastery
 - Building recognition as one of the great Amiga developers
 - Creating a legacy that establishes your place in gaming history
 - Understanding how legendary developers are recognized and remembered
 
 **Lessons 25-32: "Eternal Legacy" - Your Permanent Contribution**
+
 - Completing your ultimate contribution to Amiga gaming
 - Creating a legacy that will inspire future developers
 - Understanding how your games contribute to the Amiga's continuing legacy

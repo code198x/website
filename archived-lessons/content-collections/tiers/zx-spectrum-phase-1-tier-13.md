@@ -27,6 +27,7 @@ Push the ZX Spectrum to its absolute limits! Learn real-time programming and opt
 ## What You'll Learn
 
 Create programs that perform at professional levels:
+
 - Real-time programming principles and techniques
 - Advanced optimisation for maximum performance
 - Precise timing for responsive applications
@@ -35,24 +36,28 @@ Create programs that perform at professional levels:
 ## Tier Overview
 
 **Lessons 1-8: Real-Time Programming Fundamentals**
+
 - Understanding real-time system requirements
 - Creating responsive program architectures
 - Managing timing-critical operations
 - Building foundation for interactive systems
 
 **Lessons 9-16: Performance Optimization**
+
 - Identifying and eliminating performance bottlenecks
 - Memory optimisation for maximum efficiency
 - Code optimisation techniques and patterns
 - Achieving smooth operation in complex programs
 
 **Lessons 17-24: Precise Timing and Synchronization**
+
 - Understanding ZX Spectrum timing characteristics
 - Creating precise timing systems
 - Synchronizing multiple program elements
 - Building responsive, accurate control systems
 
 **Lessons 25-32: Advanced Audio Programming**
+
 - Mastering advanced beeper techniques
 - Creating complex sound synthesis
 - Building the foundation for Spectrum Symphony

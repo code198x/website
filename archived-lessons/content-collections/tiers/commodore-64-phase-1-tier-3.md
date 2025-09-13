@@ -27,6 +27,7 @@ Learn how the 6502 processor makes decisions at the hardware level. This tier te
 ## What You'll Build
 
 Enhance **Number Quest** with intelligent assembly features:
+
 - Conditional logic for hint generation
 - Branch-based difficulty adjustment
 - Multiple game modes using efficient flow control
@@ -35,24 +36,28 @@ Enhance **Number Quest** with intelligent assembly features:
 ## Tier Overview
 
 **Lessons 1-8: Status Flags and Comparisons**
+
 - Understanding 6502 processor status flags
 - Compare operations (CMP, CPX, CPY)
 - How flags are set and tested
 - Basic branching with flag conditions
 
-**Lessons 9-16: Branch Instructions**  
+**Lessons 9-16: Branch Instructions**
+
 - Branch on Equal/Not Equal (BEQ, BNE)
 - Branch on Carry/No Carry (BCC, BCS)
 - Branch on Negative/Positive (BMI, BPL)
 - Branch on Overflow (BVS, BVC)
 
 **Lessons 17-24: Complex Decision Logic**
+
 - Building decision trees with multiple branches
 - Efficient branching patterns and optimisation
 - Creating state machines in assembly
 - Managing program flow with jumps and branches
 
 **Lessons 25-32: Number Quest Intelligence**
+
 - Implementing assembly-based game logic
 - Building conditional hint systems
 - Creating adaptive difficulty through branching

@@ -28,7 +28,8 @@ video:
   processor: "Yamaha V9938 VDP"
   resolution: "512×212"
   colors: "512 colors"
-  display_modes: ["Screen 5: 256×212×16", "Screen 6: 512×212×4", "Screen 7: 512×212×16", "Screen 8: 256×212×256"]
+  display_modes:
+    ["Screen 5: 256×212×16", "Screen 6: 512×212×4", "Screen 7: 512×212×16", "Screen 8: 256×212×256"]
   sprites:
     count: 32
     size: "8×8 to 16×16 pixels"
@@ -40,12 +41,19 @@ video:
 audio:
   chip: "AY-3-8910 + YM2413 OPLL"
   channels: 12
-  features: ["3-channel PSG", "9-channel FM synthesis", "15 preset instruments", "Custom instruments", "Rhythm section"]
+  features:
+    [
+      "3-channel PSG",
+      "9-channel FM synthesis",
+      "15 preset instruments",
+      "Custom instruments",
+      "Rhythm section",
+    ]
   sample_playback: false
   synthesis_types: ["PSG", "FM synthesis"]
 
 # Storage and I/O
-storage: ["3.5\" floppy disk", "Cartridge", "Cassette tape"]
+storage: ['3.5" floppy disk', "Cartridge", "Cassette tape"]
 storage_details:
   built_in: ["Cartridge slots", "Cassette interface"]
   expansion: ["Floppy disk drives"]
@@ -53,7 +61,8 @@ storage_details:
     floppy: "720KB"
     cartridge: "32KB-1MB"
 
-io_ports: ["Joystick ports", "Cartridge slots", "Printer port", "Cassette interface", "Expansion slots"]
+io_ports:
+  ["Joystick ports", "Cartridge slots", "Printer port", "Cassette interface", "Expansion slots"]
 expansion_options: ["Memory mappers", "Disk interfaces", "Sound cards", "Network interfaces"]
 
 # Commercial information
@@ -70,8 +79,20 @@ market_positioning: "International standard home computer with advanced capabili
 competition: ["Commodore Amiga", "Atari ST", "Apple IIgs"]
 
 # Educational relevance
-learning_advantages: ["International hardware standard", "Advanced sprite programming", "FM synthesis audio", "Professional graphics capabilities"]
-common_beginner_projects: ["Sprite-based games", "Hardware scrolling demos", "FM music composition", "Cross-manufacturer software"]
+learning_advantages:
+  [
+    "International hardware standard",
+    "Advanced sprite programming",
+    "FM synthesis audio",
+    "Professional graphics capabilities",
+  ]
+common_beginner_projects:
+  [
+    "Sprite-based games",
+    "Hardware scrolling demos",
+    "FM music composition",
+    "Cross-manufacturer software",
+  ]
 
 # Modern preservation and emulation
 emulated: true
@@ -91,7 +112,6 @@ hardware_availability: "available"
 
 # Media
 description: "The enhanced MSX standard that brought professional graphics and sound to home computing while maintaining international compatibility."
-image: "/images/systems/msx2.jpg"
 
 # Platform Classification
 medal_tier: "gold"
@@ -106,7 +126,7 @@ order: 25
 
 # MSX2
 
-*Coming Soon*
+_Coming Soon_
 
 The MSX2 represented the evolution of Microsoft's MSX standard into a truly professional home computer platform. Built around the powerful Yamaha V9938 video display processor and enhanced with FM synthesis sound, it delivered advanced graphics and audio capabilities while maintaining cross-manufacturer compatibility.
 
@@ -124,9 +144,10 @@ MSX2 programming combines Z80A mastery with advanced hardware capabilities in an
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the MSX2 curriculum will include:
+
 - Advanced Z80A assembly with V9938 VDP programming
 - Professional sprite animation and hardware scrolling techniques
 - YM2413 FM synthesis programming and music composition

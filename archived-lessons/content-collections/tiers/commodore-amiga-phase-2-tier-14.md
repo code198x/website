@@ -27,6 +27,7 @@ Welcome to the pinnacle of visual excellence! 🎆 With **32 graphics-intensive 
 ## What You'll Build
 
 Create **AMIGA GRAPHICS SHOWCASE** - an advanced visual system featuring:
+
 - Copper effects that defy the laws of display physics 🌈
 - Blitter operations that transform graphics in real-time
 - Multi-layer graphics systems with complex interactions
@@ -36,24 +37,28 @@ Create **AMIGA GRAPHICS SHOWCASE** - an advanced visual system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Master Copper Programming" - Display List Wizardry**
+
 - Advanced Copper list construction and optimization
 - Complex mid-screen effects and synchronized changes
 - Copper-driven animations and procedural effects
 - Performance optimization for complex display programs
 
 **Lessons 9-16: "Advanced Blitter Operations" - Real-time Graphics Magic**
+
 - Complex Blitter operations and chained commands
 - Real-time graphics transformation and manipulation
 - Advanced masking and blending techniques
 - Blitter-based particle systems and dynamic effects
 
 **Lessons 17-24: "Multi-layer Graphics" - Complex Visual Architecture**
+
 - Advanced dual playfield programming and management
 - Multi-layer scrolling and parallax systems
 - Sprite multiplexing and advanced sprite management
 - Complex layer interaction and compositing techniques
 
 **Lessons 25-32: "Graphics Optimization" - Maximum Visual Performance**
+
 - Graphics performance profiling and optimization
 - Memory bandwidth optimization for complex graphics
 - Visual effect scheduling and resource management

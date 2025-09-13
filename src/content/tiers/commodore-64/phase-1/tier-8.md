@@ -30,7 +30,7 @@ order: 8
 
 # Tier 8: Complete Adventure Game
 
-*Coming Soon*
+_Coming Soon_
 
 Complete your jungle adventure! Transform Jungle Explorer into a polished, professional adventure game that matches the quality and scope of successful 1983-84 releases like Pitfall II and early adventure games.
 
@@ -48,15 +48,19 @@ This tier focuses on completing and polishing your adventure game to early 1984 
 ## Your Journey Through 32 Lessons
 
 ### World Completion (Lessons 1-8)
+
 Finish your jungle world with 20+ interconnected areas including surface jungle, multiple temple complexes, and hidden chambers with proper progression flow.
 
 ### Professional Polish (Lessons 9-16)
+
 Add title screens, instruction systems, and professional presentation that meets early 1984 commercial standards without overreaching.
 
 ### Complete Audio Experience (Lessons 17-24)
+
 Implement atmospheric jungle sounds, temple audio, and musical elements that create immersion throughout the adventure.
 
 ### Final Integration & Testing (Lessons 25-32)
+
 Combine all systems, balance the complete experience, and apply thorough testing to achieve commercial stability and polish.
 
 ## Your Completed Adventure
@@ -64,7 +68,7 @@ Combine all systems, balance the complete experience, and apply thorough testing
 By the end of this tier, Jungle Explorer will feature:
 
 - **20+ Interconnected Areas**: Complete jungle world with surface exploration and temple complexes
-- **Professional Presentation**: Title screen, instructions, and interfaces matching 1983-84 standards  
+- **Professional Presentation**: Title screen, instructions, and interfaces matching 1983-84 standards
 - **Complete Puzzle Systems**: Integrated challenges that reward exploration and logical thinking
 - **Atmospheric Audio**: Full sound design that enhances the jungle exploration experience
 - **Balanced Progression**: Carefully tuned difficulty and pacing for engaging gameplay
@@ -83,6 +87,7 @@ By the end of this tier, Jungle Explorer will feature:
 ## Prerequisites
 
 Before starting Tier 8, you should have completed:
+
 - [Tier 7: Temple Mysteries & Advanced Graphics](/lessons/commodore-64/phase-1/tier-7)
 - Advanced VIC-II programming and environmental design experience
 - Complex puzzle system implementation skills
@@ -92,4 +97,4 @@ Before starting Tier 8, you should have completed:
 
 After completing Tier 8, you'll have created two complete games (Neon Nexus and Jungle Explorer) and be ready for Tiers 9-12, where you'll tackle a third game genre and learn techniques that defined mid-1984 C64 gaming.
 
-*This tier contains 32 lessons and is currently in development. Check back soon for updates on availability.*
+_This tier contains 32 lessons and is currently in development. Check back soon for updates on availability._

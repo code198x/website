@@ -27,6 +27,7 @@ Push BASIC to its limits! Create sophisticated visual effects and realistic phys
 ## What You'll Add to Retro Racer
 
 Implement advanced racing features:
+
 - Pseudo-3D perspective road effects
 - Realistic car physics with momentum
 - Environmental effects and atmosphere
@@ -35,24 +36,28 @@ Implement advanced racing features:
 ## Tier Overview
 
 **Lessons 1-8: Pseudo-3D Graphics**
+
 - Creating perspective and depth illusions
 - Mathematical transformations for 3D effects
 - Efficient perspective calculations
 - Managing visual complexity
 
 **Lessons 9-16: Physics Simulation**
+
 - Momentum and acceleration modeling
 - Friction and handling characteristics
 - Collision response and realistic movement
 - Balancing realism with playability
 
 **Lessons 17-24: Advanced Animation**
+
 - Complex movement patterns
 - Environmental effects (weather, lighting)
 - Particle systems with character graphics
 - Creating atmosphere and immersion
 
 **Lessons 25-32: Performance Optimization**
+
 - Optimizing complex calculations
 - Managing multiple visual systems
 - Maintaining smooth frame rates

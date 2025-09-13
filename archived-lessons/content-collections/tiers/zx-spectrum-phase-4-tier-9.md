@@ -31,24 +31,28 @@ Begin developing **Neon Quest** - a music-driven adventure featuring dynamic sou
 ## Tier Overview
 
 **Lessons 1-8: Advanced Audio Programming**
+
 - ZX Spectrum sound hardware mastery
 - Advanced audio generation techniques
 - Multi-channel audio coordination
 - Professional audio architecture design
 
 **Lessons 9-16: Dynamic Music Systems**
+
 - Adaptive music that responds to gameplay
 - Smooth musical transitions and layering
 - Interactive soundtrack composition
 - Music synchronization with game events
 
 **Lessons 17-24: Sound Effects & Processing**
+
 - Professional sound effect libraries
 - Real-time audio processing and manipulation
 - Environmental audio and soundscapes
 - Audio feedback and player communication
 
 **Lessons 25-32: Complete Audio Integration**
+
 - Seamless audio-visual synchronization
 - Performance optimization for audio systems
 - Professional audio polish and mastering

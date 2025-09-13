@@ -37,7 +37,7 @@ The Z80 maintains a special 8-bit flag register that tracks the results of opera
 ```
 Flag Register (F):
 Bit 7: S (Sign flag) - Set if result is negative
-Bit 6: Z (Zero flag) - Set if result is zero  
+Bit 6: Z (Zero flag) - Set if result is zero
 Bit 4: H (Half-carry) - For BCD arithmetic
 Bit 2: P/V (Parity/Overflow) - Set based on operation
 Bit 1: N (Add/Subtract) - Indicates last operation type
@@ -67,7 +67,7 @@ CP 15           ; Compare: A < 15, Carry flag SET
 LD A, 10
 SUB 5           ; A = 5, Zero flag clear (result not zero)
 
-LD A, 8  
+LD A, 8
 SUB 8           ; A = 0, Zero flag set (result is zero)
 
 LD A, 3
@@ -93,7 +93,7 @@ Relative jumps move forward or backward by a small distance (-128 to +127 bytes)
 ; Conditional relative jumps
 JR Z, label     ; Jump if Zero flag is set
 JR NZ, label    ; Jump if Zero flag is clear
-JR C, label     ; Jump if Carry flag is set  
+JR C, label     ; Jump if Carry flag is set
 JR NC, label    ; Jump if Carry flag is clear
 ```
 
@@ -149,7 +149,7 @@ ALess:
 LD D, 2         ; A is less
 JR Compare_Done
 
-AEqual:  
+AEqual:
 LD D, 3         ; A equals C
 
 Compare_Done:
@@ -175,11 +175,13 @@ JP P, Positive          ; Jump if Sign flag clear (positive)
 ### When to Use JR vs JP
 
 **Use JR when:**
+
 - Jump target is close (within 127 bytes)
 - Code is position-independent
 - Saving memory (JR is 2 bytes, JP is 3 bytes)
 
 **Use JP when:**
+
 - Jump target is far away
 - Jumping to fixed addresses
 - Need all conditional options (JR only has Z, NZ, C, NC)
@@ -194,21 +196,21 @@ CheckRange:
     LD A, 15        ; Test value
     CP 10           ; Compare with 10
     JR C, TooSmall  ; Jump if A < 10
-    
+
     CP 21           ; Compare with 21
     JR NC, TooBig   ; Jump if A >= 21
-    
+
     ; A is in range 10-20
     LD B, 1         ; In range
     JR RangeCheck_Done
-    
+
 TooSmall:
     LD B, 0         ; Below range
     JR RangeCheck_Done
-    
+
 TooBig:
     LD B, 2         ; Above range
-    
+
 RangeCheck_Done:
     ; B contains: 0=too small, 1=in range, 2=too big
 ```
@@ -226,7 +228,7 @@ LD A, 15        ; Player X coordinate (try different values)
 CP 5            ; Is player X < 5?
 JR C, HitLeft   ; Jump if too far left
 
-; Check right boundary  
+; Check right boundary
 CP 200          ; Is player X >= 200?
 JR NC, HitRight ; Jump if too far right
 
@@ -290,16 +292,16 @@ DecisionTable:
     CP 3            ; Compare with 3
     JR C, Option1   ; If A < 3
     JR Z, Option2   ; If A = 3
-    
+
     CP 7            ; Compare with 7
     JR C, Option3   ; If 3 < A < 7
     JR Z, Option4   ; If A = 7
-    
+
     ; A > 7
     JR Option5
-    
+
 Option1: LD B, 1 : JR TableDone
-Option2: LD B, 2 : JR TableDone  
+Option2: LD B, 2 : JR TableDone
 Option3: LD B, 3 : JR TableDone
 Option4: LD B, 4 : JR TableDone
 Option5: LD B, 5
@@ -318,16 +320,16 @@ ValidateInput:
     ; A contains user input
     CP '0'          ; Compare with ASCII '0'
     JR C, InvalidInput ; Jump if less than '0'
-    
+
     CP '9' + 1      ; Compare with ASCII '9' + 1
     JR NC, InvalidInput ; Jump if greater than '9'
-    
+
     ; Valid input - convert to number
     SUB '0'         ; Convert ASCII to number
     LD B, A         ; Store valid input
     LD A, 1         ; Return success
     RET
-    
+
 InvalidInput:
     LD A, 0         ; Return failure
     RET
@@ -343,28 +345,28 @@ UpdateGame:
     LD A, (GameState)
     OR A
     JR Z, HandleMenu    ; State 0: Menu
-    
+
     DEC A
     JR Z, HandlePlaying ; State 1: Playing
-    
-    DEC A  
+
+    DEC A
     JR Z, HandlePaused  ; State 2: Paused
-    
+
     ; Must be state 3: Game Over
     JR HandleGameOver
 
 HandleMenu:
     ; Menu handling code
     RET
-    
+
 HandlePlaying:
     ; Game logic code
     RET
-    
+
 HandlePaused:
     ; Pause handling code
     RET
-    
+
 HandleGameOver:
     ; Game over handling code
     RET
@@ -381,10 +383,10 @@ ProcessGameState:
     LD A, (GameState)
     OR A
     JR Z, MenuState     ; Jump if state = 0
-    
+
     DEC A
     JR Z, GameState_    ; Jump if state = 1
-    
+
     ; Must be pause state (2)
     JR PauseState
 
@@ -401,7 +403,7 @@ GameState_:
     ; (Simplified: advance to pause state)
     LD A, 2
     LD (GameState), A
-    LD B, 200           ; Game result code  
+    LD B, 200           ; Game result code
     RET
 
 PauseState:
@@ -424,19 +426,19 @@ PauseState:
 ; Complex condition: check if A is even AND greater than 10
 CheckComplexCondition:
     LD A, 12        ; Test value
-    
+
     ; First check: is A > 10?
     CP 11           ; Compare with 11
     JR C, ConditionFalse ; Jump if A <= 10
-    
+
     ; Second check: is A even?
     AND %00000001   ; Check low bit (odd numbers have bit 0 set)
     JR NZ, ConditionFalse ; Jump if odd
-    
+
     ; Both conditions true
     LD B, 1         ; True result
     RET
-    
+
 ConditionFalse:
     LD B, 0         ; False result
     RET
@@ -452,11 +454,11 @@ UnsignedCompare:
     LD B, 100       ; Second value
     CP B            ; Compare A with B
     JR C, A_Less    ; Jump if A < B
-    
+
     ; A >= B
     LD C, 1         ; A is greater or equal
     RET
-    
+
 A_Less:
     LD C, 0         ; A is less
     RET
@@ -493,17 +495,17 @@ CheckPlayerHealth:
     LD A, (PlayerHealth)
     OR A
     JR Z, PlayerDead
-    
+
     CP 25
     JR C, PlayerLowHealth
-    
+
     ; Player has good health
     RET
-    
+
 PlayerLowHealth:
     ; Handle low health
     RET
-    
+
 PlayerDead:
     ; Handle death
     RET
@@ -528,24 +530,24 @@ PlayerChoice: DB 5  ; Simulated player input (0-9)
 ; Main menu processor
 ProcessMenu:
     LD A, (PlayerChoice)
-    
+
     ; Validate input range (0-4 for our menu)
     CP 5            ; Compare with 5
     JR NC, InvalidChoice ; Jump if >= 5
-    
+
     ; Valid choice - use jump table approach
     OR A
     JR Z, MenuOption0    ; Choice 0
-    
+
     DEC A
     JR Z, MenuOption1    ; Choice 1
-    
+
     DEC A
     JR Z, MenuOption2    ; Choice 2
-    
+
     DEC A
     JR Z, MenuOption3    ; Choice 3
-    
+
     ; Must be choice 4
     JR MenuOption4
 
@@ -582,21 +584,21 @@ InvalidChoice:
 ; Extended validation example
 ValidateAndProcess:
     LD A, (PlayerChoice)
-    
+
     ; Check if choice is a digit (ASCII '0' to '9')
     CP 48           ; ASCII '0'
     JR C, NotDigit  ; Jump if less than '0'
-    
+
     CP 58           ; ASCII '9' + 1
     JR NC, NotDigit ; Jump if greater than '9'
-    
+
     ; Convert ASCII to number
     SUB 48          ; Convert to 0-9
-    
+
     ; Now validate range for our menu (0-4)
     CP 5
     JR NC, OutOfRange
-    
+
     ; Valid menu choice
     LD (PlayerChoice), A  ; Store converted value
     CALL ProcessMenu      ; Process the choice

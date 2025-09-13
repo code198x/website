@@ -36,7 +36,7 @@ external_links:
     url: "https://swtpc.com/"
 ---
 
-**Southwest Technical Products Corporation** (SWTPc) was a pioneering company in the early microcomputer era. Founded in 1964 by Daniel Meyer in San Antonio, Texas, SWTPc initially sold DIY electronics kits, including test equipment and audio gear, through magazines like *Popular Electronics*.
+**Southwest Technical Products Corporation** (SWTPc) was a pioneering company in the early microcomputer era. Founded in 1964 by Daniel Meyer in San Antonio, Texas, SWTPc initially sold DIY electronics kits, including test equipment and audio gear, through magazines like _Popular Electronics_.
 
 The company entered the computer market in 1975 with the **SWTPc 6800**, based on the Motorola 6800 CPU. It was one of the earliest affordable microcomputers and helped popularise the **SS-50 bus**, which enabled a modular system architecture. SWTPc followed up with the more powerful **SWTPc 6809**, and briefly offered full computer systems aimed at small businesses and hobbyists.
 

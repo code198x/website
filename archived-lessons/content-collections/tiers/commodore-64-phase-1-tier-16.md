@@ -31,6 +31,7 @@ Complete your comprehensive 6502 assembly programming project with **Retro Racer
 ## What You'll Complete
 
 Finish **Retro Racer** as your complete assembly game:
+
 - Assembly racing gameplay with multiple tracks
 - Hardware-level menus and user interface
 - Score tracking and game progression in assembly
@@ -40,24 +41,28 @@ Finish **Retro Racer** as your complete assembly game:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Code Organization**
+
 - Organizing your comprehensive assembly program
 - Assembly modular design principles
 - Adding comments and documentation to assembly code
 - Assembly development best practices
 
 **Lessons 9-16: Assembly Optimization**
+
 - Making your assembly programs run at maximum efficiency
 - Advanced memory management techniques
 - Finding and fixing assembly performance issues
 - Balancing features with 6502 processor limitations
 
 **Lessons 17-24: Assembly User Experience**
+
 - Creating friendly, usable interfaces with direct hardware control
 - Adding help and instructions implemented in assembly
 - Making assembly games easy and fun to play
 - Testing your assembly games with others
 
 **Lessons 25-32: Assembly Project Completion**
+
 - Putting all the assembly pieces together
 - Final testing and assembly debugging
 - Celebrating your complete assembly game!

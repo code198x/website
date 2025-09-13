@@ -27,6 +27,7 @@ Time to bring it all together! 🎮 With **32 intensive lessons**, you'll create
 ## What You'll Build
 
 Create **"ZX SPECTRUM LEGENDS"** - choose your own arcade adventure:
+
 - **Platform Hero** - A Manic Miner inspired jumping challenge 🏃‍♂️
 - **Space Defender** - A Jetpac style shoot-em-up with smooth action 🚀
 - **Maze Runner** - A Pac-Man inspired collect-and-avoid game 👻
@@ -35,18 +36,21 @@ Create **"ZX SPECTRUM LEGENDS"** - choose your own arcade adventure:
 ## Project Overview
 
 **Weeks 1-2: "Planning & Foundation" - Architecture That Scales**
+
 - Game concept design and technical specification
 - Modular code architecture using your sprite, collision, and audio systems
 - Asset creation and sprite design workflow
 - Development timeline and milestone planning
 
 **Weeks 3-4: "Core Gameplay" - Making It Fun**
+
 - Game loop implementation with smooth 50Hz updates
 - Player controls and character movement integration
 - Level design and obstacle placement
 - Basic gameplay mechanics and win/lose conditions
 
 **Weeks 5-6: "Polish & Perfection" - Professional Quality**
+
 - Audio integration and dynamic sound effects
 - Visual polish and screen effects
 - Difficulty balancing and playtesting
@@ -74,6 +78,7 @@ Beyond just coding, you'll learn:
 ## Portfolio Impact
 
 Your finished game will be:
+
 - A complete, playable ZX Spectrum game
 - Professional-quality code with clear documentation
 - A showcase of animation, collision, and audio mastery

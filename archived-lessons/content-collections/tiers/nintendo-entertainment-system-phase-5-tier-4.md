@@ -27,6 +27,7 @@ This is it - your first complete NES game! With **32 project-focused lessons**, 
 ## What You'll Build
 
 Create **NEON WARRIOR** - a complete action game featuring:
+
 - Three distinct gameplay styles seamlessly integrated
 - Six full levels plus epic boss encounters
 - A story told through gameplay and brief cutscenes
@@ -36,24 +37,28 @@ Create **NEON WARRIOR** - a complete action game featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Architecture & Planning" - Building Big**
+
 - Structuring code for a complete game
 - Memory management strategies for complex projects
 - Using mappers to break the 32KB barrier
 - Planning content that fits within constraints
 
 **Lessons 9-16: "Level Progression" - The Complete Journey**
+
 - Designing levels that tell a story
 - Difficulty curves across the entire game
 - Variety that keeps players engaged
 - Secrets and unlockables
 
 **Lessons 17-24: "Boss Design Workshop" - Epic Encounters**
+
 - Multi-phase boss battles
 - Pattern design that teaches then tests
 - Making bosses feel huge on limited hardware
 - That satisfaction of finally winning
 
 **Lessons 25-32: "Ship It!" - Final Polish**
+
 - Title screens that set the mood
 - Password systems that actually work
 - Game over and victory sequences

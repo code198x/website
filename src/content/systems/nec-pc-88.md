@@ -29,7 +29,8 @@ video:
   processor: "Custom graphics controller"
   resolution: "640x200 (8 colors), 640x400 (monochrome)"
   colors: "8 colors"
-  display_modes: ["Text mode (80×25/80×20)", "Graphics mode (640×200)", "High-resolution mono (640×400)"]
+  display_modes:
+    ["Text mode (80×25/80×20)", "Graphics mode (640×200)", "High-resolution mono (640×400)"]
   hardware_scrolling: true
   raster_interrupts: false
 
@@ -42,7 +43,7 @@ audio:
   synthesis_types: ["PSG", "FM"]
 
 # Storage and I/O
-storage: ["5.25\" floppy disk", "Cassette tape"]
+storage: ['5.25" floppy disk', "Cassette tape"]
 storage_details:
   built_in: ["Cassette interface"]
   expansion: ["Floppy disk drives"]
@@ -99,7 +100,6 @@ notable_software:
 
 # Media
 description: "The NEC PC-8801, launched in 1981, stands as one of the most influential computers in Japanese gaming history. This Z80-based machine became the platform where many legendary game developers cut their teeth, creating genres and franchises that would define Japanese gaming for decades to come."
-image: "/images/systems/nec-pc-88.jpg"
 
 # Platform Classification
 medal_tier: "gold"
@@ -118,7 +118,7 @@ order: 28
 
 # NEC PC-8801: The Birthplace of Japanese Gaming
 
-*Planned System - 128 Lessons*
+_Planned System - 128 Lessons_
 
 The NEC PC-8801, launched in 1981, stands as one of the most influential computers in Japanese gaming history. This Z80-based machine became the platform where many legendary game developers cut their teeth, creating genres and franchises that would define Japanese gaming for decades to come.
 
@@ -134,12 +134,14 @@ The PC-88 was where Japanese computer gaming truly began. While Western computer
 ## Technical Excellence
 
 ### Z80 Mastery
+
 - **4MHz Z80A processor**: Learn assembly on the same chip that powered countless classics
 - **Bank-switched memory**: Master complex memory management techniques
 - **Hardware sprites**: Early sprite-based graphics programming
 - **Sound synthesis**: From simple beeps to complex PSG programming
 
 ### Graphics Innovation
+
 - **High-resolution modes**: 640x400 monochrome for detailed artwork
 - **Color graphics**: 640x200 with 8 colors from a larger palette
 - **Text modes**: Support for Japanese characters (JIS encoding)
@@ -159,14 +161,18 @@ The PC-88 hosted the early works of gaming legends:
 Your PC-88 journey spans 128 lessons across 2 phases:
 
 ### Phase 1: Z80 Foundations (64 lessons)
+
 Master the Z80 processor that powered Japanese gaming's golden age:
+
 - Z80 instruction set and architecture
 - Memory banking and management
 - Japanese character encoding
 - Basic graphics programming
 
 ### Phase 2: Game Development (64 lessons)
+
 Create the visual and audio experiences that defined PC-88 games:
+
 - Pixel-perfect sprite graphics
 - Tile-based backgrounds
 - PSG sound synthesis and music
@@ -185,12 +191,14 @@ The PC-88's influence extends far beyond its sales numbers:
 ## Notable Software Library
 
 ### RPGs That Changed Everything
+
 - **Hydlide (1984)**: The first action-RPG, inspiring Zelda
 - **The Black Onyx (1984)**: First true JRPG with party-based combat
 - **Dragon Slayer series**: Early dungeon crawlers by Falcom
 - **Xanadu (1985)**: Action-RPG masterpiece with incredible depth
 
 ### Adventure Classics
+
 - **Snatcher (1988)**: Hideo Kojima's cyberpunk masterpiece
 - **Mystery House**: Japanese adventure gaming begins
 - **Early visual novels**: Foundation of a uniquely Japanese genre

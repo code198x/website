@@ -39,6 +39,7 @@ order: 1
 ---
 
 # Tile Walker
+
 **"I made sprites move on tiles!"**
 
 Your first complete NES game! **Tile Walker** is where you'll experience the magic of Nintendo's revolutionary Picture Processing Unit (PPU). Watch as your sprite character moves perfectly aligned with beautiful tiles, just like in the legendary NES games that defined console gaming!
@@ -67,24 +68,28 @@ Through building Tile Walker, you'll master:
 ## Development Progression
 
 ### Foundation (Lessons 1-8)
+
 - Set up NES development environment and PPU basics
 - Create pattern table graphics and display background tiles
 - Implement sprite display and controller input
 - Build tile-based positioning system with boundaries
 
 ### Tile Interaction (Lessons 9-16)
+
 - Read background tile data and implement collision detection
 - Create collectible items and dynamic nametable updates
 - Design level layouts and implement scoring
 - Add player lives and level completion systems
 
 ### Visual Enhancement (Lessons 17-24)
+
 - Add sprite animation frames and palette control
 - Create status display and tile animations
 - Implement special effects and sprite priority
 - Design title screen and screen transitions
 
 ### Audio and Completion (Lessons 25-32)
+
 - Program APU for sound effects and background music
 - Add game options and high score system
 - Implement power-up system and final polish
@@ -141,6 +146,7 @@ This project teaches the core techniques used in legendary NES games while provi
 ## Portfolio Impact
 
 By completing Tile Walker, you'll have:
+
 - Your first complete NES game
 - Mastery of fundamental 6502 assembly programming for NES
 - Understanding of PPU graphics and sprite systems

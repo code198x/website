@@ -27,6 +27,7 @@ Bring intelligent audio to your NES games! With **32 advanced lessons**, you'll 
 ## What You'll Build
 
 Create **ADVANCED NES AUDIO ENGINE** - featuring intelligent systems:
+
 - Dynamic music that adapts to gameplay situations in real-time
 - Sophisticated sound synthesis and procedural audio generation
 - Advanced audio effects and processing systems
@@ -36,24 +37,28 @@ Create **ADVANCED NES AUDIO ENGINE** - featuring intelligent systems:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "APU Mastery" - Advanced Sound Programming**
+
 - Deep APU programming and advanced sound synthesis
 - Complex waveform generation and audio manipulation
 - Advanced channel mixing and audio routing systems
 - Memory-efficient audio data structures and streaming
 
 **Lessons 9-16: "Dynamic Music Systems" - Adaptive Audio**
+
 - Real-time music composition and adaptive soundtracks
 - Dynamic music layering and seamless transitions
 - Gameplay-responsive audio that reacts to player actions
 - Advanced music programming techniques for interactive audio
 
 **Lessons 17-24: "Audio Effects & Processing" - Advanced Sound Design**
+
 - Real-time audio effects and sound processing algorithms
 - Procedural sound generation and synthesis techniques
 - Advanced audio mixing and spatial sound positioning
 - Complex sound effect systems and audio feedback
 
 **Lessons 25-32: "Intelligent Audio Systems" - Smart Sound Design**
+
 - AI-driven audio that responds to game state intelligently
 - Performance optimization for complex audio with game systems
 - Advanced audio debugging and development tools

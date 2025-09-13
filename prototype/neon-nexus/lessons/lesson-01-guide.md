@@ -38,7 +38,7 @@ main:
     ; Set border color to red
     lda #$02            ; Color code for red
     sta $d020           ; Border color register
-    
+
     ; Set background color to black
     lda #$00            ; Color code for black
     sta $d021           ; Background color register
@@ -54,7 +54,7 @@ The C64 screen is a grid of 40×25 characters, starting at memory location $0400
     ; Display a star in the center
     lda #$2a            ; PETSCII code for asterisk
     sta $0400+500       ; Middle of screen (row 12, col 20)
-    
+
     ; Make it white
     lda #$01            ; Color code for white
     sta $d800+500       ; Color RAM same position
@@ -75,16 +75,21 @@ Without this, the C64 would crash back to BASIC!
 ## Interactive Elements
 
 ### Experiment 1: Color Changes
+
 Try different color values:
+
 ```assembly
 lda #$07    ; Yellow
-lda #$0e    ; Light blue  
+lda #$0e    ; Light blue
 lda #$05    ; Green
 ```
+
 The C64 has 16 colors (0-15). What's your favorite?
 
 ### Experiment 2: Different Characters
+
 Change the displayed character:
+
 ```assembly
 lda #$01    ; 'A'
 lda #$20    ; Space
@@ -93,11 +98,13 @@ lda #$5e    ; Arrow
 ```
 
 ### Experiment 3: Multiple Characters
+
 Display your initials:
+
 ```assembly
 lda #$0a        ; 'J'
 sta $0400+499
-lda #$04        ; 'D'  
+lda #$04        ; 'D'
 sta $0400+500
 lda #$05        ; 'E'
 sta $0400+501
@@ -122,6 +129,7 @@ Every memory location has a purpose. Learning them is like learning the streets 
 ### The VIC-II Chip
 
 The Video Interface Controller II (VIC-II) is the C64's graphics chip:
+
 - Handles all screen display
 - 16 colors
 - 40×25 text mode (what we're using)
@@ -129,12 +137,14 @@ The Video Interface Controller II (VIC-II) is the C64's graphics chip:
 - 8 hardware sprites
 
 Registers we used:
+
 - `$D020`: Border color (the thick frame)
 - `$D021`: Background color (behind characters)
 
 ## Challenge Extensions
 
 1. **Rainbow Border**: Cycle through all 16 colors
+
    ```assembly
    loop:
        inc $d020       ; Increment border color
@@ -142,6 +152,7 @@ Registers we used:
    ```
 
 2. **Screen Fill**: Fill entire screen with a character
+
    ```assembly
    ldx #0
    fill_loop:
@@ -170,6 +181,7 @@ Registers we used:
 In 1982, this was revolutionary. Previous computers required BASIC for everything. The C64 let you touch the metal directly. Games like Impossible Mission and The Last Ninja started exactly like this - one pixel at a time.
 
 Famous first programs:
+
 - **Jeff Minter**: Started with color cycling
 - **Andrew Braybrook**: Drew a single sprite
 - **Archer Maclean**: Made a dot bounce

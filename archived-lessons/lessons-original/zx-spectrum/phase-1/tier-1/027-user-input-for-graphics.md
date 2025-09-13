@@ -84,7 +84,7 @@ CursorData:
     CursorSpeed:    DB 2    ; Movement speed
     CursorVisible:  DB 1    ; Visibility flag
     CursorMode:     DB 0    ; 0=move, 1=draw
-    
+
 ; Cursor appearance
 CursorPattern:
     DB %00010000    ; Simple cross cursor
@@ -184,18 +184,18 @@ DrawCursor:
     LD A, (CursorVisible)
     OR A
     RET Z               ; Don't draw if invisible
-    
+
     ; Draw cross cursor
     LD A, (CursorX)
     LD B, A
     LD A, (CursorY)
     LD C, A
-    
+
     ; Center pixel
     PUSH BC
     CALL XORPixel
     POP BC
-    
+
     ; Horizontal line
     PUSH BC
     DEC B
@@ -204,7 +204,7 @@ DrawCursor:
     INC B
     CALL XORPixel
     POP BC
-    
+
     ; Vertical line
     PUSH BC
     DEC C
@@ -213,7 +213,7 @@ DrawCursor:
     INC C
     CALL XORPixel
     POP BC
-    
+
     RET
 
 ; Erase cursor at old position
@@ -222,12 +222,12 @@ EraseCursor:
     LD B, A
     LD A, (OldCursorY)
     LD C, A
-    
+
     ; Erase cross (same as draw with XOR)
     PUSH BC
     CALL XORPixel
     POP BC
-    
+
     PUSH BC
     DEC B
     CALL XORPixel
@@ -235,7 +235,7 @@ EraseCursor:
     INC B
     CALL XORPixel
     POP BC
-    
+
     PUSH BC
     DEC C
     CALL XORPixel
@@ -243,7 +243,7 @@ EraseCursor:
     INC C
     CALL XORPixel
     POP BC
-    
+
     RET
 
 ; Update cursor position based on input
@@ -253,11 +253,11 @@ UpdateCursor:
     LD (OldCursorX), A
     LD A, (CursorY)
     LD (OldCursorY), A
-    
+
     ; Read Q,W,E,A,S,D keys for movement
     ; W = up, S = down, A = left, D = right
     ; Q = up-left, E = up-right
-    
+
     ; Check W (up)
     LD A, KEY_Q_T
     IN A, (254)
@@ -268,7 +268,7 @@ UpdateCursor:
     SUB B               ; Move up
     JR C, CheckS        ; Don't go negative
     LD (CursorY), A
-    
+
 CheckS:
     ; Check S (down)
     LD A, KEY_A_G
@@ -281,7 +281,7 @@ CheckS:
     CP 192              ; Screen height
     JR NC, CheckA       ; Don't go off screen
     LD (CursorY), A
-    
+
 CheckA:
     ; Check A (left)
     LD A, KEY_A_G
@@ -293,7 +293,7 @@ CheckA:
     SUB B               ; Move left
     JR C, CheckD        ; Don't go negative
     LD (CursorX), A
-    
+
 CheckD:
     ; Check D (right)
     LD A, KEY_A_G
@@ -306,7 +306,7 @@ CheckD:
     JR NC, CheckDiagonals ; Don't overflow
     LD A, 255
     LD (CursorX), A
-    
+
 CheckDiagonals:
     ; Check Q (up-left)
     LD A, KEY_Q_T
@@ -321,7 +321,7 @@ CheckDiagonals:
     DEC A
     JR C, CheckE
     LD (CursorX), A
-    
+
 CheckE:
     ; Check E (up-right)
     LD A, KEY_Q_T
@@ -335,7 +335,7 @@ CheckE:
     LD A, (CursorX)
     INC A
     LD (CursorX), A
-    
+
 CheckSpeed:
     ; Check SHIFT for fast movement
     LD A, KEY_SHIFT
@@ -348,7 +348,7 @@ NormalSpeed:
     LD A, 2             ; Normal speed
 SetSpeed:
     LD (CursorSpeed), A
-    
+
     RET
 
 ; Clear screen
@@ -363,25 +363,25 @@ ClearScreen:
 ; Main cursor demo
 CursorDemo:
     CALL ClearScreen
-    
+
     ; Draw initial cursor
     CALL DrawCursor
-    
+
     ; Main loop
     LD B, 255           ; Loop counter
-    
+
 MainLoop:
     PUSH BC
-    
+
     ; Erase old cursor
     CALL EraseCursor
-    
+
     ; Update position
     CALL UpdateCursor
-    
+
     ; Draw new cursor
     CALL DrawCursor
-    
+
     ; Small delay for smooth movement
     LD BC, 500
 DelayLoop:
@@ -389,10 +389,10 @@ DelayLoop:
     LD A, B
     OR C
     JR NZ, DelayLoop
-    
+
     POP BC
     DJNZ MainLoop
-    
+
     LD B, 255           ; Success
     RET
 ```
@@ -415,24 +415,24 @@ UpdateKeyStates:
     LD HL, KeyStates
     LD DE, LastKeyStates
     LD BC, 8
-    
+
     ; Copy current to last
     PUSH HL
     PUSH DE
     LDIR
     POP DE
     POP HL
-    
+
     ; Read all keyboard ports
     LD B, 8
     LD C, 0xFE          ; Port 254
-    
+
 ReadLoop:
     LD A, (HL)          ; Get port address pattern
     IN A, (C)           ; Read keyboard
     CPL                 ; Invert (1 = pressed)
     AND 31              ; Mask to 5 keys
-    
+
     ; Detect edges
     LD D, A             ; Save current state
     LD A, (DE)          ; Get last state
@@ -441,12 +441,12 @@ ReadLoop:
     XOR E               ; Find changes
     AND D               ; Just pressed = changed AND current
     LD (KeyPressed), A
-    
+
     LD A, D
     XOR E               ; Find changes again
     AND E               ; Just released = changed AND last
     LD (KeyReleased), A
-    
+
     LD A, D
     LD (HL), A          ; Store current state
     INC HL
@@ -464,7 +464,7 @@ Handle multiple simultaneous keypresses:
 CheckMultipleKeys:
     LD HL, KeyCombinations
     LD B, 0             ; Key combination flags
-    
+
     ; Check for Ctrl+S (save)
     LD A, 0x7FFE        ; Symbol shift row
     IN A, (254)
@@ -475,11 +475,11 @@ CheckMultipleKeys:
     BIT 1, A            ; S key
     JR NZ, CheckCtrlL
     SET 0, B            ; Set save flag
-    
+
 CheckCtrlL:
     ; Check for Ctrl+L (load)
     ; ... similar pattern
-    
+
     LD A, B
     LD (KeyCombinations), A
     RET
@@ -543,44 +543,44 @@ DrawLine:
 CheckModeKeys:
     ; Number keys select modes
     ; 1 = Move, 2 = Draw, 3 = Line, etc.
-    
+
     LD A, 0xF7FE        ; Number row 1-5
     IN A, (254)
-    
+
     ; Check key 1 (Move)
     BIT 0, A
     JR NZ, Check2
     LD A, MODE_MOVE
     JR SetMode
-    
+
 Check2:
     ; Check key 2 (Draw)
     BIT 1, A
     JR NZ, Check3
     LD A, MODE_DRAW
     JR SetMode
-    
+
 Check3:
     ; Check key 3 (Line)
     BIT 2, A
     JR NZ, Check4
     LD A, MODE_LINE
     JR SetMode
-    
+
 Check4:
     ; Check key 4 (Rectangle)
     BIT 3, A
     JR NZ, Check5
     LD A, MODE_RECT
     JR SetMode
-    
+
 Check5:
     ; Check key 5 (Circle)
     BIT 4, A
     JR NZ, CheckErase
     LD A, MODE_CIRCLE
     JR SetMode
-    
+
 CheckErase:
     ; Check E key for erase
     LD A, KEY_Q_T
@@ -588,11 +588,11 @@ CheckErase:
     BIT 2, A            ; E key
     JR NZ, NoModeChange
     LD A, MODE_ERASE
-    
+
 SetMode:
     LD (DrawingMode), A
     CALL UpdateModeDisplay
-    
+
 NoModeChange:
     RET
 
@@ -603,27 +603,27 @@ HandleDrawing:
     IN A, (254)
     BIT 0, A            ; SPACE
     JR NZ, CheckDrawingActive
-    
+
     ; Toggle drawing active
     LD A, (DrawingActive)
     XOR 1
     LD (DrawingActive), A
-    
+
     ; If just activated, save start position
     OR A
     RET Z               ; Deactivated
-    
+
     LD A, (CurrentX)
     LD (StartX), A
     LD A, (CurrentY)
     LD (StartY), A
     RET
-    
+
 CheckDrawingActive:
     LD A, (DrawingActive)
     OR A
     RET Z               ; Not active
-    
+
     ; Execute based on mode
     LD A, (DrawingMode)
     OR A
@@ -676,7 +676,7 @@ HandleRect:
     NEG
 WidthOK:
     LD B, A             ; Width
-    
+
     LD A, (CurrentY)
     LD C, A
     LD A, (StartY)
@@ -685,7 +685,7 @@ WidthOK:
     NEG
 HeightOK:
     LD C, A             ; Height
-    
+
     LD A, (StartX)
     LD D, A
     LD A, (StartY)
@@ -730,12 +730,12 @@ UpdateModeDisplay:
     ADD A, A            ; × 4
     ADD A, (DrawingMode) ; × 5
     ADD A, (DrawingMode) ; × 6 (6 chars per mode)
-    
+
     LD HL, ModeNames
     LD E, A
     LD D, 0
     ADD HL, DE          ; Point to mode name
-    
+
     ; Would display mode name here
     RET
 
@@ -746,22 +746,22 @@ DrawingControlDemo:
     LD (DrawingMode), A
     LD A, 0
     LD (DrawingActive), A
-    
+
     ; Main loop
     LD B, 100
-    
+
 ControlLoop:
     PUSH BC
-    
+
     ; Check mode keys
     CALL CheckModeKeys
-    
+
     ; Handle drawing
     CALL HandleDrawing
-    
+
     ; Update cursor position
     ; (Would integrate cursor movement here)
-    
+
     ; Small delay
     LD BC, 1000
 Delay2:
@@ -769,10 +769,10 @@ Delay2:
     LD A, B
     OR C
     JR NZ, Delay2
-    
+
     POP BC
     DJNZ ControlLoop
-    
+
     ; Show final mode
     LD A, (DrawingMode)
     LD B, A             ; Return current mode
@@ -793,7 +793,7 @@ MenuData:
     MenuItems:      DB 6        ; Number of items
     CurrentItem:    DB 0        ; Selected item
     MenuVisible:    DB 1        ; Display flag
-    
+
 MenuText:
     DB "1. Move Tool    "
     DB "2. Draw Tool    "
@@ -809,7 +809,7 @@ NavigateMenu:
     IN A, (254)
     BIT 1, A
     JR NZ, CheckDown
-    
+
     ; Move selection up
     LD A, (CurrentItem)
     OR A
@@ -817,14 +817,14 @@ NavigateMenu:
     DEC A
     LD (CurrentItem), A
     CALL UpdateMenuDisplay
-    
+
 CheckDown:
     ; Check down key (S)
     LD A, KEY_A_G
     IN A, (254)
     BIT 1, A
     JR NZ, CheckSelect
-    
+
     ; Move selection down
     LD A, (CurrentItem)
     INC A
@@ -833,14 +833,14 @@ CheckDown:
     JR NC, CheckSelect  ; Already at bottom
     LD (CurrentItem), A
     CALL UpdateMenuDisplay
-    
+
 CheckSelect:
     ; Check ENTER for selection
     LD A, 0xBFFE
     IN A, (254)
     BIT 0, A            ; ENTER key
     RET NZ              ; Not pressed
-    
+
     ; Item selected
     LD A, (CurrentItem)
     CALL ExecuteMenuItem
@@ -891,7 +891,7 @@ ClearScreen:
     LD BC, 6143
     LD (HL), 0
     LDIR
-    
+
     ; Clear attributes
     LD HL, ATTR_FILE
     LD DE, ATTR_FILE + 1
@@ -909,7 +909,7 @@ DrawMenuBorder:
     LD C, MENU_Y
     LD D, MENU_WIDTH
     LD E, MENU_HEIGHT
-    
+
     ; Top and bottom borders
     LD A, MENU_Y
     CALL DrawHorizontalBorder
@@ -917,7 +917,7 @@ DrawMenuBorder:
     ADD MENU_HEIGHT
     DEC A
     CALL DrawHorizontalBorder
-    
+
     ; Side borders
     ; (Implementation simplified)
     RET
@@ -932,13 +932,13 @@ DisplayMenu:
     LD A, (MenuVisible)
     OR A
     RET Z               ; Menu hidden
-    
+
     ; Draw each menu item
     LD B, 0             ; Item counter
-    
+
 ItemLoop:
     PUSH BC
-    
+
     ; Calculate position
     LD A, MENU_Y
     ADD B
@@ -946,7 +946,7 @@ ItemLoop:
     LD C, A             ; Y position
     LD B, MENU_X
     INC B               ; Skip border
-    
+
     ; Calculate text pointer
     POP AF              ; Get item number
     PUSH AF
@@ -958,14 +958,14 @@ ItemLoop:
     ADD HL, HL          ; × 16 (16 chars per item)
     LD DE, MenuText
     ADD HL, DE          ; HL = text pointer
-    
+
     ; Display text (simplified)
     PUSH BC
     PUSH HL
     CALL DisplayMenuItem
     POP HL
     POP BC
-    
+
     ; Set color based on selection
     POP AF
     PUSH AF
@@ -973,25 +973,25 @@ ItemLoop:
     LD A, (CurrentItem)
     CP D
     JR NZ, NormalColor
-    
+
     ; Selected item - highlight
     LD A, COLOR_SELECTED
     JR SetItemColor
-    
+
 NormalColor:
     LD A, COLOR_NORMAL
-    
+
 SetItemColor:
     PUSH BC
     CALL SetMenuItemColor
     POP BC
-    
+
     POP BC
     INC B
     LD A, B
     CP 6                ; Number of items
     JR NZ, ItemLoop
-    
+
     RET
 
 ; Display single menu item text
@@ -1016,7 +1016,7 @@ SetMenuItemColor:
     ADD HL, DE
     LD DE, ATTR_FILE
     ADD HL, DE
-    
+
     ; Set color for item width
     LD B, 16            ; Item width
 ColorLoop:
@@ -1032,7 +1032,7 @@ HandleMenuInput:
     IN A, (254)
     BIT 1, A
     JR NZ, CheckDownKey
-    
+
     ; Move up
     LD A, (CurrentItem)
     OR A
@@ -1040,14 +1040,14 @@ HandleMenuInput:
     DEC A
     LD (CurrentItem), A
     RET
-    
+
 CheckDownKey:
     ; Check S key (down)
     LD A, 0xFDFE
     IN A, (254)
     BIT 1, A
     JR NZ, CheckEnterKey
-    
+
     ; Move down
     LD A, (CurrentItem)
     INC A
@@ -1055,14 +1055,14 @@ CheckDownKey:
     JR NC, CheckEnterKey ; Already at bottom
     LD (CurrentItem), A
     RET
-    
+
 CheckEnterKey:
     ; Check ENTER key
     LD A, 0xBFFE
     IN A, (254)
     BIT 0, A
     RET NZ              ; Not pressed
-    
+
     ; Selection made
     LD A, 1
     LD (SelectionMade), A
@@ -1072,33 +1072,33 @@ CheckEnterKey:
 MenuDemo:
     CALL ClearScreen
     CALL DrawMenuBorder
-    
+
     ; Main menu loop
     LD B, 200           ; Loop counter
-    
+
 MenuLoop:
     PUSH BC
-    
+
     ; Handle input
     CALL HandleMenuInput
-    
+
     ; Check if selection made
     LD A, (SelectionMade)
     OR A
     JR NZ, MenuExit
-    
+
     ; Update display if changed
     LD A, (CurrentItem)
     LD B, A
     LD A, (LastItem)
     CP B
     JR Z, NoUpdate
-    
+
     ; Item changed - update display
     LD A, B
     LD (LastItem), A
     CALL DisplayMenu
-    
+
 NoUpdate:
     ; Small delay for keyboard debouncing
     LD BC, 2000
@@ -1107,15 +1107,15 @@ DelayLoop:
     LD A, B
     OR C
     JR NZ, DelayLoop
-    
+
     POP BC
     DJNZ MenuLoop
-    
+
     ; Return selected item
     LD A, (CurrentItem)
     LD B, A
     RET
-    
+
 MenuExit:
     POP BC
     LD A, (CurrentItem)
@@ -1144,14 +1144,14 @@ RecordMovement:
     LD H, 0
     LD DE, GestureBuffer
     ADD HL, DE
-    
+
     ; Store current position
     LD A, (CurrentX)
     LD (HL), A
     INC HL
     LD A, (CurrentY)
     LD (HL), A
-    
+
     ; Update index
     LD A, (BufferIndex)
     INC A
@@ -1184,7 +1184,7 @@ FastKeyScan:
     LD HL, KeyBuffer
     LD B, 8
     LD C, 0xFE
-    
+
 ScanLoop:
     LD A, (PortTable-1)
     ADD B               ; Get port address byte
@@ -1213,7 +1213,7 @@ ImmediateResponse:
     IN A, (254)
     BIT 0, A            ; SPACE (most important)
     CALL Z, HandleSpace
-    
+
     ; Movement keys next
     LD A, KEY_A_G
     IN A, (254)
@@ -1222,7 +1222,7 @@ ImmediateResponse:
     CALL Z, MoveLeft
     BIT 2, B            ; D (right)
     CALL Z, MoveRight
-    
+
     ; Less critical keys last
     ; ...
     RET
@@ -1252,7 +1252,7 @@ MainInputSystem:
     ; Initialize
     CALL ClearScreen
     CALL InitializeSystem
-    
+
     ; Main loop
 MainInputLoop:
     ; Priority 1: Check escape/menu key
@@ -1260,39 +1260,39 @@ MainInputLoop:
     IN A, (254)
     BIT 1, A            ; Symbol shift (menu toggle)
     CALL Z, ToggleMenu
-    
+
     ; Check if menu is active
     LD A, (SystemState + 4)
     OR A
     JR Z, GameInput
-    
+
     ; Menu is active - handle menu input
     CALL HandleMenuInput
     JR ContinueLoop
-    
+
 GameInput:
     ; Priority 2: Movement
     CALL HandleMovement
-    
+
     ; Priority 3: Drawing actions
     CALL HandleDrawingInput
-    
+
     ; Priority 4: Mode changes
     CALL CheckModeHotkeys
-    
+
 ContinueLoop:
     ; Update display
     CALL UpdateDisplay
-    
+
     ; Frame delay
     CALL FrameDelay
-    
+
     ; Check exit condition
     LD A, 0xBFFE
     IN A, (254)
     BIT 1, A            ; N key for exit
     JR NZ, MainInputLoop
-    
+
     ; Cleanup and exit
     LD B, 255           ; Success
     RET
@@ -1323,38 +1323,38 @@ HandleMovement:
     LD A, 0xFDFE        ; A,S,D row
     IN A, (254)
     LD B, A
-    
+
     ; Get current position
     LD HL, SystemState + 2
     LD D, (HL)          ; Cursor X
     INC HL
     LD E, (HL)          ; Cursor Y
-    
+
     ; Check A (left)
     BIT 0, B
     JR NZ, CheckD2
     DEC D
-    
+
 CheckD2:
     ; Check D (right)
     BIT 2, B
     JR NZ, CheckWS
     INC D
-    
+
 CheckWS:
     LD A, 0xFBFE        ; W row
     IN A, (254)
     BIT 1, A            ; W (up)
     JR NZ, CheckS2
     DEC E
-    
+
 CheckS2:
     LD A, 0xFDFE
     IN A, (254)
     BIT 1, A            ; S (down)
     JR NZ, StorePosition
     INC E
-    
+
 StorePosition:
     ; Bounds check
     LD A, D
@@ -1375,12 +1375,12 @@ HandleDrawingInput:
     IN A, (254)
     BIT 0, A            ; SPACE
     RET NZ
-    
+
     ; Draw based on current mode
     LD A, (SystemState)
     CP MODE_DRAW
     RET NZ
-    
+
     ; Plot pixel at cursor
     LD A, (SystemState + 2)
     LD B, A
@@ -1394,16 +1394,16 @@ CheckModeHotkeys:
     LD A, 0xF7FE
     IN A, (254)
     LD B, 0             ; Mode counter
-    
+
 CheckModeLoop:
     RRA                 ; Check next bit
     JR C, NextMode
-    
+
     ; Key pressed - set mode
     LD A, B
     LD (SystemState), A
     RET
-    
+
 NextMode:
     INC B
     LD A, B

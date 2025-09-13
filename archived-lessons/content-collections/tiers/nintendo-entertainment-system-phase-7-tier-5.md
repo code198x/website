@@ -27,6 +27,7 @@ Build engines that power multiple games! With **32 advanced lessons**, you'll ma
 ## What You'll Build
 
 Create **ADVANCED NES GAME ENGINE** - your reusable masterpiece featuring:
+
 - Modular architecture that can power multiple different game types
 - Component-based entity systems for flexible game object management
 - Plugin architecture allowing easy addition of new game features
@@ -36,24 +37,28 @@ Create **ADVANCED NES GAME ENGINE** - your reusable masterpiece featuring:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "Engine Foundations" - Core Architecture Design**
+
 - Advanced game engine architecture patterns for NES
 - Modular system design and component separation techniques
 - Core engine loop optimization and system integration
 - Foundation architecture for supporting multiple game types
 
 **Lessons 9-16: "Component Systems" - Entity Architecture**
+
 - Component-based entity systems implementation in 6502
 - Entity management and component communication patterns
 - Memory-efficient component storage and access systems
 - Advanced entity lifecycle management and optimization
 
 **Lessons 17-24: "Plugin Architecture" - Extensible Systems**
+
 - Plugin system design and dynamic loading techniques
 - Modular game logic and extensible feature systems
 - API design for consistent engine interface patterns
 - Hot-swappable system components and runtime flexibility
 
 **Lessons 25-32: "Engine Optimization" - Advanced Performance**
+
 - Memory management for large engine systems on NES
 - Performance optimization across multiple engine subsystems
 - Engine profiling and bottleneck identification techniques

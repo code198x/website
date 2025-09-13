@@ -31,6 +31,7 @@ Your moment of NES artistic triumph! With **32 intensive creation lessons**, you
 ## What You'll Create
 
 Build your **NES ARTISTIC MASTERPIECE** - a game that transcends entertainment:
+
 - A visionary NES concept so compelling it changes how people think about the platform
 - 6502 technical implementation so elegant it becomes a study in programming artistry
 - Creative elements so beautiful they move people to tears of nostalgia and joy
@@ -40,6 +41,7 @@ Build your **NES ARTISTIC MASTERPIECE** - a game that transcends entertainment:
 ## NES Masterpiece Development Process
 
 This isn't just NES game development - it's artistic creation:
+
 - **Legendary Vision**: A concept that pushes NES boundaries while honoring its legacy
 - **6502 Technical Poetry**: Code architecture that is both powerful and beautiful
 - **Creative Transcendence**: Art and music that elevates the entire NES experience
@@ -49,24 +51,28 @@ This isn't just NES game development - it's artistic creation:
 ## NES Creation Journey
 
 **Lessons 1-8: "Vision Realization" - Making the NES Impossible Real**
+
 - Transforming your legendary concept into concrete NES development plans
 - Solving the technical challenges that bring vision to life on 6502 hardware
 - Creating the architectural foundation for NES artistic excellence
 - Building systems that serve both gameplay and artistic expression
 
 **Lessons 9-16: "6502 Poetry" - Assembly Code as Creative Expression**
+
 - Implementing your game with 6502 code so elegant it becomes art itself
 - Pushing NES optimization to achieve effects that seem impossible
 - Creating technical solutions that enhance rather than constrain creativity
 - Building performance that makes 8-bit beauty possible
 
 **Lessons 17-24: "Creative Integration" - Weaving NES Art and Soul**
+
 - Integrating pixel art that perfectly serves your game's emotional goals
 - Composing chiptunes that become inseparable from the NES experience
 - Creating aesthetic harmony that makes every moment feel intentional
 - Adding the creative touches that transform good into transcendent
 
 **Lessons 25-32: "NES Legacy" - Completing Your Masterpiece**
+
 - Adding the final polish that elevates NES art to legendary status
 - Creating documentation that preserves your creative process
 - Preparing your masterpiece for the NES community to experience

@@ -31,24 +31,28 @@ During this tier, you'll create **Mega Maze** - an advanced puzzle game featurin
 ## Tier Overview
 
 **Lessons 1-8: Interrupt Programming Mastery**
+
 - Understanding IRQ and NMI interrupts on the C64
 - Creating responsive programs with interrupt service routines
 - Raster interrupts for advanced visual effects
 - Managing multiple interrupt sources and timing
 
 **Lessons 9-16: Advanced Memory Techniques**
+
 - Sophisticated addressing modes (indirect, indexed combinations)
 - Stack manipulation and parameter passing
 - Dynamic memory management in assembly
 - Advanced zero-page optimization strategies
 
 **Lessons 17-24: Complex Data Structures**
+
 - Implementing linked lists and trees in assembly
 - Circular buffers and queues for real-time processing
 - Hash tables and efficient data lookup algorithms
 - Memory-efficient data compression techniques
 
 **Lessons 25-32: Assembly Optimization Mastery**
+
 - Cycle counting and performance analysis
 - Branch optimization and code reorganization
 - Unrolling loops and eliminating bottlenecks

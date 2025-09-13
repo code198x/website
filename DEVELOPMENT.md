@@ -12,6 +12,7 @@ The easiest way to get started is using VS Code with Dev Containers:
    - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 2. **Setup**:
+
    ```bash
    git clone https://github.com/code198x/website
    cd website
@@ -34,6 +35,7 @@ If you prefer to install tools manually on your system:
 ### Common Requirements
 
 All platforms need:
+
 - **Git** - Version control
 - **Make** - Build automation
 - **Python 3** - For tooling scripts
@@ -41,6 +43,7 @@ All platforms need:
 ### Commodore 64
 
 **Assembler**: ACME or CC65
+
 ```bash
 # Install ACME
 wget https://github.com/meonwax/acme/archive/refs/heads/main.zip
@@ -53,6 +56,7 @@ make PREFIX=/usr/local && sudo make PREFIX=/usr/local install
 ```
 
 **Emulator**: VICE
+
 ```bash
 # macOS
 brew install vice
@@ -67,6 +71,7 @@ sudo apt-get install vice
 ### ZX Spectrum
 
 **Assembler**: SjASMPlus
+
 ```bash
 wget https://github.com/z00m128/sjasmplus/archive/refs/heads/master.zip
 unzip master.zip && cd sjasmplus-master && make
@@ -74,6 +79,7 @@ sudo cp sjasmplus /usr/local/bin/
 ```
 
 **Emulator**: Fuse
+
 ```bash
 # macOS
 brew install fuse-emulator
@@ -88,6 +94,7 @@ sudo apt-get install fuse-emulator
 ### Nintendo Entertainment System
 
 **Assembler**: CA65 (from CC65)
+
 ```bash
 # Install CC65 (includes ca65 and ld65)
 wget https://github.com/cc65/cc65/archive/refs/tags/V2.19.tar.gz
@@ -96,6 +103,7 @@ make PREFIX=/usr/local && sudo make PREFIX=/usr/local install
 ```
 
 **Emulator**: FCEUX
+
 ```bash
 # macOS
 brew install fceux
@@ -110,6 +118,7 @@ sudo apt-get install fceux
 ### Commodore Amiga
 
 **Assembler**: VASM
+
 ```bash
 wget http://sun.hasenbraten.de/vasm/release/vasm.tar.gz
 tar xzf vasm.tar.gz && cd vasm
@@ -119,11 +128,13 @@ sudo cp vobjdump /usr/local/bin/
 ```
 
 **ADF Tools**: amitools
+
 ```bash
 pip3 install amitools
 ```
 
 **Emulator**: FS-UAE
+
 ```bash
 # macOS
 brew install fs-uae
@@ -145,7 +156,7 @@ Each platform has standardized build commands:
 # Commodore 64
 build-c64 cosmic-harvester.asm
 
-# ZX Spectrum  
+# ZX Spectrum
 build-spectrum quantum-shatter.asm
 
 # NES
@@ -173,6 +184,7 @@ code-samples/
 ### Testing
 
 Each lesson includes:
+
 - **Source code** - The main assembly program
 - **Makefile** - Build automation
 - **README.md** - Platform-specific instructions

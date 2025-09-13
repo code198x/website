@@ -27,6 +27,7 @@ Polish like Nintendo! With **32 comprehensive lessons**, you'll create user inte
 ## What You'll Build
 
 Polish **Power Quest** with professional interface design:
+
 - Stunning main menu with animated backgrounds
 - Intuitive inventory and equipment screens
 - Beautiful dialogue systems with character portraits
@@ -36,24 +37,28 @@ Polish **Power Quest** with professional interface design:
 ## Tier Overview
 
 **Lessons 1-8: Professional Menu Design**
+
 - Main menu architecture and visual design
 - Title screen animations and effects
 - Menu navigation and state management
 - Professional visual layout principles
 
 **Lessons 9-16: In-Game Interface Systems**
+
 - HUD design and real-time updating
 - Inventory and equipment interfaces
 - Dialogue systems and text rendering
 - Status screens and character information
 
 **Lessons 17-24: Advanced UI Features**
+
 - Animated UI elements and transitions
 - Context-sensitive help systems
 - Multi-language text support
 - Advanced input handling and shortcuts
 
 **Lessons 25-32: Interface Polish & Optimization**
+
 - Visual feedback and animation polish
 - Performance optimization for UI systems
 - Accessibility and usability improvements

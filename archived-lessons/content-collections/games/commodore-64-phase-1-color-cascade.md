@@ -68,24 +68,28 @@ This game could only exist on the Commodore 64:
 ### Tiers 5-8 Development Roadmap
 
 **Tier 5**: Basic colour display
+
 - Show colors using background/border changes
 - Simple pattern generation
 - Basic input handling
 - Pattern verification
 
 **Tier 6**: Enhanced presentation
+
 - PETSCII animations and effects
 - Sound for each colour
 - Smooth timing and delays
 - Better visual feedback
 
 **Tier 7**: Advanced gameplay
+
 - Multiple difficulty levels
 - Special pattern types (mirror, reverse)
 - Bonus scoring systems
 - Player progression tracking
 
 **Tier 8**: Polish and features
+
 - High score table with initials
 - Multiple game modes
 - Visual effects and screen transitions

@@ -31,6 +31,7 @@ Make C64 gaming history! With **32 genre-defining lessons**, you'll create the C
 ## What You'll Pioneer
 
 Create your **GENRE INNOVATION SHOWCASE** - the C64 game that defines a new genre:
+
 - An entirely new type of C64 gaming experience that creates its own category
 - Innovation so groundbreaking it inspires countless future developers
 - Design so timeless it remains compelling across generations
@@ -40,6 +41,7 @@ Create your **GENRE INNOVATION SHOWCASE** - the C64 game that defines a new genr
 ## Genre Innovation Project Scope
 
 This isn't just a game - it's a new chapter in C64 gaming history:
+
 - **Genre Creation**: Establishing an entirely new category of C64 gaming
 - **Innovation Mastery**: Combining breakthrough mechanics with technical excellence
 - **Timeless Excellence**: Design principles that ensure lasting C64 relevance
@@ -49,24 +51,28 @@ This isn't just a game - it's a new chapter in C64 gaming history:
 ## Genre Innovation Development Process
 
 **Lessons 1-8: "Genre Innovation" - Creating New C64 Gaming Categories**
+
 - Combining genre-defining principles into revolutionary C64 experiences
 - Establishing the foundational mechanics that define your new genre
 - Creating the design patterns that others will study and build upon
 - Solving C64 gaming challenges that existing genres haven't addressed
 
 **Lessons 9-16: "Timeless Excellence" - Design That Transcends Generations**
+
 - Applying timeless design principles to innovative C64 gameplay
 - Creating C64 experiences that improve with age rather than feeling dated
 - Building universal appeal that connects across gaming generations
 - Achieving the fusion of innovation with lasting C64 relevance
 
 **Lessons 17-24: "Technical Mastery Integration" - Showcasing C64 Excellence**
+
 - Integrating advanced technical mastery into genre-defining gameplay
 - Creating technical achievements that serve amazing game experiences
 - Building performance that enables previously impossible C64 gameplay
 - Demonstrating the absolute pinnacle of C64 development mastery
 
 **Lessons 25-32: "Genre Definition" - Establishing Your C64 Legacy**
+
 - Final integration of all genre-defining development principles
 - Creating the documentation that preserves your innovation process
 - Understanding the achievement of creating a genre-defining C64 game
@@ -94,4 +100,4 @@ Your Genre Innovation Showcase represents the pinnacle of C64 game development:
 
 You have achieved legendary status as a C64 game developer and innovator!
 
-*Tiers 5-8 complete - your genre innovation project showcases your mastery of legendary game creation!*
+_Tiers 5-8 complete - your genre innovation project showcases your mastery of legendary game creation!_

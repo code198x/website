@@ -31,24 +31,28 @@ Begin developing **Synth Explorer** - an electronic music adventure game featuri
 ## Tier Overview
 
 **Lessons 1-8: Echo & Reverb Systems**
+
 - Digital delay line implementation
 - Echo and reverb algorithm programming
 - Feedback control and timing
 - Memory-efficient effect storage
 
 **Lessons 9-16: Modulation & Distortion**
+
 - Amplitude and frequency modulation
 - Distortion and overdrive effects
 - Ring modulation and sync effects
 - Creative audio manipulation
 
 **Lessons 17-24: Environmental Audio**
+
 - Spatial audio positioning
 - Environmental reverb simulation
 - Dynamic audio atmosphere
 - Audio scene management
 
 **Lessons 25-32: Real-Time Processing**
+
 - Live audio effect processing
 - Interactive audio manipulation
 - Performance optimization

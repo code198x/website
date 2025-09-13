@@ -31,24 +31,28 @@ Develop **AI Master System** - a comprehensive artificial intelligence framework
 ## Tier Overview
 
 **Lessons 1-8: AI Behavior Systems**
+
 - Advanced behavior trees and decision-making algorithms
 - State-based AI systems and transition logic
 - Enemy personality and characteristic systems
 - Reactive AI and environmental awareness
 
 **Lessons 9-16: Pathfinding & Navigation**
+
 - Pathfinding algorithms optimized for NES constraints
 - Dynamic obstacle avoidance and navigation
 - Group AI and flocking behaviors
 - Spatial awareness and tactical positioning
 
 **Lessons 17-24: Adaptive Systems**
+
 - Dynamic difficulty adjustment based on player performance
 - Learning AI that adapts to player behavior
 - Balancing challenge and accessibility
 - Performance-based content scaling
 
 **Lessons 25-32: Complex Interactions**
+
 - Advanced NPC dialogue and conversation systems
 - Quest and mission AI management
 - Social AI and relationship systems

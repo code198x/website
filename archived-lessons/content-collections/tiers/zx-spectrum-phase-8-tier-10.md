@@ -27,6 +27,7 @@ Lead the future of Spectrum development! With **32 leadership-focused lessons**,
 ## What You'll Lead
 
 Develop **VISIONARY LEADERSHIP MASTERY** for the ZX Spectrum community:
+
 - The ability to inspire others to pursue excellence in ZX Spectrum development
 - Teaching skills that make complex Z80 concepts accessible and exciting
 - Mentorship programs that help talented individuals reach their full potential
@@ -36,24 +37,28 @@ Develop **VISIONARY LEADERSHIP MASTERY** for the ZX Spectrum community:
 ## Leadership Development Areas
 
 **Lessons 1-8: "Inspirational Communication" - Sharing Your Passion**
+
 - Learning to communicate the excitement and possibility of ZX Spectrum development
 - Developing presentation skills that make technical topics engaging and accessible
 - Understanding how to motivate others to pursue challenging learning goals
 - Creating content that inspires curiosity and sustained interest in Z80 programming
 
 **Lessons 9-16: "Educational Mastery" - Teaching Technical Excellence**
+
 - Developing curricula that build from fundamentals to advanced Spectrum development
 - Creating hands-on learning experiences that make abstract concepts concrete
 - Understanding different learning styles and adapting your teaching accordingly
 - Building assessment and feedback systems that support growth and development
 
 **Lessons 17-24: "Mentorship Excellence" - Nurturing Individual Potential**
+
 - Learning to identify and cultivate unique talents in developing programmers
 - Providing guidance and support that helps others overcome challenges
 - Understanding how to balance support with independence-building
 - Creating mentorship relationships that benefit both mentor and student
 
 **Lessons 25-32: "Community Institution Building" - Creating Lasting Impact**
+
 - Establishing organizations and programs that outlast individual involvement
 - Creating knowledge preservation systems that maintain institutional memory
 - Building sustainable communities that continue growing without constant oversight

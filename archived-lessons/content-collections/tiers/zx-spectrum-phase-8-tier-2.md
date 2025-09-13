@@ -27,6 +27,7 @@ Create Z80 code so elegant it becomes art in service of games! With **32 technic
 ## What You'll Master
 
 Create **ARTISTIC Z80 ASSEMBLY** that serves legendary games:
+
 - Code so elegant and efficient it enables impossible game features
 - Optimization techniques that create seemingly magical game effects
 - Programming solutions that are both technically brilliant and game-focused
@@ -36,24 +37,28 @@ Create **ARTISTIC Z80 ASSEMBLY** that serves legendary games:
 ## Technical Artistry for Games
 
 **Lessons 1-8: "Elegant Game Code" - Beautiful Code for Better Games**
+
 - Writing Z80 assembly that is both elegant and perfectly suited for games
 - Creating code architecture that enhances rather than constrains game design
 - Understanding how code elegance directly improves game performance
 - Building routines where technical artistry serves game development goals
 
 **Lessons 9-16: "Game Performance Poetry" - Optimization as Art**
+
 - Advanced optimization techniques that enable impossible game features
 - Memory management artistry that maximizes game content and performance
 - Creating performance improvements that feel like magic to players
 - Understanding how technical constraints inspire creative game solutions
 
 **Lessons 17-24: "Hardware Artistry" - Making ZX Spectrum Limitations Into Features**
+
 - Using attribute clash creatively to enhance game visual design
 - Turning hardware timing constraints into game rhythm and feel
 - Creating code that transforms Spectrum quirks into game advantages
 - Building assembly that feels perfectly matched to game requirements
 
 **Lessons 25-32: "Legendary Code Architecture" - Code That Enables Great Games**
+
 - Designing program architecture that empowers creative game development
 - Creating modular systems that are both efficient and game-development friendly
 - Building code frameworks that enable rapid iteration and game polish

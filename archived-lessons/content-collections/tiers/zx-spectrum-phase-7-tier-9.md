@@ -27,6 +27,7 @@ Revolutionize ZX Spectrum gaming! With **32 innovation-focused lessons**, you'll
 ## What You'll Build
 
 Create **INNOVATIVE SPECTRUM GAME CONCEPTS** - your creative masterpiece:
+
 - Completely original gameplay mechanics never seen on ZX Spectrum
 - Revolutionary control schemes that feel natural and intuitive
 - Game concepts that make players think "Why hasn't anyone done this before?"
@@ -36,24 +37,28 @@ Create **INNOVATIVE SPECTRUM GAME CONCEPTS** - your creative masterpiece:
 ## Innovation Design Areas
 
 **Lessons 1-8: "Innovation Fundamentals" - Creative Game Design**
+
 - Identifying opportunities for gameplay innovation on ZX Spectrum
 - Rapid prototyping techniques for testing new game concepts
 - Player psychology and innovative interaction design
 - Creative constraints that inspire breakthrough thinking
 
 **Lessons 9-16: "Mechanic Innovation" - New Types of Gameplay**
+
 - Creating entirely new categories of game mechanics
 - Innovative use of ZX Spectrum's unique hardware characteristics
 - Control scheme innovation that enhances player experience
 - Combining existing mechanics in revolutionary new ways
 
 **Lessons 17-24: "Experience Innovation" - Revolutionary Player Interactions**
+
 - Designing experiences that have never existed before
 - Innovation in player feedback and game response systems
 - Creative use of audio-visual feedback for new gameplay types
 - Multi-layered interaction systems that create depth
 
 **Lessons 25-32: "Innovation Validation" - Proving Your Concepts**
+
 - Testing and refining innovative gameplay concepts
 - Player feedback integration for revolutionary designs
 - Technical validation of innovative ideas on ZX Spectrum

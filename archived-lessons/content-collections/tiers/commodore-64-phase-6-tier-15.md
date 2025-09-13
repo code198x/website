@@ -31,24 +31,28 @@ Enhance your **Innovation Showcase** with market research, player analysis, indu
 ## Tier Overview
 
 **Lessons 1-8: Market Analysis & Research**
+
 - Game market research and analysis
 - Target audience identification
 - Competitive analysis and positioning
 - Market opportunity assessment
 
 **Lessons 9-16: Player Psychology & Motivation**
+
 - Understanding player motivations
 - Engagement and retention psychology
 - Player behavior analysis
 - Psychological game design principles
 
 **Lessons 17-24: Successful Design Pattern Analysis**
+
 - Analyzing successful games and mechanics
 - Design pattern identification and application
 - Innovation within proven frameworks
 - Balancing creativity with market appeal
 
 **Lessons 25-32: Industry Trends & Future Planning**
+
 - Current industry trends and developments
 - Future technology and market predictions
 - Career planning and skill development

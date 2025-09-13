@@ -27,6 +27,7 @@ Revolutionize gameplay! With **32 innovation-focused lessons**, you'll push the 
 ## What You'll Innovate
 
 Develop **REVOLUTIONARY GAME MECHANICS** that amaze:
+
 - Gameplay mechanics that feel impossible on 8-bit hardware
 - Innovative interactions that create amazing player experiences
 - Game systems that push the C64 to its absolute limits
@@ -36,24 +37,28 @@ Develop **REVOLUTIONARY GAME MECHANICS** that amaze:
 ## Revolutionary Innovation Areas
 
 **Lessons 1-8: "Physics-Defying Mechanics" - Impossible Interactions**
+
 - Creating realistic physics simulation on 8-bit hardware
 - Advanced collision detection for complex interactions
 - Innovative movement mechanics that feel smooth and responsive
 - Breaking conventional limitations through creative programming
 
 **Lessons 9-16: "AI Revolution" - Intelligent Game Behavior**
+
 - Advanced enemy AI that learns and adapts to player behavior
 - Complex pathfinding algorithms optimized for C64
 - Intelligent game systems that create dynamic experiences
 - Behavioral patterns that make NPCs feel alive and reactive
 
 **Lessons 17-24: "Interactive Innovation" - New Ways to Play**
+
 - Revolutionary control schemes that feel natural and intuitive
 - Multi-layered interaction systems for rich gameplay
 - Innovative input methods that maximize C64 capabilities
 - Creating interfaces that respond intelligently to player intent
 
 **Lessons 25-32: "System Integration" - Seamless Game Experiences**
+
 - Integrating all innovative mechanics into cohesive games
 - Balancing revolutionary features with stable performance
 - Creating games that showcase multiple innovations simultaneously

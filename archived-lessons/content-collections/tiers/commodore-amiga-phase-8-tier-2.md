@@ -27,6 +27,7 @@ Achieve technical excellence for legendary games! With **32 technical-excellence
 ## What You'll Master
 
 Create **LEGENDARY GAME PROGRAMMING TECHNIQUES**:
+
 - Assembly code so efficient it enables impossible game features
 - Optimization techniques that create legendary game performance
 - Custom chip programming that achieves amazing game effects
@@ -36,24 +37,28 @@ Create **LEGENDARY GAME PROGRAMMING TECHNIQUES**:
 ## Technical Excellence Areas
 
 **Lessons 1-8: "Elegant Game Code" - Programming for Legendary Performance**
+
 - Writing 68000 assembly that enables impossible game features
 - Creating code structures that maximize game performance
 - Understanding how legendary games achieved their performance
 - Building programming techniques for complex game systems
 
 **Lessons 9-16: "Custom Chip Mastery" - Amazing Game Effects**
+
 - Programming custom chips for incredible game visuals
 - Creating synchronized effects for legendary game experiences
 - Understanding timing relationships for smooth game performance
 - Building techniques that push game graphics beyond limits
 
 **Lessons 17-24: "Performance Optimization" - Legendary Game Speed**
+
 - Optimization techniques for smooth legendary game performance
 - Memory management for complex game systems
 - CPU optimization for demanding game features
 - Creating efficiency that enables legendary game complexity
 
 **Lessons 25-32: "Technical Mastery" - Enabling Legendary Games**
+
 - Understanding how legendary games achieved technical excellence
 - Building programming techniques for legendary game features
 - Creating code that enables complex game systems

@@ -31,24 +31,28 @@ Create **Party Games Collection** - a suite of local multiplayer games featuring
 ## Tier Overview
 
 **Lessons 1-8: Local Multiplayer Fundamentals**
+
 - Multiple controller input handling
 - Split-screen and shared-screen design
 - Local multiplayer game architecture
 - Player identification and management
 
 **Lessons 9-16: Competitive Game Design**
+
 - Head-to-head competitive mechanics
 - Scoring and ranking systems
 - Tournament and bracket systems
 - Skill-based matchmaking simulation
 
 **Lessons 17-24: Cooperative Game Design**
+
 - Team-based gameplay mechanics
 - Shared objectives and coordination
 - Communication and teamwork systems
 - Cooperative puzzle and challenge design
 
 **Lessons 25-32: Social Features & Engagement**
+
 - Player profiles and statistics
 - Achievement and badge systems
 - Social interaction and communication

@@ -10,7 +10,7 @@ learning_objectives:
   - "Develop advanced SID music and sound effect techniques"
   - "Build complex animation and visual effect systems"
   - "Optimize for consistent performance with advanced graphics"
-prerequisites: 
+prerequisites:
   - "Phase 1: 6502 Assembly Fundamentals"
   - "Four complete games of increasing complexity"
   - "Strong foundation in basic graphics and sound"
@@ -26,7 +26,7 @@ order: 2
 
 # Phase 2: Advanced Graphics & Sound Programming
 
-*Coming Soon*
+_Coming Soon_
 
 Take your C64 programming to the next level! After creating four complete games in Phase 1, you're ready to learn the advanced techniques that defined the golden age of C64 gaming (1985-1987).
 
@@ -46,15 +46,19 @@ Phase 2 focuses on pushing the C64's hardware capabilities to create more sophis
 ## Learning Path
 
 ### Advanced Graphics (Tiers 1-4)
+
 Learn raster interrupts, screen splitting, and the VIC-II techniques that separated professional games from amateur efforts. Create games with sophisticated visual effects.
 
 ### Complex Movement Systems (Tiers 5-8)
+
 Implement smooth multi-directional scrolling, parallax backgrounds, and advanced sprite handling. Build games with fluid, professional movement.
 
 ### Audio Excellence (Tiers 9-12)
+
 Develop comprehensive sound systems with multi-channel music, dynamic audio, and professional composition techniques.
 
 ### Integration & Polish (Tiers 13-16)
+
 Combine all advanced techniques to create games matching mid-to-late 1980s commercial standards.
 
 ## Your Phase 2 Projects
@@ -79,6 +83,7 @@ You'll create four more sophisticated games demonstrating these advanced techniq
 ## Prerequisites
 
 Before starting Phase 2, ensure you have:
+
 - Completed all of Phase 1 (512 lessons)
 - Created four complete games of increasing complexity
 - Strong foundation in 6502 assembly and C64 architecture
@@ -88,4 +93,4 @@ Before starting Phase 2, ensure you have:
 
 After completing Phase 2, you'll have eight complete games and be ready for Phase 3: Complex Game Systems, where you'll tackle multi-load games, advanced AI, and the techniques that pushed C64 gaming toward its peak.
 
-*This phase contains 512 lessons across 16 tiers and is currently in development.*
+_This phase contains 512 lessons across 16 tiers and is currently in development._

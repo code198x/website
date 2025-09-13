@@ -10,7 +10,7 @@ learning_objectives:
   - "Manage multi-disk projects with seamless integration"
   - "Develop games with 20+ hours of content"
   - "Achieve the scope of C64's most ambitious titles"
-prerequisites: 
+prerequisites:
   - "Phases 1-6: Complete technical foundation including demo techniques"
   - "Twenty-four complete games demonstrating all skill areas"
   - "Experience with extreme optimization and technical innovation"
@@ -28,7 +28,7 @@ order: 7
 
 # Phase 7: Ambitious Large-Scale Projects
 
-*Coming Soon*
+_Coming Soon_
 
 Create epics! Build massive, ambitious games that rival the scope and complexity of the C64's greatest achievements from 1991-1992 and beyond.
 
@@ -48,15 +48,19 @@ Phase 7 focuses on creating large-scale projects with unprecedented scope:
 ## Learning Path
 
 ### Architecture & Planning (Tiers 1-4)
+
 Learn to design and architect massive games from the ground up, with scalable systems and efficient organization.
 
 ### Content Systems (Tiers 5-8)
+
 Build the infrastructure for managing extensive content: levels, dialogue, graphics, music, and game data.
 
 ### World Building (Tiers 9-12)
+
 Create living game worlds with complex simulations, persistent states, and emergent gameplay.
 
 ### Epic Integration (Tiers 13-16)
+
 Combine all elements into cohesive, massive games matching the scope of the C64's most ambitious titles.
 
 ## Your Phase 7 Projects
@@ -101,6 +105,7 @@ Learn to manage ambitious projects:
 ## Prerequisites
 
 Before starting Phase 7, ensure you have:
+
 - Completed Phases 1-6 (3072 lessons)
 - Twenty-four complete games across all genres
 - Demo scene techniques and extreme optimization skills
@@ -110,4 +115,4 @@ Before starting Phase 7, ensure you have:
 
 After completing Phase 7, you'll be ready for Phase 8: Advanced Technical Showcases, where you'll recreate and understand the techniques behind the C64's most legendary games.
 
-*This phase contains 512 lessons across 16 tiers and is currently in development.*
+_This phase contains 512 lessons across 16 tiers and is currently in development._

@@ -1,5 +1,5 @@
 ---
-name: "PC Engine"
+name: "NEC PC Engine"
 full_name: "NEC PC Engine / TurboGrafx-16"
 manufacturer: "NEC / Hudson Soft"
 model_number: "PC-KD"
@@ -88,7 +88,6 @@ hardware_availability: "available"
 
 # Media
 description: "The console that pioneered affordable CD-ROM gaming and brought arcade-perfect shooters home."
-image: "/images/systems/pc-engine.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -103,7 +102,7 @@ order: 51
 
 # PC Engine / TurboGrafx-16
 
-*Coming Soon*
+_Coming Soon_
 
 The PC Engine was NEC and Hudson's innovative approach to console gaming - an 8-bit processor with 16-bit graphics performance, pioneering CD-ROM gaming, and home to some of the best shoot-em-ups ever created.
 
@@ -120,9 +119,10 @@ The PC Engine's HuC6280 processor extends the familiar 6502 with memory mapping 
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the PC Engine curriculum will include:
+
 - HuC6280 assembly (enhanced 6502)
 - VDC graphics and sprite programming
 - CD-ROM system programming

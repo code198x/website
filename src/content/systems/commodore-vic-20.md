@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The friendly computer that became the first to sell over one million units, bringing computing to the masses."
-image: "/images/systems/vic-20.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -41,7 +40,7 @@ order: 102
 
 # VIC-20
 
-*Historical Reference*
+_Historical Reference_
 
 The VIC-20 was Commodore's first mass-market home computer and the first computer of any kind to sell over one million units. With only 3.5KB of usable RAM, it taught a generation of programmers to work within extreme constraints.
 
@@ -60,4 +59,4 @@ Launched by William Shatner asking "Why buy just a video game?", the VIC-20 prov
 
 The VIC-20's success funded Commodore's development of the C64, which would become the best-selling computer model of all time. Many legendary programmers, including Jeff Minter, got their start on the humble VIC.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

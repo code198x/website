@@ -33,6 +33,7 @@ Today you'll develop your complete Copper Dreams game - the ultimate demonstrati
 ## What You've Learned
 
 In this lesson, you've created a complete multimedia demo:
+
 - **Complete system integration** combining all Amiga subsystems
 - **Professional demo architecture** with scene management
 - **Advanced effects coordination** and smooth transitions

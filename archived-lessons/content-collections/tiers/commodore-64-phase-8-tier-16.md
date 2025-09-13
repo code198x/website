@@ -28,6 +28,7 @@ Create eternal gaming legacy! With **32 legacy-focused lessons**, you'll build a
 ## Your Eternal Mission
 
 Create a **LEGENDARY GAME COLLECTION** that defines your legacy:
+
 - A series of interconnected C64 masterpieces that showcase complete mastery
 - Games so exceptional they become legendary examples in C64 history
 - A collection that demonstrates every advanced skill you've developed
@@ -37,24 +38,28 @@ Create a **LEGENDARY GAME COLLECTION** that defines your legacy:
 ## Legendary Collection Creation Areas
 
 **Lessons 1-8: "Collection Vision" - Designing Your Legacy Series**
+
 - Planning a collection of interconnected games that tell a complete story
 - Creating overarching themes that unite individual masterpieces
 - Designing progression that showcases advancing mastery across games
 - Understanding how legendary game series create lasting impact
 
 **Lessons 9-16: "Masterpiece Development" - Creating Individual Legends**
+
 - Developing each game to legendary standards of excellence
 - Integrating all advanced programming and design skills seamlessly
 - Creating games that push C64 boundaries in different exciting ways
 - Building experiences that stand alone while contributing to the collection
 
 **Lessons 17-24: "Legacy Integration" - Connecting Your Masterpieces**
+
 - Creating meaningful connections between games in your collection
 - Building shared universes and continuity that reward dedicated players
 - Developing technical frameworks that enable seamless integration
 - Understanding how legendary collections create experiences greater than their parts
 
 **Lessons 25-32: "Eternal Completion" - Finalizing Your Legacy**
+
 - Polishing your complete collection to legendary perfection
 - Creating presentation and documentation that honors your achievement
 - Establishing your collection as a legendary contribution to C64 history
@@ -65,6 +70,7 @@ Create a **LEGENDARY GAME COLLECTION** that defines your legacy:
 Throughout this tier, you'll develop your **Legendary Game Collection**:
 
 **🏆 COLLECTION PROJECT SPECIFICATIONS:**
+
 - **Scope:** A series of 3-5 interconnected C64 masterpieces showcasing complete mastery
 - **Platform:** Commodore 64 (demonstrating legendary skills within beloved constraints)
 - **Integration:** Each game showcases different aspects of your legendary development skills
@@ -72,6 +78,7 @@ Throughout this tier, you'll develop your **Legendary Game Collection**:
 - **Innovation:** Pushes boundaries while creating timeless, playable experiences
 
 **🌟 LEGENDARY COLLECTION ELEMENTS:**
+
 - **Technical Mastery:** Each game showcases different advanced programming techniques
 - **Design Excellence:** Revolutionary gameplay mechanics across different genres
 - **Artistic Achievement:** Stunning visuals and audio that push C64 capabilities

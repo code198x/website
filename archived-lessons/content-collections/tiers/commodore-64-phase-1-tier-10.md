@@ -27,6 +27,7 @@ Transform from following instructions to creating them! Learn to design assembly
 ## What You'll Add to Logic Labyrinth
 
 Implement intelligent maze generation:
+
 - Algorithms that create solvable mazes every time
 - Procedural generation with controllable difficulty
 - Randomized but structured content creation
@@ -35,24 +36,28 @@ Implement intelligent maze generation:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Algorithmic Thinking**
+
 - Breaking problems into systematic assembly steps
 - Designing repeatable assembly procedures
 - Understanding assembly algorithm efficiency
 - Planning before assembly coding
 
 **Lessons 9-16: Assembly Procedural Generation**
+
 - Creating content through assembly code
 - Assembly randomization with rules and constraints
 - Balancing chaos and structure using assembly logic
 - Ensuring generated content is usable through assembly validation
 
 **Lessons 17-24: Assembly Maze Generation Algorithms**
+
 - Assembly wall placement and removal techniques
 - Ensuring maze solvability through assembly validation
 - Creating interesting vs. boring layouts using assembly logic
 - Controlling difficulty and complexity through assembly algorithms
 
 **Lessons 25-32: Advanced Assembly Generation**
+
 - Multiple assembly generation algorithms
 - Quality testing and validation using assembly code
 - 6502 assembly performance optimisation
@@ -109,13 +114,13 @@ CREATE_PATHS:
     LDY #START_Y         ; Starting Y position
     LDA #PATH_CHAR       ; Load path character
     STA MAZE_BASE,X      ; Mark starting position
-    
+
 PATH_LOOP:
     JSR RANDOM_DIR       ; Get random direction
     JSR MOVE_AND_CARVE   ; Move and carve path
     DEC PATH_COUNT       ; Decrement path counter
     BNE PATH_LOOP        ; Continue creating paths
-    
+
     JSR VALIDATE_MAZE    ; Ensure maze is solvable
     RTS                  ; Return from subroutine
 ```

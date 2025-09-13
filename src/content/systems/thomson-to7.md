@@ -28,7 +28,8 @@ video:
   processor: "Custom video controller"
   resolution: "640×200 / 320×200"
   colors: "16 colors from 4096-color palette"
-  display_modes: ["Mode 40: 320×200 16 colors", "Mode 80: 640×200 2 colors", "Text modes", "Mixed graphics/text"]
+  display_modes:
+    ["Mode 40: 320×200 16 colors", "Mode 80: 640×200 2 colors", "Text modes", "Mixed graphics/text"]
   sprites:
     count: 16
     size: "Hardware sprites"
@@ -45,7 +46,7 @@ audio:
   synthesis_types: ["Square wave"]
 
 # Storage and I/O
-storage: ["Cassette tape", "3.5\" floppy disk"]
+storage: ["Cassette tape", '3.5" floppy disk']
 storage_details:
   built_in: ["Cassette interface"]
   expansion: ["Floppy disk drives"]
@@ -70,8 +71,15 @@ market_positioning: "National educational computer standard for France"
 competition: ["Amstrad CPC", "Apple II", "Commodore 64"]
 
 # Educational relevance
-learning_advantages: ["6809E processor mastery", "Light pen programming", "French educational computing", "Alternative architecture exploration"]
-common_beginner_projects: ["Educational games", "Light pen applications", "Graphics demos", "Interactive tutorials"]
+learning_advantages:
+  [
+    "6809E processor mastery",
+    "Light pen programming",
+    "French educational computing",
+    "Alternative architecture exploration",
+  ]
+common_beginner_projects:
+  ["Educational games", "Light pen applications", "Graphics demos", "Interactive tutorials"]
 
 # Modern preservation and emulation
 emulated: true
@@ -88,7 +96,6 @@ hardware_availability: "rare"
 
 # Media
 description: "France's national educational computer featuring the 6809E processor and pioneering light pen interface."
-image: "/images/systems/thomson-to7.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -103,7 +110,7 @@ order: 15
 
 # Thomson TO7/TO8
 
-*Coming Soon*
+_Coming Soon_
 
 The Thomson TO7 and TO8 represent one of computing history's most interesting "what if" scenarios - a nationally-mandated educational computer that dominated French schools but remained largely unknown elsewhere. These machines featured the sophisticated 6809E processor and pioneered light pen interaction.
 
@@ -121,9 +128,10 @@ Thomson systems offer insight into alternative computer architectures and the un
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Thomson curriculum will include:
+
 - Advanced 6809E assembly programming with unique addressing modes
 - Light pen programming and early direct manipulation interfaces
 - French educational software design principles

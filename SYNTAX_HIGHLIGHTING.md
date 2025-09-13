@@ -9,6 +9,7 @@ This document describes the implementation of enhanced assembly language syntax 
 ### 1. Language Definitions
 
 #### 6502 Assembly (`asm6502`)
+
 - **Used for**: Commodore 64, Nintendo Entertainment System
 - **Built-in**: Available in PrismJS by default
 - **Features**:
@@ -17,6 +18,7 @@ This document describes the implementation of enhanced assembly language syntax 
   - Comments (;), directives (.), registers (A, X, Y)
 
 #### Z80 Assembly (`z80`)
+
 - **Used for**: ZX Spectrum
 - **Custom implementation**: `/src/scripts/prism-z80.js`
 - **Features**:
@@ -27,6 +29,7 @@ This document describes the implementation of enhanced assembly language syntax 
   - Directives (ORG, DEFB, EQU, etc.)
 
 #### 68000 Assembly (`m68k`)
+
 - **Used for**: Commodore Amiga
 - **Custom implementation**: `/src/scripts/prism-m68k.js`
 - **Features**:
@@ -39,12 +42,14 @@ This document describes the implementation of enhanced assembly language syntax 
 ### 2. Retro-Themed Visual Design
 
 #### System-Specific Color Schemes
+
 - **C64/6502**: Blue gradient background with light blue opcodes
 - **ZX Spectrum/Z80**: Dark background with rainbow accents and yellow opcodes
 - **Amiga/68000**: Blue-orange gradient with orange opcodes
 - **General**: Dark backgrounds with bright, high-contrast colors
 
 #### Visual Effects
+
 - **Scanline effect**: Subtle horizontal lines for authentic CRT appearance
 - **Glow effects**: Text shadow on keywords and hover animations
 - **Gradient backgrounds**: Linear gradients matching each system's aesthetic
@@ -53,6 +58,7 @@ This document describes the implementation of enhanced assembly language syntax 
 ### 3. Token Highlighting
 
 #### Consistent Color Mapping
+
 - **Comments**: Dim gray, italic
 - **Op-codes/Keywords**: System-specific bright colors with glow
 - **Numbers**: Bright cyan for all number formats
@@ -65,12 +71,14 @@ This document describes the implementation of enhanced assembly language syntax 
 ### 4. Integration and Aliases
 
 #### Language Tag Mapping
+
 - `asm` → `asm6502` (for C64 lessons)
 - `nasm` → `z80` (for ZX Spectrum lessons that used nasm)
 - `m68k` → `m68k` (for Amiga lessons)
 - `asm6502` → `asm6502` (for NES lessons)
 
 #### Component Structure
+
 - **PrismLoader.astro**: Loads custom language definitions
 - **prism-retro.css**: Retro-themed syntax highlighting styles
 - **Layout.astro**: Integrates the custom components
@@ -78,6 +86,7 @@ This document describes the implementation of enhanced assembly language syntax 
 ## Files Modified/Created
 
 ### New Files
+
 - `/src/scripts/prism-z80.js` - Z80 assembly language definition
 - `/src/scripts/prism-m68k.js` - 68000 assembly language definition
 - `/src/styles/prism-retro.css` - Retro-themed syntax highlighting styles
@@ -85,9 +94,11 @@ This document describes the implementation of enhanced assembly language syntax 
 - `/src/pages/test-syntax.astro` - Test page for syntax highlighting
 
 ### Modified Files
+
 - `/src/layouts/Layout.astro` - Added CSS imports and PrismLoader component
 
 ### Updated Language Tags
+
 - C64 lessons: `asm` → `asm6502`
 - ZX Spectrum lessons: `nasm` → `z80`
 - Amiga lessons: `nasm` → `m68k`
@@ -96,16 +107,20 @@ This document describes the implementation of enhanced assembly language syntax 
 ## Usage
 
 ### In MDX Files
+
 Use the appropriate language identifier for code blocks:
 
-```markdown
+````markdown
 # C64/NES Assembly
+
 ```asm6502
 LDA #$06
 STA $D020
 ```
+````
 
-# ZX Spectrum Assembly  
+# ZX Spectrum Assembly
+
 ```z80
 LD HL, $4000
 LD A, 143
@@ -113,11 +128,13 @@ LD (HL), A
 ```
 
 # Amiga Assembly
+
 ```m68k
 MOVE.L #$00040000, A0
 LEA custom, A6
 MOVE.W #$8200, bplcon0(A6)
 ```
+
 ```
 
 ### Visual Features
@@ -156,3 +173,4 @@ Potential future improvements:
 - Graceful degradation for older browsers
 - No JavaScript dependencies beyond PrismJS
 - CSS-only visual effects with fallbacks
+```

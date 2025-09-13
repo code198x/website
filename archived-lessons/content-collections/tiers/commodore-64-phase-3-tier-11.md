@@ -31,24 +31,28 @@ Enhance **Crystal Caverns** with complex event systems including timed puzzles, 
 ## Tier Overview
 
 **Lessons 1-8: Interrupt Architecture Design**
+
 - Custom interrupt vector tables
 - Interrupt service routine chaining
 - Priority-based interrupt handling
 - Performance optimization
 
 **Lessons 9-16: Multi-Source Coordination**
+
 - VIC-II raster interrupt integration
 - CIA timer interrupt management
 - User port interrupt handling
 - Interrupt conflict resolution
 
 **Lessons 17-24: Event System Implementation**
+
 - Event queue design and processing
 - Message passing architectures
 - Callback system implementation
 - Event priority management
 
 **Lessons 25-32: Advanced Techniques**
+
 - Nested interrupt handling
 - Interrupt-safe data structures
 - Real-time event processing

@@ -27,6 +27,7 @@ Time to jump for joy! With **32 platforming lessons**, you'll create the kind of
 ## What You'll Build
 
 Create **PIXEL KNIGHT ADVENTURES** - a platformer featuring:
+
 - Jumping that feels so good players do it just for fun
 - Levels that teach without tutorials
 - Secret areas that reward exploration
@@ -36,24 +37,28 @@ Create **PIXEL KNIGHT ADVENTURES** - a platformer featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Jump Science 101" - Physics That Feel Right**
+
 - Sub-pixel precision for silky smooth movement
 - Variable jump heights like Mario's famous control
 - Momentum and acceleration that feel natural
 - The secret math behind perfect platforming
 
 **Lessons 9-16: "World in Motion" - Scrolling Mastery**
+
 - Multi-directional scrolling that doesn't break
 - Camera systems that follow the action perfectly
 - Parallax backgrounds using clever tricks
 - Screen transitions that maintain game flow
 
 **Lessons 17-24: "Level Design Laboratory" - Teaching Through Play**
+
 - Safe spaces to learn new mechanics
 - Difficulty curves that feel fair
 - Visual cues that guide without hand-holding
 - Secrets that make players feel clever
 
 **Lessons 25-32: "Polish & Perfection" - The Nintendo Touch**
+
 - Animation states that communicate clearly
 - Sound effects that enhance every action
 - Power-ups that transform gameplay

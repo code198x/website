@@ -27,6 +27,7 @@ Grab your sword and spellbook! With **32 epic lessons**, you'll create the kind 
 ## What You'll Build
 
 Create **SPECTRUM HEROES** - a complete RPG system featuring:
+
 - Character creation with classes, stats, and abilities
 - Turn-based combat with tactical positioning
 - Magic systems with spell learning and casting
@@ -36,24 +37,28 @@ Create **SPECTRUM HEROES** - a complete RPG system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Character Creation" - Heroes & Stats**
+
 - Character attribute systems (Strength, Magic, etc.)
 - Class systems with unique abilities and progression
 - Experience point systems and level advancement
 - Character sheet management and stat visualization
 
 **Lessons 9-16: "Combat Systems" - Battle Mechanics**
+
 - Turn-based combat with initiative and actions
 - Damage calculation and combat resolution
 - Special abilities and combat techniques
 - Enemy AI with different behavioral patterns
 
 **Lessons 17-24: "Magic & Equipment" - Power Systems**
+
 - Spell casting systems with mana management
 - Equipment effects and stat modifications
 - Inventory management with weight and space limits
 - Item identification and magical properties
 
 **Lessons 25-32: "Quest & World" - Adventure Systems**
+
 - Quest tracking and objective management
 - Dialogue systems with multiple choice responses
 - World persistence and save game functionality

@@ -26,7 +26,6 @@ country_of_origin: "Netherlands"
 
 # Media
 description: "Philips' ambitious multimedia platform that failed spectacularly despite advanced technology."
-image: "/images/systems/cd-i.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 119
 
 # Philips CD-i
 
-*Historical Reference*
+_Historical Reference_
 
 The Philips CD-i was an ambitious attempt to create the multimedia future - a CD-ROM based entertainment system that could play music, movies, games, and educational content. Despite advanced technology, it became one of the industry's most expensive failures.
 
@@ -59,6 +58,7 @@ The CD-i represented early attempts at convergence - combining entertainment, ed
 ## Why It Failed
 
 Despite impressive technology, several factors doomed the CD-i:
+
 - **Expensive**: $700+ launch price
 - **Confusing Market Position**: Neither game console nor computer
 - **Poor Games**: Infamous for terrible Nintendo ports
@@ -67,6 +67,7 @@ Despite impressive technology, several factors doomed the CD-i:
 ## Unintentional Legacy
 
 The CD-i became famous for all the wrong reasons:
+
 - Terrible Zelda and Mario games with awful cutscenes
 - Source of countless memes and YouTube videos
 - Symbol of corporate hubris in consumer electronics
@@ -75,4 +76,4 @@ The CD-i became famous for all the wrong reasons:
 
 Beyond the memes, CD-i pioneered legitimate multimedia concepts that later succeeded in other forms. Its approach to interactive media influenced educational software and DVD development.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

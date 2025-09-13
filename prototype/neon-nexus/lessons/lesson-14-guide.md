@@ -17,7 +17,7 @@ First, let's understand what a sprite is:
 ; C64 has 8 hardware sprites (0-7)
 ; Each sprite needs:
 ; - 63 bytes of pattern data
-; - X,Y position registers  
+; - X,Y position registers
 ; - Color register
 ; - Enable bit
 
@@ -59,7 +59,7 @@ copy_loop:
     inx
     cpx #63
     bne copy_loop
-    
+
     ; Tell VIC-II where the sprite data is
     lda #13         ; $0340 / 64 = 13
     sta $07f8       ; Sprite 0 pointer
@@ -73,13 +73,13 @@ Now we bring our sprite to life:
     ; Enable sprite 0
     lda #%00000001  ; Bit 0 = sprite 0
     sta SPRITE_ENABLE
-    
+
     ; Set position
     lda #100
     sta SPRITE0_X
     lda #150
     sta SPRITE0_Y
-    
+
     ; Set color
     lda #$01        ; White
     sta SPRITE0_COLOR
@@ -97,10 +97,10 @@ check_sprite_collisions:
     lda SPRITE_COLLISION    ; $d01e
     and #%00000001         ; Did sprite 0 hit anything?
     beq no_collision
-    
+
     ; Collision detected by hardware!
     jsr handle_collision
-    
+
     ; Clear collision register by reading it
     lda SPRITE_COLLISION
 ```
@@ -110,7 +110,9 @@ The VIC-II sets bits in this register whenever sprite pixels overlap. No more po
 ## Interactive Elements
 
 ### Experiment 1: Sprite Design
+
 Create different sprite patterns:
+
 ```assembly
 ; Enemy sprite - solid square
 enemy_sprite:
@@ -120,7 +122,9 @@ enemy_sprite:
 ```
 
 ### Experiment 2: Multicolor Sprites
+
 Enable 4-color sprites:
+
 ```assembly
 lda #%00000001
 sta SPRITE_MULTICOLOR  ; $d01c
@@ -128,7 +132,9 @@ sta SPRITE_MULTICOLOR  ; $d01c
 ```
 
 ### Experiment 3: Sprite Expansion
+
 Double the size:
+
 ```assembly
 lda #%00000001
 sta SPRITE_X_EXPAND    ; $d01d - double width
@@ -145,6 +151,7 @@ The VIC-II chip is a marvel of 1982 engineering:
 4. **DMA Access**: Sprites don't slow down the CPU
 
 Memory map for sprites:
+
 ```
 $0340-$037F: Sprite 0 data (64 bytes)
 $0380-$03BF: Sprite 1 data
@@ -171,6 +178,7 @@ sta $d010
 ## Challenge Extensions
 
 1. **Animated Sprites**: Change sprite pointers for animation
+
    ```assembly
    inc anim_frame
    lda anim_frame
@@ -196,6 +204,7 @@ sta $d010
 ## Performance Revolution
 
 Compare the performance:
+
 - Character drawing: ~50 cycles per object
 - Sprite movement: ~10 cycles to update position
 - Collision detection: 0 cycles (hardware does it!)
@@ -205,6 +214,7 @@ We just got a 10x performance improvement!
 ## Historical Context
 
 Games that defined sprite usage:
+
 - **Impossible Mission**: Fluid animation with sprite overlays
 - **International Karate**: Huge fighters using multiple sprites
 - **Armalyte**: Sprite multiplexing for dozens of objects

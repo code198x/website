@@ -27,6 +27,7 @@ Time to get weird! With **32 boundary-pushing lessons**, you'll create games tha
 ## What You'll Build
 
 Create **QUANTUM PIXELS** - an experimental collection featuring:
+
 - A game controlled entirely by the Select button
 - Procedurally generated worlds that never repeat
 - An emotional journey told without words
@@ -36,24 +37,28 @@ Create **QUANTUM PIXELS** - an experimental collection featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Rethinking Input" - Control Innovation**
+
 - One-button gameplay that's actually deep
 - Using limitations as features
 - Rhythm-based mechanics
 - Making players think differently
 
 **Lessons 9-16: "Infinite Worlds" - Procedural Magic**
+
 - Random generation that feels designed
 - Creating variety from simple rules
 - Emergent storytelling through code
 - Making every playthrough unique
 
 **Lessons 17-24: "Emotional Pixels" - Games as Art**
+
 - Telling stories through mechanics
 - Creating feelings with 8-bit graphics
 - Sound design for emotional impact
 - Games that stay with players
 
 **Lessons 25-32: "Breaking Boundaries" - True Innovation**
+
 - Meta-gaming and fourth wall breaks
 - Mixing genres in impossible ways
 - Technical tricks nobody's tried

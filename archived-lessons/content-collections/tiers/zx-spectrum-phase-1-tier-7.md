@@ -27,6 +27,7 @@ Add sound and responsive controls to your programs! Learn the ZX Spectrum's beep
 ## What You'll Learn
 
 Create programs that sound great and respond perfectly:
+
 - Sound effects and music with the beeper
 - Advanced keyboard input handling
 - Real-time control systems
@@ -35,24 +36,28 @@ Create programs that sound great and respond perfectly:
 ## Tier Overview
 
 **Lessons 1-8: Sound Programming**
+
 - The BEEP command and sound generation
 - Creating sound effects and simple melodies
 - Timing and duration control
 - Building a sound effects library
 
 **Lessons 9-16: Advanced Input Handling**
+
 - INKEY$ for real-time key detection
 - Creating responsive control schemes
 - Handling multiple simultaneous inputs
 - Building smooth, precise control systems
 
 **Lessons 17-24: Audio-Visual Integration**
+
 - Synchronizing sound with graphics
 - Creating feedback for user actions
 - Building immersive program experiences
 - Optimizing performance for real-time response
 
 **Lessons 25-32: Rainbow Runner Controls**
+
 - Implementing smooth platform game controls
 - Creating audio feedback for gameplay
 - Building the complete control system

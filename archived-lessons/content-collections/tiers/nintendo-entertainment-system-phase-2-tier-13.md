@@ -27,6 +27,7 @@ Time to make games run LIGHTNING FAST! ⚡ With **32 optimization-focused lesson
 ## What You'll Build
 
 Create **PERFORMANCE MONSTER** - a technically demanding game featuring:
+
 - Solid 60fps performance with dozens of sprites on screen 🎯
 - Complex gameplay systems running simultaneously
 - Professional performance monitoring and debugging tools
@@ -36,24 +37,28 @@ Create **PERFORMANCE MONSTER** - a technically demanding game featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Cycle Mastery" - Understanding 6502 Performance**
+
 - Cycle counting and instruction timing analysis
 - Memory access patterns and performance impact
 - Zero-page optimization and efficient addressing modes
 - Branch prediction and code organization strategies
 
 **Lessons 9-16: "Algorithm Optimization" - Efficient System Design**
+
 - Fast multiplication and division routines
 - Optimized collision detection algorithms
 - Efficient sprite management and culling systems
 - Data structure optimization for real-time performance
 
 **Lessons 17-24: "Memory Magic" - Cache-Friendly Programming**
+
 - Memory layout optimization for faster access
 - Data compression and decompression optimization
 - Efficient sprite and background streaming
 - ROM banking optimization for seamless performance
 
 **Lessons 25-32: "Professional Profiling" - Advanced Performance Tools**
+
 - Building performance monitoring systems
 - Automated performance testing and regression detection
 - Advanced debugging techniques for optimization

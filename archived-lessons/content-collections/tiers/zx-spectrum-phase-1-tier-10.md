@@ -27,6 +27,7 @@ Teach your programs to understand and manipulate text intelligently! Learn strin
 ## What You'll Learn
 
 Create intelligent text-processing programs:
+
 - Advanced string manipulation techniques
 - Algorithmic problem-solving approaches
 - Pattern matching and text analysis
@@ -35,24 +36,28 @@ Create intelligent text-processing programs:
 ## Tier Overview
 
 **Lessons 1-8: String Manipulation Mastery**
+
 - Advanced string functions (LEN, MID$, VAL, STR$)
 - String concatenation and manipulation
 - Converting between strings and numbers
 - Building text processing utilities
 
 **Lessons 9-16: Algorithmic Problem Solving**
+
 - Breaking down complex problems into steps
 - Creating efficient algorithms
 - Understanding algorithm complexity
 - Building reusable problem-solving patterns
 
 **Lessons 17-24: Pattern Matching and Analysis**
+
 - Searching for patterns in text
 - Creating validation and parsing systems
 - Building intelligent text analysis tools
 - Implementing string matching algorithms
 
 **Lessons 25-32: Procedural Generation Introduction**
+
 - Creating content algorithmically
 - Random generation with patterns
 - Building the foundation for Memory Matrix puzzles

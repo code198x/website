@@ -31,24 +31,28 @@ Create **Logic Master Framework** - a comprehensive game logic system featuring 
 ## Tier Overview
 
 **Lessons 1-8: Advanced State Management**
+
 - Hierarchical state machines and game flow control
 - Event-driven programming and message systems
 - Scene management and transition systems
 - Save/load systems and game persistence
 
 **Lessons 9-16: AI Programming & Behavior**
+
 - Enemy AI patterns and behavior algorithms
 - Pathfinding and navigation systems
 - Dynamic difficulty adjustment systems
 - Advanced NPC behavior and interaction
 
 **Lessons 17-24: Physics & Collision Systems**
+
 - Advanced collision detection and response
 - Physics simulation within NES constraints
 - Platformer physics and character controllers
 - Environmental interaction systems
 
 **Lessons 25-32: Complex Gameplay Mechanics**
+
 - Inventory and item management systems
 - Level progression and unlock mechanisms
 - Score systems and achievement tracking

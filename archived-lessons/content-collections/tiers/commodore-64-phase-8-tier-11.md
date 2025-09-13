@@ -27,6 +27,7 @@ Build legendary architectures! With **32 architecture-focused lessons**, you'll 
 ## What You'll Architect
 
 Develop **LEGENDARY GAME SYSTEMS** that enable greatness:
+
 - Complex game architectures that support deep, rich gameplay
 - Modular systems that allow for extensive content and features
 - Memory-efficient designs that maximize what's possible on C64
@@ -36,24 +37,28 @@ Develop **LEGENDARY GAME SYSTEMS** that enable greatness:
 ## Architecture Excellence Areas
 
 **Lessons 1-8: "System Design Mastery" - Building Scalable Foundations**
+
 - Designing game architectures that handle complex interactions
 - Creating modular systems that can be extended and modified
 - Building data structures optimized for C64 memory constraints
 - Understanding how legendary games structure their core systems
 
 **Lessons 9-16: "Advanced Memory Architecture" - Maximizing Resources**
+
 - Advanced memory management for complex game worlds
 - Smart data compression and storage techniques
 - Dynamic loading systems for large game content
 - Memory optimization that enables seemingly impossible features
 
 **Lessons 17-24: "Performance Optimization" - Speed Without Compromise**
+
 - Optimizing complex systems for smooth 50/60 FPS performance
 - Advanced caching and data access patterns
 - CPU optimization for complex game logic
 - Balancing feature richness with performance requirements
 
 **Lessons 25-32: "Framework Development" - Tools for Legends**
+
 - Creating reusable frameworks for rapid game development
 - Building debugging and development tools
 - Designing APIs that make complex features easy to use

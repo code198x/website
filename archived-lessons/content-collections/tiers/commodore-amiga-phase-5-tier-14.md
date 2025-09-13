@@ -27,8 +27,9 @@ Unleash creativity! With **32 inspiring lessons**, you'll build games that doubl
 ## What You'll Build
 
 Create **PIXEL PLAYGROUND** - a creative suite featuring:
+
 - Paint program with animation capabilities
-- Music composer with ProTracker compatibility  
+- Music composer with ProTracker compatibility
 - Level editor for your previous games
 - Sprite editor with real-time preview
 - Collaborative creation with friends
@@ -36,24 +37,28 @@ Create **PIXEL PLAYGROUND** - a creative suite featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Creative Interfaces" - Tools That Feel Like Games**
+
 - Mouse-driven interfaces that feel natural
 - Immediate visual feedback for every action
 - Undo/redo systems that never fail
 - Palette and brush management
 
 **Lessons 9-16: "Real-Time Creation" - Live Creativity**
+
 - Animation tools with onion-skinning
 - Music composition with real-time playback
 - Sprite editing with in-game preview
 - Color cycling and palette animation
 
 **Lessons 17-24: "Collaborative Features" - Creating Together**
+
 - Network protocols for shared creativity
 - Version control for creative projects
 - Comments and annotation systems
 - Gallery sharing and community features
 
 **Lessons 25-32: "Integration Magic" - Tools That Work Together**
+
 - Import/export between creative tools
 - Asset libraries and reusable components
 - Plugin architecture for extensibility

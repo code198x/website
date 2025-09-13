@@ -27,6 +27,7 @@ Welcome to adventure game development on the ZX Spectrum! Create your first comp
 ## What You'll Build
 
 **Prism Quest** - A complete dimensional maze adventure game featuring:
+
 - Color-shifting maze worlds that use attribute clash as a gameplay feature
 - Navigational entities that traverse multiple dimensional layers
 - Puzzle mechanics based on color combinations and dimensional navigation
@@ -40,10 +41,12 @@ Welcome to adventure game development on the ZX Spectrum! Create your first comp
 ## Adventure Development Journey
 
 **✅ Lessons 1-2: COMPLETED - World & Navigator**
-- **Lesson 1**: Create color-shifting dimensional maze world *(COMPLETED)*
-- **Lesson 2**: Add dimensional navigator entity with directional control *(COMPLETED)*
+
+- **Lesson 1**: Create color-shifting dimensional maze world _(COMPLETED)_
+- **Lesson 2**: Add dimensional navigator entity with directional control _(COMPLETED)_
 
 **Lessons 3-8: Core Adventure Systems**
+
 - **Lesson 3**: Dimensional Shift - Add color-based puzzle mechanics
 - **Lesson 4**: Maze Challenges - Create interactive puzzle elements and obstacles
 - **Lesson 5**: Attribute Magic - Turn color clash into gameplay advantages
@@ -52,18 +55,21 @@ Welcome to adventure game development on the ZX Spectrum! Create your first comp
 - **Lesson 8**: Prism Quest Foundation - Playable adventure prototype with core systems
 
 **Lessons 9-16: System Enhancement**
+
 - Enhanced maze generation algorithms and memory optimization
 - Improved puzzle mechanics with multi-step interactions
 - Efficient graphics routines that maximize Spectrum capabilities
 - Input optimization for responsive navigation control
 
 **Lessons 17-24: Advanced Mechanics**
+
 - Multi-dimensional maze connections and complex navigation
 - Advanced attribute manipulation for enhanced visual effects
 - Progressive difficulty systems and adaptive puzzle complexity
 - Story elements and basic character progression
 
 **Lessons 25-32: Tier 1 Mastery**
+
 - Code organization and modular adventure architecture
 - Memory optimization techniques for complex maze systems
 - Polish and refinement of core adventure mechanics

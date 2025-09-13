@@ -31,18 +31,21 @@ Create **MasterpieceLegacy** - your ultimate Amiga programming achievement combi
 ## Masterpiece Options
 
 **Option 1: Ultimate Game Engine Showcase**
+
 - Complete game engine with multiple demonstration games
 - Professional development tools and comprehensive documentation
 - Commercial-quality polish and exceptional user experience
 - Legacy preservation and open-source community contribution
 
 **Option 2: Technical Tour de Force Demo**
+
 - Legendary demo featuring impossible effects and peak performance
 - Complete platform mastery demonstration across all Amiga models
 - Professional presentation and comprehensive technical documentation
 - Historical significance and preservation for future generations
 
 **Option 3: Commercial-Quality Application Suite**
+
 - Professional application suite with commercial-grade functionality
 - Complete user interface design and exceptional usability
 - Comprehensive documentation and professional support materials
@@ -51,24 +54,28 @@ Create **MasterpieceLegacy** - your ultimate Amiga programming achievement combi
 ## Tier Overview
 
 **Lessons 1-8: Masterpiece Architecture & Design**
+
 - Ultimate project planning and architectural design
 - Integration of all advanced techniques and systems
 - Professional project management and development workflow
 - Legacy planning and long-term preservation strategy
 
 **Lessons 9-16: Master-Level Implementation**
+
 - Peak technical implementation and system integration
 - Professional optimization and performance engineering
 - Advanced debugging and quality assurance processes
 - Comprehensive testing and validation procedures
 
 **Lessons 17-24: Professional Polish & Excellence**
+
 - Commercial-quality finishing and exceptional polish
 - Professional user experience and interface design
 - Comprehensive documentation and support material creation
 - Advanced presentation and demonstration preparation
 
 **Lessons 25-32: Legacy Creation & Preservation**
+
 - Professional portfolio presentation and documentation
 - Historical context and technical achievement recognition
 - Community contribution and open-source preparation

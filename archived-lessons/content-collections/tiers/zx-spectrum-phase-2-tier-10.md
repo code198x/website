@@ -27,6 +27,7 @@ Welcome to the world of perfect control! 🎲 With **32 precision-tuned lessons*
 ## What You'll Build
 
 Create **INPUT COMMANDER** - a comprehensive control system featuring:
+
 - Input detection so fast it feels instantaneous ⚡
 - Combo systems that recognize complex button sequences
 - Support for keyboard, joystick, and custom controllers
@@ -36,24 +37,28 @@ Create **INPUT COMMANDER** - a comprehensive control system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Lightning Response" - Ultra-Fast Input Detection**
+
 - High-speed keyboard scanning with minimal latency
 - Joystick input optimization and port management
 - Input debouncing and signal cleaning techniques
 - Real-time input processing without frame drops
 
 **Lessons 9-16: "Complex Patterns" - Advanced Input Recognition**
+
 - Multi-key combination detection (Ctrl+Alt+combinations)
 - Sequence recognition for fighting game combos
 - Timing-sensitive input pattern matching
 - Context-sensitive control mapping
 
 **Lessons 17-24: "Multi-Device Mastery" - Universal Input Support**
+
 - Automatic controller detection and configuration
 - Seamless switching between input methods
 - Custom controller support and mapping
 - Input device priority and conflict resolution
 
 **Lessons 25-32: "Professional Polish" - Commercial-Grade Controls**
+
 - Input buffering systems for consistent responsiveness
 - Accessibility options and customizable controls
 - Input lag measurement and optimization

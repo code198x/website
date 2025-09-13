@@ -27,6 +27,7 @@ Push the boundaries of possibility! With **32 advanced-technique lessons**, you'
 ## What You'll Build
 
 Create **CUTTING-EDGE TECHNIQUES SHOWCASE** - your technical mastery:
+
 - Advanced visual effects that push Amiga graphics to new heights
 - Innovative audio techniques using Paula's full potential
 - Performance optimization methods that achieve the impossible
@@ -36,24 +37,28 @@ Create **CUTTING-EDGE TECHNIQUES SHOWCASE** - your technical mastery:
 ## Advanced Technique Areas
 
 **Lessons 1-8: "Visual Innovation" - Advanced Graphics Techniques**
+
 - Advanced copper programming for complex visual effects
 - Innovative blitter usage for high-performance graphics
 - Advanced sprite manipulation and transformation techniques
 - Experimental rendering methods and visual innovations
 
 **Lessons 9-16: "Audio Mastery" - Advanced Sound Programming**
+
 - Advanced Paula programming and audio manipulation
 - Real-time audio synthesis and sound generation
 - Advanced mixing techniques and audio effects
 - Innovative audio-visual synchronization methods
 
 **Lessons 17-24: "Performance Innovation" - Optimization Mastery**
+
 - Advanced 68000 optimization and efficiency techniques
 - Innovative memory management and usage patterns
 - Advanced timing and synchronization techniques
 - Performance techniques that achieve seemingly impossible results
 
 **Lessons 25-32: "Experimental Methods" - Boundary-Pushing Techniques**
+
 - Experimental programming approaches and innovation
 - Advanced hardware manipulation and undocumented features
 - Innovative game programming patterns and architectures

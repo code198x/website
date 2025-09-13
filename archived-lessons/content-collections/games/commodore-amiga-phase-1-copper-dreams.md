@@ -70,24 +70,28 @@ This game leverages the Amiga's unique architecture:
 ### Tiers 1-4 Development Roadmap
 
 **Tier 1**: Basic Copper programming
+
 - Simple palette changes
 - Horizontal colour bars
 - Understanding Copper timing
 - Basic effect parameters
 
 **Tier 2**: Enhanced effects
+
 - Scrolling backgrounds
 - Sine wave colour cycling
 - Sprite integration
 - Mouse-controlled parameters
 
 **Tier 3**: Advanced techniques
+
 - Multiple bitplane effects
 - Complex Copper lists
 - Hardware sprite multiplexing
 - Music synchronization
 
 **Tier 4**: Professional polish
+
 - GUI-based effect editor
 - Real-time preview
 - Demo export functionality
@@ -113,7 +117,7 @@ CopperList:
     DC.W $0180,$0F00    ; Set background to red
     DC.W $2D01,$FFFE    ; Wait for line 45
     DC.W $0180,$0F40    ; Set background to orange
-    DC.W $2E01,$FFFE    ; Wait for line 46  
+    DC.W $2E01,$FFFE    ; Wait for line 46
     DC.W $0180,$0FF0    ; Set background to yellow
     DC.W $2F01,$FFFE    ; Wait for line 47
     DC.W $0180,$00F0    ; Set background to green
@@ -149,7 +153,7 @@ Building **Copper Dreams** teaches:
 Effect: Plasma Wave
 Parameters:
   Speed: ████████░░ (8/10)
-  Colors: ██████░░░░ (6/10)  
+  Colors: ██████░░░░ (6/10)
   Complexity: ███░░░░░░░ (3/10)
 
 Mouse: Adjust parameters
@@ -162,7 +166,7 @@ E: Export as standalone demo
 
 Current Effect List:
 ✓ Rainbow Bars      ✓ Copper Plasma
-✓ Sprite Layers     ░ Vector Balls  
+✓ Sprite Layers     ░ Vector Balls
 ✓ Scroll Text       ░ 3D Tunnel
 ```
 

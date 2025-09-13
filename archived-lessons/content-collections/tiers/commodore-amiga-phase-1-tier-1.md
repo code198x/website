@@ -27,6 +27,7 @@ Welcome to professional game development on the Amiga! Create your first commerc
 ## What You'll Build
 
 **Crystal Cascade** - A complete professional parallax adventure game featuring:
+
 - Stunning multi-layered parallax scrolling using custom chip hardware
 - Sophisticated floating entities with complex data management systems
 - Spectacular copper effects and hardware-assisted visual presentation
@@ -40,10 +41,12 @@ Welcome to professional game development on the Amiga! Create your first commerc
 ## Professional Development Journey
 
 **✅ Lessons 1-2: COMPLETED - World & Entities**
-- **Lesson 1**: Create stunning multi-layered parallax world *(COMPLETED)*
-- **Lesson 2**: Add sophisticated floating crystal entities with complex data management *(COMPLETED)*
+
+- **Lesson 1**: Create stunning multi-layered parallax world _(COMPLETED)_
+- **Lesson 2**: Add sophisticated floating crystal entities with complex data management _(COMPLETED)_
 
 **Lessons 3-8: Core Professional Systems**
+
 - **Lesson 3**: Copper Cascade - Add mesmerizing copper effects and color cycling
 - **Lesson 4**: Smooth Scrolling - Implement professional hardware-assisted scrolling
 - **Lesson 5**: Entity Interaction - Create collision systems and interactive gameplay
@@ -52,18 +55,21 @@ Welcome to professional game development on the Amiga! Create your first commerc
 - **Lesson 8**: Crystal Cascade Foundation - Playable prototype with professional systems
 
 **Lessons 9-16: System Enhancement**
+
 - Enhanced entity management systems for complex game objects
 - Advanced copper programming for improved visual effects
 - Memory optimization techniques for efficient performance
 - Audio-visual synchronization and dynamic soundtrack integration
 
 **Lessons 17-24: Advanced Architecture**
+
 - Multi-layer level design with seamless area transitions
 - Enhanced AI systems for intelligent entity behavior
 - Professional user interface and interaction systems
 - Data management and game state persistence
 
 **Lessons 25-32: Tier 1 Mastery**
+
 - Performance optimization and custom chip utilization
 - Code organization and professional architecture patterns
 - Quality assurance and debugging methodologies

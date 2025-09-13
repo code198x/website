@@ -28,6 +28,7 @@ Achieve immortality through Z80 code! With **32 epic legacy lessons**, you'll cr
 ## Your Immortal ZX Spectrum Mission
 
 Create an **ETERNAL ZX SPECTRUM LEGACY** that transforms everything:
+
 - The ultimate ZX Spectrum masterpiece that demonstrates complete mastery of all 8 phases
 - A contribution so profound it fundamentally advances 8-bit interactive entertainment
 - Z80 technology, artistry, and vision combined into something truly timeless
@@ -37,24 +38,28 @@ Create an **ETERNAL ZX SPECTRUM LEGACY** that transforms everything:
 ## Epic Legacy Creation Areas
 
 **Lessons 1-8: "Vision Synthesis" - Uniting 8 Phases of ZX Spectrum Mastery**
+
 - Combining foundational Z80 skills, artistic mastery, technical innovation, and visionary leadership
 - Integrating collaborative excellence, cultural impact, technological breakthroughs, and global influence
 - Creating a unified vision that demonstrates how all aspects of legendary Spectrum development work together
 - Understanding how your complete journey has prepared you for this ultimate contribution to 8-bit culture
 
 **Lessons 9-16: "Masterpiece Architecture" - Building Something Eternal on ZX Spectrum**
+
 - Designing Z80 systems so elegant and innovative they become timeless references
 - Creating user experiences that feel magical decades after their creation on 8-bit hardware
 - Building technology that pushes Spectrum boundaries while remaining accessible and inspiring
 - Understanding how legendary works achieve both immediate impact and lasting influence within constraints
 
 **Lessons 17-24: "Immortal Impact" - Ensuring Your ZX Spectrum Legacy Lasts Forever**
+
 - Creating documentation and resources that help future generations build upon your Spectrum work
 - Establishing communities and institutions that preserve and extend your contributions to retro gaming
 - Building educational frameworks that turn your innovations into learning opportunities
 - Understanding how to create work that becomes more valuable over time in Spectrum culture
 
 **Lessons 25-32: "Legend Completion" - The Final ZX Spectrum Transformation**
+
 - Launching your masterpiece in ways that maximize its positive impact on the Spectrum community
 - Understanding how your journey from beginner to legend can inspire others in retro computing
 - Creating systems that ensure your influence continues growing even after project completion
@@ -65,6 +70,7 @@ Create an **ETERNAL ZX SPECTRUM LEGACY** that transforms everything:
 Throughout this tier, you'll develop your **Eternal ZX Spectrum Masterpiece**:
 
 **🏆 ULTIMATE ZX SPECTRUM PROJECT SPECIFICATIONS:**
+
 - **Scope:** Your most ambitious Spectrum project ever - the culmination of 8 phases of legendary development
 - **Platform:** ZX Spectrum (proving that true artistry transcends technical limitations completely)
 - **Integration:** Combines technical innovation, artistic mastery, cultural impact, and global influence
@@ -72,6 +78,7 @@ Throughout this tier, you'll develop your **Eternal ZX Spectrum Masterpiece**:
 - **Innovation:** Pushes boundaries in ways that establish new possibilities for 8-bit interactive entertainment
 
 **🌟 LEGENDARY ZX SPECTRUM MASTERPIECE ELEMENTS:**
+
 - **Revolutionary Z80 Technology:** Breakthrough innovations that seem impossible on the Spectrum
 - **Artistic Excellence:** Visual and beeper audio design that achieves true artistic mastery within constraints
 - **Cultural Impact:** Addresses important themes while remaining universally accessible

@@ -31,6 +31,7 @@ Create your genre-defining masterpiece! With **32 genre innovation project lesso
 ## What You'll Create
 
 Build your **GENRE-DEFINING ZX SPECTRUM GAME** - your revolutionary achievement:
+
 - **Genre Innovation**: A game that establishes an entirely new category of gaming
 - **Timeless Design**: Excellence that ensures your game remains relevant for decades
 - **Technical Mastery**: ZX Spectrum programming that enables impossible experiences
@@ -40,24 +41,28 @@ Build your **GENRE-DEFINING ZX SPECTRUM GAME** - your revolutionary achievement:
 ## Genre Innovation Project Process
 
 **Lessons 1-8: "Revolutionary Foundation" - Building Genre-Defining Architecture**
+
 - Integrating genre innovation with timeless design and technical mastery
 - Creating the architectural foundation for revolutionary gaming experiences
 - Planning genre-defining game development within ZX Spectrum constraints
 - Establishing systems that support entirely new categories of gameplay
 
 **Lessons 9-16: "Genre Implementation" - Bringing Revolutionary Vision to Life**
+
 - Implementing genre-defining concepts using timeless design principles
 - Integrating technical mastery to enable revolutionary gaming experiences
 - Creating gameplay that feels both groundbreaking and perfectly crafted
 - Building systems that prove the viability of new gaming categories
 
 **Lessons 17-24: "Revolutionary Polish" - Achieving Genre-Defining Quality**
+
 - Applying genre-defining level polish and refinement to all game elements
 - Integrating all innovation seamlessly with excellent technical implementation
 - Creating the level of quality that establishes new gaming categories
 - Testing and validating that the game achieves revolutionary status
 
 **Lessons 25-32: "Genre Legacy Completion" - Finalizing Your Revolutionary Achievement**
+
 - Completing final polish and optimization for genre-defining experience
 - Preparing the game for community reception and genre establishment
 - Documenting the revolutionary development process for future developers

@@ -27,6 +27,7 @@ Bring realistic physics to your NES games! With **32 advanced lessons**, you'll 
 ## What You'll Build
 
 Create **ADVANCED NES PHYSICS ENGINE** - featuring complex systems:
+
 - Realistic gravity, acceleration, and momentum calculations
 - Advanced collision detection and response systems
 - Physics-based puzzle mechanics and object interactions
@@ -36,24 +37,28 @@ Create **ADVANCED NES PHYSICS ENGINE** - featuring complex systems:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "Physics Fundamentals" - Core Movement Systems**
+
 - Advanced physics calculations and mathematical foundations
 - Gravity, acceleration, and velocity systems in 6502 assembly
 - Fixed-point arithmetic for precise physics calculations
 - Memory-efficient physics data structures for NES
 
 **Lessons 9-16: "Collision Mastery" - Advanced Detection Systems**
+
 - Sophisticated collision detection algorithms for complex shapes
 - Collision response and realistic object interactions
 - Spatial partitioning systems for performance optimization
 - Multi-object collision handling and resolution
 
 **Lessons 17-24: "Realistic Behaviors" - Advanced Physics Simulation**
+
 - Momentum, friction, and energy conservation systems
 - Realistic bouncing, sliding, and rolling mechanics
 - Physics-based animation and procedural movement
 - Advanced object interaction and chain reaction systems
 
 **Lessons 25-32: "Performance Physics" - Optimized Game Systems**
+
 - Performance optimization techniques for complex physics
 - Frame-rate independent physics simulation
 - Physics LOD systems and selective simulation

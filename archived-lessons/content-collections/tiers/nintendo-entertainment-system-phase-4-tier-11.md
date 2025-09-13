@@ -27,6 +27,7 @@ Design for delight! With **32 comprehensive lessons**, you'll master user experi
 ## What You'll Build
 
 Perfect **Neon Legends** with exceptional user experience:
+
 - Intuitive controls and responsive input systems
 - Comprehensive tutorial system that teaches through play
 - Professional accessibility features for inclusive gaming
@@ -36,24 +37,28 @@ Perfect **Neon Legends** with exceptional user experience:
 ## Tier Overview
 
 **Lessons 1-8: Intuitive Interface Design**
+
 - Professional control schemes and input mapping
 - Intuitive visual communication and iconography
 - Seamless menu flow and navigation systems
 - Professional feedback and response systems
 
 **Lessons 9-16: Tutorial & Onboarding Systems**
+
 - Teaching through gameplay without explicit instruction
 - Progressive skill introduction and complexity scaling
 - Professional hint systems and contextual help
 - Engaging onboarding that creates immediate investment
 
 **Lessons 17-24: Accessibility & Inclusion**
+
 - Colorblind-friendly visual design and alternatives
 - Motor accessibility and control customization
 - Cognitive accessibility and difficulty options
 - Professional inclusive design practices
 
 **Lessons 25-32: Player Psychology & Engagement**
+
 - Flow state optimization and engagement maintenance
 - Professional reward systems and progression feedback
 - Player motivation and long-term engagement strategies

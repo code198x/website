@@ -87,7 +87,6 @@ hardware_availability: "common"
 
 # Media
 description: "The console that created the home video game industry and taught programmers to work miracles with 128 bytes of RAM."
-image: "/images/systems/atari-2600.jpg"
 
 # Platform Classification
 medal_tier: "gold"
@@ -102,7 +101,7 @@ order: 11
 
 # Atari 2600
 
-*Coming Soon*
+_Coming Soon_
 
 The Atari 2600 didn't just bring arcade games home - it created an entire industry. With only 128 bytes of RAM and no frame buffer, programmers had to "race the beam," drawing graphics in real-time as the TV's electron beam swept across the screen.
 
@@ -119,9 +118,10 @@ No platform teaches resourcefulness like the 2600. With the most severe constrai
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Atari 2600 curriculum will include:
+
 - 6507 assembly and cycle counting
 - TIA programming and racing the beam
 - Display kernel development

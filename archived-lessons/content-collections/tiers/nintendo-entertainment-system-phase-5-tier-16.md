@@ -27,6 +27,7 @@ This is it - your masterpiece! With **32 culminating lessons**, you'll create th
 ## What You'll Build
 
 Create **PIXEL UNIVERSE** - your genre-spanning epic featuring:
+
 - An overworld adventure with multiple game types
 - Arcade challenges that unlock new areas
 - RPG progression across all activities
@@ -36,24 +37,28 @@ Create **PIXEL UNIVERSE** - your genre-spanning epic featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Grand Vision" - Planning Your Epic**
+
 - Designing cohesive multi-genre experiences
 - Creating a unified game world
 - Planning content scope realistically
 - Architecture for maximum ambition
 
 **Lessons 9-16: "Genre Symphony" - Bringing It Together**
+
 - Seamless transitions between game types
 - Shared progression systems
 - Making variety feel natural
 - Technical integration mastery
 
 **Lessons 17-24: "Polish Perfection" - Professional Quality**
+
 - Bug-free gameplay across all modes
 - Consistent art and audio direction
 - Difficulty balancing for everyone
 - The shine that separates good from great
 
 **Lessons 25-32: "Ship Your Legacy" - Final Push**
+
 - Complete packaging and presentation
 - Manual and marketing materials
 - Final testing and optimization

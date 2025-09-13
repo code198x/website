@@ -89,7 +89,7 @@ GameState:
     GameMode:       DB 0            ; 0=explore, 1=puzzle
     ShowUI:         DB 1
     Modified:       DB 0            ; Save needed flag
-    
+
 ; Player state
 PlayerState:
     ScreenX:        DB 128
@@ -118,20 +118,20 @@ PerformanceData:
 PixelPainter:
     ; Initialize all systems
     CALL InitializeApp
-    
+
     ; Show splash screen
     CALL ShowSplashScreen
-    
+
     ; Main application loop
 MainLoop:
     ; Update frame counter
     LD HL, (FrameCount)
     INC HL
     LD (FrameCount), HL
-    
+
     ; Performance monitoring
     CALL StartFrameTimer
-    
+
     ; Handle current state
     LD A, (CurrentState)
     OR A
@@ -143,7 +143,7 @@ MainLoop:
     DEC A
     JP Z, HandleHelp
     JP HandleExit
-    
+
 HandleSplash:
     CALL UpdateSplash
     JR ContinueFrame
@@ -151,30 +151,30 @@ HandleSplash:
 HandleMain:
     CALL UpdateMainApplication
     JR ContinueFrame
-    
+
 HandleMenu:
     CALL UpdateMenu
     JR ContinueFrame
-    
+
 HandleHelp:
     CALL UpdateHelp
     JR ContinueFrame
-    
+
 HandleExit:
     CALL CleanupAndExit
     RET
-    
+
 ContinueFrame:
     ; End frame timing
     CALL EndFrameTimer
-    
+
     ; Frame rate limiting
     CALL FrameRateLimit
-    
+
     ; Check for exit condition
     CALL CheckGlobalExit
     JR NC, MainLoop
-    
+
     ; Exit application
     CALL CleanupAndExit
     RET
@@ -184,7 +184,7 @@ InitializeApp:
     ; Clear screen and attributes
     CALL ClearScreen
     CALL InitializeAttributes
-    
+
     ; Initialize subsystems
     CALL InitializeInput
     CALL InitializeGraphics
@@ -192,59 +192,59 @@ InitializeApp:
     CALL InitializeEffects
     CALL InitializeFileSystem
     CALL InitializeUI
-    
+
     ; Set initial state
     LD A, APP_STATE_SPLASH
     LD (CurrentState), A
-    
+
     ; Reset performance counters
     LD HL, 0
     LD (FrameCount), HL
-    
+
     RET
 
 ; Main application update (drawing mode)
 UpdateMainApplication:
     ; Process input
     CALL ProcessMainInput
-    
+
     ; Update cursor
     CALL UpdateCursor
-    
+
     ; Update drawing system
     CALL UpdateDrawingSystem
-    
+
     ; Update effects
     CALL UpdateEffectsSystem
-    
+
     ; Update UI
     CALL UpdateMainUI
-    
+
     ; Auto-save check
     CALL CheckAutoSave
-    
+
     RET
 
 ; Process input in main drawing mode
 ProcessMainInput:
     ; Read keyboard state
     CALL ReadKeyboardState
-    
+
     ; Check for mode changes first
     CALL CheckModeKeys
-    
+
     ; Process tool selection
     CALL ProcessToolSelection
-    
+
     ; Process cursor movement
     CALL ProcessCursorMovement
-    
+
     ; Process drawing actions
     CALL ProcessDrawingInput
-    
+
     ; Check for menu activation
     CALL CheckMenuActivation
-    
+
     RET
 
 ; Update cursor system
@@ -254,21 +254,21 @@ UpdateCursor:
     LD (CursorState + 4), A
     LD A, (CursorState + 3)
     LD (CursorState + 5), A
-    
+
     ; Update blink timer
     LD A, (CursorState + 7)
     INC A
     AND 31              ; Blink every 32 frames
     LD (CursorState + 7), A
-    
+
     ; Draw cursor if visible
     LD A, (CursorState + 6)
     OR A
     RET Z
-    
+
     ; Erase old cursor
     CALL EraseCursor
-    
+
     ; Draw new cursor
     CALL DrawCursor
     RET
@@ -279,7 +279,7 @@ UpdateDrawingSystem:
     LD A, (DrawingState)
     OR A
     RET Z               ; Not drawing
-    
+
     ; Continue current drawing operation
     LD A, (CurrentTool)
     OR A
@@ -325,32 +325,32 @@ DrawBrushStroke:
     LD B, A             ; Current X
     LD A, (CursorState + 1)
     LD C, A             ; Current Y
-    
+
     LD A, (LastDrawX)
     LD D, A             ; Last X
     LD A, (LastDrawY)
     LD E, A             ; Last Y
-    
+
     ; Check if this is first point
     LD A, D
     CP 255
     JR Z, FirstBrushPoint
-    
+
     ; Draw line from last to current for smooth stroke
     CALL DrawBrushLine
     JR UpdateLastDraw
-    
+
 FirstBrushPoint:
     ; Draw single brush
     CALL DrawBrush
-    
+
 UpdateLastDraw:
     ; Update last draw position
     LD A, B
     LD (LastDrawX), A
     LD A, C
     LD (LastDrawY), A
-    
+
     ; Mark as modified
     LD A, 1
     LD (Modified), A
@@ -362,75 +362,75 @@ UpdateMainUI:
     LD A, (ShowUI)
     OR A
     RET Z
-    
+
     ; Update tool palette
     CALL UpdateToolPalette
-    
+
     ; Update status bar
     CALL UpdateStatusBar
-    
+
     ; Update info panel
     CALL UpdateInfoPanel
-    
+
     RET
 
 UpdateToolPalette:
     ; Draw tool icons and highlight current tool
     LD A, (CurrentTool)
     LD B, A             ; Current tool
-    
+
     ; Draw tool palette background
     CALL DrawToolPaletteFrame
-    
+
     ; Draw each tool icon
     LD C, 0             ; Tool counter
-    
+
 ToolPaletteLoop:
     PUSH BC
     PUSH BC
-    
+
     ; Check if this is selected tool
     LD A, C
     CP B
     CALL Z, HighlightTool
-    
+
     ; Draw tool icon
     LD A, C
     CALL DrawToolIcon
-    
+
     POP BC
     INC C
     LD A, C
     CP 6                ; 6 tools total
     JR NZ, ToolPaletteLoop
-    
+
     POP BC
     RET
 
 UpdateStatusBar:
     ; Show current tool, brush size, coordinates
     ; Position 0,23 (bottom of screen)
-    
+
     ; Tool name
     LD A, (CurrentTool)
     CALL GetToolName
     CALL DisplayToolName
-    
+
     ; Brush size
     LD A, (BrushSize)
     CALL DisplayBrushSize
-    
+
     ; Cursor coordinates
     LD A, (CursorState)
     LD B, A
     LD A, (CursorState + 1)
     LD C, A
     CALL DisplayCoordinates
-    
+
     ; File status
     LD A, (Modified)
     CALL DisplayFileStatus
-    
+
     RET
 
 ; Effects system integration
@@ -438,12 +438,12 @@ UpdateEffectsSystem:
     ; Update any active effects
     ; Process animation timers
     ; Handle transitions
-    
+
     ; For now, just update animation counters
     LD HL, (EffectTimer)
     INC HL
     LD (EffectTimer), HL
-    
+
     RET
 
 ; File system integration
@@ -453,16 +453,16 @@ CheckAutoSave:
     DEC A
     LD (AutoSaveTimer), A
     RET NZ
-    
+
     ; Reset timer
     LD A, 180           ; 3 seconds at 60fps
     LD (AutoSaveTimer), A
-    
+
     ; Check if modified
     LD A, (Modified)
     OR A
     RET Z
-    
+
     ; Perform auto-save
     CALL PerformAutoSave
     RET
@@ -471,7 +471,7 @@ CheckAutoSave:
 PixelPainterDemo:
     ; Run the complete application
     CALL PixelPainter
-    
+
     ; Return with status
     LD B, 255           ; Success
     RET
@@ -552,13 +552,13 @@ IntegratedBrushSystem:
 ; Advanced brush engine
 DrawAdvancedBrush:
     ; Input: B = x, C = y
-    
+
     ; Apply pressure sensitivity
     CALL CalculatePressure
-    
+
     ; Apply opacity/pattern
     CALL ApplyBrushPattern
-    
+
     ; Draw with current configuration
     LD A, (BrushConfig)
     OR A
@@ -574,19 +574,19 @@ ApplyBrushPattern:
     LD A, (BrushConfig + 5)
     CP 255
     RET Z               ; Solid pattern
-    
+
     ; Apply dither pattern based on position
     LD A, B
     ADD C
     AND 7
     LD D, A
     LD A, (BrushConfig + 5)
-    
+
 PatternShift:
     RRA
     DEC D
     JR NZ, PatternShift
-    
+
     RET C               ; Pattern bit set - draw
     POP AF              ; Return without drawing
     RET
@@ -633,13 +633,13 @@ UpdateCompleteUI:
     LD A, (UIState)
     OR A
     RET Z
-    
+
     ; Update all UI components
     CALL UpdateToolPaletteUI
     CALL UpdateMenuBarUI
     CALL UpdateStatusBarUI
     CALL UpdateInfoPanelUI
-    
+
     ; Handle UI interactions
     CALL ProcessUIInput
     RET
@@ -653,11 +653,11 @@ UpdateToolPaletteUI:
     LD E, TOOL_PALETTE_H
     LD A, UI_NORMAL
     CALL DrawUIPanel
-    
+
     ; Draw tool icons
     LD A, 0             ; Tool counter
     LD (CurrentToolIcon), A
-    
+
 ToolIconLoop:
     ; Calculate icon position
     LD A, (CurrentToolIcon)
@@ -665,44 +665,44 @@ ToolIconLoop:
     AND 1               ; Column (0 or 1)
     INC B               ; Offset from edge
     LD (IconX), A
-    
+
     LD A, (CurrentToolIcon)
     RRA                 ; Row
     INC A               ; Offset from top
     LD (IconY), A
-    
+
     ; Check if this tool is selected
     LD A, (CurrentTool)
     LD B, A
     LD A, (CurrentToolIcon)
     CP B
     JR Z, DrawSelectedTool
-    
+
     ; Normal tool icon
     LD A, UI_NORMAL
     JR DrawToolIcon
-    
+
 DrawSelectedTool:
     ; Highlighted tool icon
     LD A, UI_HIGHLIGHT
-    
+
 DrawToolIcon:
     ; Set background color
     LD B, (IconX)
     LD C, (IconY)
     CALL SetCharAttribute
-    
+
     ; Draw tool symbol
     LD A, (CurrentToolIcon)
     CALL DrawToolSymbol
-    
+
     ; Next tool
     LD A, (CurrentToolIcon)
     INC A
     LD (CurrentToolIcon), A
     CP 6                ; 6 tools
     JR NZ, ToolIconLoop
-    
+
     RET
 
 ; Menu bar implementation
@@ -714,13 +714,13 @@ UpdateMenuBarUI:
     LD E, 1
     LD A, UI_NORMAL
     CALL DrawUIPanel
-    
+
     ; Menu items
     LD HL, MenuText
     LD B, 2
     LD C, 0
     CALL DrawText
-    
+
     RET
 
 ; Status bar with comprehensive info
@@ -732,34 +732,34 @@ UpdateStatusBarUI:
     LD E, 1
     LD A, UI_NORMAL
     CALL DrawUIPanel
-    
+
     ; Tool name
     LD A, (CurrentTool)
     CALL GetToolName
     LD B, 1
     LD C, STATUS_BAR_Y
     CALL DrawText
-    
+
     ; Brush size
     LD A, (BrushSize)
     CALL FormatNumber
     LD B, 10
     LD C, STATUS_BAR_Y
     CALL DrawText
-    
+
     ; Coordinates
     LD A, (CursorState)
     CALL FormatNumber
     LD B, 15
     LD C, STATUS_BAR_Y
     CALL DrawText
-    
+
     LD A, (CursorState + 1)
     CALL FormatNumber
     LD B, 19
     LD C, STATUS_BAR_Y
     CALL DrawText
-    
+
     ; Modified indicator
     LD A, (Modified)
     OR A
@@ -768,7 +768,7 @@ UpdateStatusBarUI:
     LD B, 25
     LD C, STATUS_BAR_Y
     CALL DrawText
-    
+
 NoModified:
     RET
 
@@ -781,7 +781,7 @@ UpdateInfoPanelUI:
     LD E, 12
     LD A, UI_NORMAL
     CALL DrawUIPanel
-    
+
     ; Tool-specific options
     LD A, (CurrentTool)
     OR A
@@ -798,7 +798,7 @@ ShowBrushOptions:
     LD B, INFO_PANEL_X
     LD C, INFO_PANEL_Y + 1
     CALL DrawText
-    
+
     ; Size indicator
     LD A, (BrushSize)
     CALL DrawSizeIndicator
@@ -814,10 +814,10 @@ ShowCircleOptions:
 ProcessUIInput:
     ; Check for UI hotkeys
     CALL CheckUIHotkeys
-    
+
     ; Check for mouse-like input (cursor in UI areas)
     CALL CheckUIClick
-    
+
     RET
 
 CheckUIHotkeys:
@@ -826,12 +826,12 @@ CheckUIHotkeys:
     IN A, (254)
     BIT 1, A            ; Symbol shift
     RET NZ
-    
+
     LD A, 0xFBFE        ; T row
     IN A, (254)
     BIT 4, A            ; T key
     RET NZ
-    
+
     ; Toggle UI visibility
     LD A, (UIState)
     XOR 1
@@ -845,13 +845,13 @@ CheckUIClick:
     RET C
     CP (TOOL_PALETTE_X + TOOL_PALETTE_W) * 8
     RET NC
-    
+
     LD A, (CursorState + 1)
     CP TOOL_PALETTE_Y * 8
     RET C
     CP (TOOL_PALETTE_Y + TOOL_PALETTE_H) * 8
     RET NC
-    
+
     ; Cursor in tool palette - check for selection
     CALL CheckToolSelection
     RET
@@ -865,22 +865,22 @@ CheckToolSelection:
     RRA                 ; Divide by 8 for character row
     RRA                 ; Divide by 2 for tools per row
     LD B, A             ; Row
-    
+
     LD A, (CursorState)
     SUB TOOL_PALETTE_X * 8
     RRA
     RRA
     RRA                 ; Character column
     AND 1               ; Column 0 or 1
-    
+
     ; Calculate tool number
     ADD A, A            ; × 2
     ADD B               ; + row
-    
+
     ; Check if valid tool
     CP 6
     RET NC
-    
+
     ; Select tool
     LD (CurrentTool), A
     RET
@@ -890,28 +890,28 @@ DrawUIPanel:
     ; Input: B,C = position, D,E = size, A = color
     ; Draw filled rectangle with border
     PUSH AF
-    
+
     ; Draw background
     LD A, E
     LD (PanelHeight), A
-    
+
 PanelYLoop:
     PUSH BC
     PUSH DE
-    
+
     LD A, D
     LD (PanelWidth), A
-    
+
 PanelXLoop:
     ; Set attribute for this character
     CALL SetCharAttribute
-    
+
     INC B
     LD A, (PanelWidth)
     DEC A
     LD (PanelWidth), A
     JR NZ, PanelXLoop
-    
+
     POP DE
     POP BC
     INC C
@@ -919,7 +919,7 @@ PanelXLoop:
     DEC A
     LD (PanelHeight), A
     JR NZ, PanelYLoop
-    
+
     POP AF
     RET
 
@@ -928,7 +928,7 @@ SetCharAttribute:
     PUSH AF
     PUSH BC
     PUSH HL
-    
+
     ; Calculate attribute address
     LD H, 0
     LD L, C
@@ -941,7 +941,7 @@ SetCharAttribute:
     ADD HL, BC
     LD BC, ATTR_FILE
     ADD HL, BC
-    
+
     POP BC
     LD (HL), A
     POP HL
@@ -981,23 +981,23 @@ UIDemo:
     ; Initialize UI system
     LD A, UI_VISIBLE
     LD (UIState), A
-    
+
     ; Update all UI components
     CALL UpdateCompleteUI
-    
+
     ; Simulate some interactions
     LD A, TOOL_CIRCLE
     LD (CurrentTool), A
     CALL UpdateToolPaletteUI
-    
+
     LD A, 5
     LD (BrushSize), A
     CALL UpdateStatusBarUI
-    
+
     LD A, 1
     LD (Modified), A
     CALL UpdateStatusBarUI
-    
+
     LD B, 255           ; Success
     RET
 
@@ -1030,7 +1030,7 @@ ToolNames:
 EffectsManager:
     ActiveEffects:  DB 0    ; Bitmask of active effects
     EffectTimers:   DS 8    ; Timers for each effect
-    
+
 ; Effect types
 EFFECT_FADE:        EQU 1
 EFFECT_SPARKLE:     EQU 2
@@ -1042,7 +1042,7 @@ UpdateAllEffects:
     LD A, (ActiveEffects)
     OR A
     RET Z               ; No active effects
-    
+
     ; Check each effect bit
     BIT 0, A
     CALL NZ, UpdateFadeEffect
@@ -1052,7 +1052,7 @@ UpdateAllEffects:
     CALL NZ, UpdateTrailEffect
     BIT 3, A
     CALL NZ, UpdateParticleEffect
-    
+
     RET
 
 ; Sparkle effect for highlights
@@ -1061,7 +1061,7 @@ UpdateSparkleEffect:
     CALL Random
     AND 31
     RET NZ              ; Only sparkle occasionally
-    
+
     ; Add sparkle at random position near cursor
     LD A, (CursorState)
     LD B, A
@@ -1070,7 +1070,7 @@ UpdateSparkleEffect:
     SUB 8               ; ±8 offset
     ADD B
     LD B, A
-    
+
     LD A, (CursorState + 1)
     LD C, A
     CALL Random
@@ -1078,7 +1078,7 @@ UpdateSparkleEffect:
     SUB 8
     ADD C
     LD C, A
-    
+
     ; Draw sparkle pixel
     CALL DrawSparklePixel
     RET
@@ -1104,7 +1104,7 @@ FileManagerState:
 FileManager:
     ; Input: A = operation, HL = filename
     ; Operations: 0=New, 1=Open, 2=Save, 3=SaveAs, 4=Recent
-    
+
     OR A
     JP Z, FileOp_New
     DEC A
@@ -1119,14 +1119,14 @@ FileOp_New:
     ; Create new image
     CALL ConfirmIfModified
     RET C               ; User cancelled
-    
+
     CALL ClearCanvas
     CALL ResetModifiedFlag
-    
+
     ; Clear filename
     LD HL, FileManagerState
     LD (HL), 0
-    
+
     ; Return success
     XOR A
     RET
@@ -1135,20 +1135,20 @@ FileOp_Open:
     ; Open existing file
     CALL ConfirmIfModified
     RET C
-    
+
     ; Show file dialog (simplified)
     CALL ShowFileDialog
     RET C               ; Cancelled
-    
+
     ; Load the file
     CALL LoadImageFile
     RET C               ; Load failed
-    
+
     ; Update current filename
     LD DE, FileManagerState
     LD BC, 10
     LDIR
-    
+
     CALL ResetModifiedFlag
     XOR A
     RET
@@ -1158,12 +1158,12 @@ FileOp_Save:
     LD A, (FileManagerState)
     OR A
     JP Z, FileOp_SaveAs ; No filename - do Save As
-    
+
     ; Save to current filename
     LD HL, FileManagerState
     CALL SaveImageFile
     RET C
-    
+
     CALL ResetModifiedFlag
     CALL UpdateLastSaveTime
     XOR A
@@ -1173,16 +1173,16 @@ FileOp_SaveAs:
     ; Save with new filename
     CALL ShowSaveDialog
     RET C               ; Cancelled
-    
+
     ; Save with new name
     CALL SaveImageFile
     RET C
-    
+
     ; Update current filename
     LD DE, FileManagerState
     LD BC, 10
     LDIR
-    
+
     CALL ResetModifiedFlag
     CALL UpdateLastSaveTime
     XOR A
@@ -1199,12 +1199,12 @@ ProcessAutoSave:
     LD A, (AutoSaveOn)
     OR A
     RET Z
-    
+
     ; Check if modified
     LD A, (FileModified)
     OR A
     RET Z
-    
+
     ; Check timer
     LD HL, (LastSaveTime)
     LD DE, (FrameCount)
@@ -1213,7 +1213,7 @@ ProcessAutoSave:
     LD HL, 1800         ; 30 seconds at 60fps
     SBC HL, DE
     RET C               ; Not time yet
-    
+
     ; Perform auto-save
     CALL PerformAutoSave
     RET
@@ -1223,16 +1223,16 @@ CreateBackup:
     ; Create numbered backup
     LD A, (BackupCount)
     LD B, A
-    
+
 BackupLoop:
     PUSH BC
-    
+
     ; Generate backup filename
     CALL GenerateBackupName
-    
+
     ; Save backup
     CALL SaveBackupFile
-    
+
     POP BC
     DJNZ BackupLoop
     RET
@@ -1240,20 +1240,20 @@ BackupLoop:
 ; Complete save operation with compression
 SaveImageFile:
     ; Input: HL = filename
-    
+
     ; Create backup first
     CALL CreateBackup
-    
+
     ; Prepare file header
     CALL PrepareFileHeader
-    
+
     ; Compress image data
     CALL CompressImageData
-    
+
     ; Save file
     CALL PerformFileSave
     RET C
-    
+
     ; Verify save
     CALL VerifyFileSave
     RET
@@ -1261,15 +1261,15 @@ SaveImageFile:
 ; Load with error recovery
 LoadImageFile:
     ; Input: HL = filename
-    
+
     ; Try primary load
     CALL AttemptFileLoad
     JR NC, LoadSuccess
-    
+
     ; Try backup files
     CALL LoadFromBackup
     JR NC, LoadSuccess
-    
+
     ; Load failed
     CALL ShowLoadError
     SCF
@@ -1278,11 +1278,11 @@ LoadImageFile:
 LoadSuccess:
     ; Decompress if needed
     CALL DecompressImageData
-    
+
     ; Verify integrity
     CALL VerifyImageIntegrity
     RET C
-    
+
     ; Success
     XOR A
     RET
@@ -1291,7 +1291,7 @@ LoadSuccess:
 PrepareFileHeader:
     ; Extended header with metadata
     LD HL, ExtendedHeader
-    
+
     ; Magic number
     LD (HL), 'P'
     INC HL
@@ -1301,13 +1301,13 @@ PrepareFileHeader:
     INC HL
     LD (HL), 'T'
     INC HL
-    
+
     ; Version
     LD (HL), 2          ; Version 2
     INC HL
     LD (HL), 0
     INC HL
-    
+
     ; Dimensions
     LD (HL), 0          ; Width low
     INC HL
@@ -1317,19 +1317,19 @@ PrepareFileHeader:
     INC HL
     LD (HL), 0
     INC HL
-    
+
     ; Compression type
     LD A, (CompressionType)
     LD (HL), A
     INC HL
-    
+
     ; Timestamp
     LD DE, (FrameCount)
     LD (HL), E
     INC HL
     LD (HL), D
     INC HL
-    
+
     ; Continue with full header...
     RET
 
@@ -1337,11 +1337,11 @@ PrepareFileHeader:
 CompressImageData:
     ; Choose compression based on image content
     CALL AnalyzeImageContent
-    
+
     ; Select best compression
     CP 50               ; Threshold for complexity
     JR C, UseRLECompression
-    
+
     ; Use dictionary compression
     LD HL, 16384
     LD DE, CompressedBuffer
@@ -1397,7 +1397,7 @@ ConfirmIfModified:
     LD A, (FileModified)
     OR A
     RET Z               ; Not modified
-    
+
     ; Show confirmation dialog
     LD HL, SaveChangesMsg
     CALL ShowYesNoDialog
@@ -1406,33 +1406,33 @@ ConfirmIfModified:
 ; File demo
 FileSystemDemo:
     ; Test complete file system
-    
+
     ; Create new file
     LD A, 0
     LD HL, 0
     CALL FileManager
-    
+
     ; Draw something
     CALL DrawTestContent
-    
+
     ; Mark as modified
     LD A, 1
     LD (FileModified), A
-    
+
     ; Save file
     LD A, 3             ; Save As
     LD HL, TestFilename
     CALL FileManager
-    
+
     ; Clear and reload
     CALL ClearCanvas
     LD A, 1             ; Open
     LD HL, TestFilename
     CALL FileManager
-    
+
     ; Test auto-save
     CALL ProcessAutoSave
-    
+
     LD B, 255           ; Success
     RET
 
@@ -1485,7 +1485,7 @@ PerformanceMonitor:
     FrameEndTime:   DW 0
     FrameAverage:   DW 0
     DropFrames:     DB 0
-    
+
 ; Dynamic performance adjustment
 OptimizePerformance:
     ; Measure current performance
@@ -1494,7 +1494,7 @@ OptimizePerformance:
     OR A
     SBC HL, DE
     RET C               ; Performance OK
-    
+
     ; Performance poor - reduce quality
     CALL ReduceEffects
     CALL SimplifyBrushes
@@ -1506,7 +1506,7 @@ MemoryManager:
     ; Buffer pool for temporary operations
     BufferPool:     DS 2048
     BufferUsed:     DB 0
-    
+
 AllocateBuffer:
     ; Input: BC = size needed
     ; Output: HL = buffer address, Carry = success
@@ -1514,13 +1514,13 @@ AllocateBuffer:
     OR A
     SCF
     RET NZ              ; Buffer in use
-    
+
     ; Check size
     LD HL, 2048
     OR A
     SBC HL, BC
     RET C               ; Too large
-    
+
     ; Allocate
     LD A, 1
     LD (BufferUsed), A
@@ -1552,26 +1552,26 @@ ApplicationState:
     ; Core state
     Running:        DB 1
     CurrentMode:    DB 0            ; 0=draw, 1=menu, 2=help
-    
+
     ; Drawing state
     ActiveTool:     DB 0            ; Current tool
     BrushSettings:  DS 8            ; Brush configuration
     DrawingActive:  DB 0            ; Currently drawing
-    
+
     ; UI state
     UIVisible:      DB 1            ; UI panels shown
     MenuOpen:       DB 0            ; Menu system active
     DialogOpen:     DB 0            ; Dialog box shown
-    
+
     ; File state
     HasFilename:    DB 0            ; File has been saved
     FileModified:   DB 0            ; Needs saving
     AutoSaveCount:  DB 0            ; Auto-save counter
-    
+
     ; Performance state
     FrameRate:      DB 0            ; Current FPS
     Quality:        DB 3            ; Rendering quality (0-3)
-    
+
     ; Error state
     LastError:      DB 0            ; Last error code
     ErrorCount:     DB 0            ; Total errors
@@ -1580,38 +1580,38 @@ ApplicationState:
 PixelPainterMain:
     ; System initialization
     CALL InitializeAllSystems
-    
+
     ; Show splash screen
     CALL ShowApplicationSplash
-    
+
     ; Main application loop
 MainApplicationLoop:
     ; Frame timing start
     CALL StartFrameTiming
-    
+
     ; Process all input
     CALL ProcessAllInput
-    
+
     ; Update all systems
     CALL UpdateAllSystems
-    
+
     ; Render everything
     CALL RenderAllSystems
-    
+
     ; Frame timing end
     CALL EndFrameTiming
-    
+
     ; Performance adjustment
     CALL AdjustPerformance
-    
+
     ; Check exit condition
     LD A, (ApplicationState)
     OR A
     JR NZ, MainApplicationLoop
-    
+
     ; Cleanup and exit
     CALL CleanupAllSystems
-    
+
     ; Return final status
     LD A, (LastError)
     LD B, A
@@ -1621,7 +1621,7 @@ MainApplicationLoop:
 InitializeAllSystems:
     ; Clear all memory
     CALL ClearAllMemory
-    
+
     ; Initialize core systems
     CALL InitGraphicsCore
     CALL InitInputSystem
@@ -1630,7 +1630,7 @@ InitializeAllSystems:
     CALL InitFileSystem
     CALL InitEffectsEngine
     CALL InitPerformanceMonitor
-    
+
     ; Set initial state
     LD A, 1
     LD (ApplicationState), A
@@ -1638,10 +1638,10 @@ InitializeAllSystems:
     LD (ActiveTool), A
     LD A, 3
     LD (Quality), A
-    
+
     ; Initialize default brush
     CALL SetupDefaultBrush
-    
+
     RET
 
 ; Process all input systems
@@ -1649,12 +1649,12 @@ ProcessAllInput:
     ; Read raw input
     CALL ReadKeyboardInput
     CALL ReadCursorInput
-    
+
     ; Process UI input first
     LD A, (UIVisible)
     OR A
     CALL NZ, ProcessUIInput
-    
+
     ; Process drawing input
     LD A, (CurrentMode)
     OR A
@@ -1671,10 +1671,10 @@ UpdateAllSystems:
     CALL UpdateUISystem
     CALL UpdateEffectsSystem
     CALL UpdateFileSystem
-    
+
     ; Update application logic
     CALL UpdateApplicationLogic
-    
+
     RET
 
 ; Render all systems
@@ -1685,10 +1685,10 @@ RenderAllSystems:
     CALL RenderUILayer
     CALL RenderCursor
     CALL RenderDialogs
-    
+
     ; Post-processing
     CALL ApplyPostEffects
-    
+
     RET
 
 ; Complete drawing integration
@@ -1697,7 +1697,7 @@ UpdateDrawingSystem:
     LD A, (DrawingActive)
     OR A
     RET Z
-    
+
     ; Get current tool
     LD A, (ActiveTool)
     OR A
@@ -1729,16 +1729,16 @@ UpdateFileSystem:
     LD (AutoSaveCount), A
     CP 150              ; Every 150 frames (6 seconds at 25fps)
     JR NZ, NoAutoSave
-    
+
     ; Reset counter
     XOR A
     LD (AutoSaveCount), A
-    
+
     ; Check if file needs saving
     LD A, (FileModified)
     OR A
     CALL NZ, PerformAutoSave
-    
+
 NoAutoSave:
     ; Update file UI indicators
     CALL UpdateFileStatus
@@ -1750,18 +1750,18 @@ AdjustPerformance:
     CALL CalculateFrameRate
     LD A, (FrameRate)
     LD (ApplicationState + 12), A
-    
+
     ; Check if performance is poor
     CP TARGET_FPS
     RET NC              ; Performance OK
-    
+
     ; Reduce quality
     LD A, (Quality)
     OR A
     RET Z               ; Already minimum
     DEC A
     LD (Quality), A
-    
+
     ; Apply quality changes
     CALL ApplyQualitySettings
     RET
@@ -1770,15 +1770,15 @@ AdjustPerformance:
 HandleError:
     ; Input: A = error code
     LD (LastError), A
-    
+
     ; Increment error count
     LD HL, ErrorCount
     INC (HL)
-    
+
     ; Check error severity
     CP 100              ; Fatal error threshold
     JP NC, FatalError
-    
+
     ; Show error message
     CALL ShowErrorMessage
     RET
@@ -1786,10 +1786,10 @@ HandleError:
 FatalError:
     ; Save emergency backup
     CALL EmergencyBackup
-    
+
     ; Show fatal error dialog
     CALL ShowFatalErrorDialog
-    
+
     ; Exit application
     XOR A
     LD (ApplicationState), A
@@ -1799,12 +1799,12 @@ FatalError:
 CompleteApplicationDemo:
     ; Run the complete integrated application
     CALL PixelPainterMain
-    
+
     ; Check final status
     LD A, (LastError)
     OR A
     JR Z, DemoSuccess
-    
+
     ; Application had errors
     LD B, A
     RET
@@ -1865,7 +1865,7 @@ StartFrameTiming:
 EndFrameTiming:
     LD A, 1
     LD (FrameEndTime), A
-    
+
     ; Calculate frame time
     ; (Simplified calculation)
     LD A, TARGET_FPS
@@ -1888,14 +1888,14 @@ TestFramework:
     TestCount:      DB 0
     PassCount:      DB 0
     FailCount:      DB 0
-    
+
 RunAllTests:
     ; Initialize
     XOR A
     LD (TestCount), A
     LD (PassCount), A
     LD (FailCount), A
-    
+
     ; Test all systems
     CALL TestGraphicsCore
     CALL TestInputSystem
@@ -1903,7 +1903,7 @@ RunAllTests:
     CALL TestFileSystem
     CALL TestUISystem
     CALL TestEffectsEngine
-    
+
     ; Generate report
     CALL GenerateTestReport
     RET
@@ -1942,7 +1942,7 @@ ValidationFramework:
     CALL ValidateUISystem
     CALL ValidateFileOperations
     CALL ValidatePerformance
-    
+
     ; Generate final report
     CALL GenerateValidationReport
     RET
@@ -1951,29 +1951,29 @@ ValidationFramework:
 ValidateGraphicsCore:
     LD HL, GraphicsTests
     LD B, 5             ; 5 tests
-    
+
 GraphicsTestLoop:
     PUSH BC
     PUSH HL
-    
+
     ; Run test
     CALL (HL)
-    
+
     ; Check result
     OR A
     JR Z, GraphicsTestPass
-    
+
     ; Test failed
     LD A, (GraphicsFailures)
     INC A
     LD (GraphicsFailures), A
     JR GraphicsTestNext
-    
+
 GraphicsTestPass:
     LD A, (GraphicsPasses)
     INC A
     LD (GraphicsPasses), A
-    
+
 GraphicsTestNext:
     POP HL
     INC HL
@@ -1987,54 +1987,54 @@ ValidateDrawingTools:
     ; Test each tool
     LD A, TOOL_BRUSH
     CALL TestDrawingTool
-    
+
     LD A, TOOL_LINE
     CALL TestDrawingTool
-    
+
     LD A, TOOL_RECTANGLE
     CALL TestDrawingTool
-    
+
     LD A, TOOL_CIRCLE
     CALL TestDrawingTool
-    
+
     LD A, TOOL_FILL
     CALL TestDrawingTool
-    
+
     RET
 
 TestDrawingTool:
     ; Input: A = tool type
     ; Test the tool functionality
-    
+
     ; Set tool
     LD (CurrentTool), A
-    
+
     ; Clear test area
     CALL ClearTestArea
-    
+
     ; Perform test drawing
     CALL PerformTestDraw
-    
+
     ; Validate result
     CALL ValidateTestResult
-    
+
     RET
 
 ; Performance validation
 ValidatePerformance:
     ; Measure drawing performance
     CALL MeasureDrawingSpeed
-    
+
     ; Check against targets
     LD A, (MeasuredFPS)
     CP TARGET_FPS
     JR NC, PerformanceOK
-    
+
     ; Performance below target
     LD A, 1
     LD (PerformanceFailures), A
     RET
-    
+
 PerformanceOK:
     XOR A
     LD (PerformanceFailures), A
@@ -2043,26 +2043,26 @@ PerformanceOK:
 MeasureDrawingSpeed:
     ; Draw test pattern and measure time
     LD B, 100           ; 100 operations
-    
+
     ; Start timing
     CALL StartTimer
-    
+
 SpeedTestLoop:
     PUSH BC
-    
+
     ; Perform drawing operation
     CALL TestDrawOperation
-    
+
     POP BC
     DJNZ SpeedTestLoop
-    
+
     ; End timing
     CALL EndTimer
-    
+
     ; Calculate FPS
     CALL CalculateFPS
     LD (MeasuredFPS), A
-    
+
     RET
 
 ; Integration validation
@@ -2072,7 +2072,7 @@ ValidateIntegration:
     CALL TestDrawingToFile
     CALL TestFileToDisplay
     CALL TestUIToSystem
-    
+
     RET
 
 TestInputToDrawing:
@@ -2083,84 +2083,84 @@ TestInputToDrawing:
 ; Final application test
 FinalApplicationTest:
     ; Complete end-to-end test
-    
+
     ; Initialize application
     CALL InitializeAllSystems
-    
+
     ; Simulate user session
     CALL SimulateUserSession
-    
+
     ; Validate final state
     CALL ValidateFinalState
-    
+
     ; Cleanup
     CALL CleanupAllSystems
-    
+
     ; Generate final score
     CALL CalculateFinalScore
-    
+
     RET
 
 SimulateUserSession:
     ; Simulate typical user workflow
-    
+
     ; Create new image
     CALL SimulateNewImage
-    
+
     ; Draw with various tools
     CALL SimulateDrawingSession
-    
+
     ; Use effects
     CALL SimulateEffectsUsage
-    
+
     ; Save and load
     CALL SimulateSaveLoad
-    
+
     ; Use UI features
     CALL SimulateUIInteraction
-    
+
     RET
 
 SimulateDrawingSession:
     ; Draw with each tool
     LD A, TOOL_BRUSH
     CALL SimulateToolUsage
-    
+
     LD A, TOOL_LINE
     CALL SimulateToolUsage
-    
+
     LD A, TOOL_RECTANGLE
     CALL SimulateToolUsage
-    
+
     LD A, TOOL_CIRCLE
     CALL SimulateToolUsage
-    
+
     LD A, TOOL_FILL
     CALL SimulateToolUsage
-    
+
     RET
 
 SimulateToolUsage:
     ; Input: A = tool type
     ; Simulate using the tool
-    
+
     LD (CurrentTool), A
-    
+
     ; Simulate drawing motions
     LD B, 10            ; 10 drawing operations
-    
+
 ToolUsageLoop:
     PUSH BC
-    
+
     ; Generate test coordinates
     CALL GenerateTestCoords
-    
+
     ; Perform drawing
     CALL PerformDrawing
-    
+
     POP BC
     DJNZ ToolUsageLoop
-    
+
     RET
 
 ; Validation results
@@ -2196,7 +2196,7 @@ GenerateValidationReport:
     LD A, (FilePasses)
     ADD B
     LD (TotalPasses), A
-    
+
     ; Calculate failures
     LD A, (GraphicsFailures)
     LD B, A
@@ -2215,14 +2215,14 @@ GenerateValidationReport:
     LD A, (PerformanceFailures)
     ADD B
     LD (TotalFailures), A
-    
+
     ; Calculate final score (0-100)
     LD A, (TotalPasses)
     LD B, A
     LD A, (TotalFailures)
     ADD B              ; Total tests
     JR Z, PerfectScore
-    
+
     ; Score = (passes * 100) / total tests
     LD B, A            ; Total tests
     LD A, (TotalPasses)
@@ -2233,16 +2233,16 @@ GenerateValidationReport:
     JR Z, PerfectScore
     LD A, 85           ; Good score
     JR StoreScore
-    
+
 PerfectScore:
     LD A, 100
-    
+
 StoreScore:
     LD (FinalScore), A
-    
+
     ; Show results
     CALL DisplayValidationResults
-    
+
     RET
 
 DisplayValidationResults:
@@ -2254,12 +2254,12 @@ DisplayValidationResults:
 FinalPixelPainterDemo:
     ; Run complete validation
     CALL ValidationFramework
-    
+
     ; Check if validation passed
     LD A, (FinalScore)
     CP 80               ; Minimum passing score
     JR NC, ValidationPassed
-    
+
     ; Validation failed
     LD B, 1
     RET
@@ -2267,7 +2267,7 @@ FinalPixelPainterDemo:
 ValidationPassed:
     ; Run final demonstration
     CALL FinalApplicationTest
-    
+
     ; Return final score
     LD A, (FinalScore)
     LD B, A
@@ -2325,7 +2325,7 @@ Congratulations! You've mastered Z80 assembly graphics programming and built a c
 ## What You've Accomplished
 
 - **Graphics Programming Mastery**: From pixels to complex effects
-- **Input System Expertise**: Responsive, professional user interfaces  
+- **Input System Expertise**: Responsive, professional user interfaces
 - **File System Proficiency**: Complete persistence with compression
 - **Performance Optimization**: Real-time graphics programming
 - **Professional Development**: Complete application architecture

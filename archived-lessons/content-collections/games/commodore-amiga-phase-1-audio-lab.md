@@ -68,24 +68,28 @@ Leverages the Amiga's groundbreaking audio system:
 ### Tiers 5-8 Development Roadmap
 
 **Tier 5**: Basic audio programming
+
 - Understanding Paula chip architecture
 - Basic sample playback and channel control
 - Simple audio effects and processing
 - Building foundation audio systems
 
 **Tier 6**: Multi-channel composition
+
 - 4-channel stereo music programming
 - Channel mixing and stereo positioning
 - Advanced waveform synthesis
 - Building professional composition tools
 
 **Tier 7**: Digital sampling and effects
+
 - Recording and manipulating audio samples
 - Real-time audio effects processing
 - Advanced signal processing algorithms
 - Creating professional audio effects
 
 **Tier 8**: Complete audio workstation
+
 - Integrating all audio systems
 - Building professional user interfaces
 - Creating complete music production workflow

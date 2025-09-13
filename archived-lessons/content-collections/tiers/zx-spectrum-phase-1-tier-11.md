@@ -27,6 +27,7 @@ Elevate your programming to professional levels! Learn advanced techniques for b
 ## What You'll Learn
 
 Create professional-quality program architecture:
+
 - Subroutines for code organisation and reuse
 - Modular programming techniques
 - Advanced system design principles
@@ -35,24 +36,28 @@ Create professional-quality program architecture:
 ## Tier Overview
 
 **Lessons 1-8: Subroutines and Code Organization**
+
 - GOSUB and RETURN for subroutine creation
 - Breaking programs into logical modules
 - Creating reusable code components
 - Building well-structured program flow
 
 **Lessons 9-16: Modular Programming**
+
 - Designing modular program architecture
 - Creating specialized program modules
 - Building systems with clear interfaces
 - Managing complex program interactions
 
 **Lessons 17-24: Advanced System Design**
+
 - Planning complex software systems
 - Managing program state and data flow
 - Creating scalable program architectures
 - Building robust, maintainable systems
 
 **Lessons 25-32: Memory Matrix Advanced Features**
+
 - Implementing complex puzzle systems
 - Creating adaptive difficulty systems
 - Building sophisticated user interfaces

@@ -46,7 +46,7 @@ DitherPatterns:
     DB 00000000b
     DB 00000000b
     DB 00000000b
-    
+
     ; 12.5%
     DB 00000000b
     DB 00010000b
@@ -56,7 +56,7 @@ DitherPatterns:
     DB 00010000b
     DB 00000000b
     DB 01000001b
-    
+
     ; 25%
     DB 10001000b
     DB 00100010b
@@ -66,7 +66,7 @@ DitherPatterns:
     DB 00100010b
     DB 10001000b
     DB 00100010b
-    
+
     ; 37.5%
     DB 10101010b
     DB 01010100b
@@ -76,7 +76,7 @@ DitherPatterns:
     DB 01010100b
     DB 10101010b
     DB 01010101b
-    
+
     ; 50%
     DB 10101010b
     DB 01010101b
@@ -86,7 +86,7 @@ DitherPatterns:
     DB 01010101b
     DB 10101010b
     DB 01010101b
-    
+
     ; 62.5%
     DB 01010101b
     DB 10101011b
@@ -96,7 +96,7 @@ DitherPatterns:
     DB 10101011b
     DB 01010101b
     DB 10101010b
-    
+
     ; 75%
     DB 01110111b
     DB 11011101b
@@ -106,7 +106,7 @@ DitherPatterns:
     DB 11011101b
     DB 01110111b
     DB 11011101b
-    
+
     ; 87.5%
     DB 11111111b
     DB 11101111b
@@ -116,7 +116,7 @@ DitherPatterns:
     DB 11101111b
     DB 11111111b
     DB 10111110b
-    
+
     ; 100% (black)
     DB 11111111b
     DB 11111111b
@@ -151,11 +151,11 @@ Pattern5:       DB 11111111b    ; 100%
 DrawHGradient:
     LD A, C
     LD (GradHeight), A
-    
+
 HGradYLoop:
     PUSH BC
     PUSH DE
-    
+
     ; Calculate gradient step
     LD A, B             ; Width
     RRA
@@ -164,24 +164,24 @@ HGradYLoop:
     AND 31
     JR NZ, HGradDraw
     INC A               ; At least 1
-    
+
 HGradDraw:
     LD (GradStep), A
     LD A, 0             ; Pattern index
     LD (PatternIdx), A
-    
+
     ; Draw gradient line
     LD B, D             ; X position
-    
+
 HGradXLoop:
     PUSH BC
-    
+
     ; Get pattern for current position
     LD A, (PatternIdx)
     CP 6
     JR C, ValidPattern
     LD A, 5             ; Max pattern
-    
+
 ValidPattern:
     ; Get pattern byte
     PUSH AF
@@ -192,22 +192,22 @@ ValidPattern:
     LD A, (HL)
     LD (CurrentPattern), A
     POP AF
-    
+
     ; Draw column with pattern
     LD C, E             ; Y position
     LD A, (GradHeight)
     LD D, A
-    
+
 PatternColumn:
     PUSH BC
     PUSH DE
-    
+
     ; Apply dither pattern
     LD A, C
     AND 7               ; Row within pattern
     LD D, A
     LD A, (CurrentPattern)
-    
+
     ; Rotate pattern to current row
 PatternRotate:
     OR A
@@ -215,32 +215,32 @@ PatternRotate:
     RRA
     DEC D
     JR PatternRotate
-    
+
 ApplyPattern:
     JR NC, SkipPixel    ; Pattern bit is 0
-    
+
     CALL PlotPixel
-    
+
 SkipPixel:
     POP DE
     POP BC
     INC C               ; Next Y
     DEC D
     JR NZ, PatternColumn
-    
+
     POP BC
-    
+
     ; Move to next gradient step
     LD A, (GradStep)
     DEC A
     LD (GradStep), A
     JR NZ, SamePattern
-    
+
     ; Next pattern
     LD A, (PatternIdx)
     INC A
     LD (PatternIdx), A
-    
+
     ; Reset step counter
     POP DE
     PUSH DE
@@ -250,7 +250,7 @@ SkipPixel:
     RRA
     AND 31
     LD (GradStep), A
-    
+
 SamePattern:
     INC B               ; Next X
     POP DE
@@ -265,17 +265,17 @@ SamePattern:
     PUSH BC
     PUSH DE
     JR C, HGradXLoop
-    
+
     POP DE
     POP BC
-    
+
     ; Next line
     INC E               ; Next Y
     LD A, (GradHeight)
     DEC A
     LD (GradHeight), A
     JR NZ, HGradYLoop
-    
+
     RET
 
 ; Storage
@@ -302,27 +302,27 @@ ClearScreen:
 ; Test gradients
 TestGradients:
     CALL ClearScreen
-    
+
     ; Draw horizontal gradient
     LD D, 20            ; X start
     LD E, 20            ; Y start
     LD B, 200           ; Width
     LD C, 40            ; Height
     CALL DrawHGradient
-    
+
     ; Draw vertical gradient (rotated)
     LD D, 20
     LD E, 80
     LD B, 40
     LD C, 80
     CALL DrawVGradient
-    
+
     ; Draw radial gradient
     LD D, 150           ; Center X
     LD E, 120           ; Center Y
     LD B, 50            ; Radius
     CALL DrawRadialGradient
-    
+
     LD B, 255           ; Success
     RET
 
@@ -350,10 +350,10 @@ Simulate transparency by alternating pixels:
 TransparencyMasks:
     DB 10101010b    ; 50% checkerboard
     DB 01010101b
-    
+
     DB 10001000b    ; 25% sparse
     DB 00100010b
-    
+
     DB 11101110b    ; 75% dense
     DB 10111011b
 
@@ -363,7 +363,7 @@ DrawTransparent:
     LD A, (TransparencyLevel)
     OR A
     JP Z, DrawOpaque        ; 0% = fully opaque
-    
+
     ; Get transparency mask
     DEC A
     ADD A, A                ; × 2 (2 bytes per pattern)
@@ -375,14 +375,14 @@ DrawTransparent:
     INC BC
     LD A, (BC)              ; Second mask byte
     LD (Mask2), A
-    
+
     ; Apply transparency
     LD B, 8                 ; 8 lines
-    
+
 TransLoop:
     LD A, (HL)              ; Source byte
     PUSH AF
-    
+
     ; Apply mask (alternating rows)
     LD A, B
     AND 1
@@ -391,12 +391,12 @@ TransLoop:
     JR ApplyMask
 UseMask1:
     LD A, (Mask1)
-    
+
 ApplyMask:
     LD C, A                 ; Save mask
     POP AF                  ; Source byte
     AND C                   ; Apply transparency
-    
+
     ; Merge with background
     PUSH AF
     LD A, (DE)              ; Background byte
@@ -405,7 +405,7 @@ ApplyMask:
     LD C, A
     POP AF
     OR C                    ; Combine
-    
+
     LD (DE), A              ; Write result
     INC HL
     INC DE
@@ -436,18 +436,18 @@ DrawTransRect:
     LD (TransMode), A
     LD A, C
     LD (RectHeight), A
-    
+
 TransYLoop:
     PUSH BC
     PUSH DE
-    
+
     LD A, B             ; Width
     LD (RectWidth), A
-    
+
 TransXLoop:
     PUSH BC
     PUSH DE
-    
+
     ; Check transparency pattern
     LD A, (TransMode)
     OR A
@@ -455,7 +455,7 @@ TransXLoop:
     DEC A
     JR Z, Trans25
     JR Trans75
-    
+
 Trans50:
     ; 50% checkerboard
     LD A, B
@@ -463,7 +463,7 @@ Trans50:
     AND 1
     JR Z, SkipTransPixel
     JR DrawTransPixel
-    
+
 Trans25:
     ; 25% sparse
     LD A, B
@@ -473,7 +473,7 @@ Trans25:
     AND 1
     JR NZ, SkipTransPixel
     JR DrawTransPixel
-    
+
 Trans75:
     ; 75% dense
     LD A, B
@@ -483,29 +483,29 @@ Trans75:
     AND 1
     JR Z, DrawTransPixel
     JR SkipTransPixel
-    
+
 DrawTransPixel:
     CALL PlotPixel
-    
+
 SkipTransPixel:
     POP DE
     POP BC
-    
+
     INC B               ; Next X
     LD A, (RectWidth)
     DEC A
     LD (RectWidth), A
     JR NZ, TransXLoop
-    
+
     POP DE
     POP BC
-    
+
     INC E               ; Next Y
     LD A, (RectHeight)
     DEC A
     LD (RectHeight), A
     JR NZ, TransYLoop
-    
+
     RET
 
 ; Storage
@@ -519,21 +519,21 @@ AlphaBlend:
     ; Input: HL = image1, DE = image2, BC = size
     ; A = blend level (0-7)
     LD (BlendLevel), A
-    
+
 BlendLoop:
     PUSH BC
-    
+
     LD A, (HL)          ; Image 1 pixel
     LD B, A
     LD A, (DE)          ; Image 2 pixel
     LD C, A
-    
+
     ; Simple blend based on pattern
     LD A, (BlendCounter)
     INC A
     AND 7
     LD (BlendCounter), A
-    
+
     LD D, A
     LD A, (BlendLevel)
     CP D
@@ -542,12 +542,12 @@ BlendLoop:
     JR StoreBlend
 UseImage1:
     LD A, B             ; Use image 1
-    
+
 StoreBlend:
     LD (HL), A
     INC HL
     INC DE
-    
+
     POP BC
     DEC BC
     LD A, B
@@ -574,7 +574,7 @@ ClearScreen:
 ; Test transparency
 TestTransparency:
     CALL ClearScreen
-    
+
     ; Draw background pattern
     LD HL, DISPLAY_FILE
     LD B, 192
@@ -589,7 +589,7 @@ BackPattern1:
 NextBack:
     INC HL
     DJNZ BackLoop
-    
+
     ; Draw transparent rectangles
     LD D, 20
     LD E, 20
@@ -597,21 +597,21 @@ NextBack:
     LD C, 40
     LD A, TRANS_50
     CALL DrawTransRect
-    
+
     LD D, 50
     LD E, 40
     LD B, 60
     LD C, 40
     LD A, TRANS_25
     CALL DrawTransRect
-    
+
     LD D, 80
     LD E, 60
     LD B, 60
     LD C, 40
     LD A, TRANS_75
     CALL DrawTransRect
-    
+
     ; Overlapping transparent shapes
     LD D, 120
     LD E, 80
@@ -619,14 +619,14 @@ NextBack:
     LD C, 60
     LD A, TRANS_50
     CALL DrawTransRect
-    
+
     LD D, 140
     LD E, 100
     LD B, 80
     LD C, 60
     LD A, TRANS_50
     CALL DrawTransRect
-    
+
     LD B, 255           ; Success
     RET
 ```
@@ -646,18 +646,18 @@ SwapBuffers:
     LD A, (CurrentBuffer)
     XOR 1
     LD (CurrentBuffer), A
-    
+
     ; Copy buffer to screen
     OR A
     JR Z, CopyBuffer1
-    
+
     ; Copy buffer 2
     LD HL, BUFFER2
     JR CopyToScreen
-    
+
 CopyBuffer1:
     LD HL, BUFFER1
-    
+
 CopyToScreen:
     LD DE, DISPLAY_FILE
     LD BC, 6144
@@ -697,7 +697,7 @@ SpriteFrames:
     DB 11111111b
     DB 01111110b
     DB 00111100b
-    
+
     ; Frame 1 - ball squashed
     DB 00000000b
     DB 00111100b
@@ -707,7 +707,7 @@ SpriteFrames:
     DB 01111110b
     DB 00111100b
     DB 00000000b
-    
+
     ; Frame 2 - ball stretched
     DB 00011000b
     DB 00111100b
@@ -729,24 +729,24 @@ AnimDY:         DB 1        ; Y velocity
 ; Input: B = x, C = y, HL = sprite data
 DrawSprite:
     LD D, 8             ; 8 lines
-    
+
 SpriteLoop:
     PUSH BC
     PUSH DE
     PUSH HL
-    
+
     ; Calculate screen position
     CALL CalculateByteAddr
-    
+
     ; Draw sprite line
     LD A, (HL)          ; Sprite data
     XOR (DE)            ; XOR with screen
     LD (DE), A          ; Write back
-    
+
     POP HL
     POP DE
     POP BC
-    
+
     INC HL              ; Next sprite line
     INC C               ; Next Y
     DEC D
@@ -764,18 +764,18 @@ CalculateByteAddr:
     RRA
     OR 64
     LD D, A
-    
+
     LD A, C
     AND 56
     RLA
     RLA
     LD E, A
-    
+
     LD A, C
     AND 7
     OR D
     LD D, A
-    
+
     LD A, B
     RRA
     RRA
@@ -801,14 +801,14 @@ AnimateSprite:
     LD DE, SpriteFrames
     ADD HL, DE
     CALL DrawSprite     ; Erase with XOR
-    
+
     ; Update position
     LD A, (AnimX)
     LD B, A
     LD A, (AnimDX)
     ADD B
     LD (AnimX), A
-    
+
     ; Check X bounds
     CP 8
     JR NC, XOK1
@@ -817,7 +817,7 @@ AnimateSprite:
     LD A, 8
     LD (AnimX), A
     JR UpdateY
-    
+
 XOK1:
     CP 240
     JR C, UpdateY
@@ -825,14 +825,14 @@ XOK1:
     LD (AnimDX), A
     LD A, 240
     LD (AnimX), A
-    
+
 UpdateY:
     LD A, (AnimY)
     LD B, A
     LD A, (AnimDY)
     ADD B
     LD (AnimY), A
-    
+
     ; Check Y bounds
     CP 8
     JR NC, YOK1
@@ -844,7 +844,7 @@ UpdateY:
     LD A, 1
     LD (AnimFrame), A
     JR DrawNewSprite
-    
+
 YOK1:
     CP 176
     JR C, UpdateFrame
@@ -856,7 +856,7 @@ YOK1:
     LD A, 1
     LD (AnimFrame), A
     JR DrawNewSprite
-    
+
 UpdateFrame:
     ; Cycle animation frames
     LD A, (AnimFrame)
@@ -866,7 +866,7 @@ UpdateFrame:
     LD A, 0
 FrameOK:
     LD (AnimFrame), A
-    
+
 DrawNewSprite:
     ; Draw at new position
     LD A, (AnimX)
@@ -897,15 +897,15 @@ ClearScreen:
 ; Animation demo
 AnimationDemo:
     CALL ClearScreen
-    
+
     ; Animate for many frames
     LD B, 255
-    
+
 AnimLoop:
     PUSH BC
-    
+
     CALL AnimateSprite
-    
+
     ; Frame delay
     LD BC, 2000
 DelayLoop:
@@ -913,10 +913,10 @@ DelayLoop:
     LD A, B
     OR C
     JR NZ, DelayLoop
-    
+
     POP BC
     DJNZ AnimLoop
-    
+
     LD B, 255           ; Success
     RET
 ```
@@ -938,11 +938,11 @@ EmitParticle:
     LD A, (ParticleCount)
     CP MAX_PARTICLES
     RET NC              ; Too many particles
-    
+
     ; Find free slot
     LD HL, Particles
     LD D, MAX_PARTICLES
-    
+
 FindFreeLoop:
     LD A, (HL)          ; Check X
     CP 255              ; 255 = inactive
@@ -954,26 +954,26 @@ FindFreeLoop:
     DEC D
     JR NZ, FindFreeLoop
     RET                 ; No free slots
-    
+
 FoundFree:
     ; Initialize particle
     LD (HL), B          ; X
     INC HL
     LD (HL), C          ; Y
     INC HL
-    
+
     ; Random velocity
     CALL Random
     AND 7
     SUB 4               ; -4 to +3
     LD (HL), A          ; VX
     INC HL
-    
+
     CALL Random
     AND 3
     NEG                 ; Upward velocity
     LD (HL), A          ; VY
-    
+
     ; Increment count
     LD HL, ParticleCount
     INC (HL)
@@ -983,16 +983,16 @@ FoundFree:
 UpdateParticles:
     LD HL, Particles
     LD B, MAX_PARTICLES
-    
+
 UpdateLoop:
     PUSH BC
     PUSH HL
-    
+
     ; Check if active
     LD A, (HL)
     CP 255
     JP Z, NextParticle
-    
+
     ; Update position
     LD B, (HL)          ; X
     INC HL
@@ -1001,24 +1001,24 @@ UpdateLoop:
     LD D, (HL)          ; VX
     INC HL
     LD E, (HL)          ; VY
-    
+
     ; Apply velocity
     LD A, B
     ADD D
     LD B, A
-    
+
     LD A, C
     ADD E
     LD C, A
-    
+
     ; Apply gravity
     INC E               ; VY += 1
-    
+
     ; Check bounds
     LD A, C
     CP 192
     JR NC, KillParticle
-    
+
     ; Store updated values
     POP HL
     PUSH HL
@@ -1029,20 +1029,20 @@ UpdateLoop:
     LD (HL), D          ; VX
     INC HL
     LD (HL), E          ; VY
-    
+
     ; Draw particle
     PUSH HL
     CALL PlotPixel
     POP HL
     JR NextParticle
-    
+
 KillParticle:
     POP HL
     PUSH HL
     LD (HL), 255        ; Mark as inactive
     LD HL, ParticleCount
     DEC (HL)
-    
+
 NextParticle:
     POP HL
     POP BC
@@ -1069,48 +1069,48 @@ DISPLAY_FILE    EQU 16384
 ; Horizontal wipe effect
 HorizontalWipe:
     LD B, 32            ; 32 columns
-    
+
 HWipeLoop:
     PUSH BC
-    
+
     ; Clear column
     LD A, 32
     SUB B               ; Current column
     LD D, A
-    
+
     ; Clear all rows in column
     LD C, 192           ; All rows
     LD HL, DISPLAY_FILE
-    
+
     ; Calculate column start
     LD A, D
     AND 31
     LD E, A
     LD D, 0
     ADD HL, DE
-    
+
 ClearColumn:
     LD (HL), 0          ; Clear byte
-    
+
     ; Next row (complex calculation)
     PUSH DE
     LD DE, 32
     ADD HL, DE
-    
+
     ; Check for third boundary
     LD A, H
     AND 7
     JR NZ, SameThird
-    
+
     ; Crossed third boundary
     LD DE, 2048-256     ; Adjust
     ADD HL, DE
-    
+
 SameThird:
     POP DE
     DEC C
     JR NZ, ClearColumn
-    
+
     ; Small delay for effect
     LD BC, 500
 WipeDelay:
@@ -1118,7 +1118,7 @@ WipeDelay:
     LD A, B
     OR C
     JR NZ, WipeDelay
-    
+
     POP BC
     DJNZ HWipeLoop
     RET
@@ -1129,14 +1129,14 @@ SpiralWipe:
     LD D, 16            ; Center X (chars)
     LD E, 12            ; Center Y (chars)
     LD B, 1             ; Initial radius
-    
+
 SpiralLoop:
     PUSH BC
     PUSH DE
-    
+
     ; Draw spiral ring
     CALL DrawSpiralRing
-    
+
     ; Delay
     LD BC, 1000
 SpiralDelay:
@@ -1144,10 +1144,10 @@ SpiralDelay:
     LD A, B
     OR C
     JR NZ, SpiralDelay
-    
+
     POP DE
     POP BC
-    
+
     ; Increase radius
     INC B
     LD A, B
@@ -1165,10 +1165,10 @@ DissolveEffect:
     ; Use pseudo-random pattern
     LD HL, 0            ; Random seed
     LD B, 100           ; Iterations
-    
+
 DissolveLoop:
     PUSH BC
-    
+
     ; Generate random position
     ; Simple LFSR
     LD A, H
@@ -1177,7 +1177,7 @@ DissolveLoop:
     RRA
     XOR H
     LD H, A
-    
+
     ; Use as screen position
     LD A, H
     AND 31              ; X coordinate
@@ -1185,14 +1185,14 @@ DissolveLoop:
     LD A, L
     AND 191             ; Y coordinate
     LD E, A
-    
+
     ; Clear 8x8 block at position
     LD B, 8
-    
+
 ClearBlock:
     PUSH BC
     PUSH DE
-    
+
     ; Calculate screen address
     ; (Simplified for demo)
     LD HL, DISPLAY_FILE
@@ -1202,17 +1202,17 @@ ClearBlock:
     LD A, D
     ADD L
     LD L, A
-    
+
     LD (HL), 0
-    
+
     POP DE
     POP BC
     INC E
     DJNZ ClearBlock
-    
+
     ; Update seed
     INC HL
-    
+
     POP BC
     DJNZ DissolveLoop
     RET
@@ -1230,7 +1230,7 @@ FillLoop:
     LD A, B
     OR C
     JR NZ, FillLoop
-    
+
     ; Wait
     LD BC, 20000
 Wait1:
@@ -1238,10 +1238,10 @@ Wait1:
     LD A, B
     OR C
     JR NZ, Wait1
-    
+
     ; Do horizontal wipe
     CALL HorizontalWipe
-    
+
     ; Refill for next effect
     LD HL, DISPLAY_FILE
     LD BC, 6144
@@ -1253,7 +1253,7 @@ FillLoop2:
     LD A, B
     OR C
     JR NZ, FillLoop2
-    
+
     ; Wait
     LD BC, 20000
 Wait2:
@@ -1261,10 +1261,10 @@ Wait2:
     LD A, B
     OR C
     JR NZ, Wait2
-    
+
     ; Do dissolve
     CALL DissolveEffect
-    
+
     LD B, 255           ; Success
     RET
 
@@ -1305,7 +1305,7 @@ PreCalcFrames:
     ; Generate all rotation angles at startup
     LD B, 16            ; 16 angles
     LD HL, RotationData
-    
+
 CalcLoop:
     ; Calculate rotated sprite
     ; Store in buffer
@@ -1318,10 +1318,10 @@ UpdateDirtyOnly:
     LD A, (DirtyFlag)
     OR A
     RET Z               ; Nothing to update
-    
+
     ; Update only dirty region
     CALL UpdateDirtyRect
-    
+
     XOR A
     LD (DirtyFlag), A
     RET
@@ -1352,7 +1352,7 @@ EffectsEngine:
     CALL ClearScreen
     LD HL, 0
     LD (EffectTimer), HL
-    
+
 MainEffectLoop:
     ; Update current effect
     LD A, (CurrentEffect)
@@ -1363,49 +1363,49 @@ MainEffectLoop:
     DEC A
     JP Z, RunTransition
     JP RunAnimation
-    
+
 RunGradient:
     ; Animated gradient effect
     LD HL, (EffectTimer)
     LD A, L
     AND 31              ; Use timer for animation
     LD D, A             ; Offset
-    
+
     ; Draw moving gradient
     LD E, 50            ; Y position
     LD B, 200           ; Width
     LD C, 60            ; Height
     ; Would call gradient with offset
-    
+
     JR UpdateEffect
-    
+
 RunParticles:
     ; Particle fountain effect
     LD HL, (EffectTimer)
     LD A, L
     AND 3
     JR NZ, UpdateParticlesOnly
-    
+
     ; Emit new particle every 4 frames
     LD B, 128           ; Center X
     LD C, 150           ; Bottom Y
     ; Would call EmitParticle
-    
+
 UpdateParticlesOnly:
     ; Would call UpdateParticles
     JR UpdateEffect
-    
+
 RunTransition:
     ; Wipe transition
     LD HL, (EffectTimer)
     LD A, L
     CP 64
     JR NC, TransitionDone
-    
+
     ; Progressive wipe based on timer
     ; Would implement transition step
     JR UpdateEffect
-    
+
 TransitionDone:
     ; Move to next effect
     LD A, (CurrentEffect)
@@ -1415,22 +1415,22 @@ TransitionDone:
     LD HL, 0
     LD (EffectTimer), HL
     JR UpdateEffect
-    
+
 RunAnimation:
     ; Sprite animation
     ; Would update animated sprites
-    
+
 UpdateEffect:
     ; Increment timer
     LD HL, (EffectTimer)
     INC HL
     LD (EffectTimer), HL
-    
+
     ; Check for effect change
     LD A, H
     CP 2                ; Change after 512 frames
     JR C, ContinueEffect
-    
+
     ; Next effect
     LD A, (CurrentEffect)
     INC A
@@ -1438,7 +1438,7 @@ UpdateEffect:
     LD (CurrentEffect), A
     LD HL, 0
     LD (EffectTimer), HL
-    
+
 ContinueEffect:
     ; Frame delay
     LD BC, 1000
@@ -1447,12 +1447,12 @@ FrameDelay:
     LD A, B
     OR C
     JR NZ, FrameDelay
-    
+
     ; Check exit (simplified)
     LD A, (EffectTimer)
     CP 255
     JR NZ, MainEffectLoop
-    
+
     LD B, 255           ; Success
     RET
 
@@ -1469,10 +1469,10 @@ ClearScreen:
 EffectsDemo:
     ; Run effects engine
     CALL EffectsEngine
-    
+
     ; Show final message
     ; Would display 'Effects Complete!'
-    
+
     LD B, 255
     RET
 ```
@@ -1482,7 +1482,7 @@ EffectsDemo:
 You've mastered advanced graphics effects:
 
 1. **Gradients**: Dithering patterns for smooth transitions
-2. **Transparency**: Pattern-based alpha simulation  
+2. **Transparency**: Pattern-based alpha simulation
 3. **Animation**: Frame buffers and sprite systems
 4. **Particles**: Dynamic effect systems
 5. **Transitions**: Professional screen wipes

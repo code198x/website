@@ -27,6 +27,7 @@ Time to become a CARTRIDGE MASTER! 🗃️ With **32 data-focused lessons**, you
 ## What You'll Build
 
 Create **MEGA CONTENT SYSTEM** - a comprehensive data management framework featuring:
+
 - Efficient asset organization that maximizes available space 📦
 - Bank switching systems for games larger than 32KB
 - Data compression that squeezes more content into ROM
@@ -36,24 +37,28 @@ Create **MEGA CONTENT SYSTEM** - a comprehensive data management framework featu
 ## Tier Overview
 
 **Lessons 1-8: "ROM Architecture" - Understanding NES Cartridge Systems**
+
 - CHR-ROM and PRG-ROM organization and structure
 - Memory mapping and address space management
 - Cartridge types and hardware capabilities
 - ROM size optimization and space budgeting
 
 **Lessons 9-16: "Bank Switching Mastery" - Expanding Beyond Limits**
+
 - Memory mapper programming (MMC1, MMC3, etc.)
 - Dynamic bank switching for code and graphics
 - Seamless transitions between ROM banks
 - Advanced mapper features and capabilities
 
 **Lessons 17-24: "Compression Wizardry" - Maximizing Content Density**
+
 - Run-length encoding for graphics compression
 - Level data compression and procedural generation
 - Audio compression and efficient sound storage
 - Custom compression algorithms for specific data types
 
 **Lessons 25-32: "Professional Pipeline" - Asset Management Systems**
+
 - Build tools for asset conversion and optimization
 - Automated ROM building and organization
 - Version control and asset tracking systems

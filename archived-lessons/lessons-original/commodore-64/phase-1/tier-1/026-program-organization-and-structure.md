@@ -39,7 +39,7 @@ GameEngine:
     JSR Input.Init          ; Modular input system
     JSR Game.StartLevel     ; Clean game logic
     JSR Engine.MainLoop     ; Organised main loop
-    
+
 ; Each module is self-contained and reusable - professional
 ; game development architecture on your C64!
 ```
@@ -177,7 +177,7 @@ FindFreeBlock:
     INX
     CPX #MaxBlocks
     BNE FindFreeBlock
-    
+
     LDA #$FF                ; No free blocks
     RTS
 
@@ -253,7 +253,7 @@ InitDisplaySystem:
     ; Initialize display
     LDA #$93        ; Clear screen
     JSR $FFD2       ; CHROUT
-    
+
     LDA #$0E        ; Light blue text
     STA $286        ; Current colour
     RTS
@@ -297,7 +297,7 @@ ProcessInput:
     LDA $DC00       ; Read joystick port 2
     EOR #$FF        ; Invert (active low)
     STA InputState
-    
+
     ; Process specific inputs
     AND #%00010000  ; Fire button
     BEQ NoFirePress
@@ -338,7 +338,7 @@ UpdatePlayer:
     LDA InputState
     AND #%00000100  ; Left
     BEQ CheckRight
-    
+
     ; Move player left
     LDA PlayerX
     SEC
@@ -351,7 +351,7 @@ CheckRight:
     LDA InputState
     AND #%00001000  ; Right
     BEQ PlayerUpdateDone
-    
+
     ; Move player right
     LDA PlayerX
     CLC
@@ -388,7 +388,7 @@ CheckCollisions:
 CheckCollisionDistance:
     CMP #$08        ; Collision threshold
     BCS NoCollision
-    
+
     ; Collision detected
     JSR HandleCollision
 
@@ -418,7 +418,7 @@ ScoreUpdated:
     RTS
 
 ; ========================================
-; DISPLAY MODULE  
+; DISPLAY MODULE
 ; ========================================
 
 DisplayPlayerStats:
@@ -427,7 +427,7 @@ DisplayPlayerStats:
     STA $D6         ; Cursor row
     LDA #2          ; Column 2
     STA $D3         ; Cursor column
-    
+
     ; Display health
     LDX #0
 HealthTextLoop:
@@ -437,17 +437,17 @@ HealthTextLoop:
     INX
     JMP HealthTextLoop
 HealthTextDone:
-    
+
     ; Display health value
     LDA PlayerHealth
     JSR DisplayNumber
-    
+
     ; Display score
     LDA #6          ; Row 6
     STA $D6         ; Cursor row
-    LDA #2          ; Column 2  
+    LDA #2          ; Column 2
     STA $D3         ; Cursor column
-    
+
     LDX #0
 ScoreTextLoop:
     LDA ScoreText,X
@@ -456,13 +456,13 @@ ScoreTextLoop:
     INX
     JMP ScoreTextLoop
 ScoreTextDone:
-    
+
     ; Display score value
     LDA PlayerScore+1 ; High byte
     JSR DisplayNumber
     LDA PlayerScore   ; Low byte
     JSR DisplayNumber
-    
+
     RTS
 
 DisplayGameArea:
@@ -474,10 +474,10 @@ DisplayGameArea:
     LSR
     LSR
     STA $D3         ; Cursor column
-    
+
     LDA #'P'        ; Player character
     JSR $FFD2       ; Display player
-    
+
     ; Display enemy
     LDA #11         ; Row 11
     STA $D6         ; Cursor row
@@ -486,17 +486,17 @@ DisplayGameArea:
     LSR
     LSR
     STA $D3         ; Cursor column
-    
+
     LDA #'E'        ; Enemy character
     JSR $FFD2       ; Display enemy
-    
+
     RTS
 
 DisplayNumber:
     ; Display a number (0-255) as decimal
     ; Input: Number in A
     PHA             ; Save original number
-    
+
     ; Extract hundreds
     LDY #0          ; Hundreds counter
 HundredsLoop:
@@ -507,7 +507,7 @@ HundredsLoop:
     INY
     JMP HundredsLoop
 HundredsDone:
-    
+
     ; Display hundreds if non-zero
     TYA
     BEQ SkipHundreds
@@ -515,7 +515,7 @@ HundredsDone:
     ADC #'0'
     JSR $FFD2
 SkipHundreds:
-    
+
     ; Continue with tens and ones...
     ; (Simplified for demo)
     PLA             ; Restore original
@@ -523,7 +523,7 @@ SkipHundreds:
     CLC
     ADC #'0'        ; Convert to ASCII
     JSR $FFD2       ; Display
-    
+
     RTS
 
 ; ========================================
@@ -578,10 +578,10 @@ Multiply8x8:
     STA $FB             ; Store multiplicand
     LDA #$00
     STA $FC             ; Clear result high byte
-    
+
     CPX #$00            ; Check for zero multiplier
     BEQ MultiplyDone
-    
+
 MultiplyLoop:
     LDA $FC             ; Get current result high
     CLC
@@ -589,7 +589,7 @@ MultiplyLoop:
     STA $FC             ; Store result high
     DEX
     BNE MultiplyLoop
-    
+
 MultiplyDone:
     RTS
 
@@ -598,13 +598,13 @@ Divide8x8:
     ; Input: Dividend in A, Divisor in X
     ; Output: Quotient in A, Remainder in Y
     LDY #$00            ; Clear remainder
-    
+
     CMP #$00            ; Check for zero dividend
     BEQ DivideDone
-    
+
     CPX #$00            ; Check for zero divisor
     BEQ DivideError
-    
+
 DivideLoop:
     CMP #$00            ; Check if dividend exhausted
     BEQ DivideDone
@@ -747,7 +747,7 @@ PrintNumber:
     ; Print 8-bit number as decimal
     ; Input: Number in A
     LDX #$00            ; Digit counter
-    
+
     ; Handle hundreds
 PrintHundreds:
     CMP #100
@@ -756,7 +756,7 @@ PrintHundreds:
     SBC #100
     INX
     JMP PrintHundreds
-    
+
 PrintTens:
     ; Print hundreds digit if non-zero
     CPX #$00
@@ -766,7 +766,7 @@ PrintTens:
     ADC #'0'
     JSR $FFD2
     TXA                 ; Clear hundreds counter
-    
+
 SkipHundreds:
     LDX #$00            ; Tens counter
 PrintTensLoop:
@@ -776,19 +776,19 @@ PrintTensLoop:
     SBC #10
     INX
     JMP PrintTensLoop
-    
+
 PrintOnes:
     ; Print tens digit
     TXA
     CLC
     ADC #'0'
     JSR $FFD2
-    
+
     ; Print ones digit
     CLC
     ADC #'0'
     JSR $FFD2
-    
+
     RTS
 
 GetKeypress:
@@ -832,49 +832,49 @@ LibraryDemo:
 
 DemoMathLibrary:
     ; Demonstrate mathematical functions
-    
+
     ; Test multiplication
     LDA #$05        ; Multiplicand: 5
     LDX #$07        ; Multiplier: 7
     JSR SimpleMultiply
     ; Result should be 35
-    
+
     ; Test random number generation
     JSR GenerateRandom
     STA RandomResult
-    
+
     ; Test simple addition
     LDA #$10        ; First number
     LDX #$20        ; Second number
     JSR SimpleAdd
     STA AddResult
-    
+
     RTS
 
 SimpleMultiply:
     ; Simple multiplication by repeated addition
     ; Input: A = multiplicand, X = multiplier
     ; Output: Result in A (limited to 8-bit)
-    
+
     STA $90         ; Store multiplicand
     LDA #$00        ; Clear result
-    
+
     CPX #$00        ; Check for zero multiplier
     BEQ MultiplyEnd
-    
+
 MultiplyLoop:
     CLC
     ADC $90         ; Add multiplicand
     DEX
     BNE MultiplyLoop
-    
+
 MultiplyEnd:
     RTS
 
 GenerateRandom:
     ; Simple random number generator
     ; Output: Random number in A
-    
+
     LDA RandomSeed
     ASL             ; Shift left
     BCC NoCarry
@@ -887,7 +887,7 @@ SimpleAdd:
     ; Simple addition
     ; Input: A = first number, X = second number
     ; Output: Sum in A
-    
+
     STX $90         ; Store second number
     CLC
     ADC $90         ; Add second number
@@ -899,26 +899,26 @@ SimpleAdd:
 
 DemoStringLibrary:
     ; Demonstrate string functions
-    
+
     ; Setup string pointers
     LDA #<TestString1
     STA $80         ; String pointer 1 low
     LDA #>TestString1
     STA $81         ; String pointer 1 high
-    
+
     ; Calculate string length
     JSR CalculateStringLength
     STA StringLength1
-    
+
     ; Display string
     JSR DisplayTestString
-    
+
     RTS
 
 CalculateStringLength:
     ; Calculate length of string pointed to by $80/$81
     ; Output: Length in A
-    
+
     LDY #$00        ; Character counter
     LDA #$00        ; Length counter
 
@@ -955,27 +955,27 @@ DisplayDone:
 
 DemoIOLibrary:
     ; Demonstrate I/O functions
-    
+
     ; Set text colour
     LDA #$0E        ; Light blue
     JSR SetTextColor
-    
+
     ; Position cursor
     LDA #10         ; Row 10
     LDX #5          ; Column 5
     JSR PositionCursor
-    
+
     ; Display a message
     LDA #<IOMessage
     STA $80
     LDA #>IOMessage
     STA $81
     JSR DisplayString
-    
+
     ; Display a number
     LDA #42         ; The answer
     JSR DisplayNumber
-    
+
     RTS
 
 SetTextColor:
@@ -1006,7 +1006,7 @@ StringDisplayDone:
 DisplayNumber:
     ; Display number in decimal
     ; Input: Number in A
-    
+
     ; Simple version - just display last digit
     AND #$0F        ; Get low nibble
     CLC
@@ -1045,7 +1045,7 @@ JSR LibraryDemo
 ; Author: Professional Developer
 ; Date: 2024
 ; Description: Core game engine with modular architecture
-; 
+;
 ; Dependencies:
 ;   - KERNAL routines for I/O
 ;   - Custom graphics library
@@ -1071,7 +1071,7 @@ UpdatePlayerPosition:
     ; Function: UpdatePlayerPosition
     ; ====================================
     ; Purpose: Updates player position based on input
-    ; 
+    ;
     ; Inputs:
     ;   - InputState: Current joystick state
     ;   - PlayerX: Current X position
@@ -1083,7 +1083,7 @@ UpdatePlayerPosition:
     ;   - Carry: Set if position changed
     ;
     ; Modifies: A, X, Y registers
-    ; 
+    ;
     ; Side Effects:
     ;   - May trigger boundary collision
     ;   - Updates sprite hardware registers
@@ -1093,11 +1093,11 @@ UpdatePlayerPosition:
     ;   JSR UpdatePlayerPosition
     ;   BCS PositionChanged
     ; ====================================
-    
+
     LDA InputState          ; Read current input
     AND #%00000100          ; Check left direction
     BEQ CheckRight          ; Skip if not pressed
-    
+
     ; Move player left
     LDA PlayerX             ; Get current X position
     SEC
@@ -1106,12 +1106,12 @@ UpdatePlayerPosition:
     BCC BoundaryHit         ; Branch if hit boundary
     STA PlayerX             ; Store new position
     JMP CheckVertical       ; Continue with Y axis
-    
+
 CheckRight:
     LDA InputState          ; Read input again
     AND #%00001000          ; Check right direction
     BEQ CheckVertical       ; Skip if not pressed
-    
+
     ; Move player right
     LDA PlayerX             ; Get current X position
     CLC
@@ -1119,14 +1119,14 @@ CheckRight:
     CMP #RightBoundary      ; Check right boundary
     BCS BoundaryHit         ; Branch if hit boundary
     STA PlayerX             ; Store new position
-    
+
 CheckVertical:
     ; Similar logic for Y axis movement
     ; ... implementation continues
-    
+
     SEC                     ; Indicate position changed
     RTS
-    
+
 BoundaryHit:
     CLC                     ; Indicate no change
     RTS
@@ -1159,12 +1159,12 @@ PlayerScore:    .word $0000 ; Player score (16-bit)
 GameMainLoop:
     ; === Main Game Loop ===
     ; Processes one frame of the game
-    
+
     JSR ProcessInput        ; Handle user input
     JSR UpdateGameState     ; Update all game objects
     JSR RenderFrame         ; Draw current frame
     JSR SynchronizeFrame    ; Wait for proper timing
-    
+
     LDA GameRunning         ; Check if game should continue
     BNE GameMainLoop        ; Loop if still running
     RTS
@@ -1172,36 +1172,36 @@ GameMainLoop:
 ProcessInput:
     ; === Input Processing ===
     ; Reads joystick and converts to game actions
-    
+
     LDA $DC00               ; Read joystick port 2
     EOR #$FF                ; Invert bits (hardware is active low)
     STA InputState          ; Store for other functions
-    
+
     ; Check for pause button (fire + up)
     AND #%00010001          ; Mask fire and up bits
     CMP #%00010001          ; Both pressed?
     BNE InputProcessDone    ; No, continue normal processing
-    
+
     LDA GamePaused          ; Toggle pause state
     EOR #$01                ; Flip pause bit
     STA GamePaused          ; Store new state
-    
+
 InputProcessDone:
     RTS
 
 UpdateGameState:
     ; === Game State Update ===
     ; Updates all game objects for current frame
-    
+
     LDA GamePaused          ; Skip updates if paused
     BNE StateUpdateDone
-    
+
     JSR UpdatePlayer        ; Update player character
     JSR UpdateEnemies       ; Update all enemies
     JSR UpdateProjectiles   ; Update bullets/missiles
     JSR CheckCollisions     ; Test for collisions
     JSR UpdateScore         ; Update scoring system
-    
+
 StateUpdateDone:
     RTS
 ```
@@ -1285,7 +1285,7 @@ DataManager:
     ; Object pool management
     MaxEnemies = 10
     MaxProjectiles = 10
-    
+
 InitDataManager:
     ; Initialize all data structures
     JSR ClearPlayerData
@@ -1349,11 +1349,11 @@ SpawnEnemy:
     PHA                     ; Save X position
     TYA
     PHA                     ; Save Y position
-    
+
     ; Find free enemy slot
     JSR FindFreeEnemySlot
     BMI SpawnEnemyFailed    ; No free slots
-    
+
     ; Setup enemy data
     TAX                     ; Enemy slot in X
     PLA                     ; Restore Y position
@@ -1362,14 +1362,14 @@ SpawnEnemy:
     STA EnemyData + ENEMY_X,X
     PLA                     ; Restore enemy type
     STA EnemyData + ENEMY_TYPE,X
-    
+
     LDA #$FF                ; Full health
     STA EnemyData + ENEMY_HEALTH,X
     LDA #$00                ; Initial AI state
     STA EnemyData + ENEMY_AI_STATE,X
     LDA #%00000001          ; Active flag
     STA EnemyData + ENEMY_FLAGS,X
-    
+
     INC ActiveEnemies       ; Increment active count
     CLC                     ; Success
     RTS
@@ -1389,14 +1389,14 @@ FindEnemyLoop:
     LDA EnemyData + ENEMY_FLAGS,X
     AND #%00000001          ; Check active flag
     BEQ FoundFreeEnemy      ; Found free slot
-    
+
     TXA
     CLC
     ADC #6                  ; Next enemy (6 bytes each)
     TAX
     CMP #(MaxEnemies * 6)
     BCC FindEnemyLoop
-    
+
     LDA #$FF                ; No free slot
     RTS
 
@@ -1441,17 +1441,17 @@ InitializeProgram:
     ; Clear screen and setup display
     LDA #$93                ; Clear screen
     JSR $FFD2               ; CHROUT
-    
+
     ; Set text colour
     LDA #$0E                ; Light blue
     STA $286                ; Current colour
-    
+
     ; Initialize program data
     JSR InitializeData
-    
+
     ; Display program header
     JSR DisplayHeader
-    
+
     RTS
 
 InitializeData:
@@ -1459,12 +1459,12 @@ InitializeData:
     ; Function: InitializeData
     ; Purpose: Initialize all program variables
     ; ====================================
-    
+
     ; Initialize counters
     LDA #$00
     STA FrameCounter        ; Clear frame counter
     STA ObjectCount         ; Clear object counter
-    
+
     ; Initialize player data structure
     LDA #$50                ; Starting X position
     STA PlayerData + 0      ; Player X
@@ -1472,7 +1472,7 @@ InitializeData:
     STA PlayerData + 1      ; Player Y
     LDA #$64                ; Starting health (100)
     STA PlayerData + 2      ; Player health
-    
+
     ; Initialize object array
     LDX #$00
     LDA #$00
@@ -1481,7 +1481,7 @@ ClearObjectArray:
     INX
     CPX #32                 ; Clear 32 bytes
     BNE ClearObjectArray
-    
+
     RTS
 
 DisplayHeader:
@@ -1489,13 +1489,13 @@ DisplayHeader:
     ; Function: DisplayHeader
     ; Purpose: Display program title and info
     ; ====================================
-    
+
     ; Position cursor at top
     LDA #2                  ; Row 2
     STA $D6                 ; Cursor row
     LDA #5                  ; Column 5
     STA $D3                 ; Cursor column
-    
+
     ; Display title
     LDX #0
 TitleLoop:
@@ -1519,14 +1519,14 @@ RunMainLoop:
 MainLoop:
     ; Update frame counter
     INC FrameCounter
-    
+
     ; Process one frame
     JSR ProcessFrame
-    
+
     ; Check for exit condition
     JSR CheckExitCondition
     BCC MainLoop            ; Continue if no exit
-    
+
     RTS
 
 ProcessFrame:
@@ -1534,16 +1534,16 @@ ProcessFrame:
     ; Function: ProcessFrame
     ; Purpose: Process one frame of execution
     ; ====================================
-    
+
     ; Update simulation
     JSR UpdateSimulation
-    
+
     ; Update display
     JSR UpdateDisplay
-    
+
     ; Add frame delay
     JSR FrameDelay
-    
+
     RTS
 
 UpdateSimulation:
@@ -1551,7 +1551,7 @@ UpdateSimulation:
     ; Function: UpdateSimulation
     ; Purpose: Update program simulation/logic
     ; ====================================
-    
+
     ; Update player position (simple animation)
     LDA PlayerData + 0      ; Get player X
     CLC
@@ -1561,24 +1561,24 @@ UpdateSimulation:
     LDA #$20                ; Reset to left side
 StorePlayerX:
     STA PlayerData + 0      ; Store new X position
-    
+
     ; Update object counter
     INC ObjectCount
-    
+
     RTS
 
 UpdateDisplay:
     ; ====================================
-    ; Function: UpdateDisplay  
+    ; Function: UpdateDisplay
     ; Purpose: Update screen display
     ; ====================================
-    
+
     ; Display frame counter
     LDA #5                  ; Row 5
     STA $D6                 ; Cursor row
     LDA #2                  ; Column 2
     STA $D3                 ; Cursor column
-    
+
     LDX #0
 FrameTextLoop:
     LDA FrameText,X
@@ -1587,20 +1587,20 @@ FrameTextLoop:
     INX
     JMP FrameTextLoop
 FrameTextDone:
-    
+
     ; Display frame number (simplified)
     LDA FrameCounter
     AND #$0F                ; Get low nibble
     CLC
     ADC #'0'                ; Convert to ASCII
     JSR $FFD2               ; Display
-    
+
     ; Display player position
     LDA #6                  ; Row 6
     STA $D6                 ; Cursor row
     LDA #2                  ; Column 2
     STA $D3                 ; Cursor column
-    
+
     LDX #0
 PlayerTextLoop:
     LDA PlayerText,X
@@ -1609,7 +1609,7 @@ PlayerTextLoop:
     INX
     JMP PlayerTextLoop
 PlayerTextDone:
-    
+
     ; Display player X position (simplified)
     LDA PlayerData + 0      ; Player X
     LSR                     ; Divide by 4 for display
@@ -1618,7 +1618,7 @@ PlayerTextDone:
     CLC
     ADC #'0'                ; Convert to ASCII
     JSR $FFD2               ; Display
-    
+
     RTS
 
 CheckExitCondition:
@@ -1627,12 +1627,12 @@ CheckExitCondition:
     ; Purpose: Check if program should exit
     ; Output: Carry clear = continue, set = exit
     ; ====================================
-    
+
     ; Simple exit condition - after 255 frames
     LDA FrameCounter
     CMP #$FF
     BEQ RequestExit
-    
+
     CLC                     ; Continue running
     RTS
 
@@ -1645,7 +1645,7 @@ FrameDelay:
     ; Function: FrameDelay
     ; Purpose: Provide consistent frame timing
     ; ====================================
-    
+
     LDY #$40                ; Delay value
 DelayLoop:
     DEY
@@ -1664,7 +1664,7 @@ ShutdownProgram:
     STA $D6                 ; Cursor row
     LDA #2                  ; Column 2
     STA $D3                 ; Cursor column
-    
+
     LDX #0
 ShutdownLoop:
     LDA ShutdownText,X
@@ -1673,10 +1673,10 @@ ShutdownLoop:
     INX
     JMP ShutdownLoop
 ShutdownDone:
-    
+
     ; Clean up resources (placeholder)
     ; In real program: close files, restore interrupts, etc.
-    
+
     RTS
 
 ; ========================================
@@ -1722,7 +1722,7 @@ UpdateStateMachine:
     LDA CurrentState
     CMP NextState
     BEQ UpdateCurrentState
-    
+
     ; State change requested
     JSR ExitCurrentState
     LDA NextState
@@ -1812,7 +1812,7 @@ CreateEntity:
     LDA EntityCount
     CMP #MaxEntities
     BCS EntityCreateFailed
-    
+
     INC EntityCount
     SEC
     SBC #$01                ; Return previous count as ID
@@ -1857,6 +1857,7 @@ UpdateAISystem:
 ## Program Organization Best Practices
 
 ### 1. Use Consistent Naming Conventions
+
 ```text
 ; Good naming patterns:
 InitializeGraphics:     ; Verb + Object
@@ -1866,6 +1867,7 @@ player_x_position:     ; Alternative snake_case
 ```
 
 ### 2. Group Related Functions
+
 ```text
 ; Graphics module functions together
 ClearScreen:
@@ -1881,6 +1883,7 @@ UpdateMusic:
 ```
 
 ### 3. Separate Code from Data
+
 ```text
 ; Code section
 ; (All subroutines here)

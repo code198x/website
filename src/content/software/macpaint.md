@@ -37,6 +37,7 @@ order: 3
 MacPaint provided users with a comprehensive set of drawing and painting tools optimised for the Macintosh's 512×342 pixel black-and-white display. The program's interface became the template for graphics software that continues to influence design applications today.
 
 ### Core Features
+
 - **Tool Palette**: Selection of brushes, shapes, and editing tools
 - **Pattern Library**: Built-in patterns for fills and textures
 - **Text Integration**: Typography tools for adding text to images
@@ -44,6 +45,7 @@ MacPaint provided users with a comprehensive set of drawing and painting tools o
 - **Flood Fill**: Intelligent area-filling with pattern support
 
 ### Interface Innovation
+
 - **Direct Manipulation**: Click and drag interaction with visual elements
 - **WYSIWYG Editing**: What you see is what you get approach
 - **Context Menus**: Tools behaving differently based on selection
@@ -55,19 +57,23 @@ MacPaint provided users with a comprehensive set of drawing and painting tools o
 MacPaint pushed the boundaries of what was possible on the original Macintosh's limited hardware:
 
 ### Atkinson Dithering Algorithm
+
 Bill Atkinson's breakthrough dithering algorithm enabled grayscale image display on the Mac's black-and-white screen:
+
 - **Error Diffusion**: Distributing quantisation errors to neighbouring pixels
 - **Perceptual Quality**: Creating illusion of multiple gray levels
 - **Real-Time Processing**: Working efficiently on Mac's limited hardware
 - **Pattern Recognition**: Generating recognisable diagonal dithering patterns
 
 ### Graphics Programming
+
 - **QuickDraw Integration**: Leveraging Mac's graphics system efficiently
 - **Memory Management**: Working within 128K RAM constraints
 - **Bitmap Manipulation**: Direct pixel-level editing and processing
 - **Pattern Rendering**: Efficient pattern fill and texture algorithms
 
 ### User Interface Programming
+
 - **Event-Driven Architecture**: Responding to mouse and keyboard input
 - **Tool State Management**: Maintaining tool selection and properties
 - **Undo System**: Implementing reversible operations
@@ -78,18 +84,21 @@ Bill Atkinson's breakthrough dithering algorithm enabled grayscale image display
 MacPaint embodied several revolutionary design principles:
 
 ### Accessibility and Ease of Use
+
 - **Non-Technical Users**: Making computer graphics accessible to artists and general users
 - **Learning Curve**: Intuitive tools that could be understood immediately
 - **Visual Metaphors**: Brushes, paint buckets, and scissors representing familiar concepts
 - **Immediate Feedback**: Visual response to every user action
 
 ### Creative Empowerment
+
 - **Artistic Expression**: Enabling users to create original artwork
 - **Experimentation**: Tools encouraging creative exploration
 - **Professional Quality**: Output suitable for publication and presentation
 - **Creative Workflow**: Supporting artistic process from concept to completion
 
 ### Technical Integration
+
 - **System Harmony**: Perfect integration with Macintosh operating system
 - **Hardware Optimisation**: Making best use of available resources
 - **Performance Focus**: Responsive interaction despite hardware limitations
@@ -100,18 +109,21 @@ MacPaint embodied several revolutionary design principles:
 MacPaint had profound effects on computing culture and creative industries:
 
 ### Desktop Publishing Revolution
+
 - **Graphics Integration**: Making images part of everyday document creation
 - **Professional Design**: Enabling small businesses to create professional materials
 - **Publishing Workflow**: Integrating graphics into document production
 - **Creative Industries**: Transforming how designers and artists worked
 
 ### Educational Impact
+
 - **Computer Literacy**: Teaching graphics concepts to general users
 - **Creative Education**: Introducing art students to digital tools
 - **Technology Adoption**: Demonstrating practical value of personal computers
 - **Interface Design**: Establishing patterns that influenced all subsequent software
 
 ### Industry Influence
+
 - **Software Design**: Template for graphics application interfaces
 - **Hardware Development**: Proving demand for graphics-capable personal computers
 - **Business Applications**: Demonstrating commercial value of creative software
@@ -122,18 +134,21 @@ MacPaint had profound effects on computing culture and creative industries:
 MacPaint offers excellent learning opportunities for vintage computing students:
 
 ### Graphics Programming Concepts
+
 - **Bitmap Manipulation**: Direct pixel editing and processing algorithms
 - **Dithering Techniques**: Error diffusion and pattern dithering methods
 - **Graphics Primitives**: Drawing lines, circles, and filled shapes efficiently
 - **Memory Management**: Working with graphics data in limited memory
 
 ### User Interface Programming
+
 - **Event Handling**: Processing mouse and keyboard input effectively
 - **State Management**: Maintaining application and tool state
 - **Visual Feedback**: Providing immediate response to user actions
 - **Menu Systems**: Implementing hierarchical command structures
 
 ### Algorithm Implementation
+
 - **Flood Fill**: Efficient area-filling algorithms
 - **Pattern Generation**: Creating and applying repeating patterns
 - **Selection Tools**: Implementing marquee and lasso selection
@@ -144,18 +159,21 @@ MacPaint offers excellent learning opportunities for vintage computing students:
 MacPaint's interface became the template for modern graphics software:
 
 ### Tool Palette Innovation
+
 - **Visual Icons**: Immediately recognisable tool representations
 - **Logical Grouping**: Related tools organised together
 - **State Indication**: Clear feedback about selected tool
 - **Consistent Behaviour**: Predictable tool operation across contexts
 
 ### Pattern and Texture System
+
 - **Built-in Library**: Collection of useful patterns and textures
 - **Custom Patterns**: Ability to create and modify patterns
 - **Pattern Preview**: Visual feedback for pattern selection
 - **Efficient Storage**: Compact representation of repetitive elements
 
 ### Selection and Editing Tools
+
 - **Marquee Selection**: Rectangular selection with visual feedback
 - **Lasso Tool**: Freehand selection for irregular shapes
 - **Copy and Paste**: Revolutionary content manipulation
@@ -164,12 +182,14 @@ MacPaint's interface became the template for modern graphics software:
 ## Technical Specifications and Requirements
 
 ### System Requirements
+
 - **Macintosh 128K**: Original target platform
 - **Disk Storage**: 3.5" floppy disk distribution
 - **Memory Usage**: Efficient use of limited RAM
 - **Display**: Optimised for 512×342 black-and-white screen
 
 ### File Format Innovation
+
 - **MacPaint Format**: Efficient bitmap storage format
 - **Compression**: Compact representation of image data
 - **Metadata**: Document properties and creation information
@@ -180,18 +200,21 @@ MacPaint's interface became the template for modern graphics software:
 MacPaint continues to offer valuable lessons for modern developers:
 
 ### Interface Design Principles
+
 - **User-Centred Design**: Prioritising user needs over technical convenience
 - **Visual Communication**: Using icons and metaphors effectively
 - **Consistency**: Maintaining predictable behaviour across features
 - **Accessibility**: Making complex functionality approachable
 
 ### Graphics Programming Techniques
+
 - **Algorithm Optimisation**: Efficient implementation under resource constraints
 - **Memory Management**: Working effectively with limited RAM
 - **Real-Time Processing**: Maintaining responsiveness during complex operations
 - **Hardware Integration**: Leveraging system capabilities effectively
 
 ### Software Engineering
+
 - **Modular Design**: Organising complex software into manageable components
 - **Performance Optimisation**: Balancing features with system capabilities
 - **User Testing**: Iterating design based on user feedback
@@ -202,18 +225,21 @@ MacPaint continues to offer valuable lessons for modern developers:
 MacPaint's influence extends far beyond its original release:
 
 ### Modern Graphics Software
+
 - **Interface Conventions**: Tool palettes and direct manipulation still standard
 - **Feature Evolution**: Core concepts expanded in modern applications
 - **Workflow Patterns**: Creative processes established by MacPaint continue today
 - **Accessibility Principles**: Making powerful tools usable by non-experts
 
 ### Educational Applications
+
 - **Computer Graphics**: Teaching fundamental graphics programming concepts
 - **Interface Design**: Demonstrating timeless user interface principles
 - **Creative Technology**: Understanding intersection of art and technology
 - **Historical Context**: Role in personal computer adoption
 
 ### Preservation and Study
+
 - **Emulation**: Accurate reproduction for modern study
 - **Source Code**: Analysis of implementation techniques
 - **Design Documentation**: Preserving interface design philosophy
@@ -222,13 +248,16 @@ MacPaint's influence extends far beyond its original release:
 ## Technical Innovation Details
 
 ### Atkinson Dithering Implementation
+
 The breakthrough dithering algorithm worked by:
+
 - **Error Calculation**: Computing difference between original and displayed pixel
 - **Error Distribution**: Spreading error to specific neighbouring pixels
 - **Pattern Formation**: Creating distinctive diagonal patterns
 - **Perceptual Optimisation**: Maximising visual quality for human perception
 
 ### Memory Management Techniques
+
 - **Bitmap Compression**: Efficient storage of image data
 - **Undo Buffer**: Managing edit history within memory constraints
 - **Pattern Caching**: Optimising repeated pattern operations

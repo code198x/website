@@ -65,7 +65,7 @@ row_hi:
 ; Using the table (OLD way - slow):
     lda y_position
     ; Multiply by 40... lots of code
-    
+
 ; Using the table (NEW way - fast):
     ldy y_position
     lda row_lo,y        ; 4 cycles!
@@ -82,10 +82,10 @@ Critical updates happen during vertical blank:
 irq_handler:
     ; We're in VBLANK - screen isn't being drawn
     ; Perfect time for updates that would cause flicker
-    
+
     jsr update_particles    ; Visual effects
     ; Particle updates here won't tear
-    
+
     inc vblank_flag        ; Tell main loop we're ready
 ```
 
@@ -99,15 +99,15 @@ update_particles:
 particle_loop:
     lda particle_life,x
     beq next_particle   ; Dead? Skip it!
-    
+
     ; Decay life
     dec particle_life,x
-    
+
     ; Erase old position (smart clearing)
     ldy particle_old_pos,x
     lda #32
     sta $0400,y
-    
+
     ; Calculate new position using tables
     lda particle_y,x
     lsr
@@ -123,7 +123,9 @@ particle_loop:
 ## Interactive Elements
 
 ### Experiment 1: Loop Unrolling
+
 Compare performance:
+
 ```assembly
 ; Slow version
     ldx #0
@@ -146,7 +148,9 @@ loop:
 ```
 
 ### Experiment 2: Dirty Regions
+
 Track which parts of screen need updates:
+
 ```assembly
 dirty_rows: !fill 25, 0
 
@@ -167,7 +171,9 @@ skip_row:
 ```
 
 ### Experiment 3: Frame Skipping
+
 Maintain speed by skipping frames:
+
 ```assembly
     inc frame_skip
     lda frame_skip
@@ -203,7 +209,7 @@ Cache-friendly access on modern CPUs applies here too:
 ; Bad - jumping around memory
 lda $0400
 sta $d800
-lda $0500  
+lda $0500
 sta $d900
 
 ; Good - sequential access
@@ -218,6 +224,7 @@ loop:
 ## Challenge Extensions
 
 1. **Double Buffering**: Draw to off-screen buffer, swap instantly
+
    ```assembly
    ; Page 1: $0400 (visible)
    ; Page 2: $0C00 (hidden)
@@ -240,10 +247,11 @@ loop:
 ## Profiling Results
 
 Our optimizations in action:
+
 ```
 Original frame time:
 - Clear screen: 4,000 cycles
-- Update sprites: 800 cycles  
+- Update sprites: 800 cycles
 - Draw UI: 1,200 cycles
 - Total: 6,000 cycles (30%)
 
@@ -259,6 +267,7 @@ We just freed up 22% of our frame time!
 ## Historical Optimization Tricks
 
 Legendary optimizations:
+
 - **Impossible Mission**: Compiled sprite routines
 - **Rescue on Fractalus**: Fractal landscape in real-time
 - **Elite**: 3D universe in 64KB
@@ -269,6 +278,7 @@ Each game pioneered techniques still used today.
 ## The Optimization Mindset
 
 Rules for C64 optimization:
+
 1. **Measure First**: Don't guess, count cycles
 2. **Optimize Hotspots**: 80/20 rule applies
 3. **Trade Space for Speed**: Tables over calculation

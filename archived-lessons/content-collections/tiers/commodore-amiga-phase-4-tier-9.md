@@ -27,6 +27,7 @@ Immerse with sound! With **32 comprehensive lessons**, you'll master Paula's cap
 ## What You'll Build
 
 Begin developing **Nexus Station** - a space exploration adventure featuring:
+
 - Immersive 3D audio positioning and environmental effects
 - Dynamic music that responds to gameplay and exploration
 - Professional sound effects library and synthesis systems
@@ -36,24 +37,28 @@ Begin developing **Nexus Station** - a space exploration adventure featuring:
 ## Tier Overview
 
 **Lessons 1-8: Immersive Audio Landscapes**
+
 - 3D audio positioning and spatial effects
 - Environmental audio and reverb simulation
 - Atmospheric soundscapes and ambient audio
 - Audio occlusion and distance modeling
 
 **Lessons 9-16: Dynamic Music Systems**
+
 - Adaptive music composition and arrangement
 - Real-time music generation and variation
 - Gameplay-synchronized musical transitions
 - Interactive music and player-driven composition
 
 **Lessons 17-24: Professional Sound Effects**
+
 - Sound synthesis and effect generation
 - Impact sounds and audio feedback systems
 - Procedural audio and dynamic sound creation
 - Sound effect optimization and compression
 
 **Lessons 25-32: Complete Audio Integration**
+
 - Audio-visual synchronization systems
 - Performance optimization for complex audio
 - Professional audio mixing and mastering

@@ -31,6 +31,7 @@ Time to become a digital storyteller! 📚✨ With **32 narrative-packed lessons
 ## What You'll Complete
 
 Finish your **Genre Collection** with **MYSTIC QUEST** - an epic adventure that completes your genre mastery:
+
 - **Plasma Storm**: Shoot 'em up perfection with bullet patterns and explosions
 - **Crystal Caverns**: Platform paradise with perfect jumping physics
 - **Mind Bender**: Puzzle brilliance that makes players feel clever
@@ -40,24 +41,28 @@ Finish your **Genre Collection** with **MYSTIC QUEST** - an epic adventure that 
 ## Tier Overview
 
 **Lessons 1-8: "Once Upon a Pixel..." - Interactive Storytelling**
+
 - Writing stories that work in games (spoiler: it's different!)
 - Player choice that actually matters, not just illusion
 - Branching narratives that don't become a tangled mess
 - The secret of making 8-bit characters feel real
 
 **Lessons 9-16: "I Care About This Sprite!" - Character Development**
+
 - Creating personality through limited pixels and text
 - Character growth that players can see and feel
 - Companions that help without being annoying
 - The magic of making players care about fictional people
 
 **Lessons 17-24: "Where Did I Put That Key?" - Inventory & Interaction**
+
 - Inventory systems that help, not hinder gameplay
 - Object interactions that feel logical and satisfying
 - Puzzle integration that advances the story
 - The fine art of giving hints without hand-holding
 
 **Lessons 25-32: "I Did NOT See That Coming!" - Plot & Pacing**
+
 - Story pacing that keeps players engaged
 - Plot twists that feel earned, not random
 - Ending that satisfies while leaving room for sequels
@@ -73,7 +78,7 @@ Complete 8-Bit Game Development Mastery
 
 Your Game Portfolio:
 🚀 Plasma Storm: Arcade action perfection
-🦘 Crystal Caverns: Platform physics mastery  
+🦘 Crystal Caverns: Platform physics mastery
 🧩 Mind Bender: Puzzle design brilliance
 📚 Mystic Quest: Interactive storytelling magic
 

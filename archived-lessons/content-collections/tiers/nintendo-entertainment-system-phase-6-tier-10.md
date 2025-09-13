@@ -27,6 +27,7 @@ Time to master data compression wizardry! With **32 intensive lessons**, you'll 
 ## What You'll Build
 
 Create **NES COMPRESSION SUITE** - a comprehensive compression system featuring:
+
 - Advanced graphics compression for maximum visual variety
 - Sophisticated audio compression for longer soundtracks
 - Efficient level data compression for massive game worlds
@@ -36,24 +37,28 @@ Create **NES COMPRESSION SUITE** - a comprehensive compression system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Infinite Graphics!" - Advanced Graphics Compression**
+
 - Tile-based compression for background graphics
 - Sprite compression techniques for character animation
 - Palette optimization for maximum color efficiency
 - The secrets behind games with seemingly unlimited graphics
 
 **Lessons 9-16: "Endless Music!" - Audio Compression Mastery**
+
 - Advanced music compression using pattern recognition
 - Sound effect compression and optimization
 - APU data compression for efficient audio storage
 - Creating full soundtracks within tiny memory constraints
 
 **Lessons 17-24: "Massive Worlds!" - Level Data Compression**
+
 - Map compression algorithms for large game worlds
 - Object placement compression for complex levels
 - Collision data compression for efficient gameplay
 - The mathematics behind fitting infinite content in finite space
 
 **Lessons 25-32: "Professional Pipeline!" - Commercial Compression Systems**
+
 - Creating professional asset processing tools
 - Automatic compression and optimization systems
 - Advanced debugging tools for compressed data

@@ -31,24 +31,28 @@ Create **AmigaMaster Encyclopedia** - a comprehensive platform knowledge base fe
 ## Tier Overview
 
 **Lessons 1-8: Complete Hardware Mastery**
+
 - Comprehensive analysis of all Amiga models and configurations
 - Complete chipset understanding: OCS, ECS, and AGA
 - Advanced system architecture and component interaction
 - Hardware compatibility and optimization across all models
 
 **Lessons 9-16: System Software Expertise**
+
 - Complete WorkBench and AmigaDOS mastery
 - Advanced system libraries and API understanding
 - Professional system programming and optimization
 - Custom system modifications and enhancements
 
 **Lessons 17-24: Development Environment Mastery**
+
 - Professional development tool expertise and optimization
 - Advanced debugging and analysis across all systems
 - Cross-platform development and compatibility
 - Professional development workflow optimization
 
 **Lessons 25-32: Platform Expertise & Consulting**
+
 - Professional platform consulting and expertise development
 - Advanced troubleshooting and system analysis
 - Platform knowledge documentation and training

@@ -68,24 +68,28 @@ Leverages the complete NES PPU background capabilities:
 ### Tiers 9-12 Development Roadmap
 
 **Tier 9**: Tile graphics and pattern programming
+
 - Understanding NES tile-based graphics
 - Creating and editing pattern table data
 - Building basic tile display systems
 - Implementing tile graphics tools
 
 **Tier 10**: Background systems and name tables
+
 - Programming NES background layers
 - Name table manipulation and control
 - Creating level layout systems
 - Building screen composition tools
 
 **Tier 11**: Scrolling and camera control
+
 - Implementing smooth scrolling systems
 - Camera control and world navigation
 - Multi-screen level design
 - Advanced scrolling techniques and effects
 
 **Tier 12**: Complete world editor integration
+
 - Integrating all graphics systems
 - Building professional editing interfaces
 - Implementing save/load functionality

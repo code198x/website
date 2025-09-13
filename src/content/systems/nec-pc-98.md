@@ -42,7 +42,7 @@ audio:
   synthesis_types: ["FM", "PSG", "ADPCM"]
 
 # Storage and I/O
-storage: ["5.25\" floppy disk", "3.5\" floppy disk", "Hard disk", "CD-ROM"]
+storage: ['5.25" floppy disk', '3.5" floppy disk', "Hard disk", "CD-ROM"]
 storage_details:
   built_in: ["Two floppy drives (typical)"]
   expansion: ["SCSI hard drives", "CD-ROM drives"]
@@ -92,7 +92,6 @@ notable_software:
 
 # Media
 description: "The NEC PC-9801, launched in 1982, was the foundation of Japan's PC gaming culture for over two decades, dominating the Japanese market and producing some of the most innovative games ever made."
-image: "/images/systems/nec-pc-98.jpg"
 
 # Platform Classification
 medal_tier: "gold"
@@ -111,7 +110,7 @@ order: 27
 
 # NEC PC-9801: Japan's PC Gaming Powerhouse
 
-*Planned System - 256 Lessons*
+_Planned System - 256 Lessons_
 
 The NEC PC-9801, launched in 1982, wasn't just a computer—it was the foundation of Japan's PC gaming culture for over two decades. While the rest of the world moved through various PC standards, Japan remained loyal to the PC-98 family, creating a unique ecosystem that produced some of the most innovative and influential games ever made.
 
@@ -129,18 +128,21 @@ The PC-98 achieved something remarkable: it dominated a national market so compl
 Learning PC-98 development teaches you:
 
 ### x86 Assembly Mastery
+
 - **8086 through Pentium**: Experience the evolution of x86 architecture
 - **Real mode programming**: Understand how PCs actually worked
 - **Memory management**: Segmented memory, EMS, and XMS techniques
 - **Hardware interface**: Direct port I/O and interrupt handling
 
 ### Advanced Graphics Programming
+
 - **High-resolution displays**: 640x400 and higher resolutions
 - **Palette management**: Working with 16 colors from 4096
 - **Sprite systems**: Hardware and software sprite techniques
 - **Animation**: Smooth animation in high-resolution modes
 
 ### Sound Programming Excellence
+
 - **FM synthesis mastery**: The YM2608 OPNA chip with 15 FM + 3 SSG channels
 - **CD audio integration**: Early multimedia programming
 - **Sound effects**: Advanced synthesis techniques
@@ -151,6 +153,7 @@ Learning PC-98 development teaches you:
 Your PC-98 journey spans 256 lessons across 2 phases, covering the essential techniques that made this platform legendary:
 
 ### Phase 1: x86 Foundations & Graphics (128 lessons)
+
 - 8086 instruction set and programming model
 - Segmented memory management
 - Japanese text encoding (Shift-JIS)
@@ -158,6 +161,7 @@ Your PC-98 journey spans 256 lessons across 2 phases, covering the essential tec
 - Advanced palette techniques
 
 ### Phase 2: Sound & Game Systems (128 lessons)
+
 - FM synthesis programming
 - CD-ROM audio integration
 - Visual novel engines

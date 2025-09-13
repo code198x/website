@@ -27,6 +27,7 @@ Time to create platformers that make Mario jealous! With **32 action-packed less
 ## What You'll Build
 
 Create **CRYSTAL CAVERNS** - an exploration platformer featuring:
+
 - 8-way scrolling through massive interconnected caves
 - A hero with smooth animations and tight controls
 - Hidden secrets that reward curious players
@@ -36,24 +37,28 @@ Create **CRYSTAL CAVERNS** - an exploration platformer featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Scroll Like a Pro" - Multi-Directional Magic**
+
 - 8-way scrolling that never drops a frame
 - Copper-split screens for status displays
 - Large world management with smart loading
 - Camera systems that enhance gameplay
 
 **Lessons 9-16: "Pixel Perfect" - Collision & Physics**
+
 - Slope detection for angled platforms
 - One-way platforms and moving surfaces
 - Momentum-based movement that feels natural
 - Edge detection for last-second saves
 
 **Lessons 17-24: "Animation Station" - Fluid Character Movement**
+
 - State machines for complex animations
 - Transition blending for smooth motion
 - Context-sensitive animations (ledge grab, wall slide)
 - Sprite multiplexing for detailed characters
 
 **Lessons 25-32: "World Building" - Level Design Excellence**
+
 - Tile compression for massive worlds
 - Interactive elements and mechanisms
 - Secret area design and rewards

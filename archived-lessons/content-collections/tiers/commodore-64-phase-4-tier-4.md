@@ -31,6 +31,7 @@ Create memorable soundtracks! With **32 comprehensive lessons**, you'll learn to
 ## What You'll Complete
 
 Finish **Neon Runner** with professional audiovisual integration:
+
 - Rich, detailed graphics using advanced VIC-II modes
 - Complete musical score with dynamic, adaptive music
 - Smooth character animations and particle effects
@@ -40,24 +41,28 @@ Finish **Neon Runner** with professional audiovisual integration:
 ## Tier Overview
 
 **Lessons 1-8: Music Theory for SID**
+
 - Applying scales, chords, and harmony
 - Rhythm and timing programming
 - Musical arrangement for 3 channels
 - Composition techniques and tools
 
 **Lessons 9-16: Multi-Channel Coordination**
+
 - Channel assignment and management
 - Harmony and melody coordination
 - Bass lines and rhythm programming
 - Professional mixing techniques
 
 **Lessons 17-24: Dynamic Music Systems**
+
 - Adaptive music that changes with gameplay
 - Smooth transitions between musical sections
 - Interactive audio triggers
 - Music synchronization with game events
 
 **Lessons 25-32: Complete Musical Integration**
+
 - Full soundtrack development
 - Audio-visual synchronization
 - Professional audio polish

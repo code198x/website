@@ -27,6 +27,7 @@ Welcome to the world of intelligent opposition! 🧠 With **32 strategic lessons
 ## What You'll Build
 
 Create **AI COMMANDER** - a sophisticated enemy intelligence system featuring:
+
 - Pathfinding enemies that navigate mazes like pros 🗺️
 - Behavioral AI that adapts to player strategies
 - Group coordination where enemies work together
@@ -36,24 +37,28 @@ Create **AI COMMANDER** - a sophisticated enemy intelligence system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Basic Behaviors" - Foundation AI Systems**
+
 - Simple state machines for enemy behavior (patrol, chase, attack)
 - Line-of-sight detection and player awareness systems
 - Basic pathfinding using grid-based navigation
 - Timing systems for natural, non-robotic movement
 
 **Lessons 9-16: "Smart Navigation" - Pathfinding Mastery**
-- A* pathfinding adapted for Z80 performance constraints
+
+- A\* pathfinding adapted for Z80 performance constraints
 - Obstacle avoidance and dynamic route calculation
 - Multi-target pathfinding for complex scenarios
 - Pathfinding optimization and memory management
 
 **Lessons 17-24: "Advanced Behaviors" - Complex AI Patterns**
+
 - Behavior trees for sophisticated decision making
 - Player prediction and interception algorithms
 - Group AI coordination and swarm behaviors
 - Context-sensitive AI responses to game situations
 
 **Lessons 25-32: "Performance and Balance" - Professional AI**
+
 - AI performance profiling and optimization techniques
 - Dynamic difficulty adjustment based on player performance
 - AI debugging tools and behavior visualization

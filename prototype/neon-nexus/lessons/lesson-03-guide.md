@@ -35,11 +35,11 @@ read_keyboard:
     lda $dc01
     and #%00000010  ; Check row 1
     bne check_d     ; Not pressed? Check next
-    
+
     ; 'A' pressed - move left
     dec player_x
     jmp check_boundaries
-    
+
 check_d:
     ; Check 'D' key (Row 2, Column 2)
     lda #%11111101  ; Same column
@@ -47,7 +47,7 @@ check_d:
     lda $dc01
     and #%00000100  ; Check row 2
     bne check_w
-    
+
     ; 'D' pressed - move right
     inc player_x
     jmp check_boundaries
@@ -70,7 +70,7 @@ Row 3:  7       Y       G       8       B       H       U       V
 ```assembly
 read_keyboard:
     ; Select column 2 (for A/D) and column 1 (for W/S)
-    
+
     ; Check W (Row 1, Column 1)
     lda #%11111110  ; Column 1
     sta $dc00
@@ -78,7 +78,7 @@ read_keyboard:
     and #%00000010  ; Row 1
     bne check_s
     dec player_y    ; Move up
-    
+
 check_s:
     ; Check S (Row 5, Column 1)
     lda #%11111110  ; Column 1
@@ -87,7 +87,7 @@ check_s:
     and #%00100000  ; Row 5
     bne check_a
     inc player_y    ; Move down
-    
+
 check_a:
     ; Check A (Row 1, Column 2)
     lda #%11111101  ; Column 2
@@ -96,7 +96,7 @@ check_a:
     and #%00000010  ; Row 1
     bne check_d
     dec player_x    ; Move left
-    
+
 check_d:
     ; Check D (Row 2, Column 2)
     lda #%11111101  ; Column 2
@@ -105,7 +105,7 @@ check_d:
     and #%00000100  ; Row 2
     bne done_keys
     inc player_x    ; Move right
-    
+
 done_keys:
     rts
 ```
@@ -118,20 +118,22 @@ Keys can "bounce" - register multiple presses from one tap:
 ; Simple debounce using delay
 key_pressed:
     jsr read_keyboard
-    
+
     ; Small delay
     ldx #10
 debounce:
     dex
     bne debounce
-    
+
     ; Continue main loop
 ```
 
 ## Interactive Elements
 
 ### Experiment 1: Different Key Layouts
+
 Try arrow keys instead:
+
 ```assembly
 ; Arrow keys are special - different scanning
 ; RIGHT: Row 0, Column 2
@@ -140,7 +142,9 @@ Try arrow keys instead:
 ```
 
 ### Experiment 2: Diagonal Movement
+
 Allow multiple keys:
+
 ```assembly
 ; Don't use 'jmp' after each key
 ; Check all keys every frame
@@ -148,7 +152,9 @@ Allow multiple keys:
 ```
 
 ### Experiment 3: Speed Control
+
 Hold SHIFT for turbo:
+
 ```assembly
 ; Check SHIFT (Row 1, Column 7)
 lda #%01111111
@@ -162,6 +168,7 @@ inc player_x    ; Extra movement!
 ## Deep Dive: Why Matrix Scanning?
 
 Why not one wire per key? Math:
+
 - 64 keys × 2 wires = 128 connections (impossible!)
 - 8×8 matrix = 16 connections (doable!)
 
@@ -182,9 +189,10 @@ Pro tip: Choose keys that don't share rows/columns for simultaneous press.
 ## Challenge Extensions
 
 1. **Key Repeat**: Hold key for continuous movement
+
    ```assembly
    key_repeat_timer: !byte 0
-   
+
    ; If key held, decrease timer
    ; When timer = 0, allow movement
    ```
@@ -205,6 +213,7 @@ Pro tip: Choose keys that don't share rows/columns for simultaneous press.
 ## Performance Considerations
 
 Keyboard scanning timing:
+
 - Full matrix scan: ~64 cycles
 - Single key check: ~10 cycles
 - Our WASD check: ~40 cycles
@@ -214,6 +223,7 @@ Still faster than one frame of delay!
 ## Historical Context
 
 Famous C64 keyboard games:
+
 - **Way of the Exploding Fist**: Complex key combinations for moves
 - **Boulder Dash**: Precise keyboard control
 - **Elite**: Full keyboard flight controls
@@ -224,6 +234,7 @@ Many players preferred keyboard over joystick for precision!
 ## Hardware Details
 
 The CIA (Complex Interface Adapter) chip handles keyboard:
+
 - 6526 CIA #1 at $DC00-$DCFF
 - Also handles joysticks
 - Generates interrupts

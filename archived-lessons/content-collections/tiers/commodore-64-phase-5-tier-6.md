@@ -27,6 +27,7 @@ Time to dominate the digital field! ⚽🏀 With **32 championship-level lessons
 ## What You'll Build
 
 Create **CHAMPIONSHIP SOCCER** - an epic sports game featuring:
+
 - Teams that play with strategy, not just random movement
 - Matches where skill matters more than button mashing
 - AI opponents that adapt to your playing style
@@ -36,24 +37,28 @@ Create **CHAMPIONSHIP SOCCER** - an epic sports game featuring:
 ## Tier Overview
 
 **Lessons 1-8: "They're a Team!" - Group AI & Coordination**
+
 - AI players that work together, not just chase the ball
 - Formation play and tactical awareness
 - Team coordination without telepathic perfection
 - Making AI mistakes feel human, not stupid
 
 **Lessons 9-16: "Did You See That Move?!" - Skill-Based Controls**
+
 - Control schemes that reward practice and timing
 - Special moves that feel earned, not random
 - The balance between accessibility and depth
 - Making button combinations feel natural
 
 **Lessons 17-24: "Physics That Make Sense" - Realistic But Fun**
+
 - Ball physics that look real but play consistently
 - Player movement that feels weighty but responsive
 - Collision detection that's fair and predictable
 - The art of making simulation feel like game
 
 **Lessons 25-32: "Championship Drama!" - Tension & Stakes**
+
 - Match pacing that builds excitement
 - Comeback mechanics that keep hope alive
 - Statistical tracking that makes improvement visible

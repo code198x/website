@@ -36,11 +36,11 @@ Understanding the NES screen coordinate system is essential for precise sprite p
 NES Screen Coordinates:
   X: 0-255 (left to right)
   Y: 0-239 (top to bottom)
-  
+
 Visible Area:
   X: 8-247 (240 pixels wide)
   Y: 16-223 (208 pixels tall)
-  
+
 Special Values:
   Y = 0: Sprites are hidden
   Y > 239: Sprites wrap to top of screen
@@ -76,7 +76,7 @@ MoveSpriteRight:
     CMP #$F0             ; Check right boundary
     BCS SkipMove         ; Skip if too far right
     STA SpriteData+3     ; Store new X position
-    
+
 SkipMove:
     RTS
 
@@ -88,7 +88,7 @@ MoveSpriteDown:
     CMP #$E0             ; Check bottom boundary
     BCS SkipMoveY        ; Skip if too far down
     STA SpriteData+0     ; Store new Y position
-    
+
 SkipMoveY:
     RTS
 ```
@@ -99,7 +99,7 @@ SkipMoveY:
 ; Basic sprite positioning and movement
 Main:
     JSR InitSprites
-    
+
 GameLoop:
     JSR MoveSprites
     JSR UpdateDisplay
@@ -115,7 +115,7 @@ InitSprites:
     STA SpriteData+2
     LDA #$80             ; X position (center)
     STA SpriteData+3
-    
+
     ; Initialize sprite 1
     LDA #$60             ; Y position
     STA SpriteData+4
@@ -131,7 +131,7 @@ MoveSprites:
     ; Move sprite 0 in a circle pattern
     INC CircleAngle
     LDA CircleAngle
-    
+
     ; Simple circular movement (simplified)
     AND #$3F             ; 64-step circle
     CMP #$10
@@ -146,27 +146,27 @@ MoveSprites:
     SBC #$01
     STA SpriteData+0
     JMP MoveSprite1
-    
+
 MoveRight:
     LDA SpriteData+3
     CLC
     ADC #$01
     STA SpriteData+3
     JMP MoveSprite1
-    
+
 MoveDown:
     LDA SpriteData+0
     CLC
     ADC #$01
     STA SpriteData+0
     JMP MoveSprite1
-    
+
 MoveLeft:
     LDA SpriteData+3
     SEC
     SBC #$01
     STA SpriteData+3
-    
+
 MoveSprite1:
     ; Move sprite 1 back and forth
     INC MoveCounter
@@ -174,7 +174,7 @@ MoveSprite1:
     AND #$7F             ; 128-frame cycle
     CMP #$40             ; Half cycle
     BCC MovingRight
-    
+
     ; Moving left
     LDA SpriteData+7
     SEC
@@ -183,7 +183,7 @@ MoveSprite1:
     BCC ResetMove
     STA SpriteData+7
     JMP MoveDone
-    
+
 MovingRight:
     LDA SpriteData+7
     CLC
@@ -192,10 +192,10 @@ MovingRight:
     BCS ResetMove
     STA SpriteData+7
     JMP MoveDone
-    
+
 ResetMove:
     ; Boundary hit, direction will change next cycle
-    
+
 MoveDone:
     RTS
 
@@ -232,21 +232,21 @@ SpriteVelocities:
 UpdateSpritesWithVelocity:
     LDX #$00             ; Sprite index
     LDY #$00             ; Velocity index
-    
+
 SpriteUpdateLoop:
     ; Update X position
     LDA SpriteData+3,X   ; Get current X
     CLC
     ADC SpriteVelocities,Y ; Add X velocity
-    
+
     ; Check X boundaries
     CMP #$08             ; Left boundary
     BCC BounceX          ; Bounce off left
-    CMP #$F0             ; Right boundary  
+    CMP #$F0             ; Right boundary
     BCS BounceX          ; Bounce off right
     STA SpriteData+3,X   ; Store new X
     JMP UpdateY
-    
+
 BounceX:
     ; Reverse X velocity
     LDA SpriteVelocities,Y
@@ -254,14 +254,14 @@ BounceX:
     CLC
     ADC #$01             ; Two's complement (negate)
     STA SpriteVelocities,Y
-    
+
 UpdateY:
     ; Update Y position
     INY                  ; Move to Y velocity
     LDA SpriteData,X     ; Get current Y
     CLC
     ADC SpriteVelocities,Y ; Add Y velocity
-    
+
     ; Check Y boundaries
     CMP #$10             ; Top boundary
     BCC BounceY          ; Bounce off top
@@ -269,7 +269,7 @@ UpdateY:
     BCS BounceY          ; Bounce off bottom
     STA SpriteData,X     ; Store new Y
     JMP NextSprite
-    
+
 BounceY:
     ; Reverse Y velocity
     LDA SpriteVelocities,Y
@@ -277,7 +277,7 @@ BounceY:
     CLC
     ADC #$01             ; Two's complement (negate)
     STA SpriteVelocities,Y
-    
+
 NextSprite:
     ; Move to next sprite
     TXA
@@ -287,7 +287,7 @@ NextSprite:
     INY                  ; Move to next velocity pair
     CPX #$10             ; Check if done (4 sprites)
     BNE SpriteUpdateLoop
-    
+
     RTS
 ```
 
@@ -297,7 +297,7 @@ NextSprite:
 ; Smooth sprite movement with velocity and bouncing
 Main:
     JSR InitSprites
-    
+
 GameLoop:
     JSR UpdateSprites
     JSR UpdateDisplay
@@ -313,7 +313,7 @@ InitSprites:
     STA SpriteData+2     ; Attributes
     LDA #$40
     STA SpriteData+3     ; X
-    
+
     LDA #$60             ; Sprite 1
     STA SpriteData+4
     LDA #$02
@@ -322,7 +322,7 @@ InitSprites:
     STA SpriteData+6
     LDA #$C0
     STA SpriteData+7
-    
+
     LDA #$A0             ; Sprite 2
     STA SpriteData+8
     LDA #$03
@@ -331,7 +331,7 @@ InitSprites:
     STA SpriteData+10
     LDA #$60
     STA SpriteData+11
-    
+
     LDA #$80             ; Sprite 3
     STA SpriteData+12
     LDA #$04
@@ -346,13 +346,13 @@ UpdateSprites:
     ; Update all 4 sprites with velocity
     LDX #$00             ; Sprite data index
     LDY #$00             ; Velocity index
-    
+
 SpriteLoop:
     ; Update X position
     LDA SpriteData+3,X   ; Current X
     CLC
     ADC VelocityX,Y      ; Add X velocity
-    
+
     ; Boundary check X
     CMP #$08
     BCC BounceLeft
@@ -360,7 +360,7 @@ SpriteLoop:
     BCS BounceRight
     STA SpriteData+3,X
     JMP UpdateYPos
-    
+
 BounceLeft:
     LDA #$08
     STA SpriteData+3,X
@@ -370,7 +370,7 @@ BounceLeft:
     ADC #$01
     STA VelocityX,Y
     JMP UpdateYPos
-    
+
 BounceRight:
     LDA #$EF
     STA SpriteData+3,X
@@ -379,13 +379,13 @@ BounceRight:
     CLC
     ADC #$01
     STA VelocityX,Y
-    
+
 UpdateYPos:
     ; Update Y position
     LDA SpriteData+0,X   ; Current Y
     CLC
     ADC VelocityY,Y      ; Add Y velocity
-    
+
     ; Boundary check Y
     CMP #$10
     BCC BounceTop
@@ -393,7 +393,7 @@ UpdateYPos:
     BCS BounceBottom
     STA SpriteData+0,X
     JMP NextSprite
-    
+
 BounceTop:
     LDA #$10
     STA SpriteData+0,X
@@ -403,7 +403,7 @@ BounceTop:
     ADC #$01
     STA VelocityY,Y
     JMP NextSprite
-    
+
 BounceBottom:
     LDA #$DF
     STA SpriteData+0,X
@@ -412,7 +412,7 @@ BounceBottom:
     CLC
     ADC #$01
     STA VelocityY,Y
-    
+
 NextSprite:
     ; Move to next sprite
     TXA
@@ -459,28 +459,28 @@ UpdateFormation:
     STA LeaderX
     LDA SpriteData+0     ; Leader Y
     STA LeaderY
-    
+
     ; Update formation members
     LDX #$04             ; Start with sprite 1
     LDY #$02             ; Start with formation offset 1
-    
+
 FormationLoop:
     ; Calculate target X position
     LDA LeaderX
     CLC
     ADC FormationData,Y  ; Add X offset
     STA TargetX
-    
+
     ; Calculate target Y position
     INY
     LDA LeaderY
     CLC
     ADC FormationData,Y  ; Add Y offset
     STA TargetY
-    
+
     ; Move sprite toward target position
     JSR MoveToTarget
-    
+
     ; Next sprite
     TXA
     CLC
@@ -489,48 +489,48 @@ FormationLoop:
     INY                  ; Next formation offset
     CPX #$10             ; Check if done (4 sprites total)
     BNE FormationLoop
-    
+
     RTS
 
 MoveToTarget:
     ; X is sprite data index
     ; Move sprite smoothly toward target position
-    
+
     ; Move X toward target
     LDA SpriteData+3,X   ; Current X
     CMP TargetX
     BEQ CheckY           ; Already at target X
     BCC MoveXRight       ; Need to move right
-    
+
     ; Move left
     SEC
     SBC #$01
     STA SpriteData+3,X
     JMP CheckY
-    
+
 MoveXRight:
     CLC
     ADC #$01
     STA SpriteData+3,X
-    
+
 CheckY:
     ; Move Y toward target
     LDA SpriteData+0,X   ; Current Y
     CMP TargetY
     BEQ MoveDone         ; Already at target Y
     BCC MoveYDown        ; Need to move down
-    
+
     ; Move up
     SEC
     SBC #$01
     STA SpriteData+0,X
     RTS
-    
+
 MoveYDown:
     CLC
     ADC #$01
     STA SpriteData+0,X
-    
+
 MoveDone:
     RTS
 
@@ -557,18 +557,18 @@ ExplosionSprites:
 UpdateExplosion:
     LDA ExplosionActive
     BEQ ExplosionDone
-    
+
     ; Expand particles outward from center
     INC ExplosionFrame
     LDA ExplosionFrame
-    
+
     ; Calculate expansion distance
     LSR                  ; Divide by 2 for slower expansion
     STA ExpansionDist
-    
+
     ; Update particle positions
     LDX #$00             ; Sprite 0 (stays center)
-    
+
     ; Sprite 1 - move right
     LDA ExplosionCenterX
     CLC
@@ -576,7 +576,7 @@ UpdateExplosion:
     STA SpriteData+7     ; Sprite 1 X
     LDA ExplosionCenterY
     STA SpriteData+4     ; Sprite 1 Y
-    
+
     ; Sprite 2 - move left
     LDA ExplosionCenterX
     SEC
@@ -584,7 +584,7 @@ UpdateExplosion:
     STA SpriteData+11    ; Sprite 2 X
     LDA ExplosionCenterY
     STA SpriteData+8     ; Sprite 2 Y
-    
+
     ; Sprite 3 - move up
     LDA ExplosionCenterX
     STA SpriteData+15    ; Sprite 3 X
@@ -592,17 +592,17 @@ UpdateExplosion:
     SEC
     SBC ExpansionDist
     STA SpriteData+12    ; Sprite 3 Y
-    
+
     ; Check if explosion finished
     LDA ExplosionFrame
     CMP #$20             ; 32 frame explosion
     BCC ExplosionDone
-    
+
     ; End explosion
     LDA #$00
     STA ExplosionActive
     JSR HideExplosionSprites
-    
+
 ExplosionDone:
     RTS
 
@@ -612,13 +612,13 @@ StartExplosion:
     STA ExplosionActive
     LDA #$00
     STA ExplosionFrame
-    
+
     ; Set center position
     LDA #$80             ; Center X
     STA ExplosionCenterX
     LDA #$80             ; Center Y
     STA ExplosionCenterY
-    
+
     ; Initialize all sprites at center
     LDX #$00
 ExplosionInitLoop:
@@ -630,14 +630,14 @@ ExplosionInitLoop:
     STA SpriteData+2,X   ; Attributes
     LDA ExplosionCenterX
     STA SpriteData+3,X   ; X position
-    
+
     TXA
     CLC
     ADC #$04
     TAX
     CPX #$10             ; 4 sprites
     BNE ExplosionInitLoop
-    
+
     RTS
 
 HideExplosionSprites:
@@ -668,7 +668,7 @@ ExpansionDist: .byte $00
 ; Formation flying demonstration
 Main:
     JSR InitFormation
-    
+
 GameLoop:
     JSR UpdateLeader
     JSR UpdateFormation
@@ -685,7 +685,7 @@ InitFormation:
     STA SpriteData+2     ; Leader attributes
     LDA #$40
     STA SpriteData+3     ; Leader X
-    
+
     ; Initialize formation members
     LDX #$04             ; Start with sprite 1
 FormationInitLoop:
@@ -697,25 +697,25 @@ FormationInitLoop:
     STA SpriteData+2,X
     LDA #$40             ; Initial X
     STA SpriteData+3,X
-    
+
     TXA
     CLC
     ADC #$04
     TAX
     CPX #$10
     BNE FormationInitLoop
-    
+
     RTS
 
 UpdateLeader:
     ; Move leader in a pattern
     INC LeaderPhase
     LDA LeaderPhase
-    
+
     ; Create circular movement
     AND #$3F             ; 64-step circle
     STA CurrentAngle
-    
+
     ; Calculate X position (simplified sine)
     LDA CurrentAngle
     CMP #$10
@@ -729,24 +729,24 @@ UpdateLeader:
     SEC
     SBC #$01
     JMP StoreLeaderX
-    
+
 LeaderQuad1:
     LDA SpriteData+3
     CLC
     ADC #$01
     JMP StoreLeaderX
-    
+
 LeaderQuad2:
     LDA SpriteData+0
     CLC
     ADC #$01
     JMP StoreLeaderY
-    
+
 LeaderQuad3:
     LDA SpriteData+3
     SEC
     SBC #$01
-    
+
 StoreLeaderX:
     CMP #$20
     BCC KeepLeaderX
@@ -754,17 +754,17 @@ StoreLeaderX:
     BCS KeepLeaderX
     STA SpriteData+3
     JMP CheckLeaderY
-    
+
 KeepLeaderX:
     JMP CheckLeaderY
-    
+
 StoreLeaderY:
     CMP #$20
     BCC KeepLeaderY
     CMP #$E0
     BCS KeepLeaderY
     STA SpriteData+0
-    
+
 CheckLeaderY:
 KeepLeaderY:
     RTS
@@ -775,7 +775,7 @@ UpdateFormation:
     STA LeaderX
     LDA SpriteData+0
     STA LeaderY
-    
+
     ; Update sprite 1 (right wing)
     LDA LeaderX
     CLC
@@ -787,7 +787,7 @@ UpdateFormation:
     STA TargetY
     LDX #$04             ; Sprite 1 data
     JSR MoveToTarget
-    
+
     ; Update sprite 2 (left wing)
     LDA LeaderX
     SEC
@@ -799,7 +799,7 @@ UpdateFormation:
     STA TargetY
     LDX #$08             ; Sprite 2 data
     JSR MoveToTarget
-    
+
     ; Update sprite 3 (tail)
     LDA LeaderX
     STA TargetX          ; Same X as leader
@@ -809,7 +809,7 @@ UpdateFormation:
     STA TargetY
     LDX #$0C             ; Sprite 3 data
     JSR MoveToTarget
-    
+
     RTS
 
 MoveToTarget:
@@ -823,12 +823,12 @@ MoveToTarget:
     SBC #$02             ; Move left
     STA SpriteData+3,X
     JMP MoveTargetY
-    
+
 MoveTargetRight:
     CLC
     ADC #$02             ; Move right
     STA SpriteData+3,X
-    
+
 MoveTargetY:
     ; Move Y
     LDA SpriteData+0,X
@@ -839,12 +839,12 @@ MoveTargetY:
     SBC #$02             ; Move up
     STA SpriteData+0,X
     RTS
-    
+
 MoveTargetDown:
     CLC
     ADC #$02             ; Move down
     STA SpriteData+0,X
-    
+
 MoveTargetDone:
     RTS
 
@@ -886,7 +886,7 @@ PlayVisualNote:
     ; Display a note sprite when audio plays
     LDA CurrentNote      ; Note being played
     STA NoteTile
-    
+
     ; Calculate position based on note pitch
     LDA NotePitch
     LSR                  ; Divide by 2
@@ -894,13 +894,13 @@ PlayVisualNote:
     CLC
     ADC #$20             ; Base Y position
     STA NoteY
-    
+
     ; Calculate X position based on time
     LDA NoteTime
     CLC
     ADC #$40             ; Base X position
     STA NoteX
-    
+
     ; Set up sprite
     LDX NoteSprite       ; Current note sprite index
     LDA NoteY
@@ -911,36 +911,36 @@ PlayVisualNote:
     STA SpriteData+2,X   ; Attributes
     LDA NoteX
     STA SpriteData+3,X   ; X position
-    
+
     ; Start note animation
     LDA #$20             ; 32 frame animation
     STA NoteAnimTimer
-    
+
     RTS
 
 UpdateNoteAnimation:
     ; Animate the note sprite
     LDA NoteAnimTimer
     BEQ NoteAnimDone
-    
+
     DEC NoteAnimTimer
-    
+
     ; Make note fade by changing palette
     LDA NoteAnimTimer
     CMP #$10             ; Half time
     BCS NoteAnimDone
-    
+
     ; Change to dimmer palette
     LDX NoteSprite
     LDA #%00000011       ; Palette 3 (dimmer)
     STA SpriteData+2,X
-    
+
     ; Hide sprite when animation done
     LDA NoteAnimTimer
     BNE NoteAnimDone
     LDA #$FF             ; Hide sprite
     STA SpriteData+0,X
-    
+
 NoteAnimDone:
     RTS
 
@@ -948,13 +948,13 @@ CreateNoteDisplay:
     ; Create a visual display of current musical sequence
     LDX #$00             ; Note index
     LDY #$00             ; Sprite index
-    
+
 NoteDisplayLoop:
     ; Get note from sequence
     LDA MusicSequence,X
     CMP #$FF             ; End marker?
     BEQ NoteDisplayDone
-    
+
     ; Position sprite based on sequence position
     TXA
     ASL                  ; * 2
@@ -963,18 +963,18 @@ NoteDisplayLoop:
     CLC
     ADC #$30             ; Base X position
     STA SpriteData+3,Y   ; X position
-    
+
     LDA #$B0             ; Base Y position
     STA SpriteData+0,Y   ; Y position
-    
+
     LDA MusicSequence,X  ; Note value
     CLC
     ADC #$10             ; Base note tile
     STA SpriteData+1,Y   ; Tile
-    
+
     LDA #%00000001       ; Palette 1
     STA SpriteData+2,Y   ; Attributes
-    
+
     ; Next note and sprite
     INX
     TYA
@@ -983,7 +983,7 @@ NoteDisplayLoop:
     TAY
     CPX #$08             ; Max 8 notes
     BNE NoteDisplayLoop
-    
+
 NoteDisplayDone:
     RTS
 
@@ -1018,7 +1018,7 @@ Create a complete sprite positioning and movement system that demonstrates all c
 ; Complete sprite positioning and movement demonstration
 Main:
     JSR InitAllSprites
-    
+
 GameLoop:
     JSR UpdateMovement
     JSR UpdateFormation
@@ -1037,29 +1037,29 @@ InitBouncers:
     CLC
     ADC #$40             ; Spread positions
     STA SpriteData+0,X   ; Y position
-    
+
     LDA #$01
     STA SpriteData+1,X   ; Tile
-    
+
     TXA
     LSR
     LSR                  ; Divide by 4 for palette
     STA SpriteData+2,X   ; Attributes
-    
+
     TXA
     ASL
     ASL                  ; * 4
     CLC
     ADC #$50
     STA SpriteData+3,X   ; X position
-    
+
     TXA
     CLC
     ADC #$04
     TAX
     CPX #$10             ; 4 sprites * 4 bytes
     BNE InitBouncers
-    
+
     ; Initialize formation sprites (4-7)
     LDA #$60
     STA SpriteData+16    ; Formation leader Y
@@ -1069,7 +1069,7 @@ InitBouncers:
     STA SpriteData+18    ; Leader attributes
     LDA #$80
     STA SpriteData+19    ; Leader X
-    
+
     ; Formation followers
     LDX #$14             ; Sprite 5 offset
     LDY #$03             ; 3 followers
@@ -1082,27 +1082,27 @@ InitFollowers:
     STA SpriteData+2,X   ; Attributes
     LDA #$80
     STA SpriteData+3,X   ; X
-    
+
     TXA
     CLC
     ADC #$04
     TAX
     DEY
     BNE InitFollowers
-    
+
     RTS
 
 UpdateMovement:
     ; Update bouncing sprites with velocity
     LDX #$00             ; Sprite index
     LDY #$00             ; Velocity index
-    
+
 BounceLoop:
     ; Update X with velocity
     LDA SpriteData+3,X
     CLC
     ADC VelocityX,Y
-    
+
     ; Check X boundaries
     CMP #$10
     BCC BounceXLeft
@@ -1110,7 +1110,7 @@ BounceLoop:
     BCS BounceXRight
     STA SpriteData+3,X
     JMP UpdateYBounce
-    
+
 BounceXLeft:
     LDA #$10
     STA SpriteData+3,X
@@ -1120,7 +1120,7 @@ BounceXLeft:
     ADC #$01
     STA VelocityX,Y
     JMP UpdateYBounce
-    
+
 BounceXRight:
     LDA #$DF
     STA SpriteData+3,X
@@ -1129,13 +1129,13 @@ BounceXRight:
     CLC
     ADC #$01
     STA VelocityX,Y
-    
+
 UpdateYBounce:
     ; Update Y with velocity
     LDA SpriteData+0,X
     CLC
     ADC VelocityY,Y
-    
+
     ; Check Y boundaries
     CMP #$20
     BCC BounceYTop
@@ -1143,7 +1143,7 @@ UpdateYBounce:
     BCS BounceYBottom
     STA SpriteData+0,X
     JMP NextBouncer
-    
+
 BounceYTop:
     LDA #$20
     STA SpriteData+0,X
@@ -1153,7 +1153,7 @@ BounceYTop:
     ADC #$01
     STA VelocityY,Y
     JMP NextBouncer
-    
+
 BounceYBottom:
     LDA #$CF
     STA SpriteData+0,X
@@ -1162,7 +1162,7 @@ BounceYBottom:
     CLC
     ADC #$01
     STA VelocityY,Y
-    
+
 NextBouncer:
     TXA
     CLC
@@ -1171,7 +1171,7 @@ NextBouncer:
     INY
     CPY #$04             ; 4 bouncing sprites
     BNE BounceLoop
-    
+
     RTS
 
 UpdateFormation:
@@ -1181,7 +1181,7 @@ UpdateFormation:
     AND #$7F             ; 128 frame cycle
     CMP #$40
     BCC MoveFormationRight
-    
+
     ; Move left
     LDA SpriteData+19    ; Leader X
     SEC
@@ -1190,7 +1190,7 @@ UpdateFormation:
     BCC FormationBoundary
     STA SpriteData+19
     JMP UpdateFollowers
-    
+
 MoveFormationRight:
     LDA SpriteData+19    ; Leader X
     CLC
@@ -1199,17 +1199,17 @@ MoveFormationRight:
     BCS FormationBoundary
     STA SpriteData+19
     JMP UpdateFollowers
-    
+
 FormationBoundary:
     ; At boundary, just continue
-    
+
 UpdateFollowers:
     ; Update formation followers to follow leader
     LDA SpriteData+19    ; Leader X
     STA LeaderX
     LDA SpriteData+16    ; Leader Y
     STA LeaderY
-    
+
     ; Follower 1 (right)
     LDA LeaderX
     CLC
@@ -1221,7 +1221,7 @@ UpdateFollowers:
     STA TargetY
     LDX #$14             ; Sprite 5
     JSR MoveToTarget
-    
+
     ; Follower 2 (left)
     LDA LeaderX
     SEC
@@ -1233,7 +1233,7 @@ UpdateFollowers:
     STA TargetY
     LDX #$18             ; Sprite 6
     JSR MoveToTarget
-    
+
     ; Follower 3 (behind)
     LDA LeaderX
     STA TargetX
@@ -1243,7 +1243,7 @@ UpdateFollowers:
     STA TargetY
     LDX #$1C             ; Sprite 7
     JSR MoveToTarget
-    
+
     RTS
 
 MoveToTarget:
@@ -1256,12 +1256,12 @@ MoveToTarget:
     SBC #$01
     STA SpriteData+3,X
     JMP MoveTargetYCheck
-    
+
 MoveTargetRight2:
     CLC
     ADC #$01
     STA SpriteData+3,X
-    
+
 MoveTargetYCheck:
     LDA SpriteData+0,X   ; Current Y
     CMP TargetY
@@ -1271,12 +1271,12 @@ MoveTargetYCheck:
     SBC #$01
     STA SpriteData+0,X
     RTS
-    
+
 MoveTargetDown2:
     CLC
     ADC #$01
     STA SpriteData+0,X
-    
+
 MoveTargetComplete:
     RTS
 
@@ -1287,12 +1287,12 @@ UpdateEffects:
     AND #$0F             ; 16 frame cycle
     CMP #$08
     BCC PulseNormal
-    
+
     ; Pulse state - change tile
     LDA #$07             ; Bright tile
     STA SpriteData+17    ; Leader tile
     RTS
-    
+
 PulseNormal:
     LDA #$05             ; Normal tile
     STA SpriteData+17

@@ -27,6 +27,7 @@ Bring realistic physics to your Amiga games! With **32 physics-focused lessons**
 ## What You'll Build
 
 Create **ADVANCED PHYSICS ENGINE** - featuring realistic game physics:
+
 - Complex collision detection using Amiga's blitter efficiently
 - Realistic gravity, momentum, and acceleration systems
 - Fluid particle systems for explosions and effects
@@ -36,24 +37,28 @@ Create **ADVANCED PHYSICS ENGINE** - featuring realistic game physics:
 ## Physics Mastery Areas
 
 **Lessons 1-8: "Physics Fundamentals" - Mathematical Foundation**
+
 - Fixed-point arithmetic for accurate physics on 68000
 - Vector mathematics and coordinate transformations
 - Velocity, acceleration, and momentum calculations
 - Efficient physics data structures for Amiga
 
 **Lessons 9-16: "Collision Systems" - Detection and Response**
+
 - Advanced collision detection algorithms
 - Bounding box and circle collision optimization
 - Pixel-perfect collision using Amiga's blitter
 - Collision response and realistic bouncing effects
 
 **Lessons 17-24: "Particle Physics" - Dynamic Effects**
+
 - Particle system architecture and management
 - Explosion and destruction effects
 - Fluid simulation and wave mechanics
 - Weather effects and environmental particles
 
 **Lessons 25-32: "Advanced Mechanics" - Complex Physics Systems**
+
 - Rope and chain physics simulation
 - Realistic vehicle and projectile physics
 - Physics-based puzzle mechanics

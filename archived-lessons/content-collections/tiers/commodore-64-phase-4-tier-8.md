@@ -31,6 +31,7 @@ Create visual magic! With **32 comprehensive lessons**, you'll implement sophist
 ## What You'll Complete
 
 Finish **Synth Explorer** with incredible audiovisual integration:
+
 - Advanced audio effects and environmental soundscapes
 - Stunning parallax scrolling with multiple depth layers
 - Interactive music that responds to player actions
@@ -40,24 +41,28 @@ Finish **Synth Explorer** with incredible audiovisual integration:
 ## Tier Overview
 
 **Lessons 1-8: Mathematical Visual Effects**
+
 - Plasma effect algorithms and implementation
 - Fractal and mathematical pattern generation
 - Color cycling and palette animation
 - Performance optimization for complex effects
 
 **Lessons 9-16: Pseudo-3D Graphics**
+
 - Perspective projection simulation
 - 3D object representation on 2D hardware
 - Depth sorting and hidden surface removal
 - Camera movement and 3D navigation
 
 **Lessons 17-24: Advanced Raster Techniques**
+
 - Complex multi-raster effect chains
 - Synchronized visual effect timing
 - Screen morphing and transition effects
 - Advanced color manipulation
 
 **Lessons 25-32: Complete Effect Integration**
+
 - Audiovisual synchronization
 - Dynamic effect systems
 - Professional visual polish

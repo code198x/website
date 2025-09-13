@@ -27,6 +27,7 @@ Time to become a tool architect! With **32 intensive lessons**, you'll learn to 
 ## What You'll Build
 
 Create **NES DEVELOPMENT SUITE** - a comprehensive tool collection featuring:
+
 - Advanced graphics editors for sprite and background creation
 - Sophisticated audio tools for music and sound effect creation
 - Professional debugging and analysis tools for code optimization
@@ -36,24 +37,28 @@ Create **NES DEVELOPMENT SUITE** - a comprehensive tool collection featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Visual Creation!" - Advanced Graphics Tools**
+
 - Building professional sprite and tile editors
 - Creating advanced palette and color management tools
 - Implementing sophisticated animation editors
 - Developing tools that streamline graphics creation workflow
 
 **Lessons 9-16: "Audio Mastery!" - Professional Sound Tools**
+
 - Creating comprehensive music composition and editing tools
 - Building advanced sound effect creation and management systems
 - Implementing professional audio analysis and debugging tools
 - Developing tools for APU programming and optimization
 
 **Lessons 17-24: "Code Analysis!" - Advanced Development Tools**
+
 - Building sophisticated code editors with 6502 assembly support
 - Creating advanced debugging and profiling tools
 - Implementing comprehensive memory analysis and optimization tools
 - Developing professional code analysis and documentation systems
 
 **Lessons 25-32: "Professional Pipeline!" - Integrated Development Environment**
+
 - Creating comprehensive asset management and build systems
 - Building integrated development environments for NES programming
 - Implementing professional project management and version control

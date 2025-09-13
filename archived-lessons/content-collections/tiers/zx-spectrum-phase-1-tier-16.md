@@ -31,6 +31,7 @@ Complete **Spectrum Symphony** - a comprehensive demonstration of ZX Spectrum Z8
 ## What You'll Complete
 
 Finish your comprehensive ZX Spectrum assembly project:
+
 - A complete music creation system implemented in Z80 assembly
 - Advanced beeper synthesis and multi-channel effects using assembly
 - Real-time performance and composition tools programmed in assembly
@@ -39,24 +40,28 @@ Finish your comprehensive ZX Spectrum assembly project:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Integration**
+
 - Integrating all assembly system components
 - Creating seamless assembly workflows
 - Implementing final Z80 optimisation and polish
 - Building complete, cohesive assembly application
 
 **Lessons 9-16: Assembly Creative System Completion**
+
 - Finalizing advanced music creation features in assembly
 - Implementing composition tools using assembly programming
 - Creating complete recording and editing systems in assembly
 - Building full creative workflow support through assembly code
 
 **Lessons 17-24: Assembly Performance and Polish**
+
 - Achieving maximum Z80 assembly performance optimisation
 - Creating engaging user experience through assembly programming
 - Implementing comprehensive help and documentation in assembly
 - Building solid presentation and interface using assembly code
 
 **Lessons 25-32: Foundation Achievement**
+
 - Final assembly project completion and testing
 - Creating comprehensive assembly code documentation
 - Understanding assembly programming achievements and Phase 1 scope

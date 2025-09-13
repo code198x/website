@@ -27,6 +27,7 @@ Time to create the ultimate NES masterpiece! With **32 intensive lessons**, you'
 ## What You'll Build
 
 Create **ULTIMATE NES ENGINE** - a complete game development framework featuring:
+
 - Hardware mastery systems that exploit every NES capability
 - Performance optimization achieving impossible efficiency
 - Advanced input systems supporting every NES peripheral
@@ -36,12 +37,14 @@ Create **ULTIMATE NES ENGINE** - a complete game development framework featuring
 ## Engine Architecture
 
 **Core Systems:**
+
 - Advanced hardware abstraction layer for maximum performance
 - Sophisticated memory management with automatic optimization
 - Multi-threaded-style processing using advanced 6502 techniques
 - Professional asset pipeline for graphics, audio, and data
 
 **Advanced Features:**
+
 - Cycle-accurate timing system for perfect hardware synchronization
 - Advanced sprite and background management with automatic optimization
 - Comprehensive audio engine with professional mixing capabilities
@@ -50,24 +53,28 @@ Create **ULTIMATE NES ENGINE** - a complete game development framework featuring
 ## Tier Overview
 
 **Lessons 1-8: "Engine Foundation!" - Core Architecture Design**
+
 - Designing scalable engine architecture for NES constraints
 - Creating professional hardware abstraction layers
 - Building efficient memory management systems
 - Establishing professional development workflows
 
 **Lessons 9-16: "Graphics Powerhouse!" - Advanced Visual Systems**
+
 - Integrating sprite multiplexing with background systems
 - Creating automatic graphics optimization systems
 - Building professional animation and effects frameworks
 - Implementing advanced visual debugging tools
 
 **Lessons 17-24: "Audio Excellence!" - Professional Sound Engine**
+
 - Creating comprehensive audio mixing and management systems
 - Building professional music and sound effect frameworks
 - Implementing advanced audio streaming and compression
 - Designing sophisticated audio debugging and analysis tools
 
 **Lessons 25-32: "Development Tools!" - Professional Framework**
+
 - Creating professional development and debugging tools
 - Building comprehensive asset management systems
 - Implementing advanced profiling and optimization tools

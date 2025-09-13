@@ -39,6 +39,7 @@ order: 1
 ---
 
 # Cursor Quest
+
 **"I made text graphics come alive!"**
 
 Your first complete ZX Spectrum game! **Cursor Quest** is where you'll discover the magic of making text graphics interactive and colorful. Watch as simple characters become your first game character, leaving beautiful trails of color across the screen!
@@ -67,24 +68,28 @@ Through building Cursor Quest, you'll master:
 ## Development Progression
 
 ### Foundation (Lessons 1-8)
+
 - Set up Spectrum development environment and screen memory basics
 - Learn character display and screen address calculation
 - Implement keyboard matrix reading
 - Build cursor movement system with boundary checking
 
 ### Attribute Effects (Lessons 9-16)
+
 - Master attribute memory system for color control
 - Create trail effect framework with fading
 - Implement target letter system
 - Add collision detection and scoring
 
 ### Visual Polish (Lessons 17-24)
+
 - Add border effects and character animation
 - Generate maze layouts and special zones
 - Create particle-like character effects
 - Design title screen and transitions
 
 ### Audio and Completion (Lessons 25-32)
+
 - Program beeper for sound effects and music
 - Add difficulty settings and high score system
 - Implement power-up system
@@ -141,6 +146,7 @@ This project teaches the distinctive programming techniques that made Spectrum g
 ## Portfolio Impact
 
 By completing Cursor Quest, you'll have:
+
 - Your first complete Spectrum game
 - Mastery of fundamental Z80 assembly programming
 - Understanding of character-based graphics and attribute systems

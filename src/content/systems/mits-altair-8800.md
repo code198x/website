@@ -26,9 +26,8 @@ country_of_origin: "United States"
 
 # Media
 description: "The computer that started the personal computing revolution, inspiring the founding of Microsoft and the Homebrew Computer Club."
-image: "/images/systems/altair-8800.jpg"
 
-# Platform Classification  
+# Platform Classification
 medal_tier: "bronze"
 total_lessons: 0
 total_games: 0
@@ -41,6 +40,6 @@ order: 100
 
 # Altair 8800
 
-*Historical Reference Only*
+_Historical Reference Only_
 
 The Altair 8800 launched the personal computer revolution in 1975. While not practical for modern game development education, its historical significance cannot be overstated - this is the machine that inspired Bill Gates and Paul Allen to found Microsoft, and around which the Homebrew Computer Club formed.

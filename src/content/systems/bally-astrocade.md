@@ -28,7 +28,8 @@ video:
   processor: "Custom Bally graphics chip"
   resolution: "320×204"
   colors: "256 colors"
-  display_modes: ["Low resolution 160×102", "High resolution 320×204", "Character mode", "Bitmap graphics"]
+  display_modes:
+    ["Low resolution 160×102", "High resolution 320×204", "Character mode", "Bitmap graphics"]
   sprites:
     count: 8
     size: "Hardware sprites"
@@ -40,7 +41,8 @@ video:
 audio:
   chip: "Custom Bally sound processor"
   channels: 4
-  features: ["3 square wave oscillators", "1 noise generator", "Vibrato", "Tremolo", "Music sequencer"]
+  features:
+    ["3 square wave oscillators", "1 noise generator", "Vibrato", "Tremolo", "Music sequencer"]
   sample_playback: false
   synthesis_types: ["Square wave", "Noise", "Music synthesis"]
 
@@ -69,8 +71,10 @@ market_positioning: "Arcade-quality graphics at home"
 competition: ["Atari 2600", "Fairchild Channel F", "Magnavox Odyssey²"]
 
 # Educational relevance
-learning_advantages: ["256-color graphics", "Advanced sound synthesis", "Light pen interface", "Z80 architecture"]
-common_beginner_projects: ["Graphics demos", "Music composition", "Games", "Interactive applications"]
+learning_advantages:
+  ["256-color graphics", "Advanced sound synthesis", "Light pen interface", "Z80 architecture"]
+common_beginner_projects:
+  ["Graphics demos", "Music composition", "Games", "Interactive applications"]
 
 # Modern preservation and emulation
 emulated: true
@@ -87,7 +91,6 @@ hardware_availability: "rare"
 
 # Media
 description: "The console with arcade-quality graphics that time forgot—256 colors in 1978."
-image: "/images/systems/bally-astrocade.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -102,7 +105,7 @@ order: 40
 
 # Bally Astrocade
 
-*Coming Soon*
+_Coming Soon_
 
 The Bally Astrocade was arguably the most technically sophisticated home console of the late 1970s, featuring 256-color graphics, high-resolution display, and advanced sound synthesis years ahead of its competition. It was the console that brought arcade-quality graphics home.
 
@@ -114,15 +117,16 @@ The Astrocade's advanced graphics and sound capabilities offer unique programmin
 
 - **256 Colors**: Full color palette in 1978, years ahead of competition
 - **High Resolution**: 320×204 interlaced display with bitmap graphics
-- **Advanced Sound**: 4-channel synthesis with vibrato and tremolo effects  
+- **Advanced Sound**: 4-channel synthesis with vibrato and tremolo effects
 - **Light Pen Support**: Direct screen interaction and drawing capabilities
 - **Z80A Architecture**: Familiar processor with unique custom hardware
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Astrocade curriculum will include:
+
 - Z80A assembly with custom graphics programming
 - 256-color bitmap manipulation and sprite animation
 - Multi-channel audio synthesis and music composition

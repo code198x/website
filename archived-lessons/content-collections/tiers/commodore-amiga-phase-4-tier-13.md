@@ -27,6 +27,7 @@ Ensure excellence! With **32 comprehensive lessons**, you'll master professional
 ## What You'll Build
 
 Begin developing **Stellar Legacy** - a comprehensive RPG featuring:
+
 - Automated testing frameworks and validation systems
 - Comprehensive QA protocols and quality control processes
 - Advanced debugging tools and problem resolution systems
@@ -36,24 +37,28 @@ Begin developing **Stellar Legacy** - a comprehensive RPG featuring:
 ## Tier Overview
 
 **Lessons 1-8: Professional Testing Frameworks**
+
 - Test-driven development for Amiga games
 - Automated testing system design and implementation
 - Unit testing and integration testing frameworks
 - Continuous integration and validation pipelines
 
 **Lessons 9-16: Quality Control Processes**
+
 - Quality standards definition and implementation
 - Bug tracking and issue management systems
 - Code review processes and quality gates
 - Performance testing and validation protocols
 
 **Lessons 17-24: Advanced Debugging**
+
 - Professional debugging tools and techniques
 - Memory leak detection and performance profiling
 - Real-time debugging and system monitoring
 - Problem resolution and root cause analysis
 
 **Lessons 25-32: QA Workflow Management**
+
 - Professional QA workflow design and implementation
 - Testing documentation and reporting systems
 - Release validation and certification processes

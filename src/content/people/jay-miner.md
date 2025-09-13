@@ -54,6 +54,7 @@ Jay Miner began his career in electronics in the 1960s, working on various semic
 Miner's first major achievement was designing the **Television Interface Adaptor (TIA)** chip for the Atari 2600 (originally called the Video Computer System). Released in 1977, this chip was revolutionary for its time:
 
 **TIA Innovations:**
+
 - **Hardware sprites**: Moving objects handled entirely in hardware
 - **Playfield graphics**: Flexible background generation
 - **Collision detection**: Hardware-based sprite collision detection
@@ -65,6 +66,7 @@ The TIA's capabilities enabled the Atari 2600 to become one of the most successf
 ## The Vision for Advanced Computing
 
 By the early 1980s, Miner had grown frustrated with the limitations of existing computer systems. He envisioned a new kind of computer that would:
+
 - Handle graphics and sound as first-class citizens, not afterthoughts
 - Provide true multitasking capabilities
 - Offer professional-quality multimedia features at consumer prices
@@ -81,15 +83,19 @@ In 1982, Miner joined **Amiga Corporation** as a co-founder, alongside Larry Kap
 Miner's masterpiece was the Amiga's custom chipset, consisting of three main chips that worked together to create unprecedented multimedia capabilities:
 
 #### Agnus - The Graphics and Memory Controller
+
 **Agnus** handled graphics generation and memory management:
+
 - **Blitter**: Hardware-accelerated graphics operations
 - **Copper**: Programmable graphics coprocessor for precise timing
 - **DMA controller**: Direct Memory Access for efficient data transfer
 - **Display generation**: Multiple graphics modes and resolutions
 - **Memory arbitration**: Shared access between CPU and custom chips
 
-#### Denise - The Video Display Processor  
+#### Denise - The Video Display Processor
+
 **Denise** managed video output and colour generation:
+
 - **Palette management**: 4096 colours available, 32 simultaneously
 - **Multiple graphics modes**: From low-resolution to high-resolution
 - **Hardware sprites**: 8 independent hardware sprites
@@ -97,7 +103,9 @@ Miner's masterpiece was the Amiga's custom chipset, consisting of three main chi
 - **Dual playfields**: Multiple scrolling backgrounds
 
 #### Paula - The Audio and I/O Controller
+
 **Paula** provided sophisticated audio capabilities:
+
 - **4-channel stereo sound**: Hardware mixing and DMA sample playback
 - **8-bit PCM samples**: High-quality digital audio
 - **Hardware volume control**: Per-channel amplitude control
@@ -121,15 +129,19 @@ The Amiga's architecture was revolutionary because:
 Miner's approach to computer design was characterised by several key principles:
 
 ### Integration Over Separation
+
 Rather than treating graphics and sound as add-ons, Miner made multimedia capabilities central to the system architecture.
 
 ### Hardware Acceleration
+
 He believed that complex operations should be handled by dedicated hardware rather than software, enabling better performance and smoother operation.
 
 ### Future-Proofing
+
 The Amiga's architecture included capabilities that seemed excessive in 1985 but proved essential as multimedia computing evolved.
 
 ### Elegance Through Custom Solutions
+
 By designing custom chips specifically for multimedia tasks, Miner achieved elegant solutions that were impossible with off-the-shelf components.
 
 ## The Amiga's Revolutionary Capabilities
@@ -137,6 +149,7 @@ By designing custom chips specifically for multimedia tasks, Miner achieved eleg
 When the Amiga was released in 1985, it could do things that seemed magical:
 
 ### Graphics Capabilities
+
 - **4096 colours**: When PCs displayed 16 colours
 - **Hardware scrolling**: Smooth, flicker-free movement
 - **Multiple layers**: Overlapping graphics planes
@@ -144,12 +157,14 @@ When the Amiga was released in 1985, it could do things that seemed magical:
 - **Video effects**: Copper-controlled colour changes and display effects
 
 ### Audio Innovation
+
 - **CD-quality sound**: 4-channel stereo when PCs had beeps
 - **Sample playback**: Digital audio samples with hardware mixing
 - **Music synthesis**: Sophisticated sound generation capabilities
 - **Professional audio**: Quality suitable for music production
 
 ### Multitasking Excellence
+
 - **Preemptive multitasking**: Multiple programs running simultaneously
 - **Memory protection**: Programs couldn't crash the system
 - **GUI multitasking**: Multiple windows and applications
@@ -160,24 +175,28 @@ When the Amiga was released in 1985, it could do things that seemed magical:
 The Amiga's advanced capabilities made it the platform of choice for:
 
 ### Video Production
+
 - **Television production**: Used for titles, effects, and editing
 - **Computer graphics**: 3D rendering and animation
 - **Video toaster**: Professional video editing systems
 - **Broadcast graphics**: TV stations worldwide used Amigas
 
 ### Music and Audio
+
 - **Digital audio workstations**: Professional music production
 - **MIDI sequencing**: Advanced music composition tools
 - **Sample-based music**: Tracker software and digital sampling
 - **Audio effects**: Real-time audio processing
 
 ### Gaming Innovation
+
 - **Advanced graphics**: Games with unprecedented visual quality
 - **Smooth animation**: Hardware sprites enabled fluid movement
 - **Digital sound**: CD-quality audio in games
 - **Complex gameplay**: Multitasking enabled sophisticated game mechanics
 
 ### Art and Creativity
+
 - **Digital art**: Professional painting and graphics software
 - **Animation**: Computer animation and special effects
 - **Multimedia presentations**: Interactive displays and kiosks
@@ -188,20 +207,25 @@ The Amiga's advanced capabilities made it the platform of choice for:
 Jay Miner's influence on computing extends far beyond the Amiga:
 
 ### Advancing the Industry
+
 The Amiga demonstrated what multimedia computing could be, inspiring other manufacturers to add similar capabilities to their systems.
 
 ### Educational Impact
+
 Many programmers learned advanced concepts like hardware programming, multitasking, and multimedia development on Amiga systems.
 
 ### Technical Innovation
+
 Miner's custom chip approach influenced later developments in graphics cards, sound cards, and multimedia processors.
 
 ### Cultural Legacy
+
 The Amiga created a passionate community of users, developers, and artists who pushed the boundaries of what was possible with computer technology.
 
 ## Later Career and Final Years
 
 After the Amiga's initial success, Miner continued to work on advancing the platform:
+
 - **Enhanced chipsets**: Improved versions with more capabilities
 - **Technical consulting**: Advising on multimedia technology development
 - **Industry speaking**: Sharing knowledge about custom chip design
@@ -213,12 +237,14 @@ Sadly, Jay Miner passed away in 1994 from complications related to kidney diseas
 In Code Like It's 198x, students learning Amiga programming directly experience Miner's revolutionary vision. Programming the Amiga's custom chips teaches advanced concepts that remain relevant in modern multimedia and game development.
 
 ### Educational Value
+
 - **Hardware programming**: Direct manipulation of sophisticated custom chips
 - **Multimedia integration**: Coordinating graphics, sound, and computation
 - **Performance optimisation**: Making the most of custom hardware capabilities
 - **System architecture**: Understanding how hardware design enables software capabilities
 
 ### Modern Relevance
+
 - **GPU programming**: Custom chip concepts apply to modern graphics cards
 - **Multimedia development**: Principles of hardware-accelerated multimedia
 - **Embedded systems**: Custom chip design for specialised applications

@@ -31,24 +31,28 @@ Begin developing **Power Quest** - a complete action-RPG featuring professional 
 ## Tier Overview
 
 **Lessons 1-8: Professional Project Structure**
+
 - Industry-standard NES project organization
 - Modular source code architecture
 - Professional build systems and workflows
 - Version control and development practices
 
 **Lessons 9-16: Advanced Memory Management**
+
 - Sophisticated memory banking strategies
 - Dynamic allocation and garbage collection
 - Memory-efficient data structures
 - Performance optimization techniques
 
 **Lessons 17-24: Game System Architecture**
+
 - Component-based entity systems
 - Professional game state management
 - Modular gameplay systems design
 - Scalable code patterns and practices
 
 **Lessons 25-32: Development Tools & Workflows**
+
 - Professional debugging techniques
 - Performance profiling and optimization
 - Automated testing systems

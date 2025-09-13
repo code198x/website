@@ -27,6 +27,7 @@ Ready for the world! With **32 comprehensive lessons**, you'll master profession
 ## What You'll Build
 
 Prepare **Stellar Legacy** for professional release:
+
 - Professional packaging and distribution materials
 - Compelling marketing presentation and promotional materials
 - Comprehensive documentation and user support systems
@@ -36,24 +37,28 @@ Prepare **Stellar Legacy** for professional release:
 ## Tier Overview
 
 **Lessons 1-8: Professional Packaging**
+
 - Game packaging and distribution format creation
 - Professional installer and setup system development
 - Documentation and manual creation workflows
 - Version control and release management systems
 
 **Lessons 9-16: Marketing & Presentation**
+
 - Compelling marketing material design and creation
 - Screenshot and video capture optimization
 - Press kit development and media relations
 - Professional presentation and demo creation
 
 **Lessons 17-24: Business Strategy**
+
 - Commercial distribution strategy development
 - Pricing and market analysis methodologies
 - Publisher relations and licensing strategies
 - Legal considerations and intellectual property
 
 **Lessons 25-32: Industry Preparation**
+
 - Professional portfolio development and presentation
 - Industry networking and relationship building
 - Trade show and convention preparation

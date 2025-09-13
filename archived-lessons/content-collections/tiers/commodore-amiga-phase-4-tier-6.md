@@ -27,6 +27,7 @@ Build amazing worlds! With **32 comprehensive lessons**, you'll master level des
 ## What You'll Build
 
 Expand **Quantum Realms** with sophisticated world generation:
+
 - Hand-crafted levels with professional design principles
 - Procedural generation systems for infinite replayability
 - Dynamic world streaming and memory management
@@ -36,24 +37,28 @@ Expand **Quantum Realms** with sophisticated world generation:
 ## Tier Overview
 
 **Lessons 1-8: Professional Level Design**
+
 - Level design principles and player psychology
 - Spatial composition and flow design
 - Environmental storytelling techniques
 - Playtesting and iteration methodologies
 
 **Lessons 9-16: Procedural Generation Systems**
+
 - Random number generation and seeding
 - Algorithmic level generation techniques
 - Constraint-based generation systems
 - Quality control and validation algorithms
 
 **Lessons 17-24: Dynamic World Building**
+
 - Streaming and loading systems for large worlds
 - Memory management for complex environments
 - Dynamic content generation and modification
 - Performance optimization for world processing
 
 **Lessons 25-32: Advanced World Systems**
+
 - Level editor design and implementation
 - World data compression and optimization
 - Multi-layered world generation

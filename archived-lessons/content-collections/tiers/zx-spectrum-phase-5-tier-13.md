@@ -27,6 +27,7 @@ Insert coin to continue! With **32 nostalgic lessons**, you'll create the kind o
 ## What You'll Build
 
 Create **SPECTRUM ARCADE** - a collection of timeless classics featuring:
+
 - Maze-chase games with intelligent ghost AI
 - Dot-collecting mechanics with strategic power-ups
 - Progressive difficulty that keeps players challenged
@@ -36,24 +37,28 @@ Create **SPECTRUM ARCADE** - a collection of timeless classics featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Maze Mastery" - Navigation & Pathfinding**
+
 - Maze generation algorithms and level design
 - Player movement with precise collision detection
 - Pathfinding AI for pursuing enemies
 - Teleport systems and maze connectivity
 
 **Lessons 9-16: "Power-Up Paradise" - Temporary Abilities**
+
 - Power pellet systems and state changes
 - Temporary invincibility and score multipliers
 - Visual feedback for power-up states
 - Timing systems and power-up duration
 
 **Lessons 17-24: "Enemy AI" - Classic Behavioral Patterns**
+
 - Ghost AI with distinct personality patterns
 - Scatter and chase mode implementations
 - Predictable but challenging enemy behaviors
 - Difficulty scaling through speed and aggression
 
 **Lessons 25-32: "Arcade Polish" - Perfect Gameplay Feel**
+
 - Score systems with bonus point opportunities
 - Sound design for authentic arcade atmosphere
 - Visual effects and animation polish

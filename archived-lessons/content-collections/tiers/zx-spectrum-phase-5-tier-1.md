@@ -27,6 +27,7 @@ Welcome to the arcade! With **32 action-packed lessons**, you'll create the kind
 ## What You'll Build
 
 Create **LASER STORM** - an epic vertical scrolling shooter featuring:
+
 - Enemy formations that swoop like digital eagles
 - Bullet patterns that turn the screen into beautiful chaos
 - Explosions with color-cycling effects that make the border flash
@@ -36,24 +37,28 @@ Create **LASER STORM** - an epic vertical scrolling shooter featuring:
 ## Tier Overview
 
 **Lessons 1-8: "UDG Magic" - Character Graphics Mastery**
+
 - UDG (User Defined Graphics): Your secret weapon for smooth sprites
 - Character-based animation using the ZX Spectrum's strengths
 - Making 8x8 pixel characters dance across the screen
 - Memory-efficient sprite systems that don't break the bank
 
 **Lessons 9-16: "Bullet Ballet" - Pattern Programming Paradise**
+
 - Bullet patterns that look impossible but run at lightning speed
 - Using the ZX Spectrum's unique memory layout for collision detection
 - Movement systems that make enemies flow like water
 - The art of making 48K feel like unlimited memory
 
 **Lessons 17-24: "BOOM! ZAP! POW!" - Effects & Screen Wizardry**
+
 - Color-cycling explosions that make the whole screen pulse
 - Border effects that add drama without stealing cycles
 - Sound effects that squeeze every beep from the built-in speaker
 - Screen flash techniques that don't trigger epilepsy warnings
 
 **Lessons 25-32: "Boss Battle Brilliance" - AI & Challenge Design**
+
 - Boss patterns that use the full screen real estate
 - Enemy AI that's challenging but fair to 8-bit reflexes
 - Attack sequences that teach through gameplay

@@ -31,24 +31,28 @@ Transform **Space Trader** into a real-time simulation with concurrent trading A
 ## Tier Overview
 
 **Lessons 1-8: Cooperative Multitasking Basics**
+
 - Understanding task switching concepts
 - Implementing voluntary yield mechanisms
 - Task state management and storage
 - Simple round-robin scheduling
 
 **Lessons 9-16: Preemptive Task Scheduling**
+
 - Timer-driven task switching
 - Priority-based scheduling algorithms
 - Context switching optimization
 - Fair CPU time distribution
 
 **Lessons 17-24: Inter-Task Communication**
+
 - Message passing systems
 - Shared memory with semaphores
 - Event notification mechanisms
 - Producer-consumer patterns
 
 **Lessons 25-32: Advanced Concurrent Patterns**
+
 - State machines for task coordination
 - Deadlock prevention strategies
 - Real-time task constraints

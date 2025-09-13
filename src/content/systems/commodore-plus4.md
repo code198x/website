@@ -73,7 +73,6 @@ emulators:
     accuracy: "high"
 historical_significance: "The Commodore Plus/4 represented Commodore's ambitious attempt to create a business-oriented computer with built-in productivity software. Despite innovative TED chip integration and advanced color capabilities, it failed commercially due to incompatibility with the successful C64 and poor market positioning between home and business segments."
 description: "The business computer that tried to bridge home and office computing but fell between both worlds—a fascinating study in market positioning."
-image: "/images/systems/commodore-plus4.jpg"
 order: 46
 ---
 
@@ -82,14 +81,18 @@ The **Commodore Plus/4** represented Commodore's ambitious attempt to create a b
 ## The TED Chip Innovation
 
 ### Single-Chip Integration
+
 The Plus/4's most notable technical achievement was the TED (Text Editing Device) chip:
+
 - **Video, audio, and I/O control** integrated into a single component
 - **121-color palette** with better color separation than the C64
 - **Advanced color system** with separate luminance and chrominance control
 - **Cost reduction** through component integration
 
 ### Built-In Software Suite
+
 The Plus/4 shipped with integrated productivity applications:
+
 - **3-Plus-1 software** - word processor, file manager, graph, and calculator
 - **BASIC 3.5** - enhanced with graphics and business commands
 - **Professional features** - 80-column text capability and formatting
@@ -98,14 +101,18 @@ The Plus/4 shipped with integrated productivity applications:
 ## Technical Architecture
 
 ### Hardware Design
+
 The Plus/4 featured solid engineering:
+
 - **MOS 7501 CPU** - 6502-compatible with slight modifications
 - **64 KB RAM** standard with no expansion options
 - **TED chip** handling all video, audio, and timing functions
 - **32 KB ROM** containing OS and built-in applications
 
 ### Programming Challenges
+
 Despite familiar 6502 architecture, development was complex:
+
 - **C64 incompatibility** - different memory mapping and hardware
 - **Limited expansion** - fixed memory with no upgrade path
 - **Market confusion** - unclear target audience
@@ -113,14 +120,18 @@ Despite familiar 6502 architecture, development was complex:
 ## Market Positioning Disaster
 
 ### The Compatibility Problem
+
 Commodore's decision to break C64 compatibility proved fatal:
+
 - **Lost C64 user base** - existing customers couldn't run their software
 - **Failed to attract business users** - IBM PC dominated professional market
 - **Confused positioning** - neither toy nor serious business machine
 - **Limited software library** - developers reluctant to support new platform
 
 ### Commercial Failure Lessons
+
 The Plus/4 taught crucial business lessons:
+
 - **Compatibility matters** more than technical superiority
 - **Market positioning** requires clear target audience
 - **Built-in software** can't compete with specialized applications
@@ -129,6 +140,7 @@ The Plus/4 taught crucial business lessons:
 ## Notable Software and Applications
 
 Despite limited library, some software showcased the system's capabilities:
+
 - **The Hunt for Red October** - Submarine simulation game
 - **Lode Runner** - Popular platform puzzle game
 - **Business applications** - Productivity software leveraging built-in suite
@@ -137,14 +149,18 @@ Despite limited library, some software showcased the system's capabilities:
 ## Historical Impact and Legacy
 
 ### Technical Innovations
+
 The Plus/4 introduced several important concepts:
+
 - **Single-chip integration** - TED combined multiple functions
 - **Enhanced color system** - more sophisticated than typical 8-bit computers
 - **Integrated software** - built-in productivity applications
 - **Business computing focus** - targeting professional users
 
 ### Lessons for the Industry
+
 The Plus/4's failure provided valuable insights:
+
 - **Backward compatibility** is crucial for platform success
 - **Clear market positioning** prevents falling between segments
 - **Developer support** matters more than hardware features
@@ -153,6 +169,7 @@ The Plus/4's failure provided valuable insights:
 ## Why Study Plus/4 History
 
 Understanding the Plus/4 provides crucial insights for modern technology development:
+
 - **Platform migration strategies** and compatibility challenges
 - **Market segmentation** and positioning decisions
 - **Integrated vs. specialized software** approaches
@@ -161,6 +178,7 @@ Understanding the Plus/4 provides crucial insights for modern technology develop
 ## Technical Legacy
 
 The Plus/4's innovations influenced later developments:
+
 - **Single-chip solutions** became standard in embedded systems
 - **Integrated software suites** evolved into modern office applications
 - **Color technology** improvements appeared in later computers

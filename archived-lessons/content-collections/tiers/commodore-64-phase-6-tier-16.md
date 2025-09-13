@@ -31,6 +31,7 @@ Launch your career! With **32 comprehensive lessons**, you'll complete your prof
 ## What You'll Complete
 
 Finish your **Innovation Showcase** as the capstone of your development journey:
+
 - Creative innovation with experimental gameplay and artistic expression
 - Rapid prototyping with agile development and quick iteration
 - Market understanding with player psychology and industry analysis
@@ -40,24 +41,28 @@ Finish your **Innovation Showcase** as the capstone of your development journey:
 ## Tier Overview
 
 **Lessons 1-8: Portfolio Development & Presentation**
+
 - Professional portfolio creation and curation
 - Project documentation and case studies
 - Technical demonstration and skill showcase
 - Visual presentation and marketing materials
 
 **Lessons 9-16: Career Showcase & Demonstration**
+
 - Live demonstration and presentation skills
 - Technical interview preparation
 - Code review and technical discussion
 - Professional communication and presentation
 
 **Lessons 17-24: Professional Networking & Industry Engagement**
+
 - Industry community participation
 - Professional relationship building
 - Conference and event participation
 - Online presence and professional branding
 
 **Lessons 25-32: Career Preparation & Opportunity Development**
+
 - Job search and application strategies
 - Interview preparation and techniques
 - Salary negotiation and career planning

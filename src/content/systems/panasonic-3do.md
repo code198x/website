@@ -74,7 +74,6 @@ emulators:
     accuracy: "good"
 historical_significance: "The 3DO was gaming's first attempt at a premium multimedia console, positioning itself as the 'Lexus of video games.' Its revolutionary multi-manufacturer licensing model and cutting-edge technology established many concepts that would later define 32-bit gaming, though its $700 price tag ensured commercial failure."
 description: "The luxury multimedia console that was technologically impressive but commercially doomed—a glimpse into gaming's premium future."
-image: "/images/systems/panasonic-3do.jpg"
 order: 44
 ---
 
@@ -83,6 +82,7 @@ The **3DO Interactive Multiplayer** represents one of gaming's most ambitious at
 ## Revolutionary Business Model
 
 The 3DO's most radical innovation wasn't technical but business-oriented:
+
 - **Multiple manufacturers** - Panasonic, Goldstar, and Sanyo all produced 3DO hardware
 - **Royalty-free licensing** - Hardware makers paid 3DO Company for the right to manufacture
 - **Standardized architecture** - All models were fully compatible
@@ -93,21 +93,27 @@ This model would later inspire DVD players and other consumer electronics, but i
 ## Cutting-Edge Hardware Architecture
 
 ### ARM60 RISC Processor
+
 The 3DO featured advanced 32-bit processing power:
+
 - **12.5 MHz ARM60** - the same CPU family powering modern smartphones
 - **32-bit RISC architecture** - efficient instruction execution
 - **2 MB system RAM** - massive for 1993 (Genesis had 64KB)
 - **1 MB video RAM** - dedicated graphics memory
 
 ### Custom CEL Engine Graphics
+
 The video system delivered console-first capabilities:
+
 - **24-bit color depth** - 16.7 million colors simultaneously
-- **Hardware sprite scaling** - smooth size changes without CPU overhead  
+- **Hardware sprite scaling** - smooth size changes without CPU overhead
 - **640×480 resolution** - true VGA-quality output
 - **Real-time video decompression** - full-motion video integration
 
 ### Advanced Audio System
+
 CD-quality sound with sophisticated processing:
+
 - **44.1 kHz sampling rate** - matching audio CDs
 - **16-channel digital sound** - complex audio mixing
 - **3D positional audio** - directional sound effects
@@ -116,6 +122,7 @@ CD-quality sound with sophisticated processing:
 ## CD-ROM as Primary Medium
 
 The 3DO was built around CD-ROM from day one:
+
 - **650 MB capacity** - 1000× more data than cartridges
 - **Full-motion video** - integrated into gameplay
 - **CD-quality audio** - orchestral soundtracks and voice acting
@@ -134,21 +141,27 @@ This wasn't an add-on like Sega CD—it was fundamental to the system's design p
 ## Historical Impact and Legacy
 
 ### What Went Right
+
 The 3DO established several industry firsts:
+
 - **Multi-manufacturer licensing** - later adopted by DVD, Blu-ray
 - **Premium gaming positioning** - paved way for expensive consoles
 - **Multimedia integration** - games as interactive entertainment
 - **32-bit performance standards** - influenced PlayStation and Saturn
 
 ### What Went Wrong
+
 The 3DO's failures were equally instructive:
+
 - **Price point positioning** - $700 vs. $199 Genesis alienated consumers
 - **Limited exclusive content** - most games appeared on other platforms
 - **Marketing confusion** - unclear target audience (gamers vs. multimedia enthusiasts)
 - **Timing issues** - launched just before PlayStation/Saturn generation
 
 ### Long-Term Influence
+
 The 3DO's concepts appeared throughout gaming history:
+
 - **PlayStation's multimedia focus** - Sony learned from 3DO's vision
 - **Xbox's multimedia center** - integrated entertainment system
 - **Modern VR headsets** - multiple manufacturers, shared platforms
@@ -157,6 +170,7 @@ The 3DO's concepts appeared throughout gaming history:
 ## Technical Innovation Legacy
 
 Many 3DO innovations became industry standards:
+
 - **Hardware video decompression** - standard in all modern consoles
 - **Large RAM pools** - necessary for complex games
 - **CD-ROM optimization** - streaming and caching techniques
@@ -165,6 +179,7 @@ Many 3DO innovations became industry standards:
 ## Why Study 3DO History
 
 Understanding the 3DO reveals crucial insights for modern technology development:
+
 - **Platform licensing strategies** - hardware standardization benefits
 - **Premium market positioning** - luxury electronics marketing
 - **Content partnerships** - Hollywood collaboration models

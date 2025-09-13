@@ -39,7 +39,7 @@ BrushData:
     BrushSize:      DB 1    ; 1-8 pixels
     BrushPattern:   DB 255  ; Pattern byte
     BrushDensity:   DB 100  ; For spray brush (percentage)
-    
+
 ; Brush patterns (8x8)
 BrushPatterns:
     ; Solid brush
@@ -51,7 +51,7 @@ BrushPatterns:
     DB 11111111b
     DB 11111111b
     DB 11111111b
-    
+
     ; Checkered pattern
     DB 10101010b
     DB 01010101b
@@ -61,7 +61,7 @@ BrushPatterns:
     DB 01010101b
     DB 10101010b
     DB 01010101b
-    
+
     ; Diagonal lines
     DB 10001000b
     DB 01000100b
@@ -121,7 +121,7 @@ PlotPixel:
     LD A, C
     CP 192
     RET NC
-    
+
     CALL CalculateScreenAddress
     LD A, B
     AND 7
@@ -157,7 +157,7 @@ DrawPixelBrush:
 DrawSquareBrush:
     LD A, (BrushSize)
     LD D, A             ; Size
-    
+
     ; Calculate top-left corner
     RRA                 ; Size / 2
     LD E, A
@@ -167,17 +167,17 @@ DrawSquareBrush:
     LD A, C
     SUB E               ; y - size/2
     LD (StartY), A
-    
+
     ; Draw square
     LD A, (BrushSize)
     LD (RowCount), A
-    
+
 SquareYLoop:
     LD A, (BrushSize)
     LD (ColCount), A
     LD A, (StartX)
     LD (CurrentX), A
-    
+
 SquareXLoop:
     ; Plot pixel
     LD A, (CurrentX)
@@ -187,27 +187,27 @@ SquareXLoop:
     PUSH BC
     CALL PlotPixel
     POP BC
-    
+
     ; Next column
     LD A, (CurrentX)
     INC A
     LD (CurrentX), A
-    
+
     LD A, (ColCount)
     DEC A
     LD (ColCount), A
     JR NZ, SquareXLoop
-    
+
     ; Next row
     LD A, (CurrentY)
     INC A
     LD (CurrentY), A
-    
+
     LD A, (RowCount)
     DEC A
     LD (RowCount), A
     JR NZ, SquareYLoop
-    
+
     RET
 
 ; Circle brush
@@ -217,22 +217,22 @@ DrawCircleBrush:
     LD (CenterX), A
     LD A, C
     LD (CenterY), A
-    
+
     ; Use filled circle algorithm
     LD A, (BrushSize)
     RRA                 ; Radius = size/2
     LD (Radius), A
-    
+
     ; Simple filled circle
     LD A, (Radius)
     NEG
     LD (YOffset), A
-    
+
 CircleYLoop:
     LD A, (Radius)
     NEG
     LD (XOffset), A
-    
+
 CircleXLoop:
     ; Check if point is inside circle
     ; Using simplified distance check
@@ -240,12 +240,12 @@ CircleXLoop:
     LD B, A
     CALL Multiply       ; B² (simplified)
     LD D, A
-    
+
     LD A, (YOffset)
     LD B, A
     CALL Multiply       ; Y²
     ADD D               ; X² + Y²
-    
+
     ; Compare with R²
     LD B, A
     LD A, (Radius)
@@ -253,7 +253,7 @@ CircleXLoop:
     CALL Multiply       ; R²
     CP B
     JR C, SkipPixel     ; Outside circle
-    
+
     ; Plot pixel
     LD A, (CenterX)
     LD B, (XOffset)
@@ -266,7 +266,7 @@ CircleXLoop:
     PUSH BC
     CALL PlotPixel
     POP BC
-    
+
 SkipPixel:
     ; Next X
     LD A, (XOffset)
@@ -276,7 +276,7 @@ SkipPixel:
     CP B
     JR C, CircleXLoop
     JR Z, CircleXLoop
-    
+
     ; Next Y
     LD A, (YOffset)
     INC A
@@ -285,7 +285,7 @@ SkipPixel:
     CP B
     JR C, CircleYLoop
     JR Z, CircleYLoop
-    
+
     RET
 
 ; Spray brush (random pixels)
@@ -293,21 +293,21 @@ DrawSprayBrush:
     LD A, (BrushSize)
     ADD A, A            ; Size × 2 for density
     LD B, A
-    
+
 SprayLoop:
     PUSH BC
-    
+
     ; Generate random offset
     CALL Random
     AND 7               ; -7 to +7 range
     SUB 4
     LD D, A             ; X offset
-    
+
     CALL Random
     AND 7
     SUB 4
     LD E, A             ; Y offset
-    
+
     ; Apply offset to position
     POP BC
     PUSH BC
@@ -317,13 +317,13 @@ SprayLoop:
     LD A, C
     ADD E
     LD C, A
-    
+
     ; Plot with probability
     CALL Random
     AND 3               ; 25% chance
     JR NZ, SkipSpray
     CALL PlotPixel
-    
+
 SkipSpray:
     POP BC
     DJNZ SprayLoop
@@ -376,58 +376,58 @@ ClearScreen:
 ; Test brush system
 TestBrushes:
     CALL ClearScreen
-    
+
     ; Test pixel brush
     LD A, BRUSH_PIXEL
     LD (BrushType), A
     LD B, 20
     LD C, 20
     CALL DrawBrush
-    
+
     ; Test square brushes
     LD A, BRUSH_SQUARE
     LD (BrushType), A
-    
+
     LD A, 3
     LD (BrushSize), A
     LD B, 40
     LD C, 20
     CALL DrawBrush
-    
+
     LD A, 5
     LD (BrushSize), A
     LD B, 60
     LD C, 20
     CALL DrawBrush
-    
+
     LD A, 7
     LD (BrushSize), A
     LD B, 85
     LD C, 20
     CALL DrawBrush
-    
+
     ; Test circle brushes
     LD A, BRUSH_CIRCLE
     LD (BrushType), A
-    
+
     LD A, 6
     LD (BrushSize), A
     LD B, 120
     LD C, 20
     CALL DrawBrush
-    
+
     LD A, 10
     LD (BrushSize), A
     LD B, 150
     LD C, 20
     CALL DrawBrush
-    
+
     ; Test spray brush
     LD A, BRUSH_SPRAY
     LD (BrushType), A
     LD A, 8
     LD (BrushSize), A
-    
+
     ; Draw spray line
     LD D, 20
 SprayLine:
@@ -441,19 +441,19 @@ SprayLine:
     LD A, D
     CP 200
     JR C, SprayLine
-    
+
     ; Draw with different brushes in pattern
     LD C, 100           ; Y position
     LD D, 0             ; Brush type counter
-    
+
 PatternLoop:
     LD A, D
     AND 3               ; Cycle through 4 brush types
     LD (BrushType), A
-    
+
     LD A, 5
     LD (BrushSize), A
-    
+
     ; Calculate X position
     LD A, D
     ADD A, A
@@ -461,18 +461,18 @@ PatternLoop:
     ADD A, A            ; × 8
     ADD 20
     LD B, A
-    
+
     PUSH BC
     PUSH DE
     CALL DrawBrush
     POP DE
     POP BC
-    
+
     INC D
     LD A, D
     CP 20
     JR NZ, PatternLoop
-    
+
     LD B, 255           ; Success
     RET
 ```
@@ -486,7 +486,7 @@ PatternLoop:
 PatternData:
     CurrentPattern: DB 0    ; Pattern index
     PatternMask:    DB 255  ; Current pattern byte
-    
+
 ; Predefined patterns
 Patterns:
     DB 11111111b    ; Solid
@@ -507,13 +507,13 @@ ApplyPattern:
     AND 7               ; Get bit position
     LD D, A
     LD A, (PatternMask)
-    
+
     ; Rotate pattern to check bit
 PatternRotate:
     RRA
     DEC D
     JR NZ, PatternRotate
-    
+
     ; Carry = pattern bit
     RET NC              ; Don't draw if pattern bit is 0
     JP PlotPixel        ; Draw if pattern bit is 1
@@ -608,7 +608,7 @@ PopCoords:
     OR A
     SBC HL, DE
     RET Z               ; Stack empty
-    
+
     LD HL, (StackPointer)
     DEC HL
     LD C, (HL)          ; Get Y
@@ -624,27 +624,27 @@ FloodFill:
     ; Initialize stack
     LD HL, FillStack
     LD (StackPointer), HL
-    
+
     ; Push starting point
     CALL PushCoords
-    
+
 FillLoop:
     ; Pop next point
     CALL PopCoords
     RET Z               ; Stack empty, done
-    
+
     ; Check if already filled
     PUSH BC
     CALL ReadPixel
     POP BC
     OR A
     JR NZ, FillLoop     ; Already filled, skip
-    
+
     ; Fill this pixel
     PUSH BC
     CALL PlotPixel
     POP BC
-    
+
     ; Check and push neighbors
     ; Left
     LD A, B
@@ -659,7 +659,7 @@ FillLoop:
     CALL PushCoords
 RestoreLeft:
     INC B
-    
+
 CheckRight:
     ; Right
     LD A, B
@@ -674,7 +674,7 @@ CheckRight:
     CALL PushCoords
 RestoreRight:
     DEC B
-    
+
 CheckUp:
     ; Up
     LD A, C
@@ -689,7 +689,7 @@ CheckUp:
     CALL PushCoords
 RestoreUp:
     INC C
-    
+
 CheckDown:
     ; Down
     LD A, C
@@ -704,7 +704,7 @@ CheckDown:
     CALL PushCoords
 RestoreDown:
     DEC C
-    
+
     JR FillLoop
 
 ; Draw outline for fill test
@@ -723,7 +723,7 @@ RectTop:
     LD A, D
     CP 150
     JR NZ, RectTop
-    
+
     ; Right side
     LD B, 149
     LD D, 40
@@ -736,7 +736,7 @@ RectRight:
     LD A, D
     CP 120
     JR NZ, RectRight
-    
+
     ; Bottom
     LD C, 119
     LD D, 50
@@ -749,7 +749,7 @@ RectBottom:
     LD A, D
     CP 150
     JR NZ, RectBottom
-    
+
     ; Left side
     LD B, 50
     LD D, 40
@@ -762,7 +762,7 @@ RectLeft:
     LD A, D
     CP 120
     JR NZ, RectLeft
-    
+
     ; Draw inner obstacle
     LD B, 80
     LD D, 20
@@ -778,7 +778,7 @@ ObstacleLoop:
     LD A, D
     CP 40
     JR NZ, ObstacleLoop
-    
+
     RET
 
 ; Clear screen
@@ -793,10 +793,10 @@ ClearScreen:
 ; Test flood fill
 TestFloodFill:
     CALL ClearScreen
-    
+
     ; Draw test shapes
     CALL DrawTestOutline
-    
+
     ; Draw another shape
     ; Circle outline (simplified)
     LD B, 180
@@ -808,7 +808,7 @@ CircleOutline:
     CALL PlotPixel
     POP DE
     POP BC
-    
+
     ; Simple circle approximation
     INC D
     LD A, D
@@ -838,22 +838,22 @@ CircleNext:
     LD A, D
     CP 32
     JR NZ, CircleOutline
-    
+
     ; Fill the rectangle
     LD B, 100           ; Inside rectangle
     LD C, 80
     CALL FloodFill
-    
+
     ; Fill the circle
     LD B, 180           ; Inside circle
     LD C, 80
     CALL FloodFill
-    
+
     ; Try to fill outside (should stop at boundaries)
     LD B, 10
     LD C, 10
     CALL FloodFill
-    
+
     LD B, 255           ; Success
     RET
 ```
@@ -871,7 +871,7 @@ UndoData:
     CurrentLevel:   DB 0    ; Current undo position
     MaxLevel:       DB 0    ; Maximum valid level
     UndoBuffers:    DS UNDO_LEVELS * UNDO_SIZE
-    
+
 ; Save state for undo
 SaveUndoState:
     ; Get current buffer address
@@ -895,21 +895,21 @@ SaveUndoState:
     ADD HL, DE          ; × 296
     ADD HL, DE          ; × 304
     ; Continue to reach 768...
-    
+
     LD DE, UndoBuffers
     ADD HL, DE          ; HL = buffer address
-    
+
     ; Save current screen section
     LD DE, CRITICAL_AREA
     LD BC, UNDO_SIZE
     LDIR
-    
+
     ; Update level
     LD A, (CurrentLevel)
     INC A
     AND UNDO_LEVELS-1   ; Wrap around
     LD (CurrentLevel), A
-    
+
     ; Update max level
     LD B, A
     LD A, (MaxLevel)
@@ -970,33 +970,33 @@ SaveUndo:
     LD A, (CurrentLevel)
     CALL GetUndoBuffer
     PUSH HL
-    
+
     ; Save screen area (top-left 32x32)
     LD DE, DISPLAY_FILE
     LD B, UNDO_HEIGHT
-    
+
 SaveLoop:
     PUSH BC
     PUSH DE
-    
+
     ; Copy one line (4 bytes)
     LD BC, UNDO_WIDTH
     EX DE, HL
     LDIR
     EX DE, HL
-    
+
     ; Next screen line
     POP DE
     LD BC, 32           ; Next line in display
     EX DE, HL
     ADD HL, BC
     EX DE, HL
-    
+
     POP BC
     DJNZ SaveLoop
-    
+
     POP HL
-    
+
     ; Update level
     LD A, (CurrentLevel)
     INC A
@@ -1014,36 +1014,36 @@ PerformUndo:
     LD A, (CurrentLevel)
     OR A
     RET Z               ; Nothing to undo
-    
+
     ; Go back one level
     DEC A
     LD (CurrentLevel), A
-    
+
     ; Get buffer
     CALL GetUndoBuffer
-    
+
     ; Restore screen area
     LD DE, DISPLAY_FILE
     LD B, UNDO_HEIGHT
-    
+
 RestoreLoop:
     PUSH BC
     PUSH DE
-    
+
     ; Copy one line
     LD BC, UNDO_WIDTH
     LDIR
-    
+
     ; Next screen line
     POP DE
     EX DE, HL
     LD BC, 32
     ADD HL, BC
     EX DE, HL
-    
+
     POP BC
     DJNZ RestoreLoop
-    
+
     ; Update redo level
     LD A, (CurrentLevel)
     INC A
@@ -1059,31 +1059,31 @@ PerformRedo:
     CP B
     RET Z               ; Nothing to redo
     RET C               ; Nothing to redo
-    
+
     ; Get buffer for current level
     LD A, (CurrentLevel)
     CALL GetUndoBuffer
-    
+
     ; Restore from this buffer
     LD DE, DISPLAY_FILE
     LD B, UNDO_HEIGHT
-    
+
 RedoLoop:
     PUSH BC
     PUSH DE
-    
+
     LD BC, UNDO_WIDTH
     LDIR
-    
+
     POP DE
     EX DE, HL
     LD BC, 32
     ADD HL, BC
     EX DE, HL
-    
+
     POP BC
     DJNZ RedoLoop
-    
+
     ; Update level
     LD A, (CurrentLevel)
     INC A
@@ -1095,7 +1095,7 @@ DrawTestPattern:
     ; Draw in undo area
     LD HL, DISPLAY_FILE
     LD B, 16
-    
+
 PatternLoop:
     LD A, B
     AND 1
@@ -1113,11 +1113,11 @@ SetPattern:
     INC HL
     LD (HL), A
     INC HL
-    
+
     ; Next line
     LD DE, 28
     ADD HL, DE
-    
+
     DJNZ PatternLoop
     RET
 
@@ -1125,7 +1125,7 @@ SetPattern:
 ClearArea:
     LD HL, DISPLAY_FILE
     LD B, 32
-    
+
 ClearLoop:
     LD (HL), 0
     INC HL
@@ -1135,10 +1135,10 @@ ClearLoop:
     INC HL
     LD (HL), 0
     INC HL
-    
+
     LD DE, 28
     ADD HL, DE
-    
+
     DJNZ ClearLoop
     RET
 
@@ -1150,11 +1150,11 @@ TestUndo:
     LD BC, 6143
     LD (HL), 0
     LDIR
-    
+
     ; Operation 1: Draw pattern
     CALL SaveUndo       ; Save state before
     CALL DrawTestPattern
-    
+
     ; Wait a bit
     LD BC, 10000
 Wait1:
@@ -1162,11 +1162,11 @@ Wait1:
     LD A, B
     OR C
     JR NZ, Wait1
-    
+
     ; Operation 2: Clear
     CALL SaveUndo       ; Save state before
     CALL ClearArea
-    
+
     ; Wait
     LD BC, 10000
 Wait2:
@@ -1174,7 +1174,7 @@ Wait2:
     LD A, B
     OR C
     JR NZ, Wait2
-    
+
     ; Operation 3: Draw different pattern
     CALL SaveUndo
     LD HL, DISPLAY_FILE
@@ -1191,7 +1191,7 @@ DifferentPattern:
     LD DE, 28
     ADD HL, DE
     DJNZ DifferentPattern
-    
+
     ; Wait
     LD BC, 10000
 Wait3:
@@ -1199,29 +1199,29 @@ Wait3:
     LD A, B
     OR C
     JR NZ, Wait3
-    
+
     ; Now undo twice
     CALL PerformUndo    ; Back to clear
-    
+
     LD BC, 10000
 Wait4:
     DEC BC
     LD A, B
     OR C
     JR NZ, Wait4
-    
+
     CALL PerformUndo    ; Back to first pattern
-    
+
     LD BC, 10000
 Wait5:
     DEC BC
     LD A, B
     OR C
     JR NZ, Wait5
-    
+
     ; Redo once
     CALL PerformRedo    ; Forward to clear
-    
+
     ; Return with success
     LD B, 255
     RET
@@ -1236,14 +1236,14 @@ Wait5:
 ContinuousLine:
     LastX:      DB 255  ; 255 = not set
     LastY:      DB 255
-    
+
 DrawContinuous:
     ; Input: B = x, C = y
     ; Check if this is first point
     LD A, (LastX)
     CP 255
     JR Z, FirstPoint
-    
+
     ; Draw line from last to current
     LD D, A             ; Last X
     LD A, (LastY)
@@ -1251,7 +1251,7 @@ DrawContinuous:
     PUSH BC
     CALL DrawLine       ; Draw from (D,E) to (B,C)
     POP BC
-    
+
 FirstPoint:
     ; Update last position
     LD A, B
@@ -1280,12 +1280,12 @@ DrawMirrored:
     PUSH BC
     CALL DrawBrush
     POP BC
-    
+
     ; Check mirror mode
     LD A, (MirrorMode)
     OR A
     RET Z               ; No mirroring
-    
+
     ; Horizontal mirror
     BIT 0, A
     JR Z, CheckVertical
@@ -1297,7 +1297,7 @@ DrawMirrored:
     CALL DrawBrush
     POP AF
     POP BC
-    
+
 CheckVertical:
     ; Vertical mirror
     BIT 1, A
@@ -1307,17 +1307,17 @@ CheckVertical:
     SUB C               ; Mirror Y coordinate
     LD C, A
     CALL DrawBrush
-    
+
     ; If both mirrors active, draw fourth point
     LD A, (MirrorMode)
     CP 3
     JR NZ, MirrorDone
-    
+
     LD A, 255
     SUB B               ; Mirror X again
     LD B, A
     CALL DrawBrush
-    
+
 MirrorDone:
     POP BC
     RET
@@ -1334,7 +1334,7 @@ DirtyRect:
     MinY:       DB 255
     MaxX:       DB 0
     MaxY:       DB 0
-    
+
 ; Update dirty rectangle
 UpdateDirty:
     ; Input: B = x, C = y
@@ -1344,7 +1344,7 @@ UpdateDirty:
     JR C, CheckMaxX
     LD A, B
     LD (MinX), A
-    
+
 CheckMaxX:
     ; Update MaxX
     LD A, (MaxX)
@@ -1352,7 +1352,7 @@ CheckMaxX:
     JR NC, CheckMinY
     LD A, B
     LD (MaxX), A
-    
+
 CheckMinY:
     ; Update MinY
     LD A, (MinY)
@@ -1360,7 +1360,7 @@ CheckMinY:
     JR C, CheckMaxY
     LD A, C
     LD (MinY), A
-    
+
 CheckMaxY:
     ; Update MaxY
     LD A, (MaxY)
@@ -1398,7 +1398,7 @@ DrawingState:
     BrushSize:      DB 3
     DrawPattern:    DB 255  ; Solid
     UndoEnabled:    DB 1
-    
+
 ; Coordinate tracking
 LastX:          DB 255
 LastY:          DB 255
@@ -1434,7 +1434,7 @@ HandleDrawing:
     ; Input: B = x, C = y, A = action (0=move, 1=draw)
     OR A
     JR Z, HandleMove
-    
+
     ; Drawing action
     LD A, (CurrentTool)
     OR A
@@ -1456,21 +1456,21 @@ HandleBrushDraw:
     LD A, (LastX)
     CP 255
     JR Z, SingleBrush
-    
+
     ; Draw line from last to current
     LD D, A
     LD A, (LastY)
     LD E, A
     PUSH BC
-    
+
     ; Interpolate points
     CALL InterpolateLine
     POP BC
-    
+
 SingleBrush:
     ; Draw at current position
     CALL DrawBrush
-    
+
     ; Update last position
     LD A, B
     LD (LastX), A
@@ -1484,7 +1484,7 @@ HandleLineDraw:
     LD D, A
     LD A, (StartY)
     LD E, A
-    
+
     ; Draw preview line (would use XOR)
     CALL DrawLine
     RET
@@ -1512,7 +1512,7 @@ DrawingDemo:
     LD BC, 6143
     LD (HL), 0
     LDIR
-    
+
     ; Set up drawing state
     LD A, 0             ; Brush tool
     LD (CurrentTool), A
@@ -1520,34 +1520,34 @@ DrawingDemo:
     LD (BrushType), A
     LD A, 3             ; Size 3
     LD (BrushSize), A
-    
+
     ; Simulate drawing session
     ; Draw a curved line
     LD B, 30            ; Start X
     LD C, 50            ; Start Y
     LD D, 20            ; Points to draw
-    
+
 CurveLoop:
     PUSH BC
     PUSH DE
-    
+
     ; Save undo every 5 points
     LD A, D
     AND 3
     JR NZ, SkipUndo
     CALL SaveUndo
-    
+
 SkipUndo:
     ; Draw brush
     CALL DrawBrush
-    
+
     ; Update position (simple curve)
     POP DE
     POP BC
     INC B
     INC B
     INC B               ; Move right
-    
+
     ; Sine-like curve
     LD A, D
     AND 7
@@ -1557,37 +1557,37 @@ SkipUndo:
     JR CurveContinue
 CurveUp:
     DEC C               ; Move up
-    
+
 CurveContinue:
     DEC D
     JR NZ, CurveLoop
-    
+
     ; Draw some shapes with different brushes
     LD A, 2             ; Circle brush
     LD (BrushType), A
     LD A, 5             ; Size 5
     LD (BrushSize), A
-    
+
     LD B, 100
     LD C, 100
     CALL DrawBrush
-    
+
     LD B, 120
     LD C, 100
     CALL DrawBrush
-    
+
     LD B, 140
     LD C, 100
     CALL DrawBrush
-    
+
     ; Draw pattern
     LD A, 3             ; Spray brush
     LD (BrushType), A
-    
+
     LD B, 50
     LD C, 150
     LD D, 30
-    
+
 SprayLine:
     PUSH BC
     PUSH DE
@@ -1598,7 +1598,7 @@ SprayLine:
     INC B
     DEC D
     JR NZ, SprayLine
-    
+
     ; Success
     LD B, 255
     RET

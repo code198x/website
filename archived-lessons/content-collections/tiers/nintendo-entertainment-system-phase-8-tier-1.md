@@ -27,6 +27,7 @@ Time to create NES legend! With **32 vision-intensive lessons**, you'll learn ho
 ## What You'll Conceive
 
 Create **LEGENDARY NES GAME CONCEPTS** that honor and transcend the platform:
+
 - Game ideas so compelling that NES fans can't stop thinking about them
 - Experiences that blend classic NES genres in revolutionary ways
 - Stories and worlds that feel more vivid than the 8-bit era's greatest hits
@@ -36,24 +37,28 @@ Create **LEGENDARY NES GAME CONCEPTS** that honor and transcend the platform:
 ## Legendary NES Vision Areas
 
 **Lessons 1-8: "8-Bit Dreams" - Vision That Honors the Legacy**
+
 - Conceiving games that seem technically impossible on NES but feel inevitable
 - Finding the magical intersection of ambition and 6502/PPU limitations
 - Creating concepts that make people say "This is what NES was meant for!"
 - Understanding what transforms good NES games into timeless classics
 
 **Lessons 9-16: "Genre Alchemy" - Creating New Types of NES Magic**
+
 - Blending NES game genres in ways that feel natural yet revolutionary
 - Finding untapped emotional territories within 8-bit constraints
 - Creating mechanics that have never existed but feel perfectly "Nintendo"
 - Building on NES gaming history while creating something entirely new
 
 **Lessons 17-24: "8-Bit World Building" - Universes That Live in 32KB**
+
 - Creating NES game worlds so rich they feel like real places despite limitations
 - Designing lore and backstory that enhances rather than overwhelms
 - Building environments that tell stories through every carefully placed sprite
 - Making fictional worlds that players want to inhabit forever on their NES
 
 **Lessons 25-32: "Eternal Legacy" - NES Games That Last Forever**
+
 - Understanding what makes NES games timeless rather than nostalgic novelties
 - Creating emotional hooks that keep players coming back years later
 - Designing for discovery, mastery, and endless NES replayability

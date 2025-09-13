@@ -33,6 +33,7 @@ As your programs grow larger, you need ways to organize code into manageable, re
 ### What is a Subroutine?
 
 A subroutine is a self-contained piece of code that:
+
 - Performs a specific task
 - Can be called from multiple places
 - Returns control to the caller when finished
@@ -96,13 +97,13 @@ MainCode:
     LD B, 3             ; Second number
     CALL Multiply       ; Call multiplication subroutine
     ; A now contains 21 (7 × 3)
-    
+
     LD C, A             ; Save result
     LD A, 100           ; New first number
-    LD B, 2             ; New second number  
+    LD B, 2             ; New second number
     CALL Multiply       ; Call same subroutine again
     ; A now contains 200 (100 × 2)
-    
+
     ; Program continues...
     HALT                ; Stop for demonstration
 
@@ -111,11 +112,11 @@ Multiply:
     PUSH BC             ; Save original B (we'll modify it)
     LD C, A             ; Save original A
     LD A, 0             ; Result starts at 0
-    
+
 MultiplyLoop:
     ADD A, C            ; Add original A to result
     DJNZ MultiplyLoop   ; Repeat B times
-    
+
     POP BC              ; Restore original B
     RET                 ; Return with result in A
 
@@ -128,6 +129,7 @@ MultiplyLoop:
 ### What is the Stack?
 
 The stack is a Last-In-First-Out (LIFO) memory area used for:
+
 - Storing return addresses (automatic with CALL/RET)
 - Temporary storage with PUSH/POP
 - Parameter passing
@@ -147,6 +149,7 @@ POP DE              ; Pop from stack into DE
 ### Stack Pointer (SP)
 
 The Stack Pointer (SP) tracks the top of the stack:
+
 - Decrements when pushing (stack grows downward)
 - Increments when popping (stack shrinks upward)
 - Must be initialized before using subroutines
@@ -178,7 +181,7 @@ LD HL, $0000        ; All registers now zero
 
 ; Restore registers from stack (reverse order!)
 POP AF              ; AF gets $9ABC (last pushed)
-POP BC              ; BC gets $5678 (middle)  
+POP BC              ; BC gets $5678 (middle)
 POP DE              ; DE gets $1234 (first pushed)
 
 ; Note: We used different registers for POP to show flexibility
@@ -216,11 +219,11 @@ CalculateArea:
     PUSH BC             ; Save B (we'll modify it)
     LD C, A             ; Save width in C
     LD HL, 0            ; Initialize result
-    
+
 AreaLoop:
     ADD HL, BC          ; Add width to result
     DJNZ AreaLoop       ; Repeat height times
-    
+
     POP BC              ; Restore B
     RET                 ; Return with area in HL
 
@@ -240,23 +243,23 @@ For more complex parameter passing:
 ; Parameters pushed onto stack before call
 ; Stack layout: [C][B][A][return address]
 ComplexCalculation:
-    ; Save current position  
+    ; Save current position
     PUSH HL
     LD HL, 2            ; Skip return address
     ADD HL, SP          ; Point to parameters
-    
+
     ; Get parameters from stack
     LD A, (HL)          ; Get first parameter (A)
     INC HL : INC HL
     LD B, (HL)          ; Get second parameter (B)
-    INC HL : INC HL  
+    INC HL : INC HL
     LD C, (HL)          ; Get third parameter (C)
-    
+
     ; Calculate (A + B) × C
     ADD A, B            ; A = A + B
     LD B, C             ; B = C
     CALL Multiply       ; A = A × B
-    
+
     POP HL              ; Restore HL
     RET
 
@@ -313,7 +316,7 @@ StringLength:
     PUSH BC             ; Save registers we'll use
     PUSH HL
     LD B, 0             ; Character counter
-    
+
 LengthLoop:
     LD A, (HL)          ; Get character
     OR A                ; Check if zero (end of string)
@@ -321,7 +324,7 @@ LengthLoop:
     INC B               ; Count character
     INC HL              ; Next character
     JR LengthLoop       ; Continue
-    
+
 LengthDone:
     LD A, B             ; Return length in A
     POP HL              ; Restore registers
@@ -336,14 +339,14 @@ DivideWithRemainder:
     PUSH HL             ; Save HL
     LD H, 0             ; Quotient counter
     LD L, A             ; Dividend copy
-    
+
 DivideLoop:
     CP B                ; Compare dividend with divisor
     JR C, DivideDone    ; Exit if dividend < divisor
     SUB B               ; Subtract divisor
     INC H               ; Increment quotient
     JR DivideLoop       ; Continue
-    
+
 DivideDone:
     LD B, A             ; Remainder in B
     LD A, H             ; Quotient in A
@@ -355,7 +358,7 @@ DivideDone:
 ; Input: IX = array address, B = array size
 ProcessArray:
     PUSH BC             ; Save counter
-    
+
 ProcessLoop:
     LD A, (IX)          ; Get array element
     ; Process element (example: multiply by 2)
@@ -363,7 +366,7 @@ ProcessLoop:
     LD (IX), A          ; Store back
     INC IX              ; Next element
     DJNZ ProcessLoop    ; Continue for all elements
-    
+
     POP BC              ; Restore counter
     RET
 
@@ -373,12 +376,12 @@ TestSubroutines:
     LD HL, TestString   ; Point to string
     CALL StringLength   ; A = length
     LD C, A             ; Save length
-    
+
     ; Test division
     LD A, 17            ; Dividend
     LD B, 5             ; Divisor
     CALL DivideWithRemainder ; A=3 (quotient), B=2 (remainder)
-    
+
     ; Test array processing
     LD IX, TestArray    ; Point to array
     LD B, 5             ; Array size
@@ -487,22 +490,22 @@ PixelReady:
 ; Library jump table (for easy access)
 UtilityLib:
     JP CopyBytes        ; Offset 0
-    JP FillBytes        ; Offset 3  
+    JP FillBytes        ; Offset 3
     JP CompareBytes     ; Offset 6
     JP FindByte         ; Offset 9
 
 ; Copy BC bytes from HL to DE
 CopyBytes:
     PUSH BC             ; Save count
-    PUSH HL             ; Save pointers  
+    PUSH HL             ; Save pointers
     PUSH DE
-    
+
     LD A, B             ; Check if count is zero
     OR C
     JR Z, CopyDone      ; Exit if nothing to copy
-    
+
     LDIR                ; Copy bytes efficiently
-    
+
 CopyDone:
     POP DE              ; Restore pointers
     POP HL
@@ -514,12 +517,12 @@ FillBytes:
     PUSH BC
     PUSH HL
     PUSH DE
-    
+
     LD E, A             ; Save fill value
     LD A, B             ; Check if count is zero
     OR C
     JR Z, FillDone
-    
+
     LD (HL), E          ; Fill first byte
     LD D, H             ; DE = HL + 1
     LD E, L
@@ -528,9 +531,9 @@ FillBytes:
     LD A, B
     OR C
     JR Z, FillDone      ; Exit if only one byte
-    
+
     LDIR                ; Fill rest efficiently
-    
+
 FillDone:
     POP DE
     POP HL
@@ -543,24 +546,24 @@ CompareBytes:
     PUSH BC
     PUSH HL
     PUSH DE
-    
+
 CompareLoop:
     LD A, B             ; Check if done
     OR C
     JR Z, CompareDone   ; Z flag set = equal
-    
+
     LD A, (DE)          ; Get byte from second array
     CP (HL)             ; Compare with first array
     JR NZ, CompareDone  ; Exit if different (Z flag clear)
-    
+
     INC HL              ; Next bytes
     INC DE
     DEC BC              ; Count down
     JR CompareLoop
-    
+
 CompareDone:
     POP DE
-    POP HL  
+    POP HL
     POP BC
     RET
 
@@ -570,27 +573,27 @@ FindByte:
     PUSH BC
     PUSH DE
     LD D, A             ; Save search byte
-    
+
 FindLoop:
     LD A, B             ; Check if done
     OR C
     JR Z, NotFound      ; Exit if not found
-    
+
     LD A, (HL)          ; Get current byte
     CP D                ; Compare with search byte
     JR Z, FoundByte     ; Exit if found
-    
+
     INC HL              ; Next byte
     DEC BC              ; Count down
     JR FindLoop
-    
+
 NotFound:
     OR 1                ; Clear Z flag (not found)
     JR FindDone
-    
+
 FoundByte:
     XOR A               ; Set Z flag (found)
-    
+
 FindDone:
     POP DE
     POP BC
@@ -603,13 +606,13 @@ TestLibrary:
     LD DE, DestData
     LD BC, 5
     CALL CopyBytes      ; Copy 5 bytes
-    
+
     ; Test fill function
     LD HL, BufferData
     LD A, $AA           ; Fill pattern
     LD BC, 10
     CALL FillBytes      ; Fill 10 bytes with $AA
-    
+
     ; Test find function
     LD HL, SourceData
     LD A, $33           ; Search for $33
@@ -691,12 +694,12 @@ DestroyStackFrame:
 ; Output: A = result, Carry flag = error status
 SafeDivide:
     LD C, 0             ; Quotient counter
-    
+
     ; Check for division by zero
     LD A, B
     OR A
     JR Z, DivideError   ; Return error if B = 0
-    
+
     ; Perform division
     LD A, (dividend)    ; Get dividend back
 DivLoop:
@@ -705,12 +708,12 @@ DivLoop:
     SUB B
     INC C
     JR DivLoop
-    
+
 DivDone:
     LD A, C             ; Return quotient
     OR A                ; Clear carry (success)
     RET
-    
+
 DivideError:
     SCF                 ; Set carry flag (error)
     RET
@@ -729,12 +732,12 @@ SafeRead:
     JR C, ReadError
     CP $60              ; Above safe area?
     JR NC, ReadError
-    
+
     ; Safe to read
     LD A, (HL)
     OR A                ; Clear carry (success)
     RET
-    
+
 ReadError:
     LD A, 0             ; Return zero
     SCF                 ; Set carry (error)
@@ -759,31 +762,31 @@ Create a comprehensive subroutine library that demonstrates:
 ; Main program that uses the library
 MainProgram:
     LD SP, $8000        ; Initialize stack
-    
+
     ; Test 1: String processing
     LD HL, TestString
     CALL StringLength   ; Get string length
     LD B, A             ; Save length
-    
-    ; Test 2: Array processing  
+
+    ; Test 2: Array processing
     LD HL, TestArray
     LD C, 5             ; Array size
     CALL ArraySum       ; Sum array elements
     LD D, A             ; Save sum
-    
+
     ; Test 3: Error handling
     LD A, 10
     LD B, 0             ; Division by zero!
     CALL SafeDivision   ; Should return error
     JR C, DivisionError ; Handle error
-    
+
     ; Test 4: Nested calls
     LD A, 3
     LD B, 4
     LD C, 2
     CALL ComplexMath    ; Calculate A × B + C
     LD E, A             ; Save result
-    
+
     HALT                ; End demonstration
 
 DivisionError:
@@ -800,7 +803,7 @@ StringLength:
     PUSH BC
     PUSH HL
     LD B, 0             ; Counter
-    
+
 StrLenLoop:
     LD A, (HL)          ; Get character
     OR A                ; Check for zero terminator
@@ -808,7 +811,7 @@ StrLenLoop:
     INC B               ; Count character
     INC HL              ; Next character
     JR StrLenLoop
-    
+
 StrLenDone:
     LD A, B             ; Return length
     POP HL
@@ -823,12 +826,12 @@ ArraySum:
     PUSH HL
     LD A, 0             ; Initialize sum
     LD B, C             ; Loop counter
-    
+
 SumLoop:
     ADD A, (HL)         ; Add array element
     INC HL              ; Next element
     DJNZ SumLoop        ; Continue for all elements
-    
+
     POP HL
     POP BC
     RET
@@ -838,33 +841,33 @@ SumLoop:
 ; Output: A = quotient, Carry = error flag
 SafeDivision:
     PUSH BC
-    
+
     ; Check for division by zero
     LD C, B             ; Save divisor
     OR A                ; Clear carry
     LD B, 0             ; Quotient counter
-    
+
     LD A, C             ; Check divisor
     OR A
     JR Z, DivError      ; Error if zero
-    
+
     ; Restore dividend and perform division
     POP BC
     PUSH BC
-    
+
 DivideLoop:
     CP C                ; Compare dividend with divisor
     JR C, DivSuccess    ; Done if dividend < divisor
     SUB C               ; Subtract divisor
     INC B               ; Increment quotient
     JR DivideLoop
-    
+
 DivSuccess:
     LD A, B             ; Return quotient
     OR A                ; Clear carry (success)
     POP BC
     RET
-    
+
 DivError:
     SCF                 ; Set carry (error)
     LD A, 0             ; Return zero
@@ -889,18 +892,18 @@ Multiply:
     PUSH BC
     LD C, A             ; Save multiplier
     LD A, 0             ; Initialize result
-    
+
     ; Check for zero
     LD A, B
     OR A
     JR Z, MultDone      ; Return 0 if B is 0
-    
+
     LD A, 0             ; Reset result
-    
+
 MultLoop:
     ADD A, C            ; Add multiplier to result
     DJNZ MultLoop       ; Repeat B times
-    
+
 MultDone:
     POP BC
     RET

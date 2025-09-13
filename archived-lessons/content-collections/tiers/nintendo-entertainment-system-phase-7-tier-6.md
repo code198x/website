@@ -27,6 +27,7 @@ Build sophisticated gameplay! With **32 advanced lessons**, you'll master comple
 ## What You'll Build
 
 Create **ADVANCED NES MECHANICS ENGINE** - your gameplay masterpiece featuring:
+
 - Complex interaction systems that create deep strategic gameplay
 - Sophisticated progression and character development mechanics
 - Advanced inventory and item management systems
@@ -36,24 +37,28 @@ Create **ADVANCED NES MECHANICS ENGINE** - your gameplay masterpiece featuring:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "Complex Interactions" - Advanced Gameplay Systems**
+
 - Sophisticated interaction mechanics and player input processing
 - Complex rule systems and game logic implementation
 - Advanced state machines for gameplay behavior management
 - Multi-layered interaction systems and context-sensitive mechanics
 
 **Lessons 9-16: "Progression Systems" - Character Development**
+
 - Advanced character progression and skill development systems
 - Complex experience point and leveling mechanics
 - Sophisticated upgrade and enhancement systems
 - Dynamic difficulty scaling based on player progression
 
 **Lessons 17-24: "Inventory & Items" - Management Systems**
+
 - Advanced inventory management and item systems
 - Complex crafting and combination mechanics
 - Sophisticated equipment and gear systems
 - Dynamic item generation and randomization systems
 
 **Lessons 25-32: "Puzzle Mechanics" - Challenge Design**
+
 - Complex puzzle design and solution verification systems
 - Advanced challenge mechanics and difficulty progression
 - Sophisticated hint and assistance systems

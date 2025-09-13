@@ -31,24 +31,28 @@ Begin developing **Cosmic Defender** - a professional-grade arcade shooter featu
 ## Tier Overview
 
 **Lessons 1-8: Professional Project Structure**
+
 - Organizing large 68000 assembly projects
 - Modular code architecture and separation of concerns
 - Build systems and development workflows
 - Version control and collaborative development
 
 **Lessons 9-16: Memory Management Systems**
+
 - Dynamic memory allocation and garbage collection
 - Efficient data structures for game objects
 - Memory pooling and optimization techniques
 - Handling Amiga's memory constraints professionally
 
 **Lessons 17-24: Game Engine Framework**
+
 - Core game loop and timing systems
 - Entity-component-system architecture
 - Scene management and state machines
 - Event handling and messaging systems
 
 **Lessons 25-32: Scalable Game Systems**
+
 - Plugin architecture for game components
 - Resource management and loading systems
 - Performance profiling and optimization

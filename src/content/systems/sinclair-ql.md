@@ -26,7 +26,6 @@ country_of_origin: "United Kingdom"
 
 # Media
 description: "Sinclair's business computer with innovative Microdrives but fatally flawed execution."
-image: "/images/systems/sinclair-ql.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 111
 
 # Sinclair QL
 
-*Historical Reference*
+_Historical Reference_
 
 The Sinclair QL (Quantum Leap) was Sir Clive Sinclair's attempt at a business computer. With a 68008 processor and innovative features, it should have succeeded but was rushed to market with numerous problems.
 
@@ -59,6 +58,7 @@ The QL was one of the first affordable computers with a 32-bit processor (albeit
 ## Fatal Flaws
 
 The QL was rushed to market incomplete:
+
 - Unreliable Microdrives
 - Buggy ROM requiring dongles
 - Poor keyboard
@@ -68,4 +68,4 @@ The QL was rushed to market incomplete:
 
 Despite its failure, the QL introduced important concepts. Linus Torvalds learned to program on a QL, and its QDOS operating system influenced later designs. The QL proved that innovation alone isn't enough - execution matters.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

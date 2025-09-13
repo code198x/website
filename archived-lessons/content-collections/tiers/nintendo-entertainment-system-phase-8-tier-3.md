@@ -27,6 +27,7 @@ Your creativity ignites the legend! With **32 creative-intensive lessons**, you'
 ## What You'll Create
 
 Master **LEGENDARY NES CREATIVE ARTS** that define visual and audio excellence:
+
 - Pixel art so beautiful it becomes iconic and instantly recognizable
 - Chiptune compositions that players hum years after playing
 - Sound effects that perfectly capture the emotion of every moment
@@ -36,24 +37,28 @@ Master **LEGENDARY NES CREATIVE ARTS** that define visual and audio excellence:
 ## Creative Mastery Journey
 
 **Lessons 1-8: "Pixel Perfection" - Visual Art That Tells Stories**
+
 - Creating sprite art that conveys character and emotion in minimal pixels
 - Designing backgrounds that feel alive and full of personality
 - Mastering NES color palettes to create stunning visual harmony
 - Building animations that bring your game world to vivid life
 
 **Lessons 9-16: "Chiptune Legends" - Music That Becomes Eternal**
+
 - Composing melodies that stick in players' minds forever
 - Creating atmospheric soundscapes within NES audio limitations
 - Designing musical themes that perfectly support emotional storytelling
 - Building dynamic audio systems that respond to gameplay
 
 **Lessons 17-24: "Audio Atmosphere" - Sound That Enhances Every Moment**
+
 - Crafting sound effects that make actions feel satisfying and impactful
 - Creating audio feedback that guides and rewards player behavior
 - Designing ambient sounds that immerse players in your game world
 - Building audio systems that enhance rather than distract from gameplay
 
 **Lessons 25-32: "Artistic Integration" - Unified Creative Vision**
+
 - Combining visual and audio elements into cohesive artistic statements
 - Creating style guides that ensure consistent artistic excellence
 - Developing artistic workflows that support legendary development

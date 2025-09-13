@@ -30,24 +30,28 @@ Phase 1 is your complete introduction to professional game development using aut
 **Four Professional Games** across 16 tiers:
 
 **Game 1: Crystal Cascade** (Tiers 1-4) - Professional parallax adventure
+
 - Multi-layered parallax scrolling using custom chip hardware
 - Sophisticated floating entities with complex data management
 - Spectacular copper effects and professional visual presentation
 - Commercial-quality polish and professional game architecture
 
 **Game 2: Cosmic Drift** (Tiers 5-8) - Space exploration adventure
+
 - Smooth scrolling space environments with multiple parallax layers
 - Physics-based movement and gravitational effects simulation
 - Rich audio landscapes with sampled space ambience
 - Progressive exploration and discovery gameplay mechanics
 
 **Game 3: Neon Racing** (Tiers 9-12) - High-speed action racing
+
 - Fast-paced racing with multiple track environments
 - Advanced graphics effects showcasing Amiga visual capabilities
 - Multiple vehicle types with different handling characteristics
 - Championship progression and competitive racing features
 
 **Game 4: Shadow Quest** (Tiers 13-16) - Epic adventure finale
+
 - Large-scale adventure with multiple interconnected areas
 - Engaging storyline with character progression and upgrades
 - Impressive audio-visual presentation showcasing Amiga capabilities

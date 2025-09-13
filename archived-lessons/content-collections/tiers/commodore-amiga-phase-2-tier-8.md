@@ -27,6 +27,7 @@ Welcome to the art of perfect balance! 🎯 With **32 precision-tuned lessons**,
 ## What You'll Build
 
 Create **"AMIGA BALANCE MASTER"** - a complete game featuring:
+
 - Perfect difficulty progression that adapts to individual player skill 🎆
 - Seamless integration of movement, AI, and power-up systems
 - Dynamic challenge adjustment that keeps players in the flow state
@@ -36,24 +37,28 @@ Create **"AMIGA BALANCE MASTER"** - a complete game featuring:
 ## Project Overview
 
 **Lessons 1-8: "Balance Foundations" - The Science of Fair Challenge**
+
 - Difficulty curve mathematics and progression algorithms
 - Player skill assessment and adaptive challenge systems
 - Playtesting methodologies and data collection
 - Balance analysis tools and measurement systems
 
 **Lessons 9-16: "System Integration" - Bringing Everything Together**
+
 - Integrating movement, AI, and power-up systems seamlessly
 - Cross-system balance considerations and interactions
 - Performance optimization for complex integrated systems
 - Professional code architecture for maintainable balance
 
 **Lessons 17-24: "Flow State Mastery" - Keeping Players Engaged**
+
 - Game flow analysis and pacing optimization
 - Challenge ramp design and player progression
 - Frustration prevention and recovery systems
 - Reward timing and satisfaction curve design
 
 **Lessons 25-32: "Professional Polish" - Commercial-Quality Balance**
+
 - Advanced balance tuning and iterative improvement
 - Professional testing and validation methodologies
 - Balance documentation and design communication

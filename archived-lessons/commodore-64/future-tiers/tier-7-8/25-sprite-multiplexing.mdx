@@ -48,6 +48,7 @@ The VIC-II can only display 8 hardware sprites, but by repositioning them during
 ### The Basic Principle
 
 Imagine 16 enemies in a vertical shooter:
+
 - Enemies 0-7 use hardware sprites 0-7 at the top of the screen
 - When the raster passes them, we quickly move sprites 0-7 to show enemies 8-15 lower down
 - The player sees 16 sprites, but we only used 8
@@ -79,54 +80,54 @@ sort_outer:
     ldy #0
     sty swapped
     stx sort_limit      ; Optimization: sorted portion grows
-    
+
 sort_inner:
     ldx vsprite_y,y
     lda vsprite_y+1,y
     stx temp_y
     cmp temp_y          ; Compare Y positions
     bcs no_swap         ; Already in order
-    
+
     ; Swap all sprite data
     sta vsprite_y,y     ; Store Y+1 in Y
     lda temp_y
     sta vsprite_y+1,y   ; Store Y in Y+1
-    
+
     ; Swap X coordinates
     lda vsprite_x,y
     ldx vsprite_x+1,y
     sta vsprite_x+1,y
     stx vsprite_x,y
-    
+
     ; Swap pointers
     lda vsprite_ptr,y
     ldx vsprite_ptr+1,y
     sta vsprite_ptr+1,y
     stx vsprite_ptr,y
-    
+
     ; Swap colors
     lda vsprite_color,y
     ldx vsprite_color+1,y
     sta vsprite_color+1,y
     stx vsprite_color,y
-    
+
     ; Swap MSBs
     lda vsprite_xmsb,y
     ldx vsprite_xmsb+1,y
     sta vsprite_xmsb+1,y
     stx vsprite_xmsb,y
-    
+
     inc swapped
-    
+
 no_swap:
     iny
     cpy sort_limit
     bne sort_inner
-    
+
     ldx sort_limit
     dex
     stx sort_limit
-    
+
     lda swapped
     bne sort_outer      ; Keep sorting if swaps occurred
     rts
@@ -147,58 +148,58 @@ build_schedule:
     lda #0
     sta schedule_index
     sta current_hw
-    
+
     ldx #0              ; Virtual sprite index
 schedule_loop:
     lda vsprite_enable,x
     beq next_virtual    ; Skip disabled sprites
-    
+
     ; Find available hardware sprite
     ldy current_hw
 find_hw:
     lda hw_sprite_free,y
     cmp vsprite_y,x     ; Is hw sprite free at this Y?
     bcs assign_hw       ; Yes, assign it
-    
+
     iny
     cpy #8
     bne find_hw
-    
+
     ; No hardware sprites available - need new zone
     jsr start_new_zone
     ldy #0
-    
+
 assign_hw:
     ; Record assignment
     lda schedule_index
     sta vsprite_schedule,x
-    
+
     txa
     sta schedule_vsprite,a
     tya
     sta schedule_hwsprite,a
     lda vsprite_y,x
     sta schedule_y,a
-    
+
     ; Mark hardware sprite busy until Y+21
     clc
     adc #21             ; Sprite height
     sta hw_sprite_free,y
-    
+
     inc schedule_index
-    
+
 next_virtual:
     inx
     cpx #VIRTUAL_SPRITES
     bne schedule_loop
-    
+
     lda schedule_index
     sta schedule_count
     rts
 
 hw_sprite_free:     .res 8      ; Y position when hw sprite becomes free
 schedule_vsprite:   .res 64     ; Which virtual sprite
-schedule_hwsprite:  .res 64     ; Which hardware sprite  
+schedule_hwsprite:  .res 64     ; Which hardware sprite
 schedule_y:         .res 64     ; At what Y position
 schedule_index:     .byte 0
 schedule_count:     .byte 0
@@ -223,13 +224,13 @@ assign_zones:
     sta zone_sprites,x
     dex
     bpl .clear
-    
+
     ; Process each virtual sprite
     ldx #0
 .assign_loop:
     lda vsprite_enable,x
     beq .next_sprite
-    
+
     ; Calculate which zone(s) this sprite occupies
     lda vsprite_y,x
     lsr
@@ -238,21 +239,21 @@ assign_zones:
     lsr
     lsr                 ; Divide by 32 for zone
     tay                 ; Y = zone number
-    
+
     ; Find free slot in zone
     jsr find_free_slot
     bcc .next_sprite    ; No slot available
-    
+
     ; Assign sprite to zone
     txa
     sta zone_sprites,y  ; Store virtual sprite index
-    
+
     ; Check if sprite spans into next zone
     lda vsprite_y,x
     and #%00011111      ; Position within zone
     cmp #ZONE_HEIGHT-21 ; Does it overlap next zone?
     bcc .next_sprite
-    
+
     ; Also assign to next zone
     iny
     cpy #NUM_ZONES
@@ -261,7 +262,7 @@ assign_zones:
     bcc .next_sprite
     txa
     sta zone_sprites,y
-    
+
 .next_sprite:
     inx
     cpx #VIRTUAL_SPRITES
@@ -301,7 +302,7 @@ For maximum flexibility, use dynamic scheduling based on actual sprite positions
 ; Dynamic multiplexer - adapts to any sprite configuration
 dynamic_multiplex:
     jsr sort_sprites
-    
+
     ; Initialize
     lda #0
     sta irq_count
@@ -310,16 +311,16 @@ dynamic_multiplex:
     sta hw_busy_until,x     ; Hardware sprites available at line 0
     dex
     bpl .clear
-    
+
     ; Schedule each virtual sprite
     ldx #0
 .schedule:
     lda vsprite_enable,x
     beq .next
-    
+
     ; Find earliest available hardware sprite
     jsr find_earliest_hw
-    
+
     ; Create IRQ entry
     ldy irq_count
     lda vsprite_y,x
@@ -328,22 +329,22 @@ dynamic_multiplex:
     sta irq_vsprite,y      ; Which virtual sprite
     lda earliest_hw
     sta irq_hwsprite,y     ; Which hardware sprite
-    
+
     ; Mark hardware sprite busy
     lda vsprite_y,x
     clc
     adc #21                 ; Sprite height
     ldx earliest_hw
     sta hw_busy_until,x
-    
+
     inc irq_count
     ldx temp_x              ; Restore X
-    
+
 .next:
     inx
     cpx #VIRTUAL_SPRITES
     bne .schedule
-    
+
     ; Sort IRQ table by raster line
     jsr sort_irq_table
     rts
@@ -370,7 +371,7 @@ find_earliest_hw:
 
 hw_busy_until:  .res 8
 irq_line:       .res 64
-irq_vsprite:    .res 64  
+irq_vsprite:    .res 64
 irq_hwsprite:   .res 64
 irq_count:      .byte 0
 earliest_hw:    .byte 0
@@ -391,10 +392,10 @@ main:
     jsr init_screen
     jsr init_sprites
     jsr init_multiplexer
-    
+
     ; Create test sprites
     jsr create_test_sprites
-    
+
 main_loop:
     jsr wait_frame
     jsr update_virtual_sprites
@@ -412,7 +413,7 @@ init_sprites:
     ; Enable all 8 hardware sprites
     lda #$ff
     sta $d015
-    
+
     ; Set sprite colors
     ldx #7
 .color:
@@ -422,7 +423,7 @@ init_sprites:
     sta $d027,x
     dex
     bpl .color
-    
+
     ; Clear sprite positions
     lda #0
     ldx #15
@@ -438,7 +439,7 @@ create_test_sprites:
 .create:
     lda #1
     sta vsprite_enable,x
-    
+
     ; X position (spread across screen)
     txa
     asl
@@ -448,7 +449,7 @@ create_test_sprites:
     clc
     adc #24
     sta vsprite_x,x
-    
+
     ; Y position (three rows)
     txa
     lsr
@@ -457,18 +458,18 @@ create_test_sprites:
     tay
     lda row_y,y
     sta vsprite_y,x
-    
+
     ; Sprite pointer
     lda #$80            ; Sprite data at $2000
     sta vsprite_ptr,x
-    
+
     ; Color cycles through available colors
     txa
     and #7
     clc
     adc #1
     sta vsprite_color,x
-    
+
     inx
     cpx #24
     bne .create
@@ -482,26 +483,26 @@ update_virtual_sprites:
 .update:
     lda vsprite_enable,x
     beq .next
-    
+
     ; Move horizontally
     lda vsprite_x,x
     clc
     adc x_speed,x
     sta vsprite_x,x
-    
+
     ; Bounce at edges
     cmp #24
     bcs .check_right
     lda #1
     sta x_speed,x
     jmp .next
-    
+
 .check_right:
     cmp #255-24
     bcc .next
     lda #$ff            ; -1
     sta x_speed,x
-    
+
 .next:
     inx
     cpx #VIRTUAL_SPRITES
@@ -512,36 +513,36 @@ x_speed:    .res VIRTUAL_SPRITES
 
 init_multiplexer:
     sei
-    
+
     ; Disable CIA interrupts
     lda #$7f
     sta $dc0d
     sta $dd0d
     lda $dc0d           ; Acknowledge pending
     lda $dd0d
-    
+
     ; Set interrupt vector
     lda #<multiplex_irq
     sta $fffe
     lda #>multiplex_irq
     sta $ffff
-    
+
     ; Enable raster interrupt
     lda #$01
     sta $d01a
-    
+
     ; Set first interrupt line
     lda #50             ; Start at line 50
     sta $d012
     lda $d011
     and #$7f            ; Clear bit 8 of raster
     sta $d011
-    
+
     ; Initialize multiplexer state
     lda #0
     sta irq_index
     sta current_irq
-    
+
     cli
     rts
 
@@ -550,7 +551,7 @@ build_irq_list:
     lda #0
     sta irq_count
     sta next_vsprite
-    
+
     ; Clear hardware sprite assignments
     ldx #7
     lda #0
@@ -558,15 +559,15 @@ build_irq_list:
     sta hw_available_at,x
     dex
     bpl .clear_hw
-    
+
 .build_loop:
     ldx next_vsprite
     cpx #VIRTUAL_SPRITES
     beq .done
-    
+
     lda vsprite_enable,x
     beq .skip
-    
+
     ; Find available hardware sprite
     ldy #0
 .find_hw:
@@ -577,7 +578,7 @@ build_irq_list:
     cpy #8
     bne .find_hw
     jmp .skip           ; No hardware sprites available
-    
+
 .found_hw:
     ; Add to IRQ list
     ldx irq_count
@@ -589,19 +590,19 @@ build_irq_list:
     sta irq_vsprites,x
     tya
     sta irq_hwsprites,x
-    
+
     ; Mark hardware sprite busy
     lda vsprite_y,next_vsprite
     clc
     adc #21
     sta hw_available_at,y
-    
+
     inc irq_count
-    
+
 .skip:
     inc next_vsprite
     jmp .build_loop
-    
+
 .done:
     lda irq_count
     sta total_irqs
@@ -625,22 +626,22 @@ multiplex_irq:
     pha
     tya
     pha
-    
+
     ; Stabilize raster (optional for exact timing)
     lda $d012
     cmp $d012
     beq *+2
-    
+
     ; Process current IRQ entry
     ldx current_irq
     cpx total_irqs
     beq .frame_done
-    
+
     ; Get virtual sprite to display
     lda irq_vsprites,x
     tax
     ldy irq_hwsprites,current_irq
-    
+
     ; Set hardware sprite position
     lda vsprite_x,x
     asl                 ; Multiply Y*2 for register offset
@@ -649,16 +650,16 @@ multiplex_irq:
     sta $d000,y
     lda vsprite_y,x
     sta $d001,y
-    
+
     ; Set sprite pointer
     lda vsprite_ptr,x
     ldy irq_hwsprites,current_irq
     sta $07f8,y
-    
+
     ; Set sprite color
     lda vsprite_color,x
     sta $d027,y
-    
+
     ; Handle X position MSB
     lda vsprite_xmsb,x
     beq .no_msb
@@ -668,7 +669,7 @@ multiplex_irq:
     ora $d010
     sta $d010
     jmp .next_irq
-    
+
 .no_msb:
     lda $d010
     ldy irq_hwsprites,current_irq
@@ -676,30 +677,30 @@ multiplex_irq:
     eor #$ff
     and $d010
     sta $d010
-    
+
 .next_irq:
     ; Set up next interrupt
     inc current_irq
     ldx current_irq
     cpx total_irqs
     beq .frame_done
-    
+
     lda irq_lines,x
     sta $d012
     jmp .exit
-    
+
 .frame_done:
     ; Reset for next frame
     lda #0
     sta current_irq
     lda #50             ; First line next frame
     sta $d012
-    
+
 .exit:
     ; Acknowledge interrupt
     lda #$01
     sta $d019
-    
+
     ; Restore registers and return
     pla
     tay
@@ -733,17 +734,17 @@ When you have too many sprites in one area, implement intelligent flicker:
 handle_overflow:
     ; Count sprites per zone
     jsr count_zone_sprites
-    
+
     ; Find overflowed zones
     ldx #0
 .check_zone:
     lda zone_counts,x
     cmp #9              ; More than 8 sprites?
     bcc .next_zone
-    
+
     ; Implement round-robin or priority
     jsr apply_flicker_strategy
-    
+
 .next_zone:
     inx
     cpx #NUM_ZONES
@@ -755,7 +756,7 @@ apply_flicker_strategy:
     lda frame_counter
     and #1              ; Even/odd frames
     beq .show_even
-    
+
     ; Show odd sprites this frame
     ldy zone_start,x
 .hide_even:
@@ -763,21 +764,21 @@ apply_flicker_strategy:
     and #1
     beq .hide_sprite
     jmp .check_next
-    
+
 .show_even:
-    ; Show even sprites this frame  
+    ; Show even sprites this frame
     ldy zone_start,x
 .hide_odd:
     lda vsprite_priority,y
     and #1
     bne .hide_sprite
-    
+
 .check_next:
     iny
     cpy zone_end,x
     bne .hide_even
     rts
-    
+
 .hide_sprite:
     lda #0
     sta vsprite_enable,y
@@ -804,16 +805,16 @@ insertion_sort:
     sta key_ptr
     lda vsprite_color,x
     sta key_color
-    
+
     txa
     tay
     dey                 ; Y = X - 1
-    
+
 .inner:
     lda vsprite_y,y
     cmp key_y
     bcc .insert_here    ; Found insertion point
-    
+
     ; Shift element right
     sta vsprite_y+1,y
     lda vsprite_x,y
@@ -822,10 +823,10 @@ insertion_sort:
     sta vsprite_ptr+1,y
     lda vsprite_color,y
     sta vsprite_color+1,y
-    
+
     dey
     bpl .inner
-    
+
 .insert_here:
     iny
     lda key_y
@@ -836,7 +837,7 @@ insertion_sort:
     sta vsprite_ptr,y
     lda key_color
     sta vsprite_color,y
-    
+
     inx
     cpx #VIRTUAL_SPRITES
     bne .outer
@@ -866,7 +867,7 @@ init_enemy_wave:
 .create:
     lda #1
     sta enemy_active,x
-    
+
     ; Position in 4x4 grid
     txa
     and #3              ; Column (0-3)
@@ -878,7 +879,7 @@ init_enemy_wave:
     clc
     adc #60             ; Starting X
     sta enemy_x,x
-    
+
     txa
     lsr
     lsr                 ; Row (0-3)
@@ -889,12 +890,12 @@ init_enemy_wave:
     clc
     adc #50             ; Starting Y
     sta enemy_y,x
-    
+
     lda #0
     sta enemy_frame,x
     lda #1              ; Enemy type
     sta enemy_type,x
-    
+
     inx
     cpx #MAX_ENEMIES
     bne .create
@@ -905,30 +906,30 @@ update_enemies:
 .update:
     lda enemy_active,x
     beq .next
-    
+
     ; Simple movement pattern
     lda enemy_x,x
     clc
     adc sine_table,enemy_frame,x
     sta enemy_x,x
-    
+
     inc enemy_y,x       ; Move down
-    
+
     ; Animate
     inc enemy_frame,x
-    
+
     ; Check if off screen
     lda enemy_y,x
     cmp #250
     bcc .next
     lda #0
     sta enemy_active,x  ; Deactivate
-    
+
 .next:
     inx
     cpx #MAX_ENEMIES
     bne .update
-    
+
     ; Copy to virtual sprite system
     jsr enemies_to_vsprites
     rts
@@ -939,13 +940,13 @@ enemies_to_vsprites:
 .copy:
     lda enemy_active,x
     beq .skip
-    
+
     sta vsprite_enable,y
     lda enemy_x,x
     sta vsprite_x,y
     lda enemy_y,x
     sta vsprite_y,y
-    
+
     ; Sprite pointer based on type and frame
     lda enemy_type,x
     asl
@@ -956,17 +957,17 @@ enemies_to_vsprites:
     clc
     adc #$80            ; Base sprite pointer
     sta vsprite_ptr,y
-    
+
     lda #2              ; Red enemies
     sta vsprite_color,y
-    
+
     iny
-    
+
 .skip:
     inx
     cpx #MAX_ENEMIES
     bne .copy
-    
+
     ; Disable remaining virtual sprites
 .clear:
     cpy #VIRTUAL_SPRITES
@@ -996,11 +997,13 @@ sine_table:
 ### CPU Usage
 
 Multiplexing has costs:
+
 - **Sorting**: ~500-1000 cycles for 32 sprites
 - **IRQ overhead**: ~100 cycles per interrupt
 - **Sprite updates**: ~50 cycles per sprite
 
 With 32 sprites and 8 IRQs per frame:
+
 - Sorting: 1000 cycles
 - IRQs: 800 cycles
 - Updates: 1600 cycles
@@ -1031,24 +1034,28 @@ With 32 sprites and 8 IRQs per frame:
 ### Games That Mastered Multiplexing
 
 **Armalyte (1988)**
+
 - 64+ sprites on screen
 - No visible flicker
 - Smooth 50fps scrolling
 - Revolutionary for its time
 
 **Turrican (1990)**
+
 - Massive bosses from multiple sprites
 - Hundreds of bullets
 - Parallax backgrounds
 - Pushed multiplexing to limits
 
 **Mayhem in Monsterland (1993)**
+
 - Cartoon-quality animation
 - 50+ sprites without flicker
 - Advanced scheduling algorithms
 - Peak of C64 multiplexing
 
 **Salamander (1988)**
+
 - Arcade-perfect sprite counts
 - Complex enemy patterns
 - Multiple sprite sizes
@@ -1205,6 +1212,7 @@ When you see 32 sprites moving smoothly on your C64, using only 8 hardware sprit
 ## Experiment and Discover
 
 Try these multiplexing challenges:
+
 - Create a 64-sprite particle system
 - Build a bullet-hell shooter with hundreds of bullets
 - Implement priority sorting for important sprites

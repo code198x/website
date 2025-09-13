@@ -61,27 +61,27 @@ MapInputToNotes:
     ; Map controller input to musical notes
     LDA NewPresses
     BEQ NoNewNotes
-    
+
     ; Check each button for note mapping
     LDX #$07                ; 8 possible inputs
-    
+
 CheckInputLoop:
     LDA NewPresses
     AND InputBitMasks,X
     BEQ NextInputCheck
-    
+
     ; This input is pressed - get corresponding note
     LDA InputToNoteMap,X
     CMP #$FF                ; Valid note?
     BEQ NextInputCheck
-    
+
     ; Queue note for triggering
     JSR QueueNoteForTrigger
-    
+
 NextInputCheck:
     DEX
     BPL CheckInputLoop
-    
+
 NoNewNotes:
     RTS
 
@@ -89,24 +89,24 @@ QueueNoteForTrigger:
     ; Queue note A for triggering
     LDX QueueTail
     STA TriggerQueue,X
-    
+
     ; Advance queue tail
     INX
     TXA
     AND #$07                ; Wrap at 8 entries
     STA QueueTail
-    
+
     ; Check for queue overflow
     CMP QueueHead
     BNE QueueNotFull
-    
+
     ; Queue full - advance head to drop oldest
     LDA QueueHead
     CLC
     ADC #$01
     AND #$07
     STA QueueHead
-    
+
 QueueNotFull:
     RTS
 
@@ -115,25 +115,25 @@ TriggerMappedNotes:
     LDA QueueHead
     CMP QueueTail
     BEQ NoNotesToTrigger    ; Queue empty
-    
+
 ProcessQueueLoop:
     ; Get note from queue
     LDX QueueHead
     LDA TriggerQueue,X
-    
+
     ; Trigger this note
     JSR TriggerMusicalNote
-    
+
     ; Advance queue head
     INX
     TXA
     AND #$07
     STA QueueHead
-    
+
     ; Check if more notes in queue
     CMP QueueTail
     BNE ProcessQueueLoop
-    
+
 NoNotesToTrigger:
     RTS
 
@@ -143,25 +143,25 @@ TriggerMusicalNote:
     JSR FindAvailableChannel
     CPX #$FF
     BEQ NoChannelAvailable
-    
+
     ; Set up audio channel
     STA ChannelNotes,X
     LDA #$40                ; Default duration
     STA ChannelTimers,X
     LDA #$0F                ; Full volume
     STA ChannelVolumes,X
-    
+
     ; Configure NES audio registers
     JSR ConfigureAudioChannel
-    
+
     ; Mark channel as active
     LDA ChannelBitMasks,X
     ORA ActiveChannels
     STA ActiveChannels
-    
+
     ; Create visual feedback
     JSR CreateNoteVisual
-    
+
 NoChannelAvailable:
     RTS
 
@@ -190,7 +190,7 @@ QueueTail: .byte $00
 ; Real-time musical note triggering system
 Main:
     JSR InitMusicSystem
-    
+
 GameLoop:
     JSR ProcessInput
     JSR UpdateAudio
@@ -201,7 +201,7 @@ InitMusicSystem:
     ; Initialize musical system
     LDA #%00000001       ; Enable pulse 1
     STA $4015
-    
+
     ; Clear system state
     LDA #$00
     STA ActiveNotes
@@ -209,7 +209,7 @@ InitMusicSystem:
     STA PrevInput
     STA QueueHead
     STA QueueTail
-    
+
     ; Initialize channels
     LDX #$03
 InitChannelLoop:
@@ -220,7 +220,7 @@ InitChannelLoop:
     STA ChannelNotes,X
     DEX
     BPL InitChannelLoop
-    
+
     RTS
 
 ProcessInput:
@@ -229,12 +229,12 @@ ProcessInput:
     STA PrevInput
     JSR ReadController
     STA InputState
-    
+
     ; Find new presses
     EOR PrevInput
     AND InputState
     STA NewPresses
-    
+
     ; Process new presses
     JSR ProcessNewPresses
     RTS
@@ -243,26 +243,26 @@ ProcessNewPresses:
     ; Process each new button press
     LDA NewPresses
     BEQ NewPressesDone
-    
+
     ; Check each button
     LDX #$07
 CheckButtonLoop:
     LDA NewPresses
     AND ButtonMasks,X
     BEQ NextButton
-    
+
     ; This button was pressed
     LDA ButtonToNote,X
     CMP #$FF
     BEQ NextButton
-    
+
     ; Valid note - trigger it
     JSR TriggerNote
-    
+
 NextButton:
     DEX
     BPL CheckButtonLoop
-    
+
 NewPressesDone:
     RTS
 
@@ -275,10 +275,10 @@ FindChannelLoop:
     BEQ FoundChannel     ; Channel available
     DEX
     BPL FindChannelLoop
-    
+
     ; No available channels - use channel 0
     LDX #$00
-    
+
 FoundChannel:
     ; Set up note on channel X
     STA ChannelNotes,X
@@ -286,18 +286,18 @@ FoundChannel:
     STA NoteTimers,X
     LDA #$0F             ; Full volume
     STA NoteVolumes,X
-    
+
     ; Configure audio
     JSR SetupAudioForNote
-    
+
     ; Create visual
     JSR CreateVisualNote
-    
+
     ; Mark note as active
     LDA NoteBitMask,X
     ORA ActiveNotes
     STA ActiveNotes
-    
+
     RTS
 
 SetupAudioForNote:
@@ -308,11 +308,11 @@ SetupAudioForNote:
     STA $4002            ; Frequency low
     LDA NoteFreqHigh,Y
     STA $4003            ; Frequency high
-    
+
     ; Set envelope
     LDA #%10111111       ; Duty, envelope
     STA $4000
-    
+
     RTS
 
 CreateVisualNote:
@@ -322,7 +322,7 @@ CreateVisualNote:
     ASL
     ASL                  ; * 4 bytes per sprite
     TAY
-    
+
     ; Set sprite data
     LDA NotePosY,A       ; Y based on note pitch
     STA SpriteData,Y
@@ -330,7 +330,7 @@ CreateVisualNote:
     STA SpriteData+1,Y
     LDA #%00000001       ; Note palette
     STA SpriteData+2,Y
-    
+
     ; X position based on channel
     TXA
     ASL
@@ -339,7 +339,7 @@ CreateVisualNote:
     CLC
     ADC #$60             ; Base X
     STA SpriteData+3,Y
-    
+
     RTS
 
 UpdateAudio:
@@ -348,18 +348,18 @@ UpdateAudio:
 UpdateAudioLoop:
     LDA NoteTimers,X
     BEQ NextAudioChannel
-    
+
     ; Update this channel
     DEC NoteTimers,X
     LDA NoteTimers,X
     BNE NextAudioChannel
-    
+
     ; Note finished
     LDA NoteBitMask,X
     EOR #$FF
     AND ActiveNotes
     STA ActiveNotes
-    
+
     ; Hide visual
     TXA
     ASL
@@ -367,19 +367,19 @@ UpdateAudioLoop:
     TAY
     LDA #$FF
     STA SpriteData,Y
-    
+
 NextAudioChannel:
     DEX
     BPL UpdateAudioLoop
-    
+
     ; Check if any notes still active
     LDA ActiveNotes
     BNE AudioUpdateDone
-    
+
     ; No notes - silence audio
     LDA #$00
     STA $4000
-    
+
 AudioUpdateDone:
     RTS
 
@@ -395,36 +395,36 @@ AnimateActiveNotes:
 AnimateLoop:
     LDA NoteTimers,X
     BEQ NextAnimate
-    
+
     ; Animate this note
     TXA
     ASL
     ASL
     TAY
-    
+
     ; Pulsing effect
     LDA AnimCounter
     AND #$07
     CMP #$04
     BCC PulseUp
-    
+
     LDA ChannelNotes,X
     TAZ
     LDA NotePosY,Z
     CLC
     ADC #$02
     JMP StorePulseY
-    
+
 PulseUp:
     LDA ChannelNotes,X
     TAZ
     LDA NotePosY,Z
     SEC
     SBC #$02
-    
+
 StorePulseY:
     STA SpriteData,Y
-    
+
 NextAnimate:
     DEX
     BPL AnimateLoop
@@ -442,15 +442,15 @@ ReadController:
     BEQ SimulateB
     LDA #$FF             ; No input
     RTS
-    
+
 SimulateA:
     LDA #%01111111       ; A pressed
     RTS
-    
+
 SimulateUp:
     LDA #%11110111       ; Up pressed
     RTS
-    
+
 SimulateB:
     LDA #%10111111       ; B pressed
     RTS
@@ -526,10 +526,10 @@ CHANNEL_RELEASE = $03
 AllocateAudioChannel:
     ; Allocate best available channel for new note
     ; Returns channel index in X, or $FF if none available
-    
+
     ; First, look for free channels
     LDX #$00
-    
+
 FindFreeLoop:
     LDA ChannelStates,X
     CMP #CHANNEL_FREE
@@ -537,11 +537,11 @@ FindFreeLoop:
     INX
     CPX #NES_AUDIO_CHANNELS
     BNE FindFreeLoop
-    
+
     ; No free channels - find oldest, lowest priority
     JSR FindReplaceableChannel
     RTS
-    
+
 FoundFreeChannel:
     ; X contains free channel index
     RTS
@@ -551,24 +551,24 @@ FindReplaceableChannel:
     LDX #$00                ; Start with channel 0
     LDA ChannelAges
     STA OldestAge
-    
+
     LDY #$01                ; Check remaining channels
-    
+
 CompareChannelsLoop:
     LDA ChannelAges,Y
     CMP OldestAge
     BCC CheckNextChannel    ; This channel is newer
-    
+
     ; This channel is older
     STA OldestAge
     TYA
     TAX                     ; X = oldest channel index
-    
+
 CheckNextChannel:
     INY
     CPY #NES_AUDIO_CHANNELS
     BNE CompareChannelsLoop
-    
+
     ; X contains channel to replace
     RTS
 
@@ -576,22 +576,22 @@ ConfigureChannelForNote:
     ; Configure channel X for note A
     ; Save note index
     STA ChannelNotes,X
-    
+
     ; Set channel state
     LDA #CHANNEL_ATTACK
     STA ChannelStates,X
-    
+
     ; Reset age counter
     LDA #$00
     STA ChannelAges,X
-    
+
     ; Set priority (higher notes get higher priority)
     LDA ChannelNotes,X
     STA ChannelPriorities,X
-    
+
     ; Configure NES audio registers based on channel
     JSR ConfigureNESChannel
-    
+
     RTS
 
 ConfigureNESChannel:
@@ -612,7 +612,7 @@ ConfigurePulse1:
     STA $4000
     LDA #%00000000          ; No sweep
     STA $4001
-    
+
     LDA ChannelNotes,X
     TAY
     LDA NoteFrequencies,Y
@@ -627,7 +627,7 @@ ConfigurePulse2:
     STA $4004
     LDA #%00000000          ; No sweep
     STA $4005
-    
+
     LDA ChannelNotes,X
     TAY
     LDA NoteFrequencies,Y
@@ -640,7 +640,7 @@ ConfigureTriangle:
     ; Configure triangle channel
     LDA #%11111111          ; Linear counter
     STA $4008
-    
+
     LDA ChannelNotes,X
     TAY
     LDA NoteFrequencies,Y
@@ -662,22 +662,22 @@ ConfigureNoise:
 UpdatePolyphonicSystem:
     ; Update all active channels
     LDX #$00
-    
+
 UpdateChannelLoop:
     LDA ChannelStates,X
     CMP #CHANNEL_FREE
     BEQ NextUpdateChannel
-    
+
     ; Update this active channel
     JSR UpdateChannelState
     JSR UpdateChannelAge
     JSR UpdateChannelEnvelope
-    
+
 NextUpdateChannel:
     INX
     CPX #NES_AUDIO_CHANNELS
     BNE UpdateChannelLoop
-    
+
     RTS
 
 UpdateChannelState:
@@ -697,13 +697,13 @@ UpdateAttackPhase:
     LDA ChannelAttackTimers,X
     CMP #$08                ; 8 frame attack
     BCC AttackPhaseDone
-    
+
     ; Move to sustain phase
     LDA #CHANNEL_SUSTAIN
     STA ChannelStates,X
     LDA #$00
     STA ChannelSustainTimers,X
-    
+
 AttackPhaseDone:
     RTS
 
@@ -713,13 +713,13 @@ UpdateSustainPhase:
     LDA ChannelSustainTimers,X
     CMP #$20                ; 32 frame sustain
     BCC SustainPhaseDone
-    
+
     ; Move to release phase
     LDA #CHANNEL_RELEASE
     STA ChannelStates,X
     LDA #$00
     STA ChannelReleaseTimers,X
-    
+
 SustainPhaseDone:
     RTS
 
@@ -729,12 +729,12 @@ UpdateReleasePhase:
     LDA ChannelReleaseTimers,X
     CMP #$10                ; 16 frame release
     BCC ReleasePhaseDone
-    
+
     ; Note finished - free channel
     LDA #CHANNEL_FREE
     STA ChannelStates,X
     JSR FreeChannelVisual
-    
+
 ReleasePhaseDone:
     RTS
 
@@ -789,14 +789,14 @@ CalculateVelocity:
     ; Slow press = piano
     LDA #$04
     JMP StoreVelocity
-    
+
 MezzoVelocity:
     LDA #$08
     JMP StoreVelocity
-    
+
 ForteVelocity:
     LDA #$0F
-    
+
 StoreVelocity:
     STA CurrentVelocity
     RTS
@@ -806,64 +806,64 @@ ProcessPitchBend:
     LDA CurrentInput
     AND #%00100000          ; Select button held?
     BEQ CheckBendDown
-    
+
     ; Bend up
     LDA CurrentBend
     CMP #$10                ; Max bend up
     BCS BendDone
     INC CurrentBend
     JMP ApplyBend
-    
+
 CheckBendDown:
     LDA CurrentInput
     AND #%00010000          ; Start button held?
     BEQ BendRelease
-    
+
     ; Bend down
     LDA CurrentBend
     CMP #$F0                ; Max bend down
     BCC BendDone
     DEC CurrentBend
     JMP ApplyBend
-    
+
 BendRelease:
     ; Return to center
     LDA CurrentBend
     CMP #$00
     BEQ BendDone
     BMI BendUpToCenter
-    
+
     ; Bend down to center
     DEC CurrentBend
     JMP ApplyBend
-    
+
 BendUpToCenter:
     INC CurrentBend
-    
+
 ApplyBend:
     ; Apply bend to all active notes
     JSR ApplyBendToChannels
-    
+
 BendDone:
     RTS
 
 ApplyBendToChannels:
     ; Apply current bend to all active channels
     LDX #$00
-    
+
 ApplyBendLoop:
     LDA ChannelStates,X
     CMP #CHANNEL_FREE
     BEQ NextBendChannel
-    
+
     ; Apply bend to this channel
     JSR ApplyBendToChannel
-    
+
 NextBendChannel:
     INX
     CPX #NES_AUDIO_CHANNELS
     BNE ApplyBendLoop
-    
+
     RTS
 
 ApplyBendToChannel:
@@ -873,7 +873,7 @@ ApplyBendToChannel:
     LDA NoteFrequencies,Y
     CLC
     ADC CurrentBend         ; Add bend offset
-    
+
     ; Store bent frequency based on channel
     CPX #$00
     BEQ BendPulse1
@@ -882,15 +882,15 @@ ApplyBendToChannel:
     CPX #$02
     BEQ BendTriangle
     RTS                     ; Can't bend noise
-    
+
 BendPulse1:
     STA $4002
     RTS
-    
+
 BendPulse2:
     STA $4006
     RTS
-    
+
 BendTriangle:
     STA $400A
     RTS
@@ -901,7 +901,7 @@ ProcessScaleChange:
     AND #%00001100          ; Up + Down together?
     CMP #%00001100
     BNE CheckOtherScales
-    
+
     ; Cycle to next scale
     INC CurrentScale
     LDA CurrentScale
@@ -910,10 +910,10 @@ ProcessScaleChange:
     LDA #$00
     STA CurrentScale
     JMP ScaleChangeDone
-    
+
 CheckOtherScales:
     ; Individual scale selections could go here
-    
+
 ScaleChangeDone:
     ; Update note mapping for new scale
     JSR UpdateNoteMapping
@@ -935,11 +935,11 @@ UpdateNoteMapping:
 UseMajorScale:
     JSR LoadMajorScale
     RTS
-    
+
 UseMinorScale:
     JSR LoadMinorScale
     RTS
-    
+
 UsePentatonicScale:
     JSR LoadPentatonicScale
     RTS
@@ -979,7 +979,7 @@ PentatonicFreqs:
 ; Expressive musical control system for Sprite Symphony
 Main:
     JSR InitExpressiveSystem
-    
+
 MainLoop:
     JSR ProcessInput
     JSR UpdateExpression
@@ -991,7 +991,7 @@ InitExpressiveSystem:
     ; Initialize expressive musical system
     LDA #%00001111       ; Enable all channels
     STA $4015
-    
+
     ; Initialize expression system
     LDA #$08             ; Default velocity
     STA CurrentVelocity
@@ -999,7 +999,7 @@ InitExpressiveSystem:
     STA CurrentBend
     STA CurrentScale
     STA OctaveShift
-    
+
     ; Initialize channels
     LDX #$03
 InitExpLoop:
@@ -1010,7 +1010,7 @@ InitExpLoop:
     STA ChannelNotes,X
     DEX
     BPL InitExpLoop
-    
+
     ; Load default scale
     JSR LoadDefaultScale
     RTS
@@ -1031,15 +1031,15 @@ ProcessInput:
     STA PreviousInput
     JSR ReadController
     STA CurrentInput
-    
+
     ; Calculate new presses
     EOR PreviousInput
     AND CurrentInput
     STA NewPresses
-    
+
     ; Process expression controls
     JSR ProcessExpressionControls
-    
+
     ; Process note triggers
     JSR ProcessNoteTriggers
     RTS
@@ -1055,38 +1055,38 @@ ProcessVelocityControl:
     ; Calculate velocity based on input timing
     LDA NewPresses
     BEQ VelocityTimerUpdate
-    
+
     ; New input - reset timer
     LDA #$00
     STA VelocityTimer
     JMP VelocityDone
-    
+
 VelocityTimerUpdate:
     ; Update velocity timer
     LDA CurrentInput
     AND #%11110000       ; Any face buttons held?
     BEQ VelocityDone
-    
+
     INC VelocityTimer
     LDA VelocityTimer
     CMP #$10             ; Long hold = soft
     BCC VelocityDone
-    
+
     LDA #$04             ; Soft velocity
     STA CurrentVelocity
     JMP VelocityDone
-    
+
 VelocityDone:
     ; Set velocity based on timer
     LDA VelocityTimer
     CMP #$04
     BCS MediumVelocity
-    
+
     ; Quick press = loud
     LDA #$0F
     STA CurrentVelocity
     RTS
-    
+
 MediumVelocity:
     LDA #$08
     STA CurrentVelocity
@@ -1097,7 +1097,7 @@ ProcessBendControl:
     LDA CurrentInput
     AND #%00100000       ; Select held?
     BEQ CheckBendDown
-    
+
     ; Bend up
     LDA CurrentBend
     CMP #$0F
@@ -1105,12 +1105,12 @@ ProcessBendControl:
     INC CurrentBend
     JSR ApplyBendToActive
     JMP BendControlDone
-    
+
 CheckBendDown:
     LDA CurrentInput
     AND #%00010000       ; Start held?
     BEQ BendReturn
-    
+
     ; Bend down
     LDA CurrentBend
     CMP #$F1
@@ -1118,21 +1118,21 @@ CheckBendDown:
     DEC CurrentBend
     JSR ApplyBendToActive
     JMP BendControlDone
-    
+
 BendReturn:
     ; Return to center
     LDA CurrentBend
     BEQ BendControlDone
     BMI BendReturnUp
-    
+
     DEC CurrentBend
     JSR ApplyBendToActive
     JMP BendControlDone
-    
+
 BendReturnUp:
     INC CurrentBend
     JSR ApplyBendToActive
-    
+
 BendControlDone:
     RTS
 
@@ -1142,14 +1142,14 @@ ApplyBendToActive:
 ApplyBendLoop:
     LDA ChannelStates,X
     BEQ NextBendApply
-    
+
     ; Apply bend to this channel
     LDA ChannelNotes,X
     TAY
     LDA ActiveScale,Y
     CLC
     ADC CurrentBend
-    
+
     ; Apply to appropriate channel
     CPX #$00
     BEQ ApplyBendPulse1
@@ -1157,14 +1157,14 @@ ApplyBendLoop:
     BEQ ApplyBendPulse2
     ; Skip triangle and noise for this demo
     JMP NextBendApply
-    
+
 ApplyBendPulse1:
     STA $4002
     JMP NextBendApply
-    
+
 ApplyBendPulse2:
     STA $4006
-    
+
 NextBendApply:
     DEX
     BPL ApplyBendLoop
@@ -1176,7 +1176,7 @@ ProcessScaleControl:
     AND #%00001100       ; Up + Down
     CMP #%00001100
     BNE ScaleControlDone
-    
+
     ; Cycle scale
     INC CurrentScale
     LDA CurrentScale
@@ -1184,10 +1184,10 @@ ProcessScaleControl:
     BCC ScaleChanged
     LDA #$00
     STA CurrentScale
-    
+
 ScaleChanged:
     JSR LoadCurrentScale
-    
+
 ScaleControlDone:
     RTS
 
@@ -1195,7 +1195,7 @@ LoadCurrentScale:
     ; Load scale based on CurrentScale
     LDA CurrentScale
     BNE CheckMinor
-    
+
     ; Major scale
     LDX #$07
 LoadMajorLoop:
@@ -1204,11 +1204,11 @@ LoadMajorLoop:
     DEX
     BPL LoadMajorLoop
     RTS
-    
+
 CheckMinor:
     CMP #$01
     BNE LoadPentatonic
-    
+
     ; Minor scale
     LDX #$07
 LoadMinorLoop:
@@ -1217,7 +1217,7 @@ LoadMinorLoop:
     DEX
     BPL LoadMinorLoop
     RTS
-    
+
 LoadPentatonic:
     ; Pentatonic scale
     LDX #$07
@@ -1233,15 +1233,15 @@ ProcessNoteTriggers:
     LDA NewPresses
     AND #%00001111       ; Directional pad
     BEQ NoteTriggersDone
-    
+
     ; Map directions to notes
     JSR MapDirectionToNote
     CMP #$FF
     BEQ NoteTriggersDone
-    
+
     ; Trigger the note
     JSR TriggerExpressiveNote
-    
+
 NoteTriggersDone:
     RTS
 
@@ -1252,28 +1252,28 @@ MapDirectionToNote:
     BEQ CheckDownPress
     LDA #$07             ; High note
     RTS
-    
+
 CheckDownPress:
     LDA NewPresses
     AND #%00000100       ; Down
     BEQ CheckLeftPress
     LDA #$00             ; Low note
     RTS
-    
+
 CheckLeftPress:
     LDA NewPresses
     AND #%00000010       ; Left
     BEQ CheckRightPress
     LDA #$02             ; Mid-low note
     RTS
-    
+
 CheckRightPress:
     LDA NewPresses
     AND #%00000001       ; Right
     BEQ NoNotePress
     LDA #$05             ; Mid-high note
     RTS
-    
+
 NoNotePress:
     LDA #$FF
     RTS
@@ -1288,10 +1288,10 @@ FindExpChannelLoop:
     INX
     CPX #$02             ; Use first 2 channels
     BNE FindExpChannelLoop
-    
+
     ; Use channel 0 if none available
     LDX #$00
-    
+
 FoundExpChannel:
     ; Set up channel
     STA ChannelNotes,X
@@ -1299,10 +1299,10 @@ FoundExpChannel:
     STA ChannelStates,X
     LDA #$40             ; Note duration
     STA ChannelTimers,X
-    
+
     ; Configure audio with expression
     JSR ConfigureExpressiveAudio
-    
+
     ; Create visual
     JSR CreateExpressiveVisual
     RTS
@@ -1315,11 +1315,11 @@ ConfigureExpressiveAudio:
     CLC
     ADC CurrentBend      ; Apply bend
     STA TempFreq
-    
+
     ; Configure based on channel
     CPX #$00
     BEQ ConfigExpPulse1
-    
+
     ; Pulse 2
     LDA CurrentVelocity
     ASL
@@ -1331,7 +1331,7 @@ ConfigureExpressiveAudio:
     LDA #$08
     STA $4007
     RTS
-    
+
 ConfigExpPulse1:
     LDA CurrentVelocity
     ASL
@@ -1350,25 +1350,25 @@ CreateExpressiveVisual:
     ASL
     ASL
     TAY
-    
+
     ; Set sprite based on note and velocity
     LDA ChannelNotes,X
     CLC
     ADC #$10             ; Base tile
     STA SpriteData+1,Y
-    
+
     ; Y position based on note
     LDA ChannelNotes,X
     TAZ
     LDA NotePosY,Z
     STA SpriteData,Y
-    
+
     ; Palette based on velocity
     LDA CurrentVelocity
     LSR
     LSR
     STA SpriteData+2,Y
-    
+
     ; X position based on channel
     TXA
     ASL
@@ -1377,7 +1377,7 @@ CreateExpressiveVisual:
     CLC
     ADC #$70
     STA SpriteData+3,Y
-    
+
     RTS
 
 UpdateExpression:
@@ -1392,15 +1392,15 @@ UpdateChannelTimers:
 UpdateTimerLoop:
     LDA ChannelStates,X
     BEQ NextTimerUpdate
-    
+
     DEC ChannelTimers,X
     LDA ChannelTimers,X
     BNE NextTimerUpdate
-    
+
     ; Channel finished
     LDA #$00
     STA ChannelStates,X
-    
+
     ; Hide visual
     TXA
     ASL
@@ -1408,7 +1408,7 @@ UpdateTimerLoop:
     TAY
     LDA #$FF
     STA SpriteData,Y
-    
+
 NextTimerUpdate:
     DEX
     BPL UpdateTimerLoop
@@ -1417,24 +1417,24 @@ NextTimerUpdate:
 UpdateVisualExpression:
     ; Update visual expression effects
     INC ExpressionCounter
-    
+
     ; Animate active notes based on expression
     LDX #$03
 VisualExpLoop:
     LDA ChannelStates,X
     BEQ NextVisualExp
-    
+
     ; Animate this note
     TXA
     ASL
     ASL
     TAY
-    
+
     ; Velocity-based animation
     LDA CurrentVelocity
     CMP #$08
     BCC SubtleAnimation
-    
+
     ; Strong animation
     LDA ExpressionCounter
     AND #$03
@@ -1445,17 +1445,17 @@ VisualExpLoop:
     CLC
     ADC #$04
     JMP StoreExpY
-    
+
 SubtleAnimation:
     LDA ChannelNotes,X
     TAZ
     LDA NotePosY,Z
     CLC
     ADC #$01
-    
+
 StoreExpY:
     STA SpriteData,Y
-    
+
 NextVisualExp:
     DEX
     BPL VisualExpLoop
@@ -1466,12 +1466,12 @@ UpdateAudio:
     LDA ChannelStates
     ORA ChannelStates+1
     BNE AudioActive
-    
+
     ; No active channels - silence
     LDA #$00
     STA $4000
     STA $4004
-    
+
 AudioActive:
     RTS
 
@@ -1492,15 +1492,15 @@ ReadController:
     BEQ SimExpSelect
     LDA #$FF
     RTS
-    
+
 SimExpUp:
     LDA #%11110111       ; Up
     RTS
-    
+
 SimExpRight:
     LDA #%11111110       ; Right
     RTS
-    
+
 SimExpSelect:
     LDA #%11011111       ; Select (bend)
     RTS
@@ -1564,33 +1564,33 @@ VisualExpressionSystem:
 CreateExpressiveVisualFeedback:
     ; Create visual feedback based on musical expression
     ; A = note index, X = channel, Y = velocity
-    
+
     ; Calculate visual intensity based on velocity
     TYA                     ; Y = velocity
     LSR                     ; Divide by 2
     CLC
     ADC #$04                ; Minimum intensity
     STA IntensityLevels,X
-    
+
     ; Choose color based on note pitch
     LDA NoteColorMap,A      ; A = note index
     STA ColorModes,X
-    
+
     ; Choose animation style based on expression
     JSR DetermineAnimationStyle
     STA AnimationStyles,X
-    
+
     ; Set effect duration based on velocity
     TYA                     ; Velocity
     ASL                     ; Double for duration
     STA EffectDurations,X
-    
+
     ; Create primary note sprite
     JSR CreatePrimaryNoteSprite
-    
+
     ; Create expression particles
     JSR CreateExpressionParticles
-    
+
     RTS
 
 DetermineAnimationStyle:
@@ -1598,11 +1598,11 @@ DetermineAnimationStyle:
     LDA CurrentBend
     CMP #$08
     BCS BendAnimation       ; High bend = wavy animation
-    
+
     LDA CurrentVelocity
     CMP #$0C
     BCS PulseAnimation      ; High velocity = pulse animation
-    
+
     ; Default smooth animation
     LDA #ANIM_SMOOTH
     RTS
@@ -1620,23 +1620,23 @@ CreateExpressionParticles:
     LDA CurrentVelocity
     CMP #$08
     BCC NoParticles         ; Low velocity = no particles
-    
+
     ; Create 2-4 particles based on velocity
     LSR                     ; Divide velocity by 4
     LSR
     CLC
     ADC #$02                ; 2-6 particles
     STA ParticleCount
-    
+
     ; Initialize particles
     LDY #$00
-    
+
 CreateParticleLoop:
     JSR InitializeParticle
     INY
     CPY ParticleCount
     BNE CreateParticleLoop
-    
+
 NoParticles:
     RTS
 
@@ -1647,7 +1647,7 @@ InitializeParticle:
     TAZ
     LDA NotePosY,Z
     STA ParticleBaseY,Y
-    
+
     ; Add random offset
     TYA
     ASL
@@ -1657,7 +1657,7 @@ InitializeParticle:
     SEC
     SBC #$08                ; Center around note
     STA ParticleY,Y
-    
+
     ; X position with spread
     TXA
     ASL
@@ -1668,15 +1668,15 @@ InitializeParticle:
     CLC
     ADC ParticleXOffsets,Y  ; Add offset
     STA ParticleX,Y
-    
+
     ; Set particle properties
     LDA CurrentVelocity
     LSR                     ; Half velocity for particles
     STA ParticleVelocity,Y
-    
+
     LDA #$20                ; Particle lifetime
     STA ParticleLife,Y
-    
+
     RTS
 
 UpdateVisualExpression:
@@ -1689,11 +1689,11 @@ UpdateVisualExpression:
 UpdateNoteAnimations:
     ; Update animations for all active notes
     LDX #$00
-    
+
 UpdateAnimLoop:
     LDA ChannelStates,X
     BEQ NextAnimUpdate
-    
+
     ; Update animation for this channel
     LDA AnimationStyles,X
     CMP #ANIM_PULSE
@@ -1703,19 +1703,19 @@ UpdateAnimLoop:
     ; Default smooth
     JSR UpdateSmoothAnim
     JMP NextAnimUpdate
-    
+
 UpdatePulseAnim:
     JSR UpdatePulseAnimation
     JMP NextAnimUpdate
-    
+
 UpdateWavyAnim:
     JSR UpdateWavyAnimation
-    
+
 NextAnimUpdate:
     INX
     CPX #$04
     BNE UpdateAnimLoop
-    
+
     RTS
 
 UpdatePulseAnimation:
@@ -1724,13 +1724,13 @@ UpdatePulseAnimation:
     ASL
     ASL
     TAY                     ; Y = sprite offset
-    
+
     ; Pulse based on intensity
     LDA AnimationCounter
     AND #$07                ; 8-frame cycle
     CMP #$04
     BCC PulseOut
-    
+
     ; Pulse in
     LDA ChannelNotes,X
     TAZ
@@ -1738,14 +1738,14 @@ UpdatePulseAnimation:
     SEC
     SBC IntensityLevels,X   ; Subtract intensity
     JMP StorePulseY
-    
+
 PulseOut:
     LDA ChannelNotes,X
     TAZ
     LDA NotePosY,Z
     CLC
     ADC IntensityLevels,X   ; Add intensity
-    
+
 StorePulseY:
     STA SpriteData,Y
     RTS
@@ -1756,7 +1756,7 @@ UpdateWavyAnimation:
     ASL
     ASL
     TAY                     ; Y = sprite offset
-    
+
     ; Create sine wave effect
     LDA AnimationCounter
     CLC
@@ -1767,7 +1767,7 @@ UpdateWavyAnimation:
     LSR                     ; Scale down
     LSR
     STA WaveOffset
-    
+
     ; Apply to base position
     LDA ChannelNotes,X
     TAZ
@@ -1775,34 +1775,34 @@ UpdateWavyAnimation:
     CLC
     ADC WaveOffset
     STA SpriteData,Y
-    
+
     RTS
 
 UpdateParticleEffects:
     ; Update all active particles
     LDY #$00
-    
+
 UpdateParticleLoop:
     LDA ParticleLife,Y
     BEQ NextParticleUpdate
-    
+
     ; Update this particle
     DEC ParticleLife,Y
-    
+
     ; Move particle
     LDA ParticleY,Y
     SEC
     SBC ParticleVelocity,Y  ; Move up
     STA ParticleY,Y
-    
+
     ; Update particle sprite
     JSR UpdateParticleSprite
-    
+
 NextParticleUpdate:
     INY
     CPY #$08                ; Max 8 particles
     BNE UpdateParticleLoop
-    
+
     RTS
 
 ; Animation constants
@@ -1857,7 +1857,7 @@ Create a complete interactive note playing system that demonstrates all concepts
 ; Complete interactive note playing system for Sprite Symphony
 Main:
     JSR InitInteractiveSystem
-    
+
 MainLoop:
     JSR ProcessInteractiveInput
     JSR UpdatePolyphonicAudio
@@ -1869,7 +1869,7 @@ InitInteractiveSystem:
     ; Initialize complete interactive system
     LDA #%00001111       ; Enable all audio channels
     STA $4015
-    
+
     ; Initialize input system
     LDA #$FF
     STA CurrentInput
@@ -1877,14 +1877,14 @@ InitInteractiveSystem:
     LDA #$00
     STA NewPresses
     STA InputMode
-    
+
     ; Initialize expression system
     LDA #$08
     STA Velocity
     LDA #$00
     STA PitchBend
     STA CurrentScale
-    
+
     ; Initialize polyphonic system
     LDX #$03
 InitPolyLoop:
@@ -1895,10 +1895,10 @@ InitPolyLoop:
     STA ChannelNote,X
     DEX
     BPL InitPolyLoop
-    
+
     ; Initialize visual system
     JSR InitVisualFeedback
-    
+
     ; Load default scale
     JSR LoadMajorScale
     RTS
@@ -1908,7 +1908,7 @@ InitVisualFeedback:
     LDA #$00
     STA VisualCounter
     STA ParticleCount
-    
+
     ; Clear all sprites
     LDX #$00
     LDA #$FF
@@ -1920,7 +1920,7 @@ ClearSprites:
     INX
     CPX #$80
     BNE ClearSprites
-    
+
     ; Initialize mode indicator
     LDA #$20
     STA SpriteOAM+60     ; Mode indicator Y
@@ -1938,12 +1938,12 @@ ProcessInteractiveInput:
     STA PreviousInput
     JSR ReadController
     STA CurrentInput
-    
+
     ; Calculate new presses
     EOR PreviousInput
     AND CurrentInput
     STA NewPresses
-    
+
     ; Process different types of input
     JSR ProcessNoteInput
     JSR ProcessExpressionInput
@@ -1955,15 +1955,15 @@ ProcessNoteInput:
     LDA NewPresses
     AND #%00001111       ; Directional pad
     BEQ NoteInputDone
-    
+
     ; Map input to note
     JSR MapInputToNote
     CMP #$FF
     BEQ NoteInputDone
-    
+
     ; Trigger the note
     JSR TriggerPolyphonicNote
-    
+
 NoteInputDone:
     RTS
 
@@ -1974,28 +1974,28 @@ MapInputToNote:
     BEQ CheckNoteDown
     LDA #$07             ; Scale degree 7
     RTS
-    
+
 CheckNoteDown:
     LDA NewPresses
     AND #%00000100       ; Down
     BEQ CheckNoteLeft
     LDA #$00             ; Scale degree 0
     RTS
-    
+
 CheckNoteLeft:
     LDA NewPresses
     AND #%00000010       ; Left
     BEQ CheckNoteRight
     LDA #$02             ; Scale degree 2
     RTS
-    
+
 CheckNoteRight:
     LDA NewPresses
     AND #%00000001       ; Right
     BEQ NoNoteInput
     LDA #$04             ; Scale degree 4
     RTS
-    
+
 NoNoteInput:
     LDA #$FF
     RTS
@@ -2003,12 +2003,12 @@ NoNoteInput:
 TriggerPolyphonicNote:
     ; Trigger note A with polyphonic management
     STA TriggerNote
-    
+
     ; Find available channel
     JSR FindFreeChannel
     CPX #$FF
     BEQ TriggerNoteDone
-    
+
     ; Set up channel
     LDA TriggerNote
     STA ChannelNote,X
@@ -2016,13 +2016,13 @@ TriggerPolyphonicNote:
     STA ChannelActive,X
     LDA #$40             ; Note duration
     STA ChannelTimer,X
-    
+
     ; Configure audio
     JSR ConfigureChannelAudio
-    
+
     ; Create visual
     JSR CreateChannelVisual
-    
+
 TriggerNoteDone:
     RTS
 
@@ -2035,10 +2035,10 @@ FindChannelLoop:
     INX
     CPX #$04
     BNE FindChannelLoop
-    
+
     ; No free channels - use oldest
     LDX #$00             ; Use channel 0
-    
+
 FoundFreeChannel:
     RTS
 
@@ -2050,7 +2050,7 @@ ConfigureChannelAudio:
     CLC
     ADC PitchBend        ; Apply pitch bend
     STA TempFreq
-    
+
     ; Configure based on channel
     CPX #$00
     BEQ ConfigPulse1
@@ -2060,7 +2060,7 @@ ConfigureChannelAudio:
     BEQ ConfigTriangle
     ; Skip noise for simplicity
     RTS
-    
+
 ConfigPulse1:
     LDA Velocity
     ASL
@@ -2072,7 +2072,7 @@ ConfigPulse1:
     LDA #$08
     STA $4003
     RTS
-    
+
 ConfigPulse2:
     LDA Velocity
     ASL
@@ -2084,7 +2084,7 @@ ConfigPulse2:
     LDA #$08
     STA $4007
     RTS
-    
+
 ConfigTriangle:
     LDA #%11111111
     STA $4008
@@ -2100,25 +2100,25 @@ CreateChannelVisual:
     ASL
     ASL
     TAY
-    
+
     ; Set sprite data
     LDA ChannelNote,X
     TAZ
     LDA ScalePosY,Z
     STA SpriteOAM,Y      ; Y position
-    
+
     LDA ChannelNote,X
     CLC
     ADC #$10             ; Base tile
     STA SpriteOAM+1,Y    ; Tile
-    
+
     ; Palette based on velocity
     LDA Velocity
     LSR
     LSR
     AND #%00000011
     STA SpriteOAM+2,Y    ; Attributes
-    
+
     ; X position based on channel
     TXA
     ASL
@@ -2142,13 +2142,13 @@ ProcessVelocityInput:
     AND #%11000000       ; A + B together
     CMP #%00000000       ; Both pressed (inverted logic)
     BNE VelocityInputDone
-    
+
     ; Adjust velocity
     INC VelocityAdjust
     LDA VelocityAdjust
     AND #$0F
     STA Velocity
-    
+
 VelocityInputDone:
     RTS
 
@@ -2157,7 +2157,7 @@ ProcessBendInput:
     LDA CurrentInput
     AND #%00100000       ; Select
     BEQ CheckBendDown
-    
+
     ; Bend up
     LDA PitchBend
     CMP #$10
@@ -2165,12 +2165,12 @@ ProcessBendInput:
     INC PitchBend
     JSR ApplyBendToAll
     JMP BendInputDone
-    
+
 CheckBendDown:
     LDA CurrentInput
     AND #%00010000       ; Start
     BEQ BendReturn
-    
+
     ; Bend down
     LDA PitchBend
     CMP #$F0
@@ -2178,7 +2178,7 @@ CheckBendDown:
     DEC PitchBend
     JSR ApplyBendToAll
     JMP BendInputDone
-    
+
 BendReturn:
     ; Return to center
     LDA PitchBend
@@ -2187,11 +2187,11 @@ BendReturn:
     DEC PitchBend
     JSR ApplyBendToAll
     JMP BendInputDone
-    
+
 BendReturnUp:
     INC PitchBend
     JSR ApplyBendToAll
-    
+
 BendInputDone:
     RTS
 
@@ -2201,14 +2201,14 @@ ApplyBendToAll:
 BendApplyLoop:
     LDA ChannelActive,X
     BEQ NextBendApply
-    
+
     ; Apply bend to this channel
     LDA ChannelNote,X
     TAY
     LDA ScaleFreqs,Y
     CLC
     ADC PitchBend
-    
+
     ; Apply to channel
     CPX #$00
     BEQ BendPulse1
@@ -2217,18 +2217,18 @@ BendApplyLoop:
     CPX #$02
     BEQ BendTriangle
     JMP NextBendApply
-    
+
 BendPulse1:
     STA $4002
     JMP NextBendApply
-    
+
 BendPulse2:
     STA $4006
     JMP NextBendApply
-    
+
 BendTriangle:
     STA $400A
-    
+
 NextBendApply:
     DEX
     BPL BendApplyLoop
@@ -2240,7 +2240,7 @@ ProcessScaleInput:
     AND #%00000011       ; Left + Right
     CMP #%00000000       ; Both pressed
     BNE ScaleInputDone
-    
+
     ; Cycle scale
     INC CurrentScale
     LDA CurrentScale
@@ -2248,10 +2248,10 @@ ProcessScaleInput:
     BCC ScaleChanged
     LDA #$00
     STA CurrentScale
-    
+
 ScaleChanged:
     JSR LoadCurrentScale
-    
+
 ScaleInputDone:
     RTS
 
@@ -2259,17 +2259,17 @@ LoadCurrentScale:
     ; Load scale based on CurrentScale value
     LDA CurrentScale
     BNE CheckMinorScale
-    
+
     ; Major scale
     JSR LoadMajorScale
     RTS
-    
+
 CheckMinorScale:
     CMP #$01
     BNE LoadPentatonic
     JSR LoadMinorScale
     RTS
-    
+
 LoadPentatonic:
     JSR LoadPentatonicScale
     RTS
@@ -2311,16 +2311,16 @@ UpdatePolyphonicAudio:
 AudioUpdateLoop:
     LDA ChannelActive,X
     BEQ NextAudioUpdate
-    
+
     ; Update this channel
     DEC ChannelTimer,X
     LDA ChannelTimer,X
     BNE NextAudioUpdate
-    
+
     ; Channel finished
     LDA #$00
     STA ChannelActive,X
-    
+
     ; Hide visual
     TXA
     ASL
@@ -2328,24 +2328,24 @@ AudioUpdateLoop:
     TAY
     LDA #$FF
     STA SpriteOAM,Y
-    
+
 NextAudioUpdate:
     DEX
     BPL AudioUpdateLoop
-    
+
     ; Check if any channels active
     LDA ChannelActive
     ORA ChannelActive+1
     ORA ChannelActive+2
     ORA ChannelActive+3
     BNE AudioUpdateDone
-    
+
     ; No channels active - silence
     LDA #$00
     STA $4000
     STA $4004
     STA $4008
-    
+
 AudioUpdateDone:
     RTS
 
@@ -2362,31 +2362,31 @@ UpdateNoteVisuals:
 VisualUpdateLoop:
     LDA ChannelActive,X
     BEQ NextVisualUpdate
-    
+
     ; Update this channel's visual
     TXA
     ASL
     ASL
     TAY
-    
+
     ; Animate based on velocity
     LDA Velocity
     CMP #$08
     BCC SubtleVisual
-    
+
     ; Strong visual
     LDA VisualCounter
     AND #$07
     CMP #$04
     BCC StrongPulseUp
-    
+
     LDA ChannelNote,X
     TAZ
     LDA ScalePosY,Z
     CLC
     ADC #$04
     JMP StoreVisualY
-    
+
 StrongPulseUp:
     LDA ChannelNote,X
     TAZ
@@ -2394,17 +2394,17 @@ StrongPulseUp:
     SEC
     SBC #$04
     JMP StoreVisualY
-    
+
 SubtleVisual:
     LDA ChannelNote,X
     TAZ
     LDA ScalePosY,Z
     CLC
     ADC #$01
-    
+
 StoreVisualY:
     STA SpriteOAM,Y
-    
+
 NextVisualUpdate:
     DEX
     BPL VisualUpdateLoop
@@ -2425,7 +2425,7 @@ UpdateExpressionIndicators:
     STA SpriteOAM+66
     LDA #$E0
     STA SpriteOAM+67
-    
+
     ; Scale indicator
     LDA CurrentScale
     CLC
@@ -2458,19 +2458,19 @@ ReadController:
     BEQ SimInteractiveBend
     LDA #$FF
     RTS
-    
+
 SimInteractiveUp:
     LDA #%11110111       ; Up
     RTS
-    
+
 SimInteractiveRight:
     LDA #%11111110       ; Right
     RTS
-    
+
 SimInteractiveA:
     LDA #%01111111       ; A
     RTS
-    
+
 SimInteractiveBend:
     LDA #%11011111       ; Select (bend)
     RTS

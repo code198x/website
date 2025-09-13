@@ -43,15 +43,19 @@ Phase 1 takes you from zero assembly knowledge to writing working C64 programs. 
 Our curriculum is structured to build concepts progressively:
 
 ### Foundation (Tier 1)
+
 Start with the absolute basics through 32 comprehensive lessons covering assembly fundamentals, graphics programming, sound programming, and game development. Learn about registers, basic instructions, screen manipulation, sprites, SID sound chip, and build your first complete game.
 
 ### Building Skills (Tiers 2-4) - Coming Soon
+
 Expand into loops, branching, subroutines, and data structures. Learn to organize larger programs and implement common algorithms in assembly.
 
 ### Hardware Programming (Tiers 5-8) - Coming Soon
+
 Dive deep into the VIC-II graphics chip, SID sound chip, and advanced techniques like raster interrupts and sprite multiplexing.
 
 ### Advanced Topics (Tiers 9-16) - Coming Soon
+
 Explore optimization techniques, demo effects, compression algorithms, and professional development practices.
 
 ## Why Learn Assembly in 2025?

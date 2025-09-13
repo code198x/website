@@ -45,9 +45,9 @@ audio:
   synthesis_types: ["Square wave", "Noise"]
 
 # Storage and I/O
-storage: ["5.25\" floppy", "Hard disk"]
+storage: ['5.25" floppy', "Hard disk"]
 storage_details:
-  built_in: ["5.25\" floppy drive"]
+  built_in: ['5.25" floppy drive']
   expansion: ["Additional floppy", "Hard disk"]
   typical_capacity:
     floppy: "360KB"
@@ -87,7 +87,6 @@ hardware_availability: "available"
 
 # Media
 description: "The PC compatible that made IBM-standard computing affordable for home users with enhanced graphics and sound."
-image: "/images/systems/tandy-1000.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -102,7 +101,7 @@ order: 123
 
 # Tandy 1000
 
-*Historical Reference*
+_Historical Reference_
 
 The Tandy 1000 was Radio Shack's breakthrough PC-compatible computer that made IBM-standard computing affordable for home users. With enhanced graphics and sound capabilities, it became one of the best-selling PC compatibles of the 1980s.
 
@@ -121,6 +120,7 @@ The Tandy 1000 democratized PC-compatible computing, bringing it from the busine
 ## Market Success
 
 The Tandy 1000 became incredibly popular because it offered:
+
 - PC compatibility for business software
 - Enhanced graphics and sound for games
 - Aggressive pricing through Radio Shack's retail network
@@ -129,6 +129,7 @@ The Tandy 1000 became incredibly popular because it offered:
 ## Gaming Legacy
 
 Many classic games were enhanced for Tandy graphics and sound:
+
 - King's Quest series looked and sounded better
 - Special Tandy versions of popular games
 - Established enhanced PC gaming standards
@@ -137,4 +138,4 @@ Many classic games were enhanced for Tandy graphics and sound:
 
 The Tandy 1000 proved that PC compatibles could improve on IBM's design while maintaining compatibility. Its success established the clone market and showed that multimedia enhancements were essential for home computing.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

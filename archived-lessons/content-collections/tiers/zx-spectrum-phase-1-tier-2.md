@@ -27,6 +27,7 @@ Learn to create assembly programs that store information in memory and respond i
 ## What You'll Learn
 
 Understand how computers store and use information at the hardware level:
+
 - Memory locations as containers for data
 - Creating interactive assembly programs that respond
 - Z80 assembly mathematical calculations and operations
@@ -35,24 +36,28 @@ Understand how computers store and use information at the hardware level:
 ## Tier Overview
 
 **Lessons 1-8: Understanding Assembly Memory Management**
+
 - Z80 load and store instructions for data assignment
 - Memory locations for numeric calculations
 - Memory areas for text storage and manipulation
 - Assembly memory organisation and best practices
 
 **Lessons 9-16: Z80 Assembly Mathematical Operations**
+
 - Basic Z80 arithmetic instructions (ADD, SUB, etc.)
 - Assembly calculation sequences and optimisation
 - Using memory locations in mathematical operations
 - Building a simple assembly calculator program
 
 **Lessons 17-24: Interactive Assembly Programs**
+
 - Getting user input through direct keyboard reading
 - Responding to user choices using assembly logic
 - Validating user input with assembly routines
 - Creating conversational assembly programs
 
 **Lessons 25-32: Assembly Program Structure**
+
 - Planning assembly program flow and logic
 - Organizing assembly code for readability
 - Debugging common memory management mistakes

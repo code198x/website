@@ -27,6 +27,7 @@ Unlock the secret formulas! 🧪⚗️ With **32 mind-expanding lessons**, you'l
 ## What You'll Build
 
 Create **FUN FORMULA LAB** - a collection of gameplay experiments featuring:
+
 - Difficulty curves so perfect they feel like natural progression
 - Reward systems that trigger actual dopamine releases
 - Progression mechanics that always give players something to reach for
@@ -36,24 +37,28 @@ Create **FUN FORMULA LAB** - a collection of gameplay experiments featuring:
 ## Tier Overview
 
 **Lessons 1-8: "The Hook" - Psychology of First Impressions**
+
 - The crucial first 30 seconds that determine if players continue
 - Onboarding that teaches without feeling like teaching
 - Immediate feedback that creates instant satisfaction
 - The psychology of making complex games feel simple
 
 **Lessons 9-16: "Flow State Engineering" - The Zone**
+
 - Creating that magical state where time disappears
 - Difficulty curves that build confidence then challenge
 - Pacing that keeps players in the optimal challenge zone
 - The mathematics of perfect game balance
 
 **Lessons 17-24: "Just One More..." - The Addiction Formula**
+
 - Reward timing that triggers maximum dopamine
 - Progression systems that always offer hope
 - Achievement structures that celebrate small victories
 - The psychology of "almost winning" and why it's powerful
 
 **Lessons 25-32: "Legendary Status" - What Makes Classics**
+
 - The special ingredients that create timeless games
 - Emergent gameplay that surprises even the developers
 - Community features that build lasting engagement

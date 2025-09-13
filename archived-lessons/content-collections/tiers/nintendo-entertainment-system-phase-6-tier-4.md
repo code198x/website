@@ -27,6 +27,7 @@ Time to showcase your NES mastery! With **32 intensive lessons**, you'll create 
 ## What You'll Build
 
 Create **NES TECHNICAL SHOWCASE** - an incredible demonstration featuring:
+
 - Advanced graphics effects that make people question what's possible on NES
 - Complex audio systems that sound like they belong on 16-bit hardware
 - Memory management so efficient it seems to break NES limitations
@@ -36,18 +37,21 @@ Create **NES TECHNICAL SHOWCASE** - an incredible demonstration featuring:
 ## Project Showcase Features
 
 **Visual Excellence:**
+
 - Sprite multiplexing displaying 50+ sprites simultaneously
 - Multi-layered parallax scrolling in all directions
 - Advanced palette cycling creating animated water, fire, and energy
 - Background effects that seem to add extra colors to the NES palette
 
 **Audio Mastery:**
+
 - 5-channel compositions that sound like full orchestras
 - Dynamic music that responds to visual events
 - Layered sound effects synchronized with graphics
 - Advanced wave synthesis creating impossible sounds
 
 **Memory Magic:**
+
 - Bank switching that loads content seamlessly
 - Data compression achieving impossible storage efficiency
 - Code optimization running complex effects at full 60fps
@@ -56,24 +60,28 @@ Create **NES TECHNICAL SHOWCASE** - an incredible demonstration featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Planning the Impossible!" - Project Architecture**
+
 - Designing complex systems that work together seamlessly
 - Advanced project planning for technical demonstrations
 - System integration strategies for maximum impact
 - The art of creating effects that seem impossible
 
 **Lessons 9-16: "Graphics Perfection!" - Advanced Visual Integration**
+
 - Combining sprite multiplexing with background effects
 - Coordinating palette cycling with scrolling systems
 - Creating visual transitions that flow seamlessly
 - Optimizing complex graphics for consistent performance
 
 **Lessons 17-24: "Audio-Visual Symphony!" - Synchronized Systems**
+
 - Synchronizing complex audio with visual effects
 - Creating responsive audio that reacts to graphics
 - Advanced timing coordination between all systems
 - The magic of perfectly integrated audio-visual experiences
 
 **Lessons 25-32: "Polish & Perfection!" - Professional Presentation**
+
 - Adding professional polish that separates demos from games
 - Creating smooth transitions and elegant user interaction
 - Optimizing the entire system for maximum performance

@@ -27,6 +27,7 @@ Master dynamic audio for ZX Spectrum games! With **32 audio-focused lessons**, y
 ## What You'll Build
 
 Create **SPECTRUM DYNAMIC AUDIO ENGINE** - your advanced audio masterpiece:
+
 - Dynamic music that changes based on gameplay state and player actions
 - Advanced sound effects that provide rich audio feedback
 - Adaptive audio systems that respond to game events in real-time
@@ -36,24 +37,28 @@ Create **SPECTRUM DYNAMIC AUDIO ENGINE** - your advanced audio masterpiece:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "Dynamic Music Fundamentals" - Adaptive Soundtrack Systems**
+
 - Music composition techniques for dynamic, layered soundtracks
 - Real-time music switching and seamless transitions in Z80
 - Layered audio systems that build complexity organically
 - Memory-efficient music data structures for ZX Spectrum
 
 **Lessons 9-16: "Advanced Audio Hardware" - Beeper and AY Chip Mastery**
+
 - Advanced beeper programming techniques for complex sounds
 - Professional AY-3-8912 chip programming and sound design
 - Multi-channel audio mixing and sound layering on Spectrum
 - Hardware-specific optimization for maximum audio quality
 
 **Lessons 17-24: "Adaptive Audio Systems" - Responsive Sound Design**
+
 - Audio systems that respond to player actions and game state
 - Dynamic sound effect generation and real-time audio processing
 - Contextual audio that enhances gameplay feedback
 - Performance-optimized audio update routines
 
 **Lessons 25-32: "Audio Performance Mastery" - Optimized Audio Systems**
+
 - Advanced audio compression and data optimization techniques
 - Frame-rate independent audio updates and timing systems
 - Memory management for complex audio systems on ZX Spectrum

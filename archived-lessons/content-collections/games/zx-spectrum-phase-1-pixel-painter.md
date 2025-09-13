@@ -69,24 +69,28 @@ This game showcases what makes the ZX Spectrum unique:
 ### Tiers 1-4 Development Roadmap
 
 **Tier 1**: Basic drawing
+
 - Cursor movement with arrow keys
 - Simple pixel plotting
 - Color selection
 - Clear screen function
 
 **Tier 2**: Enhanced tools
+
 - Line drawing
 - Fill areas
 - Undo functionality
 - Better user interface
 
 **Tier 3**: Creative features
+
 - Pattern fills
 - Copy/paste regions
 - Multiple brush sizes
 - Color cycling effects
 
 **Tier 4**: Sharing and storage
+
 - Save/load artwork to tape
 - Gallery browsing
 - Export to printer

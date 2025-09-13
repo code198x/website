@@ -31,24 +31,28 @@ Create **Performance Maximizer Suite** - a collection of ultra-optimized demonst
 ## Tier Overview
 
 **Lessons 1-8: Cycle-Accurate Programming**
+
 - Understanding exact CPU timing and cycle counting
 - Optimizing instruction sequences for maximum efficiency
 - Register allocation and memory access optimization
 - Advanced 6502 addressing mode exploitation
 
 **Lessons 9-16: Hardware Timing Mastery**
+
 - PPU timing synchronization and precision control
 - APU timing optimization for audio performance
 - Interrupt timing and real-time system optimization
 - Hardware race condition management and prevention
 
 **Lessons 17-24: Performance Profiling**
+
 - Building comprehensive profiling and benchmarking tools
 - Measuring and analyzing performance bottlenecks
 - Memory usage optimization and leak detection
 - Real-time performance monitoring systems
 
 **Lessons 25-32: Extreme Optimization Techniques**
+
 - Self-modifying code and dynamic optimization
 - Hardware exploit techniques and undocumented features
 - Maximum compression and space optimization

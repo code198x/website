@@ -30,6 +30,7 @@ Welcome to your first Amiga game development project! **Copper Chase** introduce
 ## What You'll Build
 
 **Copper Chase** - A complete copper-based movement game featuring:
+
 - Horizontal color bar controlled by player input
 - Pure copper coprocessor programming (no sprites)
 - Copper-generated obstacles and targets
@@ -44,6 +45,7 @@ Control a horizontal color bar that moves up and down the screen using the Amiga
 ## Learning Journey (32 Lessons)
 
 ### Foundation (Lessons 1-8)
+
 - **Lesson 1**: Amiga system setup and custom chips
 - **Lesson 2**: Understanding the copper coprocessor
 - **Lesson 3**: Create basic copper lists
@@ -54,6 +56,7 @@ Control a horizontal color bar that moves up and down the screen using the Amiga
 - **Lesson 8**: Add boundary limits
 
 ### Copper Programming (Lessons 9-16)
+
 - **Lesson 9**: Create multiple copper objects
 - **Lesson 10**: Add animated copper effects
 - **Lesson 11**: Implement collision detection
@@ -64,6 +67,7 @@ Control a horizontal color bar that moves up and down the screen using the Amiga
 - **Lesson 16**: Create lives system
 
 ### Visual Enhancement (Lessons 17-24)
+
 - **Lesson 17**: Add copper gradient effects
 - **Lesson 18**: Create copper starfield
 - **Lesson 19**: Implement advanced copper effects
@@ -74,6 +78,7 @@ Control a horizontal color bar that moves up and down the screen using the Amiga
 - **Lesson 24**: Add copper particle effects
 
 ### Audio and Completion (Lessons 25-32)
+
 - **Lesson 25**: Paula audio basics
 - **Lesson 26**: Create sample-based sound effects
 - **Lesson 27**: Add 4-channel music
@@ -100,6 +105,7 @@ Control a horizontal color bar that moves up and down the screen using the Amiga
 ## Why Copper Programming?
 
 Copper programming is the perfect introduction to Amiga development because it teaches:
+
 - **Custom chip architecture**: Understanding the Amiga's revolutionary design
 - **Hardware acceleration**: Direct control of specialized processors
 - **Real-time effects**: Frame-perfect timing and synchronization
@@ -130,6 +136,7 @@ Copper programming is the perfect introduction to Amiga development because it t
 ## Project Outcomes
 
 By completing Copper Chase, you will have:
+
 - Created your first complete Amiga game
 - Mastered fundamental 68000 assembly programming
 - Learned copper coprocessor programming

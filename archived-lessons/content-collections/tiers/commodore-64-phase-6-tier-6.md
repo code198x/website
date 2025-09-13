@@ -31,24 +31,28 @@ Create **Crystal Caverns Quest** - an epic platform adventure featuring precise 
 ## Tier Overview
 
 **Lessons 1-8: Platform Mechanics & Movement**
+
 - Precise jumping and platform physics
 - Character movement and momentum systems
 - Collision detection for complex environments
 - Feel and responsiveness optimization
 
 **Lessons 9-16: Level Design & Exploration**
+
 - Engaging level layout and flow design
 - Secrets, collectibles, and hidden areas
 - Progressive difficulty and skill teaching
 - Environmental storytelling techniques
 
 **Lessons 17-24: Character & Ability Systems**
+
 - Character progression and new abilities
 - Power-ups and temporary enhancements
 - Inventory and item management systems
 - Character customization and growth
 
 **Lessons 25-32: Narrative & World Building**
+
 - Story integration and pacing
 - Character dialogue and interaction
 - World lore and atmosphere creation

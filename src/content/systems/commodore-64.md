@@ -36,8 +36,8 @@ audio:
     - "Oscillator synchronization"
 storage:
   - "Datasette (cassette tape, 50 KB capacity at 300 baud)"
-  - "5.25\" floppy disk drive (Commodore 1541, 170 KB capacity)"
-  - "Later: 3.5\" floppy disk drives (1581, 800 KB capacity)"
+  - '5.25" floppy disk drive (Commodore 1541, 170 KB capacity)'
+  - 'Later: 3.5" floppy disk drives (1581, 800 KB capacity)'
 io_ports:
   - "2 × CIA 6526 controller ports (joystick/paddle/mouse)"
   - "Serial port (Commodore IEC bus for peripherals)"
@@ -52,7 +52,7 @@ price_at_launch:
     - country: "United States"
       price: "595"
       currency: "USD"
-    - country: "United Kingdom"  
+    - country: "United Kingdom"
       price: "399"
       currency: "GBP"
 release_date:
@@ -82,7 +82,6 @@ emulators:
     accuracy: "high"
 historical_significance: "The C64 is the highest-selling single computer model of all time, introducing millions to computing and gaming. Its SID chip revolutionized computer audio, and its accessible BASIC programming language inspired a generation of programmers."
 description: "The world's best-selling single computer model, featuring the legendary SID sound chip and versatile graphics capabilities."
-image: "/images/systems/commodore-64.jpg"
 order: 1
 ---
 
@@ -109,7 +108,7 @@ The machine's combination of affordability and capability made it accessible to 
 Programming the Commodore 64 teaches fundamental concepts that remain relevant in modern software development:
 
 - **Memory management** - Working within tight constraints
-- **Performance optimisation** - Making every byte and cycle count  
+- **Performance optimisation** - Making every byte and cycle count
 - **Hardware interaction** - Direct programming of chips and registers
 - **Assembly language** - Understanding how computers work at the lowest level
 - **Creative problem solving** - Achieving impressive results with limited resources

@@ -31,24 +31,28 @@ Continue developing **Lost Kingdoms** - implementing advanced data systems for i
 ## Tier Overview
 
 **Lessons 1-8: Advanced Data Structures**
+
 - Binary trees and balanced tree structures
 - Hash tables and efficient lookup systems
 - Graph structures for relationships and networks
 - Priority queues and heap structures
 
 **Lessons 9-16: Data Serialization & Storage**
+
 - Binary data format design and implementation
 - Efficient serialization algorithms
 - Data versioning and backward compatibility
 - Cross-platform data format considerations
 
 **Lessons 17-24: Compression & Optimization**
+
 - Data compression algorithms (RLE, LZ77, etc.)
 - Lossy vs lossless compression techniques
 - Memory vs speed optimization trade-offs
 - Real-time compression and decompression
 
 **Lessons 25-32: Database-like Systems**
+
 - Query system design and implementation
 - Indexing and fast data retrieval
 - Relational data management

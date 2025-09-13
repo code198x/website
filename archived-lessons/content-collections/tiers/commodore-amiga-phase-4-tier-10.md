@@ -27,6 +27,7 @@ Dazzle with graphics! With **32 comprehensive lessons**, you'll push the Amiga's
 ## What You'll Build
 
 Enhance **Nexus Station** with spectacular visual polish:
+
 - Advanced particle effects and visual spectacle
 - Professional sprite animation and character design
 - Complex Copper effects and display manipulation
@@ -36,24 +37,28 @@ Enhance **Nexus Station** with spectacular visual polish:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Graphics Techniques**
+
 - Complex sprite manipulation and transformation
 - Advanced scrolling and parallax effects
 - Multi-layer compositing and blending
 - High-performance graphics algorithms
 
 **Lessons 9-16: Particle Systems & Effects**
+
 - Real-time particle system design and implementation
 - Visual effects programming and optimization
 - Explosion, fire, and energy effect creation
 - Weather and environmental effect systems
 
 **Lessons 17-24: Copper Mastery**
+
 - Advanced Copper programming techniques
 - Complex display list manipulation
 - Real-time color cycling and palette effects
 - Synchronized audio-visual spectacles
 
 **Lessons 25-32: Artistic Direction**
+
 - Cohesive visual style development
 - Color theory and palette design
 - Professional animation techniques

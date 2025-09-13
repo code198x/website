@@ -31,6 +31,7 @@ Complete **Tile Craft** - a level editor and graphics system! Demonstrate solid 
 ## What You'll Complete
 
 Finish a comprehensive development tool:
+
 - Complete tile and level editing system
 - Professional user interface and workflow
 - Advanced graphics manipulation tools
@@ -39,24 +40,28 @@ Finish a comprehensive development tool:
 ## Tier Overview
 
 **Lessons 1-8: Tool Integration and Architecture**
+
 - Integrating all graphics and editing systems
 - Creating solid tool architecture
 - Building efficient, responsive user interfaces
 - Optimizing for complex editing operations
 
 **Lessons 9-16: Advanced Editing Features**
+
 - Implementing sophisticated level design tools
 - Creating advanced graphics manipulation features
 - Building efficient undo/redo systems
 - Adding solid editing capabilities
 
 **Lessons 17-24: File Management and Export**
+
 - Implementing comprehensive save/load systems
 - Creating export functionality for game development
 - Building file format compatibility
 - Designing for workflow integration
 
 **Lessons 25-32: Professional Polish and Completion**
+
 - Final optimisation and performance tuning
 - Creating comprehensive help and tutorial systems
 - Building user-friendly workflows

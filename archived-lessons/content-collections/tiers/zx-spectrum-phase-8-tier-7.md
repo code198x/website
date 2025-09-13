@@ -27,6 +27,7 @@ Create eternal classics! With **32 timeless-focused lessons**, you'll master the
 ## What You'll Master
 
 Develop **TIMELESS DESIGN MASTERY** that transcends eras:
+
 - Design principles that make games feel eternally fresh rather than dated
 - Aesthetic choices that become more beautiful with age rather than feeling obsolete
 - Gameplay mechanics that tap into universal human psychology and emotion
@@ -36,24 +37,28 @@ Develop **TIMELESS DESIGN MASTERY** that transcends eras:
 ## Timeless Design Areas
 
 **Lessons 1-8: "Universal Principles" - Design That Transcends Time**
+
 - Understanding the core human needs and desires that never go out of style
 - Creating gameplay mechanics that tap into fundamental psychological rewards
 - Designing challenges that feel fair, engaging, and meaningful across generations
 - Building systems that remain compelling even as players' skills and expectations evolve
 
 **Lessons 9-16: "Aesthetic Transcendence" - Beauty That Improves with Age**
+
 - Creating visual designs that become more appreciated over time
 - Using ZX Spectrum constraints to create distinctive, memorable aesthetic choices
 - Understanding how simplicity and clarity can achieve greater longevity than complexity
 - Designing art that feels intentional and meaningful rather than technically limited
 
 **Lessons 17-24: "Emotional Architecture" - Feelings That Never Fade**
+
 - Tapping into universal human emotions that remain constant across cultures and eras
 - Creating moments of wonder, discovery, and achievement that feel fresh every time
 - Understanding how nostalgia can enhance rather than replace genuine quality
 - Building emotional connections that deepen rather than diminish with repeated play
 
 **Lessons 25-32: "Classic Analysis" - Learning from the Eternal Masters**
+
 - Studying ZX Spectrum classics to understand what makes them timeless
 - Analyzing how games like Jet Set Willy and The Hobbit achieved lasting appeal
 - Understanding the balance between innovation and familiarity that creates classics

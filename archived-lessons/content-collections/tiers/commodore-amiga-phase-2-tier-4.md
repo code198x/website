@@ -27,6 +27,7 @@ The moment of truth has arrived! 🎆 With **32 intensive lessons**, you'll crea
 ## What You'll Build
 
 Create **"AMIGA ADVENTURE"** - a complete side-scrolling action game featuring:
+
 - Smooth character animation with multiple states and behaviors 🎭
 - Pixel-perfect collision detection for platforms, enemies, and collectibles
 - Dynamic audio that responds to gameplay with music and sound effects
@@ -36,24 +37,28 @@ Create **"AMIGA ADVENTURE"** - a complete side-scrolling action game featuring:
 ## Project Overview
 
 **Lessons 1-8: "Foundation Architecture" - Building the Game Engine**
+
 - Game loop design and state management systems
 - Memory management for sprites, audio, and level data
 - Integration of animation, collision, and audio systems
 - Professional code organization and modular design
 
 **Lessons 9-16: "Core Gameplay" - Making It Fun**
+
 - Player character with full animation set and responsive controls
 - Enemy AI with multiple behavior patterns
 - Collectible items and power-up systems
 - Level progression and difficulty scaling
 
 **Lessons 17-24: "Polish and Features" - Amiga-Style Excellence**
+
 - Visual effects using Copper and Blitter
 - Professional UI design and player feedback systems
 - Save/load functionality and high score tracking
 - Sound effect integration and dynamic music transitions
 
 **Lessons 25-32: "Completion and Portfolio" - Professional Finish**
+
 - Comprehensive testing and bug fixing methodologies
 - Performance optimization for smooth 50fps gameplay
 - Documentation and code commenting for portfolio presentation

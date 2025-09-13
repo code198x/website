@@ -27,6 +27,7 @@ Achieve the technically impossible! With **32 technical mastery lessons**, you'l
 ## What You'll Master
 
 Achieve **ULTIMATE NES TECHNICAL MASTERY**:
+
 - 6502 programming techniques that push the processor to its absolute limits
 - Hardware manipulation that creates effects seeming impossible on NES
 - Optimization so advanced it makes the impossible look effortless
@@ -36,24 +37,28 @@ Achieve **ULTIMATE NES TECHNICAL MASTERY**:
 ## Technical Mastery Development
 
 **Lessons 1-8: "Ultimate 6502 Mastery" - Processor Perfection**
+
 - The most advanced 6502 assembly programming techniques possible
 - Extreme optimization methods that maximize every clock cycle
 - Advanced mathematical operations and computational techniques
 - Memory management mastery for complex technical achievements
 
 **Lessons 9-16: "Hardware Exploitation" - Beyond Design Limits**
+
 - Exploiting undocumented NES hardware features and edge cases
 - Advanced PPU programming and visual effect creation
 - Sophisticated audio programming using every APU capability
 - Memory banking mastery and advanced mapper programming
 
 **Lessons 17-24: "Impossible Effects" - Technical Artistry**
+
 - Creating visual effects that seem impossible on NES hardware
 - Advanced sprite manipulation and multiplexing techniques
 - Real-time calculations and dynamic system modifications
 - Technical innovations that inspire awe and admiration
 
 **Lessons 25-32: "Programming Perfection" - Technical Excellence**
+
 - Code so optimized it becomes a study in programming artistry
 - Technical solutions that enable the most ambitious game concepts
 - Performance achievements that redefine NES capabilities
@@ -62,18 +67,21 @@ Achieve **ULTIMATE NES TECHNICAL MASTERY**:
 ## Technical Achievement Areas
 
 **Advanced Programming Techniques**:
+
 - **Cycle-Perfect Code** - Programming that utilizes every processor cycle optimally
 - **Memory Artistry** - Managing every byte with mathematical precision
 - **Algorithmic Excellence** - Implementing complex algorithms within NES constraints
 - **Code Elegance** - Technical solutions that are both powerful and beautiful
 
 **Hardware Mastery**:
+
 - **PPU Virtuosity** - Creating visual effects that seem impossible
 - **APU Mastery** - Audio programming that maximizes every sound channel
 - **Mapper Innovation** - Advanced memory banking and storage techniques
 - **Timing Perfection** - Real-time programming with precise hardware synchronization
 
 **Performance Excellence**:
+
 - **Optimization Artistry** - Making complex systems run smoothly at 60fps
 - **Resource Efficiency** - Achieving maximum results with minimal resources
 - **Scalable Solutions** - Technical architectures that handle increasing complexity

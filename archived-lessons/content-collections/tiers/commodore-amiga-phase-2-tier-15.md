@@ -27,6 +27,7 @@ Welcome to the symphony of the future! 🎶 With **32 audio-mastery lessons**, y
 ## What You'll Build
 
 Create **AMIGA AUDIO MASTERPIECE** - an advanced sound system featuring:
+
 - Real-time audio synthesis that creates sounds on-the-fly 🎹
 - Advanced mixing systems that rival professional studio equipment
 - Interactive music that responds to every aspect of gameplay
@@ -36,24 +37,28 @@ Create **AMIGA AUDIO MASTERPIECE** - an advanced sound system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Advanced Paula Mastery" - Unlocking Hidden Capabilities**
+
 - Master-level Paula programming and register manipulation
 - Advanced DMA audio management and optimization
 - Complex waveform generation and audio synthesis
 - Paula hardware tricks and undocumented features
 
 **Lessons 9-16: "Real-time Audio Synthesis" - Creating Sounds from Code**
+
 - Procedural sound generation and synthesis algorithms
 - Real-time waveform manipulation and modulation
 - Advanced filter simulation and audio processing
 - Dynamic sound creation based on gameplay events
 
 **Lessons 17-24: "Interactive Music Systems" - Responsive Composition**
+
 - Adaptive music that changes with gameplay state
 - Real-time composition and arrangement algorithms
 - Interactive soundtracks that respond to player actions
 - Advanced music streaming and memory management
 
 **Lessons 25-32: "Professional Audio Architecture" - Commercial-Quality Sound**
+
 - Advanced multi-channel mixing and audio pipeline design
 - Professional audio debugging and analysis tools
 - Audio performance optimization and resource management

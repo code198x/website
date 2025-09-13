@@ -27,6 +27,7 @@ Build professional game engines for ZX Spectrum! With **32 architecture-focused 
 ## What You'll Build
 
 Create **SPECTRUM GAME ENGINE** - your reusable architecture masterpiece:
+
 - Modular engine components that can be mixed and matched
 - Professional resource management and asset loading systems
 - Reusable game object frameworks optimized for Z80
@@ -36,24 +37,28 @@ Create **SPECTRUM GAME ENGINE** - your reusable architecture masterpiece:
 ## Technical Architecture Areas
 
 **Lessons 1-8: "Engine Fundamentals" - Core Architecture Design**
+
 - Game engine architecture patterns and design principles
 - Modular system design for maximum reusability on ZX Spectrum
 - Component-based entity systems in efficient Z80 assembly
 - Professional code organization and structure techniques
 
 **Lessons 9-16: "Resource Management" - Asset and Memory Systems**
+
 - Advanced memory management for game engines on Spectrum
 - Asset loading and caching systems within memory constraints
 - Graphics and audio resource management optimization
 - Dynamic memory allocation and garbage collection techniques
 
 **Lessons 17-24: "System Integration" - Engine Component Design**
+
 - Graphics rendering system architecture for ZX Spectrum
 - Audio system integration and real-time mixing
 - Input handling and event system design
 - Game state management and scene systems
 
 **Lessons 25-32: "Engine Polish" - Professional Documentation**
+
 - Complete engine documentation and usage examples
 - API design for ease of use and maximum flexibility
 - Testing and validation of engine components

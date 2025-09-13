@@ -42,7 +42,7 @@ FileHeader:
     DataLength:     DW 0    ; Length of data
     StartAddress:   DW 0    ; Start address (for programs)
     Unused:         DW 0    ; Unused parameter
-    
+
 ; File types
 TYPE_PROGRAM:   EQU 0
 TYPE_ARRAY:     EQU 1
@@ -60,27 +60,27 @@ SaveScreen:
     ; Set up header
     LD A, TYPE_SCREEN
     LD (FileHeader), A
-    
+
     ; Set filename
     LD HL, ScreenName
     LD DE, FileHeader + 1
     LD BC, 10
     LDIR
-    
+
     ; Set data length
     LD HL, 6912         ; Screen + attributes
     LD (FileHeader + 11), HL
-    
+
     ; Set start address
     LD HL, 16384
     LD (FileHeader + 13), HL
-    
+
     ; Save header
     LD A, 0             ; Header flag
     LD DE, FileHeader
     LD BC, 17
     CALL 1218           ; ROM save routine
-    
+
     ; Save data
     LD A, 255           ; Data flag
     LD DE, 16384        ; Screen memory
@@ -140,23 +140,23 @@ CreatePaintFile:
     LD DE, CurrentFile
     LD BC, 10
     LDIR
-    
+
     ; Set file open flag
     LD A, 1
     LD (FileOpen), A
-    
+
     ; Initialize header
     LD HL, FileHeader
     LD DE, Magic
     LD BC, 16
     LDIR
-    
+
     ; Set current dimensions
     LD HL, 256
     LD (Width), HL
     LD HL, 192
     LD (Height), HL
-    
+
     RET
 
 ; Save current screen to file
@@ -165,31 +165,31 @@ SavePaintFile:
     LD A, (FileOpen)
     OR A
     RET Z               ; No file open
-    
+
     ; Prepare for save
     CALL PrepareFileData
-    
+
     ; Save header first
     LD A, TYPE_CODE
     LD HL, CurrentFile
     LD DE, FileHeader
     LD BC, 16
     CALL SaveBlock
-    
+
     ; Save screen data
     LD A, TYPE_CODE
     LD HL, CurrentFile
     LD DE, 16384        ; Screen memory
     LD BC, 6144         ; Display file only
     CALL SaveBlock
-    
+
     ; Save attributes
     LD A, TYPE_CODE
     LD HL, CurrentFile
     LD DE, 22528        ; Attribute memory
     LD BC, 768          ; Attribute size
     CALL SaveBlock
-    
+
     RET
 
 ; Save a block of data
@@ -200,13 +200,13 @@ SaveBlock:
     PUSH HL
     PUSH DE
     PUSH BC
-    
+
     ; Create temporary header
     LD HL, TempHeader
     LD A, TYPE_CODE
     LD (HL), A
     INC HL
-    
+
     ; Copy filename
     POP BC
     PUSH BC
@@ -218,21 +218,21 @@ SaveBlock:
     LD DE, TempHeader + 1
     LD BC, 10
     LDIR
-    
+
     ; Set data length
     POP BC
     PUSH BC
     LD (TempHeader + 11), BC
-    
+
     ; Set start address
     POP DE
     PUSH DE
     LD (TempHeader + 13), DE
-    
+
     ; Simulate save operation
     ; (In real system would call ROM tape routines)
     CALL SimulateSave
-    
+
     POP BC
     POP DE
     POP HL
@@ -246,10 +246,10 @@ LoadPaintFile:
     LD DE, CurrentFile
     LD BC, 10
     LDIR
-    
+
     ; Load header
     CALL LoadFileHeader
-    
+
     ; Verify magic number
     LD HL, FileHeader
     LD A, (HL)
@@ -259,21 +259,21 @@ LoadPaintFile:
     LD A, (HL)
     CP MAGIC_NUMBER >> 8
     JR NZ, LoadError
-    
+
     ; Load screen data
     LD DE, 16384
     LD BC, 6144
     CALL LoadBlock
-    
+
     ; Load attributes
     LD DE, 22528
     LD BC, 768
     CALL LoadBlock
-    
+
     ; Set file open flag
     LD A, 1
     LD (FileOpen), A
-    
+
     ; Return success
     LD A, 0
     RET
@@ -287,7 +287,7 @@ LoadError:
 LoadFileHeader:
     ; Simulate header load
     ; In real system: CALL ROM load routines
-    
+
     ; For demo, copy default header
     LD HL, DefaultHeader
     LD DE, FileHeader
@@ -302,7 +302,7 @@ LoadBlock:
     ; For demo, just clear the area
     PUSH DE
     PUSH BC
-    
+
 LoadBlockLoop:
     LD A, 0
     LD (DE), A
@@ -311,7 +311,7 @@ LoadBlockLoop:
     LD A, B
     OR C
     JR NZ, LoadBlockLoop
-    
+
     POP BC
     POP DE
     RET
@@ -322,7 +322,7 @@ PrepareFileData:
     LD A, (Compression)
     OR A
     RET Z               ; No compression
-    
+
     ; Apply RLE compression
     CALL ApplyRLECompression
     RET
@@ -337,28 +337,28 @@ FileDemo:
     ; Create new file
     LD HL, TestFileName
     CALL CreatePaintFile
-    
+
     ; Draw test pattern in screen memory
     CALL DrawTestPattern
-    
+
     ; Save the file
     CALL SavePaintFile
-    
+
     ; Clear screen
     CALL ClearScreen
-    
+
     ; Load the file back
     LD HL, TestFileName
     CALL LoadPaintFile
-    
+
     ; Check if load was successful
     OR A
     JR Z, LoadSuccess
-    
+
     ; Load failed
     LD B, 1             ; Error code
     RET
-    
+
 LoadSuccess:
     LD B, 255           ; Success
     RET
@@ -369,20 +369,20 @@ TestFileName:   DB "TESTPIC   "
 DrawTestPattern:
     LD HL, 16384
     LD B, 192
-    
+
 PatternLoop:
     LD A, B
     AND 7
     LD C, A
     LD A, 255
-    
+
 PatternShift:
     OR A
     JR Z, PatternDone
     RRA
     DEC C
     JR NZ, PatternShift
-    
+
 PatternDone:
     LD (HL), A
     INC HL
@@ -421,26 +421,26 @@ CompressRLE:
     LD (CompressSource), HL
     LD (CompressDest), DE
     LD (SourceLength), BC
-    
+
     LD HL, 0
     LD (CompressedSize), HL
-    
+
     LD HL, (CompressSource)
     LD DE, (CompressDest)
-    
+
 CompressLoop:
     ; Check remaining length
     LD BC, (SourceLength)
     LD A, B
     OR C
     JP Z, CompressDone
-    
+
     ; Get current byte
     LD A, (HL)
     LD B, A             ; Save value
     LD C, 1             ; Count = 1
     INC HL
-    
+
     ; Count consecutive bytes
 CountLoop:
     ; Check if more data
@@ -452,22 +452,22 @@ CountLoop:
     OR L
     POP HL
     JR Z, WriteRun
-    
+
     ; Check if same value
     LD A, (HL)
     CP B
     JR NZ, WriteRun
-    
+
     ; Same value - increment count
     INC C
     INC HL
-    
+
     ; Check max run length (255)
     LD A, C
     CP 255
     JR Z, WriteRun
     JR CountLoop
-    
+
 WriteRun:
     ; Write count and value
     LD A, C
@@ -476,15 +476,15 @@ WriteRun:
     LD A, B
     LD (DE), A          ; Value
     INC DE
-    
+
     ; Update compressed size
     LD HL, (CompressedSize)
     INC HL
     INC HL
     LD (CompressedSize), HL
-    
+
     JR CompressLoop
-    
+
 CompressDone:
     LD BC, (CompressedSize)
     RET
@@ -494,29 +494,29 @@ CompressDone:
 DecompressRLE:
     LD (DecompressSource), HL
     LD (DecompressDest), DE
-    
+
     LD HL, (DecompressSource)
     LD DE, (DecompressDest)
-    
+
 DecompressLoop:
     ; Get count (0 = end marker)
     LD A, (HL)
     OR A
     RET Z               ; End of data
-    
+
     LD B, A             ; Count
     INC HL
-    
+
     ; Get value
     LD A, (HL)
     INC HL
-    
+
     ; Write repeated value
 WriteLoop:
     LD (DE), A
     INC DE
     DJNZ WriteLoop
-    
+
     JR DecompressLoop
 
 ; Storage for compression
@@ -553,27 +553,27 @@ BuildDictionary:
     LD BC, MAX_DICT_ENTRIES * PATTERN_SIZE - 1
     LD (HL), 0
     LDIR
-    
+
     XOR A
     LD (DictEntries), A
-    
+
     ; Scan for common patterns
     LD HL, (ImageData)
     LD BC, (ImageSize)
-    
+
 ScanLoop:
     ; Check remaining data
     LD A, B
     OR C
     RET Z
-    
+
     ; Check if pattern exists
     CALL FindPattern
     JR NC, PatternExists
-    
+
     ; Add new pattern if space
     CALL AddPattern
-    
+
 PatternExists:
     ; Move to next position
     INC HL
@@ -590,14 +590,14 @@ FindPattern:
     OR A
     SCF
     RET Z               ; Empty dictionary
-    
+
     LD C, 0             ; Index counter
-    
+
 FindLoop:
     PUSH BC
     PUSH DE
     PUSH HL
-    
+
     ; Compare pattern
     LD B, PATTERN_SIZE
 CompareLoop:
@@ -607,7 +607,7 @@ CompareLoop:
     INC HL
     INC DE
     DJNZ CompareLoop
-    
+
     ; Pattern matches
     POP HL
     POP DE
@@ -615,12 +615,12 @@ CompareLoop:
     LD A, C             ; Return index
     OR A                ; Clear carry
     RET
-    
+
 NoMatch:
     POP HL
     POP DE
     POP BC
-    
+
     ; Next dictionary entry
     LD A, PATTERN_SIZE
     ADD E
@@ -630,7 +630,7 @@ NoMatch:
 NoCarry:
     INC C
     DJNZ FindLoop
-    
+
     SCF                 ; Pattern not found
     RET
 
@@ -640,14 +640,14 @@ AddPattern:
     LD A, (DictEntries)
     CP MAX_DICT_ENTRIES
     RET NC              ; Dictionary full
-    
+
     ; Calculate dictionary position
     LD B, 0
     LD C, A
     PUSH HL
     LD HL, Dictionary
     LD A, PATTERN_SIZE
-    
+
 CalcOffset:
     ADD C
     JR NC, NoOverflow
@@ -661,11 +661,11 @@ DoneCalc:
     ADD HL, BC
     LD DE, HL
     POP HL
-    
+
     ; Copy pattern
     LD BC, PATTERN_SIZE
     LDIR
-    
+
     ; Increment entry count
     LD HL, DictEntries
     INC (HL)
@@ -677,40 +677,40 @@ CompressDict:
     LD (CompressSource), HL
     LD (CompressDest), DE
     LD (SourceLength), BC
-    
+
     ; Build dictionary first
     CALL BuildDictionary
-    
+
     ; Compress data
     LD HL, (CompressSource)
     LD DE, (CompressDest)
     LD BC, (SourceLength)
-    
+
 CompressDictLoop:
     ; Check remaining data
     LD A, B
     OR C
     JP Z, CompressDictDone
-    
+
     ; Try to find pattern
     CALL FindPattern
     JR C, SingleByte
-    
+
     ; Found pattern - encode as index
     LD (DE), A          ; Dictionary index
     INC DE
-    
+
     ; Skip pattern bytes
     LD A, PATTERN_SIZE
     SUB 1               ; -1 because we'll inc HL below
-    
+
 SkipBytes:
     INC HL
     DEC BC
     DEC A
     JR NZ, SkipBytes
     JR NextByte
-    
+
 SingleByte:
     ; Single byte - mark as literal
     LD A, 255           ; Literal marker
@@ -719,12 +719,12 @@ SingleByte:
     LD A, (HL)          ; Actual byte
     LD (DE), A
     INC DE
-    
+
 NextByte:
     INC HL
     DEC BC
     JR CompressDictLoop
-    
+
 CompressDictDone:
     ; Write end marker
     XOR A
@@ -735,30 +735,30 @@ CompressDictDone:
 ; Input: HL = compressed data, DE = destination
 DecompressDict:
     PUSH DE
-    
+
     ; First, restore dictionary (would be saved with file)
     ; For demo, use current dictionary
-    
+
     POP DE
-    
+
 DecompressDictLoop:
     LD A, (HL)
     INC HL
-    
+
     ; Check for end marker
     OR A
     RET Z
-    
+
     ; Check for literal marker
     CP 255
     JR Z, DecompressLiteral
-    
+
     ; Dictionary index - expand pattern
     PUSH HL
     CALL ExpandPattern
     POP HL
     JR DecompressDictLoop
-    
+
 DecompressLiteral:
     ; Copy literal byte
     LD A, (HL)
@@ -775,7 +775,7 @@ ExpandPattern:
     LD B, 0
     LD C, A
     LD A, PATTERN_SIZE
-    
+
 CalcPattern:
     ADD C
     JR NC, PatternOK
@@ -787,7 +787,7 @@ PatternOK:
 PatternDone:
     LD C, A
     ADD HL, BC
-    
+
     ; Copy pattern
     LD BC, PATTERN_SIZE
     LDIR
@@ -800,27 +800,27 @@ TestCompression:
     LD (ImageData), HL
     LD HL, 64
     LD (ImageSize), HL
-    
+
     ; Test RLE compression
     LD HL, TestData
     LD DE, CompressedData
     LD BC, 64
     CALL CompressRLE
-    
+
     ; Store compressed size
     LD (RLESize), BC
-    
+
     ; Test dictionary compression
     LD HL, TestData
     LD DE, DictCompressed
     LD BC, 64
     CALL CompressDict
-    
+
     ; Decompress and verify
     LD HL, CompressedData
     LD DE, DecompressedData
     CALL DecompressRLE
-    
+
     ; Return size difference
     LD HL, (RLESize)
     LD B, H
@@ -859,7 +859,7 @@ CalculateChecksum:
     ; Input: HL = data, BC = length
     ; Output: DE = checksum
     LD DE, 0            ; Initialize checksum
-    
+
 ChecksumLoop:
     LD A, (HL)
     ADD E
@@ -880,13 +880,13 @@ VerifyFile:
     LD HL, 16384        ; Screen data
     LD BC, 6912         ; Total size
     CALL CalculateChecksum
-    
+
     ; Compare with stored checksum
     LD HL, (StoredChecksum)
     OR A
     SBC HL, DE
     RET Z               ; Checksums match
-    
+
     ; File corrupted
     SCF
     RET
@@ -903,7 +903,7 @@ AutoSave:
     LD A, (AutoSaveEnabled)
     OR A
     RET Z
-    
+
     ; Check timer
     LD HL, (AutoSaveTimer)
     DEC HL
@@ -911,11 +911,11 @@ AutoSave:
     LD A, H
     OR L
     RET NZ              ; Not time yet
-    
+
     ; Reset timer
     LD HL, AUTO_SAVE_INTERVAL
     LD (AutoSaveTimer), HL
-    
+
     ; Save backup file
     LD HL, BackupFileName
     CALL CreatePaintFile
@@ -929,7 +929,7 @@ RecoverBackup:
     CALL LoadPaintFile
     OR A
     RET Z               ; Recovery successful
-    
+
     ; Backup failed - clear screen
     CALL ClearScreen
     SCF                 ; Signal recovery failed
@@ -985,13 +985,13 @@ CreateThumbnail:
     ; Target: 16x12 thumbnail
     LD HL, 16384        ; Source screen
     LD DE, ThumbnailData ; Destination
-    
+
     ; Sample every 16th pixel horizontally, 16th line vertically
     LD B, 12            ; Thumbnail height
-    
+
 ThumbYLoop:
     PUSH BC
-    
+
     ; Calculate source line
     LD A, 12
     SUB B               ; Current thumbnail row
@@ -1001,53 +1001,53 @@ ThumbYLoop:
     ADD HL, HL          ; × 4
     ADD HL, HL          ; × 8
     ADD HL, HL          ; × 16 (multiply by 16)
-    
+
     ; Add to base address
     PUSH HL
     LD HL, 16384
     ADD HL, BC
-    
+
     ; Sample 16 pixels horizontally
     LD B, 16            ; Thumbnail width in bits
     LD C, 0             ; Accumulator
     LD D, 0             ; Bit counter
-    
+
 ThumbXLoop:
     ; Sample pixel (simplified - just read every 16th byte)
     LD A, (HL)
     AND 128             ; Test leftmost pixel
     JR Z, PixelOff
-    
+
     ; Set bit in thumbnail
     SCF
     RL C
     JR NextThumbPixel
-    
+
 PixelOff:
     OR A
     RL C
-    
+
 NextThumbPixel:
     ; Advance source by 16 pixels (2 bytes)
     INC HL
     INC HL
-    
+
     ; Next thumbnail pixel
     INC D
     LD A, D
     CP 8
     JR NZ, SameByte
-    
+
     ; Store completed byte
     LD A, C
     LD (DE), A
     INC DE
     LD C, 0
     LD D, 0
-    
+
 SameByte:
     DJNZ ThumbXLoop
-    
+
     ; Store final byte if needed
     LD A, D
     OR A
@@ -1055,12 +1055,12 @@ SameByte:
     LD A, C
     LD (DE), A
     INC DE
-    
+
 NextThumbRow:
     POP HL
     POP BC
     DJNZ ThumbYLoop
-    
+
     ; Store thumbnail size
     LD HL, 24           ; 16x12 = 192 bits = 24 bytes
     LD (ThumbnailSize), HL
@@ -1070,35 +1070,35 @@ NextThumbRow:
 SaveExtendedFile:
     ; Update header fields
     CALL UpdateTimestamp
-    
+
     ; Calculate data checksum
     LD HL, 16384
     LD BC, 6912
     CALL CalculateChecksum
     LD (ExtFileHeader + 14), DE
-    
+
     ; Create thumbnail
     CALL CreateThumbnail
-    
+
     ; Set thumbnail offset
     LD HL, 32 + 6912    ; After header and main data
     LD (ThumbnailOffset), HL
-    
+
     ; Prepare metadata
     CALL PrepareMetadata
-    
-    ; Set metadata offset  
+
+    ; Set metadata offset
     LD HL, (ThumbnailOffset)
     LD BC, (ThumbnailSize)
     ADD HL, BC
     LD (MetadataOffset), HL
-    
+
     ; Save file components
     CALL SaveExtendedHeader
     CALL SaveMainData
     CALL SaveThumbnailData
     CALL SaveMetadataBlock
-    
+
     RET
 
 ; Load extended format file
@@ -1107,10 +1107,10 @@ LoadExtendedFile:
     CALL LoadExtendedHeader
     CALL VerifyMagicNumber
     JR NZ, LoadExtError
-    
+
     ; Load main image data
     CALL LoadMainData
-    
+
     ; Verify checksum
     LD HL, 16384
     LD BC, 6912
@@ -1119,24 +1119,24 @@ LoadExtendedFile:
     OR A
     SBC HL, DE
     JR NZ, ChecksumError
-    
+
     ; Load thumbnail (optional)
     LD A, (ThumbnailSize)
     OR A
     JR Z, SkipThumbnail
     CALL LoadThumbnailData
-    
+
 SkipThumbnail:
     ; Load metadata (optional)
     LD A, (MetadataSize)
     OR A
     JR Z, LoadExtSuccess
     CALL LoadMetadataBlock
-    
+
 LoadExtSuccess:
     XOR A               ; Success
     RET
-    
+
 LoadExtError:
 ChecksumError:
     LD A, 1             ; Error
@@ -1159,13 +1159,13 @@ PrepareMetadata:
     LD DE, Metadata
     LD BC, 128          ; Metadata size
     LDIR
-    
+
     ; Update edit statistics
     LD HL, (EditCount)
     INC HL
     LD (EditCount), HL
     LD (Metadata + 118), HL
-    
+
     ; Set metadata size
     LD HL, 128
     LD (MetadataSize), HL
@@ -1215,23 +1215,23 @@ ExtendedFileDemo:
     LD DE, CurrentMetadata
     LD BC, 20
     LDIR
-    
+
     ; Create test image
     CALL DrawTestPattern
-    
+
     ; Save extended file
     CALL SaveExtendedFile
-    
+
     ; Clear and reload
     CALL ClearScreen
     CALL LoadExtendedFile
-    
+
     ; Check result
     OR A
     JR Z, ExtSuccess
     LD B, 1             ; Error
     RET
-    
+
 ExtSuccess:
     LD B, 255           ; Success
     RET
@@ -1249,11 +1249,11 @@ FastSave:
     ; Use larger buffer sizes
     ; Minimize system calls
     ; Batch operations
-    
+
     ; Pre-allocate buffers
     LD HL, LARGE_BUFFER
     LD BC, 8192         ; 8K buffer
-    
+
     ; Stream data in chunks
 SaveChunk:
     ; Process 1K at a time
@@ -1298,7 +1298,7 @@ ERR_ACCESS_DENIED:  EQU 4
 FileOperation:
     LD (LastError), A   ; Clear error
     XOR A
-    
+
     OR A                ; Check operation
     JP Z, FileOp_Load
     DEC A
@@ -1332,18 +1332,18 @@ SavePaintFile:
     ; Check disk space (simulated)
     CALL CheckDiskSpace
     JR C, SaveError_DiskFull
-    
+
     ; Backup existing file
     CALL BackupExistingFile
-    
+
     ; Attempt save
     CALL PerformSave
     JR C, SaveError_WriteError
-    
+
     ; Verify saved file
     CALL VerifyLastSave
     JR C, SaveError_VerifyFailed
-    
+
     ; Success
     XOR A
     LD (LastError), A
@@ -1367,11 +1367,11 @@ LoadPaintFile:
     ; Try primary file
     CALL AttemptLoad
     JR NC, LoadSuccess
-    
+
     ; Try backup file
     CALL LoadBackupFile
     JR NC, LoadSuccess
-    
+
     ; Load failed
     LD A, ERR_FILE_NOT_FOUND
     LD (LastError), A
@@ -1388,22 +1388,22 @@ ListFiles:
     ; Simulate directory listing
     LD HL, FileList
     LD B, 5             ; 5 demo files
-    
+
 ListLoop:
     PUSH BC
     PUSH HL
-    
+
     ; Display filename (would show on screen)
     CALL ShowFileName
-    
+
     ; Next filename (10 chars each)
     POP HL
     LD BC, 10
     ADD HL, BC
-    
+
     POP BC
     DJNZ ListLoop
-    
+
     ; Update file count
     LD A, 5
     LD (FileCount), A
@@ -1415,17 +1415,17 @@ ProcessAutoSave:
     LD A, (AutoSave)
     OR A
     RET Z
-    
+
     ; Check timer (would be called periodically)
     LD A, (AutoSaveTimer)
     DEC A
     LD (AutoSaveTimer), A
     RET NZ
-    
+
     ; Time to auto-save
     LD A, 60            ; Reset timer (60 frames)
     LD (AutoSaveTimer), A
-    
+
     ; Save backup
     LD HL, AutoSaveFile
     CALL SavePaintFile
@@ -1437,16 +1437,16 @@ RecoverSession:
     LD HL, AutoSaveFile
     CALL LoadPaintFile
     JR NC, RecoverSuccess
-    
+
     ; Try backup files
     LD HL, BackupFile1
     CALL LoadPaintFile
     JR NC, RecoverSuccess
-    
+
     LD HL, BackupFile2
     CALL LoadPaintFile
     JR NC, RecoverSuccess
-    
+
     ; No recovery possible
     CALL InitializeNewFile
     LD A, ERR_FILE_NOT_FOUND
@@ -1484,31 +1484,31 @@ FileSystemDemo:
     XOR A
     LD (FileCount), A
     LD (LastError), A
-    
+
     ; Test save operation
     LD A, 1             ; Save operation
     LD HL, TestFile
     CALL FileOperation
     OR A
     JR NZ, DemoError
-    
+
     ; Test load operation
     LD A, 0             ; Load operation
     LD HL, TestFile
     CALL FileOperation
     OR A
     JR NZ, DemoError
-    
+
     ; Test file listing
     LD A, 3             ; List operation
     CALL FileOperation
-    
+
     ; Test auto-save
     CALL ProcessAutoSave
-    
+
     ; Test recovery
     CALL RecoverSession
-    
+
     ; Success
     LD B, 255
     RET

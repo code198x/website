@@ -33,6 +33,7 @@ Welcome to the fascinating world of ZX Spectrum graphics programming! The Spectr
 ### Screen Architecture Overview
 
 The ZX Spectrum display consists of:
+
 - **256×192 pixel resolution** in the main display area
 - **32×24 character cells** (8×8 pixels each)
 - **Two colors per character cell**: INK (foreground) and PAPER (background)
@@ -84,7 +85,7 @@ PlotPixel:
     AND 7               ; y mod 8 = pixel row within character
     OR 64               ; Set bit 6 (0100 0000)
     LD H, A             ; Store in H (high byte partial)
-    
+
     LD A, C             ; y coordinate again
     RRA                 ; Shift right (divide by 2)
     RRA
@@ -92,13 +93,13 @@ PlotPixel:
     AND 24              ; Keep bits 3-4 (character row within third)
     OR H                ; Combine with pixel row
     LD H, A             ; H = high byte of address
-    
+
     LD A, C             ; y coordinate
     RLA                 ; Shift left
     RLA                 ; × 4
     AND 224             ; Keep top 3 bits (third number)
     LD L, A             ; Store in L (low byte partial)
-    
+
     LD A, B             ; x coordinate
     RRA                 ; Divide by 8
     RRA
@@ -106,7 +107,7 @@ PlotPixel:
     AND 31              ; x / 8 = character column
     OR L                ; Combine with third info
     LD L, A             ; L = low byte of address
-    
+
     ; Now HL points to the byte containing our pixel
     ; Calculate pixel mask
     LD A, B             ; x coordinate
@@ -114,11 +115,11 @@ PlotPixel:
     LD B, A             ; Save bit position
     LD A, 128           ; Start with leftmost bit
     JR Z, PlotBit       ; If bit 0, we're ready
-    
+
 ShiftLoop:
     RRA                 ; Shift right for each bit position
     DJNZ ShiftLoop
-    
+
 PlotBit:
     OR (HL)             ; Set the pixel
     LD (HL), A          ; Write back to screen
@@ -141,7 +142,7 @@ PlotPixel:
     AND 7               ; y mod 8 = pixel row within character
     OR 64               ; Set bit 6 (0100 0000)
     LD H, A             ; Store in H (high byte partial)
-    
+
     LD A, C             ; y coordinate again
     RRA                 ; Shift right
     RRA
@@ -149,13 +150,13 @@ PlotPixel:
     AND 24              ; Keep bits 3-4
     OR H                ; Combine with pixel row
     LD H, A             ; H = high byte of address
-    
+
     LD A, C             ; y coordinate
     RLA                 ; Shift left
     RLA                 ; × 4
     AND 224             ; Keep top 3 bits (third number)
     LD L, A             ; Store in L
-    
+
     LD A, B             ; x coordinate
     RRA                 ; Divide by 8
     RRA
@@ -163,18 +164,18 @@ PlotPixel:
     AND 31              ; x / 8 = character column
     OR L                ; Combine with third info
     LD L, A             ; L = low byte of address
-    
+
     ; Calculate pixel mask
     LD A, B             ; x coordinate
     AND 7               ; x mod 8 = pixel within byte
     LD B, A             ; Save bit position
     LD A, 128           ; Start with leftmost bit
     JR Z, PlotBit       ; If bit 0, we're ready
-    
+
 ShiftLoop:
     RRA                 ; Shift right for each bit position
     DJNZ ShiftLoop
-    
+
 PlotBit:
     OR (HL)             ; Set the pixel
     LD (HL), A          ; Write back to screen
@@ -192,7 +193,7 @@ ClearScreen:
 ; Test pixel plotting
 TestPixelPlot:
     CALL ClearScreen
-    
+
     ; Plot a diagonal line
     LD D, 50            ; Starting position
 DiagonalLoop:
@@ -203,7 +204,7 @@ DiagonalLoop:
     LD A, D
     CP 150              ; End at 150
     JR NZ, DiagonalLoop
-    
+
     ; Plot a horizontal line
     LD C, 100           ; y = 100
     LD D, 20            ; x start
@@ -214,7 +215,7 @@ HorizontalLoop:
     LD A, D
     CP 236              ; End at 235
     JR NZ, HorizontalLoop
-    
+
     ; Plot a vertical line
     LD B, 128           ; x = 128 (center)
     LD D, 10            ; y start
@@ -225,7 +226,7 @@ VerticalLoop:
     LD A, D
     CP 182              ; End at 181
     JR NZ, VerticalLoop
-    
+
     ; Plot a square
     ; Top line
     LD C, 50            ; y = 50
@@ -237,7 +238,7 @@ SquareTop:
     LD A, D
     CP 176              ; 96 pixels wide
     JR NZ, SquareTop
-    
+
     ; Right line
     LD B, 175           ; x = 175
     LD D, 50            ; y start
@@ -248,7 +249,7 @@ SquareRight:
     LD A, D
     CP 115              ; 64 pixels tall
     JR NZ, SquareRight
-    
+
     ; Bottom line
     LD C, 114           ; y = 114
     LD D, 80            ; x start
@@ -259,7 +260,7 @@ SquareBottom:
     LD A, D
     CP 176
     JR NZ, SquareBottom
-    
+
     ; Left line
     LD B, 80            ; x = 80
     LD D, 50            ; y start
@@ -270,7 +271,7 @@ SquareLeft:
     LD A, D
     CP 115
     JR NZ, SquareLeft
-    
+
     ; Return success indicator
     LD B, 255
     RET
@@ -281,6 +282,7 @@ SquareLeft:
 ### Understanding Attributes
 
 Each 8×8 character cell has one attribute byte controlling:
+
 - **Bits 0-2**: INK color (foreground)
 - **Bits 3-5**: PAPER color (background)
 - **Bit 6**: BRIGHT (0 = normal, 1 = bright)
@@ -352,7 +354,7 @@ WHITE       EQU 7
 ; Input: B = x (0-31), C = y (0-23), A = attribute
 SetAttribute:
     PUSH AF             ; Save attribute value
-    
+
     ; Calculate attribute address
     LD H, 0
     LD L, C             ; HL = y
@@ -366,7 +368,7 @@ SetAttribute:
     ADD HL, DE          ; HL = y * 32 + x
     LD DE, ATTR_FILE
     ADD HL, DE          ; HL = attribute address
-    
+
     POP AF              ; Restore attribute
     LD (HL), A          ; Set attribute
     RET
@@ -380,13 +382,13 @@ TestAttributes:
     LD A, WHITE << 3    ; White paper, black ink
     LD (HL), A
     LDIR
-    
+
     ; Create rainbow columns
     LD C, 0             ; Start at top
 RainbowLoop:
     LD B, 0             ; Start at left
     LD D, 0             ; Color counter
-    
+
 ColorColumnLoop:
     ; Calculate attribute: color on black
     LD A, D             ; Current color
@@ -397,60 +399,60 @@ ColorColumnLoop:
     CALL SetAttribute
     POP DE
     POP BC
-    
+
     INC B               ; Next column
     INC D               ; Next color
     LD A, B
     CP 32               ; Check if done with row
     JR NZ, ColorColumnLoop
-    
+
     INC C               ; Next row
     LD A, C
     CP 24               ; Check if done with screen
     JR NZ, RainbowLoop
-    
+
     ; Create checkerboard pattern in center
     LD C, 8             ; Start row
 CheckerLoop:
     LD B, 8             ; Start column
-    
+
 CheckerColumnLoop:
     ; Calculate checkerboard pattern
     LD A, B
     ADD A, C
     AND 1               ; Odd or even?
     JR Z, CheckerWhite
-    
+
     ; Black square with white ink
     LD A, WHITE OR (BLACK << 3) OR 64  ; Bright white on black
     JR CheckerSet
-    
+
 CheckerWhite:
     ; White square with black ink
     LD A, BLACK OR (WHITE << 3) OR 64  ; Black on bright white
-    
+
 CheckerSet:
     PUSH BC
     CALL SetAttribute
     POP BC
-    
+
     INC B
     LD A, B
     CP 24               ; 16 columns
     JR NZ, CheckerColumnLoop
-    
+
     INC C
     LD A, C
     CP 16               ; 8 rows
     JR NZ, CheckerLoop
-    
+
     ; Create gradient effect at bottom
     LD C, 20            ; Start at row 20
     LD D, 0             ; Brightness counter
-    
+
 GradientLoop:
     LD B, 0             ; Start at left
-    
+
 GradientColumnLoop:
     ; Create blue gradient
     LD A, BLUE << 3     ; Blue paper
@@ -463,27 +465,27 @@ GradientColumnLoop:
     LD A, E
     OR 64               ; Add bright bit
     JR GradientSet
-    
+
 NoBright:
     LD A, E
-    
+
 GradientSet:
     PUSH BC
     PUSH DE
     CALL SetAttribute
     POP DE
     POP BC
-    
+
     INC B
     LD A, B
     CP 32
     JR NZ, GradientColumnLoop
-    
+
     INC C
     LD A, C
     CP 24
     JR NZ, GradientLoop
-    
+
     ; Return with pattern indicator
     LD B, 200
     RET
@@ -499,18 +501,18 @@ GradientSet:
 ReadPixel:
     ; Calculate screen address (same as PlotPixel)
     CALL CalculateScreenAddress  ; Assume this returns address in HL
-    
+
     ; Calculate pixel mask
     LD A, B             ; x coordinate
     AND 7               ; x mod 8
     LD B, A
     LD A, 128           ; Start with leftmost bit
     JR Z, ReadBit
-    
+
 ReadShiftLoop:
     RRA
     DJNZ ReadShiftLoop
-    
+
 ReadBit:
     AND (HL)            ; Test the pixel
     RET                 ; A = 0 if off, mask value if on
@@ -522,18 +524,18 @@ ReadBit:
 ; Clear pixel at coordinates (B, C)
 ClearPixel:
     CALL CalculateScreenAddress
-    
+
     ; Calculate pixel mask
     LD A, B             ; x coordinate
     AND 7               ; x mod 8
     LD B, A
     LD A, 128           ; Start with leftmost bit
     JR Z, ClearBit
-    
+
 ClearShiftLoop:
     RRA
     DJNZ ClearShiftLoop
-    
+
 ClearBit:
     CPL                 ; Complement to create clear mask
     AND (HL)            ; Clear the pixel
@@ -547,18 +549,18 @@ ClearBit:
 ; XOR pixel - useful for cursors and temporary graphics
 XORPixel:
     CALL CalculateScreenAddress
-    
+
     ; Calculate pixel mask
     LD A, B             ; x coordinate
     AND 7               ; x mod 8
     LD B, A
     LD A, 128
     JR Z, XORBit
-    
+
 XORShiftLoop:
     RRA
     DJNZ XORShiftLoop
-    
+
 XORBit:
     XOR (HL)            ; Toggle the pixel
     LD (HL), A          ; Write back
@@ -584,7 +586,7 @@ FastPixelAddr:
     INC HL
     LD H, (HL)          ; Get high byte
     LD L, A             ; HL = base address for line
-    
+
     ; Add x offset
     LD A, B
     RRA
@@ -593,14 +595,14 @@ FastPixelAddr:
     AND 31              ; x / 8
     ADD L
     LD L, A             ; Add to low byte
-    
+
     ; Calculate pixel mask
     LD A, B
     AND 7
     LD B, A
     LD A, 128
     RET Z               ; If bit 0, return mask
-    
+
 MaskLoop:
     RRA
     DJNZ MaskLoop
@@ -623,7 +625,7 @@ CalculateScreenAddress:
     AND 7               ; y mod 8
     OR 64               ; Set bit 6
     LD H, A
-    
+
     LD A, C             ; y coordinate
     RRA
     RRA
@@ -631,13 +633,13 @@ CalculateScreenAddress:
     AND 24              ; Keep bits 3-4
     OR H
     LD H, A
-    
+
     LD A, C             ; y coordinate
     RLA
     RLA                 ; × 4
     AND 224             ; Keep top 3 bits
     LD L, A
-    
+
     LD A, B             ; x coordinate
     RRA
     RRA
@@ -651,18 +653,18 @@ CalculateScreenAddress:
 ; Input: B = x, C = y
 XORPixel:
     CALL CalculateScreenAddress
-    
+
     ; Calculate pixel mask
     LD A, B
     AND 7
     LD B, A
     LD A, 128
     JR Z, XORBit
-    
+
 XORShiftLoop:
     RRA
     DJNZ XORShiftLoop
-    
+
 XORBit:
     XOR (HL)            ; Toggle pixel
     LD (HL), A
@@ -672,18 +674,18 @@ XORBit:
 ; Input: B = x, C = y
 ClearPixel:
     CALL CalculateScreenAddress
-    
+
     ; Calculate pixel mask
     LD A, B
     AND 7
     LD B, A
     LD A, 128
     JR Z, ClearBit
-    
+
 ClearShiftLoop:
     RRA
     DJNZ ClearShiftLoop
-    
+
 ClearBit:
     CPL                 ; Complement for clearing
     AND (HL)
@@ -698,17 +700,17 @@ TestPixelOps:
     LD BC, 6143
     LD (HL), 0
     LDIR
-    
+
     ; Draw a pattern using XOR
     LD D, 0             ; Animation counter
-    
+
 AnimationLoop:
     PUSH DE
-    
+
     ; Draw moving cross pattern
     LD B, D             ; x = animation counter
     LD E, 50            ; y counter
-    
+
 VerticalLine:
     LD C, E             ; y coordinate
     PUSH BC
@@ -720,11 +722,11 @@ VerticalLine:
     LD A, E
     CP 150              ; 100 pixels tall
     JR NZ, VerticalLine
-    
+
     ; Horizontal line
     LD C, 96            ; y = center
     LD E, D             ; x start offset
-    
+
 HorizontalLine:
     LD B, E             ; x coordinate
     PUSH BC
@@ -737,7 +739,7 @@ HorizontalLine:
     SUB A, D
     CP 100              ; 100 pixels wide
     JR NZ, HorizontalLine
-    
+
     ; Small delay for animation
     LD BC, 1000
 DelayLoop:
@@ -745,13 +747,13 @@ DelayLoop:
     LD A, B
     OR C
     JR NZ, DelayLoop
-    
+
     POP DE
     INC D
     LD A, D
     CP 156              ; Animate across screen
     JR NZ, AnimationLoop
-    
+
     ; Draw permanent pattern
     LD D, 40
 PermLoop:
@@ -767,7 +769,7 @@ PermLoop:
     LD A, D
     CP 100
     JR NZ, PermLoop
-    
+
     ; Test clearing pixels
     LD D, 60
 ClearLoop:
@@ -781,7 +783,7 @@ ClearLoop:
     LD A, D
     CP 100
     JR NZ, ClearLoop
-    
+
     LD B, 250           ; Success indicator
     RET
 ```
@@ -802,15 +804,15 @@ ClearLoop:
 DrawHorizontalLine:
     ; Input: B = x start, C = y, D = length
     CALL CalculateScreenAddress  ; Get starting address
-    
+
     ; Handle full bytes first
     LD A, B
     AND 7               ; Starting bit position
     JR Z, FullBytes     ; Aligned to byte boundary
-    
+
     ; Handle partial first byte
     ; ... (implementation)
-    
+
 FullBytes:
     ; Draw complete bytes
     LD A, D
@@ -820,12 +822,12 @@ FullBytes:
     AND 31
     JR Z, LastByte
     LD B, A
-    
+
 ByteLoop:
     LD (HL), 255        ; Set all pixels in byte
     INC HL
     DJNZ ByteLoop
-    
+
 LastByte:
     ; Handle partial last byte
     ; ... (implementation)
@@ -856,22 +858,22 @@ DrawingTool:
     ; Initialize
     CALL ClearScreen
     CALL SetupColors
-    
+
     LD B, 100           ; Run for 100 iterations
-    
+
 MainLoop:
     PUSH BC
-    
+
     ; Draw cursor (XOR for visibility)
     LD A, (CursorX)
     LD B, A
     LD A, (CursorY)
     LD C, A
     CALL DrawCursor
-    
+
     ; Simulate movement (diagonal pattern)
     CALL SimulateInput
-    
+
     ; Update cursor position
     LD A, (CursorX)
     INC A
@@ -880,7 +882,7 @@ MainLoop:
     LD A, 16
 XOK:
     LD (CursorX), A
-    
+
     LD A, (CursorY)
     INC A
     CP 180              ; Wrap around
@@ -888,7 +890,7 @@ XOK:
     LD A, 12
 YOK:
     LD (CursorY), A
-    
+
     ; Small delay
     PUSH BC
     LD BC, 2000
@@ -898,13 +900,13 @@ Delay:
     OR C
     JR NZ, Delay
     POP BC
-    
+
     POP BC
     DJNZ MainLoop
-    
+
     ; Draw final pattern
     CALL DrawFinalPattern
-    
+
     LD B, 255           ; Success
     RET
 
@@ -939,7 +941,7 @@ DrawCursor:
     INC B
     CALL XORPixel
     POP BC
-    
+
     ; Vertical line
     PUSH BC
     DEC C
@@ -957,14 +959,14 @@ SimulateInput:
     LD A, (DrawMode)
     OR A
     RET Z               ; Not drawing
-    
+
     ; Draw at current position
     LD A, (CursorX)
     LD B, A
     LD A, (CursorY)
     LD C, A
     CALL PlotPixel
-    
+
     ; Set color for this character cell
     ; Calculate character position
     LD A, B
@@ -989,7 +991,7 @@ CalculateScreenAddress:
     AND 7
     OR 64
     LD H, A
-    
+
     LD A, C
     RRA
     RRA
@@ -997,13 +999,13 @@ CalculateScreenAddress:
     AND 24
     OR H
     LD H, A
-    
+
     LD A, C
     RLA
     RLA
     AND 224
     LD L, A
-    
+
     LD A, B
     RRA
     RRA
@@ -1016,17 +1018,17 @@ CalculateScreenAddress:
 ; Plot pixel
 PlotPixel:
     CALL CalculateScreenAddress
-    
+
     LD A, B
     AND 7
     LD B, A
     LD A, 128
     JR Z, PlotBit
-    
+
 PlotShiftLoop:
     RRA
     DJNZ PlotShiftLoop
-    
+
 PlotBit:
     OR (HL)
     LD (HL), A
@@ -1035,17 +1037,17 @@ PlotBit:
 ; XOR pixel
 XORPixel:
     CALL CalculateScreenAddress
-    
+
     LD A, B
     AND 7
     LD B, A
     LD A, 128
     JR Z, XORBit
-    
+
 XORShiftLoop:
     RRA
     DJNZ XORShiftLoop
-    
+
 XORBit:
     XOR (HL)
     LD (HL), A
@@ -1085,7 +1087,7 @@ BoxTop:
     LD A, D
     CP 150
     JR NZ, BoxTop
-    
+
     RET
 ```
 

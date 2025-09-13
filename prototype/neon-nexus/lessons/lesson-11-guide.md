@@ -22,7 +22,7 @@ update_spawning:
     beq check_spawn     ; Timer hit zero?
     dec spawn_timer
     rts
-    
+
 check_spawn:
     ; Time to spawn! But first, check if we can...
 ```
@@ -37,13 +37,13 @@ We can't just create enemies infinitely - we need to find an inactive one to reu
     ; Find first inactive enemy
     lda enemy1_active
     beq spawn_enemy1    ; Found one!
-    
+
     lda enemy2_active
     beq spawn_enemy2
-    
+
     lda enemy3_active
     beq spawn_enemy3
-    
+
     rts                 ; All enemies active, wait
 ```
 
@@ -60,7 +60,7 @@ Here's where it gets interesting. The spawn rate increases with level:
     bcs fast_spawn      ; Level 5+? Fast!
     cmp #3
     bcs medium_spawn    ; Level 3-4? Medium
-    
+
     lda #120           ; Levels 1-2: Slow (2 seconds)
     jmp set_timer
 medium_spawn:
@@ -87,7 +87,7 @@ spawn_enemy1:
     clc
     adc #8             ; Starting Y: 8, 16, 24, or 32
     sta enemy1_y
-    
+
     lda #39            ; Always start at right edge
     sta enemy1_x
     lda #1
@@ -109,7 +109,7 @@ enemies_label_loop:
     inx
     jmp enemies_label_loop
 enemies_done:
-    
+
     ; Display count
     lda enemies_spawned
     and #$0f
@@ -121,7 +121,9 @@ enemies_done:
 ## Interactive Elements
 
 ### Experiment 1: Spawn Patterns
+
 Try different spawn positions:
+
 ```assembly
 ; Spawn from top and bottom edges too
 lda frame_counter
@@ -136,7 +138,9 @@ sta enemy1_y
 ```
 
 ### Experiment 2: Wave Spawning
+
 Instead of one at a time, spawn groups:
+
 ```assembly
 ; Spawn all three enemies at once!
 lda #1
@@ -146,7 +150,9 @@ sta enemy3_active
 ```
 
 ### Experiment 3: Smart Spawning
+
 Make spawning respond to player position:
+
 ```assembly
 ; Spawn enemies away from player
 lda player_y
@@ -164,6 +170,7 @@ The C64 has no random number generator! Game developers used creative solutions:
 4. **Linear Feedback Shift Register**: Mathematical pseudo-randomness
 
 Here's a simple LFSR implementation:
+
 ```assembly
 random:
     lda seed
@@ -178,6 +185,7 @@ no_eor:
 ## Challenge Extensions
 
 1. **Formation Spawning**: Create patterns like V-formations or lines
+
    ```assembly
    ; Spawn 3 enemies in diagonal line
    lda #39
@@ -204,6 +212,7 @@ no_eor:
 ## Performance Impact
 
 Our spawning system is lightweight:
+
 - Timer check: 3-4 cycles per frame
 - Spawn attempt: ~50 cycles when timer expires
 - Enemy search: 10-15 cycles
@@ -213,6 +222,7 @@ Even with complex patterns, we're using less than 1% of frame time!
 ## Historical Context
 
 Famous C64 spawning systems:
+
 - **Impossible Mission**: Robots appear based on room layout
 - **Paradroid**: Enemies beam in with visual effects
 - **Uridium**: Waves perfectly timed to music

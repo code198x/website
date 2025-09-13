@@ -31,24 +31,28 @@ Begin developing **Prism Quest** - an artistic puzzle adventure that showcases c
 ## Tier Overview
 
 **Lessons 1-8: Color Theory Fundamentals**
+
 - Understanding color relationships and harmony
 - Applying color theory to limited palettes
 - Creating mood and atmosphere with color
 - Color psychology in game design
 
 **Lessons 9-16: Advanced Palette Techniques**
+
 - Sophisticated color cycling patterns
 - Gradient simulation with limited colors
 - Color blending and dithering techniques
 - Dynamic palette manipulation
 
 **Lessons 17-24: Artistic Design Principles**
+
 - Composition and visual hierarchy
 - Contrast and emphasis techniques
 - Color-based visual storytelling
 - Professional design workflows
 
 **Lessons 25-32: Creative Color Applications**
+
 - Color-driven gameplay mechanics
 - Atmospheric color programming
 - Artistic expression through constraints

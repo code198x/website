@@ -31,6 +31,7 @@ Time to push Amiga hardware to its absolute limits! With **32 masterful lessons*
 ## What You'll Complete
 
 Create your **AMIGA HARDWARE EXCELLENCE** - the ultimate performance demonstration:
+
 - **Hardware Controller**: Direct custom chip programming that exploits every register
 - **Performance Engine**: 68000 optimization that achieves theoretical maximum speed
 - **Input Master**: Control systems that provide perfect responsiveness
@@ -40,24 +41,28 @@ Create your **AMIGA HARDWARE EXCELLENCE** - the ultimate performance demonstrati
 ## Tier Overview
 
 **Lessons 1-8: "Perfect Integration!" - Advanced System Coordination**
+
 - Integrating hardware mastery, performance optimization, and input excellence
 - Professional system architecture that maximizes every component
 - Advanced coordination between custom chips, CPU, and input systems
 - Creating seamless interaction that achieves maximum Amiga performance
 
 **Lessons 9-16: "Hardware Limits!" - Maximum Performance Achievement**
+
 - Pushing every piece of Amiga hardware to its theoretical limits
 - Advanced optimization that eliminates every possible bottleneck
 - Professional performance validation and benchmarking
 - Achieving performance that rivals much more powerful hardware
 
 **Lessons 17-24: "Professional Excellence!" - Commercial-Quality Integration**
+
 - Advanced system debugging and performance analysis
 - Professional development practices for hardware optimization
 - Commercial-quality testing and validation techniques
 - The final polish that creates legendary Amiga performance
 
 **Lessons 25-32: "Hardware Mastery!" - Ultimate Performance Integration**
+
 - Master-level system integration and performance coordination
 - Advanced hardware exploitation and optimization techniques
 - Professional performance architecture and system design

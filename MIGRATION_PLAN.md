@@ -3,13 +3,15 @@
 ## Current State Analysis
 
 ### What Currently Exists (Keep)
+
 - **Docker Development Environments**: 16 working platforms - these align with your vision
-- **Basic Astro Framework**: Good foundation, performant, well-structured  
+- **Basic Astro Framework**: Good foundation, performant, well-structured
 - **Example Programs**: Useful reference material for lesson development
 - **Visual Design**: Retro-inspired styling works well
 - **Build Pipeline**: Docker + npm workflow is solid
 
 ### What Currently Exists (Archive/Remove)
+
 - **Archived Lessons Directory**: ~300+ lesson files built on academic approach
 - **Complex Content Schema**: Over-engineered for people/companies/events/software
 - **4-System Limitation**: Hard-coded for C64/Spectrum/NES/Amiga only
@@ -23,7 +25,9 @@
 **Goals**: Prepare clean architecture for new content model
 
 **Tasks**:
+
 1. **Archive Legacy Content**
+
    ```bash
    mv src/content/lessons-original/ archive/
    mv archived-lessons/ archive/
@@ -50,12 +54,14 @@
 **Goals**: Create foundation content for immediate value
 
 **Priority Platforms (Start with familiar ones)**:
+
 1. **Commodore 64**: BASIC Phase 0 + Assembly Phase 1 foundation
-2. **Amiga**: AMOS Phase 0 + Assembly Phase 1 foundation  
+2. **Amiga**: AMOS Phase 0 + Assembly Phase 1 foundation
 3. **Jupiter Ace**: Forth Phase 0 + Assembly Phase 1 foundation
 4. **Vectrex**: Direct Assembly Phase 1 (no Phase 0)
 
 **Content Creation Order**:
+
 1. Platform overview pages
 2. Phase 0 lessons (gateway languages)
 3. Phase 1 Tier 1 lessons (first 32 lessons building foundation game)
@@ -66,6 +72,7 @@
 **Goals**: Scale to full vision
 
 **Tasks**:
+
 1. Add remaining platforms from your 16 working environments
 2. Complete Phase 1 for priority platforms
 3. Begin Phase 2 content development
@@ -74,6 +81,7 @@
 ## Technical Implementation Plan
 
 ### New File Structure
+
 ```
 src/
 ├── content/
@@ -103,6 +111,7 @@ src/
 ## Content Development Workflow
 
 ### Phase 0 Lesson Template
+
 ```markdown
 ---
 platform: "commodore-64"
@@ -118,28 +127,31 @@ game_concepts: ["Visual feedback", "Player communication"]
 # Your First C64 Program
 
 ## What We're Building
+
 Create your first graphics on the C64 screen - a colorful "HELLO WORLD" that demonstrates...
 
 [Game-focused lesson content]
 ```
 
-### Phase 1 Lesson Template  
+### Phase 1 Lesson Template
+
 ```markdown
 ---
-platform: "commodore-64"  
+platform: "commodore-64"
 phase: 1
 tier: 1
 lesson: 1
 title: "Neon Nexus: Game World Creation"
 game_context: "Neon Nexus foundation game"
 game_feature: "Grid-based game world"
-programming_concepts: ["Memory addressing", "Screen manipulation"]  
+programming_concepts: ["Memory addressing", "Screen manipulation"]
 game_concepts: ["Game world design", "Visual foundations"]
 ---
 
 # Neon Nexus: Game World Creation
 
 ## What We're Building
+
 Create the striking neon grid world that will be the foundation of your Neon Nexus game...
 
 [Assembly programming in service of game development]
@@ -148,18 +160,21 @@ Create the striking neon grid world that will be the foundation of your Neon Nex
 ## Migration Priorities
 
 ### Immediate (This Month)
+
 1. **Clean Architecture**: Implement new content schema
 2. **Core Platforms**: Get 4 platforms working with new structure
 3. **Phase 0 Foundation**: Create gateway language lessons
 4. **Development Environment**: Ensure Docker environments work with new structure
 
-### Near Term (Next 2 Months)  
+### Near Term (Next 2 Months)
+
 1. **Phase 1 Content**: Complete first game for each core platform
 2. **Additional Platforms**: Add remaining platforms from your 16 working environments
 3. **Game Showcases**: Create compelling game presentation pages
 4. **User Experience**: Smooth lesson progression and navigation
 
 ### Long Term (3+ Months)
+
 1. **Scale to 32 Platforms**: Add remaining platforms per your master plan
 2. **Multiple Phases**: Expand beyond Phase 1 to create complete learning arcs
 3. **Interactive Elements**: Add emulators, code editing, progress tracking
@@ -168,18 +183,21 @@ Create the striking neon grid world that will be the foundation of your Neon Nex
 ## Success Metrics
 
 ### Phase 1 Success
+
 - [ ] New architecture implemented and stable
 - [ ] 4 platforms with Phase 0 + Phase 1 Tier 1 content
-- [ ] 4 foundation games playable and showcased  
+- [ ] 4 foundation games playable and showcased
 - [ ] Docker environments integrated with new structure
 
-### Phase 2 Success  
+### Phase 2 Success
+
 - [ ] 8+ platforms with complete Phase 0 content
 - [ ] Phase 1 Tier 1 complete for priority platforms
 - [ ] Compelling game-first lesson experience
 - [ ] Clear progression path visible to students
 
 ### Long Term Success
+
 - [ ] 32 platforms with Phase 0 + Phase 1 foundation
 - [ ] Multiple complete games per platform
 - [ ] Active community of retro game developers

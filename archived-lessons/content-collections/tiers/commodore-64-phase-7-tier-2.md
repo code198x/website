@@ -27,6 +27,7 @@ Bring realistic physics to your games! With **32 advanced lessons**, you'll mast
 ## What You'll Build
 
 Create **PHYSICS-BASED PLATFORMER GAME** - featuring realistic movement systems:
+
 - Objects with realistic gravity, momentum, and acceleration
 - Sophisticated collision detection and response systems
 - Particle effects for explosions, water, and environmental details
@@ -36,24 +37,28 @@ Create **PHYSICS-BASED PLATFORMER GAME** - featuring realistic movement systems:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "Physics Fundamentals" - Core Movement Systems**
+
 - Numerical integration and physics simulation
 - Velocity, acceleration, and force-based movement
 - Gravity systems and realistic falling mechanics
 - Friction, air resistance, and environmental forces
 
 **Lessons 9-16: "Collision Systems" - Advanced Interaction Detection**
+
 - Efficient collision detection algorithms
 - Bounding box and pixel-perfect collision systems
 - Collision response and momentum transfer
 - Spatial partitioning for performance optimization
 
 **Lessons 17-24: "Advanced Physics" - Complex Interactions**
+
 - Rope and chain physics simulation
 - Fluid dynamics and water physics
 - Elastic collisions and bouncing mechanics
 - Multi-body physics interactions
 
 **Lessons 25-32: "Visual Effects" - Physics-Based Particles**
+
 - Particle system architecture and optimization
 - Explosion and debris effects
 - Environmental particle effects (rain, snow, fire)

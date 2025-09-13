@@ -27,6 +27,7 @@ Perfect the experience! With **32 comprehensive lessons**, you'll master the art
 ## What You'll Build
 
 Perfect **Quantum Realms** with professional balancing:
+
 - Data-driven balancing systems for all game mechanics
 - Dynamic difficulty adjustment based on player performance
 - Comprehensive analytics and feedback collection systems
@@ -36,24 +37,28 @@ Perfect **Quantum Realms** with professional balancing:
 ## Tier Overview
 
 **Lessons 1-8: Balance Analysis & Metrics**
+
 - Understanding player behavior and engagement metrics
 - Identifying balance issues and problem areas
 - Creating measurement systems for gameplay data
 - Statistical analysis of player performance
 
 **Lessons 9-16: Data-Driven Balancing**
+
 - Implementing configurable balance parameters
 - Real-time balance adjustment systems
 - A/B testing and experimentation frameworks
 - Automated balance validation systems
 
 **Lessons 17-24: Gameplay Feel & Responsiveness**
+
 - Fine-tuning controls and input responsiveness
 - Visual and audio feedback optimization
 - Creating satisfying game feel and "juice"
 - Performance consistency and smooth gameplay
 
 **Lessons 25-32: Professional Tuning Process**
+
 - Systematic playtesting methodologies
 - Iterative design and refinement processes
 - Player feedback integration and analysis

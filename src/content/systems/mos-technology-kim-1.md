@@ -68,7 +68,6 @@ emulators:
 
 # Media
 description: "The KIM-1 (Keyboard Input Monitor) was released by MOS Technology in 1976 as a low-cost development system for the then-new 6502 microprocessor. With just a hexadecimal keypad, six 7-segment LED displays, and 1 KB of RAM, it allowed direct memory manipulation and program entry."
-image: "/images/systems/kim-1.png"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -92,7 +91,7 @@ order: 30
 
 # MOS Technology KIM-1
 
-*Historical Reference Only*
+_Historical Reference Only_
 
 The **KIM-1** (Keyboard Input Monitor) was released by MOS Technology in 1976 as a low-cost development system for the then-new 6502 microprocessor. It was intended for engineers and hobbyists and quickly became one of the most popular training and prototyping systems of its era.
 

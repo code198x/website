@@ -27,6 +27,7 @@ Welcome to the engine room of greatness! 🎮 With **32 optimization-focused les
 ## What You'll Build
 
 Create **AMIGA PERFORMANCE SUITE** - a comprehensive optimization toolkit featuring:
+
 - Profiling tools that reveal every performance bottleneck 🔍
 - Optimization techniques that squeeze maximum performance from every cycle
 - Load balancing systems that distribute work across all custom chips
@@ -36,24 +37,28 @@ Create **AMIGA PERFORMANCE SUITE** - a comprehensive optimization toolkit featur
 ## Tier Overview
 
 **Lessons 1-8: "Performance Analysis" - Understanding the Bottlenecks**
+
 - Advanced profiling techniques and performance measurement
 - CPU cycle counting and instruction-level optimization
 - Memory access pattern analysis and optimization
 - Custom chip utilization monitoring and balancing
 
 **Lessons 9-16: "Code Optimization" - Maximum Efficiency Programming**
+
 - 68000 assembly optimization and cycle-level tuning
 - Loop unrolling and branch optimization techniques
 - Register allocation and memory access optimization
 - Algorithm optimization for real-time performance
 
 **Lessons 17-24: "System Optimization" - Hardware Harmony**
+
 - DMA channel optimization and conflict resolution
 - Custom chip workload balancing and coordination
 - Memory management optimization for different RAM configurations
 - Interrupt optimization and timing-critical code
 
 **Lessons 25-32: "Scalable Performance" - Universal Optimization**
+
 - Dynamic performance scaling for different hardware
 - Feature degradation systems for lower-spec machines
 - Performance monitoring and automatic adjustment

@@ -27,6 +27,7 @@ Get ready to recreate the arcade experience at home! With **32 explosive lessons
 ## What You'll Build
 
 Create **COPPER STRIKE** - a horizontally scrolling shoot 'em up featuring:
+
 - Blitter-powered bullet patterns that fill the screen
 - Dual-playfield parallax that makes players' jaws drop
 - Enemy waves that dance to your bidding
@@ -36,24 +37,28 @@ Create **COPPER STRIKE** - a horizontally scrolling shoot 'em up featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Blitter Wizardry" - Making Objects Fly**
+
 - Blitter fundamentals: Your new best friend for moving pixels
 - BOB (Blitter Object) management for hundreds of bullets
 - Cookie-cut masking for perfect sprite transparency
 - Line drawing for laser beams and vector effects
 
 **Lessons 9-16: "Parallax Paradise" - Dual Playfield Magic**
+
 - Setting up dual playfields for independent scrolling
 - Copper tricks for seamless background effects
 - Color cycling for animated backgrounds (lava! water! energy fields!)
 - Smooth 50Hz scrolling that never tears or stutters
 
 **Lessons 17-24: "Audio Assault" - 4-Channel Symphony**
+
 - Paula programming for explosive sound effects
 - Channel prioritization (explosions always win!)
 - ProTracker module playback for epic soundtracks
 - Dynamic audio mixing based on game intensity
 
 **Lessons 25-32: "Pattern Perfection" - Enemy AI & Formations**
+
 - Sine wave patterns that make enemies dance
 - Formation flying like Galaga on steroids
 - Boss AI with multiple attack phases

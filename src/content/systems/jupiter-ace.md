@@ -28,7 +28,8 @@ video:
   processor: "Z80A direct video generation"
   resolution: "256×192"
   colors: "Monochrome (black and white)"
-  display_modes: ["Character mode 32×24", "High-resolution graphics 256×192", "User-defined characters"]
+  display_modes:
+    ["Character mode 32×24", "High-resolution graphics 256×192", "User-defined characters"]
   sprites:
     count: 0
     size: "Software only"
@@ -69,8 +70,20 @@ market_positioning: "Alternative to BASIC programming"
 competition: ["ZX Spectrum", "Commodore 64", "BBC Micro"]
 
 # Educational relevance
-learning_advantages: ["Stack-based programming", "FORTH language concepts", "Minimal memory programming", "Alternative computing paradigms"]
-common_beginner_projects: ["Stack manipulation programs", "FORTH word definitions", "Graphics applications", "Memory-efficient utilities"]
+learning_advantages:
+  [
+    "Stack-based programming",
+    "FORTH language concepts",
+    "Minimal memory programming",
+    "Alternative computing paradigms",
+  ]
+common_beginner_projects:
+  [
+    "Stack manipulation programs",
+    "FORTH word definitions",
+    "Graphics applications",
+    "Memory-efficient utilities",
+  ]
 
 # Modern preservation and emulation
 emulated: true
@@ -87,7 +100,6 @@ hardware_availability: "rare"
 
 # Media
 description: "The only home computer that spoke FORTH—stack-based computing for the masses."
-image: "/images/systems/jupiter-ace.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -102,7 +114,7 @@ order: 42
 
 # Jupiter ACE
 
-*Coming Soon*
+_Coming Soon_
 
 The Jupiter ACE stands alone in computing history as the only home computer to use FORTH as its primary programming language. Created by the designers of the ZX80 and ZX81, it introduced stack-based computing, postfix notation, and extensible programming concepts to home users decades before they became mainstream.
 
@@ -120,9 +132,10 @@ FORTH programming on the ACE teaches advanced concepts crucial in modern computi
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the ACE curriculum will include:
+
 - Stack-based programming fundamentals and postfix notation
 - FORTH word definition and dictionary manipulation
 - Extreme memory optimization techniques for 1KB programming

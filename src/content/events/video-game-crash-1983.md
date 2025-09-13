@@ -20,6 +20,7 @@ The video game crash of 1983 saw the North American video game market collapse f
 ## Consequences
 
 The crash had profound effects on the industry:
+
 - Many companies exited the video game business entirely
 - Shifted gaming focus to home computers like the Commodore 64
 - Created opportunity for Nintendo's quality-controlled approach
@@ -28,6 +29,7 @@ The crash had profound effects on the industry:
 ## Silver Lining
 
 While devastating for consoles, the crash benefited home computers:
+
 - Commodore 64 and other computers became primary gaming platforms
 - European gaming industry, centred on home computers, flourished
 - Independent developers found opportunities in computer gaming

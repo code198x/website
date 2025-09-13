@@ -27,6 +27,7 @@ Create software with commercial-quality polish! Learn professional interface des
 ## What You'll Learn
 
 Design software that users love to use:
+
 - Professional interface design principles
 - Complex system architecture and organisation
 - Advanced navigation and menu systems
@@ -35,24 +36,28 @@ Design software that users love to use:
 ## Tier Overview
 
 **Lessons 1-8: User Interface Design**
+
 - Professional interface design principles
 - Creating intuitive navigation systems
 - Designing clear, functional layouts
 - Building accessible, user-friendly interfaces
 
 **Lessons 9-16: Advanced Menu Systems**
+
 - Creating sophisticated menu hierarchies
 - Implementing context-sensitive interfaces
 - Building dynamic, responsive menu systems
 - Designing efficient workflow patterns
 
 **Lessons 17-24: System Architecture**
+
 - Organizing complex program systems
 - Managing multiple interconnected modules
 - Creating maintainable, scalable architectures
 - Building robust, professional code structures
 
 **Lessons 25-32: Spectrum Symphony Interface**
+
 - Implementing the music creation interface
 - Creating real-time visual feedback systems
 - Building professional-quality presentation

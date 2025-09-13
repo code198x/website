@@ -27,6 +27,7 @@ Time to master advanced input programming! With **32 comprehensive lessons**, yo
 ## What You'll Build
 
 Create **NES INPUT MASTER** - a comprehensive input system featuring:
+
 - Multi-controller support for up to 4 players simultaneously
 - Advanced input buffering for complex move sequences
 - Support for specialized peripherals like the NES Zapper and Power Pad
@@ -36,24 +37,28 @@ Create **NES INPUT MASTER** - a comprehensive input system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Perfect Responsiveness!" - Advanced Input Timing**
+
 - Cycle-accurate input reading for frame-perfect responsiveness
 - Advanced controller polling techniques for minimal latency
 - Input debouncing and filtering for professional feel
 - The mathematics behind perfectly responsive controls
 
 **Lessons 9-16: "Four-Player Mayhem!" - Multi-Controller Systems**
+
 - Programming the NES Four Score for 4-player support
 - Advanced input multiplexing and management
 - Simultaneous input handling without conflicts
 - Creating fair and balanced multi-player input systems
 
 **Lessons 17-24: "Complex Combinations!" - Advanced Input Processing**
+
 - Input buffering for complex move sequences and combos
 - Advanced input pattern recognition and matching
 - Professional input validation and error handling
 - Creating fighting game-style move input systems
 
 **Lessons 25-32: "Peripheral Mastery!" - Specialized Input Devices**
+
 - Programming the NES Zapper for light gun games
 - Power Pad programming for exercise and dance games
 - R.O.B. programming for robotic interaction

@@ -31,24 +31,28 @@ Begin developing **Neon Runner** - a visually spectacular platformer featuring m
 ## Tier Overview
 
 **Lessons 1-8: Multicolor Character Mode**
+
 - Understanding multicolor character format
 - Creating colorful character sets
 - Animation techniques with multicolor
 - Memory optimization strategies
 
 **Lessons 9-16: Bitmap Graphics Programming**
+
 - High-resolution bitmap mode setup
 - Multicolor bitmap implementation
 - Pixel-level drawing algorithms
 - Bitmap compression techniques
 
 **Lessons 17-24: Mixed Mode Techniques**
+
 - Combining different graphics modes
 - Mode switching during display
 - Creative graphics combinations
 - Performance considerations
 
 **Lessons 25-32: Graphics Optimization**
+
 - Memory-efficient graphics storage
 - Fast graphics update techniques
 - Color clash avoidance strategies

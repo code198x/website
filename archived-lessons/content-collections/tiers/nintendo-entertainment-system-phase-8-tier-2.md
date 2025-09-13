@@ -27,6 +27,7 @@ Your code becomes art! With **32 artistry-intensive lessons**, you'll master the
 ## What You'll Master
 
 Create **ARTISTIC 6502 ASSEMBLY** that transcends mere programming:
+
 - Code so elegant that reading it feels like experiencing poetry
 - Optimization techniques that make impossible effects look effortless
 - Software architectures that enable rather than constrain creativity
@@ -36,24 +37,28 @@ Create **ARTISTIC 6502 ASSEMBLY** that transcends mere programming:
 ## Technical Artistry Mastery
 
 **Lessons 1-8: "Code Poetry" - 6502 Assembly as Creative Expression**
+
 - Writing assembly code that reads like carefully crafted literature
 - Creating variable names and comments that tell compelling stories
 - Organizing code structure that reveals the beauty of your thinking
 - Building routines so elegant they become art objects in themselves
 
 **Lessons 9-16: "Performance Poetry" - Making Magic Look Effortless**
+
 - Optimization techniques that preserve artistic vision while maximizing performance
 - Creating effects that push NES hardware beyond its apparent limitations
 - Building systems that handle complexity with graceful simplicity
 - Crafting code that makes other developers ask "How did they do that?"
 
 **Lessons 17-24: "Architectural Artistry" - Structure That Inspires**
+
 - Designing software architectures that enable legendary creative achievement
 - Creating frameworks that make complex games feel natural to develop
 - Building modular systems that adapt to visionary creative changes
 - Establishing patterns that scale from simple concepts to epic implementations
 
 **Lessons 25-32: "Technical Legacy" - Code That Teaches and Inspires**
+
 - Creating documentation that reads like developer love letters to future creators
 - Building examples that become teaching tools for the NES community
 - Establishing coding practices that define excellence in homebrew development

@@ -27,6 +27,7 @@ Time to become a true hardware wizard! With **32 intensive lessons**, you'll mas
 ## What You'll Build
 
 Create **NES HARDWARE CONTROLLER** - a comprehensive hardware mastery system featuring:
+
 - Cycle-accurate timing that synchronizes perfectly with hardware
 - Exploitation of undocumented features for impossible effects
 - Custom mapper programming that extends NES capabilities
@@ -36,24 +37,28 @@ Create **NES HARDWARE CONTROLLER** - a comprehensive hardware mastery system fea
 ## Tier Overview
 
 **Lessons 1-8: "Cycle-Perfect Timing!" - Precision Hardware Control**
+
 - 6502 CPU cycle counting for frame-perfect timing
 - PPU timing manipulation for mid-scanline effects
 - APU synchronization for perfectly timed audio
 - The mathematics behind cycle-accurate programming
 
 **Lessons 9-16: "Undocumented Secrets!" - Hidden Hardware Features**
+
 - Undocumented 6502 opcodes and their practical uses
 - PPU glitches and bugs that create stunning visual effects
 - APU quirks that enable advanced audio techniques
 - The legendary tricks discovered by hardware hackers
 
 **Lessons 17-24: "Mapper Mastery!" - Advanced Hardware Extensions**
+
 - Programming MMC3, MMC5, and exotic mapper chips
 - Creating custom behavior using mapper-specific features
 - Bank switching optimization for seamless gameplay
 - Understanding why certain games required specific mappers
 
 **Lessons 25-32: "Hardware Hacking!" - Professional Development Techniques**
+
 - Hardware debugging using advanced analysis tools
 - Creating development tools for hardware exploration
 - Reverse engineering commercial game techniques

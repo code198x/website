@@ -27,6 +27,7 @@ Persistent gaming experiences! With **32 comprehensive lessons**, you'll impleme
 ## What You'll Build
 
 Continue developing **Vector Storm** with professional data persistence:
+
 - Sophisticated save/load systems for both tape and disk
 - High score tables with persistent storage
 - Game progress and checkpoint systems
@@ -36,24 +37,28 @@ Continue developing **Vector Storm** with professional data persistence:
 ## Tier Overview
 
 **Lessons 1-8: Tape Storage Systems**
+
 - Cassette tape data format design
 - Loading and saving to tape efficiently
 - Error detection and correction for tape
 - Custom tape format implementation
 
 **Lessons 9-16: Disk Storage Programming**
+
 - Floppy disk file system interaction
 - File creation, reading, and writing
 - Directory management and organization
 - Disk space optimization techniques
 
 **Lessons 17-24: Data Serialization**
+
 - Game state serialization algorithms
 - Data compression for storage efficiency
 - Version compatibility and migration
 - Binary data format optimization
 
 **Lessons 25-32: User Interface Integration**
+
 - Professional save/load menu systems
 - Progress indicators and feedback
 - Error handling and user communication

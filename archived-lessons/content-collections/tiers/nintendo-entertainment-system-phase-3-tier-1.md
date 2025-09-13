@@ -31,24 +31,28 @@ Create **MemoryMaster Engine** - a sophisticated memory management system featur
 ## Tier Overview
 
 **Lessons 1-8: Advanced Memory Architecture**
+
 - Deep dive into NES memory layout and addressing modes
 - Understanding CPU and PPU memory buses
 - Advanced zero-page optimization techniques
 - Stack management and optimization strategies
 
 **Lessons 9-16: Mapper Programming & Bank Switching**
+
 - MMC1, MMC3, and advanced mapper programming
 - PRG-ROM bank switching for large game worlds
 - CHR-ROM switching for dynamic graphics
 - Mapper timing and hardware considerations
 
 **Lessons 17-24: Dynamic Memory Systems**
+
 - Object pooling and recycling systems
 - Memory-efficient linked lists and data structures
 - Dynamic sprite allocation and management
 - Compressed data storage and decompression
 
 **Lessons 25-32: Professional Optimization**
+
 - Memory profiling and leak detection
 - Performance benchmarking techniques
 - Memory fragmentation management

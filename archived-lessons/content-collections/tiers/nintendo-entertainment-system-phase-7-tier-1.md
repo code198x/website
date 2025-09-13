@@ -27,6 +27,7 @@ Bring your NES games to life with intelligent opponents! With **32 advanced less
 ## What You'll Build
 
 Create **INTELLIGENT NES STRATEGY GAME** - featuring advanced AI systems:
+
 - Smart opponents with complex decision-making abilities in 6502
 - Adaptive AI that learns from player behavior within memory limits
 - Advanced pathfinding and tactical movement on NES
@@ -36,24 +37,28 @@ Create **INTELLIGENT NES STRATEGY GAME** - featuring advanced AI systems:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "AI Fundamentals" - Core Intelligence Systems**
+
 - Advanced state machines and behavior modeling in 6502 assembly
 - Decision trees and strategic planning algorithms for NES
 - Memory-efficient AI data structures within cart ROM limits
 - Real-time decision making under NES constraints
 
 **Lessons 9-16: "Pathfinding & Navigation" - Movement Intelligence**
-- A* pathfinding algorithm implementation in 6502
+
+- A\* pathfinding algorithm implementation in 6502
 - Navigation mesh generation and optimization for NES games
 - Dynamic obstacle avoidance systems using efficient assembly
 - Multi-unit coordination and formation movement
 
 **Lessons 17-24: "Adaptive Behaviors" - Dynamic AI Systems**
+
 - Player behavior analysis and adaptation on NES
 - Dynamic difficulty scaling algorithms in 6502
 - Learning AI that improves over time within memory constraints
 - Personality systems for varied opponent types
 
 **Lessons 25-32: "Strategic AI" - Advanced Game Intelligence**
+
 - Long-term strategic planning and goal setting in 6502
 - Resource management and economic AI for NES games
 - Multi-layered decision hierarchies optimized for performance

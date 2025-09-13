@@ -27,6 +27,7 @@ Time to master algorithmic programming! With **32 intensive lessons**, you'll le
 ## What You'll Build
 
 Create **NES ALGORITHM LIBRARY** - a comprehensive collection featuring:
+
 - Advanced pathfinding algorithms for AI characters
 - Complex physics simulation systems
 - Sophisticated data sorting and searching algorithms
@@ -36,24 +37,28 @@ Create **NES ALGORITHM LIBRARY** - a comprehensive collection featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Smart Characters!" - Advanced AI Algorithms**
+
 - Pathfinding algorithms for intelligent character movement
 - State machine implementation for complex AI behaviors
 - Advanced collision detection and response systems
 - The algorithms behind memorable NES enemy AI
 
 **Lessons 9-16: "Physics Magic!" - Mathematical Simulation**
+
 - Physics simulation for realistic movement and collisions
 - Advanced trajectory calculations for projectiles
 - Complex mathematical operations using 6502 assembly
 - Creating realistic physics within NES constraints
 
 **Lessons 17-24: "Data Mastery!" - Advanced Data Structures**
+
 - Efficient sorting algorithms for high scores and inventories
 - Advanced searching algorithms for game data
 - Complex data structures for managing game state
 - Professional data organization techniques
 
 **Lessons 25-32: "Problem Solving!" - Professional Programming Patterns**
+
 - Design patterns adapted for 6502 assembly programming
 - Advanced debugging and problem-solving techniques
 - Code organization strategies for complex projects

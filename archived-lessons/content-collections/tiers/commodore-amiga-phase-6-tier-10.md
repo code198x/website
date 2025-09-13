@@ -27,6 +27,7 @@ Time to master Amiga compression like a pro! With **32 intensive lessons**, you'
 ## What You'll Build
 
 Create **AMIGA COMPRESSION MASTER** - an advanced data management demonstration featuring:
+
 - Compression algorithms so efficient they double your effective storage
 - Real-time decompression that loads content seamlessly during gameplay
 - Intelligent asset management that keeps the right data in memory
@@ -36,24 +37,28 @@ Create **AMIGA COMPRESSION MASTER** - an advanced data management demonstration 
 ## Tier Overview
 
 **Lessons 1-8: "Ultimate Compression!" - Advanced Algorithm Implementation**
+
 - LZ77, LZ78, and Huffman compression algorithms in 68000 assembly
 - Custom compression techniques optimized for Amiga hardware
 - Advanced entropy coding and statistical compression methods
 - The compression algorithms that made impossible Amiga games possible
 
 **Lessons 9-16: "Real-Time Magic!" - Advanced Decompression Systems**
+
 - Lightning-fast decompression optimized for 68000 performance
 - Real-time streaming and decompression during gameplay
 - Advanced buffering and caching for seamless content loading
 - The decompression techniques that kept games running smoothly
 
 **Lessons 17-24: "Smart Assets!" - Intelligent Content Management**
+
 - Dynamic asset loading and intelligent caching systems
 - Predictive loading based on gameplay patterns
 - Advanced memory management for compressed content
 - The asset management that made complex games fit on floppy disks
 
 **Lessons 25-32: "Maximum Efficiency!" - Professional Compression Mastery**
+
 - Advanced compression optimization and space-saving techniques
 - Professional asset pipeline and compression workflow
 - Commercial-quality compression tools and development systems

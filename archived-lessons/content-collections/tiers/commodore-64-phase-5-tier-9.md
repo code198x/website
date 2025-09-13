@@ -31,24 +31,28 @@ Create a complete database management system including relational engine, query 
 ## Tier Overview
 
 **Lessons 1-8: Database Theory & Architecture**
+
 - Relational database theory and design
 - Entity-relationship modeling
 - Normalization and schema optimization
 - Database architecture patterns
 
 **Lessons 9-16: Query Processing & Optimization**
+
 - SQL-like query language design
 - Query parsing and execution planning
 - Index-based query optimization
 - Performance analysis and tuning
 
 **Lessons 17-24: Storage & Indexing Systems**
+
 - File-based storage system design
 - B-tree and hash indexing implementation
 - Data compression and optimization
 - Storage space management
 
 **Lessons 25-32: Transaction & Recovery Systems**
+
 - ACID transaction implementation
 - Concurrency control mechanisms
 - Database backup and recovery

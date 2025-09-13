@@ -31,24 +31,28 @@ Enhance **Rhythm Master** with professional input systems including multi-button
 ## Tier Overview
 
 **Lessons 1-8: Advanced Keyboard Programming**
+
 - Matrix scanning techniques
 - Eliminating key ghosting
 - Multi-key detection
 - Keyboard buffering systems
 
 **Lessons 9-16: Game Controller Programming**
+
 - Joystick state management
 - Paddle analog reading
 - Light pen support
 - Custom controller protocols
 
 **Lessons 17-24: Serial Communication**
+
 - IEC bus programming
 - Device detection
 - Fast serial protocols
 - Error handling
 
 **Lessons 25-32: Input System Architecture**
+
 - Unified input abstraction
 - Configuration systems
 - Latency optimization

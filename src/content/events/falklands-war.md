@@ -13,6 +13,7 @@ On 2nd April 1982, Argentina invaded the Falkland Islands, beginning a 74-day co
 ## Technology and War
 
 The Falklands conflict was notable for its use of modern technology:
+
 - Satellite communications for command and control
 - Computer-assisted weapons systems
 - Electronic warfare capabilities
@@ -21,6 +22,7 @@ The Falklands conflict was notable for its use of modern technology:
 ## Home Front Innovation
 
 Remarkably, the British home computer industry continued to flourish during the conflict:
+
 - The ZX Spectrum launched on 23rd April 1982, during the war
 - British software development continued unabated
 - The conflict didn't dampen enthusiasm for home computing

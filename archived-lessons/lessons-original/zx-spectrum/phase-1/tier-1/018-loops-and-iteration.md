@@ -35,7 +35,7 @@ Loops are fundamental to programming - they let you repeat operations efficientl
 Every loop needs three components:
 
 1. **Initialization**: Set up loop variables and counters
-2. **Condition**: Test whether to continue or exit the loop  
+2. **Condition**: Test whether to continue or exit the loop
 3. **Update**: Modify variables and advance to next iteration
 
 ```text
@@ -64,6 +64,7 @@ LoopStart:
 ```
 
 **DJNZ advantages:**
+
 - Only 2 bytes (vs 4 bytes for DEC B + JR NZ)
 - Faster execution (8 cycles vs 12 cycles)
 - Automatically handles counter and condition
@@ -215,7 +216,7 @@ LD B, 8             ; Outer loop: 8 rows
 RowLoop:
     PUSH BC         ; Save row counter
     LD C, 8         ; Inner loop: 8 columns
-    
+
 ColumnLoop:
     ; Calculate checkerboard pattern
     LD A, B         ; Row number
@@ -231,7 +232,7 @@ StoreSquare:
     INC IX          ; Next grid position
     DEC C           ; Decrement column counter
     JR NZ, ColumnLoop ; Continue inner loop
-    
+
     POP BC          ; Restore row counter
     DJNZ RowLoop    ; Continue outer loop
 ```
@@ -247,13 +248,13 @@ ClearRowLoop:
     ; Calculate screen address for this row
     CALL CalcRowAddress ; Returns address in HL
     LD C, 32        ; 32 bytes per row
-    
+
 ClearColumnLoop:
     LD (HL), 0      ; Clear this position
     INC HL          ; Next position
     DEC C           ; Decrement column counter
     JR NZ, ClearColumnLoop
-    
+
     POP BC          ; Restore row counter
     DJNZ ClearRowLoop
 ```
@@ -270,7 +271,7 @@ LD B, 4             ; 4 rows
 OuterLoop:
     PUSH BC         ; Save outer counter
     LD C, 4         ; 4 columns
-    
+
 InnerLoop:
     ; Create pattern based on row and column
     LD A, B         ; Get row (4,3,2,1)
@@ -278,18 +279,18 @@ InnerLoop:
     SLA A           ; × 4 (multiply row by 4)
     ADD A, C        ; Add column (4,3,2,1)
     ; A now contains unique value for each position
-    
+
     LD (IX), A      ; Store pattern value
     INC IX          ; Next grid position
     DEC C           ; Decrement column counter
     JR NZ, InnerLoop ; Continue inner loop
-    
+
     POP BC          ; Restore outer counter
     DJNZ OuterLoop  ; Continue outer loop
 
 ; Grid now contains:
 ; Row 0: 20,19,18,17
-; Row 1: 16,15,14,13  
+; Row 1: 16,15,14,13
 ; Row 2: 12,11,10,9
 ; Row 3: 8,7,6,5
 
@@ -300,7 +301,7 @@ LD B, 3             ; 3 rows
 OuterDJNZ:
     PUSH BC         ; Save outer counter
     LD C, 3         ; 3 columns
-    
+
 InnerDJNZ:
     ; Simple pattern: row + column
     LD A, B
@@ -309,7 +310,7 @@ InnerDJNZ:
     INC IX
     DEC C
     JR NZ, InnerDJNZ
-    
+
     POP BC
     DJNZ OuterDJNZ
 ```
@@ -334,7 +335,7 @@ LD HL, Buffer
 LD (HL), 0
 INC HL
 LD (HL), 0
-INC HL  
+INC HL
 LD (HL), 0
 INC HL
 LD (HL), 0
@@ -384,21 +385,21 @@ ProcessLoop:
 AnimateScreen:
     LD HL, $4000    ; Start of screen
     LD B, 192       ; 192 pixel rows
-    
+
 AnimateRowLoop:
     PUSH BC         ; Save row counter
     PUSH HL         ; Save row start address
-    
+
     ; Shift this row left by one pixel
     LD C, 32        ; 32 bytes per row
     OR A            ; Clear carry flag
-    
+
 ShiftByteLoop:
     RL (HL)         ; Rotate left through carry
     INC HL          ; Next byte
     DEC C
     JR NZ, ShiftByteLoop
-    
+
     POP HL          ; Restore row start
     ; Move to next row (complex addressing for ZX Spectrum)
     CALL NextScreenRow
@@ -415,7 +416,7 @@ ProcessAudioData:
     LD HL, AudioBuffer  ; Source data
     LD DE, FilteredBuffer ; Destination
     LD B, 0             ; Process 256 samples (B=0 = 256)
-    
+
 FilterLoop:
     LD A, (HL)          ; Get sample
     ; Apply simple low-pass filter (average with previous)
@@ -423,7 +424,7 @@ FilterLoop:
     RRA                 ; Divide by 2 (average)
     LD (DE), A          ; Store filtered sample
     LD (PrevSample), A  ; Save for next iteration
-    
+
     INC HL              ; Next source
     INC DE              ; Next destination
     DJNZ FilterLoop     ; Process all samples
@@ -461,17 +462,17 @@ AnimateSprite:
     LD A, (AnimationCounter)
     INC A
     LD (AnimationCounter), A
-    
+
     ; Change frame every 8 updates (slow down animation)
     AND %00000111
     JR NZ, NoFrameChange
-    
+
     ; Time to change frame
     LD A, (CurrentFrame)
     INC A
     AND %00000011       ; Keep in range 0-3
     LD (CurrentFrame), A
-    
+
 NoFrameChange:
     ; Draw current frame
     LD A, (CurrentFrame)
@@ -480,11 +481,11 @@ NoFrameChange:
     LD HL, SpriteFrames
     LD C, A : LD B, 0
     ADD HL, BC              ; Point to current frame
-    
+
     ; Draw frame to screen (8 bytes)
     LD DE, $4100            ; Screen position
     LD B, 8                 ; 8 bytes per frame
-    
+
 DrawFrame:
     LD A, (HL)              ; Get frame data
     LD (DE), A              ; Put on screen
@@ -512,19 +513,19 @@ SearchArray:
     LD HL, ArrayStart
     LD B, ArraySize    ; Maximum elements to check
     LD C, SearchValue  ; Value to find
-    
+
 SearchLoop:
     LD A, (HL)         ; Get array element
     CP C               ; Compare with search value
     JR Z, FoundValue   ; Exit if found
-    
+
     INC HL             ; Next element
     DJNZ SearchLoop    ; Continue if more elements
-    
+
     ; Not found
     LD A, 255          ; Return "not found" code
     RET
-    
+
 FoundValue:
     ; Found - calculate position
     LD A, ArraySize
@@ -540,12 +541,12 @@ GameLoop:
     CALL ProcessInput
     CALL UpdateGame
     CALL DrawScreen
-    
+
     ; Check for exit condition
     LD A, (GameExitFlag)
     OR A
     JR Z, GameLoop     ; Continue if not exiting
-    
+
     ; Game exit requested
     RET
 ```
@@ -557,16 +558,16 @@ GameLoop:
 ProcessNonZero:
     LD HL, ArrayStart
     LD B, ArraySize
-    
+
 ProcessLoop:
     LD A, (HL)         ; Get element
     OR A               ; Check if zero
     JR Z, SkipElement  ; Skip zero elements
-    
+
     ; Process non-zero element
     ADD A, 10          ; Example processing
     LD (HL), A         ; Store back
-    
+
 SkipElement:
     INC HL             ; Next element
     DJNZ ProcessLoop   ; Continue for all elements
@@ -609,7 +610,7 @@ RandomLoop:
 Create a comprehensive loop-based system that demonstrates:
 
 1. A counting loop that initializes data
-2. A conditional loop that searches through data  
+2. A conditional loop that searches through data
 3. Nested loops for 2D processing
 4. An animation loop with timing control
 5. Performance optimization techniques
@@ -624,7 +625,7 @@ InitData:
     LD HL, $6400        ; Data area
     LD B, 16            ; 16 bytes to initialize
     LD A, 1             ; Starting value
-    
+
 InitLoop:
     LD (HL), A          ; Store value
     SLA A               ; Multiply by 2 (1,2,4,8,16,32,64,128,...)
@@ -639,7 +640,7 @@ SearchValue:
     LD HL, $6400        ; Start of data
     LD C, 64            ; Value to find
     LD D, 0             ; Position counter
-    
+
 SearchLoop:
     LD A, (HL)          ; Get data
     CP C                ; Compare with search value
@@ -649,14 +650,14 @@ SearchLoop:
     LD A, D
     CP 16               ; Check if past end
     JR NZ, SearchLoop   ; Continue if more data
-    
+
     ; Not found
     LD D, 255           ; Error code
     JR SearchDone
-    
+
 FoundTarget:
     ; Found at position D
-    
+
 SearchDone:
     ; D contains position (0-15) or 255 if not found
 
@@ -664,11 +665,11 @@ SearchDone:
 ProcessGrid:
     LD IX, $6500        ; Grid storage
     LD B, 4             ; 4 rows
-    
+
 GridRowLoop:
     PUSH BC             ; Save row counter
     LD C, 4             ; 4 columns
-    
+
 GridColLoop:
     ; Create pattern: row × 4 + column
     LD A, 5             ; 5 - B = row number (0-3)
@@ -681,7 +682,7 @@ GridColLoop:
     INC IX              ; Next grid position
     DEC C               ; Next column
     JR NZ, GridColLoop  ; Continue inner loop
-    
+
     POP BC              ; Restore row counter
     DJNZ GridRowLoop    ; Continue outer loop
 
@@ -693,11 +694,11 @@ AnimatePattern:
     INC A
     AND %00000111       ; Keep in range 0-7
     LD (AnimationStep), A
-    
+
     ; Create rotating pattern
     LD B, 8             ; 8 positions
     LD HL, $6600        ; Pattern storage
-    
+
 AnimateLoop:
     LD A, (AnimationStep)
     ADD A, B            ; Add position offset
@@ -719,16 +720,16 @@ PatternReady:
 ; 5. Optimized processing (unrolled for first 4 elements)
 OptimizedProcess:
     LD HL, $6400        ; Data to process
-    
+
     ; Unrolled loop for first 4 elements (faster)
     LD A, (HL) : ADD A, 10 : LD (HL), A : INC HL
     LD A, (HL) : ADD A, 10 : LD (HL), A : INC HL
     LD A, (HL) : ADD A, 10 : LD (HL), A : INC HL
     LD A, (HL) : ADD A, 10 : LD (HL), A : INC HL
-    
+
     ; Regular loop for remaining elements
     LD B, 12            ; Remaining 12 elements
-    
+
 ProcessRest:
     LD A, (HL)          ; Get element
     ADD A, 10           ; Process it

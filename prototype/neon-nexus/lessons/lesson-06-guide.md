@@ -46,6 +46,7 @@ score_text:
 ### The PETSCII Mystery
 
 Here's where it gets tricky. PETSCII has different codes for:
+
 - Keyboard input (what you type)
 - Screen display (what you see)
 
@@ -66,7 +67,7 @@ Converting binary to decimal for display:
 display_score:
     ; Display score as two digits
     lda score
-    
+
     ; Get tens digit
     ldx #0          ; Tens counter
 divide_10:
@@ -76,7 +77,7 @@ divide_10:
     sbc #10         ; Subtract 10
     inx             ; Count tens
     jmp divide_10
-    
+
 got_tens:
     ; X = tens, A = ones
     pha             ; Save ones
@@ -84,7 +85,7 @@ got_tens:
     clc
     adc #$30        ; Convert to PETSCII digit
     sta $0400+7     ; After "SCORE:"
-    
+
     pla             ; Get ones
     clc
     adc #$30        ; Convert to PETSCII
@@ -100,15 +101,15 @@ Let's arrange our display:
 init_display:
     ; Row 0: Score and Level
     ; "SCORE:00     LEVEL:1"
-    
+
     ; Row 24: Lives
     ; "LIVES:♥♥♥"
-    
+
     ; Display labels
     jsr display_score_label
     jsr display_level_label
     jsr display_lives_label
-    
+
     ; Update values
     jsr display_score
     jsr display_level
@@ -127,11 +128,11 @@ add_points:
     clc
     adc #10
     sta score
-    
+
     ; Check for overflow (new level?)
     bcc no_level_up
     inc level       ; Score wrapped, new level!
-    
+
 no_level_up:
     jsr display_score
     rts
@@ -146,20 +147,20 @@ display_lives:
     ; Start position for lives
     ldx #0
     ldy lives
-    
+
 draw_hearts:
     cpy #0
     beq done_hearts
-    
+
     lda #$53        ; Heart character
     sta $0400+960,x ; Bottom row
     lda #$02        ; Red color
     sta $d800+960,x
-    
+
     inx
     dey
     jmp draw_hearts
-    
+
 done_hearts:
     ; Clear remaining positions
     cpx #3
@@ -168,7 +169,7 @@ done_hearts:
     sta $0400+960,x
     inx
     jmp done_hearts
-    
+
 done_clear:
     rts
 ```
@@ -176,7 +177,9 @@ done_clear:
 ## Interactive Elements
 
 ### Experiment 1: Different Scoring Systems
+
 Try various point values:
+
 ```assembly
 ; Survival points (every second alive)
 ; Enemy destroyed: 50 points
@@ -185,7 +188,9 @@ Try various point values:
 ```
 
 ### Experiment 2: High Score Tracking
+
 Remember the best score:
+
 ```assembly
 high_score: !byte 0
 
@@ -198,7 +203,9 @@ check_high_score:
 ```
 
 ### Experiment 3: UI Positioning
+
 Try different layouts:
+
 ```assembly
 ; Centered score
 ; Side panels
@@ -226,6 +233,7 @@ score_hi: !byte 0
 ### Screen Real Estate
 
 The C64 screen is precious:
+
 - 40×25 = 1000 characters total
 - UI typically uses 80-120 characters
 - That's 8-12% of your display!
@@ -235,18 +243,21 @@ Smart layouts maximize game area while showing vital info.
 ## Challenge Extensions
 
 1. **Animated Score**: Numbers roll up when increasing
+
    ```assembly
    ; Increment displayed score gradually
    ; Creates slot machine effect
    ```
 
 2. **Combo Multiplier**: Chain actions for more points
+
    ```assembly
    multiplier: !byte 1
    ; Reset on miss, increase on hit
    ```
 
 3. **Level Progression**: Different level indicators
+
    ```assembly
    ; Level 1-9: Numbers
    ; Level 10+: Symbols
@@ -269,6 +280,7 @@ Smart layouts maximize game area while showing vital info.
 ## Performance Optimization
 
 UI updates can be expensive:
+
 ```assembly
 ; Bad: Update entire UI every frame
 ; Cost: ~500 cycles
@@ -287,6 +299,7 @@ beq skip_score_update
 ## Historical UI Examples
 
 Classic C64 game UIs:
+
 - **Boulder Dash**: Minimal but effective
 - **Impossible Mission**: Speech bubble for time
 - **Paradroid**: Innovative deck display
@@ -297,6 +310,7 @@ Each found creative ways to show complex data simply.
 ## Color Psychology
 
 UI colors matter:
+
 - White: Neutral information
 - Yellow: Important/changing
 - Red: Danger/lives

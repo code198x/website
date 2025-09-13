@@ -27,6 +27,7 @@ Welcome to the final polish! ✨ With **32 completion-focused lessons**, you'll 
 ## What You'll Build
 
 Create **"AMIGA COMPLETE GAME"** - a fully-featured game system featuring:
+
 - Professional menu systems with smooth animations and clear navigation 🎨
 - Seamless transitions between all game states and modes
 - Complete save/load functionality that preserves every detail
@@ -36,24 +37,28 @@ Create **"AMIGA COMPLETE GAME"** - a fully-featured game system featuring:
 ## Project Overview
 
 **Lessons 1-8: "Menu Systems" - Professional Interface Design**
+
 - Main menu design with animated backgrounds and smooth navigation
 - Options screens with customizable settings and preferences
 - In-game pause menus and overlay systems
 - Professional UI animation and transition effects
 
 **Lessons 9-16: "State Management" - Seamless Flow Control**
+
 - Advanced state machine architecture for complex games
 - Smooth transitions between gameplay, menus, and cutscenes
 - State persistence and recovery systems
 - Professional game flow design and optimization
 
 **Lessons 17-24: "Save Systems" - Complete Data Persistence**
+
 - Comprehensive save/load functionality for game progress
 - High score tracking and player statistics
 - Settings persistence and preference management
 - Save file validation and corruption prevention
 
 **Lessons 25-32: "Final Integration" - Professional Game Completion**
+
 - Complete system integration and final polish
 - Performance optimization for the finished product
 - Final testing, debugging, and quality assurance

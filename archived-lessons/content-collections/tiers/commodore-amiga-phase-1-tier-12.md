@@ -31,6 +31,7 @@ Complete **Demo Creator** - an advanced multimedia demonstration system implemen
 ## What You'll Complete
 
 Finish a professional assembly demo creation system:
+
 - Complete multimedia effects and transitions using assembly
 - Advanced audio-visual synchronization through custom chip programming
 - Professional demo production workflow implemented in assembly
@@ -39,24 +40,28 @@ Finish a professional assembly demo creation system:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Assembly Effects Integration**
+
 - Coordinating complex visual and audio effects using assembly
 - Advanced timing and synchronization systems through custom chip programming
 - Creating seamless transitions and flow with assembly code
 - Building professional assembly demo frameworks
 
 **Lessons 9-16: Assembly Demo Scene Quality Programming**
+
 - Achieving demo scene standards and quality using assembly
 - Advanced assembly optimisation for smooth effects
 - Creative assembly programming and artistic expression
 - Building stunning visual presentations through assembly code
 
 **Lessons 17-24: Assembly Production Workflow**
+
 - Complete demo creation and editing tools using assembly
 - Professional timeline and sequencing implemented in assembly
 - Asset management and organisation through assembly programming
 - Creating efficient assembly production workflows
 
 **Lessons 25-32: Assembly Demo Creator Completion**
+
 - Final assembly integration and optimisation
 - Export and distribution functionality using assembly
 - Professional presentation and polish through assembly code

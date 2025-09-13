@@ -27,6 +27,7 @@ Time to make your games VISUALLY STUNNING! 🎨 With **32 dazzling lessons**, yo
 ## What You'll Build
 
 Create **VISUAL EFFECTS SHOWCASE** - a comprehensive effects system featuring:
+
 - Screen transitions that feel cinematic and professional 🎬
 - Particle effects that bring life to every action
 - Dynamic lighting that creates mood and atmosphere
@@ -36,24 +37,28 @@ Create **VISUAL EFFECTS SHOWCASE** - a comprehensive effects system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "PPU Wizardry" - Advanced Screen Effects**
+
 - Raster effects and mid-scanline PPU manipulation
 - Split-screen techniques and multiple scroll areas
 - Dynamic background effects and parallax scrolling
 - Advanced sprite priority and layering systems
 
 **Lessons 9-16: "Color Magic" - Palette Manipulation Mastery**
+
 - Real-time palette cycling for animated environments
 - Color ramping for lighting and atmospheric effects
 - Palette swapping for character variations and effects
 - Dynamic color systems that respond to game events
 
 **Lessons 17-24: "Particle Power" - Dynamic Visual Elements**
+
 - Efficient particle systems for explosions and effects
 - Weather effects (rain, snow, leaves) using sprites
 - Trail effects and motion blur simulation
 - Environmental effects that enhance immersion
 
 **Lessons 25-32: "Professional Polish" - Cinematic Presentation**
+
 - Screen transitions that feel smooth and professional
 - Cutscene effects and storytelling visuals
 - UI effects and interface polish

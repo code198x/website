@@ -27,6 +27,7 @@ Time to play mayor, farmer, or deity! With **32 world-building lessons**, you'll
 ## What You'll Build
 
 Create **PIXEL CITY PLANNER** - a simulation featuring:
+
 - Cities that grow based on player decisions
 - Resources that must be carefully balanced
 - Citizens with needs and desires (well, simple ones)
@@ -36,24 +37,28 @@ Create **PIXEL CITY PLANNER** - a simulation featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Foundation Building" - Core Systems**
+
 - Grid-based construction systems
 - Resource tracking and management
 - Growth algorithms that feel organic
 - Keeping it all running at playable speeds
 
 **Lessons 9-16: "Living Worlds" - Simulation Logic**
+
 - Population simulation within CPU limits
 - Supply and demand mechanics
 - Cause and effect relationships
 - Making simple rules create complex outcomes
 
 **Lessons 17-24: "Player as Architect" - Interface Design**
+
 - Cursor controls for precise building
 - Clear feedback on system states
 - Menus that don't overwhelm
 - Making complexity accessible
 
 **Lessons 25-32: "Sandbox Paradise" - Full Experience**
+
 - Multiple scenarios and challenges
 - Free-play sandbox modes
 - Victory conditions and goals

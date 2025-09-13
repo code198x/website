@@ -31,24 +31,28 @@ Create **DataMaster Pro** - a comprehensive data management system featuring adv
 ## Tier Overview
 
 **Lessons 1-8: Advanced Data Structures**
+
 - Designing efficient data structures for limited memory
 - Hash tables, trees, and advanced lookup systems
 - Dynamic data allocation and management
 - Memory-efficient data organization strategies
 
 **Lessons 9-16: Save/Load Systems**
+
 - Advanced save/load mechanisms and data persistence
 - Checksums and data integrity verification
 - Version control and backward compatibility
 - Cross-session data management and synchronization
 
 **Lessons 17-24: Inventory & Item Systems**
+
 - Complex inventory management and item databases
 - Equipment systems and stat calculations
 - Dynamic item generation and randomization
 - Trade and economy systems implementation
 
 **Lessons 25-32: Data Compression & Optimization**
+
 - Advanced data compression algorithms for NES
 - Real-time data streaming and caching
 - Performance optimization for data-heavy operations

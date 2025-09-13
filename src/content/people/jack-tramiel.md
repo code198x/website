@@ -44,11 +44,13 @@ external_links:
 ## Early Life and Business Formation
 
 ### Holocaust Survivor to Entrepreneur
+
 Born Idek Trzmiel in Łódź, Poland, Tramiel survived the horrors of the Holocaust, including imprisonment in concentration camps. After the war, he emigrated to the United States, where he adopted the name Jack Tramiel and served in the U.S. Army.
 
 In 1954, using his military mechanical training, Tramiel founded a typewriter repair business in the Bronx. This modest beginning would evolve into one of the most influential computer companies of the 1970s and 1980s.
 
 ### From Typewriters to Calculators
+
 **Commodore Business Machines** was incorporated in 1958, initially focusing on typewriter sales and repair. The company expanded into adding machines and office equipment throughout the 1960s.
 
 The crucial transformation came in the early 1970s when Tramiel recognised that electronic calculators would replace mechanical adding machines. He pivoted Commodore into calculator manufacturing, establishing the company in the growing semiconductor business.
@@ -56,12 +58,15 @@ The crucial transformation came in the early 1970s when Tramiel recognised that 
 ## The Calculator Wars and Vertical Integration
 
 ### Learning from Crisis
+
 In the mid-1970s, the calculator market became brutally competitive, with prices plummeting and margins disappearing. Many companies failed, but Tramiel learned crucial lessons about controlling costs and supply chains.
 
 ### The MOS Technology Acquisition (1976)
+
 Recognising that processor costs were killing his calculator business, Tramiel made a strategic decision that would define Commodore's future: he acquired **MOS Technology**, manufacturer of the revolutionary 6502 microprocessor.
 
 **Strategic Benefits:**
+
 - **Vertical integration**: Control over crucial component supply and pricing
 - **Cost advantage**: Internal processor costs gave Commodore massive pricing flexibility
 - **Technology access**: Ability to request custom variants and improvements
@@ -72,23 +77,28 @@ This acquisition gave Tramiel the foundation for his computing empire and the co
 ## The Personal Computer Revolution
 
 ### The Commodore PET (1977)
+
 Tramiel's first computer was the **Commodore PET** (Personal Electronic Transactor), designed by Chuck Peddle and launched as part of the "1977 Trinity" alongside the Apple II and TRS-80.
 
 **PET Innovations:**
+
 - **Integrated design**: Built-in monitor, keyboard, and cassette drive
 - **Competitive pricing**: Significantly cheaper than competitors
 - **Business focus**: Targeted at small businesses and schools
 - **BASIC in ROM**: Ready-to-use programming environment
 
 ### The VIC-20 Breakthrough (1980)
+
 The **VIC-20** represented Tramiel's vision of truly mass-market computing:
 
 **Revolutionary Pricing:**
+
 - **Under $300**: First colour computer under this crucial price point
 - **Mass retail**: Sold through department stores, not just computer shops
 - **Marketing blitz**: Heavy television advertising campaign
 
 **Market Impact:**
+
 - Over 2.5 million units sold worldwide
 - Established Commodore as a major force in home computing
 - Proved that cheap computers could be profitable in volume
@@ -98,17 +108,20 @@ The **VIC-20** represented Tramiel's vision of truly mass-market computing:
 The **Commodore 64** became Tramiel's crowning achievement, embodying his philosophy perfectly:
 
 **Aggressive Pricing Strategy:**
+
 - **$595 launch price**: Far below competitors with similar capabilities
 - **Price cuts**: Continual reductions to maintain competitive edge
 - **Volume economics**: High-volume manufacturing to reduce costs
 
 **Superior Specifications:**
+
 - **64KB RAM**: More than most competitors
 - **Advanced graphics**: VIC-II chip with sprites and multicolour
 - **Revolutionary sound**: SID chip with 3-voice synthesis
 - **Extensive software library**: Games, productivity, and educational software
 
 **Market Domination:**
+
 - Over 12 million units sold (some estimates suggest 17+ million)
 - Best-selling single computer model in history
 - Dominated home computing through the 1980s
@@ -118,19 +131,23 @@ The **Commodore 64** became Tramiel's crowning achievement, embodying his philos
 Tramiel's approach to business was characterised by several key principles:
 
 ### "Computers for the Masses, Not the Classes"
+
 This famous slogan captured Tramiel's core belief that computers should be affordable for ordinary families, not just wealthy enthusiasts or businesses.
 
 ### Aggressive Pricing
+
 - **Price as weapon**: Used low prices to gain market share and eliminate competition
 - **Cost control**: Obsessive focus on manufacturing costs and efficiency
 - **Vertical integration**: Controlling key components to maintain pricing flexibility
 
 ### Volume Manufacturing
+
 - **Economy of scale**: High-volume production to reduce per-unit costs
 - **Automated assembly**: Investment in manufacturing efficiency
 - **Global operations**: International manufacturing and distribution
 
 ### Marketing Innovation
+
 - **Mass retail**: Selling computers through department stores and toy shops
 - **Television advertising**: Heavy advertising in mainstream media
 - **Celebrity endorsements**: Using stars like William Shatner in commercials
@@ -138,25 +155,31 @@ This famous slogan captured Tramiel's core belief that computers should be affor
 ## The Commodore Years: Innovation and Competition
 
 ### Technical Leadership
+
 Under Tramiel's leadership, Commodore consistently pushed technical boundaries:
 
 **Graphics Innovation:**
+
 - **VIC-II chip**: Advanced graphics capabilities for home computers
 - **Custom silicon**: Investment in proprietary chip development
 - **Multimedia focus**: Emphasis on games and entertainment applications
 
 **Audio Breakthroughs:**
+
 - **SID chip**: Revolutionary sound synthesis for home computers
 - **Music software**: Professional music creation capabilities
 - **Audio quality**: Studio-quality sound in affordable systems
 
 ### Business Expansion
+
 - **International markets**: Strong presence in Europe and other regions
 - **Product line diversity**: From budget to high-end systems
 - **Software ecosystem**: Encouraging third-party development
 
 ### The Price Wars
+
 Tramiel's aggressive pricing often sparked industry-wide price wars:
+
 - **TI-99/4A conflict**: Drove Texas Instruments out of home computers
 - **Market consolidation**: Many smaller manufacturers eliminated
 - **Apple competition**: Forced Apple to compete on value, not just features
@@ -166,15 +189,19 @@ Tramiel's aggressive pricing often sparked industry-wide price wars:
 In 1984, a boardroom dispute led to Tramiel's dramatic departure from Commodore. The disagreement centred around company direction and his authoritarian management style.
 
 ### The Atari Acquisition
+
 Shortly after leaving Commodore, Tramiel acquired the consumer division of **Atari Corporation** from Warner Communications, becoming CEO of the revived company.
 
 **Atari Strategy:**
+
 - **16-bit computing**: Focus on advanced Atari ST computers
 - **Gaming revival**: Revitalising the Atari brand in gaming
 - **Price competition**: Applying Commodore-style pricing to new markets
 
 ### The Atari ST Success
+
 The **Atari ST** series, launched in 1985, demonstrated Tramiel's continued influence:
+
 - **68000 processor**: Advanced 16-bit architecture
 - **Built-in MIDI**: Professional music capabilities
 - **Aggressive pricing**: Significantly cheaper than competitors
@@ -183,19 +210,23 @@ The **Atari ST** series, launched in 1985, demonstrated Tramiel's continued infl
 ## Legacy and Impact
 
 ### Democratising Computing
+
 Tramiel's greatest achievement was making computers accessible to ordinary families. His pricing strategies and mass-market approach brought computing to millions who couldn't afford premium systems.
 
 ### Industry Transformation
+
 - **Pricing standards**: Established expectations for affordable computing
 - **Manufacturing efficiency**: Showed how volume production could reduce costs
 - **Market expansion**: Proved that computers could be mass consumer products
 
 ### Technical Innovation
+
 - **Custom silicon**: Investment in proprietary chips drove innovation
 - **Multimedia focus**: Emphasis on graphics and sound capabilities
 - **Performance value**: Delivering high performance at low prices
 
 ### Educational Impact
+
 Commodore computers, particularly the C64, introduced entire generations to computing and programming, with many future computer scientists learning on Tramiel's machines.
 
 ## Management Style and Personality
@@ -203,12 +234,14 @@ Commodore computers, particularly the C64, introduced entire generations to comp
 Tramiel was known for his direct, sometimes harsh management style:
 
 ### Strengths
+
 - **Clear vision**: Unwavering focus on affordable computing
 - **Decisive leadership**: Quick decisions and rapid execution
 - **Cost discipline**: Relentless focus on efficiency and value
 - **Market insight**: Understanding of consumer needs and price sensitivity
 
 ### Challenges
+
 - **Authoritarian approach**: Demanding and sometimes difficult to work with
 - **Short-term focus**: Emphasis on immediate results over long-term planning
 - **Personnel conflicts**: High turnover among senior executives
@@ -219,11 +252,13 @@ Tramiel was known for his direct, sometimes harsh management style:
 After stepping back from day-to-day operations at Atari in the 1990s, Tramiel remained involved in technology investments and enjoyed recognition for his contributions to computing.
 
 ### Industry Honours
+
 - **Computer History Museum**: Recognition for contributions to personal computing
 - **Pioneer Awards**: Various industry organisations honoured his achievements
 - **Hall of Fame**: Inducted into multiple computing halls of fame
 
 ### Continuing Influence
+
 Tramiel's philosophy of affordable computing continued to influence the industry, with echoes seen in later companies that prioritised value and accessibility.
 
 ## Relevance to Code Like It's 198x
@@ -231,12 +266,14 @@ Tramiel's philosophy of affordable computing continued to influence the industry
 In Code Like It's 198x, students learning on Commodore systems directly experience the results of Tramiel's vision. The Commodore 64's powerful yet affordable architecture enabled sophisticated programming projects that would have been impossible on more expensive systems.
 
 ### Educational Value
+
 - **Accessible technology**: Understanding how business decisions enable education
 - **Cost considerations**: Learning how pricing affects technology adoption
 - **Innovation drivers**: How competitive pressure drives technical advancement
 - **Market dynamics**: Understanding the relationship between technology and business
 
 ### Programming Context
+
 - **Capable hardware**: The C64's advanced graphics and sound capabilities
 - **Large user base**: Extensive software ecosystem for learning
 - **Historical significance**: Understanding computing's democratisation
@@ -245,7 +282,7 @@ In Code Like It's 198x, students learning on Commodore systems directly experien
 ## Fun Facts
 
 - Tramiel's concentration camp number was tattooed on his arm, a reminder he carried throughout his business career
-- He was known for his blunt motto: "Business is war" 
+- He was known for his blunt motto: "Business is war"
 - The VIC-20 was originally going to be called the "VIC-40" until Tramiel realised 40 sounded like a larger number than 20
 - He personally negotiated many of Commodore's major deals, including the MOS Technology acquisition
 - Tramiel's pricing strategies were so aggressive that some competitors accused him of selling below cost (which he sometimes did)

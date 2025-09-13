@@ -31,24 +31,28 @@ Create **VisualFX Master** - a comprehensive graphics showcase featuring advance
 ## Tier Overview
 
 **Lessons 1-8: Advanced Visual Effects**
+
 - Complex raster effects and mid-screen changes
 - Advanced color cycling and palette animation
 - Transparency effects and alpha blending simulation
 - Screen distortion and visual transformation effects
 
 **Lessons 9-16: Sophisticated Animation Systems**
+
 - Advanced keyframe animation and interpolation
 - Procedural animation and physics-based movement
 - Complex sprite animation and state management
 - Performance-optimized animation frameworks
 
 **Lessons 17-24: Advanced Sprite Techniques**
+
 - Large sprite composition and management
 - Advanced sprite multiplexing and priority systems
 - Dynamic sprite generation and modification
 - Professional sprite optimization techniques
 
 **Lessons 25-32: Cutting-Edge Graphics Programming**
+
 - Hardware-pushing visual effects and demonstrations
 - Advanced graphics compression and streaming
 - Professional graphics debugging and profiling

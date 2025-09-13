@@ -27,6 +27,7 @@ Conceive legendary ZX Spectrum games! With **32 legendary concept lessons**, you
 ## What You'll Conceive
 
 Create **LEGENDARY GAME CONCEPTS** worthy of ZX Spectrum immortality:
+
 - Game ideas that capture the essence of what makes Spectrum games legendary
 - Concepts that feel destined to become beloved classics
 - Experiences that honor the greatest traditions while pushing creative boundaries
@@ -36,24 +37,28 @@ Create **LEGENDARY GAME CONCEPTS** worthy of ZX Spectrum immortality:
 ## Legendary Concept Areas
 
 **Lessons 1-8: "Understanding Legends" - What Makes Games Legendary**
+
 - Analyzing legendary ZX Spectrum games and identifying timeless qualities
 - Understanding the elements that make games transcend their era
 - Recognizing patterns in games that achieve legendary status
 - Learning from classics like Elite, Knight Lore, and Jet Set Willy
 
 **Lessons 9-16: "Legendary Vision" - Conceiving Timeless Games**
+
 - Developing game concepts that feel both familiar and revolutionary
 - Creating experiences that honor ZX Spectrum heritage while innovating
 - Designing games that capture the magical essence of legendary classics
 - Balancing innovation with the timeless appeal of great game design
 
 **Lessons 17-24: "Epic Scope" - Ambitious Game Design on ZX Spectrum**
+
 - Conceiving games with epic scope within 8-bit constraints
 - Creating rich game worlds and narratives that feel vast and immersive
 - Designing experiences that feel larger than their technical limitations
 - Building concepts that maximize emotional and creative impact
 
 **Lessons 25-32: "Legendary Legacy" - Games That Define Gaming History**
+
 - Creating concepts that push the boundaries of what's possible
 - Designing games that inspire future generations of developers
 - Understanding how legendary games influence entire gaming cultures

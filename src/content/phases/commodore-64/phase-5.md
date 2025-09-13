@@ -10,7 +10,7 @@ learning_objectives:
   - "Build games with distinctive creative identities"
   - "Learn artistic direction and visual design principles"
   - "Push creative boundaries within technical constraints"
-prerequisites: 
+prerequisites:
   - "Phases 1-4: Complete technical and professional foundation"
   - "Sixteen complete games demonstrating progression"
   - "Professional development practices and optimization skills"
@@ -27,7 +27,7 @@ order: 5
 
 # Phase 5: Creative Development & Innovation
 
-*Coming Soon*
+_Coming Soon_
 
 Express your creative vision! With solid technical and professional skills, you're ready to explore innovative approaches and create games with unique artistic identities matching 1989-1990 innovation.
 
@@ -47,15 +47,19 @@ Phase 5 focuses on creative expression and innovation within the C64's constrain
 ## Learning Path
 
 ### Visual Innovation (Tiers 1-4)
+
 Develop unique graphical styles using creative character sets, color choices, and visual effects that give games distinctive personalities.
 
 ### Gameplay Experimentation (Tiers 5-8)
+
 Create innovative mechanics and gameplay concepts that challenge conventions while remaining technically achievable.
 
 ### Artistic Integration (Tiers 9-12)
+
 Combine visual, audio, and gameplay innovations into cohesive experiences with strong creative identities.
 
 ### Creative Excellence (Tiers 13-16)
+
 Push creative boundaries while maintaining professional polish, creating games that stand out through innovation.
 
 ## Your Phase 5 Projects
@@ -90,6 +94,7 @@ This phase emphasizes creativity within constraints:
 ## Prerequisites
 
 Before starting Phase 5, ensure you have:
+
 - Completed Phases 1-4 (2048 lessons)
 - Sixteen complete games demonstrating technical progression
 - Professional development and optimization skills
@@ -99,4 +104,4 @@ Before starting Phase 5, ensure you have:
 
 After completing Phase 5, you'll be ready for Phase 6: Technical Innovation, where you'll learn demo scene techniques and extreme optimization methods.
 
-*This phase contains 512 lessons across 16 tiers and is currently in development.*
+_This phase contains 512 lessons across 16 tiers and is currently in development._

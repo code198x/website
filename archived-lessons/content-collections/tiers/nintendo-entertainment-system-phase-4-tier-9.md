@@ -27,6 +27,7 @@ Compose like Koji Kondo! With **32 comprehensive lessons**, you'll master NES au
 ## What You'll Build
 
 Begin developing **Neon Legends** - a cinematic platformer featuring:
+
 - Rich, orchestral-style music using advanced APU techniques
 - Dynamic audio that adapts to gameplay and player actions
 - Professional sound effects with layered audio feedback
@@ -36,24 +37,28 @@ Begin developing **Neon Legends** - a cinematic platformer featuring:
 ## Tier Overview
 
 **Lessons 1-8: Advanced APU Programming**
+
 - Sophisticated waveform synthesis and sound generation
 - Advanced pulse, triangle, noise, and DPCM channel programming
 - Professional audio timing and synchronization
 - Complex envelope and modulation techniques
 
 **Lessons 9-16: Dynamic Music Systems**
+
 - Adaptive music that changes with gameplay state
 - Seamless transitions between musical sections
 - Interactive audio triggers and gameplay synchronization
 - Professional music layering and mixing techniques
 
 **Lessons 17-24: Professional Sound Design**
+
 - Rich sound effects with layered audio elements
 - Environmental audio and spatial sound techniques
 - Professional audio feedback and user interface sounds
 - Advanced audio compression and optimization
 
 **Lessons 25-32: Complete Audio Integration**
+
 - Full soundtrack composition and implementation
 - Audio-visual synchronization and timing
 - Professional audio polish and mastering

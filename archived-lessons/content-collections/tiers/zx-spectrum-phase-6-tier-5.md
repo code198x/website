@@ -12,7 +12,7 @@ learning_objectives:
   - "Build professional hardware abstraction layers"
 concepts_introduced:
   - "Direct ULA programming and low-level hardware control"
-  - "Undocumented Z80 instructions and advanced processor techniques" 
+  - "Undocumented Z80 instructions and advanced processor techniques"
   - "Peripheral device programming and hardware interfaces"
   - "Custom hardware optimization and timing-critical code"
   - "Professional hardware abstraction and driver development"
@@ -27,6 +27,7 @@ Become a true hardware wizard! With **32 intensive lessons**, you'll learn to pr
 ## What You'll Build
 
 Create **HARDWARE MASTER SYSTEM** - a comprehensive hardware control library featuring:
+
 - Direct ULA programming bypassing ROM routines
 - Custom Z80 optimizations using undocumented instructions
 - Peripheral device drivers and hardware interfaces
@@ -36,24 +37,28 @@ Create **HARDWARE MASTER SYSTEM** - a comprehensive hardware control library fea
 ## Tier Overview
 
 **Lessons 1-8: "ULA Mastery!" - Direct Video and Memory Control**
+
 - Direct ULA register programming and control
 - Custom video modes and hardware exploits
 - Memory timing optimization and contention handling
 - Professional-grade hardware manipulation
 
 **Lessons 9-16: "Z80 Secrets!" - Undocumented Instructions and Advanced Techniques**
+
 - Complete undocumented Z80 instruction set mastery
 - Advanced processor flags and condition codes
 - Timing-critical assembly optimization
 - The secret instructions used in commercial software
 
 **Lessons 17-24: "Peripheral Power!" - External Hardware Programming**
+
 - Joystick, mouse, and custom controller interfaces
 - Printer and serial communication programming
 - Disk drive and mass storage device control
 - Network and communication device programming
 
 **Lessons 25-32: "Hardware Architecture!" - Professional Driver Development**
+
 - Hardware abstraction layer design and implementation
 - Device driver architecture and optimization
 - Cross-platform hardware compatibility systems

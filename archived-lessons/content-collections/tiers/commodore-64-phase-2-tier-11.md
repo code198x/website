@@ -31,24 +31,28 @@ Enhance **Quest Master** with professional UI systems including multi-level menu
 ## Tier Overview
 
 **Lessons 1-8: Advanced Input Processing**
+
 - Multi-frame input buffering
 - Simultaneous key handling
 - Analog joystick processing
 - Input prediction and smoothing
 
 **Lessons 9-16: Gesture & Combo Systems**
+
 - Pattern recognition for gestures
 - Fighting game-style combos
 - Timing window management
 - Complex input sequences
 
 **Lessons 17-24: UI Framework Development**
+
 - Reusable component architecture
 - Window and dialog systems
 - List boxes and scrolling views
 - Tab navigation and focus
 
 **Lessons 25-32: Polish & Accessibility**
+
 - Smooth transitions and animations
 - Audio feedback for actions
 - Configurable controls

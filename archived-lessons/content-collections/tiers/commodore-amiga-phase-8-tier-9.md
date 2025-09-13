@@ -27,6 +27,7 @@ Achieve game perfection! With **32 perfection-focused lessons**, you'll master t
 ## What You'll Perfect
 
 Create **PERFECTLY POLISHED AMIGA GAMES** that achieve legendary status:
+
 - Games with legendary levels of quality and professional presentation
 - Experiences that feel perfectly crafted in every detail
 - Games that showcase the highest standards of development excellence
@@ -36,24 +37,28 @@ Create **PERFECTLY POLISHED AMIGA GAMES** that achieve legendary status:
 ## Game Perfection Areas
 
 **Lessons 1-8: "Quality Excellence" - Achieving Legendary Standards**
+
 - Understanding what separates good games from legendary ones
 - Developing the eye for detail that creates legendary experiences
 - Building quality standards that rival the best commercial games
 - Learning from legendary games that achieved perfection
 
 **Lessons 9-16: "Professional Polish" - Perfecting Every Detail**
+
 - Advanced techniques for polishing game interfaces and controls
 - Perfecting game balance and difficulty progression
 - Creating seamless transitions and professional presentation
 - Building games that feel perfectly crafted and refined
 
 **Lessons 17-24: "Player Experience Perfection" - Flawless Gameplay**
+
 - Perfecting player feedback and response systems
 - Creating game flow that feels effortless and natural
 - Building experiences that anticipate and exceed player expectations
 - Achieving the seamless gameplay that defines legendary games
 
 **Lessons 25-32: "Legendary Quality" - Achieving Perfection**
+
 - Final polishing techniques for legendary game quality
 - Understanding how legendary games achieve timeless appeal
 - Creating games that represent the pinnacle of development craft

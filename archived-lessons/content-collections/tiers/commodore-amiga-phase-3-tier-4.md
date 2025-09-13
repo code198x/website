@@ -31,18 +31,21 @@ Create **TechDemo Supreme** - your personal technical showcase featuring advance
 ## Project Options
 
 **Option 1: Advanced Graphics Demo**
+
 - Sophisticated Copper effects with dynamic generation
 - Complex Blitter operations and optimizations
 - Advanced memory management for graphics data
 - Professional-quality visual effects and transitions
 
 **Option 2: Complex Game Engine**
+
 - Multi-layered game logic with advanced state machines
 - Optimized memory management for game objects
 - Custom chip programming for smooth gameplay
 - Professional game architecture and organization
 
 **Option 3: Technical Benchmark Suite**
+
 - Memory management performance testing
 - Custom chip capability demonstration
 - Complex logic system benchmarking
@@ -51,24 +54,28 @@ Create **TechDemo Supreme** - your personal technical showcase featuring advance
 ## Tier Overview
 
 **Lessons 1-8: Project Planning & Architecture**
+
 - Advanced project planning and system design
 - Integrating memory management, custom chips, and logic
 - Professional development workflow setup
 - Technical specification and documentation
 
 **Lessons 9-16: Core Implementation**
+
 - Building the foundation systems and frameworks
 - Implementing advanced memory management integration
 - Custom chip programming implementation
 - Complex logic system integration
 
 **Lessons 17-24: Advanced Features & Optimization**
+
 - Adding sophisticated features and effects
 - Performance optimization and fine-tuning
 - Advanced debugging and profiling
 - User interface and interaction systems
 
 **Lessons 25-32: Polish & Presentation**
+
 - Professional polish and finishing touches
 - Technical documentation and code commenting
 - Performance analysis and benchmarking

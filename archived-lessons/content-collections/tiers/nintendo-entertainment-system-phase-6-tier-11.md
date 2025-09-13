@@ -27,6 +27,7 @@ Time to master algorithmic content creation! With **32 intensive lessons**, you'
 ## What You'll Build
 
 Create **NES PROCEDURAL GENERATOR** - a comprehensive content creation system featuring:
+
 - Advanced level generation algorithms creating infinite game worlds
 - Sophisticated music generation systems for endless soundtracks
 - Procedural graphics generation for unlimited visual variety
@@ -36,24 +37,28 @@ Create **NES PROCEDURAL GENERATOR** - a comprehensive content creation system fe
 ## Tier Overview
 
 **Lessons 1-8: "Infinite Worlds!" - Advanced Level Generation**
+
 - Sophisticated map generation algorithms for endless exploration
 - Advanced dungeon and maze generation techniques
 - Procedural object and enemy placement systems
 - The mathematics behind creating varied, balanced game worlds
 
 **Lessons 9-16: "Endless Music!" - Procedural Audio Generation**
+
 - Algorithmic music composition using mathematical patterns
 - Procedural sound effect generation and variation
 - Advanced audio pattern generation for dynamic soundtracks
 - Creating musical systems that never repeat
 
 **Lessons 17-24: "Unlimited Graphics!" - Procedural Visual Generation**
+
 - Algorithmic sprite and tile generation for infinite variety
 - Procedural animation and visual effect creation
 - Advanced pattern generation for backgrounds and textures
 - Creating visual systems that generate endless content
 
 **Lessons 25-32: "Perfect Randomness!" - Advanced Random Systems**
+
 - Professional random number generation with proper seeding
 - Statistical control systems for balanced procedural content
 - Advanced probability systems for fair and engaging gameplay

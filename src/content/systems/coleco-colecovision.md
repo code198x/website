@@ -87,7 +87,6 @@ hardware_availability: "available"
 
 # Media
 description: "The console that delivered true arcade experiences at home, with near-perfect ports of Donkey Kong and Zaxxon."
-image: "/images/systems/colecovision.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -102,7 +101,7 @@ order: 17
 
 # ColecoVision
 
-*Coming Soon*
+_Coming Soon_
 
 The ColecoVision delivered on a simple promise: arcade games at home that actually looked like arcade games. With its Z80 processor and TMS9918A graphics chip, it brought Donkey Kong, Zaxxon, and other arcade hits home with stunning accuracy.
 
@@ -119,9 +118,10 @@ The ColecoVision's combination of Z80 processor and TMS9918A graphics chip (same
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the focused ColecoVision curriculum will include:
+
 - Z80 assembly for gaming
 - TMS9918A sprite and tile graphics
 - SN76489A sound programming

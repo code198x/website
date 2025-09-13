@@ -27,6 +27,7 @@ Your third complete game - and the most complex yet! With **32 management-focuse
 ## What You'll Build
 
 Create **ACADEMY EMPIRE** - a sports management RPG featuring:
+
 - Train athletes with RPG-style progression
 - Manage facilities like a city simulation
 - Compete in tournaments with realistic sports physics
@@ -36,24 +37,28 @@ Create **ACADEMY EMPIRE** - a sports management RPG featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Management Architecture" - Complex Systems**
+
 - Multi-layered simulation design
 - Character progression integrated with management
 - Resource allocation and optimization
 - Long-term planning and strategy systems
 
 **Lessons 9-16: "Data Mastery" - Information Systems**
+
 - Comprehensive statistics tracking
 - Predictive modeling for performance
 - Historical data and record keeping
 - Visual data presentation and analysis
 
 **Lessons 17-24: "Emergent Narrative" - Stories from Systems**
+
 - Procedural event generation
 - Character relationships and drama
 - Media system and public relations
 - Rivalry development and story arcs
 
 **Lessons 25-32: "Dynasty Mode" - Long-term Engagement**
+
 - Multi-generational gameplay
 - Hall of fame and legacy systems
 - Historical challenges and scenarios

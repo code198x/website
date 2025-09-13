@@ -27,6 +27,7 @@ Master professional input systems! With **32 comprehensive lessons**, you'll cre
 ## What You'll Build
 
 Create **INPUT EXCELLENCE SYSTEM** - a comprehensive input framework featuring:
+
 - Multi-device support for keyboard, joystick, and custom controllers
 - Precision timing and professional responsiveness
 - Customizable control schemes and player configuration
@@ -36,24 +37,28 @@ Create **INPUT EXCELLENCE SYSTEM** - a comprehensive input framework featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Multi-Device Mastery!" - Universal Input Support**
+
 - Keyboard matrix scanning and advanced key detection
 - Joystick interface programming and calibration
 - Custom controller design and implementation
 - Professional multi-device input architecture
 
 **Lessons 9-16: "Precision Timing!" - Responsive Input Processing**
+
 - Timing-critical input sampling and processing
 - Input buffering and queue management
 - Lag reduction and professional responsiveness
 - Frame-perfect input detection and handling
 
 **Lessons 17-24: "Smart Controls!" - Adaptive Input Systems**
+
 - Context-sensitive control mapping
 - Gesture recognition and complex input patterns
 - Input filtering and noise reduction
 - Dynamic control scheme adaptation
 
 **Lessons 25-32: "Professional Systems!" - Advanced Input Architecture**
+
 - Configurable control systems and player preferences
 - Input recording and replay systems
 - Accessibility features and alternative control methods

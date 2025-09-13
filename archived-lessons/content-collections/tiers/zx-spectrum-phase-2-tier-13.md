@@ -27,6 +27,7 @@ Welcome to the world of peak performance! ⚡ With **32 precision-tuned lessons*
 ## What You'll Build
 
 Create **PERFORMANCE PROFILER** - a complete optimization toolkit featuring:
+
 - Profiling tools that reveal every bottleneck with surgical precision 🔍
 - Code optimizers that squeeze performance from every instruction
 - Memory managers that eliminate waste and maximize efficiency
@@ -36,24 +37,28 @@ Create **PERFORMANCE PROFILER** - a complete optimization toolkit featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Bottleneck Hunter" - Finding Performance Problems**
+
 - Cycle counting and instruction timing analysis
 - Performance profiling tools and measurement techniques
 - Identifying critical path bottlenecks in game loops
 - Memory access pattern analysis and optimization
 
 **Lessons 9-16: "Code Acceleration" - Z80 Optimization Mastery**
+
 - Advanced Z80 instruction selection and optimization
 - Loop unrolling and code restructuring techniques
 - Register allocation optimization and data flow analysis
 - Branch prediction and jump table optimization
 
 **Lessons 17-24: "Memory Mastery" - Efficient Data Access**
+
 - Cache-friendly data structure design and layout
 - Memory pool allocation and garbage collection avoidance
 - Data compression and decompression optimization
 - Memory banking efficiency and page switching optimization
 
 **Lessons 25-32: "Frame Rate Guardian" - Perfect Timing Control**
+
 - Interrupt-driven frame rate stabilization
 - Variable time step vs fixed time step optimization
 - Priority scheduling for critical game systems

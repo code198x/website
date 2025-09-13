@@ -27,6 +27,7 @@ Bring intelligence to your assembly programs! Learn conditional logic, loops, an
 ## What You'll Add to Sprite Learn
 
 Implement intelligent sprite behaviors:
+
 - Create decision-making logic for sprite movement
 - Implement collision detection and response
 - Build state machines for sprite behaviors
@@ -35,24 +36,28 @@ Implement intelligent sprite behaviors:
 ## Tier Overview
 
 **Lessons 1-8: Conditional Logic**
+
 - Understanding the status register and flags
 - Branch instructions (BEQ, BNE, BCS, BCC, etc.)
 - Comparison operations and testing
 - Building conditional execution paths
 
 **Lessons 9-16: Loops and Iteration**
+
 - Constructing efficient loops
 - Counter-based and condition-based loops
 - Nested loops and complex iteration
 - Loop optimisation techniques
 
 **Lessons 17-24: Subroutines and Functions**
+
 - JSR and RTS instructions
 - Stack management and parameter passing
 - Creating reusable code modules
 - Function libraries and organisation
 
 **Lessons 25-32: Sprite Learn Intelligence**
+
 - Implementing collision detection logic
 - Creating sprite state machines
 - Building interactive response systems

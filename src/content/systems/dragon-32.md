@@ -26,7 +26,6 @@ country_of_origin: "United Kingdom"
 
 # Media
 description: "The Welsh computer that brought 6809 power to Europe before being crushed by the Spectrum."
-image: "/images/systems/dragon-32.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 109
 
 # Dragon 32
 
-*Historical Reference*
+_Historical Reference_
 
 The Dragon 32 was Wales's entry into the home computer boom. Built around the powerful Motorola 6809E processor and largely compatible with the Tandy Color Computer, it offered superior processing power but couldn't compete with the Spectrum's price and software library.
 
@@ -64,4 +63,4 @@ Despite initial success, Dragon Data couldn't compete with Sinclair's prices or 
 
 The Dragon proved that technical superiority doesn't guarantee success. Its 6809 processor was more powerful than the Spectrum's Z80, but lack of software and higher prices doomed it. The Dragon community remains active, appreciating what might have been.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

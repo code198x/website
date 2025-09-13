@@ -31,6 +31,7 @@ Master the craft! With **32 comprehensive lessons**, you'll complete your second
 ## What You'll Complete
 
 Finish **Quantum Realms** with complete systems integration:
+
 - Advanced gameplay mechanics with emergent complexity
 - Sophisticated AI systems and procedural world generation
 - Professional balance and perfectly tuned gameplay feel
@@ -40,24 +41,28 @@ Finish **Quantum Realms** with complete systems integration:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Systems Integration**
+
 - Coordinating complex gameplay mechanics and AI systems
 - Integrating procedural generation with balanced gameplay
 - Resolving performance conflicts in complex systems
 - Professional system architecture and communication
 
 **Lessons 9-16: Performance Mastery**
+
 - Advanced optimization for complex game systems
 - Memory management for large, dynamic games
 - CPU and custom chipset utilization optimization
 - Frame rate consistency and performance profiling
 
 **Lessons 17-24: Professional Polish**
+
 - Visual and audio integration and refinement
 - User experience optimization and accessibility
 - Bug resolution and stability testing
 - Professional documentation and help systems
 
 **Lessons 25-32: Release Preparation**
+
 - Final balance adjustments and gameplay refinement
 - Performance validation across Amiga models
 - Distribution preparation and release formatting
@@ -73,7 +78,7 @@ Advanced Amiga Strategy/Action Experience
 
 Complete Development Achievements:
 - Mechanics: Advanced systems with emergent gameplay
-- AI: Intelligent, adaptive opponents and allies  
+- AI: Intelligent, adaptive opponents and allies
 - World: Procedural generation with hand-crafted quality
 - Balance: Perfectly tuned difficulty and progression
 - Polish: Commercial-quality presentation and performance

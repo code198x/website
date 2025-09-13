@@ -27,6 +27,7 @@ Welcome to the magical world of sprite animation! 🌟 With **32 spectacular les
 ## What You'll Build
 
 Create **AMIGA ANIMATION STUDIO** - a complete animation system featuring:
+
 - Walking, running, and jumping animations smoother than butter 🧈
 - Multi-directional sprites that face the right way every time
 - Character state machines that handle complex behaviors
@@ -36,24 +37,28 @@ Create **AMIGA ANIMATION STUDIO** - a complete animation system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Pixel Perfect Basics" - Foundation of Great Animation**
+
 - Single-frame Bob (Blitter Object) rendering with custom chip optimization
 - Sprite masking techniques for clean backgrounds using Blitter
 - Memory-efficient sprite storage in Chip RAM
 - Basic movement and positioning calculations with 68000 precision
 
 **Lessons 9-16: "Smooth as Silk" - Multi-Frame Animation Magic**
+
 - Frame-by-frame animation sequences that flow naturally
 - Timing systems that make animations feel alive using CIA timers
 - Animation loops and state transitions
 - Character facing and directional changes with minimal CPU overhead
 
 **Lessons 17-24: "Advanced Behaviors" - Complex Animation Systems**
+
 - State machines for walking, jumping, and special moves
 - Animation blending and transition effects using Copper synchronization
 - Multiple character animation management
 - Collision-responsive animation changes
 
 **Lessons 25-32: "Performance Wizardry" - Amiga Optimization Mastery**
+
 - Bob caching systems that eliminate flicker using dual playfields
 - Memory-efficient animation data structures in Fast RAM
 - 68000 cycle-optimized rendering routines

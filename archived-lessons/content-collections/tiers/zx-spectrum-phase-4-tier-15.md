@@ -27,6 +27,7 @@ Share your creations! With **32 comprehensive lessons**, you'll master the compl
 ## What You'll Build
 
 Continue developing **Spectrum Legends** for commercial release:
+
 - Professional release packaging and preparation
 - Comprehensive marketing and promotional campaigns
 - Multi-platform distribution strategies
@@ -36,24 +37,28 @@ Continue developing **Spectrum Legends** for commercial release:
 ## Tier Overview
 
 **Lessons 1-8: Release Preparation**
+
 - Final game packaging and distribution formats
 - Documentation and user manual creation
 - Release versioning and update systems
 - Professional release quality assurance
 
 **Lessons 9-16: Marketing & Promotion**
+
 - Marketing strategy development
 - Promotional material creation
 - Press kit and media asset preparation
 - Community outreach and engagement
 
 **Lessons 17-24: Distribution & Publishing**
+
 - Distribution platform integration
 - Commercial publishing workflows
 - Pricing and monetization strategies
 - Legal and business considerations
 
 **Lessons 25-32: Launch & Post-Release**
+
 - Launch campaign execution
 - Player feedback integration
 - Post-release support and updates

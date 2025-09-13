@@ -30,25 +30,25 @@ move_enemy:
     ldy #0
     lda #$20            ; Space
     sta (screen_lo),y
-    
+
     ; Move left
     dec enemy_x
-    
+
     ; Check left boundary
     lda enemy_x
     cmp #255            ; Wrapped around?
     bne draw_enemy
-    
+
     ; Respawn at right
     lda #39
     sta enemy_x
-    
+
 draw_enemy:
     jsr calculate_enemy_pos
     ldy #0
     lda enemy_char
     sta (screen_lo),y
-    
+
     ; Make it red
     lda #$02
     sta (color_lo),y
@@ -71,10 +71,10 @@ calculate_enemy_pos:
     asl
     clc
     adc temp        ; Y * 40
-    
+
     clc
     adc enemy_x
-    
+
     ; Store in screen pointer
     clc
     adc #$00
@@ -82,7 +82,7 @@ calculate_enemy_pos:
     lda #$04
     adc #$00
     sta screen_hi
-    
+
     ; Also calculate color RAM
     lda screen_lo
     sta color_lo
@@ -100,17 +100,17 @@ game_loop:
     ; Read player input
     jsr read_keyboard
     jsr check_boundaries
-    
+
     ; Update player
     jsr clear_player
     jsr draw_player
-    
+
     ; Update enemy
     jsr move_enemy
-    
+
     ; Delay
     jsr delay
-    
+
     jmp game_loop
 ```
 
@@ -128,7 +128,7 @@ move_enemy:
     cmp #1
     beq move_diagonal
     ; Fall through to seeking
-    
+
 move_seeking:
     ; Move toward player!
     lda player_x
@@ -139,7 +139,7 @@ move_seeking:
     jmp check_y
 enemy_left:
     dec enemy_x     ; Player is left
-    
+
 check_y:
     lda player_y
     cmp enemy_y
@@ -155,7 +155,9 @@ enemy_up:
 ## Interactive Elements
 
 ### Experiment 1: Enemy Speed
+
 Make enemy move at different rates:
+
 ```assembly
 enemy_speed: !byte 2
 
@@ -169,7 +171,9 @@ skip_enemy_move:
 ```
 
 ### Experiment 2: Multiple Enemies
+
 Add a second enemy:
+
 ```assembly
 enemy2_x: !byte 5
 enemy2_y: !byte 20
@@ -180,7 +184,9 @@ jsr move_enemy2
 ```
 
 ### Experiment 3: Enemy Patterns
+
 Create movement patterns:
+
 ```assembly
 ; Sine wave movement
 inc enemy_phase
@@ -196,16 +202,19 @@ sta enemy_y
 Enemy design is game design:
 
 **Speed Balance:**
+
 - Too slow = boring
 - Too fast = impossible
 - Just right = tension
 
 **Spawn Position:**
+
 - Too close = unfair
 - Too far = no challenge
 - Edge spawning = predictable but fair
 
 **Movement Patterns:**
+
 - Straight line = predictable
 - Random = frustrating
 - Patterns = learnable challenge
@@ -213,21 +222,24 @@ Enemy design is game design:
 ## Challenge Extensions
 
 1. **Enemy Waves**: Spawn enemies in groups
+
    ```assembly
    wave_counter: !byte 3
-   
+
    ; Spawn 3 enemies with delay
    dec wave_counter
    beq spawn_enemy
    ```
 
 2. **Smart Enemies**: Predict player movement
+
    ```assembly
    ; Check player direction
    ; Move to intercept!
    ```
 
 3. **Enemy States**: Patrol, chase, retreat
+
    ```assembly
    enemy_state: !byte 0
    ; 0 = patrol
@@ -247,6 +259,7 @@ Enemy design is game design:
 ## Performance Impact
 
 Adding enemies costs:
+
 - Position storage: 3 bytes per enemy
 - Movement logic: ~50 cycles per enemy
 - Drawing: ~40 cycles per enemy
@@ -256,6 +269,7 @@ With 5 enemies: ~450 cycles (2% of frame time)
 ## Historical Examples
 
 Famous first enemies:
+
 - **Space Invaders**: Marching formation
 - **Pac-Man**: Four ghosts, four personalities
 - **Donkey Kong**: Barrels with physics
@@ -266,6 +280,7 @@ Each defined their game's identity!
 ## Enemy Design Philosophy
 
 Good enemies:
+
 1. **Readable**: Player can predict behavior
 2. **Fair**: Avoidable with skill
 3. **Interesting**: Not just obstacles

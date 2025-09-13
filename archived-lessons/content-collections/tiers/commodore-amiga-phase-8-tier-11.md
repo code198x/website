@@ -27,6 +27,7 @@ Master complex game architectures! With **32 architecture-focused lessons**, you
 ## What You'll Architect
 
 Create **COMPLEX LEGENDARY GAME ARCHITECTURES**:
+
 - Game systems that support massive scope and deep complexity
 - Architectures that enable sophisticated gameplay and features
 - Systems that organize legendary complexity with elegant design
@@ -36,24 +37,28 @@ Create **COMPLEX LEGENDARY GAME ARCHITECTURES**:
 ## Complex Architecture Areas
 
 **Lessons 1-8: "Large-Scale Design" - Architecting Complex Games**
+
 - Designing game architectures that support legendary complexity
 - Understanding how to organize massive game systems elegantly
 - Building foundations that enable sophisticated game features
 - Creating architectures that scale to support ambitious visions
 
 **Lessons 9-16: "System Integration" - Coordinating Complex Components**
+
 - Integrating multiple complex systems into cohesive architectures
 - Managing interactions between sophisticated game components
 - Building communication systems for complex game architectures
 - Understanding how to maintain coherence in complex systems
 
 **Lessons 17-24: "Advanced Organization" - Managing Game Complexity**
+
 - Organizing complex game logic and rule systems
 - Managing large-scale game data and state systems
 - Building systems that support deep and sophisticated gameplay
 - Creating architectures that enable legendary game depth
 
 **Lessons 25-32: "Legendary Complexity" - Ultimate Game Architecture**
+
 - Creating game architectures worthy of legendary status
 - Building systems that support the most ambitious game concepts
 - Understanding how to achieve complexity without sacrificing elegance

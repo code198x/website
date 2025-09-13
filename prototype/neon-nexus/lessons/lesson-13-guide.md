@@ -31,12 +31,12 @@ check_enemy1_bbox:
     lda player_y
     cmp enemy1_y
     bne no_enemy1_collision
-    
+
     ; Check if enemy is at player position
     lda enemy1_x
     cmp player_x
     beq collision_detected
-    
+
     ; Check if enemy will be at player's next position
     lda player_x
     clc
@@ -59,7 +59,7 @@ check_keyboard:
     lda $dc01
     and #$08
     bne no_d_key
-    
+
     ; Toggle debug mode
     lda debug_mode
     eor #$01        ; Flip bit 0
@@ -88,12 +88,12 @@ short_delay:
     ; BUGFIX: Save X register!
     txa
     pha
-    
+
     ldy #30
 delay_loop:
     ldx #100    ; This overwrites X!
     ; ... delay code ...
-    
+
     ; Restore X register
     pla
     tax
@@ -105,7 +105,9 @@ Without saving X, our game over sequence would get stuck in an infinite loop!
 ## Interactive Elements
 
 ### Experiment 1: Collision Zones
+
 Modify the collision check distance:
+
 ```assembly
 ; Check 2 positions ahead
 lda player_x
@@ -114,10 +116,13 @@ adc #2
 cmp enemy1_x
 beq collision_detected
 ```
+
 How does this affect gameplay difficulty?
 
 ### Experiment 2: Visual Debugging
+
 Add more debug visualizations:
+
 ```assembly
 ; Show enemy collision zones in different colors
 lda #$0f    ; Light gray for player
@@ -125,7 +130,9 @@ lda #$02    ; Red for enemy zones
 ```
 
 ### Experiment 3: Asymmetric Collision
+
 What if enemies had bigger collision zones than the player?
+
 ```assembly
 ; Check 2 spaces around enemy, 1 around player
 ; This makes the game harder!
@@ -171,6 +178,7 @@ collision_table:
 ## Performance Considerations
 
 Our improved collision detection is more expensive:
+
 - Old method: 2 comparisons per enemy
 - New method: 4-5 comparisons per enemy
 - With 8 enemies: 40 comparisons per frame!

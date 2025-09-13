@@ -27,6 +27,7 @@ Time to become a tool creator! With **32 comprehensive lessons**, you'll build t
 ## What You'll Build
 
 Create **AMIGA DEV SUITE** - a professional development tool collection featuring:
+
 - Advanced assemblers and debuggers that rival commercial tools
 - Sophisticated sprite and graphics editors with professional features
 - Professional sound trackers and audio editing environments
@@ -36,24 +37,28 @@ Create **AMIGA DEV SUITE** - a professional development tool collection featurin
 ## Tier Overview
 
 **Lessons 1-8: "Professional Assembler!" - Advanced Development Environment**
+
 - Building a professional 68000 assembler with advanced features
 - Sophisticated error handling and debugging integration
 - Advanced macro systems and code optimization features
 - The assembler tools that made professional Amiga development possible
 
 **Lessons 9-16: "Advanced Debugger!" - Professional Debugging Systems**
+
 - Real-time debugging and profiling tool creation
 - Advanced breakpoint systems and memory analysis
 - Professional performance monitoring and optimization tools
 - The debugging systems that solved complex Amiga programming challenges
 
 **Lessons 17-24: "Asset Creation Tools!" - Professional Content Development**
+
 - Advanced sprite editors and graphics tool creation
 - Professional sound tracker and audio editing environments
 - Sophisticated level editors and content creation systems
 - The creative tools that made legendary Amiga content possible
 
 **Lessons 25-32: "Complete Dev Environment!" - Professional Integration**
+
 - Integrated development environment creation and workflow optimization
 - Professional project management and asset pipeline tools
 - Advanced development productivity and automation systems

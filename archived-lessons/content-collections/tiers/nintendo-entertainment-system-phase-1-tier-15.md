@@ -27,6 +27,7 @@ Elevate your programming to professional standards! Learn the engineering practi
 ## What You'll Add to Quest Builder
 
 Apply professional engineering practices:
+
 - Implement comprehensive testing and debugging systems
 - Create professional documentation and help systems
 - Optimize all systems for maximum performance
@@ -35,24 +36,28 @@ Apply professional engineering practices:
 ## Tier Overview
 
 **Lessons 1-8: Software Engineering Practices**
+
 - Professional development methodologies and practices
 - Code organisation and modular design principles
 - Version control and change management
 - Building maintainable large-scale systems
 
 **Lessons 9-16: Testing and Debugging**
+
 - Advanced debugging techniques and tools
 - Implementing automated testing systems
 - Performance profiling and optimisation
 - Quality assurance and reliability testing
 
 **Lessons 17-24: Documentation and Maintenance**
+
 - Creating comprehensive system documentation
 - Building user help and tutorial systems
 - Code commenting and maintainability practices
 - Long-term software maintenance strategies
 
 **Lessons 25-32: Performance and Optimization**
+
 - Advanced performance optimisation techniques
 - System tuning for maximum efficiency
 - Memory optimisation and resource management

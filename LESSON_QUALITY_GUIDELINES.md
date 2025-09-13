@@ -5,29 +5,35 @@ This document establishes quality standards for Code198x lessons to ensure prope
 ## Critical Issue: Code Dump Problem
 
 ### Problem Description
+
 Lessons 1-16 across all systems suffer from a "code dump" problem where massive blocks of assembly code (often 100-1000+ lines) are presented before any explanation. This violates fundamental educational principles and makes lessons ineffective for learning.
 
 ### Examples of the Problem
+
 - **C64 Lesson 11**: 800+ lines of assembly dumped at once with minimal explanation
 - **Early lessons**: Start with 80-100 lines of code before explaining basic concepts
 - **Complex lessons**: Present 1000+ lines implementing complete systems without building understanding
 
 ### Root Cause
+
 Lessons were written as reference implementations rather than educational materials. They show complete solutions instead of teaching how to build those solutions.
 
 ## Required Lesson Structure
 
 ### 1. Concept Introduction (Before Any Code)
+
 - **What**: Clear explanation of what we're building
 - **Why**: Why this concept matters for game development
 - **How**: High-level approach we'll take
 
 ### 2. Progressive Code Building
+
 - **Start Small**: Begin with minimal working example (5-10 lines max)
 - **Explain Each Part**: Every line or block should be explained before showing
 - **Build Incrementally**: Add features one at a time with explanation
 
 ### 3. Code Block Guidelines
+
 - **Maximum Initial Block**: 10-15 lines for first example
 - **Maximum Subsequent Blocks**: 20-30 lines for additions
 - **Required Explanations**: Each block must have:
@@ -36,6 +42,7 @@ Lessons were written as reference implementations rather than educational materi
   - Summary of what was accomplished after
 
 ### 4. Teaching Approach
+
 ```
 GOOD Structure:
 1. "First, let's create a simple sprite..."
@@ -65,7 +72,7 @@ Before submitting any lesson, verify:
 
 ## Example: Proper Lesson Structure
 
-```markdown
+````markdown
 # Lesson X: Adding Sprite Movement
 
 **What we're building**: Today we'll make our sprite move smoothly across the screen.
@@ -82,13 +89,13 @@ First, let's enable sprite 0 and position it:
 \```asm
 ; Enable sprite 0
 lda #$01
-sta $d015    ; Sprite enable register
+sta $d015 ; Sprite enable register
 
 ; Position sprite at center screen
-lda #$80     ; X position = 128
-sta $d000    ; Sprite 0 X coordinate
-lda #$64     ; Y position = 100  
-sta $d001    ; Sprite 0 Y coordinate
+lda #$80 ; X position = 128
+sta $d000 ; Sprite 0 X coordinate
+lda #$64 ; Y position = 100  
+sta $d001 ; Sprite 0 Y coordinate
 \```
 
 This code enables our first sprite and places it at the center...
@@ -110,7 +117,7 @@ sta $d000
 
 Notice how we read-modify-write the position...
 [Continue building incrementally]
-```
+````
 
 ## Fixing Existing Lessons
 

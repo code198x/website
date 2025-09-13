@@ -27,6 +27,7 @@ Time to exercise those brain cells! With **32 mind-bending lessons**, you'll cre
 ## What You'll Build
 
 Create **BLOCK DYNASTY** - a falling-block puzzler featuring:
+
 - Pieces that rotate and drop with perfect precision
 - Chain reactions that make players feel like geniuses
 - Difficulty curves that adapt to player skill
@@ -36,24 +37,28 @@ Create **BLOCK DYNASTY** - a falling-block puzzler featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Grid Logic 101" - Foundation Building**
+
 - Grid systems that track every block perfectly
 - State machines for game flow control
 - Input handling that feels instantaneous
 - The mathematics of fair randomization
 
 **Lessons 9-16: "Falling With Style" - Movement Mechanics**
+
 - Smooth piece movement that feels right
 - Rotation systems (SRS wasn't invented yet!)
-- Soft drops, hard drops, and that satisfying *thunk*
+- Soft drops, hard drops, and that satisfying _thunk_
 - Preview systems and hold mechanics
 
 **Lessons 17-24: "Chain Reaction Chemistry" - Scoring Systems**
+
 - Pattern detection for matches and clears
 - Cascading combos that reward skilled play
 - Score multipliers that encourage risk-taking
 - Visual feedback that makes clearing feel amazing
 
 **Lessons 25-32: "Addiction Engineering" - Polish & Psychology**
+
 - Difficulty curves that keep players in the zone
 - Music that speeds up with intensity
 - High score systems with battery backup

@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The computer expansion that killed Coleco with its high-speed tape drives and electromagnetic interference."
-image: "/images/systems/coleco-adam.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 113
 
 # Coleco Adam
 
-*Historical Reference*
+_Historical Reference_
 
 The Coleco Adam was an ambitious attempt to turn the successful ColecoVision game console into a complete computer system. With innovative high-speed digital tape drives and a built-in printer, it should have succeeded but became one of the industry's most spectacular failures.
 
@@ -59,6 +58,7 @@ The Adam represented the danger of rushing products to market. Initial units had
 ## Fatal Flaws
 
 The Adam's problems were legendary:
+
 - Power supply in printer (printer required even for computer)
 - Electromagnetic pulse erased nearby tapes
 - Poor quality control
@@ -68,4 +68,4 @@ The Adam's problems were legendary:
 
 The Adam became a cautionary tale about product launches. Its failure took down Coleco, which had been riding high on ColecoVision's success. It proved that even good ideas (high-speed tape, complete system) can't overcome poor execution.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

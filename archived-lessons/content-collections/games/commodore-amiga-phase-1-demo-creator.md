@@ -68,24 +68,28 @@ Leverages the Amiga's demo scene capabilities:
 ### Tiers 9-12 Development Roadmap
 
 **Tier 9**: Basic demo effects and timing
+
 - Understanding demo programming concepts
 - Creating basic visual effects and transitions
 - Simple audio-visual synchronization
 - Building foundation demo systems
 
 **Tier 10**: Advanced graphics effects
+
 - Copper programming and hardware effects
 - Advanced blitter operations and graphics
 - Complex visual effects and animations
 - Professional-quality graphics programming
 
 **Tier 11**: Multimedia synchronization
+
 - Precise audio-visual timing systems
 - Multi-channel audio coordination
 - Complex scene management and transitions
 - Building sophisticated demo frameworks
 
 **Tier 12**: Complete demo production
+
 - Integrating all effects and systems
 - Creating polished, professional demonstrations
 - Building complete demo production workflows

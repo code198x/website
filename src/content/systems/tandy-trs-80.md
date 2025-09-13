@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The affordable computer that brought programming to Radio Shack stores across America."
-image: "/images/systems/trs-80.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 101
 
 # TRS-80
 
-*Historical Reference*
+_Historical Reference_
 
 The TRS-80 Model I was one of the trinity of 1977 - alongside the Apple II and Commodore PET - that launched the personal computer revolution. Sold through Radio Shack's massive retail network, it brought computing to small-town America.
 
@@ -60,4 +59,4 @@ With over 10,000 orders in its first month (Tandy expected to sell 3,000 in a ye
 
 The TRS-80 introduced countless programmers to computing through Radio Shack's ubiquitous presence. While its graphics were primitive and it lacked color, its influence on spreading computer literacy across America was profound.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

@@ -27,6 +27,7 @@ Welcome to the symphony of gaming! 🎶 With **32 harmonious lessons**, you'll m
 ## What You'll Build
 
 Create **AMIGA AUDIO ENGINE** - a complete sound system featuring:
+
 - Crystal-clear PCM sound effects that punch through the mix 🎆
 - Dynamic music that adapts to gameplay intensity
 - Multi-channel audio mixing with priority systems
@@ -36,24 +37,28 @@ Create **AMIGA AUDIO ENGINE** - a complete sound system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Paula Fundamentals" - The Heart of Amiga Audio**
+
 - 4-channel PCM audio programming with DMA control
 - Sample playback and basic sound effect triggering
 - Audio memory management in Chip RAM
 - Paula register manipulation and timing control
 
 **Lessons 9-16: "Sound Effects Mastery" - Audio That Impacts**
+
 - Dynamic sound effect systems with priority management
 - Multi-layered audio for complex game events
 - Real-time audio mixing and channel allocation
 - Sound effect libraries and efficient sample storage
 
 **Lessons 17-24: "Music Systems" - Adaptive Audio Composition**
+
 - Dynamic music that changes with gameplay state
 - Multi-part compositions and seamless transitions
 - Interactive music systems that respond to player actions
 - Memory-efficient music streaming and compression
 
 **Lessons 25-32: "Audio Polish" - Professional Sound Design**
+
 - Advanced mixing techniques and audio mastering
 - 3D positional audio simulation
 - Audio debugging and optimization tools

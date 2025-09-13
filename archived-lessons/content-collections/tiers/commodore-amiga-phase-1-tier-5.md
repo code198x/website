@@ -27,6 +27,7 @@ Harness the power of repetition and automation! Learn 68000 assembly loops while
 ## What You'll Begin with Audio Lab
 
 Start building your audio system:
+
 - Create basic audio playback and control
 - Implement simple sound generation
 - Build foundation for multi-channel programming
@@ -35,24 +36,28 @@ Start building your audio system:
 ## Tier Overview
 
 **Lessons 1-8: Advanced Assembly Loop Structures**
+
 - Assembly loop patterns with advanced stepping
 - Conditional loops for flexible iteration using assembly
 - Nested loops and complex patterns in assembly
 - Assembly loop optimisation for maximum performance
 
 **Lessons 9-16: Assembly Audio Programming Introduction**
+
 - Direct Paula audio chip programming using assembly
 - Basic sound generation and playback through assembly
 - 4-channel audio architecture using assembly control
 - Digital audio concepts and assembly programming
 
 **Lessons 17-24: Assembly Algorithm Design**
+
 - Efficient assembly audio processing algorithms
 - Assembly data structures for audio management
 - Real-time assembly audio programming concepts
 - Building reusable assembly audio frameworks
 
 **Lessons 25-32: Assembly Audio Lab Foundation**
+
 - Implementing basic audio playback systems using assembly
 - Creating simple audio effects through Paula chip programming
 - Building foundation for professional assembly audio

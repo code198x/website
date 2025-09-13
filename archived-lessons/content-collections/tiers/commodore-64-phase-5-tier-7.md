@@ -27,8 +27,9 @@ Step into the ring! 🥊 With **32 bone-crushing lessons**, you'll create fighti
 ## What You'll Build
 
 Create **STREET WARRIOR** - an epic fighting game featuring:
+
 - Combat that makes every hit feel like it has real impact
-- Special moves that look impossible but feel natural to execute  
+- Special moves that look impossible but feel natural to execute
 - Characters with unique fighting styles and personalities
 - AI opponents that fight smart, not cheap
 - That magical moment when you land the perfect combo
@@ -36,24 +37,28 @@ Create **STREET WARRIOR** - an epic fighting game featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Feel the Impact!" - Combat Mechanics**
+
 - Hit detection that feels fair and precise
 - Attack animations that have weight and power
 - Damage systems that create dramatic moments
 - The secret sauce that makes virtual punches feel real
 
 **Lessons 9-16: "HADOKEN!" - Special Moves & Commands**
+
 - Input systems that recognize complex commands reliably
 - Special move execution that feels magical, not frustrating
 - Animation systems that make moves look spectacular
 - The psychology of quarter-circle motions and why they work
 
 **Lessons 17-24: "Know Your Enemy" - Character Balance & AI**
+
 - Character design that creates diverse but balanced matchups
 - AI opponents that fight with strategy, not just reflexes
 - Difficulty progression that builds skill gradually
 - The art of making losing feel like learning
 
 **Lessons 25-32: "FINISH HIM!" - Polish & Presentation**
+
 - Visual effects that sell the power of each attack
 - Audio design that makes every hit sound devastating
 - Victory animations that make winning feel triumphant

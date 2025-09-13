@@ -27,6 +27,7 @@ Craft legendary worlds! With **32 comprehensive lessons**, you'll master level d
 ## What You'll Build
 
 Expand **Star Fighter** with sophisticated level design:
+
 - Hand-crafted levels with professional pacing and flow
 - Procedural generation system for infinite replayability
 - Dynamic level elements that respond to player actions
@@ -36,24 +37,28 @@ Expand **Star Fighter** with sophisticated level design:
 ## Tier Overview
 
 **Lessons 1-8: Professional Level Design**
+
 - Level design principles and player psychology
 - Pacing, flow, and difficulty curve management
 - Environmental storytelling and visual communication
 - Professional level prototyping and testing
 
 **Lessons 9-16: Procedural Generation Systems**
+
 - Algorithm design for procedural level creation
 - Balanced randomization and quality control
 - Template-based generation with variations
 - Performance optimization for real-time generation
 
 **Lessons 17-24: Dynamic Level Elements**
+
 - Interactive environmental objects and hazards
 - Destructible terrain and dynamic obstacles
 - Triggered events and environmental storytelling
 - Advanced collision and interaction systems
 
 **Lessons 25-32: Level Tools & World Coherence**
+
 - Professional level editing and testing tools
 - World design consistency and progression
 - Player guidance and visual communication

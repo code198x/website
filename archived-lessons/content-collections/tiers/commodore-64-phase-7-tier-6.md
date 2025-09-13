@@ -27,6 +27,7 @@ Create games with depth and sophistication! With **32 advanced lessons**, you'll
 ## What You'll Build
 
 Create **COMPLEX MECHANICS RPG** - featuring sophisticated gameplay systems:
+
 - Advanced character progression with skills, stats, and abilities
 - Complex inventory system with crafting and equipment management
 - Interactive world with emergent gameplay and dynamic events
@@ -36,24 +37,28 @@ Create **COMPLEX MECHANICS RPG** - featuring sophisticated gameplay systems:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "Player Progression" - Character Development Systems**
+
 - Experience point systems and level progression mechanics
 - Skill trees and ability unlock systems
 - Character stat management and attribute systems
 - Player choice systems that create meaningful progression
 
 **Lessons 9-16: "Inventory & Resources" - Management Systems**
+
 - Advanced inventory management with categories and sorting
 - Crafting systems with recipes and resource requirements
 - Equipment systems with stats and modifications
 - Economy design and resource scarcity management
 
 **Lessons 17-24: "Interactive Environments" - World Systems**
+
 - Dynamic world events and environmental storytelling
 - Interactive objects and environmental puzzles
 - Day/night cycles and time-based gameplay elements
 - Emergent gameplay through system interactions
 
 **Lessons 25-32: "Advanced Gameplay" - Complex Mechanics Integration**
+
 - Tactical combat systems with positioning and strategy
 - Quest systems with branching narratives and consequences
 - Dialogue systems with personality and relationship tracking

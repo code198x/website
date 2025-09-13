@@ -31,24 +31,28 @@ Create **BrainMaster AI** - a sophisticated AI framework featuring advanced beha
 ## Tier Overview
 
 **Lessons 1-8: Advanced Behavior Systems**
+
 - Complex behavior trees and decision making systems
 - Adaptive AI that responds to player actions
 - Multi-layered AI personalities and characteristics
 - Real-time behavior modification and learning
 
 **Lessons 9-16: Intelligent Pathfinding & Navigation**
-- Advanced A* pathfinding with optimizations
+
+- Advanced A\* pathfinding with optimizations
 - Dynamic obstacle avoidance and route planning
 - Multi-agent pathfinding and coordination
 - Intelligent movement patterns and formations
 
 **Lessons 17-24: Strategic AI & Planning**
+
 - Advanced planning algorithms and goal systems
 - Strategic decision making and long-term planning
 - Cooperative AI systems and team coordination
 - Adaptive difficulty and player skill assessment
 
 **Lessons 25-32: AI Personality & Professional Systems**
+
 - Personality-driven AI behavior and reactions
 - Professional AI debugging and visualization tools
 - Performance optimization for complex AI systems

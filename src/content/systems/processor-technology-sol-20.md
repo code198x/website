@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The first complete personal computer with built-in keyboard, display, and storage - the template for all that followed."
-image: "/images/systems/sol-20.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 120
 
 # SOL-20
 
-*Historical Reference*
+_Historical Reference_
 
 The SOL-20 was the first true personal computer - a complete system with built-in keyboard, video display, and cassette storage. Unlike the Altair's switches and lights, the SOL-20 established the template that all future personal computers would follow.
 
@@ -60,6 +59,7 @@ The SOL-20 bridged the gap between hobbyist computers and practical machines. It
 ## Technical Excellence
 
 Built around the Intel 8080A, the SOL-20 featured:
+
 - Up to 65KB RAM (massive for 1976)
 - High-quality keyboard
 - Composite video output
@@ -73,4 +73,4 @@ At $995 assembled, the SOL-20 was expensive but represented incredible value as 
 
 The SOL-20's greatest contribution was proving that personal computers should be complete, integrated systems. Every modern computer - from the Apple II to today's laptops - follows the template established by the SOL-20.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

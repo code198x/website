@@ -1,5 +1,5 @@
 ---
-name: "SNES"
+name: "Nintendo SNES"
 full_name: "Super Nintendo Entertainment System"
 manufacturer: "Nintendo"
 model_number: "SNS-001"
@@ -87,7 +87,6 @@ hardware_availability: "common"
 
 # Media
 description: "Nintendo's 16-bit masterpiece that defined a generation with Mode 7 graphics and CD-quality sound."
-image: "/images/systems/snes.jpg"
 
 # Platform Classification
 medal_tier: "gold"
@@ -102,7 +101,7 @@ order: 21
 
 # Super Nintendo
 
-*Coming Soon*
+_Coming Soon_
 
 The Super Nintendo brought Nintendo into the 16-bit era with stunning graphics, incredible sound, and a library of games that many consider the best ever assembled. Its Mode 7 graphics and enhancement chips pushed 2D gaming to its limits.
 
@@ -119,9 +118,10 @@ The SNES's 65816 processor extends the 6502 with 16-bit operations, making it a 
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the SNES curriculum will include:
+
 - 65816 assembly programming
 - PPU programming and Mode 7
 - S-SMP/S-DSP audio system

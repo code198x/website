@@ -27,6 +27,7 @@ Welcome to the world of perfect collision detection! 💥 With **32 precision-cr
 ## What You'll Build
 
 Create **COLLISION COMMANDER** - a comprehensive collision system featuring:
+
 - Pixel-perfect detection that works flawlessly every time 🎯
 - Lightning-fast bounding box systems for complex objects
 - Multi-layer collision detection for rich game worlds
@@ -36,24 +37,28 @@ Create **COLLISION COMMANDER** - a comprehensive collision system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Bounding Box Basics" - Fast and Efficient Detection**
+
 - Rectangle-to-rectangle collision with Z80 optimization
 - Efficient coordinate comparison and boundary checking
 - Fast rejection algorithms that skip unnecessary tests
 - Memory-efficient collision data structures
 
 **Lessons 9-16: "Pixel Perfect Precision" - Surgical Accuracy**
+
 - Bit-level collision detection using sprite masks
 - Pixel-perfect collision with transparent areas
 - Complex shape collision using multiple bounding boxes
 - Collision detection for irregular and animated sprites
 
 **Lessons 17-24: "Advanced Collision Systems" - Professional Techniques**
+
 - Spatial partitioning for large game worlds
 - Collision layers and selective detection
 - Moving object collision prediction and response
 - Collision detection for platforms, walls, and interactive objects
 
 **Lessons 25-32: "Response and Optimization" - Making It Feel Right**
+
 - Natural collision response and physics simulation
 - Collision feedback systems (screen shake, sound effects)
 - Performance profiling and cycle optimization

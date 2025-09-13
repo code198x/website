@@ -31,24 +31,28 @@ Begin developing **Vector Storm** - a sophisticated arcade shooter featuring mod
 ## Tier Overview
 
 **Lessons 1-8: Architecture Design Patterns**
+
 - Professional game architecture planning
 - Modular system design principles
 - Component-based programming patterns
 - Scalability and maintainability planning
 
 **Lessons 9-16: Memory Management Systems**
+
 - Advanced memory allocation strategies
 - Bank switching and memory optimization
 - Dynamic loading and unloading systems
 - Professional memory debugging techniques
 
 **Lessons 17-24: Game State Management**
+
 - Robust state machine implementation
 - Scene management and transitions
 - Save state system architecture
 - Error handling and recovery systems
 
 **Lessons 25-32: Development Framework**
+
 - Professional build system setup
 - Code organization and documentation
 - Testing framework implementation

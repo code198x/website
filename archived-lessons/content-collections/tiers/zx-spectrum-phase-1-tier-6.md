@@ -27,6 +27,7 @@ Bring your programs to life with graphics and animation! Learn the ZX Spectrum's
 ## What You'll Learn
 
 Create visually engaging programs:
+
 - ZX Spectrum screen memory and organisation
 - Precise character positioning and movement
 - Color system and visual effects
@@ -35,24 +36,28 @@ Create visually engaging programs:
 ## Tier Overview
 
 **Lessons 1-8: Screen Fundamentals**
+
 - Understanding the 32×24 character screen
 - PRINT AT for precise positioning
 - Screen coordinates and character placement
 - Creating your first positioned graphics
 
 **Lessons 9-16: Color and Attributes**
+
 - The ZX Spectrum colour system
 - INK, PAPER, and BRIGHT commands
 - Working with 8×8 attribute blocks
 - Creating colorful visual effects
 
 **Lessons 17-24: Animation Techniques**
+
 - Character-based sprite movement
 - Creating smooth animation loops
 - Timing and frame rate considerations
 - Building moving objects and effects
 
 **Lessons 25-32: Game Graphics Preparation**
+
 - Optimizing graphics for game performance
 - Creating reusable graphics routines
 - Building the visual foundation for Rainbow Runner

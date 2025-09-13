@@ -31,24 +31,28 @@ Create **PerfMaster Ultimate** - an extreme performance demonstration suite feat
 ## Tier Overview
 
 **Lessons 1-8: Extreme 68000 Optimization**
+
 - Maximum performance assembly programming techniques
 - Advanced CPU instruction scheduling and optimization
 - Cache optimization and memory access patterns
 - Cycle-perfect timing and instruction sequences
 
 **Lessons 9-16: Hardware Timing Mastery**
+
 - Precise hardware timing and synchronization
 - Advanced interrupt programming and timing chains
 - CPU/DMA coordination for maximum throughput
 - Real-time performance monitoring and adjustment
 
 **Lessons 17-24: Custom Chip Performance Limits**
+
 - Pushing Copper, Blitter, and DMA to absolute limits
 - Hardware trick exploitation and undocumented features
 - Maximum bitplane and sprite performance techniques
 - Advanced display timing manipulation and effects
 
 **Lessons 25-32: Professional Performance Engineering**
+
 - Professional performance profiling and analysis
 - Hardware benchmark development and testing
 - Performance optimization case studies from demos and games

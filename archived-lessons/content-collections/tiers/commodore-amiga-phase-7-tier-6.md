@@ -27,6 +27,7 @@ Create deep, engaging gameplay! With **32 mechanics-focused lessons**, you'll ma
 ## What You'll Build
 
 Create **COMPLEX GAMEPLAY SYSTEM** - featuring sophisticated mechanics:
+
 - Interlocking game systems with emergent properties
 - Deep progression and character development mechanics
 - Complex resource management and economic systems
@@ -36,24 +37,28 @@ Create **COMPLEX GAMEPLAY SYSTEM** - featuring sophisticated mechanics:
 ## Advanced Mechanics Areas
 
 **Lessons 1-8: "System Design" - Complex Mechanics Architecture**
+
 - Designing interlocking gameplay systems
 - Creating mechanics that support multiple playstyles
 - Balancing complexity with accessibility
 - Implementing efficient game rule systems
 
 **Lessons 9-16: "Emergent Gameplay" - System Interactions**
+
 - Creating systems that generate unexpected gameplay
 - Designing mechanics that interact in interesting ways
 - Building systems that reward creativity and experimentation
 - Managing complexity to maintain player understanding
 
 **Lessons 17-24: "Progression Systems" - Player Growth**
+
 - Character development and advancement mechanics
 - Skill trees and ability progression systems
 - Resource accumulation and spending mechanics
 - Long-term progression that maintains engagement
 
 **Lessons 25-32: "Advanced Interactions" - Deep Gameplay**
+
 - Complex combat systems with tactical depth
 - Sophisticated puzzle mechanics and problem-solving
 - Economic systems and resource management

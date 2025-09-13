@@ -31,24 +31,28 @@ Enhance **Mega Maze** with complex game state management, efficient pathfinding 
 ## Tier Overview
 
 **Lessons 1-8: Dynamic Memory & Linked Lists**
+
 - Memory allocation strategies in assembly
 - Implementing singly and doubly linked lists
 - List traversal and manipulation algorithms
 - Memory management and garbage collection
 
 **Lessons 9-16: Tree Structures & Hierarchies**
+
 - Binary tree implementation in assembly
 - Tree traversal algorithms (in-order, pre-order, post-order)
 - Game state trees and decision structures
 - Balanced tree techniques for 6502
 
 **Lessons 17-24: Queues & Real-Time Buffers**
+
 - Circular buffer implementation
 - Priority queue structures
 - Event queue management
 - Double buffering techniques
 
 **Lessons 25-32: Hash Tables & Fast Lookup**
+
 - Hash function implementation for 6502
 - Collision resolution strategies
 - Dynamic hash table sizing

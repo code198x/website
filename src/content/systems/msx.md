@@ -89,7 +89,6 @@ hardware_availability: "available"
 
 # Media
 description: "The Japanese standard that united manufacturers and launched legendary game franchises like Metal Gear and Bomberman."
-image: "/images/systems/msx.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -104,7 +103,7 @@ order: 12
 
 # MSX
 
-*Coming Soon*
+_Coming Soon_
 
 The MSX wasn't just a computer - it was a vision of unified computing. Created by ASCII and Microsoft, this Japanese standard brought together Sony, Panasonic, Yamaha, and others to create a compatible ecosystem that launched gaming legends.
 
@@ -121,9 +120,10 @@ The MSX combines Z80 power with standardized hardware, making it perfect for lea
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the MSX curriculum will include:
+
 - Z80 assembly programming
 - TMS9918 graphics and sprites
 - AY-3-8910 sound programming

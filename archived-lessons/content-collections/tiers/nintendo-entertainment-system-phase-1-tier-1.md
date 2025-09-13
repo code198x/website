@@ -27,6 +27,7 @@ Welcome to console game development on the NES! Create your first complete conso
 ## What You'll Build
 
 **Circuit Surge** - A complete digital circuit adventure game featuring:
+
 - Digital circuit worlds with precise electrical current visualization
 - Controllable current conductors with accurate flow physics simulation
 - Electronic sound effects using distinctive NES audio channels
@@ -40,10 +41,12 @@ Welcome to console game development on the NES! Create your first complete conso
 ## Console Development Journey
 
 **✅ Lessons 1-2: COMPLETED - Circuit & Conductor**
-- **Lesson 1**: Create digital circuit world with electrical flow visualization *(COMPLETED)*
-- **Lesson 2**: Add electrical current conductor with precise flow control *(COMPLETED)*
+
+- **Lesson 1**: Create digital circuit world with electrical flow visualization _(COMPLETED)_
+- **Lesson 2**: Add electrical current conductor with precise flow control _(COMPLETED)_
 
 **Lessons 3-8: Core Console Systems**
+
 - **Lesson 3**: Electronic Pulse - Add NES audio effects for electrical sparks and current flow
 - **Lesson 4**: Circuit Challenges - Create electrical obstacles and routing puzzles
 - **Lesson 5**: Current Control - Implement player input for directing electrical flow
@@ -52,18 +55,21 @@ Welcome to console game development on the NES! Create your first complete conso
 - **Lesson 8**: Circuit Surge Foundation - Playable prototype with core electrical systems
 
 **Lessons 9-16: System Enhancement**
+
 - Enhanced current flow algorithms with complex electrical simulation
 - Advanced NES graphics techniques for circuit visualization
 - Precise timing optimization using console-level programming
 - Responsive control systems for electrical current direction
 
 **Lessons 17-24: Advanced Mechanics**
+
 - Multi-level circuit designs with increasing complexity
 - Advanced electrical effects and visual feedback systems
 - Enhanced physics simulation for realistic current behavior
 - Audio-visual integration for immersive electrical experience
 
 **Lessons 25-32: Tier 1 Mastery**
+
 - Code organization and modular console architecture
 - Performance optimization for precise electrical simulation
 - Polish and refinement of core circuit systems

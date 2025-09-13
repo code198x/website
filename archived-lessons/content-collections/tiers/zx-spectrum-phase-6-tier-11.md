@@ -27,6 +27,7 @@ Create infinite worlds from finite code! With **32 comprehensive lessons**, you'
 ## What You'll Build
 
 Create **PROCEDURAL MASTERY SYSTEM** - a comprehensive generation framework featuring:
+
 - Algorithmic level and world generation systems
 - Procedural graphics and texture creation
 - Dynamic music and sound effect generation
@@ -36,24 +37,28 @@ Create **PROCEDURAL MASTERY SYSTEM** - a comprehensive generation framework feat
 ## Tier Overview
 
 **Lessons 1-8: "World Building!" - Algorithmic Level Generation**
+
 - Maze and dungeon generation algorithms
 - Terrain and landscape creation systems
 - Room and structure placement algorithms
 - Professional level generation architecture
 
 **Lessons 9-16: "Visual Generation!" - Procedural Graphics**
+
 - Algorithmic sprite and character generation
 - Procedural texture and pattern creation
 - Dynamic color palette generation
 - Professional visual content creation systems
 
 **Lessons 17-24: "Audio Creation!" - Procedural Sound Systems**
+
 - Algorithmic music composition and generation
 - Procedural sound effect creation
 - Dynamic audio adaptation and variation
 - Professional procedural audio architecture
 
 **Lessons 25-32: "Infinite Systems!" - Advanced Generation**
+
 - Seed-based generation for reproducible content
 - Layered generation systems and content combination
 - Quality control and content validation algorithms

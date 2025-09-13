@@ -31,6 +31,7 @@ Today you'll integrate everything you've learned about Amiga graphics programmin
 ## Project Overview: "AmigaVision Pro"
 
 You'll create a comprehensive graphics demonstration featuring:
+
 - **Multi-layer scrolling backgrounds** using bitplanes and Copper
 - **Hardware sprite animation** with collision detection
 - **Real-time visual effects** using Blitter operations
@@ -57,7 +58,7 @@ GraphicsEngine:
 ; Main graphics initialization
 InitGraphics:
     LEA     $DFF000, A6
-    
+
     ; Setup custom screen with 5 bitplanes
     LEA     ScreenData, A0
     MOVE.L  A0, $E0(A6)         ; BPL1PT
@@ -69,65 +70,65 @@ InitGraphics:
     MOVE.L  A0, $EC(A6)         ; BPL4PT
     ADD.L   #8000, A0
     MOVE.L  A0, $F0(A6)         ; BPL5PT
-    
+
     ; Configure display mode
     MOVE.W  #$5000, $100(A6)    ; BPLCON0 - 5 bitplanes
     MOVE.W  #$0000, $102(A6)    ; BPLCON1 - no scroll
     MOVE.W  #$0024, $104(A6)    ; BPLCON2 - sprites priority
-    
+
     ; Setup display window
     MOVE.W  #$2C81, $08E(A6)    ; DIWSTRT
     MOVE.W  #$2CC1, $090(A6)    ; DIWSTOP
     MOVE.W  #$0038, $092(A6)    ; DDFSTRT
     MOVE.W  #$00D0, $094(A6)    ; DDFSTOP
-    
+
     ; Initialize Copper list
     LEA     CopperList, A0
     MOVE.L  A0, $080(A6)        ; COP1LC
-    
+
     ; Setup sprites
     BSR     InitSprites
-    
+
     ; Enable DMA
     MOVE.W  #$83E0, $096(A6)    ; Enable all graphics DMA
-    
+
     RTS
 
 ; Advanced Copper effects list
 CopperList:
     ; Wait for start of display
     dc.w    $3001, $FFFE
-    
+
     ; Setup gradient background
     dc.w    $0180, $0000        ; Color 0 - black
     dc.w    $0182, $0001        ; Color 1 - dark blue
     dc.w    $0184, $0002        ; Color 2 - blue
-    
+
     ; Horizontal gradient effect
     dc.w    $4001, $FFFE        ; Wait line 64
     dc.w    $0180, $0112        ; Shift colors
-    
+
     dc.w    $5001, $FFFE        ; Wait line 80
     dc.w    $0180, $0223        ; Continue gradient
-    
+
     dc.w    $6001, $FFFE        ; Wait line 96
     dc.w    $0180, $0334        ; More blue
-    
+
     ; Plasma effect section
     dc.w    $8001, $FFFE        ; Wait line 128
     dc.w    $0180, $0F0F        ; Bright magenta
     dc.w    $0182, $0F0A        ; Pink
     dc.w    $0184, $0A0F        ; Purple
-    
+
     ; Scrolling text area
     dc.w    $A001, $FFFE        ; Wait line 160
     dc.w    $0102, $0010        ; Scroll text left
-    
+
     ; Sprite activation area
     dc.w    $C001, $FFFE        ; Wait line 192
     dc.w    $0120, $0F00        ; Enable sprite 0
     dc.w    $0122, $0F00        ; Sprite 0 data A
-    
+
     ; End of frame
     dc.w    $FFFF, $FFFE        ; Wait for end
     dc.l    $00000000           ; End of list
@@ -135,19 +136,19 @@ CopperList:
 ; Sprite initialization and animation
 InitSprites:
     LEA     $DFF000, A6
-    
+
     ; Setup sprite 0 - main character
     LEA     SpriteData0, A0
     MOVE.L  A0, $120(A6)        ; SPR0PT
-    
+
     ; Setup sprite 1 - power-up
     LEA     SpriteData1, A0
     MOVE.L  A0, $124(A6)        ; SPR1PT
-    
+
     ; Initialize sprite positions
     MOVE.W  #$5050, SpriteX     ; Start position
     MOVE.W  #$8060, SpriteY
-    
+
     RTS
 
 ; Real-time graphics update loop
@@ -155,12 +156,12 @@ UpdateGraphics:
     BSR     UpdateSprites
     BSR     UpdateBackground
     BSR     UpdateEffects
-    
+
     ; Wait for vertical blank
 .waitvb:
     BTST    #0, $DFF005         ; Check VPOSR
     BEQ.S   .waitvb
-    
+
     RTS
 
 ; Sprite animation system
@@ -173,41 +174,41 @@ UpdateSprites:
     CLR.W   D0                  ; Wrap around
 .inbounds:
     MOVE.W  D0, SpriteX
-    
+
     ; Update sprite hardware position
     LEA     $DFF000, A6
     MOVE.W  SpriteY, D1
     LSL.W   #8, D1
     OR.W    D0, D1
     MOVE.W  D1, $142(A6)        ; SPR0POS
-    
+
     RTS
 
 ; Background scrolling and effects
 UpdateBackground:
     LEA     $DFF000, A6
-    
+
     ; Update scroll position
     MOVE.W  ScrollPos, D0
     ADDQ.W  #1, D0
     AND.W   #$0F, D0            ; Wrap at 16 pixels
     MOVE.W  D0, ScrollPos
-    
+
     ; Apply to hardware
     LSL.W   #4, D0              ; Shift for BPLCON1
     MOVE.W  D0, $102(A6)        ; BPLCON1
-    
+
     RTS
 
 ; Advanced Blitter effects
 UpdateEffects:
     LEA     $DFF000, A6
-    
+
     ; Wait for Blitter ready
 .waitblit:
     BTST    #14, $002(A6)       ; Check DMACONR
     BNE.S   .waitblit
-    
+
     ; Setup plasma effect using Blitter
     MOVE.L  #PlasmaSource, $050(A6)   ; BLTAPT
     MOVE.L  #ScreenData+16000, $054(A6) ; BLTDPT
@@ -216,7 +217,7 @@ UpdateEffects:
     MOVE.W  #$09F0, $040(A6)    ; BLTCON0
     MOVE.W  #$0000, $042(A6)    ; BLTCON1
     MOVE.W  #$1004, $058(A6)    ; BLTSIZE (start)
-    
+
     RTS
 
 ; Data sections
@@ -259,68 +260,68 @@ Let's implement the main application loop that coordinates all systems:
 MainLoop:
     ; Frame timing and synchronization
     BSR     WaitVerticalBlank
-    
+
     ; Increment frame counter
     ADDQ.W  #1, FrameCounter
-    
+
     ; Update all graphics subsystems
     BSR     UpdateGraphics
-    
+
     ; Handle user input
     BSR     CheckInput
-    
+
     ; Update audio synchronization
     BSR     UpdateAudioSync
-    
+
     ; Performance monitoring
     BSR     CheckPerformance
-    
+
     ; Continue loop
     BRA     MainLoop
 
 ; Precise vertical blank synchronization
 WaitVerticalBlank:
     LEA     $DFF000, A6
-    
+
     ; Wait for line 255 (end of display)
 .wait1:
     MOVE.W  $004(A6), D0        ; Read VPOSR
     AND.W   #$01FF, D0          ; Mask line number
     CMP.W   #255, D0
     BNE.S   .wait1
-    
+
     ; Now wait for line 0 (start of new frame)
 .wait2:
     MOVE.W  $004(A6), D0
     AND.W   #$01FF, D0
     BNE.S   .wait2
-    
+
     RTS
 
 ; Advanced input handling
 CheckInput:
     LEA     $DFF000, A6
-    
+
     ; Check joystick port 1
     MOVE.W  $00C(A6), D0        ; Read JOY1DAT
-    
+
     ; Check fire button (left mouse button)
     BTST    #7, $BFE001         ; CIA-A port A
     BEQ.S   .firePressed
-    
+
     ; Check direction
     MOVE.W  D0, D1
     ROR.W   #2, D1
     EOR.W   D0, D1
     AND.W   #$0303, D1
-    
+
     ; Process horizontal movement
     BTST    #1, D1
     BNE.S   .moveRight
     BTST    #0, D1
     BNE.S   .moveLeft
     BRA.S   .checkVertical
-    
+
 .moveRight:
     MOVE.W  SpriteX, D2
     ADDQ.W  #4, D2
@@ -328,13 +329,13 @@ CheckInput:
     BGT.S   .checkVertical
     MOVE.W  D2, SpriteX
     BRA.S   .checkVertical
-    
+
 .moveLeft:
     MOVE.W  SpriteX, D2
     SUBQ.W  #4, D2
     BMI.S   .checkVertical      ; Check left boundary
     MOVE.W  D2, SpriteX
-    
+
 .checkVertical:
     ; Process vertical movement
     BTST    #9, D1
@@ -342,7 +343,7 @@ CheckInput:
     BTST    #8, D1
     BNE.S   .moveUp
     BRA.S   .inputDone
-    
+
 .moveUp:
     MOVE.W  SpriteY, D2
     SUBQ.W  #4, D2
@@ -350,17 +351,17 @@ CheckInput:
     BLT.S   .inputDone
     MOVE.W  D2, SpriteY
     BRA.S   .inputDone
-    
+
 .moveDown:
     MOVE.W  SpriteY, D2
     ADDQ.W  #4, D2
     CMP.W   #240, D2            ; Check bottom boundary
     BGT.S   .inputDone
     MOVE.W  D2, SpriteY
-    
+
 .inputDone:
     RTS
-    
+
 .firePressed:
     ; Trigger special effect
     MOVE.W  #1, EffectTrigger
@@ -372,25 +373,25 @@ UpdateAudioSync:
     MOVE.W  FrameCounter, D0
     AND.W   #$001F, D0          ; 32-frame cycle
     BNE.S   .nobeat
-    
+
     ; Change palette on beat
     LEA     $DFF000, A6
     MOVE.W  #$0F0F, $180(A6)    ; Flash bright
     MOVE.W  #30, FlashCounter   ; Set flash duration
-    
+
 .nobeat:
     ; Fade flash effect
     TST.W   FlashCounter
     BEQ.S   .nofade
     SUBQ.W  #1, FlashCounter
-    
+
     ; Calculate fade value
     MOVE.W  FlashCounter, D0
     LSR.W   #1, D0              ; Divide by 2
     LSL.W   #4, D0              ; Shift for color format
     OR.W    D0, D0              ; Combine RGB
     MOVE.W  D0, $180(A6)        ; Apply faded color
-    
+
 .nofade:
     RTS
 
@@ -400,20 +401,20 @@ CheckPerformance:
     MOVE.W  FrameCounter, D0
     AND.W   #$003F, D0          ; Every 64 frames
     BNE.S   .noperf
-    
+
     ; Check if we're maintaining 50fps
     ; Adjust quality settings if needed
     CMP.W   #50, LastFrameRate
     BGE.S   .perfok
-    
+
     ; Reduce quality for performance
     MOVE.W  #1, QualityReduction
     BRA.S   .perfdone
-    
+
 .perfok:
     ; Restore full quality
     CLR.W   QualityReduction
-    
+
 .perfdone:
 .noperf:
     RTS
@@ -448,11 +449,11 @@ GraphicsManager:
     BSR     InitSprites
     BSR     InitCopper
     BSR     InitBlitter
-    
+
     ; Setup resource management
     LEA     ResourceList, A0
     CLR.L   (A0)                ; Clear resource count
-    
+
     ; Mark initialization complete
     MOVE.W  #1, SystemReady
     RTS
@@ -461,13 +462,13 @@ GraphicsManager:
     ; Only update if system ready
     TST.W   SystemReady
     BEQ.S   .skip
-    
+
     ; Update all subsystems in order
     BSR     UpdateBackground
     BSR     UpdateSprites
     BSR     UpdateEffects
     BSR     UpdateCopper
-    
+
 .skip:
     RTS
 
@@ -475,15 +476,15 @@ GraphicsManager:
     ; Performance-aware rendering
     TST.W   QualityReduction
     BNE.S   .lowquality
-    
+
     ; Full quality rendering
     BSR     RenderFullQuality
     BRA.S   .renderdone
-    
+
 .lowquality:
     ; Reduced quality for performance
     BSR     RenderReducedQuality
-    
+
 .renderdone:
     RTS
 
@@ -507,26 +508,26 @@ GraphicsManager:
 AllocResource:
     ; A0 = resource size
     ; Returns A0 = resource pointer or NULL
-    
+
     MOVE.L  A1, -(SP)           ; Save registers
     MOVE.L  D0, -(SP)
-    
+
     ; Find free resource slot
     LEA     ResourceList, A1
     MOVE.L  (A1), D0            ; Get count
     CMP.L   #MAX_RESOURCES, D0
     BGE.S   .allocfail
-    
+
     ; Allocate memory (simplified - use OS calls in real code)
     ; ... allocation code ...
-    
+
     ; Add to resource list
     ADDQ.L  #1, (A1)            ; Increment count
-    
+
     MOVE.L  (SP)+, D0           ; Restore registers
     MOVE.L  (SP)+, A1
     RTS
-    
+
 .allocfail:
     CLR.L   A0                  ; Return NULL
     MOVE.L  (SP)+, D0
@@ -537,28 +538,28 @@ AllocResource:
 EffectCoordinator:
     ; Coordinate multiple effects
     MOVE.W  FrameCounter, D0
-    
+
     ; Plasma effect (every frame)
     BSR     UpdatePlasma
-    
+
     ; Sprite trail effect (every 2 frames)
     BTST    #0, D0
     BNE.S   .notrail
     BSR     UpdateSpriteTrail
-    
+
 .notrail:
     ; Screen shake effect (when triggered)
     TST.W   EffectTrigger
     BEQ.S   .noshake
     BSR     ScreenShakeEffect
     CLR.W   EffectTrigger
-    
+
 .noshake:
     ; Color cycling (every 4 frames)
     AND.W   #$0003, D0
     BNE.S   .nocycle
     BSR     ColorCycleEffect
-    
+
 .nocycle:
     RTS
 
@@ -593,19 +594,19 @@ Your complete integration project demonstrates mastery of:
 ; Cache-friendly rendering order
 OptimizedRender:
     ; Render in memory-access order for cache efficiency
-    
+
     ; 1. Update all positions first (minimal memory access)
     BSR     UpdatePositions
-    
+
     ; 2. Batch all Copper updates
     BSR     BatchCopperUpdates
-    
+
     ; 3. Batch all Blitter operations
     BSR     BatchBlitterOps
-    
+
     ; 4. Update sprite hardware last
     BSR     UpdateSpriteHardware
-    
+
     RTS
 
 ; Memory-efficient double buffering
@@ -613,15 +614,15 @@ DoubleBufferSetup:
     ; Setup ping-pong buffers for smooth animation
     LEA     Buffer1, A0
     LEA     Buffer2, A1
-    
+
     MOVE.L  A0, CurrentBuffer
     MOVE.L  A1, BackBuffer
-    
+
     ; Clear both buffers
     BSR     ClearBuffer
     EXG     A0, A1
     BSR     ClearBuffer
-    
+
     RTS
 
 SwapBuffers:
@@ -629,32 +630,32 @@ SwapBuffers:
     MOVE.L  CurrentBuffer, D0
     MOVE.L  BackBuffer, CurrentBuffer
     MOVE.L  D0, BackBuffer
-    
+
     ; Update hardware pointers
     MOVE.L  CurrentBuffer, A0
     LEA     $DFF000, A6
     MOVE.L  A0, $E0(A6)         ; BPL1PT
     ; ... update other bitplane pointers
-    
+
     RTS
 
 ; Interrupt-driven updates for perfect timing
 InterruptHandler:
     ; Save registers
     MOVEM.L D0-D7/A0-A6, -(SP)
-    
+
     ; Check interrupt source
     LEA     $DFF000, A6
     MOVE.W  $01E(A6), D0        ; INTREQR
-    
+
     ; Vertical blank interrupt?
     BTST    #5, D0
     BEQ.S   .notvblank
-    
+
     ; Handle vertical blank
     BSR     VBlankUpdate
     MOVE.W  #$0020, $09C(A6)    ; Clear VBlank interrupt
-    
+
 .notvblank:
     ; Restore registers and exit
     MOVEM.L (SP)+, D0-D7/A0-A6
@@ -672,6 +673,7 @@ BackBuffer:     dc.l    0
 ## What You've Learned
 
 In this graphics integration project, you've successfully:
+
 - **Combined all graphics subsystems** into a unified application
 - **Built a professional graphics engine** with modular architecture
 - **Implemented real-time effects** at full frame rate

@@ -27,6 +27,7 @@ Preserve the adventure! With **32 comprehensive lessons**, you'll master NES dat
 ## What You'll Build
 
 Expand **Power Quest** with professional save systems:
+
 - Battery backup for seamless save/load
 - Password system for universal compatibility
 - Compressed data storage for maximum efficiency
@@ -36,24 +37,28 @@ Expand **Power Quest** with professional save systems:
 ## Tier Overview
 
 **Lessons 1-8: Battery Backup Systems**
+
 - SRAM programming and memory mapping
 - Save data structure design
 - Battery backup validation and testing
 - Power-loss protection strategies
 
 **Lessons 9-16: Password Systems**
+
 - Password generation algorithms
 - Data encoding and compression
 - Error detection and correction
 - User-friendly password interfaces
 
 **Lessons 17-24: Advanced Save Features**
+
 - Multiple save slot management
 - Save file versioning and compatibility
 - Data migration and upgrade systems
 - Professional save file validation
 
 **Lessons 25-32: Save System Integration**
+
 - Seamless game integration
 - Performance optimization
 - Save corruption prevention

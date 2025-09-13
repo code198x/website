@@ -31,6 +31,7 @@ Bring together everything you've learned to complete **Number Quest** - your fir
 ## What You'll Complete
 
 Finish **Number Quest** with professional assembly features:
+
 - Multiple difficulty levels implemented through efficient assembly loops
 - High score tracking using memory-based data structures
 - Statistics display with assembly-optimised calculations
@@ -40,24 +41,28 @@ Finish **Number Quest** with professional assembly features:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Loop Fundamentals**
+
 - Basic counting loops using registers and memory
 - Efficient loop patterns for 6502 processor
 - Nested loops and complex iteration patterns
 - Loop counter management and optimisation
 
-**Lessons 9-16: Advanced Loop Techniques**  
+**Lessons 9-16: Advanced Loop Techniques**
+
 - Creating infinite loops with proper exit conditions
 - Game loops and main program architecture
 - Breaking out of loops with conditional branches
 - Efficient loop termination and continuation
 
 **Lessons 17-24: Program Organization**
+
 - Using comments and labels for documentation
 - Organizing assembly code with subroutines
 - Planning assembly program structure
 - Testing and debugging assembly code
 
 **Lessons 25-32: Number Quest Completion**
+
 - Implementing the complete assembly game loop
 - Adding data persistence with memory management
 - Creating the final user interface in assembly
@@ -103,7 +108,7 @@ Assembly Edition for Commodore 64
 
 Select Difficulty:
 1. EASY (1-10 numbers)
-2. NORMAL (1-100 numbers)  
+2. NORMAL (1-100 numbers)
 3. HARD (1-1000 numbers)
 4. CUSTOM RANGE
 5. VIEW HIGH SCORES
@@ -117,7 +122,7 @@ You have unlimited guesses, but fewer is better!
 Attempt 1: ?50
 Not quite! Try something higher than 50.
 
-Attempt 2: ?75  
+Attempt 2: ?75
 Close! The number is between 50 and 75.
 
 Attempt 3: ?62
@@ -130,7 +135,7 @@ Enter your initials: ABC
 
 *** HIGH SCORES - NORMAL MODE ***
 1. ABC - 3 attempts (980 pts)
-2. XYZ - 4 attempts (970 pts)  
+2. XYZ - 4 attempts (970 pts)
 3. DEF - 5 attempts (950 pts)
 
 Play again? (Y/N)

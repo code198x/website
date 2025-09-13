@@ -27,6 +27,7 @@ Welcome to the symphony of gaming! 🎼 With **32 harmonious lessons**, you'll l
 ## What You'll Build
 
 Create **SPECTRUM SOUND STUDIO** - a complete audio powerhouse featuring:
+
 - Catchy chip tunes that get stuck in players' heads (in a good way!) 🎧
 - Punchy sound effects that make every action feel impactful
 - Dynamic audio that responds to gameplay in real-time
@@ -36,24 +37,28 @@ Create **SPECTRUM SOUND STUDIO** - a complete audio powerhouse featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Beeper Basics" - Making Magic with Simple Tones**
+
 - Fundamental beeper programming and frequency control
 - Creating musical notes and scales with perfect timing
 - Simple melody playback and rhythm programming
 - Sound effect generation using creative beeper techniques
 
 **Lessons 9-16: "AY Chip Mastery" - Three-Channel Symphony**
+
 - AY-3-8912 programming and register control
 - Multi-channel music composition and arrangement
 - Envelope generators and advanced waveform shaping
 - Noise channel effects and percussion programming
 
 **Lessons 17-24: "Interactive Audio" - Sound That Responds**
+
 - Dynamic music systems that adapt to gameplay
 - Audio feedback for player actions and game events
 - Background music that changes with game state
 - Seamless audio transitions and crossfading techniques
 
 **Lessons 25-32: "Audio Optimization" - Professional Polish**
+
 - Interrupt-driven sound playback for smooth performance
 - Memory-efficient audio data compression
 - Audio-visual synchronization techniques

@@ -27,6 +27,7 @@ Bring games to life with incredible audio! With **32 advanced lessons**, you'll 
 ## What You'll Build
 
 Create **DYNAMIC AUDIO ADVENTURE GAME** - featuring responsive music systems:
+
 - Music that changes based on game events and player actions
 - Interactive soundtrack that adapts to gameplay intensity
 - Sophisticated sound effects that enhance game mechanics
@@ -36,24 +37,28 @@ Create **DYNAMIC AUDIO ADVENTURE GAME** - featuring responsive music systems:
 ## Technical Mastery Areas
 
 **Lessons 1-8: "SID Mastery for Games" - Hardware Audio Programming**
+
 - Advanced SID register programming and waveform synthesis
 - Multi-channel music composition and arrangement
 - Real-time audio parameter manipulation during gameplay
 - Hardware filter programming for environmental effects
 
 **Lessons 9-16: "Dynamic Music Systems" - Responsive Scoring**
+
 - Music that adapts to game state and player progress
 - Seamless transitions between musical themes and moods
 - Interactive music layers that respond to gameplay
 - Algorithmic composition and procedural music generation
 
 **Lessons 17-24: "Game Sound Effects" - Interactive Audio Design**
+
 - Advanced sound effect synthesis for game actions
 - Positional audio and 3D sound simulation
 - Environmental sound design and atmospheric audio
 - Real-time audio feedback for player interactions
 
 **Lessons 25-32: "Advanced Audio Integration" - Professional Game Audio**
+
 - Efficient audio mixing and channel management for games
 - Audio optimization for gameplay performance
 - Interactive audio scripting and event-driven sound

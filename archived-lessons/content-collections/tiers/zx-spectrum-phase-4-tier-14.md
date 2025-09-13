@@ -27,6 +27,7 @@ Perfect performance! With **32 comprehensive lessons**, you'll master advanced p
 ## What You'll Build
 
 Continue developing **Spectrum Legends** with optimal performance:
+
 - Comprehensive performance profiling systems
 - Advanced code optimization throughout
 - Efficient memory management and allocation
@@ -36,24 +37,28 @@ Continue developing **Spectrum Legends** with optimal performance:
 ## Tier Overview
 
 **Lessons 1-8: Performance Profiling Systems**
+
 - Advanced profiling tool development
 - Performance bottleneck identification
 - Real-time performance monitoring
 - Professional profiling methodologies
 
 **Lessons 9-16: Code Optimization Techniques**
+
 - Advanced Z80 optimization strategies
 - Algorithm efficiency improvements
 - Loop optimization and unrolling
 - Professional optimization patterns
 
 **Lessons 17-24: Memory Management Mastery**
+
 - Advanced memory allocation strategies
 - Memory pool and caching systems
 - Garbage collection and cleanup
 - Memory leak detection and prevention
 
 **Lessons 25-32: System Resource Optimization**
+
 - CPU utilization optimization
 - I/O and storage optimization
 - Hardware-specific optimizations

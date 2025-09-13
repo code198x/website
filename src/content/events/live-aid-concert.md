@@ -22,6 +22,7 @@ Live Aid was a landmark in broadcasting and communications technology:
 ## Computing Context
 
 1985 was a pivotal year in personal computing:
+
 - The Commodore Amiga launched with advanced multimedia capabilities
 - The Atari ST brought affordable 16-bit computing
 - Home computers were becoming tools for global communication
@@ -30,6 +31,7 @@ Live Aid was a landmark in broadcasting and communications technology:
 ## Cultural Impact
 
 Live Aid showed how technology could be used for social good:
+
 - Inspired use of computers and technology for charitable causes
 - Demonstrated the power of global communications
 - Influenced how people thought about technology's role in society

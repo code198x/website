@@ -27,6 +27,7 @@ Ready to make people smarter? 🧩 With **32 mind-bending lessons**, you'll crea
 ## What You'll Build
 
 Create **MIND BENDER** - a deviously clever puzzle adventure featuring:
+
 - Puzzles that start simple but get wonderfully complex
 - "Aha!" moments that make players feel brilliant
 - Mechanics so intuitive you don't need tutorials
@@ -36,24 +37,28 @@ Create **MIND BENDER** - a deviously clever puzzle adventure featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Eureka!" - The Psychology of Puzzle Design**
+
 - What makes a puzzle satisfying vs. frustrating
 - Teaching mechanics through level design, not text
 - The goldilocks zone: not too easy, not too hard
 - Creating those magical "click" moments in players' minds
 
 **Lessons 9-16: "Undo Magic" - State Management & Player Comfort**
+
 - Undo systems that encourage experimentation
 - Save states that let players take risks
 - Visual feedback that confirms player understanding
 - Error handling that feels forgiving, not punishing
 
 **Lessons 17-24: "Just One More..." - The Addiction Formula**
+
 - Difficulty curves that hook players gradually
 - Reward systems that celebrate small victories
 - Progression that always gives players something to reach for
 - The mysterious "flow state" and how to create it
 
 **Lessons 25-32: "You're So Clever!" - Making Players Feel Smart**
+
 - Puzzle presentation that highlights player intelligence
 - Hint systems that nudge without spoiling
 - Visual celebrations of successful solutions

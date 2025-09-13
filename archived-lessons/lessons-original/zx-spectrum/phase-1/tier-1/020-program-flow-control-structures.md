@@ -33,6 +33,7 @@ You've mastered individual control elements - conditionals, loops, and subroutin
 ### What is a State Machine?
 
 A state machine is a control structure where:
+
 - The program exists in one of several defined **states**
 - **Events** or conditions trigger transitions between states
 - Each state has specific behaviors and responses
@@ -109,7 +110,7 @@ RunStateMachine:
 InitState:
     LD A, 10            ; Initialize counter
     LD (StateCounter), A
-    
+
     ; Transition to Running state
     LD A, 1
     LD (CurrentState), A
@@ -121,16 +122,16 @@ RunningState:
     LD A, (StateCounter)
     DEC A               ; Decrement counter
     LD (StateCounter), A
-    
+
     OR A                ; Check if zero
     JR NZ, StillRunning
-    
+
     ; Counter reached zero - transition to Waiting
     LD A, 2
     LD (CurrentState), A
     LD B, 200           ; Return running complete code
     RET
-    
+
 StillRunning:
     LD B, 201           ; Return still running code
     RET
@@ -139,7 +140,7 @@ StillRunning:
 WaitingState:
     ; Simple wait simulation - could check for input here
     CALL SimulateWait
-    
+
     ; Transition to Done state
     LD A, 3
     LD (CurrentState), A
@@ -174,7 +175,7 @@ WaitLoop:
 ; Event queue for handling multiple events
 EventQueue:
     DB 10               ; Queue size
-    DB 0                ; Head pointer  
+    DB 0                ; Head pointer
     DB 0                ; Tail pointer
     DB 0                ; Count
     DS 10               ; Event data
@@ -188,7 +189,7 @@ AddEvent:
     LD A, (EventQueue)      ; Get queue size
     CP B                    ; Check if full
     JR Z, QueueFull         ; Skip if full
-    
+
     ; Add event to tail
     LD HL, EventQueue + 2   ; Point to tail
     LD C, (HL)              ; Get tail position
@@ -196,7 +197,7 @@ AddEvent:
     LD B, 0
     ADD HL, BC              ; Point to tail position
     LD (HL), A              ; Store event
-    
+
     ; Update tail pointer
     LD HL, EventQueue + 2
     INC (HL)                ; Increment tail
@@ -205,11 +206,11 @@ AddEvent:
     JR C, NoWrapTail
     LD (HL), 0              ; Wrap to start
 NoWrapTail:
-    
+
     ; Update count
     LD HL, EventQueue + 3
     INC (HL)                ; Increment count
-    
+
 QueueFull:
     POP HL
     RET
@@ -223,12 +224,12 @@ ProcessEvents:
     CALL CheckKeyboard      ; Generate keyboard events
     CALL CheckTimer         ; Generate timer events
     CALL CheckCollisions    ; Generate collision events
-    
+
     ; Process all queued events
 EventLoop:
     CALL GetNextEvent       ; Get event from queue
     JR C, NoMoreEvents      ; Exit if no events
-    
+
     ; Dispatch event based on type
     OR A
     JP Z, HandleKeyEvent
@@ -236,9 +237,9 @@ EventLoop:
     JP Z, HandleTimerEvent
     DEC A
     JP Z, HandleCollisionEvent
-    
+
     JR EventLoop            ; Continue processing
-    
+
 NoMoreEvents:
     RET
 ```
@@ -267,29 +268,29 @@ TimerCounter:   DB 0    ; For generating timer events
 EnqueueEvent:
     PUSH BC
     PUSH HL
-    
+
     ; Check if queue is full
     LD B, A             ; Save event
     LD A, (QueueCount)
     CP 8                ; Queue size
     JR Z, QueueFull     ; Skip if full
-    
+
     ; Add event to tail position
     LD A, (QueueTail)
     LD HL, EventQueue
     LD C, A
     ADD HL, BC          ; Point to tail position
     LD (HL), B          ; Store event
-    
+
     ; Update tail pointer (with wraparound)
     INC A
     AND 7               ; Wrap at 8 (0-7)
     LD (QueueTail), A
-    
+
     ; Update count
     LD HL, QueueCount
     INC (HL)
-    
+
 QueueFull:
     POP HL
     POP BC
@@ -300,34 +301,34 @@ QueueFull:
 DequeueEvent:
     PUSH BC
     PUSH HL
-    
+
     ; Check if queue is empty
     LD A, (QueueCount)
     OR A
     JR Z, QueueEmpty
-    
+
     ; Get event from head position
     LD A, (QueueHead)
     LD HL, EventQueue
     LD C, A
     ADD HL, BC          ; Point to head position
     LD B, (HL)          ; Get event
-    
+
     ; Update head pointer (with wraparound)
     INC A
     AND 7               ; Wrap at 8
     LD (QueueHead), A
-    
+
     ; Update count
     LD HL, QueueCount
     DEC (HL)
-    
+
     LD A, B             ; Return event
     OR A                ; Clear carry (event available)
     POP HL
     POP BC
     RET
-    
+
 QueueEmpty:
     SCF                 ; Set carry (no event)
     POP HL
@@ -342,19 +343,19 @@ GenerateEvents:
     LD (TimerCounter), A
     AND 15              ; Every 16 counts
     JR NZ, NoTimer
-    
+
     LD A, EVENT_TIMER
     CALL EnqueueEvent
-    
+
 NoTimer:
     ; Simulate random keypress event
     LD A, (TimerCounter)
     AND 31              ; Every 32 counts
     JR NZ, NoKey
-    
+
     LD A, EVENT_KEYPRESS
     CALL EnqueueEvent
-    
+
 NoKey:
     RET
 
@@ -362,12 +363,12 @@ NoKey:
 ProcessEventQueue:
     ; Generate new events
     CALL GenerateEvents
-    
+
     ; Process existing events
 EventProcessLoop:
     CALL DequeueEvent
     JR C, NoMoreEvents  ; Exit if no events
-    
+
     ; Handle different event types
     CP EVENT_KEYPRESS
     JR Z, HandleKeypress
@@ -375,22 +376,22 @@ EventProcessLoop:
     JR Z, HandleTimer
     CP EVENT_COLLISION
     JR Z, HandleCollision
-    
+
     ; Unknown event - ignore
     JR EventProcessLoop
-    
+
 HandleKeypress:
     LD B, 100           ; Keypress handled code
     JR EventProcessLoop
-    
+
 HandleTimer:
     LD B, 200           ; Timer handled code
     JR EventProcessLoop
-    
+
 HandleCollision:
     LD B, 300           ; Collision handled code
     JR EventProcessLoop
-    
+
 NoMoreEvents:
     RET
 
@@ -416,14 +417,14 @@ DispatchCommand:
     ; Bounds checking
     CP 4
     JR NC, InvalidCommand
-    
+
     ; Calculate table offset
     SLA A               ; Multiply by 2 (addresses are 2 bytes)
     LD HL, CommandTable
     LD C, A
     LD B, 0
     ADD HL, BC          ; Point to function address
-    
+
     ; Get function address and call it
     LD A, (HL)          ; Low byte
     INC HL
@@ -455,7 +456,7 @@ DispatchCategoryFunction:
     ; Validate category
     CP 4
     JR NC, InvalidCategory
-    
+
     ; Get category table address
     SLA A
     LD HL, CategoryTable
@@ -466,12 +467,12 @@ DispatchCategoryFunction:
     INC HL
     LD H, (HL)
     LD L, A             ; HL = category table address
-    
+
     ; Validate function number
     LD A, B
     CP 8                ; Max 8 functions per category
     JR NC, InvalidFunction
-    
+
     ; Get function address from category table
     SLA A
     LD C, A
@@ -507,13 +508,13 @@ ExecuteFunction:
     ; Bounds check
     CP 5                ; Check if index < 5
     JR NC, InvalidIndex
-    
+
     ; Calculate table offset
     SLA A               ; × 2 (addresses are 2 bytes)
     LD HL, FunctionTable
     LD C, A : LD B, 0
     ADD HL, BC          ; Point to function address
-    
+
     ; Get and call function
     LD E, (HL)          ; Low byte of address
     INC HL
@@ -559,7 +560,7 @@ ParameterTable:
 ; Input: A = function index
 ExecuteWithParams:
     PUSH AF             ; Save function index
-    
+
     ; Get parameters for this function
     SLA A               ; × 2 (2 parameters per function)
     LD HL, ParameterTable
@@ -568,11 +569,11 @@ ExecuteWithParams:
     LD B, (HL)          ; First parameter
     INC HL
     LD C, (HL)          ; Second parameter
-    
+
     ; Now call the function
     POP AF              ; Restore function index
     CALL ExecuteFunction ; Call function
-    
+
     ; A contains function result
     ; B and C contain the parameters that were passed
     RET
@@ -591,7 +592,7 @@ ExecuteMenuOption:
     LD A, (MenuOption)
     CP 5                ; 5 menu options
     JR NC, InvalidOption
-    
+
     SLA A
     LD HL, MenuCommands
     LD C, A : LD B, 0
@@ -629,34 +630,34 @@ EvaluateGameSituation:
     LD A, (PlayerHealth)
     CP 25               ; Low health threshold
     JR C, LowHealthBranch
-    
+
     ; Good health - check enemies
     LD A, (EnemyCount)
     OR A
     JR Z, NoEnemiesBranch
-    
+
     ; Enemies present - check power level
     LD A, (PowerLevel)
     CP 50
     JR C, LowPowerBranch
-    
+
     ; High power, enemies present, good health
     JP AdvancedCombat
-    
+
 LowHealthBranch:
     ; Low health - check for health items
     LD A, (HealthItems)
     OR A
     JP Z, RetreatStrategy
     JP HealingStrategy
-    
+
 NoEnemiesBranch:
     ; No enemies - check objectives
     LD A, (ObjectivesComplete)
     CP 100
     JP Z, VictoryState
     JP ExplorationMode
-    
+
 LowPowerBranch:
     ; Low power - defensive strategy
     JP DefensiveMode
@@ -688,7 +689,7 @@ UpdateAI:
     LD A, (MainGameState)
     CP 1                ; Playing state
     RET NZ              ; Return if not playing
-    
+
     LD A, (AIState)
     ; Handle AI state transitions
     RET
@@ -709,13 +710,13 @@ ProcessInput:
     LD A, (InputType)
     CP MOVE_INPUT       ; Most common
     JR Z, HandleMove    ; Short jump
-    
+
     CP FIRE_INPUT       ; Second most common
     JR Z, HandleFire    ; Short jump
-    
+
     CP MENU_INPUT       ; Less common
     JP Z, HandleMenu    ; Long jump OK
-    
+
     ; Rare inputs
     JP HandleSpecialInput
 ```
@@ -729,10 +730,10 @@ ValidateInput:
     LD A, (InputValue)
     OR A
     RET Z               ; Return immediately if zero
-    
+
     CP 100
     JR NC, InvalidInput ; Return immediately if too large
-    
+
     ; Expensive validation only if needed
     CALL ComplexValidation
     RET
@@ -786,7 +787,7 @@ Entity3:    DB ENTITY_ATTACKING, 150, 90, 60, 1
 ; Entity behavior dispatch table
 EntityBehaviors:
     DW IdleBehavior     ; State 0
-    DW MovingBehavior   ; State 1  
+    DW MovingBehavior   ; State 1
     DW AttackBehavior   ; State 2
     DW DeadBehavior     ; State 3
 
@@ -794,11 +795,11 @@ EntityBehaviors:
 ; Input: IX = pointer to entity structure
 UpdateEntity:
     LD A, (IX+0)        ; Get entity state
-    
+
     ; Bounds check
     CP 4
     JR NC, InvalidState
-    
+
     ; Dispatch to appropriate behavior
     SLA A               ; × 2 for address table
     LD HL, EntityBehaviors
@@ -821,14 +822,14 @@ IdleBehavior:
     LD A, (IX+3)        ; Get health
     CP 50               ; If health < 50, start moving to find health
     JR C, StartMoving
-    
+
     ; Random chance to start moving
     CALL GetRandomNumber ; Returns 0-255 in A
     AND 31              ; 1 in 32 chance
     JR Z, StartMoving
-    
+
     RET                 ; Stay idle
-    
+
 StartMoving:
     LD (IX+0), ENTITY_MOVING
     RET
@@ -836,23 +837,23 @@ StartMoving:
 MovingBehavior:
     ; Move entity (simple movement)
     INC (IX+1)          ; Move right
-    
+
     ; Check if should stop moving
     LD A, (IX+1)        ; Get X position
     CP 200              ; If reached edge
     JR C, KeepMoving
-    
+
     ; Reached edge - go back to idle
     LD (IX+0), ENTITY_IDLE
     RET
-    
+
 KeepMoving:
     ; Random chance to start attacking
     CALL GetRandomNumber
     AND 15              ; 1 in 16 chance
     JR Z, StartAttacking
     RET
-    
+
 StartAttacking:
     LD (IX+0), ENTITY_ATTACKING
     RET
@@ -860,22 +861,22 @@ StartAttacking:
 AttackBehavior:
     ; Attack behavior (reduce own health for demo)
     DEC (IX+3)          ; Reduce health
-    
+
     ; Check if should die
     LD A, (IX+3)
     OR A
     JR Z, StartDying
-    
+
     ; Check if should stop attacking
     CALL GetRandomNumber
     AND 7               ; 1 in 8 chance
     JR Z, StopAttacking
     RET
-    
+
 StartDying:
     LD (IX+0), ENTITY_DEAD
     RET
-    
+
 StopAttacking:
     LD (IX+0), ENTITY_IDLE
     RET
@@ -902,10 +903,10 @@ GetRandomNumber:
 UpdateAllEntities:
     LD IX, Entity1
     CALL UpdateEntity
-    
+
     LD IX, Entity2
     CALL UpdateEntity
-    
+
     LD IX, Entity3
     CALL UpdateEntity
     RET
@@ -930,7 +931,7 @@ TaskCount:   EQU 4
 RunTasks:
     LD B, TaskCount
     LD A, (CurrentTask)
-    
+
 TaskLoop:
     ; Check if current task is active
     LD HL, TaskList + (TaskCount * 2)   ; Point to flags
@@ -940,7 +941,7 @@ TaskLoop:
     LD A, C
     OR A
     JR Z, NextTask      ; Skip if inactive
-    
+
     ; Run current task
     LD HL, TaskList
     LD A, (CurrentTask)
@@ -952,7 +953,7 @@ TaskLoop:
     LD H, (HL)
     LD L, C             ; HL = task address
     CALL CallTask       ; Run task
-    
+
 NextTask:
     LD A, (CurrentTask)
     INC A
@@ -984,7 +985,7 @@ UpdateHierarchicalState:
     ; Update parent state first
     LD A, (ParentState)
     CALL UpdateParentState
-    
+
     ; Update child state based on parent
     LD A, (ParentState)
     OR A
@@ -1037,7 +1038,7 @@ MODE_PLAYING    EQU 1
 MODE_INVENTORY  EQU 2
 MODE_PAUSED     EQU 3
 
-; AI behaviors  
+; AI behaviors
 AI_PATROL       EQU 0
 AI_CHASE        EQU 1
 AI_FLEE         EQU 2
@@ -1060,7 +1061,7 @@ UpdateGame:
     LD A, (GameMode)
     CP 4                ; Bounds check
     JR NC, InvalidMode
-    
+
     ; Dispatch to mode handler
     SLA A               ; × 2 for addresses
     LD HL, ModeHandlers
@@ -1084,79 +1085,79 @@ HandleMenu:
     CALL SimulateMenuInput
     OR A
     JR Z, MenuStay
-    
+
     ; Start game
     LD A, MODE_PLAYING
     LD (GameMode), A
     LD B, 100           ; Menu->Game transition code
     RET
-    
+
 MenuStay:
     LD B, 101           ; Still in menu code
     RET
 
 HandlePlaying:
     ; Complex game state with multiple conditions
-    
+
     ; Check player health first (critical)
     LD A, (PlayerHealth)
     CP 20               ; Critical health
     JR C, CriticalHealth
-    
+
     ; Check enemy distance
     LD A, (EnemyDistance)
     CP 10               ; Very close
     JR C, EnemyVeryClose
     CP 30               ; Moderate distance
     JR C, EnemyClose
-    
+
     ; Enemy far - normal gameplay
     CALL NormalGameplay
     LD B, 200           ; Normal gameplay code
     RET
-    
+
 CriticalHealth:
     ; Player in danger - check for escape options
     LD A, (EnemyDistance)
     CP 20
     JR C, FleeImmediate
-    
+
     ; Try to heal
     CALL AttemptHealing
     LD B, 201           ; Healing attempt code
     RET
-    
+
 FleeImmediate:
     CALL FleeFromEnemy
     LD B, 202           ; Fleeing code
     RET
-    
+
 EnemyVeryClose:
     ; Close combat - check weapon
     LD A, (PlayerWeapon)
     CP 3                ; Good weapon
     JR NC, AttackEnemy
-    
+
     ; Weak weapon - defensive
     CALL DefensiveAction
     LD B, 203           ; Defensive code
     RET
-    
+
 AttackEnemy:
     CALL CombatAction
     LD B, 204           ; Combat code
     RET
-    
+
 EnemyClose:
     ; Moderate threat - tactical decision
     LD A, (PlayerHealth)
     CP 50
     JR C, TacticalRetreat
-    
+
     CALL TacticalAdvance
     LD B, 205           ; Tactical advance code
     RET
-    
+
 TacticalRetreat:
     CALL TacticalRetreat
     LD B, 206           ; Tactical retreat code

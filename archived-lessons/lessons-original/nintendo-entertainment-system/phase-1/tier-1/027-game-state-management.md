@@ -35,7 +35,7 @@ A state machine organizes your game into discrete modes, each with its own behav
 ```text
 Common Game States:
 - Title Screen: Initial menu and options
-- Gameplay: Main interactive experience  
+- Gameplay: Main interactive experience
 - Pause Menu: Temporary interruption
 - Game Over: End condition handling
 - High Scores: Achievement display
@@ -75,27 +75,27 @@ MainGameLoop:
     BEQ RunGameOverState
     CMP #STATE_SETTINGS
     BEQ RunSettingsState
-    
+
     ; Invalid state - reset to title
     LDA #STATE_TITLE
     STA GameState
-    
+
 RunTitleState:
     JSR UpdateTitleScreen
     JMP MainGameLoop
-    
+
 RunGameplayState:
     JSR UpdateGameplay
     JMP MainGameLoop
-    
+
 RunPauseState:
     JSR UpdatePauseMenu
     JMP MainGameLoop
-    
+
 RunGameOverState:
     JSR UpdateGameOver
     JMP MainGameLoop
-    
+
 RunSettingsState:
     JSR UpdateSettings
     JMP MainGameLoop
@@ -107,7 +107,7 @@ RunSettingsState:
 ; Simple game state machine demonstration
 Main:
     JSR InitStates
-    
+
 GameLoop:
     JSR UpdateState
     JSR RenderState
@@ -136,13 +136,13 @@ UpdateTitle:
     ; Update title screen
     INC StateTimer
     JSR ProcessTitleInput
-    
+
     ; Auto-advance after delay (for demo)
     LDA StateTimer
     CMP #$78             ; 120 frames (2 seconds)
     BNE TitleDone
     JSR TransitionToGame
-    
+
 TitleDone:
     RTS
 
@@ -150,13 +150,13 @@ UpdateGame:
     ; Update game logic
     INC StateTimer
     JSR ProcessGameInput
-    
+
     ; Auto-pause after delay (for demo)
     LDA StateTimer
     CMP #$B4             ; 180 frames (3 seconds)
     BNE GameDone
     JSR TransitionToPause
-    
+
 GameDone:
     RTS
 
@@ -164,13 +164,13 @@ UpdatePause:
     ; Update pause menu
     INC StateTimer
     JSR ProcessPauseInput
-    
+
     ; Auto-resume after delay (for demo)
     LDA StateTimer
     CMP #$3C             ; 60 frames (1 second)
     BNE PauseDone
     JSR TransitionToTitle
-    
+
 PauseDone:
     RTS
 
@@ -180,7 +180,7 @@ ProcessTitleInput:
     AND #%10000000       ; A button
     BEQ TitleInputDone
     JSR TransitionToGame
-    
+
 TitleInputDone:
     RTS
 
@@ -190,7 +190,7 @@ ProcessGameInput:
     AND #%00010000       ; Start button
     BEQ GameInputDone
     JSR TransitionToPause
-    
+
 GameInputDone:
     RTS
 
@@ -200,7 +200,7 @@ ProcessPauseInput:
     AND #%00010000       ; Start button
     BEQ PauseInputDone
     JSR TransitionToGame
-    
+
 PauseInputDone:
     RTS
 
@@ -324,7 +324,7 @@ TitleData:
     MenuOptions: .byte $03       ; Number of menu options
     SelectedOption: .byte $00    ; Currently selected option
     CursorY: .byte $60          ; Cursor Y position
-    
+
 ; Gameplay data
 GameplayData:
     PlayerX: .byte $80          ; Player position
@@ -332,8 +332,8 @@ GameplayData:
     PlayerLives: .byte $03      ; Remaining lives
     PlayerScore: .byte $00, $00 ; Score (2 bytes)
     EnemyCount: .byte $00       ; Number of active enemies
-    
-; Pause menu data  
+
+; Pause menu data
 PauseData:
     PauseOption: .byte $00      ; Selected pause option
     GamePaused: .byte $00       ; Pause flag
@@ -425,18 +425,18 @@ InitiateTransition:
     ; Start transition to new state
     ; A register contains target state
     STA NextState
-    
+
     ; Determine transition type based on current and target states
     LDX GameState
     JSR GetTransitionType
     STA TransitionType
-    
+
     ; Set transition duration
     LDA #$20                ; 32 frame transition
     STA TransitionTimer
     LDA #$01
     STA TransitionActive
-    
+
     ; Prepare transition
     JSR PrepareTransition
     RTS
@@ -450,7 +450,7 @@ GetTransitionType:
     BEQ FromGameplay
     CMP #STATE_PAUSE
     BEQ FromPause
-    
+
     ; Default transition
     LDA #TRANSITION_INSTANT
     RTS
@@ -461,7 +461,7 @@ FromTitle:
     BNE TitleDefault
     LDA #TRANSITION_FADE
     RTS
-    
+
 TitleDefault:
     LDA #TRANSITION_INSTANT
     RTS
@@ -472,7 +472,7 @@ FromGameplay:
     BNE GameplayDefault
     LDA #TRANSITION_INSTANT  ; Instant pause
     RTS
-    
+
 GameplayDefault:
     LDA #TRANSITION_FADE
     RTS
@@ -485,15 +485,15 @@ FromPause:
 UpdateTransition:
     LDA TransitionActive
     BEQ TransitionDone
-    
+
     DEC TransitionTimer
     LDA TransitionTimer
     BNE ContinueTransition
-    
+
     ; Transition complete
     JSR CompleteTransition
     JMP TransitionDone
-    
+
 ContinueTransition:
     ; Update transition effect
     LDA TransitionType
@@ -503,22 +503,22 @@ ContinueTransition:
     BEQ UpdateSlideTransition
     ; Instant transition - nothing to update
     JMP TransitionDone
-    
+
 UpdateFadeTransition:
     ; Fade effect using palette changes
     LDA TransitionTimer
     CMP #$10                ; Halfway point
     BCS FadeOut
-    
+
     ; Fade in (second half)
     JSR FadeInEffect
     JMP TransitionDone
-    
+
 FadeOut:
     ; Fade out (first half)
     JSR FadeOutEffect
     JMP TransitionDone
-    
+
 UpdateSlideTransition:
     ; Slide transition (move sprites)
     LDA TransitionTimer
@@ -528,7 +528,7 @@ UpdateSlideTransition:
     LSR                     ; Divide by 2
     STA SlideOffset
     JSR ApplySlideEffect
-    
+
 TransitionDone:
     RTS
 
@@ -536,11 +536,11 @@ CompleteTransition:
     ; Finish transition and switch states
     LDA #$00
     STA TransitionActive
-    
+
     ; Switch to new state
     LDA NextState
     STA GameState
-    
+
     ; Initialize new state
     JSR InitializeStateData
     RTS
@@ -567,7 +567,7 @@ SlideOffset: .byte $00
 ; Game state transition demonstration
 Main:
     JSR InitGame
-    
+
 MainLoop:
     JSR UpdateGameState
     JSR UpdateTransitions
@@ -586,9 +586,9 @@ UpdateGameState:
     ; Update based on current state
     LDA TransitionActive
     BNE StateUpdateDone  ; Skip if transitioning
-    
+
     INC StateTimer
-    
+
     LDA CurrentState
     CMP #$00             ; Title
     BEQ UpdateTitleState
@@ -603,11 +603,11 @@ UpdateTitleState:
     LDA StateTimer
     CMP #$60             ; 1 second
     BNE TitleStateDone
-    
+
     ; Transition to menu
     LDA #$01
     JSR StartTransition
-    
+
 TitleStateDone:
     RTS
 
@@ -616,11 +616,11 @@ UpdateMenuState:
     LDA StateTimer
     CMP #$60             ; 1 second
     BNE MenuStateDone
-    
+
     ; Transition to game
     LDA #$02
     JSR StartTransition
-    
+
 MenuStateDone:
     RTS
 
@@ -629,11 +629,11 @@ UpdateGameState2:
     LDA StateTimer
     CMP #$60             ; 1 second
     BNE GameStateDone
-    
+
     ; Transition back to title
     LDA #$00
     JSR StartTransition
-    
+
 GameStateDone:
     RTS
 
@@ -643,18 +643,18 @@ StateUpdateDone:
 StartTransition:
     ; A = target state
     STA TargetState
-    
+
     ; Determine transition type
     LDX CurrentState
     JSR GetTransitionType
     STA TransitionType
-    
+
     ; Start transition
     LDA #$20             ; 32 frame transition
     STA TransitionTimer
     LDA #$01
     STA TransitionActive
-    
+
     RTS
 
 GetTransitionType:
@@ -662,11 +662,11 @@ GetTransitionType:
     LDA CurrentState
     CMP TargetState
     BEQ NoTransition
-    
+
     ; Use fade for all transitions
     LDA #$01             ; Fade type
     RTS
-    
+
 NoTransition:
     LDA #$00             ; No transition
     RTS
@@ -674,11 +674,11 @@ NoTransition:
 UpdateTransitions:
     LDA TransitionActive
     BEQ TransitionsDone
-    
+
     DEC TransitionTimer
     LDA TransitionTimer
     BNE ContinueTransition2
-    
+
     ; Complete transition
     LDA TargetState
     STA CurrentState
@@ -687,11 +687,11 @@ UpdateTransitions:
     STA StateTimer
     JSR InitCurrentStateData
     JMP TransitionsDone
-    
+
 ContinueTransition2:
     ; Update transition effect
     JSR UpdateTransitionEffect
-    
+
 TransitionsDone:
     RTS
 
@@ -700,12 +700,12 @@ UpdateTransitionEffect:
     LDA TransitionTimer
     CMP #$10             ; Midpoint
     BCS FadeOut2
-    
+
     ; Fade in - restore normal sprites
     LDA #$00
     STA SpriteData+2     ; Normal attributes
     RTS
-    
+
 FadeOut2:
     ; Fade out - dim sprites
     LDA #%00100000       ; Dim attribute
@@ -799,7 +799,7 @@ ActiveResources: .byte $00      ; Bitmask of active resources
 
 ; Resource bits
 RESOURCE_MUSIC     = %00000001
-RESOURCE_GRAPHICS  = %00000010  
+RESOURCE_GRAPHICS  = %00000010
 RESOURCE_ENEMIES   = %00000100
 RESOURCE_UI        = %00001000
 RESOURCE_EFFECTS   = %00010000
@@ -819,7 +819,7 @@ LoadTitleResources:
     ; Title screen needs music and UI
     LDA #RESOURCE_MUSIC | RESOURCE_UI
     STA ActiveResources
-    
+
     JSR LoadTitleMusic
     JSR LoadTitleGraphics
     RTS
@@ -828,7 +828,7 @@ LoadGameplayResources:
     ; Gameplay needs everything except UI menus
     LDA #RESOURCE_MUSIC | RESOURCE_GRAPHICS | RESOURCE_ENEMIES | RESOURCE_EFFECTS
     STA ActiveResources
-    
+
     JSR LoadGameMusic
     JSR LoadGameGraphics
     JSR LoadEnemyData
@@ -839,7 +839,7 @@ LoadPauseResources:
     LDA ActiveResources
     ORA #RESOURCE_UI
     STA ActiveResources
-    
+
     JSR LoadPauseUI
     RTS
 
@@ -857,7 +857,7 @@ UnloadForTitle:
     LDA ActiveResources
     AND #~(RESOURCE_ENEMIES | RESOURCE_EFFECTS)
     STA ActiveResources
-    
+
     JSR UnloadEnemyData
     JSR UnloadEffects
     RTS
@@ -867,7 +867,7 @@ UnloadForGameplay:
     LDA ActiveResources
     AND #~RESOURCE_UI
     STA ActiveResources
-    
+
     JSR UnloadMenuUI
     RTS
 
@@ -932,16 +932,16 @@ UpdateSymphonyMenu:
     ; Handle menu navigation
     JSR ProcessMenuInput
     JSR UpdateMenuDisplay
-    
+
     ; Check for mode selection
     LDA MenuSelection
     BEQ MenuDone
-    
+
     ; Transition to selected mode
     DEC MenuSelection    ; Convert to 0-based
     STA SymphonyState
     JSR InitSelectedMode
-    
+
 MenuDone:
     RTS
 
@@ -1028,7 +1028,7 @@ Create a complete game state management system that demonstrates all concepts:
 ; Complete game state management demonstration
 Main:
     JSR InitGameStates
-    
+
 MainLoop:
     JSR UpdateCurrentState
     JSR UpdateTransitions
@@ -1042,7 +1042,7 @@ InitGameStates:
     STA TransitionActive
     STA StateTimer
     STA MenuCursor
-    
+
     ; Initialize first state
     JSR InitCurrentState
     RTS
@@ -1051,9 +1051,9 @@ UpdateCurrentState:
     ; Skip updates during transitions
     LDA TransitionActive
     BNE CurrentStateDone
-    
+
     INC StateTimer
-    
+
     ; Update based on current state
     LDA GameState
     CMP #$00             ; Title
@@ -1064,22 +1064,22 @@ UpdateCurrentState:
     BEQ UpdateGameState3
     CMP #$03             ; Settings
     BEQ UpdateSettingsState
-    
+
 CurrentStateDone:
     RTS
 
 UpdateTitleState2:
     ; Title screen logic
     JSR ProcessTitleInput2
-    
+
     ; Auto-demo progression
     LDA StateTimer
     CMP #$78             ; 2 seconds
     BNE TitleDone2
-    
+
     LDA #$01             ; Go to menu
     JSR RequestStateChange
-    
+
 TitleDone2:
     RTS
 
@@ -1087,15 +1087,15 @@ UpdateMenuState2:
     ; Main menu logic
     JSR ProcessMenuInput2
     JSR UpdateMenuCursor2
-    
+
     ; Auto-demo progression
     LDA StateTimer
     CMP #$78
     BNE MenuDone2
-    
+
     LDA #$02             ; Go to game
     JSR RequestStateChange
-    
+
 MenuDone2:
     RTS
 
@@ -1103,46 +1103,46 @@ UpdateGameState3:
     ; Game logic
     JSR ProcessGameInput2
     JSR UpdateGameLogic
-    
+
     ; Auto-demo progression
     LDA StateTimer
     CMP #$78
     BNE GameDone2
-    
+
     LDA #$03             ; Go to settings
     JSR RequestStateChange
-    
+
 GameDone2:
     RTS
 
 UpdateSettingsState:
     ; Settings logic
     JSR ProcessSettingsInput
-    
+
     ; Auto-demo progression
     LDA StateTimer
     CMP #$78
     BNE SettingsDone
-    
+
     LDA #$00             ; Back to title
     JSR RequestStateChange
-    
+
 SettingsDone:
     RTS
 
 RequestStateChange:
     ; Request transition to new state
     STA NewState
-    
+
     ; Determine transition type
     JSR DetermineTransition
-    
+
     ; Start transition
     LDA #$20             ; 32 frame transition
     STA TransitionTimer
     LDA #$01
     STA TransitionActive
-    
+
     ; Save current state data
     JSR SaveCurrentStateData
     RTS
@@ -1152,12 +1152,12 @@ DetermineTransition:
     LDA GameState
     CMP NewState
     BEQ NoTransition2
-    
+
     ; Default to fade transition
     LDA #$01
     STA TransitionType
     RTS
-    
+
 NoTransition2:
     LDA #$00
     STA TransitionType
@@ -1166,19 +1166,19 @@ NoTransition2:
 UpdateTransitions:
     LDA TransitionActive
     BEQ TransitionDone2
-    
+
     DEC TransitionTimer
     LDA TransitionTimer
     BNE ContinueTransition3
-    
+
     ; Transition complete
     JSR CompleteStateChange
     JMP TransitionDone2
-    
+
 ContinueTransition3:
     ; Update transition effects
     JSR UpdateTransitionEffects
-    
+
 TransitionDone2:
     RTS
 
@@ -1189,7 +1189,7 @@ CompleteStateChange:
     LDA #$00
     STA TransitionActive
     STA StateTimer
-    
+
     ; Initialize new state
     JSR InitCurrentState
     RTS
@@ -1244,10 +1244,10 @@ ProcessTitleInput2:
     JSR ReadController2
     AND #%10000000       ; A button
     BEQ TitleInputDone2
-    
+
     LDA #$01             ; Go to menu
     JSR RequestStateChange
-    
+
 TitleInputDone2:
     RTS
 
@@ -1256,38 +1256,38 @@ ProcessMenuInput2:
     JSR ReadController2
     AND #%00001000       ; Up
     BEQ CheckMenuDown
-    
+
     LDA MenuCursor
     BEQ WrapMenuUp
     DEC MenuCursor
     JMP MenuInputDone
-    
+
 WrapMenuUp:
     LDA #$02             ; 3 menu items (0-2)
     STA MenuCursor
     JMP MenuInputDone
-    
+
 CheckMenuDown:
     JSR ReadController2
     AND #%00000100       ; Down
     BEQ CheckMenuSelect
-    
+
     LDA MenuCursor
     CMP #$02
     BEQ WrapMenuDown
     INC MenuCursor
     JMP MenuInputDone
-    
+
 WrapMenuDown:
     LDA #$00
     STA MenuCursor
     JMP MenuInputDone
-    
+
 CheckMenuSelect:
     JSR ReadController2
     AND #%10000000       ; A button
     BEQ MenuInputDone
-    
+
     ; Select current menu item
     LDA MenuCursor
     CLC
@@ -1297,7 +1297,7 @@ CheckMenuSelect:
     LDA #$00             ; Wrap to title
 MenuSelect:
     JSR RequestStateChange
-    
+
 MenuInputDone:
     RTS
 
@@ -1306,10 +1306,10 @@ ProcessGameInput2:
     JSR ReadController2
     AND #%00010000       ; Start
     BEQ GameInputDone2
-    
+
     LDA #$01             ; Back to menu
     JSR RequestStateChange
-    
+
 GameInputDone2:
     RTS
 
@@ -1318,10 +1318,10 @@ ProcessSettingsInput:
     JSR ReadController2
     AND #%01000000       ; B button
     BEQ SettingsInputDone
-    
+
     LDA #$00             ; Back to title
     JSR RequestStateChange
-    
+
 SettingsInputDone:
     RTS
 
@@ -1353,12 +1353,12 @@ UpdateTransitionEffects:
     LDA TransitionTimer
     CMP #$10             ; Midpoint
     BCS FadeOut3
-    
+
     ; Fade in
     LDA #$00
     STA FadeLevel
     RTS
-    
+
 FadeOut3:
     ; Fade out
     LDA #$01
@@ -1369,13 +1369,13 @@ UpdateDisplay:
     ; Update display based on current state
     LDA TransitionActive
     BNE RenderTransition
-    
+
     JSR RenderCurrentState2
     JMP DisplayDone
-    
+
 RenderTransition:
     JSR RenderTransitionEffect
-    
+
 DisplayDone:
     RTS
 
@@ -1414,7 +1414,7 @@ RenderMenu2:
     STA SpriteData+2
     LDA #$80
     STA SpriteData+3
-    
+
     ; Render cursor
     LDA CursorY2
     STA SpriteData+4
@@ -1454,12 +1454,12 @@ RenderTransitionEffect:
     ; Apply transition effects to sprites
     LDA FadeLevel
     BEQ TransitionEffectDone
-    
+
     ; Dim all sprites during transition
     LDA SpriteData+2
     ORA #%01000000       ; Set dim bit
     STA SpriteData+2
-    
+
 TransitionEffectDone:
     RTS
 
@@ -1468,13 +1468,13 @@ SaveCurrentStateData:
     LDA GameState
     CMP #$02             ; Game state
     BNE SaveDataDone
-    
+
     ; Save game data
     LDA PlayerX2
     STA SavedPlayerX2
     LDA PlayerY2
     STA SavedPlayerY2
-    
+
 SaveDataDone:
     RTS
 
@@ -1514,15 +1514,15 @@ ReadController2:
     BEQ SimulateStart
     LDA #$FF             ; No input
     RTS
-    
+
 SimulateA:
     LDA #%01111111       ; A pressed
     RTS
-    
+
 SimulateUp:
     LDA #%11110111       ; Up pressed
     RTS
-    
+
 SimulateStart:
     LDA #%11101111       ; Start pressed
     RTS

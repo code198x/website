@@ -31,24 +31,28 @@ Transform your games into commercial products with professional polish, marketin
 ## Tier Overview
 
 **Lessons 1-8: Professional Polish & Quality**
+
 - Game testing and quality assurance
 - Bug fixing and performance optimization
 - Professional user interface design
 - Accessibility and user experience
 
 **Lessons 9-16: Marketing & Presentation**
+
 - Screenshots and promotional materials
 - Game trailers and demonstration videos
 - Press kits and media presentation
 - Social media and community building
 
 **Lessons 17-24: User Testing & Feedback**
+
 - User testing methodologies
 - Feedback collection and analysis
 - Iterative improvement processes
 - Player experience optimization
 
 **Lessons 25-32: Distribution & Publishing**
+
 - Game packaging and distribution
 - Documentation and user manuals
 - Publishing platform preparation

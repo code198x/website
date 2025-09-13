@@ -87,7 +87,6 @@ hardware_availability: "rare"
 
 # Media
 description: "The only home console with a true vector display, bringing the crisp lines of Asteroids and Tempest home."
-image: "/images/systems/vectrex.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -102,7 +101,7 @@ order: 16
 
 # Vectrex
 
-*Coming Soon*
+_Coming Soon_
 
 The Vectrex was utterly unique: the only home gaming system with a true vector display. While others drew pixels, the Vectrex drew pure lines of light, creating impossibly crisp graphics that still look futuristic today.
 
@@ -119,9 +118,10 @@ Vector graphics programming is fundamentally different from pixel-based systems.
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the focused Vectrex curriculum will include:
+
 - 6809 assembly programming
 - Vector graphics mathematics
 - Coordinate transformations

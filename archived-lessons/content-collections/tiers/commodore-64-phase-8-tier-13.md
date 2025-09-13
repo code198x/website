@@ -27,6 +27,7 @@ Code like a legend! With **32 technique-focused lessons**, you'll master program
 ## What You'll Master
 
 Develop **LEGENDARY CODING TECHNIQUES** that inspire:
+
 - Programming methods that make impossible optimizations achievable
 - Code so elegant and efficient that others study it for inspiration
 - Techniques that push the C64 far beyond its apparent limits
@@ -36,24 +37,28 @@ Develop **LEGENDARY CODING TECHNIQUES** that inspire:
 ## Legendary Technique Areas
 
 **Lessons 1-8: "Optimization Mastery" - Code That Defies Limits**
+
 - Advanced assembly optimization that squeezes maximum performance
 - Memory management techniques that enable seemingly impossible features
 - CPU cycle optimization that creates smooth, responsive gameplay
 - Understanding how legendary programmers achieve the impossible
 
 **Lessons 9-16: "Graphics Wizardry" - Visual Techniques That Amaze**
+
 - Advanced sprite techniques that create stunning visual effects
 - Raster optimization for smooth scrolling and complex graphics
 - Creative use of C64 graphics modes for amazing visual results
 - Techniques that make graphics look beyond what hardware should allow
 
 **Lessons 17-24: "Audio Excellence" - Sound That Inspires**
+
 - Advanced SID programming for rich, complex audio
 - Music composition techniques that showcase C64 audio capabilities
 - Sound effect creation that enhances gameplay perfectly
 - Audio optimization that delivers amazing sound without performance cost
 
 **Lessons 25-32: "Code Elegance" - Programming as Art**
+
 - Writing code that is both highly optimized and beautifully structured
 - Creating maintainable systems that perform at legendary levels
 - Developing programming style that inspires other developers
@@ -62,6 +67,7 @@ Develop **LEGENDARY CODING TECHNIQUES** that inspire:
 ## Legendary Programming Focus Areas
 
 **💻 ADVANCED C64 TECHNIQUES:**
+
 - **Optimization Mastery:** Code that achieves performance beyond what seems possible
 - **Graphics Excellence:** Visual programming that creates stunning effects efficiently
 - **Audio Mastery:** SID programming that rivals professional music software
@@ -69,6 +75,7 @@ Develop **LEGENDARY CODING TECHNIQUES** that inspire:
 - **System Integration:** Code that brings everything together seamlessly
 
 **🌟 TECHNIQUE EXAMPLES** (master legendary methods like):
+
 - Cycle-perfect optimization for smooth 50/60 FPS gameplay
 - Advanced sprite multiplexing and raster interrupt techniques
 - Compression algorithms that maximize content density
@@ -87,4 +94,4 @@ This tier develops legendary programming mastery:
 
 You'll understand how legendary C64 programmers created code that continues to amaze and inspire developers decades later!
 
-*Your legendary techniques will become the foundation for creating the ultimate games in the final tiers of your journey.*
+_Your legendary techniques will become the foundation for creating the ultimate games in the final tiers of your journey._

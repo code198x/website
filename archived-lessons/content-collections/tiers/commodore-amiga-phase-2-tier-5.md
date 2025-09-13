@@ -27,6 +27,7 @@ Welcome to the physics of fun! 🌌 With **32 motion-packed lessons**, you'll cr
 ## What You'll Build
 
 Create **AMIGA MOTION ENGINE** - an advanced movement system featuring:
+
 - Physics-based character movement with realistic momentum and friction 🌊
 - Buttery-smooth scrolling that showcases Amiga's hardware advantages
 - Complex movement abilities like wall-jumping, sliding, and air control
@@ -36,24 +37,28 @@ Create **AMIGA MOTION ENGINE** - an advanced movement system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Physics Fundamentals" - The Science of Movement**
+
 - Acceleration, velocity, and momentum systems using fixed-point math
 - Friction, gravity, and environmental forces
 - Sub-pixel positioning for ultra-smooth character movement
 - Collision response and realistic physics interactions
 
 **Lessons 9-16: "Scrolling Mastery" - Hardware-Accelerated Worlds**
+
 - Copper-based smooth scrolling using playfield manipulation
 - Multi-directional scrolling with boundary management
 - Tile-based scrolling optimization for large worlds
 - Camera systems that follow characters intelligently
 
 **Lessons 17-24: "Advanced Abilities" - Complex Movement Patterns**
+
 - Wall-jumping and surface interaction systems
 - Air control and momentum conservation during jumps
 - Variable jump heights and movement state transitions
 - Advanced movement abilities like dashing and sliding
 
 **Lessons 25-32: "Environmental Systems" - World Interaction**
+
 - Multi-layer parallax scrolling for depth effects
 - Environmental interactions like moving platforms and conveyor belts
 - Water physics and special movement zones

@@ -27,6 +27,7 @@ Invent revolutionary gameplay for ZX Spectrum! With **32 innovation-focused less
 ## What You'll Invent
 
 Create **REVOLUTIONARY GAME MECHANICS** that redefine gaming:
+
 - Completely new types of player interactions never seen in games before
 - Game mechanics that utilize ZX Spectrum's unique hardware characteristics creatively
 - Innovative control schemes that feel both revolutionary and natural
@@ -36,24 +37,28 @@ Create **REVOLUTIONARY GAME MECHANICS** that redefine gaming:
 ## Innovation Creation Areas
 
 **Lessons 1-8: "Mechanic Innovation" - Inventing New Ways to Play**
+
 - Systematic approaches to inventing completely original game mechanics
 - Analyzing successful innovations to understand what makes mechanics revolutionary
 - Creating gameplay interactions that have never existed before
 - Understanding how innovative mechanics emerge from creative constraints
 
 **Lessons 9-16: "ZX Spectrum Innovation" - Hardware-Inspired Gameplay**
+
 - Utilizing attribute clash, timing constraints, and memory limits as design features
 - Creating mechanics that feel perfectly suited to ZX Spectrum characteristics
 - Innovative use of keyboard input and joystick control for new gameplay types
 - Turning technical limitations into revolutionary gameplay advantages
 
 **Lessons 17-24: "Player Experience Innovation" - Revolutionary Interactions**
+
 - Designing completely new types of player-game relationships
 - Creating innovative feedback systems and response mechanisms
 - Inventing new categories of challenge, skill, and player engagement
 - Building mechanics that change how players think about interactive entertainment
 
 **Lessons 25-32: "Mechanic Validation" - Proving Revolutionary Concepts**
+
 - Testing and refining innovative mechanics to ensure they're genuinely fun
 - Balancing revolutionary design with player accessibility and understanding
 - Creating supporting systems that make innovative mechanics feel natural

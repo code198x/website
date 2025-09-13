@@ -31,24 +31,28 @@ Create **Memory Manager Pro** - a comprehensive memory management system featuri
 ## Tier Overview
 
 **Lessons 1-8: Advanced Memory Architecture**
+
 - Understanding ZX Spectrum memory layout and banking
 - 128K memory management and bank switching
 - Memory mapping techniques and optimization
 - Dynamic memory allocation strategies
 
 **Lessons 9-16: Efficient Data Structures**
+
 - Memory-efficient linked lists and trees
 - Compressed data storage techniques
 - Lookup tables and hash systems
 - String handling and text compression
 
 **Lessons 17-24: Code Organization & Modules**
+
 - Modular programming techniques
 - Library creation and management
 - Code reusability and maintenance
 - Version control and debugging
 
 **Lessons 25-32: Advanced Optimization**
+
 - Memory leak detection and prevention
 - Performance profiling and optimization
 - Memory fragmentation management

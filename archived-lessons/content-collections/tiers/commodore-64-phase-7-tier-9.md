@@ -27,6 +27,7 @@ Break new ground in game design! With **32 advanced lessons**, you'll master inn
 ## What You'll Build
 
 Create **INNOVATIVE EXPERIMENTAL GAME** - featuring groundbreaking design:
+
 - Completely original gameplay mechanics never seen before
 - Innovative control schemes that create new ways to interact
 - Experimental narrative techniques that blur genre boundaries
@@ -36,24 +37,28 @@ Create **INNOVATIVE EXPERIMENTAL GAME** - featuring groundbreaking design:
 ## Innovative Design Areas
 
 **Lessons 1-8: "Creative Fundamentals" - Innovation Methodology**
+
 - Creative thinking techniques and ideation processes
 - Breaking conventional game design assumptions
 - Experimental design prototyping and rapid iteration
 - Innovation assessment and creative evaluation methods
 
 **Lessons 9-16: "Mechanical Innovation" - New Gameplay Systems**
+
 - Inventing completely original gameplay mechanics
 - Combining existing mechanics in revolutionary ways
 - Creating unique interaction paradigms and control schemes
 - Implementing experimental game rules and systems
 
 **Lessons 17-24: "Experience Innovation" - Boundary-Pushing Concepts**
+
 - Experimental narrative and storytelling techniques
 - Innovative audio-visual design and presentation
 - Creative use of hardware limitations as design features
 - Unique emotional and psychological player experiences
 
 **Lessons 25-32: "Creative Leadership" - Inspirational Development**
+
 - Building games that influence the industry
 - Creative vision development and artistic expression
 - Innovation documentation and design communication

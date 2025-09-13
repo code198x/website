@@ -31,24 +31,28 @@ Create **Mind Maze Master** - a sophisticated strategy/puzzle hybrid featuring i
 ## Tier Overview
 
 **Lessons 1-8: Strategy Game Fundamentals**
+
 - Turn-based and real-time strategy systems
 - Resource management and economy design
 - Unit management and strategic positioning
 - Victory conditions and game balance
 
 **Lessons 9-16: AI Opponents & Challenge**
+
 - Intelligent AI that provides fair challenge
 - Difficulty scaling and adaptive opponents
 - Strategic decision-making algorithms
 - Player vs AI balance and engagement
 
 **Lessons 17-24: Puzzle Design & Mechanics**
+
 - Brain-teasing puzzle creation and rules
 - Progressive difficulty and skill teaching
 - Hint systems and player guidance
 - Satisfying puzzle resolution feedback
 
 **Lessons 25-32: Complex Systems & Depth**
+
 - Deep, emergent gameplay systems
 - Multiple solution paths and creativity
 - Replayability and long-term engagement

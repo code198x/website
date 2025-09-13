@@ -31,6 +31,7 @@ Achieve maximum performance! With **32 comprehensive lessons**, you'll learn cyc
 ## What You'll Complete
 
 Finish **Crystal Caverns** with incredible performance:
+
 - Smooth 50fps gameplay with complex effects
 - Cycle-optimized graphics and animation
 - Perfect timing coordination across all chips
@@ -40,24 +41,28 @@ Finish **Crystal Caverns** with incredible performance:
 ## Tier Overview
 
 **Lessons 1-8: Cycle-Exact Programming**
+
 - Understanding 6502 timing precisely
 - Cycle counting for optimization
 - Instruction timing analysis
 - Performance measurement tools
 
 **Lessons 9-16: VIC-II Timing Optimization**
+
 - Badline cycle stealing effects
 - Sprite DMA timing coordination
 - Raster timing precision
 - Display list optimization
 
 **Lessons 17-24: Memory Access Optimization**
+
 - Page boundary optimization
 - Zero page usage strategies
 - Memory access pattern design
 - Cache-friendly programming
 
 **Lessons 25-32: System-Wide Coordination**
+
 - CPU and custom chip balance
 - Interrupt timing optimization
 - Multi-system performance tuning

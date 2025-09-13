@@ -31,24 +31,28 @@ Begin developing **Cyber Realm** - an advanced action-adventure featuring intell
 ## Tier Overview
 
 **Lessons 1-8: AI System Development**
+
 - Intelligent enemy behavior programming
 - State machine AI implementation
 - Pathfinding and navigation systems
 - Adaptive AI difficulty scaling
 
 **Lessons 9-16: Physics & Collision Systems**
+
 - Realistic physics simulation
 - Advanced collision detection algorithms
 - Dynamic object interaction systems
 - Particle system implementation
 
 **Lessons 17-24: Complex Game Mechanics**
+
 - Multi-layered game rule systems
 - Interactive object programming
 - Environmental interaction mechanics
 - Dynamic game element systems
 
 **Lessons 25-32: Player Progression Systems**
+
 - Experience and leveling systems
 - Skill trees and ability progression
 - Achievement and reward systems

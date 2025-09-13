@@ -27,6 +27,7 @@ Create games that define new genres! With **32 genre innovation lessons**, you'l
 ## What You'll Create
 
 Develop **GENRE-DEFINING GAMES** for ZX Spectrum:
+
 - Games so innovative they create entirely new categories of gaming
 - Experiences that inspire countless other developers to explore new possibilities
 - Revolutionary gameplay that feels both groundbreaking and perfectly natural
@@ -36,24 +37,28 @@ Develop **GENRE-DEFINING GAMES** for ZX Spectrum:
 ## Genre Innovation Areas
 
 **Lessons 1-8: "Genre Conception" - Creating New Categories of Games**
+
 - Understanding how legendary games created entirely new genres
 - Identifying unexplored territories in ZX Spectrum game design
 - Developing revolutionary concepts that feel both new and accessible
 - Creating the foundational mechanics that define new gaming categories
 
 **Lessons 9-16: "Revolutionary Implementation" - Building Genre-Defining Games**
+
 - Implementing innovative concepts that establish new gaming paradigms
 - Creating gameplay systems that feel both revolutionary and intuitive
 - Developing technical solutions that enable entirely new types of experiences
 - Building games that prove the viability of new gaming categories
 
 **Lessons 17-24: "Genre Validation" - Proving New Categories Work**
+
 - Testing and refining revolutionary concepts to ensure they're genuinely fun
 - Creating supporting systems that make new genres accessible to players
 - Developing documentation and tutorials that help others understand innovations
 - Building genre foundations that other developers can build upon
 
 **Lessons 25-32: "Genre Leadership" - Inspiring Gaming Evolution**
+
 - Polishing genre-defining games to inspire widespread adoption
 - Creating examples that demonstrate the potential of new gaming categories
 - Understanding how genre-defining games influence entire gaming communities

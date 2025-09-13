@@ -88,7 +88,6 @@ hardware_availability: "available"
 
 # Media
 description: "The computer that brought affordable computing to British homes and launched a thousand bedroom programmers."
-image: "/images/systems/zx-spectrum.jpg"
 
 # Platform Classification
 medal_tier: "platinum"
@@ -104,7 +103,7 @@ order: 2
 
 # ZX Spectrum
 
-*Coming Soon*
+_Coming Soon_
 
 The ZX Spectrum revolutionized home computing in the UK and Europe, creating a generation of bedroom programmers who would go on to found the British games industry. With its distinctive rubber keyboard, affordable price, and surprising capabilities, the Spectrum proved that great games don't need expensive hardware.
 
@@ -121,9 +120,10 @@ The Z80 processor offers a different assembly experience from the 6502, with a r
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Spectrum curriculum will include:
+
 - Z80 assembly fundamentals
 - Attribute clash management and creative graphics
 - Beeper music and sound effects

@@ -1,5 +1,5 @@
 ---
-name: "Odyssey²"
+name: "Magnavox Odyssey²"
 full_name: "Magnavox Odyssey²"
 manufacturer: "Magnavox"
 model_number: "7000"
@@ -69,8 +69,20 @@ market_positioning: "Educational computer video game system"
 competition: ["Atari 2600", "Intellivision", "Channel F"]
 
 # Educational relevance
-learning_advantages: ["Extreme memory constraints", "Character-based graphics", "Educational software design", "8048 microcontroller programming"]
-common_beginner_projects: ["Educational games", "Text-based applications", "Character graphics demos", "Keyboard input programs"]
+learning_advantages:
+  [
+    "Extreme memory constraints",
+    "Character-based graphics",
+    "Educational software design",
+    "8048 microcontroller programming",
+  ]
+common_beginner_projects:
+  [
+    "Educational games",
+    "Text-based applications",
+    "Character graphics demos",
+    "Keyboard input programs",
+  ]
 
 # Modern preservation and emulation
 emulated: true
@@ -87,7 +99,6 @@ hardware_availability: "available"
 
 # Media
 description: "The first console with a built-in keyboard—education meets entertainment in 1978."
-image: "/images/systems/odyssey-2.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -102,7 +113,7 @@ order: 39
 
 # Magnavox Odyssey²
 
-*Coming Soon*
+_Coming Soon_
 
 The Magnavox Odyssey² broke new ground in 1978 as the first home console featuring a built-in keyboard and emphasizing educational computing alongside traditional gaming. Despite severe memory constraints (just 64 bytes of RAM), it pioneered the concept of "smart" consoles that could teach as well as entertain.
 
@@ -120,9 +131,10 @@ The Odyssey²'s extreme constraints teach fundamental optimization principles st
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the Odyssey² curriculum will include:
+
 - Intel 8048 assembly programming in ultra-constrained environment
 - Character-based graphics and sprite manipulation techniques
 - Educational software design and interactive learning principles

@@ -40,7 +40,7 @@ L2: RTS
 ; AFTER: Self-documenting, professional code
 CheckPlayerInput:
     LDA CurrentKeyPress        ; Read current key
-    CMP #NO_KEY_PRESSED       ; Check if any key pressed  
+    CMP #NO_KEY_PRESSED       ; Check if any key pressed
     BEQ InputComplete         ; Exit if no input
     JSR ProcessPlayerAction    ; Handle the player's choice
     JMP CheckPlayerInput      ; Continue monitoring input
@@ -113,7 +113,7 @@ HandlePlayerDeath:
 ; ========================================
 ; Handles all player-related operations including
 ; movement, health, inventory, and state management
-; 
+;
 ; Version: 1.2
 ; Author: Development Team
 ; Last Modified: 2024-01-15
@@ -128,7 +128,7 @@ PLAYER_MOVE_SPEED       = 2        ; Pixels per frame
 PLAYER_JUMP_HEIGHT      = 16       ; Jump velocity
 PLAYER_MAX_HEALTH       = 100      ; Maximum health points
 
-; Player state constants  
+; Player state constants
 PLAYER_STATE_IDLE       = 0        ; Standing still
 PLAYER_STATE_WALKING    = 1        ; Moving horizontally
 PLAYER_STATE_JUMPING    = 2        ; In mid-air
@@ -147,7 +147,7 @@ INPUT_ACTION            = %00001000
 ; Player data structure (8 bytes)
 PlayerData:
     PlayerXPosition:    .byte 80    ; Current X coordinate
-    PlayerYPosition:    .byte 180   ; Current Y coordinate  
+    PlayerYPosition:    .byte 180   ; Current Y coordinate
     PlayerXVelocity:    .byte 0     ; Horizontal velocity
     PlayerYVelocity:    .byte 0     ; Vertical velocity
     PlayerHealth:       .byte 100   ; Current health (0-100)
@@ -172,12 +172,12 @@ InitializePlayer:
     ; Function: InitializePlayer
     ; ====================================
     ; Purpose: Initialize player to starting state
-    ; 
+    ;
     ; Inputs: None
     ; Outputs: None
     ; Modifies: A register, PlayerData structure
-    ; 
-    ; Side Effects: 
+    ;
+    ; Side Effects:
     ;   - Resets all player statistics
     ;   - Sets player to spawn position
     ;   - Initializes player flags
@@ -185,48 +185,48 @@ InitializePlayer:
     ; Usage:
     ;   JSR InitializePlayer
     ; ====================================
-    
+
     ; Set starting position
     LDA #80                 ; Center X position
     STA PlayerXPosition
-    LDA #180                ; Ground level Y position  
+    LDA #180                ; Ground level Y position
     STA PlayerYPosition
-    
+
     ; Clear velocities
     LDA #0
     STA PlayerXVelocity
     STA PlayerYVelocity
-    
+
     ; Set full health
     LDA #PLAYER_MAX_HEALTH
     STA PlayerHealth
-    
+
     ; Set initial state
     LDA #PLAYER_STATE_IDLE
     STA PlayerState
-    
+
     ; Set alive flag
     LDA #PLAYER_FLAG_ALIVE
     STA PlayerFlags
-    
+
     ; Clear inventory
     LDA #0
     STA PlayerInventory
-    
+
     RTS
 
 UpdatePlayer:
     ; ====================================
-    ; Function: UpdatePlayer  
+    ; Function: UpdatePlayer
     ; ====================================
     ; Purpose: Update player for one game frame
-    ; 
-    ; Inputs: 
+    ;
+    ; Inputs:
     ;   - CurrentInput: Joystick/keyboard state
     ;   - DeltaTime: Frame timing information
     ; Outputs: None
     ; Modifies: A, X, Y registers, PlayerData
-    ; 
+    ;
     ; Side Effects:
     ;   - Updates player position based on input
     ;   - Applies physics (gravity, collision)
@@ -235,24 +235,24 @@ UpdatePlayer:
     ;
     ; Call Frequency: Once per game frame (50/60 Hz)
     ; ====================================
-    
+
     ; Only update if player is alive
     LDA PlayerFlags
     AND #PLAYER_FLAG_ALIVE
     BEQ PlayerUpdateDone    ; Skip if dead
-    
+
     ; Process input and update movement
     JSR ProcessPlayerInput
-    
+
     ; Apply physics
     JSR ApplyPlayerPhysics
-    
+
     ; Update animation state
     JSR UpdatePlayerAnimation
-    
+
     ; Check for state transitions
     JSR CheckPlayerStateChanges
-    
+
 PlayerUpdateDone:
     RTS
 
@@ -269,32 +269,32 @@ ProcessPlayerInput:
     ; Purpose: Convert input into player actions
     ; Called by: UpdatePlayer
     ; ====================================
-    
+
     LDA CurrentInput        ; Get current input state
-    
+
     ; Check left movement
     AND #INPUT_LEFT
     BEQ CheckRightInput
     JSR MovePlayerLeft
-    
+
 CheckRightInput:
     LDA CurrentInput
-    AND #INPUT_RIGHT  
+    AND #INPUT_RIGHT
     BEQ CheckJumpInput
     JSR MovePlayerRight
-    
+
 CheckJumpInput:
     LDA CurrentInput
     AND #INPUT_JUMP
     BEQ CheckActionInput
     JSR TryPlayerJump
-    
+
 CheckActionInput:
     LDA CurrentInput
     AND #INPUT_ACTION
     BEQ InputProcessingDone
     JSR PerformPlayerAction
-    
+
 InputProcessingDone:
     RTS
 
@@ -305,66 +305,66 @@ MovePlayerLeft:
     ; Purpose: Move player leftward
     ; Preconditions: Player must be alive and able to move
     ; ====================================
-    
+
     ; Check if player can move (not jumping/falling)
     LDA PlayerState
     CMP #PLAYER_STATE_JUMPING
     BEQ CanMoveLeft         ; Can move while jumping
-    CMP #PLAYER_STATE_FALLING  
+    CMP #PLAYER_STATE_FALLING
     BEQ CanMoveLeft         ; Can move while falling
     CMP #PLAYER_STATE_IDLE
     BEQ CanMoveLeft         ; Can move when idle
     CMP #PLAYER_STATE_WALKING
     BEQ CanMoveLeft         ; Already walking
     RTS                     ; Can't move in other states
-    
+
 CanMoveLeft:
     ; Set leftward velocity
     LDA #-PLAYER_MOVE_SPEED ; Negative for leftward
     STA PlayerXVelocity
-    
+
     ; Update state to walking (if on ground)
     LDA PlayerState
     CMP #PLAYER_STATE_IDLE
     BNE LeftMoveDone
     LDA #PLAYER_STATE_WALKING
     STA PlayerState
-    
+
 LeftMoveDone:
     RTS
 
 MovePlayerRight:
     ; ====================================
-    ; Function: MovePlayerRight (PRIVATE)  
+    ; Function: MovePlayerRight (PRIVATE)
     ; ====================================
     ; Purpose: Move player rightward
     ; Implementation similar to MovePlayerLeft
     ; ====================================
-    
+
     ; Check movement capability
     LDA PlayerState
     CMP #PLAYER_STATE_JUMPING
     BEQ CanMoveRight
     CMP #PLAYER_STATE_FALLING
-    BEQ CanMoveRight  
+    BEQ CanMoveRight
     CMP #PLAYER_STATE_IDLE
     BEQ CanMoveRight
     CMP #PLAYER_STATE_WALKING
     BEQ CanMoveRight
     RTS
-    
+
 CanMoveRight:
     ; Set rightward velocity
     LDA #PLAYER_MOVE_SPEED  ; Positive for rightward
     STA PlayerXVelocity
-    
+
     ; Update state to walking (if on ground)
     LDA PlayerState
     CMP #PLAYER_STATE_IDLE
     BNE RightMoveDone
     LDA #PLAYER_STATE_WALKING
     STA PlayerState
-    
+
 RightMoveDone:
     RTS
 
@@ -375,7 +375,7 @@ TryPlayerJump:
     ; Purpose: Attempt to make player jump
     ; Conditions: Player must be on ground to jump
     ; ====================================
-    
+
     ; Can only jump when idle or walking (on ground)
     LDA PlayerState
     CMP #PLAYER_STATE_IDLE
@@ -383,19 +383,19 @@ TryPlayerJump:
     CMP #PLAYER_STATE_WALKING
     BEQ CanJump
     RTS                     ; Can't jump in other states
-    
+
 CanJump:
     ; Set upward velocity
     LDA #-PLAYER_JUMP_HEIGHT ; Negative for upward
     STA PlayerYVelocity
-    
+
     ; Change state to jumping
     LDA #PLAYER_STATE_JUMPING
     STA PlayerState
-    
+
     ; Play jump sound effect (conceptual)
     ; JSR PlayJumpSound
-    
+
     RTS
 
 ApplyPlayerPhysics:
@@ -405,47 +405,47 @@ ApplyPlayerPhysics:
     ; Purpose: Apply gravity and update position
     ; Called by: UpdatePlayer every frame
     ; ====================================
-    
+
     ; Apply gravity to Y velocity (always downward)
     LDA PlayerYVelocity
     CLC
     ADC #1                  ; Gravity constant
     STA PlayerYVelocity
-    
+
     ; Update X position
     LDA PlayerXPosition
     CLC
     ADC PlayerXVelocity
     STA PlayerXPosition
-    
-    ; Update Y position  
+
+    ; Update Y position
     LDA PlayerYPosition
     CLC
     ADC PlayerYVelocity
     STA PlayerYPosition
-    
+
     ; Apply friction to X velocity
     LDA PlayerXVelocity
     BEQ NoXFriction         ; No friction if not moving
     BMI NegativeXVelocity   ; Handle negative velocity
-    
+
     ; Positive X velocity - reduce it
     SEC
     SBC #1                  ; Friction constant
     BPL StoreXVelocity      ; Keep positive
     LDA #0                  ; Stop if would go negative
     JMP StoreXVelocity
-    
+
 NegativeXVelocity:
     ; Negative X velocity - increase it (toward zero)
     CLC
     ADC #1                  ; Friction constant
     BMI StoreXVelocity      ; Keep negative
     LDA #0                  ; Stop if would go positive
-    
+
 StoreXVelocity:
     STA PlayerXVelocity
-    
+
 NoXFriction:
     RTS
 
@@ -458,9 +458,9 @@ GetPlayerPosition:
     ; Function: GetPlayerPosition
     ; ====================================
     ; Purpose: Get current player position
-    ; 
+    ;
     ; Inputs: None
-    ; Outputs: 
+    ; Outputs:
     ;   A = Player X position
     ;   X = Player Y position
     ; Modifies: A, X registers only
@@ -470,7 +470,7 @@ GetPlayerPosition:
     ;   ; A now contains X coordinate
     ;   ; X now contains Y coordinate
     ; ====================================
-    
+
     LDA PlayerXPosition
     LDX PlayerYPosition
     RTS
@@ -490,7 +490,7 @@ IsPlayerAlive:
     ;   BEQ PlayerIsAlive
     ;   ; Player is dead
     ; ====================================
-    
+
     LDA PlayerFlags
     AND #PLAYER_FLAG_ALIVE
     RTS
@@ -555,14 +555,14 @@ AudioChannels:
     Channel0Volume:     .byte 0     ; Current volume (0-15)
     Channel0Duration:   .byte 0     ; Remaining duration
     Channel0Effect:     .byte 0     ; Applied effect type
-    
-    ; Channel 1 (Voice 2)  
+
+    ; Channel 1 (Voice 2)
     Channel1State:      .byte 0
     Channel1Priority:   .byte 0
     Channel1Volume:     .byte 0
     Channel1Duration:   .byte 0
     Channel1Effect:     .byte 0
-    
+
     ; Channel 2 (Voice 3)
     Channel2State:      .byte 0
     Channel2Priority:   .byte 0
@@ -583,7 +583,7 @@ InitializeAudioMixer:
     ; Function: InitializeAudioMixer
     ; ====================================
     ; Purpose: Initialize the audio mixer system
-    ; 
+    ;
     ; Inputs: None
     ; Outputs: None
     ; Modifies: A register, mixer data structures
@@ -591,21 +591,21 @@ InitializeAudioMixer:
     ; Call this once at program startup before
     ; using any other mixer functions
     ; ====================================
-    
+
     ; Clear all channel data
     JSR ClearAllChannels
-    
+
     ; Set default master volume
     LDA #DEFAULT_MASTER_VOLUME
     STA MixerMasterVolume
-    
+
     ; Initialize SID chip
     JSR InitializeSIDRegisters
-    
+
     ; Reset active channel counter
     LDA #0
     STA MixerActiveChannels
-    
+
     RTS
 
 PlaySoundOnChannel:
@@ -619,40 +619,40 @@ PlaySoundOnChannel:
     ;   X = Sound priority (1-3)
     ;   Y = Sound duration (frames)
     ;
-    ; Outputs: 
+    ; Outputs:
     ;   Carry clear = success
     ;   Carry set = channel busy with higher priority
     ;
     ; Usage:
     ;   LDA #0              ; Channel 0
-    ;   LDX #2              ; Medium priority  
+    ;   LDX #2              ; Medium priority
     ;   LDY #60             ; 1 second duration
     ;   JSR PlaySoundOnChannel
     ;   BCS SoundBlocked    ; Branch if channel busy
     ; ====================================
-    
+
     ; Validate channel number
     CMP #MAX_AUDIO_CHANNELS
     BCS InvalidChannel
-    
+
     ; Save parameters
     STA RequestedChannel
     STX RequestedPriority
     STY RequestedDuration
-    
+
     ; Check if channel is available
     JSR CheckChannelAvailability
     BCS ChannelBusy
-    
+
     ; Channel available - configure it
     JSR ConfigureChannelForPlayback
-    
+
     ; Update active channel count
     JSR UpdateActiveChannelCount
-    
+
     CLC                     ; Success
     RTS
-    
+
 InvalidChannel:
 ChannelBusy:
     SEC                     ; Error/busy
@@ -668,29 +668,29 @@ StopSoundOnChannel:
     ; Outputs: None
     ; Modifies: A register, channel data
     ; ====================================
-    
+
     ; Validate channel number
     CMP #MAX_AUDIO_CHANNELS
     BCS StopChannelDone
-    
+
     ; Calculate channel data offset
     JSR CalculateChannelOffset
-    
+
     ; Set channel to idle
     LDA #CHANNEL_STATE_IDLE
     STA AudioChannels,X     ; Store in state field
-    
+
     ; Clear channel priority
     LDA #0
     INX
     STA AudioChannels,X     ; Store in priority field
-    
+
     ; Update SID registers to silence channel
     JSR SilenceChannelHardware
-    
+
     ; Update active channel count
     JSR UpdateActiveChannelCount
-    
+
 StopChannelDone:
     RTS
 
@@ -707,26 +707,26 @@ UpdateAudioMixer:
     ; Call this every game frame to update
     ; channel durations and effects
     ; ====================================
-    
+
     ; Update each channel
     LDA #0                  ; Start with channel 0
-    
+
 UpdateChannelLoop:
     STA CurrentChannel
-    
+
     ; Update this channel
     JSR UpdateSingleChannel
-    
+
     ; Move to next channel
     LDA CurrentChannel
     CLC
     ADC #1
     CMP #MAX_AUDIO_CHANNELS
     BNE UpdateChannelLoop
-    
+
     ; Update master volume effects
     JSR UpdateMasterVolumeEffects
-    
+
     RTS
 
 ; ========================================
@@ -737,22 +737,22 @@ ClearAllChannels:
     ; Clear all channel data to initial state
     LDX #0
     LDA #0
-    
+
 ClearChannelLoop:
     STA AudioChannels,X
     INX
     CPX #(MAX_AUDIO_CHANNELS * 5)  ; 5 bytes per channel
     BNE ClearChannelLoop
-    
+
     RTS
 
 CalculateChannelOffset:
     ; Input: A = channel number
     ; Output: X = byte offset to channel data
-    
+
     ; Multiply channel number by 5 (5 bytes per channel)
     ASL                     ; A * 2
-    ASL                     ; A * 4  
+    ASL                     ; A * 4
     TAX                     ; Save A * 4
     CLC
     ADC CurrentChannel      ; A * 4 + A = A * 5
@@ -762,76 +762,76 @@ CalculateChannelOffset:
 CheckChannelAvailability:
     ; Check if requested channel can be used
     ; Returns carry set if channel is busy
-    
+
     LDA RequestedChannel
     JSR CalculateChannelOffset
-    
+
     ; Check channel state
     LDA AudioChannels,X     ; Get state
     CMP #CHANNEL_STATE_IDLE
     BEQ ChannelAvailable
-    
+
     ; Channel is busy - check priority
     INX
     LDA AudioChannels,X     ; Get current priority
     CMP RequestedPriority
     BCS PriorityTooLow      ; Current >= requested
-    
+
     ; Can override lower priority sound
     CLC
     RTS
-    
+
 ChannelAvailable:
     CLC                     ; Available
     RTS
-    
+
 PriorityTooLow:
     SEC                     ; Busy with higher priority
     RTS
 
 ConfigureChannelForPlayback:
     ; Configure channel with requested parameters
-    
+
     LDA RequestedChannel
     JSR CalculateChannelOffset
-    
+
     ; Set state to playing
     LDA #CHANNEL_STATE_PLAYING
     STA AudioChannels,X
-    
+
     ; Set priority
     INX
     LDA RequestedPriority
     STA AudioChannels,X
-    
+
     ; Set volume
     INX
     LDA MixerMasterVolume
     STA AudioChannels,X
-    
+
     ; Set duration
     INX
     LDA RequestedDuration
     STA AudioChannels,X
-    
+
     ; Clear effect
     INX
     LDA #0
     STA AudioChannels,X
-    
+
     RTS
 
 UpdateSingleChannel:
     ; Update one channel for current frame
-    
+
     LDA CurrentChannel
     JSR CalculateChannelOffset
-    
+
     ; Check if channel is active
     LDA AudioChannels,X
     CMP #CHANNEL_STATE_IDLE
     BEQ SingleChannelDone
-    
+
     ; Decrement duration
     TXA
     CLC
@@ -842,13 +842,13 @@ UpdateSingleChannel:
     SEC
     SBC #1
     STA AudioChannels,X
-    
+
     ; Update channel effects
     JSR UpdateChannelEffects
-    
+
 SingleChannelDone:
     RTS
-    
+
 StopExpiredChannel:
     ; Stop channel that has expired
     LDA CurrentChannel
@@ -860,27 +860,27 @@ UpdateActiveChannelCount:
     LDA #0
     STA ActiveChannelCounter
     STA MixerActiveChannels
-    
+
     LDX #0
 CountActiveLoop:
     LDA AudioChannels,X     ; Check state
     CMP #CHANNEL_STATE_IDLE
     BEQ NotActiveChannel
-    
+
     INC MixerActiveChannels
-    
+
 NotActiveChannel:
     ; Move to next channel
     TXA
     CLC
     ADC #5                  ; 5 bytes per channel
     TAX
-    
+
     INC ActiveChannelCounter
     LDA ActiveChannelCounter
     CMP #MAX_AUDIO_CHANNELS
     BNE CountActiveLoop
-    
+
     RTS
 
 ; Placeholder functions for hardware interface
@@ -918,7 +918,7 @@ JSR InitializeAudioMixer
 ; Author: Development Team
 ; Created: 2024-01-01
 ; Modified: 2024-01-15
-; 
+;
 ; Dependencies:
 ;   - memory_manager.asm (memory allocation)
 ;   - input_system.asm (user input handling)
@@ -1003,66 +1003,66 @@ ComplexGraphicsOperation:
     ;   v2.0 - Optimized for 50% better performance
     ;   v2.1 - Added error recovery
     ; ====================================
-    
+
     ; Store input parameters for validation
     STA RenderingMode       ; Save rendering mode
     STX SpriteCount         ; Save sprite count
     STY EffectIntensity     ; Save effect intensity
-    
+
     ; === INPUT VALIDATION ===
     ; Validate rendering mode (must be 0-2)
     CMP #3
     BCS InvalidRenderingMode
-    
+
     ; Validate sprite count (must be 0-8)
     TXA
     CMP #9
     BCS InvalidSpriteCount
-    
+
     ; === PHASE 1: BACKGROUND PREPARATION ===
     JSR PrepareBackgroundLayer
     BCS BackgroundError
-    
+
     ; === PHASE 2: SPRITE RENDERING ===
     LDA SpriteCount
     BEQ SkipSpriteRendering  ; No sprites to render
-    
+
     JSR RenderSpriteObjects
     BCS SpriteRenderError
-    
+
 SkipSpriteRendering:
     ; === PHASE 3: EFFECTS PROCESSING ===
     LDA RenderingMode
     CMP #1                  ; Effects mode?
     BNE SkipEffects
-    
+
     JSR ApplyVisualEffects
     BCS EffectsError
-    
+
 SkipEffects:
     ; === PHASE 4: DISPLAY UPDATE ===
     JSR UpdateDisplayRegisters
     BCS DisplayUpdateError
-    
+
     ; === SUCCESS PATH ===
     LDA #0                  ; Success status
     CLC                     ; Clear carry (success)
     RTS
-    
+
     ; === ERROR HANDLING ===
 InvalidRenderingMode:
 InvalidSpriteCount:
     LDA #2                  ; Error status
     SEC                     ; Set carry (error)
     RTS
-    
+
 BackgroundError:
 SpriteRenderError:
 EffectsError:
     LDA #1                  ; Timeout status
     SEC                     ; Set carry (error)
     RTS
-    
+
 DisplayUpdateError:
     LDA #2                  ; Critical error
     SEC                     ; Set carry (error)
@@ -1077,15 +1077,15 @@ PrepareBackgroundLayer:
     ; Uses optimised memory fill for performance
     ; Returns carry set on raster timeout
     ; ====================================
-    
+
     ; Wait for safe raster position
     JSR WaitForSafeRasterPosition
     BCS RasterTimeout
-    
+
     ; Fast clear using unrolled loop
     LDX #0
     LDA #0                  ; Clear value
-    
+
 ClearLoop:
     STA $2000,X             ; Clear 4 bytes per iteration
     STA $2100,X             ; for maximum speed
@@ -1093,18 +1093,18 @@ ClearLoop:
     STA $2300,X
     INX
     BNE ClearLoop
-    
+
     ; Set background pattern if provided
     LDA $FB                 ; Check if pattern address provided
     ORA $FC
     BEQ NoBackgroundPattern
-    
+
     JSR ApplyBackgroundPattern
-    
+
 NoBackgroundPattern:
     CLC                     ; Success
     RTS
-    
+
 RasterTimeout:
     SEC                     ; Timeout error
     RTS
@@ -1122,7 +1122,7 @@ SpriteDepthSort:
     ;
     ; Time Complexity: O(n²) worst case, O(n) best case
     ; Space Complexity: O(1) - sorts in place
-    ; 
+    ;
     ; Best for: Small sprite counts (typical: 2-8 sprites)
     ; Alternative: Use bucket sort for >16 sprites
     ;
@@ -1130,40 +1130,40 @@ SpriteDepthSort:
     ;   Each sprite entry: [X, Y, Z-depth, sprite_id]
     ;   Array length: 4 * sprite_count bytes
     ; ====================================
-    
+
     ; Outer loop: iterate through unsorted portion
     LDX #1                  ; Start with second element
-    
+
 OuterSortLoop:
     CPX SpriteCount         ; Check if done
     BEQ SortComplete
-    
+
     ; Inner loop: find insertion position
     LDY #0                  ; Start comparing from beginning
-    
+
 InnerSortLoop:
     CPY #SpriteCount        ; Reached end?
     BEQ InsertHere
-    
+
     ; Compare Z-depth values
     JSR CompareSprite DepthValues  ; Custom comparison
     BCC InsertHere          ; Found insertion point
-    
+
     INY
     JMP InnerSortLoop
-    
+
 InsertHere:
     ; Insert sprite at position Y
     JSR InsertSpriteAtPosition
-    
+
     INX
     JMP OuterSortLoop
-    
+
 SortComplete:
     RTS
 
 ; ========================================
-; DATA STRUCTURE DOCUMENTATION  
+; DATA STRUCTURE DOCUMENTATION
 ; ========================================
 
 ; Sprite Object Structure (8 bytes per sprite)
@@ -1173,7 +1173,7 @@ SortComplete:
 ;   Units: Pixels from left edge
 ;   Special: 255 = sprite disabled
 ;
-; Offset 1: Y Position (screen coordinates)  
+; Offset 1: Y Position (screen coordinates)
 ;   Range: 0-255 (with vertical scroll)
 ;   Units: Pixels from top edge
 ;   Special: 0 = top of screen
@@ -1254,7 +1254,7 @@ InsertSpriteAtPosition:
 ; management system with the following features:
 ;
 ; 1. Priority-based sound effect queuing
-; 2. Automatic channel allocation and management  
+; 2. Automatic channel allocation and management
 ; 3. Real-time volume and pitch control
 ; 4. Sound effect interruption and mixing
 ; 5. Memory-efficient sound data storage
@@ -1329,7 +1329,7 @@ SoundEffectQueue:
 ; Channel allocation tracking
 ChannelStatus:
     Channel0_EffectID:  .byte 0     ; Effect currently on voice 1
-    Channel1_EffectID:  .byte 0     ; Effect currently on voice 2  
+    Channel1_EffectID:  .byte 0     ; Effect currently on voice 2
     Channel2_EffectID:  .byte 0     ; Effect currently on voice 3
 
 ; System state variables
@@ -1353,7 +1353,7 @@ InitializeSoundSystem:
     ; the SID chip for optimal sound playback.
     ;
     ; Inputs: None
-    ; Outputs: None  
+    ; Outputs: None
     ; Modifies: A register, sound system data
     ;
     ; Side Effects:
@@ -1364,24 +1364,24 @@ InitializeSoundSystem:
     ;
     ; Call Once: At program startup only
     ; ====================================
-    
+
     ; Clear the sound effect queue
     JSR ClearSoundEffectQueue
-    
+
     ; Reset channel allocation
     JSR ResetChannelAllocation
-    
+
     ; Initialize SID chip registers
     JSR InitializeSIDChip
-    
+
     ; Set system defaults
     LDA #15                 ; Maximum master volume
     STA SystemMasterVolume
-    
+
     LDA #0                  ; No effects initially
     STA QueuedEffectCount
     STA ActiveEffectCount
-    
+
     RTS
 
 QueueSoundEffect:
@@ -1413,7 +1413,7 @@ QueueSoundEffect:
     ; Usage Examples:
     ;   ; Play explosion sound (high priority, 2 seconds)
     ;   LDA #SOUND_EXPLOSION
-    ;   LDX #SOUND_PRIORITY_HIGH  
+    ;   LDX #SOUND_PRIORITY_HIGH
     ;   LDY #100                  ; 2 seconds at 50Hz
     ;   JSR QueueSoundEffect
     ;   BCS SoundFailed
@@ -1424,62 +1424,62 @@ QueueSoundEffect:
     ;   LDY #10                   ; 0.2 seconds
     ;   JSR QueueSoundEffect
     ; ====================================
-    
+
     ; Validate inputs
     CMP #0                  ; Check for invalid effect ID
     BEQ InvalidEffectID
-    
+
     CPX #1                  ; Check minimum priority
     BCC InvalidPriority
     CPX #6                  ; Check maximum priority
     BCS InvalidPriority
-    
+
     CPY #0                  ; Check for zero duration
     BEQ UseDeraultDuration
-    
+
     ; Store parameters for processing
     STA RequestedEffectID
     STX RequestedPriority
     STY RequestedDuration
-    
+
     ; Check if queue has space
     LDA QueuedEffectCount
     CMP #MAX_SOUND_EFFECTS
     BCS QueueFull
-    
+
     ; Find available slot in queue
     JSR FindAvailableQueueSlot
     BCS QueueFull           ; No slots available
-    
+
     ; Store effect in queue slot
     JSR StoreEffectInQueue
-    
+
     ; Update queue counter
     INC QueuedEffectCount
-    
+
     ; Try to assign to channel immediately
     JSR TryImmediateChannelAssignment
-    
+
     ; Return success
     LDA QueueSlotFound      ; Return slot position
     CLC                     ; Success
     RTS
-    
+
     ; Error handling
 InvalidEffectID:
     LDA #$FF
     SEC
     RTS
-    
+
 InvalidPriority:
     LDA #$FE
     SEC
     RTS
-    
+
 UseDeraultDuration:
     LDY #60                 ; Default 1.2 second duration
     JMP StoreParameters
-    
+
 QueueFull:
     LDA #$FD
     SEC
@@ -1508,22 +1508,22 @@ UpdateSoundSystem:
     ;   4. Assign queued effects to free channels
     ;   5. Update SID registers
     ; ====================================
-    
+
     ; Update all active effects
     JSR UpdateActiveEffectDurations
-    
+
     ; Remove completed effects
     JSR RemoveCompletedEffects
-    
+
     ; Process volume fading
     JSR ProcessVolumeFading
-    
+
     ; Try to assign queued effects
     JSR AssignQueuedEffects
-    
+
     ; Update hardware registers
     JSR UpdateSIDRegisters
-    
+
     RTS
 
 StopSoundEffect:
@@ -1533,47 +1533,47 @@ StopSoundEffect:
     ; Purpose: Stop a specific sound effect
     ;
     ; Inputs: A = Effect ID to stop (1-255)
-    ; Outputs: 
+    ; Outputs:
     ;   Carry = Clear if effect stopped
     ;   Carry = Set if effect not found
     ;
     ; Notes: Only stops the first instance found
     ;        if multiple instances are playing
     ; ====================================
-    
+
     STA EffectToStop
-    
+
     ; Search through active effects
     LDX #0
-    
+
 StopSearchLoop:
     ; Check if this slot contains the target effect
     LDA SoundEffectQueue,X  ; Get effect ID
     CMP EffectToStop
     BEQ FoundEffectToStop
-    
+
     ; Move to next effect slot (6 bytes each)
     TXA
     CLC
     ADC #6
     TAX
-    
+
     ; Check if we've searched all slots
     CMP #(MAX_SOUND_EFFECTS * 6)
     BNE StopSearchLoop
-    
+
     ; Effect not found
     SEC
     RTS
-    
+
 FoundEffectToStop:
     ; Mark effect as completed
     LDA #0
     STA SoundEffectQueue,X  ; Clear effect ID
-    
+
     ; Free the channel if assigned
     JSR FreeEffectChannel
-    
+
     CLC                     ; Success
     RTS
 
@@ -1587,13 +1587,13 @@ ClearSoundEffectQueue:
     ; ====================================
     LDX #0
     LDA #0
-    
+
 ClearQueueLoop:
     STA SoundEffectQueue,X
     INX
     CPX #(MAX_SOUND_EFFECTS * 6)
     BNE ClearQueueLoop
-    
+
     RTS
 
 FindAvailableQueueSlot:
@@ -1601,26 +1601,26 @@ FindAvailableQueueSlot:
     ; PRIVATE: Find empty slot in effect queue
     ; Returns: X = slot offset, carry set if none
     ; ====================================
-    
+
     LDX #0
-    
+
 SlotSearchLoop:
     LDA SoundEffectQueue,X  ; Check effect ID
     BEQ FoundAvailableSlot  ; 0 = available
-    
+
     ; Move to next slot
     TXA
     CLC
     ADC #6                  ; 6 bytes per effect
     TAX
-    
+
     CMP #(MAX_SOUND_EFFECTS * 6)
     BNE SlotSearchLoop
-    
+
     ; No slots available
     SEC
     RTS
-    
+
 FoundAvailableSlot:
     STX QueueSlotFound
     CLC
@@ -1630,38 +1630,38 @@ StoreEffectInQueue:
     ; ====================================
     ; PRIVATE: Store effect data in queue slot
     ; ====================================
-    
+
     LDX QueueSlotFound
-    
+
     ; Store effect ID
     LDA RequestedEffectID
     STA SoundEffectQueue,X
-    
+
     ; Store priority
     INX
     LDA RequestedPriority
     STA SoundEffectQueue,X
-    
+
     ; Store initial volume (max)
     INX
     LDA #15
     STA SoundEffectQueue,X
-    
+
     ; Store duration
     INX
     LDA RequestedDuration
     STA SoundEffectQueue,X
-    
+
     ; Store channel (unassigned initially)
     INX
     LDA #3                  ; 3 = unassigned
     STA SoundEffectQueue,X
-    
+
     ; Store flags (default: no special flags)
     INX
     LDA #0
     STA SoundEffectQueue,X
-    
+
     RTS
 
 ; Placeholder implementations for remaining functions
@@ -1682,7 +1682,7 @@ FreeEffectChannel:
 
 ; Function parameters
 RequestedEffectID:      .byte 0     ; Effect ID being queued
-RequestedPriority:      .byte 0     ; Priority level requested  
+RequestedPriority:      .byte 0     ; Priority level requested
 RequestedDuration:      .byte 0     ; Duration in frames
 QueueSlotFound:         .byte 0     ; Available queue slot index
 EffectToStop:           .byte 0     ; Effect ID to stop
@@ -1705,7 +1705,7 @@ JSR InitializeSoundSystem
 ; ========================================
 
 ; File structure for large projects:
-; 
+;
 ; main.asm              - Program entry point
 ; ├── core/
 ; │   ├── memory.asm    - Memory management
@@ -1730,7 +1730,7 @@ JSR InitializeSoundSystem
 ; Each module should provide:
 ; 1. Initialization function
 ; 2. Update function (if needed)
-; 3. Shutdown function  
+; 3. Shutdown function
 ; 4. Clear public interface
 ; 5. Documented dependencies
 
@@ -1740,10 +1740,10 @@ JSR InitializeSoundSystem
 ; PUBLIC FUNCTIONS:
 ;   InitializeMemoryManager
 ;   AllocateMemoryBlock
-;   FreeMemoryBlock  
+;   FreeMemoryBlock
 ;   GetMemoryStatistics
 ;   ShutdownMemoryManager
-; 
+;
 ; DEPENDENCIES:
 ;   None (core system module)
 ;
@@ -1757,19 +1757,19 @@ MemoryManagerInterface:
     InitializeMemoryManager:
         ; Setup memory pools and tracking
         RTS
-    
+
     ; Standard allocation interface
     AllocateMemoryBlock:
         ; Input: A = block size category
         ; Output: X/Y = address, carry = status
         RTS
-    
+
     ; Standard deallocation interface
     FreeMemoryBlock:
         ; Input: X/Y = block address
         ; Output: Carry = status
         RTS
-    
+
     ; Standard shutdown interface
     ShutdownMemoryManager:
         ; Cleanup and release resources
@@ -1786,22 +1786,22 @@ GameConfiguration:
     ; All game-wide settings in one location
     ; for easy tuning and modification
     ; ====================================
-    
+
     ; Performance settings
     TARGET_FRAME_RATE       = 50       ; PAL frame rate
     MAX_SPRITES_PER_FRAME   = 8        ; Sprite limit
     GRAPHICS_BUFFER_SIZE    = $2000     ; 8KB graphics buffer
-    
+
     ; Gameplay settings
     PLAYER_STARTING_LIVES   = 3         ; Initial lives
     PLAYER_INVULNERABLE_TIME= 120       ; 2.4 seconds
     ENEMY_SPAWN_RATE        = 180       ; 3.6 seconds
-    
+
     ; Audio settings
     MASTER_VOLUME_DEFAULT   = 12        ; Default volume (0-15)
     SOUND_EFFECT_PRIORITY   = 3         ; Default SFX priority
     MUSIC_FADE_TIME         = 60        ; 1.2 second fade
-    
+
     ; Memory layout settings
     ZERO_PAGE_START         = $FB       ; Available zero page
     ZERO_PAGE_SIZE          = 5         ; 5 bytes available
@@ -1838,11 +1838,11 @@ OptimizedFunction:
     ; ====================================
     ; v1.0 - Original implementation (2024-01-01)
     ; v1.1 - Added bounds checking (2024-01-05)
-    ; v1.2 - Performance optimisation: 
+    ; v1.2 - Performance optimisation:
     ;        Reduced cycles from 200 to 150 (2024-01-10)
     ; v1.3 - Fixed edge case with zero input (2024-01-15)
     ; ====================================
-    
+
     ; Current implementation with version tracking
     RTS
 
@@ -1856,7 +1856,7 @@ OldFunction:
     ; Removal: Planned for v3.0.0
     ; Migration: See NewOptimizedFunction documentation
     ; ====================================
-    
+
     ; Temporary compatibility wrapper
     JSR NewOptimizedFunction
     RTS
@@ -1901,7 +1901,7 @@ PLAYER_MAX_SPEED = 4
 ; @example
 ; ; Update player with current input
 ; LDA CurrentInput
-; LDX FrameDelta  
+; LDX FrameDelta
 ; LDY CollisionFlags
 ; JSR UpdatePlayerMovement
 ; BNE MovementBlocked
@@ -1909,25 +1909,25 @@ PLAYER_MAX_SPEED = 4
 ; @see GetPlayerPosition, SetPlayerPosition
 UpdatePlayerMovement:
     ; Implementation with detailed inline comments
-    
+
     ; @step 1 Validate input parameters
     CMP #$FF                ; Check for invalid input
     BEQ InvalidInput
-    
+
     ; @step 2 Apply movement based on input
     AND #INPUT_LEFT         ; Check left movement
     BEQ CheckRightMovement
     JSR MovePlayerLeft
-    
+
 CheckRightMovement:
     ; @step 3 Check for boundary collisions
     ; Detailed collision checking logic here
-    
+
 InvalidInput:
     LDA #1                  ; Return error status
     RTS
 
-; @function GetPlayerPosition  
+; @function GetPlayerPosition
 ; @description Retrieve current player world coordinates
 ; @returns {byte} A - Player X coordinate
 ; @returns {byte} X - Player Y coordinate
@@ -1955,7 +1955,7 @@ GetPlayerPosition:
 ; @initialized 128 (center of world)
 PlayerWorldX: .byte 128
 
-; @data PlayerWorldY  
+; @data PlayerWorldY
 ; @description Current player Y coordinate in world space
 ; @type byte
 ; @range 0-255
@@ -2008,7 +2008,7 @@ GAME_STATE_GAME_OVER    = 3        ; @const Game over screen
 GAME_STATE_LOADING      = 4        ; @const Loading screen
 GAME_STATE_CREDITS      = 5        ; @const Credits display
 
-; @group StateTransitions  
+; @group StateTransitions
 ; @description State transition flags
 TRANSITION_IMMEDIATE    = 0        ; @const No transition effect
 TRANSITION_FADE         = 1        ; @const Fade transition
@@ -2061,17 +2061,17 @@ InitializeGameStateManager:
     STA StateTimer
     STA StateFlags
     STA SavedData
-    
+
     ; Set initial state
     LDA #GAME_STATE_MENU
     STA CurrentState
     STA PreviousState
-    
+
     ; Mark as initialized
     LDA StateFlags
     ORA #STATE_FLAG_INITIALIZED
     STA StateFlags
-    
+
     RTS
 
 ; @function RequestStateTransition
@@ -2086,7 +2086,7 @@ InitializeGameStateManager:
 ;   - Updates state transition tracking
 ; @example
 ;   LDA #GAME_STATE_PLAYING
-;   LDX #TRANSITION_FADE  
+;   LDX #TRANSITION_FADE
 ;   JSR RequestStateTransition
 ;   BCS TransitionRejected
 ; @since v1.0.0
@@ -2095,34 +2095,34 @@ RequestStateTransition:
     ; Validate new state
     CMP #6                  ; Check against maximum state value
     BCS InvalidState
-    
+
     ; Check if already transitioning
     LDA StateFlags
     AND #STATE_FLAG_TRANSITIONING
     BNE AlreadyTransitioning
-    
+
     ; Store transition request
     LDA RequestedState      ; Store the requested state (from A)
     STA NextState
     STX TransitionType
-    
+
     ; Mark as transitioning
     LDA StateFlags
     ORA #STATE_FLAG_TRANSITIONING
     STA StateFlags
-    
+
     ; Begin transition
     JSR BeginStateTransition
-    
+
     CLC                     ; Success
     RTS
-    
+
 InvalidState:
 AlreadyTransitioning:
     SEC                     ; Error/rejected
     RTS
 
-; @function UpdateStateTransitions  
+; @function UpdateStateTransitions
 ; @description Update state transition progress for current frame
 ; @inputs None
 ; @outputs None
@@ -2140,24 +2140,24 @@ UpdateStateTransitions:
     LDA StateFlags
     AND #STATE_FLAG_TRANSITIONING
     BEQ NoTransitionActive
-    
+
     ; Update transition progress
     LDA TransitionProgress
     CLC
     ADC #8                  ; Transition speed (8 units per frame)
     STA TransitionProgress
-    
+
     ; Check if transition complete
     CMP #255
     BCC TransitionInProgress
-    
+
     ; Complete the transition
     JSR CompleteStateTransition
-    
+
 TransitionInProgress:
     ; Update transition visual effects
     JSR UpdateTransitionEffects
-    
+
 NoTransitionActive:
     RTS
 
@@ -2206,26 +2206,26 @@ BeginStateTransition:
     ; Save current state as previous
     LDA CurrentState
     STA PreviousState
-    
+
     ; Reset transition progress
     LDA #0
     STA TransitionProgress
-    
+
     ; Initialize transition effects based on type
     LDA TransitionType
     CMP #TRANSITION_FADE
     BEQ InitializeFadeTransition
     CMP #TRANSITION_SLIDE
     BEQ InitializeSlideTransition
-    
+
     ; Default immediate transition
     JMP CompleteStateTransition
-    
+
 InitializeFadeTransition:
     ; Setup fade transition parameters
     JSR SetupFadeEffect
     RTS
-    
+
 InitializeSlideTransition:
     ; Setup slide transition parameters
     JSR SetupSlideEffect
@@ -2239,20 +2239,20 @@ CompleteStateTransition:
     ; Update current state to new state
     LDA NextState
     STA CurrentState
-    
+
     ; Clear transitioning flag
     LDA StateFlags
     AND #($FF - STATE_FLAG_TRANSITIONING)  ; Clear transitioning bit
     STA StateFlags
-    
+
     ; Reset transition progress
     LDA #0
     STA TransitionProgress
     STA NextState
-    
+
     ; Notify systems of state change
     JSR NotifyStateChange
-    
+
     RTS
 
 ; ========================================
@@ -2278,17 +2278,17 @@ UpdateCurrentState:
     BEQ UpdatePausedState
     CMP #GAME_STATE_GAME_OVER
     BEQ UpdateGameOverState
-    
+
     ; Unknown state - error condition
     RTS
-    
+
 UpdateMenuState:
     ; @substep Handle menu input and navigation
     JSR ProcessMenuInput
     JSR UpdateMenuAnimations
     JSR UpdateMenuAudio
     RTS
-    
+
 UpdatePlayingState:
     ; @substep Handle active gameplay
     JSR ProcessGameInput
@@ -2296,13 +2296,13 @@ UpdatePlayingState:
     JSR UpdateGameGraphics
     JSR UpdateGameAudio
     RTS
-    
+
 UpdatePausedState:
     ; @substep Handle pause menu
     JSR ProcessPauseInput
     JSR UpdatePauseMenu
     RTS
-    
+
 UpdateGameOverState:
     ; @substep Handle game over screen
     JSR ProcessGameOverInput
@@ -2324,16 +2324,16 @@ SaveCurrentState:
     LDA StateFlags
     ORA #STATE_FLAG_SAVE_REQUIRED
     STA StateFlags
-    
+
     ; Perform state-specific save operations
     JSR PerformStateSave
-    
+
     CLC
     RTS
 
 ; @function RestoreSavedState
 ; @description Restore previously saved state data
-; @inputs None  
+; @inputs None
 ; @outputs Carry clear if restored successfully
 ; @modifies A register, system state
 ; @since v1.2.0
@@ -2342,13 +2342,13 @@ RestoreSavedState:
     LDA StateFlags
     AND #STATE_FLAG_SAVE_REQUIRED
     BEQ NoSaveData
-    
+
     ; Perform state-specific restore operations
     JSR PerformStateRestore
-    
+
     CLC
     RTS
-    
+
 NoSaveData:
     SEC
     RTS
@@ -2407,15 +2407,15 @@ JSR InitializeGameStateManager
 ; DATE: 2024-01-20
 ; CHANGES:
 ;   + Added new collision detection system
-;   * Optimized sprite rendering (15% performance gain)  
+;   * Optimized sprite rendering (15% performance gain)
 ;   * Fixed memory leak in audio system
 ;   - Removed deprecated input polling method
 ;   ! Breaking change: Updated API for sound effects
-; 
+;
 ; MIGRATION GUIDE:
 ;   Old: JSR PlaySound
 ;   New: LDA #SOUND_ID : JSR QueueSoundEffect
-; 
+;
 ; COMPATIBILITY:
 ;   Maintains compatibility with v1.2.x
 ;   Breaks compatibility with v1.1.x and earlier
@@ -2433,7 +2433,7 @@ FunctionWithChangeHistory:
     ;   - Performance: 200 cycles average
     ;   - Known issue: Doesn't handle edge cases
     ;
-    ; v1.1.0 (2024-01-05) - Enhanced functionality  
+    ; v1.1.0 (2024-01-05) - Enhanced functionality
     ;   + Added input validation
     ;   + Added error handling for edge cases
     ;   * Improved readability with better comments
@@ -2456,7 +2456,7 @@ FunctionWithChangeHistory:
     ;   * Updated documentation with usage examples
     ;   * Performance: 155 cycles average (slight increase due to features)
     ; ====================================
-    
+
     ; Current implementation (v1.3.0)
     ; [Implementation details here]
     RTS
@@ -2472,7 +2472,7 @@ FunctionWithChangeHistory:
 ;   Old usage:
 ;     LDA #5
 ;     JSR OldAPICall
-;   
+;
 ;   New usage:
 ;     LDA #5
 ;     LDX #0              ; Additional parameter required
@@ -2510,7 +2510,7 @@ NewAPICall:
 ;   ; OLD (v1.x):
 ;   ; JSR AllocateMemory
 ;   ; STA MemoryPointer
-;   
+;
 ;   ; NEW (v2.x):
 ;   ; LDA #BLOCK_SIZE_256
 ;   ; JSR AllocateMemoryBlock
@@ -2564,7 +2564,7 @@ WellDocumentedFunction:
     ; ✓ Version history maintained
     ; ✓ Related functions cross-referenced
     ; ====================================
-    
+
     ; Implementation here
     RTS
 
@@ -2650,7 +2650,7 @@ DOC_MODE_VALIDATION         = 2        ; @const Validation and checking mode
 ; @size 8 bytes
 ; @layout
 ;   Byte 0: Functions documented count (0-255)
-;   Byte 1: Total functions count (0-255)  
+;   Byte 1: Total functions count (0-255)
 ;   Byte 2: Comment density percentage (0-100)
 ;   Byte 3: Documentation quality score (0-100)
 ;   Byte 4: Examples provided count (0-255)
@@ -2683,7 +2683,7 @@ COMPLIANCE_STANDARDS        = %00010000 ; Follows documentation standards
 ; @description Initialize the documentation demonstration system
 ; @algorithm
 ;   1. Clear all metrics and counters
-;   2. Set up example data structures  
+;   2. Set up example data structures
 ;   3. Initialize quality tracking
 ;   4. Prepare validation systems
 ; @inputs None
@@ -2710,18 +2710,18 @@ InitializeDocumentationDemo:
     STA ExamplesTested
     STA ComplianceFlags
     STA HealthScore
-    
+
     ; Initialize demonstration counters
     STA ExampleCounter
     STA QualityCounter
     STA ValidationCounter
-    
+
     ; Setup example data
     JSR SetupExampleData
-    
+
     ; Initialize quality tracking
     JSR InitializeQualityTracking
-    
+
     RTS
 
 ; @function RunDocumentationExamples
@@ -2748,16 +2748,16 @@ InitializeDocumentationDemo:
 RunDocumentationExamples:
     ; Phase 1: Analyze documentation coverage
     JSR AnalyzeDocumentationCoverage
-    
+
     ; Phase 2: Check comment quality and density
     JSR AnalyzeCommentQuality
-    
+
     ; Phase 3: Validate examples and cross-references
     JSR ValidateDocumentationExamples
-    
+
     ; Phase 4: Calculate overall health score
     JSR CalculateDocumentationHealth
-    
+
     ; Return overall health score
     LDA HealthScore
     RTS
@@ -2779,19 +2779,19 @@ RunDocumentationExamples:
 DisplayDocumentationResults:
     ; Display header
     JSR DisplayResultsHeader
-    
+
     ; Show coverage metrics
     JSR DisplayCoverageMetrics
-    
-    ; Show quality metrics  
+
+    ; Show quality metrics
     JSR DisplayQualityMetrics
-    
+
     ; Show compliance status
     JSR DisplayComplianceStatus
-    
+
     ; Show recommendations
     JSR DisplayRecommendations
-    
+
     RTS
 
 ; ========================================
@@ -2807,19 +2807,19 @@ AnalyzeDocumentationCoverage:
     ; Count total functions in demonstration
     LDA #8                  ; Demo has 8 documented functions
     STA TotalFunctions
-    
+
     ; Count documented functions
     LDA #8                  ; All demo functions are documented
     STA FunctionsDocumented
-    
+
     ; Calculate coverage percentage
     JSR CalculateCoveragePercentage
-    
+
     ; Update compliance flags
     LDA ComplianceFlags
     ORA #COMPLIANCE_FUNCTIONS   ; Mark functions as compliant
     STA ComplianceFlags
-    
+
     RTS
 
 ; @function AnalyzeCommentQuality (PRIVATE)
@@ -2832,46 +2832,46 @@ AnalyzeCommentQuality:
     ; In real implementation, would scan source code
     LDA #65                 ; Simulated 65% comment density
     STA CommentDensity
-    
+
     ; Calculate quality score based on density
     CMP #MIN_COMMENT_DENSITY
     BCC LowCommentDensity
-    
+
     ; Good comment density
     LDA #85                 ; High quality score
     STA QualityScore
     JMP CommentAnalysisDone
-    
+
 LowCommentDensity:
     ; Poor comment density
     LDA #45                 ; Lower quality score
     STA QualityScore
-    
+
 CommentAnalysisDone:
     RTS
 
 ; @function ValidateDocumentationExamples (PRIVATE)
 ; @description Validate that all examples work correctly
-; @caller RunDocumentationExamples  
+; @caller RunDocumentationExamples
 ; @algorithm Tests each documented example for correctness
 ; @modifies A, X registers, example metrics
 ValidateDocumentationExamples:
     ; Count examples in documentation
     LDA #12                 ; Demo has 12 examples
     STA ExamplesProvided
-    
+
     ; Test each example (simulated)
     JSR TestDocumentationExamples
-    
+
     ; Record tested examples
     LDA #10                 ; 10 of 12 examples passed
     STA ExamplesTested
-    
+
     ; Update compliance
     LDA ComplianceFlags
     ORA #COMPLIANCE_EXAMPLES
     STA ComplianceFlags
-    
+
     RTS
 
 ; @function CalculateDocumentationHealth (PRIVATE)
@@ -2883,87 +2883,87 @@ CalculateDocumentationHealth:
     ; Start with base score
     LDA #0
     STA HealthScore
-    
+
     ; Add points for function documentation
     LDA FunctionsDocumented
     CMP TotalFunctions
     BNE PartialFunctionCoverage
-    
+
     ; Full function coverage
     LDA HealthScore
     CLC
     ADC #30                 ; 30 points for full coverage
     STA HealthScore
     JMP CheckCommentDensity
-    
+
 PartialFunctionCoverage:
     ; Partial coverage - fewer points
     LDA HealthScore
     CLC
     ADC #15                 ; 15 points for partial coverage
     STA HealthScore
-    
+
 CheckCommentDensity:
     ; Add points for comment density
     LDA CommentDensity
     CMP #50
     BCC LowDensityPoints
-    
+
     ; High density
     LDA HealthScore
     CLC
     ADC #25                 ; 25 points for good density
     STA HealthScore
     JMP CheckExamples
-    
+
 LowDensityPoints:
     ; Low density
     LDA HealthScore
     CLC
     ADC #10                 ; 10 points for low density
     STA HealthScore
-    
+
 CheckExamples:
     ; Add points for examples
     LDA ExamplesTested
     CMP ExamplesProvided
     BNE PartialExamples
-    
+
     ; All examples tested
     LDA HealthScore
     CLC
     ADC #20                 ; 20 points for tested examples
     STA HealthScore
     JMP CheckCompliance
-    
+
 PartialExamples:
     ; Some examples tested
-    LDA HealthScore  
+    LDA HealthScore
     CLC
     ADC #10                 ; 10 points for partial testing
     STA HealthScore
-    
+
 CheckCompliance:
     ; Add points for compliance
     LDA ComplianceFlags
     AND #%00011111          ; Check all compliance bits
     CMP #%00011111          ; All bits set?
     BNE PartialCompliance
-    
+
     ; Full compliance
     LDA HealthScore
     CLC
     ADC #25                 ; 25 points for full compliance
     STA HealthScore
     JMP HealthCalculationDone
-    
+
 PartialCompliance:
     ; Partial compliance
     LDA HealthScore
     CLC
     ADC #15                 ; 15 points for partial compliance
     STA HealthScore
-    
+
 HealthCalculationDone:
     ; Ensure score doesn't exceed 100
     LDA HealthScore
@@ -2971,7 +2971,7 @@ HealthCalculationDone:
     BCC HealthScoreOK
     LDA #100
     STA HealthScore
-    
+
 HealthScoreOK:
     RTS
 
@@ -2997,7 +2997,7 @@ DisplayResultsHeader:
 DisplayCoverageMetrics:
     ; Calculate and display coverage percentage
     JSR CalculateCoveragePercentage
-    
+
     ; Mark coverage displayed
     LDA DisplayState
     ORA #%00000010
@@ -3006,7 +3006,7 @@ DisplayCoverageMetrics:
 
 ; @function DisplayQualityMetrics (PRIVATE)
 ; @description Display comment quality and density metrics
-; @caller DisplayDocumentationResults  
+; @caller DisplayDocumentationResults
 ; @modifies A register
 DisplayQualityMetrics:
     ; Display quality score and comment density
@@ -3037,15 +3037,15 @@ DisplayRecommendations:
     LDA HealthScore
     CMP #80
     BCS GoodDocumentationHealth
-    
+
     ; Poor health - show improvement recommendations
     JSR DisplayImprovementRecommendations
     JMP RecommendationsDone
-    
+
 GoodDocumentationHealth:
     ; Good health - show maintenance recommendations
     JSR DisplayMaintenanceRecommendations
-    
+
 RecommendationsDone:
     ; Mark recommendations displayed
     LDA DisplayState
@@ -3068,10 +3068,10 @@ CalculateCoveragePercentage:
     LDA FunctionsDocumented
     CMP TotalFunctions
     BNE PartialCoverage
-    
+
     LDA #100                ; 100% coverage
     RTS
-    
+
 PartialCoverage:
     ; Calculate actual percentage (simplified)
     LDA #75                 ; Simulated 75% coverage
@@ -3114,6 +3114,7 @@ JSR ComprehensiveDocumentationDemo
 ## Documentation Best Practices
 
 ### 1. Write Code that Explains Itself
+
 ```text
 ; Use descriptive names that reveal intent
 ; Organize code in logical, readable structures
@@ -3122,6 +3123,7 @@ JSR ComprehensiveDocumentationDemo
 ```
 
 ### 2. Document the Why, Not Just the What
+
 ```text
 ; Explain design decisions and trade-offs
 ; Document business logic and requirements
@@ -3130,6 +3132,7 @@ JSR ComprehensiveDocumentationDemo
 ```
 
 ### 3. Maintain Documentation Currency
+
 ```text
 ; Update docs with every code change
 ; Review documentation in code reviews
@@ -3138,6 +3141,7 @@ JSR ComprehensiveDocumentationDemo
 ```
 
 ### 4. Create Comprehensive References
+
 ```text
 ; Document all public interfaces thoroughly
 ; Provide usage examples for complex functions

@@ -27,6 +27,7 @@ When gameplay becomes pure innovation! With **32 mechanics-focused lessons**, yo
 ## What You'll Create
 
 Develop **INNOVATIVE GAME MECHANICS** that create amazing gameplay:
+
 - Game mechanics so creative they feel like breakthrough innovations
 - Gameplay systems that offer endless depth and surprising discoveries
 - Controls so intuitive they feel like natural extensions of thought
@@ -36,24 +37,28 @@ Develop **INNOVATIVE GAME MECHANICS** that create amazing gameplay:
 ## Innovative Mechanics Areas
 
 **Lessons 1-8: "Core Mechanic Innovation" - New Ways to Play**
+
 - Designing core gameplay mechanics that feel fresh and exciting
 - Creating interaction systems that are simple yet deep
 - Building mechanics that generate surprising player discoveries
 - Understanding what makes mechanics feel innovative yet intuitive
 
 **Lessons 9-16: "Emergent Gameplay Systems" - Mechanics That Surprise**
+
 - Creating systems where simple rules generate complex gameplay
 - Designing mechanics that allow creative player expression
 - Building interactions that create unexpected and delightful outcomes
 - Understanding how emergence creates lasting gameplay appeal
 
 **Lessons 17-24: "Intuitive Control Design" - Natural Interaction**
+
 - Designing control schemes that feel like natural extensions of thought
 - Creating input systems that enhance rather than impede gameplay
 - Building responsive controls that make players feel skilled
 - Balancing complexity with accessibility in control design
 
 **Lessons 25-32: "Legendary Mechanic Integration" - Systems That Define Games**
+
 - Combining multiple innovative mechanics into cohesive gameplay
 - Creating signature mechanics that define your game's identity
 - Building mechanics that create memorable, shareable moments

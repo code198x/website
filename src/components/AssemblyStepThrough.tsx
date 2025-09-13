@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 // TODO(human): Implement the assembly step-through debugger component
-// 
+//
 // This component should:
 // 1. Display assembly code with syntax highlighting
 // 2. Show current instruction pointer

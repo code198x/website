@@ -31,24 +31,28 @@ Continue developing **Performance Showcase** - implementing advanced graphics sy
 ## Tier Overview
 
 **Lessons 1-8: Attribute Management Mastery**
+
 - Advanced attribute clash detection and prevention
 - Creative solutions for color limitations
 - Attribute-aware graphics design techniques
 - Dynamic attribute manipulation systems
 
 **Lessons 9-16: Advanced Scrolling Systems**
+
 - Smooth multi-directional scrolling implementation
 - Parallax scrolling and layered backgrounds
 - Tile-based graphics and map systems
 - Optimized scrolling performance techniques
 
 **Lessons 17-24: Visual Effects Programming**
+
 - Advanced screen transitions and wipes
 - Raster effects and screen manipulation
 - Particle systems and dynamic effects
 - 3D-style effects and perspective tricks
 
 **Lessons 25-32: Professional Graphics Optimization**
+
 - Graphics data compression and storage
 - Efficient sprite and animation systems
 - Memory-optimized graphics routines

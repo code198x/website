@@ -1,5 +1,5 @@
 ---
-name: "CoCo 3"
+name: "Tandy CoCo 3"
 full_name: "Tandy Color Computer 3"
 manufacturer: "Tandy Corporation"
 model_number: "26-3334"
@@ -87,7 +87,6 @@ hardware_availability: "available"
 
 # Media
 description: "The most advanced 8-bit computer with the powerful 6809E and OS-9 multitasking operating system."
-image: "/images/systems/coco3.jpg"
 
 # Platform Classification
 medal_tier: "silver"
@@ -102,7 +101,7 @@ order: 22
 
 # Tandy Color Computer 3
 
-*Coming Soon*
+_Coming Soon_
 
 The CoCo 3 was Radio Shack's masterpiece - an 8-bit computer that punched far above its weight. With the powerful 6809E processor, GIME graphics chip, and the optional OS-9 operating system, it offered capabilities that wouldn't be matched by other 8-bit systems.
 
@@ -119,9 +118,10 @@ The 6809 is widely considered the most elegant 8-bit processor ever designed. Co
 
 ## Curriculum Highlights
 
-*Currently in development*
+_Currently in development_
 
 When launched, the CoCo 3 curriculum will include:
+
 - 6809 assembly programming
 - GIME graphics and palette manipulation
 - OS-9 system programming

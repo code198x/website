@@ -31,24 +31,28 @@ Optimize your existing games to run at peak performance with advanced profiling 
 ## Tier Overview
 
 **Lessons 1-8: Performance Analysis & Profiling**
+
 - Game performance measurement and analysis
 - Bottleneck identification and resolution
 - Memory usage profiling and optimization
 - CPU cycle analysis and optimization
 
 **Lessons 9-16: Advanced Memory Management**
+
 - Dynamic memory allocation strategies
 - Memory pool management systems
 - Resource streaming and caching
 - Memory leak detection and prevention
 
 **Lessons 17-24: Frame Rate & Timing Optimization**
+
 - Consistent 50Hz operation techniques
 - Variable frame rate handling
 - Input lag minimization
 - Smooth animation optimization
 
 **Lessons 25-32: Hardware Limit Optimization**
+
 - Multi-chip coordination and timing
 - Hardware-specific optimization techniques
 - Advanced assembly optimization

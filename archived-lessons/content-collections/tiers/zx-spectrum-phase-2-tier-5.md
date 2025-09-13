@@ -27,6 +27,7 @@ Welcome to movement mastery! 🎪 With **32 dynamic lessons**, you'll create cha
 ## What You'll Build
 
 Create **MOVEMENT MASTER** - an advanced character system featuring:
+
 - Gravity systems that make jumps feel perfectly weighted 🏋️‍♀️
 - Variable jump heights that respond to player input duration
 - Momentum-based movement that builds speed naturally
@@ -36,24 +37,28 @@ Create **MOVEMENT MASTER** - an advanced character system featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Physics Foundations" - Gravity and Basic Motion**
+
 - Implementing realistic gravity with proper acceleration curves
 - Variable jump mechanics with hold-to-jump-higher systems
 - Momentum preservation and friction calculations
 - Ground detection and landing state management
 
 **Lessons 9-16: "Platform Mastery" - Precise Environment Interaction**
+
 - Advanced platform collision detection and response
 - Edge detection for perfect platform alignment
 - Slope navigation and angled surface movement
 - Moving platform interaction and relative positioning
 
 **Lessons 17-24: "Advanced States" - Complex Movement Behaviors**
+
 - Running, jumping, falling, and sliding state management
 - Wall sliding and wall jumping mechanics
 - Double jumps and advanced movement abilities
 - Context-sensitive movement based on environment
 
 **Lessons 25-32: "Polish and Performance" - Professional Movement**
+
 - Movement smoothing and interpolation techniques
 - Performance optimization for complex physics calculations
 - Movement debugging and fine-tuning tools

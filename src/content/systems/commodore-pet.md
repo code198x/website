@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "The first complete personal computer: keyboard, monitor, and tape drive all in one futuristic package."
-image: "/images/systems/pet-2001.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 105
 
 # Commodore PET 2001
 
-*Historical Reference*
+_Historical Reference_
 
 The Commodore PET 2001 was the first true all-in-one personal computer. Announced at CES in January 1977 and shipping that October, it beat the Apple II and TRS-80 to market as a complete system with built-in keyboard, monitor, and cassette drive.
 
@@ -65,4 +64,4 @@ Designed by Chuck Peddle (creator of the 6502), the PET embodied his vision of c
 
 The PET's success in schools introduced a generation to computing. Commodore's experience with the PET directly led to the VIC-20 and ultimately the C64. The IEEE-488 port became a standard in laboratory equipment that persists today.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

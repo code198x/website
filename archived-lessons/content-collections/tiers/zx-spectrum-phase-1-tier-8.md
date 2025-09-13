@@ -31,6 +31,7 @@ Complete **Rainbow Runner** - your first action-packed assembly game! Learn coll
 ## What You'll Complete
 
 Finish a fully playable assembly platform game:
+
 - Smooth character movement and animation using Z80 assembly
 - Assembly collision detection with platforms and collectibles
 - Multiple levels with increasing difficulty implemented in assembly
@@ -39,24 +40,28 @@ Finish a fully playable assembly platform game:
 ## Tier Overview
 
 **Lessons 1-8: Assembly Collision Detection**
+
 - Understanding assembly collision detection algorithms
 - Implementing platform collision checking in Z80 assembly
 - Creating smooth character physics using assembly
 - Building the core assembly game engine
 
 **Lessons 9-16: Assembly Game Physics and Movement**
+
 - Assembly gravity and jumping mechanics
 - Smooth movement within attribute constraints using assembly
 - Assembly character animation and state management
 - Creating responsive, fun assembly controls
 
 **Lessons 17-24: Assembly Level Design and Progression**
+
 - Creating multiple challenging levels using assembly
 - Implementing collectible items and scoring in assembly
 - Building level progression and difficulty with assembly logic
 - Adding visual polish and effects through assembly programming
 
 **Lessons 25-32: Assembly Game Completion and Polish**
+
 - Final assembly integration and optimisation
 - Adding sound effects and feedback using assembly
 - Creating game over and victory conditions in assembly

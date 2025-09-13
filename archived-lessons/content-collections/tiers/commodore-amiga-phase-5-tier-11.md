@@ -27,6 +27,7 @@ Game on! With **32 competitive lessons**, you'll create sports games that captur
 ## What You'll Build
 
 Create **PIXEL ATHLETICS** - a multi-sport package featuring:
+
 - Fast-paced soccer with Sensible Soccer feel
 - Basketball with realistic physics
 - Tennis with precise timing and positioning
@@ -36,24 +37,28 @@ Create **PIXEL ATHLETICS** - a multi-sport package featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Game Physics" - Realistic Movement**
+
 - Ball physics for different sports
 - Player momentum and collision
 - Field interactions and boundaries
 - Weather effects on gameplay
 
 **Lessons 9-16: "AI Opponents" - Digital Athletes**
+
 - Team formation and tactics
 - Individual player personalities
 - Difficulty scaling that feels fair
 - Adaptive AI that learns your style
 
 **Lessons 17-24: "Career Mode" - Long-Term Progression**
+
 - Season and tournament structures
 - Player statistics and records
 - Team management and transfers
 - Hall of fame and achievements
 
 **Lessons 25-32: "Multiplayer Magic" - Social Competition**
+
 - Two-player simultaneous play
 - Tournament brackets and leagues
 - Custom team creation

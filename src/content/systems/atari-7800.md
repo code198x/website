@@ -26,7 +26,6 @@ country_of_origin: "United States"
 
 # Media
 description: "Atari's belated answer to the NES with better graphics but poor third-party support."
-image: "/images/systems/atari-7800.jpg"
 
 # Platform Classification
 medal_tier: "bronze"
@@ -41,7 +40,7 @@ order: 116
 
 # Atari 7800
 
-*Historical Reference*
+_Historical Reference_
 
 The Atari 7800 ProSystem was Atari's attempt to reclaim the home console market from Nintendo. With superior graphics and backward compatibility with the 2600, it should have succeeded but arrived too late with too little software support.
 
@@ -64,4 +63,4 @@ The 7800 was actually completed in 1984 but shelved during Atari's sale to Jack 
 
 The 7800 proved that technical superiority means nothing without software. It remains a "what if" console - had it launched in 1984 with proper third-party support, gaming history might have been different.
 
-*This system is preserved for historical reference only.*
+_This system is preserved for historical reference only._

@@ -31,6 +31,7 @@ Transform the world through collaboration! With **32 intensive legacy lessons**,
 ## What You'll Create
 
 Build your **ZX SPECTRUM CULTURAL LEGACY MASTERPIECE** - a collaborative achievement that changes the world:
+
 - A game that addresses important cultural issues through meaningful interactive experience
 - A collaborative work that demonstrates the power of diverse talents united by shared vision
 - An experience that inspires positive action and social change in the real world
@@ -40,6 +41,7 @@ Build your **ZX SPECTRUM CULTURAL LEGACY MASTERPIECE** - a collaborative achieve
 ## Cultural Legacy Development Process
 
 This isn't just game development - it's cultural contribution through collaborative artistry:
+
 - **Cultural Impact**: Addressing important themes that make the world a better place
 - **Visionary Leadership**: Inspiring and guiding a team toward a transformative shared goal
 - **Creative Collaboration**: Combining diverse talents into a unified, powerful statement
@@ -49,24 +51,28 @@ This isn't just game development - it's cultural contribution through collaborat
 ## Legacy Creation Journey
 
 **Lessons 1-8: "Vision Unification" - Bringing Together Cultural Impact and Collaboration**
+
 - Developing a cultural vision that inspires passionate collaborative commitment
 - Building teams around shared values and meaningful goals
 - Creating collaborative processes that serve both individual expression and cultural impact
 - Understanding how to lead cultural projects that require both artistic and social excellence
 
 **Lessons 9-16: "Collaborative Cultural Development" - Creating Meaningful Art Together**
+
 - Integrating diverse perspectives and talents into unified cultural statements
 - Developing collaborative workflows that support both efficiency and meaningful content creation
 - Creating art, music, and gameplay that work together to communicate important themes
 - Building team dynamics that enhance rather than compromise cultural impact
 
 **Lessons 17-24: "Technical and Cultural Integration" - ZX Spectrum as Cultural Medium**
+
 - Using ZX Spectrum constraints as inspiration for meaningful cultural expression
 - Creating technical solutions that serve cultural goals without compromising artistic vision
 - Developing innovative approaches that demonstrate the cultural potential of 8-bit hardware
 - Understanding how technical excellence can amplify rather than overshadow cultural content
 
 **Lessons 25-32: "Legacy Completion" - Preparing Your Cultural Contribution for the World**
+
 - Final integration of cultural impact, collaborative excellence, and technical achievement
 - Creating documentation and support materials that help others understand and build upon your work
 - Preparing your masterpiece for release in ways that maximize its positive cultural impact

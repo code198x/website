@@ -69,24 +69,28 @@ Push the beeper beyond its intended limits:
 ### Tiers 13-16 Development Roadmap
 
 **Tier 13**: Advanced sound synthesis
+
 - Multi-channel beeper techniques
 - Real-time audio generation
 - Precise timing and frequency control
 - Basic composition tools
 
 **Tier 14**: Performance systems
+
 - Real-time keyboard input handling
 - Live performance capabilities
 - Visual feedback and display systems
 - Recording and playback functionality
 
 **Tier 15**: Professional features
+
 - Complete composition editing tools
 - Advanced musical features and effects
 - Multiple file formats and compatibility
 - User interface refinement
 
 **Tier 16**: Mastery and completion
+
 - Professional-quality optimisation
 - Complete documentation and help systems
 - Final integration and polish

@@ -31,24 +31,28 @@ Create **NES Game Engine Pro** - a comprehensive, modular game engine featuring 
 ## Tier Overview
 
 **Lessons 1-8: Engine Architecture Design**
+
 - Designing modular, extensible game engine architectures
 - Creating reusable component systems and frameworks
 - Professional code organization and structure
 - Scalable system design and integration patterns
 
 **Lessons 9-16: Core Engine Systems**
+
 - Building fundamental engine systems and services
 - Memory management and resource allocation systems
 - Event systems and communication frameworks
 - Professional debugging and profiling infrastructure
 
 **Lessons 17-24: Game-Specific Systems**
+
 - Creating flexible graphics and rendering pipelines
 - Audio system integration and management
 - Input handling and control systems
 - Professional asset management and loading
 
 **Lessons 25-32: Development Tools & Workflow**
+
 - Building development tools and content creation systems
 - Professional testing frameworks and automation
 - Version control integration and project management

@@ -27,6 +27,7 @@ Perfect gameplay feel! With **32 comprehensive lessons**, you'll master the art 
 ## What You'll Build
 
 Continue developing **Cyber Realm** with gameplay perfection:
+
 - Perfectly balanced difficulty progression
 - Responsive controls with ideal game feel
 - Optimized pacing and player engagement
@@ -36,24 +37,28 @@ Continue developing **Cyber Realm** with gameplay perfection:
 ## Tier Overview
 
 **Lessons 1-8: Difficulty Curve Design**
+
 - Mathematical modeling of difficulty progression
 - Adaptive difficulty systems implementation
 - Player skill assessment and response
 - Balancing challenge with accessibility
 
 **Lessons 9-16: Gameplay Feel Optimization**
+
 - Control responsiveness and precision tuning
 - Animation timing and feedback systems
 - Audio-visual feedback optimization
 - Player satisfaction and flow state creation
 
 **Lessons 17-24: Pacing & Engagement**
+
 - Gameplay rhythm and tempo control
 - Tension and release cycle design
 - Player motivation and reward timing
 - Engagement metric tracking and optimization
 
 **Lessons 25-32: Professional Tuning**
+
 - Comprehensive playtesting methodologies
 - Data-driven balancing decisions
 - Iterative refinement processes

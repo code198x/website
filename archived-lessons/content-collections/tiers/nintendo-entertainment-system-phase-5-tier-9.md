@@ -27,6 +27,7 @@ Grab your sword and stock up on potions! With **32 epic lessons**, you'll create
 ## What You'll Build
 
 Create **CRYSTAL QUEST SAGA** - an RPG featuring:
+
 - Heroes that grow stronger with every battle
 - Turn-based combat with strategic depth
 - Towns full of quirky NPCs with vital clues
@@ -36,24 +37,28 @@ Create **CRYSTAL QUEST SAGA** - an RPG featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Numbers Game" - RPG Mathematics**
+
 - Stat systems that feel balanced at all levels
 - Experience curves that keep players motivated
 - Damage formulas that make sense
 - Random encounters that don't annoy
 
 **Lessons 9-16: "Battle Systems" - Combat Excellence**
+
 - Menu-driven battles that flow smoothly
 - Magic systems with spectacular effects
 - Status ailments and strategic elements
 - Boss battles that feel appropriately epic
 
 **Lessons 17-24: "World Building" - Creating Kingdoms**
+
 - Overworld maps that invite exploration
 - Towns with personality and purpose
 - Dungeons that challenge without frustrating
 - Compression tricks to fit it all in memory
 
 **Lessons 25-32: "The Hero's Tale" - Story & Polish**
+
 - Dialogue systems with text compression
 - Quest tracking and progression
 - Shop systems and equipment management

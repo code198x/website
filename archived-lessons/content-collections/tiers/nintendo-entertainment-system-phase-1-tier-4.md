@@ -31,6 +31,7 @@ Complete **Sprite Learn** - your first NES game programmed entirely in 6502 asse
 ## What You'll Complete
 
 Finish a fully functional sprite-based game:
+
 - Complete sprite animation and movement systems
 - Implement responsive controller input
 - Create collision detection and game mechanics
@@ -39,24 +40,28 @@ Finish a fully functional sprite-based game:
 ## Tier Overview
 
 **Lessons 1-8: PPU Sprite System**
+
 - Understanding the Picture Processing Unit architecture
 - Object Attribute Memory (OAM) programming
 - Sprite positioning and attribute control
 - DMA transfers for efficient sprite updates
 
 **Lessons 9-16: Animation Systems**
+
 - Multi-frame sprite animation
 - Animation timing and speed control
 - Creating smooth character movement
 - Building reusable animation frameworks
 
 **Lessons 17-24: Input and Interaction**
+
 - NES controller programming and input polling
 - Responsive control schemes and input buffering
 - Creating interactive gameplay mechanics
 - Building user interface systems
 
 **Lessons 25-32: Game Completion**
+
 - Final integration and optimisation
 - Game loop refinement and timing
 - Polish, feedback, and game feel

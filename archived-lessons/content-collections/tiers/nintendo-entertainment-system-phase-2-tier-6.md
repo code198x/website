@@ -27,6 +27,7 @@ Time to bring enemies to LIFE! 🧠 With **32 intelligence-focused lessons**, yo
 ## What You'll Build
 
 Create **INTELLIGENT ADVERSARY SYSTEM** - a complete AI framework featuring:
+
 - Enemies that react smartly to player behavior 🎯
 - Patrol patterns that feel natural and believable
 - Chase sequences that create exciting tension
@@ -36,24 +37,28 @@ Create **INTELLIGENT ADVERSARY SYSTEM** - a complete AI framework featuring:
 ## Tier Overview
 
 **Lessons 1-8: "Brain Basics" - AI Architecture Foundations**
+
 - State machine design for enemy behaviors
 - Efficient AI update cycles and timing
 - Memory management for multiple AI entities
 - Basic decision-making and condition checking
 
 **Lessons 9-16: "Smart Movement" - Pathfinding and Navigation**
+
 - Simple pathfinding algorithms for NES constraints
 - Obstacle avoidance and terrain navigation
 - Formation movement and group behaviors
 - Efficient distance calculations and spatial awareness
 
 **Lessons 17-24: "Player Interaction" - Reactive AI Systems**
+
 - Player detection using line-of-sight algorithms
 - Chase behaviors that create exciting gameplay
 - Attack timing and targeting systems
 - Defensive behaviors and retreat strategies
 
 **Lessons 25-32: "Behavioral Mastery" - Advanced AI Patterns**
+
 - Complex behavior trees for sophisticated enemies
 - Adaptive difficulty that responds to player skill
 - Coordinated enemy group tactics

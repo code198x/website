@@ -31,6 +31,7 @@ Achieve maximum performance on 1MHz hardware! With **32 comprehensive lessons**,
 ## What You'll Complete
 
 Finish **Mega Maze** with professional optimization throughout:
+
 - Smooth 50fps scrolling with no slowdown
 - Instant collision detection for multiple objects
 - Complex AI running without frame drops
@@ -40,24 +41,28 @@ Finish **Mega Maze** with professional optimization throughout:
 ## Tier Overview
 
 **Lessons 1-8: Cycle Counting Fundamentals**
+
 - Understanding 6502 instruction timing
 - Calculating exact cycle counts for code sections
 - Identifying performance bottlenecks
 - Using cycle counting for optimization
 
 **Lessons 9-16: Memory Access Optimization**
+
 - Page boundary crossing elimination
 - Zero page optimization strategies
 - Efficient memory layout design
 - Cache-friendly data structures
 
 **Lessons 17-24: Advanced Code Optimization**
+
 - Loop unrolling techniques
 - Branch prediction and elimination
 - Instruction reordering for efficiency
 - Algorithm-specific optimizations
 
 **Lessons 25-32: Profiling & Performance Analysis**
+
 - Building profiling tools in assembly
 - Measuring real-world performance
 - Optimization case studies
