@@ -458,9 +458,17 @@
   };
 
   class C64ScreenSimulator {
-    constructor(canvas) {
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    screenMemory: Uint8Array;
+    colorMemory: Uint8Array;
+    charsetMode: number;
+    currentColor: number;
+    colors: string[];
+
+    constructor(canvas: HTMLCanvasElement) {
       this.canvas = canvas;
-      this.ctx = canvas.getContext("2d");
+      this.ctx = canvas.getContext("2d")!;
       this.screenMemory = new Uint8Array(1000); // 40x25 characters
       this.colorMemory = new Uint8Array(1000);
       this.charsetMode = 0; // 0 = uppercase/graphics, 1 = lowercase/uppercase
@@ -499,7 +507,7 @@
       this.refresh();
     }
 
-    poke(address, value, color = null) {
+    poke(address: number, value: number, color: number | null = null) {
       if (address >= 1024 && address <= 2023) {
         const offset = address - 1024;
         this.screenMemory[offset] = value;
@@ -512,7 +520,7 @@
       return false;
     }
 
-    drawCharacter(offset) {
+    drawCharacter(offset: number) {
       const x = (offset % 40) * 8;
       const y = Math.floor(offset / 40) * 8;
       const charCode = this.screenMemory[offset];
@@ -524,7 +532,7 @@
 
       // Get character data
       const charset = this.charsetMode === 0 ? PETSCII_UPPER : PETSCII_UPPER; // For now, only uppercase
-      let charData = charset[baseCode];
+      let charData = (charset as any)[baseCode];
 
       // Fall back to space if character not defined
       if (!charData) {
@@ -554,11 +562,11 @@
       }
     }
 
-    writeText(text, startAddr = 1024) {
+    writeText(text: string, startAddr = 1024) {
       let addr = startAddr;
       for (let i = 0; i < text.length && addr <= 2023; i++) {
         const charCode = text.charCodeAt(i);
-        const petsciiCode = ASCII_TO_PETSCII[charCode] || 32; // Default to space
+        const petsciiCode = (ASCII_TO_PETSCII as any)[charCode] || 32; // Default to space
         this.poke(addr, petsciiCode, this.currentColor);
         addr++;
       }
@@ -568,68 +576,97 @@
   // Add remaining 128-255 (reversed characters) - these are generated programmatically
   for (let i = 128; i < 256; i++) {
     const baseCode = i - 128;
-    if (PETSCII_UPPER[baseCode]) {
-      PETSCII_UPPER[i] = PETSCII_UPPER[baseCode]; // Reversed drawing handled in drawCharacter
+    if ((PETSCII_UPPER as any)[baseCode]) {
+      (PETSCII_UPPER as any)[i] = (PETSCII_UPPER as any)[baseCode]; // Reversed drawing handled in drawCharacter
     }
   }
 
   // Initialize simulator when DOM is ready
   document.addEventListener("DOMContentLoaded", () => {
-    const canvas = document.getElementById("c64-screen");
+    const canvas = document.getElementById("c64-screen") as HTMLCanvasElement;
     const sim = new C64ScreenSimulator(canvas);
 
     // Handle POKE button
-    document.getElementById("poke-btn").addEventListener("click", () => {
-      const addr = parseInt(document.getElementById("address").value);
-      const val = parseInt(document.getElementById("value").value);
-      const color = parseInt(document.getElementById("color-select").value);
+    const pokeBtn = document.getElementById("poke-btn");
+    pokeBtn?.addEventListener("click", () => {
+      const addressInput = document.getElementById("address") as HTMLInputElement;
+      const valueInput = document.getElementById("value") as HTMLInputElement;
+      const colorSelect = document.getElementById("color-select") as HTMLSelectElement;
+      const memInfo = document.getElementById("mem-info");
+      
+      if (addressInput && valueInput && colorSelect && memInfo) {
+        const addr = parseInt(addressInput.value);
+        const val = parseInt(valueInput.value);
+        const color = parseInt(colorSelect.value);
 
-      sim.currentColor = color;
+        sim.currentColor = color;
 
-      if (sim.poke(addr, val, color)) {
-        document.getElementById("mem-info").textContent =
-          `POKE ${addr},${val} | Color: ${color} | Char Set: ${sim.charsetMode === 0 ? "UPPER/GFX" : "LOWER/UPPER"}`;
-      } else {
-        document.getElementById("mem-info").textContent =
-          `Invalid address! Use 1024-2023 for screen memory`;
+        if (sim.poke(addr, val, color)) {
+          memInfo.textContent =
+            `POKE ${addr},${val} | Color: ${color} | Char Set: ${sim.charsetMode === 0 ? "UPPER/GFX" : "LOWER/UPPER"}`;
+        } else {
+          memInfo.textContent =
+            `Invalid address! Use 1024-2023 for screen memory`;
+        }
       }
     });
 
     // Handle clear button
-    document.getElementById("clear-btn").addEventListener("click", () => {
+    const clearBtn = document.getElementById("clear-btn");
+    clearBtn?.addEventListener("click", () => {
       sim.clear();
-      document.getElementById("mem-info").textContent = "Screen cleared";
+      const memInfo = document.getElementById("mem-info");
+      if (memInfo) {
+        memInfo.textContent = "Screen cleared";
+      }
     });
 
     // Handle charset toggle
-    document.getElementById("charset-toggle").addEventListener("change", (e) => {
-      sim.charsetMode = e.target.checked ? 1 : 0;
+    const charsetToggle = document.getElementById("charset-toggle") as HTMLInputElement;
+    charsetToggle?.addEventListener("change", (e) => {
+      sim.charsetMode = (e.target as HTMLInputElement).checked ? 1 : 0;
       sim.refresh();
-      document.getElementById("mem-info").textContent =
-        `Char Set: ${sim.charsetMode === 0 ? "UPPER/GFX" : "LOWER/UPPER"}`;
+      const memInfo = document.getElementById("mem-info");
+      if (memInfo) {
+        memInfo.textContent =
+          `Char Set: ${sim.charsetMode === 0 ? "UPPER/GFX" : "LOWER/UPPER"}`;
+      }
     });
 
     // Handle color selection
-    document.getElementById("color-select").addEventListener("change", (e) => {
-      sim.currentColor = parseInt(e.target.value);
+    const colorSelect = document.getElementById("color-select") as HTMLSelectElement;
+    colorSelect?.addEventListener("change", (e) => {
+      sim.currentColor = parseInt((e.target as HTMLSelectElement).value);
     });
 
     // Handle text input
-    document.getElementById("text-btn").addEventListener("click", () => {
-      const text = document.getElementById("text-input").value;
-      const addr = parseInt(document.getElementById("address").value);
-      sim.writeText(text, addr);
-      document.getElementById("mem-info").textContent = `Wrote "${text}" at address ${addr}`;
+    const textBtn = document.getElementById("text-btn");
+    textBtn?.addEventListener("click", () => {
+      const textInput = document.getElementById("text-input") as HTMLInputElement;
+      const addressInput = document.getElementById("address") as HTMLInputElement;
+      const memInfo = document.getElementById("mem-info");
+      if (textInput && addressInput && memInfo) {
+        const text = textInput.value;
+        const addr = parseInt(addressInput.value);
+        sim.writeText(text, addr);
+        memInfo.textContent = `Wrote "${text}" at address ${addr}`;
+      }
     });
 
     // Handle example buttons
     document.querySelectorAll(".examples button").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const addr = parseInt(btn.dataset.addr);
-        const val = parseInt(btn.dataset.val);
-        document.getElementById("address").value = addr;
-        document.getElementById("value").value = val;
-        document.getElementById("poke-btn").click();
+        const button = btn as HTMLButtonElement;
+        const addr = parseInt(button.dataset.addr || "0");
+        const val = parseInt(button.dataset.val || "0");
+        const addressInput = document.getElementById("address") as HTMLInputElement;
+        const valueInput = document.getElementById("value") as HTMLInputElement;
+        const pokeBtn = document.getElementById("poke-btn");
+        if (addressInput && valueInput && pokeBtn) {
+          addressInput.value = addr.toString();
+          valueInput.value = val.toString();
+          pokeBtn.click();
+        }
       });
     });
   });
