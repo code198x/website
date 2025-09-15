@@ -1,5 +1,319 @@
 import { defineCollection, z } from "astro:content";
 
+// ============================================================================
+// VAULT COLLECTIONS - Encyclopedia of Retro Computing
+// ============================================================================
+
+// Base schema that all vault entries share
+const vaultBaseSchema = z.object({
+  name: z.string(),
+  status: z.enum(['available', 'coming', 'draft']).default('draft'),
+  tags: z.array(z.string()).default([]),
+  description: z.string(),
+  featured: z.boolean().default(false),
+  lastUpdated: z.date().default(() => new Date()),
+  relatedEntries: z.record(
+    z.array(z.object({
+      name: z.string(),
+      slug: z.string(),
+      available: z.boolean().default(false)
+    }))
+  ).optional()
+});
+
+// Hardware (systems, chips, peripherals) - NEW VAULT COLLECTION
+const hardware = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['computer', 'console', 'chip', 'peripheral', 'addon']),
+    year: z.number(),
+    endYear: z.number().optional(),
+    manufacturer: z.string(),
+
+    // Technical specs
+    cpu: z.string().optional(),
+    cpuSpeed: z.string().optional(),
+    memory: z.string().optional(),
+    graphics: z.string().optional(),
+    sound: z.string().optional(),
+    storage: z.string().optional(),
+    media: z.array(z.string()).optional(),
+
+    // Commercial info
+    price: z.string().optional(),
+    unitsSold: z.string().optional(),
+    marketRegions: z.array(z.string()).optional(),
+
+    // For chips/components
+    chipType: z.enum(['processor', 'graphics', 'sound', 'memory', 'custom']).optional(),
+    architecture: z.string().optional(),
+    transistorCount: z.number().optional()
+  })
+});
+
+// People (developers, designers, executives) - ENHANCED VAULT COLLECTION
+const people = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['engineer', 'designer', 'executive', 'artist', 'musician', 'programmer']),
+    birthDate: z.date().optional(),
+    birthPlace: z.string().optional(),
+    nationality: z.string().optional(),
+
+    companies: z.array(z.object({
+      name: z.string(),
+      role: z.string(),
+      period: z.string()
+    })).optional(),
+
+    notableWorks: z.array(z.string()).optional(),
+    awards: z.array(z.string()).optional(),
+    quotes: z.array(z.object({
+      text: z.string(),
+      context: z.string(),
+      year: z.number().optional()
+    })).optional(),
+
+    links: z.object({
+      wikipedia: z.string().url().optional(),
+      personal: z.string().url().optional(),
+      twitter: z.string().optional()
+    }).optional()
+  })
+});
+
+// Companies
+const companies = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['manufacturer', 'publisher', 'developer', 'distributor']),
+    founded: z.number(),
+    defunct: z.number().optional(),
+    headquarters: z.string(),
+
+    founders: z.array(z.string()).optional(),
+    keyPeople: z.array(z.object({
+      name: z.string(),
+      role: z.string(),
+      period: z.string().optional()
+    })).optional(),
+
+    parentCompany: z.string().optional(),
+    subsidiaries: z.array(z.string()).optional(),
+
+    notableProducts: z.array(z.string()).optional(),
+    notableGames: z.array(z.string()).optional(),
+
+    fate: z.string().optional()
+  })
+});
+
+// Software
+const software = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['game', 'application', 'os', 'utility', 'demo', 'language']),
+    year: z.number(),
+    platforms: z.array(z.string()),
+
+    developer: z.string(),
+    publisher: z.string().optional(),
+
+    genre: z.array(z.string()).optional(),
+
+    language: z.string().optional(),
+    size: z.string().optional(),
+    media: z.string().optional(),
+
+    players: z.string().optional(),
+
+    reviews: z.array(z.object({
+      publication: z.string(),
+      score: z.string(),
+      quote: z.string().optional()
+    })).optional(),
+
+    legacy: z.array(z.string()).optional()
+  })
+});
+
+// Techniques
+const techniques = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['graphics', 'sound', 'optimization', 'algorithm', 'hardware-trick']),
+    platforms: z.array(z.string()),
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
+
+    prerequisites: z.array(z.string()).optional(),
+    memoryUsage: z.string().optional(),
+    cpuUsage: z.string().optional(),
+
+    pioneers: z.array(z.string()).optional(),
+    notableUses: z.array(z.string()).optional(),
+
+    tutorials: z.array(z.object({
+      title: z.string(),
+      url: z.string().url()
+    })).optional()
+  })
+});
+
+// Publications
+const publications = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['magazine', 'book', 'manual', 'newsletter', 'fanzine']),
+
+    publisher: z.string(),
+    firstIssue: z.date().optional(),
+    lastIssue: z.date().optional(),
+    frequency: z.enum(['weekly', 'monthly', 'bi-monthly', 'quarterly', 'annual']).optional(),
+
+    issueCount: z.number().optional(),
+    circulation: z.string().optional(),
+
+    author: z.array(z.string()).optional(),
+    isbn: z.string().optional(),
+    pages: z.number().optional(),
+    edition: z.string().optional(),
+
+    focus: z.array(z.string()).optional(),
+    platforms: z.array(z.string()).optional(),
+
+    notableFeatures: z.array(z.string()).optional(),
+    notableContributors: z.array(z.string()).optional(),
+
+    digitalArchive: z.string().url().optional()
+  })
+});
+
+// Events
+const events = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['trade-show', 'launch', 'competition', 'demo-party', 'conference']),
+
+    date: z.date(),
+    endDate: z.date().optional(),
+    recurring: z.boolean().default(false),
+
+    location: z.object({
+      venue: z.string().optional(),
+      city: z.string(),
+      country: z.string()
+    }),
+
+    organizer: z.string().optional(),
+    attendance: z.number().optional(),
+
+    highlights: z.array(z.string()).optional(),
+
+    competitions: z.array(z.object({
+      category: z.string(),
+      winner: z.string(),
+      production: z.string()
+    })).optional(),
+
+    links: z.object({
+      official: z.string().url().optional(),
+      results: z.string().url().optional(),
+      productions: z.string().url().optional()
+    }).optional()
+  })
+});
+
+// Groups
+const groups = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['demo', 'cracking', 'development', 'music', 'art']),
+
+    formed: z.number(),
+    disbanded: z.number().optional(),
+    country: z.string(),
+
+    members: z.array(z.object({
+      handle: z.string(),
+      realName: z.string().optional(),
+      role: z.string(),
+      period: z.string().optional()
+    })).optional(),
+
+    notableReleases: z.array(z.object({
+      name: z.string(),
+      year: z.number(),
+      type: z.string(),
+      platform: z.string()
+    })).optional(),
+
+    affiliates: z.array(z.string()).optional(),
+
+    legacy: z.string().optional()
+  })
+});
+
+// Formats
+const formats = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['file', 'media', 'video', 'audio', 'protocol']),
+
+    extension: z.string().optional(),
+    mimeType: z.string().optional(),
+
+    creator: z.string().optional(),
+    year: z.number().optional(),
+
+    platforms: z.array(z.string()).optional(),
+
+    structure: z.string().optional(),
+    maxSize: z.string().optional(),
+    compression: z.boolean().default(false),
+
+    capacity: z.string().optional(),
+    physicalSize: z.string().optional(),
+
+    tools: z.array(z.object({
+      name: z.string(),
+      platform: z.string(),
+      url: z.string().url().optional()
+    })).optional(),
+
+    successor: z.string().optional()
+  })
+});
+
+// Culture
+const culture = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['scene', 'movement', 'phenomenon', 'community', 'practice']),
+
+    period: z.object({
+      start: z.number(),
+      end: z.number().optional(),
+      peak: z.string().optional()
+    }),
+
+    origins: z.string().optional(),
+    regions: z.array(z.string()).optional(),
+
+    keyFigures: z.array(z.string()).optional(),
+    keyGroups: z.array(z.string()).optional(),
+    keyEvents: z.array(z.string()).optional(),
+
+    characteristics: z.array(z.string()).optional(),
+
+    influence: z.array(z.string()).optional(),
+    modernLegacy: z.string().optional()
+  })
+});
+
+// ============================================================================
+// LESSON/CONTENT COLLECTIONS
+// ============================================================================
+
 // Systems collection - the 4 main vintage computing platforms
 const systems = defineCollection({
   type: "content",
@@ -432,903 +746,42 @@ const games = defineCollection({
   }),
 });
 
-// People collection - Historical figures in computing
-const people = defineCollection({
-  type: "content",
-  schema: z.object({
-    name: z.string(),
-    full_name: z.string().optional(), // Full legal name if different
-    aliases: z.array(z.string()).optional(), // Nicknames, pen names, etc.
-    birth_date: z.date().optional(),
-    birth_place: z.string().optional(),
-    death_date: z.date().optional(),
-    death_place: z.string().optional(),
-    nationality: z.string(),
-
-    // Professional information
-    occupation: z.array(z.string()),
-    education: z
-      .array(
-        z.object({
-          institution: z.string(),
-          degree: z.string().optional(),
-          field: z.string().optional(),
-          year: z.number().optional(),
-        })
-      )
-      .optional(),
-
-    // Career and contributions
-    notable_contributions: z.array(
-      z.object({
-        contribution: z.string(),
-        year: z.number().optional(),
-        context: z.string().optional(), // Additional context about the contribution
-        significance: z.string().optional(),
-      })
-    ),
-
-    // Company relationships
-    companies_founded: z
-      .array(
-        z.object({
-          company: z.string(),
-          year: z.number().optional(),
-          role: z.string().optional(), // "Co-founder", "Founder", etc.
-        })
-      )
-      .optional(),
-
-    companies_worked_for: z
-      .array(
-        z.object({
-          company: z.string(),
-          role: z.string().optional(),
-          start_year: z.number().optional(),
-          end_year: z.number().optional(),
-          achievements: z.array(z.string()).optional(),
-        })
-      )
-      .optional(),
-
-    // Recognition and impact
-    awards: z
-      .array(
-        z.object({
-          name: z.string(),
-          year: z.number().optional(),
-          organization: z.string().optional(),
-          reason: z.string().optional(),
-        })
-      )
-      .optional(),
-
-    patents: z
-      .array(
-        z.object({
-          title: z.string(),
-          number: z.string().optional(),
-          year: z.number().optional(),
-          description: z.string().optional(),
-        })
-      )
-      .optional(),
-
-    publications: z
-      .array(
-        z.object({
-          title: z.string(),
-          type: z.enum(["book", "paper", "article", "manual"]),
-          year: z.number().optional(),
-          co_authors: z.array(z.string()).optional(),
-        })
-      )
-      .optional(),
-
-    // Personal and contextual information
-    personal_story: z.string().optional(), // Interesting personal background
-    career_highlights: z.array(z.string()).optional(),
-    philosophy: z.string().optional(), // Their approach to work/technology
-    influence_on_others: z.array(z.string()).optional(), // People they mentored/influenced
-
-    // Legacy and modern relevance
-    legacy: z.string().optional(),
-    modern_relevance: z.string().optional(),
-    continued_influence: z.array(z.string()).optional(),
-
-    // Educational value
-    educational_significance: z
-      .object({
-        lessons_for_students: z.array(z.string()).optional(),
-        programming_concepts: z.array(z.string()).optional(),
-        business_lessons: z.array(z.string()).optional(),
-      })
-      .optional(),
-
-    // Relationships to other vault content
-    collaborated_with: z.array(z.string()).optional(), // Other people
-    influenced_by: z.array(z.string()).optional(),
-    related_technologies: z.array(z.string()).optional(),
-    related_events: z.array(z.string()).optional(),
-
-    // Media and resources
-    image: z.string().optional(),
-    quotes: z
-      .array(
-        z.object({
-          quote: z.string(),
-          context: z.string().optional(),
-          year: z.number().optional(),
-        })
-      )
-      .optional(),
-
-    external_links: z
-      .array(
-        z.object({
-          title: z.string(),
-          url: z.string(),
-          type: z
-            .enum(["biography", "interview", "obituary", "documentary", "archive", "official"])
-            .optional(),
-        })
-      )
-      .optional(),
-  }),
-});
-
-// Companies collection - Computing companies
-const companies = defineCollection({
-  type: "content",
-  schema: z.object({
-    name: z.string(),
-    legal_name: z.string().optional(), // Full legal corporate name
-    alternative_names: z.array(z.string()).optional(), // Previous names, subsidiaries, brands
-
-    // Corporate information
-    founded: z.date(),
-    dissolved: z.date().optional(),
-    headquarters: z.string(),
-    country: z.string(),
-    headquarters_history: z
-      .array(
-        z.object({
-          location: z.string(),
-          start_year: z.number(),
-          end_year: z.number().optional(),
-        })
-      )
-      .optional(),
-
-    // People and leadership
-    founders: z.array(
-      z.object({
-        name: z.string(),
-        role: z.string().optional(), // "Co-founder", "Founder and CEO", etc.
-        background: z.string().optional(),
-      })
-    ),
-
-    key_people: z
-      .array(
-        z.object({
-          name: z.string(),
-          role: z.string(),
-          tenure: z.string().optional(), // "1975-1982", "1980-present"
-          contributions: z.array(z.string()).optional(),
-        })
-      )
-      .optional(),
-
-    // Business information
-    business_focus: z.array(z.string()),
-    business_model: z.string().optional(), // How they made money
-    target_markets: z.array(z.string()).optional(), // "Home users", "Business", "Education"
-
-    // Products and services
-    notable_products: z.array(
-      z.object({
-        name: z.string(),
-        type: z.string(), // "Computer", "Software", "Peripheral"
-        year: z.number().optional(),
-        significance: z.string().optional(),
-        commercial_success: z
-          .enum(["major_hit", "moderate_success", "commercial_failure"])
-          .optional(),
-      })
-    ),
-
-    product_lines: z
-      .array(
-        z.object({
-          name: z.string(),
-          category: z.string(),
-          years_active: z.string(), // "1975-1982"
-          description: z.string().optional(),
-        })
-      )
-      .optional(),
-
-    // Financial and corporate history
-    initial_funding: z
-      .object({
-        amount: z.string(),
-        currency: z.string(),
-        investors: z.array(z.string()).optional(),
-      })
-      .optional(),
-
-    revenue_peak: z
-      .object({
-        amount: z.string(),
-        currency: z.string(),
-        year: z.number(),
-      })
-      .optional(),
-
-    employee_count: z
-      .object({
-        peak: z.number().optional(),
-        year: z.number().optional(),
-      })
-      .optional(),
-
-    // Corporate relationships
-    parent_company: z.string().optional(),
-    subsidiaries: z.array(z.string()).optional(),
-    partnerships: z
-      .array(
-        z.object({
-          partner: z.string(),
-          type: z.string(), // "OEM", "Distribution", "Technology"
-          description: z.string().optional(),
-        })
-      )
-      .optional(),
-
-    competitors: z.array(z.string()).optional(),
-
-    // End of company
-    acquired_by: z.string().optional(),
-    acquisition_date: z.date().optional(),
-    acquisition_price: z
-      .object({
-        amount: z.string(),
-        currency: z.string(),
-      })
-      .optional(),
-
-    dissolution_reason: z.string().optional(), // Why the company ended
-    assets_disposition: z.string().optional(), // What happened to IP, employees, etc.
-
-    // Impact and legacy
-    market_impact: z.string().optional(),
-    technical_innovations: z.array(z.string()).optional(),
-    industry_influence: z.string().optional(),
-    cultural_significance: z.string().optional(),
-    legacy: z.string().optional(),
-
-    // Educational relevance
-    educational_value: z
-      .object({
-        business_lessons: z.array(z.string()).optional(),
-        technical_contributions: z.array(z.string()).optional(),
-        industry_insights: z.array(z.string()).optional(),
-      })
-      .optional(),
-
-    // Timeline and milestones
-    major_milestones: z
-      .array(
-        z.object({
-          date: z.date(),
-          event: z.string(),
-          significance: z.string().optional(),
-        })
-      )
-      .optional(),
-
-    // Related content
-    related_people: z.array(z.string()).optional(),
-    related_companies: z.array(z.string()).optional(),
-    related_events: z.array(z.string()).optional(),
-
-    // Media and resources
-    logo: z.string().optional(),
-    historical_photos: z
-      .array(
-        z.object({
-          url: z.string(),
-          caption: z.string(),
-          year: z.number().optional(),
-        })
-      )
-      .optional(),
-
-    external_links: z
-      .array(
-        z.object({
-          title: z.string(),
-          url: z.string(),
-          type: z
-            .enum(["official", "history", "archive", "documentary", "news", "analysis"])
-            .optional(),
-        })
-      )
-      .optional(),
-  }),
-});
-
-// Software collection - Notable applications and games
-const software = defineCollection({
-  type: "content",
-  schema: z.object({
-    name: z.string(),
-    alternative_names: z.array(z.string()).optional(), // Regional variations, working titles
-    type: z.enum([
-      "game",
-      "application",
-      "utility",
-      "operating_system",
-      "programming_language",
-      "demo",
-      "educational",
-    ]),
-
-    // Original version information
-    original_platform: z.string(), // The platform it was first created for
-    original_developer: z.array(
-      z.object({
-        name: z.string(),
-        role: z.string().optional(), // "Programming", "Graphics", "Music", "Design"
-      })
-    ),
-    original_publisher: z.string().optional(),
-    original_release_date: z.date(),
-    development_time: z.string().optional(), // "6 months", "2 years"
-    development_budget: z.string().optional(), // When known
-
-    // Platform-specific releases
-    platform_releases: z.array(
-      z.object({
-        system: z.string(), // e.g., "commodore-64", "zx-spectrum"
-        developer: z.array(
-          z.object({
-            name: z.string(),
-            role: z.string().optional(),
-          })
-        ),
-        publisher: z.string().optional(),
-        distributor: z.string().optional(), // Often different from publisher
-        release_date: z.date(),
-        regions: z.array(z.string()).optional(), // ["UK", "US", "Europe", "Japan"]
-        version: z.string().optional(), // "1.0", "Enhanced Edition", etc.
-
-        // Technical details
-        memory_requirements: z.string().optional(), // "48K", "128K", "512K"
-        storage_format: z.array(z.string()).optional(), // ["Cassette", "Disk", "Cartridge"]
-        copy_protection: z.string().optional(), // Type of copy protection used
-        loading_time: z.string().optional(), // "5 minutes", "30 seconds"
-
-        // Quality and differences
-        technical_notes: z.string().optional(),
-        significant_changes: z.array(z.string()).optional(),
-        port_quality: z.enum(["excellent", "good", "average", "poor", "broken"]).optional(),
-        port_notes: z.string().optional(), // Why it's good/poor
-
-        // Pricing
-        original_price: z
-          .object({
-            amount: z.string(),
-            currency: z.string(), // "GBP", "USD", "DEM"
-          })
-          .optional(),
-      })
-    ),
-
-    // Classification
-    genre: z.string().optional(), // For games
-    subgenre: z.array(z.string()).optional(), // ["Turn-based", "Real-time", "Puzzle"]
-    category: z.string().optional(), // For applications
-    target_audience: z.array(z.string()).optional(), // ["Children", "Adults", "Professionals", "Hobbyists"]
-
-    // Content
-    description: z.string(),
-    significance: z.string(),
-    gameplay_description: z.string().optional(), // For games
-    features: z.array(z.string()).optional(), // Key features/selling points
-
-    // Technical and cultural impact
-    technical_innovations: z.array(z.string()).optional(),
-    programming_techniques: z.array(z.string()).optional(), // "Sprite multiplexing", "Raster interrupts"
-    hardware_pushed: z.array(z.string()).optional(), // What hardware limits it pushed
-    cultural_impact: z.string().optional(),
-    influence_on_industry: z.string().optional(),
-
-    // Commercial performance
-    sales_figures: z
-      .object({
-        total: z.string().optional(),
-        by_platform: z
-          .array(
-            z.object({
-              system: z.string(),
-              sales: z.string(),
-              timeframe: z.string().optional(), // "First year", "Lifetime"
-            })
-          )
-          .optional(),
-        commercial_success: z
-          .enum(["major_hit", "moderate_success", "commercial_failure", "cult_classic"])
-          .optional(),
-      })
-      .optional(),
-
-    // Reception and recognition
-    awards: z
-      .array(
-        z.object({
-          name: z.string(),
-          year: z.number().optional(),
-          category: z.string().optional(),
-        })
-      )
-      .optional(),
-
-    contemporary_reviews: z
-      .array(
-        z.object({
-          publication: z.string(),
-          score: z.string().optional(), // "8/10", "90%", "5 stars"
-          system: z.string().optional(),
-          year: z.number().optional(),
-          quote: z.string().optional(), // Notable review quotes
-        })
-      )
-      .optional(),
-
-    modern_reception: z
-      .object({
-        retrospective_rating: z.string().optional(),
-        historical_significance: z.string().optional(),
-        modern_playability: z.enum(["excellent", "good", "dated", "unplayable"]).optional(),
-      })
-      .optional(),
-
-    // Development context
-    development_story: z.string().optional(), // Interesting development anecdotes
-    development_challenges: z.array(z.string()).optional(),
-    cancelled_features: z.array(z.string()).optional(),
-    development_tools: z.array(z.string()).optional(), // What tools were used
-
-    // Legacy and preservation
-    source_code_availability: z
-      .enum(["available", "partially_available", "lost", "proprietary"])
-      .optional(),
-    preservation_status: z
-      .enum(["well_preserved", "partially_preserved", "rare", "lost"])
-      .optional(),
-    modern_availability: z
-      .array(
-        z.object({
-          platform: z.string(), // "Steam", "GOG", "Emulation"
-          notes: z.string().optional(),
-        })
-      )
-      .optional(),
-
-    // Media and documentation
-    screenshots: z
-      .array(
-        z.object({
-          url: z.string(),
-          system: z.string(),
-          caption: z.string().optional(),
-          type: z.enum(["gameplay", "title_screen", "loading_screen", "manual_page"]).optional(),
-        })
-      )
-      .optional(),
-
-    videos: z
-      .array(
-        z.object({
-          url: z.string(),
-          title: z.string(),
-          type: z.enum(["gameplay", "documentary", "interview", "commercial"]).optional(),
-        })
-      )
-      .optional(),
-
-    manuals: z
-      .array(
-        z.object({
-          url: z.string(),
-          system: z.string(),
-          language: z.string().optional(),
-          type: z.enum(["user_manual", "reference_card", "hint_book"]).optional(),
-        })
-      )
-      .optional(),
-
-    // Relationships
-    part_of_series: z.string().optional(), // Series name
-    sequels: z.array(z.string()).optional(),
-    prequels: z.array(z.string()).optional(),
-    related_software: z.array(z.string()).optional(),
-    inspired_by: z.array(z.string()).optional(),
-    influenced: z.array(z.string()).optional(),
-
-    // Educational relevance
-    educational_value: z
-      .object({
-        programming_concepts: z.array(z.string()).optional(),
-        historical_significance: z.string().optional(),
-        technical_learning: z.array(z.string()).optional(),
-      })
-      .optional(),
-
-    // External resources
-    external_links: z
-      .array(
-        z.object({
-          title: z.string(),
-          url: z.string(),
-          type: z
-            .enum(["official", "wiki", "review", "technical", "preservation", "community"])
-            .optional(),
-        })
-      )
-      .optional(),
-
-    // Metadata
-    order: z.number(),
-  }),
-});
-
-// Setup collection - Development environment setup guides
 const setup = defineCollection({
   type: "content",
   schema: z.object({
     title: z.string(),
     description: z.string(),
-    system: z.string(), // References system slug
-    difficulty: z.enum(["beginner", "intermediate", "advanced"]).default("beginner"),
-    estimated_time: z.string(), // e.g., "15-30 minutes"
-    prerequisites: z.array(z.string()).optional(),
-    tools_covered: z.array(z.string()).optional(),
-    platforms_supported: z.array(z.string()).optional(), // ["Windows", "macOS", "Linux"]
-    docker_image: z.string().optional(), // Docker image name if applicable
+    system: z.string(),
+    difficulty: z.string(),
+    estimated_time: z.string(),
+    prerequisites: z.array(z.string()),
+    tools_covered: z.array(z.string()),
+    platforms_supported: z.array(z.string()),
+    docker_image: z.string(),
     order: z.number(),
-  }),
-});
-
-// Techniques collection - Programming and hardware techniques
-const techniques = defineCollection({
-  type: "content",
-  schema: z.object({
-    name: z.string(),
-    alternative_names: z.array(z.string()).optional(), // Other terms for the same technique
-    
-    // Classification
-    category: z.enum([
-      "graphics",
-      "audio",
-      "memory",
-      "optimization",
-      "hardware",
-      "input",
-      "storage",
-      "networking",
-      "demo_effects"
-    ]),
-    subcategory: z.string().optional(),
-    difficulty: z.enum(["beginner", "intermediate", "advanced", "expert"]),
-    
-    // Technical details
-    description: z.string(),
-    technical_explanation: z.string(), // How it works technically
-    implementation_notes: z.string().optional(), // Practical implementation advice
-    
-    // Platform specifics
-    applicable_systems: z.array(z.string()), // Which systems this works on
-    system_specific_implementations: z.array(
-      z.object({
-        system: z.string(),
-        implementation: z.string(),
-        hardware_requirements: z.string().optional(),
-        performance_characteristics: z.string().optional(),
-      })
-    ).optional(),
-    
-    // Historical context
-    first_used: z.date().optional(),
-    invented_by: z.string().optional(), // Person or group who pioneered it
-    popularized_by: z.array(z.string()).optional(), // Games/demos that made it famous
-    evolution: z.string().optional(), // How the technique evolved over time
-    
-    // Code examples
-    code_examples: z.array(
-      z.object({
-        system: z.string(),
-        language: z.string(), // "6502 asm", "Z80 asm", "BASIC"
-        code: z.string(),
-        explanation: z.string(),
-      })
-    ).optional(),
-    
-    // Performance characteristics
-    cpu_cycles: z.string().optional(), // Typical cycle cost
-    memory_usage: z.string().optional(), // RAM requirements
-    timing_critical: z.boolean().optional(), // Whether timing is crucial
-    interrupt_usage: z.boolean().optional(), // Whether it uses interrupts
-    
-    // Use cases
-    common_uses: z.array(z.string()),
-    advantages: z.array(z.string()),
-    disadvantages: z.array(z.string()),
-    alternatives: z.array(z.string()).optional(), // Alternative techniques
-    
-    // Notable implementations
-    famous_examples: z.array(
-      z.object({
-        software: z.string(),
-        year: z.number().optional(),
-        description: z.string(), // How it was used
-        significance: z.string().optional(),
-      })
-    ).optional(),
-    
-    // Modern relevance
-    modern_equivalent: z.string().optional(), // Modern version of this technique
-    still_relevant: z.boolean().optional(),
-    educational_value: z.string().optional(),
-    
-    // Learning resources
-    prerequisites: z.array(z.string()).optional(), // What to learn first
-    related_techniques: z.array(z.string()).optional(),
-    learning_path: z.array(z.string()).optional(), // Suggested learning order
-    
-    // Relationships
-    derived_from: z.array(z.string()).optional(), // Techniques this builds on
-    led_to: z.array(z.string()).optional(), // Techniques this inspired
-    related_hardware: z.array(z.string()).optional(), // Specific chips/hardware
-    
-    // Media and resources
-    diagrams: z.array(
-      z.object({
-        url: z.string(),
-        caption: z.string(),
-        type: z.enum(["timing", "memory", "visual", "flow"]).optional(),
-      })
-    ).optional(),
-    
-    external_links: z.array(
-      z.object({
-        title: z.string(),
-        url: z.string(),
-        type: z.enum(["tutorial", "analysis", "example", "documentation"]).optional(),
-      })
-    ).optional(),
-    
-    // Metadata
-    order: z.number(),
-  }),
-});
-
-// Events collection - Historical timeline events
-const events = defineCollection({
-  type: "content",
-  schema: z.object({
-    title: z.string(),
-    alternative_names: z.array(z.string()).optional(), // Alternative names for the event
-
-    // Temporal information
-    date: z.date(),
-    end_date: z.date().optional(), // For events spanning multiple days/years
-    duration: z.string().optional(), // "3 days", "6 months", etc.
-    date_precision: z.enum(["exact", "approximate", "year_only", "decade_only"]).optional(),
-
-    // Categorisation
-    category: z.enum([
-      "Technology",
-      "Gaming History",
-      "World History",
-      "Computing",
-      "Gaming",
-      "Business",
-      "Cultural",
-      "Political",
-      "Scientific",
-    ]),
-    subcategory: z.string().optional(), // More specific categorisation
-    event_type: z
-      .enum([
-        "announcement",
-        "release",
-        "founding",
-        "acquisition",
-        "conference",
-        "innovation",
-        "milestone",
-        "crisis",
-        "breakthrough",
-      ])
-      .optional(),
-
-    // Location and context
-    location: z.string().optional(),
-    specific_venue: z.string().optional(), // "San Francisco Civic Center", "CES Convention"
-    geographic_scope: z
-      .enum(["local", "regional", "national", "international", "global"])
-      .optional(),
-
-    // Content
-    description: z.string(),
-    background_context: z.string().optional(), // What led to this event
-    key_details: z.array(z.string()).optional(), // Important specific details
-    outcomes: z.array(z.string()).optional(), // What resulted from this event
-
-    // Significance and impact
-    significance: z.string(),
-    immediate_impact: z.string().optional(),
-    long_term_impact: z.string().optional(),
-    impact_on_computing: z.string().optional(),
-    impact_on_society: z.string().optional(),
-    economic_impact: z.string().optional(),
-
-    // People involved
-    key_figures: z
-      .array(
-        z.object({
-          name: z.string(),
-          role: z.string(), // "Presenter", "Founder", "CEO", "Inventor"
-          contribution: z.string().optional(),
-        })
-      )
-      .optional(),
-
-    attendees: z
-      .object({
-        estimated_count: z.number().optional(),
-        notable_attendees: z.array(z.string()).optional(),
-      })
-      .optional(),
-
-    // Organisations involved
-    primary_organisations: z.array(z.string()).optional(), // Main companies/orgs involved
-    participating_organisations: z.array(z.string()).optional(),
-    sponsoring_organisations: z.array(z.string()).optional(),
-
-    // Technical and business details
-    technologies_involved: z.array(z.string()).optional(),
-    products_announced: z
-      .array(
-        z.object({
-          name: z.string(),
-          company: z.string(),
-          significance: z.string().optional(),
-        })
-      )
-      .optional(),
-
-    financial_details: z
-      .object({
-        amounts: z.array(
-          z.object({
-            amount: z.string(),
-            currency: z.string(),
-            context: z.string(), // "Acquisition price", "Investment amount"
-          })
-        ),
-      })
-      .optional(),
-
-    // Historical context
-    preceded_by: z.array(z.string()).optional(), // Events that led to this
-    followed_by: z.array(z.string()).optional(), // Events that resulted from this
-    contemporary_events: z.array(z.string()).optional(), // Other events happening around the same time
-
-    // Documentation and evidence
-    primary_sources: z
-      .array(
-        z.object({
-          title: z.string(),
-          type: z.enum(["newspaper", "press_release", "interview", "document", "video", "audio"]),
-          url: z.string().optional(),
-          date: z.date().optional(),
-        })
-      )
-      .optional(),
-
-    media_coverage: z
-      .array(
-        z.object({
-          publication: z.string(),
-          title: z.string(),
-          url: z.string().optional(),
-          type: z.enum(["news", "analysis", "review", "retrospective"]).optional(),
-        })
-      )
-      .optional(),
-
-    // Educational value
-    educational_significance: z
-      .object({
-        lessons_learned: z.array(z.string()).optional(),
-        business_lessons: z.array(z.string()).optional(),
-        technical_lessons: z.array(z.string()).optional(),
-        historical_lessons: z.array(z.string()).optional(),
-      })
-      .optional(),
-
-    teaching_applications: z.array(z.string()).optional(), // How this event can be used in education
-
-    // Relationships
-    related_people: z.array(z.string()).optional(),
-    related_companies: z.array(z.string()).optional(),
-    related_systems: z.array(z.string()).optional(),
-    related_software: z.array(z.string()).optional(),
-    related_events: z.array(z.string()).optional(),
-
-    // Modern relevance
-    modern_parallels: z.array(z.string()).optional(), // Similar events in modern times
-    continuing_influence: z.string().optional(),
-    commemoration: z
-      .array(
-        z.object({
-          type: z.string(), // "Anniversary", "Documentary", "Museum exhibit"
-          description: z.string(),
-          year: z.number().optional(),
-        })
-      )
-      .optional(),
-
-    // Media and resources
-    images: z
-      .array(
-        z.object({
-          url: z.string(),
-          caption: z.string(),
-          type: z.enum(["photograph", "document", "newspaper", "advertisement"]).optional(),
-          credit: z.string().optional(),
-        })
-      )
-      .optional(),
-
-    videos: z
-      .array(
-        z.object({
-          url: z.string(),
-          title: z.string(),
-          type: z.enum(["news_footage", "documentary", "interview", "recreation"]).optional(),
-        })
-      )
-      .optional(),
-
-    external_links: z
-      .array(
-        z.object({
-          title: z.string(),
-          url: z.string(),
-          type: z
-            .enum(["news", "analysis", "academic", "archive", "documentary", "commemoration"])
-            .optional(),
-        })
-      )
-      .optional(),
   }),
 });
 
 export const collections = {
+  // Lesson/Content collections
   systems,
   phases,
   tiers,
   lessons,
-  games,
+  setup,
+
+  // Vault collections (comprehensive knowledge base)
+  hardware,
   people,
   companies,
   software,
   techniques,
+  publications,
   events,
-  setup,
+  groups,
+  formats,
+  culture,
+
+  // Legacy collections (to be migrated)
+  games,
 };
