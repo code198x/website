@@ -1,77 +1,25 @@
 ---
-// Global Search Component - searches across lessons and all Vault categories
+// Global Search Component - loads data dynamically when opened
+import { getCollection } from 'astro:content';
 
-// This would normally pull from content collections
-// For now, using mock data to demonstrate the structure
-const searchableContent = [
-  // Lessons
-  {
+// Get lessons from content collections at build time
+let lessons = [];
+try {
+  const allLessons = await getCollection('lessons');
+  lessons = allLessons.map(lesson => ({
     category: 'lesson',
     type: 'lesson',
-    name: 'Hello Machine',
-    slug: '/lessons/commodore-64/phase-1/tier-1/01-hello-machine',
-    description: 'Your first C64 assembly program',
-    tags: ['beginner', 'C64', 'assembly'],
-    system: 'commodore-64',
-    phase: 1,
-    tier: 1
-  },
-  {
-    category: 'lesson',
-    type: 'lesson',
-    name: 'Understanding Memory',
-    slug: '/lessons/commodore-64/phase-1/tier-1/02-memory-basics',
-    description: 'How the C64 organizes its 64KB',
-    tags: ['memory', 'C64', 'fundamentals'],
-    system: 'commodore-64',
-    phase: 1,
-    tier: 1
-  },
-  // Hardware
-  {
-    category: 'hardware',
-    type: 'computer',
-    name: 'Commodore 64',
-    slug: '/vault/hardware/commodore-64',
-    description: 'The best-selling computer model of all time',
-    tags: ['8-bit', 'bestseller', 'SID', 'demoscene']
-  },
-  {
-    category: 'hardware',
-    type: 'chip',
-    name: 'MOS 6581 SID',
-    slug: '/vault/hardware/mos-6581-sid',
-    description: 'Revolutionary sound synthesis chip',
-    tags: ['sound', 'synthesizer', 'C64']
-  },
-  // People
-  {
-    category: 'people',
-    type: 'executive',
-    name: 'Jack Tramiel',
-    slug: '/vault/people/jack-tramiel',
-    description: 'Founder of Commodore - "Computers for the masses, not the classes"',
-    tags: ['Commodore', 'visionary', 'businessman']
-  },
-  // Software
-  {
-    category: 'software',
-    type: 'game',
-    name: 'The Last Ninja',
-    slug: '/vault/software/the-last-ninja',
-    description: 'Isometric ninja adventure that pushed the C64 to its limits',
-    tags: ['action', 'isometric', 'C64']
-  },
-  // Techniques
-  {
-    category: 'techniques',
-    type: 'graphics',
-    name: 'Sprite Multiplexing',
-    slug: '/vault/techniques/sprite-multiplexing',
-    description: 'Displaying more sprites than hardware allows',
-    tags: ['sprites', 'graphics', 'C64', 'VIC-II']
-  }
-];
+    name: lesson.data.title,
+    slug: `/lessons/${lesson.slug}`,
+    description: lesson.data.description || '',
+    tags: lesson.data.tags || [],
+    system: lesson.slug.split('/')[0],
+    phase: lesson.data.phase,
+    tier: lesson.data.tier
+  }));
+} catch (e) {
+  // Lessons collection is empty or doesn't exist
+}
 ---
 
 <!-- Global Search Modal -->
@@ -101,17 +49,33 @@ const searchableContent = [
             <span class="quick-link-icon">📚</span>
             <span>All Lessons</span>
           </a>
-          <a href="/vault/hardware" class="quick-link">
-            <span class="quick-link-icon">🖥️</span>
-            <span>Hardware</span>
-          </a>
           <a href="/vault/search" class="quick-link">
             <span class="quick-link-icon">🔍</span>
             <span>Advanced Search</span>
           </a>
+          <a href="/vault/hardware" class="quick-link">
+            <span class="quick-link-icon">🖥️</span>
+            <span>Hardware</span>
+          </a>
+          <a href="/vault/people" class="quick-link">
+            <span class="quick-link-icon">👤</span>
+            <span>People</span>
+          </a>
+          <a href="/vault/games" class="quick-link">
+            <span class="quick-link-icon">🎮</span>
+            <span>Games</span>
+          </a>
+          <a href="/vault/software" class="quick-link">
+            <span class="quick-link-icon">💿</span>
+            <span>Software</span>
+          </a>
           <a href="/vault/timeline" class="quick-link">
             <span class="quick-link-icon">📅</span>
             <span>Timeline</span>
+          </a>
+          <a href="/vault/techniques" class="quick-link">
+            <span class="quick-link-icon">💡</span>
+            <span>Techniques</span>
           </a>
         </div>
       </div>
@@ -140,12 +104,14 @@ const searchableContent = [
   </div>
 </div>
 
-<script is:inline define:vars={{ searchableContent }}>
+<script is:inline define:vars={{ lessons }}>
   // Global search functionality
   let searchModal = null;
   let searchInput = null;
   let resultsContainer = null;
   let selectedIndex = -1;
+  let searchableContent = [];
+  let vaultDataLoaded = false;
 
   function initGlobalSearch() {
     searchModal = document.getElementById('global-search-modal');
@@ -172,8 +138,41 @@ const searchableContent = [
     document.addEventListener('keydown', handleKeyboard);
   }
 
-  function openSearch() {
+  async function loadVaultData() {
+    if (vaultDataLoaded) return;
+
+    try {
+      // Dynamically import vault data only when needed
+      const module = await import('/src/data/vault-data.js');
+      const vaultData = module.vaultData;
+
+      // Convert vault data to searchable format
+      const vaultSearchable = vaultData.map(item => ({
+        category: item.c,
+        type: item.t || 'unknown',
+        name: item.n,
+        slug: `/vault/${item.c}/${item.s}`,
+        description: item.d,
+        tags: item.g || [],
+        year: item.y
+      }));
+
+      // Combine lessons and vault data
+      searchableContent = [...lessons, ...vaultSearchable];
+      vaultDataLoaded = true;
+    } catch (error) {
+      console.error('Failed to load vault data:', error);
+      // Fall back to just lessons
+      searchableContent = lessons;
+    }
+  }
+
+  async function openSearch() {
     if (!searchModal) return;
+
+    // Load vault data if not already loaded
+    await loadVaultData();
+
     searchModal.setAttribute('aria-hidden', 'false');
     searchModal.classList.add('is-open');
     searchInput?.focus();
@@ -286,11 +285,19 @@ const searchableContent = [
 
   function getIcon(category, type) {
     const icons = {
-      hardware: { computer: '🖥️', chip: '💾', peripheral: '🖱️', default: '🔧' },
-      people: { executive: '💼', engineer: '👷', default: '👤' },
-      software: { game: '🎮', application: '💿', default: '💾' },
-      techniques: { graphics: '🎨', sound: '🔊', default: '💡' },
-      companies: { manufacturer: '🏭', default: '🏢' },
+      hardware: { computer: '🖥️', chip: '💾', console: '🎮', peripheral: '🖱️', default: '🔧' },
+      people: { executive: '💼', engineer: '👷', designer: '🎨', programmer: '💻', default: '👤' },
+      software: { game: '🎮', graphics: '🎨', music: '🎵', application: '💿', default: '💾' },
+      techniques: { graphics: '🎨', sound: '🔊', programming: '💻', memory: '💾', default: '💡' },
+      companies: { hardware: '🏭', software: '💿', publisher: '📦', default: '🏢' },
+      games: { action: '⚔️', adventure: '🗺️', strategy: '♟️', default: '🎮' },
+      emulators: { emulator: '💾', default: '💾' },
+      groups: { demo: '🎨', cracking: '🔓', default: '👥' },
+      publications: { magazine: '📖', book: '📘', newsletter: '📰', default: '📚' },
+      events: { demoparty: '🎪', conference: '🎯', default: '🎪' },
+      formats: { disk: '💿', audio: '🎵', graphics: '🎨', archive: '📦', default: '💾' },
+      culture: { movement: '🌐', scene: '🎭', default: '🌐' },
+      lesson: '📚',
       default: '📁'
     };
 
