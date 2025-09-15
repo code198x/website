@@ -230,20 +230,13 @@ export class VaultSearch {
     const tags = entry.g || entry.tags || [];
     const year = entry.y || entry.year;
     const slug = entry.s || entry.slug;
-    const status = entry.st || entry.status || 'available';
 
     const icon = this.getEntryIcon(category, type);
     const categoryName = this.getCategoryName(category);
 
-    const href = status === 'available'
-      ? `/vault/${category}/${slug}`
-      : '#';
+    const href = `/vault/${category}/${slug}`;
 
-    const statusBadge = status !== 'available'
-      ? `<div class="entry-status entry-status--${status}">
-           ${status === 'coming' ? 'Coming Soon' : 'Draft'}
-         </div>`
-      : '';
+    const statusBadge = '';
 
     const tagHtml = tags.slice(0, 5).map(tag =>
       `<span class="entry-tag">${tag}</span>`
@@ -255,7 +248,7 @@ export class VaultSearch {
 
     return `
       <div class="result-card">
-        <a href="${href}" class="entry-card entry-card--${status}">
+        <a href="${href}" class="entry-card">
           <div class="entry-header">
             <span class="entry-icon">${icon}</span>
             <div class="entry-info">
