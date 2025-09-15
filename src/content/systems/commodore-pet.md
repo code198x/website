@@ -34,7 +34,7 @@ total_games: 0
 estimated_duration: "N/A"
 cpu_architecture: "6502"
 difficulty_level: "historical"
-status: "vault"
+status: "planned"
 order: 105
 ---
 

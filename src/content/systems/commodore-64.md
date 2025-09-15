@@ -82,6 +82,7 @@ emulators:
     accuracy: "high"
 historical_significance: "The C64 is the highest-selling single computer model of all time, introducing millions to computing and gaming. Its SID chip revolutionized computer audio, and its accessible BASIC programming language inspired a generation of programmers."
 description: "The world's best-selling single computer model, featuring the legendary SID sound chip and versatile graphics capabilities."
+status: "planned"
 order: 1
 ---
 

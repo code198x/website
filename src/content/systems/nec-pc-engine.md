@@ -96,7 +96,7 @@ total_games: 1
 estimated_duration: "3-4 months"
 cpu_architecture: "65C02"
 difficulty_level: "intermediate"
-status: "planned"
+status: "vault"
 order: 51
 ---
 

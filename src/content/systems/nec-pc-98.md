@@ -100,7 +100,7 @@ total_games: 20
 estimated_duration: "2-4 months"
 cpu_architecture: "x86"
 difficulty_level: "advanced"
-status: "planned"
+status: "vault"
 architecture_family: "x86"
 recommended_next: ["ibm-pc", "sharp-x68000"]
 

@@ -130,7 +130,7 @@ total_games: 15
 estimated_duration: "6-12 weeks"
 cpu_architecture: "6809"
 difficulty_level: "intermediate"
-status: "planned"
+status: "vault"
 order: 33
 ---
 

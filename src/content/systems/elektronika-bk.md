@@ -115,7 +115,7 @@ total_games: 8
 estimated_duration: "2-4 weeks"
 cpu_architecture: "PDP-11"
 difficulty_level: "advanced"
-status: "planned"
+status: "vault"
 order: 63
 ---
 

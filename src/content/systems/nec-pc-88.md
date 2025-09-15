@@ -108,7 +108,7 @@ total_games: 15
 estimated_duration: "1-3 months"
 cpu_architecture: "Z80"
 difficulty_level: "intermediate"
-status: "planned"
+status: "vault"
 architecture_family: "Z80"
 recommended_next: ["nec-pc-98", "msx", "amstrad-cpc"]
 

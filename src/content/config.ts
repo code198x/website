@@ -1002,6 +1002,119 @@ const setup = defineCollection({
   }),
 });
 
+// Techniques collection - Programming and hardware techniques
+const techniques = defineCollection({
+  type: "content",
+  schema: z.object({
+    name: z.string(),
+    alternative_names: z.array(z.string()).optional(), // Other terms for the same technique
+    
+    // Classification
+    category: z.enum([
+      "graphics",
+      "audio",
+      "memory",
+      "optimization",
+      "hardware",
+      "input",
+      "storage",
+      "networking",
+      "demo_effects"
+    ]),
+    subcategory: z.string().optional(),
+    difficulty: z.enum(["beginner", "intermediate", "advanced", "expert"]),
+    
+    // Technical details
+    description: z.string(),
+    technical_explanation: z.string(), // How it works technically
+    implementation_notes: z.string().optional(), // Practical implementation advice
+    
+    // Platform specifics
+    applicable_systems: z.array(z.string()), // Which systems this works on
+    system_specific_implementations: z.array(
+      z.object({
+        system: z.string(),
+        implementation: z.string(),
+        hardware_requirements: z.string().optional(),
+        performance_characteristics: z.string().optional(),
+      })
+    ).optional(),
+    
+    // Historical context
+    first_used: z.date().optional(),
+    invented_by: z.string().optional(), // Person or group who pioneered it
+    popularized_by: z.array(z.string()).optional(), // Games/demos that made it famous
+    evolution: z.string().optional(), // How the technique evolved over time
+    
+    // Code examples
+    code_examples: z.array(
+      z.object({
+        system: z.string(),
+        language: z.string(), // "6502 asm", "Z80 asm", "BASIC"
+        code: z.string(),
+        explanation: z.string(),
+      })
+    ).optional(),
+    
+    // Performance characteristics
+    cpu_cycles: z.string().optional(), // Typical cycle cost
+    memory_usage: z.string().optional(), // RAM requirements
+    timing_critical: z.boolean().optional(), // Whether timing is crucial
+    interrupt_usage: z.boolean().optional(), // Whether it uses interrupts
+    
+    // Use cases
+    common_uses: z.array(z.string()),
+    advantages: z.array(z.string()),
+    disadvantages: z.array(z.string()),
+    alternatives: z.array(z.string()).optional(), // Alternative techniques
+    
+    // Notable implementations
+    famous_examples: z.array(
+      z.object({
+        software: z.string(),
+        year: z.number().optional(),
+        description: z.string(), // How it was used
+        significance: z.string().optional(),
+      })
+    ).optional(),
+    
+    // Modern relevance
+    modern_equivalent: z.string().optional(), // Modern version of this technique
+    still_relevant: z.boolean().optional(),
+    educational_value: z.string().optional(),
+    
+    // Learning resources
+    prerequisites: z.array(z.string()).optional(), // What to learn first
+    related_techniques: z.array(z.string()).optional(),
+    learning_path: z.array(z.string()).optional(), // Suggested learning order
+    
+    // Relationships
+    derived_from: z.array(z.string()).optional(), // Techniques this builds on
+    led_to: z.array(z.string()).optional(), // Techniques this inspired
+    related_hardware: z.array(z.string()).optional(), // Specific chips/hardware
+    
+    // Media and resources
+    diagrams: z.array(
+      z.object({
+        url: z.string(),
+        caption: z.string(),
+        type: z.enum(["timing", "memory", "visual", "flow"]).optional(),
+      })
+    ).optional(),
+    
+    external_links: z.array(
+      z.object({
+        title: z.string(),
+        url: z.string(),
+        type: z.enum(["tutorial", "analysis", "example", "documentation"]).optional(),
+      })
+    ).optional(),
+    
+    // Metadata
+    order: z.number(),
+  }),
+});
+
 // Events collection - Historical timeline events
 const events = defineCollection({
   type: "content",
@@ -1215,6 +1328,7 @@ export const collections = {
   people,
   companies,
   software,
+  techniques,
   events,
   setup,
 };

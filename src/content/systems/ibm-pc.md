@@ -96,7 +96,7 @@ total_games: 2
 estimated_duration: "4-6 months"
 cpu_architecture: "x86"
 difficulty_level: "intermediate"
-status: "planned"
+status: "vault"
 order: 26
 ---
 

@@ -120,7 +120,7 @@ total_games: 25
 estimated_duration: "3-6 months"
 cpu_architecture: "Z80"
 difficulty_level: "advanced"
-status: "planned"
+status: "vault"
 order: 25
 ---
 
