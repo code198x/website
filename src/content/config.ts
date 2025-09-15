@@ -114,6 +114,7 @@ const techniques = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
     type: z.enum(['graphics', 'sound', 'optimization', 'algorithm', 'hardware-trick']),
+    year: z.number().optional(), // When the technique was discovered/popularized
     platforms: z.array(z.string()),
     difficulty: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
 
