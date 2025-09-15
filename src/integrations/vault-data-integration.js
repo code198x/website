@@ -17,7 +17,7 @@ export default function vaultDataIntegration() {
         logger.info('Run: npm run generate-vault-data');
       },
 
-      'astro:config:setup': ({ updateConfig, config, logger }) => {
+      'astro:config:setup': ({ updateConfig, logger }) => {
         // Add the vault data to the build
         logger.info('Vault data integration loaded');
 
