@@ -108,34 +108,6 @@ const companies = defineCollection({
   })
 });
 
-// Software
-const software = defineCollection({
-  type: "content",
-  schema: vaultBaseSchema.extend({
-    type: z.enum(['game', 'application', 'os', 'utility', 'demo', 'language']),
-    year: z.number(),
-    platforms: z.array(z.string()),
-
-    developer: z.string(),
-    publisher: z.string().optional(),
-
-    genre: z.array(z.string()).optional(),
-
-    language: z.string().optional(),
-    size: z.string().optional(),
-    media: z.string().optional(),
-
-    players: z.string().optional(),
-
-    reviews: z.array(z.object({
-      publication: z.string(),
-      score: z.string(),
-      quote: z.string().optional()
-    })).optional(),
-
-    legacy: z.array(z.string()).optional()
-  })
-});
 
 // Techniques
 const techniques = defineCollection({
@@ -281,6 +253,464 @@ const formats = defineCollection({
     })).optional(),
 
     successor: z.string().optional()
+  })
+});
+
+// Games - Entertainment software
+const games = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['arcade', 'adventure', 'platformer', 'puzzle', 'shooter', 'strategy', 'rpg', 'sports', 'simulation', 'racing', 'fighting']),
+    year: z.number(),
+    platform: z.string(), // Primary platform
+    platforms: z.array(z.string()).optional(), // All platforms it was released on
+
+    developer: z.string(),
+    publisher: z.string(),
+
+    genre: z.array(z.string()),
+    players: z.string(), // "1", "1-2", "1-4", etc.
+
+    media: z.array(z.string()).optional(), // cartridge, disk, tape, download
+
+    technicalAchievements: z.array(z.string()).optional(),
+    graphicsMode: z.string().optional(), // "Mode 7", "FMV", "Vector", etc.
+    soundChip: z.string().optional(),
+
+    reviews: z.array(z.object({
+      source: z.string(),
+      score: z.string(),
+      quote: z.string().optional()
+    })).optional(),
+
+    series: z.string().optional(), // Part of a series
+    sequels: z.array(z.string()).optional(),
+    ports: z.array(z.object({
+      platform: z.string(),
+      year: z.number(),
+      developer: z.string().optional()
+    })).optional(),
+
+    preservationStatus: z.enum(['playable', 'preserved', 'at-risk', 'lost']).optional(),
+    emulationNotes: z.string().optional()
+  })
+});
+
+// Demos - Demoscene productions
+const demos = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['demo', 'intro', 'invitation', 'musicdisk', 'diskmag', 'wild']),
+    year: z.number(),
+    platform: z.string(),
+
+    group: z.string(), // Primary group/crew
+    collaborations: z.array(z.string()).optional(), // Other groups involved
+
+    event: z.object({
+      name: z.string(),
+      year: z.number(),
+      placement: z.number().optional(),
+      category: z.string().optional()
+    }).optional(),
+
+    credits: z.array(z.object({
+      handle: z.string(),
+      role: z.string() // code, graphics, music, design
+    })).optional(),
+
+    effects: z.array(z.string()).optional(), // Effects showcased
+    techniques: z.array(z.string()).optional(), // Technical achievements
+
+    size: z.string().optional(), // "64k", "4k", etc.
+
+    music: z.object({
+      format: z.string(), // MOD, SID, YM, etc.
+      composer: z.string()
+    }).optional(),
+
+    downloads: z.array(z.object({
+      type: z.string(), // executable, video, source
+      url: z.string().url()
+    })).optional(),
+
+    pouetId: z.number().optional(), // pouet.net ID for reference
+    demozooId: z.number().optional() // demozoo.org ID
+  })
+});
+
+// Operating Systems
+const operatingSystems = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['os', 'dos', 'firmware', 'monitor', 'kernel']),
+    year: z.number(),
+    version: z.string(),
+
+    developer: z.string(),
+    basedOn: z.string().optional(), // Unix, DOS, etc.
+
+    platforms: z.array(z.string()), // Hardware it runs on
+    architecture: z.array(z.string()), // x86, 68k, 6502, etc.
+
+    minimumRequirements: z.object({
+      cpu: z.string(),
+      ram: z.string(),
+      storage: z.string()
+    }).optional(),
+
+    features: z.array(z.string()),
+    fileSystem: z.array(z.string()).optional(),
+
+    gui: z.boolean().default(false),
+    multitasking: z.boolean().default(false),
+    multiuser: z.boolean().default(false),
+    networking: z.boolean().default(false),
+
+    marketShare: z.string().optional(),
+    unitsShipped: z.number().optional(),
+
+    notableApplications: z.array(z.string()).optional(),
+
+    versions: z.array(z.object({
+      version: z.string(),
+      year: z.number(),
+      changes: z.array(z.string())
+    })).optional(),
+
+    successor: z.string().optional(),
+    predecessor: z.string().optional()
+  })
+});
+
+// Emulators - Preservation through emulation
+const emulators = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['emulator', 'fpga-core', 'simulator', 'virtual-machine']),
+    year: z.number(), // First release
+
+    developer: z.string(),
+    license: z.enum(['open-source', 'freeware', 'commercial', 'proprietary']),
+
+    systemsEmulated: z.array(z.string()), // Which systems it emulates
+
+    platforms: z.array(z.string()), // Where the emulator runs (Windows, Linux, etc.)
+
+    accuracy: z.enum(['cycle-accurate', 'highly-accurate', 'functional', 'fast']),
+
+    features: z.array(z.string()), // save-states, rewind, netplay, debugger, etc.
+
+    requirements: z.object({
+      biosRequired: z.boolean(),
+      romFormats: z.array(z.string()).optional(),
+      minimumSpecs: z.string().optional(),
+      recommendedSpecs: z.string().optional()
+    }).optional(),
+
+    debugging: z.object({
+      debugger: z.boolean(),
+      disassembler: z.boolean(),
+      memoryViewer: z.boolean(),
+      profiler: z.boolean(),
+      breakpoints: z.boolean()
+    }).optional(),
+
+    display: z.object({
+      filters: z.array(z.string()).optional(), // CRT, scanlines, etc.
+      shaders: z.boolean().optional(),
+      scaling: z.array(z.string()).optional()
+    }).optional(),
+
+    input: z.object({
+      controllers: z.array(z.string()).optional(),
+      keyboard: z.boolean().optional(),
+      mouse: z.boolean().optional(),
+      lightgun: z.boolean().optional()
+    }).optional(),
+
+    networking: z.object({
+      netplay: z.boolean().optional(),
+      linkCable: z.boolean().optional(),
+      modem: z.boolean().optional()
+    }).optional(),
+
+    developmentStatus: z.enum(['active', 'maintained', 'unmaintained', 'abandoned']),
+
+    versions: z.array(z.object({
+      version: z.string(),
+      year: z.number(),
+      changes: z.array(z.string())
+    })).optional(),
+
+    website: z.string().url().optional(),
+    repository: z.string().url().optional(),
+
+    alternatives: z.array(z.string()).optional() // Other emulators for same systems
+  })
+});
+
+// Applications - Productivity and creative software
+const applications = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['productivity', 'graphics', 'music', 'video', 'cad', 'desktop-publishing', 'database']),
+    year: z.number(),
+
+    developer: z.string(),
+    publisher: z.string().optional(),
+
+    platforms: z.array(z.string()),
+
+    category: z.string(), // Word processor, spreadsheet, paint program, etc.
+
+    systemRequirements: z.object({
+      minimumRam: z.string(),
+      diskSpace: z.string().optional(),
+      display: z.string().optional(),
+      other: z.array(z.string()).optional()
+    }).optional(),
+
+    fileFormats: z.object({
+      native: z.array(z.string()),
+      import: z.array(z.string()).optional(),
+      export: z.array(z.string()).optional()
+    }).optional(),
+
+    features: z.array(z.string()),
+
+    competitors: z.array(z.string()).optional(),
+    marketPosition: z.string().optional(),
+
+    versions: z.array(z.object({
+      version: z.string(),
+      year: z.number(),
+      changes: z.array(z.string())
+    })).optional(),
+
+    license: z.string().optional(),
+    price: z.string().optional(),
+
+    legacy: z.string().optional()
+  })
+});
+
+// Development Tools - Compilers, assemblers, IDEs
+const developmentTools = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['compiler', 'assembler', 'ide', 'debugger', 'profiler', 'linker', 'build-tool']),
+    year: z.number(),
+
+    developer: z.string(),
+
+    platforms: z.array(z.string()), // Where the tool runs
+    targetPlatforms: z.array(z.string()), // What it builds for
+
+    languages: z.array(z.string()), // Languages supported
+
+    features: z.array(z.string()),
+
+    buildSystem: z.object({
+      projectFiles: z.string().optional(),
+      makefiles: z.boolean().optional(),
+      libraries: z.boolean().optional(),
+      linking: z.string().optional()
+    }).optional(),
+
+    debugging: z.object({
+      breakpoints: z.boolean(),
+      stepping: z.boolean(),
+      watches: z.boolean(),
+      profiling: z.boolean(),
+      disassembly: z.boolean()
+    }).optional(),
+
+    optimizations: z.array(z.string()).optional(),
+
+    outputFormats: z.array(z.string()),
+
+    standardCompliance: z.array(z.string()).optional(),
+
+    documentation: z.string().optional(),
+    examples: z.boolean().optional(),
+
+    license: z.string(),
+    price: z.string().optional()
+  })
+});
+
+// Drivers - Hardware drivers and system extensions
+const drivers = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['device-driver', 'filesystem-driver', 'protocol-driver', 'video-driver', 'sound-driver', 'network-driver']),
+    year: z.number(),
+
+    developer: z.string(),
+    version: z.string(),
+
+    operatingSystems: z.array(z.string()), // Compatible OS
+
+    hardwareSupported: z.array(z.object({
+      device: z.string(),
+      manufacturer: z.string(),
+      models: z.array(z.string()).optional()
+    })),
+
+    features: z.array(z.string()),
+
+    installation: z.object({
+      method: z.string(), // TSR, loadable module, kernel patch, etc.
+      memoryResident: z.boolean(),
+      memoryUsage: z.string().optional(),
+      conflicts: z.array(z.string()).optional()
+    }).optional(),
+
+    performance: z.object({
+      overhead: z.string().optional(),
+      improvements: z.array(z.string()).optional()
+    }).optional(),
+
+    compatibility: z.object({
+      tested: z.array(z.string()),
+      known_issues: z.array(z.string()).optional()
+    }).optional(),
+
+    alternatives: z.array(z.string()).optional(),
+
+    documentation: z.string().optional(),
+    source: z.boolean().default(false)
+  })
+});
+
+// Utilities - System utilities and tools
+const utilities = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['file-manager', 'archiver', 'disk-utility', 'system-monitor', 'backup', 'security', 'network-tool']),
+    year: z.number(),
+
+    developer: z.string(),
+
+    platforms: z.array(z.string()),
+
+    category: z.string(), // File management, system optimization, etc.
+
+    features: z.array(z.string()),
+
+    commandLine: z.boolean().default(false),
+    gui: z.boolean().default(false),
+
+    systemRequirements: z.object({
+      minimumRam: z.string().optional(),
+      adminRequired: z.boolean().optional(),
+      dosVersion: z.string().optional(),
+      other: z.array(z.string()).optional()
+    }).optional(),
+
+    automation: z.object({
+      scripting: z.boolean(),
+      batch: z.boolean(),
+      scheduling: z.boolean()
+    }).optional(),
+
+    fileOperations: z.array(z.string()).optional(), // copy, move, delete, compress, etc.
+
+    competitors: z.array(z.string()).optional(),
+
+    license: z.string(),
+    size: z.string().optional(), // Program size
+
+    notableUses: z.array(z.string()).optional()
+  })
+});
+
+// Plugins - Extensions, add-ons, modules
+const plugins = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['extension', 'addon', 'module', 'patch', 'mod', 'skin']),
+    year: z.number(),
+
+    developer: z.string(),
+
+    hostApplication: z.string(), // What it extends
+    hostVersions: z.array(z.string()), // Compatible versions
+
+    platforms: z.array(z.string()),
+
+    category: z.string(), // Functionality, graphics, gameplay, etc.
+
+    features: z.array(z.string()),
+
+    installation: z.object({
+      method: z.string(), // Drop-in, installer, manual patch
+      location: z.string().optional(), // Where files go
+      dependencies: z.array(z.string()).optional()
+    }).optional(),
+
+    compatibility: z.object({
+      otherPlugins: z.array(z.string()).optional(),
+      knownConflicts: z.array(z.string()).optional()
+    }).optional(),
+
+    modifications: z.array(z.string()), // What it changes
+
+    fileSize: z.string().optional(),
+
+    license: z.string(),
+    source: z.boolean().default(false),
+
+    community: z.string().optional() // Forum, website, etc.
+  })
+});
+
+// Programming Languages
+const programmingLanguages = defineCollection({
+  type: "content",
+  schema: vaultBaseSchema.extend({
+    type: z.enum(['compiled', 'interpreted', 'bytecode', 'assembly', 'macro']),
+    year: z.number(), // First appeared
+
+    designer: z.string(),
+    developer: z.string().optional(),
+
+    paradigm: z.array(z.string()), // procedural, object-oriented, functional, etc.
+    typingDiscipline: z.array(z.string()).optional(), // static, dynamic, strong, weak
+
+    platforms: z.array(z.string()), // Where it runs
+
+    influencedBy: z.array(z.string()).optional(),
+    influenced: z.array(z.string()).optional(),
+
+    fileExtensions: z.array(z.string()),
+
+    implementations: z.array(z.object({
+      name: z.string(),
+      type: z.string(), // compiler, interpreter
+      platform: z.string(),
+      year: z.number().optional()
+    })).optional(),
+
+    features: z.array(z.string()),
+
+    standardLibrary: z.array(z.string()).optional(), // Key libraries/modules
+
+    helloWorld: z.string().optional(), // Hello World example
+
+    notableProjects: z.array(z.string()).optional(),
+
+    versions: z.array(z.object({
+      version: z.string(),
+      year: z.number(),
+      changes: z.array(z.string())
+    })).optional(),
+
+    documentation: z.array(z.object({
+      title: z.string(),
+      url: z.string().url()
+    })).optional()
   })
 });
 
@@ -725,8 +1155,8 @@ const lessons = defineCollection({
   }),
 });
 
-// Games collection - Original games created during the course
-const games = defineCollection({
+// Projects collection - Educational game projects created during the course
+const projects = defineCollection({
   type: "content",
   schema: z.object({
     title: z.string(),
@@ -774,7 +1204,24 @@ export const collections = {
   hardware,
   people,
   companies,
-  software,
+
+  // Software categories (fully separated)
+  applications,
+  developmentTools,
+  drivers,
+  utilities,
+  plugins,
+
+  // Entertainment and creativity
+  games,
+  demos,
+
+  // Systems and languages
+  operatingSystems,
+  emulators,
+  programmingLanguages,
+
+  // Knowledge and community
   techniques,
   publications,
   events,
@@ -782,6 +1229,6 @@ export const collections = {
   formats,
   culture,
 
-  // Legacy collections (to be migrated)
-  games,
+  // Educational projects
+  projects,
 };

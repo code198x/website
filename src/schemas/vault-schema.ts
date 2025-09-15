@@ -6,6 +6,7 @@ export interface VaultEntryBase {
   slug: string;           // URL-friendly identifier
   name: string;           // Display name
   status: 'available' | 'coming' | 'draft';
+  category: string;
   tags: string[];         // Cross-referencing tags
   description: string;    // Brief one-line description
   content?: string;       // Long-form markdown content
