@@ -8,13 +8,13 @@ export default defineConfig({
   output: "static",
   integrations: [
     mdx({
-      syntaxHighlight: "prism",
+      syntaxHighlight: false, // Disable server-side syntax highlighting
     }),
     sitemap(),
   ],
   site: "https://code198x.stevehill.xyz",
   markdown: {
-    syntaxHighlight: "prism",
+    syntaxHighlight: false, // Disable server-side syntax highlighting
   },
   vite: {
     css: {

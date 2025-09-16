@@ -1,0 +1,274 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - navigation "Main navigation" [ref=e4]:
+      - generic [ref=e6]:
+        - link "Code198x Home" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Code Like It's 198x" [ref=e8] [cursor=pointer]
+        - list [ref=e9]:
+          - listitem [ref=e10]:
+            - link "🏠 Home" [ref=e11] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e12] [cursor=pointer]: 🏠
+              - generic [ref=e13] [cursor=pointer]: Home
+          - listitem [ref=e14]:
+            - link "🚀 Get Started" [ref=e15] [cursor=pointer]:
+              - /url: /getting-started
+              - generic [ref=e16] [cursor=pointer]: 🚀
+              - generic [ref=e17] [cursor=pointer]: Get Started
+          - listitem [ref=e18]:
+            - link "📚 Learn" [ref=e19] [cursor=pointer]:
+              - /url: /lessons
+              - generic [ref=e20] [cursor=pointer]: 📚
+              - generic [ref=e21] [cursor=pointer]: Learn
+          - listitem [ref=e22]:
+            - link "🗄️ The Vault" [ref=e23] [cursor=pointer]:
+              - /url: /vault
+              - generic [ref=e24] [cursor=pointer]: 🗄️
+              - generic [ref=e25] [cursor=pointer]: The Vault
+          - listitem [ref=e26]:
+            - link "ℹ️ About" [ref=e27] [cursor=pointer]:
+              - /url: /about
+              - generic [ref=e28] [cursor=pointer]: ℹ️
+              - generic [ref=e29] [cursor=pointer]: About
+        - generic [ref=e30]:
+          - button "Search" [ref=e31] [cursor=pointer]:
+            - img [ref=e32] [cursor=pointer]
+          - button "Toggle theme" [ref=e35] [cursor=pointer]:
+            - img [ref=e36] [cursor=pointer]
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - heading "⚡️ Performance Monitor" [level=3] [ref=e44]
+        - button [ref=e45] [cursor=pointer]:
+          - img [ref=e46] [cursor=pointer]
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - generic [ref=e52]: CLS
+              - generic [ref=e53]: "-"
+            - generic [ref=e54]: measuring...
+          - generic [ref=e55]:
+            - generic [ref=e56]:
+              - generic [ref=e57]: FCP
+              - generic [ref=e58]: 220ms
+            - generic [ref=e59]: good
+          - generic [ref=e60]:
+            - generic [ref=e61]:
+              - generic [ref=e62]: LCP
+              - generic [ref=e63]: "-"
+            - generic [ref=e64]: measuring...
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e67]: INP
+              - generic [ref=e68]: "-"
+            - generic [ref=e69]: waiting for interaction
+        - generic [ref=e70]:
+          - button "Clear Data" [ref=e71] [cursor=pointer]
+          - button "Export Data" [ref=e72] [cursor=pointer]
+          - button "View Details" [ref=e73] [cursor=pointer]
+    - main [ref=e76]:
+      - generic [ref=e79]:
+        - generic [ref=e82]: 100% Hands-On Assembly
+        - paragraph [ref=e83]: Write assembly code for Commodore 64 (available now), plus NES, ZX Spectrum, Amiga, and many more classic systems coming soon. No emulation theory—just pure programming power.
+        - heading "Build Real Games on Real Retro Hardware" [level=1] [ref=e84]
+        - paragraph [ref=e85]:
+          - text: Start with
+          - code [ref=e86]: POKE 53280,0
+          - text: to change the border. End with smooth-scrolling games, demo effects, and tracker music. Every lesson runs on original hardware.
+        - generic [ref=e87]:
+          - link "🚀 Get Started" [ref=e88] [cursor=pointer]:
+            - /url: /getting-started
+            - generic [ref=e89] [cursor=pointer]: 🚀
+            - generic [ref=e90] [cursor=pointer]: Get Started
+          - link "📚 Explore Lessons" [ref=e91] [cursor=pointer]:
+            - /url: /lessons
+            - generic [ref=e92] [cursor=pointer]: 📚
+            - generic [ref=e93] [cursor=pointer]: Explore Lessons
+      - generic [ref=e94]:
+        - generic [ref=e97]:
+          - generic [ref=e98]: "🚀 COMING SOON: Phase 0 - Start with BASIC"
+          - heading "Never Programmed Before? Start Here!" [level=2] [ref=e99]
+          - paragraph [ref=e100]: Phase 0 will teach BASIC on systems that support it. Perfect for absolute beginners—learn variables, loops, and game logic with instant visual feedback. When you're ready, graduate to assembly programming.
+          - generic [ref=e101]:
+            - text: C64 BASIC V2
+            - generic [ref=e102]: 10 PRINT "HELLO WORLD"
+            - generic [ref=e103]: 20 FOR I = 1 TO 10
+            - generic [ref=e104]: 30 POKE 53280, I
+            - generic [ref=e105]: 40 NEXT I
+            - generic [ref=e106]: RUN
+          - generic [ref=e108]: 📅 Coming 2026
+          - paragraph [ref=e109]: Phase 0 BASIC lessons for C64, ZX Spectrum, Apple II, and more systems coming soon!
+        - generic [ref=e110]:
+          - generic [ref=e111]:
+            - heading "Available Systems" [level=2] [ref=e112]
+            - paragraph [ref=e113]: We're starting with these classic systems. More lessons are being developed each week.
+          - generic [ref=e115]:
+            - generic [ref=e117]: 💻
+            - generic [ref=e118]:
+              - heading "Commodore 64" [level=3] [ref=e119]
+              - paragraph [ref=e120]: The C64 is the highest-selling single computer model of all time, introducing millions to computing and gaming. Its SID ...
+              - generic [ref=e121]:
+                - generic [ref=e122]:
+                  - strong [ref=e123]: "CPU:"
+                  - text: MOS Technology 6510 (based on 6502)
+                - generic [ref=e124]:
+                  - strong [ref=e125]: "RAM:"
+                  - text: 64 KB
+                - generic [ref=e126]:
+                  - strong [ref=e127]: "Released:"
+                  - text: "1982"
+              - link "Start Learning →" [ref=e129] [cursor=pointer]:
+                - /url: /lessons/commodore-64
+      - generic [ref=e131]:
+        - heading "Why Learn Assembly on Vintage Hardware?" [level=2] [ref=e132]
+        - paragraph [ref=e133]: These aren't just history lessons—these are the foundations that power everything from embedded systems to modern game engines.
+        - generic [ref=e134]:
+          - generic [ref=e135]:
+            - generic [ref=e137]: 🧠
+            - heading "True Understanding" [level=3] [ref=e138]
+            - paragraph [ref=e139]: No abstractions. No frameworks. Just you, the CPU, and memory. Learn how computers actually work at the fundamental level.
+          - generic [ref=e140]:
+            - generic [ref=e142]: ⚡
+            - heading "Optimization Mastery" [level=3] [ref=e143]
+            - paragraph [ref=e144]: When you have 64KB of RAM and a 1MHz CPU, every byte and cycle counts. Skills that translate directly to modern performance-critical code.
+          - generic [ref=e145]:
+            - generic [ref=e147]: 🎮
+            - heading "Create Real Games" [level=3] [ref=e148]
+            - paragraph [ref=e149]: Build actual games that run on original hardware. From sprites to scrolling, sound to joystick input—create the magic yourself.
+      - generic [ref=e151]:
+        - heading "Modern Tools for Retro Development" [level=2] [ref=e152]
+        - paragraph [ref=e153]: No hunting for ancient software or fighting with DOSBox. Get a complete, modern development environment with VS Code integration, Docker containers, and authentic assemblers—all pre-configured and ready to go.
+        - generic [ref=e154]:
+          - generic [ref=e155]:
+            - generic [ref=e156]: 🛠️
+            - generic [ref=e157]: Authentic Assemblers
+            - generic [ref=e158]: ACME, ca65, SjASMPlus, VASM, NESASM—the actual tools used in the era
+          - generic [ref=e159]:
+            - generic [ref=e160]: 💻
+            - generic [ref=e161]: VS Code Integration
+            - generic [ref=e162]: Syntax highlighting, IntelliSense, one-click build & run
+          - generic [ref=e163]:
+            - generic [ref=e164]: 🐳
+            - generic [ref=e165]: Docker Containers
+            - generic [ref=e166]: Zero setup hassle—works on Mac, Windows, and Linux instantly
+          - generic [ref=e167]:
+            - generic [ref=e168]: 🎮
+            - generic [ref=e169]: Instant Testing
+            - generic [ref=e170]: Build and run on accurate emulators with a single command
+        - link "🚀 Get Your Dev Environment" [ref=e171] [cursor=pointer]:
+          - /url: /getting-started
+          - generic [ref=e172] [cursor=pointer]: 🚀
+          - generic [ref=e173] [cursor=pointer]: Get Your Dev Environment
+        - generic [ref=e174]: Free • Open Source • Works Everywhere
+      - generic [ref=e177]:
+        - heading "Join the Retro Revolution" [level=2] [ref=e178]
+        - paragraph [ref=e179]: This is open-source education at its finest. Free forever. Community-driven. Preserving the art of low-level programming for future generations.
+        - generic [ref=e180]:
+          - link "Start Learning Today →" [ref=e181] [cursor=pointer]:
+            - /url: /getting-started
+            - generic [ref=e182] [cursor=pointer]: Start Learning Today
+            - generic [ref=e183] [cursor=pointer]: →
+          - link "View on GitHub" [ref=e184] [cursor=pointer]:
+            - /url: https://github.com/code198x
+            - generic [ref=e185] [cursor=pointer]: View on GitHub
+        - generic [ref=e186]:
+          - generic [ref=e187]:
+            - generic [ref=e188]: 70+
+            - generic [ref=e189]: Classic Systems
+          - generic [ref=e190]:
+            - generic [ref=e191]: 4,096
+            - generic [ref=e192]: Lessons Per System
+          - generic [ref=e193]:
+            - generic [ref=e194]: 100%
+            - generic [ref=e195]: Free & Open Source
+    - contentinfo [ref=e196]:
+      - generic [ref=e197]:
+        - generic [ref=e198]:
+          - generic [ref=e199]:
+            - link "Code Like It's 198x - Home" [ref=e200] [cursor=pointer]:
+              - /url: /
+              - img "Code Like It's 198x" [ref=e201] [cursor=pointer]
+            - paragraph [ref=e202]: Learn assembly programming on classic systems through hands-on lessons and authentic development tools.
+            - generic [ref=e203]:
+              - link "GitHub" [ref=e204] [cursor=pointer]:
+                - /url: https://github.com/code198x
+                - img [ref=e205] [cursor=pointer]
+              - link "Discord" [ref=e207] [cursor=pointer]:
+                - /url: https://discord.gg/AdmEYQKWZb
+                - img [ref=e208] [cursor=pointer]
+          - generic [ref=e210]:
+            - heading "Learn" [level=4] [ref=e211]
+            - list [ref=e212]:
+              - listitem [ref=e213]:
+                - link "Get Started" [ref=e214] [cursor=pointer]:
+                  - /url: /getting-started
+              - listitem [ref=e215]:
+                - link "All Lessons" [ref=e216] [cursor=pointer]:
+                  - /url: /lessons
+              - listitem [ref=e217]:
+                - link "By System" [ref=e218] [cursor=pointer]:
+                  - /url: /lessons#systems
+              - listitem [ref=e219]:
+                - link "Setup Guides" [ref=e220] [cursor=pointer]:
+                  - /url: /getting-started#setup
+          - generic [ref=e221]:
+            - heading "Resources" [level=4] [ref=e222]
+            - list [ref=e223]:
+              - listitem [ref=e224]:
+                - link "All Systems" [ref=e225] [cursor=pointer]:
+                  - /url: /vault/hardware
+              - listitem [ref=e226]:
+                - link "The Vault" [ref=e227] [cursor=pointer]:
+                  - /url: /vault
+              - listitem [ref=e228]:
+                - link "Tools" [ref=e229] [cursor=pointer]:
+                  - /url: /tools
+              - listitem [ref=e230]:
+                - link "Community" [ref=e231] [cursor=pointer]:
+                  - /url: /community
+          - generic [ref=e232]:
+            - heading "Popular Systems" [level=4] [ref=e233]
+            - list [ref=e234]:
+              - listitem [ref=e235]:
+                - link "Commodore 64" [ref=e236] [cursor=pointer]:
+                  - /url: /vault/hardware/commodore-64
+              - listitem [ref=e237]:
+                - link "ZX Spectrum" [ref=e238] [cursor=pointer]:
+                  - /url: /vault/hardware/zx-spectrum
+              - listitem [ref=e239]:
+                - link "NES" [ref=e240] [cursor=pointer]:
+                  - /url: /vault/hardware/nintendo-entertainment-system
+              - listitem [ref=e241]:
+                - link "Amiga" [ref=e242] [cursor=pointer]:
+                  - /url: /vault/hardware/commodore-amiga
+        - generic [ref=e243]:
+          - paragraph [ref=e244]: © 2025 Code Like It's 198x. Made with ❤️ for retro computing.
+          - navigation [ref=e245]:
+            - link "Privacy" [ref=e246] [cursor=pointer]:
+              - /url: /privacy
+            - link "Terms" [ref=e247] [cursor=pointer]:
+              - /url: /terms
+            - link "Sitemap" [ref=e248] [cursor=pointer]:
+              - /url: /sitemap.xml
+  - generic [ref=e251]:
+    - button "Menu" [ref=e252]:
+      - img [ref=e254]
+      - generic: Menu
+    - button "Inspect" [ref=e258]:
+      - img [ref=e260]
+      - generic: Inspect
+    - button "Audit" [ref=e262]:
+      - generic [ref=e263]:
+        - img [ref=e264]
+        - img [ref=e267]
+      - generic: Audit
+    - button "Settings" [ref=e270]:
+      - img [ref=e272]
+      - generic: Settings
+```

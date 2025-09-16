@@ -1209,7 +1209,7 @@ export const collections = {
 
   // Software categories (fully separated)
   applications,
-  developmentTools,
+  'development-tools': developmentTools,
   drivers,
   utilities,
   plugins,
@@ -1219,9 +1219,9 @@ export const collections = {
   demos,
 
   // Systems and languages
-  operatingSystems,
+  'operating-systems': operatingSystems,
   emulators,
-  programmingLanguages,
+  'programming-languages': programmingLanguages,
 
   // Knowledge and community
   techniques,

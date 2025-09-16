@@ -1,0 +1,1389 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - navigation "Main navigation" [ref=e4]:
+      - generic [ref=e6]:
+        - link "Code198x Home" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Code Like It's 198x" [ref=e8] [cursor=pointer]
+        - list [ref=e9]:
+          - listitem [ref=e10]:
+            - link "🏠 Home" [ref=e11] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e12] [cursor=pointer]: 🏠
+              - generic [ref=e13] [cursor=pointer]: Home
+          - listitem [ref=e14]:
+            - link "🚀 Get Started" [ref=e15] [cursor=pointer]:
+              - /url: /getting-started
+              - generic [ref=e16] [cursor=pointer]: 🚀
+              - generic [ref=e17] [cursor=pointer]: Get Started
+          - listitem [ref=e18]:
+            - link "📚 Learn" [ref=e19] [cursor=pointer]:
+              - /url: /lessons
+              - generic [ref=e20] [cursor=pointer]: 📚
+              - generic [ref=e21] [cursor=pointer]: Learn
+          - listitem [ref=e22]:
+            - link "🗄️ The Vault" [ref=e23] [cursor=pointer]:
+              - /url: /vault
+              - generic [ref=e24] [cursor=pointer]: 🗄️
+              - generic [ref=e25] [cursor=pointer]: The Vault
+          - listitem [ref=e26]:
+            - link "ℹ️ About" [ref=e27] [cursor=pointer]:
+              - /url: /about
+              - generic [ref=e28] [cursor=pointer]: ℹ️
+              - generic [ref=e29] [cursor=pointer]: About
+        - generic [ref=e30]:
+          - button "Search" [ref=e31] [cursor=pointer]:
+            - img [ref=e32] [cursor=pointer]
+          - button "Toggle theme" [ref=e35] [cursor=pointer]:
+            - img [ref=e36] [cursor=pointer]
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - heading "⚡️ Performance Monitor" [level=3] [ref=e44]
+        - button [ref=e45] [cursor=pointer]:
+          - img [ref=e46] [cursor=pointer]
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - generic [ref=e52]: CLS
+              - generic [ref=e53]: "-"
+            - generic [ref=e54]: measuring...
+          - generic [ref=e55]:
+            - generic [ref=e56]:
+              - generic [ref=e57]: FCP
+              - generic [ref=e58]: 220ms
+            - generic [ref=e59]: good
+          - generic [ref=e60]:
+            - generic [ref=e61]:
+              - generic [ref=e62]: LCP
+              - generic [ref=e63]: "-"
+            - generic [ref=e64]: measuring...
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e67]: INP
+              - generic [ref=e68]: "-"
+            - generic [ref=e69]: waiting for interaction
+        - generic [ref=e70]:
+          - button "Clear Data" [ref=e71] [cursor=pointer]
+          - button "Export Data" [ref=e72] [cursor=pointer]
+          - button "View Details" [ref=e73] [cursor=pointer]
+    - main [ref=e76]:
+      - navigation "Breadcrumb navigation" [ref=e77]:
+        - list [ref=e78]:
+          - listitem [ref=e79]:
+            - link "Home" [ref=e80] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e81] [cursor=pointer]: 🏠
+              - generic [ref=e82] [cursor=pointer]: Home
+            - generic [ref=e83]: ›
+          - listitem [ref=e84]:
+            - link "Lessons" [ref=e85] [cursor=pointer]:
+              - /url: /lessons
+              - generic [ref=e86] [cursor=pointer]: 📚
+              - generic [ref=e87] [cursor=pointer]: Lessons
+            - generic [ref=e88]: ›
+          - listitem [ref=e89]:
+            - link "Commodore 64" [ref=e90] [cursor=pointer]:
+              - /url: /lessons/commodore-64
+              - generic [ref=e91] [cursor=pointer]: 🖥️
+              - generic [ref=e92] [cursor=pointer]: Commodore 64
+            - generic [ref=e93]: ›
+          - listitem [ref=e94]:
+            - link "Phase 1" [ref=e95] [cursor=pointer]:
+              - /url: /lessons/commodore-64/phase-1
+              - generic [ref=e96] [cursor=pointer]: 📖
+              - generic [ref=e97] [cursor=pointer]: Phase 1
+            - generic [ref=e98]: ›
+          - listitem [ref=e99]:
+            - link "Tier 1" [ref=e100] [cursor=pointer]:
+              - /url: /lessons/commodore-64/phase-1/tier-1
+              - generic [ref=e101] [cursor=pointer]: 🎯
+              - generic [ref=e102] [cursor=pointer]: Tier 1
+            - generic [ref=e103]: ›
+          - listitem [ref=e104]:
+            - generic [ref=e105]:
+              - generic [ref=e106]: ✏️
+              - generic [ref=e107]: "Lesson 1: Your First C64 Program: Hello Machine!"
+      - generic [ref=e110]:
+        - generic [ref=e111]: "1"
+        - generic [ref=e112]:
+          - 'heading "Your First C64 Program: Hello Machine!" [level=1] [ref=e113]'
+          - paragraph [ref=e114]: Write your first 6502 assembly program and take direct control of the Commodore 64's hardware
+          - generic [ref=e115]:
+            - generic [ref=e116]: 🟢 easy
+            - generic [ref=e117]: ⏱️ 30-45 minutes
+      - generic [ref=e118]:
+        - generic [ref=e119]:
+          - generic [ref=e120]:
+            - generic [ref=e121]:
+              - generic [ref=e122]: 🎯
+              - heading "Learning Objectives" [level=2] [ref=e123]
+            - list [ref=e124]:
+              - listitem [ref=e125]: Understand how assembly programs run on the C64
+              - listitem [ref=e127]: Control screen and border colors with direct memory writes
+              - listitem [ref=e129]: Display your first message using screen memory
+          - generic [ref=e131]:
+            - generic [ref=e132]:
+              - generic [ref=e133]: 🧠
+              - heading "Key Concepts" [level=2] [ref=e134]
+            - generic [ref=e135]:
+              - generic [ref=e136]: VIC-II chip - the C64's graphics processor
+              - generic [ref=e137]: Screen memory - where characters appear
+              - generic [ref=e138]: BASIC stub - launching assembly from BASIC
+              - generic [ref=e139]: 6502 assembly - the C64's native language
+        - generic [ref=e141]:
+          - 'heading "Your First C64 Program: Hello Machine!" [level=1] [ref=e142]'
+          - paragraph [ref=e143]:
+            - strong [ref=e144]: Take direct control of the Commodore 64
+          - generic [ref=e145]:
+            - generic [ref=e146]:
+              - generic [ref=e147]: 💾
+              - strong [ref=e148]: Before You Start
+            - generic [ref=e149]:
+              - paragraph [ref=e150]: "To follow along with this lesson, you'll need:"
+              - list [ref=e151]:
+                - listitem [ref=e152]:
+                  - strong [ref=e153]: ACME
+                  - text: "- Assembler for Commodore 64"
+                - listitem [ref=e154]:
+                  - strong [ref=e155]: VICE
+                  - text: "- Emulator to run your programs"
+                - listitem [ref=e156]:
+                  - strong [ref=e157]: 15 minutes
+                  - text: "- One-time setup"
+              - link "🚀 Setup Commodore 64 Development Environment" [ref=e159] [cursor=pointer]:
+                - /url: /setup/c64
+          - paragraph [ref=e160]:
+            - text: "Picture this: It’s 1982. Your friend just got a Commodore 64, and you’re watching them type mysterious commands like"
+            - code [ref=e161]: POKE 53280,1
+            - text: to change the screen color. “How does that work?” you wonder. Today, you’ll find out - and do far more than anyone imagined possible with simple memory writes.
+          - paragraph [ref=e162]: "What you’re about to learn is the same technique used by legendary programmers like Andrew Braybrook (Uridium), Rob Hubbard (music routines), and Martin Walker (Tau Ceti). They all started with the fundamentals you’re learning today: direct hardware control through memory-mapped I/O."
+          - paragraph [ref=e163]: Welcome to assembly programming on the Commodore 64! Today you’ll write your first program in 6502 assembly - the native language of the C64. No layers, no interpreters - just you talking directly to the hardware.
+          - paragraph [ref=e164]: By the end of this lesson, you’ll have written a complete assembly program that controls the screen colors and displays a message. This is the foundation everything else builds on.
+          - heading "What You’ll Learn" [level=2] [ref=e165]
+          - paragraph [ref=e166]: "In this lesson, you’ll discover:"
+          - list [ref=e167]:
+            - listitem [ref=e168]:
+              - strong [ref=e169]: Memory-mapped I/O
+              - text: "- How the C64 connects memory addresses to hardware"
+            - listitem [ref=e170]:
+              - strong [ref=e171]: VIC-II control
+              - text: "- Writing to graphics chip registers"
+            - listitem [ref=e172]:
+              - strong [ref=e173]: Screen memory
+              - text: "- The 1000-byte grid that displays characters"
+            - listitem [ref=e174]:
+              - strong [ref=e175]: 6502 assembly basics
+              - text: "- Your first load, store, and loop instructions"
+            - listitem [ref=e176]:
+              - strong [ref=e177]: BASIC launching
+              - text: "- How assembly programs start from BASIC"
+          - paragraph [ref=e178]: These are your first steps into a vast world of possibilities.
+          - heading "Understanding the Hardware" [level=2] [ref=e179]
+          - paragraph [ref=e180]: The Commodore 64 gives you direct access to its hardware through memory-mapped I/O. This means specific memory addresses connect directly to hardware functions. Write a value to the right address, and the hardware responds instantly.
+          - heading "The VIC-II Chip" [level=3] [ref=e181]
+          - paragraph [ref=e182]: "The VIC-II (Video Interface Chip II) is the C64’s graphics processor. It handles everything you see on screen:"
+          - list [ref=e183]:
+            - listitem [ref=e184]:
+              - strong [ref=e185]: 16 colors
+              - text: "- Each with a specific code (0-15)"
+            - listitem [ref=e186]:
+              - strong [ref=e187]: 40×25 text display
+              - text: "- 1000 character positions"
+            - listitem [ref=e188]:
+              - strong [ref=e189]: Hardware sprites
+              - text: "- 8 independent moving objects"
+            - listitem [ref=e190]:
+              - strong [ref=e191]: Smooth scrolling
+              - text: "- Hardware-accelerated movement"
+          - paragraph [ref=e192]: "Key VIC-II registers we’ll use today:"
+          - table [ref=e193]:
+            - rowgroup [ref=e194]:
+              - row "Register Function Values" [ref=e195]:
+                - cell "Register" [ref=e196]
+                - cell "Function" [ref=e197]
+                - cell "Values" [ref=e198]
+            - rowgroup [ref=e199]:
+              - row "$D020 Border color 0-15" [ref=e200]:
+                - cell "$D020" [ref=e201]
+                - cell "Border color" [ref=e202]
+                - cell "0-15" [ref=e203]
+              - row "$D021 Background color 0-15" [ref=e204]:
+                - cell "$D021" [ref=e205]
+                - cell "Background color" [ref=e206]
+                - cell "0-15" [ref=e207]
+          - heading "Screen Memory" [level=3] [ref=e208]
+          - paragraph [ref=e209]: "The C64’s screen is a grid of 40 columns × 25 rows = 1000 characters. Each position on screen corresponds to a byte in memory:"
+          - table [ref=e210]:
+            - rowgroup [ref=e211]:
+              - row "Memory Range Function Description" [ref=e212]:
+                - cell "Memory Range" [ref=e213]
+                - cell "Function" [ref=e214]
+                - cell "Description" [ref=e215]
+            - rowgroup [ref=e216]:
+              - row "$0400-$07E7 Screen memory What character to display" [ref=e217]:
+                - cell "$0400-$07E7" [ref=e218]
+                - cell "Screen memory" [ref=e219]
+                - cell "What character to display" [ref=e220]
+              - row "$D800-$DBE7 Color memory What color to use" [ref=e221]:
+                - cell "$D800-$DBE7" [ref=e222]
+                - cell "Color memory" [ref=e223]
+                - cell "What color to use" [ref=e224]
+          - paragraph [ref=e225]: When you write a value to screen memory, a character appears. It’s that direct!
+          - heading "The 6502 Processor" [level=3] [ref=e226]
+          - paragraph [ref=e227]: "The 6502 is an 8-bit processor with:"
+          - list [ref=e228]:
+            - listitem [ref=e229]:
+              - strong [ref=e230]: Accumulator (A)
+              - text: ": Main working register"
+            - listitem [ref=e231]:
+              - strong [ref=e232]: X and Y registers
+              - text: ": Index registers for loops"
+            - listitem [ref=e233]:
+              - strong [ref=e234]: 256-byte pages
+              - text: ": Memory organized in pages"
+            - listitem [ref=e235]:
+              - strong [ref=e236]: Simple, elegant instruction set
+              - text: ": Easy to learn, powerful to use"
+          - heading "Why Memory-Mapped I/O Was Revolutionary" [level=3] [ref=e237]
+          - paragraph [ref=e238]: "In 1982, most computers required complex system calls to change colors or display text. The C64’s design was radical: want to change the border color? Write a single byte to memory address $D020. The VIC-II chip monitors that address and responds instantly."
+          - paragraph [ref=e239]: This wasn’t just convenient - it was blazingly fast. While other computers struggled with graphics, C64 programmers could create real-time visual effects by rapidly writing to VIC-II registers. This is how Jeff Minter created the psychedelic effects in “Gridrunner” and how the demoscene pushed the machine far beyond its apparent limits.
+          - paragraph [ref=e240]:
+            - strong [ref=e241]: "The Engineering Genius:"
+            - text: The 6502 processor sees $D020 as regular memory, but the VIC-II chip “listens” to writes at that address. This elegant design meant no special instructions needed - just normal memory operations that happened to control hardware. Brilliant!
+          - heading "Your First Assembly Program" [level=2] [ref=e242]
+          - paragraph [ref=e243]: Let’s build your program step by step. Each piece has a purpose, and understanding why we write each line will give you the foundation for everything that follows.
+          - heading "What You’ll Build" [level=3] [ref=e244]
+          - paragraph [ref=e245]: "Now that you understand the hardware basics, let’s put them to use! Your first program will:"
+          - list [ref=e246]:
+            - listitem [ref=e247]: Change the border color to cyan
+            - listitem [ref=e248]: Set the background to black
+            - listitem [ref=e249]: Clear the entire screen
+            - listitem [ref=e250]: Display text messages on screen
+          - paragraph [ref=e251]: "We’ll create a title screen displaying “NEON NEXUS” - this will become the starting point for a complete game you’ll build throughout these lessons. But for now, focus on the fundamental techniques: controlling colors and displaying text."
+          - paragraph [ref=e252]:
+            - img "Your first assembly program running" [ref=e253]
+          - heading "The BASIC Launcher" [level=3] [ref=e254]
+          - paragraph [ref=e255]: "Here’s something fascinating: the C64 always boots into BASIC, expecting BASIC programs. But we’re writing assembly! The clever solution? We embed a tiny BASIC program that launches our assembly code."
+          - paragraph [ref=e256]: Think of it like a springboard - a one-line BASIC program whose only job is to say “jump to the assembly code at address 2061.” Once BASIC makes that jump, our assembly takes complete control of the machine.
+          - paragraph [ref=e257]:
+            - strong [ref=e258]: "A note about hexadecimal:"
+            - text: In assembly, we often use hexadecimal (base 16) numbers. The
+            - code [ref=e259]: $
+            - text: symbol means “this is a hex number.” So
+            - code [ref=e260]: $0A
+            - text: = 10 in decimal,
+            - code [ref=e261]: $10
+            - text: = 16 in decimal, and
+            - code [ref=e262]: $FF
+            - text: = 255 in decimal.
+          - generic [ref=e263]:
+            - button "📋 Copy" [ref=e264] [cursor=pointer]
+            - generic [ref=e265]: BASIC Launcher - The Trojan Horse
+            - code [ref=e267]:
+              - generic [ref=e268]: "; BASIC launcher: 10 SYS 2061"
+              - text: "!"
+              - generic [ref=e269]: byte
+              - generic [ref=e270]: $0b
+              - generic [ref=e271]: ","
+              - generic [ref=e272]: $08
+              - generic [ref=e273]: ; Next line pointer
+              - text: "!"
+              - generic [ref=e274]: byte
+              - generic [ref=e275]: $0a
+              - generic [ref=e276]: ","
+              - generic [ref=e277]: $00
+              - generic [ref=e278]: "; Line number: 10"
+              - text: "!"
+              - generic [ref=e279]: byte
+              - generic [ref=e280]: $9e
+              - generic [ref=e281]: ; SYS token
+              - text: "!"
+              - generic [ref=e282]: byte
+              - generic [ref=e283]: $32
+              - generic [ref=e284]: ","
+              - generic [ref=e285]: $30
+              - generic [ref=e286]: ","
+              - generic [ref=e287]: $36
+              - generic [ref=e288]: ","
+              - generic [ref=e289]: $31
+              - generic [ref=e290]: ; "2061" as text characters
+              - text: "!"
+              - generic [ref=e291]: byte
+              - generic [ref=e292]: $00
+              - generic [ref=e293]: ; End of line
+              - text: "!"
+              - generic [ref=e294]: byte
+              - generic [ref=e295]: $00
+              - generic [ref=e296]: ","
+              - generic [ref=e297]: $00
+              - generic [ref=e298]: ; End of program
+              - generic [ref=e299]: "start:"
+              - generic [ref=e300]: ; Your assembly code goes here!
+          - paragraph [ref=e301]:
+            - text: "This creates the smallest possible BASIC program:"
+            - code [ref=e302]: 10 SYS 2061
+            - text: . When you type
+            - code [ref=e303]: RUN
+            - text: ", BASIC jumps to address 2061 ($080D in hex) where your assembly code begins."
+          - paragraph [ref=e304]:
+            - strong [ref=e305]: "Note:"
+            - text: The
+            - code [ref=e306]: "!byte"
+            - text: directive tells the assembler (we’re using ACME) to insert raw byte values into the program. Different assemblers use different directives, but the concept is the same.
+          - 'heading "Step 2: Changing Colors - Your First Hardware Control" [level=3] [ref=e307]'
+          - paragraph [ref=e308]: Now for the magic moment - you’re about to control the C64’s hardware directly. No operating system calls, no library functions. Just you writing a number to a memory address that connects straight to the VIC-II chip.
+          - generic [ref=e309]:
+            - button "📋 Copy" [ref=e310] [cursor=pointer]
+            - generic [ref=e311]: Direct Hardware Control - Colors
+            - code [ref=e313]:
+              - generic [ref=e314]: ; Set border color to cyan
+              - generic [ref=e315]: lda
+              - generic [ref=e316]: "#$03"
+              - generic [ref=e317]: ; Load 3 (cyan) into accumulator
+              - generic [ref=e318]: sta
+              - generic [ref=e319]: $d020
+              - generic [ref=e320]: ; Store to border color register
+              - generic [ref=e321]: ; Set background to black
+              - generic [ref=e322]: lda
+              - generic [ref=e323]: "#$00"
+              - generic [ref=e324]: ; Load 0 (black) into accumulator
+              - generic [ref=e325]: sta
+              - generic [ref=e326]: $d021
+              - generic [ref=e327]: ; Store to background register
+          - paragraph [ref=e328]: "Let’s understand what’s happening here:"
+          - list [ref=e329]:
+            - listitem [ref=e330]:
+              - paragraph [ref=e331]:
+                - strong [ref=e332]:
+                  - code [ref=e333]: "lda #$03"
+                - text: "- Load the value 3 into the accumulator (the 6502’s main working register). The"
+                - code [ref=e334]: "#"
+                - text: means “immediate mode” - use this actual number, not a memory address.
+            - listitem [ref=e335]:
+              - paragraph [ref=e336]:
+                - strong [ref=e337]:
+                  - code [ref=e338]: sta $d020
+                - text: "- Store the accumulator’s value to memory address $D020. But $D020 isn’t regular memory - it’s wired directly to the VIC-II’s border color circuit. The instant this instruction executes, the border changes color!"
+          - paragraph [ref=e339]: This is fundamentally different from modern programming. You’re not asking an API to change colors. You’re not calling a function. You’re literally flipping electronic switches inside the VIC-II chip by writing to its control registers. This direct hardware access is what made the C64 so responsive and what enabled programmers to achieve “impossible” effects.
+          - 'heading "Step 3: Clearing the Screen - Understanding Memory Layout" [level=3] [ref=e340]'
+          - paragraph [ref=e341]: "The C64 screen is a 40×25 grid of characters - that’s 1000 positions total. Each position needs two things: what character to show (screen memory) and what color to use (color memory). We need to clear both."
+          - paragraph [ref=e342]: "Here’s where assembly shines. Instead of clearing 1000 positions one by one, we use a clever trick:"
+          - generic [ref=e343]:
+            - button "📋 Copy" [ref=e344] [cursor=pointer]
+            - generic [ref=e345]: Professional Screen Clearing - The 4-Page Technique
+            - code [ref=e347]:
+              - generic [ref=e348]: ; Clear all 1000 screen positions
+              - generic [ref=e349]: ldx
+              - generic [ref=e350]: "#0"
+              - generic [ref=e351]: ; Start at position 0
+              - generic [ref=e352]: "clear_loop:"
+              - generic [ref=e353]: lda
+              - generic [ref=e354]: "#$20"
+              - generic [ref=e355]: ; Space character (blank)
+              - generic [ref=e356]: sta
+              - generic [ref=e357]: $0400
+              - generic [ref=e358]: ","
+              - generic [ref=e359]: x
+              - generic [ref=e360]: ; Screen positions 0-255
+              - generic [ref=e361]: sta
+              - generic [ref=e362]: $0500
+              - generic [ref=e363]: ","
+              - generic [ref=e364]: x
+              - generic [ref=e365]: ; Screen positions 256-511
+              - generic [ref=e366]: sta
+              - generic [ref=e367]: $0600
+              - generic [ref=e368]: ","
+              - generic [ref=e369]: x
+              - generic [ref=e370]: ; Screen positions 512-767
+              - generic [ref=e371]: sta
+              - generic [ref=e372]: $0700
+              - generic [ref=e373]: ","
+              - generic [ref=e374]: x
+              - generic [ref=e375]: ; Screen positions 768-999
+              - generic [ref=e376]: ; Also set color to white
+              - generic [ref=e377]: lda
+              - generic [ref=e378]: "#$01"
+              - generic [ref=e379]: ; White color code
+              - generic [ref=e380]: sta
+              - generic [ref=e381]: $d800
+              - generic [ref=e382]: ","
+              - generic [ref=e383]: x
+              - generic [ref=e384]: ; Color positions 0-255
+              - generic [ref=e385]: sta
+              - generic [ref=e386]: $d900
+              - generic [ref=e387]: ","
+              - generic [ref=e388]: x
+              - generic [ref=e389]: ; Color positions 256-511
+              - generic [ref=e390]: sta
+              - generic [ref=e391]: $da00
+              - generic [ref=e392]: ","
+              - generic [ref=e393]: x
+              - generic [ref=e394]: ; Color positions 512-767
+              - generic [ref=e395]: sta
+              - generic [ref=e396]: $db00
+              - generic [ref=e397]: ","
+              - generic [ref=e398]: x
+              - generic [ref=e399]: ; Color positions 768-999
+              - generic [ref=e400]: inx
+              - generic [ref=e401]: ; Next position
+              - generic [ref=e402]: bne
+              - text: clear_loop
+              - generic [ref=e403]: ; Loop until X wraps to 0
+          - paragraph [ref=e404]:
+            - text: This is brilliant optimization! We write to four different pages of memory in each loop iteration. The X register counts from 0 to 255, and when it increments past 255, it wraps back to 0. The
+            - code [ref=e405]: bne
+            - text: (branch if not equal to zero) instruction detects this wraparound and exits the loop.
+          - paragraph [ref=e406]: With just 256 iterations, we clear all 1000 screen positions (the last 24 positions of $0700 get cleared even though we only need 232 of them - but that’s fine). This same technique appears in countless C64 programs because it’s so efficient.
+          - paragraph [ref=e407]:
+            - strong [ref=e408]: "Professional Technique Spotlight:"
+            - text: This four-page screen clearing method wasn’t just documented in the Programmer’s Reference Guide - it became the industry standard. When you examine the source code of classic games like “Impossible Mission” or “Beach Head,” you’ll find this exact technique. It’s not just educational; it’s authentic C64 craftsmanship.
+          - paragraph [ref=e409]:
+            - text: The technique also demonstrates 6502 addressing mastery. By writing to
+            - code [ref=e410]: $0400,x
+            - text: ","
+            - code [ref=e411]: $0500,x
+            - text: ","
+            - code [ref=e412]: $0600,x
+            - text: ", and"
+            - code [ref=e413]: $0700,x
+            - text: in the same loop, we’re using indexed addressing to efficiently cover multiple memory pages. This is the kind of optimization that separated professional C64 programmers from hobbyists.
+          - paragraph [ref=e414]:
+            - strong [ref=e415]: Historical Note
+            - text: ": This screen-clearing technique was documented in the Commodore 64 Programmer’s Reference Guide and became the standard way to clear the screen in assembly. It’s 4x faster than clearing each position individually!"
+          - 'heading "Step 4: Displaying Your Message" [level=3] [ref=e416]'
+          - paragraph [ref=e417]:
+            - strong [ref=e418]: "Important:"
+            - text: The C64 doesn’t use ASCII codes for screen display. Instead, it uses “screen codes” where A=1, B=2, C=3, etc. This is why we use numbers like 14,5,15,14 to spell “NEON”.
+          - paragraph [ref=e419]: "Time to create our title screen with “NEON NEXUS” and game text:"
+          - generic [ref=e420]:
+            - button "📋 Copy" [ref=e421] [cursor=pointer]
+            - generic [ref=e422]: Displaying Text - Screen Codes
+            - code [ref=e424]:
+              - generic [ref=e425]: ; Display "NEON NEXUS" centered on row 8
+              - generic [ref=e426]: ldx
+              - generic [ref=e427]: "#0"
+              - generic [ref=e428]: "title_loop:"
+              - generic [ref=e429]: lda
+              - text: title_text
+              - generic [ref=e430]: ","
+              - generic [ref=e431]: x
+              - generic [ref=e432]: ; Get character from title
+              - generic [ref=e433]: beq
+              - text: display_subtitle
+              - generic [ref=e434]: ; If 0, move to subtitle
+              - generic [ref=e435]: sta
+              - generic [ref=e436]: $0400
+              - text: +
+              - generic [ref=e437]: "8"
+              - text: "*"
+              - generic [ref=e438]: "40"
+              - text: +
+              - generic [ref=e439]: "15"
+              - generic [ref=e440]: ","
+              - generic [ref=e441]: x
+              - generic [ref=e442]: "; Row 8, Column 15 (screen position formula: base + row*40 + column)"
+              - generic [ref=e443]: inx
+              - generic [ref=e444]: jmp
+              - text: title_loop
+              - generic [ref=e445]: "display_subtitle:"
+              - generic [ref=e446]: ; Display "GRID PROTOCOL" on row 10
+              - generic [ref=e447]: ldx
+              - generic [ref=e448]: "#0"
+              - generic [ref=e449]: "subtitle_loop:"
+              - generic [ref=e450]: lda
+              - text: subtitle_text
+              - generic [ref=e451]: ","
+              - generic [ref=e452]: x
+              - generic [ref=e453]: beq
+              - text: display_prompt
+              - generic [ref=e454]: sta
+              - generic [ref=e455]: $0400
+              - text: +
+              - generic [ref=e456]: "10"
+              - text: "*"
+              - generic [ref=e457]: "40"
+              - text: +
+              - generic [ref=e458]: "13"
+              - generic [ref=e459]: ","
+              - generic [ref=e460]: x
+              - generic [ref=e461]: ; Row 10, Column 13
+              - generic [ref=e462]: inx
+              - generic [ref=e463]: jmp
+              - text: subtitle_loop
+              - generic [ref=e464]: "display_prompt:"
+              - generic [ref=e465]: ; Display "PRESS FIRE TO START" on row 20
+              - generic [ref=e466]: ldx
+              - generic [ref=e467]: "#0"
+              - generic [ref=e468]: "prompt_loop:"
+              - generic [ref=e469]: lda
+              - text: prompt_text
+              - generic [ref=e470]: ","
+              - generic [ref=e471]: x
+              - generic [ref=e472]: beq
+              - text: done
+              - generic [ref=e473]: sta
+              - generic [ref=e474]: $0400
+              - text: +
+              - generic [ref=e475]: "20"
+              - text: "*"
+              - generic [ref=e476]: "40"
+              - text: +
+              - generic [ref=e477]: "10"
+              - generic [ref=e478]: ","
+              - generic [ref=e479]: x
+              - generic [ref=e480]: ; Row 20, Column 10
+              - generic [ref=e481]: inx
+              - generic [ref=e482]: jmp
+              - text: prompt_loop
+              - generic [ref=e483]: "done:"
+              - generic [ref=e484]: ; Program complete - infinite loop
+              - generic [ref=e485]: jmp
+              - text: done
+              - generic [ref=e486]: ; Stay here forever
+              - generic [ref=e487]: ; Our messages using screen codes (not ASCII!)
+              - generic [ref=e488]: "title_text:"
+              - text: "!"
+              - generic [ref=e489]: byte
+              - generic [ref=e490]: "14"
+              - generic [ref=e491]: ","
+              - generic [ref=e492]: "5"
+              - generic [ref=e493]: ","
+              - generic [ref=e494]: "15"
+              - generic [ref=e495]: ","
+              - generic [ref=e496]: "14"
+              - generic [ref=e497]: ","
+              - generic [ref=e498]: "32"
+              - generic [ref=e499]: ; "NEON "
+              - text: "!"
+              - generic [ref=e500]: byte
+              - generic [ref=e501]: "14"
+              - generic [ref=e502]: ","
+              - generic [ref=e503]: "5"
+              - generic [ref=e504]: ","
+              - generic [ref=e505]: "24"
+              - generic [ref=e506]: ","
+              - generic [ref=e507]: "21"
+              - generic [ref=e508]: ","
+              - generic [ref=e509]: "19"
+              - generic [ref=e510]: ; "NEXUS"
+              - text: "!"
+              - generic [ref=e511]: byte
+              - generic [ref=e512]: "0"
+              - generic [ref=e513]: ; End marker
+              - generic [ref=e514]: "subtitle_text:"
+              - text: "!"
+              - generic [ref=e515]: byte
+              - generic [ref=e516]: "7"
+              - generic [ref=e517]: ","
+              - generic [ref=e518]: "18"
+              - generic [ref=e519]: ","
+              - generic [ref=e520]: "9"
+              - generic [ref=e521]: ","
+              - generic [ref=e522]: "4"
+              - generic [ref=e523]: ","
+              - generic [ref=e524]: "32"
+              - generic [ref=e525]: ; "GRID "
+              - text: "!"
+              - generic [ref=e526]: byte
+              - generic [ref=e527]: "16"
+              - generic [ref=e528]: ","
+              - generic [ref=e529]: "18"
+              - generic [ref=e530]: ","
+              - generic [ref=e531]: "15"
+              - generic [ref=e532]: ","
+              - generic [ref=e533]: "20"
+              - generic [ref=e534]: ","
+              - generic [ref=e535]: "15"
+              - generic [ref=e536]: ; "PROTO"
+              - text: "!"
+              - generic [ref=e537]: byte
+              - generic [ref=e538]: "3"
+              - generic [ref=e539]: ","
+              - generic [ref=e540]: "15"
+              - generic [ref=e541]: ","
+              - generic [ref=e542]: "12"
+              - generic [ref=e543]: ; "COL"
+              - text: "!"
+              - generic [ref=e544]: byte
+              - generic [ref=e545]: "0"
+              - generic [ref=e546]: "prompt_text:"
+              - text: "!"
+              - generic [ref=e547]: byte
+              - generic [ref=e548]: "16"
+              - generic [ref=e549]: ","
+              - generic [ref=e550]: "18"
+              - generic [ref=e551]: ","
+              - generic [ref=e552]: "5"
+              - generic [ref=e553]: ","
+              - generic [ref=e554]: "19"
+              - generic [ref=e555]: ","
+              - generic [ref=e556]: "19"
+              - generic [ref=e557]: ","
+              - generic [ref=e558]: "32"
+              - generic [ref=e559]: ; "PRESS "
+              - text: "!"
+              - generic [ref=e560]: byte
+              - generic [ref=e561]: "6"
+              - generic [ref=e562]: ","
+              - generic [ref=e563]: "9"
+              - generic [ref=e564]: ","
+              - generic [ref=e565]: "18"
+              - generic [ref=e566]: ","
+              - generic [ref=e567]: "5"
+              - generic [ref=e568]: ","
+              - generic [ref=e569]: "32"
+              - generic [ref=e570]: ; "FIRE "
+              - text: "!"
+              - generic [ref=e571]: byte
+              - generic [ref=e572]: "20"
+              - generic [ref=e573]: ","
+              - generic [ref=e574]: "15"
+              - generic [ref=e575]: ","
+              - generic [ref=e576]: "32"
+              - generic [ref=e577]: ; "TO "
+              - text: "!"
+              - generic [ref=e578]: byte
+              - generic [ref=e579]: "19"
+              - generic [ref=e580]: ","
+              - generic [ref=e581]: "20"
+              - generic [ref=e582]: ","
+              - generic [ref=e583]: "1"
+              - generic [ref=e584]: ","
+              - generic [ref=e585]: "18"
+              - generic [ref=e586]: ","
+              - generic [ref=e587]: "20"
+              - generic [ref=e588]: ; "START"
+              - text: "!"
+              - generic [ref=e589]: byte
+              - generic [ref=e590]: "0"
+          - paragraph [ref=e591]: "Remember, screen codes work like this:"
+          - list [ref=e592]:
+            - listitem [ref=e593]: "Letters: A = 1, B = 2, C = 3… Z = 26"
+            - listitem [ref=e594]: "Numbers: 0 = 48, 1 = 49… 9 = 57"
+            - listitem [ref=e595]: Space = 32 (same as ASCII)
+            - listitem [ref=e596]: Different from ASCII where A = 65!
+          - heading "Complete Program" [level=3] [ref=e597]
+          - paragraph [ref=e598]: "Here’s everything together to create your title screen:"
+          - generic [ref=e599]:
+            - button "📋 Copy" [ref=e600] [cursor=pointer]
+            - generic [ref=e601]: Complete Program - Neon Nexus Title Screen
+            - code [ref=e603]:
+              - generic [ref=e604]: ; Neon Nexus Title Screen
+              - generic [ref=e605]: ; Your first step toward a complete game!
+              - generic [ref=e606]: "; BASIC launcher: 10 SYS 2061"
+              - text: "!"
+              - generic [ref=e607]: byte
+              - generic [ref=e608]: $0b
+              - generic [ref=e609]: ","
+              - generic [ref=e610]: $08
+              - generic [ref=e611]: ","
+              - generic [ref=e612]: $0a
+              - generic [ref=e613]: ","
+              - generic [ref=e614]: $00
+              - generic [ref=e615]: ","
+              - generic [ref=e616]: $9e
+              - generic [ref=e617]: ","
+              - generic [ref=e618]: $32
+              - generic [ref=e619]: ","
+              - generic [ref=e620]: $30
+              - generic [ref=e621]: ","
+              - generic [ref=e622]: $36
+              - generic [ref=e623]: ","
+              - generic [ref=e624]: $31
+              - generic [ref=e625]: ","
+              - generic [ref=e626]: $00
+              - generic [ref=e627]: ","
+              - generic [ref=e628]: $00
+              - generic [ref=e629]: ","
+              - generic [ref=e630]: $00
+              - generic [ref=e631]: "start:"
+              - generic [ref=e632]: ; Set colors
+              - generic [ref=e633]: lda
+              - generic [ref=e634]: "#$03"
+              - generic [ref=e635]: ; Cyan border
+              - generic [ref=e636]: sta
+              - generic [ref=e637]: $d020
+              - generic [ref=e638]: lda
+              - generic [ref=e639]: "#$00"
+              - generic [ref=e640]: ; Black background
+              - generic [ref=e641]: sta
+              - generic [ref=e642]: $d021
+              - generic [ref=e643]: ; Clear screen
+              - generic [ref=e644]: ldx
+              - generic [ref=e645]: "#0"
+              - generic [ref=e646]: "clear_loop:"
+              - generic [ref=e647]: lda
+              - generic [ref=e648]: "#$20"
+              - generic [ref=e649]: ; Space character
+              - generic [ref=e650]: sta
+              - generic [ref=e651]: $0400
+              - generic [ref=e652]: ","
+              - generic [ref=e653]: x
+              - generic [ref=e654]: sta
+              - generic [ref=e655]: $0500
+              - generic [ref=e656]: ","
+              - generic [ref=e657]: x
+              - generic [ref=e658]: sta
+              - generic [ref=e659]: $0600
+              - generic [ref=e660]: ","
+              - generic [ref=e661]: x
+              - generic [ref=e662]: sta
+              - generic [ref=e663]: $0700
+              - generic [ref=e664]: ","
+              - generic [ref=e665]: x
+              - generic [ref=e666]: lda
+              - generic [ref=e667]: "#$03"
+              - generic [ref=e668]: ; Cyan color for text
+              - generic [ref=e669]: sta
+              - generic [ref=e670]: $d800
+              - generic [ref=e671]: ","
+              - generic [ref=e672]: x
+              - generic [ref=e673]: sta
+              - generic [ref=e674]: $d900
+              - generic [ref=e675]: ","
+              - generic [ref=e676]: x
+              - generic [ref=e677]: sta
+              - generic [ref=e678]: $da00
+              - generic [ref=e679]: ","
+              - generic [ref=e680]: x
+              - generic [ref=e681]: sta
+              - generic [ref=e682]: $db00
+              - generic [ref=e683]: ","
+              - generic [ref=e684]: x
+              - generic [ref=e685]: inx
+              - generic [ref=e686]: bne
+              - text: clear_loop
+              - generic [ref=e687]: ; Display title
+              - generic [ref=e688]: ldx
+              - generic [ref=e689]: "#0"
+              - generic [ref=e690]: "title_loop:"
+              - generic [ref=e691]: lda
+              - text: title_text
+              - generic [ref=e692]: ","
+              - generic [ref=e693]: x
+              - generic [ref=e694]: beq
+              - text: show_subtitle
+              - generic [ref=e695]: sta
+              - generic [ref=e696]: $0400
+              - text: +
+              - generic [ref=e697]: "8"
+              - text: "*"
+              - generic [ref=e698]: "40"
+              - text: +
+              - generic [ref=e699]: "15"
+              - generic [ref=e700]: ","
+              - generic [ref=e701]: x
+              - generic [ref=e702]: inx
+              - generic [ref=e703]: jmp
+              - text: title_loop
+              - generic [ref=e704]: "show_subtitle:"
+              - generic [ref=e705]: ldx
+              - generic [ref=e706]: "#0"
+              - generic [ref=e707]: "subtitle_loop:"
+              - generic [ref=e708]: lda
+              - text: subtitle_text
+              - generic [ref=e709]: ","
+              - generic [ref=e710]: x
+              - generic [ref=e711]: beq
+              - text: show_prompt
+              - generic [ref=e712]: sta
+              - generic [ref=e713]: $0400
+              - text: +
+              - generic [ref=e714]: "10"
+              - text: "*"
+              - generic [ref=e715]: "40"
+              - text: +
+              - generic [ref=e716]: "13"
+              - generic [ref=e717]: ","
+              - generic [ref=e718]: x
+              - generic [ref=e719]: inx
+              - generic [ref=e720]: jmp
+              - text: subtitle_loop
+              - generic [ref=e721]: "show_prompt:"
+              - generic [ref=e722]: ldx
+              - generic [ref=e723]: "#0"
+              - generic [ref=e724]: "prompt_loop:"
+              - generic [ref=e725]: lda
+              - text: prompt_text
+              - generic [ref=e726]: ","
+              - generic [ref=e727]: x
+              - generic [ref=e728]: beq
+              - text: done
+              - generic [ref=e729]: sta
+              - generic [ref=e730]: $0400
+              - text: +
+              - generic [ref=e731]: "20"
+              - text: "*"
+              - generic [ref=e732]: "40"
+              - text: +
+              - generic [ref=e733]: "10"
+              - generic [ref=e734]: ","
+              - generic [ref=e735]: x
+              - generic [ref=e736]: inx
+              - generic [ref=e737]: jmp
+              - text: prompt_loop
+              - generic [ref=e738]: "done:"
+              - generic [ref=e739]: jmp
+              - text: done
+              - generic [ref=e740]: ; Infinite loop
+              - generic [ref=e741]: "title_text:"
+              - text: "!"
+              - generic [ref=e742]: byte
+              - generic [ref=e743]: "14"
+              - generic [ref=e744]: ","
+              - generic [ref=e745]: "5"
+              - generic [ref=e746]: ","
+              - generic [ref=e747]: "15"
+              - generic [ref=e748]: ","
+              - generic [ref=e749]: "14"
+              - generic [ref=e750]: ","
+              - generic [ref=e751]: "32"
+              - generic [ref=e752]: ","
+              - generic [ref=e753]: "14"
+              - generic [ref=e754]: ","
+              - generic [ref=e755]: "5"
+              - generic [ref=e756]: ","
+              - generic [ref=e757]: "24"
+              - generic [ref=e758]: ","
+              - generic [ref=e759]: "21"
+              - generic [ref=e760]: ","
+              - generic [ref=e761]: "19"
+              - generic [ref=e762]: ","
+              - generic [ref=e763]: "0"
+              - generic [ref=e764]: "subtitle_text:"
+              - text: "!"
+              - generic [ref=e765]: byte
+              - generic [ref=e766]: "7"
+              - generic [ref=e767]: ","
+              - generic [ref=e768]: "18"
+              - generic [ref=e769]: ","
+              - generic [ref=e770]: "9"
+              - generic [ref=e771]: ","
+              - generic [ref=e772]: "4"
+              - generic [ref=e773]: ","
+              - generic [ref=e774]: "32"
+              - generic [ref=e775]: ","
+              - generic [ref=e776]: "16"
+              - generic [ref=e777]: ","
+              - generic [ref=e778]: "18"
+              - generic [ref=e779]: ","
+              - generic [ref=e780]: "15"
+              - generic [ref=e781]: ","
+              - generic [ref=e782]: "20"
+              - generic [ref=e783]: ","
+              - generic [ref=e784]: "15"
+              - generic [ref=e785]: ","
+              - generic [ref=e786]: "3"
+              - generic [ref=e787]: ","
+              - generic [ref=e788]: "15"
+              - generic [ref=e789]: ","
+              - generic [ref=e790]: "12"
+              - generic [ref=e791]: ","
+              - generic [ref=e792]: "0"
+              - generic [ref=e793]: "prompt_text:"
+              - text: "!"
+              - generic [ref=e794]: byte
+              - generic [ref=e795]: "16"
+              - generic [ref=e796]: ","
+              - generic [ref=e797]: "18"
+              - generic [ref=e798]: ","
+              - generic [ref=e799]: "5"
+              - generic [ref=e800]: ","
+              - generic [ref=e801]: "19"
+              - generic [ref=e802]: ","
+              - generic [ref=e803]: "19"
+              - generic [ref=e804]: ","
+              - generic [ref=e805]: "32"
+              - generic [ref=e806]: ","
+              - generic [ref=e807]: "6"
+              - generic [ref=e808]: ","
+              - generic [ref=e809]: "9"
+              - generic [ref=e810]: ","
+              - generic [ref=e811]: "18"
+              - generic [ref=e812]: ","
+              - generic [ref=e813]: "5"
+              - generic [ref=e814]: ","
+              - generic [ref=e815]: "32"
+              - text: "!"
+              - generic [ref=e816]: byte
+              - generic [ref=e817]: "20"
+              - generic [ref=e818]: ","
+              - generic [ref=e819]: "15"
+              - generic [ref=e820]: ","
+              - generic [ref=e821]: "32"
+              - generic [ref=e822]: ","
+              - generic [ref=e823]: "19"
+              - generic [ref=e824]: ","
+              - generic [ref=e825]: "20"
+              - generic [ref=e826]: ","
+              - generic [ref=e827]: "1"
+              - generic [ref=e828]: ","
+              - generic [ref=e829]: "18"
+              - generic [ref=e830]: ","
+              - generic [ref=e831]: "20"
+              - generic [ref=e832]: ","
+              - generic [ref=e833]: "0"
+          - heading "Experimenting and Learning" [level=2] [ref=e834]
+          - paragraph [ref=e835]: "Now that you have a working program, try these modifications:"
+          - heading "Change the Colors" [level=3] [ref=e836]
+          - paragraph [ref=e837]: "The C64 has 16 colors. Try different combinations:"
+          - table [ref=e838]:
+            - rowgroup [ref=e839]:
+              - row "Code Color Code Color" [ref=e840]:
+                - cell "Code" [ref=e841]
+                - cell "Color" [ref=e842]
+                - cell "Code" [ref=e843]
+                - cell "Color" [ref=e844]
+            - rowgroup [ref=e845]:
+              - row "0 Black 8 Orange" [ref=e846]:
+                - cell "0" [ref=e847]
+                - cell "Black" [ref=e848]: Black
+                - cell "8" [ref=e849]
+                - cell "Orange" [ref=e850]: Orange
+              - row "1 White 9 Brown" [ref=e851]:
+                - cell "1" [ref=e852]
+                - cell "White" [ref=e853]: White
+                - cell "9" [ref=e854]
+                - cell "Brown" [ref=e855]: Brown
+              - row "2 Red 10 Light Red" [ref=e856]:
+                - cell "2" [ref=e857]
+                - cell "Red" [ref=e858]: Red
+                - cell "10" [ref=e859]
+                - cell "Light Red" [ref=e860]: Light Red
+              - row "3 Cyan 11 Dark Gray" [ref=e861]:
+                - cell "3" [ref=e862]
+                - cell "Cyan" [ref=e863]: Cyan
+                - cell "11" [ref=e864]
+                - cell "Dark Gray" [ref=e865]: Dark Gray
+              - row "4 Purple 12 Medium Gray" [ref=e866]:
+                - cell "4" [ref=e867]
+                - cell "Purple" [ref=e868]: Purple
+                - cell "12" [ref=e869]
+                - cell "Medium Gray" [ref=e870]: Medium Gray
+              - row "5 Green 13 Light Green" [ref=e871]:
+                - cell "5" [ref=e872]
+                - cell "Green" [ref=e873]: Green
+                - cell "13" [ref=e874]
+                - cell "Light Green" [ref=e875]: Light Green
+              - row "6 Blue 14 Light Blue" [ref=e876]:
+                - cell "6" [ref=e877]
+                - cell "Blue" [ref=e878]: Blue
+                - cell "14" [ref=e879]
+                - cell "Light Blue" [ref=e880]: Light Blue
+              - row "7 Yellow 15 Light Gray" [ref=e881]:
+                - cell "7" [ref=e882]
+                - cell "Yellow" [ref=e883]: Yellow
+                - cell "15" [ref=e884]
+                - cell "Light Gray" [ref=e885]: Light Gray
+          - paragraph [ref=e886]:
+            - text: Change line 2 to
+            - code [ref=e887]: "lda #$06"
+            - text: for a blue border, or
+            - code [ref=e888]: "lda #$07"
+            - text: for yellow!
+          - heading "Move the Message" [level=3] [ref=e889]
+          - paragraph [ref=e890]:
+            - text: "The formula for screen position is:"
+            - code [ref=e891]: $0400 + row*40 + column
+          - paragraph [ref=e892]: "Try:"
+          - list [ref=e893]:
+            - listitem [ref=e894]:
+              - code [ref=e895]: $0400+0*40+0
+              - text: "- Top left corner"
+            - listitem [ref=e896]:
+              - code [ref=e897]: $0400+24*40+30
+              - text: "- Bottom right area"
+            - listitem [ref=e898]:
+              - code [ref=e899]: $0400+10*40+10
+              - text: "- Different center position"
+          - heading "Add More Text" [level=3] [ref=e900]
+          - paragraph [ref=e901]: "Extend the message:"
+          - generic [ref=e902]:
+            - button "📋 Copy" [ref=e903] [cursor=pointer]
+            - generic [ref=e904]: Extended Message
+            - code [ref=e906]:
+              - generic [ref=e907]: "message_text:"
+              - text: "!"
+              - generic [ref=e908]: byte
+              - generic [ref=e909]: "8"
+              - generic [ref=e910]: ","
+              - generic [ref=e911]: "5"
+              - generic [ref=e912]: ","
+              - generic [ref=e913]: "12"
+              - generic [ref=e914]: ","
+              - generic [ref=e915]: "12"
+              - generic [ref=e916]: ","
+              - generic [ref=e917]: "15"
+              - generic [ref=e918]: ","
+              - generic [ref=e919]: "32"
+              - generic [ref=e920]: ; "HELLO "
+              - text: "!"
+              - generic [ref=e921]: byte
+              - generic [ref=e922]: "3"
+              - generic [ref=e923]: ","
+              - generic [ref=e924]: "54"
+              - generic [ref=e925]: ","
+              - generic [ref=e926]: "52"
+              - generic [ref=e927]: ","
+              - generic [ref=e928]: "33"
+              - generic [ref=e929]: ","
+              - generic [ref=e930]: "32"
+              - generic [ref=e931]: ","
+              - generic [ref=e932]: "32"
+              - generic [ref=e933]: ; "C64! "
+              - text: "!"
+              - generic [ref=e934]: byte
+              - generic [ref=e935]: "6"
+              - generic [ref=e936]: ","
+              - generic [ref=e937]: "18"
+              - generic [ref=e938]: ","
+              - generic [ref=e939]: "15"
+              - generic [ref=e940]: ","
+              - generic [ref=e941]: "13"
+              - generic [ref=e942]: ","
+              - generic [ref=e943]: "32"
+              - generic [ref=e944]: ; "FROM "
+              - text: "!"
+              - generic [ref=e945]: byte
+              - generic [ref=e946]: "1"
+              - generic [ref=e947]: ","
+              - generic [ref=e948]: "19"
+              - generic [ref=e949]: ","
+              - generic [ref=e950]: "13"
+              - generic [ref=e951]: ","
+              - generic [ref=e952]: "33"
+              - generic [ref=e953]: ; "ASM!"
+              - text: "!"
+              - generic [ref=e954]: byte
+              - generic [ref=e955]: "0"
+          - heading "Create Patterns" [level=3] [ref=e956]
+          - paragraph [ref=e957]: "Instead of clearing with spaces, try filling with characters:"
+          - generic [ref=e958]:
+            - button "📋 Copy" [ref=e959] [cursor=pointer]
+            - generic [ref=e960]: Pattern Fill
+            - code [ref=e962]:
+              - generic [ref=e963]: lda
+              - generic [ref=e964]: "#$66"
+              - generic [ref=e965]: ; Checkerboard character
+              - generic [ref=e966]: sta
+              - generic [ref=e967]: $0400
+              - generic [ref=e968]: ","
+              - generic [ref=e969]: x
+              - generic [ref=e970]: ; Creates a pattern!
+          - heading "Professional Challenges" [level=3] [ref=e971]
+          - paragraph [ref=e972]: "Now that you understand the fundamentals, try these advanced experiments:"
+          - paragraph [ref=e973]:
+            - strong [ref=e974]: "Demo Scene Effects:"
+          - generic [ref=e975]:
+            - button "📋 Copy" [ref=e976] [cursor=pointer]
+            - generic [ref=e977]: Color Cycling - Demo Scene Style
+            - code [ref=e979]:
+              - generic [ref=e980]: ; Color cycling like the pros
+              - generic [ref=e981]: ldx
+              - generic [ref=e982]: "#0"
+              - generic [ref=e983]: "cycle_colors:"
+              - generic [ref=e984]: stx
+              - generic [ref=e985]: $d020
+              - generic [ref=e986]: ; Border cycles
+              - generic [ref=e987]: txa
+              - generic [ref=e988]: eor
+              - generic [ref=e989]: "#$0f"
+              - generic [ref=e990]: ; XOR for interesting patterns
+              - generic [ref=e991]: sta
+              - generic [ref=e992]: $d021
+              - generic [ref=e993]: ; Background cycles differently
+              - generic [ref=e994]: ; Delay loop
+              - generic [ref=e995]: ldy
+              - generic [ref=e996]: "#255"
+              - generic [ref=e997]: "delay:"
+              - generic [ref=e998]: dey
+              - generic [ref=e999]: bne
+              - text: delay
+              - generic [ref=e1000]: inx
+              - generic [ref=e1001]: jmp
+              - text: cycle_colors
+          - paragraph [ref=e1002]:
+            - strong [ref=e1003]: "Memory Painting:"
+          - generic [ref=e1004]:
+            - button "📋 Copy" [ref=e1005] [cursor=pointer]
+            - generic [ref=e1006]: Memory Painting - Uridium Style
+            - code [ref=e1008]:
+              - generic [ref=e1009]: ; Fill screen with patterns like "Uridium"
+              - generic [ref=e1010]: ldx
+              - generic [ref=e1011]: "#0"
+              - generic [ref=e1012]: "paint_screen:"
+              - generic [ref=e1013]: txa
+              - generic [ref=e1014]: and
+              - generic [ref=e1015]: "#$07"
+              - generic [ref=e1016]: ; Create repeating pattern
+              - generic [ref=e1017]: ora
+              - generic [ref=e1018]: "#$80"
+              - generic [ref=e1019]: ; Add to base character
+              - generic [ref=e1020]: sta
+              - generic [ref=e1021]: $0400
+              - generic [ref=e1022]: ","
+              - generic [ref=e1023]: x
+              - generic [ref=e1024]: sta
+              - generic [ref=e1025]: $0500
+              - generic [ref=e1026]: ","
+              - generic [ref=e1027]: x
+              - generic [ref=e1028]: sta
+              - generic [ref=e1029]: $0600
+              - generic [ref=e1030]: ","
+              - generic [ref=e1031]: x
+              - generic [ref=e1032]: sta
+              - generic [ref=e1033]: $0700
+              - generic [ref=e1034]: ","
+              - generic [ref=e1035]: x
+              - generic [ref=e1036]: inx
+              - generic [ref=e1037]: bne
+              - text: paint_screen
+          - paragraph [ref=e1038]:
+            - strong [ref=e1039]: "Historical Recreation:"
+            - text: "Try recreating the classic C64 startup sequence:"
+          - list [ref=e1040]:
+            - listitem [ref=e1041]: Clear screen to blue background
+            - listitem [ref=e1042]: Display “COMMODORE 64 BASIC V2” at the top
+            - listitem [ref=e1043]: Show available memory “38911 BASIC BYTES FREE”
+          - heading "Understanding What Just Happened" [level=2] [ref=e1044]
+          - paragraph [ref=e1045]: You’ve just done something remarkable - you wrote a program that talks directly to the C64’s hardware. No operating system, no BASIC interpreter - just your code and the chips.
+          - paragraph [ref=e1046]:
+            - text: When you typed
+            - code [ref=e1047]: RUN
+            - text: ":"
+          - list [ref=e1048]:
+            - listitem [ref=e1049]:
+              - text: BASIC executed
+              - code [ref=e1050]: SYS 2061
+            - listitem [ref=e1051]: The CPU jumped to your assembly code
+            - listitem [ref=e1052]: Your code wrote directly to VIC-II registers
+            - listitem [ref=e1053]: The hardware responded instantly
+          - paragraph [ref=e1054]: This direct control is what made the C64 special. Games could push the hardware to its limits. Demos could do “impossible” things. And now you’re part of that tradition.
+          - heading "Common Issues and Solutions" [level=2] [ref=e1055]
+          - heading "”Nothing happens when I RUN”" [level=3] [ref=e1056]
+          - list [ref=e1057]:
+            - listitem [ref=e1058]: Check your BASIC stub bytes are exactly right
+            - listitem [ref=e1059]: Make sure you’re assembling to $0801
+            - listitem [ref=e1060]: Verify the SYS address matches your code start
+          - heading "”Wrong colors appear”" [level=3] [ref=e1061]
+          - list [ref=e1062]:
+            - listitem [ref=e1063]: "Remember: color codes are 0-15"
+            - listitem [ref=e1064]: Some assemblers need decimal, others hex
+            - listitem [ref=e1065]:
+              - code [ref=e1066]: "#03"
+              - text: in some assemblers,
+              - code [ref=e1067]: "#$03"
+              - text: in others
+          - heading "”Garbage on screen”" [level=3] [ref=e1068]
+          - list [ref=e1069]:
+            - listitem [ref=e1070]: Screen codes aren’t ASCII!
+            - listitem [ref=e1071]: A=1, B=2, not A=65, B=66
+            - listitem [ref=e1072]: Use the screen code reference table
+          - heading "”Program crashes”" [level=3] [ref=e1073]
+          - list [ref=e1074]:
+            - listitem [ref=e1075]: Make sure your infinite loop is in place
+            - listitem [ref=e1076]: Check you’re not writing past screen memory
+            - listitem [ref=e1077]: Verify all branches and jumps are correct
+          - heading "What You’ve Really Learned" [level=2] [ref=e1078]
+          - paragraph [ref=e1079]: "You haven’t just written your first assembly program - you’ve joined a tradition of direct hardware programming that defined the 1980s. You can now:"
+          - list [ref=e1080]:
+            - listitem [ref=e1081]:
+              - text: ✅
+              - strong [ref=e1082]: Control hardware directly
+              - text: "- Write to VIC-II registers like the pros"
+            - listitem [ref=e1083]:
+              - text: ✅
+              - strong [ref=e1084]: Think in memory maps
+              - text: "- Understand the C64’s address space"
+            - listitem [ref=e1085]:
+              - text: ✅
+              - strong [ref=e1086]: Optimize like it’s 1982
+              - text: "- Use efficient loops and addressing modes"
+            - listitem [ref=e1087]:
+              - text: ✅
+              - strong [ref=e1088]: Code without fear
+              - text: "- Write assembly that actually does something"
+            - listitem [ref=e1089]:
+              - text: ✅
+              - strong [ref=e1090]: Understand the magic
+              - text: "- Know why"
+              - code [ref=e1091]: POKE 53280,1
+              - text: changes colors
+          - paragraph [ref=e1092]:
+            - strong [ref=e1093]: "You’re now programming like:"
+            - text: Jeff Minter, Andrew Braybrook, Rob Hubbard, and the legends who created the C64’s greatest software. The same techniques, the same mindset, the same direct control of the machine.
+          - paragraph [ref=e1094]: This isn’t just education - it’s digital archaeology. You’re preserving and continuing the craft of authentic 1980s programming.
+          - paragraph [ref=e1095]: These are the fundamental skills for C64 programming. Everything else builds on this foundation.
+          - 'heading "Next: Hardware Sprites" [level=2] [ref=e1096]'
+          - paragraph [ref=e1097]: In the next lesson, you’ll bring graphics to life with hardware sprites - independent objects that can move smoothly across the screen. The C64’s sprites are legendary for good reason. You’ll see why!
+          - paragraph [ref=e1098]:
+            - strong [ref=e1099]: Ready to make things move?
+          - separator [ref=e1100]
+          - heading "Quick Reference" [level=2] [ref=e1101]
+          - heading "Essential 6502 Instructions" [level=3] [ref=e1102]
+          - table [ref=e1103]:
+            - rowgroup [ref=e1104]:
+              - row "Instruction Description" [ref=e1105]:
+                - cell "Instruction" [ref=e1106]
+                - cell "Description" [ref=e1107]
+            - rowgroup [ref=e1108]:
+              - 'row "LDA #value Load A with immediate value" [ref=e1109]':
+                - 'cell "LDA #value" [ref=e1110]'
+                - cell "Load A with immediate value" [ref=e1111]
+              - row "STA address Store A to memory address" [ref=e1112]:
+                - cell "STA address" [ref=e1113]
+                - cell "Store A to memory address" [ref=e1114]
+              - 'row "LDX #value Load X register" [ref=e1115]':
+                - 'cell "LDX #value" [ref=e1116]'
+                - cell "Load X register" [ref=e1117]
+              - row "INX Increment X" [ref=e1118]:
+                - cell "INX" [ref=e1119]
+                - cell "Increment X" [ref=e1120]
+              - row "BNE label Branch if not zero" [ref=e1121]:
+                - cell "BNE label" [ref=e1122]
+                - cell "Branch if not zero" [ref=e1123]
+              - row "BEQ label Branch if zero" [ref=e1124]:
+                - cell "BEQ label" [ref=e1125]
+                - cell "Branch if zero" [ref=e1126]
+              - row "JMP label Jump to label" [ref=e1127]:
+                - cell "JMP label" [ref=e1128]
+                - cell "Jump to label" [ref=e1129]
+          - heading "Key Memory Locations" [level=3] [ref=e1130]
+          - table [ref=e1131]:
+            - rowgroup [ref=e1132]:
+              - row "Address Function" [ref=e1133]:
+                - cell "Address" [ref=e1134]
+                - cell "Function" [ref=e1135]
+            - rowgroup [ref=e1136]:
+              - row "$0801 BASIC program start" [ref=e1137]:
+                - cell "$0801" [ref=e1138]
+                - cell "BASIC program start" [ref=e1139]
+              - row "$0400-$07E7 Screen memory" [ref=e1140]:
+                - cell "$0400-$07E7" [ref=e1141]
+                - cell "Screen memory" [ref=e1142]
+              - row "$D800-$DBE7 Color memory" [ref=e1143]:
+                - cell "$D800-$DBE7" [ref=e1144]
+                - cell "Color memory" [ref=e1145]
+              - row "$D020 Border color" [ref=e1146]:
+                - cell "$D020" [ref=e1147]
+                - cell "Border color" [ref=e1148]
+              - row "$D021 Background color" [ref=e1149]:
+                - cell "$D021" [ref=e1150]
+                - cell "Background color" [ref=e1151]
+          - heading "Screen Codes" [level=3] [ref=e1152]
+          - table [ref=e1153]:
+            - rowgroup [ref=e1154]:
+              - row "Characters Code Range Special Code" [ref=e1155]:
+                - cell "Characters" [ref=e1156]
+                - cell "Code Range" [ref=e1157]
+                - cell "Special" [ref=e1158]
+                - cell "Code" [ref=e1159]
+            - rowgroup [ref=e1160]:
+              - row "A-Z 1-26 Space 32" [ref=e1161]:
+                - cell "A-Z" [ref=e1162]
+                - cell "1-26" [ref=e1163]
+                - cell "Space" [ref=e1164]
+                - cell "32" [ref=e1165]
+              - row "0-9 48-57 ! 33" [ref=e1166]:
+                - cell "0-9" [ref=e1167]
+                - cell "48-57" [ref=e1168]
+                - cell "!" [ref=e1169]
+                - cell "33" [ref=e1170]
+          - paragraph [ref=e1171]: "Remember: The C64 is waiting for your commands. What will you create next?"
+        - link "Next Display Your First Sprite →" [ref=e1175] [cursor=pointer]:
+          - /url: /lessons/commodore-64/phase-1/tier-1/lesson-002
+          - generic [ref=e1176] [cursor=pointer]:
+            - generic [ref=e1177] [cursor=pointer]: Next
+            - generic [ref=e1178] [cursor=pointer]: Display Your First Sprite
+          - generic [ref=e1179] [cursor=pointer]: →
+    - contentinfo [ref=e1180]:
+      - generic [ref=e1181]:
+        - generic [ref=e1182]:
+          - generic [ref=e1183]:
+            - link "Code Like It's 198x - Home" [ref=e1184] [cursor=pointer]:
+              - /url: /
+              - img "Code Like It's 198x" [ref=e1185] [cursor=pointer]
+            - paragraph [ref=e1186]: Learn assembly programming on classic systems through hands-on lessons and authentic development tools.
+            - generic [ref=e1187]:
+              - link "GitHub" [ref=e1188] [cursor=pointer]:
+                - /url: https://github.com/code198x
+                - img [ref=e1189] [cursor=pointer]
+              - link "Discord" [ref=e1191] [cursor=pointer]:
+                - /url: https://discord.gg/AdmEYQKWZb
+                - img [ref=e1192] [cursor=pointer]
+          - generic [ref=e1194]:
+            - heading "Learn" [level=4] [ref=e1195]
+            - list [ref=e1196]:
+              - listitem [ref=e1197]:
+                - link "Get Started" [ref=e1198] [cursor=pointer]:
+                  - /url: /getting-started
+              - listitem [ref=e1199]:
+                - link "All Lessons" [ref=e1200] [cursor=pointer]:
+                  - /url: /lessons
+              - listitem [ref=e1201]:
+                - link "By System" [ref=e1202] [cursor=pointer]:
+                  - /url: /lessons#systems
+              - listitem [ref=e1203]:
+                - link "Setup Guides" [ref=e1204] [cursor=pointer]:
+                  - /url: /getting-started#setup
+          - generic [ref=e1205]:
+            - heading "Resources" [level=4] [ref=e1206]
+            - list [ref=e1207]:
+              - listitem [ref=e1208]:
+                - link "All Systems" [ref=e1209] [cursor=pointer]:
+                  - /url: /vault/hardware
+              - listitem [ref=e1210]:
+                - link "The Vault" [ref=e1211] [cursor=pointer]:
+                  - /url: /vault
+              - listitem [ref=e1212]:
+                - link "Tools" [ref=e1213] [cursor=pointer]:
+                  - /url: /tools
+              - listitem [ref=e1214]:
+                - link "Community" [ref=e1215] [cursor=pointer]:
+                  - /url: /community
+          - generic [ref=e1216]:
+            - heading "Popular Systems" [level=4] [ref=e1217]
+            - list [ref=e1218]:
+              - listitem [ref=e1219]:
+                - link "Commodore 64" [ref=e1220] [cursor=pointer]:
+                  - /url: /vault/hardware/commodore-64
+              - listitem [ref=e1221]:
+                - link "ZX Spectrum" [ref=e1222] [cursor=pointer]:
+                  - /url: /vault/hardware/zx-spectrum
+              - listitem [ref=e1223]:
+                - link "NES" [ref=e1224] [cursor=pointer]:
+                  - /url: /vault/hardware/nintendo-entertainment-system
+              - listitem [ref=e1225]:
+                - link "Amiga" [ref=e1226] [cursor=pointer]:
+                  - /url: /vault/hardware/commodore-amiga
+        - generic [ref=e1227]:
+          - paragraph [ref=e1228]: © 2025 Code Like It's 198x. Made with ❤️ for retro computing.
+          - navigation [ref=e1229]:
+            - link "Privacy" [ref=e1230] [cursor=pointer]:
+              - /url: /privacy
+            - link "Terms" [ref=e1231] [cursor=pointer]:
+              - /url: /terms
+            - link "Sitemap" [ref=e1232] [cursor=pointer]:
+              - /url: /sitemap.xml
+  - generic [ref=e1235]:
+    - button "Menu" [ref=e1236]:
+      - img [ref=e1238]
+      - generic: Menu
+    - button "Inspect" [ref=e1242]:
+      - img [ref=e1244]
+      - generic: Inspect
+    - button "Audit" [ref=e1246]:
+      - generic [ref=e1247]:
+        - img [ref=e1248]
+        - img [ref=e1251]
+      - generic: Audit
+    - button "Settings" [ref=e1254]:
+      - img [ref=e1256]
+      - generic: Settings
+```

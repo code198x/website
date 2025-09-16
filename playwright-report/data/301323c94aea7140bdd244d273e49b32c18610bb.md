@@ -1,0 +1,316 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - navigation "Main navigation" [ref=e4]:
+      - generic [ref=e6]:
+        - link "Code198x Home" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Code Like It's 198x" [ref=e8] [cursor=pointer]
+        - list [ref=e9]:
+          - listitem [ref=e10]:
+            - link "🏠 Home" [ref=e11] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e12] [cursor=pointer]: 🏠
+              - generic [ref=e13] [cursor=pointer]: Home
+          - listitem [ref=e14]:
+            - link "🚀 Get Started" [ref=e15] [cursor=pointer]:
+              - /url: /getting-started
+              - generic [ref=e16] [cursor=pointer]: 🚀
+              - generic [ref=e17] [cursor=pointer]: Get Started
+          - listitem [ref=e18]:
+            - link "📚 Learn" [ref=e19] [cursor=pointer]:
+              - /url: /lessons
+              - generic [ref=e20] [cursor=pointer]: 📚
+              - generic [ref=e21] [cursor=pointer]: Learn
+          - listitem [ref=e22]:
+            - link "🗄️ The Vault" [ref=e23] [cursor=pointer]:
+              - /url: /vault
+              - generic [ref=e24] [cursor=pointer]: 🗄️
+              - generic [ref=e25] [cursor=pointer]: The Vault
+          - listitem [ref=e26]:
+            - link "ℹ️ About" [ref=e27] [cursor=pointer]:
+              - /url: /about
+              - generic [ref=e28] [cursor=pointer]: ℹ️
+              - generic [ref=e29] [cursor=pointer]: About
+        - generic [ref=e30]:
+          - button "Search" [ref=e31] [cursor=pointer]:
+            - img [ref=e32] [cursor=pointer]
+          - button "Toggle theme" [ref=e35] [cursor=pointer]:
+            - img [ref=e36] [cursor=pointer]
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - heading "⚡️ Performance Monitor" [level=3] [ref=e44]
+        - button [ref=e45] [cursor=pointer]:
+          - img [ref=e46] [cursor=pointer]
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - generic [ref=e52]: CLS
+              - generic [ref=e53]: "-"
+            - generic [ref=e54]: measuring...
+          - generic [ref=e55]:
+            - generic [ref=e56]:
+              - generic [ref=e57]: FCP
+              - generic [ref=e58]: 212ms
+            - generic [ref=e59]: good
+          - generic [ref=e60]:
+            - generic [ref=e61]:
+              - generic [ref=e62]: LCP
+              - generic [ref=e63]: "-"
+            - generic [ref=e64]: measuring...
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e67]: INP
+              - generic [ref=e68]: "-"
+            - generic [ref=e69]: waiting for interaction
+        - generic [ref=e70]:
+          - button "Clear Data" [ref=e71] [cursor=pointer]
+          - button "Export Data" [ref=e72] [cursor=pointer]
+          - button "View Details" [ref=e73] [cursor=pointer]
+    - main [ref=e76]:
+      - generic [ref=e77]:
+        - link "🖥️ Hardware" [ref=e79] [cursor=pointer]:
+          - /url: /vault
+          - generic [ref=e81] [cursor=pointer]: 🖥️ Hardware
+        - paragraph [ref=e82]: The best-selling home computer of all time, featuring the legendary SID chip and defining a generation of computing
+        - heading "Commodore 64" [level=1] [ref=e83]
+        - paragraph [ref=e84]: Learn about Commodore 64, computer from 1982.
+      - generic [ref=e86]:
+        - navigation "Breadcrumb navigation" [ref=e87]:
+          - list [ref=e88]:
+            - listitem [ref=e89]:
+              - link "Home" [ref=e90] [cursor=pointer]:
+                - /url: /
+                - generic [ref=e91] [cursor=pointer]: 🏠
+                - generic [ref=e92] [cursor=pointer]: Home
+              - generic [ref=e93]: ›
+            - listitem [ref=e94]:
+              - link "The Vault" [ref=e95] [cursor=pointer]:
+                - /url: /vault
+                - generic [ref=e96] [cursor=pointer]: 🗄️
+                - generic [ref=e97] [cursor=pointer]: The Vault
+              - generic [ref=e98]: ›
+            - listitem [ref=e99]:
+              - link "Hardware" [ref=e100] [cursor=pointer]:
+                - /url: /vault/hardware
+                - generic [ref=e101] [cursor=pointer]: 🖥️
+                - generic [ref=e102] [cursor=pointer]: Hardware
+              - generic [ref=e103]: ›
+            - listitem [ref=e104]:
+              - generic [ref=e105]:
+                - generic [ref=e106]: 🖥️
+                - generic [ref=e107]: Commodore 64
+        - article [ref=e108]:
+          - generic [ref=e109]:
+            - generic [ref=e110]:
+              - generic [ref=e111]:
+                - generic [ref=e112]: Year
+                - generic [ref=e113]: "1982"
+              - generic [ref=e114]:
+                - generic [ref=e115]: Type
+                - generic [ref=e116]: computer
+            - generic [ref=e117]:
+              - generic [ref=e118]: "Tags:"
+              - generic [ref=e119]:
+                - generic [ref=e120]: 8-bit
+                - generic [ref=e121]: home-computer
+                - generic [ref=e122]: "6502"
+                - generic [ref=e123]: gaming
+                - generic [ref=e124]: demoscene
+          - generic [ref=e126]:
+            - text: "# Commodore 64 ## The Machine That Changed Everything The Commodore 64 remains the best-selling single computer model of all time, with estimates ranging from 12.5 to 17 million units sold. Released in August 1982, it dominated the home computer market throughout the 1980s. ## Technical Specifications ### CPU: MOS Technology 6510 - 1.023 MHz (NTSC) / 0.985 MHz (PAL) - 8-bit processor with 6502 instruction set - Built-in I/O port for memory banking ### Memory - 64 KB RAM (38911 bytes free in BASIC) - 20 KB ROM (8KB BASIC 2.0, 8KB KERNAL, 4KB character ROM) - Memory-mapped I/O at $D000-$DFFF ### Graphics: VIC-II Chip - 320×200 pixels (hi-res) with 2 colors per 8×8 block - 160×200 pixels (multicolor) with 4 colors per 4×8 block - 16 colors - 8 hardware sprites - Smooth scrolling - Raster interrupts for advanced effects ### Sound:"
+            - link "SID" [ref=e127] [cursor=pointer]:
+              - /url: /vault/hardware/sid-chip
+            - text: 6581/8580 The
+            - link "SID" [ref=e128] [cursor=pointer]:
+              - /url: /vault/hardware/sid-chip
+            - text: "chip was revolutionary for its time: - 3 voices (oscillators) - 4 waveforms per voice (triangle, sawtooth, pulse, noise) - ADSR envelope control - Ring modulation and sync - Programmable filter ## Impact on Computing ### Gaming Revolution The C64 became the premier gaming platform of the 1980s. Classic titles like"
+            - link "Impossible Mission" [ref=e129] [cursor=pointer]:
+              - /url: /vault/games/impossible-mission
+            - text: ", The Last Ninja, and Turrican pushed the hardware to its limits. The machine's sprites and smooth scrolling made it ideal for arcade conversions. ### Demoscene Birth The C64 gave birth to the modern demoscene. Groups like"
+            - link "Fairlight" [ref=e130] [cursor=pointer]:
+              - /url: /vault/groups/fairlight
+            - text: ", Crest, and Eagle Soft Inc pushed the hardware beyond its intended limits, creating impossible effects through clever programming. Techniques like opening the borders, FLI (Flexible Line Interpretation), and sample playback became legendary. ### Music Innovation"
+            - link "SID" [ref=e131] [cursor=pointer]:
+              - /url: /vault/hardware/sid-chip
+            - text: musicians like Rob Hubbard, Martin Galway, and Jeroen Tel created iconic soundtracks that defined a generation. The
+            - link "SID" [ref=e132] [cursor=pointer]:
+              - /url: /vault/hardware/sid-chip
+            - text: "chip's unique sound continues to influence electronic music today. ## Programming the C64 ### BASIC Programming The C64 came with Commodore BASIC 2.0, a simple but limited dialect: - No dedicated graphics or sound commands - PEEK and POKE for hardware access - Limited to 38911 bytes for programs ### Assembly Language Serious development required 6502 assembly: - Direct hardware manipulation - Raster timing for effects - Memory banking for larger programs - Custom interrupt handlers ### Memory Map Highlights - $0801-$9FFF: BASIC program space - $C000-$CFFF: RAM under BASIC ROM - $D000-$D3FF: VIC-II registers - $D400-$D7FF:"
+            - link "SID" [ref=e133] [cursor=pointer]:
+              - /url: /vault/hardware/sid-chip
+            - text: "registers - $D800-$DBFF: Color RAM ## Modern Legacy ### Emulation"
+            - link "VICE" [ref=e134] [cursor=pointer]:
+              - /url: /vault/emulators/vice
+            - text: "(Versatile Commodore Emulator) provides cycle-accurate emulation, allowing perfect preservation of C64 software. Other emulators like CCS64 and Hoxs64 offer alternative approaches. ### Modern Hardware - C64 Mini/Maxi: Official recreations with HDMI output - Ultimate 64: FPGA-based clone with modern enhancements - Turbo Chameleon 64: Cartridge that turns C64 into accelerated system ### Active Community The C64 scene remains vibrant: - New games released regularly - Annual demo competitions - Hardware expansions still developed - Cross-development tools for modern systems ## Cultural Impact The Commodore 64 wasn't just a computer; it was a cultural phenomenon. It introduced millions to programming, created the demoscene, revolutionized game music, and established many conventions still used today. Its influence extends far beyond its impressive sales figures. For many, the C64 represents the golden age of home computing - when a single person could understand an entire system, when programming meant talking directly to hardware, and when limitations bred creativity."
+          - generic [ref=e135]:
+            - heading "🔗 Related Entries" [level=2] [ref=e136]
+            - generic [ref=e137]:
+              - link "🖥️ Hardware ZX Spectrum Britain's gateway to home computing with distinctive rubber keys and vibrant game library 8-bithome-computerZ80 +3" [ref=e138] [cursor=pointer]:
+                - /url: /vault/hardware/zx-spectrum
+                - generic [ref=e139] [cursor=pointer]:
+                  - generic [ref=e140] [cursor=pointer]: 🖥️
+                  - generic [ref=e141] [cursor=pointer]: Hardware
+                - heading "ZX Spectrum" [level=3] [ref=e142] [cursor=pointer]
+                - paragraph [ref=e143] [cursor=pointer]: Britain's gateway to home computing with distinctive rubber keys and vibrant game library
+                - generic [ref=e144] [cursor=pointer]:
+                  - generic [ref=e145] [cursor=pointer]: 8-bit
+                  - generic [ref=e146] [cursor=pointer]: home-computer
+                  - generic [ref=e147] [cursor=pointer]: Z80
+                  - generic [ref=e148] [cursor=pointer]: "+3"
+              - link "🖥️ Hardware Amiga 500 The most popular Amiga model that brought arcade-quality graphics and sound home 16-bitmultimedia68000 +3" [ref=e149] [cursor=pointer]:
+                - /url: /vault/hardware/amiga-500
+                - generic [ref=e150] [cursor=pointer]:
+                  - generic [ref=e151] [cursor=pointer]: 🖥️
+                  - generic [ref=e152] [cursor=pointer]: Hardware
+                - heading "Amiga 500" [level=3] [ref=e153] [cursor=pointer]
+                - paragraph [ref=e154] [cursor=pointer]: The most popular Amiga model that brought arcade-quality graphics and sound home
+                - generic [ref=e155] [cursor=pointer]:
+                  - generic [ref=e156] [cursor=pointer]: 16-bit
+                  - generic [ref=e157] [cursor=pointer]: multimedia
+                  - generic [ref=e158] [cursor=pointer]: "68000"
+                  - generic [ref=e159] [cursor=pointer]: "+3"
+              - link "🖥️ Hardware SID The legendary MOS 6581/8580 Sound Interface Device that defined 8-bit computer music sound-chipsynthesizercommodore +2" [ref=e160] [cursor=pointer]:
+                - /url: /vault/hardware/sid-chip
+                - generic [ref=e161] [cursor=pointer]:
+                  - generic [ref=e162] [cursor=pointer]: 🖥️
+                  - generic [ref=e163] [cursor=pointer]: Hardware
+                - heading "SID" [level=3] [ref=e164] [cursor=pointer]
+                - paragraph [ref=e165] [cursor=pointer]: The legendary MOS 6581/8580 Sound Interface Device that defined 8-bit computer music
+                - generic [ref=e166] [cursor=pointer]:
+                  - generic [ref=e167] [cursor=pointer]: sound-chip
+                  - generic [ref=e168] [cursor=pointer]: synthesizer
+                  - generic [ref=e169] [cursor=pointer]: commodore
+                  - generic [ref=e170] [cursor=pointer]: "+2"
+              - link "⚡ Techniques Raster Bars Colorful horizontal bars created by changing palette registers mid-frame graphicsdemoscenetiming +2" [ref=e171] [cursor=pointer]:
+                - /url: /vault/techniques/raster-bars
+                - generic [ref=e172] [cursor=pointer]:
+                  - generic [ref=e173] [cursor=pointer]: ⚡
+                  - generic [ref=e174] [cursor=pointer]: Techniques
+                - heading "Raster Bars" [level=3] [ref=e175] [cursor=pointer]
+                - paragraph [ref=e176] [cursor=pointer]: Colorful horizontal bars created by changing palette registers mid-frame
+                - generic [ref=e177] [cursor=pointer]:
+                  - generic [ref=e178] [cursor=pointer]: graphics
+                  - generic [ref=e179] [cursor=pointer]: demoscene
+                  - generic [ref=e180] [cursor=pointer]: timing
+                  - generic [ref=e181] [cursor=pointer]: "+2"
+              - link "🏢 Companies Commodore International Computing giant that democratized home computing with the VIC-20, C64, and Amiga manufacturer8-bit16-bit +2" [ref=e182] [cursor=pointer]:
+                - /url: /vault/companies/commodore
+                - generic [ref=e183] [cursor=pointer]:
+                  - generic [ref=e184] [cursor=pointer]: 🏢
+                  - generic [ref=e185] [cursor=pointer]: Companies
+                - heading "Commodore International" [level=3] [ref=e186] [cursor=pointer]
+                - paragraph [ref=e187] [cursor=pointer]: Computing giant that democratized home computing with the VIC-20, C64, and Amiga
+                - generic [ref=e188] [cursor=pointer]:
+                  - generic [ref=e189] [cursor=pointer]: manufacturer
+                  - generic [ref=e190] [cursor=pointer]: 8-bit
+                  - generic [ref=e191] [cursor=pointer]: 16-bit
+                  - generic [ref=e192] [cursor=pointer]: "+2"
+              - link "👥 Groups Future Crew Finnish demogroup that created the legendary Second Reality demo and later formed Remedy Entertainment demoscenePCSecond-Reality +2" [ref=e193] [cursor=pointer]:
+                - /url: /vault/groups/future-crew
+                - generic [ref=e194] [cursor=pointer]:
+                  - generic [ref=e195] [cursor=pointer]: 👥
+                  - generic [ref=e196] [cursor=pointer]: Groups
+                - heading "Future Crew" [level=3] [ref=e197] [cursor=pointer]
+                - paragraph [ref=e198] [cursor=pointer]: Finnish demogroup that created the legendary Second Reality demo and later formed Remedy Entertainment
+                - generic [ref=e199] [cursor=pointer]:
+                  - generic [ref=e200] [cursor=pointer]: demoscene
+                  - generic [ref=e201] [cursor=pointer]: PC
+                  - generic [ref=e202] [cursor=pointer]: Second-Reality
+                  - generic [ref=e203] [cursor=pointer]: "+2"
+            - paragraph [ref=e205]:
+              - text: Showing 6 related entries.
+              - link "Browse all entries" [ref=e206] [cursor=pointer]:
+                - /url: /vault
+          - link "← Back to Hardware Collection" [ref=e208] [cursor=pointer]:
+            - /url: /vault/hardware
+    - contentinfo [ref=e209]:
+      - generic [ref=e210]:
+        - generic [ref=e211]:
+          - generic [ref=e212]:
+            - link "Code Like It's 198x - Home" [ref=e213] [cursor=pointer]:
+              - /url: /
+              - img "Code Like It's 198x" [ref=e214] [cursor=pointer]
+            - paragraph [ref=e215]: Learn assembly programming on classic systems through hands-on lessons and authentic development tools.
+            - generic [ref=e216]:
+              - link "GitHub" [ref=e217] [cursor=pointer]:
+                - /url: https://github.com/code198x
+                - img [ref=e218] [cursor=pointer]
+              - link "Discord" [ref=e220] [cursor=pointer]:
+                - /url: https://discord.gg/AdmEYQKWZb
+                - img [ref=e221] [cursor=pointer]
+          - generic [ref=e223]:
+            - heading "Learn" [level=4] [ref=e224]
+            - list [ref=e225]:
+              - listitem [ref=e226]:
+                - link "Get Started" [ref=e227] [cursor=pointer]:
+                  - /url: /getting-started
+              - listitem [ref=e228]:
+                - link "All Lessons" [ref=e229] [cursor=pointer]:
+                  - /url: /lessons
+              - listitem [ref=e230]:
+                - link "By System" [ref=e231] [cursor=pointer]:
+                  - /url: /lessons#systems
+              - listitem [ref=e232]:
+                - link "Setup Guides" [ref=e233] [cursor=pointer]:
+                  - /url: /getting-started#setup
+          - generic [ref=e234]:
+            - heading "Resources" [level=4] [ref=e235]
+            - list [ref=e236]:
+              - listitem [ref=e237]:
+                - link "All Systems" [ref=e238] [cursor=pointer]:
+                  - /url: /vault/hardware
+              - listitem [ref=e239]:
+                - link "The Vault" [ref=e240] [cursor=pointer]:
+                  - /url: /vault
+              - listitem [ref=e241]:
+                - link "Tools" [ref=e242] [cursor=pointer]:
+                  - /url: /tools
+              - listitem [ref=e243]:
+                - link "Community" [ref=e244] [cursor=pointer]:
+                  - /url: /community
+          - generic [ref=e245]:
+            - heading "Popular Systems" [level=4] [ref=e246]
+            - list [ref=e247]:
+              - listitem [ref=e248]:
+                - link "Commodore 64" [ref=e249] [cursor=pointer]:
+                  - /url: /vault/hardware/commodore-64
+              - listitem [ref=e250]:
+                - link "ZX Spectrum" [ref=e251] [cursor=pointer]:
+                  - /url: /vault/hardware/zx-spectrum
+              - listitem [ref=e252]:
+                - link "NES" [ref=e253] [cursor=pointer]:
+                  - /url: /vault/hardware/nintendo-entertainment-system
+              - listitem [ref=e254]:
+                - link "Amiga" [ref=e255] [cursor=pointer]:
+                  - /url: /vault/hardware/commodore-amiga
+        - generic [ref=e256]:
+          - paragraph [ref=e257]: © 2025 Code Like It's 198x. Made with ❤️ for retro computing.
+          - navigation [ref=e258]:
+            - link "Privacy" [ref=e259] [cursor=pointer]:
+              - /url: /privacy
+            - link "Terms" [ref=e260] [cursor=pointer]:
+              - /url: /terms
+            - link "Sitemap" [ref=e261] [cursor=pointer]:
+              - /url: /sitemap.xml
+  - generic [ref=e264]:
+    - button "Menu" [ref=e265]:
+      - img [ref=e267]
+      - generic: Menu
+    - button "Inspect" [ref=e271]:
+      - img [ref=e273]
+      - generic: Inspect
+    - button "Audit" [ref=e275]:
+      - generic [ref=e276]:
+        - img [ref=e277]
+        - img [ref=e280]
+      - generic: Audit
+    - button "Settings" [ref=e283]:
+      - img [ref=e285]
+      - generic: Settings
+```
