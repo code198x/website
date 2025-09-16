@@ -1,4 +1,5 @@
 import { defineCollection, z } from "astro:content";
+import { VALIDATION, PLATFORM_TIERS, VAULT_STATUS, PLATFORM_STATUS, DIFFICULTY_LEVELS } from "../config/constants";
 
 // ============================================================================
 // VAULT COLLECTIONS - Encyclopedia of Retro Computing
@@ -7,7 +8,7 @@ import { defineCollection, z } from "astro:content";
 // Base schema that all vault entries share
 const vaultBaseSchema = z.object({
   name: z.string(),
-  status: z.enum(['available', 'coming', 'draft']).default('draft'),
+  status: z.enum(['available', 'coming', 'draft'] as const).default(VAULT_STATUS.DRAFT),
   tags: z.array(z.string()).default([]),
   description: z.string(),
   featured: z.boolean().default(false),
@@ -1037,7 +1038,7 @@ const phases = defineCollection({
   schema: z.object({
     title: z.string(),
     system: z.string(), // References system slug
-    phase_number: z.number().min(0).max(8), // Allow Phase 0
+    phase_number: z.number().min(VALIDATION.phase.min).max(VALIDATION.phase.max), // Allow Phase 0
     description: z.string(),
     learning_objectives: z.array(z.string()),
     prerequisites: z.array(z.string()).optional(),
@@ -1060,8 +1061,8 @@ const tiers = defineCollection({
   schema: z.object({
     title: z.string(),
     system: z.string(),
-    phase_number: z.number().min(0).max(8), // Allow Phase 0
-    tier_number: z.number().min(1).max(16),
+    phase_number: z.number().min(VALIDATION.phase.min).max(VALIDATION.phase.max), // Allow Phase 0
+    tier_number: z.number().min(VALIDATION.tier.min).max(VALIDATION.tier.max),
     description: z.string(),
     learning_objectives: z.array(z.string()),
     concepts_introduced: z.array(z.string()),
@@ -1088,9 +1089,9 @@ const lessons = defineCollection({
   schema: z.object({
     title: z.string(),
     system: z.string(),
-    phase_number: z.number().min(0).max(8), // Allow Phase 0
-    tier_number: z.number().min(1).max(16),
-    lesson_number: z.number().min(1).max(32),
+    phase_number: z.number().min(VALIDATION.phase.min).max(VALIDATION.phase.max), // Allow Phase 0
+    tier_number: z.number().min(VALIDATION.tier.min).max(VALIDATION.tier.max),
+    lesson_number: z.number().min(VALIDATION.lesson.min).max(VALIDATION.lesson.max),
 
     // Phase 0 specific fields (using platform instead of system for consistency)
     platform: z.string().optional(), // For Phase 0 lessons
