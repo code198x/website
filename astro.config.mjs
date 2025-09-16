@@ -16,4 +16,9 @@ export default defineConfig({
   markdown: {
     syntaxHighlight: "prism",
   },
+  vite: {
+    css: {
+      postcss: "./postcss.config.js"
+    }
+  }
 });

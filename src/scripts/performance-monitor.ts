@@ -17,8 +17,9 @@ class PerformanceMonitor {
   private isEnabled: boolean;
 
   constructor() {
-    // Only enable in production or when explicitly enabled
-    this.isEnabled = import.meta.env.PROD || import.meta.env.VITE_ENABLE_PERF_MONITORING === 'true';
+    // Enable by default in development for dashboard functionality
+    // Disable in production unless explicitly enabled
+    this.isEnabled = !import.meta.env.PROD || import.meta.env.VITE_ENABLE_PERF_MONITORING === 'true';
 
     if (this.isEnabled) {
       this.init();
@@ -61,6 +62,11 @@ class PerformanceMonitor {
     if (!import.meta.env.PROD) {
       this.logMetric(performanceData);
     }
+
+    // Dispatch custom event for dashboard
+    window.dispatchEvent(new CustomEvent('web-vital', {
+      detail: performanceData
+    }));
 
     // Send to analytics (placeholder for future implementation)
     this.sendToAnalytics(performanceData);
