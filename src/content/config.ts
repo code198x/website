@@ -542,50 +542,6 @@ const developmentTools = defineCollection({
   })
 });
 
-// Drivers - Hardware drivers and system extensions
-const drivers = defineCollection({
-  type: "content",
-  schema: vaultBaseSchema.extend({
-    type: z.enum(['device-driver', 'filesystem-driver', 'protocol-driver', 'video-driver', 'sound-driver', 'network-driver']),
-    year: z.number(),
-
-    developer: z.string(),
-    version: z.string(),
-
-    operatingSystems: z.array(z.string()), // Compatible OS
-
-    hardwareSupported: z.array(z.object({
-      device: z.string(),
-      manufacturer: z.string(),
-      models: z.array(z.string()).optional()
-    })),
-
-    features: z.array(z.string()),
-
-    installation: z.object({
-      method: z.string(), // TSR, loadable module, kernel patch, etc.
-      memoryResident: z.boolean(),
-      memoryUsage: z.string().optional(),
-      conflicts: z.array(z.string()).optional()
-    }).optional(),
-
-    performance: z.object({
-      overhead: z.string().optional(),
-      improvements: z.array(z.string()).optional()
-    }).optional(),
-
-    compatibility: z.object({
-      tested: z.array(z.string()),
-      known_issues: z.array(z.string()).optional()
-    }).optional(),
-
-    alternatives: z.array(z.string()).optional(),
-
-    documentation: z.string().optional(),
-    source: z.boolean().default(false)
-  })
-});
-
 // Utilities - System utilities and tools
 const utilities = defineCollection({
   type: "content",
@@ -625,46 +581,6 @@ const utilities = defineCollection({
     size: z.string().optional(), // Program size
 
     notableUses: z.array(z.string()).optional()
-  })
-});
-
-// Plugins - Extensions, add-ons, modules
-const plugins = defineCollection({
-  type: "content",
-  schema: vaultBaseSchema.extend({
-    type: z.enum(['extension', 'addon', 'module', 'patch', 'mod', 'skin']),
-    year: z.number(),
-
-    developer: z.string(),
-
-    hostApplication: z.string(), // What it extends
-    hostVersions: z.array(z.string()), // Compatible versions
-
-    platforms: z.array(z.string()),
-
-    category: z.string(), // Functionality, graphics, gameplay, etc.
-
-    features: z.array(z.string()),
-
-    installation: z.object({
-      method: z.string(), // Drop-in, installer, manual patch
-      location: z.string().optional(), // Where files go
-      dependencies: z.array(z.string()).optional()
-    }).optional(),
-
-    compatibility: z.object({
-      otherPlugins: z.array(z.string()).optional(),
-      knownConflicts: z.array(z.string()).optional()
-    }).optional(),
-
-    modifications: z.array(z.string()), // What it changes
-
-    fileSize: z.string().optional(),
-
-    license: z.string(),
-    source: z.boolean().default(false),
-
-    community: z.string().optional() // Forum, website, etc.
   })
 });
 
@@ -1210,9 +1126,7 @@ export const collections = {
   // Software categories (fully separated)
   applications,
   'development-tools': developmentTools,
-  drivers,
   utilities,
-  plugins,
 
   // Entertainment and creativity
   games,
