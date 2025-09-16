@@ -1,5 +1,5 @@
 import type { CollectionEntry } from 'astro:content';
-import { VAULT_CATEGORIES } from './categoryInfo';
+import { getCategoryInfo } from './categoryInfo';
 
 export interface TimelineEvent {
   month: string;
@@ -211,10 +211,8 @@ function processCollectionItem(
     .replace('{name}', item.data.name || item.data.title || 'Unknown');
 
   // Get category slug for URL
-  const categoryInfo = Object.values(VAULT_CATEGORIES).find(c =>
-    c.collection === category || c.slug === category
-  );
-  const categorySlug = categoryInfo?.slug || category.replace(/([A-Z])/g, '-$1').toLowerCase();
+  // Convert camelCase to kebab-case for category slugs
+  const categorySlug = category.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
 
   return [{
     year,
