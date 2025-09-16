@@ -1,0 +1,247 @@
+---
+import { Image } from 'astro:assets';
+
+export interface Props {
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  class?: string;
+  loading?: 'lazy' | 'eager';
+  fallbackIcon?: string;
+  placeholder?: string;
+  useIntersectionObserver?: boolean;
+  // Common image style variants
+  variant?: 'default' | 'avatar' | 'hero' | 'card' | 'thumbnail';
+}
+
+const {
+  src,
+  alt,
+  width = 400,
+  height = 300,
+  class: className = '',
+  loading = 'lazy',
+  fallbackIcon = '💻',
+  placeholder = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"%3E%3Crect width="400" height="300" fill="%23f1f5f9"/%3E%3C/svg%3E',
+  useIntersectionObserver = false,
+  variant = 'default'
+} = Astro.props;
+
+// Handle both absolute paths and imports
+const isExternalUrl = src.startsWith('http') || src.startsWith('//');
+const isAbsolutePath = src.startsWith('/');
+
+// For static images in public directory, we need to use regular img tag
+// as Astro:assets Image component doesn't work with public directory images
+const useOptimizedImage = !isAbsolutePath && !isExternalUrl;
+
+// Generate unique ID for intersection observer
+const imageId = useIntersectionObserver ? `smart-img-${Math.random().toString(36).substring(2, 11)}` : undefined;
+
+// Get variant classes
+const variantClasses = {
+  default: '',
+  avatar: 'smart-image--avatar',
+  hero: 'smart-image--hero',
+  card: 'smart-image--card',
+  thumbnail: 'smart-image--thumbnail'
+};
+
+const imageClasses = `smart-image ${variantClasses[variant]} ${className}`;
+---
+
+<div class={`smart-image-container smart-image-container--${variant}`}>
+  {useOptimizedImage ? (
+    <Image
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      class={imageClasses}
+      loading={loading}
+      id={imageId}
+      data-src={useIntersectionObserver ? src : undefined}
+      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+    />
+  ) : (
+    <img
+      src={useIntersectionObserver ? placeholder : src}
+      alt={alt}
+      width={width}
+      height={height}
+      class={imageClasses}
+      loading={loading}
+      id={imageId}
+      data-src={useIntersectionObserver ? src : undefined}
+      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+    />
+  )}
+
+  <!-- Fallback element that shows when image fails to load -->
+  <div class={`smart-image-fallback smart-image-fallback--${variant}`} style="display: none;" role="img" aria-label={`Image placeholder: ${alt}`}>
+    <span aria-hidden="true">{fallbackIcon}</span>
+  </div>
+</div>
+
+{useIntersectionObserver && (
+  <script>
+    // Enhanced lazy loading with Intersection Observer
+    class SmartImageLoader {
+      imageObserver: IntersectionObserver | null;
+
+      constructor() {
+        this.imageObserver = null;
+        this.init();
+      }
+
+      init() {
+        // Check if Intersection Observer is supported
+        if ('IntersectionObserver' in window) {
+          this.imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                const img = entry.target as HTMLImageElement;
+                this.loadImage(img);
+                observer.unobserve(img);
+              }
+            });
+          }, {
+            rootMargin: '50px 0px',
+            threshold: 0.01
+          });
+
+          this.observeImages();
+        } else {
+          // Fallback for browsers without Intersection Observer
+          this.loadAllImages();
+        }
+      }
+
+      observeImages() {
+        const lazyImages = document.querySelectorAll('img[data-src]');
+        lazyImages.forEach(img => {
+          this.imageObserver?.observe(img);
+        });
+      }
+
+      loadImage(img: HTMLImageElement) {
+        const dataSrc = img.getAttribute('data-src');
+        if (dataSrc) {
+          img.src = dataSrc;
+          img.removeAttribute('data-src');
+          img.classList.add('loaded');
+        }
+      }
+
+      loadAllImages() {
+        const lazyImages = document.querySelectorAll('img[data-src]');
+        lazyImages.forEach(img => this.loadImage(img as HTMLImageElement));
+      }
+    }
+
+    // Initialize lazy loading when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        new SmartImageLoader();
+      });
+    } else {
+      new SmartImageLoader();
+    }
+  </script>
+)}
+
+<style>
+  .smart-image-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .smart-image {
+    transition: opacity 0.3s ease-in-out;
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+  }
+
+  .smart-image[data-src] {
+    opacity: 0.7;
+    filter: blur(2px);
+  }
+
+  .smart-image.loaded {
+    opacity: 1;
+    filter: none;
+  }
+
+  /* Variant styles */
+  .smart-image--avatar {
+    border-radius: 50%;
+    aspect-ratio: 1;
+    object-fit: cover;
+  }
+
+  .smart-image--hero {
+    width: 100%;
+    height: auto;
+    max-height: 400px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  .smart-image--card {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .smart-image--thumbnail {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+
+  .smart-image-fallback {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface-secondary, #f8fafc);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 8px;
+    color: var(--color-text-secondary, #64748b);
+    font-size: 2rem;
+    min-height: 200px;
+  }
+
+  .smart-image-fallback--avatar {
+    border-radius: 50%;
+    min-height: auto;
+  }
+
+  .smart-image-fallback--hero {
+    border-radius: 12px;
+    min-height: 300px;
+  }
+
+  .smart-image-fallback--card {
+    border-radius: 12px 12px 0 0;
+  }
+
+  .smart-image-fallback--thumbnail {
+    border-radius: 6px;
+    min-height: 80px;
+    font-size: 1.5rem;
+  }
+
+  .smart-image-fallback span {
+    opacity: 0.6;
+  }
+</style>

@@ -1,0 +1,275 @@
+---
+import { vaultData } from "../data/vault-data.js";
+
+interface Props {
+  currentEntry: {
+    c: string; // category
+    s: string; // slug
+    n: string; // name
+    g?: string[]; // tags
+    t?: string; // type
+    y?: number; // year
+  };
+  maxResults?: number;
+  className?: string;
+}
+
+const { currentEntry, maxResults = 6, className = "" } = Astro.props;
+
+// Get category information for display
+const categoryInfo: Record<string, { label: string; icon: string; color: string }> = {
+  companies: { label: 'Company', icon: '🏢', color: '#3b82f6' },
+  hardware: { label: 'Hardware', icon: '🖥️', color: '#6366f1' },
+  games: { label: 'Game', icon: '🎮', color: '#f59e0b' },
+  groups: { label: 'Group', icon: '👥', color: '#ec4899' },
+  people: { label: 'Person', icon: '👤', color: '#10b981' },
+  techniques: { label: 'Technique', icon: '⚡', color: '#14b8a6' },
+  applications: { label: 'Application', icon: '🎨', color: '#8b5cf6' },
+  emulators: { label: 'Emulator', icon: '💾', color: '#8b5cf6' },
+  culture: { label: 'Culture', icon: '🌐', color: '#a855f7' },
+  events: { label: 'Event', icon: '🎪', color: '#f97316' },
+  formats: { label: 'Format', icon: '💾', color: '#84cc16' },
+  publications: { label: 'Publication', icon: '📚', color: '#ef4444' }
+};
+
+// Function to calculate similarity score between two entries
+function calculateSimilarity(entry1: any, entry2: any): number {
+  let score = 0;
+
+  // Same category gets high score
+  if (entry1.c === entry2.c) {
+    score += 30;
+  }
+
+  // Same type gets medium score
+  if (entry1.t && entry2.t && entry1.t === entry2.t) {
+    score += 20;
+  }
+
+  // Shared tags get points
+  const tags1 = entry1.g || [];
+  const tags2 = entry2.g || [];
+  const sharedTags = tags1.filter((tag: string) => tags2.includes(tag));
+  score += sharedTags.length * 15;
+
+  // Similar years get small bonus (within 3 years)
+  if (entry1.y && entry2.y) {
+    const yearDiff = Math.abs(entry1.y - entry2.y);
+    if (yearDiff <= 3) {
+      score += Math.max(0, 10 - yearDiff * 2);
+    }
+  }
+
+  return score;
+}
+
+// Find related entries
+const relatedEntries = vaultData
+  .filter(entry => entry.s !== currentEntry.s) // Exclude current entry
+  .map(entry => ({
+    entry,
+    similarity: calculateSimilarity(currentEntry, entry)
+  }))
+  .filter(({ similarity }) => similarity > 0) // Only entries with some similarity
+  .sort((a, b) => b.similarity - a.similarity) // Sort by similarity score
+  .slice(0, maxResults) // Limit results
+  .map(({ entry }) => entry); // Extract entries
+
+// Note: Could group entries by relationship type for enhanced presentation in future
+---
+
+{relatedEntries.length > 0 && (
+  <section class={`related-entries ${className}`}>
+    <h2 class="related-entries__title">Related Entries</h2>
+
+    <div class="related-entries__grid">
+      {relatedEntries.map((entry) => {
+        const category = categoryInfo[entry.c] || { label: 'Entry', icon: '📄', color: '#6b7280' };
+        return (
+          <a href={`/vault/${entry.c}/${entry.s}`} class="related-entry-card">
+            <div class="related-entry-card__header">
+              <span class="related-entry-card__icon" style={`color: ${category.color}`}>
+                {category.icon}
+              </span>
+              <span class="related-entry-card__category">{category.label}</span>
+            </div>
+            <h3 class="related-entry-card__title">{entry.n}</h3>
+            {entry.d && (
+              <p class="related-entry-card__description">{entry.d}</p>
+            )}
+            {entry.g && entry.g.length > 0 && (
+              <div class="related-entry-card__tags">
+                {entry.g.slice(0, 3).map((tag) => (
+                  <span class="related-entry-card__tag">{tag}</span>
+                ))}
+                {entry.g.length > 3 && (
+                  <span class="related-entry-card__tag related-entry-card__tag--more">
+                    +{entry.g.length - 3}
+                  </span>
+                )}
+              </div>
+            )}
+          </a>
+        );
+      })}
+    </div>
+
+    {relatedEntries.length === maxResults && (
+      <div class="related-entries__more">
+        <p class="related-entries__more-text">
+          Showing {maxResults} related entries.
+          <a href="/vault" class="related-entries__more-link">Browse all entries</a>
+        </p>
+      </div>
+    )}
+  </section>
+)}
+
+<style>
+  .related-entries {
+    margin-top: var(--space-xl);
+    padding: var(--space-lg);
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--color-border);
+  }
+
+  .related-entries__title {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: var(--space-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .related-entries__title::before {
+    content: "🔗";
+    font-size: var(--font-size-lg);
+  }
+
+  .related-entries__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-md);
+  }
+
+  .related-entry-card {
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    padding: var(--space-md);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+    display: block;
+  }
+
+  .related-entry-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-primary);
+  }
+
+  .related-entry-card__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-sm);
+  }
+
+  .related-entry-card__icon {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+  }
+
+  .related-entry-card__category {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+  }
+
+  .related-entry-card__title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: var(--space-sm);
+    line-height: 1.3;
+  }
+
+  .related-entry-card__description {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+    margin-bottom: var(--space-sm);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .related-entry-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs);
+  }
+
+  .related-entry-card__tag {
+    font-size: var(--font-size-xs);
+    background: var(--color-background-tertiary);
+    color: var(--color-text-secondary);
+    padding: var(--space-2xs) var(--space-xs);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--color-border);
+  }
+
+  .related-entry-card__tag--more {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+  }
+
+  .related-entries__more {
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-border);
+    text-align: center;
+  }
+
+  .related-entries__more-text {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .related-entries__more-link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .related-entries__more-link:hover {
+    text-decoration: underline;
+  }
+
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .related-entries {
+      margin-top: var(--space-lg);
+      padding: var(--space-md);
+    }
+
+    .related-entries__grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-sm);
+    }
+
+    .related-entry-card {
+      padding: var(--space-sm);
+    }
+
+    .related-entries__title {
+      font-size: var(--font-size-lg);
+    }
+  }
+</style>
