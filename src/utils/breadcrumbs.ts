@@ -1,53 +1,76 @@
 import type { BreadcrumbItem } from '../components/Breadcrumb.astro';
-
-// Category information for breadcrumbs
-const VAULT_CATEGORIES = {
-  applications: { label: 'Applications', icon: '🎨' },
-  companies: { label: 'Companies', icon: '🏢' },
-  culture: { label: 'Culture', icon: '🌐' },
-  demos: { label: 'Demos', icon: '🎬' },
-  'development-tools': { label: 'Development Tools', icon: '🔧' },
-  drivers: { label: 'Drivers', icon: '⚙️' },
-  emulators: { label: 'Emulators', icon: '💾' },
-  events: { label: 'Events', icon: '🎪' },
-  formats: { label: 'Formats', icon: '💾' },
-  games: { label: 'Games', icon: '🎮' },
-  groups: { label: 'Groups', icon: '👥' },
-  hardware: { label: 'Hardware', icon: '🖥️' },
-  'operating-systems': { label: 'Operating Systems', icon: '💻' },
-  people: { label: 'People', icon: '👤' },
-  plugins: { label: 'Plugins', icon: '🧩' },
-  'programming-languages': { label: 'Programming Languages', icon: '📝' },
-  projects: { label: 'Projects', icon: '📁' },
-  publications: { label: 'Publications', icon: '📚' },
-  techniques: { label: 'Techniques', icon: '⚡' },
-  utilities: { label: 'Utilities', icon: '🛠️' }
-} as const;
+import { getCategoryInfo } from './categoryInfo';
+import { VAULT_CATEGORIES } from '../data/vault-categories';
 
 type VaultCategory = keyof typeof VAULT_CATEGORIES;
 
 /**
  * Generate breadcrumbs for vault pages
  */
-export function generateVaultBreadcrumbs(category?: VaultCategory, entryName?: string): BreadcrumbItem[] {
+export function generateVaultBreadcrumbs(category?: VaultCategory | string, entryName?: string): BreadcrumbItem[] {
   const breadcrumbs: BreadcrumbItem[] = [
     { label: 'Home', href: '/', icon: '🏠' },
     { label: 'The Vault', href: '/vault', icon: '🗄️' }
   ];
 
   if (category) {
-    const categoryInfo = VAULT_CATEGORIES[category];
-    if (categoryInfo) {
+    const categoryInfo = getCategoryInfo(category);
+    breadcrumbs.push({
+      label: categoryInfo.label,
+      href: entryName ? `/vault/${category}` : undefined,
+      icon: categoryInfo.icon
+    });
+
+    if (entryName) {
       breadcrumbs.push({
-        label: categoryInfo.label,
-        href: entryName ? `/vault/${category}` : undefined,
+        label: entryName,
         icon: categoryInfo.icon
       });
+    }
+  }
 
-      if (entryName) {
+  return breadcrumbs;
+}
+
+/**
+ * Generate breadcrumbs for lesson pages
+ */
+export interface LessonBreadcrumbParams {
+  systemName: string;
+  systemSlug: string;
+  phaseNumber?: number;
+  tierNumber?: number;
+  lessonNumber?: number;
+  lessonTitle?: string;
+}
+
+export function generateLessonBreadcrumbs(params: LessonBreadcrumbParams): BreadcrumbItem[] {
+  const { systemName, systemSlug, phaseNumber, tierNumber, lessonNumber, lessonTitle } = params;
+
+  const breadcrumbs: BreadcrumbItem[] = [
+    { label: 'Home', href: '/', icon: '🏠' },
+    { label: 'Lessons', href: '/lessons', icon: '📚' },
+    { label: systemName, href: `/lessons/${systemSlug}`, icon: '🖥️' }
+  ];
+
+  if (phaseNumber) {
+    breadcrumbs.push({
+      label: `Phase ${phaseNumber}`,
+      href: tierNumber ? `/lessons/${systemSlug}/phase-${phaseNumber}` : undefined,
+      icon: '📖'
+    });
+
+    if (tierNumber) {
+      breadcrumbs.push({
+        label: `Tier ${tierNumber}`,
+        href: lessonNumber ? `/lessons/${systemSlug}/phase-${phaseNumber}/tier-${tierNumber}` : undefined,
+        icon: '🎯'
+      });
+
+      if (lessonNumber && lessonTitle) {
         breadcrumbs.push({
-          label: entryName,
-          icon: categoryInfo.icon
+          label: `Lesson ${lessonNumber}: ${lessonTitle}`,
+          icon: '✏️'
         });
       }
     }
