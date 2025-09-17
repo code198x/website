@@ -1,7 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Hero from "./Hero.astro";
-import UnifiedSearch from "./UnifiedSearch.astro";
+import { vaultData } from "../data/vault-data.js";
 import Breadcrumb from "./Breadcrumb.astro";
 import { generateVaultBreadcrumbs } from "../utils/breadcrumbs";
 
@@ -22,13 +22,6 @@ export interface Props {
   categorySlug: string;
   categoryData: any[];
 
-  // Search props
-  showCategoryFilter?: boolean;
-  showTypeFilter?: boolean;
-  showTagFilter?: boolean;
-  showYearFilter?: boolean;
-  showStatusFilter?: boolean;
-
   // Info section props
   infoTitle?: string;
   infoDescription?: string;
@@ -46,65 +39,26 @@ const {
   heroColor,
   categorySlug,
   categoryData,
-  showCategoryFilter = false,
-  showTypeFilter = true,
-  showTagFilter = true,
-  showYearFilter = false,
-  showStatusFilter = false,
   infoTitle,
   infoDescription,
   stats = []
 } = Astro.props;
 
-// Configure search filters
-const searchFilters = [
-  showCategoryFilter && {
-    id: 'category',
-    label: 'Category',
-    type: 'select' as const,
-    options: [{ value: 'all', label: 'All Categories' }],
-    show: true
-  },
-  showTypeFilter && {
-    id: 'type',
-    label: 'Type',
-    type: 'select' as const,
-    options: [{ value: 'all', label: 'All Types' }],
-    show: true
-  },
-  showTagFilter && {
-    id: 'tags',
-    label: 'Tags',
-    type: 'text' as const,
-    placeholder: 'Filter by tag...',
-    show: true
-  },
-  showYearFilter && {
-    id: 'year',
-    label: 'Year',
-    type: 'select' as const,
-    options: [
-      { value: 'all', label: 'All Years' },
-      { value: '1970s', label: '1970s' },
-      { value: '1980s', label: '1980s' },
-      { value: '1990s', label: '1990s' },
-      { value: '2000s', label: '2000s' }
-    ],
-    show: true
-  },
-  showStatusFilter && {
-    id: 'status',
-    label: 'Status',
-    type: 'select' as const,
-    options: [
-      { value: 'all', label: 'All Status' },
-      { value: 'available', label: 'Available' },
-      { value: 'coming-soon', label: 'Coming Soon' },
-      { value: 'planned', label: 'Planned' }
-    ],
-    show: true
+// Get tag statistics for this category
+const categoryTagCounts = new Map<string, number>();
+categoryData.forEach(entry => {
+  if (entry.g && Array.isArray(entry.g)) {
+    entry.g.forEach((tag: string) => {
+      const normalizedTag = tag.toLowerCase();
+      categoryTagCounts.set(normalizedTag, (categoryTagCounts.get(normalizedTag) || 0) + 1);
+    });
   }
-].filter(Boolean) as any[];
+});
+
+// Get top tags for this category
+const topCategoryTags = Array.from(categoryTagCounts.entries())
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 10);
 ---
 
 <Layout title={title} description={description} structuredData={structuredData}>
@@ -125,19 +79,27 @@ const searchFilters = [
       <!-- Breadcrumb navigation -->
       <Breadcrumb items={generateVaultBreadcrumbs(categorySlug as any)} />
 
-      <!-- Search Component -->
-      <UnifiedSearch
-        id={`${categorySlug}-search`}
-        variant="full"
-        placeholder={`Search ${heroTitle.toLowerCase()}...`}
-        filters={searchFilters}
-        showButton={false}
-        showSuggestions={true}
-        maxSuggestions={5}
-        data={categoryData}
-        onSearch={`${categorySlug}-search-results`}
-        className="vault-category-search"
-      />
+      <!-- Quick Tag Filters -->
+      {topCategoryTags.length > 0 && (
+        <div class="category-tag-filters">
+          <h3 class="tag-filters-title">Popular Tags in {heroTitle}</h3>
+          <div class="tag-filters-container">
+            {topCategoryTags.map(([tag, count]) => (
+              <a
+                href={`/vault/tags/${tag}`}
+                class="category-tag-filter"
+                title={`${count} ${heroTitle.toLowerCase()} entries`}
+              >
+                #{tag}
+                <span class="tag-filter-count">{count}</span>
+              </a>
+            ))}
+            <a href="/vault/tags" class="view-all-tags-link">
+              View All Tags →
+            </a>
+          </div>
+        </div>
+      )}
 
       <!-- Results Grid -->
       <div id="category-results-grid" class="results-grid">
@@ -283,6 +245,95 @@ const searchFilters = [
   /* Hidden by search filters */
   .vault-entry-card.hidden {
     display: none;
+  }
+
+  /* Category Tag Filters */
+  .category-tag-filters {
+    background: linear-gradient(135deg,
+      var(--color-background-secondary) 0%,
+      rgba(139, 92, 246, 0.03) 100%);
+    border: 2px solid var(--color-border);
+    border-radius: var(--border-radius-lg);
+    padding: var(--space-lg);
+    margin: var(--space-xl) 0;
+  }
+
+  .tag-filters-title {
+    font-size: var(--font-size-lg);
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .tag-filters-title::before {
+    content: '🏷️';
+    font-size: var(--font-size-xl);
+  }
+
+  .tag-filters-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    align-items: center;
+  }
+
+  .category-tag-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-md);
+    background: var(--color-background);
+    border: 2px solid var(--color-border);
+    color: var(--color-text-primary);
+    text-decoration: none;
+    border-radius: var(--border-radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .category-tag-filter:hover {
+    background: linear-gradient(135deg, var(--color-primary), rgba(0, 100, 200, 0.9));
+    color: white;
+    border-color: transparent;
+    transform: scale(1.05) translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+  }
+
+  .tag-filter-count {
+    background: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
+    padding: 2px 6px;
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+
+  .category-tag-filter:hover .tag-filter-count {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+  }
+
+  .view-all-tags-link {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-xs) var(--space-md);
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: white;
+    text-decoration: none;
+    border-radius: var(--border-radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    transition: all 0.2s ease;
+    margin-left: var(--space-sm);
+  }
+
+  .view-all-tags-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
   }
 
   /* Responsive - Mobile First Improvements */
