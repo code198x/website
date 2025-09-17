@@ -1,5 +1,11 @@
 import { defineCollection, z } from "astro:content";
-import { VALIDATION, PLATFORM_TIERS, VAULT_STATUS, PLATFORM_STATUS, DIFFICULTY_LEVELS } from "../config/constants";
+import {
+  VALIDATION,
+  PLATFORM_TIERS,
+  VAULT_STATUS,
+  PLATFORM_STATUS,
+  DIFFICULTY_LEVELS,
+} from "../config/constants";
 
 // ============================================================================
 // VAULT COLLECTIONS - Encyclopedia of Retro Computing
@@ -8,25 +14,29 @@ import { VALIDATION, PLATFORM_TIERS, VAULT_STATUS, PLATFORM_STATUS, DIFFICULTY_L
 // Base schema that all vault entries share
 const vaultBaseSchema = z.object({
   name: z.string(),
-  status: z.enum(['available', 'coming', 'draft'] as const).default(VAULT_STATUS.DRAFT),
+  status: z.enum(["available", "coming", "draft"] as const).default(VAULT_STATUS.DRAFT),
   tags: z.array(z.string()).default([]),
   description: z.string(),
   featured: z.boolean().default(false),
   lastUpdated: z.date().default(() => new Date()),
-  relatedEntries: z.record(
-    z.array(z.object({
-      name: z.string(),
-      slug: z.string(),
-      available: z.boolean().default(false)
-    }))
-  ).optional()
+  relatedEntries: z
+    .record(
+      z.array(
+        z.object({
+          name: z.string(),
+          slug: z.string(),
+          available: z.boolean().default(false),
+        })
+      )
+    )
+    .optional(),
 });
 
 // Hardware (systems, chips, peripherals) - NEW VAULT COLLECTION
 const hardware = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['computer', 'console', 'chip', 'peripheral', 'addon']),
+    type: z.enum(["computer", "console", "chip", "peripheral", "addon"]),
     year: z.number(),
     endYear: z.number().optional(),
     manufacturer: z.string(),
@@ -46,58 +56,72 @@ const hardware = defineCollection({
     marketRegions: z.array(z.string()).optional(),
 
     // For chips/components
-    chipType: z.enum(['processor', 'graphics', 'sound', 'memory', 'custom']).optional(),
+    chipType: z.enum(["processor", "graphics", "sound", "memory", "custom"]).optional(),
     architecture: z.string().optional(),
-    transistorCount: z.number().optional()
-  })
+    transistorCount: z.number().optional(),
+  }),
 });
 
 // People (developers, designers, executives) - ENHANCED VAULT COLLECTION
 const people = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['engineer', 'designer', 'executive', 'artist', 'musician', 'programmer']),
+    type: z.enum(["engineer", "designer", "executive", "artist", "musician", "programmer"]),
     birthDate: z.date().optional(),
     birthPlace: z.string().optional(),
     nationality: z.string().optional(),
 
-    companies: z.array(z.object({
-      name: z.string(),
-      role: z.string(),
-      period: z.string()
-    })).optional(),
+    companies: z
+      .array(
+        z.object({
+          name: z.string(),
+          role: z.string(),
+          period: z.string(),
+        })
+      )
+      .optional(),
 
     notableWorks: z.array(z.string()).optional(),
     awards: z.array(z.string()).optional(),
-    quotes: z.array(z.object({
-      text: z.string(),
-      context: z.string(),
-      year: z.number().optional()
-    })).optional(),
+    quotes: z
+      .array(
+        z.object({
+          text: z.string(),
+          context: z.string(),
+          year: z.number().optional(),
+        })
+      )
+      .optional(),
 
-    links: z.object({
-      wikipedia: z.string().url().optional(),
-      personal: z.string().url().optional(),
-      twitter: z.string().optional()
-    }).optional()
-  })
+    links: z
+      .object({
+        wikipedia: z.string().url().optional(),
+        personal: z.string().url().optional(),
+        twitter: z.string().optional(),
+      })
+      .optional(),
+  }),
 });
 
 // Companies
 const companies = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['manufacturer', 'publisher', 'developer', 'distributor']),
+    type: z.enum(["manufacturer", "publisher", "developer", "distributor"]),
     founded: z.number(),
     defunct: z.number().optional(),
     headquarters: z.string(),
 
     founders: z.array(z.string()).optional(),
-    keyPeople: z.array(z.object({
-      name: z.string(),
-      role: z.string(),
-      period: z.string().optional()
-    })).optional(),
+    keyPeople: z
+      .array(
+        z.object({
+          name: z.string(),
+          role: z.string(),
+          period: z.string().optional(),
+        })
+      )
+      .optional(),
 
     parentCompany: z.string().optional(),
     subsidiaries: z.array(z.string()).optional(),
@@ -105,19 +129,18 @@ const companies = defineCollection({
     notableProducts: z.array(z.string()).optional(),
     notableGames: z.array(z.string()).optional(),
 
-    fate: z.string().optional()
-  })
+    fate: z.string().optional(),
+  }),
 });
-
 
 // Techniques
 const techniques = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['graphics', 'sound', 'optimization', 'algorithm', 'hardware-trick']),
+    type: z.enum(["graphics", "sound", "optimization", "algorithm", "hardware-trick"]),
     year: z.number().optional(), // When the technique was discovered/popularized
     platforms: z.array(z.string()),
-    difficulty: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
+    difficulty: z.enum(["beginner", "intermediate", "advanced", "expert"]),
 
     prerequisites: z.array(z.string()).optional(),
     memoryUsage: z.string().optional(),
@@ -126,23 +149,27 @@ const techniques = defineCollection({
     pioneers: z.array(z.string()).optional(),
     notableUses: z.array(z.string()).optional(),
 
-    tutorials: z.array(z.object({
-      title: z.string(),
-      url: z.string().url()
-    })).optional()
-  })
+    tutorials: z
+      .array(
+        z.object({
+          title: z.string(),
+          url: z.string().url(),
+        })
+      )
+      .optional(),
+  }),
 });
 
 // Publications
 const publications = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['magazine', 'book', 'manual', 'newsletter', 'fanzine']),
+    type: z.enum(["magazine", "book", "manual", "newsletter", "fanzine"]),
 
     publisher: z.string(),
     firstIssue: z.date().optional(),
     lastIssue: z.date().optional(),
-    frequency: z.enum(['weekly', 'monthly', 'bi-monthly', 'quarterly', 'annual']).optional(),
+    frequency: z.enum(["weekly", "monthly", "bi-monthly", "quarterly", "annual"]).optional(),
 
     issueCount: z.number().optional(),
     circulation: z.string().optional(),
@@ -158,15 +185,15 @@ const publications = defineCollection({
     notableFeatures: z.array(z.string()).optional(),
     notableContributors: z.array(z.string()).optional(),
 
-    digitalArchive: z.string().url().optional()
-  })
+    digitalArchive: z.string().url().optional(),
+  }),
 });
 
 // Events
 const events = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['trade-show', 'launch', 'competition', 'demo-party', 'conference']),
+    type: z.enum(["trade-show", "launch", "competition", "demo-party", "conference"]),
 
     date: z.date(),
     endDate: z.date().optional(),
@@ -175,7 +202,7 @@ const events = defineCollection({
     location: z.object({
       venue: z.string().optional(),
       city: z.string(),
-      country: z.string()
+      country: z.string(),
     }),
 
     organizer: z.string().optional(),
@@ -183,55 +210,69 @@ const events = defineCollection({
 
     highlights: z.array(z.string()).optional(),
 
-    competitions: z.array(z.object({
-      category: z.string(),
-      winner: z.string(),
-      production: z.string()
-    })).optional(),
+    competitions: z
+      .array(
+        z.object({
+          category: z.string(),
+          winner: z.string(),
+          production: z.string(),
+        })
+      )
+      .optional(),
 
-    links: z.object({
-      official: z.string().url().optional(),
-      results: z.string().url().optional(),
-      productions: z.string().url().optional()
-    }).optional()
-  })
+    links: z
+      .object({
+        official: z.string().url().optional(),
+        results: z.string().url().optional(),
+        productions: z.string().url().optional(),
+      })
+      .optional(),
+  }),
 });
 
 // Groups
 const groups = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['demo', 'cracking', 'development', 'music', 'art']),
+    type: z.enum(["demo", "cracking", "development", "music", "art"]),
 
     formed: z.number(),
     disbanded: z.number().optional(),
     country: z.string(),
 
-    members: z.array(z.object({
-      handle: z.string(),
-      realName: z.string().optional(),
-      role: z.string(),
-      period: z.string().optional()
-    })).optional(),
+    members: z
+      .array(
+        z.object({
+          handle: z.string(),
+          realName: z.string().optional(),
+          role: z.string(),
+          period: z.string().optional(),
+        })
+      )
+      .optional(),
 
-    notableReleases: z.array(z.object({
-      name: z.string(),
-      year: z.number(),
-      type: z.string(),
-      platform: z.string()
-    })).optional(),
+    notableReleases: z
+      .array(
+        z.object({
+          name: z.string(),
+          year: z.number(),
+          type: z.string(),
+          platform: z.string(),
+        })
+      )
+      .optional(),
 
     affiliates: z.array(z.string()).optional(),
 
-    legacy: z.string().optional()
-  })
+    legacy: z.string().optional(),
+  }),
 });
 
 // Formats
 const formats = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['file', 'media', 'video', 'audio', 'protocol']),
+    type: z.enum(["file", "media", "video", "audio", "protocol"]),
 
     extension: z.string().optional(),
     mimeType: z.string().optional(),
@@ -248,21 +289,37 @@ const formats = defineCollection({
     capacity: z.string().optional(),
     physicalSize: z.string().optional(),
 
-    tools: z.array(z.object({
-      name: z.string(),
-      platform: z.string(),
-      url: z.string().url().optional()
-    })).optional(),
+    tools: z
+      .array(
+        z.object({
+          name: z.string(),
+          platform: z.string(),
+          url: z.string().url().optional(),
+        })
+      )
+      .optional(),
 
-    successor: z.string().optional()
-  })
+    successor: z.string().optional(),
+  }),
 });
 
 // Games - Entertainment software
 const games = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['arcade', 'adventure', 'platformer', 'puzzle', 'shooter', 'strategy', 'rpg', 'sports', 'simulation', 'racing', 'fighting']),
+    type: z.enum([
+      "arcade",
+      "adventure",
+      "platformer",
+      "puzzle",
+      "shooter",
+      "strategy",
+      "rpg",
+      "sports",
+      "simulation",
+      "racing",
+      "fighting",
+    ]),
     year: z.number(),
     platform: z.string(), // Primary platform
     platforms: z.array(z.string()).optional(), // All platforms it was released on
@@ -279,73 +336,93 @@ const games = defineCollection({
     graphicsMode: z.string().optional(), // "Mode 7", "FMV", "Vector", etc.
     soundChip: z.string().optional(),
 
-    reviews: z.array(z.object({
-      source: z.string(),
-      score: z.string(),
-      quote: z.string().optional()
-    })).optional(),
+    reviews: z
+      .array(
+        z.object({
+          source: z.string(),
+          score: z.string(),
+          quote: z.string().optional(),
+        })
+      )
+      .optional(),
 
     series: z.string().optional(), // Part of a series
     sequels: z.array(z.string()).optional(),
-    ports: z.array(z.object({
-      platform: z.string(),
-      year: z.number(),
-      developer: z.string().optional()
-    })).optional(),
+    ports: z
+      .array(
+        z.object({
+          platform: z.string(),
+          year: z.number(),
+          developer: z.string().optional(),
+        })
+      )
+      .optional(),
 
-    preservationStatus: z.enum(['playable', 'preserved', 'at-risk', 'lost']).optional(),
-    emulationNotes: z.string().optional()
-  })
+    preservationStatus: z.enum(["playable", "preserved", "at-risk", "lost"]).optional(),
+    emulationNotes: z.string().optional(),
+  }),
 });
 
 // Demos - Demoscene productions
 const demos = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['demo', 'intro', 'invitation', 'musicdisk', 'diskmag', 'wild']),
+    type: z.enum(["demo", "intro", "invitation", "musicdisk", "diskmag", "wild"]),
     year: z.number(),
     platform: z.string(),
 
     group: z.string(), // Primary group/crew
     collaborations: z.array(z.string()).optional(), // Other groups involved
 
-    event: z.object({
-      name: z.string(),
-      year: z.number(),
-      placement: z.number().optional(),
-      category: z.string().optional()
-    }).optional(),
+    event: z
+      .object({
+        name: z.string(),
+        year: z.number(),
+        placement: z.number().optional(),
+        category: z.string().optional(),
+      })
+      .optional(),
 
-    credits: z.array(z.object({
-      handle: z.string(),
-      role: z.string() // code, graphics, music, design
-    })).optional(),
+    credits: z
+      .array(
+        z.object({
+          handle: z.string(),
+          role: z.string(), // code, graphics, music, design
+        })
+      )
+      .optional(),
 
     effects: z.array(z.string()).optional(), // Effects showcased
     techniques: z.array(z.string()).optional(), // Technical achievements
 
     size: z.string().optional(), // "64k", "4k", etc.
 
-    music: z.object({
-      format: z.string(), // MOD, SID, YM, etc.
-      composer: z.string()
-    }).optional(),
+    music: z
+      .object({
+        format: z.string(), // MOD, SID, YM, etc.
+        composer: z.string(),
+      })
+      .optional(),
 
-    downloads: z.array(z.object({
-      type: z.string(), // executable, video, source
-      url: z.string().url()
-    })).optional(),
+    downloads: z
+      .array(
+        z.object({
+          type: z.string(), // executable, video, source
+          url: z.string().url(),
+        })
+      )
+      .optional(),
 
     pouetId: z.number().optional(), // pouet.net ID for reference
-    demozooId: z.number().optional() // demozoo.org ID
-  })
+    demozooId: z.number().optional(), // demozoo.org ID
+  }),
 });
 
 // Operating Systems
 const operatingSystems = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['os', 'dos', 'firmware', 'monitor', 'kernel']),
+    type: z.enum(["os", "dos", "firmware", "monitor", "kernel"]),
     year: z.number(),
     version: z.string(),
 
@@ -355,11 +432,13 @@ const operatingSystems = defineCollection({
     platforms: z.array(z.string()), // Hardware it runs on
     architecture: z.array(z.string()), // x86, 68k, 6502, etc.
 
-    minimumRequirements: z.object({
-      cpu: z.string(),
-      ram: z.string(),
-      storage: z.string()
-    }).optional(),
+    minimumRequirements: z
+      .object({
+        cpu: z.string(),
+        ram: z.string(),
+        storage: z.string(),
+      })
+      .optional(),
 
     features: z.array(z.string()),
     fileSystem: z.array(z.string()).optional(),
@@ -374,89 +453,115 @@ const operatingSystems = defineCollection({
 
     notableApplications: z.array(z.string()).optional(),
 
-    versions: z.array(z.object({
-      version: z.string(),
-      year: z.number(),
-      changes: z.array(z.string())
-    })).optional(),
+    versions: z
+      .array(
+        z.object({
+          version: z.string(),
+          year: z.number(),
+          changes: z.array(z.string()),
+        })
+      )
+      .optional(),
 
     successor: z.string().optional(),
-    predecessor: z.string().optional()
-  })
+    predecessor: z.string().optional(),
+  }),
 });
 
 // Emulators - Preservation through emulation
 const emulators = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['emulator', 'fpga-core', 'simulator', 'virtual-machine']),
+    type: z.enum(["emulator", "fpga-core", "simulator", "virtual-machine"]),
     year: z.number(), // First release
 
     developer: z.string(),
-    license: z.enum(['open-source', 'freeware', 'commercial', 'proprietary']),
+    license: z.enum(["open-source", "freeware", "commercial", "proprietary"]),
 
     systemsEmulated: z.array(z.string()), // Which systems it emulates
 
     platforms: z.array(z.string()), // Where the emulator runs (Windows, Linux, etc.)
 
-    accuracy: z.enum(['cycle-accurate', 'highly-accurate', 'functional', 'fast']),
+    accuracy: z.enum(["cycle-accurate", "highly-accurate", "functional", "fast"]),
 
     features: z.array(z.string()), // save-states, rewind, netplay, debugger, etc.
 
-    requirements: z.object({
-      biosRequired: z.boolean(),
-      romFormats: z.array(z.string()).optional(),
-      minimumSpecs: z.string().optional(),
-      recommendedSpecs: z.string().optional()
-    }).optional(),
+    requirements: z
+      .object({
+        biosRequired: z.boolean(),
+        romFormats: z.array(z.string()).optional(),
+        minimumSpecs: z.string().optional(),
+        recommendedSpecs: z.string().optional(),
+      })
+      .optional(),
 
-    debugging: z.object({
-      debugger: z.boolean(),
-      disassembler: z.boolean(),
-      memoryViewer: z.boolean(),
-      profiler: z.boolean(),
-      breakpoints: z.boolean()
-    }).optional(),
+    debugging: z
+      .object({
+        debugger: z.boolean(),
+        disassembler: z.boolean(),
+        memoryViewer: z.boolean(),
+        profiler: z.boolean(),
+        breakpoints: z.boolean(),
+      })
+      .optional(),
 
-    display: z.object({
-      filters: z.array(z.string()).optional(), // CRT, scanlines, etc.
-      shaders: z.boolean().optional(),
-      scaling: z.array(z.string()).optional()
-    }).optional(),
+    display: z
+      .object({
+        filters: z.array(z.string()).optional(), // CRT, scanlines, etc.
+        shaders: z.boolean().optional(),
+        scaling: z.array(z.string()).optional(),
+      })
+      .optional(),
 
-    input: z.object({
-      controllers: z.array(z.string()).optional(),
-      keyboard: z.boolean().optional(),
-      mouse: z.boolean().optional(),
-      lightgun: z.boolean().optional()
-    }).optional(),
+    input: z
+      .object({
+        controllers: z.array(z.string()).optional(),
+        keyboard: z.boolean().optional(),
+        mouse: z.boolean().optional(),
+        lightgun: z.boolean().optional(),
+      })
+      .optional(),
 
-    networking: z.object({
-      netplay: z.boolean().optional(),
-      linkCable: z.boolean().optional(),
-      modem: z.boolean().optional()
-    }).optional(),
+    networking: z
+      .object({
+        netplay: z.boolean().optional(),
+        linkCable: z.boolean().optional(),
+        modem: z.boolean().optional(),
+      })
+      .optional(),
 
-    developmentStatus: z.enum(['active', 'maintained', 'unmaintained', 'abandoned']),
+    developmentStatus: z.enum(["active", "maintained", "unmaintained", "abandoned"]),
 
-    versions: z.array(z.object({
-      version: z.string(),
-      year: z.number(),
-      changes: z.array(z.string())
-    })).optional(),
+    versions: z
+      .array(
+        z.object({
+          version: z.string(),
+          year: z.number(),
+          changes: z.array(z.string()),
+        })
+      )
+      .optional(),
 
     website: z.string().url().optional(),
     repository: z.string().url().optional(),
 
-    alternatives: z.array(z.string()).optional() // Other emulators for same systems
-  })
+    alternatives: z.array(z.string()).optional(), // Other emulators for same systems
+  }),
 });
 
 // Applications - Productivity and creative software
 const applications = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['productivity', 'graphics', 'music', 'video', 'cad', 'desktop-publishing', 'database']),
+    type: z.enum([
+      "productivity",
+      "graphics",
+      "music",
+      "video",
+      "cad",
+      "desktop-publishing",
+      "database",
+    ]),
     year: z.number(),
 
     developer: z.string(),
@@ -466,42 +571,50 @@ const applications = defineCollection({
 
     category: z.string(), // Word processor, spreadsheet, paint program, etc.
 
-    systemRequirements: z.object({
-      minimumRam: z.string(),
-      diskSpace: z.string().optional(),
-      display: z.string().optional(),
-      other: z.array(z.string()).optional()
-    }).optional(),
+    systemRequirements: z
+      .object({
+        minimumRam: z.string(),
+        diskSpace: z.string().optional(),
+        display: z.string().optional(),
+        other: z.array(z.string()).optional(),
+      })
+      .optional(),
 
-    fileFormats: z.object({
-      native: z.array(z.string()),
-      import: z.array(z.string()).optional(),
-      export: z.array(z.string()).optional()
-    }).optional(),
+    fileFormats: z
+      .object({
+        native: z.array(z.string()),
+        import: z.array(z.string()).optional(),
+        export: z.array(z.string()).optional(),
+      })
+      .optional(),
 
     features: z.array(z.string()),
 
     competitors: z.array(z.string()).optional(),
     marketPosition: z.string().optional(),
 
-    versions: z.array(z.object({
-      version: z.string(),
-      year: z.number(),
-      changes: z.array(z.string())
-    })).optional(),
+    versions: z
+      .array(
+        z.object({
+          version: z.string(),
+          year: z.number(),
+          changes: z.array(z.string()),
+        })
+      )
+      .optional(),
 
     license: z.string().optional(),
     price: z.string().optional(),
 
-    legacy: z.string().optional()
-  })
+    legacy: z.string().optional(),
+  }),
 });
 
 // Development Tools - Compilers, assemblers, IDEs
 const developmentTools = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['compiler', 'assembler', 'ide', 'debugger', 'profiler', 'linker', 'build-tool']),
+    type: z.enum(["compiler", "assembler", "ide", "debugger", "profiler", "linker", "build-tool"]),
     year: z.number(),
 
     developer: z.string(),
@@ -513,20 +626,24 @@ const developmentTools = defineCollection({
 
     features: z.array(z.string()),
 
-    buildSystem: z.object({
-      projectFiles: z.string().optional(),
-      makefiles: z.boolean().optional(),
-      libraries: z.boolean().optional(),
-      linking: z.string().optional()
-    }).optional(),
+    buildSystem: z
+      .object({
+        projectFiles: z.string().optional(),
+        makefiles: z.boolean().optional(),
+        libraries: z.boolean().optional(),
+        linking: z.string().optional(),
+      })
+      .optional(),
 
-    debugging: z.object({
-      breakpoints: z.boolean(),
-      stepping: z.boolean(),
-      watches: z.boolean(),
-      profiling: z.boolean(),
-      disassembly: z.boolean()
-    }).optional(),
+    debugging: z
+      .object({
+        breakpoints: z.boolean(),
+        stepping: z.boolean(),
+        watches: z.boolean(),
+        profiling: z.boolean(),
+        disassembly: z.boolean(),
+      })
+      .optional(),
 
     optimizations: z.array(z.string()).optional(),
 
@@ -538,15 +655,23 @@ const developmentTools = defineCollection({
     examples: z.boolean().optional(),
 
     license: z.string(),
-    price: z.string().optional()
-  })
+    price: z.string().optional(),
+  }),
 });
 
 // Utilities - System utilities and tools
 const utilities = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['file-manager', 'archiver', 'disk-utility', 'system-monitor', 'backup', 'security', 'network-tool']),
+    type: z.enum([
+      "file-manager",
+      "archiver",
+      "disk-utility",
+      "system-monitor",
+      "backup",
+      "security",
+      "network-tool",
+    ]),
     year: z.number(),
 
     developer: z.string(),
@@ -560,18 +685,22 @@ const utilities = defineCollection({
     commandLine: z.boolean().default(false),
     gui: z.boolean().default(false),
 
-    systemRequirements: z.object({
-      minimumRam: z.string().optional(),
-      adminRequired: z.boolean().optional(),
-      dosVersion: z.string().optional(),
-      other: z.array(z.string()).optional()
-    }).optional(),
+    systemRequirements: z
+      .object({
+        minimumRam: z.string().optional(),
+        adminRequired: z.boolean().optional(),
+        dosVersion: z.string().optional(),
+        other: z.array(z.string()).optional(),
+      })
+      .optional(),
 
-    automation: z.object({
-      scripting: z.boolean(),
-      batch: z.boolean(),
-      scheduling: z.boolean()
-    }).optional(),
+    automation: z
+      .object({
+        scripting: z.boolean(),
+        batch: z.boolean(),
+        scheduling: z.boolean(),
+      })
+      .optional(),
 
     fileOperations: z.array(z.string()).optional(), // copy, move, delete, compress, etc.
 
@@ -580,15 +709,15 @@ const utilities = defineCollection({
     license: z.string(),
     size: z.string().optional(), // Program size
 
-    notableUses: z.array(z.string()).optional()
-  })
+    notableUses: z.array(z.string()).optional(),
+  }),
 });
 
 // Programming Languages
 const programmingLanguages = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['compiled', 'interpreted', 'bytecode', 'assembly', 'macro']),
+    type: z.enum(["compiled", "interpreted", "bytecode", "assembly", "macro"]),
     year: z.number(), // First appeared
 
     designer: z.string(),
@@ -604,12 +733,16 @@ const programmingLanguages = defineCollection({
 
     fileExtensions: z.array(z.string()),
 
-    implementations: z.array(z.object({
-      name: z.string(),
-      type: z.string(), // compiler, interpreter
-      platform: z.string(),
-      year: z.number().optional()
-    })).optional(),
+    implementations: z
+      .array(
+        z.object({
+          name: z.string(),
+          type: z.string(), // compiler, interpreter
+          platform: z.string(),
+          year: z.number().optional(),
+        })
+      )
+      .optional(),
 
     features: z.array(z.string()),
 
@@ -619,29 +752,37 @@ const programmingLanguages = defineCollection({
 
     notableProjects: z.array(z.string()).optional(),
 
-    versions: z.array(z.object({
-      version: z.string(),
-      year: z.number(),
-      changes: z.array(z.string())
-    })).optional(),
+    versions: z
+      .array(
+        z.object({
+          version: z.string(),
+          year: z.number(),
+          changes: z.array(z.string()),
+        })
+      )
+      .optional(),
 
-    documentation: z.array(z.object({
-      title: z.string(),
-      url: z.string().url()
-    })).optional()
-  })
+    documentation: z
+      .array(
+        z.object({
+          title: z.string(),
+          url: z.string().url(),
+        })
+      )
+      .optional(),
+  }),
 });
 
 // Culture
 const culture = defineCollection({
   type: "content",
   schema: vaultBaseSchema.extend({
-    type: z.enum(['scene', 'movement', 'phenomenon', 'community', 'practice']),
+    type: z.enum(["scene", "movement", "phenomenon", "community", "practice"]),
 
     period: z.object({
       start: z.number(),
       end: z.number().optional(),
-      peak: z.string().optional()
+      peak: z.string().optional(),
     }),
 
     origins: z.string().optional(),
@@ -654,8 +795,8 @@ const culture = defineCollection({
     characteristics: z.array(z.string()).optional(),
 
     influence: z.array(z.string()).optional(),
-    modernLegacy: z.string().optional()
-  })
+    modernLegacy: z.string().optional(),
+  }),
 });
 
 // ============================================================================
@@ -1073,7 +1214,6 @@ const lessons = defineCollection({
   }),
 });
 
-
 const setup = defineCollection({
   type: "content",
   schema: z.object({
@@ -1105,7 +1245,7 @@ export const collections = {
 
   // Software categories (fully separated)
   applications,
-  'development-tools': developmentTools,
+  "development-tools": developmentTools,
   utilities,
 
   // Entertainment and creativity
@@ -1113,9 +1253,9 @@ export const collections = {
   demos,
 
   // Systems and languages
-  'operating-systems': operatingSystems,
+  "operating-systems": operatingSystems,
   emulators,
-  'programming-languages': programmingLanguages,
+  "programming-languages": programmingLanguages,
 
   // Knowledge and community
   techniques,
@@ -1124,5 +1264,4 @@ export const collections = {
   groups,
   formats,
   culture,
-
 };

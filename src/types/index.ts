@@ -44,10 +44,10 @@ export interface SystemMeta {
   name: string;
   slug: string;
   description?: string;
-  medalTier?: 'platinum' | 'gold' | 'silver' | 'bronze';
+  medalTier?: "platinum" | "gold" | "silver" | "bronze";
   totalPhases: number;
   totalLessons: number;
-  status: 'active' | 'planned' | 'vault';
+  status: "active" | "planned" | "vault";
   path: string;
 }
 
@@ -56,14 +56,14 @@ export interface SystemMeta {
 // ============================================================================
 
 export interface VaultEntry {
-  c: string;  // category
-  n: string;  // name
-  d: string;  // description
-  s: string;  // slug
+  c: string; // category
+  n: string; // name
+  d: string; // description
+  s: string; // slug
   t?: string; // type
   g?: string[]; // tags
   y?: number; // year
-  st: 'available' | 'coming' | 'draft'; // status
+  st: "available" | "coming" | "draft"; // status
 }
 
 export interface VaultCategory {
@@ -105,7 +105,7 @@ export interface Breadcrumb {
 // ============================================================================
 
 export interface SearchResult {
-  type: 'lesson' | 'vault' | 'system' | 'page';
+  type: "lesson" | "vault" | "system" | "page";
   title: string;
   description?: string;
   path: string;
@@ -118,7 +118,7 @@ export interface SearchResult {
 export interface SearchFilter {
   id: string;
   label: string;
-  type: 'select' | 'text' | 'multiselect' | 'range';
+  type: "select" | "text" | "multiselect" | "range";
   options?: Array<{
     value: string;
     label: string;
@@ -168,19 +168,19 @@ export interface CardProps {
   href?: string;
   icon?: string;
   tags?: string[];
-  variant?: 'default' | 'featured' | 'compact';
+  variant?: "default" | "featured" | "compact";
   className?: string;
 }
 
 export interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary" | "ghost" | "danger";
+  size?: "sm" | "md" | "lg";
   href?: string;
   onClick?: () => void;
   disabled?: boolean;
   loading?: boolean;
   icon?: string;
-  iconPosition?: 'left' | 'right';
+  iconPosition?: "left" | "right";
   className?: string;
   children: any;
 }
@@ -191,7 +191,7 @@ export interface ButtonProps {
 
 export interface BaseCollectionEntry {
   name: string;
-  status: 'available' | 'coming' | 'draft';
+  status: "available" | "coming" | "draft";
   tags: string[];
   description: string;
   featured: boolean;
@@ -200,7 +200,7 @@ export interface BaseCollectionEntry {
 }
 
 export interface HardwareEntry extends BaseCollectionEntry {
-  type: 'computer' | 'console' | 'chip' | 'peripheral' | 'addon';
+  type: "computer" | "console" | "chip" | "peripheral" | "addon";
   year: number;
   endYear?: number;
   manufacturer: string;
@@ -214,13 +214,13 @@ export interface HardwareEntry extends BaseCollectionEntry {
   price?: string;
   unitsSold?: string;
   marketRegions?: string[];
-  chipType?: 'processor' | 'graphics' | 'sound' | 'memory' | 'custom';
+  chipType?: "processor" | "graphics" | "sound" | "memory" | "custom";
   architecture?: string;
   transistorCount?: number;
 }
 
 export interface PersonEntry extends BaseCollectionEntry {
-  type: 'engineer' | 'designer' | 'executive' | 'artist' | 'musician' | 'programmer';
+  type: "engineer" | "designer" | "executive" | "artist" | "musician" | "programmer";
   birthDate?: Date;
   birthPlace?: string;
   nationality?: string;
@@ -244,7 +244,7 @@ export interface PersonEntry extends BaseCollectionEntry {
 }
 
 export interface CompanyEntry extends BaseCollectionEntry {
-  type: 'manufacturer' | 'publisher' | 'developer' | 'distributor';
+  type: "manufacturer" | "publisher" | "developer" | "distributor";
   founded: number;
   defunct?: number;
   headquarters: string;
@@ -267,7 +267,7 @@ export interface CompanyEntry extends BaseCollectionEntry {
 }
 
 export interface GameEntry extends BaseCollectionEntry {
-  type: 'arcade' | 'home' | 'computer' | 'handheld';
+  type: "arcade" | "home" | "computer" | "handheld";
   year: number;
   developer: string;
   publisher: string;

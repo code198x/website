@@ -1,4 +1,4 @@
-import { getCategoryIcon, getCategoryDisplayName } from './categoryInfo';
+import { getCategoryIcon, getCategoryDisplayName } from "./categoryInfo";
 
 export function getEntryIcon(category: string): string {
   return getCategoryIcon(category);

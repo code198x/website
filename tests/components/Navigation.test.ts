@@ -3,17 +3,18 @@
  * Tests mobile menu functionality, theme toggling, and active state handling
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { JSDOM } from 'jsdom';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { JSDOM } from "jsdom";
 
-describe('Navigation Component', () => {
+describe("Navigation Component", () => {
   let dom: JSDOM;
   let document: Document;
   let window: Window & typeof globalThis;
 
   beforeEach(() => {
     // Create a clean DOM environment for each test
-    dom = new JSDOM(`
+    dom = new JSDOM(
+      `
       <!DOCTYPE html>
       <html>
         <head>
@@ -126,10 +127,12 @@ describe('Navigation Component', () => {
           </nav>
         </body>
       </html>
-    `, {
-      url: 'http://localhost:4321',
-      pretendToBeVisual: true
-    });
+    `,
+      {
+        url: "http://localhost:4321",
+        pretendToBeVisual: true,
+      }
+    );
 
     document = dom.window.document;
     window = dom.window as any;
@@ -145,44 +148,44 @@ describe('Navigation Component', () => {
       removeItem: vi.fn(),
       clear: vi.fn(),
     };
-    Object.defineProperty(window, 'localStorage', {
+    Object.defineProperty(window, "localStorage", {
       value: localStorageMock,
       writable: true,
     });
 
     // Mock window properties
-    Object.defineProperty(window, 'innerWidth', {
+    Object.defineProperty(window, "innerWidth", {
       writable: true,
       configurable: true,
       value: 1024,
     });
   });
 
-  describe('Navigation Structure', () => {
-    it('should render both desktop and mobile navigation', () => {
-      const desktopNav = document.querySelector('.nav-desktop');
-      const mobileNav = document.querySelector('.nav-mobile');
+  describe("Navigation Structure", () => {
+    it("should render both desktop and mobile navigation", () => {
+      const desktopNav = document.querySelector(".nav-desktop");
+      const mobileNav = document.querySelector(".nav-mobile");
 
       expect(desktopNav).toBeTruthy();
       expect(mobileNav).toBeTruthy();
     });
 
-    it('should render logo in both desktop and mobile versions', () => {
-      const desktopLogo = document.querySelector('.nav-logo img');
-      const mobileLogo = document.querySelector('.nav-mobile-logo img');
+    it("should render logo in both desktop and mobile versions", () => {
+      const desktopLogo = document.querySelector(".nav-logo img");
+      const mobileLogo = document.querySelector(".nav-mobile-logo img");
 
-      expect(desktopLogo?.getAttribute('alt')).toBe('Code Like It\'s 198x');
-      expect(mobileLogo?.getAttribute('alt')).toBe('Code Like It\'s 198x');
+      expect(desktopLogo?.getAttribute("alt")).toBe("Code Like It's 198x");
+      expect(mobileLogo?.getAttribute("alt")).toBe("Code Like It's 198x");
     });
 
-    it('should render navigation items with icons and labels', () => {
-      const navItems = document.querySelectorAll('.nav-item');
+    it("should render navigation items with icons and labels", () => {
+      const navItems = document.querySelectorAll(".nav-item");
 
       expect(navItems.length).toBe(3);
 
-      navItems.forEach(item => {
-        const icon = item.querySelector('.nav-item__icon');
-        const label = item.querySelector('.nav-item__label');
+      navItems.forEach((item) => {
+        const icon = item.querySelector(".nav-item__icon");
+        const label = item.querySelector(".nav-item__label");
 
         expect(icon).toBeTruthy();
         expect(label).toBeTruthy();
@@ -190,137 +193,137 @@ describe('Navigation Component', () => {
       });
     });
 
-    it('should have proper accessibility attributes', () => {
-      const nav = document.querySelector('nav');
-      const mobileToggle = document.querySelector('.nav-mobile-toggle');
-      const searchButton = document.querySelector('.nav-search');
-      const themeButton = document.querySelector('.nav-theme');
+    it("should have proper accessibility attributes", () => {
+      const nav = document.querySelector("nav");
+      const mobileToggle = document.querySelector(".nav-mobile-toggle");
+      const searchButton = document.querySelector(".nav-search");
+      const themeButton = document.querySelector(".nav-theme");
 
-      expect(nav?.getAttribute('aria-label')).toBe('Main navigation');
-      expect(mobileToggle?.getAttribute('aria-label')).toBe('Toggle menu');
-      expect(mobileToggle?.getAttribute('aria-expanded')).toBe('false');
-      expect(searchButton?.getAttribute('aria-label')).toBe('Search');
-      expect(themeButton?.getAttribute('aria-label')).toBe('Toggle theme');
+      expect(nav?.getAttribute("aria-label")).toBe("Main navigation");
+      expect(mobileToggle?.getAttribute("aria-label")).toBe("Toggle menu");
+      expect(mobileToggle?.getAttribute("aria-expanded")).toBe("false");
+      expect(searchButton?.getAttribute("aria-label")).toBe("Search");
+      expect(themeButton?.getAttribute("aria-label")).toBe("Toggle theme");
     });
   });
 
-  describe('Active State Handling', () => {
-    it('should mark home item as active', () => {
+  describe("Active State Handling", () => {
+    it("should mark home item as active", () => {
       const homeItem = document.querySelector('a[href="/"]');
-      const activeDesktopItem = document.querySelector('.nav-item--active');
-      const activeMobileItem = document.querySelector('.nav-mobile-item--active');
+      const activeDesktopItem = document.querySelector(".nav-item--active");
+      const activeMobileItem = document.querySelector(".nav-mobile-item--active");
 
-      expect(activeDesktopItem?.getAttribute('href')).toBe('/');
-      expect(activeDesktopItem?.getAttribute('aria-current')).toBe('page');
-      expect(activeMobileItem?.getAttribute('href')).toBe('/');
+      expect(activeDesktopItem?.getAttribute("href")).toBe("/");
+      expect(activeDesktopItem?.getAttribute("aria-current")).toBe("page");
+      expect(activeMobileItem?.getAttribute("href")).toBe("/");
     });
 
-    it('should show active indicator in mobile menu', () => {
-      const activeMobileItem = document.querySelector('.nav-mobile-item--active');
-      const indicator = activeMobileItem?.querySelector('.nav-mobile-item__indicator');
+    it("should show active indicator in mobile menu", () => {
+      const activeMobileItem = document.querySelector(".nav-mobile-item--active");
+      const indicator = activeMobileItem?.querySelector(".nav-mobile-item__indicator");
 
       expect(indicator).toBeTruthy();
     });
   });
 
-  describe('Mobile Menu Functionality', () => {
-    it('should initialize with closed menu state', () => {
-      const toggle = document.querySelector('.nav-mobile-toggle');
-      const overlay = document.querySelector('.nav-mobile-overlay');
-      const menu = document.querySelector('.nav-mobile-menu');
+  describe("Mobile Menu Functionality", () => {
+    it("should initialize with closed menu state", () => {
+      const toggle = document.querySelector(".nav-mobile-toggle");
+      const overlay = document.querySelector(".nav-mobile-overlay");
+      const menu = document.querySelector(".nav-mobile-menu");
 
-      expect(toggle?.getAttribute('aria-expanded')).toBe('false');
-      expect(overlay?.getAttribute('aria-hidden')).toBe('true');
-      expect(menu?.getAttribute('aria-hidden')).toBe('true');
+      expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+      expect(overlay?.getAttribute("aria-hidden")).toBe("true");
+      expect(menu?.getAttribute("aria-hidden")).toBe("true");
     });
 
-    it('should simulate menu toggle functionality', () => {
-      const toggle = document.querySelector('.nav-mobile-toggle');
-      const overlay = document.querySelector('.nav-mobile-overlay');
-      const menu = document.querySelector('.nav-mobile-menu');
+    it("should simulate menu toggle functionality", () => {
+      const toggle = document.querySelector(".nav-mobile-toggle");
+      const overlay = document.querySelector(".nav-mobile-overlay");
+      const menu = document.querySelector(".nav-mobile-menu");
 
       // Simulate opening the menu
-      toggle?.setAttribute('aria-expanded', 'true');
-      overlay?.setAttribute('aria-hidden', 'false');
-      menu?.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
+      toggle?.setAttribute("aria-expanded", "true");
+      overlay?.setAttribute("aria-hidden", "false");
+      menu?.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
 
-      expect(toggle?.getAttribute('aria-expanded')).toBe('true');
-      expect(overlay?.getAttribute('aria-hidden')).toBe('false');
-      expect(menu?.getAttribute('aria-hidden')).toBe('false');
-      expect(document.body.style.overflow).toBe('hidden');
+      expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+      expect(overlay?.getAttribute("aria-hidden")).toBe("false");
+      expect(menu?.getAttribute("aria-hidden")).toBe("false");
+      expect(document.body.style.overflow).toBe("hidden");
 
       // Simulate closing the menu
-      toggle?.setAttribute('aria-expanded', 'false');
-      overlay?.setAttribute('aria-hidden', 'true');
-      menu?.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
+      toggle?.setAttribute("aria-expanded", "false");
+      overlay?.setAttribute("aria-hidden", "true");
+      menu?.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
 
-      expect(toggle?.getAttribute('aria-expanded')).toBe('false');
-      expect(overlay?.getAttribute('aria-hidden')).toBe('true');
-      expect(menu?.getAttribute('aria-hidden')).toBe('true');
-      expect(document.body.style.overflow).toBe('');
+      expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+      expect(overlay?.getAttribute("aria-hidden")).toBe("true");
+      expect(menu?.getAttribute("aria-hidden")).toBe("true");
+      expect(document.body.style.overflow).toBe("");
     });
 
-    it('should handle menu item clicks', () => {
+    it("should handle menu item clicks", () => {
       const menuItem = document.querySelector('.nav-mobile-item[href="/systems"]');
 
-      expect(menuItem?.getAttribute('href')).toBe('/systems');
+      expect(menuItem?.getAttribute("href")).toBe("/systems");
 
       // Simulate menu item click closing the menu
-      const toggle = document.querySelector('.nav-mobile-toggle');
-      const overlay = document.querySelector('.nav-mobile-overlay');
-      const menu = document.querySelector('.nav-mobile-menu');
+      const toggle = document.querySelector(".nav-mobile-toggle");
+      const overlay = document.querySelector(".nav-mobile-overlay");
+      const menu = document.querySelector(".nav-mobile-menu");
 
-      toggle?.setAttribute('aria-expanded', 'false');
-      overlay?.setAttribute('aria-hidden', 'true');
-      menu?.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
+      toggle?.setAttribute("aria-expanded", "false");
+      overlay?.setAttribute("aria-hidden", "true");
+      menu?.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
 
-      expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+      expect(toggle?.getAttribute("aria-expanded")).toBe("false");
     });
   });
 
-  describe('Theme Toggle Functionality', () => {
-    it('should handle theme toggle', () => {
-      const themeButton = document.querySelector('.nav-theme');
+  describe("Theme Toggle Functionality", () => {
+    it("should handle theme toggle", () => {
+      const themeButton = document.querySelector(".nav-theme");
       const html = document.documentElement;
 
       // Initially no dark mode
-      expect(html.classList.contains('dark-mode')).toBe(false);
+      expect(html.classList.contains("dark-mode")).toBe(false);
 
       // Simulate theme toggle
-      html.classList.add('dark-mode');
-      window.localStorage.setItem('theme', 'dark');
+      html.classList.add("dark-mode");
+      window.localStorage.setItem("theme", "dark");
 
-      expect(html.classList.contains('dark-mode')).toBe(true);
-      expect(window.localStorage.setItem).toHaveBeenCalledWith('theme', 'dark');
+      expect(html.classList.contains("dark-mode")).toBe(true);
+      expect(window.localStorage.setItem).toHaveBeenCalledWith("theme", "dark");
 
       // Toggle back to light mode
-      html.classList.remove('dark-mode');
-      window.localStorage.setItem('theme', 'light');
+      html.classList.remove("dark-mode");
+      window.localStorage.setItem("theme", "light");
 
-      expect(html.classList.contains('dark-mode')).toBe(false);
-      expect(window.localStorage.setItem).toHaveBeenCalledWith('theme', 'light');
+      expect(html.classList.contains("dark-mode")).toBe(false);
+      expect(window.localStorage.setItem).toHaveBeenCalledWith("theme", "light");
     });
 
-    it('should restore theme from localStorage', () => {
-      window.localStorage.getItem = vi.fn().mockReturnValue('dark');
+    it("should restore theme from localStorage", () => {
+      window.localStorage.getItem = vi.fn().mockReturnValue("dark");
 
       // Simulate theme restoration on page load
-      if (window.localStorage.getItem('theme') === 'dark') {
-        document.documentElement.classList.add('dark-mode');
+      if (window.localStorage.getItem("theme") === "dark") {
+        document.documentElement.classList.add("dark-mode");
       }
 
-      expect(window.localStorage.getItem).toHaveBeenCalledWith('theme');
-      expect(document.documentElement.classList.contains('dark-mode')).toBe(true);
+      expect(window.localStorage.getItem).toHaveBeenCalledWith("theme");
+      expect(document.documentElement.classList.contains("dark-mode")).toBe(true);
     });
   });
 
-  describe('Responsive Behavior', () => {
-    it('should handle mobile viewport', () => {
+  describe("Responsive Behavior", () => {
+    it("should handle mobile viewport", () => {
       // Mock mobile viewport
-      Object.defineProperty(window, 'innerWidth', {
+      Object.defineProperty(window, "innerWidth", {
         writable: true,
         configurable: true,
         value: 600,
@@ -331,9 +334,9 @@ describe('Navigation Component', () => {
       expect(isMobile).toBe(true);
     });
 
-    it('should handle desktop viewport', () => {
+    it("should handle desktop viewport", () => {
       // Mock desktop viewport
-      Object.defineProperty(window, 'innerWidth', {
+      Object.defineProperty(window, "innerWidth", {
         writable: true,
         configurable: true,
         value: 1200,
@@ -344,40 +347,40 @@ describe('Navigation Component', () => {
     });
   });
 
-  describe('Search Functionality', () => {
-    it('should render search buttons', () => {
-      const desktopSearch = document.querySelector('.nav-search');
-      const mobileSearch = document.querySelector('.nav-mobile-search');
+  describe("Search Functionality", () => {
+    it("should render search buttons", () => {
+      const desktopSearch = document.querySelector(".nav-search");
+      const mobileSearch = document.querySelector(".nav-mobile-search");
 
       expect(desktopSearch).toBeTruthy();
       expect(mobileSearch).toBeTruthy();
-      expect(mobileSearch?.textContent?.trim()).toBe('Search');
+      expect(mobileSearch?.textContent?.trim()).toBe("Search");
     });
 
-    it('should have proper search button accessibility', () => {
+    it("should have proper search button accessibility", () => {
       const searchButtons = document.querySelectorAll('[aria-label="Search"]');
       expect(searchButtons.length).toBeGreaterThan(0);
     });
   });
 
-  describe('Event Delegation', () => {
-    it('should use proper event delegation patterns', () => {
+  describe("Event Delegation", () => {
+    it("should use proper event delegation patterns", () => {
       // Test that we can simulate event delegation
       const body = document.body;
-      const clickEvent = new window.Event('click', { bubbles: true });
+      const clickEvent = new window.Event("click", { bubbles: true });
 
       // Mock closest method for event delegation
       const mockClosest = vi.fn();
       Element.prototype.closest = mockClosest;
 
-      mockClosest.mockReturnValue(document.querySelector('.nav-mobile-toggle'));
+      mockClosest.mockReturnValue(document.querySelector(".nav-mobile-toggle"));
 
       // Simulate delegated event handling
       const target = { closest: mockClosest };
-      const toggleBtn = target.closest('.nav-mobile-toggle');
+      const toggleBtn = target.closest(".nav-mobile-toggle");
 
       expect(toggleBtn).toBeTruthy();
-      expect(mockClosest).toHaveBeenCalledWith('.nav-mobile-toggle');
+      expect(mockClosest).toHaveBeenCalledWith(".nav-mobile-toggle");
     });
   });
 });

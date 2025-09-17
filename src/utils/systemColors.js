@@ -4,7 +4,10 @@
  */
 
 // Import from the new TypeScript configuration
-import { getSystemColors as getSystemConfig, getDifficultyIcon as getDiffIcon } from '../data/system-colors';
+import {
+  getSystemColors as getSystemConfig,
+  getDifficultyIcon as getDiffIcon,
+} from "../data/system-colors";
 
 /**
  * Get system colors for use in components
@@ -26,7 +29,7 @@ export const getSystemColors = (slug) => {
     dark: systemConfig.colors.dark,
     gradients: systemConfig.gradients,
     palette: systemConfig.palette,
-    name: systemConfig.name
+    name: systemConfig.name,
   };
 };
 

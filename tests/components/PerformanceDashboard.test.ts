@@ -3,25 +3,26 @@
  * Tests the dashboard UI, metrics updates, and user interactions
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { JSDOM } from 'jsdom';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { JSDOM } from "jsdom";
 
 // Mock the web-vitals library
-vi.mock('web-vitals', () => ({
+vi.mock("web-vitals", () => ({
   onCLS: vi.fn(),
   onFCP: vi.fn(),
   onLCP: vi.fn(),
   onINP: vi.fn(),
 }));
 
-describe('PerformanceDashboard Component', () => {
+describe("PerformanceDashboard Component", () => {
   let dom: JSDOM;
   let document: Document;
   let window: Window & typeof globalThis;
 
   beforeEach(() => {
     // Create a clean DOM environment for each test
-    dom = new JSDOM(`
+    dom = new JSDOM(
+      `
       <!DOCTYPE html>
       <html>
         <body>
@@ -74,10 +75,12 @@ describe('PerformanceDashboard Component', () => {
           </div>
         </body>
       </html>
-    `, {
-      url: 'http://localhost:4321',
-      pretendToBeVisual: true
-    });
+    `,
+      {
+        url: "http://localhost:4321",
+        pretendToBeVisual: true,
+      }
+    );
 
     document = dom.window.document;
     window = dom.window as any;
@@ -88,7 +91,7 @@ describe('PerformanceDashboard Component', () => {
 
     // Mock URL methods
     window.URL = {
-      createObjectURL: vi.fn().mockReturnValue('blob:mock-url'),
+      createObjectURL: vi.fn().mockReturnValue("blob:mock-url"),
       revokeObjectURL: vi.fn(),
     } as any;
 
@@ -99,24 +102,24 @@ describe('PerformanceDashboard Component', () => {
     } as any;
   });
 
-  describe('Dashboard Structure', () => {
-    it('should render dashboard with all required elements', () => {
-      const dashboard = document.getElementById('performance-dashboard');
-      const header = document.querySelector('.dashboard-header h3');
-      const toggleButton = document.getElementById('toggle-dashboard');
-      const content = document.getElementById('dashboard-content');
+  describe("Dashboard Structure", () => {
+    it("should render dashboard with all required elements", () => {
+      const dashboard = document.getElementById("performance-dashboard");
+      const header = document.querySelector(".dashboard-header h3");
+      const toggleButton = document.getElementById("toggle-dashboard");
+      const content = document.getElementById("dashboard-content");
 
       expect(dashboard).toBeTruthy();
-      expect(header?.textContent).toBe('⚡️ Performance Monitor');
+      expect(header?.textContent).toBe("⚡️ Performance Monitor");
       expect(toggleButton).toBeTruthy();
       expect(content).toBeTruthy();
     });
 
-    it('should render all four metric cards', () => {
-      const clsMetric = document.getElementById('cls-metric');
-      const fcpMetric = document.getElementById('fcp-metric');
-      const lcpMetric = document.getElementById('lcp-metric');
-      const inpMetric = document.getElementById('inp-metric');
+    it("should render all four metric cards", () => {
+      const clsMetric = document.getElementById("cls-metric");
+      const fcpMetric = document.getElementById("fcp-metric");
+      const lcpMetric = document.getElementById("lcp-metric");
+      const inpMetric = document.getElementById("inp-metric");
 
       expect(clsMetric).toBeTruthy();
       expect(fcpMetric).toBeTruthy();
@@ -124,64 +127,64 @@ describe('PerformanceDashboard Component', () => {
       expect(inpMetric).toBeTruthy();
 
       // Check metric labels
-      expect(clsMetric?.querySelector('.metric-label')?.textContent).toBe('CLS');
-      expect(fcpMetric?.querySelector('.metric-label')?.textContent).toBe('FCP');
-      expect(lcpMetric?.querySelector('.metric-label')?.textContent).toBe('LCP');
-      expect(inpMetric?.querySelector('.metric-label')?.textContent).toBe('INP');
+      expect(clsMetric?.querySelector(".metric-label")?.textContent).toBe("CLS");
+      expect(fcpMetric?.querySelector(".metric-label")?.textContent).toBe("FCP");
+      expect(lcpMetric?.querySelector(".metric-label")?.textContent).toBe("LCP");
+      expect(inpMetric?.querySelector(".metric-label")?.textContent).toBe("INP");
     });
 
-    it('should render all action buttons', () => {
-      const clearButton = document.getElementById('clear-data');
-      const exportButton = document.getElementById('export-data');
-      const detailsButton = document.getElementById('view-details');
+    it("should render all action buttons", () => {
+      const clearButton = document.getElementById("clear-data");
+      const exportButton = document.getElementById("export-data");
+      const detailsButton = document.getElementById("view-details");
 
       expect(clearButton).toBeTruthy();
       expect(exportButton).toBeTruthy();
       expect(detailsButton).toBeTruthy();
 
-      expect(clearButton?.textContent).toBe('Clear Data');
-      expect(exportButton?.textContent).toBe('Export Data');
-      expect(detailsButton?.textContent).toBe('View Details');
+      expect(clearButton?.textContent).toBe("Clear Data");
+      expect(exportButton?.textContent).toBe("Export Data");
+      expect(detailsButton?.textContent).toBe("View Details");
     });
   });
 
-  describe('Dashboard Functionality', () => {
-    it('should toggle dashboard collapse state', () => {
-      const dashboard = document.getElementById('performance-dashboard');
-      const toggleButton = document.getElementById('toggle-dashboard');
+  describe("Dashboard Functionality", () => {
+    it("should toggle dashboard collapse state", () => {
+      const dashboard = document.getElementById("performance-dashboard");
+      const toggleButton = document.getElementById("toggle-dashboard");
 
-      expect(dashboard?.classList.contains('collapsed')).toBe(false);
+      expect(dashboard?.classList.contains("collapsed")).toBe(false);
 
       // Simulate click event
       toggleButton?.click();
 
       // Since we're testing the HTML structure without the actual script,
       // we'll simulate what the script would do
-      dashboard?.classList.toggle('collapsed');
+      dashboard?.classList.toggle("collapsed");
 
-      expect(dashboard?.classList.contains('collapsed')).toBe(true);
+      expect(dashboard?.classList.contains("collapsed")).toBe(true);
     });
 
-    it('should handle metric updates correctly', () => {
-      const clsMetric = document.getElementById('cls-metric');
-      const valueElement = clsMetric?.querySelector('.metric-value');
-      const statusElement = clsMetric?.querySelector('.metric-status');
+    it("should handle metric updates correctly", () => {
+      const clsMetric = document.getElementById("cls-metric");
+      const valueElement = clsMetric?.querySelector(".metric-value");
+      const statusElement = clsMetric?.querySelector(".metric-status");
 
-      expect(valueElement?.textContent).toBe('-');
-      expect(statusElement?.textContent).toBe('measuring...');
+      expect(valueElement?.textContent).toBe("-");
+      expect(statusElement?.textContent).toBe("measuring...");
 
       // Simulate metric update
-      if (valueElement) valueElement.textContent = '0.125';
-      if (statusElement) statusElement.textContent = 'good';
-      clsMetric?.classList.add('good');
+      if (valueElement) valueElement.textContent = "0.125";
+      if (statusElement) statusElement.textContent = "good";
+      clsMetric?.classList.add("good");
 
-      expect(valueElement?.textContent).toBe('0.125');
-      expect(statusElement?.textContent).toBe('good');
-      expect(clsMetric?.classList.contains('good')).toBe(true);
+      expect(valueElement?.textContent).toBe("0.125");
+      expect(statusElement?.textContent).toBe("good");
+      expect(clsMetric?.classList.contains("good")).toBe(true);
     });
 
-    it('should handle clear data action', () => {
-      const clearButton = document.getElementById('clear-data');
+    it("should handle clear data action", () => {
+      const clearButton = document.getElementById("clear-data");
       const mockClearStoredData = vi.fn();
 
       window.performanceMonitor = {
@@ -193,36 +196,36 @@ describe('PerformanceDashboard Component', () => {
       clearButton?.click();
 
       // Test that metrics are reset (simulate what the script would do)
-      document.querySelectorAll('.metric-card').forEach(card => {
-        const valueElement = card.querySelector('.metric-value');
-        const statusElement = card.querySelector('.metric-status');
+      document.querySelectorAll(".metric-card").forEach((card) => {
+        const valueElement = card.querySelector(".metric-value");
+        const statusElement = card.querySelector(".metric-status");
 
-        if (valueElement) valueElement.textContent = '-';
-        if (statusElement) statusElement.textContent = 'measuring...';
-        card.className = 'metric-card';
+        if (valueElement) valueElement.textContent = "-";
+        if (statusElement) statusElement.textContent = "measuring...";
+        card.className = "metric-card";
       });
 
       // Verify all metrics are reset
-      const allValues = document.querySelectorAll('.metric-value');
-      const allStatuses = document.querySelectorAll('.metric-status');
+      const allValues = document.querySelectorAll(".metric-value");
+      const allStatuses = document.querySelectorAll(".metric-status");
 
-      allValues.forEach(value => {
-        expect(value.textContent).toBe('-');
+      allValues.forEach((value) => {
+        expect(value.textContent).toBe("-");
       });
 
       // Check that INP status is different
-      const inpStatus = document.querySelector('#inp-metric .metric-status');
-      if (inpStatus) inpStatus.textContent = 'waiting for interaction';
-      expect(inpStatus?.textContent).toBe('waiting for interaction');
+      const inpStatus = document.querySelector("#inp-metric .metric-status");
+      if (inpStatus) inpStatus.textContent = "waiting for interaction";
+      expect(inpStatus?.textContent).toBe("waiting for interaction");
     });
   });
 
-  describe('Metric Rating System', () => {
-    it('should apply correct CSS classes for different ratings', () => {
+  describe("Metric Rating System", () => {
+    it("should apply correct CSS classes for different ratings", () => {
       const testCases = [
-        { metric: 'cls-metric', rating: 'good' },
-        { metric: 'fcp-metric', rating: 'needs-improvement' },
-        { metric: 'lcp-metric', rating: 'poor' },
+        { metric: "cls-metric", rating: "good" },
+        { metric: "fcp-metric", rating: "needs-improvement" },
+        { metric: "lcp-metric", rating: "poor" },
       ];
 
       testCases.forEach(({ metric, rating }) => {
@@ -230,28 +233,28 @@ describe('PerformanceDashboard Component', () => {
         element?.classList.add(rating);
 
         expect(element?.classList.contains(rating)).toBe(true);
-        expect(element?.classList.contains('metric-card')).toBe(true);
+        expect(element?.classList.contains("metric-card")).toBe(true);
       });
     });
 
-    it('should format metric values correctly', () => {
+    it("should format metric values correctly", () => {
       // Test CLS formatting (decimal)
-      const clsValue = document.querySelector('#cls-metric .metric-value');
-      if (clsValue) clsValue.textContent = '0.125';
-      expect(clsValue?.textContent).toBe('0.125');
+      const clsValue = document.querySelector("#cls-metric .metric-value");
+      if (clsValue) clsValue.textContent = "0.125";
+      expect(clsValue?.textContent).toBe("0.125");
 
       // Test timing metrics formatting (ms)
-      const fcpValue = document.querySelector('#fcp-metric .metric-value');
-      if (fcpValue) fcpValue.textContent = '1200ms';
-      expect(fcpValue?.textContent).toBe('1200ms');
+      const fcpValue = document.querySelector("#fcp-metric .metric-value");
+      if (fcpValue) fcpValue.textContent = "1200ms";
+      expect(fcpValue?.textContent).toBe("1200ms");
     });
   });
 
-  describe('Export Functionality', () => {
-    it('should handle export with no data', () => {
+  describe("Export Functionality", () => {
+    it("should handle export with no data", () => {
       window.performanceMonitor = undefined;
 
-      const exportButton = document.getElementById('export-data');
+      const exportButton = document.getElementById("export-data");
 
       // Mock alert
       window.alert = vi.fn();
@@ -262,10 +265,10 @@ describe('PerformanceDashboard Component', () => {
       expect(window.performanceMonitor).toBe(undefined);
     });
 
-    it('should handle export with data', () => {
+    it("should handle export with data", () => {
       const mockData = [
-        { name: 'CLS', value: 0.125, rating: 'good', timestamp: Date.now() },
-        { name: 'FCP', value: 1200, rating: 'good', timestamp: Date.now() },
+        { name: "CLS", value: 0.125, rating: "good", timestamp: Date.now() },
+        { name: "FCP", value: 1200, rating: "good", timestamp: Date.now() },
       ];
 
       window.performanceMonitor = {
@@ -275,8 +278,8 @@ describe('PerformanceDashboard Component', () => {
 
       // Mock document.createElement and appendChild for download
       const mockLink = {
-        href: '',
-        download: '',
+        href: "",
+        download: "",
         click: vi.fn(),
       };
 
@@ -284,32 +287,32 @@ describe('PerformanceDashboard Component', () => {
       document.body.appendChild = vi.fn();
       document.body.removeChild = vi.fn();
 
-      const exportButton = document.getElementById('export-data');
+      const exportButton = document.getElementById("export-data");
 
       // The actual export logic would be tested here
       expect(window.performanceMonitor.getStoredData()).toEqual(mockData);
     });
   });
 
-  describe('Accessibility', () => {
-    it('should have proper ARIA labels', () => {
-      const toggleButton = document.getElementById('toggle-dashboard');
+  describe("Accessibility", () => {
+    it("should have proper ARIA labels", () => {
+      const toggleButton = document.getElementById("toggle-dashboard");
 
       // Check that button has proper accessibility (would be set by script)
-      toggleButton?.setAttribute('aria-expanded', 'false');
+      toggleButton?.setAttribute("aria-expanded", "false");
 
-      expect(toggleButton?.getAttribute('aria-expanded')).toBe('false');
+      expect(toggleButton?.getAttribute("aria-expanded")).toBe("false");
     });
 
-    it('should have proper semantic structure', () => {
-      const header = document.querySelector('.dashboard-header h3');
-      const buttons = document.querySelectorAll('button');
+    it("should have proper semantic structure", () => {
+      const header = document.querySelector(".dashboard-header h3");
+      const buttons = document.querySelectorAll("button");
 
-      expect(header?.tagName).toBe('H3');
+      expect(header?.tagName).toBe("H3");
       expect(buttons.length).toBeGreaterThan(0);
 
-      buttons.forEach(button => {
-        expect(button.tagName).toBe('BUTTON');
+      buttons.forEach((button) => {
+        expect(button.tagName).toBe("BUTTON");
       });
     });
   });

@@ -9,23 +9,18 @@ targetPlatforms: ["Commodore 64", "Commodore 128", "VIC-20", "Atari 8-bit", "App
 languages: ["6502 Assembly", "65C02 Assembly", "65816 Assembly"]
 outputFormats: ["PRG", "BIN", "CBM", "Object files"]
 license: "GPL"
-features: [
-  "Macro support with parameters",
-  "Conditional assembly",
-  "Local labels and zones",
-  "Mathematical expressions",
-  "Include files and binary data",
-  "Multiple output formats",
-  "Pseudo-opcodes for 65C02 and 65816",
-  "Anonymous labels"
-]
-versions: [
-  {
-    version: "0.97",
-    year: 2021,
-    changes: ["Bug fixes", "Improved error messages"]
-  }
-]
+features:
+  [
+    "Macro support with parameters",
+    "Conditional assembly",
+    "Local labels and zones",
+    "Mathematical expressions",
+    "Include files and binary data",
+    "Multiple output formats",
+    "Pseudo-opcodes for 65C02 and 65816",
+    "Anonymous labels",
+  ]
+versions: [{ version: "0.97", year: 2021, changes: ["Bug fixes", "Improved error messages"] }]
 tags: ["6502", "assembler", "cross-development", "commodore-64", "retro-development"]
 ---
 
@@ -40,6 +35,7 @@ ACME strikes an excellent balance between power and simplicity. Unlike some olde
 ## Key Features
 
 ### Macro System
+
 ACME's macro system is particularly powerful, supporting parameters and local labels:
 
 ```asm
@@ -52,6 +48,7 @@ ACME's macro system is particularly powerful, supporting parameters and local la
 ```
 
 ### Flexible Syntax
+
 ACME accepts multiple number formats and has excellent expression evaluation:
 
 ```asm
@@ -62,6 +59,7 @@ ACME accepts multiple number formats and has excellent expression evaluation:
 ```
 
 ### Zone System
+
 Local labels are managed through zones, preventing naming conflicts:
 
 ```asm
@@ -75,6 +73,7 @@ Local labels are managed through zones, preventing naming conflicts:
 ## Modern Development
 
 ACME integrates well with modern development workflows:
+
 - Works with make/build systems
 - Generates symbol files for debugging
 - Supports project organization across multiple files

@@ -1,5 +1,5 @@
-import type { CollectionEntry } from 'astro:content';
-import { getCategoryInfo } from './categoryInfo';
+import type { CollectionEntry } from "astro:content";
+import { getCategoryInfo } from "./categoryInfo";
 
 export interface TimelineEvent {
   month: string;
@@ -26,84 +26,84 @@ interface TimelineConfig {
 // Category-specific timeline configurations
 const TIMELINE_CONFIGS: Record<string, TimelineConfig> = {
   hardware: {
-    yearField: 'year',
-    titleFormat: '{name} Released',
-    eventType: 'release'
+    yearField: "year",
+    titleFormat: "{name} Released",
+    eventType: "release",
   },
   people: {
-    dateField: 'birthDate',
-    titleFormat: '{name} Born',
-    eventType: 'birth'
+    dateField: "birthDate",
+    titleFormat: "{name} Born",
+    eventType: "birth",
   },
   companies: {
-    yearField: 'founded',
-    titleFormat: '{name} Founded',
-    eventType: 'founding'
+    yearField: "founded",
+    titleFormat: "{name} Founded",
+    eventType: "founding",
   },
   games: {
-    yearField: 'year',
-    titleFormat: '{name} Released',
-    eventType: 'release'
+    yearField: "year",
+    titleFormat: "{name} Released",
+    eventType: "release",
   },
   demos: {
-    yearField: 'year',
-    titleFormat: '{name} Released',
-    eventType: 'demo'
+    yearField: "year",
+    titleFormat: "{name} Released",
+    eventType: "demo",
   },
   groups: {
-    yearField: 'formed',
-    titleFormat: '{name} Formed',
-    eventType: 'founding'
+    yearField: "formed",
+    titleFormat: "{name} Formed",
+    eventType: "founding",
   },
   operatingSystems: {
-    yearField: 'year',
-    titleFormat: '{name} Released',
-    eventType: 'release'
+    yearField: "year",
+    titleFormat: "{name} Released",
+    eventType: "release",
   },
   programmingLanguages: {
-    yearField: 'year',
-    titleFormat: '{name} Created',
-    eventType: 'creation'
+    yearField: "year",
+    titleFormat: "{name} Created",
+    eventType: "creation",
   },
   applications: {
-    yearField: 'year',
-    titleFormat: '{name} Released',
-    eventType: 'release'
+    yearField: "year",
+    titleFormat: "{name} Released",
+    eventType: "release",
   },
   developmentTools: {
-    yearField: 'year',
-    titleFormat: '{name} Released',
-    eventType: 'release'
+    yearField: "year",
+    titleFormat: "{name} Released",
+    eventType: "release",
   },
   emulators: {
-    yearField: 'year',
-    titleFormat: '{name} Released',
-    eventType: 'release'
+    yearField: "year",
+    titleFormat: "{name} Released",
+    eventType: "release",
   },
   techniques: {
-    yearField: 'year',
-    titleFormat: '{name} Discovered',
-    eventType: 'innovation'
+    yearField: "year",
+    titleFormat: "{name} Discovered",
+    eventType: "innovation",
   },
   formats: {
-    yearField: 'year',
-    titleFormat: '{name} Introduced',
-    eventType: 'standard'
+    yearField: "year",
+    titleFormat: "{name} Introduced",
+    eventType: "standard",
   },
   drivers: {
-    yearField: 'year',
-    titleFormat: '{name} Released',
-    eventType: 'release'
+    yearField: "year",
+    titleFormat: "{name} Released",
+    eventType: "release",
   },
   utilities: {
-    yearField: 'year',
-    titleFormat: '{name} Released',
-    eventType: 'release'
+    yearField: "year",
+    titleFormat: "{name} Released",
+    eventType: "release",
   },
   plugins: {
-    yearField: 'year',
-    titleFormat: '{name} Released',
-    eventType: 'release'
+    yearField: "year",
+    titleFormat: "{name} Released",
+    eventType: "release",
   },
   publications: {
     customProcessor: (pub: any) => {
@@ -114,12 +114,12 @@ const TIMELINE_CONFIGS: Record<string, TimelineConfig> = {
         const year = new Date(pub.data.firstIssue).getFullYear();
         events.push({
           year,
-          month: new Date(pub.data.firstIssue).toLocaleDateString('en-US', { month: 'long' }),
+          month: new Date(pub.data.firstIssue).toLocaleDateString("en-US", { month: "long" }),
           title: `${pub.data.name} First Issue`,
-          category: 'publications',
+          category: "publications",
           description: pub.data.description,
-          type: 'launch',
-          link: `/vault/publications/${pub.slug || pub.id}`
+          type: "launch",
+          link: `/vault/publications/${pub.slug || pub.id}`,
         } as any);
       }
 
@@ -127,17 +127,17 @@ const TIMELINE_CONFIGS: Record<string, TimelineConfig> = {
         const year = new Date(pub.data.lastIssue).getFullYear();
         events.push({
           year,
-          month: new Date(pub.data.lastIssue).toLocaleDateString('en-US', { month: 'long' }),
+          month: new Date(pub.data.lastIssue).toLocaleDateString("en-US", { month: "long" }),
           title: `${pub.data.name} Final Issue`,
-          category: 'publications',
+          category: "publications",
           description: `End of ${pub.data.name}`,
-          type: 'closure',
-          link: `/vault/publications/${pub.slug || pub.id}`
+          type: "closure",
+          link: `/vault/publications/${pub.slug || pub.id}`,
         } as any);
       }
 
       return events;
-    }
+    },
   },
   culture: {
     customProcessor: (cult: any) => {
@@ -147,35 +147,35 @@ const TIMELINE_CONFIGS: Record<string, TimelineConfig> = {
       if (cult.data.period?.start) {
         events.push({
           year: cult.data.period.start,
-          month: '',
+          month: "",
           title: cult.data.name,
-          category: 'culture',
+          category: "culture",
           description: cult.data.description,
-          type: 'movement',
-          link: `/vault/culture/${cult.slug || cult.id}`
+          type: "movement",
+          link: `/vault/culture/${cult.slug || cult.id}`,
         } as any);
       }
 
       if (cult.data.period?.end) {
         events.push({
           year: cult.data.period.end,
-          month: '',
+          month: "",
           title: `${cult.data.name} Ends`,
-          category: 'culture',
+          category: "culture",
           description: `End of ${cult.data.name}`,
-          type: 'closure',
-          link: `/vault/culture/${cult.slug || cult.id}`
+          type: "closure",
+          link: `/vault/culture/${cult.slug || cult.id}`,
         } as any);
       }
 
       return events;
-    }
+    },
   },
   events: {
-    dateField: 'date',
-    titleFormat: '{name}',
-    eventType: 'event'
-  }
+    dateField: "date",
+    titleFormat: "{name}",
+    eventType: "event",
+  },
 };
 
 /**
@@ -189,48 +189,53 @@ function processCollectionItem(
   // Use custom processor if provided
   if (config.customProcessor) {
     const result = config.customProcessor(item);
-    return Array.isArray(result) ? result : (result ? [result] : []);
+    return Array.isArray(result) ? result : result ? [result] : [];
   }
 
   // Extract year from the appropriate field
   let year: number | null = null;
-  let month = '';
+  let month = "";
 
   if (config.yearField && item.data[config.yearField]) {
     year = item.data[config.yearField];
   } else if (config.dateField && item.data[config.dateField]) {
     const date = new Date(item.data[config.dateField]);
     year = date.getFullYear();
-    month = date.toLocaleDateString('en-US', { month: 'long' });
+    month = date.toLocaleDateString("en-US", { month: "long" });
   }
 
   if (!year) return [];
 
   // Format title
-  const title = (config.titleFormat || '{name}')
-    .replace('{name}', item.data.name || item.data.title || 'Unknown');
+  const title = (config.titleFormat || "{name}").replace(
+    "{name}",
+    item.data.name || item.data.title || "Unknown"
+  );
 
   // Get category slug for URL
   // Convert camelCase to kebab-case for category slugs
-  const categorySlug = category.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+  const categorySlug = category
+    .replace(/([A-Z])/g, "-$1")
+    .toLowerCase()
+    .replace(/^-/, "");
 
-  return [{
-    year,
-    month,
-    title,
-    category: categorySlug,
-    description: item.data.description || '',
-    type: config.eventType || 'general',
-    link: `/vault/${categorySlug}/${item.slug || item.id}`
-  }];
+  return [
+    {
+      year,
+      month,
+      title,
+      category: categorySlug,
+      description: item.data.description || "",
+      type: config.eventType || "general",
+      link: `/vault/${categorySlug}/${item.slug || item.id}`,
+    },
+  ];
 }
 
 /**
  * Build timeline events from multiple collections
  */
-export function buildTimelineEvents(
-  collections: Record<string, any[]>
-): TimelineYear[] {
+export function buildTimelineEvents(collections: Record<string, any[]>): TimelineYear[] {
   const timelineEvents: TimelineYear[] = [];
 
   // Process each collection
@@ -238,20 +243,20 @@ export function buildTimelineEvents(
     const config = TIMELINE_CONFIGS[category];
     if (!config || !items?.length) return;
 
-    items.forEach(item => {
+    items.forEach((item) => {
       const events = processCollectionItem(item, category, config);
 
-      events.forEach(event => {
+      events.forEach((event) => {
         const year = (event as any).year;
         delete (event as any).year;
 
-        const existing = timelineEvents.find(e => e.year === year);
+        const existing = timelineEvents.find((e) => e.year === year);
         if (existing) {
           existing.events.push(event);
         } else {
           timelineEvents.push({
             year,
-            events: [event]
+            events: [event],
           });
         }
       });
@@ -260,11 +265,21 @@ export function buildTimelineEvents(
 
   // Sort by year and then by month within each year
   timelineEvents.sort((a, b) => a.year - b.year);
-  timelineEvents.forEach(yearGroup => {
+  timelineEvents.forEach((yearGroup) => {
     yearGroup.events.sort((a, b) => {
       const months = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
       ];
       const aIndex = months.indexOf(a.month) !== -1 ? months.indexOf(a.month) : 99;
       const bIndex = months.indexOf(b.month) !== -1 ? months.indexOf(b.month) : 99;
@@ -300,7 +315,7 @@ export function getTimelineCategoryStyles() {
       groups: "teal",
       formats: "orange",
       culture: "cyan",
-      projects: "lime"
+      projects: "lime",
     },
     icons: {
       hardware: "🖥️",
@@ -322,8 +337,8 @@ export function getTimelineCategoryStyles() {
       groups: "👥",
       formats: "💾",
       culture: "🌟",
-      projects: "🎯"
-    }
+      projects: "🎯",
+    },
   };
 }
 
@@ -339,17 +354,17 @@ export function filterTimelineEvents(
   if (!query && !category && !eventType) return events;
 
   const filtered: TimelineYear[] = [];
-  const searchLower = query?.toLowerCase() || '';
+  const searchLower = query?.toLowerCase() || "";
 
-  events.forEach(yearGroup => {
-    const filteredEvents = yearGroup.events.filter(event => {
+  events.forEach((yearGroup) => {
+    const filteredEvents = yearGroup.events.filter((event) => {
       // Category filter
-      if (category && category !== 'all' && event.category !== category) {
+      if (category && category !== "all" && event.category !== category) {
         return false;
       }
 
       // Event type filter
-      if (eventType && eventType !== 'all' && event.type !== eventType) {
+      if (eventType && eventType !== "all" && event.type !== eventType) {
         return false;
       }
 
@@ -366,7 +381,7 @@ export function filterTimelineEvents(
     if (filteredEvents.length > 0) {
       filtered.push({
         year: yearGroup.year,
-        events: filteredEvents
+        events: filteredEvents,
       });
     }
   });
@@ -379,8 +394,8 @@ export function filterTimelineEvents(
  */
 export function getEventTypes(events: TimelineYear[]): string[] {
   const types = new Set<string>();
-  events.forEach(yearGroup => {
-    yearGroup.events.forEach(event => {
+  events.forEach((yearGroup) => {
+    yearGroup.events.forEach((event) => {
       if (event.type) types.add(event.type);
     });
   });

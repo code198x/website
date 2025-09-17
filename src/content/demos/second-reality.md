@@ -71,7 +71,9 @@ Second Reality, released by Future Crew at Assembly 1993, is widely considered o
 ## Technical Achievements
 
 ### VGA Mode-X Mastery
+
 Second Reality pushed VGA hardware beyond its documented limits:
+
 - **320x240 resolution** with page flipping for smooth animation
 - **256 colors** on screen simultaneously
 - **Custom palette management** for dramatic color effects
@@ -80,28 +82,36 @@ Second Reality pushed VGA hardware beyond its documented limits:
 ### Revolutionary Effects
 
 #### Voxel Landscape
+
 The famous landscape sequence used voxel rendering:
+
 - **Height-mapped terrain** rendered in real-time
 - **Smooth camera movement** through 3D landscape
 - **Distance-based shading** creating atmospheric depth
 - **Texture mapping** on terrain surfaces
 
 #### Plasma Effects
+
 Multiple plasma sequences showcasing:
+
 - **Mathematical sine/cosine calculations** for organic movement
 - **Palette rotation** creating flowing color patterns
 - **Multiple overlay modes** for complex visual layering
 - **Synchronized beat matching** with music
 
 #### 3D Vector Objects
+
 Real-time 3D rendering including:
+
 - **Filled polygons** with flat shading
 - **Rotation and scaling** of complex objects
 - **Hidden surface removal** for proper depth
 - **Multiple objects** on screen simultaneously
 
 ### Audio Integration
+
 Perfect synchronization between visuals and Purple Motion's music:
+
 - **Tracker-based composition** using Scream Tracker 3
 - **Adlib/SoundBlaster output** with multiple channels
 - **Beat-synchronized effects** changes
@@ -110,14 +120,18 @@ Perfect synchronization between visuals and Purple Motion's music:
 ## Artistic Excellence
 
 ### Visual Design
+
 The demo showcased remarkable artistic vision:
+
 - **Coherent color palettes** throughout each section
 - **Smooth transitions** between different effects
 - **Geometric patterns** that felt both technical and organic
 - **Perfect pacing** that built dramatic tension
 
 ### Musical Composition
+
 Purple Motion's soundtrack became legendary:
+
 - **Melodic progression** that enhanced each visual sequence
 - **Electronic instruments** that complemented the technical theme
 - **Dynamic range** from subtle ambience to driving rhythms
@@ -126,7 +140,9 @@ Purple Motion's soundtrack became legendary:
 ## Technical Deep Dive
 
 ### Performance Optimization
+
 Running smoothly on 386 systems required:
+
 ```assembly
 ; VGA Mode-X setup for 320x240
 mov ax, 0013h       ; Set VGA mode 13h
@@ -142,14 +158,18 @@ out dx, al
 ```
 
 ### Memory Management
+
 Efficient use of limited RAM:
+
 - **Segmented memory** addressing for large data sets
 - **Dynamic loading** of graphics and music data
 - **Compressed assets** to fit within memory constraints
 - **Bank switching** techniques for accessing extended memory
 
 ### Real-time Rendering
+
 Advanced graphics techniques:
+
 ```c
 // Voxel landscape rendering pseudocode
 for (int y = 0; y < screen_height; y++) {
@@ -165,21 +185,27 @@ for (int y = 0; y < screen_height; y++) {
 ## Cultural Impact
 
 ### Raising the Bar
+
 Second Reality established new expectations:
+
 - **Technical complexity** that pushed hardware limits
 - **Artistic cohesion** between music and visuals
 - **Professional quality** rivaling commercial productions
 - **Storytelling** through abstract visual sequences
 
 ### Inspiring a Generation
+
 The demo influenced countless programmers:
+
 - **Graphics programming** techniques were studied and replicated
 - **Music composition** style influenced tracker musicians
 - **Effect transitions** became standard practice
 - **Overall production values** raised industry standards
 
 ### Cross-Platform Influence
+
 Effects from Second Reality appeared on other platforms:
+
 - **Console games** adopted similar visual techniques
 - **Amiga demos** recreated signature effects
 - **C64 demos** attempted scaled-down versions
@@ -188,14 +214,18 @@ Effects from Second Reality appeared on other platforms:
 ## Historical Context
 
 ### The PC Demo Scene in 1993
+
 PC demos were catching up to Amiga:
+
 - **VGA graphics** finally competitive with Amiga capabilities
 - **SoundBlaster audio** providing multi-channel sound
 - **386/486 processors** offering sufficient computational power
 - **Growing PC gaming market** creating larger audience
 
 ### Assembly 1993
+
 The demo debuted at Finland's premier demo party:
+
 - **International competition** with top European groups
 - **Large audience** of scene veterans and newcomers
 - **High-end hardware** available for optimal performance
@@ -204,21 +234,27 @@ The demo debuted at Finland's premier demo party:
 ## Legacy and Preservation
 
 ### Continued Relevance
+
 Second Reality remains important for:
+
 - **Educational purposes** in graphics programming courses
 - **Historical documentation** of demo scene evolution
 - **Technical reference** for retro development
 - **Artistic inspiration** for modern creative programmers
 
 ### Modern Adaptations
+
 The demo has been:
+
 - **Ported to modern systems** maintaining original feel
 - **Analyzed in academic papers** on computer graphics
 - **Referenced in game development** discussions
 - **Recreated in modern engines** as educational exercises
 
 ### Technical Documentation
+
 Extensive analysis exists covering:
+
 - **Source code recreation** by reverse engineering
 - **Algorithm explanations** for key effects
 - **Performance profiling** on period hardware
@@ -227,14 +263,18 @@ Extensive analysis exists covering:
 ## Programming Lessons
 
 ### Optimization Techniques
+
 Second Reality demonstrated:
+
 - **Assembly language** for performance-critical code
 - **Look-up tables** for expensive mathematical operations
 - **Fixed-point arithmetic** for speed over accuracy
 - **Memory access patterns** optimized for cache performance
 
 ### Effect Programming
+
 Key techniques included:
+
 - **Palette manipulation** for color animation
 - **Double buffering** for smooth animation
 - **Interrupt handling** for precise timing

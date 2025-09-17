@@ -9,16 +9,17 @@ targetPlatforms: ["Commodore 64", "Commodore 128"]
 languages: ["6502 Assembly", "6510 Assembly"]
 outputFormats: ["PRG", "Object code", "Memory image"]
 license: "Commercial"
-features: [
-  "Native C64 development",
-  "Lightning-fast assembly",
-  "Integrated source editor",
-  "Macro support",
-  "Symbol table management",
-  "Direct memory assembly",
-  "Turbo loading system",
-  "Source code compression"
-]
+features:
+  [
+    "Native C64 development",
+    "Lightning-fast assembly",
+    "Integrated source editor",
+    "Macro support",
+    "Symbol table management",
+    "Direct memory assembly",
+    "Turbo loading system",
+    "Source code compression",
+  ]
 tags: ["6502", "assembler", "commodore-64", "native-development", "classic-tools"]
 ---
 
@@ -33,6 +34,7 @@ What made Turbo Assembler special was its incredible speed. Using a custom turbo
 ## The Native Advantage
 
 Unlike modern cross-assemblers, Turbo Assembler ran directly on the target hardware. This meant:
+
 - Immediate testing without transfer steps
 - Direct memory manipulation and monitoring
 - Real-time debugging on actual hardware
@@ -41,14 +43,18 @@ Unlike modern cross-assemblers, Turbo Assembler ran directly on the target hardw
 ## Features Ahead of Its Time
 
 ### Integrated Development Environment
+
 Turbo Assembler included a full-screen source editor with:
+
 - Search and replace
 - Block operations
 - Automatic line numbering
 - Source code compression to fit more in memory
 
 ### Professional Macro System
+
 The macro capabilities rivaled mainframe assemblers:
+
 ```asm
 .macro setborder
     lda #{1}
@@ -59,7 +65,9 @@ The macro capabilities rivaled mainframe assemblers:
 ```
 
 ### Memory Management
+
 Clever memory organization allowed for:
+
 - Large source files despite 64KB limit
 - Symbol tables in extended memory on C128
 - Object code placement control
@@ -67,6 +75,7 @@ Clever memory organization allowed for:
 ## Cultural Impact
 
 Turbo Assembler became the tool of choice for many legendary C64 developers:
+
 - Demo groups used it to push hardware limits
 - Game developers created commercial releases
 - The cracking scene relied on its speed
@@ -74,6 +83,7 @@ Turbo Assembler became the tool of choice for many legendary C64 developers:
 ## The Turbo Assembler Workflow
 
 A typical session looked like:
+
 1. Load Turbo Assembler (with fast loader)
 2. Edit source code in the built-in editor
 3. Assemble with a single keypress

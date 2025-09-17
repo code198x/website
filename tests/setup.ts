@@ -3,8 +3,8 @@
  * Configures DOM environment, global mocks, and test utilities
  */
 
-import { vi } from 'vitest';
-import '@testing-library/jest-dom';
+import { vi } from "vitest";
+import "@testing-library/jest-dom";
 
 // Mock browser APIs that aren't available in test environment
 global.matchMedia = vi.fn().mockImplementation((query) => ({

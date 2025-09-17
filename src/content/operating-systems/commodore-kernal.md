@@ -60,20 +60,25 @@ The KERNAL (Kernel Address, Real-time, Non-specific Operations) is the essential
 ## Core Functions
 
 ### Hardware Abstraction
+
 The KERNAL shields programmers from hardware differences between Commodore models:
+
 - Screen output routines work across PET, VIC-20, and C64
 - Keyboard scanning handled uniformly
 - Serial bus communication standardized
 - Timer services abstracted
 
 ### File Operations
+
 KERNAL provides comprehensive file I/O:
+
 - OPEN, CLOSE, CHRIN, CHROUT for character I/O
 - Support for multiple devices (disk, tape, printer)
 - Sequential and relative file access
 - Error handling and status reporting
 
 ### Memory Map Location
+
 - **C64**: $E000-$FFFF (8KB ROM)
 - **VIC-20**: $E000-$FFFF (8KB ROM)
 - **C128**: $E000-$FFFF with bank switching
@@ -81,6 +86,7 @@ KERNAL provides comprehensive file I/O:
 ## Key Entry Points
 
 ### Essential Routines
+
 - `$FFD2` CHROUT - Output character to current device
 - `$FFCF` CHRIN - Input character from current device
 - `$FFC0` OPEN - Open logical file
@@ -89,6 +95,7 @@ KERNAL provides comprehensive file I/O:
 - `$FFBD` SETNAM - Set filename
 
 ### System Services
+
 - `$FF81` CINT - Initialize screen
 - `$FF84` IOINIT - Initialize I/O devices
 - `$FF87` RAMTAS - RAM test and initialization
@@ -98,7 +105,9 @@ KERNAL provides comprehensive file I/O:
 ## Programming with KERNAL
 
 ### BASIC Integration
+
 Commodore BASIC uses KERNAL extensively:
+
 ```basic
 PRINT "HELLO"    ; Uses CHROUT internally
 INPUT A$         ; Uses CHRIN for input
@@ -107,14 +116,18 @@ SAVE "DATA",8    ; Saves to device 8 (disk)
 ```
 
 ### Assembly Language Access
+
 Direct KERNAL calls from assembly:
+
 ```assembly
 LDA #$41        ; Load 'A'
 JSR $FFD2       ; Call CHROUT to print
 ```
 
 ### Custom I/O Vectors
+
 The KERNAL allows redirecting I/O:
+
 - Input vector at $0324
 - Output vector at $0326
 - Enables custom drivers and filters
@@ -122,21 +135,25 @@ The KERNAL allows redirecting I/O:
 ## Historical Evolution
 
 ### PET Era (1977-1980)
+
 - Original monochrome text-only implementation
 - Basic file operations
 - IEEE-488 bus support
 
 ### VIC-20 Enhancements (1980)
+
 - Color output support added
 - Joystick handling
 - Improved cassette routines
 
 ### C64 Optimizations (1982)
+
 - Enhanced for VIC-II graphics chip
 - Improved serial bus timing
 - Better error handling
 
 ### C128 Extensions (1985)
+
 - 80-column display support
 - Enhanced memory management
 - CP/M compatibility layer
@@ -144,21 +161,27 @@ The KERNAL allows redirecting I/O:
 ## Technical Innovations
 
 ### Device Independence
+
 Programs work identically whether output goes to:
+
 - Screen (device 3)
 - Printer (device 4/5)
 - Disk file (device 8)
 - Serial device
 
 ### Interrupt Integration
+
 KERNAL manages system interrupts:
+
 - Keyboard scanning every 1/60th second
 - Software timers
 - Serial bus timing
 - Cursor blinking
 
 ### Vector System
+
 Allows software to hook into system operations:
+
 - Custom character sets
 - Alternative input methods
 - Debugging tools
@@ -167,21 +190,27 @@ Allows software to hook into system operations:
 ## Modern Relevance
 
 ### Emulation Accuracy
+
 Understanding KERNAL is crucial for:
+
 - Cycle-accurate emulation
 - Hardware compatibility
 - Software preservation
 - Cross-development tools
 
 ### Educational Value
+
 The KERNAL demonstrates:
+
 - Clean API design principles
 - Hardware abstraction concepts
 - Interrupt-driven programming
 - Memory-mapped I/O techniques
 
 ### Historical Significance
+
 The KERNAL represented advanced thinking for its time:
+
 - Device-independent I/O
 - Modular design
 - Stable API across hardware generations
@@ -190,6 +219,7 @@ The KERNAL represented advanced thinking for its time:
 ## Legacy Impact
 
 The Commodore KERNAL influenced modern computing concepts:
+
 - Hardware abstraction layers
 - Device driver models
 - System call interfaces

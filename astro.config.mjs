@@ -18,7 +18,7 @@ export default defineConfig({
   },
   vite: {
     css: {
-      postcss: "./postcss.config.js"
-    }
-  }
+      postcss: "./postcss.config.js",
+    },
+  },
 });

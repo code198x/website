@@ -50,14 +50,18 @@ Action Replay, created by Datel Electronics in 1985, was the most famous "freeze
 ## Core Functionality
 
 ### The Freeze Feature
+
 Action Replay's signature capability was program freezing:
+
 - **Hardware interrupt** triggered by freeze button
 - **Complete system state** captured in RAM
 - **Return to program** possible at any time
 - **Works with any software** regardless of protection
 
 ### Memory Examination
+
 Once frozen, users could explore system memory:
+
 - **Hex dump display** of any memory location
 - **ASCII representation** alongside hex values
 - **Easy navigation** through memory pages
@@ -67,7 +71,9 @@ Once frozen, users could explore system memory:
 ## Development Tools
 
 ### Machine Language Monitor
+
 Action Replay included a sophisticated monitor:
+
 ```
 Typical Action Replay Monitor Session:
 > D C000         ; Disassemble from $C000
@@ -83,14 +89,18 @@ C005  60         RTS
 ```
 
 #### Disassembler
+
 Professional-quality 6502 disassembly:
+
 - **Automatic code analysis** distinguishing code from data
 - **Label generation** for branch targets
 - **Multiple addressing modes** properly decoded
 - **Cross-references** showing where addresses are used
 
 #### Memory Tools
+
 Comprehensive memory manipulation:
+
 - **Fill memory** ranges with patterns
 - **Copy memory** blocks between locations
 - **Compare memory** ranges for differences
@@ -98,9 +108,11 @@ Comprehensive memory manipulation:
 - **Save/load** memory contents to disk
 
 ### Programming Environment
+
 Action Replay provided a complete development environment:
 
 #### Assembly Programming
+
 ```assembly
 ; Example of inline assembly in Action Replay
 .A 1000         ; Assemble starting at $1000
@@ -111,6 +123,7 @@ Action Replay provided a complete development environment:
 ```
 
 #### Debugging Features
+
 - **Breakpoints** to pause execution at specific addresses
 - **Single stepping** through code instruction by instruction
 - **Register display** showing A, X, Y, and status flags
@@ -119,9 +132,11 @@ Action Replay provided a complete development environment:
 ## Gaming Enhancements
 
 ### Game Trainers
+
 Action Replay made creating game cheats easy:
 
 #### Infinite Lives Example
+
 ```
 1. Load and start game
 2. Note number of lives (e.g., 3)
@@ -135,14 +150,18 @@ Action Replay made creating game cheats easy:
 ```
 
 #### Invincibility Trainers
+
 Common technique for creating invincibility:
+
 - **Identify energy/health** memory locations
 - **Monitor value changes** during gameplay
 - **Create trainer** to maintain maximum health
 - **Package as loadable** trainer file
 
 ### Game Analysis
+
 Action Replay was invaluable for understanding games:
+
 - **Graphics examination** to see sprite and character data
 - **Music analysis** by examining SID registers
 - **Level data** extraction and modification
@@ -151,14 +170,18 @@ Action Replay was invaluable for understanding games:
 ## Disk Utilities
 
 ### Fast Loading
+
 Built-in fast loader functionality:
+
 - **5-10x speed improvement** over standard loading
 - **Directory browser** with file management
 - **Parallel cable support** for maximum speed
 - **Compatibility mode** for problematic software
 
 ### File Operations
+
 Comprehensive disk management:
+
 ```
 Disk Utility Menu:
 F1 - Fast Load File
@@ -172,7 +195,9 @@ F8 - Exit to Monitor
 ```
 
 ### Backup Functions
+
 Action Replay could backup various software:
+
 - **Save frozen programs** to disk
 - **Create game snapshots** at any point
 - **Backup protected software** (controversial use)
@@ -181,7 +206,9 @@ Action Replay could backup various software:
 ## Graphics Tools
 
 ### Sprite Editor
+
 Built-in sprite creation and editing:
+
 - **24x21 pixel** sprite canvas
 - **Pixel-by-pixel** editing with joystick or keyboard
 - **Preview animation** frames
@@ -189,7 +216,9 @@ Built-in sprite creation and editing:
 - **Load sprites** from existing games for study
 
 ### Character Set Editor
+
 Custom character creation:
+
 - **8x8 pixel** character editing
 - **Full character set** modification capability
 - **Real-time preview** in text mode
@@ -199,9 +228,11 @@ Custom character creation:
 ## Technical Implementation
 
 ### Hardware Design
+
 Action Replay's hardware was sophisticated:
 
 #### Memory Banking
+
 ```assembly
 ; Action Replay memory banking
 freeze_button:
@@ -226,24 +257,31 @@ freeze_button:
 ```
 
 #### NMI (Non-Maskable Interrupt)
+
 Action Replay used NMI for reliable freezing:
+
 - **Cannot be disabled** by software
 - **Highest priority** interrupt
 - **Hardware generated** by freeze button
 - **Preserves all state** including disabled interrupt flag
 
 ### Software Architecture
+
 The cartridge ROM contained multiple components:
 
 #### Monitor Kernel
+
 Core system providing:
+
 - **Command parser** for user input
 - **Memory management** routines
 - **Display formatting** functions
 - **Error handling** and recovery
 
 #### Utility Modules
+
 Separate modules for different functions:
+
 - **Disk utilities** with DOS commands
 - **Graphics editors** for sprites and characters
 - **Trainers** for game modification
@@ -252,14 +290,18 @@ Separate modules for different functions:
 ## Educational Value
 
 ### Programming Education
+
 Action Replay taught important concepts:
+
 - **Machine language programming** with immediate feedback
 - **Memory organization** and system architecture
 - **Interrupt handling** and system programming
 - **Debugging techniques** and problem solving
 
 ### System Understanding
+
 Users learned about:
+
 - **Hardware interaction** through memory-mapped I/O
 - **Operating system** structure and KERNAL routines
 - **Program execution** flow and control structures
@@ -268,14 +310,18 @@ Users learned about:
 ## Controversy and Legal Issues
 
 ### Software Piracy
+
 Action Replay's backup capabilities raised concerns:
+
 - **Copy protection** could be bypassed
 - **Commercial software** could be saved and distributed
 - **Legal gray area** regarding backup rights
 - **Industry response** with stronger protection schemes
 
 ### Legitimate Uses
+
 However, many uses were clearly legal:
+
 - **Personal backups** of legitimately owned software
 - **Educational exploration** of system programming
 - **Game modification** for personal enjoyment
@@ -284,14 +330,18 @@ However, many uses were clearly legal:
 ## Cultural Impact
 
 ### Demoscene Influence
+
 Action Replay significantly impacted the demo scene:
+
 - **Code analysis** of impressive demos
 - **Effect extraction** and study
 - **Development tool** for creating new demos
 - **Knowledge sharing** through trainers and utilities
 
 ### Gaming Community
+
 It transformed gaming culture:
+
 - **Cheat culture** became mainstream
 - **Game modification** communities formed
 - **Speedrunning** techniques developed
@@ -300,14 +350,18 @@ It transformed gaming culture:
 ## Modern Legacy
 
 ### Retro Development
+
 Action Replay principles influence modern retro development:
+
 - **Cross-development** tools use similar concepts
 - **Emulator debugging** features mirror AR functionality
 - **ROM hacking** tools evolved from AR techniques
 - **Homebrew development** benefits from AR understanding
 
 ### Educational Resources
+
 Modern educational uses include:
+
 - **Computer science courses** teaching system programming
 - **Retro computing workshops** demonstrating hardware concepts
 - **Game development education** showing optimization techniques

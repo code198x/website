@@ -20,18 +20,18 @@ export const MAX_LESSONS = 32;
 /** Phase 0 specific configuration */
 export const PHASE_ZERO = {
   NUMBER: 0,
-  NAME: 'Foundation',
+  NAME: "Foundation",
   TOTAL_LESSONS: 128,
   TIERS: 4,
-  LESSONS_PER_TIER: 32
+  LESSONS_PER_TIER: 32,
 } as const;
 
 /** Platform medal tiers and their lesson counts */
 export const PLATFORM_TIERS = {
-  PLATINUM: { lessons: 4096, games: { min: 30, max: 40 }, duration: '6-12 months' },
-  GOLD: { lessons: 2048, games: { min: 20, max: 25 }, duration: '3-6 months' },
-  SILVER: { lessons: 1024, games: { min: 12, max: 15 }, duration: '2-3 months' },
-  BRONZE: { lessons: 512, games: { min: 6, max: 8 }, duration: '1-2 months' }
+  PLATINUM: { lessons: 4096, games: { min: 30, max: 40 }, duration: "6-12 months" },
+  GOLD: { lessons: 2048, games: { min: 20, max: 25 }, duration: "3-6 months" },
+  SILVER: { lessons: 1024, games: { min: 12, max: 15 }, duration: "2-3 months" },
+  BRONZE: { lessons: 512, games: { min: 6, max: 8 }, duration: "1-2 months" },
 } as const;
 
 /** Calculate total lessons for a platform */
@@ -46,7 +46,7 @@ export const calculateTotalLessons = (phases: number = MAX_PHASES): number => {
 export const VALIDATION = {
   phase: { min: 0, max: MAX_PHASES },
   tier: { min: 1, max: MAX_TIERS },
-  lesson: { min: 1, max: MAX_LESSONS }
+  lesson: { min: 1, max: MAX_LESSONS },
 } as const;
 
 // ============================================================================
@@ -54,17 +54,17 @@ export const VALIDATION = {
 // ============================================================================
 
 export const PLATFORM_STATUS = {
-  ACTIVE: 'active',      // Has lessons available
-  PLANNED: 'planned',    // Future curriculum
-  VAULT: 'vault'        // Historical reference only
+  ACTIVE: "active", // Has lessons available
+  PLANNED: "planned", // Future curriculum
+  VAULT: "vault", // Historical reference only
 } as const;
 
 export const DIFFICULTY_LEVELS = [
-  'beginner',
-  'intermediate',
-  'advanced',
-  'expert',
-  'historical'
+  "beginner",
+  "intermediate",
+  "advanced",
+  "expert",
+  "historical",
 ] as const;
 
 // ============================================================================
@@ -72,9 +72,9 @@ export const DIFFICULTY_LEVELS = [
 // ============================================================================
 
 export const VAULT_STATUS = {
-  AVAILABLE: 'available',
-  COMING: 'coming',
-  DRAFT: 'draft'
+  AVAILABLE: "available",
+  COMING: "coming",
+  DRAFT: "draft",
 } as const;
 
 // ============================================================================
@@ -82,11 +82,11 @@ export const VAULT_STATUS = {
 // ============================================================================
 
 export const NAV_ITEMS = [
-  { href: '/', label: 'Home', icon: '🏠' },
-  { href: '/getting-started', label: 'Get Started', icon: '🚀' },
-  { href: '/lessons', label: 'Learn', icon: '📚' },
-  { href: '/vault', label: 'The Vault', icon: '🗄️' },
-  { href: '/about', label: 'About', icon: 'ℹ️' },
+  { href: "/", label: "Home", icon: "🏠" },
+  { href: "/getting-started", label: "Get Started", icon: "🚀" },
+  { href: "/lessons", label: "Learn", icon: "📚" },
+  { href: "/vault", label: "The Vault", icon: "🗄️" },
+  { href: "/about", label: "About", icon: "ℹ️" },
 ] as const;
 
 // ============================================================================
@@ -102,7 +102,7 @@ export const getLessonPath = (
   tier: number,
   lesson: number
 ): string => {
-  const lessonStr = String(lesson).padStart(3, '0');
+  const lessonStr = String(lesson).padStart(3, "0");
   return `/lessons/${system}/phase-${phase}/tier-${tier}/lesson-${lessonStr}`;
 };
 
@@ -118,17 +118,13 @@ export const parseLessonNumber = (slug: string): number => {
  * Format lesson number for display (e.g., 1 -> "001")
  */
 export const formatLessonNumber = (num: number): string => {
-  return String(num).padStart(3, '0');
+  return String(num).padStart(3, "0");
 };
 
 /**
  * Check if a phase/tier/lesson combination is valid
  */
-export const isValidCurriculumPath = (
-  phase: number,
-  tier: number,
-  lesson: number
-): boolean => {
+export const isValidCurriculumPath = (phase: number, tier: number, lesson: number): boolean => {
   return (
     phase >= VALIDATION.phase.min &&
     phase <= VALIDATION.phase.max &&
@@ -144,22 +140,22 @@ export const isValidCurriculumPath = (
  */
 export const getTierName = (tier: number): string => {
   const tierNames = [
-    'Foundation',
-    'Fundamentals',
-    'Core Concepts',
-    'Advanced Topics',
-    'Expert Techniques',
-    'System Mastery',
-    'Creative Projects',
-    'Professional Skills',
-    'Community Contributions',
-    'Research & Innovation',
-    'Legacy & History',
-    'Modern Applications',
-    'Cross-Platform',
-    'Optimization',
-    'Architecture Deep Dive',
-    'Capstone'
+    "Foundation",
+    "Fundamentals",
+    "Core Concepts",
+    "Advanced Topics",
+    "Expert Techniques",
+    "System Mastery",
+    "Creative Projects",
+    "Professional Skills",
+    "Community Contributions",
+    "Research & Innovation",
+    "Legacy & History",
+    "Modern Applications",
+    "Cross-Platform",
+    "Optimization",
+    "Architecture Deep Dive",
+    "Capstone",
   ];
   return tierNames[tier - 1] || `Tier ${tier}`;
 };
@@ -169,15 +165,15 @@ export const getTierName = (tier: number): string => {
  */
 export const getPhaseName = (phase: number): string => {
   const phaseNames = [
-    'Foundation',           // Phase 0
-    'Assembly Fundamentals', // Phase 1
-    'Graphics & Display',    // Phase 2
-    'Sound & Music',        // Phase 3
-    'Input & Control',      // Phase 4
-    'Storage & Memory',     // Phase 5
-    'Advanced Techniques',  // Phase 6
-    'Game Development',     // Phase 7
-    'System Mastery'        // Phase 8
+    "Foundation", // Phase 0
+    "Assembly Fundamentals", // Phase 1
+    "Graphics & Display", // Phase 2
+    "Sound & Music", // Phase 3
+    "Input & Control", // Phase 4
+    "Storage & Memory", // Phase 5
+    "Advanced Techniques", // Phase 6
+    "Game Development", // Phase 7
+    "System Mastery", // Phase 8
   ];
   return phaseNames[phase] || `Phase ${phase}`;
 };

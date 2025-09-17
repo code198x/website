@@ -13,15 +13,15 @@ export function getCategoryInfo(categorySlug: string): CategoryInfo {
     // Fallback for unknown categories
     return {
       label: categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1),
-      icon: '📄',
-      color: '#6b7280'
+      icon: "📄",
+      color: "#6b7280",
     };
   }
 
   return {
     label: categoryConfig.heroTitle,
     icon: categoryConfig.heroIcon,
-    color: categoryConfig.heroColor
+    color: categoryConfig.heroColor,
   };
 }
 

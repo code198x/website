@@ -4,16 +4,16 @@
  * Consolidates data from Web Vitals, bundle analysis, and Lighthouse reports
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import analyzeBundle from './analyze-bundle.mjs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import analyzeBundle from "./analyze-bundle.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const PROJECT_ROOT = join(__dirname, '..');
-const REPORTS_DIR = join(PROJECT_ROOT, 'performance-reports');
+const PROJECT_ROOT = join(__dirname, "..");
+const REPORTS_DIR = join(PROJECT_ROOT, "performance-reports");
 
 function ensureReportsDir() {
   if (!existsSync(REPORTS_DIR)) {
@@ -22,9 +22,9 @@ function ensureReportsDir() {
 }
 
 function loadPerformanceBudget() {
-  const budgetPath = join(PROJECT_ROOT, 'performance-budget.json');
+  const budgetPath = join(PROJECT_ROOT, "performance-budget.json");
   if (existsSync(budgetPath)) {
-    return JSON.parse(readFileSync(budgetPath, 'utf8'));
+    return JSON.parse(readFileSync(budgetPath, "utf8"));
   }
   return null;
 }
@@ -34,26 +34,26 @@ function getStoredWebVitals() {
   // For now, return mock data
   return [
     {
-      name: 'CLS',
+      name: "CLS",
       value: 0.05,
-      rating: 'good',
+      rating: "good",
       timestamp: Date.now(),
-      url: 'http://localhost:4325/'
+      url: "http://localhost:4325/",
     },
     {
-      name: 'FCP',
+      name: "FCP",
       value: 1200,
-      rating: 'good',
+      rating: "good",
       timestamp: Date.now(),
-      url: 'http://localhost:4325/'
+      url: "http://localhost:4325/",
     },
     {
-      name: 'LCP',
+      name: "LCP",
       value: 2100,
-      rating: 'good',
+      rating: "good",
       timestamp: Date.now(),
-      url: 'http://localhost:4325/'
-    }
+      url: "http://localhost:4325/",
+    },
   ];
 }
 
@@ -64,47 +64,47 @@ function checkBudgetCompliance(bundleData, budget) {
   const totalSize = bundleData.total.size;
 
   // Check against general path budget
-  const generalBudget = budget.budget.find(b => b.path === '/*');
+  const generalBudget = budget.budget.find((b) => b.path === "/*");
   if (generalBudget) {
-    const totalBudget = generalBudget.resourceSizes?.find(r => r.resourceType === 'total');
+    const totalBudget = generalBudget.resourceSizes?.find((r) => r.resourceType === "total");
     if (totalBudget && totalSize > totalBudget.budget) {
       violations.push({
-        type: 'Total Bundle Size',
+        type: "Total Bundle Size",
         actual: totalSize,
         budget: totalBudget.budget,
         tolerance: totalBudget.tolerance,
-        severity: totalSize > (totalBudget.budget + totalBudget.tolerance) ? 'error' : 'warning'
+        severity: totalSize > totalBudget.budget + totalBudget.tolerance ? "error" : "warning",
       });
     }
 
-    const jsBudget = generalBudget.resourceSizes?.find(r => r.resourceType === 'script');
+    const jsBudget = generalBudget.resourceSizes?.find((r) => r.resourceType === "script");
     const jsTotal = bundleData.js.reduce((sum, file) => sum + file.size, 0);
     if (jsBudget && jsTotal > jsBudget.budget) {
       violations.push({
-        type: 'JavaScript Bundle Size',
+        type: "JavaScript Bundle Size",
         actual: jsTotal,
         budget: jsBudget.budget,
         tolerance: jsBudget.tolerance,
-        severity: jsTotal > (jsBudget.budget + jsBudget.tolerance) ? 'error' : 'warning'
+        severity: jsTotal > jsBudget.budget + jsBudget.tolerance ? "error" : "warning",
       });
     }
 
-    const cssBudget = generalBudget.resourceSizes?.find(r => r.resourceType === 'stylesheet');
+    const cssBudget = generalBudget.resourceSizes?.find((r) => r.resourceType === "stylesheet");
     const cssTotal = bundleData.css.reduce((sum, file) => sum + file.size, 0);
     if (cssBudget && cssTotal > cssBudget.budget) {
       violations.push({
-        type: 'CSS Bundle Size',
+        type: "CSS Bundle Size",
         actual: cssTotal,
         budget: cssBudget.budget,
         tolerance: cssBudget.tolerance,
-        severity: cssTotal > (cssBudget.budget + cssBudget.tolerance) ? 'error' : 'warning'
+        severity: cssTotal > cssBudget.budget + cssBudget.tolerance ? "error" : "warning",
       });
     }
   }
 
   return {
     compliant: violations.length === 0,
-    violations
+    violations,
   };
 }
 
@@ -154,13 +154,17 @@ function generateHTMLReport(reportData) {
     <div class="section">
       <h2>🏃‍♂️ Core Web Vitals</h2>
       <div class="metric-grid">
-        ${webVitals.map(metric => `
+        ${webVitals
+          .map(
+            (metric) => `
           <div class="metric-card ${metric.rating}">
             <div class="metric-label">${metric.name}</div>
-            <div class="metric-value">${metric.value}${metric.name === 'CLS' ? '' : 'ms'}</div>
+            <div class="metric-value">${metric.value}${metric.name === "CLS" ? "" : "ms"}</div>
             <div>Rating: ${metric.rating}</div>
           </div>
-        `).join('')}
+        `
+          )
+          .join("")}
       </div>
     </div>
 
@@ -186,36 +190,49 @@ function generateHTMLReport(reportData) {
 
       <h3>📜 JavaScript Files</h3>
       <div class="file-list">
-        ${bundleAnalysis.js.map(file => `
+        ${bundleAnalysis.js
+          .map(
+            (file) => `
           <div class="file-item">
             <div class="file-name">${file.name}</div>
             <div class="file-size">${file.size} KB</div>
           </div>
-        `).join('')}
+        `
+          )
+          .join("")}
       </div>
 
       <h3>🎨 CSS Files</h3>
       <div class="file-list">
-        ${bundleAnalysis.css.map(file => `
+        ${bundleAnalysis.css
+          .map(
+            (file) => `
           <div class="file-item">
             <div class="file-name">${file.name}</div>
             <div class="file-size">${file.size} KB</div>
           </div>
-        `).join('')}
+        `
+          )
+          .join("")}
       </div>
     </div>
 
     <div class="section">
       <h2>💰 Performance Budget</h2>
-      ${budgetCompliance.compliant ?
-        '<div class="success">✅ All performance budgets are met!</div>' :
-        `<div>
-          ${budgetCompliance.violations.map(violation => `
+      ${
+        budgetCompliance.compliant
+          ? '<div class="success">✅ All performance budgets are met!</div>'
+          : `<div>
+          ${budgetCompliance.violations
+            .map(
+              (violation) => `
             <div class="violation ${violation.severity}">
               <strong>${violation.type}</strong><br>
               Actual: ${violation.actual} KB | Budget: ${violation.budget} KB | Tolerance: ${violation.tolerance} KB
             </div>
-          `).join('')}
+          `
+            )
+            .join("")}
         </div>`
       }
     </div>
@@ -233,7 +250,7 @@ function generateHTMLReport(reportData) {
 }
 
 async function generatePerformanceReport() {
-  console.log('🔄 Generating comprehensive performance report...');
+  console.log("🔄 Generating comprehensive performance report...");
 
   ensureReportsDir();
 
@@ -243,11 +260,11 @@ async function generatePerformanceReport() {
     bundleAnalysis: null,
     webVitals: getStoredWebVitals(),
     budgetCompliance: null,
-    recommendations: []
+    recommendations: [],
   };
 
   // Run bundle analysis
-  console.log('📦 Running bundle analysis...');
+  console.log("📦 Running bundle analysis...");
   reportData.bundleAnalysis = analyzeBundle();
 
   // Load and check performance budget
@@ -257,21 +274,21 @@ async function generatePerformanceReport() {
   // Generate recommendations
   const recommendations = [];
 
-  if (reportData.bundleAnalysis.js.some(file => file.size > 100)) {
+  if (reportData.bundleAnalysis.js.some((file) => file.size > 100)) {
     recommendations.push({
-      type: 'JavaScript Optimization',
-      priority: 'high',
-      description: 'Large JavaScript bundles detected. Consider code splitting or tree shaking.',
-      files: reportData.bundleAnalysis.js.filter(file => file.size > 100).map(f => f.name)
+      type: "JavaScript Optimization",
+      priority: "high",
+      description: "Large JavaScript bundles detected. Consider code splitting or tree shaking.",
+      files: reportData.bundleAnalysis.js.filter((file) => file.size > 100).map((f) => f.name),
     });
   }
 
-  if (reportData.bundleAnalysis.css.some(file => file.size > 25)) {
+  if (reportData.bundleAnalysis.css.some((file) => file.size > 25)) {
     recommendations.push({
-      type: 'CSS Optimization',
-      priority: 'medium',
-      description: 'Large CSS bundles detected. Consider CSS purging or component-specific styles.',
-      files: reportData.bundleAnalysis.css.filter(file => file.size > 25).map(f => f.name)
+      type: "CSS Optimization",
+      priority: "medium",
+      description: "Large CSS bundles detected. Consider CSS purging or component-specific styles.",
+      files: reportData.bundleAnalysis.css.filter((file) => file.size > 25).map((f) => f.name),
     });
   }
 
@@ -289,35 +306,40 @@ async function generatePerformanceReport() {
   const htmlContent = generateHTMLReport(reportData);
   writeFileSync(htmlReport, htmlContent);
 
-  console.log('✅ Performance report generated!');
+  console.log("✅ Performance report generated!");
   console.log(`📄 JSON Report: ${jsonReport}`);
   console.log(`🌐 HTML Report: ${htmlReport}`);
 
   // Console summary
-  console.log('\n' + '='.repeat(50));
-  console.log('📊 Performance Summary');
-  console.log('='.repeat(50));
+  console.log("\n" + "=".repeat(50));
+  console.log("📊 Performance Summary");
+  console.log("=".repeat(50));
 
-  console.log('\n🏃‍♂️ Core Web Vitals:');
-  reportData.webVitals.forEach(metric => {
-    const status = metric.rating === 'good' ? '✅' : metric.rating === 'needs-improvement' ? '⚠️' : '❌';
-    console.log(`  ${status} ${metric.name}: ${metric.value}${metric.name === 'CLS' ? '' : 'ms'} (${metric.rating})`);
+  console.log("\n🏃‍♂️ Core Web Vitals:");
+  reportData.webVitals.forEach((metric) => {
+    const status =
+      metric.rating === "good" ? "✅" : metric.rating === "needs-improvement" ? "⚠️" : "❌";
+    console.log(
+      `  ${status} ${metric.name}: ${metric.value}${metric.name === "CLS" ? "" : "ms"} (${metric.rating})`
+    );
   });
 
-  console.log('\n💰 Budget Compliance:');
+  console.log("\n💰 Budget Compliance:");
   if (reportData.budgetCompliance.compliant) {
-    console.log('  ✅ All performance budgets met!');
+    console.log("  ✅ All performance budgets met!");
   } else {
-    reportData.budgetCompliance.violations.forEach(violation => {
-      const status = violation.severity === 'error' ? '❌' : '⚠️';
-      console.log(`  ${status} ${violation.type}: ${violation.actual}KB (budget: ${violation.budget}KB)`);
+    reportData.budgetCompliance.violations.forEach((violation) => {
+      const status = violation.severity === "error" ? "❌" : "⚠️";
+      console.log(
+        `  ${status} ${violation.type}: ${violation.actual}KB (budget: ${violation.budget}KB)`
+      );
     });
   }
 
   if (recommendations.length > 0) {
-    console.log('\n💡 Recommendations:');
-    recommendations.forEach(rec => {
-      const priority = rec.priority === 'high' ? '🔥' : rec.priority === 'medium' ? '⚠️' : 'ℹ️';
+    console.log("\n💡 Recommendations:");
+    recommendations.forEach((rec) => {
+      const priority = rec.priority === "high" ? "🔥" : rec.priority === "medium" ? "⚠️" : "ℹ️";
       console.log(`  ${priority} ${rec.type}: ${rec.description}`);
     });
   }

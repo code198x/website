@@ -1,31 +1,31 @@
 // Generate Vault Data from Content Collections
 // This script runs at build time to create the centralized vault data
 
-import { getCollection } from 'astro:content';
-import fs from 'fs';
-import path from 'path';
+import { getCollection } from "astro:content";
+import fs from "fs";
+import path from "path";
 
 // Map collection names to category codes
 const categoryMap = {
-  'hardware': 'hardware',
-  'people': 'people',
-  'companies': 'companies',
-  'games': 'games',
-  'demos': 'demos',
-  'emulators': 'emulators',
-  'groups': 'groups',
-  'techniques': 'techniques',
-  'applications': 'applications',
-  'developmentTools': 'development-tools',
-  'utilities': 'utilities',
-  'drivers': 'drivers',
-  'plugins': 'plugins',
-  'operatingSystems': 'operating-systems',
-  'programmingLanguages': 'programming-languages',
-  'publications': 'publications',
-  'events': 'events',
-  'formats': 'formats',
-  'culture': 'culture'
+  hardware: "hardware",
+  people: "people",
+  companies: "companies",
+  games: "games",
+  demos: "demos",
+  emulators: "emulators",
+  groups: "groups",
+  techniques: "techniques",
+  applications: "applications",
+  developmentTools: "development-tools",
+  utilities: "utilities",
+  drivers: "drivers",
+  plugins: "plugins",
+  operatingSystems: "operating-systems",
+  programmingLanguages: "programming-languages",
+  publications: "publications",
+  events: "events",
+  formats: "formats",
+  culture: "culture",
 };
 
 // Generate minimal entry structure for client-side
@@ -37,19 +37,19 @@ function createEntry(category, entry) {
   if (data.period?.start) {
     year = data.period.start;
   }
-  if (year && typeof year === 'string') {
-    year = parseInt(year.match(/\d{4}/)?.[0] || '0');
+  if (year && typeof year === "string") {
+    year = parseInt(year.match(/\d{4}/)?.[0] || "0");
   }
 
   return {
     c: category, // category
     n: data.name || entry.id, // name
-    d: (data.description || '').substring(0, 200), // description (truncated)
+    d: (data.description || "").substring(0, 200), // description (truncated)
     s: entry.slug || entry.id, // slug
-    t: data.type || 'unknown', // type
+    t: data.type || "unknown", // type
     g: data.tags || [], // tags
     y: year || 0, // year
-    st: data.status || 'available' // status
+    st: data.status || "available", // status
   };
 }
 
@@ -62,7 +62,7 @@ export async function generateVaultData() {
     try {
       const collection = await getCollection(collectionName);
       if (collection && collection.length > 0) {
-        const entries = collection.map(entry => createEntry(categoryCode, entry));
+        const entries = collection.map((entry) => createEntry(categoryCode, entry));
         allData.push(...entries);
         categoryData[categoryCode] = entries;
         console.log(`✓ Processed ${collection.length} entries from ${collectionName}`);
@@ -131,7 +131,7 @@ export const metadata = {
 `;
 
   // Write the file
-  const outputPath = path.join(process.cwd(), 'src/data/vault-data-generated.js');
+  const outputPath = path.join(process.cwd(), "src/data/vault-data-generated.js");
   fs.writeFileSync(outputPath, dataContent);
 
   console.log(`\n✨ Generated vault data with ${allData.length} total entries`);
@@ -140,7 +140,7 @@ export const metadata = {
   return {
     data: allData,
     categories: categoryData,
-    totalEntries: allData.length
+    totalEntries: allData.length,
   };
 }
 

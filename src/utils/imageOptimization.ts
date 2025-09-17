@@ -11,13 +11,13 @@ export function generateSrcset(
   format?: string
 ): string {
   return widths
-    .map(w => {
+    .map((w) => {
       const params = new URLSearchParams();
-      params.set('w', w.toString());
-      if (format) params.set('fm', format);
+      params.set("w", w.toString());
+      if (format) params.set("fm", format);
       return `${baseUrl}?${params} ${w}w`;
     })
-    .join(', ');
+    .join(", ");
 }
 
 /**
@@ -30,10 +30,10 @@ export function generateSizes(config?: {
   default?: string;
 }): string {
   const {
-    mobile = '100vw',
-    tablet = '50vw',
-    desktop = '33vw',
-    default: defaultSize = '100vw'
+    mobile = "100vw",
+    tablet = "50vw",
+    desktop = "33vw",
+    default: defaultSize = "100vw",
   } = config || {};
 
   return `(max-width: 640px) ${mobile}, (max-width: 1024px) ${tablet}, (max-width: 1536px) ${desktop}, ${defaultSize}`;
@@ -47,7 +47,7 @@ export function calculateOptimalWidths(
   densities: number[] = [1, 1.5, 2, 3]
 ): number[] {
   return densities
-    .map(density => Math.round(baseWidth * density))
+    .map((density) => Math.round(baseWidth * density))
     .filter((width, index, self) => self.indexOf(width) === index) // Remove duplicates
     .sort((a, b) => a - b);
 }
@@ -58,7 +58,7 @@ export function calculateOptimalWidths(
 export function generateBlurPlaceholder(
   width: number,
   height: number,
-  color: string = '#e2e8f0'
+  color: string = "#e2e8f0"
 ): string {
   return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${width} ${height}'%3E%3Cfilter id='b' color-interpolation-filters='sRGB'%3E%3CfeGaussianBlur stdDeviation='20'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='1 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='${encodeURIComponent(color)}' filter='url(%23b)'/%3E%3C/svg%3E`;
 }
@@ -76,7 +76,7 @@ export async function generateLQIP(
     // For now, return a simple SVG placeholder
     return generateBlurPlaceholder(width, Math.round(width * 0.75));
   } catch (error) {
-    console.error('Failed to generate LQIP:', error);
+    console.error("Failed to generate LQIP:", error);
     return null;
   }
 }
@@ -84,43 +84,36 @@ export async function generateLQIP(
 /**
  * Image format detection based on browser support
  */
-export function getOptimalFormat(): 'avif' | 'webp' | 'jpeg' {
-  if (typeof window === 'undefined') return 'jpeg';
+export function getOptimalFormat(): "avif" | "webp" | "jpeg" {
+  if (typeof window === "undefined") return "jpeg";
 
   // Check AVIF support
-  const avifSupport = document.createElement('canvas')
-    .toDataURL('image/avif')
-    .indexOf('image/avif') > -1;
+  const avifSupport =
+    document.createElement("canvas").toDataURL("image/avif").indexOf("image/avif") > -1;
 
-  if (avifSupport) return 'avif';
+  if (avifSupport) return "avif";
 
   // Check WebP support
-  const webpSupport = document.createElement('canvas')
-    .toDataURL('image/webp')
-    .indexOf('image/webp') > -1;
+  const webpSupport =
+    document.createElement("canvas").toDataURL("image/webp").indexOf("image/webp") > -1;
 
-  if (webpSupport) return 'webp';
+  if (webpSupport) return "webp";
 
-  return 'jpeg';
+  return "jpeg";
 }
 
 /**
  * Preload critical images
  */
-export function preloadImage(
-  src: string,
-  srcset?: string,
-  sizes?: string,
-  type?: string
-): void {
-  const link = document.createElement('link');
-  link.rel = 'preload';
-  link.as = 'image';
+export function preloadImage(src: string, srcset?: string, sizes?: string, type?: string): void {
+  const link = document.createElement("link");
+  link.rel = "preload";
+  link.as = "image";
   link.href = src;
 
-  if (srcset) link.setAttribute('imagesrcset', srcset);
-  if (sizes) link.setAttribute('imagesizes', sizes);
-  if (type) link.setAttribute('type', type);
+  if (srcset) link.setAttribute("imagesrcset", srcset);
+  if (sizes) link.setAttribute("imagesizes", sizes);
+  if (type) link.setAttribute("type", type);
 
   document.head.appendChild(link);
 }
@@ -131,41 +124,42 @@ export function preloadImage(
 export function getNetworkAwareImageConfig(): {
   quality: number;
   format: string;
-  loading: 'lazy' | 'eager';
+  loading: "lazy" | "eager";
 } {
-  if (typeof navigator === 'undefined') {
-    return { quality: 75, format: 'auto', loading: 'lazy' };
+  if (typeof navigator === "undefined") {
+    return { quality: 75, format: "auto", loading: "lazy" };
   }
 
-  const connection = (navigator as any).connection ||
-                     (navigator as any).mozConnection ||
-                     (navigator as any).webkitConnection;
+  const connection =
+    (navigator as any).connection ||
+    (navigator as any).mozConnection ||
+    (navigator as any).webkitConnection;
 
   if (!connection) {
-    return { quality: 75, format: 'auto', loading: 'lazy' };
+    return { quality: 75, format: "auto", loading: "lazy" };
   }
 
   const effectiveType = connection.effectiveType;
   const saveData = connection.saveData;
 
   // Adjust quality based on network
-  if (saveData || effectiveType === 'slow-2g' || effectiveType === '2g') {
-    return { quality: 40, format: 'webp', loading: 'lazy' };
+  if (saveData || effectiveType === "slow-2g" || effectiveType === "2g") {
+    return { quality: 40, format: "webp", loading: "lazy" };
   }
 
-  if (effectiveType === '3g') {
-    return { quality: 60, format: 'webp', loading: 'lazy' };
+  if (effectiveType === "3g") {
+    return { quality: 60, format: "webp", loading: "lazy" };
   }
 
   // High-speed connection
-  return { quality: 85, format: getOptimalFormat(), loading: 'lazy' };
+  return { quality: 85, format: getOptimalFormat(), loading: "lazy" };
 }
 
 /**
  * Calculate aspect ratio from dimensions
  */
 export function calculateAspectRatio(width: number, height: number): string {
-  const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
   const divisor = gcd(width, height);
   return `${width / divisor}/${height / divisor}`;
 }
@@ -173,24 +167,22 @@ export function calculateAspectRatio(width: number, height: number): string {
 /**
  * Image loading priority based on viewport position
  */
-export function getLoadingPriority(
-  element: HTMLElement
-): 'high' | 'low' | 'auto' {
+export function getLoadingPriority(element: HTMLElement): "high" | "low" | "auto" {
   const rect = element.getBoundingClientRect();
   const viewportHeight = window.innerHeight;
 
   // Above the fold - high priority
   if (rect.top < viewportHeight && rect.bottom > 0) {
-    return 'high';
+    return "high";
   }
 
   // Just below the fold - auto priority
   if (rect.top < viewportHeight * 2) {
-    return 'auto';
+    return "auto";
   }
 
   // Far below the fold - low priority
-  return 'low';
+  return "low";
 }
 
 /**
@@ -206,13 +198,13 @@ export class ImageLoadScheduler {
   }
 
   private initObserver(): void {
-    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
       return;
     }
 
     this.observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach(entry => {
+        entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const img = entry.target as HTMLImageElement;
             this.loadImage(img);
@@ -221,8 +213,8 @@ export class ImageLoadScheduler {
         });
       },
       {
-        rootMargin: '100px 0px', // Start loading 100px before entering viewport
-        threshold: 0.01
+        rootMargin: "100px 0px", // Start loading 100px before entering viewport
+        threshold: 0.01,
       }
     );
   }
@@ -255,10 +247,10 @@ export class ImageLoadScheduler {
         img.src = img.dataset.src;
         delete img.dataset.src;
       }
-      img.classList.add('loaded');
+      img.classList.add("loaded");
     } catch (error) {
-      console.error('Failed to load image:', src, error);
-      img.classList.add('error');
+      console.error("Failed to load image:", src, error);
+      img.classList.add("error");
     }
   }
 
@@ -268,9 +260,9 @@ export class ImageLoadScheduler {
     this.isProcessing = true;
     const batch = Array.from(this.queue).slice(0, 3); // Process 3 at a time
 
-    await Promise.all(batch.map(img => this.loadImage(img)));
+    await Promise.all(batch.map((img) => this.loadImage(img)));
 
-    batch.forEach(img => this.queue.delete(img));
+    batch.forEach((img) => this.queue.delete(img));
     this.isProcessing = false;
 
     // Continue processing if more items
@@ -286,6 +278,4 @@ export class ImageLoadScheduler {
 }
 
 // Export singleton instance
-export const imageLoader = typeof window !== 'undefined'
-  ? new ImageLoadScheduler()
-  : null;
+export const imageLoader = typeof window !== "undefined" ? new ImageLoadScheduler() : null;

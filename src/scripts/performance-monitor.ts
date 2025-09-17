@@ -3,7 +3,7 @@
  * Tracks Core Web Vitals and custom performance metrics
  */
 
-import { onCLS, onFCP, onINP, onLCP, onTTFB, type Metric } from 'web-vitals';
+import { onCLS, onFCP, onINP, onLCP, onTTFB, type Metric } from "web-vitals";
 
 interface PerformanceData extends Metric {
   timestamp: number;
@@ -19,7 +19,8 @@ class PerformanceMonitor {
   constructor() {
     // Enable by default in development for dashboard functionality
     // Disable in production unless explicitly enabled
-    this.isEnabled = !import.meta.env.PROD || import.meta.env.VITE_ENABLE_PERF_MONITORING === 'true';
+    this.isEnabled =
+      !import.meta.env.PROD || import.meta.env.VITE_ENABLE_PERF_MONITORING === "true";
 
     if (this.isEnabled) {
       this.init();
@@ -64,9 +65,11 @@ class PerformanceMonitor {
     }
 
     // Dispatch custom event for dashboard
-    window.dispatchEvent(new CustomEvent('web-vital', {
-      detail: performanceData
-    }));
+    window.dispatchEvent(
+      new CustomEvent("web-vital", {
+        detail: performanceData,
+      })
+    );
 
     // Send to analytics (placeholder for future implementation)
     this.sendToAnalytics(performanceData);
@@ -74,13 +77,14 @@ class PerformanceMonitor {
 
   private getConnectionType(): string | undefined {
     // @ts-ignore - NetworkInformation is experimental
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const connection =
+      navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     return connection?.effectiveType || connection?.type;
   }
 
   private logMetric(data: PerformanceData) {
     const { name, value, rating } = data;
-    const color = rating === 'good' ? 'green' : rating === 'needs-improvement' ? 'orange' : 'red';
+    const color = rating === "good" ? "green" : rating === "needs-improvement" ? "orange" : "red";
 
     console.log(
       `%c📊 ${name}: ${Math.round(value)}ms (${rating})`,
@@ -89,8 +93,10 @@ class PerformanceMonitor {
   }
 
   private trackNavigationTiming() {
-    if ('performance' in window && 'getEntriesByType' in performance) {
-      const navigationEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+    if ("performance" in window && "getEntriesByType" in performance) {
+      const navigationEntries = performance.getEntriesByType(
+        "navigation"
+      ) as PerformanceNavigationTiming[];
 
       if (navigationEntries.length > 0) {
         const nav = navigationEntries[0];
@@ -115,7 +121,7 @@ class PerformanceMonitor {
               delta: 0,
               entries: [],
               id: `${name}-${Date.now()}`,
-              navigationType: 'navigate',
+              navigationType: "navigate",
             });
           }
         });
@@ -124,13 +130,15 @@ class PerformanceMonitor {
   }
 
   private trackResourceTiming() {
-    if ('performance' in window && 'getEntriesByType' in performance) {
-      const resourceEntries = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+    if ("performance" in window && "getEntriesByType" in performance) {
+      const resourceEntries = performance.getEntriesByType(
+        "resource"
+      ) as PerformanceResourceTiming[];
 
       // Track slow resources (>1s)
-      const slowResources = resourceEntries.filter(resource => resource.duration > 1000);
+      const slowResources = resourceEntries.filter((resource) => resource.duration > 1000);
 
-      slowResources.forEach(resource => {
+      slowResources.forEach((resource) => {
         console.warn(
           `⚠️ Slow resource detected: ${resource.name} took ${Math.round(resource.duration)}ms`
         );
@@ -148,13 +156,13 @@ class PerformanceMonitor {
   }
 
   private trackErrors() {
-    window.addEventListener('error', (event) => {
-      console.error('🚨 JavaScript Error:', event.error);
+    window.addEventListener("error", (event) => {
+      console.error("🚨 JavaScript Error:", event.error);
       // Could impact performance metrics
     });
 
-    window.addEventListener('unhandledrejection', (event) => {
-      console.error('🚨 Unhandled Promise Rejection:', event.reason);
+    window.addEventListener("unhandledrejection", (event) => {
+      console.error("🚨 Unhandled Promise Rejection:", event.reason);
     });
   }
 
@@ -167,7 +175,7 @@ class PerformanceMonitor {
     }, 30000);
 
     // Export on page unload
-    window.addEventListener('beforeunload', () => {
+    window.addEventListener("beforeunload", () => {
       if (this.data.length > 0) {
         this.exportData();
       }
@@ -181,12 +189,12 @@ class PerformanceMonitor {
     }
 
     // Store in localStorage for analysis
-    const existingData = JSON.parse(localStorage.getItem('performance-data') || '[]');
+    const existingData = JSON.parse(localStorage.getItem("performance-data") || "[]");
     const allData = [...existingData, ...this.data];
 
     // Keep only last 100 entries
     const trimmedData = allData.slice(-100);
-    localStorage.setItem('performance-data', JSON.stringify(trimmedData));
+    localStorage.setItem("performance-data", JSON.stringify(trimmedData));
 
     // Clear current data
     this.data = [];
@@ -197,15 +205,15 @@ class PerformanceMonitor {
     // Could send to Google Analytics, Mixpanel, etc.
     if (import.meta.env.VITE_ANALYTICS_ENDPOINT) {
       fetch(import.meta.env.VITE_ANALYTICS_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         keepalive: true,
       }).catch(console.error);
     }
   }
 
-  private getRating(metricName: string, value: number): 'good' | 'needs-improvement' | 'poor' {
+  private getRating(metricName: string, value: number): "good" | "needs-improvement" | "poor" {
     // Simple rating system for custom metrics
     const thresholds: Record<string, [number, number]> = {
       domContentLoaded: [1600, 3000],
@@ -219,9 +227,9 @@ class PerformanceMonitor {
 
     const [good, poor] = thresholds[metricName] || [1000, 2500];
 
-    if (value <= good) return 'good';
-    if (value <= poor) return 'needs-improvement';
-    return 'poor';
+    if (value <= good) return "good";
+    if (value <= poor) return "needs-improvement";
+    return "poor";
   }
 
   // Public API for manual performance tracking
@@ -240,12 +248,12 @@ class PerformanceMonitor {
   }
 
   public getStoredData(): PerformanceData[] {
-    return JSON.parse(localStorage.getItem('performance-data') || '[]');
+    return JSON.parse(localStorage.getItem("performance-data") || "[]");
   }
 
   public clearStoredData() {
-    localStorage.removeItem('performance-data');
-    console.log('🗑️ Performance data cleared');
+    localStorage.removeItem("performance-data");
+    console.log("🗑️ Performance data cleared");
   }
 }
 

@@ -21,6 +21,7 @@ tests/visual/
 ## Test Categories
 
 ### Homepage Tests (`homepage.spec.ts`)
+
 - **Full page screenshots**: Complete homepage visual validation
 - **Above-the-fold**: Hero section and critical content
 - **Navigation**: Desktop and mobile navigation states
@@ -30,6 +31,7 @@ tests/visual/
 - **Loading states**: Before and after full page load
 
 ### Component Tests (`components.spec.ts`)
+
 - **Navigation component**: Desktop and mobile states
 - **Performance dashboard**: All interaction states
 - **Button components**: Action buttons and controls
@@ -37,6 +39,7 @@ tests/visual/
 - **Responsive behavior**: Component layouts across breakpoints
 
 ### Cross-Browser Tests (`cross-browser.spec.ts`)
+
 - **Browser consistency**: Chrome, Firefox, Safari rendering
 - **Font rendering**: Typography consistency
 - **Color schemes**: Light and dark mode validation
@@ -75,6 +78,7 @@ npm run test:all
 ## Configuration
 
 ### Playwright Config (`playwright.config.ts`)
+
 - **Test directory**: `tests/visual/`
 - **Screenshot directory**: `tests/visual/screenshots/`
 - **Base URL**: `http://localhost:4321`
@@ -83,6 +87,7 @@ npm run test:all
 - **Animation handling**: Disabled for consistency
 
 ### Browser Projects
+
 - **Desktop Chrome**: 1280x720 viewport
 - **Desktop Firefox**: 1280x720 viewport
 - **Desktop Safari**: 1280x720 viewport
@@ -95,12 +100,15 @@ npm run test:all
 ## Screenshot Management
 
 ### Reference Screenshots
+
 Screenshots are stored in `tests/visual/screenshots/` organized by:
+
 - Test file name
 - Browser/device project
 - Individual test name
 
 Example structure:
+
 ```
 screenshots/
 ├── homepage-spec-ts/
@@ -113,6 +121,7 @@ screenshots/
 ```
 
 ### Updating Screenshots
+
 ```bash
 # Update all reference screenshots
 npm run test:visual:update
@@ -127,6 +136,7 @@ npx playwright test --update-snapshots --reporter=line
 ## Best Practices
 
 ### Test Writing
+
 1. **Disable animations**: Always disable CSS animations for consistent results
 2. **Wait for stability**: Use `networkidle` and appropriate timeouts
 3. **Consistent selectors**: Use stable CSS selectors and IDs
@@ -134,6 +144,7 @@ npx playwright test --update-snapshots --reporter=line
 5. **Clean state**: Ensure tests start from clean, predictable states
 
 ### Screenshot Quality
+
 - **Threshold management**: Keep 0.1 threshold for pixel-perfect accuracy
 - **Color consistency**: Test both light and dark themes
 - **Font loading**: Ensure web fonts are fully loaded
@@ -141,6 +152,7 @@ npx playwright test --update-snapshots --reporter=line
 - **Loading states**: Test both loading and loaded states
 
 ### Performance Considerations
+
 - **Parallel execution**: Tests run in parallel by default
 - **Selective testing**: Use project filters for faster feedback
 - **CI optimization**: Use single worker on CI for stability
@@ -149,12 +161,14 @@ npx playwright test --update-snapshots --reporter=line
 ## Retro Computing Specific Tests
 
 ### Visual Accuracy Requirements
+
 - **Pixel-perfect rendering**: Critical for retro computing aesthetic
 - **Typography**: Monospace fonts and retro styling consistency
 - **Color palettes**: Accurate reproduction of classic system colors
 - **Component scaling**: Proper scaling across different screen densities
 
 ### Educational Content Validation
+
 - **Code examples**: Syntax highlighting consistency
 - **Memory maps**: Visual layout accuracy
 - **Register displays**: Precise alignment and formatting
@@ -163,6 +177,7 @@ npx playwright test --update-snapshots --reporter=line
 ## CI/CD Integration
 
 ### GitHub Actions Setup
+
 ```yaml
 - name: Run Visual Tests
   run: npm run test:visual
@@ -176,6 +191,7 @@ npx playwright test --update-snapshots --reporter=line
 ```
 
 ### Baseline Management
+
 - **Main branch**: Baseline screenshots stored in repository
 - **PR validation**: Compare against main branch baselines
 - **Update workflow**: Systematic baseline updates for approved changes
@@ -185,6 +201,7 @@ npx playwright test --update-snapshots --reporter=line
 ### Common Issues
 
 #### Screenshots Don't Match
+
 ```bash
 # View diff report
 npm run test:visual:report
@@ -194,18 +211,21 @@ npm run test:visual:update
 ```
 
 #### Tests Are Flaky
+
 - Check for animations not properly disabled
 - Verify font loading completion
 - Ensure stable network conditions
 - Review timing and wait conditions
 
 #### Browser-Specific Issues
+
 - Run single browser tests for isolation
 - Check browser-specific CSS features
 - Verify web font compatibility
 - Test browser security settings
 
 ### Debugging Tests
+
 ```bash
 # Run in headed mode to see browser
 npm run test:visual:headed
@@ -220,12 +240,14 @@ npx playwright test homepage.spec.ts
 ## Performance Monitoring
 
 ### Visual Performance Metrics
+
 - **Screenshot capture time**: Monitor test execution speed
 - **Diff processing**: Track comparison performance
 - **Storage usage**: Manage screenshot file sizes
 - **CI execution time**: Optimize for build pipeline efficiency
 
 ### Quality Metrics
+
 - **Pixel accuracy**: Track threshold effectiveness
 - **Test coverage**: Ensure comprehensive visual coverage
 - **Regression detection**: Monitor catch rate for visual bugs
@@ -234,6 +256,7 @@ npx playwright test homepage.spec.ts
 ## Future Enhancements
 
 ### Planned Additions
+
 - **Animation testing**: Controlled animation validation
 - **Accessibility overlays**: Visual accessibility indicators
 - **Performance visualizations**: Web Vitals visual indicators
@@ -241,6 +264,7 @@ npx playwright test homepage.spec.ts
 - **Content variation testing**: Dynamic content scenarios
 
 ### Advanced Features
+
 - **Visual AI**: Machine learning-based visual validation
 - **Responsive matrices**: Automated breakpoint testing
 - **Component isolation**: Individual component screenshot library

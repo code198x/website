@@ -67,7 +67,9 @@ GEOS (Graphic Environment Operating System) brought the desktop metaphor to the 
 ## Revolutionary Interface
 
 ### Desktop Metaphor
+
 GEOS introduced familiar desktop concepts to home users:
+
 - Icons for applications and documents
 - Draggable windows
 - Point-and-click operation
@@ -75,7 +77,9 @@ GEOS introduced familiar desktop concepts to home users:
 - Trash can for file deletion
 
 ### Mouse-Driven Operation
+
 Unlike other C64 software, GEOS required a mouse:
+
 - Commodore 1351 mouse support
 - Precise cursor control
 - Context-sensitive menus
@@ -84,7 +88,9 @@ Unlike other C64 software, GEOS required a mouse:
 ## Core Applications
 
 ### geoWrite - Word Processor
+
 A full-featured word processor rivaling professional systems:
+
 - WYSIWYG (What You See Is What You Get) editing
 - Multiple fonts and sizes
 - Headers and footers
@@ -93,7 +99,9 @@ A full-featured word processor rivaling professional systems:
 - Graphics integration
 
 ### geoPaint - Graphics Editor
+
 Bitmap graphics editor with professional features:
+
 - Multiple brush sizes and patterns
 - Spray paint and fill tools
 - Text integration
@@ -101,7 +109,9 @@ Bitmap graphics editor with professional features:
 - Copy/paste between applications
 
 ### geoCalc - Spreadsheet
+
 Full spreadsheet application:
+
 - Formula calculation
 - Charts and graphs
 - Data import/export
@@ -111,14 +121,18 @@ Full spreadsheet application:
 ## Technical Achievements
 
 ### Memory Management
+
 GEOS performed miracles with 64KB:
+
 - Virtual memory system using disk storage
 - Intelligent overlay loading
 - Memory compression techniques
 - Efficient screen buffering
 
 ### Font System
+
 Revolutionary typography for 8-bit:
+
 - Proportional fonts (not just monospace)
 - Multiple font families
 - Font scaling
@@ -126,7 +140,9 @@ Revolutionary typography for 8-bit:
 - Custom font creation tools
 
 ### File System
+
 Enhanced file management:
+
 - Long filenames (vs. 16-character Commodore limit)
 - File associations
 - Document icons
@@ -136,7 +152,9 @@ Enhanced file management:
 ## Programming Environment
 
 ### geoProgrammer
+
 Development toolkit for GEOS applications:
+
 - Visual interface designer
 - Resource compiler
 - Assembly language support
@@ -144,7 +162,9 @@ Development toolkit for GEOS applications:
 - Application framework
 
 ### GEOS API
+
 Comprehensive programming interface:
+
 - Graphics primitives
 - Window management
 - File operations
@@ -154,21 +174,27 @@ Comprehensive programming interface:
 ## Performance Optimizations
 
 ### Disk Access
+
 Sophisticated disk caching:
+
 - Intelligent prefetching
 - Directory caching
 - Fast file loading
 - Minimal disk seeks
 
 ### Graphics Rendering
+
 Optimized drawing routines:
+
 - Hardware sprite usage
 - Efficient bitmap operations
 - Fast text rendering
 - Optimized mouse cursor
 
 ### Memory Usage
+
 Careful resource management:
+
 - Overlay system for large applications
 - Shared code libraries
 - Dynamic memory allocation
@@ -177,14 +203,18 @@ Careful resource management:
 ## Commercial Success
 
 ### Market Impact
+
 GEOS became a major success:
+
 - Over 2 million copies sold
 - Competing with DOS and early Windows
 - Professional software suite
 - Desktop publishing capabilities
 
 ### Hardware Partnerships
+
 Berkeley Softworks collaborated with hardware manufacturers:
+
 - Optimized printer drivers
 - Mouse support
 - RAM expansion support
@@ -193,14 +223,18 @@ Berkeley Softworks collaborated with hardware manufacturers:
 ## Educational Significance
 
 ### Interface Design
+
 GEOS demonstrated key UI principles:
+
 - Consistent visual language
 - Intuitive metaphors
 - User-centered design
 - Accessibility features
 
 ### Technical Innovation
+
 Showed what was possible on limited hardware:
+
 - Virtual memory systems
 - Proportional fonts
 - Multi-application environments
@@ -209,21 +243,27 @@ Showed what was possible on limited hardware:
 ## Modern Legacy
 
 ### Historical Importance
+
 GEOS proved several important concepts:
+
 - GUIs could work on limited hardware
 - Home computers could be professional tools
 - Desktop metaphor was universal
 - Integrated software suites were powerful
 
 ### Influence on Later Systems
+
 Many GEOS innovations appeared in later systems:
+
 - Drag-and-drop file operations
 - WYSIWYG document editing
 - Integrated application suites
 - Professional typography on personal computers
 
 ### Preservation Efforts
+
 GEOS remains important for:
+
 - Computing history research
 - Interface design studies
 - Technical achievement analysis
@@ -232,7 +272,9 @@ GEOS remains important for:
 ## Technical Deep Dive
 
 ### Boot Process
+
 GEOS boot sequence:
+
 1. Load GEOS kernel from disk
 2. Initialize graphics system
 3. Setup memory management
@@ -241,7 +283,9 @@ GEOS boot sequence:
 6. Display desktop
 
 ### Memory Layout
+
 GEOS memory organization:
+
 - $0000-$00FF: Zero page variables
 - $0100-$01FF: Stack
 - $0200-$3FFF: GEOS kernel and buffers

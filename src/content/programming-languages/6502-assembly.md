@@ -72,7 +72,9 @@ relatedEntries:
 ## Processor Architecture
 
 ### Registers
+
 The 6502 has a minimal but efficient register set:
+
 - **A (Accumulator)**: Primary data register for arithmetic and logic
 - **X, Y**: Index registers for addressing and counting
 - **SP (Stack Pointer)**: Points to current stack location ($0100-$01FF)
@@ -80,6 +82,7 @@ The 6502 has a minimal but efficient register set:
 - **P (Processor Status)**: Flags register (N, V, B, D, I, Z, C)
 
 ### Memory Organization
+
 - **Zero Page**: $0000-$00FF (fast access, special addressing)
 - **Stack**: $0100-$01FF (hardware stack for subroutines)
 - **General RAM**: $0200+ (varies by system)
@@ -89,35 +92,45 @@ The 6502 has a minimal but efficient register set:
 ## Addressing Modes
 
 ### Immediate
+
 Load constant values:
+
 ```assembly
 LDA #$42        ; Load hex 42 into accumulator
 LDX #100        ; Load decimal 100 into X
 ```
 
 ### Zero Page
+
 Fast access to first 256 bytes:
+
 ```assembly
 LDA $80         ; Load from zero page address $80
 STA $81         ; Store to zero page address $81
 ```
 
 ### Absolute
+
 Full 16-bit addressing:
+
 ```assembly
 LDA $2000       ; Load from address $2000
 JMP $C000       ; Jump to address $C000
 ```
 
 ### Indexed Addressing
+
 Using X or Y registers as offsets:
+
 ```assembly
 LDA $2000,X     ; Load from $2000 + X
 STA $3000,Y     ; Store to $3000 + Y
 ```
 
 ### Indirect Addressing
+
 Pointer-based memory access:
+
 ```assembly
 JMP ($2000)     ; Jump to address stored at $2000
 LDA ($80),Y     ; Load from address at $80/$81 + Y
@@ -126,6 +139,7 @@ LDA ($80),Y     ; Load from address at $80/$81 + Y
 ## Core Instructions
 
 ### Data Movement
+
 ```assembly
 LDA #$42        ; Load accumulator with immediate value
 LDX $80         ; Load X from zero page
@@ -139,6 +153,7 @@ TXA             ; Transfer X to A
 ```
 
 ### Arithmetic and Logic
+
 ```assembly
 ADC #$10        ; Add with carry
 SBC #$05        ; Subtract with carry
@@ -152,6 +167,7 @@ ROR             ; Rotate right through carry
 ```
 
 ### Comparison and Testing
+
 ```assembly
 CMP #$42        ; Compare accumulator with value
 CPX $80         ; Compare X with zero page
@@ -160,6 +176,7 @@ BIT $81         ; Test bits (affects N, V, Z flags)
 ```
 
 ### Program Flow
+
 ```assembly
 JMP $2000       ; Unconditional jump
 JSR $C000       ; Jump to subroutine
@@ -175,7 +192,9 @@ BPL label       ; Branch if plus (N=0)
 ## Programming Techniques
 
 ### Zero Page Optimization
+
 Using zero page for frequently accessed variables:
+
 ```assembly
 player_x = $80      ; Define zero page variable
 player_y = $81
@@ -187,7 +206,9 @@ BEQ collision       ; Branch if equal
 ```
 
 ### Stack Operations
+
 Managing the hardware stack:
+
 ```assembly
 LDA #$42
 PHA             ; Push accumulator to stack
@@ -198,7 +219,9 @@ PLA             ; Pull first value (gets $42)
 ```
 
 ### Subroutines
+
 Modular programming with JSR/RTS:
+
 ```assembly
 main:
     JSR init_screen
@@ -220,7 +243,9 @@ game_loop:
 ## Hardware Programming
 
 ### Memory-Mapped I/O
+
 Direct hardware control through memory addresses:
+
 ```assembly
 ; Commodore 64 examples
 LDA #$00
@@ -232,7 +257,9 @@ STA $D418       ; Full SID volume
 ```
 
 ### Interrupt Handling
+
 Custom interrupt routines:
+
 ```assembly
 ; Set up custom IRQ
 SEI             ; Disable interrupts
@@ -263,7 +290,9 @@ irq_handler:
 ```
 
 ### Sprite Programming (C64)
+
 Hardware sprite control:
+
 ```assembly
 ; Enable sprite 0
 LDA #$01
@@ -283,7 +312,9 @@ STA $07F8       ; Sprite 0 data pointer
 ## Advanced Concepts
 
 ### Timing-Critical Code
+
 Precise cycle counting for raster effects:
+
 ```assembly
 wait_raster:
     LDA $D012       ; Current raster line
@@ -298,7 +329,9 @@ wait_raster:
 ```
 
 ### Self-Modifying Code
+
 Programs that modify themselves:
+
 ```assembly
     LDA #$EA        ; NOP instruction
     STA skip_code   ; Modify the instruction
@@ -308,7 +341,9 @@ skip_code:
 ```
 
 ### Bank Switching
+
 Managing more memory than addressable:
+
 ```assembly
 ; C64 example - switching BASIC ROM out
 LDA $01         ; Current memory configuration
@@ -319,6 +354,7 @@ STA $01         ; BASIC ROM now switched out
 ## System-Specific Features
 
 ### Commodore 64
+
 ```assembly
 ; Screen memory at $0400
 LDA #$01        ; White character
@@ -330,6 +366,7 @@ STA $D800       ; Color for top-left character
 ```
 
 ### Apple II
+
 ```assembly
 ; Text mode screen at $0400
 LDA #$C8        ; 'H' with high bit set
@@ -341,6 +378,7 @@ STA $C057       ; Hi-res mode
 ```
 
 ### Nintendo NES
+
 ```assembly
 ; PPU control
 LDA #$90        ; Enable NMI, use $1000 for sprites
@@ -355,14 +393,18 @@ STA $2005       ; Scroll Y
 ## Development Tools
 
 ### Cross-Assemblers
+
 Modern tools for 6502 development:
+
 - **ACME**: Flexible macro assembler
 - **ca65**: Part of cc65 C compiler suite
 - **DASM**: Originally for Atari 2600
 - **64tass**: Advanced assembler with modern features
 
 ### Native Development
+
 Historical on-system development:
+
 - **Turbo Macro Pro**: C64 native assembler
 - **Merlin**: Apple II assembler
 - **MAC/65**: Atari 8-bit assembler
@@ -370,7 +412,9 @@ Historical on-system development:
 ## Educational Value
 
 ### Fundamental Concepts
+
 6502 assembly teaches:
+
 - Computer architecture basics
 - Memory management principles
 - Interrupt-driven programming
@@ -378,7 +422,9 @@ Historical on-system development:
 - Optimization techniques
 
 ### Historical Significance
+
 Understanding 6502 provides insight into:
+
 - Evolution of computer architecture
 - Constraints-driven design
 - Performance optimization techniques
@@ -387,21 +433,27 @@ Understanding 6502 provides insight into:
 ## Modern Relevance
 
 ### Retro Development
+
 Active community creating new software:
+
 - Homebrew games for classic systems
 - Demoscene productions
 - Educational tools
 - Hardware expansions
 
 ### Emulation and Preservation
+
 Critical for:
+
 - Accurate emulator development
 - Software preservation projects
 - Historical documentation
 - Educational research
 
 ### Embedded Systems
+
 6502 variants still used in:
+
 - Microcontrollers
 - Industrial automation
 - Educational systems
@@ -410,6 +462,7 @@ Critical for:
 ## Performance Characteristics
 
 ### Advantages
+
 - Simple, orthogonal instruction set
 - Efficient zero page addressing
 - Fast interrupt handling
@@ -417,6 +470,7 @@ Critical for:
 - Predictable timing
 
 ### Limitations
+
 - No multiply/divide instructions
 - Limited registers
 - No stack-relative addressing
