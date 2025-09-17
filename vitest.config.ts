@@ -8,8 +8,8 @@ export default defineConfig(
       // Test environment
       environment: "happy-dom", // Faster than jsdom, good for most component tests
 
-      // Test file patterns
-      include: ["src/**/*.{test,spec}.{js,ts,tsx}", "tests/**/*.{test,spec}.{js,ts,tsx}"],
+      // Test file patterns - exclude .spec files as they are Playwright tests
+      include: ["src/**/*.test.{js,ts,tsx}", "tests/**/*.test.{js,ts,tsx}"],
 
       // Setup files
       setupFiles: ["./tests/setup.ts"],

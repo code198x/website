@@ -33,13 +33,6 @@ export default defineConfig({
 
   // Expect timeout for assertions
   expect: {
-    // Animation handling
-    toMatchScreenshot: {
-      // Disable animations for consistent screenshots
-      animations: "disabled",
-      // Threshold for pixel differences
-      threshold: 0.1,
-    },
     // Screenshot comparison timeout
     timeout: 10 * 1000,
   },

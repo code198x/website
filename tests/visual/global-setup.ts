@@ -3,7 +3,7 @@
  * Prepares the testing environment for consistent visual testing
  */
 
-import { FullConfig } from "@playwright/test";
+import type { FullConfig } from "@playwright/test";
 
 async function globalSetup(config: FullConfig) {
   console.log("🎮 Setting up Code198x Visual Regression Testing...");
