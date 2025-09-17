@@ -4,7 +4,7 @@
  */
 
 import { AxeBuilder } from "@axe-core/playwright";
-import { Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 export interface AccessibilityTestOptions {
   includeTags?: string[];
