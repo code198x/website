@@ -49,9 +49,11 @@ async function generateVaultData() {
 
   // Define all vault categories
   const categories = [
-    'hardware', 'people', 'companies', 'games', 'software',
-    'emulators', 'groups', 'techniques', 'publications',
-    'events', 'formats', 'culture'
+    'hardware', 'people', 'companies',
+    'applications', 'development-tools', 'utilities',
+    'games', 'demos',
+    'operating-systems', 'emulators', 'programming-languages',
+    'techniques', 'publications', 'events', 'groups', 'formats', 'culture'
   ];
 
   // Process each category

@@ -451,6 +451,11 @@ const variantClasses = {
       }
 
       this.updateFilterOptions();
+
+      // Trigger initial search after data is loaded
+      setTimeout(() => {
+        this.handleSearch();
+      }, 100);
     }
 
     attachEventListeners() {
@@ -469,7 +474,16 @@ const variantClasses = {
 
       // Filters
       this.filters.forEach(filter => {
-        filter.addEventListener('change', () => this.handleSearch());
+        if (filter instanceof HTMLInputElement) {
+          // For text inputs, listen to input event for real-time updates
+          filter.addEventListener('input', () => {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = setTimeout(() => this.handleSearch(), 300);
+          });
+        } else {
+          // For selects, listen to change event
+          filter.addEventListener('change', () => this.handleSearch());
+        }
       });
 
       // Clear filters
@@ -495,15 +509,25 @@ const variantClasses = {
       // Update status
       this.updateStatus(this.filteredData.length);
 
-      // Dispatch custom event
+      // Dispatch custom event - dispatch to document so it can be caught by listeners
       const eventName = this.dataset.searchEvent || 'search';
-      this.dispatchEvent(new CustomEvent(eventName, {
+      const event = new CustomEvent(eventName, {
         detail: {
           query,
           filters,
           results: this.filteredData
         },
         bubbles: true
+      });
+
+      // Dispatch to both the element and document for compatibility
+      this.dispatchEvent(event);
+      document.dispatchEvent(new CustomEvent(eventName, {
+        detail: {
+          query,
+          filters,
+          results: this.filteredData
+        }
       }));
     }
 
@@ -511,9 +535,15 @@ const variantClasses = {
       return data.filter(item => {
         // Text search
         if (query) {
-          const searchFields = ['name', 'title', 'description', 'tags'];
-          const matches = searchFields.some(field => {
-            const value = item[field];
+          // Handle both full field names and abbreviated field names
+          const searchFields = [
+            ['name', 'n'],       // name
+            ['title', 'n'],      // title (also maps to n)
+            ['description', 'd'], // description
+            ['tags', 'g']        // tags
+          ];
+          const matches = searchFields.some(([fullField, shortField]) => {
+            const value = item[fullField] || item[shortField];
             if (typeof value === 'string') {
               return value.toLowerCase().includes(query.toLowerCase());
             }
@@ -525,10 +555,42 @@ const variantClasses = {
           if (!matches) return false;
         }
 
-        // Apply filters
+        // Apply filters - handle both full and abbreviated field names
         for (const [key, value] of Object.entries(filters)) {
-          if (value && value !== 'all') {
-            if (item[key] !== value) return false;
+          if (value && value !== 'all' && value !== '') {
+            // Map filter keys to data fields
+            const fieldMapping: Record<string, string> = {
+              'category': 'c',
+              'type': 't',
+              'tags': 'g',
+              'year': 'y',
+              'status': 'st'
+            };
+
+            const dataField = fieldMapping[key] || key;
+
+            // Special handling for tags filter
+            if (key === 'tags' && value) {
+              const itemTags = item[dataField] || item.g || [];
+              if (!Array.isArray(itemTags)) return false;
+              // Check if any tag contains the filter value (case-insensitive)
+              const hasTag = itemTags.some((tag: string) =>
+                tag.toLowerCase().includes(value.toLowerCase())
+              );
+              if (!hasTag) return false;
+            }
+            // Special handling for year filter (decade matching)
+            else if (key === 'year' && value.endsWith('s')) {
+              const decade = parseInt(value);
+              const itemYear = item[dataField] || item.y;
+              if (!itemYear) return false;
+              const itemDecade = Math.floor(itemYear / 10) * 10;
+              if (itemDecade !== decade) return false;
+            }
+            // Standard field matching
+            else if (item[dataField] !== value) {
+              return false;
+            }
           }
         }
 
