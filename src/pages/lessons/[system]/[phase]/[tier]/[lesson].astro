@@ -1,15 +1,17 @@
 ---
-import { getCollection } from 'astro:content';
-import Layout from '../../../../../layouts/Layout.astro';
+import { getCollection } from "astro:content";
+import Layout from "../../../../../layouts/Layout.astro";
+import Breadcrumb from "../../../../../components/Breadcrumb.astro";
+import { generateLessonBreadcrumbs } from "../../../../../utils/breadcrumbs";
 
 export async function getStaticPaths() {
-  const lessons = await getCollection('lessons');
+  const lessons = await getCollection("lessons");
   return lessons.map((lesson) => ({
-    params: { 
+    params: {
       system: lesson.data.system,
       phase: `phase-${lesson.data.phase_number}`,
       tier: `tier-${lesson.data.tier_number}`,
-      lesson: `lesson-${lesson.data.lesson_number.toString().padStart(3, '0')}`
+      lesson: `lesson-${lesson.data.lesson_number.toString().padStart(3, "0")}`,
     },
     props: { lesson },
   }));
@@ -18,325 +20,224 @@ export async function getStaticPaths() {
 const { lesson } = Astro.props;
 const { Content } = await lesson.render();
 
-// Get system, phase, and tier info
-const allSystems = await getCollection('systems');
-const system = allSystems.find(s => s.slug === lesson.data.system);
-
-const allPhases = await getCollection('phases');
-const phase = allPhases.find(p => 
-  p.data.system === lesson.data.system && 
-  p.data.phase_number === lesson.data.phase_number
-);
-
-const allTiers = await getCollection('tiers');
-const tier = allTiers.find(t => 
-  t.data.system === lesson.data.system && 
-  t.data.phase_number === lesson.data.phase_number &&
-  t.data.tier_number === lesson.data.tier_number
-);
+// Get system info
+const allSystems = await getCollection("systems");
+const system = allSystems.find((s) => s.slug === lesson.data.system);
 
 // Get adjacent lessons for navigation
-const allLessons = await getCollection('lessons');
+const allLessons = await getCollection("lessons");
 const tierLessons = allLessons
-  .filter(l => 
-    l.data.system === lesson.data.system && 
-    l.data.phase_number === lesson.data.phase_number &&
-    l.data.tier_number === lesson.data.tier_number
+  .filter(
+    (l) =>
+      l.data.system === lesson.data.system &&
+      l.data.phase_number === lesson.data.phase_number &&
+      l.data.tier_number === lesson.data.tier_number
   )
   .sort((a, b) => a.data.lesson_number - b.data.lesson_number);
 
-const currentIndex = tierLessons.findIndex(l => l.data.lesson_number === lesson.data.lesson_number);
+const currentIndex = tierLessons.findIndex(
+  (l) => l.data.lesson_number === lesson.data.lesson_number
+);
 const prevLesson = currentIndex > 0 ? tierLessons[currentIndex - 1] : null;
 const nextLesson = currentIndex < tierLessons.length - 1 ? tierLessons[currentIndex + 1] : null;
+
+// Get difficulty icon
+const getDifficultyIcon = (level: string | undefined) => {
+  switch (level?.toLowerCase()) {
+    case "easy":
+    case "beginner":
+      return "🟢";
+    case "intermediate":
+      return "🟡";
+    case "hard":
+    case "advanced":
+      return "🔴";
+    default:
+      return "⚪";
+  }
+};
+
+// Generate breadcrumbs using utility function
+const breadcrumbs = generateLessonBreadcrumbs({
+  systemName: system?.data.name || "System",
+  systemSlug: lesson.data.system,
+  phaseNumber: lesson.data.phase_number,
+  tierNumber: lesson.data.tier_number,
+  lessonNumber: lesson.data.lesson_number,
+  lessonTitle: lesson.data.title
+});
 ---
 
-<Layout title={`${system?.data.name} - Lesson ${lesson.data.lesson_number}: ${lesson.data.title}`}>
-  <!-- Hero Section with Lesson Branding -->
-  <div class="system-hero">
-    {(() => {
-      // Define system-specific colors
-      const getSystemColors = (slug) => {
-        switch(slug) {
-          case 'commodore-64':
-            return { 
-              bg: 'from-c64-brown to-c64-dark-brown', 
-              accent: 'bg-c64-brown',
-              text: 'text-c64-brown',
-              border: 'border-c64-brown'
-            };
-          case 'zx-spectrum':
-            return { 
-              bg: 'from-spectrum-red to-spectrum-magenta', 
-              accent: 'bg-spectrum-red',
-              text: 'text-spectrum-red',
-              border: 'border-spectrum-red'
-            };
-          case 'nintendo-entertainment-system':
-            return { 
-              bg: 'from-nes-red to-nes-dark-gray', 
-              accent: 'bg-nes-red',
-              text: 'text-nes-red',
-              border: 'border-nes-red'
-            };
-          case 'commodore-amiga':
-            return { 
-              bg: 'from-amiga-blue to-amiga-orange', 
-              accent: 'bg-amiga-blue',
-              text: 'text-amiga-blue',
-              border: 'border-amiga-blue'
-            };
-          default:
-            return { 
-              bg: 'from-slate-600 to-slate-800', 
-              accent: 'bg-slate-600',
-              text: 'text-slate-600',
-              border: 'border-slate-600'
-            };
-        }
-      };
-      const colors = getSystemColors(lesson.data.system);
-      
-      const getDifficultyIcon = (level) => {
-        switch(level?.toLowerCase()) {
-          case 'beginner': return '🟢';
-          case 'intermediate': return '🟡';
-          case 'advanced': return '🔴';
-          default: return '⚪';
-        }
-      };
-      
-      return (
-        <div class={`system-hero-gradient ${colors.bg}`}>
-          <div class="system-hero-overlay"></div>
-          <div class="system-hero-content" style="padding-top: var(--space-2xl); padding-bottom: var(--space-2xl);">
-            <nav class="system-hero-nav">
-              <a href="/lessons">Lessons</a>
-              <span style="margin: 0 var(--space-sm);">→</span>
-              <a href={`/lessons/${lesson.data.system}`}>
-                {system?.data.name}
-              </a>
-              <span style="margin: 0 var(--space-sm);">→</span>
-              <a href={`/lessons/${lesson.data.system}/phase-${lesson.data.phase_number}`}>
-                Phase {lesson.data.phase_number}
-              </a>
-              <span style="margin: 0 var(--space-sm);">→</span>
-              <a href={`/lessons/${lesson.data.system}/phase-${lesson.data.phase_number}/tier-${lesson.data.tier_number}`}>
-                Tier {lesson.data.tier_number}
-              </a>
-              <span style="margin: 0 var(--space-sm);">→</span>
-              <span style="color: white;">Lesson {lesson.data.lesson_number}</span>
-            </nav>
-            
-            <div style="display: flex; align-items: center; gap: var(--space-xl); margin-bottom: var(--space-xl);">
-              <div class={`lesson-hero-number ${colors.accent}`}>
-                {lesson.data.lesson_number}
-              </div>
-              <div>
-                <h1 class="lesson-hero-title">
-                  {lesson.data.title}
-                </h1>
-                <p class="lesson-hero-subtitle">
-                  {system?.data.name} • Phase {lesson.data.phase_number} • Tier {lesson.data.tier_number}
-                </p>
-              </div>
-            </div>
-            
-            <p style="font-size: 1.125rem; color: rgba(255, 255, 255, 0.9); margin-bottom: var(--space-xl); max-width: 48rem; line-height: 1.75;">
-              {lesson.data.description}
-            </p>
-            
-            <div style="display: flex; flex-wrap: wrap; gap: var(--space-md);">
-              <span class="system-spec-badge">
-                {getDifficultyIcon(lesson.data.difficulty)} {lesson.data.difficulty}
-              </span>
-              <span class="system-spec-badge">
-                ⏱️ {lesson.data.estimated_duration}
-              </span>
-              {lesson.data.code_examples && (
-                <span class="system-spec-badge" style="background: rgba(59, 130, 246, 0.3);">
-                  💻 Code Examples
+<Layout title={`${lesson.data.title} - ${system?.data.name} Lesson ${lesson.data.lesson_number}`}>
+  <Breadcrumb items={breadcrumbs} />
+
+  <!-- Lesson Header -->
+  <div class={`lesson-header lesson-header--${lesson.data.system}`}>
+    <div class="container">
+      <div class="lesson-header__content">
+        <div class="lesson-header__number">
+          {lesson.data.lesson_number}
+        </div>
+        <div class="lesson-header__info">
+          <h1 class="lesson-header__title">
+            {lesson.data.title}
+          </h1>
+          <p class="lesson-header__description">
+            {lesson.data.description}
+          </p>
+          <div class="lesson-header__meta">
+            <span class="lesson-meta lesson-meta--difficulty">
+              {getDifficultyIcon(lesson.data.difficulty)}
+              {lesson.data.difficulty}
+            </span>
+            <span class="lesson-meta lesson-meta--duration">
+              ⏱️ {lesson.data.estimated_duration}
+            </span>
+            {
+              (lesson.data as any).requires_hardware && (
+                <span class="lesson-meta lesson-meta--hardware">
+                  🎮 Requires Hardware
                 </span>
-              )}
-              {lesson.data.practical_exercise && (
-                <span class="system-spec-badge" style="background: rgba(34, 197, 94, 0.3);">
-                  🛠️ Exercise
+              )
+            }
+            {
+              (lesson.data as any).requires_software && (
+                <span class="lesson-meta lesson-meta--software">
+                  💾 Requires Software
                 </span>
-              )}
-            </div>
+              )
+            }
           </div>
         </div>
-      );
-    })()}
+      </div>
+    </div>
   </div>
 
-  <div class="container" style="padding: var(--space-2xl) 0;">
-
-    <!-- Learning Objectives & Key Concepts -->
-    <div class="lesson-objectives-grid">
-        {lesson.data.learning_objectives && lesson.data.learning_objectives.length > 0 && (
-          <div class="lesson-objectives-card green">
-            <div class="lesson-objectives-header">
-              <div class="lesson-objectives-icon green">
-                🎯
-              </div>
-              <h2 class="lesson-objectives-title green">Learning Objectives</h2>
+  <!-- Learning Objectives & Key Concepts -->
+  <div class="container">
+    <div class="lesson-cards">
+      {
+        lesson.data.learning_objectives && lesson.data.learning_objectives.length > 0 && (
+          <div class="objectives-box">
+            <div class="objectives-box__header">
+              <span class="objectives-box__icon">🎯</span>
+              <h2 class="objectives-heading">Learning Objectives</h2>
             </div>
-            <ul class="lesson-objectives-list">
-              {lesson.data.learning_objectives.map((objective) => (
-                <li class="lesson-objectives-item">
-                  <div class="lesson-objectives-bullet green"></div>
-                  <span class="lesson-objectives-text">{objective}</span>
+            <ul class="objectives-list">
+              {lesson.data.learning_objectives.map((objective: string) => (
+                <li class="objectives-item">
+                  <span class="objectives-bullet" />
+                  {objective}
                 </li>
               ))}
             </ul>
           </div>
-        )}
+        )
+      }
 
-        {lesson.data.concepts && lesson.data.concepts.length > 0 && (
-          <div class="lesson-objectives-card blue">
-            <div class="lesson-objectives-header">
-              <div class="lesson-objectives-icon blue">
-                🧠
-              </div>
-              <h2 class="lesson-objectives-title blue">Key Concepts</h2>
+      {
+        lesson.data.concepts && lesson.data.concepts.length > 0 && (
+          <div class="concepts-box">
+            <div class="concepts-box__header">
+              <span class="concepts-box__icon">🧠</span>
+              <h2 class="concepts-heading">Key Concepts</h2>
             </div>
-            <div class="lesson-concepts">
-              {lesson.data.concepts.map((concept) => (
-                <span class="lesson-concept-tag">
+            <div class="concepts-tags">
+              {lesson.data.concepts.map((concept: string) => (
+                <span class="concept-tag">
                   {concept}
                 </span>
               ))}
             </div>
           </div>
-        )}
+        )
+      }
     </div>
 
-    <!-- Lesson Content -->
-    <div class="lesson-content-wrapper">
-      <div class="lesson-content">
+    <!-- Main Content -->
+    <div class="lesson-content">
+      <div class="prose lesson-prose">
         <Content />
       </div>
     </div>
 
-    {lesson.data.external_resources && lesson.data.external_resources.length > 0 && (
-      <div class="external-resources-section">
-        <div class="external-resources-header">
-          <h2 class="external-resources-title">📚 Additional Resources</h2>
-          <p class="external-resources-subtitle">Explore these curated resources to deepen your understanding</p>
-        </div>
-        <div class="external-resources-grid">
-          {lesson.data.external_resources.map((resource) => (
-            <a 
-              href={resource.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="external-resource-card"
+    <!-- Navigation -->
+    <div class="nav-divider">
+      <div class="lesson-nav">
+        {
+          prevLesson ? (
+            <a
+              href={`/lessons/${prevLesson.data.system}/phase-${prevLesson.data.phase_number}/tier-${prevLesson.data.tier_number}/lesson-${prevLesson.data.lesson_number.toString().padStart(3, "0")}`}
+              class={`lesson-nav__link lesson-nav__link--prev lesson-nav__link--${lesson.data.system}`}
             >
-              <div class="external-resource-header">
-                <div class="external-resource-info">
-                  <div class="external-resource-icon">
-                    📖
-                  </div>
-                  <div>
-                    <h3 class="external-resource-title">{resource.title}</h3>
-                    <span class="external-resource-type">{resource.type}</span>
-                  </div>
-                </div>
-                <svg class="external-resource-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                </svg>
+              <span>←</span>
+              <div>
+                <div class="lesson-nav__label">Previous</div>
+                <div class="lesson-nav__title">{prevLesson.data.title}</div>
               </div>
-            </a>
-          ))}
-        </div>
-      </div>
-    )}
-
-    <!-- Lesson Navigation -->
-    <div class="lesson-navigation">
-      <div class="lesson-navigation-inner">
-        <div style="flex: 1;">
-          {prevLesson ? (
-            <a 
-              href={`/lessons/${lesson.data.system}/phase-${lesson.data.phase_number}/tier-${lesson.data.tier_number}/lesson-${prevLesson.data.lesson_number.toString().padStart(3, '0')}`}
-              class="lesson-nav-button prev"
-            >
-              <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-              </svg>
-              <div style="text-align: left;">
-                <div class="lesson-nav-label">Previous</div>
-                <div class="lesson-nav-title">{prevLesson.data.title}</div>
-              </div>
-            </a>
-          ) : null}
-        </div>
-        
-        <div class="lesson-progress">
-          <div>
-            <div class="lesson-progress-label">Progress</div>
-            <div class="lesson-progress-count">
-              {currentIndex + 1} / {tierLessons.length}
-            </div>
-            <div class="lesson-progress-bar">
-              <div 
-                class="lesson-progress-fill" 
-                style={`width: ${((currentIndex + 1) / tierLessons.length) * 100}%`}
-              ></div>
-            </div>
-          </div>
-        </div>
-        
-        <div style="flex: 1; display: flex; justify-content: flex-end;">
-          {nextLesson ? (
-            <a 
-              href={`/lessons/${lesson.data.system}/phase-${lesson.data.phase_number}/tier-${lesson.data.tier_number}/lesson-${nextLesson.data.lesson_number.toString().padStart(3, '0')}`}
-              class={`lesson-nav-button next ${
-                (() => {
-                  switch(lesson.data.system) {
-                    case 'commodore-64': return 'c64';
-                    case 'zx-spectrum': return 'spectrum';
-                    case 'nintendo-entertainment-system': return 'nes';
-                    case 'commodore-amiga': return 'amiga';
-                    default: return 'default';
-                  }
-                })()
-              }`}
-            >
-              <div style="text-align: right;">
-                <div class="lesson-nav-label">Next</div>
-                <div class="lesson-nav-title">{nextLesson.data.title}</div>
-              </div>
-              <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-              </svg>
             </a>
           ) : (
-            <a 
-              href={`/lessons/${lesson.data.system}/phase-${lesson.data.phase_number}/tier-${lesson.data.tier_number}`}
-              class={`lesson-nav-button complete ${
-                (() => {
-                  switch(lesson.data.system) {
-                    case 'commodore-64': return 'c64';
-                    case 'zx-spectrum': return 'spectrum';
-                    case 'nintendo-entertainment-system': return 'nes';
-                    case 'commodore-amiga': return 'amiga';
-                    default: return 'default';
-                  }
-                })()
-              }`}
+            <div />
+          )
+        }
+        {
+          nextLesson ? (
+            <a
+              href={`/lessons/${nextLesson.data.system}/phase-${nextLesson.data.phase_number}/tier-${nextLesson.data.tier_number}/lesson-${nextLesson.data.lesson_number.toString().padStart(3, "0")}`}
+              class={`lesson-nav__link lesson-nav__link--next lesson-nav__link--${lesson.data.system}`}
             >
-              <div style="text-align: right;">
-                <div class="lesson-nav-label">Complete</div>
-                <div class="lesson-nav-title">Back to Tier</div>
+              <div>
+                <div class="lesson-nav__label">Next</div>
+                <div class="lesson-nav__title">{nextLesson.data.title}</div>
               </div>
-              <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
+              <span>→</span>
             </a>
-          )}
-        </div>
+          ) : (
+            <a
+              href={`/lessons/${lesson.data.system}/phase-${lesson.data.phase_number}/tier-${lesson.data.tier_number}`}
+              class="lesson-nav__link lesson-nav__link--complete"
+            >
+              <span>🎉</span>
+              <div>
+                <div class="lesson-nav__label">Tier Complete!</div>
+                <div class="lesson-nav__title">Back to Tier Overview</div>
+              </div>
+            </a>
+          )
+        }
       </div>
+
+      {
+        lesson.data.external_resources && lesson.data.external_resources.length > 0 && (
+          <div class="resources-section">
+            <h2 class="resources-title">
+              Additional Resources
+            </h2>
+            <div class="resources-list">
+              {lesson.data.external_resources.map(
+                (resource: { title: string; url: string; type: string }) => (
+                  <a
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="resource-link"
+                  >
+                    <div class="resource-info">
+                      <span class="resource-icon">📖</span>
+                      <div>
+                        <div class="resource-title">{resource.title}</div>
+                        <div class="resource-type">{resource.type}</div>
+                      </div>
+                    </div>
+                    <span class="resource-arrow">↗</span>
+                  </a>
+                )
+              )}
+            </div>
+          </div>
+        )
+      }
     </div>
   </div>
+
 </Layout>

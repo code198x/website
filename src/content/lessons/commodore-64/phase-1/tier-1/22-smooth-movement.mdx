@@ -1,0 +1,860 @@
+---
+title: "Smooth Movement"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 22
+description: "Build a space shooter with pixel-perfect movement and 8-way directional control"
+difficulty: "easy"
+order: 22
+tags: ["movement", "sprites", "smooth", "diagonal"]
+prerequisites: ["sprite movement", "joystick input", "collision detection"]
+objectives:
+  - "Implement pixel-precise positioning"
+  - "Create 8-directional movement"
+  - "Handle variable speed control"
+  - "Build smooth sprite animation"
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Smooth Movement: Pixel-Perfect Control Systems
+**Learn continuous sprite movement and diagonal control**
+
+While grid-based movement works well for puzzle and strategy games, action games need smooth, pixel-by-pixel movement. This means tracking exact sprite positions, handling diagonal input, and creating fluid motion. The C64's sprite system supports positions from 0-511 horizontally and 0-255 vertically, allowing precise positioning anywhere on screen.
+
+## What You'll Learn
+
+In this lesson, you'll discover:
+- **16-bit positioning** - Handling X coordinates beyond 255
+- **8-directional control** - Reading diagonal joystick input
+- **Smooth animation** - Matching sprite frames to movement direction
+- **Variable speed** - Implementing acceleration and speed boosts
+- **Boundary checking** - Keeping sprites within screen limits
+- **Sub-pixel precision** - Ultra-smooth movement using fractional positions
+
+## Pixel-Perfect Positioning
+
+Unlike grid movement, smooth movement uses the sprite's full coordinate range:
+
+<CodeBlock title="16-Bit Sprite Positioning" code={`; Sprite position using 16-bit values for precision
+; X coordinate: 0-511 (9 bits)
+; Y coordinate: 0-255 (8 bits)
+
+sprite_x_lo:    .byte 160   ; X position low byte
+sprite_x_hi:    .byte 0     ; X position high bit (9th bit)
+sprite_y:       .byte 100   ; Y position
+
+; Movement speeds (pixels per frame)
+speed_x:        .byte 2     ; Horizontal speed
+speed_y:        .byte 2     ; Vertical speed
+
+; Direction flags
+moving_left:    .byte 0
+moving_right:   .byte 0
+moving_up:      .byte 0
+moving_down:    .byte 0
+
+; Initialize sprite
+init_sprite:
+    ; Enable sprite 0
+    lda #$01
+    sta $D015
+    
+    ; Set initial position
+    lda sprite_x_lo
+    sta $D000       ; Sprite 0 X
+    lda sprite_y
+    sta $D001       ; Sprite 0 Y
+    
+    ; Set X high bit if needed
+    lda sprite_x_hi
+    beq no_high
+    lda #$01
+    sta $D010       ; X coordinate MSB
+no_high:
+    
+    ; Set sprite color
+    lda #1          ; White
+    sta $D027       ; Sprite 0 color
+    
+    ; Set sprite pointer
+    lda #64         ; Block 64 for sprite data
+    sta $07F8       ; Sprite 0 pointer
+    
+    rts`} language="asm" />
+
+## 8-Directional Movement
+
+Read the joystick and allow diagonal movement:
+
+<CodeBlock title="Smooth Joystick Control" code={`; Read joystick and update movement flags
+read_controls:
+    lda $DC00       ; Joystick port 2
+    sta joy_state
+    
+    ; Reset movement flags
+    lda #0
+    sta moving_left
+    sta moving_right
+    sta moving_up
+    sta moving_down
+    
+    ; Check each direction
+    lda joy_state
+    lsr             ; Bit 0: Up
+    bcs check_down
+    lda #1
+    sta moving_up
+    
+check_down:
+    lda joy_state
+    lsr
+    lsr             ; Bit 1: Down
+    bcs check_left
+    lda #1
+    sta moving_down
+    
+check_left:
+    lda joy_state
+    lsr
+    lsr
+    lsr             ; Bit 2: Left
+    bcs check_right
+    lda #1
+    sta moving_left
+    
+check_right:
+    lda joy_state
+    and #$08        ; Bit 3: Right
+    bne check_fire
+    lda #1
+    sta moving_right
+    
+check_fire:
+    lda joy_state
+    and #$10        ; Bit 4: Fire
+    bne controls_done
+    jsr fire_weapon
+    
+controls_done:
+    rts
+
+joy_state: .byte 0`} language="asm" />
+
+## Smooth Position Updates
+
+Move sprites pixel by pixel with boundary checking:
+
+<CodeBlock title="Pixel-Perfect Movement" code={`; Update sprite position based on movement flags
+update_movement:
+    ; Horizontal movement
+    lda moving_left
+    beq check_move_right
+    
+    ; Move left
+    lda sprite_x_lo
+    sec
+    sbc speed_x
+    sta sprite_x_lo
+    bcs left_done      ; No underflow
+    
+    ; Handle X underflow (crossed 256 boundary)
+    lda sprite_x_hi
+    eor #$01           ; Toggle high bit
+    sta sprite_x_hi
+    
+left_done:
+    jmp check_vertical
+
+check_move_right:
+    lda moving_right
+    beq check_vertical
+    
+    ; Move right
+    lda sprite_x_lo
+    clc
+    adc speed_x
+    sta sprite_x_lo
+    bcc right_done     ; No overflow
+    
+    ; Handle X overflow
+    lda sprite_x_hi
+    eor #$01           ; Toggle high bit
+    sta sprite_x_hi
+    
+    ; Check right boundary (X > 320)
+    lda sprite_x_hi
+    beq right_done
+    lda sprite_x_lo
+    cmp #64            ; 320 - 256 = 64
+    bcc right_done
+    
+    ; Hit right edge - clamp position
+    lda #63
+    sta sprite_x_lo
+    
+right_done:
+
+check_vertical:
+    ; Vertical movement
+    lda moving_up
+    beq check_move_down
+    
+    ; Move up
+    lda sprite_y
+    sec
+    sbc speed_y
+    cmp #50            ; Top boundary
+    bcs up_ok
+    lda #50            ; Clamp to top
+up_ok:
+    sta sprite_y
+    jmp movement_done
+    
+check_move_down:
+    lda moving_down
+    beq movement_done
+    
+    ; Move down
+    lda sprite_y
+    clc
+    adc speed_y
+    cmp #229           ; Bottom boundary
+    bcc down_ok
+    lda #229           ; Clamp to bottom
+down_ok:
+    sta sprite_y
+    
+movement_done:
+    ; Apply position to hardware sprite
+    lda sprite_x_lo
+    sta $D000          ; Sprite 0 X position
+    lda sprite_y
+    sta $D001          ; Sprite 0 Y position
+    
+    ; Update X coordinate high bit
+    lda $D010
+    and #$FE           ; Clear sprite 0 bit
+    ora sprite_x_hi    ; Set if needed
+    sta $D010
+    
+    rts`} language="asm" />
+
+## Variable Speed System
+
+Add acceleration and speed boosts:
+
+<CodeBlock title="Speed Control System" code={`; Speed levels
+SPEED_SLOW      = 1
+SPEED_NORMAL    = 2
+SPEED_FAST      = 3
+SPEED_BOOST     = 5
+
+current_speed:  .byte SPEED_NORMAL
+boost_timer:    .byte 0
+
+; Update speed based on game state
+update_speed:
+    ; Check for boost pickup
+    lda boost_timer
+    beq normal_speed
+    
+    ; Boost active
+    dec boost_timer
+    lda #SPEED_BOOST
+    sta speed_x
+    sta speed_y
+    
+    ; Flash sprite color during boost
+    lda boost_timer
+    and #$02
+    beq boost_white
+    lda #7              ; Yellow
+    jmp set_boost_color
+boost_white:
+    lda #1              ; White
+set_boost_color:
+    sta $D027           ; Sprite 0 color
+    rts
+    
+normal_speed:
+    lda current_speed
+    sta speed_x
+    sta speed_y
+    
+    ; Reset to normal color
+    lda #1              ; White
+    sta $D027
+    rts
+
+; Activate speed boost
+activate_boost:
+    lda #60             ; 1 second at 60fps
+    sta boost_timer
+    
+    ; Sound effect
+    lda #$80
+    sta $D400           ; High frequency
+    lda #$40
+    sta $D401
+    lda #$21            ; Pulse wave
+    sta $D404
+    rts`} language="asm" />
+
+## Animated Movement
+
+Make movement feel alive with animation:
+
+<CodeBlock title="Direction-Based Animation" code={`; Animation frames for different directions
+FRAME_NEUTRAL   = 64    ; Ship facing forward
+FRAME_LEFT      = 65    ; Ship banking left
+FRAME_RIGHT     = 66    ; Ship banking right
+
+animation_timer: .byte 0
+current_frame:   .byte FRAME_NEUTRAL
+
+; Update sprite animation based on movement
+update_animation:
+    ; Determine which frame to show
+    lda moving_left
+    beq check_right_frame
+    
+    ; Banking left
+    lda #FRAME_LEFT
+    jmp set_frame
+    
+check_right_frame:
+    lda moving_right
+    beq neutral_frame
+    
+    ; Banking right
+    lda #FRAME_RIGHT
+    jmp set_frame
+    
+neutral_frame:
+    ; Facing forward
+    lda #FRAME_NEUTRAL
+    
+set_frame:
+    sta current_frame
+    sta $07F8           ; Sprite 0 pointer
+    
+    ; Add engine glow animation
+    inc animation_timer
+    lda animation_timer
+    and #$04
+    beq engine_on
+    
+    ; Engine off frame
+    lda current_frame
+    clc
+    adc #3              ; Offset to "engine off" versions
+    sta $07F8
+    
+engine_on:
+    rts`} language="asm" />
+
+## Complete Space Shooter Controls
+
+Put it all together into a playable demo:
+
+<CodeBlock title="Main Game Loop" code={`* = $0801
+    !byte $0B,$08,$0A,$00,$9E
+    !text "2061"
+    !byte $00,$00,$00
+
+* = $080D
+
+main:
+    ; Setup
+    jsr init_screen
+    jsr init_sprite
+    jsr init_sprite_data
+    jsr init_starfield
+    jsr init_sound
+    
+    ; Show instructions
+    jsr display_instructions
+    
+game_loop:
+    ; Wait for raster
+    lda #251
+wait_raster:
+    cmp $D012
+    bne wait_raster
+    
+    ; Update game
+    jsr read_controls
+    jsr update_movement
+    jsr update_speed
+    jsr update_animation
+    jsr scroll_starfield
+    jsr update_projectiles
+    jsr check_collisions
+    
+    jmp game_loop
+
+; Initialize screen
+init_screen:
+    ; Clear screen
+    lda #147
+    jsr $FFD2
+    
+    ; Set colors
+    lda #0          ; Black
+    sta $D020       ; Border
+    sta $D021       ; Background
+    
+    rts
+
+; Initialize sound system
+init_sound:
+    lda #$0F
+    sta $D418       ; Max volume
+    lda #$00
+    sta $D405       ; Attack/Decay
+    lda #$F0  
+    sta $D406       ; Sustain/Release
+    rts
+
+; Create spaceship sprite data
+init_sprite_data:
+    ; Ship facing forward (Frame 64)
+    ldx #0
+copy_neutral:
+    lda ship_neutral,x
+    sta $0400+64*64,x   ; Sprite block 64
+    inx
+    cpx #63
+    bne copy_neutral
+    
+    ; Ship banking left (Frame 65)
+    ldx #0
+copy_left:
+    lda ship_left,x
+    sta $0400+65*64,x
+    inx
+    cpx #63
+    bne copy_left
+    
+    ; Ship banking right (Frame 66)
+    ldx #0
+copy_right:
+    lda ship_right,x
+    sta $0400+66*64,x
+    inx
+    cpx #63
+    bne copy_right
+    
+    rts
+
+; Scrolling starfield background
+init_starfield:
+    ; Place random stars
+    ldx #0
+place_stars:
+    lda $D012       ; Random from raster
+    and #$07        ; 0-7
+    cmp #1
+    bne no_star
+    
+    lda #46         ; Dot character
+    sta $0400+256,x
+    lda #1          ; White
+    sta $D800+256,x
+    
+no_star:
+    inx
+    bne place_stars
+    rts
+
+; Scroll the starfield
+scroll_starfield:
+    ; Simple vertical scroll effect
+    ldx #39
+scroll_column:
+    ; Move each column down
+    ldy #23
+scroll_row:
+    ; Calculate source position
+    tya
+    asl
+    asl
+    asl             ; *8
+    tay
+    lda $0400+40,y,x
+    sta $0400+80,y,x
+    
+    dey
+    bpl scroll_row
+    
+    ; Add new star at top occasionally
+    lda $D012
+    and #$0F
+    cmp #1
+    bne next_column
+    
+    lda #46         ; Star
+    sta $0400,x
+    
+next_column:
+    dex
+    bpl scroll_column
+    rts
+
+; Fire projectile
+fire_weapon:
+    ; Check if projectile already active
+    lda projectile_active
+    bne fire_done
+    
+    ; Spawn projectile at ship position
+    lda sprite_x_lo
+    sta projectile_x
+    lda sprite_y
+    sec
+    sbc #10         ; Above ship
+    sta projectile_y
+    
+    lda #1
+    sta projectile_active
+    
+    ; Laser sound
+    lda #$00
+    sta $D400
+    lda #$80
+    sta $D401
+    lda #$81        ; Noise
+    sta $D404
+    
+fire_done:
+    rts
+
+; Update projectiles
+update_projectiles:
+    lda projectile_active
+    beq proj_done
+    
+    ; Move projectile up
+    lda projectile_y
+    sec
+    sbc #5          ; Projectile speed
+    sta projectile_y
+    
+    ; Check if off screen
+    cmp #50
+    bcs draw_projectile
+    
+    ; Deactivate
+    lda #0
+    sta projectile_active
+    jmp proj_done
+    
+draw_projectile:
+    ; Draw as sprite 1
+    lda #$02
+    ora $D015
+    sta $D015       ; Enable sprite 1
+    
+    lda projectile_x
+    sta $D002       ; Sprite 1 X
+    lda projectile_y
+    sta $D003       ; Sprite 1 Y
+    
+    lda #2          ; Red
+    sta $D028       ; Sprite 1 color
+    
+    lda #67         ; Projectile sprite
+    sta $07F9       ; Sprite 1 pointer
+    
+proj_done:
+    rts
+
+; Check collisions
+check_collisions:
+    ; Simple collision with screen edges done in movement
+    ; Add enemy collision here
+    rts
+
+; Display instructions
+display_instructions:
+    ldx #0
+print_loop:
+    lda instructions,x
+    beq inst_done
+    jsr $FFD2
+    inx
+    bne print_loop
+inst_done:
+    rts
+
+; Sprite data
+ship_neutral:
+    !byte %00000001,%00000000,%00000000
+    !byte %00000011,%10000000,%00000000
+    !byte %00000011,%10000000,%00000000
+    !byte %00000111,%11000000,%00000000
+    !byte %00000111,%11000000,%00000000
+    !byte %00001111,%11100000,%00000000
+    !byte %00001111,%11100000,%00000000
+    !byte %00011111,%11110000,%00000000
+    !byte %00011111,%11110000,%00000000
+    !byte %00111111,%11111000,%00000000
+    !byte %00111111,%11111000,%00000000
+    !byte %01111111,%11111100,%00000000
+    !byte %01111111,%11111100,%00000000
+    !byte %11111111,%11111110,%00000000
+    !byte %11111111,%11111110,%00000000
+    !byte %01111111,%11111100,%00000000
+    !byte %00111111,%11111000,%00000000
+    !byte %00011111,%11110000,%00000000
+    !byte %00001111,%11100000,%00000000
+    !byte %00000111,%11000000,%00000000
+    !byte %00000011,%10000000,%00000000
+    !byte 0
+
+ship_left:
+    !byte %00000000,%10000000,%00000000
+    !byte %00000001,%11000000,%00000000
+    !byte %00000011,%11000000,%00000000
+    !byte %00000111,%11100000,%00000000
+    !byte %00001111,%11100000,%00000000
+    !byte %00011111,%11110000,%00000000
+    !byte %00111111,%11110000,%00000000
+    !byte %01111111,%11111000,%00000000
+    !byte %11111111,%11111000,%00000000
+    !byte %11111111,%11111100,%00000000
+    !byte %01111111,%11111100,%00000000
+    !byte %00111111,%11111110,%00000000
+    !byte %00011111,%11111110,%00000000
+    !byte %00001111,%11111110,%00000000
+    !byte %00000111,%11111100,%00000000
+    !byte %00000011,%11111000,%00000000
+    !byte %00000001,%11110000,%00000000
+    !byte %00000000,%11100000,%00000000
+    !byte %00000000,%01100000,%00000000
+    !byte %00000000,%00100000,%00000000
+    !byte %00000000,%00000000,%00000000
+    !byte 0
+
+ship_right:
+    !byte %00000000,%00000001,%00000000
+    !byte %00000000,%00000011,%10000000
+    !byte %00000000,%00000011,%11000000
+    !byte %00000000,%00000111,%11100000
+    !byte %00000000,%00000111,%11110000
+    !byte %00000000,%00001111,%11111000
+    !byte %00000000,%00001111,%11111100
+    !byte %00000000,%00011111,%11111110
+    !byte %00000000,%00011111,%11111111
+    !byte %00000000,%00111111,%11111111
+    !byte %00000000,%00111111,%11111110
+    !byte %00000000,%01111111,%11111100
+    !byte %00000000,%01111111,%11111000
+    !byte %00000000,%01111111,%11110000
+    !byte %00000000,%00111111,%11100000
+    !byte %00000000,%00011111,%11000000
+    !byte %00000000,%00001111,%10000000
+    !byte %00000000,%00000111,%00000000
+    !byte %00000000,%00000110,%00000000
+    !byte %00000000,%00000100,%00000000
+    !byte %00000000,%00000000,%00000000
+    !byte 0
+
+; Variables
+projectile_x:       .byte 0
+projectile_y:       .byte 0
+projectile_active:  .byte 0
+
+; Text
+instructions:
+    !text "SMOOTH SPACE SHOOTER",13
+    !text "-------------------",13,13
+    !text "JOYSTICK: 8-WAY MOVEMENT",13
+    !text "FIRE: SHOOT LASER",13
+    !text "WATCH THE SHIP BANK!",13,13
+    !byte 0`} language="asm" />
+
+## Advanced Techniques
+
+Enhance smooth movement with these patterns:
+
+<CodeBlock title="Sub-Pixel Precision" code={`; Use 16-bit fixed point for ultra-smooth movement
+; High byte = pixel position
+; Low byte = sub-pixel fraction
+
+sprite_x_frac:  .byte 0     ; Sub-pixel X
+sprite_y_frac:  .byte 0     ; Sub-pixel Y
+
+move_subpixel:
+    ; Add fractional speed
+    lda sprite_x_frac
+    clc
+    adc #128        ; 0.5 pixels
+    sta sprite_x_frac
+    bcc no_pixel_change
+    
+    ; Fraction overflowed - move one pixel
+    inc sprite_x_lo
+    
+no_pixel_change:
+    rts`} language="asm" />
+
+## Memory Map
+
+**Sprite Registers:**
+- `$D000-$D001`: Sprite 0 position
+- `$D002-$D003`: Sprite 1 position (projectile)
+- `$D010`: X coordinate MSB for all sprites
+- `$D015`: Sprite enable register
+- `$D027-$D028`: Sprite colors
+
+## What You've Learned
+
+You've built a smooth control system demonstrating:
+- **Pixel-perfect positioning** with 16-bit coordinates
+- **8-directional movement** with diagonal support
+- **Variable speed control** with boost mechanics
+- **Animated sprites** responding to movement
+- **Smooth scrolling** backgrounds
+
+## Applying to Your Game
+
+### Smooth Network Transitions for Neon Nexus
+
+Apply smooth movement techniques for professional network node interpolation, creating fluid transitions and digital ghost trails.
+
+<CodeBlock title="Cyberpunk Smooth Interpolation System" language="asm" code={`; Smooth network node interpolation
+smooth_network_transition:
+        ; Smoothly animate between network nodes
+        ; instead of instant snapping
+        
+        ; Calculate target position
+        lda target_node_x
+        asl                     ; Convert grid to pixels
+        asl
+        asl
+        sta target_pixel_x
+        
+        lda target_node_y  
+        asl
+        asl
+        asl
+        sta target_pixel_y
+        
+        ; Smooth interpolation over 16 frames
+        lda #16
+        sta transition_frames
+        
+transition_loop:
+        ; Calculate interpolation step
+        lda target_pixel_x
+        sec
+        sbc current_pixel_x
+        asr                     ; Divide by 2 for smooth step
+        clc
+        adc current_pixel_x
+        sta current_pixel_x
+        
+        lda target_pixel_y
+        sec
+        sbc current_pixel_y
+        asr
+        clc
+        adc current_pixel_y
+        sta current_pixel_y
+        
+        ; Update sprite position
+        jsr update_sprite_position
+        
+        ; Digital ghost trail effect
+        jsr add_ghost_trail
+        
+        ; Wait one frame
+        jsr wait_one_frame
+        
+        dec transition_frames
+        bne transition_loop
+        
+        ; Snap to final position
+        lda target_pixel_x
+        sta current_pixel_x
+        lda target_pixel_y
+        sta current_pixel_y
+        
+        rts
+
+add_ghost_trail:
+        ; Create digital ghost trail effect
+        ; Shows previous positions with fading intensity
+        
+        ; Store current position in trail buffer
+        ldx trail_index
+        lda current_pixel_x
+        sta trail_x_buffer,x
+        lda current_pixel_y
+        sta trail_y_buffer,x
+        
+        ; Advance trail index
+        inx
+        cpx #8                  ; 8 trail positions
+        bne store_index
+        ldx #0
+store_index:
+        stx trail_index
+        
+        ; Draw trail sprites with fading colors
+        ldy #0
+draw_trail_loop:
+        ; Calculate fade color
+        lda #15
+        sec
+        sbc y                   ; Fade from white to darker
+        cmp #0
+        bpl color_ok
+        lda #0
+color_ok:
+        sta trail_color
+        
+        ; Draw trail sprite
+        lda trail_x_buffer,y
+        sta $d000,y             ; Sprite X positions
+        lda trail_y_buffer,y
+        sta $d001,y             ; Sprite Y positions
+        
+        iny
+        cpy #8
+        bne draw_trail_loop
+        
+        rts
+
+; Smooth interpolation variables
+target_node_x:      !byte 0
+target_node_y:      !byte 0
+target_pixel_x:     !byte 0
+target_pixel_y:     !byte 0
+current_pixel_x:    !byte 0
+current_pixel_y:    !byte 0
+transition_frames:  !byte 0
+trail_index:        !byte 0
+trail_color:        !byte 0
+
+trail_x_buffer:     !fill 8, 0
+trail_y_buffer:     !fill 8, 0`} />
+
+**Smooth Transitions:** Your Neon Nexus now has professional smooth interpolation! Network node transitions are fluid and elegant, with digital ghost trails creating authentic data-stream visualization effects.
+
+These techniques form the foundation for shooters, racing games, and any action game requiring precise control!
+
+## Practice Challenges
+
+1. Add momentum/inertia to movement
+2. Implement rotation with 8 sprite frames
+3. Add multiple speed weapons
+4. Create enemy ships with smooth AI movement
+5. Add parallax starfield layers
+
+## What's Next
+
+Next lesson, we'll add physics - gravity, jumping, and bouncing to create natural-feeling movement!

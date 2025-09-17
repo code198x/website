@@ -1,4 +1,5 @@
 # Code198x Website
+
 ## The Interactive Learning Platform for Retro Computing
 
 Built with **Astro 5.9.2** to deliver 1,400+ retro programming lessons with modern performance and educational tools.
@@ -6,6 +7,7 @@ Built with **Astro 5.9.2** to deliver 1,400+ retro programming lessons with mode
 ## 🎯 Overview
 
 The Code198x website provides:
+
 - **📚 1,400+ Interactive Lessons** across 16 retro platforms
 - **🎮 Embedded Emulators** for hands-on programming
 - **📊 Progress Tracking** through phases and tiers
@@ -67,41 +69,44 @@ website/
 
 ## 🛠️ Development Commands
 
-| Command | Purpose | Details |
-|---------|---------|----------|
-| `npm install` | Install dependencies | Required before first run |
-| `npm run dev` | Development server | Hot reload at `localhost:4321` |
-| `npm run build` | Production build | Generates static site to `./dist/` |
-| `npm run preview` | Test production build | Preview optimized version locally |
-| `npm run validate-content` | Check lesson format | Validates MDX frontmatter |
-| `npm run check-links` | Verify internal links | Ensures navigation works |
-| `npm run lint` | Code quality check | ESLint and Prettier |
-| `npm run astro add <integration>` | Add features | Install Astro integrations |
+| Command                           | Purpose               | Details                            |
+| --------------------------------- | --------------------- | ---------------------------------- |
+| `npm install`                     | Install dependencies  | Required before first run          |
+| `npm run dev`                     | Development server    | Hot reload at `localhost:4321`     |
+| `npm run build`                   | Production build      | Generates static site to `./dist/` |
+| `npm run preview`                 | Test production build | Preview optimized version locally  |
+| `npm run validate-content`        | Check lesson format   | Validates MDX frontmatter          |
+| `npm run check-links`             | Verify internal links | Ensures navigation works           |
+| `npm run lint`                    | Code quality check    | ESLint and Prettier                |
+| `npm run astro add <integration>` | Add features          | Install Astro integrations         |
 
 ### Educational Content Commands
 
-| Command | Purpose |
-|---------|----------|
-| `npm run generate-lesson-index` | Update lesson navigation |
-| `npm run optimize-images` | Compress screenshots |
-| `npm run test-emulator-integration` | Verify embedded emulators |
-| `npm run export-progress-data` | Generate learning analytics |
+| Command                             | Purpose                     |
+| ----------------------------------- | --------------------------- |
+| `npm run generate-lesson-index`     | Update lesson navigation    |
+| `npm run optimize-images`           | Compress screenshots        |
+| `npm run test-emulator-integration` | Verify embedded emulators   |
+| `npm run export-progress-data`      | Generate learning analytics |
 
 ## 🎮 Educational Features
 
 ### Interactive Learning Components
 
 **Memory Visualizations:**
+
 - Platform-specific memory maps with live highlighting
 - Register viewers showing CPU state changes
 - Step-through debugging for assembly code
 
 **Embedded Development:**
+
 - Docker container integration for building programs
 - Automatic emulator launching with built programs
 - Screenshot capture for lesson documentation
 
 **Progress Tracking:**
+
 - Phase and tier completion tracking
 - Platform mastery indicators
 - Achievement system for major milestones
@@ -109,6 +114,7 @@ website/
 ### Content Management
 
 **Lesson Schema Validation:**
+
 ```typescript
 // src/content/config.ts
 const lessonSchema = z.object({
@@ -117,13 +123,14 @@ const lessonSchema = z.object({
   tier: z.number().min(1).max(8),
   lesson: z.number().min(1).max(16),
   concept: z.string(),
-  difficulty: z.enum(['Beginner', 'Intermediate', 'Advanced']),
+  difficulty: z.enum(["Beginner", "Intermediate", "Advanced"]),
   wow_factor: z.string(),
   // ... additional validation
 });
 ```
 
 **Content Collections:**
+
 - Lessons organized by platform → phase → tier → lesson
 - Automatic navigation generation
 - Cross-platform concept linking
@@ -139,7 +146,7 @@ npm run build:production
 
 # Includes:
 # - Content validation
-# - Image optimization  
+# - Image optimization
 # - Bundle optimization
 # - Performance verification
 ```
@@ -154,12 +161,14 @@ npm run build:production
 ### Hosting Configuration
 
 **Static Site Deployment:**
+
 - All content pre-rendered to static HTML
 - CDN-friendly with aggressive caching
 - Progressive enhancement for interactive features
 - Works with any static hosting provider
 
 **Recommended Hosts:**
+
 - **Netlify**: Automatic GitHub integration
 - **Vercel**: Zero-config deployment
 - **Cloudflare Pages**: Global CDN performance
@@ -172,6 +181,7 @@ See [Deployment Guide](../docs/DEPLOYMENT.md) for complete instructions.
 ### Adding New Lessons
 
 1. **Create lesson content:**
+
    ```bash
    # Use lesson template
    cp src/templates/lesson-template.md \
@@ -179,12 +189,14 @@ See [Deployment Guide](../docs/DEPLOYMENT.md) for complete instructions.
    ```
 
 2. **Add working code:**
+
    ```bash
    # Create accompanying program
    echo '10 PRINT "HELLO, WORLD!"' > public/code/c64/lesson017.bas
    ```
 
 3. **Capture screenshot:**
+
    ```bash
    # Use emulator integration
    npm run capture-lesson-screenshot c64 tier1 lesson017
@@ -199,21 +211,21 @@ See [Deployment Guide](../docs/DEPLOYMENT.md) for complete instructions.
 ### Platform Integration
 
 **Docker Environment Connection:**
+
 ```javascript
 // Launch emulator with lesson code
 const launchEmulator = async (platform, lesson) => {
-  await docker.exec(`${platform}-container`, [
-    'build-lesson', lesson.codeFile
-  ]);
-  
+  await docker.exec(`${platform}-container`, ["build-lesson", lesson.codeFile]);
+
   await emulator.launch(platform, {
     program: lesson.outputFile,
-    autorun: lesson.autorun
+    autorun: lesson.autorun,
   });
 };
 ```
 
 **Emulator Integration:**
+
 - VICE (C64), Fuse (Spectrum), FS-UAE (Amiga)
 - Automatic program loading and execution
 - Screenshot and video capture capabilities
@@ -245,12 +257,14 @@ content/lessons/
 ### Content Types
 
 **Primary Content:**
+
 - **Lessons**: Step-by-step programming tutorials
 - **Games**: Complete projects showcasing concepts
 - **Concepts**: Cross-platform programming principles
 - **History**: Historical context and significance
 
 **Supporting Content:**
+
 - **Code Examples**: Working programs for every lesson
 - **Screenshots**: Visual proof of working programs
 - **Videos**: Demonstrations of complex concepts
@@ -263,7 +277,7 @@ The website embodies Code198x's **"Magic-First Approach"**:
 ### Lesson Presentation
 
 1. **Visual Impact First**: Every lesson opens with a compelling screenshot
-2. **Wonder and Context**: Historical significance and "wow factor" prominently featured  
+2. **Wonder and Context**: Historical significance and "wow factor" prominently featured
 3. **Hands-On Learning**: Working code examples with run buttons
 4. **Progressive Discovery**: Concepts build systematically across lessons
 5. **Extension Challenges**: Opportunities for experimentation and personalization
@@ -280,18 +294,21 @@ The website embodies Code198x's **"Magic-First Approach"**:
 ### Areas for Contribution
 
 **Content Enhancement:**
+
 - Add missing lesson screenshots
 - Improve lesson explanations and context
 - Create cross-platform concept connections
 - Develop interactive coding exercises
 
 **Technical Improvement:**
+
 - Enhance emulator integration
 - Improve performance and accessibility
 - Add new interactive learning components
 - Optimize mobile experience
 
 **Educational Tools:**
+
 - Memory map visualizers
 - Assembly code step-through debuggers
 - Progress tracking and achievement systems
@@ -302,12 +319,14 @@ See [Contributing Guide](../CONTRIBUTING.md) for detailed contribution instructi
 ## 📞 Support and Documentation
 
 ### Technical Documentation
+
 - **[Platform Guide](../docs/PLATFORM_GUIDE.md)**: Detailed platform information
 - **[Development Setup](../docs/DEVELOPMENT_SETUP.md)**: Complete development environment
 - **[Lesson Structure](../docs/LESSON_STRUCTURE.md)**: Content creation guidelines
 - **[Deployment Guide](../docs/DEPLOYMENT.md)**: Production deployment instructions
 
 ### Community Resources
+
 - **Issues**: Bug reports and feature requests
 - **Discussions**: Questions and community showcase
 - **Wiki**: Community-contributed tips and extensions

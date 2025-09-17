@@ -1,0 +1,969 @@
+---
+title: "Projectiles"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 25
+description: "Build shooting systems with object pooling, multiple projectile types, and collision detection"
+difficulty: "easy"
+order: 25
+tags: ["projectiles", "shooting", "bullets", "collision"]
+prerequisites: ["sprites", "momentum", "collision detection"]
+objectives:
+  - "Implement object pooling for projectiles"
+  - "Create multiple projectile types"
+  - "Handle projectile collision detection"
+  - "Build efficient shooting systems"
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Projectiles: Object Pooling and Shooting Systems
+**Learn to manage multiple projectiles efficiently in action games**
+
+Shooting games need to track many projectiles simultaneously - bullets flying, missiles homing, explosions expanding. Rather than creating and destroying objects constantly, we use object pooling: pre-allocating a fixed number of projectiles and reusing them. This technique is essential for performance and forms the foundation of any action game.
+
+## What You'll Learn
+
+In this lesson, you'll discover:
+- **Object pooling** - Efficiently managing multiple game objects
+- **Projectile lifecycle** - Spawning, updating, and deactivating
+- **Velocity and trajectories** - Moving projectiles in any direction
+- **Collision detection** - Checking if projectiles hit targets
+- **Multiple weapon types** - Different firing patterns and behaviors
+- **Performance optimization** - Handling many objects smoothly
+
+## Projectile Pool System
+
+Instead of constantly allocating memory, we pre-allocate a pool of projectiles:
+
+<CodeBlock title="Network Packet Management" code={`; Projectile constants
+MAX_BULLETS     = 16        ; Maximum bullets on screen
+BULLET_SPEED    = 5         ; Pixels per frame
+BULLET_LIFETIME = 60        ; Frames before despawn
+
+; Bullet structure (5 bytes each)
+; Byte 0: Active flag (0=inactive, 1=active)
+; Byte 1: X position (low)
+; Byte 2: X position (high)  
+; Byte 3: Y position
+; Byte 4: Y velocity (signed)
+
+bullet_pool:    !fill MAX_BULLETS * 5, 0
+
+; Find free bullet slot  
+find_free_bullet:
+    ldx #0
+    ldy #0              ; Pool index
+search_loop:
+    lda bullet_pool,y
+    beq found_free      ; Active flag = 0
+    
+    ; Move to next bullet
+    tya
+    clc
+    adc #5              ; 5 bytes per bullet
+    tay
+    inx
+    cpx #MAX_BULLETS
+    bne search_loop
+    
+    ; No free slots
+    lda #$FF
+    rts
+    
+found_free:
+    tya                 ; Return pool offset
+    rts
+
+; Spawn bullet from player
+spawn_bullet:
+    jsr find_free_bullet
+    cmp #$FF
+    beq spawn_failed
+    
+    tax                 ; X = pool offset
+    
+    ; Mark as active
+    lda #1
+    sta bullet_pool,x
+    
+    ; Set position (from player sprite)
+    lda $D000           ; Player sprite X
+    sta bullet_pool+1,x
+    lda #0
+    sta bullet_pool+2,x ; High byte
+    
+    lda $D001           ; Player sprite Y
+    sec
+    sbc #8              ; Above player
+    sta bullet_pool+3,x
+    
+    ; Set upward velocity
+    lda #-BULLET_SPEED
+    sta bullet_pool+4,x
+    
+    ; Shooting sound effect
+    lda #$10
+    sta $D400
+    lda #$80
+    sta $D401
+    lda #$81            ; Noise for laser
+    sta $D404
+    
+spawn_failed:
+    rts`} language="asm" />
+
+## Update Projectiles
+
+Process all active bullets each frame:
+
+<CodeBlock title="Network Packet Processing" code={`; Update all active bullets
+update_bullets:
+    ldx #0              ; Bullet counter
+    ldy #0              ; Pool offset
+    
+bullet_loop:
+    lda bullet_pool,y
+    beq next_bullet     ; Skip inactive
+    
+    ; Update Y position
+    lda bullet_pool+3,y ; Current Y
+    clc
+    adc bullet_pool+4,y ; Add velocity
+    sta bullet_pool+3,y
+    
+    ; Check if off screen
+    cmp #10             ; Top boundary
+    bcc deactivate_bullet
+    cmp #240            ; Bottom boundary
+    bcs deactivate_bullet
+    
+    ; Check collision with enemies
+    jsr check_bullet_collision
+    bcc next_bullet     ; No hit
+    
+    ; Hit something - deactivate
+    jsr handle_bullet_hit
+    
+deactivate_bullet:
+    ; Mark as inactive
+    lda #0
+    sta bullet_pool,y
+    
+next_bullet:
+    ; Move to next bullet (5 bytes each)
+    tya
+    clc
+    adc #5
+    tay
+    inx
+    cpx #MAX_BULLETS
+    bne bullet_loop
+    
+    rts
+
+; Route packet through network topology
+route_packet:
+    ; Y register contains packet pool offset
+    
+    ; Get target node position
+    lda packet_pool+5,y ; Target node ID
+    tax
+    lda node_x_positions,x
+    sta target_x
+    lda node_y_positions,x
+    sta target_y
+    
+    ; Calculate direction to target
+    lda target_x
+    sec
+    sbc packet_pool+1,y ; Current X
+    bpl move_right
+    
+    ; Move left toward target
+    lda packet_pool+1,y
+    sec
+    sbc #PACKET_SPEED
+    sta packet_pool+1,y
+    jmp check_y_movement
+    
+move_right:
+    beq check_y_movement ; Already at target X
+    lda packet_pool+1,y
+    clc
+    adc #PACKET_SPEED
+    sta packet_pool+1,y
+    
+check_y_movement:
+    lda target_y
+    sec
+    sbc packet_pool+3,y ; Current Y
+    bpl move_down
+    
+    ; Move up toward target
+    lda packet_pool+3,y
+    sec
+    sbc #PACKET_SPEED
+    sta packet_pool+3,y
+    rts
+    
+move_down:
+    beq routing_done    ; Already at target Y
+    lda packet_pool+3,y
+    clc
+    adc #PACKET_SPEED
+    sta packet_pool+3,y
+    
+routing_done:
+    rts
+
+; Check if packet reached destination
+check_packet_arrival:
+    ; Y register contains packet pool offset
+    ; Returns carry set if arrived
+    
+    ; Get current position
+    lda packet_pool+1,y
+    sta current_x
+    lda packet_pool+3,y
+    sta current_y
+    
+    ; Get target position
+    lda packet_pool+5,y ; Target node ID
+    tax
+    lda node_x_positions,x
+    sta target_x
+    lda node_y_positions,x
+    sta target_y
+    
+    ; Check if within arrival threshold (±4 pixels)
+    lda current_x
+    sec
+    sbc target_x
+    bpl abs_x_diff
+    eor #$FF
+    clc
+    adc #1
+abs_x_diff:
+    cmp #5              ; Arrival threshold
+    bcs not_arrived
+    
+    lda current_y
+    sec
+    sbc target_y
+    bpl abs_y_diff
+    eor #$FF
+    clc
+    adc #1
+abs_y_diff:
+    cmp #5
+    bcs not_arrived
+    
+    ; Packet has arrived!
+    sec
+    rts
+    
+not_arrived:
+    clc
+    rts
+
+; Working variables
+current_x:  .byte 0
+current_y:  .byte 0
+target_x:   .byte 0
+target_y:   .byte 0`} language="asm" />
+
+## Multiple Weapon Types
+
+Create different firing patterns for variety:
+
+<CodeBlock title="Network Diagnostic Tools" code={`; Weapon types
+WEAPON_SINGLE   = 0     ; Single shot
+WEAPON_DOUBLE   = 1     ; Twin shots
+WEAPON_SPREAD   = 2     ; Three-way spread
+WEAPON_RAPID    = 3     ; Machine gun
+
+current_weapon: .byte WEAPON_SINGLE
+fire_cooldown: .byte 0
+
+; Fire pattern based on current weapon
+fire_pattern:
+    lda current_weapon
+    cmp #WEAPON_SINGLE
+    beq fire_single
+    cmp #WEAPON_DOUBLE
+    beq fire_double
+    cmp #WEAPON_SPREAD
+    beq fire_spread
+    cmp #WEAPON_RAPID
+    beq fire_rapid
+    rts
+
+fire_single:
+    jsr spawn_bullet
+    rts
+
+fire_double:
+    ; Left bullet
+    jsr find_free_bullet
+    cmp #$FF
+    beq fire_failed
+    tax
+    lda #1
+    sta bullet_pool,x
+    lda $D000
+    sec
+    sbc #4              ; Offset left
+    sta bullet_pool+1,x
+    lda #0
+    sta bullet_pool+2,x
+    lda $D001
+    sec
+    sbc #8
+    sta bullet_pool+3,x
+    lda #-BULLET_SPEED
+    sta bullet_pool+4,x
+    
+    ; Right bullet
+    jsr find_free_bullet
+    cmp #$FF
+    beq fire_failed
+    tax
+    lda #1
+    sta bullet_pool,x
+    lda $D000
+    clc
+    adc #4              ; Offset right
+    sta bullet_pool+1,x
+    lda #0
+    sta bullet_pool+2,x
+    lda $D001
+    sec
+    sbc #8
+    sta bullet_pool+3,x
+    lda #-BULLET_SPEED
+    sta bullet_pool+4,x
+    
+fire_failed:
+    rts
+
+fire_spread:
+    ; Center bullet
+    jsr spawn_bullet
+    
+    ; Left diagonal
+    jsr find_free_bullet
+    cmp #$FF
+    beq spread_done
+    tax
+    lda #1
+    sta bullet_pool,x
+    lda $D000
+    sec
+    sbc #2
+    sta bullet_pool+1,x
+    lda #0
+    sta bullet_pool+2,x
+    lda $D001
+    sec
+    sbc #8
+    sta bullet_pool+3,x
+    lda #-3             ; Slower, angled
+    sta bullet_pool+4,x
+    
+    ; Right diagonal
+    jsr find_free_bullet
+    cmp #$FF
+    beq spread_done
+    tax
+    lda #1
+    sta bullet_pool,x
+    lda $D000
+    clc
+    adc #2
+    sta bullet_pool+1,x
+    lda #0
+    sta bullet_pool+2,x
+    lda $D001
+    sec
+    sbc #8
+    sta bullet_pool+3,x
+    lda #-3
+    sta bullet_pool+4,x
+    
+spread_done:
+    rts
+
+fire_triple:
+    ; Three bullets in quick succession
+    jsr fire_single
+    
+    ; Delay between shots
+    inc pattern_timer
+    lda pattern_timer
+    cmp #3
+    bcc triple_done
+    
+    ; Reset timer, fire again
+    lda #0
+    sta pattern_timer
+    jsr fire_single
+    
+triple_done:
+    rts`} language="asm" />
+
+## Homing Projectiles
+
+Create missiles that track their targets:
+
+<CodeBlock title="Homing Missile AI" code={`; Missile pool (separate from bullets)
+MAX_MISSILES    = 4
+MISSILE_SPEED   = 2
+
+; Missile structure (7 bytes each)
+; Byte 0: Active flag
+; Byte 1: X position
+; Byte 2: Y position  
+; Byte 3: Target index
+; Byte 4: Velocity X
+; Byte 5: Velocity Y
+; Byte 6: Fuel/lifetime
+
+missile_pool:   !fill MAX_MISSILES * 7, 0
+
+; Spawn homing missile
+spawn_missile:
+    jsr find_free_missile
+    cmp #$FF
+    beq missile_failed
+    
+    tax                 ; Pool offset
+    
+    ; Activate
+    lda #1
+    sta missile_pool,x
+    
+    ; Position
+    lda $D000
+    sta missile_pool+1,x
+    lda $D001
+    sta missile_pool+2,x
+    
+    ; Find nearest target
+    jsr find_nearest_enemy
+    sta missile_pool+3,x ; Store target index
+    
+    ; Initial velocity (straight up)
+    lda #0
+    sta missile_pool+4,x
+    lda #-1
+    sta missile_pool+5,x
+    
+    ; Fuel for tracking
+    lda #120            ; 2 seconds of guidance
+    sta missile_pool+6,x
+    
+    ; Missile launch sound
+    lda #$10
+    sta $D400
+    lda #$20
+    sta $D401
+    lda #$21            ; Pulse wave
+    sta $D404
+    
+missile_failed:
+    rts
+
+; Update homing missiles
+update_missiles:
+    ldx #0
+    ldy #0
+    
+missile_update_loop:
+    lda missile_pool,y
+    beq next_missile
+    
+    ; Decrement fuel
+    dec missile_pool+6,y
+    bne has_fuel
+    
+    ; Out of fuel - explode
+    jsr explode_missile
+    jmp deactivate_missile
+    
+has_fuel:
+    ; Get target position
+    ldx missile_pool+3,y ; Target index
+    lda enemy_active,x
+    beq find_new_target  ; Target destroyed
+    
+    ; Calculate direction to target
+    lda enemy_x,x
+    sec
+    sbc missile_pool+1,y ; Target X - missile X
+    bpl target_right
+    
+    ; Target is left
+    lda missile_pool+4,y
+    sec
+    sbc #1              ; Turn left
+    cmp #-MISSILE_SPEED
+    bcs store_vel_x
+    lda #-MISSILE_SPEED
+    jmp store_vel_x
+    
+target_right:
+    ; Target is right
+    lda missile_pool+4,y
+    clc
+    adc #1              ; Turn right
+    cmp #MISSILE_SPEED
+    bcc store_vel_x
+    lda #MISSILE_SPEED
+    
+store_vel_x:
+    sta missile_pool+4,y
+    
+    ; Same for Y velocity
+    lda enemy_y,x
+    sec
+    sbc missile_pool+2,y
+    bpl target_below
+    
+target_above:
+    lda missile_pool+5,y
+    sec
+    sbc #1
+    cmp #-MISSILE_SPEED
+    bcs store_vel_y
+    lda #-MISSILE_SPEED
+    jmp store_vel_y
+    
+target_below:
+    lda missile_pool+5,y
+    clc
+    adc #1
+    cmp #MISSILE_SPEED
+    bcc store_vel_y
+    lda #MISSILE_SPEED
+    
+store_vel_y:
+    sta missile_pool+5,y
+    
+    ; Apply velocity
+    lda missile_pool+1,y
+    clc
+    adc missile_pool+4,y
+    sta missile_pool+1,y
+    
+    lda missile_pool+2,y
+    clc
+    adc missile_pool+5,y
+    sta missile_pool+2,y
+    
+    ; Check collision
+    jsr check_missile_collision
+    bcc missile_bounds
+    
+    ; Hit target
+    jsr explode_missile
+    jmp deactivate_missile
+    
+missile_bounds:
+    ; Check screen bounds
+    lda missile_pool+1,y
+    cmp #255
+    bcs deactivate_missile
+    lda missile_pool+2,y
+    cmp #240
+    bcs deactivate_missile
+    jmp next_missile
+    
+find_new_target:
+    ; Original target gone, find new one
+    jsr find_nearest_enemy
+    sta missile_pool+3,y
+    jmp next_missile
+    
+deactivate_missile:
+    lda #0
+    sta missile_pool,y
+    
+next_missile:
+    tya
+    clc
+    adc #7              ; 7 bytes per missile
+    tay
+    inx
+    cpx #MAX_MISSILES
+    bne missile_update_loop
+    
+    rts
+
+; Find closest enemy for targeting
+find_nearest_enemy:
+    lda #0
+    sta closest_enemy
+    lda #255
+    sta closest_distance
+    
+    ldx #0
+distance_check:
+    lda enemy_active,x
+    beq next_distance
+    
+    ; Calculate simple distance (Manhattan)
+    lda enemy_x,x
+    sec
+    sbc $D000           ; Player X
+    bpl pos_diff_x
+    eor #$FF            ; Make positive
+    clc
+    adc #1
+pos_diff_x:
+    sta temp_dist
+    
+    lda enemy_y,x
+    sec
+    sbc $D001           ; Player Y
+    bpl pos_diff_y
+    eor #$FF
+    clc
+    adc #1
+pos_diff_y:
+    clc
+    adc temp_dist       ; Total distance
+    
+    cmp closest_distance
+    bcs next_distance
+    
+    sta closest_distance
+    stx closest_enemy
+    
+next_distance:
+    inx
+    cpx #8
+    bne distance_check
+    
+    lda closest_enemy
+    rts
+
+closest_enemy:      .byte 0
+closest_distance:   .byte 255
+temp_dist:          .byte 0`} language="asm" />
+
+## Visual Effects
+
+Make projectiles look amazing:
+
+<CodeBlock title="Projectile Rendering" code={`; Draw all active projectiles
+draw_projectiles:
+    ; Draw bullets as sprites 4-7
+    ldx #4              ; Start sprite index
+    ldy #0              ; Pool offset
+    
+bullet_draw_loop:
+    lda bullet_pool,y
+    beq skip_bullet
+    
+    ; Enable sprite
+    lda $D015
+    ora sprite_masks,x
+    sta $D015
+    
+    ; Position sprite
+    lda bullet_pool+1,y ; X position
+    sta $D000,x
+    sta $D000,x
+    lda bullet_pool+3,y ; Y position
+    sta $D001,x
+    sta $D001,x
+    
+    ; Set sprite frame
+    lda #72             ; Bullet sprite
+    sta $07F8,x         ; Sprite pointer
+    
+    ; Color (yellow)
+    lda #7
+    sta $D027,x
+    
+skip_bullet:
+    ; Next sprite/bullet
+    inx
+    inx                 ; Sprite registers are 2 bytes apart
+    tya
+    clc
+    adc #5              ; Next bullet
+    tay
+    cpx #8              ; Sprites 4-7 only
+    bne bullet_draw_loop
+    
+    ; Draw missiles as character graphics
+    ; (More complex visually)
+    jsr draw_missiles_char
+    rts
+
+; Draw missiles using character mode
+draw_missiles_char:
+    ldy #0
+missile_draw_loop:
+    lda missile_pool,y
+    beq skip_missile_draw
+    
+    ; Convert position to character coords
+    lda missile_pool+1,y
+    lsr
+    lsr
+    lsr                 ; X/8
+    tax
+    
+    lda missile_pool+2,y
+    lsr
+    lsr
+    lsr                 ; Y/8
+    
+    ; Calculate screen address
+    jsr calc_screen_pos
+    
+    ; Draw missile character
+    lda #42             ; Asterisk
+    sta ($FB),0
+    
+    ; Trail effect
+    lda missile_pool+6,y ; Use fuel for trail
+    and #$03
+    clc
+    adc #8              ; Colors 8-11
+    sta ($FD),0         ; Color RAM
+    
+skip_missile_draw:
+    tya
+    clc
+    adc #7
+    tay
+    cpy #MAX_MISSILES * 7
+    bne missile_draw_loop
+    rts
+
+; Sprite enable masks
+sprite_masks:
+    .byte %00010000     ; Sprite 4
+    .byte %00100000     ; Sprite 5
+    .byte %01000000     ; Sprite 6
+    .byte %10000000     ; Sprite 7`} language="asm" />
+
+## Complete Shooting System
+
+Put it together for an epic space battle:
+
+<CodeBlock title="Main Shooting Game Loop" code={`* = $0801
+    !byte $0B,$08,$0A,$00,$9E
+    !text "2061"
+    !byte $00,$00,$00
+
+* = $080D
+
+main:
+    jsr init_game
+    jsr init_sprites
+    jsr spawn_enemies
+    
+game_loop:
+    lda #251
+wait_frame:
+    cmp $D012
+    bne wait_frame
+    
+    ; Handle input
+    jsr handle_player_input
+    
+    ; Update systems
+    jsr update_bullets
+    jsr update_missiles
+    jsr update_enemies
+    
+    ; Check firing
+    jsr check_fire_button
+    
+    ; Render
+    jsr draw_projectiles
+    jsr draw_enemies
+    jsr update_hud
+    
+    jmp game_loop
+
+; Handle player firing
+check_fire_button:
+    lda $DC00
+    and #$10            ; Fire button
+    bne not_firing
+    
+    ; Check fire rate limit
+    dec fire_cooldown
+    bne not_firing
+    
+    ; Reset cooldown
+    lda #6              ; 10 FPS fire rate
+    sta fire_cooldown
+    
+    ; Fire current pattern
+    jsr fire_pattern
+    
+    ; Special weapon (joystick up + fire)
+    lda $DC00
+    and #$01            ; Up
+    bne not_firing
+    
+    ; Launch missile
+    jsr spawn_missile
+    
+not_firing:
+    rts
+
+; Power-up system
+pickup_powerup:
+    ; Check what type of powerup
+    lda powerup_type
+    cmp #0
+    beq upgrade_spread
+    cmp #1
+    beq add_missile
+    
+upgrade_spread:
+    inc current_pattern
+    lda current_pattern
+    cmp #4
+    bcc pattern_ok
+    lda #3              ; Max pattern
+    sta current_pattern
+pattern_ok:
+    rts
+
+add_missile:
+    ; Give player a missile
+    inc missile_count
+    rts
+
+; Variables
+fire_cooldown:  .byte 0
+missile_count:  .byte 3
+powerup_type:   .byte 0
+
+; Enemy spawn system
+spawn_enemies:
+    ldx #0
+enemy_spawn_loop:
+    lda #1
+    sta enemy_active,x
+    
+    ; Random X position
+    lda frame_counter
+    clc
+    adc #37
+    and #$3F
+    clc
+    adc #40
+    sta enemy_x,x
+    
+    ; Y position (top of screen)
+    lda #20
+    sta enemy_y,x
+    
+    ; Simple AI - move down
+    lda #1
+    sta enemy_vel_y,x
+    
+    inx
+    cpx #8
+    bne enemy_spawn_loop
+    rts
+
+; Enemy data
+enemy_active:   !fill 8, 0
+enemy_x:        !fill 8, 0  
+enemy_y:        !fill 8, 0
+enemy_vel_y:    !fill 8, 0
+frame_counter:  .byte 0`} language="asm" />
+
+## Advanced Projectile Techniques
+
+Enhance your shooting system:
+
+- **Ricocheting bullets** that bounce off walls
+- **Piercing shots** that go through multiple enemies  
+- **Explosive projectiles** with area damage
+- **Beam weapons** that track continuously
+- **Charge-up shots** that get stronger when held
+
+## What You've Learned
+
+You've built a complete projectile system demonstrating:
+- **Efficient object pooling** for managing many projectiles
+- **Multiple weapon types** with different firing patterns
+- **Projectile physics** with velocity and trajectories
+- **Collision detection** between projectiles and targets
+- **Performance optimization** for smooth gameplay
+
+## Applying to Your Game
+
+### Network Packet System for Neon Nexus
+
+Apply projectile concepts to create network diagnostic packets for our cyberpunk game:
+
+<CodeBlock title="Network Packet System" language="asm" code={`; Network packet projectiles for Neon Nexus
+init_network_packets:
+        ; Initialize packet pool for network diagnostics
+        lda #0
+        ldx #0
+clear_packets:
+        sta packet_pool,x
+        inx
+        cpx #MAX_PACKETS * 5
+        bne clear_packets
+        rts
+
+launch_diagnostic_packet:
+        ; Launch a network diagnostic packet
+        jsr find_free_packet
+        cmp #$FF
+        beq packet_failed
+        
+        tax
+        ; Configure as network packet
+        lda #1
+        sta packet_pool,x      ; Activate
+        
+        ; Set starting position at terminal
+        lda player_x
+        sta packet_pool+1,x
+        lda player_y
+        sta packet_pool+3,x
+        
+        ; Target network node
+        lda target_node
+        sta packet_pool+4,x
+        
+        ; Digital transmission sound
+        jsr play_transmission_sound
+        
+packet_failed:
+        rts
+
+; Packet pool for network diagnostics
+packet_pool: !fill MAX_PACKETS * 5, 0
+target_node: !byte 0`} />
+
+**Network Integration:** Your Neon Nexus now has diagnostic packets that travel through the network! These projectiles visualize data flow and network probing, using the same efficient pooling system as traditional projectiles.
+
+## Practice Challenges
+
+1. Add homing missiles that track targets
+2. Create bouncing projectiles that ricochet off walls
+3. Implement charge shots that grow stronger when held
+4. Add area-effect explosions when projectiles hit
+5. Create beam weapons with continuous damage
+
+## What's Next
+
+Next lesson, we'll add power-ups to enhance your weapons and abilities!

@@ -1,148 +1,107 @@
 ---
-title: "Assembly Fundamentals Through Game Development"
+title: "6502 Assembly Fundamentals"
 system: "commodore-64"
 phase_number: 1
-description: "Master 6502 assembly programming through creating 16 complete games. Learn one core programming concept per game, from basic movement to advanced sprite techniques, building a comprehensive foundation for C64 game development."
+description: "Learn 6502 assembly programming from the ground up. Start with basic concepts and build to creating working programs on the Commodore 64."
 learning_objectives:
-  - "Master 6502 assembly language through hands-on game development"
-  - "Control VIC-II graphics chip for sprites, characters, and colors"
-  - "Program SID sound chip for music and sound effects"
-  - "Implement 16 different game mechanics and genres"
-  - "Build complete playable games from start to finish"
-  - "Learn professional C64 development techniques"
-  - "Create a portfolio of finished projects"
+  - "Understand 6502 processor architecture and instruction set"
+  - "Learn memory addressing modes and data manipulation"
+  - "Learn to use ACME assembler and VICE emulator"
+  - "Write and debug assembly programs"
+  - "Control C64 hardware through memory-mapped I/O"
+  - "Build foundational skills for game and demo programming"
 prerequisites: []
-estimated_duration: "16-20 weeks"
+estimated_duration: "4-6 weeks"
 difficulty_level: "beginner"
 tools_required:
-  - "Commodore 64 (or accurate emulator like VICE)"
-  - "6502 assembler (KickAssembler, ACME, or CA65)"
-  - "Text editor or development environment"
-  - "Reference materials for C64 memory map"
+  - "ACME assembler"
+  - "VICE emulator"
+  - "Text editor (VS Code recommended)"
+  - "C64 Programmer's Reference Guide"
 order: 1
 ---
 
-# Phase 1: Assembly Fundamentals Through Game Development
+# Phase 1: 6502 Assembly Fundamentals
 
-Phase 1 introduces you to 6502 assembly programming through creating 16 complete games. Each game teaches one core programming concept while building a playable, engaging experience. By the end of Phase 1, you'll have mastered fundamental assembly programming and created a portfolio of finished C64 games.
+Welcome to your journey into Commodore 64 assembly programming! This phase introduces you to the 6502 processor and the fundamentals of low-level programming. You'll learn how computers really work at the hardware level.
 
-## Learning Philosophy: One Concept, One Game
+## What You'll Learn
 
-Each game in Phase 1 focuses on a single core programming concept:
+Phase 1 takes you from zero assembly knowledge to writing working C64 programs. We focus on understanding rather than memorization, building your skills through hands-on examples and practical exercises.
 
-1. **Grid Protocol** - Grid-based movement and sprite positioning
-2. **Dot Gather** - Collision detection and object collection
-3. **Meteor Dodge** - Animation and object movement
-4. **Beat Box** - Sound generation and rhythm
-5. **Orb Launcher** - Projectile physics and trajectories
-6. **Color Code** - Color manipulation and puzzles
-7. **Gravity Well** - Physics simulation and forces
-8. **Energy Grid** - Resource management and routing
-9. **Ghost Chase** - Simple AI and pursuit
-10. **Shape Shift** - Sprite transformation and morphing
-11. **Zone Defense** - Territory control and strategy
-12. **Chain Spark** - Combo mechanics and chain reactions
-13. **Sprite Maze** - Navigation and pathfinding
-14. **Shield Zone** - Defense mechanics and barriers
-15. **Velocity Run** - Speed and momentum
-16. **Sprite Symphony** - Advanced sprite techniques
+### Core Concepts Covered
 
-## Why 16 Games?
+- **Processor Architecture**: How the 6502 CPU works, its registers, and instruction pipeline
+- **Memory Organization**: Understanding the C64's memory map and how to navigate it
+- **Assembly Syntax**: Writing clean, readable assembly code with proper structure
+- **Addressing Modes**: The different ways to access and manipulate memory
+- **Hardware Control**: Using memory-mapped I/O to control screen, colors, and sound
+- **Development Workflow**: Modern tools and techniques for C64 development
 
-**Focused Learning**: Each game concentrates on one concept, preventing overwhelming complexity while ensuring mastery.
+## Learning Path
 
-**Immediate Application**: Every assembly instruction you learn serves a purpose in your current game project.
+Our curriculum is structured to build concepts progressively:
 
-**Portfolio Building**: Graduate with 16 complete games showcasing different skills and techniques.
+### Foundation (Tier 1)
 
-**Genre Diversity**: Experience various game types, from action to puzzles to simulations.
+Start with the absolute basics through 32 comprehensive lessons covering assembly fundamentals, graphics programming, sound programming, and game development. Learn about registers, basic instructions, screen manipulation, sprites, SID sound chip, and build your first complete game.
 
-**Progressive Complexity**: Start with simple concepts and build to advanced techniques.
+### Building Skills (Tiers 2-4) - Coming Soon
 
-## C64-Specific Advantages
+Expand into loops, branching, subroutines, and data structures. Learn to organize larger programs and implement common algorithms in assembly.
 
-**Hardware Sprites**: Learn to control the VIC-II chip's 8 hardware sprites for smooth, efficient graphics.
+### Hardware Programming (Tiers 5-8) - Coming Soon
 
-**SID Sound**: Master the legendary SID chip for music and sound effects that defined 1980s gaming.
+Dive deep into the VIC-II graphics chip, SID sound chip, and advanced techniques like raster interrupts and sprite multiplexing.
 
-**Memory Optimization**: Work within the C64's 64KB RAM to create efficient, fast-running games.
+### Advanced Topics (Tiers 9-16) - Coming Soon
 
-**Raster Effects**: Control the VIC-II at the raster level for advanced visual effects.
+Explore optimization techniques, demo effects, compression algorithms, and professional development practices.
 
-**Authentic Experience**: Use the same techniques and constraints that created classic C64 games.
+## Why Learn Assembly in 2025?
 
-## Game Development Structure
+**Understanding Fundamentals**: Assembly programming teaches you how computers actually work, knowledge that transcends languages and platforms.
 
-Each game follows the same learning pattern over 32 lessons:
+**Performance Optimization**: The skills you learn optimizing for 64KB of RAM and 1MHz of processing power apply directly to modern embedded systems and performance-critical code.
 
-### Foundation (Lessons 1-8)
-- Set up the game structure and memory layout
-- Create basic graphics and sprite definitions
-- Implement core mechanics and controls
-- Add user input handling via joystick/keyboard
+**Creative Constraints**: Working within the C64's limitations breeds creativity and elegant solutions that modern development rarely demands.
 
-### Enhancement (Lessons 9-16)
-- Add visual polish and sprite animations
-- Implement game state management
-- Create scoring and progression systems
-- Add collision detection and physics
+**Historical Perspective**: Experience how games and software were created in the 1980s, gaining appreciation for modern tools and techniques.
 
-### Polish (Lessons 17-24)
-- Integrate SID sound effects and music
-- Optimize performance for smooth gameplay
-- Add advanced visual effects
-- Create menus and user interface
+**Active Community**: The C64 scene is still vibrant with new games, demos, and tools being created regularly.
 
-### Mastery (Lessons 25-32)
-- Professional-quality polish and refinement
-- Advanced optimization techniques
-- Special effects and easter eggs
-- Complete game packaging and testing
+## Your First Programs
 
-## Technical Skills Covered
+In Tier 1, you'll create programs ranging from simple to sophisticated:
 
-**Assembly Programming**: Complete 6502 instruction set, addressing modes, and programming techniques.
+- **Hello Machine**: Display your first message on screen
+- **Memory Explorer**: Peek and poke memory locations
+- **Color Cycler**: Manipulate screen and border colors
+- **Sprite Animator**: Hardware-accelerated graphics objects
+- **Sound Synthesizer**: Generate tones with the SID chip
+- **Physics Engine**: Gravity and momentum systems
+- **Neon Nexus Game**: Complete cyberpunk-themed interactive game
 
-**VIC-II Graphics**: Sprite control, character mode, bitmap mode, multicolor sprites, raster interrupts.
+Each program builds on the previous, reinforcing concepts while introducing new techniques across the full spectrum of C64 capabilities.
 
-**SID Audio**: Waveform generation, filters, ADSR envelopes, music composition, sound effects.
+## Modern Development Approach
 
-**Memory Management**: Zero page optimization, sprite data organization, efficient data structures.
+While we're programming a 40-year-old computer, we use modern tools:
 
-**Game Architecture**: Main loops, state machines, object management, collision detection systems.
+- **Cross-assembly**: Write code on your modern computer, assemble to C64 format
+- **Emulation**: Test instantly without hardware using VICE
+- **Version Control**: Track your progress with Git
+- **Debugging**: Step through code and inspect memory
+- **Documentation**: Comprehensive references at your fingertips
 
-**Optimization**: Cycle counting, memory usage optimization, performance profiling.
+## Getting Started
 
-## Platform-Specific Features
+Ready to begin? Make sure you have:
 
-**Sprite Multiplexing**: Display more than 8 sprites using raster interrupts.
+1. Completed the [C64 Setup Guide](/setup/c64)
+2. ACME assembler installed and working
+3. VICE emulator configured
+4. A text editor ready
+5. This burning question: "How does a computer really work?"
 
-**Character Set Graphics**: Create custom character sets for backgrounds and UI.
-
-**Smooth Scrolling**: Implement hardware-assisted scrolling for larger game worlds.
-
-**Multicolor Modes**: Use the C64's multicolor capabilities for detailed graphics.
-
-**Raster Bars**: Create dynamic color effects using precise raster timing.
-
-## Learning Outcomes
-
-By completing Phase 1, you will:
-
-- Write fluent 6502 assembly code for the C64
-- Create complete games from concept to completion
-- Master VIC-II graphics and SID sound programming
-- Build a portfolio of 16 finished games
-- Understand professional C64 development techniques
-- Be prepared for advanced topics in Phase 2
-
-## Assessment
-
-Progress is measured through:
-- Completion of each game (playable and engaging)
-- Code quality, organization, and documentation
-- Understanding of concepts demonstrated in code
-- Creative enhancements and personal touches
-- Technical proficiency growth across projects
-
-Each game serves as both a learning exercise and a portfolio piece, demonstrating your growing mastery of C64 assembly programming and game development techniques that defined the golden age of 8-bit gaming.
+Let's start with Tier 1 and write your first assembly program!

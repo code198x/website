@@ -1,0 +1,222 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+export interface Props {
+  src: string | ImageMetadata;
+  alt: string;
+  class?: string;
+  loading?: 'lazy' | 'eager';
+  variant?: 'default' | 'avatar' | 'hero' | 'card' | 'thumbnail' | 'full';
+  priority?: boolean;
+  fallback?: string;
+}
+
+const {
+  src,
+  alt,
+  class: className = '',
+  loading = 'lazy',
+  variant = 'default',
+  priority = false,
+  fallback = '🖼️'
+} = Astro.props;
+
+// Use eager loading for priority images
+const actualLoading = priority ? 'eager' : loading;
+
+// Variant configurations optimized for common use cases
+const variantConfigs = {
+  default: {
+    widths: [320, 640, 960, 1280],
+    sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 800px',
+    aspectRatio: undefined,
+    class: '',
+    quality: 80
+  },
+  avatar: {
+    widths: [64, 128, 256],
+    sizes: '64px',
+    aspectRatio: '1:1',
+    class: 'rounded-full object-cover',
+    quality: 90
+  },
+  hero: {
+    widths: [640, 1280, 1920, 2560],
+    sizes: '100vw',
+    aspectRatio: '16:9',
+    class: 'w-full h-auto object-cover rounded-xl',
+    quality: 85
+  },
+  card: {
+    widths: [320, 640, 960],
+    sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
+    aspectRatio: '4:3',
+    class: 'w-full h-full object-cover',
+    quality: 80
+  },
+  thumbnail: {
+    widths: [80, 160, 240],
+    sizes: '80px',
+    aspectRatio: '1:1',
+    class: 'rounded-md object-cover',
+    quality: 75
+  },
+  full: {
+    widths: [640, 1280, 1920, 2560, 3840],
+    sizes: '100vw',
+    aspectRatio: undefined,
+    class: 'w-full h-auto',
+    quality: 85
+  }
+};
+
+const config = variantConfigs[variant];
+
+// Check if src is an external URL
+const isExternalUrl = typeof src === 'string' && (src.startsWith('http') || src.startsWith('//'));
+const isPublicAsset = typeof src === 'string' && src.startsWith('/');
+
+// Combine classes
+const imageClasses = `responsive-image responsive-image--${variant} ${config.class} ${className}`;
+
+// Generate a unique ID for error handling
+const imageId = `img-${Math.random().toString(36).substring(2, 9)}`;
+---
+
+<div class={`responsive-image-wrapper responsive-image-wrapper--${variant}`}>
+  {!isExternalUrl && !isPublicAsset ? (
+    // Use Astro's optimized Image component for local imports
+    <Image
+      src={src}
+      alt={alt}
+      widths={config.widths}
+      sizes={config.sizes}
+      loading={actualLoading}
+      class={imageClasses}
+      format={['avif', 'webp']}
+      quality={config.quality}
+      decoding={priority ? 'sync' : 'async'}
+      data-image-id={imageId}
+    />
+  ) : (
+    // For external URLs and public assets, use native img with best practices
+    <img
+      id={imageId}
+      src={typeof src === 'string' ? src : src.src}
+      alt={alt}
+      loading={actualLoading}
+      decoding={priority ? 'sync' : 'async'}
+      fetchpriority={priority ? 'high' : 'auto'}
+      class={imageClasses}
+      onerror={`this.style.display='none';document.getElementById('fallback-${imageId}').style.display='flex'`}
+    />
+  )}
+
+  {/* Error fallback */}
+  <div
+    id={`fallback-${imageId}`}
+    class="responsive-image-fallback"
+    style="display: none;"
+    role="img"
+    aria-label={alt}
+  >
+    <span aria-hidden="true">{fallback}</span>
+  </div>
+</div>
+
+<style>
+  .responsive-image-wrapper {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-bg-secondary, #f8fafc);
+  }
+
+  .responsive-image {
+    transition: opacity 0.3s ease;
+  }
+
+  /* Variant-specific wrapper styles */
+  .responsive-image-wrapper--avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+  }
+
+  .responsive-image-wrapper--hero {
+    width: 100%;
+    max-height: 500px;
+    border-radius: var(--radius-xl, 16px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .responsive-image-wrapper--card {
+    aspect-ratio: 4/3;
+    border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
+  }
+
+  .responsive-image-wrapper--thumbnail {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-base, 6px);
+  }
+
+  .responsive-image-wrapper--full {
+    width: 100%;
+  }
+
+  /* Fallback styles */
+  .responsive-image-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-secondary, #f8fafc);
+    color: var(--color-text-secondary, #64748b);
+    font-size: 2rem;
+  }
+
+  .responsive-image-wrapper--thumbnail .responsive-image-fallback {
+    font-size: 1.5rem;
+  }
+
+  /* Loading animation */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .responsive-image-wrapper:not(:has(.responsive-image[src])) {
+    background: linear-gradient(
+      90deg,
+      var(--color-bg-secondary) 0%,
+      var(--color-bg-primary) 50%,
+      var(--color-bg-secondary) 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .responsive-image {
+      transition: none;
+    }
+    .responsive-image-wrapper {
+      animation: none;
+    }
+  }
+
+  /* Print styles */
+  @media print {
+    .responsive-image-wrapper {
+      box-shadow: none !important;
+      background: none !important;
+    }
+  }
+</style>

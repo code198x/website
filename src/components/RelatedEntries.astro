@@ -1,0 +1,447 @@
+---
+import { vaultData } from "../data/vault-data.js";
+import VaultEntryCard from './VaultEntryCard.astro';
+
+interface Props {
+  currentEntry: {
+    c: string; // category
+    s: string; // slug
+    n: string; // name
+    g?: string[]; // tags
+    t?: string; // type
+    y?: number; // year
+  };
+  maxResults?: number;
+  className?: string;
+}
+
+const { currentEntry, maxResults = 6, className = "" } = Astro.props;
+
+// Using centralized category information
+
+// Function to calculate similarity score between two entries
+function calculateSimilarity(entry1: any, entry2: any): number {
+  let score = 0;
+
+  // Same category gets high score
+  if (entry1.c === entry2.c) {
+    score += 30;
+  }
+
+  // Same type gets medium score
+  if (entry1.t && entry2.t && entry1.t === entry2.t) {
+    score += 20;
+  }
+
+  // Shared tags get points
+  const tags1 = entry1.g || [];
+  const tags2 = entry2.g || [];
+  const sharedTags = tags1.filter((tag: string) => tags2.includes(tag));
+  score += sharedTags.length * 15;
+
+  // Similar years get small bonus (within 3 years)
+  if (entry1.y && entry2.y) {
+    const yearDiff = Math.abs(entry1.y - entry2.y);
+    if (yearDiff <= 3) {
+      score += Math.max(0, 10 - yearDiff * 2);
+    }
+  }
+
+  return score;
+}
+
+// Find related entries
+const relatedEntries = vaultData
+  .filter(entry => entry.s !== currentEntry.s) // Exclude current entry
+  .map(entry => ({
+    entry,
+    similarity: calculateSimilarity(currentEntry, entry)
+  }))
+  .filter(({ similarity }) => similarity > 0) // Only entries with some similarity
+  .sort((a, b) => b.similarity - a.similarity) // Sort by similarity score
+  .slice(0, maxResults) // Limit results
+  .map(({ entry }) => entry); // Extract entries
+
+// Note: Could group entries by relationship type for enhanced presentation in future
+---
+
+{relatedEntries.length > 0 && (
+  <section class={`related-entries ${className}`}>
+    <h2 class="related-entries__title">Related Entries</h2>
+
+    <div class="related-entries__grid">
+      {relatedEntries.map((entry) => (
+        <VaultEntryCard
+          entry={entry}
+          variant="related"
+          maxTags={3}
+          showYear={false}
+        />
+      ))}
+    </div>
+
+    {relatedEntries.length === maxResults && (
+      <div class="related-entries__more">
+        <p class="related-entries__more-text">
+          Showing {maxResults} related entries.
+          <a href="/vault" class="related-entries__more-link">Browse all entries</a>
+        </p>
+      </div>
+    )}
+  </section>
+)}
+
+<style>
+  /* Main container with gradient background */
+  .related-entries {
+    margin-top: var(--space-2xl);
+    padding: var(--space-xl);
+    background: linear-gradient(135deg,
+      var(--color-background-secondary) 0%,
+      rgba(0, 123, 255, 0.03) 50%,
+      var(--color-background-secondary) 100%);
+    border-radius: var(--border-radius-lg);
+    border: 2px solid var(--color-border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Add decorative pattern overlay */
+  .related-entries::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+      radial-gradient(circle at 20% 80%, transparent 50%, rgba(0, 123, 255, 0.02) 50%);
+    background-size: 30px 30px;
+    pointer-events: none;
+  }
+
+  /* Enhanced title with gradient text */
+  .related-entries__title {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--color-text), var(--color-primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--space-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    position: relative;
+  }
+
+  .related-entries__title::before {
+    content: "🔗";
+    font-size: var(--font-size-xl);
+    -webkit-text-fill-color: initial;
+    filter: grayscale(0%);
+  }
+
+  /* Grid with better spacing */
+  .related-entries__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-lg);
+    position: relative;
+  }
+
+  /* Enhanced card with glassmorphism effect */
+  .related-entry-card {
+    background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.95),
+      rgba(255, 255, 255, 0.85));
+    backdrop-filter: blur(10px);
+    border: 2px solid var(--color-border);
+    border-radius: var(--border-radius-lg);
+    padding: var(--space-lg);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Hover effect with glow */
+  .related-entry-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg,
+      transparent 0%,
+      rgba(0, 123, 255, 0.05) 50%,
+      transparent 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .related-entry-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow:
+      0 10px 30px rgba(0, 123, 255, 0.15),
+      0 5px 15px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-primary);
+  }
+
+  .related-entry-card:hover::after {
+    opacity: 1;
+  }
+
+  /* Card header with improved layout */
+  .related-entry-card__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid rgba(0, 123, 255, 0.1);
+  }
+
+  .related-entry-card__icon {
+    font-size: var(--font-size-lg);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    transition: transform 0.3s ease;
+  }
+
+  .related-entry-card:hover .related-entry-card__icon {
+    transform: scale(1.2) rotate(10deg);
+  }
+
+  .related-entry-card__category {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-tertiary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex: 1;
+  }
+
+  .related-entry-card__year {
+    font-size: var(--font-size-xs);
+    background: var(--color-primary);
+    color: white;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--border-radius-full);
+    font-weight: 600;
+  }
+
+  /* Enhanced title styling */
+  .related-entry-card__title {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-md);
+    line-height: 1.3;
+    transition: color 0.2s ease;
+  }
+
+  .related-entry-card:hover .related-entry-card__title {
+    color: var(--color-primary);
+  }
+
+  /* Improved description */
+  .related-entry-card__description {
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    margin-bottom: var(--space-md);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+  }
+
+  /* Enhanced tags with animations */
+  .related-entry-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-top: auto;
+  }
+
+  .related-entry-card__tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--font-size-xs);
+    background: linear-gradient(135deg,
+      rgba(0, 123, 255, 0.08),
+      rgba(0, 123, 255, 0.15));
+    color: var(--color-primary);
+    padding: calc(var(--space-xs) * 0.75) var(--space-sm);
+    border-radius: var(--border-radius-full);
+    border: 1px solid rgba(0, 123, 255, 0.2);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  .related-entry-card__tag::before {
+    content: '#';
+    margin-right: 1px;
+    opacity: 0.5;
+    font-weight: 400;
+    font-size: 0.9em;
+  }
+
+  /* Tag shimmer effect */
+  .related-entry-card__tag::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+      transparent,
+      rgba(0, 123, 255, 0.2),
+      transparent);
+    transition: left 0.5s ease;
+  }
+
+  .related-entry-card:hover .related-entry-card__tag::after {
+    left: 100%;
+  }
+
+  .related-entry-card__tag:hover {
+    background: linear-gradient(135deg,
+      rgba(0, 123, 255, 0.15),
+      rgba(0, 123, 255, 0.25));
+    border-color: rgba(0, 123, 255, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+  }
+
+  .related-entry-card__tag--more {
+    background: linear-gradient(135deg,
+      rgba(100, 50, 200, 0.15),
+      rgba(100, 50, 200, 0.25));
+    color: rgb(100, 50, 200);
+    border-color: rgba(100, 50, 200, 0.3);
+    font-weight: 700;
+    cursor: default;
+  }
+
+  .related-entry-card__tag--more::before {
+    content: '';
+  }
+
+  /* Enhanced footer section */
+  .related-entries__more {
+    margin-top: var(--space-lg);
+    padding-top: var(--space-lg);
+    border-top: 2px dashed var(--color-border);
+    text-align: center;
+    position: relative;
+  }
+
+  .related-entries__more-text {
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+  }
+
+  .related-entries__more-link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 600;
+    position: relative;
+    padding-bottom: 2px;
+    margin-left: var(--space-xs);
+    display: inline-block;
+  }
+
+  .related-entries__more-link::after {
+    content: '→';
+    margin-left: var(--space-xs);
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+
+  .related-entries__more-link::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-primary);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.3s ease;
+  }
+
+  .related-entries__more-link:hover::before {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
+  .related-entries__more-link:hover::after {
+    transform: translateX(4px);
+  }
+
+  /* Responsive design with better breakpoints */
+  @media (max-width: 1024px) {
+    .related-entries__grid {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+  }
+
+  @media (max-width: 768px) {
+    .related-entries {
+      margin-top: var(--space-xl);
+      padding: var(--space-lg);
+    }
+
+    .related-entries__grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-md);
+    }
+
+    .related-entry-card {
+      padding: var(--space-md);
+    }
+
+    .related-entries__title {
+      font-size: var(--font-size-xl);
+    }
+
+    .related-entry-card__description {
+      -webkit-line-clamp: 2;
+    }
+  }
+
+  /* Dark mode optimizations */
+  @media (prefers-color-scheme: dark) {
+    .related-entry-card {
+      background: linear-gradient(135deg,
+        rgba(20, 20, 30, 0.95),
+        rgba(30, 30, 40, 0.85));
+    }
+
+    .related-entry-card::after {
+      background: linear-gradient(135deg,
+        transparent 0%,
+        rgba(100, 200, 255, 0.05) 50%,
+        transparent 100%);
+    }
+
+    .related-entry-card__tag {
+      background: linear-gradient(135deg,
+        rgba(40, 40, 50, 1),
+        rgba(0, 123, 255, 0.1));
+    }
+  }
+</style>

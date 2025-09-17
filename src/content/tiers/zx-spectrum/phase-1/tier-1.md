@@ -29,6 +29,7 @@ Welcome to your first ZX Spectrum game development project! **Cursor Quest** int
 ## What You'll Build
 
 **Cursor Quest** - A complete character movement game featuring:
+
 - Character-based cursor (@) that moves through text positions
 - Attribute-based trail effects showing movement history
 - Target letter collection system with scoring
@@ -43,6 +44,7 @@ Navigate a cursor character through a field of text, leaving a colored trail usi
 ## Learning Journey (32 Lessons)
 
 ### Foundation (Lessons 1-8)
+
 - **Lesson 1**: Spectrum setup and screen memory basics
 - **Lesson 2**: Display characters at specific positions
 - **Lesson 3**: Calculate screen addresses and positioning
@@ -53,6 +55,7 @@ Navigate a cursor character through a field of text, leaving a colored trail usi
 - **Lesson 8**: Create basic game loop structure
 
 ### Attribute Effects (Lessons 9-16)
+
 - **Lesson 9**: Understanding attribute memory system
 - **Lesson 10**: Set up trail effect framework
 - **Lesson 11**: Draw colored trail behind cursor
@@ -63,6 +66,7 @@ Navigate a cursor character through a field of text, leaving a colored trail usi
 - **Lesson 16**: Add level progression
 
 ### Visual Polish (Lessons 17-24)
+
 - **Lesson 17**: Add border effects using port 254
 - **Lesson 18**: Create character animation cycles
 - **Lesson 19**: Generate maze layouts with walls
@@ -73,6 +77,7 @@ Navigate a cursor character through a field of text, leaving a colored trail usi
 - **Lesson 24**: Add transition effects
 
 ### Audio and Completion (Lessons 25-32)
+
 - **Lesson 25**: Beeper basics and tone generation
 - **Lesson 26**: Create movement sound effects
 - **Lesson 27**: Add beeper music
@@ -99,6 +104,7 @@ Navigate a cursor character through a field of text, leaving a colored trail usi
 ## Why Character Movement?
 
 Character movement is the perfect introduction to Spectrum programming because it teaches:
+
 - **Screen memory layout**: Understanding the Spectrum's unique display system
 - **Attribute control**: Managing colors and visual effects
 - **Input handling**: Responsive keyboard controls
@@ -129,6 +135,7 @@ Character movement is the perfect introduction to Spectrum programming because i
 ## Project Outcomes
 
 By completing Cursor Quest, you will have:
+
 - Created your first complete Spectrum game
 - Mastered fundamental Z80 assembly programming
 - Learned character-based graphics and attribute control

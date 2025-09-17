@@ -1,0 +1,575 @@
+---
+title: "Animate Your Sprite: From Static to Spectacular"
+system: "commodore-64"
+phase_number: 1
+tier_number: 1
+lesson_number: 3
+description: "Transform your static sprite into smooth, professional animation using raster timing and movement mathematics"
+learning_objectives:
+  - "Master raster synchronization for smooth animation"
+  - "Implement various movement patterns and physics"
+  - "Create bouncing, circular, and wave-based motion"
+  - "Apply professional game animation techniques"
+concepts:
+  - "Raster timing - the secret to smooth motion"
+  - "Movement mathematics - velocity and acceleration"
+  - "Animation patterns - linear, sine waves, bouncing"
+  - "Frame timing - consistent 50Hz animation"
+estimated_duration: "45-60 minutes"
+difficulty: "medium"
+prerequisites:
+  - "Lesson 2: Display Your First Sprite"
+code_examples: true
+practical_exercise: true
+order: 3
+---
+
+import CodeBlock from '../../../../../components/CodeBlock.astro';
+
+# Animate Your Sprite: From Static to Spectacular
+**Learn the timing techniques that create smooth animation**
+
+Animation is the art of creating movement through rapid display of sequential images. On the C64, smooth animation requires precise timing - updating sprite positions at exactly the right moment in the screen refresh cycle.
+
+Picture this: Summer 1985, PCW Show at Olympia. You're watching Andrew Braybrook demonstrate "Uridium" for the first time. As the massive Manta ship glides effortlessly across alien dreadnought battlecruisers, you realize you're witnessing something revolutionary. While other programmers struggle with jerky, flickering movement, Braybrook's sprite flows like silk across the screen.
+
+The secret? **Professional timing techniques** that separated legendary C64 games from amateur efforts. Today, you'll learn the same raster synchronization methods used in "The Last Ninja," "Wizball," and "Impossible Mission."
+
+## What You'll Learn
+
+In this lesson, you'll discover:
+- **Raster timing** - Synchronizing with the screen refresh for smooth motion
+- **The $D012 register** - Reading the current scan line position
+- **Movement patterns** - Linear, sine wave, and bouncing animations
+- **Velocity and acceleration** - Basic physics for realistic motion
+- **50Hz/60Hz timing** - Frame-perfect animation on PAL and NTSC systems
+
+## The Raster Revolution: Why Timing Is Everything
+
+### The Amateur's Dilemma
+
+Most programmers in the 1980s animated sprites like this:
+
+**The Wrong Way:**
+<CodeBlock title="Amateur Animation (Don't Do This!)" language="asm" code={`animation_loop:
+    ; Move sprite right
+    inc $d000          ; Just increment X position
+    ; Do other game logic...
+    ; Eventually loop back
+    jmp animation_loop`} />
+
+This creates jerky, inconsistent movement because sprites update at random points during the screen refresh cycle.
+
+### The Professional Secret: Raster Synchronization
+
+The breakthrough technique that professionals discovered was **raster timing**—synchronizing sprite movement with the television's scan. The VIC-II chip provides a register ($D012) that tells you exactly which scan line is currently being drawn.
+
+Here's how the magic works:
+
+<CodeBlock title="Professional Raster Synchronization" language="asm" code={`animation_loop:
+        ; Wait for raster line 250 (bottom of visible area)
+        lda #250
+wait_raster:
+        cmp $d012              ; Current raster line
+        bne wait_raster        ; Wait until we reach line 250
+        
+        ; NOW it's safe to update sprite positions
+        inc sprite_x           ; Move sprite right
+        lda sprite_x
+        sta $d000              ; Update hardware register
+        
+        jmp animation_loop     ; Perfect 50Hz timing!`} />
+
+**Why This Works:**
+- Line 250 is in the border area where nothing visible is being drawn
+- All sprite updates happen at exactly the same time in each frame
+- Results in perfectly smooth 50Hz animation (PAL) or 60Hz (NTSC)
+- Zero flicker or tearing artifacts
+
+## Movement Mathematics: From Simple to Sophisticated
+
+### Linear Movement: The Foundation
+
+Linear movement means constant velocity - the sprite moves the same distance each frame. This is the simplest form of animation:
+
+<CodeBlock title="Basic Linear Movement" language="asm" code={`        ; BASIC launcher
+        !byte $0b,$08,$0a,$00,$9e,$32,$30,$36,$31,$00,$00,$00
+
+start:
+        ; First, recreate our title screen from Lesson 1
+        jsr setup_title_screen
+        
+        ; Setup sprite (assuming sprite data already at $2000)
+        lda #$80               ; Point to sprite data
+        sta $07f8              ; Sprite 0 pointer
+        lda #$01               ; Enable sprite 0  
+        sta $d015
+        lda #$03               ; Cyan color (our theme!)
+        sta $d027
+        
+        ; Initial position - centered below title
+        lda #$AC               ; Center X position
+        sta $d000
+        lda #$C8               ; Base Y position
+        sta sprite_base_y
+        sta $d001
+
+animation_loop:
+        ; Professional raster sync
+        lda #250
+wait_raster:
+        cmp $d012
+        bne wait_raster
+        
+        ; Create floating effect using sine wave
+        inc frame_counter
+        lda frame_counter
+        lsr                    ; Slow it down
+        lsr
+        lsr
+        and #31                ; Keep in range 0-31
+        tax
+        lda float_table,x      ; Get Y offset
+        clc
+        adc sprite_base_y      ; Add to base position
+        sta $d001              ; Update sprite Y
+        
+        jmp animation_loop
+
+; Variables
+sprite_base_y:
+        !byte $C8              ; Base Y position
+frame_counter:
+        !byte 0                ; Animation frame
+
+; Gentle floating motion table (32 values)
+float_table:
+        !byte 0,1,2,3,4,5,6,7
+        !byte 8,9,10,11,12,12,13,13
+        !byte 13,13,12,12,11,10,9,8
+        !byte 7,6,5,4,3,2,1,0`} />
+
+### Bouncing Physics: Adding Realism
+
+Professional games like "Arkanoid" and "Bubble Bobble" featured realistic bouncing. Here's how to implement proper physics:
+
+<CodeBlock title="Realistic Bouncing Ball" language="asm" code={`animation_loop:
+        ; Raster sync
+        lda #250
+wait_raster:
+        cmp $d012
+        bne wait_raster
+        
+        ; Update X position
+        lda sprite_x
+        clc
+        adc velocity_x         ; Add horizontal velocity
+        sta sprite_x
+        
+        ; Update Y position  
+        lda sprite_y
+        clc
+        adc velocity_y         ; Add vertical velocity
+        sta sprite_y
+        
+        ; Apply gravity to Y velocity
+        inc velocity_y         ; Gravity pulls down
+        
+        ; Check Y boundaries (bounce off floor/ceiling)
+        lda sprite_y
+        cmp #200               ; Floor?
+        bcc check_ceiling
+        lda #200               ; Snap to floor
+        sta sprite_y
+        lda velocity_y         ; Reverse and reduce velocity
+        eor #$ff               ; Invert
+        clc
+        adc #1
+        lsr                    ; Reduce by half (energy loss)
+        sta velocity_y
+        
+check_ceiling:
+        lda sprite_y
+        cmp #50                ; Ceiling?
+        bcs check_walls
+        lda #50                ; Snap to ceiling
+        sta sprite_y
+        lda #2                 ; Small downward velocity
+        sta velocity_y
+        
+check_walls:
+        ; Similar logic for left/right walls...
+        lda sprite_x
+        cmp #300               ; Right wall?
+        bcc update_hardware
+        ; Reverse X velocity...
+        
+update_hardware:
+        lda sprite_x
+        sta $d000              ; Update hardware X
+        lda sprite_y  
+        sta $d001              ; Update hardware Y
+        
+        jmp animation_loop
+
+; Physics variables
+sprite_x:     !byte 160       ; Center X
+sprite_y:     !byte 100       ; Center Y  
+velocity_x:   !byte 2         ; Horizontal speed
+velocity_y:   !byte 0         ; Vertical speed (signed)`} />
+
+### Sine Wave Motion: Mathematical Elegance
+
+**What's a sine wave?** Imagine drawing a smooth wave that goes up and down repeatedly - like ocean waves or a snake slithering. Mathematically, it's a curve that smoothly oscillates between maximum and minimum values. In animation, sine waves create natural-looking motion because many things in nature move this way: floating objects, breathing, pendulums, and gentle bobbing.
+
+Instead of calculating sine values (which requires complex math the 6502 can't do quickly), we pre-calculate them and store them in a table. Each value represents a Y position along the wave.
+
+The floating effect we just created is a simplified sine wave. For more complex patterns, like the mesmerizing animations in "Wizball," you can use full sine tables:
+
+<CodeBlock title="Sine Wave Animation (Wizball Style)" language="asm" code={`animation_loop:
+        ; Raster sync
+        lda #250
+wait_raster:
+        cmp $d012  
+        bne wait_raster
+        
+        ; Linear movement along X
+        inc frame_counter
+        lda frame_counter
+        lsr                    ; Slow down movement
+        lsr
+        clc
+        adc #50                ; Start position
+        sta sprite_x
+        
+        ; Sine wave for Y position
+        lda frame_counter      ; Use frame as angle
+        and #63                ; Keep in 0-63 range
+        tax                    ; Use as index
+        lda sine_table,x       ; Look up sine value
+        clc
+        adc #100               ; Center vertically
+        sta sprite_y
+        
+        ; Update hardware
+        lda sprite_x
+        sta $d000
+        lda sprite_y
+        sta $d001
+        
+        jmp animation_loop
+
+frame_counter:
+        !byte 0
+
+; Pre-calculated sine table (64 values for smooth waves)
+; Values range from 0-255 (byte limit), centered around 128
+; Creates smooth up/down motion when used for Y position
+sine_table:
+        !byte 128,140,152,163,174,184,194,203
+        !byte 211,218,225,230,235,239,242,244
+        !byte 246,247,247,246,244,242,239,235
+        !byte 230,225,218,211,203,194,184,174
+        !byte 163,152,140,128,115,103,91,80
+        !byte 70,61,52,44,37,30,25,20
+        !byte 16,13,11,9,8,8,9,11
+        !byte 13,16,20,25,30,37,44,52
+        !byte 61,70,80,91,103,115,128,128`} />
+
+## Professional Animation Patterns
+
+### Multi-Sprite Formations
+
+Games like "Galaga" featured complex formation flying. Here's the technique:
+
+<CodeBlock title="Formation Flying (Galaga Style)" language="asm" code={`        ; Enable three sprites for formation
+        lda #%00000111         ; Sprites 0, 1, 2
+        sta $d015
+        
+        ; Set formation colors
+        lda #$07               ; Yellow leader
+        sta $d027
+        lda #$05               ; Green wingman 1  
+        sta $d028
+        lda #$03               ; Cyan wingman 2
+        sta $d029
+
+formation_loop:
+        ; Raster sync
+        lda #250
+wait_raster:
+        cmp $d012
+        bne wait_raster
+        
+        ; Leader follows sine wave
+        inc formation_frame
+        lda formation_frame
+        and #31
+        tax
+        lda sine_table,x
+        clc  
+        adc #120               ; Base Y position
+        sta leader_y
+        
+        ; Wingmen follow with offset
+        lda leader_y
+        sec
+        sbc #20                ; Offset above leader
+        sta wingman1_y
+        
+        lda leader_y
+        clc
+        adc #20                ; Offset below leader  
+        sta wingman2_y
+        
+        ; Update hardware positions
+        lda #160               ; Fixed X for demonstration
+        sta $d000              ; Leader X
+        sta $d002              ; Wingman 1 X (could add offset)
+        sta $d004              ; Wingman 2 X
+        
+        lda leader_y
+        sta $d001              ; Leader Y
+        lda wingman1_y
+        sta $d003              ; Wingman 1 Y
+        lda wingman2_y
+        sta $d005              ; Wingman 2 Y
+        
+        jmp formation_loop
+
+formation_frame:  !byte 0
+leader_y:         !byte 120
+wingman1_y:       !byte 100  
+wingman2_y:       !byte 140`} />
+
+### Advanced: Circular Motion
+
+The most impressive effect was circular motion, used in games like "Thrust" for realistic physics:
+
+<CodeBlock title="Circular Motion Physics" language="asm" code={`circular_loop:
+        ; Raster sync
+        lda #250
+wait_raster:
+        cmp $d012
+        bne wait_raster
+        
+        ; Increment angle
+        inc angle
+        lda angle
+        and #63                ; Keep in 0-63 range
+        tax
+        
+        ; X = center_x + radius * cos(angle)
+        lda cosine_table,x
+        clc
+        adc #160               ; Center X
+        sta $d000
+        
+        ; Y = center_y + radius * sin(angle)  
+        lda sine_table,x
+        clc
+        adc #120               ; Center Y
+        sta $d001
+        
+        jmp circular_loop
+
+angle:           !byte 0
+
+; Cosine table (same as sine, but shifted)
+cosine_table:
+        !byte 128,127,126,124,121,117,112,106
+        !byte 100,92,84,75,66,56,46,35
+        !byte 24,12,0,12,24,35,46,56
+        !byte 66,75,84,92,100,106,112,117
+        !byte 121,124,126,127,128,129,130,132
+        !byte 135,139,144,150,156,164,172,181
+        !byte 190,200,210,221,232,243,244,255
+        !byte 244,243,232,221,210,200,190,181
+        !byte 172,164,156,150,144,139,135,132
+        !byte 130,129,128,127,126,124,121,117`} />
+
+## Professional Challenge Exercises
+
+Now that you've mastered the fundamentals, try these advanced techniques used in classic games:
+
+### "Thrust" Style Physics
+
+Implement realistic spacecraft physics with momentum and rotation:
+
+<CodeBlock title="Spacecraft Physics Challenge" language="asm" code={`        ; Apply thrust based on rotation angle
+        lda thrust_active      ; Is thrust key pressed?
+        beq apply_gravity
+        
+        ; Add thrust vector to velocity
+        ldx rotation_angle
+        lda thrust_x_table,x   ; Thrust X component
+        clc
+        adc velocity_x         ; Add to current velocity
+        sta velocity_x
+        
+        lda thrust_y_table,x   ; Thrust Y component  
+        clc
+        adc velocity_y
+        sta velocity_y
+        
+apply_gravity:
+        ; Apply gravity (downward force)
+        inc velocity_y         ; Gravity always pulls down
+        
+        ; Apply momentum to position
+        lda sprite_x
+        clc
+        adc velocity_x
+        sta sprite_x
+        
+        lda sprite_y
+        clc  
+        adc velocity_y
+        sta sprite_y`} />
+
+### "The Last Ninja" Smooth Scrolling
+
+Create the illusion of a moving camera by updating all sprites relative to a scroll position:
+
+<CodeBlock title="Smooth Scrolling Animation" language="asm" code={`        ; Update scroll position
+        lda scroll_direction
+        beq scroll_done
+        bmi scroll_left
+        
+scroll_right:
+        inc scroll_x
+        lda scroll_x
+        cmp #255
+        bne update_sprites
+        lda #0
+        sta scroll_x
+        jmp update_sprites
+        
+scroll_left:
+        dec scroll_x
+        
+update_sprites:
+        ; Update all sprite positions relative to scroll
+        lda base_sprite_x      ; Original position
+        sec
+        sbc scroll_x           ; Subtract scroll offset
+        sta $d000              ; Final screen position`} />
+
+### "Wizball" Color Cycling
+
+Combine animation with dynamic color changes:
+
+<CodeBlock title="Animated Color Effects" language="asm" code={`        ; Cycle through colors smoothly
+        inc color_frame
+        lda color_frame
+        and #15                ; 16-color cycle
+        tax
+        lda color_sequence,x
+        sta $d027              ; Change sprite color
+        
+        ; Also animate the sprite position
+        lda color_frame
+        lsr
+        and #63
+        tax
+        lda sine_table,x
+        clc
+        adc #120
+        sta $d001              ; Sine wave Y motion
+
+color_sequence:
+        !byte $00,$01,$0f,$0c,$0b,$04,$06,$0e
+        !byte $03,$05,$0d,$07,$01,$0f,$0c,$0b`} />
+
+## Historical Techniques: Recreation Challenges
+
+### "Impossible Mission" Running Animation
+
+Professor Elvin Atombender's laboratory featured incredibly smooth character animation. Try recreating this multi-frame sprite animation:
+
+1. **Frame-Based Animation**: Switch between different sprite data
+2. **Consistent Timing**: Use raster sync for smooth frame transitions
+3. **Direction Changes**: Flip sprite data for left/right movement
+
+### "Bubble Bobble" Physics
+
+The bubble mechanics in this classic required sophisticated collision and physics:
+
+1. **Floating Behavior**: Bubbles slowly rise with sine wave motion
+2. **Pop Physics**: When bubbles pop, contents follow ballistic trajectories  
+3. **Boundary Bouncing**: Perfect elastic collisions with walls
+
+### "Uridium" Parallax Motion
+
+The massive Manta ship moved over detailed landscapes:
+
+1. **Multi-Layer Movement**: Background scrolls slower than foreground
+2. **Sprite Multiplexing**: More than 8 sprites visible using raster interrupts
+3. **Smooth Acceleration**: Velocity changes gradually, not instantly
+
+## Common Animation Mistakes to Avoid
+
+**Mistake 1: No Raster Sync**
+<CodeBlock title="Wrong - Jerky Movement" language="asm" code={`; WRONG - jerky movement
+inc $d000              ; Updates at random times`} />
+
+**Solution: Always Use Raster Timing**
+<CodeBlock title="Correct - Smooth Movement" language="asm" code={`; CORRECT - smooth movement  
+lda #250
+wait: cmp $d012
+bne wait
+inc sprite_x            ; Update variable first
+lda sprite_x  
+sta $d000               ; Then update hardware`} />
+
+**Mistake 2: Direct Hardware Updates**
+<CodeBlock title="Wrong - Unpredictable Updates" language="asm" code={`; WRONG - can cause glitches
+inc $d000              ; Directly modify hardware`} />
+
+**Solution: Use Variables**
+<CodeBlock title="Correct - Predictable Behavior" language="asm" code={`; CORRECT - predictable behavior
+inc sprite_x_position   ; Update variable
+lda sprite_x_position
+sta $d000               ; Copy to hardware`} />
+
+## What's Next?
+
+Your Neon Nexus title screen now has professional polish with its floating player sprite! In our next lesson, we'll add joystick input so players can press fire to start the game - and later, control the sprite during gameplay.
+
+But first, experiment with your title screen animation:
+- Try different floating speeds by adjusting the shift operations
+- Create a pulsing effect by also changing the sprite color
+- Add a second sprite that floats in the opposite phase
+- Make the "PRESS FIRE TO START" text flash in sync with the sprite
+
+**Remember:** The techniques you've just learned are the same ones used by legendary programmers like Andrew Braybrook, Jeff Minter, and Martin Walker. Your title screen is starting to look like something from a real C64 game!
+
+**WOW Moment:** Your sprites now move with the same silky smoothness that amazed gamers in the 1980s! You've unlocked the professional animation secrets that separated classic C64 games from the competition.
+
+## Quick Reference
+
+<CodeBlock title="Professional Animation Template" language="asm" code={`animation_loop:
+        ; 1. Wait for safe raster line  
+        lda #250
+wait:   cmp $d012
+        bne wait
+        
+        ; 2. Update game logic
+        inc sprite_x
+        
+        ; 3. Apply physics/math
+        lda sprite_x
+        cmp #320
+        bne no_wrap
+        lda #0
+        sta sprite_x
+        
+no_wrap:
+        ; 4. Update hardware registers
+        lda sprite_x
+        sta $d000
+        
+        ; 5. Loop for next frame
+        jmp animation_loop`} />
+
+**The Foundation of All Great C64 Games:** Raster sync + smooth updates = professional animation!

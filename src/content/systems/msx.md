@@ -1,143 +1,137 @@
 ---
 name: "MSX"
-slug: "msx"
-manufacturer: "Multiple manufacturers (ASCII Corporation standard)"
-model_number: "MSX, MSX2, MSX2+"
-cpu: "Zilog Z80A"
+full_name: "MSX Standard"
+manufacturer: "ASCII/Microsoft"
+model_number: "Various"
+alternative_names: ["MSX1", "MSX Standard"]
+
+# Hardware specifications
+cpu: "Z80A"
+cpu_details:
+  architecture: "8-bit"
+  instruction_set: "Zilog Z80"
+  addressing_modes: ["Immediate", "Register", "Indexed", "Indirect", "Relative"]
+  registers: "A, B, C, D, E, H, L, IX, IY, SP, PC"
+
 clock_speed: "3.58 MHz"
-ram: "8 KB (minimum), typically 16-64 KB"
-rom: "32 KB (MSX-BASIC, BIOS)"
+ram: "32KB-64KB"
+ram_details:
+  user_available: "32KB typical"
+  video_ram: "16KB"
+  expansion_options: ["Memory mapper", "Up to 512KB"]
+
+rom: "32KB BIOS"
+rom_contents: ["MSX BASIC", "BIOS routines"]
+
+# Graphics capabilities
 video:
-  processor: "Texas Instruments TMS9918A (MSX), Yamaha V9938 (MSX2)"
-  resolution: "256×192 pixels (MSX), 512×212 pixels (MSX2)"
-  colors: "16 colours from palette of 512 (MSX2)"
-  display_modes:
-    - "Text modes: 40×24, 32×24"
-    - "Graphics modes: 256×192, 512×212 (MSX2)"
-    - "Multicolour sprite support"
+  processor: "TMS9918"
+  resolution: "256×192"
+  colors: "16 colors"
+  display_modes: ["Text", "Graphics I", "Graphics II", "Multicolor"]
+  sprites:
+    count: 32
+    size: "8×8 or 16×16"
+    colors_per_sprite: 1
+  hardware_scrolling: false
+  raster_interrupts: true
+
+# Audio capabilities
 audio:
-  chip: "General Instrument AY-3-8910"
+  chip: "AY-3-8910 PSG"
   channels: 3
-  features:
-    - "Square wave generators"
-    - "Noise generator"
-    - "Volume envelopes"
-storage:
-  - "Compact Cassette tape"
-  - "3.5\" floppy disk (MSX2 onwards)"
-  - "ROM cartridges"
-io_ports:
-  - "2 × joystick ports"
-  - "Cartridge slots"
-  - "Cassette interface"
-  - "Printer port"
-  - "Expansion slot"
-price_at_launch:
-  global: "Varied by manufacturer"
-  countries:
-    - country: "Japan"
-      price: "39800"
-      currency: "JPY"
-    - country: "Netherlands"
-      price: "598"
-      currency: "NLG"
+  features: ["Square waves", "Noise", "Envelope control"]
+  sample_playback: false
+  synthesis_types: ["PSG synthesis"]
+
+# Storage and I/O
+storage: ["Cassette tape", "Cartridge", "Floppy disk"]
+storage_details:
+  built_in: ["Cassette interface"]
+  expansion: ["Disk drive", "Cartridge slot"]
+  typical_capacity:
+    cassette: "Variable"
+    cartridge: "8KB-512KB"
+    floppy: "360KB-720KB"
+
+io_ports: ["Cartridge slots", "Joystick ports", "Cassette", "Printer"]
+expansion_options: ["Disk interface", "RS-232", "MIDI"]
+
+# Commercial information
 release_date:
-  global: 1983-06-27
-  countries:
-    - country: "Japan"
-      date: 1983-06-27
-    - country: "Netherlands"
-      date: 1983-09-01
-    - country: "United Kingdom"
-      date: 1984-01-01
-discontinued: 1995-01-01
-units_sold: "Over 5 million units worldwide"
+  global: 1983-06-27T00:00:00Z
+
 country_of_origin: "Japan"
-operating_system: "MSX-DOS (disk systems)"
+operating_system: "MSX-DOS"
+programming_languages: ["Z80 Assembly", "MSX BASIC"]
+
+# Target market and positioning
+target_market: ["Home computing", "Gaming", "Education"]
+market_positioning: "Universal home computer standard"
+competition: ["Commodore 64", "ZX Spectrum", "NEC PC-8801"]
+
+# Educational relevance
+learning_advantages: ["Standard architecture", "Japanese gaming roots", "Z80 programming"]
+common_beginner_projects: ["Sprite demos", "PSG music", "Simple games"]
+
+# Modern preservation and emulation
 emulated: true
 emulators:
   - name: "openMSX"
-    platform: "Multi-platform"
+    platform: "Windows, macOS, Linux"
     accuracy: "cycle_accurate"
-  - name: "blueMSX"
+  - name: "BlueMSX"
     platform: "Windows"
     accuracy: "high"
-  - name: "fMSX"
-    platform: "Multi-platform"
-    accuracy: "good"
-variants:
-  - name: "MSX"
-    model_number: "MSX"
-    release_date:
-      global: 1983-06-27
-    differences: "Original 8-bit standard"
-  - name: "MSX2"
-    model_number: "MSX2"
-    release_date:
-      global: 1985-01-01
-    differences: "Enhanced graphics, more RAM, 3.5\" disk support"
-  - name: "MSX2+"
-    model_number: "MSX2+"
-    release_date:
-      global: 1988-01-01
-    differences: "Further enhanced graphics, built-in disk drive"
-notable_software:
-  - name: "Metal Gear"
-    type: "Game"
-    year: 1987
-    developer: "Konami"
-    publisher: "Konami"
-  - name: "Aleste"
-    type: "Game"
-    year: 1988
-    developer: "Compile"
-    publisher: "Compile"
-  - name: "MSX-BASIC"
-    type: "Programming Language"
-    year: 1983
-    developer: "Microsoft"
-    publisher: "ASCII Corporation"
-historical_significance: "MSX was an attempt to create a universal home computer standard, like VHS for video recorders. Developed by ASCII Corporation and Microsoft, it was adopted by many manufacturers worldwide, particularly in Japan, Netherlands, and Brazil, creating the first truly international home computer standard."
-image: "/images/systems/msx.jpg"
-order: 7
+
+preservation_status: "excellent"
+hardware_availability: "available"
+
+# Media
+description: "The Japanese standard that united manufacturers and launched legendary game franchises like Metal Gear and Bomberman."
+
+# Platform Classification
+medal_tier: "silver"
+total_lessons: 512
+total_games: 4
+estimated_duration: "6-9 months"
+cpu_architecture: "Z80"
+difficulty_level: "intermediate"
+status: "planned"
+order: 12
 ---
 
-# MSX Standard
+# MSX
 
-## Coming Soon!
+_Coming Soon_
 
-The MSX standard will be added to Code Like It's 198x in a future update. This international home computer standard featured:
+The MSX wasn't just a computer - it was a vision of unified computing. Created by ASCII and Microsoft, this Japanese standard brought together Sony, Panasonic, Yamaha, and others to create a compatible ecosystem that launched gaming legends.
 
-- **Z80 Assembly Programming** - Learn on the first truly international standard
-- **Standardised Architecture** - Understand how hardware standards work
-- **International Perspective** - Explore computing culture beyond the UK/US
-- **Advanced Graphics** - Progressive enhancement through MSX2 and MSX2+
+## Why Learn MSX Programming?
 
-MSX represented an ambitious attempt to create a universal home computer standard, successfully implemented by dozens of manufacturers worldwide.
+The MSX combines Z80 power with standardized hardware, making it perfect for learning structured game development. Its influence on Japanese gaming culture and the birth of franchises like Metal Gear make it historically essential.
 
-### Why MSX Matters
+## What Makes the MSX Special
 
-The MSX standard was revolutionary - instead of each manufacturer creating incompatible computers, MSX established a common architecture that ensured software compatibility across different brands. This concept influenced later standards and demonstrated how international cooperation could benefit the entire computing industry.
+- **Unified Standard**: Multiple manufacturers, one architecture
+- **Gaming Heritage**: Birthplace of Konami and Hudson classics
+- **Z80 Excellence**: Clean, powerful processor architecture
+- **Japanese Computing**: Window into Japan's digital revolution
 
-MSX was particularly successful in Japan, where it became the dominant home computer platform and spawned legendary game franchises including Metal Gear, Gradius, and many others.
+## Curriculum Highlights
 
-**Educational Focus:**
-- Z80 assembly language programming
-- Understanding hardware standardisation
-- International computing perspectives
-- Progressive system evolution (MSX → MSX2 → MSX2+)
-- Advanced graphics and sprite programming
+_Currently in development_
 
-**International Significance:**
-- First universal home computer standard
-- Successful in Japan, Netherlands, Brazil, and other markets
-- Demonstrated feasibility of hardware compatibility standards
-- Influenced later standardisation efforts
+When launched, the MSX curriculum will include:
 
-**Notable Achievements:**
-- Created by Microsoft and ASCII Corporation
-- Adopted by 70+ manufacturers worldwide
-- Spawned unique gaming culture in Japan
-- Established template for hardware standards
+- Z80 assembly programming
+- TMS9918 graphics and sprites
+- AY-3-8910 sound programming
+- MSX-DOS and BIOS calls
+- 4 complete projects including arcade-style games
 
-Check back soon for comprehensive MSX programming lessons that explore the world's first international home computer standard!
+## The MSX Legacy
+
+The MSX proved that standards could unite an industry. While it never conquered America, it defined computing in Japan, Brazil, and Europe, creating a generation of programmers who would shape gaming's future.
+
+Check back soon for the complete MSX curriculum!

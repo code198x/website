@@ -1,56 +1,80 @@
 ---
-name: "SWTPc 6800"
-manufacturer: "Southwest Technical Products Corporation"
-model_number: "6800"
-cpu: "Motorola 6800"
+name: "SWTPC 6800"
+full_name: "Southwest Technical Products 6800"
+manufacturer: "Southwest Technical Products"
+model_number: "SWTPC 6800"
+alternative_names: ["SWTP 6800"]
+
+# Hardware specifications
+cpu: "6800"
 clock_speed: "1 MHz"
-ram: "4 KB to 64 KB (expandable)"
-storage: ["Cassette tape", "Floppy disk (optional)"]
+ram: "4KB-65KB"
+
+# Graphics capabilities
+video:
+  resolution: "Text terminal"
+  colors: "Monochrome"
+
+# Storage and I/O
+storage: ["Cassette tape", "Floppy disk"]
+
+# Commercial information
 release_date:
-  global: 1975-01-01
-discontinued: 1979-01-01
+  global: 1975-08-01T00:00:00Z
+
 country_of_origin: "United States"
-operating_system: "FLEX"
-emulated: true
-emulators:
-  - name: "SWTPc Emulator"
-    platform: "Multi-platform"
-    accuracy: "high"
-  - name: "MAME"
-    platform: "Multi-platform"
-    accuracy: "cycle_accurate"
-notable_software:
-  - name: "FLEX"
-    type: "Operating System"
-    year: 1976
-    developer: "Technical Systems Consultants"
-    publisher: "Technical Systems Consultants"
-  - name: "TSC BASIC"
-    type: "Programming Language"
-    year: 1976
-    developer: "Technical Systems Consultants"
-    publisher: "Technical Systems Consultants"
-image: "/images/systems/swtpc.png"
-order: 8
-external_links:
-  - title: "SWTPc 6800 - Computer History Museum"
-    url: "https://computerhistory.org/collections/swtpc/"
-  - title: "SWTPc Community"
-    url: "https://swtpc.com/"
+
+# Media
+description: "The first 6800-based computer kit that introduced many to Motorola's elegant processor architecture."
+
+# Platform Classification
+medal_tier: "bronze"
+total_lessons: 0
+total_games: 0
+estimated_duration: "N/A"
+cpu_architecture: "6800"
+difficulty_level: "historical"
+status: "vault"
+order: 121
 ---
 
-The **SWTPc 6800** was one of the earliest computers based on the Motorola 6800 microprocessor, released in 1975 as a kit by Southwest Technical Products Corporation (SWTPc). It was designed for hobbyists and engineers who wanted an affordable, expandable system with good documentation.
+# SWTPC 6800
 
-The system included a serial interface for connecting to a terminal and supported expansion via the SS-50 bus. It became popular in part due to its relatively low cost and Motorola's clean 8-bit architecture, which was often preferred by developers over the Intel 8080.
+_Historical Reference_
 
-## 💡 Did You Know?
+The Southwest Technical Products 6800 was one of the first personal computers based on Motorola's 6800 processor. As a kit computer, it introduced many hobbyists to the elegant 6800 architecture and influenced the design of later systems.
 
-- The SWTPc 6800 helped popularise the SS-50 bus, which became a small ecosystem of its own
-- Many hobbyists used the system with a Teletype or video terminal and ran software like FLEX, an early disk operating system
-- SWTPc later introduced the 6809-based SWTPc 6809 and transitioned toward complete turnkey systems
+## Historical Significance
 
-## 🗃 Related Systems
+The SWTPC 6800 was crucial in establishing the 6800 processor family in personal computing. It competed directly with Intel 8080-based systems and proved that Motorola's approach to processor design had merit.
 
-- [Altair 8800](/systems/altair-8800)
-- [IMSAI 8080](/systems/imsai-8080)
-- [Motorola EXORciser](/systems/motorola-exorciser)
+## Technical Innovation
+
+- **6800 Processor**: Motorola's answer to the Intel 8080
+- **Modular Design**: Cards connected via S-100-like bus
+- **Kit Computer**: Sold as parts for hobbyist assembly
+- **Expandable**: Memory and I/O cards available
+
+## Educational Impact
+
+As a kit computer, the SWTPC 6800 taught many hobbyists:
+
+- Digital electronics and computer architecture
+- Assembly language programming
+- System integration and troubleshooting
+- The fundamentals of computer design
+
+## Influence on Later Systems
+
+The SWTPC 6800's success influenced several important developments:
+
+- Demonstrated viability of 6800 architecture
+- Influenced Ohio Scientific and other manufacturers
+- Led to improved 6809 processor development
+- Established Motorola in personal computing
+
+## Legacy
+
+The SWTPC 6800 may not be as famous as the Altair, but it played a crucial role in establishing Motorola processors in personal computing. Its influence can be traced through the 6809, 68000, and ultimately to modern ARM processors.
+
+_This system is preserved for historical reference only._

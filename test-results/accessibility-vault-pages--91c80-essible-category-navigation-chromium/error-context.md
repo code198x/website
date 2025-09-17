@@ -1,0 +1,547 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - navigation "Main navigation" [ref=e4]:
+      - generic [ref=e6]:
+        - link "Code198x Home" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Code Like It's 198x" [ref=e8] [cursor=pointer]
+        - list [ref=e9]:
+          - listitem [ref=e10]:
+            - link "🏠 Home" [ref=e11] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e12] [cursor=pointer]: 🏠
+              - generic [ref=e13] [cursor=pointer]: Home
+          - listitem [ref=e14]:
+            - link "🚀 Get Started" [ref=e15] [cursor=pointer]:
+              - /url: /getting-started
+              - generic [ref=e16] [cursor=pointer]: 🚀
+              - generic [ref=e17] [cursor=pointer]: Get Started
+          - listitem [ref=e18]:
+            - link "📚 Learn" [ref=e19] [cursor=pointer]:
+              - /url: /lessons
+              - generic [ref=e20] [cursor=pointer]: 📚
+              - generic [ref=e21] [cursor=pointer]: Learn
+          - listitem [ref=e22]:
+            - link "🗄️ The Vault" [ref=e23] [cursor=pointer]:
+              - /url: /vault
+              - generic [ref=e24] [cursor=pointer]: 🗄️
+              - generic [ref=e25] [cursor=pointer]: The Vault
+          - listitem [ref=e26]:
+            - link "ℹ️ About" [ref=e27] [cursor=pointer]:
+              - /url: /about
+              - generic [ref=e28] [cursor=pointer]: ℹ️
+              - generic [ref=e29] [cursor=pointer]: About
+        - generic [ref=e30]:
+          - button "Search" [ref=e31] [cursor=pointer]:
+            - img [ref=e32] [cursor=pointer]
+          - button "Toggle theme" [ref=e35] [cursor=pointer]:
+            - img [ref=e36] [cursor=pointer]
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - heading "⚡️ Performance Monitor" [level=3] [ref=e44]
+        - button [ref=e45] [cursor=pointer]:
+          - img [ref=e46] [cursor=pointer]
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - generic [ref=e52]: CLS
+              - generic [ref=e53]: "-"
+            - generic [ref=e54]: measuring...
+          - generic [ref=e55]:
+            - generic [ref=e56]:
+              - generic [ref=e57]: FCP
+              - generic [ref=e58]: 184ms
+            - generic [ref=e59]: good
+          - generic [ref=e60]:
+            - generic [ref=e61]:
+              - generic [ref=e62]: LCP
+              - generic [ref=e63]: "-"
+            - generic [ref=e64]: measuring...
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e67]: INP
+              - generic [ref=e68]: "-"
+            - generic [ref=e69]: waiting for interaction
+        - generic [ref=e70]:
+          - button "Clear Data" [ref=e71] [cursor=pointer]
+          - button "Export Data" [ref=e72] [cursor=pointer]
+          - button "View Details" [ref=e73] [cursor=pointer]
+    - main [ref=e76]:
+      - generic [ref=e77]:
+        - generic [ref=e80]: 🔓 28 Total Entries
+        - paragraph [ref=e81]: Your Encyclopedia of Retro Computing History
+        - heading "The Vault" [level=1] [ref=e82]
+        - paragraph [ref=e83]: Explore the people, companies, games, and innovations that defined the golden age of home computing. Every entry connects to our lessons, showing you not just the 'how' but the 'who', 'what', 'when', and 'why'.
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - heading "Explore the Archives" [level=2] [ref=e87]
+            - paragraph [ref=e88]: Dive deep into the stories behind the code
+          - generic [ref=e89]:
+            - 'link "🖥️ 4 entries Hardware Systems, chips, peripherals, and modifications that defined an era Featured: Commodore 64 • ZX Spectrum • MOS 6581 SID • Z80 CPU Browse Hardware →" [ref=e90] [cursor=pointer]':
+              - /url: /vault/hardware
+              - generic [ref=e91] [cursor=pointer]:
+                - generic [ref=e92] [cursor=pointer]: 🖥️
+                - generic [ref=e93] [cursor=pointer]: 4 entries
+              - generic [ref=e94] [cursor=pointer]:
+                - heading "Hardware" [level=3] [ref=e95] [cursor=pointer]
+                - paragraph [ref=e96] [cursor=pointer]: Systems, chips, peripherals, and modifications that defined an era
+                - generic [ref=e97] [cursor=pointer]:
+                  - generic [ref=e98] [cursor=pointer]: "Featured:"
+                  - generic [ref=e99] [cursor=pointer]: Commodore 64 • ZX Spectrum • MOS 6581 SID • Z80 CPU
+              - generic [ref=e101] [cursor=pointer]: Browse Hardware →
+            - 'link "👤 3 entries People Pioneers, programmers, and visionaries who shaped computing history Featured: Jack Tramiel • Rob Hubbard • Clive Sinclair • Shigeru Miyamoto Browse People →" [ref=e102] [cursor=pointer]':
+              - /url: /vault/people
+              - generic [ref=e103] [cursor=pointer]:
+                - generic [ref=e104] [cursor=pointer]: 👤
+                - generic [ref=e105] [cursor=pointer]: 3 entries
+              - generic [ref=e106] [cursor=pointer]:
+                - heading "People" [level=3] [ref=e107] [cursor=pointer]
+                - paragraph [ref=e108] [cursor=pointer]: Pioneers, programmers, and visionaries who shaped computing history
+                - generic [ref=e109] [cursor=pointer]:
+                  - generic [ref=e110] [cursor=pointer]: "Featured:"
+                  - generic [ref=e111] [cursor=pointer]: Jack Tramiel • Rob Hubbard • Clive Sinclair • Shigeru Miyamoto
+              - generic [ref=e113] [cursor=pointer]: Browse People →
+            - 'link "🏢 2 entries Companies The corporations and startups that built the industry Featured: Commodore • Sinclair Research • Ocean Software • Nintendo Browse Companies →" [ref=e114] [cursor=pointer]':
+              - /url: /vault/companies
+              - generic [ref=e115] [cursor=pointer]:
+                - generic [ref=e116] [cursor=pointer]: 🏢
+                - generic [ref=e117] [cursor=pointer]: 2 entries
+              - generic [ref=e118] [cursor=pointer]:
+                - heading "Companies" [level=3] [ref=e119] [cursor=pointer]
+                - paragraph [ref=e120] [cursor=pointer]: The corporations and startups that built the industry
+                - generic [ref=e121] [cursor=pointer]:
+                  - generic [ref=e122] [cursor=pointer]: "Featured:"
+                  - generic [ref=e123] [cursor=pointer]: Commodore • Sinclair Research • Ocean Software • Nintendo
+              - generic [ref=e125] [cursor=pointer]: Browse Companies →
+            - 'link "💼 2 entries Applications Productivity and creative software Featured: WordPerfect • Deluxe Paint • VisiCalc • PageMaker Browse Applications →" [ref=e126] [cursor=pointer]':
+              - /url: /vault/applications
+              - generic [ref=e127] [cursor=pointer]:
+                - generic [ref=e128] [cursor=pointer]: 💼
+                - generic [ref=e129] [cursor=pointer]: 2 entries
+              - generic [ref=e130] [cursor=pointer]:
+                - heading "Applications" [level=3] [ref=e131] [cursor=pointer]
+                - paragraph [ref=e132] [cursor=pointer]: Productivity and creative software
+                - generic [ref=e133] [cursor=pointer]:
+                  - generic [ref=e134] [cursor=pointer]: "Featured:"
+                  - generic [ref=e135] [cursor=pointer]: WordPerfect • Deluxe Paint • VisiCalc • PageMaker
+              - generic [ref=e137] [cursor=pointer]: Browse Applications →
+            - 'link "🔧 0 entries Development Tools Compilers, assemblers, and IDEs Featured: Turbo Pascal • ACME • SEKA • DevPac Browse Development Tools →" [ref=e138] [cursor=pointer]':
+              - /url: /vault/development-tools
+              - generic [ref=e139] [cursor=pointer]:
+                - generic [ref=e140] [cursor=pointer]: 🔧
+                - generic [ref=e141] [cursor=pointer]: 0 entries
+              - generic [ref=e142] [cursor=pointer]:
+                - heading "Development Tools" [level=3] [ref=e143] [cursor=pointer]
+                - paragraph [ref=e144] [cursor=pointer]: Compilers, assemblers, and IDEs
+                - generic [ref=e145] [cursor=pointer]:
+                  - generic [ref=e146] [cursor=pointer]: "Featured:"
+                  - generic [ref=e147] [cursor=pointer]: Turbo Pascal • ACME • SEKA • DevPac
+              - generic [ref=e149] [cursor=pointer]: Browse Development Tools →
+            - 'link "🛠️ 0 entries Utilities System tools and file managers Featured: Norton Commander • FastCopy • DiskMaster • SysInfo Browse Utilities →" [ref=e150] [cursor=pointer]':
+              - /url: /vault/utilities
+              - generic [ref=e151] [cursor=pointer]:
+                - generic [ref=e152] [cursor=pointer]: 🛠️
+                - generic [ref=e153] [cursor=pointer]: 0 entries
+              - generic [ref=e154] [cursor=pointer]:
+                - heading "Utilities" [level=3] [ref=e155] [cursor=pointer]
+                - paragraph [ref=e156] [cursor=pointer]: System tools and file managers
+                - generic [ref=e157] [cursor=pointer]:
+                  - generic [ref=e158] [cursor=pointer]: "Featured:"
+                  - generic [ref=e159] [cursor=pointer]: Norton Commander • FastCopy • DiskMaster • SysInfo
+              - generic [ref=e161] [cursor=pointer]: Browse Utilities →
+            - 'link "⚙️ 0 entries Drivers Hardware drivers and system extensions Featured: HIMEM.SYS • EMM386 • Mouse drivers • SCSI drivers Browse Drivers →" [ref=e162] [cursor=pointer]':
+              - /url: /vault/drivers
+              - generic [ref=e163] [cursor=pointer]:
+                - generic [ref=e164] [cursor=pointer]: ⚙️
+                - generic [ref=e165] [cursor=pointer]: 0 entries
+              - generic [ref=e166] [cursor=pointer]:
+                - heading "Drivers" [level=3] [ref=e167] [cursor=pointer]
+                - paragraph [ref=e168] [cursor=pointer]: Hardware drivers and system extensions
+                - generic [ref=e169] [cursor=pointer]:
+                  - generic [ref=e170] [cursor=pointer]: "Featured:"
+                  - generic [ref=e171] [cursor=pointer]: HIMEM.SYS • EMM386 • Mouse drivers • SCSI drivers
+              - generic [ref=e173] [cursor=pointer]: Browse Drivers →
+            - 'link "🧩 0 entries Plugins Extensions, mods, and add-ons Featured: Action Replay • Game Genie codes • GEOS apps • BBS doors Browse Plugins →" [ref=e174] [cursor=pointer]':
+              - /url: /vault/plugins
+              - generic [ref=e175] [cursor=pointer]:
+                - generic [ref=e176] [cursor=pointer]: 🧩
+                - generic [ref=e177] [cursor=pointer]: 0 entries
+              - generic [ref=e178] [cursor=pointer]:
+                - heading "Plugins" [level=3] [ref=e179] [cursor=pointer]
+                - paragraph [ref=e180] [cursor=pointer]: Extensions, mods, and add-ons
+                - generic [ref=e181] [cursor=pointer]:
+                  - generic [ref=e182] [cursor=pointer]: "Featured:"
+                  - generic [ref=e183] [cursor=pointer]: Action Replay • Game Genie codes • GEOS apps • BBS doors
+              - generic [ref=e185] [cursor=pointer]: Browse Plugins →
+            - 'link "🎮 3 entries Games Entertainment software that defined generations Featured: Elite • Manic Miner • The Last Ninja • Impossible Mission Browse Games →" [ref=e186] [cursor=pointer]':
+              - /url: /vault/games
+              - generic [ref=e187] [cursor=pointer]:
+                - generic [ref=e188] [cursor=pointer]: 🎮
+                - generic [ref=e189] [cursor=pointer]: 3 entries
+              - generic [ref=e190] [cursor=pointer]:
+                - heading "Games" [level=3] [ref=e191] [cursor=pointer]
+                - paragraph [ref=e192] [cursor=pointer]: Entertainment software that defined generations
+                - generic [ref=e193] [cursor=pointer]:
+                  - generic [ref=e194] [cursor=pointer]: "Featured:"
+                  - generic [ref=e195] [cursor=pointer]: Elite • Manic Miner • The Last Ninja • Impossible Mission
+              - generic [ref=e197] [cursor=pointer]: Browse Games →
+            - 'link "🎬 0 entries Demos Demoscene productions that pushed hardware beyond limits Featured: Second Reality • Edge of Disgrace • Unreal • 9 Fingers Browse Demos →" [ref=e198] [cursor=pointer]':
+              - /url: /vault/demos
+              - generic [ref=e199] [cursor=pointer]:
+                - generic [ref=e200] [cursor=pointer]: 🎬
+                - generic [ref=e201] [cursor=pointer]: 0 entries
+              - generic [ref=e202] [cursor=pointer]:
+                - heading "Demos" [level=3] [ref=e203] [cursor=pointer]
+                - paragraph [ref=e204] [cursor=pointer]: Demoscene productions that pushed hardware beyond limits
+                - generic [ref=e205] [cursor=pointer]:
+                  - generic [ref=e206] [cursor=pointer]: "Featured:"
+                  - generic [ref=e207] [cursor=pointer]: Second Reality • Edge of Disgrace • Unreal • 9 Fingers
+              - generic [ref=e209] [cursor=pointer]: Browse Demos →
+            - 'link "🖥️ 0 entries Operating Systems The foundations that everything ran on Featured: AmigaOS • GEOS • CP/M • ProDOS Browse Operating Systems →" [ref=e210] [cursor=pointer]':
+              - /url: /vault/operating-systems
+              - generic [ref=e211] [cursor=pointer]:
+                - generic [ref=e212] [cursor=pointer]: 🖥️
+                - generic [ref=e213] [cursor=pointer]: 0 entries
+              - generic [ref=e214] [cursor=pointer]:
+                - heading "Operating Systems" [level=3] [ref=e215] [cursor=pointer]
+                - paragraph [ref=e216] [cursor=pointer]: The foundations that everything ran on
+                - generic [ref=e217] [cursor=pointer]:
+                  - generic [ref=e218] [cursor=pointer]: "Featured:"
+                  - generic [ref=e219] [cursor=pointer]: AmigaOS • GEOS • CP/M • ProDOS
+              - generic [ref=e221] [cursor=pointer]: Browse Operating Systems →
+            - 'link "🔄 2 entries Emulators Preservation through accurate emulation Featured: VICE • MAME • WinUAE • DOSBox Browse Emulators →" [ref=e222] [cursor=pointer]':
+              - /url: /vault/emulators
+              - generic [ref=e223] [cursor=pointer]:
+                - generic [ref=e224] [cursor=pointer]: 🔄
+                - generic [ref=e225] [cursor=pointer]: 2 entries
+              - generic [ref=e226] [cursor=pointer]:
+                - heading "Emulators" [level=3] [ref=e227] [cursor=pointer]
+                - paragraph [ref=e228] [cursor=pointer]: Preservation through accurate emulation
+                - generic [ref=e229] [cursor=pointer]:
+                  - generic [ref=e230] [cursor=pointer]: "Featured:"
+                  - generic [ref=e231] [cursor=pointer]: VICE • MAME • WinUAE • DOSBox
+              - generic [ref=e233] [cursor=pointer]: Browse Emulators →
+            - 'link "📝 0 entries Programming Languages Languages and tools that enabled creation Featured: BASIC • 6502 Assembly • AMOS • Turbo Pascal Browse Programming Languages →" [ref=e234] [cursor=pointer]':
+              - /url: /vault/programming-languages
+              - generic [ref=e235] [cursor=pointer]:
+                - generic [ref=e236] [cursor=pointer]: 📝
+                - generic [ref=e237] [cursor=pointer]: 0 entries
+              - generic [ref=e238] [cursor=pointer]:
+                - heading "Programming Languages" [level=3] [ref=e239] [cursor=pointer]
+                - paragraph [ref=e240] [cursor=pointer]: Languages and tools that enabled creation
+                - generic [ref=e241] [cursor=pointer]:
+                  - generic [ref=e242] [cursor=pointer]: "Featured:"
+                  - generic [ref=e243] [cursor=pointer]: BASIC • 6502 Assembly • AMOS • Turbo Pascal
+              - generic [ref=e245] [cursor=pointer]: Browse Programming Languages →
+            - 'link "⚡ 2 entries Techniques Programming tricks and hardware hacks that made the impossible possible Featured: Sprite Multiplexing • Raster Interrupts • Mode 7 • Copper Effects Browse Techniques →" [ref=e246] [cursor=pointer]':
+              - /url: /vault/techniques
+              - generic [ref=e247] [cursor=pointer]:
+                - generic [ref=e248] [cursor=pointer]: ⚡
+                - generic [ref=e249] [cursor=pointer]: 2 entries
+              - generic [ref=e250] [cursor=pointer]:
+                - heading "Techniques" [level=3] [ref=e251] [cursor=pointer]
+                - paragraph [ref=e252] [cursor=pointer]: Programming tricks and hardware hacks that made the impossible possible
+                - generic [ref=e253] [cursor=pointer]:
+                  - generic [ref=e254] [cursor=pointer]: "Featured:"
+                  - generic [ref=e255] [cursor=pointer]: Sprite Multiplexing • Raster Interrupts • Mode 7 • Copper Effects
+              - generic [ref=e257] [cursor=pointer]: Browse Techniques →
+            - 'link "📖 2 entries Publications Magazines, books, and manuals that spread knowledge Featured: Compute! • Zzap!64 • Your Sinclair • The C64 PRG Browse Publications →" [ref=e258] [cursor=pointer]':
+              - /url: /vault/publications
+              - generic [ref=e259] [cursor=pointer]:
+                - generic [ref=e260] [cursor=pointer]: 📖
+                - generic [ref=e261] [cursor=pointer]: 2 entries
+              - generic [ref=e262] [cursor=pointer]:
+                - heading "Publications" [level=3] [ref=e263] [cursor=pointer]
+                - paragraph [ref=e264] [cursor=pointer]: Magazines, books, and manuals that spread knowledge
+                - generic [ref=e265] [cursor=pointer]:
+                  - generic [ref=e266] [cursor=pointer]: "Featured:"
+                  - generic [ref=e267] [cursor=pointer]: Compute! • Zzap!64 • Your Sinclair • The C64 PRG
+              - generic [ref=e269] [cursor=pointer]: Browse Publications →
+            - 'link "🎪 2 entries Events Demo parties, trade shows, and historic launches Featured: Assembly • The Party • CES • C64 Launch Browse Events →" [ref=e270] [cursor=pointer]':
+              - /url: /vault/events
+              - generic [ref=e271] [cursor=pointer]:
+                - generic [ref=e272] [cursor=pointer]: 🎪
+                - generic [ref=e273] [cursor=pointer]: 2 entries
+              - generic [ref=e274] [cursor=pointer]:
+                - heading "Events" [level=3] [ref=e275] [cursor=pointer]
+                - paragraph [ref=e276] [cursor=pointer]: Demo parties, trade shows, and historic launches
+                - generic [ref=e277] [cursor=pointer]:
+                  - generic [ref=e278] [cursor=pointer]: "Featured:"
+                  - generic [ref=e279] [cursor=pointer]: Assembly • The Party • CES • C64 Launch
+              - generic [ref=e281] [cursor=pointer]: Browse Events →
+            - 'link "👥 2 entries Groups Demo groups, cracking teams, and development studios Featured: Fairlight • Future Crew • Eagle Soft • Llamasoft Browse Groups →" [ref=e282] [cursor=pointer]':
+              - /url: /vault/groups
+              - generic [ref=e283] [cursor=pointer]:
+                - generic [ref=e284] [cursor=pointer]: 👥
+                - generic [ref=e285] [cursor=pointer]: 2 entries
+              - generic [ref=e286] [cursor=pointer]:
+                - heading "Groups" [level=3] [ref=e287] [cursor=pointer]
+                - paragraph [ref=e288] [cursor=pointer]: Demo groups, cracking teams, and development studios
+                - generic [ref=e289] [cursor=pointer]:
+                  - generic [ref=e290] [cursor=pointer]: "Featured:"
+                  - generic [ref=e291] [cursor=pointer]: Fairlight • Future Crew • Eagle Soft • Llamasoft
+              - generic [ref=e293] [cursor=pointer]: Browse Groups →
+            - 'link "💾 2 entries Formats File formats, storage media, and technical standards Featured: .TAP • .D64 • Cassettes • PAL/NTSC Browse Formats →" [ref=e294] [cursor=pointer]':
+              - /url: /vault/formats
+              - generic [ref=e295] [cursor=pointer]:
+                - generic [ref=e296] [cursor=pointer]: 💾
+                - generic [ref=e297] [cursor=pointer]: 2 entries
+              - generic [ref=e298] [cursor=pointer]:
+                - heading "Formats" [level=3] [ref=e299] [cursor=pointer]
+                - paragraph [ref=e300] [cursor=pointer]: File formats, storage media, and technical standards
+                - generic [ref=e301] [cursor=pointer]:
+                  - generic [ref=e302] [cursor=pointer]: "Featured:"
+                  - generic [ref=e303] [cursor=pointer]: .TAP • .D64 • Cassettes • PAL/NTSC
+              - generic [ref=e305] [cursor=pointer]: Browse Formats →
+            - 'link "🌟 2 entries Culture Demo scene, BBS culture, and computing phenomena Featured: Demo Scene • BBS Networks • Copy Parties • Piracy Browse Culture →" [ref=e306] [cursor=pointer]':
+              - /url: /vault/culture
+              - generic [ref=e307] [cursor=pointer]:
+                - generic [ref=e308] [cursor=pointer]: 🌟
+                - generic [ref=e309] [cursor=pointer]: 2 entries
+              - generic [ref=e310] [cursor=pointer]:
+                - heading "Culture" [level=3] [ref=e311] [cursor=pointer]
+                - paragraph [ref=e312] [cursor=pointer]: Demo scene, BBS culture, and computing phenomena
+                - generic [ref=e313] [cursor=pointer]:
+                  - generic [ref=e314] [cursor=pointer]: "Featured:"
+                  - generic [ref=e315] [cursor=pointer]: Demo Scene • BBS Networks • Copy Parties • Piracy
+              - generic [ref=e317] [cursor=pointer]: Browse Culture →
+            - 'link "📅 Interactive Timeline Timeline Chronological journey through computing history Featured: 1982: C64 Launch • 1983: Video Game Crash • 1985: Amiga Browse Timeline →" [ref=e318] [cursor=pointer]':
+              - /url: /vault/timeline
+              - generic [ref=e319] [cursor=pointer]:
+                - generic [ref=e320] [cursor=pointer]: 📅
+                - generic [ref=e321] [cursor=pointer]: Interactive Timeline
+              - generic [ref=e322] [cursor=pointer]:
+                - heading "Timeline" [level=3] [ref=e323] [cursor=pointer]
+                - paragraph [ref=e324] [cursor=pointer]: Chronological journey through computing history
+                - generic [ref=e325] [cursor=pointer]:
+                  - generic [ref=e326] [cursor=pointer]: "Featured:"
+                  - generic [ref=e327] [cursor=pointer]: "1982: C64 Launch • 1983: Video Game Crash • 1985: Amiga"
+              - generic [ref=e329] [cursor=pointer]: Browse Timeline →
+        - generic [ref=e331]:
+          - generic [ref=e332]:
+            - heading "Everything Is Connected" [level=2] [ref=e333]
+            - paragraph [ref=e334]: See how people, companies, and innovations influenced each other
+          - generic [ref=e335]:
+            - generic [ref=e336]:
+              - heading "The Commodore Story" [level=4] [ref=e337]
+              - generic [ref=e338]:
+                - generic [ref=e339]: Jack Tramiel
+                - generic [ref=e340]: →
+                - generic [ref=e341]: Commodore
+                - generic [ref=e342]: →
+                - generic [ref=e343]: C64
+                - generic [ref=e344]: →
+                - generic [ref=e345]: SID Chip
+              - paragraph [ref=e346]: From Holocaust survivor to computer revolution leader
+            - generic [ref=e347]:
+              - heading "The British Invasion" [level=4] [ref=e348]
+              - generic [ref=e349]:
+                - generic [ref=e350]: Clive Sinclair
+                - generic [ref=e351]: →
+                - generic [ref=e352]: ZX Spectrum
+                - generic [ref=e353]: →
+                - generic [ref=e354]: Bedroom Coders
+                - generic [ref=e355]: →
+                - generic [ref=e356]: Ocean Software
+              - paragraph [ref=e357]: How affordable computers created a gaming industry
+            - generic [ref=e358]:
+              - heading "Demo Scene Origins" [level=4] [ref=e359]
+              - generic [ref=e360]:
+                - generic [ref=e361]: Cracking Groups
+                - generic [ref=e362]: →
+                - generic [ref=e363]: Intros
+                - generic [ref=e364]: →
+                - generic [ref=e365]: Demo Parties
+                - generic [ref=e366]: →
+                - generic [ref=e367]: New Techniques
+              - paragraph [ref=e368]: From piracy to pushing hardware beyond its limits
+        - generic [ref=e370]:
+          - generic [ref=e371]:
+            - heading "⭐ Featured Entries" [level=2] [ref=e372]
+            - paragraph [ref=e373]: Curated highlights from across the vault - significant entries that shaped computing history
+          - generic [ref=e374]:
+            - link "🖥️ Hardware 1982 ZX Spectrum Britain's gateway to home computing with distinctive rubber keys and vibrant game library 8-bithome-computer +4" [ref=e375] [cursor=pointer]:
+              - /url: /vault/hardware/zx-spectrum
+              - generic [ref=e376] [cursor=pointer]:
+                - generic [ref=e377] [cursor=pointer]: 🖥️
+                - generic [ref=e378] [cursor=pointer]: Hardware
+                - generic [ref=e379] [cursor=pointer]: "1982"
+              - heading "ZX Spectrum" [level=3] [ref=e380] [cursor=pointer]
+              - paragraph [ref=e381] [cursor=pointer]: Britain's gateway to home computing with distinctive rubber keys and vibrant game library
+              - generic [ref=e382] [cursor=pointer]:
+                - generic [ref=e383] [cursor=pointer]: 8-bit
+                - generic [ref=e384] [cursor=pointer]: home-computer
+                - generic [ref=e385] [cursor=pointer]: "+4"
+            - link "🏢 Companies 0 Commodore International Computing giant that democratized home computing with the VIC-20, C64, and Amiga manufacturer8-bit +3" [ref=e386] [cursor=pointer]:
+              - /url: /vault/companies/commodore
+              - generic [ref=e387] [cursor=pointer]:
+                - generic [ref=e388] [cursor=pointer]: 🏢
+                - generic [ref=e389] [cursor=pointer]: Companies
+                - text: "0"
+              - heading "Commodore International" [level=3] [ref=e390] [cursor=pointer]
+              - paragraph [ref=e391] [cursor=pointer]: Computing giant that democratized home computing with the VIC-20, C64, and Amiga
+              - generic [ref=e392] [cursor=pointer]:
+                - generic [ref=e393] [cursor=pointer]: manufacturer
+                - generic [ref=e394] [cursor=pointer]: 8-bit
+                - generic [ref=e395] [cursor=pointer]: "+3"
+          - link "View all entries →" [ref=e397] [cursor=pointer]:
+            - /url: /vault/search
+        - generic [ref=e399]:
+          - generic [ref=e400]:
+            - heading "⭐ Recently Added" [level=2] [ref=e401]
+            - paragraph [ref=e402]: The latest additions to our retro computing encyclopedia
+          - generic [ref=e403]:
+            - link "🖥️ Hardware 1982 SID The legendary MOS 6581/8580 Sound Interface Device that defined 8-bit computer music sound-chipsynthesizer +3" [ref=e404] [cursor=pointer]:
+              - /url: /vault/hardware/sid-chip
+              - generic [ref=e405] [cursor=pointer]:
+                - generic [ref=e406] [cursor=pointer]: 🖥️
+                - generic [ref=e407] [cursor=pointer]: Hardware
+                - generic [ref=e408] [cursor=pointer]: "1982"
+              - heading "SID" [level=3] [ref=e409] [cursor=pointer]
+              - paragraph [ref=e410] [cursor=pointer]: The legendary MOS 6581/8580 Sound Interface Device that defined 8-bit computer music
+              - generic [ref=e411] [cursor=pointer]:
+                - generic [ref=e412] [cursor=pointer]: sound-chip
+                - generic [ref=e413] [cursor=pointer]: synthesizer
+                - generic [ref=e414] [cursor=pointer]: "+3"
+            - link "🖥️ Hardware 1982 Commodore 64 The best-selling home computer of all time, featuring the legendary SID chip and defining a generation of computing 8-bithome-computer +3" [ref=e415] [cursor=pointer]:
+              - /url: /vault/hardware/commodore-64
+              - generic [ref=e416] [cursor=pointer]:
+                - generic [ref=e417] [cursor=pointer]: 🖥️
+                - generic [ref=e418] [cursor=pointer]: Hardware
+                - generic [ref=e419] [cursor=pointer]: "1982"
+              - heading "Commodore 64" [level=3] [ref=e420] [cursor=pointer]
+              - paragraph [ref=e421] [cursor=pointer]: The best-selling home computer of all time, featuring the legendary SID chip and defining a generation of computing
+              - generic [ref=e422] [cursor=pointer]:
+                - generic [ref=e423] [cursor=pointer]: 8-bit
+                - generic [ref=e424] [cursor=pointer]: home-computer
+                - generic [ref=e425] [cursor=pointer]: "+3"
+            - link "👤 People 1928 Jack Tramiel Founder of Commodore who revolutionized home computing with the philosophy \"computers for the masses, not the classes\" commodoreatari +3" [ref=e426] [cursor=pointer]:
+              - /url: /vault/people/jack-tramiel
+              - generic [ref=e427] [cursor=pointer]:
+                - generic [ref=e428] [cursor=pointer]: 👤
+                - generic [ref=e429] [cursor=pointer]: People
+                - generic [ref=e430] [cursor=pointer]: "1928"
+              - heading "Jack Tramiel" [level=3] [ref=e431] [cursor=pointer]
+              - paragraph [ref=e432] [cursor=pointer]: Founder of Commodore who revolutionized home computing with the philosophy "computers for the masses, not the classes"
+              - generic [ref=e433] [cursor=pointer]:
+                - generic [ref=e434] [cursor=pointer]: commodore
+                - generic [ref=e435] [cursor=pointer]: atari
+                - generic [ref=e436] [cursor=pointer]: "+3"
+            - link "🎮 Games 1984 Elite Revolutionary space trading game featuring 3D wireframe graphics and procedural generation spacetrading +4" [ref=e437] [cursor=pointer]:
+              - /url: /vault/games/elite
+              - generic [ref=e438] [cursor=pointer]:
+                - generic [ref=e439] [cursor=pointer]: 🎮
+                - generic [ref=e440] [cursor=pointer]: Games
+                - generic [ref=e441] [cursor=pointer]: "1984"
+              - heading "Elite" [level=3] [ref=e442] [cursor=pointer]
+              - paragraph [ref=e443] [cursor=pointer]: Revolutionary space trading game featuring 3D wireframe graphics and procedural generation
+              - generic [ref=e444] [cursor=pointer]:
+                - generic [ref=e445] [cursor=pointer]: space
+                - generic [ref=e446] [cursor=pointer]: trading
+                - generic [ref=e447] [cursor=pointer]: "+4"
+          - link "View all entries →" [ref=e449] [cursor=pointer]:
+            - /url: /vault/search
+        - generic [ref=e451]:
+          - heading "Start Your Journey Through History" [level=2] [ref=e452]
+          - paragraph [ref=e453]: Every lesson references Vault entries. Every Vault entry enhances your learning.
+          - generic [ref=e454]:
+            - link "📅 Explore the Timeline" [ref=e455] [cursor=pointer]:
+              - /url: /vault/timeline
+              - generic [ref=e456] [cursor=pointer]: 📅
+              - generic [ref=e457] [cursor=pointer]: Explore the Timeline
+            - link "📚 Start Learning" [ref=e458] [cursor=pointer]:
+              - /url: /lessons
+              - generic [ref=e459] [cursor=pointer]: 📚
+              - generic [ref=e460] [cursor=pointer]: Start Learning
+    - contentinfo [ref=e461]:
+      - generic [ref=e462]:
+        - generic [ref=e463]:
+          - generic [ref=e464]:
+            - link "Code Like It's 198x - Home" [ref=e465] [cursor=pointer]:
+              - /url: /
+              - img "Code Like It's 198x" [ref=e466] [cursor=pointer]
+            - paragraph [ref=e467]: Learn assembly programming on classic systems through hands-on lessons and authentic development tools.
+            - generic [ref=e468]:
+              - link "GitHub" [ref=e469] [cursor=pointer]:
+                - /url: https://github.com/code198x
+                - img [ref=e470] [cursor=pointer]
+              - link "Discord" [ref=e472] [cursor=pointer]:
+                - /url: https://discord.gg/AdmEYQKWZb
+                - img [ref=e473] [cursor=pointer]
+          - generic [ref=e475]:
+            - heading "Learn" [level=4] [ref=e476]
+            - list [ref=e477]:
+              - listitem [ref=e478]:
+                - link "Get Started" [ref=e479] [cursor=pointer]:
+                  - /url: /getting-started
+              - listitem [ref=e480]:
+                - link "All Lessons" [ref=e481] [cursor=pointer]:
+                  - /url: /lessons
+              - listitem [ref=e482]:
+                - link "By System" [ref=e483] [cursor=pointer]:
+                  - /url: /lessons#systems
+              - listitem [ref=e484]:
+                - link "Setup Guides" [ref=e485] [cursor=pointer]:
+                  - /url: /getting-started#setup
+          - generic [ref=e486]:
+            - heading "Resources" [level=4] [ref=e487]
+            - list [ref=e488]:
+              - listitem [ref=e489]:
+                - link "All Systems" [ref=e490] [cursor=pointer]:
+                  - /url: /vault/hardware
+              - listitem [ref=e491]:
+                - link "The Vault" [ref=e492] [cursor=pointer]:
+                  - /url: /vault
+              - listitem [ref=e493]:
+                - link "Tools" [ref=e494] [cursor=pointer]:
+                  - /url: /tools
+              - listitem [ref=e495]:
+                - link "Community" [ref=e496] [cursor=pointer]:
+                  - /url: /community
+          - generic [ref=e497]:
+            - heading "Popular Systems" [level=4] [ref=e498]
+            - list [ref=e499]:
+              - listitem [ref=e500]:
+                - link "Commodore 64" [ref=e501] [cursor=pointer]:
+                  - /url: /vault/hardware/commodore-64
+              - listitem [ref=e502]:
+                - link "ZX Spectrum" [ref=e503] [cursor=pointer]:
+                  - /url: /vault/hardware/zx-spectrum
+              - listitem [ref=e504]:
+                - link "NES" [ref=e505] [cursor=pointer]:
+                  - /url: /vault/hardware/nintendo-entertainment-system
+              - listitem [ref=e506]:
+                - link "Amiga" [ref=e507] [cursor=pointer]:
+                  - /url: /vault/hardware/commodore-amiga
+        - generic [ref=e508]:
+          - paragraph [ref=e509]: © 2025 Code Like It's 198x. Made with ❤️ for retro computing.
+          - navigation [ref=e510]:
+            - link "Privacy" [ref=e511] [cursor=pointer]:
+              - /url: /privacy
+            - link "Terms" [ref=e512] [cursor=pointer]:
+              - /url: /terms
+            - link "Sitemap" [ref=e513] [cursor=pointer]:
+              - /url: /sitemap.xml
+  - generic [ref=e516]:
+    - button "Menu" [ref=e517]:
+      - img [ref=e519]
+      - generic: Menu
+    - button "Inspect" [ref=e523]:
+      - img [ref=e525]
+      - generic: Inspect
+    - button "Audit" [ref=e527]:
+      - generic [ref=e528]:
+        - img [ref=e529]
+        - img [ref=e532]
+      - generic: Audit
+    - button "Settings" [ref=e535]:
+      - img [ref=e537]
+      - generic: Settings
+```

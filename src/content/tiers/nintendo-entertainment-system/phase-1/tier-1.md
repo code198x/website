@@ -30,6 +30,7 @@ Welcome to your first NES game development project! **Tile Walker** introduces y
 ## What You'll Build
 
 **Tile Walker** - A complete tile-based movement game featuring:
+
 - 8×8 sprite character that moves in 16×16 tile increments
 - Tile-based background with collectible items
 - Responsive controller input (D-pad)
@@ -44,6 +45,7 @@ Control a sprite character that moves between background tiles on a tile-based g
 ## Learning Journey (32 Lessons)
 
 ### Foundation (Lessons 1-8)
+
 - **Lesson 1**: NES setup and PPU basics
 - **Lesson 2**: Pattern tables and tile graphics
 - **Lesson 3**: Draw background tiles
@@ -54,6 +56,7 @@ Control a sprite character that moves between background tiles on a tile-based g
 - **Lesson 8**: Add movement boundaries
 
 ### Tile Interaction (Lessons 9-16)
+
 - **Lesson 9**: Read background tile data
 - **Lesson 10**: Add collision tiles (walls)
 - **Lesson 11**: Create collectible item tiles
@@ -64,6 +67,7 @@ Control a sprite character that moves between background tiles on a tile-based g
 - **Lesson 16**: Create level completion
 
 ### Visual Enhancement (Lessons 17-24)
+
 - **Lesson 17**: Add sprite animation frames
 - **Lesson 18**: Control palette colors
 - **Lesson 19**: Create status display
@@ -74,6 +78,7 @@ Control a sprite character that moves between background tiles on a tile-based g
 - **Lesson 24**: Add screen transitions
 
 ### Audio and Completion (Lessons 25-32)
+
 - **Lesson 25**: APU sound basics
 - **Lesson 26**: Create movement sound effects
 - **Lesson 27**: Add background music
@@ -100,6 +105,7 @@ Control a sprite character that moves between background tiles on a tile-based g
 ## Why Tile-Based Movement?
 
 Tile-based movement is the perfect introduction to NES programming because it teaches:
+
 - **PPU system**: Understanding pattern tables and nametables
 - **Sprite control**: Managing hardware sprites and OAM
 - **Memory efficiency**: Working within NES constraints
@@ -130,6 +136,7 @@ Tile-based movement is the perfect introduction to NES programming because it te
 ## Project Outcomes
 
 By completing Tile Walker, you will have:
+
 - Created your first complete NES game
 - Mastered fundamental 6502 assembly programming
 - Learned PPU graphics and sprite control

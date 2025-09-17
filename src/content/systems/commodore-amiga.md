@@ -1,183 +1,137 @@
 ---
-name: "Commodore Amiga"
-slug: "commodore-amiga"
-manufacturer: "Commodore International"
-model_number: "A500"
-cpu: "Motorola 68000"
-clock_speed: "7.16 MHz (PAL) / 7.09 MHz (NTSC)"
-ram: "512 KB (expandable to 1 MB)"
-rom: "256 KB (Kickstart ROM)"
+name: "Amiga"
+full_name: "Commodore Amiga"
+manufacturer: "Commodore"
+model_number: "Various (A500, A1000, A2000, A1200, A4000)"
+alternative_names: ["Amiga", "Commodore Amiga"]
+
+# Hardware specifications
+cpu: "68000"
+cpu_details:
+  architecture: "16/32-bit"
+  instruction_set: "Motorola 68000"
+  addressing_modes:
+    ["Register Direct", "Address Register Indirect", "Immediate", "Absolute", "PC Relative"]
+  registers: "8 data registers (D0-D7), 8 address registers (A0-A7)"
+
+clock_speed: "7.16 MHz (NTSC) / 7.09 MHz (PAL)"
+ram: "512KB (expandable)"
+ram_details:
+  user_available: "512KB standard"
+  video_ram: "Chip RAM shared"
+  expansion_options: ["Memory expansions up to 8MB"]
+
+rom: "256KB Kickstart ROM"
+rom_contents: ["Operating system", "Libraries", "Workbench"]
+
+# Graphics capabilities
 video:
-  processor: "Original Chipset (OCS): Agnus, Denise, Paula"
-  resolution: "320×200 to 640×400 (various modes)"
-  colors: "4096 colors available, 32 on-screen simultaneously"
-  display_modes:
-    - "Low resolution (320×200/256, 32 colors)"
-    - "High resolution (640×200/256, 16 colors)"
-    - "Interlaced modes (double vertical resolution)"
-    - "HAM mode (Hold-And-Modify, 4096 colors)"
-    - "Sprite graphics (8 hardware sprites)"
+  processor: "Agnus/Denise custom chips"
+  resolution: "320×200 to 640×400"
+  colors: "4096 color palette"
+  display_modes: ["Multiple resolutions", "HAM mode", "Dual playfield"]
+  sprites:
+    count: 8
+    size: "16 pixels wide, arbitrary height"
+    colors_per_sprite: 3
+  hardware_scrolling: true
+  raster_interrupts: true
+
+# Audio capabilities
 audio:
-  chip: "Paula (part of custom chipset)"
+  chip: "Paula"
   channels: 4
-  features:
-    - "8-bit PCM samples"
-    - "Hardware volume control per channel"
-    - "Stereo output (2 channels left, 2 channels right)"
-    - "Hardware audio filters"
-storage:
-  - "3.5\" floppy disk (880 KB capacity)"
-  - "Hard disk drives (optional)"
-io_ports:
-  - "2 × mouse/joystick ports"
-  - "Serial port (RS-232)"
-  - "Parallel port (Centronics)"
-  - "RGB video output"
-  - "Composite video output"
-  - "RF modulator output"
-  - "Stereo audio output"
-  - "Expansion slot"
-price_at_launch:
-  global: "$1,295 USD (1985)"
-  countries:
-    - country: "United States"
-      price: "1295"
-      currency: "USD"
-    - country: "United Kingdom"
-      price: "499"
-      currency: "GBP"
+  features: ["8-bit PCM", "Hardware mixing", "Stereo output"]
+  sample_playback: true
+  synthesis_types: ["PCM samples"]
+
+# Storage and I/O
+storage: ['3.5" floppy disk', "Hard drive (optional)"]
+storage_details:
+  built_in: ['3.5" DD floppy drive']
+  expansion: ["Hard drives", "Additional floppy drives"]
+  typical_capacity:
+    floppy: "880KB"
+
+io_ports: ["Serial", "Parallel", "Floppy", "RGB video", "Composite", "Audio", "Joystick/Mouse"]
+expansion_options: ["Side expansion", "Trapdoor expansion", "Accelerator cards"]
+
+# Commercial information
 release_date:
-  global: 1985-07-23
-  countries:
-    - country: "United States"
-      date: 1985-07-23
-    - country: "United Kingdom"
-      date: 1987-05-01
-discontinued: 1996-04-01
-units_sold: "4.85 million (all Amiga models combined)"
+  global: 1987-04-01T00:00:00Z
+
 country_of_origin: "United States"
-operating_system: "AmigaOS (Workbench)"
+operating_system: "AmigaOS/Workbench"
+programming_languages: ["68000 Assembly", "C", "AmigaBASIC"]
+
+# Target market and positioning
+target_market: ["Creative professionals", "Gaming", "Home users"]
+market_positioning: "Multimedia computer ahead of its time"
+competition: ["Atari ST", "IBM PC", "Apple Macintosh"]
+
+# Educational relevance
+learning_advantages: ["Custom chips", "Multitasking OS", "Advanced graphics"]
+common_beginner_projects: ["Demos", "Games", "Graphics applications"]
+
+# Modern preservation and emulation
 emulated: true
 emulators:
   - name: "WinUAE"
     platform: "Windows"
     accuracy: "cycle_accurate"
   - name: "FS-UAE"
-    platform: "Multi-platform"
-    accuracy: "cycle_accurate"
-  - name: "Amiberry"
-    platform: "Linux"
+    platform: "Windows, macOS, Linux"
     accuracy: "high"
-  - name: "UAE4ARM"
-    platform: "Android"
-    accuracy: "high"
-variants:
-  - name: "Amiga 1000"
-    release_date:
-      global: 1985-07-23
-    discontinued: 1987-01-01
-    differences: "Original model with separate keyboard, 256KB RAM standard, required Kickstart disk"
-    model_number: "A1000"
-  - name: "Amiga 500"
-    release_date:
-      global: 1987-01-01
-    discontinued: 1991-01-01
-    differences: "Most popular model, integrated keyboard, 512KB RAM standard, built-in Kickstart ROM"
-    model_number: "A500"
-  - name: "Amiga 2000"
-    release_date:
-      global: 1987-01-01
-    discontinued: 1991-01-01
-    differences: "Expandable desktop model with Zorro II slots, separate keyboard, professional orientation"
-    model_number: "A2000"
-  - name: "Amiga 500+"
-    release_date:
-      global: 1991-04-01
-    discontinued: 1992-01-01
-    differences: "Enhanced Chip Set (ECS), 1MB Chip RAM, improved Agnus and Denise chips"
-    model_number: "A500+"
-  - name: "Amiga 600"
-    release_date:
-      global: 1992-03-01
-    discontinued: 1993-01-01
-    differences: "Compact budget model, 1MB Chip RAM, built-in IDE interface, no numeric keypad"
-    model_number: "A600"
-  - name: "Amiga 3000"
-    release_date:
-      global: 1990-06-01
-    discontinued: 1992-01-01
-    differences: "68030 processor with MMU, Enhanced Chip Set (ECS), built-in SCSI, Zorro III slots"
-    model_number: "A3000"
-  - name: "Amiga 1200"
-    release_date:
-      global: 1992-10-01
-    discontinued: 1996-01-01
-    differences: "Advanced Graphics Architecture (AGA), 68020 processor, 2MB Chip RAM, 256 colors on screen"
-    model_number: "A1200"
-  - name: "Amiga 4000"
-    release_date:
-      global: 1992-09-01
-    discontinued: 1994-01-01
-    differences: "High-end desktop, 68040 processor, Advanced Graphics Architecture (AGA), Zorro III slots"
-    model_number: "A4000"
-  - name: "Amiga CD32"
-    release_date:
-      global: 1993-09-01
-    discontinued: 1994-01-01
-    differences: "32-bit games console based on A1200, CD-ROM drive, AGA chipset, no keyboard"
-    model_number: "CD32"
-historical_significance: "The Amiga was years ahead of its time with advanced multimedia capabilities, preemptive multitasking, and custom chips that rivaled dedicated graphics workstations. It dominated video production, gaming, and digital art in the late 1980s and early 1990s."
-description: "A multimedia powerhouse with custom chips for graphics and sound, years ahead of its competition."
-image: "/images/systems/commodore-amiga.jpg"
-order: 3
+
+preservation_status: "excellent"
+hardware_availability: "available"
+
+# Media
+description: "The multimedia powerhouse that brought arcade-quality graphics and CD-quality sound to home computers."
+
+# Platform Classification
+medal_tier: "platinum"
+total_lessons: 4096
+total_games: 32
+estimated_duration: "18-24 months"
+cpu_architecture: "68000"
+difficulty_level: "advanced"
+
+status: "planned"
+order: 4
 ---
 
-The **Commodore Amiga** was a revolutionary computer that was years ahead of its time when released in 1985. With its advanced custom chipset, preemptive multitasking operating system, and sophisticated graphics and sound capabilities, the Amiga could do things that wouldn't become common on PCs until the mid-1990s.
+# Commodore Amiga
 
-The Amiga's **custom chipset**—consisting of Agnus, Denise, and Paula—provided hardware acceleration for graphics, sound, and DMA operations. This allowed the relatively modest 68000 processor to achieve remarkable multimedia performance that made the Amiga the platform of choice for video production, animation, and game development.
+_Coming Soon_
 
-## Key Features
+The Amiga was a quantum leap in home computer technology. With custom chips for graphics and sound, preemptive multitasking, and capabilities that wouldn't become standard on PCs for years, the Amiga was the ultimate creative machine of its era.
 
-- **68000 Processor** - Powerful 16/32-bit processor with clean architecture (later models used 68020, 68030, 68040)
-- **Custom Chipset** - Hardware acceleration for graphics, sound, and memory access
-- **Advanced Graphics** - Up to 4096 colors on screen, multiple graphics modes
-- **4-Channel Audio** - High-quality stereo sound with hardware mixing
-- **Preemptive Multitasking** - True multitasking OS years before Windows
-- **Intuition GUI** - Advanced graphical user interface (Workbench)
+## Why Learn Amiga Programming?
 
-## Evolution of the Platform
+The 68000 processor and custom chip architecture offer a completely different programming paradigm from 8-bit systems. The Amiga's Copper, Blitter, and Paula chips enable effects that seemed impossible, teaching advanced concepts in parallel processing and hardware acceleration.
 
-The Amiga line evolved significantly over its lifetime:
+## What Makes the Amiga Special
 
-- **Original Chipset (OCS)** - A1000, A500, A2000: The foundation of Amiga graphics
-- **Enhanced Chip Set (ECS)** - A500+, A600, A3000: Improved resolution and memory handling  
-- **Advanced Graphics Architecture (AGA)** - A1200, A4000, CD32: 256 colors on screen, improved graphics modes
+- **Custom Chips**: Copper (coprocessor), Blitter (graphics), Paula (audio)
+- **68000 Power**: True 16/32-bit programming with advanced addressing
+- **Multitasking OS**: Preemptive multitasking years before Windows
+- **Demo Scene Heritage**: The platform where the demo scene reached artistic heights
 
-## Revolutionary Technology
+## Curriculum Highlights
 
-The Amiga introduced many technologies that wouldn't become standard until years later:
+_Currently in development_
 
-- **Hardware sprites and blitter** for smooth animation
-- **HAM (Hold-And-Modify)** mode for displaying thousands of colors
-- **Copper coprocessor** for precise timing of graphics effects
-- **Paula audio chip** with DMA sample playback
-- **AmigaOS** with preemptive multitasking and memory protection
+When launched, the Amiga curriculum will include:
 
-## Cultural Impact
+- 68000 assembly programming
+- Custom chip programming (Copper, Blitter, Paula)
+- AmigaOS system programming
+- Advanced graphics and audio techniques
+- 32 complete projects showcasing Amiga's unique capabilities
 
-The Amiga found its niche in creative industries—video production, music creation, digital art, and game development. TV shows like Babylon 5 and SeaQuest DSV used Amigas for their computer graphics. The machine's superior multimedia capabilities made it the preferred platform for creative professionals throughout the late 1980s and early 1990s.
+## The Amiga Revolution
 
-The Amiga's influence on gaming was enormous, with many classic games and franchises getting their start on the platform. Its advanced capabilities allowed for gameplay experiences that simply weren't possible on other home computers of the era.
+The Amiga introduced concepts that wouldn't reach mainstream computing for years: hardware acceleration, dedicated audio processing, and true multitasking. Learning Amiga programming provides insights into modern GPU programming and parallel processing.
 
-## Why Learn Amiga Programming Today?
-
-Programming the Amiga teaches advanced concepts:
-
-- **68000 Assembly** - Clean, orthogonal processor architecture
-- **Hardware Programming** - Direct manipulation of custom chips
-- **Multimedia Programming** - Graphics, sound, and animation techniques
-- **Operating System Design** - Understanding preemptive multitasking
-- **Optimization Techniques** - Making the most of custom hardware
-- **Retro Game Development** - Creating games with hardware sprites and scrolling
-
-The Amiga's sophisticated architecture provides an excellent stepping stone between simple 8-bit systems and modern computers, teaching concepts that remain relevant in today's multimedia and game programming.
+Check back soon for the complete Amiga curriculum!

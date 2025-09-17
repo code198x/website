@@ -1,21 +1,24 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
-import mdx from '@astrojs/mdx';
-import sitemap from '@astrojs/sitemap';
-import react from '@astrojs/react';
+import { defineConfig } from "astro/config";
+import mdx from "@astrojs/mdx";
+import sitemap from "@astrojs/sitemap";
 
 // https://astro.build/config
 export default defineConfig({
-  output: 'static',
+  output: "static",
   integrations: [
-    react(),
     mdx({
-      syntaxHighlight: 'prism',
+      syntaxHighlight: false, // Disable server-side syntax highlighting
     }),
-    sitemap()
+    sitemap(),
   ],
-  site: 'https://code198x.stevehill.xyz',
+  site: "https://code198x.stevehill.xyz",
   markdown: {
-    syntaxHighlight: 'prism',
+    syntaxHighlight: false, // Disable server-side syntax highlighting
   },
+  vite: {
+    css: {
+      postcss: "./postcss.config.js"
+    }
+  }
 });

@@ -1,0 +1,288 @@
+---
+import { Image } from 'astro:assets';
+
+export interface Props {
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  sizes?: string;
+  class?: string;
+  loading?: 'lazy' | 'eager';
+  priority?: boolean;
+  quality?: number;
+  format?: 'webp' | 'avif' | 'auto';
+  densities?: number[];
+  placeholder?: 'blur' | 'dominant' | 'none';
+  fallbackIcon?: string;
+  variant?: 'default' | 'avatar' | 'hero' | 'card' | 'thumbnail' | 'full';
+  aspectRatio?: string;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+}
+
+const {
+  src,
+  alt,
+  width = 800,
+  height = 600,
+  sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 800px',
+  class: className = '',
+  loading = 'lazy',
+  priority = false,
+  quality = 75,
+  format = 'auto',
+  densities = [1, 2],
+  placeholder = 'blur',
+  fallbackIcon = '🖼️',
+  variant = 'default',
+  aspectRatio,
+  objectFit = 'cover'
+} = Astro.props;
+
+// Determine if this is an external URL or local asset
+const isExternalUrl = src.startsWith('http') || src.startsWith('//');
+const isPublicAsset = src.startsWith('/');
+
+// Use native loading for priority images
+const actualLoading = priority ? 'eager' : loading;
+
+// Generate responsive sizes based on variant
+const variantSizes = {
+  default: sizes,
+  avatar: '(max-width: 640px) 64px, 80px',
+  hero: '100vw',
+  card: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
+  thumbnail: '80px',
+  full: '100vw'
+};
+
+const responsiveSizes = variantSizes[variant] || sizes;
+
+// Calculate aspect ratio for variants
+const variantAspectRatios = {
+  default: aspectRatio || `${width}/${height}`,
+  avatar: '1/1',
+  hero: '16/9',
+  card: '4/3',
+  thumbnail: '1/1',
+  full: aspectRatio || 'auto'
+};
+
+const imageAspectRatio = variantAspectRatios[variant] || aspectRatio || `${width}/${height}`;
+
+// Generate base64 placeholder for blur effect
+const blurDataUrl = placeholder === 'blur'
+  ? `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${width} ${height}'%3E%3Cfilter id='b' color-interpolation-filters='sRGB'%3E%3CfeGaussianBlur stdDeviation='20'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='%23e2e8f0' filter='url(%23b)'/%3E%3C/svg%3E`
+  : undefined;
+
+// Generate unique ID for error handling
+const imageId = `img-${Math.random().toString(36).substring(2, 11)}`;
+
+// Variant-specific classes
+const variantClasses = {
+  default: '',
+  avatar: 'rounded-full',
+  hero: 'w-full h-auto',
+  card: 'w-full h-full',
+  thumbnail: 'rounded-lg',
+  full: 'w-full h-full'
+};
+
+const containerClasses = `optimized-image-container optimized-image--${variant} relative overflow-hidden`;
+const imageClasses = `optimized-image ${variantClasses[variant]} ${className}`;
+---
+
+<div
+  class={containerClasses}
+  style={`aspect-ratio: ${imageAspectRatio};`}
+>
+  {!isExternalUrl && !isPublicAsset ? (
+    // Use Astro's optimized Image component for local assets
+    <Image
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      sizes={responsiveSizes}
+      class={imageClasses}
+      loading={actualLoading}
+      quality={quality}
+      format={format === 'auto' ? ['avif', 'webp'] : [format]}
+      densities={densities}
+      style={`object-fit: ${objectFit};`}
+      data-image-id={imageId}
+    />
+  ) : (
+    // For external URLs and public assets, use enhanced native img
+    <picture>
+      {/* WebP version for modern browsers */}
+      {!isExternalUrl && (
+        <source
+          type="image/webp"
+          srcset={densities.map(d => `${src}?w=${width * d}&fm=webp ${d}x`).join(', ')}
+          sizes={responsiveSizes}
+        />
+      )}
+
+      {/* Original format with srcset for responsiveness */}
+      <img
+        id={imageId}
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        sizes={responsiveSizes}
+        srcset={isExternalUrl ? undefined : densities.map(d => `${src}?w=${width * d} ${d}x`).join(', ')}
+        class={imageClasses}
+        loading={actualLoading}
+        decoding={priority ? 'sync' : 'async'}
+        fetchpriority={priority ? 'high' : 'auto'}
+        style={`
+          object-fit: ${objectFit};
+          background-image: ${placeholder === 'blur' ? `url(${blurDataUrl})` : 'none'};
+          background-size: cover;
+          background-position: center;
+        `}
+      />
+    </picture>
+  )}
+
+  {/* Fallback for failed images */}
+  <div
+    id={`fallback-${imageId}`}
+    class="optimized-image-fallback absolute inset-0 hidden flex-center"
+    role="img"
+    aria-label={alt}
+  >
+    <span class="text-4xl opacity-50" aria-hidden="true">
+      {fallbackIcon}
+    </span>
+  </div>
+
+  {/* Loading skeleton */}
+  {placeholder === 'blur' && (
+    <div
+      class="optimized-image-skeleton absolute inset-0 pointer-events-none"
+      aria-hidden="true"
+      style={`background-image: url(${blurDataUrl}); background-size: cover;`}
+    />
+  )}
+</div>
+
+<script define:vars={{ imageId }}>
+  // Enhanced error handling and lazy loading
+  (function() {
+    const img = document.getElementById(imageId);
+    const fallback = document.getElementById(`fallback-${imageId}`);
+
+    if (img) {
+      // Handle loading states
+      img.addEventListener('load', () => {
+        img.classList.add('loaded');
+        const skeleton = img.parentElement?.querySelector('.optimized-image-skeleton');
+        if (skeleton) {
+          skeleton.style.opacity = '0';
+          setTimeout(() => skeleton?.remove(), 300);
+        }
+      });
+
+      // Handle errors
+      img.addEventListener('error', () => {
+        img.style.display = 'none';
+        if (fallback) {
+          fallback.style.display = 'flex';
+        }
+      });
+
+      // Add intersection observer for additional lazy loading features
+      if ('IntersectionObserver' in window && img.loading === 'lazy') {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              // Add loaded class when image comes into view
+              entry.target.classList.add('in-view');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, {
+          rootMargin: '50px'
+        });
+
+        observer.observe(img);
+      }
+    }
+  })();
+</script>
+
+<style>
+  .optimized-image-container {
+    background: var(--color-bg-secondary, #f8fafc);
+  }
+
+  .optimized-image {
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.3s ease-in-out, filter 0.3s ease-in-out;
+  }
+
+  .optimized-image:not(.loaded) {
+    opacity: 0;
+  }
+
+  .optimized-image.loaded {
+    opacity: 1;
+  }
+
+  .optimized-image-skeleton {
+    transition: opacity 0.3s ease-in-out;
+    filter: blur(20px);
+    transform: scale(1.1);
+  }
+
+  .optimized-image-fallback {
+    background: var(--color-bg-secondary, #f8fafc);
+    color: var(--color-text-secondary, #64748b);
+  }
+
+  /* Variant-specific styles */
+  .optimized-image--avatar .optimized-image {
+    border-radius: 50%;
+  }
+
+  .optimized-image--hero {
+    max-height: 500px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .optimized-image--card {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .optimized-image--thumbnail {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-base);
+  }
+
+  /* Performance hint for browsers */
+  .optimized-image[loading="lazy"] {
+    content-visibility: auto;
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .optimized-image,
+    .optimized-image-skeleton {
+      transition: none;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .optimized-image-fallback {
+      border: 2px solid currentColor;
+    }
+  }
+</style>

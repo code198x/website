@@ -1,103 +1,137 @@
 ---
-name: "Amstrad CPC"
-slug: "amstrad-cpc"
+name: "CPC"
+full_name: "Amstrad CPC"
 manufacturer: "Amstrad"
-model_number: "CPC 464/664/6128"
-cpu: "Zilog Z80A"
+model_number: "CPC464/6128"
+alternative_names: ["Colour Personal Computer", "Schneider CPC"]
+
+# Hardware specifications
+cpu: "Z80A"
+cpu_details:
+  architecture: "8-bit"
+  instruction_set: "Zilog Z80"
+  addressing_modes: ["Immediate", "Register", "Indexed", "Indirect", "Relative"]
+  registers: "A, B, C, D, E, H, L, IX, IY, SP, PC"
+
 clock_speed: "4 MHz"
-ram: "64 KB (CPC 464), 64 KB (CPC 664), 128 KB (CPC 6128)"
-rom: "32 KB (BASIC, firmware)"
+ram: "64KB-128KB"
+ram_details:
+  user_available: "42KB (464) or 61KB (6128)"
+  video_ram: "16KB"
+  expansion_options: ["RAM expansion to 512KB"]
+
+rom: "32KB"
+rom_contents: ["Locomotive BASIC", "Firmware"]
+
+# Graphics capabilities
 video:
-  processor: "Motorola 6845 CRTC + Gate Array"
-  resolution: "320×200 pixels (Mode 1), 640×200 pixels (Mode 0), 160×200 pixels (Mode 2)"
-  colors: "27 colours, 16 simultaneously"
+  processor: "6845 CRTC + Gate Array"
+  resolution: "640×200"
+  colors: "27 colors"
   display_modes:
-    - "Mode 0: 160×200, 16 colours"
-    - "Mode 1: 320×200, 4 colours"
-    - "Mode 2: 640×200, 2 colours"
+    ["Mode 0: 160×200 16 colors", "Mode 1: 320×200 4 colors", "Mode 2: 640×200 2 colors"]
+  sprites:
+    count: 0
+    size: "Software sprites only"
+    colors_per_sprite: 0
+  hardware_scrolling: true
+  raster_interrupts: true
+
+# Audio capabilities
 audio:
-  chip: "General Instrument AY-3-8912"
+  chip: "AY-3-8912"
   channels: 3
-  features:
-    - "Square wave sound generation"
-    - "Noise generator"
-    - "Volume envelopes"
-storage:
-  - "Compact Cassette tape"
-  - "3\" floppy disk (CPC 664/6128)"
-io_ports:
-  - "Joystick port"
-  - "Expansion port"
-  - "Printer port"
-  - "Monitor output"
-price_at_launch:
-  global: "£199 (CPC 464, 1984)"
-  countries:
-    - country: "United Kingdom"
-      price: "199"
-      currency: "GBP"
+  features: ["Square waves", "Noise", "Envelope control"]
+  sample_playback: false
+  synthesis_types: ["PSG"]
+
+# Storage and I/O
+storage: ["Cassette", '3" floppy disk']
+storage_details:
+  built_in: ["Cassette (464)", '3" floppy (6128)']
+  expansion: ["External disk drive"]
+  typical_capacity:
+    cassette: "Variable"
+    floppy: "180KB"
+
+io_ports: ["Expansion", "Printer", "Joystick", "Stereo sound"]
+expansion_options: ["Disk drive", "RAM expansion", "ROM box"]
+
+# Commercial information
 release_date:
-  global: 1984-04-25
-  countries:
-    - country: "United Kingdom"
-      date: 1984-04-25
-discontinued: 1990-01-01
-units_sold: "Over 3 million units"
+  global: 1984-04-01T00:00:00Z
+
 country_of_origin: "United Kingdom"
-operating_system: "AMSDOS (for disk systems)"
+operating_system: "AMSDOS"
+programming_languages: ["Z80 Assembly", "Locomotive BASIC"]
+
+# Target market and positioning
+target_market: ["Home users", "Gaming", "Education"]
+market_positioning: "Complete computer with monitor"
+competition: ["ZX Spectrum", "Commodore 64", "BBC Micro"]
+
+# Educational relevance
+learning_advantages: ["Z80 programming", "Gate Array tricks", "Hardware scrolling"]
+common_beginner_projects: ["Mode mixing", "Raster effects", "Overscan"]
+
+# Modern preservation and emulation
 emulated: true
 emulators:
   - name: "WinAPE"
     platform: "Windows"
+    accuracy: "cycle_accurate"
+  - name: "RetroVirtualMachine"
+    platform: "Windows, macOS, Linux"
     accuracy: "high"
-  - name: "CPCE"
-    platform: "Windows"
-    accuracy: "good"
-  - name: "Arnold"
-    platform: "Multi-platform"
-    accuracy: "good"
-variants:
-  - name: "CPC 464"
-    model_number: "CPC 464"
-    release_date:
-      global: 1984-04-25
-    differences: "Cassette-only system with 64KB RAM"
-  - name: "CPC 664"
-    model_number: "CPC 664"
-    release_date:
-      global: 1985-05-01
-    differences: "Built-in 3-inch floppy disk drive, 64KB RAM"
-  - name: "CPC 6128"
-    model_number: "CPC 6128"
-    release_date:
-      global: 1985-06-01
-    differences: "Built-in 3-inch floppy disk drive, 128KB RAM"
-historical_significance: "The Amstrad CPC series brought affordable computing with excellent graphics capabilities to British homes. Created by Sir Alan Sugar's Amstrad, these systems combined computer, monitor, and cassette/disk drive in one unit, making them popular for gaming and home productivity."
-image: "/images/systems/amstrad-cpc.jpg"
-order: 5
+
+preservation_status: "excellent"
+hardware_availability: "available"
+
+# Media
+description: "The all-in-one computer that brought affordable color computing to Europe with a built-in monitor."
+
+# Platform Classification
+medal_tier: "silver"
+total_lessons: 256
+total_games: 2
+estimated_duration: "4-6 months"
+cpu_architecture: "Z80"
+difficulty_level: "intermediate"
+status: "planned"
+order: 20
 ---
 
-# Amstrad CPC Series
+# Amstrad CPC
 
-## Coming Soon! 
+_Coming Soon_
 
-The Amstrad CPC (Colour Personal Computer) series will be added to Code Like It's 198x in a future update. This popular British home computer featured:
+The Amstrad CPC brought affordable computing to Europe with an all-in-one design that included a built-in monitor. Popular in the UK, France, and Spain, it competed directly with the Spectrum and C64 with colorful graphics and impressive sound.
 
-- **Z80 Assembly Programming** - Learn advanced 8-bit programming techniques
-- **Advanced Graphics** - Explore sophisticated colour graphics programming  
-- **Sound Programming** - Create music with the AY-3-8912 sound chip
-- **Disk Systems** - Work with more advanced storage than cassette-only systems
+## Why Learn CPC Programming?
 
-The Amstrad CPC was known for its excellent build quality, integrated design, and strong software library, making it a worthy addition to our vintage computing curriculum.
+The CPC's Gate Array and CRTC combination offers unique opportunities for visual effects. Its clean Z80 implementation and powerful BASIC make it an excellent platform for learning both high and low-level programming.
 
-### Why the CPC Matters
+## What Makes the CPC Special
 
-The Amstrad CPC series demonstrated how thoughtful engineering could create an affordable yet capable computer system. Sir Alan Sugar's vision of an integrated computer-monitor-storage unit influenced later all-in-one designs and showed that British companies could compete with larger international manufacturers.
+- **All-in-One**: Computer and monitor in one package
+- **Gate Array**: Unique approach to graphics
+- **27 Colors**: More than Spectrum or C64
+- **European Heritage**: Huge demoscene following
 
-**Educational Focus:**
-- Z80 assembly language programming
-- Advanced graphics techniques and colour management
-- Sound synthesis and music creation
-- Disk-based software development
+## Curriculum Highlights
 
-Check back soon for comprehensive CPC programming lessons!
+_Currently in development_
+
+When launched, the CPC curriculum will include:
+
+- Z80 assembly programming
+- Gate Array and CRTC tricks
+- Hardware scrolling and overscan
+- AY chip music programming
+- 2 complete projects
+
+## The CPC Legacy
+
+The CPC proved that late entrants could succeed with the right approach. Its all-in-one design and reasonable price made it popular in European homes and schools. The French demoscene particularly embraced it, creating stunning visual effects.
+
+Check back soon for the complete Amstrad CPC curriculum!

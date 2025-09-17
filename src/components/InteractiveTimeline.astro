@@ -1,0 +1,990 @@
+---
+interface TimelineEvent {
+  month?: string;
+  title: string;
+  category: string;
+  description: string;
+  type: string;
+  link?: string;
+}
+
+interface TimelineYear {
+  year: number;
+  events: TimelineEvent[];
+}
+
+interface Props {
+  timelineData: TimelineYear[];
+  categoryColors: Record<string, string>;
+  categoryIcons: Record<string, string>;
+}
+
+const { timelineData, categoryIcons } = Astro.props;
+
+// Get all unique categories for filtering
+const allCategories = [...new Set(timelineData.flatMap(year => year.events.map(event => event.category)))];
+
+// Get decades for navigation
+const decades = [...new Set(timelineData.map(year => Math.floor(year.year / 10) * 10))].sort();
+---
+
+<div class="interactive-timeline" data-timeline-data={JSON.stringify(timelineData)}>
+  <!-- Timeline Controls -->
+  <div class="timeline-controls" role="toolbar" aria-label="Timeline controls">
+    <div class="container">
+      <div class="controls-row">
+        <!-- Search -->
+        <div class="timeline-search">
+          <label for="timeline-search" class="sr-only">Search timeline events</label>
+          <input
+            type="search"
+            id="timeline-search"
+            placeholder="Search timeline events..."
+            class="search-input"
+            aria-describedby="search-help"
+            autocomplete="off"
+          />
+          <div id="search-help" class="sr-only">Search through timeline events by title or description</div>
+          <div class="search-results" id="search-results" style="display: none;" role="listbox" aria-label="Search suggestions"></div>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="timeline-filter">
+          <label for="category-filter">Category:</label>
+          <select id="category-filter" class="filter-select" aria-describedby="category-filter-help">
+            <option value="all">All Categories</option>
+            {allCategories.map(category => (
+              <option value={category}>
+                {categoryIcons[category]} {category.charAt(0).toUpperCase() + category.slice(1)}
+              </option>
+            ))}
+          </select>
+          <div id="category-filter-help" class="sr-only">Filter timeline events by category</div>
+        </div>
+
+        <!-- Decade Navigation -->
+        <div class="decade-nav" role="group" aria-labelledby="decade-nav-label">
+          <label id="decade-nav-label">Decade:</label>
+          <div class="btn-group">
+            {decades.map(decade => (
+              <button
+                class="btn btn--ghost btn--sm"
+                data-decade={decade}
+                title={`Jump to ${decade}s`}
+                aria-label={`Jump to events from the ${decade}s`}
+              >
+                {decade}s
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <!-- Event Type Filter -->
+      <div class="controls-row">
+        <div class="event-type-filter" role="group" aria-labelledby="type-filter-label">
+          <label id="type-filter-label">Types:</label>
+          <div class="type-tags" id="type-filter" role="group" aria-label="Filter by event type">
+            <!-- Populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline Content -->
+  <div class="timeline-content">
+    <div class="container">
+      <div class="timeline" id="timeline" role="main" aria-labelledby="timeline-heading" aria-live="polite">
+        <h2 id="timeline-heading" class="sr-only">Computing History Timeline</h2>
+        <!-- Loading placeholder -->
+        <div class="timeline-loading" role="status" aria-label="Loading timeline content">
+          <div class="loading-spinner" aria-hidden="true"></div>
+          <p>Loading timeline...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline Stats -->
+  <div class="timeline-stats" role="complementary" aria-labelledby="stats-heading">
+    <div class="container">
+      <h3 id="stats-heading" class="sr-only">Timeline Statistics</h3>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-number" id="total-events" aria-label="Total number of events">0</span>
+          <span class="stat-label">Total Events</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" id="visible-events">0</span>
+          <span class="stat-label">Visible Events</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" id="year-span">0</span>
+          <span class="stat-label">Years Covered</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+class InteractiveTimeline {
+  timelineData: any[];
+  filteredData: any[];
+  categoryColors: { [key: string]: string };
+  categoryIcons: { [key: string]: string };
+  currentFilter: {
+    category: string;
+    types: string[];
+    search: string;
+  };
+
+  constructor() {
+    this.timelineData = [];
+    this.filteredData = [];
+    this.categoryColors = {};
+    this.categoryIcons = {};
+    this.currentFilter = { category: 'all', types: [], search: '' };
+
+    this.init();
+  }
+
+  init() {
+    // Get data from the page
+    const timelineElement = document.querySelector('.interactive-timeline') as HTMLElement;
+    if (timelineElement) {
+      this.timelineData = JSON.parse(timelineElement.dataset.timelineData || '[]');
+      this.filteredData = [...this.timelineData];
+
+      // Get colors and icons from CSS or define them here
+      this.setupCategoryData();
+      this.setupEventListeners();
+      this.renderTimeline();
+      this.setupEventTypes();
+      this.updateStats();
+    }
+  }
+
+  setupCategoryData() {
+    this.categoryColors = {
+      hardware: "#2563eb", people: "#10b981", companies: "#8b5cf6", games: "#f59e0b",
+      demos: "#06b6d4", "operating-systems": "#64748b", "programming-languages": "#10b981",
+      applications: "#f59e0b", "development-tools": "#ec4899", drivers: "#6b7280",
+      utilities: "#14b8a6", plugins: "#a855f7", emulators: "#8b5cf6",
+      techniques: "#ef4444", publications: "#6366f1", events: "#ec4899",
+      groups: "#14b8a6", formats: "#fb923c", culture: "#06b6d4"
+    };
+
+    this.categoryIcons = {
+      hardware: "🖥️", people: "👤", companies: "🏢", games: "🎮",
+      demos: "🎬", "operating-systems": "💻", "programming-languages": "📝",
+      applications: "💼", "development-tools": "🔧", drivers: "⚙️",
+      utilities: "🛠️", plugins: "🧩", emulators: "🔄", techniques: "⚡",
+      publications: "📖", events: "🎪", groups: "👥", formats: "💾",
+      culture: "🌟"
+    };
+  }
+
+  setupEventListeners() {
+    // Search functionality
+    const searchInput = document.getElementById('timeline-search') as HTMLInputElement;
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this.currentFilter.search = (e.target as HTMLInputElement).value.toLowerCase();
+        this.filterAndRender();
+      });
+    }
+
+    // Category filter
+    const categoryFilter = document.getElementById('category-filter') as HTMLSelectElement;
+    if (categoryFilter) {
+      categoryFilter.addEventListener('change', (e) => {
+        this.currentFilter.category = (e.target as HTMLSelectElement).value;
+        this.filterAndRender();
+      });
+    }
+
+    // Decade navigation
+    const decadeButtons = document.querySelectorAll('.btn.btn--ghost.btn--sm');
+    decadeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const decade = parseInt((btn as HTMLElement).dataset.decade || '0');
+        this.scrollToDecade(decade);
+
+        // Update active state
+        decadeButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  }
+
+  setupEventTypes() {
+    // Get all unique event types
+    const allTypes = [...new Set(
+      this.timelineData.flatMap(year => year.events.map((event: any) => event.type))
+    )].filter(Boolean).sort();
+
+    const typeFilter = document.getElementById('type-filter');
+    if (typeFilter) {
+      typeFilter.innerHTML = allTypes.map(type => `
+        <button class="type-tag" data-type="${type}">
+          ${type.charAt(0).toUpperCase() + type.slice(1)}
+        </button>
+      `).join('');
+
+      // Add event listeners to type buttons
+      typeFilter.addEventListener('click', (e: Event) => {
+        const target = e.target as HTMLElement;
+        if (target && target.classList && target.classList.contains('type-tag')) {
+          target.classList.toggle('active');
+          this.updateTypeFilter();
+        }
+      });
+    }
+  }
+
+  updateTypeFilter() {
+    const activeTypes = [...document.querySelectorAll('.type-tag.active')]
+      .map(btn => (btn as HTMLElement).dataset.type)
+      .filter((type): type is string => type !== undefined);
+    this.currentFilter.types = activeTypes;
+    this.filterAndRender();
+  }
+
+  filterAndRender() {
+    this.filteredData = this.timelineData.map(yearData => ({
+      ...yearData,
+      events: yearData.events.filter((event: any) => {
+        // Category filter
+        if (this.currentFilter.category !== 'all' &&
+            event.category !== this.currentFilter.category) {
+          return false;
+        }
+
+        // Type filter
+        if (this.currentFilter.types.length > 0 &&
+            !this.currentFilter.types.includes(event.type)) {
+          return false;
+        }
+
+        // Search filter
+        if (this.currentFilter.search) {
+          const searchTerm = this.currentFilter.search;
+          return event.title.toLowerCase().includes(searchTerm) ||
+                 event.description.toLowerCase().includes(searchTerm) ||
+                 event.category.toLowerCase().includes(searchTerm);
+        }
+
+        return true;
+      })
+    })).filter((yearData: any) => yearData.events.length > 0);
+
+    this.renderTimeline();
+    this.updateStats();
+  }
+
+  renderTimeline() {
+    const timeline = document.getElementById('timeline');
+    if (!timeline) return;
+
+    if (this.filteredData.length === 0) {
+      timeline.innerHTML = `
+        <div class="timeline-empty">
+          <h3>No events found</h3>
+          <p>Try adjusting your filters or search terms.</p>
+        </div>
+      `;
+      return;
+    }
+
+    timeline.innerHTML = `
+      <div class="timeline-line"></div>
+      ${this.filteredData.map((yearGroup: any) => `
+        <div class="timeline-year" data-year="${yearGroup.year}">
+          <div class="timeline-year-marker">
+            <span class="year-label">${yearGroup.year}</span>
+          </div>
+          <div class="timeline-events">
+            ${yearGroup.events.map((event: any) => this.renderEvent(event)).join('')}
+          </div>
+        </div>
+      `).join('')}
+    `;
+
+    // Add fade-in animation
+    requestAnimationFrame(() => {
+      const years = timeline.querySelectorAll('.timeline-year');
+      years.forEach((year, index) => {
+        setTimeout(() => {
+          year.classList.add('fade-in');
+        }, index * 50);
+      });
+    });
+  }
+
+  renderEvent(event: any) {
+    const color = this.categoryColors[event.category] || '#6b7280';
+    const icon = this.categoryIcons[event.category] || '📦';
+
+    // event.link already contains the full path like /vault/hardware/commodore-64
+    const eventElement = event.link ? 'a' : 'div';
+    const linkAttr = event.link ? `href="${event.link}"` : '';
+
+    // Format the month/date nicely
+    const dateDisplay = event.month ? event.month.toUpperCase() : '';
+
+    return `
+      <${eventElement} ${linkAttr} class="timeline-event timeline-event--${event.category}" data-category="${event.category}" data-type="${event.type}" style="--event-color: ${color};">
+        ${dateDisplay ? `<div class="event-date">${dateDisplay}</div>` : ''}
+        <div class="event-content">
+          <div class="event-header">
+            <span class="event-icon">${icon}</span>
+            <h3 class="event-title">${event.title}</h3>
+          </div>
+          <p class="event-description">${event.description}</p>
+          <div class="event-meta">
+            <span class="event-category">
+              ${event.category.replace('-', ' ')}
+            </span>
+            ${event.type ? `<span class="event-type">${event.type}</span>` : ''}
+          </div>
+        </div>
+      </${eventElement}>
+    `;
+  }
+
+  scrollToDecade(decade: number) {
+    const yearElement = document.querySelector(`[data-year="${decade}"]`);
+    if (yearElement) {
+      yearElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  updateStats() {
+    const totalEvents = (window as any).timelineData.reduce((sum: number, year: any) => sum + year.events.length, 0);
+    const visibleEvents = this.filteredData.reduce((sum: number, year: any) => sum + year.events.length, 0);
+    const yearSpan = (window as any).timelineData.length > 0 ?
+      (window as any).timelineData[(window as any).timelineData.length - 1].year - (window as any).timelineData[0].year + 1 : 0;
+
+    const totalEventsEl = document.getElementById('total-events');
+    const visibleEventsEl = document.getElementById('visible-events');
+    const yearSpanEl = document.getElementById('year-span');
+
+    if (totalEventsEl) totalEventsEl.textContent = totalEvents.toString();
+    if (visibleEventsEl) visibleEventsEl.textContent = visibleEvents.toString();
+    if (yearSpanEl) yearSpanEl.textContent = yearSpan.toString();
+  }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  new InteractiveTimeline();
+});
+</script>
+
+<style is:global>
+  .interactive-timeline {
+    background: var(--color-bg-secondary);
+    min-height: 100vh;
+    font-family: var(--font-family-sans);
+  }
+
+  .timeline-controls {
+    background: white;
+    border-bottom: 2px solid var(--color-border);
+    padding: var(--space-xl) 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: var(--shadow-md);
+  }
+
+  .controls-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-md);
+    flex-wrap: wrap;
+  }
+
+  .controls-row:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Search Input */
+  .timeline-search {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: var(--space-sm) var(--space-md);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    background: white;
+    color: var(--color-text);
+    transition: border-color 0.2s ease;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  /* Filter Controls */
+  .timeline-filter,
+  .decade-nav,
+  .event-type-filter {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .timeline-filter label,
+  .decade-nav label,
+  .event-type-filter label {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: var(--letter-spacing-wide);
+  }
+
+  .filter-select {
+    padding: var(--space-sm) var(--space-md);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: white;
+    color: var(--color-text);
+    font-size: var(--font-size-base);
+    min-width: 180px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+
+  .filter-select:hover {
+    border-color: var(--color-primary-light);
+  }
+
+  .filter-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  /* Decade Buttons */
+  .btn-group {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+  }
+
+  .btn.btn--ghost.btn--sm {
+    padding: var(--space-xs) var(--space-sm);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: white;
+    color: var(--color-text-light);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn.btn--ghost.btn--sm:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-primary-light);
+    color: var(--color-primary);
+  }
+
+  .btn.btn--ghost.btn--sm.active {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+  }
+
+  /* Type Tags */
+  .type-tags {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+  }
+
+  .type-tag {
+    padding: var(--space-xs) var(--space-sm);
+    border: 2px solid var(--color-border);
+    border-radius: 999px;
+    background: white;
+    color: var(--color-text-light);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: capitalize;
+  }
+
+  .type-tag:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-accent-light);
+    color: var(--color-accent);
+  }
+
+  .type-tag.active {
+    background: var(--color-accent);
+    color: white;
+    border-color: var(--color-accent);
+  }
+
+  /* Timeline Content */
+  .timeline-content {
+    padding: var(--space-3xl) 0;
+  }
+
+  .timeline {
+    position: relative;
+    padding: var(--space-xl) 0;
+  }
+
+  /* Timeline Line */
+  .timeline-line {
+    position: absolute;
+    left: 50px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(
+      180deg,
+      var(--color-primary),
+      var(--color-accent),
+      var(--color-primary)
+    );
+    opacity: 0.2;
+  }
+
+  .timeline-line::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -1px;
+    right: -1px;
+    bottom: 0;
+    background: linear-gradient(
+      180deg,
+      transparent,
+      rgba(37, 99, 235, 0.1) 20%,
+      rgba(139, 92, 246, 0.1) 50%,
+      rgba(37, 99, 235, 0.1) 80%,
+      transparent
+    );
+  }
+
+  /* Timeline Year Group */
+  .timeline-year {
+    position: relative;
+    margin-bottom: var(--space-3xl);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s ease;
+  }
+
+  .timeline-year.fade-in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .timeline-year-marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100px;
+    text-align: center;
+  }
+
+  .year-label {
+    display: inline-block;
+    background: var(--gradient-primary);
+    color: white;
+    border-radius: 999px;
+    padding: 0.75rem 1.5rem;
+    font-size: 1.5rem;
+    font-weight: var(--font-weight-extrabold);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    letter-spacing: -0.02em;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .year-label::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    animation: shimmer 3s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0%, 100% { left: -100%; }
+    50% { left: 100%; }
+  }
+
+  /* Timeline Events */
+  .timeline-events {
+    margin-left: 120px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .timeline-event {
+    background: white;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border-left: 5px solid var(--event-color, var(--color-primary));
+    overflow: hidden;
+  }
+
+  .timeline-event::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--event-color, var(--color-primary)) 8%, white),
+      transparent
+    );
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .timeline-event::before {
+    content: '';
+    position: absolute;
+    left: -74px;
+    top: 24px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid var(--event-color, var(--color-primary));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--event-color, var(--color-primary)) 20%, white);
+    z-index: 2;
+  }
+
+  .timeline-event:hover {
+    transform: translateX(6px) translateY(-2px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    border-left-width: 8px;
+  }
+
+  .timeline-event:hover::after {
+    opacity: 0.8;
+  }
+
+  /* Event Content */
+  .event-date {
+    font-size: 0.75rem;
+    color: var(--event-color, var(--color-primary));
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    position: relative;
+    z-index: 1;
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: color-mix(in srgb, var(--event-color, var(--color-primary)) 10%, white);
+    border-radius: 4px;
+  }
+
+  .event-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .event-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    line-height: 1;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+    background: white;
+    padding: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--color-border-light);
+  }
+
+  .event-title {
+    font-size: 1.25rem;
+    color: var(--color-text);
+    font-weight: var(--font-weight-bold);
+    margin: 0;
+    line-height: 1.3;
+    padding-top: 0.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  .event-description {
+    color: var(--color-text-light);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .event-meta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-border-light);
+    margin-top: 0.5rem;
+  }
+
+  .event-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Add animation for timeline events */
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .event-category {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.08em;
+    background: var(--event-color, var(--color-primary));
+    color: white;
+    box-shadow: 0 2px 4px color-mix(in srgb, var(--event-color, var(--color-primary)) 30%, transparent);
+    position: relative;
+    z-index: 1;
+  }
+
+  .event-type {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    background: white;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    color: var(--color-text-light);
+    text-transform: capitalize;
+    font-weight: var(--font-weight-medium);
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Timeline Stats */
+  .timeline-stats {
+    background: white;
+    border-top: 2px solid var(--color-border);
+    padding: var(--space-2xl) 0;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-lg);
+  }
+
+  .stat-card {
+    text-align: center;
+    padding: 2rem;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: white;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+  }
+
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-primary-light);
+  }
+
+  .stat-number {
+    display: block;
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--space-sm);
+  }
+
+  .stat-label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-light);
+    text-transform: uppercase;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: var(--letter-spacing-wider);
+  }
+
+  /* Add nice hover effect for the whole timeline */
+  .timeline-year:hover .year-label {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+  }
+
+  /* Loading and Empty States */
+  .timeline-loading,
+  .timeline-empty {
+    text-align: center;
+    padding: var(--space-3xl);
+    color: var(--color-text-light);
+  }
+
+  .timeline-empty h3 {
+    color: var(--color-text);
+    margin-bottom: var(--space-md);
+    font-size: var(--font-size-xl);
+  }
+
+  /* Make the timeline more visually interesting */
+  .timeline::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: 43px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    box-shadow: 0 0 0 4px white, 0 0 0 6px var(--color-primary-light);
+  }
+
+  .timeline::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 43px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--gradient-accent);
+    box-shadow: 0 0 0 4px white, 0 0 0 6px var(--color-accent-light);
+  }
+
+  .loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid var(--color-border);
+    border-top: 3px solid var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto var(--space-lg);
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* CSS Variables for border radius (not in base.css) */
+  .interactive-timeline {
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+  }
+
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .timeline-line {
+      left: 25px;
+    }
+
+    .timeline-year-marker {
+      position: static;
+      margin-bottom: var(--space-md);
+      width: 100%;
+      text-align: left;
+    }
+
+    .timeline-events {
+      margin-left: 40px;
+    }
+
+    .timeline-event::before {
+      left: -33px;
+      width: 12px;
+      height: 12px;
+    }
+
+    .timeline-event {
+      padding: var(--space-md);
+    }
+
+    .event-title {
+      font-size: var(--font-size-base);
+    }
+
+    .event-icon {
+      font-size: 1.25rem;
+    }
+
+    .controls-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-md);
+    }
+
+    .timeline-search {
+      max-width: none;
+    }
+
+    .btn-group,
+    .type-tags {
+      justify-content: flex-start;
+    }
+  }
+</style>

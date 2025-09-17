@@ -1,178 +1,136 @@
 ---
-name: "Nintendo Entertainment System"
-slug: "nintendo-entertainment-system"
+name: "NES"
+full_name: "Nintendo Entertainment System"
 manufacturer: "Nintendo"
-model_number: "NES"
-cpu: "Ricoh 2A03 (based on MOS Technology 6502)"
+model_number: "NES-001"
+alternative_names: ["Famicom", "Family Computer"]
+
+# Hardware specifications
+cpu: "6502"
+cpu_details:
+  architecture: "8-bit"
+  instruction_set: "6502 variant (Ricoh 2A03)"
+  addressing_modes: ["Immediate", "Zero Page", "Absolute", "Indexed", "Indirect"]
+  registers: "A (Accumulator), X, Y (Index), S (Stack), P (Status)"
+
 clock_speed: "1.79 MHz (NTSC) / 1.66 MHz (PAL)"
-ram: "2 KB internal RAM"
-rom: "Game cartridges (typically 32 KB to 1 MB)"
+ram: "2KB"
+ram_details:
+  user_available: "2KB system RAM"
+  video_ram: "2KB (separate)"
+  expansion_options: ["Cartridge RAM/ROM"]
+
+rom: "None (cartridge-based)"
+rom_contents: ["Loaded from cartridge"]
+
+# Graphics capabilities
 video:
-  processor: "Picture Processing Unit (PPU)"
-  resolution: "256×240 pixels (NTSC) / 256×224 pixels (PAL)"
-  colors: "52 colors available, 25 on-screen simultaneously"
-  display_modes:
-    - "Background layers with 8×8 pixel tiles"
-    - "64 hardware sprites (8×8 or 8×16 pixels)"
-    - "4 colour palettes for backgrounds"
-    - "4 colour palettes for sprites"
+  processor: "PPU (Picture Processing Unit)"
+  resolution: "256×240 pixels"
+  colors: "54 colors from palette"
+  display_modes: ["Tiled backgrounds", "Sprites"]
+  sprites:
+    count: 64
+    size: "8×8 or 8×16 pixels"
+    colors_per_sprite: 3
+  hardware_scrolling: true
+  raster_interrupts: true
+
+# Audio capabilities
 audio:
-  chip: "Audio Processing Unit (APU) built into CPU"
+  chip: "APU (Audio Processing Unit)"
   channels: 5
-  features:
-    - "2 pulse wave channels"
-    - "1 triangle wave channel" 
-    - "1 noise channel"
-    - "1 Delta Modulation Channel (DMC) for samples"
-storage:
-  - "ROM cartridges with optional battery-backed SRAM"
-  - "Famicom Disk System (Japan only)"
-io_ports:
-  - "2 × controller ports"
-  - "Expansion port (bottom)"
-  - "RF output"
-  - "Composite video output (later models)"
-price_at_launch:
-  global: "$179.99 USD (1985)"
-  countries:
-    - country: "United States"
-      price: "179.99"
-      currency: "USD"
-    - country: "United Kingdom"
-      price: "89.99"
-      currency: "GBP"
+  features: ["2 pulse waves", "1 triangle wave", "1 noise", "1 DPCM"]
+  sample_playback: true
+  synthesis_types: ["Pulse", "Triangle", "Noise", "Delta PCM"]
+
+# Storage and I/O
+storage: ["Cartridge ROM", "Battery-backed RAM (some cartridges)"]
+storage_details:
+  built_in: ["Cartridge slot"]
+  expansion: ["Famicom Disk System (Japan only)"]
+  typical_capacity:
+    cartridge: "8KB-1MB+"
+
+io_ports: ["Controller ports", "Expansion port", "RF/Composite output"]
+expansion_options: ["Light gun", "R.O.B.", "Various peripherals"]
+
+# Commercial information
 release_date:
-  global: 1983-07-15
-  countries:
-    - country: "Japan"
-      date: 1983-07-15
-    - country: "United States"
-      date: 1985-10-18
-    - country: "United Kingdom"
-      date: 1986-09-01
-discontinued: 2003-09-25
-units_sold: "61.91 million"
+  global: 1985-10-18T00:00:00Z
+
 country_of_origin: "Japan"
-operating_system: "None (direct hardware programming)"
+operating_system: "None (cartridge-based)"
+programming_languages: ["6502 Assembly"]
+
+# Target market and positioning
+target_market: ["Home gaming", "Family entertainment"]
+market_positioning: "Premium home video game console"
+competition: ["Sega Master System", "Atari 7800"]
+
+# Educational relevance
+learning_advantages: ["Constrained environment", "Tile-based graphics", "Pattern tables"]
+common_beginner_projects: ["Simple games", "Graphics demos", "Sound tests"]
+
+# Modern preservation and emulation
 emulated: true
 emulators:
-  - name: "Nestopia"
-    platform: "Multi-platform"
+  - name: "Mesen"
+    platform: "Windows, macOS, Linux"
     accuracy: "cycle_accurate"
   - name: "FCEUX"
-    platform: "Multi-platform"
+    platform: "Windows, macOS, Linux"
     accuracy: "high"
-  - name: "Mesen"
-    platform: "Windows"
-    accuracy: "cycle_accurate"
-  - name: "RetroArch"
-    platform: "Multi-platform"
-    accuracy: "cycle_accurate"
-variants:
-  - name: "Family Computer (Famicom)"
-    release_date:
-      global: 1983-07-15
-    discontinued: 2003-09-25
-    differences: "Original Japanese model with red/white design, different cartridge format, built-in controllers"
-    model_number: "HVC-001"
-  - name: "Nintendo Entertainment System (NES)"
-    release_date:
-      global: 1985-10-18
-    discontinued: 1995-08-14
-    differences: "Western redesign with gray/black styling, cartridge slot, removable controllers"
-    model_number: "NES-001"
-  - name: "AV Famicom"
-    release_date:
-      global: 1993-12-01
-    discontinued: 2003-09-25
-    differences: "Final Famicom model with AV output, top-loading cartridge slot"
-    model_number: "HVC-101"
-  - name: "NES-101 (NES 2)"
-    release_date:
-      global: 1993-10-01
-    discontinued: 1995-08-14
-    differences: "Redesigned compact model with top-loading cartridge slot, no RF switch"
-    model_number: "NES-101"
-notable_software:
-  - name: "Super Mario Bros."
-    type: "Platform Game"
-    year: 1985
-    developer: "Nintendo"
-    publisher: "Nintendo"
-  - name: "The Legend of Zelda"
-    type: "Action-Adventure Game"
-    year: 1986
-    developer: "Nintendo"
-    publisher: "Nintendo"
-  - name: "Metroid"
-    type: "Action-Adventure Game"
-    year: 1986
-    developer: "Nintendo"
-    publisher: "Nintendo"
-  - name: "Mega Man 2"
-    type: "Platform Game"
-    year: 1988
-    developer: "Capcom"
-    publisher: "Capcom"
-  - name: "Castlevania"
-    type: "Platform Game"
-    year: 1986
-    developer: "Konami"
-    publisher: "Konami"
-historical_significance: "The NES single-handedly revived the video game industry after the 1983 crash in North America. It established many conventions of modern gaming and created franchises that remain popular today. Its strict quality control and innovative marketing saved gaming as a medium."
-description: "The console that saved video gaming in North America, featuring scrolling graphics and the 6502 processor variant."
-image: "/images/systems/nintendo-entertainment-system.jpg"
-order: 4
+
+preservation_status: "excellent"
+hardware_availability: "common"
+
+# Media
+description: "The console that saved video gaming in North America and established Nintendo as a household name."
+
+# Platform Classification
+medal_tier: "platinum"
+total_lessons: 4096
+total_games: 32
+estimated_duration: "12-18 months"
+cpu_architecture: "6502"
+difficulty_level: "intermediate"
+
+status: "planned"
+order: 3
 ---
 
-The **Nintendo Entertainment System (NES)** was the console that saved the video game industry. Released in Japan as the Family Computer (Famicom) in 1983 and in North America in 1985, the NES single-handedly revived gaming after the industry crash of 1983 and established Nintendo as the dominant force in home gaming.
+# Nintendo Entertainment System
 
-The NES featured a **Ricoh 2A03** processor (a modified 6502) running at 1.79 MHz, paired with a custom **Picture Processing Unit (PPU)** that handled graphics. Despite its modest specifications, clever programming techniques allowed developers to create games that seemed to exceed the hardware's capabilities.
+_Coming Soon_
 
-## Key Features
+The NES didn't just save the video game industry after the 1983 crash - it redefined what home gaming could be. With its powerful PPU, sophisticated scrolling capabilities, and innovative mapper chips, the NES became the canvas for some of gaming's most iconic experiences.
 
-- **6502-Based Processor** - Familiar architecture for programmers of the era
-- **Tile-Based Graphics** - Efficient system for creating detailed backgrounds
-- **Hardware Sprites** - 64 movable objects for characters and effects
-- **5-Channel Audio** - Rich sound capabilities for the time
-- **Cartridge System** - Games stored on ROM chips with optional enhancements
-- **Strict Quality Control** - Nintendo's "Seal of Quality" program
+## Why Learn NES Programming?
 
-## Revolutionary Design
+The NES uses a 6502 variant similar to the C64, but with a completely different architecture focused on gaming. Its tile-based graphics, pattern tables, and powerful PPU offer unique programming challenges that teach fundamental game development concepts still relevant today.
 
-The NES introduced several innovations that became industry standards:
+## What Makes the NES Special
 
-- **Lockout chip (10NES)** - Prevented unauthorized games (in Western markets)
-- **Memory mappers** - Allowed cartridges to exceed basic memory limitations
-- **Battery-backed saves** - First console to offer game save functionality
-- **Expansion audio** - Some cartridges included additional sound chips
-- **Advanced graphics techniques** - Sprite multiplexing, scrolling tricks, and more
+- **PPU Power**: Hardware scrolling, sprites, and background layers
+- **Mapper Chips**: Extend capabilities through cartridge hardware
+- **Tile-Based Graphics**: Efficient pattern and palette management
+- **Gaming Focus**: Pure gaming machine without computer overhead
 
-## Technical Innovation
+## Curriculum Highlights
 
-Despite apparent limitations, NES developers pioneered techniques still used today:
+_Currently in development_
 
-- **Sprite flickering** - Managing more sprites than hardware allowed
-- **Background scrolling** - Creating smooth, large game worlds
-- **Bank switching** - Accessing more memory than the CPU could address
-- **Pseudo-3D effects** - Mode 7-style scaling and rotation effects
-- **Advanced sound programming** - Creating rich music with limited channels
+When launched, the NES curriculum will include:
 
-## Cultural Impact
+- 6502 assembly for the Ricoh 2A03
+- PPU programming and graphics techniques
+- APU sound and music programming
+- Mapper utilization and bank switching
+- 16 complete games from simple to advanced
 
-The NES created the modern video game industry. It introduced legendary franchises like Super Mario Bros., The Legend of Zelda, and Metroid. The console's success established the template for how video games would be made, marketed, and sold for decades to come.
+## The NES Legacy
 
-Nintendo's business model—strict quality control, exclusive licensing agreements, and first-party game development—became the industry standard and remains influential today.
+NES development teaches constraint-based design at its finest. Working with 2KB of RAM and limited sprites forces elegant solutions that modern developers rarely need to consider. These skills translate directly to embedded systems and performance-critical code.
 
-## Why Learn NES Programming Today?
-
-Programming the NES teaches fundamental game development concepts:
-
-- **6502 Assembly Language** - Clean, well-documented processor architecture
-- **Memory Management** - Working within severe constraints (2KB RAM!)
-- **Graphics Programming** - Understanding tiles, sprites, and palettes
-- **Audio Programming** - Creating music and sound effects with basic waveforms
-- **Performance Optimization** - Making every cycle count
-- **Game Design Constraints** - How limitations foster creativity
-
-The NES's well-documented hardware and extensive homebrew community make it an excellent platform for learning low-level game programming. The skills learned programming for NES apply directly to modern embedded systems and game development.
+Check back soon for the complete NES curriculum!
