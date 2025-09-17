@@ -1073,26 +1073,6 @@ const lessons = defineCollection({
   }),
 });
 
-// Projects collection - Educational game projects created during the course
-const projects = defineCollection({
-  type: "content",
-  schema: z.object({
-    title: z.string(),
-    system: z.string(),
-    phase_number: z.number().min(1).max(8),
-    tier_range: z.string(), // e.g., "1-4", "5-8", etc.
-    genre: z.string(),
-    description: z.string(),
-    gameplay_mechanics: z.array(z.string()),
-    technical_features: z.array(z.string()),
-    concepts_demonstrated: z.array(z.string()),
-    estimated_dev_time: z.string(),
-    source_code_available: z.boolean().default(true),
-    playable_online: z.boolean().default(false),
-    screenshots: z.array(z.string()).optional(),
-    order: z.number(),
-  }),
-});
 
 const setup = defineCollection({
   type: "content",
@@ -1145,6 +1125,4 @@ export const collections = {
   formats,
   culture,
 
-  // Educational projects
-  projects,
 };

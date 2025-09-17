@@ -45,7 +45,7 @@ export default defineConfig(
       globals: true,
 
       // Reporter configuration
-      reporter: ['verbose', 'html'],
+      reporters: ['verbose', 'html'],
 
       // Test timeout
       testTimeout: 10000,

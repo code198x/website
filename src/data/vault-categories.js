@@ -68,16 +68,6 @@ export const VAULT_CATEGORIES = {
     infoDescription: "Before modern IDEs, developers crafted their programs with specialized tools. This collection documents the assemblers, debuggers, and development environments that made programming accessible on classic systems."
   },
 
-  drivers: {
-    title: "Drivers - The Vault",
-    heroTitle: "Drivers",
-    heroSubtitle: "The software bridges between hardware and applications",
-    heroIcon: "⚙️",
-    heroColor: "#6b7280",
-    infoTitle: "About the Drivers Collection",
-    infoDescription: "Device drivers were the unsung heroes of classic computing, translating between hardware capabilities and software needs. This collection documents the essential drivers that made peripherals and expansion hardware usable."
-  },
-
   emulators: {
     title: "Emulators - The Vault",
     heroTitle: "Emulators",
@@ -183,16 +173,6 @@ export const VAULT_CATEGORIES = {
     ]
   },
 
-  plugins: {
-    title: "Plugins - The Vault",
-    heroTitle: "Plugins",
-    heroSubtitle: "Extensions that expanded software capabilities",
-    heroIcon: "🧩",
-    heroColor: "#a855f7",
-    infoTitle: "About the Plugins Collection",
-    infoDescription: "Plugins and extensions allowed users to customize and enhance their software. This collection documents the add-ons that gave applications new capabilities and personalized computing experiences."
-  },
-
   'programming-languages': {
     title: "Programming Languages - The Vault",
     heroTitle: "Programming Languages",
@@ -201,16 +181,6 @@ export const VAULT_CATEGORIES = {
     heroColor: "#10b981",
     infoTitle: "About the Programming Languages Collection",
     infoDescription: "Each programming language represented a different philosophy about how humans should communicate with computers. This collection explores the languages that democratized programming and enabled new forms of creative expression."
-  },
-
-  projects: {
-    title: "Projects - The Vault",
-    heroTitle: "Projects",
-    heroSubtitle: "Ambitious endeavors that changed everything",
-    heroIcon: "📁",
-    heroColor: "#f59e0b",
-    infoTitle: "About the Projects Collection",
-    infoDescription: "Some software projects were so ambitious or influential they deserve special recognition. This collection documents the landmark projects that pushed boundaries and opened new possibilities."
   },
 
   publications: {
