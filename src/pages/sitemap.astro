@@ -1,0 +1,709 @@
+---
+import { getCollection } from "astro:content";
+import Layout from "../layouts/Layout.astro";
+import SectionHeader from "../components/SectionHeader.astro";
+import { getCategoryInfo } from "../utils/categoryInfo";
+
+// Get all static pages using Astro.glob
+const pages = await Astro.glob('./**/*.astro');
+
+// Get all collections for counts
+const systems = await getCollection("systems");
+const lessons = await getCollection("lessons");
+
+// Vault collections are organized by category
+const vaultCategories = [
+  'applications', 'companies', 'culture', 'demos', 'development-tools',
+  'emulators', 'events', 'formats', 'games', 'groups', 'hardware',
+  'operating-systems', 'people', 'programming-languages', 'publications',
+  'techniques', 'utilities'
+];
+
+// Get vault entries from all categories
+let vaultEntries = [];
+let vaultByCategory = new Map();
+
+for (const category of vaultCategories) {
+  try {
+    const entries = await getCollection(category);
+    vaultEntries = [...vaultEntries, ...entries];
+    vaultByCategory.set(category, entries);
+  } catch (e) {
+    // Category might not exist or have no entries
+    vaultByCategory.set(category, []);
+  }
+}
+
+// Filter and organize pages
+const organizedPages = {
+  main: [],
+  setup: [],
+  lessons: [],
+  vault: [],
+  legal: [],
+};
+
+// Process each page and categorize it
+const processedPages = pages
+  .map(page => {
+    // Get the URL from the page file path
+    const path = page.url || page.default?.moduleId || '';
+
+    // Skip dynamic routes, 404, and the sitemap itself
+    if (path.includes('[') || path.includes('404') || path.includes('sitemap')) {
+      return null;
+    }
+
+    // Convert file path to URL
+    let url = path
+      .replace(/^.*\/pages/, '')
+      .replace(/\.(astro|md|mdx)$/, '')
+      .replace(/\/index$/, '');
+
+    // Handle root index
+    if (url === '' || url === '/index') {
+      url = '/';
+    }
+
+    // Ensure URL starts with /
+    if (!url.startsWith('/')) {
+      url = '/' + url;
+    }
+
+    return url;
+  })
+  .filter(Boolean)
+  .sort();
+
+// Categorize pages
+processedPages.forEach(url => {
+  if (url === '/' || url === '/about' || url === '/getting-started' || url === '/community' || url === '/tools') {
+    organizedPages.main.push(url);
+  } else if (url.startsWith('/setup')) {
+    organizedPages.setup.push(url);
+  } else if (url.startsWith('/lessons')) {
+    organizedPages.lessons.push(url);
+  } else if (url.startsWith('/vault')) {
+    organizedPages.vault.push(url);
+  } else if (url === '/privacy' || url === '/terms') {
+    organizedPages.legal.push(url);
+  }
+});
+
+// Group lessons by system for better display
+const lessonsBySystem = {};
+await Promise.all(
+  systems.map(async (system) => {
+    const systemLessons = lessons.filter(l => l.id.startsWith(system.slug));
+    if (systemLessons.length > 0) {
+      lessonsBySystem[system.slug] = {
+        name: system.data.name,
+        count: systemLessons.length,
+        url: `/lessons/${system.slug}`
+      };
+    }
+  })
+);
+
+// Get all tags from vault entries
+const allTags = [...new Set(vaultEntries.flatMap(e => e.data?.tags || []).map(tag => tag.toLowerCase()))].sort();
+
+// Helper function to format page name
+function formatPageName(url) {
+  if (url === '/') return 'Home';
+
+  const name = url
+    .split('/')
+    .pop()
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, l => l.toUpperCase());
+
+  return name || 'Home';
+}
+---
+
+<Layout
+  title="Sitemap - Code Like It's 198x"
+  description="Complete site map for Code Like It's 198x. Navigate all lessons, systems, and resources."
+>
+  <div class="sitemap">
+    <div class="container">
+      <SectionHeader
+        title="Site Map"
+        subtitle="Complete overview of all pages and content"
+        variant="centered"
+      />
+
+      <div class="sitemap__grid">
+        <!-- Main Pages -->
+        <section class="sitemap__section">
+          <div class="sitemap__header">
+            <span class="sitemap__icon">🏠</span>
+            <h2 class="sitemap__title">Main Pages</h2>
+          </div>
+          <ul class="sitemap__list">
+            {organizedPages.main.map(url => (
+              <li>
+                <a href={url} class="sitemap__link">
+                  {formatPageName(url)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <!-- Setup Guides -->
+        <section class="sitemap__section">
+          <div class="sitemap__header">
+            <span class="sitemap__icon">⚙️</span>
+            <h2 class="sitemap__title">Setup Guides</h2>
+          </div>
+          <ul class="sitemap__list">
+            {organizedPages.setup.map(url => (
+              <li>
+                <a href={url} class="sitemap__link">
+                  {formatPageName(url)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <!-- Learning Paths -->
+        <section class="sitemap__section">
+          <div class="sitemap__header">
+            <span class="sitemap__icon">📚</span>
+            <h2 class="sitemap__title">Learning Paths</h2>
+          </div>
+          <ul class="sitemap__list">
+            <li>
+              <a href="/lessons" class="sitemap__link sitemap__link--primary">
+                All Lessons
+              </a>
+            </li>
+            {Object.entries(lessonsBySystem).map(([slug, system]) => (
+              <li>
+                <a href={system.url} class="sitemap__link sitemap__link--system">
+                  {system.name}
+                </a>
+                <span class="sitemap__count">{system.count} lessons</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <!-- Vault -->
+        <section class="sitemap__section">
+          <div class="sitemap__header">
+            <span class="sitemap__icon">🗄️</span>
+            <h2 class="sitemap__title">Knowledge Vault</h2>
+          </div>
+          <ul class="sitemap__list">
+            <li>
+              <a href="/vault" class="sitemap__link sitemap__link--primary">
+                Vault Home
+              </a>
+            </li>
+            <li>
+              <a href="/vault/timeline" class="sitemap__link">
+                Historical Timeline
+              </a>
+            </li>
+            <li>
+              <a href="/vault/tags" class="sitemap__link">
+                Browse by Tags
+              </a>
+            </li>
+          </ul>
+
+          <h3 class="sitemap__subsection-title">Categories</h3>
+          <ul class="sitemap__list">
+            {Array.from(vaultByCategory.entries())
+              .filter(([_, entries]) => entries.length > 0)
+              .map(([category, entries]) => {
+                const categoryInfo = getCategoryInfo(category);
+                const entryCount = entries.length;
+                return (
+                  <li key={category}>
+                    <a href={`/vault/${category}`} class="sitemap__link sitemap__link--category">
+                      <span class="sitemap__category-icon">{categoryInfo.icon}</span>
+                      {categoryInfo.label}
+                    </a>
+                    <span class="sitemap__count">
+                      {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
+                    </span>
+                  </li>
+                );
+              })}
+          </ul>
+        </section>
+
+        <!-- Legal & Meta -->
+        <section class="sitemap__section">
+          <div class="sitemap__header">
+            <span class="sitemap__icon">📋</span>
+            <h2 class="sitemap__title">Legal & Meta</h2>
+          </div>
+          <ul class="sitemap__list">
+            {organizedPages.legal.map(url => (
+              <li>
+                <a href={url} class="sitemap__link">
+                  {formatPageName(url)}
+                </a>
+              </li>
+            ))}
+            <li>
+              <a href="/sitemap.xml" class="sitemap__link sitemap__link--meta">
+                XML Sitemap (Search Engines)
+              </a>
+            </li>
+          </ul>
+        </section>
+
+        <!-- Tags -->
+        <section class="sitemap__section">
+          <div class="sitemap__header">
+            <span class="sitemap__icon">🏷️</span>
+            <h2 class="sitemap__title">All Tags ({allTags.length})</h2>
+          </div>
+          <div class="sitemap__tags">
+            {allTags.map(tag => (
+              <a href={`/vault/tags/${tag}`} class="sitemap__tag">
+                {tag}
+              </a>
+            ))}
+          </div>
+        </section>
+
+        <!-- Stats -->
+        <section class="sitemap__section sitemap__section--stats">
+          <div class="sitemap__header">
+            <span class="sitemap__icon">📊</span>
+            <h2 class="sitemap__title">Site Statistics</h2>
+          </div>
+          <ul class="sitemap__stats-list">
+            <li>
+              <span class="sitemap__stat-label">Total Systems:</span>
+              <span class="sitemap__stat-value">{systems.length}</span>
+            </li>
+            <li>
+              <span class="sitemap__stat-label">Total Lessons:</span>
+              <span class="sitemap__stat-value">{lessons.length}</span>
+            </li>
+            <li>
+              <span class="sitemap__stat-label">Vault Entries:</span>
+              <span class="sitemap__stat-value">{vaultEntries.length}</span>
+            </li>
+            <li>
+              <span class="sitemap__stat-label">Static Pages:</span>
+              <span class="sitemap__stat-value">{processedPages.length}</span>
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="sitemap__footer">
+        <p class="sitemap__update">
+          Generated: {new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}
+        </p>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  /* ============================================
+     Sitemap Page Styles (BEM)
+     ============================================ */
+
+  .sitemap {
+    padding: var(--space-xl) 0;
+    min-height: 80vh;
+  }
+
+  .sitemap__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-xl);
+    margin: var(--space-2xl) 0;
+  }
+
+  /* Section Styling */
+  .sitemap__section {
+    background: var(--color-surface);
+    padding: var(--space-lg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-light);
+    transition: all 200ms ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sitemap__section::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+      var(--color-primary) 0%,
+      var(--color-accent) 100%);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 300ms ease;
+  }
+
+  .sitemap__section:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 8px 24px rgba(var(--color-primary-rgb), 0.1);
+    transform: translateY(-2px);
+  }
+
+  .sitemap__section:hover::before {
+    transform: scaleX(1);
+  }
+
+  .sitemap__section--stats {
+    background: linear-gradient(135deg,
+      var(--color-surface) 0%,
+      var(--color-surface-secondary) 100%);
+    border: 1px solid var(--color-primary-lighter);
+    position: relative;
+    grid-column: 1 / -1;
+  }
+
+  .sitemap__section--stats::after {
+    content: "📊";
+    position: absolute;
+    top: var(--space-md);
+    right: var(--space-md);
+    font-size: 3rem;
+    opacity: 0.05;
+    transform: rotate(15deg);
+  }
+
+  .sitemap__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-sm);
+    border-bottom: 2px solid var(--color-border-light);
+    position: relative;
+  }
+
+  .sitemap__header::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    height: 2px;
+    width: 60px;
+    background: var(--color-primary);
+    border-radius: var(--radius-full);
+  }
+
+  .sitemap__icon {
+    display: block;
+    font-size: 1.5rem;
+    width: 2rem;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .sitemap__title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text);
+    margin: 0;
+    padding: 0;
+    flex: 1;
+  }
+
+  /* Lists */
+  .sitemap__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .sitemap__list li {
+    margin-bottom: var(--space-sm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sitemap__subsection-title {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: var(--letter-spacing-wide);
+    margin-top: var(--space-lg);
+    margin-bottom: var(--space-sm);
+    padding-bottom: var(--space-xs);
+    border-bottom: 1px solid var(--color-border-light);
+  }
+
+  /* Links */
+  .sitemap__link {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    padding: var(--space-xs) var(--space-sm);
+    margin: calc(var(--space-xs) * -1) calc(var(--space-sm) * -1);
+    border-radius: var(--radius-base);
+    transition: all 200ms ease;
+    position: relative;
+    flex: 1;
+    display: inline-block;
+  }
+
+  .sitemap__link::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 200ms ease;
+  }
+
+  .sitemap__link:hover {
+    color: var(--color-primary);
+    background: var(--color-primary-lighter);
+    padding-left: var(--space-lg);
+  }
+
+  .sitemap__link:hover::before {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .sitemap__link--primary {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-primary);
+  }
+
+  .sitemap__link--system {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+  }
+
+  .sitemap__link--category {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .sitemap__category-icon {
+    font-size: var(--font-size-base);
+    width: var(--space-lg);
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .sitemap__link--meta {
+    font-size: var(--font-size-sm);
+    font-style: italic;
+  }
+
+  /* Count badges */
+  .sitemap__count {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+    background: var(--color-bg-secondary);
+    padding: var(--space-0-5) var(--space-sm);
+    border-radius: var(--radius-full);
+    margin-left: var(--space-sm);
+  }
+
+  /* Stats list */
+  .sitemap__stats-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-lg);
+  }
+
+  .sitemap__stats-list li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: var(--space-md);
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-base);
+    border: 1px solid var(--color-border-light);
+  }
+
+  .sitemap__stat-label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: var(--letter-spacing-wide);
+    margin-bottom: var(--space-xs);
+  }
+
+  .sitemap__stat-value {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    line-height: 1;
+  }
+
+  /* Tags */
+  .sitemap__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  .sitemap__tag {
+    display: inline-block;
+    padding: var(--space-xs) var(--space-md);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-full);
+    text-decoration: none;
+    font-size: var(--font-size-sm);
+    transition: all 200ms ease;
+    border: 1px solid var(--color-border-light);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sitemap__tag::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: var(--color-primary);
+    border-radius: var(--radius-full);
+    transform: translate(-50%, -50%);
+    transition: all 300ms ease;
+    z-index: 0;
+  }
+
+  .sitemap__tag:hover {
+    color: var(--color-text-inverse);
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.2);
+  }
+
+  .sitemap__tag:hover::before {
+    width: 100%;
+    height: 100%;
+    padding: var(--space-xl);
+  }
+
+  .sitemap__tag span {
+    position: relative;
+    z-index: 1;
+  }
+
+  .sitemap__tag--more {
+    background: linear-gradient(135deg,
+      var(--color-accent-lighter) 0%,
+      var(--color-accent) 100%);
+    color: var(--color-accent-dark);
+    font-weight: var(--font-weight-medium);
+    border: none;
+  }
+
+  .sitemap__tag--more:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 4px 16px rgba(var(--color-accent-rgb), 0.3);
+  }
+
+  /* Footer */
+  .sitemap__footer {
+    text-align: center;
+    margin-top: var(--space-2xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .sitemap__update {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    margin: var(--space-sm) 0;
+  }
+
+  /* Dark mode adjustments */
+  .dark-mode .sitemap__section {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+  }
+
+
+  .dark-mode .sitemap__section--stats {
+    background: linear-gradient(135deg,
+      var(--color-surface) 0%,
+      var(--color-bg-tertiary) 100%);
+    border-color: var(--color-primary-lighter);
+  }
+
+  .dark-mode .sitemap__section--stats .sitemap__stat-value {
+    color: var(--color-primary-light);
+  }
+
+  .dark-mode .sitemap__stats-list li {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+  }
+
+  .dark-mode .sitemap__section:hover {
+    border-color: var(--color-primary-light);
+    box-shadow: 0 8px 24px rgba(var(--color-primary-rgb), 0.15);
+  }
+
+  .dark-mode .sitemap__link:hover {
+    background: rgba(var(--color-primary-rgb), 0.1);
+  }
+
+  .dark-mode .sitemap__count {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+  }
+
+  .dark-mode .sitemap__tag {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-border);
+    color: var(--color-text-secondary);
+  }
+
+  .dark-mode .sitemap__tag:hover {
+    color: var(--color-text-inverse);
+  }
+
+  .dark-mode .sitemap__tag--more {
+    background: linear-gradient(135deg,
+      var(--color-accent-darker) 0%,
+      var(--color-accent-dark) 100%);
+    color: var(--color-accent-light);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .sitemap__grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-lg);
+    }
+
+    .sitemap__section {
+      padding: var(--space-md);
+    }
+  }
+</style>
