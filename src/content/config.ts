@@ -19,6 +19,12 @@ const vaultBaseSchema = z.object({
   description: z.string(),
   featured: z.boolean().default(false),
   lastUpdated: z.date().default(() => new Date()),
+
+  // Image support
+  image: z.string().optional(), // Hero image URL
+  imageCaption: z.string().optional(), // Hero image caption
+  imageAlt: z.string().optional(), // Alternative text for accessibility
+
   relatedEntries: z
     .record(
       z.array(
