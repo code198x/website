@@ -1,30 +1,30 @@
 ---
-title: "Enhanced Game Logic"
+title: "Programming Logic & Control"
 system: "commodore-64"
 phase_number: 1
 tier_number: 2
-description: "Enhance Neon Nexus with hacking minigames, smarter security systems, and more complex network challenges using advanced programming logic."
+description: "Master essential programming logic through 6502 assembly. Learn conditional branching, loops, subroutines, and advanced flow control to create sophisticated, professional programs."
 learning_objectives:
-  - "Create interactive hacking minigames and puzzles"
-  - "Implement smarter security patrol algorithms"
-  - "Add game state management for minigames"
-  - "Build timed challenges and pressure systems"
-  - "Handle multiple simultaneous security threats"
-  - "Create varied network layouts and challenges"
+  - "Implement conditional logic with branching instructions"
+  - "Create efficient loops for repetitive operations"
+  - "Design and use subroutines for modular code"
+  - "Manage program flow and state transitions"
+  - "Handle interrupts and advanced control structures"
+  - "Debug and optimize logical program flow"
 concepts_introduced:
-  - "Minigame state management"
-  - "Advanced AI patrol patterns"
-  - "Timer and pressure systems"
-  - "Logic puzzle implementation"
-  - "Multi-screen game flow"
-  - "Interactive terminal interfaces"
-  - "Complex collision scenarios"
-  - "Difficulty progression systems"
+  - "Conditional branching (BEQ, BNE, BCS, BCC)"
+  - "Comparison operations (CMP, CPX, CPY)"
+  - "Loop constructs (counting, conditional, nested)"
+  - "Subroutines and stack management"
+  - "Boolean logic (AND, ORA, EOR)"
+  - "State machines and event systems"
+  - "Interrupt service routines"
+  - "Performance profiling and optimization"
 estimated_duration: "2-3 weeks"
 game_project:
   name: "Neon Nexus: Enhanced Edition"
-  description: "Add hacking minigames, smarter security systems, and varied network challenges for deeper gameplay"
-  tier_range: "Building on Tier 1 foundation with advanced logic"
+  description: "Enhance your Tier 1 game with sophisticated logic including hacking minigames, smart AI, dynamic difficulty, and professional polish"
+  tier_range: "32 lessons building on Tier 1 foundation with advanced programming techniques"
 order: 2
 ---
 
