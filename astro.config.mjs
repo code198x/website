@@ -9,6 +9,11 @@ export default defineConfig({
   integrations: [
     mdx({
       syntaxHighlight: false, // Disable server-side syntax highlighting
+      remarkPlugins: [],
+      rehypePlugins: [],
+      components: {
+        pre: './src/components/CodeBlock.astro',
+      },
     }),
     sitemap(),
   ],
