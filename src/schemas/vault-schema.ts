@@ -112,7 +112,7 @@ export interface SoftwareEntry extends VaultEntryBase {
   type: "game" | "application" | "os" | "utility" | "demo" | "language";
 
   year: number;
-  platforms: string[]; // ['commodore-64', 'zx-spectrum']
+  platforms: string[]; // ['commodore-64', 'sinclair-zx-spectrum']
 
   developer: string;
   publisher?: string;

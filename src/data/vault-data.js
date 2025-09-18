@@ -10,7 +10,7 @@ export const vaultData = [
     "c": "hardware",
     "n": "ZX Spectrum",
     "d": "Britain's gateway to home computing with distinctive rubber keys and vibrant game library",
-    "s": "zx-spectrum",
+    "s": "sinclair-zx-spectrum",
     "t": "computer",
     "g": [
       "8-bit",

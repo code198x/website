@@ -55,8 +55,8 @@ export const SYSTEM_COLORS: Record<string, SystemColor> = {
     description: "The breadbox that launched a million programmers",
   },
 
-  "zx-spectrum": {
-    slug: "zx-spectrum",
+  "sinclair-zx-spectrum": {
+    slug: "sinclair-zx-spectrum",
     name: "ZX Spectrum",
     className: "system-spectrum",
     colors: {

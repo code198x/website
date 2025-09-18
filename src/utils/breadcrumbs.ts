@@ -165,7 +165,7 @@ export function getFeaturedEntries(vaultData: any[], maxEntries = 6) {
   // Curated selection of significant entries across categories
   const featuredSlugs = [
     "commodore",
-    "zx-spectrum",
+    "sinclair-zx-spectrum",
     "shigeru-miyamoto",
     "tracker-music",
     "wordperfect",
