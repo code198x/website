@@ -37,22 +37,22 @@ const assemblers = {
   'commodore-64': {
     command: 'acme -o test.prg',
     extension: '.prg',
-    docker: 'docker run --rm -v $(pwd):/workspace code198x/acme'
+    docker: 'docker run --rm -v $(pwd):/workspace code198x/commodore-64:latest'
   },
   'sinclair-zx-spectrum': {
     command: 'sjasmplus --nologo',
     extension: '.bin',
-    docker: 'docker run --rm -v $(pwd):/workspace code198x/sjasmplus'
+    docker: 'docker run --rm -v $(pwd):/workspace code198x/sinclair-zx-spectrum:latest'
   },
   'nintendo-entertainment-system': {
     command: 'ca65 -o test.o && ld65 test.o -C nes.cfg -o test.nes',
     extension: '.nes',
-    docker: 'docker run --rm -v $(pwd):/workspace code198x/ca65'
+    docker: 'docker run --rm -v $(pwd):/workspace code198x/nintendo-entertainment-system:latest'
   },
   'commodore-amiga': {
     command: 'vasmm68k_mot -Fhunkexe -o test',
     extension: '',
-    docker: 'docker run --rm -v $(pwd):/workspace code198x/vasm'
+    docker: 'docker run --rm -v $(pwd):/workspace code198x/commodore-amiga:latest'
   }
 };
 
@@ -164,6 +164,37 @@ ${results.passed.length === results.passed.length + results.failed.length ? '�
   console.log(`\n📊 Test report written to: ${reportPath}`);
 }
 
+// Function to ensure Docker images are available
+async function ensureDockerImages() {
+  const images = [
+    'code198x/commodore-64:latest',
+    'code198x/sinclair-zx-spectrum:latest',
+    'code198x/nintendo-entertainment-system:latest',
+    'code198x/commodore-amiga:latest'
+  ];
+
+  console.log(`${colors.blue}📦 Checking Docker images...${colors.reset}`);
+
+  for (const image of images) {
+    try {
+      // Check if image exists locally
+      await execAsync(`docker image inspect ${image}`, { silent: true });
+      console.log(`${colors.gray}  ✓ ${image} found locally${colors.reset}`);
+    } catch {
+      // Image not found, try to pull it
+      console.log(`${colors.yellow}  ⬇ Pulling ${image}...${colors.reset}`);
+      try {
+        await execAsync(`docker pull ${image}`);
+        console.log(`${colors.green}  ✓ ${image} pulled successfully${colors.reset}`);
+      } catch (error) {
+        console.log(`${colors.red}  ✗ Failed to pull ${image}${colors.reset}`);
+        console.log(`${colors.gray}    ${error.message}${colors.reset}`);
+      }
+    }
+  }
+  console.log('');
+}
+
 // Main verification process
 async function main() {
   console.log(`${colors.blue}🔍 Verifying Code Samples${colors.reset}\n`);
@@ -172,6 +203,9 @@ async function main() {
   try {
     await execAsync('docker --version');
     console.log(`${colors.green}✓ Docker is available${colors.reset}\n`);
+
+    // Ensure Docker images are available
+    await ensureDockerImages();
   } catch {
     console.log(`${colors.red}✗ Docker is not available - tests will be limited${colors.reset}\n`);
   }
