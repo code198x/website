@@ -155,7 +155,7 @@ const replacements = {
   'tier_number: 1': `tier_number: ${tierNum}`,
   'lesson_number: 1': `lesson_number: ${lessonInTier}`,
   'order: 1': `order: ${lessonNumber}`,
-  'difficulty: "easy|medium|hard"': `difficulty: "${difficulty}"`,
+  'difficulty: "DIFFICULTY_LEVEL"': `difficulty: "${difficulty}"`,
   'BRIEF_DESCRIPTION_OF_LESSON': `Master ${title.toLowerCase()} on the ${config.displayName}`,
   'tags: \\["TAG1", "TAG2", "TAG3", "TAG4"\\]': `tags: ${JSON.stringify([...baseTags, config.processor])}`,
   'COMPELLING_SUBTITLE': `${config.processor} Assembly Techniques`,
