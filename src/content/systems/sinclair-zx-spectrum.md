@@ -1,5 +1,6 @@
 ---
 name: "ZX Spectrum"
+slug: "sinclair-zx-spectrum"
 full_name: "Sinclair ZX Spectrum"
 manufacturer: "Sinclair Research"
 model_number: "ZX Spectrum"
