@@ -1,0 +1,133 @@
+name: Verify Code Samples
+
+on:
+  push:
+    paths:
+      - 'code-samples/**/*.asm'
+      - 'scripts/verify-code-samples.mjs'
+  pull_request:
+    paths:
+      - 'code-samples/**/*.asm'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Verify Assembly Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Docker images for assemblers
+        run: |
+          # Build ACME for C64
+          docker build -t code198x/acme - <<EOF
+          FROM ubuntu:22.04
+          RUN apt-get update && apt-get install -y build-essential git
+          RUN git clone https://github.com/meonwax/acme.git /acme
+          WORKDIR /acme/src
+          RUN make && make install
+          WORKDIR /workspace
+          ENTRYPOINT ["acme"]
+          EOF
+
+          # Build sjasmplus for ZX Spectrum
+          docker build -t code198x/sjasmplus - <<EOF
+          FROM ubuntu:22.04
+          RUN apt-get update && apt-get install -y build-essential git cmake
+          RUN git clone https://github.com/z00m128/sjasmplus.git /sjasmplus
+          WORKDIR /sjasmplus
+          RUN make && cp sjasmplus /usr/local/bin/
+          WORKDIR /workspace
+          ENTRYPOINT ["sjasmplus"]
+          EOF
+
+      - name: Verify code samples
+        run: node scripts/verify-code-samples.mjs
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: test-report.md
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('test-report.md', 'utf8');
+
+            // Extract summary from report
+            const summaryMatch = report.match(/## Summary[\s\S]*?##/);
+            const summary = summaryMatch ? summaryMatch[0].replace(/## $/, '') : 'Test results available';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔍 Code Verification Results\n\n${summary}\n\n[Full Report](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            });
+
+  screenshot:
+    name: Capture Screenshots
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install VICE emulator
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y vice
+
+      - name: Capture C64 screenshots
+        run: |
+          mkdir -p screenshots/commodore-64
+
+          for prg in code-samples/commodore-64/**/*.prg; do
+            if [ -f "$prg" ]; then
+              lesson=$(basename $(dirname "$prg"))
+              echo "Capturing screenshot for $lesson..."
+
+              x64sc -default \
+                -VICIIfull \
+                -autostart "$prg" \
+                -autostartdelayframes 120 \
+                -screenshot "screenshots/commodore-64/${lesson}.png" \
+                -limitcycles 1000000 \
+                -exitscreenshot \
+                +sound \
+                -warp || true
+            fi
+          done
+
+      - name: Optimize screenshots
+        run: |
+          # Install pngquant for optimization
+          sudo apt-get install -y pngquant
+
+          # Optimize all screenshots
+          find screenshots -name "*.png" -exec pngquant --quality=85-95 --ext=.png --force {} \;
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
+
+      - name: Deploy screenshots to CDN
+        if: success()
+        run: |
+          # Add deployment to CDN/storage here
+          echo "Screenshots ready for deployment"
