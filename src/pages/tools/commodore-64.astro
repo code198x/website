@@ -1,0 +1,870 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Icon from "../../components/Icon.astro";
+import "../../styles/tools.css";
+
+// Store assembly code as strings to avoid parsing issues
+const flashingBorderDemo = `; C64 Flashing Border Demo
+; Build: acme -o demo.prg demo.asm
+
+!to "demo.prg", cbm    ; Output format
+
+; BASIC stub: 10 SYS 2064
+*=$0801
+!byte $0c,$08,$0a,$00,$9e,$20
+!byte $32,$30,$36,$34,$00,$00,$00
+
+; Main program starts at $0810
+*=$0810
+        sei             ; Disable interrupts
+
+loop:   ldx $d012       ; Wait for raster line
+        cpx #$ff
+        bne loop
+
+        inc $d020       ; Increment border color
+
+        ldx #$02        ; Small delay
+delay:  dex
+        bne delay
+
+        jmp loop        ; Infinite loop`;
+
+const spriteDemo = `# Create a simple sprite demo (sprite.asm)
+cat > sprite.asm << 'EOF'
+; C64 Sprite Demo
+!to "sprite.prg", cbm
+
+*=$0801
+!byte $0c,$08,$0a,$00,$9e,$20
+!byte $32,$30,$36,$34,$00,$00,$00
+
+*=$0810
+        ; Enable sprite 0
+        lda #$01
+        sta $d015
+
+        ; Set sprite 0 position
+        lda #$80
+        sta $d000       ; X position
+        lda #$80
+        sta $d001       ; Y position
+
+        ; Set sprite 0 color
+        lda #$01        ; White
+        sta $d027
+
+        ; Set sprite 0 pointer
+        lda #$80
+        sta $07f8
+
+        ; Create sprite data at $2000
+        ldx #$00
+loop:   lda sprite_data,x
+        sta $2000,x
+        inx
+        cpx #63
+        bne loop
+
+        ; Infinite loop
+done:   jmp done
+
+sprite_data:
+        !byte %00000000,%01111110,%00000000
+        !byte %00000001,%11111111,%10000000
+        !byte %00000011,%11111111,%11000000
+        !byte %00000111,%11111111,%11100000
+        !byte %00001111,%11111111,%11110000
+        !byte %00011111,%11111111,%11111000
+        !byte %00111111,%11111111,%11111100
+        !byte %01111111,%11111111,%11111110
+        !byte %01111111,%11111111,%11111110
+        !byte %11111111,%11111111,%11111111
+        !byte %11111111,%11111111,%11111111
+        !byte %11111111,%11111111,%11111111
+        !byte %11111111,%11111111,%11111111
+        !byte %01111111,%11111111,%11111110
+        !byte %01111111,%11111111,%11111110
+        !byte %00111111,%11111111,%11111100
+        !byte %00011111,%11111111,%11111000
+        !byte %00001111,%11111111,%11110000
+        !byte %00000111,%11111111,%11100000
+        !byte %00000011,%11111111,%11000000
+        !byte %00000001,%11111111,%10000000
+EOF`;
+
+const rasterBars = `; Raster bars - the "Hello World" of C64 demos
+!to "raster.prg", cbm
+
+*=$0801
+!byte $0c,$08,$0a,$00,$9e,$20,$32,$30,$36,$34,$00,$00,$00
+
+*=$0810
+        sei             ; Disable interrupts
+
+        lda #$7f        ; Disable CIA interrupts
+        sta $dc0d
+        sta $dd0d
+
+        lda #$01        ; Enable raster interrupt
+        sta $d01a
+
+        lda #$00        ; Set raster line
+        sta $d012
+        lda #$1b
+        sta $d011
+
+        lda #<irq       ; Set interrupt vector
+        sta $0314
+        lda #>irq
+        sta $0315
+
+        cli             ; Enable interrupts
+        jmp *           ; Infinite loop
+
+irq:    inc $d019       ; Acknowledge interrupt
+
+        ldx #$00
+loop:   lda colors,x
+        sta $d020       ; Set border color
+        sta $d021       ; Set background color
+
+        ldy #$08        ; Delay for bar width
+delay:  dey
+        bne delay
+
+        inx
+        cpx #$10
+        bne loop
+
+        lda #$00        ; Reset colors
+        sta $d020
+        sta $d021
+
+        jmp $ea31       ; Jump to KERNAL interrupt handler
+
+colors: !byte $06,$0e,$03,$01,$03,$0e,$06,$00
+        !byte $06,$0e,$03,$01,$03,$0e,$06,$00`;
+
+const customCharset = `; Custom charset example
+        ; Point VIC to custom charset at $2000
+        lda $d018
+        and #$f0
+        ora #$08        ; Charset at $2000
+        sta $d018
+
+        ; Copy and modify ROM charset
+        sei
+        lda #$33        ; Switch out BASIC and KERNAL
+        sta $01
+
+        ldx #$00
+copy:   lda $d000,x     ; ROM charset
+        sta $2000,x     ; Custom location
+        lda $d100,x
+        sta $2100,x
+        lda $d200,x
+        sta $2200,x
+        lda $d300,x
+        sta $2300,x
+        inx
+        bne copy
+
+        lda #$37        ; Restore ROMs
+        sta $01
+        cli
+
+        ; Modify character 'A' (8 bytes at $2000 + 65*8)
+        ldx #$00
+modify: lda custom_a,x
+        sta $2000+65*8,x
+        inx
+        cpx #$08
+        bne modify
+
+custom_a:
+        !byte %01111110
+        !byte %11111111
+        !byte %11000011
+        !byte %11111111
+        !byte %11111111
+        !byte %11000011
+        !byte %11000011
+        !byte %11000011`;
+
+const musicExample = `# Export SID tune from GoatTracker as binary
+# Then include in your assembly:
+
+*=$1000
+music:  !binary "music.sid",$7e,$7e
+
+; In your code:
+        jsr $1000       ; Initialize music
+
+        ; In interrupt handler:
+        jsr $1003       ; Play music frame`;
+
+const cProgramExample = `/* C64 Graphics Mode Demo
+   Build: cl65 -t c64 -o demo.prg demo.c */
+
+#include <c64.h>
+#include <conio.h>
+
+void set_multicolor_mode(void) {
+    __asm__ ("lda $d016");
+    __asm__ ("ora #$10");  // Set multicolor bit
+    __asm__ ("sta $d016");
+}
+
+int main(void) {
+    unsigned char x, y;
+
+    // Clear screen
+    clrscr();
+
+    // Set colors
+    bordercolor(COLOR_BLUE);
+    bgcolor(COLOR_BLACK);
+
+    // Enable multicolor mode
+    set_multicolor_mode();
+
+    // Draw pattern
+    for (y = 0; y < 25; ++y) {
+        for (x = 0; x < 40; ++x) {
+            gotoxy(x, y);
+            cputc((x + y) & 0xFF);
+        }
+    }
+
+    // Wait for keypress
+    cgetc();
+    return 0;
+}`;
+---
+
+<Layout
+  title="Commodore 64 Development Tools"
+  description="Complete guide to C64 development with ACME, cc65, and VICE. Learn 6502 assembly, create demos, and build games for the best-selling computer of all time."
+>
+  <div class="system-tools">
+    <section class="system-tools__hero">
+      <div class="system-tools__hero-content">
+        <div class="system-tools__breadcrumb">
+          <a href="/tools">Tools</a> / <span>Commodore 64</span>
+        </div>
+        <h1 class="system-tools__title">
+          <span class="system-tools__icon">🖥️</span>
+          Commodore 64 Development
+        </h1>
+        <p class="system-tools__description">
+          The best-selling single computer model of all time. With its MOS 6510 processor,
+          VIC-II graphics chip, and legendary SID sound chip, the C64 defined a generation
+          of programmers and continues to have an active development scene today.
+        </p>
+        <div class="system-tools__specs">
+          <div class="system-tools__spec">
+            <strong>CPU:</strong> MOS 6510 @ 1.023 MHz (NTSC) / 0.985 MHz (PAL)
+          </div>
+          <div class="system-tools__spec">
+            <strong>RAM:</strong> 64 KB
+          </div>
+          <div class="system-tools__spec">
+            <strong>Graphics:</strong> VIC-II (320×200, 16 colors, sprites)
+          </div>
+          <div class="system-tools__spec">
+            <strong>Sound:</strong> SID 6581/8580 (3 voices, filters)
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="system-tools__section">
+      <h2>Available Toolchains</h2>
+
+      <div class="toolchain-detail">
+        <h3>ACME Cross-Assembler</h3>
+        <p class="toolchain-detail__description">
+          ACME is a free cross-platform assembler targeting 6502/6510 processors.
+          It's particularly popular for C64 demo development due to its flexible
+          syntax and powerful macro capabilities.
+        </p>
+
+        <div class="toolchain-detail__features">
+          <h4>Key Features:</h4>
+          <ul>
+            <li>Liberal syntax (supports various number formats)</li>
+            <li>Powerful macro system with conditionals</li>
+            <li>Local labels and zones</li>
+            <li>Includes C64 BASIC stub generator</li>
+            <li>Direct PRG file output</li>
+          </ul>
+        </div>
+
+        <div class="toolchain-detail__example">
+          <h4>Example: Flashing Border Demo</h4>
+          <pre><code>{flashingBorderDemo}</code></pre>
+        </div>
+
+        <div class="toolchain-detail__build">
+          <h4>Build Commands:</h4>
+          <pre><code># Assemble to PRG file
+acme -o demo.prg demo.asm
+
+# With symbols file for debugging
+acme -o demo.prg --symbollist demo.sym demo.asm
+
+# Verbose output
+acme -v3 -o demo.prg demo.asm</code></pre>
+        </div>
+      </div>
+
+      <div class="toolchain-detail">
+        <h3>cc65 Suite (C Compiler + ca65 Assembler)</h3>
+        <p class="toolchain-detail__description">
+          cc65 is a complete cross-development package for 6502 systems. It includes
+          a C compiler, assembler (ca65), linker (ld65), and extensive runtime libraries
+          specifically optimized for the C64.
+        </p>
+
+        <div class="toolchain-detail__features">
+          <h4>Key Features:</h4>
+          <ul>
+            <li>ANSI C compiler with 6502 optimizations</li>
+            <li>Powerful macro assembler (ca65)</li>
+            <li>Sophisticated linker with memory layout control</li>
+            <li>C64-specific libraries (graphics, disk I/O, etc.)</li>
+            <li>Mixed C and assembly projects</li>
+          </ul>
+        </div>
+
+        <div class="toolchain-detail__example">
+          <h4>Example: C Program with Inline Assembly</h4>
+          <pre><code>{cProgramExample}</code></pre>
+        </div>
+
+        <div class="toolchain-detail__build">
+          <h4>Build Commands:</h4>
+          <pre><code># Compile C to PRG
+cl65 -t c64 -o demo.prg demo.c
+
+# Assemble only (ca65)
+ca65 -t c64 demo.s
+ld65 -t c64 -o demo.prg demo.o c64.lib
+
+# With optimization
+cl65 -t c64 -O -o demo.prg demo.c
+
+# Create disk image
+c1541 -format demo,id d64 demo.d64 -attach demo.d64 -write demo.prg</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="system-tools__section">
+      <h2>Memory Map & Hardware Registers</h2>
+
+      <div class="memory-map">
+        <h3>Key Memory Locations</h3>
+        <table class="memory-map__table">
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>Description</th>
+              <th>Usage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>$0800-$9FFF</code></td>
+              <td>BASIC Program Area</td>
+              <td>Default program space (38911 bytes)</td>
+            </tr>
+            <tr>
+              <td><code>$A000-$BFFF</code></td>
+              <td>BASIC ROM</td>
+              <td>Can be switched out for RAM</td>
+            </tr>
+            <tr>
+              <td><code>$C000-$CFFF</code></td>
+              <td>RAM</td>
+              <td>4KB always available</td>
+            </tr>
+            <tr>
+              <td><code>$D000-$D3FF</code></td>
+              <td>VIC-II Registers</td>
+              <td>Graphics chip control</td>
+            </tr>
+            <tr>
+              <td><code>$D400-$D7FF</code></td>
+              <td>SID Registers</td>
+              <td>Sound chip control</td>
+            </tr>
+            <tr>
+              <td><code>$D800-$DBFF</code></td>
+              <td>Color RAM</td>
+              <td>Character color attributes</td>
+            </tr>
+            <tr>
+              <td><code>$E000-$FFFF</code></td>
+              <td>KERNAL ROM</code></td>
+              <td>System routines</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="hardware-registers">
+        <h3>Important Hardware Registers</h3>
+
+        <div class="register-group">
+          <h4>VIC-II Graphics</h4>
+          <ul>
+            <li><code>$D020</code> - Border color</li>
+            <li><code>$D021</code> - Background color 0</li>
+            <li><code>$D011</code> - Control register 1 (screen on/off, bitmap mode)</li>
+            <li><code>$D016</code> - Control register 2 (multicolor mode)</li>
+            <li><code>$D018</code> - Memory pointers (character/screen location)</li>
+            <li><code>$D012</code> - Raster line (for timing)</li>
+          </ul>
+        </div>
+
+        <div class="register-group">
+          <h4>SID Sound</h4>
+          <ul>
+            <li><code>$D400-$D406</code> - Voice 1 (frequency, pulse width, control)</li>
+            <li><code>$D407-$D40D</code> - Voice 2</li>
+            <li><code>$D40E-$D414</code> - Voice 3</li>
+            <li><code>$D415</code> - Filter cutoff frequency (low byte)</li>
+            <li><code>$D416</code> - Filter cutoff frequency (high byte)</li>
+            <li><code>$D417</code> - Filter resonance and routing</li>
+            <li><code>$D418</code> - Volume and filter mode</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="system-tools__section">
+      <h2>Complete Development Workflow</h2>
+
+      <div class="workflow-steps">
+        <div class="workflow-step">
+          <h3>1. Set Up Docker Environment</h3>
+          <pre><code># Pull the C64 development container
+docker pull ghcr.io/code198x/commodore-64:v1.0.0
+
+# Create a project directory
+mkdir c64-project && cd c64-project
+
+# Start the development environment
+docker run -it -v $(pwd):/workspace ghcr.io/code198x/commodore-64:v1.0.0</code></pre>
+        </div>
+
+        <div class="workflow-step">
+          <h3>2. Create Your First Program</h3>
+          <pre><code>{spriteDemo}</code></pre>
+        </div>
+
+        <div class="workflow-step">
+          <h3>3. Build and Test</h3>
+          <pre><code># Assemble the program
+acme -o sprite.prg sprite.asm
+
+# Test in VICE emulator
+x64sc sprite.prg
+
+# Or create a D64 disk image
+c1541 -format "demo disk,01" d64 demo.d64
+c1541 -attach demo.d64 -write sprite.prg sprite
+x64sc -autostart demo.d64</code></pre>
+        </div>
+
+        <div class="workflow-step">
+          <h3>4. Advanced: Add Music with GoatTracker</h3>
+          <pre><code>{musicExample}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="system-tools__section">
+      <h2>Example Projects</h2>
+
+      <div class="example-projects">
+        <div class="example-project">
+          <h3>Raster Bar Effect</h3>
+          <p>Classic demo effect using raster interrupts</p>
+          <pre><code>{rasterBars}</code></pre>
+        </div>
+
+        <div class="example-project">
+          <h3>Character Set Redefinition</h3>
+          <p>Create custom graphics by redefining the character set</p>
+          <pre><code>{customCharset}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="system-tools__section">
+      <h2>Resources & References</h2>
+
+      <div class="resources">
+        <div class="resource-group">
+          <h3>Documentation</h3>
+          <ul>
+            <li><a href="https://www.c64-wiki.com/" target="_blank">C64 Wiki</a> - Comprehensive reference</li>
+            <li><a href="http://sta.c64.org/cbm64mem.html" target="_blank">C64 Memory Map</a> - Detailed memory layout</li>
+            <li><a href="https://www.pagetable.com/c64ref/6502/" target="_blank">6502 Instruction Reference</a> - Complete opcode reference</li>
+            <li><a href="http://www.zimmers.net/cbmpics/cbm/c64/vic-ii.txt" target="_blank">VIC-II Reference</a> - Graphics chip documentation</li>
+          </ul>
+        </div>
+
+        <div class="resource-group">
+          <h3>Tools & Utilities</h3>
+          <ul>
+            <li><a href="https://csdb.dk/" target="_blank">CSDb</a> - Commodore Scene Database</li>
+            <li><a href="https://www.hvsc.c64.org/" target="_blank">HVSC</a> - High Voltage SID Collection</li>
+            <li><a href="https://github.com/GoatTracker/GoatTracker2" target="_blank">GoatTracker</a> - SID music tracker</li>
+            <li><a href="https://www.spritemate.com/" target="_blank">SpriteMate</a> - Online sprite editor</li>
+          </ul>
+        </div>
+
+        <div class="resource-group">
+          <h3>Learning Resources</h3>
+          <ul>
+            <li>"Programming the Commodore 64" by Raeto Collin West</li>
+            <li>"Machine Language for the Commodore 64" by Jim Butterfield</li>
+            <li><a href="https://dustlayer.com/c64-coding-tutorials" target="_blank">Dustlayer Tutorials</a> - Modern C64 coding tutorials</li>
+            <li><a href="https://github.com/petriw/Commodore64Programming" target="_blank">C64 Programming on GitHub</a> - Example code collection</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="system-tools__cta">
+      <h2>Ready to Start?</h2>
+      <p>Everything you need for C64 development is ready in our Docker container.</p>
+      <div class="cta-buttons">
+        <a href="https://github.com/code198x/development-environment" class="tools__btn tools__btn--primary">
+          <Icon name="github" size={20} />
+          Get the Docker Image
+        </a>
+        <a href="/systems/commodore-64" class="tools__btn tools__btn--secondary">
+          <Icon name="arrow-right" size={20} />
+          View C64 Tutorials
+        </a>
+      </div>
+    </section>
+  </div>
+</Layout>
+
+<style>
+.system-tools {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.system-tools__hero {
+  margin-bottom: 3rem;
+  padding: 3rem;
+  background: linear-gradient(135deg, #4a5ba6 0%, #3a4990 100%);
+  color: white;
+  border-radius: 12px;
+}
+
+.system-tools__breadcrumb {
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.system-tools__breadcrumb a {
+  color: white;
+  text-decoration: none;
+}
+
+.system-tools__breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.system-tools__title {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.system-tools__icon {
+  font-size: 3rem;
+}
+
+.system-tools__description {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  opacity: 0.95;
+}
+
+.system-tools__specs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.system-tools__spec {
+  font-size: 0.875rem;
+}
+
+.system-tools__spec strong {
+  color: #a0b0ff;
+}
+
+.system-tools__section {
+  margin-bottom: 4rem;
+}
+
+.system-tools__section h2 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: var(--color-heading);
+}
+
+.toolchain-detail {
+  background: var(--color-surface);
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.toolchain-detail h3 {
+  font-size: 1.5rem;
+  color: var(--color-primary);
+  margin-bottom: 1rem;
+}
+
+.toolchain-detail__description {
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.toolchain-detail__features {
+  margin-bottom: 1.5rem;
+}
+
+.toolchain-detail__features h4 {
+  margin-bottom: 0.5rem;
+  color: var(--color-heading);
+}
+
+.toolchain-detail__features ul {
+  margin-left: 1.5rem;
+}
+
+.toolchain-detail__features li {
+  margin-bottom: 0.25rem;
+}
+
+.toolchain-detail__example,
+.toolchain-detail__build {
+  margin-top: 1.5rem;
+}
+
+.toolchain-detail__example h4,
+.toolchain-detail__build h4 {
+  margin-bottom: 1rem;
+  color: var(--color-heading);
+}
+
+.toolchain-detail__example pre,
+.toolchain-detail__build pre {
+  background: var(--color-code-bg);
+  padding: 1.5rem;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.memory-map__table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.memory-map__table th {
+  background: var(--color-primary);
+  color: white;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.memory-map__table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.memory-map__table code {
+  background: var(--color-surface);
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+}
+
+.hardware-registers {
+  margin-top: 2rem;
+}
+
+.register-group {
+  background: var(--color-surface);
+  padding: 1.5rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.register-group h4 {
+  margin-bottom: 1rem;
+  color: var(--color-primary);
+}
+
+.register-group ul {
+  margin-left: 1.5rem;
+}
+
+.register-group code {
+  background: var(--color-code-bg);
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+}
+
+.workflow-step {
+  background: var(--color-surface);
+  padding: 1.5rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.workflow-step h3 {
+  margin-bottom: 1rem;
+  color: var(--color-primary);
+}
+
+.workflow-step pre {
+  background: var(--color-code-bg);
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.example-project {
+  background: var(--color-surface);
+  padding: 1.5rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.example-project h3 {
+  margin-bottom: 0.5rem;
+  color: var(--color-primary);
+}
+
+.example-project p {
+  margin-bottom: 1rem;
+  color: var(--color-text-muted);
+}
+
+.example-project pre {
+  background: var(--color-code-bg);
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.875rem;
+}
+
+.resources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.resource-group {
+  background: var(--color-surface);
+  padding: 1.5rem;
+  border-radius: 6px;
+}
+
+.resource-group h3 {
+  margin-bottom: 1rem;
+  color: var(--color-primary);
+}
+
+.resource-group ul {
+  margin-left: 1.5rem;
+}
+
+.resource-group li {
+  margin-bottom: 0.5rem;
+}
+
+.resource-group a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+.resource-group a:hover {
+  text-decoration: underline;
+}
+
+.system-tools__cta {
+  text-align: center;
+  padding: 3rem;
+  background: var(--color-surface);
+  border-radius: 12px;
+}
+
+.system-tools__cta h2 {
+  margin-bottom: 1rem;
+  color: var(--color-heading);
+}
+
+.system-tools__cta p {
+  margin-bottom: 2rem;
+  font-size: 1.125rem;
+  color: var(--color-text-muted);
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.tools__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tools__btn--primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.tools__btn--primary:hover {
+  background: var(--color-primary-dark);
+}
+
+.tools__btn--secondary {
+  background: var(--color-background);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.tools__btn--secondary:hover {
+  background: var(--color-surface);
+}
+</style>

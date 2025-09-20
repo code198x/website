@@ -1,5 +1,5 @@
 /**
- * Central configuration constants for the Code198x curriculum structure.
+ * Central configuration constants for the Code Like It's 198x curriculum structure.
  * This file provides a single source of truth for all curriculum dimensions
  * and platform configurations.
  */
