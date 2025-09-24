@@ -48,7 +48,7 @@ function calculateTierProgress(systemSlug, phaseNumber, tierNumber) {
     lesson.data.content_status === 'published'
   );
 
-  const expectedTotal = 32; // 32 lessons per tier
+  const expectedTotal = phaseNumber === 0 ? 16 : 32; // Phase 0: 16 lessons per tier, Others: 32
   const percentage = Math.round((publishedLessons.length / expectedTotal) * 100);
 
   let status;
@@ -61,10 +61,42 @@ function calculateTierProgress(systemSlug, phaseNumber, tierNumber) {
   return { status, percentage, count: publishedLessons.length, total: expectedTotal };
 }
 
+// Calculate individual lesson progress for each tier
+function calculateLessonProgress(systemSlug, phaseNumber, tierNumber) {
+  const lessonProgress = [];
+  const totalLessons = phaseNumber === 0 ? 16 : 32; // Phase 0 has 16 lessons per tier
+
+  for (let lessonNum = 1; lessonNum <= totalLessons; lessonNum++) {
+    const lesson = allLessons.find(l => {
+      const [system, phase, tier] = l.id.split('/');
+      return system === systemSlug &&
+             phase === `phase-${phaseNumber}` &&
+             tier === `tier-${tierNumber}` &&
+             l.data.lesson_number === lessonNum;
+    });
+
+    let status;
+    if (!lesson) {
+      status = 'not-created';
+    } else if (lesson.data.content_status === 'published') {
+      status = 'published';
+    } else if (lesson.data.content_status === 'draft') {
+      status = 'draft';
+    } else {
+      status = 'template';
+    }
+
+    lessonProgress.push({ status, lessonNum });
+  }
+
+  return lessonProgress;
+}
+
 // Add progress to each tier
 const tiersWithProgress = phaseTiers.map((tier) => ({
   ...tier,
-  progress: calculateTierProgress(phase.data.system, phase.data.phase_number, tier.data.tier_number)
+  progress: calculateTierProgress(phase.data.system, phase.data.phase_number, tier.data.tier_number),
+  lessonProgress: calculateLessonProgress(phase.data.system, phase.data.phase_number, tier.data.tier_number)
 }));
 
 const colors = getSystemColors(phase.data.system);
@@ -122,6 +154,35 @@ const metaInfo = [
             : `Progress through ${phaseTiers.length} carefully structured assembly programming tiers. Each tier builds upon the previous, introducing new concepts and culminating in hands-on projects.`
           }
         </p>
+
+        <!-- Tier Progress Indicators -->
+        <div class="tier-progress-indicators">
+          {tiersWithProgress.map((tier, index) => {
+            const isClickable = tier.progress.count > 0;
+            const TierElement = isClickable ? 'a' : 'div';
+            const tierProps = isClickable ? {
+              href: `/lessons/${phase.data.system}/phase-${phase.data.phase_number}/tier-${tier.data.tier_number}`
+            } : {};
+
+            let tierClass = 'tier-indicator';
+            if (tier.progress.status === 'complete') tierClass += ' tier-green';
+            else if (tier.progress.status === 'near-complete' || tier.progress.status === 'partial') tierClass += ' tier-amber';
+            else if (tier.progress.status === 'early-access') tierClass += ' tier-red';
+            else tierClass += ' tier-grey';
+
+            if (isClickable) tierClass += ' tier-clickable';
+
+            return (
+              <TierElement
+                {...tierProps}
+                class={tierClass}
+                title={`Tier ${tier.data.tier_number}: ${tier.progress.count}/${tier.progress.total} lessons (${tier.progress.percentage}%)`}
+              >
+                <span class="tier-number">T{tier.data.tier_number}</span>
+              </TierElement>
+            );
+          })}
+        </div>
       </div>
 
       <!-- Phase Type Indicator for Phase 0 -->
@@ -225,6 +286,25 @@ const metaInfo = [
                             </span>
                             <span class="tier-card-separator">•</span>
                             <span>{tier.data.estimated_duration}</span>
+                          </div>
+
+                          {/* Lesson Progress Dots */}
+                          <div class={`tier-card-lesson-progress ${phase.data.phase_number === 0 ? 'phase-0-lessons' : ''}`}>
+                            {tier.lessonProgress.map((lesson) => {
+                              let dotClass = 'lesson-dot';
+                              if (lesson.status === 'published') dotClass += ' lesson-dot-green';
+                              else if (lesson.status === 'draft') dotClass += ' lesson-dot-amber';
+                              else if (lesson.status === 'template') dotClass += ' lesson-dot-red';
+                              else dotClass += ' lesson-dot-grey';
+
+                              return (
+                                <div
+                                  class={dotClass}
+                                  data-lesson={lesson.lessonNum}
+                                  title={`Lesson ${lesson.lessonNum}: ${lesson.status}`}
+                                />
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
