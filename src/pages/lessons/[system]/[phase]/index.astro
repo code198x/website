@@ -32,6 +32,41 @@ const phaseTiers = allTiers
   )
   .sort((a, b) => a.data.tier_number - b.data.tier_number);
 
+// Get all lessons for progress calculation
+const allLessons = await getCollection("lessons");
+
+// Calculate progress for each tier
+function calculateTierProgress(systemSlug, phaseNumber, tierNumber) {
+  const tierLessons = allLessons.filter(lesson => {
+    const [system, phase, tier] = lesson.id.split('/');
+    return system === systemSlug &&
+           phase === `phase-${phaseNumber}` &&
+           tier === `tier-${tierNumber}`;
+  });
+
+  const publishedLessons = tierLessons.filter(lesson =>
+    lesson.data.content_status === 'published'
+  );
+
+  const expectedTotal = 32; // 32 lessons per tier
+  const percentage = Math.round((publishedLessons.length / expectedTotal) * 100);
+
+  let status;
+  if (percentage === 0) status = 'not-started';
+  else if (percentage < 25) status = 'early-access';
+  else if (percentage < 50) status = 'partial';
+  else if (percentage < 100) status = 'near-complete';
+  else status = 'complete';
+
+  return { status, percentage, count: publishedLessons.length, total: expectedTotal };
+}
+
+// Add progress to each tier
+const tiersWithProgress = phaseTiers.map((tier) => ({
+  ...tier,
+  progress: calculateTierProgress(phase.data.system, phase.data.phase_number, tier.data.tier_number)
+}));
+
 const colors = getSystemColors(phase.data.system);
 
 // Generate breadcrumbs
@@ -82,74 +117,131 @@ const metaInfo = [
       <div class="learning-path-header">
         <h2 class="learning-path-title">Learning Path</h2>
         <p class="learning-path-description">
-          Progress through {phaseTiers.length} carefully structured tiers. Each tier builds upon the
-          previous, introducing new concepts and culminating in hands-on projects.
+          {phase.data.phase_number === 0
+            ? `Learn C64 BASIC programming through ${phaseTiers.length} structured tiers. Discover essential programming concepts before diving into assembly language.`
+            : `Progress through ${phaseTiers.length} carefully structured assembly programming tiers. Each tier builds upon the previous, introducing new concepts and culminating in hands-on projects.`
+          }
         </p>
       </div>
+
+      <!-- Phase Type Indicator for Phase 0 -->
+      {phase.data.phase_number === 0 && (
+        <div class="phase-type-indicator basic-phase">
+          <div class="phase-type-header">
+            <span class="phase-type-icon">💻</span>
+            <div class="phase-type-info">
+              <h3 class="phase-type-title">BASIC Programming Foundation</h3>
+              <p class="phase-type-description">
+                Start your programming journey with C64 BASIC. Learn essential concepts like variables, loops, and conditional logic that will prepare you for assembly language in later phases.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <!-- Phase Type Indicator for Assembly Phases -->
+      {phase.data.phase_number > 0 && (
+        <div class="phase-type-indicator assembly-phase">
+          <div class="phase-type-header">
+            <span class="phase-type-icon">⚙️</span>
+            <div class="phase-type-info">
+              <h3 class="phase-type-title">Assembly Programming - Phase {phase.data.phase_number}</h3>
+              <p class="phase-type-description">
+                Low-level programming directly with the processor. Control every byte, optimize for speed, and discover how the hardware really works.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <!-- Tier Cards -->
       <div class="tier-cards">
         {
-          phaseTiers.map((tier, index) => (
-            <a
-              href={`/lessons/${phase.data.system}/phase-${phase.data.phase_number}/tier-${tier.data.tier_number}`}
-              class={`lesson-card ${colors.className}`}
-            >
-              <div class="tier-card-layout">
-                <div class="lesson-card-accent" />
-                <div class="tier-card-content">
-                  <div class="tier-card-header">
-                    <div class="tier-card-main">
-                      <div class="lesson-card-number">{tier.data.tier_number}</div>
-                      <div class="tier-card-info">
-                        <h3 class="tier-card-title">{tier.data.title}</h3>
-                        <p class="tier-card-description">{tier.data.description}</p>
+          tiersWithProgress.map((tier, index) => {
+            const hasContent = tier.progress.count > 0;
+            const isClickable = hasContent;
 
-                        <div class="tier-card-concepts">
-                          {tier.data.concepts_introduced.slice(0, 4).map((concept) => (
-                            <span class="concept-pill">{concept}</span>
-                          ))}
-                          {tier.data.concepts_introduced.length > 4 && (
-                            <span class="concept-pill">
-                              +{tier.data.concepts_introduced.length - 4} more
-                            </span>
-                          )}
-                        </div>
+            let progressClass = 'tier-progress-indicator';
+            if (tier.progress.status === 'complete') progressClass += ' progress-green';
+            else if (tier.progress.status === 'near-complete' || tier.progress.status === 'partial') progressClass += ' progress-amber';
+            else if (tier.progress.status === 'early-access') progressClass += ' progress-red';
+            else progressClass += ' progress-grey';
 
-                        {tier.data.game_project && (
-                          <div class="game-project">
-                            <div class="game-project-header">
-                              <span class="game-project-icon">🎮</span>
-                              <div class="game-project-info">
-                                <h4 class="game-project-title">
-                                  Project: {tier.data.game_project.name}
-                                </h4>
-                                <p class="game-project-description">
-                                  {tier.data.game_project.description}
-                                </p>
-                              </div>
+            const TierElement = isClickable ? 'a' : 'div';
+            const tierProps = isClickable ? {
+              href: `/lessons/${phase.data.system}/phase-${phase.data.phase_number}/tier-${tier.data.tier_number}`
+            } : {};
+
+            return (
+              <TierElement
+                {...tierProps}
+                class={`lesson-card ${colors.className} ${!isClickable ? 'lesson-card-disabled' : ''}`}
+              >
+                <div class="tier-card-layout">
+                  <div class="lesson-card-accent" />
+                  <div class="tier-card-content">
+                    <div class="tier-card-header">
+                      <div class="tier-card-main">
+                        <div class="lesson-card-number">{tier.data.tier_number}</div>
+                        <div class="tier-card-info">
+                          <div class="tier-card-title-row">
+                            <h3 class="tier-card-title">{tier.data.title}</h3>
+                            <div class={progressClass} title={`${tier.progress.count}/${tier.progress.total} lessons (${tier.progress.percentage}%)`}>
+                              <span class="progress-text">{tier.progress.count}/{tier.progress.total}</span>
                             </div>
                           </div>
-                        )}
+                          <p class="tier-card-description">{tier.data.description}</p>
 
-                        <div class="tier-card-footer">
-                          <span>
-                            Tier {index + 1} of {phaseTiers.length}
-                          </span>
-                          <span class="tier-card-separator">•</span>
-                          <span>{tier.data.estimated_duration}</span>
+                          <div class="tier-card-concepts">
+                            {tier.data.concepts_introduced.slice(0, 4).map((concept) => (
+                              <span class="concept-pill">{concept}</span>
+                            ))}
+                            {tier.data.concepts_introduced.length > 4 && (
+                              <span class="concept-pill">
+                                +{tier.data.concepts_introduced.length - 4} more
+                              </span>
+                            )}
+                          </div>
+
+                          {tier.data.game_project && (
+                            <div class="game-project">
+                              <div class="game-project-header">
+                                <span class="game-project-icon">🎮</span>
+                                <div class="game-project-info">
+                                  <h4 class="game-project-title">
+                                    Project: {tier.data.game_project.name}
+                                  </h4>
+                                  <p class="game-project-description">
+                                    {tier.data.game_project.description}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          <div class="tier-card-footer">
+                            <span>
+                              Tier {index + 1} of {tiersWithProgress.length}
+                            </span>
+                            <span class="tier-card-separator">•</span>
+                            <span>{tier.data.estimated_duration}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div class="tier-card-action">
-                      <div class="lesson-nav-button primary">Start Tier →</div>
+                      <div class="tier-card-action">
+                        {isClickable ? (
+                          <div class="lesson-nav-button primary">Start Tier →</div>
+                        ) : (
+                          <div class="lesson-nav-button disabled">Coming Soon</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </a>
-          ))
+              </TierElement>
+            );
+          })
         }
       </div>
     </div>

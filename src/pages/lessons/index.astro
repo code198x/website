@@ -9,76 +9,171 @@ import FullWidthSection from "../../components/FullWidthSection.astro";
 const systems = await getCollection("systems");
 const lessons = await getCollection("lessons");
 
-// Filter out vault systems and check which have lessons
+// Define system capabilities (which phases they support)
+const systemCapabilities = {
+  // Computers - all have BASIC (Phase 0)
+  'commodore-64': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'sinclair-zx-spectrum': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'apple-ii': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'bbc-micro': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'atari-8-bit': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'ti-99-4a': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'amstrad-cpc': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'msx': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'tandy-color-computer': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'commodore-pet': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'oric-1': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'sharp-mz': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'atari-st': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'commodore-amiga': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'acorn-archimedes': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  'pc-dos': [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  // Consoles - no BASIC (start at Phase 1)
+  'nintendo-entertainment-system': [1, 2, 3, 4, 5, 6, 7, 8],
+  'sega-master-system': [1, 2, 3, 4, 5, 6, 7, 8],
+  'atari-2600': [1, 2, 3, 4, 5, 6, 7, 8],
+  'game-boy': [1, 2, 3, 4, 5, 6, 7, 8],
+  'atari-7800': [1, 2, 3, 4, 5, 6, 7, 8],
+  'colecovision': [1, 2, 3, 4, 5, 6, 7, 8],
+  'intellivision': [1, 2, 3, 4, 5, 6, 7, 8],
+  'vectrex': [1, 2, 3, 4, 5, 6, 7, 8],
+  'odyssey2': [1, 2, 3, 4, 5, 6, 7, 8],
+  'game-boy-color': [1, 2, 3, 4, 5, 6, 7, 8],
+  'sega-genesis': [1, 2, 3, 4, 5, 6, 7, 8],
+  'super-nintendo': [1, 2, 3, 4, 5, 6, 7, 8],
+  'turbografx-16': [1, 2, 3, 4, 5, 6, 7, 8],
+  'neo-geo': [1, 2, 3, 4, 5, 6, 7, 8],
+  'game-gear': [1, 2, 3, 4, 5, 6, 7, 8],
+  'atari-lynx': [1, 2, 3, 4, 5, 6, 7, 8],
+};
+
+// Calculate progress for each system
+function calculateSystemProgress(systemSlug) {
+  const capabilities = systemCapabilities[systemSlug] || [];
+  const phaseProgress = [];
+
+  for (let phase = 0; phase <= 8; phase++) {
+    if (!capabilities.includes(phase)) {
+      phaseProgress.push({ status: 'not-applicable', percentage: 0 });
+      continue;
+    }
+
+    // Count published lessons for this phase
+    const phaseLessons = lessons.filter(lesson => {
+      const [system, phaseDir] = lesson.id.split('/');
+      return system === systemSlug && phaseDir === `phase-${phase}`;
+    });
+
+    // Check for content_status in frontmatter (defaulting to 'template' for now)
+    const publishedLessons = phaseLessons.filter(lesson =>
+      lesson.data.content_status === 'published'
+    );
+
+    const expectedTotal = phase === 0 ? 128 : 512; // Phase 0: 8×16, Others: 16×32
+    const percentage = Math.round((publishedLessons.length / expectedTotal) * 100);
+
+    let status;
+    if (percentage === 0) status = 'not-started';
+    else if (percentage < 25) status = 'early-access';
+    else if (percentage < 50) status = 'partial';
+    else if (percentage < 100) status = 'near-complete';
+    else status = 'complete';
+
+    phaseProgress.push({ status, percentage, count: publishedLessons.length, total: expectedTotal });
+  }
+
+  return phaseProgress;
+}
+
+// Filter out vault systems and calculate progress
 const allSystems = systems
   .filter((system) => system.data.status !== "vault")
   .map((system) => {
-    const hasLessons = lessons.some((lesson) => lesson.id.startsWith(system.slug));
-    return { ...system, hasLessons };
+    const progress = calculateSystemProgress(system.slug);
+    const hasAnyContent = progress.some(p => p.count > 0);
+    return { ...system, progress, hasAnyContent };
   });
 
-// Group systems into two simple categories
-const activeSystems = allSystems.filter((s) => s.hasLessons);
-const comingSoonSystems = allSystems.filter((s) => !s.hasLessons);
+// Sort by content availability and order
+const systemsWithContent = allSystems.filter(s => s.hasAnyContent);
+const systemsWithoutContent = allSystems.filter(s => !s.hasAnyContent);
 
-// Sort by order
-activeSystems.sort((a, b) => a.data.order - b.data.order);
-comingSoonSystems.sort((a, b) => a.data.order - b.data.order);
+systemsWithContent.sort((a, b) => a.data.order - b.data.order);
+systemsWithoutContent.sort((a, b) => a.data.order - b.data.order);
 ---
 
 <Layout title="Assembly Programming Courses">
   <div class="container">
     <Hero
-      title="Master Assembly Programming on Real Hardware"
-      description="Build games, demos, and utilities on authentic vintage systems. From the C64's SID chip to the NES PPU—learn how legends coded when every byte mattered."
+      title="Learn Programming on Real Hardware"
+      description="Start with BASIC, then progress to assembly. Build games, demos, and utilities on authentic vintage systems. From the C64's SID chip to the NES PPU—discover how legends coded when every byte mattered."
       badge={{
-        text: `${activeSystems.length} available • ${comingSoonSystems.length} coming soon`,
+        text: `${systemsWithContent.length} available • ${systemsWithoutContent.length} coming soon`,
         color: "#10b981",
       }}
       variant="centered"
     />
 
-    <!-- Active Systems -->
+    <!-- Systems with Content -->
     {
-      activeSystems.length > 0 && (
+      systemsWithContent.length > 0 && (
         <div>
           <h2>Available Now</h2>
-          <Grid columns={3} gap="large" variant="cards">
-            {activeSystems.map((system) => {
+          <Grid columns={1} gap="large" variant="cards">
+            {systemsWithContent.map((system) => {
               const colors = getSystemColors(system.slug);
-              const SystemWrapper = system.hasLessons ? "a" : "div";
-              const wrapperProps = system.hasLessons ? { href: `/lessons/${system.slug}/` } : {};
+              const hasClickableContent = system.progress.some(p => p.count > 0);
 
               return (
-                <SystemWrapper {...wrapperProps} class={`lesson-card ${colors.className}`}>
-                  <div class="lesson-card-header">
-                    <img
-                      src={`/images/systems/${system.slug}.jpg`}
-                      alt={system.data.name}
-                      width={400}
-                      height={300}
-                      loading="lazy"
-                      class="lesson-card-image"
-                    />
-                    <div class="lesson-card-badge">Full Course</div>
-                  </div>
+                <div class={`system-progress-card ${colors.className}`}>
+                  <!-- Left side: Full-height system image -->
+                  <img
+                    src={`/images/systems/${system.slug}.jpg`}
+                    alt={system.data.name}
+                    loading="lazy"
+                    class="system-progress-image"
+                  />
 
-                  <div class="lesson-card-body">
-                    <h2 class="lesson-card-title">{system.data.name}</h2>
-                    <p class="lesson-card-manufacturer">by {system.data.manufacturer}</p>
-                    <p class="lesson-card-description">
-                      {system.data.historical_significance || system.data.description}
-                    </p>
-
-                    <div class="lesson-card-footer">
-                      <div class="lesson-card-specs">
-                        <div>CPU: {system.data.cpu}</div>
-                        <div>Released: {system.data.release_date.global.getFullYear()}</div>
+                  <!-- Right side: Content area -->
+                  <div class="system-content-area">
+                    <div class="system-progress-header">
+                      <div class="system-progress-info">
+                        <h3 class="system-progress-title">{system.data.name}</h3>
+                        <p class="system-progress-description">{system.data.description}</p>
                       </div>
-                      <div class="lesson-card-cta">Start →</div>
+                    </div>
+
+                    <div class="system-progress-footer">
+                      <div class="system-phase-progress">
+                        {system.progress.map((phase, index) => {
+                          const isClickable = phase.count > 0;
+                          const PhaseElement = isClickable ? 'a' : 'div';
+                          const phaseProps = isClickable ? { href: `/lessons/${system.slug}/phase-${index}/` } : {};
+
+                          let phaseClass = 'phase-indicator';
+                          if (phase.status === 'not-applicable') phaseClass += ' phase-empty';
+                          else if (phase.status === 'complete') phaseClass += ' phase-green';
+                          else if (phase.status === 'near-complete' || phase.status === 'partial') phaseClass += ' phase-amber';
+                          else if (phase.status === 'early-access') phaseClass += ' phase-red';
+                          else phaseClass += ' phase-grey';
+
+                          if (isClickable) phaseClass += ' phase-clickable';
+
+                          return (
+                            <PhaseElement {...phaseProps} class={phaseClass} title={`Phase ${index}: ${phase.count}/${phase.total} lessons (${phase.percentage}%)`}>
+                              <span class="phase-number">{index}</span>
+                            </PhaseElement>
+                          );
+                        })}
+                      </div>
+                      {hasClickableContent ? (
+                        <a href={`/lessons/${system.slug}/`} class="system-progress-cta">Start Learning →</a>
+                      ) : (
+                        <span class="system-progress-cta disabled">Content in Development</span>
+                      )}
                     </div>
                   </div>
-                </SystemWrapper>
+                </div>
               );
             })}
           </Grid>
@@ -88,38 +183,47 @@ comingSoonSystems.sort((a, b) => a.data.order - b.data.order);
 
     <!-- Coming Soon Systems -->
     {
-      comingSoonSystems.length > 0 && (
+      systemsWithoutContent.length > 0 && (
         <div>
           <h2>Coming Soon</h2>
-          <Grid columns={3} gap="large" variant="cards">
-            {comingSoonSystems.map((system) => {
+          <Grid columns={1} gap="large" variant="cards">
+            {systemsWithoutContent.map((system) => {
               const colors = getSystemColors(system.slug);
 
               return (
-                <div class={`lesson-card ${colors.className} lesson-card-disabled`}>
-                  <div class="lesson-card-header">
-                    <img
-                      src={`/images/systems/${system.slug}.jpg`}
-                      alt={system.data.name}
-                      width={400}
-                      height={300}
-                      loading="lazy"
-                      class="lesson-card-image"
-                    />
-                    <div class="lesson-card-badge">Full Course</div>
-                  </div>
+                <div class={`system-progress-card ${colors.className} system-card-disabled`}>
+                  <!-- Left side: Full-height system image -->
+                  <img
+                    src={`/images/systems/${system.slug}.jpg`}
+                    alt={system.data.name}
+                    loading="lazy"
+                    class="system-progress-image"
+                  />
 
-                  <div class="lesson-card-body">
-                    <h2 class="lesson-card-title">{system.data.name}</h2>
-                    <p class="lesson-card-manufacturer">by {system.data.manufacturer}</p>
-                    <p class="lesson-card-description">{system.data.description}</p>
-
-                    <div class="lesson-card-footer">
-                      <div class="lesson-card-specs">
-                        <div>CPU: {system.data.cpu}</div>
-                        <div>Released: {system.data.release_date.global.getFullYear()}</div>
+                  <!-- Right side: Content area -->
+                  <div class="system-content-area">
+                    <div class="system-progress-header">
+                      <div class="system-progress-info">
+                        <h3 class="system-progress-title">{system.data.name}</h3>
+                        <p class="system-progress-description">{system.data.description}</p>
                       </div>
-                      <div class="lesson-card-cta">Coming Soon</div>
+                    </div>
+
+                    <div class="system-progress-footer">
+                      <div class="system-phase-progress">
+                        {system.progress.map((phase, index) => {
+                          let phaseClass = 'phase-indicator';
+                          if (phase.status === 'not-applicable') phaseClass += ' phase-empty';
+                          else phaseClass += ' phase-grey';
+
+                          return (
+                            <div class={phaseClass}>
+                              <span class="phase-number">{index}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <span class="system-progress-cta disabled">Coming Soon</span>
                     </div>
                   </div>
                 </div>
