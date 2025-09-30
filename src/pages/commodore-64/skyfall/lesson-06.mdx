@@ -1,0 +1,381 @@
+---
+layout: ../../../layouts/LessonLayout.astro
+title: "Moving the Player"
+game: "Skyfall"
+system: "C64"
+lessonNumber: 6
+totalLessons: 16
+nextLesson: "/commodore-64/skyfall/lesson-07"
+prevLesson: "/commodore-64/skyfall/lesson-05"
+objectives:
+  - Track the player's current column position
+  - Move left and right based on keyboard input
+  - Keep the player on screen (boundaries)
+  - Understand the game loop concept
+---
+
+## Introduction
+
+You can detect keyboard input. Now let's use it to move the player character.
+
+By the end of this lesson, you'll control the player basket with A and D keys.
+
+## Understanding Memory: Zero Page
+
+The 6502 CPU has 64KB of addressable memory ($0000-$FFFF). But addresses $00-$FF (0-255) are special - they're called **zero page**.
+
+Zero page is faster to access than regular memory:
+- Instructions that use zero page are 1 byte shorter
+- Execution is slightly faster
+- Some addressing modes only work with zero page
+
+Think of zero page as the CPU's "fast scratch pad" - it's where you put frequently-accessed variables.
+
+**Common zero page usage:**
+- `$00-$01`: Used by the C64 system
+- `$02-$8F`: Free for your programs
+- `$90-$FF`: Used by BASIC and KERNAL (avoid if using KERNAL)
+
+We'll use `$02` onwards for Skyfall's game variables.
+
+## Tracking Player Position
+
+We need to remember where the player is. We'll use a zero page address:
+
+```asm
+; Add to constants
+PLAYER_COL = $02               ; Zero page address for player column
+```
+
+This single byte will hold the player's column number (0-39). We use zero page because:
+- We'll read/write it frequently (every movement check)
+- The faster access matters in a real-time game
+- It's good practice for efficient 6502 programming
+
+## Initialize at Startup
+
+Let's set the initial column position:
+
+```asm
+main:
+    jsr init_screen
+
+    lda #PLAYER_START_COL      ; Start at column 20
+    sta PLAYER_COL             ; Save it
+
+    jsr draw_player
+    jsr game_loop
+    rts
+```
+
+## The Game Loop
+
+Games run in a continuous loop:
+
+```asm
+game_loop:
+    jsr wait_for_raster        ; Sync to screen refresh
+    jsr check_keys             ; Read input
+    jmp game_loop              ; Loop forever
+```
+
+The `wait_for_raster` ensures the game runs at 50/60 Hz instead of impossibly fast in VICE. When we detect movement keys, we'll update the player.
+
+## Moving Left
+
+When A is pressed, decrease the column number:
+
+<div class="code-block">
+<div class="code-block-header">Move Left</div>
+
+```asm
+move_left:
+    lda PLAYER_COL             ; Get current column
+    beq skip_left              ; If 0, already at left edge
+
+    ; Erase old position
+    jsr erase_old_player
+
+    ; Move left
+    dec PLAYER_COL             ; Decrease column by 1
+
+    ; Draw new position
+    jsr draw_player
+
+skip_left:
+    rts
+```
+</div>
+
+## Moving Right
+
+When D is pressed, increase the column number:
+
+<div class="code-block">
+<div class="code-block-header">Move Right</div>
+
+```asm
+move_right:
+    lda PLAYER_COL             ; Get current column
+    cmp #39                    ; Compare with rightmost column
+    beq skip_right             ; If 39, already at right edge
+
+    ; Erase old position
+    jsr erase_old_player
+
+    ; Move right
+    inc PLAYER_COL             ; Increase column by 1
+
+    ; Draw new position
+    jsr draw_player
+
+skip_right:
+    rts
+```
+</div>
+
+## Drawing at Different Columns
+
+Our `draw_player` needs to draw at whatever column `PLAYER_COL` says. We'll keep it simple - just calculate which of the 40 positions we need.
+
+Since the player stays on row 23, we just need to handle columns 0-39:
+
+<div class="code-block">
+<div class="code-block-header">Dynamic Drawing</div>
+
+```asm
+draw_player:
+    ; Row 23 starts at SCREEN_RAM + (23 * 40) = SCREEN_RAM + 920
+
+    ldx PLAYER_COL             ; Get column into X
+    lda #PLAYER_CHAR
+    sta SCREEN_RAM + (23 * 40),x  ; Draw at row 23, column X
+
+    lda #PLAYER_COLOR
+    sta COLOR_RAM + (23 * 40),x   ; Color at row 23, column X
+    rts
+
+erase_old_player:
+    ldx PLAYER_COL
+    lda #$20                   ; Space character
+    sta SCREEN_RAM + (23 * 40),x  ; Erase at row 23, column X
+    rts
+```
+</div>
+
+That's it. Using X as an offset into row 23's memory lets us draw at any column.
+
+## Complete Lesson 6 Code
+
+<div class="code-block">
+<div class="code-block-header">skyfall.asm - Complete</div>
+
+```asm
+; SKYFALL - Lesson 6
+; Moving the player
+
+* = $0801
+
+; BASIC stub: SYS 2061
+!byte $0c,$08,$0a,$00,$9e
+!byte $32,$30,$36,$31          ; "2061" in ASCII
+!byte $00,$00,$00
+
+* = $080d
+
+; ===================================
+; Constants
+; ===================================
+SCREEN_RAM = $0400
+COLOR_RAM = $d800
+VIC_BORDER = $d020
+VIC_BACKGROUND = $d021
+VIC_RASTER = $d012
+CIA1_PORT_A = $dc01
+CIA1_PORT_B = $dc00
+
+BLACK = $00
+WHITE = $01
+DARK_GREY = $0b
+
+PLAYER_CHAR = $5e
+PLAYER_COLOR = WHITE
+PLAYER_ROW = 23
+PLAYER_START_COL = 20
+
+; Variables
+PLAYER_COL = $02               ; Current column (0-39)
+
+; ===================================
+; Main Program
+; ===================================
+main:
+    jsr init_screen
+
+    lda #PLAYER_START_COL
+    sta PLAYER_COL
+
+    jsr draw_player
+
+game_loop:
+    jsr wait_for_raster        ; Sync to screen refresh
+    jsr check_keys
+    jmp game_loop
+
+; ===================================
+; Subroutines
+; ===================================
+
+wait_for_raster:
+    lda VIC_RASTER
+    cmp #250
+    bne wait_for_raster
+    rts
+
+init_screen:
+    lda #BLACK
+    sta VIC_BACKGROUND
+    lda #DARK_GREY
+    sta VIC_BORDER
+    jsr clear_screen
+    rts
+
+clear_screen:
+    lda #$20
+    ldx #$00
+clear_screen_loop:
+    sta SCREEN_RAM,x
+    sta SCREEN_RAM + $100,x
+    sta SCREEN_RAM + $200,x
+    sta SCREEN_RAM + $300,x
+    inx
+    bne clear_screen_loop
+
+    lda #WHITE
+    ldx #$00
+clear_color_loop:
+    sta COLOR_RAM,x
+    sta COLOR_RAM + $100,x
+    sta COLOR_RAM + $200,x
+    sta COLOR_RAM + $300,x
+    inx
+    bne clear_color_loop
+    rts
+
+check_keys:
+    jsr check_a_key
+    jsr check_d_key
+    rts
+
+check_a_key:
+    lda #%11111101
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    and #%00000100
+    beq move_left
+    rts
+
+move_left:
+    lda PLAYER_COL
+    beq skip_left              ; At left edge already?
+
+    jsr erase_old_player
+    dec PLAYER_COL
+    jsr draw_player
+
+skip_left:
+    rts
+
+check_d_key:
+    lda #%11111101
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    and #%00010000
+    beq move_right
+    rts
+
+move_right:
+    lda PLAYER_COL
+    cmp #39                    ; At right edge already?
+    beq skip_right
+
+    jsr erase_old_player
+    inc PLAYER_COL
+    jsr draw_player
+
+skip_right:
+    rts
+
+erase_old_player:
+    ldx PLAYER_COL
+    lda #$20                   ; Space
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
+    rts
+
+draw_player:
+    ldx PLAYER_COL
+    lda #PLAYER_CHAR
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
+
+    lda #PLAYER_COLOR
+    sta COLOR_RAM + (PLAYER_ROW * 40),x
+    rts
+```
+</div>
+
+Build and run. Press A to move left, D to move right!
+
+## New Concepts
+
+### Opcodes Used in This Lesson
+
+**dec address** - Decrement
+- Subtracts 1 from the value at an address
+- Example: `dec PLAYER_COL` makes column number one less
+
+**inc address** - Increment
+- Adds 1 to the value at an address
+- Example: `inc PLAYER_COL` makes column number one more
+
+**cmp #value** - Compare
+- Compares the accumulator with a value
+- Sets flags so `beq` knows if they're equal
+- Example: `cmp #39` checks if we're at the right edge
+
+**sta address,x** - Store with X Offset
+- Stores A at: address + value in X register
+- Example: `sta $0798,x` stores at row 23, column X
+- This is how we draw at different columns
+
+### Indexed Addressing
+
+`sta SCREEN_RAM + (PLAYER_ROW * 40),x` means:
+- Calculate the base address (row 23 start)
+- Add X to it
+- Store A there
+
+The assembler does the math `23 * 40 = 920`, so this becomes `sta $0798,x`.
+Then at runtime, X holds the column (0-39), and we write to the right position.
+
+### Boundaries
+
+- `beq skip_left` after checking column 0 prevents moving off the left edge
+- `cmp #39` then `beq skip_right` prevents moving off the right edge
+
+Games always need boundary checks - otherwise things disappear or corrupt memory.
+
+<div class="exercise">
+<div class="exercise-title">🎯 Your Tasks</div>
+
+1. **Build and run** - Move the player with A and D keys
+2. **Test edges** - Move all the way left and right, verify you can't go off screen
+3. **Hold the key** - Notice how it moves continuously while held
+4. **Change speed** - The movement might feel too fast - we'll fix that in Lesson 7
+
+</div>
+
+## Next Steps
+
+The player basket can now move! You've built a real game loop with input handling, state updates, and boundary checking.
+
+In Lesson 7, we'll add proper timing control so movement doesn't feel instant and jerky.

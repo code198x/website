@@ -1,0 +1,823 @@
+---
+layout: ../../../layouts/LessonLayout.astro
+title: "Multi-Digit Score Display"
+game: "Skyfall"
+system: "C64"
+lessonNumber: 14
+totalLessons: 16
+nextLesson: "/commodore-64/skyfall/lesson-15"
+prevLesson: "/commodore-64/skyfall/lesson-13"
+objectives:
+  - Convert numbers to decimal digits
+  - Display multi-digit numbers properly
+  - Understand division by subtraction
+  - Handle leading zeros
+---
+
+## Introduction
+
+The score display breaks at 10 - it shows `:` instead of 10 because we're just adding $30 to the score value.
+
+By the end of this lesson, Skyfall will display scores from 0 to 99 correctly!
+
+## The Current Problem
+
+Our display code:
+
+```asm
+lda SCORE
+adc #$30                       ; Convert to PETSCII digit
+sta SCREEN_RAM
+```
+
+This works for 0-9 because:
+- 0 + $30 = $30 (PETSCII '0')
+- 9 + $30 = $39 (PETSCII '9')
+
+But for 10:
+- 10 + $30 = $3A (PETSCII ':')
+
+We need to split 10 into digits: "1" and "0".
+
+## Converting to Decimal Digits
+
+To display 57 as "5" and "7", we need:
+- Tens digit = 57 ÷ 10 = 5
+- Ones digit = 57 mod 10 = 7
+
+The 6502 has no divide instruction. We use repeated subtraction:
+
+<div className="code-block">
+<div className="code-block-header">Division by Subtraction</div>
+
+```asm
+; Divide A by 10
+; Returns: A = quotient (tens), X = remainder (ones)
+divide_by_10:
+    ldx #$00                   ; Remainder starts at 0
+divide_loop:
+    cmp #10                    ; Is A >= 10?
+    bcc done_divide            ; If less than 10, done
+    sbc #10                    ; Subtract 10 (carry is set from cmp)
+    inx                        ; Increment tens counter
+    jmp divide_loop
+
+done_divide:
+    ; A now holds ones digit
+    ; X holds tens digit
+    rts
+```
+</div>
+
+<div className="note">
+<div className="note-title">💡 How it works</div>
+
+Example with 57:
+1. Start with 57 in A, 0 in X
+2. 57 >= 10? Yes. 57 - 10 = 47. X = 1
+3. 47 >= 10? Yes. 47 - 10 = 37. X = 2
+4. 37 >= 10? Yes. 37 - 10 = 27. X = 3
+5. 27 >= 10? Yes. 27 - 10 = 17. X = 4
+6. 17 >= 10? Yes. 17 - 10 = 7. X = 5
+7. 7 >= 10? No. Done!
+8. Result: A = 7 (ones), X = 5 (tens)
+</div>
+
+## Displaying Two Digits
+
+Update `display_score`:
+
+<div className="code-block">
+<div className="code-block-header">Two-Digit Display</div>
+
+```asm
+display_score:
+    lda SCORE
+    sec                        ; Set carry for subtraction
+    jsr divide_by_10
+
+    ; X = tens, A = ones
+
+    ; Save ones digit
+    sta $fb
+
+    ; Display tens digit (only if non-zero)
+    txa                        ; Transfer X to A
+    beq skip_tens              ; If tens = 0, skip
+
+    clc
+    adc #$30                   ; Convert to PETSCII
+    sta SCREEN_RAM             ; Display at position 0
+
+    ; Display ones digit at position 1
+    lda $fb
+    clc
+    adc #$30
+    sta SCREEN_RAM + 1
+
+    ; Color both digits
+    lda #WHITE
+    sta COLOR_RAM
+    sta COLOR_RAM + 1
+
+    rts
+
+skip_tens:
+    ; No tens digit, just show ones at position 0
+    lda $fb
+    clc
+    adc #$30
+    sta SCREEN_RAM
+
+    lda #WHITE
+    sta COLOR_RAM
+    rts
+```
+</div>
+
+This displays:
+- 0-9 as single digits
+- 10-99 as two digits
+
+## Handling Leading Zeros
+
+Our current code skips the tens digit if it's zero. But what if we want to show "07" instead of "7"?
+
+For Skyfall, showing "7" is fine. But here's how you'd always show two digits:
+
+```asm
+display_score_padded:
+    lda SCORE
+    sec
+    jsr divide_by_10
+
+    sta $fb                    ; Save ones
+
+    ; Always display tens
+    txa
+    clc
+    adc #$30
+    sta SCREEN_RAM
+
+    ; Always display ones
+    lda $fb
+    clc
+    adc #$30
+    sta SCREEN_RAM + 1
+
+    ; Color both
+    lda #WHITE
+    sta COLOR_RAM
+    sta COLOR_RAM + 1
+
+    rts
+```
+
+This would show "07", "08", "09", etc.
+
+## Updating Misses Display
+
+Let's apply the same fix to misses:
+
+```asm
+display_misses:
+    lda MISSES
+    sec
+    jsr divide_by_10
+
+    sta $fb
+
+    txa
+    beq skip_miss_tens
+
+    clc
+    adc #$30
+    sta SCREEN_RAM + 5
+
+    lda $fb
+    clc
+    adc #$30
+    sta SCREEN_RAM + 6
+
+    lda #WHITE
+    sta COLOR_RAM + 5
+    sta COLOR_RAM + 6
+
+    rts
+
+skip_miss_tens:
+    lda $fb
+    clc
+    adc #$30
+    sta SCREEN_RAM + 5
+
+    lda #WHITE
+    sta COLOR_RAM + 5
+    rts
+```
+
+## Clearing Old Digits
+
+Problem: if the score goes from "10" to "9", the "1" remains on screen showing "19".
+
+Solution: always clear the display area first:
+
+```asm
+display_score:
+    ; Clear score area first
+    lda #$20                   ; Space
+    sta SCREEN_RAM
+    sta SCREEN_RAM + 1
+
+    ; Now display the score
+    lda SCORE
+    sec
+    jsr divide_by_10
+
+    ; ... rest of code
+```
+
+## Complete Lesson 14 Code
+
+<div className="code-block">
+<div className="code-block-header">skyfall.asm - Complete</div>
+
+```asm
+; SKYFALL - Lesson 14
+; Multi-digit score display
+
+* = $0801
+
+; BASIC stub: SYS 2061
+!byte $0c,$08,$0a,$00,$9e
+!byte $32,$30,$36,$31          ; "2061" in ASCII
+!byte $00,$00,$00
+
+* = $080d
+
+; ===================================
+; Constants
+; ===================================
+SCREEN_RAM = $0400
+COLOR_RAM = $d800
+VIC_BORDER = $d020
+VIC_BACKGROUND = $d021
+CIA1_PORT_A = $dc01
+CIA1_PORT_B = $dc00
+VIC_RASTER = $d012
+
+SID_V1_FREQ_LO = $d400
+SID_V1_FREQ_HI = $d401
+SID_V1_CONTROL = $d404
+SID_V1_AD = $d405
+SID_V1_SR = $d406
+SID_V3_FREQ_LO = $d40e
+SID_V3_FREQ_HI = $d40f
+SID_V3_CONTROL = $d412
+SID_V3_OSC = $d41b
+SID_VOLUME = $d418
+
+BLACK = $00
+WHITE = $01
+YELLOW = $07
+DARK_GREY = $0b
+
+PLAYER_CHAR = $5e
+PLAYER_COLOR = WHITE
+PLAYER_ROW = 23
+PLAYER_START_COL = 20
+
+OBJECT_CHAR = $2a
+OBJECT_COLOR = YELLOW
+
+MAX_OBJECTS = 3
+SPAWN_DELAY = 60
+
+; Variables
+PLAYER_COL = $02
+MOVE_COUNTER = $03
+FALL_COUNTER = $07
+SCORE = $08
+MISSES = $09
+SPAWN_COUNTER = $0a
+SOUND_TIMER = $0b
+
+; Object arrays
+OBJ_COL = $10                  ; 3 bytes
+OBJ_ROW = $13                  ; 3 bytes
+OBJ_ACTIVE = $16               ; 3 bytes
+
+; ===================================
+; Main Program
+; ===================================
+main:
+    jsr init_screen
+    jsr init_random
+    jsr init_sound
+
+    lda #PLAYER_START_COL
+    sta PLAYER_COL
+
+    lda #3
+    sta MOVE_COUNTER
+
+    lda #5
+    sta FALL_COUNTER
+
+    lda #SPAWN_DELAY
+    sta SPAWN_COUNTER
+
+    lda #$00
+    sta SCORE
+    sta MISSES
+    sta SOUND_TIMER
+
+    ; Clear all objects
+    ldx #$00
+clear_objects:
+    lda #$00
+    sta OBJ_ACTIVE,x
+    inx
+    cpx #MAX_OBJECTS
+    bne clear_objects
+
+    jsr draw_player
+    jsr spawn_object
+    jsr display_score
+    jsr display_misses
+
+game_loop:
+    jsr wait_for_raster
+
+    ; Update sound timer
+    lda SOUND_TIMER
+    beq no_sound_playing
+    dec SOUND_TIMER
+    bne no_sound_playing
+    jsr stop_sound
+no_sound_playing:
+
+    ; Player movement
+    dec MOVE_COUNTER
+    bne skip_player_movement
+    lda #3
+    sta MOVE_COUNTER
+    jsr check_keys
+skip_player_movement:
+
+    ; Object falling
+    dec FALL_COUNTER
+    bne skip_object_fall
+    lda #5
+    sta FALL_COUNTER
+    jsr update_all_objects
+skip_object_fall:
+
+    ; Spawn new objects
+    dec SPAWN_COUNTER
+    bne skip_spawn
+    lda #SPAWN_DELAY
+    sta SPAWN_COUNTER
+    jsr spawn_object
+skip_spawn:
+
+    jmp game_loop
+
+; ===================================
+; Subroutines
+; ===================================
+
+wait_for_raster:
+    lda VIC_RASTER
+    cmp #250
+    bne wait_for_raster
+    rts
+
+init_screen:
+    jsr wait_for_raster
+    lda #BLACK
+    sta VIC_BACKGROUND
+    lda #DARK_GREY
+    sta VIC_BORDER
+    jsr clear_screen
+    rts
+
+init_random:
+    lda #$ff
+    sta SID_V3_FREQ_LO
+    sta SID_V3_FREQ_HI
+    lda #$80
+    sta SID_V3_CONTROL
+    rts
+
+init_sound:
+    lda #$0f
+    sta SID_VOLUME
+    rts
+
+play_catch_sound:
+    lda #$3e
+    sta SID_V1_FREQ_LO
+    lda #$11
+    sta SID_V1_FREQ_HI
+    lda #$09
+    sta SID_V1_AD
+    lda #$00
+    sta SID_V1_SR
+    lda #$11
+    sta SID_V1_CONTROL
+    lda #10
+    sta SOUND_TIMER
+    rts
+
+play_miss_sound:
+    lda #$f7
+    sta SID_V1_FREQ_LO
+    lda #$04
+    sta SID_V1_FREQ_HI
+    lda #$00
+    sta SID_V1_AD
+    lda #$a8
+    sta SID_V1_SR
+    lda #$21
+    sta SID_V1_CONTROL
+    lda #20
+    sta SOUND_TIMER
+    rts
+
+stop_sound:
+    lda SID_V1_CONTROL
+    and #$fe
+    sta SID_V1_CONTROL
+    rts
+
+divide_by_10:
+    ; Input: A = number to divide
+    ; Output: X = tens, A = ones
+    ; Carry must be set before calling
+    ldx #$00
+divide_loop:
+    cmp #10
+    bcc done_divide
+    sbc #10
+    inx
+    jmp divide_loop
+done_divide:
+    rts
+
+get_random:
+    lda SID_V3_OSC
+    rts
+
+get_random_column:
+try_again:
+    jsr get_random
+    and #%00111111
+    cmp #40
+    bcs try_again
+    rts
+
+clear_screen:
+    lda #$20
+    ldx #$00
+clear_screen_loop:
+    sta SCREEN_RAM,x
+    sta SCREEN_RAM + $100,x
+    sta SCREEN_RAM + $200,x
+    sta SCREEN_RAM + $300,x
+    inx
+    bne clear_screen_loop
+
+    lda #WHITE
+    ldx #$00
+clear_color_loop:
+    sta COLOR_RAM,x
+    sta COLOR_RAM + $100,x
+    sta COLOR_RAM + $200,x
+    sta COLOR_RAM + $300,x
+    inx
+    bne clear_color_loop
+    rts
+
+check_keys:
+    lda #%11111101
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    sta $fb
+
+    and #%00010000
+    beq move_right
+
+    lda $fb
+    and #%00000100
+    beq move_left
+
+    rts
+
+move_left:
+    lda PLAYER_COL
+    beq skip_left
+    jsr erase_player
+    dec PLAYER_COL
+    jsr draw_player
+skip_left:
+    rts
+
+move_right:
+    lda PLAYER_COL
+    cmp #39
+    beq skip_right
+    jsr erase_player
+    inc PLAYER_COL
+    jsr draw_player
+skip_right:
+    rts
+
+erase_player:
+    ldx PLAYER_COL
+    lda #$20
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
+    rts
+
+draw_player:
+    ldx PLAYER_COL
+    lda #PLAYER_CHAR
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
+    lda #PLAYER_COLOR
+    sta COLOR_RAM + (PLAYER_ROW * 40),x
+    rts
+
+spawn_object:
+    ldx #$00
+find_slot:
+    lda OBJ_ACTIVE,x
+    beq found_slot
+    inx
+    cpx #MAX_OBJECTS
+    bne find_slot
+    rts
+found_slot:
+    lda #$01
+    sta OBJ_ACTIVE,x
+    lda #$00
+    sta OBJ_ROW,x
+    stx $fd
+    jsr get_random_column
+    ldx $fd
+    sta OBJ_COL,x
+    jsr draw_object
+    rts
+
+update_all_objects:
+    ldx #$00
+update_loop:
+    stx $fe
+    lda OBJ_ACTIVE,x
+    beq skip_this_object
+    jsr erase_object
+    ldx $fe
+    inc OBJ_ROW,x
+    lda OBJ_ROW,x
+    cmp #24
+    bne still_falling_check
+    ldx $fe
+    lda #$00
+    sta OBJ_ACTIVE,x
+    inc MISSES
+    jsr display_misses
+    jsr play_miss_sound
+    jsr spawn_object
+    jmp next_object
+still_falling_check:
+    ldx $fe
+    jsr draw_object
+skip_this_object:
+next_object:
+    ldx $fe
+    inx
+    cpx #MAX_OBJECTS
+    bne update_loop
+    rts
+
+check_all_collisions:
+    ldx #$00
+collision_loop:
+    stx $fe
+    lda OBJ_ACTIVE,x
+    beq skip_collision
+    lda OBJ_ROW,x
+    cmp #PLAYER_ROW
+    bne skip_collision
+    ldx $fe
+    lda OBJ_COL,x
+    cmp PLAYER_COL
+    bne skip_collision
+    ldx $fe
+    jsr handle_catch
+skip_collision:
+    ldx $fe
+    inx
+    cpx #MAX_OBJECTS
+    bne collision_loop
+    rts
+
+handle_catch:
+    jsr erase_object
+    lda #$00
+    sta OBJ_ACTIVE,x
+    inc SCORE
+    jsr display_score
+    jsr play_catch_sound
+    jsr spawn_object
+    rts
+
+calc_row_times_40:
+    sta $fb
+    asl
+    asl
+    asl
+    sta $fc
+    lda $fb
+    asl
+    asl
+    asl
+    asl
+    asl
+    clc
+    adc $fc
+    rts
+
+draw_object:
+    lda OBJ_ROW,x
+    jsr calc_row_times_40
+    clc
+    adc OBJ_COL,x
+    tay
+    lda #OBJECT_CHAR
+    sta SCREEN_RAM,y
+    lda #OBJECT_COLOR
+    sta COLOR_RAM,y
+    rts
+
+erase_object:
+    lda OBJ_ROW,x
+    jsr calc_row_times_40
+    clc
+    adc OBJ_COL,x
+    tay
+    lda #$20
+    sta SCREEN_RAM,y
+    rts
+
+display_score:
+    ; Clear score area
+    lda #$20
+    sta SCREEN_RAM
+    sta SCREEN_RAM + 1
+
+    ; Convert and display
+    lda SCORE
+    sec
+    jsr divide_by_10
+
+    sta $fb                    ; Save ones
+
+    txa                        ; Get tens
+    beq skip_tens              ; If zero, skip tens digit
+
+    clc
+    adc #$30
+    sta SCREEN_RAM
+
+    lda $fb
+    clc
+    adc #$30
+    sta SCREEN_RAM + 1
+
+    lda #WHITE
+    sta COLOR_RAM
+    sta COLOR_RAM + 1
+    rts
+
+skip_tens:
+    lda $fb
+    clc
+    adc #$30
+    sta SCREEN_RAM
+    lda #WHITE
+    sta COLOR_RAM
+    rts
+
+display_misses:
+    ; Clear misses area
+    lda #$20
+    sta SCREEN_RAM + 5
+    sta SCREEN_RAM + 6
+
+    ; Convert and display
+    lda MISSES
+    sec
+    jsr divide_by_10
+
+    sta $fb
+
+    txa
+    beq skip_miss_tens
+
+    clc
+    adc #$30
+    sta SCREEN_RAM + 5
+
+    lda $fb
+    clc
+    adc #$30
+    sta SCREEN_RAM + 6
+
+    lda #WHITE
+    sta COLOR_RAM + 5
+    sta COLOR_RAM + 6
+    rts
+
+skip_miss_tens:
+    lda $fb
+    clc
+    adc #$30
+    sta SCREEN_RAM + 5
+    lda #WHITE
+    sta COLOR_RAM + 5
+    rts
+```
+</div>
+
+Build and run. Play until you get 10+ points. The score displays correctly!
+
+## New Concepts
+
+### Opcodes Used in This Lesson
+
+**sbc #value** - Subtract with Carry (also called borrow)
+- Subtracts value from accumulator, accounting for carry flag
+- If carry clear, subtracts an extra 1 (borrow)
+- Always use `sec` before subtraction to set carry
+- Example: `sec` then `sbc #10` subtracts exactly 10
+
+**bcc label** - Branch if Carry Clear
+- Opposite of `bcs` (branch if carry set)
+- After `cmp`, carry is clear if A < compared value
+- Example: `cmp #10` then `bcc done` branches if A < 10
+
+**txa** - Transfer X to A
+- Copies X register value into accumulator
+- Doesn't change X
+- Example: `txa` then `adc #$30` converts X to PETSCII digit
+
+### Division by Repeated Subtraction
+
+Since the 6502 has no divide instruction, we simulate it:
+
+```
+57 ÷ 10:
+  57 - 10 = 47 (count 1)
+  47 - 10 = 37 (count 2)
+  37 - 10 = 27 (count 3)
+  27 - 10 = 17 (count 4)
+  17 - 10 = 7  (count 5)
+  7 < 10, stop
+  Result: 5 tens, 7 ones
+```
+
+This is slower than hardware division but fast enough for occasional score updates.
+
+### The Carry Flag in Subtraction
+
+The carry flag works differently for subtraction:
+- Set (`sec`) = no borrow, normal subtraction
+- Clear (`clc`) = borrow 1, subtracts an extra 1
+
+Always `sec` before subtraction unless you specifically want the borrow.
+
+### Number-to-Digits Algorithm
+
+The general pattern for any base:
+1. Divide by base (10 for decimal)
+2. Quotient = higher-order digit
+3. Remainder = current digit
+4. Repeat with quotient for more digits
+
+We only need 2 digits (0-99), so one division suffices.
+
+<div className="exercise">
+<div className="exercise-title">🎯 Your Tasks</div>
+
+1. **Build and run** - Score past 10 and verify it displays correctly
+2. **Test edge cases** - Get exactly 10, 20, 50, 99
+3. **Add padding** - Modify to always show 2 digits ("07" instead of "7")
+4. **Three digits** - Can you extend to show 100-255? (Hint: divide tens by 10 again)
+
+</div>
+
+## Next Steps
+
+Now scores display properly up to 99! The game is more professional.
+
+In Lesson 15, we'll add a proper game over screen and restart functionality!

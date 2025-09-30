@@ -1,0 +1,304 @@
+---
+layout: ../../../layouts/LessonLayout.astro
+title: "Responsive Controls"
+game: "Skyfall"
+system: "C64"
+lessonNumber: 8
+totalLessons: 16
+nextLesson: "/commodore-64/skyfall/lesson-09"
+prevLesson: "/commodore-64/skyfall/lesson-07"
+objectives:
+  - Handle edge cases in input handling
+  - Implement priority when multiple keys are pressed
+  - Understand what makes controls feel "responsive"
+  - Polish the player control system before adding gameplay
+---
+
+## Introduction
+
+The player can move left and right with good timing. But what if you press both A and D simultaneously? What if you rapidly tap keys?
+
+By the end of this lesson, Skyfall will feel tight and responsive.
+
+## The Problem with Both Keys
+
+Try this: hold both A and D keys at once in your current build.
+
+What happens? The player probably either:
+- Doesn't move (both keys cancel out)
+- Moves erratically
+- Moves in whichever direction was checked first
+
+Games need to handle this intentionally. We have two common approaches:
+
+**Option 1: Last pressed wins** - If both are held, use whichever was pressed most recently
+
+**Option 2: Priority system** - One direction always wins (usually right for consistency)
+
+For Skyfall, let's use Option 2 - if both keys are pressed, prioritize right movement. This keeps behavior predictable.
+
+## Implementing Priority
+
+Right now we check A, then D:
+
+```asm
+check_keys:
+    jsr check_a_key
+    jsr check_d_key
+    rts
+```
+
+If A is pressed, we move left. Then if D is also pressed, we move right (overriding left). This already gives us "right priority" but wastes the left movement.
+
+Let's make it cleaner - only move if one key is pressed:
+
+<div class="code-block">
+<div class="code-block-header">Better Input Handling</div>
+
+```asm
+check_keys:
+    ; Read keyboard once
+    lda #%11111101
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    sta $fb                    ; Save key state
+
+    ; Check D key first (right has priority)
+    and #%00010000             ; Check D key (bit 4)
+    beq move_right             ; D is pressed
+
+    ; D not pressed, check A
+    lda $fb                    ; Get the keys again
+    and #%00000100             ; Check A key (bit 2)
+    beq move_left              ; A is pressed
+
+    ; Neither key pressed
+    rts
+```
+</div>
+
+Now if both keys are held, we move right. If only one is held, we move that direction. If neither is held, we don't move.
+
+## Complete Lesson 8 Code
+
+<div class="code-block">
+<div class="code-block-header">skyfall.asm - Complete</div>
+
+```asm
+; SKYFALL - Lesson 8
+; Responsive controls
+
+* = $0801
+
+; BASIC stub: SYS 2061
+!byte $0c,$08,$0a,$00,$9e
+!byte $32,$30,$36,$31          ; "2061" in ASCII
+!byte $00,$00,$00
+
+* = $080d
+
+; ===================================
+; Constants
+; ===================================
+SCREEN_RAM = $0400
+COLOR_RAM = $d800
+VIC_BORDER = $d020
+VIC_BACKGROUND = $d021
+CIA1_PORT_A = $dc01
+CIA1_PORT_B = $dc00
+VIC_RASTER = $d012
+
+BLACK = $00
+WHITE = $01
+DARK_GREY = $0b
+
+PLAYER_CHAR = $5e
+PLAYER_COLOR = WHITE
+PLAYER_ROW = 23
+PLAYER_START_COL = 20
+
+; Variables
+PLAYER_COL = $02
+MOVE_COUNTER = $03
+
+; ===================================
+; Main Program
+; ===================================
+main:
+    jsr init_screen
+
+    lda #PLAYER_START_COL
+    sta PLAYER_COL
+
+    lda #3
+    sta MOVE_COUNTER
+
+    jsr draw_player
+
+game_loop:
+    jsr wait_for_raster
+
+    dec MOVE_COUNTER
+    bne skip_movement
+
+    lda #3
+    sta MOVE_COUNTER
+    jsr check_keys
+
+skip_movement:
+    jmp game_loop
+
+; ===================================
+; Subroutines
+; ===================================
+
+wait_for_raster:
+    lda VIC_RASTER
+    cmp #250
+    bne wait_for_raster
+    rts
+
+init_screen:
+    jsr wait_for_raster
+
+    lda #BLACK
+    sta VIC_BACKGROUND
+    lda #DARK_GREY
+    sta VIC_BORDER
+    jsr clear_screen
+    rts
+
+clear_screen:
+    lda #$20
+    ldx #$00
+clear_screen_loop:
+    sta SCREEN_RAM,x
+    sta SCREEN_RAM + $100,x
+    sta SCREEN_RAM + $200,x
+    sta SCREEN_RAM + $300,x
+    inx
+    bne clear_screen_loop
+
+    lda #WHITE
+    ldx #$00
+clear_color_loop:
+    sta COLOR_RAM,x
+    sta COLOR_RAM + $100,x
+    sta COLOR_RAM + $200,x
+    sta COLOR_RAM + $300,x
+    inx
+    bne clear_color_loop
+    rts
+
+check_keys:
+    ; Read keyboard once
+    lda #%11111101
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    sta $fb                    ; Save key state
+
+    ; Check D key first (right has priority)
+    and #%00010000
+    beq move_right
+
+    ; D not pressed, check A
+    lda $fb
+    and #%00000100
+    beq move_left
+
+    ; Neither key pressed
+    rts
+
+move_left:
+    lda PLAYER_COL
+    beq skip_left
+
+    jsr erase_old_player
+    dec PLAYER_COL
+    jsr draw_player
+
+skip_left:
+    rts
+
+move_right:
+    lda PLAYER_COL
+    cmp #39
+    beq skip_right
+
+    jsr erase_old_player
+    inc PLAYER_COL
+    jsr draw_player
+
+skip_right:
+    rts
+
+erase_old_player:
+    ldx PLAYER_COL
+    lda #$20
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
+    rts
+
+draw_player:
+    ldx PLAYER_COL
+    lda #PLAYER_CHAR
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
+
+    lda #PLAYER_COLOR
+    sta COLOR_RAM + (PLAYER_ROW * 40),x
+    rts
+```
+</div>
+
+Build and run. Try holding both A and D - the player should move right consistently.
+
+## What Makes Controls "Responsive"?
+
+Good game feel comes from several factors:
+
+1. **Zero input lag** - The game reacts the frame you press, not frames later
+2. **Predictable behavior** - Same input always produces same result
+3. **Visual feedback** - You see the result of your input immediately
+4. **Consistent timing** - Movement happens at regular intervals
+
+Skyfall now has all of these. The controls are tight, predictable, and feel good.
+
+## New Concepts
+
+### Temporary Storage in Zero Page
+
+We used `sta $fb` to temporarily store the keyboard state. `$FB` is a zero page address we're borrowing for scratch work.
+
+Zero page addresses `$02-$FF` are generally available for your programs (though some are used by BASIC/KERNAL). Using them for temporary values is common.
+
+### Testing Multiple Conditions
+
+By reading the keyboard once and storing the result, we can test multiple keys from the same read. This is more efficient than calling `check_a_key` and `check_d_key` separately.
+
+### Priority Systems
+
+When multiple inputs conflict, games need rules:
+- **Fighting games**: certain moves override others
+- **Platformers**: jump usually overrides all other actions
+- **Arcade games**: newer input often cancels older
+
+Skyfall uses "right priority" because it's simple and consistent.
+
+### No New Opcodes
+
+This lesson used only opcodes you already know. Sometimes improvement is about organizing code better, not learning new instructions.
+
+<div class="exercise">
+<div class="exercise-title">🎯 Your Tasks</div>
+
+1. **Build and run** - Test holding both keys simultaneously
+2. **Change priority** - Swap the order to make left win instead
+3. **Test rapid tapping** - Notice how the controls respond to quick presses
+4. **Experiment with move speed** - Try changing the MOVE_COUNTER reset value
+
+</div>
+
+## Next Steps
+
+The player controls are now polished and responsive. You've learned how to handle conflicting inputs and create predictable behavior.
+
+In Lesson 9, we finally add falling objects - the core gameplay of Skyfall begins!
