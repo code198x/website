@@ -1,12 +1,15 @@
 ---
-layout: ../../../layouts/LessonLayout.astro
+layout: ../../../../layouts/LessonLayout.astro
 title: "Collision Detection"
-game: "Skyfall"
-system: "C64"
-lessonNumber: 10
+description: "Learn to detect when the player catches falling objects, implement scoring, and respawn mechanics"
+pubDate: 2025-01-11
+language: "6502 Assembly"
+course: "C64 Assembly Week 2"
+week: 2
+lesson: 10
 totalLessons: 16
-nextLesson: "/commodore-64/skyfall/lesson-11"
-prevLesson: "/commodore-64/skyfall/lesson-09"
+nextLesson: "/commodore-64/assembly/week-2/lesson-11"
+prevLesson: "/commodore-64/assembly/week-2/lesson-09"
 objectives:
   - Detect when the player catches a falling object
   - Understand collision detection concepts
@@ -279,7 +282,7 @@ WHITE = $01
 YELLOW = $07
 DARK_GREY = $0b
 
-PLAYER_CHAR = $5e
+PLAYER_CHAR = $1e
 PLAYER_COLOR = WHITE
 PLAYER_ROW = 23
 PLAYER_START_COL = 20
@@ -339,6 +342,7 @@ skip_player_movement:
     sta FALL_COUNTER
     jsr update_object
     jsr check_collision
+    jsr draw_player           ; Redraw player (in case object erased it)
 skip_object_fall:
 
     jmp game_loop
@@ -385,15 +389,17 @@ clear_color_loop:
     rts
 
 check_keys:
+    ; Check D key (column 2, row 2)
+    lda #%11111011
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    and #%00000100
+    beq move_right
+
+    ; Check A key (column 1, row 2)
     lda #%11111101
     sta CIA1_PORT_B
     lda CIA1_PORT_A
-    sta $fb
-
-    and #%00010000
-    beq move_right
-
-    lda $fb
     and #%00000100
     beq move_left
 
@@ -509,48 +515,95 @@ handle_catch:
     jsr spawn_object
     rts
 
-calc_row_times_40:
-    sta $fb
+; Row offset lookup table (low bytes)
+row_offset_lo:
+    !byte <(0*40), <(1*40), <(2*40), <(3*40), <(4*40)
+    !byte <(5*40), <(6*40), <(7*40), <(8*40), <(9*40)
+    !byte <(10*40), <(11*40), <(12*40), <(13*40), <(14*40)
+    !byte <(15*40), <(16*40), <(17*40), <(18*40), <(19*40)
+    !byte <(20*40), <(21*40), <(22*40), <(23*40), <(24*40)
 
-    asl
-    asl
-    asl
-    sta $fc
-
-    lda $fb
-    asl
-    asl
-    asl
-    asl
-    asl
-
-    clc
-    adc $fc
-    rts
+; Row offset lookup table (high bytes)
+row_offset_hi:
+    !byte >(0*40), >(1*40), >(2*40), >(3*40), >(4*40)
+    !byte >(5*40), >(6*40), >(7*40), >(8*40), >(9*40)
+    !byte >(10*40), >(11*40), >(12*40), >(13*40), >(14*40)
+    !byte >(15*40), >(16*40), >(17*40), >(18*40), >(19*40)
+    !byte >(20*40), >(21*40), >(22*40), >(23*40), >(24*40)
 
 draw_object:
-    lda OBJ_ROW
-    jsr calc_row_times_40
+    ; Get row offset from table
+    ldx OBJ_ROW
+    lda row_offset_lo,x
+    sta $fb
+    lda row_offset_hi,x
+    sta $fc
+
+    ; Add column (with 16-bit carry handling)
+    lda $fb
     clc
     adc OBJ_COL
-    tax
+    sta $fb
+    bcc +
+    inc $fc
++
+    ; Add SCREEN_RAM base address
+    lda $fb
+    clc
+    adc #<SCREEN_RAM
+    sta $fb
+    lda $fc
+    adc #>SCREEN_RAM
+    sta $fc
 
+    ; Draw character
+    ldy #0
     lda #OBJECT_CHAR
-    sta SCREEN_RAM,x
+    sta ($fb),y
 
+    ; Calculate COLOR_RAM address
+    lda $fb
+    clc
+    adc #<(COLOR_RAM-SCREEN_RAM)
+    sta $fb
+    lda $fc
+    adc #>(COLOR_RAM-SCREEN_RAM)
+    sta $fc
+
+    ; Draw color
     lda #OBJECT_COLOR
-    sta COLOR_RAM,x
+    sta ($fb),y
     rts
 
 erase_object:
-    lda OBJ_ROW
-    jsr calc_row_times_40
+    ; Get row offset from table
+    ldx OBJ_ROW
+    lda row_offset_lo,x
+    sta $fb
+    lda row_offset_hi,x
+    sta $fc
+
+    ; Add column
+    lda $fb
     clc
     adc OBJ_COL
-    tax
+    sta $fb
+    bcc +
+    inc $fc
++
+    ; Add SCREEN_RAM base
+    lda $fb
+    clc
+    adc #<SCREEN_RAM
+    sta $fb
+    lda $fc
+    adc #>SCREEN_RAM
+    sta $fc
 
+    ; Erase with space
+    ldy #0
     lda #$20
-    sta SCREEN_RAM,x
+    sta ($fb),y
     rts
 
 display_score:

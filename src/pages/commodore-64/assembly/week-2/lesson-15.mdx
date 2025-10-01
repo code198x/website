@@ -1,12 +1,15 @@
 ---
-layout: ../../../layouts/LessonLayout.astro
+layout: ../../../../layouts/LessonLayout.astro
 title: "Game Over and Restart"
-game: "Skyfall"
-system: "C64"
-lessonNumber: 15
+description: "Add game state management with proper game over conditions, display final scores, and implement restart functionality for a complete game loop."
+pubDate: 2025-01-26
+language: "6502 Assembly"
+course: "C64 Assembly Week 2"
+week: 2
+lesson: 15
 totalLessons: 16
-nextLesson: "/commodore-64/skyfall/lesson-16"
-prevLesson: "/commodore-64/skyfall/lesson-14"
+nextLesson: "/commodore-64/assembly/week-2/lesson-16"
+prevLesson: "/commodore-64/assembly/week-2/lesson-14"
 objectives:
   - Add a game over condition
   - Display a game over screen
@@ -206,6 +209,8 @@ skip_player_movement:
     lda #5
     sta FALL_COUNTER
     jsr update_all_objects
+    jsr check_all_collisions
+    jsr draw_player           ; Redraw player (in case object erased it)
 skip_object_fall:
 
     dec SPAWN_COUNTER
@@ -328,7 +333,7 @@ WHITE = $01
 YELLOW = $07
 DARK_GREY = $0b
 
-PLAYER_CHAR = $5e
+PLAYER_CHAR = $1e
 PLAYER_COLOR = WHITE
 PLAYER_ROW = 23
 PLAYER_START_COL = 20
@@ -428,6 +433,8 @@ skip_player_movement:
     lda #5
     sta FALL_COUNTER
     jsr update_all_objects
+    jsr check_all_collisions
+    jsr draw_player           ; Redraw player (in case object erased it)
 skip_object_fall:
 
     dec SPAWN_COUNTER
@@ -558,15 +565,17 @@ clear_color_loop:
     rts
 
 check_keys:
+    ; Check D key (column 2, row 2)
+    lda #%11111011
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    and #%00000100
+    beq move_right
+
+    ; Check A key (column 1, row 2)
     lda #%11111101
     sta CIA1_PORT_B
     lda CIA1_PORT_A
-    sta $fb
-
-    and #%00010000
-    beq move_right
-
-    lda $fb
     and #%00000100
     beq move_left
 
@@ -665,13 +674,34 @@ trigger_game_over:
 still_falling_check:
     ldx $fe
     jsr draw_object
-    jsr check_collision
 skip_this_object:
 next_object:
     ldx $fe
     inx
     cpx #MAX_OBJECTS
     bne update_loop
+    rts
+
+check_all_collisions:
+    ldx #$00
+collision_loop:
+    stx $fe
+    lda OBJ_ACTIVE,x
+    beq skip_collision
+    lda OBJ_ROW,x
+    cmp #PLAYER_ROW
+    bne skip_collision
+    ldx $fe
+    lda OBJ_COL,x
+    cmp PLAYER_COL
+    bne skip_collision
+    ldx $fe
+    jsr handle_catch
+skip_collision:
+    ldx $fe
+    inx
+    cpx #MAX_OBJECTS
+    bne collision_loop
     rts
 
 check_collision:
@@ -698,42 +728,107 @@ handle_catch:
     jsr spawn_object
     rts
 
-calc_row_times_40:
-    sta $fb
-    asl
-    asl
-    asl
-    sta $fc
-    lda $fb
-    asl
-    asl
-    asl
-    asl
-    asl
-    clc
-    adc $fc
-    rts
+; Row offset lookup table (low bytes)
+row_offset_lo:
+    !byte <(0*40), <(1*40), <(2*40), <(3*40), <(4*40)
+    !byte <(5*40), <(6*40), <(7*40), <(8*40), <(9*40)
+    !byte <(10*40), <(11*40), <(12*40), <(13*40), <(14*40)
+    !byte <(15*40), <(16*40), <(17*40), <(18*40), <(19*40)
+    !byte <(20*40), <(21*40), <(22*40), <(23*40), <(24*40)
+
+; Row offset lookup table (high bytes)
+row_offset_hi:
+    !byte >(0*40), >(1*40), >(2*40), >(3*40), >(4*40)
+    !byte >(5*40), >(6*40), >(7*40), >(8*40), >(9*40)
+    !byte >(10*40), >(11*40), >(12*40), >(13*40), >(14*40)
+    !byte >(15*40), >(16*40), >(17*40), >(18*40), >(19*40)
+    !byte >(20*40), >(21*40), >(22*40), >(23*40), >(24*40)
 
 draw_object:
-    lda OBJ_ROW,x
-    jsr calc_row_times_40
+    ; Save current X
+    stx $fd
+
+    ; Get row offset from table
+    ldy OBJ_ROW,x
+    lda row_offset_lo,y
+    sta $fb
+    lda row_offset_hi,y
+    sta $fc
+
+    ; Add column
+    ldx $fd
+    lda $fb
     clc
     adc OBJ_COL,x
-    tay
+    sta $fb
+    bcc +
+    inc $fc
++
+    ; Add SCREEN_RAM base
+    lda $fb
+    clc
+    adc #<SCREEN_RAM
+    sta $fb
+    lda $fc
+    adc #>SCREEN_RAM
+    sta $fc
+
+    ; Draw character
+    ldy #0
     lda #OBJECT_CHAR
-    sta SCREEN_RAM,y
+    sta ($fb),y
+
+    ; Calculate COLOR_RAM address
+    lda $fb
+    clc
+    adc #<(COLOR_RAM-SCREEN_RAM)
+    sta $fb
+    lda $fc
+    adc #>(COLOR_RAM-SCREEN_RAM)
+    sta $fc
+
+    ; Draw color
     lda #OBJECT_COLOR
-    sta COLOR_RAM,y
+    sta ($fb),y
+
+    ldx $fd
     rts
 
 erase_object:
-    lda OBJ_ROW,x
-    jsr calc_row_times_40
+    ; Save current X
+    stx $fd
+
+    ; Get row offset from table
+    ldy OBJ_ROW,x
+    lda row_offset_lo,y
+    sta $fb
+    lda row_offset_hi,y
+    sta $fc
+
+    ; Add column
+    ldx $fd
+    lda $fb
     clc
     adc OBJ_COL,x
-    tay
+    sta $fb
+    bcc +
+    inc $fc
++
+    ; Add SCREEN_RAM base
+    lda $fb
+    clc
+    adc #<SCREEN_RAM
+    sta $fb
+    lda $fc
+    adc #>SCREEN_RAM
+    sta $fc
+
+    ; Erase with space
+    ldy #0
     lda #$20
-    sta SCREEN_RAM,y
+    sta ($fb),y
+
+    ldx $fd
     rts
 
 display_score:
