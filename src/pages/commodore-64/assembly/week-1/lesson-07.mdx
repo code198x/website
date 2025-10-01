@@ -1,0 +1,336 @@
+---
+layout: ../../../../layouts/LessonLayout.astro
+title: "Timing and Smooth Movement"
+game: "Commodore 64 Assembly"
+system: "C64"
+lessonNumber: 7
+totalLessons: 8
+nextLesson: "/commodore-64/assembly/week-1/lesson-08"
+prevLesson: "/commodore-64/assembly/week-1/lesson-06"
+objectives:
+  - Understand why timing matters in games
+  - Use the C64's raster beam for timing
+  - Slow down movement to feel responsive
+  - Learn about frame-based game loops
+---
+
+## Introduction
+
+If you held down A or D in Lesson 6, the player probably moved way too fast. The game loop runs thousands of times per second - much faster than humans can perceive.
+
+By the end of this lesson, Skyfall will feel like a real game instead of a jittery tech demo.
+
+## The Problem with Infinite Speed
+
+Right now, `game_loop` runs as fast as the CPU can execute it:
+
+```asm
+game_loop:
+    jsr check_keys             ; Maybe 100 CPU cycles
+    jmp game_loop              ; 3 CPU cycles
+    ; Total: ~103 cycles = about 10,000 times per second!
+```
+
+At 10,000 checks per second, holding a key moves the player across the screen instantly. We need to slow down.
+
+## The VIC-II Raster Beam
+
+The VIC-II chip draws the screen one line at a time, top to bottom, then starts over. This happens:
+- **50 times per second** (PAL systems)
+- **60 times per second** (NTSC systems)
+
+We can wait for the raster beam to reach a specific line, giving us a consistent frame rate.
+
+`$D012` tells you which raster line is currently being drawn (0-255).
+
+## Waiting for a Raster Line
+
+Let's wait for raster line 250 (near the bottom of the screen) before updating:
+
+<div class="code-block">
+<div class="code-block-header">Wait for Raster</div>
+
+```asm
+wait_for_raster:
+    lda $d012                  ; Read current raster line
+    cmp #250                   ; Are we at line 250?
+    bne wait_for_raster        ; If not, keep waiting
+    rts
+```
+</div>
+
+This creates a ~50Hz (PAL) or ~60Hz (NTSC) game loop.
+
+## Updated Game Loop
+
+```asm
+game_loop:
+    jsr wait_for_raster        ; Wait for raster line 250
+    jsr check_keys             ; Check input once per frame
+    jmp game_loop
+```
+
+Now the game updates exactly 50/60 times per second - smooth and consistent.
+
+## But It's Still Too Fast
+
+Even at 50/60 updates per second, holding a key moves 50/60 columns per second. The player crosses the screen in less than a second.
+
+We need movement delay - only move every few frames, not every frame.
+
+## Adding Movement Delay
+
+Let's add a frame counter that only allows movement every few frames:
+
+<div class="code-block">
+<div class="code-block-header">Frame-Based Movement</div>
+
+```asm
+; Add to variables
+MOVE_COUNTER = $03             ; Counts frames between moves
+
+; Add to game loop
+game_loop:
+    jsr wait_for_raster
+
+    ; Decrement move counter
+    dec MOVE_COUNTER
+    bne skip_movement          ; Not time to move yet
+
+    ; Reset counter and allow movement
+    lda #3                     ; Move every 3 frames
+    sta MOVE_COUNTER
+
+    jsr check_keys             ; Only check when counter hits 0
+
+skip_movement:
+    jmp game_loop
+```
+</div>
+
+Now movement only happens every 3 frames = about 16-20 times per second. Much better!
+
+## Complete Lesson 7 Code
+
+<div class="code-block">
+<div class="code-block-header">skyfall.asm - Complete</div>
+
+```asm
+; SKYFALL - Lesson 7
+; Timing and smooth movement
+
+* = $0801
+
+; BASIC stub: SYS 2061
+!byte $0c,$08,$0a,$00,$9e
+!byte $32,$30,$36,$31          ; "2061" in ASCII
+!byte $00,$00,$00
+
+* = $080d
+
+; ===================================
+; Constants
+; ===================================
+SCREEN_RAM = $0400
+COLOR_RAM = $d800
+VIC_BORDER = $d020
+VIC_BACKGROUND = $d021
+CIA1_PORT_A = $dc01
+CIA1_PORT_B = $dc00
+VIC_RASTER = $d012             ; Current raster line
+
+BLACK = $00
+WHITE = $01
+DARK_GREY = $0b
+
+PLAYER_CHAR = $5e
+PLAYER_COLOR = WHITE
+PLAYER_ROW = 23
+PLAYER_START_COL = 20
+
+; Variables
+PLAYER_COL = $02
+MOVE_COUNTER = $03             ; Frame counter for movement
+
+; ===================================
+; Main Program
+; ===================================
+main:
+    jsr init_screen
+
+    lda #PLAYER_START_COL
+    sta PLAYER_COL
+
+    lda #3                     ; Initialize move counter
+    sta MOVE_COUNTER
+
+    jsr draw_player
+
+game_loop:
+    jsr wait_for_raster
+
+    dec MOVE_COUNTER
+    bne skip_movement
+
+    lda #3                     ; Reset to 3 frames
+    sta MOVE_COUNTER
+    jsr check_keys
+
+skip_movement:
+    jmp game_loop
+
+; ===================================
+; Subroutines
+; ===================================
+
+wait_for_raster:
+    lda VIC_RASTER
+    cmp #250
+    bne wait_for_raster
+    rts
+
+init_screen:
+    lda #BLACK
+    sta VIC_BACKGROUND
+    lda #DARK_GREY
+    sta VIC_BORDER
+    jsr clear_screen
+    rts
+
+clear_screen:
+    lda #$20
+    ldx #$00
+clear_screen_loop:
+    sta SCREEN_RAM,x
+    sta SCREEN_RAM + $100,x
+    sta SCREEN_RAM + $200,x
+    sta SCREEN_RAM + $300,x
+    inx
+    bne clear_screen_loop
+
+    lda #WHITE
+    ldx #$00
+clear_color_loop:
+    sta COLOR_RAM,x
+    sta COLOR_RAM + $100,x
+    sta COLOR_RAM + $200,x
+    sta COLOR_RAM + $300,x
+    inx
+    bne clear_color_loop
+    rts
+
+check_keys:
+    jsr check_a_key
+    jsr check_d_key
+    rts
+
+check_a_key:
+    lda #%11111101
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    and #%00000100
+    beq move_left
+    rts
+
+move_left:
+    lda PLAYER_COL
+    beq skip_left
+
+    jsr erase_old_player
+    dec PLAYER_COL
+    jsr draw_player
+
+skip_left:
+    rts
+
+check_d_key:
+    lda #%11111101
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    and #%00010000
+    beq move_right
+    rts
+
+move_right:
+    lda PLAYER_COL
+    cmp #39
+    beq skip_right
+
+    jsr erase_old_player
+    inc PLAYER_COL
+    jsr draw_player
+
+skip_right:
+    rts
+
+erase_old_player:
+    ldx PLAYER_COL
+    lda #$20
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
+    rts
+
+draw_player:
+    ldx PLAYER_COL
+    lda #PLAYER_CHAR
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
+
+    lda #PLAYER_COLOR
+    sta COLOR_RAM + (PLAYER_ROW * 40),x
+    rts
+```
+</div>
+
+Build and run. Movement should now feel smooth and controllable.
+
+## Adjusting Feel
+
+Change `lda #3` to different values to adjust responsiveness:
+- `lda #1` - Move every frame (fast, responsive)
+- `lda #3` - Move every 3 frames (balanced)
+- `lda #5` - Move every 5 frames (slower, more deliberate)
+
+Find what feels right for Skyfall.
+
+## New Concepts
+
+### Opcodes Used in This Lesson
+
+**bne label** - Branch if Not Equal
+- You've seen this before (Lesson 2)
+- Here we use it for: "keep waiting" and "not time to move yet"
+- Example: `bne wait_for_raster` creates a wait loop
+
+### The Raster Register
+
+`$D012` contains the current raster line (0-255 for visible screen, plus blanking area).
+
+By waiting for a specific line, we synchronize our game to the screen refresh. This is how all C64 games maintain consistent timing.
+
+### Frame-Based Game Logic
+
+Professional games think in frames, not CPU cycles:
+- 1 frame = 1 screen refresh = 1/50th or 1/60th of a second
+- "Move every 3 frames" = about 16-20 times per second
+- All game logic runs on frame boundaries
+
+This makes timing predictable and consistent across different situations.
+
+### Why Line 250?
+
+Line 250 is near the bottom of the visible screen. By waiting there, we ensure our game logic runs during the "vertical blank" period when the raster beam is off-screen. This prevents visual tearing or flicker.
+
+<div class="exercise">
+<div class="exercise-title">🎯 Your Tasks</div>
+
+1. **Build and run** - Feel the improved movement
+2. **Experiment with timing** - Try values 1, 3, 5, 7 for MOVE_COUNTER
+3. **Find the sweet spot** - What feels best to you?
+4. **Hold vs tap keys** - Notice how responsive it feels now
+
+</div>
+
+## Next Steps
+
+The player movement now feels smooth and professional! You've learned how to synchronize your game with the C64's display hardware.
+
+In Lesson 8, we'll improve the control feel even more by adding better input handling before we start on falling objects.

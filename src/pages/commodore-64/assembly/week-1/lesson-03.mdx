@@ -1,0 +1,232 @@
+---
+layout: ../../../../layouts/LessonLayout.astro
+title: "Drawing the Player"
+game: "Commodore 64 Assembly"
+system: "C64"
+lessonNumber: 3
+totalLessons: 8
+nextLesson: "/commodore-64/assembly/week-1/lesson-04"
+prevLesson: "/commodore-64/assembly/week-1/lesson-02"
+objectives:
+  - Calculate the player's starting position
+  - Choose an appropriate PETSCII character
+  - Draw the player on screen
+  - Use constants to make code more readable
+  - Set up the foundation for player movement
+---
+
+## Introduction
+
+You know how to write to screen memory. Now let's use that to draw Skyfall's player character - the basket that will catch falling objects.
+
+## Choosing the Player Position
+
+The player needs to be at the bottom of the screen, centered horizontally. Let's use:
+
+- **Row 23** (second-to-last row, leaving one row for score/status later)
+- **Column 20** (center of the 40-column screen)
+
+Calculate the address:
+```
+Address = $0400 + (23 × 40) + 20
+        = $0400 + 920 + 20
+        = $0400 + $398 + $14
+        = $07AC
+```
+
+## Choosing the Player Character
+
+We need a character that:
+- Looks distinct from falling objects
+- Reads clearly as "the thing you control"
+- Works well in PETSCII
+
+Good options:
+- `$5E` - Wedge/triangle pointing up (▴)
+- `$DF` - Filled character block
+- `$A0` - Solid block
+
+Let's use `$5E` - the upward-pointing wedge. It visually suggests "catching things from above."
+
+## Drawing the Player
+
+Update your `skyfall.asm`:
+
+<div class="code-block">
+<div class="code-block-header">skyfall.asm</div>
+
+```asm
+; SKYFALL - Lesson 3
+; Draw the player character
+
+* = $0801                      ; Start at BASIC start address
+
+; BASIC stub: SYS 2061
+!byte $0c,$08,$0a,$00,$9e
+!byte $32,$30,$36,$31          ; "2061" in ASCII
+!byte $00,$00,$00
+
+; Program starts here
+* = $080d
+
+    lda #$93                   ; Clear screen
+    jsr $ffd2
+
+    lda #$5e                   ; Player character (upward wedge)
+    sta $07ac                  ; Draw at row 23, column 20
+
+    lda #$01                   ; White color
+    sta $dbac                  ; Color memory for same position
+
+    rts
+```
+</div>
+
+Build and run it. You should see a white wedge near the bottom center of the screen.
+
+## Making Code Readable with Constants
+
+Those magic numbers ($07AC, $DBAC, $5E) make the code hard to read. Let's use constants:
+
+<div class="code-block">
+<div class="code-block-header">skyfall.asm</div>
+
+```asm
+; SKYFALL - Lesson 3
+; Draw the player character
+
+* = $0801                      ; Start at BASIC start address
+
+; BASIC stub: SYS 2061
+!byte $0c,$08,$0a,$00,$9e
+!byte $32,$30,$36,$31          ; "2061" in ASCII
+!byte $00,$00,$00
+
+; Constants
+SCREEN_RAM = $0400             ; Start of screen memory
+COLOR_RAM = $d800              ; Start of color memory
+
+PLAYER_CHAR = $5e              ; Upward wedge character
+PLAYER_COLOR = $01             ; White
+PLAYER_START_POS = $07ac       ; Row 23, column 20
+
+; Program starts here
+* = $080d
+
+    lda #$93                   ; Clear screen
+    jsr $ffd2
+
+    lda #PLAYER_CHAR           ; Load player character
+    sta PLAYER_START_POS       ; Draw at starting position
+
+    lda #PLAYER_COLOR          ; Load player color
+    sta COLOR_RAM + $3ac       ; Color memory offset
+
+    rts
+```
+</div>
+
+Better. Now anyone reading the code understands what's happening without calculating memory addresses.
+
+<div class="note">
+<div class="note-title">💡 Note</div>
+The color RAM offset is $3AC because PLAYER_START_POS - SCREEN_RAM = $07AC - $0400 = $03AC.
+</div>
+
+## Separating Setup from Game Code
+
+Real games have structure. Let's organize the code into sections:
+
+<div class="code-block">
+<div class="code-block-header">skyfall.asm</div>
+
+```asm
+; SKYFALL - Lesson 3
+; Draw the player character
+
+* = $0801
+
+; BASIC stub: SYS 2061
+!byte $0c,$08,$0a,$00,$9e
+!byte $32,$30,$36,$31          ; "2061" in ASCII
+!byte $00,$00,$00
+
+* = $080d
+
+; ===================================
+; Constants
+; ===================================
+SCREEN_RAM = $0400
+COLOR_RAM = $d800
+
+PLAYER_CHAR = $5e
+PLAYER_COLOR = $01
+PLAYER_ROW = 23
+PLAYER_START_COL = 20
+PLAYER_START_POS = SCREEN_RAM + (PLAYER_ROW * 40) + PLAYER_START_COL
+
+; ===================================
+; Main Program
+; ===================================
+main:
+    jsr clear_screen
+    jsr draw_player
+    rts
+
+; ===================================
+; Subroutines
+; ===================================
+
+clear_screen:
+    lda #$93
+    jsr $ffd2
+    rts
+
+draw_player:
+    lda #PLAYER_CHAR
+    sta PLAYER_START_POS
+
+    lda #PLAYER_COLOR
+    sta COLOR_RAM + (PLAYER_ROW * 40) + PLAYER_START_COL
+    rts
+```
+</div>
+
+Much better. The code is organized, readable, and ready to grow.
+
+## New Concepts
+
+### Constants and Labels
+
+**Constants** (like `PLAYER_CHAR = $5e`) give names to values. The assembler replaces the name with the value during assembly. This makes code self-documenting.
+
+**Labels** (like `main:` and `draw_player:`) mark positions in code. You can jump to them with `jsr`. This lets you organize code into logical chunks.
+
+### Code Organization
+
+Good assembly programs have clear sections:
+- **Constants** - Named values at the top
+- **Main program** - The entry point that calls subroutines
+- **Subroutines** - Reusable chunks of code that do one thing
+
+This structure scales from tiny demos to complete games.
+
+### No New Opcodes
+
+This lesson used only opcodes from Lessons 1-2. Sometimes learning isn't about new instructions - it's about organizing what you already know.
+
+<div class="exercise">
+<div class="exercise-title">🎯 Your Tasks</div>
+
+1. **Build and run** - Verify the player appears on screen
+2. **Change the position** - Try `PLAYER_ROW = 22` or `PLAYER_START_COL = 15`
+3. **Try different characters** - Experiment with other PETSCII codes
+4. **Change colors** - Make the player cyan or yellow
+
+</div>
+
+## Next Steps
+
+The player character is on screen! We've also organized our code properly with constants and subroutines.
+
+In Lesson 4, we'll add color to the entire screen and make Skyfall look more polished before we add movement.
