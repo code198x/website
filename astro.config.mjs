@@ -1,16 +1,10 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { bundledLanguages } from 'shiki';
 
 // Load custom BASIC syntax grammar
-const basicGrammar = JSON.parse(
-  readFileSync(join(__dirname, 'src/syntax/basic.tmLanguage.json'), 'utf-8')
-);
+import basicGrammar from './src/syntax/basic.tmLanguage.json' assert { type: 'json' };
 
 // https://astro.build/config
 export default defineConfig({
@@ -19,11 +13,12 @@ export default defineConfig({
   markdown: {
     shikiConfig: {
       langs: [
+        ...Object.keys(bundledLanguages),
         {
           id: 'basic',
           scopeName: 'source.basic.c64',
-          grammar: basicGrammar,
-          aliases: ['c64basic', 'commodore-basic']
+          aliases: ['c64basic', 'commodore-basic'],
+          ...basicGrammar,
         }
       ],
       theme: 'dark-plus'
