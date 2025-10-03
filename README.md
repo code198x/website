@@ -1,43 +1,44 @@
-# Astro Starter Kit: Minimal
+# Code198x Website
 
-```sh
-npm create astro@latest -- --template minimal
-```
-
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Astro 5.14.1 learning platform for retro game development education.
 
 ## 🚀 Project Structure
 
-Inside of your Astro project, you'll see the following folders and files:
-
 ```text
-/
-├── public/
+website/
 ├── src/
-│   └── pages/
-│       └── index.astro
+│   ├── pages/                  # File-based routing
+│   │   └── commodore-64/basic/ # C64 BASIC course
+│   │       ├── CURRICULUM.md   # Authoritative lesson specs
+│   │       ├── index.astro     # Course overview
+│   │       └── week-N/         # Weekly lesson groups
+│   ├── layouts/                # Page templates
+│   │   ├── Layout.astro        # Base layout
+│   │   └── LessonLayout.astro  # Lesson page template
+│   ├── components/             # Reusable components
+│   └── styles/                 # Global styles
+├── public/                     # Static assets
 └── package.json
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
-
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
 ## 🧞 Commands
 
-All commands are run from the root of the project, from a terminal:
+All commands are run from the website directory:
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+| Command           | Action                                      |
+| :---------------- | :------------------------------------------ |
+| `npm install`     | Installs dependencies                       |
+| `npm run dev`     | Starts dev server at `localhost:4321`       |
+| `npm run build`   | Build production site to `./dist/`          |
+| `npm run preview` | Preview build locally before deploying      |
 
-## 👀 Want to learn more?
+## 📝 Adding Lessons
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+1. Check `CURRICULUM.md` in the course directory for lesson specifications
+2. Create `lesson-NN.mdx` with proper frontmatter (see LessonLayout.astro)
+3. Follow the lesson structure template (Opening → Basic → Practical → WOW → Reference → Learnt)
+4. Extract WOW moment code to `/code-samples/[system]/[course]/week-N/lesson-NN/`
+
+## 🌐 Live Site
+
+[code198x.stevehill.xyz](https://code198x.stevehill.xyz)
