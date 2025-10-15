@@ -9,8 +9,10 @@ week: 1
 lesson: 1
 totalLessons: 8
 nextLesson: "/commodore-64/assembly/week-1/lesson-02"
-prevLesson: "/commodore-64/assembly/week-0/lesson-08"
+prevLesson: "/commodore-64/basic/week-8/lesson-64"
 objectives:
+  - Set up ACME assembler and VICE emulator toolchain.
+  - Understand essential 6510 CPU architecture and C64 memory map.
   - Convert the BASIC launcher into an all-assembly entry routine.
   - Lay out the project memory map and zero-page workspace for Scroll Runner.
   - Load existing map/asset data into assembly-friendly buffers.
@@ -18,9 +20,231 @@ objectives:
 
 ## Lesson 1 – Bootstrapping Scroll Runner
 
-Act I begins where the Transition course left off. You already have Scroll Runner running as a hybrid: BASIC orchestrates the loop while assembly helpers handle the heaviest work. This lesson promotes the project to a **pure assembly build**. We will replace the BASIC launcher, declare a clean memory map, and load the assets we produced during Week 8.
+You've completed the BASIC course and built Scroll Runner in BASIC V2. Now we're taking it to the next level: **pure assembly**. This lesson sets up your development environment, covers essential assembly concepts, and gets you started writing 6510 machine code. By the end, you'll have Scroll Runner running entirely in assembly with no BASIC overhead.
 
 > [📷 suggested: Project tree screenshot showing `/code-samples/commodore-64/assembly/scroll-runner/` with `src/` and `assets/` folders]
+
+---
+
+## Prerequisites & Setup
+
+Before writing assembly, you need the right tools and foundational knowledge. This section covers everything in ~20 minutes.
+
+### Toolchain Setup (5 minutes)
+
+**1. Install ACME Assembler**
+
+ACME converts assembly source code (`.asm` files) into runnable C64 programs (`.prg` files).
+
+**macOS/Linux:**
+```bash
+# Using Homebrew (macOS)
+brew install acme
+
+# Or download from: https://github.com/meonwax/acme
+# Build: cd acme/src && make && sudo make install
+```
+
+**Windows:**
+```
+Download ACME from https://github.com/meonwax/acme/releases
+Extract to C:\acme\
+Add C:\acme to your PATH
+```
+
+**Docker (recommended for consistency):**
+```bash
+# Use the provided dev container
+cd /path/to/Code198x
+docker-compose up -d
+docker-compose exec workspace bash
+# ACME is pre-installed
+```
+
+**Verify installation:**
+```bash
+acme --version
+# Should output: ACME 0.97 or similar
+```
+
+**2. Install VICE Emulator**
+
+VICE is the C64 emulator with built-in monitor/debugger.
+
+- **Download**: https://vice-emu.sourceforge.io/
+- **macOS**: Install via Homebrew: `brew install vice`
+- **Linux**: `sudo apt-get install vice` or `sudo dnf install vice`
+- **Windows**: Download installer from VICE website
+
+**Verify installation:**
+```bash
+x64sc --version
+# Should show VICE version info
+```
+
+**3. Test Your Toolchain**
+
+Create a simple test program:
+
+```bash
+# Create test.asm
+echo '!to "test.prg",cbm' > test.asm
+echo '* = $0801' >> test.asm
+echo '!byte $0c,$08,$0a,$00,$9e' >> test.asm
+echo '!byte $32,$30,$36,$31,0,0,0' >> test.asm
+echo '* = $080d' >> test.asm
+echo 'lda #0' >> test.asm
+echo 'sta $d020' >> test.asm
+echo 'sta $d021' >> test.asm
+echo 'rts' >> test.asm
+
+# Assemble it
+acme -f cbm -o test.prg test.asm
+
+# Run it
+x64sc test.prg
+```
+
+If the emulator shows a black screen, **your toolchain works!** Press Alt+Q to quit VICE.
+
+---
+
+### Memory Map Essentials (5 minutes)
+
+The C64's 64KB address space is divided into specific regions. You must know where things live:
+
+**Key Memory Regions:**
+```
+$0000-$00FF  Zero Page (fast access, use for pointers/counters)
+$0100-$01FF  Stack (hardware managed, grows down from $01FF)
+$0200-$03FF  BASIC/KERNAL workspace (avoid or reuse carefully)
+$0400-$07FF  Screen RAM (1000 bytes, 40×25 characters)
+$0800-$0FFF  Free RAM (your program starts here traditionally)
+$1000-$3FFF  Free RAM (map data, buffers, code)
+$4000-$7FFF  Free RAM (more space for assets/code)
+$8000-$9FFF  Free RAM or ROM (bankable)
+$A000-$BFFF  BASIC ROM (or free RAM if banked out)
+$C000-$CFFF  Free RAM or ROM (bankable)
+$D000-$DFFF  I/O (VIC-II, SID, CIA chips)
+$E000-$FFFF  KERNAL ROM (essential routines)
+
+Color RAM: $D800-$DBE7 (not part of main address space, special)
+```
+
+**Critical I/O Registers:**
+```
+$D000-$D02E  VIC-II (video chip) - sprites, scrolling, raster
+$D400-$D41C  SID (sound chip) - music and sound effects
+$DC00-$DC0F  CIA #1 - keyboard, joystick
+$DD00-$DD0F  CIA #2 - VIC bank, serial port
+$D020        Border color
+$D021        Background color
+```
+
+**Zero Page is Gold**
+
+The zero page ($00-$FF) is special: operations here run faster and some addressing modes *only* work with zero page. Use it for:
+- Pointers (2 bytes each): `$FB-$FC`, `$FD-$FE`
+- Loop counters: `$FF`
+- Frequently accessed flags: `$FA`
+
+**Safe Zero-Page Addresses for Your Code:**
+- `$FB-$FE`: Reliable for pointers
+- `$02-$8F`: Usually safe but check KERNAL usage
+- Avoid `$90-$FF`: KERNAL uses these
+
+---
+
+### 6510 CPU Crash Course (5 minutes)
+
+The 6510 is an 8-bit CPU derived from the 6502. You need to know:
+
+**Registers (3 bytes total):**
+- **A** (Accumulator): Main working register for math/logic
+- **X** (Index): Used for loops, array indexing, stack operations
+- **Y** (Index): Similar to X, used for loops and indexing
+- **SP** (Stack Pointer): Managed by hardware, points into $0100-$01FF
+- **PC** (Program Counter): Current instruction address (16-bit)
+
+**Status Flags (processor status register):**
+```
+N V - B D I Z C
+│ │   │ │ │ │ └─ Carry (set by addition/subtraction/comparisons)
+│ │   │ │ │ └─── Zero (set when result is zero)
+│ │   │ │ └───── IRQ Disable (when set, IRQs are blocked)
+│ │   │ └─────── Decimal Mode (BCD arithmetic, rarely used)
+│ │   └───────── Break (set by BRK instruction)
+│ └───────────── Overflow (signed math overflow)
+└─────────────── Negative (bit 7 of result)
+```
+
+**Common Instructions:**
+```asm
+LDA #$00      ; Load A with immediate value $00
+STA $D020     ; Store A to address $D020
+LDX #$08      ; Load X with 8
+INX           ; Increment X
+DEY           ; Decrement Y
+CMP #$10      ; Compare A with $10 (sets flags)
+BEQ label     ; Branch if Equal (Z flag set)
+BNE label     ; Branch if Not Equal (Z flag clear)
+JMP label     ; Unconditional jump
+JSR routine   ; Jump to subroutine (pushes return address)
+RTS           ; Return from subroutine
+```
+
+**Addressing Modes (how you specify operands):**
+```asm
+LDA #$42      ; Immediate: literal value $42
+LDA $FB       ; Zero Page: read from address $FB (fast!)
+LDA $1000     ; Absolute: read from address $1000
+LDA $1000,X   ; Absolute,X: read from $1000 + X
+LDA $1000,Y   ; Absolute,Y: read from $1000 + Y
+LDA ($FB),Y   ; Indirect Indexed: read from [($FB)+Y]
+```
+
+**That's enough to read assembly!** You'll learn more by doing.
+
+---
+
+### Assets from BASIC Week 8 (3 minutes)
+
+Scroll Runner needs map data and sprite definitions. If you completed Week 8, you should have:
+
+1. **Map data**: Tile/column definitions
+2. **Sprite data**: Character graphics
+3. **HUD tiles**: Score/life display graphics
+
+**If you have Week 8 assets:**
+- Export them as binary files (`.bin`)
+- We'll load them in this lesson
+
+**If you don't have assets:**
+- Don't worry! We'll create minimal placeholder data
+- You can upgrade them later
+
+**Quick export from BASIC (if needed):**
+```basic
+10 REM EXPORT MAP DATA
+20 OPEN 1,8,2,"MAP-DATA.BIN,S,W"
+30 FOR I=0 TO 255
+40 PRINT#1,CHR$(MAP(I));
+50 NEXT I
+60 CLOSE 1
+```
+
+---
+
+## Ready to Code!
+
+You now have:
+- ✅ ACME assembler installed and tested
+- ✅ VICE emulator running
+- ✅ Understanding of C64 memory map
+- ✅ Basic 6510 CPU knowledge
+- ✅ Assets ready (or placeholders prepared)
+
+Let's build Scroll Runner in assembly!
 
 ---
 
