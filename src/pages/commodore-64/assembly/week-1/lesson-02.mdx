@@ -1,231 +1,687 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Screen Memory Fundamentals"
-game: "Commodore 64 Assembly"
-system: "C64"
-lessonNumber: 2
+title: "Deterministic Game Loop"
+description: "Build a pure assembly update/render loop with timing guardrails and scheduler hooks."
+pubDate: 2025-01-11
+language: "6502 Assembly"
+course: "C64 Assembly – Act I"
+week: 1
+lesson: 2
 totalLessons: 8
 nextLesson: "/commodore-64/assembly/week-1/lesson-03"
 prevLesson: "/commodore-64/assembly/week-1/lesson-01"
 objectives:
-  - How the C64 displays characters on screen
-  - Where screen memory lives in the C64's address space
-  - How to write characters directly to screen memory
-  - The relationship between screen memory and color memory
+  - Build an assembly-driven update/render loop with predictable timing.
+  - Integrate a frame timer using KERNAL or raster checks to guard budget.
+  - Structure scheduler tables for tasks that run each frame.
 ---
 
 ## Introduction
 
-In Lesson 1, you cleared the screen by asking the KERNAL to do it for you. That's fine for a quick test, but real games need direct control.
+Objects are falling. The player can move. Now let's make them interact.
 
-By the end of this lesson, you'll put a character on screen without using any KERNAL routines.
+By the end of this lesson, Skyfall will be a playable (if simple) game!
 
-## How the C64 Screen Works
+## What is Collision?
 
-The C64 screen is a 40×25 grid of characters - 40 columns, 25 rows. That's 1,000 character positions total.
+A collision happens when the player and object occupy the same screen position. We need to check:
+- Is the object on the player's row? (row 23)
+- Is the object on the player's column? (same column as player)
 
-Each position displays one of 256 possible PETSCII characters. The C64 stores which character to display in **screen memory**, starting at address `$0400` (1024 in decimal).
+If BOTH are true = collision = catch!
 
-### The Memory Layout
+## Checking for Collision
 
-```
-$0400 - Top-left corner (row 0, column 0)
-$0401 - One position right (row 0, column 1)
-$0428 - Start of second row (row 1, column 0)
-...
-$07E7 - Bottom-right corner (row 24, column 39)
-```
-
-<div class="note">
-<div class="note-title">💡 Quick Math</div>
-Each row is 40 bytes. To find the memory address for row Y, column X:
-
-**Address = $0400 + (Y × 40) + X**
-</div>
-
-## Writing to Screen Memory
-
-Let's put a character in the middle of the screen.
-
-The center position is approximately row 12, column 20:
-- Address = $0400 + (12 × 40) + 20
-- = $0400 + 480 + 20
-- = $0400 + $1E0 + $14
-- = $05F4
-
-Create a new file called `skyfall.asm` with the following code:
+Add this to the game loop, right after updating the object:
 
 <div class="code-block">
-<div class="code-block-header">skyfall.asm</div>
+<div class="code-block-header">Game Loop Addition</div>
 
 ```asm
-; SKYFALL - Lesson 2
-; Write to screen memory
+game_loop:
+    jsr wait_for_raster
 
-* = $0801                      ; Start at BASIC start address
+    ; Player movement (every 3 frames)
+    dec MOVE_COUNTER
+    bne skip_player_movement
+    lda #3
+    sta MOVE_COUNTER
+    jsr check_keys
+skip_player_movement:
+
+    ; Object falling (every 5 frames)
+    dec FALL_COUNTER
+    bne skip_object_fall
+    lda #5
+    sta FALL_COUNTER
+    jsr update_object
+    jsr check_collision        ; Add this!
+skip_object_fall:
+
+    jmp game_loop
+```
+</div>
+
+Implement collision detection:
+
+<div class="code-block">
+<div class="code-block-header">Collision Detection</div>
+
+```asm
+check_collision:
+    lda OBJ_ACTIVE
+    beq no_collision           ; Skip if object not active
+
+    ; Check if object is on player row
+    lda OBJ_ROW
+    cmp #PLAYER_ROW
+    bne no_collision           ; Different row = no collision
+
+    ; Check if object is on player column
+    lda OBJ_COL
+    cmp PLAYER_COL
+    bne no_collision           ; Different column = no collision
+
+    ; Both match = COLLISION!
+    jsr handle_catch
+
+no_collision:
+    rts
+
+handle_catch:
+    ; Erase the object
+    jsr erase_object
+
+    ; Deactivate it
+    lda #$00
+    sta OBJ_ACTIVE
+
+    ; TODO: Add score, spawn new object
+    ; For now, just make it disappear
+    rts
+```
+</div>
+
+Build and run. Move the player to column 20 and let the object fall to you. It should disappear when it touches you!
+
+## Adding Score
+
+Let's track how many objects the player has caught:
+
+```asm
+; Add to variables
+SCORE = $08                    ; Current score (0-255)
+
+; Initialize in main
+    lda #$00
+    sta SCORE
+```
+
+Update `handle_catch`:
+
+```asm
+handle_catch:
+    jsr erase_object
+
+    lda #$00
+    sta OBJ_ACTIVE
+
+    ; Increase score
+    inc SCORE
+
+    ; Display score
+    jsr display_score
+
+    rts
+```
+
+## Displaying the Score
+
+Let's show the score in the top-left corner:
+
+<div class="code-block">
+<div class="code-block-header">Score Display</div>
+
+```asm
+display_score:
+    ; For now, just show the number directly
+    ; Score at row 0, column 0
+
+    lda SCORE
+    clc
+    adc #$30                   ; Convert to PETSCII digit (0-9 = $30-$39)
+    sta SCREEN_RAM             ; Top-left corner
+
+    lda #WHITE
+    sta COLOR_RAM
+    rts
+```
+</div>
+
+<div class="note">
+<div class="note-title">⚠️ Limitation</div>
+This only works for scores 0-9. We'll improve it in a later lesson when scores get higher.
+</div>
+
+## Respawning Objects
+
+When an object is caught, spawn a new one immediately:
+
+```asm
+handle_catch:
+    jsr erase_object
+
+    lda #$00
+    sta OBJ_ACTIVE
+
+    inc SCORE
+    jsr display_score
+
+    ; Spawn new object
+    jsr spawn_object
+
+    rts
+```
+
+Now catching one object immediately spawns another at the top!
+
+## Handling Misses
+
+What if the object reaches the bottom without being caught? That should be a "miss." Let's track misses:
+
+```asm
+; Add to variables
+MISSES = $09                   ; Missed objects (0-255)
+
+; Initialize in main
+    lda #$00
+    sta MISSES
+```
+
+Update the `update_object` routine:
+
+<div class="code-block">
+<div class="code-block-header">Handle Misses</div>
+
+```asm
+update_object:
+    lda OBJ_ACTIVE
+    beq done_update
+
+    jsr erase_object
+
+    inc OBJ_ROW
+
+    lda OBJ_ROW
+    cmp #24
+    bne still_falling
+
+    ; Hit bottom = MISS
+    lda #$00
+    sta OBJ_ACTIVE
+
+    inc MISSES                 ; Count the miss
+    jsr display_misses         ; Show it
+    jsr spawn_object           ; Spawn new object
+    rts
+
+still_falling:
+    jsr draw_object
+
+done_update:
+    rts
+```
+</div>
+
+Display misses next to the score:
+
+```asm
+display_misses:
+    lda MISSES
+    clc
+    adc #$30                   ; Convert to PETSCII digit
+    sta SCREEN_RAM + 5         ; Row 0, column 5
+
+    lda #WHITE
+    sta COLOR_RAM + 5
+    rts
+```
+
+## Complete Lesson 10 Code
+
+<div class="code-block">
+<div class="code-block-header">skyfall.asm - Complete</div>
+
+```asm
+; SKYFALL - Lesson 10
+; Collision detection
+
+* = $0801
 
 ; BASIC stub: SYS 2061
 !byte $0c,$08,$0a,$00,$9e
 !byte $32,$30,$36,$31          ; "2061" in ASCII
 !byte $00,$00,$00
 
-; Program starts here
 * = $080d
 
-    lda #$93                   ; Clear screen first
-    jsr $ffd2
+; ===================================
+; Constants
+; ===================================
+SCREEN_RAM = $0400
+COLOR_RAM = $d800
+VIC_BORDER = $d020
+VIC_BACKGROUND = $d021
+CIA1_PORT_A = $dc01
+CIA1_PORT_B = $dc00
+VIC_RASTER = $d012
 
-    lda #$51                   ; PETSCII code for filled circle
-    sta $05f4                  ; Write to center of screen
+BLACK = $00
+WHITE = $01
+YELLOW = $07
+DARK_GREY = $0b
 
-    rts                        ; Return to BASIC
-```
-</div>
+PLAYER_CHAR = $1e
+PLAYER_COLOR = WHITE
+PLAYER_ROW = 23
+PLAYER_START_COL = 20
 
-**Build and test:**
-```bash
-acme -f cbm -o skyfall.prg skyfall.asm
-x64sc skyfall.prg
-```
+OBJECT_CHAR = $2a
+OBJECT_COLOR = YELLOW
 
-You should see a filled circle character in the middle of the screen.
+; Variables
+PLAYER_COL = $02
+MOVE_COUNTER = $03
+OBJ_COL = $04
+OBJ_ROW = $05
+OBJ_ACTIVE = $06
+FALL_COUNTER = $07
+SCORE = $08
+MISSES = $09
 
-![Filled circle in center of screen](/images/lessons/commodore-64/assembly/week-1/lesson-02/centered-circle.png)
+; ===================================
+; Main Program
+; ===================================
+main:
+    jsr init_screen
 
-### What Just Happened?
+    lda #PLAYER_START_COL
+    sta PLAYER_COL
 
-```asm
-lda #$51                       ; Load character code into accumulator
-sta $0614                      ; Store it to screen memory address
-```
+    lda #3
+    sta MOVE_COUNTER
 
-That's it. You're directly poking values into the memory that the video chip reads. No KERNAL, no abstraction - pure hardware control.
+    lda #5
+    sta FALL_COUNTER
 
-The video chip scans screen memory 50 times per second (60 on NTSC systems) and displays whatever characters it finds there.
+    lda #$00
+    sta SCORE
+    sta MISSES
 
-## Color Memory
+    jsr draw_player
+    jsr spawn_object
+    jsr display_score
+    jsr display_misses
 
-Screen memory controls which character to display. A separate area of memory controls what color each character is.
+game_loop:
+    jsr wait_for_raster
 
-Color memory starts at `$D800` and follows the same layout as screen memory. Each byte is a color code (0-15).
+    ; Player movement (every 3 frames)
+    dec MOVE_COUNTER
+    bne skip_player_movement
+    lda #3
+    sta MOVE_COUNTER
+    jsr check_keys
+skip_player_movement:
 
-Let's make our circle white:
+    ; Object falling (every 5 frames)
+    dec FALL_COUNTER
+    bne skip_object_fall
+    lda #5
+    sta FALL_COUNTER
+    jsr update_object
+    jsr check_collision
+    jsr draw_player           ; Redraw player (in case object erased it)
+skip_object_fall:
 
-<div class="code-block">
-<div class="code-block-header">skyfall.asm</div>
+    jmp game_loop
 
-```asm
-* = $080d
+; ===================================
+; Subroutines
+; ===================================
 
-    lda #$93                   ; Clear screen
-    jsr $ffd2
+wait_for_raster:
+    lda VIC_RASTER
+    cmp #250
+    bne wait_for_raster
+    rts
 
-    lda #$51                   ; PETSCII filled circle
-    sta $05f4                  ; Write to screen memory
+init_screen:
+    jsr wait_for_raster
+    lda #BLACK
+    sta VIC_BACKGROUND
+    lda #DARK_GREY
+    sta VIC_BORDER
+    jsr clear_screen
+    rts
 
-    lda #$01                   ; White color
-    sta $d9f4                  ; Write to color memory (same offset as screen)
+clear_screen:
+    lda #$20
+    ldx #$00
+clear_screen_loop:
+    sta SCREEN_RAM,x
+    sta SCREEN_RAM + $100,x
+    sta SCREEN_RAM + $200,x
+    sta SCREEN_RAM + $300,x
+    inx
+    bne clear_screen_loop
 
+    lda #WHITE
+    ldx #$00
+clear_color_loop:
+    sta COLOR_RAM,x
+    sta COLOR_RAM + $100,x
+    sta COLOR_RAM + $200,x
+    sta COLOR_RAM + $300,x
+    inx
+    bne clear_color_loop
+    rts
+
+check_keys:
+    ; Check D key (column 2, row 2)
+    lda #%11111011
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    and #%00000100
+    beq move_right
+
+    ; Check A key (column 1, row 2)
+    lda #%11111101
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    and #%00000100
+    beq move_left
+
+    rts
+
+move_left:
+    lda PLAYER_COL
+    beq skip_left
+
+    jsr erase_player
+    dec PLAYER_COL
+    jsr draw_player
+
+skip_left:
+    rts
+
+move_right:
+    lda PLAYER_COL
+    cmp #39
+    beq skip_right
+
+    jsr erase_player
+    inc PLAYER_COL
+    jsr draw_player
+
+skip_right:
+    rts
+
+erase_player:
+    ldx PLAYER_COL
+    lda #$20
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
+    rts
+
+draw_player:
+    ldx PLAYER_COL
+    lda #PLAYER_CHAR
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
+
+    lda #PLAYER_COLOR
+    sta COLOR_RAM + (PLAYER_ROW * 40),x
+    rts
+
+spawn_object:
+    lda #$01
+    sta OBJ_ACTIVE
+
+    lda #$00
+    sta OBJ_ROW
+
+    lda #20
+    sta OBJ_COL
+
+    jsr draw_object
+    rts
+
+update_object:
+    lda OBJ_ACTIVE
+    beq done_update
+
+    jsr erase_object
+
+    inc OBJ_ROW
+
+    lda OBJ_ROW
+    cmp #24
+    bne still_falling
+
+    ; Hit bottom = MISS
+    lda #$00
+    sta OBJ_ACTIVE
+
+    inc MISSES
+    jsr display_misses
+    jsr spawn_object
+    rts
+
+still_falling:
+    jsr draw_object
+
+done_update:
+    rts
+
+check_collision:
+    lda OBJ_ACTIVE
+    beq no_collision
+
+    ; Check row
+    lda OBJ_ROW
+    cmp #PLAYER_ROW
+    bne no_collision
+
+    ; Check column
+    lda OBJ_COL
+    cmp PLAYER_COL
+    bne no_collision
+
+    ; COLLISION!
+    jsr handle_catch
+
+no_collision:
+    rts
+
+handle_catch:
+    jsr erase_object
+
+    lda #$00
+    sta OBJ_ACTIVE
+
+    inc SCORE
+    jsr display_score
+
+    jsr spawn_object
+    rts
+
+; Row offset lookup table (low bytes)
+row_offset_lo:
+    !byte <(0*40), <(1*40), <(2*40), <(3*40), <(4*40)
+    !byte <(5*40), <(6*40), <(7*40), <(8*40), <(9*40)
+    !byte <(10*40), <(11*40), <(12*40), <(13*40), <(14*40)
+    !byte <(15*40), <(16*40), <(17*40), <(18*40), <(19*40)
+    !byte <(20*40), <(21*40), <(22*40), <(23*40), <(24*40)
+
+; Row offset lookup table (high bytes)
+row_offset_hi:
+    !byte >(0*40), >(1*40), >(2*40), >(3*40), >(4*40)
+    !byte >(5*40), >(6*40), >(7*40), >(8*40), >(9*40)
+    !byte >(10*40), >(11*40), >(12*40), >(13*40), >(14*40)
+    !byte >(15*40), >(16*40), >(17*40), >(18*40), >(19*40)
+    !byte >(20*40), >(21*40), >(22*40), >(23*40), >(24*40)
+
+draw_object:
+    ; Get row offset from table
+    ldx OBJ_ROW
+    lda row_offset_lo,x
+    sta $fb
+    lda row_offset_hi,x
+    sta $fc
+
+    ; Add column (with 16-bit carry handling)
+    lda $fb
+    clc
+    adc OBJ_COL
+    sta $fb
+    bcc +
+    inc $fc
++
+    ; Add SCREEN_RAM base address
+    lda $fb
+    clc
+    adc #<SCREEN_RAM
+    sta $fb
+    lda $fc
+    adc #>SCREEN_RAM
+    sta $fc
+
+    ; Draw character
+    ldy #0
+    lda #OBJECT_CHAR
+    sta ($fb),y
+
+    ; Calculate COLOR_RAM address
+    lda $fb
+    clc
+    adc #<(COLOR_RAM-SCREEN_RAM)
+    sta $fb
+    lda $fc
+    adc #>(COLOR_RAM-SCREEN_RAM)
+    sta $fc
+
+    ; Draw color
+    lda #OBJECT_COLOR
+    sta ($fb),y
+    rts
+
+erase_object:
+    ; Get row offset from table
+    ldx OBJ_ROW
+    lda row_offset_lo,x
+    sta $fb
+    lda row_offset_hi,x
+    sta $fc
+
+    ; Add column
+    lda $fb
+    clc
+    adc OBJ_COL
+    sta $fb
+    bcc +
+    inc $fc
++
+    ; Add SCREEN_RAM base
+    lda $fb
+    clc
+    adc #<SCREEN_RAM
+    sta $fb
+    lda $fc
+    adc #>SCREEN_RAM
+    sta $fc
+
+    ; Erase with space
+    ldy #0
+    lda #$20
+    sta ($fb),y
+    rts
+
+display_score:
+    lda SCORE
+    clc
+    adc #$30
+    sta SCREEN_RAM
+
+    lda #WHITE
+    sta COLOR_RAM
+    rts
+
+display_misses:
+    lda MISSES
+    clc
+    adc #$30
+    sta SCREEN_RAM + 5
+
+    lda #WHITE
+    sta COLOR_RAM + 5
     rts
 ```
 </div>
 
-![White filled circle with color memory](/images/lessons/commodore-64/assembly/week-1/lesson-02/white-circle.png)
-
-### C64 Color Codes
-
-| Code | Color | Code | Color |
-|------|-------|------|-------|
-| `$00` | Black | `$08` | Orange |
-| `$01` | White | `$09` | Brown |
-| `$02` | Red | `$0A` | Light Red |
-| `$03` | Cyan | `$0B` | Dark Grey |
-| `$04` | Purple | `$0C` | Grey |
-| `$05` | Green | `$0D` | Light Green |
-| `$06` | Blue | `$0E` | Light Blue |
-| `$07` | Yellow | `$0F` | Light Grey |
-
-## The Full Screen
-
-Want to fill the entire screen with a character? Loop through all 1,000 positions:
-
-<div class="code-block">
-<div class="code-block-header">skyfall.asm</div>
-
-```asm
-* = $080d
-
-    ldx #$00                   ; X register = counter
-loop:
-    lda #$2a                   ; Asterisk character
-    sta $0400,x                ; Write to screen + X offset
-    sta $0500,x                ; Second 256 bytes
-    sta $0600,x                ; Third 256 bytes
-    sta $0700,x                ; Fourth 256 bytes (partial)
-
-    inx                        ; Increment X
-    bne loop                   ; Loop until X wraps to 0
-
-    rts
-```
-</div>
-
-Try it. The screen fills with asterisks.
-
-![Screen filled with asterisks](/images/lessons/commodore-64/assembly/week-1/lesson-02/screen-filled-asterisks.png)
-
-<div class="note">
-<div class="note-title">📝 Technical Note</div>
-This fills 256×4 = 1,024 positions, which is 24 more than we need. The last 24 writes spill into memory beyond the screen. For now, that's fine - we'll learn precise control later.
-</div>
+Build and run. Catch objects to increase your score. Miss them and your miss count increases. New objects spawn automatically!
 
 ## New Concepts
 
-### Opcodes Used in This Lesson
+### Collision Detection Philosophy
 
-**lda #$xx / lda $xxxx** - Load Accumulator
-- We saw immediate mode (#) in Lesson 1
-- Now we see absolute addressing - reading from a memory address
-- Example: `lda $0400` loads whatever value is stored at address $0400
+There are many ways to detect collisions:
+- **Perfect pixel collision** - Check every pixel (overkill for simple games)
+- **Bounding box collision** - Check if rectangles overlap (common)
+- **Position matching** - Check if exact positions match (what we use)
 
-**sta $xxxx** - Store Accumulator
-- Writes the accumulator's value to a memory address
-- This is how you poke values into memory
-- Example: `sta $0614` writes A's value to address $0614
+Skyfall uses position matching because our "characters" are single screen positions. This is the simplest and fastest method.
 
-**ldx #$xx** - Load X Register
-- Like lda, but loads into the X register instead
-- X is often used for counters and indexing
-- Example: `ldx #$00` sets X to zero
+### Why Check After Movement?
 
-**inx** - Increment X
-- Adds 1 to the X register
-- Example: If X = 5, then `inx` makes X = 6
+We check collisions AFTER `update_object` because:
+- The object has moved to its new position
+- The player might have moved too
+- We check the current frame's state
 
-**bne label** - Branch if Not Equal (to zero)
-- Jumps to a label if the last operation's result wasn't zero
-- Used for loops - keeps looping until something becomes zero
-- Example: `bne loop` jumps back to the "loop:" label
+Checking before movement would miss collisions or detect false positives.
 
-### The X Register
+### Score Display Limitation
 
-The X register is used for counting, indexing into arrays, and offset addressing. In `sta $0400,x`, the X value is added to $0400 to determine the actual write address.
+Our score display only works for 0-9. At score 10, it will show `:` (PETSCII $3A). We'll fix this in Lesson 14 when we properly format numbers.
 
-When X increments from $FF to $00, it "wraps around" and sets the zero flag, which makes `bne` stop branching.
+For now, it's good enough to prove the game works!
+
+### Game Loop Structure
+
+Notice the pattern:
+1. Wait for frame
+2. Update player
+3. Update objects
+4. Check collisions
+5. Repeat
+
+This is the structure of every real-time game. **Input → Update → Collision → Repeat.**
+
+### No New Opcodes
+
+Still using only the opcodes from previous lessons. You're building complex behavior from simple building blocks!
 
 <div class="exercise">
 <div class="exercise-title">🎯 Your Tasks</div>
 
-1. **Experiment with positions** - Put characters at different screen locations
-2. **Try different PETSCII codes** - Values 0-255 give different characters
-3. **Change colors** - Make characters different colors
-4. **Fill the screen** - Try the loop example
+1. **Build and run** - Play Skyfall! Try to catch 5 objects
+2. **Change spawn column** - Make objects fall at different columns
+3. **Adjust speeds** - Make player or objects faster/slower
+4. **Break it** - Try to catch an object at the wrong position - verify it doesn't work
 
-Don't worry about memorizing the math yet. In the next lesson, we'll start building Skyfall's player character with what you've learned here.
 </div>
 
 ## Next Steps
 
-You now have direct control over the C64's display. No more KERNAL calls - you're writing directly to the hardware.
+Congratulations! Skyfall is now a playable game! You can catch objects, track score, and count misses.
 
-In Lesson 3, we'll use this knowledge to create the player's basket at the bottom of the screen - the first real piece of our Skyfall game!
+In Lesson 11, we'll add random spawning so objects don't always fall in the same place!

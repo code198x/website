@@ -1,155 +1,146 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Drawing the Player"
-game: "Commodore 64 Assembly"
-system: "C64"
-lessonNumber: 3
+title: "Input & State Core"
+description: "Move input polling and game-state transitions into 6510 routines using CIA reads and zero-page structs."
+pubDate: 2025-01-22
+language: "6502 Assembly"
+course: "C64 Assembly – Act I"
+week: 1
+lesson: 3
 totalLessons: 8
 nextLesson: "/commodore-64/assembly/week-1/lesson-04"
 prevLesson: "/commodore-64/assembly/week-1/lesson-02"
 objectives:
-  - Calculate the player's starting position
-  - Choose an appropriate PETSCII character
-  - Draw the player on screen
-  - Use constants to make code more readable
-  - Set up the foundation for player movement
+  - Read joystick and keyboard state via CIA registers in assembly.
+  - Maintain game-state flags and transitions inside zero-page structs.
+  - Feed input/state data into the new assembly main loop.
 ---
 
 ## Introduction
 
-You know how to write to screen memory. Now let's use that to draw Skyfall's player character - the basket that will catch falling objects.
+Objects always spawn at column 20 - predictable and boring. Real games need randomness.
 
-## Choosing the Player Position
+By the end of this lesson, every object will fall at a different position, making the game actually challenging!
 
-The player needs to be at the bottom of the screen, centered horizontally. Let's use:
+## The Problem with Predictability
 
-- **Row 23** (second-to-last row, leaving one row for score/status later)
-- **Column 20** (center of the 40-column screen)
+Try catching 20 objects in the current game. Easy, right? You just park at column 20 and wait.
 
-Calculate the address:
-```
-Address = $0400 + (23 × 40) + 20
-        = $0400 + 920 + 20
-        = $0400 + $398 + $14
-        = $07AC
-```
+Games need unpredictability. The player should react to where objects appear, not memorize patterns.
 
-## Choosing the Player Character
+## Random Numbers on the C64
 
-We need a character that:
-- Looks distinct from falling objects
-- Reads clearly as "the thing you control"
-- Works well in PETSCII
+Modern computers have dedicated random number generators. The C64 doesn't. But it has something almost as good: the SID chip's noise generator.
 
-Good options:
-- `$1E` - Wedge/triangle pointing up (▴)
-- `$DF` - Filled character block
-- `$A0` - Solid block
+The SID (Sound Interface Device) generates audio. One of its features is a noise waveform for sound effects. The noise values change constantly and unpredictably - perfect for random numbers!
 
-Let's use `$1E` - the upward-pointing wedge. It visually suggests "catching things from above."
+The trick: Read from address `$D41B` (SID voice 3 oscillator output) to get a random byte (0-255).
 
-## Drawing the Player
+But there's a catch: we need to configure the SID to generate noise first.
 
-Update your `skyfall.asm`:
+## Setting Up the SID for Randomness
+
+Add this initialization:
 
 <div class="code-block">
-<div class="code-block-header">skyfall.asm</div>
+<div class="code-block-header">Initialize Random</div>
 
 ```asm
-; SKYFALL - Lesson 3
-; Draw the player character
+init_random:
+    ; Configure SID voice 3 for random number generation
+    lda #$ff                   ; Maximum frequency
+    sta $d40e                  ; Voice 3 frequency low
+    sta $d40f                  ; Voice 3 frequency high
 
-* = $0801                      ; Start at BASIC start address
-
-; BASIC stub: SYS 2061
-!byte $0c,$08,$0a,$00,$9e
-!byte $32,$30,$36,$31          ; "2061" in ASCII
-!byte $00,$00,$00
-
-; Program starts here
-* = $080d
-
-    lda #$93                   ; Clear screen
-    jsr $ffd2
-
-    lda #$1e                   ; Player character (upward wedge)
-    sta $07ac                  ; Draw at row 23, column 20
-
-    lda #$01                   ; White color
-    sta $dbac                  ; Color memory for same position
+    lda #$80                   ; Noise waveform
+    sta $d412                  ; Voice 3 control register
 
     rts
 ```
 </div>
 
-Build and run it. You should see a white wedge near the bottom center of the screen.
-
-![White wedge character at bottom center](/images/lessons/commodore-64/assembly/week-1/lesson-03/player-wedge-bottom-center.png)
-
-<div class="note">
-<div class="note-title">💡 Note</div>
-All three code samples in this lesson produce the same visual result. The differences are in code organization and readability, not output.
-</div>
-
-## Making Code Readable with Constants
-
-Those magic numbers ($07AC, $DBAC, $5E) make the code hard to read. Let's use constants:
-
-<div class="code-block">
-<div class="code-block-header">skyfall.asm</div>
+Call this from main during setup:
 
 ```asm
-; SKYFALL - Lesson 3
-; Draw the player character
+main:
+    jsr init_screen
+    jsr init_random            ; Add this
 
-* = $0801                      ; Start at BASIC start address
+    lda #PLAYER_START_COL
+    sta PLAYER_COL
+    ; etc...
+```
 
-; BASIC stub: SYS 2061
-!byte $0c,$08,$0a,$00,$9e
-!byte $32,$30,$36,$31          ; "2061" in ASCII
-!byte $00,$00,$00
+## Getting a Random Number
 
-; Constants
-SCREEN_RAM = $0400             ; Start of screen memory
-COLOR_RAM = $d800              ; Start of color memory
+Now we can read random values:
 
-PLAYER_CHAR = $1e              ; Upward wedge character
-PLAYER_COLOR = $01             ; White
-PLAYER_START_POS = $07ac       ; Row 23, column 20
-
-; Program starts here
-* = $080d
-
-    lda #$93                   ; Clear screen
-    jsr $ffd2
-
-    lda #PLAYER_CHAR           ; Load player character
-    sta PLAYER_START_POS       ; Draw at starting position
-
-    lda #PLAYER_COLOR          ; Load player color
-    sta COLOR_RAM + $3ac       ; Color memory offset
-
+```asm
+get_random:
+    ; Returns random value 0-255 in A
+    lda $d41b                  ; Read SID voice 3 oscillator
     rts
+```
+
+Simple! But we need random columns (0-39), not random bytes (0-255).
+
+## Converting to Column Range
+
+We need to convert 0-255 to 0-39. If we use just the lower 6 bits, we get values 0-63. That's close to 40. We can:
+
+1. Get a random byte
+2. Keep only lower 6 bits (0-63)
+3. If >= 40, try again
+
+<div class="code-block">
+<div class="code-block-header">Random Column</div>
+
+```asm
+get_random_column:
+    ; Returns random column 0-39 in A
+try_again:
+    jsr get_random             ; Get random byte
+    and #%00111111             ; Keep only lower 6 bits (0-63)
+    cmp #40                    ; Is it < 40?
+    bcs try_again              ; If >= 40, try again
+    rts                        ; Return valid column in A
 ```
 </div>
 
-Better. Now anyone reading the code understands what's happening without calculating memory addresses.
-
 <div class="note">
-<div class="note-title">💡 Note</div>
-The color RAM offset is $3AC because PLAYER_START_POS - SCREEN_RAM = $07AC - $0400 = $03AC.
+<div class="note-title">💡 Why This Works</div>
+Most attempts (40 out of 64) succeed immediately. The rest loop once or twice. Fast enough!
 </div>
 
-## Separating Setup from Game Code
+## Random Object Spawning
 
-Real games have structure. Let's organize the code into sections:
-
-<div class="code-block">
-<div class="code-block-header">skyfall.asm</div>
+Update `spawn_object`:
 
 ```asm
-; SKYFALL - Lesson 3
-; Draw the player character
+spawn_object:
+    lda #$01
+    sta OBJ_ACTIVE
+
+    lda #$00
+    sta OBJ_ROW
+
+    jsr get_random_column      ; Get random column!
+    sta OBJ_COL
+
+    jsr draw_object
+    rts
+```
+
+That's it! Now every object spawns at a random column.
+
+## Complete Lesson 11 Code
+
+<div class="code-block">
+<div class="code-block-header">skyfall.asm - Complete</div>
+
+```asm
+; SKYFALL - Lesson 11
+; Random spawning
 
 * = $0801
 
@@ -165,75 +156,442 @@ Real games have structure. Let's organize the code into sections:
 ; ===================================
 SCREEN_RAM = $0400
 COLOR_RAM = $d800
+VIC_BORDER = $d020
+VIC_BACKGROUND = $d021
+CIA1_PORT_A = $dc01
+CIA1_PORT_B = $dc00
+VIC_RASTER = $d012
+
+SID_V3_FREQ_LO = $d40e
+SID_V3_FREQ_HI = $d40f
+SID_V3_CONTROL = $d412
+SID_V3_OSC = $d41b
+
+BLACK = $00
+WHITE = $01
+YELLOW = $07
+DARK_GREY = $0b
 
 PLAYER_CHAR = $1e
-PLAYER_COLOR = $01
+PLAYER_COLOR = WHITE
 PLAYER_ROW = 23
 PLAYER_START_COL = 20
-PLAYER_START_POS = SCREEN_RAM + (PLAYER_ROW * 40) + PLAYER_START_COL
+
+OBJECT_CHAR = $2a
+OBJECT_COLOR = YELLOW
+
+; Variables
+PLAYER_COL = $02
+MOVE_COUNTER = $03
+OBJ_COL = $04
+OBJ_ROW = $05
+OBJ_ACTIVE = $06
+FALL_COUNTER = $07
+SCORE = $08
+MISSES = $09
 
 ; ===================================
 ; Main Program
 ; ===================================
 main:
-    jsr clear_screen
+    jsr init_screen
+    jsr init_random            ; Initialize random number generator
+
+    lda #PLAYER_START_COL
+    sta PLAYER_COL
+
+    lda #3
+    sta MOVE_COUNTER
+
+    lda #5
+    sta FALL_COUNTER
+
+    lda #$00
+    sta SCORE
+    sta MISSES
+
     jsr draw_player
-    rts
+    jsr spawn_object
+    jsr display_score
+    jsr display_misses
+
+game_loop:
+    jsr wait_for_raster
+
+    ; Player movement (every 3 frames)
+    dec MOVE_COUNTER
+    bne skip_player_movement
+    lda #3
+    sta MOVE_COUNTER
+    jsr check_keys
+skip_player_movement:
+
+    ; Object falling (every 5 frames)
+    dec FALL_COUNTER
+    bne skip_object_fall
+    lda #5
+    sta FALL_COUNTER
+    jsr update_object
+    jsr check_collision
+    jsr draw_player           ; Redraw player (in case object erased it)
+skip_object_fall:
+
+    jmp game_loop
 
 ; ===================================
 ; Subroutines
 ; ===================================
 
+wait_for_raster:
+    lda VIC_RASTER
+    cmp #250
+    bne wait_for_raster
+    rts
+
+init_screen:
+    jsr wait_for_raster
+    lda #BLACK
+    sta VIC_BACKGROUND
+    lda #DARK_GREY
+    sta VIC_BORDER
+    jsr clear_screen
+    rts
+
+init_random:
+    ; Set up SID voice 3 for random number generation
+    lda #$ff
+    sta SID_V3_FREQ_LO
+    sta SID_V3_FREQ_HI
+
+    lda #$80                   ; Noise waveform
+    sta SID_V3_CONTROL
+    rts
+
+get_random:
+    ; Returns random byte 0-255 in A
+    lda SID_V3_OSC
+    rts
+
+get_random_column:
+    ; Returns random column 0-39 in A
+try_again:
+    jsr get_random
+    and #%00111111             ; Keep lower 6 bits (0-63)
+    cmp #40
+    bcs try_again              ; If >= 40, try again
+    rts
+
 clear_screen:
-    lda #$93
-    jsr $ffd2
+    lda #$20
+    ldx #$00
+clear_screen_loop:
+    sta SCREEN_RAM,x
+    sta SCREEN_RAM + $100,x
+    sta SCREEN_RAM + $200,x
+    sta SCREEN_RAM + $300,x
+    inx
+    bne clear_screen_loop
+
+    lda #WHITE
+    ldx #$00
+clear_color_loop:
+    sta COLOR_RAM,x
+    sta COLOR_RAM + $100,x
+    sta COLOR_RAM + $200,x
+    sta COLOR_RAM + $300,x
+    inx
+    bne clear_color_loop
+    rts
+
+check_keys:
+    ; Check D key (column 2, row 2)
+    lda #%11111011
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    and #%00000100
+    beq move_right
+
+    ; Check A key (column 1, row 2)
+    lda #%11111101
+    sta CIA1_PORT_B
+    lda CIA1_PORT_A
+    and #%00000100
+    beq move_left
+
+    rts
+
+move_left:
+    lda PLAYER_COL
+    beq skip_left
+
+    jsr erase_player
+    dec PLAYER_COL
+    jsr draw_player
+
+skip_left:
+    rts
+
+move_right:
+    lda PLAYER_COL
+    cmp #39
+    beq skip_right
+
+    jsr erase_player
+    inc PLAYER_COL
+    jsr draw_player
+
+skip_right:
+    rts
+
+erase_player:
+    ldx PLAYER_COL
+    lda #$20
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
     rts
 
 draw_player:
+    ldx PLAYER_COL
     lda #PLAYER_CHAR
-    sta PLAYER_START_POS
+    sta SCREEN_RAM + (PLAYER_ROW * 40),x
 
     lda #PLAYER_COLOR
-    sta COLOR_RAM + (PLAYER_ROW * 40) + PLAYER_START_COL
+    sta COLOR_RAM + (PLAYER_ROW * 40),x
+    rts
+
+spawn_object:
+    lda #$01
+    sta OBJ_ACTIVE
+
+    lda #$00
+    sta OBJ_ROW
+
+    jsr get_random_column      ; Random column!
+    sta OBJ_COL
+
+    jsr draw_object
+    rts
+
+update_object:
+    lda OBJ_ACTIVE
+    beq done_update
+
+    jsr erase_object
+
+    inc OBJ_ROW
+
+    lda OBJ_ROW
+    cmp #24
+    bne still_falling
+
+    lda #$00
+    sta OBJ_ACTIVE
+
+    inc MISSES
+    jsr display_misses
+    jsr spawn_object
+    rts
+
+still_falling:
+    jsr draw_object
+
+done_update:
+    rts
+
+check_collision:
+    lda OBJ_ACTIVE
+    beq no_collision
+
+    lda OBJ_ROW
+    cmp #PLAYER_ROW
+    bne no_collision
+
+    lda OBJ_COL
+    cmp PLAYER_COL
+    bne no_collision
+
+    jsr handle_catch
+
+no_collision:
+    rts
+
+handle_catch:
+    jsr erase_object
+
+    lda #$00
+    sta OBJ_ACTIVE
+
+    inc SCORE
+    jsr display_score
+
+    jsr spawn_object
+    rts
+
+; Row offset lookup table (low bytes)
+row_offset_lo:
+    !byte <(0*40), <(1*40), <(2*40), <(3*40), <(4*40)
+    !byte <(5*40), <(6*40), <(7*40), <(8*40), <(9*40)
+    !byte <(10*40), <(11*40), <(12*40), <(13*40), <(14*40)
+    !byte <(15*40), <(16*40), <(17*40), <(18*40), <(19*40)
+    !byte <(20*40), <(21*40), <(22*40), <(23*40), <(24*40)
+
+; Row offset lookup table (high bytes)
+row_offset_hi:
+    !byte >(0*40), >(1*40), >(2*40), >(3*40), >(4*40)
+    !byte >(5*40), >(6*40), >(7*40), >(8*40), >(9*40)
+    !byte >(10*40), >(11*40), >(12*40), >(13*40), >(14*40)
+    !byte >(15*40), >(16*40), >(17*40), >(18*40), >(19*40)
+    !byte >(20*40), >(21*40), >(22*40), >(23*40), >(24*40)
+
+draw_object:
+    ; Get row offset from table
+    ldx OBJ_ROW
+    lda row_offset_lo,x
+    sta $fb
+    lda row_offset_hi,x
+    sta $fc
+
+    ; Add column (with 16-bit carry handling)
+    lda $fb
+    clc
+    adc OBJ_COL
+    sta $fb
+    bcc +
+    inc $fc
++
+    ; Add SCREEN_RAM base address
+    lda $fb
+    clc
+    adc #<SCREEN_RAM
+    sta $fb
+    lda $fc
+    adc #>SCREEN_RAM
+    sta $fc
+
+    ; Draw character
+    ldy #0
+    lda #OBJECT_CHAR
+    sta ($fb),y
+
+    ; Calculate COLOR_RAM address
+    lda $fb
+    clc
+    adc #<(COLOR_RAM-SCREEN_RAM)
+    sta $fb
+    lda $fc
+    adc #>(COLOR_RAM-SCREEN_RAM)
+    sta $fc
+
+    ; Draw color
+    lda #OBJECT_COLOR
+    sta ($fb),y
+    rts
+
+erase_object:
+    ; Get row offset from table
+    ldx OBJ_ROW
+    lda row_offset_lo,x
+    sta $fb
+    lda row_offset_hi,x
+    sta $fc
+
+    ; Add column
+    lda $fb
+    clc
+    adc OBJ_COL
+    sta $fb
+    bcc +
+    inc $fc
++
+    ; Add SCREEN_RAM base
+    lda $fb
+    clc
+    adc #<SCREEN_RAM
+    sta $fb
+    lda $fc
+    adc #>SCREEN_RAM
+    sta $fc
+
+    ; Erase with space
+    ldy #0
+    lda #$20
+    sta ($fb),y
+    rts
+
+display_score:
+    lda SCORE
+    clc
+    adc #$30
+    sta SCREEN_RAM
+
+    lda #WHITE
+    sta COLOR_RAM
+    rts
+
+display_misses:
+    lda MISSES
+    clc
+    adc #$30
+    sta SCREEN_RAM + 5
+
+    lda #WHITE
+    sta COLOR_RAM + 5
     rts
 ```
 </div>
 
-Much better. The code is organized, readable, and ready to grow.
+Build and run. Objects now fall at unpredictable positions! The game is suddenly much more challenging.
 
 ## New Concepts
 
-### Constants and Labels
+### Opcodes Used in This Lesson
 
-**Constants** (like `PLAYER_CHAR = $1e`) give names to values. The assembler replaces the name with the value during assembly. This makes code self-documenting.
+**bcs label** - Branch if Carry Set
+- Opposite of `bcc` (branch if carry clear)
+- After `cmp #40`, carry is SET if A >= 40
+- We use this to retry if random number is too large
+- Example: `bcs try_again` loops back when value >= 40
 
-**Labels** (like `main:` and `draw_player:`) mark positions in code. You can jump to them with `jsr`. This lets you organize code into logical chunks.
+### The SID Chip
 
-### Code Organization
+The SID (Sound Interface Device) is the C64's sound chip. It has:
+- 3 voices (oscillators) for music
+- Multiple waveforms (pulse, sawtooth, triangle, noise)
+- Filters and envelopes
 
-Good assembly programs have clear sections:
-- **Constants** - Named values at the top
-- **Main program** - The entry point that calls subroutines
-- **Subroutines** - Reusable chunks of code that do one thing
+We're using voice 3's noise waveform. The values change constantly based on the oscillator state - effectively random for game purposes.
 
-This structure scales from tiny demos to complete games.
+### Why Voice 3?
 
-### No New Opcodes
+Voice 3 is special: its oscillator can be read directly (`$D41B`) without affecting audio output. Voices 1 and 2 don't have this feature.
 
-This lesson used only opcodes from Lessons 1-2. Sometimes learning isn't about new instructions - it's about organizing what you already know.
+This lets us use voice 3 for randomness while still having voices 1 and 2 available for sound effects (which we'll add later).
+
+### "Random Enough"
+
+The SID's noise isn't cryptographically random - it's deterministic based on oscillator state. But for games, it's perfect:
+- Fast to read
+- No complex algorithms needed
+- Good distribution
+- Unpredictable to players
+
+### Rejection Sampling
+
+Our `get_random_column` uses rejection sampling: get a random value from a larger range, reject values outside the target range, try again.
+
+This is simpler than using modulo or division, and fast enough since most attempts succeed immediately.
 
 <div class="exercise">
 <div class="exercise-title">🎯 Your Tasks</div>
 
-1. **Build and run** - Verify the player appears on screen
-2. **Change the position** - Try `PLAYER_ROW = 22` or `PLAYER_START_COL = 15`
-3. **Try different characters** - Experiment with other PETSCII codes
-4. **Change colors** - Make the player cyan or yellow
+1. **Build and run** - Play with random spawning, notice the difficulty increase
+2. **Test distribution** - Play for a while, do objects seem evenly distributed across columns?
+3. **Change the range** - Try modifying to spawn only in columns 10-30
+4. **Remove randomness** - Comment out `jsr init_random` and see what happens
 
 </div>
 
 ## Next Steps
 
-The player character is on screen! We've also organized our code properly with constants and subroutines.
+The game is now genuinely challenging! Objects fall at unpredictable positions, forcing the player to react rather than memorize.
 
-In Lesson 4, we'll add color to the entire screen and make Skyfall look more polished before we add movement.
+In Lesson 12, we'll add multiple falling objects simultaneously to really challenge the player!

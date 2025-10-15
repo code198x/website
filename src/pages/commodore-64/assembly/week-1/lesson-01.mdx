@@ -1,189 +1,268 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Setting Up Your Development Environment"
-game: "Commodore 64 Assembly"
-system: "C64"
-lessonNumber: 1
+title: "Bootstrapping Scroll Runner"
+description: "Set up the all-assembly project, memory map, and assets migrated from the hybrid build."
+pubDate: 2025-01-10
+language: "6502 Assembly"
+course: "C64 Assembly – Act I"
+week: 1
+lesson: 1
 totalLessons: 8
 nextLesson: "/commodore-64/assembly/week-1/lesson-02"
+prevLesson: "/commodore-64/assembly/week-0/lesson-08"
 objectives:
-  - Install and configure the ACME cross-assembler
-  - Set up the VICE C64 emulator
-  - Write your first C64 assembly program
-  - Understand the basic development workflow
+  - Convert the BASIC launcher into an all-assembly entry routine.
+  - Lay out the project memory map and zero-page workspace for Scroll Runner.
+  - Load existing map/asset data into assembly-friendly buffers.
 ---
 
-## Introduction
+## Lesson 1 – Bootstrapping Scroll Runner
 
-Welcome to your journey into Commodore 64 assembly programming! In this first lesson, we'll set up everything you need to develop games for the C64 on your modern computer.
+Act I begins where the Transition course left off. You already have Scroll Runner running as a hybrid: BASIC orchestrates the loop while assembly helpers handle the heaviest work. This lesson promotes the project to a **pure assembly build**. We will replace the BASIC launcher, declare a clean memory map, and load the assets we produced during Week 8.
 
-By the end of this lesson, you'll have written your first assembly program and seen it run on an emulated C64.
+> [📷 suggested: Project tree screenshot showing `/code-samples/commodore-64/assembly/scroll-runner/` with `src/` and `assets/` folders]
 
-## Installing the Tools
+---
 
-You'll need two tools: an assembler to turn your code into C64 programs, and an emulator to run them.
+### The One-Minute Tour
 
-<div class="note">
-<div class="note-title">💡 Note</div>
-A cross-assembler runs on your modern computer but produces code for a different system (the C64).
-</div>
+- Create a dedicated assembly project folder mirroring the BASIC assets from Week 8.
+- Replace the BASIC `SYS` stub with an assembly boot routine that initialises memory and jumps into the main loop.
+- Reserve RAM for map data, sprites, HUD buffers, and zero-page mailboxes that future lessons will use.
 
-### The ACME Assembler
+---
 
-ACME is a powerful cross-assembler that converts your assembly code into machine code the C64 can run.
+### Project Skeleton
 
-**Installation:**
-- Download from [ACME on GitHub](https://github.com/meonwax/acme)
-- Follow the installation instructions for your OS
-- Verify it works: `acme --version`
-
-### The VICE Emulator
-
-VICE accurately emulates the C64 hardware, letting you test your programs without real hardware.
-
-**Installation:**
-- Download from [VICE website](https://vice-emu.sourceforge.io/)
-- Install the C64 emulator (x64sc is recommended)
-- Launch it to make sure it works
-
-### Alternative: Docker (For Advanced Users)
-
-If you're comfortable with Docker, we provide pre-built images with ACME already installed:
+Start inside `code-samples/commodore-64/assembly`. Create a new project folder that will hold the Act I build:
 
 ```bash
-# Pull the Commodore 64 toolchain image
-docker pull ghcr.io/code198x/commodore-64:v2.0.0
-
-# Assemble a program (we'll write hello.asm next)
-docker run --rm -v $(pwd):/workspace \
-  ghcr.io/code198x/commodore-64:v2.0.0 \
-  -f cbm -o hello.prg hello.asm
+mkdir -p scroll-runner/src scroll-runner/assets
+cp ../basic/week-8/scroll-runner/map-data.bin scroll-runner/assets/
+cp ../basic/week-8/scroll-runner/sprites.bin  scroll-runner/assets/
 ```
 
-For these lessons, we'll assume you've installed ACME and VICE directly. The Docker approach is great for CI/CD or if you want to avoid installing tools locally.
+> **Tip:** The exact filenames may differ from your repository. Copy the assets you exported during Week 8 (map columns, HUD tiles, sprite definitions) so the assembly version can reuse them without BASIC `DATA` statements.
 
-## Your First C64 Program
-
-Let's write a simple program that changes the border color:
-
-<div class="code-block">
-<div class="code-block-header">hello.asm</div>
+Create `scroll-runner/src/constants.inc` to centralise the memory map and zero-page allocations:
 
 ```asm
-; My first C64 program
-; Changes the border color to red
+; constants.inc — shared across every module
 
-* = $0801                ; BASIC start address
+; Runtime addresses
+ENTRY       = $080d
+MAP_BUFFER  = $4000          ; 8 KB (two 4 KB banks for scroll data)
+SPRITE_DATA = $6000          ; 2 KB sprite definitions
+HUD_BUFFER  = $6800          ; off-screen HUD workspace
+CODE_BANK   = $8000          ; main code lives here and above
 
-; BASIC launcher (SYS 2061)
-!byte $0c,$08,$0a,$00,$9e
-!byte $32,$30,$36,$31    ; "2061" in ASCII
-!byte $00,$00,$00
+; Sizes
+MAP_BUFFER_END  = MAP_BUFFER + $2000
+SPRITE_DATA_END = SPRITE_DATA + $0800
+HUD_BUFFER_END  = HUD_BUFFER + $0400
 
-* = $080d                ; Our code starts here
-
-start:
-    lda #$02             ; Load red color value
-    sta $d020            ; Store to border color register
-    rts                  ; Return to BASIC
+; Zero-page map (documented to avoid clashes)
+ZP_PTR_LO   = $fb
+ZP_PTR_HI   = $fc
+ZP_STATE    = $fd
+ZP_FRAME_LO = $fe
+ZP_FRAME_HI = $ff
 ```
-</div>
 
-### Understanding the Code
+Then create `scroll-runner/src/main.asm` with the following scaffold. Note how it imports the shared constants and places assets directly at their runtime addresses to avoid brittle copy loops:
 
-Let's break down each line:
+```asm
+        !to "scroll-runner.prg",cbm
+        * = $0801
 
-- `* = $0801` - Sets the assembly address to the BASIC start location
-- `!byte` directives - Create a BASIC launcher that executes SYS 2061 ($080D)
-- `* = $080d` - Our actual machine code starts here
-- `lda #$02` - Load the value 2 (red) into the accumulator
-- `sta $d020` - Store accumulator to memory address $D020 (border color)
-- `rts` - Return to BASIC
+        !src "constants.inc"
 
-## Building and Running
+; -----------------------------------------------------------------------------
+; BASIC header: SYS into ENTRY
+; -----------------------------------------------------------------------------
+        !byte $0c,$08,$0a,$00,$9e
+        !byte $32,$30,$36,$31,0,0,0
 
-### Assembling the Code
+; -----------------------------------------------------------------------------
+; Boot code begins at ENTRY
+; -----------------------------------------------------------------------------
+        * = ENTRY
 
-Open your terminal and run:
+Start:
+        sei                     ; set up before IRQs run
+        cld
+        ldx #$ff
+        txs
+
+        jsr InitState
+        ; Assets are already in place via !binary includes below
+
+        cli                     ; Lesson 2 will install a proper IRQ loop
+        jsr WaitVBlank          ; simple guard so we don’t spin too fast yet
+        jmp MainLoop
+
+; -----------------------------------------------------------------------------
+; Initial state setup
+; -----------------------------------------------------------------------------
+InitState:
+        lda #0
+        sta ZP_STATE
+        sta ZP_PTR_LO
+        sta ZP_PTR_HI
+        sta ZP_FRAME_LO
+        sta ZP_FRAME_HI
+        rts
+
+; -----------------------------------------------------------------------------
+; Minimal frame wait (placeholder until Lesson 2)
+; -----------------------------------------------------------------------------
+WaitVBlank:
+        lda $d012               ; current raster line
+WaitLoop:
+        cmp $d012
+        beq WaitLoop
+        rts
+
+; -----------------------------------------------------------------------------
+; Main loop placeholder – replaced in Lesson 2
+; -----------------------------------------------------------------------------
+MainLoop:
+        jmp MainLoop
+
+; -----------------------------------------------------------------------------
+; Assert memory layout at build time
+; -----------------------------------------------------------------------------
+        !if MAP_BUFFER_END > SPRITE_DATA !error "Map buffer overlaps sprite data"
+        !if SPRITE_DATA_END > HUD_BUFFER !error "Sprite data overlaps HUD buffer"
+        !if HUD_BUFFER_END > CODE_BANK   !error "HUD buffer overlaps code bank"
+
+; -----------------------------------------------------------------------------
+; Asset binaries placed directly into RAM
+; -----------------------------------------------------------------------------
+        * = MAP_BUFFER
+MapBinary:
+        !binary "../assets/map-data.bin"
+MapBinaryEnd:
+
+        * = SPRITE_DATA
+SpriteBinary:
+        !binary "../assets/sprites.bin"
+SpriteBinaryEnd:
+
+        * = HUD_BUFFER
+HUDBinary:
+        !fill HUD_BUFFER_END-HUD_BUFFER,0
+```
+
+Building now ensures the assets occupy the addresses the rest of the lessons expect without runtime copies, and the guard clauses raise errors if the files ever outgrow their slots.
+
+This assembly file does three critical things:
+
+1. **Bootstraps without BASIC.** The only BASIC code left is the two-line `SYS` stub. Once it runs, the 6510 executes your assembly boot routine directly.
+2. **Declares the memory map up front.** Future lessons will use these constants for the game loop, renderer, and HUD. Adjust addresses if you prefer a different layout, but keep them centralised.
+3. **Keeps assets in place.** ACME’s `!binary` directive drops the map and sprite files directly at their runtime addresses, so no runtime copy loops are needed.
+
+> **Tip:** ACME’s `!binary` offsets are resolved at assemble time. If your binaries are larger than expected, list their lengths in a comment and assert with `!if` to prevent silent overflow.
+
+---
+
+### Build Script
+
+Add a Makefile (or extend the repository’s existing one) so you can build Act I with a single command:
+
+```makefile
+scroll-runner.prg: src/main.asm src/constants.inc assets/map-data.bin assets/sprites.bin
+	acme -f cbm -o $@ src/main.asm
+```
+
+Run the build and confirm the PRG launches:
 
 ```bash
-acme -f cbm -o hello.prg hello.asm
+cd code-samples/commodore-64/assembly/scroll-runner
+make
+x64sc scroll-runner.prg
 ```
 
-This creates `hello.prg`, a program file the C64 can load.
+On launch you will see a blank screen—the main loop simply spins. That is expected. Lesson 2 will replace `MainLoop` with the deterministic scheduler.
 
-The `-f cbm` flag tells ACME to output in Commodore BASIC format, which includes the load address header that the C64 expects.
+> [🎥 suggested: short clip showing VICE booting the PRG and remaining idle, confirming the launcher works]
 
-### Running in VICE
+---
 
-1. Start VICE (x64sc)
-2. Drag and drop `hello.prg` onto the emulator window
-3. Type `RUN` and press Enter
-4. The border should turn red!
+### Experiment Section
 
-![Red border on C64 screen](/images/lessons/commodore-64/assembly/week-1/lesson-01/hello-red-border.png)
+- Try swapping `MAP_BUFFER` and `SPRITE_DATA` addresses to match your preferred layout. Update `constants.inc` and ensure the overlap asserts still pass.
+- If you intend to stream assets from disk instead of bundling them, replace the `!binary` sections with a loader (`JSR $FFD5`) and add matching guards to confirm the transfer succeeds.
+- Add extra zero-page entries for timers (`ZP_FRAME_LO/HI`) or input flags—Lesson 3 will use these, so reserve them now if you plan to track more state.
+- Split the asset includes into separate modules (`renderer.asm`, `audio.asm`) and use ACME’s `!src` directive. Keeping the project modular will matter once Acts II–IV add more systems.
 
-<div class="exercise">
-<div class="exercise-title">🎯 Try It Yourself</div>
+---
 
-Modify the program to use different colors:
-- `#$05` for green
-- `#$06` for blue
-- `#$07` for yellow
+### Concept Expansion
 
-What happens if you also store to `$d021` (background color)?
-</div>
+Declaring the memory map explicitly is the difference between tinkering and engineering. Every future routine can reference the same constants for buffers and mailboxes, eliminating “magic numbers” from the code. Likewise, booting directly into assembly means you no longer pay the BASIC interpreter’s overhead or risk BASIC resetting your memory after a crash.
 
-## The Development Cycle
+---
 
-Your typical workflow will be:
+### Game Integration
 
-1. **Write** assembly code in your text editor
-2. **Assemble** with ACME to create a PRG file
-3. **Load** into VICE to test
-4. **Debug** and refine
-5. **Repeat** until perfect!
+Record the key addresses in your developer notes so every subsystem agrees:
 
-## New Concepts
+```text
+ENTRY       = $080d
+MAP_BUFFER  = $4000 (8 KB)
+SPRITE_DATA = $6000 (2 KB)
+HUD_BUFFER  = $6800 (1 KB)
+CODE_BANK   = $8000 onwards
+```
 
-### Opcodes Used in This Lesson
+Paste this table into the top of new source files or into a shared `constants.asm`. Keeping the map visible prevents pointer conflicts when Acts II–IV allocate more RAM.
 
-**lda #$xx** - Load Accumulator
-- Loads a value into the accumulator (the A register)
-- The # symbol means "immediate mode" - use the value directly
-- Example: `lda #$93` puts the value $93 into A
+---
 
-**jsr $xxxx** - Jump to Subroutine
-- Calls a routine at the specified address
-- The routine runs, then returns to the next instruction
-- Example: `jsr $ffd2` calls the KERNAL print routine
+### From the Vault
 
-**rts** - Return from Subroutine
-- Returns control to whoever called this routine
-- In our case, returns to BASIC
+- [Memory Banks](/vault/memory-banks) — refresher on banking out BASIC/KERNAL ROM.
+- [Scroll Runner Design Notes](/vault/scroll-runner-notes) — the Week 8 planning document.
 
-### The Accumulator
+---
 
-The accumulator (A) is the 6502's primary working register. Most operations use it - loading values, doing math, and storing results all go through the accumulator.
+### Quick Reference
 
-## Memory Map Basics
+```asm
+!src "constants.inc"        ; shared memory map + zero-page
 
-The C64 has 64KB of addressable memory. Key locations we'll use:
+; Assembly entry stub (replaces BASIC loop)
+!byte $0c,$08,$0a,$00,$9e
+!byte $32,$30,$36,$31,0,0,0
 
-| Address | Description |
-|---------|-------------|
-| `$0400-$07FF` | Screen memory (1000 bytes) |
-| `$D000-$D3FF` | VIC-II chip (graphics) |
-| `$D400-$D7FF` | SID chip (sound) |
-| `$D800-$DBFF` | Color RAM |
+; Simple VBlank wait placeholder
+WaitVBlank:
+  lda $d012
+.wait
+  cmp $d012
+  beq .wait
+  rts
 
-## Next Steps
+; Assets resident at runtime addresses
+* = MAP_BUFFER
+!binary "../assets/map-data.bin"
 
-Congratulations! You've set up your development environment and written your first C64 program.
+* = SPRITE_DATA
+!binary "../assets/sprites.bin"
 
-In the next lesson, we'll explore the C64's memory map in detail and learn how to draw characters on the screen - the first step toward building our Skyfall game!
+* = HUD_BUFFER
+!fill HUD_BUFFER_END-HUD_BUFFER,0
+```
 
-<div class="note">
-<div class="note-title">🎮 Quick Tip</div>
-Save your `hello.asm` file - we'll build on it in future lessons!
-</div>
+---
+
+### What You’ve Learnt
+
+- Booted Scroll Runner directly into assembly, removing BASIC from the runtime equation.
+- Established a clear memory map and zero-page layout that future lessons will reuse.
+- Included map and sprite assets at build time so the assembly version can access them instantly.
+
+**Next lesson:** Build the deterministic assembly game loop that will drive every subsystem.
+
+---
