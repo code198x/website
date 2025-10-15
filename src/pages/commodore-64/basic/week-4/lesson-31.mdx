@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Boundaries & Wrapping"
+title: "Enemy AI"
 game: "Commodore 64 BASIC"
 system: "C64"
 lessonNumber: 31
@@ -8,141 +8,114 @@ totalLessons: 64
 prevLesson: "/commodore-64/basic/week-4/lesson-30"
 nextLesson: "/commodore-64/basic/week-4/lesson-32"
 objectives:
-  - Wrap sprites at screen edges
-  - Create Pac-Man style wrapping
-  - Handle left/right/top/bottom edges
-  - Build continuous playfields
+  - 'Create simple chase behaviour by comparing sprite positions.'
+  - 'Tie enemy speed to room rules and randomness.'
+  - 'Trigger HUD updates when the enemy catches the player.'
 ---
 
-## Wrap Around the World!
+## Lesson 31 – Enemy AI
 
-Hard boundaries stop sprites—but **wrapping** creates infinite playfields! When a sprite exits one edge, it reappears on the opposite side.
+Time to give your enemies a brain. We’ll build a position-based chaser, leverage the rule tables for speed, and trigger HUD updates when the player gets caught.
 
-Pac-Man, Asteroids, and countless arcade classics use screen wrapping to create seamless, continuous game worlds.
+> [📷 suggested: screenshot of an enemy sprite chasing the player sprite]
 
-## Basic Example
+---
 
-Horizontal wrap:
+### The One-Minute Tour
 
-```basic
-10 REM *** HORIZONTAL WRAP ***
-20 PRINT CHR$(147)
-30 FOR I=832 TO 894:POKE I,255:NEXT I
-40 POKE 2040,13:POKE 53269,1:POKE 53287,7
-50 X=24:Y=120
-60 X=X+2
-70 IF X>344 THEN X=24
-80 POKE 53248,X:POKE 53249,Y
-90 FOR D=1 TO 10:NEXT D
-100 GOTO 60
-```
+- Compare enemy `EX/EY` to player `PX/PY` to decide direction.  
+- Use `RULESPEED(ROOM)` (from Lesson 21) to pace enemy steps.  
+- When collision fires (Lesson 28), reduce lives via the hazard handler.  
+- Randomise initial direction to avoid identical openings.
 
-Sprite wraps from right to left! Continuous motion.
+---
 
-## Practical Example
-
-Four-way wrap:
-
-```basic
-10 REM *** 4-WAY WRAP ***
-20 PRINT CHR$(147)
-30 FOR I=832 TO 894:POKE I,255:NEXT I
-40 POKE 2040,13:POKE 53269,1:POKE 53287,14
-50 X=160:Y=120
-60 GET K$
-70 IF K$="W" THEN Y=Y-3
-80 IF K$="S" THEN Y=Y+3
-90 IF K$="A" THEN X=X-3
-100 IF K$="D" THEN X=X+3
-110 REM WRAP ALL EDGES
-120 IF X<24 THEN X=344
-130 IF X>344 THEN X=24
-140 IF Y<50 THEN Y=250
-150 IF Y>250 THEN Y=50
-160 POKE 53248,X:POKE 53249,Y
-170 GOTO 60
-```
-
-Exit any edge, appear on opposite side!
-
-## WOW Moment: Pac-Man Wrap
+### Chaser Loop
 
 ```basic
 NEW
-10 REM *** PAC-MAN WRAP ***
-20 PRINT CHR$(147)
-30 PRINT "COLLECT ALL 20 DOTS!"
-40 FOR I=832 TO 894:POKE I,255:NEXT I
-50 POKE 2040,13:POKE 53269,1:POKE 53287,7
-60 X=160:Y=120:SC=0
-70 REM PLACE 20 DOTS
-80 FOR I=0 TO 19
-90 DX=INT(RND(1)*35)+3
-100 DY=INT(RND(1)*20)+4
-110 POKE 1024+DY*40+DX,81
-120 POKE 55296+DY*40+DX,7
-130 NEXT I
-140 GET K$
-150 IF K$="W" THEN Y=Y-3
-160 IF K$="S" THEN Y=Y+3
-170 IF K$="A" THEN X=X-3
-180 IF K$="D" THEN X=X+3
-190 REM WRAP EDGES
-200 IF X<24 THEN X=344
-210 IF X>344 THEN X=24
-220 IF Y<50 THEN Y=250
-230 IF Y>250 THEN Y=50
-240 POKE 53248,X:POKE 53249,Y
-250 REM COLLECT DOTS
-260 P=1024+INT(Y/8)*40+INT(X/8)
-270 IF PEEK(P)=81 THEN POKE P,32:SC=SC+1
-280 REM UPDATE SCORE
-290 POKE 1030,SC/10+48
-300 POKE 1031,SC AND 15+48
-310 IF SC=20 THEN PRINT CHR$(19);"YOU WIN!":END
-320 GOTO 140
+10 PRINT CHR$(147)
+20 FOR I=832 TO 894:POKE I,255:NEXT I
+30 FOR I=896 TO 958:POKE I,170:NEXT I
+40 POKE 2040,13:POKE 2041,14
+50 POKE 53269,3
+60 POKE 53287,12:POKE 53288,2
+70 PX=140:PY=120:EX=220:EY=140
+80 STEP=0:SPEED=2
+90 GET K$:IF K$<>"" THEN 110
+100 GOTO 150
+110 IF K$="A" THEN PX=PX-3
+120 IF K$="D" THEN PX=PX+3
+130 IF K$="W" THEN PY=PY-3
+140 IF K$="S" THEN PY=PY+3
+150 IF PX<24 THEN PX=24
+160 IF PX>255 THEN PX=255
+170 IF PY<50 THEN PY=50
+180 IF PY>229 THEN PY=229
+190 STEP=STEP+1
+200 IF STEP MOD SPEED=0 THEN GOSUB 300
+210 POKE 53248,PX:POKE 53249,PY
+220 POKE 53250,EX:POKE 53251,EY
+230 IF PEEK(53278) THEN PRINT CHR$(19);"CAUGHT!":END
+240 GOTO 90
+
+300 REM --- ENEMY CHASE ---
+310 IF EX<PX THEN EX=EX+1
+320 IF EX>PX THEN EX=EX-1
+330 IF EY<PY THEN EY=EY+1
+340 IF EY>PY THEN EY=EY-1
+350 RETURN
 ```
 
-![Pac-Man style wrapping](/images/lessons/commodore-64/basic/week-4/lesson-31/wrap.png)
-
-Exit left, appear right! Exit top, appear bottom! The playfield wraps seamlessly—just like the arcade! This creates the illusion of an infinite world from a small screen.
-
-## Quick Reference
-
-```basic
-REM HORIZONTAL WRAP
-IF X<24 THEN X=344     Left edge to right
-IF X>344 THEN X=24     Right edge to left
-
-REM VERTICAL WRAP
-IF Y<50 THEN Y=250     Top edge to bottom
-IF Y>250 THEN Y=50     Bottom edge to top
-
-REM EDGE VALUES
-24   Left sprite edge
-344  Right sprite edge
-50   Top sprite edge
-250  Bottom sprite edge
-
-REM WHY THESE VALUES?
-Sprite width = 24 pixels
-Screen coordinates adjusted for sprite size
-```
-
-## What You've Learnt
-
-- Wrap creates continuous playfields
-- Check all four edges
-- Wrap values depend on sprite size
-- Seamless transitions feel natural
-- Classic arcade technique
-
-Wrapping transforms limited screens into infinite worlds!
+- Player moves with WASD; enemy steps toward the player every `SPEED` frames.  
+- Simple collision detection uses `PEEK(53278)`; later you’ll call the hazard routine instead of ending abruptly.
 
 ---
 
-**Time to complete:** 15 minutes
+### Experiment Section
 
-**Key concept:** Screen edge wrapping for continuous playfields
+- Vary enemy speed per room: `SPEED=RULESPEED(ROOM)` to reuse earlier work.  
+- Randomise starting position using the pattern from Lesson 30 to keep chase routes fresh.  
+- Add sidesteps: if the enemy aligns on X, move vertically faster; vice-versa for Y.  
+- Play a collision sound (Lesson 28) when `PEEK(53278)` indicates contact.  
+- Trigger dialogue (“It caught up!”) by calling the dialogue box routine from Lesson 23.
 
-**Success indicator:** You can create a sprite that wraps seamlessly from any edge to the opposite side
+---
+
+### Concept Expansion
+
+Chasers provide a baseline for more complex AI. You can add patrol states, retreats, or group tactics by layering additional conditions around this core logic.
+
+---
+
+### Game Integration
+
+- Use chase logic for the main antagonist in your mini-game.  
+- Combine with random events: occasionally spawn fast “hunter” enemies with higher `SPEED`.  
+- Toggle aggression: slow enemies down when the player collects certain items.  
+- Log chase duration with the timer to give the player bonus points for surviving longer.
+
+---
+
+### Quick Reference
+
+```basic
+IF EX<PX THEN EX=EX+1    : REM chase right
+IF EX>PX THEN EX=EX-1    : REM chase left
+IF EY<PY THEN EY=EY+1    : REM chase down
+IF EY>PY THEN EY=EY-1    : REM chase up
+IF STEP MOD SPEED=0      : REM throttle enemy move rate
+```
+
+---
+
+### What You’ve Learnt
+
+- Built a simple chase enemy driven by relative position.  
+- Used frame counters to control enemy speed.  
+- Hooked collision detection into HUD feedback.  
+- Prepared the enemy AI for the Week 4 mini-game finale.
+
+**Next lesson:** Mini-Game — combine sprites, collisions, HUD, and AI into a full chase experience.
+
+---

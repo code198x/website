@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Shooting Game"
+title: "Smooth Scrolling"
 game: "Commodore 64 BASIC"
 system: "C64"
 lessonNumber: 35
@@ -8,138 +8,123 @@ totalLessons: 64
 prevLesson: "/commodore-64/basic/week-5/lesson-34"
 nextLesson: "/commodore-64/basic/week-5/lesson-36"
 objectives:
-  - Fire projectiles upwards
-  - Detect bullet-target collisions
-  - Remove hit targets from screen
-  - Create shooting game mechanics
+  - Use VIC-II fine-scroll registers for sub-character motion.
+  - Combine hardware scroll with string buffers for endless text.
+  - Prepare the screen for map animation without flicker.
 ---
 
-## Fire at Will!
+## Lesson 35 – Smooth Scrolling
 
-Moving sprites and dodging enemies is brilliant—but what about **fighting back**? Fire bullets upwards, hit targets, and watch them disappear!
+Paging showed us how to jump between slices of a level. Smooth scrolling turns those jumps into glides. By nudging the VIC-II’s fine-scroll registers we can slide an entire map a pixel at a time, then drop in fresh columns as the world moves. No more jerky jumps—just classic C64 motion straight out of a demo party.
 
-Every space shooter from Space Invaders to Galaga uses this exact pattern: fire projectile, check collision, destroy target.
+> [📷 suggested: side-by-side comparison of coarse paging vs. smooth scroll]
 
-## Basic Example
+---
 
-Simple bullet moving upwards:
+### The One-Minute Tour
 
-```basic
-10 REM *** BULLET UP ***
-20 FOR I=832 TO 894:POKE I,255:NEXT I
-30 POKE 2040,13:POKE 53269,1
-40 POKE 53287,1
-50 X=160:Y=200
-60 Y=Y-5
-70 POKE 53248,X:POKE 53249,Y
-80 IF Y>50 THEN GOTO 60
-90 PRINT "MISSED!"
-100 END
-```
+- Register `53270` (D016) controls horizontal fine scrolling in text mode.
+- Scroll from 0 to 7, then shift screen memory by one column and reset.
+- Feed new characters from a buffer so the motion never runs out of scenery.
 
-Press RUN and watch the bullet fly upwards! Simple vertical movement.
+---
 
-## Practical Example
-
-Fire bullet with spacebar:
-
-```basic
-10 REM *** FIRE BULLET ***
-20 PRINT CHR$(147)
-30 FOR I=832 TO 894:POKE I,255:NEXT I
-40 POKE 2040,13:POKE 53269,1
-50 POKE 53287,1
-60 BX=160:BY=200:F=0
-70 GET K$
-80 IF K$=" " AND F=0 THEN F=1:BY=200
-90 IF F=1 THEN BY=BY-5
-100 IF BY<50 THEN F=0:BY=200
-110 POKE 53248,BX:POKE 53249,BY
-120 GOTO 70
-```
-
-Press SPACE to fire! F tracks if bullet is active (0=ready, 1=flying).
-
-## WOW Moment: Target Shooting
+### Example Program
 
 ```basic
 NEW
-10 REM *** TARGET SHOOTER ***
-20 PRINT CHR$(147)
-30 PRINT "PRESS SPACE TO FIRE"
-40 REM SETUP SPRITES
-50 FOR I=832 TO 894:POKE I,255:NEXT I
-60 POKE 2040,13:POKE 2041,13
-70 POKE 53269,3:POKE 53287,1:POKE 53288,2
-80 REM PLAYER & BULLET
-90 PX=160:BY=200:F=0
-100 REM TARGETS
-110 FOR I=0 TO 4
-120 POKE 1100+I*5,81
-130 POKE 55396+I*5,2
-140 NEXT I
-150 SC=0:TA=5
-160 GET K$
-170 IF K$="A" THEN PX=PX-3
-180 IF K$="D" THEN PX=PX+3
-190 IF K$=" " AND F=0 THEN F=1:BX=PX:BY=200
-200 REM MOVE BULLET
-210 IF F=1 THEN BY=BY-5
-220 IF BY<50 THEN F=0
-230 REM CHECK HITS
-240 IF F=1 THEN P=1024+INT(BY/8)*40+INT(BX/8)
-250 IF F=1 AND PEEK(P)=81 THEN POKE P,32:SC=SC+10:F=0:TA=TA-1
-260 REM DISPLAY
-270 POKE 53248,PX:POKE 53249,200
-280 IF F=1 THEN POKE 53250,BX:POKE 53251,BY
-290 PRINT CHR$(19)
-300 PRINT "SCORE:";SC;" TARGETS:";TA
-310 IF TA=0 THEN PRINT "ALL DESTROYED!":END
-320 GOTO 160
+10 REM *** SMOOTH SCROLL STRIP ***
+20 MESSAGE$="   198X HYPERDRIVE ONLINE   "
+30 SPEED=3
+40 PRINT CHR$(147)
+50 BASE=PEEK(53270) AND 248
+60 FOR C=0 TO 39:POKE 1024+C,32:NEXT C
+70 POS=1
+80 CHAR=ASC(MID$(MESSAGE$,POS,1))-32
+90 FOR SHIFT=0 TO 7
+100 POKE 53270,BASE OR SHIFT
+110 FOR W=1 TO SPEED:NEXT W
+120 NEXT SHIFT
+130 FOR COL=0 TO 38
+140 POKE 1024+COL,PEEK(1025+COL)
+150 NEXT COL
+160 POKE 1024+39,CHAR
+170 POS=POS+1:IF POS>LEN(MESSAGE$) THEN POS=1
+180 CHAR=ASC(MID$(MESSAGE$,POS,1))-32
+190 POKE 53270,BASE
+200 GET K$:IF K$=" " THEN END
+210 GOTO 90
 ```
 
-![Space shooter with targets](/images/lessons/commodore-64/basic/week-5/lesson-35/shooter.png)
+This routine scrolls a marquee endlessly from right to left. Lines 50–60 grab the VIC-II’s current horizontal setting and clear a 40-column buffer. The loop at 90–120 smoothly increases the fine-scroll value, nudging the entire row by one pixel per iteration. Once we reach shift value 7, lines 130–160 move the screen memory left by exactly one character and drop in the next letter from `MESSAGE$`. Resetting the scroll bits (line 190) snaps us back to column alignment, ready to repeat.
 
-Move with A/D, fire with SPACE, and watch targets vanish! Destroy all 5 targets to win. This is pure arcade shooting action!
-
-## Quick Reference
-
-```basic
-REM BULLET MECHANICS
-F=0              Bullet ready
-F=1              Bullet flying
-IF F=0 THEN...   Only fire when ready
-
-REM FIRING PATTERN
-IF K$=" " AND F=0 THEN F=1:BY=200
-IF F=1 THEN BY=BY-5     Move bullet up
-IF BY<50 THEN F=0       Reset at top
-
-REM HIT DETECTION
-P=1024+INT(BY/8)*40+INT(BX/8)  Bullet position
-IF PEEK(P)=81 THEN...          Hit target (81=dot)
-POKE P,32                      Remove target
-
-REM TWO SPRITES
-POKE 53269,3     Enable sprites 0 & 1
-Sprite 0 = player (53248/53249)
-Sprite 1 = bullet (53250/53251)
-```
-
-## What You've Learnt
-
-- Fire projectiles with spacebar
-- Track bullet state (ready/flying)
-- Detect bullet-target collisions
-- Remove hit targets from screen
-- Use two sprites (player + bullet)
-
-Shooting mechanics bring action games to life!
+> **Tip:** `PEEK(53270) AND 248` clears only the fine-scroll bits (0–2). You keep multicolour and sprite options intact while you animate.
 
 ---
 
-**Time to complete:** 20 minutes
+### Experiment Section
 
-**Key concept:** Projectile firing and collision detection
+- Adjust `SPEED` to change the glide rate; lower numbers move faster.
+- Load a whole map column from lesson 34 instead of a single character—perfect for side-on caverns.
+- Add vertical scroll by poking `53265` (D011) with values 0–7 inside the same loop.
+- Insert `GET K$` checks inside the fine-scroll loop to let the player pause or accelerate the camera.
 
-**Success indicator:** You can fire bullets that destroy on-screen targets and update score
+> [🎥 suggested: capture of the text strip sliding smoothly with a paused frame showing intermediate positions]
+
+---
+
+### Concept Expansion
+
+Smooth scroll is the bridge between static maps and living worlds. Once you are comfortable feeding fresh columns into screen memory, you can scroll backgrounds, parallax layers, HUDs, or status tapes. Tie the scroll amount to the player’s velocity and the camera will finally follow the action instead of teleporting between pages.
+
+---
+
+### Game Integration
+
+Imagine a runner game that keeps a buffer of upcoming tiles:
+
+```basic
+FOR R=0 TO 9
+  POKE 1024+R*40+39,MAP(R,VIEWX+39)
+NEXT R
+```
+
+Combine this write with the fine-scroll loop so every glide pulls in new terrain from your `DATA` map. The player feels continuous motion even though you still store the world in chunky tiles.
+
+---
+
+### From the Vault
+
+- [VIC-II](/vault/vic-ii) — deep-dive into D011 and D016, the registers you’re tweaking.
+- [Scroll Tech](/vault/scroll-tech) — historical tricks magazines shared for buttery movement.
+
+---
+
+### Quick Reference
+
+```basic
+REM Clear fine scroll bits but keep mode flags
+BASE=PEEK(53270) AND 248
+
+REM Horizontal fine scroll (0-7)
+FOR SHIFT=0 TO 7
+  POKE 53270,BASE OR SHIFT
+NEXT SHIFT
+
+REM Shift screen one column left
+FOR COL=0 TO 38
+  POKE 1024+COL,PEEK(1025+COL)
+NEXT COL
+```
+
+---
+
+### What You’ve Learnt
+
+- Fine-scroll registers let you move the entire screen a pixel at a time.
+- Combining hardware scroll with memory shuffling creates seamless motion.
+- Buffering new characters or tiles keeps the scroll continuous and interesting.
+
+**Next lesson:** Put players and enemies into that moving world with full two-axis control.
+
+---

@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Race/Obstacle Course"
+title: "Game Loops Revisited"
 game: "Commodore 64 BASIC"
 system: "C64"
 lessonNumber: 39
@@ -8,148 +8,120 @@ totalLessons: 64
 prevLesson: "/commodore-64/basic/week-5/lesson-38"
 nextLesson: "/commodore-64/basic/week-5/lesson-40"
 objectives:
-  - Create scrolling obstacles
-  - Implement up/down dodging
-  - Track distance travelled
-  - Build endless runner mechanics
+  - Regulate BASIC game loops with the system timer.
+  - Decouple input checks from simulation updates.
+  - Handle slow frames gracefully so gameplay stays consistent.
 ---
 
-## Dodge to Survive!
+## Lesson 39 – Game Loops Revisited
 
-How far can you run? Endless runner games like **Canabalt** and **Temple Run** use one simple pattern: obstacles scroll toward you, and you dodge!
+Our world now scrolls, collides, and thinks. The last ingredient is rhythm. Without a timed loop, game speed depends on how fast BASIC executes—bad news when you add effects or run on a different machine. We’ll rebuild our main loop around the `TI` jiffy clock, giving us steady pacing and clear hooks for input, logic, and rendering.
 
-Every runner game uses this exact mechanic: scrolling hazards, player movement, distance tracking.
+> [📷 suggested: overlay showing the timer value and sprite position in sync]
 
-## Basic Example
+---
 
-Single scrolling obstacle:
+### The One-Minute Tour
 
-```basic
-10 REM *** SCROLLING OBSTACLE ***
-20 PRINT CHR$(147)
-30 OX=320:OY=120
-40 PY=120
-50 PRINT CHR$(19);"*"
-60 OX=OX-2
-70 IF OX<24 THEN OX=320:OY=120
-80 POKE 53248,OX:POKE 53249,OY
-90 GOTO 60
-```
+- `TI` counts jiffies (1/60th of a second) and resets when you assign `TI$`.
+- Poll inputs continuously, but only update the world when the timer reaches the next tick.
+- If you fall behind, skip ahead to the next tick instead of running stale frames.
 
-An obstacle scrolls from right to left! When it goes off screen, it reappears on the right.
+---
 
-## Practical Example
-
-Dodge obstacle with up/down:
-
-```basic
-10 REM *** DODGE OBSTACLE ***
-20 PRINT CHR$(147)
-30 PRINT "W/S TO DODGE - HIT Q TO QUIT"
-40 FOR I=832 TO 894:POKE I,255:NEXT I
-50 POKE 2040,13:POKE 53287,14:POKE 53269,1
-60 PY=120:OX=320:OY=120
-70 GET K$
-80 IF K$="W" THEN PY=PY-3
-90 IF K$="S" THEN PY=PY+3
-100 IF K$="Q" THEN END
-110 IF PY<50 THEN PY=50
-120 IF PY>229 THEN PY=229
-130 OX=OX-3
-140 IF OX<24 THEN OX=320:OY=INT(RND(1)*150)+70
-150 POKE 53248,120:POKE 53249,PY
-160 POKE 53250,OX:POKE 53251,OY
-170 IF PEEK(53279) THEN PRINT CHR$(147);"HIT!":END
-180 GOTO 70
-```
-
-Dodge the scrolling obstacle with W/S keys! Collision detection stops the game. The obstacle reappears at a random height each time.
-
-## WOW Moment: Obstacle Course Race
+### Example Program
 
 ```basic
 NEW
-10 REM *** OBSTACLE COURSE ***
-20 PRINT CHR$(147)
-30 PRINT "DODGE OBSTACLES - REACH 100M TO WIN!"
-40 PRINT:PRINT "W/S TO MOVE - PRESS ANY KEY"
-50 GET K$:IF K$="" THEN GOTO 50
-60 FOR I=832 TO 894:POKE I,255:NEXT I
-70 POKE 2040,13:POKE 53287,3
-80 POKE 53269,7
-90 PY=120:DIST=0
-100 O1X=320:O1Y=80
-110 O2X=420:O2Y=160
-120 O3X=520:O3Y=100
-130 POKE 53241,2:POKE 53242,2:POKE 53243,2
-140 GET K$
-150 IF K$="W" THEN PY=PY-3
-160 IF K$="S" THEN PY=PY+3
-170 IF K$="Q" THEN END
-180 IF PY<50 THEN PY=50
-190 IF PY>229 THEN PY=229
-200 O1X=O1X-2:O2X=O2X-2:O3X=O3X-2
-210 IF O1X<24 THEN O1X=340:O1Y=INT(RND(1)*150)+70
-220 IF O2X<24 THEN O2X=340:O2Y=INT(RND(1)*150)+70
-230 IF O3X<24 THEN O3X=340:O3Y=INT(RND(1)*150)+70
-240 DIST=DIST+1
-250 POKE 53248,120:POKE 53249,PY
-260 POKE 53250,O1X:POKE 53251,O1Y
-270 POKE 53252,O2X:POKE 53253,O2Y
-280 POKE 53254,O3X:POKE 53255,O3Y
-290 PRINT CHR$(19);"DISTANCE:";INT(DIST/10);"M    "
-300 IF PEEK(53279) THEN GOTO 350
-310 IF DIST>=1000 THEN GOTO 370
-320 GOTO 140
-350 PRINT CHR$(147)
-360 PRINT "CRASHED AT";INT(DIST/10);"M!":END
-370 PRINT CHR$(147)
-380 PRINT "YOU WIN! 100M COMPLETE!"
-390 END
+10 REM *** FIXED TIMESTEP LOOP ***
+20 PRINT CHR$(147);"F=FASTER  S=SLOWER  Q=QUIT"
+30 POKE 2040,13:POKE 53287,7:POKE 53269,1
+40 POKE 53249,120
+50 TI$="000000"
+60 STEP=6:NEXTT=STEP
+70 BASE=PEEK(53270) AND 248
+80 PX=24:SCROLL=0
+90 GET K$
+100 IF K$="F" AND STEP>2 THEN STEP=STEP-1
+110 IF K$="S" AND STEP<12 THEN STEP=STEP+1
+120 IF K$="Q" THEN END
+130 T=TI
+140 IF T<NEXTT THEN GOTO 90
+150 PX=PX+4:IF PX>320 THEN PX=24
+160 POKE 53248,PX
+170 SCROLL=SCROLL+1:IF SCROLL>7 THEN SCROLL=0
+180 POKE 53270,BASE OR SCROLL
+190 IF SCROLL=0 THEN POKE 53270,BASE
+200 NEXTT=NEXTT+STEP
+210 IF NEXTT<T THEN NEXTT=T+STEP
+220 IF NEXTT>30000 THEN NEXTT=STEP:TI$="000000"
+230 PRINT CHR$(19);"STEP:";STEP;"  TI:";T
+240 GOTO 90
 ```
 
-![Obstacle course with distance tracking](/images/lessons/commodore-64/basic/week-5/lesson-39/race.png)
+The loop checks input every pass (lines 90–120) but only updates motion when `TI` reaches the next scheduled tick (line 140). Horizontal sprite motion and a gentle smooth scroll happen inside the timed block (150–190). If a frame runs long, line 210 fast-forwards `NEXTT` to the current timer to avoid piling up late updates. The printout at line 230 gives live telemetry so you can see the timer and step size in action.
 
-Three scrolling obstacles at random heights! Dodge them with W/S keys and reach 100 metres to win. Each obstacle respawns at a new position when it scrolls off-screen—the course never ends until you crash or reach the finish!
-
-## Quick Reference
-
-```basic
-REM SCROLLING OBSTACLES
-OX=OX-2              Move left
-IF OX<24 THEN OX=320 Wrap to right edge
-
-REM RANDOM HEIGHTS
-OY=RND(1)*150+70     Random Y between 70-220
-
-REM DISTANCE TRACKING
-DIST=DIST+1          Increment each frame
-INT(DIST/10)         Convert to metres
-
-REM MULTIPLE SPRITES
-POKE 53269,7         Enable sprites 0,1,2
-O1X, O2X, O3X        Track separately
-POKE 53250-255       Position obstacles
-
-REM COLLISION DETECTION
-PEEK(53279)          Sprite-sprite collision
-Bit set = collision detected
-```
-
-## What You've Learnt
-
-- Scrolling obstacles create runner gameplay
-- Multiple obstacles increase difficulty
-- Distance tracking measures progress
-- Random respawning keeps gameplay fresh
-- Collision ends the game or triggers loss
-
-Scrolling hazards turn simple dodging into addictive "one more try" gameplay!
+> **Tip:** `STEP` is measured in jiffies. Six jiffies ≈ 0.1 seconds (60 / 6). Shorter steps mean smoother motion but more CPU work each second.
 
 ---
 
-**Time to complete:** 15 minutes
+### Experiment Section
 
-**Key concept:** Endless runner mechanics with scrolling obstacles
+- Replace the simple sprite move with your full player update from Lesson 36.
+- Run collision checks only when the timer ticks, but read inputs continuously so you never miss quick taps.
+- Add a countdown timer: subtract 1 every 60 jiffies and update the HUD.
+- Try letting the player press `F` during slow frames to see how the loop recovers.
 
-**Success indicator:** You can dodge three scrolling obstacles and track distance travelled with a win condition
+> [🎥 suggested: capture of the sprite gliding at constant speed while the timer overlay updates]
+
+---
+
+### Concept Expansion
+
+A regulated loop is your contract with the player. Once you own the rhythm, you can stack systems—AI, physics, scrolling—confident they’ll keep sync. For true smoothness, some developers run logic at one rate (say, 1/30 s) and rendering faster. In BASIC we keep it simple: one loop, one timer, consistent speed.
+
+---
+
+### Game Integration
+
+Hook the timer into your scroll runner:
+
+```basic
+IF TI>=NEXTT THEN NEXTT=NEXTT+STEP:GOSUB 4000:GOSUB 5000
+```
+
+Use `NEXTT<T` checks to skip frames when you lag. Better a brief skip than runaway slow motion.
+
+---
+
+### From the Vault
+
+- [BASIC Timing Tricks](/vault/basic-timing) — magazine tips on squeezing consistent speed from interpreters.
+- [Demo Scene](/vault/demoscene) — inspiration from coders who lived by cycle-perfect loops.
+
+---
+
+### Quick Reference
+
+```basic
+REM Reset timer
+TI$="000000"
+
+REM Schedule next tick
+IF TI>=NEXTT THEN NEXTT=NEXTT+STEP:GOSUB 4000
+
+REM Catch-up guard
+IF NEXTT<TI THEN NEXTT=TI+STEP
+```
+
+---
+
+### What You’ve Learnt
+
+- `TI` and `TI$` give you a reliable heartbeat for BASIC games.
+- Poll input constantly but simulate on schedule for smooth motion.
+- Skip ahead when frames lag so gameplay never crawls unpredictably.
+
+**Next lesson:** Build **Scroll Runner**, a complete mini-game that blends scrolling, AI, collisions, and timing.
+
+---

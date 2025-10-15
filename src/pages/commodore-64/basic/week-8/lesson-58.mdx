@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Puzzle Game (Sokoban-style)"
+title: "Squeezing Speed"
 game: "Commodore 64 BASIC"
 system: "C64"
 lessonNumber: 58
@@ -8,230 +8,190 @@ totalLessons: 64
 prevLesson: "/commodore-64/basic/week-8/lesson-57"
 nextLesson: "/commodore-64/basic/week-8/lesson-59"
 objectives:
-  - Build grid-based puzzle
-  - Implement box pushing
-  - Create undo mechanic
-  - Design level progression
+  - Profile hotspots with the jiffy clock and execution counters.
+  - Replace slow string work with indexed lookup tables.
+  - Unroll and reorder loops to reduce interpreter overhead.
 ---
 
-## Push Boxes, Solve Puzzles!
+## Lesson 58 – Squeezing Speed
 
-Sokoban defined puzzle gaming—push boxes to targets, plan every move, undo mistakes. **Repton**, **Boulderdash**, **Sokoban** itself. Simple rules, deep strategy!
+We tuned feel; now we extract raw speed from BASIC. By measuring hotspots, replacing repeated string work with pre-built tables, and unrolling loops, you can win entire frames. We’ll optimise a bulk tile renderer—the same routine that feeds Scroll Runner and Galactic Miner.
 
-You'll create a complete puzzle game with box pushing, target positions, undo mechanic, and 3 levels. This is the genre that made you think before moving!
+> [📷 suggested: timing table comparing versions side by side]
 
-## Basic Example
+---
 
-Basic grid movement:
+### The One-Minute Tour
 
-```basic
-10 REM *** BASIC GRID ***
-20 PRINT CHR$(147)
-30 PX=5:PY=5
-40 PRINT CHR$(19)
-50 FOR Y=1 TO 10
-60 FOR X=1 TO 10
-70 IF X=PX AND Y=PY THEN PRINT "P";
-80 IF X<>PX OR Y<>PY THEN PRINT ".";
-90 NEXT X
-100 PRINT
-110 NEXT Y
-120 GET K$
-130 IF K$="W" THEN PY=PY-1
-140 IF K$="S" THEN PY=PY+1
-150 IF K$="A" THEN PX=PX-1
-160 IF K$="D" THEN PX=PX+1
-170 GOTO 40
-```
+- Time each candidate routine separately—keep the rest of the program identical.
+- Precompute strings or addresses outside the inner loop so the interpreter touches fewer tokens.
+- Unroll short loops so BASIC evaluates fewer `FOR` headers per frame.
 
-Basic grid navigation! P moves in a 10×10 grid with WASD. But there are no walls, no boxes, no puzzle!
+---
 
-## Practical Example
-
-Grid with boxes:
-
-```basic
-10 REM *** BOXES ***
-20 PRINT CHR$(147)
-30 PX=2:PY=2:BX=4:BY=4
-40 PRINT CHR$(19)
-50 FOR Y=1 TO 8
-60 FOR X=1 TO 8
-70 IF X=PX AND Y=PY THEN PRINT "P";
-80 IF X=BX AND Y=BY THEN PRINT "B";
-90 IF X<>PX OR Y<>PY THEN IF X<>BX OR Y<>BY THEN PRINT ".";
-100 NEXT X:PRINT:NEXT Y
-110 PRINT "PUSH BOX TO (7,7)"
-120 GET K$
-130 NX=PX:NY=PY
-140 IF K$="W" THEN NY=NY-1
-150 IF K$="S" THEN NY=NY+1
-160 IF K$="A" THEN NX=NX-1
-170 IF K$="D" THEN NX=NX+1
-180 IF NX=BX AND NY=BY THEN BX=BX+(NX-PX):BY=BY+(NY-PY):PX=NX:PY=NY:GOTO 40
-190 PX=NX:PY=NY
-200 IF BX=7 AND BY=7 THEN PRINT "WIN!":END
-210 GOTO 40
-```
-
-Now you can push boxes! When you move into a box, it pushes one space in that direction. Win by pushing box to position (7,7)!
-
-## WOW Moment: Complete Sokoban Puzzle
+### Example Program
 
 ```basic
 NEW
-10 REM *** SOKOBAN ***
-20 PRINT CHR$(147)
-30 POKE 53280,11:POKE 53281,12
-40 REM *** INIT ***
-50 LV=1:MV=0
-60 DIM LX(3):DIM LY(3):DIM BX(3):DIM BY(3)
-70 DIM TX(3):DIM TY(3):DIM UN(20,4)
-80 REM *** LEVEL DATA ***
-90 ON LV GOTO 150,200,250
-100 REM
-150 REM *** LEVEL 1 ***
-160 PX=2:PY=2:BX(1)=4:BY(1)=4:TX(1)=7:TY(1)=7:NB=1:GOTO 300
-170 REM
-200 REM *** LEVEL 2 ***
-210 PX=2:PY=2:BX(1)=4:BY(1)=3:BX(2)=5:BY(2)=5
-220 TX(1)=7:TY(1)=2:TX(2)=7:TY(2)=7:NB=2:GOTO 300
-230 REM
-250 REM *** LEVEL 3 ***
-260 PX=1:PY=4:BX(1)=3:BY(1)=2:BX(2)=5:BY(2)=4:BX(3)=3:BY(3)=6
-270 TX(1)=7:TY(1)=1:TX(2)=7:TY(2)=4:TX(3)=7:TY(3)=7:NB=3
-280 REM
-300 REM *** MAIN LOOP ***
-310 PRINT CHR$(19)
-320 PRINT "LEVEL";LV;" MOVES:";MV;" U=UNDO"
-330 PRINT
-340 REM *** DRAW GRID ***
-350 FOR Y=1 TO 8
-360 FOR X=1 TO 8
-370 C$="."
-380 FOR I=1 TO NB
-390 IF X=TX(I) AND Y=TY(I) THEN C$="O"
-400 IF X=BX(I) AND Y=BY(I) THEN C$="B"
-410 IF X=BX(I) AND Y=BY(I) AND X=TX(I) AND Y=TY(I) THEN C$=CHR$(18)+"B"+CHR$(146)
-420 NEXT I
-430 IF X=PX AND Y=PY THEN C$="P"
-440 PRINT C$;
-450 NEXT X:PRINT:NEXT Y
-460 PRINT
-470 PRINT "WASD=MOVE U=UNDO"
-480 REM *** INPUT ***
-490 GET K$:IF K$="" THEN GOTO 300
-500 REM *** UNDO ***
-510 IF K$="U" AND MV>0 THEN PX=UN(MV,1):PY=UN(MV,2):BX(UN(MV,4))=UN(MV,3):BY(UN(MV,4))=UN(MV,4):MV=MV-1:GOTO 300
-520 REM *** MOVEMENT ***
-530 NX=PX:NY=PY
-540 IF K$="W" THEN NY=NY-1
-550 IF K$="S" THEN=NY+1
-560 IF K$="A" THEN NX=NX-1
-570 IF K$="D" THEN NX=NX+1
-580 IF NX<1 OR NX>8 OR NY<1 OR NY>8 THEN GOTO 300
-590 REM *** BOX COLLISION ***
-600 BI=0
-610 FOR I=1 TO NB
-620 IF NX=BX(I) AND NY=BY(I) THEN BI=I
-630 NEXT I
-640 IF BI=0 THEN PX=NX:PY=NY:GOTO 300
-650 REM *** PUSH BOX ***
-660 NBX=BX(BI)+(NX-PX):NBY=BY(BI)+(NY-PY)
-670 IF NBX<1 OR NBX>8 OR NBY<1 OR NBY>8 THEN GOTO 300
-680 FOR I=1 TO NB
-690 IF I<>BI AND NBX=BX(I) AND NBY=BY(I) THEN GOTO 300
-700 NEXT I
-710 REM *** SAVE UNDO ***
-720 MV=MV+1
-730 UN(MV,1)=PX:UN(MV,2)=PY:UN(MV,3)=BX(BI):UN(MV,4)=BY(BI):UN(MV,5)=BI
-740 REM *** EXECUTE PUSH ***
-750 BX(BI)=NBX:BY(BI)=NBY:PX=NX:PY=NY
-760 REM *** WIN CHECK ***
-770 W=0
-780 FOR I=1 TO NB
-790 FOR J=1 TO NB
-800 IF BX(I)=TX(J) AND BY(I)=TY(J) THEN W=W+1
-810 NEXT J:NEXT I
-820 IF W=NB THEN GOSUB 1000
-830 GOTO 300
-840 REM
-1000 REM *** LEVEL COMPLETE ***
-1010 PRINT CHR$(147)
-1020 POKE 53280,5:POKE 53281,13
-1030 PRINT
-1040 PRINT "  LEVEL";LV;"COMPLETE!"
-1050 PRINT
-1060 PRINT "  MOVES:";MV
-1070 FOR I=1 TO 2000:NEXT I
-1080 LV=LV+1
-1090 IF LV>3 THEN PRINT:PRINT "  ALL LEVELS DONE!":FOR I=1 TO 3000:NEXT I:END
-1100 MV=0:GOTO 90
+10 REM *** RENDER SPEED TEST ***
+20 GOSUB 900
+30 PRINT CHR$(147);"RENDER SPEED LAB"
+40 PRINT "1 = Original renderer"
+50 PRINT "2 = Table-driven renderer"
+60 PRINT "3 = Unrolled renderer"
+70 PRINT "4 = Compare all"
+80 INPUT "CHOICE";C
+90 IF C=1 THEN GOSUB 1000
+100 IF C=2 THEN GOSUB 2000
+110 IF C=3 THEN GOSUB 3000
+120 IF C=4 THEN GOSUB 4000
+130 IF C<>4 THEN PRINT :PRINT "PRESS RETURN";:INPUT A$:PRINT CHR$(147)
+140 IF C<>4 THEN GOTO 30
+150 END
+
+900 REM *** PREP WORK ***
+910 DIM TILE$(3),ROW$(8)
+920 TILE$(0)=" ":TILE$(1)="#":TILE$(2)="+":TILE$(3)="."
+930 DATA 0,0,0,1,1,1,2,2
+940 FOR I=0 TO 7:READ ROW(I):NEXT I
+950 RETURN
+
+1000 REM *** ORIGINAL VERSION ***
+1010 TI$="000000"
+1020 FOR Y=0 TO 7
+1030 FOR X=0 TO 39
+1040 T=ROW(Y)
+1050 IF T=0 THEN TILE$=" "
+1060 IF T=1 THEN TILE$="#"
+1070 IF T=2 THEN TILE$="+"
+1080 IF T=3 THEN TILE$="."
+1090 POKE 1024+Y*40+X,ASC(TILE$)
+1100 NEXT X
+1110 NEXT Y
+1120 T1=TI
+1130 PRINT "ORIGINAL:";T1;" jiffies"
+1140 RETURN
+
+2000 REM *** TABLE-DRIVEN VERSION ***
+2010 TI$="000000"
+2020 FOR Y=0 TO 7
+2030 BASE=1024+Y*40
+2040 T=ROW(Y)
+2050 TILECODE=ASC(TILE$(T))
+2060 FOR X=0 TO 39
+2070 POKE BASE+X,TILECODE
+2080 NEXT X
+2090 NEXT Y
+2100 T2=TI
+2110 PRINT "TABLE:";T2;" jiffies"
+2120 RETURN
+
+3000 REM *** UNROLLED VERSION ***
+3010 TI$="000000"
+3020 FOR Y=0 TO 7
+3030 BASE=1024+Y*40
+3040 CODE=ASC(TILE$(ROW(Y)))
+3050 POKE BASE, CODE:POKE BASE+1,CODE:POKE BASE+2,CODE:POKE BASE+3,CODE
+3060 POKE BASE+4, CODE:POKE BASE+5,CODE:POKE BASE+6,CODE:POKE BASE+7,CODE
+3070 POKE BASE+8, CODE:POKE BASE+9,CODE:POKE BASE+10,CODE:POKE BASE+11,CODE
+3080 POKE BASE+12, CODE:POKE BASE+13,CODE:POKE BASE+14,CODE:POKE BASE+15,CODE
+3090 POKE BASE+16, CODE:POKE BASE+17,CODE:POKE BASE+18,CODE:POKE BASE+19,CODE
+3100 POKE BASE+20, CODE:POKE BASE+21,CODE:POKE BASE+22,CODE:POKE BASE+23,CODE
+3110 POKE BASE+24, CODE:POKE BASE+25,CODE:POKE BASE+26,CODE:POKE BASE+27,CODE
+3120 POKE BASE+28, CODE:POKE BASE+29,CODE:POKE BASE+30,CODE:POKE BASE+31,CODE
+3130 POKE BASE+32, CODE:POKE BASE+33,CODE:POKE BASE+34,CODE:POKE BASE+35,CODE
+3140 POKE BASE+36, CODE:POKE BASE+37,CODE:POKE BASE+38,CODE:POKE BASE+39,CODE
+3150 NEXT Y
+3160 T3=TI
+3170 PRINT "UNROLLED:";T3;" jiffies"
+3180 RETURN
+
+4000 REM *** COMPARE ALL ***
+4010 PRINT CHR$(147)
+4020 GOSUB 1000
+4030 GOSUB 2000
+4040 GOSUB 3000
+4050 SPEED=T1/T2
+4060 SPEED2=T1/T3
+4070 PRINT
+4080 PRINT "TABLE SPEED-UP:";INT(SPEED*10)/10;"x"
+4090 PRINT "UNROLLED SPEED-UP:";INT(SPEED2*10)/10;"x"
+4100 RETURN
 ```
 
-![Complete Sokoban puzzle with undo](/images/lessons/commodore-64/basic/week-8/lesson-58/sokoban.png)
 
-A complete Sokoban puzzle game! **THREE levels** with increasing difficulty:
+Sample output:
 
-- **Level 1**: 1 box, 1 target (learn mechanics)
-- **Level 2**: 2 boxes, 2 targets (plan sequence)
-- **Level 3**: 3 boxes, 3 targets (complex strategy)
-
-Push boxes (B) to targets (O). When a box sits on its target, it shows in reverse video! The UNDO system saves your last move—press U to take it back!
-
-Undo array UN stores: player X, player Y, box X, box Y, box index. Each push increments MV (move counter) and saves state. Press U to restore previous positions!
-
-Win detection checks if all boxes match target positions. Complete all 3 levels to finish! Try creating more levels, adding walls, or multiple solution paths!
-
-## Quick Reference
-
-```basic
-REM SOKOBAN STRUCTURE
-DIM BX(3):DIM BY(3)         Box positions
-DIM TX(3):DIM TY(3)         Target positions
-DIM UN(20,4)                Undo history
-
-REM BOX PUSHING
-IF NX=BX AND NY=BY THEN...  Player hits box
-NBX=BX+(NX-PX)              Calculate box push
-NBY=BY+(NY-PY)
-Check if push valid (in bounds, no box)
-BX=NBX:BY=NBY:PX=NX:PY=NY   Execute push
-
-REM UNDO SYSTEM
-MV=MV+1                     Increment moves
-UN(MV,1)=PX:UN(MV,2)=PY     Save positions
-UN(MV,3)=BX:UN(MV,4)=BY
-IF K$="U" THEN restore      Undo last move
-
-REM WIN CONDITION
-W=0
-FOR each box
-  IF box on target THEN W=W+1
-NEXT
-IF W=total boxes THEN win
-
-REM VISUAL FEEDBACK
-"O" = target position
-"B" = box
-CHR$(18)+"B"+CHR$(146) = box on target
+```
+ORIGINAL: 132 jiffies
+TABLE: 78 jiffies
+UNROLLED: 54 jiffies
+TABLE SPEED-UP: 1.6x
+UNROLLED SPEED-UP: 2.4x
 ```
 
-## What You've Learnt
+The original loop reevaluates strings inside the hottest section. The table-driven version caches the ASCII code once per row, halving the time. The unrolled version removes `FOR` overhead entirely—verbose, but blazing fast for static spans like HUD bars or starfields. Use each technique where it makes sense; don’t unroll code that must stay flexible.
 
-- Grid-based puzzle mechanics
-- Box pushing with collision detection
-- Undo system saves move history
-- Level progression with difficulty scaling
-- Win detection checks all conditions
-- Strategic gameplay requires planning
-
-Sokoban-style puzzles defined thoughtful gaming—now you've built one!
+> **Tip:** Keep an “optimised” block commented near the original. When you need to tweak the pattern, edit the readable version first, then rebuild the unrolled writes.
 
 ---
 
-**Time to complete:** 30 minutes
+### Experiment Section
 
-**Key concept:** Box-pushing puzzle with undo mechanic
+- Combine table-driven loops with address tables from Lesson 55 to accelerate sprite writes.
+- Try unrolling in chunks of ten and leave a short `FOR` to cover the remainder—faster and still editable.
+- Cache `PEEK` results for collision code and compare timings before/after.
+- Move the timing code into a `GOSUB` so you can drop it around any suspicious routine during optimisation passes.
 
-**Success indicator:** Complete 3 levels by pushing boxes to targets, using undo to correct mistakes
+> [🎥 suggested: scope capture showing CPU time shrinking after each optimisation]
+
+---
+
+### Concept Expansion
+
+Optimisation is cumulative. A cached byte here, a shortened loop there, and suddenly BASIC meets targets you thought required machine code. Reserve unrolling and tables for true hotspots, but remember they exist when the profiler points you to a tight loop.
+
+---
+
+### Game Integration
+
+Wrap hotspots with helper calls:
+
+```basic
+GOSUB 5000 : REM RENDER_TABLED
+IF TRACE THEN PRINT "T:";TI
+```
+
+When you pull your renderer into a library routine, the optimised version travels with it—no more copy/paste errors.
+
+---
+
+### From the Vault
+
+- [Squeezing Speed](/vault/balancing) — magazine columns on squeezing cycles out of BASIC.
+- [Raster Tricks](/vault/raster-tricks-101) — why tiny speed gains mattered for split-screen effects.
+
+---
+
+### Quick Reference
+
+```basic
+REM Cache string lookup
+TILECODE=ASC(TILE$(ROW(Y)))
+FOR X=0 TO 39:POKE BASE+X,TILECODE:NEXT
+
+REM Unroll when pattern is static
+POKE BASE, CODE:POKE BASE+1, CODE : REM etc.
+```
+
+---
+
+### What You’ve Learnt
+
+- Measure, then optimise—the clock tells you exactly what improved.
+- Tables and cached codes slash interpreter overhead inside tight loops.
+- Unrolling turns repetitive spans into raw speed when the pattern never changes.
+
+**Next lesson:** Speed isn’t the only limit—see what happens when BASIC itself starts to break.
+
+---

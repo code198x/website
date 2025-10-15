@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Simple Platformer Jump"
+title: "Collision Layers"
 game: "Commodore 64 BASIC"
 system: "C64"
 lessonNumber: 38
@@ -8,142 +8,147 @@ totalLessons: 64
 prevLesson: "/commodore-64/basic/week-5/lesson-37"
 nextLesson: "/commodore-64/basic/week-5/lesson-39"
 objectives:
-  - Implement gravity physics
-  - Create jump arc with velocity
-  - Detect platform landings
-  - Build platformer movement
+  - Separate sprite–sprite and sprite–background collisions.
+  - React differently when players hit walls, pickups, or hazards.
+  - Keep score and lives in sync with collision outcomes.
 ---
 
-## Jump Like Manic Miner!
+## Lesson 38 – Collision Layers
 
-Platformer games need **gravity**—sprites fall down unless they're standing on something. Add a jump, and you've got Manic Miner, Jet Set Willy, or any classic platform game!
+When everything shares one collision rule, games feel unfair. By splitting collisions into layers—background tiles, collectibles, hazards—you control how each overlap behaves. The VIC-II gives us two handy status registers so we can detect walls separately from sprite encounters, then resolve each interaction cleanly.
 
-Every platformer from Donkey Kong to Mario uses this exact pattern: gravity pulls down, jump pushes up, land on platforms.
+> [📷 suggested: screenshot with the player sprite rebounding off a wall while a pickup sparkles nearby]
 
-## Basic Example
+---
 
-Simple gravity—sprite falls:
+### The One-Minute Tour
 
-```basic
-10 REM *** GRAVITY FALL ***
-20 FOR I=832 TO 894:POKE I,255:NEXT I
-30 POKE 2040,13:POKE 53269,1
-40 POKE 53287,7
-50 X=160:Y=50
-60 VY=0
-70 VY=VY+1
-80 Y=Y+VY
-90 IF Y>200 THEN Y=200:VY=0
-100 POKE 53248,X:POKE 53249,Y
-110 FOR D=1 TO 5:NEXT D
-120 GOTO 70
-```
+- `PEEK(53278)` flags sprite-vs-background collisions.
+- `PEEK(53279)` flags which sprites have touched another sprite.
+- React immediately, then read the registers again next frame—they clear on read.
 
-Gravity constantly pulls down! VY increases every frame (acceleration). When Y hits the ground (200), stop falling.
+---
 
-## Practical Example
-
-Add jump—press space to go up:
-
-```basic
-10 REM *** GRAVITY + JUMP ***
-20 FOR I=832 TO 894:POKE I,255:NEXT I
-30 POKE 2040,13:POKE 53269,1
-40 POKE 53287,14
-50 X=160:Y=200
-60 VY=0:ON=1
-70 GET K$
-80 IF K$=" " AND ON=1 THEN VY=-8:ON=0
-90 VY=VY+1
-100 Y=Y+VY
-110 IF Y>200 THEN Y=200:VY=0:ON=1
-120 POKE 53248,X:POKE 53249,Y
-130 FOR D=1 TO 3:NEXT D
-140 GOTO 70
-```
-
-Press space to jump! VY=-8 creates upward velocity. Gravity (+1 every frame) pulls it back down. ON flag prevents mid-air jumping.
-
-## WOW Moment: Platform Jumper
+### Example Program
 
 ```basic
 NEW
-10 REM *** PLATFORM JUMPER ***
+10 REM *** COLLISION LAYERS ***
 20 PRINT CHR$(147)
-30 PRINT "SPACE=JUMP  A/D=MOVE"
-40 FOR I=0 TO 23:POKE 1024+I*40+5,160:NEXT I
-50 FOR I=0 TO 23:POKE 1024+I*40+34,160:NEXT I
-60 FOR I=10 TO 15:POKE 1024+15*40+I,160:NEXT I
-70 FOR I=25 TO 30:POKE 1024+15*40+I,160:NEXT I
-80 FOR I=5 TO 39:POKE 1024+23*40+I,160:NEXT I
-90 FOR I=832 TO 894:POKE I,255:NEXT I
-100 POKE 2040,13:POKE 53287,3
-110 POKE 53269,1
-120 X=100:Y=170
-130 VY=0:ON=1
+30 PRINT "SCORE:0  LIVES:3"
+35 R=RND(-TI)
+40 FOR C=0 TO 39
+50 POKE 1024+12*40+C,160:POKE 55296+12*40+C,2
+60 NEXT C
+70 POKE 2040,13:POKE 2041,14:POKE 2042,15
+80 POKE 53269,7
+90 POKE 53287,6:POKE 53288,10:POKE 53289,2
+100 PX=80:PY=200:FX=280:FY=90:HX=140:HY=80:HS=2
+110 LIVES=3:SCORE=0
+120 GOSUB 300
+130 OLDPX=PX:OLDPY=PY
 140 GET K$
-150 IF K$=" " AND ON=1 THEN VY=-9:ON=0
-160 IF K$="A" THEN X=X-2
-170 IF K$="D" THEN X=X+2
-180 VY=VY+1
-190 IF VY>5 THEN VY=5
-200 Y=Y+VY
-210 REM CHECK PLATFORMS
-220 PX=INT(X/8):PY=INT(Y/8)
-230 C=PEEK(1024+PY*40+PX)
-240 IF C=160 AND VY>0 THEN Y=PY*8:VY=0:ON=1
-250 REM FALL OFF BOTTOM
-260 IF Y>229 THEN PRINT CHR$(147);"FELL!":GOTO 280
-270 IF X<48 OR X>272 THEN X=100:Y=170:VY=0
-280 POKE 53248,X:POKE 53249,Y
-290 FOR D=1 TO 3:NEXT D
-300 GOTO 140
+150 IF K$="A" THEN PX=PX-3
+160 IF K$="D" THEN PX=PX+3
+170 IF K$="W" THEN PY=PY-3
+180 IF K$="S" THEN PY=PY+3
+190 IF PX<24 THEN PX=24
+200 IF PX>320 THEN PX=320
+210 IF PY<60 THEN PY=60
+220 IF PY>233 THEN PY=233
+230 POKE 53248,PX:POKE 53249,PY
+240 COLB=PEEK(53278)
+250 IF COLB AND 1 THEN PX=OLDPX:PY=OLDPY:POKE 53248,PX:POKE 53249,PY
+260 COLS=PEEK(53279)
+270 IF COLS AND 2 THEN SCORE=SCORE+100:GOSUB 320
+280 IF COLS AND 4 THEN LIVES=LIVES-1:PX=80:PY=200:GOSUB 350:IF LIVES=0 THEN PRINT CHR$(19);"GAME OVER":END
+290 HY=HY+HS:IF HY<70 OR HY>200 THEN HS=-HS:HY=HY+HS
+300 POKE 53250,FX:POKE 53251,FY
+310 POKE 53252,HX:POKE 53253,HY
+320 GOSUB 300
+330 FOR D=1 TO 4:NEXT D
+340 OLDPX=PX:OLDPY=PY
+350 GOTO 140
+300 PRINT CHR$(19);"SCORE:";SCORE;TAB(18);"LIVES:";LIVES
+310 RETURN
+320 FX=60+INT(RND(1)*220):FY=70+INT(RND(1)*110)
+330 POKE 53250,FX:POKE 53251,FY
+340 RETURN
+350 HX=40+INT(RND(1)*240):HY=70+INT(RND(1)*120)
+360 POKE 53252,HX:POKE 53253,HY
+370 RETURN
 ```
 
-![Platformer with gravity and jumping](/images/lessons/commodore-64/basic/week-5/lesson-38/platformer.png)
+A solid wall lives on row 12 (lines 40–60). The player sprite (0) flies around, sprite 1 is a fuel cell, and sprite 2 is a prowling hazard. When the player touches the wall, line 250 spots the background collision (`COLB AND 1`) and snaps the sprite back to its previous position. Fuel pickups trigger bit 1 (`COLS AND 2`), adding 100 points and respawning elsewhere. Hazard collisions use bit 2 (`COLS AND 4`) to drain a life, reset the player, and reroll the hazard’s patrol. The scoreboard is redrawn each frame via the subroutine at line 300.
 
-Jump between platforms! Gravity constantly pulls down. Space creates upward velocity that decreases each frame (arc). PEEK detects platform characters (160). Fall off the bottom and you restart!
-
-## Quick Reference
-
-```basic
-REM GRAVITY PHYSICS
-VY=0                Starting velocity
-VY=VY+1             Gravity acceleration
-Y=Y+VY              Apply velocity
-IF VY>5 THEN VY=5   Terminal velocity
-
-REM JUMP MECHANICS
-VY=-8               Jump velocity (negative = up)
-ON=1                On ground flag
-IF ON=1 THEN...     Can only jump on ground
-
-REM PLATFORM DETECTION
-PX=INT(X/8)         Convert to character X
-PY=INT(Y/8)         Convert to character Y
-C=PEEK(1024+PY*40+PX)  Read screen character
-IF C=160 THEN...    Platform detected
-
-REM LANDING
-IF C=160 AND VY>0   Platform + falling down
-Y=PY*8              Snap to platform top
-VY=0:ON=1           Stop falling, enable jump
-```
-
-## What You've Learnt
-
-- VY creates gravity acceleration
-- Negative velocity = jump upward
-- Gravity pulls velocity back down
-- PEEK detects platform characters
-- ON flag prevents mid-air jumping
-
-Gravity + jump = platformer gameplay!
+> **Tip:** Read `53278` and `53279` once per frame, store the results, and act on the stored values. Every read clears the register, so grabbing it twice will lose the data.
 
 ---
 
-**Time to complete:** 20 minutes
+### Experiment Section
 
-**Key concept:** Gravity physics with jump mechanics
+- Add separate `DATA` arrays for collectible positions and rebuild the map when you clear a stage.
+- Replace the solid wall with a scrolling row to see how background collisions behave in motion.
+- Track invincibility frames: set `HITTIME=TI` when you lose a life and ignore hazard collisions until a delay passes.
+- Trigger sound effects (`POKE 54272`) for each collision type to reinforce feedback.
 
-**Success indicator:** You can jump between platforms with realistic gravity, and fall to your death off the bottom
+> [🎥 suggested: clip showing the player bouncing off the wall, collecting fuel, and losing a life to the hazard]
+
+---
+
+### Concept Expansion
+
+Layered collisions keep your logic simple. Background hits resolve immediately by snapping positions. Collectibles alter score or inventory, then vanish. Hazards affect health or states. Once you trust each layer, you can add more—enemy projectiles, moving platforms, parallax decorations—without the whole system collapsing.
+
+---
+
+### Game Integration
+
+Use layers to gate level progress:
+
+```basic
+IF COLB AND 1 THEN CAN_SCROLL=0
+IF COLS AND 2 THEN CRYSTALS=CRYSTALS+1
+IF CRYSTALS=TOTAL THEN CAN_SCROLL=1
+```
+
+Only when the player clears every collectible does the scroll lock release, tying collisions directly to progression.
+
+---
+
+### From the Vault
+
+- [VIC-II Collision Guide](/vault/vic-ii-collisions) — bit charts for both registers.
+- [Arcade Feedback](/vault/feedback) — how visual and audio cues sold hits in classic games.
+
+---
+
+### Quick Reference
+
+```basic
+REM Collision registers
+COLB=PEEK(53278) : REM sprite vs background
+COLS=PEEK(53279) : REM sprite vs sprite
+
+REM Bit masks
+1 = sprite 0
+2 = sprite 1
+4 = sprite 2
+
+REM Typical responses
+IF COLB AND 1 THEN RESTORE_POSITION
+IF COLS AND 2 THEN COLLECT_ITEM
+IF COLS AND 4 THEN TAKE_DAMAGE
+```
+
+---
+
+### What You’ve Learnt
+
+- The VIC-II separates background and sprite collisions so you can act appropriately.
+- Reading the registers clears them—store once, then respond.
+- Clear reactions (bounce, award, damage) keep multi-layered gameplay understandable.
+
+**Next lesson:** Tighten your main loop timing so all these systems run at a steady tempo.
+
+---

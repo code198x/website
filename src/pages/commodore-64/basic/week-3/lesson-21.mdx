@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Moving a Sprite"
+title: "Smarter Decisions II"
 game: "Commodore 64 BASIC"
 system: "C64"
 lessonNumber: 21
@@ -8,120 +8,197 @@ totalLessons: 64
 prevLesson: "/commodore-64/basic/week-3/lesson-20"
 nextLesson: "/commodore-64/basic/week-3/lesson-22"
 objectives:
-  - Move sprites by changing position
-  - Calculate circular motion
-  - Use SIN/COS for smooth paths
-  - Create animated sprite movement
+  - 'Introduce room-specific rules that alter hazards, exits, and enemy behaviour.'
+  - 'Use lookup tables to adjust logic without rewriting code.'
+  - 'Build a mini state machine that reacts differently per room or difficulty.'
 ---
 
-## Sprites Come Alive!
+## Lesson 21 – Smarter Decisions II
 
-A stationary sprite is nice, but sprites are meant to **move**. Change the X/Y registers in a loop and the sprite glides smoothly across the screen!
+Week 2 gave you global collision logic; now we tailor it per room. You’ll assign behaviours through tables, letting one loop adapt to different hazards, exits, and enemy speeds.
 
-The secret: POKE new values to 53248 (X) and 53249 (Y) repeatedly.
-
-## Basic Example
-
-Move a sprite horizontally:
-
-```basic
-10 REM *** MOVING SPRITE ***
-20 FOR I=832 TO 894:POKE I,255:NEXT I
-30 POKE 2040,13:POKE 53269,1
-40 X=50
-50 POKE 53248,X:POKE 53249,120
-60 X=X+2:IF X>250 THEN X=50
-70 GOTO 50
-```
-
-<video src="/images/lessons/commodore-64/basic/week-3/lesson-21/horizontal-movement.mp4" controls loop autoplay muted></video>
-
-The sprite slides across the screen and wraps!
-
-**Note:** X stops at 250 because POKE only accepts values 0-255. The C64 screen is actually 320 pixels wide—later you'll learn about register 53264 which extends sprite X positions beyond 255!
-
-## Practical Example
-
-Move sprite up and down:
-
-```basic
-10 REM *** VERTICAL MOTION ***
-20 FOR I=832 TO 894:POKE I,255:NEXT I
-30 POKE 2040,13:POKE 53269,1
-40 Y=50:DY=2
-50 POKE 53248,160:POKE 53249,Y
-60 Y=Y+DY
-70 IF Y>200 OR Y<50 THEN DY=-DY
-80 GOTO 50
-```
-
-<video src="/images/lessons/commodore-64/basic/week-3/lesson-21/vertical-movement.mp4" controls loop autoplay muted></video>
-
-Bounces between top and bottom!
-
-## WOW Moment: Circular Motion
-
-```basic
-NEW
-10 REM *** CIRCLE SPRITE ***
-20 FOR I=832 TO 894:POKE I,255:NEXT I
-30 POKE 2040,13:POKE 53287,7
-40 POKE 53269,1
-50 REM CENTER OF CIRCLE
-60 CX=180:CY=130:R=50
-70 A=0
-80 REM CALCULATE POSITION
-90 X=CX+R*COS(A)
-100 Y=CY+R*SIN(A)
-110 POKE 53248,X
-120 POKE 53249,Y
-130 A=A+0.1
-140 IF A>6.28 THEN A=0
-150 GOTO 80
-```
-
-<video src="/images/lessons/commodore-64/basic/week-3/lesson-21/circular-movement.mp4" controls loop autoplay muted></video>
-
-Perfect circle! SIN and COS create smooth circular paths. Change R for different circle sizes!
-
-## Quick Reference
-
-```basic
-REM MOTION BASICS
-53248    Sprite 0 X position (0-255)
-53249    Sprite 0 Y position (0-255)
-X=X+DX   Move horizontally
-Y=Y+DY   Move vertically
-
-REM X POSITION LIMITS
-POKE only accepts 0-255
-Screen is 320 pixels wide
-53264 extends X beyond 255 (later lesson!)
-
-REM CIRCULAR MOTION
-X = CenterX + Radius * COS(Angle)
-Y = CenterY + Radius * SIN(Angle)
-Angle from 0 to 6.28 (2π radians)
-
-REM SPEED CONTROL
-Small step = slow motion
-Large step = fast motion
-```
-
-## What You've Learnt
-
-- Change X/Y in a loop for motion
-- SIN/COS create circular paths
-- Angle 0-6.28 for full circle
-- Sprite moves smoothly anywhere
-- Position updates = animation
-
-Sprites + math = smooth graphics magic!
+> [📷 suggested: screenshot showing two rooms with different hazard behaviours]
 
 ---
 
-**Time to complete:** 15 minutes
+### The One-Minute Tour
 
-**Key concept:** Sprite animation through position updates
+- Store room rules (hazard damage, exit scores, enemy speed) in arrays.  
+- On entry, copy those values into globals the loop consumes.  
+- Use `ON...GOSUB` to branch to hazard/exit handlers depending on tile type.  
+- Difficulty scaling becomes data, not code edits.
 
-**Success indicator:** You can move a sprite in a circular path using trigonometry
+---
+
+### Extending the Loader
+
+Add rule tables alongside room DATA:
+
+```basic
+30 DIM MAP(9,17),EX(3),EY(3)
+31 DIM RULEDMG(2),RULEBONUS(2),RULESPEED(2)
+```
+
+Populate them when loading a room:
+
+```basic
+5130 IF ROOM=1 THEN RESTORE 9000
+5140 IF ROOM=2 THEN RESTORE 9100
+5150 FOR R=0 TO 9
+5160 FOR C=0 TO 17:READ MAP(R,C):NEXT C
+5170 NEXT R
+5180 FOR I=0 TO 3:READ EX(I),EY(I):NEXT I
+5190 READ TITLE$,RULEDMG(ROOM),RULEBONUS(ROOM),RULESPEED(ROOM)
+```
+
+`RULEDMG` = lives lost on hazard; `RULEBONUS` = score from exit; `RULESPEED` controls enemy pace.
+
+---
+
+### Applying Rules in the Loop
+
+```basic
+5400 REM --- PLAYER MOVE ---
+5410 GET K$:IF K$="" THEN RETURN
+5420 NX=PX:NY=PY
+5430 IF K$="W" OR K$=CHR$(145) THEN NY=PY-1
+5440 IF K$="S" OR K$=CHR$(17) THEN NY=PY+1
+5450 IF K$="A" OR K$=CHR$(157) THEN NX=PX-1
+5460 IF K$="D" OR K$=CHR$(29) THEN NX=PX+1
+5470 MX=NX-11:MY=NY-5
+5480 IF MX<0 OR MX>17 OR MY<0 OR MY>9 THEN RETURN
+5490 TILE=MAP(MY,MX)
+5500 IF TILE=1 THEN RETURN
+5510 POKE SCREEN+PY*40+PX,32
+5520 PX=NX:PY=NY
+5530 POKE SCREEN+PY*40+PX,64
+5540 IF TILE>1 THEN ON TILE-1 GOSUB 6000,6100
+5550 RETURN
+```
+
+`ON TILE-1` routes to hazard or exit handlers depending on the tile value:
+
+- `TILE=2` → exits.  
+- `TILE=3` → hazards.
+
+---
+
+### Hazard / Exit Logic
+
+```basic
+6000 REM --- EXIT ---
+6010 SCORE=SCORE+RULEBONUS(ROOM)
+6020 PRINT CHR$(19)
+6030 PRINT "SCORE:";SCORE;" LIVES:";LIVES;"     ";
+6040 STATE=2:RETURN
+
+6100 REM --- HAZARD ---
+6110 LIVES=LIVES-RULEDMG(ROOM)
+6120 IF LIVES<0 THEN LIVES=0
+6130 PRINT CHR$(19)
+6140 PRINT "SCORE:";SCORE;" LIVES:";LIVES;"     ";
+6150 IF LIVES=0 THEN STATE=3
+6160 RETURN
+```
+
+No branching inside the handlers themselves—just simple arithmetic guided by the rule tables.
+
+---
+
+### Enemy Speed Adjustment
+
+```basic
+5530 ENEMYDELAY=RULESPEED(ROOM)
+6500 REM --- ENEMY LOOP ---
+6510 FOR I=0 TO 2
+6520 POKE SCREEN+(EY(I)+5)*40+(EX(I)+11),32
+6530 IF STEP MOD ENEMYDELAY<>0 THEN GOTO 6580
+6540 DX=0:DY=0
+6550 IF EX(I)<PX-11 THEN DX=1
+6560 IF EX(I)>PX-11 THEN DX=-1
+6570 IF EY(I)<PY-5 THEN DY=1
+6575 IF EY(I)>PY-5 THEN DY=-1
+6580 NX=EX(I)+DX:NY=EY(I)+DY
+6590 IF MAP(NY,NX)=1 THEN DX=0:DY=0
+6600 EX(I)=EX(I)+DX:EY(I)=EY(I)+DY
+6610 POKE SCREEN+(EY(I)+5)*40+(EX(I)+11),81
+6620 IF EX(I)+11=PX AND EY(I)+5=PY THEN GOSUB 6100
+6630 NEXT I
+```
+
+Let `STEP` (a frame counter) gate enemy movement. Different rooms, different speeds—no duplicate code.
+
+---
+
+### Example Rule DATA
+
+```basic
+9000 REM ROOM 1 DATA + RULES
+9010 DATA ... map rows ...
+9020 DATA ... enemies ...
+9030 DATA "DUSTY HALL",1,100,1
+
+9100 REM ROOM 2 DATA + RULES
+9110 DATA ... map rows ...
+9120 DATA ... enemies ...
+9130 DATA "TOXIC CHAMBER",2,150,2
+```
+
+Room 1 hazards subtract 1 life and exits award 100 points; enemies move every frame (`RULESPEED=1`). Room 2 hazards hit twice as hard, grant bigger bonuses, and enemies move every other frame.
+
+---
+
+### Experiment Section
+
+- Add rule columns for music cues, HUD colour changes, or time limits.  
+- Make certain rooms safe: set `RULEDMG(ROOM)=0` to create rest areas.  
+- Difficulty mode: use `LEVEL` to offset into alternative rule arrays.  
+- Tie the parser in—rooms can unlock commands when specific flags are set.  
+- Save rule values into a buffer before writing so you can undo changes (for temporary power-ups).
+
+---
+
+### Concept Expansion
+
+Room-specific logic is the prelude to full state machines: separate data, shared engine. Changing behaviour becomes a DATA change, not a code rewrite.
+
+---
+
+### Game Integration
+
+- Boss fights: treat a room’s rule set as the behaviour script for special encounters.  
+- Puzzles: mark tiles that require a key; rules decide whether to block or allow passage.  
+- Campaign difficulty: adjust `RULESPEED` and `RULEDMG` via a global difficulty setting at load time.  
+- Analytics: log which room killed the player to tweak balancing.
+
+---
+
+### From the Vault
+
+- [Paradroid](/vault/paradroid) — each deck has different hazards and rules; we’re recreating that dynamic.  
+- [Demo Scene 101](/vault/demo-scene-101) — inspiration for giving each room its own visual/sound flair.
+
+---
+
+### Quick Reference
+
+```basic
+ON TILE-1 GOSUB 6000,6100     : REM route exits/hazards
+DMG=RULEDMG(ROOM)             : REM current room's damage
+BONUS=RULEBONUS(ROOM)         : REM exit reward
+SPEED=RULESPEED(ROOM)         : REM enemy step delay
+RESTORE 9000                  : REM load room-specific DATA
+```
+
+---
+
+### What You’ve Learnt
+
+- Parameterised room behaviours using DATA-driven rule sets.
+- Routed shared logic through handlers by tile type.  
+- Adjusted enemy speed and scoring without rewriting loops.  
+- Delivered room-specific reactions, ready for Week 3’s mini-game.
+
+**Next lesson:** Sprites on the horizon—turn these routines into genuine smooth graphics.
+
+---

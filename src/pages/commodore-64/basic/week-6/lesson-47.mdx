@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Raster Timing Basics"
+title: "Saving Scores"
 game: "Commodore 64 BASIC"
 system: "C64"
 lessonNumber: 47
@@ -8,139 +8,149 @@ totalLessons: 64
 prevLesson: "/commodore-64/basic/week-6/lesson-46"
 nextLesson: "/commodore-64/basic/week-6/lesson-48"
 objectives:
-  - Understand raster beam scanning
-  - Wait for specific raster lines
-  - Change colours mid-screen
-  - Create horizontal colour bars
+  - Maintain a top-five table using parallel arrays.
+  - Insert new scores by shifting entries down.
+  - Write the table to disk with the C64 file commands.
 ---
 
-## Split the Screen!
+## Lesson 47 – Saving Scores
 
-Ever noticed how **International Karate** has different coloured borders at the top and bottom? Or how **Creatures** splits the screen into multiple zones? That's **raster interrupts**!
+Arcades lived on high-score tables. In BASIC we can keep them in memory and persist them to disk for the next play session. This lesson builds a five-entry table, inserts a new result, and writes it out so your triumph survives the power switch.
 
-The CRT monitor draws the screen line-by-line, top to bottom. By waiting for the beam to reach a specific line, you can change colours mid-screen—creating bars, borders, and split-screen effects that shouldn't be possible!
+> [📷 suggested: screenshot of the updated high-score table and save confirmation]
 
-## Basic Example
+---
 
-Wait for raster line 100:
+### The One-Minute Tour
 
-```basic
-10 REM *** RASTER WAIT ***
-20 PRINT CHR$(147)
-30 POKE 53280,6
-40 IF PEEK(53266)<>100 THEN GOTO 40
-50 POKE 53280,14
-60 GOTO 40
-```
+- Use parallel arrays (`NAME$()`, `SCORE()`) to keep names and values aligned.
+- Find the insert position, shift lower entries down, and drop the new champion in place.
+- `OPEN`/`PRINT#` writes data to disk—perfect for keeping a small text leaderboard.
 
-The border changes colour halfway down! PEEK(53266) is the current raster line (0-255). The loop waits until the beam reaches line 100, then changes the border colour. The top is blue, the bottom is light blue!
+---
 
-## Practical Example
-
-Multi-coloured border bars:
-
-```basic
-10 REM *** COLOUR BARS ***
-20 PRINT CHR$(147)
-30 IF PEEK(53266)<>50 THEN GOTO 30
-40 POKE 53280,2
-50 IF PEEK(53266)<>100 THEN GOTO 50
-60 POKE 53280,10
-70 IF PEEK(53266)<>150 THEN GOTO 70
-80 POKE 53280,7
-90 IF PEEK(53266)<>200 THEN GOTO 90
-100 POKE 53280,5
-110 GOTO 30
-```
-
-Four colour bars! The border changes at lines 50, 100, 150, and 200—creating horizontal stripes across the screen. Each wait synchronises with the raster beam position!
-
-## WOW Moment: Rainbow Raster Bars
+### Example Program
 
 ```basic
 NEW
-10 REM *** RAINBOW BARS ***
-20 PRINT CHR$(147)
-30 PRINT "*** RASTER DEMO ***"
-40 PRINT
-50 PRINT "WATCH THE BORDER!"
-60 PRINT
-70 PRINT "THE SCREEN IS DRAWN"
-80 PRINT "LINE BY LINE..."
-90 PRINT
-100 PRINT "...AND WE CHANGE"
-110 PRINT "THE COLOUR AS IT DRAWS!"
-120 PRINT
-130 PRINT "PRESS Q TO QUIT"
-140 C=0
-150 L=50
-160 IF PEEK(53266)<>L THEN GOTO 160
-170 POKE 53280,C
-180 C=C+1
-190 IF C>15 THEN C=0
-200 L=L+4
-210 IF L>250 THEN L=50:C=0
-220 GET K$:IF K$="Q" THEN END
-230 GOTO 160
+10 REM *** HIGH SCORE TABLE ***
+20 DIM NAME$(5),SC(5)
+30 FOR I=1 TO 5:READ NAME$(I):READ SC(I):NEXT I
+40 GOSUB 150
+50 INPUT "YOUR SCORE";NS
+60 INPUT "INITIALS (3 CHARS)";N$
+70 N$=LEFT$(N$,3)
+80 GOSUB 200
+90 GOSUB 150
+100 INPUT "SAVE TO DISK (Y/N)";A$
+110 IF A$="Y" THEN GOSUB 300
+120 DATA "ACE",500,"JAX",420,"MIN",360,"SID",220,"DOC",150
+130 END
+150 PRINT CHR$(147);"TOP PILOTS"
+160 FOR I=1 TO 5
+170 PRINT I;".";TAB(6);NAME$(I);TAB(12);SC(I)
+180 NEXT I
+190 RETURN
+200 FOR I=1 TO 5
+210 IF NS>SC(I) THEN POS=I:GOTO 230
+220 NEXT I:RETURN
+230 FOR J=5 TO POS+1 STEP -1
+240 SC(J)=SC(J-1):NAME$(J)=NAME$(J-1)
+250 NEXT J
+260 SC(POS)=NS:NAME$(POS)=N$
+270 RETURN
+300 PRINT "SAVING..."
+310 OPEN 1,8,2,"HISCORE,S,W"
+320 FOR I=1 TO 5
+330 PRINT#1,NAME$(I);",";SC(I)
+340 NEXT I
+350 CLOSE 1
+360 PRINT "DONE. LOAD WITH OPEN 1,8,2:""HISCORE,S,R"""
+370 RETURN
 ```
 
-![Rainbow raster bars effect](/images/lessons/commodore-64/basic/week-6/lesson-47/raster.png)
+Sample output:
 
-A rainbow of colour bars! Every 4 raster lines, the border colour changes—cycling through all 16 colours. This creates smooth rainbow bars that flow down the screen!
-
-The raster beam draws the screen top-to-bottom, 50 times per second. By changing colours as it draws, you create effects that look impossible—more colours than the hardware should allow!
-
-This is the secret behind demo scene effects and games with elaborate borders!
-
-## Quick Reference
-
-```basic
-REM RASTER POSITION
-PEEK(53266)              Current raster line (0-255)
-PEEK(53265) bit 7        Raster line bit 8 (for 256-312)
-
-REM WAIT FOR LINE
-IF PEEK(53266)<>line THEN GOTO wait
-Waits until beam reaches exact line
-
-REM SAFE ZONES
-Lines 0-50               Top border area
-Lines 51-250             Visible screen area
-Lines 251-312            Bottom border/offscreen
-
-REM COLOUR CHANGES
-POKE 53280,colour        Border colour
-POKE 53281,colour        Background colour
-Do immediately after raster wait
-
-REM TIMING
-4 lines per colour       Thick bars
-1 line per colour        Thin bars
-Loop back to start       Continuous cycle
-
-REM COLOUR CYCLING
-C=C+1                    Next colour
-IF C>15 THEN C=0         Wrap to black
-Creates rainbow effect   16 colours
+```
+TOP PILOTS
+1. ACE    500
+2. JAX    420
+3. MIN    360
+4. YOU    275
+5. SID    220
 ```
 
-## What You've Learnt
+Lines 20–40 seed the table from `DATA`. When a new score arrives, the insert routine (200–270) scans for the first score lower than the newcomer, slides the trailing entries down, and drops the new initials into the gap. If the player doesn’t beat the table, nothing changes. The save routine (300–370) writes comma-separated lines to a disk file named `HISCORE`, which you can reload later with `INPUT#` or `GET#`.
 
-- CRT monitor draws screen line-by-line (raster scan)
-- PEEK(53266) returns current raster line number
-- Wait loops synchronise code with raster position
-- Changing colours during scan creates split-screen effects
-- Multiple raster waits create colour bars
-- Raster timing enables "impossible" effects
-
-This is the foundation of C64 demo scene effects—professional demos use assembly language for precise timing, but BASIC can create impressive raster bars too!
+> **Tip:** When running inside an emulator, device 8 points to the mounted disk image. Replace it with `1` (tape) or `0` (keyboard) if you’re experimenting elsewhere.
 
 ---
 
-**Time to complete:** 15 minutes
+### Experiment Section
 
-**Key concept:** Raster timing for mid-screen colour changes
+- Store dates alongside scores by adding a third array `DATE$()`.
+- Allow duplicate initials by appending a number when you save (e.g., `ACE-2`).
+- Add a prompt that lets the player view the table without entering a new score.
+- Write the table back into `DATA` format so you can paste it straight into source control.
 
-**Success indicator:** You can create rainbow colour bars by synchronising with raster beam position
+> [🎥 suggested: clip showing a new score climbing the table and a disk save message]
 
-**Next step:** In machine code, raster interrupts enable effects like sprite multiplexing and split-screen games!
+---
+
+### Concept Expansion
+
+Saving data is just formatted text. Once you understand how to write and read arrays, you can persist settings, level progress, even map edits. The same insertion logic works for combo multipliers or lap times.
+
+---
+
+### Game Integration
+
+Load on start-up, save on demand:
+
+```basic
+GOSUB 9000
+IF SCORE>SC(5) THEN GOSUB 9200: GOSUB 9400
+```
+
+Use the 9000s block for score-table utilities (e.g., `9000 REM LOAD TABLE`, `9200 REM INSERT NEW SCORE`, `9400 REM SAVE TABLE`). This keeps your leaderboard up to date without rebuilding it from scratch.
+
+---
+
+### From the Vault
+
+- [Disk Fastloaders](/vault/disk-fastloaders) — why saving felt magical (and slow) in the 80s.
+- [Bedroom Coder](/vault/bedroom-coder) — stories from kids who hand-managed their own score tables.
+
+---
+
+### Quick Reference
+
+```basic
+REM Insert score
+FOR I=1 TO 5
+  IF NS>SC(I) THEN POS=I:GOTO 230
+NEXT I
+RETURN
+
+230 FOR J=5 TO POS+1 STEP -1
+  SC(J)=SC(J-1)
+NEXT J
+SC(POS)=NS
+NAME$(POS)=N$
+
+REM Disk save
+OPEN 1,8,2,"HISCORE,S,W"
+FOR I=1 TO 5:PRINT#1,NAME$(I);",";SC(I):NEXT I:CLOSE 1
+```
+
+---
+
+### What You’ve Learnt
+
+- Parallel arrays make high-score tables easy to sort and print.
+- Insertion-by-shift keeps the list in descending order at all times.
+- Simple file commands let you persist data for your next power-on.
+
+**Next lesson:** Time for the Week 6 mini-game—**Cosmic Clash** pulls every system together.
+
+---
