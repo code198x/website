@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Math Magic"
+title: "Working with Time"
 game: "Commodore 64 BASIC"
 system: "C64"
 phase: 0
@@ -10,179 +10,189 @@ totalLessons: 64
 prevLesson: "/commodore-64/phase-0/tier-1/lesson-014"
 nextLesson: "/commodore-64/phase-0/tier-1/lesson-016"
 objectives:
-  - 'Wrap reusable formulas in `DEF FN` to simplify expressions.'
-  - 'Combine globals and single-argument functions for game maths.'
-  - 'Use functions to drive scoring, physics, and procedural patterns.'
+  - 'Master the TI jiffy clock for timing game events.'
+  - 'Create spawn timers using TI comparison.'
+  - 'Implement countdown mechanics for time-limited gameplay.'
 ---
 
-## Lesson 15 – Math Magic
+## Working with Time
 
-You’ve been writing formulas inline; now collect them into functions. `DEF FN` gives each formula a name so your code reads like intent instead of algebra.
+Games need timing—spawning enemies at intervals, countdown timers, animation frame rates. The C64 provides a simple but powerful tool: the TI (time interval) variable, which counts in "jiffies" (1/60th of a second).
 
-> [📷 suggested: screenshot showing PRINT lines calling several functions]
+## The One-Minute Tour
 
----
+- **TI** counts jiffies since power-on or reset (60 jiffies = 1 second)
+- **TI$** sets the clock with string assignment `TI$="000000"`
+- **Spawn timers** use TI comparison to trigger events at intervals
+- **Countdown mechanics** subtract TI from a limit to create time pressure
+- **Division converts jiffies** to seconds (`TI/60`) or minutes (`TI/3600`)
 
-### The One-Minute Tour
+## Reading the Clock
 
-- `DEF FNNAME(X)=expression` defines a numeric function.
-- Commodore BASIC V2 supports **one argument**, **one line**, **one numeric result**.
-- Use uppercase names without spaces (e.g., `FNSCORE`).
-
----
-
-### Basic Function Toolkit
+The TI variable increments 60 times per second, providing a consistent timebase for game logic.
 
 ```basic
-NEW
-10 DEF FNSQ(X)=X*X
-20 DEF FNDB(N)=N*2
-30 PRINT FNSQ(5)
-40 PRINT FNDB(7)
-```
-
-Output:
-```
-25
-14
-```
-
-Functions drop inline: `PRINT 20+FNSQ(3)` works just fine.
-
----
-
-### Percentages, Scaling, and Rounding
-
-```basic
-NEW
-10 DEF FNPERCENT(S)=INT(S*100/MAX)
-20 MAX=500
-30 SCORE=275
-40 PRINT "SCORE:";SCORE;"(";FNPERCENT(SCORE);"%)"
-```
-
-Use globals (`MAX`) to supply extra context. Commodore BASIC functions only accept one argument, so globals keep them useful.
-
----
-
-### Gravity Helper for Your Loop
-
-```basic
-NEW
-10 DEF FNFALL(T)=VY*T-4.9*T*T
-20 VY=8
-30 FOR T=0 TO 3 STEP .2
-40 Y=FNFALL(T)
-50 IF Y<0 THEN EXIT
-60 PRINT T;Y
-70 NEXT T
-```
-
-`FNFALL` encapsulates a physics formula so the main loop stays readable. With a screen `POKE` you could bring back the trajectory from Lesson 10.
-
----
-
-### Pattern Functions for Generators
-
-```basic
-NEW
-10 DEF FNCHESS(X)= (X AND 1)=0
-20 FOR R=0 TO 7
-30 FOR C=0 TO 7
-40 IF FNCHESS(R+C) THEN PRINT "#"; ELSE PRINT " ";
-50 NEXT C
+10 REM reading the jiffy clock
+20 PRINT CHR$(147)
+30 PRINT "TI CLOCK IN JIFFIES:"
+40 PRINT
+50 PRINT "TI = ";TI
 60 PRINT
-70 NEXT R
+70 PRINT "SECONDS = ";INT(TI/60)
+80 PRINT "MINUTES = ";INT(TI/3600)
+90 PRINT
+100 PRINT "PRESS SPACE TO READ AGAIN"
+110 GET A$:IF A$<>" " THEN 110
+120 GOTO 20
 ```
 
-`FNCHESS` returns true/false, letting you alternate characters elegantly inside nested loops.
+![TI clock display showing jiffies, seconds, and minutes](/images/commodore-64/phase-0/tier-1/lesson-015/example-1.png)
 
----
+**Line 50** reads TI directly—the number of jiffies since clock reset
+**Line 70** converts to seconds by dividing by 60
+**Line 80** converts to minutes by dividing by 3600 (60 seconds × 60 jiffies)
 
-### Random Helpers
+The INT function truncates to whole numbers. So `INT(419/60)` gives 6 seconds, not 6.983333.
+
+**Resetting the clock:** TI is read-only, but you can reset it via `TI$="000000"`. The string format is HHMMSS (hours, minutes, seconds), so `TI$="000000"` sets it to midnight. Once set, TI resumes counting from that value.
+
+## Spawn Timer
+
+Games spawn objects at intervals—asteroids appearing every 2 seconds, enemies emerging every 5 seconds. This requires comparing the current time against the last spawn time.
 
 ```basic
-NEW
-10 DEF FNROLL(N)=INT(RND(1)*N)+1
-20 FOR I=1 TO 5
-30 PRINT "D6:";FNROLL(6)," D20:";FNROLL(20)
-40 NEXT I
+10 REM spawn timer with delay
+20 PRINT CHR$(147):POKE 53280,0:POKE 53281,0
+30 TI$="000000"
+40 LA=0
+50 X=INT(RND(1)*40):Y=INT(RND(1)*25)
+60 POKE 1024+Y*40+X,42:POKE 55296+Y*40+X,7
+70 IF TI-LA<60 THEN 70
+80 LA=TI
+90 GOTO 50
 ```
 
-Random dice, percentages, scaling—they all benefit from a named function you can drop into scoring logic.
+![Random stars spawning at regular intervals on black screen](/images/commodore-64/phase-0/tier-1/lesson-015/example-2.png)
 
----
+**Line 30** resets clock to zero with `TI$="000000"`
+**Line 40** initialises last spawn time (LA=0)
+**Line 70** checks if 60 jiffies (1 second) have passed: `IF TI-LA<60 THEN 70`
+**Line 80** updates last spawn time to current time
 
-### Combining Globals with Dummy Arguments
+This creates a **busy-wait loop**—the program sits at line 70 until enough time passes. The comparison `TI-LA<60` checks if fewer than 60 jiffies have elapsed. When 60 or more jiffies pass, the condition fails, execution continues to line 80, and a new star spawns.
 
-Need more than one input? Store extra values globally, use a dummy parameter to satisfy BASIC’s single-argument rule.
+**Why reset TI?** Without resetting, TI continues from power-on, potentially starting at thousands of jiffies. Resetting to zero makes the timing predictable and prevents immediate overflow issues.
+
+## Countdown Timer Game
+
+Combining TI with collision detection and scoring creates time-limited gameplay—collect as many stars as possible before time runs out.
 
 ```basic
-NEW
-10 X1=4:Y1=5:X2=18:Y2=9
-20 DEF FNDIST(Q)=SQR((X2-X1)^2+(Y2-Y1)^2)
-30 PRINT "DIST:";INT(FNDIST(0))
+10 REM countdown timer game
+20 PRINT CHR$(147):POKE 53280,0:POKE 53281,0
+30 SC=0:TI$="000000":LI=600
+40 PRINT "COLLECT STARS! 10 SECONDS!"
+50 PX=20:PY=12:OX=INT(RND(1)*40):OY=INT(RND(1)*25)
+60 POKE 1024+PY*40+PX,81:POKE 55296+PY*40+PX,1
+70 POKE 1024+OY*40+OX,42:POKE 55296+OY*40+OX,7
+80 GET A$
+90 IF A$="W" AND PY>0 THEN POKE 1024+PY*40+PX,32:PY=PY-1
+100 IF A$="S" AND PY<24 THEN POKE 1024+PY*40+PX,32:PY=PY+1
+110 IF A$="A" AND PX>0 THEN POKE 1024+PY*40+PX,32:PX=PX-1
+120 IF A$="D" AND PX<39 THEN POKE 1024+PY*40+PX,32:PX=PX+1
+130 POKE 1024+PY*40+PX,81:POKE 55296+PY*40+PX,1
+140 IF PX=OX AND PY=OY THEN SC=SC+1:OX=INT(RND(1)*40):OY=INT(RND(1)*25)
+150 POKE 1024+OY*40+OX,42:POKE 55296+OY*40+OX,7
+160 RE=LI-TI
+170 POKE 1024,INT(RE/60)+48:POKE 1024+1,SC+48
+180 IF RE<=0 THEN PRINT CHR$(147):PRINT "TIME UP! SCORE:";SC:END
+190 GOTO 80
 ```
 
-Not elegant, but effective—and common practice in 1980s code.
+![Game over screen showing TIME UP! SCORE: 0](/images/commodore-64/phase-0/tier-1/lesson-015/example-3.png)
 
----
+**Line 30** sets score to zero, resets clock, and sets limit (LI=600 = 10 seconds)
+**Line 160** calculates remaining time: `RE=LI-TI`
+**Line 170** displays time remaining (seconds) and score as single digits
+**Line 180** checks for time expiry: `IF RE<=0`
 
-### Experiment Section
+The display logic converts countdown to screen codes: `INT(RE/60)+48` turns jiffies into seconds, then adds 48 to get the digit character. So 7 seconds remaining becomes `INT(420/60)+48 = 7+48 = 55`, which is screen code for "7".
 
-- Add `DEF FNFX(S)=INT(SPEED*S)` to convert player speed to animation frames.
-- Use `DEF FNHP(V)=MINHP+INT((MAXHP-MINHP)*V)` to scale hit points.
-- Integrate Lesson 14’s generators: call a function inside nested loops to pick tiles.
-- Combine with Lesson 13 logic: `IF FNHIT(NX,NY)=1 THEN ...` wraps collision math in a friendly wrapper.
-- Precompute tables: fill an array with `FOR I=0 TO 15:LOOKUP(I)=FNFX(I/15)`.
+**Multiple conditions on line 180:** The THEN clause can execute multiple statements separated by colons. `THEN PRINT CHR$(147):PRINT "time up! score:";SC:END` clears screen, prints message, and ends the program—all in one line.
 
-> [📷 suggested: screenshot showing a HUD that uses function output]
+**Game balance:** 600 jiffies = 10 seconds. Adjusting LI changes difficulty—300 jiffies (5 seconds) creates frantic gameplay, 1200 jiffies (20 seconds) allows casual play.
 
----
+## How Games Use This
 
-### Concept Expansion
+**Paradroid** used timers for the circuit-board takeover minigame. You had a limited time to connect nodes—TI tracked the countdown, displaying remaining seconds.
 
-Functions are the maths sibling of subroutines: they only return a value, but that value can express physics, scoring, or procedural rules concisely. Later you’ll embed similar logic in machine code, but the interfaces will look familiar.
+**Boulder Dash** spawned butterflies and fireflies at timed intervals. Each cave had spawn rates defined in data tables, checked against TI-based timers.
 
----
+**Impossible Mission** featured a 6-hour time limit (real-time, not game-time). TI tracked elapsed jiffies, converting to minutes and hours for the display.
 
-### Game Integration
+**Uridium** spawned enemy ships in waves. Spawn timers ensured predictable patterns—1 second between ships in a wave, 5 seconds between waves.
 
-- **Scoring:** `SCORE=SCORE+FNCOMBO(HITS)` to reward streaks.
-- **Projectile motion:** call `FNFALL` to update bullet arcs each frame.
-- **Damage curves:** `HP=HP-FNDAMAGE(WEAPON)` to centralise balancing.
-- **Enemy AI:** `ANGLE=FNTRACK(PX,PY,EX,EY)` returns chase direction (store positions in globals first).
+## From the Vault
 
----
+- **TI and TI$ variables:** C64 Programmer's Reference Guide, pages 309-310—explains jiffy clock mechanics and HHMMSS format
+- **CIA timer chips:** Hardware timers behind TI, detailed in C64 Programmer's Reference Guide, pages 338-342
+- **Frame synchronisation:** Using TI for 60Hz timing, discussed in Mapping the Commodore 64, pages 217-219
+- **NTSC vs PAL timing:** NTSC runs at 60Hz (60 jiffies/second), PAL at 50Hz (50 jiffies/second)—affects timing code portability
 
-### From the Vault
+## Quick Reference
 
-- [Paradroid](/vault/paradroid) — read design diaries referencing control formulas.
-- [Commodore 64](/vault/commodore-64) — understand how floating-point arithmetic behaves on the 6510.
-
----
-
-### Quick Reference
-
-```basic
-DEF FNSQ(X)=X*X               : REM define
-PRINT FNSQ(5)                 : REM call
-DEF FNROLL(N)=INT(RND(1)*N)+1 : REM random range helper
+**TI Clock Operations:**
+```
+TI              : Read jiffies (1/60 second increments)
+TI$="000000"    : Reset clock to zero (HHMMSS format)
+INT(TI/60)      : Convert jiffies to seconds
+INT(TI/3600)    : Convert jiffies to minutes
 ```
 
-- Functions must appear **before** you call them.
-- Names must be `FN` followed by letters (no spaces).
-- Use globals for extra context; reset them before each call if needed.
+**Spawn Timer Pattern:**
+```
+TI$="000000"         : Reset clock
+LA=0                 : Last spawn time
+[main loop]
+IF TI-LA<60 THEN 70  : Wait 60 jiffies (1 second)
+LA=TI                : Update last spawn time
+[spawn object]
+```
 
----
+**Countdown Timer Pattern:**
+```
+LI=600               : Limit (10 seconds)
+TI$="000000"         : Reset clock
+RE=LI-TI             : Calculate remaining time
+IF RE<=0 THEN [end]  : Check for time expiry
+```
 
-### What You’ve Learnt
+**Jiffy Conversion Table:**
+| Jiffies | Time |
+|---------|------|
+| 1 | 1/60 second (16.67ms) |
+| 60 | 1 second |
+| 3600 | 1 minute |
+| 216000 | 1 hour |
 
-- Defined reusable formulas with `DEF FN`.
-- Balanced the single-argument limitation using globals.
-- Dropped functions into loops, scoring, and physics for cleaner code.
-- Built a toolbox of random, pattern, and physics helpers ready for the Week 2 mini-game.
+**Time Limits (10 seconds):**
+| Difficulty | Jiffies |
+|------------|---------|
+| Easy | 1200 (20 seconds) |
+| Normal | 600 (10 seconds) |
+| Hard | 300 (5 seconds) |
+| Extreme | 120 (2 seconds) |
 
-**Next lesson:** Mini-Game: Maze Craze — stitch the whole week together into a procedural maze run.
+## What You've Learnt
 
----
+- Reading TI to get elapsed jiffies since clock reset
+- Setting TI$ to reset the clock to a known value
+- Converting jiffies to seconds and minutes using division
+- Creating spawn timers with TI comparison and busy-wait loops
+- Implementing countdown mechanics by subtracting TI from a limit
+- Displaying time values as screen code digits
+- Chaining multiple statements in THEN clauses with colons
+
+## Preview: Next Lesson
+
+We'll bring everything together in a synthesis project—a text adventure combining movement, collision detection, scoring, randomness, sound effects, and timing. You'll build a complete 40-60 line game that demonstrates all the skills from Tier 1.
