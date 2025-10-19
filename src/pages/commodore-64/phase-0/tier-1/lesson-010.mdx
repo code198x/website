@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Logic & Motion"
+title: "First Sound"
 game: "Commodore 64 BASIC"
 system: "C64"
 phase: 0
@@ -10,166 +10,180 @@ totalLessons: 64
 prevLesson: "/commodore-64/phase-0/tier-1/lesson-009"
 nextLesson: "/commodore-64/phase-0/tier-1/lesson-011"
 objectives:
-  - 'Combine grid data with player movement and collision checks.'
-  - 'Use compound `IF` conditions to guard edges and hazards.'
-  - 'Introduce a simple game loop that reads input and updates the map.'
+  - 'Understand the SID chip and its three voices.'
+  - 'Control volume, frequency, and waveform registers.'
+  - 'Play musical notes through direct hardware POKEs.'
 ---
 
-## Lesson 10 – Logic & Motion
+## Your Sound Synthesiser
 
-Yesterday you built a map; today you bring it to life. We’ll wire up input, movement, and collision logic so your hero respects walls, avoids hazards, and marches across the grid you just created.
-
-> [📷 suggested: screenshot of a player `@` navigating a walled grid]
+You've been pushing pixels—now you'll push air molecules. The C64's SID chip (Sound Interface Device) isn't background music hardware; it's a three-voice analogue synthesiser designed by Bob Yannes, who later founded Ensoniq. While other computers beeped, the C64 sang, and you're about to take direct control of this legendary sound engine.
 
 ---
 
 ### The One-Minute Tour
 
-- Store the map and the player coordinates in arrays/variables.
-- Detect intended movement by reading keys with `GET`.
-- Check the target cell before moving; block or punish as needed.
-- Redraw only the tiles that changed to keep the board responsive.
+- SID chip base address: 54272 (Voice 1 starts here)
+- Volume register: 54296 (bits 0-3 control master volume)
+- Frequency: Two bytes (low/high) set pitch for each voice
+- Waveform: Triangle, sawtooth, pulse, noise (select with bits 4-7)
+- Attack/Decay/Sustain/Release: Envelope shaping (covered in Lesson 11)
 
 ---
 
-### Wiring Up the Playground
+### Example Program
 
 ```basic
-NEW
 10 PRINT CHR$(147)
-20 DIM MAP(9,9)
-30 FOR R=0 TO 9:FOR C=0 TO 9:MAP(R,C)=0:NEXT C:NEXT R
-40 FOR I=0 TO 9:MAP(0,I)=1:MAP(9,I)=1:MAP(I,0)=1:MAP(I,9)=1:NEXT I
-50 MAP(3,4)=3 : REM hazard
-60 MAP(7,7)=4 : REM goal
-70 PROWX=5:PROWY=5
-80 GOSUB 500
-90 GOSUB 400
-100 GOSUB 600
-110 GOTO 100
-
-400 REM --- DRAW MAP ---
-410 FOR R=0 TO 9
-420 FOR C=0 TO 9
-430 LOC=1024+R*40+C
-440 CELL=MAP(R,C)
-450 IF CELL=0 THEN POKE LOC,32
-460 IF CELL=1 THEN POKE LOC,35
-470 IF CELL=3 THEN POKE LOC,88
-480 IF CELL=4 THEN POKE LOC,42
-490 NEXT C
-500 NEXT R
-510 RETURN
-
-500 REM --- DRAW PLAYER ---
-510 POKE 1024+PROWY*40+PROWX,64
-520 RETURN
-
-600 REM --- INPUT & LOGIC ---
-610 GET K$ : IF K$="" THEN RETURN
-620 NX=PROWX : NY=PROWY
-630 IF K$="W" THEN NY=PROWY-1
-640 IF K$="S" THEN NY=PROWY+1
-650 IF K$="A" THEN NX=PROWX-1
-660 IF K$="D" THEN NX=PROWX+1
-670 IF MAP(NY,NX)=1 THEN RETURN
-680 IF NX<1 OR NX>8 OR NY<1 OR NY>8 THEN RETURN
-690 POKE 1024+PROWY*40+PROWX,32
-700 PROWX=NX : PROWY=NY
-710 POKE 1024+PROWY*40+PROWX,64
-720 IF MAP(NY,NX)=3 THEN GOSUB 7000
-730 IF MAP(NY,NX)=4 THEN GOSUB 7100
-740 RETURN
-
-7000 REM --- HAZARD ---
-7010 PRINT : PRINT "OUCH!" : FOR T=1 TO 200:NEXT T
-7020 RETURN
-
-7100 REM --- GOAL ---
-7110 PRINT : PRINT "WINNER!" : FOR T=1 TO 200:NEXT T
-7120 RUN
+20 POKE 54277,9:POKE 54278,0
+30 POKE 54296,15
+40 POKE 54273,25:POKE 54272,177
+50 POKE 54276,17
+60 FOR I=1 TO 1000:NEXT I
+70 POKE 54276,16
+80 END
 ```
 
-> [🎥 suggested: clip showing the @ character moving with WASD, refusing to cross walls]
+Sample output:
 
----
+```
+[Screen clears, single beep tone plays]
 
-### Code Tour
+READY.
+```
 
-- **Lines 10–70:** initialise the 10×10 map with border walls, a hazard (`X`), and a goal (`*`). Player starts at centre.
-- **Line 80:** draws static map tiles.
-- **Line 90:** draws the player in the current position.
-- **Line 100:** polls input and executes logic before looping.
+![Screen after playing a single note](/images/commodore-64/phase-0/tier-1/lesson-010/lesson-010-example-1.png)
 
-Inside the logic routine:
-- Determine candidate coordinates (`NX`, `NY`).
-- Check for walls (`MAP=1`) or map edges before moving.
-- Clear the previous player tile and draw the new one.
-- React to hazards/goals with simple subroutines.
+<audio controls>
+  <source src="/images/commodore-64/phase-0/tier-1/lesson-010/lesson-010-example-1.wav" type="audio/wav" />
+  Your browser does not support the audio element.
+</audio>
+
+**Line 10** clears screen. **Line 20** sets Attack/Decay (A=0, D=9) and Sustain/Release (S=0, R=0) for the envelope. **Line 30** sets volume to maximum (15). **Line 40** sets frequency: high byte (25) and low byte (177) for combined value of 6577. **Line 50** activates triangle waveform (17 = gate on + triangle). **Line 60** delay loop. **Line 70** gate off (16 = triangle only, no gate).
+
+> **Tip:** The "gate" bit (bit 0 of the waveform register) triggers the sound. Setting it to 1 starts the note, 0 stops it. The waveform bits (4-7) determine the tone colour.
 
 ---
 
 ### Experiment Section
 
-- Swap to arrow keys by checking `CHR$(157)` (left), `CHR$(29)` (right), `CHR$(17)` (down), `CHR$(145)` (up).
-- Multiple hazards: scatter extra `MAP(R,C)=3`.
-- Lives counter: add `LIVES=3` and decrement when hitting hazards; reset only after lives reach zero.
-- Move draws into a subroutine `GOSUB 520` to centralise rendering updates.
-- Animate hazards: every loop, toggle their characters to show flicker.
+Try these variations:
 
-> [📷 suggested: grid with multiple hazard tiles and a lives counter]
+- **Different pitches**: Change line 40 to `POKE 54273,28:POKE 54272,214` (higher) or `POKE 54273,19:POKE 54272,63` (lower)
+- **Waveforms**: Change line 30 to 33 (sawtooth), 65 (pulse), 129 (noise)
+- **Higher frequencies**: Try `POKE 54273,50:POKE 54272,0` for very high pitch
+- **Simple melody**: Play multiple notes in sequence with delay loops between each
+- **Volume control**: Try `POKE 54296,7` for half volume
+
+Play a simple three-note melody:
+
+```basic
+10 PRINT CHR$(147)
+20 POKE 54277,9:POKE 54278,0
+30 POKE 54296,15
+40 FOR N=1 TO 3
+50 READ HF,LF
+60 POKE 54273,HF:POKE 54272,LF
+70 POKE 54276,17
+80 FOR I=1 TO 500:NEXT I
+90 POKE 54276,16
+100 FOR I=1 TO 100:NEXT I
+110 NEXT N
+120 DATA 25,177,28,214,32,94
+130 END
+```
+
+![Screen after playing melody](/images/commodore-64/phase-0/tier-1/lesson-010/lesson-010-example-2.png)
+
+<audio controls>
+  <source src="/images/commodore-64/phase-0/tier-1/lesson-010/lesson-010-example-2.wav" type="audio/wav" />
+  Your browser does not support the audio element.
+</audio>
+
+The program reads three pairs of frequency values (high and low bytes) from DATA, plays each note for 500 loops, then pauses for 100 loops before the next note.
 
 ---
 
 ### Concept Expansion
 
-Input + logic + rendering equals the classic game loop: read → simulate → draw. Later you’ll capture the loop inside a `GOSUB`, then upgrade timers with `TI` or raster interrupts, but the structure will stay familiar.
+**Bob Yannes' masterpiece.** The SID chip wasn't designed by committee—it was the vision of engineer Bob Yannes, who was frustrated by the primitive sound capabilities of other computers. He designed a true analogue synthesiser on a chip with three independent voices, programmable filters, ring modulation, and sync. After Commodore, he co-founded Ensoniq, which dominated the professional synthesiser market in the 1980s.
+
+**Three voices, one chip.** SID has three completely independent voices (Voice 1: 54272, Voice 2: 54279, Voice 3: 54286). Each voice has its own frequency, waveform, and envelope registers. You can play chords, harmonies, or three completely different sound effects simultaneously. Most games used one voice for music, one for continuous sound effects, and one for spot effects.
+
+**Frequency bytes.** The two frequency bytes (low and high) form a 16-bit value that controls pitch. The formula is: frequency = note_frequency × 0.06097. For middle C (261.6 Hz), that's approximately 261.6 × 0.06097 = 15.95, which rounds to 16 (low byte). The high byte extends the range for higher pitches. Most game music used lookup tables of pre-calculated values.
 
 ---
 
 ### Game Integration
 
-- **Patrolling enemies:** track enemy coordinates and check collisions against the player.
-- **Keys and doors:** add a second map for items, then only allow moving onto goal tiles when a key flag is set.
-- **Scoring:** increment `SCORE` whenever the player steps onto pickups.
-- **Fog of war:** keep a `VISITED(,)` array; only draw cells that have been discovered.
+- **Menu sounds**: Beep when selecting options
+- **Action feedback**: Different pitches for jump, shoot, collect
+- **Simple music**: Title screen melodies, victory jingles
+- **Environmental audio**: Engine hum, alarm sirens (continuous tones)
+- **Note sequences**: Play through DATA arrays for longer melodies
+- **Layered sounds**: Use multiple voices for richer audio (Lesson 11)
 
 ---
 
 ### From the Vault
 
-- [Gridlocked](/commodore-64/phase-0/tier-1/lesson-09) — revisit the map lesson if you need a refresher.
-- [Paradroid](/vault/paradroid) — study how grid logic powers classic C64 decks.
+- [SID Chip Reference](/vault/sid-chip) — complete register map and waveforms
+- [Musical Note Frequencies](/vault/note-frequencies) — POKE values for each note
+- [Bob Yannes Interview](/vault/bob-yannes) — creating the SID chip
 
 ---
 
 ### Quick Reference
 
-```basic
-REM Movement skeleton
-GET K$: IF K$="" THEN RETURN
-NX=PX: NY=PY
-IF K$="A" THEN NX=PX-1
-IF MAP(NY,NX)=1 THEN RETURN
-IF NX<1 OR NX>MAX THEN RETURN
-POKE SCREEN+PY*40+PX,32
-PX=NX: PY=NY
-POKE SCREEN+PY*40+PX,PLAYER_CHAR
+**SID Chip Base Addresses:**
+```
+Voice 1: 54272    Voice 2: 54279    Voice 3: 54286
+Master Volume: 54296 (bits 0-3, range 0-15)
 ```
 
-- Always calculate the candidate tile before applying it.
-- Check both grid contents and edges for safety.
-- Clear and redraw only what changes to keep the loop fast.
+**Voice 1 Registers:**
+```
+54272 = Frequency Low Byte     (0-255)
+54273 = Frequency High Byte    (0-255)
+54274 = Pulse Width Low        (for pulse wave)
+54275 = Pulse Width High       (for pulse wave)
+54276 = Waveform + Gate        (see below)
+54277 = Attack/Decay           (Lesson 11)
+54278 = Sustain/Release        (Lesson 11)
+```
+
+**Waveform Register (54276) Bits:**
+```
+Bit 0 = Gate (1=on, 0=off)     Bit 4 = Triangle (16)
+Bit 1 = Sync                   Bit 5 = Sawtooth (32)
+Bit 2 = Ring Modulation        Bit 6 = Pulse (64)
+Bit 3 = Test                   Bit 7 = Noise (128)
+
+Common values:
+17 = Triangle wave + gate on   (16 + 1)
+33 = Sawtooth + gate on        (32 + 1)
+65 = Pulse + gate on           (64 + 1)
+16 = Triangle wave, gate off   (16 + 0)
+```
+
+**Volume Register (54296):**
+- Bits 0-3: Volume (0=silent, 15=maximum)
+- Always set this first before playing sounds
+
+> **Note for .bas files:** The downloadable code samples use lowercase keywords (e.g., `print` instead of `PRINT`) for technical compatibility with the petcat converter tool.
 
 ---
 
-### What You’ve Learnt
+### What You've Learnt
 
-- How to merge arrays with movement logic for real-time control.
-- Compound `IF` checks that prevent walking into walls or off the board.
-- Redrawing just the affected tiles instead of the entire map.
-- Built the core game loop that powers many C64 titles.
+- The SID chip at 54272 is a three-voice analogue synthesiser
+- Volume register 54296 controls master volume (0-15)
+- Frequency registers (low/high bytes) set the pitch
+- Waveform register selects tone colour and controls the gate
+- Gate bit (bit 0) starts and stops notes
+- Bob Yannes designed SID, later founded Ensoniq
+- Delay loops create note duration
 
-**Next lesson:** Text Tricks — slice strings, print dynamic HUDs, and prepare for menus.
+**Next lesson:** We'll explore ADSR envelopes and sound effects—creating explosions, beeps, and pickup sounds by shaping how notes start, hold, and fade away.
 
 ---
