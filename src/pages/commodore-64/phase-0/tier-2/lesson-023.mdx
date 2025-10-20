@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Memory Games III"
+title: "SID Voices"
 game: "Commodore 64 BASIC"
 system: "C64"
 phase: 0
@@ -10,144 +10,313 @@ totalLessons: 64
 prevLesson: "/commodore-64/phase-0/tier-2/lesson-022"
 nextLesson: "/commodore-64/phase-0/tier-2/lesson-024"
 objectives:
-  - 'Stream auxiliary data (dialogue, music cues) per room.'
-  - 'Reuse a single loader to populate text, audio, and logic tables.'
-  - 'Trigger context-specific assets without duplicating code.'
+  - 'Use three independent SID voices for polyphonic sound.'
+  - 'Calculate frequency values for specific musical notes.'
+  - 'Control each voice independently with separate registers.'
 ---
 
-## Lesson 23 – Memory Games III
+## The Sound of Three Voices
 
-Your rooms have maps, enemies, and rules; now add narrative and sound. We’ll extend the loader to read dialogue strings and music cues per room so each space tells its own story.
-
-> [📷 suggested: screenshot showing room title, description, and play button for music]
+Most home computers in 1982 could play one tone at a time—simple beeps and bloops. The C64's SID chip offered three independent synthesizer voices capable of simultaneous sound. This lesson explores the voice architecture that made C64 music revolutionary: true polyphony without external hardware.
 
 ---
 
 ### The One-Minute Tour
 
-- Store dialogue lines and music identifiers alongside map data.  
-- After loading, fill `LOG$( )` and a `MUSIC$` array to guide the UI and SID routines.  
-- Trigger cues by room without new `IF` chains—data drives everything.
+- SID chip has three independent voices (oscillators)
+- Each voice: frequency (2 bytes), waveform, ADSR envelope
+- Voice 1 base: $D400-$D406 (54272-54278)
+- Voice 2 base: $D407-$D40D (54279-54285)
+- Voice 3 base: $D40E-$D414 (54286-54292)
+- Frequency = 0-65535 (16-bit value split across low/high bytes)
+- All voices share global volume register ($D418 / 54296)
+- Attack/release register controls sound envelope
 
 ---
 
-### Extending the DATA Blocks
-
-Add dialogue lines and a music id at the end of each room definition:
+### Example Program
 
 ```basic
-9130 DATA "DUSTY HALL",1,100,1
-9135 DATA "You wipe cobwebs from your face.","The floor hums with latent power.","Your steps echo down the hall.","" ,"" ,"TITLE1"
+10 REM THREE VOICE CHORD
+20 REM SETUP ADSR (REQUIRED!)
+30 POKE 54277,9:POKE 54278,0
+40 POKE 54284,9:POKE 54285,0
+50 POKE 54291,9:POKE 54292,0
+60 REM SET VOLUME
+70 POKE 54296,15
+80 REM VOICE 1 - LOW C (262 HZ)
+90 POKE 54272,8:POKE 54273,16
+100 POKE 54276,17
+110 REM VOICE 2 - E (330 HZ)
+120 POKE 54279,161:POKE 54280,20
+130 POKE 54283,17
+140 REM VOICE 3 - G (392 HZ)
+150 POKE 54286,193:POKE 54287,24
+160 POKE 54290,17
+170 REM PLAY FOR 2 SECONDS
+180 FOR T=1 TO 120:NEXT
+190 REM RELEASE ALL VOICES
+200 POKE 54276,16
+210 POKE 54283,16
+220 POKE 54290,16
 ```
 
-Five dialogue slots (empty strings allowed) and a music id (`TITLE1`) follow the rules.
+<audio controls src="/images/commodore-64/phase-0/tier-2/lesson-023/example-1.wav"></audio>
 
----
+**Lines 30-50** initialize ADSR envelopes for all three voices—without this, the SID chip produces no sound. **Line 70** sets global volume to maximum (15). **Lines 90-160** configure three voices with different frequencies forming a C major chord. Each voice uses register offset +4 for control (54276, 54283, 54290) with value 17 (waveform + gate on). **Lines 200-220** release all voices by clearing the gate bit (value 16 = waveform only).
 
-### Loader Updates
-
-Declare extra arrays:
-
-```basic
-32 DIM DIALOG$(4),MUSIC$(2)
-```
-
-Modify the loader:
-
-```basic
-5180 FOR I=0 TO 3:READ EX(I),EY(I):NEXT I
-5190 READ TITLE$,RULEDMG(ROOM),RULEBONUS(ROOM),RULESPEED(ROOM)
-5200 FOR I=0 TO 4:READ DIALOG$(I):NEXT I
-5210 READ MUSIC$(ROOM)
-5220 RETURN
-```
-
-Now every room automatically populates its text and audio cues.
-
----
-
-### Displaying Dialogue
-
-Reuse the log routine from Lesson 22:
-
-```basic
-5400 REM --- DRAW DIALOGUE BOX ---
-5410 PRINT CHR$(147)
-5420 PRINT TITLE$
-5430 PRINT "--------"
-5440 FOR I=0 TO 4
-5450 LINE$=LEFT$(DIALOG$(I),36)
-5460 PRINT "  ";LINE$
-5470 NEXT I
-```
-
-You can call this when entering the room, after hazards, or during cut-scenes.
-
----
-
-### Music Cue Stub
-
-```basic
-5500 REM --- PLAY ROOM MUSIC ---
-5510 RESTORE 9500
-5520 TARGET$=MUSIC$(ROOM)
-5530 GOSUB 6000   : REM look up frequency table for TARGET$
-5540 RETURN
-```
-
-`MUSIC$(ROOM)` might be `TITLE1`, `CHILL`, etc. Store the frequency sequences in a separate DATA block and use a lookup routine (`6000`) to play them. (Implementing the SID playback is Lesson 24’s domain; here we just provide the hook.)
+> **Note:** Frequency values aren't intuitive—262 Hz (middle C) requires frequency value 4104 (low byte 8, high byte 16). Formula: frequency_value = (Hz * 16777216) / 985248
 
 ---
 
 ### Experiment Section
 
-- Branch dialogue depending on `RULEDMG`: if hazards are lethal, print “The air is toxic!”  
-- Add `ITEM$` arrays to list power-ups found in each room.  
-- Store `MUSIC$(ROOM)` as an index instead of string for compactness.  
-- Combine parser commands so `LOOK` prints the dialogue box, `LISTEN` plays the cue.  
-- Save the last music id to avoid restarting the track if the room reloads quickly.
+Try these variations:
+
+- **Different chord**: Change frequencies to 4104, 5168, 6150 (C, E, G an octave higher)
+- **Longer duration**: Line 140 — `FOR T=1 TO 300` for 5-second chord
+- **Volume control**: Line 30 — try different volumes 1-15
+
+Now try an arpeggio showing voice independence:
+
+```basic
+10 REM INDEPENDENT VOICES ARPEGGIO
+20 REM SETUP ADSR (REQUIRED!)
+30 POKE 54277,9:POKE 54278,0
+40 POKE 54284,9:POKE 54285,0
+50 POKE 54291,9:POKE 54292,0
+60 REM SET VOLUME
+70 POKE 54296,15
+80 REM NOTE FREQUENCIES C,E,G
+90 DIM F(2):F(0)=4240:F(1)=5346:F(2)=6350
+100 REM MAIN LOOP
+110 FOR N=0 TO 2
+120 REM VOICE 1 PLAYS ALL NOTES
+130 L=F(N) AND 255:H=INT(F(N)/256)
+140 POKE 54272,L:POKE 54273,H
+150 POKE 54276,17
+160 FOR T=1 TO 20:NEXT
+170 POKE 54276,16
+180 NEXT
+190 REM VOICE 2 PLAYS ALL NOTES
+200 FOR N=0 TO 2
+210 L=F(N) AND 255:H=INT(F(N)/256)
+220 POKE 54279,L:POKE 54280,H
+230 POKE 54283,17
+240 FOR T=1 TO 20:NEXT
+250 POKE 54283,16
+260 NEXT
+270 REM VOICE 3 PLAYS ALL NOTES
+280 FOR N=0 TO 2
+290 L=F(N) AND 255:H=INT(F(N)/256)
+300 POKE 54286,L:POKE 54287,H
+310 POKE 54290,17
+320 FOR T=1 TO 20:NEXT
+330 POKE 54290,16
+340 NEXT
+```
+
+<audio controls src="/images/commodore-64/phase-0/tier-2/lesson-023/example-2.wav"></audio>
+
+**Lines 30-50** initialize ADSR envelopes—essential for audible sound. **Line 90** stores three frequency values in an array. **Lines 130/210/290** split 16-bit frequency into low byte (AND 255) and high byte (INT/256). Each voice plays the same three notes sequentially, demonstrating independent control. The pattern repeats three times—once per voice.
 
 ---
 
 ### Concept Expansion
 
-Streaming per-room metadata is the stepping stone to script engines. Later, you’ll load full conversation trees or soundtrack playlists from disk, but the pattern—DATA + loader—remains.
+**SID Voice Architecture**
+
+Each of the three voices is a complete synthesizer with these registers:
+
+```
+Voice 1 ($D400-$D406 / 54272-54278):
+  +0,+1: Frequency (16-bit, low/high)
+  +2,+3: Pulse width (for pulse waveform)
+  +4:    Control register (waveform + gate)
+  +5:    Attack/Decay
+  +6:    Sustain/Release
+
+Voice 2 ($D407-$D40D / 54279-54285):
+  [same register layout, +7 offset]
+
+Voice 3 ($D40E-$D414 / 54286-54292):
+  [same register layout, +14 offset]
+```
+
+Setting a frequency affects only that voice. Setting waveform/gate affects only that voice. This independence enables chords, harmonies, and complex music.
+
+**Frequency Calculation**
+
+The SID chip uses a phase accumulator clocked at 985248 Hz (PAL) or 1022727 Hz (NTSC). To generate a specific frequency:
+
+```
+Frequency Value = (Desired Hz × 16777216) / Clock Rate
+
+Middle C (261.63 Hz, NTSC):
+(261.63 × 16777216) / 1022727 = 4291
+
+A440 (concert A):
+(440 × 16777216) / 1022727 = 7217
+```
+
+For practical BASIC programming, use a lookup table or pre-calculated values. The precision of BASIC's floating-point math (5 significant digits) introduces small tuning errors at higher frequencies.
+
+**Control Register Structure**
+
+Register +4 for each voice (54276, 54283, 54290) controls waveform and gating:
+
+```
+Bit 7: Noise waveform
+Bit 6: Pulse waveform
+Bit 5: Sawtooth waveform
+Bit 4: Triangle waveform
+Bit 3: Test bit (resets oscillator)
+Bit 2: Ring modulation
+Bit 1: Sync
+Bit 0: Gate (1=attack phase, 0=release phase)
+```
+
+Common values:
+- 17 (00010001): Triangle + gate on
+- 33 (00100001): Sawtooth + gate on
+- 65 (01000001): Pulse + gate on
+- 16 (00010000): Triangle, gate off (release)
+
+**Global Volume Register**
+
+$D418 (54296) controls overall volume and filter routing:
+
+```
+Bits 3-0: Volume (0-15)
+Bit 4: Low-pass filter
+Bit 5: Band-pass filter
+Bit 6: High-pass filter
+Bit 7: Voice 3 off
+```
+
+For simple sound: `POKE 54296,15` (maximum volume, no filter).
+
+**Attack/Release Simplified**
+
+Registers +5 and +6 control the ADSR envelope (covered in detail in Lesson 24). For basic notes:
+
+```basic
+REM Fast attack, short decay, full sustain, fast release
+POKE 54277,9   REM Voice 1: Attack=0, Decay=9
+POKE 54278,240 REM Voice 1: Sustain=15, Release=0
+```
+
+Default power-on values work for simple tones, but explicit ADSR control creates more musical sounds.
+
+**Voice Independence in Practice**
+
+Each voice runs continuously once started. To play a chord:
+
+1. Set frequency for voice 1
+2. Gate on voice 1 (control register bit 0 = 1)
+3. Set frequency for voice 2
+4. Gate on voice 2
+5. Set frequency for voice 3
+6. Gate on voice 3
+7. Wait (FOR loop)
+8. Gate off all voices (control register bit 0 = 0)
+
+Voices don't interfere. You can gate voice 2 off while voices 1 and 3 continue playing.
+
+**Frequency Table for Common Notes**
+
+| Note | Frequency (Hz) | SID Value (NTSC) | Low Byte | High Byte |
+|------|---------------|------------------|----------|-----------|
+| C4   | 261.63        | 4291             | 211      | 16        |
+| D4   | 293.66        | 4817             | 209      | 18        |
+| E4   | 329.63        | 5406             | 126      | 21        |
+| F4   | 349.23        | 5729             | 97       | 22        |
+| G4   | 392.00        | 6430             | 30       | 25        |
+| A4   | 440.00        | 7217             | 49       | 28        |
+| B4   | 493.88        | 8103             | 167      | 31        |
+| C5   | 523.25        | 8581             | 133      | 33        |
 
 ---
 
-### Game Integration
+### How Games Use This
 
-- Title cards: room titles feed the HUD or cut-scene transitions.  
-- Dynamic music: `MUSIC$(ROOM)` drives SID sequences for ambient vs. combat.  
-- Quest text: populate the dialogue buffer with hints or story beats.  
-- Random chatter: rotate a selection of dialogue lines in each room for variety.
+**The Last Ninja** (1987, System 3): Used all three voices for music—melody on voice 1, bass line on voice 2, rhythm/percussion on voice 3. Sound effects temporarily interrupted voice 3, then restored music.
+
+**International Karate** (1985, System 3): Title screen music used three-voice chords for dramatic impact. During gameplay, voice 1 played punch/kick sounds while voices 2-3 continued background music.
+
+**Commando** (1985, Elite): Background music used all three voices in harmony. Explosion effects briefly took over one voice, creating dynamic mix between music and effects.
+
+**Wizball** (1987, Ocean): Martin Galway's soundtrack used complex three-voice harmonies with rapid voice switching. Some sections played 4-5 note arpeggios across three voices to simulate more instruments.
 
 ---
 
 ### From the Vault
 
-- [Memory Games](/vault/cassette-loading) — underscores how early games streamed data from tape.  
-- [Demo Scene 101](/vault/demo-scene-101) — inspiration for synchronising audio and text effects.
+- [SID chip](/vault/sid) - Sound Interface Device architecture and register details
 
 ---
 
 ### Quick Reference
 
+**Voice Register Base Addresses:**
+```
+Voice 1: $D400 (54272)
+Voice 2: $D407 (54279)
+Voice 3: $D40E (54286)
+```
+
+**Register Offsets (add to base):**
+```
++0: Frequency low byte
++1: Frequency high byte
++2: Pulse width low byte
++3: Pulse width high byte
++4: Control register (waveform + gate)
++5: Attack/Decay
++6: Sustain/Release
+```
+
+**Common Control Values:**
 ```basic
-FOR I=0 TO 4:READ DIALOG$(I):NEXT I
-READ MUSIC$(ROOM)
-PRINT TITLE$ : REM display room name
+REM Triangle waveform
+POKE voice_control, 17  REM Gate on
+POKE voice_control, 16  REM Gate off
+
+REM Sawtooth waveform
+POKE voice_control, 33  REM Gate on
+POKE voice_control, 32  REM Gate off
+
+REM Pulse waveform
+POKE voice_control, 65  REM Gate on
+POKE voice_control, 64  REM Gate off
+```
+
+**Setting Global Volume:**
+```basic
+POKE 54296, 15  REM Maximum volume
+```
+
+**Splitting Frequency Value:**
+```basic
+L = F AND 255        REM Low byte
+H = INT(F / 256)     REM High byte
 ```
 
 ---
 
-### What You’ve Learnt
+### What You've Learnt
 
-- Extended DATA sets to include dialogue and audio cues.  
-- Loaded all per-room metadata in one pass.  
-- Hooked dialogue and music into existing UI and sound stubs.  
-- Prepared rich room scripting for the Week 3 mini-game finale.
-
-**Next lesson:** Wrap Week 3 with the full mini-game—rooms, logic, UI, and sound all working together.
+- SID chip provides three independent synthesizer voices
+- Each voice has separate frequency, waveform, and envelope registers
+- Voice 1: 54272-54278, Voice 2: 54279-54285, Voice 3: 54286-54292
+- Frequency is 16-bit value (0-65535) split into low/high bytes
+- Control register bit 0 gates voice on (1) or off (0)
+- Global volume register (54296) affects all voices
+- Voice independence enables chords, harmonies, and polyphonic music
+- Frequency values calculated from Hz using phase accumulator formula
 
 ---
+
+### Preview: Next Lesson
+
+We'll master ADSR envelopes to shape sound over time. You'll learn attack, decay, sustain, and release parameters, create instrument-like timbres, and understand how envelope shaping transforms simple waveforms into musical sounds.

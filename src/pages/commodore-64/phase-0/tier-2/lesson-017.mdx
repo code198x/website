@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "The Art of Movement"
+title: "Hardware Sprites"
 game: "Commodore 64 BASIC"
 system: "C64"
 phase: 0
@@ -10,174 +10,183 @@ totalLessons: 64
 prevLesson: "/commodore-64/phase-0/tier-1/lesson-016"
 nextLesson: "/commodore-64/phase-0/tier-2/lesson-018"
 objectives:
-  - 'Refresh screen/colour memory maths for precise positioning.'
-  - 'Animate multi-tile shapes smoothly with clean erase/draw loops.'
-  - 'Introduce velocity variables to decouple direction and speed.'
+  - 'Understand VIC-II hardware sprite system (8 sprites, 24×21 pixels).'
+  - 'Enable and position sprites using memory-mapped registers.'
+  - 'Differentiate between character graphics and hardware sprites.'
 ---
 
-## Lesson 17 – The Art of Movement
+## Beyond Characters
 
-Week 3 opens by turning all that map logic into fluid motion. You already know how to POKE characters; now you’ll glide multi-tile shapes, keep colours in sync, and prepare for sprite-like movement.
-
-> [📷 suggested: screenshot of a 2×2 block sliding smoothly across the screen]
+In Tier 1, you drew graphics using screen memory—characters and PETSCII symbols arranged on a 40×25 grid. This works for static layouts and text adventures, but action games need something faster: **hardware sprites**. The VIC-II chip can display up to 8 independent graphical objects that move smoothly across the screen without touching screen memory at all.
 
 ---
 
 ### The One-Minute Tour
 
-- Compute screen addresses with `SCREEN + ROW*40 + COL`; colour lives at `COLOR + ROW*40 + COL`.  
-- Multi-tile objects need erase → update → draw order.  
-- Velocity variables (`VX`, `VY`) separate direction from position.  
-- Delay loops (or timers later) make motion readable.
+- VIC-II has 8 hardware sprites (24×21 pixels each)
+- Sprites overlay the character screen—they don't erase or move text
+- Position controlled by dedicated registers ($D000-$D00F)
+- Enable register ($D015) turns sprites on/off
+- Sprite pointers (2040-2047) define which sprite data to display
+- Default sprite data exists at block 13 (memory 832)
 
 ---
 
-### Warm-Up: Sliding a Single Character
+### Example Program
 
 ```basic
-NEW
-10 PRINT CHR$(147)
-20 SCREEN=1024
-30 COLOR=55296
-40 X=5:Y=12:CHAR=64:COL=7
-50 FOR STEP=0 TO 30
-60 LOC=SCREEN+Y*40+X
-70 POKE LOC,CHAR:POKE COLOR+Y*40+X,COL
-80 FOR D=1 TO 80:NEXT D
-90 POKE LOC,32
-100 X=X+1
-110 NEXT STEP
+10 REM ENABLE SPRITE 0
+20 REM FIRST, CREATE SIMPLE SPRITE DATA
+30 FOR I=0 TO 62:POKE 832+I,255:NEXT
+40 REM NOW POSITION AND ENABLE SPRITE
+50 POKE 53248,160:POKE 53249,120
+60 POKE 2040,13
+70 POKE 53269,1
+80 GET A$:IF A$="" THEN 80
 ```
 
-- **Line 70** paints an `@` (`64`) in yellow (`7`).  
-- **Line 90** erases before moving.  
-- Increase/decrease `X` to slide left/right; swap the loop to animate vertically.
+![White sprite block displayed center-screen](/images/commodore-64/phase-0/tier-2/lesson-017/example-1.png)
 
----
+**Line 30** fills sprite data with 255 (all pixels on) creating a solid block. **Lines 50** position sprite 0 at X=160, Y=120 (center screen). **Line 60** points sprite 0 to data block 13 (memory 832). **Line 70** enables sprite 0 (bit 0 of $D015). **Line 80** waits for keypress.
 
-### Out-of-Bounds? Clamp It
-
-```basic
-120 IF X>38 THEN X=38
-130 IF X<0 THEN X=0
-```
-
-Insert those before line 70 to keep the character on-screen. You’ve used this guard pattern in earlier lessons; animation makes it essential.
-
----
-
-### Multi-Tile Block (2×2)
-
-```basic
-NEW
-10 PRINT CHR$(147)
-20 SCREEN=1024:COLOR=55296
-30 X=8:Y=8:COL=2
-40 FOR STEP=1 TO 25
-50 GOSUB 2000        : REM draw block
-60 FOR D=1 TO 120:NEXT D
-70 GOSUB 2100        : REM erase block
-80 X=X+1:Y=Y+1
-90 NEXT STEP
-100 END
-
-2000 REM --- DRAW BLOCK ---
-2010 FOR DY=0 TO 1
-2020 FOR DX=0 TO 1
-2030 LOC=SCREEN+(Y+DY)*40+(X+DX)
-2040 POKE LOC,162
-2050 POKE COLOR+(Y+DY)*40+(X+DX),COL
-2060 NEXT DX
-2070 NEXT DY
-2080 RETURN
-
-2100 REM --- ERASE BLOCK ---
-2110 FOR DY=0 TO 1
-2120 FOR DX=0 TO 1
-2130 LOC=SCREEN+(Y+DY)*40+(X+DX)
-2140 POKE LOC,32
-2150 NEXT DX
-2160 NEXT DY
-2170 RETURN
-```
-
-Keep the draw and erase loops symmetrical so you wipe the exact pixels you painted.
-
----
-
-### Velocity Variables
-
-```basic
-NEW
-10 PRINT CHR$(147)
-20 SCREEN=1024:COLOR=55296
-30 X=10:Y=10:VX=1:VY=0
-40 FOR STEP=1 TO 60
-50 LOC=SCREEN+Y*40+X
-60 POKE LOC,90:POKE COLOR+Y*40+X,1
-70 FOR D=1 TO 40:NEXT D
-80 POKE LOC,32
-90 X=X+VX:Y=Y+VY
-100 IF X<1 OR X>38 THEN VX=-VX
-110 IF Y<1 OR Y>23 THEN VY=-VY
-120 NEXT STEP
-```
-
-Bounce effect! Tweak `VX`/`VY` to change direction or speed. Later, enemies and projectiles will use the same pattern.
+> **Note:** Sprite coordinates are different from character positions. X ranges 0-511 (needs 9 bits), Y ranges 0-255. The screen visible area is roughly X=24-344, Y=50-250.
 
 ---
 
 ### Experiment Section
 
-- Combine velocity with the 2×2 block—change both `X` and `Y` to create diagonal motion.  
-- Tile-ready: replace `162` with `MAP` values to move a player made of multiple character cells.  
-- Trails: forget to erase and witness after-images—useful for debugging.  
-- Colour shifts: cycle `COL` inside the loop to animate glowing objects.  
-- Timer-based speed: tie the delay loop to `TI` instead of fixed counts for consistent motion across PAL/NTSC.
+Try these variations:
+
+- **Different positions**: Change lines 50 to move the sprite around
+- **Top-left corner**: `POKE 53248,24:POKE 53249,50`
+- **Bottom-right**: `POKE 53248,320:POKE 53249,229` (see Extended Positioning below)
+- **Sprite visibility**: What happens if you set Y to 0 or 255?
+
+Now add colour to your sprite:
+
+```basic
+10 REM COLORED SPRITE
+20 REM CREATE SIMPLE SPRITE SHAPE
+30 FOR I=0 TO 62:POKE 832+I,255:NEXT
+40 REM POSITION SPRITE CENTER SCREEN
+50 POKE 53248,160:POKE 53249,120
+60 POKE 2040,13
+70 POKE 53287,7:REM SPRITE 0 COLOR = YELLOW
+80 POKE 53269,1:REM ENABLE SPRITE 0
+90 GET A$:IF A$="" THEN 90
+```
+
+![Yellow sprite block displayed center-screen](/images/commodore-64/phase-0/tier-2/lesson-017/example-2.png)
+
+**Line 70** sets sprite 0's colour to yellow (7). Each sprite has its own colour register at $D027-$D02E (53287-53294).
 
 ---
 
 ### Concept Expansion
 
-These techniques are the stepping stone to sprites: once you’re comfortable updating multiple characters per frame, migrating to hardware sprites (or blitting in assembly) is a natural progression.
+**Why Sprites Instead of Screen Memory?**
+
+In Tier 1, moving an @ character meant:
+1. POKE 32 (space) to erase old position
+2. Calculate new screen address (1024 + Y\*40 + X)
+3. POKE character code to new position
+
+For smooth animation, this is slow. **Hardware sprites**:
+- VIC-II draws them automatically every frame
+- No screen memory calculations needed
+- Move independently of the 40×25 character grid
+- Overlay everything (characters, graphics, background)
+
+**The VIC-II Sprite System**
+
+The VIC-II chip has dedicated circuitry for sprites. When you POKE a position register, the chip immediately starts drawing that sprite at the new location on the next frame. This happens in hardware—no BASIC interpreter overhead.
+
+**8 Sprites Maximum**
+
+The VIC-II can display 8 sprites simultaneously (numbered 0-7). Each has:
+- X/Y position registers (2 bytes each)
+- Colour register (1 byte, 16 colours)
+- Sprite pointer (tells which data to display)
+- Enable bit (in $D015 register)
+
+**Sprite Data Format**
+
+Each sprite is 24×21 pixels (3 bytes wide × 21 rows = 63 bytes). Plus 1 padding byte = 64 bytes per sprite. The C64 stores sprite data in 64-byte blocks. Block 13 starts at memory 832 (13 × 64 = 832).
+
+Filling sprite data with 255 creates a solid block because 255 in binary is 11111111 (all 8 pixels on in that byte).
+
+**Extended Positioning (X > 255)**
+
+X positions above 255 require the most significant bit (MSB) register at $D010 (53264). We'll cover this in Lesson 19 when sprites move horizontally across the entire screen.
 
 ---
 
-### Game Integration
+### How Games Use This
 
-- Player characters composed of 2×2 blocks for chunkier art.  
-- Moving obstacles that track the player by tweaking `VX/VY`.  
-- Camera scroll prototypes: update an offset instead of the object to learn parallax fundamentals.  
-- Blend with collision checks from Lesson 13 before moving to avoid clipping.
+**Pac-Man** (1983, Atarisoft): Pac-Man, ghosts, and fruits were all sprites moving independently over the maze background (which was screen characters).
+
+**Impossible Mission** (1984, Epyx): Your agent was sprite 0. Enemy robots were sprites 1-3. The platforming environment was drawn with screen memory, but all moving objects were sprites.
+
+**Uridium** (1986, Hewson): Your ship, enemy fighters, and bullets were sprites. The scrolling landscape underneath was bitmap graphics, but sprites overlaid it all.
+
+**Boulder Dash** (1984, First Star): Rockford (the player) was a sprite. Falling boulders and diamonds were sprites. The dirt and walls were character graphics that sprites moved through.
 
 ---
 
 ### From the Vault
 
-- [Inside the VIC-II](/vault/vic-ii) — revisit how characters and colours live in memory.  
-- [Paradroid](/vault/paradroid) — note how multi-tile objects slide smoothly across the decks.
+- VIC-II sprite system: Programmer's Reference Guide, pages 400-412
+- Sprite positioning: Mapping the Commodore 64, pages 155-158
+- Sprite data format: _Commodore 64 User's Guide_, pages 110-115
 
 ---
 
 ### Quick Reference
 
-```basic
-SCREEN=1024:COLOR=55296
-LOC=SCREEN+ROW*40+COL          : REM character address
-POKE LOC,CHAR                  : REM draw
-POKE COLOR+ROW*40+COL,COLVAL   : REM colour
-X=X+VX : Y=Y+VY                : REM velocity update
+**Sprite 0 Registers:**
+```
+$D000 (53248) : X position low byte
+$D001 (53249) : Y position
+$D010 (53264) : X position MSB (bit 0 for sprite 0)
+$D015 (53269) : Sprite enable (bit 0 for sprite 0)
+$D027 (53287) : Sprite 0 colour
+2040 (screen+$3F8) : Sprite 0 pointer
 ```
 
+**Sprite Data Location:**
+```
+Block 13 = Memory 832-895 (13 × 64)
+Pointer value: 13
+63 bytes of pixel data + 1 padding byte
+```
+
+**Colour Values:**
+| Value | Colour      | Value | Colour       |
+|-------|-------------|-------|--------------|
+| 0     | Black       | 8     | Orange       |
+| 1     | White       | 9     | Brown        |
+| 2     | Red         | 10    | Light Red    |
+| 3     | Cyan        | 11    | Dark Grey    |
+| 4     | Purple      | 12    | Grey         |
+| 5     | Green       | 13    | Light Green  |
+| 6     | Blue        | 14    | Light Blue   |
+| 7     | Yellow      | 15    | Light Grey   |
+
 ---
 
-### What You’ve Learnt
+### What You've Learnt
 
-- Refreshed screen/colour memory maths and offsets.  
-- Animated single- and multi-tile shapes with clean erase/draw routines.  
-- Applied velocity variables for smooth, reversible movement.  
-- Prepared your engine for sprite work and scrolling in upcoming lessons.
-
-**Next lesson:** Logic & Motion remix—add smarter enemies that chase and evade.
+- VIC-II sprites are hardware-accelerated graphical objects
+- 8 sprites available (numbered 0-7)
+- Position registers control X/Y coordinates
+- Enable register ($D015) turns sprites on/off
+- Colour registers ($D027-$D02E) set individual sprite colours
+- Sprite pointers (2040-2047) select which data block to display
+- Sprites overlay character screen without erasing it
+- Default sprite data exists at block 13 (memory 832)
 
 ---
+
+### Preview: Next Lesson
+
+We'll design custom sprite shapes using DATA statements. You'll learn the 24×21 pixel format, create a spaceship or character sprite, and understand how the 63-byte data structure defines sprite graphics.

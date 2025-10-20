@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Text Tricks III"
+title: "Sprite Animation"
 game: "Commodore 64 BASIC"
 system: "C64"
 phase: 0
@@ -10,157 +10,291 @@ totalLessons: 64
 prevLesson: "/commodore-64/phase-0/tier-2/lesson-021"
 nextLesson: "/commodore-64/phase-0/tier-2/lesson-023"
 objectives:
-  - 'Render context-aware menus (highlight selection, wrap navigation).'
-  - 'Display conversation/dialogue boxes with scrolling text.'
-  - 'Reuse Lesson 19 utilities to keep code tidy and maintainable.'
+  - 'Animate sprites by cycling through multiple sprite frames.'
+  - 'Control animation timing using TI variable or delay loops.'
+  - 'Load multiple sprite shapes to different memory blocks.'
 ---
 
-## Lesson 22 – Text Tricks III
+## Bringing Sprites to Life
 
-Interfaces now need flair: highlightable menus, dialogue boxes, and context-sensitive prompts. We’ll build a reusable menu engine and a dialogue scroller using the padding and input tricks from Lessons 19–21.
-
-> [📷 suggested: screenshot of a highlighted menu option and a scrolling dialogue panel]
+Static sprites work for bullets and cursors, but games need walking characters, rotating ships, and flapping enemies. Sprite animation works by rapidly switching between different sprite shapes—the same principle as film or cartoon animation. This lesson shows how to create smooth animated sprites using frame cycling and timing control.
 
 ---
 
 ### The One-Minute Tour
 
-- Menus store their options in arrays; a cursor index determines which option is highlighted.  
-- Highlight with inverse block characters (`18`/`146`) or colour RAM toggles.  
-- Dialogue boxes print lines into a fixed region using a rolling buffer similar to the command log.
+- Animation = switching sprite pointers to display different shapes
+- Load multiple frames to consecutive memory blocks (832, 896, 960...)
+- Change sprite pointer (POKE 2040, block_number) to cycle frames
+- Timing methods: FOR loops (simple) or TI variable (smooth)
+- TI = system timer, increments 60 times per second (NTSC)
+- Memory safety: Blocks 13-15 safe (832-959), block 16 overlaps screen memory
+- Two frames minimum for animation (walk cycle, blink, etc.)
 
 ---
 
-### Menu Engine Skeleton
+### Example Program
 
 ```basic
-NEW
-10 PRINT CHR$(147)
-20 DIM OPT$(3)
-30 DATA "START GAME","LOAD GAME","OPTIONS","QUIT"
-40 FOR I=0 TO 3:READ OPT$(I):NEXT
-50 SEL=0
-60 GOSUB 2000
-70 GET K$:IF K$="" THEN 70
-80 IF K$="S" OR K$=CHR$(17) THEN SEL=SEL+1
-90 IF K$="W" OR K$=CHR$(145) THEN SEL=SEL-1
-100 IF SEL>3 THEN SEL=0
-110 IF SEL<0 THEN SEL=3
-120 IF K$=CHR$(13) THEN GOSUB 3000
-130 GOTO 60
-
-2000 REM --- DRAW MENU ---
-2010 PRINT CHR$(147)
-2020 PRINT "MAZE CRAZE"
-2030 PRINT "-----------"
-2040 FOR I=0 TO 3
-2050 LINE$=OPT$(I)
-2060 IF I=SEL THEN PRINT CHR$(18);" ";LINE$;" ";CHR$(146) ELSE PRINT "  ";LINE$
-2070 NEXT I
-2080 RETURN
+10 REM SPRITE FRAME CYCLING
+20 REM LOAD 2 ANIMATION FRAMES
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 FOR I=0 TO 62
+70 READ B:POKE 896+I,B
+80 NEXT
+90 REM SETUP SPRITE
+100 POKE 53287,7:POKE 53269,1
+110 X=150:Y=120:F=0
+120 POKE 53248,X:POKE 53249,Y
+130 REM MAIN LOOP
+140 F=1-F
+150 POKE 2040,13+F
+160 FOR D=1 TO 30:NEXT D
+170 GOTO 140
+180 REM FRAME 0 - CIRCLE
+190 DATA 0,0,0,0,126,0,1,255,128
+200 DATA 3,255,192,7,255,224,7,255,224
+210 DATA 15,255,240,15,255,240,15,255,240
+220 DATA 7,255,224,7,255,224,3,255,192
+230 DATA 1,255,128,0,126,0,0,0,0
+240 DATA 0,0,0,0,0,0,0,0,0
+250 DATA 0,0,0,0,0,0,0,0,0
+260 REM FRAME 1 - DIAMOND
+270 DATA 0,0,0,0,24,0,0,60,0
+280 DATA 0,126,0,1,255,128,3,255,192
+290 DATA 7,255,224,15,255,240,15,255,240
+300 DATA 7,255,224,3,255,192,1,255,128
+310 DATA 0,126,0,0,60,0,0,24,0
+320 DATA 0,0,0,0,0,0,0,0,0
+330 DATA 0,0,0,0,0,0,0,0,0
 ```
 
-- Use `CHR$(18)` to turn on reverse video and `CHR$(146)` to turn it off. Surround the selected option with spaces for a highlighted bar.  
-- Wrap selection when moving past the top or bottom.
+![Yellow sprite alternating between circle and diamond shapes](/images/commodore-64/phase-0/tier-2/lesson-022/example-1.png)
 
----
+**Lines 30-80** load two sprite frames: frame 0 to block 13 (832-894), frame 1 to block 14 (896-958). **Line 140** toggles F between 0 and 1 using `F=1-F` (when F=0, becomes 1; when F=1, becomes 0). **Line 150** changes the sprite pointer to display the current frame (13+0=13 or 13+1=14). **Line 160** delays 30 loops for visible frame duration.
 
-### Handling Menu Selection
-
-```basic
-3000 REM --- MENU ACTIONS ---
-3010 ON SEL+1 GOTO 3100,3200,3300,3400
-3100 PRINT "START!":END
-3200 PRINT "LOAD...":END
-3300 PRINT "OPTIONS...":END
-3400 PRINT "QUIT":END
-```
-
-`ON SEL+1` routes to different handlers depending on the highlighted item.
-
----
-
-### Dialogue Box with Scroll
-
-```basic
-NEW
-10 PRINT CHR$(147)
-20 DIM MSG$(4)
-30 FOR I=0 TO 4:MSG$(I)="":NEXT
-40 DATA "WELCOME TO THE MAZE.","WATCH OUT FOR PATROLS.","FIND THE EXIT TO ADVANCE.","PRESS ANY KEY...","GOOD LUCK!"
-50 FOR L=0 TO 4
-60 MSG$(4)=READ$:FOR I=3 TO 0 STEP -1:MSG$(I)=MSG$(I-1):NEXT
-70 MSG$(0)=MSG$(4)
-80 GOSUB 2000
-90 GET K$:IF K$="" THEN 90
-100 NEXT
-110 END
-
-2000 REM --- DRAW DIALOGUE PANEL ---
-2010 PRINT CHR$(147)
-2020 PRINT "DIALOGUE"
-2030 PRINT "--------"
-2040 FOR I=0 TO 3
-2050 LINE$=LEFT$(MSG$(I),36)
-2060 PRINT "  ";LINE$
-2070 NEXT I
-2080 RETURN
-```
-
-Here the window shows the four most recent lines; `MSG$(0)` is newest. You can now plug this into cut-scenes, terminals, or quest givers.
+> **Note:** Each sprite = 63 bytes. Block 13 starts at 832, block 14 at 896 (832+64), block 15 at 960 (896+64). Don't use block 16 (1024)—that's screen memory!
 
 ---
 
 ### Experiment Section
 
-- Replace reverse video with colour toggles by poking `COLOR` RAM for the menu line.  
-- Add keyboard shortcuts: pressing `S` selects “Start Game” instantly by scanning the first character of each option.  
-- Pad dialogue lines with `RIGHT$` and `LEFT$` to align speaker names and text columns.  
-- Introduce slow typewriter effects by printing one character at a time with delays.  
-- Combine the menu engine with the room loader so the “OPTIONS” item adjusts `RULEDMG` or `RULESPEED` dynamically.
+Try these variations:
+
+- **Faster animation**: Line 160 — `FOR D=1 TO 10` speeds up cycling
+- **More frames**: Add frame 2 at block 15 (960), change line 140 to cycle 0-1-2: `F=F+1:IF F>2 THEN F=0`
+- **Different shapes**: Lines 190-330 — design your own frames (spinning arrow, beating heart, etc.)
+
+Now try smoother timing using the TI variable for frame-perfect animation:
+
+```basic
+10 REM ANIMATED WALKING CHARACTER
+20 REM LOAD 2 ANIMATION FRAMES
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 FOR I=0 TO 62
+70 READ B:POKE 896+I,B
+80 NEXT
+90 REM SETUP SPRITE
+100 POKE 53287,7:POKE 53269,1
+110 X=50:Y=120:VX=1:F=0
+120 POKE 53248,X:POKE 53249,Y
+130 T=TI
+140 REM MAIN LOOP
+150 X=X+VX
+160 IF X>255 THEN X=50
+170 POKE 53248,X
+180 IF TI-T<5 THEN GOTO 180
+190 T=TI
+200 F=1-F
+210 POKE 2040,13+F
+220 GOTO 150
+230 REM FRAME 0 - LEFT LEG FORWARD
+240 DATA 0,24,0,0,60,0,0,126,0
+250 DATA 0,255,0,1,255,128,3,255,192
+260 DATA 7,255,224,15,255,240,31,255,248
+270 DATA 3,255,192,3,255,192,3,255,192
+280 DATA 1,255,192,0,255,192,0,126,192
+290 DATA 0,60,128,0,24,0,0,0,0
+300 DATA 0,0,0,0,0,0,0,0,0
+310 REM FRAME 1 - RIGHT LEG FORWARD
+320 DATA 0,24,0,0,60,0,0,126,0
+330 DATA 0,255,0,1,255,128,3,255,192
+340 DATA 7,255,224,15,255,240,31,255,248
+350 DATA 3,255,192,3,255,192,3,255,192
+360 DATA 3,255,128,3,255,0,3,126,0
+370 DATA 1,60,0,0,24,0,0,0,0
+380 DATA 0,0,0,0,0,0,0,0,0
+```
+
+![Yellow sprite walking across screen with alternating leg positions](/images/commodore-64/phase-0/tier-2/lesson-022/example-2.png)
+
+**Line 130** initializes T with current timer value (TI). **Line 180** waits until 5/60ths of a second (5 jiffies) have passed before continuing—creates consistent timing regardless of BASIC execution speed. **Line 190** resets T for next frame. This separates movement (every loop) from animation (every 5 jiffies), so the sprite walks smoothly even if animation frames change.
 
 ---
 
 ### Concept Expansion
 
-Menus and dialogue need to be maintainable. By storing options/lines in arrays and reusing the log buffer, you keep layout logic separate from behaviour, paving the way for larger story scripts later.
+**Memory Layout for Multiple Frames**
+
+The C64's memory map determines safe sprite storage locations:
+
+```
+0-1023:     BASIC/system variables
+1024-2023:  Screen memory (40×25 characters)
+2024-2039:  Sprite pointers
+...
+832-894:    Block 13 (sprite frame 0)
+896-958:    Block 14 (sprite frame 1)
+960-1022:   Block 15 (sprite frame 2)
+1024+:      SCREEN MEMORY - DON'T USE!
+```
+
+Loading a sprite to block 16 (1024) overwrites screen characters, causing corruption. For BASIC programs, blocks 13-15 provide space for 3 sprite frames. More frames require higher memory (blocks 192+ at 12288+) or complex memory management.
+
+**Frame Cycling Techniques**
+
+Two common patterns for cycling through N frames:
+
+```basic
+REM Toggle between 2 frames
+F=1-F          REM F alternates 0,1,0,1...
+
+REM Cycle through 3+ frames
+F=F+1:IF F>2 THEN F=0     REM F cycles 0,1,2,0,1,2...
+```
+
+The sprite pointer formula: `POKE 2040, BASE_BLOCK+F` where BASE_BLOCK is your first frame (typically 13) and F is the current frame index (0, 1, 2...).
+
+**Timing Methods Compared**
+
+**FOR loop delays:**
+```basic
+FOR D=1 TO 30:NEXT D    REM ~1/2 second (varies with program)
+```
+- Simple to implement
+- Duration varies with program complexity
+- Same code elsewhere runs at different speeds
+- Good for learning, less reliable in complex programs
+
+**TI variable timing:**
+```basic
+T=TI                          REM Save current time
+IF TI-T<5 THEN GOTO line     REM Wait 5 jiffies
+T=TI                          REM Reset for next frame
+```
+- Consistent frame rate (60 jiffies per second on NTSC, 50 on PAL)
+- Independent of program complexity
+- Allows simultaneous actions (movement + animation at different rates)
+- Essential for game-quality timing
+
+TI increments automatically every 1/60th second (NTSC) or 1/50th second (PAL). One "jiffy" = one TI increment. Common animation speeds: 3-5 jiffies (12-20 FPS), 6-10 jiffies (6-10 FPS).
+
+**Design Considerations for Animation Frames**
+
+Effective sprite animation requires:
+
+1. **Consistent sprite size**: All frames should occupy similar visual space
+2. **Smooth transitions**: Adjacent frames should differ by small changes
+3. **Loop continuity**: Last frame should transition smoothly to first
+4. **Pixel symmetry**: Walking legs, spinning objects need balanced shapes
+5. **Motion exaggeration**: Larger changes read better at low frame rates (2-4 frames)
+
+Two-frame animations work well for: walking (alternating legs), blinking (open/closed), spinning (45° rotations), breathing (expand/contract). Three-frame animations add: smoother rotation, middle positions (walk with both legs down), anticipation poses.
+
+**TI Variable Limitations**
+
+Critical TI facts:
+
+- Resets to 0 at power-on
+- Resets to 0 after 24 hours (86400 jiffies = 1440000)
+- Stops incrementing during BASIC's GET, INPUT, and STOP statements
+- Can be manually reset: `TI=0`
+
+For frame timing, these limitations rarely matter—games typically run for minutes, not 24 hours. If TI resets during gameplay, animations might freeze for one frame when crossing the zero point.
 
 ---
 
-### Game Integration
+### How Games Use This
 
-- Title screen: drop the menu skeleton into the Week 2 state machine.  
-- Pause menu: call the menu routine when the player hits `RUN/STOP`, resume gameplay afterwards.  
-- Dialogue decisions: convert highlighted options into verb/object commands for the parser.  
-- HUD prompts: display hints or warnings in the dialogue box when hazards trigger.
+**Impossible Mission** (1984, Epyx): Player character used 8-frame running animation, cycling through frames based on horizontal movement speed. Standing still displayed frame 0; moving cycled frames 1-8 at speeds proportional to velocity.
+
+**Paradroid** (1985, Hewson): Enemy droids used 2-frame animations for patrol movement (alternating antenna positions), 4-frame explosion sequences when destroyed. The game synchronized animation timing with droid movement patterns.
+
+**Boulder Dash** (1984, First Star): Rockford's 8-frame walking animation cycled through elaborate leg and arm movements. Diamonds used 2-frame sparkle animations. All animations used TI-based timing for consistent speed across gameplay.
+
+**Uridium** (1986, Hewson): Player ship exhaust used 3-frame animation (flame cycles), enemy fighters used 2-frame wing animations. The game updated animation frames independently from movement, allowing smooth rotation while maintaining flicker effects.
 
 ---
 
 ### From the Vault
 
-- [Your Sinclair](/vault/your-sinclair) — inspiration for witty menu copy and dialogue tone.  
-- [Paradroid](/vault/paradroid) — notice how UI panels relay information consistently across decks.
+- [VIC-II](/vault/vic-ii) - Sprite pointers, memory layout, and animation techniques
 
 ---
 
 ### Quick Reference
 
-```basic
-CHR$(18) / CHR$(146)             : REM reverse video on/off
-ON SEL+1 GOTO ...                : REM menu action routing
-LEFT$(MSG$,36)                   : REM cap dialogue line length
-LOG$(I)=LOG$(I-1)                : REM rolling buffer reuse
+**Memory Blocks for Sprite Storage:**
+```
+Block 13: 832-894   (safe)
+Block 14: 896-958   (safe)
+Block 15: 960-1022  (safe)
+Block 16: 1024+     (SCREEN MEMORY - avoid!)
 ```
 
+**Frame Cycling Patterns:**
+```basic
+REM 2-frame toggle
+F=1-F
+POKE 2040, 13+F
+
+REM 3-frame cycle
+F=F+1:IF F>2 THEN F=0
+POKE 2040, 13+F
+
+REM 4-frame cycle
+F=F+1:IF F>3 THEN F=0
+POKE 2040, 13+F
+```
+
+**Timing Methods:**
+```basic
+REM FOR loop (simple, variable speed)
+FOR D=1 TO 30:NEXT D
+
+REM TI variable (smooth, consistent)
+T=TI
+IF TI-T<5 THEN GOTO loop_line
+T=TI
+```
+
+**Common Animation Speeds:**
+| Jiffies | FPS (NTSC) | Use Case |
+|---------|------------|----------|
+| 2       | 30         | Very fast (explosions) |
+| 3       | 20         | Fast (running) |
+| 5       | 12         | Medium (walking) |
+| 10      | 6          | Slow (breathing) |
+
 ---
 
-### What You’ve Learnt
+### What You've Learnt
 
-- Highlighted menu selections with reverse video and wrapping navigation.  
-- Built a reusable dialogue box using string buffers.  
-- Hooked the new text components into your existing data and logic framework.  
-- Set the stage for Week 3’s mini-game UI.
-
-**Next lesson:** Text meets sound—call SID cues directly from your interface events.
+- Sprite animation works by cycling through multiple sprite shapes
+- Load frames to consecutive memory blocks (832, 896, 960)
+- Change sprite pointer (POKE 2040, block) to display different frames
+- FOR loops provide simple timing, TI variable provides consistent timing
+- TI increments 60 times per second (NTSC), 50 times per second (PAL)
+- Block 16 (1024) is screen memory—causes corruption if used for sprites
+- Frame cycling uses toggle (F=1-F) or increment (F=F+1 with reset)
+- Effective animation requires consistent size and smooth transitions
 
 ---
+
+### Preview: Next Lesson
+
+We'll control sprite priority and multicolour mode. You'll learn to display sprites behind background graphics, create 3-colour sprites with shared colour palettes, and combine priority layers for depth effects in game graphics.

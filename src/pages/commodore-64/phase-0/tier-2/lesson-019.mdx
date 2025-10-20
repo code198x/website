@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Text Tricks II"
+title: "Moving Sprites"
 game: "Commodore 64 BASIC"
 system: "C64"
 phase: 0
@@ -10,152 +10,223 @@ totalLessons: 64
 prevLesson: "/commodore-64/phase-0/tier-2/lesson-018"
 nextLesson: "/commodore-64/phase-0/tier-2/lesson-020"
 objectives:
-  - 'Format HUDs and menus with padding, alignment, and inline updates.'
-  - 'Normalise and tokenise input strings to support synonyms and two-word commands.'
-  - 'Build scrolling log/output panels using string buffers.'
+  - 'Animate sprites by updating X/Y position registers.'
+  - 'Understand coordinate ranges (X: 0-511, Y: 0-255).'
+  - 'Handle X positions above 255 using MSB register ($D010).'
 ---
 
-## Lesson 19 – Text Tricks II
+## Bringing Sprites to Life
 
-Week 2 introduced slicing strings; now we’ll dress up the interface. HUDs, logs, and menus all rely on tidy formatting and responsive text handling. Today: padded numbers, synonyms, and scrolling logs.
-
-> [📷 suggested: screenshot showing a formatted HUD and command log]
+Static sprites are useful for testing, but games need movement. The VIC-II updates sprite positions every frame—change the position registers, and the sprite moves instantly. This lesson shows how to animate sprites through X/Y coordinate updates and handle the full horizontal screen range using the MSB (most significant bit) register.
 
 ---
 
 ### The One-Minute Tour
 
-- Use `CHR$(19)` to home the cursor and overwrite HUD text.  
-- `RIGHT$`, `LEFT$`, `MID$` handle padding/truncation.  
-- Normalise inputs (trim spaces, uppercase, collapse synonyms).  
-- Maintain command history in a string array.
+- X position: $D000 (53248) stores values 0-255 (low byte)
+- Y position: $D001 (53249) stores values 0-255 (full range)
+- X MSB register: $D010 (53264) extends X to 0-511
+- Bit 0 of $D010 controls sprite 0's ninth X bit
+- Movement loop: read position → add velocity → write position
+- Delay loops control animation speed
 
 ---
 
-### HUD with Padded Numbers
+### Example Program
 
 ```basic
-NEW
-10 SCORE=125
-20 LIVES=3
-30 TIMELEFT=42
-40 PRINT CHR$(147)
-50 PRINT CHR$(19)
-60 PRINT "SCORE:";RIGHT$("00000"+STR$(SCORE),5);
-70 PRINT "  LIVES:";LIVES;
-80 PRINT "  TIME:";RIGHT$("00"+STR$(TIMELEFT),2)
+10 REM MOVE SPRITE HORIZONTALLY
+20 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 REM ENABLE SPRITE
+70 POKE 2040,13:POKE 53287,7:POKE 53269,1
+80 X=50:Y=120
+90 REM MAIN LOOP
+100 POKE 53248,X:POKE 53249,Y
+110 X=X+2
+120 IF X>255 THEN X=50
+130 FOR D=1 TO 50:NEXT D
+140 GOTO 100
+150 DATA 0,24,0,0,60,0,0,126,0
+160 DATA 0,255,0,1,255,128,3,255,192
+170 DATA 7,255,224,15,255,240,31,255,248
+180 DATA 3,255,192,3,255,192,3,255,192
+190 DATA 3,255,192,3,255,192,3,255,192
+200 DATA 1,255,128,0,255,0,0,126,0
+210 DATA 0,60,0,0,24,0,0,0,0
 ```
 
-`RIGHT$("00000"+STR$(SCORE),5)` keeps the score five digits wide, adding leading zeros automatically.
+![Yellow arrow sprite moving across the screen](/images/commodore-64/phase-0/tier-2/lesson-019/example-1.png)
 
----
+**Line 80** initializes position variables (X=50, Y=120). **Line 100** updates sprite position registers. **Line 110** increments X by 2 pixels per frame. **Line 120** wraps X back to 50 when it exceeds 255. **Line 130** delay loop controls speed (higher value = slower).
 
-### Normalising Player Input
-
-```basic
-NEW
-10 INPUT "COMMAND";CM$
-20 CM$=CM$+" "
-30 FOR I=1 TO LEN(CM$)
-40 CH$=MID$(CM$,I,1)
-50 IF CH$>="a" AND CH$<="z" THEN MID$(CM$,I,1)=CHR$(ASC(CH$)-32)
-60 NEXT I
-70 IF LEFT$(CM$,1)=" " THEN CM$=MID$(CM$,2):GOTO 70
-80 IF RIGHT$(CM$,1)=" " THEN CM$=LEFT$(CM$,LEN(CM$)-1):GOTO 80
-90 PRINT "NORMALISED:";CM$
-```
-
-Uppercase conversion and space trimming make comparisons reliable.
-
----
-
-### Synonym Compression
-
-```basic
-NEW
-10 VB$="TAKE"
-20 IF VB$="GRAB" OR VB$="PICK" THEN VB$="TAKE"
-30 PRINT VB$
-```
-
-You’ll plug this right after splitting verbs/objects to funnel multiple inputs into a single action.
-
----
-
-### Command Log Buffer
-
-```basic
-NEW
-10 DIM LOG$(4)
-20 FOR I=0 TO 4:LOG$(I)="":NEXT
-30 FOR TURN=0 TO 10
-40 INPUT "COMMAND";CM$
-50 FOR I=4 TO 1 STEP -1
-60 LOG$(I)=LOG$(I-1)
-70 NEXT I
-80 LOG$(0)=CM$
-90 PRINT CHR$(147)
-100 PRINT "COMMAND LOG"
-110 PRINT "------------"
-120 FOR I=0 TO 4:PRINT LOG$(I):NEXT
-130 NEXT TURN
-```
-
-This rolling buffer keeps the latest commands visible—perfect for debugging or story logs.
+> **Note:** This example only moves within X=0-255 range. For full-screen movement (X=0-511), you need the MSB register covered in the next example.
 
 ---
 
 ### Experiment Section
 
-- Centre text: `PRINT TAB((40-LEN(T$))/2);T$` for menu titles.  
-- Truncate long names: `LEFT$(NAME$,12)` before printing inside cramped HUD slots.  
-- Combine logs with Lesson 18’s movement to show a textual trail of events.  
-- Multi-word object support: after splitting verb/object, store the rest in `DESC$` for longer descriptions.  
-- Pre-load synonyms from DATA so designers can tweak vocabulary without touching code.
+Try these variations:
+
+- **Change speed**: Line 110 — use `X=X+1` (slower) or `X=X+4` (faster)
+- **Vertical movement**: Change line 110 to `Y=Y+2` and line 120 to check Y range
+- **Diagonal movement**: Increment both X and Y: `X=X+2:Y=Y+1`
+- **Different delay**: Line 130 — try `FOR D=1 TO 20` (faster) or `FOR D=1 TO 100` (slower)
+
+Now try full-screen horizontal movement with MSB handling:
+
+```basic
+10 REM SPRITE ACROSS FULL SCREEN WIDTH
+20 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 REM ENABLE SPRITE
+70 POKE 2040,13:POKE 53287,14:POKE 53269,1
+80 X=0:Y=120
+90 REM MAIN LOOP
+100 IF X<256 THEN POKE 53264,0:POKE 53248,X
+110 IF X>=256 THEN POKE 53264,1:POKE 53248,X-256
+120 POKE 53249,Y
+130 X=X+2
+140 IF X>340 THEN X=0
+150 FOR D=1 TO 50:NEXT D
+160 GOTO 100
+170 DATA 0,0,0,0,56,0,0,124,0
+180 DATA 0,214,0,1,255,128,1,255,128
+190 DATA 3,255,192,3,255,192,7,255,224
+200 DATA 7,255,224,15,255,240,31,255,248
+210 DATA 63,255,252,127,255,254,127,255,254
+220 DATA 63,231,252,31,195,248,7,0,224
+230 DATA 3,0,192,1,129,128,0,195,0
+240 DATA 0,126,0,0,60,0,0,0,0
+```
+
+![Light blue spaceship sprite moving across full screen width](/images/commodore-64/phase-0/tier-2/lesson-019/example-2.png)
+
+**Lines 100-110** handle MSB logic: when X < 256, clear bit 0 of $D010 (MSB=0) and write X directly. When X >= 256, set bit 0 of $D010 (MSB=1) and write X-256 to the low byte. This allows the sprite to traverse the full 0-511 X range.
 
 ---
 
 ### Concept Expansion
 
-Clean text output keeps retro UI readable despite limited pixels. Later you can use these same routines to log combat events, hint systems, or even disk-based conversation trees.
+**The VIC-II Coordinate System**
+
+The VIC-II uses different coordinate systems for sprites versus the character screen:
+
+- Character screen: 40 columns × 25 rows (fixed grid)
+- Sprites: X=0-511, Y=0-255 (pixel coordinates)
+- Visible screen area: roughly X=24-344, Y=50-250
+- Sprites can move partially off-screen (hardware clips them)
+
+**Why 9 Bits for X?**
+
+The C64 screen is wider than 256 pixels. To support positions 256-511, the VIC-II needs a ninth bit for each sprite's X coordinate. Since registers are 8 bits, the designers used $D010 as a shared MSB register:
+
+- Bit 0 = sprite 0 MSB
+- Bit 1 = sprite 1 MSB
+- Bit 2 = sprite 2 MSB
+- ... (up to bit 7 = sprite 7 MSB)
+
+**MSB Register Logic**
+
+When X >= 256:
+1. Set sprite's MSB bit: `POKE 53264,1` (for sprite 0)
+2. Write low 8 bits: `POKE 53248,X-256`
+
+When X < 256:
+1. Clear sprite's MSB bit: `POKE 53264,0`
+2. Write X directly: `POKE 53248,X`
+
+For multiple sprites, use OR logic to combine MSB bits: `POKE 53264, (sprite0msb) OR (sprite1msb*2) OR (sprite2msb*4)` etc.
+
+**Movement Patterns**
+
+Common velocity patterns:
+
+- **Constant velocity**: `X=X+2` (steady horizontal movement)
+- **Acceleration**: `VX=VX+1:X=X+VX` (speed increases over time)
+- **Bouncing**: `X=X+VX:IF X>320 OR X<24 THEN VX=-VX` (reverse direction at edges)
+- **Sine wave**: Use SIN() for smooth curves (covered in later lessons)
+
+**Frame Rate and Timing**
+
+The delay loop (`FOR D=1 TO 50:NEXT D`) controls how many BASIC interpreter cycles pass between position updates. The VIC-II updates the screen 50 times per second (PAL) or 60 times per second (NTSC), but BASIC is much slower. Without the delay, sprites would move too fast to see.
 
 ---
 
-### Game Integration
+### How Games Use This
 
-- **HUD update:** call the padded score routine whenever `SCORE` changes.  
-- **Menus:** highlight the active option by padding with spaces and inverse blocks.  
-- **Dialog:** combine log buffers with timed updates for conversation windows.  
-- **Save prompts:** reuse the normalisation code to accept both `Y/YES` or `N/NO` gracefully.
+**Impossible Mission** (1984, Epyx): Your agent's horizontal movement used this exact X/Y update pattern. When running left/right, the game incremented X by 2-4 pixels per frame depending on whether you were walking or running.
+
+**Paradroid** (1985, Hewson): The player droid's movement combined X/Y updates with joystick input. Each frame read the joystick, calculated new X/Y coordinates, handled MSB for wide screens, then updated position registers.
+
+**Uridium** (1986, Hewson): Your spaceship's smooth horizontal scrolling required precise MSB handling as it moved across massive battleship landscapes wider than 511 pixels (multiple screen widths).
+
+**Boulder Dash** (1984, First Star): Rockford's walking animation combined sprite movement (X/Y updates) with sprite shape changes (switching between walking frames). The game used a fixed velocity of 2 pixels per frame for consistent movement speed.
 
 ---
 
 ### From the Vault
 
-- [Your Sinclair](/vault/your-sinclair) — interviews and tips on slick BASIC interfaces.  
-- [Gridlocked](/commodore-64/phase-0/tier-1/lesson-09) — tie the new logs back into your level editor when you move to scripts.
+- Sprite position registers: Programmer's Reference Guide, pages 406-408
+- MSB register usage: _Mapping the Commodore 64_, pages 158-159
+- Movement algorithms: _Compute!'s First Book of Commodore 64 Games_, pages 92-97
+- Coordinate systems: Commodore 64 User's Guide, pages 116-118
 
 ---
 
 ### Quick Reference
 
+**Sprite 0 Position Registers:**
+```
+$D000 (53248) : X position low byte (0-255)
+$D001 (53249) : Y position (0-255)
+$D010 (53264) : X position MSB (bit 0 for sprite 0)
+```
+
+**X Coordinate Ranges:**
+| X Value | MSB Bit | Low Byte | Screen Position    |
+|---------|---------|----------|-------------------|
+| 0-255   | 0       | 0-255    | Left side         |
+| 256-511 | 1       | 0-255    | Right side        |
+| 24      | 0       | 24       | Left edge visible |
+| 344     | 1       | 88       | Right edge visible|
+
+**Movement Pattern Examples:**
 ```basic
-PRINT CHR$(19)                    : REM home cursor
-RIGHT$("0000"+STR$(N),4)          : REM zero-padded numbers
-LEFT$(T$,N)                       : REM cap string length
-100 IF LEFT$(S$,1)=" " THEN S$=MID$(S$,2):GOTO 100      : REM trim leading spaces
-LOG$(I)=LOG$(I-1)                 : REM shift history buffer
+REM Horizontal movement
+X=X+2:POKE 53248,X
+
+REM Vertical movement
+Y=Y+1:POKE 53249,Y
+
+REM Diagonal movement
+X=X+2:Y=Y+1
+POKE 53248,X:POKE 53249,Y
+
+REM Bounce at edges
+X=X+VX
+IF X<24 OR X>320 THEN VX=-VX
 ```
 
 ---
 
-### What You’ve Learnt
+### What You've Learnt
 
-- Formatted HUDs and logs with padding, trimming, and alignment.
-- Normalised player input for reliable verb/object parsing.
-- Maintained rolling command histories for UI feedback.  
-- Prepared textual interfaces for Week 3’s larger adventures.
-
-**Next lesson:** Memory Games II — load bigger data sets and reuse them across multi-room worlds.
+- Sprite animation works by updating position registers
+- X coordinate range is 0-511 (9 bits total)
+- Y coordinate range is 0-255 (8 bits)
+- $D010 (53264) holds MSB for all 8 sprites
+- X < 256: clear MSB, write X directly
+- X >= 256: set MSB, write X-256 to low byte
+- Delay loops control animation speed
+- Movement patterns combine position updates with logic
 
 ---
+
+### Preview: Next Lesson
+
+We'll manage multiple sprites simultaneously. You'll learn to track 2-4 sprites with separate positions, handle their individual MSB bits, and coordinate their movements for simple gameplay scenarios like sprite formations and interactions.

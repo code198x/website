@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Memory Games II"
+title: "Multiple Sprites"
 game: "Commodore 64 BASIC"
 system: "C64"
 phase: 0
@@ -10,194 +10,245 @@ totalLessons: 64
 prevLesson: "/commodore-64/phase-0/tier-2/lesson-019"
 nextLesson: "/commodore-64/phase-0/tier-2/lesson-021"
 objectives:
-  - 'Load multi-room data (maps, enemies, strings) from DATA into structured arrays.'
-  - 'Switch between rooms by pointing to different dataset offsets.'
-  - 'Write utility routines to reset arrays before consuming new DATA blocks.'
+  - 'Manage 2-4 sprites simultaneously with independent movement.'
+  - 'Track separate X/Y positions for multiple sprites.'
+  - 'Coordinate sprite enable bits and pointer assignments.'
 ---
 
-## Lesson 20 – Memory Games II
+## Beyond One Sprite
 
-Week 2 taught DATA basics; now we scale up. You’ll load several rooms from DATA into arrays, swap between them, and reset the read pointer on demand. Multiple rooms, shared code.
-
-> [📷 suggested: screenshot showing two different rooms loaded from different DATA blocks]
+Single-sprite programs teach the mechanics, but games need multiple moving objects: players, enemies, bullets, power-ups. The VIC-II supports up to 8 sprites—this lesson shows how to manage 2-4 sprites with independent positions and movements, building toward complete sprite-based games.
 
 ---
 
 ### The One-Minute Tour
 
-- Store each room’s map, enemies, and text blocks sequentially in DATA.  
-- Use `RESTORE label` to jump to the start of a dataset.  
-- Clear arrays before reading new data to avoid leftovers.  
-- Wrap loads in `GOSUB` routines so transitions stay tidy.
+- Each sprite has its own position registers (X, Y)
+- Sprite 0: $D000-$D001, Sprite 1: $D002-$D003, etc.
+- Enable register ($D015) controls all sprites with bit flags
+- Each sprite needs its own sprite pointer (2040-2047)
+- Track positions with separate variables (X0, Y0, X1, Y1, etc.)
+- Update all sprites each frame in sequence
 
 ---
 
-### Room Loader Skeleton
+### Example Program
 
 ```basic
-NEW
-10 PRINT CHR$(147)
-20 SCREEN=1024:COLOR=55296
-30 DIM MAP(9,17),EX(3),EY(3)
-40 ROOM=1
-50 GOSUB 5000
-60 GOSUB 5100
-70 GOSUB 5200
-80 GOSUB 5300
-90 PRINT "PRESS N FOR NEXT ROOM"
-100 GET K$:IF K$<>"N" THEN 100
-110 ROOM=ROOM+1:IF ROOM>2 THEN ROOM=1
-120 GOTO 50
-
-5000 REM --- CLEAR ARRAYS ---
-5010 FOR R=0 TO 9:FOR C=0 TO 17:MAP(R,C)=0:NEXT C:NEXT R
-5020 FOR I=0 TO 3:EX(I)=0:EY(I)=0:NEXT I
-5030 RETURN
+10 REM TWO SPRITES IN FORMATION
+20 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 REM SETUP SPRITES 0 AND 1
+70 POKE 2040,13:POKE 2041,13
+80 POKE 53287,7:POKE 53288,14
+90 POKE 53269,3
+100 X=50:Y=100
+110 REM MAIN LOOP
+120 POKE 53248,X:POKE 53249,Y
+130 POKE 53250,X+30:POKE 53251,Y
+140 X=X+2
+150 IF X>240 THEN X=50
+160 FOR D=1 TO 50:NEXT D
+170 GOTO 120
+180 DATA 0,24,0,0,60,0,0,126,0
+190 DATA 0,255,0,1,255,128,3,255,192
+200 DATA 7,255,224,15,255,240,31,255,248
+210 DATA 3,255,192,3,255,192,3,255,192
+220 DATA 3,255,192,3,255,192,3,255,192
+230 DATA 1,255,128,0,255,0,0,126,0
+240 DATA 0,60,0,0,24,0,0,0,0
 ```
 
-Start by clearing arrays; otherwise leftovers from the previous room haunt you.
+![Two yellow and light blue sprites moving in formation](/images/commodore-64/phase-0/tier-2/lesson-020/example-1.png)
 
----
+**Line 70** sets both sprite pointers to block 13 (same shape for both). **Line 80** sets sprite 0 yellow (7), sprite 1 light blue (14). **Line 90** enables both sprites (bits 0 and 1 = binary 11 = decimal 3). **Lines 120-130** update positions—sprite 1 is offset 30 pixels right from sprite 0.
 
-### Reading Room Data by Index
-
-```basic
-5100 REM --- LOAD ROOM DATA ---
-5110 IF ROOM=1 THEN RESTORE 9000
-5120 IF ROOM=2 THEN RESTORE 9100
-5130 FOR R=0 TO 9
-5140 FOR C=0 TO 17
-5150 READ MAP(R,C)
-5160 NEXT C
-5170 NEXT R
-5180 FOR I=0 TO 3
-5190 READ EX(I),EY(I)
-5200 NEXT I
-5210 READ TITLE$
-5220 RETURN
-```
-
-Switch `RESTORE` targets based on `ROOM`. After you’ve read the room tiles, continue reading enemy positions and a title string.
-
----
-
-### Drawing + HUD
-
-```basic
-5200 REM --- DRAW ROOM ---
-5210 PRINT CHR$(147)
-5220 PRINT TITLE$
-5230 PRINT ""                                       : REM blank spacer
-5240 FOR R=0 TO 9
-5250 FOR C=0 TO 17
-5260 LOC=SCREEN+(R+4)*40+(C+11)
-5270 VAL=MAP(R,C)
-5280 CHAR=32:COL=1
-5290 IF VAL=1 THEN CHAR=160:COL=0
-5300 IF VAL=2 THEN CHAR=4:COL=7
-5310 IF VAL=3 THEN CHAR=81:COL=2
-5320 POKE LOC,CHAR
-5330 POKE COLOR+(R+4)*40+(C+11),COL
-5340 NEXT C
-5350 NEXT R
-5360 RETURN
-
-5300 REM --- DRAW ENEMIES ---
-5310 FOR I=0 TO 3
-5320 IF EX(I)=0 AND EY(I)=0 THEN NEXT I:GOTO 5340
-5330 POKE SCREEN+(EY(I)+4)*40+(EX(I)+11),81
-5340 NEXT I
-5350 RETURN
-```
-
-Now the screen updates directly from the array data you just loaded.
-
----
-
-### Example DATA Sets
-
-```basic
-9000 REM ROOM 1 DATA
-9010 DATA 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
-9020 DATA 1,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,1
-9030 DATA 1,0,1,1,0,1,0,1,1,1,1,0,1,1,0,1,0,1
-9040 DATA 1,0,1,0,0,1,0,0,0,0,1,0,0,1,0,1,0,1
-9050 DATA 1,0,1,0,1,1,1,1,0,0,1,0,1,1,0,1,0,1
-9060 DATA 1,0,0,0,0,0,0,1,0,1,1,0,0,0,0,1,0,1
-9070 DATA 1,0,1,1,1,1,0,1,0,0,0,1,1,1,0,1,0,1
-9080 DATA 1,0,0,0,0,1,0,1,1,1,0,0,0,1,0,0,0,1
-9090 DATA 1,0,1,1,0,1,0,0,0,1,1,1,0,1,1,1,0,1
-9100 DATA 1,0,0,1,0,0,0,1,0,0,0,0,0,0,3,0,0,1
-9110 DATA 2,5,14,7,10,4, TITLE ROOM 1
-
-9100 REM ROOM 2 DATA
-9110 DATA 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
-9120 DATA 1,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1
-9130 DATA 1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,0,1
-9140 DATA 1,0,1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1
-9150 DATA 1,0,1,0,1,1,1,0,1,1,1,0,1,1,0,1,0,1
-9160 DATA 1,0,0,0,1,3,1,0,0,0,0,0,3,1,0,0,0,1
-9170 DATA 1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,1
-9180 DATA 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-9190 DATA 1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,0,1
-9200 DATA 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-9210 DATA 4,4,13,8,11,6, TITLE ROOM 2
-```
-
-Each room stores 10×18 tiles, two enemy pairs (X,Y), and a title string. Add more fields as needed (power-ups, story snippets, etc.).
+> **Note:** This uses a single X/Y variable pair since the sprites move together. For independent movement, each sprite needs its own position variables.
 
 ---
 
 ### Experiment Section
 
-- Add additional rooms: clone the DATA block, update offsets, and increase the loop bound.  
-- Store multiple strings per room (title, description) by reading them into an array after the enemy loop.  
-- Swap palettes: include colour values in the DATA stream and apply them while drawing.  
-- Save partial progress: keep the last `ROOM` visited so you can resume when loading the game again.  
-- Move DATA to a helper file once you graduate to the development environment—useful for bigger adventures.
+Try these variations:
+
+- **Different colours**: Line 80 — try different colour combinations
+- **Vertical offset**: Line 130 — `POKE 53251,Y+20` puts sprite 1 below sprite 0
+- **More sprites**: Add sprite 2 by including `POKE 2042,13`, `POKE 53289,2`, change line 90 to `POKE 53269,7` (binary 111 = sprites 0,1,2)
+
+Now try four sprites with independent movement and bouncing:
+
+```basic
+10 REM FOUR SPRITES BOUNCING
+20 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 REM SETUP 4 SPRITES
+70 FOR S=0 TO 3
+80 POKE 2040+S,13
+90 POKE 53287+S,S+2
+100 NEXT
+110 POKE 53269,15
+120 X0=50:Y0=100:VX0=2:VY0=1
+125 X1=100:Y1=120:VX1=2:VY1=1
+127 X2=150:Y2=140:VX2=2:VY2=-1
+129 X3=200:Y3=160:VX3=2:VY3=-1
+170 REM MAIN LOOP
+180 X0=X0+VX0:Y0=Y0+VY0
+190 IF X0<24 OR X0>320 THEN VX0=-VX0:X0=X0+VX0
+200 IF Y0<50 OR Y0>230 THEN VY0=-VY0:Y0=Y0+VY0
+210 X1=X1+VX1:Y1=Y1+VY1
+220 IF X1<24 OR X1>320 THEN VX1=-VX1:X1=X1+VX1
+230 IF Y1<50 OR Y1>230 THEN VY1=-VY1:Y1=Y1+VY1
+240 X2=X2+VX2:Y2=Y2+VY2
+250 IF X2<24 OR X2>320 THEN VX2=-VX2:X2=X2+VX2
+260 IF Y2<50 OR Y2>230 THEN VY2=-VY2:Y2=Y2+VY2
+270 X3=X3+VX3:Y3=Y3+VY3
+280 IF X3<24 OR X3>320 THEN VX3=-VX3:X3=X3+VX3
+290 IF Y3<50 OR Y3>230 THEN VY3=-VY3:Y3=Y3+VY3
+300 REM UPDATE POSITIONS WITH MSB
+310 M=0
+320 IF X0>255 THEN M=M+1:POKE 53248,X0-256:GOTO 325
+322 POKE 53248,X0
+325 IF X1>255 THEN M=M+2:POKE 53250,X1-256:GOTO 330
+327 POKE 53250,X1
+330 IF X2>255 THEN M=M+4:POKE 53252,X2-256:GOTO 335
+332 POKE 53252,X2
+335 IF X3>255 THEN M=M+8:POKE 53254,X3-256:GOTO 340
+337 POKE 53254,X3
+340 POKE 53264,M
+350 POKE 53249,Y0:POKE 53251,Y1
+360 POKE 53253,Y2:POKE 53255,Y3
+390 FOR D=1 TO 20:NEXT D
+400 GOTO 180
+410 DATA 0,24,0,0,60,0,0,126,0
+420 DATA 0,255,0,1,255,128,3,255,192
+430 DATA 7,255,224,15,255,240,31,255,248
+440 DATA 3,255,192,3,255,192,3,255,192
+450 DATA 3,255,192,3,255,192,3,255,192
+460 DATA 1,255,128,0,255,0,0,126,0
+470 DATA 0,60,0,0,24,0,0,0,0
+```
+
+![Four colored sprites bouncing around the screen](/images/commodore-64/phase-0/tier-2/lesson-020/example-2.png)
+
+**Lines 120-129** initialize 4 sprites with unique positions and velocities (VX/VY variables). **Lines 180-290** update each sprite independently—when a sprite hits screen edges, its velocity reverses AND the position is immediately corrected to stay within bounds. **Lines 300-360** handle MSB logic for X coordinates and write all positions to hardware registers.
 
 ---
 
 ### Concept Expansion
 
-Structured DATA blocks are the precursor to level files. Once comfortable, you can export them to disk, compress them, or load them from assembly routines for speed.
+**Sprite Register Organization**
+
+The VIC-II organizes sprite registers in pairs:
+
+```
+Sprite 0: $D000 (X), $D001 (Y)
+Sprite 1: $D002 (X), $D003 (Y)
+Sprite 2: $D004 (X), $D005 (Y)
+...
+Sprite 7: $D00E (X), $D00F (Y)
+```
+
+This sequential layout allows FOR loops to set up sprites: `POKE 53248+S*2,X(S)` updates sprite S's X position.
+
+**Enable Register Bit Flags**
+
+$D015 (53269) controls which sprites are visible using 8 bits (one per sprite):
+
+- Bit 0 = sprite 0 (value 1)
+- Bit 1 = sprite 1 (value 2)
+- Bit 2 = sprite 2 (value 4)
+- Combined: sprite 0+1 = 3, sprites 0+1+2 = 7, all 8 sprites = 255
+
+To enable sprites 0, 1, and 3: `POKE 53269, 1+2+8` (binary 00001011 = decimal 11).
+
+**Variable Naming Patterns**
+
+For 2-4 sprites, individual variables (X0, Y0, X1, Y1...) work well. Beyond 4 sprites, arrays become necessary: `DIM X(7),Y(7)`. This lesson avoids arrays to keep complexity manageable—arrays appear in later lessons.
+
+**Independent vs. Coordinated Movement**
+
+Two movement patterns emerge:
+
+1. **Formation flying** (Example 1): Sprites share position logic, offsets create formation
+2. **Independent movement** (Example 2): Each sprite has unique position, velocity, and behavior
+
+Most games mix both: player ship in formation with wingmen, enemies moving independently.
+
+**Performance Considerations**
+
+BASIC can comfortably manage 4 sprites at 50 FPS (one update per frame). Beyond 4 sprites, BASIC's interpreter overhead becomes noticeable—animation slows down. Assembly language programs handle all 8 sprites smoothly, but BASIC games typically use 4-6 sprites maximum.
 
 ---
 
-### Game Integration
+### How Games Use This
 
-- Tie this loader into the Week 2 state machine—each victory loads the next room.  
-- Mix string tables with the parser to give each room unique descriptions and available commands.  
-- Use `EX/EY` arrays to seed enemy patrols, then reuse the chase logic from Lesson 18.  
-- Combine with Week 1 randomness to spawn different hazards each run.
+**Impossible Mission** (1984, Epyx): Used 4 sprites simultaneously—player (sprite 0), 3 enemy robots (sprites 1-3). Each robot had independent AI and movement patterns, all managed through position arrays.
+
+**Paradroid** (1985, Hewson): Player droid (sprite 0) plus 2-3 enemy droids (sprites 1-3). Each droid type had different movement algorithms—some patrolled, some chased the player, all tracked independently.
+
+**Boulder Dash** (1984, First Star): Rockford (sprite 0), plus falling boulders and diamonds (sprites 1-4). The game tracked up to 4 moving objects simultaneously, prioritizing which falling objects got sprite slots.
+
+**Uridium** (1986, Hewson): Player ship (sprite 0), enemy fighters (sprites 1-3), bullets (sprites 4-7). The game reused sprite slots—when bullets hit targets, those sprites became explosions, then recycled for new bullets.
 
 ---
 
 ### From the Vault
 
-- [Memory Games](/vault/cassette-loading) — deeper appreciation of data streaming on the C64.  
-- [Paradroid](/vault/paradroid) — how professional titles stored multi-deck layouts.
+- Multi-sprite management: _Programmer's Reference Guide_, pages 408-410
+- Sprite enable register: _Mapping the Commodore 64_, pages 159-160
+- Coordinate arrays: _Compute!'s First Book of C64 Games_, pages 98-102
+- Formation patterns: _Commodore 64 Graphics_, pages 74-77
 
 ---
 
 ### Quick Reference
 
+**Sprite Position Registers:**
+```
+Sprite 0: $D000-$D001 (53248-53249)
+Sprite 1: $D002-$D003 (53250-53251)
+Sprite 2: $D004-$D005 (53252-53253)
+Sprite 3: $D006-$D007 (53254-53255)
+```
+
+**Enable Register Values:**
+| Sprites Enabled  | Binary   | Decimal |
+|------------------|----------|---------|
+| 0                | 00000001 | 1       |
+| 0,1              | 00000011 | 3       |
+| 0,1,2            | 00000111 | 7       |
+| 0,1,2,3          | 00001111 | 15      |
+| 0,1,2,3,4,5,6,7  | 11111111 | 255     |
+
+**Setup Pattern:**
 ```basic
-RESTORE label          : REM rewind DATA pointer to label
-FOR R=0 TO H:FOR C=0 TO W:READ MAP(R,C):NEXT:C NEXT
-READ EX(I),EY(I)       : REM enemy positions
-READ TITLE$            : REM strings bundled with rooms
+REM Setup sprites 0-3
+FOR S=0 TO 3
+  POKE 2040+S,13        REM sprite pointer
+  POKE 53287+S,S+2      REM color
+NEXT
+POKE 53269,15           REM enable all 4
 ```
 
 ---
 
-### What You’ve Learnt
+### What You've Learnt
 
-- Structured DATA to load entire rooms (tiles, enemies, text).  
-- Switched between datasets using `RESTORE` and a `ROOM` index.  
-- Cleaned arrays before repopulating to prevent ghosts.  
-- Prepared a multi-room world loader ready for Week 3’s mini-game.
-
-**Next lesson:** Smarter Decisions II — let the world react differently in each room.
+- Each sprite has dedicated X/Y position registers
+- Position registers are sequential (every 2 bytes)
+- Enable register uses bit flags (1=sprite 0, 2=sprite 1, etc.)
+- Multiple sprites need separate position variables
+- Formation movement uses shared position + offsets
+- Independent movement tracks each sprite separately
+- Bouncing uses velocity reversal at screen edges
+- BASIC comfortably manages 4 sprites simultaneously
 
 ---
+
+### Preview: Next Lesson
+
+We'll detect sprite collisions using VIC-II hardware registers. You'll learn to detect sprite-to-sprite and sprite-to-background collisions for hit detection, boundary checking, and gameplay interactions without complex position calculations.

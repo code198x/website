@@ -1,6 +1,6 @@
 ---
 layout: ../../../../layouts/LessonLayout.astro
-title: "Smarter Decisions II"
+title: "Sprite Collisions"
 game: "Commodore 64 BASIC"
 system: "C64"
 phase: 0
@@ -10,197 +10,262 @@ totalLessons: 64
 prevLesson: "/commodore-64/phase-0/tier-2/lesson-020"
 nextLesson: "/commodore-64/phase-0/tier-2/lesson-022"
 objectives:
-  - 'Introduce room-specific rules that alter hazards, exits, and enemy behaviour.'
-  - 'Use lookup tables to adjust logic without rewriting code.'
-  - 'Build a mini state machine that reacts differently per room or difficulty.'
+  - 'Detect sprite-to-sprite collisions using $D01E register.'
+  - 'Detect sprite-to-background collisions using $D01F register.'
+  - 'Read and clear collision registers for gameplay logic.'
 ---
 
-## Lesson 21 – Smarter Decisions II
+## Hardware-Assisted Hit Detection
 
-Week 2 gave you global collision logic; now we tailor it per room. You’ll assign behaviours through tables, letting one loop adapt to different hazards, exits, and enemy speeds.
-
-> [📷 suggested: screenshot showing two rooms with different hazard behaviours]
+Position-based collision detection requires comparing X/Y coordinates and sprite sizes—complex mathematics in BASIC. The VIC-II provides dedicated hardware collision registers that automatically detect when sprites overlap each other or background graphics. This lesson shows how to read these registers for instant, accurate collision detection without calculations.
 
 ---
 
 ### The One-Minute Tour
 
-- Store room rules (hazard damage, exit scores, enemy speed) in arrays.  
-- On entry, copy those values into globals the loop consumes.  
-- Use `ON...GOSUB` to branch to hazard/exit handlers depending on tile type.  
-- Difficulty scaling becomes data, not code edits.
+- Sprite-to-sprite register: $D01E (53278) reports which sprites have collided
+- Sprite-to-background register: $D01F (53279) reports sprites hitting foreground pixels
+- Each bit represents one sprite (bit 0 = sprite 0, bit 1 = sprite 1, etc.)
+- Reading the register clears it for next frame
+- Collision detection happens automatically every frame
+- No complex coordinate math required
 
 ---
 
-### Extending the Loader
-
-Add rule tables alongside room DATA:
+### Example Program
 
 ```basic
-30 DIM MAP(9,17),EX(3),EY(3)
-31 DIM RULEDMG(2),RULEBONUS(2),RULESPEED(2)
+10 REM SPRITE COLLISION DETECTION
+20 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 REM SETUP TWO SPRITES
+70 POKE 2040,13:POKE 2041,13
+80 POKE 53287,7:POKE 53288,2
+90 POKE 53269,3
+100 X0=50:Y0=120:X1=250:Y1=120
+110 VX0=2:VX1=-2
+120 REM MAIN LOOP
+130 X0=X0+VX0:X1=X1+VX1
+140 IF X0<24 OR X0>255 THEN VX0=-VX0:X0=X0+VX0
+150 IF X1<24 OR X1>255 THEN VX1=-VX1:X1=X1+VX1
+160 POKE 53248,X0:POKE 53249,Y0
+170 POKE 53250,X1:POKE 53251,Y1
+180 C=PEEK(53278)
+190 IF C>0 THEN POKE 53280,C:GOTO 210
+200 POKE 53280,6
+210 FOR D=1 TO 30:NEXT D
+220 GOTO 130
+230 DATA 0,24,0,0,60,0,0,126,0
+240 DATA 0,255,0,1,255,128,3,255,192
+250 DATA 7,255,224,15,255,240,31,255,248
+260 DATA 3,255,192,3,255,192,3,255,192
+270 DATA 3,255,192,3,255,192,3,255,192
+280 DATA 1,255,128,0,255,0,0,126,0
+290 DATA 0,60,0,0,24,0,0,0,0
 ```
 
-Populate them when loading a room:
+![Two sprites moving towards each other with border changing colour on collision](/images/commodore-64/phase-0/tier-2/lesson-021/example-1.png)
 
-```basic
-5130 IF ROOM=1 THEN RESTORE 9000
-5140 IF ROOM=2 THEN RESTORE 9100
-5150 FOR R=0 TO 9
-5160 FOR C=0 TO 17:READ MAP(R,C):NEXT C
-5170 NEXT R
-5180 FOR I=0 TO 3:READ EX(I),EY(I):NEXT I
-5190 READ TITLE$,RULEDMG(ROOM),RULEBONUS(ROOM),RULESPEED(ROOM)
-```
+**Line 180** reads the sprite collision register ($D01E). **Lines 190-200** change the border colour when collision detected (C>0) or restore it to blue (6) when no collision. **Lines 140-150** ensure positions stay within 0-255 range by reversing velocity and immediately correcting position when bounds hit. The act of reading the register (line 180) automatically clears it for the next frame.
 
-`RULEDMG` = lives lost on hazard; `RULEBONUS` = score from exit; `RULESPEED` controls enemy pace.
-
----
-
-### Applying Rules in the Loop
-
-```basic
-5400 REM --- PLAYER MOVE ---
-5410 GET K$:IF K$="" THEN RETURN
-5420 NX=PX:NY=PY
-5430 IF K$="W" OR K$=CHR$(145) THEN NY=PY-1
-5440 IF K$="S" OR K$=CHR$(17) THEN NY=PY+1
-5450 IF K$="A" OR K$=CHR$(157) THEN NX=PX-1
-5460 IF K$="D" OR K$=CHR$(29) THEN NX=PX+1
-5470 MX=NX-11:MY=NY-5
-5480 IF MX<0 OR MX>17 OR MY<0 OR MY>9 THEN RETURN
-5490 TILE=MAP(MY,MX)
-5500 IF TILE=1 THEN RETURN
-5510 POKE SCREEN+PY*40+PX,32
-5520 PX=NX:PY=NY
-5530 POKE SCREEN+PY*40+PX,64
-5540 IF TILE>1 THEN ON TILE-1 GOSUB 6000,6100
-5550 RETURN
-```
-
-`ON TILE-1` routes to hazard or exit handlers depending on the tile value:
-
-- `TILE=2` → exits.  
-- `TILE=3` → hazards.
-
----
-
-### Hazard / Exit Logic
-
-```basic
-6000 REM --- EXIT ---
-6010 SCORE=SCORE+RULEBONUS(ROOM)
-6020 PRINT CHR$(19)
-6030 PRINT "SCORE:";SCORE;" LIVES:";LIVES;"     ";
-6040 STATE=2:RETURN
-
-6100 REM --- HAZARD ---
-6110 LIVES=LIVES-RULEDMG(ROOM)
-6120 IF LIVES<0 THEN LIVES=0
-6130 PRINT CHR$(19)
-6140 PRINT "SCORE:";SCORE;" LIVES:";LIVES;"     ";
-6150 IF LIVES=0 THEN STATE=3
-6160 RETURN
-```
-
-No branching inside the handlers themselves—just simple arithmetic guided by the rule tables.
-
----
-
-### Enemy Speed Adjustment
-
-```basic
-5530 ENEMYDELAY=RULESPEED(ROOM)
-6500 REM --- ENEMY LOOP ---
-6510 FOR I=0 TO 2
-6520 POKE SCREEN+(EY(I)+5)*40+(EX(I)+11),32
-6530 IF STEP MOD ENEMYDELAY<>0 THEN GOTO 6580
-6540 DX=0:DY=0
-6550 IF EX(I)<PX-11 THEN DX=1
-6560 IF EX(I)>PX-11 THEN DX=-1
-6570 IF EY(I)<PY-5 THEN DY=1
-6575 IF EY(I)>PY-5 THEN DY=-1
-6580 NX=EX(I)+DX:NY=EY(I)+DY
-6590 IF MAP(NY,NX)=1 THEN DX=0:DY=0
-6600 EX(I)=EX(I)+DX:EY(I)=EY(I)+DY
-6610 POKE SCREEN+(EY(I)+5)*40+(EX(I)+11),81
-6620 IF EX(I)+11=PX AND EY(I)+5=PY THEN GOSUB 6100
-6630 NEXT I
-```
-
-Let `STEP` (a frame counter) gate enemy movement. Different rooms, different speeds—no duplicate code.
-
----
-
-### Example Rule DATA
-
-```basic
-9000 REM ROOM 1 DATA + RULES
-9010 DATA ... map rows ...
-9020 DATA ... enemies ...
-9030 DATA "DUSTY HALL",1,100,1
-
-9100 REM ROOM 2 DATA + RULES
-9110 DATA ... map rows ...
-9120 DATA ... enemies ...
-9130 DATA "TOXIC CHAMBER",2,150,2
-```
-
-Room 1 hazards subtract 1 life and exits award 100 points; enemies move every frame (`RULESPEED=1`). Room 2 hazards hit twice as hard, grant bigger bonuses, and enemies move every other frame.
+> **Note:** The collision register uses bit flags—sprite 0 colliding sets bit 0 (value 1), sprite 1 sets bit 1 (value 2), both colliding sets bits 0+1 (value 3). For simple detection, just check if the value is greater than zero.
 
 ---
 
 ### Experiment Section
 
-- Add rule columns for music cues, HUD colour changes, or time limits.  
-- Make certain rooms safe: set `RULEDMG(ROOM)=0` to create rest areas.  
-- Difficulty mode: use `LEVEL` to offset into alternative rule arrays.  
-- Tie the parser in—rooms can unlock commands when specific flags are set.  
-- Save rule values into a buffer before writing so you can undo changes (for temporary power-ups).
+Try these variations:
+
+- **Check specific sprites**: Line 190 — `IF (C AND 1)>0` checks only sprite 0, `IF (C AND 2)>0` checks only sprite 1
+- **Different feedback**: Line 190 — try `PRINT "HIT!"` or play a sound effect instead of changing border
+- **Three sprites**: Add sprite 2, enable it with `POKE 53269,7`, collision register will show which sprites collide
+
+Now try sprite-to-background collision detection:
+
+```basic
+10 REM SPRITE VS BACKGROUND COLLISION
+20 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 REM DRAW BACKGROUND WALL
+70 PRINT CHR$(147)
+80 FOR I=0 TO 21
+90 POKE 1024+40+I,160
+100 POKE 55296+40+I,1
+110 NEXT
+120 REM SETUP SPRITE
+130 POKE 2040,13:POKE 53287,7:POKE 53269,1
+140 X=50:Y=50:VX=2:VY=1
+150 REM MAIN LOOP
+160 X=X+VX:Y=Y+VY
+170 IF X<24 OR X>255 THEN VX=-VX:X=X+VX
+180 IF Y<50 OR Y>230 THEN VY=-VY:Y=Y+VY
+190 POKE 53248,X:POKE 53249,Y
+200 C=PEEK(53279)
+210 IF C>0 THEN VX=-VX:VY=-VY:X=X+VX*2:Y=Y+VY*2
+220 FOR D=1 TO 30:NEXT D
+230 GOTO 160
+240 DATA 0,24,0,0,60,0,0,126,0
+250 DATA 0,255,0,1,255,128,3,255,192
+260 DATA 7,255,224,15,255,240,31,255,248
+270 DATA 3,255,192,3,255,192,3,255,192
+280 DATA 3,255,192,3,255,192,3,255,192
+290 DATA 1,255,128,0,255,0,0,126,0
+300 DATA 0,60,0,0,24,0,0,0,0
+```
+
+![Yellow sprite bouncing off a vertical wall of characters](/images/commodore-64/phase-0/tier-2/lesson-021/example-2.png)
+
+**Lines 80-110** draw a vertical wall using screen codes (160 = solid block character). **Line 200** reads the sprite-to-background collision register ($D01F). **Line 210** reverses both velocity components and pushes the sprite away from the wall when collision detected.
 
 ---
 
 ### Concept Expansion
 
-Room-specific logic is the prelude to full state machines: separate data, shared engine. Changing behaviour becomes a DATA change, not a code rewrite.
+**Collision Register Architecture**
+
+The VIC-II maintains two 8-bit collision registers:
+
+```
+$D01E (53278): Sprite-to-Sprite Collision
+- Bit 0 = sprite 0 collided with another sprite
+- Bit 1 = sprite 1 collided with another sprite
+- ...
+- Bit 7 = sprite 7 collided with another sprite
+
+$D01F (53279): Sprite-to-Background Collision
+- Bit 0 = sprite 0 hit foreground pixel
+- Bit 1 = sprite 1 hit foreground pixel
+- ...
+- Bit 7 = sprite 7 hit foreground pixel
+```
+
+These registers update automatically every frame. The VIC-II compares sprite pixel positions during raster scanning and sets bits when overlaps occur.
+
+**Reading Clears the Register**
+
+CRITICAL: `PEEK(53278)` or `PEEK(53279)` automatically resets the register to zero. This means:
+
+1. You must store the value: `C=PEEK(53278)`
+2. Check the stored value: `IF C>0 THEN...`
+3. Don't PEEK twice in the same frame—you'll get zero the second time
+
+**What Counts as a Collision?**
+
+- **Sprite-to-sprite**: Any non-transparent sprite pixels overlap
+- **Sprite-to-background**: Sprite pixel overlaps any character with foreground colour set (not background colour 0)
+- Sprite priority (behind/in front of background) doesn't affect collision detection
+- Sprite colour doesn't matter—transparent vs. solid is all that counts
+
+**Bit Flag Logic**
+
+For advanced collision checking:
+
+```basic
+REM Check if sprite 0 collided
+IF (C AND 1) > 0 THEN PRINT "SPRITE 0 HIT"
+
+REM Check if sprite 1 collided
+IF (C AND 2) > 0 THEN PRINT "SPRITE 1 HIT"
+
+REM Check if sprite 2 collided
+IF (C AND 4) > 0 THEN PRINT "SPRITE 2 HIT"
+```
+
+The AND operator masks specific bits. Sprite N uses bit N, which has value 2^N.
+
+**Collision Response Patterns**
+
+Common game responses to collisions:
+
+1. **Reverse direction**: Bullets bounce, player stops
+2. **Destroy sprite**: Disable sprite (clear bit in $D015)
+3. **Score update**: Increment score variable
+4. **State change**: Set flag for game logic
+5. **Sound effect**: POKE sound registers
+
+**Performance Advantage**
+
+Manual collision detection in BASIC:
+
+```basic
+REM Check if two 24x21 sprites overlap
+IF X0<X1+24 AND X0+24>X1 AND Y0<Y1+21 AND Y0+21>Y1 THEN...
+```
+
+This is complex, slow, and error-prone. Hardware detection is instant and accurate—one PEEK operation per frame.
 
 ---
 
-### Game Integration
+### How Games Use This
 
-- Boss fights: treat a room’s rule set as the behaviour script for special encounters.  
-- Puzzles: mark tiles that require a key; rules decide whether to block or allow passage.  
-- Campaign difficulty: adjust `RULESPEED` and `RULEDMG` via a global difficulty setting at load time.  
-- Analytics: log which room killed the player to tweak balancing.
+**Impossible Mission** (1984, Epyx): Used sprite-to-background collision to detect when the agent touched platforms, lifts, and furniture. Falling was disabled when standing on solid objects detected via $D01F.
+
+**Paradroid** (1985, Hewson): Sprite-to-sprite collisions triggered the "influence device" transfer game when your droid touched an enemy. The collision register identified which enemy droid for the puzzle difficulty.
+
+**Boulder Dash** (1984, First Star): Rockford (sprite 0) used sprite-to-sprite collision to collect diamonds (sprites 1-4) and sprite-to-background collision to detect wall impacts. The game checked specific bit patterns to identify which diamond was collected.
+
+**Uridium** (1986, Hewson): Player ship used sprite-to-sprite for bullet hits on enemies and sprite-to-background for crashing into the battleship surface. Different collision types triggered different visual effects and scoring.
 
 ---
 
 ### From the Vault
 
-- [Paradroid](/vault/paradroid) — each deck has different hazards and rules; we’re recreating that dynamic.  
-- [Demo Scene 101](/vault/demo-scene-101) — inspiration for giving each room its own visual/sound flair.
+- [VIC-II](/vault/vic-ii) - Collision detection registers and sprite hardware
 
 ---
 
 ### Quick Reference
 
+**Collision Registers:**
+```
+$D01E (53278): Sprite-to-Sprite Collision
+$D01F (53279): Sprite-to-Background Collision
+```
+
+**Bit Values:**
+| Sprite | Bit | Value |
+|--------|-----|-------|
+| 0      | 0   | 1     |
+| 1      | 1   | 2     |
+| 2      | 2   | 4     |
+| 3      | 3   | 8     |
+| 4      | 4   | 16    |
+| 5      | 5   | 32    |
+| 6      | 6   | 64    |
+| 7      | 7   | 128   |
+
+**Detection Pattern:**
 ```basic
-ON TILE-1 GOSUB 6000,6100     : REM route exits/hazards
-DMG=RULEDMG(ROOM)             : REM current room's damage
-BONUS=RULEBONUS(ROOM)         : REM exit reward
-SPEED=RULESPEED(ROOM)         : REM enemy step delay
-RESTORE 9000                  : REM load room-specific DATA
+REM Read collision register
+C=PEEK(53278)    REM or 53279
+
+REM Simple check (any collision)
+IF C>0 THEN PRINT "COLLISION!"
+
+REM Specific sprite check
+IF (C AND 1)>0 THEN PRINT "SPRITE 0"
+IF (C AND 2)>0 THEN PRINT "SPRITE 1"
 ```
 
 ---
 
-### What You’ve Learnt
+### What You've Learnt
 
-- Parameterised room behaviours using DATA-driven rule sets.
-- Routed shared logic through handlers by tile type.  
-- Adjusted enemy speed and scoring without rewriting loops.  
-- Delivered room-specific reactions, ready for Week 3’s mini-game.
-
-**Next lesson:** Sprites on the horizon—turn these routines into genuine smooth graphics.
+- $D01E (53278) detects sprite-to-sprite collisions
+- $D01F (53279) detects sprite-to-background collisions
+- Reading collision registers automatically clears them
+- Bit flags indicate which sprites collided
+- Hardware detection is faster and simpler than coordinate math
+- Collision response patterns: reverse, destroy, score, state change
+- Store PEEK result before checking—don't PEEK twice
+- Background collision requires foreground character pixels
 
 ---
+
+### Preview: Next Lesson
+
+We'll animate sprites by cycling through different sprite shapes. You'll learn to switch sprite pointers for frame-based animation, control timing with the TI variable, and create multi-frame character animations like walking and running sprites.
