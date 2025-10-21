@@ -1,0 +1,420 @@
+---
+layout: ../../../../layouts/LessonLayout.astro
+title: "Game States"
+game: "Commodore 64 BASIC"
+system: "C64"
+phase: 0
+tier: 2
+lessonNumber: 31
+totalLessons: 64
+prevLesson: "/commodore-64/phase-0/tier-2/lesson-030"
+nextLesson: "/commodore-64/phase-0/tier-2/lesson-032"
+objectives:
+  - 'Implement state machines using ON...GOSUB for clean game flow control.'
+  - 'Track current game state with a single integer variable (GS).'
+  - 'Create separate subroutines for each state (title, play, game over).'
+  - 'Transition between states by changing the state variable value.'
+---
+
+## Organizing Game Flow
+
+Every complete game follows a cycle: title screen, gameplay, game over, restart. State machines transform this cycle from tangled IF statements into clean, maintainable code. This lesson teaches the ON...GOSUB dispatch pattern—the foundation of professional game structure. Master this and you'll never write spaghetti code again.
+
+---
+
+###  The One-Minute Tour
+
+- State variable (GS) holds current game state as integer (0=title, 1=play, 2=game over)
+- ON...GOSUB dispatches to correct subroutine: `ON GS+1 GOSUB 100,200,400`
+- Each state gets dedicated subroutine with RETURN at end
+- State transitions happen by modifying GS: `GS=1` switches to play state
+- Main loop repeatedly calls dispatcher: infinite loop calling state handler
+- Visual feedback per state: different screen colours identify current state
+- RESTORE resets DATA pointer when cycling back to title screen
+- Each state controls what displays: sprites on/off, labels drawn/cleared
+- Clean separation: title setup, play loop, game over sequence all isolated
+- Pattern scales: add pause state, menu state, or level transition states easily
+
+---
+
+### Example Programme
+
+```basic
+10 REM SIMPLE THREE-STATE GAME
+20 REM STATE: 0=TITLE, 1=PLAY, 2=GAMEOVER
+30 GS=0
+35 SC=0:HI=0
+40 REM MAIN LOOP
+50 ON GS+1 GOSUB 100,200,400
+60 GOTO 50
+100 REM TITLE SCREEN
+110 PRINT CHR$(147)
+120 POKE 53280,6:POKE 53281,6
+130 RESTORE:FOR I=0 TO 9:READ D:POKE 1104+I,D:POKE 55376+I,14:NEXT
+140 FOR I=1 TO 100:NEXT I
+150 GET K$:IF K$<>"" THEN GS=1:SC=0
+160 RETURN
+200 REM PLAY STATE
+210 IF SC=0 THEN PRINT CHR$(147):POKE 53280,0:POKE 53281,0
+220 SC=SC+1
+230 FOR I=4 TO 0 STEP -1
+240 S=SC:POKE 1024+I,48+(S-INT(S/10)*10):S=INT(S/10)
+250 NEXT
+260 IF SC>=500 THEN GS=2
+270 FOR I=1 TO 3:NEXT I
+280 RETURN
+400 REM GAME OVER STATE
+410 POKE 53280,2:POKE 53281,2
+420 FOR I=0 TO 8:READ D:POKE 1144+I,D:POKE 55416+I,7:NEXT
+430 IF SC>HI THEN HI=SC
+440 FOR I=1 TO 200:NEXT I
+450 GS=0:RESTORE
+460 RETURN
+900 DATA 16,18,5,19,19,32,6,9,18,5
+910 DATA 7,1,13,5,32,15,22,5,18
+```
+
+**Line 30** initialises game state to 0 (title screen). **Line 50** dispatcher: `ON GS+1` because BASIC counts from 1, but states number from 0; jumps to subroutine 100, 200, or 400 based on GS value. **Line 60** infinite loop returns to dispatcher after each state completes. **Line 130** RESTORE resets DATA pointer to line 900; required because title may display multiple times. **Line 150** waits for keypress then transitions to play state by setting `GS=1`. **Line 260** triggers game over when score reaches 500 by setting `GS=2`. **Line 450** cycles back to title state with `GS=0` and calls RESTORE to reset DATA pointer. **Line 420** reads game over text from DATA at line 910 (sequential read after title DATA consumed). **Lines 900-910** contain all DATA: title text first, game over text second. Each state has distinct screen colours: blue for title (6), black for play (0), red for game over (2).
+
+<img src="/images/commodore-64/phase-0/tier-2/lesson-031/example-1.png" alt="Title screen showing PRESS FIRE in light blue on blue background" />
+
+The `ON GS+1` pattern compensates for BASIC's 1-based indexing. When GS=0 (title), `ON 1 GOSUB` calls first subroutine (100). When GS=1 (play), `ON 2 GOSUB` calls second (200). This keeps state numbers logical starting from zero.
+
+---
+
+### Experiment: Complete Game with Lives and Sprites
+
+Integrate state machine with sprite movement, lives system, and joystick control:
+
+```basic
+10 REM STATE MACHINE WITH SPRITE AND LIVES
+20 GS=0:LI=0:SC=0:HI=0:X=160:Y=120
+25 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62:READ B:POKE 832+I,B:NEXT
+35 POKE 2040,13:POKE 53287,14
+40 REM MAIN LOOP
+45 ON GS+1 GOSUB 100,200,400
+50 GOTO 45
+100 REM TITLE STATE
+105 POKE 53269,0
+110 PRINT CHR$(147)
+115 POKE 53280,6:POKE 53281,6
+120 FOR I=0 TO 9:READ D:POKE 1104+I,D:POKE 55376+I,14:NEXT
+125 FOR I=1 TO 100:NEXT I
+130 GET K$:IF K$<>"" THEN GS=1:LI=3:SC=0:X=160:Y=120:RESTORE
+135 RETURN
+200 REM PLAY STATE
+205 IF SC=0 THEN PRINT CHR$(147):POKE 53280,0:POKE 53281,0:GOSUB 700:GOSUB 500:POKE 53269,1
+210 J=PEEK(56320) AND 31:DX=0:DY=0
+215 IF (J AND 1)=0 THEN DY=-2
+220 IF (J AND 2)=0 THEN DY=2
+225 IF (J AND 4)=0 THEN DX=-2
+230 IF (J AND 8)=0 THEN DX=2
+235 IF (J AND 16)=0 AND LI>0 THEN LI=LI-1:GOSUB 500
+240 X=X+DX:Y=Y+DY
+245 IF X<24 THEN X=24
+250 IF X>320 THEN X=320
+255 IF Y<50 THEN Y=50
+260 IF Y>229 THEN Y=229
+265 POKE 53248,X:POKE 53249,Y
+270 IF X>255 THEN POKE 53264,1 ELSE POKE 53264,0
+275 SC=SC+1:IF SC>9999 THEN SC=0
+280 GOSUB 600
+285 IF LI=0 THEN GS=2:RESTORE
+290 FOR D=1 TO 2:NEXT D
+295 RETURN
+400 REM GAME OVER STATE
+405 POKE 53269,0
+410 POKE 53280,2:POKE 53281,2
+415 FOR I=0 TO 8:READ D:POKE 1144+I,D:POKE 55416+I,7:NEXT
+420 IF SC>HI THEN HI=SC
+425 FOR I=1 TO 200:NEXT I
+430 GS=0:RESTORE
+435 RETURN
+500 REM DRAW LIVES AND LABEL
+505 FOR H=0 TO 2
+510 IF H<LI THEN POKE 1024+6+H,83:POKE 55296+6+H,2
+515 IF H>=LI THEN POKE 1024+6+H,32:POKE 55296+6+H,0
+520 NEXT
+525 RETURN
+600 REM DISPLAY SCORE
+605 S=SC
+610 FOR I=3 TO 0 STEP -1
+615 POKE 1024+40+I,48+(S-INT(S/10)*10)
+620 S=INT(S/10)
+625 NEXT
+630 RETURN
+700 REM DRAW LABELS
+702 FOR I=0 TO 62:READ D:NEXT
+705 FOR I=0 TO 4:READ D:POKE 1024+I,D:POKE 55296+I,10:NEXT
+710 FOR I=0 TO 4:READ D:POKE 1024+32+I,D:POKE 55328+I,10:NEXT
+715 RETURN
+900 REM SPRITE DATA
+905 DATA 0,24,0,0,60,0,0,126,0
+910 DATA 0,255,0,1,255,128,3,255,192
+915 DATA 7,255,224,15,255,240,31,255,248
+920 DATA 3,255,192,3,255,192,3,255,192
+925 DATA 3,255,192,3,255,192,3,255,192
+930 DATA 1,255,128,0,255,0,0,126,0
+935 DATA 0,60,0,0,24,0,0,0,0
+940 REM LABEL DATA (LIVES, SCORE)
+945 DATA 12,9,22,5,19
+950 DATA 19,3,15,18,5
+960 REM TEXT DATA FOR TITLE
+965 DATA 16,18,5,19,19,32,6,9,18,5
+970 REM TEXT DATA FOR GAME OVER
+975 DATA 7,1,13,5,32,15,22,5,18
+```
+
+**Line 105** hides sprite during title state (`POKE 53269,0`). **Line 130** transitions to play: sets lives to 3, resets position, calls RESTORE to reset DATA pointer. **Line 205** play state initialisation: only executes when SC=0 (first frame), clears screen, draws labels (gosub 700), draws lives (gosub 500), enables sprite (POKE 53269,1). **Lines 210-230** read joystick and calculate movement deltas. **Line 235** fire button triggers damage: decrements lives and updates display. **Lines 240-270** update sprite position with boundary checking and MSB handling. **Line 285** transitions to game over when lives reach zero. **Line 405** hides sprite during game over state. **Line 430** returns to title state creating complete cycle. **Line 702** critical: skips past 63 sprite DATA bytes; after RESTORE, pointer returns to line 905, so must consume sprite data before reading labels at lines 945-950. Without this skip, label displays corrupted characters because it reads sprite bytes as screen codes.
+
+<img src="/images/commodore-64/phase-0/tier-2/lesson-031/example-2.png" alt="Play state showing LIVES with three hearts, sprite, and SCORE label" />
+
+The DATA organisation at lines 900-975 requires careful ordering: sprite data first (63 bytes), then label screen codes (10 bytes), then title text (10 bytes), then game over text (9 bytes). RESTORE resets pointer to line 905. When line 702 executes in subroutine 700, it consumes and discards those 63 sprite values, positioning the pointer correctly for label data at lines 945-950.
+
+---
+
+### Try It
+
+- Add pause state (freeze gameplay, return to play)
+- Implement high score persistence across game cycles
+- Create difficulty selection in title state
+- Add sound effects for state transitions
+- Display lives and score in title state
+- Add animation during state transitions (fade effects)
+
+---
+
+### Common Mistakes
+
+**Problem 1: ON...GOSUB Index Off By One**
+```basic
+GS=0                          REM State 0 = title
+ON GS GOSUB 100,200,400       REM ERROR! ON 0 GOSUB = out of range!
+```
+**Diagnosis:** ON...GOSUB uses 1-based indexing (1=first subroutine, 2=second, etc.). When GS=0, `ON 0 GOSUB` causes "?ILLEGAL QUANTITY ERROR" because 0 is out of range.
+
+**Fix:** Add 1 to state variable in ON statement:
+```basic
+GS=0                          REM State 0 = title
+ON GS+1 GOSUB 100,200,400     REM GS+1=1, calls first subroutine (100)
+```
+**Why:** BASIC's ON statement expects values 1, 2, 3, etc. to dispatch to first, second, third subroutines in the list. State machines logically number states from 0 (title=0, play=1, game over=2), so the `+1` converts 0-based state numbers to 1-based GOSUB indices. Without this adjustment, state 0 fails, and all other states call wrong subroutines (state 1 would call subroutine 100 instead of 200).
+
+**Problem 2: Missing RETURN Causes State Corruption**
+```basic
+100 REM TITLE STATE
+110 PRINT CHR$(147)
+120 GET K$:IF K$<>"" THEN GS=1
+REM Missing RETURN here!
+
+200 REM PLAY STATE
+210 SC=SC+1
+220 RETURN
+```
+**Diagnosis:** Control "falls through" from title state (100) into play state (200). Both states execute sequentially, screen clears twice, score increments during title.
+
+**Fix:** Always end subroutines with RETURN:
+```basic
+100 REM TITLE STATE
+110 PRINT CHR$(147)
+120 GET K$:IF K$<>"" THEN GS=1
+130 RETURN                    REM REQUIRED!
+
+200 REM PLAY STATE
+210 SC=SC+1
+220 RETURN
+```
+**Why:** GOSUB jumps to subroutine line number and executes until encountering RETURN, which jumps back to line after GOSUB. Without RETURN, execution continues into next subroutine. In state machine, this means multiple states execute each frame—title state runs, then immediately continues into play state, corrupting game logic. RETURN is mandatory at end of every state subroutine.
+
+**Problem 3: DATA Runs Out or Returns Wrong Values**
+```basic
+100 REM TITLE STATE
+110 RESTORE:FOR I=0 TO 9:READ D:POKE 1024+I,D:NEXT
+120 IF K$<>"" THEN GS=1
+130 RETURN
+
+200 REM PLAY STATE
+210 FOR I=0 TO 4:READ D:POKE 1024+40+I,D:NEXT  REM Wrong data or "OUT OF DATA ERROR"
+220 RETURN
+
+900 DATA 16,18,5,19,19,32,6,9,18,5  REM Title text (10 values)
+```
+**Diagnosis:** After cycling through states, DATA pointer continues advancing. First title screen reads 10 values. Game over reads remaining DATA. When returning to title, RESTORE works—but then play state tries to read when pointer is at game over DATA, causing corruption or OUT OF DATA error if no values remain.
+
+**Fix:** Organize DATA so all states share common pool, or skip DATA consumption where not needed:
+```basic
+100 REM TITLE STATE
+110 RESTORE:FOR I=0 TO 9:READ D:POKE 1024+I,D:NEXT
+120 IF K$<>"" THEN GS=1
+130 RETURN
+
+400 REM GAME OVER STATE
+410 REM DATA already consumed by title, skip 10 values
+420 FOR I=0 TO 8:READ D:POKE 1144+I,D:NEXT
+430 RETURN
+
+900 DATA 16,18,5,19,19,32,6,9,18,5  REM Title (10 values)
+910 DATA 7,1,13,5,32,15,22,5,18     REM Game over (9 values)
+```
+**Why:** C64 BASIC V2 RESTORE command takes NO arguments—always resets to first DATA statement. No way to position pointer at specific DATA line. Must organize DATA sequentially and READ through in order. When title calls RESTORE, pointer resets to line 900. Game over subroutine continues reading from line 910 (sequential after title's 10 values consumed). This pattern works because each cycle restarts from title state, which calls RESTORE.
+
+**Problem 4: State Transition Happens Before State Finishes**
+```basic
+200 REM PLAY STATE
+210 SC=SC+1
+220 IF SC>=500 THEN GS=2         REM Transition to game over
+230 GOSUB 600                    REM Update display
+240 RETURN
+
+600 REM UPDATE DISPLAY
+610 POKE 1024,SC                 REM Still runs with GS=2!
+```
+**Diagnosis:** After setting `GS=2` (line 220), rest of play state continues executing—display update runs, delay loop runs. Next frame starts game over state, but previous frame's play state completed fully.
+
+**Fix:** Transition should happen at end of state, or use RETURN immediately after:
+```basic
+200 REM PLAY STATE
+210 SC=SC+1
+230 GOSUB 600                    REM Update display first
+240 IF SC>=500 THEN GS=2         REM Transition last
+250 RETURN
+```
+**Why:** State variable change (GS=2) doesn't immediately switch states—it only affects next frame's dispatch. Current subroutine continues executing all remaining lines until RETURN. If transition happens early, subsequent code (display updates, collision checks) runs with stale state assumptions. Best practice: check transition conditions at end of state, after all state logic completes. Alternatively, check condition then immediately RETURN to abort remaining state logic.
+
+---
+
+### Hardware Details
+
+**ON...GOSUB Statement:**
+- Syntax: `ON <expression> GOSUB <line1>,<line2>,<line3>,...`
+- Expression evaluates to 1, 2, 3, etc. (1-based indexing)
+- Value 1 jumps to first line, value 2 to second line, and so on
+- Out of range values (0, negative, beyond list length) cause error
+- Common pattern: `ON GS+1 GOSUB` converts 0-based states to 1-based dispatch
+
+**State Machine Variables:**
+- GS: Game state (0=title, 1=play, 2=game over, etc.)
+- Typically 0-255 range (single byte sufficient)
+- Increment/decrement to transition: `GS=GS+1` or `GS=2`
+- Can use multiple state variables for complex systems
+
+**DATA and RESTORE Management:**
+- RESTORE resets DATA pointer to first DATA statement only (no line number argument in C64 BASIC V2)
+- Sequential READ consumes data linearly from current pointer position
+- After RESTORE, pointer returns to first DATA statement—all previously-read data available again
+- Critical for cycling states: RESTORE at start of title allows repeated display
+- Organize DATA sequentially: first state's data first, second state's data second, etc.
+- No way to "skip" DATA—must READ and discard unwanted values before reaching desired data
+
+**Screen Control by State:**
+- Border colour (53280): Visual state indicator
+- Background colour (53281): Secondary visual feedback
+- Sprite enable register (53269): Control sprite visibility per state
+- Screen clear (CHR$(147)): Reset display between states
+
+---
+
+### How Games Use This
+
+**Impossible Mission:** Title screen with animated rotating pieces, gameplay with room navigation and puzzle solving, game over showing statistics. Each state completely different, managed by state machine dispatcher. Demo mode (attract state) plays automatically if no input detected.
+
+**Paradroid:** Title sequence with scrolling logos, ship selection menu, gameplay with droid combat and transfer puzzles, game completion sequence. Complex state machine with nested states: gameplay contains sub-states for normal movement, transfer game, lift travel.
+
+**Boulder Dash:** Title with level selection, gameplay with cave timer, intermission screens between levels, game over showing final statistics. Level completion triggers intermission state (brief animation) before returning to next level's play state.
+
+**Uridium:** Scrolling title screen, ship selection, gameplay with ground attack and boss encounters, game over with score table. Boss encounters operate as temporary sub-state within play state—returns to normal play after defeating battleship.
+
+---
+
+### From the Vault
+
+**State machine patterns:**
+- [Finite State Machines](https://www.c64-wiki.com/wiki/State_machine) - Theory and implementation details
+
+**ON statement syntax:**
+- [ON...GOSUB documentation](https://www.c64-wiki.com/wiki/ON) - Complete syntax and examples
+
+---
+
+### Quick Reference
+
+**State Machine Pattern:**
+```basic
+REM Initialise state
+GS=0
+
+REM Main loop - dispatcher
+ON GS+1 GOSUB [TITLE],[PLAY],[GAMEOVER]
+GOTO [MAIN_LOOP]
+
+REM Title state
+[TITLE SUBROUTINE]
+  REM Setup title screen
+  REM Wait for input
+  GS=1  REM Transition to play
+  RETURN
+
+REM Play state
+[PLAY SUBROUTINE]
+  REM Game logic here
+  IF [CONDITION] THEN GS=2  REM Transition to game over
+  RETURN
+
+REM Game over state
+[GAMEOVER SUBROUTINE]
+  REM Display results
+  GS=0  REM Return to title
+  RETURN
+```
+
+**Common State Values:**
+```
+0 = Title screen
+1 = Gameplay
+2 = Game over
+3 = Pause
+4 = High score entry
+5 = Level transition
+6 = Demo mode
+```
+
+**State Transition Methods:**
+```basic
+REM Direct assignment
+GS=1
+
+REM Conditional transition
+IF SC>=1000 THEN GS=2
+
+REM Sequential progression
+GS=GS+1
+
+REM Return to previous state (requires state history variable)
+GS=PS
+```
+
+**Visual State Indicators:**
+```basic
+REM Screen colours per state
+IF GS=0 THEN POKE 53280,6  REM Blue title
+IF GS=1 THEN POKE 53280,0  REM Black gameplay
+IF GS=2 THEN POKE 53280,2  REM Red game over
+```
+
+---
+
+### What You've Learnt
+
+- State machines organize game flow with single integer variable tracking current state
+- ON...GOSUB dispatches to appropriate subroutine based on state value
+- Each state gets dedicated subroutine with complete control over display and logic
+- State transitions happen by simple variable assignment: `GS=new_value`
+- Main loop repeatedly calls dispatcher creating infinite game cycle
+- RESTORE resets DATA pointer for states that display multiple times
+- Screen colours provide instant visual feedback about current state
+- Sprite visibility controlled per-state: on during play, off during menus
+- Pattern scales easily: add new states by extending ON...GOSUB list
+- Clean separation of concerns: each state isolated from others
+
+Next lesson: Lesson 032 explores advanced game techniques building on these foundations.

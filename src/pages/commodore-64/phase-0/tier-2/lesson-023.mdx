@@ -238,6 +238,77 @@ Voices don't interfere. You can gate voice 2 off while voices 1 and 3 continue p
 
 ---
 
+### Common Mistakes
+
+**Problem 1: No Sound at All**
+```basic
+POKE 54296,15  REM Volume
+POKE 54272,100:POKE 54273,20  REM Frequency
+POKE 54276,17  REM Gate on - still no sound!
+```
+**Diagnosis:** Forgot to initialize ADSR envelope. SID requires Attack/Decay and Sustain/Release values.
+
+**Fix:** Set ADSR registers before playing any sound:
+```basic
+POKE 54277,9:POKE 54278,0  REM Attack/Decay
+POKE 54296,15  REM Volume
+POKE 54272,100:POKE 54273,20
+POKE 54276,17  REM Now it works!
+```
+**Why:** ADSR controls sound envelope—how quickly sound starts (attack) and stops (release). Without initialization, envelope registers contain random power-on values, often resulting in zero sustain level (silence).
+
+**Problem 2: Wrong Pitch - Too High or Too Low**
+```basic
+POKE 54272,100  REM Intended middle C
+POKE 54273,16
+POKE 54276,17  REM Sounds wrong!
+```
+**Diagnosis:** Frequency bytes swapped. Low byte first ($D400), high byte second ($D401).
+
+**Fix:** Correct byte order for middle C (frequency 4104):
+```basic
+POKE 54272,8   REM Low byte: 4104 AND 255 = 8
+POKE 54273,16  REM High byte: INT(4104/256) = 16
+POKE 54276,17
+```
+**Why:** 16-bit frequency stored as two bytes. Formula: `L=F AND 255` (low byte), `H=INT(F/256)` (high byte). Getting bytes backwards produces wildly wrong frequency.
+
+**Problem 3: Sound Never Stops**
+```basic
+POKE 54276,17  REM Gate on
+FOR T=1 TO 100:NEXT
+REM Forgot to gate off - sound continues!
+```
+**Diagnosis:** Gate bit (bit 0 of control register) stays set. Sound plays indefinitely.
+
+**Fix:** Clear gate bit after delay:
+```basic
+POKE 54276,17  REM Gate on
+FOR T=1 TO 100:NEXT
+POKE 54276,16  REM Gate off (value 17-1=16)
+```
+**Why:** Control register bit 0 is the gate. When 1, sound plays. When 0, sound enters release phase. Value 17 = waveform (16) + gate (1). Value 16 = waveform only, gate off.
+
+**Problem 4: Only One Voice Plays in Chord**
+```basic
+POKE 54277,9:POKE 54278,0  REM Set ADSR for voice 1
+POKE 54296,15
+POKE 54272,8:POKE 54273,16:POKE 54276,17  REM Voice 1
+POKE 54279,161:POKE 54280,20:POKE 54283,17  REM Voice 2 - no sound!
+```
+**Diagnosis:** ADSR not initialized for voices 2 and 3. Each voice needs separate ADSR setup.
+
+**Fix:** Initialize ADSR for all three voices:
+```basic
+POKE 54277,9:POKE 54278,0  REM Voice 1 ADSR
+POKE 54284,9:POKE 54285,0  REM Voice 2 ADSR
+POKE 54291,9:POKE 54292,0  REM Voice 3 ADSR
+POKE 54296,15
+```
+**Why:** Each voice has independent ADSR registers at offsets +5 and +6 from voice base address. Voice 2 base is 54279, so ADSR is at 54284-54285. Voice 3 base is 54286, ADSR at 54291-54292.
+
+---
+
 ### How Games Use This
 
 **The Last Ninja** (1987, System 3): Used all three voices for music—melody on voice 1, bass line on voice 2, rhythm/percussion on voice 3. Sound effects temporarily interrupted voice 3, then restored music.

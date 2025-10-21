@@ -200,6 +200,72 @@ This is complex, slow, and error-prone. Hardware detection is instant and accura
 
 ---
 
+### Common Mistakes
+
+**Problem 1: Collision Always Returns Zero**
+```basic
+IF PEEK(53278)>0 THEN PRINT "HIT"  REM Never detects!
+IF PEEK(53278)>0 THEN POKE 53280,2 REM Still never works!
+```
+**Diagnosis:** Two PEEKs in same frame. First PEEK clears the register, second PEEK reads zero.
+
+**Fix:** Store the PEEK result once, then check the variable:
+```basic
+C=PEEK(53278)
+IF C>0 THEN PRINT "HIT"
+IF C>0 THEN POKE 53280,2  REM Now it works!
+```
+**Why:** Reading collision registers automatically clears them to zero. Store the value in a variable (C) so you can test it multiple times without re-reading the register.
+
+**Problem 2: Collision Detection Intermittent**
+```basic
+C=PEEK(53278)
+IF C=1 THEN PRINT "SPRITES HIT"  REM Sometimes misses collisions!
+```
+**Diagnosis:** Checking for exact value 1. When sprite 1 collides, C=2. When both sprites collide, C=3.
+
+**Fix:** Check if C is greater than zero for any collision:
+```basic
+C=PEEK(53278)
+IF C>0 THEN PRINT "SPRITES HIT"  REM Catches all collisions
+```
+**Why:** Collision register uses bit flags (sprite 0=1, sprite 1=2, sprite 2=4, etc.). Value depends on which sprites collided. Use `C>0` for "any collision" or `(C AND n)>0` for specific sprite n.
+
+**Problem 3: Background Collision Never Triggers**
+```basic
+REM Draw wall with background colour
+FOR I=0 TO 21
+  POKE 1024+I,160:POKE 55296+I,0  REM Colour 0!
+NEXT
+C=PEEK(53279)  REM Always zero!
+```
+**Diagnosis:** Character cells use background colour 0. Sprite-to-background only detects foreground pixels.
+
+**Fix:** Use non-zero colour for wall characters:
+```basic
+FOR I=0 TO 21
+  POKE 1024+I,160:POKE 55296+I,1  REM Colour 1 (white)
+NEXT
+C=PEEK(53279)  REM Now detects collision!
+```
+**Why:** $D01F detects sprite pixels overlapping character foreground colour. Colour 0 is treated as background/transparent—no collision detected. Use any colour 1-15 for solid walls.
+
+**Problem 4: Sprites "Stick Together" After Collision**
+```basic
+C=PEEK(53278)
+IF C>0 THEN VX0=-VX0:VX1=-VX1  REM Sprites stuck!
+```
+**Diagnosis:** Sprites still overlapping after reversing velocity. Collision register stays set every frame, velocity keeps reversing.
+
+**Fix:** Push sprites apart immediately after collision:
+```basic
+C=PEEK(53278)
+IF C>0 THEN VX0=-VX0:VX1=-VX1:X0=X0+VX0*2:X1=X1+VX1*2
+```
+**Why:** Reversing velocity isn't enough if sprites still overlap. Move sprites 2 pixels in new direction (VX*2) to separate them before next frame. Otherwise collision register stays set and velocities oscillate every frame.
+
+---
+
 ### How Games Use This
 
 **Impossible Mission** (1984, Epyx): Used sprite-to-background collision to detect when the agent touched platforms, lifts, and furniture. Falling was disabled when standing on solid objects detected via $D01F.
