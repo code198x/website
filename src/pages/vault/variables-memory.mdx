@@ -1,0 +1,450 @@
+---
+layout: ../../../layouts/VaultLayout.astro
+title: "Variables and Memory"
+description: "How variables work internally and memory management for BASIC programs"
+pubDate: 2025-01-23
+tags: ["reference", "commodore-64", "variables", "memory"]
+---
+
+# Variables and Memory
+
+Variables are boxes with labels—type `SCORE=100` and the C64 stores 100 somewhere in memory with the label "SCORE". But where? How much space does it use? What happens when you create arrays or long strings?
+
+Understanding variable storage isn't just academic—it affects program size, speed, and whether your game crashes when it runs out of memory.
+
+This article explains how BASIC manages variables, where they live in memory, and practical strategies for efficient memory use in games.
+
+## Memory Layout Overview
+
+When you turn on the C64, BASIC carves up memory into distinct regions:
+
+| Address Range | Size | Purpose |
+|---------------|------|---------|
+| $0000-$00FF | 256 bytes | Zero page (fast access) |
+| $0100-$01FF | 256 bytes | Stack |
+| $0200-$03FF | 512 bytes | BASIC input buffer, variables |
+| $0400-$07E7 | 1000 bytes | Screen RAM |
+| $0800-$9FFF | ~38KB | BASIC program and variables |
+| $A000-$BFFF | 8KB | BASIC ROM |
+| $C000-$CFFF | 4KB | (free, or for machine language) |
+| $D000-$DFFF | 4KB | I/O registers (VIC-II, SID, CIA) |
+| $E000-$FFFF | 8KB | KERNAL ROM |
+
+**Key insight:** Your BASIC program and all its variables share the $0800-$9FFF region—approximately 38KB total.
+
+### The BASIC Program Area
+
+When you type a BASIC program, it's stored starting at $0801 (2049 decimal). Each line is tokenized:
+
+```
+Line format in memory:
+[Next line pointer][Line number][Tokenized statement][End marker]
+```
+
+**Example:**
+```basic
+10 PRINT "HELLO"
+```
+
+Stored as:
+- 2 bytes: Pointer to next line
+- 2 bytes: Line number (10)
+- 1 byte: PRINT token (153)
+- 7 bytes: " "HELLO" " (includes quotes and space)
+- 1 byte: End-of-line marker (0)
+
+Total: 13 bytes for this line.
+
+### Where Variables Live
+
+Variables are stored **after** the BASIC program, growing upward in memory. Arrays and strings are stored **above** simple variables.
+
+```
+Memory layout (growing upward):
+┌────────────────────────────┐ $9FFF (top of BASIC RAM)
+│  Free space                │
+├────────────────────────────┤
+│  String storage (grows ↓)  │
+├────────────────────────────┤
+│  Arrays                    │
+├────────────────────────────┤
+│  Simple variables          │
+├────────────────────────────┤
+│  BASIC program             │
+└────────────────────────────┘ $0801 (start of BASIC)
+```
+
+**Critical points:**
+- Program stored at bottom
+- Variables immediately after program
+- Arrays above simple variables
+- Strings allocated from top, growing downward
+- Free space shrinks as you add variables/strings
+
+Run out of space → `?OUT OF MEMORY ERROR`
+
+## Simple Variable Storage
+
+### Numeric Variables
+
+**Storage:** 7 bytes each (2 bytes for name, 5 bytes for value)
+
+```basic
+a=10        rem 7 bytes
+score=100   rem 7 bytes (name stored as "SC", remember!)
+x=3.14159   rem 7 bytes
+```
+
+**Format:**
+- 2 bytes: Variable name (first two characters)
+- 5 bytes: Floating-point value
+
+**Integer variables** (using `%` suffix):
+```basic
+a%=10       rem 7 bytes (not 2!)
+```
+
+Surprisingly, integer variables still use 7 bytes. The `%` just tells BASIC to truncate values to integers when assigned. There's no memory advantage.
+
+**Performance:** Integer arithmetic is faster, but storage is identical.
+
+### String Variables
+
+**Storage:** 3 bytes for descriptor + 1 byte per character
+
+```basic
+a$="hello"     rem 3 bytes descriptor + 5 bytes string = 8 bytes
+name$="steve"  rem 3 bytes descriptor + 5 bytes string = 8 bytes
+text$=""       rem 3 bytes descriptor + 0 bytes = 3 bytes (empty)
+```
+
+**String descriptor:**
+- 1 byte: String length
+- 2 bytes: Pointer to string data in memory
+
+**String data:** Stored separately, up in high memory, growing downward.
+
+**Key difference:** String variable name and descriptor stored with other variables, but actual string content lives elsewhere.
+
+## Array Storage
+
+Arrays consume significant memory. Plan carefully.
+
+### Numeric Arrays
+
+**Storage:** 5 bytes overhead + (5 bytes × elements)
+
+```basic
+dim a(10)        rem 5 + (5 × 11) = 60 bytes
+dim b(100)       rem 5 + (5 × 101) = 510 bytes
+dim grid(20,20)  rem 5 + (5 × 21 × 21) = 2210 bytes
+```
+
+**Formula:**
+```
+Memory = 5 + (2 × dimensions) + (5 × total_elements)
+```
+
+**Remember:** `DIM A(10)` creates 11 elements (0-10 inclusive).
+
+### Integer Arrays
+
+**Storage:** 5 bytes overhead + (2 bytes × elements)
+
+```basic
+dim a%(10)       rem 5 + (2 × 11) = 27 bytes
+dim b%(100)      rem 5 + (2 × 101) = 207 bytes
+```
+
+**Significant savings:** Integer arrays use ~40% of the space of floating-point arrays.
+
+**When to use:**
+- Tile maps (grid of tile types)
+- Entity IDs
+- Flags and states
+- Anything guaranteed to fit in -32768 to 32767
+
+### String Arrays
+
+**Storage:** 5 bytes overhead + (3 bytes × elements) + actual string lengths
+
+```basic
+dim name$(10)    rem 5 + (3 × 11) = 38 bytes descriptors
+                 rem + length of strings when assigned
+```
+
+**Example:**
+```basic
+dim name$(2)
+name$(0)="bob"     rem adds 3 bytes
+name$(1)="alice"   rem adds 5 bytes
+name$(2)="eve"     rem adds 3 bytes
+rem total: 38 + 3 + 5 + 3 = 49 bytes
+```
+
+String arrays are deceptive—descriptors take space even before you assign strings.
+
+## Memory Fragmentation and Garbage Collection
+
+BASIC's string handling creates a messy problem: **garbage**.
+
+### The Garbage Problem
+
+```basic
+10 a$="hello"        rem allocates 5 bytes
+20 a$="world"        rem allocates new 5 bytes, old string now garbage
+30 a$="test"         rem allocates new 4 bytes, more garbage
+```
+
+Every time you reassign a string, the old string becomes **garbage**—still in memory but unreachable. Over time, this fragments memory.
+
+### Garbage Collection
+
+When BASIC runs low on string space, it triggers **garbage collection**:
+
+1. Pause program
+2. Scan all string variables
+3. Copy active strings to fresh memory region
+4. Discard garbage
+5. Resume program
+
+**Symptoms:**
+- Brief pause during gameplay
+- Noticeable on complex programs with heavy string manipulation
+- Can happen mid-frame, causing visible glitches
+
+**Games avoid this by:**
+- Minimizing string operations
+- Preallocating strings and reusing them
+- Using numeric codes instead of strings where possible
+
+### String Concatenation Cost
+
+```basic
+a$=a$+"x"          rem EXPENSIVE
+```
+
+Every concatenation:
+1. Allocates new memory for result
+2. Copies old string
+3. Appends new content
+4. Abandons old string (now garbage)
+
+Do this in a loop and you'll hit garbage collection constantly.
+
+**Better approach:**
+```basic
+rem Pre-build strings once, reference them
+100 dim msg$(5)
+110 msg$(0)="get key"
+120 msg$(1)="door locked"
+130 msg$(2)="found gold"
+rem ...use msg$(n) instead of building strings dynamically
+```
+
+## The Variable Name Limitation
+
+**Most notorious BASIC V2 quirk:** Only the **first two characters** of variable names matter.
+
+```basic
+score=100
+screen=200
+scroll=300
+print score        rem prints 300!
+```
+
+All three variables are actually the same: `SC`.
+
+**Storage implication:** When you create `SCORE`, BASIC stores "SC" as the name. Creating `SCREEN` doesn't create a new variable—it overwrites `SCORE`.
+
+**Strategy:**
+- Plan variable names to have unique first two characters
+- Use single-letter names in tight memory situations
+- Keep a written list during development
+
+**Example naming scheme:**
+```basic
+sc    rem score
+pl    rem player lives
+en    rem enemy count
+xp    rem x position player
+xe    rem x position enemy
+```
+
+## Checking Memory Usage
+
+### FRE() Function
+
+```basic
+print fre(0)       rem bytes of free memory
+```
+
+**Returns:** Bytes available before OUT OF MEMORY error.
+
+**Important:** Calling `FRE(0)` triggers garbage collection, so value may jump if garbage existed.
+
+**Use during development:**
+```basic
+100 print "free:";fre(0)
+110 dim map%(39,24)
+120 print "after map:";fre(0)
+```
+
+Track how much memory each major structure consumes.
+
+## Protecting Memory Regions
+
+Games often need to reserve memory for machine language routines, character sets, or sprite data.
+
+### Lowering BASIC's Top
+
+```basic
+poke 56,48:poke 55,0:clr    rem protect 12288+
+```
+
+**What this does:**
+- `POKE 56,48`: Set top of BASIC RAM to $C000 (12288)
+- `POKE 55,0`: Set low byte to 0
+- `CLR`: Clear variables and arrays (required!)
+
+**Effect:** BASIC now stops at $C000. Memory from $C000-$9FFF is yours for machine language, graphics, etc.
+
+**Common boundaries:**
+
+| Boundary | POKE Values | Effect |
+|----------|-------------|--------|
+| $C000 (49152) | `POKE 56,192:POKE 55,0:CLR` | Protect 49152+ (12KB free) |
+| $A000 (40960) | `POKE 56,160:POKE 55,0:CLR` | Protect 40960+ (24KB free) |
+| $8000 (32768) | `POKE 56,128:POKE 55,0:CLR` | Protect 32768+ (32KB free) |
+
+**Warning:** Must do this **before** defining arrays or variables. CLR wipes everything.
+
+## Practical Memory Management
+
+### Strategies for Large Programs
+
+**1. Use integer arrays wherever possible**
+```basic
+dim map%(39,24)    rem 2 bytes per tile, not 5
+```
+
+**2. Avoid dynamic strings**
+```basic
+rem BAD - creates garbage
+10 msg$="score: "+str$(sc)
+
+rem BETTER - direct output
+10 print "score:";sc
+```
+
+**3. Preallocate arrays once**
+```basic
+100 dim enemy_x(19), enemy_y(19), enemy_type(19)
+110 rem use these arrays throughout game
+```
+
+**4. Recycle variables**
+```basic
+rem Instead of:
+a=peek(1024):b=peek(1025):c=peek(1026)
+
+rem Reuse one variable:
+t=peek(1024):x=t
+t=peek(1025):y=t
+t=peek(1026):z=t
+```
+
+**5. Abbreviate keywords**
+```basic
+rem Full version (easier to read):
+10 print "hello"
+
+rem Abbreviated (saves bytes):
+10 ?("hello"
+```
+
+BASIC stores abbreviated keywords as single-byte tokens, saving program space.
+
+### When Memory Runs Low
+
+**Symptoms:**
+- `?OUT OF MEMORY ERROR`
+- Unexpected crashes during array DIM
+- String operations fail
+
+**Solutions:**
+1. **Remove REM statements** (they consume program space)
+2. **Shorten line numbers** (1,2,3 vs 1000,1010,1020)
+3. **Combine statements** (use `:` to put multiple on one line)
+4. **Use single-letter variables** (saves tokenized program size slightly)
+5. **Reduce array sizes** (do you *really* need 100 elements?)
+6. **Move to machine language** (1KB of ML can replace 5KB of BASIC)
+
+## Variables in Machine Language
+
+When you call machine language routines from BASIC, you need to pass variables. BASIC stores them in specific places:
+
+### Passing Numeric Variables
+
+**Zero page usage:**
+- Floating-point accumulator: $61-$66 (97-102)
+- Integer accumulator: $14-$15 (20-21)
+
+**Example:**
+```basic
+10 a%=100
+20 sys 49152       rem ML routine at $C000
+30 print a%        rem ML can modify a%
+```
+
+The ML routine reads/writes $14-$15 to access `A%`.
+
+### Passing String Variables
+
+Strings are trickier. Use `PEEK()` to get string descriptor, then read string data:
+
+```basic
+100 a$="test"
+110 la=peek(peek(45)+peek(46)*256)        rem length
+120 lo=peek(peek(45)+peek(46)*256+1)      rem address low
+130 hi=peek(peek(45)+peek(46)*256+2)      rem address high
+140 rem string data at hi*256+lo, length la
+```
+
+**Reality:** Most games avoid passing strings to ML. Use numeric codes instead.
+
+## Memory Map for Game Programmers
+
+**Typical game memory layout:**
+
+```
+$0000-$00FF   Zero page (BASIC/KERNAL use, some free bytes)
+$0100-$01FF   Stack
+$0200-$03FF   BASIC variables (some free)
+$0400-$07E7   Screen RAM
+$0800-$0FFF   BASIC program (~2KB)
+$1000-$1FFF   Game data arrays (~4KB)
+$2000-$3FFF   Character set / sprites
+$4000-$7FFF   Machine language game engine
+$8000-$9FFF   Music/sound effects
+$A000-$BFFF   BASIC ROM (or banked RAM)
+$C000-$CFFF   Sprite data / extra storage
+$D000-$DFFF   I/O (VIC-II, SID, CIA)
+$E000-$FFFF   KERNAL ROM
+```
+
+**Strategy:**
+- Small BASIC program as loader/menu
+- Arrays for level data
+- Machine language for game loop
+- Graphics/music in protected high memory
+
+## See Also
+
+- [BASIC V2 Reference](/vault/basic-v2) — complete variable syntax
+- [Random Numbers](/vault/random-numbers) — RND seed storage location
+- [Screen Memory](/vault/screen-memory) — using POKE for direct screen writes
+
+---
+
+*Memory is your most constrained resource. Treat it like treasure—spend wisely, recycle aggressively, and never waste a byte.*

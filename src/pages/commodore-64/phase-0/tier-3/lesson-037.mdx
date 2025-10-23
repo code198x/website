@@ -1,0 +1,437 @@
+---
+layout: ../../../../layouts/LessonLayout.astro
+title: "Sprite Optimization"
+game: "Commodore 64 BASIC"
+system: "C64"
+phase: 0
+tier: 3
+lessonNumber: 37
+totalLessons: 64
+prevLesson: "/commodore-64/phase-0/tier-3/lesson-036"
+nextLesson: "/commodore-64/phase-0/tier-3/lesson-038"
+objectives:
+  - 'Minimize POKE calls for faster sprite updates.'
+  - 'Pre-calculate values before animation loops.'
+  - 'Group sprite register updates efficiently.'
+---
+
+# Squeezing Performance from BASIC
+
+Last lesson showed BASIC hitting its ceiling with sprite multiplexing. But that doesn't mean you should give up on optimization. There's still significant performance to gain by minimizing POKE calls, pre-calculating values, and structuring your code efficiently.
+
+This lesson shows the best BASIC can do—techniques that make your sprite games run as fast as possible within the interpreter's constraints.
+
+---
+
+## The One-Minute Tour
+
+**Common Performance Killers:**
+- Unnecessary POKE calls updating registers that haven't changed
+- Recalculating the same values every frame
+- Scattered POKEs instead of grouped updates
+- Reading registers (PEEK) when value is already known in a variable
+
+**Optimization Strategies:**
+- **Track state in variables** - Know what's changed before POKEing
+- **Pre-calculate** - Do maths once, not every frame
+- **Batch updates** - Group sprite register POKEs together
+- **Minimize branches** - IF statements add overhead
+
+**Realistic Expectations:**
+- Optimizations give 20-40% speed improvement
+- Still slower than assembly by 10-100×
+- Good enough for playable sprite games
+- Not good enough for multiplexing or complex AI
+
+---
+
+## Example 1: Unoptimized Sprite Movement
+
+Let's start with typical beginner code that updates sprites inefficiently:
+
+```basic
+10 PRINT CHR$(147):REM CLEAR SCREEN
+20 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 REM SETUP SPRITE
+70 POKE 2040,13
+80 POKE 53287,14
+90 POKE 53269,1
+100 X=100:Y=100:DX=2:DY=1
+105 M=0:REM MSB TRACKER
+110 REM UNOPTIMIZED MAIN LOOP
+120 POKE 53287,14:REM REDUNDANT - COLOUR DOESN'T CHANGE
+130 POKE 53269,1:REM REDUNDANT - SPRITE ALREADY ENABLED
+140 X=X+DX
+150 Y=Y+DY
+160 IF X<24 THEN DX=2
+170 IF X>290 THEN DX=-2
+180 IF Y<50 THEN DY=1
+190 IF Y>229 THEN DY=-1
+195 IF X>=256 THEN M=1:GOTO 200
+196 M=0
+200 POKE 53248,X AND 255
+210 POKE 53249,Y
+215 POKE 53264,M
+220 FOR D=1 TO 10:NEXT D
+230 GOTO 120
+240 REM SPRITE DATA
+250 DATA 0,126,0,1,255,128,3,255,192
+260 DATA 7,255,224,15,255,240,31,255,248
+270 DATA 31,255,248,63,255,252,63,255,252
+280 DATA 63,255,252,63,255,252,63,255,252
+290 DATA 31,255,248,31,255,248,15,255,240
+300 DATA 7,255,224,3,255,192,1,255,128
+310 DATA 0,126,0,0,0,0,0,0,0
+```
+
+![Unoptimized sprite movement](/images/commodore-64/phase-0/tier-3/lesson-037/example-1.png)
+
+**Performance Problems:**
+- **Lines 120-130**: POKEs to 53287 and 53269 every frame (colour and enable never change!)
+- **Lines 160-190**: Four IF statements checking bounds every frame
+- **Lines 195-215**: MSB handling is correct but verbose
+- Delay loop (220) wastes time
+- Works, but slower than necessary
+
+---
+
+## Example 2: Optimized Sprite Movement
+
+Now the same movement with optimizations applied:
+
+```basic
+10 PRINT CHR$(147):REM CLEAR SCREEN
+20 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 REM SETUP SPRITE (ONCE)
+70 POKE 2040,13
+80 POKE 53287,14
+90 POKE 53269,1
+100 REM INITIAL VALUES
+110 X=100:Y=100:DX=2:DY=1
+120 MINX=24:MAXX=290
+130 MINY=50:MAXY=229
+135 M=0:REM MSB TRACKER
+140 REM OPTIMIZED MAIN LOOP
+150 X=X+DX:Y=Y+DY
+160 IF X<MINX OR X>MAXX THEN DX=-DX
+170 IF Y<MINY OR Y>MAXY THEN DY=-DY
+175 IF X>=256 THEN M=1:GOTO 180
+176 M=0
+180 POKE 53248,X AND 255:POKE 53249,Y
+185 POKE 53264,M
+190 GOTO 150
+200 REM SPRITE DATA
+210 DATA 0,126,0,1,255,128,3,255,192
+220 DATA 7,255,224,15,255,240,31,255,248
+230 DATA 31,255,248,63,255,252,63,255,252
+240 DATA 63,255,252,63,255,252,63,255,252
+250 DATA 31,255,248,31,255,248,15,255,240
+260 DATA 7,255,224,3,255,192,1,255,128
+270 DATA 0,126,0,0,0,0,0,0,0
+```
+
+![Optimized sprite movement (smoother)](/images/commodore-64/phase-0/tier-3/lesson-037/example-2.png)
+
+**Optimizations Applied:**
+- **Removed redundant POKEs** (lines 120-130 from example 1 gone)
+- **Pre-calculated bounds** (lines 120-130): MINX, MAXX, MINY, MAXY
+- **Combined IF statements** (lines 160-170): OR instead of separate checks
+- **MSB handling streamlined** (lines 175-185): Same pattern, less verbose
+- **Removed delay loop** - runs at maximum BASIC speed
+- **Grouped POKEs** (line 180): Both position updates together
+
+**Result:** Noticeably smoother movement—about 30% faster.
+
+---
+
+## Handling X Positions Beyond 255
+
+Before we continue with multi-sprite examples, there's a critical detail: sprite X positions are 9 bits (0-511), not 8 bits.
+
+**Register 53264 ($D010)** holds the 9th bit (MSB) for all 8 sprites:
+- Bit 0 = sprite 0's MSB
+- Bit 1 = sprite 1's MSB
+- ...and so on
+
+**When X >= 256:** Set the sprite's bit in 53264
+**When X < 256:** Clear the sprite's bit in 53264
+
+```basic
+REM For sprite 0 moving to X=300
+M=0:REM MSB tracker variable
+IF X>=256 THEN M=M OR 1:GOTO 100
+M=M AND 254
+100 POKE 53248,X AND 255:REM Low 8 bits only
+POKE 53264,M:REM MSB bit
+```
+
+This is **standard practice** for any sprite that might cross X=255.
+
+---
+
+## Example 3: Multiple Sprites - Unoptimized
+
+Managing 4 sprites the inefficient way (including MSB handling):
+
+```basic
+10 PRINT CHR$(147):REM CLEAR SCREEN
+20 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 REM SETUP 4 SPRITES
+70 FOR I=0 TO 3
+80 POKE 2040+I,13
+90 POKE 53287+I,I+2
+100 NEXT
+110 POKE 53269,15:REM ENABLE SPRITES 0-3
+115 POKE 53264,0:REM CLEAR X MSB INITIALLY
+120 X0=50:Y0=100:X1=100:Y1=100
+130 X2=150:Y2=100:X3=200:Y3=100
+135 M=0:REM MSB TRACKER
+140 REM UNOPTIMIZED LOOP - SCATTERED POKES
+150 X0=X0+2:IF X0>300 THEN X0=50
+155 IF X0>=256 THEN M=M OR 1:GOTO 160
+156 M=M AND 254
+160 POKE 53248,X0 AND 255:POKE 53249,Y0
+170 X1=X1+2:IF X1>300 THEN X1=50
+175 IF X1>=256 THEN M=M OR 2:GOTO 180
+176 M=M AND 253
+180 POKE 53250,X1 AND 255:POKE 53251,Y1
+190 X2=X2+2:IF X2>300 THEN X2=50
+195 IF X2>=256 THEN M=M OR 4:GOTO 200
+196 M=M AND 251
+200 POKE 53252,X2 AND 255:POKE 53253,Y2
+210 X3=X3+2:IF X3>300 THEN X3=50
+215 IF X3>=256 THEN M=M OR 8:GOTO 220
+216 M=M AND 247
+220 POKE 53254,X3 AND 255:POKE 53255,Y3
+225 POKE 53264,M:REM UPDATE MSB REGISTER
+230 FOR D=1 TO 5:NEXT D
+240 GOTO 150
+250 REM SPRITE DATA
+260 DATA 0,126,0,1,255,128,3,255,192
+270 DATA 7,255,224,15,255,240,31,255,248
+280 DATA 31,255,248,63,255,252,63,255,252
+290 DATA 63,255,252,63,255,252,63,255,252
+300 DATA 31,255,248,31,255,248,15,255,240
+310 DATA 7,255,224,3,255,192,1,255,128
+320 DATA 0,126,0,0,0,0,0,0,0
+```
+
+![Four sprites moving (unoptimized)](/images/commodore-64/phase-0/tier-3/lesson-037/example-3.png)
+
+**Inefficiencies:**
+- **Scattered logic**: Each sprite updated in separate code blocks
+- **MSB handling**: Lines 155, 175, 195, 215 check each sprite individually
+- **Delay loop** at line 230 slows everything down
+- **Separate IF checks** for each sprite's wrapping
+- Difficult to maintain—adding more sprites means copying more code
+
+**Note:** The MSB handling adds overhead but is necessary for positions > 255
+
+---
+
+## Example 4: Multiple Sprites - Optimized with Arrays
+
+Using arrays and batched updates for efficiency:
+
+```basic
+10 PRINT CHR$(147):REM CLEAR SCREEN
+20 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 REM SETUP 4 SPRITES
+70 FOR I=0 TO 3
+80 POKE 2040+I,13
+90 POKE 53287+I,I+2
+100 NEXT
+110 POKE 53269,15
+120 REM ARRAYS FOR POSITIONS AND VELOCITIES
+130 DIM X(3),Y(3),DX(3)
+140 FOR I=0 TO 3
+150 X(I)=50+I*50:Y(I)=100:DX(I)=2
+160 NEXT
+170 MAXP=300:MINP=50:BA=53248
+175 M=0:REM MSB TRACKER
+180 REM OPTIMIZED LOOP - BATCHED UPDATES
+190 FOR I=0 TO 3
+200 X(I)=X(I)+DX(I)
+210 IF X(I)>MAXP OR X(I)<MINP THEN DX(I)=-DX(I)
+215 REM HANDLE X MSB FOR THIS SPRITE
+220 B=2^I:REM BIT VALUE FOR THIS SPRITE
+225 IF X(I)>=256 THEN M=M OR B:GOTO 230
+226 M=M AND (255-B)
+230 AD=BA+I*2
+240 POKE AD,X(I) AND 255:POKE AD+1,Y(I)
+250 NEXT I
+255 POKE 53264,M:REM UPDATE MSB REGISTER
+260 GOTO 190
+260 REM SPRITE DATA
+270 DATA 0,126,0,1,255,128,3,255,192
+280 DATA 7,255,224,15,255,240,31,255,248
+290 DATA 31,255,248,63,255,252,63,255,252
+300 DATA 63,255,252,63,255,252,63,255,252
+310 DATA 31,255,248,31,255,248,15,255,240
+320 DATA 7,255,224,3,255,192,1,255,128
+330 DATA 0,126,0,0,0,0,0,0,0
+```
+
+![Four sprites moving (optimized with arrays)](/images/commodore-64/phase-0/tier-3/lesson-037/example-4.png)
+
+**Optimizations:**
+- **Arrays** (line 130): X(), Y(), DX() store all sprite data
+- **Pre-calculated constants** (line 170): MAXP, MINP, BA (base address)
+- **Single FOR loop** (lines 190-260): All sprites updated in one pass
+- **Efficient MSB handling** (lines 220-225): Calculate bit value, single POKE at end
+- **Calculated addresses** (line 230): AD = BA + I*2 for register access
+- **No delay loop** - maximum BASIC speed
+- Easy to add more sprites—just change array dimensions and loop limit
+
+**MSB Advantage:** One POKE to 53264 (line 255) instead of checking/updating after each sprite
+
+**Performance:** About 40% faster than example 3, smoother animation.
+
+---
+
+## Example 5: Pre-Calculated Movement Tables
+
+For even better performance, pre-calculate movement patterns:
+
+```basic
+10 PRINT CHR$(147):REM CLEAR SCREEN
+20 REM LOAD SPRITE DATA
+30 FOR I=0 TO 62
+40 READ B:POKE 832+I,B
+50 NEXT
+60 REM SETUP SPRITE
+70 POKE 2040,13
+80 POKE 53287,14
+90 POKE 53269,1
+100 REM PRE-CALCULATE SINE WAVE POSITIONS
+110 DIM SX(63),SY(63)
+120 FOR I=0 TO 63
+130 SX(I)=160+INT(SIN(I*3.14159/32)*100)
+140 SY(I)=120+INT(COS(I*3.14159/32)*60)
+150 NEXT
+160 P=0
+170 REM OPTIMIZED LOOP - TABLE LOOKUP
+180 POKE 53248,SX(P):POKE 53249,SY(P)
+190 P=P+1:IF P>63 THEN P=0
+200 GOTO 180
+210 REM SPRITE DATA
+220 DATA 0,126,0,1,255,128,3,255,192
+230 DATA 7,255,224,15,255,240,31,255,248
+240 DATA 31,255,248,63,255,252,63,255,252
+250 DATA 63,255,252,63,255,252,63,255,252
+260 DATA 31,255,248,31,255,248,15,255,240
+270 DATA 7,255,224,3,255,192,1,255,128
+280 DATA 0,126,0,0,0,0,0,0,0
+```
+
+![Sprite moving in smooth circle using pre-calculated table](/images/commodore-64/phase-0/tier-3/lesson-037/example-5.png)
+
+**The Table Technique:**
+- **Lines 110-150**: Pre-calculate 64 positions forming a circle
+- **Line 180**: Simple table lookup—no SIN/COS in the loop
+- **Line 190**: Increment index, wrap at end
+
+**Performance Gain:**
+- Calculating SIN/COS every frame: extremely slow
+- Table lookup: very fast (just array access)
+- Trade-off: Uses memory for the table (128 bytes for 64 positions)
+
+**When to Use:**
+- Circular or wave movement patterns
+- Fixed paths or animations
+- Any repeated calculation
+
+---
+
+## Optimization Checklist
+
+**Before Your Main Loop:**
+- [ ] Set up sprites once (pointers, colours, enable bits)
+- [ ] Pre-calculate constants (bounds, base addresses)
+- [ ] Build lookup tables for complex calculations
+- [ ] Initialize arrays for multi-sprite management
+
+**Inside Your Main Loop:**
+- [ ] Update only registers that have changed
+- [ ] Handle X MSB register (53264) for positions >= 256
+- [ ] Group related POKEs together
+- [ ] Use variables to track state (not PEEK)
+- [ ] Combine IF conditions with OR/AND when possible
+- [ ] Avoid calculations—use pre-calculated values
+
+**General Principles:**
+- [ ] Minimize total POKE count per frame
+- [ ] Reduce IF statement count
+- [ ] No delay loops (FOR D=1 TO X)—run at full speed
+- [ ] Use arrays for multiple sprites
+- [ ] Calculate addresses once, not repeatedly
+
+---
+
+## Performance Comparison
+
+**Typical BASIC sprite game (unoptimized):**
+- 100-150 POKEs per frame
+- 20-30 IF checks per frame
+- ~10-15 frames per second
+
+**Well-optimized BASIC sprite game:**
+- 20-40 POKEs per frame
+- 5-10 IF checks per frame
+- ~20-30 frames per second
+
+**Assembly sprite game:**
+- Same register updates, but ~100× faster execution
+- ~50-60 frames per second
+- Raster-synchronized updates
+
+**The Reality:**
+Optimization makes BASIC sprite games playable and enjoyable. But assembly still offers an order of magnitude more performance.
+
+---
+
+## Game Context: BASIC Games That Did It Well
+
+Some published C64 BASIC games used these optimization techniques:
+
+**Type-In Magazine Games (1980s):**
+- Often included REM comments explaining optimizations
+- Pre-calculated lookup tables for movement
+- Grouped POKE statements efficiently
+- Limited sprite counts to stay smooth (2-4 sprites typical)
+
+**Early Educational Games:**
+- Simple sprite movement with minimal overhead
+- Smart use of arrays for multiple objects
+- Avoided complex calculations in loops
+
+**The Common Thread:**
+All successful BASIC sprite games understood the interpreter's limitations and worked within them. They didn't try to match assembly—they aimed for "smooth enough" gameplay.
+
+---
+
+## What You've Learnt
+
+- Minimize POKE calls by tracking state in variables
+- Pre-calculate values before loops (bounds, addresses, tables)
+- Group sprite updates together for efficiency
+- Use arrays for managing multiple sprites
+- Build lookup tables for complex calculations (SIN/COS)
+- Combine IF conditions to reduce branch overhead
+- Optimized BASIC gives 20-40% speed improvement
+- Still 10-100× slower than assembly, but playable
+- **Trade-off: memory (tables) for speed (no recalculation)**
+
+Next lesson, we'll explore multi-voice music in BASIC—another area where BASIC struggles but optimization helps.
