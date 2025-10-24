@@ -1,0 +1,230 @@
+---
+title: "Hello, NES World"
+description: "Your first NES program in 6502 assembly—initialize the hardware and display a solid colour background."
+pubDate: 2025-01-20
+tier: 1
+lessonNumber: 1
+tags: ["assembly", "6502", "ppu", "initialization", "background"]
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-002"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Welcome to NES programming! Unlike BASIC on the C64 or ZX Spectrum, the NES has no built-in language. You write assembly code that talks directly to the hardware. This lesson builds the minimal program needed to see something on screen.
+
+Every NES program starts the same way: initialize the hardware, configure the PPU (Picture Processing Unit), and enter a main loop. Let's build that foundation.
+
+## The One-Minute Tour
+
+- **6502 assembly** is the language—labels, instructions, operands
+- **iNES header** tells emulators about your ROM structure
+- **Reset vector** at $FFFC defines where execution begins
+- **PPU initialization** requires waiting for two VBlank periods
+- **Background rendering** controlled by writing to PPU registers
+- **Main loop** keeps the program running (infinite JMP)
+
+## Your First NES Program
+
+Type this into a file called `hello-nes.asm`:
+
+```asm
+; Hello, NES World
+; Displays a solid background colour
+
+.segment "HEADER"
+    .byte "NES", $1A        ; iNES magic identifier
+    .byte 2                  ; 2 x 16KB PRG-ROM banks
+    .byte 1                  ; 1 x 8KB CHR-ROM bank
+    .byte $01, $00          ; Mapper 0, vertical mirroring
+
+.segment "CODE"
+
+Reset:
+    SEI                     ; Disable interrupts
+    CLD                     ; Clear decimal mode
+
+    ; Wait for PPU to be ready (2 vblanks)
+    LDX #$00
+VBlank1:
+    BIT $2002               ; Read PPUSTATUS
+    BPL VBlank1             ; Wait for bit 7
+
+VBlank2:
+    BIT $2002
+    BPL VBlank2
+
+    ; Initialize stack
+    LDX #$FF
+    TXS
+
+    ; Set background colour to dark blue
+    LDA #$3F                ; Palette address high byte
+    STA $2006               ; PPUADDR
+    LDA #$00                ; Palette address low byte
+    STA $2006               ; PPUADDR
+    LDA #$02                ; Dark blue colour
+    STA $2007               ; PPUDATA
+
+    ; Enable rendering
+    LDA #%00001000          ; Enable background
+    STA $2001               ; PPUMASK
+
+MainLoop:
+    JMP MainLoop            ; Loop forever
+
+NMI:
+    RTI                     ; Return from interrupt
+
+IRQ:
+    RTI
+
+.segment "VECTORS"
+    .word NMI               ; $FFFA: NMI vector
+    .word Reset             ; $FFFC: Reset vector
+    .word IRQ               ; $FFFE: IRQ vector
+
+.segment "CHARS"
+    .res 8192, $00          ; 8KB blank tile data
+```
+
+**Assemble this** with ca65 and ld65 (or use the build script in the code samples directory).
+
+![Hello NES World - dark blue background](/images/nintendo-entertainment-system/phase-1/tier-1/lesson-001/hello-nes.png)
+
+The screen displays a solid dark blue background. Simple, but this proves your ROM structure is correct, the PPU initializes properly, and rendering is enabled.
+
+## How This Works
+
+### The iNES Header
+
+```asm
+.segment "HEADER"
+    .byte "NES", $1A        ; Magic identifier
+    .byte 2                  ; PRG-ROM size
+    .byte 1                  ; CHR-ROM size
+    .byte $01, $00          ; Mapper and flags
+```
+
+The first 16 bytes of every NES ROM tell emulators (and flash carts) how the ROM is organized. The "NES" string plus $1A byte is a magic identifier. The next bytes specify 32KB of program code (2 × 16KB) and 8KB of graphics data (1 × 8KB). The mapper byte $01 means mapper 0 (NROM)—the simplest cartridge type.
+
+### Reset: Where Execution Begins
+
+```asm
+Reset:
+    SEI                     ; Disable interrupts
+    CLD                     ; Clear decimal mode
+```
+
+When the NES powers on, the CPU reads address $FFFC (the Reset vector) to find where to start. That's why we put `Reset` in the VECTORS segment at $FFFC. The first two instructions are standard initialization: disable interrupts (SEI) and clear decimal mode (CLD). The NES 6502 has no decimal mode hardware, but clearing the flag is good practice.
+
+### PPU Initialization
+
+```asm
+VBlank1:
+    BIT $2002               ; Read PPUSTATUS
+    BPL VBlank1             ; Loop until bit 7 set
+```
+
+The PPU takes about 30,000 CPU cycles to warm up after power-on. Reading $2002 (PPUSTATUS) checks bit 7—the VBlank flag. When VBlank happens, bit 7 is set. We wait for two VBlanks to ensure the PPU is fully stable.
+
+**BIT** tests bits without changing the accumulator. **BPL** branches if bit 7 is clear (positive). So this loops until VBlank occurs.
+
+### Setting the Background Colour
+
+```asm
+    LDA #$3F                ; Palette address high byte
+    STA $2006               ; PPUADDR
+    LDA #$00                ; Palette address low byte
+    STA $2006               ; PPUADDR
+    LDA #$02                ; Dark blue colour
+    STA $2007               ; PPUDATA
+```
+
+The PPU has its own memory space (separate from CPU RAM). To write to it, you set an address via $2006 (PPUADDR), then write data via $2007 (PPUDATA). Writing to PPUADDR takes two writes: high byte, then low byte. Address $3F00 is the start of the palette RAM. The first byte ($3F00) is the background colour. Writing $02 sets it to dark blue.
+
+**Colour $02** is one of 64 colours in the NES palette. $00 is black, $01 is dark grey, $02 is dark blue, $0D is black (duplicate), $1D is also black, $2D is black again, $3D is yet another black. The NES has some quirks.
+
+### Enabling Rendering
+
+```asm
+    LDA #%00001000          ; Enable background
+    STA $2001               ; PPUMASK
+```
+
+$2001 (PPUMASK) controls rendering. Bit 3 enables background rendering. Without this, the screen stays black no matter what you write to palette RAM. The percent sign prefix (%00001000) means binary—it's clearer than hexadecimal for register flags.
+
+### The Main Loop
+
+```asm
+MainLoop:
+    JMP MainLoop            ; Loop forever
+```
+
+Every NES program needs an infinite loop. Without it, the CPU would execute whatever garbage follows in memory—probably crashing. Later lessons will do useful work in this loop, but for now, just spin.
+
+### Interrupt Vectors
+
+```asm
+NMI:
+    RTI                     ; Return from interrupt
+
+.segment "VECTORS"
+    .word NMI               ; $FFFA: NMI vector
+    .word Reset             ; $FFFC: Reset vector
+    .word IRQ               ; $FFFE: IRQ vector
+```
+
+The CPU expects interrupt vectors at fixed addresses: $FFFA (NMI), $FFFC (Reset), $FFFE (IRQ). **NMI** (Non-Maskable Interrupt) fires every frame during VBlank—that's 60 times per second. Right now our NMI handler just returns (RTI = Return from Interrupt), but later lessons will use it for game logic.
+
+## Experiment: Different Colours
+
+Change the colour value at this line:
+
+```asm
+    LDA #$02                ; Try $00-$3F
+```
+
+**Try these:**
+- $00 = Black (or darkest grey)
+- $06 = Red
+- $1A = Light green
+- $22 = Light blue
+- $30 = White
+
+Colours above $3F wrap around (the palette repeats every 64 entries). Some colours like $0D, $1D, $2D, $3D all produce black—these were used for debug in early NES hardware.
+
+## From the Vault
+
+- [NESDev Wiki - CPU Memory Map](https://www.nesdev.org/wiki/CPU_memory_map)
+- [NESDev Wiki - PPU Registers](https://www.nesdev.org/wiki/PPU_registers)
+- [NESDev Wiki - PPU Palettes](https://www.nesdev.org/wiki/PPU_palettes)
+
+## Quick Reference: Essential PPU Registers
+
+| Address | Name | Purpose |
+|---------|------|---------|
+| $2000 | PPUCTRL | PPU control (NMI enable, etc) |
+| $2001 | PPUMASK | Rendering control |
+| $2002 | PPUSTATUS | PPU status (VBlank flag) |
+| $2006 | PPUADDR | PPU address (write twice: high, low) |
+| $2007 | PPUDATA | PPU data read/write |
+
+## Quick Reference: Common Initialization Steps
+
+1. **SEI** - Disable interrupts
+2. **CLD** - Clear decimal mode
+3. **Wait for two VBlanks** - Read $2002 until bit 7 set, twice
+4. **Initialize stack** - LDX #$FF, TXS
+5. **Configure PPU** - Set palette, enable rendering
+6. **Enter main loop** - JMP to itself
+
+## What You've Learnt
+
+- NES programs start at the **Reset vector** ($FFFC)
+- **iNES header** defines ROM structure for emulators
+- **PPU registers** ($2000-$2007) control graphics
+- **PPUADDR** ($2006) sets address, **PPUDATA** ($2007) reads/writes
+- **VBlank waiting** ensures PPU stability (read $2002 twice)
+- **Colour $02** makes a dark blue background
+- **Main loop** prevents CPU from executing garbage
+
+Next lesson: We'll add sprites and make something move on screen.
