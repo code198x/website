@@ -1,0 +1,514 @@
+---
+title: "VBlank Timing"
+description: "Master 60fps game loops—NMI interrupts, VBlank synchronization, register preservation, and the separation of game logic from graphics updates."
+pubDate: 2025-01-20
+tier: 1
+lessonNumber: 4
+tags: ["assembly", "6502", "nmi", "vblank", "timing", "interrupts", "60fps"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-003"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-005"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Every NES game runs at 60 frames per second, synchronized to the television's refresh rate. The NMI (Non-Maskable Interrupt) is the hardware mechanism that makes this possible. Understanding VBlank timing and NMI handling is fundamental to NES programming—this is how games coordinate gameplay with graphics updates.
+
+Previous lessons configured the PPU and organized memory. This lesson introduces the game loop architecture that every NES game uses: main code runs game logic, NMI handler updates graphics, and a flag variable synchronizes them at 60fps.
+
+## The One-Minute Tour
+
+- **VBlank period**—safe window (~2273 cycles) when PPU can be updated
+- **NMI interrupt**—hardware automatically calls handler at start of VBlank
+- **60 Hz frequency**—NMI occurs exactly 60 times per second
+- **Register preservation**—save A, X, Y on entry, restore before RTI
+- **Game loop pattern**—main code waits for flag, NMI sets flag
+- **Separation of concerns**—gameplay in MainLoop, graphics in NMI
+- **$2000 bit 7**—enables/disables NMI generation
+
+## Your First NMI Handler
+
+Create `nmi-handler.asm`:
+
+```asm
+.segment "HEADER"
+    .byte "NES", $1A
+    .byte 2
+    .byte 1
+    .byte $01, $00
+
+.segment "ZEROPAGE"
+nmi_ready: .res 1           ; Synchronization flag
+
+.segment "CODE"
+Reset:
+    SEI
+    CLD
+
+    ; PPU warmup
+    BIT $2002
+:   BIT $2002
+    BPL :-
+:   BIT $2002
+    BPL :-
+
+    ; Initialize stack
+    LDX #$FF
+    TXS
+
+    ; Set background colour
+    LDA #$3F
+    STA $2006
+    LDA #$00
+    STA $2006
+    LDA #$12                ; Blue
+    STA $2007
+
+    ; Enable NMI
+    LDA #%10000000          ; Bit 7 = NMI enable
+    STA $2000
+
+    ; Enable rendering
+    LDA #%00001000
+    STA $2001
+
+MainLoop:
+    ; Wait for NMI
+:   LDA nmi_ready
+    BEQ :-                  ; Loop while flag is 0
+
+    ; Reset flag
+    LDA #$00
+    STA nmi_ready
+
+    ; Game logic here
+    ; (runs once per frame)
+
+    JMP MainLoop
+
+NMI:
+    ; Save registers
+    PHA
+    TXA
+    PHA
+    TYA
+    PHA
+
+    ; Graphics updates here
+    ; (safe during VBlank)
+
+    ; Set ready flag
+    LDA #$01
+    STA nmi_ready
+
+    ; Restore registers
+    PLA
+    TAY
+    PLA
+    TAX
+    PLA
+    RTI                     ; Return from interrupt
+
+IRQ:
+    RTI
+
+.segment "VECTORS"
+    .word NMI
+    .word Reset
+    .word IRQ
+
+.segment "CHARS"
+    .res 8192, $00
+```
+
+**Assemble and run**—the program runs with proper 60fps timing!
+
+## How This Works
+
+### The VBlank Period
+
+A CRT television draws the picture line by line, top to bottom. After drawing the last line (scanline 240), the electron beam turns off and returns to the top—this is **VBlank** (vertical blank).
+
+```
+Frame structure (NTSC):
+Scanlines 0-239: Active display (picture being drawn)
+Scanlines 240-260: VBlank period (beam returning to top)
+Total: 261 scanlines per frame
+Duration: 16.67ms (60 frames per second)
+```
+
+During VBlank, the PPU isn't drawing the picture, so it's safe to change graphics data. Updating PPU memory during active display causes glitches—corrupted tiles, wrong colours, screen tearing. **VBlank is the only safe time to update graphics.**
+
+The PPU provides ~2273 CPU cycles during VBlank—enough time to update sprite positions, change palettes, modify a few nametable tiles, and handle basic housekeeping. For larger updates (loading new graphics, changing entire screens), you disable rendering temporarily.
+
+### NMI: Hardware-Driven Timing
+
+**NMI (Non-Maskable Interrupt)** is a hardware signal. When VBlank starts, the PPU triggers NMI if enabled. The CPU:
+
+1. Finishes the current instruction
+2. Pushes PC (program counter) to stack
+3. Pushes P (status flags) to stack
+4. Jumps to the address stored at $FFFA (NMI vector)
+5. Executes the NMI handler
+6. RTI (Return from Interrupt) restores everything and resumes
+
+This happens **automatically**—no polling, no checking. The hardware guarantees your NMI handler runs exactly once per frame, 60 times per second.
+
+**Why "Non-Maskable"?** Most interrupts can be disabled with SEI (Set Interrupt Disable). NMI cannot be masked by the I flag—it always fires when enabled. The only way to stop NMI is clearing bit 7 of $2000.
+
+### Enabling NMI
+
+Register $2000 (PPUCTRL) controls PPU behaviour. Bit 7 enables NMI:
+
+```asm
+LDA #%10000000          ; Bit 7 = 1, others = 0
+STA $2000               ; Enable NMI
+```
+
+**$2000 bits:**
+- Bit 7: Generate NMI at VBlank (1 = enable, 0 = disable)
+- Bit 6: PPU master/slave (ignore)
+- Bit 5: Sprite size (0 = 8×8, 1 = 8×16)
+- Bit 4: Background pattern table ($0000 or $1000)
+- Bit 3: Sprite pattern table ($0000 or $1000)
+- Bit 2: PPU address increment (0 = +1, 1 = +32)
+- Bits 1-0: Nametable select (which of 4 nametables)
+
+Value `%10000000` enables NMI (bit 7), uses first nametable (bits 1-0 = 00), and sets sensible defaults for other bits.
+
+**When to enable:** After PPU warmup and initialization. Once enabled, NMI fires every frame. Disable NMI during loading screens or major graphics updates to prevent interruptions.
+
+### Register Preservation
+
+NMI can interrupt main code between **any two instructions**. If A contains player X position and NMI changes A, the main code sees corrupted data. **Must save registers:**
+
+```asm
+NMI:
+    PHA                 ; Push A to stack
+    TXA                 ; Transfer X to A
+    PHA                 ; Push X (via A) to stack
+    TYA                 ; Transfer Y to A
+    PHA                 ; Push Y (via A) to stack
+
+    ; Safe to use A, X, Y now
+
+    PLA                 ; Pull Y from stack
+    TAY                 ; Transfer A to Y
+    PLA                 ; Pull X from stack
+    TAX                 ; Transfer A to X
+    PLA                 ; Pull A from stack
+    RTI
+```
+
+The 6502 has only one data register (A). To save X and Y, transfer them to A, push A, repeat. Restore in reverse order.
+
+**Why this works:** The stack at $0100-$01FF preserves values. Push order: A, X, Y. Pull order: Y, X, A (reverse). Stack grows downward (SP decrements with push, increments with pull).
+
+**Hardware saves PC and P:** The CPU automatically pushes PC and P when NMI triggers. RTI (Return from Interrupt) pulls them back. You handle A, X, Y; hardware handles PC and P.
+
+### The Game Loop Pattern
+
+Classic NES architecture separates concerns:
+
+**MainLoop (game logic):**
+- Runs as fast as possible
+- Waits for `nmi_ready` flag
+- Processes input, updates positions, checks collisions
+- Prepares data for graphics (sprite positions, colour changes)
+- Never directly updates PPU
+
+**NMI (graphics updates):**
+- Runs exactly once per frame during VBlank
+- Updates PPU registers (sprites, palettes, scroll)
+- Sets `nmi_ready` flag when done
+- Never does heavy computation
+
+**Synchronization:**
+
+```asm
+; Main code
+MainLoop:
+:   LDA nmi_ready
+    BEQ :-              ; Wait while flag is 0
+    LDA #$00
+    STA nmi_ready       ; Reset flag to 0
+    ; Game logic
+    JMP MainLoop
+
+; NMI handler
+NMI:
+    ; ... save registers ...
+    ; Graphics updates
+    LDA #$01
+    STA nmi_ready       ; Set flag to 1
+    ; ... restore registers ...
+    RTI
+```
+
+Main code waits for flag. NMI sets flag and updates graphics. Main code sees flag, resets it, does game logic, waits again. Perfect 60fps synchronization.
+
+### Why Separate Game Logic and Graphics?
+
+**VBlank is short:** Only ~2273 cycles. Updating all sprites takes ~513 cycles (OAM DMA). Palette changes take ~50 cycles. Little time left for game logic.
+
+**Active display is long:** ~29,658 cycles. Plenty of time for input handling, physics, AI, collision detection.
+
+**Deterministic timing:** If game logic runs in main loop, it has predictable time budget. If it ran in NMI, slow frames would skip VBlank updates (graphics glitches).
+
+**Clean architecture:** Graphics code is isolated. Main loop never touches PPU registers (except during initialization). Easy to debug, easy to understand.
+
+## Colour Cycling Example
+
+Extend the pattern to change background colour each frame:
+
+```asm
+.segment "ZEROPAGE"
+nmi_ready: .res 1
+frame_count: .res 1
+colour_index: .res 1
+
+.segment "CODE"
+Reset:
+    ; ... initialization ...
+    LDA #$00
+    STA frame_count
+    STA colour_index
+    ; ... enable NMI and rendering ...
+
+MainLoop:
+    ; Wait for VBlank
+:   LDA nmi_ready
+    BEQ :-
+    LDA #$00
+    STA nmi_ready
+
+    ; Change colour every 15 frames
+    INC frame_count
+    LDA frame_count
+    CMP #15
+    BNE MainLoop
+
+    ; 15 frames passed
+    LDA #$00
+    STA frame_count
+    INC colour_index
+    LDA colour_index
+    CMP #$08
+    BNE MainLoop
+    LDA #$00
+    STA colour_index
+
+    JMP MainLoop
+
+NMI:
+    ; Save registers
+    PHA
+    TXA
+    PHA
+    TYA
+    PHA
+
+    ; Update background colour
+    BIT $2002               ; Reset address latch
+    LDA #$3F
+    STA $2006
+    LDA #$00
+    STA $2006
+
+    LDX colour_index
+    LDA ColourTable,X
+    STA $2007
+
+    ; Set flag
+    LDA #$01
+    STA nmi_ready
+
+    ; Restore registers
+    PLA
+    TAY
+    PLA
+    TAX
+    PLA
+    RTI
+
+.segment "RODATA"
+ColourTable:
+    .byte $0F, $12, $16, $27, $29, $1A, $21, $30
+```
+
+**Run this**—background cycles through 8 colours, changing every 15 frames (every 0.25 seconds).
+
+Main loop increments `frame_count` each frame. At 15 frames, it increments `colour_index` and resets counter. NMI reads `colour_index` and loads the corresponding colour from a lookup table.
+
+**Frame counter pattern:** Essential for timing in games. Count frames to delay events, trigger animations, control speed. 60 frames = 1 second. 15 frames = 0.25 seconds.
+
+## Stack Initialization
+
+```asm
+LDX #$FF
+TXS                     ; Transfer X to SP (Stack Pointer)
+```
+
+The stack pointer (SP) starts at an undefined value after reset. Initialize it to $FF (top of stack at $01FF) before enabling interrupts.
+
+**Why $FF?** Stack is at $0100-$01FF. SP holds the low byte. Setting SP to $FF makes the stack pointer $01FF. First push writes to $01FF and decrements SP to $FE.
+
+**Must initialize before NMI:** If NMI fires before stack initialization, pushing registers corrupts random RAM. Always `TXS` before writing `STA $2000`.
+
+## Reading $2002 in NMI
+
+```asm
+NMI:
+    ; ... save registers ...
+    BIT $2002               ; Reset address latch
+    LDA #$3F
+    STA $2006
+```
+
+Reading $2002 has side effects:
+1. Clears VBlank flag (bit 7)
+2. Resets the $2006/$2007 address latch
+
+**Address latch reset:** $2006 requires two writes (high byte, low byte). Internal flip-flop tracks which write is next. If main code was interrupted mid-write, the flip-flop is in the wrong state. Reading $2002 resets it to "expecting high byte."
+
+**Best practice:** Start every PPU address setup with `BIT $2002`.
+
+## Timing Budget
+
+VBlank provides limited time for graphics updates:
+
+**Available cycles:** ~2273 (NTSC)
+
+**Common operations:**
+- OAM DMA (sprite update): 513 cycles
+- Write 1 palette entry: ~13 cycles
+- Write 1 nametable tile: ~13 cycles
+- Scroll update: ~10 cycles
+
+**Example budget:**
+- OAM DMA: 513 cycles
+- Update 4 palettes (16 bytes): 208 cycles
+- Update 20 nametable tiles: 260 cycles
+- Scroll/misc: 50 cycles
+- Total: ~1031 cycles (45% of budget)
+
+Plenty of headroom for typical games. Large updates (loading new screens) disable rendering temporarily to get unlimited time.
+
+## RTI vs RTS
+
+**RTI (Return from Interrupt):** Pulls status flags, then PC. Used at end of interrupt handlers (NMI, IRQ).
+
+**RTS (Return from Subroutine):** Only pulls PC. Used at end of subroutines called by JSR.
+
+**Don't confuse them:**
+- NMI handler → RTI
+- Subroutine → RTS
+- Using wrong instruction corrupts the stack
+
+## NMI Handler Best Practices
+
+1. **Keep it short:** Aim for &lt;1000 cycles. Long handlers steal time from game logic.
+
+2. **Preserve registers:** Always PHA/PLA for A, X, Y.
+
+3. **Reset address latch:** `BIT $2002` before PPU writes.
+
+4. **No complex logic:** NMI is for graphics updates only. Game logic stays in main loop.
+
+5. **Flag synchronization:** Use a flag variable to coordinate with main code.
+
+6. **Mind the budget:** VBlank is finite. Profile your code. Defer heavy updates.
+
+## From the Vault
+
+- [NES VBlank Timing](https://www.nesdev.org/wiki/PPU_frame_timing)
+- [NMI Handler Patterns](https://www.nesdev.org/wiki/NMI)
+- [PPU Rendering Details](https://www.nesdev.org/wiki/PPU_rendering)
+- [CPU Interrupts](https://www.nesdev.org/wiki/CPU_interrupts)
+
+## Quick Reference: VBlank & NMI
+
+### Frame Timing (NTSC)
+
+| Phase | Scanlines | CPU Cycles | Duration |
+|-------|-----------|------------|----------|
+| Active display | 0-239 | ~29658 | 13.63ms |
+| VBlank | 240-260 | ~2273 | 3.04ms |
+| **Total** | 261 | ~31931 | 16.67ms (60 Hz) |
+
+### NMI Control
+
+| Register | Bit | Purpose |
+|----------|-----|---------|
+| $2000 | 7 | Enable NMI (1 = on, 0 = off) |
+| $2002 | 7 | VBlank flag (read to check, cleared on read) |
+
+### NMI Handler Structure
+
+```asm
+NMI:
+    PHA                 ; Save A
+    TXA
+    PHA                 ; Save X
+    TYA
+    PHA                 ; Save Y
+
+    ; Graphics updates here
+    ; - OAM DMA ($4014)
+    ; - Palette writes ($2006/$2007)
+    ; - Scroll ($2005)
+    ; - Small nametable updates
+
+    LDA #$01
+    STA nmi_ready       ; Set synchronization flag
+
+    PLA
+    TAY                 ; Restore Y
+    PLA
+    TAX                 ; Restore X
+    PLA                 ; Restore A
+    RTI                 ; Return from interrupt
+```
+
+### Main Loop Pattern
+
+```asm
+MainLoop:
+:   LDA nmi_ready       ; Wait for NMI
+    BEQ :-
+    LDA #$00
+    STA nmi_ready       ; Reset flag
+
+    ; Game logic here
+    ; - Input processing
+    ; - Physics/movement
+    ; - Collision detection
+    ; - AI
+    ; - Prepare graphics data
+
+    JMP MainLoop
+```
+
+### VBlank Cycle Budget
+
+| Operation | Cycles | Notes |
+|-----------|--------|-------|
+| OAM DMA | 513 | Update all 64 sprites |
+| 1 palette entry | ~13 | $2006 + $2007 writes |
+| 1 nametable tile | ~13 | $2006 + $2007 writes |
+| Scroll update | ~10 | Two $2005 writes |
+| **Total available** | ~2273 | NTSC VBlank period |
+
+## What You've Learnt
+
+- **VBlank period**—safe window for graphics updates (~2273 cycles)
+- **NMI interrupt**—hardware automatically calls handler at VBlank start
+- **60fps synchronization**—NMI fires exactly 60 times per second
+- **Register preservation**—save/restore A, X, Y in interrupt handlers
+- **Game loop architecture**—main code does logic, NMI does graphics
+- **Flag synchronization**—coordinate main loop with NMI handler
+- **Stack initialization**—set SP to $FF before enabling interrupts
+- **$2000 control**—bit 7 enables/disables NMI generation
+- **Address latch reset**—read $2002 before PPU address setup
+- **Timing budget**—VBlank provides limited cycles for updates
+- **RTI instruction**—return from interrupt (vs RTS for subroutines)
+
+Next lesson: Background graphics—pattern tables, nametables, and creating the Pong playfield with tiles. You'll learn how the PPU renders backgrounds using 8×8 pixel tiles and build your first visible game graphics.
