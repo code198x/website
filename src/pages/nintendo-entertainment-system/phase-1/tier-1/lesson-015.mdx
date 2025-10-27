@@ -1,0 +1,284 @@
+---
+title: "Player Control"
+description: "Direct paddle control—removing automatic velocity, implementing responsive input-driven movement, boundary clamping, smooth 60fps control feel."
+pubDate: 2025-01-20
+tier: 1
+lessonNumber: 15
+tags: ["assembly", "6502", "input", "control", "gameplay"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-014"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-016"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Automatic velocity created bouncing animation—but Pong needs direct player control. This lesson removes automatic movement, links controller input directly to paddle position, implements boundary clamping to prevent paddle leaving screen, and polishes movement feel for responsive gameplay.
+
+Previous lesson detected button presses. This lesson builds complete player control system.
+
+## The One-Minute Tour
+
+- **Direct control**—controller input directly modifies position (no velocity)
+- **Removed velocity**—no automatic movement, player has full control
+- **ClampPaddle routine**—prevents paddle from leaving screen
+- **Constants**—PADDLE_TOP, PADDLE_BOTTOM, PADDLE_SPEED for easy tuning
+- **3 pixels/frame**—responsive without being too fast (180px/sec)
+- **Smooth feel**—60fps input polling ensures immediate response
+
+## Your First Direct Control
+
+```asm
+.segment "ZEROPAGE"
+buttons:   .res 1
+paddle_y:  .res 1
+
+PADDLE_TOP = 8
+PADDLE_BOTTOM = 200
+PADDLE_SPEED = 3
+
+.segment "CODE"
+Reset:
+    ; [PPU init code]
+    LDA #100
+    STA paddle_y     ; No velocity initialization needed
+
+MainLoop:
+:   LDA nmi_ready
+    BEQ :-
+    LDA #$00
+    STA nmi_ready
+
+    JSR ReadController
+
+    ; Up button - move paddle up
+    LDA buttons
+    AND #%00001000
+    BEQ :+
+    LDA paddle_y
+    SEC
+    SBC #PADDLE_SPEED
+    STA paddle_y
+
+    ; Down button - move paddle down
+:   LDA buttons
+    AND #%00000100
+    BEQ :+
+    LDA paddle_y
+    CLC
+    ADC #PADDLE_SPEED
+    STA paddle_y
+
+    ; Clamp to screen boundaries
+:   JSR ClampPaddle
+    JSR UpdateOAM
+    JMP MainLoop
+
+ClampPaddle:
+    ; Top boundary
+    LDA paddle_y
+    CMP #PADDLE_TOP
+    BCS :+           ; Branch if >= top
+    LDA #PADDLE_TOP
+    STA paddle_y
+
+    ; Bottom boundary
+:   LDA paddle_y
+    CMP #PADDLE_BOTTOM
+    BCC :+           ; Branch if < bottom
+    LDA #PADDLE_BOTTOM
+    STA paddle_y
+
+:   RTS
+```
+
+**Run this**—paddle responds instantly to D-pad input and stops at edges!
+
+## How This Works
+
+### Direct Position Control
+
+**No velocity variable**—paddle_y changes ONLY when player presses buttons:
+
+```asm
+; Up pressed? Subtract from position
+LDA buttons
+AND #%00001000
+BEQ :+
+LDA paddle_y
+SEC
+SBC #PADDLE_SPEED
+STA paddle_y
+```
+
+**Immediate response:** No delay between input and movement. Better for precise control games like Pong.
+
+**Contrast with velocity-based:** Lesson 12 used velocity that changed every frame. This approach only moves when player commands it.
+
+### Named Constants
+
+Define gameplay values as constants for easy tuning:
+
+```asm
+PADDLE_TOP = 8
+PADDLE_BOTTOM = 200
+PADDLE_SPEED = 3
+```
+
+**Benefits:**
+- Change speed in one place → affects entire game
+- Self-documenting: `CMP #PADDLE_TOP` clearer than `CMP #8`
+- Easy experimentation: try PADDLE_SPEED = 2 or 4
+
+**Why these values?**
+- PADDLE_TOP = 8: Below screen border (first 8 scanlines)
+- PADDLE_BOTTOM = 200: Accounts for 16-pixel paddle height (240 - 16 - border)
+- PADDLE_SPEED = 3: Responsive but controllable (tested value)
+
+### Boundary Clamping
+
+Prevent paddle from moving off-screen with ClampPaddle:
+
+```asm
+ClampPaddle:
+    ; Check top boundary
+    LDA paddle_y
+    CMP #PADDLE_TOP
+    BCS within_top       ; Branch if >= top (in bounds)
+    ; Exceeded top - clamp to minimum
+    LDA #PADDLE_TOP
+    STA paddle_y
+
+within_top:
+    ; Check bottom boundary
+    LDA paddle_y
+    CMP #PADDLE_BOTTOM
+    BCC within_bottom    ; Branch if < bottom (in bounds)
+    ; Exceeded bottom - clamp to maximum
+    LDA #PADDLE_BOTTOM
+    STA paddle_y
+
+within_bottom:
+    RTS
+```
+
+**CMP mechanics:**
+- CMP subtracts but doesn't store result (only sets flags)
+- If A >= operand: Carry SET (BCS branches)
+- If A < operand: Carry CLEAR (BCC branches)
+
+**Clamping:** If position exceeds boundary, reset to boundary value. No bouncing—just stops.
+
+### Order of Operations
+
+Critical sequence for clean behavior:
+
+1. **Read input** (JSR ReadController)
+2. **Apply input** (modify paddle_y based on buttons)
+3. **Clamp position** (JSR ClampPaddle)
+4. **Update sprite** (JSR UpdateOAM)
+
+**Why this order?** Input might push paddle past boundary. Clamping fixes it before rendering. Result: paddle appears to stop at edge, no visual glitch.
+
+**Wrong order example:**
+```asm
+JSR UpdateOAM         ; Render first
+JSR ReadController
+; Apply input
+JSR ClampPaddle       ; Fix boundaries
+```
+Would show one frame of paddle out of bounds.
+
+### Control Feel Tuning
+
+Different speeds create different gameplay feel:
+
+| PADDLE_SPEED | px/sec | Feel | Use Case |
+|--------------|--------|------|----------|
+| 1 | 60 | Very slow | Puzzle games |
+| 2 | 120 | Slow | Precision required |
+| **3** | **180** | **Responsive** | **Pong (good balance)** |
+| 4 | 240 | Fast | Action games |
+| 5 | 300 | Very fast | Hard difficulty |
+
+**Screen traverse time:** At speed=3, paddle travels ~240 pixels in 1.3 seconds (80 frames). Feels fast enough to react but slow enough to control precisely.
+
+## From the Vault
+
+- [Game Feel](https://en.wikipedia.org/wiki/Game_feel)
+- [Input Handling](https://www.nesdev.org/wiki/Controller_reading)
+
+## Quick Reference
+
+### Control Pattern
+
+```asm
+MainLoop:
+    ; Wait for VBlank
+    JSR ReadController
+    ; Apply input to position
+    JSR ClampPosition
+    JSR UpdateSprite
+    JMP MainLoop
+```
+
+### Clamping Minimum
+
+```asm
+CMP #minimum
+BCS within       ; Branch if >= minimum
+LDA #minimum     ; Clamp to minimum
+STA position
+within:
+```
+
+### Clamping Maximum
+
+```asm
+CMP #maximum
+BCC within       ; Branch if < maximum
+LDA #maximum     ; Clamp to maximum
+STA position
+within:
+```
+
+### Clamping Both
+
+```asm
+ClampValue:
+    ; Minimum
+    LDA value
+    CMP #min
+    BCS :+
+    LDA #min
+    STA value
+
+    ; Maximum
+:   LDA value
+    CMP #max
+    BCC :+
+    LDA #max
+    STA value
+:   RTS
+```
+
+### Speed Calculation
+
+```asm
+; pixels per frame × 60 frames/sec = pixels per second
+SPEED = 3        ; 3 px/frame × 60 = 180 px/sec
+
+; Screen traverse time
+; 240 pixels ÷ 3 px/frame = 80 frames = 1.33 seconds
+```
+
+## What You've Learnt
+
+- **Direct control**—input directly modifies position (no velocity)
+- **Removed automatic movement**—player has full control
+- **Named constants**—define PADDLE_TOP, PADDLE_BOTTOM, PADDLE_SPEED
+- **ClampPaddle routine**—prevents paddle leaving screen
+- **CMP for boundaries**—BCS for >=, BCC for <
+- **Order of operations**—input → apply → clamp → render
+- **Control feel tuning**—speed affects gameplay significantly
+- **3 pixels/frame**—good balance for Pong (180px/sec)
+- **Separation of concerns**—distinct routines for input, logic, clamping, rendering
+
+Next lesson: Boundaries—robust boundary handling, conflict resolution for Up+Down simultaneously pressed, edge case handling, complete polished control system.

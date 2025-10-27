@@ -1,0 +1,258 @@
+---
+title: "D-Pad Input"
+description: "Test directional buttons—bit masking for Up/Down detection, handling simultaneous button presses, implementing paddle movement from player input."
+pubDate: 2025-01-20
+tier: 1
+lessonNumber: 14
+tags: ["assembly", "6502", "input", "dpad", "bitmask"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-013"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-015"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+ReadController captures all 8 buttons—but games need to test specific buttons and respond appropriately. This lesson shows bit masking to isolate D-pad directions (Up/Down for Pong), handle simultaneous button presses, and link input to paddle movement.
+
+Previous lesson read controller state into a byte. This lesson extracts meaning from that byte.
+
+## The One-Minute Tour
+
+- **Bit masking**—AND to isolate specific button bits
+- **Multiple tests**—check each button independently
+- **D-pad bits**—Up=bit 3, Down=bit 2, Left=bit 1, Right=bit 0
+- **Z flag logic**—AND result zero = not pressed, non-zero = pressed
+- **Simultaneous presses**—multiple buttons can be pressed at once
+- **Independent handling**—test each button separately for flexibility
+
+## Your First D-Pad Input
+
+```asm
+.segment "ZEROPAGE"
+buttons:   .res 1
+paddle_y:  .res 1
+
+.segment "CODE"
+MainLoop:
+:   LDA nmi_ready
+    BEQ :-
+    LDA #$00
+    STA nmi_ready
+
+    JSR ReadController
+
+    ; Test Up button (bit 3)
+    LDA buttons
+    AND #%00001000
+    BEQ :+           ; Not pressed, skip
+    ; Up pressed - move paddle up
+    LDA paddle_y
+    SEC
+    SBC #2           ; Subtract 2 (move up)
+    STA paddle_y
+
+    ; Test Down button (bit 2)
+:   LDA buttons
+    AND #%00000100
+    BEQ :+           ; Not pressed, skip
+    ; Down pressed - move paddle down
+    LDA paddle_y
+    CLC
+    ADC #2           ; Add 2 (move down)
+    STA paddle_y
+
+:   JSR UpdateOAM
+    JMP MainLoop
+```
+
+**Run this**—use D-pad Up/Down to move paddle!
+
+## How This Works
+
+### Bit Masking with AND
+
+**AND** isolates specific bits by zeroing others:
+
+```asm
+LDA buttons      ; buttons = %10101010
+AND #%00001000   ; Mask = bit 3 only
+; Result = %00001000 if bit 3 was set, %00000000 if bit 3 was clear
+```
+
+**Z flag behavior:**
+- Result = $00 → Z flag SET → button not pressed
+- Result ≠ $00 → Z flag CLEAR → button pressed
+
+**Why AND works:**
+- 1 AND 1 = 1 (bit preserved)
+- 0 AND 1 = 0 (bit zeroed)
+- 1 AND 0 = 0 (bit zeroed)
+- 0 AND 0 = 0 (bit zeroed)
+
+Only bits where mask=1 pass through. All others become zero.
+
+### Testing Individual Buttons
+
+Each button gets its own test:
+
+```asm
+; Up button (bit 3)
+LDA buttons
+AND #%00001000
+BEQ not_pressed_up
+; Handle Up
+not_pressed_up:
+
+; Down button (bit 2)
+LDA buttons
+AND #%00000100
+BEQ not_pressed_down
+; Handle Down
+not_pressed_down:
+```
+
+**Loading buttons each time:** Could optimize by keeping buttons in A, but clarity matters more at this stage. Compiler would optimize this in higher-level language.
+
+**Branch destination:** Using `:` for local labels. Each `:+` branches to next `:`, each `:-` branches to previous `:`. Keeps code clean.
+
+### All Button Masks
+
+```asm
+A button:      AND #%10000000  ; Bit 7
+B button:      AND #%01000000  ; Bit 6
+Select:        AND #%00100000  ; Bit 5
+Start:         AND #%00010000  ; Bit 4
+Up:            AND #%00001000  ; Bit 3
+Down:          AND #%00000100  ; Bit 2
+Left:          AND #%00000010  ; Bit 1
+Right:         AND #%00000001  ; Bit 0
+```
+
+**Hexadecimal equivalents:**
+```asm
+A:      AND #$80
+B:      AND #$40
+Select: AND #$20
+Start:  AND #$10
+Up:     AND #$08
+Down:   AND #$04
+Left:   AND #$02
+Right:  AND #$01
+```
+
+**Use binary for clarity**—easier to see which bit you're testing.
+
+### Handling Simultaneous Presses
+
+Multiple buttons can be pressed at once. Test each independently:
+
+```asm
+JSR ReadController   ; buttons = current state
+
+LDA buttons
+AND #%00001000       ; Test Up
+BEQ :+
+; Up is pressed
+:
+
+LDA buttons
+AND #%00000100       ; Test Down
+BEQ :+
+; Down is pressed
+:
+```
+
+**Both pressed?** Both handlers run. For Pong, this means Up subtracts 2, Down adds 2, net movement = 0. Next lesson handles this conflict better.
+
+**Different from exclusive choice:** Not "if Up OR Down" but "if Up, then...; if Down, then...". Both can execute.
+
+### Movement Integration
+
+Link input to position:
+
+```asm
+; Up pressed
+LDA paddle_y
+SEC
+SBC #2           ; Subtract 2 (move up, Y decreases going up)
+STA paddle_y
+
+; Down pressed
+LDA paddle_y
+CLC
+ADC #2           ; Add 2 (move down, Y increases going down)
+STA paddle_y
+```
+
+**Y coordinates:** Remember 0 = top of screen, 239 = bottom. Up = decrease Y, Down = increase Y.
+
+**Speed:** 2 pixels per frame = 120 pixels per second. Feels responsive without being too fast.
+
+## From the Vault
+
+- [Controller Reading](https://www.nesdev.org/wiki/Controller_reading)
+- [Bitwise Operations](https://en.wikipedia.org/wiki/Bitwise_operation)
+
+## Quick Reference
+
+### Button Bit Masks
+
+| Button | Binary | Hex | Decimal |
+|--------|--------|-----|---------|
+| A | %10000000 | $80 | 128 |
+| B | %01000000 | $40 | 64 |
+| Select | %00100000 | $20 | 32 |
+| Start | %00010000 | $10 | 16 |
+| Up | %00001000 | $08 | 8 |
+| Down | %00000100 | $04 | 4 |
+| Left | %00000010 | $02 | 2 |
+| Right | %00000001 | $01 | 1 |
+
+### Testing Multiple Buttons
+
+Test both A and B pressed:
+```asm
+LDA buttons
+AND #%11000000   ; Mask both bits
+CMP #%11000000   ; Compare to both set
+BEQ both_pressed
+```
+
+Test either A or B pressed:
+```asm
+LDA buttons
+AND #%11000000   ; Mask both bits
+BEQ neither_pressed
+; At least one pressed
+```
+
+### Movement Patterns
+
+```asm
+; Move up (decrease Y)
+SEC
+SBC #speed
+
+; Move down (increase Y)
+CLC
+ADC #speed
+
+; Move left (decrease X)
+SEC
+SBC #speed
+
+; Move right (increase X)
+CLC
+ADC #speed
+```
+
+## What You've Learnt
+
+- **Bit masking**—AND isolates specific button bits
+- **Z flag testing**—result zero = not pressed, non-zero = pressed
+- **D-pad bits**—Up=3, Down=2, Left=1, Right=0
+- **Independent tests**—check each button separately
+- **Simultaneous presses**—multiple buttons can be pressed at once
+- **Movement integration**—link input directly to position changes
+- **Y coordinates**—0 at top, decrease=up, increase=down
+- **BEQ after AND**—branch if button not pressed
+
+Next lesson: Paddle Control—removing automatic velocity, implementing direct player control, adding boundary clamping, polishing movement feel.
