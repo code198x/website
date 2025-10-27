@@ -1,0 +1,241 @@
+---
+title: "OAM Structure"
+description: "Display sprites on screen—understanding Object Attribute Memory, the 4-byte sprite format, OAM buffer at $0200, and sprite attributes."
+pubDate: 2025-01-20
+tier: 1
+lessonNumber: 10
+tags: ["assembly", "6502", "oam", "sprites", "attributes"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-009"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-011"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Sprite graphics need position and attribute data to appear on screen. The NES stores this data in OAM (Object Attribute Memory)—256 bytes describing 64 sprites. This lesson shows how to fill the OAM buffer and display your first sprite.
+
+Previous lesson created sprite tiles. This lesson adds the data needed to position and render them.
+
+## The One-Minute Tour
+
+- **OAM**—256 bytes in PPU (64 sprites × 4 bytes each)
+- **4-byte format**—Y position, tile index, attributes, X position
+- **OAM buffer**—$0200-$02FF in CPU RAM, copied to PPU via DMA
+- **Attributes**—palette selection, priority, horizontal/vertical flip
+- **Hiding sprites**—set Y = $FF to move off-screen
+- **PPUCTRL bits**—bit 5 for 8×16 mode, bit 3 for sprite pattern table
+
+## Your First Displayed Sprite
+
+```asm
+.segment "ZEROPAGE"
+paddle_y: .res 1
+
+.segment "CODE"
+Reset:
+    ; [PPU warmup, palettes, etc.]
+
+    ; Initialize paddle position
+    LDA #100
+    STA paddle_y
+
+    ; Set up sprite 0 in OAM buffer
+    LDA paddle_y
+    STA $0200           ; Y position
+    LDA #$00
+    STA $0201           ; Tile index (paddle top)
+    LDA #%00000000      ; Palette 0, no flip
+    STA $0202           ; Attributes
+    LDA #16
+    STA $0203           ; X position
+
+    ; Hide remaining sprites
+    LDX #$04
+    LDA #$FF
+:   STA $0200,X
+    INX
+    INX
+    INX
+    INX
+    BNE :-
+
+    ; Enable 8×16 sprites
+    LDA #%10100000      ; NMI + 8×16 + pattern table 1
+    STA $2000
+
+    LDA #%00011110      ; Show background + sprites
+    STA $2001
+```
+
+**Run this**—paddle sprite appears at position (16, 100)!
+
+## How This Works
+
+### OAM: Object Attribute Memory
+
+OAM is 256 bytes of memory inside the PPU storing sprite data. Each of 64 sprites uses 4 bytes:
+
+```
+$0000-$0003: Sprite 0 (Y, tile, attr, X)
+$0004-$0007: Sprite 1
+...
+$00FC-$00FF: Sprite 63
+```
+
+**CPU can't write OAM directly**—too slow during active display. Instead, CPU builds sprite data in RAM ($0200-$02FF), then uses DMA to copy all 256 bytes during VBlank.
+
+### The 4-Byte Sprite Format
+
+**Byte 0: Y Position**
+- Range: 0-255
+- Y=0 or Y=1 hides sprite (off top of screen)
+- Y=239 is bottom visible scanline
+- Y=$FF moves sprite far off-screen (common hiding technique)
+
+**Byte 1: Tile Index**
+- Range: 0-255
+- Selects which tile from sprite pattern table
+- In 8×16 mode: even tiles only ($00, $02, $04...), PPU uses tile+1 for bottom
+
+**Byte 2: Attributes** (detailed below)
+
+**Byte 3: X Position**
+- Range: 0-255
+- X=0 is left edge, X=255 wraps to right edge
+
+### Attribute Byte Breakdown
+
+```
+Bit 7: Flip vertical (0=normal, 1=upside down)
+Bit 6: Flip horizontal (0=normal, 1=mirror)
+Bit 5: Priority (0=front, 1=behind background)
+Bits 2-4: Unused (always 0)
+Bits 0-1: Palette (0-3, selects sprite palette 0-3)
+```
+
+**Common values:**
+- `%00000000` = Palette 0, front, no flip
+- `%00000001` = Palette 1, front, no flip
+- `%01000000` = Palette 0, front, flip horizontal
+- `%00100000` = Palette 0, behind background, no flip
+
+**Priority bit:** 0 = sprite appears in front of background. 1 = sprite appears behind background colours 1-3 (but still in front of colour 0).
+
+### OAM Buffer at $0200
+
+Convention: Use $0200-$02FF as OAM buffer. This is general-purpose RAM, but $0200 is traditional (easy to remember, aligns with page boundary).
+
+**Writing to buffer:**
+```asm
+LDA #100
+STA $0200           ; Sprite 0, Y position
+LDA #$00
+STA $0201           ; Sprite 0, tile
+LDA #%00000000
+STA $0202           ; Sprite 0, attributes
+LDA #50
+STA $0203           ; Sprite 0, X position
+```
+
+**Next lesson:** DMA ($4014) to copy buffer to OAM during VBlank.
+
+### Hiding Unused Sprites
+
+Initialize all 64 sprites with Y=$FF to hide them:
+
+```asm
+LDX #$00
+LDA #$FF
+:   STA $0200,X
+    INX
+    INX
+    INX
+    INX
+    BNE :-
+```
+
+**Why skip 4 bytes?** Each sprite is 4 bytes. INX four times moves to next sprite's Y position.
+
+**Loop 64 times:** X starts at 0, increments by 4 each iteration. After 64 iterations, X=0 (wraps), BNE terminates.
+
+### PPUCTRL Configuration
+
+```asm
+LDA #%10100000
+STA $2000
+```
+
+**Bit 7 (NMI):** Enable VBlank NMI
+**Bit 6:** Unused
+**Bit 5 (Sprite size):** 1 = 8×16, 0 = 8×8
+**Bit 4:** Background pattern table (0=$0000, 1=$1000)
+**Bit 3 (Sprite pattern):** 1 = $1000, 0 = $0000
+**Bits 0-2:** Nametable/scroll
+
+Value `%10100000` = NMI on, 8×16 sprites, sprite table 1.
+
+### PPUMASK for Sprites
+
+```asm
+LDA #%00011110
+STA $2001
+```
+
+**Bit 4 ($10):** Show sprites
+**Bit 3 ($08):** Show background
+**Bit 2 ($04):** Show sprites in leftmost 8 pixels
+**Bit 1 ($02):** Show background in leftmost 8 pixels
+
+Value `%00011110` = show both background and sprites everywhere.
+
+## From the Vault
+
+- [OAM Documentation](https://www.nesdev.org/wiki/PPU_OAM)
+- [Sprite Attributes](https://www.nesdev.org/wiki/PPU_OAM#Byte_2)
+
+## Quick Reference
+
+### 4-Byte Sprite Format
+
+| Byte | Field | Range | Purpose |
+|------|-------|-------|---------|
+| 0 | Y position | 0-255 | Vertical position (0-1 hidden) |
+| 1 | Tile index | 0-255 | Which tile from pattern table |
+| 2 | Attributes | 0-255 | Palette, priority, flip bits |
+| 3 | X position | 0-255 | Horizontal position |
+
+### Attribute Byte Bits
+
+| Bits | Purpose | Values |
+|------|---------|--------|
+| 7 | Flip vertical | 0=normal, 1=flipped |
+| 6 | Flip horizontal | 0=normal, 1=flipped |
+| 5 | Priority | 0=front, 1=behind BG |
+| 2-4 | Unused | Always 0 |
+| 0-1 | Palette | 0-3 (sprite palettes) |
+
+### PPUCTRL Sprite Bits
+
+| Bit | Value | Purpose |
+|-----|-------|---------|
+| 5 | $20 | Sprite size (0=8×8, 1=8×16) |
+| 3 | $08 | Sprite pattern table (0=$0000, 1=$1000) |
+
+### PPUMASK Sprite Bits
+
+| Bit | Value | Purpose |
+|-----|-------|---------|
+| 4 | $10 | Show sprites |
+| 2 | $04 | Show sprites in leftmost 8 pixels |
+
+## What You've Learnt
+
+- **OAM**—256 bytes in PPU storing 64 sprites × 4 bytes
+- **4-byte format**—Y, tile, attributes, X
+- **OAM buffer**—$0200-$02FF in RAM, copied via DMA
+- **Attributes**—palette (0-3), priority (front/back), flip (H/V)
+- **Hiding sprites**—Y=$FF moves sprite off-screen
+- **PPUCTRL bit 5**—enables 8×16 sprite mode
+- **PPUCTRL bit 3**—selects sprite pattern table
+- **PPUMASK bit 4**—enables sprite rendering
+- **Sprite 0**—first sprite at $0200-$0203
+
+Next lesson: OAM DMA—copying the OAM buffer to PPU during VBlank using $4014, enabling smooth sprite updates at 60fps.
