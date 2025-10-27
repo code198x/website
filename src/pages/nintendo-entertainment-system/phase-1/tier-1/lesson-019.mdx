@@ -1,0 +1,353 @@
+---
+title: "Screen Boundaries"
+description: "Ball collision with screen edges—top/bottom bounce physics using velocity reversal, left/right scoring zones, position clamping to prevent tunneling."
+pubDate: 2025-01-22
+tier: 1
+lessonNumber: 19
+tags: ["assembly", "6502", "collision", "boundaries", "physics"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-018"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-020"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Your ball moves—but it sails off the screen. This lesson adds boundary collision detection: top and bottom walls bounce the ball back (reversing Y velocity), while left and right edges trigger scoring instead of bouncing. Position clamping prevents the ball from tunneling through walls at high speeds.
+
+This is your first collision detection—the foundation for paddle hits later.
+
+## The One-Minute Tour
+
+- **Boundary constants**—Top=8, Bottom=232 (playfield edges)
+- **Bounce physics**—Reverse velocity component when hitting wall
+- **Two's complement negation**—EOR #$FF, ADC #$01 to flip velocity sign
+- **Position clamping**—Snap ball to boundary prevents tunneling
+- **Scoring zones**—Left/right edges don't bounce, they trigger scoring (later)
+- **Top/bottom only**—Horizontal walls bounce, vertical edges score
+- **Test sequence**—Check top, check bottom, check left, check right
+
+## Your Boundary Collision
+
+```asm
+.segment "ZEROPAGE"
+ball_x:  .res 1
+ball_y:  .res 1
+ball_vx: .res 1
+ball_vy: .res 1
+
+; Boundary constants
+BALL_TOP = 8            ; Top boundary (below status area)
+BALL_BOTTOM = 232       ; Bottom boundary (8 pixels from screen edge)
+BALL_LEFT = 0           ; Left edge (scoring zone, not bounce)
+BALL_RIGHT = 255        ; Right edge (scoring zone)
+
+.segment "CODE"
+; Check and handle all ball collisions
+CheckBallCollision:
+    ; Top boundary
+    LDA ball_y
+    CMP #BALL_TOP
+    BCS :+                  ; Branch if Y >= TOP (in bounds)
+
+    ; Hit top wall - bounce down
+    LDA #BALL_TOP
+    STA ball_y              ; Snap to boundary (prevent tunneling)
+    JSR NegateBallVY        ; Reverse Y velocity
+
+    ; Bottom boundary
+:   LDA ball_y
+    CMP #BALL_BOTTOM
+    BCC :+                  ; Branch if Y < BOTTOM (in bounds)
+
+    ; Hit bottom wall - bounce up
+    LDA #BALL_BOTTOM
+    STA ball_y              ; Snap to boundary
+    JSR NegateBallVY        ; Reverse Y velocity
+
+    ; Left boundary (Player 2 scores - implemented in L27)
+:   LDA ball_x
+    BNE :+                  ; Branch if not at left edge
+
+    ; Ball went off left edge
+    JSR ScorePlayer2        ; Award point (placeholder for now)
+    JSR ResetBall           ; Return to center
+    RTS
+
+    ; Right boundary (Player 1 scores)
+:   LDA ball_x
+    CMP #BALL_RIGHT
+    BNE :+                  ; Branch if not at right edge
+
+    ; Ball went off right edge
+    JSR ScorePlayer1        ; Award point (placeholder)
+    JSR ResetBall
+
+:   RTS
+
+; Negate ball Y velocity (two's complement)
+NegateBallVY:
+    LDA ball_vy
+    EOR #$FF                ; Flip all bits
+    CLC
+    ADC #$01                ; Add 1 (completes negation)
+    STA ball_vy
+    RTS
+
+; Negate ball X velocity (for paddle collisions later)
+NegateBallVX:
+    LDA ball_vx
+    EOR #$FF
+    CLC
+    ADC #$01
+    STA ball_vx
+    RTS
+
+; Reset ball to center (after scoring)
+ResetBall:
+    LDA #128
+    STA ball_x
+    LDA #120
+    STA ball_y
+    ; Velocity stays same direction (for now)
+    RTS
+
+; Placeholder scoring routines (implemented in L25-28)
+ScorePlayer1:
+    ; TODO: Increment P1 score
+    RTS
+
+ScorePlayer2:
+    ; TODO: Increment P2 score
+    RTS
+
+; Main game loop integration
+MainLoop:
+    ; Wait for VBlank
+:   LDA nmi_ready
+    BEQ :-
+    LDA #$00
+    STA nmi_ready
+
+    JSR ReadController
+    JSR UpdatePaddle
+    JSR UpdateBall
+    JSR CheckBallCollision  ; ← Add collision detection
+
+    JSR UpdatePaddleSprites
+    JSR UpdateBallSprite
+
+    JMP MainLoop
+```
+
+**Run this**—ball bounces off top and bottom walls! Exits left/right (scoring comes in L27).
+
+## How This Works
+
+### Two's Complement Negation
+
+To reverse velocity, flip the sign bit. In two's complement, negate = invert bits + 1:
+
+```asm
+Original:  $02 (+2 moving down)
+EOR #$FF:  $FD (all bits flipped)
+ADC #$01:  $FE (-2 moving up)
+
+Original:  $FE (-2 moving up)
+EOR #$FF:  $01 (bits flipped)
+ADC #$01:  $02 (+2 moving down)
+```
+
+**Why EOR then ADC?** This is standard two's complement math:
+- EOR #$FF inverts every bit (one's complement)
+- ADC #$01 adds 1 (completes two's complement)
+- Result: Negative becomes positive, positive becomes negative
+
+### Boundary Detection Pattern
+
+Compare position to boundary constant, branch if in bounds:
+
+```asm
+; Top boundary (inclusive test)
+LDA ball_y
+CMP #BALL_TOP
+BCS in_bounds       ; Branch if Y >= TOP
+
+; Out of bounds (Y < TOP)
+; Handle collision
+```
+
+**BCS (Branch if Carry Set)** treats values as unsigned. After `CMP #BALL_TOP`:
+- If Y >= TOP: Carry set (in bounds)
+- If Y < TOP: Carry clear (out of bounds, collision)
+
+**Bottom boundary** uses BCC (Branch if Carry Clear):
+```asm
+LDA ball_y
+CMP #BALL_BOTTOM
+BCC in_bounds       ; Branch if Y < BOTTOM
+```
+
+### Position Clamping (Critical!)
+
+After detecting collision, snap ball to boundary:
+
+```asm
+LDA #BALL_TOP
+STA ball_y          ; Force position = boundary
+JSR NegateBallVY    ; Then reverse velocity
+```
+
+**Why clamp?** Without it, ball can get stuck *inside* the wall:
+1. Ball at Y=6, VY=-2 (moving up)
+2. Next frame: Y=4 (past boundary Y=8)
+3. Detect collision, reverse VY to +2
+4. Next frame: Y=6 (still past boundary!)
+5. Detect collision again, reverse VY to -2
+6. Ball oscillates inside wall forever
+
+**With clamping:**
+1. Ball at Y=6, VY=-2
+2. Detect collision
+3. **Snap Y=8** (boundary)
+4. Reverse VY to +2
+5. Next frame: Y=10 (safely away from wall)
+
+### Left/Right Scoring Zones
+
+Horizontal boundaries (left/right) trigger scoring, not bouncing:
+
+```asm
+; Left edge
+LDA ball_x
+BNE :+              ; Skip if X != 0
+
+; Ball at X=0 (left edge)
+JSR ScorePlayer2    ; P2 scores (P1 missed)
+JSR ResetBall       ; Return ball to center
+```
+
+**Why score instead of bounce?** That's how Pong works—ball exits screen = point for opponent. Paddles prevent ball from reaching edges.
+
+### Boundary Constants
+
+```
+Screen dimensions: 256×240 pixels
+Playfield:         0-255 (X), 8-232 (Y)
+
+BALL_TOP    = 8     (row below status bar)
+BALL_BOTTOM = 232   (8 pixels from bottom)
+BALL_LEFT   = 0     (left edge)
+BALL_RIGHT  = 255   (right edge)
+```
+
+**Why 8/232 for Y?** Leaves room for status bar (top 2 rows) and avoids overscan area (bottom 8 pixels often cut off on CRT TVs).
+
+## Building Your Game
+
+### Add to Main Loop
+
+After UpdateBall, check collisions:
+
+```asm
+MainLoop:
+    ; ... wait for VBlank ...
+
+    JSR ReadController
+    JSR UpdatePaddle
+    JSR UpdateBall
+    JSR CheckBallCollision  ; ← Add this
+
+    JSR UpdatePaddleSprites
+    JSR UpdateBallSprite
+
+    JMP MainLoop
+```
+
+**Order matters:** Update position first, then check boundaries. Ensures ball is at new position before testing collision.
+
+### Testing Boundaries
+
+Run game and observe:
+- Ball bounces cleanly off top/bottom walls
+- Ball exits left/right (scores not implemented yet)
+- No "stuck in wall" behavior
+- Smooth, predictable bounces
+
+## Common Pitfalls
+
+**Ball gets stuck in wall:**
+- Forgot to clamp position after detecting collision
+- Velocity reversed but position still past boundary
+- Solution: Always snap position to boundary before reversing velocity
+
+**Ball tunnels through wall:**
+- Not clamping position allows fast ball to skip past
+- Solution: Clamp position ensures ball never overlaps wall
+
+**Wrong comparison operators:**
+- Using BEQ/BNE for range checks instead of BCS/BCC
+- Signed vs unsigned comparison confusion
+- Solution: Use BCS for ">=", BCC for "<" with unsigned values
+
+**Bouncing on left/right edges:**
+- These should trigger scoring, not bounce
+- Left/right are goal zones, not walls
+- Solution: Different logic for horizontal vs vertical boundaries
+
+## Building Toward
+
+**Next Lesson:** Physics refinement—diagonal bounces, angle variation, speed changes.
+
+**This Arc:**
+- L20: Ball physics polish (angle variety, speed boost)
+
+**Next Arc (L21-24):**
+- Paddle-ball collision (AABB detection)
+- Angle control (hit position affects bounce)
+- Momentum transfer (moving paddle = faster ball)
+
+**Later (L25-28):**
+- Scoring system when ball exits left/right
+- Score display and win conditions
+
+## Quick Reference
+
+### Boundary Test Pattern
+```asm
+; Top/Bottom (bounce):
+LDA position
+CMP #BOUNDARY
+BCS in_bounds       ; Branch if >= boundary
+; Handle collision
+
+; Left/Right (score):
+LDA ball_x
+BNE in_bounds       ; Branch if != 0 (left edge)
+; Handle scoring
+```
+
+### Velocity Negation
+```asm
+LDA velocity
+EOR #$FF            ; Invert bits
+CLC
+ADC #$01            ; Add 1
+STA velocity        ; Store negated value
+```
+
+### Collision Response Order
+```
+1. Detect collision (compare to boundary)
+2. Clamp position (snap to boundary)
+3. Reverse velocity (negate appropriate component)
+```
+
+### Boundary Values
+```
+Top:    8   (below status bar)
+Bottom: 232 (above overscan)
+Left:   0   (scoring zone)
+Right:  255 (scoring zone)
+```
+
+---
+
+**You have bouncing!** Next lesson adds angle variation and physics polish.

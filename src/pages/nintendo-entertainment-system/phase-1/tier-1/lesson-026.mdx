@@ -1,0 +1,165 @@
+---
+title: "Number-to-Tiles"
+description: "Score display preparation—convert binary scores to decimal digits, implement division by 10, map digits to CHR-ROM tile indices ($30-$39 for '0'-'9')."
+pubDate: 2025-01-29
+tier: 1
+lessonNumber: 26
+tags: ["assembly", "6502", "conversion", "display"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-025"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-027"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Scores exist—but as binary numbers (0-99). Nametable needs tile indices. This lesson converts binary scores to decimal digits (tens and ones), implements division by 10 algorithm, and maps digits to CHR-ROM tiles. Tile $30 = '0', $31 = '1', ... $39 = '9' (ASCII convention).
+
+Now scores can be displayed visually.
+
+## The One-Minute Tour
+
+- **Binary to decimal**—Convert 0-99 to two digits (tens, ones)
+- **Division by 10**—Repeated subtraction loop
+- **Digit extraction**—Tens = quotient, ones = remainder
+- **Tile mapping**—Add $30 to digit (0→$30, 9→$39)
+- **ASCII convention**—NES tiles follow ASCII: '0'=$30
+- **Two-step process**—Score → digits → tiles
+
+## Your Conversion Routines
+
+```asm
+.segment "ZEROPAGE"
+temp_score: .res 1      ; Working copy
+digit_tens: .res 1      ; Tens digit (0-9)
+digit_ones: .res 1      ; Ones digit (0-9)
+
+.segment "CODE"
+; Convert score (0-99) to two decimal digits
+ScoreToDigits:
+    ; A = score to convert
+    STA temp_score
+
+    ; Extract tens digit (divide by 10)
+    LDX #0              ; Tens counter
+:   LDA temp_score
+    CMP #10
+    BCC @done_tens      ; Branch if < 10
+    SBC #10             ; Subtract 10 (carry set from CMP)
+    STA temp_score
+    INX
+    JMP :-
+
+@done_tens:
+    STX digit_tens      ; Store tens digit
+
+    ; Ones digit = remainder
+    LDA temp_score
+    STA digit_ones
+
+    RTS
+
+; Convert digit (0-9) to tile index ($30-$39)
+DigitToTile:
+    ; A = digit
+    CLC
+    ADC #$30            ; ASCII/tile offset
+    RTS                 ; Returns tile index in A
+```
+
+**Use:** `LDA score_p1 / JSR ScoreToDigits / LDA digit_tens / JSR DigitToTile`
+
+## How This Works
+
+### Division by 10 Algorithm
+
+Repeated subtraction:
+
+```
+Example: 47 ÷ 10
+Start: temp=47, tens=0
+
+Loop 1: 47 >= 10? Yes. 47-10=37, tens=1
+Loop 2: 37 >= 10? Yes. 37-10=27, tens=2
+Loop 3: 27 >= 10? Yes. 27-10=17, tens=3
+Loop 4: 17 >= 10? Yes. 17-10=7, tens=4
+Loop 5: 7 >= 10? No. Done.
+
+Result: tens=4, ones=7 (remainder)
+```
+
+**6502 implementation:**
+```asm
+LDX #0              ; Counter
+loop:
+    LDA temp_score
+    CMP #10
+    BCC done        ; < 10, done
+    SBC #10         ; Subtract
+    STA temp_score
+    INX             ; Increment counter
+    JMP loop
+done:
+    STX digit_tens  ; Counter = quotient
+    LDA temp_score  ; Remainder = ones digit
+```
+
+### Tile Index Mapping
+
+Tiles follow ASCII:
+
+```
+'0' = $30 (tile 48)
+'1' = $31 (tile 49)
+...
+'9' = $39 (tile 57)
+```
+
+**Conversion:**
+```asm
+LDA #5              ; Digit 5
+ADC #$30            ; Add ASCII offset
+; Result: $35 (tile for '5')
+```
+
+## Building Your Game
+
+Prepare scores for display:
+
+```asm
+; Convert P1 score
+LDA score_p1
+JSR ScoreToDigits
+
+; Get tens tile
+LDA digit_tens
+JSR DigitToTile
+STA temp            ; Save tens tile
+
+; Get ones tile
+LDA digit_ones
+JSR DigitToTile
+STA temp+1          ; Save ones tile
+
+; Now write temp, temp+1 to nametable (L27)
+```
+
+## Quick Reference
+
+### Conversion Pattern
+```asm
+; Score → Digits
+LDA score
+JSR ScoreToDigits   ; Sets digit_tens, digit_ones
+
+; Digit → Tile
+LDA digit_tens
+JSR DigitToTile     ; Returns tile in A
+```
+
+### Tile Indices
+```
+'0' = $30
+'9' = $39
+```
+
+---
+
+**Scores can be displayed!** Next: Write to nametable.

@@ -1,0 +1,382 @@
+---
+title: "Momentum Transfer"
+description: "Moving paddle influence—track paddle velocity each frame, add paddle momentum to ball on hit, implement smash shots for offensive play, speed boost for moving paddles."
+pubDate: 2025-01-26
+tier: 1
+lessonNumber: 23
+tags: ["assembly", "6502", "physics", "momentum", "gameplay"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-022"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-024"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Paddle position affects angle—but paddle *movement* does nothing. This lesson adds momentum transfer: track whether paddle is moving up/down/stationary, add paddle velocity to ball on collision, and increase ball speed for "smash" hits. Stationary paddle = defensive return (normal angle/speed), moving paddle = offensive shot (steeper angle, faster ball).
+
+This creates a skill-based offense/defense dynamic.
+
+## The One-Minute Tour
+
+- **Paddle velocity tracking**—Store paddle_vy each frame (0, +3, -3)
+- **Momentum addition**—ball_vy += paddle_vy on collision
+- **Speed boost**—Moving paddle increases ball_vx magnitude
+- **Defensive vs offensive**—Stationary = safe, moving = risky power shot
+- **Velocity clamping**—Keep ball speeds in safe range after addition
+- **Same for both paddles**—P1 and P2 both transfer momentum
+- **Player skill expression**—Timing paddle movement for smash hits
+
+## Your Momentum Transfer System
+
+```asm
+.segment "ZEROPAGE"
+paddle1_x:  .res 1
+paddle1_y:  .res 1
+paddle1_vy: .res 1      ; Paddle velocity (0, +PADDLE_SPEED, -PADDLE_SPEED)
+
+paddle2_x:  .res 1
+paddle2_y:  .res 1
+paddle2_vy: .res 1
+
+PADDLE_SPEED = 3        ; Pixels per frame when moving
+
+.segment "CODE"
+; Update paddle 1 with velocity tracking
+UpdatePaddle1:
+    ; Read controller
+    LDA buttons1
+    AND #BUTTON_UP
+    BEQ :+
+
+    ; Moving up
+    LDA paddle1_y
+    CMP #PADDLE_TOP
+    BEQ @stationary         ; At boundary, can't move
+    SEC
+    SBC #PADDLE_SPEED
+    STA paddle1_y
+    LDA #$FD                ; -3 velocity (moving up)
+    STA paddle1_vy
+    RTS
+
+:   LDA buttons1
+    AND #BUTTON_DOWN
+    BEQ @stationary
+
+    ; Moving down
+    LDA paddle1_y
+    CMP #PADDLE_BOTTOM
+    BEQ @stationary         ; At boundary, can't move
+    CLC
+    ADC #PADDLE_SPEED
+    STA paddle1_y
+    LDA #$03                ; +3 velocity (moving down)
+    STA paddle1_vy
+    RTS
+
+@stationary:
+    ; Not moving
+    LDA #$00
+    STA paddle1_vy
+    RTS
+
+; Handle paddle hit with angle AND momentum
+HandlePaddle1HitWithMomentum:
+    ; 1. Calculate base angle from hit position (from L22)
+    JSR CalculateHitAngle   ; Returns angle in A
+    STA temp                ; temp = base angle
+
+    ; 2. Add paddle momentum to ball Y velocity
+    LDA temp                ; Base angle
+    CLC
+    ADC paddle1_vy          ; Add paddle velocity
+    STA ball_vy
+
+    ; 3. Clamp Y velocity to safe range (±4)
+    JSR ClampBallVY
+
+    ; 4. Reverse X velocity (bounce)
+    JSR NegateBallVX
+
+    ; 5. Speed boost for moving paddle (smash hit)
+    LDA paddle1_vy
+    BEQ :+                  ; Skip if stationary
+
+    ; Paddle is moving - increase ball X speed
+    JSR BoostBallSpeed
+
+    ; 6. Snap ball outside paddle
+:   LDA paddle1_x
+    CLC
+    ADC #PADDLE_WIDTH
+    CLC
+    ADC #2                  ; Extra 2-pixel clearance
+    STA ball_x
+
+    RTS
+
+; Calculate base angle from hit position (from L22)
+CalculateHitAngle:
+    ; Paddle center
+    LDA paddle1_y
+    CLC
+    ADC #8
+    STA temp
+
+    ; Ball center
+    LDA ball_y
+    CLC
+    ADC #4
+    STA temp+1
+
+    ; Offset
+    LDA temp+1
+    SEC
+    SBC temp
+
+    ; Convert offset to angle (-3 to +3)
+    CMP #$FD                ; < -3?
+    BCS :+
+    LDA #$FD                ; Clamp to -3
+:   CMP #$04                ; > +3?
+    BCC :+
+    LDA #$03                ; Clamp to +3
+
+:   RTS                     ; Return angle in A
+
+; Clamp ball Y velocity to [-4, +4]
+ClampBallVY:
+    LDA ball_vy
+    CMP #$05                ; > +4?
+    BCC :+
+    CMP #$FC                ; < -4? (signed $FC)
+    BCS :+
+
+    ; Out of range - clamp
+    LDA ball_vy
+    BMI @negative
+    LDA #$04                ; Clamp to +4
+    STA ball_vy
+    RTS
+
+@negative:
+    LDA #$FC                ; Clamp to -4
+    STA ball_vy
+
+:   RTS
+
+; Boost ball X speed (increase magnitude)
+BoostBallSpeed:
+    LDA ball_vx
+    BMI @negative           ; Branch if moving left
+
+@positive:
+    ; Moving right
+    CMP #$04                ; Already at max?
+    BCS :+
+    INC ball_vx
+
+:   RTS
+
+@negative:
+    ; Moving left
+    CMP #$FC                ; Already at min (-4)?
+    BCC :+
+    DEC ball_vx             ; More negative = faster
+
+:   RTS
+```
+
+**Run this**—move paddle while hitting ball for powerful smash shots!
+
+## How This Works
+
+### Paddle Velocity Tracking
+
+Each frame, record paddle movement:
+
+```asm
+; Moving up:
+LDA #$FD            ; -3 (PADDLE_SPEED negated)
+STA paddle_vy
+
+; Moving down:
+LDA #$03            ; +3 (PADDLE_SPEED)
+STA paddle_vy
+
+; Stationary:
+LDA #$00
+STA paddle_vy
+```
+
+**Why track velocity?** Collision handler needs to know if paddle was moving when ball hit.
+
+### Momentum Addition
+
+On collision, add paddle velocity to ball velocity:
+
+```asm
+; Base angle from hit position: -2 (slightly up)
+; Paddle moving down: +3
+
+LDA base_angle      ; -2
+CLC
+ADC paddle_vy       ; +3
+STA ball_vy         ; Result: +1 (moving down instead of up!)
+```
+
+**Effect:** Moving paddle overrides hit position angle. Creates "smash" mechanic.
+
+### Speed Boost Mechanic
+
+Moving paddle increases ball horizontal speed:
+
+```asm
+LDA paddle_vy
+BEQ no_boost        ; Skip if stationary
+
+; Increase ball_vx magnitude
+JSR BoostBallSpeed
+```
+
+**Gameplay:** Smash shots are both faster AND angled—harder to return.
+
+### Defensive vs Offensive Play
+
+**Defensive (stationary paddle):**
+- Normal angle (hit position only)
+- Normal speed
+- Safe, controlled return
+
+**Offensive (moving paddle):**
+- Steeper angle (momentum + hit position)
+- Increased speed (boost)
+- Risky (requires timing)
+
+**Skill expression:** Good players time paddle movement to hit ball.
+
+### Velocity Clamping (Critical!)
+
+After adding momentum, clamp result:
+
+```asm
+; ball_vy might be -2 + (-3) = -5 (too fast!)
+JSR ClampBallVY     ; Clamp to -4 (max safe speed)
+```
+
+**Why clamp?** Unbounded addition creates impossible speeds. Ball becomes invisible blur.
+
+### Example Scenarios
+
+**Scenario 1: Defensive return**
+```
+Hit position: Center (angle = -1)
+Paddle: Stationary (momentum = 0)
+Result: ball_vy = -1 (slight up, normal speed)
+```
+
+**Scenario 2: Smash hit**
+```
+Hit position: Top (angle = -3)
+Paddle: Moving up (momentum = -3)
+Result: ball_vy = -3 + (-3) = -6 → clamped to -4
+ball_vx: increased by 1 (speed boost)
+Effect: Steep, fast shot (hard to return)
+```
+
+**Scenario 3: Counter-intuitive**
+```
+Hit position: Top (angle = -3, wants to go up)
+Paddle: Moving down (momentum = +3)
+Result: ball_vy = -3 + (+3) = 0 → becomes +1 (medium down)
+Effect: Paddle movement overrides hit position!
+```
+
+## Building Your Game
+
+Replace HandlePaddle1HitWithAngle with HandlePaddle1HitWithMomentum:
+
+```asm
+CheckBallPaddle1:
+    ; ... AABB test ...
+    JSR HandlePaddle1HitWithMomentum  ; ← Full physics version
+    ; ...
+```
+
+Update both paddles to track velocity:
+
+```asm
+UpdatePaddle1:
+    ; ... movement code ...
+    ; Set paddle1_vy based on movement
+
+UpdatePaddle2:
+    ; ... same for paddle2_vy ...
+```
+
+## Common Pitfalls
+
+**Not clamping final velocity:**
+- Ball speeds become unplayable
+- Solution: Always JSR ClampBallVY after addition
+
+**Applying boost when stationary:**
+- Wastes cycles, confusing behavior
+- Solution: Check paddle_vy != 0 first
+
+**Infinite speed increase:**
+- Every hit boosts speed forever
+- Solution: Clamp ball_vx to max (±4)
+
+**Asymmetric feel:**
+- One paddle stronger than other
+- Solution: Both paddles use identical momentum logic
+
+## Building Toward
+
+**Next Lesson:** Collision polish—cooldown system, stuck ball prevention, edge cases, synthesis.
+
+**This Arc:**
+- L24: Complete collision system with all refinements
+
+**Later:**
+- L25-28: Scoring and game states
+- L29-32: 2-player polish and complete game
+
+## Quick Reference
+
+### Momentum Addition
+```asm
+; Base angle + paddle velocity
+LDA base_angle
+CLC
+ADC paddle_vy
+STA ball_vy
+
+; Then clamp to safe range
+JSR ClampBallVY
+```
+
+### Speed Boost Pattern
+```asm
+; If paddle moving, increase ball_vx magnitude
+LDA paddle_vy
+BEQ no_boost
+
+LDA ball_vx
+BMI negative
+INC ball_vx         ; Positive direction
+JMP done
+negative:
+DEC ball_vx         ; Negative direction (more negative)
+done:
+```
+
+### Paddle Velocity Values
+```
+Moving up:   paddle_vy = -3 (PADDLE_SPEED negated)
+Stationary:  paddle_vy = 0
+Moving down: paddle_vy = +3 (PADDLE_SPEED)
+```
+
+---
+
+**You have momentum transfer!** Next lesson polishes collision with cooldown and edge cases.

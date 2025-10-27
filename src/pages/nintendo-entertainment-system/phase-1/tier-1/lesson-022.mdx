@@ -1,0 +1,343 @@
+---
+title: "Angle Control"
+description: "Hit position affects bounce—calculate where ball strikes paddle (top/center/bottom), modify ball_vy based on zone, create steeper/shallower angles for strategic play."
+pubDate: 2025-01-25
+tier: 1
+lessonNumber: 22
+tags: ["assembly", "6502", "collision", "angle", "gameplay"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-021"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-023"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Ball bounces off paddles—but always at the same angle. This lesson adds *angle control*: calculate where ball hits paddle (top third, middle third, or bottom third), then modify ball_vy to create steeper or shallower bounces. Hit paddle center = straight bounce, hit edge = angled bounce. This transforms collision from binary (hit/miss) to skill-based gameplay.
+
+Players can now *aim* their returns.
+
+## The One-Minute Tour
+
+- **Hit position calculation**—Ball center Y minus paddle center Y = offset
+- **Three zones**—Top third (steep up), middle third (medium), bottom third (steep down)
+- **Velocity modification**—Change ball_vy based on hit zone
+- **Center calculation**—Add half height to get sprite center
+- **Signed offset**—Negative = top hit, positive = bottom hit, zero = center
+- **Player skill ceiling**—Strategic paddle positioning affects ball trajectory
+- **Still reverse VX**—Horizontal bounce, vertical angle control
+
+## Your Angle Control System
+
+```asm
+.segment "CODE"
+; Handle paddle 1 collision with angle control
+HandlePaddle1HitWithAngle:
+    ; Calculate paddle center Y
+    LDA paddle1_y
+    CLC
+    ADC #8                  ; Center = Y + half height (16/2=8)
+    STA temp                ; temp = paddle center Y
+
+    ; Calculate ball center Y
+    LDA ball_y
+    CLC
+    ADC #4                  ; Ball center = Y + half height (8/2=4)
+    STA temp+1              ; temp+1 = ball center Y
+
+    ; Calculate hit offset (ball_center - paddle_center)
+    ; Result: negative = hit top, 0 = center, positive = bottom
+    LDA temp+1
+    SEC
+    SBC temp
+    STA temp+2              ; temp+2 = hit offset (-8 to +8)
+
+    ; Reverse ball X velocity (bounce)
+    JSR NegateBallVX
+
+    ; Snap ball outside paddle
+    LDA paddle1_x
+    CLC
+    ADC #PADDLE_WIDTH
+    STA ball_x
+
+    ; Modify Y velocity based on hit position
+    LDA temp+2              ; Load hit offset
+
+    ; Top zone (offset < -3)
+    CMP #$FD                ; -3 in signed (two's complement)
+    BCS @middle             ; Branch if >= -3 (not top zone)
+
+    ; Hit top third - steep upward angle
+    LDA #$FD                ; -3 (steep up)
+    STA ball_vy
+    RTS
+
+@middle:
+    ; Middle zone (offset -3 to +2)
+    LDA temp+2
+    CMP #$03
+    BCS @bottom             ; Branch if >= 3 (bottom zone)
+
+    ; Hit middle third - medium angle
+    LDA temp+2
+    CMP #$80                ; Negative?
+    BCS @middle_up
+
+    ; Slightly down
+    LDA #$01
+    STA ball_vy
+    RTS
+
+@middle_up:
+    ; Slightly up
+    LDA #$FF                ; -1
+    STA ball_vy
+    RTS
+
+@bottom:
+    ; Bottom zone (offset >= 3)
+    ; Hit bottom third - steep downward angle
+    LDA #$03                ; +3 (steep down)
+    STA ball_vy
+    RTS
+
+; Paddle 2 uses same logic
+HandlePaddle2HitWithAngle:
+    ; Calculate paddle center
+    LDA paddle2_y
+    CLC
+    ADC #8
+    STA temp
+
+    ; Calculate ball center
+    LDA ball_y
+    CLC
+    ADC #4
+    STA temp+1
+
+    ; Calculate offset
+    LDA temp+1
+    SEC
+    SBC temp
+    STA temp+2
+
+    ; Reverse X velocity
+    JSR NegateBallVX
+
+    ; Snap position
+    LDA paddle2_x
+    SEC
+    SBC #BALL_WIDTH
+    STA ball_x
+
+    ; Apply same angle logic
+    LDA temp+2
+    CMP #$FD
+    BCS @middle
+    LDA #$FD
+    STA ball_vy
+    RTS
+
+@middle:
+    LDA temp+2
+    CMP #$03
+    BCS @bottom
+    LDA temp+2
+    CMP #$80
+    BCS @middle_up
+    LDA #$01
+    STA ball_vy
+    RTS
+
+@middle_up:
+    LDA #$FF
+    STA ball_vy
+    RTS
+
+@bottom:
+    LDA #$03
+    STA ball_vy
+    RTS
+```
+
+**Run this**—hit paddle edge for steep angles, center for straight bounce!
+
+## How This Works
+
+### Center Point Calculation
+
+Sprite position is top-left. Calculate center by adding half the size:
+
+```asm
+; Paddle center (16 pixels tall)
+LDA paddle_y
+ADC #8          ; 16/2 = 8
+; Result: center Y coordinate
+
+; Ball center (8 pixels tall)
+LDA ball_y
+ADC #4          ; 8/2 = 4
+; Result: center Y coordinate
+```
+
+### Hit Offset Calculation
+
+Subtract paddle center from ball center:
+
+```asm
+ball_center - paddle_center = offset
+
+Examples:
+Ball at 100, Paddle at 100: offset = 0 (direct center hit)
+Ball at 96,  Paddle at 100: offset = -4 (hit top portion)
+Ball at 104, Paddle at 100: offset = +4 (hit bottom portion)
+```
+
+**Offset range:** -8 to +8 (ball can be slightly off paddle and still collide)
+
+### Three-Zone System
+
+Divide paddle into zones based on offset:
+
+```
+Paddle (16 pixels):
+
+  ┌─────────┐ Top Y
+  │  Top    │ Offset < -3 → VY = -3 (steep up)
+  │  Zone   │
+  ├─────────┤
+  │ Middle  │ Offset -3 to +2 → VY = -1/+1 (medium)
+  │  Zone   │
+  ├─────────┤
+  │ Bottom  │ Offset >= +3 → VY = +3 (steep down)
+  │  Zone   │
+  └─────────┘ Bottom Y
+```
+
+**Why three zones?** Simple enough to implement, complex enough for strategy. More zones = more code, diminishing returns on gameplay depth.
+
+### Signed Comparison
+
+Offset is signed (-8 to +8). Compare using two's complement:
+
+```asm
+CMP #$FD        ; -3 in two's complement
+BCS not_top     ; Branch if >= -3 (signed)
+
+; -3 = $FD in two's complement
+; -2 = $FE
+; -1 = $FF
+;  0 = $00
+; +1 = $01
+; +2 = $02
+; +3 = $03
+```
+
+**BCS after CMP** works for signed comparisons when values in expected range.
+
+### Middle Zone Split
+
+Middle zone splits into slightly up (-1) or slightly down (+1):
+
+```asm
+LDA offset
+CMP #$80        ; Test sign bit
+BCS negative    ; Branch if negative (bit 7 set)
+
+; Positive: VY = +1
+LDA #$01
+STA ball_vy
+
+negative:
+; Negative: VY = -1
+LDA #$FF
+STA ball_vy
+```
+
+**Why split middle?** Pure horizontal (VY=0) is boring and can create infinite horizontal bounce. Slight angle keeps game dynamic.
+
+### Gameplay Impact
+
+**Without angle control:**
+- Ball bounces predictably
+- No skill expression
+- Defensive play only
+
+**With angle control:**
+- Hit with paddle edge = steep angle (offensive shot)
+- Hit with paddle center = safe return (defensive)
+- Strategic positioning matters
+- Skill ceiling increases
+
+## Building Your Game
+
+Replace simple HandlePaddle1Hit with HandlePaddle1HitWithAngle:
+
+```asm
+CheckBallPaddle1:
+    ; ... AABB test ...
+    JSR HandlePaddle1HitWithAngle  ; ← Angle-aware version
+    ; ...
+```
+
+## Common Pitfalls
+
+**Integer overflow in offset:**
+- Ball far from paddle causes wrong angle
+- Solution: AABB test prevents collision when ball too far off
+
+**Not clamping angle values:**
+- VY outside safe range breaks physics
+- Solution: Clamp VY to ±4 range (next lesson covers this)
+
+**Unsigned comparison on signed offset:**
+- Wrong branch instructions
+- Solution: Use BCS/BCC correctly for signed values in range
+
+**Same angle for both paddles:**
+- Asymmetric feel
+- Solution: Both paddles use identical zone logic
+
+## Building Toward
+
+**Next Lesson:** Paddle movement influence—moving paddle adds momentum to ball.
+
+**This Arc:**
+- L23: Momentum transfer (paddle velocity affects ball speed)
+- L24: Collision polish (cooldown, edge cases, synthesis)
+
+**Later:**
+- L25-28: Scoring system
+- L29-32: 2-player polish
+
+## Quick Reference
+
+### Hit Position Zones
+```
+Top third:    offset < -3  → VY = -3 (steep up)
+Middle third: -3 ≤ offset < 3 → VY = -1/+1 (medium)
+Bottom third: offset ≥ 3   → VY = +3 (steep down)
+```
+
+### Center Calculation
+```asm
+; Paddle center Y (16 pixels tall)
+LDA paddle_y
+ADC #8          ; Half of height
+
+; Ball center Y (8 pixels tall)
+LDA ball_y
+ADC #4          ; Half of height
+```
+
+### Offset to Angle Mapping
+```
+Hit Offset | Angle (VY)
+-----------|------------
+< -3       | -3 (steep up)
+-3 to 0    | -1 (slight up)
+0 to +3    | +1 (slight down)
+> +3       | +3 (steep down)
+```
+
+---
+
+**You have angle control!** Next lesson adds paddle momentum for even richer gameplay.

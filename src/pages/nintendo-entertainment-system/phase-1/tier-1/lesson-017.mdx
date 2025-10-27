@@ -1,0 +1,275 @@
+---
+title: "Ball Entity"
+description: "Creating the ball sprite—position and velocity in RAM, 8×8 round sprite, OAM slot management, displaying alongside paddles."
+pubDate: 2025-01-21
+tier: 1
+lessonNumber: 17
+tags: ["assembly", "6502", "sprites", "entities", "ball"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-016"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-018"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Pong needs a ball. You have paddles that move—now add a round sprite that will bounce between them. This lesson creates the ball entity with position and velocity stored in RAM, an 8×8 circular sprite using tile $02, and proper OAM slot management so ball displays alongside your existing paddles.
+
+The ball is just another sprite, but it's the first entity with *velocity*—it moves on its own.
+
+## The One-Minute Tour
+
+- **Ball entity**—position (X, Y) and velocity (VX, VY) in RAM
+- **8×8 sprite**—round tile using both bitplanes for solid circle
+- **OAM slot 2**—ball at index 8 (paddles use 0-1, 4-5)
+- **Center spawn**—ball starts at (128, 120) screen center
+- **Signed velocity**—VX/VY can be negative (moving left/up)
+- **Y-1 quirk**—PPU displays sprites 1 scanline lower
+- **InitBall routine**—set starting position and initial velocity
+
+## Your Ball Entity
+
+```asm
+.segment "ZEROPAGE"
+ball_x:  .res 1    ; X position (0-255)
+ball_y:  .res 1    ; Y position (0-239)
+ball_vx: .res 1    ; X velocity (signed: -127 to +127)
+ball_vy: .res 1    ; Y velocity (signed: -127 to +127)
+
+.segment "CODE"
+; Initialize ball at screen center
+InitBall:
+    LDA #128            ; Center X
+    STA ball_x
+    LDA #120            ; Center Y
+    STA ball_y
+    LDA #$01            ; Initial X velocity (moving right)
+    STA ball_vx
+    LDA #$FF            ; Initial Y velocity (moving up, -1 signed)
+    STA ball_vy
+    RTS
+
+; Update ball sprite in OAM
+UpdateBallSprite:
+    LDX #8              ; Ball uses OAM index 8 (sprite slot 2)
+
+    ; Y position (subtract 1 for PPU quirk)
+    LDA ball_y
+    SEC
+    SBC #1
+    STA oam_buffer,X
+    INX
+
+    ; Tile ID ($02 = ball tile)
+    LDA #$02
+    STA oam_buffer,X
+    INX
+
+    ; Attributes (palette 1, no flip)
+    LDA #%00000001
+    STA oam_buffer,X
+    INX
+
+    ; X position
+    LDA ball_x
+    STA oam_buffer,X
+    RTS
+
+; In your Reset handler
+Reset:
+    ; ... PPU initialization ...
+    JSR InitOAM
+    JSR InitPaddles
+    JSR InitBall        ; Add ball initialization
+    ; ... enable NMI ...
+
+; In your main loop (after UpdatePaddleSprites)
+MainLoop:
+    ; ... wait for VBlank ...
+    JSR UpdatePaddleSprites
+    JSR UpdateBallSprite    ; Add ball sprite update
+    JMP MainLoop
+```
+
+**Run this**—ball sprite appears at screen center! It doesn't move yet (that's next lesson).
+
+## How This Works
+
+### Entity Structure
+
+Ball entity has four properties in RAM:
+
+```asm
+ball_x:  X position (0-255)
+ball_y:  Y position (0-239)
+ball_vx: X velocity (signed, left=-1, right=+1)
+ball_vy: Y velocity (signed, up=-1, down=+1)
+```
+
+**Why velocity?** Ball moves automatically, unlike paddles (player-controlled). Velocity tells us *how fast* and *which direction*.
+
+**Signed bytes:**
+- `$00` =   0 (no movement)
+- `$01` =  +1 (right/down)
+- `$FF` =  -1 (left/up)
+- `$80` = -128 (fast left/up)
+- `$7F` = +127 (fast right/down)
+
+### OAM Slot Management
+
+Each sprite occupies 4 bytes in OAM. Current layout:
+
+```
+Index 0-3:   Paddle 1 (8×16, two tiles)
+Index 4-7:   (Unused for now)
+Index 8-11:  Ball (8×8, one tile)
+Index 12-15: Paddle 2 (when added)
+```
+
+**Why index 8?** Paddles use slots 0-1. Ball is sprite slot 2. Each slot = 4 bytes, so 2 × 4 = 8.
+
+### The Y-1 Quirk
+
+PPU displays sprites 1 scanline lower than their OAM Y value:
+
+```asm
+LDA ball_y
+SEC
+SBC #1          ; Subtract 1 before writing to OAM
+STA oam_buffer,X
+```
+
+**Why?** Hardware design quirk. Y=0 in OAM means "off screen above," so visible sprites start at Y=1. We compensate by subtracting 1 when writing to OAM.
+
+### Ball Tile Design
+
+In CHR-ROM (tile $02):
+
+```
+Bitplane 0:   Bitplane 1:   Result:
+00011000      00011000      ..333...
+00111100      00111100      .33333..
+01111110      01111110      33333333
+01111110      01111110      33333333
+00111100      00111100      .33333..
+00011000      00011000      ..333...
+00000000      00000000      ........
+00000000      00000000      ........
+```
+
+Both bitplanes identical = solid color (palette value 3). Creates round ball.
+
+## Building Your Game
+
+### Add to Reset Handler
+
+After InitPaddles, call InitBall:
+
+```asm
+Reset:
+    ; ... PPU init ...
+    JSR InitOAM
+    JSR InitPaddles
+    JSR InitBall    ; ← Add this
+    ; ... NMI enable ...
+```
+
+### Add to Main Loop
+
+After paddle sprite updates, update ball sprite:
+
+```asm
+MainLoop:
+    ; Wait for VBlank
+:   LDA nmi_ready
+    BEQ :-
+    LDA #$00
+    STA nmi_ready
+
+    JSR ReadController
+    JSR UpdatePaddle
+    JSR UpdatePaddleSprites
+    JSR UpdateBallSprite    ; ← Add this
+    JMP MainLoop
+```
+
+### CHR-ROM Tile Data
+
+If you haven't added ball tile yet, add to CHR-ROM:
+
+```asm
+.segment "CHARS"
+; Tile $00: Paddle top
+.byte $00,$00,$FF,$FF,$FF,$FF,$FF,$FF
+.byte $00,$00,$FF,$FF,$FF,$FF,$FF,$FF
+
+; Tile $01: Paddle bottom
+.byte $FF,$FF,$FF,$FF,$FF,$FF,$00,$00
+.byte $FF,$FF,$FF,$FF,$FF,$FF,$00,$00
+
+; Tile $02: Ball
+.byte $00,$18,$3C,$7E,$7E,$3C,$18,$00
+.byte $00,$18,$3C,$7E,$7E,$3C,$18,$00
+
+; Fill remaining tiles with $00
+```
+
+## Common Pitfalls
+
+**Ball doesn't appear:**
+- Check OAM index is 8 (not 2—that's the slot number)
+- Verify ball_x and ball_y have reasonable values (128, 120)
+- Make sure CHR-ROM has tile $02 defined
+- Confirm palette 1 exists ($3F05-$3F07)
+
+**Ball appears as garbage:**
+- CHR-ROM tile $02 not defined properly
+- Both bitplanes must match for solid circle
+- Check you're writing to OAM correctly (Y, tile, attr, X order)
+
+**Ball appears in wrong place:**
+- Forgot Y-1 adjustment
+- Wrong OAM index (each sprite = 4 bytes)
+- X/Y values out of range
+
+## Building Toward
+
+**Next Lesson:** Ball movement using velocity—VX/VY added to X/Y each frame.
+
+**This Arc:**
+- L18: Ball velocity and automatic movement
+- L19: Screen boundary collision (top/bottom bounce)
+- L20: Physics refinement (angle variation)
+
+**Later This Tier:**
+- L21-24: Paddle-ball collision and angle control
+- L25-28: Scoring when ball exits screen
+- L29-32: 2-player controls and polish
+
+## Quick Reference
+
+### Ball RAM Layout
+```
+ball_x:  Current X position (0-255)
+ball_y:  Current Y position (0-239)
+ball_vx: X velocity, signed (-127 to +127)
+ball_vy: Y velocity, signed (-127 to +127)
+```
+
+### OAM Sprite Slots
+```
+Slot 0 (index 0-3):   Paddle 1
+Slot 1 (index 4-7):   Reserved/unused
+Slot 2 (index 8-11):  Ball
+Slot 3 (index 12-15): Paddle 2 (later)
+```
+
+### Signed Byte Values
+```
+$00 =   0  (no movement)
+$01 =  +1  (slow right/down)
+$7F = +127 (max right/down)
+$80 = -128 (max left/up)
+$FF =  -1  (slow left/up)
+```
+
+---
+
+**You now have a ball entity!** Next lesson makes it move using velocity.

@@ -1,0 +1,511 @@
+---
+title: "Physics Refinement"
+description: "Ball physics polish—diagonal bounce angles with variation, velocity clamping for safe ranges, launch direction toward scoring player, complete ball system synthesis."
+pubDate: 2025-01-23
+tier: 1
+lessonNumber: 20
+tags: ["assembly", "6502", "physics", "synthesis", "ball"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-019"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-021"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Ball bounces predictably—which means predictably *boring*. This synthesis lesson adds angle variation to wall bounces (preventing infinite straight bounces), velocity clamping for safe ranges, launch direction toward the player who was scored on (fairness), and optional speed progression. The ball system is now feature-complete before adding paddle collision.
+
+This completes the Ball Physics arc. Ball has movement, boundaries, and realistic behavior.
+
+## The One-Minute Tour
+
+- **Angle variation**—Small random X nudge on Y bounce prevents straight paths
+- **Velocity clamping**—Keep VX/VY within ±4 range (safe, playable)
+- **Launch direction**—Ball starts toward player who was scored on
+- **Frame counter randomness**—Use frame_count for pseudo-random values
+- **Speed progression**—Optional: increase speed after N bounces
+- **Complete system**—Ball entity fully functional before paddle collision
+- **Synthesis lesson**—Combines L17-19 concepts into polished implementation
+
+## Your Refined Ball Physics
+
+```asm
+.segment "ZEROPAGE"
+ball_x:     .res 1
+ball_y:     .res 1
+ball_vx:    .res 1      ; -4 to +4 range
+ball_vy:    .res 1      ; -4 to +4 range
+ball_speed: .res 1      ; Base speed (optional progression)
+
+.segment "CODE"
+; Initialize ball with random direction
+InitBall:
+    LDA #128
+    STA ball_x
+    LDA #120
+    STA ball_y
+
+    ; Random initial X direction (use frame counter)
+    LDA frame_count
+    AND #$01
+    BEQ :+
+
+    ; Move right
+    LDA #$02
+    STA ball_vx
+    JMP :++
+
+    ; Move left
+:   LDA #$FE            ; -2 (signed)
+    STA ball_vx
+
+    ; Random Y velocity
+:   LDA frame_count
+    AND #$03            ; 0-3
+    SEC
+    SBC #$02            ; Range: -2 to +1
+    STA ball_vy
+
+    ; Set base speed
+    LDA #$02
+    STA ball_speed
+    RTS
+
+; Bounce off top with angle variation
+BounceTop:
+    ; Snap position
+    LDA #BALL_TOP
+    STA ball_y
+
+    ; Reverse Y velocity
+    JSR NegateBallVY
+
+    ; Add slight X variation (prevents boring straight bounces)
+    LDA frame_count
+    AND #$01
+    BEQ :+
+    INC ball_vx         ; Slight right nudge
+    JMP :++
+:   DEC ball_vx         ; Slight left nudge
+
+    ; Clamp X velocity to safe range
+:   JSR ClampBallVX
+    RTS
+
+; Bounce off bottom with angle variation
+BounceBottom:
+    LDA #BALL_BOTTOM
+    STA ball_y
+    JSR NegateBallVY
+
+    ; Same variation as top
+    LDA frame_count
+    AND #$01
+    BEQ :+
+    INC ball_vx
+    JMP :++
+:   DEC ball_vx
+
+:   JSR ClampBallVX
+    RTS
+
+; Clamp X velocity to safe range (±4)
+ClampBallVX:
+    ; Check if > +4
+    LDA ball_vx
+    CMP #$05
+    BCC :+              ; Branch if < 5 (in positive range)
+
+    ; Check if < -4 (unsigned $FC)
+    CMP #$FC
+    BCS :+              ; Branch if >= $FC (in negative range)
+
+    ; Out of range - clamp
+    LDA ball_vx
+    BMI @negative
+
+    ; Too positive
+    LDA #$04
+    STA ball_vx
+    RTS
+
+@negative:
+    ; Too negative
+    LDA #$FC            ; -4 in signed
+    STA ball_vx
+
+:   RTS
+
+; Clamp Y velocity to safe range (±4)
+ClampBallVY:
+    LDA ball_vy
+    CMP #$05
+    BCC :+
+    CMP #$FC
+    BCS :+
+
+    LDA ball_vy
+    BMI @negative
+    LDA #$04
+    STA ball_vy
+    RTS
+
+@negative:
+    LDA #$FC
+    STA ball_vy
+
+:   RTS
+
+; Reset ball toward player who was scored on (fairness)
+ResetBallToward:
+    ; A register = direction (0=left toward P1, 1=right toward P2)
+    STA temp
+
+    LDA #128
+    STA ball_x
+    LDA #120
+    STA ball_y
+
+    ; Set velocity toward specified direction
+    LDA temp
+    BEQ :+
+
+    ; Launch right (toward P2)
+    LDA #$02
+    STA ball_vx
+    JMP :++
+
+    ; Launch left (toward P1)
+:   LDA #$FE
+    STA ball_vx
+
+    ; Random Y component
+:   LDA frame_count
+    AND #$03
+    SEC
+    SBC #$02
+    STA ball_vy
+
+    RTS
+
+; Complete ball update with refined physics
+UpdateBallPhysics:
+    ; Apply velocity
+    LDA ball_x
+    CLC
+    ADC ball_vx
+    STA ball_x
+
+    LDA ball_y
+    CLC
+    ADC ball_vy
+    STA ball_y
+
+    ; Check top boundary
+    LDA ball_y
+    CMP #BALL_TOP
+    BCS :+
+    JSR BounceTop
+
+    ; Check bottom boundary
+:   LDA ball_y
+    CMP #BALL_BOTTOM
+    BCC :+
+    JSR BounceBottom
+
+    ; Check left boundary (scoring)
+:   LDA ball_x
+    BNE :+
+
+    ; Ball exited left - P2 scores
+    JSR ScorePlayer2
+    LDA #1              ; Launch right (toward P2)
+    JSR ResetBallToward
+    RTS
+
+    ; Check right boundary (scoring)
+:   LDA ball_x
+    CMP #255
+    BNE :+
+
+    ; Ball exited right - P1 scores
+    JSR ScorePlayer1
+    LDA #0              ; Launch left (toward P1)
+    JSR ResetBallToward
+
+:   RTS
+
+; Optional: Increase ball speed gradually
+IncreaseSpeed:
+    LDA ball_speed
+    CMP #$04            ; Max speed = 4
+    BCS :+              ; Already at max
+
+    INC ball_speed
+
+    ; Scale velocities by new speed
+    ; (Simplified: just increase magnitude)
+    LDA ball_vx
+    BMI :+              ; Skip if negative
+    INC ball_vx
+
+:   RTS
+```
+
+**Run this**—ball bounces with variety, never gets stuck in straight paths!
+
+## How This Works
+
+### Angle Variation on Bounce
+
+Without variation, ball can bounce straight up-down forever. Add small random X nudge:
+
+```asm
+; After reversing Y velocity:
+LDA frame_count
+AND #$01            ; 0 or 1 (pseudo-random)
+BEQ nudge_left
+INC ball_vx         ; Nudge right
+JMP done
+nudge_left:
+DEC ball_vx         ; Nudge left
+done:
+JSR ClampBallVX     ; Keep in safe range
+```
+
+**Why frame_count?** It increments every frame (60fps), giving quasi-random least significant bit. Not cryptographically random, but good enough for gameplay variety.
+
+**Effect:** Ball bouncing at Y=120 will gradually drift left or right, preventing boring straight bounces.
+
+### Velocity Clamping
+
+After any velocity modification, clamp to safe range:
+
+```asm
+; Clamp VX to [-4, +4]
+LDA ball_vx
+CMP #$05            ; Check if > +4
+BCC in_range        ; Branch if 0-4
+
+CMP #$FC            ; Check if < -4 (signed as $FC)
+BCS in_range        ; Branch if >= $FC
+
+; Out of range - clamp
+; [Clamping logic]
+```
+
+**Why clamp?** Angle variation adds/subtracts from velocity. Without clamping:
+1. Ball bounces 10 times
+2. Each bounce adds ±1 to VX
+3. VX becomes ±10 (too fast, unplayable)
+4. Ball moves 10 pixels/frame = invisible blur
+
+**Safe range:** ±4 pixels/frame = smooth, playable, visible ball movement.
+
+### Launch Direction Fairness
+
+When ball exits screen, launch toward player who was scored on:
+
+```asm
+; P2 scored (ball exited left, P1 missed)
+JSR ScorePlayer2
+LDA #1              ; Direction = right
+JSR ResetBallToward ; Launch toward P2
+```
+
+**Why?** Classic Pong fairness—losing player gets next serve. Gives them a chance to recover.
+
+**Implementation:**
+```asm
+ResetBallToward:
+    ; A = 0 (left) or 1 (right)
+    STA temp
+
+    ; Position at center
+    LDA #128
+    STA ball_x
+    LDA #120
+    STA ball_y
+
+    ; Set velocity based on direction
+    LDA temp
+    BEQ launch_left
+
+    LDA #$02            ; Positive = right
+    STA ball_vx
+    JMP set_vy
+
+launch_left:
+    LDA #$FE            ; Negative = left
+    STA ball_vx
+
+set_vy:
+    ; Random Y (prevents predictable serves)
+    LDA frame_count
+    AND #$03
+    SEC
+    SBC #$02
+    STA ball_vy
+```
+
+### Frame Counter Randomness
+
+NES has no built-in random number generator. Use frame_count:
+
+```asm
+LDA frame_count     ; 0-255, increments every frame
+AND #$01            ; Mask to single bit (0 or 1)
+```
+
+**Properties:**
+- Changes every frame (60Hz)
+- Player input timing adds entropy
+- Good enough for gameplay variation
+- Not suitable for cryptography
+
+**Common patterns:**
+```asm
+AND #$01        ; 0-1 (50/50)
+AND #$03        ; 0-3 (4 values)
+AND #$07        ; 0-7 (8 values)
+```
+
+### Optional Speed Progression
+
+Gradually increase ball speed for difficulty:
+
+```asm
+; After N bounces or time:
+JSR IncreaseSpeed
+
+IncreaseSpeed:
+    LDA ball_speed
+    CMP #$04            ; Max speed
+    BCS done
+
+    INC ball_speed
+
+    ; Increase velocity magnitude
+    LDA ball_vx
+    BMI done            ; Skip if negative
+    INC ball_vx
+
+done:
+    RTS
+```
+
+**Trade-off:** Makes game harder over time, but can frustrate beginners. Consider making this optional or tied to difficulty setting.
+
+## Building Your Game
+
+### Integration Pattern
+
+Replace simple UpdateBall with UpdateBallPhysics:
+
+```asm
+MainLoop:
+    ; ... wait for VBlank ...
+
+    JSR ReadController
+    JSR UpdatePaddle
+    JSR UpdateBallPhysics   ; ← Refined version
+
+    JSR UpdatePaddleSprites
+    JSR UpdateBallSprite
+
+    JMP MainLoop
+```
+
+### Testing Checklist
+
+- Ball never travels in perfectly straight line for long
+- Ball speed feels consistent (not too fast/slow)
+- Ball launches toward losing player after score
+- No crashes from velocity overflow
+- Bounces look natural, not mechanical
+
+## Common Pitfalls
+
+**Velocity grows unbounded:**
+- Forgot to clamp after modifications
+- Ball becomes impossibly fast
+- Solution: Always JSR ClampBallVX after INC/DEC ball_vx
+
+**Ball gets stuck:**
+- Position snapping missing
+- Ball overlaps wall, triggers collision every frame
+- Solution: Always snap position before reversing velocity
+
+**Too predictable:**
+- No angle variation
+- Players memorize ball patterns
+- Solution: Add frame_count randomness to bounces
+
+**Too fast:**
+- Speed progression too aggressive
+- Ball invisible blur
+- Solution: Cap max speed, test on real hardware
+
+## Building Toward
+
+**Next Arc (L21-24):** Paddle-ball collision completes Pong physics.
+- L21: AABB collision detection (bounding boxes)
+- L22: Angle control (hit position affects bounce)
+- L23: Momentum transfer (moving paddle = faster ball)
+- L24: Polish and edge cases (collision cooldown)
+
+**Later (L25-28):** Scoring system and game states.
+
+## Quick Reference
+
+### Velocity Ranges
+```
+ball_vx: -4 to +4 (horizontal)
+ball_vy: -4 to +4 (vertical)
+Total speed: √(vx² + vy²) ≈ 2-5 pixels/frame
+```
+
+### Clamping Pattern
+```asm
+; Clamp to range [MIN, MAX]
+LDA value
+CMP #MAX+1
+BCC :+              ; In range
+LDA #MAX            ; Clamp to max
+STA value
+
+:   LDA value
+CMP #MIN
+BCS :+              ; In range
+LDA #MIN            ; Clamp to min
+STA value
+:
+```
+
+### Random Variation
+```asm
+; Use frame counter for pseudo-random
+LDA frame_count
+AND #$01            ; 0 or 1
+BEQ option_a
+; option_b
+JMP done
+option_a:
+; ...
+done:
+```
+
+### Launch Direction
+```asm
+; 0 = left (toward P1)
+; 1 = right (toward P2)
+LDA direction
+BEQ left
+LDA #$02            ; Positive VX
+JMP done
+left:
+LDA #$FE            ; Negative VX
+done:
+STA ball_vx
+```
+
+---
+
+**Ball physics complete!** Next arc: Paddle-ball collision turns this into actual Pong.

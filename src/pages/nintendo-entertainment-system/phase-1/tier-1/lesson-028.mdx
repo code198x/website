@@ -1,0 +1,209 @@
+---
+title: "Game States"
+description: "Game flow structure—title screen, playing state, game over screen, state transitions with Start button, winner display, complete game loop synthesis."
+pubDate: 2025-01-31
+tier: 1
+lessonNumber: 28
+tags: ["assembly", "6502", "game-states", "synthesis"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-027"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-029"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Gameplay works—but game never ends or restarts. This synthesis lesson implements game states: title screen (wait for Start), playing state (active gameplay), game over screen (show winner, wait for restart). State machine controls game flow, creating a complete game experience from power-on to victory.
+
+This completes the Scoring System arc!
+
+## The One-Minute Tour
+
+- **Three states**—Title, Playing, GameOver
+- **State machine**—game_state variable controls flow
+- **Start button detection**—Transition between states
+- **Title screen**—Display logo, wait for player
+- **Game over**—Show winner, final scores
+- **Complete loop**—Title → Play → GameOver → Title
+
+## Your Game State Machine
+
+```asm
+.segment "ZEROPAGE"
+game_state: .res 1
+buttons_prev: .res 1    ; Previous frame buttons (for edge detect)
+
+STATE_TITLE = 0
+STATE_PLAYING = 1
+STATE_GAMEOVER = 2
+
+.segment "CODE"
+; Main game loop
+MainLoop:
+    ; Wait for VBlank
+:   LDA nmi_ready
+    BEQ :-
+    LDA #$00
+    STA nmi_ready
+
+    ; State machine
+    LDA game_state
+    CMP #STATE_TITLE
+    BEQ TitleScreen
+    CMP #STATE_PLAYING
+    BEQ PlayingState
+    CMP #STATE_GAMEOVER
+    BEQ GameOverState
+
+    JMP MainLoop
+
+; Title screen state
+TitleScreen:
+    JSR ReadController
+
+    ; Detect Start button press (edge trigger)
+    LDA buttons
+    AND #BUTTON_START
+    BEQ @no_start
+    
+    LDA buttons_prev
+    AND #BUTTON_START
+    BNE @no_start       ; Was already pressed
+
+    ; Start pressed - begin game
+    LDA #STATE_PLAYING
+    STA game_state
+    JSR InitGame
+
+@no_start:
+    LDA buttons
+    STA buttons_prev
+    JMP MainLoop
+
+; Playing state
+PlayingState:
+    JSR ReadController
+    JSR UpdatePaddle1
+    JSR UpdatePaddle2
+    JSR CheckAllCollisions
+    JSR UpdateBallPhysics
+    JSR CheckBallBoundaries
+    JSR UpdatePaddleSprites
+    JSR UpdateBallSprite
+
+    LDA buttons
+    STA buttons_prev
+    JMP MainLoop
+
+; Game over state
+GameOverState:
+    JSR ReadController
+
+    ; Detect Start press for restart
+    LDA buttons
+    AND #BUTTON_START
+    BEQ @no_restart
+
+    LDA buttons_prev
+    AND #BUTTON_START
+    BNE @no_restart
+
+    ; Restart - return to title
+    LDA #STATE_TITLE
+    STA game_state
+
+@no_restart:
+    LDA buttons
+    STA buttons_prev
+    JMP MainLoop
+
+; Initialize game
+InitGame:
+    JSR InitScores
+    JSR InitPaddles
+    JSR InitBall
+    LDA #$00
+    STA collision_cooldown
+    RTS
+```
+
+**Run this**—complete game flow from title to victory!
+
+## How This Works
+
+### State Machine
+
+Single variable controls entire game:
+
+```asm
+LDA game_state
+CMP #STATE_TITLE
+BEQ TitleScreen
+CMP #STATE_PLAYING
+BEQ PlayingState
+CMP #STATE_GAMEOVER
+BEQ GameOverState
+```
+
+**Each frame:** Check state, execute appropriate logic.
+
+### Edge Detection
+
+Detect button *press* (not hold):
+
+```asm
+; Current frame: pressed
+LDA buttons
+AND #BUTTON_START
+BEQ not_pressed
+
+; Previous frame: not pressed
+LDA buttons_prev
+AND #BUTTON_START
+BNE was_pressed     ; Skip if already pressed
+
+; Edge detected!
+; ... transition ...
+```
+
+**Why?** Holding Start shouldn't spam transitions.
+
+### State Transitions
+
+```
+Power on → STATE_TITLE
+    ↓ (Start pressed)
+STATE_PLAYING
+    ↓ (Score reaches win condition)
+STATE_GAMEOVER
+    ↓ (Start pressed)
+STATE_TITLE (loop)
+```
+
+## Building Your Game
+
+Replace simple MainLoop with state machine. Each state handles its own logic.
+
+## Quick Reference
+
+### State Values
+```
+STATE_TITLE = 0
+STATE_PLAYING = 1
+STATE_GAMEOVER = 2
+```
+
+### Edge Detection
+```asm
+; Current pressed AND previous not pressed
+LDA buttons
+AND #BUTTON_START
+BEQ not_pressed
+
+LDA buttons_prev
+AND #BUTTON_START
+BNE was_pressed
+
+; Edge detected!
+```
+
+---
+
+**Game has complete flow!** Next: 2-player polish arc.
