@@ -1,0 +1,193 @@
+---
+title: "Sprite DMA"
+description: "Enable smooth sprite updates at 60fps—using OAM DMA ($4014) for fast sprite memory transfers during VBlank."
+pubDate: 2025-01-20
+tier: 1
+lessonNumber: 11
+tags: ["assembly", "6502", "dma", "oam", "sprites", "vblank"]
+prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-010"
+nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-012"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Manually copying 256 bytes of sprite data to OAM would take ~2560 cycles—over half the VBlank window. OAM DMA (Direct Memory Access) copies all sprite data in just 513 cycles using hardware acceleration. This lesson implements DMA for efficient sprite updates.
+
+Previous lesson filled the OAM buffer manually. This lesson adds DMA to synchronize sprite updates with VBlank at 60fps.
+
+## The One-Minute Tour
+
+- **OAM DMA**—hardware copies 256 bytes in 513 cycles
+- **$4014 register**—write high byte of source address to trigger
+- **VBlank timing**—DMA must occur during VBlank
+- **5× faster**—513 cycles vs ~2560 for manual copy
+- **Update pattern**—main loop modifies buffer, NMI triggers DMA
+- **Batch transfer**—all 64 sprites updated simultaneously
+
+## Your First DMA Transfer
+
+```asm
+.segment "ZEROPAGE"
+nmi_ready: .res 1
+
+.segment "CODE"
+MainLoop:
+    ; Wait for VBlank
+:   LDA nmi_ready
+    BEQ :-
+    LDA #$00
+    STA nmi_ready
+
+    ; Update sprite data in OAM buffer
+    JSR UpdateOAM
+
+    JMP MainLoop
+
+NMI:
+    PHA
+    TXA
+    PHA
+    TYA
+    PHA
+
+    ; Trigger OAM DMA
+    LDA #$02            ; High byte of $0200
+    STA $4014           ; Start DMA (513 cycles)
+
+    LDA #$01
+    STA nmi_ready
+
+    PLA
+    TAY
+    PLA
+    TAX
+    PLA
+    RTI
+
+UpdateOAM:
+    LDA paddle_y
+    STA $0200           ; Update Y position in buffer
+    RTS
+```
+
+**Run this**—sprites update smoothly at 60fps with minimal VBlank time!
+
+## How This Works
+
+### OAM DMA Hardware
+
+Writing to $4014 triggers hardware DMA:
+1. CPU writes high byte of source address to $4014
+2. Hardware copies 256 bytes from (high byte << 8) to OAM
+3. Takes 513 CPU cycles (or 514 if CPU on odd cycle)
+4. CPU halted during transfer
+
+**Example:** `STA $4014` with A=$02 copies $0200-$02FF to OAM.
+
+**Why fast?** Hardware transfer vs CPU loop. No fetch-decode-execute overhead per byte.
+
+### DMA Timing
+
+**Manual copy:**
+```asm
+LDX #$00
+:   LDA $0200,X
+    STA $2004           ; OAM data port
+    INX
+    BNE :-
+```
+~10 cycles per byte × 256 = 2560 cycles.
+
+**DMA:** 513 cycles total. **5× faster.**
+
+### VBlank Budget Analysis
+
+Total VBlank: ~2273 cycles (NTSC)
+- OAM DMA: 513 cycles (22.5%)
+- Palette updates: ~100 cycles
+- Scroll updates: ~10 cycles
+- **Remaining: ~1650 cycles** for nametable writes, music, etc.
+
+**Plenty of headroom** for typical game needs.
+
+### Update Pattern
+
+**Main loop (game logic):**
+```asm
+MainLoop:
+    ; Wait for VBlank flag
+    ; Update sprite positions in $0200 buffer
+    ; Update other game state
+    JMP MainLoop
+```
+
+**NMI handler (graphics):**
+```asm
+NMI:
+    ; Save registers
+    ; Trigger OAM DMA ($4014)
+    ; Other PPU updates (palettes, scroll)
+    ; Set VBlank flag
+    ; Restore registers
+    RTI
+```
+
+**Separation of concerns:** Game logic modifies buffer any time. Graphics sync happens once per frame in NMI.
+
+### DMA Cycle Alignment
+
+DMA waits for even CPU cycle before starting:
+- CPU on even cycle: 513 cycles
+- CPU on odd cycle: 514 cycles (waits 1, then 513)
+
+**Average: 513.5 cycles.** Budget for 514 to be safe.
+
+**Why alignment?** Hardware optimization. DMA reads/writes on specific cycles for efficiency.
+
+## From the Vault
+
+- [OAM DMA](https://www.nesdev.org/wiki/PPU_OAM#DMA)
+- [$4014 Register](https://www.nesdev.org/wiki/PPU_registers#OAMDMA)
+
+## Quick Reference
+
+### $4014 (OAMDMA)
+
+| Operation | Details |
+|-----------|---------|
+| Write | High byte of source address (e.g. $02 for $0200-$02FF) |
+| Effect | Copies 256 bytes to OAM |
+| Timing | 513 or 514 cycles |
+| When | During VBlank only |
+
+### VBlank Timing Budget
+
+| Operation | Cycles | % of VBlank |
+|-----------|--------|-------------|
+| Total VBlank | ~2273 | 100% |
+| OAM DMA | 513 | 22.5% |
+| **Available** | **1760** | **77.5%** |
+
+### Update Pattern
+
+```
+Frame N:
+  Active display: Main loop runs (game logic)
+  VBlank: NMI triggers DMA (graphics sync)
+
+Frame N+1:
+  Active display: Updated sprites visible
+  ...
+```
+
+## What You've Learnt
+
+- **OAM DMA**—hardware copies 256 bytes in 513 cycles
+- **$4014 register**—write high byte to trigger transfer
+- **5× speedup**—513 vs ~2560 cycles for manual copy
+- **VBlank requirement**—DMA must occur during VBlank
+- **Update pattern**—main loop modifies buffer, NMI triggers DMA
+- **Cycle alignment**—DMA waits for even CPU cycle (513-514 cycles)
+- **VBlank budget**—DMA uses 22.5%, leaves 77.5% for other updates
+- **Batch transfer**—all 64 sprites updated simultaneously
+
+Next lesson: Sprite Movement—reading controller input, updating paddle positions, implementing smooth 60fps movement with velocity and boundaries.
