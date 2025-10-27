@@ -1,0 +1,283 @@
+---
+title: "Lesson 012: BOB Movement"
+description: "Move BOBs with joystick input, implement smooth movement, and master position tracking on the Commodore Amiga"
+pubDate: 2025-10-24
+platform: "commodore-amiga"
+phase: 0
+tier: 1
+lesson: 12
+---
+
+import CodeBlock from '../../../../components/CodeBlock.astro';
+
+# Lesson 012: BOB Movement
+
+**Make sprites move with player input.** Control BOBs smoothly at 50 frames per second using joystick or keyboard, implement boundary checking, and track positions for game logic.
+
+## The One-Minute Tour
+
+- **Bob command updates position** - `Bob 1,x,y,1` sets BOB 1 to new coordinates
+- **Joystick functions return -1 or 0** - `Jleft(1)`, `Jright(1)`, `Jup(1)`, `Jdown(1)`
+- **Position tracking** - `Bob X(1)` and `Bob Y(1)` read current coordinates
+- **Movement speed** - Larger increment values = faster movement
+- **Boundary checking essential** - Prevent BOBs from leaving the screen
+- **50fps smoothness** - Wait Vbl + Bob Update creates fluid motion
+- **Screen coordinates** - 320×256 lowres (0-319, 0-255)
+
+## Example: Player-Controlled Sprite
+
+```amos
+Screen Open 0,320,256,32,Lowres
+Curs Off: Flash Off: Cls 0
+
+' Create player sprite (blue square)
+Ink 2
+Bar 0,0 To 15,15
+Get Bob 1,0,0 To 16,16
+Cls 0
+
+' Starting position
+x=150: y=120
+speed=2
+
+Bob 1,x,y,1
+
+Do
+  ' Read joystick port 1
+  If Jleft(1) Then Dec x,speed
+  If Jright(1) Then Add x,speed
+  If Jup(1) Then Dec y,speed
+  If Jdown(1) Then Add y,speed
+
+  ' Boundary checking
+  If x<0 Then x=0
+  If x>304 Then x=304
+  If y<0 Then y=0
+  If y>240 Then y=240
+
+  ' Update BOB position
+  Bob 1,x,y,1
+
+  Wait Vbl
+  Bob Update
+Loop Until Inkey$<>""
+```
+
+**What's happening:**
+1. **Joystick input** - Each frame checks four directions
+2. **Speed control** - `Dec x,2` and `Add x,2` move 2 pixels per frame
+3. **Boundary checking** - Prevents x/y from going negative or off-screen
+4. **Synchronization** - Wait Vbl ensures 50fps, Bob Update refreshes hardware
+
+**Try it:** Move the sprite around. Notice the smooth 50fps movement and how boundaries prevent escape.
+
+## Experiment: Variable Speed Control
+
+```amos
+' Add speed control with Fire button
+If Fire(1) Then
+  speed=4    ' Fast when Fire pressed
+Else
+  speed=2    ' Normal speed
+End If
+
+If Jleft(1) Then Dec x,speed
+If Jright(1) Then Add x,speed
+' ... etc
+```
+
+**What's different:** Fire button doubles movement speed. This creates a "run" mechanic common in action games.
+
+**Try varying:**
+- Speed values (1=slow, 3=fast, 5=very fast)
+- Diagonal speed (should it be slower to match visual distance?)
+- Acceleration (gradually increase speed when held)
+
+## Coordinate System Deep Dive
+
+**Amiga screen coordinates:**
+```
+(0,0) ──────────────────────── (319,0)
+  │                                 │
+  │        320×256 Lowres           │
+  │                                 │
+(0,255) ──────────────────── (319,255)
+```
+
+**BOB positioning:**
+- Coordinates specify BOB's **top-left corner**
+- 16×16 BOB at (0,0) → visible from (0,0) to (15,15)
+- 16×16 BOB at (304,0) → visible from (304,0) to (319,15)
+- **That's why boundary is 304 not 320** - prevents right edge clipping
+
+**Visual boundaries:**
+```amos
+' For 16×16 BOB on 320×256 screen
+maxX = 320 - 16  ' = 304
+maxY = 256 - 16  ' = 240
+```
+
+For different BOB sizes, adjust boundaries accordingly.
+
+## Joystick vs Keyboard
+
+**Joystick input (port 1):**
+```amos
+If Jleft(1) Then Dec x,speed     ' Joystick left
+If Jright(1) Then Add x,speed    ' Joystick right
+```
+
+**Keyboard alternative:**
+```amos
+' Use cursor keys
+k$=Inkey$
+If k$=Chr$(203) Then Dec x,speed  ' Left arrow
+If k$=Chr$(205) Then Add x,speed  ' Right arrow
+If k$=Chr$(200) Then Dec y,speed  ' Up arrow
+If k$=Chr$(208) Then Add y,speed  ' Down arrow
+```
+
+**Keyboard + joystick both work:**
+```amos
+' OR conditions support either input
+If Jleft(1) or k$=Chr$(203) Then Dec x,speed
+```
+
+Most players prefer joystick, but keyboard support increases accessibility.
+
+## Movement Speed Mathematics
+
+**Frame rate context:**
+- PAL Amiga runs at 50 frames/second
+- Each frame is 20ms (1/50 second)
+- Speed value = pixels moved per frame
+
+**Speed calculations:**
+```
+speed=1  → 50 pixels/second  (very slow)
+speed=2  → 100 pixels/second (good for player)
+speed=3  → 150 pixels/second (fast enemy)
+speed=4  → 200 pixels/second (bullet)
+```
+
+**Diagonal movement issue:**
+```amos
+' Player moving right + up simultaneously
+If Jright(1) Then Add x,2  ' +2 pixels right
+If Jup(1) Then Dec y,2     ' +2 pixels up
+' Result: √(2²+2²) = 2.83 pixels (41% faster diagonally!)
+```
+
+**Fix for accurate diagonal speed:**
+```amos
+' Detect diagonal movement
+diagonal = 0
+If (Jleft(1) or Jright(1)) and (Jup(1) or Jdown(1)) Then diagonal = 1
+
+' Adjust speed
+If diagonal Then
+  speed = 1  ' Slower diagonal
+Else
+  speed = 2  ' Normal orthogonal
+End If
+```
+
+## Position Reading with Bob X/Y
+
+**Reading coordinates:**
+```amos
+currentX = Bob X(1)  ' Read BOB 1's X position
+currentY = Bob Y(1)  ' Read BOB 1's Y position
+```
+
+**Why read positions?**
+1. **Relative movement** - Move based on current position
+2. **Collision response** - Push BOB back after hit
+3. **Screen wrapping** - Teleport to opposite edge
+4. **Distance calculations** - Measure separation between BOBs
+
+**Example: Screen wrapping**
+```amos
+If x>320 Then x=0      ' Right edge → left edge
+If x<0 Then x=320      ' Left edge → right edge
+If y>256 Then y=0      ' Bottom → top
+If y<0 Then y=256      ' Top → bottom
+```
+
+## In Game Use: Space Shooter
+
+**Typical player ship control:**
+```amos
+Procedure PlayerShip
+  ' Read input
+  If Jleft(1) Then Dec shipX,3
+  If Jright(1) Then Add shipX,3
+
+  ' Constrain to screen (with margin)
+  If shipX<10 Then shipX=10
+  If shipX>290 Then shipX=290
+
+  ' Fire button shoots
+  If Fire(1) Then ShootBullet shipX,shipY
+
+  ' Update position
+  Bob 1,shipX,shipY,1
+End Proc
+```
+
+**Why margins?** Many games keep player away from screen edges (10-20 pixels) to prevent visual clipping and improve gameplay feel.
+
+## From the Vault
+
+**Amiga hardware:**
+- **Blitter** handles BOB position updates (no CPU cost)
+- **Copper** can change BOB positions mid-frame (advanced)
+- **Sprite DMA** reads BOB data automatically at 50Hz
+
+**Bob Update timing:**
+- Executes during vertical blank (1.5ms window)
+- Updates **all** BOBs simultaneously
+- Never call Bob Update without Wait Vbl first
+
+**Historical note:** Arcade games of the 1980s ran at 60fps (NTSC) or 50fps (PAL). Amiga matches arcade smoothness, unlike home computers with software sprites at 10-20fps.
+
+## Quick Reference
+
+### Movement Commands
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `Bob n,x,y,i` | Set BOB position | `Bob 1,100,80,1` |
+| `Bob X(n)` | Read X coordinate | `x=Bob X(1)` |
+| `Bob Y(n)` | Read Y coordinate | `y=Bob Y(1)` |
+| `Add var,val` | Increment | `Add x,2` |
+| `Dec var,val` | Decrement | `Dec y,3` |
+
+### Joystick Input (Port 1)
+| Function | Returns | Purpose |
+|----------|---------|---------|
+| `Jleft(1)` | -1 or 0 | Left direction |
+| `Jright(1)` | -1 or 0 | Right direction |
+| `Jup(1)` | -1 or 0 | Up direction |
+| `Jdown(1)` | -1 or 0 | Down direction |
+| `Fire(1)` | -1 or 0 | Fire button |
+
+### Screen Coordinates (Lowres)
+| Dimension | Range | BOB Boundary (16×16) |
+|-----------|-------|----------------------|
+| Width | 0-319 | 0-304 |
+| Height | 0-255 | 0-240 |
+| Center | (160,128) | - |
+
+## What You've Learnt
+
+**You can now:**
+- ✅ Move BOBs with joystick input at 50fps
+- ✅ Implement boundary checking to keep sprites on screen
+- ✅ Control movement speed with variable increments
+- ✅ Read BOB positions with Bob X/Y functions
+- ✅ Create smooth player-controlled sprites
+- ✅ Understand coordinate system and positioning
+- ✅ Support both joystick and keyboard input
+- ✅ Calculate diagonal movement adjustments
+
+**Next lesson:** Collision detection with the Col function - detect when BOBs touch for pickups, hits, and game logic.

@@ -1,0 +1,536 @@
+---
+title: "Lesson 015: Enemy AI"
+description: "Implement simple chase AI with arrays for entity management, create multiple enemies with independent behaviour on the Commodore Amiga"
+pubDate: 2025-10-24
+platform: "commodore-amiga"
+phase: 0
+tier: 1
+lesson: 15
+---
+
+import CodeBlock from '../../../../components/CodeBlock.astro';
+
+# Lesson 015: Enemy AI
+
+**Create enemies that hunt the player.** Use parallel arrays to manage multiple entities, implement simple but effective chase algorithms, and track active states for complex game logic.
+
+## The One-Minute Tour
+
+- **Parallel arrays** - ex(i), ey(i), ea(i) track X, Y, active state for enemy i
+- **Chase AI** - Move towards player by comparing positions
+- **Active state tracking** - ea(i)=1 (active), ea(i)=0 (inactive/destroyed)
+- **Entity management pattern** - Create → Update → Collision → Destroy
+- **BOB numbering** - Player=1, Enemies=2-6 (i+1 offset)
+- **Simple but effective** - One line per axis creates believable pursuit
+- **Independent entities** - Each enemy acts autonomously
+
+## Example: Five Hunting Enemies
+
+```amos
+Screen Open 0,320,256,32,Lowres
+Curs Off: Flash Off: Cls 0
+
+' Create player sprite (blue square)
+Ink 2
+Bar 0,0 To 15,15
+Ink 14
+Circle 8,8,5
+Get Bob 1,0,0 To 16,16
+Cls 0
+
+' Create enemy sprite (red square)
+Ink 1
+Box 0,0 To 15,15
+Bar 2,2 To 13,13
+Get Bob 2,0,0 To 16,16
+Cls 0
+
+' Enemy data arrays
+' ex = X position, ey = Y position, ea = active status
+Dim ex(5),ey(5),ea(5)
+
+' Create 5 enemies at random positions
+For i=1 To 5
+  ex(i)=Rnd(280)+20
+  ey(i)=Rnd(220)+20
+  ea(i)=1  ' 1 = active, 0 = inactive
+  Bob i+1,ex(i),ey(i),2
+Next i
+
+' Player starting position
+px=150
+py=120
+Bob 1,px,py,1
+
+' Instructions
+Locate 2,20: Print "Enemies chase you!"
+Locate 2,21: Print "Touch to destroy them"
+Locate 2,22: Print "Press SPACE to quit"
+
+score=0
+
+' Main game loop
+Do
+  ' PLAYER MOVEMENT
+  If Jleft(1) Then Dec px,2
+  If Jright(1) Then Add px,2
+  If Jup(1) Then Dec py,2
+  If Jdown(1) Then Add py,2
+
+  ' Boundary checking
+  If px<0 Then px=0
+  If px>304 Then px=304
+  If py<0 Then py=0
+  If py>240 Then py=240
+
+  ' Update player position
+  Bob 1,px,py,1
+
+  ' ENEMY AI - Update all active enemies
+  For i=1 To 5
+    If ea(i)=1 Then
+      ' Simple chase AI: move towards player
+      If ex(i)<px Then Add ex(i),1     ' Player is right
+      If ex(i)>px Then Dec ex(i),1     ' Player is left
+      If ey(i)<py Then Add ey(i),1     ' Player is below
+      If ey(i)>py Then Dec ey(i),1     ' Player is above
+
+      ' Update enemy BOB position
+      Bob i+1,ex(i),ey(i),2
+    End If
+  Next i
+
+  ' COLLISION - Check collision with enemies
+  hit=Col(1)
+  If hit>1 Then
+    ' Calculate which enemy was hit
+    enemyNum=hit-1
+
+    ' Verify it's a valid enemy and destroy it
+    If enemyNum>=1 and enemyNum<=5 Then
+      If ea(enemyNum)=1 Then
+        ea(enemyNum)=0      ' Mark as inactive
+        Bob Off hit         ' Hide the BOB
+        Add score,10
+        Sam Play 0,1        ' Play hit sound
+      End If
+    End If
+  End If
+
+  ' DISPLAY - Count active enemies
+  activeCount=0
+  For i=1 To 5
+    If ea(i)=1 Then Add activeCount,1
+  Next i
+
+  Locate 2,1
+  Print "Score: ";score;" "
+  Locate 2,2
+  Print "Enemies: ";activeCount;" "
+
+  ' WIN - All enemies destroyed
+  If activeCount=0 Then
+    Locate 10,12
+    Print "ALL ENEMIES DESTROYED!"
+    Wait Key
+    Exit
+  End If
+
+  ' SYNCHRONIZE
+  Wait Vbl
+  Bob Update
+Loop Until Inkey$=" "
+
+' Cleanup
+For i=1 To 6
+  Bob Off i
+Next i
+```
+
+**What's happening:**
+1. **Parallel arrays** - Three arrays (ex, ey, ea) track enemy data at same index
+2. **Chase algorithm** - Four simple comparisons create pursuit behaviour
+3. **Active state** - Only process enemies where ea(i)=1
+4. **BOB offset** - Enemy array index i maps to BOB i+1 (player is BOB 1)
+5. **Collision response** - Convert BOB number to array index: enemyNum=hit-1
+
+**Try it:** Run from enemies. Notice how they converge on your position. Destroy all 5 to win.
+
+## Experiment: Variable Enemy Speed
+
+```amos
+' Add speed array
+Dim ex(5),ey(5),ea(5),espeed(5)
+
+' Initialize with different speeds
+For i=1 To 5
+  ex(i)=Rnd(280)+20
+  ey(i)=Rnd(220)+20
+  ea(i)=1
+  espeed(i)=Rnd(2)+1  ' Speed 1-3
+  Bob i+1,ex(i),ey(i),2
+Next i
+
+' In AI loop, use individual speed:
+If ex(i)<px Then Add ex(i),espeed(i)
+If ex(i)>px Then Dec ex(i),espeed(i)
+' ... etc
+```
+
+**What's different:** Each enemy has unique speed. Creates varied threat levels.
+
+**Try adding:**
+- Different enemy types (patrol, flee, teleport)
+- Difficulty progression (speed increases over time)
+- Leader behaviour (one enemy leads, others follow)
+
+## Chase AI Algorithm Breakdown
+
+**The core logic:**
+```amos
+' For each axis independently:
+If enemyX < playerX Then Add enemyX, 1    ' Move right
+If enemyX > playerX Then Dec enemyX, 1    ' Move left
+If enemyY < playerY Then Add enemyY, 1    ' Move down
+If enemyY > playerY Then Dec enemyY, 1    ' Move up
+```
+
+**Why it works:**
+1. **X-axis comparison** - If enemy left of player, move right
+2. **Y-axis comparison** - If enemy above player, move down
+3. **Both axes checked** - Creates diagonal movement
+4. **Always moves towards** - Closes distance each frame
+
+**Movement pattern:**
+```
+Enemy at (100,100), Player at (150,150)
+
+Frame 1: ex<px → ex=101, ey<py → ey=101
+Frame 2: ex<px → ex=102, ey<py → ey=102
+...
+Frame 50: ex=150, ey=150 (caught player!)
+```
+
+**Visual:**
+```
+E → → ↘
+↓     ↓
+↓     ↓
+↘ → → P
+```
+
+Enemies approach diagonally when offset on both axes.
+
+## Parallel Arrays Pattern
+
+**Why three separate arrays?**
+```amos
+Dim ex(5)    ' X positions
+Dim ey(5)    ' Y positions
+Dim ea(5)    ' Active states
+```
+
+**Alternative (NOT in AMOS):**
+```basic
+' Other languages use structs/records:
+Type Enemy
+  x As Integer
+  y As Integer
+  active As Integer
+End Type
+Dim enemies(5) As Enemy
+```
+
+**AMOS doesn't have structs**, so we use parallel arrays where index i is the same entity across all arrays.
+
+**Access pattern:**
+```amos
+' Enemy 3's data:
+ex(3)  ' X position
+ey(3)  ' Y position
+ea(3)  ' Active state
+
+' All refer to the SAME enemy
+```
+
+## Active State Management
+
+**The ea (enemy active) array:**
+```amos
+ea(i) = 1    ' Active (process AI, draw BOB, check collision)
+ea(i) = 0    ' Inactive (skip entirely, hidden)
+```
+
+**Why not just Bob Off?**
+```amos
+' WRONG: Only hiding BOB
+Bob Off 3
+' Problem: ea(3) still = 1, AI still runs!
+
+' RIGHT: Mark inactive AND hide
+ea(3) = 0
+Bob Off 3
+```
+
+**Processing pattern:**
+```amos
+For i=1 To 5
+  If ea(i)=1 Then
+    ' AI code only runs for active enemies
+    If ex(i)<px Then Add ex(i),1
+    Bob i+1,ex(i),ey(i),2
+  End If
+Next i
+```
+
+**Benefits:**
+- Skip destroyed enemies (performance)
+- Enable respawn (set ea(i)=1 again)
+- Track game state (count active for win condition)
+- Complex logic (different states: patrol, alert, chase)
+
+## BOB Number Management
+
+**Numbering strategy:**
+```
+BOB 1       → Player (reserved)
+BOB 2-6     → Enemies (array index + 1)
+BOB 7-10    → Collectibles (if added later)
+```
+
+**Why i+1 offset?**
+```amos
+' Array index starts at 1
+For i=1 To 5
+  Bob i+1, ex(i), ey(i), 2
+  ' i=1 → BOB 2
+  ' i=2 → BOB 3
+  ' i=3 → BOB 4
+  ' i=4 → BOB 5
+  ' i=5 → BOB 6
+Next i
+```
+
+**Collision resolution:**
+```amos
+hit = Col(1)              ' Returns BOB number (2-6)
+enemyNum = hit - 1        ' Convert to array index (1-5)
+
+' Verify range:
+If enemyNum>=1 and enemyNum<=5 Then
+  ea(enemyNum) = 0        ' Valid enemy
+End If
+```
+
+**Why verify range?** Prevents crashes if player collides with non-enemy BOB (collectible, power-up, etc.)
+
+## Entity Management Lifecycle
+
+**Complete pattern:**
+```amos
+' 1. CREATE
+For i=1 To enemyCount
+  ex(i) = starting_x
+  ey(i) = starting_y
+  ea(i) = 1
+  Bob i+1, ex(i), ey(i), 2
+Next i
+
+' 2. UPDATE (each frame)
+For i=1 To enemyCount
+  If ea(i)=1 Then
+    ' AI logic
+    ' Update position
+    Bob i+1, ex(i), ey(i), 2
+  End If
+Next i
+
+' 3. COLLISION
+hit = Col(1)
+If hit>1 Then
+  enemyNum = hit-1
+  If ea(enemyNum)=1 Then
+    ea(enemyNum)=0
+    Bob Off hit
+  End If
+End If
+
+' 4. CLEANUP (game over)
+For i=1 To enemyCount
+  Bob Off i+1
+Next i
+```
+
+**Scales to any game:** Bullets, power-ups, NPCs all use same pattern.
+
+## AI Variations
+
+### Patrol AI (Not Chase)
+```amos
+' Move in pattern regardless of player
+Add ex(i), edx(i)     ' Move in direction
+If ex(i)<minX or ex(i)>maxX Then
+  edx(i) = -edx(i)    ' Reverse direction
+End If
+```
+
+### Flee AI (Opposite Chase)
+```amos
+' Run away from player
+If ex(i)<px Then Dec ex(i),1    ' Player right → run left
+If ex(i)>px Then Add ex(i),1    ' Player left → run right
+If ey(i)<py Then Dec ey(i),1    ' Player below → run up
+If ey(i)>py Then Add ey(i),1    ' Player above → run down
+```
+
+### Random Wander
+```amos
+' Move randomly
+Add ex(i), Rnd(3)-1    ' -1, 0, or 1
+Add ey(i), Rnd(3)-1
+```
+
+### Line-of-Sight Chase
+```amos
+' Only chase if "can see" player (within range)
+distance = Abs(ex(i)-px) + Abs(ey(i)-py)
+If distance < 100 Then
+  ' Close enough to detect player
+  If ex(i)<px Then Add ex(i),2    ' Fast chase
+  ' ... etc
+Else
+  ' Too far, patrol instead
+  Add ex(i), edx(i)
+End If
+```
+
+## Advanced: Difficulty Progression
+
+**Speed increases over time:**
+```amos
+' Start slow, gradually increase
+baseSpeed = 1
+speedBonus = score / 50    ' +1 speed per 50 points
+
+For i=1 To 5
+  If ea(i)=1 Then
+    speed = baseSpeed + speedBonus
+    If ex(i)<px Then Add ex(i),speed
+    ' ... etc
+  End If
+Next i
+```
+
+**Add enemies dynamically:**
+```amos
+' Spawn new enemy every 500 points
+If score Mod 500 = 0 and score>0 Then
+  ' Find inactive enemy slot
+  For i=1 To 10
+    If ea(i)=0 Then
+      ex(i) = Rnd(280)+20
+      ey(i) = Rnd(220)+20
+      ea(i) = 1
+      Bob On i+1
+      Bob i+1,ex(i),ey(i),2
+      Exit  ' Only spawn one
+    End If
+  Next i
+End If
+```
+
+## In Game Use: Boss Battle
+
+**Single powerful enemy:**
+```amos
+' Boss has more complex behaviour
+Dim bossX, bossY, bossHP, bossState
+
+' States: 0=idle, 1=chase, 2=attack, 3=retreat
+bossState = 1
+bossHP = 10
+bossX = 160: bossY = 50
+
+Do
+  If bossState=1 Then
+    ' Chase player
+    If bossX<px Then Add bossX,1
+    ' ... etc
+  End If
+
+  If bossState=2 Then
+    ' Attack pattern (shoot projectiles)
+    ' ... complex code ...
+  End If
+
+  ' Hit boss
+  If Col(1)=2 and Fire(1) Then
+    Dec bossHP,1
+    If bossHP<=5 Then bossState=3  ' Retreat when weak
+  End If
+
+  Bob 2,bossX,bossY,2
+Loop
+```
+
+## From the Vault
+
+**Historical AI:**
+- **Pac-Man ghosts (1980)** - Four different AI patterns (chase, flee, patrol, random)
+- **Space Invaders (1978)** - Simple descent + horizontal movement
+- **Amiga Lemmings (1991)** - Hundreds of independent entities
+
+**AMOS optimization:**
+- Chase AI is 4 comparisons + 4 operations (very fast)
+- Active state checking prevents wasted cycles
+- Hardware BOB updates (Blitter) means no draw cost
+- Can easily manage 20-30 enemies at 50fps
+
+**Professional technique:** The chase AI in this lesson is identical to algorithms used in 1980s arcade games. Simple but effective.
+
+## Quick Reference
+
+### Array Management
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `Dim arr(n)` | Create array | `Dim ex(5)` |
+| `arr(i)` | Access element | `ex(3)=100` |
+| `For i=1 To n` | Iterate array | `For i=1 To 5` |
+
+### Chase AI Pattern
+| Comparison | Action | Result |
+|------------|--------|--------|
+| `ex(i)<px` | `Add ex(i),1` | Move right |
+| `ex(i)>px` | `Dec ex(i),1` | Move left |
+| `ey(i)<py` | `Add ey(i),1` | Move down |
+| `ey(i)>py` | `Dec ey(i),1` | Move up |
+
+### BOB Numbering
+| Entity | BOB Number | Array Index |
+|--------|------------|-------------|
+| Player | 1 | - |
+| Enemy 1 | 2 | 1 |
+| Enemy 2 | 3 | 2 |
+| Enemy 3 | 4 | 3 |
+| Formula | `i+1` | `hit-1` |
+
+### State Values
+| Value | Meaning | Usage |
+|-------|---------|-------|
+| `ea(i)=1` | Active | Process AI |
+| `ea(i)=0` | Inactive | Skip entirely |
+| `ea(i)=2` | Stunned | Custom state |
+
+## What You've Learnt
+
+**You can now:**
+- ✅ Implement simple but effective chase AI
+- ✅ Use parallel arrays for entity management
+- ✅ Track active states to enable/disable entities
+- ✅ Manage multiple independent BOBs
+- ✅ Convert BOB numbers to array indices
+- ✅ Create patrol, flee, and random wander AI
+- ✅ Implement difficulty progression
+- ✅ Scale entity systems to any game complexity
+
+**Final lesson:** Complete arcade game combining ALL Phase 0 Tier 1 concepts - procedures, arrays, BOBs, collision, input, sound, timer, AI, difficulty progression into one playable game with menu, gameplay, and game over screens.

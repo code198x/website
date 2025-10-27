@@ -6,6 +6,7 @@ import { bundledLanguages } from 'shiki';
 // Load custom syntax grammars
 import basicGrammar from './src/syntax/basic.tmLanguage.json' assert { type: 'json' };
 import asm6502Grammar from './src/syntax/6502.tmLanguage.json' assert { type: 'json' };
+import amosGrammar from './src/syntax/amos.tmLanguage.json' assert { type: 'json' };
 
 // https://astro.build/config
 export default defineConfig({
@@ -26,6 +27,12 @@ export default defineConfig({
           scopeName: 'source.asm.6502',
           aliases: ['6502asm', 'asm6502', 'c64asm'],
           ...asm6502Grammar,
+        },
+        {
+          id: 'amos',
+          scopeName: 'source.basic.amos',
+          aliases: ['amos', 'amospro', 'amos-basic'],
+          ...amosGrammar,
         }
       ],
       theme: 'dark-plus'
