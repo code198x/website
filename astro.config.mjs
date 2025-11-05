@@ -2,6 +2,8 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import { bundledLanguages } from 'shiki';
+import { remarkHighlightApi } from 'remark-shiki-highlight-api';
+import { loadCode198xLanguages } from './src/lib/load-custom-languages.ts';
 
 // Load custom syntax grammars
 import basicGrammar from './src/syntax/basic.tmLanguage.json' assert { type: 'json' };
@@ -15,6 +17,14 @@ export default defineConfig({
   site: 'https://code198x.stevehill.xyz',
   integrations: [mdx()],
   markdown: {
+    // Use CSS Custom Highlight API for syntax highlighting
+    remarkPlugins: [
+      [remarkHighlightApi, {
+        theme: 'dark-plus',
+        loadLanguages: loadCode198xLanguages
+      }]
+    ],
+    syntaxHighlight: false,
     shikiConfig: {
       langs: [
         ...Object.keys(bundledLanguages),
