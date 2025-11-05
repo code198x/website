@@ -1,0 +1,401 @@
+---
+title: "ZX Spectrum ROM Disassembly"
+description: "Annotated reference for key ROM routines in the 16K Spectrum ROM"
+platform: "sinclair-zx-spectrum"
+category: "vault"
+tags: ["ROM", "BASIC", "system-calls", "reference"]
+---
+
+# ZX Spectrum ROM Disassembly
+
+The ZX Spectrum ROM occupies addresses $0000-$3FFF (16,384 bytes) and contains:
+- The BASIC interpreter
+- System variables ($5C00-$5CB5)
+- Character set bitmap ($3D00-$3FFF)
+- Essential system routines
+
+This reference covers the most commonly used ROM routines you'll encounter when writing assembly programs or understanding how BASIC commands work under the hood.
+
+---
+
+## Quick ROM Routine Reference
+
+### Essential System Calls
+
+| Address | Name | Purpose | Entry Parameters | Exit Values |
+|---------|------|---------|------------------|-------------|
+| $0D6B | CLS | Clear screen | None | None |
+| $09F4 | PRINT_A_1 | Print character in A | A = character | Screen updated |
+| $0010 | PRINT_A | Print character | A = character | Screen updated |
+| $1601 | CHAN_OPEN | Open channel | A = channel ('K','S','R','P') | Stream opened |
+| $15EF | BEEP | Make beep sound | DE = duration, HL = pitch | None |
+| $02BB | KEY_SCAN | Scan keyboard | None | Carry set if key pressed |
+| $0C55 | PO_STORE | Store attribute | ATTR_P system variable | Screen attributes updated |
+| $2294 | BORDER | Change border colour | A = colour (0-7) | Border changed |
+
+---
+
+## BORDER Command ($2294)
+
+The ROM routine that implements BASIC's `BORDER` command.
+
+**Address:** $2294
+
+**Purpose:** Change the border colour and update the BORDCR system variable.
+
+**Entry:**
+- A register contains colour value (0-7)
+
+**Operation:**
+1. Validates colour is in range 0-7 (ANDs with %00000111)
+2. Shifts colour left 3 bits to position for BORDCR
+3. Stores in BORDCR system variable ($5C48)
+4. Outputs to port $FE to change physical border
+
+**Code Overview:**
+```nasm
+BORDER:
+        AND $07            ; Keep colour in range 0-7
+        RLCA              ; Shift left 3 times (colour * 8)
+        RLCA
+        RLCA
+        LD HL,$5C48       ; BORDCR system variable
+        AND $38           ; Mask to border bits
+        LD (HL),A         ; Store in BORDCR
+        OUT ($FE),A       ; Output to hardware port
+        RET
+```
+
+**Why it's slower than direct assembly:**
+- Multiple shifts (could use single OUT)
+- System variable update (not needed for immediate effect)
+- ROM routine call overhead
+- BASIC interpreter overhead to get here
+
+**Your assembly version:**
+```nasm
+LD A,2
+OUT ($FE),A
+```
+
+**Speed comparison:** ROM routine ~50 T-states vs your code ~18 T-states
+
+**When called from BASIC:** Add ~20,000 T-states for interpreter overhead!
+
+---
+
+## Character Set ($3D00-$3FFF)
+
+The ROM character set contains bitmap data for all 96 characters (ASCII 32-127).
+
+**Location:** $3D00-$3FFF (768 bytes)
+
+**Format:** Each character is 8 bytes (8×8 pixel bitmap)
+
+**Character Address Formula:**
+```
+Address = $3D00 + ((character - 32) × 8)
+```
+
+**Example - Character 'A' (ASCII 65):**
+```
+Address = $3D00 + ((65 - 32) × 8) = $3D00 + (33 × 8) = $3D00 + $108 = $3E08
+```
+
+**Bitmap data for 'A' at $3E08:**
+```
+Byte  Hex   Binary      Display
++0    $00   00000000    ........
++1    $10   00010000    ...█....
++2    $28   00101000    ..█.█...
++3    $44   01000100    .█...█..
++4    $7C   01111100    .█████..
++5    $44   01000100    .█...█..
++6    $44   01000100    .█...█..
++7    $00   00000000    ........
+```
+
+**Using ROM characters in your programs:**
+```nasm
+; Copy ROM character bitmap to screen
+        LD A,'A'          ; Character to copy
+        SUB 32            ; Convert to ROM offset
+        LD L,A
+        LD H,0
+        ADD HL,HL         ; × 2
+        ADD HL,HL         ; × 4
+        ADD HL,HL         ; × 8 (each char is 8 bytes)
+        LD BC,$3D00
+        ADD HL,BC         ; HL = character bitmap address
+        ; Now copy 8 bytes from HL to screen
+```
+
+---
+
+## Print Character Routines
+
+### PRINT_A ($0010)
+
+**Purpose:** Print character in A register to current print position.
+
+**Entry:**
+- A = character code (0-255)
+
+**Exit:**
+- Character printed at current cursor position
+- Cursor advanced
+- Special characters handled (newline, etc.)
+
+**Example use:**
+```nasm
+        LD A,'H'
+        RST $10           ; Print 'H' (RST $10 = CALL $0010)
+        LD A,'I'
+        RST $10           ; Print 'I'
+```
+
+**Note:** RST instructions are 1-byte calls to ROM routines. RST $10 = CALL $0010.
+
+### Print String Example
+
+```nasm
+PrintString:
+        LD HL,Message
+PrintLoop:
+        LD A,(HL)
+        OR A              ; Check for 0 (string terminator)
+        RET Z
+        RST $10           ; Print character
+        INC HL
+        JR PrintLoop
+
+Message:
+        DEFM "HELLO",0    ; 0-terminated string
+```
+
+---
+
+## CLS - Clear Screen ($0D6B)
+
+**Purpose:** Clear the entire screen to current PAPER colour.
+
+**Entry:** None
+
+**Exit:**
+- Screen cleared (bitmap + attributes)
+- Cursor reset to top-left
+
+**Called by BASIC:** `CLS` command
+
+**Your assembly:**
+```nasm
+        CALL $0D6B        ; Clear screen
+```
+
+**Manual screen clear (faster):**
+```nasm
+; Clear screen bitmap (6144 bytes)
+        LD HL,$4000       ; Screen start
+        LD DE,$4001
+        LD BC,6143
+        LD (HL),0
+        LDIR              ; Copy 0 across entire screen
+
+; Clear attributes (768 bytes)
+        LD HL,$5800
+        LD DE,$5801
+        LD BC,767
+        LD (HL),$38       ; White INK, black PAPER
+        LDIR
+```
+
+**Manual version is ~3× faster** but uses more code space.
+
+---
+
+## BEEP - Sound Generation ($15EF)
+
+**Purpose:** Generate a beep sound of specified pitch and duration.
+
+**Entry:**
+- DE = duration (in 1/50th second units for simple beeps)
+- HL = pitch (higher values = higher pitch)
+
+**Exit:**
+- Sound played through speaker (port $FE bit 4)
+
+**BASIC equivalent:**
+```basic
+BEEP duration, pitch
+```
+
+**Assembly example:**
+```nasm
+        LD DE,50          ; 1 second duration
+        LD HL,100         ; Middle pitch
+        CALL $15EF        ; Make beep
+```
+
+**Direct speaker control (simpler beep):**
+```nasm
+; Simple 1kHz-ish beep
+BeepLoop:
+        LD A,(BORDCR)     ; Get current border
+        XOR $10           ; Toggle speaker bit (bit 4)
+        OUT ($FE),A       ; Output to port
+        LD B,100
+Delay:  DJNZ Delay        ; Short delay
+        DJNZ BeepLoop     ; Repeat
+```
+
+---
+
+## Keyboard Reading ($02BB)
+
+### KEY_SCAN - Full Keyboard Scan ($02BB)
+
+**Purpose:** Scan entire keyboard and update system variables.
+
+**Entry:** None
+
+**Exit:**
+- Carry flag set if any key pressed
+- Last key stored in LAST_K system variable ($5C08)
+
+**Direct keyboard reading (faster):**
+```nasm
+; Read QAOP keys directly
+        LD BC,$FBFE       ; Half-row $FB (Q-T)
+        IN A,(C)
+        BIT 0,A           ; Q key
+        JR Z,QPressed
+
+        LD BC,$DFFE       ; Half-row $DF (P-O)
+        IN A,(C)
+        BIT 1,A           ; O key
+        JR Z,OPressed
+```
+
+**Port $FE keyboard layout:**
+- Bits 0-4 of the result are active-low (0 = pressed)
+- Top 8 bits of BC select half-row
+- Multiple keys can be read simultaneously
+
+**Keyboard half-row map:**
+| BC High Byte | Keys |
+|--------------|------|
+| $FE | SHIFT, Z, X, C, V |
+| $FD | A, S, D, F, G |
+| $FB | Q, W, E, R, T |
+| $F7 | 1, 2, 3, 4, 5 |
+| $EF | 0, 9, 8, 7, 6 |
+| $DF | P, O, I, U, Y |
+| $BF | ENTER, L, K, J, H |
+| $7F | SPACE, SYM, M, N, B |
+
+---
+
+## System Variables ($5C00-$5CB5)
+
+Key system variables you might reference:
+
+| Address | Name | Size | Purpose |
+|---------|------|------|---------|
+| $5C00 | KSTATE | 8 | Keyboard state |
+| $5C08 | LAST_K | 1 | Last key pressed |
+| $5C3C | TV_FLAG | 1 | TV control flags |
+| $5C48 | BORDCR | 1 | Border colour (bits 3-5) |
+| $5C6C | FRAMES | 3 | Frame counter (50Hz) |
+| $5C8D | ATTR_P | 1 | Permanent attributes |
+| $5C8F | ATTR_T | 1 | Temporary attributes |
+
+**Reading frame counter:**
+```nasm
+; Get frame count (increments 50 times per second)
+        LD HL,($5C6C)     ; Read low 16 bits
+        LD A,($5C6E)      ; Read high 8 bits (if needed)
+```
+
+**Reading last key:**
+```nasm
+        LD A,($5C08)      ; LAST_K
+        CP 'A'
+        JR Z,APressed
+```
+
+---
+
+## ROM vs Direct Hardware Access
+
+**Why write your own routines instead of using ROM?**
+
+1. **Speed:** ROM routines do extra checks and system updates
+2. **Simplicity:** You often need less functionality
+3. **Predictability:** ROM routines may have side effects
+4. **Learning:** Understanding hardware is more powerful
+
+**When to use ROM routines:**
+
+- ✓ Complex operations (BEEP with precise pitch)
+- ✓ BASIC integration (printing to BASIC screen)
+- ✓ System consistency (maintaining system variables)
+- ✓ Code space is more important than speed
+
+**When to write your own:**
+
+- ✓ Speed-critical code (game loops)
+- ✓ Simple operations (border colour)
+- ✓ Full control needed (custom screen handling)
+- ✓ Game doesn't use BASIC at all
+
+---
+
+## RST Instructions - Quick ROM Calls
+
+RST instructions are 1-byte CALL instructions to fixed ROM addresses:
+
+| Instruction | Address | T-states | Common Use |
+|-------------|---------|----------|------------|
+| RST $00 | $0000 | 11 | Reset machine |
+| RST $08 | $0008 | 11 | Error handling |
+| RST $10 | $0010 | 11 | Print character (PRINT_A) |
+| RST $18 | $0018 | 11 | Get next character |
+| RST $20 | $0020 | 11 | Get next floating point |
+| RST $28 | $0028 | 11 | Calculator |
+| RST $30 | $0030 | 11 | Make BC spaces |
+| RST $38 | $0038 | 11 | Interrupt routine (IM 1) |
+
+**Example - Using RST for printing:**
+```nasm
+        LD A,'X'
+        RST $10           ; 1 byte vs CALL $0010 (3 bytes)
+```
+
+---
+
+## External References
+
+**Full ROM Disassembly:**
+- [Skoolkid ROM Disassembly](https://skoolkid.github.io/rom/) - Complete annotated listing
+- [The Complete Spectrum ROM Disassembly](http://www.matthew-wilson.net/spectrum/rom/) - Dr. Ian Logan & Dr. Frank O'Hara
+
+**ROM Routine Documentation:**
+- [World of Spectrum - ROM Routines](https://worldofspectrum.org/faq/reference/48kreference.htm)
+
+---
+
+## Notes for Assembly Programmers
+
+**Important considerations:**
+
+1. **ROM is read-only** - You cannot modify ROM routines
+2. **Interrupt mode 1** - Default interrupt vector at $0038
+3. **Stack pointer** - ROM sets SP to $5CB6 (in system variables!)
+4. **Contention** - ROM access is not contended (unlike screen RAM)
+5. **Breaking out** - BREAK key checks ROM routines, your code needs to handle it
+
+**Best practice:** Learn what ROM routines do, then write faster custom versions for your games.
+
+---
+
+*This Vault page provides practical ROM knowledge for assembly programmers. For complete ROM listings, see the external references above.*

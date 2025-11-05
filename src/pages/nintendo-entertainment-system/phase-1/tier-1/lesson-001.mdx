@@ -26,27 +26,33 @@ Every NES program starts the same way: initialize the hardware, configure the PP
 
 Type this into a file called `hello-nes.asm`:
 
-```asm
+```nasm
 ; Hello, NES World
-; Displays a solid background colour
+; Your first NES program
+;
+; This program initializes the NES and displays a solid background color.
+; It demonstrates the minimal structure needed for any NES program.
 
+; iNES Header (tells emulators about this ROM)
 .segment "HEADER"
     .byte "NES", $1A        ; iNES magic identifier
     .byte 2                  ; 2 x 16KB PRG-ROM banks
     .byte 1                  ; 1 x 8KB CHR-ROM bank
     .byte $01, $00          ; Mapper 0, vertical mirroring
 
+; PRG-ROM: Program code and data
 .segment "CODE"
 
+; Reset vector - execution starts here
 Reset:
     SEI                     ; Disable interrupts
-    CLD                     ; Clear decimal mode
+    CLD                     ; Clear decimal mode (NES 6502 has no decimal mode)
 
     ; Wait for PPU to be ready (2 vblanks)
     LDX #$00
 VBlank1:
     BIT $2002               ; Read PPUSTATUS
-    BPL VBlank1             ; Wait for bit 7
+    BPL VBlank1             ; Wait for bit 7 to be set
 
 VBlank2:
     BIT $2002
@@ -56,34 +62,49 @@ VBlank2:
     LDX #$FF
     TXS
 
-    ; Set background colour to dark blue
-    LDA #$3F                ; Palette address high byte
+    ; Initialize PPU registers
+    LDA #$00
+    STA $2000               ; PPUCTRL - disable NMI, sprites, background
+    STA $2001               ; PPUMASK - disable rendering during setup
+
+    ; Set background color to dark blue
+    LDA #$3F                ; High byte of palette address
     STA $2006               ; PPUADDR
-    LDA #$00                ; Palette address low byte
+    LDA #$00                ; Low byte of palette address
     STA $2006               ; PPUADDR
-    LDA #$02                ; Dark blue colour
-    STA $2007               ; PPUDATA
+    LDA #$02                ; Dark blue color
+    STA $2007               ; PPUDATA - write to palette
+
+    ; Reset scroll position
+    LDA #$00
+    STA $2005               ; PPUSCROLL X
+    STA $2005               ; PPUSCROLL Y (write twice)
 
     ; Enable rendering
-    LDA #%00001000          ; Enable background
+    LDA #%00001000          ; Enable background rendering
     STA $2001               ; PPUMASK
 
+    ; Main loop - just wait forever
 MainLoop:
-    JMP MainLoop            ; Loop forever
+    JMP MainLoop
 
+; NMI vector - called every frame during vblank
 NMI:
     RTI                     ; Return from interrupt
 
+; IRQ vector - not used
 IRQ:
     RTI
 
+; Interrupt vectors at end of PRG-ROM
 .segment "VECTORS"
     .word NMI               ; $FFFA: NMI vector
     .word Reset             ; $FFFC: Reset vector
     .word IRQ               ; $FFFE: IRQ vector
 
+; CHR-ROM: Graphics data (empty for now)
 .segment "CHARS"
-    .res 8192, $00          ; 8KB blank tile data
+    .res 8192, $00          ; 8KB of blank tile data
 ```
 
 **Assemble this** with ca65 and ld65 (or use the build script in the code samples directory).
@@ -96,7 +117,7 @@ The screen displays a solid dark blue background. Simple, but this proves your R
 
 ### The iNES Header
 
-```asm
+```nasm
 .segment "HEADER"
     .byte "NES", $1A        ; Magic identifier
     .byte 2                  ; PRG-ROM size
@@ -108,7 +129,7 @@ The first 16 bytes of every NES ROM tell emulators (and flash carts) how the ROM
 
 ### Reset: Where Execution Begins
 
-```asm
+```nasm
 Reset:
     SEI                     ; Disable interrupts
     CLD                     ; Clear decimal mode
@@ -118,7 +139,7 @@ When the NES powers on, the CPU reads address $FFFC (the Reset vector) to find w
 
 ### PPU Initialization
 
-```asm
+```nasm
 VBlank1:
     BIT $2002               ; Read PPUSTATUS
     BPL VBlank1             ; Loop until bit 7 set
@@ -128,9 +149,19 @@ The PPU takes about 30,000 CPU cycles to warm up after power-on. Reading $2002 (
 
 **BIT** tests bits without changing the accumulator. **BPL** branches if bit 7 is clear (positive). So this loops until VBlank occurs.
 
+After the PPU warms up, we explicitly initialize the PPU control registers:
+
+```nasm
+    LDA #$00
+    STA $2000               ; PPUCTRL - NMI off, sprites/background off
+    STA $2001               ; PPUMASK - rendering off during setup
+```
+
+**Why explicitly initialize registers?** The NES power-up state is unpredictable on real hardware. Always set $2000, $2001, and $2005 to known values. Emulators initialize cleanly, but physical consoles may have garbage in these registers. This is especially important if you want your ROM to work on flash carts or original hardware.
+
 ### Setting the Background Colour
 
-```asm
+```nasm
     LDA #$3F                ; Palette address high byte
     STA $2006               ; PPUADDR
     LDA #$00                ; Palette address low byte
@@ -143,9 +174,20 @@ The PPU has its own memory space (separate from CPU RAM). To write to it, you se
 
 **Colour $02** is one of 64 colours in the NES palette. $00 is black, $01 is dark grey, $02 is dark blue, $0D is black (duplicate), $1D is also black, $2D is black again, $3D is yet another black. The NES has some quirks.
 
+### Reset Scroll Position
+
+```nasm
+    ; Reset scroll position
+    LDA #$00
+    STA $2005               ; PPUSCROLL X = 0
+    STA $2005               ; PPUSCROLL Y = 0 (write twice)
+```
+
+Before enabling rendering, we reset the scroll position by writing to $2005 (PPUSCROLL) twice-once for X, once for Y. Like PPUADDR, PPUSCROLL requires two writes. Setting both to zero ensures the screen displays from the top-left corner of the nametable.
+
 ### Enabling Rendering
 
-```asm
+```nasm
     LDA #%00001000          ; Enable background
     STA $2001               ; PPUMASK
 ```
@@ -154,7 +196,7 @@ $2001 (PPUMASK) controls rendering. Bit 3 enables background rendering. Without 
 
 ### The Main Loop
 
-```asm
+```nasm
 MainLoop:
     JMP MainLoop            ; Loop forever
 ```
@@ -163,7 +205,7 @@ Every NES program needs an infinite loop. Without it, the CPU would execute what
 
 ### Interrupt Vectors
 
-```asm
+```nasm
 NMI:
     RTI                     ; Return from interrupt
 
@@ -179,7 +221,7 @@ The CPU expects interrupt vectors at fixed addresses: $FFFA (NMI), $FFFC (Reset)
 
 Change the colour value at this line:
 
-```asm
+```nasm
     LDA #$02                ; Try $00-$3F
 ```
 
@@ -205,6 +247,7 @@ Colours above $3F wrap around (the palette repeats every 64 entries). Some colou
 | $2000 | PPUCTRL | PPU control (NMI enable, etc) |
 | $2001 | PPUMASK | Rendering control |
 | $2002 | PPUSTATUS | PPU status (VBlank flag) |
+| $2005 | PPUSCROLL | Scroll position (write twice: x, y) |
 | $2006 | PPUADDR | PPU address (write twice: high, low) |
 | $2007 | PPUDATA | PPU data read/write |
 
@@ -214,8 +257,10 @@ Colours above $3F wrap around (the palette repeats every 64 entries). Some colou
 2. **CLD** - Clear decimal mode
 3. **Wait for two VBlanks** - Read $2002 until bit 7 set, twice
 4. **Initialize stack** - LDX #$FF, TXS
-5. **Configure PPU** - Set palette, enable rendering
-6. **Enter main loop** - JMP to itself
+5. **Initialize PPU registers - Set $2000, $2001 to $00
+6. **Configure PPU** - Set palette, enable rendering
+7. **Enable rendering** - Set $2001 bits for background/sprites
+8. **Enter main loop** - JMP to itself
 
 ## What You've Learnt
 
@@ -224,6 +269,8 @@ Colours above $3F wrap around (the palette repeats every 64 entries). Some colou
 - **PPU registers** ($2000-$2007) control graphics
 - **PPUADDR** ($2006) sets address, **PPUDATA** ($2007) reads/writes
 - **VBlank waiting** ensures PPU stability (read $2002 twice)
+- **Explicit initialization** of PPU registers prevents unpredictable behaviour
+- **PPUSCROLL** ($2005) requires two writes for X and Y position
 - **Colour $02** makes a dark blue background
 - **Main loop** prevents CPU from executing garbage
 

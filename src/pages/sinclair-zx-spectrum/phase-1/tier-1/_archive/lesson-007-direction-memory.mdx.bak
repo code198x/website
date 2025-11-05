@@ -1,0 +1,809 @@
+---
+title: "Lesson 7: Direction Memory"
+description: "Store game state in RAM - your first variables! Learn LD to/from memory and direction encoding for snake movement."
+platform: "sinclair-zx-spectrum"
+phase: 1
+tier: 1
+lesson: 7
+---
+
+# Lesson 7: Direction Memory
+
+## Variables at Last
+
+Registers are temporary. Loop through 100 iterations? Your counter vanishes. Call a subroutine? Your values get overwritten.
+
+**RAM persists.** Store a direction value at the start of your programme, it's still there at the end. That's how games remember state between frames.
+
+This lesson teaches you to use memory addresses as variables. Snake's direction (0=up, 1=right, 2=down, 3=left) becomes your first persistent game state.
+
+---
+
+## The One-Minute Tour
+
+- Define variables with EQU (labels for memory addresses)
+- Store with LD (addr),A - write A to memory
+- Load with LD A,(addr) - read memory into A
+- Direction encoding: 0=up, 1=right, 2=down, 3=left
+- Safe RAM: $5B00+ (above screen and attributes)
+- Registers are temporary, RAM persists
+- Foundation for game state management
+
+---
+
+## Why Registers Aren't Enough
+
+**Registers are workspace, not storage:**
+
+```asm
+LD A,2              ; A = 2 (direction: down)
+CALL ClearScreen    ; Calls subroutine
+; A is now garbage! ClearScreen overwrote it
+```
+
+**Every subroutine uses registers:**
+- ClearScreen needs A for zero value
+- Drawing routines need HL for addresses
+- Loops need B for counters
+
+**After any CALL, your register values are probably gone.**
+
+**Solution:** Store important values in RAM before calling subroutines.
+
+---
+
+## Memory Map Reminder
+
+**ZX Spectrum memory layout:**
+
+```
+$0000-$3FFF  ROM (16KB) - System routines, can't write here
+$4000-$57FF  Screen bitmap (6144 bytes)
+$5800-$5AFF  Attributes (768 bytes)
+$5B00-$FFFF  Free RAM - Your variables and code live here
+```
+
+**Safe for variables:** $5B00 onwards (just above attributes)
+
+**Dangerous for variables:**
+- $4000-$57FF: Overwrites screen graphics
+- $5800-$5AFF: Overwrites screen colours
+- $5C00+: BASIC system variables (if returning to BASIC)
+
+---
+
+## Defining Variables with EQU
+
+**EQU creates a label for a memory address:**
+
+```asm
+Direction:  EQU $5B00    ; Direction stored at address $5B00
+```
+
+**What this means:**
+- `Direction` is now a name for address $5B00
+- You can use `Direction` instead of writing `$5B00` everywhere
+- Makes code readable: `LD A,(Direction)` vs `LD A,($5B00)`
+- EQU doesn't allocate memory, it just creates a label
+
+**Multiple variables:**
+
+```asm
+Direction:  EQU $5B00    ; 1 byte
+SnakeX:     EQU $5B01    ; 1 byte
+SnakeY:     EQU $5B02    ; 1 byte
+Score:      EQU $5B03    ; 2 bytes (16-bit)
+```
+
+Each variable needs its own address. Don't overlap!
+
+---
+
+## Storing Values to Memory
+
+**Only A register can store directly to memory:**
+
+```asm
+LD A,2              ; A = 2
+LD ($5B00),A        ; Store A at address $5B00
+```
+
+**With labels (preferred):**
+
+```asm
+Direction:  EQU $5B00
+
+LD A,2              ; A = 2 (direction: down)
+LD (Direction),A    ; Store to Direction variable
+```
+
+**For other registers, transfer via A:**
+
+```asm
+LD A,B              ; Copy B to A
+LD (Direction),A    ; Store A to memory
+```
+
+**Common mistake:**
+
+```asm
+LD (Direction),2    ; ERROR! Can't store immediate value
+LD (Direction),B    ; ERROR! Can only use A
+```
+
+---
+
+## Loading Values from Memory
+
+**Load memory into A:**
+
+```asm
+LD A,(Direction)    ; Load Direction into A
+```
+
+**Then transfer to other registers if needed:**
+
+```asm
+LD A,(Direction)    ; Load from memory
+LD B,A              ; Copy to B
+```
+
+**The parentheses matter:**
+
+```asm
+LD A,Direction      ; WRONG: Loads address $5B00 (immediate value)
+LD A,(Direction)    ; RIGHT: Loads contents OF address $5B00
+```
+
+---
+
+## Direction Encoding
+
+**Standard snake direction values:**
+
+| Value | Direction | Movement | Keyboard |
+|-------|-----------|----------|----------|
+| 0 | Up | Decrement Y | Q |
+| 1 | Right | Increment X | P |
+| 2 | Down | Increment Y | A |
+| 3 | Left | Decrement X | O |
+
+**Why this encoding:**
+- Simple numeric values (easy to compare with CP)
+- Can use as array index later (lookup tables)
+- Natural mapping to QAOP keys
+- 0-3 fits in 2 bits (efficient)
+
+**Usage:**
+
+```asm
+LD A,(Direction)    ; Load current direction
+
+CP 0                ; Is it up?
+JR Z,MoveUp
+
+CP 1                ; Is it right?
+JR Z,MoveRight
+
+CP 2                ; Is it down?
+JR Z,MoveDown
+
+; Otherwise it's left (3)
+JP MoveLeft
+```
+
+---
+
+## Example Programme 1: Store and Display Direction
+
+Store a direction value in RAM and display a visual indicator:
+
+```asm
+; Direction Memory - Lesson 007, Example 1
+; Store direction value in RAM and display marker based on it
+
+        DEVICE ZXSPECTRUM48
+
+        ORG $8000
+
+; RAM variable definition
+Direction:  EQU $5B00          ; Memory address for direction (0-3)
+
+Start:
+        ; Store initial direction (2 = down)
+        LD A,2                 ; A = 2 (direction: down)
+        LD (Direction),A       ; Store to RAM at $5B00
+
+        ; Clear screen
+        LD HL,$4000
+        LD BC,6144
+        XOR A
+
+ClearLoop:
+        LD (HL),A
+        INC HL
+        DEC BC
+        PUSH AF
+        LD A,B
+        OR C
+        JR Z,ClearDone
+        POP AF
+        JR ClearLoop
+
+ClearDone:
+        POP AF
+
+        ; Load direction from RAM and display marker
+        LD A,(Direction)       ; Load direction from RAM
+
+        ; Test which direction
+        CP 0
+        JR Z,DrawUp
+
+        CP 1
+        JR Z,DrawRight
+
+        CP 2
+        JR Z,DrawDown
+
+        JP DrawLeft
+
+DrawUp:
+        ; Draw horizontal bar at top
+        LD HL,$4000
+        LD B,32
+        LD A,$FF
+
+DrawUpLoop:
+        LD (HL),A
+        INC HL
+        DJNZ DrawUpLoop
+        JP Freeze
+
+DrawRight:
+        ; Draw corner block at top-right
+        LD HL,$4018
+        LD D,8
+
+DrawRightRow:
+        LD B,8
+DrawRightLoop:
+        LD (HL),$FF
+        INC HL
+        DJNZ DrawRightLoop
+        LD A,L
+        ADD A,24
+        LD L,A
+        DEC D
+        JR NZ,DrawRightRow
+        JP Freeze
+
+DrawDown:
+        ; Draw horizontal bar at bottom
+        LD HL,$57E0
+        LD B,32
+
+DrawDownLoop:
+        LD A,$FF
+        LD (HL),A
+        INC HL
+        DJNZ DrawDownLoop
+        JP Freeze
+
+DrawLeft:
+        ; Draw corner block at top-left
+        LD HL,$4000
+        LD D,8
+
+DrawLeftRow:
+        LD B,8
+DrawLeftLoop:
+        LD (HL),$FF
+        INC HL
+        DJNZ DrawLeftLoop
+        LD A,L
+        ADD A,24
+        LD L,A
+        DEC D
+        JR NZ,DrawLeftRow
+        ; Fall through to Freeze
+
+Freeze:
+        JR Freeze
+
+End:
+```
+
+**To run:**
+```
+RANDOMIZE USR 32768
+```
+
+![Direction=2 shows bottom bar](/images/sinclair-zx-spectrum/phase-1/tier-1/lesson-007/example-1.png)
+
+**What happened:**
+
+1. Stored direction value 2 (down) at address $5B00
+2. Cleared screen
+3. Loaded direction back from $5B00
+4. Tested value with CP instructions
+5. Drew bottom horizontal bar (because direction=2 = down)
+6. Infinite loop keeps display visible
+
+**Key point:** Direction persists in RAM even after clearing the screen!
+
+---
+
+## Example Programme 2: Cycle Through All Directions
+
+Demonstrate RAM persistence by cycling through all 4 directions:
+
+```asm
+; Direction Memory - Lesson 007, Example 2
+; Cycle through all 4 directions with visual animation
+
+        DEVICE ZXSPECTRUM48
+
+        ORG $8000
+
+Direction:  EQU $5B00
+
+Start:
+        LD D,4                 ; D = counter (4 directions)
+        XOR A                  ; A = 0 (start with up)
+
+MainLoop:
+        ; Store current direction to RAM
+        LD (Direction),A
+        PUSH AF                ; Save on stack
+
+        ; Clear screen
+        CALL ClearScreen
+
+        ; Load direction back from RAM
+        LD A,(Direction)       ; Demonstrates RAM persistence
+
+        ; Draw marker based on direction
+        CP 0
+        CALL Z,DrawUp
+
+        CP 1
+        CALL Z,DrawRight
+
+        CP 2
+        CALL Z,DrawDown
+
+        CP 3
+        CALL Z,DrawLeft
+
+        ; Delay
+        CALL Delay
+
+        ; Next direction
+        POP AF
+        INC A
+        CP 4
+        JR NZ,NotWrapped
+        XOR A                  ; Wrap to 0
+
+NotWrapped:
+        DEC D
+        JR NZ,MainLoop
+
+        ; Freeze on final display
+Freeze:
+        JR Freeze
+
+; === Subroutines ===
+
+ClearScreen:
+        LD HL,$4000
+        LD BC,6144
+        XOR A
+
+ClearLoop:
+        LD (HL),A
+        INC HL
+        DEC BC
+        PUSH AF
+        LD A,B
+        OR C
+        JR Z,ClearDone
+        POP AF
+        JR ClearLoop
+
+ClearDone:
+        POP AF
+        RET
+
+DrawUp:
+        LD HL,$4000
+        LD B,32
+        LD A,$FF
+
+DrawUpLoop:
+        LD (HL),A
+        INC HL
+        DJNZ DrawUpLoop
+        RET
+
+DrawRight:
+        LD HL,$4018
+        LD D,8
+
+DrawRightRow:
+        LD B,8
+DrawRightLoop:
+        LD (HL),$FF
+        INC HL
+        DJNZ DrawRightLoop
+        LD A,L
+        ADD A,24
+        LD L,A
+        DEC D
+        JR NZ,DrawRightRow
+        RET
+
+DrawDown:
+        LD HL,$57E0
+        LD B,32
+
+DrawDownLoop:
+        LD A,$FF
+        LD (HL),A
+        INC HL
+        DJNZ DrawDownLoop
+        RET
+
+DrawLeft:
+        LD HL,$4000
+        LD D,8
+
+DrawLeftRow:
+        LD B,8
+DrawLeftLoop:
+        LD (HL),$FF
+        INC HL
+        DJNZ DrawLeftLoop
+        LD A,L
+        ADD A,24
+        LD L,A
+        DEC D
+        JR NZ,DrawLeftRow
+        RET
+
+Delay:
+        LD B,0
+
+DelayOuter:
+        LD C,0
+
+DelayInner:
+        DEC C
+        JR NZ,DelayInner
+        DJNZ DelayOuter
+        RET
+
+End:
+```
+
+**What's different:**
+
+1. **Loops through directions 0→1→2→3**
+2. **Stores each to RAM before clearing screen**
+3. **Loads back after clear** (proves persistence!)
+4. **Calls multiple subroutines** (ClearScreen, Draw*, Delay)
+5. **Direction survives all subroutine calls** because it's in RAM
+
+![Direction cycling animation](/images/sinclair-zx-spectrum/phase-1/tier-1/lesson-007/example-2.png)
+
+**Screenshot shows:** One frame from the animation (top-right corner block = direction 1 = right)
+
+---
+
+## Why RAM Variables Matter
+
+**Without RAM:**
+
+```asm
+LD A,2              ; Direction = down
+CALL ClearScreen    ; A gets overwritten!
+; Direction is lost
+```
+
+**With RAM:**
+
+```asm
+LD A,2
+LD (Direction),A    ; Store in RAM
+CALL ClearScreen    ; A gets overwritten
+LD A,(Direction)    ; Load back - still 2!
+; Direction survives
+```
+
+**Games need persistent state:**
+- Snake direction (this lesson)
+- Snake body positions (lesson 16-18)
+- Score (lesson 26-27)
+- Lives remaining
+- Power-up status
+- Enemy positions
+
+**All of these need RAM, not just registers.**
+
+---
+
+## The Parentheses Rule
+
+**Critical difference:**
+
+```asm
+LD A,Direction      ; Loads VALUE $5B00 into A (the address itself)
+LD A,(Direction)    ; Loads CONTENTS of $5B00 into A (the data)
+```
+
+**Example:**
+
+```asm
+Direction:  EQU $5B00
+
+LD A,2
+LD (Direction),A    ; $5B00 now contains 2
+
+LD A,Direction      ; A = $5B00 (ERROR - loads address)
+LD A,(Direction)    ; A = 2 (RIGHT - loads contents)
+```
+
+**Rule:** Parentheses mean "contents of" in Z80 assembly.
+
+---
+
+## Common Patterns
+
+**Store and forget:**
+
+```asm
+LD A,3
+LD (Direction),A    ; Store once, use many times later
+```
+
+**Load, modify, store back:**
+
+```asm
+LD A,(Direction)    ; Load current value
+INC A               ; Modify it
+CP 4                ; Check bounds
+JR NZ,NoWrap
+XOR A               ; Wrap to 0
+NoWrap:
+LD (Direction),A    ; Store new value
+```
+
+**Transfer between memory locations:**
+
+```asm
+LD A,(OldDirection) ; Load from one variable
+LD (NewDirection),A ; Store to another
+```
+
+---
+
+## Memory Safety
+
+**Safe addresses for variables:**
+
+```asm
+Variables:      EQU $5B00    ; Start of safe area
+Direction:      EQU $5B00    ; +0
+SnakeX:         EQU $5B01    ; +1
+SnakeY:         EQU $5B02    ; +2
+; ... etc
+```
+
+**How much space do you have?**
+- $5B00-$7FFF = 9,472 bytes for variables
+- $8000+ = Where your code lives (non-contended RAM)
+- Plenty of room!
+
+**Don't overlap:**
+
+```asm
+Var1:  EQU $5B00    ; OK
+Var2:  EQU $5B00    ; WRONG! Same address as Var1
+Var2:  EQU $5B01    ; OK - different address
+```
+
+---
+
+## 16-Bit Variables
+
+**You can store 16-bit values too:**
+
+```asm
+Score:  EQU $5B10           ; 2-byte variable
+
+LD HL,$1234                 ; HL = 4660
+LD (Score),HL               ; Store both bytes
+
+LD HL,(Score)               ; Load both bytes back
+```
+
+**Memory layout:**
+
+```
+$5B10: $34 (low byte)
+$5B11: $12 (high byte)
+```
+
+**Z80 is little-endian:** Low byte first, then high byte.
+
+---
+
+## Performance Notes
+
+**Memory operations are slower than registers:**
+
+```
+LD A,5          ; 7 T-states (register immediate)
+LD A,(addr)     ; 13 T-states (memory read)
+LD (addr),A     ; 13 T-states (memory write)
+```
+
+**But the trade-off is worth it:**
+- Registers: Fast but temporary
+- Memory: Slower but persistent
+
+**Best practice:** Use registers for calculations, store results in memory.
+
+```asm
+; Fast inner loop - registers only
+LD B,100
+Loop:
+    LD A,B
+    ADD A,10
+    LD C,A          ; Register to register (fast)
+    DJNZ Loop
+
+; Store final result in memory
+LD A,C
+LD (Result),A       ; Persist to RAM
+```
+
+---
+
+## Make It Your Own: Experiments
+
+**Easy modifications:**
+
+1. **Change initial direction:**
+   - Change `LD A,2` to `LD A,0` (up)
+   - Change to `LD A,3` (left)
+
+2. **More directions:**
+   - Add diagonal directions (4-7)
+   - Store in different memory addresses
+
+3. **Multiple variables:**
+   ```asm
+   Direction:  EQU $5B00
+   Speed:      EQU $5B01
+   Lives:      EQU $5B02
+   ```
+
+**Challenge:** Store TWO direction values (current and previous), compare them, and display different markers if they match.
+
+---
+
+## From the Vault: Essential Reading
+
+**[Z80 Instruction Set Reference](/vault/sinclair-zx-spectrum/z80-instruction-set)**
+- LD (nn),A instruction details
+- LD A,(nn) instruction details
+- Memory addressing modes
+
+**[ZX Spectrum Memory Map](/vault/sinclair-zx-spectrum/memory-map)**
+- Screen and attribute addresses
+- Safe RAM areas for variables
+- System variable locations
+
+---
+
+## Quick Reference: Lesson 007
+
+### Variable Definition
+
+```asm
+LabelName:  EQU $address    ; Define variable at address
+```
+
+### Store to Memory
+
+```asm
+LD A,value          ; Load value into A
+LD (address),A      ; Store A to memory
+LD (label),A        ; Store A using label
+```
+
+### Load from Memory
+
+```asm
+LD A,(address)      ; Load from memory into A
+LD A,(label)        ; Load using label
+```
+
+### Direction Encoding
+
+| Value | Direction | Visual Indicator |
+|-------|-----------|------------------|
+| 0 | Up | Top horizontal bar |
+| 1 | Right | Top-right corner block |
+| 2 | Down | Bottom horizontal bar |
+| 3 | Left | Top-left corner block |
+
+### Memory Map (Variables)
+
+| Address | Purpose | Notes |
+|---------|---------|-------|
+| $5B00+ | Variables | Safe for game state |
+| $8000+ | Code | Non-contended RAM |
+| $4000-$57FF | Screen | Don't use for variables |
+| $5800-$5AFF | Attributes | Don't use for variables |
+
+### Instructions Used
+
+| Instruction | Purpose | T-states | Bytes |
+|-------------|---------|----------|-------|
+| EQU nn | Define label | N/A | 0 |
+| LD (nn),A | Store A to memory | 13 | 3 |
+| LD A,(nn) | Load memory to A | 13 | 3 |
+| CP n | Compare A with value | 7 | 2 |
+| CALL nn | Call subroutine | 17 | 3 |
+| RET | Return from subroutine | 10 | 1 |
+
+---
+
+## What You've Learnt
+
+After completing this lesson, you can:
+
+- ✓ Define RAM variables using EQU
+- ✓ Store values to memory with LD (addr),A
+- ✓ Load values from memory with LD A,(addr)
+- ✓ Understand direction encoding (0-3)
+- ✓ Know safe memory addresses for variables ($5B00+)
+- ✓ Understand why registers aren't enough (temporary)
+- ✓ Use memory to preserve state across subroutine calls
+- ✓ Test values with CP and conditional jumps
+- ✓ Organise code with labels and subroutines
+- ✓ Build foundation for game state management
+
+**Key insight:** Registers are workspace (temporary), RAM is storage (persistent). Games need both. Fast calculations happen in registers, results get saved to RAM.
+
+**Critical understanding:** Every subroutine call can overwrite registers. If you need a value to survive, store it in RAM before calling.
+
+**Next lesson:** Making It Move - Use your direction variable to actually move a dot around the screen! Learn 16-bit arithmetic (INC HL/DEC HL) and screen address calculation. The proto-snake begins!
+
+---
+
+## Tools Used
+
+**Assembler:** sjasmplus
+```bash
+sjasmplus --raw=example-1.bin example-1.asm
+```
+
+**TAP Converter:** bin2tap.py
+```bash
+python3 bin2tap.py example-1.bin example-1.tap 0x8000
+```
+
+**Emulator:** FUSE
+```bash
+fuse --tape example-1.tap --auto-load
+```
+
+All lesson files available in: `/code-samples/sinclair-zx-spectrum/phase-1/tier-1/lesson-007/`
+
+---
+
+*Remember: Arc 2 is about movement. You've got your direction stored in RAM (lesson 7). Next you'll use that direction to move a dot (lesson 8), then read keyboard input to change direction (lesson 9), and finally put it all together with conditional movement (lesson 10). You're building snake piece by piece!*

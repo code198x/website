@@ -10,9 +10,9 @@ nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-004"
 layout: "../../../../layouts/LessonLayout.astro"
 ---
 
-The NES has 2KB of RAM—far less than modern systems, but carefully organized for efficiency. The 6502 CPU provides special addressing modes that make certain memory regions faster to access. Understanding NES memory layout and using zero page effectively is crucial for performant game code.
+Previous lessons drew graphics using immediate values—constants written directly in code. Real games need **variables**: named memory locations storing values that change during gameplay. Player coordinates, enemy health, score counters, animation frames—all require variables.
 
-Last lesson controlled the PPU. This lesson focuses on the CPU side: where to store variables, how memory is organized, what makes zero page special, and managing game state within tight constraints.
+The NES has 2KB of RAM organized for efficiency. The 6502 CPU provides special addressing modes making certain memory regions faster. This lesson explores NES memory layout, zero page advantages, and using variables to build a simple scene.
 
 ## The One-Minute Tour
 
@@ -23,12 +23,13 @@ Last lesson controlled the PPU. This lesson focuses on the CPU side: where to st
 - **General RAM** at $0300-$07FF for game state
 - **PRG-ROM** at $8000-$FFFF holds program code (read-only)
 - `.segment "ZEROPAGE"` declares variables in fast zero page memory
+- **Zero page instructions are smaller and faster** than absolute addressing
 
-## Your First Variables
+## Scene from Variables
 
 Create `variables.asm`:
 
-```asm
+```nasm
 .segment "HEADER"
     .byte "NES", $1A
     .byte 2
@@ -36,41 +37,149 @@ Create `variables.asm`:
     .byte $01, $00
 
 .segment "ZEROPAGE"
-counter: .res 1             ; Reserve 1 byte at $00
-colour:  .res 1             ; Reserve 1 byte at $01
+sky_color:    .res 1         ; Color for sky background
+ground_color: .res 1         ; Color for ground tiles
+sun_color:    .res 1         ; Color for sun tile
+horizon_row:  .res 1         ; Which row the ground starts
+sun_x:        .res 1         ; Sun X position (in tiles)
+sun_y:        .res 1         ; Sun Y position (in tiles)
+row_counter:  .res 1         ; Current row being drawn
 
 .segment "CODE"
 Reset:
     SEI
     CLD
 
-    ; PPU warmup
+    ; PPU warmup (2 VBlanks)
     BIT $2002
 :   BIT $2002
     BPL :-
 :   BIT $2002
     BPL :-
 
-    ; Initialize variables
-    LDA #$00
-    STA counter
-    LDA #$12                ; Blue
-    STA colour
+    ; Initialize stack
+    LDX #$FF
+    TXS
 
-    ; Use variable to set background
+    ; Initialize PPU
+    LDA #$00
+    STA $2000               ; PPUCTRL - disable NMI
+    STA $2001               ; PPUMASK - disable rendering
+
+    ; Initialize scene variables
+    LDA #$21                ; Light blue sky
+    STA sky_color
+    LDA #$28                ; Green ground
+    STA ground_color
+    LDA #$38                ; Yellow sun
+    STA sun_color
+    LDA #12                 ; Horizon at row 12
+    STA horizon_row
+    LDA #24                 ; Sun at column 24
+    STA sun_x
+    LDA #4                  ; Sun at row 4
+    STA sun_y
+
+    ; Set palette colors from variables
     LDA #$3F
     STA $2006
     LDA #$00
     STA $2006
-    LDA colour              ; Load from variable
+    LDA sky_color           ; Color 0: sky (background)
+    STA $2007
+    LDA ground_color        ; Color 1: ground
+    STA $2007
+    LDA sun_color           ; Color 2: sun
     STA $2007
 
+    ; Clear attribute table
+    LDA #$23
+    STA $2006
+    LDA #$C0
+    STA $2006
+    LDX #64
+    LDA #$00
+:   STA $2007
+    DEX
+    BNE :-
+
+    ; Draw sky (rows 0 to horizon_row - 1)
+    LDA #$20
+    STA $2006
+    LDA #$00
+    STA $2006
+
+    LDA #$00                ; Tile $00 for sky
+    LDX #$00
+    STX row_counter
+
+DrawSkyLoop:
+    LDY #32                 ; 32 tiles per row
+:   STA $2007
+    DEY
+    BNE :-
+
+    INC row_counter
+    LDX row_counter
+    CPX horizon_row         ; Reached horizon?
+    BNE DrawSkyLoop
+
+    ; Draw ground (rows horizon_row to 29)
+    LDA #$01                ; Tile $01 for ground
+    LDX row_counter
+
+DrawGroundLoop:
+    LDY #32                 ; 32 tiles per row
+:   STA $2007
+    DEY
+    BNE :-
+
+    INX
+    CPX #30                 ; 30 rows total
+    BNE DrawGroundLoop
+
+    ; Draw sun at (sun_x, sun_y)
+    ; Address = $2000 + (sun_y * 32) + sun_x
+    LDA sun_y
+    ASL                     ; Multiply by 32
+    ASL
+    ASL
+    ASL
+    ASL
+    CLC
+    ADC sun_x               ; Add X offset
+    TAY                     ; Save low byte in Y
+
+    ; Calculate high byte
+    LDA #$20
+    LDX sun_y
+    CPX #8
+    BCC :+
+    LDA #$21
+:   CPX #16
+    BCC :+
+    LDA #$22
+:   CPX #24
+    BCC :+
+    LDA #$23
+:
+    ; Set address and draw sun
+    STA $2006
+    TYA
+    STA $2006
+    LDA #$02                ; Tile $02 (sun)
+    STA $2007
+
+    ; Reset scroll
+    LDA #$00
+    STA $2005
+    STA $2005
+
     ; Enable rendering
-    LDA #%00001000
+    LDA #%00001010          ; Enable background + leftmost 8 pixels
     STA $2001
 
 Forever:
-    INC counter             ; Increment each loop
     JMP Forever
 
 NMI:
@@ -85,18 +194,138 @@ IRQ:
     .word IRQ
 
 .segment "CHARS"
-    .res 8192, $00
+    ; Tile $00: Blank (shows background color)
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+
+    ; Tile $01: Solid color 1 (ground)
+    .byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+
+    ; Tile $02: Solid color 2 (sun)
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+
+    .res 8192 - 48, $00
 ```
 
-**Assemble and run**—displays blue screen like before, but now using variables!
+**Assemble and run** to see a simple scene: blue sky, green ground, yellow sun.
+
+![Sky and ground scene](/images/nintendo-entertainment-system/phase-1/tier-1/lesson-003/scene.png)
 
 ## How This Works
 
-### 6502 CPU Architecture
+### Declaring Zero Page Variables
+
+```nasm
+.segment "ZEROPAGE"
+sky_color:    .res 1         ; Color for sky background
+ground_color: .res 1         ; Color for ground tiles
+sun_color:    .res 1         ; Color for sun tile
+horizon_row:  .res 1         ; Which row the ground starts
+sun_x:        .res 1         ; Sun X position (in tiles)
+sun_y:        .res 1         ; Sun Y position (in tiles)
+row_counter:  .res 1         ; Current row being drawn
+```
+
+The `.segment "ZEROPAGE"` directive tells ca65 to allocate these variables in zero page ($00-$FF). `.res 1` reserves 1 byte without initializing it. The assembler assigns sequential addresses starting from $00:
+
+- `sky_color` → $00
+- `ground_color` → $01
+- `sun_color` → $02
+- `horizon_row` → $03
+- `sun_x` → $04
+- `sun_y` → $05
+- `row_counter` → $06
+
+You reference them by name. The assembler translates to zero page addresses automatically.
+
+### Initializing Variables
+
+Variables contain random values at power-on. Always initialize before use:
+
+```nasm
+LDA #$21                ; Light blue
+STA sky_color
+LDA #$28                ; Green
+STA ground_color
+LDA #$38                ; Yellow
+STA sun_color
+LDA #12                 ; Horizon at row 12
+STA horizon_row
+```
+
+**Never assume zero.** Real hardware and flash carts power on with random RAM contents.
+
+### Using Variables
+
+Once initialized, load values from variables and use them:
+
+```nasm
+; Set palette from variables
+LDA sky_color           ; Load from variable
+STA $2007               ; Write to PPU
+LDA ground_color
+STA $2007
+LDA sun_color
+STA $2007
+```
+
+Compare this to immediate values:
+
+```nasm
+; Without variables
+LDA #$21
+STA $2007
+LDA #$28
+STA $2007
+LDA #$38
+STA $2007
+```
+
+Variables make code readable and flexible. Change one initialization value, and the entire scene changes.
+
+### Variables in Control Flow
+
+The `horizon_row` variable controls where sky ends and ground begins:
+
+```nasm
+DrawSkyLoop:
+    LDY #32                 ; 32 tiles per row
+:   STA $2007
+    DEY
+    BNE :-
+
+    INC row_counter
+    LDX row_counter
+    CPX horizon_row         ; Compare against variable
+    BNE DrawSkyLoop
+```
+
+Loop continues until `row_counter` reaches `horizon_row`. Changing `horizon_row` from 12 to 15 moves the horizon down three rows—no code changes required.
+
+### Coordinate Variables
+
+The sun position uses `sun_x` and `sun_y` to calculate nametable address:
+
+```nasm
+LDA sun_y
+ASL                     ; Multiply by 32
+ASL
+ASL
+ASL
+ASL
+CLC
+ADC sun_x               ; Add X coordinate
+```
+
+Address = $2000 + (sun_y × 32) + sun_x. Variables make positioning flexible—modify initialization values to move the sun anywhere on screen.
+
+## 6502 CPU Architecture
 
 The 6502 is an 8-bit processor with minimal internal state:
 
-**Accumulator (A):** Primary register for arithmetic, logic, memory operations. Most instructions involve A.
+**Accumulator (A):** Primary register for arithmetic, logic, and memory operations. Most instructions involve A.
 
 **Index Register X:** Counter, array index, offset calculations.
 
@@ -108,9 +337,22 @@ The 6502 is an 8-bit processor with minimal internal state:
 
 **Status Register (P):** Flags: Negative, oVerflow, Break, Decimal, Interrupt, Zero, Carry.
 
-That's it. No caches, no floating point, no multiplication/division, no registers for general data storage. **Everything uses RAM.**
+That's it. No caches, no floating point, no multiplication/division hardware, no registers for general data storage. **Everything uses RAM.**
 
-### NES Memory Map
+### Why This Matters
+
+With only three registers (A, X, Y) for calculations, the 6502 constantly loads from and stores to memory. A typical operation:
+
+```nasm
+LDA playerX             ; Load from memory
+CLC
+ADC playerVelocity      ; Add from memory
+STA playerX             ; Store back to memory
+```
+
+Every instruction accessing memory costs cycles. **Fast memory access is critical.**
+
+## NES Memory Map
 
 The 6502 can address 64KB ($0000-$FFFF). The NES organizes this space:
 
@@ -127,9 +369,6 @@ $2000-$2007: PPU Registers
 $2008-$3FFF: Mirrors of $2000-$2007
 
 $4000-$4017: APU and I/O Registers
-$4018-$401F: APU and I/O (disabled)
-
-$4020-$5FFF: Cartridge Expansion ROM
 
 $6000-$7FFF: Cartridge SRAM (battery-backed save RAM)
 
@@ -138,209 +377,188 @@ $8000-$FFFF: PRG-ROM (program code from cartridge)
   $C000-$FFFF: Second 16KB bank (contains vectors)
 ```
 
-**Key insight:** Only $0000-$07FF is RAM you can write to. Everything else is read-only ROM, hardware registers, or mirrors.
+**Key insight:** Only $0000-$07FF is writable RAM. Everything else is read-only ROM, hardware registers, or mirrors.
 
-### Why Zero Page is Special
+### RAM Regions Explained
 
-The 6502 has two main addressing modes for memory:
+**Zero Page ($0000-$00FF):** 256 bytes of fastest RAM. Special addressing modes make access 25% faster than general RAM. Use for frequently accessed variables.
 
-**Absolute addressing:** 3-byte instruction specifying full 16-bit address.
-```asm
-LDA $0300               ; 4 cycles
+**Stack ($0100-$01FF):** 256 bytes for subroutine calls (JSR/RTS) and temporary storage (PHA/PLA). Grows downward.
+
+**OAM Buffer ($0200-$02FF):** 256 bytes conventionally used for sprite data. Not hardware-enforced, but every NES library uses this location. Reserve it.
+
+**General RAM ($0300-$07FF):** 1280 bytes for game state, level data, buffers, arrays. Slower than zero page but plenty of space.
+
+**Mirrors ($0800-$1FFF):** Hardware repeats $0000-$07FF four times. Ignore these—use original addresses.
+
+## Why Zero Page is Special
+
+The 6502 has different addressing modes for memory access:
+
+**Absolute addressing:** 3-byte instruction with full 16-bit address.
+```nasm
+LDA $0300               ; 4 cycles, 3 bytes
 ```
 
-**Zero page addressing:** 2-byte instruction with 8-bit address (implies $00XX).
-```asm
-LDA $00                 ; 3 cycles
+**Zero page addressing:** 2-byte instruction with 8-bit address (assumes $00XX).
+```nasm
+LDA $00                 ; 3 cycles, 2 bytes
 ```
 
-Zero page instructions are **smaller** (save 1 byte) and **faster** (save 1 cycle). With a 1.79 MHz CPU, every cycle matters. Zero page access happens 25% faster than absolute addressing.
+Zero page instructions are **1 byte smaller** and **1 cycle faster** than absolute addressing.
 
-**Real impact:** In a game loop running 60 times per second, accessing player X/Y position from zero page instead of general RAM saves thousands of cycles per frame. That's time for more enemies, better AI, smoother animation.
+### The Real-World Impact
 
-### Declaring Zero Page Variables
+Consider a game loop that runs 60 times per second, reading player X/Y coordinates 10 times per frame:
 
-The `.segment "ZEROPAGE"` directive tells ca65 to allocate these variables in zero page:
+**Using absolute addressing:**
+- 10 reads × 4 cycles = 40 cycles per frame
+- 40 cycles × 60 frames = 2,400 cycles per second wasted
 
-```asm
-.segment "ZEROPAGE"
-counter: .res 1             ; Reserve 1 byte
-colour:  .res 1             ; Reserve 1 byte
-playerX: .res 1
-playerY: .res 1
-enemyX:  .res 1
-enemyY:  .res 1
+**Using zero page:**
+- 10 reads × 3 cycles = 30 cycles per frame
+- 30 cycles × 60 frames = 1,800 cycles per second
+- **Savings: 600 cycles per second**
+
+That's time for additional enemies, smoother animation, more complex AI. In a 1.79 MHz system where every cycle counts, zero page makes the difference between possible and impossible.
+
+### Choosing What Goes in Zero Page
+
+**Good candidates for zero page:**
+- Player coordinates (X, Y, velocity)
+- Current frame counter
+- Controller input state
+- Temporary calculation variables
+- Loop counters used frequently
+
+**Not worth zero page:**
+- Level data arrays (too large)
+- Infrequently accessed configuration
+- One-time initialization values
+
+Rule of thumb: if accessed in an inner loop or multiple times per frame, use zero page.
+
+## Memory-Mapped Hardware
+
+Addresses $2000-$2007 (PPU) and $4000-$4017 (APU/IO) aren't RAM—they're hardware registers. Writing to them controls hardware; reading reports hardware state.
+
+```nasm
+STA $2006               ; Write to PPU address register
+LDA $2002               ; Read PPU status (VBlank flag)
 ```
 
-`.res N` reserves N bytes without initializing them. The assembler assigns sequential zero page addresses starting from $00. `counter` gets $00, `colour` gets $01, etc.
+This is **memory-mapped I/O**. The 6502 has no special I/O instructions—everything uses LDA/STA. Hardware appears as memory locations.
 
-**Access them by name:**
+**Important:** Reading from some hardware registers has side effects. Reading $2002 clears the VBlank flag. Reading $2007 increments the PPU address pointer. Always check documentation before reading hardware registers.
 
-```asm
-LDA counter             ; Load from $00
-INC counter             ; Increment $00
-LDA colour
-STA $2007               ; Use colour value in PPU write
-```
+## The Stack
 
-The assembler translates `counter` to `$00` automatically. You write readable code; the assembler generates efficient zero page instructions.
+The stack at $0100-$01FF handles subroutine calls and temporary storage:
 
-### Initializing Variables
-
-Variables in zero page contain random values at power-on. Initialize them in Reset before use:
-
-```asm
-Reset:
-    ; ... PPU warmup ...
-
-    LDA #$00
-    STA counter             ; counter = 0
-    LDA #$12
-    STA colour              ; colour = $12 (blue)
-```
-
-**Don't assume zero.** Real hardware, flash carts, and some emulators power on with random RAM contents. Always initialize.
-
-### The Stack
-
-The stack at $0100-$01FF handles subroutine calls, interrupts, and temporary storage:
-
-```asm
+```nasm
 JSR Subroutine          ; Push return address to stack, jump
-; ...
+; ... subroutine code ...
 RTS                     ; Pull return address, return
 ```
 
-**Push/pull manually:**
+**Manual stack operations:**
 
-```asm
+```nasm
 PHA                     ; Push A to stack
 TXA
-PHA                     ; Push X (via A)
+PHA                     ; Push X (via A, since no PHX instruction)
 ; ... do work ...
 PLA
-TAX                     ; Pull X
-PLA                     ; Pull A
+TAX                     ; Restore X
+PLA                     ; Restore A
 ```
 
-The stack grows downward. Each push decrements SP; each pull increments SP. Stack overflow (too many pushes) wraps to $01FF and corrupts RAM. **Avoid deep recursion** and balance pushes with pulls.
+The stack grows downward. Each push decrements SP; each pull increments SP. Stack overflow (too many pushes without corresponding pulls) wraps to $01FF and corrupts RAM.
 
-### OAM Buffer
+**Avoid deep recursion.** Balance pushes with pulls. The 6502 has no stack overflow detection—corruption happens silently.
 
-$0200-$02FF is conventionally reserved for the OAM (Object Attribute Memory) buffer—sprite data copied to the PPU via DMA. This is **convention**, not hardware requirement, but every NES tutorial and library uses this location.
+## Experiment: Different Horizons
 
-```asm
-; Sprite 0 at $0200-$0203
-LDA #$80
-STA $0200               ; Y position
-LDA #$00
-STA $0201               ; Tile index
-LDA #$00
-STA $0202               ; Attributes
-LDA #$80
-STA $0203               ; X position
+Modify the horizon position by changing one value:
+
+```nasm
+LDA #8                  ; Higher horizon (more ground)
+STA horizon_row
 ```
 
-Later lessons cover sprites. For now, know that $0200-$02FF is reserved—don't use it for general variables.
+Or:
 
-### General Purpose RAM
-
-$0300-$07FF (1280 bytes) stores game state: levels, enemy data, buffers, temporary calculations.
-
-```asm
-.segment "BSS"
-levelData: .res 256     ; 256 bytes for level tiles
-enemyList: .res 128     ; 16 enemies × 8 bytes each
-scoreBuffer: .res 16    ; Score display buffer
+```nasm
+LDA #20                 ; Lower horizon (more sky)
+STA horizon_row
 ```
 
-`.segment "BSS"` places variables outside zero page. Slower access (4 cycles instead of 3) but plenty of space for large arrays and buffers.
+The same code draws different scenes. Variables separate **what** to draw from **how** to draw it.
 
-**When to use BSS vs ZEROPAGE:**
+## Experiment: Move the Sun
 
-- **Zero page:** Frequently accessed variables (player position, frame counter, temporary calculations)
-- **BSS:** Large arrays, level data, infrequently accessed state
+Change sun position:
 
-### PRG-ROM
-
-$8000-$FFFF contains your program code. On NROM (mapper 0), this is 32KB of read-only cartridge ROM. Code, lookup tables, graphics data, text—all live here.
-
-```asm
-.segment "CODE"
-Reset:
-    ; Code here is at $8000+ in ROM
+```nasm
+LDA #4                  ; Left side
+STA sun_x
+LDA #8                  ; Lower in sky
+STA sun_y
 ```
 
-You can read from ROM but not write to it. Constants and lookup tables:
+Or place it near the horizon:
 
-```asm
-.segment "RODATA"
-ColourTable:
-    .byte $0F, $12, $16, $27, $29, $1A, $21, $30
+```nasm
+LDA #16                 ; Center
+STA sun_x
+LDA #11                 ; Just above horizon (if horizon_row = 12)
+STA sun_y
 ```
 
-```asm
-LDX #$03
-LDA ColourTable,X       ; Load 4th colour from table
+## Experiment: Night Scene
+
+Change colors for a night scene:
+
+```nasm
+LDA #$0F                ; Black sky
+STA sky_color
+LDA #$17                ; Brown ground
+STA ground_color
+LDA #$30                ; White moon
+STA sun_color
 ```
 
-### Memory Access Patterns
-
-**Fastest to slowest:**
-
-1. **Immediate:** `LDA #$12` (2 cycles) - loads constant
-2. **Zero page:** `LDA $00` (3 cycles) - loads from $00-$FF
-3. **Absolute:** `LDA $0300` (4 cycles) - loads from any address
-4. **Indexed:** `LDA $0300,X` (4-5 cycles) - loads from address + X
-
-Choose zero page for variables accessed in inner loops. Use absolute addressing for less critical data.
+Same code, different scene. Variables make games configurable and dynamic.
 
 ## The INC Instruction
 
-```asm
-Forever:
-    INC counter
-    JMP Forever
+```nasm
+INC row_counter
 ```
 
-`INC` increments a memory location directly—no need to load into A, increment, and store back:
+`INC` increments a memory location directly—no need to load into A, add one, and store back:
 
-```asm
-; Slow way
-LDA counter
+```nasm
+; Slow way (5 instructions, 11 cycles)
+LDA row_counter
 CLC
 ADC #$01
-STA counter
+STA row_counter
 
-; Fast way
-INC counter
+; Fast way (1 instruction, 5 cycles)
+INC row_counter
 ```
 
-**INC** modifies memory in place (5 cycles for zero page). Supports zero page and absolute addressing, not immediate (can't `INC #$12`—that doesn't make sense).
-
-**Variants:**
+**INC** modifies memory in place. Works with zero page and absolute addressing. The 6502 also provides:
 
 - `INC addr` - increment memory
-- `INX` - increment X register
-- `INY` - increment Y register
+- `INX` - increment X register (2 cycles)
+- `INY` - increment Y register (2 cycles)
 - `DEC addr` - decrement memory
 - `DEX` - decrement X register
 - `DEY` - decrement Y register
 
-## Memory-Mapped Hardware
-
-Addresses $2000-$2007 (PPU) and $4000-$4017 (APU/IO) aren't RAM—they're hardware registers. Writing to them controls hardware; reading from them reports hardware state.
-
-**Example: PPU registers**
-
-```asm
-STA $2006               ; Write to PPU address register (hardware)
-LDA $2002               ; Read PPU status (hardware reports VBlank flag)
-```
-
-This is called **memory-mapped I/O**. The 6502 has no special I/O instructions—everything uses LDA/STA. Hardware appears as memory locations.
-
-**RAM mirrors:** $0800-$1FFF mirrors $0000-$07FF. Writing to $0800 is the same as writing to $0000. This exists because the NES only decodes 11 address bits for RAM, so the high bits are ignored. **Use $0000-$07FF**—mirrors waste address space and confuse debugging.
+Use register increments (INX/INY) when possible—they're faster than memory increments.
 
 ## From the Vault
 
@@ -353,30 +571,30 @@ This is called **memory-mapped I/O**. The 6502 has no special I/O instructions�
 
 ### Memory Map
 
-| Address Range | Purpose | Access |
-|---------------|---------|--------|
-| $0000-$00FF | Zero page | Fast RAM (3 cycles) |
-| $0100-$01FF | Stack | RAM |
-| $0200-$02FF | OAM buffer | RAM (conventional) |
-| $0300-$07FF | General RAM | Slower RAM (4 cycles) |
+| Address Range | Purpose | Access Speed |
+|---------------|---------|--------------|
+| $0000-$00FF | Zero page | Fast (3 cycles) |
+| $0100-$01FF | Stack | Normal (4 cycles) |
+| $0200-$02FF | OAM buffer | Normal (conventional) |
+| $0300-$07FF | General RAM | Normal (4 cycles) |
 | $2000-$2007 | PPU registers | Hardware |
 | $4000-$4017 | APU/IO registers | Hardware |
 | $8000-$FFFF | PRG-ROM | Read-only code |
 
 ### 6502 Registers
 
-| Register | Purpose |
-|----------|---------|
-| A | Accumulator (arithmetic/logic) |
-| X | Index register |
-| Y | Index register |
-| SP | Stack pointer ($0100-$01FF) |
-| PC | Program counter |
-| P | Status flags (NVBDIZC) |
+| Register | Purpose | Size |
+|----------|---------|------|
+| A | Accumulator (arithmetic/logic) | 8-bit |
+| X | Index register | 8-bit |
+| Y | Index register | 8-bit |
+| SP | Stack pointer ($0100-$01FF) | 8-bit |
+| PC | Program counter | 16-bit |
+| P | Status flags (NVBDIZC) | 8-bit |
 
 ### Variable Declaration
 
-```asm
+```nasm
 .segment "ZEROPAGE"
 varName: .res 1             ; 1 byte in zero page
 
@@ -389,25 +607,29 @@ tableData: .byte 1,2,3,4    ; Read-only data in ROM
 
 ### Memory Instructions
 
-| Instruction | Example | Cycles | Purpose |
-|-------------|---------|--------|---------|
+| Instruction | Example | Cycles (ZP/Abs) | Purpose |
+|-------------|---------|-----------------|---------|
 | LDA | `LDA #$12` | 2 | Load A (immediate) |
 | LDA | `LDA $00` | 3 | Load A (zero page) |
 | LDA | `LDA $0300` | 4 | Load A (absolute) |
 | STA | `STA $00` | 3 | Store A (zero page) |
-| INC | `INC $00` | 5 | Increment memory |
-| DEC | `DEC $00` | 5 | Decrement memory |
+| STA | `STA $0300` | 4 | Store A (absolute) |
+| INC | `INC $00` | 5 | Increment memory (ZP) |
+| INC | `INC $0300` | 6 | Increment memory (abs) |
+| INX | `INX` | 2 | Increment X register |
+| INY | `INY` | 2 | Increment Y register |
 
 ## What You've Learnt
 
-- **6502 CPU architecture**—A, X, Y registers, minimal internal state
+- **6502 CPU architecture**—A, X, Y registers with minimal internal state
 - **NES memory map**—2KB RAM organized into zero page, stack, OAM, general
-- **Zero page advantages**—faster access (3 vs 4 cycles), smaller code
+- **Zero page advantages**—faster access (3 vs 4 cycles), smaller instructions
 - **Variable declaration**—`.segment "ZEROPAGE"` and `.res` directives
+- **Variable initialization**—always set values before use (RAM is random at power-on)
+- **Variables in control flow**—comparing against variables to make decisions
 - **Memory-mapped I/O**—hardware registers appear as memory addresses
 - **Stack usage**—$0100-$01FF for subroutines and temporary storage
-- **OAM buffer convention**—$0200-$02FF reserved for sprite data
-- **PRG-ROM**—$8000-$FFFF holds read-only code and data
 - **INC instruction**—increment memory directly without loading to A
+- **Scene flexibility**—variables separate configuration from logic
 
 Next lesson: VBlank timing and the NMI interrupt—the foundation of 60fps gameplay. You'll learn how to synchronize graphics updates with the display refresh and structure a proper game loop.

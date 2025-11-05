@@ -12,7 +12,7 @@ layout: "../../../../layouts/LessonLayout.astro"
 
 Every NES game runs at 60 frames per second, synchronized to the television's refresh rate. The NMI (Non-Maskable Interrupt) is the hardware mechanism that makes this possible. Understanding VBlank timing and NMI handling is fundamental to NES programming—this is how games coordinate gameplay with graphics updates.
 
-Previous lessons configured the PPU and organized memory. This lesson introduces the game loop architecture that every NES game uses: main code runs game logic, NMI handler updates graphics, and a flag variable synchronizes them at 60fps.
+Previous lessons configured the PPU and organized memory. This lesson introduces the game loop architecture that every NES game uses: main code runs game logic, NMI handler updates graphics, and hardware automatically synchronizes them at 60fps.
 
 ## The One-Minute Tour
 
@@ -23,12 +23,13 @@ Previous lessons configured the PPU and organized memory. This lesson introduces
 - **Game loop pattern**—main code waits for flag, NMI sets flag
 - **Separation of concerns**—gameplay in MainLoop, graphics in NMI
 - **$2000 bit 7**—enables/disables NMI generation
+- **Visual proof**—smooth animation demonstrates 60fps timing
 
-## Your First NMI Handler
+## Breathing Animation
 
 Create `nmi-handler.asm`:
 
-```asm
+```nasm
 .segment "HEADER"
     .byte "NES", $1A
     .byte 2
@@ -36,7 +37,9 @@ Create `nmi-handler.asm`:
     .byte $01, $00
 
 .segment "ZEROPAGE"
-nmi_ready: .res 1           ; Synchronization flag
+nmi_ready: .res 1           ; Flag: 1 = NMI occurred
+colour: .res 1              ; Current background colour
+direction: .res 1           ; 0 = getting brighter, 1 = darker
 
 .segment "CODE"
 Reset:
@@ -54,33 +57,65 @@ Reset:
     LDX #$FF
     TXS
 
-    ; Set background colour
+    ; Initialize variables
+    LDA #$12                ; Start with blue
+    STA colour
+    LDA #$00                ; Start getting brighter
+    STA direction
+
+    ; Set initial background colour
     LDA #$3F
     STA $2006
     LDA #$00
     STA $2006
-    LDA #$12                ; Blue
+    LDA colour
     STA $2007
+
+    ; Fill nametable with tile $00
+    LDA #$20
+    STA $2006
+    LDA #$00
+    STA $2006
+
+    LDA #$00                ; Tile $00 (blank)
+    LDX #4
+    LDY #$00
+:   STA $2007
+    INY
+    BNE :-
+    DEX
+    BNE :--
+
+    ; Clear attribute table
+    LDA #$23
+    STA $2006
+    LDA #$C0
+    STA $2006
+    LDX #64
+    LDA #$00
+:   STA $2007
+    DEX
+    BNE :-
 
     ; Enable NMI
     LDA #%10000000          ; Bit 7 = NMI enable
     STA $2000
 
     ; Enable rendering
-    LDA #%00001000
+    LDA #%00001010          ; Enable background + leftmost 8 pixels
     STA $2001
 
 MainLoop:
-    ; Wait for NMI
+    ; Wait for NMI to set flag
 :   LDA nmi_ready
-    BEQ :-                  ; Loop while flag is 0
+    BEQ :-                  ; Loop until flag is 1
 
-    ; Reset flag
+    ; NMI occurred - reset flag
     LDA #$00
     STA nmi_ready
 
     ; Game logic here
-    ; (runs once per frame)
+    ; (runs once per frame, synchronized to 60fps)
 
     JMP MainLoop
 
@@ -92,8 +127,36 @@ NMI:
     TYA
     PHA
 
-    ; Graphics updates here
-    ; (safe during VBlank)
+    ; Pulsing colour animation (breathing effect)
+    ; Oscillates between $12 (dark blue) and $22 (light blue)
+    LDA direction
+    BEQ Brighten
+
+Darken:
+    DEC colour
+    LDA colour
+    CMP #$12                ; Reached dark blue?
+    BNE UpdateColour
+    LDA #$00                ; Switch to brightening
+    STA direction
+    JMP UpdateColour
+
+Brighten:
+    INC colour
+    LDA colour
+    CMP #$22                ; Reached light blue?
+    BNE UpdateColour
+    LDA #$01                ; Switch to darkening
+    STA direction
+
+UpdateColour:
+    ; Write new colour to PPU
+    LDA #$3F
+    STA $2006
+    LDA #$00
+    STA $2006
+    LDA colour
+    STA $2007
 
     ; Set ready flag
     LDA #$01
@@ -116,10 +179,18 @@ IRQ:
     .word IRQ
 
 .segment "CHARS"
-    .res 8192, $00
+    ; Tile $00: Blank (shows background color)
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+
+    .res 8192 - 16, $00
 ```
 
-**Assemble and run**—the program runs with proper 60fps timing!
+**Assemble and run**—the screen pulses between dark and light blue at 60fps!
+
+![Breathing animation](/images/nintendo-entertainment-system/phase-1/tier-1/lesson-004/breathing.png)
+
+This smooth "breathing" effect is **visual proof** that NMI is working correctly. The color changes 60 times per second, creating seamless animation. If NMI wasn't firing, the screen would be static. If register preservation was wrong, the code would crash.
 
 ## How This Works
 
@@ -158,7 +229,7 @@ This happens **automatically**—no polling, no checking. The hardware guarantee
 
 Register $2000 (PPUCTRL) controls PPU behaviour. Bit 7 enables NMI:
 
-```asm
+```nasm
 LDA #%10000000          ; Bit 7 = 1, others = 0
 STA $2000               ; Enable NMI
 ```
@@ -180,7 +251,7 @@ Value `%10000000` enables NMI (bit 7), uses first nametable (bits 1-0 = 00), and
 
 NMI can interrupt main code between **any two instructions**. If A contains player X position and NMI changes A, the main code sees corrupted data. **Must save registers:**
 
-```asm
+```nasm
 NMI:
     PHA                 ; Push A to stack
     TXA                 ; Transfer X to A
@@ -223,7 +294,7 @@ Classic NES architecture separates concerns:
 
 **Synchronization:**
 
-```asm
+```nasm
 ; Main code
 MainLoop:
 :   LDA nmi_ready
@@ -245,6 +316,36 @@ NMI:
 
 Main code waits for flag. NMI sets flag and updates graphics. Main code sees flag, resets it, does game logic, waits again. Perfect 60fps synchronization.
 
+### The Breathing Effect
+
+The animation increments `colour` from $12 (dark blue) to $22 (light blue), then decrements back down:
+
+```nasm
+Brighten:
+    INC colour
+    LDA colour
+    CMP #$22                ; Reached light blue?
+    BNE UpdateColour
+    LDA #$01                ; Switch to darkening
+    STA direction
+
+Darken:
+    DEC colour
+    LDA colour
+    CMP #$12                ; Reached dark blue?
+    BNE UpdateColour
+    LDA #$00                ; Switch to brightening
+    STA direction
+```
+
+The `direction` variable tracks whether we're brightening (0) or darkening (1). When `colour` reaches $22, we switch to darkening. When it reaches $12, we switch back to brightening.
+
+**Why this demonstrates NMI:**
+- **60fps smoothness**: Each frame increments/decrements by 1, creating smooth animation
+- **Proof it works**: Visual feedback confirms NMI fires every frame
+- **Register safety**: If we didn't preserve registers, this would crash
+- **Timing discipline**: Graphics update during VBlank, not during active display
+
 ### Why Separate Game Logic and Graphics?
 
 **VBlank is short:** Only ~2273 cycles. Updating all sprites takes ~513 cycles (OAM DMA). Palette changes take ~50 cycles. Little time left for game logic.
@@ -257,13 +358,13 @@ Main code waits for flag. NMI sets flag and updates graphics. Main code sees fla
 
 ## Colour Cycling Example
 
-Extend the pattern to change background colour each frame:
+Extend the pattern to cycle through multiple colours. Create `colour-cycle.asm`:
 
-```asm
+```nasm
 .segment "ZEROPAGE"
 nmi_ready: .res 1
-frame_count: .res 1
-colour_index: .res 1
+frame_count: .res 1         ; Frame counter (0-255)
+colour_index: .res 1        ; Current colour (0-7)
 
 .segment "CODE"
 Reset:
@@ -286,7 +387,7 @@ MainLoop:
     CMP #15
     BNE MainLoop
 
-    ; 15 frames passed
+    ; 15 frames passed - change colour
     LDA #$00
     STA frame_count
     INC colour_index
@@ -307,12 +408,13 @@ NMI:
     PHA
 
     ; Update background colour
-    BIT $2002               ; Reset address latch
+    BIT $2002               ; Reset PPU address latch
     LDA #$3F
     STA $2006
     LDA #$00
     STA $2006
 
+    ; Load colour from table
     LDX colour_index
     LDA ColourTable,X
     STA $2007
@@ -336,13 +438,15 @@ ColourTable:
 
 **Run this**—background cycles through 8 colours, changing every 15 frames (every 0.25 seconds).
 
+![Colour cycling](/images/nintendo-entertainment-system/phase-1/tier-1/lesson-004/colour-cycle.png)
+
 Main loop increments `frame_count` each frame. At 15 frames, it increments `colour_index` and resets counter. NMI reads `colour_index` and loads the corresponding colour from a lookup table.
 
 **Frame counter pattern:** Essential for timing in games. Count frames to delay events, trigger animations, control speed. 60 frames = 1 second. 15 frames = 0.25 seconds.
 
 ## Stack Initialization
 
-```asm
+```nasm
 LDX #$FF
 TXS                     ; Transfer X to SP (Stack Pointer)
 ```
@@ -355,7 +459,7 @@ The stack pointer (SP) starts at an undefined value after reset. Initialize it t
 
 ## Reading $2002 in NMI
 
-```asm
+```nasm
 NMI:
     ; ... save registers ...
     BIT $2002               ; Reset address latch
@@ -369,7 +473,7 @@ Reading $2002 has side effects:
 
 **Address latch reset:** $2006 requires two writes (high byte, low byte). Internal flip-flop tracks which write is next. If main code was interrupted mid-write, the flip-flop is in the wrong state. Reading $2002 resets it to "expecting high byte."
 
-**Best practice:** Start every PPU address setup with `BIT $2002`.
+**Best practice:** Start every PPU address setup with `BIT $2002` (or `LDA $2002` if you need the value).
 
 ## Timing Budget
 
@@ -417,6 +521,39 @@ Plenty of headroom for typical games. Large updates (loading new screens) disabl
 
 6. **Mind the budget:** VBlank is finite. Profile your code. Defer heavy updates.
 
+## Experiment: Faster Breathing
+
+Change the breathing speed by modifying the color range:
+
+```nasm
+; Faster (smaller range)
+CMP #$1A                ; Only 8 steps instead of 16
+```
+
+Or add a frame counter to slow it down:
+
+```nasm
+; Slower (skip frames)
+INC frame_count
+LDA frame_count
+AND #$03                ; Only change every 4 frames
+BNE SkipUpdate
+; ... colour update here ...
+SkipUpdate:
+```
+
+## Experiment: Different Colors
+
+Change the color range:
+
+```nasm
+LDA #$27                ; Start with orange
+; ...
+CMP #$2A                ; End with light green
+```
+
+Try different NES color values to create different moods.
+
 ## From the Vault
 
 - [NES VBlank Timing](https://www.nesdev.org/wiki/PPU_frame_timing)
@@ -443,7 +580,7 @@ Plenty of headroom for typical games. Large updates (loading new screens) disabl
 
 ### NMI Handler Structure
 
-```asm
+```nasm
 NMI:
     PHA                 ; Save A
     TXA
@@ -470,7 +607,7 @@ NMI:
 
 ### Main Loop Pattern
 
-```asm
+```nasm
 MainLoop:
 :   LDA nmi_ready       ; Wait for NMI
     BEQ :-
@@ -510,5 +647,6 @@ MainLoop:
 - **Address latch reset**—read $2002 before PPU address setup
 - **Timing budget**—VBlank provides limited cycles for updates
 - **RTI instruction**—return from interrupt (vs RTS for subroutines)
+- **Visual proof**—smooth animation demonstrates proper timing
 
-Next lesson: Background graphics—pattern tables, nametables, and creating the Pong playfield with tiles. You'll learn how the PPU renders backgrounds using 8×8 pixel tiles and build your first visible game graphics.
+Next lesson: Pattern tables—creating 8×8 pixel tile graphics in CHR-ROM. You'll learn the 2-bit pixel encoding format and design tiles for the Pong playfield.

@@ -1,0 +1,554 @@
+---
+title: "ZX Spectrum Hardware Ports"
+description: "Complete reference for Spectrum I/O ports - border, keyboard, speaker, and ULA control"
+platform: "sinclair-zx-spectrum"
+category: "vault"
+tags: ["hardware", "ports", "I/O", "ULA", "keyboard", "reference"]
+---
+
+# ZX Spectrum Hardware Ports
+
+The ZX Spectrum uses I/O ports to communicate with hardware devices. This reference covers all standard Spectrum ports with focus on the multi-purpose port $FE.
+
+---
+
+## Port $FE - The Multi-Purpose Port
+
+Port $FE is the most important port on the Spectrum. It controls **border colour**, reads the **keyboard**, controls the **speaker**, and handles **tape I/O**.
+
+### Port $FE Output (Writing)
+
+**Usage:** `OUT ($FE),A`
+
+**Bit Layout:**
+
+| Bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|---|---|---|---|
+| **Purpose** | — | — | — | Speaker | Tape | Border | Border | Border |
+| **Value** | x | x | x | MIC | EAR | Border | Border | Border |
+
+**Bit Functions:**
+
+- **Bits 0-2:** Border colour (0-7)
+- **Bit 3:** Tape output (EAR socket)
+- **Bit 4:** Speaker control (0 = off, 1 = on)
+- **Bits 5-7:** Not used (but should be preserved)
+
+**Example - Change Border:**
+```nasm
+LD A,2           ; Red border
+OUT ($FE),A
+```
+
+**Example - Make Sound:**
+```nasm
+; Toggle speaker bit for simple beep
+LD A,$10         ; Speaker on, black border
+OUT ($FE),A
+; Delay
+LD A,$00         ; Speaker off
+OUT ($FE),A
+```
+
+**Example - Preserve Upper Bits:**
+```nasm
+; Read current value, modify border only
+IN A,($FE)       ; Read current port state
+AND $F8          ; Clear border bits (0-2)
+OR 5             ; Set to cyan (5)
+OUT ($FE),A      ; Write back
+```
+
+### Port $FE Input (Reading)
+
+**Usage:** `IN A,($FE)`
+
+**Bit Layout:**
+
+| Bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|---|---|---|---|
+| **Purpose** | — | Tape | — | — | Key | Key | Key | Key | Key |
+| **Active** | x | EAR | x | x | Row bit 4 | Row bit 3 | Row bit 2 | Row bit 1 | Row bit 0 |
+
+**Bit Functions:**
+
+- **Bits 0-4:** Keyboard row data (active low - 0 = pressed)
+- **Bit 5:** Not used
+- **Bit 6:** Tape input (EAR socket)
+- **Bit 7:** Not used
+
+**Important:** Keyboard reading requires setting the upper byte of BC to select keyboard half-row.
+
+---
+
+## Keyboard Reading
+
+The Spectrum keyboard is arranged in a matrix of 8 half-rows × 5 keys each.
+
+### Keyboard Matrix
+
+**To read keyboard:**
+1. Set BC register: High byte selects half-row, low byte = $FE
+2. Read with `IN A,(C)`
+3. Test bits 0-4 (active low: 0 = pressed, 1 = not pressed)
+
+### Keyboard Half-Row Map
+
+| BC High | Half-row | Bit 4 | Bit 3 | Bit 2 | Bit 1 | Bit 0 |
+|---------|----------|-------|-------|-------|-------|-------|
+| $FE | Row 0 | V | C | X | Z | SHIFT |
+| $FD | Row 1 | G | F | D | S | A |
+| $FB | Row 2 | T | R | E | W | Q |
+| $F7 | Row 3 | 5 | 4 | 3 | 2 | 1 |
+| $EF | Row 4 | 6 | 7 | 8 | 9 | 0 |
+| $DF | Row 5 | Y | U | I | O | P |
+| $BF | Row 6 | H | J | K | L | ENTER |
+| $7F | Row 7 | B | N | M | SYM | SPACE |
+
+### Reading Single Key
+
+**Example - Read Q key:**
+```nasm
+        LD BC,$FBFE       ; Half-row $FB (Q-T row)
+        IN A,(C)          ; Read keyboard
+        BIT 0,A           ; Test bit 0 (Q key)
+        JR Z,QPressed     ; Jump if Q pressed (bit = 0)
+```
+
+**Example - Read Arrow Keys (using QAOP):**
+```nasm
+; Read Q (up) key
+        LD BC,$FBFE       ; Q-T row
+        IN A,(C)
+        BIT 0,A
+        JR Z,MoveUp
+
+; Read A (down) key
+        LD BC,$FDFE       ; A-G row
+        IN A,(C)
+        BIT 0,A
+        JR Z,MoveDown
+
+; Read O (right) key
+        LD BC,$DFFE       ; P-Y row
+        IN A,(C)
+        BIT 1,A
+        JR Z,MoveRight
+
+; Read P (left) key
+        LD BC,$DFFE       ; Same row
+        IN A,(C)
+        BIT 0,A
+        JR Z,MoveLeft
+```
+
+### Reading Multiple Keys Simultaneously
+
+The Spectrum supports multiple simultaneous key presses (within matrix limitations).
+
+**Example - Detect multiple keys:**
+```nasm
+; Read Q-T row
+        LD BC,$FBFE
+        IN A,(C)
+        LD D,A            ; Save for later
+
+        BIT 0,D           ; Q pressed?
+        CALL Z,HandleQ
+
+        BIT 1,D           ; W pressed?
+        CALL Z,HandleW
+```
+
+### Scan All Keys
+
+**Example - Detect any key press:**
+```nasm
+ScanKeyboard:
+        LD BC,$FEFE       ; Start with row 0
+        LD D,8            ; 8 rows to scan
+ScanLoop:
+        IN A,(C)          ; Read row
+        AND $1F           ; Mask to key bits
+        CP $1F            ; All bits set = no keys
+        JR NZ,KeyFound    ; Jump if any key pressed
+
+        RLC B             ; Next row (rotate high byte)
+        DEC D
+        JR NZ,ScanLoop
+
+        ; No keys found
+        RET
+
+KeyFound:
+        ; Key detected - A contains key bits
+        RET
+```
+
+### Ghost Keys and Limitations
+
+**Matrix ghosting:** Pressing certain 3-key combinations can register phantom 4th key.
+
+**Example problem:**
+- Press: Q + A + O
+- Ghost: P may appear pressed
+
+**Solution:** Use diagonally opposite keys in your control schemes (e.g., QAOP works well).
+
+---
+
+## Speaker/Beeper ($FE Bit 4)
+
+The Spectrum has a simple 1-bit speaker controlled by port $FE bit 4.
+
+### Simple Beep
+
+```nasm
+Beep:
+        LD B,200          ; Duration counter
+BeepLoop:
+        LD A,$10          ; Speaker on
+        OUT ($FE),A
+
+        LD E,50           ; Frequency delay
+Delay1: DEC E
+        JR NZ,Delay1
+
+        LD A,$00          ; Speaker off
+        OUT ($FE),A
+
+        LD E,50
+Delay2: DEC E
+        JR NZ,Delay2
+
+        DJNZ BeepLoop
+        RET
+```
+
+### Variable Pitch Beep
+
+```nasm
+; HL = pitch (higher = higher pitch)
+; B = duration
+ToneBeep:
+ToneLoop:
+        LD A,$10
+        OUT ($FE),A
+        PUSH HL
+ToneDelay1:
+        DEC HL
+        LD A,H
+        OR L
+        JR NZ,ToneDelay1
+        POP HL
+
+        LD A,$00
+        OUT ($FE),A
+        PUSH HL
+ToneDelay2:
+        DEC HL
+        LD A,H
+        OR L
+        JR NZ,ToneDelay2
+        POP HL
+
+        DJNZ ToneLoop
+        RET
+```
+
+### Preserving Border Colour with Speaker
+
+**Problem:** Writing to port $FE affects border **and** speaker.
+
+**Solution:** Read current value, modify only speaker bit:
+
+```nasm
+        IN A,($FE)        ; Read current port
+        AND $F8           ; Clear border bits
+        LD C,A            ; Save base value
+
+        ; Speaker ON
+        LD A,C
+        OR $10            ; Set speaker bit
+        OUT ($FE),A
+
+        ; Delay...
+
+        ; Speaker OFF
+        LD A,C
+        OUT ($FE),A       ; Restore (speaker bit = 0)
+```
+
+---
+
+## Tape I/O
+
+### Tape Output (Bit 3)
+
+Used for saving programs to tape. Toggling bit 3 creates the signal.
+
+**Controlled by ROM tape save routines** - rarely manipulated directly in games.
+
+### Tape Input (Bit 6, read only)
+
+Used for loading from tape. Reads the signal from the EAR socket.
+
+**Controlled by ROM tape load routines** - rarely read directly in games.
+
+---
+
+## Port Addressing Quirks
+
+### Incomplete Address Decoding
+
+The Spectrum uses only the low byte ($FE) for most decoding. The high byte can be used for keyboard selection.
+
+**All these are equivalent for border/speaker:**
+```nasm
+OUT ($FE),A
+OUT ($00FE),A
+OUT ($FFFE),A
+```
+
+**But for keyboard, high byte matters:**
+```nasm
+; These are DIFFERENT:
+LD BC,$FBFE
+IN A,(C)        ; Reads Q-T row
+
+LD BC,$FDFE
+IN A,(C)        ; Reads A-G row
+```
+
+### Why Use BC for Keyboard?
+
+The `IN A,(C)` instruction uses the entire BC register:
+- **B (high byte):** Selects keyboard half-row
+- **C (low byte):** Port address ($FE)
+
+The `IN A,(n)` instruction uses only the low byte and puts $FF in the high byte automatically.
+
+---
+
+## ULA Port ($FE) - Complete Specification
+
+### Output Bit Summary
+
+| Bit | Function | Effect |
+|-----|----------|--------|
+| 0 | Border LSB | Border colour bit 0 |
+| 1 | Border | Border colour bit 1 |
+| 2 | Border MSB | Border colour bit 2 |
+| 3 | MIC | Tape output (cassette save) |
+| 4 | Speaker | 1-bit speaker output |
+| 5-7 | Unused | No effect (recommended: write 0) |
+
+**Border colours (bits 0-2):**
+```
+%000 = 0 = Black      %100 = 4 = Green
+%001 = 1 = Blue       %101 = 5 = Cyan
+%010 = 2 = Red        %110 = 6 = Yellow
+%011 = 3 = Magenta    %111 = 7 = White
+```
+
+### Input Bit Summary
+
+| Bit | Function | Effect |
+|-----|----------|--------|
+| 0-4 | Keyboard | 5 keys per half-row (active low) |
+| 5 | Unused | Always reads 1 |
+| 6 | EAR | Tape input signal |
+| 7 | Unused | Always reads 1 |
+
+---
+
+## Other Spectrum Ports
+
+### Port $7FFD - 128K Memory Paging (128K models only)
+
+Not available on 48K Spectrum. Used for bank switching on 128K models.
+
+### Port $FFFD - AY-3-8912 Sound Chip (128K models only)
+
+3-channel sound chip on 128K/+2/+3 models. Not present on 48K.
+
+### Kempston Joystick - Port $1F
+
+**Not a standard Spectrum feature** - third-party add-on.
+
+**Read:** `IN A,($1F)`
+
+| Bit | Function |
+|-----|----------|
+| 0 | Right |
+| 1 | Left |
+| 2 | Down |
+| 3 | Up |
+| 4 | Fire |
+
+---
+
+## Port Access Patterns
+
+### Safe Port Writing
+
+**Best practice:** Always preserve bits you don't want to change.
+
+```nasm
+; Change border without affecting speaker
+SafeBorder:
+        IN A,($FE)        ; Read current state
+        AND $F8           ; Clear border bits
+        OR 2              ; Set new border (red)
+        OUT ($FE),A       ; Write back
+        RET
+```
+
+### Fast Keyboard Routine
+
+```nasm
+; Quick check for any key
+AnyKey:
+        XOR A             ; A = 0
+        IN A,($FE)        ; Read with $00 in high byte
+        AND $1F           ; Mask key bits
+        CP $1F            ; All high = no keys
+        RET Z             ; Return if no key
+
+        ; Key pressed
+        SCF               ; Set carry to indicate key
+        RET
+```
+
+### Multi-Key Game Controls
+
+```nasm
+ReadControls:
+        ; Read QAOP for movement
+        LD BC,$FBFE       ; Q,W,E,R,T row
+        IN A,(C)
+        BIT 0,A
+        CALL Z,MoveUp     ; Q = up
+
+        LD BC,$FDFE       ; A,S,D,F,G row
+        IN A,(C)
+        BIT 0,A
+        CALL Z,MoveDown   ; A = down
+
+        LD BC,$DFFE       ; P,O,I,U,Y row
+        IN A,(C)
+        BIT 1,A
+        CALL Z,MoveRight  ; O = right
+        BIT 0,A
+        CALL Z,MoveLeft   ; P = left
+
+        LD BC,$7FFE       ; SPACE,SYM,M,N,B row
+        IN A,(C)
+        BIT 0,A
+        CALL Z,Fire       ; SPACE = fire
+
+        RET
+```
+
+---
+
+## Timing Considerations
+
+### Port Contention
+
+**Port $FE is contended** when accessed during screen display time (similar to screen memory contention).
+
+**Impact:**
+- IN/OUT instructions may take longer during display
+- Timing becomes less predictable
+
+**Solution for critical timing:**
+- Perform port I/O during vertical blank
+- Or accept variable timing
+
+### T-State Timing
+
+**Port instructions:**
+- `OUT (n),A`: 11 T-states
+- `IN A,(n)`: 11 T-states
+- `OUT (C),r`: 12 T-states
+- `IN r,(C)`: 12 T-states
+
+**Without contention:**
+- Predictable timing
+- Safe for precise delays
+
+**With contention:**
+- Add 0-6 T-states depending on screen position
+- Variable timing
+
+---
+
+## Common Port Patterns Reference
+
+### Pattern: Toggle Speaker
+```nasm
+LD A,$10
+OUT ($FE),A       ; On
+; Delay
+XOR $10
+OUT ($FE),A       ; Off
+```
+
+### Pattern: Read Specific Key
+```nasm
+LD BC,row_value   ; e.g., $FBFE
+IN A,(C)
+BIT key_bit,A     ; 0-4
+JR Z,KeyPressed
+```
+
+### Pattern: Flash Border
+```nasm
+LD B,10
+FlashLoop:
+        LD A,2
+        OUT ($FE),A
+        HALT              ; Wait 1 frame
+        LD A,5
+        OUT ($FE),A
+        HALT
+        DJNZ FlashLoop
+```
+
+---
+
+## Hardware Notes
+
+**Physical port address decoding:**
+- Bit 0 of address must be 0 for ULA to respond
+- This is why $FE works ($FE = %11111110)
+- Also why $00, $02, $04, etc. would work
+- But $FF would not ($FF = %11111111)
+
+**Keyboard matrix:**
+- Hardware-scanned matrix
+- No debouncing in hardware
+- Software must handle key bounce
+
+**Speaker:**
+- 1-bit output (on/off only)
+- No volume control
+- Frequency controlled by toggle rate
+
+---
+
+## External Resources
+
+**Hardware Documentation:**
+- [World of Spectrum Hardware Guide](https://worldofspectrum.org/faq/reference/48kreference.htm)
+- Spectrum Service Manual - detailed ULA specs
+
+**Advanced Topics:**
+- Contention patterns and timing
+- Tape format specifications
+- 128K memory mapping
+
+---
+
+*This reference covers the 48K Spectrum standard I/O. 128K models add additional ports for memory banking and the AY sound chip.*

@@ -1,0 +1,482 @@
+---
+title: "Lesson 3: The First Character"
+description: "Learn to display letters by copying character bitmaps from ROM to screen memory"
+platform: "sinclair-zx-spectrum"
+phase: 1
+tier: 1
+lesson: 3
+---
+
+# Lesson 3: The First Character
+
+## From Pixels to Letters
+
+In Lesson 002, you wrote raw pixel patterns to the screen. Value 42 gave you three dots because that's the binary pattern %00101010. But what if you want to display the letter "A"?
+
+You could design it yourself (8 bytes of pixel patterns). But the Spectrum ROM already has a complete character set waiting for you at $3D00. All 96 characters from space to copyright symbol, each stored as 8 bytes of bitmap data.
+
+To display a letter, you copy those 8 bytes from ROM to screen memory.
+
+This lesson teaches you how.
+
+---
+
+## The One-Minute Tour
+
+- ROM character set at $3D00-$3FFF (768 bytes)
+- 96 characters total (ASCII 32 to 127)
+- Each character = 8 bytes (8 scanlines tall)
+- Character "A" (ASCII 65) is at $3D00 + ((65-32) × 8) = $3E08
+- To display: Copy 8 bytes from ROM to screen
+- Consecutive screen scanlines are 256 bytes apart (in top third)
+- Use loop to copy character byte-by-byte
+- Subroutines allow code reuse for multiple characters
+
+---
+
+## Understanding ROM Characters
+
+The Spectrum ROM contains pre-designed bitmaps for every printable character. Each character is exactly 8 bytes (one byte per scanline).
+
+**Character "A" bitmap at $3E08:**
+
+```
+Byte 0: %00000000  ■■■■■■■■
+Byte 1: %00011000  ■■■□□■■■
+Byte 2: %00100100  ■■□■■□■■
+Byte 3: %01000010  ■□■■■■□■
+Byte 4: %01111110  ■□□□□□□■
+Byte 5: %01000010  ■□■■■■□■
+Byte 6: %01000010  ■□■■■■□■
+Byte 7: %00000000  ■■■■■■■■
+```
+
+**Address calculation:**
+
+```
+Character set starts at: $3D00
+First character is: ASCII 32 (space)
+Character "A" is: ASCII 65
+
+Offset from start: (65 - 32) × 8 = 33 × 8 = 264 bytes = $108
+ROM address: $3D00 + $108 = $3E08
+```
+
+**Formula:**
+```
+ROM_ADDRESS = $3D00 + ((ASCII_CODE - 32) × 8)
+```
+
+---
+
+## The Challenge: Scanline Spacing
+
+Here's where it gets interesting. In Lesson 002, you wrote to consecutive screen addresses ($4000, $4001, $4002...) and got pixels side-by-side.
+
+But character scanlines go down the screen, not across. And in the top third of the screen, consecutive scanlines are **256 bytes apart**.
+
+**Screen layout (top third):**
+```
+Row 0, scanline 0: $4000
+Row 0, scanline 1: $4100  ← +256 bytes, not +1!
+Row 0, scanline 2: $4200  ← +256 bytes
+...
+Row 0, scanline 7: $4700
+```
+
+This means: `INC D` (increment high byte) moves down one scanline (+256 bytes).
+
+---
+
+## Example Programme 1: Display "A"
+
+```asm
+; The First Character - Lesson 003, Example 1
+; Display letter "A" on screen
+
+        DEVICE ZXSPECTRUM48
+
+        ORG $8000              ; Non-contended RAM
+
+Start:
+        ; Calculate ROM address for character "A" (ASCII 65)
+        ; "A" = $3D00 + ((65-32) × 8) = $3E08
+
+        LD HL,$3E08            ; HL = ROM address of "A" bitmap
+
+        ; Calculate screen address (row 1, column 14)
+        LD DE,$410E            ; DE = screen position
+
+        ; Copy 8 bytes vertically (one character)
+        LD B,8                 ; B = counter (8 bytes)
+
+CopyLoop:
+        LD A,(HL)              ; Read byte from ROM
+        LD (DE),A              ; Write byte to screen
+        INC HL                 ; Next ROM byte
+        INC D                  ; Next scanline (+256 bytes)
+        DJNZ CopyLoop          ; Repeat for all 8 bytes
+
+        RET
+
+End:
+```
+
+**To run:**
+```
+RANDOMIZE USR 32768
+```
+
+![Letter A displayed on screen](/images/sinclair-zx-spectrum/phase-1/tier-1/lesson-003/example-1.png)
+
+**What happened:**
+1. HL points to ROM character data at $3E08
+2. DE points to screen position at $410E
+3. Loop 8 times:
+   - Read ROM byte → Write to screen
+   - HL++ (next ROM byte)
+   - D++ (next scanline, +256 bytes)
+4. After 8 iterations, complete "A" is on screen
+
+**Key insight:** `INC D` adds 256 to the address (moving down one scanline in the top third).
+
+---
+
+## Example Programme 2: Display "HI"
+
+Now let's display multiple characters using a subroutine for code reuse:
+
+```asm
+; The First Character - Lesson 003, Example 2
+; Display word "HI" using subroutine
+
+        DEVICE ZXSPECTRUM48
+
+        ORG $8000
+
+Start:
+        ; Display "H" at column 12
+        LD HL,$3E40            ; ROM address of "H"
+        LD DE,$410C            ; Screen position (row 1, col 12)
+        CALL PrintChar
+
+        ; Display "I" at column 13
+        LD HL,$3E48            ; ROM address of "I"
+        LD DE,$410D            ; Screen position (row 1, col 13)
+        CALL PrintChar
+
+        RET
+
+; PrintChar subroutine
+; Input: HL = ROM character address, DE = screen position
+PrintChar:
+        LD B,8                 ; 8 bytes per character
+
+PrintLoop:
+        LD A,(HL)              ; Read from ROM
+        LD (DE),A              ; Write to screen
+        INC HL                 ; Next ROM byte
+        INC D                  ; Next scanline
+        DJNZ PrintLoop
+
+        RET
+
+End:
+```
+
+**Character addresses:**
+- "H" (ASCII 72): $3D00 + ((72-32) × 8) = $3E40
+- "I" (ASCII 73): $3D00 + ((73-32) × 8) = $3E48
+
+**Screen addresses:**
+- Column 12: $4100 + 12 = $410C
+- Column 13: $4100 + 13 = $410D
+
+![Word HI displayed on screen](/images/sinclair-zx-spectrum/phase-1/tier-1/lesson-003/example-2.png)
+
+**What's new here:**
+
+**Subroutines with CALL/RET:**
+- `CALL PrintChar` - Push return address, jump to subroutine
+- `RET` - Pop return address, jump back to caller
+- Allows code reuse without duplication
+
+**Why this matters:**
+- Display one character: ~15 bytes of code
+- Display five characters without subroutine: ~75 bytes
+- Display five characters with subroutine: ~40 bytes
+- Subroutines save memory and improve maintainability
+
+---
+
+## Connection to Lesson 002
+
+**Lesson 002 taught:** Spectrum screen memory holds pixel patterns, not character codes.
+
+**Lesson 003 reveals:** Character display requires copying pre-designed pixel patterns from ROM.
+
+**The key difference from character-based computers:**
+
+**C64 approach:**
+```asm
+LD A,65              ; Character code "A"
+LD ($0400),A         ; Write to screen
+; Hardware looks up character in ROM and displays it
+```
+
+**Spectrum approach:**
+```asm
+LD HL,$3E08          ; Source: ROM character bitmap
+LD DE,$4000          ; Destination: Screen memory
+LD B,8               ; 8 bytes to copy
+Loop:
+  LD A,(HL)
+  LD (DE),A
+  INC HL
+  INC D
+  DJNZ Loop
+; We manually copy the bitmap
+```
+
+**Why this approach?**
+- **More control** - Modify characters on-the-fly
+- **More flexibility** - Mix text and graphics seamlessly
+- **More speed** - Direct pixel access, no hardware lookup delay
+- **More work** - Must handle the copying ourselves
+
+This is the Spectrum's philosophy: Give you the pixels, let you decide what to do with them.
+
+---
+
+## Make It Your Own: Experiments
+
+**Easy modifications:**
+
+1. **Different letters:**
+   - Try "B" at $3E10 (ASCII 66: 66-32 = 34, 34×8 = 272 = $110)
+   - Try "Z" at $3F48 (ASCII 90: 90-32 = 58, 58×8 = 464 = $1D0)
+
+2. **Different positions:**
+   - Change column: Modify low byte of DE ($410E → $4110 moves right 2)
+   - Change row: Modify high byte of DE ($410E → $420E moves down 1 row)
+
+3. **Display your name:**
+   - Calculate ROM address for each letter
+   - Call PrintChar for each letter
+   - Increment column for each character
+
+**Challenge:** Display "HELLO" across the top of the screen (5 characters).
+
+---
+
+## The ROM Character Set
+
+**Complete character set at $3D00-$3FFF:**
+
+```
+ASCII 32-47:  Space ! " # $ % & ' ( ) * + , - . /
+ASCII 48-57:  0 1 2 3 4 5 6 7 8 9
+ASCII 58-64:  : ; < = > ? @
+ASCII 65-90:  A B C D E F G H I J K L M N O P Q R S T U V W X Y Z
+ASCII 91-96:  [ \ ] ^ _ `
+ASCII 97-122: a b c d e f g h i j k l m n o p q r s t u v w x y z
+ASCII 123-127: { | } ~ ©
+```
+
+**Common character addresses:**
+
+| Character | ASCII | Calculation | ROM Address |
+|-----------|-------|-------------|-------------|
+| Space | 32 | (32-32)×8 = 0 | $3D00 |
+| 0 | 48 | (48-32)×8 = 128 | $3D80 |
+| A | 65 | (65-32)×8 = 264 | $3E08 |
+| a | 97 | (97-32)×8 = 520 | $3F08 |
+| © | 127 | (127-32)×8 = 760 | $3FF8 |
+
+---
+
+## Screen Positioning (Top Third)
+
+**Character rows in top third (rows 0-7):**
+
+```
+Row 0: $4000-$401F (32 character positions)
+Row 1: $4100-$411F
+Row 2: $4200-$421F
+Row 3: $4300-$431F
+Row 4: $4400-$441F
+Row 5: $4500-$451F
+Row 6: $4600-$461F
+Row 7: $4700-$471F
+```
+
+**Formula (top third only):**
+```
+SCREEN_ADDRESS = $4000 + (row × 256) + column
+```
+
+**Why 256 bytes per row?**
+- Each character is 8 scanlines tall
+- Scanlines are 32 bytes wide (256 pixels ÷ 8)
+- 8 scanlines × 32 bytes = 256 bytes per character row
+
+**Important note:** This simple formula only works for the top 8 character rows. The middle and bottom thirds use the "thirds formula" (covered in later lessons).
+
+---
+
+## How Games Use Character Display
+
+**Text adventures (The Hobbit, Quill games):**
+- Display text by copying ROM characters to screen
+- Fast enough for real-time text scrolling
+- Custom fonts by modifying UDG area (later lesson)
+
+**Action games with HUD:**
+- Score display: Copy digit characters from ROM
+- Lives counter: Copy number characters
+- Update 50 times per second without slowdown
+
+**Loading screens:**
+- Display title text at specific positions
+- Mix graphics and text seamlessly
+- All pixel-level control
+
+**The pattern:**
+All games that display text use this same ROM character copying technique. It's fundamental to Spectrum programming.
+
+---
+
+## From the Vault: Essential Reading
+
+**[ZX Spectrum ROM Disassembly](/vault/sinclair-zx-spectrum/rom-disassembly)**
+- Character set location and format ($3D00-$3FFF)
+- Character bitmap structure (8 bytes per character)
+- ASCII to ROM address mapping
+
+**[Z80 Instruction Set Reference](/vault/sinclair-zx-spectrum/z80-instruction-set)**
+- CALL/RET instructions for subroutines
+- DJNZ instruction for counted loops
+- Stack operations (PUSH/POP)
+
+**[ZX Spectrum Hardware Ports](/vault/sinclair-zx-spectrum/hardware-ports)**
+- Screen memory organization
+- Scanline addressing in thirds
+- Memory timing and contention
+
+---
+
+## Quick Reference: Lesson 003
+
+### ROM Character Set
+
+| Property | Value | Notes |
+|----------|-------|-------|
+| Start address | $3D00 | First character (space) |
+| End address | $3FFF | Last character (©) |
+| Total size | 768 bytes | 96 characters × 8 bytes |
+| Bytes per char | 8 | One byte per scanline |
+| First ASCII | 32 | Space character |
+| Last ASCII | 127 | Copyright symbol |
+
+### Address Calculation
+
+**ROM character address:**
+```
+ROM_ADDR = $3D00 + ((ASCII - 32) × 8)
+
+Examples:
+  "A" (65): $3D00 + ((65-32) × 8) = $3E08
+  "0" (48): $3D00 + ((48-32) × 8) = $3D80
+  "a" (97): $3D00 + ((97-32) × 8) = $3F08
+```
+
+**Screen address (top third only):**
+```
+SCREEN_ADDR = $4000 + (row × 256) + column
+
+Examples:
+  Row 0, col 0: $4000
+  Row 1, col 15: $4100 + 15 = $410F
+  Row 7, col 31: $4700 + 31 = $471F
+```
+
+### Scanline Spacing
+
+| Area | Spacing | Technique |
+|------|---------|-----------|
+| Top third (rows 0-7) | +256 bytes | `INC D` |
+| Middle third (rows 8-15) | Complex | Thirds formula |
+| Bottom third (rows 16-23) | Complex | Thirds formula |
+
+### Instructions Used
+
+| Instruction | Purpose | T-states | Bytes |
+|-------------|---------|----------|-------|
+| LD HL,nn | Load ROM address | 10 | 3 |
+| LD DE,nn | Load screen address | 10 | 3 |
+| LD B,n | Load loop counter | 7 | 2 |
+| LD A,(HL) | Read from ROM | 7 | 1 |
+| LD (DE),A | Write to screen | 7 | 1 |
+| INC HL | Next ROM byte | 6 | 1 |
+| INC D | Next scanline (+256) | 4 | 1 |
+| DJNZ label | Loop if B ≠ 0 | 13/8 | 2 |
+| CALL label | Call subroutine | 17 | 3 |
+| RET | Return from subroutine | 10 | 1 |
+
+### Performance Comparison
+
+| Operation | Assembly | BASIC | Advantage |
+|-----------|----------|-------|-----------|
+| Display 1 char | ~320 T-states | ~5000 T-states | ~15× faster |
+| Display "HI" | ~660 T-states | ~10000 T-states | ~15× faster |
+| Display line of text | ~5000 T-states | ~80000 T-states | ~16× faster |
+
+---
+
+## What You've Learnt
+
+After completing this lesson, you can:
+
+- ✓ Locate ROM character set at $3D00-$3FFF
+- ✓ Calculate ROM address for any ASCII character
+- ✓ Understand character bitmap format (8 bytes per character)
+- ✓ Copy character bitmaps from ROM to screen
+- ✓ Use `INC D` to navigate scanlines (+256 bytes)
+- ✓ Create subroutines with CALL/RET
+- ✓ Display multiple characters with code reuse
+- ✓ Understand why Spectrum text display differs from character-based computers
+- ✓ Calculate screen addresses in top third of screen
+
+**Key insight:** Characters are pre-designed pixel patterns in ROM. Displaying text = copying pixel data, not writing character codes. This gives you complete control over every pixel.
+
+**Next lesson:** Reading Back - We'll learn to read from screen memory and use the CP instruction to check if a position is occupied. Essential for collision detection in games!
+
+---
+
+## Tools Used
+
+**Assembler:** sjasmplus
+```bash
+sjasmplus --raw=example-1.bin example-1.asm
+```
+
+**TAP Converter:** bin2tap.py
+```bash
+python3 bin2tap.py example-1.bin example-1.tap 0x8000
+```
+
+**Emulator:** FUSE
+```bash
+fuse --tape example-1.tap --auto-load
+```
+
+**Validator:** validate-z80-asm.py
+```bash
+python3 /scripts/validate-z80-asm.py example-1.asm
+```
+
+All lesson files available in: `/code-samples/sinclair-zx-spectrum/phase-1/tier-1/lesson-003/`
+
+---
+
+*Remember: In Lesson 002, you wrote raw pixel patterns. Now you're copying pre-designed patterns from ROM. Same principle (pixel control), different source (ROM instead of your brain). This is the Spectrum way.*

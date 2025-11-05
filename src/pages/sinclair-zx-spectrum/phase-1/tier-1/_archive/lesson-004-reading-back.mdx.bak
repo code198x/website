@@ -1,0 +1,560 @@
+---
+title: "Lesson 4: Reading Back"
+description: "Learn to read from screen memory, compare values, and make decisions based on comparison results"
+platform: "sinclair-zx-spectrum"
+phase: 1
+tier: 1
+lesson: 4
+---
+
+# Lesson 4: Reading Back
+
+## Memory Is a Two-Way Street
+
+You've been writing to screen memory for three lessons now. Border colours, pixel patterns, ROM characters—all flowing out from your programme to the display.
+
+But memory isn't write-only. **You can read what's already there.**
+
+This changes everything. Before moving your snake head, read the destination. Wall? Body? Food? Empty space? The answer determines what happens next.
+
+Reading + comparing + deciding = intelligence.
+
+---
+
+## The One-Minute Tour
+
+- Memory reads with `LD A,(HL)` - copies byte at address HL into A register
+- Compare with `CP n` - subtracts n from A internally, sets flags
+- Z flag = 1 if values equal (result is zero)
+- C flag = 1 if A < n (borrow occurred)
+- Conditional jumps: `JR Z` (jump if equal), `JR NZ` (jump if not equal)
+- Pattern: Read → Compare → Branch
+- Foundation for collision detection in games
+- CP doesn't change A, only sets flags
+
+---
+
+## From Write-Only to Read-Write
+
+**What you've done so far:**
+
+```asm
+LD A,42              ; Value to write
+LD (HL),A            ; Write to screen
+; Data flows out: CPU → Memory
+```
+
+**What's new:**
+
+```asm
+LD A,(HL)            ; Read from screen
+; Data flows in: Memory → CPU
+; Now A contains whatever was at that address
+```
+
+**Key insight:** Parentheses matter!
+- `LD A,(HL)` - Read from address pointed to by HL
+- `LD (HL),A` - Write to address pointed to by HL
+- Direction is determined by which side has parentheses
+
+---
+
+## The CP Instruction: Comparison Without Destruction
+
+**CP = Compare** - The instruction that asks "are these values equal?"
+
+**What it does internally:**
+```
+CP n  →  Performs A - n
+         Sets flags based on result
+         Doesn't store result anywhere
+         A remains unchanged
+```
+
+**Flags set by CP:**
+
+| Flag | Condition | Meaning |
+|------|-----------|---------|
+| Z = 1 | A - n = 0 | A equals n |
+| Z = 0 | A - n ≠ 0 | A doesn't equal n |
+| C = 1 | A - n < 0 | A is less than n |
+| C = 0 | A - n ≥ 0 | A is greater than or equal to n |
+
+**Examples:**
+
+```asm
+LD A,5
+CP 5                 ; 5 - 5 = 0 → Z flag set (equal)
+CP 3                 ; 5 - 3 = 2 → Z flag clear (not equal)
+CP 10                ; 5 - 10 = -5 → C flag set (less than)
+```
+
+**Why CP doesn't change A:**
+
+Imagine checking if screen position contains 0 (empty). You want to preserve the original value for further checks. CP lets you test without destroying data.
+
+---
+
+## Conditional Jumps: Making Decisions
+
+**After CP sets flags, act on them:**
+
+```asm
+LD A,(HL)            ; Read screen position
+CP 0                 ; Is it empty?
+JR Z,IsEmpty         ; If Z flag set (equal to 0), jump
+; Not empty - handle collision
+; ...
+IsEmpty:
+; Empty - safe to move
+; ...
+```
+
+**Available conditional jumps:**
+
+| Instruction | Condition | When to use |
+|-------------|-----------|-------------|
+| `JR Z,label` | Z flag = 1 | After CP, if values were equal |
+| `JR NZ,label` | Z flag = 0 | After CP, if values were different |
+| `JR C,label` | C flag = 1 | After CP, if A was less than |
+| `JR NC,label` | C flag = 0 | After CP, if A was greater/equal |
+
+**Timing:**
+- JR taken: 12 T-states (executes jump)
+- JR not taken: 7 T-states (falls through)
+
+---
+
+## Example Programme 1: Empty Position Check
+
+Check if centre screen position is empty (contains 0):
+
+```asm
+; Reading Back - Lesson 004, Example 1
+; Check if screen position is empty
+
+        DEVICE ZXSPECTRUM48
+
+        ORG $8000              ; Non-contended RAM
+
+Start:
+        ; Point to centre screen position
+        LD HL,$4190            ; HL = row 12, column 16
+
+        ; Read byte from screen memory
+        LD A,(HL)              ; A = byte at screen position
+
+        ; Compare with 0 (empty position)
+        CP 0                   ; Compare A with 0
+        JR Z,IsEmpty           ; If Z flag set, jump
+
+        ; Position is occupied
+        LD A,2                 ; Red border
+        OUT ($FE),A
+        RET
+
+IsEmpty:
+        ; Position is empty
+        LD A,4                 ; Green border
+        OUT ($FE),A
+        RET
+
+End:
+```
+
+**To run:**
+```
+RANDOMIZE USR 32768
+```
+
+![Green border - position is empty](/images/sinclair-zx-spectrum/phase-1/tier-1/lesson-004/example-1.png)
+
+**What happened:**
+
+1. HL points to $4190 (centre of screen)
+2. `LD A,(HL)` reads byte at that position
+3. Fresh screen has all zeros, so A = 0
+4. `CP 0` performs 0 - 0 = 0, sets Z flag
+5. `JR Z,IsEmpty` sees Z flag set, jumps to IsEmpty
+6. Green border displayed (success!)
+
+**To test with occupied position:**
+Run lesson-003 example-2 first (writes "HI" to screen), then run this example. Screen position will contain pixel data (not 0), so you'll get red border instead.
+
+---
+
+## Example Programme 2: Verify Written Data
+
+Write character, read it back, verify it matches expected value:
+
+```asm
+; Reading Back - Lesson 004, Example 2
+; Write character, read back, verify match
+
+        DEVICE ZXSPECTRUM48
+
+        ORG $8000
+
+Start:
+        ; Write character "X" to centre position
+        ; "X" (ASCII 88): $3D00 + ((88-32) × 8) = $3EC0
+        LD HL,$3EC0            ; HL = ROM address of "X"
+        LD DE,$4190            ; DE = screen centre
+        LD B,8                 ; 8 bytes per character
+
+WriteLoop:
+        LD A,(HL)              ; Read from ROM
+        LD (DE),A              ; Write to screen
+        INC HL                 ; Next ROM byte
+        INC D                  ; Next scanline
+        DJNZ WriteLoop
+
+        ; Read back first scanline and verify
+        LD HL,$4190            ; HL = screen position
+        LD A,(HL)              ; Read first byte
+
+        ; Get expected value from ROM
+        LD HL,$3EC0            ; HL = ROM address of "X"
+        LD B,(HL)              ; B = expected value
+        CP B                   ; Compare A with B
+        JR Z,Match             ; If equal, success
+
+        ; Mismatch - red border
+        LD A,2
+        OUT ($FE),A
+        RET
+
+Match:
+        ; Values match - green border
+        LD A,4
+        OUT ($FE),A
+        RET
+
+End:
+```
+
+**Character address calculation:**
+```
+"X" is ASCII 88
+Offset: (88 - 32) × 8 = 56 × 8 = 448 = $1C0
+ROM address: $3D00 + $1C0 = $3EC0
+```
+
+![Letter X with green border - verification successful](/images/sinclair-zx-spectrum/phase-1/tier-1/lesson-004/example-2.png)
+
+**What happened:**
+
+1. Wrote "X" character (8 bytes) to centre position
+2. Read back first scanline of character
+3. Compared with expected value from ROM
+4. Match! Green border confirms read-back verification
+
+**Why this matters:**
+
+This pattern (write → read → verify) is crucial for:
+- Debugging (did my write succeed?)
+- Data integrity checking
+- Understanding memory behaviour
+- Confidence in your code
+
+---
+
+## Understanding CP Variations
+
+**CP with immediate value:**
+```asm
+LD A,42
+CP 42                ; Compare A with constant 42
+```
+
+**CP with register:**
+```asm
+LD A,42
+LD B,42
+CP B                 ; Compare A with register B
+```
+
+**CP with memory:**
+```asm
+LD HL,$4190
+LD A,42
+CP (HL)              ; Compare A with byte at address HL
+```
+
+**All three set the same flags, choose based on where your comparison value is.**
+
+---
+
+## The Read-Compare-Branch Pattern
+
+**This pattern appears everywhere in games:**
+
+**Snake collision detection:**
+```asm
+; Check destination before moving head
+LD HL,DestinationAddr
+LD A,(HL)            ; Read destination
+CP 0                 ; Is it empty?
+JR NZ,Collision      ; Not empty = collision
+; Empty - safe to move
+```
+
+**Pac-Man pellet detection:**
+```asm
+LD A,(HL)            ; Read maze position
+CP PelletChar        ; Is it a pellet?
+JR Z,EatPellet       ; Yes - eat it
+; Not a pellet, keep moving
+```
+
+**Platform game ground detection:**
+```asm
+LD A,(HL)            ; Read position below player
+CP GroundChar        ; Is it ground?
+JR Z,OnGround        ; Yes - stop falling
+; Not ground - keep falling
+```
+
+**The universal pattern:** Read → Compare → Act
+
+---
+
+## Make It Your Own: Experiments
+
+**Easy modifications:**
+
+1. **Check different positions:**
+   - Change HL to $4000 (top-left)
+   - Try $41A0 (different column at centre row)
+   - Test multiple positions in sequence
+
+2. **Check for specific values:**
+   - Change `CP 0` to `CP 255` (solid bar)
+   - Check for specific character scanlines
+   - Test with values you wrote in previous lessons
+
+3. **Multiple comparisons:**
+   ```asm
+   LD A,(HL)
+   CP 0
+   JR Z,IsZero
+   CP 255
+   JR Z,IsFull
+   ; Neither zero nor full
+   ```
+
+**Challenge:** Write a programme that checks three screen positions and displays different border colours based on how many are occupied (green=0, yellow=1-2, red=3).
+
+---
+
+## Why CP Doesn't Change A
+
+**Consider this scenario:**
+
+```asm
+LD A,(HL)            ; Read screen position (A = 42)
+CP 0                 ; Check if empty
+JR Z,IsEmpty
+; A still = 42 here! Can use it.
+CP 255               ; Check if full
+JR Z,IsFull
+; A still = 42! Can make multiple comparisons.
+```
+
+**If CP changed A:**
+```asm
+LD A,(HL)            ; A = 42
+CP 0                 ; Would change A to 42 (the difference)
+; Lost original value! Can't do second comparison.
+```
+
+**Preservation of data** allows multiple tests on the same value without re-reading from memory.
+
+---
+
+## Flags: The CPU's Decision-Making System
+
+**The Z80 has 8 flags (1-bit values) that record information about operations:**
+
+| Flag | Name | Set when | Used by |
+|------|------|----------|---------|
+| Z | Zero | Result = 0 | JR Z, JR NZ |
+| C | Carry | Result < 0 or overflow | JR C, JR NC |
+| S | Sign | Result is negative | JR M, JR P |
+| P/V | Parity/Overflow | Various conditions | JR PE, JR PO |
+
+**For now, focus on Z and C:**
+- Z flag = equality testing
+- C flag = less-than testing
+
+**Later lessons** will introduce other flags and their uses.
+
+---
+
+## How Games Use Read-Compare-Branch
+
+**Manic Miner:**
+- Read platform positions before moving Willy
+- Compare with empty space
+- Branch to different code for solid/deadly/collectable
+
+**Jet Set Willy:**
+- Scan room for objects
+- Compare each position with object table
+- Branch to object-specific handling code
+
+**Sabre Wulf:**
+- Check surrounding tiles
+- Compare with walkable terrain codes
+- Branch to allow/deny movement
+
+**The common thread:**
+
+Every game that responds to its environment uses this pattern. You're not just learning assembly—you're learning **how games think**.
+
+---
+
+## From the Vault: Essential Reading
+
+**[Z80 Instruction Set Reference](/vault/sinclair-zx-spectrum/z80-instruction-set)**
+- CP instruction variants and timing
+- Conditional jump instructions (JR Z/NZ/C/NC)
+- Flag register details
+
+**[ZX Spectrum ROM Disassembly](/vault/sinclair-zx-spectrum/rom-disassembly)**
+- How BASIC uses CP for string comparison
+- ROM keyboard scanning routines (read + compare pattern)
+
+**[ZX Spectrum Hardware Ports](/vault/sinclair-zx-spectrum/hardware-ports)**
+- Screen memory organization
+- Reading vs writing to hardware
+
+---
+
+## Quick Reference: Lesson 004
+
+### Memory Read Instruction
+
+| Instruction | Purpose | T-states | Bytes |
+|-------------|---------|----------|-------|
+| LD A,(HL) | Read byte at address HL into A | 7 | 1 |
+| LD A,(BC) | Read byte at address BC into A | 7 | 1 |
+| LD A,(DE) | Read byte at address DE into A | 7 | 1 |
+| LD A,(nn) | Read byte at address nn into A | 13 | 3 |
+
+### Compare Instruction
+
+| Instruction | Purpose | T-states | Bytes |
+|-------------|---------|----------|-------|
+| CP n | Compare A with immediate value n | 7 | 2 |
+| CP r | Compare A with register (B,C,D,E,H,L) | 4 | 1 |
+| CP (HL) | Compare A with byte at address HL | 7 | 1 |
+
+**Important:** CP performs A - value but doesn't store result. Only sets flags.
+
+### Conditional Jumps (Relative)
+
+| Instruction | Condition | Flag state | T-states |
+|-------------|-----------|------------|----------|
+| JR Z,label | Jump if Zero | Z = 1 | 12 (taken) / 7 (not) |
+| JR NZ,label | Jump if Not Zero | Z = 0 | 12 (taken) / 7 (not) |
+| JR C,label | Jump if Carry | C = 1 | 12 (taken) / 7 (not) |
+| JR NC,label | Jump if No Carry | C = 0 | 12 (taken) / 7 (not) |
+
+**Range:** JR can jump -126 to +129 bytes from current position
+
+### Flags After CP
+
+**CP performs A - n internally:**
+
+| Result | Z flag | C flag | Meaning |
+|--------|--------|--------|---------|
+| A = n | 1 | 0 | Values equal |
+| A > n | 0 | 0 | A is greater |
+| A < n | 0 | 1 | A is less |
+
+### Common Patterns
+
+**Check if empty:**
+```asm
+LD A,(HL)
+CP 0
+JR Z,IsEmpty
+; Not empty
+```
+
+**Check if specific value:**
+```asm
+LD A,(HL)
+CP 42
+JR Z,IsFortyTwo
+; Not 42
+```
+
+**Check range (is A between 10 and 20?):**
+```asm
+CP 10
+JR C,TooSmall        ; A < 10
+CP 21
+JR NC,TooBig         ; A >= 21
+; A is 10-20
+```
+
+### Performance Comparison
+
+| Operation | Assembly | BASIC | Advantage |
+|-----------|----------|-------|-----------|
+| Read + compare | ~14 T-states | ~1000 T-states | ~70× faster |
+| Read + 2 compares | ~25 T-states | ~2000 T-states | ~80× faster |
+| 100 position checks | ~1400 T-states | ~100000 T-states | ~70× faster |
+
+---
+
+## What You've Learnt
+
+After completing this lesson, you can:
+
+- ✓ Read values from memory using LD A,(HL)
+- ✓ Understand memory is both readable and writable
+- ✓ Use CP instruction to compare values
+- ✓ Understand CP sets flags without changing A
+- ✓ Interpret Z flag (equality) and C flag (less-than)
+- ✓ Use conditional jumps (JR Z, JR NZ)
+- ✓ Implement read-compare-branch pattern
+- ✓ Verify written data by reading it back
+- ✓ Build foundation for collision detection
+- ✓ Understand how games make decisions
+
+**Key insight:** Reading + comparing + branching = intelligence. Your programme can now inspect the world and react to what it finds. This is the foundation of game logic.
+
+**Next lesson:** Simple Repetition - Use DJNZ loops to draw multiple characters in a row. Combine character writing (lesson 3) with counted loops to create patterns. One step closer to drawing the snake body!
+
+---
+
+## Tools Used
+
+**Assembler:** sjasmplus
+```bash
+sjasmplus --raw=example-1.bin example-1.asm
+```
+
+**TAP Converter:** bin2tap.py
+```bash
+python3 bin2tap.py example-1.bin example-1.tap 0x8000
+```
+
+**Emulator:** FUSE
+```bash
+fuse --tape example-1.tap --auto-load
+```
+
+**Validator:** validate-z80-asm.py
+```bash
+python3 /scripts/validate-z80-asm.py example-1.asm
+```
+
+All lesson files available in: `/code-samples/sinclair-zx-spectrum/phase-1/tier-1/lesson-004/`
+
+---
+
+*Remember: In previous lessons, you sent data out (writes). Now you're receiving data in (reads). Output + input = interaction. This is where games begin.*

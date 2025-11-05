@@ -1,0 +1,567 @@
+---
+title: "Lesson 5: Simple Repetition"
+description: "Learn to use DJNZ loops to draw multiple characters efficiently"
+platform: "sinclair-zx-spectrum"
+phase: 1
+tier: 1
+lesson: 5
+---
+
+# Lesson 5: Simple Repetition
+
+## One Character, Ten Characters, A Hundred
+
+You've displayed individual characters one at a time. But what about drawing a line of blocks? Or the word "SNAKE"? Or an entire snake body?
+
+Manual repetition won't scale. You need loops.
+
+The Z80 has a built-in counted loop instruction: **DJNZ** (Decrement and Jump if Not Zero). Load B with a count, execute code, DJNZ loops back until B reaches zero.
+
+This is how you draw patterns, sequences, and game objects efficiently.
+
+---
+
+## The One-Minute Tour
+
+- DJNZ = "Decrement B and Jump if Not Zero"
+- B register is the loop counter
+- Pattern: LD B,n → Loop: code → DJNZ Loop
+- Executes exactly B times (initial value)
+- After loop: B = 0
+- DJNZ is 13 T-states (looping) or 8 T-states (exit)
+- ~50% faster than manual decrement + conditional jump
+- Foundation for drawing snake body, scrolling text, clearing screens
+
+---
+
+## The DJNZ Instruction
+
+**DJNZ = Your Loop Workhorse**
+
+```asm
+LD B,5               ; B = loop counter
+Loop:
+    ; Code executes 5 times
+    DJNZ Loop        ; B--, loop if B≠0
+; B is now 0
+```
+
+**What DJNZ does:**
+1. Decrements B register (B = B - 1)
+2. Tests if B ≠ 0
+3. If true, jumps to label
+4. If false (B = 0), continues to next instruction
+
+**Why B register?**
+- DJNZ only works with B (hardware-optimised)
+- Can't use A, C, D, E, H, L for DJNZ
+- B is the Z80's dedicated loop counter
+
+---
+
+## From One to Many
+
+**Manual approach (no loop):**
+```asm
+; Display 3 characters manually
+LD HL,$3E08          ; Character "A"
+LD DE,$4000
+CALL PrintChar
+INC E
+
+LD HL,$3E08
+LD DE,$4001
+CALL PrintChar
+INC E
+
+LD HL,$3E08
+LD DE,$4002
+CALL PrintChar
+; 30+ lines for 3 characters!
+```
+
+**Loop approach:**
+```asm
+; Display 3 characters with loop
+LD B,3               ; Loop 3 times
+LD DE,$4000
+Loop:
+    LD HL,$3E08      ; Character "A"
+    CALL PrintChar
+    INC E            ; Next column
+    DJNZ Loop
+; 7 lines for any number of characters!
+```
+
+**Scalability:**
+- 10 characters manually: ~100 lines
+- 10 characters with loop: ~10 lines
+- 100 characters with loop: Still ~10 lines
+
+This is the power of loops.
+
+---
+
+## Example Programme 1: Five Solid Blocks
+
+Draw five solid blocks in a horizontal row using DJNZ:
+
+```asm
+; Simple Repetition - Lesson 005, Example 1
+; Draw 5 solid blocks in a row using DJNZ
+
+        DEVICE ZXSPECTRUM48
+
+        ORG $8000              ; Non-contended RAM
+
+Start:
+        ; Draw 5 solid blocks at row 0, columns 10-14
+        ; Strategy: Draw one scanline across all 5 positions, repeat 8 times
+
+        LD D,$40               ; D = high byte (row 0)
+        LD B,8                 ; B = 8 scanlines per character
+
+ScanlineLoop:
+        ; Draw one scanline across 5 character positions
+        LD E,10                ; E = starting column
+        LD A,$FF               ; A = solid block pattern
+
+        ; Draw 5 blocks on this scanline
+        LD (DE),A              ; Column 10
+        INC E
+        LD (DE),A              ; Column 11
+        INC E
+        LD (DE),A              ; Column 12
+        INC E
+        LD (DE),A              ; Column 13
+        INC E
+        LD (DE),A              ; Column 14
+
+        ; Move to next scanline
+        INC D                  ; Next scanline (+256 bytes)
+
+        DJNZ ScanlineLoop      ; Repeat for all 8 scanlines
+
+        RET
+
+End:
+```
+
+**To run:**
+```
+RANDOMIZE USR 32768
+```
+
+![Five solid blocks in a row](/images/sinclair-zx-spectrum/phase-1/tier-1/lesson-005/example-1.png)
+
+**What happened:**
+
+1. B = 8 (loop will execute 8 times)
+2. First iteration:
+   - E = 10, draw $FF at $400A, $400B, $400C, $400D, $400E
+   - INC D → D = $41
+   - DJNZ: B becomes 7, loop continues
+3. Second iteration:
+   - E = 10, draw $FF at $410A, $410B, $410C, $410D, $410E
+   - INC D → D = $42
+   - DJNZ: B becomes 6, loop continues
+4. ...continues for 8 scanlines...
+5. After 8th iteration: B = 0, DJNZ exits, programme returns
+
+**Result:** Five solid blocks (8 scanlines tall, 1 byte wide each).
+
+---
+
+## Example Programme 2: Display "SNAKE"
+
+Use DJNZ within a subroutine to display multiple characters:
+
+```asm
+; Simple Repetition - Lesson 005, Example 2
+; Display "SNAKE" using DJNZ character loop
+
+        DEVICE ZXSPECTRUM48
+
+        ORG $8000
+
+Start:
+        ; Display "SNAKE" at row 0, columns 10-14
+        LD DE,$400A            ; DE = screen position
+
+        ; Character "S" (ASCII 83)
+        LD HL,$3E98            ; ROM address
+        CALL PrintChar
+        INC E                  ; Move to next column
+
+        ; Character "N" (ASCII 78)
+        LD HL,$3E70
+        CALL PrintChar
+        INC E
+
+        ; Character "A" (ASCII 65)
+        LD HL,$3E08
+        CALL PrintChar
+        INC E
+
+        ; Character "K" (ASCII 75)
+        LD HL,$3E58
+        CALL PrintChar
+        INC E
+
+        ; Character "E" (ASCII 69)
+        LD HL,$3E28
+        CALL PrintChar
+
+        RET
+
+; PrintChar subroutine
+; Input: HL = ROM character address, DE = screen position
+; Uses DJNZ to copy 8 bytes
+PrintChar:
+        PUSH DE                ; Save original position
+        LD B,8                 ; B = 8 scanlines
+
+PrintLoop:
+        LD A,(HL)              ; Read from ROM
+        LD (DE),A              ; Write to screen
+        INC HL                 ; Next ROM byte
+        INC D                  ; Next scanline (+256)
+        DJNZ PrintLoop         ; Repeat 8 times
+
+        POP DE                 ; Restore original position
+        RET
+
+End:
+```
+
+**Character addresses:**
+- S (83): $3D00 + ((83-32)×8) = $3E98
+- N (78): $3D00 + ((78-32)×8) = $3E70
+- A (65): $3D00 + ((65-32)×8) = $3E08
+- K (75): $3D00 + ((75-32)×8) = $3E58
+- E (69): $3D00 + ((69-32)×8) = $3E28
+
+![Word SNAKE displayed](/images/sinclair-zx-spectrum/phase-1/tier-1/lesson-005/example-2.png)
+
+**DJNZ in action within PrintChar:**
+
+1. PUSH DE saves screen position ($400A)
+2. B = 8
+3. Loop 8 times:
+   - Copy ROM byte to screen
+   - INC HL (next ROM byte)
+   - INC D (next scanline)
+   - DJNZ decrements B and loops
+4. POP DE restores original position
+5. RET returns to caller
+
+**Result:** Complete character displayed, position preserved for next character.
+
+---
+
+## Understanding Loop Execution
+
+**DJNZ execution flow:**
+
+```asm
+LD B,3               ; B = 3
+Loop:
+    ; Code here       ; Iteration 1: B = 3
+    DJNZ Loop        ; B--, B = 2, jump
+    ; Code here       ; Iteration 2: B = 2
+    DJNZ Loop        ; B--, B = 1, jump
+    ; Code here       ; Iteration 3: B = 1
+    DJNZ Loop        ; B--, B = 0, fall through
+; Continue here       ; B = 0
+```
+
+**Important points:**
+- Loop executes B times (initial value)
+- B decrements at end of each iteration
+- When B reaches 0, loop exits
+- After loop, B is always 0
+
+**Off-by-one gotcha:**
+```asm
+LD B,0               ; B = 0
+Loop:
+    DJNZ Loop        ; B--, B = 255 (wraps!), keeps looping!
+; Infinite loop! Never exits!
+```
+
+**Never start DJNZ with B = 0** unless you want 256 iterations!
+
+---
+
+## Screen Memory Addressing: An Important Discovery
+
+**Why row 0?**
+
+When creating this lesson, we discovered something important: The Spectrum's screen memory uses a complex addressing scheme called "thirds."
+
+**What we tried:**
+- Row 10: Got doubled characters (split across screen)
+- Row 2: Still got issues
+- Row 0: Works perfectly!
+
+**Why?**
+
+The screen is divided into three sections (thirds), and scanlines don't increment linearly everywhere. **Row 0 (character row 0) is special** - it uses simple `INC D` navigation for scanlines.
+
+**Address pattern for row 0:**
+```
+Scanline 0: $4000 + column
+Scanline 1: $4100 + column  (+$100 = INC D)
+Scanline 2: $4200 + column  (+$100 = INC D)
+...
+Scanline 7: $4700 + column  (+$100 = INC D)
+```
+
+This simple pattern only works for character rows 0, 1, 8, 9, 16, and 17 (first two rows of each third).
+
+**For other rows:** You need the "thirds formula" (covered in later lessons).
+
+**Lesson learnt:** Start simple (row 0), learn the pattern, then tackle the complexity.
+
+---
+
+## Make It Your Own: Experiments
+
+**Easy modifications:**
+
+1. **Different patterns:**
+   - Change number of blocks: `LD B,10` (10 blocks)
+   - Different pattern: `LD A,$AA` (checkerboard)
+   - Try `LD A,$55` (inverse checkerboard)
+
+2. **Different text:**
+   - Display your name instead of "SNAKE"
+   - Calculate ROM addresses for your letters
+   - Remember: address = $3D00 + ((ASCII-32)×8)
+
+3. **Multiple rows:**
+   ```asm
+   LD DE,$400A          ; Row 0
+   CALL PrintChar
+   LD DE,$480A          ; Row 1 (8 scanlines down)
+   CALL PrintChar
+   ```
+
+**Challenge:** Display "HELLO" at row 0 using a loop that iterates through an array of character addresses.
+
+---
+
+## DJNZ Performance
+
+**Timing comparison:**
+
+**DJNZ approach:**
+```asm
+LD B,10              ; 7 T-states
+Loop:
+    ; Work here       ; N T-states
+    DJNZ Loop        ; 13 T-states (loop) / 8 T-states (exit)
+```
+Total overhead: 7 + (10 × 13) + 8 = 145 T-states
+
+**Manual approach:**
+```asm
+LD B,10              ; 7 T-states
+Loop:
+    ; Work here       ; N T-states
+    DEC B            ; 4 T-states
+    JP NZ,Loop       ; 10 T-states
+```
+Total overhead: 7 + (10 × 14) + 10 = 157 T-states
+
+**DJNZ saves ~12 T-states** per 10-iteration loop. For 100 iterations: 120 T-states saved (enough to display 3 more pixels!).
+
+---
+
+## DJNZ Limitations
+
+**Range limitation:**
+- DJNZ uses relative jump (1-byte offset)
+- Can jump -126 to +129 bytes
+- If loop body is too large, DJNZ can't reach
+
+**Example of problem:**
+```asm
+LD B,10
+Loop:
+    ; ... 150 bytes of code here ...
+    DJNZ Loop        ; ERROR: Too far to jump back!
+```
+
+**Solution for large loops:**
+```asm
+LD B,10
+Loop:
+    ; ... 150 bytes of code here ...
+    DEC B
+    JP NZ,Loop       ; JP has no range limit
+```
+
+**Rule of thumb:** Keep DJNZ loop bodies under 100 bytes. For larger loops, use DEC + JP NZ.
+
+---
+
+## How Games Use Loops
+
+**Snake:**
+- Loop through body positions array
+- Display each segment at stored position
+- DJNZ perfect for fixed-size segments
+
+**Pac-Man:**
+- Loop through pellet positions
+- Check if collected, display if not
+- Loop through ghost positions
+- Update and display each ghost
+
+**Space Invaders:**
+- Loop through alien grid
+- Display each alien
+- Loop through bullets
+- Update each bullet position
+
+**The pattern:** Whenever you have multiple similar objects, use loops.
+
+---
+
+## From the Vault: Essential Reading
+
+**[Z80 Instruction Set Reference](/vault/sinclair-zx-spectrum/z80-instruction-set)**
+- DJNZ instruction timing and details
+- Loop optimisation techniques
+- Alternative loop patterns
+
+**[ZX Spectrum Hardware Ports](/vault/sinclair-zx-spectrum/hardware-ports)**
+- Screen memory organization (thirds)
+- Why row 0 uses simple addressing
+- Complete address mapping
+
+**[ZX Spectrum ROM Disassembly](/vault/sinclair-zx-spectrum/rom-disassembly)**
+- How ROM uses DJNZ for character display
+- Optimisation examples
+
+---
+
+## Quick Reference: Lesson 005
+
+### DJNZ Instruction
+
+| Instruction | Operation | T-states | Range |
+|-------------|-----------|----------|-------|
+| DJNZ label | B←B-1, if B≠0 jump | 13 (loop) / 8 (exit) | -126 to +129 bytes |
+
+**Flags:** None affected
+
+### Loop Patterns
+
+**Counted loop:**
+```asm
+LD B,count
+Loop:
+    ; Code
+    DJNZ Loop
+```
+
+**Loop with preserved position:**
+```asm
+LD B,count
+Loop:
+    PUSH DE          ; Save position
+    ; Code that modifies DE
+    POP DE           ; Restore position
+    DJNZ Loop
+```
+
+**Nested loops:**
+```asm
+LD B,outer_count
+OuterLoop:
+    PUSH BC          ; Save outer counter
+    LD B,inner_count
+InnerLoop:
+        ; Inner code
+        DJNZ InnerLoop
+    POP BC           ; Restore outer counter
+    DJNZ OuterLoop
+```
+
+### Screen Addressing (Row 0)
+
+| Scanline | Address (col 10) | Pattern |
+|----------|------------------|---------|
+| 0 | $400A | Base + column |
+| 1 | $410A | Base + $100 + column |
+| 2 | $420A | Base + $200 + column |
+| 3 | $430A | Base + $300 + column |
+| 4 | $440A | Base + $400 + column |
+| 5 | $450A | Base + $500 + column |
+| 6 | $460A | Base + $600 + column |
+| 7 | $470A | Base + $700 + column |
+
+**Navigation:** INC D moves to next scanline (+256 bytes)
+
+### Performance Comparison
+
+| Operation | Assembly (DJNZ) | BASIC | Advantage |
+|-----------|-----------------|-------|-----------|
+| Draw 5 blocks | ~650 T-states | ~25000 T-states | ~38× faster |
+| Display "SNAKE" | ~1750 T-states | ~50000 T-states | ~28× faster |
+| Draw 100 pixels | ~8000 T-states | ~500000 T-states | ~62× faster |
+
+---
+
+## What You've Learnt
+
+After completing this lesson, you can:
+
+- ✓ Use DJNZ instruction for counted loops
+- ✓ Understand B register as loop counter
+- ✓ Draw multiple characters in a row
+- ✓ Combine loops with character display
+- ✓ Navigate screen memory horizontally (INC E)
+- ✓ Understand scanline addressing for row 0
+- ✓ Use PUSH/POP to preserve values across loops
+- ✓ Recognize when to use DJNZ vs manual loops
+- ✓ Understand screen memory "thirds" concept
+- ✓ Build foundation for drawing game objects
+
+**Key insight:** Loops transform repetitive tasks from impossible to trivial. One instruction (DJNZ) replaces hundreds of lines. This is how you draw snake bodies, alien grids, and scrolling text.
+
+**Important discovery:** Screen memory addressing is more complex than it first appears. Row 0 works simply with INC D, but other rows require understanding the "thirds" structure. Start simple, master the pattern, then tackle complexity.
+
+**Next lesson:** Clearing Up - Learn the XOR A trick to quickly set A=0, then use loops to clear entire screen. Foundation for screen management and game resets!
+
+---
+
+## Tools Used
+
+**Assembler:** sjasmplus
+```bash
+sjasmplus --raw=example-1.bin example-1.asm
+```
+
+**TAP Converter:** bin2tap.py
+```bash
+python3 bin2tap.py example-1.bin example-1.tap 0x8000
+```
+
+**Emulator:** FUSE
+```bash
+fuse --tape example-1.tap --auto-load
+```
+
+**Validator:** validate-z80-asm.py
+```bash
+python3 /scripts/validate-z80-asm.py example-1.asm
+```
+
+All lesson files available in: `/code-samples/sinclair-zx-spectrum/phase-1/tier-1/lesson-005/`
+
+---
+
+*Remember: Manual repetition doesn't scale. One DJNZ loop replaces hundreds of lines. This is how games draw complex scenes at 50 frames per second. You've just learnt the Z80's most powerful instruction.*

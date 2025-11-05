@@ -1,70 +1,130 @@
 ---
 title: "Understanding PPU"
-description: "Master the NES graphics chip—how PPU registers work, palette memory structure, and controlling screen colours."
+description: "Learn how to draw tiles on screen by writing to the nametable and understanding the PPU's memory structure."
 pubDate: 2025-01-20
 tier: 1
 lessonNumber: 2
-tags: ["assembly", "6502", "ppu", "palettes", "colours", "registers"]
+tags: ["assembly", "6502", "ppu", "tiles", "nametable", "attributes"]
 prevLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-001"
 nextLesson: "/nintendo-entertainment-system/phase-1/tier-1/lesson-003"
 layout: "../../../../layouts/LessonLayout.astro"
 ---
 
-The PPU (Picture Processing Unit) is the NES's dedicated graphics processor. While the CPU runs game logic, the PPU handles all display work—tiles, sprites, scrolling, and colours. Understanding how to communicate with the PPU through memory-mapped registers is fundamental to NES programming.
+Lesson 1 displayed a solid colour. This lesson brings tiles to the screen—actual graphics built from 8×8 pixel patterns. You'll write tile data to the **nametable** and see how the PPU assembles the screen from these building blocks.
 
-Last lesson displayed a single colour. This lesson explores how that works: PPU architecture, register usage, palette memory structure, and the colour system. You'll experiment with different colours and understand why the two-write pattern to $2006 exists.
+Every NES game draws graphics using tiles. Backgrounds are grids of tiles, sprites are tiles that move independently, and even text is made of tiles. Master this, and you understand how every NES visual works.
 
 ## The One-Minute Tour
 
-- **PPU is independent**—separate processor handling graphics while CPU runs game logic
-- **Memory-mapped registers** at $2000-$2007 control PPU from CPU
-- **$2006 sets address**—write twice (high byte, low byte) to target PPU memory
-- **$2007 reads/writes data**—access PPU memory at current address
-- **Palette memory** at $3F00-$3F1F stores colours (background and sprite palettes)
-- **64-colour system**—each palette entry indexes master palette ($00-$3F)
-- **Auto-increment**—PPUADDR advances after each $2007 access
+- **Tiles are 8×8 pixels** stored in CHR-ROM (the graphics bank)
+- **Nametable** at $2000-$23FF defines which tiles appear where (32×30 grid)
+- **Attribute table** at $23C0-$23FF controls which palette each tile uses
+- **PPUADDR** ($2006) sets where to write, **PPUDATA** ($2007) writes the data
+- **Each tile is 16 bytes**—two 8-byte bitplanes defining 2 bits per pixel
+- **PPUMASK bit 1** must be set to show the leftmost 8 pixels of the screen
 
-## Your First PPU Experiment
+## Your First Tiles
 
-Create `colour-change.asm`:
+Create `top-border.asm`:
 
-```asm
-; Change background colour using PPU registers
+```nasm
+; Understanding PPU - Top Border
+; Draws a white stripe across the top of the screen
 
 .segment "HEADER"
     .byte "NES", $1A        ; iNES identifier
     .byte 2                  ; 32KB PRG-ROM
     .byte 1                  ; 8KB CHR-ROM
-    .byte $01, $00          ; Mapper 0
+    .byte $01, $00          ; Mapper 0, vertical mirroring
 
 .segment "CODE"
+
 Reset:
     SEI                     ; Disable interrupts
     CLD                     ; Clear decimal mode
 
     ; Wait for PPU warmup (2 VBlanks)
+    LDX #$00
+VBlank1:
     BIT $2002
-:   BIT $2002
-    BPL :-
-:   BIT $2002
-    BPL :-
+    BPL VBlank1
 
-    ; Set PPU address to palette memory
-    LDA #$3F                ; High byte of $3F00
-    STA $2006               ; Write to PPUADDR
-    LDA #$00                ; Low byte of $3F00
-    STA $2006               ; Write to PPUADDR again
+VBlank2:
+    BIT $2002
+    BPL VBlank2
 
-    ; Write colour to palette
-    LDA #$12                ; Colour $12 (blue)
-    STA $2007               ; Write to PPUDATA
+    ; Initialize stack
+    LDX #$FF
+    TXS
+
+    ; Initialize PPU registers
+    LDA #$00
+    STA $2000               ; PPUCTRL - disable NMI
+    STA $2001               ; PPUMASK - disable rendering
+
+    ; Set palette colours
+    LDA #$3F
+    STA $2006
+    LDA #$00
+    STA $2006
+    LDA #$02                ; Dark blue background
+    STA $2007
+    LDA #$30                ; White for tiles
+    STA $2007               ; Auto-increments to $3F01
+
+    ; Clear nametable and attributes
+    LDA #$20
+    STA $2006
+    LDA #$00
+    STA $2006
+
+    LDX #$04                ; 4 × 256 = 1024 bytes
+    LDY #$00
+    LDA #$00
+ClearLoop:
+    STA $2007
+    INY
+    BNE ClearLoop
+    DEX
+    BNE ClearLoop
+
+    ; Clear attribute table explicitly
+    LDA #$23
+    STA $2006
+    LDA #$C0
+    STA $2006
+
+    LDX #64                 ; 64 bytes
+    LDA #$00
+ClearAttr:
+    STA $2007
+    DEX
+    BNE ClearAttr
+
+    ; Draw top border - 32 tiles across row 0
+    LDA #$20
+    STA $2006
+    LDA #$00
+    STA $2006
+
+    LDX #32                 ; 32 tiles wide
+    LDA #$01                ; Tile $01 (solid white)
+DrawTop:
+    STA $2007
+    DEX
+    BNE DrawTop
+
+    ; Reset scroll position
+    LDA #$00
+    STA $2005
+    STA $2005
 
     ; Enable rendering
-    LDA #%00001000          ; Enable background
-    STA $2001               ; PPUMASK
+    LDA #%00001010          ; Enable background + leftmost 8 pixels
+    STA $2001
 
-Forever:
-    JMP Forever
+MainLoop:
+    JMP MainLoop
 
 NMI:
     RTI
@@ -73,319 +133,287 @@ IRQ:
     RTI
 
 .segment "VECTORS"
-    .word NMI               ; $FFFA
-    .word Reset             ; $FFFC
-    .word IRQ               ; $FFFE
+    .word NMI
+    .word Reset
+    .word IRQ
 
 .segment "CHARS"
-    .res 8192, $00          ; Blank CHR-ROM
+    ; Tile $00: Blank
+    .byte $00, $00, $00, $00, $00, $00, $00, $00  ; Plane 0
+    .byte $00, $00, $00, $00, $00, $00, $00, $00  ; Plane 1
+
+    ; Tile $01: Solid white (colour 1)
+    .byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF  ; Plane 0
+    .byte $00, $00, $00, $00, $00, $00, $00, $00  ; Plane 1
+
+    .res 8192 - 32, $00
 ```
 
-**Assemble and run this**—the screen displays solid blue!
+**Assemble this** with ca65 and ld65, then load in Mesen.
+
+![Top border example](/images/nintendo-entertainment-system/phase-1/tier-1/lesson-002/top-border.png)
+
+A white stripe appears across the top. Simple, but this demonstrates the entire tile rendering pipeline: CHR-ROM defines tile shapes, nametable says where they go, palette assigns colours.
 
 ## How This Works
 
-### PPU Architecture
+### Tile Data in CHR-ROM
 
-The NES has two processors:
+```nasm
+.segment "CHARS"
+    ; Tile $00: Blank
+    .byte $00, $00, $00, $00, $00, $00, $00, $00  ; Plane 0
+    .byte $00, $00, $00, $00, $00, $00, $00, $00  ; Plane 1
 
-**CPU (6502):** Runs at 1.79 MHz, executes game logic, handles input, manages game state.
-
-**PPU (2C02):** Runs independently, generates video signal, renders tiles and sprites, outputs 256×240 pixels at 60 Hz.
-
-These processors don't share memory. CPU has 2KB RAM plus ROM. PPU has 2KB VRAM plus pattern tables in cartridge ROM. They communicate through memory-mapped registers at $2000-$2007.
-
-This architecture lets the CPU focus on gameplay while PPU handles graphics automatically. The CPU configures what to draw; the PPU draws it every frame without CPU intervention.
-
-### PPU Memory Map
-
-PPU has its own 16KB address space:
-
-```
-$0000-$1FFF: Pattern tables (tile graphics in CHR-ROM)
-$2000-$23FF: Nametable 0 (background tile layout)
-$2400-$27FF: Nametable 1
-$2800-$2BFF: Nametable 2
-$2C00-$2FFF: Nametable 3
-$3F00-$3F1F: Palette RAM (colours)
+    ; Tile $01: Solid white
+    .byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF  ; Plane 0
+    .byte $00, $00, $00, $00, $00, $00, $00, $00  ; Plane 1
 ```
 
-CPU can't directly access this memory. Instead, CPU writes to registers at $2000-$2007 which control PPU operations.
+**Tiles are 16 bytes** divided into two 8-byte planes. Each byte represents one row of 8 pixels. The PPU combines both planes to get 2 bits per pixel (4 colours per tile).
 
-### Register $2006: PPUADDR
+- **Plane 0 = 0, Plane 1 = 0**: Colour 0 (background colour from $3F00)
+- **Plane 0 = 1, Plane 1 = 0**: Colour 1 (from $3F01)
+- **Plane 0 = 0, Plane 1 = 1**: Colour 2 (from $3F02)
+- **Plane 0 = 1, Plane 1 = 1**: Colour 3 (from $3F03)
 
-This register sets which PPU memory address to access. Problem: PPUADDR is 16-bit (covers $0000-$3FFF) but CPU is 8-bit. Solution: write twice—high byte first, then low byte.
+Tile $01 has all bits set in plane 0 and all bits clear in plane 1. This makes every pixel colour 1, which we set to white ($30) at palette address $3F01.
 
-```asm
-LDA #$3F                ; High byte
-STA $2006               ; Write $3F
-LDA #$00                ; Low byte
-STA $2006               ; Write $00
-                        ; PPUADDR now points to $3F00
+### Writing to the Nametable
+
+```nasm
+LDA #$20                ; Nametable high byte
+STA $2006               ; PPUADDR
+LDA #$00                ; Nametable low byte
+STA $2006               ; PPUADDR
+
+LDX #32                 ; 32 tiles wide
+LDA #$01                ; Tile $01
+DrawTop:
+    STA $2007           ; Write tile index
+    DEX
+    BNE DrawTop
 ```
 
-The PPU maintains internal state tracking whether the next write is high or low byte. First write after power-on or reading $2002 is always the high byte.
+The nametable at $2000-$23BF is a 32×30 grid. Each byte is a tile index referencing CHR-ROM. Writing $01 to address $2000 displays tile $01 at screen position (0, 0). Writing to $2001 displays tile $01 at position (1, 0). The loop writes 32 tiles across row 0.
 
-**Why this matters:** Every PPU memory access requires this two-step setup. Writing palette data, loading tile graphics, updating nametables—all start with two writes to $2006.
+**PPUADDR requires two writes**: high byte first, then low byte. After each write to PPUDATA ($2007), the address auto-increments (controlled by PPUCTRL bit 2, default +1).
 
-### Register $2007: PPUDATA
+### The Attribute Table
 
-After setting the address with $2006, read or write PPU memory via $2007:
-
-```asm
-LDA #$12                ; Blue colour
-STA $2007               ; Write to PPU memory at current address
-```
-
-This writes $12 to PPU address $3F00 (the address we set earlier). After each $2007 access, PPUADDR automatically increments by 1, ready for the next byte.
-
-**Auto-increment example:**
-
-```asm
-LDA #$3F
+```nasm
+LDA #$23
 STA $2006
-LDA #$00
-STA $2006               ; PPUADDR = $3F00
-
-LDA #$0F
-STA $2007               ; Write $0F to $3F00, PPUADDR becomes $3F01
-LDA #$12
-STA $2007               ; Write $12 to $3F01, PPUADDR becomes $3F02
-LDA #$16
-STA $2007               ; Write $16 to $3F02, PPUADDR becomes $3F03
-```
-
-This loads four consecutive palette colours without resetting PPUADDR each time.
-
-### Palette Memory Structure
-
-Palette RAM ($3F00-$3F1F) stores 32 bytes: 8 palettes × 4 colours each.
-
-```
-$3F00-$3F0F: Background palettes (4 palettes)
-  $3F00-$3F03: Palette 0
-  $3F04-$3F07: Palette 1
-  $3F08-$3F0B: Palette 2
-  $3F0C-$3F0F: Palette 3
-
-$3F10-$3F1F: Sprite palettes (4 palettes)
-  $3F10-$3F13: Palette 0
-  $3F14-$3F17: Palette 1
-  $3F18-$3F1B: Palette 2
-  $3F1C-$3F1F: Palette 3
-```
-
-Each palette has 4 colours. Tiles and sprites reference which palette (0-3) and which colour within that palette (0-3) to use for each pixel.
-
-**Special case:** $3F00 is the universal background colour. When no tiles are drawn (like our example), the entire screen displays this colour. Addresses $3F04, $3F08, $3F0C, $3F10, $3F14, $3F18, $3F1C are mirrors of $3F00.
-
-### The NES Colour System
-
-Each palette entry is a single byte ($00-$3F) indexing into the NES's master palette of 64 colours. The NES can't display arbitrary RGB colours—only these 64 fixed colours.
-
-**Common colours:**
-
-| Value | Colour | Value | Colour |
-|-------|---------|-------|---------|
-| $0F | Black | $00 | Dark grey |
-| $10 | Light grey | $20 | White |
-| $30 | White (duplicate) | $12 | Blue |
-| $16 | Red | $27 | Orange |
-| $29 | Green | $1A | Light green |
-| $21 | Sky blue | $2A | Light blue |
-
-**Note:** Colours $0D, $1D, $2D, $3D produce glitches on real hardware (blacker than black). Never use them. Many emulators render them as pure black but actual TVs displayed artifacts.
-
-## Experimenting with Colours
-
-Modify the colour value and reassemble:
-
-```asm
-LDA #$16                ; Try red
-STA $2007
-```
-
-```asm
-LDA #$29                ; Try green
-STA $2007
-```
-
-```asm
-LDA #$30                ; Try white
-STA $2007
-```
-
-Each assembly creates a ROM displaying a different background colour. Instant feedback—change value, rebuild, see result.
-
-## Loading Multiple Palette Colours
-
-Extend the example to load a full 4-colour palette:
-
-```asm
-; Set address to palette 0
-LDA #$3F
-STA $2006
-LDA #$00
+LDA #$C0
 STA $2006
 
-; Load palette 0 (4 colours)
-LDA #$0F                ; Colour 0: Black
-STA $2007
-LDA #$12                ; Colour 1: Blue
-STA $2007
-LDA #$16                ; Colour 2: Red
-STA $2007
-LDA #$27                ; Colour 3: Orange
-STA $2007
-```
-
-This loads background palette 0 with four colours. The screen still displays colour 0 (black) because no tiles are drawn yet. Next lessons introduce tiles which use these palette colours.
-
-**Why load all four?** When tiles are drawn, each pixel uses one of four colours from the palette. Setting up complete palettes now prepares for upcoming graphics work.
-
-## Reading $2002: PPUSTATUS
-
-Register $2002 provides PPU status:
-
-```asm
-BIT $2002               ; Test status flags
-```
-
-**Bit 7 (VBlank flag):** Set when PPU enters VBlank period (screen finished drawing). Cleared when read or when VBlank ends.
-
-**Bit 6 (Sprite 0 Hit):** Set when sprite 0 overlaps background (used for split-screen effects).
-
-**Bit 5 (Sprite Overflow):** Set when more than 8 sprites on a scanline.
-
-Reading $2002 has a side effect: **resets the $2006 write toggle**. After reading $2002, the next $2006 write is the high byte again. This prevents getting stuck in the wrong state if interrupts occur during PPU address setup.
-
-**Common pattern:**
-
-```asm
-BIT $2002               ; Reset write toggle
-LDA #$3F
-STA $2006               ; High byte
+LDX #64                 ; 64 bytes
 LDA #$00
-STA $2006               ; Low byte
+ClearAttr:
+    STA $2007
+    DEX
+    BNE ClearAttr
 ```
 
-Start every PPU address setup with `BIT $2002` to ensure consistent state.
+Every nametable has a 64-byte **attribute table** at $23C0-$23FF. Each byte controls a 32×32 pixel area (4×4 tiles), selecting which of the four background palettes each quadrant uses.
 
-## Why Two Writes to $2006?
+If you don't initialize this, garbage data causes tiles to use the wrong palette. Setting all attributes to $00 means every tile uses palette 0 (colours from $3F00-$3F03).
 
-**Hardware limitation:** The 6502 CPU is 8-bit. All registers, instructions, and data transfers work with 8-bit values. But PPU memory spans $0000-$3FFF (16-bit address space).
+**Why clear both nametable and attributes?** At power-on, PPU memory contains random data. Explicitly clearing ensures consistent behaviour across emulators and real hardware.
 
-The PPU designers chose to make PPUADDR a 16-bit register accessed through two 8-bit writes. Alternative would be two separate registers ($2006 for high, $2007 for low), but that uses an extra register number.
+### PPUMASK Bit 1
 
-This pattern—two writes to build a 16-bit value—appears throughout 8-bit systems. The same limitation affects setting scroll positions, sprite coordinates, and memory transfers.
-
-## PPU Warmup Wait
-
-Why wait for two VBlanks after reset?
-
-```asm
-BIT $2002
-:   BIT $2002
-    BPL :-              ; Wait for first VBlank
-:   BIT $2002
-    BPL :-              ; Wait for second VBlank
-```
-
-The PPU takes ~29,658 CPU cycles after power-on to stabilize. During this time, PPU registers don't respond correctly. Waiting for two VBlanks ensures the PPU is fully operational before configuration.
-
-**First VBlank** occurs during warmup—might happen immediately if you read $2002 late in warmup. **Second VBlank** definitely occurs after warmup completes. Now PPU is ready for register writes.
-
-**Why this matters:** Writing to PPU registers during warmup can corrupt VRAM or cause the PPU to lock up. Always wait for two VBlanks. Every NES program starts with this pattern.
-
-## Enabling Rendering
-
-Register $2001 (PPUMASK) controls what the PPU displays:
-
-```asm
-LDA #%00001000          ; Enable background
+```nasm
+LDA #%00001010          ; Enable background + leftmost 8 pixels
 STA $2001
 ```
 
-**Bit 3:** Show background (0 = hide, 1 = show)
-**Bit 4:** Show sprites (0 = hide, 1 = show)
-**Bit 0:** Greyscale mode (1 = greyscale)
-**Bit 1:** Show leftmost 8 pixels of background
-**Bit 2:** Show leftmost 8 pixels of sprites
+Lesson 1 used `%00001000` (only bit 3 = enable background). This **hides the leftmost 8 pixels** on each scanline. Real NES games use this to hide glitches during scrolling, but for our border, we need those pixels visible.
 
-Value `%00001000` enables background rendering (bit 3 = 1) and disables sprites (bit 4 = 0). With no tiles drawn, the background colour fills the screen.
+**Bit 1 = 1**: Show background in leftmost 8 pixels
+**Bit 3 = 1**: Enable background rendering
 
-**Common values:**
+Setting both (`$0A` = `%00001010`) displays the full screen width.
 
-- `%00000000`: Rendering off (screen black)
-- `%00001000`: Background only
-- `%00010000`: Sprites only
-- `%00011000`: Background and sprites (normal gameplay)
-- `%00011110`: Background, sprites, leftmost 8 pixels (full screen)
+## Experiment: Complete Frame
+
+Extend the border to all four edges. Create `frame-border.asm` by adding:
+
+```nasm
+; Draw bottom border (row 29)
+LDA #$23                ; $2000 + (29 × 32) = $23A0
+STA $2006
+LDA #$A0
+STA $2006
+
+LDX #32
+LDA #$01
+DrawBottom:
+    STA $2007
+    DEX
+    BNE DrawBottom
+
+; Draw left side (rows 1-28, column 0)
+LDY #1
+
+DrawLeft:
+    ; Calculate address high byte based on row
+    LDA #$20
+    CPY #8
+    BCC :+
+    LDA #$21
+:   CPY #16
+    BCC :+
+    LDA #$22
+:   CPY #24
+    BCC :+
+    LDA #$23
+:   STA $2006
+
+    ; Calculate address low byte: Y × 32
+    TYA
+    ASL                     ; Multiply by 32
+    ASL
+    ASL
+    ASL
+    ASL
+    STA $2006
+
+    LDA #$01
+    STA $2007
+
+    INY
+    CPY #29
+    BNE DrawLeft
+
+; Draw right side (rows 1-28, column 31)
+LDY #1
+
+DrawRight:
+    LDA #$20
+    CPY #8
+    BCC :+
+    LDA #$21
+:   CPY #16
+    BCC :+
+    LDA #$22
+:   CPY #24
+    BCC :+
+    LDA #$23
+:   STA $2006
+
+    TYA
+    ASL
+    ASL
+    ASL
+    ASL
+    ASL
+    CLC
+    ADC #31                 ; Add column offset
+    STA $2006
+
+    LDA #$01
+    STA $2007
+
+    INY
+    CPY #29
+    BNE DrawRight
+```
+
+![Frame border example](/images/nintendo-entertainment-system/phase-1/tier-1/lesson-002/frame-border.png)
+
+Now a complete white frame surrounds the screen. This demonstrates **nametable address calculation**: address = $2000 + (row × 32) + column.
+
+**Why the high byte checks?** When calculating `row × 32` in an 8-bit register, values above 255 wrap around. Rows 8-15 need high byte $21, rows 16-23 need $22, rows 24-29 need $23. This is a common NES programming pattern for multi-byte address arithmetic.
+
+## Experiment: Different Patterns
+
+Try modifying tile $01 in CHR-ROM:
+
+```nasm
+; Checkerboard pattern
+.byte $AA, $55, $AA, $55, $AA, $55, $AA, $55  ; Plane 0
+.byte $00, $00, $00, $00, $00, $00, $00, $00  ; Plane 1
+
+; Horizontal stripes
+.byte $FF, $00, $FF, $00, $FF, $00, $FF, $00  ; Plane 0
+.byte $00, $00, $00, $00, $00, $00, $00, $00  ; Plane 1
+
+; Diagonal pattern
+.byte $80, $40, $20, $10, $08, $04, $02, $01  ; Plane 0
+.byte $00, $00, $00, $00, $00, $00, $00, $00  ; Plane 1
+```
+
+Each creates a different border texture. The pattern shows how 8 bytes encode 8 rows of 8 pixels each.
+
+## Emulator Notes
+
+**Mesen**: Shows full screen correctly by default.
+
+**FCEUX**: NTSC mode crops top/bottom edges (simulating real TV overscan). Use PAL mode (`Config → Region → PAL`) to see full screen during development.
+
+**Real hardware**: CRT TVs hide 8-16 pixels around all edges (overscan). Commercial NES games avoid placing important UI elements near screen edges. Our borders work for learning, but production games would inset them 1-2 tiles.
 
 ## From the Vault
 
-- [NESDev PPU Registers Reference](https://www.nesdev.org/wiki/PPU_registers)
-- [NES Palette Viewer Tool](https://www.nesdev.org/wiki/PPU_palettes)
-- [PPU Memory Map](https://www.nesdev.org/wiki/PPU_memory_map)
-- [PPU Rendering Details](https://www.nesdev.org/wiki/PPU_rendering)
+- [NESDev Wiki - PPU Nametables](https://www.nesdev.org/wiki/PPU_nametables)
+- [NESDev Wiki - PPU Attribute Tables](https://www.nesdev.org/wiki/PPU_attribute_tables)
+- [NESDev Wiki - PPU Pattern Tables](https://www.nesdev.org/wiki/PPU_pattern_tables)
+- [NESDev Wiki - PPU Registers](https://www.nesdev.org/wiki/PPU_registers)
 
-## Quick Reference: PPU Basics
-
-### PPU Registers (CPU Memory Map)
-
-| Address | Name | Purpose |
-|---------|------|---------|
-| $2000 | PPUCTRL | PPU control (NMI, address increment) |
-| $2001 | PPUMASK | Enable rendering, color effects |
-| $2002 | PPUSTATUS | VBlank flag, sprite 0 hit (read-only) |
-| $2003 | OAMADDR | OAM (sprite) address |
-| $2004 | OAMDATA | OAM (sprite) data |
-| $2005 | PPUSCROLL | Scroll position (2 writes) |
-| $2006 | PPUADDR | PPU memory address (2 writes) |
-| $2007 | PPUDATA | PPU memory data |
-
-### PPU Memory Map
+## Quick Reference: PPU Memory Map
 
 | Address Range | Purpose |
-|---------------|---------|
-| $0000-$1FFF | Pattern tables (CHR-ROM/RAM) |
-| $2000-$23FF | Nametable 0 |
+|--------------|---------|
+| $0000-$0FFF | Pattern table 0 (256 tiles) |
+| $1000-$1FFF | Pattern table 1 (256 tiles) |
+| $2000-$23BF | Nametable 0 (960 bytes) |
+| $23C0-$23FF | Attribute table 0 (64 bytes) |
 | $2400-$27FF | Nametable 1 |
 | $2800-$2BFF | Nametable 2 |
 | $2C00-$2FFF | Nametable 3 |
-| $3F00-$3F0F | Background palettes |
-| $3F10-$3F1F | Sprite palettes |
+| $3F00-$3F0F | Background palettes (16 bytes) |
+| $3F10-$3F1F | Sprite palettes (16 bytes) |
 
-### Common NES Colours
+## Quick Reference: Nametable Addressing
 
-| $00-$0F | $10-$1F | $20-$2F | $30-$3F |
-|---------|---------|---------|---------|
-| Dark greys | Blues/purples | Greens/cyans | Reds/oranges/yellows |
-
-Avoid: $0D, $1D, $2D, $3D (cause glitches)
-
-### PPU Access Pattern
-
-```asm
-BIT $2002               ; Reset toggle
-LDA #$3F                ; High byte
-STA $2006               ; PPUADDR
-LDA #$00                ; Low byte
-STA $2006               ; PPUADDR
-LDA #$12                ; Data value
-STA $2007               ; PPUDATA (PPUADDR auto-increments)
+```nasm
+; Formula: address = $2000 + (row × 32) + column
+; Example: row 10, column 5
+; Address = $2000 + (10 × 32) + 5 = $2000 + 320 + 5 = $2145
 ```
+
+**Rows 0-7**: High byte = $20
+**Rows 8-15**: High byte = $21
+**Rows 16-23**: High byte = $22
+**Rows 24-29**: High byte = $23
+
+## Quick Reference: PPUMASK ($2001)
+
+| Bit | Function |
+|-----|----------|
+| 0 | Greyscale (1 = greyscale mode) |
+| 1 | Show background in leftmost 8 pixels |
+| 2 | Show sprites in leftmost 8 pixels |
+| 3 | Enable background rendering |
+| 4 | Enable sprite rendering |
+| 5-7 | Colour emphasis (BGR) |
+
+**Common values:**
+- `$00`: Rendering disabled (during setup)
+- `$08`: Background only, leftmost 8 pixels hidden
+- `$0A`: Background only, full screen width
+- `$1E`: Background + sprites, full screen (typical gameplay value)
 
 ## What You've Learnt
 
-- **PPU architecture**—independent graphics processor with own memory space
-- **Memory-mapped registers**—CPU controls PPU through $2000-$2007
-- **PPUADDR ($2006)**—requires two writes (high, low) to set 16-bit address
-- **PPUDATA ($2007)**—reads/writes PPU memory, auto-increments address
-- **Palette structure**—8 palettes × 4 colours, stored at $3F00-$3F1F
-- **NES colour system**—64 fixed colours indexed by palette entries
-- **PPUSTATUS ($2002)**—check VBlank flag, reset address write toggle
-- **PPUMASK ($2001)**—enable/disable background and sprite rendering
-- **PPU warmup**—wait two VBlanks after reset before register access
+- **Tiles are 16 bytes**—two 8-byte bitplanes encoding 2 bits per pixel
+- **Nametable** at $2000-$23BF defines which tiles appear at each screen position
+- **Attribute table** at $23C0-$23FF controls which palette each tile area uses
+- **PPUADDR** ($2006) sets address with two writes (high byte, then low byte)
+- **PPUDATA** ($2007) writes data and auto-increments address
+- **PPUMASK bit 1** controls whether leftmost 8 pixels display
+- **Address arithmetic** requires multi-byte calculations for rows beyond 7
+- **Always clear nametable and attributes** to avoid garbage data
 
-Next lesson: CPU architecture, memory map, zero page variables, and storing game state. You'll learn how to organize RAM for fast access and manage game data while the PPU handles graphics independently.
+Next lesson: Variables and zero page—storing game state in fast RAM and understanding the 6502 memory map.
