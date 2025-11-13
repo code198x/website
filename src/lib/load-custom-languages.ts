@@ -2,6 +2,7 @@
  * Load Code198x custom languages into shiki-highlight-api
  */
 import { loadCustomLanguage } from 'shiki-highlight-api';
+import asmLang from 'shiki/langs/asm.mjs';
 
 // Import custom grammars
 import basicGrammar from '../syntax/basic.tmLanguage.json';
@@ -46,9 +47,9 @@ export async function loadCode198xLanguages() {
   });
 
   // Load NASM as an alias for Shiki's built-in 'asm' language
-  const asmLang = await import('shiki/langs/asm.mjs');
+  // Note: asmLang is the module's default export (an array of language definitions)
   await loadCustomLanguage({
-    ...asmLang.default[0],
+    ...asmLang[0],
     name: 'nasm',
   });
 }
