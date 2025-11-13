@@ -1,7 +1,7 @@
 /**
  * Load Code198x custom languages into shiki-highlight-api
  */
-import { loadCustomLanguage } from 'shiki-highlight-api';
+import { loadCustomLanguage, loadBundledLanguage } from 'shiki-highlight-api';
 import asmLang from 'shiki/langs/asm.mjs';
 
 // Import custom grammars
@@ -46,8 +46,12 @@ export async function loadCode198xLanguages() {
     name: 'ca65',
   });
 
-  // Load NASM as an alias for Shiki's built-in 'asm' language
-  // Note: asmLang is the module's default export (an array of language definitions)
+  // Load Shiki's built-in 'asm' language using the new helper
+  await loadBundledLanguage('asm');
+
+  // Create 'nasm' alias for asm language
+  // Note: Using static import to avoid Vite build race conditions
+  // TODO: Replace with createBundledLanguageAlias('asm', 'nasm') once available
   await loadCustomLanguage({
     ...asmLang[0],
     name: 'nasm',
