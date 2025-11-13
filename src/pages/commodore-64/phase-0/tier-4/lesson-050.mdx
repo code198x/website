@@ -1,0 +1,336 @@
+---
+title: "The Jerky Road"
+description: "Attempt to create a smooth racing game and discover why character-based scrolling creates visible 8-pixel jumps—experience the hard limitation that requires assembly language for true smooth scrolling."
+pubDate: 2025-11-07
+tier: 4
+lessonNumber: 50
+tags: ["discovery", "racing", "scrolling", "limitations", "performance"]
+previousLesson: "/commodore-64/phase-0/tier-4/lesson-049"
+nextLesson: "/commodore-64/phase-0/tier-4/lesson-051"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+You've built platformers with scrolling. You've created space shooters with moving objects. Now let's attempt something that feels like it should work: a racing game with smooth vertical road scrolling.
+
+**This lesson reveals a fundamental BASIC limitation**—character-based scrolling. Commercial C64 racing games like Pole Position scroll smoothly at 60 fps. When you try to replicate that in BASIC, you'll discover why: BASIC can only move whole characters (8 pixels at a time), creating visible "jumps" instead of smooth motion.
+
+The key discovery: **Smooth scrolling requires VIC-II hardware control**. BASIC has no access to the fine scroll registers ($D011, $D016) with the frame-perfect timing needed. This isn't an optimization problem you can solve—it's a hard boundary between BASIC's character-based display and assembly's hardware access.
+
+---
+
+## The One-Minute Tour
+
+**Racing Game Mechanics:**
+- **Vertical road scrolling** moves road downward toward player
+- **3-lane system** with left/center/right positioning
+- **Obstacles spawn** at top and move down with road
+- **Lane switching** via A/D keys to avoid obstacles
+
+**The Scrolling Problem:**
+- **8-pixel minimum jump** because BASIC works with characters, not pixels
+- **Freeze-jump pattern** road appears frozen for 4 frames, then jumps 8 pixels
+- **Visual jerkiness** destroys racing feel (need 1-2 pixel smooth motion)
+- **No optimization fixes this** it's fundamental to character-based display
+
+**What Smooth Scrolling Needs:**
+- **VIC-II registers** $D011 (vertical fine scroll, bits 0-2)
+- **Frame-perfect timing** to update registers mid-frame
+- **Assembly language** only way to achieve this precision
+- **Commercial games** all use assembly for smooth scrolling
+
+---
+
+## Example: Racing Game with Jerky Scrolling
+
+Here's a complete racing game that demonstrates the 8-pixel limitation:
+
+```basic
+10 REM RACING GAME - DEMONSTRATING 8-PIXEL SCROLL LIMITATION
+20 PRINT CHR$(147):PRINT "RACING GAME"
+30 PRINT:PRINT "USE A/D KEYS TO CHANGE LANES"
+40 PRINT "AVOID OBSTACLES!"
+50 PRINT:PRINT "PRESS ANY KEY TO START..."
+60 GET K$:IF K$="" THEN 60
+70 DIM RD$(24):REM 25 ROWS OF ROAD PATTERN
+80 DIM OX(5),OY(5),OA(5):REM OBSTACLE X,Y,ACTIVE
+90 RS=0:REM ROAD SCROLL POSITION (0-7)
+100 RO=0:REM ROAD OFFSET (WHICH ROW IS TOP)
+110 PX=1:REM PLAYER LANE (0=LEFT, 1=CENTER, 2=RIGHT)
+120 SP=2:REM SCROLL SPEED (PIXELS PER UPDATE)
+130 SC=0:REM SCORE
+140 NO=0:REM NUMBER OF OBSTACLES
+150 GOSUB 9000:REM INIT ROAD PATTERN
+160 REM MAIN GAME LOOP
+170 GOSUB 1000:REM HANDLE INPUT
+180 GOSUB 2000:REM SCROLL ROAD
+190 GOSUB 3000:REM UPDATE OBSTACLES
+200 GOSUB 4000:REM CHECK COLLISIONS
+210 GOSUB 5000:REM DRAW EVERYTHING
+220 GOTO 170
+1000 REM HANDLE PLAYER INPUT
+1010 GET K$:IF K$="" THEN RETURN
+1020 IF K$="A" AND PX>0 THEN PX=PX-1
+1030 IF K$="D" AND PX<2 THEN PX=PX+1
+1040 RETURN
+2000 REM SCROLL ROAD - THIS IS WHERE THE LIMITATION SHOWS
+2010 RS=RS+SP:REM ADVANCE SCROLL POSITION
+2020 IF RS<8 THEN RETURN:REM NOT YET 8 PIXELS
+2030 REM MOVED ONE CHARACTER ROW - THIS IS THE JERKY PART
+2040 RS=RS-8:REM RESET TO 0-7 RANGE
+2050 RO=(RO+1)
+2060 IF RO>24 THEN RO=0
+2070 SC=SC+1:REM INCREMENT SCORE
+2080 RETURN
+3000 REM UPDATE OBSTACLES
+3010 FOR I=1 TO 5
+3020 IF OA(I)=0 THEN NEXT I:GOTO 3060
+3030 OY(I)=OY(I)+1:REM MOVE OBSTACLE DOWN
+3040 IF OY(I)>22 THEN OA(I)=0:REM OFF SCREEN
+3050 NEXT I
+3060 REM SPAWN NEW OBSTACLE RANDOMLY
+3070 IF RND(1)<0.08 THEN GOSUB 3100
+3080 RETURN
+3100 REM SPAWN NEW OBSTACLE
+3110 FOR I=1 TO 5
+3120 IF OA(I)=1 THEN NEXT I:GOTO 3170
+3130 OX(I)=INT(RND(1)*3):REM RANDOM LANE
+3140 OY(I)=0:REM TOP OF SCREEN
+3150 OA(I)=1:REM ACTIVE
+3160 RETURN
+3170 NEXT I
+3180 RETURN
+4000 REM CHECK COLLISIONS
+4010 FOR I=1 TO 5
+4020 IF OA(I)=0 THEN NEXT I:RETURN
+4030 REM CHECK IF OBSTACLE HIT PLAYER
+4040 IF OY(I)=18 AND OX(I)=PX THEN GOSUB 4100
+4050 NEXT I
+4060 RETURN
+4100 REM CRASH - GAME OVER
+4110 PRINT CHR$(147)
+4120 PRINT "CRASH!"
+4130 PRINT
+4140 PRINT "FINAL SCORE:";SC
+4150 PRINT
+4160 PRINT "THE ROAD SCROLLING WAS JERKY"
+4170 PRINT "BECAUSE BASIC CAN ONLY MOVE"
+4180 PRINT "WHOLE CHARACTERS (8 PIXELS)"
+4190 PRINT
+4200 PRINT "SMOOTH SCROLLING NEEDS"
+4210 PRINT "ASSEMBLY LANGUAGE!"
+4220 END
+5000 REM DRAW SCREEN - THIS IS WHERE THE LIMITATION SHOWS
+5010 PRINT CHR$(147):REM CLEAR SCREEN CAUSES FLICKER
+5020 REM DRAW ROAD FROM CURRENT OFFSET
+5030 FOR Y=0 TO 22
+5040 RW=RO+Y
+5050 IF RW>24 THEN RW=RW-25
+5060 PRINT RD$(RW);
+5070 NEXT Y
+5080 REM DRAW OBSTACLES
+5090 FOR I=1 TO 5
+5100 IF OA(I)=0 THEN NEXT I:GOTO 5130
+5110 POKE 1024+OY(I)*40+11+OX(I)*9,81:REM Q FOR OBSTACLE
+5120 POKE 55296+OY(I)*40+11+OX(I)*9,2:REM RED COLOUR
+5130 NEXT I
+5140 REM DRAW PLAYER CAR
+5150 POKE 1024+18*40+11+PX*9,83:REM S FOR CAR
+5160 POKE 55296+18*40+11+PX*9,7:REM YELLOW COLOUR
+5170 REM SHOW SCORE AT BOTTOM
+5180 PRINT "SCORE:";SC;"   ";
+5190 RETURN
+9000 REM INITIALIZE ROAD PATTERN
+9010 REM CREATE 3-LANE ROAD WITH BARRIERS
+9020 FOR I=0 TO 24
+9030 R$="##"
+9040 R$=R$+"         ":REM LEFT LANE (9 SPACES)
+9050 R$=R$+"#"
+9060 R$=R$+"         ":REM CENTER LANE (9 SPACES)
+9070 R$=R$+"#"
+9080 R$=R$+"         ":REM RIGHT LANE (9 SPACES)
+9090 R$=R$+"##"
+9100 RD$(I)=R$
+9110 NEXT I
+9120 RETURN
+```
+
+![Racing game showing character-based scrolling limitation](/images/commodore-64/phase-0/tier-4/lesson-050/screenshot-1.png)
+
+**What happens when you run this:**
+
+1. **Frames 1-4:** Road appears completely frozen (RS increments: 0→2→4→6)
+2. **Frame 5:** Road suddenly jumps 8 pixels (RS hits 8, triggers screen redraw)
+3. **Frames 6-9:** Road frozen again (RS: 0→2→4→6)
+4. **Frame 10:** Another 8-pixel jump
+
+This freeze-jump-freeze pattern is inherently jerky. You're not doing anything wrong—BASIC simply can't access the hardware features needed for smooth scrolling.
+
+---
+
+## Why BASIC Can't Do Smooth Scrolling
+
+**Character-based display:**
+- Screen memory holds 40×25 characters
+- Each character is 8×8 pixels
+- BASIC can POKE characters into screen memory
+- **BASIC cannot move pixels within characters**
+
+**What smooth scrolling needs:**
+```assembly
+; PSEUDOCODE - WHAT ASSEMBLY CAN DO:
+LDA $D011          ; Read VIC-II vertical scroll register
+SEC
+SBC #1             ; Subtract 1 pixel
+AND #07            ; Keep in 0-7 range
+STA $D011          ; Write back
+; Result: Screen shifts by 1 pixel
+```
+
+**Why BASIC can't do this:**
+- BASIC has no way to read/write $D011 at precise timing
+- VIC-II must update registers during specific scanlines
+- BASIC's POKE is too slow and imprecise
+- By the time BASIC POKEs, the frame has already rendered
+
+---
+
+## The Optimization Trap
+
+You might try these optimizations:
+
+**1. Reduce scroll speed:**
+```basic
+120 SP=1:REM SCROLL ONLY 1 PIXEL PER FRAME
+```
+**Result:** Road still jumps 8 pixels, just less frequently (every 8 frames instead of 4)
+
+**2. Remove screen clear:**
+```basic
+REM INSTEAD OF PRINT CHR$(147), TRY SELECTIVE REDRAW
+```
+**Result:** Reduces flicker, but still 8-pixel jumps
+
+**3. Faster code:**
+```basic
+REM USE SHORTER VARIABLE NAMES, INLINE CODE
+```
+**Result:** Might gain 1-2 fps, but still jerky 8-pixel jumps
+
+**The lesson:** No optimization fixes character-based scrolling. It's a fundamental limit.
+
+---
+
+## Commercial Racing Games
+
+**Pole Position (1982):**
+- 60 fps smooth scrolling
+- Assembly language throughout
+- VIC-II hardware scrolling
+- Raster interrupts for road perspective
+
+**Out Run (1986):**
+- Smooth 1-pixel vertical scrolling
+- Assembly sprite multiplexing (20+ cars)
+- Hardware colour splitting for road stripes
+- Custom music player running in interrupt
+
+**What they have in common:**
+- **0% BASIC** all assembly language
+- **VIC-II control** direct hardware register manipulation
+- **Raster timing** precise scanline synchronization
+
+---
+
+## Alternative: Turn-Based Racing
+
+**What works in BASIC:**
+```basic
+REM SCREEN-BY-SCREEN RACING PUZZLE
+100 PRINT CHR$(147)
+110 PRINT "UPCOMING SEGMENT:"
+120 PRINT "##    #    ##"
+130 PRINT "##    Q    ##"
+140 PRINT "##         ##"
+150 INPUT "MOVE LEFT/RIGHT/STAY";M$
+160 REM CALCULATE RESULT
+170 GOSUB 1000:REM PROCESS MOVE
+180 REM JUMP TO NEXT SCREEN
+```
+
+**Result:**
+- No scrolling needed (discrete screens)
+- Playable in BASIC (instant response)
+- Puzzle/strategy element (planning moves)
+- NOT "racing" feel, but different genre that fits BASIC
+
+---
+
+## What You've Discovered
+
+**Today you learnt:**
+
+- **Character-based scrolling** is BASIC's hard limit (8-pixel minimum)
+- **Freeze-jump pattern** destroys racing feel (need 1-2 pixel smoothness)
+- **VIC-II hardware scrolling** requires assembly language timing
+- **No optimization fixes** fundamental limitation, not performance issue
+- **Genre fit matters** turn-based games work in BASIC, smooth scrolling doesn't
+
+**The boundary:**
+- BASIC: Character-based display (8-pixel jumps)
+- Assembly: Pixel-based display (1-pixel smooth motion)
+
+**Why this matters:**
+- Tier 3's platformer (L36) had same 8-pixel limitation
+- This racing game hits the same wall
+- Pattern emerging: Real-time smooth motion needs assembly
+- Next lessons: More boundaries to discover
+
+---
+
+## From the Vault
+
+**C64 VIC-II Scrolling Registers:**
+- **$D011 (53265):** Vertical fine scroll (bits 0-2, values 0-7)
+- **$D016 (53270):** Horizontal fine scroll (bits 0-2, values 0-7)
+- Assembly can update these each frame for 1-pixel smooth scrolling
+- BASIC can POKE them but cannot achieve frame-perfect timing
+
+**Memory Programmer's Reference:**
+- Page 454: VIC-II Register Map
+- Page 455: "Fine scrolling requires changing the register value every frame"
+- Page 456: "BASIC is too slow for smooth scrolling effects"
+
+---
+
+## Quick Reference
+
+**Character-Based Scroll (BASIC Limit):**
+```basic
+100 RS=RS+2              :REM SCROLL 2 PIXELS
+110 IF RS<8 THEN RETURN  :REM WAIT FOR 8 PIXELS
+120 RS=RS-8:RO=RO+1      :REM JUMP ONE CHARACTER
+```
+
+**Hardware Smooth Scroll (Assembly Only):**
+```assembly
+LDA $D011    ; Read vertical scroll register
+SEC
+SBC #1       ; Decrement by 1 pixel
+AND #07      ; Wrap 0-7
+STA $D011    ; Update display
+; Result: Smooth 1-pixel scroll every frame
+```
+
+**Performance:**
+- BASIC scrolling: 18 fps but jerky (8-pixel jumps)
+- Assembly scrolling: 60 fps smooth (1-pixel increments)
+
+---
+
+## What's Next
+
+**Lesson 051:** Particle effects system—discover calculation overhead with 30 particles
+
+**Lesson 052:** Speed Demons Collection (synthesis)—combine all speed challenges, recognize real-time action pattern
+
+The road was jerky because BASIC can only move whole characters. Commercial racing games use hardware scrolling via assembly language. This is the same limitation that affected the platformer in Tier 3—it's a consistent boundary of BASIC programming. Turn-based games work perfectly in BASIC. Smooth scrolling games need assembly.

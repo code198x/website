@@ -1,0 +1,334 @@
+---
+title: "Arcade-Quality Control"
+description: "Replace keyboard input with joystick hardware—CIA chip reading, Port 2 input, bit-level decoding, fire button detection, instant response, diagonal movement."
+pubDate: 2024-11-06
+tier: 2
+lessonNumber: 18
+tags: ["basic", "joystick", "CIA", "hardware", "input"]
+prevLesson: "/commodore-64/phase-0/tier-2/lesson-017"
+nextLesson: "/commodore-64/phase-0/tier-2/lesson-019"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+You've mastered keyboard control. Now discover **hardware joystick input**—the secret behind arcade-quality gameplay. The 6526 CIA (Complex Interface Adapter) chip reads joystick state instantly through memory-mapped registers. No waiting like `GET`. This is how real C64 games feel.
+
+Previous lessons used `GET` for keyboard input. Joysticks connect directly to hardware registers, giving instant response and diagonal movement detection.
+
+## The One-Minute Tour
+
+- **CIA chip**—6526 Complex Interface Adapter handles I/O (joysticks, keyboard, timers)
+- **Port 2 joystick**—Standard gaming port at address 56320 ($DC00)
+- **Active-low encoding**—0 = pressed, 1 = released (hardware pull-ups)
+- **Bit mapping**—Bits 0-4 encode Up/Down/Left/Right/Fire
+- **Instant reading**—`PEEK(56320)` returns current joystick state
+- **AND operator**—Test individual bits: `(J AND 1)=0` checks Up
+- **Diagonal detection**—Test multiple bits simultaneously
+- **Fire button**—Bit 4 triggers actions
+
+## Joystick Sprite Control
+
+```basic
+10 REM JOYSTICK SPRITE CONTROL
+20 PRINT CHR$(147)
+30 PRINT "LOADING SPRITE DATA..."
+40 REM LOAD SPRITE DATA TO BLOCK 13 (832)
+50 FOR I=832 TO 894:READ D:POKE I,D:NEXT I
+60 POKE 2040,13:REM SPRITE 0 POINTER
+70 POKE 53287,1:REM WHITE COLOUR
+80 POKE 53269,1:REM ENABLE SPRITE 0
+90 REM STARTING POSITION
+100 X=160:Y=100
+110 POKE 53248,X AND 255:POKE 53249,Y
+115 POKE 53264,0:REM CLEAR X MSB
+120 PRINT CHR$(147)
+130 PRINT "USE JOYSTICK PORT 2 TO MOVE SPRITE"
+140 PRINT "PRESS Q TO QUIT"
+150 REM MAIN LOOP
+160 GET K$:IF K$="Q" THEN END
+170 J=PEEK(56320):REM READ JOYSTICK PORT 2
+180 IF (J AND 1)=0 THEN Y=Y-2:REM UP
+190 IF (J AND 2)=0 THEN Y=Y+2:REM DOWN
+200 IF (J AND 4)=0 THEN X=X-2:REM LEFT
+210 IF (J AND 8)=0 THEN X=X+2:REM RIGHT
+220 POKE 53248,X AND 255:REM LOW 8 BITS
+225 M=0:IF X>255 THEN M=1
+230 POKE 53264,M:REM X MSB FOR SPRITE 0
+235 POKE 53249,Y
+240 GOTO 160
+250 REM SPRITE DATA: ARROW/SPACESHIP
+260 DATA 0,16,0,0,56,0,0,124,0,0,254,0
+270 DATA 1,255,0,3,255,128,7,255,192,15,255,224
+280 DATA 1,255,0,0,254,0,0,124,0,0,56,0
+290 DATA 0,16,0,0,0,0,0,0,0,0,0,0
+300 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+```
+
+**Plug in a joystick to port 2**—instant arcade response! Move the stick and feel the difference. Hold diagonals for smooth movement.
+
+![Joystick sprite control](/images/commodore-64/phase-0/tier-2/lesson-018/screenshot-1.png)
+
+## How This Works
+
+### CIA Chip Architecture
+
+The C64 has **two CIA chips**:
+
+- **CIA #1 ($DC00-$DC0F)**—Keyboard, joysticks, timers, IRQ interrupts
+- **CIA #2 ($DD00-$DD0F)**—Serial bus, VIC bank switching, RS-232, NMI interrupts
+
+**Games use CIA #1** for joystick reading. Port A ($DC00/56320) reads joystick port 2.
+
+### Joystick Bit Encoding
+
+One byte contains the entire joystick state:
+
+```
+Bit 7: Not used
+Bit 6: Not used
+Bit 5: Not used
+Bit 4: FIRE button (0=pressed)
+Bit 3: RIGHT       (0=pressed)
+Bit 2: LEFT        (0=pressed)
+Bit 1: DOWN        (0=pressed)
+Bit 0: UP          (0=pressed)
+```
+
+**Active-low logic**: Pressed = 0, Released = 1. Hardware uses pull-up resistors.
+
+**Value 127** ($7F, binary 01111111) = nothing pressed (all direction bits = 1).
+
+### Reading Joystick State
+
+```basic
+170 J=PEEK(56320):REM READ JOYSTICK PORT 2
+```
+
+This reads **one byte** containing all directions + fire button.
+
+### Testing Individual Bits
+
+The `AND` operator tests specific bits:
+
+```basic
+180 IF (J AND 1)=0 THEN Y=Y-2:REM UP
+```
+
+**How this works**:
+- `J AND 1` masks bit 0 (Up direction)
+- If bit 0 = 0, joystick is pushed up
+- Move sprite up by subtracting from Y
+
+**Pattern for all directions**:
+- `J AND 1` = Up (bit 0)
+- `J AND 2` = Down (bit 1)
+- `J AND 4` = Left (bit 2)
+- `J AND 8` = Right (bit 3)
+- `J AND 16` = Fire (bit 4)
+
+### Why Active-Low?
+
+Hardware design uses **pull-up resistors**. When joystick switch closes, it grounds the line (pulls to 0). When released, resistor pulls line high (1).
+
+This is why **0 = pressed** seems backwards—it's the hardware, not a programming choice.
+
+## Experimenting
+
+Try holding the joystick diagonally. The sprite moves both directions simultaneously because **multiple bits** can be 0 at once.
+
+**Diagonal up-left**: Bits 0 and 2 both = 0, so both `IF` statements execute.
+
+### Adding Boundaries
+
+This version adds screen boundaries and fire button colour change:
+
+```basic
+10 REM JOYSTICK WITH BOUNDARIES AND FIRE
+20 PRINT CHR$(147)
+30 PRINT "LOADING SPRITE DATA..."
+40 REM LOAD SPRITE DATA TO BLOCK 13 (832)
+50 FOR I=832 TO 894:READ D:POKE I,D:NEXT I
+60 POKE 2040,13:REM SPRITE 0 POINTER
+70 POKE 53287,1:REM WHITE COLOUR
+80 POKE 53269,1:REM ENABLE SPRITE 0
+90 REM STARTING POSITION
+100 X=160:Y=100:FC=0
+110 POKE 53248,X AND 255:POKE 53249,Y
+115 POKE 53264,0:REM CLEAR X MSB
+120 PRINT CHR$(147)
+130 PRINT "JOYSTICK PORT 2 CONTROLS SPRITE"
+140 PRINT "FIRE BUTTON CHANGES COLOUR"
+145 PRINT "BOUNDARIES KEEP SPRITE ON SCREEN"
+150 PRINT
+160 PRINT "PRESS Q TO QUIT"
+170 REM MAIN LOOP
+180 GET K$:IF K$="Q" THEN END
+190 J=PEEK(56320):REM READ JOYSTICK PORT 2
+200 REM PROCESS DIRECTIONS WITH BOUNDARIES
+210 IF (J AND 1)=0 THEN Y=Y-2:IF Y<50 THEN Y=50
+220 IF (J AND 2)=0 THEN Y=Y+2:IF Y>229 THEN Y=229
+230 IF (J AND 4)=0 THEN X=X-2:IF X<24 THEN X=24
+240 IF (J AND 8)=0 THEN X=X+2:IF X>320 THEN X=320
+250 REM CHECK FIRE BUTTON
+260 IF (J AND 16)=0 THEN FC=FC+1:IF FC>15 THEN FC=0
+270 POKE 53287,FC:REM UPDATE COLOUR
+280 REM UPDATE SPRITE POSITION
+290 POKE 53248,X AND 255:REM LOW 8 BITS
+295 M=0:IF X>255 THEN M=1
+300 POKE 53264,M:REM X MSB FOR SPRITE 0
+305 POKE 53249,Y
+310 GOTO 180
+320 REM SPRITE DATA: ARROW/SPACESHIP
+330 DATA 0,16,0,0,56,0,0,124,0,0,254,0
+340 DATA 1,255,0,3,255,128,7,255,192,15,255,224
+350 DATA 1,255,0,0,254,0,0,124,0,0,56,0
+360 DATA 0,16,0,0,0,0,0,0,0,0,0,0
+370 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+```
+
+**Boundaries** clamp X/Y values to keep sprite visible. **Fire button** cycles through all 16 colours.
+
+![Joystick with boundaries and fire button](/images/commodore-64/phase-0/tier-2/lesson-018/screenshot-2.png)
+
+## Common Joystick Values
+
+Understanding the byte values helps with debugging:
+
+| Value | Binary | Meaning |
+|-------|--------|---------|
+| 127 | 01111111 | Nothing pressed |
+| 126 | 01111110 | Up |
+| 125 | 01111101 | Down |
+| 123 | 01111011 | Left |
+| 119 | 01110111 | Right |
+| 111 | 01101111 | Fire |
+| 122 | 01111010 | Up + Left (diagonal) |
+| 118 | 01110110 | Up + Right (diagonal) |
+| 121 | 01111001 | Down + Left (diagonal) |
+| 117 | 01110101 | Down + Right (diagonal) |
+| 110 | 01101110 | Fire + Up |
+
+**Try printing** `J` to see these values: `PRINT J;`
+
+## Hardware Details
+
+### CIA Register Map
+
+**CIA #1 Port A** ($DC00 / 56320):
+- **Read mode**: Returns joystick port 2 state
+- **Also used**: Keyboard row scanning (bit 5-7)
+- **Shared**: Keyboard and joystick share this register
+
+**CIA #1 Port B** ($DC01 / 56321):
+- **Read mode**: Returns joystick port 1 state
+- **Also used**: Keyboard column scanning
+
+### Two-Player Games
+
+For two players, read both ports:
+
+```basic
+100 J1=PEEK(56321):REM JOYSTICK PORT 1
+110 J2=PEEK(56320):REM JOYSTICK PORT 2
+```
+
+**Most single-player games** use port 2 by convention. Port 1 often conflicts with keyboard scanning in some games.
+
+### Why PEEK Instead of GET?
+
+`GET` waits for keyboard buffer and returns PETSCII codes. Joysticks need **instant hardware reading** every frame.
+
+**Keyboard (GET)**: Slow, buffered, text-oriented
+**Joystick (PEEK)**: Instant, unbuffered, hardware-direct
+
+This is why joystick control feels **arcade-quality**.
+
+## Game Integration
+
+### Reading Every Frame
+
+Games read joystick every frame (50 or 60 times per second):
+
+```basic
+100 REM GAME LOOP
+110 J=PEEK(56320):REM READ JOYSTICK
+120 IF (J AND 1)=0 THEN GOSUB 2000:REM MOVE UP
+130 IF (J AND 16)=0 THEN GOSUB 3000:REM FIRE
+140 GOTO 100
+```
+
+### Combining With Collision Detection
+
+Next lesson adds **hardware collision detection**. Joystick + sprites + collisions = complete game control system.
+
+```basic
+110 J=PEEK(56320):REM INPUT
+120 C=PEEK(53279):REM COLLISION
+130 IF C>0 THEN GOSUB 5000:REM HIT DETECTED
+```
+
+## From the Vault
+
+**Why "Port 2" for single player?**—C64 keyboard matrix shares CIA #1 Port B with joystick port 1. Some games scan keyboard continuously, causing port 1 glitches. Port 2 (Port A) has fewer conflicts, becoming the standard.
+
+**Competition Pro joysticks**—Most popular C64 joystick. Digital switches, precise control, indestructible. Launched 1984, still manufactured.
+
+**"Waggler" games**—Some games (Summer Games, Decathlon) required rapid left-right joystick movement. Destroyed many joysticks. Speedball 2 perfected this mechanic.
+
+## Quick Reference
+
+### Reading Joystick Port 2
+
+```basic
+J=PEEK(56320)  ' Read current state
+```
+
+### Testing Directions
+
+```basic
+IF (J AND 1)=0 THEN [UP]
+IF (J AND 2)=0 THEN [DOWN]
+IF (J AND 4)=0 THEN [LEFT]
+IF (J AND 8)=0 THEN [RIGHT]
+IF (J AND 16)=0 THEN [FIRE]
+```
+
+### Testing Diagonals
+
+```basic
+IF (J AND 1)=0 AND (J AND 4)=0 THEN [UP-LEFT]
+IF (J AND 1)=0 AND (J AND 8)=0 THEN [UP-RIGHT]
+IF (J AND 2)=0 AND (J AND 4)=0 THEN [DOWN-LEFT]
+IF (J AND 2)=0 AND (J AND 8)=0 THEN [DOWN-RIGHT]
+```
+
+### CIA Registers
+
+| Address | Decimal | Purpose |
+|---------|---------|---------|
+| $DC00 | 56320 | CIA #1 Port A (Joystick 2) |
+| $DC01 | 56321 | CIA #1 Port B (Joystick 1) |
+
+### Joystick Bit Map
+
+| Bit | Value | Direction |
+|-----|-------|-----------|
+| 0 | 1 | Up |
+| 1 | 2 | Down |
+| 2 | 4 | Left |
+| 3 | 8 | Right |
+| 4 | 16 | Fire |
+
+## What You've Learnt
+
+You can now:
+
+- Read joystick hardware through CIA chip registers
+- Decode bit-level input with `AND` operator
+- Detect individual directions and fire button
+- Support diagonal movement naturally
+- Understand active-low hardware logic
+- Implement instant arcade-quality response
+- Add boundaries to constrain movement
+- Differentiate joystick vs keyboard input methods
+
+**Next**: Hardware collision detection completes the game control system.

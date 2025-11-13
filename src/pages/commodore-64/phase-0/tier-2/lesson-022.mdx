@@ -1,0 +1,508 @@
+---
+title: "Complete Sprite Game 🔗"
+description: "Synthesis of Tier 2—assemble everything into a polished space shooter. Game states (title/play/game over), lives system, HUD updates, screen flashing, player respawn, defensive boundary checks prevent crashes."
+pubDate: 2025-11-06
+tier: 2
+lessonNumber: 22
+tags: ["basic", "sprites", "synthesis", "game-states", "lives", "hud", "complete-game"]
+prevLesson: "/commodore-64/phase-0/tier-2/lesson-021"
+nextLesson: "/commodore-64/phase-0/tier-2/lesson-023"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+You've mastered sprites, joystick control, bullets, collision detection, and enemy waves. Now **synthesise everything** into a complete game with title screen, lives system, game over state, HUD updates, and defensive programming patterns. This is your first complete sprite-based game—Space Defender.
+
+This lesson introduces **game state machines** (title/play/game over), **lives tracking**, **screen effects** (flashing on damage), and **boundary checking** patterns that prevent crashes. These are professional game development techniques that work on any platform.
+
+## The One-Minute Tour
+
+- **Game states**—Variable GS controls three modes: 0=title, 1=playing, 2=game over
+- **State machine**—`ON GS+1 GOSUB` dispatches to correct state handler
+- **Lives system**—LI variable tracks remaining lives, game over at LI=0
+- **HUD updates**—Top line shows score, lives, wave number
+- **Screen flashing**—Visual feedback when player hit (border colour cycling)
+- **Player respawn**—Reset position to centre after taking damage
+- **Boundary checks**—Validate coordinates before POKE to prevent crashes
+- **Defensive programming**—Check ranges before every sprite position update
+- **Complete loop**—Title → play → game over → restart
+
+## Complete Space Defender Game
+
+```basic
+10 REM SPACE DEFENDER - COMPLETE GAME
+20 REM SYNTHESIS OF SPRITE SHOOTER ARC
+30 PRINT CHR$(147)
+40 PRINT "LOADING GAME..."
+50 REM LOAD PLAYER SPRITE TO BLOCK 13 (832)
+60 FOR I=832 TO 894:READ D:POKE I,D:NEXT I
+70 REM LOAD BULLET SPRITE TO BLOCK 14 (896)
+80 FOR I=896 TO 958:READ D:POKE I,D:NEXT I
+90 REM LOAD ENEMY SPRITE TO BLOCK 15 (960)
+100 FOR I=960 TO 1022:READ D:POKE I,D:NEXT I
+110 REM SPRITE POINTERS
+120 POKE 2040,13:REM SPRITE 0 (PLAYER)
+130 POKE 2041,14:POKE 2042,14:POKE 2043,14:POKE 2044,14:REM SPRITES 1-4 (BULLETS)
+140 POKE 2045,15:POKE 2046,15:POKE 2047,15:REM SPRITES 5-7 (ENEMIES)
+150 REM SPRITE COLOURS
+160 POKE 53287,1:REM WHITE PLAYER
+170 POKE 53288,7:POKE 53289,7:POKE 53290,7:POKE 53291,7:REM YELLOW BULLETS
+180 POKE 53292,2:POKE 53293,2:POKE 53294,2:REM RED ENEMIES
+190 REM GAME STATE: 0=TITLE, 1=PLAY, 2=GAME OVER
+200 GS=0
+210 REM INITIALIZE ARRAYS
+220 DIM BX(4),BY(4),BA(4):REM BULLETS
+230 DIM EX(3),EY(3),EA(3),ET(3):REM ENEMIES (X,Y,ACTIVE,TYPE)
+240 REM MAIN LOOP
+250 ON GS+1 GOSUB 1000,2000,3000
+260 GOTO 250
+1000 REM STATE 0: TITLE SCREEN
+1010 POKE 53280,6:POKE 53281,14:REM BLUE BORDER, LIGHT BLUE BG
+1020 POKE 53269,0:REM DISABLE ALL SPRITES
+1030 PRINT CHR$(147);CHR$(5);:REM CLEAR SCREEN, WHITE TEXT
+1040 PRINT "        SPACE DEFENDER"
+1050 PRINT
+1060 PRINT "     DEFEND EARTH FROM"
+1070 PRINT "     THE ALIEN INVASION!"
+1080 PRINT
+1090 PRINT
+1100 PRINT "CONTROLS (JOYSTICK PORT 2):"
+1110 PRINT "  MOVE: JOYSTICK DIRECTIONS"
+1120 PRINT "  FIRE: FIRE BUTTON"
+1130 PRINT
+1140 PRINT
+1150 PRINT "DESTROY ENEMIES FOR POINTS"
+1160 PRINT "YOU HAVE 3 LIVES"
+1170 PRINT
+1180 PRINT
+1190 PRINT
+1200 PRINT "   PRESS FIRE TO START"
+1210 REM CHECK FOR FIRE BUTTON
+1220 J=PEEK(56320)
+1230 IF (J AND 16)=0 THEN GOSUB 1300:GS=1
+1240 RETURN
+1300 REM INITIALIZE GAME
+1310 SC=0:LI=3:WV=1:REM SCORE, LIVES, WAVE
+1320 PX=160:PY=200:FC=0:REM PLAYER X,Y, FIRE COOLDOWN
+1330 FOR I=1 TO 4:BA(I)=0:NEXT I:REM CLEAR BULLETS
+1340 FOR I=1 TO 3:EA(I)=0:NEXT I:REM CLEAR ENEMIES
+1350 POKE 53280,0:POKE 53281,0:REM BLACK BORDER/BG
+1360 PRINT CHR$(147)
+1370 POKE 53269,1:REM ENABLE SPRITE 0 (PLAYER)
+1380 POKE 53248,PX AND 255:POKE 53249,PY:REM PLAYER POSITION
+1390 POKE 53264,0:REM CLEAR X MSB
+1400 GOSUB 4000:REM SPAWN FIRST WAVE
+1410 RETURN
+2000 REM STATE 1: PLAYING
+2010 GOSUB 2100:REM PLAYER CONTROL
+2020 GOSUB 2300:REM UPDATE BULLETS
+2030 GOSUB 2500:REM UPDATE ENEMIES
+2040 GOSUB 2700:REM COLLISION DETECTION
+2050 GOSUB 2900:REM UPDATE HUD
+2060 RETURN
+2100 REM PLAYER CONTROL
+2110 J=PEEK(56320)
+2120 REM MOVEMENT WITH BOUNDARIES
+2130 IF (J AND 4)=0 THEN PX=PX-2:IF PX<24 THEN PX=24
+2140 IF (J AND 8)=0 THEN PX=PX+2:IF PX>320 THEN PX=320
+2150 IF (J AND 1)=0 THEN PY=PY-2:IF PY<70 THEN PY=70
+2160 IF (J AND 2)=0 THEN PY=PY+2:IF PY>229 THEN PY=229
+2170 REM UPDATE POSITION WITH MSB HANDLING
+2180 POKE 53248,PX AND 255:POKE 53249,PY
+2190 M=PEEK(53264):IF PX>255 THEN M=M OR 1
+2200 IF PX<256 THEN M=M AND 254
+2210 POKE 53264,M
+2220 REM FIRE BUTTON WITH COOLDOWN
+2230 IF FC>0 THEN FC=FC-1:RETURN
+2240 IF (J AND 16)=0 THEN GOSUB 5000:FC=10
+2250 RETURN
+2300 REM UPDATE ALL BULLETS
+2310 FOR I=1 TO 4
+2320 IF BA(I)=1 THEN GOSUB 2400
+2330 NEXT I
+2340 RETURN
+2400 REM UPDATE BULLET I
+2410 BY(I)=BY(I)-4
+2420 IF BY(I)<50 THEN GOSUB 6000:RETURN
+2425 IF BY(I)<0 OR BY(I)>255 THEN GOSUB 6000:RETURN
+2430 POKE 53249+(I*2),BY(I)
+2440 RETURN
+2500 REM UPDATE ALL ENEMIES
+2510 AE=0:REM COUNT ACTIVE ENEMIES
+2520 FOR I=1 TO 3
+2530 IF EA(I)=1 THEN GOSUB 2600:AE=AE+1
+2540 NEXT I
+2550 IF AE=0 THEN GOSUB 4000:REM SPAWN NEXT WAVE
+2560 RETURN
+2600 REM UPDATE ENEMY I
+2610 ON ET(I) GOSUB 7000,7100,7200
+2620 REM CHECK IF OFF-SCREEN
+2630 IF EY(I)>229 THEN GOSUB 6100:LI=LI-1:RETURN
+2640 IF EY(I)<40 THEN GOSUB 6100:RETURN
+2645 REM BOUNDARY CHECK BEFORE POKE
+2650 IF EX(I)<0 OR EX(I)>320 THEN GOSUB 6100:RETURN
+2655 IF EY(I)<0 OR EY(I)>255 THEN GOSUB 6100:RETURN
+2660 REM UPDATE SPRITE POSITION (SPRITE 4+I)
+2665 SP=I+4
+2670 POKE 53248+(SP*2),EX(I) AND 255
+2680 POKE 53249+(SP*2),EY(I)
+2690 RETURN
+2700 REM COLLISION DETECTION
+2710 C=PEEK(53278):IF C=0 THEN RETURN
+2720 REM CHECK PLAYER HIT ENEMY
+2730 IF (C AND 1)>0 THEN GOSUB 8000
+2740 REM CHECK EACH BULLET VS EACH ENEMY
+2750 FOR B=1 TO 4:IF BA(B)=0 THEN 2830
+2760 IF (C AND (2^B))=0 THEN 2830
+2770 FOR E=1 TO 3:IF EA(E)=0 THEN 2820
+2780 SP=E+4
+2790 IF (C AND (2^SP))>0 THEN GOSUB 8200
+2820 NEXT E
+2830 NEXT B
+2840 POKE 53278,0:REM CLEAR COLLISION
+2850 RETURN
+2900 REM UPDATE HUD
+2910 POKE 214,0:PRINT:REM CURSOR TO TOP
+2920 PRINT "SCORE: ";SC;"  LIVES: ";LI;"  WAVE: ";WV
+2930 IF LI=0 THEN GS=2
+2940 RETURN
+3000 REM STATE 2: GAME OVER
+3010 POKE 53269,0:REM DISABLE ALL SPRITES
+3020 POKE 214,10:PRINT:REM CURSOR TO MIDDLE
+3030 PRINT "         GAME OVER"
+3040 PRINT
+3050 PRINT "     FINAL SCORE: ";SC
+3060 PRINT "     WAVES CLEARED: ";WV-1
+3070 PRINT
+3080 PRINT
+3090 PRINT "   PRESS FIRE TO RESTART"
+3100 REM CHECK FOR FIRE BUTTON
+3110 J=PEEK(56320)
+3120 IF (J AND 16)=0 THEN GS=0
+3130 RETURN
+4000 REM SPAWN WAVE
+4010 POKE 214,0:PRINT:REM UPDATE WAVE DISPLAY
+4020 PRINT "SCORE: ";SC;"  LIVES: ";LI;"  WAVE: ";WV
+4030 NE=WV:IF NE>3 THEN NE=3:REM MAX 3 ENEMIES
+4040 FOR I=1 TO NE
+4050 EX(I)=50+INT(RND(1)*220):EY(I)=50
+4060 EA(I)=1
+4070 ET(I)=INT(RND(1)*3)+1:REM RANDOM AI PATTERN
+4080 SP=I+4
+4090 POKE 53248+(SP*2),EX(I) AND 255
+4100 POKE 53249+(SP*2),EY(I)
+4110 E=PEEK(53269):POKE 53269,E OR (2^SP)
+4120 NEXT I
+4130 WV=WV+1
+4140 RETURN
+5000 REM SPAWN BULLET
+5010 FOR I=1 TO 4
+5020 IF BA(I)=0 THEN GOSUB 5100:RETURN
+5030 NEXT I
+5040 RETURN
+5100 REM CREATE BULLET I
+5110 BX(I)=PX:BY(I)=PY-20:BA(I)=1
+5115 REM BOUNDARY CHECK BEFORE SPAWNING
+5120 IF BY(I)<0 OR BY(I)>255 THEN BA(I)=0:RETURN
+5125 POKE 53248+(I*2),BX(I) AND 255
+5130 POKE 53249+(I*2),BY(I)
+5140 E=PEEK(53269):POKE 53269,E OR (2^I)
+5150 RETURN
+6000 REM DESPAWN BULLET I
+6010 BA(I)=0
+6020 E=PEEK(53269):POKE 53269,E AND (255-(2^I))
+6030 RETURN
+6100 REM DESPAWN ENEMY I
+6110 EA(I)=0
+6120 SP=I+4
+6130 E=PEEK(53269):POKE 53269,E AND (255-(2^SP))
+6140 RETURN
+7000 REM AI PATTERN 1: STRAIGHT DOWN
+7010 EY(I)=EY(I)+1+INT(WV/3)
+7020 RETURN
+7100 REM AI PATTERN 2: SINE WAVE
+7110 EY(I)=EY(I)+1+INT(WV/3)
+7120 EX(I)=EX(I)+INT(SIN(EY(I)/10)*3)
+7130 IF EX(I)<24 THEN EX(I)=24
+7140 IF EX(I)>320 THEN EX(I)=320
+7150 RETURN
+7200 REM AI PATTERN 3: TRACK PLAYER
+7210 EY(I)=EY(I)+1+INT(WV/3)
+7220 IF EX(I)<PX THEN EX(I)=EX(I)+1
+7230 IF EX(I)>PX THEN EX(I)=EX(I)-1
+7240 RETURN
+8000 REM PLAYER HIT ENEMY - LOSE LIFE
+8010 LI=LI-1
+8020 REM FLASH SCREEN
+8030 FOR F=1 TO 3
+8040 POKE 53280,2:FOR D=1 TO 50:NEXT D
+8050 POKE 53280,0:FOR D=1 TO 50:NEXT D
+8060 NEXT F
+8070 REM RESET PLAYER POSITION
+8080 PX=160:PY=200
+8090 POKE 53248,PX AND 255:POKE 53249,PY
+8100 POKE 53264,0
+8110 RETURN
+8200 REM BULLET HIT ENEMY
+8210 I=E:GOSUB 6100:REM DESPAWN ENEMY
+8220 I=B:GOSUB 6000:REM DESPAWN BULLET
+8230 SC=SC+10:REM ADD SCORE
+8240 RETURN
+8250 REM PLAYER SPRITE DATA: ARROW/SPACESHIP
+8260 DATA 0,16,0,0,56,0,0,124,0,0,254,0
+8270 DATA 1,255,0,3,255,128,7,255,192,15,255,224
+8280 DATA 1,255,0,0,254,0,0,124,0,0,56,0
+8290 DATA 0,16,0,0,0,0,0,0,0,0,0,0
+8300 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+8310 REM BULLET SPRITE DATA: SMALL DOT
+8320 DATA 0,0,0,0,0,0,0,56,0,0,124,0
+8330 DATA 0,254,0,0,254,0,0,254,0,0,124,0
+8340 DATA 0,56,0,0,0,0,0,0,0,0,0,0
+8350 DATA 0,0,0,0,0,0,0,0,0,0,0,0
+8360 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+8370 REM ENEMY SPRITE DATA: INVADER
+8380 DATA 0,0,0,0,130,0,1,131,0,3,199,128
+8390 DATA 7,239,192,15,255,224,11,239,208,27,235,216
+8400 DATA 31,255,248,5,85,64,10,170,160,21,85,80
+8410 DATA 0,0,0,0,0,0,0,0,0,0,0,0
+8420 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+```
+
+**Run this**—full game experience from title screen to game over!
+
+![Space Defender title screen](/images/commodore-64/phase-0/tier-2/lesson-022/screenshot-1.png)
+
+![Space Defender gameplay with enemies and bullets](/images/commodore-64/phase-0/tier-2/lesson-022/screenshot-2.png)
+
+## How This Works
+
+### Game State Machine
+
+The core innovation is **state-based control flow**:
+
+```basic
+200 GS=0              ' Start in title state
+240 REM MAIN LOOP
+250 ON GS+1 GOSUB 1000,2000,3000
+260 GOTO 250
+```
+
+**`ON GS+1 GOSUB`** dispatches to different subroutines based on state:
+- **GS=0** → calls line 1000 (title screen)
+- **GS=1** → calls line 2000 (playing game)
+- **GS=2** → calls line 3000 (game over)
+
+Each state handler returns, the main loop continues. **State changes** happen inside handlers:
+- Title screen: `GS=1` when fire pressed (line 1230)
+- Playing: `GS=2` when lives reach 0 (line 2930)
+- Game over: `GS=0` when fire pressed to restart (line 3120)
+
+### Lives System and Game Over
+
+**Lives tracking** integrates throughout:
+
+```basic
+1310 SC=0:LI=3:WV=1         ' Initialize with 3 lives
+2630 IF EY(I)>229 THEN GOSUB 6100:LI=LI-1:RETURN  ' Enemy escaped
+2930 IF LI=0 THEN GS=2       ' Game over check
+8010 LI=LI-1                 ' Player hit enemy
+```
+
+**Two ways to lose lives**:
+1. **Enemy escapes** (line 2630)—reaches bottom of screen
+2. **Player collision** (line 8010)—touches enemy sprite
+
+When `LI=0`, game transitions to state 2 (game over).
+
+### HUD Updates with POKE 214
+
+The **heads-up display** updates every frame:
+
+```basic
+2910 POKE 214,0:PRINT:REM CURSOR TO TOP
+2920 PRINT "SCORE: ";SC;"  LIVES: ";LI;"  WAVE: ";WV
+```
+
+**POKE 214,0** moves cursor to row 0 without clearing screen. Next PRINT statement overwrites that line, updating HUD while gameplay continues below.
+
+**Why this works**: Normal PRINT scrolls screen. Setting cursor position directly writes to specific location without scrolling.
+
+### Screen Flash Effect
+
+Visual feedback for taking damage:
+
+```basic
+8020 REM FLASH SCREEN
+8030 FOR F=1 TO 3
+8040 POKE 53280,2:FOR D=1 TO 50:NEXT D   ' Red border
+8050 POKE 53280,0:FOR D=1 TO 50:NEXT D   ' Black border
+8060 NEXT F
+```
+
+**Three red/black flashes** (register 53280 = border colour) with timing delays. Player notices damage immediately.
+
+### Defensive Boundary Checks
+
+**Critical crash prevention** pattern throughout:
+
+```basic
+2425 IF BY(I)<0 OR BY(I)>255 THEN GOSUB 6000:RETURN
+2650 IF EX(I)<0 OR EX(I)>320 THEN GOSUB 6100:RETURN
+2655 IF EY(I)<0 OR EY(I)>255 THEN GOSUB 6100:RETURN
+5120 IF BY(I)<0 OR BY(I)>255 THEN BA(I)=0:RETURN
+```
+
+**Why essential**: POKE expects 0-255. Negative values or values >255 cause **ILLEGAL QUANTITY ERROR** crash. AI patterns (sine wave, tracking) can generate out-of-range coordinates. **Check before every POKE**.
+
+This is **defensive programming**—assume edge cases will happen, prevent crashes before they occur.
+
+### Player Respawn
+
+After taking damage, reset player to safe position:
+
+```basic
+8070 REM RESET PLAYER POSITION
+8080 PX=160:PY=200
+8090 POKE 53248,PX AND 255:POKE 53249,PY
+8100 POKE 53264,0
+```
+
+Centre screen (160,200), clear MSB. Gives player moment to recover while screen flashes.
+
+## Professional Game Structure
+
+This pattern scales to larger games:
+
+```basic
+' Top level: state machine
+ON STATE GOSUB TITLE,PLAY,GAMEOVER,HIGHSCORE
+
+' Each state: focused responsibility
+TITLE:   Handle input, display instructions, transition to PLAY
+PLAY:    Game loop—update, collisions, check win/lose conditions
+GAMEOVER: Display results, wait for restart
+```
+
+**Benefits**:
+- **Clear flow**—easy to see game structure
+- **Isolated code**—title screen bugs don't affect gameplay
+- **Easy extensions**—add pause state, shop state, level select
+
+**State machines** appear everywhere in game development. You've just implemented your first one.
+
+## Boundary Check Patterns
+
+Three defensive techniques used here:
+
+**1. Check before POKE (crash prevention)**
+```basic
+IF BY<0 OR BY>255 THEN DESPAWN:RETURN
+POKE 53249,BY
+```
+
+**2. Clamp to valid range (keep on screen)**
+```basic
+IF EX<24 THEN EX=24
+IF EX>320 THEN EX=320
+```
+
+**3. Despawn at boundaries (gameplay rule)**
+```basic
+IF BY<50 THEN DESPAWN:RETURN  ' Bullet off-screen
+IF EY>229 THEN DESPAWN:LOSE LIFE:RETURN  ' Enemy escaped
+```
+
+**Choose the right technique** for each situation. Crashes need prevention. Sprites need clamping. Gameplay needs despawning.
+
+## From the Vault
+
+- [State Machines](https://en.wikipedia.org/wiki/Finite-state_machine) - Theory behind game states
+- [Defensive Programming](https://en.wikipedia.org/wiki/Defensive_programming) - Preventing crashes before they happen
+- [C64 Screen Editor](https://www.c64-wiki.com/wiki/Screen_editor) - POKE 214 cursor positioning
+
+## Quick Reference
+
+### Game State Machine
+
+```basic
+' Setup
+GS=0                           ' Initialize state
+
+' Main loop
+ON GS+1 GOSUB STATE0,STATE1,STATE2
+GOTO (main loop line)
+
+' State handlers
+STATE0: ... :GS=1:RETURN       ' Transition to state 1
+STATE1: ... :IF COND THEN GS=2:RETURN
+STATE2: ... :GS=0:RETURN
+```
+
+### Lives System
+
+```basic
+' Initialize
+LI=3                           ' Starting lives
+
+' Lose life
+LI=LI-1                        ' Decrement
+IF LI=0 THEN GS=GAMEOVER       ' Check game over
+
+' Display
+PRINT "LIVES: ";LI
+```
+
+### HUD Updates
+
+```basic
+POKE 214,ROW:PRINT             ' Position cursor
+PRINT "TEXT";VAR;"MORE"        ' Update display
+```
+
+**Common rows**: 0=top, 12=middle, 24=bottom
+
+### Boundary Checking
+
+```basic
+' Before POKE (crash prevention)
+IF Y<0 OR Y>255 THEN DESPAWN:RETURN
+POKE REG,Y
+
+' Range clamping (keep valid)
+IF X<MIN THEN X=MIN
+IF X>MAX THEN X=MAX
+
+' Gameplay boundaries
+IF Y<TOP OR Y>BOTTOM THEN ACTION:RETURN
+```
+
+### Screen Effects
+
+```basic
+' Flash border
+FOR F=1 TO TIMES
+  POKE 53280,COLOUR1:FOR D=1 TO DELAY:NEXT D
+  POKE 53280,COLOUR2:FOR D=1 TO DELAY:NEXT D
+NEXT F
+
+' Flash background
+POKE 53281,COLOUR:FOR D=1 TO DELAY:NEXT D
+POKE 53281,ORIGINAL
+```
+
+## What You've Learnt
+
+- **State machines**—ON GOSUB dispatch based on game state variable
+- **Three-state pattern**—Title/play/game over standard structure
+- **Lives system**—Track player health, trigger game over at zero
+- **HUD implementation**—POKE 214 cursor positioning for non-scrolling updates
+- **Screen effects**—Border colour flashing for visual feedback
+- **Player respawn**—Reset position and state after taking damage
+- **Defensive programming**—Boundary checks before every POKE operation
+- **Crash prevention**—Validate coordinate ranges (0-255 for Y, 0-320 for X)
+- **Range clamping**—Keep sprite coordinates within valid boundaries
+- **Gameplay boundaries**—Different rules for bullets (despawn) vs enemies (lose life)
+- **State transitions**—Input-driven changes (fire button) and condition-driven (lives=0)
+- **Complete game loop**—All systems integrated: input, update, collision, display, state
+- **Professional patterns**—Techniques that scale to larger games
+
+Next lesson: Three Voice Harmony—use all three SID voices simultaneously to create chords, learn musical harmony, chord progressions, and polyphonic sound design.

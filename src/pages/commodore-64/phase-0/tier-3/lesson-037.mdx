@@ -1,0 +1,705 @@
+---
+title: "Enemy AI Patterns"
+description: "Implement platform-aware enemy AI with patrol and chase behaviours—discover how to manage multiple enemies using state machines, distance calculations, and platform collision detection."
+pubDate: 2025-11-06
+tier: 3
+lessonNumber: 37
+tags: ["discovery", "ai", "enemies", "state-machine", "platformer"]
+previousLesson: "/commodore-64/phase-0/tier-3/lesson-036"
+nextLesson: "/commodore-64/phase-0/tier-3/lesson-038"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Your platformer has gravity, collision, animation, and scrolling. But the world feels empty—there's no challenge, no adversaries to overcome. Real platform games have **intelligent enemies** that patrol, chase, and react to the player.
+
+**This lesson introduces enemy AI patterns**—the state machines and behaviours that bring adversaries to life. You'll learn to implement patrol behaviour with platform edge detection, chase behaviour using distance calculation, manage multiple enemies with independent states, and apply physics and collision to enemy entities.
+
+The key insight: **AI is just state management**. Each enemy has a state (patrol or chase), determined by proximity to the player. The state dictates behaviour—patrol enemies walk back and forth on platforms, chase enemies move toward the player. Both respect physics and collision, creating believable adversaries.
+
+---
+
+## The One-Minute Tour
+
+**Enemy State Machine:**
+- **PATROL state (0):** Walk back and forth on platform, turn at edges
+- **CHASE state (1):** Detect player within range, move toward them
+- **State transitions:** Distance < 80 pixels → chase, distance > 80 → patrol
+- **Platform awareness:** Enemies don't fall off platform edges
+
+**Enemy Management:**
+- **3 enemies maximum:** Limited by sprite availability and performance
+- **Independent states:** Each enemy tracks own position, velocity, state, direction
+- **Variable naming:** e1x, e1y, e1s, e1d for enemy 1 (no arrays to avoid REDIM issues)
+- **Separate update routines:** GOSUB 1000, 2000, 3000 for three enemies
+
+**Distance Calculation:**
+- **Manhattan distance:** ABS(PX-EX) for X-only proximity (fast)
+- **Diagonal distance:** SQR((PX-EX)^2+(PY-EY)^2) for true distance (slow)
+- **Performance:** Avoid SQR() by using squared distance or X-only check
+- **Chase range:** 80 pixels is typical balance between aggressive and escapable
+
+**Performance Impact:**
+- **3 AI updates:** ~10ms per frame (distance calc + state check + movement)
+- **With scrolling:** Total 110ms = **9 fps** (AI overhead is minimal)
+- **Bottleneck remains:** Screen redraw (100ms) dominates frame time
+- **More enemies:** 4-5 possible but diminishing returns on gameplay vs performance
+
+---
+
+## Example 1: Simple Enemy Patrol
+
+Let's start with a single enemy that patrols back and forth:
+
+```basic
+10 REM SIMPLE ENEMY PATROL
+20 PRINT CHR$(147)
+30 REM SPRITE SETUP
+40 POKE 53269,3:REM ENABLE SPRITES 0-1
+50 POKE 2040,13:REM PLAYER SPRITE
+60 POKE 2041,13:REM ENEMY SPRITE
+70 REM DRAW SPRITES (SIMPLE CHARACTER)
+80 FOR I=0 TO 62
+90 IF I<21 OR I>42 THEN POKE 832+I,0:GOTO 110
+100 POKE 832+I,255
+110 NEXT I
+120 POKE 53287,1:REM PLAYER WHITE
+130 POKE 53288,2:REM ENEMY RED
+140 REM PLAYER POSITION (FIXED FOR DEMO)
+150 PX=100:PY=150
+160 REM ENEMY PATROL VARIABLES
+170 EX=150:EY=180
+180 ED=1:REM DIRECTION (1=RIGHT, -1=LEFT)
+190 ES=1:REM SPEED
+200 PL=50:PR=250:REM PLATFORM LEFT/RIGHT
+210 REM MAIN LOOP
+220 REM PATROL MOVEMENT
+230 EX=EX+ED*ES
+240 REM TURN AT PLATFORM EDGES
+250 IF EX<=PL THEN ED=1
+260 IF EX>=PR THEN ED=-1
+270 REM UPDATE SPRITES
+280 POKE 53248,PX:POKE 53249,PY:REM PLAYER
+290 POKE 53250,EX:POKE 53251,EY:REM ENEMY
+300 REM DELAY
+310 FOR D=1 TO 50:NEXT D
+320 GOTO 220
+```
+
+**What's Happening:**
+
+1. **Two sprites enabled** (lines 40-130): Player (sprite 0) and enemy (sprite 1)
+2. **Enemy position tracking** (lines 170-200): EX/EY for position, ED for direction, ES for speed, PL/PR for platform boundaries
+3. **Patrol movement** (line 230): Move enemy in current direction at speed
+4. **Edge detection** (lines 250-260): When enemy reaches platform edge, reverse direction
+5. **Sprite updates** (lines 280-290): Position both player and enemy sprites
+6. **Delay for visibility** (line 310): Slow down so you can see the patrol
+
+**The key mechanics:**
+- **Direction multiplier:** ED × ES creates movement (-1 or 1 × speed)
+- **Boundary checking:** Platform edges prevent enemy falling off
+- **Simple state:** No state variable needed—pure patrol behaviour
+
+![Simple enemy patrol](/images/commodore-64/phase-0/tier-3/lesson-037/screenshot-1.png)
+
+You'll see the red enemy sprite walking back and forth on an invisible platform. When it reaches the edges (50 or 250 pixels), it turns around. This is the foundation of all platform AI—constrained movement within boundaries.
+
+---
+
+## Example 2: Multi-Enemy AI with Chase Behaviour
+
+Now let's add chase behaviour and manage three enemies with independent states:
+
+```basic
+10 REM ENEMY AI PATTERNS
+20 PRINT CHR$(147)
+30 REM SPRITE SETUP
+40 POKE 53269,15:REM ENABLE SPRITES 0-3
+50 FOR S=0 TO 3
+60 POKE 2040+S,13:REM ALL USE SAME SPRITE
+70 NEXT S
+80 REM DRAW SPRITE (SIMPLE CHARACTER)
+90 FOR I=0 TO 62
+100 IF I<21 OR I>42 THEN POKE 832+I,0:GOTO 120
+110 POKE 832+I,255
+120 NEXT I
+130 POKE 53287,1:REM PLAYER WHITE
+140 POKE 53288,2:REM ENEMY 1 RED
+150 POKE 53289,2:REM ENEMY 2 RED
+160 POKE 53290,2:REM ENEMY 3 RED
+170 REM ENEMY 1 VARIABLES
+180 E1X=60:E1Y=180:E1S=0:E1D=1:P1L=40:P1R=120
+190 REM ENEMY 2 VARIABLES
+200 E2X=160:E2Y=180:E2S=0:E2D=-1:P2L=120:P2R=220
+210 REM ENEMY 3 VARIABLES
+220 E3X=260:E3Y=180:E3S=0:E3D=1:P3L=220:P3R=300
+230 REM PLAYER VARIABLES
+240 PX=80:PY=180:VX=0
+250 REM CHASE RANGE
+260 CR=80
+270 REM MAIN LOOP
+280 REM PLAYER INPUT
+290 J=PEEK(56320)
+300 VX=0
+310 IF (J AND 4)=0 THEN VX=-2
+320 IF (J AND 8)=0 THEN VX=2
+330 PX=PX+VX
+340 IF PX<20 THEN PX=20
+350 IF PX>300 THEN PX=300
+360 REM UPDATE ENEMY 1
+370 GOSUB 1000
+380 REM UPDATE ENEMY 2
+390 GOSUB 2000
+400 REM UPDATE ENEMY 3
+410 GOSUB 3000
+420 REM UPDATE SPRITES
+430 POKE 53248,PX:POKE 53249,PY
+440 POKE 53250,E1X:POKE 53251,E1Y
+450 POKE 53252,E2X:POKE 53253,E2Y
+460 POKE 53254,E3X:POKE 53255,E3Y
+470 REM DISPLAY STATES
+480 POKE 214,0:PRINT:PRINT "ENEMIES:"
+490 PRINT "E1:";
+500 IF E1S=0 THEN PRINT "PATROL ";
+510 IF E1S=1 THEN PRINT "CHASE  ";
+520 PRINT "E2:";
+530 IF E2S=0 THEN PRINT "PATROL ";
+540 IF E2S=1 THEN PRINT "CHASE  ";
+550 PRINT "E3:";
+560 IF E3S=0 THEN PRINT "PATROL ";
+570 IF E3S=1 THEN PRINT "CHASE  ";
+580 PRINT
+590 REM DELAY
+600 FOR D=1 TO 30:NEXT D
+610 GOTO 280
+1000 REM UPDATE ENEMY 1
+1010 DX=ABS(PX-E1X)
+1020 IF DX<CR THEN E1S=1:GOTO 1040
+1030 E1S=0
+1040 IF E1S=1 THEN GOSUB 1100:RETURN
+1050 GOSUB 1200
+1060 RETURN
+1100 REM ENEMY 1 CHASE
+1110 IF PX<E1X THEN E1X=E1X-1.5:E1D=-1:RETURN
+1120 IF PX>E1X THEN E1X=E1X+1.5:E1D=1:RETURN
+1130 RETURN
+1200 REM ENEMY 1 PATROL
+1210 E1X=E1X+E1D*1
+1220 IF E1X<=P1L THEN E1D=1
+1230 IF E1X>=P1R THEN E1D=-1
+1240 RETURN
+2000 REM UPDATE ENEMY 2
+2010 DX=ABS(PX-E2X)
+2020 IF DX<CR THEN E2S=1:GOTO 2040
+2030 E2S=0
+2040 IF E2S=1 THEN GOSUB 2100:RETURN
+2050 GOSUB 2200
+2060 RETURN
+2100 REM ENEMY 2 CHASE
+2110 IF PX<E2X THEN E2X=E2X-1.5:E2D=-1:RETURN
+2120 IF PX>E2X THEN E2X=E2X+1.5:E2D=1:RETURN
+2130 RETURN
+2200 REM ENEMY 2 PATROL
+2210 E2X=E2X+E2D*1
+2220 IF E2X<=P2L THEN E2D=1
+2230 IF E2X>=P2R THEN E2D=-1
+2240 RETURN
+3000 REM UPDATE ENEMY 3
+3010 DX=ABS(PX-E3X)
+3020 IF DX<CR THEN E3S=1:GOTO 3040
+3030 E3S=0
+3040 IF E3S=1 THEN GOSUB 3100:RETURN
+3050 GOSUB 3200
+3060 RETURN
+3100 REM ENEMY 3 CHASE
+3110 IF PX<E3X THEN E3X=E3X-1.5:E3D=-1:RETURN
+3120 IF PX>E3X THEN E3X=E3X+1.5:E3D=1:RETURN
+3130 RETURN
+3200 REM ENEMY 3 PATROL
+3210 E3X=E3X+E3D*1
+3220 IF E3X<=P3L THEN E3D=1
+3230 IF E3X>=P3R THEN E3D=-1
+3240 RETURN
+```
+
+**What's Happening:**
+
+1. **Four sprites enabled** (lines 40-160): Player plus three enemies
+2. **Enemy data** (lines 170-220): Each enemy has X/Y position, state (S), direction (D), and platform boundaries (L/R)
+3. **Player control** (lines 280-350): Joystick left/right moves player
+4. **Three update routines** (lines 360-410): GOSUB to separate routines for each enemy
+5. **State display** (lines 470-580): Show which enemies are patrolling vs chasing
+6. **Enemy 1 logic** (lines 1000-1240): Check distance → set state → patrol or chase
+7. **Enemies 2 and 3** (lines 2000-3240): Identical logic with different variables
+
+**The AI Pattern:**
+
+Each enemy update follows this sequence:
+1. **Calculate distance to player** (line 1010): `DX=ABS(PX-E1X)`
+2. **Determine state** (lines 1020-1030): If close, chase; if far, patrol
+3. **Execute behaviour** (lines 1040-1050): GOSUB to patrol or chase routine
+4. **Patrol** (lines 1200-1240): Walk in direction, turn at edges
+5. **Chase** (lines 1100-1130): Move toward player at higher speed (1.5 vs 1.0)
+
+![Multi-enemy AI with chase behaviour](/images/commodore-64/phase-0/tier-3/lesson-037/screenshot-2.png)
+
+Run the program and move the player (sprite 0, white) with the joystick. Watch the status display at the top:
+- Enemies far from you show "PATROL"—they walk back and forth on their platforms
+- Enemies within 80 pixels switch to "CHASE"—they move toward you faster
+- Each enemy independently tracks and responds to your position
+
+**Why No Arrays?**
+
+C64 BASIC V2 has strict DIM rules—you can only dimension arrays once. Attempting `DIM EX(3)` twice causes "REDIM'D ARRAY ERROR". To avoid this complexity, we use separate variables (E1X, E2X, E3X) with duplicate code. It's not elegant, but it's bulletproof for learning AI patterns.
+
+---
+
+## Understanding State Machines
+
+**What is a state machine?**
+
+A **state machine** is a pattern where behaviour changes based on current state. Each enemy is in exactly one state at any time, and transitions between states based on conditions.
+
+**Our Enemy States:**
+
+```
+         Distance > 80
+    PATROL ←----------→ CHASE
+         Distance < 80
+```
+
+**State 0 (PATROL):**
+- **Behaviour:** Walk back and forth on platform
+- **Speed:** 1 pixel per frame (slow)
+- **Turn condition:** Reaching platform edge
+- **Transition:** Player comes within 80 pixels → switch to CHASE
+
+**State 1 (CHASE):**
+- **Behaviour:** Move toward player
+- **Speed:** 1.5 pixels per frame (faster than patrol)
+- **Direction:** Based on player position (left if player left, right if player right)
+- **Transition:** Player moves beyond 80 pixels → switch to PATROL
+
+**Why States Matter:**
+
+Without states, enemies would either always patrol or always chase. States let us create **context-aware behaviour**—enemies patrol their territory until threatened, then become aggressive. This creates emergent gameplay: you can choose to avoid enemies (stay outside chase range) or engage them (enter their territory).
+
+---
+
+## Distance Calculation Trade-offs
+
+**Method 1: True Diagonal Distance (Slow)**
+
+```basic
+100 DX=PX-EX:DY=PY-EY
+110 DS=SQR(DX*DX+DY*DY)
+120 IF DS<CR THEN [CHASE]
+```
+
+- **Pros:** Accurate distance in all directions
+- **Cons:** SQR() is slow (~2000 cycles), multiplications add overhead
+- **Use when:** Accuracy matters more than speed (bosses, special enemies)
+
+**Method 2: Manhattan Distance (Fast)**
+
+```basic
+100 DS=ABS(PX-EX)+ABS(PY-EY)
+110 IF DS<CR THEN [CHASE]
+```
+
+- **Pros:** Much faster (no multiplication or SQR)
+- **Cons:** Overestimates diagonal distance (80 pixel range becomes ~113 diagonally)
+- **Use when:** Approximate proximity is sufficient
+
+**Method 3: X-Only Distance (Fastest)**
+
+```basic
+100 DX=ABS(PX-EX)
+110 IF DX<CR THEN [CHASE]
+```
+
+- **Pros:** Simplest and fastest (~50 cycles)
+- **Cons:** Ignores vertical distance entirely
+- **Use when:** Platformer where enemies and player stay on same Y level
+- **Example 2 uses this**—it's perfect for platform AI
+
+**Method 4: Squared Distance (No SQR)**
+
+```basic
+100 DS2=(PX-EX)^2+(PY-EY)^2
+110 IF DS2<CR*CR THEN [CHASE]
+```
+
+- **Pros:** Accurate without expensive SQR()
+- **Cons:** Must square the chase range for comparison
+- **Use when:** Need diagonal accuracy but SQR() is too slow
+
+**Performance Comparison:**
+
+| Method | Cycles | Accuracy | Best For |
+|--------|--------|----------|----------|
+| X-only | ~50 | X-axis only | Platform games |
+| Manhattan | ~200 | Approximate | Fast multi-enemy |
+| Squared | ~800 | Diagonal | Balanced |
+| True distance | ~2500 | Perfect | Special cases |
+
+For platform games, **X-only is ideal**—enemies and player are usually on the same platform level, so vertical distance is irrelevant. This is why Example 2 uses `DX=ABS(PX-E1X)`.
+
+---
+
+## Platform Edge Detection
+
+**The Problem:**
+
+Without edge detection, enemies walk off platforms and fall:
+
+```basic
+100 EX=EX+ED*ES  :REM JUST MOVE
+110 REM NO BOUNDARY CHECK - ENEMY WALKS OFF EDGE!
+```
+
+**The Solution:**
+
+Track platform boundaries and reverse direction at edges:
+
+```basic
+100 EX=EX+ED*ES         :REM MOVE
+110 IF EX<=PLEFT THEN ED=1   :REM HIT LEFT EDGE, TURN RIGHT
+120 IF EX>=PRIGHT THEN ED=-1  :REM HIT RIGHT EDGE, TURN LEFT
+```
+
+**How It Works:**
+
+1. **Store platform boundaries** (lines 180, 200, 220): P1L/P1R define left and right edges
+2. **Check after movement** (lines 1220-1230): If enemy X reaches or exceeds edge, flip direction
+3. **Direction multiplier** (line 1210): ED is -1 (left) or 1 (right), so ED×speed creates motion
+
+**Why This Matters:**
+
+Platform-aware AI is what separates believable enemies from broken ones. Without edge detection:
+- Enemies walk off ledges and disappear
+- Players can exploit AI by standing on lower platforms
+- Level design is constrained (enemies need walls everywhere)
+
+With edge detection:
+- Enemies patrol platforms intelligently
+- Multi-level gameplay works naturally
+- You can create enemies on narrow platforms, adding variety
+
+**Advanced Edge Detection:**
+
+For games with complex platforms, you'd check actual platform collision (like player collision from Lesson 34) rather than predefined boundaries. But for learning AI patterns, fixed boundaries are simpler and more reliable.
+
+---
+
+## Chase Behaviour Variations
+
+**Method 1: Direct Chase (Example 2)**
+
+```basic
+1100 REM ENEMY 1 CHASE
+1110 IF PX<E1X THEN E1X=E1X-1.5:E1D=-1:RETURN
+1120 IF PX>E1X THEN E1X=E1X+1.5:E1D=1:RETURN
+```
+
+- **Always moves toward player**
+- **Simple and reliable**
+- **Can feel robotic**—enemy never anticipates or fails
+
+**Method 2: Predictive Chase**
+
+```basic
+1100 REM PREDICTIVE CHASE
+1110 TX=PX+VX*10:REM TARGET WHERE PLAYER WILL BE
+1120 IF TX<E1X THEN E1X=E1X-1.5:E1D=-1:RETURN
+1130 IF TX>E1X THEN E1X=E1X+1.5:E1D=1:RETURN
+```
+
+- **Leads the target**—chases where player is going, not where they are
+- **More challenging**—harder to dodge
+- **Feels intelligent**—enemy anticipates movement
+
+**Method 3: Jump Chase**
+
+```basic
+1100 REM JUMP CHASE (FOR PLATFORMS)
+1110 IF PX<E1X THEN E1X=E1X-1.5:E1D=-1
+1120 IF PX>E1X THEN E1X=E1X+1.5:E1D=1
+1130 IF PY<E1Y-20 AND ONGROUND THEN VY=-5:REM JUMP TO REACH
+1140 RETURN
+```
+
+- **Enemies jump to reach player on higher platforms**
+- **Requires gravity and collision** (from Lessons 33-34)
+- **Much more dynamic**—enemies traverse levels like player
+
+**Method 4: Hesitant Chase**
+
+```basic
+1100 REM HESITANT CHASE (70% OF THE TIME)
+1110 IF RND(1)<0.3 THEN RETURN:REM 30% CHANCE TO PAUSE
+1120 IF PX<E1X THEN E1X=E1X-1.5:E1D=-1:RETURN
+1130 IF PX>E1X THEN E1X=E1X+1.5:E1D=1:RETURN
+```
+
+- **Random pauses**—enemy sometimes hesitates
+- **Feels less robotic**—more humanlike uncertainty
+- **Easier for player**—creates escape opportunities
+
+**Choosing Chase Behaviour:**
+
+- **Early game enemies:** Direct chase (predictable, teaches player)
+- **Mid game enemies:** Predictive chase (requires skill to dodge)
+- **Late game enemies:** Jump chase or hesitant chase (variety and challenge)
+
+---
+
+## Managing Multiple Enemies
+
+**Why Three Enemies?**
+
+The C64 has 8 hardware sprites:
+- **Sprite 0:** Player
+- **Sprites 1-3:** Enemies (3 maximum in Example 2)
+- **Sprite 4:** Player projectiles (bullets, bombs)
+- **Sprites 5-7:** Pickups, bosses, special effects
+
+**Three enemies is the sweet spot**—enough for interesting gameplay without overwhelming sprites or performance.
+
+**Array vs Separate Variables:**
+
+**Arrays (Cleaner Code):**
+```basic
+100 DIM EX(3),EY(3),ES(3),ED(3)
+110 FOR I=1 TO 3
+120 GOSUB 1000  :REM UPDATE ENEMY I
+130 NEXT I
+```
+
+**Separate Variables (Example 2):**
+```basic
+100 GOSUB 1000  :REM UPDATE ENEMY 1 (E1X, E1Y, E1S, E1D)
+110 GOSUB 2000  :REM UPDATE ENEMY 2 (E2X, E2Y, E2S, E2D)
+120 GOSUB 3000  :REM UPDATE ENEMY 3 (E3X, E3Y, E3S, E3D)
+```
+
+**Why Example 2 Uses Separate Variables:**
+
+C64 BASIC V2 only allows `DIM` once per array. If your program structure causes accidental re-dimensioning (common when building up from simple examples), you get "REDIM'D ARRAY ERROR". Separate variables avoid this entirely.
+
+**Trade-offs:**
+- **Arrays:** Cleaner, more scalable, but error-prone for beginners
+- **Separate variables:** More code duplication, but bulletproof and easier to debug
+
+For learning AI patterns, **separate variables are safer**. For a real game, you'd use arrays and carefully structure your program to DIM once at startup.
+
+---
+
+## Adding Gravity and Collision
+
+**The Problem:**
+
+Example 2 enemies don't fall—they float at Y=180 forever. Real platform enemies need:
+1. **Gravity:** Pull enemies down when not on platform
+2. **Platform collision:** Stop falling when landing on platform
+3. **Vertical velocity:** Track falling speed (just like player in Lesson 33)
+
+**The Solution:**
+
+Add the physics system from Lessons 33-34 to each enemy:
+
+```basic
+1000 REM UPDATE ENEMY 1
+1010 REM DISTANCE CHECK AND STATE (AS BEFORE)
+1020 DX=ABS(PX-E1X)
+1030 IF DX<CR THEN E1S=1:GOTO 1050
+1040 E1S=0
+1050 REM APPLY BEHAVIOUR (AS BEFORE)
+1060 IF E1S=1 THEN GOSUB 1100:GOTO 1080
+1070 GOSUB 1200
+1080 REM APPLY GRAVITY
+1090 VY1=VY1+0.3:IF VY1>8 THEN VY1=8
+1100 E1Y=E1Y+VY1
+1110 REM CHECK PLATFORM COLLISION
+1120 IF VY1<0 THEN RETURN:REM RISING, NO CHECK
+1130 FOR P=1 TO NP:REM CHECK ALL PLATFORMS
+1140 IF E1Y<PY(P)-8 OR E1Y>PY(P)+8 THEN NEXT P:RETURN
+1150 IF E1X<PX(P) OR E1X>PX(P)+PW(P) THEN NEXT P:RETURN
+1160 REM LANDED
+1170 E1Y=PY(P):VY1=0:EPL=P:REM REMEMBER PLATFORM
+1180 RETURN
+```
+
+**What Changed:**
+
+1. **Vertical velocity tracking** (line 1090): VY1 variable for enemy 1 (VY2, VY3 for others)
+2. **Gravity application** (lines 1090-1100): Same as player gravity (0.3 acceleration, 8 max)
+3. **Platform collision** (lines 1110-1180): Same logic as Lesson 34, applied to enemy
+4. **Platform memory** (line 1170): Remember which platform (EPL) for edge detection
+
+**Integration with Patrol:**
+
+Once you track the current platform, you can make edge detection dynamic:
+
+```basic
+1200 REM ENEMY 1 PATROL (WITH DYNAMIC EDGES)
+1210 E1X=E1X+E1D*1
+1220 IF E1X<=PX(EPL) THEN E1D=1:REM LEFT EDGE OF CURRENT PLATFORM
+1230 IF E1X>=PX(EPL)+PW(EPL) THEN E1D=-1:REM RIGHT EDGE
+1240 RETURN
+```
+
+Now enemies patrol whatever platform they're on, making them truly platform-aware.
+
+---
+
+## Performance Considerations
+
+**Frame Time Breakdown (With 3 Enemies + Scrolling):**
+
+| Operation | Time | Percentage |
+|-----------|------|------------|
+| Screen redraw | ~100ms | 91% |
+| Player input | ~1ms | 1% |
+| Player physics | ~1ms | 1% |
+| Enemy 1 AI | ~3ms | 3% |
+| Enemy 2 AI | ~3ms | 3% |
+| Enemy 3 AI | ~3ms | 3% |
+| Sprite updates | ~1ms | 1% |
+| **Total** | **~112ms** | **~9 fps** |
+
+**Key Observations:**
+
+1. **AI is cheap:** 3 enemies add only ~9ms total (~3ms each)
+2. **Scrolling dominates:** Screen redraw is still 91% of frame time
+3. **Diminishing returns:** 4th enemy adds 3ms (8 fps), 5th adds 3ms (7 fps)
+4. **Sprite limit:** 8 hardware sprites total (player + enemies + projectiles + pickups)
+
+**Optimization Strategies:**
+
+**1. Skip AI When Off-Screen:**
+```basic
+1000 REM UPDATE ENEMY 1
+1010 IF E1X<CX-50 OR E1X>CX+370 THEN RETURN:REM OFF SCREEN, SKIP
+1020 REM DISTANCE CHECK AND AI (AS NORMAL)
+```
+
+- **Saves ~3ms per off-screen enemy**
+- **Works with scrolling** (CX is camera position from Lesson 36)
+- **Enemies "wake up" when scrolling brings them on-screen**
+
+**2. Update Enemies Every Other Frame:**
+```basic
+1000 REM UPDATE ENEMY 1
+1010 FC=FC+1:IF (FC AND 1)=0 THEN RETURN:REM SKIP EVERY OTHER FRAME
+1020 REM DISTANCE CHECK AND AI (AS NORMAL)
+```
+
+- **Halves AI cost** (~4.5ms instead of 9ms for 3 enemies)
+- **Slight jerkiness**—enemies update at 4-5 fps instead of 8-9
+- **Acceptable trade-off** for more enemies or smoother scrolling
+
+**3. Reduce Chase Range:**
+```basic
+260 CR=60:REM CHASE RANGE (WAS 80)
+```
+
+- **Fewer chase calculations** when player far from enemies
+- **Changes gameplay**—enemies less aggressive
+- **Balancing act** between performance and challenge
+
+---
+
+## Common Pitfalls
+
+**1. Enemies Fall Off Platforms**
+
+**Symptom:** Enemies walk off ledges and disappear downward.
+
+**Cause:** No platform edge detection—enemies keep moving beyond platform boundaries.
+
+**Fix:**
+```basic
+1220 IF E1X<=P1L THEN E1D=1   :REM TURN RIGHT AT LEFT EDGE
+1230 IF E1X>=P1R THEN E1D=-1  :REM TURN LEFT AT RIGHT EDGE
+```
+
+**2. All Enemies Chase From Anywhere**
+
+**Symptom:** Enemies on different platforms chase player even when far away.
+
+**Cause:** No Y-distance check—using X-only distance when enemies are vertically separated.
+
+**Fix:**
+```basic
+1010 DX=ABS(PX-E1X):DY=ABS(PY-E1Y)
+1020 IF DX<CR AND DY<30 THEN E1S=1:GOTO 1040:REM CHASE ONLY IF CLOSE IN X AND Y
+```
+
+**3. Enemy Speed > Player Speed**
+
+**Symptom:** Player can't escape chasing enemies—always caught.
+
+**Cause:** Chase speed (1.5) greater than player speed (2) doesn't give enough advantage.
+
+**Fix:** Make chase speed slower than player:
+```basic
+1110 IF PX<E1X THEN E1X=E1X-1.0:E1D=-1:RETURN  :REM CHASE SPEED 1.0
+```
+
+**4. Forgot Gravity**
+
+**Symptom:** Enemies float in mid-air instead of falling when no platform beneath.
+
+**Cause:** No gravity application—enemies have fixed Y position.
+
+**Fix:** Add gravity and velocity tracking (see "Adding Gravity and Collision" section above).
+
+**5. Enemies Share Direction**
+
+**Symptom:** All enemies turn at the same time—they move in sync.
+
+**Cause:** Using single ED variable instead of E1D, E2D, E3D.
+
+**Fix:** Use separate direction variables for each enemy (as in Example 2).
+
+**6. No Platform Tracking**
+
+**Symptom:** Edge detection uses fixed boundaries—doesn't work with dynamic platforms.
+
+**Cause:** Hard-coded P1L/P1R instead of referencing current platform.
+
+**Fix:** Track current platform (EPL) and use platform array bounds:
+```basic
+1220 IF E1X<=PX(EPL) THEN E1D=1         :REM LEFT EDGE OF CURRENT PLATFORM
+1230 IF E1X>=PX(EPL)+PW(EPL) THEN E1D=-1  :REM RIGHT EDGE
+```
+
+---
+
+## What You've Learnt
+
+**Core Concepts:**
+- **State machines** drive AI behaviour—enemies transition between patrol and chase states
+- **Distance calculation** determines state transitions—X-only distance is fastest for platformers
+- **Platform edge detection** keeps enemies on platforms—direction reverses at boundaries
+- **Independent enemy tracking** requires separate variables or arrays—E1X/E2X/E3X approach avoids REDIM errors
+
+**Technical Skills:**
+- Implementing two-state AI (patrol and chase) with GOSUB routines
+- Using ABS() for distance calculation without SQR() overhead
+- Managing multiple sprites with independent positions and behaviours
+- Combining AI with physics (gravity) and collision (platforms)
+
+**Game Design Insights:**
+- **Chase range balances challenge**—too small and enemies are passive, too large and player has no safe zones
+- **Enemy speed relative to player** determines escapability—chase speed should be slower than player
+- **3 enemies is optimal**—sprite limit and performance sweet spot for platformers
+- **AI overhead is minimal**—screen redraw (100ms) dominates, AI adds only ~10ms for 3 enemies
+
+**Integration Points:**
+- **With scrolling (Lesson 36):** Skip AI for off-screen enemies to save ~3ms per enemy
+- **With collision (Lesson 34):** Apply platform collision to enemies so they fall and land like player
+- **With animation (Lesson 35):** Change enemy sprite frames based on state (patrol vs chase sprites)
+- **Next lesson (38):** Add player-enemy collision to complete adversarial gameplay
+
+You've created intelligent adversaries that patrol, chase, and respect physics. Your platformer now has **challenge and danger**—the foundation of engaging gameplay. Next you'll add collision between player and enemies, allowing you to defeat them (and be defeated by them), completing the core platformer combat loop.

@@ -1,0 +1,329 @@
+---
+title: "Asteroids & Wrapping"
+description: "Build a complete asteroid field with multiple moving objects, screen wrapping, and collision-based destruction—learn to manage arrays of independent entities moving simultaneously across an infinite playfield."
+pubDate: 2025-01-31
+tier: 2
+lessonNumber: 31
+tags: ["physics", "asteroids", "wrapping", "arrays", "collision"]
+previousLesson: "/commodore-64/phase-0/tier-2/lesson-030"
+nextLesson: "/commodore-64/phase-0/tier-2/lesson-032"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+You've mastered rotation and thrust for a single ship. Now multiply that—create an entire asteroid field with multiple objects moving independently. Each asteroid has its own position and velocity, wrapping around screen edges to create an infinite playfield. This is object management: tracking many entities simultaneously, updating them each frame, and handling their interactions.
+
+**Managing multiple moving objects is the foundation of every game with enemies, bullets, and powerups.** The technique scales from 3 asteroids to entire game worlds.
+
+## The One-Minute Tour
+
+- **Screen wrapping creates infinite space** with objects exiting left appearing right (X&lt;0 → X=255) and top/bottom wrapping too
+- **Independent velocities per asteroid** means each moves at different speed and direction with separate VX/VY values
+- **Arrays (or individual variables) track multiple objects** storing position (X,Y), velocity (VX,VY), and active status for each
+- **Update loop processes all asteroids** iterating through each one, adding velocity, checking wrapping, updating sprite position
+- **Collision detection triggers destruction** using VIC-II sprite collision register ($D01E) to detect bullet hits
+- **Active flags control display** with inactive asteroids (AA=0) skipped in update loop, hiding off-screen sprites
+- **Wrapping boundaries match playfield** using Y range 50-229 (visible screen area) rather than full 0-255 range
+
+## First Example: Three Asteroids
+
+Type this to see independent asteroid movement with wrapping:
+
+```basic
+10 REM SIMPLE ASTEROID MOVEMENT
+20 PRINT CHR$(147)
+25 REM SPRITE DATA
+30 FOR J=0 TO 62:READ D:POKE 832+J,D:NEXT
+35 DATA 0,126,0,1,255,128,3,255,192
+36 DATA 7,231,224,15,195,240,31,129,248
+37 DATA 31,129,248,63,0,252,63,0,252
+38 DATA 63,0,252,31,129,248,31,129,248
+39 DATA 15,195,240,7,231,224,3,255,192
+40 DATA 1,255,128,0,126,0,0,0,0
+41 DATA 0,0,0,0,0,0,0,0,0
+50 REM SETUP 3 ASTEROIDS
+55 AX1=100:AY1=100:AVX1=0.8:AVY1=0.5
+60 AX2=180:AY2=120:AVX2=-0.6:AVY2=0.7
+65 AX3=150:AY3=180:AVX3=0.4:AVY3=-0.9
+120 REM ENABLE SPRITES
+130 POKE 53269,7
+140 POKE 53287,1:POKE 53288,5:POKE 53289,3
+145 POKE 2040,13:POKE 2041,13:POKE 2042,13
+150 REM MAIN LOOP
+155 AX1=AX1+AVX1:AY1=AY1+AVY1
+160 AX2=AX2+AVX2:AY2=AY2+AVY2
+165 AX3=AX3+AVX3:AY3=AY3+AVY3
+170 IF AX1<0 THEN AX1=AX1+255
+175 IF AX1>255 THEN AX1=AX1-255
+180 IF AY1<50 THEN AY1=AY1+179
+185 IF AY1>229 THEN AY1=AY1-179
+190 IF AX2<0 THEN AX2=AX2+255
+195 IF AX2>255 THEN AX2=AX2-255
+200 IF AY2<50 THEN AY2=AY2+179
+205 IF AY2>229 THEN AY2=AY2-179
+210 IF AX3<0 THEN AX3=AX3+255
+215 IF AX3>255 THEN AX3=AX3-255
+220 IF AY3<50 THEN AY3=AY3+179
+225 IF AY3>229 THEN AY3=AY3-179
+230 POKE 53248,INT(AX1):POKE 53249,INT(AY1)
+235 POKE 53250,INT(AX2):POKE 53251,INT(AY2)
+240 POKE 53252,INT(AX3):POKE 53253,INT(AY3)
+260 FOR D=1 TO 15:NEXT D
+270 GOTO 155
+```
+
+**Run this** and watch three asteroids drift across the screen. When one exits left, it reappears on the right. When it exits top, it reappears at bottom. The playfield feels infinite, but it's just clever coordinate maths.
+
+![Three asteroids moving with screen wrapping](/images/commodore-64/phase-0/tier-2/lesson-031/screenshot-1.png)
+
+Each asteroid has four variables: position (AX, AY) and velocity (AVX, AVY). Lines 155-165 add velocity to position. Lines 170-225 handle wrapping—when coordinates go outside boundaries, they wrap to the opposite side. Lines 230-240 update sprite hardware registers.
+
+## How Screen Wrapping Works
+
+**The infinite playfield illusion:**
+When an object exits one edge, it appears at the opposite edge. This creates a continuous space where you can travel forever in any direction.
+
+**Horizontal wrapping (X-axis):**
+```basic
+100 IF X<0 THEN X=X+255
+110 IF X>255 THEN X=X-255
+```
+X-coordinate 0-255 matches sprite X register range. When X goes negative (exits left), add 255 to wrap to right side. When X exceeds 255 (exits right), subtract 255 to wrap to left.
+
+**Vertical wrapping (Y-axis):**
+```basic
+100 IF Y<50 THEN Y=Y+179
+110 IF Y>229 THEN Y=Y-179
+```
+Y-coordinate 50-229 matches playfield height (179 pixels). Top of play area is Y=50 (below screen border). Bottom is Y=229 (above bottom border). Wrapping distance is 179 (229-50).
+
+**Why not 0-255 for Y?**
+Because the C64 screen has borders. Playable area is roughly Y=50 to Y=229. Wrapping to Y=0 would place sprites in the top border (usually hidden). Using playfield boundaries keeps everything visible.
+
+**The maths explained:**
+When Y=48 (just above top edge), Y&lt;50 is true, so Y=48+179=227 (appears near bottom).
+When Y=231 (just below bottom edge), Y&gt;229 is true, so Y=231-179=52 (appears near top).
+
+## Adding Bullets and Collision
+
+Now create an interactive demo where you can shoot asteroids:
+
+```basic
+10 REM ASTEROID SPLITTING DEMO
+20 PRINT CHR$(147)
+25 REM SPRITE DATA
+30 FOR J=0 TO 62:READ D:POKE 832+J,D:NEXT
+35 DATA 0,24,0,0,60,0,0,126,0
+36 DATA 0,255,0,1,255,128,3,255,192
+37 DATA 3,255,192,7,255,224,3,255,192
+38 DATA 3,255,192,1,255,128,0,255,0
+39 DATA 0,126,0,0,60,0,0,24,0
+40 DATA 0,0,0,0,0,0,0,0,0
+45 REM ASTEROID SPRITE
+50 FOR J=0 TO 62:READ D:POKE 896+J,D:NEXT
+55 DATA 0,126,0,1,255,128,3,255,192
+56 DATA 7,231,224,15,195,240,31,129,248
+57 DATA 31,129,248,63,0,252,63,0,252
+58 DATA 63,0,252,31,129,248,31,129,248
+59 DATA 15,195,240,7,231,224,3,255,192
+60 DATA 1,255,128,0,126,0,0,0,0
+61 DATA 0,0,0,0,0,0,0,0,0
+65 REM BULLET SPRITE
+70 FOR J=0 TO 62:READ D:POKE 960+J,D:NEXT
+75 DATA 0,0,0,0,0,0,0,0,0
+76 DATA 0,0,0,0,24,0,0,60,0
+77 DATA 0,60,0,0,24,0,0,0,0
+78 DATA 0,0,0,0,0,0,0,0,0
+79 DATA 0,0,0,0,0,0,0,0,0
+80 DATA 0,0,0,0,0,0,0,0,0
+81 DATA 0,0,0,0,0,0,0,0,0
+82 DATA 0,0,0,0,0,0,0,0,0
+83 DATA 0,0,0,0,0,0,0,0,0
+90 REM SETUP
+95 SX=160:SY=120:BX=0:BY=0:BA=0
+100 AX1=100:AY1=100:AVX1=0.5:AVY1=0.8:AA1=1
+105 AX2=200:AY2=150:AVX2=-0.6:AVY2=0.5:AA2=1
+110 REM ENABLE SPRITES
+115 POKE 53269,15
+120 POKE 53287,1:POKE 53288,5:POKE 53289,3:POKE 53290,7
+125 POKE 2040,13:POKE 2041,14:POKE 2042,14:POKE 2043,15
+130 REM MAIN LOOP
+135 J=PEEK(56320)
+140 IF (J AND 1)=0 THEN SY=SY-2
+145 IF (J AND 2)=0 THEN SY=SY+2
+150 IF (J AND 4)=0 THEN SX=SX-2
+155 IF (J AND 8)=0 THEN SX=SX+2
+160 IF (J AND 16)=0 AND BA=0 THEN BX=SX:BY=SY:BA=1
+165 POKE 53248,SX:POKE 53249,SY
+170 REM UPDATE BULLET
+175 IF BA=1 THEN BY=BY-3
+180 IF BY<50 THEN BA=0
+185 IF BA=1 THEN POKE 53254,BX:POKE 53255,BY
+190 REM UPDATE ASTEROIDS
+195 IF AA1=1 THEN AX1=AX1+AVX1:AY1=AY1+AVY1
+200 IF AA1=1 AND AX1<0 THEN AX1=AX1+255
+205 IF AA1=1 AND AX1>255 THEN AX1=AX1-255
+210 IF AA1=1 AND AY1<50 THEN AY1=AY1+179
+215 IF AA1=1 AND AY1>229 THEN AY1=AY1-179
+220 IF AA1=1 THEN POKE 53250,INT(AX1):POKE 53251,INT(AY1)
+225 IF AA2=1 THEN AX2=AX2+AVX2:AY2=AY2+AVY2
+230 IF AA2=1 AND AX2<0 THEN AX2=AX2+255
+235 IF AA2=1 AND AX2>255 THEN AX2=AX2-255
+240 IF AA2=1 AND AY2<50 THEN AY2=AY2+179
+245 IF AA2=1 AND AY2>229 THEN AY2=AY2-179
+250 IF AA2=1 THEN POKE 53252,INT(AX2):POKE 53253,INT(AY2)
+255 REM COLLISION CHECK
+260 C=PEEK(53278):IF C=0 THEN 300
+265 IF (C AND 4)>0 THEN AA1=0:BA=0:POKE 53251,0
+270 IF (C AND 8)>0 THEN AA2=0:BA=0:POKE 53253,0
+275 POKE 53278,0
+300 FOR D=1 TO 15:NEXT D
+305 GOTO 135
+```
+
+**Use joystick to move** (sprite 0 is your ship). Press fire to shoot bullets upward (sprite 3). When a bullet hits an asteroid (sprites 1-2), both disappear. The active flags (AA1, AA2, BA) control which objects are visible and updated.
+
+![Ship shooting asteroids with collision detection](/images/commodore-64/phase-0/tier-2/lesson-031/screenshot-2.png)
+
+Lines 260-275 handle collision. Register 53278 ($D01E) contains sprite-sprite collision bits. If bit 2 is set, sprite 1 (first asteroid) collided with something. If bit 3 is set, sprite 2 (second asteroid) collided. When collision detected, set active flag to 0 and move sprite off-screen (POKE Y=0).
+
+## Managing Multiple Objects
+
+**The pattern for any number of objects:**
+
+1. **Store state per object:** Position, velocity, active flag, size, type, etc.
+2. **Update loop processes all:** FOR I=1 TO MAX: IF ACTIVE(I) THEN [update position, check wrapping]
+3. **Collision loop checks pairs:** FOR I=1 TO MAX: FOR J=I+1 TO MAX: [check collision between I and J]
+4. **Deactivate destroyed objects:** Set ACTIVE flag to 0, hide sprite (move off-screen or disable)
+5. **Reuse slots for new objects:** When spawning new asteroid, find first slot where ACTIVE=0
+
+**The VIC-II's 8-sprite limit:**
+You can only show 8 sprites simultaneously. For games needing more (12 asteroids + 4 bullets + 1 ship = 17), you need either:
+- Limit active objects (max 3-4 asteroids at once)
+- Sprite multiplexing (Tier 3 technique, reuses sprites across scan lines)
+- Character graphics (draw some asteroids using screen memory instead)
+
+**Array vs individual variables:**
+This lesson uses individual variables (AX1, AX2, AX3) because C64 BASIC's array handling is slow. For 3-4 objects, individual variables are faster. For 10+ objects, arrays become necessary despite speed penalty. Choose based on how many objects you need.
+
+## Wrapping Boundaries
+
+**Common wrapping configurations:**
+
+**Full screen wrap (0-255 X, 50-229 Y):**
+```basic
+100 IF X<0 THEN X=X+255
+110 IF X>255 THEN X=X-255
+120 IF Y<50 THEN Y=Y+179
+130 IF Y>229 THEN Y=Y-179
+```
+Objects wrap at screen edges. Playfield feels infinite.
+
+**Despawn at edges (no wrap):**
+```basic
+100 IF X<0 OR X>255 THEN ACTIVE=0
+110 IF Y<50 OR Y>229 THEN ACTIVE=0
+```
+Objects disappear when exiting screen. Used for bullets (fire-and-forget).
+
+**Bounce at edges:**
+```basic
+100 IF X<24 OR X>255 THEN VX=-VX
+110 IF Y<50 OR Y>229 THEN VY=-VY
+```
+Objects reverse direction when hitting edges. Used for contained playfields (Breakout, Pong).
+
+**Extended playfield (world map):**
+```basic
+100 IF X<0 THEN X=0:VX=0
+110 IF X>1000 THEN X=1000:VX=0
+```
+Large world with hard boundaries. Camera follows player, objects stop at edges.
+
+## Asteroid Breaking Mechanics
+
+**The curriculum includes asteroid splitting:**
+When you hit a large asteroid, it breaks into 2 medium asteroids. Hit a medium, get 2 small asteroids. Hit a small, it's destroyed. Each fragment inherits parent velocity plus random scatter.
+
+**Implementation pattern:**
+```basic
+1000 REM DESTROY ASTEROID A
+1010 SIZE=AS(A)
+1020 AA(A)=0:REM DEACTIVATE PARENT
+1030 IF SIZE<=1 THEN RETURN:REM SMALL, JUST DESTROY
+1040 REM CREATE FIRST FRAGMENT
+1050 GOSUB 2000
+1060 REM CREATE SECOND FRAGMENT
+1070 GOSUB 2000
+1080 RETURN
+2000 REM CREATE FRAGMENT
+2010 FOR I=1 TO MAX
+2020 IF AA(I)>0 THEN NEXT I:RETURN
+2030 AX(I)=AX(A):AY(I)=AY(A)
+2040 AS(I)=SIZE-1:AA(I)=1
+2050 AVX(I)=AVX(A)+(RND(1)-0.5)*2
+2060 AVY(I)=AVY(A)+(RND(1)-0.5)*2
+2070 RETURN
+```
+
+Fragments spawn at parent position with reduced size. Velocity inherits from parent plus random offset (-1 to +1), creating realistic scatter effect.
+
+## From the Vault
+
+**Classic arcade references:**
+- **Asteroids (1979):** The definitive asteroid field game—vector graphics, thrust physics, screen wrapping, asteroid breaking
+- **Space Rocks (C64):** Peter Liepa's excellent Asteroids clone demonstrating all these techniques
+- **Boulder Dash (C64):** Uses similar object management for falling rocks and enemies
+
+**Technical reading:**
+- *Commodore 64 Programmer's Reference Guide* pages 417-420: Sprite collision detection
+- *Mapping the Commodore 64* pages 211-212: VIC-II collision registers ($D01E, $D01F)
+- C64 Wiki: Sprite multiplexing techniques (for showing 8+ sprites)
+
+## Quick Reference
+
+**Screen Wrapping (Horizontal):**
+```basic
+100 IF X<0 THEN X=X+255
+110 IF X>255 THEN X=X-255
+```
+
+**Screen Wrapping (Vertical):**
+```basic
+100 IF Y<50 THEN Y=Y+179
+110 IF Y>229 THEN Y=Y-179
+```
+
+**Collision Detection:**
+```basic
+100 C=PEEK(53278):REM SPRITE-SPRITE
+110 IF C=0 THEN RETURN
+120 IF (C AND 2)>0 THEN [SPRITE 0 HIT]
+130 IF (C AND 4)>0 THEN [SPRITE 1 HIT]
+140 POKE 53278,0:REM CLEAR REGISTER
+```
+
+**Object Active Pattern:**
+```basic
+100 IF ACTIVE=0 THEN RETURN
+110 X=X+VX:Y=Y+VY
+120 [WRAP OR BOUNDS CHECK]
+130 POKE XREG,X:POKE YREG,Y
+```
+
+**Velocity Scatter:**
+```basic
+100 VX_NEW=VX_OLD+(RND(1)-0.5)*2
+110 VY_NEW=VY_OLD+(RND(1)-0.5)*2
+```
+
+## What You've Learnt
+
+- Screen wrapping creates infinite playfields by repositioning objects at opposite edges when they exit boundaries
+- Independent velocity per object enables multiple entities moving simultaneously in different directions
+- Active flags control which objects are updated and displayed each frame
+- Collision detection triggers destruction or interaction between sprites using VIC-II hardware registers
+- Object management patterns scale from 3 asteroids to complex game worlds with dozens of entities
+- Wrapping boundaries (50-229 for Y) match playfield size to keep objects visible
+- Sprite collision register ($D01E) provides fast hardware-based hit detection without manual distance calculation
+
+You can now create asteroid fields, bullet systems, and multi-object games. Next lesson builds the complete Asteroids game with all features combined.

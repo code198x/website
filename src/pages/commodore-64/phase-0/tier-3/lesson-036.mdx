@@ -1,0 +1,590 @@
+---
+title: "Worlds Beyond the Screen"
+description: "Implement horizontal scrolling to create multi-screen platformer levels—discover character-based camera following, experience the performance cost of screen redraws, and learn why smooth scrolling requires assembly."
+pubDate: 2025-11-06
+tier: 3
+lessonNumber: 36
+tags: ["discovery", "scrolling", "camera", "platformer", "performance"]
+previousLesson: "/commodore-64/phase-0/tier-3/lesson-035"
+nextLesson: "/commodore-64/phase-0/tier-3/lesson-037"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Your platformer works brilliantly—within the confines of one screen. But great platform games like **Miner 2049er** and **Impossible Mission** feature sprawling multi-screen worlds. The player character explores vast levels that scroll horizontally as they move.
+
+**This lesson introduces horizontal scrolling**—the technique that expands your game world beyond the screen boundaries. You'll learn to implement camera systems that follow the player, store and render multi-screen level data efficiently, and understand the fundamental limitations of character-based scrolling in BASIC.
+
+The key discovery: **BASIC scrolling is character-based, not pixel-based**. The VIC-II chip has hardware registers for smooth scrolling, but accessing them requires assembly language. In BASIC, scrolling moves in 8-pixel jumps—visibly jerky but functionally playable. You'll experience this limitation firsthand and discover another boundary of BASIC programming.
+
+---
+
+## The One-Minute Tour
+
+**Camera System Basics:**
+- **Camera position (CX)** tracks horizontal view offset in pixels
+- **Camera follows player** by centering them on screen (CX = PX - 160)
+- **Camera boundaries** prevent showing beyond level edges
+- **Sprite positions become relative** to camera (screen X = world X - camera X)
+
+**Character-Based Scrolling:**
+- **8-pixel jumps** because screen memory is character-based (1 char = 8 pixels)
+- **Full screen redraw** when camera moves beyond threshold (typically 8 pixels)
+- **Visible "pop"** as screen jumps to new position
+- **No smooth pixel scrolling** without VIC-II hardware control (assembly required)
+
+**Performance Impact:**
+- **Screen redraw costs ~100ms** (redrawing 1000 characters)
+- **Frame rate drops** from ~14 fps to ~6 fps when scrolling
+- **Playable but sluggish** movement during scrolling moments
+- **Discovery moment:** Experience the performance wall of BASIC rendering
+
+---
+
+## Example 1: Simple Horizontal Scrolling
+
+Let's implement a basic scrolling system with camera following:
+
+```basic
+10 REM HORIZONTAL SCROLLING DEMO
+20 PRINT CHR$(147)
+30 REM SET UP SPRITE
+40 POKE 53269,1
+50 POKE 2040,13
+60 FOR I=0 TO 62:POKE 832+I,255:NEXT I
+70 POKE 53287,1
+80 REM LEVEL DATA - 3 SCREENS WIDE
+90 DIM LV$(25)
+100 FOR Y=0 TO 24:READ LV$(Y):NEXT Y
+110 REM CAMERA AND PLAYER POSITION
+120 CX=0:PX=160:LX=-999
+130 PY=50
+140 REM MAIN LOOP
+150 GOSUB 1000
+160 GOSUB 2000
+170 GOSUB 3000
+180 GOTO 150
+1000 REM INPUT
+1010 J=PEEK(56320)
+1020 VX=0
+1030 IF (J AND 4)=0 THEN VX=-2
+1040 IF (J AND 8)=0 THEN VX=2
+1050 PX=PX+VX
+1060 IF PX<0 THEN PX=0
+1070 IF PX>959 THEN PX=959
+1080 RETURN
+2000 REM UPDATE CAMERA
+2010 CX=PX-160
+2020 IF CX<0 THEN CX=0
+2030 IF CX>639 THEN CX=639
+2040 RETURN
+3000 REM DRAW SCREEN
+3010 IF ABS(CX-LX)<8 THEN RETURN
+3020 LX=CX
+3030 OF=INT(CX/8)
+3040 FOR Y=0 TO 24
+3050 FOR X=0 TO 39
+3060 LI=OF+X
+3070 IF LI<LEN(LV$(Y)) THEN C=ASC(MID$(LV$(Y),LI+1,1)):POKE 1024+Y*40+X,C
+3080 NEXT X:NEXT Y
+3090 REM POSITION SPRITE
+3100 SX=PX-CX+24
+3110 POKE 53248,SX
+3120 POKE 53249,PY+50
+3130 RETURN
+9000 DATA "################################################################################################################################"
+9010 DATA "#                                                                                                                              #"
+9020 DATA "#   P                                                                                                                         #"
+9030 DATA "#                                                                                                                             #"
+9040 DATA "#                    ###                                                                                                      #"
+9050 DATA "#                                           ###                                                                               #"
+9060 DATA "#                                                                                                                             #"
+9070 DATA "#          ###                                                   ###                                                          #"
+9080 DATA "#                                                                                                                             #"
+9090 DATA "#                                  ###                                                                                        #"
+9100 DATA "#                                                                                       ###                                   #"
+9110 DATA "#     ###                                                                                                                     #"
+9120 DATA "#                                                        ###                                                                  #"
+9130 DATA "#                                                                                                                             #"
+9140 DATA "#                         ###                                                                         ###                     #"
+9150 DATA "#                                                                                                                             #"
+9160 DATA "#                                                 ###                                                                         #"
+9170 DATA "#                                                                                                                             #"
+9180 DATA "#  ###                                                                        ###                                             #"
+9190 DATA "#                                                                                                                             #"
+9200 DATA "#                                        ###                                                                                  #"
+9210 DATA "#                                                                                                  ###                        #"
+9220 DATA "#                 ###                                                                                                         #"
+9230 DATA "#                                                                   ###                                                       #"
+9240 DATA "################################################################################################################################"
+```
+
+![Simple horizontal scrolling with camera following](/images/commodore-64/phase-0/tier-3/lesson-036/screenshot-1.png)
+
+**What happens:**
+- Lines 90-100: Load 3 screens of level data (120 characters wide per row)
+- Lines 2000-2040: Camera follows player, centered at X=160
+- Lines 3010-3020: Only redraw if camera moved more than 8 pixels (threshold)
+- Lines 3030-3080: Calculate screen offset and draw 40×25 characters
+- Lines 3100-3120: Position sprite relative to camera (not world coordinates)
+
+**The scrolling threshold (line 3010):**
+```
+ABS(CX-LX)<8 checks if camera moved less than 8 pixels since last draw
+Why 8 pixels? One character width—no point redrawing for sub-character movement
+Without this check: Screen redraws every frame, causing constant flicker
+```
+
+**Why this works:** Camera tracks player position, screen redraw shows the appropriate section of the level data, and sprite position is adjusted relative to camera for correct on-screen placement.
+
+---
+
+## Example 2: Platformer with Scrolling
+
+Now let's add physics and jumping to create a complete scrolling platformer:
+
+```basic
+10 REM PLATFORMER WITH HORIZONTAL SCROLLING
+20 PRINT CHR$(147)
+30 REM SET UP SPRITE
+40 POKE 53269,1
+50 POKE 2040,13
+60 FOR I=0 TO 62:POKE 832+I,0:NEXT I
+70 POKE 832,24:POKE 833,60:POKE 834,126
+80 POKE 835,219:POKE 836,255:POKE 837,126
+90 POKE 838,60:POKE 839,24
+100 POKE 53287,7
+110 REM LEVEL DATA - 3 SCREENS WIDE
+120 DIM LV$(25)
+130 FOR Y=0 TO 24:READ LV$(Y):NEXT Y
+140 REM CAMERA VARIABLES
+150 CX=0:LX=-999
+160 REM PLAYER VARIABLES
+170 PX=80:PY=140:VX=0:VY=0
+180 REM PHYSICS CONSTANTS
+190 GR=0.3:JP=-5:OG=1
+200 REM MAIN LOOP
+210 GOSUB 1000
+220 GOSUB 2000
+230 GOSUB 3000
+240 GOSUB 4000
+250 GOTO 210
+1000 REM JOYSTICK INPUT
+1010 J=PEEK(56320)
+1020 VX=0
+1030 IF (J AND 4)=0 THEN VX=-2
+1040 IF (J AND 8)=0 THEN VX=2
+1050 IF (J AND 16)=0 AND OG=1 THEN VY=JP:OG=0
+1060 RETURN
+2000 REM PHYSICS
+2010 VY=VY+GR:IF VY>8 THEN VY=8
+2020 PX=PX+VX:PY=PY+VY
+2030 IF PX<0 THEN PX=0:VX=0
+2040 IF PX>959 THEN PX=959:VX=0
+2050 REM SIMPLE GROUND COLLISION
+2060 IF PY>=180 THEN PY=180:VY=0:OG=1:RETURN
+2070 OG=0:RETURN
+3000 REM UPDATE CAMERA
+3010 CX=PX-160
+3020 IF CX<0 THEN CX=0
+3030 IF CX>639 THEN CX=639
+3040 RETURN
+4000 REM DRAW SCREEN
+4010 IF ABS(CX-LX)<8 THEN GOTO 4090
+4020 LX=CX
+4030 OF=INT(CX/8)
+4040 FOR Y=0 TO 24
+4050 FOR X=0 TO 39
+4060 LI=OF+X
+4070 IF LI<LEN(LV$(Y)) THEN C=ASC(MID$(LV$(Y),LI+1,1)):POKE 1024+Y*40+X,C
+4080 NEXT X:NEXT Y
+4090 REM POSITION SPRITE RELATIVE TO CAMERA
+4100 SX=PX-CX+24
+4110 POKE 53248,SX
+4120 POKE 53249,PY+50
+4130 RETURN
+9000 DATA "################################################################################################################################"
+9010 DATA "#                                                                                                                              #"
+9020 DATA "#                                                                                                                             #"
+9030 DATA "#                                                                                                                             #"
+9040 DATA "#                    ###                                                                                                      #"
+9050 DATA "#                                           ###                                                                               #"
+9060 DATA "#                                                                                                                             #"
+9070 DATA "#          ###                                                   ###                                                          #"
+9080 DATA "#                                                                                                                             #"
+9090 DATA "#                                  ###                                                                                        #"
+9100 DATA "#                                                                                       ###                                   #"
+9110 DATA "#     ###                                                                                                                     #"
+9120 DATA "#                                                        ###                                                                  #"
+9130 DATA "#                                                                                                                             #"
+9140 DATA "#                         ###                                                                         ###                     #"
+9150 DATA "#                                                                                                                             #"
+9160 DATA "#                                                 ###                                                                         #"
+9170 DATA "#                                                                                                                             #"
+9180 DATA "#  ###                                                                        ###                                             #"
+9190 DATA "#                                                                                                                             #"
+9200 DATA "#                                        ###                                                                                  #"
+9210 DATA "#                                                                                                  ###                        #"
+9220 DATA "#                 ###                                                                                                         #"
+9230 DATA "#                                                                   ###                                                       #"
+9240 DATA "################################################################################################################################"
+```
+
+![Complete platformer with horizontal scrolling, physics, and jumping](/images/commodore-64/phase-0/tier-3/lesson-036/screenshot-2.png)
+
+**What's different:**
+- Lines 170-190: Full physics system (gravity, velocity, jump force, grounded flag)
+- Lines 2000-2070: Physics update with collision detection
+- Line 4100: Sprite position calculation (world X - camera X + offset)
+- Lines 70-90: Custom sprite design (character shape instead of solid block)
+
+**The sprite positioning formula:**
+```
+Screen X = World X - Camera X + 24
+
+World X (PX): Absolute position in level (0-959 pixels)
+Camera X (CX): Current view offset (0-639 pixels)
+Screen X (SX): Where to draw sprite (24-320 pixels typically)
++24: Border offset to prevent sprite clipping at left edge
+```
+
+**Why this matters:** Without camera adjustment, sprite would stay at absolute world position, moving off-screen as camera scrolls. Subtracting camera X makes sprite position relative to viewport.
+
+---
+
+## How Camera Following Works
+
+**Direct center following (used in examples):**
+```
+Camera X = Player X - 160
+
+When player at PX=200:
+  CX = 200 - 160 = 40 (camera offset 40 pixels into level)
+  Screen shows characters 5-44 (40÷8=5 character offset)
+  Player sprite at SX = 200-40+24 = 184 (centered on screen)
+```
+
+**Camera boundaries:**
+```
+IF CX<0 THEN CX=0           (Left edge: don't scroll past level start)
+IF CX>639 THEN CX=639       (Right edge: 960 pixels wide - 320 screen = 640 max)
+```
+
+**Alternative: Dead zone following:**
+```
+IF PX > CX+200 THEN CX=PX-200  (Player near right edge? Scroll right)
+IF PX < CX+120 THEN CX=PX-120  (Player near left edge? Scroll left)
+```
+
+This creates a "comfort zone" where player can move without camera following immediately. Only when reaching zone edge does camera catch up. Many professional games use this approach for less aggressive camera movement.
+
+---
+
+## Why Character-Based Scrolling Is Jerky
+
+**The fundamental limitation:**
+
+VIC-II has hardware registers (**$D016**) that control fine horizontal scrolling in 1-pixel increments. Setting these registers smoothly scrolls the entire screen without redrawing. But these are hardware registers—assembly language territory.
+
+**What BASIC can do:**
+- Read and write screen memory (1024-2023) character by character
+- Each character is 8×8 pixels
+- "Scrolling" means shifting which characters are visible
+- Movement happens in 8-pixel jumps—one full character at a time
+
+**What you'll see:**
+- Player moves smoothly (sprite position updates in 2-pixel steps)
+- Every ~4 steps, screen "pops" to new position (8-pixel threshold reached)
+- Brief freeze during screen redraw (~100ms to POKE 1000 characters)
+- Visible jerkiness but still playable
+
+**Discovery moment:** You've hit BASIC's rendering performance wall. Smooth scrolling exists on the C64—games like **Boulder Dash** and **Trailblazer** prove it—but it requires assembly language to manipulate VIC-II registers directly.
+
+---
+
+## Performance Impact: The Numbers
+
+**Without scrolling (static screen):**
+- Input: ~10ms
+- Physics: ~20ms
+- Sprite update: ~10ms
+- **Total: ~40ms per frame = 25 fps**
+
+**With character-based scrolling:**
+- Input: ~10ms
+- Physics: ~20ms
+- Camera update: ~5ms
+- Screen redraw (when triggered): ~100ms
+- Sprite update: ~10ms
+- **Total with redraw: ~145ms = 6-7 fps**
+- **Total without redraw: ~45ms = 22 fps**
+
+**What this means:**
+- Every 4 player steps triggers a screen redraw
+- Brief stutter as screen updates
+- Movement still responsive between redraws
+- Playable but noticeably sluggish compared to assembly scrollers
+
+**Optimisation attempts:**
+- Increase threshold (line 3010): Scroll less often, longer jumps (even jerkier)
+- Partial updates: Only redraw changed columns (complex, still slow)
+- Reduce level detail: Fewer characters to POKE (less visual interest)
+
+None solve the fundamental problem: **BASIC is too slow for smooth scrolling**. The C64 hardware can do it—BASIC can't access it efficiently.
+
+---
+
+## Level Data Storage Strategies
+
+**Method 1: String arrays (used in examples)**
+```basic
+DIM LV$(25)
+FOR Y=0 TO 24:READ LV$(Y):NEXT Y
+DATA "######## ########..."
+```
+**Pros:** Easy to visualise and edit, straightforward to read with MID$
+**Cons:** Memory-intensive (1 byte per character + string overhead)
+
+**Method 2: Numeric arrays**
+```basic
+DIM LV(25,120)
+FOR Y=0 TO 24:FOR X=0 TO 119:READ LV(Y,X):NEXT X:NEXT Y
+DATA 35,35,35,32,32...  (35='#', 32=space)
+```
+**Pros:** More memory-efficient, faster array access
+**Cons:** Hard to visualise level layout in code, tedious to type
+
+**Method 3: Run-length encoding**
+```basic
+DATA 20,35,10,32,5,64  (20×'#', 10×space, 5×'@')
+```
+**Pros:** Very compact for levels with repeated patterns
+**Cons:** Slower decode, more complex to implement and edit
+
+For BASIC projects, **string arrays** offer the best balance of simplicity and readability. Memory isn't tight for 3-screen levels (~3KB). Professional games use compressed formats, but those require significant decoding overhead.
+
+---
+
+## Common Pitfalls
+
+**1. Redrawing every frame**
+```basic
+REM WRONG: No threshold check
+3000 REM DRAW SCREEN
+3010 OF=INT(CX/8)
+3020 FOR Y=0 TO 24:FOR X=0 TO 39...
+```
+**Result:** Constant screen flicker, unplayable
+
+**Fix:** Add threshold check: `IF ABS(CX-LX)<8 THEN RETURN`
+
+**2. Forgetting to initialise LX**
+```basic
+REM WRONG: LX starts at 0
+120 CX=0:PX=160
+```
+**Result:** ABS(0-0)&lt;8 is true, screen never draws initially!
+
+**Fix:** Set LX to impossible value: `LX=-999`
+
+**3. Sprite position still absolute**
+```basic
+REM WRONG: Using world coordinates
+3100 POKE 53248,PX
+```
+**Result:** Sprite moves off-screen when camera scrolls
+
+**Fix:** Calculate screen position: `SX=PX-CX+24`
+
+**4. Level data too short**
+```basic
+REM WRONG: Only 80 characters wide (2 screens)
+9000 DATA "###...###"  (80 chars, but CX can reach 639)
+```
+**Result:** MID$ accesses beyond string length, garbage characters or errors
+
+**Fix:** Ensure level data width ≥ (CX_MAX+320)/8 characters
+
+**5. Camera boundaries wrong**
+```basic
+REM WRONG: No right boundary
+2030 IF CX<0 THEN CX=0
+```
+**Result:** Camera scrolls past level end, showing undefined memory
+
+**Fix:** Add max boundary: `IF CX>LEVEL_WIDTH-320 THEN CX=LEVEL_WIDTH-320`
+
+---
+
+## Experiments to Try
+
+**1. Change camera follow mode**
+
+Replace lines 3010-3030 with dead zone following:
+```basic
+3010 IF PX>CX+200 THEN CX=PX-200
+3020 IF PX<CX+120 THEN CX=PX-120
+3030 IF CX<0 THEN CX=0
+3040 IF CX>639 THEN CX=639
+```
+Player can move within zone before camera follows. Less aggressive scrolling.
+
+**2. Adjust scrolling threshold**
+
+Change line 3010 to `IF ABS(CX-LX)<16 THEN RETURN`
+
+Scrolls less often (every 16 pixels instead of 8). Bigger jumps, less frequent stutters. Which feels better?
+
+**3. Add vertical scrolling**
+
+Add these variables:
+```basic
+115 CY=0:LY=-999
+```
+
+Update camera vertically:
+```basic
+3005 CY=PY-100:IF CY<0 THEN CY=0:IF CY>100 THEN CY=100
+```
+
+Draw with Y offset:
+```basic
+3060 LI=OF+X+INT(CY/8)*120
+```
+
+Now the level scrolls vertically too! (But even slower with more redraws.)
+
+**4. Parallax background layer**
+
+Before line 3040, add:
+```basic
+3035 FOR X=0 TO 39:POKE 1024+X,160:NEXT X
+```
+This draws a static top row whilst the level scrolls. Simple parallax effect—background moves slower (or not at all) compared to foreground.
+
+**5. Mini-map display**
+
+Add after line 3130:
+```basic
+3140 REM DRAW MINI-MAP (TOP RIGHT CORNER)
+3150 MP=INT(PX/96):REM PLAYER POSITION IN 10-CHAR MAP
+3160 FOR I=0 TO 9:POKE 1030+I,46:NEXT I:REM DOTS
+3170 POKE 1030+MP,81:REM PLAYER MARKER (FILLED CIRCLE)
+```
+Shows player position in scrolling level with simple 10-segment indicator.
+
+---
+
+## What You've Learnt
+
+**Camera Systems:**
+- Camera position determines viewport into larger world
+- Camera follows player by centering them on screen
+- Boundaries prevent showing beyond level edges
+- Sprite positions must be relative to camera, not world
+
+**Character-Based Scrolling:**
+- BASIC scrolling moves in 8-pixel jumps (character width)
+- Full screen redraw required when threshold reached
+- Visible "pop" and performance hit during scrolling
+- Smooth pixel scrolling requires VIC-II hardware access (assembly)
+
+**Performance Reality:**
+- Screen redraw costs ~100ms for 1000 POKEs
+- Scrolling drops frame rate from ~25 fps to ~6 fps
+- Playable but noticeably sluggish compared to assembly
+- You've discovered BASIC's rendering performance wall
+
+**Level Data:**
+- Multi-screen levels stored as wide character arrays
+- String arrays balance memory usage and readability
+- Character offset calculation maps camera to level data
+- Proper length checking prevents accessing beyond data bounds
+
+---
+
+## From the Vault
+
+**Classic C64 scrolling games:**
+- **Miner 2049er** (1983): Single-screen levels with lifts, no scrolling but multi-level
+- **Impossible Mission** (1984): Smooth scrolling rooms using assembly VIC-II control
+- **Boulder Dash** (1984): Smooth scrolling cave exploration, assembly-based
+- **Trailblazer** (1986): 3D perspective scrolling at high speed, pure assembly
+
+**Why they're smooth:** All use assembly language to manipulate VIC-II register $D016 (horizontal fine scroll) and shift screen memory character-by-character as player moves. Some pre-render level slices to minimise redraw overhead.
+
+**BASIC scrolling in the wild:**
+- Text adventures with scrolling descriptions (slow but acceptable)
+- Strategy games with scrolling maps (turn-based, speed less critical)
+- Educational software with scrolling content
+
+Character-based scrolling in BASIC is functional but sluggish. Professional action games require assembly.
+
+---
+
+## Quick Reference
+
+**Camera following:**
+```basic
+CX=PX-160                        REM Center player on screen
+IF CX<0 THEN CX=0                REM Left boundary
+IF CX>LEVEL_WIDTH-320 THEN CX=LEVEL_WIDTH-320  REM Right boundary
+```
+
+**Screen redraw with threshold:**
+```basic
+IF ABS(CX-LX)<8 THEN RETURN      REM Skip if moved < 8 pixels
+LX=CX                            REM Update last position
+OF=INT(CX/8)                     REM Character offset
+FOR Y=0 TO 24:FOR X=0 TO 39
+  LI=OF+X                        REM Level index
+  C=ASC(MID$(LV$(Y),LI+1,1))     REM Get character
+  POKE 1024+Y*40+X,C             REM Draw to screen
+NEXT X:NEXT Y
+```
+
+**Sprite position relative to camera:**
+```basic
+SCREEN_X = WORLD_X - CAMERA_X + 24
+POKE 53248,SCREEN_X
+```
+
+**Level width calculation:**
+```
+1 screen = 320 pixels = 40 characters
+3 screens = 960 pixels = 120 characters
+5 screens = 1600 pixels = 200 characters
+```
+
+**Performance breakdown:**
+| Operation | Time | Impact |
+|-----------|------|--------|
+| Input | ~10ms | Minimal |
+| Physics | ~20ms | Moderate |
+| Screen redraw | ~100ms | Severe |
+| Sprite update | ~10ms | Minimal |
+| **With scrolling** | **~145ms** | **6-7 fps** |
+| **Without scrolling** | **~45ms** | **22 fps** |
+
+---
+
+## What's Next
+
+**Lesson 37:** Enemy characters positioned in world coordinates, following the same camera system
+
+**Lesson 38:** Collectables and obstacles placed throughout scrolling levels
+
+**Lesson 39:** Multiple level progression and screen transitions
+
+**Lesson 40:** Complete multi-screen platformer synthesis
+
+**Tier 4:** Performance measurement tools, assembly smooth scrolling comparison, and optimisation techniques
+
+---
+
+You've built a scrolling platformer world that extends beyond the screen. The camera follows your character through a multi-screen level, sprites position correctly relative to the viewport, and the game remains playable despite character-based movement.
+
+**But you've also discovered a hard truth:** BASIC scrolling is jerky and slow. Every 8 pixels, the screen redraws with visible stutter. The frame rate tanks. Smooth scrolling—the kind you see in commercial games—requires assembly language to access VIC-II hardware directly.
+
+This is not a failure of your implementation. **This is BASIC's limit.** You've explored scrolling as far as BASIC can go. In Tier 4, you'll measure this performance quantitatively and see how assembly language achieves smooth 50/60 fps scrolling with hardware register manipulation.
+
+For now: you've built a scrolling world. It works. It's playable. That's the victory.

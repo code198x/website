@@ -1,0 +1,602 @@
+---
+title: "Your First Weapon"
+description: "Implement bullet sprites with movement—spawn from player position, update each frame, manage multiple bullets with arrays, despawn off-screen, sprite resource allocation."
+pubDate: 2025-11-06
+tier: 2
+lessonNumber: 20
+tags: ["basic", "sprites", "bullets", "arrays", "entity-management"]
+prevLesson: "/commodore-64/phase-0/tier-2/lesson-019"
+nextLesson: "/commodore-64/phase-0/tier-2/lesson-021"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+You've mastered player control and collision detection. Now add **shooting mechanics**—the foundation of any shooter game. Manage multiple bullet sprites with arrays, spawn bullets from the player's position, move them automatically, and despawn when they leave the screen. This introduces **entity management**, a pattern you'll use throughout game development.
+
+Previous lessons controlled a single sprite. Bullets require managing multiple sprites dynamically—tracking which are active, reusing sprite slots, and updating positions each frame.
+
+## The One-Minute Tour
+
+- **Bullet sprites**—Small, fast-moving sprites spawned by player
+- **Array-based management**—Parallel arrays track X, Y, active status
+- **Spawn mechanics**—Create bullet at player position when fire pressed
+- **Automatic movement**—Update bullet position each frame (Y -= 4)
+- **Despawn logic**—Remove bullet when off-screen (Y < 50)
+- **Sprite reuse**—Find first inactive slot, mark active, reuse when despawned
+- **Fire cooldown**—Prevent rapid-fire spam with frame counter
+- **Sprite allocation**—Player uses sprite 0, bullets use sprites 1-4
+
+## Simple Bullet System
+
+```basic
+10 REM SIMPLE BULLET SYSTEM
+20 PRINT CHR$(147)
+30 PRINT "LOADING SPRITE DATA..."
+40 REM LOAD PLAYER SPRITE TO BLOCK 13 (832)
+50 FOR I=832 TO 894:READ D:POKE I,D:NEXT I
+60 REM LOAD BULLET SPRITE TO BLOCK 14 (896)
+70 FOR I=896 TO 958:READ D:POKE I,D:NEXT I
+80 POKE 2040,13:REM SPRITE 0 POINTER (PLAYER)
+90 POKE 2041,14:REM SPRITE 1 POINTER (BULLET)
+100 POKE 53287,1:REM WHITE PLAYER COLOUR
+110 POKE 53288,7:REM YELLOW BULLET COLOUR
+120 REM ENABLE SPRITE 0 ONLY (PLAYER)
+130 POKE 53269,1
+140 REM PLAYER POSITION
+150 PX=160:PY=200
+160 POKE 53248,PX AND 255:POKE 53249,PY
+170 POKE 53264,0:REM CLEAR X MSB
+180 REM BULLET VARIABLES
+190 DIM BX(1),BY(1),BA(1)
+200 REM BULLET INACTIVE AT START
+210 BA(1)=0
+220 PRINT CHR$(147)
+230 PRINT "PRESS SPACE TO FIRE BULLET"
+240 PRINT "PRESS Q TO QUIT"
+250 REM MAIN LOOP
+260 GET K$:IF K$="Q" THEN END
+270 REM CHECK SPACEBAR
+280 IF K$=" " AND BA(1)=0 THEN GOSUB 500
+290 REM UPDATE BULLET IF ACTIVE
+300 IF BA(1)=1 THEN GOSUB 600
+310 GOTO 260
+500 REM SPAWN BULLET
+510 BX(1)=PX:BY(1)=PY-20
+520 BA(1)=1
+530 POKE 53250,BX(1) AND 255
+540 POKE 53251,BY(1)
+550 REM ENABLE SPRITE 1 (BULLET)
+560 E=PEEK(53269):POKE 53269,E OR 2
+570 RETURN
+600 REM UPDATE BULLET
+610 BY(1)=BY(1)-4
+620 REM CHECK IF OFF-SCREEN
+630 IF BY(1)<50 THEN GOSUB 700:RETURN
+640 POKE 53251,BY(1)
+650 RETURN
+700 REM DESPAWN BULLET
+710 BA(1)=0
+720 REM DISABLE SPRITE 1
+730 E=PEEK(53269):POKE 53269,E AND 253
+740 RETURN
+750 REM PLAYER SPRITE DATA: ARROW/SPACESHIP
+760 DATA 0,16,0,0,56,0,0,124,0,0,254,0
+770 DATA 1,255,0,3,255,128,7,255,192,15,255,224
+780 DATA 1,255,0,0,254,0,0,124,0,0,56,0
+790 DATA 0,16,0,0,0,0,0,0,0,0,0,0
+800 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+810 REM BULLET SPRITE DATA: SMALL DOT
+820 DATA 0,0,0,0,0,0,0,56,0,0,124,0
+830 DATA 0,254,0,0,254,0,0,254,0,0,124,0
+840 DATA 0,56,0,0,0,0,0,0,0,0,0,0
+850 DATA 0,0,0,0,0,0,0,0,0,0,0,0
+860 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+```
+
+**Press spacebar to fire**—a yellow bullet sprite appears and travels upward. When it reaches the top, it despawns and you can fire again.
+
+![Simple bullet system](/images/commodore-64/phase-0/tier-2/lesson-020/screenshot-1.png)
+
+## How This Works
+
+### Sprite Data Setup
+
+**Two sprite shapes** are needed:
+
+```basic
+40 REM LOAD PLAYER SPRITE TO BLOCK 13 (832)
+50 FOR I=832 TO 894:READ D:POKE I,D:NEXT I
+60 REM LOAD BULLET SPRITE TO BLOCK 14 (896)
+70 FOR I=896 TO 958:READ D:POKE I,D:NEXT I
+```
+
+Each sprite occupies 64 bytes. Block 13 starts at 832 (13 × 64), block 14 at 896 (14 × 64).
+
+**Sprite pointers** tell VIC-II which shape to display:
+
+```basic
+80 POKE 2040,13:REM SPRITE 0 POINTER (PLAYER)
+90 POKE 2041,14:REM SPRITE 1 POINTER (BULLET)
+```
+
+Register 2040 controls sprite 0, register 2041 controls sprite 1.
+
+### Array-Based Entity Management
+
+**Three parallel arrays** track bullet state:
+
+```basic
+190 DIM BX(1),BY(1),BA(1)
+```
+
+- `BX(1)`—Bullet X position
+- `BY(1)`—Bullet Y position
+- `BA(1)`—Bullet active flag (0=inactive, 1=active)
+
+**Active flag pattern** is fundamental to entity management. Only active entities update.
+
+### Spawning a Bullet
+
+```basic
+500 REM SPAWN BULLET
+510 BX(1)=PX:BY(1)=PY-20
+520 BA(1)=1
+530 POKE 53250,BX(1) AND 255
+540 POKE 53251,BY(1)
+550 REM ENABLE SPRITE 1 (BULLET)
+560 E=PEEK(53269):POKE 53269,E OR 2
+570 RETURN
+```
+
+**Line 510**: Position bullet at player X, 20 pixels above player (PY-20).
+
+**Line 520**: Mark bullet active.
+
+**Lines 530-540**: Set sprite 1 position registers ($D002-$D003 / 53250-53251).
+
+**Line 560**: Enable sprite 1 by setting bit 1 in register $D015 (53269).
+
+### Sprite Enable Register Bit Manipulation
+
+The sprite enable register ($D015 / 53269) uses **one bit per sprite**:
+
+- Bit 0 = Sprite 0
+- Bit 1 = Sprite 1
+- Bit 2 = Sprite 2
+- Bit 3 = Sprite 3
+- Bit 4 = Sprite 4
+- Bit 5 = Sprite 5
+- Bit 6 = Sprite 6
+- Bit 7 = Sprite 7
+
+**Enable sprite 1**: `POKE 53269, PEEK(53269) OR 2`
+
+- Current value: `PEEK(53269)` (e.g., 00000001 = sprite 0 enabled)
+- OR with 2: `00000001 OR 00000010 = 00000011`
+- Result: Both sprite 0 and sprite 1 enabled
+
+**Disable sprite 1**: `POKE 53269, PEEK(53269) AND 253`
+
+- 253 = 11111101 (all bits set except bit 1)
+- AND clears bit 1 whilst preserving other sprites
+- Sprite 0 remains enabled, sprite 1 disabled
+
+**Never directly assign** sprite enable register—always use OR/AND to preserve other sprites.
+
+### Updating Bullet Position
+
+```basic
+600 REM UPDATE BULLET
+610 BY(1)=BY(1)-4
+620 REM CHECK IF OFF-SCREEN
+630 IF BY(1)<50 THEN GOSUB 700:RETURN
+640 POKE 53251,BY(1)
+650 RETURN
+```
+
+**Line 610**: Move bullet up 4 pixels per frame (subtracting decreases Y = moves up).
+
+**Line 630**: If Y < 50 (top of screen), despawn bullet.
+
+**Line 640**: Update sprite 1 Y position register.
+
+### Despawning a Bullet
+
+```basic
+700 REM DESPAWN BULLET
+710 BA(1)=0
+720 REM DISABLE SPRITE 1
+730 E=PEEK(53269):POKE 53269,E AND 253
+740 RETURN
+```
+
+**Line 710**: Mark bullet inactive.
+
+**Line 730**: Disable sprite 1 by clearing bit 1.
+
+**Value 253**: Binary 11111101—clears bit 1 (sprite 1) whilst keeping bit 0 (sprite 0) and others intact.
+
+## Experimenting
+
+Try changing bullet speed in line 610:
+
+```basic
+610 BY(1)=BY(1)-2  REM SLOW BULLETS
+610 BY(1)=BY(1)-8  REM FAST BULLETS
+```
+
+Change bullet spawn position:
+
+```basic
+510 BX(1)=PX:BY(1)=PY-30  REM SPAWN FURTHER AHEAD
+510 BX(1)=PX+10:BY(1)=PY-20  REM OFFSET TO RIGHT
+```
+
+### Multiple Bullets with Joystick
+
+This version supports **4 bullets simultaneously** with joystick control:
+
+```basic
+10 REM COMPLETE BULLET SYSTEM WITH JOYSTICK
+20 PRINT CHR$(147)
+30 PRINT "LOADING SPRITE DATA..."
+40 REM LOAD PLAYER SPRITE TO BLOCK 13 (832)
+50 FOR I=832 TO 894:READ D:POKE I,D:NEXT I
+60 REM LOAD BULLET SPRITE TO BLOCK 14 (896)
+70 FOR I=896 TO 958:READ D:POKE I,D:NEXT I
+80 POKE 2040,13:REM SPRITE 0 POINTER (PLAYER)
+90 REM SPRITE POINTERS FOR BULLETS (SPRITES 1-4)
+100 POKE 2041,14:POKE 2042,14:POKE 2043,14:POKE 2044,14
+110 POKE 53287,1:REM WHITE PLAYER COLOUR
+120 POKE 53288,7:POKE 53289,7:REM YELLOW BULLET COLOURS
+130 POKE 53290,7:POKE 53291,7
+140 REM ENABLE SPRITE 0 ONLY (PLAYER)
+150 POKE 53269,1
+160 REM PLAYER POSITION AND FIRE COOLDOWN
+170 PX=160:PY=200:FC=0
+180 POKE 53248,PX AND 255:POKE 53249,PY
+190 POKE 53264,0:REM CLEAR X MSB
+200 REM BULLET ARRAYS (MAX 4 BULLETS)
+210 DIM BX(4),BY(4),BA(4)
+220 REM ALL BULLETS INACTIVE AT START
+230 FOR I=1 TO 4:BA(I)=0:NEXT I
+240 PRINT CHR$(147)
+250 PRINT "JOYSTICK PORT 2 CONTROLS PLAYER"
+260 PRINT "FIRE BUTTON SHOOTS BULLETS"
+270 PRINT "MAX 4 BULLETS ON SCREEN"
+280 PRINT
+290 PRINT "PRESS Q TO QUIT"
+300 REM MAIN LOOP
+310 GET K$:IF K$="Q" THEN END
+320 REM READ JOYSTICK PORT 2
+330 J=PEEK(56320)
+340 REM PROCESS DIRECTIONS WITH BOUNDARIES
+350 IF (J AND 4)=0 THEN PX=PX-2:IF PX<24 THEN PX=24
+360 IF (J AND 8)=0 THEN PX=PX+2:IF PX>320 THEN PX=320
+370 IF (J AND 1)=0 THEN PY=PY-2:IF PY<70 THEN PY=70
+380 IF (J AND 2)=0 THEN PY=PY+2:IF PY>229 THEN PY=229
+390 REM UPDATE PLAYER POSITION
+400 POKE 53248,PX AND 255
+410 M=0:IF PX>255 THEN M=1
+420 POKE 53264,M:REM X MSB FOR SPRITE 0
+430 POKE 53249,PY
+440 REM HANDLE FIRE BUTTON WITH COOLDOWN
+450 IF FC>0 THEN FC=FC-1:GOTO 490
+460 IF (J AND 16)=0 THEN GOSUB 700:FC=10
+490 REM UPDATE ALL BULLETS
+500 FOR I=1 TO 4
+510 IF BA(I)=1 THEN GOSUB 800
+520 NEXT I
+530 GOTO 310
+700 REM SPAWN BULLET
+710 FOR I=1 TO 4
+720 IF BA(I)=0 THEN GOSUB 750:RETURN
+730 NEXT I
+740 RETURN:REM NO SLOTS AVAILABLE
+750 REM CREATE BULLET I
+760 BX(I)=PX:BY(I)=PY-20:BA(I)=1
+770 POKE 53248+(I*2),BX(I) AND 255
+780 POKE 53249+(I*2),BY(I)
+790 E=PEEK(53269):POKE 53269,E OR (2^I):RETURN
+800 REM UPDATE BULLET I
+810 BY(I)=BY(I)-4
+820 REM CHECK IF OFF-SCREEN
+830 IF BY(I)<50 THEN GOSUB 900:RETURN
+840 POKE 53249+(I*2),BY(I)
+850 RETURN
+900 REM DESPAWN BULLET I
+910 BA(I)=0
+920 E=PEEK(53269):POKE 53269,E AND (255-(2^I))
+930 RETURN
+940 REM PLAYER SPRITE DATA: ARROW/SPACESHIP
+950 DATA 0,16,0,0,56,0,0,124,0,0,254,0
+960 DATA 1,255,0,3,255,128,7,255,192,15,255,224
+970 DATA 1,255,0,0,254,0,0,124,0,0,56,0
+980 DATA 0,16,0,0,0,0,0,0,0,0,0,0
+990 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+1000 REM BULLET SPRITE DATA: SMALL DOT
+1010 DATA 0,0,0,0,0,0,0,56,0,0,124,0
+1020 DATA 0,254,0,0,254,0,0,254,0,0,124,0
+1030 DATA 0,56,0,0,0,0,0,0,0,0,0,0
+1040 DATA 0,0,0,0,0,0,0,0,0,0,0,0
+1050 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+```
+
+**Move with joystick, fire with button**—up to 4 bullets on screen simultaneously. Cooldown prevents instant-fire spam.
+
+![Multiple bullets with joystick control](/images/commodore-64/phase-0/tier-2/lesson-020/screenshot-2.png)
+
+## Advanced Patterns
+
+### Fire Cooldown System
+
+```basic
+160 PX=160:PY=200:FC=0
+...
+450 IF FC>0 THEN FC=FC-1:GOTO 490
+460 IF (J AND 16)=0 THEN GOSUB 700:FC=10
+```
+
+**FC (Fire Cooldown)** prevents rapid-fire:
+
+- **Line 450**: If cooldown active (FC > 0), decrement and skip fire check
+- **Line 460**: Fire pressed and cooldown zero? Spawn bullet, set FC=10
+- **Result**: Minimum 10 frames between bullets (~0.2 seconds at 50Hz)
+
+Adjust cooldown value to control fire rate: FC=5 (faster), FC=20 (slower).
+
+### Finding Available Bullet Slots
+
+```basic
+700 REM SPAWN BULLET
+710 FOR I=1 TO 4
+720 IF BA(I)=0 THEN GOSUB 750:RETURN
+730 NEXT I
+740 RETURN:REM NO SLOTS AVAILABLE
+```
+
+**Loop through bullets** to find first inactive slot. If all 4 active, fire button has no effect (line 740).
+
+This **slot reuse pattern** is fundamental—with only 8 sprites total, must efficiently manage limited resources.
+
+### Sprite Register Calculation
+
+```basic
+770 POKE 53248+(I*2),BX(I) AND 255
+780 POKE 53249+(I*2),BY(I)
+```
+
+**Sprite I registers**:
+- X position: $D000 + (I × 2) = 53248 + (I × 2)
+- Y position: $D001 + (I × 2) = 53249 + (I × 2)
+
+**Example**: Sprite 2 (I=2):
+- X register: 53248 + 4 = 53252 ($D004)
+- Y register: 53249 + 4 = 53253 ($D005)
+
+This **register offset pattern** scales to all 8 sprites.
+
+### Bit Mask Calculations
+
+**Enable sprite I**: `2^I`
+
+- Sprite 1: 2^1 = 2 (binary 00000010)
+- Sprite 2: 2^2 = 4 (binary 00000100)
+- Sprite 3: 2^3 = 8 (binary 00001000)
+- Sprite 4: 2^4 = 16 (binary 00010000)
+
+**Disable sprite I**: `255 - (2^I)`
+
+- Sprite 1: 255 - 2 = 253 (binary 11111101)
+- Sprite 2: 255 - 4 = 251 (binary 11111011)
+- Sprite 3: 255 - 8 = 247 (binary 11110111)
+- Sprite 4: 255 - 16 = 239 (binary 11101111)
+
+These formulae work for **any sprite index**.
+
+## Sprite Allocation Strategy
+
+**Typical allocation** for shooter games:
+
+- **Sprite 0**: Player
+- **Sprites 1-4**: Bullets (4 max)
+- **Sprites 5-7**: Enemies (3 max)
+
+With 8 sprites total, plan allocation carefully. Some games use **sprite multiplexing** (reusing sprites at different Y positions) for more entities, but that's advanced.
+
+## Common Pitfalls
+
+### Forgetting to Disable Sprite
+
+```basic
+700 REM DESPAWN BULLET - WRONG
+710 BA(I)=0
+720 RETURN  REM SPRITE STILL VISIBLE!
+```
+
+**Problem**: Bullet marked inactive, but sprite remains enabled. You'll see "ghost bullets".
+
+**Fix**: Always disable sprite when despawning:
+
+```basic
+720 E=PEEK(53269):POKE 53269,E AND (255-(2^I))
+```
+
+### Array Index Errors
+
+```basic
+210 DIM BX(4),BY(4),BA(4)
+...
+500 FOR I=0 TO 4  REM WRONG!
+```
+
+**Problem**: BASIC V2 DIM creates indices 0-4 (5 elements), but sprite allocation uses 1-4. Index 0 wastes space and sprite 0 (player) gets accidentally modified.
+
+**Fix**: Use `FOR I=1 TO 4` consistently.
+
+### Wrong Sprite Registers
+
+```basic
+770 POKE 53250,BX(I)  REM WRONG - ALWAYS SPRITE 1
+```
+
+**Problem**: Hardcoded register only updates sprite 1. Other bullets don't move.
+
+**Fix**: Calculate register offset: `POKE 53248+(I*2),BX(I)`
+
+### Direct Assignment to Enable Register
+
+```basic
+560 POKE 53269,2  REM WRONG - DISABLES PLAYER SPRITE
+```
+
+**Problem**: Direct assignment replaces all bits. Player sprite (bit 0) gets disabled.
+
+**Fix**: Use OR to preserve existing sprites: `POKE 53269,PEEK(53269) OR 2`
+
+### No Fire Rate Limit
+
+Without cooldown, holding fire button spawns bullets every frame (50 per second). All 4 slots fill instantly, creating continuous bullet stream. Sometimes desired (power-up), usually needs limiting.
+
+## Hardware Details
+
+### VIC-II Sprite Registers Used
+
+| Address | Decimal | Purpose |
+|---------|---------|---------|
+| $D000-$D001 | 53248-53249 | Sprite 0 X/Y (player) |
+| $D002-$D003 | 53250-53251 | Sprite 1 X/Y (bullet 1) |
+| $D004-$D005 | 53252-53253 | Sprite 2 X/Y (bullet 2) |
+| $D006-$D007 | 53254-53255 | Sprite 3 X/Y (bullet 3) |
+| $D008-$D009 | 53256-53257 | Sprite 4 X/Y (bullet 4) |
+| $D010 | 53264 | Sprite X MSB register |
+| $D015 | 53269 | Sprite enable register |
+| $D027-$D02B | 53287-53291 | Sprite colours 0-4 |
+
+### Sprite Pointer Locations
+
+| Address | Decimal | Sprite | Typical Value |
+|---------|---------|--------|---------------|
+| 2040 | 2040 | 0 (player) | 13 (block 13) |
+| 2041 | 2041 | 1 (bullet) | 14 (block 14) |
+| 2042 | 2042 | 2 (bullet) | 14 (block 14) |
+| 2043 | 2043 | 3 (bullet) | 14 (block 14) |
+| 2044 | 2044 | 4 (bullet) | 14 (block 14) |
+
+All bullets share the same sprite shape (block 14), saving memory.
+
+## Game Integration
+
+### Adding Bullet-Enemy Collision
+
+Next lesson adds **enemies**. Combine with collision detection:
+
+```basic
+500 FOR I=1 TO 4
+510 IF BA(I)=1 THEN GOSUB 800:REM UPDATE BULLET
+520 C=PEEK(53278):REM SPRITE-SPRITE COLLISION
+530 IF C>0 THEN GOSUB 1500:REM CHECK COLLISIONS
+540 NEXT I
+```
+
+Register $D01E (53278) reports sprite-sprite collisions. Check after bullet update.
+
+### Score and Hit Effects
+
+```basic
+1500 REM BULLET HIT ENEMY
+1510 SCORE=SCORE+10
+1520 GOSUB 2000:REM EXPLOSION EFFECT
+1530 GOSUB 700:REM DESPAWN BULLET
+1540 RETURN
+```
+
+Despawn bullet on hit, increment score, trigger effect.
+
+### Power-Ups
+
+Modify bullet behaviour based on power-up level:
+
+```basic
+810 BY(I)=BY(I)-(4+POWER*2)  REM FASTER WITH POWER-UP
+...
+710 FOR I=1 TO 4+(POWER*2)  REM MORE BULLETS WITH POWER-UP
+```
+
+## From the Vault
+
+**Sprite shapes and memory**—Many C64 shooters reuse sprite shapes. "Bullet" sprite might be 3×3 pixels (mostly transparent), but same 64-byte allocation as large sprites. Efficient games pack multiple small sprites into one 64-byte block, changing sprite pointer mid-frame.
+
+**Hardware sprite limitations**—Only 8 sprites total seems restrictive, but clever programmers used **sprite multiplexing**. Reuse sprites at different Y positions within single frame. Games like Armalyte displayed 30+ enemies by rapidly changing sprite positions during vertical blank.
+
+**Entity management evolution**—This array pattern (position + active flag) scaled from BASIC to assembly to modern game engines. Unity's GameObject active state, Unreal's Actor lifecycle—same concept, different syntax.
+
+## Quick Reference
+
+### Spawn Bullet at Player Position
+
+```basic
+BX(I)=PX:BY(I)=PY-20:BA(I)=1
+POKE 53248+(I*2),BX(I) AND 255
+POKE 53249+(I*2),BY(I)
+E=PEEK(53269):POKE 53269,E OR (2^I)
+```
+
+### Update Bullet Position
+
+```basic
+BY(I)=BY(I)-4
+IF BY(I)<50 THEN GOSUB [DESPAWN]:RETURN
+POKE 53249+(I*2),BY(I)
+```
+
+### Despawn Bullet
+
+```basic
+BA(I)=0
+E=PEEK(53269):POKE 53269,E AND (255-(2^I))
+```
+
+### Sprite Enable Formulas
+
+```basic
+REM Enable sprite I (I=0 to 7)
+E=PEEK(53269):POKE 53269,E OR (2^I)
+
+REM Disable sprite I
+E=PEEK(53269):POKE 53269,E AND (255-(2^I))
+```
+
+### Sprite Register Offsets
+
+```basic
+REM For sprite I:
+REM X position: 53248 + (I*2)
+REM Y position: 53249 + (I*2)
+REM Sprite pointer: 2040 + I
+```
+
+### Entity Management Pattern
+
+```basic
+10 DIM BX(4),BY(4),BA(4):REM X,Y,ACTIVE
+20 FOR I=1 TO 4
+30 IF BA(I)=1 THEN [UPDATE ENTITY I]
+40 NEXT I
+```
+
+## What You've Learnt
+
+You can now:
+
+- Implement bullet sprites with automatic movement
+- Manage multiple entities using parallel arrays
+- Spawn bullets from player position on fire button
+- Despawn bullets when off-screen
+- Use sprite enable register bit manipulation (OR/AND)
+- Calculate sprite register offsets dynamically
+- Implement fire cooldown for controlled shooting
+- Allocate sprites efficiently (player + bullets + enemies)
+- Understand entity management patterns
+- Reuse sprite slots when bullets despawn
+
+**Next**: Add enemy sprites that bullets can destroy.

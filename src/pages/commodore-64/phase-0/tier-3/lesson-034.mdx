@@ -1,0 +1,681 @@
+---
+title: "Landing Platforms"
+description: "Detect collision with multiple platforms using arrays, implement landing versus falling-through logic with velocity checks, and build multi-level platformer foundations with Y-threshold collision."
+pubDate: 2025-11-06
+tier: 3
+lessonNumber: 34
+tags: ["discovery", "collision", "platforms", "arrays", "platformer"]
+previousLesson: "/commodore-64/phase-0/tier-3/lesson-033"
+nextLesson: "/commodore-64/phase-0/tier-3/lesson-035"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+In the previous lesson, you implemented gravity and jumping with ground collision. That worked brilliantly for flat ground—but most platformers need platforms at different heights. How do you detect collision with multiple platforms? How do you land on platforms from above without getting stuck when jumping up from below?
+
+**Lesson 34 introduces platform collision**—checking multiple surfaces at different heights using arrays. The key insight: only land when falling (VY >= 0) and within vertical range of platform top. Jump up through platforms from below, land on them from above. Simple velocity-based logic creates natural platformer behaviour.
+
+---
+
+## The One-Minute Tour
+
+**Platform Data Structure:**
+- **Arrays store multiple platforms:** `PX(I), PY(I), PW(I)` for X, Y, and width
+- **Loop through platforms** checking each for collision
+- **DATA statements** provide platform coordinates
+- **READ loops** load platforms into arrays on initialisation
+
+**Landing Logic:**
+- **Velocity check first:** Only land when falling (`VY >= 0`)
+- **Y-threshold range:** Within ±8 pixels of platform top accounts for float precision
+- **Horizontal overlap:** Player X within platform left-to-right bounds
+- **All three required:** Velocity + Y-range + X-overlap = landing
+
+**Falling Through Mechanics:**
+- **Rising blocks collision:** `IF VY < 0 THEN RETURN` skips platform checks when jumping
+- **Above platform:** `IF Y < PY-8 THEN RETURN` hasn't reached platform yet
+- **Outside horizontal:** X beyond platform edges means no collision
+- **Natural jumping:** Pass through from below, land from above
+
+---
+
+## Example 1: Platform Collision System
+
+Let's implement multi-platform collision with the gravity system from lesson 33:
+
+```basic
+100 REM PLATFORM COLLISION DEMO
+110 REM INITIALISE PLATFORM ARRAYS
+120 DIM PX(8),PY(8),PW(8)
+130 NP=0
+140 GOSUB 9000
+150 REM PLAYER VARIABLES
+160 X=50:Y=50:VX=0:VY=0
+170 GR=0.3:JP=-5:OG=0
+180 REM SPRITE SETUP
+190 POKE 53269,1:REM ENABLE SPRITE 0
+200 POKE 2040,13:REM SPRITE POINTER
+210 FOR I=0 TO 62:READ D:POKE 832+I,D:NEXT
+220 REM MAIN LOOP
+230 GOSUB 1000
+240 GOSUB 2000
+250 GOSUB 3000
+260 GOSUB 4000
+270 GOSUB 5000
+280 GOTO 230
+1000 REM JOYSTICK INPUT
+1010 J=PEEK(56320)
+1020 VX=0
+1030 IF (J AND 4)=0 THEN VX=-2
+1040 IF (J AND 8)=0 THEN VX=2
+1050 IF (J AND 16)=0 AND OG=1 THEN VY=JP:OG=0
+1060 RETURN
+2000 REM APPLY GRAVITY
+2010 VY=VY+GR
+2020 IF VY>8 THEN VY=8
+2030 RETURN
+3000 REM UPDATE POSITION
+3010 X=X+VX:Y=Y+VY
+3020 IF X<24 THEN X=24
+3030 IF X>255 THEN X=255
+3040 RETURN
+4000 REM PLATFORM COLLISION
+4010 OG=0
+4020 IF VY<0 THEN RETURN
+4030 FOR I=1 TO NP
+4040 GOSUB 4100
+4050 IF OG=1 THEN RETURN
+4060 NEXT I
+4070 RETURN
+4100 REM CHECK PLATFORM I
+4110 IF Y<PY(I)-8 THEN RETURN
+4120 IF Y>PY(I)+8 THEN RETURN
+4130 IF X<PX(I) THEN RETURN
+4140 IF X>PX(I)+PW(I) THEN RETURN
+4150 Y=PY(I):VY=0:OG=1
+4160 RETURN
+5000 REM UPDATE SPRITE
+5010 POKE 53248,X
+5020 POKE 53249,Y
+5030 RETURN
+9000 REM LOAD PLATFORM DATA
+9010 READ NP
+9020 FOR I=1 TO NP
+9030 READ PX(I),PY(I),PW(I)
+9040 NEXT I
+9050 RETURN
+9100 REM PLATFORM DATA
+9110 DATA 6
+9120 DATA 30,200,40
+9130 DATA 100,200,60
+9140 DATA 50,160,50
+9150 DATA 120,140,40
+9160 DATA 80,120,60
+9170 DATA 40,100,50
+9200 REM SPRITE DATA - SIMPLE SQUARE
+9210 DATA 0,126,0,126,0,126,0,126
+9220 DATA 0,126,0,126,0,126,0,126
+9230 DATA 0,126,0,126,0,126,0,126
+9240 DATA 0,126,0,126,0,126,0,126
+9250 DATA 0,126,0,126,0,126,0,126
+9260 DATA 0,126,0,126,0,126,0,126
+9270 DATA 0,126,0,126,0,126,0,126
+9280 DATA 0,126,0,126,0,0,0,0
+```
+
+![Platform collision demonstration with invisible platforms](/images/commodore-64/phase-0/tier-3/lesson-034/screenshot-1.png)
+
+**What happens:**
+
+**Line 120: Array Declaration**
+```basic
+DIM PX(8),PY(8),PW(8)
+```
+- Creates three arrays for up to 8 platforms
+- PX(I) = Platform X position (left edge)
+- PY(I) = Platform Y position (top surface)
+- PW(I) = Platform width in pixels
+
+**Line 140: Load Platform Data**
+```basic
+GOSUB 9000
+```
+- Reads number of platforms from DATA
+- Loops through reading X, Y, Width for each
+- Fills arrays with platform coordinates
+
+**Line 4020: Velocity Check**
+```basic
+IF VY<0 THEN RETURN
+```
+- Critical line: only check platforms when falling
+- VY < 0 means rising (jumping upward)
+- Returns immediately, allowing jump-through from below
+- VY >= 0 means falling, continue checking
+
+**Line 4030-4060: Platform Loop**
+```basic
+FOR I=1 TO NP
+GOSUB 4100
+IF OG=1 THEN RETURN
+NEXT I
+```
+- Checks each platform in sequence
+- Returns immediately on first landing (OG=1)
+- No need to check remaining platforms
+
+**Line 4110-4140: Collision Checks**
+```basic
+IF Y<PY(I)-8 THEN RETURN    :REM ABOVE PLATFORM
+IF Y>PY(I)+8 THEN RETURN    :REM BELOW PLATFORM
+IF X<PX(I) THEN RETURN      :REM LEFT OF PLATFORM
+IF X>PX(I)+PW(I) THEN RETURN :REM RIGHT OF PLATFORM
+```
+- Four checks: vertical range and horizontal range
+- Y-threshold (±8 pixels) accounts for floating-point velocity
+- X bounds check: between left edge and left+width
+- All four must pass for collision
+
+**Line 4150: Landing**
+```basic
+Y=PY(I):VY=0:OG=1
+```
+- Snap Y to platform top (prevents sinking)
+- Zero vertical velocity (stop falling)
+- Set grounded flag (allows next jump)
+
+---
+
+## Example 2: Visual Platforms
+
+Now add visible platforms drawn with screen memory:
+
+```basic
+100 REM PLATFORM COLLISION WITH VISUALS
+110 REM CLEAR SCREEN AND SETUP
+120 PRINT CHR$(147)
+130 DIM PX(8),PY(8),PW(8)
+140 NP=0
+150 GOSUB 9000
+160 REM DRAW PLATFORMS
+170 GOSUB 6000
+180 REM PLAYER VARIABLES
+190 X=100:Y=80:VX=0:VY=0
+200 GR=0.3:JP=-5:OG=0
+210 REM SPRITE SETUP
+220 POKE 53269,1
+230 POKE 2040,13
+240 POKE 53287,2:REM SPRITE COLOUR RED
+250 FOR I=0 TO 62:READ D:POKE 832+I,D:NEXT
+260 REM MAIN LOOP
+270 GOSUB 1000
+280 GOSUB 2000
+290 GOSUB 3000
+300 GOSUB 4000
+310 GOSUB 5000
+320 GOTO 270
+1000 REM JOYSTICK INPUT
+1010 J=PEEK(56320)
+1020 VX=0
+1030 IF (J AND 4)=0 THEN VX=-2
+1040 IF (J AND 8)=0 THEN VX=2
+1050 IF (J AND 16)=0 AND OG=1 THEN VY=JP:OG=0
+1060 RETURN
+2000 REM APPLY GRAVITY
+2010 VY=VY+GR
+2020 IF VY>8 THEN VY=8
+2030 RETURN
+3000 REM UPDATE POSITION
+3010 X=X+VX:Y=Y+VY
+3020 IF X<24 THEN X=24
+3030 IF X>255 THEN X=255
+3040 IF Y>229 THEN Y=80:X=100:VY=0
+3050 RETURN
+4000 REM PLATFORM COLLISION
+4010 OG=0
+4020 IF VY<0 THEN RETURN
+4030 FOR I=1 TO NP
+4040 GOSUB 4100
+4050 IF OG=1 THEN RETURN
+4060 NEXT I
+4070 RETURN
+4100 REM CHECK PLATFORM I
+4110 IF Y<PY(I)-8 THEN RETURN
+4120 IF Y>PY(I)+8 THEN RETURN
+4130 IF X<PX(I) THEN RETURN
+4140 IF X>PX(I)+PW(I) THEN RETURN
+4150 Y=PY(I):VY=0:OG=1
+4160 RETURN
+5000 REM UPDATE SPRITE
+5010 POKE 53248,X
+5020 POKE 53249,Y
+5030 RETURN
+6000 REM DRAW PLATFORMS
+6010 FOR I=1 TO NP
+6020 FOR J=0 TO PW(I) STEP 8
+6030 CX=INT((PX(I)+J)/8)
+6040 CY=INT(PY(I)/8)
+6050 IF CX<40 AND CY<25 THEN POKE 1024+CY*40+CX,160
+6060 IF CX<40 AND CY<25 THEN POKE 55296+CY*40+CX,5
+6070 NEXT J
+6080 NEXT I
+6090 RETURN
+9000 REM LOAD PLATFORM DATA
+9010 READ NP
+9020 FOR I=1 TO NP
+9030 READ PX(I),PY(I),PW(I)
+9040 NEXT I
+9050 RETURN
+9100 REM PLATFORM DATA
+9110 DATA 5
+9120 DATA 32,192,80
+9130 DATA 56,152,64
+9140 DATA 128,152,48
+9150 DATA 88,112,72
+9160 DATA 40,72,56
+9200 REM SPRITE DATA - PLAYER CHARACTER
+9210 DATA 0,126,0,126,0,126,0,126
+9220 DATA 0,126,0,126,0,126,0,126
+9230 DATA 0,126,0,126,0,126,0,126
+9240 DATA 0,126,0,126,0,126,0,126
+9250 DATA 0,126,0,126,0,126,0,126
+9260 DATA 0,126,0,126,0,126,0,126
+9270 DATA 0,126,0,126,0,126,0,126
+9280 DATA 0,126,0,126,0,0,0,0
+```
+
+![Visual platformer with green platforms and red player sprite](/images/commodore-64/phase-0/tier-3/lesson-034/screenshot-2.png)
+
+**New addition:**
+
+**Line 6000-6090: Platform Drawing**
+```basic
+6000 REM DRAW PLATFORMS
+6010 FOR I=1 TO NP
+6020 FOR J=0 TO PW(I) STEP 8
+```
+- Loop through all platforms
+- For each platform, draw characters every 8 pixels (character width)
+
+**Line 6030-6040: Character Coordinate Conversion**
+```basic
+CX=INT((PX(I)+J)/8)
+CY=INT(PY(I)/8)
+```
+- Convert pixel coordinates to character grid
+- Screen is 40×25 characters (320×200 pixels / 8)
+- INT() ensures whole character positions
+
+**Line 6050: Draw Platform Character**
+```basic
+IF CX<40 AND CY<25 THEN POKE 1024+CY*40+CX,160
+```
+- Screen memory: 1024 + row×40 + column
+- Character 160 = horizontal line (good platform visual)
+- Bounds check prevents writing off-screen
+
+**Line 6060: Colour Platform**
+```basic
+IF CX<40 AND CY<25 THEN POKE 55296+CY*40+CX,5
+```
+- Colour memory: 55296 + same offset
+- Colour 5 = green (classic platform colour)
+
+**Line 3040: Respawn Check**
+```basic
+IF Y>229 THEN Y=80:X=100:VY=0
+```
+- If player falls off bottom of screen
+- Respawn at starting position (100, 80)
+- Zero velocity to prevent immediate re-fall
+
+---
+
+## Understanding Y-Threshold Collision
+
+**Why ±8 pixel range instead of exact Y match?**
+
+Gravity adds floating-point velocity every frame:
+```
+Frame N:   Y=151.7, VY=0.9
+Frame N+1: Y=152.6, VY=1.2
+Frame N+2: Y=153.8, VY=1.5
+```
+
+If platform Y=152 and you check `IF Y=PY THEN LAND`:
+- Y might be 151.7 (before platform)
+- Then 152.6 (past platform)
+- Never exactly 152!
+
+**The threshold solution:**
+```basic
+IF Y>=PY-8 AND Y<=PY+8 THEN [CHECK HORIZONTAL]
+```
+
+Player within ±8 pixels = potential landing zone. Combined with VY>=0 check (falling), this catches all landings without false positives.
+
+**Why 8 pixels specifically?**
+
+Maximum fall speed (terminal velocity) is typically 8 pixels/frame. The ±8 threshold ensures we catch the player even if they're falling at maximum speed. Smaller threshold might miss fast falls. Larger threshold creates "sticky" platforms that catch you too early.
+
+---
+
+## Velocity-Based Landing Logic
+
+**The critical insight: only check platforms when falling.**
+
+Without velocity check:
+```basic
+REM BAD VERSION - NO VELOCITY CHECK
+4000 FOR I=1 TO NP
+4010 IF Y>=PY(I)-8 AND Y<=PY(I)+8 THEN [CHECK X]
+```
+
+**What goes wrong:**
+1. Jump upward from ground (VY=-5)
+2. Head enters platform's Y-threshold from below
+3. Collision detected—player snaps to platform top
+4. Player stuck! Can't jump through
+
+**With velocity check:**
+```basic
+REM GOOD VERSION - VELOCITY CHECK FIRST
+4000 IF VY<0 THEN RETURN :REM RISING, SKIP COLLISION
+4010 FOR I=1 TO NP
+```
+
+**What happens:**
+1. Jump upward (VY=-5)
+2. VY&lt;0 detected—RETURN immediately
+3. No collision check whilst rising
+4. Pass through platform from below
+5. At peak of jump, VY becomes positive (falling)
+6. Now collision checks activate
+7. Land on platform from above
+
+Natural jump-through behaviour with one line of code.
+
+---
+
+## Platform Array Design
+
+**Why three arrays instead of nested structures?**
+
+BASIC V2 doesn't support multi-dimensional arrays efficiently. This works:
+```basic
+DIM PX(8),PY(8),PW(8)
+```
+
+This doesn't exist in BASIC V2:
+```basic
+DIM PLATFORMS(8,3)  :REM Not available
+```
+
+**Array indexing:**
+- Platform 1: PX(1), PY(1), PW(1)
+- Platform 2: PX(2), PY(2), PW(2)
+- Platform I: PX(I), PY(I), PW(I)
+
+**Loading from DATA:**
+```basic
+9000 READ NP           :REM Read count
+9010 FOR I=1 TO NP
+9020 READ PX(I),PY(I),PW(I)  :REM Read three values
+9030 NEXT I
+```
+
+**DATA structure:**
+```basic
+9110 DATA 6            :REM 6 platforms
+9120 DATA 30,200,40    :REM Platform 1: X=30, Y=200, Width=40
+9130 DATA 100,200,60   :REM Platform 2: X=100, Y=200, Width=60
+```
+
+Simple, efficient, easy to edit.
+
+---
+
+## Game Integration
+
+**How games use platform collision:**
+
+**Manic Miner (1983):**
+- Fixed platform layouts per screen
+- Platforms drawn with character graphics
+- Exact collision (8×8 character grid)
+- No floating-point—character-based movement
+
+**Impossible Mission (C64, 1984):**
+- Smooth pixel-based platforming
+- Multiple platform heights
+- Velocity-based collision
+- Lift platforms that move
+
+**Montezuma's Revenge (C64, 1984):**
+- Character grid platforms
+- Ladder collision (different system)
+- Key/door interactions on platforms
+- Room-based platform layouts
+
+**Your platformer can:**
+1. **Static platforms:** Fixed positions (current implementation)
+2. **Moving platforms:** Change PY(I) each frame (oscillate)
+3. **Crumbling platforms:** Remove from array after landing
+4. **One-way platforms:** Only land from above (check previous Y)
+
+Example 2 uses static platforms—the foundation for all variants.
+
+---
+
+## Experiment: Platform Layouts
+
+Modify the DATA statements to create different level designs:
+
+**Staircase pattern:**
+```basic
+9110 DATA 6
+9120 DATA 32,200,48   :REM Ground level
+9130 DATA 64,176,48   :REM Step 1
+9140 DATA 96,152,48   :REM Step 2
+9150 DATA 128,128,48  :REM Step 3
+9160 DATA 160,104,48  :REM Step 4
+9170 DATA 192,80,48   :REM Top platform
+```
+
+**Gap-jumping challenge:**
+```basic
+9110 DATA 4
+9120 DATA 32,192,32   :REM Left platform
+9130 DATA 120,192,32  :REM Gap (88 pixels wide)
+9140 DATA 200,192,32  :REM Right platform
+9150 DATA 116,128,40  :REM Upper platform above gap
+```
+
+**Vertical climbing:**
+```basic
+9110 DATA 5
+9120 DATA 32,200,32   :REM Ground left
+9130 DATA 160,200,32  :REM Ground right
+9140 DATA 96,176,32   :REM Platform 1 (centre)
+9150 DATA 64,144,32   :REM Platform 2 (left)
+9160 DATA 128,112,32  :REM Platform 3 (right)
+```
+
+**Which layout is most fun?** Play-test each. Level design is game design.
+
+---
+
+## From the Vault
+
+**Platform collision in 1980s games:**
+
+- **Jet Set Willy (ZX Spectrum, 1984):** Character-grid platforms. Simple ON/OFF collision per 8×8 block. Fast, effective.
+- **Boulder Dash (C64, 1984):** Tile-based collision. Every screen position is a tile type. Check player's tile for collision.
+- **Prince of Persia (Apple II, 1989):** Pixel-perfect platform collision. Complex but smooth. Shows evolution of technique.
+- **Rick Dangerous (C64, 1989):** Combines platforms with traps. Collision system handles multiple object types.
+
+**Assembly vs BASIC collision:**
+
+The collision logic is identical:
+```
+Check velocity → Check Y range → Check X range → Land
+```
+
+Assembly checks this 50 times per second. BASIC checks 15-25 times per second. The algorithm is the same—the update frequency differs. By Tier 4, you'll measure exact frame rates and understand the trade-offs.
+
+---
+
+## Common Pitfalls
+
+**1. Missing velocity check**
+
+Without line 4020:
+```basic
+4000 OG=0
+4010 FOR I=1 TO NP  :REM No VY check - WRONG
+```
+- Player jumps through platform from below
+- Head enters Y-threshold
+- Collision detected
+- Player stuck to platform bottom
+- Cannot jump properly
+
+**Fix:** Always check `IF VY<0 THEN RETURN` before platform loops.
+
+**2. Wrong Y-threshold comparison**
+
+Using exact match:
+```basic
+4100 IF Y=PY(I) THEN [LAND]  :REM WRONG
+```
+- Floating-point Y (152.6) never equals exact PY (152)
+- Player falls through all platforms
+- No collision detected
+
+**Fix:** Use range check: `IF Y>=PY-8 AND Y<=PY+8`
+
+**3. Forgetting to set OG=1**
+
+```basic
+4150 Y=PY(I):VY=0  :REM Missing OG=1
+4160 RETURN
+```
+- Player lands on platform
+- But OG flag not set
+- Cannot jump (requires OG=1)
+- Stuck on platform!
+
+**Fix:** Always set grounded flag: `Y=PY(I):VY=0:OG=1`
+
+**4. Wrong platform priority**
+
+Checking platforms in wrong order can cause landing on wrong platform when multiple overlap:
+```basic
+REM If platforms overlap vertically
+REM Check lower platforms first
+```
+
+Current implementation returns on first match—works for non-overlapping platforms. For complex layouts, sort platforms by Y position or check all and choose nearest.
+
+---
+
+## What You've Learnt
+
+You now understand multi-platform collision:
+
+- **Platform arrays** store multiple surfaces with X, Y, and width data
+- **Velocity-based collision** only lands when falling, allows jump-through
+- **Y-threshold range** (±8 pixels) catches floating-point positions reliably
+- **Horizontal bounds checking** ensures player is within platform edges
+- **Early return on landing** stops checking after first platform collision
+- **DATA statements** provide clean level design format
+- **Screen memory drawing** visualises platform positions
+
+**Next lesson:** Scrolling levels with off-screen platforms. Your collision system already works—you'll just update which platforms to check based on scroll position.
+
+**Building toward:** By lesson 40, you'll have Crystal Caverns—a complete platformer with this exact collision system handling dozens of platforms across scrolling screens. These 17 lines power the entire game:
+
+```basic
+4000 REM PLATFORM COLLISION
+4010 OG=0
+4020 IF VY<0 THEN RETURN
+4030 FOR I=1 TO NP
+4040 GOSUB 4100
+4050 IF OG=1 THEN RETURN
+4060 NEXT I
+4070 RETURN
+4100 REM CHECK PLATFORM I
+4110 IF Y<PY(I)-8 THEN RETURN
+4120 IF Y>PY(I)+8 THEN RETURN
+4130 IF X<PX(I) THEN RETURN
+4140 IF X>PX(I)+PW(I) THEN RETURN
+4150 Y=PY(I):VY=0:OG=1
+4160 RETURN
+```
+
+Simple collision, complex levels.
+
+---
+
+## Quick Reference
+
+**Platform array setup:**
+```basic
+100 DIM PX(8),PY(8),PW(8)  :REM 8 platforms max
+110 READ NP                :REM Number of platforms
+120 FOR I=1 TO NP
+130 READ PX(I),PY(I),PW(I) :REM X, Y, Width
+140 NEXT I
+```
+
+**Platform collision loop:**
+```basic
+100 IF VY<0 THEN RETURN    :REM Rising, skip collision
+110 FOR I=1 TO NP
+120 GOSUB [CHECK PLATFORM I]
+130 IF ON_GROUND=1 THEN RETURN
+140 NEXT I
+```
+
+**Individual platform check:**
+```basic
+100 IF Y<PY-8 THEN RETURN     :REM Above platform
+110 IF Y>PY+8 THEN RETURN     :REM Below platform
+120 IF X<PX THEN RETURN       :REM Left of platform
+130 IF X>PX+PW THEN RETURN    :REM Right of platform
+140 Y=PY:VY=0:ON_GROUND=1     :REM Land
+```
+
+**Draw platforms:**
+```basic
+100 FOR I=1 TO NP
+110 FOR J=0 TO PW(I) STEP 8
+120 CX=INT((PX(I)+J)/8)
+130 CY=INT(PY(I)/8)
+140 POKE 1024+CY*40+CX,160  :REM Character
+150 POKE 55296+CY*40+CX,5   :REM Colour
+160 NEXT J:NEXT I
+```
+
+**Platform DATA format:**
+```basic
+100 DATA 3              :REM Number of platforms
+110 DATA 50,180,60      :REM Platform 1: X=50, Y=180, W=60
+120 DATA 120,160,40     :REM Platform 2: X=120, Y=160, W=40
+130 DATA 80,140,50      :REM Platform 3: X=80, Y=140, W=50
+```
+
+**Memory locations used:**
+- 1024-2023 ($0400-$07E7): Screen memory (40×25 characters)
+- 55296-56295 ($D800-$DBE7): Colour memory
+- 53248-53249 ($D000-$D001): Sprite 0 X/Y position
+- 53269 ($D015): Sprite enable register
+- 53287 ($D027): Sprite 0 colour
+- 56320 ($DC00): Joystick port 2
+
+**Common platform characters:**
+- 160: Horizontal line (─)
+- 162: Vertical line (│)
+- 176: Half-filled block (▒)
+- 224: Full block (█)
+
+Next lesson: Scrolling platformer levels.

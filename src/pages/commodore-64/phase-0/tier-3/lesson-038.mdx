@@ -1,0 +1,665 @@
+---
+title: "Collectibles and Goals"
+description: "Implement collectible items and goal-based progression—discover how to create gems, keys, and locked doors using collision detection, inventory tracking, and win conditions."
+pubDate: 2025-11-06
+tier: 3
+lessonNumber: 38
+tags: ["discovery", "collectibles", "progression", "collision", "platformer"]
+previousLesson: "/commodore-64/phase-0/tier-3/lesson-037"
+nextLesson: "/commodore-64/phase-0/tier-3/lesson-039"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+Your platformer has gravity, scrolling, animation, and enemies. But there's no **objective**—no reason to explore, no reward for taking risks. Real platform games have **collectibles** that incentivise exploration and **goals** that structure progression.
+
+**This lesson introduces collectibles and goal-based progression**—the items and objectives that give your game purpose. You'll learn to implement collectible gems for scoring, keys that unlock doors, health pickups for recovery, distance-based collision detection, inventory tracking, and win conditions.
+
+The key insight: **Collectibles are just positions with collision checks**. Each item has world coordinates and a type. Every frame, check distance to player—if close enough, mark collected and apply effect (add score, give key, restore health). Goals work the same way, but check additional conditions (have key? door unlocked?) before triggering progression.
+
+---
+
+## The One-Minute Tour
+
+**Collectible Types:**
+- **Gems (Type 1):** Award points, encourage exploration, optional collection
+- **Keys (Type 2):** Unlock doors, required for progression, consumed on use
+- **Health (Type 3):** Restore HP, risk/reward placement, capped at maximum
+- **Custom types:** Power-ups, weapons, extra lives (easy to extend)
+
+**Item Management:**
+- **Arrays for storage:** IX(), IY(), IT(), IC() store position, type, collected flag
+- **World coordinates:** Items placed in level coordinate space (like enemies)
+- **Collision radius:** Distance < 20 pixels triggers collection (forgiving)
+- **Type-based effects:** ON IT(I) GOSUB routes to gem/key/health handlers
+
+**Goal Objects:**
+- **Locked door:** Requires key to unlock, blocks access to area
+- **Exit point:** Touch to win level (only after door unlocked)
+- **Win condition:** Distance check + prerequisite check → level complete
+- **Lock-and-key pattern:** Classic adventure game progression
+
+**Drawing on Scrolling Screen:**
+- **World to screen conversion:** SCREEN_X = WORLD_X - CAMERA_X
+- **Culling:** Only draw items visible in current camera view
+- **Character codes:** Diamond (4), key (11), heart (3), door (85), exit (88)
+- **Colour memory:** 54272 offset from screen address for colours
+
+---
+
+## Example 1: Simple Collectibles
+
+Let's start with basic collectible items using joystick control:
+
+```basic
+10 REM COLLECTIBLES DEMONSTRATION
+20 PRINT CHR$(147)
+30 POKE 53280,0:POKE 53281,0
+40 REM PLAYER POSITION
+50 PX=160:PY=100
+60 REM ITEM ARRAYS (MAX 8 ITEMS)
+70 DIM IX(8),IY(8),IT(8),IC(8)
+80 REM X,Y,TYPE,COLLECTED
+90 REM LOAD ITEMS
+100 GOSUB 1000
+110 REM SCORE AND INVENTORY
+120 SC=0:KY=0:HP=3
+130 REM MAIN LOOP
+140 GOSUB 2000:REM INPUT
+150 GOSUB 3000:REM CHECK ITEMS
+160 GOSUB 4000:REM DRAW SCREEN
+170 GOTO 140
+1000 REM LOAD ITEM DATA
+1010 NI=5:REM NUMBER OF ITEMS
+1020 REM ITEM 1: GEM
+1030 IX(1)=80:IY(1)=80:IT(1)=1:IC(1)=0
+1040 REM ITEM 2: GEM
+1050 IX(2)=160:IY(2)=60:IT(2)=1:IC(2)=0
+1060 REM ITEM 3: KEY
+1070 IX(3)=240:IY(3)=80:IT(3)=2:IC(3)=0
+1080 REM ITEM 4: HEALTH
+1090 IX(4)=120:IY(4)=140:IT(4)=3:IC(4)=0
+1100 REM ITEM 5: GEM
+1110 IX(5)=200:IY(5)=140:IT(5)=1:IC(5)=0
+1120 RETURN
+2000 REM INPUT
+2010 J=PEEK(56320)
+2020 REM JOYSTICK RIGHT
+2030 IF (J AND 8)=0 THEN PX=PX+2
+2040 REM JOYSTICK LEFT
+2050 IF (J AND 4)=0 THEN PX=PX-2
+2060 REM JOYSTICK DOWN
+2070 IF (J AND 2)=0 THEN PY=PY+2
+2080 REM JOYSTICK UP
+2090 IF (J AND 1)=0 THEN PY=PY-2
+2100 REM KEEP IN BOUNDS
+2110 IF PX<20 THEN PX=20
+2120 IF PX>300 THEN PX=300
+2130 IF PY<20 THEN PY=20
+2140 IF PY>180 THEN PY=180
+2150 RETURN
+3000 REM CHECK ITEMS
+3010 FOR I=1 TO NI
+3020 IF IC(I)=1 THEN NEXT I:RETURN
+3030 GOSUB 3100:REM CHECK ITEM I
+3040 NEXT I
+3050 RETURN
+3100 REM CHECK ITEM I COLLISION
+3110 DX=PX-IX(I):DY=PY-IY(I)
+3120 REM DISTANCE CHECK
+3130 DS=SQR(DX*DX+DY*DY)
+3140 IF DS>20 THEN RETURN
+3150 REM COLLECTED
+3160 IC(I)=1
+3170 ON IT(I) GOSUB 3200,3300,3400
+3180 RETURN
+3200 REM COLLECT GEM (TYPE 1)
+3210 SC=SC+5
+3220 POKE 54296,15:REM VOLUME
+3230 POKE 54276,33:REM SOUND ON
+3240 FOR D=1 TO 50:NEXT D
+3250 POKE 54276,32:REM SOUND OFF
+3260 RETURN
+3300 REM COLLECT KEY (TYPE 2)
+3310 KY=1
+3320 POKE 54296,15
+3330 POKE 54276,33
+3340 FOR D=1 TO 100:NEXT D
+3350 POKE 54276,32
+3360 RETURN
+3400 REM COLLECT HEALTH (TYPE 3)
+3410 HP=HP+1
+3420 IF HP>5 THEN HP=5
+3430 POKE 54296,15
+3440 POKE 54276,33
+3450 FOR D=1 TO 75:NEXT D
+3460 POKE 54276,32
+3470 RETURN
+4000 REM DRAW SCREEN
+4010 PRINT CHR$(19):REM HOME
+4020 PRINT "SCORE:";SC;"  KEY:";KY;"  HP:";HP
+4030 PRINT
+4040 REM DRAW ITEMS
+4050 FOR I=1 TO NI
+4060 IF IC(I)=1 THEN NEXT I:GOTO 4110
+4070 CH=1024+(INT(IY(I)/8)*40)+INT(IX(I)/8)
+4080 ON IT(I) GOSUB 4200,4300,4400
+4090 NEXT I
+4100 REM DRAW PLAYER
+4110 CH=1024+(INT(PY/8)*40)+INT(PX/8)
+4120 POKE CH,81:REM PLAYER
+4130 POKE CH+54272,1:REM WHITE
+4140 RETURN
+4200 REM DRAW GEM (TYPE 1)
+4210 POKE CH,4:REM DIAMOND
+4220 POKE CH+54272,7:REM YELLOW
+4230 RETURN
+4300 REM DRAW KEY (TYPE 2)
+4310 POKE CH,11:REM + CHAR
+4320 POKE CH+54272,5:REM GREEN
+4330 RETURN
+4400 REM DRAW HEALTH (TYPE 3)
+4410 POKE CH,3:REM HEART
+4420 POKE CH+54272,2:REM RED
+4430 RETURN
+```
+
+<img src="/images/commodore-64/phase-0/tier-3/lesson-038/screenshot-1.png" alt="Collectibles demonstration showing gems, key, health, and player" />
+
+**What's Happening:**
+
+1. **Item arrays** (lines 70-80): Four parallel arrays store X position, Y position, type, and collected flag for each item
+2. **Load level data** (lines 1000-1120): Initialise 5 items with positions and types (1=gem, 2=key, 3=health)
+3. **Player inventory** (line 120): Track score (SC), has key flag (KY), and health points (HP)
+4. **Joystick input** (lines 2000-2150): Four-way movement with boundary checking
+5. **Collision detection** (lines 3100-3180): Calculate distance to each uncollected item, mark collected if within 20 pixels
+6. **Type-based effects** (line 3170): ON...GOSUB routes to appropriate handler based on item type
+7. **Drawing with culling** (lines 4050-4090): Skip collected items, draw visible ones with character codes
+
+**The key mechanics:**
+- **Distance formula:** DS=SQR(DX²+DY²) gives true distance between points
+- **Forgiving collision:** 20-pixel radius is larger than sprite, easy to collect
+- **Permanent collection:** IC(I)=1 flag prevents re-collecting same item
+- **Sound feedback:** Brief SID tone confirms collection (different durations per type)
+
+---
+
+## Example 2: Lock-and-Key Progression
+
+Now add goal objects—a locked door and exit point:
+
+```basic
+10 REM LOCK-AND-KEY PROGRESSION
+20 PRINT CHR$(147)
+30 POKE 53280,6:POKE 53281,14
+40 REM PLAYER POSITION
+50 PX=40:PY=100
+60 REM ITEM ARRAYS
+70 DIM IX(6),IY(6),IT(6),IC(6)
+80 REM LOAD LEVEL DATA
+90 GOSUB 1000
+100 REM PLAYER STATE
+110 SC=0:KY=0:HP=3
+120 REM GOAL OBJECTS
+130 DX=240:DY=100:DK=0:REM DOOR X,Y,UNLOCKED
+140 EX=280:EY=100:REM EXIT X,Y
+150 REM MAIN LOOP
+160 GOSUB 2000:REM INPUT
+170 GOSUB 3000:REM CHECK ITEMS
+180 GOSUB 4000:REM CHECK DOOR
+190 GOSUB 5000:REM CHECK EXIT
+200 GOSUB 6000:REM DRAW
+210 GOTO 160
+1000 REM LOAD LEVEL DATA
+1010 NI=6:REM NUMBER OF ITEMS
+1020 REM GEMS
+1030 IX(1)=80:IY(1)=100:IT(1)=1:IC(1)=0
+1040 IX(2)=120:IY(2)=80:IT(2)=1:IC(2)=0
+1050 IX(3)=160:IY(3)=120:IT(3)=1:IC(3)=0
+1060 REM HEALTH
+1070 IX(4)=140:IY(4)=60:IT(4)=3:IC(4)=0
+1080 REM KEY (REQUIRED)
+1090 IX(5)=200:IY(5)=100:IT(5)=2:IC(5)=0
+1100 REM BONUS GEM AFTER DOOR
+1110 IX(6)=260:IY(6)=100:IT(6)=1:IC(6)=0
+1120 RETURN
+2000 REM INPUT
+2010 J=PEEK(56320)
+2020 IF (J AND 8)=0 THEN PX=PX+2
+2030 IF (J AND 4)=0 THEN PX=PX-2
+2040 IF (J AND 2)=0 THEN PY=PY+2
+2050 IF (J AND 1)=0 THEN PY=PY-2
+2060 IF PX<20 THEN PX=20
+2070 IF PX>300 THEN PX=300
+2080 IF PY<20 THEN PY=20
+2090 IF PY>180 THEN PY=180
+2100 RETURN
+3000 REM CHECK ITEMS
+3010 FOR I=1 TO NI
+3020 IF IC(I)=1 THEN NEXT I:RETURN
+3030 GOSUB 3100
+3040 NEXT I
+3050 RETURN
+3100 REM CHECK ITEM I
+3110 DX=PX-IX(I):DY=PY-IY(I)
+3120 DS=SQR(DX*DX+DY*DY)
+3130 IF DS>20 THEN RETURN
+3140 IC(I)=1
+3150 ON IT(I) GOSUB 3200,3300,3400
+3160 RETURN
+3200 REM COLLECT GEM
+3210 SC=SC+10
+3220 POKE 54296,15
+3230 POKE 54273,20:REM HIGH FREQ
+3240 POKE 54276,33
+3250 FOR D=1 TO 30:NEXT D
+3260 POKE 54276,32
+3270 RETURN
+3300 REM COLLECT KEY
+3310 KY=1
+3320 POKE 54296,15
+3330 POKE 54273,40
+3340 POKE 54276,33
+3350 FOR D=1 TO 50:NEXT D
+3360 POKE 54276,32
+3370 RETURN
+3400 REM COLLECT HEALTH
+3410 HP=HP+1
+3420 IF HP>5 THEN HP=5
+3430 POKE 54296,15
+3440 POKE 54273,30
+3450 POKE 54276,33
+3460 FOR D=1 TO 40:NEXT D
+3470 POKE 54276,32
+3480 RETURN
+4000 REM CHECK DOOR
+4010 IF DK=1 THEN RETURN:REM UNLOCKED
+4020 IF KY=0 THEN RETURN:REM NO KEY
+4030 D=SQR((PX-DX)*(PX-DX)+(PY-DY)*(PY-DY))
+4040 IF D>25 THEN RETURN
+4050 REM UNLOCK DOOR
+4060 DK=1:KY=0
+4070 POKE 54296,15
+4080 POKE 54273,50
+4090 POKE 54276,33
+4100 FOR T=1 TO 100:NEXT T
+4110 POKE 54276,32
+4120 RETURN
+5000 REM CHECK EXIT
+5010 IF DK=0 THEN RETURN:REM LOCKED
+5020 D=SQR((PX-EX)*(PX-EX)+(PY-EY)*(PY-EY))
+5030 IF D>25 THEN RETURN
+5040 REM WIN LEVEL
+5050 PRINT CHR$(147)
+5060 PRINT "LEVEL COMPLETE!"
+5070 PRINT
+5080 PRINT "SCORE:";SC
+5090 PRINT "HEALTH:";HP
+5100 FOR T=1 TO 3000:NEXT T
+5110 END
+6000 REM DRAW SCREEN
+6010 PRINT CHR$(19):REM HOME
+6020 PRINT "SCORE:";SC;"  KEY:";
+6030 IF KY=1 THEN PRINT "YES";
+6040 IF KY=0 THEN PRINT "NO ";
+6050 PRINT "  HP:";HP
+6060 PRINT
+6070 PRINT "FIND THE KEY!"
+6080 IF KY=1 AND DK=0 THEN PRINT "UNLOCK THE DOOR!"
+6090 IF DK=1 THEN PRINT "REACH THE EXIT!"
+6100 PRINT
+6110 REM DRAW ITEMS
+6120 FOR I=1 TO NI
+6130 IF IC(I)=1 THEN NEXT I:GOTO 6180
+6140 CH=1024+(INT(IY(I)/8)*40)+INT(IX(I)/8)
+6150 ON IT(I) GOSUB 6300,6400,6500
+6160 NEXT I
+6170 REM DRAW DOOR IF LOCKED
+6180 IF DK=0 THEN GOSUB 6600
+6190 REM DRAW EXIT IF UNLOCKED
+6200 IF DK=1 THEN GOSUB 6700
+6210 REM DRAW PLAYER
+6220 CH=1024+(INT(PY/8)*40)+INT(PX/8)
+6230 POKE CH,81
+6240 POKE CH+54272,1
+6250 RETURN
+6300 REM DRAW GEM
+6310 POKE CH,4
+6320 POKE CH+54272,7
+6330 RETURN
+6400 REM DRAW KEY
+6410 POKE CH,11
+6420 POKE CH+54272,5
+6430 RETURN
+6500 REM DRAW HEALTH
+6510 POKE CH,3
+6520 POKE CH+54272,2
+6530 RETURN
+6600 REM DRAW DOOR
+6610 CH=1024+(INT(DY/8)*40)+INT(DX/8)
+6620 POKE CH,85:REM LOCKED
+6630 POKE CH+54272,6:REM BLUE
+6640 RETURN
+6700 REM DRAW EXIT
+6710 CH=1024+(INT(EY/8)*40)+INT(EX/8)
+6720 POKE CH,88:REM X
+6730 POKE CH+54272,13:REM LIGHT GREEN
+6740 RETURN
+```
+
+<img src="/images/commodore-64/phase-0/tier-3/lesson-038/screenshot-2.png" alt="Lock-and-key progression with door and exit" />
+
+**What's Happening:**
+
+1. **Goal object variables** (lines 130-140): Door position and unlocked flag (DK), exit position
+2. **Check door** (lines 4000-4120): If player has key and near door, unlock it and consume key
+3. **Check exit** (lines 5000-5110): If door unlocked and player near exit, win level
+4. **Conditional drawing** (lines 6180-6200): Draw door only if locked, exit only if unlocked
+5. **Progressive objectives** (lines 6070-6090): Display current objective based on game state
+6. **Win screen** (lines 5050-5110): Show completion message with score and stats
+
+**The key mechanics:**
+- **Prerequisite checks:** Door requires key, exit requires unlocked door
+- **Consumable items:** KY=0 after unlocking (can't reuse key)
+- **State-driven drawing:** Door disappears when unlocked, exit appears
+- **Victory condition:** Distance check + prerequisite → level complete
+
+---
+
+## Collision Detection Methods
+
+Three approaches to item collection, each with trade-offs:
+
+### Method 1: Circle-Circle (Current)
+
+```basic
+DX=PX-IX:DY=PY-IY
+DS=SQR(DX*DX+DY*DY)
+IF DS<20 THEN [COLLECT]
+```
+
+**Pros:** Accurate, natural feeling collision
+**Cons:** SQR() is slow (~2ms per call), expensive with many items
+**Use when:** Few items (&lt;10), accuracy matters
+
+### Method 2: Bounding Box
+
+```basic
+IF ABS(PX-IX)<16 AND ABS(PY-IY)<16 THEN [COLLECT]
+```
+
+**Pros:** 10× faster than circle-circle, no SQR()
+**Cons:** Square collision (corner hits feel wrong)
+**Use when:** Many items (10+), speed critical
+
+### Method 3: Screen Cell
+
+```basic
+IF INT(PX/8)=INT(IX/8) AND INT(PY/8)=INT(IY/8) THEN [COLLECT]
+```
+
+**Pros:** 20× faster, perfect for tile-based games
+**Cons:** 8×8 pixel granularity (imprecise), tile alignment required
+**Use when:** Grid-based movement, maximum performance needed
+
+**Recommendation:** Start with circle-circle (Example 1), optimise later if performance suffers.
+
+---
+
+## Drawing Items on Scrolling Screens
+
+When your game has camera scrolling (L36), items must convert from world to screen coordinates:
+
+```basic
+1000 REM DRAW ITEMS
+1010 FOR I=1 TO NI
+1020 IF IC(I)=1 THEN NEXT I:RETURN
+1030 REM WORLD TO SCREEN CONVERSION
+1040 SX=IX(I)-CX:SY=IY(I)
+1050 REM CULL OFF-SCREEN ITEMS
+1060 IF SX<0 OR SX>320 THEN NEXT I:RETURN
+1070 REM CALCULATE CHARACTER ADDRESS
+1080 CH=1024+(SY/8)*40+(SX/8)
+1090 REM DRAW ITEM
+1100 ON IT(I) GOSUB [GEM],[KEY],[HEALTH]
+1110 NEXT I
+```
+
+**Key points:**
+- **Camera offset:** Subtract CX (camera X) from world X to get screen X
+- **Culling:** Skip items outside 0-320 pixel range (huge performance gain)
+- **Y unchanged:** If no vertical scrolling, Y coordinate stays in screen space
+- **Character math:** Divide by 8 (character size), add to 1024 (screen start)
+
+**With vertical scrolling:**
+```basic
+SX=IX(I)-CX:SY=IY(I)-CY
+IF SX<0 OR SX>320 OR SY<0 OR SY>200 THEN RETURN
+```
+
+---
+
+## Progression Pattern Examples
+
+Different collectible patterns create different gameplay experiences:
+
+### Pattern 1: Linear Lock-and-Key (Example 2)
+
+```
+Start → Find Key → Unlock Door → Find Exit → Win
+```
+
+**Design:** Single key, single door, mandatory progression
+**Gameplay:** Forces exploration, clear objective
+**Use for:** Tutorial levels, linear experiences
+
+### Pattern 2: Optional Collection
+
+```
+Start → Collect Gems (optional) → Find Exit → Win
+```
+
+**Design:** Exit accessible immediately, gems add score
+**Gameplay:** Speed-run friendly, risk/reward exploration
+**Use for:** Time trials, competitive scoring
+
+### Pattern 3: Multi-Key
+
+```
+Start → Key 1 → Door 1 → Key 2 → Door 2 → Exit
+```
+
+**Design:** Chain of locked areas, sequential progression
+**Gameplay:** Longer levels, backtracking, Metroidvania-style
+**Use for:** Adventure games, complex levels
+
+### Pattern 4: Collection Threshold
+
+```
+Start → Collect 5/8 Gems → Door Unlocks → Exit
+```
+
+**Design:** Door unlocks after collecting N items
+**Gameplay:** Forces partial exploration, clear progress tracking
+**Use for:** Collect-a-thon games, educational levels
+
+**Implementation:**
+```basic
+4000 REM CHECK DOOR
+4010 IF DK=1 THEN RETURN:REM ALREADY UNLOCKED
+4020 REM COUNT COLLECTED GEMS
+4030 CG=0
+4040 FOR I=1 TO NI
+4050 IF IT(I)=1 AND IC(I)=1 THEN CG=CG+1
+4060 NEXT I
+4070 IF CG>=5 THEN DK=1:REM UNLOCK AT 5 GEMS
+4080 RETURN
+```
+
+---
+
+## Extending the System
+
+The collectible system is easily extensible:
+
+### Custom Item Types
+
+```basic
+REM TYPE 4: INVINCIBILITY
+3500 HP=99:REM TEMPORARY INVINCIBILITY
+3510 TI=100:REM INVINCIBILITY TIMER
+3520 RETURN
+
+REM TYPE 5: WEAPON
+3600 WP=1:REM HAS WEAPON
+3610 AM=10:REM AMMO COUNT
+3620 RETURN
+
+REM TYPE 6: EXTRA LIFE
+3700 LV=LV+1:REM LIVES
+3710 RETURN
+```
+
+Add corresponding draw routines (lines 4500-4700) with unique characters and colours.
+
+### Animated Items
+
+Make items sparkle by cycling characters:
+
+```basic
+4200 REM DRAW GEM (ANIMATED)
+4210 FR=(FR+1) AND 3:REM FRAME 0-3
+4220 ON FR+1 GOSUB 4250,4260,4270,4280
+4230 RETURN
+4240 REM FRAME 0
+4250 POKE CH,4:POKE CH+54272,7:RETURN
+4260 POKE CH,42:POKE CH+54272,7:RETURN
+4270 POKE CH,43:POKE CH+54272,10:RETURN
+4280 POKE CH,46:POKE CH+54272,7:RETURN
+```
+
+Cycles through diamond, asterisk, plus, period—creates twinkling effect.
+
+### Collection Particle Effects
+
+Brief visual feedback when collecting:
+
+```basic
+3200 REM COLLECT GEM
+3210 SC=SC+5
+3220 REM PARTICLE EFFECT
+3230 FOR P=1 TO 8
+3240 PC=1024+(INT(IY(I)/8)*40)+INT(IX(I)/8)
+3250 POKE PC,42:POKE PC+54272,7
+3260 FOR D=1 TO 10:NEXT D
+3270 POKE PC,32:REM CLEAR
+3280 NEXT P
+3290 RETURN
+```
+
+Flashes asterisks around collection point—gives satisfying feedback.
+
+### Item Counters in HUD
+
+Display collection progress:
+
+```basic
+4010 PRINT CHR$(19):REM HOME
+4020 PRINT "GEMS:";CG;"/";TG;"  KEY:";KY;"  HP:";HP
+```
+
+Shows "GEMS: 3/8" to track progress toward goal.
+
+---
+
+## Common Pitfalls
+
+Watch out for these mistakes:
+
+1. **Forgetting collected flag:** Items reappear every frame
+   - **Fix:** Check IC(I)=1 before drawing (line 4060)
+
+2. **Impossible item placement:** Items in walls or off-platform
+   - **Fix:** Test all item positions, ensure reachable
+
+3. **Key consumed without unlocking:** Wrong door distance or missing key check
+   - **Fix:** Verify DK=1 and KY=0 happen together (line 4060)
+
+4. **Items collected off-screen:** Distance check includes camera offset
+   - **Fix:** Use world coordinates for collision, not screen coords
+
+5. **Collision too strict:** Players miss items they clearly touched
+   - **Fix:** Increase radius from 10 to 20 pixels (line 3140)
+
+6. **No collection feedback:** Player doesn't know item collected
+   - **Fix:** Add sound effect and score display update
+
+7. **DX/DY variable collision:** DX used for door X and delta X
+   - **Fix:** Use unique variable names (DX for door, D1 for delta)
+
+---
+
+## Performance Considerations
+
+**With 8 items + 3 enemies + scrolling:**
+- Item collision checks: ~5ms (8 items × 0.6ms per SQR)
+- Enemy updates: ~10ms (from L37)
+- Screen redraw: ~100ms (still dominant)
+- **Total: ~115ms = 8.7 fps**
+
+**Optimisations if needed:**
+
+1. **Reduce collision checks:** Skip items far from player (Manhattan distance pre-filter)
+   ```basic
+   IF ABS(PX-IX(I))>50 THEN RETURN
+   ```
+
+2. **Square distance:** Avoid SQR() by comparing squared values
+   ```basic
+   DS=DX*DX+DY*DY
+   IF DS<400 THEN [COLLECT]:REM 400 = 20²
+   ```
+
+3. **Limit item count:** 8-10 items per screen keeps performance good
+
+4. **Defer non-visible:** Only check items near player or on-screen
+
+**Reality:** Item collision is cheap compared to screen drawing. Don't optimise prematurely.
+
+---
+
+## Integration with Previous Lessons
+
+This lesson combines techniques from:
+
+- **L33 (Gravity):** Items use Y positions, no physics needed
+- **L34 (Platforms):** Items placed on/above platforms
+- **L36 (Scrolling):** Items use world coordinates, convert to screen
+- **L37 (Enemies):** Similar distance checks, different effects
+
+**Complete platformer checklist:**
+- ☑ Gravity and jumping (L33)
+- ☑ Platform collision (L34)
+- ☑ Multi-state animation (L35)
+- ☑ Horizontal scrolling (L36)
+- ☑ Enemy AI (L37)
+- ☑ Collectibles and goals (L38)
+- ☐ HUD and polish (L39)
+- ☐ Final integration (L40)
+
+---
+
+## What You've Learnt
+
+By completing this lesson, you can now:
+
+- Implement collectible items with position, type, and collected flag tracking
+- Detect item collision using circle-circle distance calculation
+- Apply type-specific effects (score, inventory, health) via ON...GOSUB
+- Create goal objects with prerequisite checks (keys unlock doors)
+- Build win conditions that check proximity and game state
+- Draw items with world-to-screen coordinate conversion
+- Design progression patterns (linear, optional, multi-key, threshold)
+- Extend the system with custom item types and effects
+- Optimise collision detection with pre-filtering and culling
+
+**Next lesson:** You'll add a heads-up display (HUD) showing score, health, keys, and level objectives—the visual feedback that ties everything together into a polished experience.

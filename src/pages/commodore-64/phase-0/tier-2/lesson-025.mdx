@@ -1,0 +1,277 @@
+---
+title: "Background Music"
+description: "Learn to play music that doesn't stop your game—non-blocking music playback lets your programs do multiple things at once."
+pubDate: 2025-01-23
+tier: 2
+lessonNumber: 25
+tags: ["sid", "sound", "music", "non-blocking", "game-loop"]
+previousLesson: "/commodore-64/phase-0/tier-2/lesson-024"
+nextLesson: "/commodore-64/phase-0/tier-2/lesson-026"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+You've built a note sequencer that plays melodies. But there's a problem—whilst the music plays, your game freezes. Discover non-blocking music playback, where the music system updates in tiny slices each frame, keeping your game responsive.
+
+**One music update per frame.** Check timing, play next note if needed, return immediately. Your game loop continues whilst the music plays in the background.
+
+## The One-Minute Tour
+
+- **Blocking code freezes everything** using `FOR I=1 TO 1000:NEXT` or similar delays
+- **Non-blocking code checks and returns** only updating music when the note duration expires
+- **Music state tracks position** including current note, start time, and playing status
+- **TI timer enables non-blocking timing** by checking elapsed time without waiting
+- **Game loop calls music update each frame** integrating music into the main program flow
+- **Music can be toggled on/off** without disrupting the game
+
+## First Example: Simple Background Music
+
+Type this and move around whilst music plays:
+
+```basic
+10 REM SIMPLE BACKGROUND MUSIC
+20 PRINT CHR$(147)
+30 PRINT "BACKGROUND MUSIC DEMO"
+40 PRINT
+50 PRINT "PRESS W/A/S/D TO MOVE"
+60 PRINT "PRESS M TO TOGGLE MUSIC"
+70 PRINT
+80 DIM N(11),MS(16),MD(16)
+90 GOSUB 9000:REM LOAD NOTE TABLE
+100 GOSUB 9500:REM LOAD MUSIC DATA
+110 GOSUB 9800:REM SETUP SID
+120 MP=1:MT=0:MU=1:REM MUSIC STATE
+130 PX=10:PY=12:REM PLAYER POSITION
+140 POKE 1024+PY*40+PX,81:REM DRAW PLAYER
+150 GET K$:IF K$<>"" THEN GOSUB 1000
+160 GOSUB 2000:REM UPDATE MUSIC
+170 GOTO 150
+1000 REM HANDLE INPUT
+1010 POKE 1024+PY*40+PX,32:REM CLEAR OLD
+1020 IF K$="W" AND PY>0 THEN PY=PY-1
+1030 IF K$="S" AND PY<24 THEN PY=PY+1
+1040 IF K$="A" AND PX>0 THEN PX=PX-1
+1050 IF K$="D" AND PX<39 THEN PX=PX+1
+1060 IF K$="M" THEN MU=1-MU:IF MU=0 THEN POKE 54276,0
+1070 POKE 1024+PY*40+PX,81:REM DRAW PLAYER
+1080 RETURN
+2000 REM UPDATE MUSIC
+2010 IF MU=0 THEN RETURN
+2020 E=TI-MT:REM ELAPSED TIME
+2030 IF E<MD(MP) THEN RETURN
+2040 GOSUB 2500:REM PLAY NEXT NOTE
+2050 RETURN
+2500 REM PLAY NEXT NOTE
+2510 MP=MP+1:REM ADVANCE
+2520 IF MP>ML THEN MP=1:REM LOOP
+2530 NO=MS(MP):DU=MD(MP)
+2540 IF NO=99 THEN POKE 54276,0:MT=TI:RETURN
+2550 F=N(NO):REM LOOKUP FREQUENCY
+2560 FL=F AND 255:FH=INT(F/256)
+2570 POKE 54272,FL:POKE 54273,FH
+2580 POKE 54276,0:REM GATE OFF
+2590 POKE 54276,33:REM GATE ON
+2600 MT=TI:REM RESET TIMER
+2610 RETURN
+9000 REM NOTE TABLE C4-B4
+9010 FOR I=0 TO 11:READ N(I):NEXT
+9020 DATA 4286,4541,4811,5096,5401
+9030 DATA 5713,6052,6412,6791,7200
+9040 DATA 7628,8085
+9050 RETURN
+9500 REM LOAD MUSIC SEQUENCE
+9510 ML=0
+9520 FOR I=1 TO 16:READ NO:IF NO<0 THEN 9560
+9530 ML=ML+1:MS(ML)=NO:READ MD(ML)
+9540 NEXT I
+9550 RETURN
+9560 ML=I-1:RETURN
+9600 REM MUSIC DATA: NOTE,DURATION
+9610 DATA 0,20,2,20,4,20,5,40
+9620 DATA 4,20,2,20,0,40,99,20
+9630 DATA -1
+9800 REM SETUP SID
+9810 POKE 54296,15:REM VOLUME
+9820 POKE 54277,9:POKE 54278,0:REM ADSR
+9830 RETURN
+```
+
+**Run this** and notice you can move whilst the music plays. Press M to toggle the music on and off.
+
+![Simple background music demo](/images/commodore-64/phase-0/tier-2/lesson-025/screenshot-1.png)
+
+The player character responds instantly to your key presses whilst music continues playing. The music update routine (line 2000) checks if it's time for a new note, plays it if needed, then returns immediately. Your game never waits for music—it just checks and continues.
+
+## How Non-Blocking Works
+
+The key difference between blocking and non-blocking code:
+
+**Blocking (freezes game):**
+```basic
+100 FOR I=1 TO 1000:NEXT   REM Wait 1000 loops
+110 REM Play note
+120 FOR I=1 TO 500:NEXT    REM Wait 500 loops
+```
+
+Whilst the `FOR` loops run, nothing else happens. The game is frozen.
+
+**Non-blocking (game continues):**
+```basic
+100 IF TI-MT<DU THEN RETURN   REM Not time yet? Return.
+110 REM Time elapsed—play next note
+120 MT=TI                      REM Reset timer
+```
+
+The code checks elapsed time. If the note is still playing (`TI-MT<DU`), it returns immediately. Only when enough time has passed does it play the next note. The entire update takes just a few milliseconds.
+
+## Music State Variables
+
+Non-blocking music requires tracking state between updates:
+
+- **MP** (Music Position): Which note we're currently playing (1 to ML)
+- **MT** (Music Time): When the current note started (in jiffies)
+- **ML** (Music Length): Total number of notes in the sequence
+- **MU** (Music Unmuted): Whether music is playing (1) or muted (0)
+
+The game loop calls the music update routine every frame. The music routine checks if enough time has elapsed since the last note started. If yes, it plays the next note and resets the timer. If no, it returns immediately.
+
+## Second Example: Game with Music
+
+Now let's integrate music into a simple collection game:
+
+```basic
+10 REM COLLECT GAME WITH MUSIC
+20 PRINT CHR$(147)
+30 PRINT "COLLECT THE STARS!"
+40 PRINT "PRESS W/A/S/D TO MOVE"
+50 PRINT "PRESS M TO TOGGLE MUSIC"
+60 PRINT
+70 DIM N(11),MS(24),MD(24)
+80 DIM SX(5),SY(5):REM STAR POSITIONS
+90 GOSUB 9000:REM LOAD NOTE TABLE
+100 GOSUB 9500:REM LOAD MUSIC DATA
+110 GOSUB 9800:REM SETUP SID
+120 MP=1:MT=0:MU=1:REM MUSIC STATE
+130 PX=20:PY=12:SC=0:REM PLAYER POS AND SCORE
+140 GOSUB 8000:REM SPAWN STARS
+150 POKE 214,0:PRINT:REM HOME CURSOR
+160 PRINT "SCORE:";SC;"  MUSIC:";
+170 IF MU=1 THEN PRINT "ON " ELSE PRINT "OFF"
+180 GET K$:IF K$<>"" THEN GOSUB 1000
+190 GOSUB 2000:REM UPDATE MUSIC
+200 GOSUB 3000:REM CHECK COLLISIONS
+210 GOTO 150
+1000 REM HANDLE INPUT
+1010 POKE 1024+PY*40+PX,32:REM CLEAR OLD
+1020 IF K$="W" AND PY>2 THEN PY=PY-1
+1030 IF K$="S" AND PY<24 THEN PY=PY+1
+1040 IF K$="A" AND PX>0 THEN PX=PX-1
+1050 IF K$="D" AND PX<39 THEN PX=PX+1
+1060 IF K$="M" THEN MU=1-MU:IF MU=0 THEN POKE 54276,0
+1070 POKE 1024+PY*40+PX,81:REM DRAW PLAYER
+1080 RETURN
+2000 REM UPDATE MUSIC
+2010 IF MU=0 THEN RETURN
+2020 E=TI-MT:REM ELAPSED TIME
+2030 IF E<MD(MP) THEN RETURN
+2040 GOSUB 2500:REM PLAY NEXT NOTE
+2050 RETURN
+2500 REM PLAY NEXT NOTE
+2510 MP=MP+1:REM ADVANCE
+2520 IF MP>ML THEN MP=1:REM LOOP
+2530 NO=MS(MP):DU=MD(MP)
+2540 IF NO=99 THEN POKE 54276,0:MT=TI:RETURN
+2550 F=N(NO):REM LOOKUP FREQUENCY
+2560 FL=F AND 255:FH=INT(F/256)
+2570 POKE 54272,FL:POKE 54273,FH
+2580 POKE 54276,0:REM GATE OFF
+2590 POKE 54276,33:REM GATE ON
+2600 MT=TI:REM RESET TIMER
+2610 RETURN
+3000 REM CHECK COLLISIONS
+3010 FOR I=1 TO 5
+3020 IF SX(I)=PX AND SY(I)=PY THEN GOSUB 3500
+3030 NEXT I
+3040 RETURN
+3500 REM COLLECT STAR
+3510 SC=SC+10:REM ADD SCORE
+3520 SX(I)=INT(RND(1)*40):SY(I)=INT(RND(1)*23)+2
+3530 POKE 1024+SY(I)*40+SX(I),42:REM DRAW NEW STAR
+3540 RETURN
+8000 REM SPAWN STARS
+8010 FOR I=1 TO 5
+8020 SX(I)=INT(RND(1)*40):SY(I)=INT(RND(1)*23)+2
+8030 POKE 1024+SY(I)*40+SX(I),42:REM DRAW STAR
+8040 NEXT I
+8050 RETURN
+9000 REM NOTE TABLE C4-B4
+9010 FOR I=0 TO 11:READ N(I):NEXT
+9020 DATA 4286,4541,4811,5096,5401
+9030 DATA 5713,6052,6412,6791,7200
+9040 DATA 7628,8085
+9050 RETURN
+9500 REM LOAD MUSIC SEQUENCE
+9510 ML=0
+9520 FOR I=1 TO 24:READ NO:IF NO<0 THEN 9560
+9530 ML=ML+1:MS(ML)=NO:READ MD(ML)
+9540 NEXT I
+9550 RETURN
+9560 ML=I-1:RETURN
+9600 REM MUSIC DATA: NOTE,DURATION
+9610 DATA 0,15,4,15,7,15,12,30
+9620 DATA 7,15,4,15,0,30,99,15
+9630 DATA 2,15,5,15,9,15,11,30
+9640 DATA 9,15,5,15,2,30,99,15
+9650 DATA -1
+9800 REM SETUP SID
+9810 POKE 54296,15:REM VOLUME
+9820 POKE 54277,9:POKE 54278,0:REM ADSR
+9830 RETURN
+```
+
+**Run this** and collect stars whilst music plays. The game is fully responsive—you can move, collect items, and toggle music without any freezing or delays.
+
+![Collection game with background music](/images/commodore-64/phase-0/tier-2/lesson-025/screenshot-2.png)
+
+Notice how the game maintains its score, spawns new stars when collected, and keeps the music playing—all simultaneously. Each frame, the main loop updates player input (line 1000), music (line 2000), and collision detection (line 3000). Each system does its small amount of work and returns, creating the illusion that everything happens at once.
+
+## The Integration Pattern
+
+Professional games follow this structure:
+
+```basic
+100 REM MAIN GAME LOOP
+110 GOSUB 1000:REM UPDATE PLAYER
+120 GOSUB 2000:REM UPDATE ENEMIES
+130 GOSUB 3000:REM UPDATE BULLETS
+140 GOSUB 4000:REM CHECK COLLISIONS
+150 GOSUB 9000:REM UPDATE MUSIC
+160 GOTO 110
+```
+
+Each subsystem (player, enemies, bullets, music) gets called once per frame. Each subsystem does a small amount of work—checking state, updating positions, playing notes—then returns immediately. The combined effect is a responsive, multi-tasking program.
+
+## Voice Allocation Strategy
+
+When integrating music with games that use sound effects:
+
+- **Voice 1:** Background music (continuous melody)
+- **Voice 2:** Sound effects (shoot, jump, collect)
+- **Voice 3:** Sound effects or bass line
+
+By reserving voice 1 for music, you can play sound effects on voices 2 and 3 without interrupting the melody. This creates rich, layered audio in your games.
+
+## Performance Note
+
+Non-blocking music adds minimal overhead—about 10-20 BASIC statements executed per frame. The music update routine typically returns immediately (line 2030) because most frames don't need a new note. When a note does need playing, the routine executes quickly and returns. Your game maintains smooth performance whilst music plays continuously.
+
+## What You've Learnt
+
+- Non-blocking code checks timing and returns immediately rather than waiting
+- Music state variables (MP, MT, ML, MU) track playback between updates
+- TI timer enables non-blocking timing by measuring elapsed jiffies
+- The game loop calls the music update routine every frame
+- Multiple systems (player, music, collisions) can run "simultaneously"
+- Professional games integrate music without blocking the main loop
+- Voice allocation lets music and sound effects coexist
+
+You've mastered non-blocking music playback—one of the most important patterns in game programming. Your games can now have continuous background music whilst remaining fully responsive to player input.

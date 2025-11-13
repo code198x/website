@@ -1,0 +1,424 @@
+---
+title: "The Flickering Dream"
+description: "Attempt smooth pixel-perfect scrolling using VIC-II hardware registers and discover why timing precision requirements make it impossible in BASIC—witness screen tearing and jittery motion that reveals the boundary between interpreted code and cycle-accurate assembly."
+pubDate: 2025-11-07
+tier: 4
+lessonNumber: 57
+tags: ["discovery", "scrolling", "vic-ii", "hardware", "limitations"]
+previousLesson: "/commodore-64/phase-0/tier-4/lesson-056"
+nextLesson: "/commodore-64/phase-0/tier-4/lesson-058"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+You've experienced character-based scrolling limitations in racing games (L50). You know BASIC can only move content in 8-pixel jumps. But what if you access the VIC-II hardware directly?
+
+**This lesson reveals BASIC's synchronisation precision limit**—hardware register timing. Commercial C64 games achieve buttery-smooth 1-pixel scrolling by updating VIC-II register $D016 (horizontal fine scroll) at precise moments each frame. When you attempt this in BASIC, you'll discover why it fails: BASIC can POKE the register, but updates happen at unpredictable times during screen refresh, causing screen tearing and jittery motion.
+
+The key discovery: **Hardware scrolling requires frame-synchronised register updates**. BASIC can access $D016 but can't control _when_ during the frame the change happens. By the time BASIC POKEs the register, the VIC-II has already drawn part of the screen with the old value, tearing the display. This isn't an optimisation problem—it's a fundamental synchronisation boundary.
+
+---
+
+## The One-Minute Tour
+
+**VIC-II Hardware Scrolling:**
+- **$D016 register** (53270) controls horizontal fine scroll (bits 0-2)
+- **Values 0-7** shift display 0-7 pixels right within character boundaries
+- **1-pixel smooth motion** by incrementing/decrementing this value each frame
+- **Commercial games** update during vertical blank (VIC-II not drawing)
+
+**The Timing Problem:**
+- **Frame refresh** VIC-II draws screen top-to-bottom over 20ms
+- **Register updates** must happen during vertical blank (~1ms window)
+- **BASIC's game loop** updates at unpredictable moments during frame
+- **Screen tearing** top half shows one scroll position, bottom shows another
+
+**What You'll See:**
+- **Text scrolls** but with visible horizontal tear line
+- **Tear position wanders** sometimes at row 5, sometimes row 12, sometimes row 18
+- **Jittery motion** smooth scrolling interrupted by sudden jumps
+- **Completely unprofessional** far worse than simple 8-pixel character scrolling
+
+---
+
+## Example: Smooth Pixel Scroller (Broken Attempt)
+
+Here's the attempt that demonstrates BASIC's timing limitation:
+
+```basic
+100 REM SMOOTH PIXEL SCROLLER (ATTEMPT)
+110 REM THIS WON'T WORK SMOOTHLY IN BASIC
+120 REM SCREEN DATA
+130 DIM SC$(25):REM 25 ROWS OF TEXT
+140 SO=0:REM SCREEN OFFSET (WHICH COLUMN STARTS AT LEFT)
+150 FS=0:REM FINE SCROLL (0-7 PIXELS)
+160 GOSUB 9000:REM INIT SCREEN DATA
+170 REM MAIN LOOP
+180 GOSUB 1000:REM DRAW SCREEN
+190 GOSUB 2000:REM SCROLL
+200 GOTO 180
+1000 REM DRAW SCREEN
+1010 REM DRAW 40 CHARACTERS STARTING AT OFFSET
+1020 FOR Y=0 TO 24
+1030 FOR X=0 TO 39
+1040 CH=ASC(MID$(SC$(Y),SO+X+1,1))
+1050 POKE 1024+Y*40+X,CH
+1060 NEXT X
+1070 NEXT Y
+1080 RETURN
+2000 REM SCROLL (ATTEMPT SMOOTH)
+2010 REM INCREMENT FINE SCROLL
+2020 FS=FS+1
+2030 IF FS>7 THEN FS=0:SO=SO+1:GOSUB 1000
+2040 REM UPDATE VIC-II REGISTER
+2050 REM THIS IS WHERE IT BREAKS
+2060 POKE 53270,(PEEK(53270) AND 248) OR FS
+2070 REM PROBLEM: UPDATES AT WRONG TIME
+2080 REM CAUSES TEARING, JITTER
+2090 FOR I=1 TO 10:NEXT I:REM DELAY
+2100 RETURN
+9000 REM INIT SCREEN DATA
+9010 FOR I=0 TO 24
+9020 SC$(I)="THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG 1234567890            "
+9030 NEXT I
+9040 RETURN
+```
+
+![Smooth scroller showing screen tearing at unpredictable positions](/images/commodore-64/phase-0/tier-4/lesson-057/example-1.png)
+
+**What happens when you run this:**
+
+1. **Text scrolls smoothly** for brief moments (1-2 frames)
+2. **Horizontal tear appears** top half scrolled 3 pixels, bottom half scrolled 5 pixels
+3. **Tear position changes** next frame torn at row 12, then row 7, then row 15
+4. **Visual "ripple"** waves of misalignment travel down the screen
+5. **Occasionally smooth** when BASIC happens to POKE during vertical blank (pure luck)
+
+The effect is nauseating. You're not doing anything wrong—BASIC's game loop executes at unpredictable times relative to the VIC-II's refresh cycle.
+
+---
+
+## Understanding Frame Timing
+
+**What smooth scrolling needs:**
+```
+Frame timeline (20ms = one full frame):
+0ms:    Vertical blank starts  <- UPDATE REGISTER HERE
+1ms:    Vertical blank ends
+1-20ms: VIC-II draws screen top-to-bottom
+20ms:   Frame complete, vertical blank starts again
+
+Result: Register updated once before drawing, entire frame consistent
+```
+
+**What BASIC does:**
+```
+Frame 1:
+0ms:    Vertical blank (BASIC executing game logic)
+3ms:    VIC-II drawing row 5
+3.1ms:  BASIC POKEs $D016 <- REGISTER CHANGES MID-FRAME
+3.1ms:  Rows 0-4 drawn with old value (FS=2)
+4-20ms: Rows 5-24 drawn with new value (FS=3)
+Result: Horizontal tear at row 5
+
+Frame 2:
+0ms:    Vertical blank (BASIC executing different code)
+7ms:    VIC-II drawing row 12
+7.1ms:  BASIC POKEs $D016 <- DIFFERENT TIMING
+7.1ms:  Rows 0-11 drawn with old value (FS=3)
+8-20ms: Rows 12-24 drawn with new value (FS=4)
+Result: Horizontal tear at row 12
+
+Frame 3: Tear at row 18
+Frame 4: Tear at row 3
+...
+Result: Tear position wanders unpredictably
+```
+
+**Why BASIC can't fix this:**
+- BASIC's interpreter overhead varies (string operations take longer than integer maths)
+- GOSUB calls, FOR loops, IF checks all vary in execution time
+- No way to "wait for vertical blank" reliably in BASIC
+- By the time you detect vertical blank with PEEK($D011), it's already over
+
+---
+
+## The $D016 Register
+
+**VIC-II horizontal scroll register:**
+```
+$D016 (53270): Horizontal fine scroll and screen width
+Bits 0-2: Fine scroll offset (0-7 pixels)
+Bit 3:    Screen width (0=38 columns, 1=40 columns)
+Bits 4-7: Reserved (always set)
+
+To update fine scroll while preserving other bits:
+POKE 53270,(PEEK(53270) AND 248) OR FS
+
+Why this works:
+PEEK(53270) AND 248  clears bits 0-2 (leaves bits 3-7 unchanged)
+OR FS                 sets bits 0-2 to fine scroll value
+```
+
+**The illusion of control:**
+```basic
+100 FS=3:REM SET FINE SCROLL TO 3 PIXELS
+110 POKE 53270,(PEEK(53270) AND 248) OR FS
+120 REM Register updated... but WHEN?
+```
+
+BASIC successfully POKEs the register. The hardware accepts the value. But **VIC-II reads this register continuously** as it draws each scanline. If you change the value while VIC-II is mid-frame, you get inconsistent scrolling across the screen.
+
+---
+
+## Why It Tears
+
+**Frame anatomy:**
+```
+VIC-II draws 312 scanlines per frame (PAL):
+Lines 0-50:   Top border
+Lines 51-250: Visible screen (25 character rows × 8 scanlines)
+Lines 251-311: Bottom border
+
+Each character row = 8 scanlines
+Row 0:  Lines 51-58   (8ms to draw)
+Row 1:  Lines 59-66   (8ms to draw)
+...
+Row 24: Lines 243-250 (8ms to draw)
+```
+
+**BASIC's POKE timing:**
+```basic
+170 REM MAIN LOOP
+180 GOSUB 1000:REM DRAW SCREEN (12ms)
+190 GOSUB 2000:REM SCROLL (2ms)
+200 GOTO 180   :REM LOOP (0.5ms)
+
+Total: ~14.5ms per iteration
+Frame: 20ms
+
+Result: POKE happens at different frame position each loop
+```
+
+**Example tear sequence:**
+```
+Frame 1: POKE at 3ms (VIC-II drawing row 5)
+         Rows 0-4 old value, rows 5-24 new value
+         Tear at row 5
+
+Frame 2: POKE at 7ms (VIC-II drawing row 12)
+         Rows 0-11 old value, rows 12-24 new value
+         Tear at row 12
+
+Frame 3: POKE at 11ms (VIC-II drawing row 18)
+         Rows 0-17 old value, rows 18-24 new value
+         Tear at row 18
+
+Frame 4: POKE at 0.5ms (lucky! vertical blank)
+         All rows new value
+         No tear (pure luck)
+
+Frame 5: POKE at 5ms (VIC-II drawing row 8)
+         Tear at row 8
+```
+
+Every frame has different execution timing, so tear position wanders randomly.
+
+---
+
+## Commercial Game Technique
+
+**What assembly does:**
+```assembly
+; Pseudocode (assembly language)
+; Set raster interrupt at line 250 (bottom of screen)
+LDA #250
+STA $D012        ; Raster interrupt line
+LDA #<IRQ_VBLANK
+STA $0314        ; IRQ vector low
+LDA #>IRQ_VBLANK
+STA $0315        ; IRQ vector high
+
+IRQ_VBLANK:
+  ; CPU interrupted at line 250 (start of vertical blank)
+  LDA FINE_SCROLL
+  STA $D016      ; Update scroll register (safe time)
+  ; All other game logic here
+  RTI            ; Return from interrupt
+```
+
+**Key differences from BASIC:**
+- **Raster interrupt** CPU automatically executes code at exact scanline
+- **Vertical blank** interrupt fires when VIC-II not drawing visible screen
+- **Frame-synchronised** happens at same moment every frame (line 250)
+- **Safe update** register changed before VIC-II draws next frame
+- **BASIC has none** no interrupts, no vertical blank detection, no frame sync
+
+---
+
+## The Optimisation Trap
+
+You might try these "solutions":
+
+**1. Wait for vertical blank:**
+```basic
+100 REM WAIT FOR VERTICAL BLANK
+110 IF PEEK(53265) AND 128 THEN 110:REM WAIT FOR BIT 7 CLEAR
+120 POKE 53270,(PEEK(53270) AND 248) OR FS
+```
+**Result:** By the time PEEK reads, checks bit 7, and branches, vertical blank is over. Still tears.
+
+**2. Update once per frame:**
+```basic
+100 REM ONLY UPDATE FS ONCE PER FRAME
+110 GOSUB 1000:REM DRAW
+120 POKE 53270,(PEEK(53270) AND 248) OR FS
+130 FOR I=1 TO 100:NEXT I:REM DELAY
+```
+**Result:** Reduces tear frequency but doesn't control timing. Still tears at random positions.
+
+**3. Faster code:**
+```basic
+REM USE SHORTER VARIABLE NAMES, INLINE CODE
+```
+**Result:** Saves 1-2ms but doesn't synchronise with frame. Still tears.
+
+**The lesson:** No optimisation fixes frame synchronisation. BASIC can't detect vertical blank reliably or control when POKEs happen relative to VIC-II drawing.
+
+---
+
+## Comparing Approaches
+
+**Character-based scrolling (L50):**
+- 8-pixel jumps (one character at a time)
+- Jerky freeze-jump pattern
+- Consistent (no tearing)
+- **Playable but rough**
+
+**Hardware scrolling attempt (L57):**
+- Goal: 1-pixel smooth motion
+- Screen tearing at random positions
+- Jittery, unprofessional
+- **Broken and unusable**
+
+**Assembly hardware scrolling:**
+- 1-pixel smooth motion
+- Frame-synchronised updates
+- Professional quality (no tearing)
+- **How all commercial games work**
+
+**Conclusion:** Character-based scrolling is better than broken hardware scrolling. Accept the 8-pixel limitation rather than create a torn, jittery mess.
+
+---
+
+## What You've Discovered
+
+**Today you learnt:**
+
+- **VIC-II register $D016** controls fine scroll (0-7 pixel offset)
+- **Frame synchronisation** register must update during vertical blank
+- **Screen tearing** updating mid-frame causes horizontal split
+- **Timing precision** BASIC's unpredictable execution makes tears wander
+- **Raster interrupts** only way to achieve frame-synchronised updates (assembly only)
+- **Fundamental boundary** BASIC can access hardware but can't synchronise with it
+
+**The boundary:**
+- BASIC: Can POKE hardware registers, but updates at unpredictable frame times
+- Assembly: Raster interrupts trigger code at exact scanline for frame-synchronised updates
+
+**Why this matters:**
+- Lesson 50's character scrolling (8-pixel jumps) was consistent
+- This hardware scrolling attempt (1-pixel goal) creates tears and jitter
+- Pattern emerging: Hardware access without timing control worse than staying within BASIC's character-based model
+- Next lesson: More hardware access attempts, more timing problems
+
+---
+
+## From the Vault
+
+**C64 VIC-II Scrolling Registers:**
+- **$D016 (53270):** Horizontal fine scroll (bits 0-2, values 0-7)
+- **$D011 (53265):** Vertical fine scroll (bits 0-2, values 0-7)
+- Assembly games update these during vertical blank via raster interrupts
+- BASIC can POKE them but cannot achieve frame-synchronised timing
+
+**Vertical Blank Detection:**
+- **$D011 bit 7:** Raster line bit 8 (for reading high bit of $D012)
+- **$D012 (53266):** Current raster line (0-311)
+- Lines 250-311 are border area (safe for updates)
+- BASIC's PEEK overhead (~5ms) makes reliable detection impossible
+
+**Commodore 64 Programmer's Reference Guide:**
+- Page 454: VIC-II Register Map
+- Page 456: "Smooth scrolling requires updating registers during vertical blank"
+- Page 457: "BASIC programs cannot achieve reliable vertical blank synchronisation"
+
+---
+
+## Quick Reference
+
+**VIC-II Horizontal Fine Scroll:**
+```basic
+REM Update fine scroll (0-7 pixels)
+FS=3:REM 3 pixels right shift
+POKE 53270,(PEEK(53270) AND 248) OR FS
+
+REM Increment scroll (with wrap)
+FS=FS+1
+IF FS>7 THEN FS=0:REM WRAP TO 0
+
+REM Decrement scroll (with wrap)
+FS=FS-1
+IF FS<0 THEN FS=7:REM WRAP TO 7
+```
+
+**Why It Tears:**
+```
+Frame refresh: 20ms (50 fps PAL)
+Vertical blank: 0-1ms (safe update window)
+Screen drawing: 1-20ms (VIC-II reading $D016)
+
+BASIC POKE timing: Unpredictable (3-15ms)
+Result: Often POKEs during screen drawing
+        Top half old value, bottom half new value
+        Horizontal tear at random row
+```
+
+**Assembly Alternative:**
+```assembly
+; Set interrupt at line 250 (vertical blank)
+LDA #250
+STA $D012        ; Raster interrupt line
+
+IRQ:
+  LDA FINE_SCROLL
+  STA $D016      ; Safe update (VIC-II not drawing)
+  RTI
+```
+
+**Comparison:**
+```
+Character scrolling (BASIC):
+- 8-pixel jumps
+- Consistent
+- Playable ✓
+
+Hardware scrolling (BASIC):
+- 1-pixel goal
+- Screen tears
+- Broken ✗
+
+Hardware scrolling (Assembly):
+- 1-pixel smooth
+- Frame-synced
+- Professional ✓
+```
+
+---
+
+## What's Next
+
+**Lesson 058:** Split-screen racer—discover raster synchronisation precision limits
+
+**Lesson 059:** Music + SFX arcade—discover how SID voices conflict badly
+
+The scrolling tore because BASIC POKEs hardware registers at unpredictable times during frame refresh. Commercial smooth scrollers use raster interrupts (assembly only) to update registers during vertical blank. This is a synchronisation precision boundary—BASIC can access the hardware but can't control when updates happen relative to the VIC-II's drawing cycle. Character-based scrolling (8-pixel jumps) works reliably in BASIC. Hardware scrolling (1-pixel smooth) needs assembly.

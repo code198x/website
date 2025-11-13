@@ -1,0 +1,384 @@
+---
+title: "Hardware Collision"
+description: "The VIC-II chip detects sprite collisions automatically—discover collision registers, bit testing, collision clearing, and building collision-responsive games."
+pubDate: 2024-11-06
+tier: 2
+lessonNumber: 19
+tags: ["basic", "sprites", "VIC-II", "collision", "hardware"]
+prevLesson: "/commodore-64/phase-0/tier-2/lesson-018"
+nextLesson: "/commodore-64/phase-0/tier-2/lesson-020"
+layout: "../../../../layouts/LessonLayout.astro"
+---
+
+The VIC-II chip automatically detects when sprites collide. No manual coordinate checking needed—the hardware does it during screen refresh. This lesson reveals how to read collision registers, test which sprites collided, and build responsive collision systems.
+
+Previous lessons moved sprites with keyboard and joystick. Now discover how the C64 knows when sprites touch.
+
+## The One-Minute Tour
+
+- **Hardware collision detection**—VIC-II detects sprite overlaps automatically
+- **Collision registers**—53278 (sprite-sprite), 53279 (sprite-background)
+- **Bit mapping**—Each bit represents one sprite (bit 0 = sprite 0 collided)
+- **Sticky registers**—Collision bits stay set until you clear them
+- **Clearing pattern**—Read collision, test bits, respond, then POKE any value to clear
+- **Collision response**—Score points, disable sprites, move objects, trigger sounds
+- **No coordinate maths**—Hardware does pixel-perfect detection at 60Hz
+
+## Detecting Collisions
+
+```basic
+10 REM HARDWARE COLLISION - BASIC DETECTION
+20 PRINT CHR$(147)
+30 PRINT "LOADING SPRITE DATA..."
+40 REM LOAD SPRITE DATA TO BLOCKS 13 AND 14
+50 FOR I=832 TO 894:READ D:POKE I,D:NEXT I
+60 FOR I=896 TO 958:READ D:POKE I,D:NEXT I
+70 REM SETUP SPRITE 0 (PLAYER)
+80 POKE 2040,13:REM SPRITE 0 POINTER
+90 POKE 53287,1:REM WHITE COLOUR
+100 POKE 53248,100:POKE 53249,120:REM POSITION
+110 REM SETUP SPRITE 1 (TARGET)
+120 POKE 2041,14:REM SPRITE 1 POINTER
+130 POKE 53288,2:REM RED COLOUR
+140 POKE 53250,200:POKE 53251,120:REM POSITION
+150 POKE 53269,3:REM ENABLE SPRITES 0 AND 1
+160 POKE 53264,0:REM CLEAR X MSB
+170 PRINT CHR$(147)
+180 PRINT "USE A/D TO MOVE WHITE SPRITE"
+190 PRINT "COLLISIONS DETECTED BELOW:"
+200 PRINT
+210 REM MAIN LOOP
+220 GET K$
+230 IF K$="A" THEN POKE 53248,PEEK(53248)-2
+240 IF K$="D" THEN POKE 53248,PEEK(53248)+2
+250 REM CHECK COLLISION
+260 C=PEEK(53278):REM SPRITE-SPRITE COLLISION
+270 IF C=0 THEN 300
+280 PRINT "COLLISION DETECTED!";
+290 POKE 53278,0:REM CLEAR COLLISION REGISTER
+300 GOTO 220
+310 REM SPRITE DATA: ARROW/SPACESHIP
+320 DATA 0,16,0,0,56,0,0,124,0,0,254,0
+330 DATA 1,255,0,3,255,128,7,255,192,15,255,224
+340 DATA 1,255,0,0,254,0,0,124,0,0,56,0
+350 DATA 0,16,0,0,0,0,0,0,0,0,0,0
+360 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+370 REM SPRITE DATA: CIRCLE/TARGET
+380 DATA 0,124,0,3,255,192,7,255,224,15,199,240
+390 DATA 31,131,248,31,1,248,63,0,252,63,0,252
+400 DATA 31,1,248,31,131,248,15,199,240,7,255,224
+410 DATA 3,255,192,0,124,0,0,0,0,0,0,0
+420 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+```
+
+**Run this**—white arrow and red circle appear. Press A/D to move the white sprite. When sprites touch, "COLLISION DETECTED!" appears repeatedly. The VIC-II reports the collision every frame until cleared.
+
+![Basic collision detection](/images/commodore-64/phase-0/tier-2/lesson-019/screenshot-1.png)
+
+## How This Works
+
+### The Collision Register
+
+The VIC-II has two collision detection registers:
+
+- **$D01E (53278)**—Sprite-sprite collision
+- **$D01F (53279)**—Sprite-background collision
+
+Each register is one byte with eight bits, one per sprite:
+
+```
+Bit 7: Sprite 7 collided
+Bit 6: Sprite 6 collided
+...
+Bit 1: Sprite 1 collided
+Bit 0: Sprite 0 collided
+```
+
+**Reading the register:**
+```basic
+260 C=PEEK(53278):REM READ SPRITE-SPRITE COLLISION
+270 IF C=0 THEN 300:REM NO COLLISION, SKIP
+```
+
+If C=0, no sprites collided this frame. If C>0, at least one sprite collided.
+
+### Testing Specific Sprites
+
+Use AND to test which sprite(s) collided:
+
+```basic
+C=PEEK(53278)
+IF (C AND 1)>0 THEN [SPRITE 0 COLLIDED]
+IF (C AND 2)>0 THEN [SPRITE 1 COLLIDED]
+IF (C AND 4)>0 THEN [SPRITE 2 COLLIDED]
+IF (C AND 8)>0 THEN [SPRITE 3 COLLIDED]
+```
+
+**Why AND?** Bit 0 has value 1, bit 1 has value 2, bit 2 has value 4, bit 3 has value 8, etc. AND extracts individual bits.
+
+### The Sticky Register Problem
+
+**Critical:** Collision registers are "sticky"—once set, they stay set until cleared.
+
+```basic
+290 POKE 53278,0:REM CLEAR COLLISION REGISTER
+```
+
+Write ANY value to clear. The VIC-II doesn't care what value—the write operation clears it.
+
+**Pattern:**
+1. Read collision register
+2. Test which sprites collided
+3. Respond to collision
+4. Clear register by writing to it
+5. Repeat next frame
+
+## Collision with Scoring
+
+```basic
+10 REM HARDWARE COLLISION - SCORING GAME
+20 PRINT CHR$(147)
+30 PRINT "LOADING SPRITE DATA..."
+40 REM LOAD SPRITE DATA TO BLOCKS 13 AND 14
+50 FOR I=832 TO 894:READ D:POKE I,D:NEXT I
+60 FOR I=896 TO 958:READ D:POKE I,D:NEXT I
+70 REM SETUP SPRITE 0 (PLAYER)
+80 POKE 2040,13:REM SPRITE 0 POINTER
+90 POKE 53287,1:REM WHITE COLOUR
+100 X=100:Y=120
+110 POKE 53248,X AND 255:POKE 53249,Y
+120 REM SETUP SPRITE 1 (TARGET)
+130 POKE 2041,14:REM SPRITE 1 POINTER
+140 POKE 53288,2:REM RED COLOUR
+150 TX=200:TY=120
+160 POKE 53250,TX AND 255:POKE 53251,TY
+170 POKE 53269,3:REM ENABLE SPRITES 0 AND 1
+180 POKE 53264,0:REM CLEAR X MSB FOR BOTH
+190 SC=0:REM SCORE
+200 PRINT CHR$(147)
+210 PRINT "MOVE WHITE SPRITE TO HIT RED TARGET"
+220 PRINT "USE W/A/S/D TO MOVE"
+230 PRINT
+240 PRINT "SCORE:";SC
+250 REM MAIN LOOP
+260 GET K$
+270 IF K$="W" AND Y>50 THEN Y=Y-2
+280 IF K$="S" AND Y<229 THEN Y=Y+2
+290 IF K$="A" AND X>24 THEN X=X-2
+300 IF K$="D" AND X<320 THEN X=X+2
+310 POKE 53248,X AND 255
+320 M=0:IF X>255 THEN M=1
+330 POKE 53264,M:REM X MSB FOR SPRITE 0
+340 POKE 53249,Y
+350 REM CHECK COLLISION
+360 C=PEEK(53278):REM SPRITE-SPRITE COLLISION
+370 IF C=0 THEN 260
+380 REM COLLISION DETECTED!
+390 SC=SC+10
+400 POKE 214,3:PRINT:REM CURSOR TO LINE 4
+410 PRINT "SCORE:";SC;"         "
+420 REM MOVE TARGET TO NEW POSITION
+430 TX=50+INT(RND(1)*200)
+440 TY=50+INT(RND(1)*180)
+450 POKE 53250,TX AND 255:POKE 53251,TY
+460 POKE 53278,0:REM CLEAR COLLISION REGISTER
+470 GOTO 260
+480 REM SPRITE DATA: ARROW/SPACESHIP
+490 DATA 0,16,0,0,56,0,0,124,0,0,254,0
+500 DATA 1,255,0,3,255,128,7,255,192,15,255,224
+510 DATA 1,255,0,0,254,0,0,124,0,0,56,0
+520 DATA 0,16,0,0,0,0,0,0,0,0,0,0
+530 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+540 REM SPRITE DATA: CIRCLE/TARGET
+550 DATA 0,124,0,3,255,192,7,255,224,15,199,240
+560 DATA 31,131,248,31,1,248,63,0,252,63,0,252
+570 DATA 31,1,248,31,131,248,15,199,240,7,255,224
+580 DATA 3,255,192,0,124,0,0,0,0,0,0,0
+590 DATA 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+```
+
+**Run this**—move the white sprite to hit the red target. Each collision adds 10 points and moves the target to a random position. Simple collision-based gameplay!
+
+![Collision scoring game](/images/commodore-64/phase-0/tier-2/lesson-019/screenshot-2.png)
+
+**Key additions:**
+
+- **Lines 390-410**—Score increments, display updates
+- **Lines 430-450**—Target moves to random position after hit
+- **Line 460**—Clear collision register after handling
+
+## The Collision Pattern
+
+Every collision system follows this structure:
+
+```basic
+1000 REM COLLISION CHECK ROUTINE
+1010 C=PEEK(53278):IF C=0 THEN RETURN
+1020 IF (C AND 1)>0 THEN GOSUB 2000:REM PLAYER HIT
+1030 IF (C AND 2)>0 THEN GOSUB 3000:REM BULLET HIT
+1040 POKE 53278,0:REM CLEAR REGISTER
+1050 RETURN
+```
+
+**The pattern:**
+1. Read collision register into variable
+2. Quick exit if zero (no collisions)
+3. Test each sprite bit that matters
+4. Call appropriate response subroutines
+5. Clear register last (after all tests)
+
+## Multiple Collision Detection
+
+When sprite 0 hits sprite 3:
+- Bit 0 is set (sprite 0 collided)
+- Bit 3 is set (sprite 3 collided)
+- Value = 1 + 8 = 9
+
+**Both sprites** appear in the collision register. You know they touched, but not necessarily with each other. If you have many sprites, you might need additional logic to determine collision pairs.
+
+**Simple case (few sprites):**
+```basic
+C=PEEK(53278)
+IF C=9 THEN [SPRITES 0 AND 3 DEFINITELY COLLIDED]
+```
+
+**Complex case (many sprites):**
+Test each sprite individually and use game logic to determine what matters.
+
+## Sprite-Background Collision
+
+The second collision register detects sprites hitting screen characters:
+
+```basic
+100 B=PEEK(53279):REM SPRITE-BACKGROUND
+110 IF (B AND 1)>0 THEN [SPRITE 0 HIT WALL/CHARACTER]
+120 POKE 53279,0:REM CLEAR
+```
+
+**Uses:**
+- Walls and obstacles in mazes
+- Platform detection in jumping games
+- Collectible items drawn as characters
+- Any solid object made from screen characters
+
+**Background** = any non-zero screen code. Spaces (screen code 0) don't trigger collisions.
+
+## Extending The Concept
+
+### Sound on Collision
+
+Add sound effects when sprites collide:
+
+```basic
+380 REM COLLISION DETECTED!
+381 POKE 54296,15:REM MAX VOLUME
+382 POKE 54273,50:REM FREQUENCY HIGH
+383 POKE 54276,33:REM ATTACK/SUSTAIN
+```
+
+### Flash Sprite Colour
+
+Change sprite colour temporarily on hit:
+
+```basic
+380 REM COLLISION DETECTED!
+385 POKE 53287,7:REM FLASH YELLOW
+390 SC=SC+10
+395 FOR D=1 TO 100:NEXT D:REM SHORT DELAY
+396 POKE 53287,1:REM BACK TO WHITE
+```
+
+### Lives System
+
+Track player hits:
+
+```basic
+10 LV=3:REM LIVES
+...
+380 REM COLLISION DETECTED!
+381 LV=LV-1
+382 IF LV=0 THEN PRINT "GAME OVER":END
+```
+
+### Invincibility Timer
+
+Prevent multiple hits:
+
+```basic
+10 IV=0:REM INVINCIBILITY FRAMES
+...
+360 C=PEEK(53278):REM SPRITE-SPRITE COLLISION
+361 IF IV>0 THEN IV=IV-1:GOTO 470:REM SKIP IF INVINCIBLE
+370 IF C=0 THEN 470
+380 REM COLLISION DETECTED!
+...
+465 IV=60:REM 60 FRAMES INVINCIBILITY
+```
+
+## From the Vault
+
+**Why automatic collision detection?**
+
+Early home computers required manual coordinate checking:
+
+```basic
+REM Manual collision (other computers)
+IF ABS(X1-X2)<16 AND ABS(Y1-Y2)<16 THEN [COLLISION]
+```
+
+This consumed CPU cycles every frame. The C64's VIC-II does pixel-perfect collision detection in hardware at 60Hz with zero CPU cost. Games can check collisions without sacrificing performance.
+
+**The sticky register design** forces programmers to acknowledge collisions. If the register auto-cleared, you might miss collisions between PEEK calls. Sticky registers guarantee detection.
+
+## Quick Reference
+
+### Collision Registers
+
+| Address | Decimal | Purpose |
+|---------|---------|---------|
+| **$D01E** | 53278 | Sprite-sprite collision |
+| **$D01F** | 53279 | Sprite-background collision |
+
+### Bit Values for Sprite Testing
+
+```basic
+Sprite 0: AND 1
+Sprite 1: AND 2
+Sprite 2: AND 4
+Sprite 3: AND 8
+Sprite 4: AND 16
+Sprite 5: AND 32
+Sprite 6: AND 64
+Sprite 7: AND 128
+```
+
+### Complete Collision Check
+
+```basic
+1000 REM COLLISION SYSTEM
+1010 C=PEEK(53278):IF C=0 THEN RETURN
+1020 IF (C AND 1)>0 THEN GOSUB 2000:REM PLAYER HIT
+1030 IF (C AND 2)>0 THEN GOSUB 3000:REM BULLET HIT
+1040 POKE 53278,0:REM CLEAR REGISTER
+1050 RETURN
+```
+
+### Clear Pattern
+
+```basic
+POKE 53278,0  :REM Clear sprite-sprite
+POKE 53279,0  :REM Clear sprite-background
+```
+
+## What You've Learnt
+
+- Hardware collision detection runs automatically during screen refresh
+- Register 53278 reports sprite-sprite collisions as bit flags
+- Register 53279 reports sprite-background collisions
+- AND operator tests individual sprite bits
+- Collision registers are sticky—must clear by writing any value
+- Read, test, respond, clear—the collision pattern
+- Multiple sprites can collide simultaneously
+- Zero CPU cost for pixel-perfect collision detection
+
+**Next lesson:** Multiple sprites with individual collision responses—building a complete collision system for sprite shooters.
