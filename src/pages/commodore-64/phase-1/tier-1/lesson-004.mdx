@@ -1,0 +1,284 @@
+---
+title: "Lesson 4: Note Tables"
+description: "Store complete melodies as data tables and build your first music player with 'Mary Had a Little Lamb'"
+platform: "commodore-64"
+phase: 1
+tier: 1
+lesson: 4
+---
+
+# Lesson 4: Note Tables
+
+## Data-Driven Music
+
+You've played notes manually (Lesson 3) and sequentially (Lesson 2). Now you're ready to store complete songs as **data** - separate from code.
+
+This is how every C64 music player worked: melody stored as note indices and durations, not hard-coded instructions. Change the data, change the song. No rewriting code.
+
+Welcome to data-driven programming.
+
+---
+
+## The One-Minute Tour
+
+- **Melody tables** store note indices (0=C, 2=D, 4=E...)
+- **Duration tables** store how long each note plays
+- **End markers** ($FF) signal when the melody finishes
+- **Parallel arrays** keep melody and timing in sync
+- **Index-based playback** loops through tables automatically
+- Data and code are completely separate
+
+---
+
+## Example: "Mary Had a Little Lamb"
+
+```asm
+; Lesson 004: Note Tables
+; Data-driven music playback - "Mary Had a Little Lamb"
+
+        * = $0801
+        !byte $0c,$08,$0a,$00,$9e,$20,$32,$30,$36,$34,$00,$00,$00
+        * = $0810
+        JMP init
+
+; Frequency table (chromatic scale C4-C5)
+freq_lo: !byte $67, $72, $89, $aa, $ed, $3b, $94, $13, $a4, $45, $04, $da, $ce
+freq_hi: !byte $11, $12, $13, $14, $15, $17, $18, $1a, $1b, $1d, $1f, $20, $22
+
+; MELODY DATA - "Mary Had a Little Lamb"
+melody:
+        !byte 4, 2, 0, 2, 4, 4, 4       ; E D C D E E E
+        !byte 2, 2, 2, 4, 7, 7          ; D D D E G G
+        !byte 4, 2, 0, 2, 4, 4, 4, 4    ; E D C D E E E E
+        !byte 2, 2, 4, 2, 0, $ff        ; D D E D C (end)
+
+durations:
+        !byte 4, 4, 4, 4, 4, 4, 8       ; Quarter + half
+        !byte 4, 4, 8, 4, 4, 8
+        !byte 4, 4, 4, 4, 4, 4, 4, 4
+        !byte 4, 4, 4, 4, 8, 0
+
+init:   JSR clear_sid
+        LDX #$00                ; Melody index
+
+play_loop:
+        LDA melody,X            ; Get note index
+        CMP #$FF                ; End marker?
+        BEQ done
+
+        TAY                     ; Y = note index for lookup
+        LDA freq_lo,Y
+        STA $D400
+        LDA freq_hi,Y
+        STA $D401
+
+        LDA #$21                ; Sawtooth + gate on
+        STA $D404
+
+        LDA durations,X         ; Get duration
+        JSR delay_variable      ; Wait that many units
+
+        LDA #$20                ; Gate off
+        STA $D404
+        JSR short_pause
+
+        INX
+        JMP play_loop
+
+done:   JMP init                ; Loop melody
+
+; Variable delay based on A register
+delay_variable:
+        STA temp
+        LDY #$00
+dv_outer:
+        PHY
+        LDX #$FF
+dv_inner:
+        DEX
+        BNE dv_inner
+        PLY
+        INY
+        CPY temp
+        BNE dv_outer
+        RTS
+
+short_pause:
+        LDY #$08
+sp1:    LDX #$FF
+sp2:    DEX
+        BNE sp2
+        DEY
+        BNE sp1
+        RTS
+
+clear_sid:
+        LDA #$00
+        LDX #$00
+cls:    STA $D400,X
+        INX
+        CPX #$1D
+        BNE cls
+        LDA #$08
+        STA $D405
+        LDA #$B0
+        STA $D406
+        LDA #$0F
+        STA $D418
+        RTS
+
+temp: !byte $00
+```
+
+Run it - you'll hear "Mary Had a Little Lamb" loop forever!
+
+---
+
+## Parallel Arrays Pattern
+
+The key insight: melody and durations must stay in sync.
+
+```
+Index:     0   1   2   3   4   5   6
+melody:    4   2   0   2   4   4   4     (E D C D E E E)
+durations: 4   4   4   4   4   4   8     (quarter notes + half)
+```
+
+**Index 0:** Play note 4 (E) for duration 4
+**Index 1:** Play note 2 (D) for duration 4
+**Index 6:** Play note 4 (E) for duration 8 (longer!)
+
+Both arrays accessed with the same index (X register), ensuring they always match.
+
+---
+
+## The End Marker
+
+How does the program know when the melody finishes?
+
+```asm
+LDA melody,X
+CMP #$FF        ; $FF is our end marker
+BEQ done        ; If found, melody complete
+```
+
+$FF is chosen because it's not a valid note index (our table only has 0-12). It's a **sentinel value** - special data that signals "stop here."
+
+The durations table also has a 0 at the matching position, though we never read it.
+
+---
+
+## Variable Duration Delay
+
+Unlike Lesson 2's fixed delay, this uses the duration value:
+
+```asm
+delay_variable:
+        STA temp        ; Save duration (how many loops)
+        LDY #$00
+dv_outer:
+        PHY             ; Save Y on stack
+        LDX #$FF
+dv_inner:
+        DEX
+        BNE dv_inner
+        PLY             ; Restore Y from stack
+        INY
+        CPY temp        ; Done enough iterations?
+        BNE dv_outer
+        RTS
+```
+
+If `temp` = 4, outer loop runs 4 times.
+If `temp` = 8, outer loop runs 8 times - note plays twice as long.
+
+---
+
+## Note Indices vs Frequencies
+
+**Why store note indices (0, 2, 4) instead of full frequencies ($1167, $1389...)?**
+
+**Space savings:**
+- Note index: 1 byte per note
+- Full frequency: 2 bytes per note (16-bit values)
+
+For "Mary Had a Little Lamb" (26 notes):
+- With indices: 26 bytes
+- With full frequencies: 52 bytes
+
+Plus, you only need **one** frequency table for all melodies!
+
+---
+
+## The Chromatic Scale Table
+
+Our frequency table has all 13 notes from C4 to C5:
+
+```
+Index  Note   Frequency
+0      C4     $1167
+1      C#4    $1272
+2      D4     $1389
+3      D#4    $14AA
+4      E4     $15ED
+5      F4     $173B
+6      F#4    $1894
+7      G4     $1A13
+8      G#4    $1BA4
+9      A4     $1D45
+10     A#4    $1F04
+11     B4     $20DA
+12     C5     $22CE
+```
+
+Now you can play any note by index, not just the C-major scale!
+
+---
+
+## Quick Reference
+
+**Data Storage Pattern:**
+```asm
+; Parallel arrays - indices must match!
+notes:     !byte 0, 2, 4, 5, 7, $ff
+durations: !byte 4, 4, 4, 4, 8, 0
+
+; Playback loop
+LDX #$00
+loop:
+    LDA notes,X        ; Get note
+    CMP #$FF
+    BEQ done
+    ; ...play note using durations,X...
+    INX
+    JMP loop
+```
+
+**End Marker Pattern:**
+```asm
+CMP #$FF        ; Check for end
+BEQ done        ; Jump if found
+```
+
+**Stack Operations (for nested loops):**
+```asm
+PHY    ; Push Y onto stack
+; ...modify Y...
+PLY    ; Pop Y from stack (restores original value)
+```
+
+---
+
+## Experiment!
+
+Try these modifications:
+
+1. **Compose your own melody**: Change the `melody` array (use notes 0-12)
+2. **Add rests**: Use a special value like $FE for silence
+3. **Vary rhythms**: Mix quarter notes (4) and eighth notes (2)
+4. **Transpose**: Add 2 to every note index for a different key
+5. **Second voice harmony**: Add another melody playing simultaneously
+
+---
+
+**Next lesson:** Precise CIA timer-based timing for perfect rhythm at 120 BPM!

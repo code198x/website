@@ -1,0 +1,398 @@
+---
+title: "Lesson 3: Keyboard Triggers ⚡"
+description: "Create your first interactive musical instrument by scanning the C64 keyboard matrix in real-time"
+platform: "commodore-64"
+phase: 1
+tier: 1
+lesson: 3
+---
+
+# Lesson 3: Keyboard Triggers ⚡
+
+## PLAYABLE MILESTONE
+
+This is it. Your first **interactive** program. No more watching notes play automatically - now **you** control the music.
+
+Press keys A/S/D/F/G/H/J/K and hear the C-major scale (C-D-E-F-G-A-B-C) play instantly. This is the foundation of every rhythm game, every synthesiser, every interactive musical experience on the C64.
+
+You're building a playable instrument.
+
+---
+
+## The One-Minute Tour
+
+- The **C64 keyboard** is an 8×8 matrix scanned via CIA #1
+- **Port A ($DC00)** selects which column to read (output)
+- **Port B ($DC01)** reports which keys are pressed in that column (input)
+- **Inverted logic**: Bit = 0 means pressed, bit = 1 means not pressed
+- **Real-time scanning**: Check all keys every frame for instant response
+- **Note tracking**: Prevent retriggering the same note on held keys
+
+---
+
+## Example Program: Interactive Musical Keyboard
+
+```asm
+; Lesson 003: Keyboard Triggers
+; Interactive musical keyboard - Press A/S/D/F/G/H/J/K to play C-major scale
+
+        * = $0801       ; BASIC start address
+        ; BASIC stub: 10 SYS 2064
+        !byte $0c,$08,$0a,$00,$9e,$20,$32,$30,$36,$34,$00,$00,$00
+
+        * = $0810       ; Machine code start
+        JMP init        ; Jump over data tables to initialization
+
+; ============================================================================
+; FREQUENCY TABLE - C-major scale (C4-C5) A440 PAL tuning
+; ============================================================================
+freq_lo: !byte $67, $89, $ed, $3b, $13, $45, $da, $ce
+freq_hi: !byte $11, $13, $15, $17, $1a, $1d, $20, $22
+; C4=$1167, D4=$1389, E4=$15ED, F4=$173B, G4=$1A13, A4=$1D45, B4=$20DA, C5=$22CE
+
+; ============================================================================
+; KEYBOARD MATRIX SCAN CODES
+; ============================================================================
+; Mapping: A/S/D/F/G/H/J/K keys to C/D/E/F/G/A/B/C notes
+
+; Row select masks (write to $DC00 - bit=0 selects that row)
+key_row_sel: !byte $fd, $fd, $fb, $fb, $f7, $f7, $ef, $ef
+; $FD = %11111101 = row 1 (A, S)
+; $FB = %11111011 = row 2 (D, F)
+; $F7 = %11110111 = row 3 (G, H)
+; $EF = %11101111 = row 4 (J, K)
+
+; Column check masks (read from $DC01 - bit=0 means key pressed)
+key_col_chk: !byte $04, $20, $04, $20, $04, $20, $04, $20
+; $04 = %00000100 = column 2 (A, D, G, J)
+; $20 = %00100000 = column 5 (S, F, H, K)
+
+num_keys = 8
+
+; ============================================================================
+; VARIABLES
+; ============================================================================
+current_note: !byte $ff         ; Currently playing note ($ff = none)
+
+; ============================================================================
+; INITIALIZATION
+; ============================================================================
+init:
+        JSR clear_sid
+        JSR setup_cia
+        JMP main
+
+; ============================================================================
+; MAIN LOOP - Scan keyboard continuously
+; ============================================================================
+main:
+        LDX #$00                ; Start with key 0
+        LDY #$00                ; Y = flag: 0 = no key pressed yet
+
+scan_loop:
+        ; Select row for this key
+        LDA key_row_sel,X
+        STA $DC00               ; Write row select mask to Port A
+
+        ; Read column data
+        LDA $DC01               ; Read columns from Port B
+        AND key_col_chk,X       ; Isolate the column we care about
+        BNE next_key            ; If bit=1, key not pressed, skip to next
+
+        ; Key IS pressed (bit=0) - check if it's a new note
+        LDY #$01                ; Flag: a key was pressed this scan
+        CPX current_note        ; Same note as last time?
+        BEQ next_key            ; Yes - skip (already playing)
+
+        ; New note - play it
+        JSR play_note
+
+next_key:
+        INX                     ; Next key
+        CPX #num_keys           ; All 8 keys scanned?
+        BNE scan_loop           ; No - continue scanning
+
+        ; After scanning all keys, check if any were pressed
+        CPY #$00                ; Was any key pressed this cycle?
+        BNE main                ; Yes - keep gate on, restart scan
+
+        ; No keys pressed - turn gate off and reset note tracker
+        LDA #$10                ; Triangle waveform + gate OFF
+        STA $D404               ; Voice 1 control register
+        LDA #$FF                ; Reset current note
+        STA current_note
+
+        JMP main                ; Restart scan from key 0
+
+; ============================================================================
+; PLAY NOTE - X register contains note index
+; ============================================================================
+play_note:
+        ; Save current note
+        STX current_note
+
+        ; Load frequency for this note
+        LDA freq_lo,X
+        STA $D400               ; Voice 1 frequency low
+        LDA freq_hi,X
+        STA $D401               ; Voice 1 frequency high
+
+        ; Trigger note (gate on)
+        LDA #$11                ; Triangle waveform + gate on
+        STA $D404               ; Voice 1 control
+
+        RTS
+
+; ============================================================================
+; CLEAR SID - Initialize all SID registers
+; ============================================================================
+clear_sid:
+        LDA #$00
+        LDX #$00
+clear_loop:
+        STA $D400,X
+        INX
+        CPX #$1D                ; 29 SID registers
+        BNE clear_loop
+
+        ; Set ADSR for sustained sound
+        LDA #$00                ; Attack=0 (instant), Decay=0 (no decay)
+        STA $D405               ; Voice 1 Attack/Decay
+        LDA #$F0                ; Sustain=15 (full), Release=0 (instant off)
+        STA $D406               ; Voice 1 Sustain/Release
+
+        ; Set volume
+        LDA #$0F                ; Maximum volume
+        STA $D418               ; Volume register
+
+        RTS
+
+; ============================================================================
+; SETUP CIA - Configure keyboard scanning
+; ============================================================================
+setup_cia:
+        LDA #$FF                ; All bits = output
+        STA $DC02               ; Port A data direction (columns = output)
+
+        LDA #$00                ; All bits = input
+        STA $DC03               ; Port B data direction (rows = input)
+
+        RTS
+```
+
+**To run:**
+```bash
+acme -f cbm -o lesson-003.prg example-1.asm
+x64sc lesson-003.prg
+```
+
+Press A/S/D/F/G/H/J/K keys - hear the scale! Hold multiple keys - hear chords! This is **your** instrument now.
+
+---
+
+## Understanding the C64 Keyboard Matrix
+
+The C64 keyboard isn't 64 individual wires - it's an **8×8 matrix**:
+
+```
+        COL 0  COL 1  COL 2  COL 3  COL 4  COL 5  COL 6  COL 7
+ROW 0:  DEL    RETURN  →      F7     F1     F3     F5     ↓
+ROW 1:  3       W       A      4      Z      S      E      SHIFT
+ROW 2:  5       R       D      6      C      F      T      X
+ROW 3:  7       Y       G      8      B      H      U      V
+ROW 4:  9       I       J      0      M      K      O      N
+```
+
+Each key connects one row to one column. When pressed, it completes the circuit between them.
+
+**Key A** is at ROW 1, COL 2.
+**Key S** is at ROW 1, COL 5.
+**Key J** is at ROW 4, COL 2.
+
+---
+
+## How Matrix Scanning Works
+
+**Step 1: Select a row** by writing to $DC00 (CIA Port A)
+
+To select ROW 1, write `%11111101` ($FD) - bit 1 = 0 selects row 1.
+
+**Step 2: Read which columns are active** from $DC01 (CIA Port B)
+
+If key A (ROW 1, COL 2) is pressed, reading $DC01 returns a value with bit 2 = 0.
+
+**Step 3: Check the specific column bit**
+
+```asm
+LDA #$FD        ; Select row 1 (%11111101)
+STA $DC00
+LDA $DC01       ; Read column states
+AND #$04        ; Check bit 2 (column 2) - %00000100
+BEQ key_a_down  ; If bit=0, key A is pressed
+```
+
+**Inverted logic:** 0 = pressed, 1 = not pressed. This is how the C64 hardware works.
+
+---
+
+## The Scan Tables
+
+Instead of hard-coding 8 separate checks, we use **lookup tables**:
+
+```asm
+; Row selections for each key (A, S, D, F, G, H, J, K)
+key_row_sel: !byte $fd, $fd, $fb, $fb, $f7, $f7, $ef, $ef
+
+; Column checks for each key
+key_col_chk: !byte $04, $20, $04, $20, $04, $20, $04, $20
+```
+
+**For key index 0 (A):**
+- `key_row_sel[0]` = $FD (select row 1)
+- `key_col_chk[0]` = $04 (check column 2, bit 2)
+
+**For key index 1 (S):**
+- `key_row_sel[1]` = $FD (select row 1)
+- `key_col_chk[1]` = $20 (check column 5, bit 5)
+
+The loop scans all 8 keys using these tables:
+
+```asm
+LDA key_row_sel,X   ; Select row for key X
+STA $DC00
+LDA $DC01           ; Read columns
+AND key_col_chk,X   ; Check if this key's column is active
+BEQ key_pressed     ; Bit=0 means pressed
+```
+
+---
+
+## Preventing Retriggering
+
+Without note tracking, holding a key would retrigger the note hundreds of times per second as the scan loop repeats. We prevent this with `current_note`:
+
+```asm
+CPX current_note    ; Is this the same note already playing?
+BEQ next_key        ; Yes - skip, don't retrigger
+```
+
+Only when you release all keys and press a new one (or different one) does the note restart.
+
+---
+
+## The Y Register Flag
+
+Y acts as a "did we find any key this scan?" flag:
+
+```asm
+LDY #$00            ; Start assuming no keys pressed
+...
+BNE next_key        ; Key pressed - set Y=#$01
+...
+CPY #$00            ; After full scan, any keys found?
+BNE main            ; Yes - keep gate on
+; No - turn gate off
+```
+
+This ensures the gate only turns off when **no keys** are pressed, allowing chord playing.
+
+---
+
+## ADSR for Responsive Sound
+
+Notice the ADSR settings:
+
+```asm
+LDA #$00    ; Attack=0, Decay=0
+STA $D405
+LDA #$F0    ; Sustain=15, Release=0
+STA $D406
+```
+
+**Attack=0**: Note starts instantly when key pressed
+**Decay=0**: No decay phase, goes straight to sustain
+**Sustain=15**: Full volume while key held
+**Release=0**: Instant silence when key released
+
+This creates an **organ-like** sound - instant on/off, perfect for responsive keyboard control.
+
+---
+
+## Real-Time vs Polled Input
+
+In BASIC, `GET` waits for a keypress - it **blocks** your program.
+
+In assembly with CIA scanning, you can:
+- Check keyboard state **without waiting**
+- Continue running other code while scanning
+- Respond to keys in **milliseconds** instead of frames
+
+This non-blocking input is essential for games, synthesisers, and any real-time application.
+
+---
+
+## Quick Reference
+
+**CIA #1 Keyboard Registers:**
+- `$DC00` - Port A: Column select (write, output)
+- `$DC01` - Port B: Row read (read, input)
+- `$DC02` - Port A data direction ($FF = all output)
+- `$DC03` - Port B data direction ($00 = all input)
+
+**Matrix Scanning Pattern:**
+```asm
+; Setup (once)
+LDA #$FF
+STA $DC02    ; Port A = output (select columns)
+LDA #$00
+STA $DC03    ; Port B = input (read rows)
+
+; Scan (loop)
+LDA #$FD     ; Select row 1 (bit 1 = 0)
+STA $DC00
+LDA $DC01    ; Read which columns are active
+AND #$04     ; Check column 2 (bit 2)
+BEQ pressed  ; Bit=0 = key pressed
+```
+
+**Common Keys (Row, Col, Mask):**
+```
+A: Row 1, Col 2 → $FD, $04
+S: Row 1, Col 5 → $FD, $20
+D: Row 2, Col 2 → $FB, $04
+F: Row 2, Col 5 → $FB, $20
+G: Row 3, Col 2 → $F7, $04
+SPACE: Row 7, Col 4 → $7F, $10
+```
+
+**Inverted Logic:**
+- Bit = 0 → Key pressed
+- Bit = 1 → Key not pressed
+
+---
+
+## Experiment!
+
+Try these modifications:
+
+1. **Change the keys**: Map different keys by changing the scan code tables
+2. **Add more notes**: Extend to a full chromatic scale (12 notes)
+3. **Different waveform**: Change `#$11` to `#$21` for sawtooth sound
+4. **Pitch bend**: Hold two adjacent keys and hear a microtonal interval
+5. **Visual feedback**: Print the note name on screen when pressed (use screen RAM $0400)
+
+---
+
+## Playable Milestone Achieved! ⚡
+
+You've now created your first **fully interactive** Phase 1 program. This is the foundation for:
+
+- **Lesson 4-5**: Data-driven melodies and precise timing
+- **Lesson 6-7**: Rhythm matching games with scoring
+- **Lesson 8+**: Advanced SID features and multi-voice music
+
+You can now play simple melodies by ear. This is genuine musical expression on 1980s hardware, using the same techniques that powered countless C64 synthesiser programs and games.
+
+---
+
+**Next lesson:** Note tables and melody playback - storing complete songs as data.

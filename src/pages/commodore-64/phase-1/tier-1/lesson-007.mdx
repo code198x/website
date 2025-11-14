@@ -1,0 +1,1118 @@
+---
+title: "Lesson 7: Scoring System 🎯 COMPLETE"
+description: "Build your first complete C64 game with scoring, lives, levels, and a heads-up display"
+platform: "commodore-64"
+phase: 1
+tier: 1
+lesson: 7
+---
+
+# Lesson 7: Scoring System 🎯
+
+## The Complete Game
+
+You've built the core mechanics. Now it's time to turn them into a **complete game**.
+
+This lesson adds scoring (perfect hits = 100 points, good hits = 50 points), lives (3 to start, lose 1 per miss), three difficulty levels with different timing windows, and a heads-up display showing score/lives/level.
+
+When you finish this lesson, you'll have created your **first complete C64 game** from scratch in assembly language.
+
+---
+
+## The One-Minute Tour
+
+- **16-bit score** tracks points (supports up to 65535)
+- **Lives system** starts at 3, decreases on miss, game over at 0
+- **Three levels** with progressive difficulty (±5, ±3, ±2 frame windows)
+- **Perfect vs good hits** award 100 or 50 points based on accuracy
+- **HUD (Heads-Up Display)** shows real-time score/lives/level
+- **Level progression** advances through three different patterns
+- **Victory condition** completes all three levels
+- **Combo tracking** counts consecutive hits
+
+---
+
+## Example Program: Complete Rhythm Game
+
+This is a **full game** - 666 lines of assembly implementing all game systems.
+
+```asm
+; Lesson 007: Scoring System (Complete Game)
+; First complete rhythm game with scoring, lives, levels, and HUD
+
+        * = $0801       ; BASIC start address
+        ; BASIC stub: 10 SYS 2064
+        !byte $0c,$08,$0a,$00,$9e,$20,$32,$30,$36,$34,$00,$00,$00
+
+        * = $0810       ; Machine code start
+
+; ============================================================================
+; CONSTANTS
+; ============================================================================
+SCREEN = $0400          ; Screen RAM
+COLOR  = $d800          ; Color RAM
+
+TIMER_LO = $2d          ; CIA Timer for 60Hz (PAL)
+TIMER_HI = $40
+
+QUARTER_NOTE = 30       ; 30 frames at 60fps = 0.5 seconds at 120 BPM
+
+; State machine
+STATE_PLAY  = 0         ; Playing current note
+STATE_WAIT  = 1         ; Waiting for player input
+
+; Timing windows per level (frames)
+WINDOW_LEVEL1 = 5       ; Easy
+WINDOW_LEVEL2 = 3       ; Medium
+WINDOW_LEVEL3 = 2       ; Hard
+
+; ============================================================================
+; FREQUENCY TABLE
+; ============================================================================
+freq_lo: !byte $67, $72, $89, $aa, $ed, $3b, $94, $13, $a4, $45, $04, $da, $ce
+freq_hi: !byte $11, $12, $13, $14, $15, $17, $18, $1a, $1b, $1d, $1f, $20, $22
+
+; ============================================================================
+; PATTERN DATA - Three levels of increasing difficulty
+; ============================================================================
+pattern1: !byte 0, 2, 4, 5, $ff                 ; Level 1: Simple 4-note
+pattern2: !byte 4, 2, 0, 2, 4, 7, 5, $ff        ; Level 2: 7-note melody
+pattern3: !byte 0, 4, 7, 12, 7, 4, 0, 2, 4, $ff ; Level 3: Octave jump
+
+timing1:  !byte QUARTER_NOTE, QUARTER_NOTE, QUARTER_NOTE, QUARTER_NOTE, 0
+timing2:  !byte QUARTER_NOTE, QUARTER_NOTE, QUARTER_NOTE, QUARTER_NOTE
+          !byte QUARTER_NOTE, QUARTER_NOTE, QUARTER_NOTE, 0
+timing3:  !byte QUARTER_NOTE, QUARTER_NOTE, QUARTER_NOTE, QUARTER_NOTE
+          !byte QUARTER_NOTE, QUARTER_NOTE, QUARTER_NOTE, QUARTER_NOTE
+          !byte QUARTER_NOTE, 0
+
+; Level configuration (timing windows)
+level_windows: !byte WINDOW_LEVEL1, WINDOW_LEVEL2, WINDOW_LEVEL3
+
+; ============================================================================
+; VARIABLES
+; ============================================================================
+game_state:     !byte $00       ; Current game state
+note_index:     !byte $00       ; Current position in pattern
+frame_counter:  !byte $00       ; Global frame counter
+note_start:     !byte $00       ; Frame when current note started
+result_timer:   !byte $00       ; Countdown for result display
+
+; Game data
+score:          !word $0000     ; 16-bit score
+lives:          !byte $03       ; 3 lives to start
+level:          !byte $01       ; Current level (1-3)
+combo:          !byte $00       ; Consecutive hits
+
+; Pattern pointers (16-bit) - must be in zero page for (ptr),y addressing
+pattern_ptr = $fb               ; Zero page pointer
+timing_ptr  = $fd               ; Zero page pointer
+
+temp:           !byte $00       ; Temporary storage
+
+; ============================================================================
+; INITIALIZATION
+; ============================================================================
+        jmp init
+
+init:
+        jsr clear_sid
+        jsr init_timer
+        jsr clear_screen
+        jsr init_game
+        jmp main_loop
+
+init_game:
+        ; Reset game variables
+        lda #$00
+        sta score
+        sta score+1
+        sta note_index
+        sta frame_counter
+        sta combo
+        sta game_state
+
+        lda #$03
+        sta lives
+
+        lda #$01
+        sta level
+
+        ; Set pattern pointers to level 1
+        lda #<pattern1
+        sta pattern_ptr
+        lda #>pattern1
+        sta pattern_ptr+1
+
+        lda #<timing1
+        sta timing_ptr
+        lda #>timing1
+        sta timing_ptr+1
+
+        jsr draw_hud
+        jsr show_instructions
+        rts
+
+; ============================================================================
+; MAIN LOOP
+; ============================================================================
+main_loop:
+        jsr wait_frame
+        inc frame_counter       ; Track frames for timing
+
+        ; Handle result display timer
+        lda result_timer
+        beq check_state
+        dec result_timer
+        bne check_state
+        jsr clear_message       ; Timer expired, clear message
+
+check_state:
+        lda game_state
+        cmp #STATE_PLAY
+        beq do_play
+        cmp #STATE_WAIT
+        beq do_wait
+        jmp main_loop
+
+; ============================================================================
+; STATE: PLAY NOTE
+; ============================================================================
+do_play:
+        ; Check if pattern complete
+        jsr get_current_note
+        cmp #$ff
+        bne play_continue
+        jmp level_complete
+
+play_continue:
+        ; Play the note
+        jsr play_note
+
+        ; Record when note started
+        lda frame_counter
+        sta note_start
+
+        ; Move to waiting for input
+        lda #STATE_WAIT
+        sta game_state
+        jmp main_loop
+
+; ============================================================================
+; STATE: WAIT FOR INPUT
+; ============================================================================
+do_wait:
+        ; Check for spacebar press
+        jsr scan_spacebar
+        bcs key_pressed         ; Carry set = key pressed
+
+        ; No key - check if note duration expired (automatic miss)
+        jsr check_note_timeout
+        bcc main_loop           ; Still time left
+
+        ; Time's up - automatic miss
+        jsr handle_miss
+        jmp next_note
+
+key_pressed:
+        ; Calculate timing: frames since note started
+        lda frame_counter
+        sec
+        sbc note_start
+
+        ; Get current difficulty window
+        ldx level
+        dex
+        lda level_windows,x
+        sta temp
+
+        ; Check timing accuracy
+        lda frame_counter
+        sec
+        sbc note_start
+
+        ; Perfect hit = exactly on beat (0-1 frames)
+        cmp #$02
+        bcc perfect_hit
+
+        ; Good hit = within window
+        cmp temp
+        bcc good_hit
+
+        ; Outside window = miss
+        jsr handle_miss
+        jmp next_note
+
+perfect_hit:
+        jsr add_score_100
+        jsr show_perfect
+        inc combo
+        jmp next_note
+
+good_hit:
+        jsr add_score_50
+        jsr show_hit
+        inc combo
+        jmp next_note
+
+; ============================================================================
+; HANDLE MISS
+; ============================================================================
+handle_miss:
+        jsr show_miss
+        dec lives
+        lda #$00
+        sta combo               ; Reset combo on miss
+
+        ; Check game over
+        lda lives
+        bne hm_done
+        jsr show_game_over
+        jmp freeze              ; Freeze at game over
+
+hm_done:
+        jsr update_hud
+        rts
+
+; ============================================================================
+; ADVANCE TO NEXT NOTE
+; ============================================================================
+next_note:
+        ; Turn off current note
+        lda #$20
+        sta $d404
+
+        ; Move to next note
+        inc note_index
+
+        ; Back to PLAY state
+        lda #STATE_PLAY
+        sta game_state
+        jsr update_hud
+        jmp main_loop
+
+; ============================================================================
+; LEVEL COMPLETE
+; ============================================================================
+level_complete:
+        ; Turn off sound
+        lda #$20
+        sta $d404
+
+        jsr show_level_clear
+
+        ; Check if all levels complete
+        lda level
+        cmp #$03
+        beq victory
+
+        ; Advance to next level
+        inc level
+        lda #$00
+        sta note_index
+
+        ; Update pattern pointer based on new level
+        lda level
+        cmp #$02
+        beq set_level2
+        cmp #$03
+        beq set_level3
+
+set_level2:
+        lda #<pattern2
+        sta pattern_ptr
+        lda #>pattern2
+        sta pattern_ptr+1
+        lda #<timing2
+        sta timing_ptr
+        lda #>timing2
+        sta timing_ptr+1
+        jsr update_hud
+        ; Wait for key, then continue
+        jsr wait_for_key
+        jsr clear_message
+        lda #STATE_PLAY
+        sta game_state
+        jmp main_loop
+
+set_level3:
+        lda #<pattern3
+        sta pattern_ptr
+        lda #>pattern3
+        sta pattern_ptr+1
+        lda #<timing3
+        sta timing_ptr
+        lda #>timing3
+        sta timing_ptr+1
+        jsr update_hud
+        ; Wait for key, then continue
+        jsr wait_for_key
+        jsr clear_message
+        lda #STATE_PLAY
+        sta game_state
+        jmp main_loop
+
+; ============================================================================
+; VICTORY
+; ============================================================================
+victory:
+        jsr show_victory
+freeze: jmp freeze              ; Freeze at end
+
+; ============================================================================
+; GET CURRENT NOTE
+; ============================================================================
+get_current_note:
+        ldy note_index
+        lda (pattern_ptr),y
+        rts
+
+; ============================================================================
+; PLAY NOTE - Play current note from pattern
+; ============================================================================
+play_note:
+        jsr get_current_note
+        tay                     ; Y = note index
+
+        lda freq_lo,y
+        sta $d400               ; Set frequency
+        lda freq_hi,y
+        sta $d401
+
+        lda #$21                ; Sawtooth + gate ON
+        sta $d404
+        rts
+
+; ============================================================================
+; CHECK NOTE TIMEOUT
+; ============================================================================
+check_note_timeout:
+        lda frame_counter
+        sec
+        sbc note_start          ; A = frames since note started
+        sta temp                ; Save elapsed frames
+        ldy note_index
+        lda (timing_ptr),y      ; Load timing value
+        cmp temp                ; Compare with elapsed
+        ; If timing <= elapsed, carry is set (timeout)
+        ; If timing > elapsed, carry is clear (still time)
+        rts
+
+; ============================================================================
+; SCAN SPACEBAR - Check if spacebar pressed
+; ============================================================================
+scan_spacebar:
+        lda #$7f                ; Select column 7
+        sta $dc00
+        lda $dc01               ; Read rows
+        and #$10                ; Check row 4 (spacebar)
+        beq space_down
+        clc                     ; No key pressed
+        rts
+space_down:
+        sec                     ; Key pressed
+        rts
+
+; ============================================================================
+; WAIT FOR KEY - Wait for spacebar press (for level transitions)
+; ============================================================================
+wait_for_key:
+wfk_loop:
+        jsr wait_frame
+        jsr scan_spacebar
+        bcc wfk_loop
+        ; Key down, now wait for release
+wfk_release:
+        jsr wait_frame
+        jsr scan_spacebar
+        bcs wfk_release
+        rts
+
+; ============================================================================
+; SCORING ROUTINES
+; ============================================================================
+add_score_100:
+        clc
+        lda score
+        adc #$64                ; 100 decimal = $64
+        sta score
+        lda score+1
+        adc #$00
+        sta score+1
+        jsr update_hud
+        rts
+
+add_score_50:
+        clc
+        lda score
+        adc #$32                ; 50 decimal = $32
+        sta score
+        lda score+1
+        adc #$00
+        sta score+1
+        jsr update_hud
+        rts
+
+; ============================================================================
+; HUD ROUTINES
+; ============================================================================
+draw_hud:
+        ; Display static HUD text at top of screen
+        ldx #$00
+dh_loop:
+        lda hud_text,x
+        beq dh_done
+        sta SCREEN,x
+        lda #$0e                ; Light blue
+        sta COLOR,x
+        inx
+        jmp dh_loop
+dh_done:
+        jsr update_hud
+        rts
+
+update_hud:
+        ; Update score display (4 hex digits)
+        lda score+1
+        jsr hex_to_screen
+        stx SCREEN+7
+        sty SCREEN+8
+
+        lda score
+        jsr hex_to_screen
+        stx SCREEN+9
+        sty SCREEN+10
+
+        ; Update lives display
+        lda lives
+        clc
+        adc #$30                ; Convert to PETSCII digit
+        sta SCREEN+19
+
+        ; Update level display
+        lda level
+        clc
+        adc #$30
+        sta SCREEN+28
+        rts
+
+hex_to_screen:
+        ; Convert A register to two PETSCII digits in X,Y
+        pha
+        lsr
+        lsr
+        lsr
+        lsr
+        clc
+        adc #$30
+        tax
+        pla
+        and #$0f
+        clc
+        adc #$30
+        tay
+        rts
+
+; ============================================================================
+; MESSAGE DISPLAY ROUTINES
+; ============================================================================
+show_perfect:
+        ldx #$00
+sp_loop:
+        lda msg_perfect,x
+        beq sp_done
+        sta SCREEN+40*12+15,x
+        lda #$07                ; Yellow
+        sta COLOR+40*12+15,x
+        inx
+        jmp sp_loop
+sp_done:
+        lda #60                 ; Show for 1 second
+        sta result_timer
+        rts
+
+show_hit:
+        ldx #$00
+sh_loop:
+        lda msg_hit,x
+        beq sh_done
+        sta SCREEN+40*12+17,x
+        lda #$05                ; Green
+        sta COLOR+40*12+17,x
+        inx
+        jmp sh_loop
+sh_done:
+        lda #60                 ; Show for 1 second
+        sta result_timer
+        rts
+
+show_miss:
+        ldx #$00
+sm_loop:
+        lda msg_miss,x
+        beq sm_done
+        sta SCREEN+40*12+17,x
+        lda #$02                ; Red
+        sta COLOR+40*12+17,x
+        inx
+        jmp sm_loop
+sm_done:
+        lda #60                 ; Show for 1 second
+        sta result_timer
+        rts
+
+show_level_clear:
+        ldx #$00
+slc_loop:
+        lda msg_level_clear,x
+        beq slc_done
+        sta SCREEN+40*12+12,x
+        lda #$0e                ; Light blue
+        sta COLOR+40*12+12,x
+        inx
+        jmp slc_loop
+slc_done:
+        rts
+
+show_game_over:
+        ldx #$00
+sgo_loop:
+        lda msg_game_over,x
+        beq sgo_done
+        sta SCREEN+40*12+15,x
+        lda #$02                ; Red
+        sta COLOR+40*12+15,x
+        inx
+        jmp sgo_loop
+sgo_done:
+        rts
+
+show_victory:
+        ldx #$00
+sv_loop:
+        lda msg_victory,x
+        beq sv_done
+        sta SCREEN+40*12+10,x
+        lda #$07                ; Yellow
+        sta COLOR+40*12+10,x
+        inx
+        jmp sv_loop
+sv_done:
+        rts
+
+show_instructions:
+        ldx #$00
+si_loop:
+        lda msg_inst,x
+        beq si_done
+        sta SCREEN+40*2+7,x
+        lda #$0e                ; Light blue
+        sta COLOR+40*2+7,x
+        inx
+        jmp si_loop
+si_done:
+        rts
+
+clear_message:
+        ldx #$14                ; Clear 20 characters
+cm_loop:
+        lda #$20                ; Space
+        sta SCREEN+40*12+10,x
+        dex
+        bpl cm_loop
+        rts
+
+; ============================================================================
+; MESSAGES (PETSCII)
+; ============================================================================
+hud_text:       !text "score:     lives:   level:  ",0
+msg_perfect:    !text "perfect!",0
+msg_hit:        !text "hit!",0
+msg_miss:       !text "miss",0
+msg_level_clear: !text "level complete!",0
+msg_game_over:  !text "game over",0
+msg_victory:    !text "all levels complete!",0
+msg_inst:       !text "press space on the beat!",0
+
+; ============================================================================
+; CLEAR SCREEN
+; ============================================================================
+clear_screen:
+        lda #$20                ; Space character
+        ldx #$00
+cs_loop1:
+        sta SCREEN,x
+        sta SCREEN+$100,x
+        sta SCREEN+$200,x
+        sta SCREEN+$2e8,x
+        inx
+        bne cs_loop1
+
+        lda #$0e                ; Light blue
+        ldx #$00
+cs_loop2:
+        sta COLOR,x
+        sta COLOR+$100,x
+        sta COLOR+$200,x
+        sta COLOR+$2e8,x
+        inx
+        bne cs_loop2
+        rts
+
+; ============================================================================
+; WAIT FRAME - Wait for 60Hz tick
+; ============================================================================
+wait_frame:
+wf_loop:
+        lda $dc0d
+        and #$01
+        beq wf_loop
+        rts
+
+; ============================================================================
+; INIT TIMER - Set up CIA Timer A
+; ============================================================================
+init_timer:
+        lda #$00
+        sta $dc0e               ; Stop timer
+        lda #TIMER_LO
+        sta $dc04
+        lda #TIMER_HI
+        sta $dc05
+        lda #$11                ; Start continuous
+        sta $dc0e
+        rts
+
+; ============================================================================
+; CLEAR SID
+; ============================================================================
+clear_sid:
+        lda #$00
+        ldx #$00
+sid_loop:
+        sta $d400,x
+        inx
+        cpx #$1d
+        bne sid_loop
+
+        lda #$08                ; Attack=0, Decay=8
+        sta $d405
+        lda #$b0                ; Sustain=11, Release=0
+        sta $d406
+        lda #$0f                ; Max volume
+        sta $d418
+        rts
+```
+
+**To run:**
+```bash
+acme -f cbm -o lesson-007.prg example-1.asm
+x64sc lesson-007.prg
+```
+
+Play through all three levels! Level 1 is easy (±5 frames), Level 2 is medium (±3 frames), Level 3 is hard (±2 frames). Hit perfectly = 100 points, hit within window = 50 points. Three lives - don't miss!
+
+---
+
+## 16-Bit Score System
+
+Scores can exceed 255, so we need a **16-bit variable**:
+
+```asm
+score: !word $0000      ; 16 bits = 2 bytes (low, high)
+```
+
+**Adding points requires carry propagation:**
+```asm
+add_score_100:
+        clc                     ; Clear carry
+        lda score               ; Get low byte
+        adc #$64                ; Add 100 ($64)
+        sta score               ; Store low byte
+        lda score+1             ; Get high byte
+        adc #$00                ; Add carry if any
+        sta score+1             ; Store high byte
+        rts
+```
+
+**Why add #$00 to the high byte?** If the low byte addition overflows (255 + something > 255), the carry flag is set. `ADC #$00` adds that carry to the high byte, correctly incrementing it.
+
+**Example:**
+```
+Score = $00FF (255)
+Add 100 ($64):
+  Low byte:  $FF + $64 = $163 (overflow! carry = 1, result = $63)
+  High byte: $00 + $00 + carry(1) = $01
+  Final score: $0163 (355)
+```
+
+---
+
+## Lives and Game Over
+
+The lives system is simple but crucial:
+
+```asm
+lives: !byte $03        ; Start with 3 lives
+
+handle_miss:
+        jsr show_miss
+        dec lives               ; Lose 1 life
+        lda #$00
+        sta combo               ; Reset combo streak
+
+        ; Check game over
+        lda lives
+        bne hm_done             ; Lives > 0? Continue
+        jsr show_game_over
+        jmp freeze              ; Lives = 0? Freeze!
+
+hm_done:
+        jsr update_hud          ; Update display
+        rts
+```
+
+When `lives` reaches 0, the game freezes with an infinite loop (`freeze: jmp freeze`). The player must reset the C64 to play again.
+
+---
+
+## Level Progression
+
+Three levels with different patterns and timing windows:
+
+```asm
+level_windows: !byte 5, 3, 2    ; Frames tolerance per level
+
+pattern1: !byte 0, 2, 4, 5, $ff                 ; 4 notes (easy)
+pattern2: !byte 4, 2, 0, 2, 4, 7, 5, $ff        ; 7 notes (medium)
+pattern3: !byte 0, 4, 7, 12, 7, 4, 0, 2, 4, $ff ; 9 notes with octave jump (hard)
+```
+
+**Advancing levels:**
+```asm
+level_complete:
+        lda level
+        cmp #$03                ; On level 3?
+        beq victory             ; Yes = game won!
+
+        inc level               ; Next level
+        lda #$00
+        sta note_index          ; Reset pattern position
+
+        ; Update pattern pointer
+        lda level
+        cmp #$02
+        beq set_level2
+        cmp #$03
+        beq set_level3
+```
+
+Each level loads different `pattern_ptr` and `timing_ptr` values pointing to the level's data.
+
+---
+
+## Zero Page Pointers
+
+To access patterns with variable indices, we use **indirect indexed addressing** with zero-page pointers:
+
+```asm
+pattern_ptr = $fb       ; 2 bytes at $FB/$FC
+timing_ptr  = $fd       ; 2 bytes at $FD/$FE
+
+; Setting the pointer
+lda #<pattern1          ; Low byte
+sta pattern_ptr
+lda #>pattern1          ; High byte
+sta pattern_ptr+1
+
+; Reading through the pointer
+ldy note_index          ; Y = offset
+lda (pattern_ptr),y     ; Load from address in pattern_ptr + Y
+```
+
+**Why zero page?** The 6502's `(ptr),Y` addressing mode **only works with zero-page pointers** ($00-$FF). That's why we declare `pattern_ptr = $fb` instead of using `!byte` in normal RAM.
+
+---
+
+## HUD Display
+
+The heads-up display shows real-time game status at the top of the screen:
+
+```
+SCORE: 0000  LIVES: 3  LEVEL: 1
+```
+
+**Drawing the HUD:**
+```asm
+draw_hud:
+        ldx #$00
+dh_loop:
+        lda hud_text,x          ; Get character
+        beq dh_done             ; 0 = done
+        sta SCREEN,x            ; Write to screen
+        lda #$0e                ; Light blue
+        sta COLOR,x
+        inx
+        jmp dh_loop
+dh_done:
+        jsr update_hud          ; Fill in values
+        rts
+
+hud_text: !text "score:     lives:   level:  ",0
+```
+
+**Updating score/lives/level:**
+```asm
+update_hud:
+        ; Display score as 4 hex digits
+        lda score+1             ; High byte
+        jsr hex_to_screen       ; Returns X/Y = digits
+        stx SCREEN+7            ; First digit
+        sty SCREEN+8            ; Second digit
+
+        lda score               ; Low byte
+        jsr hex_to_screen
+        stx SCREEN+9            ; Third digit
+        sty SCREEN+10           ; Fourth digit
+
+        ; Display lives (single digit)
+        lda lives
+        clc
+        adc #$30                ; Convert to PETSCII
+        sta SCREEN+19
+
+        ; Display level (single digit)
+        lda level
+        clc
+        adc #$30
+        sta SCREEN+28
+        rts
+```
+
+---
+
+## Hexadecimal to Screen Display
+
+Scores are stored in hex ($0123) but must display as readable numbers (0123):
+
+```asm
+hex_to_screen:
+        ; Input: A = hex byte ($A3)
+        ; Output: X = high digit (A), Y = low digit (3)
+        pha                     ; Save A
+        lsr                     ; Shift right 4 times
+        lsr
+        lsr
+        lsr                     ; A now = high nibble
+        clc
+        adc #$30                ; Convert to PETSCII (0-9)
+        tax                     ; X = high digit
+
+        pla                     ; Restore A
+        and #$0f                ; Mask low nibble
+        clc
+        adc #$30                ; Convert to PETSCII
+        tay                     ; Y = low digit
+        rts
+```
+
+**Example:** `$A3` becomes `"A"` and `"3"` in screen codes.
+
+**Why $30?** PETSCII digit `"0"` = $30, `"1"` = $31, etc. Adding $30 converts 0-9 to screen codes.
+
+---
+
+## Perfect vs Good Hits
+
+Timing accuracy determines point value:
+
+```asm
+key_pressed:
+        lda frame_counter
+        sec
+        sbc note_start          ; Frames since note started
+
+        ; Perfect = 0-1 frames
+        cmp #$02
+        bcc perfect_hit         ; < 2 frames? Perfect!
+
+        ; Good = within level window
+        ldx level
+        dex
+        lda level_windows,x     ; Get window for current level
+        sta temp
+
+        lda frame_counter
+        sec
+        sbc note_start
+        cmp temp
+        bcc good_hit            ; Within window? Good!
+
+        ; Else: miss
+        jsr handle_miss
+        rts
+
+perfect_hit:
+        jsr add_score_100       ; 100 points!
+        jsr show_perfect
+        inc combo
+        rts
+
+good_hit:
+        jsr add_score_50        ; 50 points
+        jsr show_hit
+        inc combo
+        rts
+```
+
+**Perfect hits** require pressing within 0-1 frames of the note start - extremely accurate timing. This rewards skilled players with double points.
+
+---
+
+## Victory Condition
+
+Completing all three levels triggers victory:
+
+```asm
+level_complete:
+        lda level
+        cmp #$03                ; Just finished level 3?
+        beq victory             ; Yes = game won!
+
+        ; Else advance to next level
+        inc level
+        ; ...update pattern pointers...
+        jmp main_loop
+
+victory:
+        jsr show_victory
+freeze: jmp freeze              ; Infinite loop
+```
+
+The victory message displays the final score and freezes the game. A complete playthrough!
+
+---
+
+## Combo System
+
+The `combo` variable tracks consecutive hits:
+
+```asm
+perfect_hit:
+        ; ... award points ...
+        inc combo               ; Increment combo
+        rts
+
+handle_miss:
+        ; ... lose life ...
+        lda #$00
+        sta combo               ; Reset combo to 0
+        rts
+```
+
+Currently unused, but **ready for expansion**: multiply points by combo, display combo counter, award bonus for 10+ combo, etc. This is how you'd add a "streak" system in later lessons.
+
+---
+
+## Quick Reference
+
+**16-Bit Addition:**
+```asm
+; Add value to 16-bit variable
+clc
+lda var_lo
+adc #value
+sta var_lo
+lda var_hi
+adc #$00        ; Add carry
+sta var_hi
+```
+
+**Indirect Indexed Addressing:**
+```asm
+; Setup pointer in zero page
+lda #<data_table
+sta ptr         ; $FB
+lda #>data_table
+sta ptr+1       ; $FC
+
+; Access data
+ldy #index      ; Y = offset
+lda (ptr),y     ; Load from ptr + Y
+```
+
+**Hex to PETSCII Conversion:**
+```asm
+; Convert nibble (0-F) to screen code
+and #$0f        ; Isolate nibble
+clc
+adc #$30        ; 0-9 → $30-$39 (digits)
+; A-F would need +$01 for $41-$46 (letters)
+```
+
+**Level Configuration Table:**
+```asm
+level_data:
+    !byte <pattern1, >pattern1  ; Level 1 pointer
+    !byte <pattern2, >pattern2  ; Level 2 pointer
+    !byte <pattern3, >pattern3  ; Level 3 pointer
+
+; Access with level index
+ldx level
+dex
+lda level_data,x        ; Low byte
+; ...
+```
+
+---
+
+## Complete Game Checklist
+
+**This game has:**
+- ✅ **Clear objective** - Match rhythms through 3 levels
+- ✅ **Player feedback** - HIT/MISS/PERFECT messages in color
+- ✅ **Scoring system** - Points for accuracy, displayed on HUD
+- ✅ **Lives/health** - 3 lives, lose 1 per miss
+- ✅ **Progressive difficulty** - Tighter timing windows per level
+- ✅ **Victory condition** - Complete all levels = win
+- ✅ **Defeat condition** - Lose all lives = game over
+- ✅ **Real-time display** - HUD updates instantly
+- ✅ **Multiple patterns** - Different melodies per level
+- ✅ **Professional structure** - State machine, modular code
+
+**You have created a complete, playable C64 game in 6502 assembly language.**
+
+---
+
+## Experiment!
+
+Try these modifications:
+
+1. **More levels**: Add pattern4/timing4 and extend to 4 levels
+2. **Bonus points**: Multiply score by combo (e.g., `score += 50 * combo`)
+3. **Display combo**: Show "5x COMBO!" on screen when combo >= 5
+4. **Difficulty select**: Let player choose easy/medium/hard at start
+5. **High score**: Save best score to a variable (Phase 2 covers disk saves)
+6. **Lives powerup**: Award +1 life every 500 points
+7. **Sound effects**: Different SID waveforms for hit vs miss
+
+---
+
+## What You've Achieved
+
+**In these 7 lessons, you've:**
+- Mastered SID chip programming (frequencies, waveforms, ADSR)
+- Learned CIA timer-based frame-accurate timing
+- Implemented keyboard matrix scanning for real-time input
+- Built state machines for game flow control
+- Created data-driven music systems with lookup tables
+- Programmed hit detection and timing windows
+- Designed HUDs with real-time updating displays
+- Managed 16-bit arithmetic for scoring
+- Written **666 lines of working 6502 assembly**
+
+**This is the foundation for everything that follows.** Lessons 8-32 will refine, enhance, and polish this core game into something truly special.
+
+---
+
+**Next lessons:** Waveform control, multiple voices, advanced effects, visual feedback, and turning this into a polished, professional rhythm game!

@@ -1,0 +1,275 @@
+---
+title: "Lesson 1: Your First Note"
+description: "Your first 6502 assembly program - initialise the SID chip and play a continuous musical note"
+platform: "commodore-64"
+phase: 1
+tier: 1
+lesson: 1
+---
+
+# Lesson 1: Your First Note
+
+## Beyond POKE
+
+In Phase 0, you typed `POKE 54296,15: POKE 54276,17` and eventually... sound came out. The BASIC interpreter validated your numbers, called ROM routines, and finally wrote to the SID chip. This took thousands of clock cycles.
+
+In assembly, you're going to do the same thing in under 20 clock cycles. No interpreter. No ROM. Just you, writing directly to the hardware.
+
+Welcome to 6502 assembly language on the Commodore 64.
+
+---
+
+## The One-Minute Tour
+
+- Assembly language is instructions the 6502 CPU understands directly
+- The **A register** (accumulator) is your main workspace
+- **SID registers** at $D400-$D41C control the sound chip
+- The **LDA/STA** instructions load and store values
+- Your code starts at **$0810** (2064) after a BASIC stub
+- Assembly executes hundreds of times faster than BASIC
+
+---
+
+## From BASIC to Assembly
+
+Remember this from Phase 0, Lesson 11?
+
+```basic
+10 POKE 54296,15 : REM VOLUME
+20 POKE 54276,17 : REM TRIANGLE WAVE
+```
+
+Here's the assembly equivalent:
+
+```asm
+        LDA #$0F        ; Load 15 into A register
+        STA $D418       ; Store to volume register
+        LDA #$11        ; Load 17 into A
+        STA $D404       ; Store to voice 1 control
+```
+
+**What's happening:**
+
+**BASIC approach:**
+1. Interpreter reads "POKE"
+2. Looks up command in ROM table
+3. Validates parameters
+4. Calls ROM routine
+5. Finally writes to SID
+
+**Assembly approach:**
+1. Load value into A register (2 cycles)
+2. Store A to SID register (4 cycles)
+3. Done. (6 cycles total per POKE)
+
+The assembly version is **over 100× faster** for these operations.
+
+---
+
+## Example Program 1: Your First Sound
+
+```asm
+; Lesson 001, Example 1: Your First Note
+; Plays middle C (261.63 Hz) continuously
+
+        * = $0801       ; BASIC start address
+
+        ; BASIC stub: 10 SYS 2064
+        !byte $0c,$08,$0a,$00,$9e,$20,$32,$30,$36,$34,$00,$00,$00
+
+        * = $0810       ; Machine code start (2064 decimal)
+
+init:   ; Clear all SID registers
+        LDA #$00
+        LDX #$00
+clear:  STA $D400,X
+        INX
+        CPX #$1D        ; 29 SID registers ($00-$1C)
+        BNE clear
+
+        ; Set frequency for middle C (261.63 Hz) - A440 PAL tuning
+        ; Frequency value: $1167 (4455 decimal)
+        LDA #$67        ; Low byte
+        STA $D400       ; Voice 1 frequency low
+        LDA #$11        ; High byte
+        STA $D401       ; Voice 1 frequency high
+
+        ; Set waveform and gate
+        LDA #$11        ; Bit 4 = triangle wave, bit 0 = gate on
+        STA $D404       ; Voice 1 control register
+
+        ; Set ADSR envelope
+        LDA #$08        ; Attack = 0 (instant), Decay = 8
+        STA $D405
+        LDA #$F0        ; Sustain = 15 (max), Release = 0
+        STA $D406
+
+        ; Set master volume
+        LDA #$0F        ; Volume = 15 (maximum)
+        STA $D418       ; Volume and filter register
+
+loop:   JMP loop        ; Infinite loop (note continues playing)
+```
+
+**Line-by-line breakdown:**
+
+- `* = $0801` - **Crucial!** Tells assembler this code lives at address $0801 (2049 decimal)
+- `!byte ...` - The BASIC stub. This is tokenised BASIC for `10 SYS 2064` which launches our machine code
+- `* = $0810` - Machine code starts at $0810 (2064 decimal)
+- `LDA #$00` - **LDA** = "Load Accumulator". Puts the value $00 into register A
+- `STA $D400,X` - **STA** = "Store Accumulator". Writes A to memory address $D400 + X
+- `INX` - **INX** = "Increment X". Adds 1 to the X register
+- `CPX #$1D` - **CPX** = "Compare X". Compares X with $1D (29 decimal)
+- `BNE clear` - **BNE** = "Branch if Not Equal". If CPX showed X ≠ $1D, jump back to `clear`
+- `JMP loop` - **JMP** = "Jump". Infinite loop keeps the program running
+
+**To run this:**
+1. Assemble with ACME: `acme -f cbm -o lesson-001.prg example-1.asm`
+2. Load in VICE: `x64sc lesson-001.prg`
+3. You hear a continuous middle C tone!
+
+---
+
+## Why Clear SID First?
+
+The first thing we do is clear all 29 SID registers to $00. This is **essential** because:
+
+1. **Unknown state**: When the C64 starts, SID registers contain random values
+2. **Previous programs**: If you ran other code, SID might still have settings
+3. **Clean slate**: Starting from zero guarantees predictable behaviour
+
+The clearing loop uses **indexed addressing** (`STA $D400,X`). With X=0, it writes to $D400. With X=1, it writes to $D401. The loop runs 29 times (X from 0 to $1C), clearing every SID register.
+
+---
+
+## The BASIC Stub Mystery
+
+That `!byte` line looks like gibberish, but it's tokenised BASIC:
+
+```
+$0C $08    - Link to next BASIC line (address $080C)
+$0A $00    - Line number (10 in decimal)
+$9E        - Token for "SYS"
+$20        - Space character
+$32 $30 $36 $34 - "2064" in PETSCII
+$00        - End of BASIC line
+$00 $00    - End of BASIC program
+```
+
+When you type `LOAD "LESSON-001.PRG",8,1` and `RUN`, the C64:
+1. Sees a BASIC program at $0801
+2. Executes line 10: `SYS 2064`
+3. Jumps to address 2064 ($0810)
+4. Your machine code runs!
+
+**Every C64 assembly program needs this stub** or it won't load properly.
+
+---
+
+## How SID Frequency Works
+
+To play middle C (261.63 Hz), we write $1167 to the frequency registers. But why $1167?
+
+**SID frequency formula:**
+```
+frequency_value = (note_hz * 16777216) / clock_speed
+```
+
+For PAL C64:
+```
+clock_speed = 985,248 Hz
+middle_C = 261.63 Hz
+frequency_value = (261.63 * 16777216) / 985248 = 4455 decimal = $1167 hex
+```
+
+**16-bit frequency:** SID needs the low byte ($67) in $D400 and high byte ($11) in $D401.
+
+**PAL vs NTSC:** These values are for **PAL systems** (985,248 Hz). NTSC systems run at 1,022,727 Hz (~3.8% faster), so $1167 will sound slightly sharp on NTSC. For perfect pitch on both systems, you'd need different frequency tables.
+
+---
+
+## The Triangle Wave
+
+We set $D404 (voice 1 control register) to $11:
+
+```
+Bit 7: 0 - Noise off
+Bit 6: 0 - Pulse off
+Bit 5: 0 - Sawtooth off
+Bit 4: 1 - Triangle ON
+Bit 3: 0 - Test off
+Bit 2: 0 - Ring modulation off
+Bit 1: 0 - Sync off
+Bit 0: 1 - Gate ON
+```
+
+**Bit 4** selects the triangle waveform (smooth, flute-like sound).
+**Bit 0** is the **gate** - setting it to 1 starts the note, clearing it to 0 stops the note.
+
+Try changing $11 to $21 for sawtooth (buzzy, brass-like) or $41 for pulse (hollow, clarinet-like).
+
+---
+
+## The Infinite Loop
+
+The last line `JMP loop` creates an infinite loop. Why?
+
+**Without the loop:** After setting up SID, the CPU would continue executing whatever bytes come next in memory - likely garbage, causing a crash.
+
+**With the loop:** The program stays running, keeping the note playing. The SID continues generating sound as long as the gate bit stays set and the program doesn't crash.
+
+To stop the program in VICE, press `Alt+H` to reset, or `Ctrl+C` if you run with `-console`.
+
+---
+
+## Quick Reference
+
+**6502 Instructions Introduced:**
+- `LDA #$nn` - Load accumulator immediate (2 cycles, 2 bytes)
+- `STA $aaaa` - Store accumulator absolute (4 cycles, 3 bytes)
+- `LDX #$nn` - Load X register immediate (2 cycles, 2 bytes)
+- `INX` - Increment X register (2 cycles, 1 byte)
+- `CPX #$nn` - Compare X register (2 cycles, 2 bytes)
+- `BNE label` - Branch if not equal (2-3 cycles, 2 bytes)
+- `JMP label` - Jump to label (3 cycles, 3 bytes)
+
+**SID Voice 1 Registers:**
+- `$D400` - Frequency low byte
+- `$D401` - Frequency high byte
+- `$D404` - Control register (waveform, gate)
+- `$D405` - Attack/Decay
+- `$D406` - Sustain/Release
+- `$D418` - Volume and filter mode
+
+**Common Note Frequencies (PAL, A440 tuning):**
+```
+Middle C: $1167 (261.63 Hz)
+D:        $1389 (293.66 Hz)
+E:        $15ED (329.63 Hz)
+F:        $173B (349.23 Hz)
+G:        $1A13 (392.00 Hz)
+A:        $1D45 (440.00 Hz)
+```
+
+**Assembler:**
+```bash
+acme -f cbm -o example-1.prg example-1.asm
+x64sc example-1.prg
+```
+
+---
+
+## Experiment!
+
+Try these modifications:
+
+1. **Change the pitch**: Replace $67/$11 with $89/$13 (D) or $ED/$15 (E)
+2. **Change the waveform**: Try $21 (sawtooth), $41 (pulse), or $81 (noise)
+3. **Adjust ADSR**: Change $08 to $FF for slow attack (fade-in effect)
+4. **Lower volume**: Change $0F to $07 for half volume
+
+Save your modified .asm file and reassemble to hear the changes!
+
+---
+
+**Next lesson:** Frequency tables and playing multiple notes in sequence.

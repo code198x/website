@@ -1,0 +1,331 @@
+---
+title: "Lesson 2: Frequency Control"
+description: "Build frequency lookup tables and play multiple notes in sequence using indexed addressing"
+platform: "commodore-64"
+phase: 1
+tier: 1
+lesson: 2
+---
+
+# Lesson 2: Frequency Control
+
+## Tables, Not Magic Numbers
+
+In Lesson 1, we hard-coded middle C as `$67/$11`. But what if we want to play a melody? Repeating those frequency values for every note would be tedious and error-prone.
+
+The solution: **frequency lookup tables**. Store pre-calculated SID frequency values in memory, then use indexed addressing to retrieve them. Change the index, change the note.
+
+This is how all great C64 music was made.
+
+---
+
+## The One-Minute Tour
+
+- **Frequency tables** store pre-calculated SID values for musical notes
+- **Indexed addressing** (`LDA freq_lo,X`) loads values using X as an offset
+- **16-bit frequencies** require separate low/high byte tables
+- **Note-on/note-off** requires setting and clearing the gate bit
+- **Delay loops** provide crude timing between notes
+- Sequential playback creates simple melodies
+
+---
+
+## Example Program: C-E-G Major Chord
+
+This program plays C, E, G in sequence - the notes of a C major chord.
+
+```asm
+; Lesson 002, Example 1: Frequency Table (C-E-G major chord)
+; Demonstrates frequency lookup table and sequential playback
+
+        * = $0801
+
+        ; BASIC stub: 10 SYS 2064
+        !byte $0c,$08,$0a,$00,$9e,$20,$32,$30,$36,$34,$00,$00,$00
+
+        * = $0810
+
+; Frequency table for C, E, G (major chord) - A440 PAL tuning
+freq_lo: !byte $67, $ed, $13  ; Low bytes
+freq_hi: !byte $11, $15, $1a  ; High bytes
+; C4 = $1167, E4 = $15ED, G4 = $1A13
+
+init:   JSR clear_sid
+        LDX #$00        ; Start at note index 0
+
+play_note:
+        ; Load frequency from table
+        LDA freq_lo,X
+        STA $D400       ; Voice 1 frequency low
+        LDA freq_hi,X
+        STA $D401       ; Voice 1 frequency high
+
+        ; Note on (triangle + gate)
+        LDA #$11
+        STA $D404
+
+        ; Play duration
+        JSR delay
+
+        ; Note off (triangle, no gate)
+        LDA #$10
+        STA $D404
+
+        ; Brief silence between notes
+        JSR short_delay
+
+        ; Next note
+        INX
+        CPX #$03        ; 3 notes in table
+        BNE play_note
+
+        ; Loop back to start
+        JMP init
+
+clear_sid:
+        LDA #$00
+        LDX #$00
+cls_loop:
+        STA $D400,X
+        INX
+        CPX #$1D        ; 29 SID registers
+        BNE cls_loop
+
+        ; Set ADSR envelope
+        LDA #$08        ; Attack=0, Decay=8
+        STA $D405
+        LDA #$F0        ; Sustain=15, Release=0
+        STA $D406
+
+        ; Set volume
+        LDA #$0F        ; Maximum volume
+        STA $D418
+        RTS
+
+; Note duration (~500ms)
+delay:  LDY #$20        ; Outer loop (32 iterations)
+dly1:   LDX #$FF        ; Inner loop (255 iterations)
+dly2:   DEX
+        BNE dly2
+        DEY
+        BNE dly1
+        RTS
+
+; Short pause (~100ms)
+short_delay:
+        LDY #$08        ; Shorter outer loop
+sdly1:  LDX #$FF
+sdly2:  DEX
+        BNE sdly2
+        DEY
+        BNE sdly1
+        RTS
+```
+
+**To run:**
+```bash
+acme -f cbm -o lesson-002.prg example-1.asm
+x64sc lesson-002.prg
+```
+
+You'll hear C-E-G-C-E-G... repeating forever!
+
+---
+
+## How Indexed Addressing Works
+
+The magic line is:
+```asm
+LDA freq_lo,X
+```
+
+This means: "Load the accumulator with the value at address `freq_lo + X`"
+
+**When X = 0:**
+- `LDA freq_lo,X` loads `freq_lo[0]` = $67 (C's low byte)
+
+**When X = 1:**
+- `LDA freq_lo,X` loads `freq_lo[1]` = $ED (E's low byte)
+
+**When X = 2:**
+- `LDA freq_lo,X` loads `freq_lo[2]` = $13 (G's low byte)
+
+By incrementing X (`INX`), we step through the table automatically. No need to write separate code for each note!
+
+---
+
+## Why Split Low and High Bytes?
+
+SID frequency is 16 bits, but 6502 instructions work with 8 bits. We must split each frequency:
+
+```
+C (261.63 Hz) = $1167 = %0001 0001 0110 0111
+                        High    Low
+                        $11     $67
+```
+
+**Storage in memory:**
+```
+freq_lo: $67, $ED, $13  (low bytes of C, E, G)
+freq_hi: $11, $15, $1A  (high bytes of C, E, G)
+```
+
+**Loading into SID:**
+```asm
+LDA freq_lo,X  ; Get low byte for note X
+STA $D400      ; Store to frequency low
+LDA freq_hi,X  ; Get high byte for note X
+STA $D401      ; Store to frequency high
+```
+
+**Critical:** The indices must match! `freq_lo[0]` and `freq_hi[0]` must be the same note.
+
+---
+
+## Note On / Note Off
+
+To play a note and then stop it, we manipulate the **gate bit** (bit 0 of $D404):
+
+**Note ON:**
+```asm
+LDA #$11    ; %00010001 = triangle (bit 4) + gate ON (bit 0)
+STA $D404
+```
+
+**Note OFF:**
+```asm
+LDA #$10    ; %00010000 = triangle (bit 4) + gate OFF (bit 0)
+STA $D404
+```
+
+When the gate bit goes from 1→0, the **release** phase of the ADSR envelope begins. The note fades out according to the release setting ($D406 bits 0-3).
+
+Without turning the gate off between notes, they would blend together - no distinct attacks.
+
+---
+
+## Crude Timing with Delay Loops
+
+The `delay` and `short_delay` subroutines use nested loops to waste time:
+
+```asm
+delay:  LDY #$20        ; Outer loop: 32 iterations
+dly1:   LDX #$FF        ; Inner loop: 255 iterations
+dly2:   DEX             ; Decrement X (2 cycles)
+        BNE dly2        ; Branch if not zero (2-3 cycles)
+        DEY             ; Decrement Y (2 cycles)
+        BNE dly1        ; Branch if not zero (2-3 cycles)
+        RTS
+```
+
+**Approximate duration:**
+- Inner loop: 255 × 5 cycles ≈ 1275 cycles ≈ 1.3ms
+- Outer loop: 32 × 1.3ms ≈ 41ms
+- Plus overhead ≈ 50ms total
+
+This is **very crude** timing - the exact duration varies with CPU speed (PAL vs NTSC). In Lesson 5, we'll use CIA timers for precise, frame-accurate timing.
+
+---
+
+## The Repeat Loop
+
+After playing all 3 notes, we jump back to `init`:
+
+```asm
+INX
+CPX #$03        ; Have we played 3 notes?
+BNE play_note   ; No - play next note
+JMP init        ; Yes - start over
+```
+
+This creates an infinite loop of C-E-G-C-E-G... forever.
+
+To add more notes, just extend the tables:
+```asm
+freq_lo: !byte $67, $ed, $13, $67  ; C E G C (octave higher)
+freq_hi: !byte $11, $15, $1a, $22
+```
+
+And change `CPX #$03` to `CPX #$04`.
+
+---
+
+## Building a Full Octave Table
+
+Here's a complete chromatic scale (C4 to C5) for your own experiments:
+
+```asm
+; Chromatic scale C4-C5 (13 notes, PAL A440 tuning)
+freq_lo: !byte $67, $72, $89, $aa, $ed, $3b, $94
+         !byte $13, $a4, $45, $04, $da, $ce
+
+freq_hi: !byte $11, $12, $13, $14, $15, $17, $18
+         !byte $1a, $1b, $1d, $1f, $20, $22
+
+; Note names:
+; 0=C4, 1=C#4, 2=D4, 3=D#4, 4=E4, 5=F4, 6=F#4
+; 7=G4, 8=G#4, 9=A4, 10=A#4, 11=B4, 12=C5
+```
+
+Now you can play any note from 0-12 by setting X to that index!
+
+---
+
+## Quick Reference
+
+**Indexed Addressing Modes:**
+```asm
+LDA table,X     ; Load from (table + X)
+STA table,X     ; Store to (table + X)
+LDA table,Y     ; Load from (table + Y)
+```
+
+**SID Control Register Bits ($D404):**
+```
+Bit 0: Gate (1=on, 0=off)
+Bit 4: Triangle waveform
+Bit 5: Sawtooth waveform
+Bit 6: Pulse waveform
+Bit 7: Noise waveform
+```
+
+**Note Frequencies (PAL, A440):**
+```
+C4:  $1167 = 4455 decimal (261.63 Hz)
+D4:  $1389 = 5001 decimal (293.66 Hz)
+E4:  $15ED = 5613 decimal (329.63 Hz)
+F4:  $173B = 5947 decimal (349.23 Hz)
+G4:  $1A13 = 6675 decimal (392.00 Hz)
+A4:  $1D45 = 7493 decimal (440.00 Hz)
+B4:  $20DA = 8410 decimal (493.88 Hz)
+C5:  $22CE = 8910 decimal (523.25 Hz)
+```
+
+**16-Bit Split Pattern:**
+```asm
+; Value $1167 becomes:
+freq_lo: !byte $67  ; Low byte
+freq_hi: !byte $11  ; High byte
+
+; Loading:
+LDA freq_lo,X
+STA $D400
+LDA freq_hi,X
+STA $D401
+```
+
+---
+
+## Experiment!
+
+Try these modifications:
+
+1. **Change the melody**: Replace C-E-G with other note combinations
+2. **Add more notes**: Extend both tables and change `CPX #$03` to match
+3. **Different waveform**: Change `#$11` to `#$21` (sawtooth) or `#$41` (pulse)
+4. **Adjust timing**: Change `#$20` in `delay` to speed up or slow down playback
+5. **Add dynamics**: Try different ADSR values for each note
+
+---
+
+**Next lesson:** Real-time keyboard input for interactive playback - your first PLAYABLE program!
