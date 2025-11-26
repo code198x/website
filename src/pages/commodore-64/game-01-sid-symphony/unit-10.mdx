@@ -1,0 +1,244 @@
+---
+title: "Timing Windows"
+description: "Precision matters. Add Perfect, Good, and Late grades with different point values to reward accurate timing."
+pubDate: 2025-11-26
+game: 1
+gameName: "SID Symphony"
+unit: 10
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "timing", "scoring", "feedback"]
+prevLesson: "/commodore-64/game-01-sid-symphony/unit-09"
+nextLesson: "/commodore-64/game-01-sid-symphony/unit-11"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+## Beyond Hit or Miss
+
+Until now, hitting a note anywhere in the hit zone gave the same reward. Press the key when the note is barely visible, or press it at the last possible moment — same points, same feedback.
+
+Real rhythm games don't work this way. They grade your timing: Perfect, Great, Good, OK, Miss. Better timing means better scores. This precision is what separates casual play from mastery.
+
+This unit divides our hit zone into timing windows, each with its own point value and visual feedback.
+
+## Defining the Windows
+
+Our hit zone is 8 columns wide (columns 0-7, where column 0 is the target line). We divide this into three grades:
+
+| Grade | Columns | Points | Colour |
+|-------|---------|--------|--------|
+| Perfect | 0-2 | 15 | Green |
+| Good | 3-5 | 10 | Yellow |
+| Late | 6-7 | 5 | Red |
+
+```asm
+; Timing window boundaries (within HIT_ZONE_X = 8)
+ZONE_PERFECT    = 3             ; Columns 0-2 = Perfect
+ZONE_GOOD       = 6             ; Columns 3-5 = Good
+                                ; Columns 6-7 = Late
+
+; Point values per grade
+POINTS_PERFECT  = 15
+POINTS_GOOD     = 10
+POINTS_LATE     = 5
+
+; Grade identifiers
+GRADE_PERFECT   = 0
+GRADE_GOOD      = 1
+GRADE_LATE      = 2
+
+GRADE_FLASH_TIME = 20           ; Frames to show grade text
+```
+
+The closer to the target line (column 0), the better the grade. Players who wait until the last moment get Perfect; those who press early get Late.
+
+## Calculating the Grade
+
+When a hit occurs, we check where the note was in the hit zone:
+
+```asm
+calculate_grade:
+            lda hit_position
+            cmp #ZONE_PERFECT       ; < 3 = Perfect
+            bcs cg_not_perfect
+            ; PERFECT!
+            lda #GRADE_PERFECT
+            sta current_grade
+            lda #POINTS_PERFECT
+            jmp cg_add_score
+
+cg_not_perfect:
+            cmp #ZONE_GOOD          ; < 6 = Good
+            bcs cg_late
+            ; GOOD
+            lda #GRADE_GOOD
+            sta current_grade
+            lda #POINTS_GOOD
+            jmp cg_add_score
+
+cg_late:
+            ; LATE (positions 6-7)
+            lda #GRADE_LATE
+            sta current_grade
+            lda #POINTS_LATE
+
+cg_add_score:
+            ; Add points (A contains point value)
+            clc
+            adc score_lo
+            sta score_lo
+            bcc cg_done
+            inc score_hi
+cg_done:
+            rts
+```
+
+The `bcs` (branch if carry set) instruction branches when the comparison result is greater than or equal. So `cmp #ZONE_PERFECT` followed by `bcs` branches if the position is 3 or higher — meaning it's not Perfect.
+
+## Showing the Grade
+
+Each grade flashes briefly on screen in its track row. We use indirect addressing with zero-page pointers to write to the correct screen location:
+
+```asm
+show_grade_text:
+            ; Set up screen pointer based on track
+            lda check_track
+            cmp #TRACK_1
+            bne sgt_not_t1
+            lda #<(SCREEN + ROW_TRACK1 * 40 + 15)
+            sta grade_screen_ptr
+            lda #>(SCREEN + ROW_TRACK1 * 40 + 15)
+            sta grade_screen_ptr + 1
+            lda #GRADE_FLASH_TIME
+            sta grade_timer_t1
+            jmp sgt_draw
+            ; ... similar for tracks 2 and 3
+
+sgt_draw:
+            ; Draw grade text based on current_grade
+            lda current_grade
+            cmp #GRADE_PERFECT
+            bne sgt_not_perf
+            ; Draw "PERFECT!" in green
+            ldx #$00
+sgt_perf_loop:
+            lda perfect_text,x
+            beq sgt_perf_done
+            ldy #$00
+            sta (grade_screen_ptr),y
+            lda #COL_GREEN
+            sta (grade_colour_ptr),y
+            ; Increment pointers
+            inc grade_screen_ptr
+            bne +
+            inc grade_screen_ptr + 1
++           inc grade_colour_ptr
+            bne +
+            inc grade_colour_ptr + 1
++           inx
+            jmp sgt_perf_loop
+sgt_perf_done:
+            rts
+```
+
+The pointers live in zero page ($57-$5a) so we can use indirect indexed addressing: `sta (grade_screen_ptr),y`. This lets us write to calculated screen addresses without hardcoding them.
+
+## Timer-Based Clearing
+
+Each track has its own grade timer. Every frame, we check if any timer has expired and clear that track's grade text:
+
+```asm
+update_grade_text:
+            ; Track 1
+            lda grade_timer_t1
+            beq ugt_t2              ; Skip if already zero
+            dec grade_timer_t1
+            bne ugt_t2              ; Skip if not yet zero
+            jsr clear_grade_t1      ; Timer just hit zero - clear text
+
+ugt_t2:
+            lda grade_timer_t2
+            beq ugt_t3
+            dec grade_timer_t2
+            bne ugt_t3
+            jsr clear_grade_t2
+
+ugt_t3:
+            lda grade_timer_t3
+            beq ugt_done
+            dec grade_timer_t3
+            bne ugt_done
+            jsr clear_grade_t3
+
+ugt_done:
+            rts
+
+clear_grade_t1:
+            ldx #$00
+cgt1_loop:
+            lda #TRACK_CHAR         ; Restore track line character
+            sta SCREEN + ROW_TRACK1 * 40 + 15,x
+            lda #COL_CYAN
+            sta COLOUR + ROW_TRACK1 * 40 + 15,x
+            inx
+            cpx #8                  ; Clear 8 characters
+            bne cgt1_loop
+            rts
+```
+
+This pattern — countdown timer that triggers an action when it reaches zero — appears constantly in game programming. We'll use it again for combo displays, power-ups, and animations.
+
+## Integration
+
+The grade calculation replaces the old fixed-point scoring. In `check_hit_on_track`:
+
+```asm
+check_hit_on_track:
+            ; ... find note in hit zone ...
+
+            ; HIT! Save position for grade calculation
+            lda note_x,x
+            sta hit_position
+
+            jsr erase_note
+            lda #NOTE_INACTIVE
+            ldx hit_note_idx
+            sta note_x,x
+
+            ; Calculate grade and add appropriate score
+            jsr calculate_grade
+
+            ; Show grade text on screen
+            jsr show_grade_text
+
+            ; Continue with hit flash, crowd update, etc.
+            ; ...
+```
+
+And in the main game loop, we add the grade text update:
+
+```asm
+            ; Update sound effects
+            jsr update_filter_sweep
+            jsr update_bum_note
+
+            ; Update grade text (Unit 10)
+            jsr update_grade_text
+
+            ; Update displays
+            jsr update_display
+```
+
+## The Result
+
+Play the game now. You'll see:
+
+- "PERFECT!" in green when you hit notes right at the target line
+- "GOOD" in yellow for slightly early hits
+- "LATE" in red for hits at the edge of the zone
+
+Watch your score climb faster with precise timing. A song played perfectly scores 50% higher than one played sloppily.
+
+## What's Next
+
+We have grades, but no way to chain them. In Unit 11, we add a **combo system** — consecutive Perfect hits multiply your score. The pressure builds.

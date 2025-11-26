@@ -1,0 +1,213 @@
+---
+title: "Combo System"
+description: "Reward sustained excellence. Build multipliers through consecutive hits and watch your score soar."
+pubDate: 2025-11-26
+game: 1
+gameName: "SID Symphony"
+unit: 11
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "combo", "multiplier", "scoring"]
+prevLesson: "/commodore-64/game-01-sid-symphony/unit-10"
+nextLesson: "/commodore-64/game-01-sid-symphony/unit-12"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+## The Value of Consistency
+
+Timing grades reward precision on individual notes. But what about sustained excellence? A player who hits 50 notes in a row deserves more than someone who hits every other note.
+
+Enter the combo system. Consecutive hits build a multiplier. More hits, bigger multiplier, higher scores. One miss resets everything. The pressure builds with every successful hit.
+
+## The Multiplier Model
+
+We use a simple progression:
+
+| Hits | Multiplier | Colour |
+|------|------------|--------|
+| 0-9 | 1x | Grey |
+| 10-19 | 2x | Yellow |
+| 20-29 | 3x | Green |
+| 30+ | 4x | Cyan |
+
+```asm
+; Combo constants
+COMBO_THRESHOLD = 10            ; Hits needed per multiplier level
+MAX_MULTIPLIER  = 4             ; Maximum multiplier (4x)
+
+; Variables
+combo_count:        !byte $00   ; Consecutive hits (0-9)
+multiplier:         !byte $01   ; Current multiplier (1-4)
+```
+
+Every 10 consecutive hits increases the multiplier. The combo counter resets to zero each time, so you need another 10 hits for the next level.
+
+## Building the Combo
+
+Every successful hit — Perfect, Good, or Late — calls the combo update routine:
+
+```asm
+update_combo:
+            inc combo_count
+            lda combo_count
+            cmp #COMBO_THRESHOLD
+            bcc uc_done             ; Haven't reached threshold yet
+
+            ; Reached threshold - increase multiplier if not at max
+            lda multiplier
+            cmp #MAX_MULTIPLIER
+            bcs uc_reset            ; Already at max
+            inc multiplier
+
+uc_reset:
+            lda #$00
+            sta combo_count         ; Reset combo counter
+
+uc_done:
+            rts
+```
+
+The logic is straightforward: increment the counter, check if we've hit the threshold, increase the multiplier if possible, reset the counter either way.
+
+## Breaking the Combo
+
+A miss devastates your progress. Both the combo counter and the multiplier reset to their starting values:
+
+```asm
+update_crowd_miss:
+            jsr play_bum_note       ; Audio feedback
+
+            ; Reset combo and multiplier on miss
+            lda #$00
+            sta combo_count
+            lda #$01
+            sta multiplier
+
+            ; Continue with crowd meter decrease...
+```
+
+This creates tension. That 4x multiplier took 30 consecutive hits to build. One mistake and it's gone. Players naturally become more careful as their multiplier climbs.
+
+## Multiplication on the 6502
+
+The 6502 has no multiply instruction. We implement multiplication through shifts and adds:
+
+```asm
+cg_add_score:
+            ; A contains base points, multiply by multiplier (1-4)
+            sta cg_base_points      ; Save base points
+            lda multiplier
+            cmp #$01
+            beq cg_mult_done        ; 1x = no change
+            cmp #$02
+            beq cg_mult_2x
+            cmp #$03
+            beq cg_mult_3x
+
+            ; 4x = shift left twice
+            lda cg_base_points
+            asl                     ; x2
+            asl                     ; x4
+            jmp cg_mult_done
+
+cg_mult_2x:
+            lda cg_base_points
+            asl                     ; x2
+            jmp cg_mult_done
+
+cg_mult_3x:
+            lda cg_base_points
+            asl                     ; x2
+            clc
+            adc cg_base_points      ; x2 + x1 = x3
+
+cg_mult_done:
+            ; A now contains multiplied points
+            clc
+            adc score_lo
+            sta score_lo
+            bcc cg_done
+            inc score_hi
+```
+
+The `asl` (arithmetic shift left) instruction doubles a value. Two shifts give us 4x. For 3x, we shift once (2x) then add the original value (2x + 1x = 3x).
+
+## Displaying the Multiplier
+
+The multiplier appears on the score row, colour-coded by level:
+
+```asm
+MULT_SCREEN_POS = SCREEN + (ROW_SCORE * 40) + 18
+
+draw_multiplier:
+            lda multiplier
+            clc
+            adc #$30                ; Convert to ASCII digit
+            sta MULT_SCREEN_POS
+            lda #$18                ; 'X' in screen codes
+            sta MULT_SCREEN_POS + 1
+
+            ; Colour based on multiplier level
+            lda multiplier
+            cmp #$04
+            bcs dm_max              ; 4x = cyan
+            cmp #$03
+            bcs dm_high             ; 3x = green
+            cmp #$02
+            bcs dm_mid              ; 2x = yellow
+            lda #COL_GREY           ; 1x = grey
+            jmp dm_set_col
+dm_mid:
+            lda #COL_YELLOW
+            jmp dm_set_col
+dm_high:
+            lda #COL_GREEN
+            jmp dm_set_col
+dm_max:
+            lda #COL_CYAN
+dm_set_col:
+            sta COLOUR + (ROW_SCORE * 40) + 18
+            sta COLOUR + (ROW_SCORE * 40) + 19
+            rts
+```
+
+The colour progression provides instant feedback. Grey is baseline. Yellow means you're building. Green means you're doing well. Cyan means you're on fire — and one mistake away from losing it all.
+
+## Initialisation
+
+The combo system needs proper reset when starting a new game:
+
+```asm
+            ; Reset combo system
+            lda #$00
+            sta combo_count
+            lda #$01
+            sta multiplier
+```
+
+## The Psychology
+
+Watch how players behave with the combo system:
+
+- At 1x: Relaxed, taking risks
+- At 2x: Starting to focus
+- At 3x: Visibly concentrating
+- At 4x: Holding their breath
+
+The multiplier doesn't just affect score — it affects how the game *feels*. That's the magic of risk/reward systems.
+
+## Score Impact
+
+With the multiplier, maximum scores increase dramatically:
+
+| Grade | Base | 1x | 2x | 3x | 4x |
+|-------|------|----|----|----|----|
+| Perfect | 15 | 15 | 30 | 45 | 60 |
+| Good | 10 | 10 | 20 | 30 | 40 |
+| Late | 5 | 5 | 10 | 15 | 20 |
+
+A player maintaining 4x throughout scores four times higher than one who keeps missing. Skill is now clearly visible in the final score.
+
+## What's Next
+
+The combo system adds tension, but we can push the "feel" further. In Unit 12, we add **visual juice** — screen effects that make every hit feel impactful.

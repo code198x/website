@@ -1,0 +1,253 @@
+---
+title: "Keeping Score"
+description: "Track hits with points and streaks. The numbers on screen finally mean something."
+pubDate: 2025-11-25
+game: 1
+gameName: "SID Symphony"
+unit: 4
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "scoring", "binary-to-decimal", "game-state"]
+prevLesson: "/commodore-64/game-01-sid-symphony/unit-03"
+nextLesson: "/commodore-64/game-01-sid-symphony/unit-05"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+## What You're Building
+
+You can hit notes. You can miss them. But the score stays frozen at zero, the streak never moves. Your performance isn't being measured.
+
+By the end of this unit, you'll have:
+
+- Points awarded for each hit (10 points per note)
+- A streak counter that tracks consecutive hits
+- Streak reset on misses
+- Live score and streak display that updates as you play
+
+The numbers mean something now. Every hit counts.
+
+![Score and streak tracking](/images/commodore-64/game-01-sid-symphony/unit-04/screenshot.png)
+
+## Storing the Score
+
+A score can get big. 10 points per hit, maybe 100 notes in a song — that's 1000 points minimum. We need more than a single byte (max 255).
+
+Two bytes give us 0-65535:
+
+```asm
+score_lo:       !byte $00       ; Low byte of score
+score_hi:       !byte $00       ; High byte of score
+streak:         !byte $00       ; Current consecutive hits (0-255)
+best_streak:    !byte $00       ; Best streak this game
+```
+
+Why track `best_streak`? For the end-of-game screen (Unit 8). Players like seeing their best performance, even if they fumbled at the end.
+
+## Adding Points
+
+Adding to a 16-bit number requires handling the carry:
+
+```asm
+POINTS_PER_HIT  = 10
+
+add_score:
+            clc                     ; Clear carry before addition
+            lda score_lo
+            adc #POINTS_PER_HIT     ; Add to low byte
+            sta score_lo
+            bcc as_done             ; No overflow? Done
+            inc score_hi            ; Overflow: increment high byte
+as_done:
+            rts
+```
+
+When `score_lo` overflows past 255, the carry flag is set. We add that carry to `score_hi` by incrementing it. This is how all multi-byte arithmetic works on the 6502.
+
+## Managing Streaks
+
+Streaks are simpler — just one byte. On a hit:
+
+```asm
+            inc streak              ; One more in a row
+            lda streak
+            cmp best_streak         ; New record?
+            bcc skip_best           ; No, skip
+            sta best_streak         ; Yes, save it
+skip_best:
+```
+
+On a miss:
+
+```asm
+            lda #$00
+            sta streak              ; Back to zero
+```
+
+The streak resets completely. No partial credit for "almost" keeping it going.
+
+## The Display Problem
+
+We have a 16-bit binary number. The screen wants decimal digits. The 6502 doesn't have a divide instruction. How do we convert?
+
+Repeated subtraction. To find how many 10000s are in a number, subtract 10000 until you can't anymore. Count the subtractions. That's your digit.
+
+```asm
+convert_score:
+            ; Copy score to working area
+            lda score_lo
+            sta work_lo
+            lda score_hi
+            sta work_hi
+
+            ; 10000s digit
+            ldx #$00                ; Digit counter
+cs_10000:
+            ; Can we subtract 10000?
+            lda work_hi
+            cmp #>10000             ; Compare high bytes
+            bcc cs_10000_done       ; Definitely can't
+            bne cs_10000_sub        ; Definitely can
+            lda work_lo
+            cmp #<10000             ; High bytes equal, check low
+            bcc cs_10000_done       ; Can't subtract
+cs_10000_sub:
+            ; Subtract 10000
+            lda work_lo
+            sec
+            sbc #<10000
+            sta work_lo
+            lda work_hi
+            sbc #>10000
+            sta work_hi
+            inx                     ; Count this subtraction
+            jmp cs_10000
+cs_10000_done:
+            stx score_digits        ; Store 10000s digit
+```
+
+Then repeat for 1000s, 100s, 10s, and 1s. Each iteration is simpler because the numbers get smaller.
+
+The `<` and `>` operators extract the low and high bytes of a 16-bit constant. `<10000` is `$10`, `>10000` is `$27`.
+
+## Drawing Digits
+
+Once we have digits (0-9), we convert to screen codes and write them:
+
+```asm
+SCORE_SCREEN_POS = SCREEN + (ROW_SCORE * 40) + 7
+
+draw_score:
+            ldx #$00
+ds_loop:
+            lda score_digits,x
+            clc
+            adc #$30            ; Convert 0-9 to screen code '0'-'9'
+            sta SCORE_SCREEN_POS,x
+            inx
+            cpx #$06            ; 6 digits
+            bne ds_loop
+            rts
+```
+
+Screen codes for digits are `$30-$39` (same as PETSCII). Add `$30` to a digit value, and you get the character.
+
+## Streak Display
+
+The streak is simpler — just two digits (0-99 is plenty):
+
+```asm
+convert_streak:
+            lda streak
+
+            ; 10s digit
+            ldx #$00
+cst_10:
+            cmp #10
+            bcc cst_10_done
+            sec
+            sbc #10
+            inx
+            jmp cst_10
+cst_10_done:
+            stx streak_digits       ; Tens
+
+            ; 1s digit (remainder in A)
+            sta streak_digits + 1   ; Ones
+            rts
+```
+
+This is the same algorithm, just for a single byte. Subtract 10 until you can't, count the subtractions, the remainder is the ones digit.
+
+## Integration
+
+In `check_hit`, after removing the note:
+
+```asm
+            ; Award points
+            jsr add_score
+
+            ; Increment streak
+            inc streak
+            lda streak
+            cmp best_streak
+            bcc ch_skip_best
+            sta best_streak
+ch_skip_best:
+            ; Trigger green flash
+            lda #FLASH_DURATION
+            sta hit_flash
+```
+
+In `move_notes`, when a note despawns:
+
+```asm
+despawn_note:
+            ; Note missed! Reset streak
+            lda #$00
+            sta streak
+            ; Trigger red flash
+            lda #FLASH_DURATION
+            sta miss_flash
+```
+
+## Update Every Frame
+
+The main loop calls `update_display` each frame:
+
+```asm
+            ; Update score display
+            jsr update_display
+
+update_display:
+            jsr convert_score
+            jsr draw_score
+            jsr convert_streak
+            jsr draw_streak
+            rts
+```
+
+Is this wasteful? Slightly — we're converting and drawing even when nothing changed. But it's simple and fast enough. Optimisation can wait.
+
+## What You've Built
+
+Run it. Hit a note — watch the score jump to 10, the streak to 1. Hit another — 20, streak 2. Miss one — score stays, streak drops to 0.
+
+You now have:
+
+- **Multi-byte arithmetic** — 16-bit addition with carry
+- **Binary-to-decimal conversion** — Repeated subtraction method
+- **Live display updates** — Screen reflects game state
+- **Streak mechanics** — Rewarding consistency
+
+## What You've Learnt
+
+- **16-bit numbers** — Use two bytes, handle carry between them
+- **Division without divide** — Repeated subtraction gives quotient and remainder
+- **Screen code conversion** — Add `$30` to convert digit values to displayable characters
+- **State integration** — Connecting game events to visible feedback
+
+## Next Unit
+
+Score goes up. Streak goes up and down. But there's no consequence for missing. You can't lose. The crowd meter sits empty, doing nothing.
+
+In Unit 5, we add the crowd. Hit notes to keep them happy. Miss too many and they leave. Now there's something to lose.

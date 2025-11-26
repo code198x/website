@@ -1,0 +1,265 @@
+---
+title: "Song Data"
+description: "Replace fixed spawning with authored song data. Notes appear when the song says they should, not on a timer."
+pubDate: 2025-11-26
+game: 1
+gameName: "SID Symphony"
+unit: 7
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "data-driven", "pointers", "indirect-addressing"]
+prevLesson: "/commodore-64/game-01-sid-symphony/unit-06"
+nextLesson: "/commodore-64/game-01-sid-symphony/unit-08"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+## What You're Building
+
+Notes spawn on a fixed timer. Track 1, track 2, track 3, repeat. That's predictable — not musical. Real rhythm games have authored patterns.
+
+By the end of this unit, you'll have:
+
+- Song data that specifies exactly when each note appears
+- Delta timing — each note says "wait N frames after the previous note"
+- Track assignment from data, not rotation
+- Song completion detection
+- The same engine playing any song you write
+
+![Song data driving gameplay](/images/commodore-64/game-01-sid-symphony/unit-07/screenshot.png)
+
+## The Power of Data-Driven Design
+
+Here's the key insight: **the game engine doesn't change — only the data does**.
+
+The same code that plays a simple test pattern can play a complex musical piece. The code doesn't know or care what song it's playing. It just reads data and spawns notes.
+
+This is data-driven design. It's how real games work.
+
+## Song Data Format
+
+Each note is two bytes: delta time and track.
+
+```asm
+; Song data: pairs of (delta_frames, track)
+; delta = frames to wait before spawning this note
+; track = 0 (top/X), 1 (middle/C), 2 (bottom/V)
+; End marker: 0, 0
+
+song_data:
+            !byte 60, 1         ; After 60 frames, note on middle track
+            !byte 40, 1         ; After 40 more frames, middle again
+            !byte 40, 0         ; After 40 more frames, top track
+            !byte 40, 2         ; After 40 more frames, bottom track
+            ; ... more notes ...
+            !byte 0, 0          ; End marker
+```
+
+Why delta timing instead of absolute timestamps? Absolute timestamps overflow a byte quickly — 255 frames is only about 5 seconds at 50fps. Delta timing allows songs of any length.
+
+## The Song Pointer
+
+We need to track where we are in the song:
+
+```asm
+; Zero page pointer for indirect addressing
+song_ptr        = $fd       ; 2 bytes: $fd-$fe
+
+; Variables
+next_note_timer: !byte $00
+song_playing:   !byte $00
+```
+
+The pointer must be in zero page for indirect addressing to work. That's why we use `$fd` (and `$fe` for the high byte), not a regular variable location.
+
+## Initialising the Song
+
+```asm
+init_song:
+            ; Set song pointer to start of song data
+            lda #<song_data
+            sta song_ptr
+            lda #>song_data
+            sta song_ptr + 1
+
+            ; Read first delta time
+            ldy #$00
+            lda (song_ptr),y
+            sta next_note_timer
+
+            ; Song is playing
+            lda #$01
+            sta song_playing
+
+            rts
+```
+
+The `<` and `>` operators extract the low and high bytes of an address. `#<song_data` gives the low byte of wherever `song_data` lives in memory.
+
+## Reading Song Data
+
+Every frame, we check if it's time for the next note:
+
+```asm
+check_song:
+            lda song_playing
+            beq cs_done                 ; Song already ended
+
+            dec next_note_timer
+            bne cs_done                 ; Not time yet
+
+            ; Time for next note - spawn it
+            ldy #$01                    ; Track is at offset 1
+            lda (song_ptr),y
+            jsr spawn_note_on_track
+
+            ; Advance pointer by 2 bytes
+            clc
+            lda song_ptr
+            adc #$02
+            sta song_ptr
+            bcc cs_no_carry
+            inc song_ptr + 1
+cs_no_carry:
+
+            ; Read next delta time
+            ldy #$00
+            lda (song_ptr),y
+            beq cs_end_of_song          ; 0 = end marker
+            sta next_note_timer
+cs_done:
+            rts
+
+cs_end_of_song:
+            lda #$00
+            sta song_playing
+            rts
+```
+
+This replaces the fixed spawn timer entirely. Notes appear exactly when the song data says.
+
+## Indirect Addressing
+
+The instruction `lda (song_ptr),y` is indirect indexed addressing. It:
+
+1. Reads the 16-bit address from `song_ptr` (actually from `$fd` and `$fe`)
+2. Adds Y to that address
+3. Loads the byte from the resulting address
+
+So if `song_ptr` contains `$1000` and Y is `1`, it loads from `$1001`.
+
+This is how we read sequential data from anywhere in memory using a pointer we can advance.
+
+## Spawn on Specific Track
+
+Instead of rotating through tracks, we spawn on the track specified by the song:
+
+```asm
+spawn_note_on_track:
+            sta spawn_track_temp
+
+            ; Find free slot
+            ldx #$00
+snot_find:
+            lda note_x,x
+            cmp #NOTE_INACTIVE
+            beq snot_found
+            inx
+            cpx #MAX_NOTES
+            bne snot_find
+            rts                         ; No free slot
+
+snot_found:
+            lda #NOTE_START_X
+            sta note_x,x
+
+            ; Assign track from parameter
+            lda spawn_track_temp
+            sta note_track,x
+
+            jsr draw_note
+            rts
+```
+
+The track comes from the song data, stored in A when we call this routine.
+
+## Song Completion
+
+When we read a delta of 0, the song has ended. But notes might still be on screen:
+
+```asm
+check_notes_remaining:
+            ldx #$00
+cnr_loop:
+            lda note_x,x
+            cmp #NOTE_INACTIVE
+            bne cnr_found               ; Still have notes
+            inx
+            cpx #MAX_NOTES
+            bne cnr_loop
+            ; No notes left - song complete!
+            jsr trigger_song_complete
+cnr_found:
+            rts
+```
+
+We check after moving notes each frame. When the song has ended AND all notes are cleared, we show the completion message.
+
+## A Real Pattern
+
+The song in this unit has structure:
+
+```asm
+song_data:
+            ; Intro - single notes, slow
+            !byte 60, 1         ; Middle track (C)
+            !byte 40, 1         ; Middle again
+            !byte 40, 0         ; Top track (X)
+            !byte 40, 2         ; Bottom track (V)
+
+            ; Build up - alternating pattern
+            !byte 30, 1         ; C
+            !byte 30, 0         ; X
+            !byte 30, 1         ; C
+            !byte 30, 2         ; V
+            ; ... repeats ...
+
+            ; Faster section
+            !byte 20, 0         ; X
+            !byte 20, 1         ; C
+            !byte 20, 2         ; V
+            ; ... continues ...
+
+            ; Chord hits (notes close together)
+            !byte 40, 0         ; X
+            !byte 5, 1          ; C (almost simultaneous)
+            !byte 5, 2          ; V (chord!)
+
+            ; End marker
+            !byte 0, 0
+```
+
+The "chord" moments — notes spawning 5 frames apart — arrive almost simultaneously, requiring you to hit all three keys together. That's impossible with fixed rotation.
+
+## What You've Built
+
+Run it. Watch the pattern unfold. It's not random — it's authored. The intro eases you in, the middle section builds intensity, and the chord hits demand precision.
+
+You now have:
+
+- **Data-driven spawning** — Song data controls everything
+- **Indirect addressing** — Reading sequential data through a pointer
+- **Song structure** — Intro, build-up, intensity, resolution
+- **Completion state** — The song can end
+
+## What You've Learnt
+
+- **Delta timing** — Relative timestamps that don't overflow
+- **Zero page pointers** — Required for indirect addressing
+- **Indirect indexed addressing** — `lda (ptr),y` for reading data through pointers
+- **Data-driven design** — Same code, different data, different experience
+
+## Next Unit
+
+The engine is complete. Three tracks, song data, scoring, crowd reactions. But one song isn't a game.
+
+In Unit 8, we polish the full experience — the performance loop that makes you want to play again.

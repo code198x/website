@@ -1,0 +1,186 @@
+---
+title: "Pause"
+description: "Let players breathe. A simple pause feature transforms a demanding game into one that respects the player's time."
+pubDate: 2025-11-26
+game: 1
+gameName: "SID Symphony"
+unit: 15
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "pause", "state-machine", "input"]
+prevLesson: "/commodore-64/game-01-sid-symphony/unit-14"
+nextLesson: "/commodore-64/game-01-sid-symphony/unit-16"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+## The Need to Stop
+
+Life interrupts. The phone rings. Someone knocks. The player needs to look away. Without pause, these moments become failures — missed notes, lost progress, frustration.
+
+Pause is respect. It says "take your time, we'll wait." A small feature with outsized impact on player experience.
+
+## A New State
+
+We add a fifth game state:
+
+```asm
+; Game states
+STATE_TITLE     = 0
+STATE_PLAYING   = 1
+STATE_GAMEOVER  = 2
+STATE_VICTORY   = 3
+STATE_PAUSED    = 4             ; Unit 15: Paused state
+```
+
+The main loop needs to handle this new state:
+
+```asm
+ml_not_gameover:
+            cmp #STATE_VICTORY
+            bne ml_not_victory
+            jsr update_endscreen
+            jmp main_loop
+ml_not_victory:
+            ; STATE_PAUSED (Unit 15)
+            jsr update_paused
+            jmp main_loop
+```
+
+## Entering Pause
+
+At the start of the game update, we check for the P key. If pressed, we silence audio, show the pause text, and switch states:
+
+```asm
+update_game:
+            ; --- Check for pause key (Unit 15) ---
+            jsr check_p_key
+            ldx key_p_was
+            sta key_p_was
+            cpx #$00
+            bne ug_no_pause
+            cmp #$01
+            bne ug_no_pause
+            ; P just pressed - pause game
+            jsr silence_all
+            jsr draw_paused_text
+            lda #STATE_PAUSED
+            sta game_state
+            rts
+ug_no_pause:
+```
+
+The early `rts` is important — we exit immediately after pausing. No further game logic runs.
+
+## The Pause Loop
+
+While paused, we do almost nothing. Just wait for P to be pressed again:
+
+```asm
+update_paused:
+            ; Check for P key to unpause
+            jsr check_p_key
+            ldx key_p_was
+            sta key_p_was
+            cpx #$00
+            bne up_done
+            cmp #$01
+            bne up_done
+            ; P just pressed - unpause
+            jsr erase_paused_text
+            lda #STATE_PLAYING
+            sta game_state
+up_done:
+            rts
+```
+
+This is the same edge-detection pattern we use for all keys — track the previous state to detect transitions, not held keys.
+
+## Reading the P Key
+
+The C64 keyboard matrix puts P on row 5 (bit 5), column 1 (bit 1):
+
+```asm
+check_p_key:
+            lda #%11011111              ; Row 5 (bit 5)
+            sta CIA1_PRA
+            lda CIA1_PRB
+            and #%00000010              ; Column 1 (P)
+            bne cp_not
+            lda #$01
+            rts
+cp_not:
+            lda #$00
+            rts
+```
+
+## Visual Feedback
+
+Players need to know they're paused. We draw "PAUSED" in the centre of the screen:
+
+```asm
+PAUSE_ROW   = 11
+PAUSE_COL   = 17
+
+draw_paused_text:
+            ldx #$00
+dpt_loop:
+            lda paused_text,x
+            beq dpt_done
+            sta SCREEN + (PAUSE_ROW * 40) + PAUSE_COL,x
+            lda #COL_YELLOW
+            sta COLOUR + (PAUSE_ROW * 40) + PAUSE_COL,x
+            inx
+            bne dpt_loop
+dpt_done:
+            rts
+
+erase_paused_text:
+            ldx #$00
+ept_loop:
+            cpx #6                  ; "PAUSED" is 6 characters
+            bcs ept_done
+            lda #$20                ; Space
+            sta SCREEN + (PAUSE_ROW * 40) + PAUSE_COL,x
+            lda #$00
+            sta COLOUR + (PAUSE_ROW * 40) + PAUSE_COL,x
+            inx
+            bne ept_loop
+ept_done:
+            rts
+```
+
+Yellow stands out against the game's cyan and black palette. The text appears on row 11 — between the tracks, clearly visible but not obscuring gameplay elements.
+
+## What Pause Preserves
+
+When we pause, everything freezes in place:
+
+- **Note positions**: Notes stay where they are
+- **Score and streak**: Progress is preserved
+- **Multiplier**: No penalty for pausing
+- **Crowd meter**: Doesn't decay
+- **Song position**: Resumes from the same beat
+
+We achieve this by simply not calling any update routines while paused. The game state variables persist unchanged.
+
+## What Pause Stops
+
+We explicitly silence audio:
+
+```asm
+            jsr silence_all
+```
+
+Without this, any playing notes would sustain forever. The `silence_all` routine gates off all three voices.
+
+## Design Decisions
+
+**Why P for pause?** It's intuitive (P for Pause) and not used for gameplay. Space is taken by the title screen, X/C/V are gameplay keys.
+
+**Why not pause on any key?** Accidental pauses frustrate players. A dedicated key means intentional pauses only.
+
+**Why not dim the screen?** Complexity without benefit. The "PAUSED" text is clear enough. Adding screen effects would require saving and restoring colour memory — more code for marginal gain.
+
+## What's Next
+
+The game is feature-complete. In Unit 16, we do a **final polish pass** — cleaning up code, optimising where it matters, and preparing the game for release.

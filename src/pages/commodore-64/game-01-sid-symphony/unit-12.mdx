@@ -1,0 +1,194 @@
+---
+title: "Visual Juice"
+description: "Make every action feel impactful. Add border flashes, screen effects, and visual feedback that transforms button presses into satisfying moments."
+pubDate: 2025-11-26
+game: 1
+gameName: "SID Symphony"
+unit: 12
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "visual-effects", "juice", "feedback"]
+prevLesson: "/commodore-64/game-01-sid-symphony/unit-11"
+nextLesson: "/commodore-64/game-01-sid-symphony/unit-13"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+## What Is "Juice"?
+
+Game designers use "juice" to describe the small visual and audio effects that make games feel satisfying. A button press that does nothing visible feels unresponsive. The same button press with a screen flash, sound effect, and particle burst feels *powerful*.
+
+We already have audio feedback. Now we add visual punch.
+
+## The Border Register
+
+The C64's border colour lives at `$D020`. Changing this single byte transforms the entire screen surround:
+
+```asm
+; Border colour register
+; Writing here instantly changes the border
+; Values 0-15 map to the C64 colour palette
+            lda #$02        ; Red
+            sta $d020       ; Border turns red immediately
+```
+
+We'll flash the border on key moments: cyan when the multiplier increases, red when the player misses.
+
+## Effect Timers
+
+Each visual effect needs a timer. When triggered, we set the timer. Each frame, we decrement it. When it hits zero, the effect ends:
+
+```asm
+; Visual juice constants
+BORDER_FLASH_TIME = 8       ; Frames for border flash
+HIT_PULSE_TIME    = 3       ; Frames for hit zone pulse
+MISS_FLASH_TIME   = 4       ; Frames for miss screen flash
+
+; Visual juice variables
+border_flash_timer: !byte $00   ; Frames remaining for border flash
+hit_pulse_timer:    !byte $00   ; Frames remaining for hit pulse
+miss_flash_timer:   !byte $00   ; Frames remaining for miss flash
+```
+
+At 50 frames per second on PAL, 8 frames gives us roughly 160ms of flash — noticeable but not distracting.
+
+## Triggering Effects
+
+When the multiplier increases, we want celebration. Add the border flash trigger to the combo routine:
+
+```asm
+update_combo:
+            ; Trigger hit pulse effect
+            lda #HIT_PULSE_TIME
+            sta hit_pulse_timer
+
+            inc combo_count
+            lda combo_count
+            cmp #COMBO_THRESHOLD
+            bcc uc_done
+
+            lda multiplier
+            cmp #MAX_MULTIPLIER
+            bcs uc_reset
+            inc multiplier
+
+            ; Trigger border flash on multiplier increase
+            lda #BORDER_FLASH_TIME
+            sta border_flash_timer
+
+uc_reset:
+            lda #$00
+            sta combo_count
+uc_done:
+            rts
+```
+
+Every hit triggers the pulse. But the border flash only fires when the multiplier actually increases — making it feel special.
+
+## Miss Feedback
+
+Missing should feel bad. A red border flash reinforces the mistake:
+
+```asm
+update_crowd_miss:
+            jsr play_bum_note
+
+            ; Trigger miss flash effect
+            lda #MISS_FLASH_TIME
+            sta miss_flash_timer
+
+            ; Reset combo and multiplier
+            lda #$00
+            sta combo_count
+            lda #$01
+            sta multiplier
+            ; ...
+```
+
+The miss flash is shorter than the multiplier flash. We want the player to notice, not to punish them with a long red screen.
+
+## The Update Routine
+
+Each frame, we check all effect timers and set the border colour accordingly:
+
+```asm
+update_visual_effects:
+            ; Border flash (cyan when multiplier increases)
+            lda border_flash_timer
+            beq uve_no_border
+            dec border_flash_timer
+            lda #COL_CYAN           ; Bright cyan border flash
+            sta $d020
+            jmp uve_hit_pulse
+
+uve_no_border:
+            ; Miss flash overrides normal
+            lda miss_flash_timer
+            beq uve_normal_border
+            dec miss_flash_timer
+            lda #COL_RED            ; Red border on miss
+            sta $d020
+            jmp uve_hit_pulse
+
+uve_normal_border:
+            lda #$00                ; Black border normally
+            sta $d020
+
+uve_hit_pulse:
+            ; Hit pulse - brighten hit zones briefly
+            lda hit_pulse_timer
+            beq uve_done
+            dec hit_pulse_timer
+uve_done:
+            rts
+```
+
+The priority matters: multiplier flash beats miss flash beats normal. If somehow both trigger simultaneously, the positive feedback wins.
+
+## Integration
+
+Add the update call to the game loop, after other updates:
+
+```asm
+            ; Update grade text (Unit 10)
+            jsr update_grade_text
+
+            ; Update visual effects (Unit 12)
+            jsr update_visual_effects
+
+            ; Update displays
+            jsr update_display
+            jsr draw_crowd
+```
+
+## Initialisation
+
+Reset all effect timers when starting a new game:
+
+```asm
+            ; Reset visual effects
+            lda #$00
+            sta border_flash_timer
+            sta hit_pulse_timer
+            sta miss_flash_timer
+```
+
+## The Feel Factor
+
+These effects are subtle. You might not consciously notice them. But play the game with and without them — the difference is dramatic.
+
+Good juice follows a principle: **reward success loudly, punish failure quietly**. The cyan multiplier flash is longer and brighter than the red miss flash. Players feel celebrated for achievement without feeling beaten down by mistakes.
+
+## Beyond the Border
+
+The C64 offers more juice possibilities:
+
+- **Colour cycling**: Rapidly changing character colours
+- **Screen shake**: Offsetting the screen position briefly
+- **Sprite overlays**: Temporary graphics for explosions
+- **Raster effects**: Mid-screen colour changes
+
+Each adds complexity. For SID Symphony, border flashes deliver maximum impact with minimum code.
+
+## What's Next
+
+The game now looks and sounds polished. In Unit 13, we add **difficulty progression** — making the song speed up as the player succeeds, keeping the challenge fresh.
