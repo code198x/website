@@ -12,6 +12,8 @@ nextLesson: "/commodore-amiga/game-01-hop/unit-04"
 layout: "../../../layouts/UnitLayout.astro"
 ---
 
+import CodeFromFile from "@components/CodeFromFile.astro";
+
 *Need to catch up? Check out [Unit 2: The Frog](/commodore-amiga/game-01-hop/unit-02).*
 
 ## What You're Building
@@ -44,32 +46,17 @@ The register contains two counters:
 
 For a digital joystick, we only need specific bits. The standard decoding:
 
-```asm
-JOY1DAT     equ $00c
-
-            move.w  JOY1DAT(a5),d0  ; Read joystick register
-            btst    #1,d0           ; Right?
-            btst    #9,d0           ; Left?
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/snippets/01-the-amiga-joystick.asm" lang="asm" />
 
 But up/down require XOR decoding:
 
-```asm
-            move.w  d0,d1
-            lsr.w   #1,d1           ; Shift by 1
-            eor.w   d1,d0           ; XOR to decode
-            btst    #0,d0           ; Down?
-            btst    #8,d0           ; Up?
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/snippets/02-the-amiga-joystick.asm" lang="asm" />
 
 ### The Fire Button
 
 The joystick fire button is on CIA-A at $BFE001, bit 7 (active low):
 
-```asm
-            btst    #7,$bfe001      ; Fire pressed?
-            beq.s   .fire_pressed   ; Yes if bit is clear
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/snippets/03-the-amiga-joystick.asm" lang="asm" />
 
 ## Discrete Hopping
 
@@ -77,9 +64,7 @@ In Frogger, the frog doesn't glide — it hops in discrete steps. One joystick p
 
 We'll store the previous frame's joystick state and compare:
 
-```asm
-joy_prev:   dc.w    0               ; Last frame's joystick state
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/snippets/04-discrete-hopping.asm" lang="asm" />
 
 The logic:
 1. Read current joystick state
@@ -87,43 +72,25 @@ The logic:
 3. Only act on newly-pressed directions
 4. Store current state for next frame
 
-```asm
-            move.w  joy_current,d0
-            move.w  joy_prev,d1
-            not.w   d1              ; Invert: 1 where previously NOT pressed
-            and.w   d0,d1           ; AND: 1 where NOW pressed AND wasn't before
-            move.w  d0,joy_prev     ; Save for next frame
-            ; D1 now has edge-triggered directions
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/snippets/05-discrete-hopping.asm" lang="asm" />
 
 ## Sprite Position Variables
 
 We'll track the frog's logical position in memory:
 
-```asm
-frog_x:     dc.w    96              ; Horizontal position (pixels)
-frog_y:     dc.w    180             ; Vertical position (screen lines)
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/snippets/06-sprite-position-variables.asm" lang="asm" />
 
 ### Movement Constants
 
 Frogger movement is grid-based. We'll hop 16 pixels per move:
 
-```asm
-HOP_SIZE    equ 16                  ; Pixels per hop
-FROG_HEIGHT equ 16                  ; Sprite height
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/snippets/07-sprite-position-variables.asm" lang="asm" />
 
 ### Boundaries
 
 We need to keep the frog on screen:
 
-```asm
-MIN_X       equ 32                  ; Left boundary
-MAX_X       equ 288                 ; Right boundary
-MIN_Y       equ 44                  ; Top (home zone)
-MAX_Y       equ 196                 ; Bottom (start zone)
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/snippets/08-sprite-position-variables.asm" lang="asm" />
 
 ## Updating the Sprite Position
 
@@ -134,26 +101,7 @@ Amiga sprite control words encode position differently than a simple X/Y:
 
 The horizontal position is shifted right by 1 (giving 2-pixel granularity), and the low bit goes into the control word. For simplicity, we'll keep positions even.
 
-```asm
-update_sprite:
-            lea     frog_data,a0
-            move.w  frog_y,d0           ; Get Y position
-            move.w  frog_x,d1           ; Get X position
-
-            ; Build Word 1: VSTART | HSTART>>1
-            move.w  d0,d2               ; D2 = Y
-            lsl.w   #8,d2               ; Y in high byte
-            lsr.w   #1,d1               ; X >> 1
-            or.b    d1,d2               ; Combine
-            move.w  d2,(a0)             ; Write Word 1
-
-            ; Build Word 2: VSTOP | 0
-            add.w   #FROG_HEIGHT,d0     ; VSTOP = Y + height
-            lsl.w   #8,d0               ; In high byte
-            move.w  d0,2(a0)            ; Write Word 2
-
-            rts
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/snippets/09-updating-the-sprite-position.asm" lang="asm" />
 
 ## The Main Loop
 
@@ -164,74 +112,13 @@ Our game loop now:
 4. Updates sprite control words
 5. Repeats
 
-```asm
-mainloop:
-            bsr.s   wait_vblank
-
-            ; Read joystick
-            bsr.s   read_joystick       ; Returns edge-triggered state in D0
-
-            ; Check each direction
-            btst    #8,d0               ; Up?
-            beq.s   .no_up
-            move.w  frog_y,d1
-            sub.w   #HOP_SIZE,d1
-            cmp.w   #MIN_Y,d1
-            blt.s   .no_up
-            move.w  d1,frog_y
-.no_up:
-            btst    #0,d0               ; Down?
-            beq.s   .no_down
-            move.w  frog_y,d1
-            add.w   #HOP_SIZE,d1
-            cmp.w   #MAX_Y,d1
-            bgt.s   .no_down
-            move.w  d1,frog_y
-.no_down:
-            btst    #9,d0               ; Left?
-            beq.s   .no_left
-            move.w  frog_x,d1
-            sub.w   #HOP_SIZE,d1
-            cmp.w   #MIN_X,d1
-            blt.s   .no_left
-            move.w  d1,frog_x
-.no_left:
-            btst    #1,d0               ; Right?
-            beq.s   .no_right
-            move.w  frog_x,d1
-            add.w   #HOP_SIZE,d1
-            cmp.w   #MAX_X,d1
-            bgt.s   .no_right
-            move.w  d1,frog_x
-.no_right:
-
-            ; Update sprite
-            bsr.s   update_sprite
-
-            bra.s   mainloop
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/snippets/10-the-main-loop.asm" lang="asm" />
 
 ## The Joystick Routine
 
 Here's the complete joystick reading with edge detection:
 
-```asm
-read_joystick:
-            ; Read and decode JOY1DAT
-            move.w  JOY1DAT(a5),d0
-            move.w  d0,d1
-            lsr.w   #1,d1
-            eor.w   d1,d0               ; Decode up/down
-
-            ; Edge detection
-            move.w  joy_prev,d1
-            not.w   d1
-            and.w   d0,d1               ; D1 = newly pressed
-            move.w  d0,joy_prev         ; Save for next frame
-
-            move.w  d1,d0               ; Return in D0
-            rts
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/snippets/11-the-joystick-routine.asm" lang="asm" />
 
 ## Build It. Run It.
 
@@ -257,275 +144,7 @@ Push the joystick — the frog hops! Each push moves exactly one grid cell. The 
 
 Here's the full `hop.asm` with movement:
 
-```asm
-;──────────────────────────────────────────────────────────────
-; HOP - A Frogger-style game for the Commodore Amiga
-; Unit 3: The Hop
-;──────────────────────────────────────────────────────────────
-
-CUSTOM      equ $dff000
-
-; Custom chip register offsets
-DMACONR     equ $002
-VPOSR       equ $004
-JOY1DAT     equ $00c
-COP1LC      equ $080
-COPJMP1     equ $088
-DMACON      equ $096
-INTENA      equ $09a
-INTREQ      equ $09c
-COLOR00     equ $180
-
-; Movement constants
-HOP_SIZE    equ 16
-FROG_HEIGHT equ 16
-MIN_X       equ 32
-MAX_X       equ 288
-MIN_Y       equ 44
-MAX_Y       equ 196
-
-;──────────────────────────────────────────────────────────────
-; Code Section
-;──────────────────────────────────────────────────────────────
-            section code,code
-
-start:
-            lea     CUSTOM,a5
-
-            ; --- Take over the machine ---
-            move.w  #$7fff,INTENA(a5)
-            move.w  #$7fff,INTREQ(a5)
-            move.w  #$7fff,DMACON(a5)
-
-            ; --- Set sprite pointer in copper list ---
-            lea     frog_data,a0
-            lea     sprpt+2,a1
-            move.l  a0,d0
-            swap    d0
-            move.w  d0,(a1)
-            swap    d0
-            move.w  d0,4(a1)
-
-            ; --- Install copper list ---
-            lea     copperlist,a0
-            move.l  a0,COP1LC(a5)
-            move.w  d0,COPJMP1(a5)
-
-            ; --- Enable DMA ---
-            move.w  #$8320,DMACON(a5)
-
-            ; --- Initialise frog position ---
-            move.w  #160,frog_x
-            move.w  #180,frog_y
-            bsr.s   update_sprite
-
-            ; === Main Loop ===
-mainloop:
-            bsr.s   wait_vblank
-            bsr.s   read_joystick
-
-            ; --- Check Up ---
-            btst    #8,d0
-            beq.s   .no_up
-            move.w  frog_y,d1
-            sub.w   #HOP_SIZE,d1
-            cmp.w   #MIN_Y,d1
-            blt.s   .no_up
-            move.w  d1,frog_y
-.no_up:
-            ; --- Check Down ---
-            btst    #0,d0
-            beq.s   .no_down
-            move.w  frog_y,d1
-            add.w   #HOP_SIZE,d1
-            cmp.w   #MAX_Y,d1
-            bgt.s   .no_down
-            move.w  d1,frog_y
-.no_down:
-            ; --- Check Left ---
-            btst    #9,d0
-            beq.s   .no_left
-            move.w  frog_x,d1
-            sub.w   #HOP_SIZE,d1
-            cmp.w   #MIN_X,d1
-            blt.s   .no_left
-            move.w  d1,frog_x
-.no_left:
-            ; --- Check Right ---
-            btst    #1,d0
-            beq.s   .no_right
-            move.w  frog_x,d1
-            add.w   #HOP_SIZE,d1
-            cmp.w   #MAX_X,d1
-            bgt.s   .no_right
-            move.w  d1,frog_x
-.no_right:
-
-            bsr.s   update_sprite
-            bra.s   mainloop
-
-;──────────────────────────────────────────────────────────────
-; Wait for vertical blank
-;──────────────────────────────────────────────────────────────
-wait_vblank:
-            move.l  #$1ff00,d1
-.wait:
-            move.l  VPOSR(a5),d0
-            and.l   d1,d0
-            bne.s   .wait
-            rts
-
-;──────────────────────────────────────────────────────────────
-; Read joystick with edge detection
-; Returns: D0 = newly pressed directions
-;──────────────────────────────────────────────────────────────
-read_joystick:
-            move.w  JOY1DAT(a5),d0
-            move.w  d0,d1
-            lsr.w   #1,d1
-            eor.w   d1,d0               ; Decode up/down
-
-            ; Edge detection
-            move.w  joy_prev,d1
-            not.w   d1
-            and.w   d0,d1
-            move.w  d0,joy_prev
-
-            move.w  d1,d0
-            rts
-
-;──────────────────────────────────────────────────────────────
-; Update sprite control words from frog_x/frog_y
-;──────────────────────────────────────────────────────────────
-update_sprite:
-            lea     frog_data,a0
-            move.w  frog_y,d0
-            move.w  frog_x,d1
-
-            ; Word 1: VSTART | HSTART>>1
-            move.w  d0,d2
-            lsl.w   #8,d2
-            lsr.w   #1,d1
-            or.b    d1,d2
-            move.w  d2,(a0)
-
-            ; Word 2: VSTOP | 0
-            add.w   #FROG_HEIGHT,d0
-            lsl.w   #8,d0
-            move.w  d0,2(a0)
-
-            rts
-
-;──────────────────────────────────────────────────────────────
-; Variables (in code section for PC-relative access)
-;──────────────────────────────────────────────────────────────
-frog_x:     dc.w    160
-frog_y:     dc.w    180
-joy_prev:   dc.w    0
-
-;──────────────────────────────────────────────────────────────
-; Chip RAM Data
-;──────────────────────────────────────────────────────────────
-            section chipdata,data_c
-
-copperlist:
-            dc.w    COLOR00,$0000
-
-            ; --- Sprite 0 palette ---
-            dc.w    $01a2,$00f0
-            dc.w    $01a4,$0ff0
-            dc.w    $01a6,$0000
-
-            ; --- Sprite 0 pointer ---
-sprpt:
-            dc.w    $0120,$0000
-            dc.w    $0122,$0000
-
-            ; === HOME ZONE ===
-            dc.w    $2c07,$fffe
-            dc.w    COLOR00,$0080
-
-            ; === WATER ZONE ===
-            dc.w    $4007,$fffe
-            dc.w    COLOR00,$0048
-
-            dc.w    $4c07,$fffe
-            dc.w    COLOR00,$006b
-
-            dc.w    $5407,$fffe
-            dc.w    COLOR00,$0048
-
-            dc.w    $5c07,$fffe
-            dc.w    COLOR00,$006b
-
-            dc.w    $6407,$fffe
-            dc.w    COLOR00,$0048
-
-            ; === MEDIAN ===
-            dc.w    $6c07,$fffe
-            dc.w    COLOR00,$0080
-
-            ; === ROAD ZONE ===
-            dc.w    $7807,$fffe
-            dc.w    COLOR00,$0444
-
-            dc.w    $8407,$fffe
-            dc.w    COLOR00,$0666
-
-            dc.w    $8807,$fffe
-            dc.w    COLOR00,$0444
-
-            dc.w    $9407,$fffe
-            dc.w    COLOR00,$0666
-
-            dc.w    $9807,$fffe
-            dc.w    COLOR00,$0444
-
-            dc.w    $a407,$fffe
-            dc.w    COLOR00,$0666
-
-            dc.w    $a807,$fffe
-            dc.w    COLOR00,$0444
-
-            ; === START ZONE ===
-            dc.w    $b407,$fffe
-            dc.w    COLOR00,$0080
-
-            dc.w    $c007,$fffe
-            dc.w    COLOR00,$0070
-
-            ; === BOTTOM BORDER ===
-            dc.w    $f007,$fffe
-            dc.w    COLOR00,$0000
-
-            dc.w    $ffff,$fffe
-
-;──────────────────────────────────────────────────────────────
-; Sprite Data
-;──────────────────────────────────────────────────────────────
-            even
-frog_data:
-            dc.w    $b460,$c400         ; Control words (updated by code)
-
-            dc.w    $0000,$0000
-            dc.w    $07e0,$0000
-            dc.w    $1ff8,$0420
-            dc.w    $3ffc,$0a50
-            dc.w    $7ffe,$1248
-            dc.w    $7ffe,$1008
-            dc.w    $ffff,$2004
-            dc.w    $ffff,$0000
-            dc.w    $ffff,$0000
-            dc.w    $7ffe,$2004
-            dc.w    $7ffe,$1008
-            dc.w    $3ffc,$0810
-            dc.w    $1ff8,$0420
-            dc.w    $07e0,$0000
-            dc.w    $0000,$0000
-            dc.w    $0000,$0000
-
-            dc.w    $0000,$0000
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-03/hop.asm" lang="asm" />
 
 ## Recap / Sanity Check
 

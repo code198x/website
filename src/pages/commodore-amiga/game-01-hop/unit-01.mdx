@@ -12,6 +12,8 @@ nextLesson: "/commodore-amiga/game-01-hop/unit-02"
 layout: "../../../layouts/UnitLayout.astro"
 ---
 
+import CodeFromFile from "@components/CodeFromFile.astro";
+
 *Need to set up your tools first? See [Getting Started](/commodore-amiga/getting-started).*
 
 ## What You're Building
@@ -107,22 +109,7 @@ When you see "Build it. Run it." in the lesson, use these commands.
 
 The Amiga's custom chips live at address $DFF000. Every register is an offset from this base:
 
-```asm
-CUSTOM      equ $dff000
-
-; DMA and interrupt control
-DMACONR     equ $002        ; DMA control read
-DMACON      equ $096        ; DMA control write
-INTENA      equ $09a        ; Interrupt enable
-INTREQ      equ $09c        ; Interrupt request
-
-; Copper registers
-COP1LC      equ $080        ; Copper list 1 address
-COPJMP1     equ $088        ; Restart copper at COP1LC
-
-; Colour registers
-COLOR00     equ $180        ; Background colour
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-01/snippets/01-hardware-registers.asm" lang="asm" />
 
 We'll use A5 as our custom chip base pointer throughout — `lea CUSTOM,a5` once, then access registers as offsets: `$180(a5)` for COLOR00.
 
@@ -150,37 +137,7 @@ Key instructions we'll use:
 
 First, the startup code that takes over the machine:
 
-```asm
-;──────────────────────────────────────────────────────────────
-; HOP - A Frogger-style game for the Commodore Amiga
-; Unit 1: The Lanes
-;──────────────────────────────────────────────────────────────
-
-CUSTOM      equ $dff000
-
-DMACONR     equ $002
-DMACON      equ $096
-INTENA      equ $09a
-INTREQ      equ $09c
-COP1LC      equ $080
-COPJMP1     equ $088
-VPOSR       equ $004
-COLOR00     equ $180
-
-;──────────────────────────────────────────────────────────────
-            section code,code
-;──────────────────────────────────────────────────────────────
-
-start:
-            lea     CUSTOM,a5           ; A5 = custom chip base
-
-            ; Disable all interrupts
-            move.w  #$7fff,INTENA(a5)   ; Clear all interrupt bits
-            move.w  #$7fff,INTREQ(a5)   ; Clear pending interrupts
-
-            ; Disable all DMA
-            move.w  #$7fff,DMACON(a5)   ; Turn off all DMA channels
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-01/snippets/02-starting-the-program.asm" lang="asm" />
 
 Let's break this down:
 
@@ -196,15 +153,7 @@ Let's break this down:
 
 Now we point the copper at our list and start it:
 
-```asm
-            ; Install copper list
-            lea     copperlist,a0
-            move.l  a0,COP1LC(a5)       ; Set copper list address
-            move.w  d0,COPJMP1(a5)      ; Strobe: restart copper
-
-            ; Enable copper DMA
-            move.w  #$8280,DMACON(a5)   ; Set bits: master + copper
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-01/snippets/03-installing-the-copper-list.asm" lang="asm" />
 
 **`lea copperlist,a0`** — Get the address of our copper list.
 
@@ -223,23 +172,7 @@ $8280 = %1000001010000000, which sets master enable and copper DMA.
 
 Our main loop waits for vertical blank and checks the mouse button:
 
-```asm
-mainloop:
-            ; Wait for vertical blank (line 0)
-            move.l  #$1ff00,d1          ; Mask for vertical position
-.vbwait:
-            move.l  VPOSR(a5),d0        ; Read beam position
-            and.l   d1,d0               ; Isolate vertical bits
-            bne.s   .vbwait             ; Loop until line 0
-
-            ; Check left mouse button (active low)
-            btst    #6,$bfe001          ; Test bit 6 of CIA-A
-            bne.s   mainloop            ; If set (not pressed), continue
-
-            ; Mouse pressed - for now, just loop forever
-            ; In a real game, this might reset or exit
-            bra.s   mainloop
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-01/snippets/04-the-main-loop.asm" lang="asm" />
 
 **Vertical blank wait** — VPOSR/VHPOSR at offset $004 contains the current beam position. The mask $1FF00 isolates the vertical line number (bits 8-16). When this is zero, we're at line 0 — the start of the frame.
 
@@ -262,10 +195,7 @@ A copper list is a sequence of instructions. Each instruction is two words (4 by
 - Word 2: Mask ($FFFE for standard wait)
 
 Example:
-```asm
-dc.w    $0180,$0f00     ; MOVE: Write $0F00 (red) to COLOR00
-dc.w    $5007,$fffe     ; WAIT: Wait for line $50, any horizontal
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-01/snippets/05-copper-instructions.asm" lang="asm" />
 
 ## Amiga Colours
 
@@ -289,26 +219,11 @@ The copper list must be in **chip RAM**. The Amiga has two types of memory:
 
 We use `section name,data_c` to ensure placement in chip RAM:
 
-```asm
-;──────────────────────────────────────────────────────────────
-            section chipdata,data_c
-;──────────────────────────────────────────────────────────────
-
-copperlist:
-            ; Start with black border
-            dc.w    COLOR00,$0000
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-01/snippets/06-the-copper-list.asm" lang="asm" />
 
 Now we build the zones by waiting for specific lines and changing colours:
 
-```asm
-            ; Top grass (home zone)
-            dc.w    $2c07,$fffe         ; Wait line $2C
-            dc.w    COLOR00,$0070       ; Dark green
-
-            dc.w    $4007,$fffe         ; Wait line $40
-            dc.w    COLOR00,$0080       ; Brighter green
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-01/snippets/07-the-copper-list.asm" lang="asm" />
 
 The wait format `$2c07,$fffe` means:
 - Wait for line $2C (44 decimal)
@@ -319,70 +234,7 @@ The wait format `$2c07,$fffe` means:
 
 Here's the complete copper list with all game zones:
 
-```asm
-copperlist:
-            dc.w    COLOR00,$0000       ; Black border at top
-
-            ; === HOME ZONE (green) ===
-            dc.w    $2c07,$fffe
-            dc.w    COLOR00,$0080       ; Green
-
-            ; === WATER ZONE (blue stripes) ===
-            dc.w    $4007,$fffe
-            dc.w    COLOR00,$0048       ; Dark blue
-
-            dc.w    $4c07,$fffe
-            dc.w    COLOR00,$006b       ; Medium blue
-
-            dc.w    $5407,$fffe
-            dc.w    COLOR00,$0048       ; Dark blue
-
-            dc.w    $5c07,$fffe
-            dc.w    COLOR00,$006b       ; Medium blue
-
-            dc.w    $6407,$fffe
-            dc.w    COLOR00,$0048       ; Dark blue
-
-            ; === MEDIAN (safe zone) ===
-            dc.w    $6c07,$fffe
-            dc.w    COLOR00,$0080       ; Green
-
-            ; === ROAD ZONE (grey stripes) ===
-            dc.w    $7807,$fffe
-            dc.w    COLOR00,$0444       ; Dark grey
-
-            dc.w    $8407,$fffe
-            dc.w    COLOR00,$0666       ; Light grey (lane marker)
-
-            dc.w    $8807,$fffe
-            dc.w    COLOR00,$0444       ; Dark grey
-
-            dc.w    $9407,$fffe
-            dc.w    COLOR00,$0666       ; Light grey
-
-            dc.w    $9807,$fffe
-            dc.w    COLOR00,$0444       ; Dark grey
-
-            dc.w    $a407,$fffe
-            dc.w    COLOR00,$0666       ; Light grey
-
-            dc.w    $a807,$fffe
-            dc.w    COLOR00,$0444       ; Dark grey
-
-            ; === START ZONE (green) ===
-            dc.w    $b407,$fffe
-            dc.w    COLOR00,$0080       ; Green
-
-            dc.w    $c007,$fffe
-            dc.w    COLOR00,$0070       ; Darker green
-
-            ; === BOTTOM BORDER ===
-            dc.w    $f007,$fffe
-            dc.w    COLOR00,$0000       ; Black
-
-            ; End copper list
-            dc.w    $ffff,$fffe
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-01/snippets/08-building-all-the-zones.asm" lang="asm" />
 
 The final `$ffff,$fffe` waits for line 255 — effectively "wait forever." The copper automatically restarts from COP1LC at the beginning of each frame.
 
@@ -422,129 +274,7 @@ This is the playing field. Everything that follows — the frog sprite, the scro
 
 Here's the full `hop.asm`:
 
-```asm
-;──────────────────────────────────────────────────────────────
-; HOP - A Frogger-style game for the Commodore Amiga
-; Unit 1: The Lanes
-;──────────────────────────────────────────────────────────────
-
-CUSTOM      equ $dff000
-
-; Custom chip register offsets
-DMACONR     equ $002
-DMACON      equ $096
-INTENA      equ $09a
-INTREQ      equ $09c
-COP1LC      equ $080
-COPJMP1     equ $088
-VPOSR       equ $004
-COLOR00     equ $180
-
-;──────────────────────────────────────────────────────────────
-; Code Section
-;──────────────────────────────────────────────────────────────
-            section code,code
-
-start:
-            lea     CUSTOM,a5           ; Custom chip base in A5
-
-            ; --- Take over the machine ---
-            move.w  #$7fff,INTENA(a5)   ; Disable all interrupts
-            move.w  #$7fff,INTREQ(a5)   ; Clear pending interrupts
-            move.w  #$7fff,DMACON(a5)   ; Disable all DMA
-
-            ; --- Install copper list ---
-            lea     copperlist,a0
-            move.l  a0,COP1LC(a5)       ; Point copper at our list
-            move.w  d0,COPJMP1(a5)      ; Strobe to start copper
-
-            ; --- Enable DMA ---
-            move.w  #$8280,DMACON(a5)   ; Enable master + copper
-
-            ; === Main Loop ===
-mainloop:
-            ; Wait for vertical blank
-            move.l  #$1ff00,d1
-.vbwait:
-            move.l  VPOSR(a5),d0
-            and.l   d1,d0
-            bne.s   .vbwait
-
-            ; Check left mouse button
-            btst    #6,$bfe001
-            bne.s   mainloop
-
-            ; Button pressed - loop forever (game runs until reset)
-            bra.s   mainloop
-
-;──────────────────────────────────────────────────────────────
-; Chip RAM Data (copper list must be here)
-;──────────────────────────────────────────────────────────────
-            section chipdata,data_c
-
-copperlist:
-            dc.w    COLOR00,$0000       ; Black border
-
-            ; === HOME ZONE ===
-            dc.w    $2c07,$fffe
-            dc.w    COLOR00,$0080       ; Green
-
-            ; === WATER ZONE (5 lanes) ===
-            dc.w    $4007,$fffe
-            dc.w    COLOR00,$0048       ; Dark blue - lane 1
-
-            dc.w    $4c07,$fffe
-            dc.w    COLOR00,$006b       ; Medium blue - wave
-
-            dc.w    $5407,$fffe
-            dc.w    COLOR00,$0048       ; Dark blue - lane 2
-
-            dc.w    $5c07,$fffe
-            dc.w    COLOR00,$006b       ; Medium blue - wave
-
-            dc.w    $6407,$fffe
-            dc.w    COLOR00,$0048       ; Dark blue - lane 3
-
-            ; === MEDIAN (safe) ===
-            dc.w    $6c07,$fffe
-            dc.w    COLOR00,$0080       ; Green
-
-            ; === ROAD ZONE (4 lanes) ===
-            dc.w    $7807,$fffe
-            dc.w    COLOR00,$0444       ; Dark grey - lane 1
-
-            dc.w    $8407,$fffe
-            dc.w    COLOR00,$0666       ; Light grey - marker
-
-            dc.w    $8807,$fffe
-            dc.w    COLOR00,$0444       ; Dark grey - lane 2
-
-            dc.w    $9407,$fffe
-            dc.w    COLOR00,$0666       ; Light grey - marker
-
-            dc.w    $9807,$fffe
-            dc.w    COLOR00,$0444       ; Dark grey - lane 3
-
-            dc.w    $a407,$fffe
-            dc.w    COLOR00,$0666       ; Light grey - marker
-
-            dc.w    $a807,$fffe
-            dc.w    COLOR00,$0444       ; Dark grey - lane 4
-
-            ; === START ZONE ===
-            dc.w    $b407,$fffe
-            dc.w    COLOR00,$0080       ; Green
-
-            dc.w    $c007,$fffe
-            dc.w    COLOR00,$0070       ; Darker green border
-
-            ; === BOTTOM BORDER ===
-            dc.w    $f007,$fffe
-            dc.w    COLOR00,$0000       ; Black
-
-            ; End of list
-            dc.w    $ffff,$fffe
-```
+<CodeFromFile src="commodore-amiga/game-01-hop/unit-01/hop.asm" lang="asm" />
 
 ## Recap / Sanity Check
 

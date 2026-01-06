@@ -12,6 +12,8 @@ nextLesson: "/nintendo-entertainment-system/game-01-neon-nexus/unit-02"
 layout: "../../../layouts/UnitLayout.astro"
 ---
 
+import CodeFromFile from "@components/CodeFromFile.astro";
+
 *Need to set up your tools first? See [Getting Started](/nintendo-entertainment-system/getting-started).*
 
 ## What You're Building
@@ -129,21 +131,7 @@ When you see "Build it. Run it." in the lesson, use these commands.
 
 Every NES ROM starts with a 16-byte header that tells emulators (and hardware) about the cartridge:
 
-```asm
-;──────────────────────────────────────────────────────────────
-; NEON NEXUS
-; A fixed-screen action game for the Nintendo Entertainment System
-; Unit 1: The Grid
-;──────────────────────────────────────────────────────────────
-
-.segment "HEADER"
-    .byte "NES", $1a        ; iNES magic number
-    .byte 2                 ; 2 x 16KB PRG ROM = 32KB
-    .byte 1                 ; 1 x 8KB CHR ROM
-    .byte $01               ; Mapper 0, vertical mirroring
-    .byte $00               ; Mapper 0 continued
-    .byte 0,0,0,0,0,0,0,0   ; Padding
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/01-the-ines-header.asm" lang="asm" />
 
 Let's break this down:
 
@@ -161,19 +149,7 @@ Let's break this down:
 
 Next, we define our constants and reserve zero page memory:
 
-```asm
-.segment "ZEROPAGE"
-frame_counter: .res 1
-
-.segment "CODE"
-PPUCTRL   = $2000
-PPUMASK   = $2001
-PPUSTATUS = $2002
-OAMADDR   = $2003
-PPUSCROLL = $2005
-PPUADDR   = $2006
-PPUDATA   = $2007
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/02-constants-and-zero-page.asm" lang="asm" />
 
 **`.segment "ZEROPAGE"`** — The linker configuration maps this to $00-$FF. Zero page is fast on the 6502 — addressing modes are shorter and quicker.
 
@@ -185,22 +161,7 @@ PPUDATA   = $2007
 
 When the NES powers on, the CPU jumps to the address stored at $FFFC-$FFFD. This is our `reset` procedure:
 
-```asm
-.proc reset
-    sei                     ; Disable IRQs
-    cld                     ; Disable decimal mode
-
-    ldx #$40
-    stx $4017               ; Disable APU frame IRQ
-
-    ldx #$ff
-    txs                     ; Set up stack
-
-    inx                     ; X = 0
-    stx PPUCTRL             ; Disable NMI
-    stx PPUMASK             ; Disable rendering
-    stx $4010               ; Disable DMC IRQs
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/03-the-reset-handler.asm" lang="asm" />
 
 Let's examine each instruction:
 
@@ -220,13 +181,7 @@ Let's examine each instruction:
 
 The PPU needs time to warm up after power-on. We wait for two vertical blanks:
 
-```asm
-    ; Wait for first vblank
-    bit PPUSTATUS
-@vblank1:
-    bit PPUSTATUS
-    bpl @vblank1
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/04-waiting-for-vblank.asm" lang="asm" />
 
 **`bit PPUSTATUS`** — The BIT instruction tests bits without modifying the accumulator. When reading PPUSTATUS:
 - Bit 7 (negative flag) = vblank has occurred
@@ -240,20 +195,7 @@ We do this twice because the first vblank might occur mid-warmup. After two vbla
 
 While waiting for the second vblank, we clear all 2KB of RAM:
 
-```asm
-    lda #$00
-@clear_ram:
-    sta $0000, x
-    sta $0100, x
-    sta $0200, x
-    sta $0300, x
-    sta $0400, x
-    sta $0500, x
-    sta $0600, x
-    sta $0700, x
-    inx
-    bne @clear_ram
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/05-clearing-ram.asm" lang="asm" />
 
 This writes zero to every byte from $0000-$07FF. The 6502's indexed addressing (`sta $0000, x`) adds X to the base address. When X overflows from $FF to $00, the loop ends.
 
@@ -261,40 +203,19 @@ This writes zero to every byte from $0000-$07FF. The 6502's indexed addressing (
 
 After the second vblank, we load our colours:
 
-```asm
-    jsr load_palette
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/06-loading-the-palette.asm" lang="asm" />
 
 **`jsr load_palette`** — "Jump to SubRoutine." This calls `load_palette`, runs it, then returns here. Think of it like calling a function.
 
 The palette loading routine:
 
-```asm
-.proc load_palette
-    ; Set PPU address to palette ($3F00)
-    bit PPUSTATUS           ; Reset address latch
-    lda #$3f
-    sta PPUADDR
-    lda #$00
-    sta PPUADDR
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/07-loading-the-palette.asm" lang="asm" />
 
 **`bit PPUSTATUS`** — Reading PPUSTATUS resets the address latch. The PPU has a two-write address register — first write is high byte, second is low byte. The `bit` instruction reads and discards the value, resetting the latch.
 
 **`lda #$3f` / `sta PPUADDR` / `lda #$00` / `sta PPUADDR`** — Write the PPU address $3F00 (palette start) in two parts: high byte first, then low byte.
 
-```asm
-    ; Load 32 palette bytes
-    ldx #0
-@loop:
-    lda palette_data, x
-    sta PPUDATA
-    inx
-    cpx #32
-    bne @loop
-    rts
-.endproc
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/08-loading-the-palette.asm" lang="asm" />
 
 **`lda palette_data, x`** — Load from our palette table using X as an index.
 
@@ -327,20 +248,7 @@ Each palette entry is a single byte — an index into the hardware palette:
 
 Our palette data:
 
-```asm
-palette_data:
-    ; Background palettes (4 palettes x 4 colours)
-    .byte $0f, $11, $21, $31    ; Palette 0: Blues
-    .byte $0f, $19, $29, $39    ; Palette 1: Greens
-    .byte $0f, $15, $25, $35    ; Palette 2: Magentas
-    .byte $0f, $00, $10, $30    ; Palette 3: Greys
-
-    ; Sprite palettes (4 palettes x 4 colours)
-    .byte $0f, $11, $21, $31
-    .byte $0f, $19, $29, $39
-    .byte $0f, $15, $25, $35
-    .byte $0f, $00, $10, $30
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/09-the-nes-colour-palette.asm" lang="asm" />
 
 Colour 0 of every palette is the universal background colour (usually black, $0F).
 
@@ -348,27 +256,7 @@ Colour 0 of every palette is the universal background colour (usually black, $0F
 
 Now we set up the nametable and attribute table:
 
-```asm
-.proc fill_background
-    ; Set PPU address to first nametable ($2000)
-    bit PPUSTATUS
-    lda #$20
-    sta PPUADDR
-    lda #$00
-    sta PPUADDR
-
-    ; Fill with tile $00 (960 tiles = 30 rows x 32 cols)
-    lda #$00                ; Tile index 0
-    ldx #0
-    ldy #4                  ; 4 x 256 = 1024 bytes
-@outer:
-@inner:
-    sta PPUDATA
-    inx
-    bne @inner
-    dey
-    bne @outer
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/10-filling-the-background.asm" lang="asm" />
 
 **`ldy #4`** — "Load Y register with 4." Y is another index register, useful for nested loops. Here it counts our outer loop iterations.
 
@@ -378,43 +266,13 @@ We fill the nametable with tile index 0 (our solid block). The nested loop write
 
 Then we overwrite the attribute table with our colour zones:
 
-```asm
-    ; Set attribute table address ($23C0)
-    bit PPUSTATUS
-    lda #$23
-    sta PPUADDR
-    lda #$c0
-    sta PPUADDR
-
-    ; Fill attributes with zone pattern
-    ldx #0
-@attr_loop:
-    lda attribute_data, x
-    sta PPUDATA
-    inx
-    cpx #64
-    bne @attr_loop
-
-    rts
-.endproc
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/11-filling-the-background.asm" lang="asm" />
 
 ## The Attribute Data
 
 This is where we define our colour zones:
 
-```asm
-attribute_data:
-    ; 8 rows of 8 bytes = 64 bytes
-    .byte $00, $00, $00, $00, $00, $00, $00, $00  ; Palette 0
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $55, $55, $55, $55, $55, $55, $55, $55  ; Palette 1
-    .byte $55, $55, $55, $55, $55, $55, $55, $55
-    .byte $aa, $aa, $aa, $aa, $aa, $aa, $aa, $aa  ; Palette 2
-    .byte $aa, $aa, $aa, $aa, $aa, $aa, $aa, $aa
-    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff  ; Palette 3
-    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/12-the-attribute-data.asm" lang="asm" />
 
 Each row of 8 bytes covers 8 × 32 = 256 pixels horizontally, and 32 pixels vertically. Two rows per zone gives us 64 pixels per colour band.
 
@@ -427,28 +285,13 @@ Each row of 8 bytes covers 8 × 32 = 256 pixels horizontally, and 32 pixels vert
 
 Back in the reset handler, after filling the background:
 
-```asm
-    ; Enable rendering
-    lda #%10000000          ; Enable NMI
-    sta PPUCTRL
-    lda #%00011110          ; Enable sprites and background
-    sta PPUMASK
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/13-enabling-rendering.asm" lang="asm" />
 
 **PPUCTRL bit 7** — Enable NMI on vblank. This is critical for game timing.
 
 **PPUMASK bits 3-4** — Show background and sprites. Bits 1-2 would clip the leftmost 8 pixels.
 
-```asm
-    ; Reset scroll
-    lda #$00
-    sta PPUSCROLL
-    sta PPUSCROLL
-
-forever:
-    jmp forever
-.endproc
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/14-enabling-rendering.asm" lang="asm" />
 
 **PPUSCROLL** is written twice: X scroll, then Y scroll. We want no scrolling, so both are zero.
 
@@ -460,18 +303,7 @@ The main loop is empty — all the work happens in the NMI handler.
 
 The NMI (Non-Maskable Interrupt) fires at the start of every vblank — about 60 times per second:
 
-```asm
-.proc nmi
-    inc frame_counter
-
-    ; Reset scroll (important!)
-    lda #$00
-    sta PPUSCROLL
-    sta PPUSCROLL
-
-    rti
-.endproc
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/15-the-nmi-handler.asm" lang="asm" />
 
 **`inc frame_counter`** — "Increment memory location by 1." Unlike `inx`/`iny` which work on registers, `inc` works directly on a memory address.
 
@@ -483,22 +315,13 @@ For now, we just increment a frame counter and reset the scroll position. Later 
 
 We don't use IRQs, but we need a handler:
 
-```asm
-.proc irq
-    rti
-.endproc
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/16-the-irq-handler.asm" lang="asm" />
 
 ## The Interrupt Vectors
 
 The 6502 looks for interrupt vectors at the top of memory:
 
-```asm
-.segment "VECTORS"
-    .word nmi               ; $FFFA-$FFFB: NMI vector
-    .word reset             ; $FFFC-$FFFD: Reset vector
-    .word irq               ; $FFFE-$FFFF: IRQ vector
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/17-the-interrupt-vectors.asm" lang="asm" />
 
 **.word** stores a 16-bit address (little-endian). When the NES powers on, it reads the reset vector and jumps there.
 
@@ -506,15 +329,7 @@ The 6502 looks for interrupt vectors at the top of memory:
 
 The PPU reads tile graphics from CHR ROM. We define a single tile — a solid block:
 
-```asm
-.segment "CHARS"
-    ; Tile 0: Solid block
-    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff  ; Plane 0
-    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff  ; Plane 1
-
-    ; Fill rest of 8KB CHR ROM
-    .res 8192 - 16
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/18-chr-rom-the-tiles.asm" lang="asm" />
 
 NES tiles are 8×8 pixels with 2 bits per pixel (4 colours). Each tile uses 16 bytes: 8 bytes for bit plane 0, 8 for bit plane 1.
 
@@ -590,176 +405,7 @@ This is the grid. Everything that follows — the player sprite, the enemies, th
 
 Here's the full program:
 
-```asm
-;──────────────────────────────────────────────────────────────
-; NEON NEXUS
-; A fixed-screen action game for the Nintendo Entertainment System
-; Unit 1: The Grid
-;──────────────────────────────────────────────────────────────
-
-.segment "HEADER"
-    .byte "NES", $1a
-    .byte 2
-    .byte 1
-    .byte $01
-    .byte $00
-    .byte 0,0,0,0,0,0,0,0
-
-.segment "ZEROPAGE"
-frame_counter: .res 1
-
-.segment "CODE"
-PPUCTRL   = $2000
-PPUMASK   = $2001
-PPUSTATUS = $2002
-OAMADDR   = $2003
-PPUSCROLL = $2005
-PPUADDR   = $2006
-PPUDATA   = $2007
-
-.proc reset
-    sei
-    cld
-    ldx #$40
-    stx $4017
-    ldx #$ff
-    txs
-    inx
-    stx PPUCTRL
-    stx PPUMASK
-    stx $4010
-
-    bit PPUSTATUS
-@vblank1:
-    bit PPUSTATUS
-    bpl @vblank1
-
-    lda #$00
-@clear_ram:
-    sta $0000, x
-    sta $0100, x
-    sta $0200, x
-    sta $0300, x
-    sta $0400, x
-    sta $0500, x
-    sta $0600, x
-    sta $0700, x
-    inx
-    bne @clear_ram
-
-@vblank2:
-    bit PPUSTATUS
-    bpl @vblank2
-
-    jsr load_palette
-    jsr fill_background
-
-    lda #%10000000
-    sta PPUCTRL
-    lda #%00011110
-    sta PPUMASK
-
-    lda #$00
-    sta PPUSCROLL
-    sta PPUSCROLL
-
-forever:
-    jmp forever
-.endproc
-
-.proc load_palette
-    bit PPUSTATUS
-    lda #$3f
-    sta PPUADDR
-    lda #$00
-    sta PPUADDR
-
-    ldx #0
-@loop:
-    lda palette_data, x
-    sta PPUDATA
-    inx
-    cpx #32
-    bne @loop
-    rts
-.endproc
-
-.proc fill_background
-    bit PPUSTATUS
-    lda #$20
-    sta PPUADDR
-    lda #$00
-    sta PPUADDR
-
-    lda #$00
-    ldx #0
-    ldy #4
-@outer:
-@inner:
-    sta PPUDATA
-    inx
-    bne @inner
-    dey
-    bne @outer
-
-    bit PPUSTATUS
-    lda #$23
-    sta PPUADDR
-    lda #$c0
-    sta PPUADDR
-
-    ldx #0
-@attr_loop:
-    lda attribute_data, x
-    sta PPUDATA
-    inx
-    cpx #64
-    bne @attr_loop
-    rts
-.endproc
-
-.proc nmi
-    inc frame_counter
-    lda #$00
-    sta PPUSCROLL
-    sta PPUSCROLL
-    rti
-.endproc
-
-.proc irq
-    rti
-.endproc
-
-palette_data:
-    .byte $0f, $11, $21, $31
-    .byte $0f, $19, $29, $39
-    .byte $0f, $15, $25, $35
-    .byte $0f, $00, $10, $30
-    .byte $0f, $11, $21, $31
-    .byte $0f, $19, $29, $39
-    .byte $0f, $15, $25, $35
-    .byte $0f, $00, $10, $30
-
-attribute_data:
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $55, $55, $55, $55, $55, $55, $55, $55
-    .byte $55, $55, $55, $55, $55, $55, $55, $55
-    .byte $aa, $aa, $aa, $aa, $aa, $aa, $aa, $aa
-    .byte $aa, $aa, $aa, $aa, $aa, $aa, $aa, $aa
-    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff
-    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff
-
-.segment "VECTORS"
-    .word nmi
-    .word reset
-    .word irq
-
-.segment "CHARS"
-    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff
-    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff
-    .res 8192 - 16
-```
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/nexus.asm" lang="asm" />
 
 ## Recap / Sanity Check
 

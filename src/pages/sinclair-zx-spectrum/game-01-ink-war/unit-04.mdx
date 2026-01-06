@@ -12,6 +12,8 @@ nextLesson: "/sinclair-zx-spectrum/game-01-ink-war/unit-05"
 layout: "../../../layouts/UnitLayout.astro"
 ---
 
+import CodeFromFile from "@components/CodeFromFile.astro";
+
 *Need to catch up? Check out [Unit 3: Movement](/sinclair-zx-spectrum/game-01-ink-war/unit-03).*
 
 ## What You're Building
@@ -40,13 +42,7 @@ For a game, we need to track ownership:
 
 We need 64 bytes — one for each cell on the 8×8 board:
 
-```asm
-;───────────────────────────────────────
-; Game state
-;───────────────────────────────────────
-board_state:    defs 64         ; 8x8 = 64 cells
-current_player: defb 1          ; 1 = Red, 2 = Cyan
-```
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/01-the-board-state.asm" lang="asm" />
 
 **`defs 64`** — "Define Space." Reserves 64 bytes of memory, initialised to zero. Unlike `defb` which sets specific values, `defs` just claims empty space. All cells start as neutral (0).
 
@@ -54,32 +50,7 @@ current_player: defb 1          ; 1 = Red, 2 = Cyan
 
 To read or write `board_state[y][x]`, we calculate the index: `index = (y × 8) + x`
 
-```asm
-;───────────────────────────────────────
-; Get board state address
-; Input: B = row (0-7), C = column (0-7)
-; Output: HL = address in board_state
-;───────────────────────────────────────
-get_board_addr:
-        ld hl, board_state
-
-        ; Add row offset: y × 8
-        ld a, b
-        rlca                    ; × 2
-        rlca                    ; × 4
-        rlca                    ; × 8
-        ld e, a
-        ld d, 0
-        add hl, de
-
-        ; Add column offset
-        ld a, c
-        ld e, a
-        ld d, 0
-        add hl, de
-
-        ret
-```
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/02-accessing-the-array.asm" lang="asm" />
 
 This is simpler than `get_cell_addr` — we only need `y × 8` (three rotations) instead of `y × 64`.
 
@@ -87,15 +58,7 @@ This is simpler than `get_cell_addr` — we only need `y × 8` (three rotations)
 
 SPACE is on the bottom half-row ($7F), bit 0:
 
-```asm
-; Check if SPACE is pressed
-; Returns: Z if pressed, NZ if not
-check_space:
-        ld bc, $7ffe
-        in a, (c)
-        bit 0, a
-        ret
-```
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/03-reading-space.asm" lang="asm" />
 
 But there's a problem: if we just check SPACE in the main loop, holding the key would claim cells every frame. We need to detect the **transition** from not-pressed to pressed.
 
@@ -103,40 +66,7 @@ But there's a problem: if we just check SPACE in the main loop, holding the key 
 
 We track whether SPACE was already down:
 
-```asm
-space_held:     defb 0          ; 0 = released, 1 = held
-
-;───────────────────────────────────────
-; Check SPACE with edge detection
-; Returns: Z if just pressed (edge), NZ otherwise
-;───────────────────────────────────────
-check_space_edge:
-        ld bc, $7ffe
-        in a, (c)
-        bit 0, a
-        jr nz, .released
-
-        ; SPACE is down - was it already?
-        ld a, (space_held)
-        or a
-        jr nz, .already_held    ; Yes - ignore
-
-        ; First frame of press
-        ld a, 1
-        ld (space_held), a
-        xor a                   ; Set Z flag (pressed)
-        ret
-
-.already_held:
-        or 1                    ; Clear Z flag
-        ret
-
-.released:
-        xor a
-        ld (space_held), a      ; Mark as released
-        or 1                    ; Clear Z flag
-        ret
-```
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/04-debouncing-space.asm" lang="asm" />
 
 **`xor a`** — "Exclusive OR A with itself." Always produces zero (and sets the Z flag). A common idiom for "set A to 0 and set Z".
 
@@ -150,74 +80,13 @@ When the player presses SPACE:
 2. Update `board_state` to the current player
 3. Change the cell's colour on screen
 
-```asm
-;───────────────────────────────────────
-; Claim the current cell
-;───────────────────────────────────────
-claim_cell:
-        ; Get board state for current position
-        ld a, (cursor_y)
-        ld b, a
-        ld a, (cursor_x)
-        ld c, a
-        call get_board_addr
-
-        ; Check if neutral
-        ld a, (hl)
-        or a
-        ret nz                  ; Not neutral - can't claim
-
-        ; Claim it!
-        ld a, (current_player)
-        ld (hl), a
-
-        ; Update screen colour
-        call set_cell_colour
-
-        ret
-```
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/05-the-claim-logic.asm" lang="asm" />
 
 ## Setting Cell Colours
 
 We need to change the attribute bytes to the player's colour:
 
-```asm
-;───────────────────────────────────────
-; Set cell colour based on current_player
-;───────────────────────────────────────
-set_cell_colour:
-        ; Get colour for current player
-        ld a, (current_player)
-        cp 1
-        jr z, .red
-        ld a, CYAN_ON_CYAN
-        jr .got_colour
-.red:
-        ld a, RED_ON_RED
-.got_colour:
-        ld b, a                 ; Save colour in B
-
-        ; Get attribute address
-        push bc
-        ld a, (cursor_y)
-        ld b, a
-        ld a, (cursor_x)
-        ld c, a
-        call get_cell_addr
-        pop bc                  ; B = colour
-
-        ; Write to all 4 attribute bytes
-        ld (hl), b
-        inc hl
-        ld (hl), b
-        ld de, 31
-        add hl, de
-        ld (hl), b
-        inc hl
-        ld (hl), b
-
-        ret
-```
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/06-setting-cell-colours.asm" lang="asm" />
 
 We don't preserve the FLASH bit here — when you claim a cell, it becomes solid, not flashing. The cursor will move on and flash somewhere else.
 
@@ -225,35 +94,13 @@ We don't preserve the FLASH bit here — when you claim a cell, it becomes solid
 
 Add the SPACE check after the movement keys:
 
-```asm
-check_keyboard:
-        ; ... existing Q/A/O/P checks ...
-
-        ; SPACE = claim
-        call check_space_edge
-        jr nz, .no_claim
-        call claim_cell
-.no_claim:
-
-        ret
-```
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/07-integrating-with-the-game-loop.asm" lang="asm" />
 
 Note: we don't `ret` after claiming. The player might want to move immediately after claiming, so we let the movement checks happen too (they'll fail the debounce check since we just processed input).
 
 Actually, let's keep it simple — if SPACE is pressed, we claim and return:
 
-```asm
-check_keyboard:
-        ; SPACE = claim (check first)
-        call check_space_edge
-        jr nz, .not_space
-        call claim_cell
-        ret
-.not_space:
-
-        ; Q = up
-        ; ... rest of movement checks ...
-```
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/08-integrating-with-the-game-loop.asm" lang="asm" />
 
 ## Testing So Far
 
@@ -309,433 +156,7 @@ This is the core gameplay loop taking shape: move → claim → repeat.
 
 Here's `inkwar.asm` as it stands after Unit 4:
 
-```asm
-;══════════════════════════════════════════════════════════════
-; INK WAR
-; A territory control game for the ZX Spectrum
-; Unit 4: Claiming Cells
-;══════════════════════════════════════════════════════════════
-
-        org $8000
-
-;───────────────────────────────────────
-; Constants
-;───────────────────────────────────────
-ATTR_BASE       equ 22528
-BOARD_ATTR      equ 22664
-BOARD_SIZE      equ 8
-
-WHITE_ON_WHITE  equ %00111111
-RED_ON_RED      equ %00010010
-CYAN_ON_CYAN    equ %00101101
-
-;───────────────────────────────────────
-; Entry point
-;───────────────────────────────────────
-start:
-        im 1
-        ei
-
-        ld a, 0
-        out (254), a
-
-        call clear_screen
-        call draw_board
-        call get_cursor_addr
-        call highlight_cursor
-
-;───────────────────────────────────────
-; Main game loop
-;───────────────────────────────────────
-main_loop:
-        halt
-
-        ld a, (move_delay)
-        dec a
-        ld (move_delay), a
-        jr nz, main_loop
-
-        ld a, 8
-        ld (move_delay), a
-
-        call check_keyboard
-
-        jr main_loop
-
-;───────────────────────────────────────
-; Check keyboard
-;───────────────────────────────────────
-check_keyboard:
-        ; SPACE = claim
-        call check_space_edge
-        jr nz, .not_space
-        call claim_cell
-        ret
-.not_space:
-        ; Q = up
-        ld bc, $fbfe
-        in a, (c)
-        bit 0, a
-        jr nz, .not_up
-        call move_up
-        ret
-.not_up:
-        ; A = down
-        ld bc, $fdfe
-        in a, (c)
-        bit 0, a
-        jr nz, .not_down
-        call move_down
-        ret
-.not_down:
-        ; O = left
-        ld bc, $dffe
-        in a, (c)
-        bit 1, a
-        jr nz, .not_left
-        call move_left
-        ret
-.not_left:
-        ; P = right
-        ld bc, $dffe
-        in a, (c)
-        bit 0, a
-        jr nz, .not_right
-        call move_right
-        ret
-.not_right:
-        ret
-
-;───────────────────────────────────────
-; Check SPACE with edge detection
-;───────────────────────────────────────
-check_space_edge:
-        ld bc, $7ffe
-        in a, (c)
-        bit 0, a
-        jr nz, .released
-
-        ld a, (space_held)
-        or a
-        jr nz, .already_held
-
-        ld a, 1
-        ld (space_held), a
-        xor a
-        ret
-
-.already_held:
-        or 1
-        ret
-
-.released:
-        xor a
-        ld (space_held), a
-        or 1
-        ret
-
-;───────────────────────────────────────
-; Claim the current cell
-;───────────────────────────────────────
-claim_cell:
-        ld a, (cursor_y)
-        ld b, a
-        ld a, (cursor_x)
-        ld c, a
-        call get_board_addr
-
-        ; Check if neutral
-        ld a, (hl)
-        or a
-        ret nz
-
-        ; Claim it
-        ld a, (current_player)
-        ld (hl), a
-
-        ; Update display
-        call set_cell_colour
-
-        ret
-
-;───────────────────────────────────────
-; Set cell to current player's colour
-;───────────────────────────────────────
-set_cell_colour:
-        ld a, (current_player)
-        cp 1
-        jr z, .red
-        ld a, CYAN_ON_CYAN
-        jr .got_colour
-.red:
-        ld a, RED_ON_RED
-.got_colour:
-        ld b, a
-
-        push bc
-        ld a, (cursor_y)
-        ld b, a
-        ld a, (cursor_x)
-        ld c, a
-        call get_cell_addr
-        pop bc
-
-        ld (hl), b
-        inc hl
-        ld (hl), b
-        ld de, 31
-        add hl, de
-        ld (hl), b
-        inc hl
-        ld (hl), b
-
-        ret
-
-;───────────────────────────────────────
-; Get board state address
-;───────────────────────────────────────
-get_board_addr:
-        ld hl, board_state
-
-        ld a, b
-        rlca
-        rlca
-        rlca
-        ld e, a
-        ld d, 0
-        add hl, de
-
-        ld a, c
-        ld e, a
-        ld d, 0
-        add hl, de
-
-        ret
-
-;───────────────────────────────────────
-; Movement routines
-;───────────────────────────────────────
-move_up:
-        ld a, (cursor_y)
-        or a
-        ret z
-
-        call get_cursor_addr
-        call clear_cursor
-
-        ld a, (cursor_y)
-        dec a
-        ld (cursor_y), a
-
-        call get_cursor_addr
-        call highlight_cursor
-        ret
-
-move_down:
-        ld a, (cursor_y)
-        cp 7
-        ret z
-
-        call get_cursor_addr
-        call clear_cursor
-
-        ld a, (cursor_y)
-        inc a
-        ld (cursor_y), a
-
-        call get_cursor_addr
-        call highlight_cursor
-        ret
-
-move_left:
-        ld a, (cursor_x)
-        or a
-        ret z
-
-        call get_cursor_addr
-        call clear_cursor
-
-        ld a, (cursor_x)
-        dec a
-        ld (cursor_x), a
-
-        call get_cursor_addr
-        call highlight_cursor
-        ret
-
-move_right:
-        ld a, (cursor_x)
-        cp 7
-        ret z
-
-        call get_cursor_addr
-        call clear_cursor
-
-        ld a, (cursor_x)
-        inc a
-        ld (cursor_x), a
-
-        call get_cursor_addr
-        call highlight_cursor
-        ret
-
-get_cursor_addr:
-        ld a, (cursor_y)
-        ld b, a
-        ld a, (cursor_x)
-        ld c, a
-        call get_cell_addr
-        ret
-
-;───────────────────────────────────────
-; Screen routines
-;───────────────────────────────────────
-clear_screen:
-        ld hl, 16384
-        ld de, 16385
-        ld bc, 6143
-        ld (hl), 0
-        ldir
-
-        ld hl, ATTR_BASE
-        ld de, ATTR_BASE + 1
-        ld bc, 767
-        ld (hl), 0
-        ldir
-        ret
-
-draw_board:
-        ld hl, BOARD_ATTR
-        ld b, BOARD_SIZE
-
-.row_loop:
-        push bc
-        ld b, BOARD_SIZE
-
-.cell_loop:
-        push bc
-        push hl
-
-        ld a, WHITE_ON_WHITE
-        ld (hl), a
-        inc hl
-        ld (hl), a
-        ld de, 31
-        add hl, de
-        ld (hl), a
-        inc hl
-        ld (hl), a
-
-        pop hl
-        inc hl
-        inc hl
-
-        pop bc
-        djnz .cell_loop
-
-        pop bc
-        push bc
-        ld a, BOARD_SIZE
-        sub b
-        inc a
-
-        ld h, 0
-        ld l, a
-        add hl, hl
-        add hl, hl
-        add hl, hl
-        add hl, hl
-        add hl, hl
-        add hl, hl
-        ld de, BOARD_ATTR
-        add hl, de
-
-        pop bc
-        djnz .row_loop
-        ret
-
-get_cell_addr:
-        ld hl, BOARD_ATTR
-
-        ld a, b
-        rlca
-        rlca
-        rlca
-        rlca
-        rlca
-        rlca
-        ld e, a
-        ld d, 0
-        add hl, de
-
-        ld a, c
-        add a, a
-        ld e, a
-        ld d, 0
-        add hl, de
-
-        ret
-
-highlight_cursor:
-        ld a, (hl)
-        set 7, a
-        ld (hl), a
-
-        inc hl
-        ld a, (hl)
-        set 7, a
-        ld (hl), a
-
-        ld de, 31
-        add hl, de
-
-        ld a, (hl)
-        set 7, a
-        ld (hl), a
-
-        inc hl
-        ld a, (hl)
-        set 7, a
-        ld (hl), a
-
-        ret
-
-clear_cursor:
-        ld a, (hl)
-        res 7, a
-        ld (hl), a
-
-        inc hl
-        ld a, (hl)
-        res 7, a
-        ld (hl), a
-
-        ld de, 31
-        add hl, de
-
-        ld a, (hl)
-        res 7, a
-        ld (hl), a
-
-        inc hl
-        ld a, (hl)
-        res 7, a
-        ld (hl), a
-
-        ret
-
-;───────────────────────────────────────
-; Variables
-;───────────────────────────────────────
-cursor_x:       defb 0
-cursor_y:       defb 0
-move_delay:     defb 1
-space_held:     defb 0
-current_player: defb 1
-board_state:    defs 64
-
-        end start
-```
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/inkwar.asm" lang="asm" />
 
 ## Next Unit
 

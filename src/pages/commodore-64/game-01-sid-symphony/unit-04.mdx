@@ -13,6 +13,8 @@ nextLesson: "/commodore-64/game-01-sid-symphony/unit-05"
 layout: "../../../layouts/UnitLayout.astro"
 ---
 
+import CodeFromFile from "@components/CodeFromFile.astro";
+
 import InlineNote from "../../../components/units/InlineNote.astro";
 
 *Need to catch up? Check out [Unit 3: Hit or Miss](/commodore-64/game-01-sid-symphony/unit-03).*
@@ -36,12 +38,7 @@ A score can get big. 10 points per hit, maybe 100 notes in a song — that's 100
 
 Two bytes give us 0-65535:
 
-```asm
-score_lo:       !byte $00       ; Low byte of score
-score_hi:       !byte $00       ; High byte of score
-streak:         !byte $00       ; Current consecutive hits (0-255)
-best_streak:    !byte $00       ; Best streak this game
-```
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-04/snippets/01-storing-the-score.asm" lang="asm" />
 
 Why track `best_streak`? For the end-of-game screen (Unit 8). Players like seeing their best performance, even if they fumbled at the end.
 
@@ -49,18 +46,7 @@ Why track `best_streak`? For the end-of-game screen (Unit 8). Players like seein
 
 Adding to a 16-bit number requires handling the carry:
 
-```asm
-POINTS_PER_HIT  = 10
-
-add_score:
-            clc                     ; Clear carry before addition
-            lda score_lo
-            adc #POINTS_PER_HIT     ; Add to low byte
-            sta score_lo
-            bcc +                   ; No overflow? Done
-            inc score_hi            ; Overflow: increment high byte
-+           rts
-```
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-04/snippets/02-adding-points.asm" lang="asm" />
 
 When `score_lo` overflows past 255, the carry flag is set. We detect this with `bcc` (branch if carry clear) — if no overflow occurred, skip the increment.
 
@@ -72,21 +58,11 @@ This is how all multi-byte arithmetic works on the 6502. Addition sets the carry
 
 Streaks are simpler — just one byte. On a hit:
 
-```asm
-            inc streak              ; One more in a row
-            lda streak
-            cmp best_streak         ; New record?
-            bcc +                   ; No, skip
-            sta best_streak         ; Yes, save it
-+
-```
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-04/snippets/03-managing-streaks.asm" lang="asm" />
 
 On a miss:
 
-```asm
-            lda #$00
-            sta streak              ; Back to zero
-```
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-04/snippets/04-managing-streaks.asm" lang="asm" />
 
 The streak resets completely. No partial credit for "almost" keeping it going.
 
@@ -96,35 +72,7 @@ We have a 16-bit binary number. The screen wants decimal digits. The 6502 doesn'
 
 Repeated subtraction. To find how many 10000s are in a number, subtract 10000 until you can't anymore. Count the subtractions. That's your digit.
 
-```asm
-convert_score:
-            ; Copy score to working area
-            lda score_lo
-            sta work_lo
-            lda score_hi
-            sta work_hi
-
-            ; 10000s digit
-            ldx #$00                ; Digit counter
--           lda work_hi
-            cmp #>10000             ; Compare high bytes first
-            bcc +                   ; Definitely can't subtract
-            bne ++                  ; Definitely can subtract
-            lda work_lo
-            cmp #<10000             ; High bytes equal, check low
-            bcc +                   ; Can't subtract
-++          ; Subtract 10000
-            lda work_lo
-            sec
-            sbc #<10000
-            sta work_lo
-            lda work_hi
-            sbc #>10000
-            sta work_hi
-            inx                     ; Count this subtraction
-            jmp -
-+           stx score_digits        ; Store 10000s digit
-```
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-04/snippets/05-the-display-problem.asm" lang="asm" />
 
 Then repeat for 1000s, 100s, 10s, and 1s. Each iteration is simpler because the numbers get smaller.
 
@@ -134,17 +82,7 @@ The `<` and `>` operators extract the low and high bytes of a 16-bit constant. `
 
 Once we have digits (0-9), we convert to screen codes and write them:
 
-```asm
-draw_score:
-            ldx #$00
--           lda score_digits,x
-            ora #$30                ; Convert 0-9 to screen code '0'-'9'
-            sta SCREEN + (ROW_SCORE * 40) + 8,x
-            inx
-            cpx #$05                ; 5 digits (max 65535)
-            bne -
-            rts
-```
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-04/snippets/06-drawing-digits.asm" lang="asm" />
 
 Screen codes for digits are `$30-$39` (same as PETSCII). OR-ing with `$30` converts a digit value (0-9) to the displayable character.
 
@@ -152,20 +90,7 @@ Screen codes for digits are `$30-$39` (same as PETSCII). OR-ing with `$30` conve
 
 The streak is simpler — just two digits (0-99 is plenty):
 
-```asm
-convert_streak:
-            lda streak
-            ldx #$00                ; Tens counter
--           cmp #10
-            bcc +
-            sec
-            sbc #10
-            inx
-            jmp -
-+           stx streak_tens         ; Tens digit
-            sta streak_ones         ; Ones digit (remainder)
-            rts
-```
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-04/snippets/07-streak-display.asm" lang="asm" />
 
 This is the same algorithm, just for a single byte. Subtract 10 until you can't, count the subtractions, the remainder is the ones digit.
 
@@ -173,40 +98,17 @@ This is the same algorithm, just for a single byte. Subtract 10 until you can't,
 
 In `check_hit`, after removing the note:
 
-```asm
-            jsr add_score           ; Award points
-            inc streak              ; Increment streak
-            lda streak
-            cmp best_streak
-            bcc +
-            sta best_streak         ; New best!
-+           lda #FLASH_TIME
-            sta hit_flash           ; Green flash
-```
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-04/snippets/08-integration.asm" lang="asm" />
 
 When a note despawns (missed):
 
-```asm
-            lda #$00
-            sta streak              ; Reset streak
-            lda #FLASH_TIME
-            sta miss_flash          ; Red flash
-```
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-04/snippets/09-integration.asm" lang="asm" />
 
 ## Update Every Frame
 
 The main loop calls the display update each frame:
 
-```asm
-            jsr update_display
-
-update_display:
-            jsr convert_score
-            jsr draw_score
-            jsr convert_streak
-            jsr draw_streak
-            rts
-```
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-04/snippets/10-update-every-frame.asm" lang="asm" />
 
 Is this wasteful? Slightly — we're converting and drawing even when nothing changed. But it's simple and fast enough. Optimisation can wait.
 
@@ -238,630 +140,5 @@ In [Unit 5: The Crowd](/commodore-64/game-01-sid-symphony/unit-05), we add the c
 
 Here's the complete `symphony.asm` including all features from Units 1-4:
 
-```asm
-;──────────────────────────────────────────────────────────────
-; SID SYMPHONY
-; A rhythm game for the Commodore 64
-; Unit 4: Keeping Score
-;
-; Current features:
-; - Three-lane track display
-; - Notes spawning and scrolling
-; - Hit detection with timing feedback
-; - Score and streak tracking
-;
-; Controls:
-;   X - Hit notes on the track
-;──────────────────────────────────────────────────────────────
-
-; ============================================================
-; CONSTANTS
-; ============================================================
-
-; Memory-mapped I/O
-SCREEN          = $0400         ; Screen RAM (1000 bytes)
-COLOUR          = $d800         ; Colour RAM (1000 bytes)
-BORDER          = $d020         ; Border colour register
-BACKGROUND      = $d021         ; Background colour register
-RASTER          = $d012         ; Current raster line
-
-; SID registers
-SID             = $d400         ; SID base address
-SID_FREQ_LO     = SID + $00     ; Voice 1 frequency low byte
-SID_FREQ_HI     = SID + $01     ; Voice 1 frequency high byte
-SID_PW_LO       = SID + $02     ; Voice 1 pulse width low
-SID_PW_HI       = SID + $03     ; Voice 1 pulse width high
-SID_CTRL        = SID + $04     ; Voice 1 control register
-SID_AD          = SID + $05     ; Voice 1 attack/decay
-SID_SR          = SID + $06     ; Voice 1 sustain/release
-SID_VOLUME      = SID + $18     ; Main volume (low nybble)
-
-; CIA1 keyboard
-CIA1_PORTA      = $dc00         ; Keyboard column select
-CIA1_PORTB      = $dc01         ; Keyboard row read
-
-; Screen layout
-ROW_SCORE       = 1             ; Score display row
-ROW_STREAK      = 2             ; Streak display row
-ROW_TRACK       = 12            ; Track row
-HIT_ZONE_COL    = 5             ; Column where notes are hit
-
-; Colours
-COL_BLACK       = $00
-COL_WHITE       = $01
-COL_RED         = $02
-COL_CYAN        = $03
-COL_GREEN       = $05
-COL_BLUE        = $06
-COL_YELLOW      = $07
-COL_GREY        = $0c
-
-; Game constants
-MAX_NOTES       = 8             ; Maximum simultaneous notes
-NOTE_INACTIVE   = $ff           ; Marker for empty note slot
-NOTE_SPEED      = 4             ; Frames between note movements
-SPAWN_INTERVAL  = 40            ; Frames between note spawns
-FLASH_TIME      = 4             ; Duration of visual feedback
-HIT_ZONE_W      = 3             ; Hit zone width (columns)
-POINTS_PER_HIT  = 10            ; Points awarded per hit
-
-; SID note frequencies (C4 = middle C)
-FREQ_C4         = 4291          ; 262 Hz
-
-; ============================================================
-; BASIC STUB
-; ============================================================
-*= $0801
-            !byte $0c, $08      ; Pointer to next line
-            !byte $0a, $00      ; Line number 10
-            !byte $9e           ; SYS token
-            !text "2064"        ; Address in decimal
-            !byte $00           ; End of line
-            !byte $00, $00      ; End of program
-
-; ============================================================
-; MAIN PROGRAM
-; ============================================================
-*= $0810
-start:
-            jsr init_screen
-            jsr init_sid
-            jsr init_game
-
-main_loop:
-            jsr wait_frame
-            jsr read_input
-            jsr check_hit
-            jsr update_notes
-            jsr update_flash
-            jsr update_display
-            jmp main_loop
-
-; ============================================================
-; INITIALISATION
-; ============================================================
-
-init_screen:
-            ; Set border and background to black
-            lda #COL_BLACK
-            sta BORDER
-            sta BACKGROUND
-
-            ; Clear screen with spaces
-            ldx #$00
-            lda #$20            ; Space character
--           sta SCREEN,x
-            sta SCREEN + $100,x
-            sta SCREEN + $200,x
-            sta SCREEN + $2e8,x
-            lda #COL_GREY
-            sta COLOUR,x
-            sta COLOUR + $100,x
-            sta COLOUR + $200,x
-            sta COLOUR + $2e8,x
-            inx
-            bne -
-
-            ; Draw title
-            ldx #$00
--           lda title_text,x
-            beq +
-            sta SCREEN + 4,x
-            lda #COL_CYAN
-            sta COLOUR + 4,x
-            inx
-            bne -
-+
-            ; Draw "SCORE:" label
-            ldx #$00
--           lda score_label,x
-            beq +
-            sta SCREEN + (ROW_SCORE * 40),x
-            lda #COL_WHITE
-            sta COLOUR + (ROW_SCORE * 40),x
-            inx
-            bne -
-+
-            ; Draw "STREAK:" label
-            ldx #$00
--           lda streak_label,x
-            beq +
-            sta SCREEN + (ROW_STREAK * 40),x
-            lda #COL_WHITE
-            sta COLOUR + (ROW_STREAK * 40),x
-            inx
-            bne -
-+
-            ; Draw track line
-            ldx #39
-            lda #$43            ; Horizontal line character
--           sta SCREEN + (ROW_TRACK * 40),x
-            lda #COL_BLUE
-            sta COLOUR + (ROW_TRACK * 40),x
-            dex
-            bpl -
-
-            ; Draw hit zone marker
-            lda #$5b            ; Left bracket
-            sta SCREEN + (ROW_TRACK * 40) + HIT_ZONE_COL - 1
-            lda #$5d            ; Right bracket
-            sta SCREEN + (ROW_TRACK * 40) + HIT_ZONE_COL + HIT_ZONE_W
-            lda #COL_WHITE
-            sta COLOUR + (ROW_TRACK * 40) + HIT_ZONE_COL - 1
-            sta COLOUR + (ROW_TRACK * 40) + HIT_ZONE_COL + HIT_ZONE_W
-
-            rts
-
-init_sid:
-            ; Clear all SID registers
-            ldx #$18
-            lda #$00
--           sta SID,x
-            dex
-            bpl -
-
-            ; Set volume to maximum
-            lda #$0f
-            sta SID_VOLUME
-
-            ; Set up voice 1: pulse wave with medium attack
-            lda #<FREQ_C4
-            sta SID_FREQ_LO
-            lda #>FREQ_C4
-            sta SID_FREQ_HI
-            lda #$08            ; Pulse width mid-point (low)
-            sta SID_PW_LO
-            lda #$08            ; Pulse width mid-point (high)
-            sta SID_PW_HI
-            lda #$22            ; Attack=2, Decay=2
-            sta SID_AD
-            lda #$a8            ; Sustain=10, Release=8
-            sta SID_SR
-
-            rts
-
-init_game:
-            ; Clear score
-            lda #$00
-            sta score_lo
-            sta score_hi
-            sta streak
-            sta best_streak
-
-            ; Clear all note slots
-            ldx #MAX_NOTES - 1
-            lda #NOTE_INACTIVE
--           sta note_x,x
-            dex
-            bpl -
-
-            ; Reset timers
-            lda #SPAWN_INTERVAL
-            sta spawn_timer
-            lda #NOTE_SPEED
-            sta move_timer
-
-            ; Clear input state
-            lda #$00
-            sta key_current
-            sta key_previous
-
-            ; Clear flash timers
-            sta hit_flash
-            sta miss_flash
-
-            rts
-
-; ============================================================
-; FRAME SYNCHRONISATION
-; ============================================================
-
-wait_frame:
-            ; Wait for raster to reach line 255 (bottom of screen)
--           lda RASTER
-            cmp #255
-            bne -
-            ; Wait for raster to leave line 255
--           lda RASTER
-            cmp #255
-            beq -
-            rts
-
-; ============================================================
-; INPUT HANDLING
-; ============================================================
-
-read_input:
-            ; Save previous state
-            lda key_current
-            sta key_previous
-
-            ; Read X key (row 2, column 7)
-            lda #%01111111      ; Select column 7
-            sta CIA1_PORTA
-            lda CIA1_PORTB      ; Read rows
-            and #%00000100      ; Check row 2 (X key)
-            beq +               ; Branch if pressed (active low)
-            lda #$00            ; Not pressed
-            jmp ++
-+           lda #$01            ; Pressed
-++          sta key_current
-            rts
-
-; ============================================================
-; HIT DETECTION
-; ============================================================
-
-check_hit:
-            ; Check for key-down transition (not pressed -> pressed)
-            lda key_previous
-            bne ch_done         ; Was already pressed, skip
-            lda key_current
-            beq ch_done         ; Not pressed now, skip
-
-            ; Key just pressed - check for note in hit zone
-            ldx #MAX_NOTES - 1
--           lda note_x,x
-            cmp #NOTE_INACTIVE
-            beq +               ; Skip inactive slots
-            ; Check if note is in hit zone
-            cmp #HIT_ZONE_COL
-            bcc +               ; Before hit zone
-            cmp #HIT_ZONE_COL + HIT_ZONE_W
-            bcs +               ; After hit zone
-
-            ; HIT! Remove note and award points
-            jsr erase_note      ; Erase from screen
-            lda #NOTE_INACTIVE
-            sta note_x,x        ; Mark slot as free
-
-            ; Add to score
-            jsr add_score
-
-            ; Update streak
-            inc streak
-            lda streak
-            cmp best_streak
-            bcc ++
-            sta best_streak     ; New best!
-++
-            ; Play hit sound
-            jsr play_note
-
-            ; Trigger hit flash
-            lda #FLASH_TIME
-            sta hit_flash
-
-            jmp ch_done         ; Only hit one note per press
-
-+           dex
-            bpl -
-
-ch_done:
-            rts
-
-; ============================================================
-; SCORING
-; ============================================================
-
-add_score:
-            clc
-            lda score_lo
-            adc #POINTS_PER_HIT
-            sta score_lo
-            bcc +
-            inc score_hi
-+           rts
-
-; ============================================================
-; NOTE MOVEMENT
-; ============================================================
-
-update_notes:
-            ; Handle spawn timer
-            dec spawn_timer
-            bne +
-            jsr spawn_note
-            lda #SPAWN_INTERVAL
-            sta spawn_timer
-+
-            ; Handle move timer
-            dec move_timer
-            bne un_done
-            lda #NOTE_SPEED
-            sta move_timer
-
-            ; Move all active notes
-            ldx #MAX_NOTES - 1
--           lda note_x,x
-            cmp #NOTE_INACTIVE
-            beq +               ; Skip inactive
-
-            ; Erase at old position
-            jsr erase_note
-
-            ; Move left
-            dec note_x,x
-            bmi ++              ; Despawned off left edge
-
-            ; Draw at new position
-            jsr draw_note
-            jmp +
-
-++          ; Note despawned - missed!
-            lda #NOTE_INACTIVE
-            sta note_x,x
-
-            ; Reset streak
-            lda #$00
-            sta streak
-
-            ; Trigger miss flash
-            lda #FLASH_TIME
-            sta miss_flash
-
-+           dex
-            bpl -
-
-un_done:
-            rts
-
-spawn_note:
-            ; Find empty slot
-            ldx #MAX_NOTES - 1
--           lda note_x,x
-            cmp #NOTE_INACTIVE
-            beq +
-            dex
-            bpl -
-            rts                 ; No empty slots
-
-+           ; Spawn at right edge
-            lda #38
-            sta note_x,x
-            jsr draw_note
-            rts
-
-; ============================================================
-; NOTE DRAWING
-; ============================================================
-
-draw_note:
-            ; X = note index, note_x[X] = column
-            lda note_x,x
-            tay                 ; Y = column
-            lda #$51            ; Filled circle character
-            sta SCREEN + (ROW_TRACK * 40),y
-            lda #COL_YELLOW
-            sta COLOUR + (ROW_TRACK * 40),y
-            rts
-
-erase_note:
-            ; X = note index, note_x[X] = column
-            lda note_x,x
-            tay                 ; Y = column
-            lda #$43            ; Horizontal line (restore track)
-            sta SCREEN + (ROW_TRACK * 40),y
-            lda #COL_BLUE
-            sta COLOUR + (ROW_TRACK * 40),y
-            rts
-
-; ============================================================
-; VISUAL FEEDBACK
-; ============================================================
-
-update_flash:
-            ; Handle hit flash (green border)
-            lda hit_flash
-            beq +
-            dec hit_flash
-            lda #COL_GREEN
-            sta BORDER
-            rts
-+
-            ; Handle miss flash (red border)
-            lda miss_flash
-            beq +
-            dec miss_flash
-            lda #COL_RED
-            sta BORDER
-            rts
-+
-            ; No flash - black border
-            lda #COL_BLACK
-            sta BORDER
-            rts
-
-; ============================================================
-; AUDIO
-; ============================================================
-
-play_note:
-            ; Gate on (start note)
-            lda #$41            ; Pulse wave + gate
-            sta SID_CTRL
-            ; Note will release naturally via ADSR
-            rts
-
-; ============================================================
-; DISPLAY UPDATE
-; ============================================================
-
-update_display:
-            jsr convert_score
-            jsr draw_score
-            jsr convert_streak
-            jsr draw_streak
-            rts
-
-convert_score:
-            ; Copy score to work area
-            lda score_lo
-            sta work_lo
-            lda score_hi
-            sta work_hi
-
-            ; 10000s digit
-            ldx #$00
--           lda work_hi
-            cmp #>10000
-            bcc +
-            bne ++
-            lda work_lo
-            cmp #<10000
-            bcc +
-++          lda work_lo
-            sec
-            sbc #<10000
-            sta work_lo
-            lda work_hi
-            sbc #>10000
-            sta work_hi
-            inx
-            jmp -
-+           stx score_digits + 0
-
-            ; 1000s digit
-            ldx #$00
--           lda work_hi
-            cmp #>1000
-            bcc +
-            bne ++
-            lda work_lo
-            cmp #<1000
-            bcc +
-++          lda work_lo
-            sec
-            sbc #<1000
-            sta work_lo
-            lda work_hi
-            sbc #>1000
-            sta work_hi
-            inx
-            jmp -
-+           stx score_digits + 1
-
-            ; 100s digit
-            ldx #$00
--           lda work_lo
-            cmp #100
-            bcc +
-            sec
-            sbc #100
-            sta work_lo
-            inx
-            jmp -
-+           stx score_digits + 2
-
-            ; 10s digit
-            ldx #$00
--           lda work_lo
-            cmp #10
-            bcc +
-            sec
-            sbc #10
-            sta work_lo
-            inx
-            jmp -
-+           stx score_digits + 3
-
-            ; 1s digit
-            lda work_lo
-            sta score_digits + 4
-            rts
-
-draw_score:
-            ldx #$00
--           lda score_digits,x
-            ora #$30            ; Convert to screen code
-            sta SCREEN + (ROW_SCORE * 40) + 8,x
-            lda #COL_WHITE
-            sta COLOUR + (ROW_SCORE * 40) + 8,x
-            inx
-            cpx #$05
-            bne -
-            rts
-
-convert_streak:
-            lda streak
-            ldx #$00
--           cmp #10
-            bcc +
-            sec
-            sbc #10
-            inx
-            jmp -
-+           stx streak_tens
-            sta streak_ones
-            rts
-
-draw_streak:
-            lda streak_tens
-            ora #$30
-            sta SCREEN + (ROW_STREAK * 40) + 8
-            lda streak_ones
-            ora #$30
-            sta SCREEN + (ROW_STREAK * 40) + 9
-            lda #COL_WHITE
-            sta COLOUR + (ROW_STREAK * 40) + 8
-            sta COLOUR + (ROW_STREAK * 40) + 9
-            rts
-
-; ============================================================
-; DATA
-; ============================================================
-
-title_text:
-            !scr "sid symphony"
-            !byte 0
-
-score_label:
-            !scr "score:  "
-            !byte 0
-
-streak_label:
-            !scr "streak: "
-            !byte 0
-
-; ============================================================
-; VARIABLES (uninitialised)
-; ============================================================
-
-note_x:         !fill MAX_NOTES, 0  ; Note X positions
-spawn_timer:    !byte 0             ; Frames until next spawn
-move_timer:     !byte 0             ; Frames until next movement
-key_current:    !byte 0             ; Current key state
-key_previous:   !byte 0             ; Previous key state
-hit_flash:      !byte 0             ; Hit flash countdown
-miss_flash:     !byte 0             ; Miss flash countdown
-score_lo:       !byte 0             ; Score low byte
-score_hi:       !byte 0             ; Score high byte
-streak:         !byte 0             ; Current streak
-best_streak:    !byte 0             ; Best streak this game
-work_lo:        !byte 0             ; Working area for conversion
-work_hi:        !byte 0
-score_digits:   !fill 5, 0          ; 5 decimal digits
-streak_tens:    !byte 0             ; Streak tens digit
-streak_ones:    !byte 0             ; Streak ones digit
-```
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-04/symphony.asm" lang="asm" />
 
