@@ -13,6 +13,10 @@ nextLesson: "/commodore-64/game-01-sid-symphony/unit-03"
 layout: "../../../layouts/UnitLayout.astro"
 ---
 
+import InlineNote from "../../../components/units/InlineNote.astro";
+
+*Need to catch up? Check out [Unit 1: The Stage](/commodore-64/game-01-sid-symphony/unit-01).*
+
 ## What You're Building
 
 The stage is set. The SID can sing. But nothing's moving yet.
@@ -26,37 +30,30 @@ By the end of this unit, you'll have:
 
 It's not a game yet — you can't hit the notes, can't score points, can't fail. But it *looks* like a game. Something is happening. The highway is alive.
 
-![Notes scrolling across Track 2](/images/commodore-64/game-01-sid-symphony/unit-02/screenshot.png)
-
 ## The Problem With Speed
 
-Our Unit 1 main loop runs as fast as it can. On a real C64, that's roughly a million cycles per second. If we moved a note every time through the loop, it would cross the screen in a blur — maybe 50 times per second.
+Our Unit 1 main loop runs as fast as it can. On a real C64, that's roughly a million cycles per second. If we moved a note every time through the loop, it would cross the screen in a blur.
 
-We need to slow down. But not with delay loops (those are unpredictable). We need to sync with something reliable.
+We need to sync with something reliable: the display.
 
 ## The Raster Beam
 
 The C64 draws the screen 50 times per second (PAL) or 60 times (NTSC). An electron beam sweeps across the screen, line by line, painting each frame. The VIC-II chip tracks which line it's currently drawing in register `$D012`.
 
 ```asm
-RASTER      = $d012         ; Current raster line (0-255)
-```
-
-If we wait for the raster to reach line 0, we know a new frame has started. Do our game logic, then wait again. One update per frame. Smooth, consistent, predictable.
-
-```asm
-; Wait for new frame
-wait_not_zero:
-            lda RASTER
-            beq wait_not_zero   ; If already 0, wait until it's not
-wait_zero:
-            lda RASTER
-            bne wait_zero       ; Wait for line 0
+wait_frame:
+.wait_not_0:
+            lda $d012
+            beq .wait_not_0     ; If already 0, wait until it's not
+.wait_0:
+            lda $d012
+            bne .wait_0         ; Wait for line 0
+            rts
 ```
 
 Why wait for "not zero" first? If we're already on line 0 when we check, we'd immediately continue — and might run multiple updates in the same frame. The two-step wait ensures we catch the *transition* to line 0.
 
-This is the foundation of all smooth C64 animation. Every game you've ever played on this machine does something like this.
+This is the foundation of all smooth C64 animation.
 
 ## Storing Notes
 
@@ -67,39 +64,33 @@ MAX_NOTES       = 4             ; Up to 4 notes on screen
 NOTE_INACTIVE   = $ff           ; Marker for empty slot
 
 note_x:
-            !byte $ff, $ff, $ff, $ff   ; 4 slots, all inactive
+            !byte $ff, $ff, $ff, $ff
 ```
 
-A note with X position `$FF` doesn't exist. Any other value is its column on screen (0-39).
-
-Why 4 notes? At our spawn rate (one per second) and scroll speed (~1.3 seconds to cross), we'll typically have 1-2 notes visible. Four gives us headroom without wasting memory.
+A note with X position `$FF` doesn't exist. Any other value (0-39) is its column on screen.
 
 ## Spawning Notes
 
 To spawn a note, find an empty slot and set its position to 39 (the right edge):
 
 ```asm
-NOTE_START_X    = 39            ; Spawn at right edge
-
 spawn_note:
             ldx #$00
-find_slot:
+.find_slot:
             lda note_x,x
             cmp #NOTE_INACTIVE
-            beq found_slot      ; Found an empty slot
+            beq .found
             inx
             cpx #MAX_NOTES
-            bne find_slot
-            rts                 ; No free slots, skip spawn
+            bne .find_slot
+            rts                 ; No free slots
 
-found_slot:
-            lda #NOTE_START_X
+.found:
+            lda #39             ; Right edge
             sta note_x,x
-            jsr draw_note       ; Show it on screen
+            jsr draw_note
             rts
 ```
-
-We search from slot 0. First empty slot wins. If all slots are full, we skip the spawn — the player won't notice one missing note in a stream.
 
 ## Moving Notes
 
@@ -108,51 +99,38 @@ Every few frames, shift all active notes one column left:
 ```asm
 move_notes:
             ldx #$00
-move_loop:
+.loop:
             lda note_x,x
             cmp #NOTE_INACTIVE
-            beq move_next       ; Skip inactive notes
+            beq .next           ; Skip inactive
 
             jsr erase_note      ; Remove from old position
             dec note_x,x        ; Move left
 
             lda note_x,x
             cmp #NOTE_INACTIVE  ; Wrapped to $FF?
-            beq move_next       ; Yes - it's now despawned
+            beq .next           ; Despawned
 
             jsr draw_note       ; Draw at new position
 
-move_next:
+.next:
             inx
             cpx #MAX_NOTES
-            bne move_loop
+            bne .loop
             rts
 ```
 
-When a note at column 0 decrements, it wraps to `$FF` — which is our inactive marker. The note despawns automatically. No special case needed.
+When a note at column 0 decrements, it wraps to `$FF` — our inactive marker. The note despawns automatically.
 
-## Drawing and Erasing
+## Drawing and Erasing Notes
 
-Notes need to appear on screen and disappear when they move. We're drawing on Track 2, which is at row 12.
-
-```asm
-NOTE_CHAR       = $a0           ; Solid block
-NOTE_COLOUR     = $01           ; White
-TRACK_CHAR      = $2d           ; Dash (to restore track)
-ROW_TRACK2      = 12
-```
-
-Drawing uses indirect addressing — we calculate the screen position and write through a pointer:
+Notes appear on Track 2 (row 12). We calculate the screen address and write a character:
 
 ```asm
-screen_ptr  = $fb               ; Zero page pointer
-
 draw_note:
-            stx temp_x          ; Save note index
-
-            lda note_x,x        ; Get X position
-            cmp #HIT_ZONE_X     ; In hit zone (columns 0-3)?
-            bcc draw_note_done  ; Yes - don't overdraw
+            lda note_x,x
+            cmp #HIT_ZONE_W     ; In hit zone?
+            bcc .done           ; Don't overdraw hit zone
 
             clc
             adc #<(SCREEN + ROW_TRACK2 * 40)
@@ -162,117 +140,561 @@ draw_note:
             sta screen_ptr + 1
 
             ldy #$00
-            lda #NOTE_CHAR
+            lda #$51            ; Note character (ball)
             sta (screen_ptr),y
 
-            ; ... set colour similarly ...
+            ; Set colour
+            lda note_x,x
+            clc
+            adc #<(COLOUR + ROW_TRACK2 * 40)
+            sta screen_ptr
+            lda #>(COLOUR + ROW_TRACK2 * 40)
+            adc #$00
+            sta screen_ptr + 1
 
-draw_note_done:
-            ldx temp_x
+            lda #COL_WHITE
+            sta (screen_ptr),y
+.done:
             rts
 ```
 
-The `<` and `>` operators extract the low and high bytes of an address. We add the note's X position to the base address of row 12, giving us the exact screen location.
+Erasing is similar but writes a dash character to restore the track.
 
-Erasing is identical, but writes `TRACK_CHAR` instead — restoring the dash that was there before.
+<InlineNote>
+The zero page pointer `screen_ptr` ($FB-$FC) lets us use indirect indexed addressing: `sta (screen_ptr),y`. This is how we write to calculated addresses on the 6502.
+</InlineNote>
 
-## Timing It All
+## Timer-Based Events
 
 Two timers control the rhythm:
 
 ```asm
 NOTE_SPEED      = 4             ; Move every 4 frames
-SPAWN_INTERVAL  = 90            ; Spawn every 90 frames (~1.5 seconds)
+SPAWN_INTERVAL  = 50            ; Spawn every 50 frames (~1 second)
 
-move_timer:     !byte 4
-spawn_timer:    !byte 90
+move_timer:     !byte NOTE_SPEED
+spawn_timer:    !byte SPAWN_INTERVAL
 ```
 
 Each frame, decrement both. When they hit zero, do the action and reset:
 
 ```asm
-main_loop:
-            ; Wait for new frame
-            jsr wait_frame
-
-            ; Handle input (same as Unit 1)
-            jsr check_x_key
-            ; ... key state logic ...
-
             ; Spawn timer
             dec spawn_timer
-            bne no_spawn
+            bne .no_spawn
             lda #SPAWN_INTERVAL
             sta spawn_timer
             jsr spawn_note
-no_spawn:
+.no_spawn:
 
             ; Move timer
             dec move_timer
-            bne no_move
+            bne .no_move
             lda #NOTE_SPEED
             sta move_timer
             jsr move_notes
-no_move:
-
-            jmp main_loop
+.no_move:
 ```
 
-At 50 frames per second:
-- Notes move ~12 times per second (every 4 frames)
-- Notes spawn every 1.5 seconds (every 90 frames)
-- A note takes ~3 seconds to cross the screen (39 columns ÷ 12.5 moves)
+At 50fps: notes move ~12 times per second, notes spawn every second. A note takes about 3 seconds to cross the screen.
 
-Try changing these constants. `NOTE_SPEED = 2` makes notes fly. `SPAWN_INTERVAL = 45` doubles the note density. This is how you tune game feel.
+## What You've Built
 
-## The Complete Picture
+Build it. Run it. Watch notes appear on the right, scroll left, and vanish off the edge. Press X — the SID still sings. The two systems coexist.
 
-Here's how it all fits together:
+## What You've Learnt
+
+- **Raster synchronisation** — `$D012` tracks the beam; wait for line 0 for frame sync
+- **Object arrays** — Store entity state in arrays; use sentinel values for inactive slots
+- **Timer patterns** — Decrement counters each frame; act when zero; reset
+- **Indirect addressing** — Calculate addresses at runtime; access through zero page pointers
+
+## The Complete Code
+
+Here's the complete `symphony.asm` for this unit:
 
 ```asm
+;═══════════════════════════════════════════════════════════════════════════════
+; SID SYMPHONY - Unit 2: Notes in Motion
+; A rhythm game for the Commodore 64
+;
+; Build: acme -f cbm -o symphony.prg symphony.asm
+; Run:   x64sc symphony.prg
+;═══════════════════════════════════════════════════════════════════════════════
+
+;───────────────────────────────────────────────────────────────────────────────
+; BASIC stub
+;───────────────────────────────────────────────────────────────────────────────
+            * = $0801
+
+            !byte $0c, $08
+            !byte $0a, $00
+            !byte $9e
+            !byte $32, $30, $36, $34
+            !byte $00
+            !byte $00, $00
+
+;───────────────────────────────────────────────────────────────────────────────
+; Constants
+;───────────────────────────────────────────────────────────────────────────────
+SCREEN      = $0400
+COLOUR      = $d800
+
+; Zero page
+screen_ptr  = $fb               ; 2 bytes for indirect addressing
+
+; Screen layout
+ROW_SCORE   = 1
+ROW_TRACK1  = 8
+ROW_TRACK2  = 12
+ROW_TRACK3  = 16
+ROW_CROWD   = 23
+
+; Colours
+COL_BLACK   = $00
+COL_WHITE   = $01
+COL_CYAN    = $03
+COL_GREEN   = $05
+COL_GREY    = $0b
+
+; Track dimensions
+HIT_ZONE_W  = 4
+
+; Note system
+MAX_NOTES       = 4
+NOTE_INACTIVE   = $ff
+NOTE_CHAR       = $51           ; Ball character
+TRACK_CHAR      = $2d           ; Dash for track
+
+; Timing
+NOTE_SPEED      = 4             ; Frames between moves
+SPAWN_INTERVAL  = 50            ; Frames between spawns
+
+; SID registers
+SID         = $d400
+SID_FREQ_LO = SID + 0
+SID_FREQ_HI = SID + 1
+SID_PW_LO   = SID + 2
+SID_PW_HI   = SID + 3
+SID_CTRL    = SID + 4
+SID_AD      = SID + 5
+SID_SR      = SID + 6
+SID_VOLUME  = SID + 24
+
+; CIA
+CIA1_PRA    = $dc00
+CIA1_PRB    = $dc01
+
+;───────────────────────────────────────────────────────────────────────────────
+; Entry Point
+;───────────────────────────────────────────────────────────────────────────────
+            * = $0810
+
 main:
-            jsr setup_screen    ; From Unit 1
-            jsr init_sid        ; From Unit 1
-            jsr init_notes      ; NEW: Clear note array, reset timers
+            jsr setup_screen
+            jsr draw_top_panel
+            jsr draw_tracks
+            jsr draw_bottom_panel
+            jsr init_sid
+            jsr init_notes
             jmp main_loop
 
+;───────────────────────────────────────────────────────────────────────────────
+; Setup Screen
+;───────────────────────────────────────────────────────────────────────────────
+setup_screen:
+            lda #COL_BLACK
+            sta $d020
+            sta $d021
+
+            ldx #$00
+.clear_loop:
+            lda #$20
+            sta SCREEN,x
+            sta SCREEN + $100,x
+            sta SCREEN + $200,x
+            sta SCREEN + $2e8,x
+            lda #COL_BLACK
+            sta COLOUR,x
+            sta COLOUR + $100,x
+            sta COLOUR + $200,x
+            sta COLOUR + $2e8,x
+            inx
+            bne .clear_loop
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Draw Top Panel
+;───────────────────────────────────────────────────────────────────────────────
+draw_top_panel:
+            ldx #$00
+.loop:
+            lda score_text,x
+            beq .done
+            sta SCREEN + (ROW_SCORE * 40),x
+            lda #COL_WHITE
+            sta COLOUR + (ROW_SCORE * 40),x
+            inx
+            bne .loop
+.done:
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Draw Tracks
+;───────────────────────────────────────────────────────────────────────────────
+draw_tracks:
+            ; Track 1
+            ldx #$00
+.t1_loop:
+            cpx #HIT_ZONE_W
+            bcs .t1_lane
+            lda #$a0
+            jmp .t1_store
+.t1_lane:
+            lda #TRACK_CHAR
+.t1_store:
+            sta SCREEN + (ROW_TRACK1 * 40),x
+            lda #COL_GREY
+            sta COLOUR + (ROW_TRACK1 * 40),x
+            inx
+            cpx #40
+            bne .t1_loop
+
+            ; Track 2
+            ldx #$00
+.t2_loop:
+            cpx #HIT_ZONE_W
+            bcs .t2_lane
+            lda #$a0
+            jmp .t2_store
+.t2_lane:
+            lda #TRACK_CHAR
+.t2_store:
+            sta SCREEN + (ROW_TRACK2 * 40),x
+            lda #COL_CYAN
+            sta COLOUR + (ROW_TRACK2 * 40),x
+            inx
+            cpx #40
+            bne .t2_loop
+
+            ; Track 3
+            ldx #$00
+.t3_loop:
+            cpx #HIT_ZONE_W
+            bcs .t3_lane
+            lda #$a0
+            jmp .t3_store
+.t3_lane:
+            lda #TRACK_CHAR
+.t3_store:
+            sta SCREEN + (ROW_TRACK3 * 40),x
+            lda #COL_GREY
+            sta COLOUR + (ROW_TRACK3 * 40),x
+            inx
+            cpx #40
+            bne .t3_loop
+
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Draw Bottom Panel
+;───────────────────────────────────────────────────────────────────────────────
+draw_bottom_panel:
+            ldx #$00
+.loop:
+            lda crowd_text,x
+            beq .done
+            sta SCREEN + (ROW_CROWD * 40),x
+            lda #COL_GREEN
+            sta COLOUR + (ROW_CROWD * 40),x
+            inx
+            bne .loop
+.done:
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Init SID
+;───────────────────────────────────────────────────────────────────────────────
+init_sid:
+            lda #$0f
+            sta SID_VOLUME
+
+            lda #$00
+            sta SID_AD
+            lda #$f9
+            sta SID_SR
+
+            lda #$00
+            sta SID_PW_LO
+            lda #$08
+            sta SID_PW_HI
+
+            lda #$12
+            sta SID_FREQ_LO
+            lda #$11
+            sta SID_FREQ_HI
+
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Init Notes
+;───────────────────────────────────────────────────────────────────────────────
 init_notes:
             ldx #MAX_NOTES - 1
-init_loop:
+.loop:
             lda #NOTE_INACTIVE
             sta note_x,x
             dex
-            bpl init_loop
+            bpl .loop
 
             lda #NOTE_SPEED
             sta move_timer
             lda #$01            ; Spawn first note quickly
             sta spawn_timer
+
             rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Wait Frame - Sync to raster line 0
+;───────────────────────────────────────────────────────────────────────────────
+wait_frame:
+.wait_not_0:
+            lda $d012
+            beq .wait_not_0
+.wait_0:
+            lda $d012
+            bne .wait_0
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Spawn Note - Create new note at right edge
+;───────────────────────────────────────────────────────────────────────────────
+spawn_note:
+            ldx #$00
+.find_slot:
+            lda note_x,x
+            cmp #NOTE_INACTIVE
+            beq .found
+            inx
+            cpx #MAX_NOTES
+            bne .find_slot
+            rts                 ; No free slot
+
+.found:
+            lda #39             ; Right edge of screen
+            sta note_x,x
+            jsr draw_note
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Move Notes - Shift all active notes left
+;───────────────────────────────────────────────────────────────────────────────
+move_notes:
+            ldx #$00
+.loop:
+            lda note_x,x
+            cmp #NOTE_INACTIVE
+            beq .next
+
+            ; Erase at old position
+            jsr erase_note
+
+            ; Move left
+            dec note_x,x
+
+            ; Check if despawned (wrapped to $FF)
+            lda note_x,x
+            cmp #NOTE_INACTIVE
+            beq .next
+
+            ; Draw at new position
+            jsr draw_note
+
+.next:
+            inx
+            cpx #MAX_NOTES
+            bne .loop
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Draw Note - Display note at current position
+; X = note index (preserved)
+;───────────────────────────────────────────────────────────────────────────────
+draw_note:
+            stx temp_x
+
+            lda note_x,x
+            cmp #HIT_ZONE_W     ; Don't draw in hit zone
+            bcc .done
+
+            ; Calculate screen address
+            clc
+            adc #<(SCREEN + ROW_TRACK2 * 40)
+            sta screen_ptr
+            lda #>(SCREEN + ROW_TRACK2 * 40)
+            adc #$00
+            sta screen_ptr + 1
+
+            ; Draw note character
+            ldy #$00
+            lda #NOTE_CHAR
+            sta (screen_ptr),y
+
+            ; Calculate colour address
+            lda note_x,x
+            clc
+            adc #<(COLOUR + ROW_TRACK2 * 40)
+            sta screen_ptr
+            lda #>(COLOUR + ROW_TRACK2 * 40)
+            adc #$00
+            sta screen_ptr + 1
+
+            ; Set colour
+            lda #COL_WHITE
+            sta (screen_ptr),y
+
+.done:
+            ldx temp_x
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Erase Note - Remove note from screen
+; X = note index (preserved)
+;───────────────────────────────────────────────────────────────────────────────
+erase_note:
+            stx temp_x
+
+            lda note_x,x
+            cmp #HIT_ZONE_W
+            bcc .done
+
+            ; Calculate screen address
+            clc
+            adc #<(SCREEN + ROW_TRACK2 * 40)
+            sta screen_ptr
+            lda #>(SCREEN + ROW_TRACK2 * 40)
+            adc #$00
+            sta screen_ptr + 1
+
+            ; Restore track character
+            ldy #$00
+            lda #TRACK_CHAR
+            sta (screen_ptr),y
+
+            ; Calculate colour address
+            lda note_x,x
+            clc
+            adc #<(COLOUR + ROW_TRACK2 * 40)
+            sta screen_ptr
+            lda #>(COLOUR + ROW_TRACK2 * 40)
+            adc #$00
+            sta screen_ptr + 1
+
+            ; Restore track colour
+            lda #COL_CYAN
+            sta (screen_ptr),y
+
+.done:
+            ldx temp_x
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Play/Stop Note
+;───────────────────────────────────────────────────────────────────────────────
+play_note:
+            lda #$41
+            sta SID_CTRL
+            rts
+
+stop_note:
+            lda #$40
+            sta SID_CTRL
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Check X Key
+;───────────────────────────────────────────────────────────────────────────────
+check_x_key:
+            lda #%11111011
+            sta CIA1_PRA
+            lda CIA1_PRB
+            and #%10000000
+            bne .not_pressed
+            lda #$01
+            rts
+.not_pressed:
+            lda #$00
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Main Loop
+;───────────────────────────────────────────────────────────────────────────────
+main_loop:
+            jsr wait_frame
+
+            ; Handle input (same as Unit 1)
+            jsr check_x_key
+            cmp #$01
+            beq .x_pressed
+
+            lda key_state
+            cmp #$01
+            bne .after_input
+            lda #$00
+            sta key_state
+            jsr stop_note
+            jmp .after_input
+
+.x_pressed:
+            lda key_state
+            cmp #$01
+            beq .after_input
+            lda #$01
+            sta key_state
+            jsr play_note
+
+.after_input:
+            ; Spawn timer
+            dec spawn_timer
+            bne .no_spawn
+            lda #SPAWN_INTERVAL
+            sta spawn_timer
+            jsr spawn_note
+.no_spawn:
+
+            ; Move timer
+            dec move_timer
+            bne .no_move
+            lda #NOTE_SPEED
+            sta move_timer
+            jsr move_notes
+.no_move:
+
+            jmp main_loop
+
+;───────────────────────────────────────────────────────────────────────────────
+; Data
+;───────────────────────────────────────────────────────────────────────────────
+score_text:
+            !scr "score: 000000          streak: 00"
+            !byte 0
+
+crowd_text:
+            !scr "crowd [          ]"
+            !byte 0
+
+;───────────────────────────────────────────────────────────────────────────────
+; Variables
+;───────────────────────────────────────────────────────────────────────────────
+key_state:      !byte $00
+move_timer:     !byte NOTE_SPEED
+spawn_timer:    !byte SPAWN_INTERVAL
+temp_x:         !byte $00
+
+; Note arrays
+note_x:
+            !byte $ff, $ff, $ff, $ff
 ```
-
-The first spawn timer is set to 1 instead of 60 — so a note appears almost immediately. Otherwise you'd wait a full second staring at an empty track.
-
-## What You've Built
-
-Run it. Watch the notes scroll. Press X — the SID still sings. The two systems coexist: input handling from Unit 1, animation from Unit 2.
-
-You now have:
-
-- **Frame-synced animation** — Smooth, consistent movement tied to the display
-- **Object lifecycle** — Spawn, update, despawn
-- **Array-based game objects** — Multiple independent entities
-- **Timer-driven events** — Actions that happen on schedule
-
-This is the skeleton of every action game. Enemies spawn, bullets fly, platforms move — they all work like this.
-
-## What You've Learnt
-
-- **Raster synchronisation** — `$D012` tracks the electron beam; wait for line 0 for frame sync
-- **Object arrays** — Store entity state in parallel arrays; use sentinel values for inactive slots
-- **Timer patterns** — Decrement counters each frame; act when zero; reset
-- **Indirect addressing** — Calculate addresses at runtime; access through zero page pointers
-- **Screen coordinate math** — Row × 40 + column = screen offset
 
 ## Next Unit
 

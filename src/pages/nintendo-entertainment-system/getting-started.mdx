@@ -1,0 +1,215 @@
+---
+title: "Getting Started with NES Development"
+description: "Set up your tools for NES 6502 assembly programming."
+layout: "../../layouts/GettingStartedLayout.astro"
+system: "Nintendo Entertainment System"
+---
+
+## What You Need
+
+To develop for the NES, you need:
+
+1. **An assembler** - converts 6502 assembly to machine code
+2. **A linker** - combines object files into a ROM
+3. **An emulator** - runs your programs
+
+## Installing the Assembler
+
+We use **ca65** and **ld65** from the cc65 suite.
+
+### macOS (Homebrew)
+
+```bash
+brew install cc65
+```
+
+### Linux
+
+```bash
+# Ubuntu/Debian
+sudo apt install cc65
+
+# Or build from source
+git clone https://github.com/cc65/cc65.git
+cd cc65
+make
+sudo make install
+```
+
+### Windows
+
+Download from [cc65.github.io](https://cc65.github.io/).
+
+### Verify Installation
+
+```bash
+ca65 --version
+ld65 --version
+```
+
+## Installing the Emulator
+
+We recommend **FCEUX**.
+
+### macOS (Homebrew)
+
+```bash
+brew install fceux
+```
+
+### Linux
+
+```bash
+# Ubuntu/Debian
+sudo apt install fceux
+```
+
+### Windows
+
+Download from [fceux.com](https://fceux.com/).
+
+## Your First Program
+
+Create two files:
+
+### nexus.asm
+
+```asm
+.segment "HEADER"
+    .byte "NES", $1a        ; iNES magic
+    .byte 2                 ; 32KB PRG ROM
+    .byte 1                 ; 8KB CHR ROM
+    .byte $01               ; Mapper 0
+    .byte $00
+    .byte 0,0,0,0,0,0,0,0
+
+.segment "CODE"
+
+PPUCTRL   = $2000
+PPUMASK   = $2001
+PPUSTATUS = $2002
+
+.proc reset
+    sei
+    cld
+    ldx #$ff
+    txs
+
+    ldx #$00
+    stx PPUCTRL
+    stx PPUMASK
+
+    ; Wait for vblank
+    bit PPUSTATUS
+@vblank1:
+    bit PPUSTATUS
+    bpl @vblank1
+
+@vblank2:
+    bit PPUSTATUS
+    bpl @vblank2
+
+    ; Set background colour (via palette)
+    bit PPUSTATUS
+    lda #$3f
+    sta $2006
+    lda #$00
+    sta $2006
+    lda #$11            ; Blue
+    sta $2007
+
+    ; Enable rendering
+    lda #%00001000
+    sta PPUMASK
+
+forever:
+    jmp forever
+.endproc
+
+.proc nmi
+    rti
+.endproc
+
+.proc irq
+    rti
+.endproc
+
+.segment "VECTORS"
+    .word nmi
+    .word reset
+    .word irq
+
+.segment "CHARS"
+    .res 8192           ; Empty CHR ROM
+```
+
+### nes.cfg
+
+```
+MEMORY {
+    ZP:     start = $00,    size = $100,   type = rw, file = "";
+    RAM:    start = $0200,  size = $600,   type = rw, file = "";
+    HEADER: start = $0,     size = $10,    type = ro, file = %O, fill = yes;
+    PRG:    start = $8000,  size = $8000,  type = ro, file = %O, fill = yes;
+    CHR:    start = $0,     size = $2000,  type = ro, file = %O, fill = yes;
+}
+
+SEGMENTS {
+    ZEROPAGE: load = ZP,     type = zp;
+    BSS:      load = RAM,    type = bss;
+    HEADER:   load = HEADER, type = ro;
+    CODE:     load = PRG,    type = ro,  start = $8000;
+    VECTORS:  load = PRG,    type = ro,  start = $FFFA;
+    CHARS:    load = CHR,    type = ro;
+}
+```
+
+## Building
+
+```bash
+ca65 nexus.asm -o nexus.o
+ld65 -C nes.cfg nexus.o -o nexus.nes
+```
+
+## Running
+
+```bash
+fceux nexus.nes
+```
+
+You should see a blue screen.
+
+## Project Structure
+
+```
+neon-nexus/
+├── nexus.asm       # Source code
+├── nes.cfg         # Linker configuration
+├── nexus.o         # Object file
+└── nexus.nes       # ROM file
+```
+
+## Key Addresses
+
+| Address | Purpose |
+|---------|---------|
+| $2000 | PPUCTRL - PPU control |
+| $2001 | PPUMASK - PPU mask |
+| $2002 | PPUSTATUS - PPU status |
+| $2005 | PPUSCROLL - Scroll position |
+| $2006 | PPUADDR - PPU address |
+| $2007 | PPUDATA - PPU data |
+| $4016 | Controller 1 |
+
+## The iNES Format
+
+NES ROMs use the iNES format:
+- 16-byte header
+- PRG ROM (code) - 16KB or 32KB typically
+- CHR ROM (graphics) - 8KB typically
+
+The header specifies ROM sizes and mapper number. Mapper 0 (NROM) is the simplest.
+
+## Next Steps
+
+You're ready to start [Neon Nexus](/nintendo-entertainment-system/game-01-neon-nexus) — your first NES game.

@@ -1,0 +1,554 @@
+---
+title: "The Player"
+description: "Add a hardware sprite to the grid. Learn how the NES handles Object Attribute Memory (OAM) and DMA transfers."
+pubDate: 2026-01-03
+game: 1
+gameName: "Neon Nexus"
+unit: 2
+totalUnits: 16
+system: "Nintendo Entertainment System"
+tags: ["assembly", "6502", "sprites", "oam", "dma"]
+nextLesson: "/nintendo-entertainment-system/game-01-neon-nexus/unit-03"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+*Need to catch up? Check out [Unit 1: The Grid](/nintendo-entertainment-system/game-01-neon-nexus/unit-01).*
+
+## What You're Building
+
+The grid is ready. Now we need a runner.
+
+By the end of this unit, you'll have:
+
+- A player character rendered as a hardware sprite
+- An understanding of Object Attribute Memory (OAM)
+- DMA transfers from CPU RAM to the PPU
+- The foundation for player movement
+
+No movement yet. Just the player, floating in the neon void, waiting for input.
+
+## The Plan
+
+Here's what we need to add to our code:
+
+1. **Shadow OAM** — A 256-byte buffer in CPU RAM at $0200
+2. **Player sprite data** — Y position, tile index, attributes, X position
+3. **DMA transfer** — Copy shadow OAM to PPU every frame
+4. **Ship graphic** — A new tile in CHR ROM
+
+## Hardware Sprites
+
+The NES handles moving objects differently from the background. While backgrounds use nametables and attribute tables, sprites live in a special 256-byte area inside the PPU called **OAM** (Object Attribute Memory).
+
+OAM holds data for 64 sprites. Each sprite uses exactly 4 bytes:
+
+| Byte | Purpose | Range |
+|------|---------|-------|
+| 0 | Y Position | 0-239 (top to bottom) |
+| 1 | Tile Index | 0-255 (which graphic) |
+| 2 | Attributes | Palette, flip, priority |
+| 3 | X Position | 0-255 (left to right) |
+
+The attribute byte packs several options into 8 bits:
+
+```
+76543210
+||||||||
+||||||++- Palette (0-3) — which of the 4 sprite palettes
+|||+++--- Unused
+||+------ Priority: 0 = in front of background, 1 = behind
+|+------- Flip horizontally
++-------- Flip vertically
+```
+
+## The Shadow OAM Problem
+
+Here's a catch: you can only write to PPU memory during **vertical blank** — the brief pause between frames when the screen isn't being drawn. If you try to write while the PPU is rendering, you get garbage.
+
+Writing 256 bytes one at a time during vblank is slow. The NES solves this with **DMA** (Direct Memory Access).
+
+DMA works like this:
+1. Keep a copy of sprite data in CPU RAM (the "shadow OAM")
+2. During vblank, write a single byte to register $4014
+3. The CPU halts while hardware copies all 256 bytes to PPU OAM
+
+The byte you write to $4014 is the **high byte** of your shadow OAM address. If your buffer is at $0200, you write $02. The hardware copies $0200-$02FF to OAM automatically.
+
+This is why we reserved $0200-$02FF when setting up memory — it's our shadow OAM buffer.
+
+## The OAM DMA Register
+
+We need a new constant:
+
+```asm
+OAMDMA    = $4014
+```
+
+Writing to this register triggers the DMA transfer. The value written specifies which 256-byte page of CPU RAM to copy.
+
+## Clearing Shadow OAM
+
+Before we use sprites, we need to initialise shadow OAM. If we leave it as zeros, all 64 sprites appear at position (0, 0) — a mess of overlapping graphics in the top-left corner.
+
+The trick: set all Y positions to $FF (255). Since the visible screen is only 240 lines tall, Y=$FF pushes sprites off the bottom where they're invisible.
+
+We clear the entire buffer to $FF:
+
+```asm
+    ; Clear shadow OAM to $FF (sprites off-screen)
+    lda #$ff
+    ldx #0
+@clear_oam:
+    sta $0200, x
+    inx
+    bne @clear_oam
+```
+
+This writes $FF to every byte from $0200 to $02FF. When X wraps from $FF to $00, the loop ends.
+
+## Initialising the Player Sprite
+
+With shadow OAM cleared, we place our player. Sprite 0 lives at $0200-$0203:
+
+```asm
+    ; Initialise player sprite (Sprite 0)
+    lda #120                ; Y position (middle of screen)
+    sta $0200
+    lda #1                  ; Tile index 1 (our ship graphic)
+    sta $0201
+    lda #%00000000          ; Attributes: palette 0, no flip, in front
+    sta $0202
+    lda #128                ; X position (middle of screen)
+    sta $0203
+```
+
+The player appears at coordinates (128, 120) — roughly centre screen.
+
+## The DMA Transfer
+
+In the NMI handler, we trigger the DMA copy every frame:
+
+```asm
+.proc nmi
+    ; Preserve registers
+    pha
+    txa
+    pha
+    tya
+    pha
+
+    inc frame_counter
+
+    ; OAM DMA transfer
+    lda #$00
+    sta OAMADDR             ; Set OAM address to 0
+    lda #$02                ; High byte of $0200
+    sta OAMDMA              ; Trigger DMA copy
+
+    ; Reset scroll position
+    lda #$00
+    sta PPUSCROLL
+    sta PPUSCROLL
+
+    ; Restore registers
+    pla
+    tay
+    pla
+    tax
+    pla
+
+    rti
+.endproc
+```
+
+**New instructions:**
+
+**`pha`** — "Push Accumulator." Saves A to the stack. We preserve registers at the start of the interrupt handler so we don't corrupt whatever the main program was doing.
+
+**`txa`** / **`tya`** — "Transfer X/Y to Accumulator." We can't push X and Y directly, so we move them to A first, then push.
+
+**`pla`** — "Pull Accumulator." Pops a value from the stack into A. We restore registers in reverse order (last pushed = first pulled).
+
+The DMA sequence:
+1. Write $00 to OAMADDR to reset the OAM write pointer
+2. Write $02 to OAMDMA to copy $0200-$02FF to OAM
+
+This happens every frame, even though our sprite isn't moving yet. When we add movement later, shadow OAM will update between frames, and DMA will push those changes to the PPU.
+
+## The Ship Graphic
+
+We need a tile for our player. NES tiles are 8×8 pixels with 2 bits per pixel (4 colours). Each tile uses 16 bytes: 8 for bit plane 0, 8 for bit plane 1.
+
+The two planes combine to select colours:
+- Plane 0 = 0, Plane 1 = 0 → Colour 0 (transparent for sprites)
+- Plane 0 = 1, Plane 1 = 0 → Colour 1
+- Plane 0 = 0, Plane 1 = 1 → Colour 2
+- Plane 0 = 1, Plane 1 = 1 → Colour 3
+
+Here's our ship — a simple arrow shape:
+
+```asm
+.segment "CHARS"
+    ; Tile 0: Solid block (background)
+    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff  ; Plane 0
+    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff  ; Plane 1
+
+    ; Tile 1: Player ship
+    .byte %00011000         ; ...XX...
+    .byte %00111100         ; ..XXXX..
+    .byte %01111110         ; .XXXXXX.
+    .byte %11111111         ; XXXXXXXX
+    .byte %11111111         ; XXXXXXXX
+    .byte %00100100         ; ..X..X..
+    .byte %00100100         ; ..X..X..
+    .byte %01100110         ; .XX..XX.
+    ; Plane 1 (all zeros = use colour 1 only)
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+
+    ; Fill rest of CHR ROM
+    .res 8192 - 32
+```
+
+With plane 1 all zeros, every set pixel uses colour 1 from sprite palette 0. That's the second colour in our sprite palette — a bright colour against the transparent background.
+
+## Build It. Run It.
+
+```bash
+ca65 nexus.asm -o nexus.o
+ld65 -C nes.cfg nexus.o -o nexus.nes
+fceux nexus.nes
+```
+
+You should see the four colour zones from Unit 1, with a small ship sprite hovering in the centre of the screen.
+
+![The player sprite on the grid](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-02/screenshot.png)
+
+## What You've Built
+
+Look at what you made:
+
+- A hardware sprite rendered by the PPU
+- Shadow OAM buffer in CPU RAM at $0200
+- DMA transfer that copies sprite data every frame
+- A ship graphic in CHR ROM
+- Proper register preservation in the NMI handler
+
+The player exists. It's visible. It's ready to move.
+
+## What You've Learnt
+
+- **OAM** holds 64 sprites, 4 bytes each (Y, Tile, Attributes, X)
+- **Shadow OAM** at $0200 lets us manipulate sprites in CPU RAM
+- **DMA** via $4014 copies 256 bytes to PPU OAM in one operation
+- **$FF for Y** hides sprites by pushing them off-screen
+- **Sprite tiles** use 2-bit planar format, same as background tiles
+- **Register preservation** (pha/pla) protects the main program during interrupts
+
+## The Complete Code
+
+Here's the full `nexus.asm` at this point:
+
+```asm
+;──────────────────────────────────────────────────────────────
+; NEON NEXUS
+; A fixed-screen action game for the Nintendo Entertainment System
+; Unit 2: The Player
+;──────────────────────────────────────────────────────────────
+
+.segment "HEADER"
+    .byte "NES", $1a        ; iNES magic number
+    .byte 2                 ; 2 x 16KB PRG ROM = 32KB
+    .byte 1                 ; 1 x 8KB CHR ROM
+    .byte $01               ; Mapper 0, vertical mirroring
+    .byte $00               ; Mapper 0 continued
+    .byte 0,0,0,0,0,0,0,0   ; Padding
+
+;──────────────────────────────────────────────────────────────
+; Variables
+;──────────────────────────────────────────────────────────────
+
+.segment "ZEROPAGE"
+frame_counter: .res 1
+
+;──────────────────────────────────────────────────────────────
+; Constants
+;──────────────────────────────────────────────────────────────
+
+.segment "CODE"
+
+; PPU registers
+PPUCTRL   = $2000
+PPUMASK   = $2001
+PPUSTATUS = $2002
+OAMADDR   = $2003
+PPUSCROLL = $2005
+PPUADDR   = $2006
+PPUDATA   = $2007
+
+; OAM DMA register
+OAMDMA    = $4014
+
+;──────────────────────────────────────────────────────────────
+; Reset handler
+;──────────────────────────────────────────────────────────────
+
+.proc reset
+    sei                     ; Disable IRQs
+    cld                     ; Disable decimal mode
+
+    ldx #$40
+    stx $4017               ; Disable APU frame IRQ
+
+    ldx #$ff
+    txs                     ; Set up stack
+
+    inx                     ; X = 0
+    stx PPUCTRL             ; Disable NMI
+    stx PPUMASK             ; Disable rendering
+    stx $4010               ; Disable DMC IRQs
+
+    ; Wait for first vblank
+    bit PPUSTATUS
+@vblank1:
+    bit PPUSTATUS
+    bpl @vblank1
+
+    ; Clear RAM ($0000-$07FF)
+    lda #$00
+    ldx #0
+@clear_ram:
+    sta $0000, x
+    sta $0100, x
+    sta $0200, x
+    sta $0300, x
+    sta $0400, x
+    sta $0500, x
+    sta $0600, x
+    sta $0700, x
+    inx
+    bne @clear_ram
+
+    ; Clear shadow OAM to $FF (sprites off-screen)
+    lda #$ff
+    ldx #0
+@clear_oam:
+    sta $0200, x
+    inx
+    bne @clear_oam
+
+    ; Wait for second vblank
+@vblank2:
+    bit PPUSTATUS
+    bpl @vblank2
+
+    ; Load palette
+    jsr load_palette
+
+    ; Fill background
+    jsr fill_background
+
+    ; Initialise player sprite (Sprite 0)
+    lda #120                ; Y position
+    sta $0200
+    lda #1                  ; Tile index 1
+    sta $0201
+    lda #%00000000          ; Attributes: palette 0, no flip
+    sta $0202
+    lda #128                ; X position
+    sta $0203
+
+    ; Enable rendering
+    lda #%10000000          ; Enable NMI
+    sta PPUCTRL
+    lda #%00011110          ; Enable sprites and background
+    sta PPUMASK
+
+    ; Reset scroll
+    lda #$00
+    sta PPUSCROLL
+    sta PPUSCROLL
+
+forever:
+    jmp forever
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; NMI handler (called every vblank)
+;──────────────────────────────────────────────────────────────
+
+.proc nmi
+    ; Preserve registers
+    pha
+    txa
+    pha
+    tya
+    pha
+
+    inc frame_counter
+
+    ; OAM DMA transfer
+    lda #$00
+    sta OAMADDR             ; Set OAM address to 0
+    lda #$02                ; High byte of $0200
+    sta OAMDMA              ; Trigger DMA copy
+
+    ; Reset scroll position
+    lda #$00
+    sta PPUSCROLL
+    sta PPUSCROLL
+
+    ; Restore registers
+    pla
+    tay
+    pla
+    tax
+    pla
+
+    rti
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; IRQ handler (unused)
+;──────────────────────────────────────────────────────────────
+
+.proc irq
+    rti
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; Subroutines
+;──────────────────────────────────────────────────────────────
+
+.proc load_palette
+    ; Set PPU address to palette ($3F00)
+    bit PPUSTATUS           ; Reset address latch
+    lda #$3f
+    sta PPUADDR
+    lda #$00
+    sta PPUADDR
+
+    ; Load 32 palette bytes
+    ldx #0
+@loop:
+    lda palette_data, x
+    sta PPUDATA
+    inx
+    cpx #32
+    bne @loop
+    rts
+.endproc
+
+.proc fill_background
+    ; Set PPU address to nametable 0 ($2000)
+    bit PPUSTATUS
+    lda #$20
+    sta PPUADDR
+    lda #$00
+    sta PPUADDR
+
+    ; Fill with tile 0 (960 + 64 = 1024 bytes)
+    lda #$00
+    ldx #0
+    ldy #4
+@outer:
+@inner:
+    sta PPUDATA
+    inx
+    bne @inner
+    dey
+    bne @outer
+
+    ; Set PPU address to attribute table ($23C0)
+    bit PPUSTATUS
+    lda #$23
+    sta PPUADDR
+    lda #$c0
+    sta PPUADDR
+
+    ; Fill with colour zone pattern
+    ldx #0
+@attr_loop:
+    lda attribute_data, x
+    sta PPUDATA
+    inx
+    cpx #64
+    bne @attr_loop
+
+    rts
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; Data
+;──────────────────────────────────────────────────────────────
+
+palette_data:
+    ; Background palettes
+    .byte $0f, $11, $21, $31    ; Palette 0: Blues
+    .byte $0f, $19, $29, $39    ; Palette 1: Greens
+    .byte $0f, $15, $25, $35    ; Palette 2: Magentas
+    .byte $0f, $00, $10, $30    ; Palette 3: Greys
+
+    ; Sprite palettes
+    .byte $0f, $30, $21, $11    ; Palette 0: White/Blue (player)
+    .byte $0f, $19, $29, $39    ; Palette 1: Greens
+    .byte $0f, $15, $25, $35    ; Palette 2: Magentas
+    .byte $0f, $17, $27, $37    ; Palette 3: Oranges
+
+attribute_data:
+    ; 8 rows of 8 bytes = 64 bytes
+    .byte $00, $00, $00, $00, $00, $00, $00, $00  ; Palette 0
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $55, $55, $55, $55, $55, $55, $55, $55  ; Palette 1
+    .byte $55, $55, $55, $55, $55, $55, $55, $55
+    .byte $aa, $aa, $aa, $aa, $aa, $aa, $aa, $aa  ; Palette 2
+    .byte $aa, $aa, $aa, $aa, $aa, $aa, $aa, $aa
+    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff  ; Palette 3
+    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff
+
+;──────────────────────────────────────────────────────────────
+; Vectors
+;──────────────────────────────────────────────────────────────
+
+.segment "VECTORS"
+    .word nmi               ; $FFFA-$FFFB: NMI vector
+    .word reset             ; $FFFC-$FFFD: Reset vector
+    .word irq               ; $FFFE-$FFFF: IRQ vector
+
+;──────────────────────────────────────────────────────────────
+; CHR ROM (graphics)
+;──────────────────────────────────────────────────────────────
+
+.segment "CHARS"
+    ; Tile 0: Solid block (background fill)
+    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff  ; Plane 0
+    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff  ; Plane 1
+
+    ; Tile 1: Player ship
+    .byte %00011000         ; ...XX...
+    .byte %00111100         ; ..XXXX..
+    .byte %01111110         ; .XXXXXX.
+    .byte %11111111         ; XXXXXXXX
+    .byte %11111111         ; XXXXXXXX
+    .byte %00100100         ; ..X..X..
+    .byte %00100100         ; ..X..X..
+    .byte %01100110         ; .XX..XX.
+    ; Plane 1 (all zeros = colour 1 only)
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+
+    ; Fill rest of 8KB CHR ROM
+    .res 8192 - 32
+```
+
+## Recap / Sanity Check
+
+- Build + run: `ca65 nexus.asm -o nexus.o && ld65 -C nes.cfg nexus.o -o nexus.nes && fceux nexus.nes`
+- Screen: four colour zones with a small ship sprite in the centre
+- The sprite should be visible, not flickering, and positioned at roughly (128, 120)
+- If you see 64 sprites clustered at (0, 0), shadow OAM isn't being cleared to $FF
+- If no sprite appears, check that PPUMASK enables sprites (bit 4 set)
+
+## Next Unit
+
+The ship is ready. But it's frozen in place.
+
+In Unit 3, we read the controller and let you fly around the grid. The neon nexus awakens.

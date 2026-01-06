@@ -1,23 +1,23 @@
 # Code198x Website
 
-Astro 5.14.1 learning platform for retro game development education.
+Astro 5.15.x learning platform for retro game development education.
 
 ## 🚀 Project Structure
 
 ```text
 website/
 ├── src/
-│   ├── pages/                  # File-based routing
-│   │   └── commodore-64/basic/ # C64 BASIC course
-│   │       ├── CURRICULUM.md   # Authoritative lesson specs
-│   │       ├── index.astro     # Course overview
-│   │       └── week-N/         # Weekly lesson groups
-│   ├── layouts/                # Page templates
-│   │   ├── Layout.astro        # Base layout
-│   │   └── LessonLayout.astro  # Lesson page template
-│   ├── components/             # Reusable components
-│   └── styles/                 # Global styles
-├── public/                     # Static assets
+│   ├── pages/                     # File-based routing
+│   │   └── [platform]/            # e.g., commodore-64
+│   │       └── game-NN-[title]/   # Game project
+│   │           ├── index.mdx      # Course overview
+│   │           └── unit-NN.mdx    # Individual lessons
+│   ├── layouts/                   # Page templates
+│   │   ├── Layout.astro           # Base layout
+│   │   └── LessonLayout.astro     # Lesson page template
+│   ├── components/                # Reusable components
+│   └── styles/                    # Global styles
+├── public/                        # Static assets
 └── package.json
 ```
 
@@ -34,10 +34,10 @@ All commands are run from the website directory:
 
 ## 📝 Adding Lessons
 
-1. Check `CURRICULUM.md` in the course directory for lesson specifications
-2. Create `lesson-NN.mdx` with proper frontmatter (see LessonLayout.astro)
+1. Check the authoritative curriculum specs in `/docs/curriculum/[platform]-curriculum.md`
+2. Create `unit-NN.mdx` in the appropriate game directory
 3. Follow the lesson structure template (Opening → Basic → Practical → WOW → Reference → Learnt)
-4. Extract WOW moment code to `/code-samples/[system]/[course]/week-N/lesson-NN/`
+4. Extract WOW moment code to `/code-samples/[platform]/game-NN-[title]/unit-NN/`
 
 ## 🌐 Live Site
 

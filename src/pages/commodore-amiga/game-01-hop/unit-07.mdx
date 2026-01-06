@@ -1,0 +1,624 @@
+---
+title: "Riding the Logs"
+description: "Implement platform mechanics. Learn how to detect when the frog lands on a log and make it ride along."
+pubDate: 2026-01-03
+game: 1
+gameName: "Hop"
+unit: 7
+totalUnits: 16
+system: "Commodore Amiga"
+tags: ["assembly", "68000", "collision", "platforms"]
+nextLesson: "/commodore-amiga/game-01-hop/unit-08"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+*Need to catch up? Check out [Unit 6: The River](/commodore-amiga/game-01-hop/unit-06).*
+
+## What You're Building
+
+Logs float by, but the frog just phases through them. Time to make them rideable.
+
+By the end of this unit, you'll have:
+
+- Platform detection for logs
+- The frog moving with the log it's standing on
+- Zone detection (water vs road vs grass)
+
+## The Frogger Mechanic
+
+In Frogger, the water is deadly — unless you're on a log. The mechanic works like this:
+
+1. If frog is in **water zone** AND **on a log** → ride the log
+2. If frog is in **water zone** AND **not on a log** → death (next unit)
+3. If frog is in **road zone** → normal movement
+4. If frog is in **grass zone** → safe
+
+## Zone Detection
+
+We can determine the zone from the frog's Y position:
+
+```asm
+; Y boundaries
+WATER_TOP   equ 64
+WATER_BOT   equ 108
+ROAD_TOP    equ 120
+ROAD_BOT    equ 180
+```
+
+Checking the zone:
+
+```asm
+            move.w  frog_y,d0
+            cmp.w   #WATER_TOP,d0
+            blt.s   .safe               ; Above water = home
+            cmp.w   #WATER_BOT,d0
+            blt.s   .in_water           ; In water zone
+            cmp.w   #ROAD_TOP,d0
+            blt.s   .safe               ; Median
+            cmp.w   #ROAD_BOT,d0
+            blt.s   .on_road            ; Road zone
+.safe:      ; Safe zone
+```
+
+## Log Collision Detection
+
+To check if the frog is on a log, we compare their bounding boxes:
+
+```asm
+check_on_log:
+            ; Returns: D0 = log speed if on log, 0 if not
+            lea     objects,a2
+            move.w  #NUM_OBJECTS-1,d7
+.loop:
+            ; Only check logs
+            cmp.w   #TYPE_LOG,OBJ_TYPE(a2)
+            bne.s   .next
+
+            ; Check Y overlap (frog on same row as log)
+            move.w  frog_y,d1
+            move.w  OBJ_Y(a2),d2
+            sub.w   d2,d1               ; D1 = frog_y - log_y
+            bmi.s   .next               ; Frog above log
+            cmp.w   #LOG_HEIGHT,d1      ; Frog below log?
+            bge.s   .next
+
+            ; Check X overlap
+            move.w  frog_x,d1
+            move.w  OBJ_X(a2),d2
+            sub.w   d2,d1               ; D1 = frog_x - log_x
+            cmp.w   #-FROG_WIDTH,d1     ; Frog too far left?
+            blt.s   .next
+            cmp.w   #LOG_PIXELS,d1      ; Frog too far right?
+            bge.s   .next
+
+            ; On this log! Return its speed
+            move.w  OBJ_SPEED(a2),d0
+            rts
+
+.next:      lea     OBJ_SIZE(a2),a2
+            dbf     d7,.loop
+
+            ; Not on any log
+            moveq   #0,d0
+            rts
+```
+
+## Platform Movement
+
+When the frog is on a log, it moves with the log:
+
+```asm
+handle_platform:
+            ; Check if in water zone
+            move.w  frog_y,d0
+            cmp.w   #WATER_TOP,d0
+            blt.s   .done
+            cmp.w   #WATER_BOT,d0
+            bge.s   .done
+
+            ; In water - check if on a log
+            bsr.s   check_on_log
+            tst.w   d0
+            beq.s   .done               ; Not on log (death later)
+
+            ; On a log - apply log speed
+            add.w   d0,frog_x
+
+            ; Clamp to screen
+            tst.w   frog_x
+            bpl.s   .check_right
+            clr.w   frog_x
+            bra.s   .done
+.check_right:
+            cmp.w   #MAX_X,frog_x
+            ble.s   .done
+            move.w  #MAX_X,frog_x
+.done:      rts
+```
+
+## Build It. Run It.
+
+```bash
+vasmm68k_mot -Fhunkexe -kick1hunks -o hop -nosym hop.asm
+xdftool hop.adf create + format "Hop" ofs + boot install boot1x + write hop + makedir s
+echo "hop" > startup-sequence
+xdftool hop.adf write startup-sequence s/startup-sequence
+fs-uae --floppy_drive_0=hop.adf
+```
+
+Hop onto a log — the frog should ride along with it!
+
+## What You've Learnt
+
+- **Zone detection** uses Y position to determine game area
+- **Bounding box collision** checks for overlap in both X and Y
+- **Platform mechanics** add the platform's velocity to the rider
+- **Signed comparisons** handle objects that can be at negative positions
+
+## The Complete Code
+
+Here's the full `hop.asm` with platform mechanics:
+
+```asm
+;──────────────────────────────────────────────────────────────
+; HOP - A Frogger-style game for the Commodore Amiga
+; Unit 7: Riding the Logs
+;──────────────────────────────────────────────────────────────
+
+CUSTOM      equ $dff000
+
+DMACONR     equ $002
+VPOSR       equ $004
+JOY1DAT     equ $00c
+BLTCON0     equ $040
+BLTCON1     equ $042
+BLTAFWM     equ $044
+BLTALWM     equ $046
+BLTAPTH     equ $050
+BLTDPTH     equ $054
+BLTSIZE     equ $058
+BLTAMOD     equ $064
+BLTDMOD     equ $066
+COP1LC      equ $080
+COPJMP1     equ $088
+DMACON      equ $096
+INTENA      equ $09a
+INTREQ      equ $09c
+COLOR00     equ $180
+
+SCREEN_W    equ 40
+SCREEN_H    equ 256
+PLANE_SIZE  equ SCREEN_W*SCREEN_H
+
+HOP_SIZE    equ 16
+FROG_WIDTH  equ 16
+FROG_HEIGHT equ 16
+MIN_X       equ 32
+MAX_X       equ 288
+MIN_Y       equ 44
+MAX_Y       equ 196
+
+WATER_TOP   equ 64
+WATER_BOT   equ 108
+ROAD_TOP    equ 120
+ROAD_BOT    equ 180
+
+OBJ_X       equ 0
+OBJ_Y       equ 2
+OBJ_SPEED   equ 4
+OBJ_TYPE    equ 6
+OBJ_SIZE    equ 8
+
+TYPE_CAR    equ 0
+TYPE_LOG    equ 1
+
+CAR_WIDTH   equ 1
+CAR_HEIGHT  equ 8
+LOG_WIDTH   equ 2
+LOG_HEIGHT  equ 8
+LOG_PIXELS  equ 32
+
+NUM_OBJECTS equ 7
+
+;──────────────────────────────────────────────────────────────
+            section code,code
+
+start:
+            lea     CUSTOM,a5
+            move.w  #$7fff,INTENA(a5)
+            move.w  #$7fff,INTREQ(a5)
+            move.w  #$7fff,DMACON(a5)
+
+            bsr     clear_screen
+            bsr     setup_copper_pointers
+
+            lea     copperlist,a0
+            move.l  a0,COP1LC(a5)
+            move.w  d0,COPJMP1(a5)
+
+            move.w  #$83e0,DMACON(a5)
+
+            move.w  #160,frog_x
+            move.w  #180,frog_y
+            bsr     update_sprite
+
+mainloop:
+            bsr     wait_vblank
+            bsr     read_joystick
+            bsr     update_frog
+            bsr     handle_platform
+            bsr     update_sprite
+            bsr     update_objects
+            bra     mainloop
+
+;──────────────────────────────────────────────────────────────
+wait_vblank:
+            move.l  #$1ff00,d1
+.wait:      move.l  VPOSR(a5),d0
+            and.l   d1,d0
+            bne.s   .wait
+            rts
+
+wait_blit:
+            btst    #6,DMACONR(a5)
+            bne.s   wait_blit
+            rts
+
+;──────────────────────────────────────────────────────────────
+clear_screen:
+            bsr.s   wait_blit
+            move.l  #screen_plane1,BLTDPTH(a5)
+            move.w  #0,BLTDMOD(a5)
+            move.w  #$0100,BLTCON0(a5)
+            move.w  #0,BLTCON1(a5)
+            move.w  #(SCREEN_H<<6)|SCREEN_W/2,BLTSIZE(a5)
+            bsr.s   wait_blit
+            move.l  #screen_plane2,BLTDPTH(a5)
+            move.w  #(SCREEN_H<<6)|SCREEN_W/2,BLTSIZE(a5)
+            rts
+
+;──────────────────────────────────────────────────────────────
+setup_copper_pointers:
+            lea     screen_plane1,a0
+            lea     bplpt+2,a1
+            move.l  a0,d0
+            swap    d0
+            move.w  d0,(a1)
+            swap    d0
+            move.w  d0,4(a1)
+            lea     screen_plane2,a0
+            move.l  a0,d0
+            swap    d0
+            move.w  d0,8(a1)
+            swap    d0
+            move.w  d0,12(a1)
+            lea     frog_data,a0
+            lea     sprpt+2,a1
+            move.l  a0,d0
+            swap    d0
+            move.w  d0,(a1)
+            swap    d0
+            move.w  d0,4(a1)
+            rts
+
+;──────────────────────────────────────────────────────────────
+read_joystick:
+            move.w  JOY1DAT(a5),d0
+            move.w  d0,d1
+            lsr.w   #1,d1
+            eor.w   d1,d0
+            move.w  joy_prev,d1
+            not.w   d1
+            and.w   d0,d1
+            move.w  d0,joy_prev
+            move.w  d1,d0
+            rts
+
+;──────────────────────────────────────────────────────────────
+update_frog:
+            btst    #8,d0
+            beq.s   .no_up
+            move.w  frog_y,d1
+            sub.w   #HOP_SIZE,d1
+            cmp.w   #MIN_Y,d1
+            blt.s   .no_up
+            move.w  d1,frog_y
+.no_up:     btst    #0,d0
+            beq.s   .no_down
+            move.w  frog_y,d1
+            add.w   #HOP_SIZE,d1
+            cmp.w   #MAX_Y,d1
+            bgt.s   .no_down
+            move.w  d1,frog_y
+.no_down:   btst    #9,d0
+            beq.s   .no_left
+            move.w  frog_x,d1
+            sub.w   #HOP_SIZE,d1
+            cmp.w   #MIN_X,d1
+            blt.s   .no_left
+            move.w  d1,frog_x
+.no_left:   btst    #1,d0
+            beq.s   .no_right
+            move.w  frog_x,d1
+            add.w   #HOP_SIZE,d1
+            cmp.w   #MAX_X,d1
+            bgt.s   .no_right
+            move.w  d1,frog_x
+.no_right:  rts
+
+;──────────────────────────────────────────────────────────────
+handle_platform:
+            move.w  frog_y,d0
+            cmp.w   #WATER_TOP,d0
+            blt.s   .done
+            cmp.w   #WATER_BOT,d0
+            bge.s   .done
+
+            bsr.s   check_on_log
+            tst.w   d0
+            beq.s   .done
+
+            add.w   d0,frog_x
+
+            tst.w   frog_x
+            bpl.s   .check_right
+            clr.w   frog_x
+            bra.s   .done
+.check_right:
+            cmp.w   #MAX_X,frog_x
+            ble.s   .done
+            move.w  #MAX_X,frog_x
+.done:      rts
+
+;──────────────────────────────────────────────────────────────
+check_on_log:
+            lea     objects,a2
+            move.w  #NUM_OBJECTS-1,d7
+.loop:
+            cmp.w   #TYPE_LOG,OBJ_TYPE(a2)
+            bne.s   .next
+
+            move.w  frog_y,d1
+            move.w  OBJ_Y(a2),d2
+            sub.w   d2,d1
+            bmi.s   .next
+            cmp.w   #LOG_HEIGHT,d1
+            bge.s   .next
+
+            move.w  frog_x,d1
+            move.w  OBJ_X(a2),d2
+            sub.w   d2,d1
+            cmp.w   #-FROG_WIDTH,d1
+            blt.s   .next
+            cmp.w   #LOG_PIXELS,d1
+            bge.s   .next
+
+            move.w  OBJ_SPEED(a2),d0
+            rts
+
+.next:      lea     OBJ_SIZE(a2),a2
+            dbf     d7,.loop
+            moveq   #0,d0
+            rts
+
+;──────────────────────────────────────────────────────────────
+update_sprite:
+            lea     frog_data,a0
+            move.w  frog_y,d0
+            move.w  frog_x,d1
+            move.w  d0,d2
+            lsl.w   #8,d2
+            lsr.w   #1,d1
+            or.b    d1,d2
+            move.w  d2,(a0)
+            add.w   #FROG_HEIGHT,d0
+            lsl.w   #8,d0
+            move.w  d0,2(a0)
+            rts
+
+;──────────────────────────────────────────────────────────────
+update_objects:
+            lea     objects,a2
+            move.w  #NUM_OBJECTS-1,d7
+.loop:
+            move.w  OBJ_X(a2),d0
+            move.w  OBJ_Y(a2),d1
+            bsr     clear_object
+
+            move.w  OBJ_SPEED(a2),d0
+            add.w   d0,OBJ_X(a2)
+
+            move.w  OBJ_X(a2),d0
+            cmp.w   #320,d0
+            blt.s   .check_left
+            sub.w   #352,d0
+            move.w  d0,OBJ_X(a2)
+            bra.s   .draw
+.check_left:
+            cmp.w   #-32,d0
+            bge.s   .draw
+            add.w   #352,d0
+            move.w  d0,OBJ_X(a2)
+.draw:
+            move.w  OBJ_X(a2),d0
+            move.w  OBJ_Y(a2),d1
+            bsr     draw_object
+
+            lea     OBJ_SIZE(a2),a2
+            dbf     d7,.loop
+            rts
+
+;──────────────────────────────────────────────────────────────
+clear_object:
+            tst.w   d0
+            bmi.s   .done
+            cmp.w   #320,d0
+            bge.s   .done
+            bsr     wait_blit
+            lea     screen_plane1,a0
+            mulu    #SCREEN_W,d1
+            add.l   d1,a0
+            move.w  d0,d2
+            lsr.w   #3,d2
+            ext.l   d2
+            add.l   d2,a0
+            move.w  OBJ_TYPE(a2),d3
+            beq.s   .car_clear
+            move.w  #SCREEN_W-LOG_WIDTH*2,BLTDMOD(a5)
+            move.w  #(LOG_HEIGHT<<6)|LOG_WIDTH,d4
+            bra.s   .do_clear
+.car_clear: move.w  #SCREEN_W-CAR_WIDTH*2,BLTDMOD(a5)
+            move.w  #(CAR_HEIGHT<<6)|CAR_WIDTH,d4
+.do_clear:  move.l  a0,BLTDPTH(a5)
+            move.w  #$0100,BLTCON0(a5)
+            move.w  #0,BLTCON1(a5)
+            move.w  d4,BLTSIZE(a5)
+.done:      rts
+
+;──────────────────────────────────────────────────────────────
+draw_object:
+            tst.w   d0
+            bmi.s   .done
+            cmp.w   #320,d0
+            bge.s   .done
+            bsr     wait_blit
+            lea     screen_plane1,a0
+            mulu    #SCREEN_W,d1
+            add.l   d1,a0
+            move.w  d0,d2
+            lsr.w   #3,d2
+            ext.l   d2
+            add.l   d2,a0
+            move.w  OBJ_TYPE(a2),d3
+            beq.s   .car_draw
+            move.l  #log_gfx,BLTAPTH(a5)
+            move.w  #SCREEN_W-LOG_WIDTH*2,BLTDMOD(a5)
+            move.w  #(LOG_HEIGHT<<6)|LOG_WIDTH,d4
+            bra.s   .do_draw
+.car_draw:  move.l  #car_gfx,BLTAPTH(a5)
+            move.w  #SCREEN_W-CAR_WIDTH*2,BLTDMOD(a5)
+            move.w  #(CAR_HEIGHT<<6)|CAR_WIDTH,d4
+.do_draw:   move.l  a0,BLTDPTH(a5)
+            move.w  #$09f0,BLTCON0(a5)
+            move.w  #0,BLTCON1(a5)
+            move.w  #$ffff,BLTAFWM(a5)
+            move.w  #$ffff,BLTALWM(a5)
+            move.w  #0,BLTAMOD(a5)
+            move.w  d4,BLTSIZE(a5)
+.done:      rts
+
+;──────────────────────────────────────────────────────────────
+frog_x:     dc.w    160
+frog_y:     dc.w    180
+joy_prev:   dc.w    0
+
+objects:
+            dc.w    0,122,2,TYPE_CAR
+            dc.w    300,138,-3,TYPE_CAR
+            dc.w    100,154,1,TYPE_CAR
+            dc.w    200,170,-2,TYPE_CAR
+            dc.w    0,66,1,TYPE_LOG
+            dc.w    200,82,-1,TYPE_LOG
+            dc.w    100,98,2,TYPE_LOG
+
+;──────────────────────────────────────────────────────────────
+            section chipdata,data_c
+
+copperlist:
+            dc.w    COLOR00,$0000
+            dc.w    $0100,$2200
+            dc.w    $0102,$0000
+            dc.w    $0104,$0000
+            dc.w    $0108,$0000
+            dc.w    $010a,$0000
+
+bplpt:      dc.w    $00e0,$0000,$00e2,$0000
+            dc.w    $00e4,$0000,$00e6,$0000
+
+            dc.w    $0180,$0000,$0182,$0f00
+            dc.w    $0184,$0ff0,$0186,$0fff
+            dc.w    $01a2,$00f0,$01a4,$0ff0,$01a6,$0000
+
+sprpt:      dc.w    $0120,$0000,$0122,$0000
+
+            dc.w    $2c07,$fffe
+            dc.w    COLOR00,$0080
+
+            dc.w    $4007,$fffe
+            dc.w    COLOR00,$0048
+            dc.w    $0182,$0840
+
+            dc.w    $4c07,$fffe
+            dc.w    COLOR00,$006b
+            dc.w    $5407,$fffe
+            dc.w    COLOR00,$0048
+            dc.w    $5c07,$fffe
+            dc.w    COLOR00,$006b
+            dc.w    $6407,$fffe
+            dc.w    COLOR00,$0048
+
+            dc.w    $6c07,$fffe
+            dc.w    COLOR00,$0080
+
+            dc.w    $7807,$fffe
+            dc.w    COLOR00,$0444
+            dc.w    $0182,$0f00
+
+            dc.w    $8407,$fffe
+            dc.w    COLOR00,$0666
+            dc.w    $8807,$fffe
+            dc.w    COLOR00,$0444
+            dc.w    $9407,$fffe
+            dc.w    COLOR00,$0666
+            dc.w    $9807,$fffe
+            dc.w    COLOR00,$0444
+            dc.w    $a407,$fffe
+            dc.w    COLOR00,$0666
+            dc.w    $a807,$fffe
+            dc.w    COLOR00,$0444
+
+            dc.w    $b407,$fffe
+            dc.w    COLOR00,$0080
+            dc.w    $c007,$fffe
+            dc.w    COLOR00,$0070
+
+            dc.w    $f007,$fffe
+            dc.w    COLOR00,$0000
+
+            dc.w    $ffff,$fffe
+
+            even
+car_gfx:    dc.w    $ffff,$ffff,$ffff,$ffff,$ffff,$ffff,$ffff,$ffff
+            even
+log_gfx:    dc.w    $ffff,$ffff,$ffff,$ffff,$ffff,$ffff,$ffff,$ffff
+            dc.w    $ffff,$ffff,$ffff,$ffff,$ffff,$ffff,$ffff,$ffff
+            even
+frog_data:  dc.w    $b460,$c400
+            dc.w    $0000,$0000,$07e0,$0000,$1ff8,$0420,$3ffc,$0a50
+            dc.w    $7ffe,$1248,$7ffe,$1008,$ffff,$2004,$ffff,$0000
+            dc.w    $ffff,$0000,$7ffe,$2004,$7ffe,$1008,$3ffc,$0810
+            dc.w    $1ff8,$0420,$07e0,$0000,$0000,$0000,$0000,$0000
+            dc.w    $0000,$0000
+
+            even
+screen_plane1:
+            ds.b    PLANE_SIZE
+            even
+screen_plane2:
+            ds.b    PLANE_SIZE
+```
+
+## Recap / Sanity Check
+
+Before moving on, verify:
+
+- [ ] Frog rides logs when in water zone
+- [ ] Frog moves with log speed automatically
+- [ ] Frog stays within screen boundaries while riding
+- [ ] Road and grass zones work normally
+
+## Next Unit
+
+The frog can ride logs, but falling into the water should be fatal.
+
+In [Unit 8: Collision and Death](/commodore-amiga/game-01-hop/unit-08), we add collision detection with cars and drowning in water.

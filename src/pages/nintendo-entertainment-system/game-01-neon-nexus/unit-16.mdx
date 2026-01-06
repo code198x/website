@@ -1,0 +1,1546 @@
+---
+title: "Final Polish"
+description: "Tighten movement, add version display, and build the release ROM."
+pubDate: 2026-01-04
+game: 1
+gameName: "Neon Nexus"
+unit: 16
+totalUnits: 16
+system: "Nintendo Entertainment System"
+tags: ["assembly", "6502", "polish", "release"]
+nextLesson: "/nintendo-entertainment-system"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+*Need to catch up? Check out [Unit 15: Game Over Polish](/nintendo-entertainment-system/game-01-neon-nexus/unit-15).*
+
+## What You're Building
+
+This is it—the final unit. You've built a complete game from scratch: sprites, movement, collision, scoring, lives, difficulty progression, sound effects, title screen, pause, and polished transitions. Now we'll add the finishing touches that transform a working prototype into a proper release.
+
+This unit adds:
+- Tighter player boundary clamping (no walking into the HUD)
+- Version string on the title screen
+- Final code cleanup and organisation
+- A smoke-tested release build
+
+## The Plan
+
+1. Clamp player movement to the visible playfield
+2. Add version text to the title screen
+3. Verify the complete game loop
+4. Build and test the final ROM
+
+## Tightening Player Boundaries
+
+Currently, the player can move too close to the screen edges and HUD. Let's define proper boundaries:
+
+```asm
+PLAYER_MIN_X = 8         ; left edge + sprite width
+PLAYER_MAX_X = 240       ; right edge - sprite width
+PLAYER_MIN_Y = 24        ; below HUD
+PLAYER_MAX_Y = 216       ; above bottom edge
+```
+
+Update `update_player` to use these constants:
+
+```asm
+update_player:
+    lda buttons
+    and #BTN_RIGHT
+    beq @check_left
+    lda player_x
+    clc
+    adc #PLAYER_SPEED
+    cmp #PLAYER_MAX_X
+    bcs @check_left
+    sta player_x
+
+@check_left:
+    lda buttons
+    and #BTN_LEFT
+    beq @check_down
+    lda player_x
+    sec
+    sbc #PLAYER_SPEED
+    cmp #PLAYER_MIN_X
+    bcc @check_down
+    sta player_x
+
+@check_down:
+    lda buttons
+    and #BTN_DOWN
+    beq @check_up
+    lda player_y
+    clc
+    adc #PLAYER_SPEED
+    cmp #PLAYER_MAX_Y
+    bcs @check_up
+    sta player_y
+
+@check_up:
+    lda buttons
+    and #BTN_UP
+    beq @done
+    lda player_y
+    sec
+    sbc #PLAYER_SPEED
+    cmp #PLAYER_MIN_Y
+    bcc @done
+    sta player_y
+
+@done:
+    rts
+```
+
+The key change is using named constants and proper minimum values. The player now stays within the visible playfield, unable to overlap the HUD or disappear off-screen.
+
+## Version String
+
+Professional games display version information. We'll add a "V1.0" indicator on the title screen. First, add the letter tile constants we need:
+
+```asm
+TILE_0 = 4          ; we already have digit 0 at tile 4
+TILE_1 = 5          ; digit 1 at tile 5
+```
+
+Modify `draw_title_screen` to include the version:
+
+```asm
+draw_title_screen:
+    ; ... hide sprites ...
+
+    ; Draw title
+    ; ... existing title code ...
+
+    ; Draw "PRESS START"
+    ; ... existing press code ...
+
+    ; Draw version "V1.0" at bottom right
+    lda #$23            ; near bottom of nametable
+    sta PPUADDR
+    lda #$98            ; right side
+    sta PPUADDR
+
+    lda #TILE_V
+    sta PPUDATA
+    lda #TILE_1
+    sta PPUDATA
+    lda #0              ; period (empty tile works)
+    sta PPUDATA
+    lda #TILE_0
+    sta PPUDATA
+
+    lda #0
+    sta PPUSCROLL
+    sta PPUSCROLL
+    rts
+```
+
+## Code Organisation Review
+
+Before building the final ROM, let's verify our code structure is clean:
+
+**Zero Page Variables** (fast access):
+- Input state: `buttons`, `buttons_prev`
+- Player state: `player_x`, `player_y`, `lives`, `invuln_timer`
+- Enemy state: `enemy_x[]`, `enemy_y[]`, `enemy_dir[]`
+- Item state: `item_x`, `item_y`
+- Score state: `score[]`, `high_score[]`, `new_high`
+- Game state: `game_state`, `screen_drawn`, `pause_flag`
+- Timing: `frame_counter`, `flash_timer`, `gameover_delay`
+- Sound: `sfx_timer`, `sfx_type`, `sfx_pitch`
+- Gameplay: `difficulty`, `temp`
+
+**Constants**:
+- Hardware addresses grouped together
+- Button masks defined as bit patterns
+- Game constants (speeds, sizes, timings) named clearly
+- Tile indices for text display
+
+**Subroutines**:
+- Each routine does one thing well
+- Clear entry and exit points
+- Shared utilities (`div10`, `respawn_item`) factored out
+
+## The Complete Game Loop
+
+Let's trace through the final game flow:
+
+1. **Power On / Reset**
+   - Clear RAM, initialise hardware
+   - Load palette, hide sprites
+   - Enter TITLE state
+
+2. **Title Screen**
+   - Display "NEON NEXUS", "PRESS START", "V1.0"
+   - Wait for START press
+   - Transition to PLAYING
+
+3. **Gameplay**
+   - Player moves with d-pad (bounded)
+   - Enemies scroll and bounce
+   - Collect items for points
+   - Difficulty increases with score
+   - Take damage, lose lives
+   - Pause with START
+   - Game over when lives = 0
+
+4. **Game Over**
+   - Screen flash effect
+   - Display high score
+   - Show "NEW" if applicable
+   - Wait, then accept START
+   - Return to gameplay (high score persists)
+
+## Final Smoke Test Checklist
+
+Before declaring the ROM complete, verify:
+
+**Title Screen**:
+- [ ] "NEON NEXUS" displays correctly
+- [ ] "PRESS START" displays correctly
+- [ ] Version "V1.0" displays at bottom
+- [ ] START begins the game
+
+**Gameplay**:
+- [ ] Player moves in all four directions
+- [ ] Player can't walk into HUD area
+- [ ] Player can't walk off-screen
+- [ ] Enemies move left and wrap
+- [ ] Enemies 0-1 bounce vertically
+- [ ] Item spawns and can be collected
+- [ ] Score increases by 10 per item
+- [ ] Difficulty increases at thresholds
+- [ ] Collect sound plays
+- [ ] Enemy collision costs a life
+- [ ] Death sound plays
+- [ ] Player respawns with invulnerability
+- [ ] Invulnerability sprite flickers
+- [ ] Lives decrease correctly
+- [ ] Pause works (edge-triggered)
+- [ ] "PAUSED" displays and clears properly
+
+**Game Over**:
+- [ ] Screen flashes white on final death
+- [ ] "GAME OVER" displays after flash
+- [ ] High score displays correctly
+- [ ] "NEW" appears for new records
+- [ ] Input delay works (can't restart immediately)
+- [ ] START returns to gameplay
+- [ ] High score persists across runs
+
+## Build the Release ROM
+
+```bash
+ca65 nexus.asm -o nexus.o
+ld65 -C nes.cfg nexus.o -o nexus.nes
+```
+
+If you want a release build with version tagging:
+
+```bash
+ca65 nexus.asm -o nexus.o
+ld65 -C nes.cfg nexus.o -o neon-nexus-v1.0.nes
+```
+
+Test in your emulator of choice. If everything passes the checklist, you've got a release ROM!
+
+## What You've Built
+
+Congratulations. You've built a complete NES game from scratch:
+
+- **Sprite rendering** with DMA transfer
+- **Controller input** with edge detection
+- **Collision detection** using bounding boxes
+- **Scoring system** with 16-bit arithmetic
+- **Lives system** with invulnerability
+- **Difficulty progression** using lookup tables
+- **State machine** (title, playing, game over)
+- **Sound effects** using the APU pulse channel
+- **Pause functionality** with visual feedback
+- **Polish effects** (screen flash, input delay)
+- **UI text rendering** to the nametable
+
+This is a real game. It runs on real hardware. You wrote every byte.
+
+## What You've Learnt
+
+Over these 16 units, you've learnt:
+
+- **6502 architecture**: registers, addressing modes, the stack
+- **NES hardware**: PPU, APU, controller interface
+- **Memory layout**: zero page, OAM, nametables, CHR-ROM
+- **Graphics**: sprites, tiles, palettes, DMA
+- **Input handling**: reading controllers, edge detection
+- **Game logic**: movement, collision, spawning
+- **State machines**: managing game flow
+- **Sound**: pulse waves, timers, pitch tables
+- **Optimisation**: using lookup tables, efficient branching
+- **Polish**: screen effects, timing, feel
+
+## Where to Go Next
+
+Ideas for extending Neon Nexus:
+- Add background tiles for visual variety
+- Implement more enemy types with unique behaviours
+- Add power-ups (shield, speed boost, extra life)
+- Create multiple levels with different layouts
+- Add background music using triangle/noise channels
+- Implement a two-player mode
+
+Or start a new project. You now have the skills to build anything the NES can run.
+
+## The Complete Code
+
+Here's the final `nexus.asm`:
+
+```asm
+;
+; Neon Nexus - Unit 16: Final Polish
+; Release version 1.0
+;
+
+.segment "HEADER"
+    .byte "NES", $1A
+    .byte 2                 ; 2x 16KB PRG-ROM
+    .byte 1                 ; 1x 8KB CHR-ROM
+    .byte $01               ; mapper 0, vertical mirroring
+    .byte $00
+
+; PPU registers
+PPUCTRL   = $2000
+PPUMASK   = $2001
+PPUSTATUS = $2002
+PPUADDR   = $2006
+PPUDATA   = $2007
+PPUSCROLL = $2005
+OAMDMA    = $4014
+JOYPAD1   = $4016
+
+; APU registers
+APU_PULSE1_CTRL = $4000
+APU_PULSE1_SWEEP = $4001
+APU_PULSE1_TIMER_LO = $4002
+APU_PULSE1_TIMER_HI = $4003
+APU_STATUS = $4015
+
+; Controller buttons
+BTN_RIGHT  = %00000001
+BTN_LEFT   = %00000010
+BTN_DOWN   = %00000100
+BTN_UP     = %00001000
+BTN_START  = %00010000
+
+; Game constants
+PLAYER_SPEED   = 2
+PLAYER_MIN_X   = 8
+PLAYER_MAX_X   = 240
+PLAYER_MIN_Y   = 24
+PLAYER_MAX_Y   = 216
+NUM_ENEMIES    = 4
+SPAWN_X        = 120
+SPAWN_Y        = 120
+INVULN_TIME    = 60
+HITBOX_SIZE    = 6
+MAX_DIFFICULTY = 5
+FLASH_TIME     = 8
+GAMEOVER_DELAY = 60
+
+; Game states
+STATE_TITLE    = 0
+STATE_PLAYING  = 1
+STATE_GAMEOVER = 2
+
+; Sound effect types
+SFX_NONE    = 0
+SFX_COLLECT = 1
+SFX_DEATH   = 2
+
+; Tile indices for text
+TILE_0 = 4
+TILE_1 = 5
+TILE_A = 14
+TILE_D = 30
+TILE_E = 15
+TILE_G = 16
+TILE_H = 27
+TILE_I = 28
+TILE_M = 17
+TILE_N = 18
+TILE_O = 19
+TILE_P = 20
+TILE_R = 21
+TILE_S = 22
+TILE_T = 23
+TILE_U = 24
+TILE_V = 25
+TILE_W = 29
+TILE_X = 26
+
+; === Zero Page Variables ===
+.segment "ZEROPAGE"
+nmi_ready:      .res 1
+buttons:        .res 1
+buttons_prev:   .res 1
+player_x:       .res 1
+player_y:       .res 1
+enemy_x:        .res 4
+enemy_y:        .res 4
+enemy_dir:      .res 4
+item_x:         .res 1
+item_y:         .res 1
+score:          .res 2
+high_score:     .res 2
+game_state:     .res 1
+lives:          .res 1
+invuln_timer:   .res 1
+screen_drawn:   .res 1
+temp:           .res 1
+sfx_timer:      .res 1
+sfx_pitch:      .res 1
+sfx_type:       .res 1
+difficulty:     .res 1
+new_high:       .res 1
+frame_counter:  .res 1
+pause_flag:     .res 1
+flash_timer:    .res 1
+gameover_delay: .res 1
+
+; === OAM Buffer ===
+.segment "OAM"
+oam: .res 256
+
+; === Code ===
+.segment "CODE"
+
+; ------------------------------
+; Reset Handler
+; ------------------------------
+reset:
+    sei                     ; disable interrupts
+    cld                     ; clear decimal mode
+    ldx #$40
+    stx $4017               ; disable APU frame IRQ
+    ldx #$FF
+    txs                     ; initialise stack
+    inx                     ; X = 0
+    stx PPUCTRL             ; disable NMI
+    stx PPUMASK             ; disable rendering
+    stx $4010               ; disable DMC IRQs
+
+@vblank1:
+    bit PPUSTATUS
+    bpl @vblank1
+
+    ; Clear RAM
+    lda #0
+@clear_ram:
+    sta $0000, x
+    sta $0100, x
+    sta $0200, x
+    sta $0300, x
+    sta $0400, x
+    sta $0500, x
+    sta $0600, x
+    sta $0700, x
+    inx
+    bne @clear_ram
+
+@vblank2:
+    bit PPUSTATUS
+    bpl @vblank2
+
+    ; Hide all sprites
+    ldx #0
+    lda #$FF
+@hide_sprites:
+    sta oam, x
+    inx
+    bne @hide_sprites
+
+    ; Initialise high score to zero
+    lda #0
+    sta high_score
+    sta high_score+1
+
+    jsr init_apu
+    jsr load_palette
+
+    ; Start at title screen
+    lda #STATE_TITLE
+    sta game_state
+    lda #0
+    sta screen_drawn
+
+    ; Enable rendering and NMI
+    lda #%10010000
+    sta PPUCTRL
+    lda #%00011110
+    sta PPUMASK
+
+; ------------------------------
+; Main Game Loop
+; ------------------------------
+game_loop:
+    lda nmi_ready
+    beq game_loop
+    lda #0
+    sta nmi_ready
+
+    lda game_state
+    cmp #STATE_TITLE
+    beq title_state
+    cmp #STATE_PLAYING
+    beq playing_state
+    jmp gameover_state
+
+; --- Title State ---
+title_state:
+    lda screen_drawn
+    bne @check_input
+    jsr draw_title_screen
+    lda #1
+    sta screen_drawn
+
+@check_input:
+    jsr read_controller
+    lda buttons
+    and #BTN_START
+    beq game_loop
+
+    jsr clear_playfield
+    jsr init_game
+    lda #STATE_PLAYING
+    sta game_state
+    lda #0
+    sta screen_drawn
+    jmp game_loop
+
+; --- Playing State ---
+playing_state:
+    jsr read_controller
+    jsr check_pause
+
+    lda pause_flag
+    bne @skip_gameplay
+
+    inc frame_counter
+
+    lda invuln_timer
+    beq @no_invuln
+    dec invuln_timer
+@no_invuln:
+
+    jsr update_player
+    jsr move_enemies
+    jsr check_item_collision
+    jsr check_enemy_collision
+    jsr update_sound
+
+@skip_gameplay:
+    jsr update_player_sprite
+    jsr update_enemy_sprites
+    jsr update_item_sprite
+
+    jmp game_loop
+
+; --- Game Over State ---
+gameover_state:
+    jsr update_flash
+
+    lda screen_drawn
+    bne @check_delay
+
+    lda flash_timer
+    bne game_loop
+
+    jsr draw_game_over
+    lda #1
+    sta screen_drawn
+
+@check_delay:
+    lda gameover_delay
+    beq @check_restart
+    dec gameover_delay
+    jmp game_loop
+
+@check_restart:
+    jsr read_controller
+    lda buttons
+    and #BTN_START
+    beq game_loop
+
+    jsr clear_playfield
+    jsr init_game
+    lda #STATE_PLAYING
+    sta game_state
+    lda #0
+    sta screen_drawn
+    jmp game_loop
+
+; ------------------------------
+; NMI Handler
+; ------------------------------
+nmi:
+    pha
+    txa
+    pha
+    tya
+    pha
+
+    ; DMA sprite data
+    lda #$00
+    sta $2003
+    lda #$02
+    sta OAMDMA
+
+    ; Update HUD during gameplay
+    lda game_state
+    cmp #STATE_PLAYING
+    bne @skip_hud
+    jsr draw_hud
+@skip_hud:
+
+    lda #1
+    sta nmi_ready
+
+    pla
+    tay
+    pla
+    tax
+    pla
+    rti
+
+; ------------------------------
+; IRQ Handler
+; ------------------------------
+irq:
+    rti
+
+; ------------------------------
+; Flash Effect
+; ------------------------------
+update_flash:
+    lda flash_timer
+    beq @done
+    dec flash_timer
+    bne @done
+
+    lda #%00011110
+    sta PPUMASK
+
+    lda #GAMEOVER_DELAY
+    sta gameover_delay
+@done:
+    rts
+
+; ------------------------------
+; Pause System
+; ------------------------------
+check_pause:
+    lda buttons_prev
+    eor #$FF
+    and buttons
+    sta temp
+
+    lda buttons
+    sta buttons_prev
+
+    lda temp
+    and #BTN_START
+    beq @done
+
+    lda pause_flag
+    eor #1
+    sta pause_flag
+
+    beq @unpause
+    jsr draw_pause_text
+    rts
+@unpause:
+    jsr clear_pause_text
+@done:
+    rts
+
+draw_pause_text:
+    lda PPUSTATUS
+    lda #$21
+    sta PPUADDR
+    lda #$CD
+    sta PPUADDR
+
+    lda #TILE_P
+    sta PPUDATA
+    lda #TILE_A
+    sta PPUDATA
+    lda #TILE_U
+    sta PPUDATA
+    lda #TILE_S
+    sta PPUDATA
+    lda #TILE_E
+    sta PPUDATA
+    lda #TILE_D
+    sta PPUDATA
+
+    lda #0
+    sta PPUSCROLL
+    sta PPUSCROLL
+    rts
+
+clear_pause_text:
+    lda PPUSTATUS
+    lda #$21
+    sta PPUADDR
+    lda #$CD
+    sta PPUADDR
+
+    lda #0
+    sta PPUDATA
+    sta PPUDATA
+    sta PPUDATA
+    sta PPUDATA
+    sta PPUDATA
+    sta PPUDATA
+
+    lda #0
+    sta PPUSCROLL
+    sta PPUSCROLL
+    rts
+
+; ------------------------------
+; APU / Sound
+; ------------------------------
+init_apu:
+    lda #%00000001
+    sta APU_STATUS
+    lda #%00110000
+    sta APU_PULSE1_CTRL
+    lda #0
+    sta APU_PULSE1_SWEEP
+    sta sfx_timer
+    sta sfx_type
+    sta sfx_pitch
+    rts
+
+play_collect_sound:
+    lda #SFX_COLLECT
+    sta sfx_type
+    lda #15
+    sta sfx_timer
+    lda #0
+    sta sfx_pitch
+    lda #%10111111
+    sta APU_PULSE1_CTRL
+    lda #0
+    sta APU_PULSE1_SWEEP
+    lda collect_pitches
+    sta APU_PULSE1_TIMER_LO
+    lda #%00001000
+    sta APU_PULSE1_TIMER_HI
+    rts
+
+play_death_sound:
+    lda #SFX_DEATH
+    sta sfx_type
+    lda #20
+    sta sfx_timer
+    lda #0
+    sta sfx_pitch
+    lda #%11111111
+    sta APU_PULSE1_CTRL
+    lda #0
+    sta APU_PULSE1_SWEEP
+    lda death_pitches
+    sta APU_PULSE1_TIMER_LO
+    lda #%00001000
+    sta APU_PULSE1_TIMER_HI
+    rts
+
+update_sound:
+    lda sfx_timer
+    beq @done
+    dec sfx_timer
+    beq @end_sound
+    lda sfx_type
+    cmp #SFX_COLLECT
+    beq @update_collect
+    cmp #SFX_DEATH
+    beq @update_death
+    rts
+@update_collect:
+    lda sfx_timer
+    and #%00000011
+    bne @done
+    inc sfx_pitch
+    ldx sfx_pitch
+    cpx #5
+    bcs @done
+    lda collect_pitches, x
+    sta APU_PULSE1_TIMER_LO
+    rts
+@update_death:
+    lda sfx_timer
+    and #%00000011
+    bne @done
+    inc sfx_pitch
+    ldx sfx_pitch
+    cpx #5
+    bcs @done
+    lda death_pitches, x
+    sta APU_PULSE1_TIMER_LO
+    rts
+@end_sound:
+    lda #%00110000
+    sta APU_PULSE1_CTRL
+    lda #SFX_NONE
+    sta sfx_type
+@done:
+    rts
+
+collect_pitches:
+    .byte 200, 150, 100, 75, 50
+death_pitches:
+    .byte 100, 150, 200, 230, 254
+
+; ------------------------------
+; Game Initialisation
+; ------------------------------
+init_game:
+    lda #SPAWN_X
+    sta player_x
+    lda #SPAWN_Y
+    sta player_y
+    lda #3
+    sta lives
+    lda #0
+    sta score
+    sta score+1
+    sta invuln_timer
+    sta sfx_timer
+    sta sfx_type
+    sta difficulty
+    sta new_high
+    sta frame_counter
+    sta pause_flag
+    sta buttons_prev
+    sta flash_timer
+    sta gameover_delay
+    jsr init_enemies
+    jsr respawn_item
+    rts
+
+init_enemies:
+    lda #30
+    sta enemy_x
+    lda #50
+    sta enemy_y
+    lda #0
+    sta enemy_dir
+
+    lda #200
+    sta enemy_x+1
+    lda #80
+    sta enemy_y+1
+    lda #1
+    sta enemy_dir+1
+
+    lda #30
+    sta enemy_x+2
+    lda #140
+    sta enemy_y+2
+    lda #0
+    sta enemy_dir+2
+
+    lda #200
+    sta enemy_x+3
+    lda #200
+    sta enemy_y+3
+    lda #0
+    sta enemy_dir+3
+
+    rts
+
+respawn_item:
+    lda item_x
+    clc
+    adc #67
+    and #%01111111
+    clc
+    adc #60
+    sta item_x
+    lda item_y
+    clc
+    adc #53
+    and #%01111111
+    clc
+    adc #40
+    sta item_y
+    rts
+
+; ------------------------------
+; High Score
+; ------------------------------
+check_high_score:
+    lda #0
+    sta new_high
+    lda score+1
+    cmp high_score+1
+    bcc @not_new
+    bne @new_record
+    lda score
+    cmp high_score
+    bcc @not_new
+    beq @not_new
+@new_record:
+    lda score
+    sta high_score
+    lda score+1
+    sta high_score+1
+    lda #1
+    sta new_high
+@not_new:
+    rts
+
+; ------------------------------
+; Difficulty
+; ------------------------------
+update_difficulty:
+    lda difficulty
+    cmp #MAX_DIFFICULTY
+    bcs @done
+    ldx difficulty
+    inx
+    lda score
+    cmp difficulty_thresholds, x
+    bcc @done
+    inc difficulty
+@done:
+    rts
+
+difficulty_thresholds:
+    .byte 0, 50, 100, 150, 200, 250
+enemy_speeds:
+    .byte 1, 1, 2, 2, 3, 3
+
+; ------------------------------
+; Screen Drawing
+; ------------------------------
+draw_title_screen:
+    ldx #0
+    lda #$FF
+@hide:
+    sta oam, x
+    inx
+    bne @hide
+
+    ; Title "NEON NEXUS"
+    lda PPUSTATUS
+    lda #$21
+    sta PPUADDR
+    lda #$4B
+    sta PPUADDR
+    ldx #0
+@title_loop:
+    lda title_text, x
+    beq @draw_press
+    sta PPUDATA
+    inx
+    bne @title_loop
+
+    ; "PRESS START"
+@draw_press:
+    lda #$21
+    sta PPUADDR
+    lda #$CA
+    sta PPUADDR
+    ldx #0
+@press_loop:
+    lda press_text, x
+    beq @draw_version
+    sta PPUDATA
+    inx
+    bne @press_loop
+
+    ; Version "V1.0"
+@draw_version:
+    lda #$23
+    sta PPUADDR
+    lda #$98
+    sta PPUADDR
+    lda #TILE_V
+    sta PPUDATA
+    lda #TILE_1
+    sta PPUDATA
+    lda #0              ; period placeholder
+    sta PPUDATA
+    lda #TILE_0
+    sta PPUDATA
+
+    lda #0
+    sta PPUSCROLL
+    sta PPUSCROLL
+    rts
+
+title_text:
+    .byte TILE_N, TILE_E, TILE_O, TILE_N, 0
+    .byte TILE_N, TILE_E, TILE_X, TILE_U, TILE_S, 0
+press_text:
+    .byte TILE_P, TILE_R, TILE_E, TILE_S, TILE_S, 0
+    .byte TILE_S, TILE_T, TILE_A, TILE_R, TILE_T, 0
+
+draw_game_over:
+    ldx #0
+    lda #$FF
+@hide:
+    sta oam, x
+    inx
+    bne @hide
+
+    lda PPUSTATUS
+    lda #$21
+    sta PPUADDR
+    lda #$4B
+    sta PPUADDR
+    ldx #0
+@go_loop:
+    lda gameover_text, x
+    beq @draw_hi
+    sta PPUDATA
+    inx
+    bne @go_loop
+
+@draw_hi:
+    lda #$21
+    sta PPUADDR
+    lda #$AB
+    sta PPUADDR
+    lda #TILE_H
+    sta PPUDATA
+    lda #TILE_I
+    sta PPUDATA
+    lda #0
+    sta PPUDATA
+    lda high_score+1
+    jsr div10
+    clc
+    adc #4
+    sta PPUDATA
+    lda temp
+    jsr div10
+    clc
+    adc #4
+    sta PPUDATA
+    lda temp
+    clc
+    adc #4
+    sta PPUDATA
+
+    lda new_high
+    beq @done
+    lda #$21
+    sta PPUADDR
+    lda #$EC
+    sta PPUADDR
+    lda #TILE_N
+    sta PPUDATA
+    lda #TILE_E
+    sta PPUDATA
+    lda #TILE_W
+    sta PPUDATA
+
+@done:
+    lda #0
+    sta PPUSCROLL
+    sta PPUSCROLL
+    rts
+
+gameover_text:
+    .byte TILE_G, TILE_A, TILE_M, TILE_E, 0
+    .byte TILE_O, TILE_V, TILE_E, TILE_R, 0
+
+clear_playfield:
+    lda PPUSTATUS
+    lda #$21
+    sta PPUADDR
+    lda #$00
+    sta PPUADDR
+    lda #0
+    ldx #0
+@loop:
+    sta PPUDATA
+    sta PPUDATA
+    sta PPUDATA
+    sta PPUDATA
+    inx
+    cpx #80
+    bne @loop
+    lda #0
+    sta PPUSCROLL
+    sta PPUSCROLL
+    rts
+
+; ------------------------------
+; Controller Input
+; ------------------------------
+read_controller:
+    lda #1
+    sta JOYPAD1
+    lda #0
+    sta JOYPAD1
+    ldx #8
+@loop:
+    lda JOYPAD1
+    lsr a
+    rol buttons
+    dex
+    bne @loop
+    rts
+
+; ------------------------------
+; Player Movement (bounded)
+; ------------------------------
+update_player:
+    lda buttons
+    and #BTN_RIGHT
+    beq @check_left
+    lda player_x
+    clc
+    adc #PLAYER_SPEED
+    cmp #PLAYER_MAX_X
+    bcs @check_left
+    sta player_x
+
+@check_left:
+    lda buttons
+    and #BTN_LEFT
+    beq @check_down
+    lda player_x
+    sec
+    sbc #PLAYER_SPEED
+    cmp #PLAYER_MIN_X
+    bcc @check_down
+    sta player_x
+
+@check_down:
+    lda buttons
+    and #BTN_DOWN
+    beq @check_up
+    lda player_y
+    clc
+    adc #PLAYER_SPEED
+    cmp #PLAYER_MAX_Y
+    bcs @check_up
+    sta player_y
+
+@check_up:
+    lda buttons
+    and #BTN_UP
+    beq @done
+    lda player_y
+    sec
+    sbc #PLAYER_SPEED
+    cmp #PLAYER_MIN_Y
+    bcc @done
+    sta player_y
+
+@done:
+    rts
+
+; ------------------------------
+; Enemy Movement
+; ------------------------------
+move_enemies:
+    ldx difficulty
+    lda enemy_speeds, x
+    sta temp
+
+    ldx #0
+
+@loop:
+    lda enemy_x, x
+    sec
+    sbc temp
+    sta enemy_x, x
+    cmp #250
+    bcc @check_vertical
+    lda #248
+    sta enemy_x, x
+
+@check_vertical:
+    cpx #2
+    bcs @next
+
+    lda frame_counter
+    and #%00000001
+    bne @next
+
+    lda enemy_dir, x
+    beq @move_down
+
+    lda enemy_y, x
+    sec
+    sbc #1
+    cmp #24
+    bcs @store_y
+    lda #0
+    sta enemy_dir, x
+    lda #24
+    jmp @store_y
+
+@move_down:
+    lda enemy_y, x
+    clc
+    adc #1
+    cmp #216
+    bcc @store_y
+    lda #1
+    sta enemy_dir, x
+    lda #215
+
+@store_y:
+    sta enemy_y, x
+
+@next:
+    inx
+    cpx #NUM_ENEMIES
+    bne @loop
+    rts
+
+; ------------------------------
+; Collision Detection
+; ------------------------------
+check_item_collision:
+    lda player_x
+    sec
+    sbc item_x
+    bcs @check_x_pos
+    eor #$FF
+    clc
+    adc #1
+@check_x_pos:
+    cmp #HITBOX_SIZE
+    bcs @no_collision
+    lda player_y
+    sec
+    sbc item_y
+    bcs @check_y_pos
+    eor #$FF
+    clc
+    adc #1
+@check_y_pos:
+    cmp #HITBOX_SIZE
+    bcs @no_collision
+    jsr collect_item
+@no_collision:
+    rts
+
+collect_item:
+    lda score
+    clc
+    adc #10
+    sta score
+    lda score+1
+    adc #0
+    sta score+1
+    jsr update_difficulty
+    jsr play_collect_sound
+    jsr respawn_item
+    rts
+
+check_enemy_collision:
+    lda invuln_timer
+    bne @done
+    ldx #0
+@loop:
+    lda player_x
+    sec
+    sbc enemy_x, x
+    bcs @check_x
+    eor #$FF
+    clc
+    adc #1
+@check_x:
+    cmp #HITBOX_SIZE
+    bcs @next
+    lda player_y
+    sec
+    sbc enemy_y, x
+    bcs @check_y
+    eor #$FF
+    clc
+    adc #1
+@check_y:
+    cmp #HITBOX_SIZE
+    bcs @next
+    jsr lose_life
+    rts
+@next:
+    inx
+    cpx #NUM_ENEMIES
+    bne @loop
+@done:
+    rts
+
+lose_life:
+    dec lives
+    jsr play_death_sound
+    lda lives
+    beq @game_over
+    jsr respawn_player
+    rts
+@game_over:
+    jsr check_high_score
+    lda #FLASH_TIME
+    sta flash_timer
+    lda #STATE_GAMEOVER
+    sta game_state
+    lda #0
+    sta screen_drawn
+    sta pause_flag
+    lda #%11111110
+    sta PPUMASK
+    rts
+
+respawn_player:
+    lda #SPAWN_X
+    sta player_x
+    lda #SPAWN_Y
+    sta player_y
+    lda #INVULN_TIME
+    sta invuln_timer
+    rts
+
+; ------------------------------
+; Sprite Updates
+; ------------------------------
+update_player_sprite:
+    lda invuln_timer
+    beq @visible
+    and #%00000100
+    beq @hidden
+@visible:
+    lda player_y
+    sta oam
+    lda #1
+    sta oam+1
+    lda #0
+    sta oam+2
+    lda player_x
+    sta oam+3
+    rts
+@hidden:
+    lda #$FF
+    sta oam
+    rts
+
+update_enemy_sprites:
+    ldx #0
+    ldy #4
+@loop:
+    lda enemy_y, x
+    sta oam, y
+    iny
+    lda #2
+    sta oam, y
+    iny
+    lda #1
+    sta oam, y
+    iny
+    lda enemy_x, x
+    sta oam, y
+    iny
+    inx
+    cpx #NUM_ENEMIES
+    bne @loop
+    rts
+
+update_item_sprite:
+    lda item_y
+    sta oam+20
+    lda #3
+    sta oam+21
+    lda #2
+    sta oam+22
+    lda item_x
+    sta oam+23
+    rts
+
+; ------------------------------
+; HUD Drawing
+; ------------------------------
+draw_hud:
+    lda #$20
+    sta PPUADDR
+    lda #$02
+    sta PPUADDR
+    lda score+1
+    jsr div10
+    clc
+    adc #4
+    sta PPUDATA
+    lda temp
+    jsr div10
+    clc
+    adc #4
+    sta PPUDATA
+    lda temp
+    clc
+    adc #4
+    sta PPUDATA
+
+    lda #$20
+    sta PPUADDR
+    lda #$1C
+    sta PPUADDR
+    lda lives
+    clc
+    adc #4
+    sta PPUDATA
+
+    lda #0
+    sta PPUSCROLL
+    sta PPUSCROLL
+    rts
+
+; ------------------------------
+; Utilities
+; ------------------------------
+div10:
+    ldx #0
+@loop:
+    cmp #10
+    bcc @done
+    sec
+    sbc #10
+    inx
+    bne @loop
+@done:
+    sta temp
+    txa
+    rts
+
+load_palette:
+    lda PPUSTATUS
+    lda #$3F
+    sta PPUADDR
+    lda #$00
+    sta PPUADDR
+    ldx #0
+@loop:
+    lda palette_data, x
+    sta PPUDATA
+    inx
+    cpx #32
+    bne @loop
+    rts
+
+palette_data:
+    ; Background palettes
+    .byte $0F, $20, $10, $00
+    .byte $0F, $20, $10, $00
+    .byte $0F, $20, $10, $00
+    .byte $0F, $20, $10, $00
+    ; Sprite palettes
+    .byte $0F, $20, $16, $28    ; player
+    .byte $0F, $20, $12, $22    ; enemies
+    .byte $0F, $20, $1A, $2A    ; items
+    .byte $0F, $20, $10, $00
+
+; === Vectors ===
+.segment "VECTORS"
+    .word nmi
+    .word reset
+    .word irq
+
+; === Character ROM ===
+.segment "CHARS"
+; Tile 0: Empty
+.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 1: Player
+.byte $18,$3C,$7E,$FF,$FF,$7E,$3C,$18,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 2: Enemy
+.byte $42,$24,$7E,$5A,$FF,$81,$42,$24,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 3: Item
+.byte $18,$3C,$7E,$FF,$7E,$3C,$18,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 4: 0
+.byte $3C,$66,$6E,$7E,$76,$66,$3C,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 5: 1
+.byte $18,$38,$18,$18,$18,$18,$7E,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 6: 2
+.byte $3C,$66,$06,$1C,$30,$60,$7E,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 7: 3
+.byte $3C,$66,$06,$1C,$06,$66,$3C,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 8: 4
+.byte $0E,$1E,$36,$66,$7F,$06,$06,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 9: 5
+.byte $7E,$60,$7C,$06,$06,$66,$3C,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 10: 6
+.byte $1C,$30,$60,$7C,$66,$66,$3C,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 11: 7
+.byte $7E,$06,$0C,$18,$30,$30,$30,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 12: 8
+.byte $3C,$66,$66,$3C,$66,$66,$3C,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 13: 9
+.byte $3C,$66,$66,$3E,$06,$0C,$38,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 14: A
+.byte $18,$3C,$66,$66,$7E,$66,$66,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 15: E
+.byte $7E,$60,$60,$7C,$60,$60,$7E,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 16: G
+.byte $3C,$66,$60,$6E,$66,$66,$3C,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 17: M
+.byte $63,$77,$7F,$6B,$63,$63,$63,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 18: N
+.byte $66,$76,$7E,$7E,$6E,$66,$66,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 19: O
+.byte $3C,$66,$66,$66,$66,$66,$3C,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 20: P
+.byte $7C,$66,$66,$7C,$60,$60,$60,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 21: R
+.byte $7C,$66,$66,$7C,$6C,$66,$66,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 22: S
+.byte $3C,$66,$60,$3C,$06,$66,$3C,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 23: T
+.byte $7E,$18,$18,$18,$18,$18,$18,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 24: U
+.byte $66,$66,$66,$66,$66,$66,$3C,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 25: V
+.byte $66,$66,$66,$66,$66,$3C,$18,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 26: X
+.byte $66,$66,$3C,$18,$3C,$66,$66,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 27: H
+.byte $66,$66,$66,$7E,$66,$66,$66,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 28: I
+.byte $7E,$18,$18,$18,$18,$18,$7E,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 29: W
+.byte $63,$63,$63,$6B,$7F,$77,$63,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Tile 30: D
+.byte $7C,$66,$66,$66,$66,$66,$7C,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; Remaining tiles
+.res 7920, $00
+```
+
+## Recap / Sanity Check
+
+Final verification before release:
+
+- [ ] Title screen shows "NEON NEXUS", "PRESS START", and "V1.0"
+- [ ] Player can't move into HUD area (Y < 24)
+- [ ] Player can't move off left edge (X < 8)
+- [ ] Complete game loop works: title → play → game over → play
+- [ ] High score persists across games
+- [ ] All sound effects play correctly
+- [ ] Pause works correctly
+- [ ] Screen flash works on game over
+- [ ] No crashes or glitches during extended play
+
+## You've Completed Neon Nexus!
+
+You've just built a complete NES game from scratch. Not bad for 16 units.
+
+Keep building. Keep learning. The NES has plenty more secrets to discover.
+
+## Next
+
+[Return to NES home](/nintendo-entertainment-system) to pick another path or start a new game.

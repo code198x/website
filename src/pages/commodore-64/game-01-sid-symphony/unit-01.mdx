@@ -12,6 +12,8 @@ nextLesson: "/commodore-64/game-01-sid-symphony/unit-02"
 layout: "../../../layouts/UnitLayout.astro"
 ---
 
+import InlineNote from "../../../components/units/InlineNote.astro";
+
 *Need to set up your tools first? See [Getting Started](/commodore-64/getting-started).*
 
 ## What You're Building
@@ -21,7 +23,7 @@ Before a single note scrolls across the screen, before you score a single point,
 By the end of this unit, you'll have:
 
 - A screen that looks like a game (even though it isn't one yet)
-- Three tracks waiting for notes (even though only one works)
+- Three tracks waiting for notes (with one active)
 - A key that makes the SID chip sing (just one note, but *your* note)
 
 It's not much. It's also everything. Every Guitar Hero, every Rock Band, every rhythm game ever made started here: a place for things to happen, and a sound when you poke it.
@@ -37,137 +39,78 @@ Here's what we're aiming for:
 │ SCORE: 000000          STREAK: 00      │  ← Top panel
 ├────────────────────────────────────────┤
 │                                        │
-│ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  ← Track 1 (Z) - dimmed
+│ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  ← Track 1 (X) - dimmed
 │                                        │
-│ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  ← Track 2 (X) - ACTIVE
+│ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  ← Track 2 (C) - ACTIVE
 │                                        │
-│ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  ← Track 3 (C) - dimmed
+│ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  ← Track 3 (V) - dimmed
 │                                        │
 ├────────────────────────────────────────┤
 │ CROWD [          ]                     │  ← Bottom panel
 └────────────────────────────────────────┘
 ```
 
-The hit zone is on the left — that solid block where notes arrive and you smack the key. The rest of the track is where notes will scroll from. Right now it's empty. Ominously empty.
+The hit zone is on the left — that solid block where notes arrive and you smack the key. The rest of the track is where notes will scroll from. Right now it's empty.
 
-The top panel shows score and streak. Both zero. For now.
+## Build It. Run It.
 
-The bottom panel has the crowd meter. They're cautiously optimistic. Waiting.
-
-## Setting Up
-
-Create a new file called `symphony.asm`. This is your game. Every unit builds on this file.
-
-To build and run as you work:
+Use this command whenever you see "Build it. Run it.":
 
 ```bash
 acme -f cbm -o symphony.prg symphony.asm && x64sc symphony.prg
 ```
 
-Or do them separately:
+## The BASIC Stub
 
-```bash
-acme -f cbm -o symphony.prg symphony.asm   # Compile
-x64sc symphony.prg                          # Run
-```
-
-When you see "Build it. Run it." in the lesson, use these commands.
-
-First, the boilerplate. Every C64 program needs this preamble to make the system happy:
+Every C64 program that loads with `LOAD "*",8,1` and runs with `RUN` needs a BASIC stub. This tiny fake BASIC program just says "jump to the machine code":
 
 ```asm
-;──────────────────────────────────────────────────────────────
-; SID SYMPHONY
-; A rhythm game for the Commodore 64
-; Unit 1: The Stage
-;──────────────────────────────────────────────────────────────
-
             * = $0801
 
 ; BASIC stub: 10 SYS 2064
-            !byte $0c, $08, $0a, $00, $9e
-            !byte $32, $30, $36, $34
-            !byte $00, $00, $00
-
-;───────────────────────────────────────
-; Entry point
-;───────────────────────────────────────
-            * = $0810
-
-main:
-            jsr setup_screen
-            jsr init_sid
-            jmp main_loop
+            !byte $0c, $08      ; Pointer to next BASIC line
+            !byte $0a, $00      ; Line number 10
+            !byte $9e           ; SYS token
+            !byte $32, $30, $36, $34  ; "2064" in PETSCII
+            !byte $00           ; End of line
+            !byte $00, $00      ; End of program
 ```
 
-Don't panic. The BASIC stub is just a magic incantation that makes `RUN` work. You'll type it once and never think about it again. The interesting bit is what comes next.
+The `* = $0801` tells the assembler to put this code at address $0801, where BASIC programs live. The stub points to $0810 (2064 in decimal), where our real code starts.
 
-## Constants
+## Memory Map Essentials
 
-Before we write any logic, let's define where things live. Add these after the BASIC stub:
+The C64 has specific memory addresses for everything:
 
-```asm
-;───────────────────────────────────────
-; Constants
-;───────────────────────────────────────
-SCREEN      = $0400             ; Screen RAM
-COLOUR      = $d800             ; Colour RAM
+| Address | Purpose |
+|---------|---------|
+| $0400-$07E7 | Screen RAM (1000 characters, 40×25) |
+| $D800-$DBE7 | Colour RAM (one byte per character) |
+| $D020 | Border colour |
+| $D021 | Background colour |
+| $D400-$D418 | SID chip (sound) |
+| $DC00-$DC01 | CIA #1 (keyboard) |
 
-; Screen layout (row positions)
-ROW_SCORE   = 1                 ; Top panel
-ROW_TRACK1  = 8                 ; Track 1 (Z)
-ROW_TRACK2  = 12                ; Track 2 (X) - active
-ROW_TRACK3  = 16                ; Track 3 (C)
-ROW_CROWD   = 23                ; Bottom panel
+Screen position = `$0400 + (row × 40) + column`. Colour position = `$D800 + (row × 40) + column`.
 
-; Colours
-COL_WHITE   = $01
-COL_GREY    = $0b
-COL_CYAN    = $03
-COL_GREEN   = $05
+## Clearing the Screen
 
-; Hit zone width
-HIT_ZONE_X  = 8                 ; Column where hit zone ends
-
-; SID registers
-SID         = $d400
-SID_FREQ_LO = SID + 0           ; Frequency low byte
-SID_FREQ_HI = SID + 1           ; Frequency high byte
-SID_PW_LO   = SID + 2           ; Pulse width low byte
-SID_PW_HI   = SID + 3           ; Pulse width high byte
-SID_CTRL    = SID + 4           ; Control (waveform + gate)
-SID_AD      = SID + 5           ; Attack/Decay
-SID_SR      = SID + 6           ; Sustain/Release
-SID_VOLUME  = SID + 24          ; Master volume
-
-; CIA for keyboard reading
-CIA1_PRA    = $dc00             ; Keyboard column select
-CIA1_PRB    = $dc01             ; Keyboard row read
-```
-
-Forty columns, twenty-five rows. That's your canvas. Every screen position is just `SCREEN + (row * 40) + column`.
-
-## Clearing the Decks
-
-The C64 boots up with a cheerful blue screen and a blinking cursor. We don't want that. We want darkness. Control. A blank canvas.
+We want a black screen, not the default blue with "READY." prompt:
 
 ```asm
-;───────────────────────────────────────
-; Setup screen
-;───────────────────────────────────────
 setup_screen:
             lda #$00
-            sta $d020           ; Border colour - black
-            sta $d021           ; Background colour - black
+            sta $d020           ; Border = black
+            sta $d021           ; Background = black
 
-            ; Clear screen and colour RAM
+            ; Clear all 1000 screen positions
             ldx #$00
 clear_loop:
             lda #$20            ; Space character
             sta $0400,x         ; Screen RAM page 1
             sta $0500,x         ; Screen RAM page 2
             sta $0600,x         ; Screen RAM page 3
-            sta $06e8,x         ; Screen RAM remaining
+            sta $06e8,x         ; Screen RAM remaining bytes
             lda #$00            ; Black
             sta $d800,x         ; Colour RAM page 1
             sta $d900,x         ; Colour RAM page 2
@@ -175,327 +118,567 @@ clear_loop:
             sta $dae8,x         ; Colour RAM remaining
             inx
             bne clear_loop
-
-            jsr draw_top_panel
-            jsr draw_tracks
-            jsr draw_bottom_panel
             rts
 ```
 
-Build it. Run it. You should see... nothing. A black void.
+The loop runs 256 times (X goes 0→255→0, and `bne` exits when X wraps to 0). We fill four overlapping regions to cover all 1000 screen bytes.
 
-Perfect.
+<InlineNote>
+The C64's screen is 1000 bytes but X can only count to 255. We use four `sta` instructions with different base addresses to cover the full screen in one loop.
+</InlineNote>
 
-## Drawing the Panels
+## Drawing Text
 
-Now we need structure. The top panel shows score and streak:
+To draw text, we copy characters from a string to screen RAM, and set colours in colour RAM:
 
 ```asm
-;───────────────────────────────────────
-; Draw top panel
-;───────────────────────────────────────
 draw_top_panel:
             ldx #$00
-top_loop:
+.loop:
             lda score_text,x
-            beq top_done        ; Zero byte = end of string
-            sta SCREEN + (ROW_SCORE * 40),x
-            lda #COL_WHITE
-            sta COLOUR + (ROW_SCORE * 40),x
+            beq .done           ; Zero byte = end of string
+            sta $0400 + 40,x    ; Row 1 of screen
+            lda #$01            ; White
+            sta $d800 + 40,x    ; Colour for row 1
             inx
-            bne top_loop
-top_done:
+            bne .loop
+.done:
             rts
-```
 
-And the data it draws:
-
-```asm
-;───────────────────────────────────────
-; Data
-;───────────────────────────────────────
 score_text:
             !scr "score: 000000          streak: 00"
             !byte 0
 ```
 
-The `!scr` directive converts text to C64 screen codes. The zero byte at the end marks where the string stops.
+The `!scr` directive converts ASCII text to C64 screen codes. The `!byte 0` marks the end of the string.
 
-## The Tracks
+## Drawing the Tracks
 
-Three tracks. One active, two waiting. The active track glows cyan. The others are grey — visible but clearly "not yet."
+Three horizontal tracks, each with a hit zone on the left and a lane stretching right:
 
 ```asm
-;───────────────────────────────────────
-; Draw tracks
-;───────────────────────────────────────
 draw_tracks:
-            ; Track 1 (dimmed)
+            ; Track 1 (row 8) - dimmed grey
             ldx #$00
-t1_loop:
-            cpx #HIT_ZONE_X
-            bcs t1_dim          ; Past hit zone? Draw dash
-            lda #$a0            ; Solid block in hit zone
-            sta SCREEN + (ROW_TRACK1 * 40),x
-            lda #COL_GREY
-            sta COLOUR + (ROW_TRACK1 * 40),x
-            jmp t1_next
-t1_dim:
-            lda #$2d            ; Dash in lane
-            sta SCREEN + (ROW_TRACK1 * 40),x
-            lda #COL_GREY
-            sta COLOUR + (ROW_TRACK1 * 40),x
-t1_next:
+.t1_loop:
+            cpx #$04            ; First 4 columns = hit zone
+            bcs .t1_lane
+            lda #$a0            ; Solid block
+            jmp .t1_store
+.t1_lane:
+            lda #$2d            ; Dash character
+.t1_store:
+            sta $0400 + (8*40),x
+            lda #$0b            ; Grey
+            sta $d800 + (8*40),x
             inx
             cpx #40
-            bne t1_loop
+            bne .t1_loop
 
-            ; Track 2 (active - cyan)
+            ; Track 2 (row 12) - active cyan
             ldx #$00
-t2_loop:
-            cpx #HIT_ZONE_X
-            bcs t2_dim
+.t2_loop:
+            cpx #$04
+            bcs .t2_lane
             lda #$a0
-            sta SCREEN + (ROW_TRACK2 * 40),x
-            lda #COL_CYAN
-            sta COLOUR + (ROW_TRACK2 * 40),x
-            jmp t2_next
-t2_dim:
+            jmp .t2_store
+.t2_lane:
             lda #$2d
-            sta SCREEN + (ROW_TRACK2 * 40),x
-            lda #COL_CYAN
-            sta COLOUR + (ROW_TRACK2 * 40),x
-t2_next:
+.t2_store:
+            sta $0400 + (12*40),x
+            lda #$03            ; Cyan
+            sta $d800 + (12*40),x
             inx
             cpx #40
-            bne t2_loop
+            bne .t2_loop
 
-            ; Track 3 (dimmed)
+            ; Track 3 (row 16) - dimmed grey
             ldx #$00
-t3_loop:
-            cpx #HIT_ZONE_X
-            bcs t3_dim
+.t3_loop:
+            cpx #$04
+            bcs .t3_lane
             lda #$a0
-            sta SCREEN + (ROW_TRACK3 * 40),x
-            lda #COL_GREY
-            sta COLOUR + (ROW_TRACK3 * 40),x
-            jmp t3_next
-t3_dim:
+            jmp .t3_store
+.t3_lane:
             lda #$2d
-            sta SCREEN + (ROW_TRACK3 * 40),x
-            lda #COL_GREY
-            sta COLOUR + (ROW_TRACK3 * 40),x
-t3_next:
+.t3_store:
+            sta $0400 + (16*40),x
+            lda #$0b            ; Grey
+            sta $d800 + (16*40),x
             inx
             cpx #40
-            bne t3_loop
+            bne .t3_loop
 
             rts
 ```
 
-Yes, there's repetition. Yes, we could refactor it. We will, later, when we've earned the right to care about elegance. Right now we care about seeing something on screen.
+Yes, there's repetition. We'll refactor later. Right now, clarity beats cleverness.
 
-## The Bottom Panel
+## The Crowd Meter
 
-Crowd meter. Watching. Waiting.
+The bottom panel shows the crowd's enthusiasm:
 
 ```asm
-;───────────────────────────────────────
-; Draw bottom panel
-;───────────────────────────────────────
 draw_bottom_panel:
             ldx #$00
-bottom_loop:
+.loop:
             lda crowd_text,x
-            beq bottom_done
-            sta SCREEN + (ROW_CROWD * 40),x
-            lda #COL_GREEN
-            sta COLOUR + (ROW_CROWD * 40),x
+            beq .done
+            sta $0400 + (23*40),x
+            lda #$05            ; Green
+            sta $d800 + (23*40),x
             inx
-            bne bottom_loop
-bottom_done:
+            bne .loop
+.done:
             rts
 
 crowd_text:
-            !scr "crowd [          ]              "
+            !scr "crowd [          ]"
             !byte 0
 ```
 
-Build and run. Three horizontal tracks. The middle one glows cyan. The others wait in grey. It's starting to look like a game.
+## The SID Chip
 
-![The stage - three tracks with score and crowd display](/images/commodore-64/game-01-sid-symphony/unit-01/screenshot.png)
+The SID (Sound Interface Device) is the C64's legendary sound chip. It has three voices, each with:
 
-## Making Noise
+- **Frequency** (16-bit) - the pitch
+- **Pulse width** (12-bit) - for pulse wave shape
+- **Control** - waveform selection and gate
+- **ADSR** - Attack, Decay, Sustain, Release envelope
 
-The stage is set. Time to give it a voice.
+For voice 1:
 
-The SID chip lives at $D400. It has three voices, each with its own registers. We're only using voice 1 today:
+| Register | Address | Purpose |
+|----------|---------|---------|
+| Freq Lo | $D400 | Frequency low byte |
+| Freq Hi | $D401 | Frequency high byte |
+| PW Lo | $D402 | Pulse width low |
+| PW Hi | $D403 | Pulse width high |
+| Control | $D404 | Waveform + gate |
+| AD | $D405 | Attack/Decay |
+| SR | $D406 | Sustain/Release |
+| Volume | $D418 | Master volume (shared) |
 
-| Address | Purpose |
-|---------|---------|
-| $D400-$D401 | Frequency (16-bit) |
-| $D402-$D403 | Pulse width (12-bit) |
-| $D404 | Control (waveform + gate) |
-| $D405 | Attack/Decay |
-| $D406 | Sustain/Release |
-| $D418 | Master volume |
-
-Let's initialise the SID:
+## Initialising the SID
 
 ```asm
-;───────────────────────────────────────
-; Init SID
-;───────────────────────────────────────
 init_sid:
-            lda #$0f            ; Maximum volume
-            sta SID_VOLUME
+            ; Master volume to maximum
+            lda #$0f
+            sta $d418
 
-            lda #$00            ; Attack=0, Decay=0 (instant on)
-            sta SID_AD
-            lda #$f4            ; Sustain=15 (full), Release=4 (short fade)
-            sta SID_SR
+            ; Voice 1 ADSR: instant attack, short release
+            lda #$00            ; Attack=0, Decay=0
+            sta $d405
+            lda #$f9            ; Sustain=15, Release=9
+            sta $d406
 
-            lda #$00            ; Pulse width low byte
-            sta SID_PW_LO
-            lda #$08            ; Pulse width high byte (50% duty cycle)
-            sta SID_PW_HI
+            ; Pulse width (needed for pulse wave)
+            lda #$00
+            sta $d402
+            lda #$08            ; 50% duty cycle
+            sta $d403
 
-            lda #$12            ; Frequency low byte
-            sta SID_FREQ_LO
-            lda #$22            ; Frequency high byte
-            sta SID_FREQ_HI
+            ; Frequency for middle C (approximately)
+            lda #$12
+            sta $d400
+            lda #$11
+            sta $d401
+
             rts
 ```
 
 The ADSR envelope shapes how the sound evolves:
-- **Attack** = 0: Sound reaches full volume instantly
-- **Decay** = 0: No decay phase
-- **Sustain** = 15: Holds at full volume while key is held
-- **Release** = 4: Short fade when key is released
+- **Attack** (0) - Sound reaches full volume instantly
+- **Decay** (0) - No decay phase
+- **Sustain** (15) - Holds at full volume while gate is open
+- **Release** (9) - Fades when gate closes
 
-The pulse width must be set for pulse wave to produce sound. $0800 gives a 50% duty cycle — a nice square-ish tone.
+## Playing and Stopping Notes
 
-## Playing Notes
-
-To make a sound, we open the "gate" — set bit 0 of the control register. Bit 6 selects pulse wave:
+To make sound, we "open the gate" (bit 0 of control register). Bit 6 selects pulse wave:
 
 ```asm
-;───────────────────────────────────────
-; Play/stop note
-;───────────────────────────────────────
 play_note:
             lda #$41            ; Pulse wave ($40) + gate on ($01)
-            sta SID_CTRL
+            sta $d404
             rts
 
 stop_note:
-            lda #$40            ; Pulse wave + gate off
-            sta SID_CTRL
+            lda #$40            ; Pulse wave, gate off
+            sta $d404
             rts
 ```
 
-Gate on = sound starts, enters attack/decay/sustain. Gate off = sound enters release phase and fades.
+Gate on = sound starts and sustains. Gate off = sound enters release phase and fades.
 
 ## Reading the Keyboard
 
-We want the note to sustain while X is held, and fade when released. The KERNAL's GETIN routine only tells us "a key was pressed" — it doesn't detect key release. For that, we need to read the keyboard matrix directly via the CIA chip.
+The C64 keyboard is an 8×8 matrix read through CIA #1. To check if a key is pressed:
 
-The C64 keyboard is an 8×8 matrix. To check if X is pressed:
-1. Write to CIA1_PRA to select the column
-2. Read CIA1_PRB to check the row
+1. Write to $DC00 to select a row (column in matrix terms)
+2. Read $DC01 to see which keys in that row are pressed
 3. A 0 bit means the key is down
 
+For the X key (row 2, column 7):
+
 ```asm
-;───────────────────────────────────────
-; Check if X key is currently held
-; Returns A=1 if pressed, A=0 if not
-;───────────────────────────────────────
 check_x_key:
-            lda #%11111011      ; Select column 2 (X is row 7, col 2)
-            sta CIA1_PRA
-            lda CIA1_PRB        ; Read rows
-            and #%10000000      ; Check row 7 (bit 7)
-            bne x_not_pressed   ; Bit set = not pressed
-            lda #$01
+            lda #%11111011      ; Select column 2 (active low)
+            sta $dc00
+            lda $dc01           ; Read rows
+            and #%10000000      ; Check bit 7 (X key)
+            bne .not_pressed
+            lda #$01            ; Return 1 = pressed
             rts
-x_not_pressed:
-            lda #$00
+.not_pressed:
+            lda #$00            ; Return 0 = not pressed
             rts
 ```
 
 ## The Main Loop
 
-Now we tie it together. The main loop tracks three states:
-- **Idle** (0): No sound, waiting for keypress
-- **Playing** (1): Gate open, note sustaining
-- **Releasing** (2): Gate closed, note fading out
+We track key state to handle press/release properly:
 
 ```asm
-;───────────────────────────────────────
-; Main loop
-; key_state: 0=idle, 1=playing, 2=releasing
-;───────────────────────────────────────
 main_loop:
-            jsr check_x_key     ; A=1 if X pressed
+            jsr check_x_key
             cmp #$01
-            beq x_pressed
+            beq .x_pressed
 
-            ; X not pressed
+            ; X not pressed - check if we need to stop note
             lda key_state
-            cmp #$01            ; Were we playing?
-            bne main_loop       ; No - idle or releasing, keep looping
-            ; Transition: playing → releasing
-            lda #$02
+            cmp #$01
+            bne main_loop
+            ; Was playing, now released
+            lda #$00
             sta key_state
-            jsr stop_note       ; Close gate, starts release fade
+            jsr stop_note
             jmp main_loop
 
-x_pressed:
-            ; X pressed
+.x_pressed:
+            ; X pressed - check if we need to start note
             lda key_state
             cmp #$01
-            beq main_loop       ; Already playing, keep looping
-            ; Transition: idle/releasing → playing
+            beq main_loop       ; Already playing
+            ; Start playing
             lda #$01
             sta key_state
-            jsr play_note       ; Open gate
+            jsr play_note
             jmp main_loop
-
-;───────────────────────────────────────
-; Variables
-;───────────────────────────────────────
-key_state:
-            !byte $00
 ```
-
-The key insight: we only call `play_note` when *starting* to play, and only call `stop_note` when *starting* to release. This lets the SID's envelope do its work without being constantly retriggered.
-
-Build it. Run it. Hold X — the note sustains. Release X — it fades smoothly.
-
-**You just played the SID.**
 
 ## What You've Built
 
-Take a breath. Look at what you made:
-
-- A black screen with a proper game layout
-- Three tracks — one active, two waiting
-- A score display (doesn't count yet, but it's there)
-- A crowd meter (doesn't move yet, but it's watching)
-- A key that makes the SID sing, with proper sustain and release
-
-This is the stage. Everything that follows — scrolling notes, hit detection, scoring, the crowd going wild — happens here, in this structure you built.
-
-Save your work. You'll need it.
+Build it. Run it. You should see:
+- Black screen with white text at top
+- Three horizontal tracks (middle one cyan, others grey)
+- Crowd meter at bottom
+- Hold X to hear a sustained tone, release to hear it fade
 
 ## What You've Learnt
 
-- **Screen RAM** - $0400-$07E7 holds 1000 character codes (40×25)
-- **Colour RAM** - $D800-$DBE7 holds the colour for each character
-- **SID fundamentals** - Frequency, pulse width, waveform, gate, ADSR envelope
-- **ADSR envelope** - Attack/Decay/Sustain/Release shapes how notes sound
-- **CIA keyboard matrix** - Direct hardware access for key-up/key-down detection
-- **State machines** - Track what's happening to avoid retriggering
+- **Screen RAM** ($0400) and **Colour RAM** ($D800) are separate
+- **SID fundamentals** - frequency, pulse width, ADSR envelope, gate control
+- **CIA keyboard matrix** - row/column scanning for key detection
+- **State tracking** - remembering previous state to detect changes
+
+## The Complete Code
+
+Here's the complete `symphony.asm` for this unit:
+
+```asm
+;═══════════════════════════════════════════════════════════════════════════════
+; SID SYMPHONY - Unit 1: The Stage
+; A rhythm game for the Commodore 64
+;
+; Build: acme -f cbm -o symphony.prg symphony.asm
+; Run:   x64sc symphony.prg
+;═══════════════════════════════════════════════════════════════════════════════
+
+;───────────────────────────────────────────────────────────────────────────────
+; BASIC stub: 10 SYS 2064
+;───────────────────────────────────────────────────────────────────────────────
+            * = $0801
+
+            !byte $0c, $08      ; Pointer to next line
+            !byte $0a, $00      ; Line number 10
+            !byte $9e           ; SYS token
+            !byte $32, $30, $36, $34  ; "2064"
+            !byte $00           ; End of line
+            !byte $00, $00      ; End of program
+
+;───────────────────────────────────────────────────────────────────────────────
+; Constants
+;───────────────────────────────────────────────────────────────────────────────
+SCREEN      = $0400
+COLOUR      = $d800
+
+; Screen layout
+ROW_SCORE   = 1
+ROW_TRACK1  = 8
+ROW_TRACK2  = 12
+ROW_TRACK3  = 16
+ROW_CROWD   = 23
+
+; Colours
+COL_BLACK   = $00
+COL_WHITE   = $01
+COL_CYAN    = $03
+COL_GREEN   = $05
+COL_GREY    = $0b
+
+; Track dimensions
+HIT_ZONE_W  = 4
+
+; SID registers
+SID         = $d400
+SID_FREQ_LO = SID + 0
+SID_FREQ_HI = SID + 1
+SID_PW_LO   = SID + 2
+SID_PW_HI   = SID + 3
+SID_CTRL    = SID + 4
+SID_AD      = SID + 5
+SID_SR      = SID + 6
+SID_VOLUME  = SID + 24
+
+; CIA
+CIA1_PRA    = $dc00
+CIA1_PRB    = $dc01
+
+;───────────────────────────────────────────────────────────────────────────────
+; Entry Point
+;───────────────────────────────────────────────────────────────────────────────
+            * = $0810
+
+main:
+            jsr setup_screen
+            jsr draw_top_panel
+            jsr draw_tracks
+            jsr draw_bottom_panel
+            jsr init_sid
+            jmp main_loop
+
+;───────────────────────────────────────────────────────────────────────────────
+; Setup Screen - Clear and set colours
+;───────────────────────────────────────────────────────────────────────────────
+setup_screen:
+            ; Set border and background to black
+            lda #COL_BLACK
+            sta $d020
+            sta $d021
+
+            ; Clear screen and colour RAM
+            ldx #$00
+.clear_loop:
+            lda #$20            ; Space character
+            sta SCREEN,x
+            sta SCREEN + $100,x
+            sta SCREEN + $200,x
+            sta SCREEN + $2e8,x
+            lda #COL_BLACK
+            sta COLOUR,x
+            sta COLOUR + $100,x
+            sta COLOUR + $200,x
+            sta COLOUR + $2e8,x
+            inx
+            bne .clear_loop
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Draw Top Panel - Score and streak display
+;───────────────────────────────────────────────────────────────────────────────
+draw_top_panel:
+            ldx #$00
+.loop:
+            lda score_text,x
+            beq .done
+            sta SCREEN + (ROW_SCORE * 40),x
+            lda #COL_WHITE
+            sta COLOUR + (ROW_SCORE * 40),x
+            inx
+            bne .loop
+.done:
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Draw Tracks - Three horizontal lanes
+;───────────────────────────────────────────────────────────────────────────────
+draw_tracks:
+            ; Track 1 (row 8) - dimmed
+            ldx #$00
+.t1_loop:
+            cpx #HIT_ZONE_W
+            bcs .t1_lane
+            lda #$a0            ; Solid block in hit zone
+            jmp .t1_store
+.t1_lane:
+            lda #$2d            ; Dash in lane
+.t1_store:
+            sta SCREEN + (ROW_TRACK1 * 40),x
+            lda #COL_GREY
+            sta COLOUR + (ROW_TRACK1 * 40),x
+            inx
+            cpx #40
+            bne .t1_loop
+
+            ; Track 2 (row 12) - active
+            ldx #$00
+.t2_loop:
+            cpx #HIT_ZONE_W
+            bcs .t2_lane
+            lda #$a0
+            jmp .t2_store
+.t2_lane:
+            lda #$2d
+.t2_store:
+            sta SCREEN + (ROW_TRACK2 * 40),x
+            lda #COL_CYAN
+            sta COLOUR + (ROW_TRACK2 * 40),x
+            inx
+            cpx #40
+            bne .t2_loop
+
+            ; Track 3 (row 16) - dimmed
+            ldx #$00
+.t3_loop:
+            cpx #HIT_ZONE_W
+            bcs .t3_lane
+            lda #$a0
+            jmp .t3_store
+.t3_lane:
+            lda #$2d
+.t3_store:
+            sta SCREEN + (ROW_TRACK3 * 40),x
+            lda #COL_GREY
+            sta COLOUR + (ROW_TRACK3 * 40),x
+            inx
+            cpx #40
+            bne .t3_loop
+
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Draw Bottom Panel - Crowd meter
+;───────────────────────────────────────────────────────────────────────────────
+draw_bottom_panel:
+            ldx #$00
+.loop:
+            lda crowd_text,x
+            beq .done
+            sta SCREEN + (ROW_CROWD * 40),x
+            lda #COL_GREEN
+            sta COLOUR + (ROW_CROWD * 40),x
+            inx
+            bne .loop
+.done:
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Init SID - Configure voice 1
+;───────────────────────────────────────────────────────────────────────────────
+init_sid:
+            ; Master volume
+            lda #$0f
+            sta SID_VOLUME
+
+            ; Voice 1 ADSR
+            lda #$00            ; Attack=0, Decay=0
+            sta SID_AD
+            lda #$f9            ; Sustain=15, Release=9
+            sta SID_SR
+
+            ; Pulse width for voice 1
+            lda #$00
+            sta SID_PW_LO
+            lda #$08            ; 50% duty cycle
+            sta SID_PW_HI
+
+            ; Frequency (approximately middle C)
+            lda #$12
+            sta SID_FREQ_LO
+            lda #$11
+            sta SID_FREQ_HI
+
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Play Note - Open gate on voice 1
+;───────────────────────────────────────────────────────────────────────────────
+play_note:
+            lda #$41            ; Pulse wave + gate on
+            sta SID_CTRL
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Stop Note - Close gate on voice 1
+;───────────────────────────────────────────────────────────────────────────────
+stop_note:
+            lda #$40            ; Pulse wave + gate off
+            sta SID_CTRL
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Check X Key - Returns A=1 if pressed, A=0 if not
+;───────────────────────────────────────────────────────────────────────────────
+check_x_key:
+            lda #%11111011      ; Select column 2
+            sta CIA1_PRA
+            lda CIA1_PRB        ; Read rows
+            and #%10000000      ; Check bit 7 (X key)
+            bne .not_pressed
+            lda #$01
+            rts
+.not_pressed:
+            lda #$00
+            rts
+
+;───────────────────────────────────────────────────────────────────────────────
+; Main Loop - Handle input and sound
+;───────────────────────────────────────────────────────────────────────────────
+main_loop:
+            jsr check_x_key
+            cmp #$01
+            beq .x_pressed
+
+            ; X not pressed
+            lda key_state
+            cmp #$01
+            bne main_loop       ; Wasn't playing anyway
+            ; Was playing, now released - stop
+            lda #$00
+            sta key_state
+            jsr stop_note
+            jmp main_loop
+
+.x_pressed:
+            ; X pressed
+            lda key_state
+            cmp #$01
+            beq main_loop       ; Already playing
+            ; Start playing
+            lda #$01
+            sta key_state
+            jsr play_note
+            jmp main_loop
+
+;───────────────────────────────────────────────────────────────────────────────
+; Data
+;───────────────────────────────────────────────────────────────────────────────
+score_text:
+            !scr "score: 000000          streak: 00"
+            !byte 0
+
+crowd_text:
+            !scr "crowd [          ]"
+            !byte 0
+
+;───────────────────────────────────────────────────────────────────────────────
+; Variables
+;───────────────────────────────────────────────────────────────────────────────
+key_state:
+            !byte $00           ; 0=not playing, 1=playing
+```
 
 ## Next Unit
 

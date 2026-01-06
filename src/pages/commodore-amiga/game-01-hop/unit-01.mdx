@@ -1,0 +1,566 @@
+---
+title: "The Lanes"
+description: "Set up the Hop game zones using the Amiga's copper chip - grass, road, water, and home."
+pubDate: 2026-01-02
+game: 1
+gameName: "Hop"
+unit: 1
+totalUnits: 16
+system: "Commodore Amiga"
+tags: ["assembly", "68000", "copper", "display"]
+nextLesson: "/commodore-amiga/game-01-hop/unit-02"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+*Need to set up your tools first? See [Getting Started](/commodore-amiga/getting-started).*
+
+## What You're Building
+
+Before the frog hops, before cars crush, before logs float — you need lanes.
+
+By the end of this unit, you'll have:
+
+- A display showing the game zones
+- Green grass at top and bottom (safe zones)
+- Grey road with lane markers (danger zone)
+- Blue water with wave patterns (floating danger)
+- A display driven entirely by the copper chip
+
+No frog yet. No traffic. Just the world it'll hop through, painted without the CPU lifting a finger.
+
+## The Game Zones
+
+Here's what we're aiming for:
+
+```
+┌────────────────────────────────────────┐
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │  ← Top border (black)
+├────────────────────────────────────────┤
+│ ████████████████████████████████████████│  ← Home zone (green)
+│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  ← Water lanes (blue stripes)
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
+├────────────────────────────────────────┤
+│ ████████████████████████████████████████│  ← Safe median (green)
+├────────────────────────────────────────┤
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │  ← Road lanes (grey stripes)
+│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+├────────────────────────────────────────┤
+│ ████████████████████████████████████████│  ← Start zone (green)
+└────────────────────────────────────────┘
+```
+
+The safe zones are green. You hop across the grey road dodging cars. You hop across the blue water on logs and turtles. Reach the home zone to score.
+
+## Taking Over the Machine
+
+Unlike the system-friendly approach some Amiga tutorials teach, we're taking complete control. This is how real games worked — boot from disk, own the hardware, no operating system in the way.
+
+Our approach:
+1. Disable all interrupts
+2. Disable all DMA channels
+3. Set up our display and copper list
+4. Enable only the DMA we need
+5. Run our game loop forever
+
+No libraries to open. No state to save. We own the machine.
+
+## The Copper
+
+The Amiga has a secret weapon: the **copper** (coprocessor).
+
+The copper watches the video beam as it draws the screen. Every frame, the beam starts at the top-left corner, sweeps right, drops down a line, sweeps right again — 200+ times until it reaches the bottom. The copper can wait for specific beam positions, then change hardware registers.
+
+This is extraordinarily powerful:
+
+- Change the background colour at line 50? Copper does it.
+- Change it again at line 80? Sure.
+- Change palette colours, scroll registers, sprite positions — all synchronised to the display without CPU involvement.
+
+For Hop, we use the copper to paint horizontal colour bands. Each zone gets its own colour. The CPU sets up the copper list once, then the copper runs it every frame automatically.
+
+## Setting Up
+
+Create a new file called `hop.asm`. This is your game.
+
+### Build It. Run It.
+
+Use this workflow throughout the course:
+
+```bash
+vasmm68k_mot -Fhunkexe -kick1hunks -o hop -nosym hop.asm
+```
+
+To create a bootable disk and run:
+
+```bash
+xdftool hop.adf create + format "Hop" ofs + boot install boot1x + write hop + makedir s
+echo "hop" > startup-sequence
+xdftool hop.adf write startup-sequence s/startup-sequence
+fs-uae --floppy_drive_0=hop.adf
+```
+
+When you see "Build it. Run it." in the lesson, use these commands.
+
+## Hardware Registers
+
+The Amiga's custom chips live at address $DFF000. Every register is an offset from this base:
+
+```asm
+CUSTOM      equ $dff000
+
+; DMA and interrupt control
+DMACONR     equ $002        ; DMA control read
+DMACON      equ $096        ; DMA control write
+INTENA      equ $09a        ; Interrupt enable
+INTREQ      equ $09c        ; Interrupt request
+
+; Copper registers
+COP1LC      equ $080        ; Copper list 1 address
+COPJMP1     equ $088        ; Restart copper at COP1LC
+
+; Colour registers
+COLOR00     equ $180        ; Background colour
+```
+
+We'll use A5 as our custom chip base pointer throughout — `lea CUSTOM,a5` once, then access registers as offsets: `$180(a5)` for COLOR00.
+
+## The 68000 Basics
+
+If you're coming from 6502 (C64/NES), the 68000 is a step up:
+
+- **32-bit registers**: D0-D7 (data), A0-A7 (address)
+- **Multiple sizes**: `.b` (byte), `.w` (word/16-bit), `.l` (longword/32-bit)
+- **Orthogonal design**: Most instructions work with most addressing modes
+- **More memory**: 24-bit address bus (16MB addressable)
+
+Key instructions we'll use:
+
+| Instruction | Meaning |
+|-------------|---------|
+| `move.w #$1234,d0` | Load immediate value into D0 |
+| `move.w d0,$180(a5)` | Write D0 to address A5+$180 |
+| `lea label,a0` | Load effective address into A0 |
+| `btst #6,$bfe001` | Test bit 6 at address |
+| `bne.s label` | Branch if not equal (short) |
+| `rts` | Return from subroutine |
+
+## Starting the Program
+
+First, the startup code that takes over the machine:
+
+```asm
+;──────────────────────────────────────────────────────────────
+; HOP - A Frogger-style game for the Commodore Amiga
+; Unit 1: The Lanes
+;──────────────────────────────────────────────────────────────
+
+CUSTOM      equ $dff000
+
+DMACONR     equ $002
+DMACON      equ $096
+INTENA      equ $09a
+INTREQ      equ $09c
+COP1LC      equ $080
+COPJMP1     equ $088
+VPOSR       equ $004
+COLOR00     equ $180
+
+;──────────────────────────────────────────────────────────────
+            section code,code
+;──────────────────────────────────────────────────────────────
+
+start:
+            lea     CUSTOM,a5           ; A5 = custom chip base
+
+            ; Disable all interrupts
+            move.w  #$7fff,INTENA(a5)   ; Clear all interrupt bits
+            move.w  #$7fff,INTREQ(a5)   ; Clear pending interrupts
+
+            ; Disable all DMA
+            move.w  #$7fff,DMACON(a5)   ; Turn off all DMA channels
+```
+
+Let's break this down:
+
+**`lea CUSTOM,a5`** — Load Effective Address. Puts $DFF000 into A5. We'll use A5 as our base for all custom chip access.
+
+**`move.w #$7fff,INTENA(a5)`** — The INTENA register controls interrupts. Writing with bit 15 clear disables the specified bits. $7FFF has bits 0-14 set, so this disables all interrupt sources.
+
+**`move.w #$7fff,INTREQ(a5)`** — Clear any pending interrupt requests.
+
+**`move.w #$7fff,DMACON(a5)`** — Same pattern for DMA. We disable everything, then enable only what we need.
+
+## Installing the Copper List
+
+Now we point the copper at our list and start it:
+
+```asm
+            ; Install copper list
+            lea     copperlist,a0
+            move.l  a0,COP1LC(a5)       ; Set copper list address
+            move.w  d0,COPJMP1(a5)      ; Strobe: restart copper
+
+            ; Enable copper DMA
+            move.w  #$8280,DMACON(a5)   ; Set bits: master + copper
+```
+
+**`lea copperlist,a0`** — Get the address of our copper list.
+
+**`move.l a0,COP1LC(a5)`** — COP1LC is a 32-bit register holding the copper list address. We write the full longword.
+
+**`move.w d0,COPJMP1(a5)`** — Writing anything to COPJMP1 "strobes" the copper — tells it to jump to COP1LC and start executing. The value doesn't matter; D0 is just convenient.
+
+**`move.w #$8280,DMACON(a5)`** — DMACON controls DMA channels. The format is:
+- Bit 15: 1 = set bits, 0 = clear bits
+- Bit 9: Master DMA enable
+- Bit 7: Copper DMA
+
+$8280 = %1000001010000000, which sets master enable and copper DMA.
+
+## The Main Loop
+
+Our main loop waits for vertical blank and checks the mouse button:
+
+```asm
+mainloop:
+            ; Wait for vertical blank (line 0)
+            move.l  #$1ff00,d1          ; Mask for vertical position
+.vbwait:
+            move.l  VPOSR(a5),d0        ; Read beam position
+            and.l   d1,d0               ; Isolate vertical bits
+            bne.s   .vbwait             ; Loop until line 0
+
+            ; Check left mouse button (active low)
+            btst    #6,$bfe001          ; Test bit 6 of CIA-A
+            bne.s   mainloop            ; If set (not pressed), continue
+
+            ; Mouse pressed - for now, just loop forever
+            ; In a real game, this might reset or exit
+            bra.s   mainloop
+```
+
+**Vertical blank wait** — VPOSR/VHPOSR at offset $004 contains the current beam position. The mask $1FF00 isolates the vertical line number (bits 8-16). When this is zero, we're at line 0 — the start of the frame.
+
+**Mouse button** — The left mouse button is bit 6 of CIA-A's port A at $BFE001. It's active-low: the bit is clear when pressed.
+
+**`btst #6,$bfe001`** — Test bit 6. Sets the zero flag if the bit is clear.
+
+**`bne.s mainloop`** — Branch if Not Equal (bit was set, button not pressed). The `.s` suffix means short branch.
+
+## Copper Instructions
+
+A copper list is a sequence of instructions. Each instruction is two words (4 bytes):
+
+**MOVE** — Write a value to a register:
+- Word 1: Register offset ($000-$1FE, even only)
+- Word 2: Value to write
+
+**WAIT** — Wait for beam position:
+- Word 1: Position ($VVHH — VV=line, HH=horizontal)
+- Word 2: Mask ($FFFE for standard wait)
+
+Example:
+```asm
+dc.w    $0180,$0f00     ; MOVE: Write $0F00 (red) to COLOR00
+dc.w    $5007,$fffe     ; WAIT: Wait for line $50, any horizontal
+```
+
+## Amiga Colours
+
+Amiga colours are 12-bit RGB: `$0RGB` where R, G, B are each 0-F:
+
+| Value | Colour |
+|-------|--------|
+| $0000 | Black |
+| $0fff | White |
+| $0f00 | Bright red |
+| $00f0 | Bright green |
+| $000f | Bright blue |
+| $0080 | Medium green |
+| $0444 | Dark grey |
+
+## The Copper List
+
+The copper list must be in **chip RAM**. The Amiga has two types of memory:
+- **Chip RAM**: Accessible by custom chips (copper, blitter, etc.)
+- **Fast RAM**: CPU only, faster but can't be used for graphics
+
+We use `section name,data_c` to ensure placement in chip RAM:
+
+```asm
+;──────────────────────────────────────────────────────────────
+            section chipdata,data_c
+;──────────────────────────────────────────────────────────────
+
+copperlist:
+            ; Start with black border
+            dc.w    COLOR00,$0000
+```
+
+Now we build the zones by waiting for specific lines and changing colours:
+
+```asm
+            ; Top grass (home zone)
+            dc.w    $2c07,$fffe         ; Wait line $2C
+            dc.w    COLOR00,$0070       ; Dark green
+
+            dc.w    $4007,$fffe         ; Wait line $40
+            dc.w    COLOR00,$0080       ; Brighter green
+```
+
+The wait format `$2c07,$fffe` means:
+- Wait for line $2C (44 decimal)
+- Horizontal position $07 (any position past the border)
+- Mask $FFFE (standard comparison)
+
+## Building All the Zones
+
+Here's the complete copper list with all game zones:
+
+```asm
+copperlist:
+            dc.w    COLOR00,$0000       ; Black border at top
+
+            ; === HOME ZONE (green) ===
+            dc.w    $2c07,$fffe
+            dc.w    COLOR00,$0080       ; Green
+
+            ; === WATER ZONE (blue stripes) ===
+            dc.w    $4007,$fffe
+            dc.w    COLOR00,$0048       ; Dark blue
+
+            dc.w    $4c07,$fffe
+            dc.w    COLOR00,$006b       ; Medium blue
+
+            dc.w    $5407,$fffe
+            dc.w    COLOR00,$0048       ; Dark blue
+
+            dc.w    $5c07,$fffe
+            dc.w    COLOR00,$006b       ; Medium blue
+
+            dc.w    $6407,$fffe
+            dc.w    COLOR00,$0048       ; Dark blue
+
+            ; === MEDIAN (safe zone) ===
+            dc.w    $6c07,$fffe
+            dc.w    COLOR00,$0080       ; Green
+
+            ; === ROAD ZONE (grey stripes) ===
+            dc.w    $7807,$fffe
+            dc.w    COLOR00,$0444       ; Dark grey
+
+            dc.w    $8407,$fffe
+            dc.w    COLOR00,$0666       ; Light grey (lane marker)
+
+            dc.w    $8807,$fffe
+            dc.w    COLOR00,$0444       ; Dark grey
+
+            dc.w    $9407,$fffe
+            dc.w    COLOR00,$0666       ; Light grey
+
+            dc.w    $9807,$fffe
+            dc.w    COLOR00,$0444       ; Dark grey
+
+            dc.w    $a407,$fffe
+            dc.w    COLOR00,$0666       ; Light grey
+
+            dc.w    $a807,$fffe
+            dc.w    COLOR00,$0444       ; Dark grey
+
+            ; === START ZONE (green) ===
+            dc.w    $b407,$fffe
+            dc.w    COLOR00,$0080       ; Green
+
+            dc.w    $c007,$fffe
+            dc.w    COLOR00,$0070       ; Darker green
+
+            ; === BOTTOM BORDER ===
+            dc.w    $f007,$fffe
+            dc.w    COLOR00,$0000       ; Black
+
+            ; End copper list
+            dc.w    $ffff,$fffe
+```
+
+The final `$ffff,$fffe` waits for line 255 — effectively "wait forever." The copper automatically restarts from COP1LC at the beginning of each frame.
+
+## Build It. Run It.
+
+```bash
+vasmm68k_mot -Fhunkexe -kick1hunks -o hop -nosym hop.asm
+xdftool hop.adf create + format "Hop" ofs + boot install boot1x + write hop + makedir s
+echo "hop" > startup-sequence
+xdftool hop.adf write startup-sequence s/startup-sequence
+fs-uae --floppy_drive_0=hop.adf
+```
+
+You should see horizontal colour bands: green home zone, blue water with wave stripes, green median, grey road with lane markers, green start zone. The display is entirely driven by the copper — your CPU isn't drawing anything.
+
+## What You've Built
+
+Look at what you made:
+
+- A display driven by the copper chip with zero CPU involvement
+- Colour zones representing game areas (grass, road, water, home)
+- Visual lane markers in the road and wave patterns in water
+- A proper takeover startup that owns the machine
+
+This is the playing field. Everything that follows — the frog sprite, the scrolling cars, the floating logs — happens in these zones.
+
+## What You've Learnt
+
+- **Copper lists** control display timing without CPU involvement
+- **WAIT instructions** synchronise to beam position (`$VVHH,$FFFE`)
+- **MOVE instructions** write to hardware registers (`$REG,$VALUE`)
+- **Chip RAM** is required for copper lists — use `section name,data_c`
+- **DMACON** controls which DMA channels are active
+- **Taking over** means disabling everything, then enabling only what you need
+
+## The Complete Code
+
+Here's the full `hop.asm`:
+
+```asm
+;──────────────────────────────────────────────────────────────
+; HOP - A Frogger-style game for the Commodore Amiga
+; Unit 1: The Lanes
+;──────────────────────────────────────────────────────────────
+
+CUSTOM      equ $dff000
+
+; Custom chip register offsets
+DMACONR     equ $002
+DMACON      equ $096
+INTENA      equ $09a
+INTREQ      equ $09c
+COP1LC      equ $080
+COPJMP1     equ $088
+VPOSR       equ $004
+COLOR00     equ $180
+
+;──────────────────────────────────────────────────────────────
+; Code Section
+;──────────────────────────────────────────────────────────────
+            section code,code
+
+start:
+            lea     CUSTOM,a5           ; Custom chip base in A5
+
+            ; --- Take over the machine ---
+            move.w  #$7fff,INTENA(a5)   ; Disable all interrupts
+            move.w  #$7fff,INTREQ(a5)   ; Clear pending interrupts
+            move.w  #$7fff,DMACON(a5)   ; Disable all DMA
+
+            ; --- Install copper list ---
+            lea     copperlist,a0
+            move.l  a0,COP1LC(a5)       ; Point copper at our list
+            move.w  d0,COPJMP1(a5)      ; Strobe to start copper
+
+            ; --- Enable DMA ---
+            move.w  #$8280,DMACON(a5)   ; Enable master + copper
+
+            ; === Main Loop ===
+mainloop:
+            ; Wait for vertical blank
+            move.l  #$1ff00,d1
+.vbwait:
+            move.l  VPOSR(a5),d0
+            and.l   d1,d0
+            bne.s   .vbwait
+
+            ; Check left mouse button
+            btst    #6,$bfe001
+            bne.s   mainloop
+
+            ; Button pressed - loop forever (game runs until reset)
+            bra.s   mainloop
+
+;──────────────────────────────────────────────────────────────
+; Chip RAM Data (copper list must be here)
+;──────────────────────────────────────────────────────────────
+            section chipdata,data_c
+
+copperlist:
+            dc.w    COLOR00,$0000       ; Black border
+
+            ; === HOME ZONE ===
+            dc.w    $2c07,$fffe
+            dc.w    COLOR00,$0080       ; Green
+
+            ; === WATER ZONE (5 lanes) ===
+            dc.w    $4007,$fffe
+            dc.w    COLOR00,$0048       ; Dark blue - lane 1
+
+            dc.w    $4c07,$fffe
+            dc.w    COLOR00,$006b       ; Medium blue - wave
+
+            dc.w    $5407,$fffe
+            dc.w    COLOR00,$0048       ; Dark blue - lane 2
+
+            dc.w    $5c07,$fffe
+            dc.w    COLOR00,$006b       ; Medium blue - wave
+
+            dc.w    $6407,$fffe
+            dc.w    COLOR00,$0048       ; Dark blue - lane 3
+
+            ; === MEDIAN (safe) ===
+            dc.w    $6c07,$fffe
+            dc.w    COLOR00,$0080       ; Green
+
+            ; === ROAD ZONE (4 lanes) ===
+            dc.w    $7807,$fffe
+            dc.w    COLOR00,$0444       ; Dark grey - lane 1
+
+            dc.w    $8407,$fffe
+            dc.w    COLOR00,$0666       ; Light grey - marker
+
+            dc.w    $8807,$fffe
+            dc.w    COLOR00,$0444       ; Dark grey - lane 2
+
+            dc.w    $9407,$fffe
+            dc.w    COLOR00,$0666       ; Light grey - marker
+
+            dc.w    $9807,$fffe
+            dc.w    COLOR00,$0444       ; Dark grey - lane 3
+
+            dc.w    $a407,$fffe
+            dc.w    COLOR00,$0666       ; Light grey - marker
+
+            dc.w    $a807,$fffe
+            dc.w    COLOR00,$0444       ; Dark grey - lane 4
+
+            ; === START ZONE ===
+            dc.w    $b407,$fffe
+            dc.w    COLOR00,$0080       ; Green
+
+            dc.w    $c007,$fffe
+            dc.w    COLOR00,$0070       ; Darker green border
+
+            ; === BOTTOM BORDER ===
+            dc.w    $f007,$fffe
+            dc.w    COLOR00,$0000       ; Black
+
+            ; End of list
+            dc.w    $ffff,$fffe
+```
+
+## Recap / Sanity Check
+
+Before moving on, verify:
+
+- [ ] Build succeeds with no errors
+- [ ] Disk boots in FS-UAE
+- [ ] Screen shows horizontal colour bands
+- [ ] Green zones at top (home) and bottom (start)
+- [ ] Blue striped water zone below home
+- [ ] Green median in the middle
+- [ ] Grey striped road zone with lane markers
+- [ ] Display is static (no movement yet)
+
+## Next Unit
+
+The lanes are painted. But they're static. Lifeless.
+
+In [Unit 2: The Frog](/commodore-amiga/game-01-hop/unit-02), we add a hardware sprite that you control with the joystick. The hopping begins.

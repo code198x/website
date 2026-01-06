@@ -1,0 +1,813 @@
+---
+title: "Enemies"
+description: "Add threats. Learn how to manage multiple entities with indexed addressing and arrays."
+pubDate: 2026-01-03
+game: 1
+gameName: "Neon Nexus"
+unit: 4
+totalUnits: 16
+system: "Nintendo Entertainment System"
+tags: ["assembly", "6502", "arrays", "ai"]
+nextLesson: "/nintendo-entertainment-system/game-01-neon-nexus/unit-05"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+*Need to catch up? Check out [Unit 3: Movement](/nintendo-entertainment-system/game-01-neon-nexus/unit-03).*
+
+## What You're Building
+
+Flying alone is boring. Let's add some danger.
+
+By the end of this unit, you'll have:
+
+- Four enemy ships descending the screen
+- An entity system using parallel arrays
+- Indexed addressing to process multiple objects efficiently
+- A new enemy graphic in CHR ROM
+
+No collision yet — that comes in Unit 5. For now, the enemies just fly.
+
+## The Plan
+
+Here's what we need to add:
+
+1. **Enemy arrays** — X and Y positions for 4 enemies
+2. **Enemy initialisation** — Spawn enemies at starting positions
+3. **Enemy movement** — Make them descend the screen
+4. **Sprite updates** — Write enemy positions to shadow OAM
+5. **Enemy graphic** — A new tile for the enemy ships
+
+## Managing Multiple Entities
+
+The player is simple — one `player_x`, one `player_y`. But what about 4 enemies?
+
+We could create `enemy1_x`, `enemy2_x`, `enemy3_x`, `enemy4_x`... but that leads to copy-pasted code for each enemy. Tedious and error-prone.
+
+The better approach: **parallel arrays**.
+
+```asm
+.segment "ZEROPAGE"
+; ... existing variables ...
+enemy_x:  .res 4              ; X positions for 4 enemies
+enemy_y:  .res 4              ; Y positions for 4 enemies
+```
+
+Now enemy 0's position is at `enemy_x+0` and `enemy_y+0`. Enemy 1 is at `enemy_x+1` and `enemy_y+1`. And so on.
+
+The magic: we use the **X register as an index** to access all enemies with the same code.
+
+## Indexed Addressing
+
+The 6502's indexed addressing modes let us access array elements:
+
+```asm
+    ldx #2              ; Index = 2
+    lda enemy_x, x      ; Load enemy_x[2] into A
+```
+
+The instruction `lda enemy_x, x` means "load from address (enemy_x + X)". If `enemy_x` is at $0010 and X is 2, it loads from $0012.
+
+This is the key to processing multiple entities with a single loop.
+
+## Initialising Enemies
+
+We need to place enemies at starting positions. Let's spread them across the top of the screen:
+
+```asm
+.proc init_enemies
+    ; Enemy 0: left side
+    lda #50
+    sta enemy_x
+    lda #32
+    sta enemy_y
+
+    ; Enemy 1: left-centre
+    lda #100
+    sta enemy_x + 1
+    lda #48
+    sta enemy_y + 1
+
+    ; Enemy 2: right-centre
+    lda #156
+    sta enemy_x + 2
+    lda #24
+    sta enemy_y + 2
+
+    ; Enemy 3: right side
+    lda #206
+    sta enemy_x + 3
+    lda #40
+    sta enemy_y + 3
+
+    rts
+.endproc
+```
+
+We stagger the Y positions so enemies don't all arrive at once — it creates a wave pattern.
+
+## Moving Enemies
+
+Now the interesting part. A single loop processes all 4 enemies:
+
+```asm
+.proc move_enemies
+    ldx #0                  ; Start with enemy 0
+@loop:
+    ; Move enemy down (increment Y)
+    inc enemy_y, x
+
+    ; Check if off bottom of screen
+    lda enemy_y, x
+    cmp #232                ; Past visible area?
+    bcc @next               ; No - continue
+
+    ; Wrap to top
+    lda #0
+    sta enemy_y, x
+
+@next:
+    inx                     ; Next enemy
+    cpx #4                  ; All 4 done?
+    bne @loop               ; No - loop
+    rts
+.endproc
+```
+
+**`inc enemy_y, x`** — Increment the byte at address (enemy_y + X). This single instruction moves whichever enemy X points to.
+
+The loop:
+1. Increments enemy Y position
+2. Checks if enemy went off screen (Y >= 232)
+3. If so, wraps back to Y = 0 (top of screen)
+4. Moves to next enemy
+5. Repeats until all 4 are processed
+
+## Updating Sprites
+
+Our `update_player` routine handles the player sprite at OAM position 0. Now we need to update enemy sprites at positions 1-4.
+
+Each sprite uses 4 bytes in OAM:
+- Sprite 0: bytes 0-3 ($0200-$0203) — the player
+- Sprite 1: bytes 4-7 ($0204-$0207) — enemy 0
+- Sprite 2: bytes 8-11 ($0208-$020B) — enemy 1
+- Sprite 3: bytes 12-15 ($020C-$020F) — enemy 2
+- Sprite 4: bytes 16-19 ($0210-$0213) — enemy 3
+
+We need two indices: X for the enemy array (0-3) and Y for OAM (4, 8, 12, 16).
+
+```asm
+.proc update_enemy_sprites
+    ldx #0                  ; Enemy index
+    ldy #4                  ; OAM offset (skip sprite 0)
+@loop:
+    ; Y position
+    lda enemy_y, x
+    sta $0200, y
+    iny
+
+    ; Tile index (enemy graphic)
+    lda #2                  ; Tile 2 = enemy
+    sta $0200, y
+    iny
+
+    ; Attributes (palette 1, no flip)
+    lda #%00000001          ; Sprite palette 1
+    sta $0200, y
+    iny
+
+    ; X position
+    lda enemy_x, x
+    sta $0200, y
+    iny
+
+    ; Next enemy
+    inx
+    cpx #4
+    bne @loop
+    rts
+.endproc
+```
+
+Notice we use **both X and Y as indices** simultaneously:
+- X indexes into enemy arrays (0, 1, 2, 3)
+- Y indexes into OAM (4, 5, 6, 7, 8, 9, ...)
+
+After each sprite, Y advances by 4 bytes automatically (we `iny` four times), perfectly aligning with the next OAM slot.
+
+## The Enemy Graphic
+
+We need a second tile for enemies. Let's create a hostile-looking seeker ship:
+
+```asm
+    ; Tile 2: Enemy ship
+    .byte %01100110         ; .XX..XX.
+    .byte %11111111         ; XXXXXXXX
+    .byte %11011011         ; XX.XX.XX
+    .byte %01111110         ; .XXXXXX.
+    .byte %00111100         ; ..XXXX..
+    .byte %00111100         ; ..XXXX..
+    .byte %00011000         ; ...XX...
+    .byte %00011000         ; ...XX...
+    ; Plane 1 (all zeros = colour 1)
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+```
+
+This creates a triangular shape pointing downward — visually distinct from the player's upward-pointing ship.
+
+## Enemy Palette
+
+Enemies use sprite palette 1. Let's make them green to stand out against the white player:
+
+```asm
+    ; Sprite palette 1: Greens (enemies)
+    .byte $0f, $2a, $1a, $0a    ; Black, light green, green, dark green
+```
+
+The first colour ($0f) is always transparent for sprites. Colour 1 ($2a) is what the enemies will appear as — a bright green.
+
+## Updating the Main Loop
+
+Add calls to our new subroutines:
+
+```asm
+forever:
+    lda frame_counter
+@wait:
+    cmp frame_counter
+    beq @wait
+
+    jsr read_controller
+    jsr update_player
+    jsr move_enemies
+    jsr update_enemy_sprites
+
+    jmp forever
+```
+
+The order matters:
+1. Read input
+2. Update player based on input
+3. Move enemies based on AI (just falling for now)
+4. Update all sprites in shadow OAM
+
+The NMI handler then copies shadow OAM to the PPU via DMA.
+
+## Build It. Run It.
+
+```bash
+ca65 nexus.asm -o nexus.o
+ld65 -C nes.cfg nexus.o -o nexus.nes
+fceux nexus.nes
+```
+
+You should see your white player ship, plus four green enemy ships falling down the screen. When enemies reach the bottom, they wrap back to the top.
+
+![Player and enemies on the grid](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-04/screenshot.png)
+
+## What You've Built
+
+Look at what you made:
+
+- **Four enemy entities** managed with parallel arrays
+- **Indexed addressing** to process multiple objects with one loop
+- **Sprite system** handling 5 sprites (1 player + 4 enemies)
+- **Enemy movement** with screen wrapping
+- **Distinct graphics and palettes** for player vs enemies
+
+The neon void is no longer empty. The enemies descend. The challenge begins.
+
+## What You've Learnt
+
+- **Parallel arrays** store related data at matching indices
+- **Indexed addressing** (`lda table, x`) accesses array elements
+- **Loops with indices** process multiple entities efficiently
+- **OAM layout** maps sequential 4-byte blocks to sprites
+- **Multiple indices** (X and Y) handle offset calculations
+
+## The Complete Code
+
+Here's the full `nexus.asm` at this point:
+
+```asm
+;──────────────────────────────────────────────────────────────
+; NEON NEXUS
+; A fixed-screen action game for the Nintendo Entertainment System
+; Unit 4: Enemies
+;──────────────────────────────────────────────────────────────
+
+.segment "HEADER"
+    .byte "NES", $1a        ; iNES magic number
+    .byte 2                 ; 2 x 16KB PRG ROM = 32KB
+    .byte 1                 ; 1 x 8KB CHR ROM
+    .byte $01               ; Mapper 0, vertical mirroring
+    .byte $00               ; Mapper 0 continued
+    .byte 0,0,0,0,0,0,0,0   ; Padding
+
+;──────────────────────────────────────────────────────────────
+; Variables
+;──────────────────────────────────────────────────────────────
+
+.segment "ZEROPAGE"
+frame_counter: .res 1
+buttons:       .res 1
+player_x:      .res 1
+player_y:      .res 1
+enemy_x:       .res 4       ; X positions for 4 enemies
+enemy_y:       .res 4       ; Y positions for 4 enemies
+
+;──────────────────────────────────────────────────────────────
+; Constants
+;──────────────────────────────────────────────────────────────
+
+.segment "CODE"
+
+; PPU registers
+PPUCTRL   = $2000
+PPUMASK   = $2001
+PPUSTATUS = $2002
+OAMADDR   = $2003
+PPUSCROLL = $2005
+PPUADDR   = $2006
+PPUDATA   = $2007
+
+; OAM DMA register
+OAMDMA    = $4014
+
+; Controller
+JOYPAD1   = $4016
+
+; Button bit positions
+BTN_A      = %00000001
+BTN_B      = %00000010
+BTN_SELECT = %00000100
+BTN_START  = %00001000
+BTN_UP     = %00010000
+BTN_DOWN   = %00100000
+BTN_LEFT   = %01000000
+BTN_RIGHT  = %10000000
+
+; Game constants
+NUM_ENEMIES = 4
+
+;──────────────────────────────────────────────────────────────
+; Reset handler
+;──────────────────────────────────────────────────────────────
+
+.proc reset
+    sei                     ; Disable IRQs
+    cld                     ; Disable decimal mode
+
+    ldx #$40
+    stx $4017               ; Disable APU frame IRQ
+
+    ldx #$ff
+    txs                     ; Set up stack
+
+    inx                     ; X = 0
+    stx PPUCTRL             ; Disable NMI
+    stx PPUMASK             ; Disable rendering
+    stx $4010               ; Disable DMC IRQs
+
+    ; Wait for first vblank
+    bit PPUSTATUS
+@vblank1:
+    bit PPUSTATUS
+    bpl @vblank1
+
+    ; Clear RAM ($0000-$07FF)
+    lda #$00
+    ldx #0
+@clear_ram:
+    sta $0000, x
+    sta $0100, x
+    sta $0200, x
+    sta $0300, x
+    sta $0400, x
+    sta $0500, x
+    sta $0600, x
+    sta $0700, x
+    inx
+    bne @clear_ram
+
+    ; Clear shadow OAM to $FF (sprites off-screen)
+    lda #$ff
+    ldx #0
+@clear_oam:
+    sta $0200, x
+    inx
+    bne @clear_oam
+
+    ; Wait for second vblank
+@vblank2:
+    bit PPUSTATUS
+    bpl @vblank2
+
+    ; Load palette
+    jsr load_palette
+
+    ; Fill background
+    jsr fill_background
+
+    ; Initialise player position
+    lda #128                ; X position (centre)
+    sta player_x
+    lda #200                ; Y position (near bottom)
+    sta player_y
+
+    ; Initialise player sprite (Sprite 0)
+    lda player_y
+    sta $0200               ; Y position
+    lda #1                  ; Tile index 1 (player ship)
+    sta $0201
+    lda #%00000000          ; Attributes: palette 0, no flip
+    sta $0202
+    lda player_x
+    sta $0203               ; X position
+
+    ; Initialise enemies
+    jsr init_enemies
+
+    ; Enable rendering
+    lda #%10000000          ; Enable NMI
+    sta PPUCTRL
+    lda #%00011110          ; Enable sprites and background
+    sta PPUMASK
+
+    ; Reset scroll
+    lda #$00
+    sta PPUSCROLL
+    sta PPUSCROLL
+
+    ; Main loop
+forever:
+    lda frame_counter
+@wait:
+    cmp frame_counter       ; Has NMI fired?
+    beq @wait               ; No - keep waiting
+
+    jsr read_controller
+    jsr update_player
+    jsr move_enemies
+    jsr update_enemy_sprites
+
+    jmp forever
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; NMI handler (called every vblank)
+;──────────────────────────────────────────────────────────────
+
+.proc nmi
+    ; Preserve registers
+    pha
+    txa
+    pha
+    tya
+    pha
+
+    inc frame_counter
+
+    ; OAM DMA transfer
+    lda #$00
+    sta OAMADDR             ; Set OAM address to 0
+    lda #$02                ; High byte of $0200
+    sta OAMDMA              ; Trigger DMA copy
+
+    ; Reset scroll position
+    lda #$00
+    sta PPUSCROLL
+    sta PPUSCROLL
+
+    ; Restore registers
+    pla
+    tay
+    pla
+    tax
+    pla
+
+    rti
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; IRQ handler (unused)
+;──────────────────────────────────────────────────────────────
+
+.proc irq
+    rti
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; Read controller
+;──────────────────────────────────────────────────────────────
+
+.proc read_controller
+    ; Strobe controller
+    lda #$01
+    sta JOYPAD1             ; Strobe on
+    lda #$00
+    sta JOYPAD1             ; Strobe off
+
+    ; Read 8 buttons
+    ldx #8
+@loop:
+    lda JOYPAD1             ; Read next button (bit 0)
+    lsr a                   ; Shift bit 0 into carry
+    rol buttons             ; Roll carry into buttons byte
+    dex
+    bne @loop
+    rts
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; Update player position
+;──────────────────────────────────────────────────────────────
+
+.proc update_player
+    ; Check Up
+    lda buttons
+    and #BTN_UP
+    beq @check_down
+    lda player_y
+    cmp #8                  ; Top boundary
+    bcc @check_down
+    dec player_y
+
+@check_down:
+    lda buttons
+    and #BTN_DOWN
+    beq @check_left
+    lda player_y
+    cmp #224                ; Bottom boundary
+    bcs @check_left
+    inc player_y
+
+@check_left:
+    lda buttons
+    and #BTN_LEFT
+    beq @check_right
+    lda player_x
+    cmp #8                  ; Left boundary
+    bcc @check_right
+    dec player_x
+
+@check_right:
+    lda buttons
+    and #BTN_RIGHT
+    beq @done
+    lda player_x
+    cmp #240                ; Right boundary
+    bcs @done
+    inc player_x
+
+@done:
+    ; Copy position to shadow OAM
+    lda player_y
+    sta $0200               ; Sprite 0 Y position
+    lda player_x
+    sta $0203               ; Sprite 0 X position
+    rts
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; Initialise enemies
+;──────────────────────────────────────────────────────────────
+
+.proc init_enemies
+    ; Enemy 0: left side
+    lda #50
+    sta enemy_x
+    lda #32
+    sta enemy_y
+
+    ; Enemy 1: left-centre
+    lda #100
+    sta enemy_x + 1
+    lda #48
+    sta enemy_y + 1
+
+    ; Enemy 2: right-centre
+    lda #156
+    sta enemy_x + 2
+    lda #24
+    sta enemy_y + 2
+
+    ; Enemy 3: right side
+    lda #206
+    sta enemy_x + 3
+    lda #40
+    sta enemy_y + 3
+
+    rts
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; Move enemies
+;──────────────────────────────────────────────────────────────
+
+.proc move_enemies
+    ldx #0                  ; Start with enemy 0
+@loop:
+    ; Move enemy down (increment Y)
+    inc enemy_y, x
+
+    ; Check if off bottom of screen
+    lda enemy_y, x
+    cmp #232                ; Past visible area?
+    bcc @next               ; No - continue
+
+    ; Wrap to top
+    lda #0
+    sta enemy_y, x
+
+@next:
+    inx                     ; Next enemy
+    cpx #NUM_ENEMIES        ; All done?
+    bne @loop               ; No - loop
+    rts
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; Update enemy sprites
+;──────────────────────────────────────────────────────────────
+
+.proc update_enemy_sprites
+    ldx #0                  ; Enemy index
+    ldy #4                  ; OAM offset (skip sprite 0)
+@loop:
+    ; Y position
+    lda enemy_y, x
+    sta $0200, y
+    iny
+
+    ; Tile index (enemy graphic)
+    lda #2                  ; Tile 2 = enemy ship
+    sta $0200, y
+    iny
+
+    ; Attributes (palette 1, no flip)
+    lda #%00000001          ; Sprite palette 1
+    sta $0200, y
+    iny
+
+    ; X position
+    lda enemy_x, x
+    sta $0200, y
+    iny
+
+    ; Next enemy
+    inx
+    cpx #NUM_ENEMIES
+    bne @loop
+    rts
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; Subroutines
+;──────────────────────────────────────────────────────────────
+
+.proc load_palette
+    ; Set PPU address to palette ($3F00)
+    bit PPUSTATUS           ; Reset address latch
+    lda #$3f
+    sta PPUADDR
+    lda #$00
+    sta PPUADDR
+
+    ; Load 32 palette bytes
+    ldx #0
+@loop:
+    lda palette_data, x
+    sta PPUDATA
+    inx
+    cpx #32
+    bne @loop
+    rts
+.endproc
+
+.proc fill_background
+    ; Set PPU address to nametable 0 ($2000)
+    bit PPUSTATUS
+    lda #$20
+    sta PPUADDR
+    lda #$00
+    sta PPUADDR
+
+    ; Fill with tile 0 (960 + 64 = 1024 bytes)
+    lda #$00
+    ldx #0
+    ldy #4
+@outer:
+@inner:
+    sta PPUDATA
+    inx
+    bne @inner
+    dey
+    bne @outer
+
+    ; Set PPU address to attribute table ($23C0)
+    bit PPUSTATUS
+    lda #$23
+    sta PPUADDR
+    lda #$c0
+    sta PPUADDR
+
+    ; Fill with colour zone pattern
+    ldx #0
+@attr_loop:
+    lda attribute_data, x
+    sta PPUDATA
+    inx
+    cpx #64
+    bne @attr_loop
+
+    rts
+.endproc
+
+;──────────────────────────────────────────────────────────────
+; Data
+;──────────────────────────────────────────────────────────────
+
+palette_data:
+    ; Background palettes
+    .byte $0f, $11, $21, $31    ; Palette 0: Blues
+    .byte $0f, $19, $29, $39    ; Palette 1: Greens
+    .byte $0f, $15, $25, $35    ; Palette 2: Magentas
+    .byte $0f, $00, $10, $30    ; Palette 3: Greys
+
+    ; Sprite palettes
+    .byte $0f, $30, $21, $11    ; Palette 0: White/Blue (player)
+    .byte $0f, $2a, $1a, $0a    ; Palette 1: Greens (enemies)
+    .byte $0f, $15, $25, $35    ; Palette 2: Magentas
+    .byte $0f, $17, $27, $37    ; Palette 3: Oranges
+
+attribute_data:
+    ; 8 rows of 8 bytes = 64 bytes
+    .byte $00, $00, $00, $00, $00, $00, $00, $00  ; Palette 0
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $55, $55, $55, $55, $55, $55, $55, $55  ; Palette 1
+    .byte $55, $55, $55, $55, $55, $55, $55, $55
+    .byte $aa, $aa, $aa, $aa, $aa, $aa, $aa, $aa  ; Palette 2
+    .byte $aa, $aa, $aa, $aa, $aa, $aa, $aa, $aa
+    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff  ; Palette 3
+    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff
+
+;──────────────────────────────────────────────────────────────
+; Vectors
+;──────────────────────────────────────────────────────────────
+
+.segment "VECTORS"
+    .word nmi               ; $FFFA-$FFFB: NMI vector
+    .word reset             ; $FFFC-$FFFD: Reset vector
+    .word irq               ; $FFFE-$FFFF: IRQ vector
+
+;──────────────────────────────────────────────────────────────
+; CHR ROM (graphics)
+;──────────────────────────────────────────────────────────────
+
+.segment "CHARS"
+    ; Tile 0: Solid block (background fill)
+    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff  ; Plane 0
+    .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff, $ff  ; Plane 1
+
+    ; Tile 1: Player ship (pointing up)
+    .byte %00011000         ; ...XX...
+    .byte %00111100         ; ..XXXX..
+    .byte %01111110         ; .XXXXXX.
+    .byte %11111111         ; XXXXXXXX
+    .byte %11111111         ; XXXXXXXX
+    .byte %00100100         ; ..X..X..
+    .byte %00100100         ; ..X..X..
+    .byte %01100110         ; .XX..XX.
+    ; Plane 1 (all zeros = colour 1 only)
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+
+    ; Tile 2: Enemy ship (pointing down)
+    .byte %01100110         ; .XX..XX.
+    .byte %11111111         ; XXXXXXXX
+    .byte %11011011         ; XX.XX.XX
+    .byte %01111110         ; .XXXXXX.
+    .byte %00111100         ; ..XXXX..
+    .byte %00111100         ; ..XXXX..
+    .byte %00011000         ; ...XX...
+    .byte %00011000         ; ...XX...
+    ; Plane 1 (all zeros = colour 1 only)
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+
+    ; Fill rest of 8KB CHR ROM
+    .res 8192 - 48
+```
+
+## Recap / Sanity Check
+
+- Build + run: `ca65 nexus.asm -o nexus.o && ld65 -C nes.cfg nexus.o -o nexus.nes && fceux nexus.nes`
+- You should see: 1 white player ship + 4 green enemy ships
+- Enemies fall down and wrap back to the top
+- Player moves with d-pad, enemies ignore you (for now)
+- If enemies don't appear, check that OAM offset starts at 4 (not 0)
+- If enemies are white, check sprite palette attribute is %00000001
+
+## Next Unit
+
+The enemies are flying, but they can't hurt you. You can fly right through them.
+
+In Unit 5, we add **collision detection** — and discover what happens when enemies catch you.

@@ -1,0 +1,467 @@
+---
+title: "The Cursor"
+description: "Create an active cursor. Learn how to modify attributes dynamically to highlight the selected cell."
+pubDate: 2026-01-03
+game: 1
+gameName: "Ink War"
+unit: 2
+totalUnits: 16
+system: "Sinclair ZX Spectrum"
+tags: ["assembly", "z80", "attributes", "flash"]
+nextLesson: "/sinclair-zx-spectrum/game-01-ink-war/unit-03"
+layout: "../../../layouts/UnitLayout.astro"
+---
+
+*Need to catch up? Check out [Unit 1: The Board](/sinclair-zx-spectrum/game-01-ink-war/unit-01).*
+
+## What You're Building
+
+The board is set, but you can't tell where you are. We need a cursor.
+
+By the end of this unit, you'll have:
+
+- A blinking cursor highlighting the current cell
+- A way to track player position in memory
+- The Spectrum doing the animation work for you (zero CPU cost)
+
+No movement yet. Just the cursor, blinking at you, waiting for input.
+
+![The cursor flashing on the top-left cell](/images/sinclair-zx-spectrum/game-01-ink-war/unit-02/screenshot.png)
+
+## The FLASH Bit
+
+In modern games, a cursor might be a sprite or an animated outline. On the Spectrum, we use the **FLASH** attribute — and the hardware does all the work.
+
+Remember the attribute byte from Unit 1?
+
+```
+  7   6   5   4   3   2   1   0
+┌───┬───┬───────────┬───────────┐
+│ F │ B │  PAPER    │   INK     │
+└───┴───┴───────────┴───────────┘
+```
+
+Bit 7 is FLASH. Set it to 1, and the Spectrum automatically swaps INK and PAPER colours every 16 frames — roughly twice a second. The ULA handles this; your code doesn't need to do anything after setting the bit.
+
+This is perfect for a cursor. Set the bit, forget about it. The blinking happens for free.
+
+## The Challenge
+
+Our game board uses 2×2 character cells. One game cell = four attribute bytes:
+
+```
+Game cell (x, y):
+┌─────────┬─────────┐
+│ Top-L   │ Top-R   │   ← Row y*2
+├─────────┼─────────┤
+│ Bot-L   │ Bot-R   │   ← Row y*2+1
+└─────────┴─────────┘
+  Col x*2   Col x*2+1
+```
+
+To highlight a cell, we need to set the FLASH bit on all four attribute bytes. And we need to calculate where those bytes are in memory.
+
+## The Plan
+
+We need three things:
+
+1. **Variables** to track cursor position (0-7 for both X and Y)
+2. **A routine** to calculate the attribute address from game coordinates
+3. **A routine** to set the FLASH bit on all four bytes of a cell
+
+Let's build each piece.
+
+## Tracking Position
+
+Add these variables to your data section:
+
+```asm
+;───────────────────────────────────────
+; Variables
+;───────────────────────────────────────
+cursor_x:       defb 0          ; Column (0-7)
+cursor_y:       defb 0          ; Row (0-7)
+```
+
+The cursor starts at (0, 0) — the top-left cell of the game board.
+
+## Calculating the Address
+
+The game board starts at screen row 4, column 8. In attribute memory, that's address 22664.
+
+From there, we need to calculate the offset:
+- Each game row = 2 screen rows = 64 bytes (32 bytes × 2)
+- Each game column = 2 screen columns = 2 bytes
+
+So: `address = 22664 + (cursor_y × 64) + (cursor_x × 2)`
+
+```asm
+;───────────────────────────────────────
+; Get attribute address for a game cell
+; Input: B = row (0-7), C = column (0-7)
+; Output: HL = address of top-left attribute
+;───────────────────────────────────────
+get_cell_addr:
+        ld hl, 22664            ; Base address of game board
+
+        ; Add row offset: y × 64
+        ld a, b
+        rlca                    ; × 2
+        rlca                    ; × 4
+        rlca                    ; × 8
+        rlca                    ; × 16
+        rlca                    ; × 32
+        rlca                    ; × 64
+        ld e, a
+        ld d, 0
+        add hl, de
+
+        ; Add column offset: x × 2
+        ld a, c
+        add a, a                ; × 2
+        ld e, a
+        ld d, 0
+        add hl, de
+
+        ret
+```
+
+**`rlca`** — "Rotate Left Circular Accumulator." Shifts all bits in A one position left, with bit 7 wrapping to bit 0. Each rotation doubles the value. Six rotations = multiply by 64.
+
+**Building DE from A** — We need to add an 8-bit offset to a 16-bit address. `ld e, a` puts our offset in the low byte; `ld d, 0` clears the high byte. Then `add hl, de` does the 16-bit addition.
+
+## Setting the FLASH Bit
+
+Once we have the address, we modify all four attribute bytes:
+
+```asm
+;───────────────────────────────────────
+; Highlight a cell by setting FLASH
+; Input: HL = address of top-left attribute
+;───────────────────────────────────────
+highlight_cursor:
+        ; Top-left
+        ld a, (hl)
+        set 7, a
+        ld (hl), a
+
+        ; Top-right
+        inc hl
+        ld a, (hl)
+        set 7, a
+        ld (hl), a
+
+        ; Move to next row (we're at top-right, need bottom-left)
+        ; That's 31 bytes forward: 32 - 1 = 31
+        ld de, 31
+        add hl, de
+
+        ; Bottom-left
+        ld a, (hl)
+        set 7, a
+        ld (hl), a
+
+        ; Bottom-right
+        inc hl
+        ld a, (hl)
+        set 7, a
+        ld (hl), a
+
+        ret
+```
+
+**`set 7, a`** — "Set bit 7 of A to 1." The Z80 has dedicated bit manipulation instructions:
+- `set n, r` — Set bit n to 1
+- `res n, r` — Reset bit n to 0
+- `bit n, r` — Test bit n (sets zero flag if bit is 0)
+
+These work on any bit (0-7) of any main register. Here we're setting the FLASH bit without disturbing the colour bits.
+
+**Why 31?** — The attribute table is 32 bytes per row. After `inc hl` we're at the top-right byte. To reach the bottom-left, we need to go down one row (32 bytes) and back one column (-1 byte). That's 31.
+
+## Putting It Together
+
+Now we modify the main program flow. After drawing the board, we highlight the cursor:
+
+```asm
+start:
+        ; Set up the display
+        ld a, 0
+        out (254), a            ; Black border
+        call clear_screen
+        call draw_board
+
+        ; Highlight cursor at starting position
+        ld a, (cursor_y)
+        ld b, a
+        ld a, (cursor_x)
+        ld c, a
+        call get_cell_addr
+        call highlight_cursor
+
+        ; Main loop (just wait for now)
+.hang:
+        halt
+        jr .hang
+```
+
+The cursor position lives in memory. We load it into A, then transfer to the register the subroutine expects (B for row, C for column). This pattern — load from memory, shuffle into the right register — is common in Z80 code.
+
+## Build It. Run It.
+
+```bash
+pasmo --tapbas inkwar.asm inkwar.tap
+```
+
+Load the tape in your emulator. You should see:
+
+- The same 8×8 game board from Unit 1
+- The top-left cell flashing between its normal colour and inverted
+
+The cursor is alive. It's asking to be moved.
+
+## Recap / Sanity Check
+
+- The top-left cell should flash roughly twice per second
+- All four character cells of that game cell should flash together
+- The other 63 cells should be static
+- If nothing flashes, check that `set 7, a` is being executed and written back
+- If only part of the cell flashes, check your address arithmetic
+
+## What You've Built
+
+Look at what changed from Unit 1:
+
+- **Cursor variables** — Two bytes tracking where the player is
+- **Address calculation** — Translating game coordinates to memory addresses
+- **Attribute modification** — Changing one bit without touching the others
+- **Hardware-assisted animation** — The ULA does the flashing, not your code
+
+The structure is now: set up display → draw board → highlight cursor → wait.
+
+## What You've Learnt
+
+- **FLASH bit** (bit 7) gives you free animation from the hardware
+- **Bit instructions** (`set`, `res`, `bit`) modify individual bits
+- **Address arithmetic** converts logical coordinates to memory locations
+- **The 32-byte row** — attribute table is 32 bytes wide, always
+
+## The Complete Code
+
+Here's `inkwar.asm` as it stands after Unit 2:
+
+```asm
+;══════════════════════════════════════════════════════════════
+; INK WAR
+; A territory control game for the ZX Spectrum
+; Unit 2: The Cursor
+;══════════════════════════════════════════════════════════════
+
+        org $8000
+
+;───────────────────────────────────────
+; Constants
+;───────────────────────────────────────
+ATTR_BASE       equ 22528       ; Start of attribute memory
+BOARD_ATTR      equ 22664       ; Board starts at row 4, col 8
+BOARD_SIZE      equ 8           ; 8x8 game cells
+
+; Colours (paper * 8 + ink)
+WHITE_ON_WHITE  equ %00111111   ; Paper 7, Ink 7
+RED_ON_RED      equ %00010010   ; Paper 2, Ink 2
+CYAN_ON_CYAN    equ %00101101   ; Paper 5, Ink 5
+
+;───────────────────────────────────────
+; Entry point
+;───────────────────────────────────────
+start:
+        ; Black border
+        ld a, 0
+        out (254), a
+
+        ; Clear screen
+        call clear_screen
+
+        ; Draw the game board
+        call draw_board
+
+        ; Highlight cursor at starting position
+        ld a, (cursor_y)
+        ld b, a
+        ld a, (cursor_x)
+        ld c, a
+        call get_cell_addr
+        call highlight_cursor
+
+        ; Main loop
+.hang:
+        halt
+        jr .hang
+
+;───────────────────────────────────────
+; Clear screen to black
+;───────────────────────────────────────
+clear_screen:
+        ; Clear pixel memory
+        ld hl, 16384
+        ld de, 16385
+        ld bc, 6143
+        ld (hl), 0
+        ldir
+
+        ; Clear attributes to black on black
+        ld hl, ATTR_BASE
+        ld de, ATTR_BASE + 1
+        ld bc, 767
+        ld (hl), 0
+        ldir
+        ret
+
+;───────────────────────────────────────
+; Draw the 8x8 game board
+; All cells start as white (neutral)
+;───────────────────────────────────────
+draw_board:
+        ld hl, BOARD_ATTR
+        ld b, BOARD_SIZE        ; 8 rows of game cells
+
+.row_loop:
+        push bc
+        ld b, BOARD_SIZE        ; 8 columns of game cells
+
+.cell_loop:
+        push bc
+        push hl
+
+        ; Fill 2x2 character block with white
+        ld a, WHITE_ON_WHITE
+
+        ; Top-left
+        ld (hl), a
+        ; Top-right
+        inc hl
+        ld (hl), a
+        ; Bottom-left (next row, back one column)
+        ld de, 31
+        add hl, de
+        ld (hl), a
+        ; Bottom-right
+        inc hl
+        ld (hl), a
+
+        pop hl
+        ; Move to next cell (2 columns right)
+        inc hl
+        inc hl
+
+        pop bc
+        djnz .cell_loop
+
+        ; Move to next row of cells
+        ; We're at column 16 (8 cells × 2), need to go to column 8 of next row
+        ; That's: 32 - 16 + 32 = 48 bytes forward... but we drew 2 rows
+        ; Actually: move down 2 rows (64 bytes) minus the 16 we moved right
+        ; = 64 - 16 = 48? No wait...
+        ; After 8 cells we're at column 8 + 16 = 24
+        ; Need column 8 of row +2
+        ; Easier: just reset to start of next game row
+        pop bc
+        push bc
+        ld a, BOARD_SIZE
+        sub b                   ; A = rows completed (1-8)
+        inc a                   ; A = next row number (2-9 or 1 if done)
+
+        ; If B=0 we're done, but djnz handles that
+        ; Calculate: BOARD_ATTR + (row * 64)
+        ld h, 0
+        ld l, a
+        add hl, hl              ; × 2
+        add hl, hl              ; × 4
+        add hl, hl              ; × 8
+        add hl, hl              ; × 16
+        add hl, hl              ; × 32
+        add hl, hl              ; × 64
+        ld de, BOARD_ATTR
+        add hl, de
+
+        pop bc
+        djnz .row_loop
+
+        ret
+
+;───────────────────────────────────────
+; Get attribute address for a game cell
+; Input: B = row (0-7), C = column (0-7)
+; Output: HL = address of top-left attribute
+;───────────────────────────────────────
+get_cell_addr:
+        ld hl, BOARD_ATTR
+
+        ; Add row offset: y × 64
+        ld a, b
+        rlca
+        rlca
+        rlca
+        rlca
+        rlca
+        rlca
+        ld e, a
+        ld d, 0
+        add hl, de
+
+        ; Add column offset: x × 2
+        ld a, c
+        add a, a
+        ld e, a
+        ld d, 0
+        add hl, de
+
+        ret
+
+;───────────────────────────────────────
+; Highlight a cell by setting FLASH bit
+; Input: HL = address of top-left attribute
+;───────────────────────────────────────
+highlight_cursor:
+        ; Top-left
+        ld a, (hl)
+        set 7, a
+        ld (hl), a
+
+        ; Top-right
+        inc hl
+        ld a, (hl)
+        set 7, a
+        ld (hl), a
+
+        ; Move to bottom-left (31 bytes forward)
+        ld de, 31
+        add hl, de
+
+        ; Bottom-left
+        ld a, (hl)
+        set 7, a
+        ld (hl), a
+
+        ; Bottom-right
+        inc hl
+        ld a, (hl)
+        set 7, a
+        ld (hl), a
+
+        ret
+
+;───────────────────────────────────────
+; Variables
+;───────────────────────────────────────
+cursor_x:       defb 0
+cursor_y:       defb 0
+
+        end start
+```
+
+## Next Unit
+
+The cursor is flashing. But it's stuck in the corner.
+
+In Unit 3, we'll read the keyboard — Q, A, O, P — and make the cursor move around the board. The game starts to feel interactive.
