@@ -11,6 +11,8 @@ import asm6502Grammar from './src/syntax/6502.tmLanguage.json' assert { type: 'j
 import amosGrammar from './src/syntax/amos.tmLanguage.json' assert { type: 'json' };
 import sinclairBasicGrammar from './src/syntax/sinclair-basic.tmLanguage.json' assert { type: 'json' };
 import ca65Grammar from './src/syntax/ca65.tmLanguage.json' assert { type: 'json' };
+import z80Grammar from './src/syntax/z80.tmLanguage.json' assert { type: 'json' };
+import m68kGrammar from './src/syntax/m68k.tmLanguage.json' assert { type: 'json' };
 
 // https://astro.build/config
 export default defineConfig({
@@ -57,6 +59,18 @@ export default defineConfig({
           scopeName: 'source.asm.ca65',
           aliases: ['ca65', 'nes-asm', 'nes6502'],
           ...ca65Grammar,
+        },
+        {
+          id: 'z80',
+          scopeName: 'source.z80asm',
+          aliases: ['z80asm', 'spectrum-asm', 'zx-asm'],
+          ...z80Grammar,
+        },
+        {
+          id: 'm68k',
+          scopeName: 'source.asm.m68k',
+          aliases: ['68000', '68k', 'amiga-asm', 'm68000'],
+          ...m68kGrammar,
         }
       ],
       theme: 'dark-plus'
