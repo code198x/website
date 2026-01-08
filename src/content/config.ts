@@ -21,4 +21,38 @@ const vault = defineCollection({
   }),
 });
 
-export const collections = { vault };
+const patterns = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    summary: z.string(),
+    platform: z.enum([
+      'commodore-64',
+      'sinclair-zx-spectrum',
+      'commodore-amiga',
+      'nintendo-nes',
+      'cross-platform'
+    ]),
+    category: z.enum([
+      'rendering',
+      'input',
+      'audio',
+      'physics',
+      'ai',
+      'framework'
+    ]),
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
+    taught_in: z.string().optional(),
+    tags: z.array(z.string()).default([]),
+    evolution: z.object({
+      previous: z.string().nullable(),
+      next: z.string().nullable(),
+    }).optional(),
+    related: z.object({
+      patterns: z.array(z.string()).default([]),
+      vault: z.array(z.string()).default([]),
+    }).optional(),
+  }),
+});
+
+export const collections = { vault, patterns };
