@@ -1,0 +1,345 @@
+---
+title: "ZX Spectrum Hardware Ports"
+subtitle: "Complete I/O port reference"
+summary: "Complete reference for Spectrum I/O ports - border, keyboard, speaker, and ULA control."
+category: "techniques"
+platforms: ['spectrum']
+tags: ['hardware', 'ports', 'i/o', 'ula', 'keyboard', 'reference']
+---
+
+The ZX Spectrum uses I/O ports to communicate with hardware devices. This reference covers all standard Spectrum ports with focus on the multi-purpose port $FE.
+
+---
+
+## Port $FE - The Multi-Purpose Port
+
+Port $FE is the most important port on the Spectrum. It controls **border colour**, reads the **keyboard**, controls the **speaker**, and handles **tape I/O**.
+
+### Port $FE Output (Writing)
+
+**Usage:** `OUT ($FE),A`
+
+**Bit Layout:**
+
+| Bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|---|---|---|---|
+| **Purpose** | — | — | — | Speaker | Tape | Border | Border | Border |
+| **Value** | x | x | x | MIC | EAR | Border | Border | Border |
+
+**Bit Functions:**
+
+- **Bits 0-2:** Border colour (0-7)
+- **Bit 3:** Tape output (EAR socket)
+- **Bit 4:** Speaker control (0 = off, 1 = on)
+- **Bits 5-7:** Not used (but should be preserved)
+
+**Example - Change Border:**
+```nasm
+LD A,2           ; Red border
+OUT ($FE),A
+```
+
+**Example - Make Sound:**
+```nasm
+; Toggle speaker bit for simple beep
+LD A,$10         ; Speaker on, black border
+OUT ($FE),A
+; Delay
+LD A,$00         ; Speaker off
+OUT ($FE),A
+```
+
+**Example - Preserve Upper Bits:**
+```nasm
+; Read current value, modify border only
+IN A,($FE)       ; Read current port state
+AND $F8          ; Clear border bits (0-2)
+OR 5             ; Set to cyan (5)
+OUT ($FE),A      ; Write back
+```
+
+### Port $FE Input (Reading)
+
+**Usage:** `IN A,($FE)`
+
+**Bit Layout:**
+
+| Bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|---|---|---|---|
+| **Purpose** | — | Tape | — | — | Key | Key | Key | Key | Key |
+| **Active** | x | EAR | x | x | Row bit 4 | Row bit 3 | Row bit 2 | Row bit 1 | Row bit 0 |
+
+**Bit Functions:**
+
+- **Bits 0-4:** Keyboard row data (active low - 0 = pressed)
+- **Bit 5:** Not used
+- **Bit 6:** Tape input (EAR socket)
+- **Bit 7:** Not used
+
+**Important:** Keyboard reading requires setting the upper byte of BC to select keyboard half-row.
+
+---
+
+## Keyboard Reading
+
+The Spectrum keyboard is arranged in a matrix of 8 half-rows × 5 keys each.
+
+### Keyboard Matrix
+
+**To read keyboard:**
+1. Set BC register: High byte selects half-row, low byte = $FE
+2. Read with `IN A,(C)`
+3. Test bits 0-4 (active low: 0 = pressed, 1 = not pressed)
+
+### Keyboard Half-Row Map
+
+| BC High | Half-row | Bit 4 | Bit 3 | Bit 2 | Bit 1 | Bit 0 |
+|---------|----------|-------|-------|-------|-------|-------|
+| $FE | Row 0 | V | C | X | Z | SHIFT |
+| $FD | Row 1 | G | F | D | S | A |
+| $FB | Row 2 | T | R | E | W | Q |
+| $F7 | Row 3 | 5 | 4 | 3 | 2 | 1 |
+| $EF | Row 4 | 6 | 7 | 8 | 9 | 0 |
+| $DF | Row 5 | Y | U | I | O | P |
+| $BF | Row 6 | H | J | K | L | ENTER |
+| $7F | Row 7 | B | N | M | SYM | SPACE |
+
+### Reading Single Key
+
+**Example - Read Q key:**
+```nasm
+        LD BC,$FBFE       ; Half-row $FB (Q-T row)
+        IN A,(C)          ; Read keyboard
+        BIT 0,A           ; Test bit 0 (Q key)
+        JR Z,QPressed     ; Jump if Q pressed (bit = 0)
+```
+
+**Example - Read Arrow Keys (using QAOP):**
+```nasm
+; Read Q (up) key
+        LD BC,$FBFE       ; Q-T row
+        IN A,(C)
+        BIT 0,A
+        JR Z,MoveUp
+
+; Read A (down) key
+        LD BC,$FDFE       ; A-G row
+        IN A,(C)
+        BIT 0,A
+        JR Z,MoveDown
+
+; Read O (right) key
+        LD BC,$DFFE       ; P-Y row
+        IN A,(C)
+        BIT 1,A
+        JR Z,MoveRight
+
+; Read P (left) key
+        LD BC,$DFFE       ; Same row
+        IN A,(C)
+        BIT 0,A
+        JR Z,MoveLeft
+```
+
+### Reading Multiple Keys Simultaneously
+
+The Spectrum supports multiple simultaneous key presses (within matrix limitations).
+
+**Example - Detect multiple keys:**
+```nasm
+; Read Q-T row
+        LD BC,$FBFE
+        IN A,(C)
+        LD D,A            ; Save for later
+
+        BIT 0,D           ; Q pressed?
+        CALL Z,HandleQ
+
+        BIT 1,D           ; W pressed?
+        CALL Z,HandleW
+```
+
+### Scan All Keys
+
+**Example - Detect any key press:**
+```nasm
+ScanKeyboard:
+        LD BC,$FEFE       ; Start with row 0
+        LD D,8            ; 8 rows to scan
+ScanLoop:
+        IN A,(C)          ; Read row
+        AND $1F           ; Mask to key bits
+        CP $1F            ; All bits set = no keys
+        JR NZ,KeyFound    ; Jump if any key pressed
+
+        RLC B             ; Next row (rotate high byte)
+        DEC D
+        JR NZ,ScanLoop
+
+        ; No keys found
+        RET
+
+KeyFound:
+        ; Key detected - A contains key bits
+        RET
+```
+
+### Ghost Keys and Limitations
+
+**Matrix ghosting:** Pressing certain 3-key combinations can register phantom 4th key.
+
+**Example problem:**
+- Press: Q + A + O
+- Ghost: P may appear pressed
+
+**Solution:** Use diagonally opposite keys in your control schemes (e.g., QAOP works well).
+
+---
+
+## Speaker/Beeper ($FE Bit 4)
+
+The Spectrum has a simple 1-bit speaker controlled by port $FE bit 4.
+
+### Simple Beep
+
+```nasm
+Beep:
+        LD B,200          ; Duration counter
+BeepLoop:
+        LD A,$10          ; Speaker on
+        OUT ($FE),A
+
+        LD E,50           ; Frequency delay
+Delay1: DEC E
+        JR NZ,Delay1
+
+        LD A,$00          ; Speaker off
+        OUT ($FE),A
+
+        LD E,50
+Delay2: DEC E
+        JR NZ,Delay2
+
+        DJNZ BeepLoop
+        RET
+```
+
+### Variable Pitch Beep
+
+```nasm
+; HL = pitch (higher = higher pitch)
+; B = duration
+ToneBeep:
+ToneLoop:
+        LD A,$10
+        OUT ($FE),A
+        PUSH HL
+ToneDelay1:
+        DEC HL
+        LD A,H
+        OR L
+        JR NZ,ToneDelay1
+        POP HL
+
+        LD A,$00
+        OUT ($FE),A
+        PUSH HL
+ToneDelay2:
+        DEC HL
+        LD A,H
+        OR L
+        JR NZ,ToneDelay2
+        POP HL
+
+        DJNZ ToneLoop
+        RET
+```
+
+### Preserving Border Colour with Speaker
+
+**Problem:** Writing to port $FE affects border **and** speaker.
+
+**Solution:** Read current value, modify only speaker bit:
+
+```nasm
+        IN A,($FE)        ; Read current port
+        AND $F8           ; Clear border bits
+        LD C,A            ; Save base value
+
+        ; Speaker ON
+        LD A,C
+        OR $10            ; Set speaker bit
+        OUT ($FE),A
+
+        ; Delay...
+
+        ; Speaker OFF
+        LD A,C
+        OUT ($FE),A       ; Restore (speaker bit = 0)
+```
+
+---
+
+## ULA Port ($FE) - Complete Specification
+
+### Output Bit Summary
+
+| Bit | Function | Effect |
+|-----|----------|--------|
+| 0 | Border LSB | Border colour bit 0 |
+| 1 | Border | Border colour bit 1 |
+| 2 | Border MSB | Border colour bit 2 |
+| 3 | MIC | Tape output (cassette save) |
+| 4 | Speaker | 1-bit speaker output |
+| 5-7 | Unused | No effect (recommended: write 0) |
+
+**Border colours (bits 0-2):**
+```
+%000 = 0 = Black      %100 = 4 = Green
+%001 = 1 = Blue       %101 = 5 = Cyan
+%010 = 2 = Red        %110 = 6 = Yellow
+%011 = 3 = Magenta    %111 = 7 = White
+```
+
+### Input Bit Summary
+
+| Bit | Function | Effect |
+|-----|----------|--------|
+| 0-4 | Keyboard | 5 keys per half-row (active low) |
+| 5 | Unused | Always reads 1 |
+| 6 | EAR | Tape input signal |
+| 7 | Unused | Always reads 1 |
+
+---
+
+## Other Spectrum Ports
+
+### Port $7FFD - 128K Memory Paging (128K models only)
+
+Not available on 48K Spectrum. Used for bank switching on 128K models.
+
+### Port $FFFD - AY-3-8912 Sound Chip (128K models only)
+
+3-channel sound chip on 128K/+2/+3 models. Not present on 48K.
+
+### Kempston Joystick - Port $1F
+
+**Not a standard Spectrum feature** - third-party add-on.
+
+**Read:** `IN A,($1F)`
+
+| Bit | Function |
+|-----|----------|
+| 0 | Right |
+| 1 | Left |
+| 2 | Down |
+| 3 | Up |
+| 4 | Fire |
+
+---
+
+## See also
+
+- [ZX Spectrum](/vault/systems/zx-spectrum)
+- [ZX Spectrum ROM Disassembly](/vault/techniques/zx-spectrum-rom-disassembly)
+- [Z80 Instruction Set Reference](/vault/techniques/z80-instruction-set)

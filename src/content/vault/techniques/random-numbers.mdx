@@ -1,0 +1,462 @@
+---
+title: "Random Numbers"
+subtitle: "RND() internals and techniques"
+summary: "RND() internals, techniques, and patterns for game development"
+category: "techniques"
+tags: ['reference', 'commodore-64', 'random', 'techniques']
+---
+
+# Random Numbers
+
+Random numbers are the lifeblood of games—enemy behavior, loot drops, terrain generation, dice rolls, card shuffles. The C64's `RND()` function is deceptively simple on the surface but has quirks worth understanding.
+
+This article explains how `RND()` actually works, why it's not truly random, and practical techniques for using it effectively in games.
+
+## How RND() Works
+
+`RND()` is a **pseudo-random number generator** (PRNG). It's not genuinely random—it's a mathematical formula that produces a sequence of numbers that *appears* random but is completely predictable if you know the starting point.
+
+### The Basic Call
+
+```basic
+x=rnd(1)     rem returns 0.0 to 0.999999
+```
+
+Every call to `RND(1)` returns a floating-point number between 0 (inclusive) and 1 (exclusive). The distribution is uniform—every value equally likely across the range.
+
+### The Three Modes
+
+`RND()` accepts different arguments that change its behavior:
+
+| Call | Behavior |
+|------|----------|
+| `RND(1)` | Generate next number in sequence |
+| `RND(0)` | Repeat last number generated |
+| `RND(-TI)` | Reseed generator from system clock |
+
+**`RND(1)` — Normal use:**
+```basic
+10 for i=1 to 10
+20 print rnd(1)
+30 next i
+```
+
+Each call advances the sequence, giving you a new "random" value.
+
+**`RND(0)` — Repeat last value:**
+```basic
+10 a=rnd(1)      rem generate number
+20 b=rnd(0)      rem repeat it
+30 print a;b     rem same value twice
+```
+
+Rarely useful, but occasionally handy for debugging or ensuring two systems use the same random value without storing it.
+
+**`RND(-TI)` — Reseed:**
+```basic
+10 x=rnd(-ti)    rem reseed from clock
+20 a=rnd(1)      rem now unpredictable
+```
+
+Seeds the generator with the system clock (`TI` = 60Hz ticks since power-on). This introduces unpredictability by making the sequence start point depend on when the program runs.
+
+## The Predictability Problem
+
+Turn your C64 on. Type:
+
+```basic
+print rnd(1)
+```
+
+You'll get the same number every time. Try it. Power cycle, run again—same sequence.
+
+**Why?** The generator starts with a fixed seed value (5327, stored at memory locations $8B-$8F). Every time you power on, the seed resets to 5327, giving the same sequence.
+
+**For games, this is terrible.** Imagine a space invaders game where enemies always move the same way. Boring.
+
+### Solution: Reseed from Clock
+
+```basic
+10 rem game initialization
+20 x=rnd(-ti)
+30 rem now RND(1) is unpredictable
+```
+
+`TI` is the system clock—a 3-byte timer counting 60Hz ticks (50Hz on PAL systems). It increments constantly while the C64 runs. Using `-TI` as the seed makes your random sequence depend on *when* the player starts the game, effectively randomizing the starting point.
+
+**Common pattern:**
+```basic
+10 rem title screen
+20 print "press space to start"
+30 get k$:if k$="" then 30
+40 x=rnd(-ti)          rem player delay = randomness
+50 gosub 1000          rem start game
+```
+
+The longer the player waits to press space, the more `TI` advances, changing the seed. This introduces genuine unpredictability.
+
+## Converting to Useful Ranges
+
+`RND(1)` gives you 0.0 to 0.999999. Games need dice rolls, grid positions, enemy types—integers in specific ranges.
+
+### The Universal Formula
+
+```basic
+result = INT(RND(1) * RANGE) + START
+```
+
+**Examples:**
+
+| Range | Formula | Use Case |
+|-------|---------|----------|
+| 0-9 | `INT(RND(1)*10)` | Single digit |
+| 1-10 | `INT(RND(1)*10)+1` | Counting numbers |
+| 1-6 | `INT(RND(1)*6)+1` | Dice roll |
+| 0-255 | `INT(RND(1)*256)` | Byte value |
+| 50-99 | `INT(RND(1)*50)+50` | Score bonus |
+| -10 to 10 | `INT(RND(1)*21)-10` | Velocity offset |
+
+### Why INT() Is Required
+
+Without `INT()`, you get floating-point numbers:
+
+```basic
+print rnd(1)*6+1     rem 3.847291 (useless for dice)
+print int(rnd(1)*6)+1   rem 4 (proper dice roll)
+```
+
+`INT()` truncates the decimal, converting to a whole number. Combined with multiplication and addition, you can generate any integer range.
+
+### Common Mistake: Off-by-One Errors
+
+```basic
+rem WRONG - gives 0-5, not 1-6
+dice=int(rnd(1)*6)
+
+rem RIGHT - gives 1-6
+dice=int(rnd(1)*6)+1
+```
+
+**Rule:** Multiply by RANGE (how many values), add START (first value).
+
+Want 10-20? That's 11 values (10, 11, 12...20), starting at 10:
+```basic
+n=int(rnd(1)*11)+10
+```
+
+## Performance Considerations
+
+`RND(1)` is **relatively fast** for BASIC—about 1500 calls per second. Fast enough for most game logic.
+
+**Slow operations:**
+- `INT()` adds overhead
+- Multiplication and division slow things down
+- Nested loops with RND() can bog down
+
+**Optimization tips:**
+
+1. **Pregenerate random values**
+```basic
+rem During initialization:
+100 dim rn(100)
+110 for i=0 to 100
+120 rn(i)=int(rnd(1)*100)
+130 next i
+
+rem During game loop:
+1000 enemy_x=rn(frame and 127)    rem use pregenerated value
+```
+
+2. **Use lookup tables for complex distributions**
+```basic
+rem Instead of IF chains:
+100 r=int(rnd(1)*100)
+110 if r&lt;50 then item=1       rem 50% common
+120 if r>=50 and r&lt;80 then item=2    rem 30% uncommon
+130 if r>=80 then item=3      rem 20% rare
+
+rem Use array:
+100 dim loot(99)
+110 for i=0 to 49:loot(i)=1:next i      rem 50% common
+120 for i=50 to 79:loot(i)=2:next i     rem 30% uncommon
+130 for i=80 to 99:loot(i)=3:next i     rem 20% rare
+1000 drop=loot(int(rnd(1)*100))         rem instant lookup
+```
+
+## Weighted Random Selection
+
+Not all outcomes should be equally likely. Rare items, critical hits, special events—these need weighted probability.
+
+### Simple Weighted Selection
+
+```basic
+10 rem 60% enemy type 1, 30% type 2, 10% type 3
+20 r=int(rnd(1)*100)
+30 if r&lt;60 then type=1:goto 60
+40 if r&lt;90 then type=2:goto 60
+50 type=3
+60 rem continue with selected type
+```
+
+**How it works:**
+- 0-59 (60 values) → type 1
+- 60-89 (30 values) → type 2
+- 90-99 (10 values) → type 3
+
+### Lookup Table Approach
+
+For complex distributions, precompute a weighted array:
+
+```basic
+100 dim spawn(99)
+110 for i=0 to 59:spawn(i)=1:next i     rem 60% goblins
+120 for i=60 to 84:spawn(i)=2:next i    rem 25% orcs
+130 for i=85 to 94:spawn(i)=3:next i    rem 10% trolls
+140 for i=95 to 99:spawn(i)=4:next i    rem 5% dragons
+
+1000 enemy=spawn(int(rnd(1)*100))
+```
+
+This is faster than IF chains and easier to tune.
+
+### Dynamic Probability
+
+Difficulty ramping, loot luck, adaptive AI—sometimes probability needs to change during play.
+
+```basic
+10 luck=0     rem player's luck stat
+
+100 rem loot drop with luck bonus
+110 r=int(rnd(1)*100)+luck
+120 if r&lt;50 then item=1       rem common
+130 if r>=50 and r&lt;80 then item=2    rem uncommon
+140 if r>=80 then item=3      rem rare (easier with higher luck)
+```
+
+As `luck` increases, the random roll gets a bonus, shifting outcomes toward better results.
+
+## Shuffling and Permutations
+
+Card games, randomized levels, unpredictable enemy spawn orders—sometimes you need to shuffle a list.
+
+### Fisher-Yates Shuffle
+
+The standard algorithm for shuffling arrays:
+
+```basic
+100 rem initialize deck
+110 dim deck(51)
+120 for i=0 to 51:deck(i)=i:next i
+
+200 rem shuffle
+210 for i=51 to 1 step -1
+220 j=int(rnd(1)*(i+1))
+230 t=deck(i):deck(i)=deck(j):deck(j)=t
+240 next i
+
+300 rem deck is now shuffled
+310 for i=0 to 51:print deck(i);:next i
+```
+
+**How it works:**
+- Start at end of array
+- Pick random element from 0 to current position
+- Swap current element with random element
+- Move to previous position, repeat
+
+This guarantees every possible permutation equally likely.
+
+### Partial Shuffle
+
+Don't need the entire deck shuffled? Stop early:
+
+```basic
+200 rem shuffle first 10 cards only
+210 for i=51 to 42 step -1
+220 j=int(rnd(1)*(i+1))
+230 t=deck(i):deck(i)=deck(j):deck(j)=t
+240 next i
+```
+
+Faster than full shuffle, good for "draw 5 cards" scenarios.
+
+## Random Without Repetition
+
+Sometimes you need random values that don't repeat—unique enemy spawn positions, non-repeating background music tracks, etc.
+
+### Small Sets: Boolean Array
+
+```basic
+100 dim used(9)
+110 for i=0 to 9:used(i)=0:next i    rem all unused
+
+200 rem pick unique value
+210 x=int(rnd(1)*10)
+220 if used(x)=1 then 210            rem already used, try again
+230 used(x)=1                        rem mark as used
+240 print "spawning at position ";x
+```
+
+**Limitation:** As set fills up, finding unused values takes longer. Works well for small sets (&lt;20 items).
+
+### Large Sets: Shuffle Once, Iterate
+
+```basic
+100 dim spawn_x(99)
+110 for i=0 to 99:spawn_x(i)=i:next i
+
+200 rem shuffle
+210 for i=99 to 1 step -1
+220 j=int(rnd(1)*(i+1))
+230 t=spawn_x(i):spawn_x(i)=spawn_x(j):spawn_x(j)=t
+240 next i
+
+1000 ptr=0
+1100 rem spawn enemy at spawn_x(ptr)
+1110 x=spawn_x(ptr)
+1120 ptr=ptr+1:if ptr>99 then ptr=0    rem wrap around
+```
+
+Precompute shuffled order, iterate through it. No repetition until you've used all values.
+
+## Seeded Random for Procedural Generation
+
+Procedural generation—infinite levels, consistent worlds, reproducible terrain—requires *controlled* randomness.
+
+**The trick:** Save and restore the RND seed.
+
+### Saving the Seed
+
+The RND seed is stored at memory locations $8B-$8F (139-143 decimal):
+
+```basic
+100 rem save current seed
+110 for i=0 to 4
+120 seed(i)=peek(139+i)
+130 next i
+
+200 rem restore seed
+210 for i=0 to 4
+220 poke 139+i,seed(i)
+230 next i
+```
+
+### Procedural Level Generation
+
+```basic
+100 dim seed(4)
+
+1000 rem generate level based on level number
+1010 input "level";level
+1020 x=rnd(-level)           rem seed from level number
+1030 gosub 2000              rem generate terrain
+1040 gosub 3000              rem generate enemies
+1050 rem play level
+
+2000 rem terrain generation
+2010 for x=0 to 39
+2020 height=int(rnd(1)*20)+5
+2030 for y=0 to height
+2040 poke 1024+y*40+x,160    rem draw column
+2050 next y
+2060 next x
+2070 return
+```
+
+**Key insight:** Seeding with `level` number means level 3 always generates the same terrain. Players can revisit levels, share level codes, and the world stays consistent.
+
+## Testing and Debugging Random Behavior
+
+Random bugs are the worst—hard to reproduce, intermittent, unpredictable.
+
+### Forced Seed for Testing
+
+```basic
+10 rem DEBUGGING - fixed seed
+20 for i=0 to 4:poke 139+i,0:next i    rem zero seed
+30 x=rnd(1)                             rem now predictable
+
+100 rem game code
+```
+
+With a fixed seed, behavior becomes reproducible. You can debug the same sequence every time.
+
+**Remember to remove or comment out forced seeds before release!**
+
+### Logging Random Values
+
+```basic
+1000 rem enemy spawn
+1010 x=int(rnd(1)*40)
+1020 print "spawn x=";x    rem DEBUG
+1030 rem spawn enemy at x
+```
+
+Print random values as they're generated. Helps spot patterns, bias, or bugs in your formulas.
+
+## Common Patterns
+
+### Random Walk (Drunk Sailor)
+
+```basic
+100 x=20:y=12     rem start center screen
+110 d=int(rnd(1)*4)
+120 if d=0 then x=x-1     rem left
+130 if d=1 then x=x+1     rem right
+140 if d=2 then y=y-1     rem up
+150 if d=3 then y=y+1     rem down
+160 poke 1024+y*40+x,81   rem draw
+170 goto 110
+```
+
+Unpredictable movement, organic-looking paths.
+
+### Random Event Chance
+
+```basic
+100 if rnd(1)&lt;0.05 then gosub 5000    rem 5% chance per frame
+```
+
+Creates occasional events—power-up spawns, weather changes, random encounters.
+
+### Noise and Variation
+
+```basic
+100 base_speed=5
+110 speed=base_speed+int(rnd(1)*3)-1    rem 4-6 range
+```
+
+Adds variation to predictable values—enemies with slightly different speeds, damage with random variance, etc.
+
+### Critical Hits
+
+```basic
+100 damage=10
+110 if rnd(1)&lt;0.1 then damage=damage*2:print "critical!"
+```
+
+10% chance to double damage. Classic RPG mechanic.
+
+## The Linear Congruential Generator
+
+Under the hood, C64's `RND()` uses a **linear congruential generator** (LCG):
+
+```
+next_seed = (A * seed + C) mod M
+```
+
+The C64 uses specific constants for A, C, and M that produce decent randomness for games but aren't cryptographically secure.
+
+**Period:** The sequence eventually repeats after about 16 million values. For games, this is effectively infinite—you'd need to call `RND()` constantly for hours to loop back.
+
+**Quality:** Good enough for game development. Not suitable for cryptography, simulations requiring statistical rigor, or security applications.
+
+## See Also
+
+- [BASIC V2 Reference](/vault/techniques/basic-v2) — complete command reference
+- [Variables and Memory](/vault/techniques/variables-memory) — where RND seed lives
+- [Screen Memory](/vault/techniques/screen-memory) — for visualizing random output
+
+---
+
+*Randomness makes games replayable. Master `RND()` and you control chaos.*
