@@ -1,0 +1,144 @@
+---
+title: "Health Meter"
+description: "Stakes matter. Add a health bar that rewards hits and punishes misses, ending the game when performance drops too low."
+pubDate: 2026-01-09
+game: 1
+gameName: "SID Symphony"
+unit: 14
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "health-bar", "game-over", "bar-graph"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-13"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-15"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import InlineNote from "../../../../components/units/InlineNote.astro";
+
+*Need to catch up? Check out [Unit 13: Miss Detection](/commodore-64/assembly/game-01-sid-symphony/unit-13).*
+
+## What You're Building
+
+We track misses now, but so what? The player could miss every single note and the game continues forever. There are no stakes.
+
+By the end of this unit, you'll have:
+
+- A health meter that reflects player performance
+- Health gained on hits (reward)
+- Health lost on misses (punishment)
+- Game over when health reaches zero
+- A visual bar graph display
+- Restart capability
+
+Now failure has consequences.
+
+## The Health System
+
+A single byte tracks player performance:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-14/snippets/01-health-system.asm" />
+
+Why these values?
+- **64 maximum**: Divides cleanly into 8 segments of 8 points each (power of two = fast division)
+- **32 starting**: Gives breathing room in both directions
+- **+2 per hit**: Gradual recovery rewards consistent play
+- **-4 per miss**: Misses hurt twice as much as hits heal
+
+This asymmetry creates tension. You can't recover from sloppy play by hitting a few notes — you need sustained accuracy.
+
+<InlineNote>
+The ratio matters more than the absolute values. At 2:4, you need to hit twice as many notes as you miss just to break even. Adjust these constants to tune difficulty.
+</InlineNote>
+
+## Modifying Health
+
+Health changes happen in two places:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-14/snippets/02-health-modification.asm" />
+
+Both directions need **clamping** — preventing the value from wrapping around:
+- Adding health: clamp at 64 (maximum)
+- Subtracting health: clamp at 0 (minimum)
+
+The `bcs`/`bcc` branches detect overflow/underflow. If subtraction causes a borrow (carry cleared), we've gone negative — clamp to zero and trigger game over.
+
+## Drawing the Health Bar
+
+Eight segments, each representing 8 health points:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-14/snippets/03-health-bar.asm" />
+
+Division by 8 is three right shifts (`lsr`, `lsr`, `lsr`). This gives us the number of filled segments (0-8).
+
+The loop draws each segment:
+- If segment index < filled count → draw solid (green)
+- Otherwise → draw hollow (dark grey)
+
+<InlineNote>
+We use custom characters for the health bar. Character 131 is a solid block; character 132 is a hollow outline. The same technique works for any bar graph — progress bars, volume indicators, anything.
+</InlineNote>
+
+## Game Over Handling
+
+When health hits zero, the game must stop:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-14/snippets/04-game-over.asm" />
+
+The game over state:
+1. Displays "GAME OVER!" in red
+2. Flashes the border red
+3. Waits for player input
+4. Space restarts, Q quits
+
+Note that restart jumps to `start`, not `main_loop`. This reinitialises everything — health, score, song position, note states. A clean slate.
+
+## The Main Loop Addition
+
+The game loop now checks for game over:
+
+```asm
+main_loop:
+                jsr wait_raster
+                jsr update_counters
+                jsr check_spawn_notes
+                jsr update_notes
+                jsr draw_notes
+                jsr scan_keyboard
+                jsr handle_input
+                jsr update_display
+                jsr check_game_over     ; NEW: Check if dead
+                jsr check_quit
+                jmp main_loop
+```
+
+Once `game_over` is set, `check_game_over` takes over and doesn't return until the player chooses restart or quit.
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+Watch the health bar. Hit notes and see it grow. Miss notes and watch it shrink. Let it empty completely — "GAME OVER!" appears.
+
+Press Space to try again. Notice how everything resets: score, health, song position. A fresh start.
+
+## What You've Learnt
+
+- **Health as performance metric**: Single byte tracking player skill
+- **Clamping**: Preventing overflow/underflow with conditional branches
+- **Bar graph display**: Segments = value / divisor (power of two for speed)
+- **Game over state**: Flag triggers alternate flow, waits for restart
+- **Full restart**: Jump to init, not main loop
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-14/symphony.asm" />
+
+## Next Unit
+
+The game ends when you fail. But what about success? Notes stop spawning, but nothing happens — no victory, no fanfare.
+
+In Unit 15, we add song completion detection — when all notes are played, the player wins.

@@ -1,0 +1,121 @@
+---
+title: "Miss Detection"
+description: "Consequences matter. Detect when notes are missed, flash the track red, play an error sound, and track failure."
+pubDate: 2026-01-09
+game: 1
+gameName: "SID Symphony"
+unit: 13
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "miss-detection", "game-logic", "sid"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-12"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-14"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import InlineNote from "../../../../components/units/InlineNote.astro";
+
+*Need to catch up? Check out [Unit 12: Hit Detection](/commodore-64/assembly/game-01-sid-symphony/unit-12).*
+
+## What You're Building
+
+Hits feel good, but misses have no teeth. Notes drift off the left edge without consequence. Players can ignore the entire game.
+
+By the end of this unit, you'll have:
+
+- Implicit miss detection: notes that escape the hit zone unhit
+- Explicit miss detection: pressing a key when no note is present
+- Visual feedback: hit zone flashes red on miss
+- Audio feedback: a noise burst signals failure
+- Miss counting: tracking how badly the player is doing
+
+Now failure has consequences.
+
+## Two Types of Misses
+
+A rhythm game has two ways to fail:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-13/snippets/01-miss-types.asm" />
+
+**Implicit misses** happen passively — the note escaped while the player wasn't paying attention. We detect this in `update_notes` when a note's X position drops below `HIT_START`.
+
+**Explicit misses** happen actively — the player pressed a key at the wrong time. We detect this in `handle_input` when `check_hit` returns carry clear (no note found).
+
+<InlineNote>
+Why distinguish between miss types? For feedback. An implicit miss means "you weren't ready." An explicit miss means "you acted wrongly." Different psychological experiences, even if the consequence is the same.
+</InlineNote>
+
+## Handling Misses
+
+Both miss types end up calling similar routines:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-13/snippets/02-handle-miss.asm" />
+
+On any miss:
+1. Increment the miss counter
+2. Start a red flash timer for the appropriate track
+3. Play a noise burst on Voice 3
+
+The noise waveform (`$80` in the control register) generates random values — a harsh, unmusical sound that contrasts with the clean pulse waves of successful hits. The player's ears know instantly: something went wrong.
+
+## Visual Feedback Priority
+
+We now have two flash states: white for hits, red for misses. What if both occur on the same track?
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-13/snippets/03-visual-feedback.asm" />
+
+Priority matters:
+1. **Hit flash (white)** — Highest priority. Reward success visibly.
+2. **Miss flash (red)** — Next priority. Punish failure visibly.
+3. **Normal colour** — No flash active.
+
+This means if you hit a note while the miss flash is active, the white hit flash takes over. Success overrides failure.
+
+## The Miss Sound
+
+The SID's noise waveform is perfect for error sounds:
+
+```asm
+; Noise burst for miss feedback
+lda #$80                ; Noise waveform (bit 7)
+sta SID_V3_CTRL
+lda #$20                ; Low frequency = rumbling noise
+sta SID_V3_FREQ_HI
+lda #$0a                ; Quick attack (0), medium decay (a)
+sta SID_V3_AD
+lda #$00                ; No sustain, no release
+sta SID_V3_SR
+lda #$81                ; Gate on (start the sound)
+sta SID_V3_CTRL
+```
+
+Lower frequencies produce a deeper, more ominous rumble. Higher frequencies produce a sharper hiss. We use a low frequency (`$20`) for a satisfying "thump" of failure.
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+Let some notes pass without hitting them. Watch the track flash red. Hear the noise burst. Now press a key when no note is in the hit zone — same feedback.
+
+Try alternating hits and misses. Notice how the white flash overrides red when you hit a note quickly after missing.
+
+## What You've Learnt
+
+- **Two miss types**: Implicit (note escaped) vs explicit (wrong key)
+- **Noise waveform**: SID's `$80` control bit produces random, harsh sound
+- **Priority-based feedback**: Hit flash (white) overrides miss flash (red)
+- **Miss counting**: Track failures for later use (health, scoring)
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-13/symphony.asm" />
+
+## Next Unit
+
+We're tracking misses now, but nothing happens when you miss too many. The player could miss every single note and the game continues indefinitely.
+
+In Unit 14, we add a health meter — miss too many notes and the game ends.

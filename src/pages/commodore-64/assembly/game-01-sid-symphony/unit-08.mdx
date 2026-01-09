@@ -1,0 +1,167 @@
+---
+title: "Song Data"
+description: "Design a data format to drive your rhythm game. Parallel arrays store when, where, and what to play for each note."
+pubDate: 2026-01-09
+game: 1
+gameName: "SID Symphony"
+unit: 8
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "data-structures", "parallel-arrays", "song-format"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-07"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-09"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import InlineNote from "../../../../components/units/InlineNote.astro";
+
+*Need to catch up? Check out [Unit 7: The Game Loop](/commodore-64/assembly/game-01-sid-symphony/unit-07).*
+
+## What You're Building
+
+A rhythm game needs a song — a sequence of notes with precise timing. But how do you represent that in assembly?
+
+By the end of this unit, you'll have:
+
+- A song data format using parallel arrays
+- A simple test song (ascending scale)
+- Display of current song position
+- The foundation for spawning and tracking notes
+
+Data drives games. This is where we design our data.
+
+## The Song Data Problem
+
+Each note in our song needs three pieces of information:
+1. **When**: Which beat should it appear on?
+2. **Where**: Which track (1, 2, or 3)?
+3. **What**: Which SID frequency to play?
+
+We could use a struct-like approach (3 bytes per note), but the 6502 doesn't handle structs well. Instead, we use **parallel arrays**:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-08/snippets/01-song-data-format.asm" />
+
+Three arrays, same index. Note 0 is `song_beats[0]`, `song_tracks[0]`, `song_notes[0]`. Note 5 is index 5 in all three arrays.
+
+<InlineNote>
+Parallel arrays are a classic 6502 pattern. They work well with indexed addressing: `lda song_beats,x` reads the beat for note X with a single instruction. No pointer arithmetic needed.
+</InlineNote>
+
+## Why Parallel Arrays?
+
+Consider the alternative — interleaved data:
+
+```asm
+; Interleaved (harder to use)
+song_data:
+    !byte 0, 1, $11     ; Beat 0, Track 1, Note C4
+    !byte 2, 2, $13     ; Beat 2, Track 2, Note D4
+```
+
+To read the track for note 5, you'd calculate offset = 5 × 3 + 1. That's multiplication — expensive on 6502.
+
+With parallel arrays, offset = 5. Just `ldx #5; lda song_tracks,x`. Simple, fast.
+
+## The End Marker
+
+How do we know when the song ends? A special value:
+
+```asm
+END_MARKER      = $ff           ; Beat 255 = end of song
+
+song_beats:
+                !byte 0, 2, 4, 6, 8
+                !byte END_MARKER    ; No more notes
+```
+
+When we read a beat value of $FF, we know we've reached the end. No need to store a separate length variable.
+
+## Reading Song Data
+
+The algorithm to check for new notes:
+
+```asm
+check_for_notes:
+                ldx song_position       ; Current position in song
+
+.check_next:    lda song_beats,x        ; Get beat for this note
+                cmp #END_MARKER
+                beq .song_ended         ; No more notes
+
+                cmp beat_counter        ; Is it time for this note?
+                bcc .spawn_note         ; Beat has passed - spawn it!
+                bne .done               ; Not yet
+
+.spawn_note:    lda song_tracks,x       ; Which track?
+                ; ... spawn note on that track
+                inx                     ; Move to next note
+                stx song_position
+                bne .check_next         ; Check if more notes on same beat
+
+.done:          rts
+.song_ended:    ; Handle song completion
+                rts
+```
+
+Key insight: we compare `song_beats[x]` with `beat_counter`. If the song beat is less than or equal to current beat, spawn the note.
+
+## Displaying Song Position
+
+For debugging, we show the current position:
+
+```asm
+update_song_display:
+                ; Display song position
+                lda song_position
+                jsr display_two_digits
+                ; Display beat counter
+                lda beat_counter
+                jsr display_two_digits
+                rts
+```
+
+Watching these numbers increment confirms your timing logic works before you add visual notes.
+
+## The Test Song
+
+Our first song is a simple ascending scale:
+
+```asm
+song_beats:     !byte 0, 2, 4, 6, 8, 10, 12, 14
+                !byte END_MARKER
+
+song_tracks:    !byte 1, 2, 3, 2, 1, 3, 2, 1
+
+song_notes:     !byte $11, $13, $15, $17, $1a, $1d, $20, $22
+```
+
+Eight notes, spread across tracks, playing C4 through C5. Notes appear every 2 beats (about 0.5 seconds apart at our current tempo).
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+You'll see two numbers updating: song position and beat counter. The song position advances as beats pass, proving the data format is being read correctly.
+
+No notes appear on screen yet — that's next unit. But the data structure is in place.
+
+## What You've Learnt
+
+- **Parallel arrays**: Multiple arrays with shared index, efficient on 6502
+- **End markers**: Special values to indicate data boundaries
+- **Song format**: Beat number, track, and frequency per note
+- **Data-driven design**: Code reads data, data defines behaviour
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-08/symphony.asm" />
+
+## Next Unit
+
+We have song data. We have a game loop. Now we connect them.
+
+In Unit 9, we spawn notes onto tracks when their beat arrives — the first visual rhythm gameplay.

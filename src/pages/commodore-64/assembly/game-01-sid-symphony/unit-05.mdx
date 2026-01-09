@@ -1,0 +1,156 @@
+---
+title: "Screen Layout"
+description: "From sound to visuals. Build the game screen with tracks, hit zones, and score displays using screen memory and colour RAM."
+pubDate: 2026-01-09
+game: 1
+gameName: "SID Symphony"
+unit: 5
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "screen-memory", "colour-ram", "indirect-addressing"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-04"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-06"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import InlineNote from "../../../../components/units/InlineNote.astro";
+
+*Need to catch up? Check out [Unit 4: Playing a Scale](/commodore-64/assembly/game-01-sid-symphony/unit-04).*
+
+## What You're Building
+
+Four units of black screens. Time to change that.
+
+By the end of this unit, you'll have:
+
+- A game screen with three horizontal tracks
+- Coloured hit zones where notes will land
+- Key labels showing which key controls each track
+- Score and streak displays (placeholders for now)
+
+The SID still knows how to sing. Now the VIC-II learns to draw.
+
+## Screen Memory
+
+The C64's screen is a grid of 40 columns by 25 rows — 1000 characters. Each character position has two values:
+
+- **Character code** at $0400-$07E7 (what to display)
+- **Colour attribute** at $D800-$DBE7 (what colour)
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-05/snippets/01-screen-constants.asm" />
+
+Screen and colour memory are parallel — position 0 in screen memory corresponds to position 0 in colour memory. Write a character code to $0400, write its colour to $D800, and it appears in the top-left corner.
+
+<InlineNote>
+The C64 has 16 colours, numbered 0-15. We define constants for readability. `COL_CYAN = 3` is clearer than magic number `3` scattered through your code.
+</InlineNote>
+
+## Clearing the Screen
+
+Before drawing anything, clear the screen. This means writing spaces ($20) to all 1000 character positions and setting all colours:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-05/snippets/02-clear-screen.asm" />
+
+The screen spans roughly 4 pages of memory (256 bytes each). We use four `STA` instructions per iteration, covering $0400-$06FF plus the final partial page at $0700-$07E7.
+
+The anonymous label `-` and `bne -` create a tight loop. The X register counts 0→255, giving us 256 iterations. Since we write to four offsets per iteration, we cover all 1000+ positions.
+
+## Calculating Row Addresses
+
+Here's where 8-bit maths gets interesting. To write at row 17, column 5, we need address $0400 + (17 × 40) + 5.
+
+But 17 × 40 = 680, which exceeds 255. We need **16-bit arithmetic**.
+
+The trick: multiply by 40 using shifts and adds. Since 40 = 8 + 32, we can calculate row × 40 as (row × 8) + (row × 32):
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-05/snippets/03-calc-row-address.asm" />
+
+This routine takes a row number in A and sets up two zero-page pointers:
+- `screen_ptr` points to that row in screen memory
+- `colour_ptr` points to the same row in colour memory
+
+<InlineNote>
+**Zero page pointers** are essential for indirect addressing. The 6502 can only do indirect addressing through zero page locations. We use $FB-$FC for screen_ptr and $FD-$FE for colour_ptr.
+</InlineNote>
+
+## Indirect Indexed Addressing
+
+With row pointers set up, we use **indirect indexed addressing** to write characters:
+
+```asm
+ldy #5                  ; Column 5
+lda #$01                ; Character 'A'
+sta (screen_ptr),y      ; Write to screen
+```
+
+The instruction `sta (screen_ptr),y` means: take the 16-bit address stored at screen_ptr, add Y, and store A at that address.
+
+This is powerful — we can write anywhere on screen by setting the row pointer once, then using Y for the column.
+
+## Drawing a Track
+
+Each track needs:
+- A key label like `[X]` showing which key to press
+- A coloured hit zone where notes land
+- A track line extending to the right edge
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-05/snippets/04-draw-track.asm" />
+
+The routine takes row in A, key character in X, and colour in Y. It calculates the row address, then draws each element using indirect indexed addressing.
+
+<InlineNote>
+**Screen codes vs PETSCII**: The keyboard produces PETSCII codes, but screen memory uses screen codes. They're different! The letter 'A' is PETSCII 65 but screen code 1. The `!scr` directive in ACME handles this conversion for strings.
+</InlineNote>
+
+## Building the Full Screen
+
+The main program calls these routines in sequence:
+
+```asm
+start:
+                jsr clear_screen
+                jsr draw_header
+                jsr draw_tracks
+                jsr draw_footer
+
+forever:        jmp forever
+```
+
+Each subroutine handles one part of the layout:
+- `draw_header`: Title, subtitle, score display
+- `draw_tracks`: The three gameplay tracks
+- `draw_footer`: Instructions at the bottom
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+You'll see a properly laid-out game screen:
+- "SID SYMPHONY" title centred at the top
+- Score and streak displays
+- Three coloured tracks with key labels [X], [C], [V]
+- Instructions at the bottom
+
+No sound yet — we've left the SID silent while we build the visuals.
+
+## What You've Learnt
+
+- **Screen memory**: Characters at $0400, colours at $D800
+- **16-bit multiplication**: Using shifts and adds for row × 40
+- **Zero page pointers**: Required for indirect addressing
+- **Indirect indexed**: `sta (ptr),y` for flexible screen access
+- **Screen codes**: Different from PETSCII keyboard codes
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-05/symphony.asm" />
+
+## Next Unit
+
+We have a game screen, but it's using the default character set. Those boring rectangles won't do for a rhythm game.
+
+In Unit 6, we create custom characters — note symbols that will slide across our tracks.

@@ -1,0 +1,157 @@
+---
+title: "The Game Loop"
+description: "The heartbeat of every game. Build a frame-synchronised main loop with raster timing, counters, and keyboard input."
+pubDate: 2026-01-09
+game: 1
+gameName: "SID Symphony"
+unit: 7
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "game-loop", "raster", "keyboard", "timing"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-06"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-08"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import InlineNote from "../../../../components/units/InlineNote.astro";
+
+*Need to catch up? Check out [Unit 6: Custom Characters](/commodore-64/assembly/game-01-sid-symphony/unit-06).*
+
+## What You're Building
+
+Every game has a heartbeat — a loop that runs continuously, updating the world, drawing to the screen, checking for input. Without it, your game is a static painting.
+
+By the end of this unit, you'll have:
+
+- A proper init/loop game architecture
+- Raster-synchronised 50fps timing
+- Frame and beat counters
+- Keyboard input detection (Q to quit)
+- Visual feedback showing the beat counter
+
+The foundation for everything that follows.
+
+## The Game Loop Pattern
+
+All games follow the same structure:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-07/snippets/01-game-loop-structure.asm" />
+
+This pattern is universal — from the C64 to modern consoles. Initialise once, then loop forever: sync, update, draw, check input.
+
+The key insight: **the loop runs once per frame** (50 times per second on PAL). Everything inside must complete within ~20ms.
+
+## Raster Synchronisation
+
+The VIC-II draws the screen line by line, 312 lines per frame. Register $D012 tells us which line is currently being drawn.
+
+By waiting for a specific line, we achieve perfectly consistent timing:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-07/snippets/02-raster-sync.asm" />
+
+Line 250 is just below the visible screen. When we reach it:
+1. The visible area is fully drawn
+2. We have ~2ms of "vertical blank" to update graphics without flicker
+3. We get exactly one loop iteration per frame
+
+<InlineNote>
+Why wait twice? If we're still on line 250 from the last frame (game logic was fast), we'd immediately continue without waiting. The first loop ensures we've left line 250 before waiting for it again.
+</InlineNote>
+
+## Frame and Beat Counters
+
+Raw frame counting (50fps) is too fast for rhythm game beats. We use a divider:
+
+```asm
+FRAMES_PER_BEAT = 12            ; 50/12 ≈ 4 beats per second
+
+update_counters:
+                inc frame_counter
+                lda frame_counter
+                cmp #FRAMES_PER_BEAT
+                bcc .no_beat        ; Not yet
+
+                lda #0
+                sta frame_counter
+                inc beat_counter    ; One beat passed
+
+.no_beat:       rts
+```
+
+At 12 frames per beat, we get approximately 4 beats per second — a reasonable tempo for a rhythm game. Adjusting `FRAMES_PER_BEAT` changes the game speed.
+
+## Reading the Keyboard Matrix
+
+The C64 keyboard is an 8×8 matrix. To check a specific key:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-07/snippets/03-keyboard-check.asm" />
+
+The matrix works by selection:
+1. Write to $DC00 with one bit low to select a column
+2. Read $DC01 — any pressed key in that column will have its row bit low
+
+The Q key is column 7, row 6. We select column 7 by clearing bit 7 of $DC00, then check if bit 6 of $DC01 is clear.
+
+## Visual Feedback
+
+To prove our timing works, we display the beat counter:
+
+```asm
+update_display:
+                ; Show beat counter at screen position
+                lda beat_counter
+                jsr display_as_hex
+                rts
+```
+
+You'll see the number incrementing steadily — proof that your game loop is running at a consistent pace.
+
+## Clean Exit
+
+When Q is pressed, we return to BASIC cleanly:
+
+```asm
+exit_to_basic:
+                ; Reset VIC to default character set
+                lda #$14
+                sta VIC_MEMSETUP
+
+                ; Clear screen
+                lda #147            ; Clear screen PETSCII
+                jsr $ffd2           ; CHROUT - print character
+
+                ; Return to BASIC
+                jmp ($a002)         ; BASIC warm start
+```
+
+This restores the default character set and jumps to BASIC's warm start vector. Your game exits gracefully instead of crashing.
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+You'll see the game screen with a beat counter updating approximately 4 times per second. Press Q to exit to BASIC.
+
+Try changing `FRAMES_PER_BEAT` to 6 (faster) or 25 (slower) and observe the tempo change.
+
+## What You've Learnt
+
+- **Game loop pattern**: init once, then loop (sync → update → draw → input)
+- **Raster sync**: Wait for $D012 to reach a specific line for 50fps timing
+- **Beat division**: Convert frame counts to musical beats
+- **Keyboard matrix**: Select column via $DC00, read rows from $DC01
+- **Clean exit**: Restore defaults before returning to BASIC
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-07/symphony.asm" />
+
+## Next Unit
+
+We have a running game loop with consistent timing. But there's no song data — no notes to play, no patterns to follow.
+
+In Unit 8, we design the song data format that will drive our rhythm game.

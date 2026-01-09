@@ -1,0 +1,133 @@
+---
+title: "Keyboard Input"
+description: "Make it interactive. Read the keyboard matrix, debounce key presses, and provide visual feedback when the player acts."
+pubDate: 2026-01-09
+game: 1
+gameName: "SID Symphony"
+unit: 11
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "keyboard", "input", "debouncing", "cia"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-10"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-12"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import InlineNote from "../../../../components/units/InlineNote.astro";
+
+*Need to catch up? Check out [Unit 10: Note Movement](/commodore-64/assembly/game-01-sid-symphony/unit-10).*
+
+## What You're Building
+
+Notes flow. The hit zones wait. But the player can't do anything — those [X], [C], [V] labels are just decoration.
+
+By the end of this unit, you'll have:
+
+- Keyboard scanning for X, C, and V keys
+- Debouncing to detect new presses (not just "key is held")
+- Visual feedback — hit zones flash when you press their key
+- The foundation for hit detection
+
+Press a key. Watch the zone flash. Interactivity arrives.
+
+## The Keyboard Matrix
+
+The C64 keyboard is an 8×8 matrix of switches. To read it:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-11/snippets/01-key-definitions.asm" />
+
+The process:
+1. Write to $DC00 to select which column (bit = 0 selects)
+2. Read $DC01 to see which rows have pressed keys (bit = 0 means pressed)
+
+X, C, and V are in columns 2 and 3. Each column+row combination identifies one key.
+
+<InlineNote>
+The keyboard matrix is "active low" — pressed keys read as 0, not 1. This is counterintuitive but common in hardware design. We use AND to mask the relevant bit, then check for zero.
+</InlineNote>
+
+## The Debouncing Problem
+
+A naive key check would fire every frame the key is held — 50 times per second while your finger is down. That's not useful for a rhythm game.
+
+We need **debouncing**: detect the moment of press, ignore the holding.
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-11/snippets/02-debouncing.asm" />
+
+We track two things per key:
+- `key_x_state`: Is the key currently held? (persists across frames)
+- `key_x_pressed`: Was the key NEWLY pressed THIS frame? (reset each frame)
+
+The pressed flag only goes high when transitioning from "not held" to "held". Holding the key keeps state=1, but pressed stays 0 after the first frame.
+
+## Visual Feedback
+
+Players need confirmation that their input registered. We flash the hit zone:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-11/snippets/03-visual-feedback.asm" />
+
+When a key is newly pressed, we set a timer (10 frames = ~0.2 seconds). The drawing code checks this timer:
+
+```asm
+; In draw_hitzone:
+lda flash_t1_timer
+beq .normal_colour
+dec flash_t1_timer
+lda #COL_WHITE          ; Bright flash
+jmp .draw
+.normal_colour:
+lda #COL_CYAN           ; Normal track colour
+.draw:
+; ... draw hit zone with this colour
+```
+
+The timer counts down each frame. While non-zero, use the flash colour. When it reaches zero, return to normal.
+
+## Input Timing
+
+Where in the game loop should we scan the keyboard?
+
+```asm
+main_loop:
+                jsr wait_raster
+                jsr update_counters
+                jsr check_spawn_notes
+                jsr update_notes
+                jsr draw_notes
+                jsr scan_keyboard       ; After drawing
+                jsr handle_input        ; Process results
+                jsr update_display
+                jsr check_quit
+                jmp main_loop
+```
+
+We scan after drawing so input is as fresh as possible — minimal lag between physical keypress and response.
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+Press X, C, or V. Watch the corresponding hit zone flash white briefly. Notes still flow, but now you can interact.
+
+The flash is satisfying, but nothing happens to the notes yet. You're pressing keys, notes are passing — but they're not connected.
+
+## What You've Learnt
+
+- **Keyboard matrix**: 8×8 grid read via $DC00/$DC01
+- **Active low logic**: Pressed keys read as 0, not 1
+- **Debouncing**: Track state to detect transitions, not levels
+- **Visual feedback**: Timer-based flash confirms input registration
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-11/symphony.asm" />
+
+## Next Unit
+
+Keys work. Notes move. But there's no connection — pressing X when a note is in the hit zone does nothing special.
+
+In Unit 12, we implement hit detection: did the player press the right key at the right time? This is where rhythm gaming lives.

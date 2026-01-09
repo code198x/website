@@ -1,0 +1,139 @@
+---
+title: "Song Completion"
+description: "Victory conditions. Detect when the song ends, show final results with performance rating, and reward success."
+pubDate: 2026-01-09
+game: 1
+gameName: "SID Symphony"
+unit: 15
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "game-complete", "results-screen", "rating"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-14"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-16"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import InlineNote from "../../../../components/units/InlineNote.astro";
+
+*Need to catch up? Check out [Unit 14: Health Meter](/commodore-64/assembly/game-01-sid-symphony/unit-14).*
+
+## What You're Building
+
+The game can end in failure — health depleted, game over. But what about success? Notes stop spawning when the song ends, but nothing happens. No fanfare, no victory screen, no rating.
+
+By the end of this unit, you'll have:
+
+- Song completion detection
+- A results screen with final score
+- Performance rating (POOR to PERFECT)
+- Replay or quit option
+- Victory feedback (green border flash)
+
+Now there's something to play for.
+
+## Detecting Song Completion
+
+Two conditions signal song completion:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-15/snippets/01-completion-detection.asm" />
+
+Why both conditions? The `END_MARKER` tells us no more notes will spawn, but notes already spawned might still be flying across the screen. We wait until:
+1. Song data exhausted (position reached END_MARKER)
+2. All note slots inactive (no notes in flight)
+
+Only then is the song truly complete.
+
+<InlineNote>
+This is a common pattern in games: the "level over" condition isn't just "no more spawns" but "no more spawns AND no remaining enemies/notes/objects." Premature victory is frustrating for players.
+</InlineNote>
+
+## The Results Screen
+
+When the song completes, display the player's achievement:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-15/snippets/02-results-screen.asm" />
+
+The screen shows:
+- "SONG COMPLETE!" in green (victory!)
+- Final score (copied from the header display)
+- Performance rating
+- Prompt for next action
+
+Notice we copy the score digits directly from screen memory rather than re-converting. The header already displays the score — why recalculate?
+
+## Performance Rating
+
+The rating gives players a goal beyond just surviving:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-15/snippets/03-performance-rating.asm" />
+
+With 16 notes at 100 points each, the maximum score is 1600. The thresholds:
+- **POOR** (red): 0-499 points (fewer than 5 hits)
+- **GOOD** (yellow): 500-999 points (5-9 hits)
+- **GREAT** (green): 1000-1499 points (10-14 hits)
+- **PERFECT** (cyan): 1500+ points (15-16 hits)
+
+BCD comparison works naturally here — we compare the hundreds byte (`score+1`) against BCD thresholds like `$15` for 1500.
+
+## The Main Loop Addition
+
+Song completion check joins the main loop:
+
+```asm
+main_loop:
+                jsr wait_raster
+                jsr update_counters
+                jsr check_spawn_notes
+                jsr update_notes
+                jsr draw_notes
+                jsr scan_keyboard
+                jsr handle_input
+                jsr update_display
+                jsr check_song_complete ; NEW: Check for victory
+                jsr check_game_over
+                jsr check_quit
+                jmp main_loop
+```
+
+Order matters: check song completion before game over. Both can trigger on the same frame (last note missed), but victory should take priority if the song is complete.
+
+## Victory vs Failure
+
+The game now has two end states:
+
+| Condition | Trigger | Border | Message | Result |
+|-----------|---------|--------|---------|--------|
+| Victory | Song complete | Green | "SONG COMPLETE!" | Show rating |
+| Failure | Health = 0 | Red | "GAME OVER!" | No rating |
+
+Both offer replay (Space) or quit (Q). Both jump to `start` for a clean restart.
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+Play through the entire song, hitting notes. When the last note clears, "SONG COMPLETE!" appears with your rating. Try for PERFECT — hit all 16 notes.
+
+Then deliberately fail — let your health drain. Compare the two experiences. Victory feels earned; failure feels consequential.
+
+## What You've Learnt
+
+- **Completion detection**: End marker AND no active objects
+- **Screen data reuse**: Copy displayed values instead of recalculating
+- **BCD comparison**: Works naturally for score thresholds
+- **Performance rating**: Tiered feedback encourages replay
+- **Dual end states**: Victory and failure as distinct experiences
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-15/symphony.asm" />
+
+## Next Unit
+
+The game works. You can play, win, lose, and replay. But it starts abruptly — notes immediately begin flowing with no introduction.
+
+In Unit 16, we add a title screen — the game's first impression, where players see the name, learn the controls, and press a key to begin.

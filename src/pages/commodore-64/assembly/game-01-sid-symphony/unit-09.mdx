@@ -1,0 +1,129 @@
+---
+title: "Spawning Notes"
+description: "Bring notes to life. Track active notes in memory, spawn them from song data, and draw them on screen."
+pubDate: 2026-01-09
+game: 1
+gameName: "SID Symphony"
+unit: 9
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "game-objects", "spawning", "object-pools"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-08"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-10"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import InlineNote from "../../../../components/units/InlineNote.astro";
+
+*Need to catch up? Check out [Unit 8: Song Data](/commodore-64/assembly/game-01-sid-symphony/unit-08).*
+
+## What You're Building
+
+Song data defines *when* notes should appear. But appearing means existing — tracking each note's position, state, and properties while it's on screen.
+
+By the end of this unit, you'll have:
+
+- An object pool for up to 8 active notes
+- Spawning logic that creates notes from song data
+- Drawing code that renders active notes on their tracks
+- Visual confirmation: notes appearing at the right edge of the screen
+
+The rhythm game begins to feel real.
+
+## The Object Pool Pattern
+
+Games manage many temporary objects — bullets, enemies, particles, notes. Creating and destroying them dynamically wastes cycles. Instead, we pre-allocate a fixed pool:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-09/snippets/01-note-arrays.asm" />
+
+Eight slots, always allocated. When we need a note, we find an inactive slot and activate it. When a note leaves the screen, we deactivate its slot.
+
+This is the **object pool pattern** — universal in game programming, essential on 6502.
+
+<InlineNote>
+Why 8 notes? It's a tradeoff. More slots means more memory and slower iteration. Eight is enough for our simple songs while keeping the code fast.
+</InlineNote>
+
+## Spawning a Note
+
+When song data triggers a note, we find a free slot:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-09/snippets/02-spawn-note.asm" />
+
+The spawn process:
+1. Search for an inactive slot (linear scan)
+2. If found, activate it
+3. Set initial position (column 39 — right edge)
+4. Set track and note value from spawn parameters
+
+If all 8 slots are active, the note is simply dropped. In a real game, you'd size your pool to handle peak load.
+
+## Connecting Song Data to Spawning
+
+Every frame, we check if the current beat matches the next note in our song:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-09/snippets/03-check-spawn.asm" />
+
+The timing is crucial: we only check when `frame_counter` is 0 (the exact moment a new beat starts). This ensures notes spawn precisely on beat, not slightly early or late.
+
+## Drawing Active Notes
+
+With notes tracked in memory, drawing is straightforward:
+
+```asm
+draw_notes:
+                ldx #0
+
+.draw_loop:     lda note_active,x
+                beq .next_note      ; Skip inactive slots
+
+                ; Calculate screen position from track and x
+                lda note_track,x
+                jsr get_track_row   ; Returns row in A
+                jsr calc_row_addr   ; Set up screen_ptr
+
+                ldy note_x,x        ; Column
+                lda #NOTE_CHAR
+                sta (screen_ptr),y
+
+                ; Set colour based on track
+                lda note_track,x
+                jsr get_track_colour
+                sta (colour_ptr),y
+
+.next_note:     inx
+                cpx #MAX_NOTES
+                bne .draw_loop
+                rts
+```
+
+For each active slot, we calculate the screen position and draw the note character. The colour matches the track — cyan for track 1, green for track 2, yellow for track 3.
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+Watch the right edge of each track. Every 2 beats, a note appears — spawned from our song data, rendered using our object pool.
+
+The notes don't move yet. They just appear and stay. But they're *there*, managed properly in memory.
+
+## What You've Learnt
+
+- **Object pools**: Pre-allocated slots for temporary game objects
+- **Active flags**: Track which slots are in use
+- **Spawning**: Find free slot, initialise, activate
+- **Data-driven spawn**: Song data triggers spawn at the right moment
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-09/symphony.asm" />
+
+## Next Unit
+
+Notes spawn but don't move. A rhythm game needs notes sliding toward the hit zone.
+
+In Unit 10, we add movement — notes march left one column per frame, creating the visual flow of a rhythm game.

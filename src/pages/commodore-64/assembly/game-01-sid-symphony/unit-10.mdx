@@ -1,0 +1,130 @@
+---
+title: "Note Movement"
+description: "Animation basics. Move notes across the screen by erasing and redrawing, creating the flowing visual of a rhythm game."
+pubDate: 2026-01-09
+game: 1
+gameName: "SID Symphony"
+unit: 10
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "animation", "movement", "game-objects"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-09"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-11"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import InlineNote from "../../../../components/units/InlineNote.astro";
+
+*Need to catch up? Check out [Unit 9: Spawning Notes](/commodore-64/assembly/game-01-sid-symphony/unit-09).*
+
+## What You're Building
+
+Static notes don't make a rhythm game. Notes need to flow — spawning at the right edge, sliding left, reaching the hit zone where you must strike.
+
+By the end of this unit, you'll have:
+
+- Notes moving smoothly across the screen
+- Proper erase-before-draw animation
+- Speed control via frame delay
+- Notes deactivating when they pass the hit zone
+
+Watch the notes flow. This is starting to feel like a game.
+
+## The Animation Loop
+
+Animation on the C64 is simple in concept: erase the object at its old position, update its position, draw it at the new position.
+
+But timing matters. Moving every frame (50 times per second) would send notes flying across the screen. We use a delay:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-10/snippets/01-move-notes.asm" />
+
+With `MOVE_DELAY = 3`, notes move approximately 17 times per second — fast enough to feel smooth, slow enough to react to.
+
+<InlineNote>
+The delay counter (`move_counter`) is separate from `frame_counter`. This lets us tune note speed independently of beat timing. Different aspects of your game can run at different rates.
+</InlineNote>
+
+## Erase and Draw
+
+The key to flicker-free animation: erase first, then draw.
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-10/snippets/02-erase-draw.asm" />
+
+When erasing, we don't clear to a space — we draw the track character (`TRACK_CHAR`). This maintains the visual track line as notes pass over it.
+
+When drawing, we set the colour based on track: cyan, green, or yellow. This visual distinction helps players see which track each note belongs to.
+
+## Position and Bounds
+
+Each note's X position is its column (0-39). Movement is simple:
+
+```asm
+dec note_x,x            ; Move left one column
+```
+
+But we need bounds checking. When a note reaches column 2 or less, it's past the hit zone — the player missed it:
+
+```asm
+lda note_x,x
+cmp #HIT_START          ; Column 3
+bcs .still_active       ; If >= 3, still on screen
+
+; Deactivate the note (missed)
+lda #NOTE_INACTIVE
+sta note_active,x
+```
+
+The hit zone spans columns 3-6. Notes reaching column 2 or below are definitively missed and should disappear.
+
+## The Update Order
+
+Our main loop now has a clear structure:
+
+```asm
+main_loop:
+                jsr wait_raster         ; Sync to frame
+                jsr update_counters     ; Update timing
+                jsr check_spawn_notes   ; Spawn new notes
+                jsr update_notes        ; Move existing notes
+                jsr draw_notes          ; Draw all active notes
+                jsr check_quit          ; Check for exit
+                jmp main_loop
+```
+
+Order matters:
+1. Wait for raster (consistent timing)
+2. Update counters (know what beat we're on)
+3. Spawn notes (new notes appear at right edge)
+4. Update notes (move existing notes, which erases them)
+5. Draw notes (render at new positions)
+
+Spawning before updating ensures new notes don't move on their first frame. Drawing after updating ensures we render final positions.
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+Notes now flow from right to left across each track. They spawn from song data, slide smoothly, and disappear when they pass the hit zone.
+
+Try changing `MOVE_DELAY` to 1 (very fast) or 6 (slow) to see how speed affects gameplay feel.
+
+## What You've Learnt
+
+- **Animation pattern**: Erase old position, update state, draw new position
+- **Speed control**: Frame delay counters for tunable movement speed
+- **Bounds checking**: Deactivate objects that leave valid areas
+- **Update order**: Spawn → Update → Draw for correct visual results
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-10/symphony.asm" />
+
+## Next Unit
+
+Notes flow beautifully, but the player can't do anything. Those key labels — [X], [C], [V] — are just decoration.
+
+In Unit 11, we read the keyboard matrix to detect when the player presses the right keys.

@@ -1,0 +1,145 @@
+---
+title: "Custom Characters"
+description: "Design your own graphics. Copy the character ROM to RAM, define custom note symbols, and point the VIC-II to your creation."
+pubDate: 2026-01-09
+game: 1
+gameName: "SID Symphony"
+unit: 6
+totalUnits: 16
+system: "Commodore 64"
+tags: ["assembly", "6510", "custom-characters", "vic-ii", "graphics"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-05"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-07"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import InlineNote from "../../../../components/units/InlineNote.astro";
+
+*Need to catch up? Check out [Unit 5: Screen Layout](/commodore-64/assembly/game-01-sid-symphony/unit-05).*
+
+## What You're Building
+
+The default C64 character set is fine for text, but we need graphics — note symbols that slide across tracks, hit zones that pulse, track lines that look purposeful.
+
+By the end of this unit, you'll have:
+
+- The ROM character set copied to RAM
+- Custom characters: a filled circle (note), track line, hit zone
+- The VIC-II pointing to your custom character set
+- Notes displayed on each track
+
+This is where your game starts looking like a *game*.
+
+## The Character ROM Problem
+
+The C64's character ROM lives at $D000 — but so does I/O. They overlap. By default, I/O wins, which is why you can access the SID and VIC-II registers.
+
+To read the character ROM, we must temporarily hide I/O:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-06/snippets/01-copy-charset.asm" />
+
+The processor port at $01 controls what's visible:
+- Bit 2 clear: Character ROM visible, I/O hidden
+- Bit 2 set: I/O visible, character ROM hidden (default)
+
+<InlineNote>
+We disable interrupts with `sei` before hiding I/O. If an interrupt fired while I/O was hidden, the interrupt handler would crash trying to access hardware. Always `sei` before, `cli` after.
+</InlineNote>
+
+## Designing Characters
+
+Each character is 8×8 pixels, stored as 8 bytes. Each byte is one row, with the most significant bit (bit 7) being the leftmost pixel:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-06/snippets/02-define-characters.asm" />
+
+The binary notation makes pixel patterns visual — you can literally see the shape in the code:
+
+```
+%00111100    ..####..
+%01111110    .######.
+%11111111    ########
+```
+
+We place our custom characters starting at position 128, leaving the standard alphabet (0-127) intact.
+
+## Pointing the VIC-II
+
+The VIC-II chip needs to know where to find character data. Register $D018 controls this:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-06/snippets/03-vic-memory-setup.asm" />
+
+The calculation:
+- Screen at $0400: divide by $0400 = 1, shift left 4 = $10
+- Characters at $3000: divide by $0800 = 6, shift left 1 = $0C
+- Combined: $10 | $0C = $1C
+
+<InlineNote>
+The VIC-II can only see 16KB at a time (its "bank"). The default bank is $0000-$3FFF, which includes both our screen ($0400) and character RAM ($3000). If you move things outside this range, you'll need to change banks via $DD00.
+</InlineNote>
+
+## Character Memory Layout
+
+With our setup:
+
+| Address | Content |
+|---------|---------|
+| $3000-$33FF | Characters 0-127 (copied from ROM) |
+| $3400-$37FF | Characters 128-255 (our custom chars) |
+
+Character 128 (our note) lives at $3000 + (128 × 8) = $3400.
+
+To draw it on screen, just write 128 to screen memory:
+
+```asm
+lda #128            ; Note character code
+sta SCREEN + 200    ; Position on screen
+```
+
+## Using the Characters
+
+The `draw_sample_notes` routine places notes on each track to test our custom characters:
+
+```asm
+draw_sample_notes:
+                ; Track 1 - note at column 15
+                lda #TRACK1_ROW
+                jsr calc_row_addr
+                ldy #15
+                lda #NOTE_CHAR
+                sta (screen_ptr),y
+                lda #COL_CYAN
+                sta (colour_ptr),y
+
+                ; ... repeat for tracks 2 and 3
+                rts
+```
+
+Each track gets its own colour: cyan, green, yellow — matching the hit zones from Unit 5.
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+You should see the game screen with three circular notes on the tracks. They're not moving yet — that comes next unit — but they're *there*, rendered with your custom character set.
+
+## What You've Learnt
+
+- **Character ROM access**: Hide I/O by clearing bit 2 of $01
+- **Character structure**: 8 bytes per character, MSB = leftmost pixel
+- **VIC-II memory setup**: $D018 controls screen and character location
+- **Binary graphics**: Design characters visually using `%` notation
+- **Custom character range**: Characters 128-255 available for custom use
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-06/symphony.asm" />
+
+## Next Unit
+
+We have a screen. We have custom notes. But everything is static.
+
+In Unit 7, we build the game loop — the heartbeat that will drive note movement, input checking, and timing. The rhythm game comes alive.
