@@ -1,205 +1,133 @@
 ---
-title: "The Stage"
-description: "Build the screen layout for SID Symphony - three tracks, score display, and a key that makes the SID chip sing."
-pubDate: 2025-11-25
+title: "First Sound"
+description: "Your first contact with the SID chip. Write to memory, hear a tone. The C64 speaks."
+pubDate: 2026-01-08
 game: 1
 gameName: "SID Symphony"
 unit: 1
-totalUnits: 16
+totalUnits: 64
 system: "Commodore 64"
-tags: ["assembly", "6510", "sid", "screen-layout", "cia"]
+tags: ["assembly", "6510", "sid", "memory-mapped-io"]
 nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-02"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
 import InlineNote from "../../../../components/units/InlineNote.astro";
 
 *Need to set up your tools first? See [Getting Started](/commodore-64/getting-started).*
 
 ## What You're Building
 
-Before a single note scrolls across the screen, before you score a single point, before the crowd goes wild — you need a stage.
+No graphics. No input. Just sound.
 
 By the end of this unit, you'll have:
 
-- A screen that looks like a game (even though it isn't one yet)
-- Three tracks waiting for notes (with one active)
-- A key that makes the SID chip sing (just one note, but *your* note)
+- A working assembly program that runs on the C64
+- Your first contact with the SID chip
+- A continuous tone playing through the speaker
 
-It's not much. It's also everything. Every Guitar Hero, every Rock Band, every rhythm game ever made started here: a place for things to happen, and a sound when you poke it.
-
-Let's build the stage.
-
-## The Screen Layout
-
-Here's what we're aiming for:
-
-```
-┌────────────────────────────────────────┐
-│ SCORE: 000000          STREAK: 00      │  ← Top panel
-├────────────────────────────────────────┤
-│                                        │
-│ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  ← Track 1 (X) - dimmed
-│                                        │
-│ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  ← Track 2 (C) - ACTIVE
-│                                        │
-│ ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  ← Track 3 (V) - dimmed
-│                                        │
-├────────────────────────────────────────┤
-│ CROWD [          ]                     │  ← Bottom panel
-└────────────────────────────────────────┘
-```
-
-The hit zone is on the left — that solid block where notes arrive and you smack the key. The rest of the track is where notes will scroll from. Right now it's empty.
-
-## Build It. Run It.
-
-Use this command whenever you see "Build it. Run it.":
-
-```bash
-acme -f cbm -o symphony.prg symphony.asm && x64sc symphony.prg
-```
+It's not much to look at — a blank screen. But *listen*. That tone is yours. You made the C64 speak.
 
 ## The BASIC Stub
 
-Every C64 program that loads with `LOAD "*",8,1` and runs with `RUN` needs a BASIC stub. This tiny fake BASIC program just says "jump to the machine code":
+Every C64 program that loads with `LOAD"*",8,1` and runs with `RUN` needs a BASIC stub. This tiny fake BASIC program tells the C64 where to find your machine code:
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/01-the-basic-stub.asm" lang="asm" />
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/01-basic-stub.asm" />
 
-The `* = $0801` tells the assembler to put this code at address $0801, where BASIC programs live. The stub points to $0810 (2064 in decimal), where our real code starts.
+The `* = $0801` tells the assembler to put this code at address $0801, where BASIC programs live. The stub creates a single BASIC line: `10 SYS 2064`. When you type RUN, the C64 executes this line, which jumps to address 2064 ($0810) — where your real code begins.
 
-## Memory Map Essentials
+## Memory-Mapped I/O
 
-The C64 has specific memory addresses for everything:
+Here's the key insight that makes the C64 tick: **hardware is controlled through memory addresses**.
 
-| Address | Purpose |
-|---------|---------|
-| $0400-$07E7 | Screen RAM (1000 characters, 40×25) |
-| $D800-$DBE7 | Colour RAM (one byte per character) |
-| $D020 | Border colour |
-| $D021 | Background colour |
-| $D400-$D418 | SID chip (sound) |
-| $DC00-$DC01 | CIA #1 (keyboard) |
+Want to change the border colour? Write to address $D020.
+Want to make sound? Write to addresses starting at $D400.
 
-Screen position = `$0400 + (row × 40) + column`. Colour position = `$D800 + (row × 40) + column`.
+The CPU doesn't know or care that these addresses connect to hardware. It just reads and writes bytes. The magic happens in the chips monitoring those memory locations.
 
-## Clearing the Screen
-
-We want a black screen, not the default blue with "READY." prompt:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/02-clearing-the-screen.asm" lang="asm" />
-
-The loop runs 256 times (X goes 0→255→0, and `bne` exits when X wraps to 0). We fill four overlapping regions to cover all 1000 screen bytes.
-
-<InlineNote>
-The C64's screen is 1000 bytes but X can only count to 255. We use four `sta` instructions with different base addresses to cover the full screen in one loop.
-</InlineNote>
-
-## Drawing Text
-
-To draw text, we copy characters from a string to screen RAM, and set colours in colour RAM:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/03-drawing-text.asm" lang="asm" />
-
-The `!scr` directive converts ASCII text to C64 screen codes. The `!byte 0` marks the end of the string.
-
-## Drawing the Tracks
-
-Three horizontal tracks, each with a hit zone on the left and a lane stretching right:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/04-drawing-the-tracks.asm" lang="asm" />
-
-Yes, there's repetition. We'll refactor later. Right now, clarity beats cleverness.
-
-## The Crowd Meter
-
-The bottom panel shows the crowd's enthusiasm:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/05-the-crowd-meter.asm" lang="asm" />
+This is called **memory-mapped I/O**, and it's how all C64 programming works.
 
 ## The SID Chip
 
-The SID (Sound Interface Device) is the C64's legendary sound chip. It has three voices, each with:
+The SID (Sound Interface Device) is the C64's legendary sound chip. It lives at addresses $D400 through $D41C — 29 bytes that control three independent voices, each capable of producing different waveforms.
 
-- **Frequency** (16-bit) - the pitch
-- **Pulse width** (12-bit) - for pulse wave shape
-- **Control** - waveform selection and gate
-- **ADSR** - Attack, Decay, Sustain, Release envelope
+For now, we only need voice 1:
 
-For voice 1:
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/02-sid-registers.asm" />
 
-| Register | Address | Purpose |
-|----------|---------|---------|
-| Freq Lo | $D400 | Frequency low byte |
-| Freq Hi | $D401 | Frequency high byte |
-| PW Lo | $D402 | Pulse width low |
-| PW Hi | $D403 | Pulse width high |
-| Control | $D404 | Waveform + gate |
-| AD | $D405 | Attack/Decay |
-| SR | $D406 | Sustain/Release |
-| Volume | $D418 | Master volume (shared) |
+Each voice has seven registers. We'll explore them all, but today we focus on making *any* sound at all.
 
-## Initialising the SID
+## Setting the Frequency
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/06-initialising-the-sid.asm" lang="asm" />
+Sound is vibration. The SID creates vibration by oscillating between high and low values at a specific rate — the frequency. Higher frequency means higher pitch.
 
-The ADSR envelope shapes how the sound evolves:
-- **Attack** (0) - Sound reaches full volume instantly
-- **Decay** (0) - No decay phase
-- **Sustain** (15) - Holds at full volume while gate is open
-- **Release** (9) - Fades when gate closes
+The SID's frequency registers take a 16-bit value, split across two 8-bit registers:
 
-## Playing and Stopping Notes
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/03-set-frequency.asm" />
 
-To make sound, we "open the gate" (bit 0 of control register). Bit 6 selects pulse wave:
+The value $1168 produces middle C (approximately 262 Hz). We'll build a proper note table in Unit 4.
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/07-playing-and-stopping-notes.asm" lang="asm" />
+<InlineNote>
+Why two registers? The 6510 is an 8-bit CPU — it can only work with one byte at a time. Any value larger than 255 must be split across multiple bytes. You'll see this pattern constantly.
+</InlineNote>
 
-Gate on = sound starts and sustains. Gate off = sound enters release phase and fades.
+## The ADSR Envelope
 
-## Reading the Keyboard
+A tone that starts instantly and stops instantly sounds harsh and artificial. Real sounds have shape — they swell, sustain, and fade.
 
-The C64 keyboard is an 8×8 matrix read through CIA #1. To check if a key is pressed:
+The SID shapes sounds using four parameters: **Attack**, **Decay**, **Sustain**, and **Release** (ADSR):
 
-1. Write to $DC00 to select a row (column in matrix terms)
-2. Read $DC01 to see which keys in that row are pressed
-3. A 0 bit means the key is down
+- **Attack**: How quickly the sound reaches full volume
+- **Decay**: How quickly it drops to the sustain level
+- **Sustain**: The volume while the note is held
+- **Release**: How quickly it fades after the note ends
 
-For the X key (row 2, column 7):
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/04-set-envelope.asm" />
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/08-reading-the-keyboard.asm" lang="asm" />
+For now, we use instant attack ($0), no decay ($0), full sustain ($F), and instant release ($0). This creates a plain, sustained tone — perfect for testing.
 
-## The Main Loop
+## Opening the Gate
 
-We track key state to handle press/release properly:
+You've set the frequency. You've set the envelope. But the SID is still silent. Why?
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/09-the-main-loop.asm" lang="asm" />
+The SID has a **gate**. Think of it like a musician's breath — the sound only plays while the gate is open. The gate is bit 0 of the control register.
 
-## What You've Built
+The control register also selects which waveform to use. We'll explore waveforms in Unit 2, but for now we use the **pulse wave** (bit 6):
 
-Build it. Run it. You should see:
-- Black screen with white text at top
-- Three horizontal tracks (middle one cyan, others grey)
-- Crowd meter at bottom
-- Hold X to hear a sustained tone, release to hear it fade
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/snippets/05-gate-on.asm" />
+
+The moment you write this value, the SID springs to life.
+
+## Build It. Run It.
+
+Save this code as `symphony.asm` and assemble it:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+You should see a black screen. More importantly, you should *hear* a continuous tone.
+
+<InlineNote>
+If you don't hear anything, check your emulator's sound settings. In VICE, go to Settings → Sound settings and ensure sound is enabled.
+</InlineNote>
 
 ## What You've Learnt
 
-- **Screen RAM** ($0400) and **Colour RAM** ($D800) are separate
-- **SID fundamentals** - frequency, pulse width, ADSR envelope, gate control
-- **CIA keyboard matrix** - row/column scanning for key detection
-- **State tracking** - remembering previous state to detect changes
+- **Memory-mapped I/O**: Hardware is controlled by writing to specific addresses
+- **The SID chip**: Lives at $D400, has three voices, each with its own registers
+- **Frequency**: A 16-bit value split across two registers
+- **ADSR envelope**: Shapes how sounds evolve over time
+- **The gate bit**: Controls when sound plays
 
 ## The Complete Code
 
-Here's the complete `symphony.asm` for this unit:
+Here's the complete `symphony.asm`:
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/symphony.asm" lang="asm" />
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-01/symphony.asm" />
 
 ## Next Unit
 
-The stage is set. The SID is ready. But nothing's moving yet.
-
-In Unit 2, we spawn notes on the right and watch them scroll toward that hit zone on the left. The highway comes alive.
+One voice, one note, one tone. But the SID has three voices, each capable of different waveforms. In Unit 2, we'll explore all four waveforms and make all three voices sing together — your first chord.

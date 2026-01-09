@@ -1,97 +1,134 @@
 ---
-title: "Hit or Miss"
-description: "Detect when notes are hit or missed. Add visual feedback. The toy becomes a game."
-pubDate: 2025-11-25
+title: "ADSR Envelopes"
+description: "Shape sounds from harsh stabs to soft pads. The same note becomes organ, string, or pluck through envelope design."
+pubDate: 2026-01-08
 game: 1
 gameName: "SID Symphony"
 unit: 3
-totalUnits: 16
+totalUnits: 64
 system: "Commodore 64"
-tags: ["assembly", "6510", "collision-detection", "game-logic", "feedback"]
+tags: ["assembly", "6510", "sid", "adsr", "envelope", "sound-design"]
 prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-02"
 nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-04"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
 import InlineNote from "../../../../components/units/InlineNote.astro";
 
-*Need to catch up? Check out [Unit 2: Notes in Motion](/commodore-64/game-01-sid-symphony/unit-02).*
+*Need to catch up? Check out [Unit 2: The Three Voices](/commodore-64/assembly/game-01-sid-symphony/unit-02).*
 
 ## What You're Building
 
-Notes scroll. The SID sings. But nothing happens when a note reaches the hit zone. You can't succeed. You can't fail. There's no game yet.
+We briefly mentioned ADSR in Unit 1. Now we master it.
+
+The same frequency. The same waveform. But radically different sounds — organ, string, and pluck — all from the same note, shaped only by their envelopes.
 
 By the end of this unit, you'll have:
 
-- Hit detection — pressing X while a note is in the hit zone removes it
-- Miss detection — notes that scroll past without being hit trigger feedback
-- Visual feedback — green flash for hits, red flash for misses
+- Deep understanding of Attack, Decay, Sustain, and Release
+- Three voices playing the same note with completely different characters
+- The ability to design sounds, not just trigger them
 
-It's a game now. You can win. You can lose. There are stakes.
+This is where programming becomes *sound design*.
 
-## The Key-Down Problem
+## The Shape of Sound
 
-In Unit 2, we checked if X was held. But for hit detection, we need to know when X *transitions* from not-pressed to pressed — the exact moment of the key-down.
+A piano key struck and held doesn't produce a constant volume. It starts with a sharp attack, settles into a sustained tone, and fades when released. A flute note swells in gradually. A drum hit is all attack, no sustain.
 
-Why? If we check every frame that X is held, a single keypress lasting 10 frames would try to hit 10 notes. We only want one hit per press.
+ADSR captures this evolution:
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/01-the-key-down-problem.asm" lang="asm" />
+- **Attack**: Time from silence to peak volume
+- **Decay**: Time from peak to sustain level
+- **Sustain**: Volume level while note is held (not a time — a level)
+- **Release**: Time from sustain to silence after note ends
 
-Each frame, compare "is pressed now" with "was pressed last frame":
+The SID lets you set each parameter from 0-15, packed into two registers:
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/02-the-key-down-problem.asm" lang="asm" />
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/01-adsr-registers.asm" />
 
-The transition happens when `key_was_pressed` is 0 and current state is 1.
+## Attack Times
 
-## Hit Detection
+Attack values map to specific times. The scale is non-linear — small values for fast attacks, large values for slow swells:
 
-A "hit" means: X pressed while any note is in the hit zone (columns 0-3).
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/02-attack-times.asm" />
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/03-hit-detection.asm" lang="asm" />
-
-We scan through all note slots. The first active note with position less than `HIT_ZONE_W` is a hit.
-
-## Miss Detection
-
-A "miss" happens when a note scrolls off the left edge. In `move_notes`, when a note's position wraps to $FF, it's a miss:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/04-miss-detection.asm" lang="asm" />
-
-## Visual Feedback
-
-Feedback needs to be immediate and clear. We flash the hit zone colour:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/05-visual-feedback.asm" lang="asm" />
-
-Each frame, check if a flash is active:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/06-visual-feedback.asm" lang="asm" />
+Decay and Release use the same time values. The non-linear scale gives fine control over fast times (where precision matters for percussive sounds) and coarse control over slow times (where exact duration matters less).
 
 <InlineNote>
-Four frames at 50fps is about 80 milliseconds — long enough to notice, short enough to feel snappy. This is a common pattern for feedback timing.
+Sustain is different — it's a *level* (0-15), not a time. Sustain=8 means the sound holds at half volume. Sustain=0 means the sound fades to silence during decay, regardless of whether the gate stays open.
 </InlineNote>
 
-## What You've Built
+## Three Characters, One Note
 
-Build it. Run it. Watch a note scroll toward the hit zone. Press X at the right moment — the note vanishes, the zone flashes green. Miss one — red flash.
+Let's create three distinct sounds, all playing the same C4 note:
+
+### The Organ
+
+Instant attack, full sustain, slow release. The classic held-key sound:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/03-organ-envelope.asm" />
+
+### The String
+
+Slow swell, partial sustain, gradual fade. Like a bowed instrument:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/04-string-envelope.asm" />
+
+### The Pluck
+
+Instant hit, quick decay to nothing. Like a plucked guitar string:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/05-pluck-envelope.asm" />
+
+## The Gate Cycle
+
+The gate bit controls when the ADSR cycle runs:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/snippets/06-gate-cycle.asm" />
+
+When you open the gate, Attack begins immediately. The sound rises to full volume, then falls to the Sustain level during Decay. It holds at Sustain until you close the gate, which triggers Release — the final fade to silence.
+
+For the pluck envelope (Sustain=0), the sound fades to nothing during Decay even if the gate stays open. The Release phase has nothing left to fade.
+
+## Hearing the Difference
+
+This unit's program plays each voice separately so you can clearly hear each envelope character, then plays all three together as a chord:
+
+1. **Organ** (C): Appears instantly, sustains fully, fades slowly when released
+2. **String** (E): Swells in over ~1 second, sustains, fades gradually
+3. **Pluck** (G): Hits instantly, fades away almost immediately
+4. **All three**: The chord combines all three characters
+
+Run it. Close your eyes. Listen to how the same waveform becomes three different instruments through envelope shaping alone.
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+The program loops: trigger, hold, release, wait, repeat. Each cycle lets you hear the full ADSR journey.
+
+Experiments to try:
+1. Set Voice 3's decay to 15 — watch the pluck become a slow fade
+2. Set Voice 2's attack to 15 — hear an 8-second swell
+3. Set Voice 1's release to 0 — instant silence when gate closes
 
 ## What You've Learnt
 
-- **Key-down detection** — Compare current state with previous frame to find transitions
-- **Collision zones** — Use comparison operators to check if values fall within ranges
-- **Timer-based effects** — Decrement counters each frame for timed events
-- **Colour RAM manipulation** — Change colours without changing characters
+- **ADSR register layout**: Attack/Decay in one byte, Sustain/Release in another
+- **Time values**: 0-15 maps to 2ms-8 seconds (non-linear)
+- **Sustain is a level**: Not a time; determines volume during held notes
+- **Gate triggers cycles**: Open = Attack starts, Close = Release starts
 
 ## The Complete Code
 
-Here's the complete `symphony.asm` for this unit:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/symphony.asm" lang="asm" />
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-03/symphony.asm" />
 
 ## Next Unit
 
-You can hit notes. You can miss them. But nothing's counting. The score stays at zero. The streak never moves.
+We can make sounds. We can shape them. But we're stuck on one note — middle C.
 
-In Unit 4, we add scoring. Hits earn points. Consecutive hits build streaks. The numbers on screen start to mean something.
+In Unit 4, we build a frequency table covering a full octave, then play an ascending scale. The SID learns to sing melodies.

@@ -1,118 +1,134 @@
 ---
-title: "Notes in Motion"
-description: "Spawn notes on the right, watch them scroll toward the hit zone. The highway comes alive."
-pubDate: 2025-11-25
+title: "The Three Voices"
+description: "The SID has three independent voices. Configure them all, explore the four waveforms, and play your first chord."
+pubDate: 2026-01-08
 game: 1
 gameName: "SID Symphony"
 unit: 2
-totalUnits: 16
+totalUnits: 64
 system: "Commodore 64"
-tags: ["assembly", "6510", "animation", "game-objects", "timing"]
+tags: ["assembly", "6510", "sid", "waveforms", "chord"]
 prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-01"
 nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-03"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
 import InlineNote from "../../../../components/units/InlineNote.astro";
 
-*Need to catch up? Check out [Unit 1: The Stage](/commodore-64/game-01-sid-symphony/unit-01).*
+*Need to catch up? Check out [Unit 1: First Sound](/commodore-64/assembly/game-01-sid-symphony/unit-01).*
 
 ## What You're Building
 
-The stage is set. The SID can sing. But nothing's moving yet.
+One voice made one sound. But the SID has *three* voices — three independent sound generators that can play simultaneously. That's not just three times louder. That's harmony. That's chords. That's music.
 
 By the end of this unit, you'll have:
 
-- Notes spawning on the right edge of Track 2
-- Smooth animation as they scroll toward the hit zone
-- Multiple notes on screen at once
-- Proper frame timing so it looks the same on every C64
+- All three SID voices playing together
+- A C major chord ringing out (C-E-G)
+- Three different waveforms, each with its own character
+- Understanding of how voices combine
 
-It's not a game yet — you can't hit the notes, can't score points, can't fail. But it *looks* like a game. Something is happening. The highway is alive.
+Listen to the result. That's not a beep — that's a *chord*.
 
-## The Problem With Speed
+## Voice Register Offsets
 
-Our Unit 1 main loop runs as fast as it can. On a real C64, that's roughly a million cycles per second. If we moved a note every time through the loop, it would cross the screen in a blur.
+Each SID voice has seven registers. Voice 1 starts at $D400, but where are the others?
 
-We need to sync with something reliable: the display.
+Simple arithmetic: each voice occupies 7 bytes, so the voices are 7 bytes apart:
 
-## The Raster Beam
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/01-voice-offsets.asm" />
 
-The C64 draws the screen 50 times per second (PAL) or 60 times (NTSC). An electron beam sweeps across the screen, line by line, painting each frame. The VIC-II chip tracks which line it's currently drawing in register `$D012`.
+Voice 1 at $D400, Voice 2 at $D407, Voice 3 at $D40E. The register layout is identical — only the base address changes.
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/01-the-raster-beam.asm" lang="asm" />
+## The Four Waveforms
 
-Why wait for "not zero" first? If we're already on line 0 when we check, we'd immediately continue — and might run multiple updates in the same frame. The two-step wait ensures we catch the *transition* to line 0.
+The SID can generate four fundamentally different waveforms. Each has a distinct sonic character:
 
-This is the foundation of all smooth C64 animation.
+| Waveform | Bit | Sound Character |
+|----------|-----|-----------------|
+| Triangle | $10 | Soft, pure, flute-like |
+| Sawtooth | $20 | Bright, buzzy, string-like |
+| Pulse | $40 | Hollow, reedy, organ-like |
+| Noise | $80 | Unpitched, percussive, static |
 
-## Storing Notes
+The waveform is selected in the control register, combined with the gate bit:
 
-We need to track which notes exist and where they are. The simplest approach: an array of X positions.
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/02-storing-notes.asm" lang="asm" />
-
-A note with X position `$FF` doesn't exist. Any other value (0-39) is its column on screen.
-
-## Spawning Notes
-
-To spawn a note, find an empty slot and set its position to 39 (the right edge):
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/03-spawning-notes.asm" lang="asm" />
-
-## Moving Notes
-
-Every few frames, shift all active notes one column left:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/04-moving-notes.asm" lang="asm" />
-
-When a note at column 0 decrements, it wraps to `$FF` — our inactive marker. The note despawns automatically.
-
-## Drawing and Erasing Notes
-
-Notes appear on Track 2 (row 12). We calculate the screen address and write a character:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/05-drawing-and-erasing-notes.asm" lang="asm" />
-
-Erasing is similar but writes a dash character to restore the track.
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/02-waveform-bits.asm" />
 
 <InlineNote>
-The zero page pointer `screen_ptr` ($FB-$FC) lets us use indirect indexed addressing: `sta (screen_ptr),y`. This is how we write to calculated addresses on the 6502.
+You can only select *one* waveform at a time (setting multiple bits produces unusual, often harsh, sounds — interesting for experimentation, but not for music).
 </InlineNote>
 
-## Timer-Based Events
+## Building a Chord
 
-Two timers control the rhythm:
+A chord is multiple notes that sound good together. The simplest pleasant chord is a **major triad**: the root note, a major third above it, and a perfect fifth above it.
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/06-timer-based-events.asm" lang="asm" />
+For C major: C, E, and G.
 
-Each frame, decrement both. When they hit zero, do the action and reset:
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/03-chord-frequencies.asm" />
 
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/07-timer-based-events.asm" lang="asm" />
+We'll build a proper frequency table in Unit 4. For now, these three values give us a clean C major chord.
 
-At 50fps: notes move ~12 times per second, notes spawn every second. A note takes about 3 seconds to cross the screen.
+## Configuring Each Voice
 
-## What You've Built
+Each voice needs the same setup: frequency, envelope, waveform, and gate. The only differences are the frequency value and the waveform selection:
 
-Build it. Run it. Watch notes appear on the right, scroll left, and vanish off the edge. Press X — the SID still sings. The two systems coexist.
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/04-configure-voice.asm" />
+
+We give each voice a different waveform so you can hear them individually within the chord:
+- Voice 1 (C): Triangle — the soft foundation
+- Voice 2 (E): Sawtooth — the bright third
+- Voice 3 (G): Pulse — the hollow fifth
+
+## Pulse Width
+
+The pulse waveform has an extra parameter: **pulse width**. This controls the ratio of "high" to "low" in each cycle.
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/snippets/05-pulse-width.asm" />
+
+- 50% ($0800) — Balanced, hollow square wave
+- 25% ($0400) — Thinner, more nasal
+- 10% ($0199) — Very thin, almost filtered
+
+Triangle and sawtooth don't use pulse width. Noise ignores both pulse width and frequency (it's just random).
+
+## How Voices Combine
+
+When multiple voices play simultaneously, the SID adds their outputs together. Three voices at full sustain won't be three times as loud — the SID has a single output that clips if overdriven.
+
+For clean mixing:
+- Use similar sustain levels across voices
+- Vary waveforms for distinct voices
+- Space frequencies apart (don't play the same note on multiple voices)
+
+## Build It. Run It.
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+x64sc symphony.prg
+```
+
+You'll see a black screen. But *listen*. That's a chord — three distinct tones harmonising together.
+
+Try these experiments:
+1. Change Voice 2's waveform from sawtooth to triangle — hear how the chord becomes softer
+2. Change Voice 3's pulse width to $0400 — hear how it becomes thinner
+3. Set all three to the same waveform — hear how they blend into one sound
 
 ## What You've Learnt
 
-- **Raster synchronisation** — `$D012` tracks the beam; wait for line 0 for frame sync
-- **Object arrays** — Store entity state in arrays; use sentinel values for inactive slots
-- **Timer patterns** — Decrement counters each frame; act when zero; reset
-- **Indirect addressing** — Calculate addresses at runtime; access through zero page pointers
+- **Voice offsets**: +7 bytes per voice ($D400, $D407, $D40E)
+- **Waveform selection**: Triangle ($10), Sawtooth ($20), Pulse ($40), Noise ($80)
+- **Pulse width**: 12-bit value controlling pulse wave duty cycle
+- **Voice mixing**: The SID sums all voices to a single output
 
 ## The Complete Code
 
-Here's the complete `symphony.asm` for this unit:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/symphony.asm" lang="asm" />
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-02/symphony.asm" />
 
 ## Next Unit
 
-Notes scroll past, but nothing happens when they reach the hit zone. You can't succeed. You can't fail. There's no game yet.
+We've played sounds, we've played chords. But they're all the same shape — instant on, sustained, instant off. Real instruments don't work that way. A piano note swells and fades. A drum hits and decays. A string sustains then releases.
 
-In Unit 3, we detect when you press X at the right moment — and when you don't. Hits and misses. The game gets teeth.
+In Unit 3, we explore ADSR envelopes in depth — shaping sounds from harsh stabs to soft pads.
