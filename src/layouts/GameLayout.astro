@@ -13,6 +13,13 @@ export interface Props {
     title: string;
     available: boolean;
   }>;
+  phases?: Array<{
+    name: string;
+    description?: string;
+    hours?: string;
+    start: number;
+    end: number;
+  }>;
 }
 
 // Access frontmatter from MDX
@@ -25,8 +32,18 @@ const {
   game = 1,
   gameName = '',
   totalUnits = 8,
-  units = []
+  units = [],
+  phases = []
 } = frontmatter;
+
+// Helper to get units for a phase
+const getUnitsForPhase = (start: number, end: number) => {
+  return units.filter(u => u.number >= start && u.number <= end);
+};
+
+// Calculate progress
+const availableUnits = units.filter(u => u.available).length;
+const progressPercent = totalUnits > 0 ? (availableUnits / totalUnits) * 100 : 0;
 
 const systemColors = {
   'Commodore 64': '#4a4dff',
@@ -92,19 +109,83 @@ const displayGameName = gameName || title;
     <!-- Unit Roadmap -->
     {units.length > 0 && (
       <section class="unit-roadmap">
-        <h2 class="roadmap-title">Unit Roadmap</h2>
-        <div class="unit-list">
-          {units.map((unit) => (
-            <a
-              href={unit.available ? `/${platformSlug}/${languagePath}/game-${String(game).padStart(2, '0')}-${gameName.toLowerCase().replace(/\s+/g, '-')}/unit-${String(unit.number).padStart(2, '0')}` : undefined}
-              class={`unit-item ${unit.available ? 'available' : 'locked'}`}
-            >
-              <span class="unit-number">{unit.number}</span>
-              <span class="unit-title">{unit.title}</span>
-              {!unit.available && <span class="unit-status">Coming Soon</span>}
-            </a>
-          ))}
+        <div class="section-divider"></div>
+        <div class="roadmap-header">
+          <h2 class="roadmap-title">Unit Roadmap</h2>
+          <div class="progress-indicator">
+            <span class="progress-text">{availableUnits} of {totalUnits} units available</span>
+            <div class="progress-bar">
+              <div class="progress-fill" style={`width: ${progressPercent}%`}></div>
+            </div>
+          </div>
         </div>
+
+        {phases.length > 0 ? (
+          /* Render units grouped by phase */
+          phases.map((phase, phaseIndex) => {
+            const phaseUnits = getUnitsForPhase(phase.start, phase.end);
+            const phaseAvailableCount = phaseUnits.filter(u => u.available).length;
+            const isPhaseComplete = phaseAvailableCount === phaseUnits.length;
+            const isPhaseAvailable = phaseAvailableCount > 0;
+            return (
+              <div class={`phase-group ${isPhaseAvailable ? 'available' : 'locked'}`}>
+                <div class="phase-header">
+                  <div class="phase-info">
+                    <div class="phase-title-row">
+                      <span class="phase-number">Phase {phaseIndex + 1}</span>
+                      <h3 class="phase-title">{phase.name}</h3>
+                    </div>
+                    {phase.description && <p class="phase-description">{phase.description}</p>}
+                  </div>
+                  <div class="phase-meta">
+                    <span class="phase-range">Units {phase.start}–{phase.end}</span>
+                    {phase.hours && <span class="phase-hours">~{phase.hours} hours</span>}
+                    {isPhaseComplete && <span class="phase-status complete">Complete</span>}
+                    {!isPhaseComplete && phaseAvailableCount > 0 && <span class="phase-status partial">{phaseAvailableCount}/{phaseUnits.length}</span>}
+                    {phaseAvailableCount === 0 && <span class="phase-status upcoming">Coming Soon</span>}
+                  </div>
+                </div>
+                {isPhaseAvailable ? (
+                  /* Grid layout for available phases */
+                  <div class="unit-grid">
+                    {phaseUnits.map((unit) => (
+                      <a
+                        href={unit.available ? `/${platformSlug}/${languagePath}/game-${String(game).padStart(2, '0')}-${gameName.toLowerCase().replace(/\s+/g, '-')}/unit-${String(unit.number).padStart(2, '0')}` : undefined}
+                        class={`unit-item ${unit.available ? 'available' : 'locked'}`}
+                      >
+                        <span class="unit-number">{unit.number}</span>
+                        <span class="unit-title">{unit.title}</span>
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  /* Compact preview for locked phases */
+                  <div class="unit-preview">
+                    {phaseUnits.map((unit, i) => (
+                      <span class="preview-unit">
+                        {unit.title}{i < phaseUnits.length - 1 ? ' · ' : ''}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          /* Flat list fallback */
+          <div class="unit-grid">
+            {units.map((unit) => (
+              <a
+                href={unit.available ? `/${platformSlug}/${languagePath}/game-${String(game).padStart(2, '0')}-${gameName.toLowerCase().replace(/\s+/g, '-')}/unit-${String(unit.number).padStart(2, '0')}` : undefined}
+                class={`unit-item ${unit.available ? 'available' : 'locked'}`}
+              >
+                <span class="unit-number">{unit.number}</span>
+                <span class="unit-title">{unit.title}</span>
+                {!unit.available && <span class="unit-status">Coming Soon</span>}
+              </a>
+            ))}
+          </div>
+        )}
       </section>
     )}
 
@@ -242,6 +323,20 @@ const displayGameName = gameName || title;
       margin-bottom: var(--space-2);
     }
 
+    .game-content :global(img:first-of-type) {
+      display: block;
+      margin: 0 auto var(--space-8);
+      max-width: 100%;
+      height: auto;
+      border: 3px solid var(--systemColor);
+      border-radius: 0.75rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+      width: min(100%, 640px);
+    }
+
     .game-content :global(img) {
       display: block;
       margin: var(--space-8) auto;
@@ -287,10 +382,183 @@ const displayGameName = gameName || title;
       margin-bottom: var(--space-12);
     }
 
+    .section-divider {
+      height: 4px;
+      background: linear-gradient(90deg, transparent, var(--systemColor), transparent);
+      margin-bottom: var(--space-12);
+      border-radius: 2px;
+    }
+
+    .roadmap-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-6);
+      margin-bottom: var(--space-8);
+    }
+
     .roadmap-title {
       font-size: 1.5rem;
-      margin-bottom: var(--space-6);
+      margin: 0;
       color: var(--color-text);
+    }
+
+    .progress-indicator {
+      text-align: right;
+    }
+
+    .progress-text {
+      font-size: 0.875rem;
+      color: var(--color-text-secondary);
+      display: block;
+      margin-bottom: var(--space-2);
+    }
+
+    .progress-bar {
+      width: 200px;
+      height: 6px;
+      background: var(--color-border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--systemColor);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    /* Phase Groups */
+    .phase-group {
+      margin-bottom: var(--space-6);
+      padding: var(--space-6);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+
+    .phase-group.available {
+      border-color: var(--systemColor);
+      border-width: 2px;
+    }
+
+    .phase-group.locked {
+      opacity: 0.8;
+    }
+
+    .phase-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .phase-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-4);
+      margin-bottom: var(--space-4);
+    }
+
+    .phase-info {
+      flex: 1;
+    }
+
+    .phase-title-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: var(--space-1);
+    }
+
+    .phase-number {
+      font-family: var(--font-family-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary);
+      background: var(--color-border);
+      padding: 0.15rem 0.4rem;
+      border-radius: 0.25rem;
+    }
+
+    .phase-group.available .phase-number {
+      background: var(--systemColor);
+      color: white;
+    }
+
+    .phase-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-text);
+      margin: 0;
+    }
+
+    .phase-description {
+      font-size: 0.875rem;
+      color: var(--color-text-secondary);
+      margin: 0;
+    }
+
+    .phase-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: var(--space-2);
+    }
+
+    .phase-range {
+      font-family: var(--font-family-mono);
+      font-size: 0.75rem;
+      color: var(--color-text-secondary);
+    }
+
+    .phase-hours {
+      font-size: 0.75rem;
+      color: var(--color-text-secondary);
+    }
+
+    .phase-status {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: var(--space-1) var(--space-2);
+      border-radius: 0.25rem;
+    }
+
+    .phase-status.complete {
+      background: #22c55e20;
+      color: #22c55e;
+    }
+
+    .phase-status.partial {
+      background: var(--systemColor)20;
+      color: var(--systemColor);
+    }
+
+    .phase-status.upcoming {
+      background: var(--color-border);
+      color: var(--color-text-secondary);
+    }
+
+    /* Unit Grid (2 columns for available) */
+    .unit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-3);
+    }
+
+    /* Unit Preview (compact for locked) */
+    .unit-preview {
+      font-size: 0.8rem;
+      color: var(--color-text-secondary);
+      line-height: 1.9;
+      word-break: break-word;
+      hyphens: auto;
+      margin-top: var(--space-3);
+      padding: var(--space-3);
+      background: rgba(0, 0, 0, 0.03);
+      border-radius: 0.5rem;
     }
 
     .unit-list {
@@ -403,6 +671,33 @@ const displayGameName = gameName || title;
       .game-badge {
         flex-direction: column;
         align-items: flex-start;
+      }
+
+      .roadmap-header {
+        flex-direction: column;
+        gap: var(--space-4);
+      }
+
+      .progress-indicator {
+        text-align: left;
+      }
+
+      .progress-bar {
+        width: 100%;
+      }
+
+      .unit-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .phase-header {
+        flex-direction: column;
+        gap: var(--space-2);
+      }
+
+      .phase-meta {
+        flex-direction: row;
+        align-items: center;
       }
 
       .game-navigation {
