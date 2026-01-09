@@ -1,6 +1,6 @@
 ---
 /**
- * CodeFromFile - Renders code from an external file
+ * CodeFromFile - Renders code from an external file with syntax highlighting
  *
  * Usage:
  *   import CodeFromFile from '@components/CodeFromFile.astro';
@@ -9,6 +9,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { codeToHighlightHtml } from 'shiki-highlight-api';
+import { loadCode198xLanguages } from '../lib/load-custom-languages';
 
 interface Props {
   src: string;      // Path relative to code-samples root
@@ -51,16 +53,30 @@ function inferLanguage(srcPath: string, ext: string): string {
 }
 
 const language = lang || inferLanguage(src, extension);
+
+// Load custom languages and generate highlighted HTML using CSS Highlights API
+await loadCode198xLanguages();
+
+// Generate unique block ID for CSS Highlights API
+const blockId = `code-${src.replace(/[^a-z0-9]/gi, '-')}`;
+
+const highlightResult = await codeToHighlightHtml(code, {
+  lang: language,
+  theme: 'dark-plus',
+  blockId,
+});
 ---
 
 {title && <p class="code-title"><strong>{title}</strong></p>}
-<div class="code-container">
+<div class="code-container" data-code={code}>
   <button class="copy-button" aria-label="Copy code to clipboard">
     <span class="copy-icon">Copy</span>
     <span class="copied-icon" style="display: none;">Copied!</span>
   </button>
-  <pre class={`language-${language}`}><code class={`language-${language}`} set:text={code} /></pre>
+  <Fragment set:html={highlightResult.html} />
 </div>
+<Fragment set:html={highlightResult.css} />
+<Fragment set:html={highlightResult.script} />
 
 <style>
   .code-title {
@@ -111,15 +127,16 @@ const language = lang || inferLanguage(src, extension);
 <script>
   document.querySelectorAll('.code-container').forEach(container => {
     const button = container.querySelector('.copy-button');
-    const code = container.querySelector('code');
     const copyIcon = button?.querySelector('.copy-icon');
     const copiedIcon = button?.querySelector('.copied-icon');
+    // Get raw code from data attribute (preserved for accurate copying)
+    const rawCode = container.getAttribute('data-code');
 
     button?.addEventListener('click', async () => {
-      if (!code || !copyIcon || !copiedIcon) return;
+      if (!rawCode || !copyIcon || !copiedIcon) return;
 
       try {
-        await navigator.clipboard.writeText(code.textContent || '');
+        await navigator.clipboard.writeText(rawCode);
         copyIcon.style.display = 'none';
         copiedIcon.style.display = 'inline';
 
