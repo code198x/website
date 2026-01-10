@@ -1,204 +1,110 @@
 ---
-title: "Difficulty Levels"
-description: "Add difficulty settings to adjust AI speed and strategy."
-pubDate: 2026-01-04
+title: "Results Screen"
+description: "Create a dedicated results screen with final scores, win margin, and proper presentation. The end of each game deserves celebration."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 14
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "ai", "tuning"]
+tags: ["assembly", "z80", "results", "display", "polish"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-13"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-15"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 13: Two Player Mode](/sinclair-zx-spectrum/game-01-ink-war/unit-13).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-The AI plays the same way every time. There's no way to ease into the game or challenge yourself with a tougher opponent. Time to add difficulty settings.
+In Unit 12, we announced the winner over the game board. It worked, but felt rushed — the scores were still there, the board still visible. A proper results screen clears everything away and celebrates the victory.
 
 By the end of this unit, you'll have:
 
-- Three difficulty levels: Easy, Normal, and Hard
-- Difficulty selection on the title screen (for 1P mode only)
-- AI think delay that varies by difficulty
-- Strategic scoring adjustments for each level
+- A dedicated results screen (not overlaid on gameplay)
+- Final scores displayed prominently
+- Win margin calculation and display
+- Special handling for draws
+- A polished end-of-game experience
 
-![Difficulty selection](/images/sinclair-zx-spectrum/game-01-ink-war/unit-14/screenshot.png)
+![Unit 14 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-14/screenshot.png)
 
-## The Plan
+*Title screen — play a full game to see the new results screen.*
 
-We need to:
+## Results Screen Layout
 
-1. **Add a difficulty variable** — track the current setting
-2. **Create a difficulty selection screen** — show after choosing 1P mode
-3. **Modify AI think delay** — faster on Hard, slower on Easy
-4. **Adjust AI scoring** — add center preference for Hard, reduce blocking for Easy
+The results screen needs clear hierarchy:
 
-## How Difficulty Will Work
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/01-results-constants.asm" />
 
-Each difficulty level adjusts two things:
+The winner announcement sits at the top where eyes naturally go first. Scores come next — both players see their final territory. The win margin tells the story: was it a close battle or a decisive victory?
 
-| Level  | Think Delay | Centre Bonus | Blocking Bonus |
-|--------|-------------|--------------|----------------|
-| Easy   | 40 frames   | 0            | 0              |
-| Normal | 25 frames   | 1            | 4              |
-| Hard   | 10 frames   | 3            | 6              |
+<InlineNote>
+"Won by 6 cells" is more meaningful than just showing "35 vs 29". It tells players how close the game was.
+</InlineNote>
 
-**Think delay** — How long the AI "thinks" before moving. Slower gives you more time to plan.
+## Separating Calculation from Display
 
-**Centre bonus** — Extra score for cells near the board centre. Higher makes the AI more strategically aggressive.
+We split winner determination into two parts: calculating the result, then displaying it:
 
-**Blocking bonus** — Score boost for blocking the player. Zero means the AI won't actively try to block.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/02-calculate-results.asm" />
 
-## Adding the Difficulty Variable
+The calculation determines the winner and computes the margin. The Z80's `SUB` instruction gives us the difference directly. We store both values so the display routines can use them.
 
-Add to the variables section:
+## Drawing the Results Screen
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/01-adding-the-difficulty-variable.asm" lang="asm" />
+The main drawing routine calls each component:
 
-We default to Normal (2) so returning players get the familiar experience.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/03-draw-results.asm" />
 
-## The Difficulty Selection Screen
+Each element gets its own colour:
+- Winner message in the player's colour (red or cyan)
+- Draw message in white
+- Scores in player colours
+- Margin and prompt in white/yellow
 
-After choosing 1P mode, we'll show difficulty options. First, the display routine:
+## The Win Margin Message
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/02-the-difficulty-selection-screen.asm" lang="asm" />
+The margin message adapts to the result:
 
-New strings:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/04-margin-message.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/03-the-difficulty-selection-screen.asm" lang="asm" />
+A win shows "WON BY X CELLS". A draw gets special treatment: "TIED AT 32 EACH!" — more interesting than just "margin = 0".
 
-## Handling Difficulty Selection
-
-Wait for 1, 2, or 3:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/04-handling-difficulty-selection.asm" lang="asm" />
-
-The 3 key is bit 2 on row $F7 (the 1-5 row).
-
-## Updating the Entry Point
-
-Modify the start sequence to show difficulty selection only for 1P mode:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/05-updating-the-entry-point.asm" lang="asm" />
-
-In 2P mode, we skip straight to the game — difficulty only affects the AI.
-
-## Variable Think Delay
-
-Replace the fixed delay with a lookup:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/06-variable-think-delay.asm" lang="asm" />
-
-Easy gives you 40 frames (~0.8 seconds) to watch the AI "think". Hard is only 10 frames (~0.2 seconds) — blink and you'll miss it.
-
-## Adjusting AI Scoring
-
-The bigger change is in `score_cell`. We'll modify the blocking bonus and add centre preference:
-
-### Centre Preference
-
-Cells near the centre of the board are more valuable — they have more expansion options. Let's reward the AI for claiming them on harder difficulties:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/07-adjusting-ai-scoring.asm" lang="asm" />
-
-### Blocking Bonus
-
-Adjust the blocking bonus based on difficulty:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/08-adjusting-ai-scoring.asm" lang="asm" />
-
-## The Complete score_cell Routine
-
-Here's the full updated routine:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/snippets/09-the-complete-score-cell-routine.asm" lang="asm" />
-
-## Playing to Difficulty
-
-Each difficulty creates a different experience:
-
-**Easy:**
-- Slow responses give you time to think
-- No centre preference — the AI expands wherever it finds a valid move
-- No blocking — it won't actively try to stop you
-- Great for learning the game mechanics
-
-**Normal:**
-- Balanced pace
-- Mild centre preference (+1/+1 for centre cells)
-- Standard blocking (+4 when near enemy)
-- The default experience
-
-**Hard:**
-- Lightning-fast responses — feels like playing a human
-- Strong centre preference (+2/+2)
-- Aggressive blocking (+6)
-- A real challenge
+<InlineNote>
+The draw message is longer, so we adjust the column position (`RESULT_MARGIN_COL - 1`) to keep it centred.
+</InlineNote>
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Test each difficulty:
+Run in your emulator:
 
-**Easy (press 1 → 1):**
-- AI takes noticeably longer to move
-- AI doesn't seem to block your expansion
-- Win easily while learning the board
+1. Press any key to start
+2. Play a full game — claim all 64 cells
+3. When the last cell is claimed, watch for the results screen
+4. You'll see: winner announcement, final scores, and win margin
+5. The border flashes in the winner's colour
+6. Press any key to return to title
 
-**Normal (press 1 → 2):**
-- Same as before — familiar pacing
-- AI puts up a decent fight
-
-**Hard (press 1 → 3):**
-- AI moves almost instantly
-- AI aggressively controls the centre
-- Much harder to beat
-
-## Recap / Sanity Check
-
-- Difficulty variable stores 1 (Easy), 2 (Normal), or 3 (Hard)
-- Difficulty selection only appears for 1P mode
-- AI think delay varies: 40/25/10 frames
-- Centre bonus adds strategic depth to harder levels
-- Blocking bonus makes hard AI more defensive
-- 2P mode skips difficulty selection entirely
-
-## What You've Built
-
-Comparing to Unit 13:
-
-- **`difficulty`** — variable tracking current setting
-- **`show_difficulty`** — difficulty selection screen
-- **`wait_for_difficulty`** — input handling for 1/2/3 keys
-- **Updated `ai_think_delay`** — variable delay by difficulty
-- **Updated `score_cell`** — centre bonus and variable blocking
-- **New strings** — msg_difficulty, msg_easy, msg_normal, msg_hard
-
-The game now scales to player skill level!
+Try for a draw! If you can manage exactly 32 cells each, you'll see the special "TIED AT 32 EACH!" message.
 
 ## What You've Learnt
 
-- **Lookup tables vs branching** — Using `cp` chains to select values
-- **Conditional features** — Only showing difficulty for relevant modes
-- **AI tuning** — How small scoring changes affect behaviour
-- **Game balance** — Creating distinct experiences with the same AI logic
+- **Dedicated screens**: Clearing away gameplay for clean presentation
+- **Result calculation**: Computing winner and margin separately
+- **Display hierarchy**: Most important information first
+- **Special cases**: Different handling for draws
+- **Polish**: Small touches that make games feel finished
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 14:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/inkwar.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-14/inkwar.asm" />
 
 ## Next Unit
 
-The game now adapts to your skill level. But it still looks a bit rough around the edges.
-
-In Unit 15, we'll add **Visual Polish** — refining the cursor, pacing, and colours for a more polished experience.
+The game is almost complete. One final touch remains: making it obvious that players can start a new game. In Unit 15, we'll add visual feedback encouraging players to press a key, ensuring no one sits at the results screen wondering what to do next.

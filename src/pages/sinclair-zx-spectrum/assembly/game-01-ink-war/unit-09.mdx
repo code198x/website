@@ -1,162 +1,114 @@
 ---
-title: "Win Detection"
-description: "Detect when the game ends, count territories, and declare a winner."
-pubDate: 2026-01-04
+title: "Move Validation"
+description: "Robust validation with audio feedback. Success sounds pleasant, errors sound harsh. Clear feedback for every action."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 9
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "game-logic", "state"]
+tags: ["assembly", "z80", "validation", "sound", "beeper"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-08"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-10"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 8: Better AI](/sinclair-zx-spectrum/game-01-ink-war/unit-08).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-The game plays, but it never ends. You keep claiming until the board fills up, then... nothing. Time to fix that.
+We've had validation since Unit 7 — you can't claim occupied cells. But silent rejection isn't good user experience. In this unit, we add audio feedback that makes valid and invalid moves instantly distinguishable.
 
 By the end of this unit, you'll have:
 
-- Detection for when the board is full
-- Territory counting for both players
-- A winner announcement
-- A game-over state that waits for restart
+- A beeper routine for generating tones
+- A pleasant rising sound for successful claims
+- A harsh buzz for invalid moves
+- Clear, immediate feedback for every action
 
-![Game over screen showing the winner](/images/sinclair-zx-spectrum/game-01-ink-war/unit-09/screenshot.png)
+![Unit 9 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-09/screenshot.png)
 
-## When Does the Game End?
+*The visuals haven't changed — run the program to hear the sounds!*
 
-The game ends when no valid moves remain. This happens when:
-1. The board is completely full (all 64 cells claimed), OR
-2. Neither player can make a valid move (both are blocked)
+## The Spectrum Beeper
 
-We'll track remaining moves with a simple counter. Starting at 62 (64 cells minus 2 starting cells), it decrements after each claim. When it hits zero, we check the winner.
+The Spectrum has a simple 1-bit speaker controlled by bit 4 of port $FE. To make sound, we toggle this bit rapidly:
 
-## The Plan
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/01-beep-routine.asm" />
 
-We need:
+The pitch is controlled by how long we wait between toggles. Shorter waits = higher frequency = higher pitch. The duration controls how long the sound plays.
 
-1. **A move counter** to track remaining cells
-2. **Territory counting** to see who has more
-3. **A game-over routine** to display the winner
-4. **A restart mechanism** to play again
+<InlineNote>
+The speaker shares port $FE with the border colour. When making sound, you might see the border flicker. This is normal — the Spectrum's design means we can't entirely avoid it.
+</InlineNote>
 
-## Tracking Remaining Moves
+## Success Sound
 
-Add a variable to count unclaimed cells:
+A successful claim should feel good. We use a rising pitch — three quick notes, each higher than the last:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/01-tracking-remaining-moves.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/02-success-sound.asm" />
 
-Decrement it whenever a cell is claimed:
+Rising pitch suggests progress, achievement, positivity. It's short enough not to be annoying but distinctive enough to register.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/02-tracking-remaining-moves.asm" lang="asm" />
+## Error Sound
 
-The AI also claims cells, so we decrement there too:
+An invalid move needs clear negative feedback. We use a low, harsh buzz:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/03-tracking-remaining-moves.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/03-error-sound.asm" />
 
-## Counting Territories
+Low pitch sounds "wrong" to human ears. The longer duration emphasises the error without being obnoxious.
 
-When the game ends, we count how many cells each player owns:
+## Validation Flow
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/04-counting-territories.asm" lang="asm" />
+The validation now has clear paths for valid and invalid moves:
 
-This is simpler than the nested loops we used for AI scanning — we just walk through the 64-byte array linearly.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/04-validation-flow.asm" />
 
-## Checking the Winner
+Invalid moves:
+1. Play error sound
+2. Flash border red (extended)
+3. Return — turn doesn't change
 
-After counting, compare the totals:
+Valid moves:
+1. Claim the cell
+2. Update display
+3. Play success sound
+4. Switch turns
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/05-checking-the-winner.asm" lang="asm" />
+## Why Audio Matters
 
-**`cp b` then `jr c`** — After comparing A with B, carry is set if A < B. So if P2's count is less than P1's count, P1 wins.
+Games without audio feedback feel unresponsive. Even simple beeps tell players:
+- "Yes, I heard you"
+- "That worked" or "That didn't work"
+- "Something important happened"
 
-## Displaying the Result
-
-We need to show who won. The Spectrum ROM has a print routine at address 8252 (decimal) that we can use, but for simplicity let's write directly to the attribute memory with coloured blocks:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/06-displaying-the-result.asm" lang="asm" />
-
-This flashes the border rapidly to signal game over, then settles on the winner's colour.
-
-## Waiting for Restart
-
-After showing the result, we wait for the player to press SPACE:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/07-waiting-for-restart.asm" lang="asm" />
-
-We first wait for SPACE to be released (in case it was held from claiming the last cell), then wait for a new press.
-
-## Restarting the Game
-
-Reset everything to initial state:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/snippets/08-restarting-the-game.asm" lang="asm" />
-
-**`jp main_loop`** — Unlike `call`, `jp` doesn't push a return address. We're not returning; we're starting fresh.
-
-## Integrating with the Game
-
-The key integration points:
-
-1. **After human claims**: Decrement counter, check for game over
-2. **After AI claims**: Same — decrement and check
-3. **Game over flow**: Count → show result → wait → restart
+The Spectrum's beeper is limited, but it's enough for effective feedback.
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Load the tape and play a full game. When the board fills:
+Make sure your emulator's sound is enabled, then:
 
-- The border should flash rapidly
-- It settles on the winner's colour (red, cyan, or yellow for draw)
-- Pressing SPACE restarts to a fresh game
-
-## Recap / Sanity Check
-
-- Game over triggers when `moves_remaining` hits 0
-- Territory counts reflect actual board state
-- Border flashing signals game end clearly
-- SPACE restarts to a clean game
-- All state resets: board, cursor, counter, player
-
-## What You've Built
-
-Look at what changed from Unit 8:
-
-- **`moves_remaining`** — Tracks unclaimed cells
-- **`count_territories`** — Sums cells per player
-- **`check_game_over`** — Determines the winner
-- **`show_game_over`** — Visual feedback for game end
-- **`wait_for_restart`** — Waits for player input
-- **`restart_game`** — Resets all state
-
-The game now has a proper beginning, middle, and end!
+1. Move to an empty cell → Press Space → *rising bleep* + green flash
+2. Move cursor away, then back → Press Space on claimed cell → *harsh buzz* + red flash
+3. Notice the difference is instant and unmistakable
 
 ## What You've Learnt
 
-- **Game state tracking** — A simple counter detects end-of-game
-- **Linear array scanning** — Walking through memory without nested loops
-- **Comparison and branching** — Using carry flag for less-than comparisons
-- **State reset** — Clearing everything for a fresh start
-- **`jp` vs `call`** — Jump when you don't need to return
+- **Beeper basics**: Toggle bit 4 of port $FE to make sound
+- **Pitch control**: Shorter delays = higher pitch
+- **Sound design**: Rising = positive, low = negative
+- **User experience**: Audio feedback makes games feel responsive
+- **Defensive programming**: Different paths for valid vs invalid
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 9:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/inkwar.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-09/inkwar.asm" />
 
 ## Next Unit
 
-The game ends, but the ending is sparse. Just a coloured border? We can do better.
-
-In Unit 10, we'll add **Scoring** — displaying the final counts and making the victory screen more informative.
+Players can claim cells with satisfying feedback. But how many cells does each player have? In Unit 10, we'll add a score display showing the cell count for each player. The competition becomes measurable.

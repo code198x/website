@@ -1,146 +1,131 @@
 ---
-title: "Turn Logic"
-description: "Implement two-player turns with visual feedback. Learn XOR tricks and use the border as a turn indicator."
-pubDate: 2026-01-03
+title: "Keyboard Input"
+description: "Read the Spectrum keyboard directly. Detect key presses, handle debouncing, respond to player input."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 5
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "turn-logic", "game-state"]
+tags: ["assembly", "z80", "input", "keyboard", "ports"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-04"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-06"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 4: Claiming Cells](/sinclair-zx-spectrum/game-01-ink-war/unit-04).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-Right now both players paint in the same colour. That's no war — that's interior decorating.
+A game needs input. In this unit, we read the keyboard directly — no BASIC, no ROM routines, just raw hardware access.
 
 By the end of this unit, you'll have:
 
-- Two players taking alternating turns
-- The border colour showing whose turn it is
-- Automatic player swap after each claim
-- A real two-player game (pass the keyboard!)
+- Understanding of the Spectrum keyboard matrix
+- Code to read specific keys (Q, A, O, P, Space)
+- Debouncing to detect new presses only
+- Visual feedback proving your input works
 
-![Two-player game with turn indicator](/images/sinclair-zx-spectrum/game-01-ink-war/unit-05/screenshot.png)
+![Unit 5 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-05/screenshot.png)
 
-## The XOR Trick
+*The screenshot shows the initial state. Run the program and press keys to see the border flash!*
 
-We already have `current_player` from Unit 4. Now we need to toggle it between 1 and 2. There's a classic bit manipulation trick for this:
+## The Keyboard Matrix
 
-```
-Player 1 = %01
-Player 2 = %10
+The Spectrum keyboard is organised as a matrix of 8 half-rows, each containing 5 keys. We read them through port $FE:
 
-XOR with %11 (which is 3):
-  %01 XOR %11 = %10  (1 becomes 2)
-  %10 XOR %11 = %01  (2 becomes 1)
-```
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/01-keyboard-matrix.asm" />
 
-Why does this work? XOR flips bits where the mask has 1s. Since 3 = %11, it flips both low bits. This happens to toggle between the values 1 and 2. One instruction, no branches, no comparisons.
+To read a half-row, we load its address into A and use the `IN` instruction. The result tells us which keys in that row are pressed.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/01-the-xor-trick.asm" lang="asm" />
+<InlineNote>
+The keyboard shares port $FE with the border colour. When reading (IN), it returns keyboard state. When writing (OUT), it sets border colour. Same port, different functions.
+</InlineNote>
 
-**`xor 3`** — "Exclusive OR A with 3." XOR compares bits: if they're different, the result is 1; if they're the same, the result is 0. When you XOR with a value, you flip the bits where that value has 1s.
+## Reading a Key
 
-| A before | 3 (%11) | A after |
-|----------|---------|---------|
-| 1 (%01)  | XOR     | 2 (%10) |
-| 2 (%10)  | XOR     | 1 (%01) |
+To check if a specific key is pressed:
 
-This trick only works because we chose 1 and 2 as our player numbers. If we'd used 0 and 1, we'd need `xor 1` instead.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/02-read-key.asm" />
+
+The crucial detail: keys are **active low**. A bit value of 0 means the key IS pressed; 1 means it's NOT pressed. This is backwards from intuition, but it's how the hardware works.
+
+## Our Control Keys
+
+Ink War uses the classic Spectrum control scheme:
+
+| Key | Action | Half-row | Bit |
+|-----|--------|----------|-----|
+| Q | Up | $FB | 0 |
+| A | Down | $FD | 0 |
+| O | Left | $DF | 1 |
+| P | Right | $DF | 0 |
+| Space | Claim | $7F | 0 |
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/03-our-controls.asm" />
+
+Notice that O and P share the same half-row ($DF). We read the row once and test different bits.
+
+## The Debouncing Problem
+
+If we check "is Q pressed?" every frame, a single tap triggers dozens of times. The key is held for perhaps 100ms, but we're checking 50 times per second.
+
+We need to detect **new** presses — the moment a key transitions from "not pressed" to "pressed":
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/04-debouncing.asm" />
+
+The trick: compare current state with previous frame. Using `CPL` (complement) and `AND`, we isolate only the bits that are newly set.
 
 ## Visual Feedback
 
-How does a player know it's their turn? The Spectrum's border is perfect for this — always visible, easy to change, and we've already used `out (254), a` to set it black.
+During development, visual feedback is invaluable. We flash the border different colours for each key:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/02-visual-feedback.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/05-visual-feedback.asm" />
 
-Red border = Player 1's turn. Cyan border = Player 2's turn. No text needed, no screen space wasted.
+This confirms the input code works before we connect it to game logic. If the border doesn't flash, we know the problem is in our keyboard code, not elsewhere.
 
-## Integrating with Claiming
+## The Main Loop
 
-The `claim_cell` routine from Unit 4 needs to call `swap_player` after a successful claim. Here's the updated version:
+Our main loop now has structure:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/03-integrating-with-claiming.asm" lang="asm" />
+```asm
+main_loop:
+        halt                ; Wait for vertical blank
+        call read_keys      ; Check keyboard
+        jr main_loop        ; Repeat forever
+```
 
-The key change: we call `swap_player` after successfully claiming. This toggles `current_player` and updates the border.
-
-## Initialising the Turn
-
-At startup, we need to set the border to Player 1's colour:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/04-initialising-the-turn.asm" lang="asm" />
-
-Without this, the border would start black (from `clear_screen`), leaving players confused about whose turn it is.
-
-## The Game Flow
-
-Here's what happens now:
-
-1. **Game starts**: Border is RED (Player 1)
-2. **Player 1** moves cursor with Q/A/O/P
-3. **Player 1** presses SPACE on an empty cell
-4. Cell turns RED, border changes to CYAN
-5. **Player 2** moves cursor (same keys — pass the keyboard!)
-6. **Player 2** presses SPACE on an empty cell
-7. Cell turns CYAN, border changes to RED
-8. **Repeat** until board is full
-
-Two players, one keyboard, no rules about *where* you can claim. We'll add territory restrictions in Unit 6.
+`HALT` pauses until the next interrupt (vertical blank). This gives us consistent 50Hz timing and prevents the CPU from running flat-out.
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Load the tape in your emulator. You should see:
+Load it in your emulator and press keys:
 
-- Border starts RED
-- Claim a cell — it turns red, border goes CYAN
-- Claim another cell — it turns cyan, border goes RED
-- Keep alternating!
+- **Q** → Red flash
+- **A** → Green flash
+- **O** → Cyan flash
+- **P** → Yellow flash
+- **Space** → White flash
 
-## Recap / Sanity Check
-
-- Border should change colour after every successful claim
-- Claiming an already-owned cell does nothing (no player swap)
-- Both players use the same controls (Q/A/O/P/SPACE)
-- If the border doesn't change, check that `swap_player` is being called
-- If cells don't change colour, check `set_cell_colour`
-
-## What You've Built
-
-Look at what changed from Unit 4:
-
-- **`swap_player`** — Toggles between players using XOR
-- **`update_ui_colours`** — Updates border to show current player
-- **Modified `claim_cell`** — Now calls `swap_player` after claiming
-- **Initial setup** — Calls `update_ui_colours` at startup
-
-The game is now truly two-player. Pass the keyboard to your opponent!
+Each key should flash *once* per press, not continuously while held.
 
 ## What You've Learnt
 
-- **XOR for toggling** — `xor 3` swaps between 1 and 2
-- **Visual feedback** — The border communicates game state instantly
-- **State management** — One byte (`current_player`) controls game flow
-- **Integration** — New features plug into existing routines
+- **Keyboard matrix**: 8 half-rows, 5 keys each, read via port $FE
+- **Active low**: 0 = pressed, 1 = not pressed
+- **IN instruction**: Read from hardware port
+- **Debouncing**: Compare current and previous state to detect new presses
+- **HALT**: Wait for vertical blank, gives consistent timing
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 5:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/inkwar.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/inkwar.asm" />
 
 ## Next Unit
 
-Players can claim any cell they want. That's not much of a territory war.
-
-In Unit 6, we'll implement **Valid Moves** — you can only claim cells adjacent to territory you already own. This transforms random clicking into actual strategy.
+We can read input. Now we need something to control. In Unit 6, we'll create a cursor that moves around the board — the first truly interactive element of Ink War.

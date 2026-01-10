@@ -1,172 +1,134 @@
 ---
-title: "The Cursor"
-description: "Create an active cursor. Learn how to modify attributes dynamically to highlight the selected cell."
-pubDate: 2026-01-03
+title: "The Attribute Grid"
+description: "Master the 32×24 grid of colour cells. Calculate addresses, fill regions, and create patterns."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 2
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "attributes", "flash"]
+tags: ["assembly", "z80", "display", "attributes", "loops"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-01"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-03"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 1: The Board](/sinclair-zx-spectrum/game-01-ink-war/unit-01).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-The board is set, but you can't tell where you are. We need a cursor.
+In Unit 1, we placed a few coloured cells by hand. But Ink War needs an 8×8 board — 64 cells. We need to understand the grid.
 
 By the end of this unit, you'll have:
 
-- A blinking cursor highlighting the current cell
-- A way to track player position in memory
-- The Spectrum doing the animation work for you (zero CPU cost)
+- A clear mental model of the 32×24 attribute grid
+- Code to fill entire rows with colour
+- A checkerboard pattern demonstrating position-based logic
+- Understanding of BRIGHT colours
 
-No movement yet. Just the cursor, blinking at you, waiting for input.
+![Unit 2 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-02/screenshot.png)
 
-![The cursor flashing on the top-left cell](/images/sinclair-zx-spectrum/game-01-ink-war/unit-02/screenshot.png)
+## The Grid
 
-## The FLASH Bit
+The Spectrum screen has 256×192 pixels, but the attribute system divides it into a grid of 8×8 pixel cells:
 
-In modern games, a cursor might be a sprite or an animated outline. On the Spectrum, we use the **FLASH** attribute — and the hardware does all the work.
+- **32 columns** (256 ÷ 8 = 32)
+- **24 rows** (192 ÷ 8 = 24)
+- **768 cells total** (32 × 24)
 
-Remember the attribute byte from Unit 1?
+Each cell has one attribute byte controlling its colours. These 768 bytes live at $5800-$5AFF.
 
-```
-  7   6   5   4   3   2   1   0
-┌───┬───┬───────────┬───────────┐
-│ F │ B │  PAPER    │   INK     │
-└───┴───┴───────────┴───────────┘
-```
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/01-grid-layout.asm" />
 
-Bit 7 is FLASH. Set it to 1, and the Spectrum automatically swaps INK and PAPER colours every 16 frames — roughly twice a second. The ULA handles this; your code doesn't need to do anything after setting the bit.
+## Calculating Addresses
 
-This is perfect for a cursor. Set the bit, forget about it. The blinking happens for free.
-
-## The Challenge
-
-Our game board uses 2×2 character cells. One game cell = four attribute bytes:
+To colour a specific cell, we need its address. The formula is simple:
 
 ```
-Game cell (x, y):
-┌─────────┬─────────┐
-│ Top-L   │ Top-R   │   ← Row y*2
-├─────────┼─────────┤
-│ Bot-L   │ Bot-R   │   ← Row y*2+1
-└─────────┴─────────┘
-  Col x*2   Col x*2+1
+address = $5800 + (row × 32) + column
 ```
 
-To highlight a cell, we need to set the FLASH bit on all four attribute bytes. And we need to calculate where those bytes are in memory.
+Row 0 is the top of the screen. Column 0 is the left edge.
 
-## The Plan
+| Position | Calculation | Address |
+|----------|-------------|---------|
+| Row 0, Col 0 | $5800 + 0 + 0 | $5800 |
+| Row 0, Col 31 | $5800 + 0 + 31 | $581F |
+| Row 1, Col 0 | $5800 + 32 + 0 | $5820 |
+| Row 10, Col 15 | $5800 + 320 + 15 | $5800 + $14F = $594F |
 
-We need three things:
+The cells are stored row by row, 32 bytes per row.
 
-1. **Variables** to track cursor position (0-7 for both X and Y)
-2. **A routine** to calculate the attribute address from game coordinates
-3. **A routine** to set the FLASH bit on all four bytes of a cell
+## Clearing the Screen
 
-Let's build each piece.
+Before drawing, we should clear the screen to a known state. We could loop through all 768 bytes, but there's a faster way: the Z80's `LDIR` instruction.
 
-## Tracking Position
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/02-clear-screen.asm" />
 
-Add these variables to your data section:
+`LDIR` means "Load, Increment, Repeat". It copies the byte at (HL) to (DE), increments both pointers, decrements BC, and repeats until BC reaches zero.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/01-tracking-position.asm" lang="asm" />
+By setting the first byte and then copying it forward, we fill the entire area with the same value. This is much faster than a loop.
 
-The cursor starts at (0, 0) — the top-left cell of the game board.
+<InlineNote>
+LDIR is one of the Z80's most useful instructions. You'll use it for clearing memory, copying data, and scrolling screens. Learn it well.
+</InlineNote>
 
-## Calculating the Address
+## Filling a Row
 
-The game board starts at screen row 4, column 8. In attribute memory, that's address 22664.
+To fill a specific row with colour, we calculate its starting address and write 32 bytes:
 
-From there, we need to calculate the offset:
-- Each game row = 2 screen rows = 64 bytes (32 bytes × 2)
-- Each game column = 2 screen columns = 2 bytes
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/03-fill-row.asm" />
 
-So: `address = 22664 + (cursor_y × 64) + (cursor_x × 2)`
+`DJNZ` means "Decrement B and Jump if Not Zero". It's perfect for counted loops — load B with the count, and DJNZ handles the rest.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/02-calculating-the-address.asm" lang="asm" />
+## The Checkerboard Pattern
 
-**`rlca`** — "Rotate Left Circular Accumulator." Shifts all bits in A one position left, with bit 7 wrapping to bit 0. Each rotation doubles the value. Six rotations = multiply by 64.
+A checkerboard alternates colours based on position. The trick: XOR the row number with the column number. If the result is odd, use one colour; if even, use another.
 
-**Building DE from A** — We need to add an 8-bit offset to a 16-bit address. `ld e, a` puts our offset in the low byte; `ld d, 0` clears the high byte. Then `add hl, de` does the 16-bit addition.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/04-checkerboard.asm" />
 
-## Setting the FLASH Bit
+This pattern is important for Ink War. Our game board will start as a checkerboard of potential moves, with players claiming cells to turn them their colour.
 
-Once we have the address, we modify all four attribute bytes:
+<InlineNote>
+XOR (exclusive OR) returns 1 when the inputs differ. Row 0, Column 1: 0 XOR 1 = 1 (odd). Row 1, Column 1: 1 XOR 1 = 0 (even). This creates the alternating pattern.
+</InlineNote>
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/03-setting-the-flash-bit.asm" lang="asm" />
+## BRIGHT Colours
 
-**`set 7, a`** — "Set bit 7 of A to 1." The Z80 has dedicated bit manipulation instructions:
-- `set n, r` — Set bit n to 1
-- `res n, r` — Reset bit n to 0
-- `bit n, r` — Test bit n (sets zero flag if bit is 0)
+The Spectrum has 8 basic colours, but the BRIGHT bit doubles them (well, almost — bright black is still black). BRIGHT colours are more vivid and saturated.
 
-These work on any bit (0-7) of any main register. Here we're setting the FLASH bit without disturbing the colour bits.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/05-bright-colours.asm" />
 
-**Why 31?** — The attribute table is 32 bytes per row. After `inc hl` we're at the top-right byte. To reach the bottom-left, we need to go down one row (32 bytes) and back one column (-1 byte). That's 31.
+In our screenshot, the bottom two rows show this. Row 20 has normal colours; row 21 has the same colours with BRIGHT enabled. The difference is subtle but noticeable.
 
-## Putting It Together
-
-Now we modify the main program flow. After drawing the board, we highlight the cursor:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/04-putting-it-together.asm" lang="asm" />
-
-The cursor position lives in memory. We load it into A, then transfer to the register the subroutine expects (B for row, C for column). This pattern — load from memory, shuffle into the right register — is common in Z80 code.
+For Ink War, we'll use BRIGHT colours for player territories to make them stand out from the board.
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Load the tape in your emulator. You should see:
+You should see:
 
-- The same 8×8 game board from Unit 1
-- The top-left cell flashing between its normal colour and inverted
-
-The cursor is alive. It's asking to be moved.
-
-## Recap / Sanity Check
-
-- The top-left cell should flash roughly twice per second
-- All four character cells of that game cell should flash together
-- The other 63 cells should be static
-- If nothing flashes, check that `set 7, a` is being executed and written back
-- If only part of the cell flashes, check your address arithmetic
-
-## What You've Built
-
-Look at what changed from Unit 1:
-
-- **Cursor variables** — Two bytes tracking where the player is
-- **Address calculation** — Translating game coordinates to memory addresses
-- **Attribute modification** — Changing one bit without touching the others
-- **Hardware-assisted animation** — The ULA does the flashing, not your code
-
-The structure is now: set up display → draw board → highlight cursor → wait.
+- Three coloured bars at the top (red, green, blue)
+- An 8×8 checkerboard in the centre
+- A colour gradient at the bottom (normal then bright)
 
 ## What You've Learnt
 
-- **FLASH bit** (bit 7) gives you free animation from the hardware
-- **Bit instructions** (`set`, `res`, `bit`) modify individual bits
-- **Address arithmetic** converts logical coordinates to memory locations
-- **The 32-byte row** — attribute table is 32 bytes wide, always
+- **Grid layout**: 32 columns × 24 rows = 768 attribute cells
+- **Address calculation**: $5800 + (row × 32) + column
+- **LDIR**: Fast block copy instruction
+- **DJNZ**: Counted loop instruction
+- **Checkerboard**: XOR row with column for alternating pattern
+- **BRIGHT colours**: Bit 6 makes colours more vivid
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 2:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/inkwar.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/inkwar.asm" />
 
 ## Next Unit
 
-The cursor is flashing. But it's stuck in the corner.
-
-In Unit 3, we'll read the keyboard — Q, A, O, P — and make the cursor move around the board. The game starts to feel interactive.
+We can fill screens and create patterns. Now it's time to draw our actual game board — an 8×8 playing area with a border, positioned in the centre of the screen. The foundation of Ink War takes shape.

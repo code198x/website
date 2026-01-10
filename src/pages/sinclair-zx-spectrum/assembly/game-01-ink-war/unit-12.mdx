@@ -1,162 +1,105 @@
 ---
-title: "Title Screen"
-description: "Add an intro screen with instructions before dropping into the board."
-pubDate: 2026-01-04
+title: "Determining the Winner"
+description: "Compare scores, announce the winner, and celebrate with a flashing border. Three outcomes: red wins, blue wins, or draw."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 12
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "ui", "flow"]
+tags: ["assembly", "z80", "comparison", "winner", "celebration"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-11"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-13"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 11: Sound Effects](/sinclair-zx-spectrum/game-01-ink-war/unit-11).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-The game currently launches straight into the board. No title, no instructions, no context. New players are dumped onto an 8x8 grid with no idea what to do.
+The game ends when all cells are claimed. But who won? Both players have been fighting for territory — now it's time to declare a victor. In this unit, we compare final scores and announce the winner.
 
 By the end of this unit, you'll have:
 
-- A title screen with game name
-- Control instructions
-- A start prompt
-- Proper game flow: title → game → results → title
+- Score comparison logic with three outcomes
+- Winner message display ("RED WINS!", "BLU WINS!", or "DRAW!")
+- A flashing border celebration effect
+- A null-terminated string printing routine
 
-![Title screen with game name and instructions](/images/sinclair-zx-spectrum/game-01-ink-war/unit-12/screenshot.png)
+![Unit 12 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-12/screenshot.png)
 
-## The Plan
+*Initial state — fill the board to see the winner announced!*
 
-We need to:
+## Winner Codes
 
-1. **Create a title screen routine** — display game name and instructions
-2. **Wait for input** — start when player presses SPACE
-3. **Change program flow** — show title first, return to title after game
-4. **Add instruction strings** — control descriptions
+We need to track not just whether the game is over, but who won:
 
-## The Title Screen Routine
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/01-winner-constants.asm" />
 
-Using our existing print routines, we build a title screen:
+The messages are null-terminated strings — a common pattern in assembly programming. The zero byte marks where the string ends.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/01-the-title-screen-routine.asm" lang="asm" />
+<InlineNote>
+"BLU" instead of "BLUE" — we keep messages the same length for simpler positioning. Consistency beats completeness.
+</InlineNote>
 
-## Adding the String Data
+## Comparing Scores
 
-We need strings for the title screen:
+The Z80's `CP` instruction makes comparison straightforward:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/02-adding-the-string-data.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/02-determine-winner.asm" />
 
-## Waiting for Start
+The `CP` instruction subtracts without storing the result, but sets the flags:
+- **Zero flag**: set if values are equal (draw)
+- **Carry flag**: set if A < B (P2 < P1, so P1 wins)
 
-After showing the title, we wait for SPACE:
+Otherwise P2 has more and wins.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/03-waiting-for-start.asm" lang="asm" />
+## Printing Strings
 
-This is identical to `wait_for_restart` — in fact, we can just reuse that routine for both purposes.
+Instead of printing each character individually, we create a reusable string-printing routine:
 
-## Restructuring Program Flow
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/03-print-string.asm" />
 
-Currently, the program starts like this:
+The loop continues until it hits the null terminator (byte value 0). This pattern appears throughout computing — from early assembly to modern C strings.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/04-restructuring-program-flow.asm" lang="asm" />
+## Victory Celebration
 
-We need to change it to show the title first:
+A flashing border celebrates the winner in their colour:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/05-restructuring-program-flow.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/04-flash-border.asm" />
 
-We'll extract the game initialisation into its own routine:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/06-restructuring-program-flow.asm" lang="asm" />
-
-## Returning to Title After Game
-
-Currently, `restart_game` jumps directly back into the game. We want it to return to the title screen instead:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/07-returning-to-title-after-game.asm" lang="asm" />
-
-Wait — that means we clear the board state, then show the title, then clear it again when initialising. That's redundant but harmless. Let's simplify further:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/08-returning-to-title-after-game.asm" lang="asm" />
-
-The `init_game` routine will handle clearing and reinitialising everything. We can remove the separate board clearing.
-
-Actually, we need to be careful. The board state needs resetting, but `init_starting_cells` assumes a clean board. Let's add the clearing to `init_game`:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/09-returning-to-title-after-game.asm" lang="asm" />
-
-Now `restart_game` can simply jump to `start`.
-
-## The Complete Flow
-
-1. **start** → show_title → wait_for_start → init_game → main_loop
-2. **game ends** → show_results → play_result_sound → wait_for_restart → restart_game
-3. **restart_game** → start (back to step 1)
-
-This creates a clean loop: title → game → results → title → game → ...
-
-## Interrupt Setup
-
-One thing to note: we enable interrupts (`im 1` and `ei`) for the HALT instruction to work. We should do this once at startup, before any wait loop:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/snippets/10-interrupt-setup.asm" lang="asm" />
-
-Previously we had `im 1` and `ei` in the old `start` routine, which ran once. Now it still runs once since `restart_game` jumps back to `start`.
-
-Actually, wait — if we jump to `start` from `restart_game`, we'll execute `im 1` and `ei` again each game. That's fine — setting them again when already set is harmless.
+The game over loop calls this repeatedly, creating a continuous flash. Red flashes for P1, cyan for P2, white for a draw.
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Load the tape:
+Run in your emulator:
 
-1. Title screen appears with "INK WAR" and controls
-2. Press SPACE — game begins
-3. Play to completion
-4. Results screen shows
-5. Press SPACE — returns to title screen
-6. Press SPACE again — new game starts
+1. Play a full game — fill all 64 cells
+2. After the last cell is claimed, the winner message appears
+3. The border flashes in the winner's colour
+4. If you manage a draw (32 cells each), the border flashes white
 
-## Recap / Sanity Check
-
-- Title screen shows before gameplay begins
-- Instructions explain the controls
-- SPACE starts the game
-- After results, SPACE returns to title
-- Each game starts fresh with cleared board
-
-## What You've Built
-
-Comparing to Unit 11:
-
-- **`show_title`** — displays the title screen
-- **`init_game`** — extracted game initialisation
-- **Title strings** — msg_title, msg_controls, msg_move, msg_claim, msg_start
-- **Flow restructure** — start → title → game → results → title
-
-The game now has proper presentation!
+<InlineNote>
+To test the draw condition easily, have players take alternating corners and work inward. Getting exactly 32-32 requires planning!
+</InlineNote>
 
 ## What You've Learnt
 
-- **Program flow** — Structuring game states and transitions
-- **Code extraction** — Moving initialisation into a reusable routine
-- **State machines** — title → game → results → title loop
-- **User onboarding** — Instructions help new players understand controls
+- **Comparison logic**: Using CP and flags for three-way branching
+- **Null-terminated strings**: Common string representation pattern
+- **String printing**: Reusable routine for message display
+- **Visual celebration**: Border effects for victory feedback
+- **Outcome handling**: Different paths for win/lose/draw
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 12:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/inkwar.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-12/inkwar.asm" />
 
 ## Next Unit
 
-The game has a proper front-end now. But it's strictly single-player. What if a friend wants to play?
-
-In Unit 13, we'll add **Two Player Mode** — hotseat multiplayer where two humans take turns.
+We have a working game with winner announcement. But it plays once and stops. In Unit 13, we'll add proper game states — title, playing, game over — so players can start new games and the experience feels complete.

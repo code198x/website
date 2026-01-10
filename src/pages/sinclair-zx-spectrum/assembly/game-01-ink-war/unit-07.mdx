@@ -1,181 +1,108 @@
 ---
-title: "Simple AI"
-description: "Add a computer opponent with basic heuristics. Learn nested loops, scoring systems, and turn management."
-pubDate: 2026-01-04
+title: "Claiming Cells"
+description: "Press Space to claim territory. Track game state in memory. The battle begins."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 7
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "ai", "game-logic"]
+tags: ["assembly", "z80", "game-state", "arrays", "claiming"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-06"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-08"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 6: Valid Moves](/sinclair-zx-spectrum/game-01-ink-war/unit-06).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-Playing against yourself isn't much fun. Let's give the computer a brain.
+The cursor moves. Now it needs to do something. In this unit, pressing Space claims the current cell for the current player.
 
 By the end of this unit, you'll have:
 
-- An AI opponent that picks moves using simple heuristics
-- Single-player mode: human vs computer
-- A "thinking" delay so moves feel deliberate
-- Turn management that alternates human → AI → human
+- A 64-byte array tracking board ownership
+- Space key detection for claiming
+- Validation (can't claim occupied cells)
+- Visual and feedback for successful/failed claims
 
-![AI playing against the human](/images/sinclair-zx-spectrum/game-01-ink-war/unit-07/screenshot.png)
+![Unit 7 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-07/screenshot.png)
 
-## The AI Strategy
+*Press Space to claim the cell under the cursor!*
 
-Our AI uses a simple scoring system. For each valid cell, it calculates:
+## Board State
 
-- **+3** for each adjacent friendly cell (grows territory)
-- **+1** for each adjacent neutral cell (keeps options open)
-- **-2** for each adjacent enemy cell (avoid isolation)
+Until now, we've only stored colours on screen. But a game needs to know who owns each cell — we need proper state tracking:
 
-The AI picks the cell with the highest score. Ties go to whichever we find first (top-left bias, but we'll fix that in Unit 8).
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/01-board-state.asm" />
 
-## The Plan
+The `board_state` array has 64 bytes — one for each cell. We calculate the index using `row × 8 + column`.
 
-We need:
+<InlineNote>
+Why track state separately from the display? The display can be redrawn, lost, or modified for visual effects. The board_state array is the authoritative record of who owns what.
+</InlineNote>
 
-1. **Variables** to track the best move found
-2. **A scanning routine** to check all 64 cells
-3. **A scoring routine** to evaluate each cell
-4. **Integration** into the turn flow
+## Claiming Logic
 
-## AI Variables
+When Space is pressed, we:
+1. Find the cell's position in the board_state array
+2. Check if it's empty (value 0)
+3. If empty, set it to the current player
+4. Update the display
 
-Add these to track the AI's decision:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/02-check-claim.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/01-ai-variables.asm" lang="asm" />
+The key validation: `or a` sets the zero flag if A is zero. If the cell isn't empty, we reject the claim.
 
-## Scanning the Board
+## Updating the Display
 
-The AI needs to examine every cell. We use nested loops:
+After claiming, we update the screen to show the player's colour:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/02-scanning-the-board.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/03-update-display.asm" />
 
-**Nested loops** — B counts rows (0-7), C counts columns (0-7). The inner loop (`.x_loop`) runs 8 times for each outer iteration, visiting all 64 cells.
+Now the display matches the game state. Red cells belong to Player 1, blue cells to Player 2.
 
-**`push bc` / `pop bc`** — We save BC before calling subroutines that might modify it, then restore afterwards. The stack is essential when registers are scarce.
+## Feedback
 
-**`jr nc, .skip`** — "Jump Relative if No Carry." After `cp e`, the carry flag is set if A < E (the new score is better). No carry means our current best is good enough.
+Players need to know if their claim succeeded:
 
-## Checking Adjacency at Coordinates
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/04-feedback.asm" />
 
-We need a version of `check_adjacency` that works with B/C coordinates instead of the cursor:
+A green flash means success. A red flash means the cell was already taken. This simple feedback makes the game feel responsive.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/03-checking-adjacency-at-coordinates.asm" lang="asm" />
+## Cursor on Claimed Cells
 
-This is similar to the cursor-based version but uses B/C directly. We restore BC after each check so the original coordinates are available for the next direction.
+One subtlety: the cursor needs to look different when over a claimed cell. We can't just draw yellow — that would hide whose territory it is.
 
-## Scoring a Cell
-
-For each valid cell, we examine its neighbours and sum up the heuristic values:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/04-scoring-a-cell.asm" lang="asm" />
-
-## Scoring Neighbours
-
-Each direction follows the same pattern. Here's `score_neighbour_up`:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/05-scoring-neighbours.asm" lang="asm" />
-
-**`sub 2`** — "Subtract 2 from A." Like `add` but subtracts. New instruction!
-
-The heuristic values:
-- **+3** for friendly neighbours (encourages connected territory)
-- **+1** for neutral neighbours (keeps options open)
-- **-2** for enemy neighbours (avoids getting surrounded)
-
-The other three directions (`score_neighbour_down`, `score_neighbour_left`, `score_neighbour_right`) follow the same pattern, just checking different edges and modifying different coordinates.
-
-## Making the AI Move
-
-After the AI picks a cell, we need to actually claim it:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/06-making-the-ai-move.asm" lang="asm" />
-
-## The Thinking Delay
-
-Make the AI feel like it's "thinking" with a short pause:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/07-the-thinking-delay.asm" lang="asm" />
-
-**`djnz .delay_loop`** — "Decrement B and Jump if Not Zero." A compact loop instruction that decrements B and branches if it's not zero yet. Perfect for countdown loops. This single instruction replaces `dec b` + `jr nz`.
-
-## Integrating with the Game Flow
-
-The key change: after the human claims a cell, we trigger the AI instead of just swapping players.
-
-Update `claim_cell` to call the AI after a successful human move:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/08-integrating-with-the-game-flow.asm" lang="asm" />
-
-Actually, let's restructure this more cleanly. The full `claim_cell` becomes:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/snippets/09-integrating-with-the-game-flow.asm" lang="asm" />
-
-The flow is now: Human claims → AI thinks → AI claims → Back to human (border stays red since we reset `current_player` to 1 in `ai_make_move`).
+The solution: when over a claimed cell, we add the FLASH bit to the existing colour. The cell blinks between showing colour and black, indicating both ownership and cursor position.
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Load the tape in your emulator. You should see:
+Try these actions:
 
-- Claim a cell as Player 1 (Red)
-- Brief pause while AI "thinks"
-- AI claims a cell (Cyan appears)
-- Border stays red (your turn again)
-- The AI tends to grow its territory rather than scatter randomly
+1. Move cursor to an empty cell → Press Space → Cell turns red (green flash)
+2. Move cursor to another empty cell → Press Space → Cell turns red again
+3. Try to claim the first cell again → Red flash (rejected!)
 
-## Recap / Sanity Check
-
-- AI moves happen automatically after human moves
-- There's a visible pause before the AI moves
-- AI picks cells adjacent to its territory
-- AI prefers cells with more friendly neighbours
-- Human is always Player 1, AI is always Player 2
-- Turn flow: human → AI → human → AI...
-
-## What You've Built
-
-Look at what changed from Unit 6:
-
-- **`ai_pick_move`** — Scans all cells, finds the best valid move
-- **`check_adjacency_at`** — Adjacency check for arbitrary coordinates
-- **`score_cell`** — Evaluates how good a cell is
-- **`score_neighbour_*`** — Scores based on neighbour ownership
-- **`ai_make_move`** — Claims the AI's chosen cell
-- **`ai_think_delay`** — Makes the AI feel deliberate
-- **Modified `claim_cell`** — Triggers AI after human moves
-
-The game is now single-player! You against the computer.
+All cells belong to Player 1 for now — we'll add turn switching in Unit 8.
 
 ## What You've Learnt
 
-- **Nested loops** — B/C for row/column iteration
-- **Heuristics** — Simple scoring creates reasonable behaviour
-- **`djnz`** — Compact decrement-and-branch instruction
-- **`sub`** — Subtraction instruction
-- **Stack discipline** — `push`/`pop` to preserve registers across calls
+- **Board state array**: 64 bytes tracking ownership
+- **Index calculation**: row × 8 + column
+- **Claim validation**: Check empty before allowing claim
+- **State vs display**: Update both when claiming
+- **Visual feedback**: Border flashes for success/failure
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 7:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/inkwar.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-07/inkwar.asm" />
 
 ## Next Unit
 
-The AI works, but it's predictable. It always picks the same cell when scores tie, making it easy to exploit.
-
-In Unit 8, we'll add **Better AI** — randomness to break ties, blocking moves when threatened, and awareness of isolation. The computer will actually feel like an opponent.
+Right now, every claim goes to Player 1. That's not much of a game. In Unit 8, we'll add turn switching — after each successful claim, it becomes the other player's turn. Two players, one keyboard, real competition.

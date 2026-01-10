@@ -1,210 +1,102 @@
 ---
-title: "Sound Effects"
-description: "Add Spectrum beeps for moves, captures, and wins."
-pubDate: 2026-01-04
+title: "Detecting Game End"
+description: "Know when the board is full. Game state tracking and the simplest state machine: playing versus game over."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 11
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "sound", "buzzer"]
+tags: ["assembly", "z80", "game-state", "state-machine", "end-condition"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-10"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-12"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 10: Scoring](/sinclair-zx-spectrum/game-01-ink-war/unit-10).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-The game works, but it's silent. Moves happen without feedback. Claims go unheard. Victory arrives with no fanfare. The Spectrum has a speaker — time to use it.
+Players can claim cells, see scores, and take turns. But when does the game end? Currently, it doesn't — players could keep trying to claim already-claimed cells forever. In this unit, we add end detection.
 
 By the end of this unit, you'll have:
 
-- A flexible beep routine controlled by pitch and duration
-- Sound effects for cursor movement
-- Audio feedback for successful cell claims
-- Victory and defeat jingles
+- A game state variable tracking whether we're playing or finished
+- Detection for when all 64 cells are claimed
+- A main loop that stops processing input when the game ends
+- Your first simple state machine
 
-![Game with sound effects hooked in](/images/sinclair-zx-spectrum/game-01-ink-war/unit-11/screenshot.png)
+![Unit 11 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-11/screenshot.png)
 
-## The Spectrum's Beeper
+*The game looks the same — the difference is in the ending. Fill all 64 cells and the game stops.*
 
-The ZX Spectrum has a simple 1-bit speaker. Bit 4 of port $FE controls it. To make sound:
+## Game States
 
-1. Set bit 4 high (speaker cone out)
-2. Wait a bit
-3. Set bit 4 low (speaker cone in)
-4. Wait a bit
-5. Repeat
+Until now, our main loop has been an infinite loop processing input forever. Real games need states — the game is either being played, or it's over:
 
-The wait duration determines pitch — shorter waits make higher frequencies. The number of cycles determines length.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/01-game-state-constants.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/01-the-spectrum-s-beeper.asm" lang="asm" />
+This is the simplest possible state machine: two states, one transition (playing → game over).
 
-There's a catch: port $FE also controls the border colour (bits 0-2). We need to preserve those bits or the border will flicker during sound.
+<InlineNote>
+State machines are fundamental to game programming. Even this two-state version separates "what the game is doing" from "how it responds to input."
+</InlineNote>
 
-## The Plan
+## Checking for Game End
 
-We need:
+After each successful claim, we count empty cells. If none remain, the game is over:
 
-1. **A core beep routine** — with adjustable pitch and duration
-2. **Specific sound effects** — move, claim, victory, defeat
-3. **Integration** — call sounds from the right places
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/02-check-game-end.asm" />
 
-## The Beep Routine
+We iterate through all 64 cells, incrementing D for each empty one. If D is zero at the end, all cells are filled. We also clear the turn indicator since there's no "next turn" when the game ends.
 
-Here's a flexible beep that takes pitch (delay between toggles) and duration (number of cycles):
+## Modified Main Loop
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/02-the-beep-routine.asm" lang="asm" />
+The main loop now checks game state before processing input:
 
-We store the current border colour and mix it into the speaker output. This prevents the border from flickering black during sound.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/03-main-loop.asm" />
 
-## Adding a Border Colour Variable
+When `game_state` is `STATE_GAME_OVER`, we skip input processing entirely. The game simply halts in a loop. (The next unit will add winner display and make this more interesting.)
 
-We need to track the current border colour. Add it to the variables section:
+## When to Check
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/03-adding-a-border-colour-variable.asm" lang="asm" />
+We call `check_game_end` after each successful claim, before switching players:
 
-And update `update_ui_colours` to save it:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/04-valid-move-updated.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/04-adding-a-border-colour-variable.asm" lang="asm" />
-
-Also update `set_winner_border`:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/05-adding-a-border-colour-variable.asm" lang="asm" />
-
-## Creating Sound Effects
-
-Now we create specific sounds. Each just sets up DE (pitch) and BC (duration), then calls `play_beep`.
-
-### Move Sound
-
-A quick, high-pitched click:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/06-creating-sound-effects.asm" lang="asm" />
-
-### Claim Sound
-
-A satisfying "boop" when claiming a cell:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/07-creating-sound-effects.asm" lang="asm" />
-
-### Victory Fanfare
-
-An ascending sequence of notes:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/08-creating-sound-effects.asm" lang="asm" />
-
-### Defeat Sound
-
-A descending, sad sequence:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/09-creating-sound-effects.asm" lang="asm" />
-
-### Draw Sound
-
-Two neutral tones:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/10-creating-sound-effects.asm" lang="asm" />
-
-## Hooking Up the Sounds
-
-Now we integrate sounds into existing routines.
-
-### Movement Beeps
-
-Add a call to `beep_move` at the end of each movement routine:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/11-hooking-up-the-sounds.asm" lang="asm" />
-
-Do the same for `move_down`, `move_left`, and `move_right`.
-
-### Claim Beep
-
-In `claim_cell`, add a sound after the visual update:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/12-hooking-up-the-sounds.asm" lang="asm" />
-
-### Result Sounds
-
-In `show_results`, play the appropriate sound after displaying the screen:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/13-hooking-up-the-sounds.asm" lang="asm" />
-
-Wait — we have a problem. The `show_results` routine currently ends with `ret` after printing "PRESS SPACE". We need to reorganise it slightly.
-
-Actually, looking at the flow: `check_game_over` calls `show_results`, then `set_winner_border`, then `wait_for_restart`. We can play the sound after `show_results` returns, in `check_game_over`:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/14-hooking-up-the-sounds.asm" lang="asm" />
-
-Then create a separate routine:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/15-hooking-up-the-sounds.asm" lang="asm" />
-
-## Understanding the Beep Timing
-
-The pitch delay loop:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/16-understanding-the-beep-timing.asm" lang="asm" />
-
-Each iteration is about 26 T-states when taken. At 3.5 MHz, that's about 7.4 microseconds per iteration. For DE=100, the delay is roughly 740 microseconds, giving a frequency of about 675 Hz.
-
-Lower pitch values = shorter delay = higher frequency.
-Higher pitch values = longer delay = lower frequency.
+If the game ends, we skip the player switch — there's no need to indicate whose turn it is when nobody can move.
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Test the sounds:
+Run in your emulator:
 
-- Move the cursor — you should hear a quick click
-- Claim a cell — a satisfying "boop"
-- Play to completion — hear the victory or defeat jingle
+1. Play normally — claim cells, watch scores change
+2. Fill the entire board (all 64 cells)
+3. After the last cell is claimed, the turn indicator disappears
+4. Input no longer works — no cursor movement, no claiming
+5. The game has ended
 
-## Recap / Sanity Check
-
-- Port $FE bit 4 controls the speaker
-- Border colour must be preserved during sound
-- Pitch is determined by delay loop duration
-- Duration is determined by number of cycles
-- Sounds must be short to avoid stalling gameplay
-
-## What You've Built
-
-Comparing to Unit 10:
-
-- **`play_beep`** — Core sound generation with pitch and duration
-- **`beep_move`** — Quick click for cursor movement
-- **`beep_claim`** — Satisfying tone for claims
-- **`beep_victory`** — Ascending jingle for winning
-- **`beep_defeat`** — Descending sound for losing
-- **`beep_draw`** — Neutral tones for draws
-- **`play_result_sound`** — Dispatches to appropriate end sound
-- **`border_colour`** — Tracks current border for sound preservation
-
-The game now has audio feedback throughout!
+<InlineNote>
+You'll need patience (or a faster emulator) to fill all 64 cells manually. The test is worth it — seeing the game properly stop is satisfying.
+</InlineNote>
 
 ## What You've Learnt
 
-- **1-bit audio** — Making sound with a single speaker bit
-- **Frequency generation** — Delay loops control pitch
-- **Port preservation** — Not destroying other bits when toggling one
-- **Event-driven sound** — Hooking audio into game events
-- **Sound design** — Using pitch and rhythm to convey meaning
+- **Game states**: Variables that track what the game is doing
+- **State machines**: Different behaviour based on current state
+- **End condition**: Checking when gameplay should stop
+- **Clean transitions**: Stopping input, clearing indicators
+- **Separation of concerns**: State check separate from input handling
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 11:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/inkwar.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/inkwar.asm" />
 
 ## Next Unit
 
-The game plays, sounds, ends, and displays scores. But it starts abruptly — no title screen, no instructions.
-
-In Unit 12, we'll add a **Title Screen** with game title and controls.
+The game ends when the board is full. But who won? In Unit 12, we'll compare final scores and determine the winner. Red versus blue — may the best player win.

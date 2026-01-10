@@ -1,297 +1,148 @@
 ---
-title: "The Board"
-description: "Set up the game board for Ink War - an 8x8 grid of coloured cells that introduces the Spectrum's attribute system."
-pubDate: 2026-01-02
+title: "The Spectrum's Display"
+description: "Your first contact with the Spectrum's memory-mapped display. Change the border, colour some cells, see pixels respond to code."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 1
-totalUnits: 8
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "attributes", "screen-layout"]
+tags: ["assembly", "z80", "display", "attributes", "memory-mapped"]
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-02"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 *Need to set up your tools first? See [Getting Started](/sinclair-zx-spectrum/getting-started).*
 
 ## What You're Building
 
-Before any territory is claimed, before any battles are won, before you control the majority — you need a board.
+No gameplay. No input. Just colour.
 
 By the end of this unit, you'll have:
 
-- A black screen with a title
-- An 8x8 grid of coloured cells
-- Two starting territories already claimed (red and cyan corners)
+- A working assembly program that runs on the Spectrum
+- Your first contact with the display system
+- A blue border and coloured blocks on screen
 
-It's not a game yet. It's a canvas. A battlefield waiting to happen.
+It's not much — a few coloured squares. But those squares came from *your* code writing directly to memory. The Spectrum obeyed.
 
-Let's draw the board.
+![Unit 1 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-01/screenshot.png)
 
-## The Board Layout
+## Memory-Mapped Display
 
-Here's what we're aiming for:
+Here's the insight that makes the Spectrum tick: **the screen is just memory**.
 
-```
-┌────────────────────────────────────────┐
-│          INK WAR                       │  ← Title
-│                                        │
-│                                        │
-│        ██████░░░░░░░░░░                │  ← Red territory (top-left)
-│        ██████░░░░░░░░░░                │
-│        ██████░░░░░░░░░░                │
-│        ░░░░░░░░░░░░░░░░                │  ← Unclaimed (white)
-│        ░░░░░░░░░░░░░░░░                │
-│        ░░░░░░░░░░██████                │
-│        ░░░░░░░░░░██████                │  ← Cyan territory (bottom-right)
-│        ░░░░░░░░░░██████                │
-│                                        │
-│ Claim the board. Control wins.         │  ← Instructions
-└────────────────────────────────────────┘
-```
+The Spectrum doesn't have special "draw pixel" commands. Instead, certain memory addresses are connected directly to the display hardware. Write a byte to $5800, and a cell on screen changes colour. Write to $4000, and pixels appear.
 
-Each cell in the 8x8 grid is 2 characters wide and 2 characters tall. The attribute system colours entire 8x8 pixel cells, so our game cells align perfectly with the hardware.
+This is called a **memory-mapped display**, and it's how all Spectrum programming works.
 
-## The Attribute System
+## Where the Screen Lives
 
-The ZX Spectrum has a unique way of handling colour. The screen is 256x192 pixels, but colour is applied in 8x8 pixel cells. Each cell has one *attribute byte* that controls:
+The Spectrum's display uses two areas of memory:
 
-```
-Attribute byte:  F B P P P I I I
-                 │ │ └─┬─┘ └─┬─┘
-                 │ │   │     └── INK colour (0-7)
-                 │ │   └──────── PAPER colour (0-7)
-                 │ └──────────── BRIGHT (0-1)
-                 └────────────── FLASH (0-1)
-```
+| Memory Range | Size | Purpose |
+|-------------|------|---------|
+| $4000-$57FF | 6144 bytes | Screen memory (pixels) |
+| $5800-$5AFF | 768 bytes | Attribute memory (colours) |
 
-The colours are:
+**Screen memory** controls which pixels are on or off — pure black and white dots. **Attribute memory** controls what colours those dots appear in.
 
-| Value | Colour |
-|-------|--------|
-| 0 | Black |
-| 1 | Blue |
-| 2 | Red |
-| 3 | Magenta |
-| 4 | Green |
-| 5 | Cyan |
-| 6 | Yellow |
-| 7 | White |
+For Ink War, we'll focus almost entirely on attributes. Each attribute byte controls the colour of one 8×8 pixel cell — and our game board is made of these cells.
 
-This creates the infamous "colour clash" — you can't have two different foreground colours in the same 8x8 cell. But for Ink War, it's perfect. Our game board *is* made of 8x8 cells. The constraint becomes the gameplay.
+## The Border
 
-## Setting Up
+Before we touch the screen, let's change the border. The border is the area surrounding the main display, and it's controlled by port $FE:
 
-Create a new file called `inkwar.asm`. This is your game. Every unit builds on this file.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/02-border.asm" />
 
-### Build it. Run it.
+The `OUT` instruction sends a value to a hardware port. Port $FE controls several things, but bits 0-2 set the border colour. We send 1 (blue), and the border turns blue.
 
-Use this every time you see "Build it. Run it.": ([need setup?](/sinclair-zx-spectrum/getting-started))
+<InlineNote>
+Why a port instead of memory? The border isn't part of the screen — it's drawn by the ULA chip around the display area. Ports communicate with hardware that isn't memory-mapped.
+</InlineNote>
+
+## Constants
+
+Before we continue, let's define some constants. These give names to numbers, making our code readable:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/01-constants.asm" />
+
+Now we can write `BLUE` instead of `1`, and `ATTR_START` instead of `$5800`. When you read the code later, you'll know exactly what it means.
+
+## The Attribute Byte
+
+Each attribute byte packs several pieces of information into 8 bits:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/03-attribute-byte.asm" />
+
+The format is **FBPPPIII**:
+
+- **F** (bit 7): Flash — alternates between ink and paper colours
+- **B** (bit 6): Bright — makes colours more vivid
+- **PPP** (bits 5-3): Paper colour — the background
+- **III** (bits 2-0): Ink colour — the foreground
+
+To create red paper with white ink:
+- Paper = RED (2) = 010 in binary
+- Ink = WHITE (7) = 111 in binary
+- Result: %00010111
+
+## Writing to Attribute Memory
+
+Now let's place some coloured cells on screen:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/04-write-attribute.asm" />
+
+The `LD (HL), A` instruction writes the value in the A register to the address pointed to by HL. Since HL points to $5800 (the first attribute cell), we've just changed the colour of the top-left cell on screen.
+
+`INC HL` moves to the next cell. The attribute cells are arranged in a simple grid — 32 cells per row, 24 rows. Incrementing HL moves one cell to the right.
+
+## The Infinite Loop
+
+There's one problem: when our code finishes, it returns to BASIC. The Spectrum redraws the screen, and our coloured cells vanish.
+
+We need to keep the program running:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/05-infinite-loop.asm" />
+
+`JR` means "Jump Relative". When the CPU reaches this instruction, it jumps back to the `forever` label — which is the same instruction. It loops forever, keeping our code running and our colours visible.
+
+<InlineNote>
+We'll replace this crude loop with proper game logic later. For now, it keeps our display intact.
+</InlineNote>
+
+## Build It. Run It.
+
+Save this code as `inkwar.asm` and assemble it:
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Then load the `.tap` file in your emulator. It will auto-run.
-
-When you see "Build it. Run it." in the lesson, use this command.
-
-**Download the starter/solution code** (identical to this lesson):  
-`https://github.com/code198x/code-samples/tree/main/sinclair-zx-spectrum/game-01-ink-war/unit-01`
-
-## The Code
-
-Let's build this step by step. First, the header and entry point:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/01-the-code.asm" lang="asm" />
-
-Let's break down these instructions:
-
-**`org 32768`** — This tells the assembler "put the following code at memory address 32768." The Spectrum has 48K of RAM; address 32768 is safely above where BASIC stores its programs.
-
-**`ld a, 0`** — "Load the value 0 into register A." The Z80 has several registers — think of them as built-in variables the CPU uses for calculations. A is the *accumulator*, the main one used for maths and moving data around.
-
-**`out (254), a`** — "Output the value in A to port 254." Ports are how the CPU talks to hardware. Port 254 controls the border colour (and the beeper). We just set it to 0 (black).
-
-**`call 3435`** — "Jump to the code at address 3435, run it, then come back here." Address 3435 is the ROM's CLS routine — it clears the screen. We're borrowing code the Spectrum already has built in.
-
-**`ld a, 7`** — Load 7 into A. Same instruction as before, different value.
-
-**`ld (23693), a`** — "Store A's value at memory address 23693." The parentheses mean "the memory location at this address" rather than the number itself. Address 23693 is where the Spectrum keeps its default text colours.
-
-## Printing Text
-
-The Spectrum ROM has a character output routine at RST 16 (address 16). We use it with control codes to position text:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/02-printing-text.asm" lang="asm" />
-
-New instructions:
-
-**`rst 16`** — "Restart 16" is a shortcut for `call 16`. The ROM has a character printing routine at address 16. Whatever value is in A gets printed to the screen. We use it to send control codes (like "position cursor") and text.
-
-**`ld hl, title_text`** — "Load the address of title_text into register pair HL." HL is a 16-bit register (H and L together) that can hold a memory address. We're pointing it at our text data.
-
-Control code 22 is `AT` — it positions the cursor. The next two bytes are row and column. Then we call our string printing routine.
-
-The `print_string` routine is simple:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/03-printing-text.asm" lang="asm" />
-
-More new instructions:
-
-**`ld a, (hl)`** — "Load the byte at the memory address in HL into A." The parentheses mean "the contents of memory at this address." HL points to our string; this fetches one character.
-
-**`or a`** — "OR A with itself." This seems pointless, but it's a trick: it sets the *zero flag* if A is zero, without changing A's value. We're checking if we've hit the end of the string.
-
-**`ret z`** — "Return if the zero flag is set." If A was zero (end of string), we're done — return to whoever called us.
-
-**`inc hl`** — "Increment HL by 1." Move to the next character in the string.
-
-**`jr print_string`** — "Jump Relative to print_string." Go back to the start of the routine and process the next character. JR is a short jump (faster, smaller) for nearby labels.
-
-The routine reads bytes from memory, prints them via RST 16, and stops when it hits a zero byte.
-
-> Why this matters: the ROM print routine gives you UI positioning for free. Once the board is down, we stay away from ROM output to avoid scroll side effects on your attributes.
-
-## Drawing the Board
-
-Now the interesting part. We draw the board by writing directly to attribute memory — no ROM routines, just raw hardware access.
-
-Attribute memory starts at address 22528 and covers 768 bytes (32 columns × 24 rows). Each byte controls one 8x8 pixel cell.
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/04-drawing-the-board.asm" lang="asm" />
-
-**`halt`** — "Stop and wait for an interrupt." The Spectrum generates an interrupt 50 times per second (once per screen refresh). HALT pauses the CPU until the next one arrives. It's a polite way to wait without burning power.
-
-**`jr .hang`** — Jump back to the `.hang` label. This creates an infinite loop: wait for interrupt, jump back, wait again. The program sits here doing nothing until you reset the machine.
-
-We draw the board *after* printing text. Why? The ROM print routines can scroll the screen, which would mess up any attributes we'd already written. By drawing last, we avoid this problem.
-
-## The Draw Board Routine
-
-The board is an 8x8 grid of cells. Each cell is 2 characters wide and 2 characters tall (so 16x16 pixels, covering 4 attribute cells). We start at row 4, column 8:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/05-the-draw-board-routine.asm" lang="asm" />
-
-New instructions in this routine:
-
-**`ld de, 32`** — "Load 32 into register pair DE." Like HL, DE is a 16-bit register pair. We're using it to hold the number of bytes per screen row.
-
-**`add hl, de`** — "Add DE to HL." This moves our memory pointer forward by 32 bytes — one screen row.
-
-**`inc a`** — "Increment A by 1." Add one to our row counter.
-
-**`cp 8`** — "Compare A with 8." This subtracts 8 from A (without changing A) and sets flags based on the result. If A equals 8, the zero flag is set.
-
-**`jr nz, .row_loop`** — "Jump Relative if Not Zero." If A wasn't 8 yet, go back and draw another row.
-
-**`ret`** — "Return." We're done with this subroutine — go back to whoever called us.
-
-The address calculation is straightforward: attribute memory starts at 22528, each row is 32 bytes, so row 4, column 8 is `22528 + (4 × 32) + 8 = 22664`.
-
-We use `cell_y` to track which row of game cells we're drawing (0-7). Each game cell spans 2 attribute rows, so we call `draw_cell_row` twice per game row.
-
-## Drawing a Cell Row
-
-Each row of the board has 8 cells, each 2 characters wide:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/06-drawing-a-cell-row.asm" lang="asm" />
-
-New instructions:
-
-**`push hl`** — "Push HL onto the stack." The stack is a temporary storage area in memory. We're saving HL's current value so we can restore it later. Think of it as "remember this for me."
-
-**`ld (hl), a`** — "Store A at the memory address in HL." This writes the attribute byte to screen memory. The parentheses mean "the location pointed to by HL."
-
-**`pop hl`** — "Pop HL from the stack." Restore HL to the value we saved earlier. The caller needs HL to still point at the row start, so they can move to the next row.
-
-The loop writes 2 bytes per cell (because each cell is 2 characters wide), then moves to the next cell.
-
-## Choosing Cell Colours
-
-The `get_cell_colour` routine decides what colour each cell should be. For this unit, we create a starting position: red in the top-left, cyan in the bottom-right, white everywhere else.
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/07-choosing-cell-colours.asm" lang="asm" />
-
-The comparison logic uses the *carry flag*:
-
-**`jr nc, .not_red`** — "Jump Relative if No Carry." After `cp 3`, the carry flag is set if A < 3, and clear if A >= 3. So `jr nc` means "jump if A >= 3" — skip the red zone code.
-
-**`jr c, .neutral`** — "Jump Relative if Carry." After `cp 5`, `jr c` means "jump if A < 5" — it's not in the cyan zone.
-
-This is how the Z80 does comparisons: the `cp` instruction sets flags, then conditional jumps act on those flags.
-
-The attribute byte format is `FBPPPIII` — we calculate it as `PAPER * 8 + INK`. So red paper with white ink is `2 * 8 + 7 = 23`. Cyan paper with white ink is `5 * 8 + 7 = 47`. White paper with black ink is `7 * 8 + 0 = 56`.
-
-## Variables and Data
-
-Finally, we need some storage:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/snippets/08-variables-and-data.asm" lang="asm" />
-
-These aren't instructions — they're *assembler directives* that tell Pasmo what to put in memory:
-
-**`defb 0`** — "Define Byte." Put the value 0 at this location. We use it to create variables and data.
-
-**`defb "INK WAR", 0`** — Define a string as a sequence of bytes, followed by a zero. The zero marks the end of the string (that's what `print_string` looks for).
-
-**`end start`** — "End of program, entry point is `start`." This tells Pasmo where your code begins, so it can generate a BASIC loader that runs automatically.
-
-## Build and Run
-
-```bash
-pasmo --tapbas inkwar.asm inkwar.tap
-```
-
-Load `inkwar.tap` in your emulator. You should see:
-
-- A black border
-- "INK WAR" at the top
-- An 8x8 grid with red cells (top-left) and cyan cells (bottom-right)
-- White unclaimed cells filling the rest
-- Instructions at the bottom
-
-![Ink War board with red and cyan territories](/images/sinclair-zx-spectrum/game-01-ink-war/unit-01-board.png)
-
-## What You've Built
-
-Take a breath. Look at what you made:
-
-- A black screen with game layout
-- A coloured game board using the attribute system
-- Two starting territories already claimed
-- Text rendered using ROM routines
-- Direct hardware access to attribute memory
-
-This is the board. Everything that follows — claiming cells, turn logic, winning conditions — happens here, on this grid you created.
-
-Save your work. You'll need it.
+Load the `.sna` file in your emulator. You should see:
+
+- A blue border
+- Several coloured cells in the top-left corner
+- One cell flashing (the FLASH bit in action)
 
 ## What You've Learnt
 
-- **Memory layout** — Code at 32768, attributes at 22528, screen at 16384
-- **Attribute format** — FBPPPIII (Flash, Bright, Paper, Ink)
-- **ROM routines** — RST 16 prints characters, CLS (3435) clears the screen
-- **Control codes** — Code 22 + row + column positions the cursor
-- **Port I/O** — OUT (254) sets the border colour
-- **Address calculation** — Row × 32 + column gives attribute offset
+- **Memory-mapped display**: The screen is just memory at specific addresses
+- **Screen memory** ($4000-$57FF): Controls pixels (on/off)
+- **Attribute memory** ($5800-$5AFF): Controls colours (768 cells)
+- **The border**: Controlled via port $FE, not memory
+- **Attribute byte format**: FBPPPIII (Flash, Bright, Paper, Ink)
+- **The 8 colours**: Black, blue, red, magenta, green, cyan, yellow, white
 
 ## The Complete Code
 
-Here's the full listing for reference:
+Here's the complete `inkwar.asm`:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/inkwar.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-- Build + run: `pasmo --tapbas inkwar.asm inkwar.tap`, then load the TAP.
-- Screen: title at the top, instructions near the bottom, 8x8 grid with red in the top-left, cyan in the bottom-right, white elsewhere.
-- Input: none yet — the HALT loop just waits. That's expected.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-01/inkwar.asm" />
 
 ## Next Unit
 
-The board is drawn. But it's frozen. No one can claim anything yet.
-
-In Unit 2, we add keyboard input so players can select and claim cells. The battle begins.
+We've placed a few cells by hand. But Ink War needs an 8×8 board — 64 cells. In Unit 2, we'll explore the attribute grid in depth: how to calculate addresses, how to fill regions, and how to create the patterns that will become our game board.

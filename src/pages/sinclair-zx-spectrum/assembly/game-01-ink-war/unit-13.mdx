@@ -1,173 +1,120 @@
 ---
-title: "Two Player Mode"
-description: "Add hotseat play so two humans can battle for territory."
-pubDate: 2026-01-04
+title: "Game States"
+description: "Structure your game with a state machine: title screen, playing, and results. Clean transitions make your game feel professional."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 13
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "input", "multiplayer"]
+tags: ["assembly", "z80", "state-machine", "title-screen", "game-loop"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-12"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-14"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 12: Title Screen](/sinclair-zx-spectrum/game-01-ink-war/unit-12).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-The game is single-player only. Playing against the AI is fun, but sometimes you want to challenge a friend sitting next to you. Time to add hotseat multiplayer.
+Until now, our game starts playing immediately and ends forever. Real games have structure: a title screen to build anticipation, gameplay, then results with the option to play again.
 
 By the end of this unit, you'll have:
 
-- A game mode selection menu (1 Player vs 2 Player)
-- Turn-based hotseat play for two humans
-- Proper labelling on the results screen (P1/P2 instead of Player/CPU)
-- Both modes working with existing sound and visuals
+- A state machine with three distinct states
+- A title screen showing "INK WAR" and a prompt
+- Clean transitions between states
+- A game that flows: title → playing → results → title
 
-![Mode selection on title screen](/images/sinclair-zx-spectrum/game-01-ink-war/unit-13/screenshot.png)
+![Unit 13 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-13/screenshot.png)
 
-## The Plan
+*The title screen — press any key to begin the battle.*
 
-We need to:
+## The State Machine Pattern
 
-1. **Add a game mode variable** — track whether we're in 1P or 2P mode
-2. **Modify the title screen** — add mode selection
-3. **Change turn handling** — skip AI when in 2P mode
-4. **Update result labels** — show appropriate player names
+A state machine is one of the most useful patterns in game development. Instead of tangled conditionals, you have:
 
-## Game Mode Variable
+1. A variable holding the current state
+2. A dispatch that routes to the right handler
+3. Transition functions that set up each state
 
-Add a variable to track the game mode:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/01-state-constants.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/01-game-mode-variable.asm" lang="asm" />
+Three states are all we need: showing the title, playing the game, showing results.
 
-Mode 1 is the existing AI opponent. Mode 2 is hotseat multiplayer where both players share the keyboard.
+## The Main Loop Dispatch
 
-## Modifying the Title Screen
+Every frame, check the current state and call the appropriate handler:
 
-The title screen needs to show mode selection and handle input:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/02-state-dispatch.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/02-modifying-the-title-screen.asm" lang="asm" />
+Each handler is responsible for exactly one frame of logic. The title handler waits for a key. The playing handler processes input and moves. The results handler flashes the border and checks for a key.
 
-The new strings:
+<InlineNote>
+Notice how the default case goes to title state. Defensive programming — if game_state somehow becomes invalid, we recover gracefully.
+</InlineNote>
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/03-modifying-the-title-screen.asm" lang="asm" />
+## State Transitions
 
-## Handling Mode Selection
+Each transition function sets up everything needed for its state:
 
-Instead of just waiting for SPACE, we wait for either 1 or 2:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/03-state-transitions.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/04-handling-mode-selection.asm" lang="asm" />
+The key insight: each state function is self-contained. It clears the screen, draws what it needs, and sets all relevant variables. No assumptions about what came before.
 
-The 1 and 2 keys are on keyboard row $F7 (the number row 1-5). Bit 0 is "1", bit 1 is "2".
+## Blocking vs Non-Blocking Input
 
-## Changing Turn Handling
+We need two styles of key detection:
 
-The key change is in `claim_cell`. Currently, after the human claims, we call the AI:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/04-key-handling.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/05-changing-turn-handling.asm" lang="asm" />
+The title screen uses `wait_any_key` — it blocks until a key is pressed. We want the player to see the title and consciously choose to start.
 
-We need to check the game mode first:
+The results screen uses `check_any_key` — it returns immediately so the border can keep flashing. The player can watch the celebration as long as they like.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/06-changing-turn-handling.asm" lang="asm" />
+<InlineNote>
+Why wait for key release first? Otherwise, if the player is still holding a key from gameplay, we'd immediately skip the title screen.
+</InlineNote>
 
-Wait — there's an issue. In the existing code, after claiming we always return player to 1 before calling AI (the AI temporarily sets player to 2). But we've already set `current_player` to 1 when storing the claim. Let me trace through more carefully.
+## Resetting for New Games
 
-Actually, looking at the existing `claim_cell`:
-1. We store `current_player` (which is 1) into the board
-2. We call AI routines which set player to 2, make the AI move, then set back to 1
+When starting a new game, we must clear everything:
 
-For 2P mode, we need:
-1. Store `current_player` into the board (could be 1 or 2)
-2. Switch to the other player
-3. That's it — no AI
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/05-reset-game.asm" />
 
-The simpler approach:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/07-changing-turn-handling.asm" lang="asm" />
-
-**`xor 3`** — This is a neat trick. XOR with 3 (binary 11) flips the bottom two bits. 1 XOR 3 = 2. 2 XOR 3 = 1. Perfect for toggling between players!
-
-## Updating Result Labels
-
-The results screen currently shows "PLAYER" and "CPU". For 2P mode, we should show "PLAYER 1" and "PLAYER 2":
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/08-updating-result-labels.asm" lang="asm" />
-
-New strings for 2P mode:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/09-updating-result-labels.asm" lang="asm" />
-
-## Winner Message for 2P
-
-The winner message also needs updating. Currently we have `msg_player_wins` and `msg_cpu_wins`. For 2P mode, we need `msg_p1_wins` and `msg_p2_wins`:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/10-winner-message-for-2p.asm" lang="asm" />
-
-## Updating the Entry Point
-
-Update `start` to call the new mode selection:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/11-updating-the-entry-point.asm" lang="asm" />
+Every variable that affects gameplay gets reset. The board is cleared. Scores return to zero. Player 1 starts. Miss anything here, and you'll have subtle bugs where the second game behaves differently from the first.
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Test both modes:
+Run in your emulator:
 
-**1 Player (press 1):**
-- Same as before — you vs the AI
-- Results show "PLAYER" and "CPU"
+1. The title screen appears: "INK WAR" and "PRESS ANY KEY TO START"
+2. Press any key — the game board appears
+3. Play through a full game
+4. When all cells are claimed, the winner is announced
+5. The border flashes in the winner's colour
+6. Press any key — back to the title screen
+7. Play again!
 
-**2 Player (press 2):**
-- Both players use QAOP + SPACE
-- Border shows whose turn it is (red/cyan)
-- Players alternate after each claim
-- Results show "PLAYER 1" and "PLAYER 2"
-
-## Recap / Sanity Check
-
-- Mode variable tracks 1P vs 2P
-- Title screen offers mode selection (1 or 2 key)
-- AI code is skipped in 2P mode
-- Turn switching uses XOR 3 trick
-- Result labels change based on mode
-- All existing features (sound, scoring) work in both modes
-
-## What You've Built
-
-Comparing to Unit 12:
-
-- **`game_mode`** — variable tracking 1P or 2P
-- **`wait_for_mode`** — mode selection input handling
-- **Updated `claim_cell`** — conditional AI vs human turn
-- **Updated `show_results`** — mode-aware labels
-- **New strings** — msg_mode1, msg_mode2, msg_p1, msg_p2, msg_p1_wins, msg_p2_wins
-
-The game now supports both single-player and local multiplayer!
+The game now has a complete loop. You can play forever.
 
 ## What You've Learnt
 
-- **Game modes** — Using a variable to change behaviour
-- **Conditional logic** — Branching based on mode
-- **XOR toggle** — `xor 3` to flip between 1 and 2
-- **Keyboard scanning** — Reading specific keys (1 and 2)
-- **Code reuse** — Same input/display code works for both modes
+- **State machine pattern**: Clean separation of game phases
+- **State dispatch**: Routing to handlers based on current state
+- **Transition functions**: Self-contained state setup
+- **Blocking vs non-blocking input**: Different needs for different states
+- **Game reset**: Ensuring each playthrough starts fresh
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 13:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/inkwar.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/inkwar.asm" />
 
 ## Next Unit
 
-The game now supports both solo and local multiplayer. But the AI is one-size-fits-all — no way to adjust difficulty.
-
-In Unit 14, we'll add **Difficulty Levels** — letting players choose how tough the AI should be.
+The game loops, but the results are shown on the game board with scores still visible. In Unit 14, we'll create a dedicated results screen that shows the winner prominently, making the end of each game feel like a proper conclusion.

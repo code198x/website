@@ -10,6 +10,8 @@ import asm6502Grammar from '../syntax/6502.tmLanguage.json';
 import amosGrammar from '../syntax/amos.tmLanguage.json';
 import sinclairBasicGrammar from '../syntax/sinclair-basic.tmLanguage.json';
 import ca65Grammar from '../syntax/ca65.tmLanguage.json';
+import z80Grammar from '../syntax/z80.tmLanguage.json';
+import m68kGrammar from '../syntax/m68k.tmLanguage.json';
 
 /**
  * Load all Code198x custom languages
@@ -44,6 +46,18 @@ export async function loadCode198xLanguages() {
   await loadCustomLanguage({
     ...ca65Grammar,
     name: 'ca65',
+  });
+
+  // Load Z80 Assembly (ZX Spectrum)
+  await loadCustomLanguage({
+    ...z80Grammar,
+    name: 'z80',
+  });
+
+  // Load M68K Assembly (Amiga)
+  await loadCustomLanguage({
+    ...m68kGrammar,
+    name: 'm68k',
   });
 
   // Load Shiki's built-in 'asm' language using the new helper

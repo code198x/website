@@ -1,180 +1,131 @@
 ---
-title: "Scoring"
-description: "Add a score tally and present results when the battle ends."
-pubDate: 2026-01-04
+title: "Score Display"
+description: "Count cells owned by each player and display the scores. Direct screen memory writes and number-to-ASCII conversion."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 10
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "score", "ui"]
+tags: ["assembly", "z80", "display", "score", "characters"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-09"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-11"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 9: Win Detection](/sinclair-zx-spectrum/game-01-ink-war/unit-09).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-The game ends, the border flashes, and... that's it. The player knows they won or lost by the border colour, but there's no fanfare, no numbers, no "PLAYER WINS" message. Time to give the ending some proper presentation.
+We have turns, we have claiming, we have feedback. But players have no idea who's winning. In this unit, we add a score display showing how many cells each player controls.
 
 By the end of this unit, you'll have:
 
-- A results screen showing territory counts
-- Text display using the ROM's print routines
-- A clear winner announcement
-- A proper "press space to play again" prompt
+- A cell counting routine that iterates through the board
+- A character printing routine using the ROM character set
+- Number-to-ASCII conversion for displaying scores
+- Live score updates after each move
 
-![Game over screen showing scores and winner](/images/sinclair-zx-spectrum/game-01-ink-war/unit-10/screenshot.png)
+![Unit 10 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-10/screenshot.png)
 
-## The Spectrum's Print System
+*"P1: 0" and "P2: 0" — both players start with nothing. Let the battle begin.*
 
-The ZX Spectrum ROM has a built-in print system. At address $10 (RST 16), there's a routine that prints whatever character is in the A register. Before using it, we need to open the correct "channel" — the screen is channel 2.
+## Counting Cells
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/01-the-spectrum-s-print-system.asm" lang="asm" />
+First, we need to count how many cells each player owns. We iterate through all 64 cells of `board_state`:
 
-Once the channel is open, we can print characters with RST $10:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/01-count-cells.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/02-the-spectrum-s-print-system.asm" lang="asm" />
+The D and E registers act as counters during the loop. When we find a cell belonging to Player 1, increment D. Player 2's cells increment E. At the end, we store both counts in memory.
 
-The cursor advances automatically after each character.
+<InlineNote>
+We use a 16-bit counter (BC) even though we only have 64 cells. This is defensive programming — the loop structure works for any board size up to 65535.
+</InlineNote>
 
-## Positioning the Cursor
+## Writing Characters to Screen
 
-The print system uses control codes. To position the cursor, we send:
-- Code 22 (AT command)
-- Y coordinate (row 0-23)
-- X coordinate (column 0-31)
+The Spectrum stores its character set in ROM at $3D00. Each character is 8 bytes — one byte per pixel row. To print a character, we:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/03-positioning-the-cursor.asm" lang="asm" />
+1. Calculate the screen address from row and column
+2. Find the character data in ROM
+3. Copy 8 bytes to screen memory
 
-## The Plan
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/02-print-char.asm" />
 
-We need to:
+The Spectrum's screen layout is notoriously complex. The address calculation involves:
+- **High byte**: `$40 + (row/8)*8` — which third of the screen
+- **Low byte**: `(row%8)*32 + column` — position within that third
 
-1. **Print strings** — a routine to print null-terminated text
-2. **Print numbers** — convert `p1_count` and `p2_count` to digits
-3. **Build the results screen** — show scores and winner
-4. **Replace the simple flash** with the full results screen
+Within each "third" of the screen, pixel lines are $100 apart, so we simply increment H for each line.
 
-## Printing Strings
+## Converting Numbers to Characters
 
-Rather than printing character by character, let's create a routine that prints a string ending with a zero byte:
+Scores can be 0-64, requiring two-digit display. We convert by repeated subtraction:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/04-printing-strings.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/03-print-number.asm" />
 
-Simple and effective. We load each byte, check if it's zero (end marker), print if not, advance, repeat.
+To avoid a leading zero (showing " 5" instead of "05"), we print a space when tens is zero. Adding '0' (ASCII 48) converts a digit value to its printable character.
 
-## Printing Numbers
+<InlineNote>
+We use scratch variables instead of complex stack manipulation. This is clearer to understand and less error-prone, even if slightly less elegant.
+</InlineNote>
 
-Our counts are single bytes, 0-64. We need to convert them to printable ASCII digits. This is a classic problem: divide by 10 repeatedly, collect the remainders.
+## Drawing the Scores
 
-For values up to 64, we need at most two digits:
-- Tens digit (0-6)
-- Units digit (0-9)
+The complete score display routine brings everything together:
 
-The Z80 doesn't have a divide instruction, but we can subtract repeatedly:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/04-draw-scores.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/05-printing-numbers.asm" lang="asm" />
+We use different ink colours for each player's score — red for P1, cyan for P2. The attributes are set before printing so the characters appear in the correct colour.
 
-Wait — there's a problem. If the score is exactly 10, 20, 30 etc., we'd skip the leading zero but then only print "0". Let's fix that:
+## Updating Scores
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/06-printing-numbers.asm" lang="asm" />
+After each successful claim, we call `draw_scores` to update the display:
 
-Actually, looking at this again — if a player scores 5, we print "5". If they score 50, we print "50". That's correct. The skip logic is fine for a game score display.
+```asm
+valid_move:
+        call get_board_state_address
+        ld a, (current_player)
+        ld (hl), a
+        call update_cell_display
+        call play_success_sound
+        ; ...border flash...
 
-## Building the Results Screen
+        ; Update scores after claim
+        call draw_scores
 
-Now let's create the complete game over display:
+        call switch_player
+        ret
+```
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/07-building-the-results-screen.asm" lang="asm" />
-
-## Message Data
-
-We need to define our strings. Each ends with a zero byte:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/08-message-data.asm" lang="asm" />
-
-The extra spaces in "PLAYER:" and "CPU:" align the numbers.
-
-## Updating check_game_over
-
-Now we replace the simple border flash with the full results screen:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/09-updating-check-game-over.asm" lang="asm" />
-
-We've split the border setting into its own routine:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/10-updating-check-game-over.asm" lang="asm" />
-
-## New Instruction: RST
-
-**`RST $10`** — This is a special single-byte call instruction. The Z80 has 8 RST instructions (RST 0, RST 8, RST 16, RST 24, RST 32, RST 40, RST 48, RST 56) that call fixed addresses. `RST $10` calls address $0010 — the Spectrum ROM's print routine. It's faster and smaller than `CALL $0010`.
-
-The RST instructions exist because early computers needed compact code. One byte instead of three makes a real difference when you're printing lots of characters.
-
-## Understanding System Variables
-
-**Address 23693 ($5C8D)** — This is `ATTR_P`, the permanent attribute used when printing. Setting it controls the ink and paper colours for subsequent text output.
-
-The Spectrum ROM maintains many such system variables in the range 23552-23733. We're not manipulating them heavily, but knowing they exist is useful.
+The score recounts all cells every time. This is simple and always accurate, even if it's not the most efficient approach.
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Play a full game. When the board fills:
+Run in your emulator:
 
-- Screen clears to show results
-- "GAME OVER" appears at the top
-- Both scores display (e.g., "PLAYER: 35" and "CPU: 29")
-- Winner announcement shows
-- "PRESS SPACE" prompt appears
-- Border reflects the winner
-- SPACE restarts cleanly
-
-## Recap / Sanity Check
-
-- ROM print routine (RST $10) outputs characters
-- Channel 2 must be opened before printing
-- Control code 22 positions the cursor
-- Division by subtraction extracts digits
-- Null-terminated strings end with zero byte
-- System variables control print attributes
-
-## What You've Built
-
-Comparing to Unit 9:
-
-- **`print_string`** — outputs null-terminated text
-- **`print_number`** — converts byte to ASCII digits
-- **`show_results`** — displays the full game over screen
-- **`set_winner_border`** — sets border colour (extracted from old show_game_over)
-- **Message data** — all the text strings
-
-The game now has a proper ending screen with real information.
+1. See "P1: 0" on the left, "P2: 0" on the right
+2. Move cursor, press Space to claim a cell
+3. Watch P1's score increment to 1
+4. After P2 claims, see P2's score update
 
 ## What You've Learnt
 
-- **ROM routines** — The Spectrum ROM provides useful functions
-- **RST instructions** — Single-byte calls to fixed addresses
-- **Print channels** — The Spectrum's I/O stream system
-- **Control codes** — Positioning and formatting text
-- **Integer to ASCII** — Converting numbers to printable digits
-- **System variables** — ROM state stored at fixed addresses
+- **Cell counting**: Iterating through game state with counters
+- **Screen addressing**: The Spectrum's complex display layout
+- **Character printing**: Using the ROM character set
+- **Number conversion**: Digit extraction and ASCII conversion
+- **Attribute colours**: Setting ink colour for text
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 10:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/inkwar.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/inkwar.asm" />
 
 ## Next Unit
 
-The game ends with a proper score display now. But it's eerily silent throughout. Every great game has sound feedback.
-
-In Unit 11, we'll add **Sound Effects** — beeps for moves, claims, and victory.
+Players can see their scores. But when does the game end? In Unit 11, we'll detect when the board is full — all 64 cells claimed. The competition needs a finish line.

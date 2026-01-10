@@ -1,172 +1,125 @@
 ---
-title: "Valid Moves"
-description: "Implement territory expansion rules. Learn adjacency checking and boundary conditions."
-pubDate: 2026-01-03
+title: "The Cursor"
+description: "Create a movable cursor that responds to keyboard input. The first truly interactive element."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 6
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "game-logic", "adjacency"]
+tags: ["assembly", "z80", "cursor", "movement", "game-loop"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-05"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-07"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 5: Turn Logic](/sinclair-zx-spectrum/game-01-ink-war/unit-05).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-Right now players can claim any empty cell on the board. That's not territory expansion — that's just random paint splashing.
+We can read the keyboard. Now we need something to control.
 
 By the end of this unit, you'll have:
 
-- Territory rules: you can only claim cells adjacent to your existing territory
-- Starting positions: each player begins with a corner
-- A proper two-player strategy game
+- A visible cursor on the game board
+- Cursor movement with Q/A/O/P keys
+- Boundary checking (can't leave the board)
+- The game loop pattern: read input, update state, draw
 
-![Territory expansion from corners](/images/sinclair-zx-spectrum/game-01-ink-war/unit-06/screenshot.png)
+![Unit 6 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-06/screenshot.png)
 
-## The Rules
+*The yellow cell is the cursor. Move it with Q/A/O/P!*
 
-A valid claim requires two conditions:
+## Cursor State
 
-1. **The cell must be empty** — You can't overwrite territory (yet)
-2. **The cell must be adjacent** — At least one neighbour (up, down, left, or right) must already be yours
+The cursor needs to remember its position. We store this in two variables:
 
-This creates the core strategy: you expand outward from your territory, competing for the middle ground.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/snippets/01-cursor-variables.asm" />
 
-## The Starting Problem
+Both values range from 0 to 7, covering the 8×8 board. The cursor starts at (3,3) — roughly the centre.
 
-There's a catch: on turn one, neither player has territory. The adjacency check will always fail.
+## Drawing the Cursor
 
-We solve this by giving each player a starting cell:
-- **Player 1** (Red) starts at (0, 0) — top-left corner
-- **Player 2** (Cyan) starts at (7, 7) — bottom-right corner
+The cursor is just a cell with a different colour. We use bright yellow to make it stand out:
 
-Opposite corners create natural tension. Both players race toward the centre.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/snippets/02-draw-cursor.asm" />
 
-## The Plan
+The `get_cell_address` subroutine (from Unit 4) converts board coordinates to an attribute address.
 
-We need:
+<InlineNote>
+We could use FLASH instead of a colour, making the cell blink. But a solid colour is easier to see in screenshots and makes debugging simpler. You can experiment with FLASH later.
+</InlineNote>
 
-1. **A helper routine** to get the owner of any cell
-2. **An adjacency checker** to test if a cell is next to our territory
-3. **Initialisation code** to set up the starting cells
-4. **Modified claim logic** to enforce the rules
+## Erasing the Cursor
 
-## Getting a Cell's Owner
+Before moving the cursor, we must erase it from the old position:
 
-First, a simple helper that returns who owns a cell:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/snippets/03-erase-cursor.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/snippets/01-getting-a-cell-s-owner.asm" lang="asm" />
+Without this, we'd leave yellow "ghost" cells everywhere the cursor has been. The pattern is always: **erase, move, draw**.
 
-We reuse `get_board_addr` from Unit 4. This helper makes the adjacency checker cleaner.
+## Moving the Cursor
 
-## Checking Adjacency
+The move routine checks which keys are pressed and updates the position:
 
-The adjacency checker examines all four neighbours. If any belongs to the current player, the move is valid:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/snippets/04-move-cursor.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/snippets/02-checking-adjacency.asm" lang="asm" />
+We check for movement keys first — if none are pressed, we return immediately without erasing or redrawing.
 
-**The pattern for each direction:**
-1. Check if we're at an edge (can't check past the board)
-2. Calculate the neighbour's coordinates
-3. Get who owns that cell
-4. Compare to `current_player`
-5. Return immediately if it matches (Z flag set)
+## Boundary Checking
 
-**`or 1`** — If we reach the end without finding a match, we need to return with Z flag cleared (NZ = invalid). `or 1` sets A to a non-zero value, which clears the Z flag. The actual value doesn't matter — we only care about the flag.
+The cursor must stay within the 8×8 board. We check boundaries before allowing movement:
 
-## Initialising Starting Cells
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/snippets/05-boundary-check.asm" />
 
-At startup, we mark the corners and colour them:
+The check happens *before* modifying the position. If we're at a boundary, we simply skip the increment or decrement.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/snippets/03-initialising-starting-cells.asm" lang="asm" />
+## The Game Loop
 
-**`board_state + 63`** — The board is 8×8 = 64 cells. Index 63 is the last cell (7,7). We can calculate the address directly instead of calling `get_board_addr`.
+Our main loop now has the classic game structure:
 
-We need a new helper to set a cell's colour directly (not based on `current_player`):
+```asm
+main_loop:
+        halt                ; Wait for vertical blank
+        call read_keys      ; 1. Read input
+        call move_cursor    ; 2. Update state
+        jr main_loop        ; 3. (Drawing happens in move_cursor)
+```
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/snippets/04-initialising-starting-cells.asm" lang="asm" />
-
-This is similar to `set_cell_colour`, but takes the colour as a parameter instead of reading `current_player`.
-
-## Enforcing the Rules
-
-The `claim_cell` routine now checks adjacency before allowing a claim:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/snippets/05-enforcing-the-rules.asm" lang="asm" />
-
-**`ret nz`** — "Return if Not Zero." After `or a`, the Z flag is set if A was zero (empty cell). If NZ (not zero), the cell is already owned — we can't claim it. After `check_adjacency`, NZ means no adjacent territory — invalid move.
-
-## The Startup Sequence
-
-Update `start` to initialise the starting cells and position the cursor sensibly:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/snippets/06-the-startup-sequence.asm" lang="asm" />
-
-We start the cursor at (1, 0) — next to Player 1's corner. This way Player 1 can immediately make a valid move.
-
-## The Game Flow
-
-1. **Game starts**: Player 1 (Red) owns (0,0), Player 2 (Cyan) owns (7,7)
-2. **Player 1** can only claim cells next to (0,0): positions (1,0) or (0,1)
-3. **After claiming**, border turns cyan, Player 2's turn
-4. **Player 2** can only claim next to (7,7): positions (6,7) or (7,6)
-5. **Both expand** toward the middle, competing for territory
-6. **Game ends** when all cells are claimed (or neither can move)
+This runs at 50Hz (once per frame). Each iteration:
+1. Waits for the screen refresh
+2. Reads the keyboard
+3. Updates game state (cursor position)
+4. Redraws if needed
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Load the tape in your emulator. You should see:
+You should see:
 
-- Red cell in top-left corner
-- Cyan cell in bottom-right corner
-- Cursor near top-left
-- Trying to claim a cell in the middle fails — nothing happens
-- Claiming a cell adjacent to your corner works!
-
-## Recap / Sanity Check
-
-- Starting corners should be coloured immediately
-- You can only claim cells next to your existing territory
-- The middle of the board is unreachable at first
-- Turn switching still works after valid claims
-- Invalid claims produce no change (no sound feedback yet)
-
-## What You've Built
-
-Look at what changed from Unit 5:
-
-- **`get_owner`** — Helper to check who owns any cell
-- **`check_adjacency`** — Tests if a move is valid
-- **`init_starting_cells`** — Sets up the corners
-- **`set_cell_direct`** — Colours a cell with any colour
-- **Modified `claim_cell`** — Enforces the rules
-
-The game now has actual strategy. You can't just click randomly — you must think about expansion.
+- The game board with a yellow cursor cell
+- Press Q → cursor moves up
+- Press A → cursor moves down
+- Press O → cursor moves left
+- Press P → cursor moves right
+- Cursor stops at board edges
 
 ## What You've Learnt
 
-- **Boundary checking** — Test for edges before checking neighbours
-- **Flag-based returns** — Use Z/NZ to signal success/failure
-- **Game balance** — Starting positions create natural tension
-- **Rule enforcement** — Validation before state changes
+- **Cursor state**: Variables tracking position (row, column)
+- **Erase-move-draw**: Pattern for smooth movement
+- **Boundary checking**: Prevent cursor leaving valid area
+- **Game loop**: Input → Update → Draw cycle
+- **HALT timing**: Run at consistent frame rate
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 6:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/inkwar.asm" lang="asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-06/inkwar.asm" />
 
 ## Next Unit
 
-You have a complete two-player game. But playing against yourself gets lonely.
-
-In Unit 7, we'll add a **Simple AI** so the computer can fight back. Nothing fancy — just enough to make single-player mode possible.
+The cursor moves, but pressing Space does nothing. In Unit 7, we'll make Space claim the current cell — turning it to the current player's colour. The game mechanics begin.

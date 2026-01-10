@@ -1,165 +1,107 @@
 ---
-title: "Claiming Cells"
-description: "Paint the board your colour. Learn state arrays and how to permanently change cells."
-pubDate: 2026-01-03
+title: "Player Colours"
+description: "Define the colours of war. Bright red versus bright blue. Create routines to claim territory."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 4
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "game-logic", "arrays"]
+tags: ["assembly", "z80", "game-state", "subroutines", "colours"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-03"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-05"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 3: Movement](/sinclair-zx-spectrum/game-01-ink-war/unit-03).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-You can move around, but the board stays white. Time to start claiming territory.
+We have a board. Now we need to show what happens when players battle over it.
 
 By the end of this unit, you'll have:
 
-- A state array tracking who owns each cell
-- SPACE bar input to claim the current cell
-- Cells that permanently change colour when claimed
-- The beginning of actual gameplay
+- Player colour constants (bright red vs bright blue)
+- A `set_cell` subroutine to claim any cell
+- A visual preview of what gameplay will look like
+- The foundation for game state management
 
-Press SPACE. Watch the cell turn red. That's yours now.
+![Unit 4 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-04/screenshot.png)
 
-![A cell claimed by the red player](/images/sinclair-zx-spectrum/game-01-ink-war/unit-04/screenshot.png)
+## Defining Player Colours
 
-## The Board State
+Each cell can be in one of three states: empty, claimed by Player 1, or claimed by Player 2. We need constants for both the state values and their visual appearance:
 
-Until now, the board was just pixels. The program didn't "know" what colour each cell was — it just painted them white at startup.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/01-player-constants.asm" />
 
-For a game, we need to track ownership:
-- **0** = Neutral (white)
-- **1** = Player 1 (red)
-- **2** = Player 2 (cyan)
+We use **bright** red and blue (bit 6 set) because they pop against the white board. Normal red and blue would work, but bright colours make the territories visually distinct.
 
-We need 64 bytes — one for each cell on the 8×8 board:
+<InlineNote>
+Why red vs blue? They're traditional rivals — think chess pieces, sports teams, political maps. They're also on opposite sides of the colour spectrum, making them easy to distinguish even at a glance.
+</InlineNote>
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/01-the-board-state.asm" lang="asm" />
+## The set_cell Subroutine
 
-**`defs 64`** — "Define Space." Reserves 64 bytes of memory, initialised to zero. Unlike `defb` which sets specific values, `defs` just claims empty space. All cells start as neutral (0).
+Rather than calculating addresses every time we want to colour a cell, we create a reusable subroutine. Give it a row, column, and player, and it handles the rest:
 
-## Accessing the Array
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/02-set-cell.asm" />
 
-To read or write `board_state[y][x]`, we calculate the index: `index = (y × 8) + x`
+The key insight: board coordinates (0-7) aren't the same as screen coordinates. We add `BOARD_TOP` and `BOARD_LEFT` to convert from board space to screen space.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/02-accessing-the-array.asm" lang="asm" />
+## Converting State to Colour
 
-This is simpler than `get_cell_addr` — we only need `y × 8` (three rotations) instead of `y × 64`.
+The `get_player_colour` subroutine translates a player number into the corresponding attribute byte:
 
-## Reading SPACE
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/03-get-colour.asm" />
 
-SPACE is on the bottom half-row ($7F), bit 0:
+This separation is important. The game logic works with player numbers (0, 1, 2). The display code works with attribute bytes. Keeping them separate makes the code cleaner and easier to modify.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/03-reading-space.asm" lang="asm" />
+## Claiming Territory
 
-But there's a problem: if we just check SPACE in the main loop, holding the key would claim cells every frame. We need to detect the **transition** from not-pressed to pressed.
+To claim a cell, we load the row into B, column into C, player into A, and call `set_cell`:
 
-## Debouncing SPACE
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/04-claim-example.asm" />
 
-We track whether SPACE was already down:
+In the screenshot, you can see the result: Player 1 (red) has claimed the top-left corner, while Player 2 (blue) controls the bottom-right. The white cells in between are unclaimed territory — the battlefield.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/04-debouncing-space.asm" lang="asm" />
+## Looking Ahead: Game State
 
-**`xor a`** — "Exclusive OR A with itself." Always produces zero (and sets the Z flag). A common idiom for "set A to 0 and set Z".
+Right now, we're only changing colours on screen. The display *looks* like a game, but there's no actual game state — no memory of which cells belong to whom.
 
-Now SPACE only registers once per press, no matter how long you hold it.
-
-## The Claim Logic
-
-When the player presses SPACE:
-
-1. Check if the cell is neutral (can't claim opponent's cells yet)
-2. Update `board_state` to the current player
-3. Change the cell's colour on screen
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/05-the-claim-logic.asm" lang="asm" />
-
-## Setting Cell Colours
-
-We need to change the attribute bytes to the player's colour:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/06-setting-cell-colours.asm" lang="asm" />
-
-We don't preserve the FLASH bit here — when you claim a cell, it becomes solid, not flashing. The cursor will move on and flash somewhere else.
-
-## Integrating with the Game Loop
-
-Add the SPACE check after the movement keys:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/07-integrating-with-the-game-loop.asm" lang="asm" />
-
-Note: we don't `ret` after claiming. The player might want to move immediately after claiming, so we let the movement checks happen too (they'll fail the debounce check since we just processed input).
-
-Actually, let's keep it simple — if SPACE is pressed, we claim and return:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/08-integrating-with-the-game-loop.asm" lang="asm" />
-
-## Testing So Far
-
-Build and run. Navigate around and press SPACE:
-
-- White cells turn red when you press SPACE
-- The same cell doesn't change if you press SPACE again
-- The cursor moves to the red cell and keeps flashing over the red background
-
-Wait — that last one might look odd. A flashing cursor over a red cell swaps between red and... the inverted red (cyan-ish). That's actually fine for now. The FLASH effect still works.
+In later units, we'll add a 64-byte array tracking ownership. But for now, the visual feedback is enough to understand the goal: claim more cells than your opponent.
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
 You should see:
-- Move around with Q/A/O/P
-- Press SPACE — the cell turns red
-- Press SPACE again on the same cell — nothing happens (already claimed)
-- Press SPACE on another white cell — it turns red too
 
-You're painting the board. One player at a time, for now.
-
-## Recap / Sanity Check
-
-- Only white (neutral) cells can be claimed
-- Claimed cells stay red permanently
-- SPACE only registers once per press
-- The cursor still flashes, even over red cells
-- If cells don't change colour, check `set_cell_colour` is called after `claim_cell` updates the state
-
-## What You've Built
-
-The game now has:
-
-- **State array** — 64 bytes tracking ownership
-- **Input debouncing** — Edge detection for single actions
-- **Claim logic** — Check validity, update state, update display
-- **Visual feedback** — Cells change colour permanently
-
-This is the core gameplay loop taking shape: move → claim → repeat.
+- The game board with white empty cells
+- Red cells in the top-left (Player 1's territory)
+- Blue cells in the bottom-right (Player 2's territory)
+- A preview of what gameplay will look like
 
 ## What You've Learnt
 
-- **`defs`** reserves uninitialised memory
-- **State vs display** — Track ownership separately from what's on screen
-- **Edge detection** — Distinguish "just pressed" from "still held"
-- **Array indexing** — `y × width + x` maps 2D to 1D
+- **Player constants**: State values (0/1/2) and attribute colours
+- **Coordinate conversion**: Board space (0-7) to screen space
+- **Reusable subroutines**: `set_cell` handles address calculation
+- **State vs display**: Game logic uses numbers, display uses colours
+- **16-bit multiplication**: Using `ADD HL,HL` to multiply by powers of 2
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 4:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/inkwar.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/inkwar.asm" lang="asm" />
+## Phase 1 Progress
 
-## Next Unit
+Units 1-4 covered the display fundamentals:
+- Unit 1: First contact with attributes
+- Unit 2: The 32×24 grid
+- Unit 3: Drawing the board
+- Unit 4: Player colours
 
-You can paint the board red, but it's a one-player game. Boring.
-
-In Unit 5, we add **Turn Logic** — after you claim a cell, it becomes the other player's turn. Red and cyan take turns conquering the board.
+**Next: Input.** A game isn't a game without player control. In Unit 5, we'll read the keyboard and start responding to the humans at the controls.

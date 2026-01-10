@@ -1,138 +1,112 @@
 ---
-title: "Better AI"
-description: "Improve the AI with blocking moves, isolation awareness, and randomness to break ties."
-pubDate: 2026-01-04
+title: "Turn System"
+description: "Take turns. Red claims, then blue claims, then red again. Real two-player competition."
+pubDate: 2026-01-09
 game: 1
 gameName: "Ink War"
 unit: 8
-totalUnits: 16
+totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "ai", "strategy"]
+tags: ["assembly", "z80", "turns", "multiplayer", "state"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-07"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-09"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-
-*Need to catch up? Check out [Unit 7: Simple AI](/sinclair-zx-spectrum/game-01-ink-war/unit-07).*
+import InlineNote from "../../../../components/units/InlineNote.astro";
 
 ## What You're Building
 
-The AI from Unit 7 works, but it's predictable. It always picks the first cell when scores tie, creating a top-left bias you can exploit. It doesn't block threats or avoid isolation.
+In Unit 7, every cell went to Player 1. That's not much of a game. Now we add turns — after each successful claim, it becomes the other player's turn.
 
 By the end of this unit, you'll have:
 
-- **Blocking behaviour** — The AI recognises when you're building a strong frontier and blocks it
-- **Randomness** — Ties are broken unpredictably using a frame counter
-- **Smarter scoring** — The AI avoids isolated cells and values connected territory
+- Alternating turns between players
+- A turn indicator showing whose turn it is
+- Cursor colour matching the current player
+- The foundation for real two-player gameplay
 
-![AI blocking player expansion](/images/sinclair-zx-spectrum/game-01-ink-war/unit-08/screenshot.png)
+![Unit 8 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-08/screenshot.png)
 
-## The Improved Heuristics
+*The red bar shows it's Player 1's turn. The cursor flashes red.*
 
-We keep the basic scoring from Unit 7 but add two enhancements:
+## Switching Players
 
-1. **Blocking bonus** — If a cell is adjacent to 2+ enemy cells, claim it before the opponent builds a wall
-2. **Random tie-breaker** — Add 0 or 1 to the score based on a frame counter, so equal scores don't always pick the same cell
+The elegant way to toggle between 1 and 2: subtract from 3.
 
-## Adding a Frame Counter
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-08/snippets/01-switch-player.asm" />
 
-We need a simple source of randomness. A frame counter that increments every main loop iteration works well:
+If current is 1, then 3 - 1 = 2. If current is 2, then 3 - 2 = 1. Perfect toggle.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-08/snippets/01-adding-a-frame-counter.asm" lang="asm" />
+<InlineNote>
+You could also use XOR: `xor 3` toggles bit 0 and bit 1, changing 1↔2. But subtraction is clearer and works for any two consecutive values.
+</InlineNote>
 
-In the main loop:
+## The Turn Indicator
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-08/snippets/02-adding-a-frame-counter.asm" lang="asm" />
+Players need to know whose turn it is without counting cells. We add a coloured bar above the board:
 
-The counter constantly changes, so whenever the AI evaluates cells, it gets a different "random" tie-breaker.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-08/snippets/02-turn-indicator.asm" />
 
-## Counting Enemy Neighbours
+Red bar = Player 1's turn. Blue bar = Player 2's turn. Simple, clear, unmistakable.
 
-To detect threats, we count how many neighbours belong to the enemy:
+## Cursor Colour
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-08/snippets/03-counting-enemy-neighbours.asm" lang="asm" />
+The cursor now matches the current player. This reinforces whose turn it is:
 
-This routine follows the same pattern as our adjacency checks but counts matches instead of returning on the first one.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-08/snippets/03-cursor-colour.asm" />
 
-## The Improved Scoring
+On empty cells, the cursor uses the current player's colour with FLASH added. On claimed cells, it adds FLASH to whatever colour is there.
 
-Update `score_cell` to include blocking and randomness:
+## Claim and Switch
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-08/snippets/04-the-improved-scoring.asm" lang="asm" />
+The claim routine now calls `switch_player` after a successful claim:
 
-**`and %00000001`** — Masks off all bits except bit 0, giving us either 0 or 1. This tiny random factor breaks ties between equally-scored cells without significantly affecting the heuristics.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-08/snippets/04-claim-with-switch.asm" />
 
-**`jr c, .no_block`** — "Jump Relative if Carry." After `cp 2`, the carry flag is set if A < 2. So if there are 0 or 1 enemy neighbours, we skip the blocking bonus.
+The sequence: validate → claim → display → feedback → switch. After the switch, everything updates: the turn indicator changes colour, and the cursor redraws in the new player's colour.
 
-## Why This Works
+## Hot-Seat Multiplayer
 
-The blocking bonus (+4) is large enough to matter but not so large that it overrides everything else. Consider:
+Both players share the same keyboard. After Player 1 claims a cell, they pass control to Player 2 (metaphorically — the game handles it automatically). This is "hot-seat" multiplayer: one keyboard, take turns.
 
-- A cell next to 2 friendly cells: +6 (3+3)
-- A cell next to 2 enemy cells: +4 (from blocking) - 4 (penalty) = 0, but +4 blocking = +4
-- A cell next to 1 friendly + 2 enemy: +3 - 4 + 4 = +3
-
-The AI still prefers connected friendly territory, but now it recognises when blocking is valuable.
-
-The randomness (+0 or +1) is too small to override good decisions but enough to vary choices when cells score equally.
-
-## The Complete Flow
-
-The AI now:
-
-1. Scans all empty cells adjacent to its territory
-2. Scores each based on: friendly neighbours (+3), neutral (+1), enemy (-2)
-3. Adds blocking bonus (+4) if ≥2 enemy neighbours
-4. Adds random tie-breaker (+0 or +1)
-5. Picks the highest-scoring cell
+It's not glamorous, but it works. And it's how many classic games handled two-player mode.
 
 ## Build It. Run It.
 
 ```bash
-pasmo --tapbas inkwar.asm inkwar.tap
+pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Load the tape in your emulator. Play several games and observe:
+Play a mock game:
 
-- The AI no longer always picks the same cells
-- When you build a line of cells, the AI tries to cut you off
-- The AI still prefers connected territory but is less exploitable
+1. Red indicator, red cursor — Player 1's turn
+2. Move cursor, press Space — cell turns red
+3. Blue indicator, blue cursor — Player 2's turn!
+4. Move cursor, press Space — cell turns blue
+5. Red indicator again — turns alternate properly
 
-## Recap / Sanity Check
-
-- Frame counter increments every main loop iteration
-- AI varies its choices when scores tie
-- AI blocks when you have 2+ cells adjacent to a position
-- AI still prioritises growing its own territory
-- The game feels more competitive
-
-## What You've Built
-
-Look at what changed from Unit 7:
-
-- **`frame_counter`** — Simple randomness source
-- **`count_enemy_neighbours`** — Detects threat patterns
-- **Modified `score_cell`** — Includes blocking bonus and randomness
-- **Modified main loop** — Increments frame counter
-
-The AI is now a more worthy opponent.
+Try claiming an occupied cell — the turn doesn't change on failed claims.
 
 ## What You've Learnt
 
-- **Bit masking** — `and %00000001` extracts a single bit for randomness
-- **Threat detection** — Counting enemy neighbours identifies blocking opportunities
-- **Heuristic balance** — Bonus values need tuning to create good behaviour
-- **Simple randomness** — A frame counter provides cheap unpredictability
+- **Player toggle**: 3 - current swaps 1↔2
+- **Turn indicator**: Coloured bar shows whose turn
+- **Visual consistency**: Cursor colour matches current player
+- **Turn transitions**: Update indicator and cursor on switch
+- **Hot-seat multiplayer**: Shared keyboard, alternating turns
 
 ## The Complete Code
 
-Here's `inkwar.asm` as it stands after Unit 8:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-08/inkwar.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-08/inkwar.asm" lang="asm" />
+## Phase Progress
 
-## Next Unit
+Units 5-8 covered input and interaction:
+- Unit 5: Keyboard reading
+- Unit 6: Moving cursor
+- Unit 7: Claiming cells
+- Unit 8: Turn system
 
-The AI is smarter, but the game never ends. You just keep playing until the board fills up — or get bored.
-
-In Unit 9, we'll add **Win Detection** — counting territories and declaring a winner when the game is over.
+**Next: Game Logic.** Players can claim cells and take turns, but the game doesn't know when it's over or who won. In Units 9-12, we add move validation, score display, game end detection, and winner determination.
