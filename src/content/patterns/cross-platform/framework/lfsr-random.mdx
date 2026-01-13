@@ -1,0 +1,131 @@
+---
+title: "LFSR Random Numbers"
+summary: "Linear Feedback Shift Register for fast, deterministic pseudo-random numbers."
+platform: "cross-platform"
+category: "framework"
+difficulty: "intermediate"
+tags: ["random", "lfsr", "prng", "math"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: []
+  vault: ["random-numbers"]
+---
+
+## Overview
+
+A Linear Feedback Shift Register (LFSR) generates pseudo-random numbers by shifting bits and XORing feedback taps. It's fast (no multiplication), deterministic (same seed = same sequence), and produces a long cycle before repeating.
+
+The 8-bit Galois LFSR shown here cycles through all 255 non-zero values before repeating — perfect for games.
+
+## Algorithm
+
+```text
+; 8-bit Galois LFSR with taps at bits 7, 5, 4, 3
+; Polynomial: x^8 + x^6 + x^5 + x^4 + 1
+
+random_seed: byte = $01    ; Must be non-zero!
+
+get_random:
+    load random_seed
+    shift right            ; Carry = bit 0
+    if carry set:
+        xor #$B4           ; Feedback polynomial
+    store random_seed
+    return                 ; Result in accumulator
+```
+
+## Pseudocode
+
+```text
+; Initialise with any non-zero value
+random_seed = $01
+
+; Get next random number (0-255, never 0)
+get_random:
+    seed = random_seed
+    carry = seed AND 1
+    seed = seed >> 1
+    if carry:
+        seed = seed XOR $B4
+    random_seed = seed
+    return seed
+
+; Get random in range 0 to max-1 (for powers of 2)
+get_random_max(max):
+    return get_random AND (max - 1)
+
+; Example: random 0-15
+direction = get_random AND $0F
+```
+
+## Implementation Notes
+
+**6502:**
+```asm
+get_random:
+    lda random_seed
+    lsr              ; Shift right, bit 0 -> carry
+    bcc +            ; Skip XOR if carry clear
+    eor #$B4         ; Apply feedback
++   sta random_seed
+    rts
+```
+
+**Z80:**
+```asm
+get_random:
+    ld a,(random_seed)
+    srl a            ; Shift right, bit 0 -> carry
+    jr nc,.no_xor
+    xor $B4
+.no_xor:
+    ld (random_seed),a
+    ret
+```
+
+**68000:**
+```asm
+get_random:
+    move.b  random_seed,d0
+    lsr.b   #1,d0
+    bcc.s   .no_xor
+    eor.b   #$B4,d0
+.no_xor:
+    move.b  d0,random_seed
+    rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~10-20 cycles |
+| Memory | 1 byte for seed |
+| Period | 255 values before repeat |
+| Distribution | Uniform across 1-255 (never generates 0) |
+
+**When to use:** Enemy spawn positions, random delays, shuffling, procedural generation.
+
+**When to avoid:** Cryptography (this is not secure!), or when you need 0 in your range.
+
+## Seeding
+
+For variety between play sessions, seed from player input timing:
+
+```text
+; Count frames until player presses start
+seed_counter = 0
+wait_for_start:
+    seed_counter = seed_counter + 1
+    if not start_pressed: goto wait_for_start
+    random_seed = seed_counter
+    if random_seed == 0: random_seed = 1  ; Never zero!
+```
+
+## Larger Periods
+
+For 16-bit LFSR (65,535 values):
+- Use polynomial $B400 (taps at 15, 13, 12, 10)
+- Same algorithm, just with 16-bit operations

@@ -1,0 +1,149 @@
+---
+title: "Input Edge Detection"
+summary: "Detect newly-pressed buttons, ignoring held inputs. Essential for menus and single-action triggers."
+platform: "cross-platform"
+category: "input"
+difficulty: "beginner"
+tags: ["input", "joystick", "keyboard", "edge-detection"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["joystick-reading", "keyboard-reading"]
+  vault: []
+---
+
+## Overview
+
+Raw input tells you if a button is pressed right now. Edge detection tells you if a button was *just* pressed this frame — it wasn't pressed last frame, but is pressed now. This prevents a single button press from triggering multiple times.
+
+Without edge detection: holding fire spawns bullets every frame.
+With edge detection: holding fire spawns one bullet, then nothing until released and pressed again.
+
+## Algorithm
+
+```text
+current_input: byte      ; This frame's input state
+previous_input: byte     ; Last frame's input state
+new_presses: byte        ; Buttons just pressed this frame
+
+read_input_with_edges:
+    ; Save last frame's state
+    previous_input = current_input
+
+    ; Read new input (platform-specific)
+    current_input = read_hardware_input()
+
+    ; Find newly pressed buttons:
+    ; New press = pressed now AND NOT pressed before
+    new_presses = current_input AND (NOT previous_input)
+
+    return
+```
+
+## Pseudocode
+
+```text
+; Constants (bits in input byte)
+BTN_UP    = %00000001
+BTN_DOWN  = %00000010
+BTN_LEFT  = %00000100
+BTN_RIGHT = %00001000
+BTN_FIRE  = %00010000
+
+; Variables
+current_input: byte = 0
+previous_input: byte = 0
+new_presses: byte = 0
+
+; Call once per frame, before game logic
+update_input:
+    previous_input = current_input
+    current_input = read_joystick()   ; Platform-specific
+    new_presses = current_input AND (NOT previous_input)
+    return
+
+; Check if fire was JUST pressed (not held)
+if new_presses AND BTN_FIRE:
+    spawn_bullet()
+
+; Check if fire is HELD (continuous fire)
+if current_input AND BTN_FIRE:
+    charge_weapon()
+
+; Check if up was JUST pressed (menu navigation)
+if new_presses AND BTN_UP:
+    menu_selection = menu_selection - 1
+```
+
+## Implementation Notes
+
+**6502:**
+```asm
+update_input:
+    lda current_input
+    sta previous_input
+    jsr read_joystick      ; Result in A
+    sta current_input
+
+    ; new_presses = current AND (NOT previous)
+    lda previous_input
+    eor #$FF               ; Invert (NOT)
+    and current_input
+    sta new_presses
+    rts
+
+; Usage
+check_fire:
+    lda new_presses
+    and #BTN_FIRE
+    beq .no_fire
+    jsr spawn_bullet
+.no_fire:
+```
+
+**Z80:**
+```asm
+update_input:
+    ld a,(current_input)
+    ld (previous_input),a
+    call read_keyboard      ; Result in A
+    ld (current_input),a
+
+    ; new_presses = current AND (NOT previous)
+    ld b,a
+    ld a,(previous_input)
+    cpl                     ; Invert (NOT)
+    and b
+    ld (new_presses),a
+    ret
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~15-25 extra cycles per frame |
+| Memory | 2 extra bytes (previous + new_presses) |
+| Latency | None — detection is same frame as press |
+
+**When to use:** Menu navigation, single-shot weapons, jump triggers, pause toggle.
+
+**When to avoid:** Continuous actions like movement or autofire (use raw input instead).
+
+## Variations
+
+**Released detection:** Find buttons just released this frame
+```text
+new_releases = previous_input AND (NOT current_input)
+```
+
+**Double-tap detection:** Track timing between presses
+```text
+if new_presses AND BTN_RIGHT:
+    if frames_since_last_right < 15:
+        trigger_dash()
+    frames_since_last_right = 0
+else:
+    frames_since_last_right = frames_since_last_right + 1
+```

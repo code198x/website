@@ -1,0 +1,184 @@
+---
+title: "Sprite Animation"
+summary: "Cycle through animation frames with configurable timing. Walk cycles, explosions, idle animations."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "beginner"
+tags: ["sprites", "animation", "rendering", "graphics"]
+evolution:
+  previous: null
+  next: "animation-state-machine"
+related:
+  patterns: []
+  vault: []
+---
+
+## Overview
+
+Sprite animation cycles through a sequence of frames at a fixed rate. A frame counter ticks each game frame; when it reaches the delay threshold, advance to the next animation frame. Wrap back to the first frame at the end.
+
+The same logic works for walk cycles, explosions, flickering torches — any repeating animation.
+
+## Algorithm
+
+```text
+; Animation state
+anim_frame: byte = 0       ; Current frame index (0, 1, 2...)
+anim_counter: byte = 0     ; Ticks until next frame
+
+; Animation data
+ANIM_DELAY = 8             ; Frames between animation steps
+ANIM_LENGTH = 4            ; Number of frames in animation
+
+update_animation:
+    anim_counter = anim_counter + 1
+    if anim_counter < ANIM_DELAY:
+        return             ; Not time yet
+
+    ; Time to advance
+    anim_counter = 0
+    anim_frame = anim_frame + 1
+    if anim_frame >= ANIM_LENGTH:
+        anim_frame = 0     ; Wrap to start
+
+    return
+```
+
+## Pseudocode
+
+```text
+; Animation frames (sprite indices or pointers)
+walk_frames: byte[4] = { 0, 1, 2, 1 }    ; Walk cycle
+WALK_DELAY = 6
+WALK_LENGTH = 4
+
+; Player animation state
+player_anim_frame: byte = 0
+player_anim_counter: byte = 0
+
+; Call every game frame
+update_player_animation:
+    player_anim_counter = player_anim_counter + 1
+    if player_anim_counter < WALK_DELAY:
+        return
+
+    player_anim_counter = 0
+    player_anim_frame = player_anim_frame + 1
+    if player_anim_frame >= WALK_LENGTH:
+        player_anim_frame = 0
+
+    ; Get actual sprite index from frame table
+    sprite_index = walk_frames[player_anim_frame]
+    set_player_sprite(sprite_index)
+    return
+```
+
+## Implementation Notes
+
+**6502:**
+```asm
+ANIM_DELAY  = 6
+ANIM_LENGTH = 4
+
+walk_frames:
+    .byte 0, 1, 2, 1      ; Frame indices
+
+update_animation:
+    inc anim_counter
+    lda anim_counter
+    cmp #ANIM_DELAY
+    bcc .done             ; Not time yet
+
+    lda #0
+    sta anim_counter
+
+    inc anim_frame
+    lda anim_frame
+    cmp #ANIM_LENGTH
+    bcc .set_sprite
+    lda #0
+    sta anim_frame
+
+.set_sprite:
+    tax
+    lda walk_frames,x     ; Get sprite index
+    sta SPRITE_POINTER    ; Platform-specific
+.done:
+    rts
+```
+
+**Z80:**
+```asm
+update_animation:
+    ld a,(anim_counter)
+    inc a
+    ld (anim_counter),a
+    cp ANIM_DELAY
+    ret c                 ; Not time yet
+
+    xor a
+    ld (anim_counter),a
+
+    ld a,(anim_frame)
+    inc a
+    cp ANIM_LENGTH
+    jr c,.set_frame
+    xor a
+.set_frame:
+    ld (anim_frame),a
+
+    ld hl,walk_frames
+    add a,l
+    ld l,a
+    ld a,(hl)             ; Get sprite index
+    ; ... set sprite
+    ret
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~20-30 cycles per frame |
+| Memory | 2 bytes state + frame table |
+| Flexibility | Easy to change speed and sequence |
+
+**When to use:** Character walk cycles, enemy animations, environmental effects.
+
+**When to avoid:** Single-frame sprites, or when animation is tied to movement (use distance-based instead).
+
+## Variations
+
+**Speed from movement:** Only advance animation when moving
+```text
+if player_moving:
+    update_player_animation()
+else:
+    player_anim_frame = 0    ; Reset to idle frame
+```
+
+**One-shot animations:** Explosions that don't loop
+```text
+update_explosion:
+    if anim_frame >= EXPLOSION_LENGTH:
+        return             ; Stay on last frame (or destroy)
+    ; ... normal update without wrap
+```
+
+**Variable speed:** Store delay per animation
+```text
+animations:
+    ; delay, length, frame_data...
+    .byte 6, 4, 0, 1, 2, 1    ; Walk: 6 frame delay, 4 frames
+    .byte 3, 6, 0, 1, 2, 3, 4, 5  ; Run: faster, more frames
+```
+
+**Direction-aware:** Different frames for left/right
+```text
+if facing_left:
+    base_frame = LEFT_WALK_START
+else:
+    base_frame = RIGHT_WALK_START
+
+sprite = base_frame + walk_frames[anim_frame]
+```

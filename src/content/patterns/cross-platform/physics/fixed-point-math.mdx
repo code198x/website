@@ -1,0 +1,143 @@
+---
+title: "Fixed-Point Math"
+summary: "Fractional values without floating point. Essential for smooth movement and physics on 8/16-bit CPUs."
+platform: "cross-platform"
+category: "physics"
+difficulty: "intermediate"
+tags: ["math", "physics", "movement", "fixed-point"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["sprite-movement-bounds"]
+  vault: []
+---
+
+## Overview
+
+8-bit and 16-bit CPUs don't have floating-point hardware. Fixed-point math lets you work with fractional values using integers. The trick: store position as two bytes — the high byte is the pixel position, the low byte is the sub-pixel fraction.
+
+This gives you smooth movement at any speed, even slower than 1 pixel per frame.
+
+## Concept
+
+```text
+; 8.8 fixed-point: 8 bits integer, 8 bits fraction
+; Value $0180 = 1.5 (1 pixel + 128/256 = 1.5)
+; Value $0040 = 0.25 (0 pixels + 64/256 = 0.25)
+
+position_lo: byte    ; Fractional part (0-255 = 0.0 to 0.996)
+position_hi: byte    ; Integer part (pixel position)
+
+velocity_lo: byte    ; Fractional velocity
+velocity_hi: byte    ; Integer velocity (usually 0 for slow movement)
+```
+
+## Pseudocode
+
+```text
+; Player position (8.8 fixed-point)
+player_x_lo: byte = 0      ; Fraction
+player_x_hi: byte = 100    ; Pixel position
+
+; Velocity: 0.75 pixels per frame
+; 0.75 * 256 = 192 = $C0
+velocity_x_lo: byte = $C0
+velocity_x_hi: byte = 0
+
+; Update position each frame
+update_position:
+    ; Add velocity to position (16-bit add)
+    player_x_lo = player_x_lo + velocity_x_lo
+    if carry:
+        player_x_hi = player_x_hi + 1
+    player_x_hi = player_x_hi + velocity_x_hi
+
+    ; Use player_x_hi as sprite X position
+    sprite_x = player_x_hi
+    return
+```
+
+## Implementation Notes
+
+**6502:**
+```asm
+; Position
+player_x_lo:  .byte 0
+player_x_hi:  .byte 100
+
+; Velocity (0.75 px/frame = $00C0)
+velocity_x_lo: .byte $C0
+velocity_x_hi: .byte $00
+
+update_position:
+    clc
+    lda player_x_lo
+    adc velocity_x_lo
+    sta player_x_lo
+    lda player_x_hi
+    adc velocity_x_hi
+    sta player_x_hi
+    rts
+```
+
+**Z80:**
+```asm
+; Add 16-bit velocity to 16-bit position
+update_position:
+    ld hl,(player_x)       ; L=lo, H=hi
+    ld bc,(velocity_x)     ; C=lo, B=hi
+    add hl,bc
+    ld (player_x),hl
+    ret
+```
+
+## Common Velocities
+
+| Speed (px/frame) | Fixed-point value | Hex |
+|------------------|-------------------|-----|
+| 0.25 | 64 | $0040 |
+| 0.5 | 128 | $0080 |
+| 0.75 | 192 | $00C0 |
+| 1.0 | 256 | $0100 |
+| 1.5 | 384 | $0180 |
+| 2.0 | 512 | $0200 |
+| 2.5 | 640 | $0280 |
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~20 cycles for 16-bit add |
+| Memory | 2 bytes per axis (vs 1 for integer) |
+| Precision | 1/256 pixel (~0.004 pixel resolution) |
+
+**When to use:** Any movement that isn't exactly integer pixels per frame — gravity, acceleration, diagonal movement, slow enemies.
+
+**When to avoid:** Grid-based games where everything moves in whole tiles.
+
+## Gravity Example
+
+```text
+; Gravity: accelerate downward 0.1 px/frame/frame
+GRAVITY = 26      ; 0.1 * 256 ≈ 26
+
+velocity_y_lo: byte = 0
+velocity_y_hi: byte = 0
+
+apply_gravity:
+    ; Add gravity to velocity
+    velocity_y_lo = velocity_y_lo + GRAVITY
+    if carry:
+        velocity_y_hi = velocity_y_hi + 1
+
+    ; Clamp to terminal velocity (e.g., 4 px/frame)
+    if velocity_y_hi >= 4:
+        velocity_y_hi = 4
+        velocity_y_lo = 0
+    return
+```
+
+## Signed Movement
+
+For movement in both directions, use signed arithmetic or separate positive/negative velocities. Simplest approach: track direction separately and always add positive velocity.
