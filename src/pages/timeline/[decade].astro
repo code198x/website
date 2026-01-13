@@ -1,0 +1,603 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import { Clock, Globe, Monitor, Users, Gamepad2, Building2, BookOpen, Cpu, Wrench, Cross, Baby, ArrowLeft, ArrowRight, XCircle } from '@lucide/astro';
+
+export async function getStaticPaths() {
+  const decades = [1920, 1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020];
+  return decades.map(decade => ({
+    params: { decade: `${decade}s` },
+    props: { decadeStart: decade },
+  }));
+}
+
+const { decadeStart } = Astro.props;
+const decadeEnd = decadeStart + 9;
+
+// Navigation
+const decades = [1920, 1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020];
+const currentIndex = decades.indexOf(decadeStart);
+const prevDecade = currentIndex > 0 ? decades[currentIndex - 1] : null;
+const nextDecade = currentIndex < decades.length - 1 ? decades[currentIndex + 1] : null;
+
+// Get vault entries with years (excluding people - they get birth/death events instead)
+const vaultEntries = await getCollection('vault');
+const vaultEvents = vaultEntries
+  .filter(e => e.data.years?.length > 0 && e.data.years[0] !== null && e.data.category !== 'people')
+  .map(e => ({
+    year: e.data.years[0] as number,
+    endYear: e.data.years[e.data.years.length - 1],
+    title: e.data.title,
+    category: e.data.category,
+    type: 'vault' as const,
+    url: `/vault/${e.slug}`,
+    summary: e.data.summary,
+  }));
+
+// Generate birth events for people
+const birthEvents = vaultEntries
+  .filter(e =>
+    e.data.category === 'people' &&
+    e.data.years?.length >= 1 &&
+    e.data.years[0] !== null
+  )
+  .map(e => ({
+    year: e.data.years![0] as number,
+    title: `${e.data.title} born`,
+    category: 'people' as const,
+    type: 'birth' as const,
+    url: `/vault/${e.slug}`,
+    summary: e.data.subtitle || e.data.summary,
+  }));
+
+// Generate death events for people who have died (end year is not null)
+const deathEvents = vaultEntries
+  .filter(e =>
+    e.data.category === 'people' &&
+    e.data.years?.length >= 2 &&
+    e.data.years[1] !== null
+  )
+  .map(e => ({
+    year: e.data.years![1] as number,
+    title: `${e.data.title} dies`,
+    category: 'people' as const,
+    type: 'death' as const,
+    url: `/vault/${e.slug}`,
+    summary: `${e.data.title} (${e.data.years![0]}–${e.data.years![1]})`,
+  }));
+
+// Generate company closure events (end year is not null)
+const companyClosureEvents = vaultEntries
+  .filter(e =>
+    e.data.category === 'companies' &&
+    e.data.years?.length >= 2 &&
+    e.data.years[1] !== null
+  )
+  .map(e => ({
+    year: e.data.years![1] as number,
+    title: `${e.data.title} closes`,
+    category: 'companies' as const,
+    type: 'closure' as const,
+    url: `/vault/${e.slug}`,
+    summary: `${e.data.title} (${e.data.years![0]}–${e.data.years![1]})`,
+  }));
+
+// Get global timeline events
+const timelineEntries = await getCollection('timeline');
+const globalEvents = timelineEntries.map(e => ({
+  year: e.data.year,
+  month: e.data.month,
+  title: e.data.title,
+  category: e.data.category,
+  type: 'global' as const,
+  summary: e.data.summary,
+}));
+
+// Filter to this decade and sort
+const allEvents = [...vaultEvents, ...birthEvents, ...deathEvents, ...companyClosureEvents, ...globalEvents]
+  .filter(e => e.year >= decadeStart && e.year <= decadeEnd)
+  .sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year;
+    const aMonth = 'month' in a ? a.month || 0 : 0;
+    const bMonth = 'month' in b ? b.month || 0 : 0;
+    if (aMonth !== bMonth) return aMonth - bMonth;
+    return a.title.localeCompare(b.title);
+  });
+
+// Group by year
+const years = [...new Set(allEvents.map(e => e.year))].sort((a, b) => a - b);
+const eventsByYear = years.reduce((acc, year) => {
+  acc[year] = allEvents.filter(e => e.year === year);
+  return acc;
+}, {} as Record<number, typeof allEvents>);
+
+// Category colours
+const categoryColors: Record<string, string> = {
+  systems: '#4a4dff',
+  hardware: '#06b6d4',
+  people: '#9333ea',
+  companies: '#f59e0b',
+  games: '#22c55e',
+  culture: '#ec4899',
+  techniques: '#6366f1',
+  politics: '#ef4444',
+  technology: '#3b82f6',
+  economics: '#f59e0b',
+  science: '#10b981',
+};
+
+// Category icons for vault
+const vaultIcons: Record<string, typeof Monitor> = {
+  systems: Monitor,
+  hardware: Cpu,
+  people: Users,
+  companies: Building2,
+  games: Gamepad2,
+  culture: BookOpen,
+  techniques: Wrench,
+};
+
+// Decade descriptions
+const decadeDescriptions: Record<number, string> = {
+  1920: "The birth of computing pioneers who would shape the digital age.",
+  1930: "Alan Turing's theoretical foundations and the seeds of modern computing.",
+  1940: "World War II accelerates computing development—ENIAC, Colossus, and the dawn of the computer age.",
+  1950: "The transistor revolution begins. Early video games emerge from research labs.",
+  1960: "Mainframes rule, the space race drives innovation, and integrated circuits miniaturise electronics.",
+  1970: "Microprocessors arrive. Arcades explode. Home computing becomes possible.",
+  1980: "The golden age. 8-bit and 16-bit machines transform bedrooms into game development studios.",
+  1990: "3D graphics, CD-ROMs, the World Wide Web, and the console wars define a new era.",
+  2000: "Mobile gaming, digital distribution, and the indie game revolution reshape the industry.",
+  2010: "Kickstarter funds retro revivals. Preservation becomes a priority. Nostalgia goes mainstream.",
+  2020: "Retro gaming peaks. Emulation matures. A new generation discovers classic computing.",
+};
+---
+
+<Layout
+  title={`${decadeStart}s Timeline`}
+  description={`Computing history from ${decadeStart} to ${decadeEnd}: systems, games, people, and world events in context.`}
+>
+  <style>
+    .decade-page {
+      min-height: 100vh;
+      background: var(--color-bg);
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      padding: var(--space-8) var(--space-4);
+      text-align: center;
+      color: white;
+    }
+
+    .hero-nav {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-4);
+      margin-bottom: var(--space-4);
+    }
+
+    .hero-nav a {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--color-primary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: opacity var(--transition-base);
+    }
+
+    .hero-nav a:hover {
+      opacity: 0.8;
+    }
+
+    .hero-icon {
+      color: var(--color-primary);
+      margin-bottom: var(--space-2);
+    }
+
+    .hero-title {
+      font-size: clamp(2.5rem, 8vw, 4rem);
+      font-weight: 900;
+      font-family: var(--font-family-mono);
+      margin-bottom: var(--space-2);
+    }
+
+    .hero-subtitle {
+      font-size: 1rem;
+      opacity: 0.9;
+      max-width: 600px;
+      margin: 0 auto var(--space-4);
+      line-height: 1.6;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: var(--space-6);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .stat-value {
+      font-family: var(--font-family-mono);
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: var(--color-primary);
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      opacity: 0.7;
+      text-transform: uppercase;
+    }
+
+    /* Year navigation */
+    .year-nav {
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      padding: var(--space-4);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .year-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      gap: var(--space-2);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .year-btn {
+      padding: var(--space-2) var(--space-3);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      color: var(--color-text);
+      font-family: var(--font-family-mono);
+      font-size: 0.875rem;
+      text-decoration: none;
+      transition: all var(--transition-base);
+    }
+
+    .year-btn:hover {
+      border-color: var(--color-primary);
+      transform: translateY(-2px);
+    }
+
+    /* Timeline container */
+    .timeline-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: var(--space-8) var(--space-4);
+    }
+
+    /* Year section */
+    .year-section {
+      margin-bottom: var(--space-10);
+      scroll-margin-top: 80px;
+    }
+
+    .year-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      margin-bottom: var(--space-4);
+    }
+
+    .year-title {
+      font-family: var(--font-family-mono);
+      font-size: 1.75rem;
+      font-weight: 900;
+      color: var(--color-primary);
+    }
+
+    .year-line {
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(90deg, var(--color-primary), transparent);
+    }
+
+    .year-count {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+    }
+
+    /* Events list */
+    .events-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    /* Event card */
+    .event-card {
+      display: flex;
+      gap: var(--space-4);
+      padding: var(--space-4);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      text-decoration: none;
+      color: var(--color-text);
+      transition: all var(--transition-base);
+      position: relative;
+    }
+
+    .event-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--event-color);
+      border-radius: 0.5rem 0 0 0.5rem;
+    }
+
+    .event-card:hover {
+      transform: translateX(4px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--event-color);
+    }
+
+    .event-icon-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: color-mix(in oklab, var(--event-color) 15%, var(--color-surface) 85%);
+      border-radius: 0.5rem;
+      color: var(--event-color);
+      flex-shrink: 0;
+    }
+
+    .event-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .event-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: var(--space-1);
+    }
+
+    .event-badge {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background: color-mix(in oklab, var(--event-color) 15%, var(--color-surface) 85%);
+      color: var(--event-color);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .event-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: var(--space-1);
+      line-height: 1.3;
+    }
+
+    .event-summary {
+      font-size: 0.875rem;
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Global event specific */
+    .event-card.global {
+      background: color-mix(in oklab, var(--event-color) 5%, var(--color-surface) 95%);
+    }
+
+    /* Bottom navigation */
+    .bottom-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1000px;
+      margin: var(--space-8) auto;
+      padding: var(--space-6) var(--space-4);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      color: var(--color-text);
+      text-decoration: none;
+      font-family: var(--font-family-mono);
+      transition: all var(--transition-base);
+    }
+
+    .nav-link:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    .nav-placeholder {
+      width: 120px;
+    }
+
+    .back-link {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--color-text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+    }
+
+    .back-link:hover {
+      color: var(--color-primary);
+    }
+
+    @media (max-width: 768px) {
+      .year-container {
+        justify-content: flex-start;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: var(--space-2);
+      }
+
+      .year-btn {
+        flex-shrink: 0;
+      }
+    }
+  </style>
+
+  <div class="decade-page">
+    <section class="hero">
+      <div class="hero-nav">
+        {prevDecade && (
+          <a href={`/timeline/${prevDecade}s`}>
+            <ArrowLeft size={16} />
+            {prevDecade}s
+          </a>
+        )}
+        <a href="/timeline">
+          <Clock size={16} />
+          All Decades
+        </a>
+        {nextDecade && (
+          <a href={`/timeline/${nextDecade}s`}>
+            {nextDecade}s
+            <ArrowRight size={16} />
+          </a>
+        )}
+      </div>
+      <div class="hero-icon"><Clock size={40} /></div>
+      <h1 class="hero-title">{decadeStart}s</h1>
+      <p class="hero-subtitle">{decadeDescriptions[decadeStart]}</p>
+      <div class="hero-stats">
+        <div>
+          <div class="stat-value">{allEvents.length}</div>
+          <div class="stat-label">Events</div>
+        </div>
+        <div>
+          <div class="stat-value">{years.length}</div>
+          <div class="stat-label">Years</div>
+        </div>
+      </div>
+    </section>
+
+    {years.length > 0 && (
+      <nav class="year-nav">
+        <div class="year-container">
+          {years.map(year => (
+            <a href={`#year-${year}`} class="year-btn">
+              {year}
+            </a>
+          ))}
+        </div>
+      </nav>
+    )}
+
+    <div class="timeline-container">
+      {years.length === 0 ? (
+        <p style="text-align: center; color: var(--color-text-muted); padding: var(--space-8);">
+          No events recorded for this decade yet.
+        </p>
+      ) : (
+        years.map(year => {
+          const events = eventsByYear[year];
+          return (
+            <section class="year-section" id={`year-${year}`}>
+              <div class="year-header">
+                <h2 class="year-title">{year}</h2>
+                <div class="year-line"></div>
+                <span class="year-count">{events.length} {events.length === 1 ? 'event' : 'events'}</span>
+              </div>
+
+              <div class="events-list">
+                {events.map(event => {
+                  const color = categoryColors[event.category] || '#888';
+                  const isGlobal = event.type === 'global';
+                  const isDeath = event.type === 'death';
+                  const isBirth = event.type === 'birth';
+                  const isClosure = event.type === 'closure';
+                  const Icon = isGlobal ? Globe : isDeath ? Cross : isBirth ? Baby : isClosure ? XCircle : vaultIcons[event.category] || Monitor;
+                  const badgeText = isGlobal ? 'World' : isDeath ? 'In Memoriam' : isBirth ? 'Birth' : isClosure ? 'Closed' : event.category;
+
+                  return isGlobal ? (
+                    <div
+                      class="event-card global"
+                      style={`--event-color: ${color}`}
+                    >
+                      <div class="event-icon-wrapper">
+                        <Icon size={20} />
+                      </div>
+                      <div class="event-content">
+                        <div class="event-meta">
+                          <span class="event-badge">{badgeText}</span>
+                        </div>
+                        <h3 class="event-title">{event.title}</h3>
+                        <p class="event-summary">{event.summary}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <a
+                      href={event.url}
+                      class="event-card"
+                      style={`--event-color: ${color}`}
+                    >
+                      <div class="event-icon-wrapper">
+                        <Icon size={20} />
+                      </div>
+                      <div class="event-content">
+                        <div class="event-meta">
+                          <span class="event-badge">{badgeText}</span>
+                        </div>
+                        <h3 class="event-title">{event.title}</h3>
+                        <p class="event-summary">{event.summary}</p>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })
+      )}
+    </div>
+
+    <nav class="bottom-nav">
+      {prevDecade ? (
+        <a href={`/timeline/${prevDecade}s`} class="nav-link">
+          <ArrowLeft size={16} />
+          {prevDecade}s
+        </a>
+      ) : (
+        <div class="nav-placeholder"></div>
+      )}
+
+      <a href="/timeline" class="back-link">
+        <Clock size={16} />
+        Back to Timeline
+      </a>
+
+      {nextDecade ? (
+        <a href={`/timeline/${nextDecade}s`} class="nav-link">
+          {nextDecade}s
+          <ArrowRight size={16} />
+        </a>
+      ) : (
+        <div class="nav-placeholder"></div>
+      )}
+    </nav>
+  </div>
+</Layout>

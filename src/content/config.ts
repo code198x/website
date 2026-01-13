@@ -17,7 +17,7 @@ const vault = defineCollection({
     ]),
     platforms: z.array(z.enum(['c64', 'spectrum', 'amiga', 'nes'])).optional(),
     tags: z.array(z.string()).default([]),
-    years: z.array(z.number()).optional(),
+    years: z.array(z.number().nullable()).optional(),
   }),
 });
 
@@ -55,4 +55,16 @@ const patterns = defineCollection({
   }),
 });
 
-export const collections = { vault, patterns };
+const timeline = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    year: z.number(),
+    month: z.number().optional(),
+    day: z.number().optional(),
+    category: z.enum(['politics', 'culture', 'technology', 'economics', 'science']),
+    summary: z.string(),
+  }),
+});
+
+export const collections = { vault, patterns, timeline };
