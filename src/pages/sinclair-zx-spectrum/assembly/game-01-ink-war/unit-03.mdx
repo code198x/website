@@ -1,123 +1,217 @@
 ---
-title: "Drawing the Board"
-description: "Create the game board — an 8×8 playing area, centred on screen, ready for territory battles."
-pubDate: 2026-01-09
+title: "Making It Yours"
+description: "Customise the board colours, position, and cursor style. Learn the internals by changing them."
+pubDate: 2026-01-12
 game: 1
 gameName: "Ink War"
 unit: 3
 totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "display", "game-board", "constants"]
+tags: ["assembly", "z80", "attributes", "customisation"]
 prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-02"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-04"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-## What You're Building
+The game works. Now make it yours.
 
-Patterns are useful for learning, but we need an actual game board. Ink War uses an 8×8 grid of cells — 64 territories to fight over.
+This unit teaches the attribute system by having you change it. You won't just read about bits and colours - you'll modify them and see the results. By the end, you'll understand exactly how the Spectrum's colour system works because you'll have bent it to your will.
 
-By the end of this unit, you'll have:
+## Run It
 
-- A centred 8×8 playing area
-- A visible border framing the board
-- Clean, organised code using constants
-- The foundation for all gameplay to come
+Assemble and run:
+
+```bash
+pasmonext --tapbas inkwar.asm inkwar.tap
+```
 
 ![Unit 3 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-03/screenshot.png)
 
-## Planning the Layout
+This doesn't look like the previous versions. The board is **cyan** instead of white. There's a **yellow border** around it. The **screen border is blue** (because it's Player 2's turn). The cursor is bright white, not flashing.
 
-The Spectrum screen has 32×24 attribute cells. Our board is 8×8 cells, plus we want a 1-cell border around it — that's 10×10 total.
+Same game, completely different feel.
 
-To centre a 10-cell-wide element on a 32-cell-wide screen:
-- Left margin = (32 - 10) ÷ 2 = 11 cells
+## The Customisation Section
 
-To centre vertically on 24 rows:
-- Top margin = (24 - 10) ÷ 2 = 7 rows
+All the visual changes come from one section at the top of the code:
 
-So our border starts at row 7, column 11. The playable area starts one cell inside: row 8, column 12.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-03/snippets/01-customisation-section.asm" />
 
-## Using Constants
+This is your control panel. Change these values, reassemble, and see the difference immediately.
 
-Hard-coding numbers like `8` and `12` throughout our code is asking for trouble. If we later decide to change the board position, we'd have to hunt through every line. Instead, we use constants:
+## Understanding the Attribute Byte
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-03/snippets/01-board-constants.asm" />
+Let's decode `%01101000` (the cyan cell):
 
-Now we write `BOARD_LEFT` instead of `12`. If we want to move the board, we change one line.
-
-<InlineNote>
-EQU doesn't create a variable — it's a compile-time substitution. The assembler replaces every `BOARD_LEFT` with `12` before generating machine code. Zero runtime cost.
-</InlineNote>
-
-## Step 1: Clear the Screen
-
-First, we fill the entire screen with black. This gives us a clean slate:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-03/snippets/02-clear-to-black.asm" />
-
-We use `%00000000` — black paper and black ink. The entire screen becomes a uniform black.
-
-## Step 2: Draw the Board
-
-Now we fill the 8×8 playing area with white (the "empty cell" colour):
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-03/snippets/03-draw-board.asm" />
-
-This nested loop pattern is fundamental:
-1. Outer loop counts rows (B register)
-2. Inner loop counts columns (also B register, after saving)
-3. After each row, we add 32 to HL to move to the next row
-
-The `push`/`pop` instructions save and restore values. We save BC (the row counter) before using B for the column loop, then restore it.
-
-## Step 3: Draw the Border
-
-The border is a frame of white cells around the playing area:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-03/snippets/04-draw-border.asm" />
-
-We draw four sides:
-1. Top row — 10 cells
-2. Bottom row — 10 cells
-3. Left column — 8 cells (between top and bottom)
-4. Right column — 8 cells
-
-The sides skip the corners (already drawn by top/bottom) to avoid duplicate work.
-
-## Drawing Order Matters
-
-Notice we draw the border first, then the board. This means the board overwrites the inside of the border frame, leaving just the outer edge visible.
-
-If we drew in the opposite order, the border would overwrite the board's edges. Always think about which elements should be "on top".
-
-## Build It. Run It.
-
-```bash
-pasmonext --sna inkwar.asm inkwar.sna
+```
+%01101000
+ │└┬┘└┬┘
+ │ │  └── INK: 000 = black (0)
+ │ └───── PAPER: 101 = cyan (5)
+ └─────── BRIGHT: 1 = yes, FLASH: 0 = no
 ```
 
-You should see:
+The attribute byte packs four pieces of information into 8 bits:
 
-- Black screen (border and background)
-- White rectangle in the centre (the game board)
-- The board is clearly defined, ready for gameplay
+| Bits | Name | Values |
+|------|------|--------|
+| 7 | FLASH | 0=steady, 1=flashing |
+| 6 | BRIGHT | 0=normal, 1=bright |
+| 5-3 | PAPER | 0-7 (background colour) |
+| 2-0 | INK | 0-7 (foreground colour) |
 
-## What You've Learnt
+## Building Attribute Values
 
-- **Constants (EQU)**: Named values for readable, maintainable code
-- **Centering**: Calculate margins from screen size minus element size
-- **Nested loops**: Outer loop for rows, inner loop for columns
-- **PUSH/POP**: Save and restore registers during nested loops
-- **Drawing order**: Later drawing overwrites earlier — plan accordingly
+To create an attribute byte, work backwards:
+
+1. **Choose your PAPER colour** (0-7)
+2. **Choose your INK colour** (0-7)
+3. **Decide on BRIGHT** (add 64 if yes)
+4. **Decide on FLASH** (add 128 if yes)
+
+**Example: Bright yellow paper, blue ink**
+- PAPER = 6 (yellow) → bits 5-3 = 110
+- INK = 1 (blue) → bits 2-0 = 001
+- BRIGHT = yes → bit 6 = 1
+- FLASH = no → bit 7 = 0
+
+Result: `%01110001` = 113 decimal
+
+**Example: Flashing green paper, white ink**
+- PAPER = 4 (green) → bits 5-3 = 100
+- INK = 7 (white) → bits 2-0 = 111
+- BRIGHT = no → bit 6 = 0
+- FLASH = yes → bit 7 = 1
+
+Result: `%10100111` = 167 decimal
+
+## Try This: Change the Board Colour
+
+Edit `EMPTY_ATTR` to try different colours:
+
+```asm
+; Bright green board
+EMPTY_ATTR  equ     %01100000       ; Green paper (4), black ink
+
+; Bright magenta board
+EMPTY_ATTR  equ     %01011000       ; Magenta paper (3), black ink
+
+; Yellow board with blue ink
+EMPTY_ATTR  equ     %01110001       ; Yellow paper (6), blue ink (1)
+```
+
+Reassemble after each change. Watch the board transform.
+
+## The Visible Border
+
+In Units 1 and 2, the border around the board was invisible - black on black. Now we draw it explicitly:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-03/snippets/03-visible-border.asm" />
+
+The border is one row above, one row below, and one column on each side of the 8×8 playing area. We draw it as a rectangle of yellow cells.
+
+## Try This: Change the Border Colour
+
+```asm
+; Red border
+BORDER_ATTR equ     %01010000       ; Red paper (2)
+
+; White border
+BORDER_ATTR equ     %01111000       ; White paper (7)
+
+; Flashing border (dramatic!)
+BORDER_ATTR equ     %11110000       ; Flash + Bright + Yellow
+```
+
+## Dynamic Screen Border
+
+The screen border (the area outside the main display) changes colour based on whose turn it is:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-03/snippets/02-border-colours.asm" />
+
+This is different from attribute memory. The screen border is set by outputting a value (0-7) to port $FE:
+
+```asm
+            ld      a, 2            ; Red
+            out     ($fe), a        ; Set border
+```
+
+The border colour gives immediate visual feedback about game state.
+
+## Try This: Different Turn Colours
+
+```asm
+; Green for P1, Cyan for P2
+P1_BORDER   equ     4               ; Green
+P2_BORDER   equ     5               ; Cyan
+
+; Yellow for P1, Magenta for P2
+P1_BORDER   equ     6               ; Yellow
+P2_BORDER   equ     3               ; Magenta
+```
+
+## The Cursor: Flash vs Bright
+
+The original cursor used FLASH (bit 7):
+
+```asm
+CURSOR_ATTR equ     %10111000       ; Flash + white paper
+```
+
+The FLASH attribute alternates the cell between normal and inverted colours every 16 frames (about 0.32 seconds). It's automatic - the hardware does it.
+
+The new cursor uses BRIGHT instead:
+
+```asm
+CURSOR_ATTR equ     %01111000       ; Bright + white paper (no flash)
+```
+
+BRIGHT makes colours more vivid. The cursor now stands out by being brighter than surrounding cells, rather than flashing.
+
+Which do you prefer? Try both.
+
+## The Colour Palette
+
+Here's the complete Spectrum palette:
+
+| Value | Normal | Bright |
+|-------|--------|--------|
+| 0 | Black | Black |
+| 1 | Blue | Bright Blue |
+| 2 | Red | Bright Red |
+| 3 | Magenta | Bright Magenta |
+| 4 | Green | Bright Green |
+| 5 | Cyan | Bright Cyan |
+| 6 | Yellow | Bright Yellow |
+| 7 | Grey | White |
+
+Note that "white" only exists as bright 7. Normal 7 is actually grey.
 
 ## The Complete Code
 
 <CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-03/inkwar.asm" />
 
-## Next Unit
+## Challenge: Create Your Theme
 
-We have a board. Now we need to show what happens when players claim cells. In Unit 4, we'll define player colours — bright red for Player 1, bright blue for Player 2 — and create routines to mark territory. The battle begins.
+Design a complete colour scheme:
+1. Choose a board colour that looks good
+2. Choose a contrasting border colour
+3. Pick screen border colours that clearly indicate whose turn it is
+4. Decide between flash and bright for the cursor
+5. Make sure player colours (red/blue) still stand out
+
+Document your choices in comments. Share your theme.
+
+## What You've Learnt
+
+- **Attribute byte format** - FBPPPIII: flash, bright, paper, ink packed into 8 bits
+- **Calculating attributes** - Shift paper left 3, add ink, optionally add 64 (bright) or 128 (flash)
+- **Screen border** - OUT ($FE), A sets the border to colours 0-7
+- **FLASH vs BRIGHT** - Flash alternates automatically; bright intensifies colours
+- **Colour palette** - 8 colours × 2 brightness levels, but black stays black
+
+## What's Next
+
+In Unit 4, we'll add score and turn display - text on screen showing whose turn it is and how many cells each player controls.

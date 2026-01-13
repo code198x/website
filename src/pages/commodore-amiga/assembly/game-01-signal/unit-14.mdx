@@ -1,137 +1,163 @@
 ---
 title: "Level Progression"
-description: "Make the game harder as levels increase with faster objects and more hazards."
-pubDate: 2026-01-04
+description: "Fill all homes, complete the level. Next level is faster. Difficulty increases."
+pubDate: 2026-01-12
 game: 1
-gameName: "Hop"
+gameName: "Signal"
 unit: 14
-totalUnits: 16
+totalUnits: 64
 system: "Commodore Amiga"
-tags: ["assembly", "68000", "difficulty", "progression"]
+tags: ["assembly", "68000", "levels", "difficulty"]
+prevLesson: "/commodore-amiga/assembly/game-01-signal/unit-13"
 nextLesson: "/commodore-amiga/assembly/game-01-signal/unit-15"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-import InlineNote from "../../../../components/units/InlineNote.astro";
-
-*Need to catch up? Check out [Unit 13: High Score Table](/commodore-amiga/game-01-signal/unit-13).*
-
 ## What You're Building
 
-Right now, the game plays the same whether you're on level 1 or level 10. That's not very challenging! This unit adds:
+Level progression.
 
-- Increasing object speeds as levels progress
-- Additional objects spawning on higher levels
-- Speed caps to prevent unplayable difficulty
-- Level display in the HUD
+A game without escalation is just practice. This unit adds levels—fill all 5 homes to advance. Each level increases car speeds, rewarding mastery with greater challenge.
 
-When you're done, completing each level makes the next one noticeably harder. Cars move faster, logs become trickier to ride, and the game demands quicker reflexes.
+By the end of this unit:
+- Fill all 5 homes = level complete
+- Next level is faster
+- Level displayed on screen
+- Difficulty increases smoothly
 
-## Difficulty Scaling Approach
+![Unit 14 Screenshot](/images/commodore-amiga/game-01-signal/unit-14/screenshot.png)
 
-There are many ways to scale difficulty. We'll use the simplest: multiply base speeds by a factor that increases each level.
+## The Level Variable
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/01-difficulty-scaling-approach.asm" lang="asm" />
+We track the current level as a simple word:
 
-The formula is: `actual_speed = base_speed * (16 + (level-1) * SPEED_INCREASE) / 16`
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/01-level-constants.asm" />
 
-This uses fixed-point arithmetic. We represent 1.0 as 16, so we can do fractional scaling with integer maths.
+The level starts at 1 and increments each time the player fills all five homes.
 
-## Calculating Level Speed
+## Detecting Level Complete
 
-Here's a routine that returns the speed multiplier for the current level:
+We already have `check_round_complete` from earlier units. Now instead of just clearing homes, we advance to the next level:
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/02-calculating-level-speed.asm" lang="asm" />
+```asm
+check_round_complete:
+            lea     home_filled,a0
+            moveq   #NUM_HOMES-1,d0
+            moveq   #0,d1
 
-Level 1 returns 16 (1.0x), level 2 returns 18 (1.125x), level 5 returns 24 (1.5x), and it caps at 32 (2.0x).
+.loop:
+            tst.w   (a0)+
+            beq.s   .not_complete
+            addq.w  #1,d1
+            dbf     d0,.loop
 
-## Applying Speed to Objects
+            cmp.w   #NUM_HOMES,d1
+            bne.s   .not_complete
 
-When updating objects, we scale their movement by the level multiplier:
+            ; All homes filled - advance to next level!
+            bsr     next_level
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/03-applying-speed-to-objects.asm" lang="asm" />
+.not_complete:
+            rts
+```
 
-<InlineNote>
-We store base speeds in the object array and scale them each frame rather than modifying the stored values. This means we can easily reset to level 1 speeds without reinitialising all objects.
-</InlineNote>
+When all 5 homes are filled, we call `next_level` instead of just clearing the homes array.
 
-## Adding More Objects on Higher Levels
+## The next_level Routine
 
-Starting from level 3, we spawn additional objects. We do this by activating previously dormant object slots:
+Advancing a level involves several steps:
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/04-adding-more-objects-on-higher-levels.asm" lang="asm" />
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/02-next-level.asm" />
 
-When initialising objects, we set up all 12 but only the first 8 start with valid types. Additional objects are initialised with TYPE_NONE and activated as the player progresses:
+The player earns a 100-point bonus for completing each level. Then we increment the level counter, clear all homes for a fresh start, and recalculate car speeds.
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/05-adding-more-objects-on-higher-levels.asm" lang="asm" />
+## Speed Scaling
 
-## Simple Random Number Generator
+The core of difficulty progression is car speed. We store base speeds separately and calculate actual speeds from them:
 
-For spawning objects at random positions, we need a random number generator. A linear congruential generator works well:
+```asm
+base_speeds:
+            dc.w    1               ; Car 0: right, slow
+            dc.w    1               ; Car 1: right, slow
+            dc.w    -2              ; Car 2: left, medium
+            dc.w    -2              ; Car 3: left, medium
+            ; ... etc
+```
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/06-simple-random-number-generator.asm" lang="asm" />
+The `set_car_speeds` routine applies level-based scaling:
 
-The constants `$41C6` (16838) and `$3039` (12345) are standard LCG parameters that produce a reasonable distribution.
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/03-set-car-speeds.asm" />
+
+The formula is simple: each level above 1 adds 1 pixel per frame to the absolute speed. A car with base speed 2 moves at speed 2 on level 1, speed 3 on level 2, speed 4 on level 3, and so on.
+
+For negative speeds (cars moving left), we subtract the increment to make them faster in the negative direction.
+
+## Speed Capping
+
+We cap the speed increment at `MAX_LEVEL-1` (7 levels of increase) to prevent speeds from becoming unplayable:
+
+```asm
+MAX_LEVEL       equ 8           ; Speed caps at this level
+```
+
+After level 8, cars don't get any faster. The game remains challenging but not impossible. Players can continue past level 8, but difficulty plateaus.
 
 ## Displaying the Level
 
-We add the level to the HUD so players know their progress:
+A single digit shows the current level in the start zone:
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/07-displaying-the-level.asm" lang="asm" />
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/04-display-level.asm" />
 
-We'll add a 2-digit number drawing routine for cleaner display:
+The display shows levels 1-9. Beyond level 9, it displays "9" while the actual level continues incrementing internally.
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/08-displaying-the-level.asm" lang="asm" />
+## Initialisation
 
-## Level Transition
+When starting a new game, we reset to level 1 and set initial car speeds:
 
-When a level is completed (all homes filled), we already increment the level counter. Now we also activate new objects:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/snippets/09-level-transition.asm" lang="asm" />
-
-## Build It. Run It.
-
-Assemble and run:
-
-```bash
-vasmm68k_mot -Fhunkexe -o hop -nosym hop.asm
+```asm
+init_game:
+            move.w  #START_LIVES,lives
+            clr.l   score
+            move.w  #TIMER_START,timer
+            move.w  #1,level            ; Start at level 1
+            ; ...
+            bsr     set_car_speeds      ; Set initial speeds
 ```
 
-Test the progression:
+This ensures every new game starts fresh at level 1 with base car speeds.
 
-1. Level 1 should feel manageable
-2. Complete all 5 homes to advance
-3. Level 2 objects should move noticeably faster
-4. By level 5, the game should be quite challenging
-5. Speeds cap at 2x to remain playable
+## The Progression Effect
 
-## What You've Learnt
+Level progression transforms the game experience:
 
-- **Fixed-point arithmetic**: Using integers to represent fractions (16 = 1.0)
-- **Difficulty curves**: Scaling values smoothly across levels
-- **Speed caps**: Preventing unplayable difficulty
-- **Object spawning**: Dynamically activating dormant objects
-- **Random numbers**: Linear congruential generator basics
+- **Level 1**: Learn the patterns, find safe paths
+- **Levels 2-4**: Tighter timing, less margin for error
+- **Levels 5-7**: Expert play required, split-second decisions
+- **Level 8+**: Maximum challenge, mastery mode
 
-## The Complete Code
+The gradual increase keeps players engaged. Early levels teach, later levels test.
 
-Here's the complete `hop.asm` with level progression:
+## Key Takeaways
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/hop.asm" lang="asm" />
+- **Level variable** tracks progression simply
+- **Base speeds** stored separately from current speeds
+- **Speed scaling** adds fixed increment per level
+- **Speed cap** prevents impossible difficulty
+- **Level bonus** rewards completion (100 points)
+- **Display update** shows progress to player
 
-## Recap / Sanity Check
+## The Code
 
-Before moving on, verify:
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-14/signal.asm" />
 
-- [ ] Level displays in HUD alongside score and lives
-- [ ] Level 1 objects move at normal speed
-- [ ] Completing all homes advances to next level
-- [ ] Level 2+ objects move noticeably faster
-- [ ] Speed increase caps at 2x (around level 9)
-- [ ] Game remains playable at maximum difficulty
+## Build It
 
-## Next Unit
+```bash
+vasmm68k_mot -Fhunkexe -kick1hunks -o signal signal.asm
+```
 
-[Unit 15: Time Limit](/commodore-amiga/game-01-signal/unit-15) - Add a countdown timer for extra pressure and bonus scoring.
+## What's Next
+
+The game has progression, but lacks proper game states. In Unit 15, we'll add a title screen and game over screen for complete game flow.

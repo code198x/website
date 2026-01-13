@@ -1,98 +1,135 @@
 ---
-title: "Riding the Logs"
-description: "Implement platform mechanics. Learn how to detect when the frog lands on a log and make it ride along."
-pubDate: 2026-01-03
+title: "Cars on the Road"
+description: "Blitter-drawn cars. Multiple lanes. Different speeds. Traffic."
+pubDate: 2026-01-12
 game: 1
-gameName: "Hop"
+gameName: "Signal"
 unit: 7
-totalUnits: 16
+totalUnits: 64
 system: "Commodore Amiga"
-tags: ["assembly", "68000", "collision", "platforms"]
+tags: ["assembly", "68000", "blitter", "objects"]
+prevLesson: "/commodore-amiga/assembly/game-01-signal/unit-06"
 nextLesson: "/commodore-amiga/assembly/game-01-signal/unit-08"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 6: The River](/commodore-amiga/game-01-signal/unit-06).*
-
 ## What You're Building
 
-Logs float by, but the frog just phases through them. Time to make them rideable.
+Traffic.
 
-By the end of this unit, you'll have:
+One car doesn't make a game. This unit adds ten cars across all five road lanes, each moving at different speeds. Some go left, some go right. The result: a busy road that's challenging to cross.
 
-- Platform detection for logs
-- The frog moving with the log it's standing on
-- Zone detection (water vs road vs grass)
+By the end of this unit:
+- 10 cars across 5 road lanes
+- 2 cars per lane, staggered positions
+- Different speeds per lane
+- Bidirectional traffic
+- Screen wrapping at edges
 
-## The Frogger Mechanic
+![Unit 7 Screenshot](/images/commodore-amiga/game-01-signal/unit-07/screenshot.png)
 
-In Frogger, the water is deadly — unless you're on a log. The mechanic works like this:
+## Object Data Structures
 
-1. If frog is in **water zone** AND **on a log** → ride the log
-2. If frog is in **water zone** AND **not on a log** → death (next unit)
-3. If frog is in **road zone** → normal movement
-4. If frog is in **grass zone** → safe
+Each car needs several properties. We store them in a simple array:
 
-## Zone Detection
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-07/snippets/01-car-data-structure.asm" />
 
-We can determine the zone from the frog's Y position:
+Speed is signed: positive values move right, negative values move left.
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-07/snippets/01-zone-detection.asm" lang="asm" />
+## The Car Loop
 
-Checking the zone:
+Each frame, we process all cars in three passes:
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-07/snippets/02-zone-detection.asm" lang="asm" />
+```asm
+mainloop:
+    bsr     wait_vblank
+    bsr     update_frog
+    bsr     update_sprite
 
-## Log Collision Detection
+    bsr     erase_all_cars      ; Pass 1: Clear old positions
+    bsr     move_all_cars       ; Pass 2: Update positions
+    bsr     draw_all_cars       ; Pass 3: Draw new positions
 
-To check if the frog is on a log, we compare their bounding boxes:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-07/snippets/03-log-collision-detection.asm" lang="asm" />
-
-## Platform Movement
-
-When the frog is on a log, it moves with the log:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-07/snippets/04-platform-movement.asm" lang="asm" />
-
-## Build It. Run It.
-
-```bash
-vasmm68k_mot -Fhunkexe -kick1hunks -o hop -nosym hop.asm
-xdftool hop.adf create + format "Hop" ofs + boot install boot1x + write hop + makedir s
-echo "hop" > startup-sequence
-xdftool hop.adf write startup-sequence s/startup-sequence
-fs-uae --floppy_drive_0=hop.adf
+    bra     mainloop
 ```
 
-Hop onto a log — the frog should ride along with it!
+Why three passes? Erasing all cars first prevents visual glitches where a fast car might be drawn before a slow car in the same area is erased.
 
-## What You've Learnt
+## Processing All Cars
 
-- **Zone detection** uses Y position to determine game area
-- **Bounding box collision** checks for overlap in both X and Y
-- **Platform mechanics** add the platform's velocity to the rider
-- **Signed comparisons** handle objects that can be at negative positions
+We use a register as a pointer to walk through the car array. The movement routine also handles screen wrapping:
 
-## The Complete Code
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-07/snippets/02-move-all-cars.asm" />
 
-Here's the full `hop.asm` with platform mechanics:
+The `dbf` instruction (Decrement and Branch if False) is the 68000's loop primitive. It decrements the counter and branches if the result isn't -1.
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-07/hop.asm" lang="asm" />
+We wrap at -32 and 320 to account for the car's 32-pixel width. This ensures cars fully exit before reappearing.
 
-## Recap / Sanity Check
+## Lane Configuration
 
-Before moving on, verify:
+Each lane has its own character:
 
-- [ ] Frog rides logs when in water zone
-- [ ] Frog moves with log speed automatically
-- [ ] Frog stays within screen boundaries while riding
-- [ ] Road and grass zones work normally
+| Lane | Row | Speed | Direction | Feel |
+|------|-----|-------|-----------|------|
+| 1 | 7 | 1 | Right | Slow and steady |
+| 2 | 8 | 2 | Left | Quick, watch out |
+| 3 | 9 | 2 | Right | Quick matching |
+| 4 | 10 | 1 | Left | Slow return |
+| 5 | 11 | 3 | Right | Fast and dangerous |
 
-## Next Unit
+The mix of speeds and directions creates interesting patterns for the player to navigate.
 
-The frog can ride logs, but falling into the water should be fatal.
+## Skipping Offscreen Cars
 
-In [Unit 8: Collision and Death](/commodore-amiga/game-01-signal/unit-08), we add collision detection with cars and drowning in water.
+When drawing, we skip cars that are completely offscreen:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-07/snippets/03-draw-all-cars.asm" />
+
+This is a small optimisation, but more importantly it prevents drawing into invalid screen memory.
+
+## The Blitter Cost
+
+Ten cars means ten blitter operations per frame for erasing, plus ten for drawing—twenty total. Each blit of a 32×12 car takes approximately:
+
+```
+Words per blit: 2 × 12 = 24 words
+Cycles per word: ~4 DMA cycles
+Total: ~96 DMA cycles per blit
+20 blits: ~1920 DMA cycles
+```
+
+The Amiga has plenty of DMA bandwidth for this. We could easily have 50+ cars before running into trouble.
+
+## Why Not Use Sprites?
+
+We're using the frog as a sprite (which makes collision detection easier later). For cars, the Blitter approach works well because:
+
+1. **All cars look the same**: We reuse one graphic
+2. **Cars move horizontally**: Easy screen address calculation
+3. **Many cars needed**: More than 8 sprites would require multiplexing
+4. **No transparency needed**: Cars don't overlap each other (much)
+
+## Key Takeaways
+
+- **Object arrays** store multiple similar entities
+- **Three-pass update** (erase, move, draw) prevents visual glitches
+- **Signed speed** enables bidirectional movement
+- **Screen wrapping** creates continuous traffic flow
+- **Offscreen culling** prevents invalid memory access
+- **Blitter loops** handle many objects efficiently
+
+## The Code
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-07/signal.asm" />
+
+## Build It
+
+```bash
+vasmm68k_mot -Fhunkexe -kick1hunks -o signal signal.asm
+```
+
+## What's Next
+
+Traffic fills the road, but the frog can walk right through it! In Unit 8, we'll add collision detection—finally making the game dangerous.

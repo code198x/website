@@ -1,196 +1,106 @@
 ---
-title: "The Player"
-description: "Add a hardware sprite to the grid. Learn how the NES handles Object Attribute Memory (OAM) and DMA transfers."
-pubDate: 2026-01-03
+title: "Moving the Player"
+description: "Add controller input — move your sprite with the D-pad."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 2
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "sprites", "oam", "dma"]
+tags: ["assembly", "6502", "controller", "input", "movement"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-01"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-03"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 1: The Grid](/nintendo-entertainment-system/game-01-neon-nexus/unit-01).*
-
 ## What You're Building
 
-The grid is ready. Now we need a runner.
+The sprite now moves. Press the D-pad and watch it respond.
 
-By the end of this unit, you'll have:
+![Moving Player](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-02/screenshot.png)
 
-- A player character rendered as a hardware sprite
-- An understanding of Object Attribute Memory (OAM)
-- DMA transfers from CPU RAM to the PPU
-- The foundation for player movement
+This is the moment it becomes a game.
 
-No movement yet. Just the player, floating in the neon void, waiting for input.
+## The Code
 
-## The Plan
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-02/nexus.asm" />
 
-Here's what we need to add to our code:
-
-1. **Shadow OAM** — A 256-byte buffer in CPU RAM at $0200
-2. **Player sprite data** — Y position, tile index, attributes, X position
-3. **DMA transfer** — Copy shadow OAM to PPU every frame
-4. **Ship graphic** — A new tile in CHR ROM
-
-## Hardware Sprites
-
-The NES handles moving objects differently from the background. While backgrounds use nametables and attribute tables, sprites live in a special 256-byte area inside the PPU called **OAM** (Object Attribute Memory).
-
-OAM holds data for 64 sprites. Each sprite uses exactly 4 bytes:
-
-| Byte | Purpose | Range |
-|------|---------|-------|
-| 0 | Y Position | 0-239 (top to bottom) |
-| 1 | Tile Index | 0-255 (which graphic) |
-| 2 | Attributes | Palette, flip, priority |
-| 3 | X Position | 0-255 (left to right) |
-
-The attribute byte packs several options into 8 bits:
-
-```
-76543210
-||||||||
-||||||++- Palette (0-3) — which of the 4 sprite palettes
-|||+++--- Unused
-||+------ Priority: 0 = in front of background, 1 = behind
-|+------- Flip horizontally
-+-------- Flip vertically
-```
-
-## The Shadow OAM Problem
-
-Here's a catch: you can only write to PPU memory during **vertical blank** — the brief pause between frames when the screen isn't being drawn. If you try to write while the PPU is rendering, you get garbage.
-
-Writing 256 bytes one at a time during vblank is slow. The NES solves this with **DMA** (Direct Memory Access).
-
-DMA works like this:
-1. Keep a copy of sprite data in CPU RAM (the "shadow OAM")
-2. During vblank, write a single byte to register $4014
-3. The CPU halts while hardware copies all 256 bytes to PPU OAM
-
-The byte you write to $4014 is the **high byte** of your shadow OAM address. If your buffer is at $0200, you write $02. The hardware copies $0200-$02FF to OAM automatically.
-
-This is why we reserved $0200-$02FF when setting up memory — it's our shadow OAM buffer.
-
-## The OAM DMA Register
-
-We need a new constant:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-02/snippets/01-the-oam-dma-register.asm" lang="asm" />
-
-Writing to this register triggers the DMA transfer. The value written specifies which 256-byte page of CPU RAM to copy.
-
-## Clearing Shadow OAM
-
-Before we use sprites, we need to initialise shadow OAM. If we leave it as zeros, all 64 sprites appear at position (0, 0) — a mess of overlapping graphics in the top-left corner.
-
-The trick: set all Y positions to $FF (255). Since the visible screen is only 240 lines tall, Y=$FF pushes sprites off the bottom where they're invisible.
-
-We clear the entire buffer to $FF:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-02/snippets/02-clearing-shadow-oam.asm" lang="asm" />
-
-This writes $FF to every byte from $0200 to $02FF. When X wraps from $FF to $00, the loop ends.
-
-## Initialising the Player Sprite
-
-With shadow OAM cleared, we place our player. Sprite 0 lives at $0200-$0203:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-02/snippets/03-initialising-the-player-sprite.asm" lang="asm" />
-
-The player appears at coordinates (128, 120) — roughly centre screen.
-
-## The DMA Transfer
-
-In the NMI handler, we trigger the DMA copy every frame:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-02/snippets/04-the-dma-transfer.asm" lang="asm" />
-
-**New instructions:**
-
-**`pha`** — "Push Accumulator." Saves A to the stack. We preserve registers at the start of the interrupt handler so we don't corrupt whatever the main program was doing.
-
-**`txa`** / **`tya`** — "Transfer X/Y to Accumulator." We can't push X and Y directly, so we move them to A first, then push.
-
-**`pla`** — "Pull Accumulator." Pops a value from the stack into A. We restore registers in reverse order (last pushed = first pulled).
-
-The DMA sequence:
-1. Write $00 to OAMADDR to reset the OAM write pointer
-2. Write $02 to OAMDMA to copy $0200-$02FF to OAM
-
-This happens every frame, even though our sprite isn't moving yet. When we add movement later, shadow OAM will update between frames, and DMA will push those changes to the PPU.
-
-## The Ship Graphic
-
-We need a tile for our player. NES tiles are 8×8 pixels with 2 bits per pixel (4 colours). Each tile uses 16 bytes: 8 for bit plane 0, 8 for bit plane 1.
-
-The two planes combine to select colours:
-- Plane 0 = 0, Plane 1 = 0 → Colour 0 (transparent for sprites)
-- Plane 0 = 1, Plane 1 = 0 → Colour 1
-- Plane 0 = 0, Plane 1 = 1 → Colour 2
-- Plane 0 = 1, Plane 1 = 1 → Colour 3
-
-Here's our ship — a simple arrow shape:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-02/snippets/05-the-ship-graphic.asm" lang="asm" />
-
-With plane 1 all zeros, every set pixel uses colour 1 from sprite palette 0. That's the second colour in our sprite palette — a bright colour against the transparent background.
-
-## Build It. Run It.
+## Build and Run
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
-fceux nexus.nes
 ```
 
-You should see the four colour zones from Unit 1, with a small ship sprite hovering in the centre of the screen.
+Use the D-pad (arrow keys in most emulators) to move the sprite around.
 
-![The player sprite on the grid](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-02/screenshot.png)
+## What's New
 
-## What You've Built
+Two things changed from Unit 1:
 
-Look at what you made:
+### 1. Reading the Controller
 
-- A hardware sprite rendered by the PPU
-- Shadow OAM buffer in CPU RAM at $0200
-- DMA transfer that copies sprite data every frame
-- A ship graphic in CHR ROM
-- Proper register preservation in the NMI handler
+```asm
+read_controller:
+    lda #1
+    sta JOYPAD1       ; Strobe controller
+    lda #0
+    sta JOYPAD1
 
-The player exists. It's visible. It's ready to move.
+    ldx #8
+@read_loop:
+    lda JOYPAD1       ; Read one bit
+    lsr a             ; Shift into Carry
+    rol buttons       ; Rotate into buttons
+    dex
+    bne @read_loop
+    rts
+```
 
-## What You've Learnt
+The NES controller sends button states one bit at a time. Strobe it, then read 8 times.
 
-- **OAM** holds 64 sprites, 4 bytes each (Y, Tile, Attributes, X)
-- **Shadow OAM** at $0200 lets us manipulate sprites in CPU RAM
-- **DMA** via $4014 copies 256 bytes to PPU OAM in one operation
-- **$FF for Y** hides sprites by pushing them off-screen
-- **Sprite tiles** use 2-bit planar format, same as background tiles
-- **Register preservation** (pha/pla) protects the main program during interrupts
+### 2. Moving Based on Input
 
-## The Complete Code
+```asm
+move_player:
+    lda buttons
+    and #BTN_UP       ; Is UP pressed?
+    beq @check_down   ; No? Skip
 
-Here's the full `nexus.asm` at this point:
+    lda player_y
+    sec
+    sbc #PLAYER_SPEED ; Move up
+    sta player_y
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-02/nexus.asm" lang="asm" />
+@check_down:
+    ; ... same pattern for other directions
+```
 
-## Recap / Sanity Check
+Check each button. If pressed, adjust position. Boundary checks prevent going off screen.
 
-- Build + run: `ca65 nexus.asm -o nexus.o && ld65 -C nes.cfg nexus.o -o nexus.nes && fceux nexus.nes`
-- Screen: four colour zones with a small ship sprite in the centre
-- The sprite should be visible, not flickering, and positioned at roughly (128, 120)
-- If you see 64 sprites clustered at (0, 0), shadow OAM isn't being cleared to $FF
-- If no sprite appears, check that PPUMASK enables sprites (bit 4 set)
+## Try This
 
-## Next Unit
+1. **Change speed** — Find `PLAYER_SPEED = 2` and try `1` (slow) or `4` (fast)
 
-The ship is ready. But it's frozen in place.
+2. **Remove boundaries** — Delete the `cmp` and `bcc`/`bcs` lines. Now you can wrap around the screen.
 
-In Unit 3, we read the controller and let you fly around the grid. The neon nexus awakens.
+3. **Invert controls** — Swap `BTN_UP` with `BTN_DOWN` in the movement code.
+
+## The Main Loop
+
+Notice the structure:
+
+```asm
+main_loop:
+    jsr read_controller
+    jsr move_player
+    jmp main_loop
+```
+
+Read input, update game state, repeat. This is a game loop. Every NES game has one.
+
+## Next
+
+Unit 3 explains how all this works — the PPU, VBlank, and why the code is structured this way.

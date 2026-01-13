@@ -1,191 +1,105 @@
 ---
-title: "Enemies"
-description: "Add threats. Learn how to manage multiple entities with indexed addressing and arrays."
-pubDate: 2026-01-03
+title: "The Background"
+description: "Draw a bordered arena using the nametable."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 4
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "arrays", "ai"]
+tags: ["assembly", "6502", "nametable", "background", "tiles"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-03"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-05"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 3: Movement](/nintendo-entertainment-system/game-01-neon-nexus/unit-03).*
-
 ## What You're Building
 
-Flying alone is boring. Let's add some danger.
+A bordered play area. The player is now confined to an arena.
 
-By the end of this unit, you'll have:
+![The Arena](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-04/screenshot.png)
 
-- Four enemy ships descending the screen
-- An entity system using parallel arrays
-- Indexed addressing to process multiple objects efficiently
-- A new enemy graphic in CHR ROM
+This is the game world taking shape.
 
-No collision yet — that comes in Unit 5. For now, the enemies just fly.
+## The Nametable
 
-## The Plan
+The NES background is a 32×30 grid of tile indices. Each byte in the **nametable** references a tile from the pattern table.
 
-Here's what we need to add:
+- Nametable starts at `$2000`
+- 960 bytes total (32 × 30)
+- Each byte = one 8×8 tile
 
-1. **Enemy arrays** — X and Y positions for 4 enemies
-2. **Enemy initialisation** — Spawn enemies at starting positions
-3. **Enemy movement** — Make them descend the screen
-4. **Sprite updates** — Write enemy positions to shadow OAM
-5. **Enemy graphic** — A new tile for the enemy ships
+To draw the arena, we fill this grid with border and floor tiles.
 
-## Managing Multiple Entities
+## Drawing the Arena
 
-The player is simple — one `player_x`, one `player_y`. But what about 4 enemies?
+```asm
+draw_arena:
+    ; Set PPU address to nametable start
+    lda #$20
+    sta PPUADDR
+    lda #$00
+    sta PPUADDR
 
-We could create `enemy1_x`, `enemy2_x`, `enemy3_x`, `enemy4_x`... but that leads to copy-pasted code for each enemy. Tedious and error-prone.
+    ; Draw 30 rows
+    ldy #0
 
-The better approach: **parallel arrays**.
+@draw_row:
+    ; First/last 2 rows are all border
+    cpy #0
+    beq @border_row
+    cpy #1
+    beq @border_row
+    cpy #28
+    beq @border_row
+    cpy #29
+    beq @border_row
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-04/snippets/01-managing-multiple-entities.asm" lang="asm" />
+    ; Middle rows: border + floor + border
+    jmp @middle_row
+```
 
-Now enemy 0's position is at `enemy_x+0` and `enemy_y+0`. Enemy 1 is at `enemy_x+1` and `enemy_y+1`. And so on.
+The PPU address auto-increments after each write to `PPUDATA`. Write 960 tiles and you've filled the screen.
 
-The magic: we use the **X register as an index** to access all enemies with the same code.
+## Tile Layout
 
-## Indexed Addressing
+We define three tiles in CHR-ROM:
 
-The 6502's indexed addressing modes let us access array elements:
+| Tile | Purpose | Appearance |
+|------|---------|------------|
+| 0 | Empty | Transparent |
+| 1 | Border | Solid cyan |
+| 2 | Floor | Black |
+| 3 | Player | Arrow sprite |
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-04/snippets/02-indexed-addressing.asm" lang="asm" />
+## The Code
 
-The instruction `lda enemy_x, x` means "load from address (enemy_x + X)". If `enemy_x` is at $0010 and X is 2, it loads from $0012.
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-04/nexus.asm" />
 
-This is the key to processing multiple entities with a single loop.
-
-## Initialising Enemies
-
-We need to place enemies at starting positions. Let's spread them across the top of the screen:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-04/snippets/03-initialising-enemies.asm" lang="asm" />
-
-We stagger the Y positions so enemies don't all arrive at once — it creates a wave pattern.
-
-## Moving Enemies
-
-Now the interesting part. A single loop processes all 4 enemies:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-04/snippets/04-moving-enemies.asm" lang="asm" />
-
-**`inc enemy_y, x`** — Increment the byte at address (enemy_y + X). This single instruction moves whichever enemy X points to.
-
-The loop:
-1. Increments enemy Y position
-2. Checks if enemy went off screen (Y >= 232)
-3. If so, wraps back to Y = 0 (top of screen)
-4. Moves to next enemy
-5. Repeats until all 4 are processed
-
-## Updating Sprites
-
-Our `update_player` routine handles the player sprite at OAM position 0. Now we need to update enemy sprites at positions 1-4.
-
-Each sprite uses 4 bytes in OAM:
-- Sprite 0: bytes 0-3 ($0200-$0203) — the player
-- Sprite 1: bytes 4-7 ($0204-$0207) — enemy 0
-- Sprite 2: bytes 8-11 ($0208-$020B) — enemy 1
-- Sprite 3: bytes 12-15 ($020C-$020F) — enemy 2
-- Sprite 4: bytes 16-19 ($0210-$0213) — enemy 3
-
-We need two indices: X for the enemy array (0-3) and Y for OAM (4, 8, 12, 16).
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-04/snippets/05-updating-sprites.asm" lang="asm" />
-
-Notice we use **both X and Y as indices** simultaneously:
-- X indexes into enemy arrays (0, 1, 2, 3)
-- Y indexes into OAM (4, 5, 6, 7, 8, 9, ...)
-
-After each sprite, Y advances by 4 bytes automatically (we `iny` four times), perfectly aligning with the next OAM slot.
-
-## The Enemy Graphic
-
-We need a second tile for enemies. Let's create a hostile-looking seeker ship:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-04/snippets/06-the-enemy-graphic.asm" lang="asm" />
-
-This creates a triangular shape pointing downward — visually distinct from the player's upward-pointing ship.
-
-## Enemy Palette
-
-Enemies use sprite palette 1. Let's make them green to stand out against the white player:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-04/snippets/07-enemy-palette.asm" lang="asm" />
-
-The first colour ($0f) is always transparent for sprites. Colour 1 ($2a) is what the enemies will appear as — a bright green.
-
-## Updating the Main Loop
-
-Add calls to our new subroutines:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-04/snippets/08-updating-the-main-loop.asm" lang="asm" />
-
-The order matters:
-1. Read input
-2. Update player based on input
-3. Move enemies based on AI (just falling for now)
-4. Update all sprites in shadow OAM
-
-The NMI handler then copies shadow OAM to the PPU via DMA.
-
-## Build It. Run It.
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
-fceux nexus.nes
 ```
 
-You should see your white player ship, plus four green enemy ships falling down the screen. When enemies reach the bottom, they wrap back to the top.
+Move with the D-pad. The player now bounces off the arena walls.
 
-![Player and enemies on the grid](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-04/screenshot.png)
+## Updated Boundaries
 
-## What You've Built
+The movement code now uses arena boundaries instead of screen edges:
 
-Look at what you made:
+```asm
+ARENA_LEFT   = 16    ; 2 border tiles × 8 pixels
+ARENA_RIGHT  = 232
+ARENA_TOP    = 16
+ARENA_BOTTOM = 208
+```
 
-- **Four enemy entities** managed with parallel arrays
-- **Indexed addressing** to process multiple objects with one loop
-- **Sprite system** handling 5 sprites (1 player + 4 enemies)
-- **Enemy movement** with screen wrapping
-- **Distinct graphics and palettes** for player vs enemies
+The player can't escape the play area.
 
-The neon void is no longer empty. The enemies descend. The challenge begins.
+## Next
 
-## What You've Learnt
-
-- **Parallel arrays** store related data at matching indices
-- **Indexed addressing** (`lda table, x`) accesses array elements
-- **Loops with indices** process multiple entities efficiently
-- **OAM layout** maps sequential 4-byte blocks to sprites
-- **Multiple indices** (X and Y) handle offset calculations
-
-## The Complete Code
-
-Here's the full `nexus.asm` at this point:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-04/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-- Build + run: `ca65 nexus.asm -o nexus.o && ld65 -C nes.cfg nexus.o -o nexus.nes && fceux nexus.nes`
-- You should see: 1 white player ship + 4 green enemy ships
-- Enemies fall down and wrap back to the top
-- Player moves with d-pad, enemies ignore you (for now)
-- If enemies don't appear, check that OAM offset starts at 4 (not 0)
-- If enemies are white, check sprite palette attribute is %00000001
-
-## Next Unit
-
-The enemies are flying, but they can't hurt you. You can fly right through them.
-
-In Unit 5, we add **collision detection** — and discover what happens when enemies catch you.
+The arena works but looks plain. Unit 5 adds custom tile graphics.

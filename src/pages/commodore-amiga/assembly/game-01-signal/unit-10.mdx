@@ -1,162 +1,167 @@
 ---
-title: "Home Zone"
-description: "Add the goal at the top of the screen where the frog must reach to score."
-pubDate: 2026-01-04
+title: "Home Zones"
+description: "Reach the top. Fill the homes. Score points. Respawn and repeat."
+pubDate: 2026-01-12
 game: 1
-gameName: "Hop"
+gameName: "Signal"
 unit: 10
-totalUnits: 16
+totalUnits: 64
 system: "Commodore Amiga"
-tags: ["assembly", "68000", "game-logic", "win-condition"]
+tags: ["assembly", "68000", "goals", "scoring"]
+prevLesson: "/commodore-amiga/assembly/game-01-signal/unit-09"
 nextLesson: "/commodore-amiga/assembly/game-01-signal/unit-11"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 9: Lives and Scoring](/commodore-amiga/game-01-signal/unit-09).*
-
 ## What You're Building
 
-Our frog can cross the road and navigate the river, but there's no destination. In the classic game, you need to guide frogs into home slots at the top of the screen. Fill all the slots to complete the level.
+Goals.
 
-This unit adds:
-- **Home slots** at the top of the screen
-- **Goal detection** when the frog reaches a slot
-- **Slot filling** to track which homes are occupied
-- **Level completion** when all slots are filled
-- **Bonus points** for reaching home
+Stakes without a goal is just endless punishment. This unit adds 5 home zones at the top of the screen. Reach an empty home, it fills in, you score 50 points, and you respawn. Fill all 5 homes to complete a round and start again.
 
-## The Home Zone Layout
+By the end of this unit:
+- 5 home zones at top of screen
+- Reaching an empty home fills it
+- 50 points per successful docking
+- Landing on filled home = death
+- Landing between homes = death
+- Fill all 5 to reset for next round
 
-The home zone sits at the very top of the screen, above the water. It consists of several slots (typically 5) where the frog can land:
+![Unit 10 Screenshot](/images/commodore-amiga/game-01-signal/unit-10/screenshot.png)
 
+## Home Zone Layout
+
+The top row has 5 home slots, evenly spaced across the grid:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/01-home-constants.asm" />
+
+Each home is 2 grid cells wide. The gaps between homes are dangerous—landing there kills the frog. Using words instead of bytes keeps alignment clean and makes comparisons straightforward.
+
+## The Check Home Routine
+
+When the frog reaches row 0, we determine which home (if any) it landed on:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/02-check-home.asm" />
+
+The logic is straightforward: check if the X position falls within each home's range. If it's between homes, the frog dies. Landing on an already-filled home also kills the frog—this prevents players from repeatedly using the same safe spot.
+
+## Score Tracking
+
+We use a 32-bit long word for the score:
+
+```asm
+score:          dc.l    0
+POINTS_PER_HOME equ 50
+
+; Adding points
+add.l   #POINTS_PER_HOME,score
 ```
-+---+   +---+   +---+   +---+   +---+
-| 1 |   | 2 |   | 3 |   | 4 |   | 5 |   <- Home slots
-+---+   +---+   +---+   +---+   +---+
-    XXXXXXX   XXXXXXX   XXXXXXX         <- Deadly gaps between
+
+The score isn't displayed yet—that comes in a later unit. For now, we just track it.
+
+## Round Completion
+
+When all 5 homes are filled, we reset them for the next round:
+
+```asm
+check_round_complete:
+    lea     home_filled,a0
+    moveq   #NUM_HOMES-1,d0
+    moveq   #0,d1               ; Count filled homes
+
+.loop:
+    tst.w   (a0)+
+    beq.s   .not_complete
+    addq.w  #1,d1
+    dbf     d0,.loop
+
+    ; All homes filled?
+    cmp.w   #NUM_HOMES,d1
+    bne.s   .not_complete
+
+    ; Clear all homes for next round
+    lea     home_filled,a0
+    moveq   #NUM_HOMES-1,d0
+.clear:
+    clr.w   (a0)+
+    dbf     d0,.clear
+
+    bsr     update_home_display
+
+.not_complete:
+    rts
 ```
 
-Landing in a slot fills it and awards bonus points. Landing in a gap (between slots) kills the frog. Landing in an already-filled slot also kills the frog.
+In a complete game, this is where you'd increase difficulty—faster cars, more obstacles. For now, we just reset.
 
-## Home Slot Data Structure
+## Visual Feedback via Copper
 
-We need to track each slot's position and whether it's filled:
+We modify the Copper list to show filled homes in a different colour. Each home zone has its own colour value that we update:
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/01-home-slot-data-structure.asm" lang="asm" />
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/03-update-home-display.asm" />
 
-Each slot is 32 pixels wide with gaps between them. The Y position is constant for all slots.
+The Copper changes colours mid-scanline to create distinct home zones. Filled homes appear orange, empty ones stay light green. The wait value `$2c4f` means: scanline $2c, horizontal position $4f. This lets us change colours within a single line.
 
-## Zone Constants
+## Game Initialisation
 
-Add the home zone to our boundaries:
+We add an `init_game` routine that resets everything for a new game:
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/02-zone-constants.asm" lang="asm" />
+```asm
+init_game:
+    move.w  #START_LIVES,lives
+    clr.l   score
 
-## Detecting Home Zone Entry
+    ; Clear all homes
+    lea     home_filled,a0
+    moveq   #NUM_HOMES-1,d0
+.clear_homes:
+    clr.w   (a0)+
+    dbf     d0,.clear_homes
 
-When the frog's Y position enters the home zone, we check if it's in a valid slot:
+    bsr     update_home_display
+    bsr     reset_frog
+    rts
+```
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/03-detecting-home-zone-entry.asm" lang="asm" />
+This is called at startup and when restarting after game over.
 
-## Finding the Home Slot
+## When to Check Homes
 
-Given the frog's X position, determine which slot (if any) it's in:
+We only check for home docking when the frog is idle (not hopping or dying):
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/04-finding-the-home-slot.asm" lang="asm" />
+```asm
+cmp.w   #STATE_DYING,frog_state
+beq.s   .skip_collision
+cmp.w   #STATE_IDLE,frog_state
+bne.s   .skip_collision
+bsr     check_home
+bsr     check_collision
+.skip_collision:
+```
 
-## Filling a Home Slot
+This ensures we only check at the moment the frog lands on a cell, not during animation.
 
-When the frog reaches an empty slot, fill it and award points:
+## Key Takeaways
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/05-filling-a-home-slot.asm" lang="asm" />
+- **Home zones** create a goal beyond survival
+- **State tracking** per home enables progress
+- **Round completion** creates replay loops
+- **Horizontal Copper waits** enable per-home colours
+- **Score variable** tracks player progress
+- **Filled home death** prevents camping
 
-## Checking Level Completion
+## The Code
 
-When all 5 slots are filled, the level is complete:
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/signal.asm" />
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/06-checking-level-completion.asm" lang="asm" />
-
-## Drawing the Home Zone
-
-We need to draw the home slots visually. Empty slots appear as dark rectangles, filled slots show a small frog icon:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/07-drawing-the-home-zone.asm" lang="asm" />
-
-For simplicity, we'll use the Blitter to draw rectangles:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/08-drawing-the-home-zone.asm" lang="asm" />
-
-## Updated Main Loop
-
-Add home zone checking to the main loop:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/09-updated-main-loop.asm" lang="asm" />
-
-The order matters: check home zone BEFORE platform (the home zone is above water, so we don't want water death to trigger first).
-
-## Initialisation
-
-Add home slot initialisation to startup:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/snippets/10-initialisation.asm" lang="asm" />
-
-## Build It. Run It.
-
-Save the complete code below as `hop.asm` and build:
+## Build It
 
 ```bash
-vasmm68k_mot -Fhunkexe -kick1hunks -nosym -o hop hop.asm
+vasmm68k_mot -Fhunkexe -kick1hunks -o signal signal.asm
 ```
 
-Create a bootable ADF:
+## What's Next
 
-```bash
-xdftool hop.adf format "Hop" + write hop + makedir s + write s/startup-sequence "hop"
-```
-
-Run in an emulator:
-
-```bash
-fs-uae --floppy_drive_0=hop.adf
-```
-
-**Expected behaviour:**
-- Five home slots visible at the top
-- Hopping into an empty slot fills it and awards 100 points
-- Hopping into a gap between slots kills the frog
-- Hopping into an already-filled slot kills the frog
-- Filling all 5 slots awards 1000 bonus points and resets the level
-- Frog resets to start after filling each slot
-
-## What You've Learnt
-
-| Concept | Why It Matters |
-|---------|----------------|
-| Goal zones | Every game needs a win condition |
-| Slot detection | Precise position checking |
-| State tracking | Array of filled/empty flags |
-| Level completion | Multi-condition victory check |
-| Level reset | Restoring initial game state |
-
-## The Complete Code
-
-Here's the full `hop.asm` with home zones:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-10/hop.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-Before moving on, verify:
-- [ ] Five home slots visible at top of screen
-- [ ] Reaching an empty slot fills it and awards 100 points
-- [ ] Frog resets to start after reaching home
-- [ ] Jumping into a gap kills the frog
-- [ ] Jumping into a filled slot kills the frog
-- [ ] Filling all 5 slots awards 1000 points and resets level
-- [ ] Code assembles without errors
-
-## Next Unit
-
-[Unit 11: Sound Effects](/commodore-amiga/game-01-signal/unit-11) - Add audio feedback using the Paula chip.
+The game has goals and stakes, but no audio feedback. In Unit 11, we'll add sound effects—beeps and buzzes that give the game life.

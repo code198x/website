@@ -1,141 +1,117 @@
 ---
-title: "Collision"
-description: "High stakes. Implement enemy collision and a game state machine."
-pubDate: 2026-01-03
+title: "Colour and Attributes"
+description: "Use the attribute table to add colour regions to the arena."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 6
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "collision", "game-over"]
+tags: ["assembly", "6502", "attribute-table", "palette", "colour"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-05"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-07"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 5: Items](/nintendo-entertainment-system/game-01-neon-nexus/unit-05).*
-
 ## What You're Building
 
-Collecting items is fun, but without danger, it's just a chore. Let's make the enemies deadly.
+A multi-coloured arena using the attribute table.
 
-By the end of this unit, you'll have:
+![Colour Regions](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-06/screenshot.png)
 
-- Collision detection against all 4 enemies
-- A game state machine (playing vs game over)
-- Press Start to restart after dying
-- A proper game loop with state-dependent behaviour
+The border uses one palette (blue). The floor uses another (purple). Same tiles, different colours.
 
-## The Plan
+## The Attribute Table
 
-Here's what we need to add:
+The NES has 4 background palettes, but how does it know which palette to use for each tile? The **attribute table**.
 
-1. **Game state variable** — Track whether we're playing or dead
-2. **Enemy collision loop** — Check player against all enemies
-3. **State-dependent logic** — Only update gameplay when playing
-4. **Game reset** — Restart everything when player presses Start
-5. **Game over handling** — Stop the action when caught
+The attribute table lives at `$23C0-$23FF` (64 bytes). Each byte controls a 32×32 pixel area (4×4 tiles):
 
-## Game States
+```
+Byte layout:
++----+----+
+| TL | TR |  Bits 0-1: Top-left 16×16
++----+----+  Bits 2-3: Top-right 16×16
+| BL | BR |  Bits 4-5: Bottom-left 16×16
++----+----+  Bits 6-7: Bottom-right 16×16
+```
 
-Real games have multiple states: title screen, playing, paused, game over. We'll start with two:
+Each 2-bit value selects a palette (0-3).
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-06/snippets/01-game-states.asm" lang="asm" />
+## Setting Attributes
 
-Add the state variable:
+```asm
+set_attributes:
+    bit PPUSTATUS
+    lda #$23
+    sta PPUADDR
+    lda #$C0
+    sta PPUADDR
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-06/snippets/02-game-states.asm" lang="asm" />
+    ; Top rows: all palette 0 (border)
+    ldx #8
+    lda #$00
+@attr_top:
+    sta PPUDATA
+    dex
+    bne @attr_top
 
-Now the main loop can behave differently based on state.
+    ; Floor rows: edges palette 0, middle palette 1
+    ldx #6
+@attr_floor_rows:
+    lda #$00          ; Left edge
+    sta PPUDATA
+    lda #%01010101    ; Floor: all palette 1
+    sta PPUDATA
+    ; ... middle bytes ...
+    lda #$00          ; Right edge
+    sta PPUDATA
+    dex
+    bne @attr_floor_rows
+```
 
-## The State Machine
+## Multiple Palettes
 
-The main loop becomes a state machine:
+We now define distinct palettes:
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-06/snippets/03-the-state-machine.asm" lang="asm" />
+```asm
+palette_data:
+    ; Palette 0: Blue (border)
+    .byte BG_COLOUR, $11, $21, $31
 
-When playing, we run all game logic. When game over, we only check for the Start button to restart.
+    ; Palette 1: Purple (floor)
+    .byte BG_COLOUR, $13, $23, $33
 
-## Checking Enemy Collision
+    ; Palette 2: Green (unused)
+    .byte BG_COLOUR, $19, $29, $39
 
-We already know how to do bounding box collision from Unit 5. Now we loop through all 4 enemies:
+    ; Palette 3: Red (unused)
+    .byte BG_COLOUR, $16, $26, $36
+```
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-06/snippets/04-checking-enemy-collision.asm" lang="asm" />
+The floor tiles use the same graphics but palette 1 makes them purple instead of blue.
 
-Key insight: when we detect a hit, we set `game_state` to `STATE_GAMEOVER` and return immediately. No point checking remaining enemies — we're already dead.
+## The Limitation
 
-The indexed addressing `enemy_x, x` and `enemy_y, x` makes this loop efficient. The same collision code checks all 4 enemies.
+Attribute granularity is 16×16 pixels - you can't change palette for individual 8×8 tiles. This is why NES games often have blocky colour boundaries.
 
-## Resetting the Game
+Creative level design works around this constraint.
 
-When the player presses Start after dying, reset everything:
+## The Code
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-06/snippets/05-resetting-the-game.asm" lang="asm" />
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-06/nexus.asm" />
 
-This puts the player back in the centre, respawns enemies at their starting positions, and resets the score. The game continues from a clean slate.
-
-## Visual Feedback
-
-How does the player know they died? The game freezes — enemies stop moving, player stops responding. That's feedback, but not very dramatic.
-
-For now, the freeze is enough. In later units, we'll add sound effects and possibly a death animation. The important thing is that the state machine works.
-
-## Initialising Game State
-
-Don't forget to set the initial state during setup:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-06/snippets/06-initialising-game-state.asm" lang="asm" />
-
-## Build It. Run It.
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
-fceux nexus.nes
 ```
 
-Fly around collecting items. Then deliberately fly into an enemy. The game should freeze. Press Start to restart.
+The arena now has distinct colour regions. The border and floor are visually separate.
 
-![Game over state](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-06/screenshot.png)
+## Next
 
-## What You've Built
-
-Look at what you made:
-
-- **State machine** controlling game flow
-- **Enemy collision** checking all 4 enemies in a loop
-- **Game over state** that freezes gameplay
-- **Restart functionality** with Start button
-- **Clean reset** restoring initial conditions
-
-The game has stakes now. Getting caught means starting over.
-
-## What You've Learnt
-
-- **State machines** manage game flow (playing, paused, game over)
-- **Looping collision** scales to any number of enemies
-- **Early exit** (`rts` on hit) avoids unnecessary checks
-- **Game reset** restores initial state without rebooting
-- **Conditional main loop** runs different code based on state
-
-## The Complete Code
-
-Here's the full `nexus.asm` at this point:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-06/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-- Build + run: `ca65 nexus.asm -o nexus.o && ld65 -C nes.cfg nexus.o -o nexus.nes && fceux nexus.nes`
-- Collect items as usual — they respawn and score increases
-- Fly into an enemy — game freezes (enemies and player stop moving)
-- Press Start — game restarts, player recentres, enemies respawn
-- If collision doesn't trigger, check bounding box logic and indexed addressing
-- If restart doesn't work, check BTN_START mask and read_controller call
-
-## Next Unit
-
-We have a score variable, but it's invisible. The player has no idea how well they're doing.
-
-In Unit 7, we'll implement **the score display** — writing numbers to the background in real-time.
+The arena is complete. Unit 7 adds enemies to populate it.

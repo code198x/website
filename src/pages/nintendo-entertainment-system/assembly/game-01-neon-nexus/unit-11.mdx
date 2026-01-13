@@ -1,138 +1,103 @@
 ---
-title: "Difficulty"
-description: "Make enemies faster as the score increases."
-pubDate: 2026-01-04
+title: "Collectibles"
+description: "Add data cores that the player can collect."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 11
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "gameplay", "difficulty"]
+tags: ["assembly", "6502", "collectibles", "items", "gameplay"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-10"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-12"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 10: Sound Effects](/nintendo-entertainment-system/game-01-neon-nexus/unit-10).*
-
 ## What You're Building
 
-Right now enemies move at a constant speed. The game starts easy and stays easy—not very compelling. Classic arcade games ramp up difficulty as the player progresses, creating tension and challenge.
+Data cores. Collect them to win.
 
-This unit adds:
-- A difficulty level that increases with score
-- Enemies that move faster at higher difficulty
-- A frame skip system to control speed without floating-point maths
+![Collectibles](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-11/screenshot.png)
 
-## The Plan
+Green diamonds scattered around the arena. Touch them and they disappear.
 
-1. Add a `difficulty` variable that tracks current level
-2. Increase difficulty every 50 points
-3. Modify enemy movement to move faster at higher difficulty
-4. Cap difficulty at a maximum level
+## Item Data
 
-## The Challenge of Variable Speed
+Each item has a position and an active flag:
 
-The 6502 doesn't have floating-point numbers or easy multiplication. We can't simply multiply speed by 1.5. Instead, we use a frame-skip approach: at low difficulty, enemies move every frame. At high difficulty, enemies move twice per frame (or skip frames less often).
+```asm
+NUM_ITEMS = 4
 
-Another approach: instead of moving 1 pixel per frame, we can move 2 pixels per frame at higher difficulty. This is simpler and works well for our game.
+item_x:       .res NUM_ITEMS
+item_y:       .res NUM_ITEMS
+item_active:  .res NUM_ITEMS   ; Non-zero if item exists
+```
 
-## Difficulty Variable
+## Collection Detection
 
-Add a difficulty level to zero page:
+Same distance check as enemy collision, but the result is different:
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-11/snippets/01-difficulty-variable.asm" lang="asm" />
+```asm
+check_item_collisions:
+    ldx #0
+@check_item:
+    lda item_active, x
+    beq @next_item      ; Skip if already collected
 
-Difficulty starts at 0 and increases as score rises. We'll define constants:
+    ; Distance check (same as enemy collision)
+    ; ...
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-11/snippets/02-difficulty-variable.asm" lang="asm" />
+    ; Collected!
+    lda #0
+    sta item_active, x   ; Deactivate item
+    inc items_collected
 
-## Updating Difficulty
+@next_item:
+    inx
+    cpx #NUM_ITEMS
+    bne @check_item
+    rts
+```
 
-After collecting an item, check if we should increase difficulty:
+## Item Sprites
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-11/snippets/03-updating-difficulty.asm" lang="asm" />
+Items use sprite palette 2 (green) to distinguish them from enemies (red):
 
-## Difficulty-Based Enemy Speed
+```asm
+update_item_sprites:
+    ldx #0
+    ldy #20             ; OAM offset
 
-Modify `move_enemies` to move enemies faster at higher difficulty:
+@loop:
+    lda item_active, x
+    beq @hide_item
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-11/snippets/04-difficulty-based-enemy-speed.asm" lang="asm" />
+    lda item_y, x
+    sta oam_buffer, y
+    iny
+    lda #SPRITE_ITEM
+    sta oam_buffer, y
+    iny
+    lda #%00000010      ; Palette 2 (green)
+    sta oam_buffer, y
+    ; ...
+```
 
-This gives us:
-- Difficulty 0: 1 pixel/frame
-- Difficulty 1-2: 2 pixels/frame
-- Difficulty 3-5: 3 pixels/frame
+## The Code
 
-## Alternative: Speed Table
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-11/nexus.asm" />
 
-For finer control, use a lookup table:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-11/snippets/05-alternative-speed-table.asm" lang="asm" />
-
-This is cleaner and makes balancing easier—just adjust the table values.
-
-## Calling Update Difficulty
-
-Call `update_difficulty` after collecting an item:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-11/snippets/06-calling-update-difficulty.asm" lang="asm" />
-
-## Resetting Difficulty
-
-When the game restarts, reset difficulty to 0:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-11/snippets/07-resetting-difficulty.asm" lang="asm" />
-
-## Visual Feedback (Optional)
-
-You could change the background palette at higher difficulties to signal danger. For simplicity, we'll skip this, but it's a nice touch:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-11/snippets/08-visual-feedback-optional.asm" lang="asm" />
-
-## Build It. Run It.
-
-Assemble and run:
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
 ```
 
-Test the difficulty:
-1. Start a new game—enemies move slowly
-2. Collect items to reach 50 points—enemies should speed up
-3. Continue to 100, 150 points—enemies get progressively faster
-4. The game should feel more challenging as you play longer
+Collect the data cores. They vanish when touched.
 
-## What You've Built
+## Next
 
-Your game now has progressive difficulty. The longer players survive and the more they score, the harder it gets. This creates the classic arcade tension—can you survive just a little longer?
-
-## What You've Learnt
-
-- **Progressive difficulty**: Scaling challenge with player progress
-- **Lookup tables for speed**: Using tables instead of complex maths
-- **Score-based triggers**: Checking thresholds to advance difficulty
-- **Game balance basics**: How speed changes affect gameplay feel
-
-## The Complete Code
-
-Here's the complete `nexus.asm` with difficulty progression:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-11/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-Before moving on, verify:
-
-- [ ] Game starts with slow enemies (difficulty 0)
-- [ ] Reaching 50 points speeds up enemies
-- [ ] Speed increases again at 100, 150, 200, 250 points
-- [ ] Difficulty resets when starting a new game
-- [ ] The game feels progressively more challenging
-
-## Next Unit
-
-[Unit 12: High Score](/nintendo-entertainment-system/game-01-neon-nexus/unit-12) — track and display the best score.
+Collection feels good, but there's no score yet. Unit 12 adds scoring.

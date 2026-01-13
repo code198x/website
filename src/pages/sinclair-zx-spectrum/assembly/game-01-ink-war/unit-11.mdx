@@ -1,102 +1,129 @@
 ---
-title: "Detecting Game End"
-description: "Know when the board is full. Game state tracking and the simplest state machine: playing versus game over."
-pubDate: 2026-01-09
+title: "Defensive AI"
+description: "The AI now blocks your expansion too. Balances offense and defense for smarter play."
+pubDate: 2026-01-12
 game: 1
 gameName: "Ink War"
 unit: 11
 totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "game-state", "state-machine", "end-condition"]
+tags: ["assembly", "z80", "ai", "defense"]
 prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-10"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-12"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-## What You're Building
+The Unit 10 AI expands its own territory but ignores the human completely. If you build a large connected region, it won't try to stop you. This unit adds defensive awareness — the AI now considers blocking human expansion as valuable as growing its own territory.
 
-Players can claim cells, see scores, and take turns. But when does the game end? Currently, it doesn't — players could keep trying to claim already-claimed cells forever. In this unit, we add end detection.
+The result is a significantly more competitive opponent. It's no longer just racing to fill the board; it's actively fighting for contested cells.
 
-By the end of this unit, you'll have:
-
-- A game state variable tracking whether we're playing or finished
-- Detection for when all 64 cells are claimed
-- A main loop that stops processing input when the game ends
-- Your first simple state machine
-
-![Unit 11 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-11/screenshot.png)
-
-*The game looks the same — the difference is in the ending. Fill all 64 cells and the game stops.*
-
-## Game States
-
-Until now, our main loop has been an infinite loop processing input forever. Real games need states — the game is either being played, or it's over:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/01-game-state-constants.asm" />
-
-This is the simplest possible state machine: two states, one transition (playing → game over).
-
-<InlineNote>
-State machines are fundamental to game programming. Even this two-state version separates "what the game is doing" from "how it responds to input."
-</InlineNote>
-
-## Checking for Game End
-
-After each successful claim, we count empty cells. If none remain, the game is over:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/02-check-game-end.asm" />
-
-We iterate through all 64 cells, incrementing D for each empty one. If D is zero at the end, all cells are filled. We also clear the turn indicator since there's no "next turn" when the game ends.
-
-## Modified Main Loop
-
-The main loop now checks game state before processing input:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/03-main-loop.asm" />
-
-When `game_state` is `STATE_GAME_OVER`, we skip input processing entirely. The game simply halts in a loop. (The next unit will add winner display and make this more interesting.)
-
-## When to Check
-
-We call `check_game_end` after each successful claim, before switching players:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/04-valid-move-updated.asm" />
-
-If the game ends, we skip the player switch — there's no need to indicate whose turn it is when nobody can move.
-
-## Build It. Run It.
+## Run It
 
 ```bash
 pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Run in your emulator:
+![Unit 11 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-11/screenshot.png)
 
-1. Play normally — claim cells, watch scores change
-2. Fill the entire board (all 64 cells)
-3. After the last cell is claimed, the turn indicator disappears
-4. Input no longer works — no cursor movement, no claiming
-5. The game has ended
+Watch how the AI positions itself. It doesn't just expand outward — it claims cells that would otherwise extend your territory.
 
-<InlineNote>
-You'll need patience (or a faster emulator) to fill all 64 cells manually. The test is worth it — seeing the game properly stop is satisfying.
-</InlineNote>
+## The Strategic Shift
 
-## What You've Learnt
+In Unit 10, the AI scored each cell by counting adjacent AI cells. A cell with 2 AI neighbours scored higher than one with 1. But adjacent human cells were ignored.
 
-- **Game states**: Variables that track what the game is doing
-- **State machines**: Different behaviour based on current state
-- **End condition**: Checking when gameplay should stop
-- **Clean transitions**: Stopping input, clearing indicators
-- **Separation of concerns**: State check separate from input handling
+Now we count both:
+- **Offense**: Adjacent AI cells (expanding territory)
+- **Defense**: Adjacent human cells (blocking expansion)
+
+The combined score determines which cell to claim. A cell adjacent to 2 human cells and 1 AI cell scores 3 — the same as a cell adjacent to 3 AI cells. This makes contested boundary cells high priority.
+
+## Combined Scoring
+
+The updated algorithm counts both types of neighbours:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/01-combined-scoring.asm" />
+
+Two function calls now: `count_adjacent_ai` (from Unit 10) plus the new `count_adjacent_p1`. The scores are simply added together — no weighting, just raw neighbour count.
+
+## Counting Human Neighbours
+
+The new function mirrors `count_adjacent_ai`, but checks for `STATE_P1` instead of `STATE_P2`:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/snippets/02-count-adjacent-p1.asm" />
+
+Same boundary checks, same helper pattern. The only difference is which player state we're looking for.
+
+## Why Simple Addition Works
+
+You might expect defense to need higher weighting — shouldn't blocking be more important than expanding? In practice, simple addition works well:
+
+- **Early game**: Few neighbours of either type, so random cells get picked
+- **Mid game**: Contested boundaries naturally score highest (neighbours on both sides)
+- **Late game**: Remaining cells tend to be near both players anyway
+
+The AI doesn't need explicit priorities because contested cells inherently have high combined scores.
+
+## The Behaviour Change
+
+Compare the two AI versions:
+
+**Unit 10 (Offense Only):**
+- Claims cells adjacent to own territory
+- Ignores human expansion entirely
+- Lets you build large regions unopposed
+
+**Unit 11 (Offense + Defense):**
+- Values boundary cells between territories
+- Actively contests your expansion
+- Creates interleaved, competitive positions
+
+The defensive AI is noticeably harder to beat. It won't let you quietly dominate one side of the board.
 
 ## The Complete Code
 
 <CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-11/inkwar.asm" />
 
-## Next Unit
+## Try This: Defensive Weighting
 
-The game ends when the board is full. But who won? In Unit 12, we'll compare final scores and determine the winner. Red versus blue — may the best player win.
+Want the AI to prioritise blocking over expanding? Multiply the defense score:
+
+```asm
+; Count adjacent human cells (defense)
+ld      a, c
+call    count_adjacent_p1
+add     a, a                ; Double the defense score
+add     a, b                ; A = (P1 * 2) + AI
+```
+
+This makes blocking human territory twice as valuable as expanding AI territory.
+
+## Try This: Offense Weighting
+
+Or prioritise expansion:
+
+```asm
+; Count adjacent AI cells (offense)
+ld      a, c
+call    count_adjacent_ai
+add     a, a                ; Double the offense score
+ld      b, a
+; Count adjacent human cells (defense)
+ld      a, c
+call    count_adjacent_p1
+add     a, b                ; A = (AI * 2) + P1
+```
+
+Different weightings create different AI personalities.
+
+## What You've Learnt
+
+- **Multi-factor evaluation** — Combining multiple scores for better decisions
+- **Defense vs offense** — Blocking as a strategic consideration
+- **Code reuse** — New function mirrors existing one with minimal changes
+- **Emergent behaviour** — Simple scoring creates complex strategy
+
+## What's Next
+
+In Unit 12, we'll add corner and edge strategy — the AI will recognise that edges have fewer neighbours and corners are strategic positions.

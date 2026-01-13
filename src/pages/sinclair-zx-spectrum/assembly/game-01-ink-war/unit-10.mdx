@@ -1,131 +1,111 @@
 ---
-title: "Score Display"
-description: "Count cells owned by each player and display the scores. Direct screen memory writes and number-to-ASCII conversion."
-pubDate: 2026-01-09
+title: "Smarter AI - Adjacent Priority"
+description: "The AI builds connected territory by prioritising cells next to its existing claims."
+pubDate: 2026-01-12
 game: 1
 gameName: "Ink War"
 unit: 10
 totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "display", "score", "characters"]
+tags: ["assembly", "z80", "ai", "strategy"]
 prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-09"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-11"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-## What You're Building
+Random moves work, but they don't feel like playing against an opponent. The AI scatters claims across the board with no plan. This unit gives the AI its first strategic behaviour: prefer cells adjacent to existing territory.
 
-We have turns, we have claiming, we have feedback. But players have no idea who's winning. In this unit, we add a score display showing how many cells each player controls.
+The result is an AI that builds connected regions — clumps of blue cells that expand outward. It's still beatable, but it feels more like a real opponent.
 
-By the end of this unit, you'll have:
-
-- A cell counting routine that iterates through the board
-- A character printing routine using the ROM character set
-- Number-to-ASCII conversion for displaying scores
-- Live score updates after each move
-
-![Unit 10 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-10/screenshot.png)
-
-*"P1: 0" and "P2: 0" — both players start with nothing. Let the battle begin.*
-
-## Counting Cells
-
-First, we need to count how many cells each player owns. We iterate through all 64 cells of `board_state`:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/01-count-cells.asm" />
-
-The D and E registers act as counters during the loop. When we find a cell belonging to Player 1, increment D. Player 2's cells increment E. At the end, we store both counts in memory.
-
-<InlineNote>
-We use a 16-bit counter (BC) even though we only have 64 cells. This is defensive programming — the loop structure works for any board size up to 65535.
-</InlineNote>
-
-## Writing Characters to Screen
-
-The Spectrum stores its character set in ROM at $3D00. Each character is 8 bytes — one byte per pixel row. To print a character, we:
-
-1. Calculate the screen address from row and column
-2. Find the character data in ROM
-3. Copy 8 bytes to screen memory
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/02-print-char.asm" />
-
-The Spectrum's screen layout is notoriously complex. The address calculation involves:
-- **High byte**: `$40 + (row/8)*8` — which third of the screen
-- **Low byte**: `(row%8)*32 + column` — position within that third
-
-Within each "third" of the screen, pixel lines are $100 apart, so we simply increment H for each line.
-
-## Converting Numbers to Characters
-
-Scores can be 0-64, requiring two-digit display. We convert by repeated subtraction:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/03-print-number.asm" />
-
-To avoid a leading zero (showing " 5" instead of "05"), we print a space when tens is zero. Adding '0' (ASCII 48) converts a digit value to its printable character.
-
-<InlineNote>
-We use scratch variables instead of complex stack manipulation. This is clearer to understand and less error-prone, even if slightly less elegant.
-</InlineNote>
-
-## Drawing the Scores
-
-The complete score display routine brings everything together:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/04-draw-scores.asm" />
-
-We use different ink colours for each player's score — red for P1, cyan for P2. The attributes are set before printing so the characters appear in the correct colour.
-
-## Updating Scores
-
-After each successful claim, we call `draw_scores` to update the display:
-
-```asm
-valid_move:
-        call get_board_state_address
-        ld a, (current_player)
-        ld (hl), a
-        call update_cell_display
-        call play_success_sound
-        ; ...border flash...
-
-        ; Update scores after claim
-        call draw_scores
-
-        call switch_player
-        ret
-```
-
-The score recounts all cells every time. This is simple and always accurate, even if it's not the most efficient approach.
-
-## Build It. Run It.
+## Run It
 
 ```bash
 pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Run in your emulator:
+![Unit 10 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-10/screenshot.png)
 
-1. See "P1: 0" on the left, "P2: 0" on the right
-2. Move cursor, press Space to claim a cell
-3. Watch P1's score increment to 1
-4. After P2 claims, see P2's score update
+Watch how the AI's claims cluster together. Instead of random scattered cells, it builds from its first claim outward.
 
-## What You've Learnt
+## The Strategy
 
-- **Cell counting**: Iterating through game state with counters
-- **Screen addressing**: The Spectrum's complex display layout
-- **Character printing**: Using the ROM character set
-- **Number conversion**: Digit extraction and ASCII conversion
-- **Attribute colours**: Setting ink colour for text
+When humans play territory games, they instinctively expand from existing claims. Isolated cells are vulnerable; connected regions are stronger. The AI now does the same:
+
+1. Scan every empty cell on the board
+2. For each empty cell, count how many adjacent cells the AI owns
+3. Pick the cell with the highest count
+4. If no adjacent cells exist, fall back to random
+
+This simple heuristic produces surprisingly natural-looking play.
+
+## Finding the Best Adjacent Cell
+
+The core algorithm scans all 64 cells and tracks the best candidate:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/02-find-best-adjacent.asm" />
+
+We track two values: `best_cell` (the index of the best cell found so far) and `best_score` (how many AI neighbours it has). Each empty cell gets scored, and we keep the highest.
+
+If no cell has any AI neighbours (score remains 0), we fall back to `find_random_empty_cell` — the same function from Unit 9.
+
+## Counting Adjacent Cells
+
+For each candidate cell, we need to count how many neighbours belong to the AI:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/03-count-adjacent.asm" />
+
+This checks the four orthogonal neighbours (up, down, left, right). Edge detection prevents reading outside the board — row 0 has no up neighbour, column 7 has no right neighbour.
+
+The helper function `.caa_check_cell` converts row/column to a board index and checks if that cell belongs to Player 2 (the AI).
+
+## Updating AI Move Selection
+
+The change to `ai_make_move` is minimal — just call the new function instead of the random one:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/snippets/01-ai-make-move.asm" />
+
+Everything else stays the same: convert the cell index to row/column, claim the cell, switch players, update the display.
+
+## Why This Works
+
+Adjacent priority creates emergent behaviour:
+
+- **Early game**: The AI's first move is random (no existing territory), but subsequent moves cluster around it
+- **Mid game**: The AI expands its territory naturally, filling in gaps
+- **Late game**: When surrounded by enemy cells, it still finds the best local option
+
+The AI doesn't think ahead or consider defence — it just prefers cells next to its own. Yet this simple rule produces play that looks intelligent.
 
 ## The Complete Code
 
 <CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-10/inkwar.asm" />
 
-## Next Unit
+## Try This: Diagonal Neighbours
 
-Players can see their scores. But when does the game end? In Unit 11, we'll detect when the board is full — all 64 cells claimed. The competition needs a finish line.
+The current code only checks orthogonal neighbours (up, down, left, right). You could also check diagonal neighbours:
+
+```asm
+; Check up-left (row-1, col-1)
+ld      a, b
+or      a
+jr      z, .skip_up_left
+ld      a, c
+or      a
+jr      z, .skip_up_left
+; ... check cell at (row-1, col-1)
+```
+
+This would make the AI value corner positions differently.
+
+## What You've Learnt
+
+- **Cell scoring** — Evaluating board positions numerically
+- **Neighbour counting** — Checking adjacent cells with boundary detection
+- **Fallback strategies** — Using random when heuristics don't apply
+- **Emergent behaviour** — Simple rules producing complex-looking play
+
+## What's Next
+
+In Unit 11, we'll add defensive behaviour — the AI will recognise when the human is building territory and try to block them.

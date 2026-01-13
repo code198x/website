@@ -1,421 +1,76 @@
 ---
-title: "The Grid"
-description: "Set up the NES PPU and display a coloured background using the attribute table."
-pubDate: 2026-01-02
+title: "Hello NES"
+description: "Your first NES program — a sprite on screen in minutes."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 1
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "ppu", "palette", "attributes"]
+tags: ["assembly", "6502", "first-program", "sprite", "ppu"]
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-02"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to set up your tools first? See [Getting Started](/nintendo-entertainment-system/getting-started).*
-
 ## What You're Building
 
-Before the player moves, before enemies spawn, before items glow — you need a grid.
+A sprite on a coloured background. Your code, running on the NES.
 
-By the end of this unit, you'll have:
+![Hello NES](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-01/screenshot.png)
 
-- A working NES ROM that boots in any emulator
-- A display showing four colour zones
-- An understanding of how the PPU handles graphics
-- The foundation for everything else
+No theory first. Run it, then change it.
 
-No sprites yet. No gameplay. Just the neon grid waiting to come alive.
+## The Code
 
-## The Screen Layout
+This is a complete, working NES program:
 
-Here's what we're aiming for:
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/nexus.asm" />
 
-```
-┌────────────────────────────────────────┐
-│ ████████████████████████████████████████│  ← Zone 1: Blue (palette 0)
-│ ████████████████████████████████████████│
-│ ████████████████████████████████████████│
-├────────────────────────────────────────┤
-│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│  ← Zone 2: Green (palette 1)
-│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
-│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
-├────────────────────────────────────────┤
-│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│  ← Zone 3: Magenta (palette 2)
-│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-├────────────────────────────────────────┤
-│ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│  ← Zone 4: Grey (palette 3)
-│ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│
-│ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│
-└────────────────────────────────────────┘
-```
-
-Four horizontal bands, each using a different colour palette. This teaches the NES's unique attribute system — how it assigns colours to groups of tiles rather than individual pixels.
-
-## The PPU
-
-The NES Picture Processing Unit is separate from the CPU. While the CPU runs your game logic, the PPU handles all graphics independently. This division of labour was revolutionary in 1983.
-
-The PPU has its own 16KB of memory space, completely separate from the CPU's RAM:
-
-| Address | Size | Purpose |
-|---------|------|---------|
-| $0000-$0FFF | 4KB | Pattern Table 0 (tiles) |
-| $1000-$1FFF | 4KB | Pattern Table 1 (tiles) |
-| $2000-$23BF | 960 | Nametable 0 (tile indices) |
-| $23C0-$23FF | 64 | Attribute Table 0 (palettes) |
-| $2400-$27FF | 1KB | Nametable 1 (mirrored or separate) |
-| $3F00-$3F0F | 16 | Background palettes |
-| $3F10-$3F1F | 16 | Sprite palettes |
-
-You can't read or write PPU memory directly. Instead, you use CPU-mapped registers:
-
-| Address | Name | Purpose |
-|---------|------|---------|
-| $2000 | PPUCTRL | Control register (NMI enable, etc.) |
-| $2001 | PPUMASK | Rendering enable flags |
-| $2002 | PPUSTATUS | Status (vblank flag, etc.) |
-| $2005 | PPUSCROLL | Scroll position (write twice) |
-| $2006 | PPUADDR | PPU address (write twice) |
-| $2007 | PPUDATA | PPU data (read/write) |
-
-## The Attribute Table
-
-Here's the NES's quirk: you can't colour each tile individually. Instead, the screen is divided into 32×32 pixel regions (4×4 tiles), and each region shares one of four background palettes.
-
-The attribute table stores this information — 64 bytes controlling palette selection for the entire 256×240 screen. Each byte controls a 4×4 tile area, split into four 2×2 quadrants:
-
-```
-Each attribute byte controls a 32x32 pixel area:
-┌───────┬───────┐
-│  0-1  │  2-3  │  bits 0-1: top-left 2x2
-├───────┼───────┤  bits 2-3: top-right 2x2
-│  4-5  │  6-7  │  bits 4-5: bottom-left 2x2
-└───────┴───────┘  bits 6-7: bottom-right 2x2
-```
-
-To fill a region with palette 0: all bits = %00 → byte = $00
-To fill a region with palette 1: all bits = %01 → byte = $55
-To fill a region with palette 2: all bits = %10 → byte = $AA
-To fill a region with palette 3: all bits = %11 → byte = $FF
-
-This is how we create our colour zones — by filling rows of the attribute table with different values.
-
-> Why this matters: $00/$55/$AA/$FF are the four palette picks. Stack rows of them and you paint the four horizontal colour bands from the target screen.
-
-## Setting Up
-
-Create two files:
-- `nexus.asm` — The game code
-- `nes.cfg` — Linker configuration
-
-### Build it. Run it.
-
-Use this loop whenever you see "Build it. Run it.": ([need setup?](/nintendo-entertainment-system/getting-started))
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
-fceux nexus.nes
 ```
 
-When you see "Build it. Run it." in the lesson, use these commands.
+Open `nexus.nes` in an emulator. You should see a white arrow on a blue background.
 
-**Download the starter/solution code** (identical to this lesson):  
-`https://github.com/code198x/code-samples/tree/main/nintendo-entertainment-system/game-01-neon-nexus/unit-01`
+## Make It Yours
 
-## The iNES Header
+Find these lines near the top of the code:
 
-Every NES ROM starts with a 16-byte header that tells emulators (and hardware) about the cartridge:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/01-the-ines-header.asm" lang="asm" />
-
-Let's break this down:
-
-**`"NES", $1a`** — The magic number that identifies an iNES file. The $1A is a DOS end-of-file marker from the format's MS-DOS origins.
-
-**`.byte 2`** — PRG ROM size in 16KB units. We have 32KB of program code.
-
-**`.byte 1`** — CHR ROM size in 8KB units. We have 8KB of tile graphics.
-
-**`$01`** — Flags 6: Low nybble of mapper number (0) plus vertical nametable mirroring (bit 0 set).
-
-**`$00`** — Flags 7: High nybble of mapper number (0). NROM is the simplest mapper — no bank switching, direct memory mapping.
-
-## Constants and Zero Page
-
-Next, we define our constants and reserve zero page memory:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/02-constants-and-zero-page.asm" lang="asm" />
-
-**`.segment "ZEROPAGE"`** — The linker configuration maps this to $00-$FF. Zero page is fast on the 6502 — addressing modes are shorter and quicker.
-
-**`.res 1`** — Reserve 1 byte. We'll use `frame_counter` to track time.
-
-**`PPUCTRL = $2000`** — Equates define symbolic names for addresses. Much clearer than writing `$2000` everywhere.
-
-## The Reset Handler
-
-When the NES powers on, the CPU jumps to the address stored at $FFFC-$FFFD. This is our `reset` procedure:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/03-the-reset-handler.asm" lang="asm" />
-
-Let's examine each instruction:
-
-**`sei`** — Set Interrupt disable. Prevents IRQ interrupts during initialisation.
-
-**`cld`** — Clear Decimal mode. The NES doesn't have decimal mode, but it's good practice — some 6502s boot with it enabled.
-
-**`ldx #$40` / `stx $4017`** — Disable the APU's frame counter IRQ by writing $40 to the frame counter register.
-
-**`ldx #$ff` / `txs`** — Initialise the stack pointer to $FF. The stack lives at $0100-$01FF, growing downward.
-
-**`inx`** — Increment X, wrapping $FF to $00. A clever trick to get zero in X.
-
-**`stx PPUCTRL` / `stx PPUMASK`** — Disable NMI and rendering. We don't want interrupts firing before we're ready.
-
-## Waiting for VBlank
-
-The PPU needs time to warm up after power-on. We wait for two vertical blanks:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/04-waiting-for-vblank.asm" lang="asm" />
-
-**`bit PPUSTATUS`** — The BIT instruction tests bits without modifying the accumulator. When reading PPUSTATUS:
-- Bit 7 (negative flag) = vblank has occurred
-- Reading also clears the vblank flag
-
-**`bpl @vblank1`** — Branch if Positive (bit 7 clear). Keep looping until we see the vblank flag.
-
-We do this twice because the first vblank might occur mid-warmup. After two vblanks, the PPU is definitely ready.
-
-## Clearing RAM
-
-While waiting for the second vblank, we clear all 2KB of RAM:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/05-clearing-ram.asm" lang="asm" />
-
-This writes zero to every byte from $0000-$07FF. The 6502's indexed addressing (`sta $0000, x`) adds X to the base address. When X overflows from $FF to $00, the loop ends.
-
-## Loading the Palette
-
-After the second vblank, we load our colours:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/06-loading-the-palette.asm" lang="asm" />
-
-**`jsr load_palette`** — "Jump to SubRoutine." This calls `load_palette`, runs it, then returns here. Think of it like calling a function.
-
-The palette loading routine:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/07-loading-the-palette.asm" lang="asm" />
-
-**`bit PPUSTATUS`** — Reading PPUSTATUS resets the address latch. The PPU has a two-write address register — first write is high byte, second is low byte. The `bit` instruction reads and discards the value, resetting the latch.
-
-**`lda #$3f` / `sta PPUADDR` / `lda #$00` / `sta PPUADDR`** — Write the PPU address $3F00 (palette start) in two parts: high byte first, then low byte.
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/08-loading-the-palette.asm" lang="asm" />
-
-**`lda palette_data, x`** — Load from our palette table using X as an index.
-
-**`sta PPUDATA`** — Write to PPUDATA. The PPU address auto-increments after each write.
-
-**`cpx #32` / `bne @loop`** — Compare X to 32, loop if not equal. We load all 32 bytes: 16 for background palettes, 16 for sprite palettes.
-
-**`rts`** — "Return from Subroutine." Go back to whoever called us with `jsr`.
-
-## The NES Colour Palette
-
-The NES has a fixed palette of 64 colours (actually 54 unique ones). You choose 32 of these: 16 for backgrounds, 16 for sprites, arranged as 8 palettes of 4 colours each.
-
-Each palette entry is a single byte — an index into the hardware palette:
-
-| Value | Colour |
-|-------|--------|
-| $0F | Black |
-| $00 | Dark grey |
-| $10 | Medium grey |
-| $20 | Light grey |
-| $30 | White |
-| $11 | Dark blue |
-| $21 | Medium blue |
-| $31 | Light blue |
-| $19 | Dark green |
-| $29 | Medium green |
-| $15 | Dark magenta |
-| $25 | Medium magenta |
-
-Our palette data:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/09-the-nes-colour-palette.asm" lang="asm" />
-
-Colour 0 of every palette is the universal background colour (usually black, $0F).
-
-## Filling the Background
-
-Now we set up the nametable and attribute table:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/10-filling-the-background.asm" lang="asm" />
-
-**`ldy #4`** — "Load Y register with 4." Y is another index register, useful for nested loops. Here it counts our outer loop iterations.
-
-**`dey`** — "Decrement Y by 1." The opposite of `inx`/`iny`. When Y hits zero, the outer loop ends.
-
-We fill the nametable with tile index 0 (our solid block). The nested loop writes 1024 bytes — enough to cover the 960-byte nametable plus the 64-byte attribute table.
-
-Then we overwrite the attribute table with our colour zones:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/11-filling-the-background.asm" lang="asm" />
-
-## The Attribute Data
-
-This is where we define our colour zones:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/12-the-attribute-data.asm" lang="asm" />
-
-Each row of 8 bytes covers 8 × 32 = 256 pixels horizontally, and 32 pixels vertically. Two rows per zone gives us 64 pixels per colour band.
-
-**$00** = all quadrants use palette 0 = %00000000
-**$55** = all quadrants use palette 1 = %01010101
-**$AA** = all quadrants use palette 2 = %10101010
-**$FF** = all quadrants use palette 3 = %11111111
-
-## Enabling Rendering
-
-Back in the reset handler, after filling the background:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/13-enabling-rendering.asm" lang="asm" />
-
-**PPUCTRL bit 7** — Enable NMI on vblank. This is critical for game timing.
-
-**PPUMASK bits 3-4** — Show background and sprites. Bits 1-2 would clip the leftmost 8 pixels.
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/14-enabling-rendering.asm" lang="asm" />
-
-**PPUSCROLL** is written twice: X scroll, then Y scroll. We want no scrolling, so both are zero.
-
-**`jmp forever`** — "Jump." Go to `forever` and stay there — don't come back. Unlike `jsr`, there's no return.
-
-The main loop is empty — all the work happens in the NMI handler.
-
-## The NMI Handler
-
-The NMI (Non-Maskable Interrupt) fires at the start of every vblank — about 60 times per second:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/15-the-nmi-handler.asm" lang="asm" />
-
-**`inc frame_counter`** — "Increment memory location by 1." Unlike `inx`/`iny` which work on registers, `inc` works directly on a memory address.
-
-For now, we just increment a frame counter and reset the scroll position. Later units will add real game logic here.
-
-**`rti`** — Return from Interrupt. Restores the CPU state and resumes the main program.
-
-## The IRQ Handler
-
-We don't use IRQs, but we need a handler:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/16-the-irq-handler.asm" lang="asm" />
-
-## The Interrupt Vectors
-
-The 6502 looks for interrupt vectors at the top of memory:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/17-the-interrupt-vectors.asm" lang="asm" />
-
-**.word** stores a 16-bit address (little-endian). When the NES powers on, it reads the reset vector and jumps there.
-
-## CHR ROM — The Tiles
-
-The PPU reads tile graphics from CHR ROM. We define a single tile — a solid block:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/snippets/18-chr-rom-the-tiles.asm" lang="asm" />
-
-NES tiles are 8×8 pixels with 2 bits per pixel (4 colours). Each tile uses 16 bytes: 8 bytes for bit plane 0, 8 for bit plane 1.
-
-For a solid block, all bits are 1 in both planes, giving colour 3 (the brightest colour in the palette).
-
-## The Linker Configuration
-
-The `nes.cfg` file tells the linker where to put everything:
-
-```
-MEMORY {
-    ZP:     start = $00,    size = $100,   type = rw, file = "";
-    RAM:    start = $0200,  size = $600,   type = rw, file = "";
-    HEADER: start = $0,     size = $10,    type = ro, file = %O, fill = yes;
-    PRG:    start = $8000,  size = $8000,  type = ro, file = %O, fill = yes;
-    CHR:    start = $0,     size = $2000,  type = ro, file = %O, fill = yes;
-}
-
-SEGMENTS {
-    ZEROPAGE: load = ZP,     type = zp;
-    BSS:      load = RAM,    type = bss;
-    HEADER:   load = HEADER, type = ro;
-    CODE:     load = PRG,    type = ro,  start = $8000;
-    VECTORS:  load = PRG,    type = ro,  start = $FFFA;
-    CHARS:    load = CHR,    type = ro;
-}
+```asm
+PLAYER_START_X = 124  ; Player X position (0-247)
+PLAYER_START_Y = 116  ; Player Y position (0-231)
+BG_COLOUR      = $12  ; Background colour
 ```
 
-This maps:
-- ZEROPAGE to $00-$FF (fast variables)
-- RAM to $0200-$07FF (general variables, avoiding stack at $0100)
-- HEADER to the start of the ROM file
-- CODE to $8000-$FFFF (PRG ROM)
-- VECTORS to $FFFA-$FFFF (interrupt vectors)
-- CHARS to a separate CHR ROM section
+Try changing them:
 
-## Build and Run
+1. **Move the player** — Change `PLAYER_START_X` to `50`. Rebuild. The sprite moves left.
 
-```bash
-ca65 nexus.asm -o nexus.o
-ld65 -C nes.cfg nexus.o -o nexus.nes
-fceux nexus.nes
-```
+2. **Change the background** — Try these values for `BG_COLOUR`:
+   - `$0F` = Black
+   - `$30` = White
+   - `$16` = Red
+   - `$1A` = Green
+   - `$12` = Blue (current)
 
-You should see four horizontal colour bands: blue at top, green, magenta, grey at bottom.
+3. **Move to the corner** — Set X to `8` and Y to `8`. The sprite appears in the top-left.
 
-![The grid - four colour zones](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-01/screenshot.png)
+Every change you make is real. This is your program.
 
-## What You've Built
+## What Just Happened?
 
-Look at what you made:
+You ran NES code. The details of how it works come in Unit 3. For now, know this:
 
-- A valid NES ROM with proper iNES header
-- PPU initialisation that waits for warmup
-- Palette loading through the PPU registers
-- A nametable filled with solid tiles
-- An attribute table creating colour zones
-- NMI handler ready for game logic
+- The **PPU** (Picture Processing Unit) draws everything
+- **Sprites** are moveable graphics (like your arrow)
+- **Palettes** define colours
+- The code runs at 60 frames per second
 
-This is the grid. Everything that follows — the player sprite, the enemies, the items — will be drawn on top of this foundation.
+## Next
 
-## What You've Learnt
-
-- **PPU registers** at $2000-$2007 are the only way to access PPU memory
-- **Two-write registers** (PPUADDR, PPUSCROLL) need the address latch reset first
-- **Palettes** live at $3F00 in PPU memory — 32 bytes total
-- **Attribute table** at $23C0 controls palette selection for 4×4 tile regions
-- **NMI** fires every vblank — this is where game logic will live
-- **iNES header** tells emulators how to interpret your ROM
-- **CHR ROM** holds tile graphics in 2-bit planar format
-
-## The Complete Code
-
-Here's the full program:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-01/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-- Build + run: `ca65 nexus.asm -o nexus.o && ld65 -C nes.cfg nexus.o -o nexus.nes && fceux nexus.nes`.
-- Screen: four horizontal colour bands (blue, green, magenta, grey) with no sprites and a stable image.
-- Input: none yet — the NMI just resets scroll. That’s expected.
-- If colours look wrong, double-check the attribute_data rows ($00/$55/$AA/$FF) and that PPUMASK enables background rendering (`%00011110`).
-
-## Next Unit
-
-The grid is drawn. But it's empty. Static.
-
-In Unit 2, we add the player sprite — an 8×8 character you control with the D-pad. The neon nexus awakens.
+In Unit 2, you'll make the sprite move with the controller. Real interactivity.

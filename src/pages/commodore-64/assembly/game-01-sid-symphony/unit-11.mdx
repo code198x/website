@@ -1,133 +1,175 @@
 ---
-title: "Keyboard Input"
-description: "Make it interactive. Read the keyboard matrix, debounce key presses, and provide visual feedback when the player acts."
-pubDate: 2026-01-09
+title: "Song End and Results"
+description: "Detect song completion. Display results with score breakdown."
+pubDate: 2026-01-13
 game: 1
 gameName: "SID Symphony"
 unit: 11
-totalUnits: 16
+totalUnits: 64
 system: "Commodore 64"
-tags: ["assembly", "6510", "keyboard", "input", "debouncing", "cia"]
+tags: ["assembly", "6510", "gameplay", "results"]
 prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-10"
 nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-12"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-*Need to catch up? Check out [Unit 10: Note Movement](/commodore-64/assembly/game-01-sid-symphony/unit-10).*
+A game needs an ending. This unit adds results and the complete game loop.
 
-## What You're Building
+When the song finishes, the screen clears to show final results: score, perfects, goods, misses, and accuracy percentage. Press any key to play again. The game now has a proper beginning and end.
 
-Notes flow. The hit zones wait. But the player can't do anything — those [X], [C], [V] labels are just decoration.
+## Run It
 
-By the end of this unit, you'll have:
-
-- Keyboard scanning for X, C, and V keys
-- Debouncing to detect new presses (not just "key is held")
-- Visual feedback — hit zones flash when you press their key
-- The foundation for hit detection
-
-Press a key. Watch the zone flash. Interactivity arrives.
-
-## The Keyboard Matrix
-
-The C64 keyboard is an 8×8 matrix of switches. To read it:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-11/snippets/01-key-definitions.asm" />
-
-The process:
-1. Write to $DC00 to select which column (bit = 0 selects)
-2. Read $DC01 to see which rows have pressed keys (bit = 0 means pressed)
-
-X, C, and V are in columns 2 and 3. Each column+row combination identifies one key.
-
-<InlineNote>
-The keyboard matrix is "active low" — pressed keys read as 0, not 1. This is counterintuitive but common in hardware design. We use AND to mask the relevant bit, then check for zero.
-</InlineNote>
-
-## The Debouncing Problem
-
-A naive key check would fire every frame the key is held — 50 times per second while your finger is down. That's not useful for a rhythm game.
-
-We need **debouncing**: detect the moment of press, ignore the holding.
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-11/snippets/02-debouncing.asm" />
-
-We track two things per key:
-- `key_x_state`: Is the key currently held? (persists across frames)
-- `key_x_pressed`: Was the key NEWLY pressed THIS frame? (reset each frame)
-
-The pressed flag only goes high when transitioning from "not held" to "held". Holding the key keeps state=1, but pressed stays 0 after the first frame.
-
-## Visual Feedback
-
-Players need confirmation that their input registered. We flash the hit zone:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-11/snippets/03-visual-feedback.asm" />
-
-When a key is newly pressed, we set a timer (10 frames = ~0.2 seconds). The drawing code checks this timer:
-
-```asm
-; In draw_hitzone:
-lda flash_t1_timer
-beq .normal_colour
-dec flash_t1_timer
-lda #COL_WHITE          ; Bright flash
-jmp .draw
-.normal_colour:
-lda #COL_CYAN           ; Normal track colour
-.draw:
-; ... draw hit zone with this colour
-```
-
-The timer counts down each frame. While non-zero, use the flash colour. When it reaches zero, return to normal.
-
-## Input Timing
-
-Where in the game loop should we scan the keyboard?
-
-```asm
-main_loop:
-                jsr wait_raster
-                jsr update_counters
-                jsr check_spawn_notes
-                jsr update_notes
-                jsr draw_notes
-                jsr scan_keyboard       ; After drawing
-                jsr handle_input        ; Process results
-                jsr update_display
-                jsr check_quit
-                jmp main_loop
-```
-
-We scan after drawing so input is as fresh as possible — minimal lag between physical keypress and response.
-
-## Build It. Run It.
+Assemble and run:
 
 ```bash
 acme -f cbm -o symphony.prg symphony.asm
-x64sc symphony.prg
 ```
 
-Press X, C, or V. Watch the corresponding hit zone flash white briefly. Notes still flow, but now you can interact.
+![Unit 11 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-11/screenshot.png)
 
-The flash is satisfying, but nothing happens to the notes yet. You're pressing keys, notes are passing — but they're not connected.
+Play through the entire song. When it ends, you'll see the results screen with "SONG COMPLETE!" and your statistics. Press any key to restart.
 
-## What You've Learnt
+## Game States
 
-- **Keyboard matrix**: 8×8 grid read via $DC00/$DC01
-- **Active low logic**: Pressed keys read as 0, not 1
-- **Debouncing**: Track state to detect transitions, not levels
-- **Visual feedback**: Timer-based flash confirms input registration
+The game now has three distinct states:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-11/snippets/01-game-states.asm" />
+
+The main loop checks `game_state` and calls the appropriate update routine. This pattern - a state variable controlling which code runs - scales well as games grow more complex.
+
+## Detecting Song End
+
+The song ends when all notes have been processed and cleared from the screen:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-11/snippets/02-check-song-end.asm" />
+
+The logic is:
+1. Check if song data is exhausted (`song_ended` flag)
+2. Wait for all active notes to scroll off or be hit
+3. Wait a brief delay (for dramatic effect)
+4. Transition to results state
+
+## Tracking Statistics
+
+We now track perfects and goods separately:
+
+```asm
+award_points:
+            lda hit_quality
+            cmp #2
+            beq award_perfect
+
+            ; Good hit
+            inc good_count      ; Track goods separately
+            ; ... add score ...
+
+award_perfect:
+            inc perfect_count   ; Track perfects separately
+            ; ... add score ...
+```
+
+These counters appear on the results screen.
+
+## Calculating Accuracy
+
+Accuracy shows what percentage of notes the player hit:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-11/snippets/03-accuracy.asm" />
+
+The formula: `(perfects + goods) × 100 ÷ total_notes`. We multiply first, then divide, to maintain precision. The 6502 has no division instruction, so we use repeated subtraction.
+
+## The Results Screen
+
+The results screen displays:
+
+```
+        SONG COMPLETE!
+
+        FINAL SCORE: 02800
+        PERFECTS:    15
+        GOODS:       10
+        MISSES:      05
+        ACCURACY:    083%
+
+        PRESS ANY KEY
+```
+
+Each statistic uses colour to communicate meaning: white for perfects, yellow for goods, red for misses, green for accuracy. The border turns green for success.
+
+## Press Any Key
+
+Waiting for any key is simple:
+
+```asm
+update_results:
+            lda #$00
+            sta CIA1_PRA        ; Select all keyboard rows
+            lda CIA1_PRB
+            cmp #$FF            ; $FF = no keys pressed
+            beq results_wait
+
+            ; Key pressed - restart
+            jsr init_game
+
+results_wait:
+            lda #$FF
+            sta CIA1_PRA
+            rts
+```
+
+Setting CIA1_PRA to $00 selects all rows. Any key press makes CIA1_PRB read something other than $FF.
 
 ## The Complete Code
 
 <CodeFromFile src="commodore-64/game-01-sid-symphony/unit-11/symphony.asm" />
 
-## Next Unit
+## Try This: Grade Letters
 
-Keys work. Notes move. But there's no connection — pressing X when a note is in the hit zone does nothing special.
+Add letter grades based on accuracy:
 
-In Unit 12, we implement hit detection: did the player press the right key at the right time? This is where rhythm gaming lives.
+```asm
+            lda accuracy
+            cmp #95
+            bcs grade_s         ; S rank
+            cmp #80
+            bcs grade_a         ; A rank
+            cmp #60
+            bcs grade_b         ; B rank
+            ; ... etc
+```
+
+Grades give players clear targets.
+
+## Try This: High Score
+
+Save the best score:
+
+```asm
+            ; Compare current to high score
+            lda score_hi
+            cmp high_score_hi
+            bcc not_high
+            bne is_high
+            lda score_lo
+            cmp high_score_lo
+            bcc not_high
+is_high:
+            ; New high score!
+            ; ... copy and display ...
+```
+
+High scores encourage replay.
+
+## What You've Learnt
+
+- **State machines** - Different code paths for different game states
+- **End detection** - Waiting for all notes to resolve
+- **Statistics tracking** - Counting perfects, goods, misses separately
+- **Integer percentage** - Multiply then divide for accuracy
+- **Any-key detection** - Selecting all keyboard rows at once
+
+## What's Next
+
+In Unit 12, we'll add a combo system. Consecutive hits build a multiplier, rewarding sustained accuracy with bonus points.

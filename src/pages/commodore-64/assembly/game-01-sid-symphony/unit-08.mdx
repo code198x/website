@@ -1,167 +1,142 @@
 ---
-title: "Song Data"
-description: "Design a data format to drive your rhythm game. Parallel arrays store when, where, and what to play for each note."
-pubDate: 2026-01-09
+title: "Health System"
+description: "A health meter that grows on hits and shrinks on misses. The game can be lost."
+pubDate: 2026-01-13
 game: 1
 gameName: "SID Symphony"
 unit: 8
-totalUnits: 16
+totalUnits: 64
 system: "Commodore 64"
-tags: ["assembly", "6510", "data-structures", "parallel-arrays", "song-format"]
+tags: ["assembly", "6510", "health", "game-over"]
 prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-07"
 nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-09"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-*Need to catch up? Check out [Unit 7: The Game Loop](/commodore-64/assembly/game-01-sid-symphony/unit-07).*
+A game without stakes is just practice. Now the game can be lost.
 
-## What You're Building
+This unit adds a health system. Health starts at half-full. Perfect hits restore 4 points. Good hits restore 2 points. Misses cost 8 points. When health reaches zero, the game ends. Success requires sustained performance.
 
-A rhythm game needs a song — a sequence of notes with precise timing. But how do you represent that in assembly?
+## Run It
 
-By the end of this unit, you'll have:
-
-- A song data format using parallel arrays
-- A simple test song (ascending scale)
-- Display of current song position
-- The foundation for spawning and tracking notes
-
-Data drives games. This is where we design our data.
-
-## The Song Data Problem
-
-Each note in our song needs three pieces of information:
-1. **When**: Which beat should it appear on?
-2. **Where**: Which track (1, 2, or 3)?
-3. **What**: Which SID frequency to play?
-
-We could use a struct-like approach (3 bytes per note), but the 6502 doesn't handle structs well. Instead, we use **parallel arrays**:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-08/snippets/01-song-data-format.asm" />
-
-Three arrays, same index. Note 0 is `song_beats[0]`, `song_tracks[0]`, `song_notes[0]`. Note 5 is index 5 in all three arrays.
-
-<InlineNote>
-Parallel arrays are a classic 6502 pattern. They work well with indexed addressing: `lda song_beats,x` reads the beat for note X with a single instruction. No pointer arithmetic needed.
-</InlineNote>
-
-## Why Parallel Arrays?
-
-Consider the alternative — interleaved data:
-
-```asm
-; Interleaved (harder to use)
-song_data:
-    !byte 0, 1, $11     ; Beat 0, Track 1, Note C4
-    !byte 2, 2, $13     ; Beat 2, Track 2, Note D4
-```
-
-To read the track for note 5, you'd calculate offset = 5 × 3 + 1. That's multiplication — expensive on 6502.
-
-With parallel arrays, offset = 5. Just `ldx #5; lda song_tracks,x`. Simple, fast.
-
-## The End Marker
-
-How do we know when the song ends? A special value:
-
-```asm
-END_MARKER      = $ff           ; Beat 255 = end of song
-
-song_beats:
-                !byte 0, 2, 4, 6, 8
-                !byte END_MARKER    ; No more notes
-```
-
-When we read a beat value of $FF, we know we've reached the end. No need to store a separate length variable.
-
-## Reading Song Data
-
-The algorithm to check for new notes:
-
-```asm
-check_for_notes:
-                ldx song_position       ; Current position in song
-
-.check_next:    lda song_beats,x        ; Get beat for this note
-                cmp #END_MARKER
-                beq .song_ended         ; No more notes
-
-                cmp beat_counter        ; Is it time for this note?
-                bcc .spawn_note         ; Beat has passed - spawn it!
-                bne .done               ; Not yet
-
-.spawn_note:    lda song_tracks,x       ; Which track?
-                ; ... spawn note on that track
-                inx                     ; Move to next note
-                stx song_position
-                bne .check_next         ; Check if more notes on same beat
-
-.done:          rts
-.song_ended:    ; Handle song completion
-                rts
-```
-
-Key insight: we compare `song_beats[x]` with `beat_counter`. If the song beat is less than or equal to current beat, spawn the note.
-
-## Displaying Song Position
-
-For debugging, we show the current position:
-
-```asm
-update_song_display:
-                ; Display song position
-                lda song_position
-                jsr display_two_digits
-                ; Display beat counter
-                lda beat_counter
-                jsr display_two_digits
-                rts
-```
-
-Watching these numbers increment confirms your timing logic works before you add visual notes.
-
-## The Test Song
-
-Our first song is a simple ascending scale:
-
-```asm
-song_beats:     !byte 0, 2, 4, 6, 8, 10, 12, 14
-                !byte END_MARKER
-
-song_tracks:    !byte 1, 2, 3, 2, 1, 3, 2, 1
-
-song_notes:     !byte $11, $13, $15, $17, $1a, $1d, $20, $22
-```
-
-Eight notes, spread across tracks, playing C4 through C5. Notes appear every 2 beats (about 0.5 seconds apart at our current tempo).
-
-## Build It. Run It.
+Assemble and run:
 
 ```bash
 acme -f cbm -o symphony.prg symphony.asm
-x64sc symphony.prg
 ```
 
-You'll see two numbers updating: song position and beat counter. The song position advances as beats pass, proving the data format is being read correctly.
+![Unit 8 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-08/screenshot.png)
 
-No notes appear on screen yet — that's next unit. But the data structure is in place.
+The health bar displays at the bottom. Watch it grow as you hit notes and shrink when you miss. Let too many notes through and the game ends with "GAME OVER" in red.
 
-## What You've Learnt
+## Health Logic
 
-- **Parallel arrays**: Multiple arrays with shared index, efficient on 6502
-- **End markers**: Special values to indicate data boundaries
-- **Song format**: Beat number, track, and frequency per note
-- **Data-driven design**: Code reads data, data defines behaviour
+Health is a single byte ranging from 0 to 64. Changes are clamped - you can't go below 0 or above 64:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-08/snippets/01-health-system.asm" />
+
+The `decrease_health` routine uses the carry flag to detect underflow. After `SBC`, if carry is clear, the result went negative. Rather than storing a garbage value, we clamp to zero. The `increase_health` routine works similarly - compare against the maximum and clamp if exceeded.
+
+## The Health Bar
+
+A visual bar makes health tangible. Eight characters represent 64 health points - each character shows 8 points:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-08/snippets/02-display-health.asm" />
+
+The `LSR` instructions divide health by 8 (three right shifts = divide by 2³ = divide by 8). This gives the number of full bar characters to draw. The remaining positions get empty bar characters.
+
+## Custom Bar Characters
+
+Two new custom characters create the health bar:
+
+```asm
+; Health bar full - solid block
+lda #%11111111
+sta CHARSET + (CHAR_BAR_FULL * 8) + 0
+; ... (all 8 rows solid)
+
+; Health bar empty - outline
+lda #%11111111
+sta CHARSET + (CHAR_BAR_EMPTY * 8) + 0
+lda #%10000001
+sta CHARSET + (CHAR_BAR_EMPTY * 8) + 1
+; ... (middle rows outline only)
+```
+
+The full bar is a solid block. The empty bar shows just the outline - indicating capacity without filling it. The contrast makes current health immediately clear.
+
+## Game Over
+
+When health hits zero, the game freezes:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-08/snippets/03-game-over.asm" />
+
+The `game_over` variable acts as a flag. Once set, the main loop skips all game logic - notes stop spawning, keys stop responding. The player sees "GAME OVER" in red and must restart.
+
+## Hooking Into Existing Code
+
+The health system integrates with existing routines. In `award_points`:
+
+```asm
+            ; Increase health for perfect hit
+            lda #HEALTH_PERFECT
+            jsr increase_health
+```
+
+In `handle_miss`:
+
+```asm
+            ; Decrease health
+            jsr decrease_health
+```
+
+Small additions to existing code. The routines we wrote handle all the complexity.
 
 ## The Complete Code
 
 <CodeFromFile src="commodore-64/game-01-sid-symphony/unit-08/symphony.asm" />
 
-## Next Unit
+## Try This: Different Balance
 
-We have song data. We have a game loop. Now we connect them.
+Adjust the difficulty by changing health values:
 
-In Unit 9, we spawn notes onto tracks when their beat arrives — the first visual rhythm gameplay.
+```asm
+HEALTH_PERFECT = 2              ; Less reward
+HEALTH_GOOD   = 1
+HEALTH_MISS   = 12              ; Harsher punishment
+```
+
+This makes the game harder - misses hurt more, hits help less. Find a balance that feels challenging but fair.
+
+## Try This: Visual Health Feedback
+
+Change the bar colour based on health level:
+
+```asm
+display_health:
+            lda health
+            cmp #16
+            bcc health_critical
+            lda #5              ; Green
+            jmp set_health_col
+health_critical:
+            lda #2              ; Red when low
+set_health_col:
+            sta health_colour
+            ; ... use health_colour instead of HEALTH_COL
+```
+
+Red when critical makes danger obvious.
+
+## What You've Learnt
+
+- **Clamped values** - Preventing overflow and underflow with comparisons
+- **Bit shifting for division** - LSR divides by 2, three shifts divide by 8
+- **Game state flags** - A simple variable to track game over condition
+- **Visual bars** - Custom characters for progress display
+
+## What's Next
+
+In Unit 9, we'll design the song data format. Real songs with multiple patterns, variable timing, and musical structure. The placeholder test pattern becomes actual music.

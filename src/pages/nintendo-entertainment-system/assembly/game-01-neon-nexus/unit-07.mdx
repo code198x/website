@@ -1,170 +1,141 @@
 ---
-title: "Score"
-description: "Make progress visible. Learn to update PPU during vblank and display numbers on screen."
-pubDate: 2026-01-04
+title: "Enemies Appear"
+description: "Add enemy sprites to the arena."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 7
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "hud", "ppu"]
+tags: ["assembly", "6502", "sprites", "enemies", "oam"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-06"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-08"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 6: Collision](/nintendo-entertainment-system/game-01-neon-nexus/unit-06).*
-
 ## What You're Building
 
-We have a score variable, but no one can see it. Time to make progress visible.
+Enemies in the arena. Four hostile sprites waiting for you.
 
-By the end of this unit, you'll have:
+![Enemies Appear](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-07/screenshot.png)
 
-- Digit graphics (0-9) in CHR ROM
-- A score display in the top-left corner
-- PPU updates during vblank
-- Binary-to-decimal conversion
+The arena now feels dangerous.
 
-## The Plan
+## Enemy Data
 
-Here's what we need to add:
+Enemies need positions. We store them in zero page for fast access:
 
-1. **Digit tiles** — Graphics for 0-9 in CHR ROM
-2. **Score display position** — Where on the nametable to write
-3. **Draw score routine** — Convert score to digits and write to PPU
-4. **Vblank update** — Draw the score in NMI when safe
+```asm
+NUM_ENEMIES = 4
 
-## The PPU Timing Challenge
-
-Here's the problem: we can only write to PPU memory during **vblank** — the brief pause between frames when the screen isn't being drawn. Writing to PPUDATA while rendering is active causes graphical corruption.
-
-We've been writing to the PPU during setup (before enabling rendering) and during DMA (which happens automatically). But the score changes during gameplay. We need to update background tiles mid-game.
-
-The solution: update the score display inside the NMI handler, where we're guaranteed to be in vblank.
-
-## Digit Tiles
-
-We need graphics for digits 0-9. Each tile is 8×8 pixels. Here's a simple blocky font:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-07/snippets/01-digit-tiles.asm" lang="asm" />
-
-We place these at tiles 4-13 in CHR ROM. That means:
-- Tile 4 = "0"
-- Tile 5 = "1"
-- ...
-- Tile 13 = "9"
-
-To convert a digit value (0-9) to a tile index, add 4.
-
-## Score Display Position
-
-The NES nametable is 32×30 tiles. The background fills the whole screen. We'll put the score in the top-left corner.
-
-Nametable 0 starts at PPU address $2000. Each row is 32 bytes. To write at row 1, column 2:
-
-```
-Address = $2000 + (row × 32) + column
-        = $2000 + (1 × 32) + 2
-        = $2000 + 32 + 2
-        = $2022
+.segment "ZEROPAGE"
+enemy_x:     .res NUM_ENEMIES
+enemy_y:     .res NUM_ENEMIES
 ```
 
-We'll display 3 digits (up to 255) at positions $2022, $2023, $2024.
+Four bytes for X positions, four for Y. Simple arrays.
 
-## Binary to Decimal Conversion
+## Initialising Enemies
 
-Our score is a binary number (0-255). To display it, we need to extract individual decimal digits. For a 3-digit display:
+Place enemies at the four corners of the play area:
 
-- **Hundreds digit** = score / 100
-- **Tens digit** = (score / 10) % 10
-- **Ones digit** = score % 10
+```asm
+init_enemies:
+    ; Enemy 0: Top-left
+    lda #48
+    sta enemy_x+0
+    lda #48
+    sta enemy_y+0
 
-The 6502 has no divide instruction. We use repeated subtraction:
+    ; Enemy 1: Top-right
+    lda #200
+    sta enemy_x+1
+    lda #48
+    sta enemy_y+1
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-07/snippets/02-binary-to-decimal-conversion.asm" lang="asm" />
+    ; Continue for enemies 2 and 3...
+    rts
+```
 
-For the hundreds digit, we divide by 100:
+## Multiple Sprites in OAM
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-07/snippets/03-binary-to-decimal-conversion.asm" lang="asm" />
+The player uses OAM slots 0-3. Enemies use slots 4-19 (4 enemies × 4 bytes each):
 
-## The Draw Score Routine
+```asm
+update_enemy_sprites:
+    ldx #0              ; Enemy index
+    ldy #4              ; OAM offset (after player)
 
-This extracts digits and writes them to the PPU:
+@loop:
+    ; Y position
+    lda enemy_y, x
+    sta oam_buffer, y
+    iny
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-07/snippets/04-the-draw-score-routine.asm" lang="asm" />
+    ; Tile index
+    lda #SPRITE_ENEMY
+    sta oam_buffer, y
+    iny
 
-## Calling from NMI
+    ; Attributes: palette 1
+    lda #%00000001
+    sta oam_buffer, y
+    iny
 
-We need to call `draw_score` during vblank, but only after DMA completes. Update the NMI handler:
+    ; X position
+    lda enemy_x, x
+    sta oam_buffer, y
+    iny
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-07/snippets/05-calling-from-nmi.asm" lang="asm" />
+    inx
+    cpx #NUM_ENEMIES
+    bne @loop
+    rts
+```
 
-The score updates every frame. This is slightly wasteful (the score doesn't change every frame), but it's simple and works. We could optimise with a "dirty flag" that only redraws when the score changes, but that's premature optimisation for now.
+## Sprite Palettes
 
-## Important: Scroll Reset
+Enemies use a different palette from the player:
 
-After writing to PPUADDR/PPUDATA, the internal PPU address register has moved. We must reset the scroll position, or the screen will display from the wrong offset.
+```asm
+; Sprite palettes
+.byte BG_COLOUR, $30, $27, $17  ; Palette 0: Player (white/orange)
+.byte BG_COLOUR, $16, $26, $36  ; Palette 1: Enemy (red)
+```
 
-That's why `PPUSCROLL` writes come after all our PPU updates:
+The attribute byte's low 2 bits select the sprite palette.
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-07/snippets/06-important-scroll-reset.asm" lang="asm" />
+## The Enemy Tile
 
-## The Temp Variable
+A hostile diamond shape:
 
-We need a temporary variable for the division routines:
+```asm
+; Tile 8: Enemy sprite
+.byte %00011000
+.byte %00111100
+.byte %01111110
+.byte %11111111
+.byte %11111111
+.byte %01111110
+.byte %00111100
+.byte %00011000
+```
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-07/snippets/07-the-temp-variable.asm" lang="asm" />
+## The Code
 
-## Build It. Run It.
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-07/nexus.asm" />
+
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
-fceux nexus.nes
 ```
 
-You should see "000" in the top-left corner. Collect an item — the score increments to "001". Collect more — watch the numbers climb!
+Four enemies now occupy the arena. They don't move yet - that's next.
 
-![Score display](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-07/screenshot.png)
+## Next
 
-## What You've Built
-
-Look at what you made:
-
-- **Digit tiles** for displaying numbers
-- **Score extraction** using division routines
-- **PPU updates during vblank** for safe rendering
-- **Score display** that updates in real-time
-
-The player can see their progress. The game feels more complete.
-
-## What You've Learnt
-
-- **Vblank timing** is critical for PPU updates
-- **Division by repeated subtraction** works when there's no divide instruction
-- **Tile indices** map graphics to displayable characters
-- **Scroll reset** is required after PPUADDR/PPUDATA operations
-- **NMI is safe** for PPU writes since rendering is paused
-
-## The Complete Code
-
-Here's the full `nexus.asm` at this point:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-07/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-- Build + run: `ca65 nexus.asm -o nexus.o && ld65 -C nes.cfg nexus.o -o nexus.nes && fceux nexus.nes`
-- Score should appear as "000" in top-left corner
-- Collecting items increments the score
-- Score resets to 000 when you restart
-- If score displays garbage, check division routines and tile indices
-- If screen scrolls wrong, check PPUSCROLL reset after draw_score
-
-## Next Unit
-
-The score shows progress, but there's no second chance. One hit and you're done.
-
-In Unit 8, we add **lives** — multiple chances before game over.
+Static enemies aren't threatening. Unit 8 makes them patrol.

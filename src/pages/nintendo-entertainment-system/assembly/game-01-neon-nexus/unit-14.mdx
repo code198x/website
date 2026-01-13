@@ -1,186 +1,101 @@
 ---
-title: "Pause"
-description: "Add pause/resume logic with edge-triggered input detection."
-pubDate: 2026-01-04
+title: "Win Condition"
+description: "Add a win condition - collecting all items completes the level."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 14
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "state", "input"]
+tags: ["assembly", "6502", "game-logic", "win-condition"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-13"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-15"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 13: Enemy Variety](/nintendo-entertainment-system/game-01-neon-nexus/unit-13).*
-
 ## What You're Building
 
-Every game needs a pause feature. Players need to answer the phone, grab a drink, or simply take a break. But implementing pause correctly requires understanding **edge detection**—responding to a button press only once, not continuously.
+A goal. Collect all items. Win.
 
-This unit adds:
-- Edge-triggered START button detection
-- A pause flag that freezes gameplay
-- Visual feedback showing "PAUSED" on screen
-- Proper state management across game transitions
+![Win Condition](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-14/screenshot.png)
 
-## The Plan
+Without a win condition, there's no point. Now collecting all 4 data cores completes the level.
 
-1. Add variables for previous button state and pause flag
-2. Implement edge detection for the START button
-3. Gate all gameplay updates behind the pause flag
-4. Draw/clear "PAUSED" text when toggling
+## The Logic
 
-## The Edge Detection Problem
+Track items collected. When `items_collected` equals `NUM_ITEMS`, the level is complete:
 
-Currently, our controller reading gives us the **level** of each button—whether it's held down right now. If we pause when START is held:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/snippets/01-the-edge-detection-problem.asm" lang="asm" />
-
-This would toggle pause on/off rapidly while the player holds START. We need **edge detection**—detecting the moment a button transitions from released to pressed.
-
-## Edge Detection Solution
-
-The technique is simple: compare the current button state to the previous frame's state. A button was "just pressed" if it's down now but wasn't down before.
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/snippets/02-edge-detection-solution.asm" lang="asm" />
-
-This gives us a byte where only "newly pressed" buttons have their bits set.
-
-## Adding the Variables
-
-We need two new zero-page variables:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/snippets/03-adding-the-variables.asm" lang="asm" />
-
-And a new letter tile constant for displaying "PAUSED":
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/snippets/04-adding-the-variables.asm" lang="asm" />
-
-## Implementing Edge Detection
-
-Create a `check_pause` routine that only triggers on a fresh START press:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/snippets/05-implementing-edge-detection.asm" lang="asm" />
-
-## Understanding EOR for Toggle
-
-The `EOR #1` instruction is perfect for toggling a flag:
-
-| pause_flag | EOR #1 | Result |
-|------------|--------|--------|
-| 0          | 1      | 1      |
-| 1          | 1      | 0      |
-
-The exclusive-OR flips bit 0, toggling between 0 and 1.
-
-## Drawing Pause Text
-
-When pausing, we write "PAUSED" to the nametable. Position it in the centre of the screen:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/snippets/06-drawing-pause-text.asm" lang="asm" />
-
-## Clearing Pause Text
-
-When unpausing, we clear those tiles by writing empty tiles:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/snippets/07-clearing-pause-text.asm" lang="asm" />
-
-## Gating Gameplay Updates
-
-In `playing_state`, check the pause flag before running gameplay logic:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/snippets/08-gating-gameplay-updates.asm" lang="asm" />
-
-Note that we still update sprites even when paused—we want the game to remain visible, just frozen.
-
-## Resetting Pause on Transitions
-
-When starting a new game or transitioning to game over, clear the pause flag:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/snippets/09-resetting-pause-on-transitions.asm" lang="asm" />
-
-Also clear it when transitioning from title to playing, and when entering game over state.
-
-## Adding the 'D' Tile
-
-We need to add the letter 'D' to our CHR-ROM. At tile index 30:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/snippets/10-adding-the-d-tile.asm" lang="asm" />
-
-The bit pattern draws:
-```
-.XXXXX..  $7C
-.XX..XX.  $66
-.XX..XX.  $66
-.XX..XX.  $66
-.XX..XX.  $66
-.XX..XX.  $66
-.XXXXX..  $7C
-........  $00
+```asm
+check_win_condition:
+    lda items_collected
+    cmp #NUM_ITEMS          ; Have we collected all items?
+    bne @not_yet
+    lda level_complete      ; Already triggered?
+    bne @not_yet
+    lda #1
+    sta level_complete
+    jsr play_victory_sound
+@not_yet:
+    rts
 ```
 
-## Why Edge Detection Matters
+## Victory Sound
 
-Without edge detection, the pause would flicker rapidly while START is held. The player would have to release and press START with frame-perfect timing. Edge detection makes the input feel natural and responsive.
+An ascending sweep announces victory:
 
-This technique applies to any "toggle" or "trigger once" input:
-- Pause/unpause
-- Menu selection
-- Jump initiation (so holding jump doesn't auto-jump repeatedly)
-- Weapon firing (for semi-automatic weapons)
+```asm
+play_victory_sound:
+    lda #%10011111      ; Duty 50%, constant vol, vol 15
+    sta APU_PULSE1_CTRL
+    lda #%10000111      ; Sweep enabled, up, fast
+    sta APU_PULSE1_SWEEP
+    lda #$FF            ; Low byte of period (start low)
+    sta APU_PULSE1_LO
+    lda #%00000011      ; Length counter load, high bits
+    sta APU_PULSE1_HI
+    rts
+```
 
-## Build It. Run It.
+The sweep unit shifts the frequency upward, creating a triumphant rising tone.
 
-Assemble and test:
+## Game States
+
+The main loop now checks two end conditions:
+
+```asm
+main_loop:
+    lda game_over
+    bne @game_over_loop
+    lda level_complete
+    bne @level_complete_loop
+    ; ... game logic ...
+    jmp main_loop
+
+@game_over_loop:
+    jmp @game_over_loop
+
+@level_complete_loop:
+    jsr update_all_sprites
+    jmp @level_complete_loop
+```
+
+When the level completes, the game freezes in a victory state.
+
+## The Code
+
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/nexus.asm" />
+
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
 ```
 
-Test the pause system:
-1. Start the game and press START—gameplay should freeze
-2. "PAUSED" should appear in the centre of the screen
-3. Enemies and player should stop moving
-4. Press START again—gameplay should resume
-5. "PAUSED" text should disappear
-6. Holding START shouldn't cause rapid toggling
-7. Die and restart—pause should be cleared
+Collect all 4 data cores. Hear the victory sound. Level complete.
 
-## What You've Built
+## Next
 
-Your game now has proper pause functionality. Players can freeze the action at any time, see clear feedback that the game is paused, and resume with another START press.
-
-## What You've Learnt
-
-- **Edge detection**: Detecting button press transitions, not just button state
-- **EOR for inversion**: Using XOR with $FF to flip all bits
-- **EOR for toggle**: Using XOR with 1 to flip a single flag
-- **Nametable updates mid-game**: Writing/clearing text during gameplay
-- **Gating updates**: Using flags to conditionally skip code sections
-- **State cleanup**: Resetting flags on game transitions
-
-## The Complete Code
-
-Here's the complete `nexus.asm` with pause functionality:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-14/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-Before moving on, verify:
-
-- [ ] Pressing START pauses the game—enemies and player freeze
-- [ ] "PAUSED" appears in the centre of the screen
-- [ ] Pressing START again resumes gameplay
-- [ ] "PAUSED" text disappears when resuming
-- [ ] Holding START doesn't cause rapid pause/unpause toggling
-- [ ] Starting a new game clears any pause state
-- [ ] Game over clears the pause state
-
-## Next Unit
-
-[Unit 15: Game Over Polish](/nintendo-entertainment-system/game-01-neon-nexus/unit-15) — refine the game over flow and add visual feedback.
+The game has two end states but no proper screens. Unit 15 adds a title screen and game over display.

@@ -1,144 +1,156 @@
 ---
-title: "Health Meter"
-description: "Stakes matter. Add a health bar that rewards hits and punishes misses, ending the game when performance drops too low."
-pubDate: 2026-01-09
+title: "Game Over Screen"
+description: "Handle failure. Show game over. Distinct from successful completion."
+pubDate: 2026-01-13
 game: 1
 gameName: "SID Symphony"
 unit: 14
-totalUnits: 16
+totalUnits: 64
 system: "Commodore 64"
-tags: ["assembly", "6510", "health-bar", "game-over", "bar-graph"]
+tags: ["assembly", "6510", "state-machine", "gameover"]
 prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-13"
 nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-15"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-*Need to catch up? Check out [Unit 13: Miss Detection](/commodore-64/assembly/game-01-sid-symphony/unit-13).*
+Failure needs its own moment. This unit gives the game over state proper treatment.
 
-## What You're Building
+Previously, running out of health showed "GAME OVER" overlaid on the gameplay screen. Now the game clears to a dedicated display: "GAME OVER" in red, "HEALTH DEPLETED" explaining why, the score you achieved, and how many notes you hit before failing. The red border reinforces failure, distinct from the green border of success.
 
-We track misses now, but so what? The player could miss every single note and the game continues forever. There are no stakes.
+## Run It
 
-By the end of this unit, you'll have:
-
-- A health meter that reflects player performance
-- Health gained on hits (reward)
-- Health lost on misses (punishment)
-- Game over when health reaches zero
-- A visual bar graph display
-- Restart capability
-
-Now failure has consequences.
-
-## The Health System
-
-A single byte tracks player performance:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-14/snippets/01-health-system.asm" />
-
-Why these values?
-- **64 maximum**: Divides cleanly into 8 segments of 8 points each (power of two = fast division)
-- **32 starting**: Gives breathing room in both directions
-- **+2 per hit**: Gradual recovery rewards consistent play
-- **-4 per miss**: Misses hurt twice as much as hits heal
-
-This asymmetry creates tension. You can't recover from sloppy play by hitting a few notes — you need sustained accuracy.
-
-<InlineNote>
-The ratio matters more than the absolute values. At 2:4, you need to hit twice as many notes as you miss just to break even. Adjust these constants to tune difficulty.
-</InlineNote>
-
-## Modifying Health
-
-Health changes happen in two places:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-14/snippets/02-health-modification.asm" />
-
-Both directions need **clamping** — preventing the value from wrapping around:
-- Adding health: clamp at 64 (maximum)
-- Subtracting health: clamp at 0 (minimum)
-
-The `bcs`/`bcc` branches detect overflow/underflow. If subtraction causes a borrow (carry cleared), we've gone negative — clamp to zero and trigger game over.
-
-## Drawing the Health Bar
-
-Eight segments, each representing 8 health points:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-14/snippets/03-health-bar.asm" />
-
-Division by 8 is three right shifts (`lsr`, `lsr`, `lsr`). This gives us the number of filled segments (0-8).
-
-The loop draws each segment:
-- If segment index < filled count → draw solid (green)
-- Otherwise → draw hollow (dark grey)
-
-<InlineNote>
-We use custom characters for the health bar. Character 131 is a solid block; character 132 is a hollow outline. The same technique works for any bar graph — progress bars, volume indicators, anything.
-</InlineNote>
-
-## Game Over Handling
-
-When health hits zero, the game must stop:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-14/snippets/04-game-over.asm" />
-
-The game over state:
-1. Displays "GAME OVER!" in red
-2. Flashes the border red
-3. Waits for player input
-4. Space restarts, Q quits
-
-Note that restart jumps to `start`, not `main_loop`. This reinitialises everything — health, score, song position, note states. A clean slate.
-
-## The Main Loop Addition
-
-The game loop now checks for game over:
-
-```asm
-main_loop:
-                jsr wait_raster
-                jsr update_counters
-                jsr check_spawn_notes
-                jsr update_notes
-                jsr draw_notes
-                jsr scan_keyboard
-                jsr handle_input
-                jsr update_display
-                jsr check_game_over     ; NEW: Check if dead
-                jsr check_quit
-                jmp main_loop
-```
-
-Once `game_over` is set, `check_game_over` takes over and doesn't return until the player chooses restart or quit.
-
-## Build It. Run It.
+Assemble and run:
 
 ```bash
 acme -f cbm -o symphony.prg symphony.asm
-x64sc symphony.prg
 ```
 
-Watch the health bar. Hit notes and see it grow. Miss notes and watch it shrink. Let it empty completely — "GAME OVER!" appears.
+![Unit 14 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-14/screenshot.png)
 
-Press Space to try again. Notice how everything resets: score, health, song position. A fresh start.
+Press fire to start, then deliberately miss notes until your health depletes. You'll see the new game over screen.
 
-## What You've Learnt
+## Success vs Failure
 
-- **Health as performance metric**: Single byte tracking player skill
-- **Clamping**: Preventing overflow/underflow with conditional branches
-- **Bar graph display**: Segments = value / divisor (power of two for speed)
-- **Game over state**: Flag triggers alternate flow, waits for restart
-- **Full restart**: Jump to init, not main loop
+The game now has two distinct endings:
+
+| Aspect | Results (Success) | Game Over (Failure) |
+|--------|-------------------|---------------------|
+| Trigger | Song completes | Health reaches 0 |
+| Title | "SONG COMPLETE!" | "GAME OVER" |
+| Colour | Green border | Red border |
+| Stats | Full breakdown | Score + notes hit |
+| Feeling | Achievement | Try again |
+
+Players immediately know whether they succeeded or failed from the visual language.
+
+## The Game Over Display
+
+The game over screen provides closure on failure:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-14/snippets/01-show-game-over.asm" />
+
+Three key elements:
+1. "GAME OVER" in red - immediately communicates failure
+2. "HEALTH DEPLETED" - explains why the game ended
+3. Score and notes hit - shows progress before failure
+
+## Colour Communicates State
+
+The red colour scheme signals failure:
+
+```asm
+            lda #2                  ; Red for failure
+            sta COLRAM + (6 * 40) + 15,x   ; Title colour
+
+            ; ...later...
+
+            lda #2                  ; Red border
+            sta BORDER
+```
+
+Compare to the results screen's green border:
+
+```asm
+            lda #5                  ; Green border for success
+            sta BORDER
+```
+
+Players don't need to read text to understand the outcome.
+
+## Showing Partial Progress
+
+Unlike the success screen, the game over shows simplified stats:
+
+```asm
+            ; Show score achieved
+            jsr display_gameover_score
+
+            ; Show notes hit (perfects + goods)
+            lda perfect_count
+            clc
+            adc good_count
+            jsr display_go_stat
+```
+
+We don't show accuracy or max combo - that level of detail is for success. For failure, we show what was achieved before the end.
 
 ## The Complete Code
 
 <CodeFromFile src="commodore-64/game-01-sid-symphony/unit-14/symphony.asm" />
 
-## Next Unit
+## Try This: Retry Option
 
-The game ends when you fail. But what about success? Notes stop spawning, but nothing happens — no victory, no fanfare.
+Add a quick retry option instead of returning to title:
 
-In Unit 15, we add song completion detection — when all notes are played, the player wins.
+```asm
+update_gameover:
+            ; Check fire for title
+            lda CIA1_PRA
+            and #$10
+            beq go_to_title
+
+            ; Check R key for retry
+            lda #$FB
+            sta CIA1_PRA
+            lda CIA1_PRB
+            and #$04            ; R key
+            beq retry_game
+
+            ; ... cleanup and return ...
+
+retry_game:
+            jsr init_game
+            lda #STATE_PLAYING
+            sta game_state
+            rts
+```
+
+Quick retry keeps players in the flow.
+
+## Try This: Continue Counter
+
+Show how many continues have been used:
+
+```asm
+continue_count: !byte 0
+
+retry_game:
+            inc continue_count
+            ; ... draw continue count on gameplay screen ...
+```
+
+Some players want to see their full history.
+
+## What You've Learnt
+
+- **Failure presentation** - Dedicated screen for game over
+- **Colour communication** - Red for failure, green for success
+- **Partial progress** - Showing achievement before failure
+- **State distinction** - Visual language separating outcomes
+- **Emotional design** - Failure should feel different from success
+
+## What's Next
+
+In Unit 15, we'll polish all the sound effects. Perfect hits will sound brighter than good hits, miss sounds will be harsh, and menu sounds will click satisfyingly.

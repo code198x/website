@@ -1,177 +1,120 @@
 ---
-title: "Title Screen"
-description: "Create a title screen and complete game state machine."
-pubDate: 2026-01-04
+title: "Collision Detection"
+description: "Detect when player touches enemies with visual feedback."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 9
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "state", "flow"]
+tags: ["assembly", "6502", "collision", "bounding-box", "gameplay"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-08"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-10"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 8: Lives](/nintendo-entertainment-system/game-01-neon-nexus/unit-08).*
-
 ## What You're Building
 
-Every proper game starts with a title screen. It's the first thing players see—a moment to present your game before the action begins. We already have `STATE_PLAYING` and `STATE_GAMEOVER`. Now we add `STATE_TITLE` to create a complete three-state game flow.
+Collision detection. Touch an enemy and you flash - a warning that danger is real.
 
-This unit adds:
-- A title screen showing the game name
-- "PRESS START" prompt
-- A game over message when lives run out
-- Clean transitions between all three states
+![Collision Detection](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-09/screenshot.png)
 
-## The Plan
+Actions now have consequences.
 
-1. Add `STATE_TITLE` constant and start there on boot
-2. Add letter tiles to CHR-ROM for text display
-3. Create routines to draw title screen and game over text
-4. Restructure the main loop to dispatch based on state
-5. Handle button presses to transition between states
+## Bounding Box Collision
 
-## The Three-State Machine
+The simplest collision test: do two rectangles overlap?
 
-Our game now has three distinct states:
+For 8×8 sprites, we check if the distance between centres is less than a threshold:
 
-```
-        [TITLE]
-           |
-       Press Start
-           ↓
-        [PLAYING] ←──────┐
-           |              |
-       Lose all lives     |
-           ↓              |
-       [GAMEOVER]         |
-           |              |
-       Press Start ───────┘
-```
+```asm
+COLLISION_DIST = 6       ; Pixels of overlap needed
 
-Update the constants to include the new state:
+check_collisions:
+    ldx #0
+@check_enemy:
+    ; Check X distance: |player_x - enemy_x| < COLLISION_DIST
+    lda player_x
+    sec
+    sbc enemy_x, x
+    bpl @check_x_positive
+    ; Negative result - make it positive
+    eor #$FF
+    clc
+    adc #1
+@check_x_positive:
+    cmp #COLLISION_DIST
+    bcs @next_enemy      ; Too far apart in X
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/snippets/01-the-three-state-machine.asm" lang="asm" />
-
-On reset, we now start at `STATE_TITLE` instead of jumping straight into gameplay.
-
-## Letter Tiles for Text
-
-To display "NEON NEXUS", "PRESS START", and "GAME OVER", we need letter tiles in CHR-ROM. Each letter is an 8x8 pixel tile, just like digits.
-
-We'll add tiles 14-39 for letters A-Z. The tile index for any letter is: `letter_ascii - 'A' + 14`. For our specific text, we only need: A, E, G, M, N, O, P, R, S, T, U, V, X.
-
-Since we're writing directly to the nametable, we need to calculate PPU addresses. The NES nametable starts at $2000, with 32 tiles per row. To write text at row R, column C:
-
-```
-PPU address = $2000 + (R × 32) + C
+    ; Same check for Y...
 ```
 
-For row 10, column 11 (roughly centred):
-- $2000 + (10 × 32) + 11 = $2000 + 320 + 11 = $214B
+## Absolute Value
 
-## Drawing the Title Screen
+The 6502 has no absolute value instruction. We compute it manually:
 
-The title screen draws text to the nametable during vblank. We only need to draw it once when entering the title state, not every frame.
+1. Subtract to get difference (may be negative)
+2. If result is negative (bit 7 set), negate it
+3. Negate: `EOR #$FF` then `ADC #1` (two's complement)
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/snippets/02-drawing-the-title-screen.asm" lang="asm" />
+## Visual Feedback
 
-Wait—that's getting complicated with manual tile indices. Let's simplify by defining our letter tiles starting at index 14 and using a helper table:
+When collision is detected, the player flashes:
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/snippets/03-drawing-the-title-screen.asm" lang="asm" />
+```asm
+collision_flag: .res 1     ; Non-zero if hit
+flash_timer:    .res 1     ; Frames remaining
 
-Actually, for clarity in the code listing, we'll use direct byte values that match our CHR-ROM tile layout.
+; On collision:
+    lda #1
+    sta collision_flag
+    lda #30              ; Flash for 30 frames
+    sta flash_timer
+```
 
-## Drawing Game Over Text
+## The Flash Effect
 
-Similar to the title screen, game over draws text to the nametable:
+Toggle sprite visibility every few frames:
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/snippets/04-drawing-game-over-text.asm" lang="asm" />
+```asm
+update_player_sprite:
+    lda flash_timer
+    beq @no_flash
 
-## Clearing the Screen
+    dec flash_timer
 
-When transitioning between states, we need to clear text from the previous state. A simple approach: clear a portion of the nametable when entering a new state.
+    ; Flash every 4 frames
+    and #%00000100
+    beq @show_player
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/snippets/05-clearing-the-screen.asm" lang="asm" />
+    ; Hide: move Y off screen
+    lda #$FF
+    sta oam_buffer+0
+    rts
 
-## Restructured Main Loop
+@show_player:
+    lda player_y
+    sta oam_buffer+0
+    rts
+```
 
-The main loop now dispatches based on `game_state`:
+Setting Y to `$FF` moves the sprite below the visible screen.
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/snippets/06-restructured-main-loop.asm" lang="asm" />
+## The Code
 
-## Tracking Screen State
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/nexus.asm" />
 
-One issue: we only want to draw the title or game over text once, not every frame. We can use a flag to track whether we've drawn the current state's screen:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/snippets/07-tracking-screen-state.asm" lang="asm" />
-
-When changing states, set `screen_drawn = 0`. In each state handler, check this flag:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/snippets/08-tracking-screen-state.asm" lang="asm" />
-
-## Initialisation Changes
-
-On reset, we now start at the title screen:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/snippets/09-initialisation-changes.asm" lang="asm" />
-
-## Transitioning to Game Over
-
-When `lose_life` detects zero lives remaining, it sets the game over state and clears the screen_drawn flag:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/snippets/10-transitioning-to-game-over.asm" lang="asm" />
-
-## Build It. Run It.
-
-Assemble and run:
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
 ```
 
-Test the complete flow:
-1. Game boots to title screen showing "NEON NEXUS" and "PRESS START"
-2. Press Start—title clears, gameplay begins
-3. Play until you lose all lives
-4. "GAME OVER" appears
-5. Press Start—game over clears, new game begins with 3 lives
+Touch an enemy and the player flashes. The game now reacts to your mistakes.
 
-## What You've Built
+## Next
 
-Your game now has proper structure: a title screen that introduces the game, gameplay, and a game over screen that provides closure. This three-state pattern is the foundation of virtually every arcade game.
-
-## What You've Learnt
-
-- **State machines**: Organising game flow with distinct states
-- **Nametable text**: Drawing text by writing tile indices to PPU
-- **Screen management**: Drawing screens once and clearing when transitioning
-- **State flags**: Tracking whether setup for a state has been done
-- **PPU address calculation**: Converting row/column to nametable address
-
-## The Complete Code
-
-Here's the complete `nexus.asm` with title screen and game state machine:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-09/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-Before moving on, verify:
-
-- [ ] Game starts at title screen showing "NEON NEXUS" and "PRESS START"
-- [ ] No sprites visible on title screen
-- [ ] Pressing Start transitions to gameplay
-- [ ] HUD (score and lives) appears during gameplay
-- [ ] Gameplay works as before (movement, collision, scoring)
-- [ ] Losing all lives shows "GAME OVER"
-- [ ] No sprites visible on game over screen
-- [ ] Pressing Start from game over begins a new game
-
-## Next Unit
-
-[Unit 10: Sound Effects](/nintendo-entertainment-system/game-01-neon-nexus/unit-10) — add audio feedback using the APU.
+Flashing is a warning. Unit 10 adds real consequences: lives and death.

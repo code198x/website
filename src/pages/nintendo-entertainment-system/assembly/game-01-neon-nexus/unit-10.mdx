@@ -1,198 +1,139 @@
 ---
-title: "Sound Effects"
-description: "Add audio feedback using the NES APU."
-pubDate: 2026-01-04
+title: "Lives and Death"
+description: "Add a lives system with death and respawn."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 10
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "apu", "audio"]
+tags: ["assembly", "6502", "lives", "death", "respawn", "gameplay"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-09"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-11"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 9: Title Screen](/nintendo-entertainment-system/game-01-neon-nexus/unit-09).*
-
 ## What You're Building
 
-Games without sound feel lifeless. A simple "bleep" when collecting an item or a harsh buzz on death transforms the experience. The NES has a dedicated Audio Processing Unit (APU) with five sound channels—more than enough for retro sound effects.
+Lives. Death. Stakes.
 
-This unit adds:
-- APU initialisation
-- A sound effect trigger system
-- Collect sound (rising tone)
-- Death sound (falling tone)
-- Sound effect timers that update each frame
+![Lives and Death](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-10/screenshot.png)
 
-## The Plan
+Now you can lose.
 
-1. Define APU register addresses
-2. Initialise the APU on reset
-3. Create a simple sound effect system with timers
-4. Trigger sounds from game events
-5. Update sound timers in the main loop
+## Lives System
 
-## The NES APU
+Track lives in zero page:
 
-The APU has five channels:
+```asm
+STARTING_LIVES = 3
 
-| Channel | Registers | Sound Type |
-|---------|-----------|------------|
-| Pulse 1 | $4000-$4003 | Square wave with duty cycle |
-| Pulse 2 | $4004-$4007 | Square wave with duty cycle |
-| Triangle | $4008-$400B | Triangle wave (bass/melody) |
-| Noise | $400C-$400F | Noise (percussion/effects) |
-| DMC | $4010-$4013 | Sample playback |
-
-For sound effects, we'll use Pulse 1. Each pulse channel has four registers:
-
-- **$4000 (Pulse 1 Control)**: Duty cycle, volume, envelope
-- **$4001 (Pulse 1 Sweep)**: Frequency sweep (pitch bend)
-- **$4002 (Pulse 1 Timer Low)**: Lower 8 bits of frequency
-- **$4003 (Pulse 1 Timer High + Length)**: Upper 3 bits of frequency + length counter
-
-The APU also has a status register at **$4015** that enables/disables channels.
-
-## APU Register Constants
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/snippets/01-apu-register-constants.asm" lang="asm" />
-
-## Understanding Pulse Control
-
-The control register ($4000/$4004) packs several settings into one byte:
-
-```
-Bit 7-6: Duty cycle (wave shape)
-         00 = 12.5% (thin, sharp)
-         01 = 25%   (classic square)
-         10 = 50%   (hollow)
-         11 = 75%   (like 25%, inverted)
-
-Bit 5:   Length counter halt (1 = ignore length counter)
-Bit 4:   Constant volume (1 = use volume bits directly)
-Bit 3-0: Volume or envelope period (0-15)
+lives:        .res 1
+invuln_timer: .res 1    ; Invulnerability after respawn
+game_over:    .res 1
 ```
 
-For simple sound effects, we use `%10111111` which means:
-- 50% duty cycle
-- Length counter halted
-- Constant volume
-- Volume = 15 (maximum)
+## Death and Respawn
 
-## Frequency and Pitch
+When collision is detected:
 
-The timer value determines pitch. Lower timer = higher pitch. The formula is:
+```asm
+player_hit:
+    dec lives
+    lda lives
+    beq @game_over
 
+    ; Respawn at centre
+    lda #PLAYER_START_X
+    sta player_x
+    lda #PLAYER_START_Y
+    sta player_y
+
+    ; Grant invulnerability
+    lda #INVULN_TIME
+    sta invuln_timer
+    rts
+
+@game_over:
+    lda #1
+    sta game_over
+    rts
 ```
-Frequency = CPU_clock / (16 × (timer + 1))
+
+## Invulnerability
+
+After respawning, the player is briefly invulnerable. This prevents instant re-death:
+
+```asm
+INVULN_TIME = 90      ; 1.5 seconds at 60fps
+
+check_collisions:
+    ; Skip collision check if invulnerable
+    lda invuln_timer
+    beq @check
+    dec invuln_timer
+    rts
+
+@check:
+    ; Normal collision detection...
 ```
 
-For NTSC NES (1.789773 MHz CPU), some useful timer values:
-- Timer = 253: ~440 Hz (A4)
-- Timer = 190: ~587 Hz (D5)
-- Timer = 126: ~880 Hz (A5)
+During invulnerability, the player flashes (same flash effect as Unit 9).
 
-We'll use a simple lookup table for our sound effect pitches.
+## Lives Display
 
-## Sound Effect System
+Show remaining lives as sprites:
 
-Our sound system is timer-based. When a sound is triggered, we set:
-1. The channel parameters (volume, duty, frequency)
-2. A countdown timer
+```asm
+update_lives_display:
+    ldy #20             ; OAM offset for lives
 
-Each frame, we decrement the timer. When it reaches zero, we silence the channel.
+    ldx lives
+    beq @hide_all
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/snippets/02-sound-effect-system.asm" lang="asm" />
+    ; Show life 1
+    lda #8              ; Y position
+    sta oam_buffer, y
+    iny
+    lda #SPRITE_LIFE
+    sta oam_buffer, y
+    ; ...repeat for each life
+```
 
-Sound types:
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/snippets/03-sound-effect-system.asm" lang="asm" />
+## Game Over
 
-## Initialising the APU
+When lives reach zero:
 
-On reset, we enable the pulse channels and silence everything:
+```asm
+main_loop:
+    lda game_over
+    bne @game_over_loop
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/snippets/04-initialising-the-apu.asm" lang="asm" />
+    ; Normal game logic...
+    jmp main_loop
 
-## Triggering a Sound Effect
+@game_over_loop:
+    ; Freeze - game is over
+    jmp @game_over_loop
+```
 
-When an event happens (collect item, lose life), we call a trigger routine:
+The game stops. The player sees their final position.
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/snippets/05-triggering-a-sound-effect.asm" lang="asm" />
+## The Code
 
-## Updating Sound Each Frame
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/nexus.asm" />
 
-In the main loop, we update the sound effect:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/snippets/06-updating-sound-each-frame.asm" lang="asm" />
-
-## Pitch Tables
-
-The pitch tables define the frequency progression for each sound:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/snippets/07-pitch-tables.asm" lang="asm" />
-
-## Connecting to Game Events
-
-In `collect_item`, trigger the collect sound:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/snippets/08-connecting-to-game-events.asm" lang="asm" />
-
-In `lose_life`, trigger the death sound:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/snippets/09-connecting-to-game-events.asm" lang="asm" />
-
-## Adding to the Main Loop
-
-Call `update_sound` every frame during gameplay:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/snippets/10-adding-to-the-main-loop.asm" lang="asm" />
-
-## Build It. Run It.
-
-Assemble and run:
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
 ```
 
-Test the sounds:
-1. Collect an item—you should hear a rising "bleep"
-2. Collide with an enemy—you should hear a falling "buzz"
-3. Sounds should be short and not overlap awkwardly
+Die three times and it's over. The game now has stakes.
 
-## What You've Built
+## Next
 
-Your game now has audio feedback. The rising tone for collection feels rewarding; the falling tone for death feels punishing. These simple sounds dramatically improve the game feel.
-
-## What You've Learnt
-
-- **APU architecture**: The NES has dedicated sound hardware with multiple channels
-- **Pulse wave control**: Duty cycle, volume, and frequency settings
-- **Timer-based sounds**: Using frame counters to manage sound duration
-- **Pitch tables**: Data-driven sound design
-- **Event-driven audio**: Triggering sounds from game events
-
-## The Complete Code
-
-Here's the complete `nexus.asm` with sound effects:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-10/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-Before moving on, verify:
-
-- [ ] Game boots without audio glitches
-- [ ] Collecting an item plays a rising tone
-- [ ] Hitting an enemy plays a falling/harsh tone
-- [ ] Sounds don't overlap awkwardly (new sound replaces old)
-- [ ] Sounds stop cleanly (no hanging notes)
-- [ ] Game otherwise functions as before
-
-## Next Unit
-
-[Unit 11: Difficulty](/nintendo-entertainment-system/game-01-neon-nexus/unit-11) — make enemies faster as the game progresses.
+Death is the stick. Unit 11 adds the carrot: collectibles.

@@ -1,130 +1,137 @@
 ---
-title: "Note Movement"
-description: "Animation basics. Move notes across the screen by erasing and redrawing, creating the flowing visual of a rhythm game."
-pubDate: 2026-01-09
+title: "Song Playback"
+description: "Play the song from data. Progress bar shows how far through. The rhythm feels right."
+pubDate: 2026-01-13
 game: 1
 gameName: "SID Symphony"
 unit: 10
-totalUnits: 16
+totalUnits: 64
 system: "Commodore 64"
-tags: ["assembly", "6510", "animation", "movement", "game-objects"]
+tags: ["assembly", "6510", "gameplay", "timing"]
 prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-09"
 nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-11"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-*Need to catch up? Check out [Unit 9: Spawning Notes](/commodore-64/assembly/game-01-sid-symphony/unit-09).*
+Players need to know where they are in the song. This unit adds progress tracking.
 
-## What You're Building
+A progress bar shows how far through the song the player has reached. Each beat advances the bar. Players can see the end approaching. It creates anticipation - "just a bit more" or "almost there."
 
-Static notes don't make a rhythm game. Notes need to flow — spawning at the right edge, sliding left, reaching the hit zone where you must strike.
+## Run It
 
-By the end of this unit, you'll have:
-
-- Notes moving smoothly across the screen
-- Proper erase-before-draw animation
-- Speed control via frame delay
-- Notes deactivating when they pass the hit zone
-
-Watch the notes flow. This is starting to feel like a game.
-
-## The Animation Loop
-
-Animation on the C64 is simple in concept: erase the object at its old position, update its position, draw it at the new position.
-
-But timing matters. Moving every frame (50 times per second) would send notes flying across the screen. We use a delay:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-10/snippets/01-move-notes.asm" />
-
-With `MOVE_DELAY = 3`, notes move approximately 17 times per second — fast enough to feel smooth, slow enough to react to.
-
-<InlineNote>
-The delay counter (`move_counter`) is separate from `frame_counter`. This lets us tune note speed independently of beat timing. Different aspects of your game can run at different rates.
-</InlineNote>
-
-## Erase and Draw
-
-The key to flicker-free animation: erase first, then draw.
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-10/snippets/02-erase-draw.asm" />
-
-When erasing, we don't clear to a space — we draw the track character (`TRACK_CHAR`). This maintains the visual track line as notes pass over it.
-
-When drawing, we set the colour based on track: cyan, green, or yellow. This visual distinction helps players see which track each note belongs to.
-
-## Position and Bounds
-
-Each note's X position is its column (0-39). Movement is simple:
-
-```asm
-dec note_x,x            ; Move left one column
-```
-
-But we need bounds checking. When a note reaches column 2 or less, it's past the hit zone — the player missed it:
-
-```asm
-lda note_x,x
-cmp #HIT_START          ; Column 3
-bcs .still_active       ; If >= 3, still on screen
-
-; Deactivate the note (missed)
-lda #NOTE_INACTIVE
-sta note_active,x
-```
-
-The hit zone spans columns 3-6. Notes reaching column 2 or below are definitively missed and should disappear.
-
-## The Update Order
-
-Our main loop now has a clear structure:
-
-```asm
-main_loop:
-                jsr wait_raster         ; Sync to frame
-                jsr update_counters     ; Update timing
-                jsr check_spawn_notes   ; Spawn new notes
-                jsr update_notes        ; Move existing notes
-                jsr draw_notes          ; Draw all active notes
-                jsr check_quit          ; Check for exit
-                jmp main_loop
-```
-
-Order matters:
-1. Wait for raster (consistent timing)
-2. Update counters (know what beat we're on)
-3. Spawn notes (new notes appear at right edge)
-4. Update notes (move existing notes, which erases them)
-5. Draw notes (render at new positions)
-
-Spawning before updating ensures new notes don't move on their first frame. Drawing after updating ensures we render final positions.
-
-## Build It. Run It.
+Assemble and run:
 
 ```bash
 acme -f cbm -o symphony.prg symphony.asm
-x64sc symphony.prg
 ```
 
-Notes now flow from right to left across each track. They spawn from song data, slide smoothly, and disappear when they pass the hit zone.
+![Unit 10 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-10/screenshot.png)
 
-Try changing `MOVE_DELAY` to 1 (very fast) or 6 (slow) to see how speed affects gameplay feel.
+Watch the cyan progress bar at the bottom. It fills as the song plays. The health bar above it shows your performance. Two measures of progress - through the song and through survival.
 
-## What You've Learnt
+## Tracking Song Position
 
-- **Animation pattern**: Erase old position, update state, draw new position
-- **Speed control**: Frame delay counters for tunable movement speed
-- **Bounds checking**: Deactivate objects that leave valid areas
-- **Update order**: Spawn → Update → Draw for correct visual results
+A new variable tracks the current beat within the song:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-10/snippets/01-song-progress.asm" />
+
+The `song_beat` variable counts from 0 to 63 (SONG_LENGTH minus 1). Each beat increments it. When it reaches SONG_LENGTH, the song loops back to the start.
+
+## The Progress Bar
+
+The progress bar converts song position to visual representation:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-10/snippets/02-display-progress.asm" />
+
+The calculation uses bit shifting for division. With a 64-beat song and 16-character bar, each character represents 4 beats. Two LSR instructions divide by 4. The result tells us how many filled blocks to draw.
+
+## Why Progress Matters
+
+Progress creates emotional engagement:
+
+- **Early song** - Full bar ahead feels daunting
+- **Midway** - Momentum builds, player feels committed
+- **Near end** - Tension peaks, "almost there" excitement
+- **Complete** - Satisfaction of finishing
+
+Without progress indication, players don't know if they're at beat 10 or beat 50. The bar transforms an abstract challenge into a visible journey.
+
+## Layout Considerations
+
+The screen now shows two bars:
+
+```
+Row 23: HEALTH: [########........]
+Row 24: SONG:   [####............]
+```
+
+Health shows performance quality. Progress shows song position. Two complementary pieces of information. The player knows both "how am I doing?" and "how far to go?"
+
+## The Main Loop
+
+The main loop now calls `advance_song` each beat:
+
+```asm
+no_new_beat:
+            ; ...
+            jmp main_loop
+
+; Called once per beat
+advance_song:
+            inc beat_count
+            inc song_beat
+            ; Check for song end
+            ; Update progress display
+```
+
+The beat counter drives everything - note spawning, song position, progress display. One timing system controls all game events.
 
 ## The Complete Code
 
 <CodeFromFile src="commodore-64/game-01-sid-symphony/unit-10/symphony.asm" />
 
-## Next Unit
+## Try This: Different Bar Colours
 
-Notes flow beautifully, but the player can't do anything. Those key labels — [X], [C], [V] — are just decoration.
+Change the progress bar colour based on position:
 
-In Unit 11, we read the keyboard matrix to detect when the player presses the right keys.
+```asm
+display_progress:
+            lda song_beat
+            cmp #48             ; Last quarter
+            bcs progress_yellow
+            lda #3              ; Cyan
+            jmp set_progress_col
+progress_yellow:
+            lda #7              ; Yellow when near end
+set_progress_col:
+            sta progress_colour
+```
+
+Yellow in the final stretch heightens tension.
+
+## Try This: Percentage Display
+
+Add a numeric percentage:
+
+```asm
+            ; After updating bar
+            lda song_beat
+            ; Multiply by 100, divide by 64
+            ; (or approximate: song_beat * 3 / 2)
+            ; Display two digits
+```
+
+Numbers complement the visual bar.
+
+## What You've Learnt
+
+- **Progress tracking** - Counting beats through the song
+- **Visual progress bars** - Converting numbers to filled blocks
+- **Player psychology** - How progress indication affects engagement
+- **Screen layout** - Organising multiple status displays
+
+## What's Next
+
+In Unit 11, we'll handle the song end properly. When the song finishes, the game shows results - final score, accuracy percentage, and whether you succeeded or failed. The loop becomes a complete experience.

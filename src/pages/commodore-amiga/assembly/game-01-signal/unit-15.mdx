@@ -1,128 +1,151 @@
 ---
-title: "Time Limit"
-description: "Add a countdown timer for extra pressure and time bonus scoring."
-pubDate: 2026-01-04
+title: "Game States"
+description: "Title screen. Playing. Game over. Complete game flow."
+pubDate: 2026-01-12
 game: 1
-gameName: "Hop"
+gameName: "Signal"
 unit: 15
-totalUnits: 16
+totalUnits: 64
 system: "Commodore Amiga"
-tags: ["assembly", "68000", "timer", "urgency"]
+tags: ["assembly", "68000", "state-machine", "flow"]
+prevLesson: "/commodore-amiga/assembly/game-01-signal/unit-14"
 nextLesson: "/commodore-amiga/assembly/game-01-signal/unit-16"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-import InlineNote from "../../../../components/units/InlineNote.astro";
-
-*Need to catch up? Check out [Unit 14: Level Progression](/commodore-amiga/game-01-signal/unit-14).*
-
 ## What You're Building
 
-Classic Frogger has a time limit. If you don't reach a home slot before time runs out, you lose a life. This adds urgency and prevents players from waiting indefinitely for "safe" moments. This unit adds:
+Game flow.
 
-- A countdown timer that resets when reaching home
-- Timer displayed as a diminishing bar in the HUD
-- Death when timer reaches zero
-- Time bonus added to score for quick completions
+A game isn't complete without proper presentation. Players need a title screen to start, gameplay to enjoy, and a game over screen to reflect on their performance. This unit adds a state machine that manages these three states.
 
-When you're done, reaching home quickly rewards you with bonus points, while dawdling too long costs a life.
+By the end of this unit:
+- Title screen with "SIGNAL"
+- Press fire to start
+- Gameplay until game over
+- Game over screen with score
+- Press fire to return to title
 
-## Timer Design
+![Unit 15 Screenshot](/images/commodore-amiga/game-01-signal/unit-15/screenshot.png)
 
-We'll implement a simple countdown that decrements each frame. At 50fps (PAL), counting down from 1500 gives 30 seconds per life:
+## The State Machine
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/01-timer-design.asm" lang="asm" />
+We add a high-level `game_state` variable to control which screen is active:
 
-The timer bar width is calculated proportionally:
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/01-game-state-constants.asm" />
+
+This is separate from `frog_state` (IDLE, HOPPING, DYING, GAMEOVER) which tracks the frog's animation state during gameplay.
+
+## Main Loop Dispatch
+
+The main loop now dispatches based on `game_state`:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/02-main-loop-dispatch.asm" />
+
+Each state has its own handler. The playing state runs the full game update. Title and game over states just wait for fire button input.
+
+## Fire Button Edge Detection
+
+We need edge detection to prevent a single press from triggering multiple transitions:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/03-fire-edge-detection.asm" />
+
+The `seq` instruction sets d0 to $FF if the zero flag is set (button pressed since btst clears Z for bit=0). We compare current state with previous state to detect the moment of pressing.
+
+## Title Screen
+
+The title screen displays "SIGNAL" and waits for fire:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/04-title-loop.asm" />
+
+We hide the frog sprite during the title by clearing its control words:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/05-show-title.asm" />
+
+## Letter Font
+
+We extend our digit font with letters needed for "SIGNAL" and "GAME OVER":
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/06-letter-font.asm" />
+
+Each letter is stored as 8 rows of 16-bit words (same format as digit font). The text data is an array of indices into the font.
+
+## Game Over Screen
+
+When the player loses their last life, we transition to game over:
+
+```asm
+.enter_gameover:
+            move.w  #GSTATE_OVER,game_state
+            bsr     show_gameover
+            bra     mainloop
+```
+
+The game over screen overlays "GAME OVER" on the frozen gameplay, letting players see their final score:
+
+```asm
+show_gameover:
+            ; Draw "GAME OVER" text over the game screen
+            lea     screen_plane,a2
+            add.l   #120*SCREEN_W+15,a2
+
+            lea     gameover_text,a1
+            ; ... draw each letter
+```
+
+## State Transitions
+
+The complete flow:
+
+1. **Start**: Game begins in GSTATE_TITLE
+2. **Title → Playing**: Fire button triggers init_game
+3. **Playing → Game Over**: Last life lost (frog_state = STATE_GAMEOVER)
+4. **Game Over → Title**: Fire button returns to title
 
 ```
-bar_width = (timer_value * MAX_BAR_WIDTH) / TIMER_START
+    ┌─────────┐      fire       ┌─────────┐
+    │  TITLE  │───────────────►│ PLAYING │
+    └─────────┘                 └────┬────┘
+         ▲                           │
+         │           fire            │ no lives
+         │      ┌──────────┐         │
+         └──────│GAME OVER │◄────────┘
+                └──────────┘
 ```
 
-## Updating the Timer
+## Initialisation Changes
 
-Each frame during active gameplay, we decrement the timer:
+The startup code now shows the title screen instead of jumping straight into gameplay:
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/02-updating-the-timer.asm" lang="asm" />
+```asm
+            ; Start at title screen
+            move.w  #GSTATE_TITLE,game_state
+            bsr     show_title
+```
 
-## Drawing the Timer Bar
+The game only initialises when the player presses fire on the title screen.
 
-We draw a horizontal bar that shrinks as time runs out. When low, it changes colour:
+## Key Takeaways
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/03-drawing-the-timer-bar.asm" lang="asm" />
+- **State machine** separates game flow from game logic
+- **High-level states** (title/playing/over) vs animation states (idle/hopping/dying)
+- **Edge detection** prevents button bouncing
+- **Font extension** reuses digit rendering for letters
+- **Overlay text** keeps final score visible on game over
+- **Clean transitions** between all states
 
-<InlineNote>
-Drawing a variable-width bar requires handling partial bytes at the right edge. A bar 25 pixels wide needs 3 full bytes (24 pixels) plus a partial byte with only the leftmost bit set.
-</InlineNote>
+## The Code
 
-## Time Bonus
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/signal.asm" />
 
-When reaching a home slot, award bonus points based on remaining time:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/04-time-bonus.asm" lang="asm" />
-
-With a 30-second timer, this gives up to ~93 bonus points for instant completion, scaling down to 0 if you barely make it.
-
-## Resetting the Timer
-
-The timer resets in several situations:
-
-1. Starting a new game
-2. After reaching a home slot
-3. After losing a life and respawning
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/05-resetting-the-timer.asm" lang="asm" />
-
-## Shorter Time on Higher Levels
-
-To increase difficulty, we reduce the starting time as levels progress:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/snippets/06-shorter-time-on-higher-levels.asm" lang="asm" />
-
-## Build It. Run It.
-
-Assemble and run:
+## Build It
 
 ```bash
-vasmm68k_mot -Fhunkexe -o hop -nosym hop.asm
+vasmm68k_mot -Fhunkexe -kick1hunks -o signal signal.asm
 ```
 
-Test the timer:
+## What's Next
 
-1. Timer bar should appear below the score
-2. Bar should shrink as time passes
-3. Flashing should start when time is low
-4. Running out of time should kill the frog
-5. Reaching home should reset the timer and award bonus points
-6. Higher levels should start with less time
-
-## What You've Learnt
-
-- **Frame counting**: Using vertical blank frequency for timing
-- **Proportional drawing**: Scaling values for variable-width display
-- **Bit manipulation**: Creating masks for partial byte drawing
-- **Warning feedback**: Visual cues for urgent game states
-- **Bonus systems**: Rewarding skilful play with extra points
-
-## The Complete Code
-
-Here's the complete `hop.asm` with time limit:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-15/hop.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-Before moving on, verify:
-
-- [ ] Timer bar displays and shrinks during gameplay
-- [ ] Timer flashes when low (under 10 seconds)
-- [ ] Running out of time causes death
-- [ ] Reaching home resets timer and awards bonus
-- [ ] Higher levels have shorter time limits
-- [ ] Timer pauses during death animation
-
-## Next Unit
-
-[Unit 16: Polish and System Restore](/commodore-amiga/game-01-signal/unit-16) - Final touches and returning control to AmigaOS.
+In Unit 16, we'll complete Phase 1 with final polish—high score tracking and presentation refinements.

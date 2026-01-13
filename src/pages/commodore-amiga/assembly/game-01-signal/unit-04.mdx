@@ -1,204 +1,161 @@
 ---
-title: "The Traffic"
-description: "Introduce the Blitter. Learn how to set up bitplanes and use the Blitter to draw cars on the road."
-pubDate: 2026-01-03
+title: "The Playfield"
+description: "Copper zone colours. Green homes. Blue river. Grey roads. The game arena."
+pubDate: 2026-01-12
 game: 1
-gameName: "Hop"
+gameName: "Signal"
 unit: 4
-totalUnits: 16
+totalUnits: 64
 system: "Commodore Amiga"
-tags: ["assembly", "68000", "blitter", "bitplanes"]
+tags: ["assembly", "68000", "copper", "display"]
+prevLesson: "/commodore-amiga/assembly/game-01-signal/unit-03"
 nextLesson: "/commodore-amiga/assembly/game-01-signal/unit-05"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 3: The Hop](/commodore-amiga/game-01-signal/unit-03).*
-
 ## What You're Building
 
-The frog has a nice road, but it's empty. Time to make it dangerous.
+The game arena.
 
-By the end of this unit, you'll have:
+Every Frogger game has the same basic layout: home at the top, water hazards, a safe median, road hazards, and a starting area at the bottom. We're creating that layout using nothing but the Copper and colour changes.
 
-- A bitmap screen layer using bitplanes
-- A car drawn using the Blitter
-- Understanding of planar graphics and the Blitter's operation
+By the end of this unit:
+- 13-row grid layout matching classic Frogger
+- Green home zone with docking spots
+- Blue water zone (5 lanes)
+- Green median (safe resting area)
+- Grey road zone (5 lanes)
+- Green start zone at bottom
 
-## The Problem with Hardware Sprites
+![Unit 4 Screenshot](/images/commodore-amiga/game-01-signal/unit-04/screenshot.png)
 
-We only have 8 hardware sprites, and the frog uses one. We could use a few more for cars, but what about logs, turtles, and all the traffic in a busy Frogger game? We need more drawing power.
+## The 13-Row Grid
 
-Enter the **Blitter** (Block Image Transferrer) — dedicated hardware that copies rectangular blocks of memory faster than the CPU.
+Classic Frogger uses a 13-row playfield:
 
-## Bitplanes: Amiga's Screen Memory
+| Row | Zone | Purpose |
+|-----|------|---------|
+| 1 | Home | 5 docking spots to fill |
+| 2-6 | Water | Logs and turtles to ride |
+| 7 | Median | Safe resting zone |
+| 8-12 | Road | Cars and trucks to dodge |
+| 13 | Start | Where the frog begins |
 
-Amiga graphics are **planar**, not chunky. Instead of storing all bits for each pixel together, we store separate "planes" of bits:
+Each row is 16 pixels tall. Our playfield spans from scanline 44 (row 1) to scanline 251 (row 13), giving us 208 pixels of gameplay area.
 
-| Planes | Colours | Bits per pixel |
-|--------|---------|----------------|
-| 1 | 2 | 1 |
-| 2 | 4 | 2 |
-| 3 | 8 | 3 |
-| 4 | 16 | 4 |
-| 5 | 32 | 5 |
+## Copper Timing
 
-For Hop, we'll use **2 bitplanes** (4 colours). That's enough for cars: transparent, body, detail, outline.
+The Copper executes instructions in sync with the video beam. When we write:
 
-### Screen Memory Layout
-
-A 320-pixel-wide screen uses 40 bytes per line (320 ÷ 8). For 256 lines:
-
-```
-Bytes per plane = 40 × 256 = 10,240 bytes
-Total for 2 planes = 20,480 bytes
-```
-
-This must be in **chip RAM** — memory accessible by the custom chips.
-
-## Setting Up Bitplanes
-
-We need to:
-
-1. **Allocate screen memory** in chip RAM
-2. **Configure BPLCON0** to enable bitplanes
-3. **Set bitplane pointers** so hardware knows where screen data lives
-4. **Enable bitplane DMA** in DMACON
-
-### BPLCON0 — Bitplane Control
-
-Register $100 controls the display:
-
-| Bits | Purpose |
-|------|---------|
-| 15 | High resolution mode |
-| 14-12 | Number of bitplanes (BPU) |
-| 11 | Hold-and-modify (HAM) |
-| 9 | Dual playfield |
-| 1 | Colour enable |
-
-For 2 bitplanes with colour: `$2200` (BPU=2, colour on)
-
-### Bitplane Pointers
-
-Each plane needs its address set via two registers:
-
-| Plane | High | Low |
-|-------|------|-----|
-| 1 | $0E0 (BPL1PTH) | $0E2 (BPL1PTL) |
-| 2 | $0E4 (BPL2PTH) | $0E6 (BPL2PTL) |
-
-We'll put placeholders in the copper list and have the CPU fill them in.
-
-## The Blitter
-
-The Blitter has four channels (A, B, C, D) that combine data using boolean logic:
-
-- **A** — Usually the mask (shape)
-- **B** — Usually the source graphics
-- **C** — Background (read before write)
-- **D** — Destination (write result)
-
-The operation is defined by an 8-bit **minterm** that specifies the boolean combination. For a simple copy (A=mask, B=source, C=dest):
-
-```
-D = (A AND B) OR (NOT A AND C)
+```asm
+dc.w    $3c07,$fffe          ; WAIT for line 60, position 7
+dc.w    COLOR00,COLOUR_WATER1 ; Set background to blue
 ```
 
-This "cookies out" the shape: where the mask is 1, take the source; where 0, keep the background.
+The Copper waits until the beam reaches line 60, then changes the background colour. All subsequent pixels on that line (and following lines) are drawn in the new colour until the next WAIT.
 
-### Blitter Registers
+### Calculating Scanlines
 
-| Register | Offset | Purpose |
-|----------|--------|---------|
-| BLTCON0 | $040 | Control + shift A |
-| BLTCON1 | $042 | Control + shift B |
-| BLTAFWM | $044 | First word mask A |
-| BLTALWM | $046 | Last word mask A |
-| BLTCPTH/L | $048/4A | Channel C pointer |
-| BLTBPTH/L | $04C/4E | Channel B pointer |
-| BLTAPTH/L | $050/52 | Channel A pointer |
-| BLTDPTH/L | $054/56 | Channel D pointer |
-| BLTSIZE | $058 | Starts blit (height + width) |
-| BLTCMOD | $060 | C modulo |
-| BLTBMOD | $062 | B modulo |
-| BLTAMOD | $064 | A modulo |
-| BLTDMOD | $066 | D modulo |
+We want row 2 (first water lane) to start at scanline 60. With 16 pixels per row:
 
-### Waiting for the Blitter
+```
+Row 1 (Home):   44-59   ($2C-$3B)
+Row 2 (Water):  60-75   ($3C-$4B)
+Row 3 (Water):  76-91   ($4C-$5B)
+...and so on
+```
 
-The Blitter runs in parallel with the CPU. Before starting a new blit or reading results, we must wait:
+The hex values are: 44 = $2C, 60 = $3C, 76 = $4C, etc.
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-04/snippets/01-the-blitter.asm" lang="asm" />
+## Zone Colours
 
-## A Simple Car
+Good colour choice makes the playfield readable at a glance:
 
-For now, we'll draw a solid rectangular car. It's 16 pixels wide (1 word) and 8 pixels tall.
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-04/snippets/02-zone-colours.asm" />
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-04/snippets/02-a-simple-car.asm" lang="asm" />
+The median is the brightest green—it needs to scream "SAFE ZONE!" to the player. Alternating shades in the water and road zones suggest depth and lane divisions.
 
-We'll draw this in colour 1 (first bitplane set, second clear).
+## Alternating Lane Colours
 
-### Drawing with the Blitter
+Each zone alternates between two shades:
 
-To draw the car at position (X, Y):
+```asm
+; Row 2: Water lane 1
+dc.w    $3c07,$fffe
+dc.w    COLOR00,COLOUR_WATER1
 
-1. Calculate destination address: `screen + Y*40 + X/8`
-2. Set up source (car graphics)
-3. Set modulos (bytes to skip between lines)
-4. Set size and trigger
+; Row 3: Water lane 2
+dc.w    $4c07,$fffe
+dc.w    COLOR00,COLOUR_WATER2
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-04/snippets/03-a-simple-car.asm" lang="asm" />
+; Row 4: Water lane 3
+dc.w    $5c07,$fffe
+dc.w    COLOR00,COLOUR_WATER1
+```
 
-The BLTSIZE format is `(height << 6) | width_in_words`.
+This subtle striping helps players judge distances and identify individual lanes—important when dodging traffic or timing log jumps.
 
-## Palette Setup
+## Highlight Stripes
 
-We need colours for our bitplane graphics. Colour 0 will be transparent (showing through to copper background). Colour 1 is the car:
+The home and start zones have a thin highlight stripe for visual interest:
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-04/snippets/04-palette-setup.asm" lang="asm" />
+```asm
+; Home zone with highlight
+dc.w    $2c07,$fffe
+dc.w    COLOR00,COLOUR_HOME      ; Main colour
+dc.w    $3407,$fffe
+dc.w    COLOR00,COLOUR_HOME_LIT  ; Highlight stripe
+dc.w    $3807,$fffe
+dc.w    COLOR00,COLOUR_HOME      ; Back to main
+```
 
-## Build It. Run It.
+Small details like this make the playfield feel polished.
+
+## The Complete Copper List
+
+Our Copper list now has 40+ instructions—still tiny by Amiga standards, but enough to create a complete game arena:
+
+1. Sprite palette setup (colours 17-19)
+2. Sprite pointer
+3. Home zone colours (with highlight)
+4. Water zone (5 lanes, alternating)
+5. Median
+6. Road zone (5 lanes, alternating)
+7. Start zone colours (with highlight)
+8. Bottom border
+
+All this without a single pixel of bitmap graphics—just colour changes synced to scanlines.
+
+## Memory Cost
+
+Traditional bitmap graphics for a 320×208 playfield would require:
+- 1 bitplane: 8,320 bytes
+- 4 bitplanes (16 colours): 33,280 bytes
+
+Our Copper list: ~200 bytes.
+
+This is why Amiga developers loved the Copper. The memory we save can hold sprite graphics, sound samples, or more game code.
+
+## Key Takeaways
+
+- **13-row grid** matches classic Frogger layout
+- **Copper timing** lets us change colours at exact scanlines
+- **Zone colours** make the playfield readable at a glance
+- **Alternating shades** help distinguish lanes
+- **Copper-only graphics** use minimal memory
+
+## The Code
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-04/signal.asm" />
+
+## Build It
 
 ```bash
-vasmm68k_mot -Fhunkexe -kick1hunks -o hop -nosym hop.asm
-xdftool hop.adf create + format "Hop" ofs + boot install boot1x + write hop + makedir s
-echo "hop" > startup-sequence
-xdftool hop.adf write startup-sequence s/startup-sequence
-fs-uae --floppy_drive_0=hop.adf
+vasmm68k_mot -Fhunkexe -kick1hunks -o signal signal.asm
 ```
 
-You should see the coloured lanes, the frog sprite, and a red car rectangle on the road!
+## What's Next
 
-## What You've Learnt
-
-- **Bitplanes** store screen data in separate bit layers
-- **BPLCON0** controls how many planes are active
-- **The Blitter** copies rectangular blocks faster than the CPU
-- **Minterms** define the boolean logic for combining channels
-- **BLTSIZE** triggers the operation (format: `height << 6 | width`)
-- **wait_blit** is essential before any blitter operation
-
-## The Complete Code
-
-Here's the full `hop.asm` with bitplanes and the Blitter:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-04/hop.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-Before moving on, verify:
-
-- [ ] Build succeeds with no errors
-- [ ] Coloured zones still display correctly
-- [ ] Frog sprite still moves with joystick
-- [ ] Red car rectangle visible on the road
-- [ ] Car moves from left to right
-- [ ] Car wraps back to left edge when it exits right
-
-## Next Unit
-
-One car is a start. A highway needs more.
-
-In [Unit 5: Traffic Flow](/commodore-amiga/game-01-signal/unit-05), we'll add multiple cars in different lanes, moving at different speeds.
+The playfield is complete. In Unit 5, we'll change from smooth movement to grid-based hopping—the frog should jump one row at a time, not glide continuously.

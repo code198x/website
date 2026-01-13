@@ -1,124 +1,205 @@
 ---
-title: "The River"
-description: "Add logs to the water zone. Learn how to unify object handling for both cars and logs."
-pubDate: 2026-01-03
+title: "The Blitter Introduction"
+description: "Why 8 sprites isn't enough. DMA graphics engine. BOBs for cars."
+pubDate: 2026-01-12
 game: 1
-gameName: "Hop"
+gameName: "Signal"
 unit: 6
-totalUnits: 16
+totalUnits: 64
 system: "Commodore Amiga"
-tags: ["assembly", "68000", "blitter", "game-loop"]
+tags: ["assembly", "68000", "blitter", "graphics"]
+prevLesson: "/commodore-amiga/assembly/game-01-signal/unit-05"
 nextLesson: "/commodore-amiga/assembly/game-01-signal/unit-07"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 5: Traffic Flow](/commodore-amiga/game-01-signal/unit-05).*
-
 ## What You're Building
 
-The road is deadly. But the river is treacherous.
+The Blitter.
 
-By the end of this unit, you'll have:
+Hardware sprites are wonderful—automatic, fast, zero CPU cost. But the Amiga only has 8 of them. A Frogger game needs dozens of moving objects: five lanes of cars, five lanes of logs and turtles, plus the frog. Eight sprites won't cut it.
 
-- Logs floating in the water zone
-- A unified object system handling both cars and logs
-- Different graphics for different object types
+The solution? The Blitter—a DMA coprocessor that copies rectangular blocks of memory at blazing speed.
 
-## Unified Object System
+By the end of this unit:
+- One car drives across the road
+- Drawn using Blitter, not sprites
+- You understand BOBs vs sprites
+- Foundation for many moving objects
 
-Cars and logs share most of their behaviour — they move horizontally, wrap at screen edges, and need clearing/drawing. The only differences:
+![Unit 6 Screenshot](/images/commodore-amiga/game-01-signal/unit-06/screenshot.png)
 
-1. **Graphics** — cars look different from logs
-2. **Colour** — red for cars, brown for logs
-3. **Position** — cars in road zone, logs in water zone
+## Why Not Just More Sprites?
 
-We can handle this with one object structure and a **type** field:
+The Amiga's 8 hardware sprites have limitations:
+- **Only 16 pixels wide** (though they can be any height)
+- **3 colours each** (plus transparent)
+- **Multiplexing is tricky** (reusing sprites mid-screen)
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/snippets/01-unified-object-system.asm" lang="asm" />
+For a game with many similar objects moving horizontally, the Blitter is often easier.
 
-## Object Types
+## What Is the Blitter?
 
-We'll define two types:
+The **Bl**ock **I**mage **T**ransferr**er** is a DMA coprocessor. It copies rectangular regions of memory without CPU involvement. While the Blitter works, the CPU can do other things.
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/snippets/02-object-types.asm" lang="asm" />
+Key capabilities:
+- **Copy** graphics from one place to another
+- **Combine** multiple sources using logic operations
+- **Shift** data for pixel-precise positioning
+- **Fill** areas with solid colour
+- **Draw** lines (yes, hardware line drawing!)
 
-When drawing, we select the graphic and colour based on type:
+We'll start with simple copying.
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/snippets/03-object-types.asm" lang="asm" />
+## Setting Up Bitplanes
 
-## Log Graphics
+Unlike our sprite-only previous units, we now need screen memory:
 
-Logs are wider than cars. We'll make them 32 pixels (2 words) wide:
+```asm
+SCREEN_W        equ 40          ; 320 pixels = 40 bytes per line
+SCREEN_H        equ 256         ; PAL lines
+PLANE_SIZE      equ SCREEN_W*SCREEN_H   ; 10240 bytes
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/snippets/04-log-graphics.asm" lang="asm" />
-
-Drawing a 2-word-wide object requires updating the blit size and modulo:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/snippets/05-log-graphics.asm" lang="asm" />
-
-## Unified Object Data
-
-Now we define all objects in one array:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/snippets/06-unified-object-data.asm" lang="asm" />
-
-## Drawing with Variable Width
-
-The blit width depends on object type:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/snippets/07-drawing-with-variable-width.asm" lang="asm" />
-
-## Colour Per Type
-
-We draw cars in plane 1 (colour 1 = red) and logs in plane 2 (colour 2 = brown).
-
-Actually, for simplicity, let's draw everything in plane 1 and use different copper colours in different zones. The road shows colour 1 as red; the water shows colour 1 as brown.
-
-We can change the playfield colours mid-screen via copper:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/snippets/08-colour-per-type.asm" lang="asm" />
-
-This is a neat trick — the same bitplane pixels appear as different colours depending on their vertical position!
-
-## Build It. Run It.
-
-```bash
-vasmm68k_mot -Fhunkexe -kick1hunks -o hop -nosym hop.asm
-xdftool hop.adf create + format "Hop" ofs + boot install boot1x + write hop + makedir s
-echo "hop" > startup-sequence
-xdftool hop.adf write startup-sequence s/startup-sequence
-fs-uae --floppy_drive_0=hop.adf
+; In chip BSS section
+screen_plane:   ds.b    PLANE_SIZE
 ```
 
-You should see red cars on the road and brown logs floating in the water!
+The Copper points at this memory, and the Blitter draws into it.
 
-## What You've Learnt
+## Blitter Registers
 
-- **Unified object systems** reduce code duplication
-- **Type fields** differentiate behaviour within shared code
-- **Variable blit width** handles different object sizes
-- **Copper colour changes** make the same pixels appear differently in different zones
+The Blitter has four channels: A, B, C, and D (destination). For a simple copy, we use A (source) and D (destination):
 
-## The Complete Code
+| Register | Purpose |
+|----------|---------|
+| BLTCON0 | Control: which channels, what operation |
+| BLTCON1 | Control: shift amount, special modes |
+| BLTAPTH | Source A pointer (high word) |
+| BLTDPTH | Destination D pointer (high word) |
+| BLTAMOD | Source A modulo (bytes to skip per row) |
+| BLTDMOD | Destination D modulo |
+| BLTSIZE | Size and trigger—writing here starts the blit |
 
-Here's the full `hop.asm` with cars and logs:
+## A Simple Copy
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/hop.asm" lang="asm" />
+To copy our car graphics to the screen:
 
-## Recap / Sanity Check
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/snippets/03-draw-car.asm" />
 
-Before moving on, verify:
+## Understanding BLTCON0
 
-- [ ] Build succeeds with no errors
-- [ ] Cars visible on the road (red)
-- [ ] Logs visible in the water (brown)
-- [ ] All objects move and wrap correctly
-- [ ] Frog still moves correctly
+The value `$09f0` breaks down as:
 
-## Next Unit
+```
+$09f0 = %0000 1001 1111 0000
+              │  │ ││││
+              │  │ └┴┴┴─ Minterm: $F0 = D = A
+              │  └────── USEA: Use channel A
+              └───────── USED: Use channel D (always for output)
+```
 
-The river has logs, but jumping on them is still fatal.
+The **minterm** is a 4-bit pattern that specifies how to combine A, B, and C. `$F0` means "D = A"—just copy A to D.
 
-In [Unit 7: Riding the Logs](/commodore-amiga/game-01-signal/unit-07), we'll implement platform mechanics — when the frog lands on a log, it rides along.
+## Understanding BLTSIZE
+
+```asm
+move.w  #(CAR_HEIGHT<<6)|CAR_WIDTH,BLTSIZE(a5)
+```
+
+BLTSIZE encodes both dimensions:
+- **Bits 15-6**: Height in lines (max 1024)
+- **Bits 5-0**: Width in words (max 64 words = 1024 pixels)
+
+Writing to BLTSIZE triggers the blit immediately.
+
+## Waiting for the Blitter
+
+The Blitter runs asynchronously. Before starting a new blit or reading results, we must wait:
+
+```asm
+wait_blit:
+    btst    #6,DMACONR(a5)      ; Test BBUSY flag
+    bne.s   wait_blit           ; Loop while busy
+    rts
+```
+
+Bit 6 of DMACONR is the "blitter busy" flag.
+
+## Erasing the Car
+
+Before drawing at the new position, we erase at the old position. We use the clear_screen approach which uses the Blitter with minterm 0:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/snippets/02-clear-screen.asm" />
+
+Minterm `$00` (via BLTCON0 = $0100) means "D = 0"—clear the destination.
+
+## The Animation Loop
+
+Each frame:
+1. Wait for VBlank
+2. Erase car at old position
+3. Update car position
+4. Draw car at new position
+
+```asm
+mainloop:
+    bsr     wait_vblank
+    bsr     update_frog
+    bsr     update_sprite
+
+    bsr     erase_car       ; Clear old
+    bsr     move_car        ; Update position
+    bsr     draw_car        ; Draw new
+
+    bra     mainloop
+```
+
+## BOBs vs Sprites
+
+What we've created is called a **BOB** (Blitter Object):
+
+| Feature | Hardware Sprite | BOB |
+|---------|-----------------|-----|
+| Count | 8 maximum | Unlimited* |
+| Width | 16 pixels | Any size |
+| Colours | 3 (+transparent) | As many as bitplanes allow |
+| CPU cost | Zero | Low (Blitter DMA) |
+| Erasing | Automatic | Must be done manually |
+| Behind playfield | Easy | Requires masking |
+
+*Limited by Blitter time per frame
+
+## Enabling Blitter DMA
+
+We added blitter DMA to our DMACON setup:
+
+```asm
+move.w  #$87e0,DMACON(a5)   ; Master + blit + copper + bitplane + sprite
+```
+
+Bit 6 (BLTEN) enables Blitter DMA.
+
+## Key Takeaways
+
+- **8 sprites isn't enough** for games with many objects
+- **The Blitter** copies rectangular blocks via DMA
+- **BOBs** are objects drawn by the Blitter
+- **BLTCON0** controls which channels and what operation
+- **BLTSIZE** encodes size and triggers the blit
+- **Always wait** for the Blitter before starting another blit
+
+## The Code
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-06/signal.asm" />
+
+## Build It
+
+```bash
+vasmm68k_mot -Fhunkexe -kick1hunks -o signal signal.asm
+```
+
+## What's Next
+
+We have one car. In Unit 7, we'll add collision detection—the frog needs to die when it hits the car!

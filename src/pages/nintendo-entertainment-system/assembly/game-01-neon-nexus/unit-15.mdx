@@ -1,170 +1,125 @@
 ---
-title: "Game Over Polish"
-description: "Refine game over transitions with screen flash and input delay."
-pubDate: 2026-01-04
+title: "Game States"
+description: "Add a state machine with title screen, game over, and win states."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 15
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "polish", "effects"]
+tags: ["assembly", "6502", "state-machine", "game-flow"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-14"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-16"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 14: Pause](/nintendo-entertainment-system/game-01-neon-nexus/unit-14).*
-
 ## What You're Building
 
-Our game over transition is abrupt—the screen instantly changes and the player can immediately restart. Classic arcade games used subtle effects to make these transitions feel more impactful: a brief screen flash, a pause before accepting input, and sometimes a fade effect.
+A complete game flow. Title screen. Playing. Game over. Win.
 
-This unit adds:
-- Screen flash effect on death (using PPU emphasis bits)
-- A delay timer before the game over screen accepts input
-- Cleaner state transition handling
-- Visual polish that makes game over feel significant
+![Game States](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-15/screenshot.png)
 
-## The Plan
+The game now starts at a title screen. Press Start to play.
 
-1. Add a delay timer for game over input
-2. Implement screen flash using PPU emphasis bits
-3. Create a death "freeze frame" effect
-4. Polish the overall game flow
+## The State Machine
 
-## PPU Emphasis Bits
+Four states control the game:
 
-The NES PPU has three emphasis bits in PPUMASK ($2001) that tint the screen:
-
-```
-PPUMASK ($2001):
-Bit 7: Emphasize blue
-Bit 6: Emphasize green
-Bit 5: Emphasize red
+```asm
+STATE_TITLE    = 0
+STATE_PLAYING  = 1
+STATE_GAMEOVER = 2
+STATE_WIN      = 3
 ```
 
-Setting all three creates a white tint—perfect for a flash effect. When combined with sprite and background enable bits:
+## Main Loop
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-15/snippets/01-ppu-emphasis-bits.asm" lang="asm" />
+The main loop dispatches to state handlers:
 
-## Death Flash Effect
+```asm
+main_loop:
+    jsr read_controller
 
-When the player loses their last life, we'll flash the screen white briefly before showing the game over screen:
+    lda game_state
+    cmp #STATE_TITLE
+    beq @title_state
+    cmp #STATE_PLAYING
+    beq @playing_state
+    cmp #STATE_GAMEOVER
+    beq @gameover_state
+    cmp #STATE_WIN
+    beq @win_state
+    jmp main_loop
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-15/snippets/02-death-flash-effect.asm" lang="asm" />
+@title_state:
+    jsr handle_title
+    jmp main_loop
+```
 
-Constants for timing:
+Each state has its own handler. Clean separation.
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-15/snippets/03-death-flash-effect.asm" lang="asm" />
+## Button Edge Detection
 
-## Implementing the Flash
+We want to detect a new press, not a held button:
 
-Modify `lose_life` to trigger the flash when lives reach zero:
+```asm
+BTN_START = %00010000
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-15/snippets/04-implementing-the-flash.asm" lang="asm" />
+handle_title:
+    lda buttons
+    and #BTN_START
+    beq @no_start
+    lda buttons_prev
+    and #BTN_START
+    bne @no_start       ; Already pressed
 
-## Flash Update Routine
+    ; New press! Start the game
+    jsr init_game
+    lda #STATE_PLAYING
+    sta game_state
 
-Create a routine to update the flash effect each frame:
+@no_start:
+    lda buttons
+    sta buttons_prev
+    rts
+```
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-15/snippets/05-flash-update-routine.asm" lang="asm" />
+Compare current buttons with previous frame. Only act on the rising edge.
 
-## Delaying Game Over Input
+## State Transitions
 
-In `gameover_state`, check the delay timer before accepting START:
+| From | To | Trigger |
+|------|----|---------|
+| TITLE | PLAYING | Start pressed |
+| PLAYING | GAMEOVER | Lives reach 0 |
+| PLAYING | WIN | All items collected |
+| GAMEOVER | TITLE | Start pressed |
+| WIN | TITLE | Start pressed |
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-15/snippets/06-delaying-game-over-input.asm" lang="asm" />
+## Screen Displays
 
-## Why Use Emphasis Bits?
+Each state shows different sprites:
 
-The emphasis bits are a simple but effective tool:
-- No palette changes required
-- Works instantly (takes effect next frame)
-- Affects the entire screen uniformly
-- Can create flash, fade, or tint effects
+- **Title**: Player with decorative items
+- **Playing**: Full game (player, enemies, items, lives)
+- **Game Over**: Enemy sprites as defeat indicator
+- **Win**: Player surrounded by items
 
-The flash gives players visual feedback that something significant happened—their game just ended.
+## The Code
 
-## Input Delay Benefits
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-15/nexus.asm" />
 
-The input delay serves multiple purposes:
-1. **Prevents accidental restart**: Players might be mashing buttons when they die
-2. **Lets the moment sink in**: The player sees their score and high score
-3. **Feels more polished**: Instant restart feels cheap; a pause feels deliberate
-
-One second (60 frames at NTSC) is a good balance—long enough to notice, short enough not to frustrate.
-
-## Death Freeze Frame
-
-For extra polish, we can freeze the sprites in place during the flash. The sprites are already updated in the OAM buffer, so they'll stay visible during the flash frames before we hide them for the game over screen.
-
-This creates a "freeze frame" moment—the player sees exactly where they died before the screen transitions.
-
-## Initialising New Variables
-
-Add initialisation in `init_game`:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-15/snippets/07-initialising-new-variables.asm" lang="asm" />
-
-## State Flow Summary
-
-The refined game over flow:
-1. Player loses last life
-2. Death sound plays
-3. Screen flashes white (8 frames)
-4. Flash clears, game over text draws
-5. Input ignored for 60 frames
-6. Player can now press START to restart
-
-## Build It. Run It.
-
-Assemble and test:
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
 ```
 
-Test the polish:
-1. Play until you lose all lives
-2. Watch for the white screen flash
-3. Notice the freeze frame moment before game over
-4. Try pressing START immediately—it should be ignored
-5. Wait a moment, then START should work
-6. The transition should feel more impactful than before
+The game now has complete flow. Title, play, end, restart.
 
-## What You've Built
+## Next
 
-Your game over sequence now feels polished and deliberate. The flash draws attention to the moment, the delay prevents accidents, and the overall flow feels like a real game rather than a prototype.
-
-## What You've Learnt
-
-- **PPU emphasis bits**: Using bits 5-7 of PPUMASK for screen tinting
-- **Timed effects**: Using countdown timers for visual effects
-- **Input buffering**: Ignoring input during transition periods
-- **Polish details**: Small touches that make games feel complete
-- **State machine refinement**: Adding nuance to state transitions
-
-## The Complete Code
-
-Here's the complete `nexus.asm` with game over polish:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-15/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-Before moving on, verify:
-
-- [ ] Losing your last life triggers a white screen flash
-- [ ] The flash lasts about 8 frames (brief but noticeable)
-- [ ] Game over screen appears after the flash clears
-- [ ] Pressing START immediately after game over does nothing
-- [ ] After about one second, START restarts the game
-- [ ] High score still displays correctly
-- [ ] "NEW" indicator still appears for new high scores
-- [ ] The overall transition feels more polished than before
-
-## Next Unit
-
-[Unit 16: Final Polish](/nintendo-entertainment-system/game-01-neon-nexus/unit-16) — final tweaks, code cleanup, and building the release ROM.
+Unit 16 brings Phase 1 to a close. Time to review what we've built.

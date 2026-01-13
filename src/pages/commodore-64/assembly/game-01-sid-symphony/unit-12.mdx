@@ -1,132 +1,164 @@
 ---
-title: "Hit Detection"
-description: "The heart of rhythm gaming. Detect when key presses match notes, play sounds on hits, and start tracking score."
-pubDate: 2026-01-09
+title: "Combo System"
+description: "Track consecutive hits. Multiply your score. Break the combo on miss."
+pubDate: 2026-01-13
 game: 1
 gameName: "SID Symphony"
 unit: 12
-totalUnits: 16
+totalUnits: 64
 system: "Commodore 64"
-tags: ["assembly", "6510", "hit-detection", "scoring", "bcd", "sid"]
+tags: ["assembly", "6510", "scoring", "combo"]
 prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-11"
 nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-13"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-*Need to catch up? Check out [Unit 11: Keyboard Input](/commodore-64/assembly/game-01-sid-symphony/unit-11).*
+Consistency pays off. This unit adds a combo system that rewards consecutive hits.
 
-## What You're Building
+Hit notes in succession and your combo climbs. Higher combos unlock score multipliers: 2x at 10 hits, 3x at 25, 4x at 50. Miss a single note and the combo breaks, resetting to zero. The risk/reward creates tension - that 49-hit combo could become 4x on the next hit, or crash to nothing.
 
-Notes flow. Keys work. But they're disconnected — pressing X when a cyan note sits in the hit zone does nothing special.
+## Run It
 
-By the end of this unit, you'll have:
-
-- Hit detection: matching key presses to notes in the hit zone
-- Sound on hit: the SID plays the note you successfully hit
-- Scoring: points accumulate with each successful hit
-- Visual feedback: notes disappear when hit
-
-This is where it becomes a *game*.
-
-## The Hit Detection Algorithm
-
-A hit requires three conditions:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-12/snippets/01-check-hit.asm" />
-
-The algorithm:
-1. Loop through all note slots
-2. Skip inactive notes
-3. Skip notes on wrong track
-4. Skip notes outside hit zone (columns 3-6)
-5. If all conditions pass: HIT!
-
-We use the carry flag to return results: set = hit found, clear = no hit. This lets the caller branch efficiently with `bcc` (no hit) or `bcs` (hit).
-
-<InlineNote>
-Why search all 8 notes? There might be multiple notes on the same track. We hit the first one found in the hit zone. A more sophisticated system would find the *closest* note, but for our simple song, first-found works.
-</InlineNote>
-
-## Playing the Hit Sound
-
-When you hit a note, the SID should sing:
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-12/snippets/02-play-hit-note.asm" />
-
-Each track uses its own SID voice:
-- Track 1 (X key) → Voice 1
-- Track 2 (C key) → Voice 2
-- Track 3 (V key) → Voice 3
-
-This means hitting notes on different tracks produces a chord — multiple voices singing simultaneously. Hit all three tracks together and you hear harmony.
-
-## BCD Scoring
-
-Displaying scores is easier with BCD (Binary Coded Decimal):
-
-<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-12/snippets/03-scoring.asm" />
-
-In BCD, each nibble (4 bits) holds a single decimal digit (0-9). The value `$50` literally means "50" — the 5 is in the high nibble, 0 in the low.
-
-The 6502's decimal mode (`sed`) makes addition automatically carry at 10 instead of 16. Add `$10` (ten points) repeatedly and you get 10, 20, 30... with proper decimal carries.
-
-<InlineNote>
-Don't forget `cld` (clear decimal mode) when done! Leaving decimal mode set causes mysterious bugs — other code expects binary arithmetic.
-</InlineNote>
-
-## The Complete Flow
-
-When a key is newly pressed:
-
-```asm
-handle_input:
-                lda key_x_pressed
-                beq .no_x
-                lda #1                  ; Track 1
-                jsr check_hit
-                bcc .no_x               ; No hit - no flash
-                lda #10
-                sta flash_t1_timer      ; Flash on hit!
-.no_x:
-                ; ... repeat for C and V
-```
-
-If `check_hit` succeeds (carry set):
-1. The note is removed from play
-2. The SID plays the note's sound
-3. Score increases by 10 points
-4. Hit zone flashes white
-
-If `check_hit` fails (carry clear):
-- Nothing happens (for now — we'll add miss handling in Unit 13)
-
-## Build It. Run It.
+Assemble and run:
 
 ```bash
 acme -f cbm -o symphony.prg symphony.asm
-x64sc symphony.prg
 ```
 
-Watch the notes flow. When one enters the hit zone (the coloured block), press the matching key. You'll hear the note play and see the score increase!
+![Unit 12 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-12/screenshot.png)
 
-Try hitting notes perfectly. Try missing them entirely. The game now has real gameplay — success and failure are distinguishable.
+The "COMBO: 000 1x" display shows your current combo count and multiplier. Build a combo and watch both the number and colour change as you reach new tiers.
 
-## What You've Learnt
+## The Combo System
 
-- **Hit detection**: Search active notes for one matching track AND in hit zone
-- **Carry flag results**: Set = success, clear = failure
-- **SID voice mapping**: Three tracks → three voices → polyphonic sound
-- **BCD scoring**: Decimal mode for easy score display
+The combo tracks consecutive hits without misses:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-12/snippets/01-combo-system.asm" />
+
+Two variables do the work: `combo` for current consecutive hits, `max_combo` for the best this song. The multiplier calculation uses simple comparisons - check if combo exceeds each threshold, return the appropriate tier.
+
+## Multiplier Tiers
+
+The tiers reward sustained accuracy:
+
+| Combo | Multiplier | Why |
+|-------|------------|-----|
+| 0-9   | 1x         | Baseline - no bonus yet |
+| 10-24 | 2x         | Getting warmed up |
+| 25-49 | 3x         | In the zone |
+| 50+   | 4x         | Maximum - perfect consistency |
+
+A perfect hit normally scores 100 points. At 4x multiplier, that same hit scores 400. Over a full song, the difference between 1x and 4x is massive.
+
+## Applying the Multiplier
+
+Multiplying on the 6502 requires repeated addition:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-12/snippets/02-apply-multiplier.asm" />
+
+The routine stores the base score, gets the multiplier, then adds the base score that many times. For 3x, it adds the base twice (starting with one copy already in place). The 16-bit result handles scores up to 65535.
+
+## Combo Display
+
+The display uses colour to communicate multiplier tier:
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-12/snippets/03-display-combo.asm" />
+
+Grey means no bonus (1x). Yellow signals 2x. Green shows 3x. White indicates maximum 4x. Players instantly know their multiplier state without reading numbers.
+
+## Breaking the Combo
+
+Missing breaks the combo dramatically:
+
+```asm
+handle_miss:
+            inc miss_count
+            jsr play_miss_sound
+            ; ... visual feedback ...
+
+            ; Break the combo!
+            jsr break_combo
+
+            rts
+```
+
+A single line - `jsr break_combo` - undoes potentially dozens of consecutive hits. This creates the tension that makes combos meaningful.
+
+## Max Combo on Results
+
+The results screen now shows max combo:
+
+```
+        SONG COMPLETE!
+
+        FINAL SCORE: 05200
+        PERFECTS:    18
+        GOODS:       08
+        MISSES:      02
+        MAX COMBO:   31
+        ACCURACY:    092%
+```
+
+Max combo tells players how close they came to a perfect run. A score of 5000 with max combo 10 plays differently than 5000 with max combo 45.
 
 ## The Complete Code
 
 <CodeFromFile src="commodore-64/game-01-sid-symphony/unit-12/symphony.asm" />
 
-## Next Unit
+## Try This: Combo Sound
 
-Hits feel great, but misses have no consequence. Notes just vanish off the left edge without penalty.
+Add an ascending tone as combo builds:
 
-In Unit 13, we add miss detection — when notes leave the hit zone without being hit, something bad happens.
+```asm
+play_combo_sound:
+            lda combo
+            lsr                 ; Divide by 2
+            clc
+            adc #$10            ; Base frequency
+            sta SID_V1_FREQ_HI
+            ; ... trigger note ...
+```
+
+Higher combos produce higher pitches.
+
+## Try This: Combo Milestones
+
+Flash the screen when reaching new tiers:
+
+```asm
+increment_combo:
+            inc combo
+            lda combo
+            cmp #COMBO_TIER_2
+            beq combo_milestone
+            cmp #COMBO_TIER_3
+            beq combo_milestone
+            cmp #COMBO_TIER_4
+            beq combo_milestone
+            jmp no_milestone
+
+combo_milestone:
+            ; Flash border yellow briefly
+            lda #7
+            sta BORDER
+            lda #8
+            sta border_flash
+no_milestone:
+            ; ... rest of routine ...
+```
+
+Celebrate reaching 10, 25, and 50.
+
+## What You've Learnt
+
+- **Combo tracking** - Increment on hit, reset on miss
+- **Multiplier tiers** - Thresholds that increase rewards
+- **8-bit multiplication** - Repeated addition for score scaling
+- **Colour feedback** - Visual encoding of game state
+- **Risk/reward design** - Tension between safety and bonus
+
+## What's Next
+
+In Unit 13, we'll add a title screen. The game will start with a proper presentation, wait for player input, then begin play.

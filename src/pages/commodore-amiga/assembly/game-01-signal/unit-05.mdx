@@ -1,141 +1,165 @@
 ---
-title: "Traffic Flow"
-description: "Animate multiple cars with the Blitter. Learn how to manage arrays of game objects with different speeds."
-pubDate: 2026-01-03
+title: "Grid-Based Movement"
+description: "Hop in discrete steps. Smooth animation. The Frogger feel."
+pubDate: 2026-01-12
 game: 1
-gameName: "Hop"
+gameName: "Signal"
 unit: 5
-totalUnits: 16
+totalUnits: 64
 system: "Commodore Amiga"
-tags: ["assembly", "68000", "blitter", "animation"]
+tags: ["assembly", "68000", "movement", "animation"]
+prevLesson: "/commodore-amiga/assembly/game-01-signal/unit-04"
 nextLesson: "/commodore-amiga/assembly/game-01-signal/unit-06"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 4: The Traffic](/commodore-amiga/game-01-signal/unit-04).*
-
 ## What You're Building
 
-One car is hardly traffic. Time to fill the highway.
+The Frogger feel.
 
-By the end of this unit, you'll have:
+Real Frogger doesn't glide—it hops. Each joystick press moves the frog exactly one grid cell. The movement is animated over 8 frames, giving that distinctive chunky-but-smooth feel that makes Frogger satisfying to play.
 
-- Multiple cars in different road lanes
-- Cars moving at different speeds
-- Cars moving in both directions
-- A data-driven object system
+By the end of this unit:
+- Frog hops in discrete 16-pixel steps
+- Smooth 8-frame animation during each hop
+- Grid: 20 columns × 13 rows
+- Edge detection prevents holding the joystick
 
-## Object Data Structures
+![Unit 5 Screenshot](/images/commodore-amiga/game-01-signal/unit-05/screenshot.png)
 
-Games need to track many similar entities (cars, enemies, bullets). There are two common approaches:
+## Why Grid Movement?
 
-**Struct of Arrays** — separate arrays for each property:
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/snippets/01-object-data-structures.asm" lang="asm" />
+Frogger isn't an action game—it's a puzzle game with timing elements. The grid serves several purposes:
 
-**Array of Structs** — each object is a contiguous block:
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/snippets/02-object-data-structures.asm" lang="asm" />
+1. **Predictability**: You know exactly where you'll land
+2. **Collision zones**: Each lane is one row; cars and logs occupy grid cells
+3. **Strategic planning**: You can count cells to plan safe routes
+4. **Timing windows**: Hops take fixed time, creating rhythm
 
-For the 68000, **Array of Structs** often works well because we can use address register offsets like `2(a0)` to access fields, and advance with `lea 6(a0),a0` between objects.
+Smooth, analogue movement would make the game feel floaty and imprecise. The grid creates clarity.
 
-## The Car Structure
+## The State Machine
 
-Each car needs:
+Our frog now has two states:
 
-| Offset | Field | Size | Description |
-|--------|-------|------|-------------|
-| 0 | X | Word | Horizontal position |
-| 2 | Y | Word | Vertical position (fixed per lane) |
-| 4 | Speed | Word | Signed: positive = right, negative = left |
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/snippets/02-state-machine.asm" />
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/snippets/03-the-car-structure.asm" lang="asm" />
+This prevents the frog from changing direction mid-hop or moving continuously when the joystick is held.
 
-## Initialising the Cars
+## Grid Coordinates
 
-We'll place cars in the four road lanes, alternating direction:
+We track position two ways:
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/snippets/04-initialising-the-cars.asm" lang="asm" />
+```asm
+; Grid position (which cell)
+frog_grid_x:    dc.w    9       ; Column (0-19)
+frog_grid_y:    dc.w    12      ; Row (0-12)
 
-## The Update Loop
-
-Each frame, we loop through all cars:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/snippets/05-the-update-loop.asm" lang="asm" />
-
-### The DBF Instruction
-
-`dbf d7,.loop` is "Decrement and Branch if False" — it decrements D7, then branches if D7 ≥ 0. It's the 68000's loop instruction.
-
-If you want 4 iterations, set D7 to 3 (it loops while ≥ 0).
-
-## Wrapping Coordinates
-
-Cars need to wrap around the screen edges:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/snippets/06-wrapping-coordinates.asm" lang="asm" />
-
-Note we wrap to slightly off-screen (-16 or 320) so cars scroll smoothly in from the edge rather than popping.
-
-## Clearing Before Drawing
-
-We must clear the car's old position before drawing the new one. With multiple cars, each car clears itself before moving:
-
-1. Clear at current position
-2. Update position
-3. Draw at new position
-
-This prevents "trails" of old pixels.
-
-## Signed Arithmetic
-
-The 68000 handles signed numbers naturally. A speed of -3 means:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/snippets/07-signed-arithmetic.asm" lang="asm" />
-
-When comparing for wrap, we use signed comparisons:
-- `blt` (Branch if Less Than) — signed
-- `bge` (Branch if Greater or Equal) — signed
-
-## Build It. Run It.
-
-```bash
-vasmm68k_mot -Fhunkexe -kick1hunks -o hop -nosym hop.asm
-xdftool hop.adf create + format "Hop" ofs + boot install boot1x + write hop + makedir s
-echo "hop" > startup-sequence
-xdftool hop.adf write startup-sequence s/startup-sequence
-fs-uae --floppy_drive_0=hop.adf
+; Pixel position (for rendering)
+frog_pixel_x:   dc.w    0       ; Screen X
+frog_pixel_y:   dc.w    0       ; Screen Y
 ```
 
-Four cars should be moving across the road — some going left, some going right, at different speeds!
+Grid coordinates are the "true" position—which cell the frog occupies. Pixel coordinates are calculated from grid coordinates for rendering and animation.
 
-## What You've Learnt
+### Converting Grid to Pixels
 
-- **Array of Structs** keeps related data together
-- **68000 addressing modes** like `CAR_X(a2)` access struct fields
-- **DBF** is the standard loop instruction
-- **Signed arithmetic** handles bidirectional movement naturally
-- **Clear-then-draw** prevents pixel trails
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/snippets/04-grid-to-pixels.asm" />
 
-## The Complete Code
+The grid origin (48, 44) positions the grid within our playfield.
 
-Here's the full `hop.asm` with multiple cars:
+## Edge Detection
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/hop.asm" lang="asm" />
+Holding the joystick shouldn't make the frog hop repeatedly. We want one hop per press. This requires **edge detection**—detecting the transition from "not pressed" to "pressed".
 
-## Recap / Sanity Check
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/snippets/03-edge-detection.asm" />
 
-Before moving on, verify:
+The key insight: `current AND NOT previous` gives us bits that are set now but weren't set before—exactly the "just pressed" events we want.
 
-- [ ] Build succeeds with no errors
-- [ ] Four cars visible on the road
-- [ ] Cars move in different directions
-- [ ] Cars move at different speeds
-- [ ] Cars wrap around screen edges smoothly
-- [ ] Frog still moves correctly
+## Animation Timing
 
-## Next Unit
+Each hop takes 8 frames at 2 pixels per frame:
 
-The road is dangerous. But the river is worse.
+```asm
+HOP_FRAMES      equ 8           ; Animation duration
+PIXELS_PER_FRAME equ 2          ; Movement per frame
+```
 
-In [Unit 6: The River](/commodore-amiga/game-01-signal/unit-06), we add logs that the frog must ride across the water.
+8 × 2 = 16 pixels = one cell. At 50fps (PAL), each hop takes 8/50 = 0.16 seconds. This feels snappy but visible.
+
+### The Hop Animation
+
+```asm
+.hopping:
+    addq.w  #1,frog_anim_frame
+
+    ; Move based on direction
+    move.w  frog_dir,d0
+    cmp.w   #DIR_UP,d0
+    bne.s   .hop_not_up
+    sub.w   #PIXELS_PER_FRAME,frog_pixel_y
+    bra.s   .check_done
+.hop_not_up:
+    ; ... check other directions ...
+
+.check_done:
+    cmp.w   #HOP_FRAMES,frog_anim_frame
+    blt.s   .done
+
+    ; Hop complete: update grid, snap pixels
+    ; ... update frog_grid_x/y ...
+    bsr     grid_to_pixels
+    move.w  #STATE_IDLE,frog_state
+```
+
+We update pixel position each frame for smooth animation, then snap to exact grid position when done. The snap prevents cumulative rounding errors.
+
+## Boundary Checking
+
+Before starting a hop, we check if the target cell exists:
+
+```asm
+btst    #8,d0               ; Up pressed?
+beq.s   .not_up
+move.w  frog_grid_y,d1
+tst.w   d1                  ; Already at row 0?
+beq.s   .not_up             ; Can't go higher
+move.w  #DIR_UP,frog_dir
+bra.s   .start_hop
+```
+
+We check grid coordinates, not pixel coordinates. This is cleaner and prevents the frog from starting a hop it can't complete.
+
+## The Complete Flow
+
+1. **Frame starts**: Wait for VBlank
+2. **Update frog**: Run state machine
+3. **Update sprite**: Write new position to sprite data
+4. **Loop**: Repeat
+
+The frog logic is now significantly more complex than our previous smooth movement, but the result feels much better. The grid creates that classic arcade rhythm.
+
+## Key Takeaways
+
+- **State machine** separates idle and hopping behaviour
+- **Grid coordinates** are the source of truth
+- **Pixel coordinates** are derived for rendering
+- **Edge detection** gives one hop per press
+- **Snapping to grid** prevents drift
+- **8-frame animation** balances speed and visibility
+
+## The Code
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-05/signal.asm" />
+
+## Build It
+
+```bash
+vasmm68k_mot -Fhunkexe -kick1hunks -o signal signal.asm
+```
+
+## What's Next
+
+The frog hops correctly, but there's nothing to dodge. In Unit 6, we'll introduce the Blitter—the Amiga's block image transfer coprocessor—to draw cars on the road.

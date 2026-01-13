@@ -1,131 +1,124 @@
 ---
-title: "Keyboard Input"
-description: "Read the Spectrum keyboard directly. Detect key presses, handle debouncing, respond to player input."
-pubDate: 2026-01-09
+title: "Move Validation"
+description: "Error feedback when you try to claim an occupied cell. The game pushes back."
+pubDate: 2026-01-12
 game: 1
 gameName: "Ink War"
 unit: 5
 totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "input", "keyboard", "ports"]
+tags: ["assembly", "z80", "sound", "feedback"]
 prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-04"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-06"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-## What You're Building
+Try claiming a cell that's already taken. In the previous unit, nothing happened. That's confusing - did the game register your keypress? Did something break?
 
-A game needs input. In this unit, we read the keyboard directly — no BASIC, no ROM routines, just raw hardware access.
+This unit adds clear feedback: when you try to claim an occupied cell, you hear an error buzz and the border flashes red. The turn doesn't change. You know exactly what went wrong.
 
-By the end of this unit, you'll have:
-
-- Understanding of the Spectrum keyboard matrix
-- Code to read specific keys (Q, A, O, P, Space)
-- Debouncing to detect new presses only
-- Visual feedback proving your input works
-
-![Unit 5 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-05/screenshot.png)
-
-*The screenshot shows the initial state. Run the program and press keys to see the border flash!*
-
-## The Keyboard Matrix
-
-The Spectrum keyboard is organised as a matrix of 8 half-rows, each containing 5 keys. We read them through port $FE:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/01-keyboard-matrix.asm" />
-
-To read a half-row, we load its address into A and use the `IN` instruction. The result tells us which keys in that row are pressed.
-
-<InlineNote>
-The keyboard shares port $FE with the border colour. When reading (IN), it returns keyboard state. When writing (OUT), it sets border colour. Same port, different functions.
-</InlineNote>
-
-## Reading a Key
-
-To check if a specific key is pressed:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/02-read-key.asm" />
-
-The crucial detail: keys are **active low**. A bit value of 0 means the key IS pressed; 1 means it's NOT pressed. This is backwards from intuition, but it's how the hardware works.
-
-## Our Control Keys
-
-Ink War uses the classic Spectrum control scheme:
-
-| Key | Action | Half-row | Bit |
-|-----|--------|----------|-----|
-| Q | Up | $FB | 0 |
-| A | Down | $FD | 0 |
-| O | Left | $DF | 1 |
-| P | Right | $DF | 0 |
-| Space | Claim | $7F | 0 |
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/03-our-controls.asm" />
-
-Notice that O and P share the same half-row ($DF). We read the row once and test different bits.
-
-## The Debouncing Problem
-
-If we check "is Q pressed?" every frame, a single tap triggers dozens of times. The key is held for perhaps 100ms, but we're checking 50 times per second.
-
-We need to detect **new** presses — the moment a key transitions from "not pressed" to "pressed":
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/04-debouncing.asm" />
-
-The trick: compare current state with previous frame. Using `CPL` (complement) and `AND`, we isolate only the bits that are newly set.
-
-## Visual Feedback
-
-During development, visual feedback is invaluable. We flash the border different colours for each key:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/05-visual-feedback.asm" />
-
-This confirms the input code works before we connect it to game logic. If the border doesn't flash, we know the problem is in our keyboard code, not elsewhere.
-
-## The Main Loop
-
-Our main loop now has structure:
-
-```asm
-main_loop:
-        halt                ; Wait for vertical blank
-        call read_keys      ; Check keyboard
-        jr main_loop        ; Repeat forever
-```
-
-`HALT` pauses until the next interrupt (vertical blank). This gives us consistent 50Hz timing and prevents the CPU from running flat-out.
-
-## Build It. Run It.
+## Run It
 
 ```bash
 pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Load it in your emulator and press keys:
+![Unit 5 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-05/screenshot.png)
 
-- **Q** → Red flash
-- **A** → Green flash
-- **O** → Cyan flash
-- **P** → Yellow flash
-- **Space** → White flash
+Claim a few cells. Then try to claim one that's already taken. You'll hear a harsh buzz and see the border flash red. Your turn doesn't switch - you get another chance.
 
-Each key should flash *once* per press, not continuously while held.
+## Validation Logic
 
-## What You've Learnt
+The updated `try_claim` routine now branches on the cell state:
 
-- **Keyboard matrix**: 8 half-rows, 5 keys each, read via port $FE
-- **Active low**: 0 = pressed, 1 = not pressed
-- **IN instruction**: Read from hardware port
-- **Debouncing**: Compare current and previous state to detect new presses
-- **HALT**: Wait for vertical blank, gives consistent timing
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/01-try-claim.asm" />
+
+The key change is replacing `ret nz` with a jump to error handling. If the cell is empty (state = 0), we proceed with the claim. If it's occupied (state ≠ 0), we provide feedback and return without changing turns.
+
+## The Error Sound
+
+A harsh, low-frequency buzz signals "that's wrong":
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/02-sound-error.asm" />
+
+Compared to the pleasant rising tone for valid claims, this sound is deliberately unpleasant:
+- **Longer delay** (80 cycles) creates a lower pitch
+- **Shorter duration** (30 loops) keeps it brief
+- The result is a quick "BZZT" that says "nope"
+
+## The Border Flash
+
+Visual feedback reinforces the audio:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/snippets/03-flash-border.asm" />
+
+The border flashes red three times, with black gaps between flashes. Then `update_border` restores the correct player colour. The flashing is fast enough to feel urgent but not so fast it's imperceptible.
+
+## Why Both Audio and Visual?
+
+Good feedback uses multiple channels:
+- **Audio** grabs attention even when you're not looking at the screen
+- **Visual** confirms what happened and draws your eye to the relevant area
+- Together, they create unmistakable feedback
+
+In 1980s arcades, this pattern was everywhere. Error sounds and screen flashes told players "try again" without breaking the flow.
+
+## Delay Timing
+
+The delays use simple countdown loops:
+
+```asm
+            ld      bc, 8000
+.delay:
+            dec     bc
+            ld      a, b
+            or      c
+            jr      nz, .delay
+```
+
+At 3.5 MHz, this gives roughly 8000 × 30 cycles ≈ 70ms per flash. We check `b or c` because DEC BC doesn't set the zero flag - we need to explicitly test if BC has reached zero.
 
 ## The Complete Code
 
 <CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-05/inkwar.asm" />
 
-## Next Unit
+## Try This: Different Error Sound
 
-We can read input. Now we need something to control. In Unit 6, we'll create a cursor that moves around the board — the first truly interactive element of Ink War.
+```asm
+; Higher pitch, longer duration (more annoying!)
+sound_error:
+            ld      b, 50               ; Longer
+.se_loop:
+            ; ... same inner loop ...
+            ld      c, 30               ; Shorter delay = higher pitch
+```
+
+## Try This: Screen Flash Instead
+
+Instead of flashing the border, flash the whole screen by temporarily setting all attributes to red:
+
+```asm
+; Warning: This is more disruptive!
+flash_screen_error:
+            ld      hl, $5800
+            ld      de, $5801
+            ld      bc, 767
+            ld      (hl), %01010000     ; Red paper
+            ldir
+            ; ... delay ...
+            ; Then redraw everything
+```
+
+## What You've Learnt
+
+- **Input validation** - Check before acting, provide feedback for invalid input
+- **Multi-channel feedback** - Combine audio and visual cues for clarity
+- **Error sounds** - Low frequency + short duration = unpleasant buzz
+- **Border control** - OUT ($FE), A with colour in bits 0-2
+- **Delay loops** - BC countdown for timing (DEC BC doesn't set flags, need OR test)
+
+## What's Next
+
+In Unit 6, we'll detect when the board is full and declare a winner. The game gets a proper ending.

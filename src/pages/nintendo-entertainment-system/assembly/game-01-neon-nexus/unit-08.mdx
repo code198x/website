@@ -1,158 +1,126 @@
 ---
-title: "Lives"
-description: "Track lives, handle death, and manage respawn logic."
-pubDate: 2026-01-04
+title: "Enemy Movement"
+description: "Make enemies patrol the arena with bounce patterns."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 8
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "state", "hud"]
+tags: ["assembly", "6502", "movement", "ai", "patrol"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-07"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-09"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 7: Score](/nintendo-entertainment-system/game-01-neon-nexus/unit-07).*
-
 ## What You're Building
 
-Right now, one touch from an enemy means instant game over. That's brutal. Real arcade games give players multiple chances—three lives is the classic convention.
+Enemies that patrol. They bounce off walls, constantly hunting.
 
-This unit adds:
-- A lives counter starting at 3
-- Lives display in the HUD
-- Life loss on enemy collision (not instant game over)
-- Brief invulnerability after respawning
-- Game over only when all lives are gone
+![Enemy Movement](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-08/screenshot.png)
 
-The difference between "unfair" and "challenging" often comes down to whether players feel they had a fair chance.
+The arena is now alive with danger.
 
-## The Plan
+## Direction Variables
 
-1. Add a `lives` variable initialised to 3
-2. Add an `invuln_timer` for post-respawn protection
-3. Display lives count in the HUD alongside score
-4. Modify collision to lose a life instead of instant game over
-5. Respawn player at starting position with invulnerability
-6. Only trigger game over when lives reach zero
+Each enemy needs a direction for X and Y movement:
 
-## Variables for the Life System
+```asm
+enemy_dir_x:  .res NUM_ENEMIES   ; +1 (right) or -1 (left)
+enemy_dir_y:  .res NUM_ENEMIES   ; +1 (down) or -1 (up)
+```
 
-Add two new variables to zero page:
+We use `$FF` for -1 (two's complement). When added to a position, it subtracts 1.
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/snippets/01-variables-for-the-life-system.asm" lang="asm" />
+## Initialising Directions
 
-The `invuln_timer` gives the player a moment of grace after losing a life. Without it, respawning into an enemy means instant death again—frustrating and unfair.
+Each enemy starts moving in a different diagonal:
 
-We'll also define constants for spawn position and invulnerability duration:
+```asm
+init_enemies:
+    ; Enemy 0: Top-left, moving right and down
+    lda #1
+    sta enemy_dir_x+0
+    sta enemy_dir_y+0
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/snippets/02-variables-for-the-life-system.asm" lang="asm" />
+    ; Enemy 1: Top-right, moving left and down
+    lda #$FF            ; -1
+    sta enemy_dir_x+1
+    lda #1
+    sta enemy_dir_y+1
+    ; ...
+```
 
-## Initialising Lives
+## Movement Logic
 
-In the reset routine, set starting lives:
+Each frame, move each enemy and check for wall collisions:
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/snippets/03-initialising-lives.asm" lang="asm" />
+```asm
+move_enemies:
+    ldx #0
 
-The same initialisation happens in `reset_game` when the player restarts after game over.
+@enemy_loop:
+    ; Move X
+    lda enemy_x, x
+    clc
+    adc enemy_dir_x, x
+    sta enemy_x, x
 
-## Displaying Lives in the HUD
+    ; Check bounds
+    cmp #ARENA_LEFT
+    bcs @check_right
+    ; Hit left wall - reverse
+    lda #1
+    sta enemy_dir_x, x
+    lda #ARENA_LEFT
+    sta enemy_x, x
+    jmp @move_y
 
-Extend the HUD to show lives. We'll display "L:" followed by the lives count on the right side of the score row. Since lives is always 0-9, we don't need the division routines—just add the digit tile offset directly.
+@check_right:
+    cmp #ARENA_RIGHT
+    bcc @move_y
+    ; Hit right wall - reverse
+    lda #$FF
+    sta enemy_dir_x, x
+    ; ... same pattern for Y
+```
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/snippets/04-displaying-lives-in-the-hud.asm" lang="asm" />
+## The Bounce
 
-We put lives at column 26 ($1A) to place it on the right side of the screen. The NES screen is 32 tiles wide, so column 26 leaves room for the digit with some margin.
+When an enemy hits a wall:
+1. Reverse its direction for that axis
+2. Clamp its position to the boundary
 
-## Losing a Life
+This creates the classic "bounce" behaviour seen in many early games.
 
-The key change is in collision handling. Instead of immediately setting `STATE_GAMEOVER`, we call a `lose_life` routine that:
-1. Decrements the life counter
-2. Checks if lives hit zero (then game over)
-3. If lives remain, respawns the player with invulnerability
+## Calling Movement
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/snippets/05-losing-a-life.asm" lang="asm" />
+Add enemy movement to the main loop:
 
-The `respawn_player` routine resets position and grants invulnerability:
+```asm
+main_loop:
+    jsr read_controller
+    jsr move_player
+    jsr move_enemies        ; NEW
+    jsr update_enemy_sprites
+    jmp main_loop
+```
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/snippets/06-losing-a-life.asm" lang="asm" />
+## The Code
 
-## Checking Invulnerability
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/nexus.asm" />
 
-The collision check now skips if the player is invulnerable:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/snippets/07-checking-invulnerability.asm" lang="asm" />
-
-## Decrementing the Timer
-
-In the main game loop, decrement the invulnerability timer each frame:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/snippets/08-decrementing-the-timer.asm" lang="asm" />
-
-The `beq @no_invuln` check prevents underflow—if the timer is already zero, we don't decrement it (which would wrap to 255).
-
-## Visual Feedback for Invulnerability
-
-A common technique is to make the player sprite flicker during invulnerability. We can do this by toggling the sprite's visibility based on the timer:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/snippets/09-visual-feedback-for-invulnerability.asm" lang="asm" />
-
-The `AND #%00000100` trick creates a flicker pattern. Bit 2 of the timer changes every 4 frames, creating a visible on/off pattern without being too rapid.
-
-## Updated Reset Game
-
-The `reset_game` routine now initialises lives:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/snippets/10-updated-reset-game.asm" lang="asm" />
-
-## Build It. Run It.
-
-Assemble and run:
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
 ```
 
-Test by:
-1. Starting the game—you should see "3" on the right of the HUD
-2. Colliding with an enemy—lives drops to 2, player respawns, sprite flickers
-3. During flicker, enemies pass through harmlessly
-4. Lose all lives—game over state activates
-5. Press Start—full restart with 3 lives again
+Enemies now patrol endlessly. The arena feels dangerous.
 
-## What You've Built
+## Next
 
-Your game now has a proper life system. Players get three chances, respawn safely after death, and only face game over when truly defeated. The flickering invulnerability gives clear feedback about the protection window.
-
-## What You've Learnt
-
-- **Invulnerability timers**: Preventing instant re-death after respawn
-- **Conditional collision**: Skipping checks based on game state
-- **Visual feedback**: Using bit manipulation for sprite flickering
-- **Underflow prevention**: Checking before decrementing to avoid wrap-around
-- **HUD extension**: Adding more information to the display
-
-## The Complete Code
-
-Here's the complete `nexus.asm` with the lives system:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-08/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-Before moving on, verify:
-
-- [ ] Lives starts at 3 and displays on the right side of the HUD
-- [ ] Touching an enemy decrements lives and respawns the player
-- [ ] During respawn invulnerability, the player sprite flickers
-- [ ] During invulnerability, enemy collisions are ignored
-- [ ] After about one second, invulnerability ends (sprite stops flickering)
-- [ ] At 0 lives, game over state activates
-- [ ] Pressing Start after game over resets lives to 3
-
-## Next Unit
-
-[Unit 9: Title Screen](/nintendo-entertainment-system/game-01-neon-nexus/unit-09) — create a proper title screen to greet players.
+Movement creates threat, but there's no consequence for touching enemies yet. Unit 9 adds collision detection.

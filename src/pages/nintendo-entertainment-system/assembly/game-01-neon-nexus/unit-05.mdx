@@ -1,161 +1,132 @@
 ---
-title: "Items"
-description: "Give a purpose. Learn bounding box collision detection and add collectible items."
-pubDate: 2026-01-03
+title: "Custom Tiles"
+description: "Design better tile graphics for the arena."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 5
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "collision", "items"]
+tags: ["assembly", "6502", "tiles", "chr-rom", "pattern-table"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-04"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-06"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 4: Enemies](/nintendo-entertainment-system/game-01-neon-nexus/unit-04).*
-
 ## What You're Building
 
-Dodging enemies is good, but collecting things is better. Let's add some loot.
+Custom-designed tiles that make the arena look polished.
 
-By the end of this unit, you'll have:
+![Custom Tiles](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-05/screenshot.png)
 
-- A glowing collectible item on the grid
-- Bounding box collision detection
-- Item collection with respawning
-- A score variable tracking your progress
+The border has a brick pattern. The corners have diagonal edges. The floor has a subtle grid.
 
-## The Plan
+## How NES Tiles Work
 
-Here's what we need to add:
+Each tile is 8×8 pixels with 4 possible colours. The pattern table stores tiles as two bit-planes:
 
-1. **Item variables** — X and Y position for one collectible
-2. **Score variable** — Track collected items
-3. **Item graphic** — A distinct tile for the collectible
-4. **Item sprite** — Render the item in OAM
-5. **Collision detection** — Check if player touches item
-6. **Collection logic** — Respawn item when collected
-
-## The Item Graphic
-
-We need a tile that screams "collect me!" A glowing diamond shape:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-05/snippets/01-the-item-graphic.asm" lang="asm" />
-
-We'll use sprite palette 2 (magentas) to make it stand out from both the white player and green enemies.
-
-## Item Variables
-
-Add to zero page:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-05/snippets/02-item-variables.asm" lang="asm" />
-
-## Initialising the Item
-
-Place the item somewhere on the grid:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-05/snippets/03-initialising-the-item.asm" lang="asm" />
-
-## The Item Sprite
-
-The item goes in sprite slot 5 (after the player and 4 enemies):
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-05/snippets/04-the-item-sprite.asm" lang="asm" />
-
-Sprite 5 occupies OAM bytes 20-23 ($0214-$0217).
-
-## Bounding Box Collision
-
-Two rectangles collide if they overlap on both axes. For 8×8 sprites:
+- **Low plane**: 8 bytes, one per row
+- **High plane**: 8 bytes, one per row
+- Combine bits from both planes: 0-3 selects palette colour
 
 ```
-Collision occurs when ALL of these are true:
-  player_x < item_x + 8   (player left edge < item right edge)
-  item_x < player_x + 8   (item left edge < player right edge)
-  player_y < item_y + 8   (player top edge < item bottom edge)
-  item_y < player_y + 8   (item top edge < player bottom edge)
+Low bit:  1  High bit: 0  →  Colour 1
+Low bit:  0  High bit: 1  →  Colour 2
+Low bit:  1  High bit: 1  →  Colour 3
+Low bit:  0  High bit: 0  →  Colour 0 (transparent/background)
 ```
 
-If any condition is false, there's no collision.
+## Designing the Border Tile
 
-In assembly, we check each condition and bail out if any fails:
+A brick pattern alternates between solid rows and rows with gaps:
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-05/snippets/05-bounding-box-collision.asm" lang="asm" />
+```asm
+; Tile 1: Border (brick pattern)
+.byte %11111111   ; Row 0: solid
+.byte %10000001   ; Row 1: edges only
+.byte %10000001   ; Row 2: edges only
+.byte %11111111   ; Row 3: solid
+.byte %11111111   ; Row 4: solid
+.byte %00010001   ; Row 5: offset gaps
+.byte %00010001   ; Row 6: offset gaps
+.byte %11111111   ; Row 7: solid
+```
 
-**`clc`** — "Clear Carry." Ensures the carry flag is 0 before addition. Without this, a leftover carry from previous operations would add an extra 1.
+The high plane adds colour variation within the tile.
 
-**`adc #8`** — "Add with Carry." Adds 8 to A plus the carry flag. After `clc`, it simply adds 8.
+## Corner Tiles
 
-The logic: after `cmp A, B`, the carry flag is **set** if A >= B, **clear** if A < B. We use `bcc` (branch if carry clear) to skip when there's no overlap on that axis.
+Diagonal corners make the arena look less blocky:
 
-## Collecting Items
+```asm
+; Tile 3: Corner TL (diagonal from top-left)
+.byte %11111111   ; Row 0
+.byte %11000000   ; Row 1
+.byte %10100000   ; Row 2
+.byte %10010000   ; Row 3
+.byte %10001000   ; Row 4
+.byte %10000100   ; Row 5
+.byte %10000010   ; Row 6
+.byte %10000001   ; Row 7
+```
 
-When collision is detected, increment score and respawn the item:
+Four corner tiles (TL, TR, BL, BR) are mirrored versions of each other.
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-05/snippets/06-collecting-items.asm" lang="asm" />
+## The Floor Tile
 
-**`asl a`** — "Arithmetic Shift Left." Shifts all bits left, putting 0 into bit 0. This doubles the value. Four shifts multiply by 16.
+A subtle grid pattern adds visual texture without being distracting:
 
-This creates a simple pattern: items appear at different X positions based on the score, alternating between high and low Y positions. It's not random, but it gives variety.
+```asm
+; Tile 2: Floor (subtle grid)
+.byte %00000000
+.byte %00000000
+.byte %00000000
+.byte %00000000
+.byte %00000000
+.byte %00000000
+.byte %00000000
+.byte %10000001   ; Small dots at corners
+```
 
-## Updating the Main Loop
+## Drawing Corners
 
-Add the new calls:
+The arena drawing code now places corner tiles at the four corners:
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-05/snippets/07-updating-the-main-loop.asm" lang="asm" />
+```asm
+@top_row:
+    lda row_counter
+    cmp #0
+    bne @top_row_inner
 
-And call `init_item` during setup, after `init_enemies`.
+    ; Very top row with corners
+    lda #TILE_CORNER_TL
+    sta PPUDATA
+    lda #TILE_BORDER
+    ldx #30
+@top_fill:
+    sta PPUDATA
+    dex
+    bne @top_fill
+    lda #TILE_CORNER_TR
+    sta PPUDATA
+    jmp @next_row
+```
 
-## Build It. Run It.
+## The Code
+
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-05/nexus.asm" />
+
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
-fceux nexus.nes
 ```
 
-Navigate your ship over the glowing item. It should vanish and reappear at a new location!
+The arena now has character. Custom tiles transform a functional border into something that looks designed.
 
-![Player collecting items](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-05/screenshot.png)
+## Next
 
-## What You've Built
-
-Look at what you made:
-
-- **Collectible item** with distinct graphic and palette
-- **Bounding box collision** using compare and branch
-- **Score tracking** in a variable
-- **Item respawning** at new positions
-
-The game has a goal now. Collect items while dodging enemies.
-
-## What You've Learnt
-
-- **Bounding boxes** check rectangular overlap on both axes
-- **`clc` + `adc`** perform clean addition
-- **`asl`** doubles values (shift left = multiply by 2)
-- **Carry flag after `cmp`** indicates greater-than/less-than
-- **Sequential condition checks** with early exit for efficiency
-
-## The Complete Code
-
-Here's the full `nexus.asm` at this point:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-05/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-- Build + run: `ca65 nexus.asm -o nexus.o && ld65 -C nes.cfg nexus.o -o nexus.nes && fceux nexus.nes`
-- You should see: player (white), enemies (green), and item (magenta)
-- When you fly over the item, it disappears and reappears elsewhere
-- Enemies still fall through you harmlessly
-- If the item doesn't respond, check collision logic and bounding box calculations
-- If the item appears in weird places, check the respawn math in collect_item
-
-## Next Unit
-
-Grabbing items is fun, but flying through enemies without consequence is too easy.
-
-In Unit 6, we add **enemy collision** — and face the consequences of getting caught.
+The tiles look good but use only one palette. Unit 6 adds colour regions with the attribute table.

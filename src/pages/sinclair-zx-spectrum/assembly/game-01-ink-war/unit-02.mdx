@@ -1,134 +1,161 @@
 ---
-title: "The Attribute Grid"
-description: "Master the 32×24 grid of colour cells. Calculate addresses, fill regions, and create patterns."
-pubDate: 2026-01-09
+title: "Claiming Cells"
+description: "Press Space to claim territory. Cells turn your colour. Take turns with a friend."
+pubDate: 2026-01-12
 game: 1
 gameName: "Ink War"
 unit: 2
 totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "display", "attributes", "loops"]
+tags: ["assembly", "z80", "attributes", "gameplay"]
 prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-01"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-03"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-## What You're Building
+The board is ready. Now it's time to claim it.
 
-In Unit 1, we placed a few coloured cells by hand. But Ink War needs an 8×8 board — 64 cells. We need to understand the grid.
+This unit adds the core gameplay: press Space to claim the cell under your cursor. The cell turns your colour. Then it's the other player's turn. Two players, one keyboard, taking turns until the board is full.
 
-By the end of this unit, you'll have:
+## Run It
 
-- A clear mental model of the 32×24 attribute grid
-- Code to fill entire rows with colour
-- A checkerboard pattern demonstrating position-based logic
-- Understanding of BRIGHT colours
+Assemble and run:
+
+```bash
+pasmonext --tapbas inkwar.asm inkwar.tap
+```
 
 ![Unit 2 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-02/screenshot.png)
 
-## The Grid
+The board looks the same as before - but now press **Space**.
 
-The Spectrum screen has 256×192 pixels, but the attribute system divides it into a grid of 8×8 pixel cells:
+The cell under your cursor turns **red** (bright red, actually). A short rising tone plays. Move the cursor and press Space again - now it turns **blue**. You're Player 2.
 
-- **32 columns** (256 ÷ 8 = 32)
-- **24 rows** (192 ÷ 8 = 24)
-- **768 cells total** (32 × 24)
+Keep pressing Space. Red, blue, red, blue. The board fills up with colour.
 
-Each cell has one attribute byte controlling its colours. These 768 bytes live at $5800-$5AFF.
+Hand the keyboard to a friend. Now you're playing Ink War.
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/01-grid-layout.asm" />
+## What Changed
 
-## Calculating Addresses
+We added three things:
+1. **Board state** - An array tracking who owns each cell
+2. **Claiming** - Press Space to take ownership
+3. **Turn switching** - Players alternate automatically
 
-To colour a specific cell, we need its address. The formula is simple:
+### Player Colours
 
-```
-address = $5800 + (row × 32) + column
-```
+Each player gets a distinct colour:
 
-Row 0 is the top of the screen. Column 0 is the left edge.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/01-player-attributes.asm" />
 
-| Position | Calculation | Address |
-|----------|-------------|---------|
-| Row 0, Col 0 | $5800 + 0 + 0 | $5800 |
-| Row 0, Col 31 | $5800 + 0 + 31 | $581F |
-| Row 1, Col 0 | $5800 + 32 + 0 | $5820 |
-| Row 10, Col 15 | $5800 + 320 + 15 | $5800 + $14F = $594F |
+Player 1 is red (`%01010000`), Player 2 is blue (`%01001000`). Both use BRIGHT for vivid colours that stand out from the white empty cells.
 
-The cells are stored row by row, 32 bytes per row.
+The cursor attributes (`P1_CURSOR`, `P2_CURSOR`) combine the player colour with FLASH, so when you move onto your own cell, it still flashes.
 
-## Clearing the Screen
+### Game State
 
-Before drawing, we should clear the screen to a known state. We could loop through all 768 bytes, but there's a faster way: the Z80's `LDIR` instruction.
+We need to remember who owns each cell:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/02-clear-screen.asm" />
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/02-game-state.asm" />
 
-`LDIR` means "Load, Increment, Repeat". It copies the byte at (HL) to (DE), increments both pointers, decrements BC, and repeats until BC reaches zero.
+The `board_state` array has 64 bytes - one per cell. Each byte is:
+- `0` = empty
+- `1` = Player 1 (red)
+- `2` = Player 2 (blue)
 
-By setting the first byte and then copying it forward, we fill the entire area with the same value. This is much faster than a loop.
+The `current_player` variable tracks whose turn it is, starting with Player 1.
 
-<InlineNote>
-LDIR is one of the Z80's most useful instructions. You'll use it for clearing memory, copying data, and scrolling screens. Learn it well.
-</InlineNote>
+### Initialisation
 
-## Filling a Row
+At startup, we clear the board and set Player 1 to go first:
 
-To fill a specific row with colour, we calculate its starting address and write 32 bytes:
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/03-init-game.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/03-fill-row.asm" />
+The `djnz` loop writes zero to all 64 cells. Simple and fast.
 
-`DJNZ` means "Decrement B and Jump if Not Zero". It's perfect for counted loops — load B with the count, and DJNZ handles the rest.
+### Trying to Claim
 
-## The Checkerboard Pattern
+When you press Space, we check if the claim is valid:
 
-A checkerboard alternates colours based on position. The trick: XOR the row number with the column number. If the result is odd, use one colour; if even, use another.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/04-try-claim.asm" />
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/04-checkerboard.asm" />
+If the cell isn't empty (`or a` / `ret nz`), we ignore the press. No stealing opponent cells - not yet, anyway.
 
-This pattern is important for Ink War. Our game board will start as a checkerboard of potential moves, with players claiming cells to turn them their colour.
+The player switch uses a clever trick: `xor 3` toggles between 1 and 2. Binary 01 XOR 11 = 10, and 10 XOR 11 = 01.
 
-<InlineNote>
-XOR (exclusive OR) returns 1 when the inputs differ. Row 0, Column 1: 0 XOR 1 = 1 (odd). Row 1, Column 1: 1 XOR 1 = 0 (even). This creates the alternating pattern.
-</InlineNote>
+### The Claim Itself
 
-## BRIGHT Colours
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/05-claim-cell.asm" />
 
-The Spectrum has 8 basic colours, but the BRIGHT bit doubles them (well, almost — bright black is still black). BRIGHT colours are more vivid and saturated.
+Two things happen:
+1. We store the player number in `board_state`
+2. We change the attribute colour on screen
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/05-bright-colours.asm" />
+The array index is `row * 8 + col`. We calculate it using shifts: `add a, a` three times multiplies by 8.
 
-In our screenshot, the bottom two rows show this. Row 20 has normal colours; row 21 has the same colours with BRIGHT enabled. The difference is subtle but noticeable.
+### Sound Feedback
 
-For Ink War, we'll use BRIGHT colours for player territories to make them stand out from the board.
+A claim should feel satisfying:
 
-## Build It. Run It.
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/snippets/06-sound-claim.asm" />
 
-```bash
-pasmonext --sna inkwar.asm inkwar.sna
-```
+This generates a rising tone by decreasing the delay between speaker toggles. The Spectrum's beeper is just a single bit - toggle it fast for high pitch, slow for low pitch.
 
-You should see:
-
-- Three coloured bars at the top (red, green, blue)
-- An 8×8 checkerboard in the centre
-- A colour gradient at the bottom (normal then bright)
-
-## What You've Learnt
-
-- **Grid layout**: 32 columns × 24 rows = 768 attribute cells
-- **Address calculation**: $5800 + (row × 32) + column
-- **LDIR**: Fast block copy instruction
-- **DJNZ**: Counted loop instruction
-- **Checkerboard**: XOR row with column for alternating pattern
-- **BRIGHT colours**: Bit 6 makes colours more vivid
+The speaker is bit 4 of port $FE (the same port as border colour). We alternate between `$10` (speaker on) and `$00` (speaker off).
 
 ## The Complete Code
 
 <CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-02/inkwar.asm" />
 
-## Next Unit
+## Try This: Change Player Colours
 
-We can fill screens and create patterns. Now it's time to draw our actual game board — an 8×8 playing area with a border, positioned in the centre of the screen. The foundation of Ink War takes shape.
+Edit `P1_ATTR` and `P2_ATTR` to use different colours:
+
+```asm
+P1_ATTR     equ     %01100000       ; Yellow paper + BRIGHT
+P2_ATTR     equ     %01011000       ; Cyan paper + BRIGHT
+```
+
+Remember the colour values:
+- 0 = black, 1 = blue, 2 = red, 3 = magenta
+- 4 = green, 5 = cyan, 6 = yellow, 7 = white
+
+The PAPER bits are 5-3, so shift your colour left by 3. Yellow (6) becomes `110` in bits 5-3, plus BRIGHT (bit 6) = `%01110000`... wait, that's white. Let me recalculate.
+
+Actually: `%01100000` = BRIGHT + paper 4 (green). For yellow: `%01110000` = BRIGHT + paper 6. Try different combinations and see what looks good.
+
+## Try This: Change the Sound
+
+Make the claim sound descending instead of ascending:
+
+```asm
+sound_claim:
+            ld      hl, 100         ; Starting pitch (higher)
+            ld      b, 20
+
+.loop:
+            ; ... same tone generation ...
+
+            ; Decrease pitch (add to delay)
+            ld      de, 20
+            add     hl, de          ; Changed from sbc to add
+
+            djnz    .loop
+            ret
+```
+
+Or make it longer, shorter, different starting pitch. The beeper is primitive but expressive.
+
+## What You've Learnt
+
+- **Game state arrays** - `defs 64, 0` reserves 64 bytes initialised to zero
+- **Turn-based logic** - Track current player, switch after valid moves
+- **Input validation** - Check cell state before allowing claims
+- **XOR toggling** - `xor 3` switches between 1 and 2
+- **Beeper sound** - Toggle bit 4 of port $FE at varying speeds for pitch
+
+## What's Next
+
+In Unit 3, you'll customise the game's appearance - different colours, different cursor style, making it your own. You'll learn exactly how attribute bytes work by changing them.

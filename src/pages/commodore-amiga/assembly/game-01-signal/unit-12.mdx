@@ -1,167 +1,139 @@
 ---
-title: "Title Screen"
-description: "Add a title screen with game logo and press fire to start functionality."
-pubDate: 2026-01-04
+title: "Score Display"
+description: "Binary to decimal. Blitter draws digits. Player sees progress. Visual feedback."
+pubDate: 2026-01-12
 game: 1
-gameName: "Hop"
+gameName: "Signal"
 unit: 12
-totalUnits: 16
+totalUnits: 64
 system: "Commodore Amiga"
-tags: ["assembly", "68000", "title", "game-flow"]
+tags: ["assembly", "68000", "blitter", "display"]
+prevLesson: "/commodore-amiga/assembly/game-01-signal/unit-11"
 nextLesson: "/commodore-amiga/assembly/game-01-signal/unit-13"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-import InlineNote from "../../../../components/units/InlineNote.astro";
-
-*Need to catch up? Check out [Unit 11: Sound Effects](/commodore-amiga/game-01-signal/unit-11).*
-
 ## What You're Building
 
-Every game needs a title screen. It's the player's first impression—a chance to set the mood before gameplay begins. This unit adds:
+Visual feedback.
 
-- A game title displayed at the centre of the screen
-- "PRESS FIRE TO START" prompt with blinking animation
-- Clean transition from title screen to gameplay
-- Game mode state machine to manage different screens
+Tracking points internally is useless if players can't see them. This unit adds score display using bitmap digits. We convert the binary score to decimal and draw each digit using the Blitter.
 
-When you're done, launching the game will show the title screen. Press fire to begin playing. After game over, you'll return to the title screen to start again.
+By the end of this unit:
+- 6-digit score displayed on screen
+- Binary to decimal conversion using DIVU
+- Bitmap digit font (0-9)
+- Blitter draws digits from font data
 
-## Game Modes vs Game States
+![Unit 12 Screenshot](/images/commodore-amiga/game-01-signal/unit-12/screenshot.png)
 
-We already have game states (ALIVE, DYING, DEAD, GAMEOVER) that control what happens during gameplay. Now we need a higher-level concept: **game modes** that determine which screen we're showing.
+## The Digit Font
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/01-game-modes-vs-game-states.asm" lang="asm" />
+We define a simple 8x8 pixel bitmap font for digits 0-9. Each digit is stored as 8 words (16 bytes), with the pattern in the high byte:
 
-The game mode determines whether we run the title screen logic, the gameplay logic, or the game over screen logic. Within MODE_PLAYING, we still use our existing game states to track whether the frog is alive, dying, or dead.
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/03-digit-font.asm" />
 
-This two-level approach keeps things organised:
+The word format ensures proper alignment for the Blitter. The low byte is always zero, so the visible digit occupies the left 8 pixels of each 16-pixel word.
 
+## Binary to Decimal Conversion
+
+The score is a 32-bit binary number. To display it, we convert to 6 decimal digits using repeated division by 10:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/02-binary-to-decimal.asm" />
+
+The DIVU instruction divides a 32-bit dividend by a 16-bit divisor:
+- Low word of result = quotient
+- High word of result = remainder
+
+We extract digits from right to left (ones place first), storing them in reverse order so the array reads left to right.
+
+## Drawing Digits with the Blitter
+
+Each digit is drawn by blitting from the font data to the screen:
+
+```asm
+.draw_loop:
+            move.w  (a1)+,d0              ; Get digit value (0-9)
+            mulu    #16,d0                ; Offset into font (16 bytes/digit)
+            lea     digit_font,a0
+            add.l   d0,a0                 ; Point to correct digit
+
+            bsr     wait_blit
+
+            move.l  a0,BLTAPTH(a5)        ; Source: font data
+            move.l  a2,BLTDPTH(a5)        ; Dest: screen position
+            move.w  #$ffff,BLTAFWM(a5)
+            move.w  #$ffff,BLTALWM(a5)
+            move.w  #0,BLTAMOD(a5)
+            move.w  #SCREEN_W-2,BLTDMOD(a5)
+            move.w  #$09f0,BLTCON0(a5)    ; D = A (copy)
+            move.w  #0,BLTCON1(a5)
+            move.w  #(8<<6)|1,BLTSIZE(a5) ; 8 rows, 1 word
+
+            addq.l  #2,a2                 ; Next digit position
+            dbf     d4,.draw_loop
 ```
-Game Mode: MODE_TITLE
-    └── Show title, wait for fire
 
-Game Mode: MODE_PLAYING
-    └── Game State: STATE_ALIVE (normal play)
-    └── Game State: STATE_DYING (death animation)
-    └── Game State: STATE_DEAD (respawn delay)
-    └── (transitions to MODE_GAMEOVER when lives = 0)
+Key points:
+- Each digit is 1 word (16 pixels) wide, but only the left 8 pixels contain the pattern
+- We advance by 2 bytes between digits for word alignment
+- BLTCON0 = $09f0 means: use channel A, use channel D, minterm = copy A to D
 
-Game Mode: MODE_GAMEOVER
-    └── Show game over, wait for fire
-    └── (transitions back to MODE_TITLE)
+## Word Alignment
+
+The Blitter works with word-aligned addresses. When positioning digits:
+
+```asm
+SCORE_X         equ 240         ; Pixel X position
+SCORE_Y         equ 200         ; Pixel Y position
+
+; Calculate screen address
+lea     screen_plane,a2
+add.l   #SCORE_Y*SCREEN_W+SCORE_X/8,a2
 ```
 
-## Drawing Text to the Screen
+We divide X by 8 to convert pixels to bytes. The destination must be word-aligned, so we advance by 2 bytes (16 pixels) between digits rather than 1 byte.
 
-We already have digit rendering for the score. For the title screen, we need to draw alphabetic text. We'll extend our font to include letters A-Z.
+## DIVU Limitations
 
-Each letter is 8x8 pixels, just like our digits. We store them as 8 bytes of bitmap data:
+DIVU produces a 16-bit quotient. If the score exceeds 655,359 (quotient > 65535), the division overflows. For a 6-digit display (max 999,999), this limits practical scores.
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/02-drawing-text-to-the-screen.asm" lang="asm" />
+For larger scores, you'd need software division routines. For our Frogger clone, this limit is more than sufficient.
 
-For the title "HOP", we only need three letters. But let's include the full alphabet so we can display other messages too:
+## When to Update
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/03-drawing-text-to-the-screen.asm" lang="asm" />
+We call `display_score` at strategic points:
 
-## Blinking Text Effect
+1. **Game start**: Show initial 000000
+2. **Home reached**: Update after adding points
+3. **Game restart**: Reset display after game over
 
-A static "PRESS FIRE" message is boring. Making it blink draws the player's attention and signals that input is expected.
+```asm
+            ; After adding points for reaching home
+            add.l   #POINTS_PER_HOME,score
+            bsr     display_score         ; Update display
+```
 
-We use a simple frame counter and toggle visibility every 30 frames (half a second at 50fps):
+## Key Takeaways
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/04-blinking-text-effect.asm" lang="asm" />
+- **DIVU** extracts decimal digits via remainder
+- **Bitmap fonts** are simple arrays of pixel data
+- **Blitter** copies font data to screen efficiently
+- **Word alignment** required for Blitter destinations
+- **Immediate feedback** makes scoring meaningful
 
-When drawing the prompt, we check `blink_visible` and skip the draw if it's zero.
+## The Code
 
-## The Title Screen Loop
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/signal.asm" />
 
-The title screen has its own update routine. It's simpler than gameplay—we just:
-
-1. Update the blink timer
-2. Draw the title text
-3. Draw the blinking prompt (if visible)
-4. Check for fire button
-5. Start the game when fire is pressed
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/05-the-title-screen-loop.asm" lang="asm" />
-
-## Starting a New Game
-
-When transitioning from the title screen to gameplay, we need to reset everything:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/06-starting-a-new-game.asm" lang="asm" />
-
-The `fire_delay` prevents the fire button press that started the game from immediately triggering a hop on the first frame.
-
-## Modifying the Main Loop
-
-Our main loop now branches based on game mode:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/07-modifying-the-main-loop.asm" lang="asm" />
-
-## Text Rendering System
-
-Let's implement the text drawing routine. It's similar to our number rendering but uses letters instead of digits:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/08-text-rendering-system.asm" lang="asm" />
-
-<InlineNote>
-ASCII codes make text handling straightforward. 'A' is 65, 'Z' is 90. Subtract 65 to get font indices 0-25. The same technique works for digits: '0' is 48, so subtract 48 for indices 0-9.
-</InlineNote>
-
-## The Game Over Transition
-
-When lives reach zero during gameplay, we transition to MODE_GAMEOVER:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/09-the-game-over-transition.asm" lang="asm" />
-
-## Build It. Run It.
-
-Assemble and run:
+## Build It
 
 ```bash
-vasmm68k_mot -Fhunkexe -o hop -nosym hop.asm
+vasmm68k_mot -Fhunkexe -kick1hunks -o signal signal.asm
 ```
 
-Run in an emulator. You should see:
+## What's Next
 
-1. Title screen with "HOP" displayed
-2. "PRESS FIRE" blinking below
-3. Press fire to start playing
-4. After game over, you return to a game over screen
-5. Press fire again to return to title
-
-The game now has proper flow—title screen, gameplay, game over, and back to title.
-
-## What You've Learnt
-
-- **Game modes**: High-level state machine for different screens
-- **Text rendering**: Drawing strings character by character
-- **ASCII conversion**: Using character codes to index font data
-- **Blink animation**: Frame counter toggling visibility
-- **Game flow**: Clean transitions between title, play, and game over
-- **Fire delay**: Preventing input from triggering across screen transitions
-
-## The Complete Code
-
-Here's the complete `hop.asm` with title screen support:
-
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/hop.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-Before moving on, verify:
-
-- [ ] Game starts on title screen showing "HOP"
-- [ ] "PRESS FIRE" blinks on and off
-- [ ] Fire button starts the game
-- [ ] Game over returns to a game over screen
-- [ ] Fire from game over returns to title
-- [ ] Score displays correctly on game over screen
-
-## Next Unit
-
-[Unit 13: High Score Table](/commodore-amiga/game-01-signal/unit-13) - Add persistent high scores that survive game resets.
+The game tracks and displays score, but has no time pressure. In Unit 13, we'll add a countdown timer that creates urgency and awards bonus points for speed.

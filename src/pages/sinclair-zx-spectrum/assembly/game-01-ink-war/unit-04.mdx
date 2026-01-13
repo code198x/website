@@ -1,107 +1,167 @@
 ---
-title: "Player Colours"
-description: "Define the colours of war. Bright red versus bright blue. Create routines to claim territory."
-pubDate: 2026-01-09
+title: "Score and Turn Display"
+description: "Count cells, display scores, show whose turn it is. The game gets a proper UI."
+pubDate: 2026-01-12
 game: 1
 gameName: "Ink War"
 unit: 4
 totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "game-state", "subroutines", "colours"]
+tags: ["assembly", "z80", "text", "ui"]
 prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-03"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-05"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-## What You're Building
+Players need to know the score. They need to know whose turn it is.
 
-We have a board. Now we need to show what happens when players battle over it.
+This unit adds a proper user interface: score display showing how many cells each player owns, and a turn indicator that changes colour with each move. The game starts to feel complete.
 
-By the end of this unit, you'll have:
-
-- Player colour constants (bright red vs bright blue)
-- A `set_cell` subroutine to claim any cell
-- A visual preview of what gameplay will look like
-- The foundation for game state management
-
-![Unit 4 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-04/screenshot.png)
-
-## Defining Player Colours
-
-Each cell can be in one of three states: empty, claimed by Player 1, or claimed by Player 2. We need constants for both the state values and their visual appearance:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/01-player-constants.asm" />
-
-We use **bright** red and blue (bit 6 set) because they pop against the white board. Normal red and blue would work, but bright colours make the territories visually distinct.
-
-<InlineNote>
-Why red vs blue? They're traditional rivals — think chess pieces, sports teams, political maps. They're also on opposite sides of the colour spectrum, making them easy to distinguish even at a glance.
-</InlineNote>
-
-## The set_cell Subroutine
-
-Rather than calculating addresses every time we want to colour a cell, we create a reusable subroutine. Give it a row, column, and player, and it handles the rest:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/02-set-cell.asm" />
-
-The key insight: board coordinates (0-7) aren't the same as screen coordinates. We add `BOARD_TOP` and `BOARD_LEFT` to convert from board space to screen space.
-
-## Converting State to Colour
-
-The `get_player_colour` subroutine translates a player number into the corresponding attribute byte:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/03-get-colour.asm" />
-
-This separation is important. The game logic works with player numbers (0, 1, 2). The display code works with attribute bytes. Keeping them separate makes the code cleaner and easier to modify.
-
-## Claiming Territory
-
-To claim a cell, we load the row into B, column into C, player into A, and call `set_cell`:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/04-claim-example.asm" />
-
-In the screenshot, you can see the result: Player 1 (red) has claimed the top-left corner, while Player 2 (blue) controls the bottom-right. The white cells in between are unclaimed territory — the battlefield.
-
-## Looking Ahead: Game State
-
-Right now, we're only changing colours on screen. The display *looks* like a game, but there's no actual game state — no memory of which cells belong to whom.
-
-In later units, we'll add a 64-byte array tracking ownership. But for now, the visual feedback is enough to understand the goal: claim more cells than your opponent.
-
-## Build It. Run It.
+## Run It
 
 ```bash
 pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-You should see:
+![Unit 4 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-04/screenshot.png)
 
-- The game board with white empty cells
-- Red cells in the top-left (Player 1's territory)
-- Blue cells in the bottom-right (Player 2's territory)
-- A preview of what gameplay will look like
+Above the board you'll see:
+- **P1:00** with a score (red background)
+- **P2:00** with a score (blue background)
+- **TURN** indicator in the current player's colour
 
-## What You've Learnt
+Claim some cells. Watch the scores update. Watch the turn indicator change colour.
 
-- **Player constants**: State values (0/1/2) and attribute colours
-- **Coordinate conversion**: Board space (0-7) to screen space
-- **Reusable subroutines**: `set_cell` handles address calculation
-- **State vs display**: Game logic uses numbers, display uses colours
-- **16-bit multiplication**: Using `ADD HL,HL` to multiply by powers of 2
+## Counting Cells
+
+To display scores, we first need to count them:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/01-count-cells.asm" />
+
+This iterates through all 64 cells of `board_state`, counting how many belong to each player. The `djnz` instruction (Decrement and Jump if Not Zero) is perfect for loops - it decrements B and jumps back if B isn't zero yet.
+
+We store the counts in `p1_count` and `p2_count` for display.
+
+## Printing Characters
+
+Rather than wrestling with the ROM's print routines (which need careful system variable setup), we write our own character printing routine. This gives us complete control and teaches more about how the Spectrum works.
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/05-print-char.asm" />
+
+The routine:
+1. Looks up the character's pixel data in the ROM character set at $3C00
+2. Calculates where on screen to draw it using the Spectrum's quirky display layout
+3. Copies 8 bytes (one per pixel row) to the display file
+
+## The Spectrum's Screen Layout
+
+The Spectrum's display file at $4000 has a complex layout. For each character position at row R, column C:
+
+```asm
+; High byte = $40 + (row/8)*8 + pixel_line
+; Low byte = (row%8)*32 + column
+```
+
+The screen is divided into thirds (rows 0-7, 8-15, 16-23), with each pixel row 256 bytes apart. Our `print_char` routine handles this complexity.
+
+## Converting Numbers to Text
+
+Scores are numbers (0-64), but we print characters. To convert:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/02-print-number.asm" />
+
+The conversion is simple: subtract 10 repeatedly to get the tens digit, then add ASCII '0' (48 decimal) to convert digits to printable characters.
+
+For example, the number 23:
+- Subtract 10 twice: 23 → 13 → 3 (tens = 2, remainder = 3)
+- Tens digit: 2 + '0' = '2' (ASCII 50)
+- Units digit: 3 + '0' = '3' (ASCII 51)
+
+## The Turn Indicator
+
+A simple "TURN" label that changes colour based on whose turn it is:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/snippets/03-draw-turn.asm" />
+
+We print the text first, then set the attributes afterwards. The text stays the same - only the background colour changes.
+
+## Setting Attribute Ranges
+
+We colour the text by setting attributes for multiple consecutive cells:
+
+```asm
+set_attr_range:
+            ; A = row, C = start column, B = count, E = attribute
+            ; Calculate address, then write E to B consecutive bytes
+```
+
+This lets us create coloured "badges" for the score labels - red background for P1, blue for P2.
+
+## UI Layout Constants
+
+The display positions are defined as constants at the top:
+
+```asm
+SCORE_ROW   equ     2               ; Score display row
+P1_SCORE_COL equ    10              ; "P1: nn" column
+P2_SCORE_COL equ    18              ; "P2: nn" column
+TURN_ROW    equ     4               ; Turn indicator row
+TURN_COL    equ     14              ; Turn indicator column
+```
+
+Changing these moves the entire UI. Want scores at the bottom? Change `SCORE_ROW` to 20.
+
+## Updating After Claims
+
+When a cell is claimed, we update the display:
+
+```asm
+try_claim:
+            ; ... claim the cell ...
+
+            call    draw_ui         ; Update scores and turn indicator
+            call    update_border
+            call    draw_cursor
+```
+
+The `draw_ui` routine calls `count_cells` to recalculate, then redraws the score display and turn indicator. Every claim triggers an update.
 
 ## The Complete Code
 
 <CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-04/inkwar.asm" />
 
-## Phase 1 Progress
+## Try This: Move the UI
 
-Units 1-4 covered the display fundamentals:
-- Unit 1: First contact with attributes
-- Unit 2: The 32×24 grid
-- Unit 3: Drawing the board
-- Unit 4: Player colours
+Change the position constants:
 
-**Next: Input.** A game isn't a game without player control. In Unit 5, we'll read the keyboard and start responding to the humans at the controls.
+```asm
+; Scores at the bottom
+SCORE_ROW   equ     21
+
+; Turn indicator on the left
+TURN_ROW    equ     12
+TURN_COL    equ     2
+```
+
+## Try This: Different Colour Scheme
+
+```asm
+; Green for P1, Magenta for P2
+P1_TEXT     equ     %01100111       ; Green paper, white ink
+P2_TEXT     equ     %01011111       ; Magenta paper, white ink
+```
+
+## What You've Learnt
+
+- **Custom print routine** - Direct screen memory access gives full control
+- **ROM character set** - Character data at $3C00, each character is 8 bytes
+- **Display file layout** - Screen memory has complex interleaved addressing
+- **Number to ASCII** - Add '0' (48) to convert a digit to its character code
+- **Cell counting** - Iterate with DJNZ, compare and branch to count categories
+- **Attribute ranges** - Set consecutive attributes to create coloured text backgrounds
+
+## What's Next
+
+In Unit 5, we'll add proper move validation with feedback - error sounds and visual cues when you try to claim an already-occupied cell.

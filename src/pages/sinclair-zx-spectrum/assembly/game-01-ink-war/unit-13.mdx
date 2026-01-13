@@ -1,120 +1,137 @@
 ---
-title: "Game States"
-description: "Structure your game with a state machine: title screen, playing, and results. Clean transitions make your game feel professional."
-pubDate: 2026-01-09
+title: "AI Difficulty Levels"
+description: "Choose your challenge: Easy (random), Medium (adjacent), or Hard (full strategy)."
+pubDate: 2026-01-12
 game: 1
 gameName: "Ink War"
 unit: 13
 totalUnits: 64
 system: "Sinclair ZX Spectrum"
-tags: ["assembly", "z80", "state-machine", "title-screen", "game-loop"]
+tags: ["assembly", "z80", "ai", "difficulty"]
 prevLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-12"
 nextLesson: "/sinclair-zx-spectrum/assembly/game-01-ink-war/unit-14"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import InlineNote from "../../../../components/units/InlineNote.astro";
 
-## What You're Building
+We've built three distinct AI behaviours across Units 9-12: random moves, adjacent priority, and full strategy with defense and position bonuses. But players can only face the hardest version. This unit lets them choose their challenge.
 
-Until now, our game starts playing immediately and ends forever. Real games have structure: a title screen to build anticipation, gameplay, then results with the option to play again.
+The title screen now offers four options. Two-player mode remains, but vs Computer splits into Easy, Medium, and Hard — each using a different AI algorithm.
 
-By the end of this unit, you'll have:
-
-- A state machine with three distinct states
-- A title screen showing "INK WAR" and a prompt
-- Clean transitions between states
-- A game that flows: title → playing → results → title
-
-![Unit 13 Screenshot](/images/sinclair-zx-spectrum/game-01-ink-war/unit-13/screenshot.png)
-
-*The title screen — press any key to begin the battle.*
-
-## The State Machine Pattern
-
-A state machine is one of the most useful patterns in game development. Instead of tangled conditionals, you have:
-
-1. A variable holding the current state
-2. A dispatch that routes to the right handler
-3. Transition functions that set up each state
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/01-state-constants.asm" />
-
-Three states are all we need: showing the title, playing the game, showing results.
-
-## The Main Loop Dispatch
-
-Every frame, check the current state and call the appropriate handler:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/02-state-dispatch.asm" />
-
-Each handler is responsible for exactly one frame of logic. The title handler waits for a key. The playing handler processes input and moves. The results handler flashes the border and checks for a key.
-
-<InlineNote>
-Notice how the default case goes to title state. Defensive programming — if game_state somehow becomes invalid, we recover gracefully.
-</InlineNote>
-
-## State Transitions
-
-Each transition function sets up everything needed for its state:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/03-state-transitions.asm" />
-
-The key insight: each state function is self-contained. It clears the screen, draws what it needs, and sets all relevant variables. No assumptions about what came before.
-
-## Blocking vs Non-Blocking Input
-
-We need two styles of key detection:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/04-key-handling.asm" />
-
-The title screen uses `wait_any_key` — it blocks until a key is pressed. We want the player to see the title and consciously choose to start.
-
-The results screen uses `check_any_key` — it returns immediately so the border can keep flashing. The player can watch the celebration as long as they like.
-
-<InlineNote>
-Why wait for key release first? Otherwise, if the player is still holding a key from gameplay, we'd immediately skip the title screen.
-</InlineNote>
-
-## Resetting for New Games
-
-When starting a new game, we must clear everything:
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/05-reset-game.asm" />
-
-Every variable that affects gameplay gets reset. The board is cleared. Scores return to zero. Player 1 starts. Miss anything here, and you'll have subtle bugs where the second game behaves differently from the first.
-
-## Build It. Run It.
+## Run It
 
 ```bash
 pasmonext --sna inkwar.asm inkwar.sna
 ```
 
-Run in your emulator:
+![Unit 13 Title Screen](/images/sinclair-zx-spectrum/game-01-ink-war/unit-13/title-screen.png)
 
-1. The title screen appears: "INK WAR" and "PRESS ANY KEY TO START"
-2. Press any key — the game board appears
-3. Play through a full game
-4. When all cells are claimed, the winner is announced
-5. The border flashes in the winner's colour
-6. Press any key — back to the title screen
-7. Play again!
+The new title screen shows all four options. Press 1-4 to select your game mode.
 
-The game now has a complete loop. You can play forever.
+![Unit 13 Gameplay](/images/sinclair-zx-spectrum/game-01-ink-war/unit-13/screenshot.png)
 
-## What You've Learnt
+## The Three Difficulties
 
-- **State machine pattern**: Clean separation of game phases
-- **State dispatch**: Routing to handlers based on current state
-- **Transition functions**: Self-contained state setup
-- **Blocking vs non-blocking input**: Different needs for different states
-- **Game reset**: Ensuring each playthrough starts fresh
+Each difficulty level uses a different cell selection algorithm:
+
+| Level | Algorithm | Behaviour |
+|-------|-----------|-----------|
+| **Easy** | Random | Picks any empty cell at random. No strategy. |
+| **Medium** | Adjacent priority | Expands from existing territory. No defense. |
+| **Hard** | Full strategy | Offense + defense + position bonuses. |
+
+Easy is beatable by anyone. Medium requires some thought. Hard plays optimally within its evaluation limits.
+
+## Difficulty Constants
+
+We define the three levels as constants:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/01-difficulty-constants.asm" />
+
+The title screen repositions to accommodate four menu options instead of two.
+
+## Title Screen Selection
+
+The keyboard reading now checks four keys instead of two:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/03-title-selection.asm" />
+
+Keys 1-4 map to bits 0-3 of keyboard row $F7. Each AI option sets both `game_mode` (to GM_VS_AI) and `ai_difficulty` (to the appropriate level).
+
+## AI Dispatch
+
+The core change is in `ai_make_move`, which now dispatches based on difficulty:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/snippets/02-ai-dispatch.asm" />
+
+Three paths:
+- **Easy**: Calls `find_random_empty_cell` directly
+- **Medium**: Calls new `find_adjacent_only` (AI neighbours only)
+- **Hard**: Calls `find_best_adjacent_cell` (full strategy)
+
+## Medium Difficulty Algorithm
+
+Medium difficulty uses a simplified version of the scoring algorithm — only AI adjacency, no defense or position bonus:
+
+```asm
+find_adjacent_only:
+            ; ... scan all cells ...
+            ; For each empty cell:
+            call    count_adjacent_ai   ; Only this - no defense/position
+            ; ... keep best score ...
+```
+
+This creates an AI that expands its territory but doesn't actively block you or prioritise strategic positions.
+
+## Why Three Distinct Algorithms?
+
+We could have used probability-based mixing (e.g., Easy = 70% random, 30% strategic). But distinct algorithms are:
+
+- **Simpler to implement** — No random number checks per move
+- **More predictable** — Each level has consistent behaviour
+- **Easier to debug** — Clear separation of concerns
+- **Better learning progression** — Players see distinct AI personalities
+
+The algorithms we built in Units 9-12 map naturally to difficulty levels.
 
 ## The Complete Code
 
 <CodeFromFile src="sinclair-zx-spectrum/game-01-ink-war/unit-13/inkwar.asm" />
 
-## Next Unit
+## Try This: Add More Levels
 
-The game loops, but the results are shown on the game board with scores still visible. In Unit 14, we'll create a dedicated results screen that shows the winner prominently, making the end of each game feel like a proper conclusion.
+You could add intermediate difficulties:
+
+```asm
+AI_VERY_EASY equ    0   ; Random
+AI_EASY      equ    1   ; Adjacent only
+AI_MEDIUM    equ    2   ; Adjacent + defense (no position)
+AI_HARD      equ    3   ; Full strategy
+AI_EXPERT    equ    4   ; Full strategy + look-ahead (future unit)
+```
+
+More keys are available on the same keyboard row (key 5 = bit 4).
+
+## Try This: Display Difficulty
+
+Show the current difficulty during gameplay:
+
+```asm
+; After drawing UI, show difficulty level
+ld      a, (ai_difficulty)
+; ... display "EASY", "MEDIUM", or "HARD" ...
+```
+
+This reminds players which AI they're facing.
+
+## What You've Learnt
+
+- **Menu expansion** — Adding options to existing UI
+- **Dispatch patterns** — Branching based on configuration
+- **Code reuse** — Leveraging existing algorithms for difficulty
+- **Player choice** — Giving control over game challenge
+
+## What's Next
+
+In Unit 14, we'll add sound effects — distinct sounds for claims, errors, and victory to give the game audio feedback.

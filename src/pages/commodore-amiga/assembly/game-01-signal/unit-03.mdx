@@ -1,163 +1,176 @@
 ---
-title: "The Hop"
-description: "Make the frog hop. Learn how to read the joystick and update hardware sprite positions with discrete movement."
-pubDate: 2026-01-03
+title: "Understanding What We Built"
+description: "Deep dive into the scaffold. System takeover. Copper lists. Hardware sprites. VBlank."
+pubDate: 2026-01-12
 game: 1
-gameName: "Hop"
+gameName: "Signal"
 unit: 3
-totalUnits: 16
+totalUnits: 64
 system: "Commodore Amiga"
-tags: ["assembly", "68000", "joystick", "sprites"]
+tags: ["assembly", "68000", "theory", "custom-chipset"]
+prevLesson: "/commodore-amiga/assembly/game-01-signal/unit-02"
 nextLesson: "/commodore-amiga/assembly/game-01-signal/unit-04"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 2: The Frog](/commodore-amiga/game-01-signal/unit-02).*
-
 ## What You're Building
 
-The frog is on the screen, but it's frozen. It's time to give it life.
+Understanding.
 
-By the end of this unit, you'll have:
+This unit produces the same output as Unit 2. No new features. Instead, we stop and understand everything we've built. The code is heavily commented—read it alongside this explanation.
 
-- A frog that hops up, down, left, and right
-- Joystick input with edge detection (one press = one hop)
-- Discrete movement (Frogger-style grid hopping)
-- Boundary clamping to keep the frog on screen
+By the end of this unit:
+- You understand why we take over the system
+- You know how Copper lists create the display
+- You know how hardware sprites work
+- You understand VBlank timing
 
-This is the moment the game becomes interactive.
+![Unit 3 Screenshot](/images/commodore-amiga/game-01-signal/unit-03/screenshot.png)
 
-## The Amiga Joystick
+## Why Theory Matters
 
-The Amiga has two game ports. Port 2 (typically used for joysticks) is read through `JOY1DAT` at offset $00C.
+We could keep adding features. Movement works, the display looks good. But programming without understanding is fragile. One wrong register, one misunderstood concept, and you're staring at a blank screen with no idea why.
 
-Unlike simpler systems, the Amiga uses **quadrature encoding** for joystick data — the same system used for mice and trackballs. For a digital joystick, we need to decode it.
+This unit builds the foundation for everything that follows.
 
-### JOY1DAT Format
+## Taking Over the Machine
 
-The register contains two counters:
+The first thing our code does is disable the operating system:
 
-| Bits | Purpose |
-|------|---------|
-| 15-8 | Vertical counter (Y1, Y0) |
-| 7-0 | Horizontal counter (X1, X0) |
+\`\`\`asm
+move.w  #$7fff,INTENA(a5)   ; Disable all interrupts
+move.w  #$7fff,INTREQ(a5)   ; Clear pending interrupts
+move.w  #$7fff,DMACON(a5)   ; Disable all DMA
+\`\`\`
 
-For a digital joystick, we only need specific bits. The standard decoding:
+### Why Take Over?
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/snippets/01-the-amiga-joystick.asm" lang="asm" />
+AmigaOS is a preemptive multitasking operating system. It runs multiple programs simultaneously by rapidly switching between them using interrupts.
 
-But up/down require XOR decoding:
+For a game, this creates problems:
+- **Timing uncertainty**: The OS might interrupt your code at any moment
+- **Resource conflicts**: The OS might be using DMA you need
+- **Overhead**: The OS consumes CPU time and memory
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/snippets/02-the-amiga-joystick.asm" lang="asm" />
+By disabling interrupts and DMA, we get predictable timing and full hardware access.
 
-### The Fire Button
+### The Magic Number \$7FFF
 
-The joystick fire button is on CIA-A at $BFE001, bit 7 (active low):
+Amiga control registers use bit 15 as a SET/CLR flag:
+- **Bit 15 = 0**: Clear the bits that are 1 in bits 0-14
+- **Bit 15 = 1**: Set the bits that are 1 in bits 0-14
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/snippets/03-the-amiga-joystick.asm" lang="asm" />
+So \`\$7fff\` means "clear all of bits 0-14". Later, \`\$83a0\` enables only what we need.
 
-## Discrete Hopping
+## The Custom Chipset
 
-In Frogger, the frog doesn't glide — it hops in discrete steps. One joystick push = one hop. This means we need **edge detection**: only register a hop when the joystick transitions from "not pressed" to "pressed."
+### Agnus (Address Generator)
+Contains the Copper and Blitter. Manages all DMA operations.
 
-We'll store the previous frame's joystick state and compare:
+### Denise (Display Encoder)
+Creates the video signal—sprites, bitplanes, colours.
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/snippets/04-discrete-hopping.asm" lang="asm" />
+### Paula (Ports and Audio)
+Four channels of 8-bit audio, floppy disk, serial/parallel ports.
 
-The logic:
-1. Read current joystick state
-2. Compare with previous state
-3. Only act on newly-pressed directions
-4. Store current state for next frame
+## The Copper
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/snippets/05-discrete-hopping.asm" lang="asm" />
+A simple co-processor that runs synchronised to the video beam. It can only:
 
-## Sprite Position Variables
+1. **WAIT** for a specific screen position
+2. **MOVE** a value to a hardware register
 
-We'll track the frog's logical position in memory:
+Our playfield is just colour changes:
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/snippets/06-sprite-position-variables.asm" lang="asm" />
+\`\`\`asm
+dc.w    \$2c07,\$fffe          ; WAIT for line 44
+dc.w    COLOR00,COLOUR_HOME  ; MOVE green to colour 0
 
-### Movement Constants
+dc.w    \$4007,\$fffe          ; WAIT for line 64
+dc.w    COLOR00,COLOUR_WATER ; MOVE blue to colour 0
+\`\`\`
 
-Frogger movement is grid-based. We'll hop 16 pixels per move:
+No bitmap. Just the Copper changing one colour register as the beam scans down.
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/snippets/07-sprite-position-variables.asm" lang="asm" />
+### Copper Instruction Format
 
-### Boundaries
+**WAIT**: \`\$VVHH,\$FFFE\` (VV=vertical, HH=horizontal)
+**MOVE**: \`\$XXYY,\$VVVV\` (XX=register/2, VVVV=value)
 
-We need to keep the frog on screen:
+## Hardware Sprites
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/snippets/08-sprite-position-variables.asm" lang="asm" />
+The Amiga has 8 hardware sprites. Each is 16 pixels wide.
 
-## Updating the Sprite Position
+Without hardware sprites, moving an object means erasing and redrawing 50 times per second. With sprites, just write new coordinates—the chipset handles the rest.
 
-Amiga sprite control words encode position differently than a simple X/Y:
+### Sprite Data Format
 
-**Word 1**: `VSTART[7:0] | HSTART[8:1]`
-**Word 2**: `VSTOP[7:0] | CONTROL`
+\`\`\`asm
+frog_data:
+    dc.w    \$b450,\$c400     ; Control words (Y, X positions)
+    dc.w    \$0000,\$0000     ; Line 1 (plane0, plane1)
+    dc.w    \$07e0,\$0000     ; Line 2
+    ; ... more lines ...
+    dc.w    \$0000,\$0000     ; End marker
+\`\`\`
 
-The horizontal position is shifted right by 1 (giving 2-pixel granularity), and the low bit goes into the control word. For simplicity, we'll keep positions even.
+Two bitplanes give 4 colours: transparent, colour 17, colour 18, colour 19.
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/snippets/09-updating-the-sprite-position.asm" lang="asm" />
+## Vertical Blank
 
-## The Main Loop
+The video beam scans 50 times per second (PAL). **Vertical blank** is when the beam returns to the top.
 
-Our game loop now:
-1. Waits for vertical blank
-2. Reads joystick with edge detection
-3. Updates frog position (with boundary checks)
-4. Updates sprite control words
-5. Repeats
+Update graphics during VBlank to avoid **tearing** (old and new frames mixed together).
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/snippets/10-the-main-loop.asm" lang="asm" />
+\`\`\`asm
+wait_vblank:
+    move.l  #\$1ff00,d1
+.wait:
+    move.l  VPOSR(a5),d0
+    and.l   d1,d0
+    bne.s   .wait
+    rts
+\`\`\`
 
-## The Joystick Routine
+## Joystick Decoding
 
-Here's the complete joystick reading with edge detection:
+The Amiga uses **quadrature encoding** from Atari hardware:
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/snippets/11-the-joystick-routine.asm" lang="asm" />
+\`\`\`asm
+move.w  JOY1DAT(a5),d0  ; Read raw
+move.w  d0,d1
+lsr.w   #1,d1           ; Shift copy
+eor.w   d1,d0           ; XOR decodes it
+\`\`\`
 
-## Build It. Run It.
+After decoding: Bit 8=Up, Bit 0=Down, Bit 9=Left, Bit 1=Right.
 
-```bash
-vasmm68k_mot -Fhunkexe -kick1hunks -o hop -nosym hop.asm
-xdftool hop.adf create + format "Hop" ofs + boot install boot1x + write hop + makedir s
-echo "hop" > startup-sequence
-xdftool hop.adf write startup-sequence s/startup-sequence
-fs-uae --floppy_drive_0=hop.adf
-```
+## The DMACON Mystery
 
-Push the joystick — the frog hops! Each push moves exactly one grid cell. The frog stays within the play area.
+We enable DMA with \`\$83a0\`:
+- Bit 15: SET (enable)
+- Bit 9: DMAEN (master)
+- Bit 8: BPLEN (bitplane)
+- Bit 7: COPEN (Copper)
+- Bit 5: SPREN (sprite)
 
-## What You've Learnt
+**Why BPLEN with no bitplanes?** Hardware quirk: sprites don't render without BPLEN enabled.
 
-- **JOY1DAT** ($00C) holds quadrature-encoded joystick data
-- **XOR decoding** extracts clean up/down signals
-- **Edge detection** ensures one press = one hop
-- **Sprite control words** encode position with specific bit layouts
-- **Boundary checking** prevents the frog from leaving the play area
+## Key Takeaways
 
-## The Complete Code
+- **System takeover** gives predictable timing
+- **The Copper** changes registers in sync with the beam
+- **Hardware sprites** are drawn automatically
+- **VBlank** is when we safely update graphics
+- **BPLEN must be enabled** for sprites (hardware quirk)
+- **\$7fff** disables; **\$8xxx** enables
 
-Here's the full `hop.asm` with movement:
+## The Code
 
-<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/hop.asm" lang="asm" />
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-03/signal.asm" />
 
-## Recap / Sanity Check
+## What's Next
 
-Before moving on, verify:
-
-- [ ] Build succeeds with no errors
-- [ ] Frog responds to joystick input
-- [ ] Each joystick push = exactly one hop
-- [ ] Frog cannot move off the left, right, top, or bottom boundaries
-- [ ] Movement is 16 pixels per hop (grid-aligned)
-
-## Next Unit
-
-The frog is hopping. But the road is safe. Too safe.
-
-In [Unit 4: The Traffic](/commodore-amiga/game-01-signal/unit-04), we add cars that scroll across the road using the Blitter.
+Theory complete. In Unit 4, we'll refine the playfield colours and layout.

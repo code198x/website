@@ -1,140 +1,97 @@
 ---
-title: "Enemy Variety"
-description: "Add vertical movement and diverse enemy behaviour patterns."
-pubDate: 2026-01-04
+title: "Sound Effects"
+description: "Add APU sound effects for collection and death."
+pubDate: 2026-01-11
 game: 1
 gameName: "Neon Nexus"
 unit: 13
-totalUnits: 16
+totalUnits: 64
 system: "Nintendo Entertainment System"
-tags: ["assembly", "6502", "gameplay", "ai"]
+tags: ["assembly", "6502", "apu", "sound", "audio"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-12"
 nextLesson: "/nintendo-entertainment-system/assembly/game-01-neon-nexus/unit-14"
 layout: "../../../../layouts/UnitLayout.astro"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-*Need to catch up? Check out [Unit 12: High Score](/nintendo-entertainment-system/game-01-neon-nexus/unit-12).*
-
 ## What You're Building
 
-All enemies currently move identically—straight left across the screen. That's predictable and quickly becomes boring. Real arcade games vary enemy behaviour to keep players alert.
+Sound. The game comes alive.
 
-This unit adds:
-- Vertical movement for some enemies (bouncing up/down)
-- Per-enemy movement flags to differentiate behaviour
-- Screen boundary bouncing for vertical movers
+![Sound Effects](/images/nintendo-entertainment-system/game-01-neon-nexus/unit-13/screenshot.png)
 
-## The Plan
+Collect an item: ascending beep. Hit an enemy: descending warble.
 
-1. Add `enemy_dir` array to track vertical direction
-2. Give enemies 0-1 horizontal-only movement
-3. Give enemies 2-3 combined horizontal and vertical movement
-4. Implement vertical boundary bouncing
+## The APU
 
-## Enemy Direction Tracking
+The NES Audio Processing Unit has 5 channels:
+- 2 pulse waves (square waves)
+- 1 triangle wave
+- 1 noise channel
+- 1 DMC (sample playback)
 
-Each enemy needs a direction flag for vertical movement:
+We use pulse channel 1 for simple sound effects.
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-13/snippets/01-enemy-direction-tracking.asm" lang="asm" />
+## APU Registers
 
-## Initialising Enemy Directions
+```asm
+APUSTATUS = $4015         ; Enable channels
+APU_PULSE1_CTRL = $4000   ; Volume, duty cycle
+APU_PULSE1_SWEEP = $4001  ; Frequency sweep
+APU_PULSE1_LO = $4002     ; Period low byte
+APU_PULSE1_HI = $4003     ; Period high, length
+```
 
-Set initial directions when spawning enemies:
+## Collection Sound
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-13/snippets/02-initialising-enemy-directions.asm" lang="asm" />
+A short, high-pitched beep:
 
-## Differentiating Enemy Movement
+```asm
+play_collect_sound:
+    lda #%10011111      ; 50% duty, constant vol, vol 15
+    sta APU_PULSE1_CTRL
+    lda #0
+    sta APU_PULSE1_SWEEP
+    lda #$C4            ; Period low (high pitch)
+    sta APU_PULSE1_LO
+    lda #%00001000      ; Period high, trigger
+    sta APU_PULSE1_HI
+    rts
+```
 
-Modify `move_enemies` to add vertical movement for enemies 0 and 1:
+## Death Sound
 
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-13/snippets/03-differentiating-enemy-movement.asm" lang="asm" />
+A descending tone using the sweep unit:
 
-## Understanding the Logic
+```asm
+play_death_sound:
+    lda #%10011111      ; 50% duty, vol 15
+    sta APU_PULSE1_CTRL
+    lda #%10001111      ; Sweep down, fast
+    sta APU_PULSE1_SWEEP
+    lda #$00            ; Start low pitch
+    sta APU_PULSE1_LO
+    lda #%00001011      ; Trigger
+    sta APU_PULSE1_HI
+    rts
+```
 
-The key insight is using `CPX #2` to differentiate enemy types:
-- Enemies 0 and 1 (X < 2): Move both horizontally and vertically
-- Enemies 2 and 3 (X >= 2): Move only horizontally
+The sweep unit automatically decreases the frequency, creating a falling sound.
 
-For vertical movement:
-- `enemy_dir = 0` means moving down (Y increases)
-- `enemy_dir = 1` means moving up (Y decreases)
-- When hitting a boundary, we flip the direction
+## The Code
 
-## Boundary Values
+<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-13/nexus.asm" />
 
-The vertical boundaries account for:
-- **Top (Y = 24)**: Below the HUD row to avoid visual overlap
-- **Bottom (Y = 216)**: Above the screen edge, leaving room for the 8-pixel sprite
-
-## Frame Counter for Slower Vertical Movement
-
-If vertical movement feels too fast, we can use a frame counter to slow it:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-13/snippets/04-frame-counter-for-slower-vertical-movement.asm" lang="asm" />
-
-Increment it each frame and check before vertical movement:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-13/snippets/05-frame-counter-for-slower-vertical-movement.asm" lang="asm" />
-
-This halves the vertical speed relative to horizontal, creating a more diagonal movement pattern.
-
-## Updating Frame Counter
-
-In the main loop, increment the frame counter:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-13/snippets/06-updating-frame-counter.asm" lang="asm" />
-
-## Visual Result
-
-With these changes:
-- Enemies 0 and 1 move diagonally, bouncing between top and bottom
-- Enemies 2 and 3 move straight across like before
-- The mix creates more dynamic gameplay requiring varied dodging strategies
-
-## Build It. Run It.
-
-Assemble and run:
+## Build It
 
 ```bash
 ca65 nexus.asm -o nexus.o
 ld65 -C nes.cfg nexus.o -o nexus.nes
 ```
 
-Test the variety:
-1. Watch enemies 0-1 bounce vertically as they cross
-2. Watch enemies 2-3 move straight across
-3. Notice how the mixed patterns require different dodging strategies
-4. Verify vertical bouncers stay within screen bounds
+The game now has audio feedback. Actions have sounds.
 
-## What You've Built
+## Next
 
-Your game now has enemy variety. Some enemies are predictable horizontal threats; others bounce vertically, creating diagonal patterns. This simple change significantly increases gameplay depth.
-
-## What You've Learnt
-
-- **Per-entity flags**: Using arrays to store per-enemy state
-- **Conditional behaviour**: Differentiating entity types with index checks
-- **Boundary bouncing**: Reversing direction when hitting edges
-- **Frame-rate control**: Using frame counters to slow specific movements
-- **Gameplay variety**: How small AI changes affect player experience
-
-## The Complete Code
-
-Here's the complete `nexus.asm` with enemy variety:
-
-<CodeFromFile src="nintendo-entertainment-system/game-01-neon-nexus/unit-13/nexus.asm" lang="asm" />
-
-## Recap / Sanity Check
-
-Before moving on, verify:
-
-- [ ] Enemies 0 and 1 bounce vertically while moving left
-- [ ] Enemies 2 and 3 move straight left only
-- [ ] Vertical bouncing stays within screen bounds
-- [ ] Movement feels smoother with frame-skip
-- [ ] All other gameplay (collision, scoring, etc.) still works
-
-## Next Unit
-
-[Unit 14: Pause](/nintendo-entertainment-system/game-01-neon-nexus/unit-14) — add pause functionality during gameplay.
+Collecting items is satisfying, but there's no goal. Unit 14 adds a win condition.
