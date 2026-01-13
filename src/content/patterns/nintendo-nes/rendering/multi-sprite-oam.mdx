@@ -1,0 +1,224 @@
+---
+title: "Multi-Sprite OAM Update"
+summary: "Manage multiple sprites in the OAM buffer. Update positions, hide unused sprites, and DMA transfer efficiently."
+platform: "nintendo-nes"
+category: "rendering"
+difficulty: "intermediate"
+taught_in: "Game 1, Unit 5"
+tags: ["sprites", "oam", "dma", "rendering"]
+evolution:
+  previous: "nmi-game-loop"
+  next: null
+related:
+  patterns: ["nmi-game-loop", "sprite-movement-bounds"]
+  vault: ["nintendo-nes"]
+---
+
+## Overview
+
+The NES supports 64 sprites, each requiring 4 bytes in OAM (Object Attribute Memory). For multiple game objects, you need to manage their OAM entries systematically - updating positions, hiding inactive objects, and handling the OAM DMA transfer during NMI.
+
+## Code
+
+```ca65
+; =============================================================================
+; MULTI-SPRITE OAM UPDATE - NES
+; Manage multiple sprites in OAM buffer
+; Taught: Game 1 (Neon Nexus), Unit 5
+; CPU: ~200 cycles | Memory: ~100 bytes
+; =============================================================================
+
+OAMADDR   = $2003
+OAMDMA    = $4014
+
+MAX_OBJECTS = 8                 ; Maximum active objects
+SPRITE_HIDDEN = $FF             ; Y position to hide sprite
+
+.segment "OAM"
+oam_buffer:  .res 256           ; Must be page-aligned ($xx00)
+
+.segment "ZEROPAGE"
+; Object data (parallel arrays)
+obj_x:       .res MAX_OBJECTS   ; X positions
+obj_y:       .res MAX_OBJECTS   ; Y positions
+obj_tile:    .res MAX_OBJECTS   ; Tile numbers
+obj_attr:    .res MAX_OBJECTS   ; Attributes (palette, flip)
+obj_active:  .res MAX_OBJECTS   ; 0=inactive, 1=active
+
+.segment "CODE"
+
+; Update all active objects in OAM buffer
+; Call this before NMI triggers DMA
+update_oam:
+        ldx #0                  ; Object index
+        ldy #0                  ; OAM buffer index
+
+@object_loop:
+        lda obj_active, x
+        beq @skip_object        ; Skip inactive objects
+
+        ; Copy object to OAM buffer
+        ; Byte 0: Y position
+        lda obj_y, x
+        sta oam_buffer, y
+        iny
+
+        ; Byte 1: Tile number
+        lda obj_tile, x
+        sta oam_buffer, y
+        iny
+
+        ; Byte 2: Attributes
+        lda obj_attr, x
+        sta oam_buffer, y
+        iny
+
+        ; Byte 3: X position
+        lda obj_x, x
+        sta oam_buffer, y
+        iny
+
+        jmp @next_object
+
+@skip_object:
+        ; Write hidden sprite to OAM
+        lda #SPRITE_HIDDEN
+        sta oam_buffer, y
+        iny
+        iny
+        iny
+        iny                     ; Skip 4 bytes
+
+@next_object:
+        inx
+        cpx #MAX_OBJECTS
+        bne @object_loop
+
+        ; Hide remaining sprites (up to 64)
+        lda #SPRITE_HIDDEN
+@hide_rest:
+        cpy #0                  ; Wrapped around = done
+        beq @done
+        sta oam_buffer, y
+        iny
+        iny
+        iny
+        iny
+        bne @hide_rest
+
+@done:
+        rts
+
+; Perform OAM DMA transfer (call from NMI)
+do_oam_dma:
+        lda #0
+        sta OAMADDR             ; Start at OAM address 0
+        lda #>oam_buffer        ; High byte of buffer address
+        sta OAMDMA              ; Triggers 256-byte DMA transfer
+        rts
+
+; Hide all sprites (call at init or game over)
+hide_all_sprites:
+        lda #SPRITE_HIDDEN
+        ldx #0
+@loop:
+        sta oam_buffer, x
+        inx
+        inx
+        inx
+        inx
+        bne @loop
+        rts
+
+; Spawn object at index X
+; Input: A=tile, obj_x[X], obj_y[X] already set
+spawn_object:
+        sta obj_tile, x
+        lda #0
+        sta obj_attr, x         ; Default attributes
+        lda #1
+        sta obj_active, x
+        rts
+
+; Deactivate object at index X
+kill_object:
+        lda #0
+        sta obj_active, x
+        rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~200 cycles for 8 objects |
+| Memory | ~100 bytes code + 256 OAM + arrays |
+| Limitation | 8 sprites per scanline hardware limit |
+
+**When to use:** Games with multiple moving objects (enemies, bullets, items).
+
+**When to avoid:** Single-sprite games - use direct OAM writes instead.
+
+## OAM Entry Format
+
+Each sprite uses 4 consecutive bytes:
+
+| Offset | Purpose | Notes |
+|--------|---------|-------|
+| +0 | Y position | $FF hides sprite |
+| +1 | Tile number | Pattern table index |
+| +2 | Attributes | Palette, flip, priority |
+| +3 | X position | - |
+
+**Attribute byte format:**
+```
+76543210
+||||||++- Palette (0-3)
+|||+++--- Unused
+||+------ Priority (0=front, 1=behind BG)
+|+------- Horizontal flip
++-------- Vertical flip
+```
+
+## NMI Integration
+
+```ca65
+nmi:
+        pha
+        txa
+        pha
+        tya
+        pha
+
+        ; Update OAM from game state
+        jsr update_oam
+
+        ; DMA transfer to PPU
+        jsr do_oam_dma
+
+        pla
+        tay
+        pla
+        tax
+        pla
+        rti
+```
+
+## Sprite Flickering
+
+The NES can only display 8 sprites per scanline. When exceeded, sprites disappear. To distribute flickering evenly, rotate sprite order each frame:
+
+```ca65
+; Simple rotation: start OAM index at different offset each frame
+update_oam_rotate:
+        lda frame_count
+        and #$1C                ; 0, 4, 8, 12, 16, 20, 24, 28
+        tay                     ; Start OAM index
+        ; ... rest of update loop
+```
+
+## Related
+
+**Patterns:** [NMI Game Loop](/patterns/nintendo-nes/framework/nmi-game-loop), [Sprite Movement with Bounds](/patterns/nintendo-nes/physics/sprite-movement-bounds)
+
+**Vault:** [NES](/vault/systems/nintendo-nes)

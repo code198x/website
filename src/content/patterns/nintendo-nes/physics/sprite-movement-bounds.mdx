@@ -1,0 +1,174 @@
+---
+title: "Sprite Movement with Bounds"
+summary: "Move sprites with D-pad input and screen boundary clamping. Essential for player-controlled objects."
+platform: "nintendo-nes"
+category: "physics"
+difficulty: "beginner"
+taught_in: "Game 1, Unit 2"
+tags: ["sprites", "movement", "bounds", "input"]
+evolution:
+  previous: "controller-reading"
+  next: null
+related:
+  patterns: ["controller-reading", "nmi-game-loop"]
+  vault: ["nintendo-nes"]
+---
+
+## Overview
+
+Player sprites need to respond to D-pad input while staying on screen. Read the controller, check each direction, apply velocity, and clamp to screen boundaries. This pattern handles all four directions independently, allowing diagonal movement.
+
+## Code
+
+```ca65
+; =============================================================================
+; SPRITE MOVEMENT WITH BOUNDS - NES
+; Move player sprite with screen boundary clamping
+; Taught: Game 1 (Neon Nexus), Unit 2
+; CPU: ~100 cycles | Memory: ~60 bytes
+; =============================================================================
+
+; Controller button masks
+BTN_UP     = %00001000
+BTN_DOWN   = %00000100
+BTN_LEFT   = %00000010
+BTN_RIGHT  = %00000001
+
+; Movement speed
+PLAYER_SPEED = 2                ; Pixels per frame
+
+; Screen boundaries (accounting for 8x8 sprite)
+SCREEN_LEFT   = 0
+SCREEN_RIGHT  = 248             ; 256 - 8 (sprite width)
+SCREEN_TOP    = 0
+SCREEN_BOTTOM = 224             ; 240 - 16 (overscan)
+
+.segment "ZEROPAGE"
+player_x:    .res 1
+player_y:    .res 1
+buttons:     .res 1
+
+.segment "CODE"
+
+; Move player based on controller input
+; Call after read_controller
+move_player:
+        ; === Check UP ===
+        lda buttons
+        and #BTN_UP
+        beq @check_down
+
+        lda player_y
+        sec
+        sbc #PLAYER_SPEED       ; Move up (subtract)
+        cmp #SCREEN_TOP
+        bcc @check_down         ; Underflow = past top edge
+        sta player_y
+
+@check_down:
+        lda buttons
+        and #BTN_DOWN
+        beq @check_left
+
+        lda player_y
+        clc
+        adc #PLAYER_SPEED       ; Move down (add)
+        cmp #SCREEN_BOTTOM
+        bcs @check_left         ; Past bottom edge
+        sta player_y
+
+@check_left:
+        lda buttons
+        and #BTN_LEFT
+        beq @check_right
+
+        lda player_x
+        sec
+        sbc #PLAYER_SPEED       ; Move left (subtract)
+        cmp #SCREEN_LEFT
+        bcc @check_right        ; Underflow = past left edge
+        sta player_x
+
+@check_right:
+        lda buttons
+        and #BTN_RIGHT
+        beq @done
+
+        lda player_x
+        clc
+        adc #PLAYER_SPEED       ; Move right (add)
+        cmp #SCREEN_RIGHT
+        bcs @done               ; Past right edge
+        sta player_x
+
+@done:
+        rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~100 cycles |
+| Memory | ~60 bytes |
+| Limitation | Fixed speed, no acceleration |
+
+**When to use:** Any game with player-controlled sprites.
+
+**When to avoid:** Grid-based movement - check edges differently.
+
+## Understanding the Bounds Checks
+
+The 6502 has no signed comparison, so we use carry flag tricks:
+
+| Direction | Operation | Overflow Check |
+|-----------|-----------|----------------|
+| Up | `SBC` (subtract) | `BCC` - carry clear means underflow |
+| Down | `ADC` (add) | `BCS` - carry set means >= boundary |
+| Left | `SBC` (subtract) | `BCC` - carry clear means underflow |
+| Right | `ADC` (add) | `BCS` - carry set means >= boundary |
+
+## Diagonal Movement
+
+This pattern checks all four directions independently, so holding Up+Right moves diagonally. The total speed increases by ~41% on diagonals. For consistent diagonal speed:
+
+```ca65
+; Reduce diagonal speed (approximation)
+DIAG_SPEED = 1                  ; Use slower speed for diagonals
+
+move_player:
+        lda buttons
+        and #(BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT)
+        ; Check if multiple directions held...
+        ; Use DIAG_SPEED instead of PLAYER_SPEED
+```
+
+## Updating OAM
+
+After moving, copy position to OAM buffer (typically in NMI):
+
+```ca65
+nmi:
+        ; ... save registers ...
+
+        ; Update sprite position in OAM
+        lda player_y
+        sta oam_buffer+0        ; Y position
+        lda player_x
+        sta oam_buffer+3        ; X position
+
+        ; DMA to OAM
+        lda #0
+        sta OAMADDR
+        lda #>oam_buffer
+        sta OAMDMA
+
+        ; ... restore registers ...
+        rti
+```
+
+## Related
+
+**Patterns:** [Controller Reading](/patterns/nintendo-nes/input/controller-reading), [NMI Game Loop](/patterns/nintendo-nes/framework/nmi-game-loop)
+
+**Vault:** [NES](/vault/systems/nintendo-nes)

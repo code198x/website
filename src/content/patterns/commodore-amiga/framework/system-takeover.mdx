@@ -1,0 +1,129 @@
+---
+title: "System Takeover"
+summary: "Disable AmigaOS interrupts and DMA to take full control of the hardware. Required for bare-metal game programming."
+platform: "commodore-amiga"
+category: "framework"
+difficulty: "beginner"
+taught_in: "Game 1, Unit 1"
+tags: ["system", "initialization", "dma", "interrupts"]
+evolution:
+  previous: null
+  next: "system-restore"
+related:
+  patterns: ["vblank-game-loop", "copper-list-basics"]
+  vault: ["commodore-amiga"]
+---
+
+## Overview
+
+To program the Amiga's custom chips directly, you must first disable AmigaOS. This means turning off all interrupts and DMA channels, then selectively enabling only what your program needs. Without this, the OS will interfere with your hardware access.
+
+## Code
+
+```m68k
+; =============================================================================
+; SYSTEM TAKEOVER - AMIGA
+; Disable OS and take control of hardware
+; Taught: Game 1 (Signal), Unit 1
+; CPU: ~50 cycles | Memory: ~30 bytes
+; =============================================================================
+
+CUSTOM      equ $dff000
+
+; Register offsets from CUSTOM base
+DMACON      equ $096            ; DMA control
+DMACONR     equ $002            ; DMA control read
+INTENA      equ $09a            ; Interrupt enable
+INTENAR     equ $01c            ; Interrupt enable read
+INTREQ      equ $09c            ; Interrupt request
+
+            section code,code_c
+
+start:
+            lea     CUSTOM,a5           ; Custom chip base in A5
+
+            ; === Save system state (for clean exit) ===
+            move.w  DMACONR(a5),d0
+            or.w    #$8000,d0           ; Set bit 15 for later restore
+            move.w  d0,saved_dmacon
+
+            move.w  INTENAR(a5),d0
+            or.w    #$8000,d0
+            move.w  d0,saved_intena
+
+            ; === Disable everything ===
+            move.w  #$7fff,INTENA(a5)   ; Disable all interrupts
+            move.w  #$7fff,INTREQ(a5)   ; Clear pending interrupts
+            move.w  #$7fff,DMACON(a5)   ; Disable all DMA
+
+            ; === Your game setup here ===
+            ; Install copper list, set up sprites, etc.
+
+            ; === Enable only what you need ===
+            move.w  #$83a0,DMACON(a5)   ; Master + Copper + Sprites + Bitplanes
+
+            ; ... game code ...
+
+            ; === Restore system before exit ===
+            move.w  #$7fff,DMACON(a5)
+            move.w  #$7fff,INTENA(a5)
+            move.w  saved_dmacon,DMACON(a5)
+            move.w  saved_intena,INTENA(a5)
+
+            rts
+
+saved_dmacon:   dc.w    0
+saved_intena:   dc.w    0
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~50 cycles |
+| Memory | ~30 bytes + 4 bytes for saved state |
+| Limitation | Must restore before returning to OS |
+
+**When to use:** Every Amiga game or demo that accesses hardware directly.
+
+**When to avoid:** Programs that want to coexist with the OS (use system-friendly methods instead).
+
+## How DMACON/INTENA Work
+
+These registers use a SET/CLEAR mechanism controlled by bit 15:
+
+- **Bit 15 = 0:** CLEAR the specified bits (disable)
+- **Bit 15 = 1:** SET the specified bits (enable)
+
+```m68k
+move.w  #$7fff,DMACON(a5)   ; Clear bits 0-14 (disable all)
+move.w  #$83a0,DMACON(a5)   ; Set bits 5,7,8,9,15 (enable selected)
+```
+
+## DMACON Bit Reference
+
+| Bit | Name | Purpose |
+|-----|------|---------|
+| 15 | SET/CLR | 1=set bits, 0=clear bits |
+| 9 | DMAEN | Master DMA enable |
+| 8 | BPLEN | Bitplane DMA |
+| 7 | COPEN | Copper DMA |
+| 6 | BLTEN | Blitter DMA |
+| 5 | SPREN | Sprite DMA |
+| 4 | DSKEN | Disk DMA |
+| 3-0 | AUDxEN | Audio channels 0-3 |
+
+## Common DMACON Values
+
+| Value | Enables |
+|-------|---------|
+| `$83a0` | Master + Copper + Sprites + Bitplanes |
+| `$8380` | Master + Copper + Bitplanes (no sprites) |
+| `$83e0` | Master + Copper + Sprites + Bitplanes + Blitter |
+| `$87e0` | All above + Audio |
+
+## Related
+
+**Patterns:** [VBlank Game Loop](/patterns/commodore-amiga/framework/vblank-game-loop), [Copper List Basics](/patterns/commodore-amiga/rendering/copper-list-basics)
+
+**Vault:** [Commodore Amiga](/vault/systems/commodore-amiga)

@@ -1,0 +1,146 @@
+---
+title: "Sprite Control Words"
+summary: "Calculate and update Amiga sprite control words from X/Y coordinates. Position sprites anywhere on screen."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "beginner"
+taught_in: "Game 1, Unit 2"
+tags: ["sprites", "positioning", "control-words", "rendering"]
+evolution:
+  previous: null
+  next: "sprite-animation"
+related:
+  patterns: ["copper-list-basics"]
+  vault: ["commodore-amiga"]
+---
+
+## Overview
+
+Amiga sprites have two control words at the start of their data that define vertical start/stop positions and horizontal position. Update these each frame to move sprites around the screen. The encoding packs multiple values into 16-bit words.
+
+## Code
+
+```m68k
+; =============================================================================
+; SPRITE CONTROL WORDS - AMIGA
+; Calculate sprite position from X/Y coordinates
+; Taught: Game 1 (Signal), Unit 2
+; CPU: ~40 cycles | Memory: ~30 bytes
+; =============================================================================
+
+SPRITE_HEIGHT   equ 16          ; Sprite height in pixels
+
+; Update sprite control words
+; Input: A0 = sprite data address
+;        frog_pixel_x, frog_pixel_y = coordinates
+update_sprite:
+            move.w  frog_pixel_y,d0     ; D0 = Y position (VSTART)
+            move.w  frog_pixel_x,d1     ; D1 = X position (HSTART)
+
+            ; === Control word 1: VSTART and HSTART ===
+            ; Format: VSTART[7:0] in high byte, HSTART[8:1] in low byte
+            move.w  d0,d2               ; D2 = VSTART
+            lsl.w   #8,d2               ; Shift to high byte
+            lsr.w   #1,d1               ; HSTART / 2 (lose bit 0)
+            or.b    d1,d2               ; Combine
+            move.w  d2,(a0)             ; Write control word 1
+
+            ; === Control word 2: VSTOP and control bits ===
+            ; Format: VSTOP[7:0] in high byte, control bits in low byte
+            add.w   #SPRITE_HEIGHT,d0   ; VSTOP = VSTART + height
+            lsl.w   #8,d0               ; Shift to high byte
+            ; Low byte contains: ATTACH, unused, VSTOP[8], VSTART[8], HSTART[0]
+            ; For simple sprites, low byte is usually 0
+            move.w  d0,2(a0)            ; Write control word 2
+
+            rts
+
+frog_pixel_x:   dc.w    160         ; Screen X coordinate
+frog_pixel_y:   dc.w    100         ; Screen Y coordinate
+```
+
+**Extended version with all control bits:**
+
+```m68k
+; Full control word calculation with all bits
+; Handles sprites in lower screen area (Y > 255)
+update_sprite_full:
+            move.w  sprite_y,d0         ; VSTART
+            move.w  sprite_x,d1         ; HSTART
+            move.w  d0,d2
+            add.w   #SPRITE_HEIGHT,d2   ; VSTOP
+
+            ; Control word 1
+            move.w  d0,d3               ; VSTART[7:0]
+            lsl.w   #8,d3
+            move.w  d1,d4
+            lsr.w   #1,d4               ; HSTART[8:1]
+            or.b    d4,d3
+            move.w  d3,(a0)
+
+            ; Control word 2
+            move.w  d2,d3               ; VSTOP[7:0]
+            lsl.w   #8,d3
+
+            ; Build low byte: bit 7=ATTACH, bit 2=VSTOP[8], bit 1=VSTART[8], bit 0=HSTART[0]
+            moveq   #0,d4
+            btst    #8,d2               ; VSTOP bit 8?
+            beq.s   .no_vstop8
+            bset    #2,d4
+.no_vstop8:
+            btst    #8,d0               ; VSTART bit 8?
+            beq.s   .no_vstart8
+            bset    #1,d4
+.no_vstart8:
+            btst    #0,d1               ; HSTART bit 0?
+            beq.s   .no_hstart0
+            bset    #0,d4
+.no_hstart0:
+            or.b    d4,d3
+            move.w  d3,2(a0)
+
+            rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~40 cycles |
+| Memory | ~30 bytes |
+| Limitation | Must update every frame for moving sprites |
+
+**When to use:** Any program using hardware sprites.
+
+**When to avoid:** Never - sprites always need valid control words.
+
+## Control Word Format
+
+**Word 1 (offset 0):**
+```
+Bit 15-8: VSTART[7:0] - Vertical start position (low 8 bits)
+Bit 7-0:  HSTART[8:1] - Horizontal position (bits 8-1, divided by 2)
+```
+
+**Word 2 (offset 2):**
+```
+Bit 15-8: VSTOP[7:0] - Vertical stop position (low 8 bits)
+Bit 7:    ATTACH     - Attach to previous sprite (for 15-colour sprites)
+Bit 6-3:  Unused
+Bit 2:    VSTOP[8]   - Vertical stop bit 8
+Bit 1:    VSTART[8]  - Vertical start bit 8
+Bit 0:    HSTART[0]  - Horizontal position bit 0
+```
+
+## Position Ranges
+
+| Axis | Range | Notes |
+|------|-------|-------|
+| X | 0-447 | Visible area ~64-383 |
+| Y | 0-312 (PAL) | Visible area ~44-300 |
+
+## Related
+
+**Patterns:** [Copper List Basics](/patterns/commodore-amiga/rendering/copper-list-basics)
+
+**Vault:** [Commodore Amiga](/vault/systems/commodore-amiga)

@@ -1,0 +1,149 @@
+---
+title: "Reset Sequence"
+summary: "Standard NES initialisation: disable interrupts, wait for PPU, clear RAM. Required boilerplate for every NES program."
+platform: "nintendo-nes"
+category: "framework"
+difficulty: "beginner"
+taught_in: "Game 1, Unit 1"
+tags: ["reset", "initialization", "boilerplate", "startup"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["nmi-game-loop", "palette-loading"]
+  vault: ["nintendo-nes"]
+---
+
+## Overview
+
+Every NES program needs this exact startup sequence. The reset handler disables interrupts, waits for the PPU to stabilise (two VBlank waits), and clears all RAM. Only after this is it safe to configure the PPU and start your game.
+
+## Code
+
+```ca65
+; =============================================================================
+; RESET SEQUENCE - NES
+; Standard NES initialisation boilerplate
+; Taught: Game 1 (Neon Nexus), Unit 1
+; CPU: ~30,000 cycles | Memory: ~60 bytes
+; =============================================================================
+
+PPUCTRL   = $2000
+PPUMASK   = $2001
+PPUSTATUS = $2002
+
+.segment "CODE"
+
+reset:
+    sei                     ; Disable interrupts
+    cld                     ; Clear decimal mode (not used on NES, but safe)
+
+    ldx #$40
+    stx $4017               ; Disable APU frame IRQ
+
+    ldx #$FF
+    txs                     ; Set up stack at $01FF
+
+    inx                     ; X = 0
+    stx PPUCTRL             ; Disable NMI
+    stx PPUMASK             ; Disable rendering
+    stx $4010               ; Disable DMC IRQs
+
+    ; === First VBlank wait ===
+    ; PPU needs time to warm up after power-on
+@vblank1:
+    bit PPUSTATUS           ; Read status (bit 7 = in VBlank)
+    bpl @vblank1            ; Loop until VBlank flag set
+
+    ; === Clear RAM while we wait ===
+    ; RAM contents are undefined at power-on
+    lda #0
+@clear_ram:
+    sta $0000, x
+    sta $0100, x
+    sta $0200, x            ; OAM buffer
+    sta $0300, x
+    sta $0400, x
+    sta $0500, x
+    sta $0600, x
+    sta $0700, x
+    inx
+    bne @clear_ram          ; Loop 256 times (X wraps from $FF to $00)
+
+    ; === Second VBlank wait ===
+    ; PPU is now fully ready
+@vblank2:
+    bit PPUSTATUS
+    bpl @vblank2
+
+    ; === PPU is ready - continue with game setup ===
+    ; Load palettes, set up sprites, etc.
+    jsr setup_game
+
+    ; Enable NMI and rendering
+    lda #%10010000          ; NMI enable, sprites from pattern table 1
+    sta PPUCTRL
+    lda #%00011110          ; Show sprites and background
+    sta PPUMASK
+
+    ; Fall through to main loop
+main_loop:
+    jmp main_loop           ; NMI does the work
+
+setup_game:
+    ; Your initialisation code here
+    rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~30,000 cycles (two VBlank waits) |
+| Memory | ~60 bytes |
+| Limitation | None - this is mandatory |
+
+**When to use:** Every NES program. Copy this exactly.
+
+**When to avoid:** Never - you always need this.
+
+## Why Two VBlank Waits?
+
+The PPU takes time to stabilise after power-on:
+
+1. **First wait:** PPU internal state is settling
+2. **Clear RAM:** Use this time productively
+3. **Second wait:** PPU is now fully ready
+
+Skipping this can cause graphics glitches or crashes on real hardware.
+
+## What Each Step Does
+
+| Step | Purpose |
+|------|---------|
+| `sei` | Prevent interrupts during setup |
+| `cld` | Clear decimal flag (6502 habit, harmless) |
+| `stx $4017` | Disable APU frame counter IRQ |
+| `txs` | Set stack pointer to $01FF |
+| `stx PPUCTRL` | Disable NMI until ready |
+| `stx PPUMASK` | Disable rendering until ready |
+| `stx $4010` | Disable DMC channel IRQ |
+| VBlank waits | Let PPU stabilise |
+| Clear RAM | Initialise all variables to 0 |
+
+## Vector Table
+
+Don't forget to set up your vectors:
+
+```ca65
+.segment "VECTORS"
+    .word nmi               ; $FFFA - NMI vector
+    .word reset             ; $FFFC - Reset vector
+    .word irq               ; $FFFE - IRQ vector
+```
+
+## Related
+
+**Patterns:** [NMI Game Loop](/patterns/nintendo-nes/framework/nmi-game-loop), [Palette Loading](/patterns/nintendo-nes/rendering/palette-loading)
+
+**Vault:** [NES](/vault/systems/nintendo-nes)
