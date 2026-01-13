@@ -1,0 +1,181 @@
+---
+title: "Attribute Writing"
+summary: "Write colours directly to attribute memory for fast, flicker-free graphics without touching pixel data."
+platform: "sinclair-zx-spectrum"
+category: "rendering"
+difficulty: "beginner"
+taught_in: "Game 1, Unit 1"
+tags: ["attributes", "colours", "rendering", "graphics"]
+evolution:
+  previous: null
+  next: "attribute-animation"
+related:
+  patterns: ["game-loop-halt"]
+  vault: ["sinclair-zx-spectrum"]
+---
+
+## Overview
+
+The Spectrum's attribute system lets you colour 8x8 character cells without drawing pixels. Each attribute byte controls foreground (ink), background (paper), brightness, and flash. This is the fastest way to create colourful displays and is the basis for many classic Spectrum game graphics.
+
+## Code
+
+```z80
+; =============================================================================
+; ATTRIBUTE WRITING - ZX SPECTRUM
+; Direct manipulation of attribute memory
+; Taught: Game 1 (Ink War), Unit 1
+; CPU: ~30 cycles per cell | Memory: ~40 bytes
+; =============================================================================
+
+ATTR_BASE   equ     $5800           ; Start of attribute memory (768 bytes)
+
+; Attribute format: %FBPPPIII
+; F = Flash (0=off, 1=flashing)
+; B = Bright (0=normal, 1=bright)
+; P = Paper colour (0-7)
+; I = Ink colour (0-7)
+
+; Colour values
+BLACK       equ     0
+BLUE        equ     1
+RED         equ     2
+MAGENTA     equ     3
+GREEN       equ     4
+CYAN        equ     5
+YELLOW      equ     6
+WHITE       equ     7
+
+; Example attributes
+ATTR_WHITE  equ     %00111000       ; White paper, black ink
+ATTR_FLASH  equ     %10111000       ; White paper, black ink + FLASH
+ATTR_BRIGHT equ     %01111000       ; White paper, black ink + BRIGHT
+
+; Set attribute at row, column
+; Input: B = row (0-23), C = column (0-31), A = attribute value
+set_attribute:
+    push    af                  ; Save attribute value
+
+    ; Calculate address: ATTR_BASE + row * 32 + column
+    ld      a, b
+    ld      l, a
+    ld      h, 0
+    add     hl, hl              ; *2
+    add     hl, hl              ; *4
+    add     hl, hl              ; *8
+    add     hl, hl              ; *16
+    add     hl, hl              ; *32
+    ld      a, c
+    add     a, l
+    ld      l, a
+    ld      bc, ATTR_BASE
+    add     hl, bc              ; HL = attribute address
+
+    pop     af                  ; Restore attribute value
+    ld      (hl), a             ; Write attribute
+    ret
+```
+
+**Fill a rectangular area:**
+
+```z80
+; Fill rectangle with attribute
+; Input: B = start row, C = start column
+;        D = height, E = width, A = attribute
+fill_attributes:
+    push    af
+
+.row_loop:
+    push    bc
+    push    de
+
+.col_loop:
+    pop     de
+    pop     bc
+    pop     af
+    push    af
+    push    bc
+    push    de
+
+    call    set_attribute
+
+    inc     c                   ; Next column
+    dec     e
+    jr      nz, .col_loop
+
+    pop     de
+    pop     bc
+    inc     b                   ; Next row
+    dec     d
+    jr      nz, .row_loop
+
+    pop     af
+    ret
+```
+
+**Fast row fill (optimised):**
+
+```z80
+; Fill entire row with attribute
+; Input: A = row (0-23), E = attribute value
+fill_row:
+    ld      l, a
+    ld      h, 0
+    add     hl, hl
+    add     hl, hl
+    add     hl, hl
+    add     hl, hl
+    add     hl, hl              ; HL = row * 32
+    ld      bc, ATTR_BASE
+    add     hl, bc              ; HL = start of row in attributes
+
+    ld      b, 32               ; 32 columns
+.loop:
+    ld      (hl), e
+    inc     hl
+    djnz    .loop
+    ret
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~30 cycles per cell |
+| Memory | 768 bytes for full screen |
+| Limitation | 8x8 cell resolution only |
+
+**When to use:** Board games, puzzles, status displays, any game using character-cell graphics.
+
+**When to avoid:** When you need pixel-level colour control (not possible on Spectrum).
+
+## Attribute Memory Layout
+
+```
+$5800-$581F: Row 0  (columns 0-31)
+$5820-$583F: Row 1
+$5840-$585F: Row 2
+...
+$5AE0-$5AFF: Row 23
+```
+
+Total: 768 bytes (24 rows x 32 columns)
+
+## Colour Reference
+
+| Value | Normal | Bright |
+|-------|--------|--------|
+| 0 | Black | Black |
+| 1 | Blue | Bright Blue |
+| 2 | Red | Bright Red |
+| 3 | Magenta | Bright Magenta |
+| 4 | Green | Bright Green |
+| 5 | Cyan | Bright Cyan |
+| 6 | Yellow | Bright Yellow |
+| 7 | White | Bright White |
+
+## Related
+
+**Patterns:** [Game Loop (HALT)](/patterns/sinclair-zx-spectrum/framework/game-loop-halt)
+
+**Vault:** [ZX Spectrum](/vault/systems/sinclair-zx-spectrum)
