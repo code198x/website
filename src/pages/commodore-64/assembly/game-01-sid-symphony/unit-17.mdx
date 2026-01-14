@@ -1,0 +1,257 @@
+---
+title: "Song Selection Screen"
+description: "Building a menu system to select songs. The structure for multiple songs, ready to expand."
+pubDate: 2026-01-14
+game: 1
+gameName: "SID Symphony"
+unit: 17
+totalUnits: 64
+system: "Commodore 64"
+tags: ["assembly", "6510", "menu", "state-machine"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-16"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-18"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Phase 2 begins. The complete game from Phase 1 becomes the foundation for something bigger.
+
+This unit adds a song selection menu between the title screen and gameplay. Currently there's only one song to choose, but the infrastructure is ready for more. When you add songs in future units, they'll appear in this menu automatically.
+
+## Run It
+
+Assemble and run:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+```
+
+![Unit 17 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-17/screenshot.png)
+
+Press fire on the title screen to reach the song selection menu. Select a song and press fire again to play.
+
+## The New Game Flow
+
+The game now has five states instead of four:
+
+```
+TITLE → MENU → PLAYING → RESULTS/GAMEOVER → MENU
+```
+
+After completing or failing a song, you return to the menu—not the title. This feels more like a real game: pick a song, play it, try another.
+
+## New State Constant
+
+We add `STATE_MENU` to our state machine:
+
+```asm
+STATE_TITLE   = 0               ; Title screen
+STATE_MENU    = 1               ; Song selection menu (NEW!)
+STATE_PLAYING = 2               ; Gameplay
+STATE_RESULTS = 3               ; Success results
+STATE_GAMEOVER = 4              ; Failure game over
+```
+
+The state numbers shifted. `STATE_PLAYING` is now 2 instead of 1. This matters for the main loop dispatcher.
+
+## Menu Variables
+
+Three new zero-page variables track menu state:
+
+```asm
+cursor_pos  = $10               ; Which song is highlighted
+key_delay_count = $11           ; Prevents key repeat spam
+selected_song = $12             ; Which song to play
+```
+
+The key delay prevents the cursor from flying through options when holding up/down. Without it, the menu would be unusable.
+
+## Drawing the Menu
+
+The `show_menu` routine clears the screen and displays the song list:
+
+```asm
+show_menu:
+            ; Clear screen
+            ldx #0
+            lda #CHAR_SPACE
+clear_menu:
+            sta SCREEN,x
+            sta SCREEN+$100,x
+            sta SCREEN+$200,x
+            sta SCREEN+$2E8,x
+            inx
+            bne clear_menu
+
+            ; Initialise cursor
+            lda #0
+            sta cursor_pos
+            sta key_delay_count
+
+            ; Draw menu title
+            ldx #0
+draw_menu_title:
+            lda menu_title,x
+            beq draw_menu_title_done
+            sta SCREEN + (4 * 40) + 12,x
+            lda #TITLE_COL
+            sta COLRAM + (4 * 40) + 12,x
+            inx
+            jmp draw_menu_title
+draw_menu_title_done:
+
+            ; Draw song list
+            jsr draw_song_list
+            rts
+```
+
+The cursor starts at position 0 (the first song). With only one song currently, that's the only option.
+
+## Cursor Movement
+
+The `update_menu` routine handles input:
+
+```asm
+update_menu:
+            ; Handle key delay
+            lda key_delay_count
+            beq menu_check_input
+            dec key_delay_count
+            jmp menu_check_fire
+
+menu_check_input:
+            ; Check joystick up
+            lda CIA1_PRA
+            and #$01            ; Bit 0 = up
+            beq menu_up_pressed
+
+            ; Check joystick down
+            lda CIA1_PRA
+            and #$02            ; Bit 1 = down
+            beq menu_down_pressed
+
+            jmp menu_check_fire
+```
+
+Key repeat delay works like this:
+1. If `key_delay_count` is non-zero, skip input checking and decrement
+2. When input detected, set `key_delay_count` to `KEY_DELAY` (10 frames)
+3. This means roughly 5 cursor movements per second maximum
+
+## Sound Feedback
+
+Two new sounds make the menu feel responsive:
+
+```asm
+MENU_MOVE_FREQ    = $10         ; Lower pitch for cursor move
+MENU_MOVE_WAVE    = $11         ; Triangle (soft)
+
+MENU_SELECT_FREQ  = $18         ; Higher pitch for selection
+MENU_SELECT_WAVE  = $41         ; Pulse (click)
+```
+
+The move sound is soft and low. The select sound is brighter and sharper. This audio distinction helps users understand what action they just took.
+
+## Transitioning to Game
+
+When fire is pressed, we store the selection and start the game:
+
+```asm
+menu_fire_pressed:
+            lda #$FF
+            sta CIA1_PRA
+
+            ; Play select sound
+            jsr play_menu_select
+
+            ; Store selected song
+            lda cursor_pos
+            sta selected_song
+
+            ; Transition to game
+            jsr transition_to_game
+            rts
+
+transition_to_game:
+            ; Set up the selected song
+            ; In future units, this will load different song data
+
+            ; Initialise game
+            jsr init_game
+            lda #STATE_PLAYING
+            sta game_state
+            rts
+```
+
+Right now `transition_to_game` always loads the same song. In Unit 18, we'll use `selected_song` to choose which song data to use.
+
+## Returning to Menu
+
+After completing or failing, pressing fire now returns to the menu:
+
+```asm
+update_results:
+            ; Check for fire to return to menu
+            lda CIA1_PRA
+            and #$10
+            beq results_fire
+            ; ...
+
+results_fire:
+            ; ...
+            ; Return to menu (not title)
+            jsr show_menu
+            lda #STATE_MENU
+            sta game_state
+            rts
+```
+
+This small change makes a big difference. Players can immediately try another song without going through the title screen.
+
+## Song Name Display
+
+During gameplay, the selected song's name appears in the HUD:
+
+```asm
+            ; Draw song name on gameplay screen
+            ldx #0
+draw_song_name:
+            lda selected_song
+            ; For now only song 0
+            lda song1_name,x
+            beq draw_song_name_done
+            sta SCREEN + 28,x
+            lda #11
+            sta COLRAM + 28,x
+            inx
+            jmp draw_song_name
+draw_song_name_done:
+```
+
+When we add more songs, this will display which one is playing.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-17/symphony.asm" />
+
+## What's Coming
+
+The menu system is ready for expansion:
+
+- **Unit 18:** Add Song 2 with different character
+- **Unit 19:** Add difficulty selection to the menu
+- **Unit 20:** Difficulty variants for each song
+- **Unit 21:** Song 3 at faster tempo
+
+The infrastructure built here pays off quickly.
+
+## What You've Learnt
+
+- **Menu state management** - Adding states to the state machine
+- **Cursor tracking** - Position variable and bounds checking
+- **Key repeat delay** - Preventing input spam
+- **State transitions** - Menu → Game → Menu flow
+- **Sound feedback** - Different sounds for different actions
+
+Phase 2 is underway.

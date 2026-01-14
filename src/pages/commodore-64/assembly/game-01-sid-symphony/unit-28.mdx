@@ -1,0 +1,222 @@
+---
+title: "Endless Mode"
+description: "Adding Endless Mode - a survival challenge where songs loop continuously until health depletes. Score accumulates across loops, testing endurance rather than completion."
+pubDate: 2026-01-14
+game: 1
+gameName: "SID Symphony"
+unit: 28
+totalUnits: 64
+system: "Commodore 64"
+tags: ["assembly", "6510", "game-modes", "survival", "endless"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-27"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-29"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Some players want to beat a song. Others want to see how long they can last. Endless Mode transforms any song into a survival challenge—the music loops indefinitely until your health reaches zero.
+
+This unit adds an Endless Mode toggle that changes how songs end and tracks how many loops you complete.
+
+## Run It
+
+Assemble and run:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+```
+
+![Unit 28 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-28/screenshot.png)
+
+The menu now shows "ENDLESS: OFF" below the speed setting. Press E to toggle it on. With Endless Mode active, songs loop continuously—your score keeps climbing until your health runs out.
+
+## Mode Toggle
+
+The endless mode flag works like our other toggles:
+
+```asm
+endless_mode  = $1D             ; 0=Normal (song ends), 1=Endless (loops)
+loop_count    = $1E             ; Number of loops completed in endless mode
+```
+
+Players toggle between normal mode (song ends after all notes) and endless mode (song loops forever).
+
+## Menu Display
+
+We add the endless label and state display to the menu:
+
+```asm
+draw_endless_label:
+            lda endless_label,x
+            beq draw_endless_label_done
+            sta SCREEN + (19 * 40) + 13,x
+            lda #TITLE_COL
+            sta COLRAM + (19 * 40) + 13,x
+            inx
+            jmp draw_endless_label
+draw_endless_label_done:
+
+            jsr draw_endless_state
+            rts
+
+endless_label:
+            !scr "endless:"
+            !byte 0
+```
+
+The state display shows ON in cyan or OFF in grey, matching our other toggles.
+
+## E Key Handler
+
+The E key toggles endless mode:
+
+```asm
+            ; Check E key for endless toggle (row 1, column 6)
+            lda #$FD                ; Row 1
+            sta CIA1_PRA
+            lda CIA1_PRB
+            and #$40                ; Column 6 = E
+            beq menu_e_pressed
+
+            jmp menu_check_fire
+
+menu_e_pressed:
+            ; Toggle endless mode
+            lda endless_mode
+            eor #1
+            sta endless_mode
+            jsr play_menu_move
+            jsr draw_endless_state
+            lda #KEY_DELAY
+            sta key_delay_count
+            jmp menu_check_fire
+```
+
+The pattern is identical to our practice mode toggle—read keyboard, XOR the flag, update display.
+
+## Song Looping
+
+The key change is in `check_song_end`. Instead of showing results when the song ends, we check the mode:
+
+```asm
+            ; Check for endless mode
+            lda endless_mode
+            beq end_song_normal
+
+            ; Endless mode - loop the song
+            inc loop_count
+            jsr display_loop_count
+            jsr init_song           ; Reset song position
+            lda #0
+            sta end_delay
+            sta song_ended
+            rts
+
+end_song_normal:
+            ; Show results
+            jsr show_results
+            lda #STATE_RESULTS
+            sta game_state
+```
+
+In endless mode, we increment the loop count, reset the song position, and continue. The player keeps their score and health across loops.
+
+## Loop Counter Display
+
+During endless play, we show the current loop number:
+
+```asm
+display_loop_count:
+            ; Display "LOOP X" in top right during endless mode
+            ; Position: row 1, column 32
+            lda #'l'
+            sta SCREEN + (1 * 40) + 32
+            lda #'o'
+            sta SCREEN + (1 * 40) + 33
+            sta SCREEN + (1 * 40) + 34
+            lda #'p'
+            sta SCREEN + (1 * 40) + 35
+            lda #CHAR_SPACE
+            sta SCREEN + (1 * 40) + 36
+
+            ; Display loop number (max 9 displayed)
+            lda loop_count
+            cmp #10
+            bcc display_loop_digit
+            lda #9                  ; Cap display at 9
+display_loop_digit:
+            clc
+            adc #$30                ; Convert to ASCII digit
+            sta SCREEN + (1 * 40) + 37
+```
+
+We cap the display at 9, though the internal counter can go higher. The loop display appears in cyan in the top-right corner.
+
+## Initialization
+
+Loop count starts at 1 (first play-through):
+
+```asm
+            ; Initialize endless mode loop counter
+            lda #1                  ; Start at loop 1
+            sta loop_count
+
+            ; Display loop count if in endless mode
+            lda endless_mode
+            beq init_game_done
+            jsr display_loop_count
+
+init_game_done:
+            rts
+```
+
+We only display the loop counter if endless mode is active, keeping the screen clean for normal play.
+
+## Why Endless Mode Matters
+
+Different players enjoy games differently:
+
+| Play Style | Normal Mode | Endless Mode |
+|------------|-------------|--------------|
+| Goal | Complete song | Survive longest |
+| Pressure | Moderate | Increasing |
+| Score | Capped by song | Unlimited |
+| Session | 1-2 minutes | Until death |
+
+Endless mode transforms a 64-beat song into an endurance test. Each loop the pressure builds—one bad streak depletes health accumulated over multiple loops.
+
+## Mode Interactions
+
+Consider how modes combine:
+
+| Practice | Endless | Effect |
+|----------|---------|--------|
+| OFF | OFF | Normal play—song ends at completion |
+| ON | OFF | Practice—no health loss, song ends |
+| OFF | ON | Survival—loops until death |
+| ON | ON | Infinite practice—loops with no penalty |
+
+Players can use Practice + Endless to learn a song indefinitely, then switch to pure Endless for the challenge.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-28/symphony.asm" />
+
+## What's Coming
+
+With five songs and multiple game modes:
+
+- **Unit 29:** Song 6 with mixed techniques
+- **Unit 30:** Advanced scoring mechanics
+- **Unit 31:** Results screen enhancements
+
+## What You've Learnt
+
+- **Mode toggles** - Menu options that change game behaviour
+- **Song looping** - Resetting song position without restarting game
+- **Loop counting** - Tracking and displaying progress
+- **Mode interactions** - How multiple options combine
+- **Play style variety** - Different players want different challenges
+
+Endless Mode turns completion into survival.

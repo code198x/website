@@ -1,0 +1,226 @@
+---
+title: "Advanced Scoring Mechanics"
+description: "Adding advanced scoring: perfect streak bonuses, section completion rewards, and full combo bonus. Skilled play is now richly rewarded beyond basic hit points."
+pubDate: 2026-01-14
+game: 1
+gameName: "SID Symphony"
+unit: 30
+totalUnits: 64
+system: "Commodore 64"
+tags: ["assembly", "6510", "scoring", "bonuses", "streaks"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-29"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-31"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+A rhythm game's scoring should reward skill beyond mere accuracy. Landing five perfect hits in a row is harder than landing five spread across the song—the scoring should reflect that.
+
+This unit adds three advanced scoring mechanics: perfect streak bonuses, section completion rewards, and a full combo bonus for flawless performance.
+
+## Run It
+
+Assemble and run:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+```
+
+![Unit 30 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-30/screenshot.png)
+
+The menu looks the same, but gameplay now rewards skilled play with bonus points.
+
+## New Scoring Variables
+
+We track additional data for bonus calculations:
+
+```asm
+perfect_streak = $1F            ; Current consecutive perfect hits
+best_streak   = $20             ; Best perfect streak this song
+section_bonus = $21             ; Accumulated section bonus points
+notes_hit     = $22             ; Total notes hit (for accuracy calc)
+```
+
+These enable streak tracking, section milestones, and accuracy measurement.
+
+## Bonus Constants
+
+The bonus values balance reward without breaking the score economy:
+
+```asm
+; Streak bonuses (awarded every N consecutive perfects)
+STREAK_THRESHOLD = 5            ; Perfect streak bonus every 5 perfects
+STREAK_BONUS  = 50              ; Bonus points per streak milestone
+
+; Section completion bonuses (25%, 50%, 75%, 100%)
+SECTION_BONUS = 100             ; Bonus per section completed
+
+; Full combo bonus (no misses)
+FULL_COMBO_BONUS = 200          ; Bonus if no misses entire song
+```
+
+Five consecutive perfects earns 50 bonus points—roughly equivalent to one perfect hit, rewarding consistency without overwhelming base scoring.
+
+## Perfect Streak Tracking
+
+Each perfect hit extends the streak; good hits reset it:
+
+```asm
+award_perfect:
+            ; Perfect hit - increment streak
+            inc perfect_streak
+
+            ; Check for streak bonus (every STREAK_THRESHOLD perfects)
+            lda perfect_streak
+            cmp #STREAK_THRESHOLD
+            bne no_streak_bonus
+            ; Award streak bonus
+            lda #STREAK_BONUS
+            jsr add_score
+            lda #0
+            sta perfect_streak      ; Reset for next milestone
+            ; Flash border cyan for streak bonus
+            lda #3                  ; Cyan
+            sta BORDER
+no_streak_bonus:
+```
+
+The streak resets after awarding the bonus, so players must maintain another five perfects for the next bonus.
+
+## Good Hits Break Streaks
+
+A good hit isn't a miss, but it interrupts perfection:
+
+```asm
+            ; Good hit - resets perfect streak
+            lda #0
+            sta perfect_streak
+```
+
+This creates tension: should players aim for risky perfect timing or play it safe with reliable good hits?
+
+## Section Bonuses
+
+Every quarter of the song awards a completion bonus:
+
+```asm
+check_section_bonus:
+            ; Check 25% (song_length / 4)
+            lda song_length
+            lsr
+            lsr                     ; A = song_length / 4
+            cmp song_beat
+            bne check_50
+
+            ; Award 25% section bonus
+            lda section_bonus
+            and #$01                ; Check if already awarded
+            bne section_done
+            lda section_bonus
+            ora #$01                ; Mark 25% as awarded
+            sta section_bonus
+            jsr award_section_bonus
+            rts
+```
+
+We use bit flags to track which sections have awarded their bonus, preventing multiple awards for the same milestone.
+
+## Section Calculation
+
+The 75% calculation requires subtraction:
+
+```asm
+check_75:
+            ; Check 75% (song_length - song_length/4)
+            lda song_length
+            lsr
+            lsr
+            sta ZP_TEMP             ; song_length / 4
+            lda song_length
+            sec
+            sbc ZP_TEMP             ; song_length - song_length/4
+            cmp song_beat
+```
+
+We calculate 75% as "100% minus 25%" rather than multiplying by 3/4, which is simpler in 8-bit assembly.
+
+## Full Combo Bonus
+
+Zero misses earns a special bonus at song end:
+
+```asm
+show_results:
+            ; Check for full combo bonus (no misses)
+            lda miss_count
+            bne skip_full_combo
+            ; Award full combo bonus!
+            lda #FULL_COMBO_BONUS
+            jsr add_score
+skip_full_combo:
+```
+
+This bonus is awarded before checking high scores, so a full combo can push players into new high score territory.
+
+## Visual Feedback
+
+Each bonus type has distinct visual feedback:
+
+| Event | Border Colour | Duration |
+|-------|---------------|----------|
+| Perfect streak | Cyan | 6 frames |
+| Section complete | Purple | 8 frames |
+| Good hit | Yellow | 4 frames |
+| Perfect hit | White | 6 frames |
+
+Players learn to recognise bonus events through colour coding.
+
+## Score Composition
+
+A skilled player's score now includes multiple components:
+
+| Source | Example |
+|--------|---------|
+| Hit points | 50-100 per note |
+| Combo multiplier | 2x-4x at high combos |
+| Streak bonuses | 50 per 5 perfects |
+| Section bonuses | 100 per quarter |
+| Full combo | 200 if no misses |
+
+The layered scoring rewards different aspects of skill simultaneously.
+
+## Initialisation
+
+New variables need clearing at game start:
+
+```asm
+            ; Initialize advanced scoring variables
+            sta perfect_streak
+            sta best_streak
+            sta section_bonus
+            sta notes_hit
+```
+
+Starting with zero streak ensures fair play from the first note.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-30/symphony.asm" />
+
+## What's Coming
+
+With advanced scoring rewarding skilled play:
+
+- **Unit 31:** Results screen enhancements
+- **Unit 32:** Phase 2 completion
+
+## What You've Learnt
+
+- **Streak tracking** - Counting consecutive events for bonus triggers
+- **Bit flags** - Using individual bits to track multiple states
+- **Section milestones** - Division and comparison for progress checkpoints
+- **Score layering** - Multiple bonus sources rewarding different skills
+- **Visual feedback** - Colour-coded feedback for bonus events
+- **Balance design** - Bonuses that enhance without overwhelming
+
+Advanced scoring makes perfection pay.
