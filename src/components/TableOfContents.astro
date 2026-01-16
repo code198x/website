@@ -1,0 +1,254 @@
+---
+/**
+ * TableOfContents - Auto-generated navigation from page headings
+ *
+ * Usage:
+ *   import TableOfContents from '@components/TableOfContents.astro';
+ *   <TableOfContents />
+ *
+ * Client-side component that scans for h2/h3 headings in the page
+ * and creates a navigable outline. Highlights current section on scroll.
+ */
+
+interface Props {
+  selector?: string; // CSS selector for the content container
+  platformColor?: string;
+}
+
+const { selector = '.unit-content', platformColor } = Astro.props;
+const accentColor = platformColor || 'var(--color-primary)';
+---
+
+<nav
+  class="toc"
+  aria-label="Table of contents"
+  data-selector={selector}
+  style={`--toc-accent: ${accentColor};`}
+>
+  <button class="toc-toggle" aria-expanded="false">
+    <span class="toc-toggle-text">On this page</span>
+    <svg class="toc-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  </button>
+  <ol class="toc-list"></ol>
+</nav>
+
+<style>
+  .toc {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .toc-toggle {
+    display: none;
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--color-text);
+    text-align: left;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .toc-toggle-icon {
+    transition: transform var(--transition-base);
+  }
+
+  .toc-toggle[aria-expanded="true"] .toc-toggle-icon {
+    transform: rotate(180deg);
+  }
+
+  .toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .toc-list:empty {
+    display: none;
+  }
+
+  .toc-list :global(li) {
+    margin: 0;
+  }
+
+  .toc-list :global(a) {
+    display: block;
+    padding: var(--space-2) 0;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    padding-left: var(--space-3);
+    transition: all var(--transition-base);
+  }
+
+  .toc-list :global(a:hover) {
+    color: var(--toc-accent);
+  }
+
+  .toc-list :global(a.active) {
+    color: var(--toc-accent);
+    border-left-color: var(--toc-accent);
+    font-weight: 500;
+  }
+
+  .toc-list :global(a.depth-3) {
+    padding-left: calc(var(--space-3) + var(--space-4));
+    font-size: 0.8125rem;
+  }
+
+  /* Desktop: always visible in sidebar */
+  @media (min-width: 1200px) {
+    .toc {
+      position: sticky;
+      top: calc(var(--nav-height) + var(--space-8));
+      max-height: calc(100vh - var(--nav-height) - var(--space-16));
+      overflow-y: auto;
+    }
+
+    .toc-list {
+      border-left: 1px solid var(--color-border);
+    }
+  }
+
+  /* Mobile: collapsible */
+  @media (max-width: 1199px) {
+    .toc {
+      margin-bottom: var(--space-6);
+    }
+
+    .toc-toggle {
+      display: flex;
+    }
+
+    .toc-list {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-top: 0;
+      border-radius: 0 0 0.5rem 0.5rem;
+    }
+
+    .toc[data-expanded="true"] .toc-list {
+      max-height: 400px;
+      padding: var(--space-3) var(--space-4);
+      overflow-y: auto;
+    }
+
+    .toc-list :global(a) {
+      border-left: none;
+      padding: var(--space-2) 0;
+    }
+
+    .toc-list :global(a.depth-3) {
+      padding-left: var(--space-4);
+    }
+  }
+</style>
+
+<script>
+  class TableOfContents {
+    private toc: HTMLElement;
+    private list: HTMLOListElement;
+    private toggle: HTMLButtonElement;
+    private selector: string;
+    private headings: HTMLHeadingElement[] = [];
+    private links: HTMLAnchorElement[] = [];
+    private observer: IntersectionObserver | null = null;
+
+    constructor(toc: HTMLElement) {
+      this.toc = toc;
+      this.list = toc.querySelector('.toc-list') as HTMLOListElement;
+      this.toggle = toc.querySelector('.toc-toggle') as HTMLButtonElement;
+      this.selector = toc.dataset.selector || '.unit-content';
+
+      this.init();
+    }
+
+    private init() {
+      this.buildToc();
+      this.setupToggle();
+      this.setupScrollSpy();
+    }
+
+    private buildToc() {
+      const content = document.querySelector(this.selector);
+      if (!content) return;
+
+      this.headings = Array.from(content.querySelectorAll('h2, h3')) as HTMLHeadingElement[];
+
+      if (this.headings.length === 0) {
+        this.toc.style.display = 'none';
+        return;
+      }
+
+      // Ensure headings have IDs
+      this.headings.forEach((heading, index) => {
+        if (!heading.id) {
+          heading.id = `heading-${index}`;
+        }
+      });
+
+      // Build the list using safe DOM methods
+      this.list.textContent = ''; // Clear existing content
+      this.headings.forEach(heading => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = `#${heading.id}`;
+        a.textContent = heading.textContent;
+        a.className = heading.tagName === 'H3' ? 'depth-3' : 'depth-2';
+        li.appendChild(a);
+        this.list.appendChild(li);
+      });
+
+      this.links = Array.from(this.list.querySelectorAll('a'));
+    }
+
+    private setupToggle() {
+      this.toggle?.addEventListener('click', () => {
+        const isExpanded = this.toggle.getAttribute('aria-expanded') === 'true';
+        this.toggle.setAttribute('aria-expanded', (!isExpanded).toString());
+        this.toc.dataset.expanded = (!isExpanded).toString();
+      });
+    }
+
+    private setupScrollSpy() {
+      if (this.headings.length === 0) return;
+
+      // Use Intersection Observer for scroll spy
+      this.observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(entry => {
+            const id = entry.target.id;
+            const link = this.links.find(a => a.getAttribute('href') === `#${id}`);
+
+            if (entry.isIntersecting) {
+              this.links.forEach(a => a.classList.remove('active'));
+              link?.classList.add('active');
+            }
+          });
+        },
+        {
+          rootMargin: '-80px 0px -80% 0px',
+          threshold: 0
+        }
+      );
+
+      this.headings.forEach(heading => {
+        this.observer?.observe(heading);
+      });
+    }
+  }
+
+  // Initialize all ToC instances
+  document.querySelectorAll('.toc').forEach(toc => {
+    new TableOfContents(toc as HTMLElement);
+  });
+</script>

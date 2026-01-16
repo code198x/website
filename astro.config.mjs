@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
+import sitemap from '@astrojs/sitemap';
 import icon from 'astro-icon';
 import { bundledLanguages } from 'shiki';
 import { remarkHighlightApi } from 'remark-shiki-highlight-api';
@@ -18,7 +19,7 @@ import m68kGrammar from './src/syntax/m68k.tmLanguage.json' assert { type: 'json
 // https://astro.build/config
 export default defineConfig({
   site: 'https://code198x.stevehill.xyz',
-  integrations: [mdx(), icon()],
+  integrations: [mdx(), sitemap(), icon()],
   markdown: {
     // Use CSS Custom Highlight API for syntax highlighting
     remarkPlugins: [

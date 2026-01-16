@@ -9,236 +9,68 @@ accentColor: "#ff6600"
 
 ## What You Need
 
-To develop for the Amiga, you need:
+To develop for the Amiga, you need three things: a way to **compile** your code, an **emulator** to run it, and **Kickstart ROMs**.
 
-1. **A way to compile** - our Docker toolchain handles assembler and disk tools
-2. **An emulator** - runs your programs (install natively for best experience)
-3. **Kickstart ROMs** - the Amiga's operating system
+<div class="setup-grid">
+<div class="setup-column">
 
-## Docker Toolchain (Recommended)
+### <span class="icon">⚙️</span> Dev Toolchain
 
-Our Docker image includes vasm assembler, amitools for disk creation, and NDK headers — everything needed to compile Amiga programs.
+Our Docker image includes vasm assembler and amitools for disk creation.
 
-<div class="tool-card">
-
-### Quick Start
+#### Install
 
 ```bash
 docker pull code198x/commodore-amiga
 ```
 
-To compile a program and create a bootable disk:
+#### Compile
 
 ```bash
-# Compile
-docker run --rm -v "$(pwd)":/code code198x/commodore-amiga \
-  vasmm68k_mot -Fhunkexe -kick1hunks -o hello -nosym hello.asm
-
-# Create bootable ADF (run from your code directory)
-docker run --rm -v "$(pwd)":/code code198x/commodore-amiga \
-  bash -c "echo hello > startup-sequence && \
-           xdftool hello.adf create + format 'Hello' ofs + boot install boot1x && \
-           xdftool hello.adf + makedir s + write startup-sequence s/startup-sequence && \
-           xdftool hello.adf + write hello + protect hello +e && \
-           rm startup-sequence"
+docker run --rm -v "$(pwd)":/code -w /code \
+  code198x/commodore-amiga \
+  vasmm68k_mot -Fhunkexe -kick1hunks -o game game.asm
 ```
 
-Your compiled executable and bootable `.adf` disk appear in your current directory.
+#### Create Bootable Disk
+
+```bash
+docker run --rm -v "$(pwd)":/code -w /code \
+  code198x/commodore-amiga bash -c \
+  "echo game > s && xdftool game.adf create + format Game + \
+   boot install boot1x + makedir s + write s s/startup-sequence + \
+   write game && rm s"
+```
 
 </div>
+<div class="setup-column">
 
-## Installing the Emulator
+### <span class="icon">🖥️</span> Emulator
 
-We recommend **FS-UAE**. Install it natively for smooth, responsive testing.
+Install an Amiga emulator natively for the best experience.
 
-<div class="tool-card">
-
-### Installing FS-UAE
-
-**macOS (Homebrew)**
-
+**macOS / Linux**
 ```bash
-brew install --cask fs-uae
+brew install --cask fs-uae  # macOS
+sudo apt install fs-uae     # Linux
 ```
 
-**Linux**
+**Windows** — Download [WinUAE](https://www.winuae.net/)
 
-```bash
-# Ubuntu/Debian
-sudo add-apt-repository ppa:fengestad/stable
-sudo apt update
-sudo apt install fs-uae
-```
+#### Kickstart ROMs
 
-**Windows**
-
-Download from [fs-uae.net](https://fs-uae.net/).
-
-**Kickstart ROM**
-
-FS-UAE requires Kickstart ROM files. You can:
+Amiga emulators require Kickstart ROM files:
 - Dump from a real Amiga
 - Purchase from [Amiga Forever](https://www.amigaforever.com/)
-- Use AROS replacements (limited compatibility)
 
-Place ROM files in `~/Documents/FS-UAE/Kickstarts/`.
-
-</div>
-
-## Your First Program
-
-Create a file called `hello.asm`:
-
-```asm
-CUSTOM          equ $dff000
-ExecBase        equ 4
-OldOpenLibrary  equ -408
-CloseLibrary    equ -414
-LoadView        equ -222
-WaitTOF         equ -270
-
-            section code,code
-
-start:
-            move.l  ExecBase,a6
-            lea     gfxname(pc),a1
-            jsr     OldOpenLibrary(a6)
-            tst.l   d0
-            beq     .exit
-            move.l  d0,a6
-
-            ; Clear display
-            sub.l   a1,a1
-            jsr     LoadView(a6)
-            jsr     WaitTOF(a6)
-
-            ; Set background to blue
-            move.w  #$00f,$180+CUSTOM
-
-            ; Wait for mouse
-.wait:
-            btst    #6,$bfe001
-            bne     .wait
-
-            ; Exit
-            move.l  a6,a1
-            move.l  ExecBase,a6
-            jsr     CloseLibrary(a6)
-.exit:
-            moveq   #0,d0
-            rts
-
-gfxname:    dc.b    "graphics.library",0
-```
-
-## The Workflow
-
-Every change follows the same cycle:
-
-1. **Edit** your `.asm` file in any text editor
-2. **Compile** with `make`
-3. **Run** with `make run`
-
-### Using a Makefile
-
-Create a `Makefile` in your project directory:
-
-```makefile
-# Commodore Amiga Makefile
-IMAGE = code198x/commodore-amiga
-SRC   = game.asm
-EXE   = game
-ADF   = game.adf
-NAME  = Game
-
-.PHONY: all run clean
-
-all: $(ADF)
-
-$(EXE): $(SRC)
-	docker run --rm -v "$(PWD)":/code -w /code $(IMAGE) \
-		vasmm68k_mot -Fhunkexe -kick1hunks -nosym -o $(EXE) $(SRC)
-
-$(ADF): $(EXE)
-	docker run --rm -v "$(PWD)":/code -w /code $(IMAGE) bash -c "\
-		echo '$(EXE)' > startup-sequence && \
-		xdftool $(ADF) create + format '$(NAME)' ofs + boot install boot1x && \
-		xdftool $(ADF) + makedir s + write startup-sequence s/startup-sequence && \
-		xdftool $(ADF) + write $(EXE) + protect $(EXE) +e && \
-		rm startup-sequence"
-
-run: $(ADF)
-	fs-uae --floppy_drive_0=$(ADF)
-
-clean:
-	rm -f $(EXE) $(ADF)
-```
-
-Now your workflow is simply:
+#### Run
 
 ```bash
-make        # Compile and create bootable disk
-make run    # Compile and run in FS-UAE
-make clean  # Remove built files
-```
-
-You should see a blue screen. Click the left mouse button to exit. Every lesson includes a working Makefile.
-
-## Project Structure
-
-```
-hop/
-├── hop.asm         # Source code
-├── hop             # Compiled executable
-└── hop.adf         # Bootable disk image
-```
-
-## Key Addresses
-
-| Address | Purpose |
-|---------|---------|
-| $DFF000 | Custom chip base |
-| $BFE001 | CIA-A (mouse buttons, etc.) |
-| $DFF180 | COLOR00 (background) |
-| $DFF080 | COP1LC (copper list address) |
-
-<span id="native"></span>
-
-## Alternative: Native Tools
-
-If you prefer not to use Docker, install the tools directly.
-
-<div class="tool-card">
-
-### Installing vasm & amitools
-
-**vasm (Assembler)**
-
-vasm must be built from source on all platforms:
-
-```bash
-wget http://www.compilers.de/vasm.tar.gz
-tar xzf vasm.tar.gz
-cd vasm
-make CPU=m68k SYNTAX=mot
-sudo cp vasmm68k_mot /usr/local/bin/
-```
-
-Windows - Download from [compilers.de/vasm](http://www.compilers.de/vasm.html) or use WSL.
-
-**amitools (Disk Tools)**
-
-```bash
-pip3 install amitools
+fs-uae --floppy_drive_0=game.adf
 ```
 
 </div>
-
-With native tools, compile directly:
-
-```bash
-vasmm68k_mot -Fhunkexe -kick1hunks -o hello -nosym hello.asm
-```
+</div>
 
 <div class="next-step">
 
@@ -246,6 +78,6 @@ vasmm68k_mot -Fhunkexe -kick1hunks -o hello -nosym hello.asm
 
 Your tools are set up. Time to write some code.
 
-[Start Game 1: Signal →](/commodore-amiga/assembly/game-01-signal)
+[Start with Assembly →](/commodore-amiga/assembly)
 
 </div>
