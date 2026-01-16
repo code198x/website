@@ -27,6 +27,7 @@ const platforms = defineCollection({
 
     // Navigation & Status
     status: z.enum(['active', 'coming-soon']),
+    curriculumStatus: z.string().optional(), // e.g. "Game 1 Phase 2 live"
     navOrder: z.number(),
   }),
 });
