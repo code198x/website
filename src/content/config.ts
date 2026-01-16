@@ -99,4 +99,47 @@ const timeline = defineCollection({
   }),
 });
 
-export const collections = { platforms, vault, patterns, timeline };
+// Pattern library categories (rendering, input, audio, etc.)
+const patternCategories = defineCollection({
+  type: 'data',
+  schema: z.object({
+    name: z.string(),
+    description: z.string(),
+    icon: z.string(), // Lucide icon name
+    order: z.number(),
+  }),
+});
+
+// Pattern library difficulty levels
+const patternDifficulties = defineCollection({
+  type: 'data',
+  schema: z.object({
+    name: z.string(),
+    description: z.string(),
+    icon: z.string(), // Lucide icon name
+    color: z.string(), // CSS color or variable
+    order: z.number(),
+  }),
+});
+
+// Vault categories (systems, hardware, people, etc.)
+const vaultCategories = defineCollection({
+  type: 'data',
+  schema: z.object({
+    name: z.string(),
+    description: z.string(),
+    icon: z.string(), // Lucide icon name or emoji
+    color: z.string(), // CSS color for category accent
+    order: z.number(),
+  }),
+});
+
+export const collections = {
+  platforms,
+  vault,
+  patterns,
+  timeline,
+  'pattern-categories': patternCategories,
+  'pattern-difficulties': patternDifficulties,
+  'vault-categories': vaultCategories,
+};
