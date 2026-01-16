@@ -1,5 +1,36 @@
 import { defineCollection, z } from 'astro:content';
 
+// Platform/system definitions - the source of truth for all platform data
+const platforms = defineCollection({
+  type: 'data',
+  schema: z.object({
+    // Identity
+    name: z.string(),
+    shortName: z.string(),
+    year: z.number(),
+    color: z.string(),
+    tagline: z.string(),
+
+    // Classification
+    bits: z.enum(['8', '16', '32']),
+    region: z.enum(['US', 'UK', 'Japan', 'Europe']),
+    cpu: z.string(),
+    cpuArchitecture: z.enum(['6502', 'z80', '68000']),
+
+    // Toolchain
+    assembler: z.string(),
+    assemblerLanguage: z.enum(['6502', 'z80', 'm68k', 'ca65']),
+    emulator: z.string(),
+    buildOutput: z.string(),
+    toolchainExtras: z.array(z.string()).default([]),
+    dockerImage: z.string(),
+
+    // Navigation & Status
+    status: z.enum(['active', 'coming-soon']),
+    navOrder: z.number(),
+  }),
+});
+
 const vault = defineCollection({
   type: 'content',
   schema: z.object({
@@ -67,4 +98,4 @@ const timeline = defineCollection({
   }),
 });
 
-export const collections = { vault, patterns, timeline };
+export const collections = { platforms, vault, patterns, timeline };
