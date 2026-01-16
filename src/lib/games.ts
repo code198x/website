@@ -1,7 +1,11 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
+import { getUnitsAvailableCount, hasUnitsEntry } from './units';
 
 export type GamesEntry = CollectionEntry<'games'>;
 export type Game = GamesEntry['data']['games'][number];
+
+// Game with guaranteed unitsAvailable (computed if from units collection)
+export type GameWithAvailability = Omit<Game, 'unitsAvailable'> & { unitsAvailable: number };
 
 /**
  * Get games for a specific platform and track combination
@@ -10,6 +14,35 @@ export async function getGames(platform: string, track: 'assembly' | 'basic' | '
   const allGames = await getCollection('games');
   const entry = allGames.find(g => g.data.platform === platform && g.data.track === track);
   return entry?.data.games ?? [];
+}
+
+/**
+ * Get games with computed unitsAvailable (from units collection when available)
+ */
+export async function getGamesWithAvailability(
+  platform: string,
+  track: 'assembly' | 'basic' | 'amos'
+): Promise<GameWithAvailability[]> {
+  const games = await getGames(platform, track);
+
+  return Promise.all(games.map(async (game) => {
+    // Check if units collection has an entry for this game
+    const hasUnits = await hasUnitsEntry(platform, track, game.slug);
+
+    let unitsAvailable: number;
+    if (hasUnits) {
+      // Compute from units collection
+      unitsAvailable = await getUnitsAvailableCount(platform, track, game.slug);
+    } else {
+      // Fall back to games collection value or 0
+      unitsAvailable = game.unitsAvailable ?? 0;
+    }
+
+    return {
+      ...game,
+      unitsAvailable,
+    };
+  }));
 }
 
 /**

@@ -146,9 +146,31 @@ const games = defineCollection({
       name: z.string(),
       tagline: z.string(),
       units: z.number(),
-      unitsAvailable: z.number().default(0),
+      unitsAvailable: z.number().optional(), // Computed from units collection when available
       skills: z.array(z.string()),
       status: z.enum(['in-progress', 'coming-soon', 'complete']),
+    })),
+  }),
+});
+
+// Unit details for each game - phases and individual unit information
+const units = defineCollection({
+  type: 'data',
+  schema: z.object({
+    platform: z.string(),
+    track: z.enum(['assembly', 'basic', 'amos']),
+    gameSlug: z.string(),
+    phases: z.array(z.object({
+      name: z.string(),
+      description: z.string(),
+      hours: z.string(), // e.g., "16-24"
+      start: z.number(),
+      end: z.number(),
+    })),
+    units: z.array(z.object({
+      number: z.number(),
+      title: z.string(),
+      available: z.boolean().default(false),
     })),
   }),
 });
@@ -159,6 +181,7 @@ export const collections = {
   patterns,
   timeline,
   games,
+  units,
   'pattern-categories': patternCategories,
   'pattern-difficulties': patternDifficulties,
   'vault-categories': vaultCategories,
