@@ -1,223 +1,548 @@
 ---
 /**
- * CodeDiff - Display code changes with line highlighting
+ * CodeDiff - Show code differences with syntax highlighting
  *
- * Usage:
- *   import CodeDiff from '@components/CodeDiff.astro';
+ * Usage with file paths (automatic diff):
  *   <CodeDiff
- *     title="Changes in Unit 3"
- *     additions={[5, 6, 7]}
- *     deletions={[2]}
- *     code={`line 1
- * line 2 (deleted)
- * line 3
- * line 4
- * line 5 (added)
- * line 6 (added)
- * line 7 (added)`}
+ *     before="commodore-64/game-01-sid-symphony/unit-07/symphony.asm"
+ *     after="commodore-64/game-01-sid-symphony/unit-08/symphony.asm"
  *   />
  *
- * Lines are 1-indexed. Additions are highlighted green, deletions red.
+ * Usage with inline markup (manual diff):
+ *   <CodeDiff lang="6502">
+ *   {`  LDA #$00
+ *   + LDA #$01      ; Changed: new value
+ *   - STA $D020     ; Removed: border colour
+ *     STA $D021     ; Unchanged: background
+ *   + JSR new_routine`}
+ *   </CodeDiff>
+ *
+ * Lines starting with + are additions (green)
+ * Lines starting with - are deletions (red)
+ * Lines starting with space or no prefix are context
  */
+import fs from 'node:fs';
+import path from 'node:path';
+import { codeToHighlightHtml } from 'shiki-highlight-api';
+import { loadCode198xLanguages } from '../lib/load-custom-languages';
+import { getAllPlatforms } from '../lib/platforms';
 
 interface Props {
-  code: string;
-  lang?: string;
-  title?: string;
-  additions?: number[];
-  deletions?: number[];
-  highlights?: number[];
-  showLineNumbers?: boolean;
-  platformColor?: string;
+  before?: string;    // Path to "before" file (relative to code-samples)
+  after?: string;     // Path to "after" file (relative to code-samples)
+  lang?: string;      // Language for syntax highlighting
+  mode?: 'unified' | 'side-by-side';  // Display mode (default: unified)
+  title?: string;     // Optional title
+  context?: number;   // Lines of context around changes (default: 0 = show all)
 }
 
 const {
-  code,
-  lang = 'asm',
+  before,
+  after,
+  lang,
+  mode = 'unified',
   title,
-  additions = [],
-  deletions = [],
-  highlights = [],
-  showLineNumbers = true,
-  platformColor
+  context = 0
 } = Astro.props;
 
-const lines = code.split('\n');
-const accentColor = platformColor || 'var(--color-primary)';
+// Get inline content if provided via slot
+const slotContent = await Astro.slots.render('default');
+const inlineContent = slotContent?.trim();
 
-function getLineClass(lineNum: number): string {
-  const classes: string[] = [];
-  if (additions.includes(lineNum)) classes.push('line-added');
-  if (deletions.includes(lineNum)) classes.push('line-deleted');
-  if (highlights.includes(lineNum)) classes.push('line-highlight');
-  return classes.join(' ');
+// Resolve code-samples path
+const codeSamplesPath = process.env.CODE_SAMPLES_PATH || path.resolve(process.cwd(), '../code-samples');
+
+// Build platform -> language mapping
+const platforms = await getAllPlatforms();
+const platformLanguages = Object.fromEntries(
+  platforms.map(p => [p.id, p.data.assemblerLanguage])
+);
+
+function inferLanguage(srcPath: string): string {
+  const ext = path.extname(srcPath).slice(1);
+  const platformSlug = srcPath.split('/')[0];
+
+  if (ext === 'bas') {
+    if (platformSlug === 'sinclair-zx-spectrum') return 'sinclair-basic';
+    if (platformSlug === 'commodore-amiga') return 'amos';
+    return 'basic';
+  }
+  if (ext === 'asm' || ext === 's') {
+    return platformLanguages[platformSlug] || '6502';
+  }
+  return ext;
 }
----
 
-<div class="code-diff" style={`--diff-accent: ${accentColor};`}>
-  {title && (
-    <div class="diff-header">
-      <span class="diff-title">{title}</span>
-      <div class="diff-stats">
-        {additions.length > 0 && (
-          <span class="stat-added">+{additions.length}</span>
-        )}
-        {deletions.length > 0 && (
-          <span class="stat-deleted">-{deletions.length}</span>
-        )}
-      </div>
-    </div>
-  )}
-  <div class="diff-content">
-    <pre><code class={`language-${lang}`}>{lines.map((line, i) => {
-      const lineNum = i + 1;
-      const lineClass = getLineClass(lineNum);
-      return (
-        <div class={`diff-line ${lineClass}`} data-line={lineNum}>
-          {showLineNumbers && (
-            <span class="line-number">{lineNum}</span>
-          )}
-          <span class="line-content">{line || ' '}</span>
-        </div>
-      );
-    })}</code></pre>
-  </div>
-</div>
+interface DiffLine {
+  type: 'add' | 'del' | 'context' | 'separator';
+  content: string;
+  beforeLineNum?: number;
+  afterLineNum?: number;
+}
 
-<style>
-  .code-diff {
-    margin: var(--space-6) 0;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
+let diffLines: DiffLine[] = [];
+let language = lang || '6502';
+let error: string | null = null;
+
+if (inlineContent) {
+  // Parse inline diff markup
+  // Strip HTML tags that might have been added
+  const cleanContent = inlineContent.replace(/<[^>]+>/g, '');
+  const lines = cleanContent.split('\n');
+
+  let beforeNum = 1;
+  let afterNum = 1;
+
+  for (const line of lines) {
+    if (line.startsWith('+')) {
+      diffLines.push({
+        type: 'add',
+        content: line.slice(1), // Remove + prefix
+        afterLineNum: afterNum++
+      });
+    } else if (line.startsWith('-')) {
+      diffLines.push({
+        type: 'del',
+        content: line.slice(1), // Remove - prefix
+        beforeLineNum: beforeNum++
+      });
+    } else {
+      // Context line (may have leading space or not)
+      const content = line.startsWith(' ') ? line.slice(1) : line;
+      diffLines.push({
+        type: 'context',
+        content,
+        beforeLineNum: beforeNum++,
+        afterLineNum: afterNum++
+      });
+    }
+  }
+} else if (before && after) {
+  // Compute diff from two files
+  try {
+    const beforePath = path.join(codeSamplesPath, before);
+    const afterPath = path.join(codeSamplesPath, after);
+
+    const beforeContent = fs.readFileSync(beforePath, 'utf-8');
+    const afterContent = fs.readFileSync(afterPath, 'utf-8');
+
+    language = lang || inferLanguage(after);
+
+    // Simple line-by-line diff using LCS
+    const beforeLines = beforeContent.split('\n');
+    const afterLines = afterContent.split('\n');
+
+    diffLines = computeDiff(beforeLines, afterLines, context);
+  } catch (e) {
+    error = `Could not load diff files: ${before} / ${after}`;
+    console.error('CodeDiff error:', e);
+  }
+} else {
+  error = 'CodeDiff requires either before/after props or inline content';
+}
+
+// Diff algorithm using LCS (Longest Common Subsequence)
+function computeDiff(beforeLines: string[], afterLines: string[], contextLines: number): DiffLine[] {
+  const m = beforeLines.length;
+  const n = afterLines.length;
+
+  // Build LCS table
+  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (beforeLines[i - 1] === afterLines[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
   }
 
+  // Backtrack to find diff
+  const rawDiff: DiffLine[] = [];
+  let i = m, j = n;
+
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && beforeLines[i - 1] === afterLines[j - 1]) {
+      rawDiff.unshift({
+        type: 'context',
+        content: beforeLines[i - 1],
+        beforeLineNum: i,
+        afterLineNum: j
+      });
+      i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      rawDiff.unshift({
+        type: 'add',
+        content: afterLines[j - 1],
+        afterLineNum: j
+      });
+      j--;
+    } else {
+      rawDiff.unshift({
+        type: 'del',
+        content: beforeLines[i - 1],
+        beforeLineNum: i
+      });
+      i--;
+    }
+  }
+
+  // If context = 0, return all lines
+  if (contextLines === 0) return rawDiff;
+
+  // Filter to show only context around changes
+  const hasChange = rawDiff.map(line => line.type !== 'context');
+  const keepLine = new Array(rawDiff.length).fill(false);
+
+  for (let idx = 0; idx < rawDiff.length; idx++) {
+    if (hasChange[idx]) {
+      for (let c = Math.max(0, idx - contextLines); c <= Math.min(rawDiff.length - 1, idx + contextLines); c++) {
+        keepLine[c] = true;
+      }
+    }
+  }
+
+  // Build result with separators
+  const result: DiffLine[] = [];
+  let lastKept = -1;
+  for (let idx = 0; idx < rawDiff.length; idx++) {
+    if (keepLine[idx]) {
+      if (lastKept !== -1 && idx - lastKept > 1) {
+        result.push({ type: 'separator', content: '...' });
+      }
+      result.push(rawDiff[idx]);
+      lastKept = idx;
+    }
+  }
+
+  return result;
+}
+
+// Load custom languages for highlighting
+await loadCode198xLanguages();
+
+// Generate syntax-highlighted HTML for each line
+async function highlightLine(content: string): Promise<string> {
+  if (!content || content === '...') return content;
+
+  const blockId = `diff-${Math.random().toString(36).slice(2, 9)}`;
+  try {
+    const result = await codeToHighlightHtml(content, {
+      lang: language,
+      theme: 'dark-plus',
+      blockId,
+    });
+
+    // Extract just the code content (strip outer pre/code tags)
+    const match = result.html.match(/<code[^>]*>([\s\S]*?)<\/code>/);
+    return match ? match[1] : content;
+  } catch {
+    return content;
+  }
+}
+
+// Highlight all lines
+const highlightedLines = await Promise.all(
+  diffLines.map(async (line) => ({
+    ...line,
+    highlighted: await highlightLine(line.content)
+  }))
+);
+
+// Count stats
+const addCount = diffLines.filter(l => l.type === 'add').length;
+const delCount = diffLines.filter(l => l.type === 'del').length;
+
+const blockId = `diff-${Math.random().toString(36).slice(2, 9)}`;
+---
+
+{title && (
+  <div class="diff-header">
+    <span class="diff-title">{title}</span>
+    <div class="diff-stats">
+      {addCount > 0 && <span class="stat-added">+{addCount}</span>}
+      {delCount > 0 && <span class="stat-deleted">-{delCount}</span>}
+    </div>
+  </div>
+)}
+
+{error ? (
+  <div class="diff-error" role="alert">
+    <p class="error-message">{error}</p>
+  </div>
+) : mode === 'unified' ? (
+  <div class="diff-container unified" id={blockId}>
+    <table class="diff-table">
+      <tbody>
+        {highlightedLines.map((line) => (
+          <tr class={`diff-line ${line.type}`}>
+            <td class="line-num before">{line.type !== 'separator' ? (line.beforeLineNum || '') : ''}</td>
+            <td class="line-num after">{line.type !== 'separator' ? (line.afterLineNum || '') : ''}</td>
+            <td class="line-marker">
+              {line.type === 'add' ? '+' : line.type === 'del' ? '-' : line.type === 'separator' ? '' : ' '}
+            </td>
+            <td class="line-content">
+              {line.type === 'separator' ? (
+                <span class="separator">{line.content}</span>
+              ) : (
+                <code set:html={line.highlighted} />
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+) : (
+  <div class="diff-container side-by-side" id={blockId}>
+    <div class="diff-pane before-pane">
+      <div class="pane-header">Before</div>
+      <table class="diff-table">
+        <tbody>
+          {highlightedLines.filter(l => l.type !== 'add').map((line) => (
+            <tr class={`diff-line ${line.type}`}>
+              <td class="line-num">{line.type !== 'separator' ? (line.beforeLineNum || '') : ''}</td>
+              <td class="line-content">
+                {line.type === 'separator' ? (
+                  <span class="separator">{line.content}</span>
+                ) : (
+                  <code set:html={line.highlighted} />
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <div class="diff-pane after-pane">
+      <div class="pane-header">After</div>
+      <table class="diff-table">
+        <tbody>
+          {highlightedLines.filter(l => l.type !== 'del').map((line) => (
+            <tr class={`diff-line ${line.type}`}>
+              <td class="line-num">{line.type !== 'separator' ? (line.afterLineNum || '') : ''}</td>
+              <td class="line-content">
+                {line.type === 'separator' ? (
+                  <span class="separator">{line.content}</span>
+                ) : (
+                  <code set:html={line.highlighted} />
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
+<style>
   .diff-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-2) var(--space-4);
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
+    padding: 0.5rem 1rem;
+    background: #2d2d2d;
+    border-radius: 0.5rem 0.5rem 0 0;
+    border-bottom: 1px solid #444;
+    margin-bottom: 0;
   }
 
   .diff-title {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-family-mono, monospace);
     font-size: 0.8125rem;
     font-weight: 500;
-    color: var(--color-text-secondary);
+    color: #9ca3af;
   }
 
   .diff-stats {
     display: flex;
-    gap: var(--space-2);
-    font-family: var(--font-family-mono);
+    gap: 0.75rem;
+    font-family: var(--font-family-mono, monospace);
     font-size: 0.75rem;
     font-weight: 600;
   }
 
   .stat-added {
-    color: var(--color-success);
+    color: #22c55e;
   }
 
   .stat-deleted {
-    color: var(--color-error);
+    color: #ef4444;
   }
 
-  .diff-content {
-    background: var(--color-code-bg);
-  }
-
-  pre {
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-  }
-
-  code {
-    display: block;
-    font-family: var(--font-family-mono);
+  .diff-container {
+    margin: 0 0 1.5rem 0;
+    border-radius: 0 0 0.5rem 0.5rem;
+    overflow: hidden;
+    background: #1e1e1e;
+    font-family: var(--font-family-mono, 'Fira Code', monospace);
     font-size: 0.875rem;
-    line-height: 1.6;
-    color: var(--color-code-text);
+    line-height: 1.25;
+  }
+
+  .diff-header + .diff-container {
+    border-radius: 0 0 0.5rem 0.5rem;
+  }
+
+  .diff-container:not(.diff-header + .diff-container) {
+    border-radius: 0.5rem;
+    margin-top: 1.5rem;
+  }
+
+  /* Unified view */
+  .diff-container.unified {
+    overflow-x: auto;
+  }
+
+  .diff-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
   }
 
   .diff-line {
-    display: flex;
-    padding: 0 var(--space-4);
-    min-height: 1.6em;
+    border: none;
   }
 
-  .line-number {
-    flex-shrink: 0;
-    width: 3ch;
-    padding-right: var(--space-3);
+  .diff-line td {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .diff-line.add {
+    background: rgba(34, 197, 94, 0.15);
+  }
+
+  .diff-line.del {
+    background: rgba(239, 68, 68, 0.15);
+  }
+
+  .diff-line.context {
+    background: transparent;
+  }
+
+  .diff-line.separator {
+    background: #252525;
+  }
+
+  .line-num {
+    width: 3rem;
+    padding: 0 0.5rem;
     text-align: right;
-    color: var(--color-text-muted);
+    color: #6b7280;
     user-select: none;
-    opacity: 0.5;
+    vertical-align: top;
+    font-size: 0.75rem;
+  }
+
+  .line-marker {
+    width: 1.5rem;
+    padding: 0 0.25rem;
+    text-align: center;
+    font-weight: bold;
+    user-select: none;
+    vertical-align: top;
+  }
+
+  .diff-line.add .line-marker {
+    color: #22c55e;
+  }
+
+  .diff-line.del .line-marker {
+    color: #ef4444;
   }
 
   .line-content {
-    flex: 1;
+    padding: 0 1rem 0 0.5rem;
     white-space: pre;
+    overflow-x: visible;
   }
 
-  /* Line states */
-  .line-added {
-    background: color-mix(in oklab, var(--color-success) 15%, var(--color-code-bg) 85%);
-    border-left: 3px solid var(--color-success);
+  .line-content code {
+    font-family: inherit;
   }
 
-  .line-added .line-number {
-    color: var(--color-success);
-    opacity: 1;
+  .separator {
+    color: #6b7280;
+    font-style: italic;
+    display: block;
+    text-align: center;
   }
 
-  .line-deleted {
-    background: color-mix(in oklab, var(--color-error) 15%, var(--color-code-bg) 85%);
-    border-left: 3px solid var(--color-error);
-    opacity: 0.7;
+  /* Side-by-side view */
+  .diff-container.side-by-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    background: #333;
   }
 
-  .line-deleted .line-number {
-    color: var(--color-error);
-    opacity: 1;
+  .diff-pane {
+    background: #1e1e1e;
+    overflow-x: auto;
   }
 
-  .line-deleted .line-content {
-    text-decoration: line-through;
+  .pane-header {
+    padding: 0.5rem 1rem;
+    background: #2d2d2d;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9ca3af;
+    border-bottom: 1px solid #333;
   }
 
-  .line-highlight {
-    background: color-mix(in oklab, var(--diff-accent) 15%, var(--color-code-bg) 85%);
-    border-left: 3px solid var(--diff-accent);
+  .before-pane .pane-header {
+    color: #ef4444;
   }
 
-  .line-highlight .line-number {
-    color: var(--diff-accent);
-    opacity: 1;
+  .after-pane .pane-header {
+    color: #22c55e;
   }
 
-  /* When no highlight, add subtle left border for consistency */
-  .diff-line:not(.line-added):not(.line-deleted):not(.line-highlight) {
-    border-left: 3px solid transparent;
+  .side-by-side .line-num {
+    width: 2.5rem;
   }
 
+  .side-by-side .diff-line.add {
+    background: rgba(34, 197, 94, 0.2);
+  }
+
+  .side-by-side .diff-line.del {
+    background: rgba(239, 68, 68, 0.2);
+  }
+
+  /* Responsive: stack on mobile */
   @media (max-width: 768px) {
-    code {
+    .diff-container.side-by-side {
+      grid-template-columns: 1fr;
+    }
+
+    .diff-table {
       font-size: 0.8125rem;
     }
 
-    .diff-line {
-      padding: 0 var(--space-2);
+    .line-num {
+      width: 2rem;
+      font-size: 0.7rem;
     }
+  }
 
-    .line-number {
-      width: 2.5ch;
-      padding-right: var(--space-2);
-    }
+  .diff-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-left: 4px solid #ef4444;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .error-message {
+    color: #ef4444;
+    margin: 0;
   }
 </style>

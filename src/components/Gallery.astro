@@ -1,0 +1,261 @@
+---
+/**
+ * Gallery - Grid of images with lightbox navigation
+ *
+ * Usage:
+ *   import Gallery from '@components/Gallery.astro';
+ *   import Figure from '@components/Figure.astro';
+ *
+ *   <Gallery>
+ *     <Figure src="/images/step1.png" alt="Step 1" caption="Initial setup" />
+ *     <Figure src="/images/step2.png" alt="Step 2" caption="Add sprites" />
+ *     <Figure src="/images/step3.png" alt="Step 3" caption="Final result" />
+ *   </Gallery>
+ *
+ *   <Gallery columns={2}>
+ *     ...
+ *   </Gallery>
+ */
+
+interface Props {
+  columns?: 2 | 3 | 4;   // Number of columns (default: 3, responsive)
+  gap?: 'sm' | 'md' | 'lg';  // Gap between items
+}
+
+const {
+  columns = 3,
+  gap = 'md'
+} = Astro.props;
+
+const gapSizes = {
+  sm: '0.5rem',
+  md: '1rem',
+  lg: '1.5rem'
+};
+---
+
+<div
+  class="gallery"
+  style={`--columns: ${columns}; --gap: ${gapSizes[gap]};`}
+  data-gallery="true"
+>
+  <slot />
+</div>
+
+<style>
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(var(--columns), 1fr);
+    gap: var(--gap);
+    margin: var(--space-6, 1.5rem) 0;
+  }
+
+  /* Responsive: reduce columns on smaller screens */
+  @media (max-width: 768px) {
+    .gallery {
+      grid-template-columns: repeat(min(2, var(--columns)), 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .gallery {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Reset figure margins inside gallery */
+  .gallery :global(figure) {
+    margin: 0;
+  }
+
+  /* Ensure images fill grid cells */
+  .gallery :global(.image-wrapper) {
+    width: 100%;
+  }
+
+  .gallery :global(img) {
+    width: 100%;
+    height: auto;
+  }
+</style>
+
+<script>
+  // Gallery lightbox with navigation between images
+  document.querySelectorAll('[data-gallery="true"]').forEach(gallery => {
+    const images = gallery.querySelectorAll('img[data-lightbox="true"]');
+    if (images.length === 0) return;
+
+    let currentIndex = 0;
+    let overlay: HTMLElement | null = null;
+    let lightboxImg: HTMLImageElement | null = null;
+    let counter: HTMLElement | null = null;
+
+    const imageList = Array.from(images) as HTMLImageElement[];
+
+    const createLightbox = (startIndex: number) => {
+      currentIndex = startIndex;
+
+      overlay = document.createElement('div');
+      overlay.className = 'gallery-lightbox';
+      overlay.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.95);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      `;
+
+      const content = document.createElement('div');
+      content.style.cssText = `
+        position: relative;
+        max-width: 90vw;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      `;
+
+      lightboxImg = document.createElement('img');
+      lightboxImg.style.cssText = `
+        max-width: 90vw;
+        max-height: 80vh;
+        object-fit: contain;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      `;
+
+      counter = document.createElement('div');
+      counter.style.cssText = `
+        color: white;
+        margin-top: 1rem;
+        font-size: 0.875rem;
+        opacity: 0.7;
+      `;
+
+      const closeBtn = document.createElement('button');
+      closeBtn.setAttribute('aria-label', 'Close');
+      closeBtn.textContent = '\u00d7';
+      closeBtn.style.cssText = `
+        position: absolute;
+        top: -50px;
+        right: 0;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 2.5rem;
+        cursor: pointer;
+        padding: 0.5rem;
+        line-height: 1;
+      `;
+
+      // Navigation buttons
+      const prevBtn = document.createElement('button');
+      prevBtn.setAttribute('aria-label', 'Previous');
+      prevBtn.textContent = '\u2039'; // ‹
+      prevBtn.style.cssText = `
+        position: absolute;
+        left: -60px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: white;
+        font-size: 3rem;
+        cursor: pointer;
+        padding: 1rem;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+      `;
+      prevBtn.addEventListener('mouseenter', () => prevBtn.style.opacity = '1');
+      prevBtn.addEventListener('mouseleave', () => prevBtn.style.opacity = '0.7');
+
+      const nextBtn = document.createElement('button');
+      nextBtn.setAttribute('aria-label', 'Next');
+      nextBtn.textContent = '\u203a'; // ›
+      nextBtn.style.cssText = `
+        position: absolute;
+        right: -60px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: white;
+        font-size: 3rem;
+        cursor: pointer;
+        padding: 1rem;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+      `;
+      nextBtn.addEventListener('mouseenter', () => nextBtn.style.opacity = '1');
+      nextBtn.addEventListener('mouseleave', () => nextBtn.style.opacity = '0.7');
+
+      content.appendChild(lightboxImg);
+      content.appendChild(counter);
+      content.appendChild(closeBtn);
+      content.appendChild(prevBtn);
+      content.appendChild(nextBtn);
+      overlay.appendChild(content);
+
+      const updateImage = () => {
+        const img = imageList[currentIndex];
+        if (lightboxImg && counter) {
+          lightboxImg.src = img.src;
+          lightboxImg.alt = img.alt;
+          counter.textContent = `${currentIndex + 1} / ${imageList.length}`;
+        }
+      };
+
+      const navigate = (delta: number) => {
+        currentIndex = (currentIndex + delta + imageList.length) % imageList.length;
+        updateImage();
+      };
+
+      const close = () => overlay?.remove();
+
+      // Event handlers
+      closeBtn.addEventListener('click', close);
+      prevBtn.addEventListener('click', (e) => { e.stopPropagation(); navigate(-1); });
+      nextBtn.addEventListener('click', (e) => { e.stopPropagation(); navigate(1); });
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) close();
+      });
+
+      const keyHandler = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') close();
+        if (e.key === 'ArrowLeft') navigate(-1);
+        if (e.key === 'ArrowRight') navigate(1);
+      };
+      document.addEventListener('keydown', keyHandler);
+
+      // Clean up key handler when closed
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.removedNodes.forEach((node) => {
+            if (node === overlay) {
+              document.removeEventListener('keydown', keyHandler);
+              observer.disconnect();
+            }
+          });
+        });
+      });
+      observer.observe(document.body, { childList: true });
+
+      updateImage();
+      document.body.appendChild(overlay);
+    };
+
+    // Override click handler for gallery images
+    images.forEach((img, index) => {
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        createLightbox(index);
+      });
+      // Remove default lightbox attribute to prevent double-triggering
+      img.removeAttribute('data-lightbox');
+      img.setAttribute('data-gallery-item', 'true');
+      (img as HTMLElement).style.cursor = 'zoom-in';
+    });
+  });
+</script>
