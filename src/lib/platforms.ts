@@ -94,3 +94,56 @@ export async function getPlatformShortName(slug: string): Promise<string> {
   const platform = await getPlatformBySlug(slug);
   return platform?.data.shortName ?? slug;
 }
+
+/**
+ * Get platforms formatted for the pattern library
+ * Returns array with slug, name, color (as CSS var reference)
+ * Includes 'cross-platform' as a special case
+ * Note: Uses 'nintendo-nes' slug for pattern library routes (not full 'nintendo-entertainment-system')
+ */
+export async function getPlatformsForPatternLibrary(): Promise<Array<{
+  slug: string;
+  name: string;
+  color: string;
+  gradient?: string;
+}>> {
+  const platforms = await getActivePlatforms();
+
+  // Map collection IDs to pattern library slugs (NES uses shorter form)
+  const patternSlugs: Record<string, string> = {
+    'nintendo-entertainment-system': 'nintendo-nes',
+  };
+
+  // Map to pattern library format with CSS variable references
+  const cssVarNames: Record<string, string> = {
+    'commodore-64': '--c64-blue',
+    'sinclair-zx-spectrum': '--zx-magenta',
+    'commodore-amiga': '--amiga-orange',
+    'nintendo-entertainment-system': '--nes-red',
+  };
+
+  // Gradients for platform pages
+  const gradients: Record<string, string> = {
+    'commodore-64': 'linear-gradient(135deg, #3b3b8f 0%, #5555bb 50%, #7777dd 100%)',
+    'sinclair-zx-spectrum': 'linear-gradient(135deg, #8f3b5f 0%, #bb5577 50%, #dd7799 100%)',
+    'commodore-amiga': 'linear-gradient(135deg, #cc5200 0%, #ff6600 50%, #ff8833 100%)',
+    'nintendo-entertainment-system': 'linear-gradient(135deg, #b30613 0%, #e30613 50%, #ff4444 100%)',
+  };
+
+  const result = platforms.map(p => ({
+    slug: patternSlugs[p.id] || p.id,
+    name: p.data.name,
+    color: `var(${cssVarNames[p.id] || '--color-primary'})`,
+    gradient: gradients[p.id],
+  }));
+
+  // Add cross-platform as special case
+  result.push({
+    slug: 'cross-platform',
+    name: 'Cross-Platform',
+    color: 'var(--color-primary)',
+    gradient: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #3d7ab5 100%)',
+  });
+
+  return result;
+}
