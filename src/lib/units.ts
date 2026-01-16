@@ -45,6 +45,18 @@ export async function getPhases(
 }
 
 /**
+ * Count total units for a specific game
+ */
+export async function getTotalUnitsCount(
+  platform: string,
+  track: 'assembly' | 'basic' | 'amos',
+  gameSlug: string
+): Promise<number> {
+  const units = await getUnits(platform, track, gameSlug);
+  return units.length;
+}
+
+/**
  * Count available units for a specific game
  */
 export async function getUnitsAvailableCount(

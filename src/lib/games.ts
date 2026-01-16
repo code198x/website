@@ -1,11 +1,14 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
-import { getUnitsAvailableCount, hasUnitsEntry } from './units';
+import { getTotalUnitsCount, getUnitsAvailableCount, hasUnitsEntry } from './units';
 
 export type GamesEntry = CollectionEntry<'games'>;
 export type Game = GamesEntry['data']['games'][number];
 
-// Game with guaranteed unitsAvailable (computed if from units collection)
-export type GameWithAvailability = Omit<Game, 'unitsAvailable'> & { unitsAvailable: number };
+// Game with computed units counts (from units collection)
+export type GameWithCounts = Omit<Game, 'units' | 'unitsAvailable'> & {
+  units: number;
+  unitsAvailable: number;
+};
 
 /**
  * Get games for a specific platform and track combination
@@ -17,33 +20,34 @@ export async function getGames(platform: string, track: 'assembly' | 'basic' | '
 }
 
 /**
- * Get games with computed unitsAvailable (from units collection when available)
+ * Get games with computed unit counts (from units collection)
  */
-export async function getGamesWithAvailability(
+export async function getGamesWithCounts(
   platform: string,
   track: 'assembly' | 'basic' | 'amos'
-): Promise<GameWithAvailability[]> {
+): Promise<GameWithCounts[]> {
   const games = await getGames(platform, track);
 
   return Promise.all(games.map(async (game) => {
-    // Check if units collection has an entry for this game
-    const hasUnits = await hasUnitsEntry(platform, track, game.slug);
+    // Compute from units collection
+    const units = await getTotalUnitsCount(platform, track, game.slug);
+    const unitsAvailable = await getUnitsAvailableCount(platform, track, game.slug);
 
-    let unitsAvailable: number;
-    if (hasUnits) {
-      // Compute from units collection
-      unitsAvailable = await getUnitsAvailableCount(platform, track, game.slug);
-    } else {
-      // Fall back to games collection value or 0
-      unitsAvailable = game.unitsAvailable ?? 0;
-    }
+    // Remove the old fields and add computed ones
+    const { units: _units, unitsAvailable: _avail, ...rest } = game as Game & { units?: number; unitsAvailable?: number };
 
     return {
-      ...game,
+      ...rest,
+      units,
       unitsAvailable,
     };
   }));
 }
+
+/**
+ * @deprecated Use getGamesWithCounts instead
+ */
+export const getGamesWithAvailability = getGamesWithCounts;
 
 /**
  * Get the full games entry (includes platform and track metadata)

@@ -135,6 +135,7 @@ const vaultCategories = defineCollection({
 });
 
 // Games catalogue - curriculum games organised by platform and track
+// Note: units and unitsAvailable are computed from the units collection
 const games = defineCollection({
   type: 'data',
   schema: z.object({
@@ -145,8 +146,6 @@ const games = defineCollection({
       slug: z.string(),
       name: z.string(),
       tagline: z.string(),
-      units: z.number(),
-      unitsAvailable: z.number().optional(), // Computed from units collection when available
       skills: z.array(z.string()),
       status: z.enum(['in-progress', 'coming-soon', 'complete']),
     })),
