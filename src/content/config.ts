@@ -134,11 +134,31 @@ const vaultCategories = defineCollection({
   }),
 });
 
+// Games catalogue - curriculum games organised by platform and track
+const games = defineCollection({
+  type: 'data',
+  schema: z.object({
+    platform: z.string(), // e.g., commodore-64, sinclair-zx-spectrum
+    track: z.enum(['assembly', 'basic', 'amos']),
+    games: z.array(z.object({
+      number: z.number(),
+      slug: z.string(),
+      name: z.string(),
+      tagline: z.string(),
+      units: z.number(),
+      unitsAvailable: z.number().default(0),
+      skills: z.array(z.string()),
+      status: z.enum(['in-progress', 'coming-soon', 'complete']),
+    })),
+  }),
+});
+
 export const collections = {
   platforms,
   vault,
   patterns,
   timeline,
+  games,
   'pattern-categories': patternCategories,
   'pattern-difficulties': patternDifficulties,
   'vault-categories': vaultCategories,
