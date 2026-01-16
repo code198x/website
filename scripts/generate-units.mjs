@@ -323,12 +323,19 @@ function main() {
   let extracted = 0;
 
   for (const game of games) {
-    const filename = `${game.platform}-${game.track}-${game.slug}.yaml`;
-    const outputPath = join(unitsDir, filename);
+    // Nested structure: platform/track/game-slug.yaml
+    const gameDir = join(unitsDir, game.platform, game.track);
+    const filename = `${game.slug}.yaml`;
+    const outputPath = join(gameDir, filename);
+
+    // Ensure directory exists
+    if (!existsSync(gameDir)) {
+      mkdirSync(gameDir, { recursive: true });
+    }
 
     // Skip if file already exists
     if (existsSync(outputPath)) {
-      console.log(`Skipping ${filename} (already exists)`);
+      console.log(`Skipping ${game.platform}/${game.track}/${filename} (already exists)`);
       skipped++;
       continue;
     }
