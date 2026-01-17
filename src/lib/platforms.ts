@@ -5,6 +5,8 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 
 export type Platform = CollectionEntry<'platforms'>;
 export type PlatformData = Platform['data'];
+export type Architecture = CollectionEntry<'architectures'>;
+export type ArchitectureData = Architecture['data'];
 
 /**
  * Get all platforms, sorted by navOrder
@@ -20,6 +22,16 @@ export async function getAllPlatforms(): Promise<Platform[]> {
 export async function getActivePlatforms(): Promise<Platform[]> {
   const platforms = await getAllPlatforms();
   return platforms.filter(p => p.data.status === 'active');
+}
+
+/**
+ * Get coming-soon platforms, sorted by year
+ */
+export async function getComingSoonPlatforms(): Promise<Platform[]> {
+  const platforms = await getAllPlatforms();
+  return platforms
+    .filter(p => p.data.status === 'coming-soon')
+    .sort((a, b) => a.data.year - b.data.year);
 }
 
 /**
@@ -146,4 +158,53 @@ export async function getPlatformsForPatternLibrary(): Promise<Array<{
   });
 
   return result;
+}
+
+/**
+ * Get all CPU architectures, sorted by order
+ */
+export async function getAllArchitectures(): Promise<Architecture[]> {
+  const architectures = await getCollection('architectures');
+  return architectures.sort((a, b) => a.data.order - b.data.order);
+}
+
+/**
+ * Get architecture by its ID (slug)
+ */
+export async function getArchitectureById(id: string): Promise<Architecture | undefined> {
+  const architectures = await getCollection('architectures');
+  return architectures.find(a => a.id === id);
+}
+
+// Manufacturer types and helpers
+export type Manufacturer = CollectionEntry<'manufacturers'>;
+export type ManufacturerData = Manufacturer['data'];
+
+/**
+ * Get all manufacturers
+ */
+export async function getAllManufacturers(): Promise<Manufacturer[]> {
+  return await getCollection('manufacturers');
+}
+
+/**
+ * Get manufacturer by ID
+ */
+export async function getManufacturerById(id: string): Promise<Manufacturer | undefined> {
+  const manufacturers = await getCollection('manufacturers');
+  return manufacturers.find(m => m.id === id);
+}
+
+/**
+ * Get platforms grouped by manufacturer
+ */
+export async function getPlatformsByManufacturer(): Promise<Map<string, Platform[]>> {
+  return getPlatformsGroupedBy('manufacturer');
+}
+
+/**
+ * Get platforms grouped by type (computer, console, handheld)
+ */
+export async function getPlatformsByType(): Promise<Map<string, Platform[]>> {
+  return getPlatformsGroupedBy('type');
 }

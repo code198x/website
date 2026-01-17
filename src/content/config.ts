@@ -12,18 +12,43 @@ const platforms = defineCollection({
     tagline: z.string(),
 
     // Classification
-    bits: z.enum(['8', '16', '32']),
-    region: z.enum(['US', 'UK', 'Japan', 'Europe']),
+    type: z.enum(['computer', 'console', 'handheld']),
+    bits: z.enum(['8', '16', '32', '64', '128']),
+    region: z.enum(['US', 'UK', 'Japan', 'Europe', 'Netherlands']),
+    manufacturer: z.string(), // references manufacturers collection
     cpu: z.string(),
-    cpuArchitecture: z.enum(['6502', 'z80', '68000']),
+    cpuArchitecture: z.enum([
+      // 8-bit families
+      '8080',      // Intel 8080/8085
+      'f8',        // Fairchild F8
+      '1802',      // RCA CDP1802
+      'mcs48',     // Intel MCS-48 (8048/8049)
+      'cp1610',    // General Instrument CP1610
+      'tms9900',   // Texas Instruments TMS9900
+      '6502',      // MOS 6502 and variants
+      'z80',       // Zilog Z80
+      '6809',      // Motorola 6809
+      // 16-bit families
+      '65c816',    // WDC 65C816 (16-bit 6502)
+      'x86',       // Intel 8086/8088 and successors
+      '68000',     // Motorola 68000
+      // 32-bit families
+      'arm',       // ARM (Acorn RISC Machine)
+      'sh2',       // Hitachi SuperH SH-2
+      'v810',      // NEC V810
+      'mips',      // MIPS R3000/R4300
+      // Later generations
+      'sh4',       // Hitachi SuperH SH-4
+      'tlcs900',   // Toshiba TLCS-900
+    ]),
 
-    // Toolchain
-    assembler: z.string(),
-    assemblerLanguage: z.enum(['6502', 'z80', 'm68k', 'ca65']),
-    emulator: z.string(),
-    buildOutput: z.string(),
+    // Toolchain (optional for coming-soon platforms)
+    assembler: z.string().optional(),
+    assemblerLanguage: z.enum(['6502', 'z80', 'm68k', 'ca65']).optional(),
+    emulator: z.string().optional(),
+    buildOutput: z.string().optional(),
     toolchainExtras: z.array(z.string()).default([]),
-    dockerImage: z.string(),
+    dockerImage: z.string().optional(),
 
     // Navigation & Status
     status: z.enum(['active', 'coming-soon']),
@@ -122,6 +147,37 @@ const patternDifficulties = defineCollection({
   }),
 });
 
+// Manufacturers - companies that made the platforms
+const manufacturers = defineCollection({
+  type: 'data',
+  schema: z.object({
+    name: z.string(),
+    shortName: z.string(),
+    country: z.string(),
+    city: z.string(),
+    coordinates: z.object({
+      lat: z.number(),
+      lng: z.number(),
+    }),
+    founded: z.number(),
+    defunct: z.number().optional(),
+    color: z.string().optional(),
+  }),
+});
+
+// CPU architectures - groupings for the systems page
+const architectures = defineCollection({
+  type: 'data',
+  schema: z.object({
+    name: z.string(),
+    shortName: z.string(),
+    description: z.string(),
+    era: z.enum(['early', 'classic-8bit', '16bit', '32bit', 'later']),
+    bits: z.enum(['8', '16', '32', '64', '128']),
+    order: z.number(),
+  }),
+});
+
 // Vault categories (systems, hardware, people, etc.)
 const vaultCategories = defineCollection({
   type: 'data',
@@ -176,6 +232,8 @@ const units = defineCollection({
 
 export const collections = {
   platforms,
+  manufacturers,
+  architectures,
   vault,
   patterns,
   timeline,
