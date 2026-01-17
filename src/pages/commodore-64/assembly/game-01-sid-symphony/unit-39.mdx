@@ -1,0 +1,182 @@
+---
+title: "Miss Effects"
+description: "Add brief negative feedback for missed notes with text popups and screen shake, punishing mistakes without compounding player frustration."
+pubDate: 2026-01-17
+game: 1
+gameName: "SID Symphony"
+unit: 39
+totalUnits: 64
+system: "Commodore 64"
+tags: ["assembly", "6510", "visual-effects", "feedback", "game-feel"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-38"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-40"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+When players miss a note, they need to know—but not be punished twice. This unit adds brief negative feedback: a "MISS" text popup in red and a quick screen shake. The key is brevity. A missed note already costs health and combo; the visual feedback should inform, not frustrate.
+
+## Run It
+
+Assemble and run:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+```
+
+![Unit 39 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-39/screenshot.png)
+
+Play a song and deliberately miss some notes. "MISS" appears briefly in red on the track, and the screen shakes for just 2 frames. The feedback is instant and unmistakable, but gone before it can annoy.
+
+## Design Philosophy: Brief Punishment
+
+Miss feedback must balance competing needs:
+
+| Requirement | Approach |
+|-------------|----------|
+| Player awareness | Clear "MISS" text in red |
+| Don't compound frustration | Only 6 frames (vs 12 for perfect) |
+| Physical emphasis | Screen shake adds impact |
+| Quick recovery | Effects end before next note likely arrives |
+
+The miss already costs 10 health points and resets the combo. Visual feedback adds communication, not punishment.
+
+## New Variables
+
+Following the established pattern:
+
+```asm
+miss_effect      = $2D          ; Miss effect countdown
+; miss_track is already defined earlier at $0A
+screen_shake     = $2E          ; Screen shake countdown
+```
+
+Note that `miss_track` already exists from the health system—we reuse it rather than duplicating.
+
+## Triggering Miss Effects
+
+In `handle_miss`, after the existing health penalty:
+
+```asm
+            ; Trigger "MISS" text effect (Unit 39)
+            lda #6                  ; Very brief - don't compound frustration
+            sta miss_effect
+            ; miss_track is already set before handle_miss is called
+
+            ; Trigger screen shake (Unit 39)
+            lda #2                  ; Just 2 frames of shake
+            sta screen_shake
+```
+
+Compare: perfect effects last 12 frames, good effects 8 frames, miss effects just 6 frames. This asymmetry is deliberate—celebration should exceed commiseration.
+
+## Screen Shake via Fine Scroll
+
+The VIC-II chip provides fine horizontal scrolling through register $D016:
+
+```asm
+update_screen_shake:
+            lda screen_shake
+            beq shake_done
+
+            dec screen_shake
+
+            ; Apply horizontal offset using VIC-II fine scroll
+            lda $D016
+            and #$F8            ; Clear scroll bits (0-2)
+            ora #$02            ; Offset by 2 pixels
+            sta $D016
+            rts
+
+shake_done:
+            ; Reset to normal position
+            lda $D016
+            and #$F8            ; Clear scroll bits
+            sta $D016
+            rts
+```
+
+Key details:
+- Bits 0-2 of $D016 control fine X scroll (0-7 pixels)
+- We shift by 2 pixels—enough to notice, not enough to disorient
+- The effect lasts just 2 frames, creating a quick "jolt" sensation
+
+## Red for Danger
+
+Unlike the warm (perfect) and cool (good) palettes, misses use stark red:
+
+```asm
+miss_track1:
+            ldx #0
+miss_draw_t1:
+            lda miss_text,x
+            beq miss_draw_done
+            sta SCREEN + (TRACK1_ROW * 40) + 8,x
+            lda #2                  ; Red - universal danger colour
+            sta COLRAM + (TRACK1_ROW * 40) + 8,x
+            inx
+            jmp miss_draw_t1
+```
+
+No colour cycling here—red throughout. This keeps the feedback stark and honest.
+
+## Effect Priority
+
+The update order matters:
+
+```asm
+            jsr update_perfect_effect
+            jsr update_good_effect
+            jsr update_miss_effect
+            jsr update_screen_shake
+```
+
+If somehow multiple effects trigger on the same track, later effects overwrite earlier ones. In practice, you can't simultaneously perfect-hit and miss the same note, but the code handles edge cases gracefully.
+
+## The Psychology of Brief Punishment
+
+Extended negative feedback creates a frustration spiral:
+1. Player misses a note (feels bad)
+2. Screen screams "MISS!" for ages (feels worse)
+3. Player tenses up (performance drops)
+4. More misses occur (spiral continues)
+
+By keeping miss feedback to 6 frames (~0.12 seconds), we:
+- Acknowledge the mistake clearly
+- Allow immediate focus on the next note
+- Prevent frustration from compounding
+
+The screen shake adds physical impact without duration. Two frames creates a "jolt" that registers subconsciously without consciously disrupting play.
+
+## Try This
+
+1. **Shake intensity** - Try varying the pixel offset (1-4) for different impact
+2. **Vertical shake** - Use $D011 for vertical offset instead
+3. **Combo break flash** - Flash the combo counter when it resets
+4. **Track dim** - Briefly dim the missed track's colour
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-39/symphony.asm" />
+
+## What You've Learnt
+
+- **Fine scroll registers** - Using VIC-II $D016 for pixel-level screen movement
+- **Effect duration balancing** - Shorter punishment than reward
+- **Variable reuse** - Using existing `miss_track` rather than duplicating
+- **Psychological design** - Brief negative feedback prevents frustration spirals
+
+## What's Next
+
+With all hit feedback complete, Unit 40 adds dynamic background visuals. The static black background works, but responsive colour cycling will make the game feel alive.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 38 → Unit 39"
+  before="commodore-64/game-01-sid-symphony/unit-38/symphony.asm"
+  after="commodore-64/game-01-sid-symphony/unit-39/symphony.asm"
+  context={3}
+/>

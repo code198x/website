@@ -1,0 +1,296 @@
+---
+title: "High Score Table"
+description: "Immortalise top performances with a global leaderboard featuring name entry, sorted insertion, and formatted display of the best scores."
+pubDate: 2026-01-17
+game: 1
+gameName: "SID Symphony"
+unit: 45
+totalUnits: 64
+system: "Commodore 64"
+tags: ["assembly", "6510", "high-scores", "leaderboard", "name-entry", "persistence"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-44"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-46"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+High scores matter. They're not just numbers—they're proof of mastery, motivation to improve, and bragging rights among friends. This unit adds a proper leaderboard with name entry, turning anonymous scores into personal achievements.
+
+## Run It
+
+Assemble and run:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+```
+
+![Unit 45 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-45/screenshot.png)
+
+Score high enough to reach the top 5, and you'll be prompted to enter your initials. Use the joystick to scroll through letters, left/right to move between positions, and fire to confirm. Your name joins the leaderboard.
+
+## High Score Table Structure
+
+Each entry stores a name and score:
+
+```asm
+HS_ENTRY_SIZE = 5               ; 3 name + 2 score
+HS_TABLE_SIZE = 5               ; Top 5 entries
+
+hs_table:
+            ; Entry 1: Default high score
+            !byte 'S', 'I', 'D'   ; Name
+            !word 5000            ; Score
+            ; Entry 2
+            !byte 'C', '6', '4'
+            !word 4000
+            ; ... more entries ...
+```
+
+Five bytes per entry (3 for initials, 2 for score) keeps the table compact while providing meaningful identification.
+
+## New Variables
+
+```asm
+name_entry_mode  = $40          ; 1 = currently entering name
+name_cursor      = $41          ; Current letter position (0-2)
+name_char_0      = $42          ; First letter of name
+name_char_1      = $43          ; Second letter
+name_char_2      = $44          ; Third letter
+name_flash       = $45          ; Flash timer for current letter
+hs_table_rank    = $46          ; Rank achieved (0-4, or $FF if not in top 5)
+```
+
+The name characters are stored individually for easy indexed access during input.
+
+## Checking Qualification
+
+When a song ends, we check if the score makes the leaderboard:
+
+```asm
+check_hs_table:
+            lda #0
+            sta hs_table_rank
+            ldx #0                  ; Start at entry 0
+
+.check_loop:
+            ; Compare score_hi with entry's high byte
+            lda score_hi
+            cmp hs_table+4,x
+            bcc .try_next           ; score < entry
+            bne .found_rank         ; score > entry
+
+            ; High bytes equal, compare low bytes
+            lda score_lo
+            cmp hs_table+3,x
+            bcc .try_next           ; score < entry
+            beq .try_next           ; score = entry
+
+.found_rank:
+            ; Score beats this entry
+            rts
+```
+
+We walk through entries from top to bottom. The first entry our score beats determines our rank.
+
+## Name Entry Input
+
+The joystick controls letter selection:
+
+```asm
+update_name_entry:
+            ; Check up (increment letter)
+            lda $DC00
+            and #$01
+            bne .check_down
+            jsr name_letter_up
+
+.check_down:
+            lda work_lo
+            and #$02
+            bne .check_left
+            jsr name_letter_down
+```
+
+Up/down cycles through A-Z with wraparound. Left/right moves between the three letter positions.
+
+## Letter Cycling
+
+```asm
+name_letter_up:
+            ldx name_cursor
+            lda name_char_0,x
+            clc
+            adc #1
+            cmp #'Z'+1
+            bcc .store_up
+            lda #'A'                ; Wrap to A
+.store_up:
+            sta name_char_0,x
+            jsr play_menu_move
+            rts
+```
+
+Indexed addressing (`name_char_0,x`) lets us modify whichever letter the cursor indicates without branching.
+
+## Visual Feedback
+
+The current letter flashes to show selection:
+
+```asm
+            ; Flash current letter
+            lda name_flash
+            and #$08
+            beq .no_flash
+            ldx name_cursor
+            lda #1                  ; White
+            sta COLRAM + (16 * 40) + 18,x
+```
+
+The `and #$08` creates a toggle every 8 frames—fast enough to be visible, slow enough to read.
+
+## Sorted Insertion
+
+When entry is confirmed, we insert at the correct position:
+
+```asm
+insert_hs_entry:
+            ; Shift entries down from bottom
+            ldx #(HS_TABLE_SIZE - 2)
+
+.shift_loop:
+            cpx hs_table_rank
+            bcc .do_insert          ; Past insertion point
+
+            ; Copy entry X to entry X+1
+            ; (multiply by 5 for offset)
+            ; ...
+```
+
+Entries below the new score shift down, pushing the lowest score off the table. The new entry slots into its rightful position.
+
+## Integration with Results
+
+The results animation now includes a name entry phase:
+
+```asm
+results_phase_3:
+            dec results_timer
+            bne phase_3_flash
+            ; Check if qualified for leaderboard
+            jsr check_hs_table
+            lda hs_table_rank
+            cmp #$FF
+            beq phase_3_no_entry    ; Not in top 5
+            ; Qualified! Start name entry
+            jsr start_name_entry
+            jsr draw_name_entry
+            lda #5
+            sta results_phase
+```
+
+Phase 5 handles the actual name entry, calling `update_name_entry` each frame until the player confirms.
+
+## Drawing the Table
+
+The high score table display formats each entry with rank, name, and score:
+
+```asm
+.entry_loop:
+            ; Draw rank (1-5)
+            lda hs_temp
+            clc
+            adc #'1'                ; Convert to ASCII '1'-'5'
+            ldy #0
+            sta (ZP_PTR),y
+
+            ; Draw name (3 characters)
+            ; ...
+
+            ; Draw score (5 digits)
+            jsr draw_score_at_ptr
+```
+
+The pointer-based approach lets us move through screen rows without calculating offsets each time.
+
+## Score to Decimal Conversion
+
+Displaying a 16-bit score requires repeated subtraction:
+
+```asm
+draw_score_at_ptr:
+            ; 10000s digit
+            lda #0
+            sta hs_temp
+.sub_10000:
+            lda work_lo
+            sec
+            sbc #<10000
+            tax
+            lda work_hi
+            sbc #>10000
+            bcc .done_10000
+            sta work_hi
+            stx work_lo
+            inc hs_temp
+            jmp .sub_10000
+```
+
+Each digit counts how many times we can subtract its place value. Classic 8-bit technique.
+
+## Default Scores
+
+The initial leaderboard provides targets to beat:
+
+| Rank | Name | Score |
+|------|------|-------|
+| 1 | SID | 5000 |
+| 2 | C64 | 4000 |
+| 3 | ASM | 3000 |
+| 4 | RHY | 2000 |
+| 5 | THM | 1000 |
+
+These aren't impossibly high—new players can reach the leaderboard quickly, providing early satisfaction.
+
+## Why Three Letters?
+
+Arcade tradition established three-letter initials. The reasons remain valid:
+
+- Quick to enter (important when others wait)
+- Distinctive enough to identify players
+- Fits cleanly in limited display space
+- Creates memorable handles (AAA, JON, MOM)
+
+Some games use longer names, but three letters hit the sweet spot.
+
+## Try This
+
+1. **Per-song leaderboards** - Separate top 5 for each song/difficulty
+2. **Date stamps** - Record when each score was achieved
+3. **Statistics** - Track total plays, average score, best combo
+4. **Clear option** - Let players reset the leaderboard
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-45/symphony.asm" />
+
+## What You've Learnt
+
+- **Table data structures** - Fixed-size entries with multiple fields
+- **Sorted insertion** - Maintaining order when adding elements
+- **Input state machines** - Multi-position selection with confirmation
+- **16-bit decimal conversion** - Displaying large numbers digit by digit
+
+## What's Next
+
+With high scores tracked, Unit 46 adds an options screen. Players will access sound tests, statistics, and game settings from a dedicated menu.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 44 → Unit 45"
+  before="commodore-64/game-01-sid-symphony/unit-44/symphony.asm"
+  after="commodore-64/game-01-sid-symphony/unit-45/symphony.asm"
+  context={3}
+/>

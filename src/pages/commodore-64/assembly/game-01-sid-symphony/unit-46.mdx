@@ -1,0 +1,294 @@
+---
+title: "Options Screen"
+description: "Add a dedicated options menu with sound test, high score viewing, and statistics display, giving players control and insight into their performance."
+pubDate: 2026-01-17
+game: 1
+gameName: "SID Symphony"
+unit: 46
+totalUnits: 64
+system: "Commodore 64"
+tags: ["assembly", "6510", "options", "sound-test", "statistics", "menu"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-45"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-47"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+Every polished game needs an options screen. This unit adds a dedicated menu accessible from song selection, featuring a sound test to preview all audio, high score viewing, and statistics display. Players gain control and insight.
+
+## Run It
+
+Assemble and run:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+```
+
+![Unit 46 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-46/screenshot.png)
+
+From the song selection menu, press O to access options. Navigate with joystick, select with fire. The sound test lets you preview every sound effect and jingle in the game.
+
+## New Game State
+
+Options gets its own state in the game loop:
+
+```asm
+STATE_OPTIONS = 6               ; Options screen (Unit 46)
+```
+
+The main loop dispatches to the appropriate update routine:
+
+```asm
+            cmp #STATE_OPTIONS
+            beq do_options
+            ; ...
+
+do_options:
+            jsr update_options
+            jmp main_loop
+```
+
+## Options Menu Structure
+
+The options screen offers four choices:
+
+| Option | Description |
+|--------|-------------|
+| Sound Test | Preview all sound effects |
+| High Scores | View the leaderboard |
+| Statistics | See lifetime play stats |
+| Back to Menu | Return to song selection |
+
+## New Variables
+
+```asm
+options_cursor   = $48          ; Options menu cursor position (0-3)
+sound_test_idx   = $49          ; Current sound in sound test (0-8)
+options_state    = $4A          ; 0=menu, 1=sound test, 2=stats
+```
+
+The `options_state` variable tracks sub-screens within options—the sound test has its own navigation.
+
+## Drawing the Options Screen
+
+```asm
+show_options:
+            jsr clear_screen
+
+            ; Set colours
+            lda #6                  ; Blue
+            sta $D020
+            sta $D021
+
+            ; Draw title and menu items
+            ; ...
+
+            ; Initialize cursor
+            lda #0
+            sta options_cursor
+            sta options_state
+            jsr draw_options_cursor
+            rts
+```
+
+The screen layout mirrors the song selection menu for consistency.
+
+## Menu Navigation
+
+The update routine handles cursor movement:
+
+```asm
+update_options:
+            lda options_state
+            cmp #1
+            bne uo_not_st
+            jmp update_sound_test
+uo_not_st:
+            cmp #2
+            bne uo_menu_state
+            jmp update_stats_view
+uo_menu_state:
+            ; Handle cursor movement and selection
+```
+
+Sub-states have their own update routines, keeping the code organised.
+
+## Sound Test
+
+The sound test cycles through all game sounds:
+
+```asm
+; Sound names table
+sound_names_lo:
+            !byte <snd_name_0, <snd_name_1, <snd_name_2, <snd_name_3
+            !byte <snd_name_4, <snd_name_5, <snd_name_6, <snd_name_7
+            !byte <snd_name_8
+
+snd_name_0: !text "MENU MOVE"
+snd_name_1: !text "MENU SELECT"
+snd_name_2: !text "MENU BACK"
+snd_name_3: !text "NOTE HIT"
+snd_name_4: !text "PERFECT HIT"
+snd_name_5: !text "MISS"
+snd_name_6: !text "VICTORY"
+snd_name_7: !text "GAME OVER"
+snd_name_8: !text "MILESTONE"
+```
+
+Left/right cycles through sounds; fire plays the current selection.
+
+## Playing Test Sounds
+
+A dispatch table routes to the correct sound routine:
+
+```asm
+play_test_sound:
+            cpx #0
+            bne pts_not_0
+            jmp play_menu_move
+pts_not_0:
+            cpx #1
+            bne pts_not_1
+            jmp play_menu_select
+            ; ... etc
+```
+
+Each sound index maps to its corresponding playback routine.
+
+## Sound Test Navigation
+
+```asm
+update_sound_test:
+            ; Left decrements, right increments
+            lda CIA1_PRA
+            and #$04                ; Left
+            beq ust_prev
+            lda CIA1_PRA
+            and #$08                ; Right
+            beq ust_next
+
+            ; Fire plays current sound
+            ; Down returns to options menu
+```
+
+Simple controls: left/right to browse, fire to play, down to exit.
+
+## Statistics Screen
+
+The statistics screen shows lifetime performance:
+
+```asm
+show_stats_screen:
+            jsr clear_screen
+
+            ; Draw labels
+            ; "GAMES PLAYED: ---"
+            ; "NOTES HIT: ---"
+            ; "BEST COMBO: ---"
+```
+
+Currently shows placeholders—full statistics tracking would require persistent storage across sessions.
+
+## Accessing Options
+
+From the song selection menu, the O key triggers options:
+
+```asm
+            ; Check O key for options (row 4, column 6)
+            lda #$EF                ; Row 4
+            sta CIA1_PRA
+            lda CIA1_PRB
+            and #$40                ; Column 6 = O
+            beq menu_o_pressed
+
+menu_o_pressed:
+            jsr play_menu_select
+            jsr show_options
+            lda #STATE_OPTIONS
+            sta game_state
+            rts
+```
+
+The C64 keyboard matrix requires specific row/column combinations to detect each key.
+
+## High Score Viewing
+
+Selecting "High Scores" reuses the existing table display:
+
+```asm
+uo_select_high_scores:
+            jsr clear_screen
+            jsr draw_hs_table
+            ; Draw return hint
+            lda #2
+            sta options_state       ; Wait-for-fire state
+            rts
+```
+
+Code reuse keeps the binary small.
+
+## Return Navigation
+
+Sub-screens use a simple wait-for-fire pattern:
+
+```asm
+update_stats_view:
+            lda CIA1_PRA
+            and #$10
+            beq usv_back
+            ; ... check space bar ...
+            rts
+
+usv_back:
+            jsr play_menu_back
+            jsr show_options
+            rts
+```
+
+Fire or space returns to the options menu.
+
+## Why Sound Test?
+
+Sound tests serve multiple purposes:
+
+| Purpose | Benefit |
+|---------|---------|
+| Player enjoyment | Hear favourite sounds on demand |
+| Audio verification | Confirm all sounds work |
+| Development aid | Test changes without gameplay |
+| Accessibility check | Verify audio is distinct |
+
+They're also fun—players love exploring game audio.
+
+## Try This
+
+1. **Volume control** - Add master volume adjustment
+2. **SFX on/off** - Toggle for sound effects vs music only
+3. **Reset statistics** - Option to clear all stats
+4. **Credits screen** - Add author credits accessible from options
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-46/symphony.asm" />
+
+## What You've Learnt
+
+- **Sub-state management** - Multiple screens within one game state
+- **Keyboard matrix reading** - Detecting specific keys on the C64
+- **Menu dispatch patterns** - Routing to different update routines
+- **Code reuse** - Sharing display routines across features
+
+## What's Next
+
+With options complete, Unit 47 adds pause functionality. Players will be able to pause mid-game, access a pause menu, and resume with a countdown.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 45 → Unit 46"
+  before="commodore-64/game-01-sid-symphony/unit-45/symphony.asm"
+  after="commodore-64/game-01-sid-symphony/unit-46/symphony.asm"
+  context={3}
+/>

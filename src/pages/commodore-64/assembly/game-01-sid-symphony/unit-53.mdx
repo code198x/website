@@ -1,0 +1,201 @@
+---
+title: "Advanced SID - Multi-Speed"
+description: "Learn how multi-speed SID playback produces richer sound by updating the chip multiple times per frame, and understand the trade-offs involved."
+pubDate: 2026-01-17
+game: 1
+gameName: "SID Symphony"
+unit: 53
+totalUnits: 64
+system: "Commodore 64"
+tags: ["assembly", "6510", "sid", "audio", "multi-speed"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-52"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-54"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+The SID chip produces sound based on register values. Update those registers more frequently, and you can achieve effects impossible at standard speed. This unit explores multi-speed SID playback—what it is, why it matters, and when to use it.
+
+## Run It
+
+Assemble and run:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+```
+
+![Unit 53 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-53/screenshot.png)
+
+Our game continues using 1x speed playback. Version shows "PHASE 4 V0.5".
+
+## What is Multi-Speed?
+
+Standard SID playback updates registers once per frame—50 times per second on PAL. Multi-speed players update more frequently:
+
+| Speed | Updates/Second | Updates/Frame |
+|-------|----------------|---------------|
+| 1x | 50 | 1 |
+| 2x | 100 | 2 |
+| 4x | 200 | 4 |
+| 8x | 400 | 8 |
+
+Higher update rates enable smoother pitch bends, faster arpeggios, and more detailed envelopes.
+
+## Why More Updates Help
+
+### Pitch Slides
+
+At 1x, a pitch slide changes frequency 50 times per second. You hear distinct "steps":
+
+```
+1x: C4 ─┬─ C#4 ─┬─ D4 ─┬─ D#4 ─┬─ E4
+        20ms    20ms    20ms    20ms
+```
+
+At 4x, the same slide is four times smoother:
+
+```
+4x: C4 ┬┬┬┬ C#4 ┬┬┬┬ D4 ┬┬┬┬ D#4 ┬┬┬┬ E4
+       5ms      5ms      5ms      5ms
+```
+
+### Fast Arpeggios
+
+The classic C64 "arpeggio chord" effect cycles through chord notes rapidly. At 1x, cycling C-E-G takes 60ms—audible as separate notes. At 4x, it takes 15ms—perceived as a single rich chord.
+
+### Detailed Envelopes
+
+Custom volume envelopes (beyond ADSR) need frequent updates. At 1x, you get 50 volume levels per second. At 8x, you get 400—enabling subtle tremolo and complex shapes.
+
+## Implementation Approaches
+
+### Raster Interrupts
+
+The most common approach uses multiple raster interrupts per frame:
+
+```asm
+; Simplified 2x speed setup
+            lda #<irq_handler
+            sta $0314
+            lda #>irq_handler
+            sta $0315
+
+            ; First interrupt at line 0
+            lda #0
+            sta $D012
+
+irq_handler:
+            ; Update SID
+            jsr play_music
+
+            ; Set up next interrupt
+            lda $D012
+            clc
+            adc #156            ; ~half frame later
+            sta $D012
+
+            ; Acknowledge interrupt
+            asl $D019
+            jmp $EA31           ; Return via KERNAL
+```
+
+### Timer-Based
+
+CIA timers can trigger interrupts at precise intervals regardless of raster position:
+
+```asm
+            ; Set CIA1 Timer A for 2x speed
+            lda #<(19656/2)     ; Half frame in cycles
+            sta $DC04
+            lda #>(19656/2)
+            sta $DC05
+            ; Enable timer interrupt
+            lda #$81
+            sta $DC0D
+```
+
+## CPU Cost
+
+More updates mean more CPU time:
+
+| Speed | CPU Usage | Cycles/Frame |
+|-------|-----------|--------------|
+| 1x | ~2% | ~400 |
+| 2x | ~4% | ~800 |
+| 4x | ~8% | ~1,600 |
+| 8x | ~16% | ~3,200 |
+
+For a dedicated music player, 8x is fine. For a game with complex logic, 1x or 2x is safer.
+
+## Our Decision: 1x Speed
+
+SID Symphony uses standard 1x playback for several reasons:
+
+| Factor | 1x Advantage |
+|--------|--------------|
+| Simplicity | No interrupt setup required |
+| CPU headroom | Maximum cycles for gameplay |
+| Stability | Fewer timing edge cases |
+| Educational | Easier to understand |
+
+Our sound effects and simple melodies don't need multi-speed. The trade-off isn't worth it.
+
+## When Multi-Speed Makes Sense
+
+| Use Case | Recommended Speed |
+|----------|-------------------|
+| Background game music | 1x-2x |
+| Music-focused demo | 4x-8x |
+| Smooth pitch effects | 2x minimum |
+| Complex drum sounds | 4x+ |
+| Our rhythm game | 1x (sufficient) |
+
+## Famous Multi-Speed Examples
+
+Many classic SID tunes use multi-speed:
+
+- **Martin Galway** - Often used 2x for smooth effects
+- **Jeroen Tel** - Known for detailed 4x compositions
+- **HVSC collection** - Documents speed in file metadata
+
+You can hear the difference: 1x tunes sound "chunkier," while 4x tunes have silky-smooth modulations.
+
+## SID Player Standards
+
+The **PSID** format includes speed information in its header:
+
+```
+Offset $12-$13: Flags
+  Bit 2: PlaySID specific
+  Bit 3: C64 BASIC flag
+  Bits 4-5: Clock (PAL/NTSC)
+  Bits 6-7: SID model
+```
+
+**RSID** format requires more authentic playback, often with specific interrupt timing.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-53/symphony.asm" />
+
+## What You've Learnt
+
+- **Multi-speed concept** - Updating SID multiple times per frame
+- **Audio benefits** - Smoother slides, faster arpeggios, detailed envelopes
+- **CPU trade-offs** - More updates = more cycles consumed
+- **Implementation options** - Raster interrupts vs timer-based
+
+## What's Next
+
+Unit 54 explores ring modulation—the SID's ability to multiply waveforms together for metallic, bell-like tones that define the C64's distinctive sound.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 52 → Unit 53"
+  before="commodore-64/game-01-sid-symphony/unit-52/symphony.asm"
+  after="commodore-64/game-01-sid-symphony/unit-53/symphony.asm"
+  context={3}
+/>

@@ -1,0 +1,208 @@
+---
+title: "Advanced SID - Filters"
+description: "Use the SID filter to create dynamic audio that responds to gameplay state—brighter at high combos, muffled at low health, with sweeps on perfect hits."
+pubDate: 2026-01-17
+game: 1
+gameName: "SID Symphony"
+unit: 42
+totalUnits: 64
+system: "Commodore 64"
+tags: ["assembly", "6510", "sid", "filters", "audio", "game-feel"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-41"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-43"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+The SID's filter is underutilised in many C64 games, but it's perfect for communicating gameplay state through audio. This unit adds dynamic filtering: note sounds brighten as your combo builds, muffle when health drops low, and sweep brilliantly on perfect hits.
+
+## Run It
+
+Assemble and run:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+```
+
+![Unit 42 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-42/screenshot.png)
+
+Play a song and listen carefully. At low combo, notes sound warm but muted. Build a streak and they become brighter. Hit perfect timing and hear a momentary sparkle. Let health drop and everything gets dull—a subconscious warning.
+
+## The SID Filter
+
+The SID has a single multimode filter that can affect any combination of its three voices. Key registers:
+
+| Register | Address | Purpose |
+|----------|---------|---------|
+| Filter Low | $D415 | Filter cutoff (bits 0-2) |
+| Filter High | $D416 | Filter cutoff (bits 3-10) |
+| Resonance | $D417 | Resonance (bits 4-7), voice routing (bits 0-3) |
+| Mode/Vol | $D418 | Filter mode (bits 4-6), volume (bits 0-3) |
+
+We use low-pass mode, which lets frequencies below the cutoff pass through and attenuates higher frequencies.
+
+## New Variables
+
+```asm
+filter_sweep     = $35          ; Perfect hit filter sweep countdown
+base_filter      = $36          ; Base filter cutoff (varies with combo/health)
+```
+
+The `base_filter` value changes with game state; `filter_sweep` provides temporary boosts.
+
+## Combo-Based Brightness
+
+Higher combos mean brighter sound:
+
+```asm
+update_game_filter:
+            ; Calculate base filter from combo multiplier
+            jsr get_multiplier      ; Returns 1-4 in A
+            asl                     ; x2
+            asl                     ; x4
+            asl                     ; x8
+            asl                     ; x16
+            clc
+            adc #$20                ; Base minimum $20
+            sta base_filter         ; $20-$60 based on combo
+```
+
+| Combo | Multiplier | Filter Cutoff |
+|-------|------------|---------------|
+| 0-9 | 1x | $30 |
+| 10-24 | 2x | $40 |
+| 25-49 | 3x | $50 |
+| 50+ | 4x | $60 |
+
+Higher cutoff = brighter, more harmonic-rich sound.
+
+## Low Health Warning
+
+When health drops below 30, we muffle the sound:
+
+```asm
+            ; Reduce filter if health is low (danger feedback)
+            lda health
+            cmp #30                 ; Low health threshold
+            bcs filter_apply
+            ; Health is low - muffle the sound
+            lda base_filter
+            sec
+            sbc #$20                ; Reduce cutoff
+            bcs filter_store
+            lda #$10                ; Minimum cutoff
+filter_store:
+            sta base_filter
+```
+
+This creates an instinctive "something's wrong" feeling. The audio tells players they're in danger without explicit warning text.
+
+## Applying the Filter
+
+We route voices 1 and 2 through the filter (voice 3 handles callouts):
+
+```asm
+filter_apply:
+            lda #$13                ; Filter voices 1+2, resonance 1
+            sta SID_RESON
+            lda #$00
+            sta SID_FILT_LO
+            lda base_filter
+            sta SID_FILT_HI
+            lda #$1F                ; Low-pass filter, volume 15
+            sta SID_VOLUME
+```
+
+The `$13` in RESON means:
+- Bits 0-1: voices 1 and 2 routed to filter
+- Bits 4-7: resonance level 1 (subtle emphasis)
+
+## Perfect Hit Sweep
+
+On perfect timing, we trigger a brightness boost:
+
+```asm
+            ; Trigger filter sweep effect (Unit 42)
+            lda #8                  ; Brief brightness boost
+            sta filter_sweep
+```
+
+The update routine adds temporary brightness:
+
+```asm
+update_filter_sweep:
+            lda filter_sweep
+            beq sweep_done
+
+            dec filter_sweep
+
+            ; Boost filter cutoff temporarily
+            lda base_filter
+            clc
+            adc #$30                ; Add brightness boost
+            bcc sweep_apply
+            lda #$FF                ; Cap at maximum
+sweep_apply:
+            sta SID_FILT_HI
+```
+
+The result: perfect hits "sparkle" for 8 frames, adding to visual feedback with audio feedback.
+
+## Respecting Callouts
+
+When voice callouts are active, we skip normal filter updates:
+
+```asm
+update_game_filter:
+            ; Skip if voice callout is active (it manages its own filter)
+            lda voice_callout
+            bne filter_skip
+```
+
+This prevents the game filter from conflicting with callout filter sweeps.
+
+## The Audio Story
+
+The filter now tells a story:
+
+| Game State | Audio Quality | Player Feeling |
+|------------|---------------|----------------|
+| Starting out | Warm, slightly muted | Safe, building up |
+| High combo | Bright, punchy | Confident, in the zone |
+| Perfect hit | Momentary sparkle | Satisfaction |
+| Low health | Dull, muffled | Danger, urgency |
+
+Players may not consciously notice, but they'll feel it.
+
+## Try This
+
+1. **Resonance variation** - Higher resonance at high combos for emphasis
+2. **Band-pass for danger** - Switch to band-pass at critical health
+3. **Filter LFO** - Slowly oscillate cutoff for ambient movement
+4. **Per-track filtering** - Different filter settings per voice
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-42/symphony.asm" />
+
+## What You've Learnt
+
+- **SID filter registers** - Cutoff, resonance, routing, and mode
+- **Dynamic audio design** - Audio that responds to gameplay state
+- **Emotional feedback** - Using sound to communicate danger and success
+- **Filter coordination** - Managing filter across multiple systems
+
+## What's Next
+
+With dynamic filtering in place, Unit 43 builds a complete sound effects layer. We'll add distinct sounds for menu navigation, victory, and game over—finishing the audio design.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 41 → Unit 42"
+  before="commodore-64/game-01-sid-symphony/unit-41/symphony.asm"
+  after="commodore-64/game-01-sid-symphony/unit-42/symphony.asm"
+  context={3}
+/>

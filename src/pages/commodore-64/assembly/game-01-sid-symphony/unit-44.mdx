@@ -1,0 +1,291 @@
+---
+title: "Results Screen Polish"
+description: "Transform the static results display into an animated reveal with score count-ups, grade flashes, and high score celebrations that make success feel earned."
+pubDate: 2026-01-17
+game: 1
+gameName: "SID Symphony"
+unit: 44
+totalUnits: 64
+system: "Commodore 64"
+tags: ["assembly", "6510", "animation", "results", "polish", "feedback"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-43"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-45"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+A static results screen shows what you achieved, but an animated one makes you *feel* the achievement. This unit transforms the results display into a reveal sequence: scores count up from zero, grades flash before settling, and high scores trigger celebration. The difference is dramatic.
+
+## Run It
+
+Assemble and run:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+```
+
+![Unit 44 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-44/screenshot.png)
+
+Complete a song and watch the results unfold. The score doesn't appear instantly—it counts up from zero, building anticipation. The grade flashes before revealing, and if you beat your high score, you'll know immediately.
+
+## Animation Phases
+
+The results screen progresses through distinct phases:
+
+| Phase | Duration | Action |
+|-------|----------|--------|
+| 0 | 30 frames | Initial delay (anticipation) |
+| 1 | Variable | Score count-up animation |
+| 2 | 15 frames | Grade flash effect |
+| 3 | 30 frames | High score celebration (if applicable) |
+| 4 | — | Complete, accept input |
+
+Each phase creates a moment of revelation.
+
+## New Variables
+
+```asm
+results_phase    = $3A          ; Results animation phase (0-4)
+results_timer    = $3B          ; Timer for current phase
+display_score_lo = $3C          ; Currently displayed score (animating up)
+display_score_hi = $3D          ; High byte of displayed score
+new_high_score   = $3E          ; Flag: 1 = achieved new high score
+grade_flash      = $3F          ; Grade flash animation counter
+```
+
+The `display_score` variables track the animated value, which climbs toward the actual score.
+
+## Phase 0: Anticipation
+
+The results screen appears with "00000" displayed:
+
+```asm
+draw_rs_value:
+            ; Draw initial score as 00000 (Unit 44 - will animate up)
+            lda #$30                ; ASCII '0'
+            sta SCREEN + (9 * 40) + 23
+            sta SCREEN + (9 * 40) + 24
+            sta SCREEN + (9 * 40) + 25
+            sta SCREEN + (9 * 40) + 26
+            sta SCREEN + (9 * 40) + 27
+```
+
+A half-second pause lets players absorb the screen layout before animation begins. Rushing straight into the count-up would feel jarring.
+
+## Phase 1: Score Count-Up
+
+The heart of the animation—score climbing from zero to final value:
+
+```asm
+results_phase1:
+            ; Score count-up animation
+            dec results_timer
+            bne phase1_update
+            lda #2                  ; Speed: update every 2 frames
+            sta results_timer
+
+phase1_update:
+            ; Add increment to displayed score
+            lda display_score_lo
+            clc
+            adc #5                  ; Count up by 5s for smooth animation
+            sta display_score_lo
+            bcc check_reached
+            inc display_score_hi
+```
+
+The count increments by 5 each update, creating visible motion without taking forever on high scores.
+
+## Reaching the Target
+
+We check if the displayed value has reached or exceeded the actual score:
+
+```asm
+check_reached:
+            ; Compare display_score with actual score
+            lda display_score_hi
+            cmp score_hi
+            bcc still_counting      ; Display < actual, keep going
+            bne reached_target      ; Display > actual, done
+            lda display_score_lo
+            cmp score_lo
+            bcc still_counting      ; Display < actual
+
+reached_target:
+            ; Clamp to exact score
+            lda score_lo
+            sta display_score_lo
+            lda score_hi
+            sta display_score_hi
+            ; Move to phase 2
+            lda #2
+            sta results_phase
+            lda #15
+            sta results_timer       ; Grade flash duration
+```
+
+Clamping ensures we display exactly the earned score, not an overshoot.
+
+## Updating the Display
+
+Each count-up step redraws the score digits:
+
+```asm
+update_displayed_score:
+            ; Convert display_score to 5 decimal digits
+            ; Uses division-by-subtraction for 16-bit value
+
+            ; Position: row 9, column 23
+            lda #<(SCREEN + (9 * 40) + 23)
+            sta temp_ptr
+            lda #>(SCREEN + (9 * 40) + 23)
+            sta temp_ptr+1
+
+            ; ... digit extraction and display ...
+```
+
+The 16-bit to decimal conversion extracts each digit through repeated subtraction—the standard technique for displaying multi-digit numbers on 8-bit systems.
+
+## Phase 2: Grade Flash
+
+Before the final grade settles, it flashes between colours:
+
+```asm
+results_phase2:
+            ; Grade flash animation
+            dec results_timer
+            beq phase2_done
+
+            ; Alternate grade colour
+            lda results_timer
+            and #$04                ; Toggle every 4 frames
+            beq grade_bright
+            lda #COLOUR_DARK
+            jmp set_grade_colour
+grade_bright:
+            lda #COLOUR_WHITE
+set_grade_colour:
+            sta COLOUR + (11 * 40) + 20
+```
+
+The flashing draws attention to the grade, making its reveal feel significant.
+
+## Phase 3: High Score Celebration
+
+If the player beat their previous best:
+
+```asm
+results_phase3:
+            ; High score celebration
+            lda new_high_score
+            beq skip_to_phase4      ; No high score, skip celebration
+
+            dec results_timer
+            bne celebration_effect
+
+            ; Done celebrating
+            lda #4
+            sta results_phase
+            rts
+
+celebration_effect:
+            ; Flash border or play sound
+            lda results_timer
+            and #$03
+            tax
+            lda celebration_colours,x
+            sta $D020               ; Border colour
+```
+
+The border pulses through colours, clearly signaling the achievement.
+
+## Phase 4: Ready for Input
+
+Once all animations complete, we accept input:
+
+```asm
+update_results:
+            ; Update animation (Unit 44)
+            jsr update_results_animation
+
+            ; Only check input when animation complete
+            lda results_phase
+            cmp #4
+            bne results_wait        ; Still animating
+
+            ; Check for fire button
+            lda $DC00
+            and #$10
+            beq return_to_menu
+            rts
+```
+
+Players can't skip the reveal—they must watch their score climb. This builds investment in the result.
+
+## Initialisation
+
+The animation state is set when showing results:
+
+```asm
+results_done:
+            ; Initialize animation state (Unit 44)
+            lda #0
+            sta results_phase       ; Start at phase 0
+            sta display_score_lo    ; Start display at 0
+            sta display_score_hi
+            lda #30                 ; Initial delay (half second)
+            sta results_timer
+
+            ; Check for new high score
+            jsr check_high_score
+            sta new_high_score      ; Store result for phase 3
+            rts
+```
+
+The high score check happens immediately but the celebration waits until phase 3.
+
+## The Psychology of Revelation
+
+Why animate instead of showing results instantly?
+
+| Instant Display | Animated Reveal |
+|-----------------|-----------------|
+| Information dump | Building anticipation |
+| Passive reception | Active engagement |
+| "I got 12,450" | "It's going up... higher... 12,450!" |
+| Forgettable | Memorable |
+
+Arcade games learnt this decades ago. The journey to the number matters as much as the number itself.
+
+## Try This
+
+1. **Variable speed count-up** - Start slow, accelerate as score climbs
+2. **Sound effects** - Tick sounds during count, fanfare at high score
+3. **Stat-by-stat reveal** - Animate perfects, goods, misses separately
+4. **Rank comparison** - Show previous best alongside new score
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-44/symphony.asm" />
+
+## What You've Learnt
+
+- **Multi-phase animation** - Sequencing distinct animation stages
+- **Score display animation** - 16-bit to decimal conversion with visual updates
+- **Anticipation and reveal** - Using timing to build emotional investment
+- **State machine patterns** - Managing complex animation sequences
+
+## What's Next
+
+With results polished, Unit 45 adds a proper high score table. Players will enter their names and see their achievements preserved alongside the best performances.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 43 → Unit 44"
+  before="commodore-64/game-01-sid-symphony/unit-43/symphony.asm"
+  after="commodore-64/game-01-sid-symphony/unit-44/symphony.asm"
+  context={3}
+/>

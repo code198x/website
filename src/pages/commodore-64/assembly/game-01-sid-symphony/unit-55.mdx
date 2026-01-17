@@ -1,0 +1,205 @@
+---
+title: "Sprite Multiplexing Introduction"
+description: "Learn how sprite multiplexing overcomes the VIC-II's 8-sprite limit by repositioning sprites during screen drawing, enabling complex visual displays."
+pubDate: 2026-01-17
+game: 1
+gameName: "SID Symphony"
+unit: 55
+totalUnits: 64
+system: "Commodore 64"
+tags: ["assembly", "6510", "vic-ii", "sprites", "multiplexing"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-54"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-56"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+The VIC-II supports only 8 hardware sprites—yet many C64 games display dozens on screen. The secret is sprite multiplexing: rapidly repositioning sprites as the raster beam draws down the screen. This unit explains the technique.
+
+## Run It
+
+Assemble and run:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+```
+
+![Unit 55 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-55/screenshot.png)
+
+Our game uses character graphics, not sprites. Version shows "PHASE 4 V0.7".
+
+## The Hardware Limit
+
+The VIC-II has 8 sprite slots:
+
+| Register | Sprite |
+|----------|--------|
+| $D000-$D001 | Sprite 0 X/Y |
+| $D002-$D003 | Sprite 1 X/Y |
+| ... | ... |
+| $D00E-$D00F | Sprite 7 X/Y |
+
+Each sprite is 24×21 pixels. With only 8 slots, how do games show more?
+
+## The Multiplexing Trick
+
+The VIC-II draws the screen top-to-bottom, line by line. Once a sprite has been drawn, its slot can be reused lower on the screen:
+
+```
+Raster line 50:  ┌─────────────────────────┐
+                 │  Sprite 0 (enemy A)     │
+                 │  Sprite 1 (enemy B)     │
+Raster line 100: ├─────────────────────────┤
+                 │  (Interrupt fires)      │
+                 │  Reposition sprite 0→C  │
+                 │  Reposition sprite 1→D  │
+                 │  Sprite 0 (enemy C)     │
+                 │  Sprite 1 (enemy D)     │
+Raster line 150: └─────────────────────────┘
+```
+
+Now we're showing 4 enemies with only 2 sprite slots!
+
+## Implementation Outline
+
+```asm
+; Simplified multiplexer concept
+multiplex_init:
+            ; Sort sprites by Y position
+            ; Set up first 8 sprites
+            ; Calculate raster line for first reuse
+
+multiplex_irq:
+            ; Save registers
+            pha
+            txa
+            pha
+
+            ; Reposition sprites for next zone
+            ldx next_sprite_slot
+            lda sprite_x,x
+            sta $D000,x
+            lda sprite_y,x
+            sta $D001,x
+            ; ...
+
+            ; Set up next interrupt
+            lda next_raster_line
+            sta $D012
+
+            ; Restore and return
+            pla
+            tax
+            pla
+            rti
+```
+
+## Sorting by Y Position
+
+For multiplexing to work, sprites must be processed top-to-bottom:
+
+```asm
+; Bubble sort by Y coordinate
+sort_sprites:
+            ldx #0
+.outer:
+            ldy #0
+.inner:
+            lda sprite_y,y
+            cmp sprite_y+1,y
+            bcc .no_swap
+            ; Swap entries
+            ; ...
+.no_swap:
+            iny
+            cpy #NUM_SPRITES-1
+            bne .inner
+            inx
+            cpx #NUM_SPRITES-1
+            bne .outer
+            rts
+```
+
+## Zone Planning
+
+Divide the screen into "zones" based on sprite density:
+
+```
+Zone 1: Lines 50-99   (8 sprites max)
+Zone 2: Lines 100-149 (8 sprites max)
+Zone 3: Lines 150-199 (8 sprites max)
+```
+
+Each zone can display up to 8 sprites. With 3 zones, that's 24 sprites total.
+
+## Timing Constraints
+
+The reposition must complete before the sprite is drawn:
+
+```
+Sprite Y = 100
+Raster interrupt = 99 (one line early)
+Available cycles = ~63 (one line)
+Cycles per sprite = ~8-10
+
+Maximum repositions per line ≈ 6
+```
+
+Complex multiplexers use multiple interrupts per zone.
+
+## Why We Don't Need It
+
+SID Symphony uses character graphics:
+
+| Feature | Sprites | Characters |
+|---------|---------|------------|
+| Note display | ❌ | ✅ Text characters |
+| Hit feedback | ❌ | ✅ Colour changes |
+| UI elements | ❌ | ✅ Screen text |
+
+Character graphics are simpler and sufficient for our rhythm game.
+
+## When to Use Sprites
+
+Sprites excel at:
+
+- **Smooth movement** - Pixel-level positioning
+- **Overlap** - Sprites over background
+- **Collision** - Hardware detection
+- **Animation** - Quick frame changes
+
+Our notes move in fixed columns—perfect for characters.
+
+## Famous Multiplexed Games
+
+- **Katakis** - Dozens of enemy ships
+- **Armalyte** - Complex bullet patterns
+- **Creatures** - Multiple animated characters
+
+These games would be impossible without multiplexing.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-55/symphony.asm" />
+
+## What You've Learnt
+
+- **VIC-II sprite limits** - 8 hardware sprites maximum
+- **Multiplexing concept** - Reuse slots as raster descends
+- **Y-sorting** - Process sprites top-to-bottom
+- **Zone planning** - Divide screen into manageable sections
+
+## What's Next
+
+Unit 56 adds a loading screen—the visual that appears while the game loads from tape or disk. This professional touch sets expectations before gameplay begins.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 54 → Unit 55"
+  before="commodore-64/game-01-sid-symphony/unit-54/symphony.asm"
+  after="commodore-64/game-01-sid-symphony/unit-55/symphony.asm"
+  context={3}
+/>

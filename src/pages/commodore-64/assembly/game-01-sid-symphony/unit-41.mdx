@@ -1,0 +1,217 @@
+---
+title: "Voice Callouts"
+description: "Add voice-like celebration sounds at combo milestones using SID filter sweeps, creating audio encouragement that rewards sustained performance."
+pubDate: 2026-01-17
+game: 1
+gameName: "SID Symphony"
+unit: 41
+totalUnits: 64
+system: "Commodore 64"
+tags: ["assembly", "6510", "sid", "audio", "filters", "feedback"]
+prevLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-40"
+nextLesson: "/commodore-64/assembly/game-01-sid-symphony/unit-42"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+When players hit combo milestones, they deserve audio celebration. This unit adds "voice callouts"—descending filter sweeps that create a vocal "wow" quality. At 10, 25, and 50 combo, the SID rewards your streak with escalating fanfare.
+
+## Run It
+
+Assemble and run:
+
+```bash
+acme -f cbm -o symphony.prg symphony.asm
+```
+
+![Unit 41 Screenshot](/images/commodore-64/game-01-sid-symphony/unit-41/screenshot.png)
+
+Play a song and maintain a combo. At 10 hits, you'll hear a brief descending tone. At 25, a higher-pitched, longer call. At 50, a triumphant sweep. These audio milestones add rhythm game "feel" beyond simple beeps.
+
+## The SID Filter Trick
+
+True speech synthesis on the SID is complex, but we can suggest vocal quality using the filter. The technique:
+
+1. Start with a pulse wave (rich in harmonics)
+2. Apply the low-pass filter at high cutoff
+3. Sweep the filter downward while descending pitch
+4. The combination creates a "wow" or "wah" sound
+
+This isn't speech, but it's reminiscent of vocal formants.
+
+## Milestone Thresholds
+
+```asm
+MILESTONE_1 = 10                ; "Nice!" at 10 combo
+MILESTONE_2 = 25                ; "Great!" at 25 combo
+MILESTONE_3 = 50                ; "Amazing!" at 50 combo
+```
+
+Each milestone triggers a progressively more impressive callout—higher starting pitch and longer duration.
+
+## New Variables
+
+```asm
+voice_callout    = $31          ; Voice callout countdown
+voice_freq_hi    = $32          ; Current voice frequency high byte
+voice_freq_lo    = $33          ; Current voice frequency low byte
+last_milestone   = $34          ; Last milestone reached (prevents re-trigger)
+```
+
+The `last_milestone` variable prevents repeated triggering—once you hit 25 combo, you don't keep hearing the 25 callout on every subsequent hit.
+
+## Milestone Detection
+
+We check on every combo increment:
+
+```asm
+check_milestone:
+            lda combo
+
+            ; Check 50 combo milestone
+            cmp #MILESTONE_3
+            bne check_25
+            lda last_milestone
+            cmp #MILESTONE_3
+            bne do_milestone_50
+            rts                     ; Already triggered
+```
+
+The pattern: check if we've reached the threshold, then check if we've already triggered it. Only proceed if both conditions are new.
+
+## Configuring Voice 3
+
+We use voice 3 for callouts because voices 1 and 2 handle note sounds:
+
+```asm
+start_callout:
+            sta voice_callout
+
+            ; Configure voice 3 for callout
+            lda voice_freq_lo
+            sta SID_V3_FREQ_LO
+            lda voice_freq_hi
+            sta SID_V3_FREQ_HI
+            lda #$08                ; Pulse width
+            sta SID_V3_PWLO
+            lda #$04
+            sta SID_V3_PWHI
+            lda #$00                ; Instant attack
+            sta SID_V3_AD
+            lda #$F8                ; Long sustain, slow release
+            sta SID_V3_SR
+```
+
+The pulse width settings (mid-range) give a rich tone suitable for filter manipulation.
+
+## Filter Configuration
+
+The magic happens in the filter:
+
+```asm
+            ; Enable filter on voice 3
+            lda #$44                ; Filter voice 3, resonance 4
+            sta SID_RESON
+            lda #$00
+            sta SID_FILT_LO
+            lda #$70                ; High cutoff for bright start
+            sta SID_FILT_HI
+            lda #$1F                ; Low-pass filter, volume 15
+            sta SID_VOLUME
+```
+
+Key settings:
+- `$44` in RESON: filter voice 3, resonance level 4 (moderate emphasis)
+- `$70` in FILT_HI: high initial cutoff (bright sound)
+- `$1F` in MODE/VOL: low-pass filter enabled, full volume
+
+## The Descending Sweep
+
+Each frame during the callout, we reduce pitch and filter cutoff:
+
+```asm
+update_voice_callout:
+            ; ...
+            ; Descending pitch creates "wow" effect
+            lda voice_freq_hi
+            sec
+            sbc #$02                ; Pitch descends
+            bcc skip_freq_update
+            sta voice_freq_hi
+            sta SID_V3_FREQ_HI
+
+            ; Filter follows pitch
+            lda voice_freq_hi
+            sta SID_FILT_HI
+```
+
+The parallel descent of frequency and filter cutoff creates the vocal-like quality.
+
+## Milestone Reset
+
+When the combo breaks, we reset the milestone tracker:
+
+```asm
+break_combo:
+            lda #0
+            sta combo
+            jsr display_combo
+            jsr reset_milestone     ; Allow milestones to trigger again
+            rts
+```
+
+This lets players earn the callouts again on their next streak.
+
+## Escalating Celebration
+
+Each milestone differs:
+
+| Milestone | Start Pitch | Duration | Feeling |
+|-----------|------------|----------|---------|
+| 10 | $20 (low) | 18 frames | Encouraging |
+| 25 | $30 (medium) | 24 frames | Impressive |
+| 50 | $40 (high) | 30 frames | Triumphant |
+
+Higher pitch and longer duration make bigger milestones feel more significant.
+
+## Why Voice 3?
+
+The SID has three voices. In SID Symphony:
+- Voice 1: Track 1 note sounds
+- Voice 2: Track 2 note sounds
+- Voice 3: Track 3 note sounds OR callouts
+
+When a callout triggers, it temporarily takes over voice 3. Track 3 notes during this brief window won't sound, but the callout is short enough that players rarely notice.
+
+## Try This
+
+1. **Ascending variant** - Try rising pitch for a "yeah!" feeling
+2. **Ring modulation** - Add ring mod between voices for stranger tones
+3. **Milestone text** - Display "NICE!" "GREAT!" "AMAZING!" with the sounds
+4. **Custom thresholds** - Different values for different songs
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-sid-symphony/unit-41/symphony.asm" />
+
+## What You've Learnt
+
+- **SID filter basics** - Cutoff, resonance, and filter modes
+- **Vocal synthesis concepts** - Filter sweeps approximate formants
+- **Milestone systems** - Tracking achievements without re-triggering
+- **Voice allocation** - Managing multiple simultaneous sounds
+
+## What's Next
+
+With milestone callouts working, Unit 42 explores the SID filter more deeply. We'll add filter sweeps on perfect hits, creating a dynamic audio landscape that responds to every action.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 40 → Unit 41"
+  before="commodore-64/game-01-sid-symphony/unit-40/symphony.asm"
+  after="commodore-64/game-01-sid-symphony/unit-41/symphony.asm"
+  context={3}
+/>
