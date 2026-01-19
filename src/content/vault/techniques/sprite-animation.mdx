@@ -1,0 +1,272 @@
+---
+title: "Sprite Animation"
+subtitle: "Bringing pixels to life"
+summary: "Frame-by-frame sprite animation creates the illusion of movement by cycling through carefully designed images at controlled intervals."
+category: "techniques"
+platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+tags: ['graphics', 'animation', 'fundamentals']
+originated: 1978
+
+---
+
+
+## Overview
+
+Animation is the rapid display of slightly different images. For sprites, this means cycling through a sequence of frames: a walk cycle might use 4-8 frames, shown in sequence as the character moves. The timing between frames and the smoothness of the sequence determine whether animation feels fluid or jerky.
+
+## Animation fundamentals
+
+### Frame rate vs animation rate
+
+| Term | Meaning |
+|------|---------|
+| Frame rate | How often the screen refreshes (50/60 Hz) |
+| Animation rate | How often the sprite image changes |
+
+Sprite animation is typically slower than screen refresh:
+- 50 fps screen refresh
+- Character animation at 10 fps (every 5 screen frames)
+
+### Animation timing
+
+```asm
+anim_timer:  .byte 0
+anim_frame:  .byte 0
+ANIM_SPEED = 6        ; frames between changes
+
+update_animation:
+    inc anim_timer
+    lda anim_timer
+    cmp #ANIM_SPEED
+    bcc .no_change
+
+    lda #0
+    sta anim_timer
+
+    ; Advance animation frame
+    inc anim_frame
+    lda anim_frame
+    cmp #NUM_FRAMES
+    bcc .no_wrap
+    lda #0
+    sta anim_frame
+.no_wrap:
+
+.no_change:
+    rts
+```
+
+## Walk cycle basics
+
+A typical walk cycle:
+
+```
+Frame 1: Standing (contact)
+Frame 2: Passing (one leg forward)
+Frame 3: Contact (other leg)
+Frame 4: Passing (first leg forward)
+```
+
+Four frames is minimum; 6-8 frames feels smoother.
+
+## Platform implementations
+
+### Commodore 64
+
+Sprites use 64 bytes each. Animation swaps sprite pointers:
+
+```asm
+; Sprite pointers at $07F8-$07FF
+SPRITE_PTRS = $07f8
+
+; Animation frames stored at $2000, $2040, $2080...
+walk_frames:
+    .byte $80, $81, $82, $83     ; pointers / 64
+
+animate_player:
+    ldx anim_frame
+    lda walk_frames,x
+    sta SPRITE_PTRS             ; sprite 0 pointer
+    rts
+```
+
+### ZX Spectrum
+
+Software sprites require copying new frame data:
+
+```z80
+; Copy animation frame to sprite buffer
+animate_sprite:
+    ld a, (anim_frame)
+    ld l, a
+    ld h, 0
+    add hl, hl          ; ×2
+    add hl, hl          ; ×4
+    add hl, hl          ; ×8 (8 bytes per frame)
+    ld de, frame_data
+    add hl, de          ; hl = frame address
+
+    ld de, sprite_buffer
+    ld bc, 8
+    ldir
+    ret
+```
+
+### NES
+
+Change tile indices in OAM:
+
+```asm
+; OAM structure: Y, tile, attr, X
+animate_player:
+    lda anim_frame
+    asl                 ; 2 tiles per frame (16x16 sprite)
+    clc
+    adc #PLAYER_TILE_BASE
+    sta OAM_DATA+1      ; top tile
+    adc #1
+    sta OAM_DATA+5      ; bottom tile
+    rts
+```
+
+### Amiga
+
+BOBs require redrawing with new image data. Sprites update data registers:
+
+```asm
+animate_sprite:
+    move.w  anim_frame,d0
+    lsl.w   #2,d0               ; ×4 for pointer table offset
+    lea     anim_table,a0
+    move.l  (a0,d0.w),a1        ; get frame address
+
+    ; Copy to sprite data area or update copper list
+```
+
+## State-based animation
+
+Different actions need different animations:
+
+```asm
+; Animation states
+ANIM_IDLE    = 0
+ANIM_WALK    = 1
+ANIM_JUMP    = 2
+ANIM_ATTACK  = 3
+
+anim_state:    .byte ANIM_IDLE
+
+get_frame_table:
+    lda anim_state
+    asl
+    tax
+    lda anim_tables,x
+    sta ptr
+    lda anim_tables+1,x
+    sta ptr+1
+    rts
+
+anim_tables:
+    .word idle_frames
+    .word walk_frames
+    .word jump_frames
+    .word attack_frames
+```
+
+## Directional animation
+
+Characters facing left/right:
+
+### Mirrored sprites (hardware)
+
+Some systems support horizontal flip:
+- C64: sprite X-expand, but no flip
+- NES: flip bit in OAM attribute
+- Amiga: no hardware flip for BOBs
+
+### Separate frames
+
+Store left and right versions:
+
+```asm
+; 4 walk frames × 2 directions = 8 frames
+walk_right:  .byte $80, $81, $82, $83
+walk_left:   .byte $84, $85, $86, $87
+
+get_walk_frame:
+    lda facing_right
+    bne .right
+    lda walk_left,x
+    rts
+.right:
+    lda walk_right,x
+    rts
+```
+
+## Animation speed variation
+
+Match animation speed to movement speed:
+
+```asm
+; Walking = slower animation
+; Running = faster animation
+
+update_walk_animation:
+    lda is_running
+    bne .running
+    lda #8              ; slow
+    jmp .set_speed
+.running:
+    lda #4              ; fast
+.set_speed:
+    sta anim_speed
+    rts
+```
+
+## One-shot animations
+
+For attacks, jumps, or deaths—play once, don't loop:
+
+```asm
+update_oneshot:
+    lda anim_timer
+    beq .done           ; already finished
+
+    dec anim_timer
+    bne .no_advance
+
+    inc anim_frame
+    lda anim_frame
+    cmp #ONESHOT_FRAMES
+    bcc .not_done
+
+    ; Animation complete
+    lda #0
+    sta anim_timer
+    sta anim_frame
+    jsr return_to_idle
+    rts
+
+.not_done:
+    lda #ANIM_SPEED
+    sta anim_timer
+.no_advance:
+.done:
+    rts
+```
+
+## Memory optimisation
+
+| Technique | Saving | Trade-off |
+|-----------|--------|-----------|
+| Share frames | Reuse idle frame in walk | May look stiff |
+| Reduce frames | 4 instead of 8 | Less smooth |
+| Smaller sprites | 16×16 vs 24×21 | Less detail |
+| Palette swap | Recolour same frames | Characters look similar |
+
+## See also
+
+- [State Machine](/vault/techniques/state-machine)
+- [VIC-II](/vault/hardware/vic-ii)
+- [PPU](/vault/hardware/ppu)
+- [Game Loop](/vault/techniques/game-loop)

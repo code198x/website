@@ -1,0 +1,242 @@
+---
+title: "State Machines"
+subtitle: "Organising game logic cleanly"
+summary: "State machines bring order to complex game logic—managing title screens, gameplay, pauses, and game-overs through clear transitions and isolated behaviour."
+category: "techniques"
+platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+tags: ['programming', 'architecture', 'fundamentals']
+originated: 1950
+
+---
+
+
+## Overview
+
+A state machine organises code by defining discrete states (title, playing, paused) and transitions between them. Each state has its own update and render logic. This prevents spaghetti code where every function checks multiple conditions and keeps game logic manageable.
+
+## The pattern
+
+```
+define states: TITLE, PLAYING, PAUSED, GAMEOVER
+
+each frame:
+    switch (current_state):
+        TITLE:    run title screen logic
+        PLAYING:  run gameplay logic
+        PAUSED:   run pause logic
+        GAMEOVER: run game over logic
+```
+
+## State definition
+
+### As constants
+
+```asm
+STATE_TITLE    = 0
+STATE_PLAYING  = 1
+STATE_PAUSED   = 2
+STATE_GAMEOVER = 3
+```
+
+### As a variable
+
+```asm
+game_state:    .byte STATE_TITLE
+```
+
+## State dispatch
+
+### Jump table approach (6502)
+
+```asm
+update_game:
+    lda game_state
+    asl                 ; multiply by 2 for word offset
+    tax
+    lda state_table,x
+    sta jump+1
+    lda state_table+1,x
+    sta jump+2
+jump:
+    jmp $0000           ; self-modifying code
+
+state_table:
+    .word update_title
+    .word update_playing
+    .word update_paused
+    .word update_gameover
+```
+
+### Compare chain (simpler)
+
+```asm
+update_game:
+    lda game_state
+    cmp #STATE_TITLE
+    beq update_title
+    cmp #STATE_PLAYING
+    beq update_playing
+    cmp #STATE_PAUSED
+    beq update_paused
+    jmp update_gameover
+```
+
+## State transitions
+
+### Immediate transition
+
+```asm
+; Player pressed start
+start_game:
+    lda #STATE_PLAYING
+    sta game_state
+    jsr init_level      ; setup for new state
+    rts
+```
+
+### Transition with delay
+
+```asm
+; Show "GAME OVER" for 3 seconds
+trigger_gameover:
+    lda #STATE_GAMEOVER
+    sta game_state
+    lda #150            ; 3 seconds at 50fps
+    sta state_timer
+    rts
+
+update_gameover:
+    dec state_timer
+    bne .still_showing
+    lda #STATE_TITLE
+    sta game_state
+.still_showing:
+    rts
+```
+
+## Nested state machines
+
+Games often have states within states:
+
+### Game-level states
+- TITLE
+- PLAYING
+- GAMEOVER
+
+### Player-level states (within PLAYING)
+- IDLE
+- WALKING
+- JUMPING
+- DYING
+
+```asm
+update_playing:
+    jsr update_enemies
+    jsr update_player_state  ; runs player's state machine
+    jsr check_collisions
+    rts
+
+update_player_state:
+    lda player_state
+    cmp #PLAYER_IDLE
+    beq player_idle
+    cmp #PLAYER_WALKING
+    beq player_walking
+    ; etc.
+```
+
+## Common states
+
+### Title screen
+- Wait for start button
+- Maybe cycle through attract mode
+- Transition: START → PLAYING
+
+### Playing
+- Run full game logic
+- Transition: death → DYING, pause → PAUSED
+
+### Paused
+- Freeze gameplay
+- Show pause menu
+- Transition: unpause → PLAYING, quit → TITLE
+
+### Dying
+- Play death animation
+- Decrement lives
+- Transition: lives > 0 → PLAYING, lives = 0 → GAMEOVER
+
+### Game over
+- Show final score
+- Wait for input
+- Transition: any key → TITLE
+
+## State entry and exit
+
+Clean transitions require setup/teardown:
+
+```asm
+change_state:
+    ; Exit current state
+    lda game_state
+    jsr exit_state
+
+    ; Set new state
+    stx game_state      ; X = new state
+
+    ; Enter new state
+    jsr enter_state
+    rts
+
+enter_state:
+    lda game_state
+    cmp #STATE_PLAYING
+    bne .not_playing
+    jsr init_level
+    jsr reset_player
+    jsr start_music
+.not_playing:
+    rts
+```
+
+## Animation as state machines
+
+Sprite animation is often a state machine:
+
+```
+States: FRAME_1, FRAME_2, FRAME_3, FRAME_4
+Transitions: timer expired → next frame
+```
+
+```asm
+update_animation:
+    dec anim_timer
+    bne .no_change
+
+    ; Advance frame
+    inc anim_frame
+    lda anim_frame
+    cmp #4
+    bcc .not_wrap
+    lda #0
+    sta anim_frame
+.not_wrap:
+    lda #6              ; frames per animation step
+    sta anim_timer
+.no_change:
+    rts
+```
+
+## Benefits
+
+| Benefit | Explanation |
+|---------|-------------|
+| Clarity | Each state's logic is self-contained |
+| Debugging | Easy to identify which state caused a bug |
+| Extensibility | Add new states without touching existing code |
+| Memory | Only active state's data needs to be hot |
+
+## See also
+
+- [Game Loop](/vault/techniques/game-loop)
+- [Sprite Animation](/vault/techniques/sprite-animation)

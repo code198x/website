@@ -1,0 +1,179 @@
+---
+title: "Double Buffering"
+subtitle: "Tear-free animation"
+summary: "Double buffering uses two screen areas—drawing to one while displaying the other—eliminating the visual tearing that occurs when updating the screen mid-display."
+category: "techniques"
+platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+tags: ['graphics', 'animation', 'fundamentals']
+originated: 1970
+
+---
+
+
+## Overview
+
+When you draw directly to visible screen memory, the display shows your drawing in progress—half-complete sprites, flickering backgrounds. Double buffering solves this by maintaining two screen buffers: one displayed while you draw to the other, then swapping them instantly.
+
+## The problem: tearing
+
+Without double buffering:
+
+```
+Frame N:
+  Display starts showing line 0
+  Your code starts erasing sprite at line 50
+  Display reaches line 50—sees half-erased sprite!
+  Your code finishes drawing new position
+  Display shows inconsistent frame
+```
+
+## The solution: two buffers
+
+```
+Buffer A (displayed)    Buffer B (drawing)
++-------------------+   +-------------------+
+|                   |   | (your code draws  |
+|  (user sees this) |   |  here unseen)     |
+|                   |   |                   |
++-------------------+   +-------------------+
+
+Next frame: swap pointers
+Buffer B displayed, draw to Buffer A
+```
+
+## Platform implementations
+
+### Commodore 64
+
+The VIC-II's screen pointer lives in register $D018:
+
+```asm
+screen1 = $0400         ; default screen
+screen2 = $0800         ; alternate screen
+current_screen: .byte $00
+
+swap_screens:
+    lda current_screen
+    eor #1
+    sta current_screen
+    beq .use_screen1
+
+    ; Display screen2, draw to screen1
+    lda #$20            ; screen at $0800
+    sta $d018
+    lda #<screen1
+    sta draw_ptr
+    lda #>screen1
+    sta draw_ptr+1
+    rts
+
+.use_screen1:
+    ; Display screen1, draw to screen2
+    lda #$10            ; screen at $0400
+    sta $d018
+    lda #<screen2
+    sta draw_ptr
+    lda #>screen2
+    sta draw_ptr+1
+    rts
+```
+
+### ZX Spectrum
+
+The Spectrum's fixed screen address makes true double buffering memory-expensive (two 6.75KB buffers). Common alternatives:
+
+1. **Shadow buffer:** draw to upper RAM, copy to screen in chunks
+2. **Attribute-only animation:** change colours, not pixels
+3. **Partial updates:** only redraw changed areas
+
+```z80
+; Copy shadow buffer to screen
+    ld hl, shadow_screen
+    ld de, $4000
+    ld bc, 6144
+    ldir
+```
+
+### NES
+
+The NES uses CHR-ROM/RAM for tiles, not a framebuffer. For sprites:
+
+```asm
+; Build sprite list in shadow OAM ($0200)
+; DMA transfer all 256 bytes during VBlank
+    lda #$02
+    sta $4014           ; OAM DMA
+```
+
+The DMA transfer is atomic—no tearing possible.
+
+### Amiga
+
+With bitplanes, switch display by changing BPLxPT registers:
+
+```asm
+; Copper list points to current display
+; During VBlank, update copper list with new addresses
+
+swap_buffers:
+    lea     buffer1,a0
+    lea     buffer2,a1
+
+    ; Swap pointers
+    move.l  display_ptr,a2
+    move.l  draw_ptr,display_ptr
+    move.l  a2,draw_ptr
+
+    ; Update copper list
+    move.w  display_ptr+2,coplist+2     ; low word
+    move.w  display_ptr,coplist+6       ; high word
+```
+
+## Timing the swap
+
+**Critical:** swap buffers during VBlank when the display isn't reading screen memory.
+
+```asm
+; C64: wait for VBlank
+.wait:
+    lda $d011
+    bpl .wait           ; wait for bit 7 set (in VBlank)
+
+    jsr swap_screens    ; safe to swap now
+```
+
+## Memory cost
+
+| Platform | Screen size | Double buffer cost |
+|----------|-------------|-------------------|
+| C64 | 1KB text + 1KB colour | 2KB |
+| C64 bitmap | 8KB + 1KB colour | ~18KB |
+| ZX Spectrum | 6.75KB | ~13.5KB |
+| Amiga lowres | 320×200×5 planes | 80KB |
+
+Memory-constrained systems often use partial techniques.
+
+## Triple buffering
+
+For smoothest animation:
+- Buffer 1: displayed
+- Buffer 2: ready for next frame
+- Buffer 3: currently drawing
+
+Eliminates any wait for drawing to complete—but costs three times the memory.
+
+## When to use double buffering
+
+| Situation | Recommendation |
+|-----------|----------------|
+| Full screen animation | Yes, essential |
+| Few moving objects | Maybe—sprite hardware may suffice |
+| Memory constrained | Consider dirty rectangles instead |
+| Static backgrounds | Probably unnecessary |
+
+## See also
+
+- [Game Loop](/vault/techniques/game-loop)
+- [VIC-II](/vault/hardware/vic-ii)
+- [Screen Memory](/vault/techniques/screen-memory)
+- [Raster Tricks 101](/vault/techniques/raster-tricks-101)

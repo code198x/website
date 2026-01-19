@@ -72,9 +72,28 @@ const vault = defineCollection({
       'systems',
       'culture'
     ]),
-    platforms: z.array(z.enum(['c64', 'spectrum', 'amiga', 'nes'])).optional(),
+    // Platforms can be any string - vault covers more systems than the curriculum
+    platforms: z.array(z.string()).optional(),
     tags: z.array(z.string()).default([]),
-    years: z.array(z.number().nullable()).optional(),
+
+    // Category-specific date fields (all optional, use null for unknown/ongoing)
+    // People: birth and death years
+    born: z.number().nullable().optional(),
+    died: z.number().nullable().optional(),
+    // Companies: founding and dissolution/merger
+    founded: z.number().nullable().optional(),
+    dissolved: z.number().nullable().optional(),
+    // Games: release year
+    released: z.number().nullable().optional(),
+    // Techniques: when originated and deprecated (if applicable)
+    originated: z.number().nullable().optional(),
+    deprecated: z.number().nullable().optional(),
+    // Culture: emergence and ending (if applicable)
+    emerged: z.number().nullable().optional(),
+    ended: z.number().nullable().optional(),
+    // Hardware/Systems: introduction and discontinuation
+    introduced: z.number().nullable().optional(),
+    discontinued: z.number().nullable().optional(),
   }),
 });
 

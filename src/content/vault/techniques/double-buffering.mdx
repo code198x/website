@@ -1,0 +1,142 @@
+---
+title: "Double Buffering"
+subtitle: "Smooth, tear-free graphics"
+summary: "Double buffering drew to an off-screen buffer while displaying another, eliminating visual tearing and enabling smooth animation even on slow hardware."
+category: "techniques"
+platforms: ['c64', 'amiga', 'nes', 'zx-spectrum']
+tags: ['graphics', 'animation', 'memory']
+originated: 1970
+
+---
+
+
+## Overview
+
+Without double buffering, drawing directly to screen memory creates visible artifacts—half-drawn objects, flickering sprites, tearing during scrolling. Double buffering solves this by maintaining two frame buffers: one displayed, one drawn to. When drawing completes, the buffers swap instantly.
+
+## The tearing problem
+
+When drawing to visible memory:
+```
+Frame drawing starts
+User sees: partial old frame + partial new frame
+Frame drawing completes
+```
+
+The "tear line" moves down the screen where old meets new.
+
+## The solution
+
+| Buffer | State |
+|--------|-------|
+| Front buffer | Currently displayed |
+| Back buffer | Being drawn to |
+
+After drawing completes:
+1. Wait for vertical blank
+2. Swap buffer pointers
+3. Display shows completed frame
+4. Draw next frame to other buffer
+
+## Implementation approaches
+
+### Pointer swapping
+
+Change where the display hardware reads from:
+
+```asm
+; C64: Point VIC-II to different screen
+swap_buffers:
+    lda current_buffer
+    eor #$01
+    sta current_buffer
+    beq .use_buffer_0
+
+.use_buffer_1:
+    lda #$18          ; Screen at $0800
+    jmp .set_bank
+
+.use_buffer_0:
+    lda #$10          ; Screen at $0400
+
+.set_bank:
+    sta $d018
+    rts
+```
+
+### Memory copying
+
+If hardware doesn't support pointer swapping, copy back buffer to front:
+- Slower
+- Uses more CPU time
+- Still eliminates tearing if done during vblank
+
+## Platform specifics
+
+### Commodore 64
+
+| Approach | Memory addresses |
+|----------|------------------|
+| Two character screens | $0400, $0800 |
+| Two bitmap screens | $2000, $4000 |
+| Bank switching | Different 16K banks |
+
+### Amiga
+
+Hardware designed for double buffering:
+- Copper can change display pointers
+- Blitter can clear/fill buffers quickly
+- Triple buffering common for 50fps
+
+### NES
+
+- Change nametable pointer during vblank
+- PPU has two nametables
+- Scrolling uses this naturally
+
+## Memory cost
+
+| Display type | Single buffer | Double buffer |
+|--------------|---------------|---------------|
+| C64 text (40×25) | 1KB | 2KB |
+| C64 bitmap | 8KB | 16KB |
+| Amiga lo-res | 40KB | 80KB |
+
+On memory-constrained systems, double buffering was a luxury.
+
+## Triple buffering
+
+Three buffers enable:
+- One displaying
+- One ready to display
+- One being drawn
+
+Smoother when drawing time varies.
+
+## Page flipping vs copying
+
+| Method | Speed | Memory |
+|--------|-------|--------|
+| Page flip | Instant | 2× screen |
+| Copy | Slow | 1× screen + buffer |
+| Dirty rectangles | Medium | Minimal |
+
+## Vertical blank timing
+
+Swap must happen during vertical blank:
+```asm
+wait_vblank:
+    lda $d011
+    bpl wait_vblank   ; Wait for vblank start
+.wait_end:
+    lda $d011
+    bmi .wait_end     ; Wait for vblank end
+    ; Now safe to swap
+```
+
+## See also
+
+- [Raster Interrupts](/vault/techniques/raster-interrupts)
+- [VIC-II](/vault/hardware/vic-ii)
+- [Copper](/vault/hardware/copper)
+- [Blitter](/vault/hardware/blitter)

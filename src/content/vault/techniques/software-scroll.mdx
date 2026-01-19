@@ -1,0 +1,224 @@
+---
+title: "Software Scrolling"
+subtitle: "When hardware won't help"
+summary: "On systems without scroll registers, software must move every byte of screen data—a CPU-intensive technique that defines the feel of ZX Spectrum games."
+category: "techniques"
+platforms: ['zx-spectrum']
+tags: ['graphics', 'scrolling', 'zx-spectrum']
+originated: 1982
+
+---
+
+
+## Overview
+
+The ZX Spectrum has no hardware scroll registers. Moving the screen means copying thousands of bytes every frame. This fundamental limitation shaped Spectrum game design: many games used flip-screen progression, while those that scrolled did so slowly or in limited areas.
+
+## The challenge
+
+The Spectrum screen is 6,144 bytes of pixel data plus 768 bytes of attributes. Moving everything takes thousands of instructions:
+
+```
+6,144 bytes ÷ 21 cycles per LDIR byte = ~129,024 cycles
+At 3.5 MHz, that's ~37 ms—nearly two frames!
+```
+
+Full-screen software scrolling at 50 fps isn't possible.
+
+## Basic horizontal scroll
+
+Shift screen data one pixel left:
+
+```z80
+scroll_left:
+    ld hl, $4000        ; screen start
+    ld b, 192           ; 192 lines
+
+.line_loop:
+    push bc
+    ld b, 32            ; 32 bytes per line
+    or a                ; clear carry
+
+.byte_loop:
+    rl (hl)             ; rotate left through carry
+    inc hl
+    djnz .byte_loop
+
+    pop bc
+    djnz .line_loop
+    ret
+```
+
+This shifts pixels left, bringing in zeros from the right.
+
+## Faster alternatives
+
+### Unrolled loops
+
+Remove DJNZ overhead:
+
+```z80
+scroll_line:
+    rl (hl)
+    inc hl
+    rl (hl)
+    inc hl
+    ; ... repeat 32 times
+    ret
+```
+
+### Stack abuse
+
+Use PUSH/POP for 16-bit moves:
+
+```z80
+; Save stack pointer
+    ld (save_sp), sp
+
+; Point stack at screen
+    ld sp, $5800        ; end of screen
+
+; Pop in reverse, shift, push forward
+    pop de
+    ; shift de left
+    push de
+
+; Restore stack
+    ld sp, (save_sp)
+```
+
+## Character-based scrolling
+
+Faster than pixel scrolling—move whole characters:
+
+```z80
+; Scroll screen left by 8 pixels (1 character)
+scroll_char_left:
+    ld hl, $4001        ; source (1 byte right)
+    ld de, $4000        ; destination
+    ld bc, 31           ; 31 bytes to move (32-1)
+
+.line_loop:
+    push bc
+    ldir                ; move this line
+    inc hl              ; skip last byte
+    inc de
+    pop bc
+
+    ; Handle screen line interleaving
+    ; (Spectrum screen isn't linear)
+    ...
+
+    jr nz, .line_loop
+    ret
+```
+
+## Colour attribute challenges
+
+The attribute grid doesn't align with pixel scrolling:
+
+| Scroll amount | Attribute handling |
+|---------------|-------------------|
+| 8 pixels | Attribute scroll matches |
+| 1-7 pixels | Attributes can't match precisely |
+
+Most games either:
+- Scroll by 8 pixels at a time
+- Accept colour clash at scroll boundaries
+- Use monochrome scrolling areas
+
+## Window scrolling
+
+Scroll only part of the screen:
+
+```z80
+; Scroll a 16-character wide window
+scroll_window:
+    ld hl, window_start
+    ld de, window_start - 1
+    ld bc, 16           ; window width in bytes
+
+    ld a, 192           ; lines
+.loop:
+    push af
+    push bc
+    ldir
+
+    ; Move to next line (Spectrum screen layout)
+    ; ... complex address calculation
+
+    pop bc
+    pop af
+    dec a
+    jr nz, .loop
+    ret
+```
+
+Smaller windows scroll faster.
+
+## Spectrum screen layout
+
+The screen isn't linear—understanding this is crucial:
+
+```
+Lines 0-7:   $4000, $4100, $4200, $4300, $4400, $4500, $4600, $4700
+Lines 8-15:  $4020, $4120, $4220, ...
+Lines 16-23: $4040, $4140, ...
+...
+Lines 64-71: $4800, $4900, ...
+```
+
+Third of screen = different base address.
+
+### Address calculation
+
+```z80
+; Convert Y coordinate to screen address
+; Input: B = Y (0-191)
+; Output: HL = screen address
+
+y_to_address:
+    ld a, b
+    and %00000111       ; Y2-Y0
+    or $40              ; $40xx base
+    ld h, a
+
+    ld a, b
+    and %11000000       ; Y7-Y6
+    rrca
+    rrca
+    rrca
+    ld l, a
+
+    ld a, b
+    and %00111000       ; Y5-Y3
+    or l
+    ld l, a
+    ret
+```
+
+## Common solutions
+
+| Approach | Speed | Smoothness |
+|----------|-------|------------|
+| Flip-screen | Fast | Instant |
+| Character scroll | Medium | Jerky |
+| Pixel scroll | Slow | Smooth |
+| Window scroll | Variable | Area-limited |
+| Attribute-only | Fast | Colour-based |
+
+## Games that scrolled
+
+| Game | Technique |
+|------|-----------|
+| Deathchase | Full horizontal scroll |
+| Sidewize | Window-based |
+| R-Type | Character-based |
+| Head Over Heels | Flip-screen |
+
+## See also
+
+- [ULA](/vault/hardware/ula)
+- [ZX Spectrum](/vault/systems/zx-spectrum)
+- [Hardware Scroll](/vault/techniques/hardware-scroll)
+- [Screen Memory](/vault/techniques/screen-memory)

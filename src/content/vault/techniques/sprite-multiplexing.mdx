@@ -1,0 +1,151 @@
+---
+title: "Sprite Multiplexing"
+subtitle: "More sprites than hardware allows"
+summary: "By repositioning hardware sprites mid-frame as the raster beam passes, programmers displayed far more objects than the hardware officially supported."
+category: "techniques"
+platforms: ['c64', 'amiga', 'nes']
+tags: ['graphics', 'raster', 'advanced']
+originated: 1980
+
+---
+
+
+## Overview
+
+The VIC-II has 8 sprites. The NES has 64 sprites but only 8 per scanline. The Amiga has 8 sprites. Yet games routinely displayed dozens of moving objects. The trick: reposition sprites after the raster beam has drawn them, allowing the same hardware sprite to appear multiple times per frame.
+
+## The principle
+
+```
+Frame start:
+  Sprite 0 at Y=50
+  Raster draws sprite at line 50
+
+Raster reaches line 71 (sprite done):
+  Move sprite 0 to Y=150
+  Raster draws "second" sprite at line 150
+
+Result: One hardware sprite appears twice
+```
+
+## Commodore 64 implementation
+
+### Simple approach
+
+```asm
+; Wait for raster to pass sprite's bottom
+    lda #71             ; line after first sprite
+.wait:
+    cmp $d012
+    bcs .wait
+
+; Reposition sprite for second appearance
+    lda #150
+    sta $d001           ; sprite 0 Y position
+    lda new_x
+    sta $d000           ; sprite 0 X position
+```
+
+### Full multiplexer
+
+A proper multiplexer:
+
+1. Sorts all virtual sprites by Y position
+2. Assigns hardware sprites to the nearest virtual sprites
+3. Uses raster interrupts to reposition at exact moments
+
+```asm
+; Simplified multiplexer structure
+virtual_sprites:        ; array of Y,X,pointer for each object
+    .res MAX_SPRITES * 4
+
+sorted_indices:         ; Y-sorted order
+    .res MAX_SPRITES
+
+; IRQ chain repositions sprites as raster descends
+```
+
+### Sorting requirement
+
+Sprites must be Y-sorted because:
+- The raster moves top to bottom
+- A sprite can only be reused after it's been drawn
+- Out-of-order sprites cause flicker or missing objects
+
+## NES sprite considerations
+
+The NES has different constraints:
+
+- 64 sprites in OAM (Object Attribute Memory)
+- Only 8 sprites per scanline (hardware limit)
+- Excess sprites on a line become invisible
+
+### NES solution: cycling priority
+
+```asm
+; Rotate which sprites get priority each frame
+; Spreads flicker across all objects instead of
+; always hiding the same ones
+
+    inc sprite_cycle
+    lda sprite_cycle
+    and #7
+    tax
+    ; Start sprite building from different offset
+```
+
+This creates even flicker rather than permanent invisibility.
+
+## Amiga sprite multiplexing
+
+The Copper makes Amiga multiplexing elegant:
+
+```asm
+copper_list:
+    ; Sprite 0 first appearance
+    dc.w    $0120, sprite0_hi
+    dc.w    $0122, sprite0_lo
+    dc.w    $0140, $5050        ; position 1
+
+    ; Wait for sprite to pass
+    dc.w    $6007, $fffe
+
+    ; Sprite 0 second appearance
+    dc.w    $0140, $a070        ; position 2
+    dc.w    $0144, new_data
+```
+
+No CPU interrupts needed—the Copper handles repositioning.
+
+## Limitations
+
+| Constraint | Cause | Mitigation |
+|------------|-------|------------|
+| Vertical only | Can't reuse until raster passes | Sort by Y, design levels accordingly |
+| Flicker | Too many sprites at same Y | Spread objects vertically |
+| CPU cost | Sorting, repositioning | Pre-sort static objects |
+| Per-line limits | Hardware constraint | Design around it |
+
+## Games that used multiplexing
+
+| Game | Platform | Virtual sprites |
+|------|----------|-----------------|
+| Commando | C64 | 20+ enemies |
+| Armalyte | C64 | Massive bullet counts |
+| Katakis | C64 | Horizontal shooter |
+| R-Type | Various | Dozens of bullets |
+
+## Flicker management
+
+When multiplexing can't avoid overlap:
+
+1. **Alternate visibility:** swap which sprites are hidden each frame
+2. **Priority rotation:** give different sprites priority each frame
+3. **Design:** place enemies at staggered Y positions
+
+## See also
+
+- [VIC-II](/vault/hardware/vic-ii)
+- [Raster Tricks 101](/vault/techniques/raster-tricks-101)
+- [PPU](/vault/hardware/ppu)
+- [Copper](/vault/hardware/copper)

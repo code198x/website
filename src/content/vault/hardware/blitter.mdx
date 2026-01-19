@@ -1,0 +1,167 @@
+---
+title: "Blitter: The Amiga's Graphics Accelerator"
+subtitle: "Hardware-powered block transfers"
+summary: "The Blitter moved, combined, and transformed graphics data faster than any CPU could—making the Amiga's smooth scrolling and complex visuals possible."
+category: "hardware"
+platforms: ['amiga']
+tags: ['custom-chips', 'graphics', 'dma', 'commodore']
+introduced: 1985
+
+---
+
+
+## Overview
+
+The Blitter (block image transferrer) was a DMA engine inside Agnus that performed graphics operations in hardware. It could copy memory, combine multiple sources with logic operations, fill areas, and draw lines—all while the CPU worked on game logic. This division of labour gave the Amiga its characteristic smooth, fast graphics.
+
+## Fast facts
+
+- **Location:** integrated into Agnus chip.
+- **Sources:** up to 3 inputs (A, B, C) plus 1 output (D).
+- **Operations:** copy, logic combine, area fill, line draw.
+- **Speed:** moves 1 word (16 pixels) per 4 cycles.
+
+## Blitter channels
+
+| Channel | Purpose |
+|---------|---------|
+| A | Source data, often used as mask |
+| B | Source data |
+| C | Destination read (for combining) |
+| D | Destination write |
+
+Not all channels need be active for every operation.
+
+## Basic operations
+
+### Copy (A to D)
+
+```68000
+    move.w  #$09f0,BLTCON0(a6)  ; A->D, no shifts
+    move.w  #$0000,BLTCON1(a6)  ; No special modes
+    move.l  #source,BLTAPT(a6)  ; Source address
+    move.l  #dest,BLTDPT(a6)    ; Destination address
+    move.w  #$0000,BLTAMOD(a6)  ; Source modulo
+    move.w  #$0000,BLTDMOD(a6)  ; Dest modulo
+    move.w  #64*64+40,BLTSIZE(a6) ; 64 lines × 40 words
+```
+
+### Masked copy (A masks B to D)
+
+Cookie-cutter operation for sprites:
+
+```68000
+    move.w  #$0fca,BLTCON0(a6)  ; A=mask, B=source, C=bg, D=output
+```
+
+Minterm $CA: `D = (A AND B) OR (NOT A AND C)`
+
+### Fill
+
+Fill enclosed areas:
+
+```68000
+    move.w  #$0001,BLTCON1(a6)  ; Fill mode enabled
+```
+
+Draw outline first, then fill—Blitter toggles fill state at each edge pixel.
+
+### Line drawing
+
+Draw lines in hardware:
+
+```68000
+    move.w  #$0001,BLTCON1(a6)  ; Line mode + octant
+    move.w  #dx,BLTBMOD(a6)     ; Delta X
+    move.w  #dy,BLTAMOD(a6)     ; Delta Y
+    ; ... additional setup
+    move.w  #1*64+width,BLTSIZE(a6) ; Start line draw
+```
+
+## Minterm logic
+
+The Blitter combines sources using an 8-bit minterm:
+
+| Bit | Condition |
+|-----|-----------|
+| 7 | A AND B AND C |
+| 6 | A AND B AND NOT C |
+| 5 | A AND NOT B AND C |
+| 4 | A AND NOT B AND NOT C |
+| 3 | NOT A AND B AND C |
+| 2 | NOT A AND B AND NOT C |
+| 1 | NOT A AND NOT B AND C |
+| 0 | NOT A AND NOT B AND NOT C |
+
+### Common minterms
+
+| Minterm | Operation |
+|---------|-----------|
+| $F0 | D = A (copy A) |
+| $CC | D = B (copy B) |
+| $AA | D = C (copy C) |
+| $CA | D = (A∧B)∨(¬A∧C) (cookie cut) |
+| $5A | D = A XOR C |
+| $0A | D = A AND C |
+
+## Shifting
+
+The Blitter can shift data horizontally:
+
+```68000
+    move.w  #$n9f0,BLTCON0(a6)  ; n = shift count (0-15)
+```
+
+Essential for pixel-precise positioning in planar graphics.
+
+## Blitter registers
+
+| Register | Address | Purpose |
+|----------|---------|---------|
+| BLTCON0 | $DFF040 | Control: minterm, shift, channels |
+| BLTCON1 | $DFF042 | Control: fill, line mode |
+| BLTAFWM | $DFF044 | First word mask for A |
+| BLTALWM | $DFF046 | Last word mask for A |
+| BLTCPT | $DFF048 | Channel C pointer |
+| BLTBPT | $DFF04C | Channel B pointer |
+| BLTAPT | $DFF050 | Channel A pointer |
+| BLTDPT | $DFF054 | Channel D pointer |
+| BLTSIZE | $DFF058 | Size and start operation |
+| BLTCMOD | $DFF060 | Channel C modulo |
+| BLTBMOD | $DFF062 | Channel B modulo |
+| BLTAMOD | $DFF064 | Channel A modulo |
+| BLTDMOD | $DFF066 | Channel D modulo |
+| BLTCDAT | $DFF070 | Channel C data |
+| BLTBDAT | $DFF072 | Channel B data |
+| BLTADAT | $DFF074 | Channel A data |
+
+## Modulo explained
+
+Modulo values handle non-contiguous memory:
+
+```
+Source width = 320 pixels = 40 bytes = 20 words
+Screen width = 320 pixels = 40 bytes = 20 words
+Blit width = 32 pixels = 4 bytes = 2 words
+Modulo = screen width - blit width = 20 - 2 = 18 words
+```
+
+## Waiting for Blitter
+
+Always wait before using Blitter results:
+
+```68000
+wait_blit:
+    btst    #6,$dff002          ; Check BLTBUSY in DMACONR
+    bne.s   wait_blit           ; Loop until done
+```
+
+Or check bit 14 of DMACONR for Blitter-done flag.
+
+## See also
+
+- [Agnus](/vault/hardware/agnus)
+- [Amiga Chipset](/vault/hardware/amiga-chipset)
+- [Copper](/vault/hardware/copper)
+- [Denise](/vault/hardware/denise)
+- [Bob Graphics](/vault/techniques/bob-graphics)

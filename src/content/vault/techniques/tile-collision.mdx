@@ -1,0 +1,276 @@
+---
+title: "Tile-Based Collision"
+subtitle: "Efficient collision detection for platformers"
+summary: "By checking which tiles a character overlaps rather than testing every object, tile collision provides fast, memory-efficient collision detection for platform games."
+category: "techniques"
+platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+tags: ['gameplay', 'collision', 'platformers']
+originated: 1980
+
+---
+
+
+## Overview
+
+In tile-based games, the world is made of a grid. Instead of checking collision against every platform and wall, you check which tiles the player overlaps and whether those tiles are solid. This reduces collision detection from O(n) object comparisons to O(1) tile lookups.
+
+## Tile map structure
+
+```
+Map: 40×25 tiles, 1 byte each
++--+--+--+--+--+--+--+--+
+| 0| 0| 0| 0| 0| 0| 0| 0|  0 = empty (sky)
++--+--+--+--+--+--+--+--+
+| 0| 0| 0| 0| 0| 0| 1| 1|  1 = solid (ground)
++--+--+--+--+--+--+--+--+
+| 1| 1| 1| 0| 0| 1| 1| 1|  2 = platform (solid top only)
++--+--+--+--+--+--+--+--+
+```
+
+## Basic collision check
+
+Given a pixel position, find the tile:
+
+```asm
+; Convert pixel position to tile coordinates
+; Assuming 8×8 tiles
+
+pixel_to_tile_x:
+    lda player_x
+    lsr
+    lsr
+    lsr             ; divide by 8
+    rts
+
+pixel_to_tile_y:
+    lda player_y
+    lsr
+    lsr
+    lsr             ; divide by 8
+    rts
+
+; Get tile at (tile_x, tile_y)
+get_tile:
+    lda tile_y
+    ; multiply by map width (e.g., 40)
+    asl             ; ×2
+    asl             ; ×4
+    asl             ; ×8
+    clc
+    adc tile_y      ; ×9
+    asl             ; ×18
+    asl             ; ×36
+    clc
+    adc tile_y      ; ×37
+    adc tile_y
+    adc tile_y
+    adc tile_y      ; ×40 (close enough for 32-40 width)
+    ; Or use lookup table for exact multiplication
+
+    clc
+    adc tile_x
+    tax
+    lda map_data,x
+    rts
+```
+
+## Collision points
+
+Check multiple points around the player:
+
+```
+Player hitbox (16×16):
+    +--+--+
+    |TL  TR|   TL = top-left
+    |      |   TR = top-right
+    |BL  BR|   BL = bottom-left
+    +--+--+    BR = bottom-right
+```
+
+### Horizontal movement
+
+```asm
+check_horizontal:
+    ; Moving right? Check TR and BR
+    lda velocity_x
+    bmi .check_left
+    beq .no_collision
+
+    ; Check right edge
+    lda player_x
+    clc
+    adc #15             ; player width - 1
+    sta check_x
+
+    ; Check top-right
+    lda player_y
+    sta check_y
+    jsr get_tile_at_point
+    cmp #TILE_SOLID
+    beq .collision
+
+    ; Check bottom-right
+    lda player_y
+    clc
+    adc #15
+    sta check_y
+    jsr get_tile_at_point
+    cmp #TILE_SOLID
+    beq .collision
+
+.no_collision:
+    rts
+
+.check_left:
+    ; Similar for left edge
+    ...
+
+.collision:
+    ; Align to tile boundary
+    lda player_x
+    and #$f8            ; snap to 8-pixel grid
+    sta player_x
+    lda #0
+    sta velocity_x
+    rts
+```
+
+### Vertical movement (falling)
+
+```asm
+check_falling:
+    ; Check below player
+    lda player_y
+    clc
+    adc #16             ; just below feet
+    sta check_y
+
+    ; Check both feet positions
+    lda player_x
+    sta check_x
+    jsr get_tile_at_point
+    cmp #TILE_SOLID
+    beq .on_ground
+
+    lda player_x
+    clc
+    adc #15
+    sta check_x
+    jsr get_tile_at_point
+    cmp #TILE_SOLID
+    beq .on_ground
+
+    ; Not on ground - apply gravity
+    lda #1
+    sta is_falling
+    rts
+
+.on_ground:
+    lda #0
+    sta is_falling
+    sta velocity_y
+    ; Snap to tile top
+    lda player_y
+    clc
+    adc #8
+    and #$f8
+    sta player_y
+    rts
+```
+
+## Tile types
+
+```asm
+TILE_EMPTY    = 0       ; passable
+TILE_SOLID    = 1       ; blocked all sides
+TILE_PLATFORM = 2       ; solid from above only
+TILE_LADDER   = 3       ; climbable
+TILE_HAZARD   = 4       ; damages player
+TILE_WATER    = 5       ; swimmable
+```
+
+### Platform tiles (one-way)
+
+```asm
+check_platform:
+    ; Only solid when falling down onto it
+    lda velocity_y
+    bmi .not_solid      ; moving up, pass through
+
+    ; Check if feet are above platform
+    lda player_y
+    clc
+    adc #15             ; feet position
+    and #$07            ; position within tile
+    cmp #2              ; near top of tile?
+    bcs .not_solid      ; too far in, let them pass
+
+    ; Treat as solid
+    ...
+
+.not_solid:
+    rts
+```
+
+## Slopes
+
+More complex but achievable:
+
+```asm
+; Slope tile contains height map
+; Each column of the tile has different height
+
+slope_heights:
+    .byte 7, 6, 5, 4, 3, 2, 1, 0   ; upward slope
+
+check_slope:
+    ; Get X position within tile
+    lda player_x
+    and #$07
+    tax
+    lda slope_heights,x
+
+    ; Compare to player Y within tile
+    lda player_y
+    and #$07
+    cmp slope_heights,x
+    bcc .above_slope
+    ; On or below slope surface
+    ...
+```
+
+## Optimisation
+
+### Coarse-fine check
+
+First check if player moved to a new tile:
+
+```asm
+    lda player_tile_x
+    cmp last_tile_x
+    bne .check_needed
+    lda player_tile_y
+    cmp last_tile_y
+    beq .skip_check     ; same tile, no collision possible
+
+.check_needed:
+    jsr full_collision_check
+.skip_check:
+```
+
+### Tile attribute table
+
+Separate collision data from visual tiles:
+
+```asm
+; Visual map uses tiles 0-255 for graphics
+; Collision map uses simplified types
+visual_map:   .res 1000
+collision_map: .res 1000   ; parallel array
+```
+
+## See also
+
+- [Fixed-Point Maths](/vault/techniques/fixed-point-math)
+- [State Machine](/vault/techniques/state-machine)
+- [Screen Memory](/vault/techniques/screen-memory)

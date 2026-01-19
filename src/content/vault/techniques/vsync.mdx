@@ -1,0 +1,129 @@
+---
+title: "VSync"
+subtitle: "Synchronising with the display"
+summary: "VSync synchronised game updates with the monitor's vertical refresh, preventing screen tearing and providing consistent timing for game logic."
+category: "techniques"
+platforms: ['c64', 'amiga', 'nes', 'atari-2600']
+tags: ['graphics', 'timing', 'technique']
+originated: 1977
+
+---
+
+
+## Overview
+
+The CRT electron beam draws the screen line by line, then returns to the top during "vertical blank." Updating graphics while the beam is drawing causes tearing—half the screen shows old data, half shows new. VSync waits for vertical blank before updating, ensuring clean, tear-free visuals.
+
+## The problem
+
+Without synchronisation:
+```
+Frame 1: Beam at line 100
+Game updates screen
+Beam continues drawing
+Result: Top half old, bottom half new
+Visual: Horizontal tear line
+```
+
+## The solution
+
+Wait for vertical blank:
+```asm
+wait_vsync:
+    lda $d011          ; VIC-II control register
+    bpl wait_vsync     ; Wait for bit 7 set (vblank)
+    ; Now safe to update
+```
+
+## CRT timing
+
+| Phase | Description |
+|-------|-------------|
+| Active display | Beam draws visible lines |
+| Horizontal blank | Beam returns to left |
+| Vertical blank | Beam returns to top |
+| Available time | VBlank duration |
+
+## Platform implementations
+
+### Commodore 64
+
+```asm
+wait_vblank:
+    lda $d011
+    bpl wait_vblank    ; Wait for vblank start
+.wait_end:
+    lda $d011
+    bmi .wait_end      ; Wait for vblank end
+```
+
+### NES
+
+```asm
+wait_nmi:
+    lda nmi_flag
+    beq wait_nmi       ; Wait for NMI (VBlank)
+    lda #0
+    sta nmi_flag
+```
+
+### Atari 2600
+
+Entire game synced to display:
+```asm
+    sta WSYNC          ; Wait for horizontal sync
+    sta VSYNC          ; Signal vertical sync
+```
+
+## VBlank duration
+
+| System | VBlank lines | Time |
+|--------|--------------|------|
+| PAL C64 | 25 lines | ~1.2ms |
+| NTSC NES | 20 lines | ~1.1ms |
+| PAL Amiga | 25 lines | ~1.2ms |
+
+Limited time for updates.
+
+## What to do during VBlank
+
+| Task | Priority |
+|------|----------|
+| Screen updates | Highest |
+| Sprite positions | High |
+| Scroll registers | High |
+| Palette changes | Medium |
+| Sound updates | Can extend past VBlank |
+
+## Game loop structure
+
+```
+main_loop:
+    jsr wait_vsync     ; Sync to display
+    jsr update_screen  ; Safe to modify video
+    jsr game_logic     ; Can take any time
+    jmp main_loop
+```
+
+## Frame rate locking
+
+VSync naturally creates:
+- 50 fps (PAL)
+- 60 fps (NTSC)
+- Consistent timing
+- Predictable game speed
+
+## Tearing vs performance
+
+| Choice | Result |
+|--------|--------|
+| Always VSync | No tearing, may skip frames |
+| Never VSync | Tearing, maximum speed |
+| Smart VSync | Balance both |
+
+## See also
+
+- [Double Buffering](/vault/techniques/double-buffering)
+- [Raster Interrupts](/vault/techniques/raster-interrupts)
+- [VIC-II](/vault/hardware/vic-ii)
+- [PPU](/vault/hardware/ppu)

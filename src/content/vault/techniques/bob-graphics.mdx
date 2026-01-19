@@ -1,0 +1,207 @@
+---
+title: "BOBs: Blitter Objects"
+subtitle: "Software sprites on the Amiga"
+summary: "BOBs used the Amiga's Blitter to draw sprites into the playfield—offering unlimited objects at the cost of CPU coordination and flicker-free rendering."
+category: "techniques"
+platforms: ['amiga']
+tags: ['graphics', 'sprites', 'amiga', 'blitter']
+originated: 1985
+
+---
+
+
+## Overview
+
+The Amiga has only 8 hardware sprites, each 16 pixels wide. For games needing more objects—or larger, more colourful characters—programmers used BOBs (Blitter OBjects). The Blitter copied sprite graphics into the playfield bitplanes, with masking to preserve the background. More flexible than hardware sprites, but requiring careful buffer management.
+
+## BOBs vs hardware sprites
+
+| Feature | Hardware sprites | BOBs |
+|---------|-----------------|------|
+| Count | 8 (or 4 attached) | Unlimited* |
+| Width | 16 pixels fixed | Any size |
+| Colours | 3 or 15 (attached) | Playfield depth |
+| Speed | Zero CPU | Blitter time |
+| Background | Automatic | Requires save/restore |
+
+*Limited by Blitter time and frame budget.
+
+## The BOB rendering process
+
+### 1. Save background
+
+Before drawing, save what's underneath:
+
+```68000
+save_background:
+    ; Copy screen area to save buffer
+    move.l  bob_x,d0
+    move.l  bob_y,d1
+    jsr     calc_screen_address
+
+    ; Blit from screen to save buffer
+    move.w  #$09f0,BLTCON0(a6)  ; A->D copy
+    move.l  screen_addr,BLTAPT(a6)
+    move.l  save_buffer,BLTDPT(a6)
+    move.w  #(height<<6)|words,BLTSIZE(a6)
+```
+
+### 2. Draw BOB
+
+Cookie-cut the sprite onto the screen:
+
+```68000
+draw_bob:
+    ; A = mask data
+    ; B = sprite data
+    ; C = screen (background)
+    ; D = screen (destination)
+
+    move.w  #$0fca,BLTCON0(a6)  ; cookie cut minterm
+    move.l  mask_ptr,BLTAPT(a6)
+    move.l  image_ptr,BLTBPT(a6)
+    move.l  screen_addr,BLTCPT(a6)
+    move.l  screen_addr,BLTDPT(a6)
+
+    ; Set modulos for screen width
+    move.w  screen_mod,BLTCMOD(a6)
+    move.w  screen_mod,BLTDMOD(a6)
+    move.w  #0,BLTAMOD(a6)
+    move.w  #0,BLTBMOD(a6)
+
+    ; Start blit
+    move.w  #(height<<6)|words,BLTSIZE(a6)
+```
+
+### 3. Restore background (next frame)
+
+Before drawing at new position, restore old background:
+
+```68000
+restore_background:
+    ; Copy save buffer back to screen
+    move.l  last_screen_addr,BLTDPT(a6)
+    move.l  save_buffer,BLTAPT(a6)
+    move.w  #$09f0,BLTCON0(a6)
+    move.w  #(height<<6)|words,BLTSIZE(a6)
+```
+
+## Double buffering with BOBs
+
+Essential for flicker-free BOBs:
+
+```68000
+; Frame N:
+; - Display buffer A
+; - Clear BOBs from buffer B (restore backgrounds)
+; - Draw BOBs to buffer B
+; - Swap: B becomes display, A becomes draw
+
+frame_update:
+    ; Wait for VBlank
+    jsr     wait_vblank
+
+    ; Swap display pointers
+    move.l  draw_buffer,d0
+    move.l  display_buffer,draw_buffer
+    move.l  d0,display_buffer
+
+    ; Update copper to show new display buffer
+    jsr     update_copper
+
+    ; Now safe to modify draw_buffer
+    jsr     restore_all_bobs
+    jsr     update_bob_positions
+    jsr     draw_all_bobs
+```
+
+## Pixel-accurate positioning
+
+The Blitter works on word boundaries. For sub-word positioning:
+
+```68000
+draw_bob_shifted:
+    ; Calculate shift amount (0-15)
+    move.w  bob_x,d0
+    and.w   #$000f,d0       ; pixel offset within word
+
+    ; Put shift value in BLTCON0/1
+    lsl.w   #4,d0           ; shift to position
+    lsl.w   #8,d0
+    or.w    #$0fca,d0       ; add minterm
+    move.w  d0,BLTCON0(a6)
+```
+
+When shifting, you need an extra word:
+- 32-pixel BOB shifted = 3 words instead of 2
+
+## Sorting for draw order
+
+BOBs must be drawn back-to-front (painter's algorithm):
+
+```68000
+sort_bobs_by_y:
+    ; Simple bubble sort (fine for small counts)
+    ; Or use insertion sort as positions change incrementally
+    ...
+
+draw_sorted_bobs:
+    lea     sorted_list,a0
+.loop:
+    move.w  (a0)+,d0        ; bob index
+    bmi     .done           ; -1 = end of list
+    jsr     draw_single_bob
+    bra     .loop
+.done:
+    rts
+```
+
+## Interleaved blitting
+
+Overlap Blitter operations with CPU work:
+
+```68000
+; Don't wait after every blit
+; Queue multiple operations
+
+draw_multiple:
+    jsr     start_bob1_blit  ; start blitter
+    jsr     do_game_logic    ; CPU works while blitter runs
+    jsr     wait_blitter     ; ensure done before next
+    jsr     start_bob2_blit
+    ; ...
+```
+
+## Memory requirements
+
+| Component | Size |
+|-----------|------|
+| BOB image | width × height × planes |
+| BOB mask | width × height |
+| Save buffer | Same as BOB (per BOB) |
+| Second screen | Full screen size |
+
+Example: 32×32 BOB, 5 planes
+- Image: 32×32×5 = 640 bytes
+- Mask: 32×32 = 128 bytes
+- Save: 32×32×5 = 640 bytes per instance
+
+## Performance considerations
+
+| Factor | Impact |
+|--------|--------|
+| BOB size | Larger = slower |
+| BOB count | More = slower |
+| Bitplane depth | More planes = slower |
+| Shifting | Adds ~50% time |
+| Screen width | Affects modulo |
+
+Typical budget: 10-20 medium BOBs at 50 fps.
+
+## See also
+
+- [Blitter](/vault/hardware/blitter)
+- [Denise](/vault/hardware/denise)
+- [Amiga Chipset](/vault/hardware/amiga-chipset)
+- [Double Buffering](/vault/techniques/double-buffering-basic)
+- [Sprite Multiplexing](/vault/techniques/sprite-multiplexing)

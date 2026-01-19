@@ -1,0 +1,276 @@
+---
+title: "Raster Interrupts"
+subtitle: "Precision timing with the video beam"
+summary: "Raster interrupts trigger code at exact screen positions, enabling split-screen effects, colour bars, and multiplexed sprites that defined 8-bit graphics."
+category: "techniques"
+platforms: ['c64', 'amiga', 'nes']
+tags: ['graphics', 'interrupts', 'advanced']
+originated: 1977
+
+---
+
+
+## Overview
+
+The video display is drawn line by line, top to bottom, 50 or 60 times per second. Raster interrupts let your code execute when the electron beam reaches a specific line. This enables effects impossible otherwise: different colours in different screen regions, multiplexed sprites, and split-screen displays.
+
+## How it works
+
+```
+Display generation:
+  Line 0   → top of screen
+  Line 1   →
+  ...      →
+  Line 100 → [INTERRUPT FIRES HERE]
+  ...      → your code runs, changes colours/sprites
+  Line 200 →
+  ...      →
+  Line 311 → bottom of frame (PAL)
+  VBlank   → vertical retrace
+  Line 0   → next frame starts
+```
+
+## Commodore 64 implementation
+
+### Setting up a raster interrupt
+
+```asm
+setup_raster:
+    sei                     ; disable interrupts
+
+    ; Select raster as interrupt source
+    lda #$01
+    sta $d01a               ; enable raster interrupt
+
+    ; Set raster line (low 8 bits)
+    lda #100
+    sta $d012
+
+    ; Clear bit 7 of $d011 for lines 0-255
+    ; (or set for lines 256-311)
+    lda $d011
+    and #$7f
+    sta $d011
+
+    ; Point IRQ vector to our handler
+    lda #<raster_handler
+    sta $0314
+    lda #>raster_handler
+    sta $0315
+
+    ; Acknowledge any pending interrupt
+    lda #$01
+    sta $d019
+
+    cli                     ; enable interrupts
+    rts
+
+raster_handler:
+    ; Change something (colour, sprite, etc.)
+    lda #2                  ; red
+    sta $d020               ; border colour
+
+    ; Acknowledge interrupt
+    lda #$01
+    sta $d019
+
+    ; Set up next interrupt at different line
+    lda #150
+    sta $d012
+
+    ; Point to second handler
+    lda #<raster_handler2
+    sta $0314
+    lda #>raster_handler2
+    sta $0315
+
+    ; Return from interrupt
+    jmp $ea31               ; KERNAL IRQ return
+```
+
+### Chained interrupts
+
+Multiple raster interrupts per frame:
+
+```asm
+raster_handler1:         ; line 50 - red border
+    lda #2
+    sta $d020
+    lda #100
+    sta $d012
+    ; point to handler2
+    ...
+    jmp $ea31
+
+raster_handler2:         ; line 100 - blue border
+    lda #6
+    sta $d020
+    lda #150
+    sta $d012
+    ; point to handler3
+    ...
+    jmp $ea31
+
+raster_handler3:         ; line 150 - black border
+    lda #0
+    sta $d020
+    lda #50
+    sta $d012
+    ; point back to handler1
+    ...
+    jmp $ea31
+```
+
+## NES implementation
+
+The NES uses NMI for VBlank and mapper IRQs for mid-screen:
+
+### VBlank NMI
+
+```asm
+nmi_handler:
+    ; VBlank started - safe to update VRAM
+    pha
+    txa
+    pha
+    tya
+    pha
+
+    ; Update sprites
+    lda #$02
+    sta $4014               ; OAM DMA
+
+    ; Update palettes, nametables, etc.
+    ...
+
+    pla
+    tay
+    pla
+    tax
+    pla
+    rti
+```
+
+### MMC3 scanline counter
+
+```asm
+; Set IRQ to fire at line 100
+    lda #100
+    sta $C000               ; set counter
+    sta $C001               ; reload counter
+    sta $E001               ; enable IRQ
+
+irq_handler:
+    ; Change scroll, palette, etc.
+    ...
+    sta $E000               ; acknowledge IRQ
+    rti
+```
+
+## Amiga implementation
+
+The Amiga uses the Copper for beam-synced effects, but can also use interrupts:
+
+### Copper-triggered interrupt
+
+```asm
+copperlist:
+    dc.w    $0180,$0000     ; COLOR00 = black
+    dc.w    $8007,$fffe     ; wait line 128
+    dc.w    $009c,$8010     ; trigger copper interrupt
+    dc.w    $ffff,$fffe     ; end
+
+; Level 3 interrupt handler
+copper_interrupt:
+    btst    #4,$dff01f      ; copper interrupt?
+    beq     .not_copper
+    move.w  #$0010,$dff09c  ; acknowledge
+
+    ; Do stuff
+    ...
+
+.not_copper:
+    rte
+```
+
+## Common uses
+
+| Effect | How it works |
+|--------|--------------|
+| Colour bars | Change background colour at each scanline |
+| Split screen | Different scroll values above/below split |
+| Sprite multiplex | Reposition sprites after they're drawn |
+| Status bar | Fixed area with different graphics mode |
+| Parallax | Different scroll speeds per region |
+
+## Timing precision
+
+### Jitter
+
+Interrupts don't fire at exactly the same cycle each time:
+
+```
+Instruction being executed varies
+Interrupt acknowledged after instruction completes
+Handler entry timing varies by 0-7 cycles
+```
+
+### Stable raster
+
+For cycle-exact effects, synchronise first:
+
+```asm
+stable_raster:
+    ; Known entry point timing
+    lda #$00            ; 2 cycles
+    sta $d012           ; 4 cycles
+    ...
+
+    ; Double interrupt technique or
+    ; NOPs to align to specific cycle
+```
+
+## Performance considerations
+
+| Factor | Impact |
+|--------|--------|
+| Interrupt latency | ~40 cycles to enter handler |
+| Handler length | Must complete before next interrupt |
+| Nested interrupts | Complex to manage correctly |
+| KERNAL return | Uses ~30 cycles; skip for speed |
+
+### Skipping KERNAL
+
+For maximum speed:
+
+```asm
+fast_handler:
+    ; Save registers
+    pha
+    txa
+    pha
+    tya
+    pha
+
+    ; Your code here
+    ...
+
+    ; Acknowledge
+    lda #$01
+    sta $d019
+
+    ; Restore registers
+    pla
+    tay
+    pla
+    tax
+    pla
+    rti                 ; direct return, skip KERNAL
+```
+
+## See also
+
+- [Raster Tricks 101](/vault/techniques/raster-tricks-101)
+- [VIC-II](/vault/hardware/vic-ii)
+- [Copper](/vault/hardware/copper)
+- [Sprite Multiplexing](/vault/techniques/sprite-multiplexing)

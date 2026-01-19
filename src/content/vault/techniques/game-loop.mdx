@@ -1,0 +1,189 @@
+---
+title: "The Game Loop"
+subtitle: "The heartbeat of every game"
+summary: "Every game runs on the same fundamental pattern: read input, update state, render graphics, repeat. Understanding the game loop is the first step to building anything interactive."
+category: "techniques"
+platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+tags: ['programming', 'architecture', 'fundamentals']
+originated: 1962
+
+---
+
+
+## Overview
+
+The game loop is the core rhythm that drives every video game. Each frame, the game reads player input, updates the game world, draws the result, and repeats. This simple pattern—running 50 or 60 times per second—creates the illusion of continuous motion and responsiveness.
+
+## The basic pattern
+
+```
+initialise game state
+
+repeat forever:
+    read input
+    update game state
+    render graphics
+    wait for next frame
+```
+
+This structure appears in every game from Pong to modern AAA titles.
+
+## Frame timing
+
+### Fixed frame rate
+
+Most 8-bit games synchronise to the display refresh:
+
+| System | Refresh rate | Frame time |
+|--------|--------------|------------|
+| PAL | 50 Hz | 20 ms |
+| NTSC | 60 Hz | 16.67 ms |
+
+Synchronising to vertical blank (VBlank) ensures:
+- Consistent game speed.
+- Tear-free graphics updates.
+- Predictable timing for music.
+
+### Variable timestep
+
+Modern games often use:
+```
+delta_time = current_time - last_frame_time
+update(delta_time)
+```
+
+But 8-bit games typically assume fixed timing.
+
+## Implementation approaches
+
+### Busy-wait loop
+
+```
+main_loop:
+    jsr read_input
+    jsr update_game
+    jsr render_graphics
+
+wait_vsync:
+    lda $d012        ; VIC-II raster line
+    cmp #$ff
+    bne wait_vsync
+
+    jmp main_loop
+```
+
+Simple but wastes cycles during the wait.
+
+### Interrupt-driven
+
+```
+; Set up raster interrupt at line 251
+    lda #251
+    sta $d012
+
+    ; IRQ handler runs game logic
+irq_handler:
+    jsr read_input
+    jsr update_game
+    jsr render_graphics
+    rti
+```
+
+More efficient—CPU does useful work between frames.
+
+## Phase structure
+
+### 1. Input phase
+
+Read all input sources at the start:
+- Joystick positions
+- Keyboard state
+- Network data (for multiplayer)
+
+Store values for consistent use throughout the frame.
+
+### 2. Update phase
+
+Process game logic in order:
+1. Player movement and actions
+2. Enemy AI and movement
+3. Physics and collisions
+4. Scoring and game state
+5. Sound triggers
+
+### 3. Render phase
+
+Draw everything to screen:
+1. Clear or scroll background
+2. Draw static elements
+3. Draw moving objects (sprites)
+4. Update score display
+
+**Critical:** On systems without double-buffering, update graphics during VBlank to avoid tearing.
+
+## Timing considerations
+
+### VBlank window
+
+| System | VBlank cycles |
+|--------|---------------|
+| C64 PAL | ~7,800 cycles |
+| NES | ~2,270 cycles |
+| ZX Spectrum | varies by border |
+
+Graphics updates must complete within this window.
+
+### Splitting work
+
+If update takes too long:
+- Spread AI across multiple frames
+- Update only visible sprites
+- Use dirty rectangle rendering
+
+## State machines within the loop
+
+```
+game_loop:
+    lda game_state
+    cmp #STATE_TITLE
+    beq handle_title
+    cmp #STATE_PLAYING
+    beq handle_playing
+    cmp #STATE_GAMEOVER
+    beq handle_gameover
+```
+
+Different states run different logic while sharing the same loop structure.
+
+## Common mistakes
+
+| Mistake | Problem | Solution |
+|---------|---------|----------|
+| No frame sync | Game speed varies | Wait for VBlank |
+| Render during display | Visual tearing | Update in VBlank only |
+| Too much per frame | Slowdown | Spread work across frames |
+| Input once per object | Inconsistent response | Read once, use everywhere |
+
+## Platform-specific notes
+
+### Commodore 64
+
+Use raster interrupts or poll `$D012` for VBlank.
+
+### ZX Spectrum
+
+Check FRAMES system variable or use HALT to wait for interrupt.
+
+### NES
+
+NMI fires at VBlank start—natural synchronisation point.
+
+### Amiga
+
+Copper can trigger interrupts; also use VBlank interrupt.
+
+## See also
+
+- [State Machine](/vault/techniques/state-machine)
+- [Raster Tricks 101](/vault/techniques/raster-tricks-101)
+- [Double Buffering](/vault/techniques/double-buffering-basic)

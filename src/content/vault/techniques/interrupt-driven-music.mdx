@@ -1,0 +1,150 @@
+---
+title: "Interrupt-Driven Music"
+subtitle: "Sound without blocking"
+summary: "Interrupt-driven music used timer interrupts to update sound chips at regular intervals, allowing music playback while the CPU handled game logic."
+category: "techniques"
+platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+tags: ['audio', 'programming', 'technique']
+originated: 1980
+
+---
+
+
+## Overview
+
+Early games faced a choice: play music or run the game. Interrupt-driven music solved this by using hardware interrupts to call music routines at fixed intervals. The main game loop ran uninterrupted while music played in the background, enabling the rich soundtracks that defined 8-bit gaming.
+
+## The problem
+
+Without interrupts:
+```asm
+main_loop:
+    jsr update_game
+    jsr play_music_note    ; Blocks game
+    jsr update_graphics
+    jmp main_loop
+```
+
+Music timing depends on game speed.
+
+## The solution
+
+With interrupts:
+```asm
+; Interrupt handler (called by hardware)
+irq_handler:
+    jsr update_music       ; Quick update
+    rti
+
+; Main loop runs freely
+main_loop:
+    jsr update_game
+    jsr update_graphics
+    jmp main_loop
+```
+
+## C64 implementation
+
+### Using CIA timer
+
+```asm
+    lda #<irq_handler
+    sta $0314
+    lda #>irq_handler
+    sta $0315
+
+    lda #$00              ; Timer low byte
+    sta $dc04
+    lda #$40              ; Timer high byte (~50Hz)
+    sta $dc05
+
+    lda #$01              ; Enable timer interrupt
+    sta $dc0d
+
+    cli                   ; Enable interrupts
+```
+
+### Music routine requirements
+
+| Requirement | Reason |
+|-------------|--------|
+| Fast execution | Don't block too long |
+| Register preservation | Don't corrupt game state |
+| Consistent timing | Musical accuracy |
+
+## NES implementation
+
+### Using NMI
+
+The NES uses NMI (Non-Maskable Interrupt) during VBlank:
+```asm
+nmi_handler:
+    pha                   ; Save registers
+    txa
+    pha
+    tya
+    pha
+
+    jsr update_music      ; Call music routine
+
+    pla                   ; Restore registers
+    tay
+    pla
+    tax
+    pla
+    rti
+```
+
+## Amiga implementation
+
+### Using CIA or VBlank
+
+| Source | Frequency |
+|--------|-----------|
+| VBlank | 50/60 Hz |
+| CIA timer | Programmable |
+
+Paula handles sample playback; CPU sets up patterns.
+
+## Music routine structure
+
+Typical update routine:
+```asm
+update_music:
+    dec frame_counter
+    bne .no_update
+
+    lda #speed
+    sta frame_counter
+
+    ; Update each channel
+    jsr update_channel_1
+    jsr update_channel_2
+    jsr update_channel_3
+
+.no_update:
+    rts
+```
+
+## Timing considerations
+
+| Factor | Impact |
+|--------|--------|
+| Interrupt frequency | Musical tempo |
+| Routine length | CPU availability |
+| Nested interrupts | Complexity |
+
+## Professional music drivers
+
+| Driver | Platform | Creator |
+|--------|----------|---------|
+| Custom | C64 | Rob Hubbard |
+| FamiTracker driver | NES | Various |
+| ProTracker | Amiga | Various |
+
+## See also
+
+- [Raster Interrupts](/vault/techniques/raster-interrupts)
+- [SID Chip](/vault/hardware/sid-chip)
+- [APU](/vault/hardware/apu)
+- [Rob Hubbard](/vault/people/rob-hubbard)

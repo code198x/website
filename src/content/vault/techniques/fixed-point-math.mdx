@@ -1,0 +1,226 @@
+---
+title: "Fixed-Point Maths"
+subtitle: "Smooth movement without floating point"
+summary: "Fixed-point arithmetic gives 8-bit systems sub-pixel precision for smooth movement, physics, and animation—all with fast integer operations."
+category: "techniques"
+platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+tags: ['programming', 'maths', 'performance']
+originated: 1960
+
+---
+
+
+## Overview
+
+8-bit processors don't have floating-point hardware. Moving a sprite by 0.5 pixels per frame seems impossible when positions are whole numbers. Fixed-point maths solves this by treating integers as fractions—the upper bits hold the whole part, lower bits hold the fractional part.
+
+## The concept
+
+Split a 16-bit value into whole and fractional parts:
+
+```
+16-bit fixed point (8.8 format):
+WWWWWWWW.FFFFFFFF
+
+W = whole number (0-255)
+F = fraction (0/256 to 255/256)
+```
+
+The value `$0180` represents 1.5:
+- High byte: $01 = 1
+- Low byte: $80 = 128/256 = 0.5
+
+## Common formats
+
+| Format | Range | Precision | Use case |
+|--------|-------|-----------|----------|
+| 8.8 | 0-255 | 1/256 | Positions, velocities |
+| 4.4 | 0-15 | 1/16 | Compact, less precision |
+| 12.4 | 0-4095 | 1/16 | Large coordinates |
+| 1.7 | 0-1 | 1/128 | Interpolation, percentages |
+
+## Basic operations
+
+### Addition and subtraction
+
+Same as regular integer operations:
+
+```asm
+; Add velocity to position (16-bit)
+    clc
+    lda pos_lo
+    adc vel_lo
+    sta pos_lo
+    lda pos_hi
+    adc vel_hi
+    sta pos_hi
+```
+
+### Getting the whole part
+
+Just read the high byte:
+
+```asm
+    lda pos_hi      ; whole number for screen position
+    sta sprite_x
+```
+
+### Setting a value
+
+```asm
+; Set position to 100.5
+    lda #100
+    sta pos_hi
+    lda #128        ; 0.5 = 128/256
+    sta pos_lo
+```
+
+## Multiplication
+
+More complex—typically done with shifts and adds.
+
+### Multiply by constant (shift)
+
+```asm
+; Multiply by 2
+    asl pos_lo
+    rol pos_hi
+
+; Multiply by 4
+    asl pos_lo
+    rol pos_hi
+    asl pos_lo
+    rol pos_hi
+```
+
+### General multiplication
+
+For 8.8 × 8.8, the result is 16.16—keep the middle 16 bits:
+
+```asm
+; Simplified: multiply A by fixed-point B
+; Result = (A × B) >> 8
+multiply_8x8:
+    ; Uses 16-bit intermediate
+    ; ... (platform-specific implementation)
+```
+
+## Division
+
+### Divide by power of 2 (shift right)
+
+```asm
+; Divide by 2
+    lsr pos_hi
+    ror pos_lo
+
+; Divide by 4
+    lsr pos_hi
+    ror pos_lo
+    lsr pos_hi
+    ror pos_lo
+```
+
+### General division
+
+More expensive—often avoided by multiplying by reciprocal.
+
+## Practical example: smooth movement
+
+Moving 1.5 pixels per frame:
+
+```asm
+; Velocity = 1.5 = $0180
+velocity_hi:  .byte $01
+velocity_lo:  .byte $80
+
+; Position starts at 50.0 = $3200
+position_hi:  .byte $32
+position_lo:  .byte $00
+
+update_position:
+    clc
+    lda position_lo
+    adc velocity_lo
+    sta position_lo
+    lda position_hi
+    adc velocity_hi
+    sta position_hi
+
+    ; Use whole part for sprite
+    lda position_hi
+    sta sprite_x
+    rts
+```
+
+After 2 frames: 50.0 → 51.5 → 53.0
+
+## Gravity simulation
+
+```asm
+; Gravity adds to velocity each frame
+gravity_lo:    .byte $40     ; 0.25 pixels/frame²
+gravity_hi:    .byte $00
+
+apply_gravity:
+    ; velocity += gravity
+    clc
+    lda vel_lo
+    adc gravity_lo
+    sta vel_lo
+    lda vel_hi
+    adc gravity_hi
+    sta vel_hi
+
+    ; position += velocity
+    clc
+    lda pos_lo
+    adc vel_lo
+    sta pos_lo
+    lda pos_hi
+    adc vel_hi
+    sta pos_hi
+    rts
+```
+
+This creates smooth, realistic falling motion.
+
+## Negative numbers
+
+For signed fixed-point, use two's complement:
+
+```asm
+; -1.5 in 8.8 signed = $FE80
+; $FE = -2, $80 = +0.5, total = -1.5
+```
+
+Subtraction and signed comparison require care.
+
+## Lookup tables alternative
+
+For complex functions (sine, square root), use pre-calculated tables:
+
+```asm
+; 256-entry sine table (0-255 → sin×127)
+sine_table:
+    .byte 0, 3, 6, 9, 12, ...  ; sin(0°) to sin(90°)
+```
+
+Tables trade memory for speed—essential on 8-bit systems.
+
+## Platform notes
+
+### NES
+Limited RAM makes 16-bit variables expensive. Use 8.8 sparingly.
+
+### ZX Spectrum
+No index registers for 16-bit—IX/IY help but are slow.
+
+### C64
+Zero page makes 16-bit operations faster. Use it for frequently-accessed fixed-point values.
+
+## See also
+
+- [Game Loop](/vault/techniques/game-loop)
+- [Sprite Animation](/vault/techniques/sprite-animation)
+- [Random Numbers](/vault/techniques/random-numbers)

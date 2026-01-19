@@ -1,0 +1,152 @@
+---
+title: "Copper: The Amiga's Display Coprocessor"
+subtitle: "Two instructions that changed everything"
+summary: "The Copper synchronised effects to the video beam with just WAIT and MOVE—enabling rainbow gradients, split screens, and per-scanline palette changes."
+category: "hardware"
+platforms: ['amiga']
+tags: ['custom-chips', 'coprocessor', 'graphics', 'commodore']
+introduced: 1985
+
+---
+
+
+## Overview
+
+The Copper (short for coprocessor) lives inside Agnus and executes simple programs synchronised to the video beam position. With just three instructions—WAIT, MOVE, and SKIP—programmers created effects that seemed impossible: smooth colour gradients, split-screen displays, and sprite multiplexing.
+
+## Fast facts
+
+- **Location:** integrated into Agnus chip.
+- **Instructions:** 3 (WAIT, MOVE, SKIP).
+- **Execution:** one instruction per memory cycle during display.
+- **Lists:** two copper lists can be active (COP1/COP2).
+
+## Instruction format
+
+All copper instructions are 32 bits (two words):
+
+### MOVE instruction
+
+```
+First word:  Register offset (bit 0 = 0)
+Second word: Data to write
+```
+
+Example: `$0180, $0F00` — write $0F00 to COLOR00 (red).
+
+### WAIT instruction
+
+```
+First word:  VP7-VP0 HP8-HP1 (position) | $0001
+Second word: VPM7-VPM0 HPM8-HPM1 | $FFFE
+```
+
+- VP = vertical position (line number).
+- HP = horizontal position (divided by 2).
+- Mask bits allow partial matching.
+
+Example: `$4007, $FFFE` — wait for line $40, any horizontal position.
+
+### SKIP instruction
+
+```
+First word:  VP7-VP0 HP8-HP1 (position) | $0001
+Second word: VPM7-VPM0 HPM8-HPM1 | $FFFF (note: bit 0 = 1)
+```
+
+Skip next instruction if beam is past specified position.
+
+## Common techniques
+
+### Copper rainbow
+
+Change background colour each scanline:
+
+```
+    dc.w    $2c07,$fffe      ; Wait line $2c
+    dc.w    $0180,$0100      ; Dark red
+    dc.w    $2d07,$fffe      ; Wait line $2d
+    dc.w    $0180,$0200      ; Slightly brighter
+    dc.w    $2e07,$fffe      ; Wait line $2e
+    dc.w    $0180,$0300      ; Brighter still
+    ; ... continue for smooth gradient
+```
+
+### Split screen
+
+Different display modes in upper/lower screen:
+
+```
+    ; Upper screen: hires
+    dc.w    $0100,$8200      ; BPLCON0 = hires
+    dc.w    $8007,$fffe      ; Wait for line $80
+    ; Lower screen: lowres
+    dc.w    $0100,$1200      ; BPLCON0 = lowres
+```
+
+### Sprite multiplexing
+
+Reposition sprite after it passes:
+
+```
+    dc.w    $5007,$fffe      ; Wait for sprite's last line
+    dc.w    $0140,$8050      ; SPR0POS = new position
+    dc.w    $0142,$8060      ; SPR0CTL = new control
+    dc.w    $0144,sprite2    ; SPR0DATA = new graphics
+```
+
+## Copper limitations
+
+| Limitation | Details |
+|------------|---------|
+| Can't read | Only writes, no conditional logic beyond SKIP |
+| Can't access RAM | Only hardware registers |
+| Timing bound | Executes during display, not vblank |
+| Protected registers | Some registers (like DMACON) require "copper danger" bit |
+
+## Copper danger
+
+Certain registers are protected by default. To allow copper writes to these:
+
+```
+    move.w  #$8002,$dff096   ; Set COPCON bit in DMACON
+```
+
+Protected registers include DMACON and INTENA.
+
+## Copper list management
+
+| Register | Address | Purpose |
+|----------|---------|---------|
+| COP1LCH | $DFF080 | Copper list 1 high word |
+| COP1LCL | $DFF082 | Copper list 1 low word |
+| COP2LCH | $DFF084 | Copper list 2 high word |
+| COP2LCL | $DFF086 | Copper list 2 low word |
+| COPJMP1 | $DFF088 | Restart copper 1 (strobe) |
+| COPJMP2 | $DFF08A | Restart copper 2 (strobe) |
+
+## Example copper list structure
+
+```68000
+copperlist:
+    dc.w    $008e,$2c81      ; DIWSTRT - display window start
+    dc.w    $0090,$f4c1      ; DIWSTOP - display window stop
+    dc.w    $0092,$0038      ; DDFSTRT - data fetch start
+    dc.w    $0094,$00d0      ; DDFSTOP - data fetch stop
+    dc.w    $0100,$1200      ; BPLCON0 - 1 bitplane
+    dc.w    $0180,$0000      ; COLOR00 - black background
+    dc.w    $0182,$0fff      ; COLOR01 - white foreground
+    dc.w    $ffff,$fffe      ; End - wait forever
+```
+
+## Why the Copper mattered
+
+The Copper democratised advanced display effects. What required expensive hardware on other systems—or wasn't possible at all—became a matter of writing a simple list. Demo coders and game programmers alike exploited this to create visuals that defined the Amiga's reputation.
+
+## See also
+
+- [Agnus](/vault/hardware/agnus)
+- [Amiga Chipset](/vault/hardware/amiga-chipset)
+- [Blitter](/vault/hardware/blitter)
+- [Denise](/vault/hardware/denise)
+- [Demo Scene 101](/vault/culture/demo-scene-101)

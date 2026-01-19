@@ -1,0 +1,257 @@
+---
+title: "Hardware Scrolling"
+subtitle: "Smooth movement without moving data"
+summary: "Hardware scroll registers let the display shift smoothly pixel-by-pixel without copying memory—essential for fast, smooth side-scrolling games."
+category: "techniques"
+platforms: ['c64', 'amiga', 'nes']
+tags: ['graphics', 'scrolling', 'optimisation']
+originated: 1977
+
+---
+
+
+## Overview
+
+Moving a game world pixel-by-pixel by copying screen memory is impossibly slow on 8-bit hardware. Hardware scrolling solves this: dedicated registers shift the display position, and you only update the newly-revealed edge. The result is butter-smooth scrolling at full frame rate.
+
+## Commodore 64
+
+The VIC-II provides smooth scroll registers:
+
+### Horizontal scroll (0-7 pixels)
+
+```asm
+; $D016 bits 0-2 = X scroll offset
+scroll_x:   .byte 0
+
+smooth_scroll_right:
+    dec scroll_x
+    lda scroll_x
+    and #$07
+    sta scroll_x
+    ora $d016
+    and #$f8
+    ora scroll_x
+    sta $d016
+
+    ; When scroll_x wraps from 0 to 7,
+    ; shift screen memory left by 1 character
+    lda scroll_x
+    cmp #$07
+    bne .no_coarse
+    jsr shift_screen_left
+.no_coarse:
+    rts
+```
+
+### Vertical scroll (0-7 pixels)
+
+```asm
+; $D011 bits 0-2 = Y scroll offset
+scroll_y:   .byte 0
+
+smooth_scroll_down:
+    inc scroll_y
+    lda scroll_y
+    and #$07
+    sta scroll_y
+
+    lda $d011
+    and #$f8
+    ora scroll_y
+    sta $d011
+
+    ; When scroll_y wraps, shift screen up
+    lda scroll_y
+    bne .no_coarse
+    jsr shift_screen_up
+.no_coarse:
+    rts
+```
+
+### Colour RAM challenge
+
+VIC-II colour RAM doesn't scroll with screen memory. Solutions:
+- Use same colour for scrolling area
+- Copy colour RAM along with screen (slow)
+- Use character colour (bits 8-11 of character data in multicolour mode)
+
+## NES
+
+The NES has excellent scroll hardware:
+
+### Scroll registers
+
+```asm
+; Write scroll position during VBlank
+set_scroll:
+    lda scroll_x
+    sta $2005           ; X scroll
+    lda scroll_y
+    sta $2005           ; Y scroll
+    rts
+```
+
+### Nametable switching
+
+The NES has 2-4 nametables. Scrolling spans them:
+
+```asm
+; $2000 bits 0-1 select base nametable
+; Combined with $2005, allows seamless scrolling
+
+    lda #%00000000      ; nametable 0
+    sta $2000
+    ; or
+    lda #%00000001      ; nametable 1
+    sta $2000
+```
+
+### Mid-screen scroll changes
+
+Using sprite 0 hit or mapper IRQ:
+
+```asm
+; Status bar at top (no scroll)
+    lda #0
+    sta $2005
+    sta $2005
+
+; Wait for sprite 0 hit
+.wait:
+    lda $2002
+    and #$40
+    beq .wait
+
+; Game area (scrolled)
+    lda game_scroll_x
+    sta $2005
+    lda game_scroll_y
+    sta $2005
+```
+
+## Amiga
+
+The Amiga scrolls by adjusting bitplane pointers:
+
+### Coarse scroll (16-pixel steps)
+
+```asm
+; Change BPLxPT to scroll whole words
+scroll_coarse:
+    ; Move display start forward by 2 bytes (16 pixels)
+    add.l   #2,bitplane_ptr
+    move.l  bitplane_ptr,bpl1pt
+    ...
+```
+
+### Fine scroll (0-15 pixels)
+
+```asm
+; BPLCON1 contains scroll delay values
+; Bits 0-3: playfield 1 scroll
+; Bits 4-7: playfield 2 scroll
+
+scroll_fine:
+    move.w  scroll_x,d0
+    and.w   #$0f,d0         ; 0-15
+    move.w  d0,$dff102      ; BPLCON1
+```
+
+### Dual playfield parallax
+
+```asm
+; Playfield 1 scrolls at full speed
+; Playfield 2 scrolls at half speed
+
+update_scroll:
+    add.w   #2,pf1_scroll   ; fast
+    add.w   #1,pf2_scroll   ; slow
+
+    move.w  pf1_scroll,d0
+    and.w   #$0f,d0
+    move.w  pf2_scroll,d1
+    and.w   #$0f,d1
+    lsl.w   #4,d1
+    or.w    d1,d0
+    move.w  d0,$dff102
+```
+
+## Coarse scroll techniques
+
+When smooth scroll wraps, the screen must shift:
+
+### Character-based (C64)
+
+```asm
+; Shift screen left by 1 character
+shift_screen_left:
+    ldx #0
+.loop:
+    lda $0401,x         ; source (one char right)
+    sta $0400,x         ; destination
+    inx
+    cpx #39             ; 40 columns - 1
+    bne .loop
+
+    ; Draw new column at right edge
+    jsr draw_right_column
+    rts
+```
+
+### Tile-based (NES)
+
+```asm
+; Update single column of nametable
+; Done gradually during gameplay, not all at once
+update_column:
+    lda column_to_update
+    ; Set VRAM address
+    ; Write 30 tiles (one column)
+    ; Spread across multiple frames if needed
+```
+
+## Bidirectional scrolling
+
+Scrolling both directions requires:
+- Tracking scroll position (potentially >256)
+- Buffer around visible area
+- Updating both leading edges
+
+```asm
+; 16-bit scroll position
+scroll_x_lo:    .byte 0
+scroll_x_hi:    .byte 0
+
+update_scroll:
+    lda direction
+    beq .scroll_right
+
+.scroll_left:
+    ; Decrement scroll, wrap at 0
+    ...
+    jsr update_left_edge
+    rts
+
+.scroll_right:
+    ; Increment scroll, wrap at map width
+    ...
+    jsr update_right_edge
+    rts
+```
+
+## Performance comparison
+
+| Method | Speed | Memory | Smoothness |
+|--------|-------|--------|------------|
+| Software scroll | Very slow | Low | Depends |
+| Hardware scroll | Fast | Medium | Excellent |
+| Page flipping | Medium | High | Good |
+
+## See also
+
+- [VIC-II](/vault/hardware/vic-ii)
+- [PPU](/vault/hardware/ppu)
+- [Copper](/vault/hardware/copper)
+- [Software Scroll](/vault/techniques/software-scroll)
+- [Double Buffering](/vault/techniques/double-buffering-basic)
