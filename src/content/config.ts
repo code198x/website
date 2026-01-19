@@ -66,11 +66,22 @@ const vault = defineCollection({
     category: z.enum([
       'people',
       'companies',
+      'groups',        // Scene collectives, informal organisations (Fairlight, Future Crew)
       'games',
+      'demos',         // Demo scene productions (Second Reality, State of the Art)
       'techniques',
       'hardware',
       'systems',
-      'culture'
+      'culture',
+      'events',        // Demo parties, LAN events, conferences (Assembly, QuakeCon)
+      'magazines',     // Gaming press (CRASH, ZZAP!64, Your Sinclair)
+      'books',         // Books about gaming/programming
+      'phenomena',     // Cultural phenomena (video game crash, bedroom coding)
+      'tools',         // Development tools, trackers, archives (ProTracker, HVSC)
+      'genres',        // Game genres (JRPG, roguelike, immersive sim)
+      'emulators',     // Emulation software (VICE, MAME)
+      'distribution',  // Software distribution methods (shareware, budget games, cover tapes)
+      'communities'    // Subcultures and communities (demo scene, modding, speedrunning)
     ]),
     // Platforms can be any string - vault covers more systems than the curriculum
     platforms: z.array(z.string()).optional(),
