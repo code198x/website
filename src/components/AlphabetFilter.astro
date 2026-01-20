@@ -1,0 +1,225 @@
+---
+/**
+ * AlphabetFilter - A-Z filter bar for vault entries
+ *
+ * Props:
+ * - entries: Array of { title: string, ... } objects to filter
+ */
+
+interface Props {
+  entries: Array<{ title: string }>;
+}
+
+const { entries } = Astro.props;
+
+// Count entries per letter
+const letterCounts = new Map<string, number>();
+letterCounts.set('#', 0);
+for (let i = 65; i <= 90; i++) {
+  letterCounts.set(String.fromCharCode(i), 0);
+}
+
+entries.forEach(entry => {
+  const firstChar = entry.title.charAt(0).toUpperCase();
+  if (/[A-Z]/.test(firstChar)) {
+    letterCounts.set(firstChar, (letterCounts.get(firstChar) || 0) + 1);
+  } else {
+    // Numbers and symbols go under #
+    letterCounts.set('#', (letterCounts.get('#') || 0) + 1);
+  }
+});
+
+const letters = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
+---
+
+<div class="alphabet-filter" data-filter-component data-total={entries.length}>
+  <div class="filter-bar">
+    <button
+      class="filter-btn active"
+      data-letter="all"
+      type="button"
+    >
+      All
+    </button>
+    {letters.map(letter => {
+      const count = letterCounts.get(letter) || 0;
+      return (
+        <button
+          class:list={['filter-btn', { disabled: count === 0 }]}
+          data-letter={letter}
+          disabled={count === 0}
+          type="button"
+          title={count > 0 ? `${count} entries` : 'No entries'}
+        >
+          {letter}
+        </button>
+      );
+    })}
+  </div>
+  <div class="filter-status">
+    <span class="status-prefix">Showing all </span>
+    <span class="status-count">{entries.length}</span>
+    <span class="status-suffix"> entries</span>
+  </div>
+</div>
+
+<script>
+  function initAlphabetFilter() {
+    const filterComponent = document.querySelector('[data-filter-component]') as HTMLElement;
+    if (!filterComponent) return;
+
+    const buttons = filterComponent.querySelectorAll('.filter-btn:not([disabled])');
+    const statusPrefix = filterComponent.querySelector('.status-prefix');
+    const statusCount = filterComponent.querySelector('.status-count');
+    const statusSuffix = filterComponent.querySelector('.status-suffix');
+    const articleGrid = document.querySelector('.article-grid');
+    const totalCount = parseInt(filterComponent.dataset.total || '0', 10);
+
+    if (!articleGrid) return;
+
+    const articles = articleGrid.querySelectorAll('.article-card');
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const letter = (btn as HTMLElement).dataset.letter;
+
+        // Update active state
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        let visibleCount = 0;
+
+        articles.forEach(article => {
+          const title = (article as HTMLElement).dataset.title ||
+                        article.querySelector('.article-title')?.textContent || '';
+          const firstChar = title.charAt(0).toUpperCase();
+
+          let matches = false;
+          if (letter === 'all') {
+            matches = true;
+          } else if (letter === '#') {
+            matches = !/[A-Z]/i.test(firstChar);
+          } else {
+            matches = firstChar === letter;
+          }
+
+          if (matches) {
+            (article as HTMLElement).style.display = '';
+            visibleCount++;
+          } else {
+            (article as HTMLElement).style.display = 'none';
+          }
+        });
+
+        // Update status text safely using textContent
+        if (statusPrefix && statusCount && statusSuffix) {
+          if (letter === 'all') {
+            statusPrefix.textContent = 'Showing all ';
+            statusCount.textContent = String(totalCount);
+            statusSuffix.textContent = ' entries';
+          } else {
+            statusPrefix.textContent = 'Showing ';
+            statusCount.textContent = String(visibleCount);
+            statusSuffix.textContent = ` entries starting with "${letter}"`;
+          }
+        }
+      });
+    });
+  }
+
+  // Run on page load
+  document.addEventListener('DOMContentLoaded', initAlphabetFilter);
+  // Also run immediately in case DOM is already loaded
+  if (document.readyState !== 'loading') {
+    initAlphabetFilter();
+  }
+</script>
+
+<style>
+  .alphabet-filter {
+    margin-bottom: var(--space-6);
+  }
+
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+  }
+
+  .filter-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0 var(--space-2);
+    font-family: var(--font-family-mono);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all var(--transition-base);
+  }
+
+  .filter-btn:hover:not([disabled]) {
+    color: var(--color-text);
+    background: var(--color-border);
+  }
+
+  .filter-btn.active {
+    color: var(--color-background);
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+
+  .filter-btn.disabled,
+  .filter-btn[disabled] {
+    color: var(--color-text-tertiary, #555);
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .filter-btn[data-letter="all"] {
+    padding: 0 var(--space-3);
+    margin-right: var(--space-2);
+    border-right: 1px solid var(--color-border);
+    padding-right: var(--space-4);
+  }
+
+  .filter-status {
+    margin-top: var(--space-3);
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+  }
+
+  .status-count {
+    font-family: var(--font-family-mono);
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+
+  @media (max-width: 640px) {
+    .filter-btn {
+      min-width: 1.75rem;
+      height: 1.75rem;
+      font-size: 0.75rem;
+    }
+
+    .filter-btn[data-letter="all"] {
+      width: 100%;
+      margin-bottom: var(--space-2);
+      margin-right: 0;
+      border-right: none;
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: var(--space-2);
+      padding-right: var(--space-2);
+    }
+  }
+</style>
