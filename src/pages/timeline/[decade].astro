@@ -20,13 +20,44 @@ const currentIndex = decades.indexOf(decadeStart);
 const prevDecade = currentIndex > 0 ? decades[currentIndex - 1] : null;
 const nextDecade = currentIndex < decades.length - 1 ? decades[currentIndex + 1] : null;
 
-// Get vault entries with years (excluding people - they get birth/death events instead)
+// Get vault entries and extract year based on category
 const vaultEntries = await getCollection('vault');
+
+// Helper to get the primary year for a vault entry based on category
+function getStartYear(e: typeof vaultEntries[0]): number | null {
+  const d = e.data;
+  switch (d.category) {
+    case 'people': return d.born ?? null;
+    case 'companies': return d.founded ?? null;
+    case 'games': return d.released ?? null;
+    case 'techniques': return d.originated ?? null;
+    case 'culture': return d.emerged ?? null;
+    case 'hardware':
+    case 'systems': return d.introduced ?? null;
+    default: return null;
+  }
+}
+
+// Helper to get the end year for a vault entry (death, dissolution, etc.)
+function getEndYear(e: typeof vaultEntries[0]): number | null {
+  const d = e.data;
+  switch (d.category) {
+    case 'people': return d.died ?? null;
+    case 'companies': return d.dissolved ?? null;
+    case 'techniques': return d.deprecated ?? null;
+    case 'culture': return d.ended ?? null;
+    case 'hardware':
+    case 'systems': return d.discontinued ?? null;
+    default: return null;
+  }
+}
+
+// Get vault events (excluding people - they get birth/death events instead)
 const vaultEvents = vaultEntries
-  .filter(e => e.data.years?.length > 0 && e.data.years[0] !== null && e.data.category !== 'people')
+  .filter(e => e.data.category !== 'people' && getStartYear(e) !== null)
   .map(e => ({
-    year: e.data.years[0] as number,
-    endYear: e.data.years[e.data.years.length - 1],
+    year: getStartYear(e) as number,
+    endYear: getEndYear(e),
     title: e.data.title,
     category: e.data.category,
     type: 'vault' as const,
@@ -36,13 +67,9 @@ const vaultEvents = vaultEntries
 
 // Generate birth events for people
 const birthEvents = vaultEntries
-  .filter(e =>
-    e.data.category === 'people' &&
-    e.data.years?.length >= 1 &&
-    e.data.years[0] !== null
-  )
+  .filter(e => e.data.category === 'people' && e.data.born !== null && e.data.born !== undefined)
   .map(e => ({
-    year: e.data.years![0] as number,
+    year: e.data.born as number,
     title: `${e.data.title} born`,
     category: 'people' as const,
     type: 'birth' as const,
@@ -50,36 +77,28 @@ const birthEvents = vaultEntries
     summary: e.data.subtitle || e.data.summary,
   }));
 
-// Generate death events for people who have died (end year is not null)
+// Generate death events for people who have died
 const deathEvents = vaultEntries
-  .filter(e =>
-    e.data.category === 'people' &&
-    e.data.years?.length >= 2 &&
-    e.data.years[1] !== null
-  )
+  .filter(e => e.data.category === 'people' && e.data.died !== null && e.data.died !== undefined)
   .map(e => ({
-    year: e.data.years![1] as number,
+    year: e.data.died as number,
     title: `${e.data.title} dies`,
     category: 'people' as const,
     type: 'death' as const,
     url: `/vault/${e.slug}`,
-    summary: `${e.data.title} (${e.data.years![0]}–${e.data.years![1]})`,
+    summary: `${e.data.title} (${e.data.born}–${e.data.died})`,
   }));
 
-// Generate company closure events (end year is not null)
+// Generate company closure events
 const companyClosureEvents = vaultEntries
-  .filter(e =>
-    e.data.category === 'companies' &&
-    e.data.years?.length >= 2 &&
-    e.data.years[1] !== null
-  )
+  .filter(e => e.data.category === 'companies' && e.data.dissolved !== null && e.data.dissolved !== undefined)
   .map(e => ({
-    year: e.data.years![1] as number,
+    year: e.data.dissolved as number,
     title: `${e.data.title} closes`,
     category: 'companies' as const,
     type: 'closure' as const,
     url: `/vault/${e.slug}`,
-    summary: `${e.data.title} (${e.data.years![0]}–${e.data.years![1]})`,
+    summary: `${e.data.title} (${e.data.founded}–${e.data.dissolved})`,
   }));
 
 // Get global timeline events
