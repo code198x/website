@@ -145,8 +145,8 @@ export async function getPlatformsForPatternLibrary(): Promise<Array<{
   const result = platforms.map(p => ({
     slug: patternSlugs[p.id] || p.id,
     name: p.data.name,
-    color: `var(${cssVarNames[p.id] || '--color-primary'})`,
-    gradient: gradients[p.id],
+    color: cssVarNames[p.id] ? `var(${cssVarNames[p.id]})` : p.data.color,
+    gradient: gradients[p.id] || `linear-gradient(135deg, ${p.data.color} 0%, ${p.data.color} 100%)`,
   }));
 
   // Add cross-platform as special case

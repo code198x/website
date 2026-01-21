@@ -53,6 +53,7 @@ const platforms = defineCollection({
     // Navigation & Status
     status: z.enum(['active', 'coming-soon']),
     curriculumStatus: z.string().optional(), // e.g. "Game 1 Phase 2 live"
+    recommendationTag: z.string().optional(), // Optional badge for systems page recommendations
     navOrder: z.number(),
   }),
 });
