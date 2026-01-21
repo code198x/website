@@ -60,6 +60,12 @@ export async function loadCode198xLanguages() {
     name: 'm68k',
   });
 
+  // Alias for legacy language tag used in content
+  await loadCustomLanguage({
+    ...m68kGrammar,
+    name: '68000',
+  });
+
   // Load Shiki's built-in 'asm' language using the new helper
   await loadBundledLanguage('asm');
 
