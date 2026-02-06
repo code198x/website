@@ -1,0 +1,153 @@
+---
+title: "Ship on Screen"
+description: "Display a hardware sprite using VIC-II registers — your first machine code program on the Commodore 64."
+pubDate: 2026-02-05
+game: 1
+gameName: "Starfield"
+unit: 1
+totalUnits: 128
+system: "Commodore 64"
+tags: ["assembly", "6510", "vic-ii", "sprites", "shooter"]
+nextLesson: "/commodore-64/assembly/game-01-starfield/unit-02"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+A white spaceship against black. Nothing moves, nothing makes sound — it just sits there.
+
+That's all you need. This single image proves you can talk to the VIC-II chip, the C64's graphics engine. Every sprite, every animation, every game you'll ever write on this machine starts with the same two instructions you'll learn here: `LDA` (load a value) and `STA` (store it somewhere).
+
+## Run It
+
+```bash
+acme -f cbm -o starfield.prg starfield.asm
+```
+
+Load `starfield.prg` in VICE (x64sc) or on real hardware. You'll see a white spaceship near the bottom-centre of a black screen.
+
+## What You're Building
+
+The screen goes black. A single white sprite appears — your ship, waiting for orders. Right now it does nothing but exist. In the units ahead it'll move, shoot, and fight. For now: one sprite, five registers, and the satisfaction of knowing you put it there with machine code.
+
+## The BASIC Stub
+
+Every C64 program needs a way to start. The first two bytes of any `.prg` file tell the C64 where to load the program in memory. After that, we need a BASIC line that launches our machine code:
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-01/snippets/01-basic-stub.asm" />
+
+The magic bytes encode `10 SYS 2061` — a BASIC line that calls the machine code starting at address $080D (decimal 2061). When you type `RUN`, BASIC executes this line and jumps to your code.
+
+You don't need to memorise these bytes. They're the same for every program that starts at $080D.
+
+## LDA and STA
+
+The 6510 processor works with three registers: **A** (the accumulator), **X**, and **Y**. For now, you only need A.
+
+Two instructions do most of the work:
+
+- **`LDA #value`** — **L**oa**D** the **A**ccumulator with a value
+- **`STA address`** — **ST**ore the **A**ccumulator to a memory address
+
+The `#` symbol means "this exact value" (called *immediate* mode). Without it, the number would be treated as a memory address to read from.
+
+```asm
+        lda #$01        ; Put the value 1 into A
+        sta $d027       ; Write A to address $D027 (sprite 0 colour)
+```
+
+That's it. Load a value, store it somewhere. The entire VIC-II chip — sprites, colours, screen layout — is controlled by storing values to specific memory addresses. This is called *memory-mapped I/O*: the hardware responds to writes at certain addresses as if they were physical switches.
+
+## Clearing the Screen
+
+Before showing our ship, we clear away the BASIC startup text. This short loop fills screen memory with space characters:
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-01/snippets/04-clear-screen.asm" />
+
+Screen memory lives at `$0400`–`$07E7` (1,000 bytes — one per character cell on the 40×25 screen). The loop uses the X register as a counter: `LDX` loads it, `INX` increments it, and `BNE` loops back until X wraps from 255 to 0. We'll explore loops properly in Unit 2. For now, just know this gives us a clean black canvas.
+
+## VIC-II Sprite Registers
+
+The VIC-II chip controls all graphics on the C64. To display a sprite, it needs four pieces of information:
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-01/snippets/02-sprite-setup.asm" />
+
+1. **Where's the graphic?** — Register `$07F8` holds a *block number* pointing to the sprite's pixel data. Block 128 means address $2000 (128 × 64 = 8192 = $2000).
+
+2. **Where on screen?** — Registers `$D000` (X) and `$D001` (Y) set the sprite's position. X runs left-to-right, Y runs top-to-bottom.
+
+3. **What colour?** — Register `$D027` sets sprite 0's colour. The C64 has 16 colours (0–15). White is 1.
+
+4. **Is it switched on?** — Register `$D015` is the sprite enable register. Each bit controls one sprite. Bit 0 = sprite 0, bit 1 = sprite 1, and so on up to 7. Set the bit to 1 to make the sprite visible.
+
+## Sprite Data
+
+A C64 sprite is 24 pixels wide and 21 pixels tall. Each row is stored as 3 bytes (24 bits), making 63 bytes per sprite. With one padding byte, that's 64 bytes — which is why sprite data must sit at 64-byte boundaries in memory.
+
+Each bit represents one pixel. Bit 7 (leftmost) of the first byte is the leftmost pixel in that row. A `1` bit draws the pixel in the sprite's colour; a `0` bit is transparent.
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-01/snippets/03-sprite-data.asm" />
+
+This data draws a pointed ship with flared wings and engine exhausts. Sketch it on graph paper if you want to design your own — convert each row of dots and crosses into three hex bytes.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-01/starfield.asm" />
+
+## If It Doesn't Work
+
+- **No sprite?** Check `$D015` — it must have bit 0 set. A value of `$00` means all sprites are off.
+- **Wrong position?** `$D000` is X (horizontal), `$D001` is Y (vertical). Easy to swap them.
+- **Wrong colour?** Sprite colour registers go from `$D027` (sprite 0) to `$D02E` (sprite 7). Values 0–15.
+- **Garbled sprite?** The pointer at `$07F8` must match where you placed the data. Block 128 = address $2000. If you move the data, update the pointer.
+- **Screen not black?** Make sure you're writing to both `$D020` (border) and `$D021` (background).
+
+## Try This: Change the Colour
+
+Find this line:
+
+```asm
+        lda #$01            ; White
+        sta $d027
+```
+
+Change `$01` to any value from 0 to 15:
+
+| Value | Colour |
+|-------|--------|
+| `$00` | Black |
+| `$01` | White |
+| `$02` | Red |
+| `$03` | Cyan |
+| `$05` | Green |
+| `$07` | Yellow |
+| `$0a` | Light red |
+| `$0e` | Light blue |
+
+Reassemble and reload. Your ship changes colour instantly.
+
+## Try This: Move the Ship
+
+Change the X and Y position values:
+
+```asm
+        lda #172            ; Try 24, 160, or 255
+        sta $d000
+        lda #220            ; Try 50, 150, or 230
+        sta $d001
+```
+
+Notice that X only goes up to 255 — but the screen is 320 pixels wide. For positions beyond 255, you'll need an extra register (`$D010`). We'll tackle that in a later unit.
+
+## What You've Learnt
+
+- **LDA and STA** — Load a value into the accumulator, store it to a memory address. These two instructions control the entire machine.
+- **Memory-mapped I/O** — The VIC-II chip responds to writes at addresses `$D000`–`$D02E`. No function calls, no APIs — just poke values into memory.
+- **Sprite enable register ($D015)** — Each bit enables one of eight hardware sprites. Bit 0 = sprite 0.
+- **Sprite pointer ($07F8)** — Tells the VIC-II where in memory to find the sprite's pixel data. Value × 64 = address.
+- **Sprite data format** — 24 × 21 pixels, 3 bytes per row, 63 bytes total. One bit per pixel.
+- **The BASIC stub** — A tiny BASIC program that launches your machine code with `SYS`.
+
+## What's Next
+
+The ship sits still. In Unit 2, you'll read the joystick and make it move — left, right, up, down — using the CIA chip and your first conditional branches.
