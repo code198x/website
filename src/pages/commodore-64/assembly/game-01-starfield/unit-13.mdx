@@ -1,0 +1,78 @@
+---
+title: "Life Lost Flash"
+description: "The border flashes red when the player loses a life. A death timer counts down frames of invulnerability, preventing instant re-death while the screen recovers."
+pubDate: 2026-02-06
+game: 1
+gameName: "Starfield"
+unit: 13
+totalUnits: 128
+system: "Commodore 64"
+tags: ["assembly", "6510", "border colour", "death timer", "invulnerability", "$D020"]
+prevLesson: "/commodore-64/assembly/game-01-starfield/unit-12"
+nextLesson: "/commodore-64/assembly/game-01-starfield/unit-14"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Losing a life should feel like something happened. Right now the ship just teleports back to its starting position — no flash, no pause, no feedback. This unit adds a red border flash that lasts 16 frames, and while the border is red, the ship can't be hit again.
+
+## The Death Timer
+
+A new zero-page variable:
+
+```
+death_timer = $13   ; Death flash countdown (0 = no flash)
+```
+
+When the player loses a life (but the game isn't over), `death_timer` is set to 16. Each frame, the game loop decrements it. When it reaches zero, the border returns to black. Same pattern as `flash_tbl` for enemy explosions — a countdown that drives a visual effect.
+
+## The Border as Feedback
+
+The VIC-II border colour register at `$D020` controls the entire border area surrounding the screen. One store to `$D020` and the whole frame changes colour — the most dramatic single-byte visual effect on the C64.
+
+On death: `LDA #$02` / `STA $D020` turns the border red. When the timer expires: `LDA #$00` / `STA $D020` restores it to black. The flash is visible for exactly 16 frames — about a third of a second at PAL timing.
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-13/snippets/01-death-flash.asm" />
+
+The timer check runs every frame, right at the start of the game logic. `BEQ` skips the entire block when the timer is zero — three instructions of overhead during normal play. When the timer is running, `DEC` subtracts one and `BNE` skips the border restore unless the timer just hit zero.
+
+## Invulnerability During Flash
+
+Without protection, the ship would die again immediately — the enemy that killed it is still right there. The death timer doubles as an invulnerability window. Before checking ship-enemy collisions, one test decides whether to skip the entire collision loop.
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-13/snippets/02-invulnerability.asm" />
+
+`LDA death_timer` / `BNE skip_ship_collision` — if the timer is running, branch past the entire collision loop to `JMP game_loop`. The ship still moves, bullets still fire, enemies still descend. Only the collision check is disabled.
+
+The label `skip_ship_collision` sits right after the loop's natural end. When the loop finishes without finding a hit, it falls through to the same `JMP game_loop`. One label, two paths to it.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-13/starfield.asm" />
+
+## If It Doesn't Work
+
+- **Border never flashes?** Check `life_lost` stores `$02` to `$D020` and sets `death_timer` to 16.
+- **Border stays red forever?** The timer decrement must run every frame. Check the `death_timer` section appears after `game_active` and before the joystick code.
+- **Ship dies immediately after respawn?** The invulnerability check must test `death_timer` before the ship collision loop. `BNE` must branch to `skip_ship_collision`, not back into the loop.
+- **Border red on restart?** `init_game` must clear `$D020` to zero. Check `STA $D020` appears in the reset section.
+- **Flash too short or too long?** The timer starts at 16 (about 0.3 seconds at PAL). Increase for longer invulnerability, decrease for shorter.
+
+## Try This: Flash the Border Rapidly
+
+Instead of solid red for 16 frames, alternate between red and black. Test bit 0 of `death_timer`: `LDA death_timer` / `AND #$01` / `BEQ` to choose red or black. The border strobes — more urgent, more dramatic.
+
+## Try This: Change Ship Colour During Flash
+
+Set the ship sprite colour to red (`$D027 = $02`) when the timer starts. Restore it to white when the timer expires. Visual feedback on the ship itself, not just the border.
+
+## What You've Learnt
+
+- **`$D020` for visual feedback** — the border colour register is the simplest whole-screen effect.
+- **Frame-counting timers** — decrement each frame, act when zero. The same pattern used for enemy flash timers.
+- **Invulnerability windows** — one branch instruction skips an entire collision loop, protecting the player during recovery.
+
+## What's Next
+
+Black space is empty space. In Unit 14, characters written to screen RAM become a scrolling starfield — the game gets its name, and the background finally has depth.
