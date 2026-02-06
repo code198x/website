@@ -1,0 +1,149 @@
+---
+title: "Score Display"
+description: "Binary to decimal. Blitter draws digits. Player sees progress. Visual feedback."
+pubDate: 2026-01-12
+game: 2
+gameName: "Signal"
+unit: 12
+totalUnits: 128
+system: "Commodore Amiga"
+tags: ["assembly", "68000", "blitter", "display"]
+prevLesson: "/commodore-amiga/assembly/game-02-signal/unit-11"
+nextLesson: "/commodore-amiga/assembly/game-02-signal/unit-13"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+## What You're Building
+
+Visual feedback.
+
+Tracking points internally is useless if players can't see them. This unit adds score display using bitmap digits. We convert the binary score to decimal and draw each digit using the Blitter.
+
+By the end of this unit:
+- 6-digit score displayed on screen
+- Binary to decimal conversion using DIVU
+- Bitmap digit font (0-9)
+- Blitter draws digits from font data
+
+![Unit 12 Screenshot](/images/commodore-amiga/game-01-signal/unit-12/screenshot.png)
+
+## The Digit Font
+
+We define a simple 8x8 pixel bitmap font for digits 0-9. Each digit is stored as 8 words (16 bytes), with the pattern in the high byte:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/03-digit-font.asm" />
+
+The word format ensures proper alignment for the Blitter. The low byte is always zero, so the visible digit occupies the left 8 pixels of each 16-pixel word.
+
+## Binary to Decimal Conversion
+
+The score is a 32-bit binary number. To display it, we convert to 6 decimal digits using repeated division by 10:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/snippets/02-binary-to-decimal.asm" />
+
+The DIVU instruction divides a 32-bit dividend by a 16-bit divisor:
+- Low word of result = quotient
+- High word of result = remainder
+
+We extract digits from right to left (ones place first), storing them in reverse order so the array reads left to right.
+
+## Drawing Digits with the Blitter
+
+Each digit is drawn by blitting from the font data to the screen:
+
+```asm
+.draw_loop:
+            move.w  (a1)+,d0              ; Get digit value (0-9)
+            mulu    #16,d0                ; Offset into font (16 bytes/digit)
+            lea     digit_font,a0
+            add.l   d0,a0                 ; Point to correct digit
+
+            bsr     wait_blit
+
+            move.l  a0,BLTAPTH(a5)        ; Source: font data
+            move.l  a2,BLTDPTH(a5)        ; Dest: screen position
+            move.w  #$ffff,BLTAFWM(a5)
+            move.w  #$ffff,BLTALWM(a5)
+            move.w  #0,BLTAMOD(a5)
+            move.w  #SCREEN_W-2,BLTDMOD(a5)
+            move.w  #$09f0,BLTCON0(a5)    ; D = A (copy)
+            move.w  #0,BLTCON1(a5)
+            move.w  #(8<<6)|1,BLTSIZE(a5) ; 8 rows, 1 word
+
+            addq.l  #2,a2                 ; Next digit position
+            dbf     d4,.draw_loop
+```
+
+Key points:
+- Each digit is 1 word (16 pixels) wide, but only the left 8 pixels contain the pattern
+- We advance by 2 bytes between digits for word alignment
+- BLTCON0 = $09f0 means: use channel A, use channel D, minterm = copy A to D
+
+## Word Alignment
+
+The Blitter works with word-aligned addresses. When positioning digits:
+
+```asm
+SCORE_X         equ 240         ; Pixel X position
+SCORE_Y         equ 200         ; Pixel Y position
+
+; Calculate screen address
+lea     screen_plane,a2
+add.l   #SCORE_Y*SCREEN_W+SCORE_X/8,a2
+```
+
+We divide X by 8 to convert pixels to bytes. The destination must be word-aligned, so we advance by 2 bytes (16 pixels) between digits rather than 1 byte.
+
+## DIVU Limitations
+
+DIVU produces a 16-bit quotient. If the score exceeds 655,359 (quotient > 65535), the division overflows. For a 6-digit display (max 999,999), this limits practical scores.
+
+For larger scores, you'd need software division routines. For our Frogger clone, this limit is more than sufficient.
+
+## When to Update
+
+We call `display_score` at strategic points:
+
+1. **Game start**: Show initial 000000
+2. **Home reached**: Update after adding points
+3. **Game restart**: Reset display after game over
+
+```asm
+            ; After adding points for reaching home
+            add.l   #POINTS_PER_HOME,score
+            bsr     display_score         ; Update display
+```
+
+## Key Takeaways
+
+- **DIVU** extracts decimal digits via remainder
+- **Bitmap fonts** are simple arrays of pixel data
+- **Blitter** copies font data to screen efficiently
+- **Word alignment** required for Blitter destinations
+- **Immediate feedback** makes scoring meaningful
+
+## The Code
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-12/signal.asm" />
+
+## Build It
+
+```bash
+vasmm68k_mot -Fhunkexe -kick1hunks -o signal signal.asm
+```
+
+## What's Next
+
+The game tracks and displays score, but has no time pressure. In Unit 13, we'll add a countdown timer that creates urgency and awards bonus points for speed.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 11 → Unit 12"
+  before="commodore-amiga/game-01-signal/unit-11/signal.asm"
+  after="commodore-amiga/game-01-signal/unit-12/signal.asm"
+  context={3}
+/>

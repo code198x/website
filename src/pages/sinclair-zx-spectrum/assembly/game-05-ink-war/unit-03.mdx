@@ -1,0 +1,227 @@
+---
+title: "Making It Yours"
+description: "Customise the board colours, position, and cursor style. Learn the internals by changing them."
+pubDate: 2026-01-12
+game: 5
+gameName: "Ink War"
+unit: 3
+totalUnits: 128
+system: "Sinclair ZX Spectrum"
+tags: ["assembly", "z80", "attributes", "customisation"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-05-ink-war/unit-02"
+nextLesson: "/sinclair-zx-spectrum/assembly/game-05-ink-war/unit-04"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+The game works. Now make it yours.
+
+This unit teaches the attribute system by having you change it. You won't just read about bits and colours - you'll modify them and see the results. By the end, you'll understand exactly how the Spectrum's colour system works because you'll have bent it to your will.
+
+## Run It
+
+Assemble and run:
+
+```bash
+pasmonext --tapbas inkwar.asm inkwar.tap
+```
+
+![Unit 3 Screenshot](/images/sinclair-zx-spectrum/game-05-ink-war/unit-03/screenshot.png)
+
+This doesn't look like the previous versions. The board is **cyan** instead of white. There's a **yellow border** around it. The **screen border is blue** (because it's Player 2's turn). The cursor is bright white, not flashing.
+
+Same game, completely different feel.
+
+## The Customisation Section
+
+All the visual changes come from one section at the top of the code:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-05-ink-war/unit-03/snippets/01-customisation-section.asm" />
+
+This is your control panel. Change these values, reassemble, and see the difference immediately.
+
+## Understanding the Attribute Byte
+
+Let's decode `%01101000` (the cyan cell):
+
+```
+%01101000
+ │└┬┘└┬┘
+ │ │  └── INK: 000 = black (0)
+ │ └───── PAPER: 101 = cyan (5)
+ └─────── BRIGHT: 1 = yes, FLASH: 0 = no
+```
+
+The attribute byte packs four pieces of information into 8 bits:
+
+| Bits | Name | Values |
+|------|------|--------|
+| 7 | FLASH | 0=steady, 1=flashing |
+| 6 | BRIGHT | 0=normal, 1=bright |
+| 5-3 | PAPER | 0-7 (background colour) |
+| 2-0 | INK | 0-7 (foreground colour) |
+
+## Building Attribute Values
+
+To create an attribute byte, work backwards:
+
+1. **Choose your PAPER colour** (0-7)
+2. **Choose your INK colour** (0-7)
+3. **Decide on BRIGHT** (add 64 if yes)
+4. **Decide on FLASH** (add 128 if yes)
+
+**Example: Bright yellow paper, blue ink**
+- PAPER = 6 (yellow) → bits 5-3 = 110
+- INK = 1 (blue) → bits 2-0 = 001
+- BRIGHT = yes → bit 6 = 1
+- FLASH = no → bit 7 = 0
+
+Result: `%01110001` = 113 decimal
+
+**Example: Flashing green paper, white ink**
+- PAPER = 4 (green) → bits 5-3 = 100
+- INK = 7 (white) → bits 2-0 = 111
+- BRIGHT = no → bit 6 = 0
+- FLASH = yes → bit 7 = 1
+
+Result: `%10100111` = 167 decimal
+
+## Try This: Change the Board Colour
+
+Edit `EMPTY_ATTR` to try different colours:
+
+```asm
+; Bright green board
+EMPTY_ATTR  equ     %01100000       ; Green paper (4), black ink
+
+; Bright magenta board
+EMPTY_ATTR  equ     %01011000       ; Magenta paper (3), black ink
+
+; Yellow board with blue ink
+EMPTY_ATTR  equ     %01110001       ; Yellow paper (6), blue ink (1)
+```
+
+Reassemble after each change. Watch the board transform.
+
+## The Visible Border
+
+In Units 1 and 2, the border around the board was invisible - black on black. Now we draw it explicitly:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-05-ink-war/unit-03/snippets/03-visible-border.asm" />
+
+The border is one row above, one row below, and one column on each side of the 8×8 playing area. We draw it as a rectangle of yellow cells.
+
+## Try This: Change the Border Colour
+
+```asm
+; Red border
+BORDER_ATTR equ     %01010000       ; Red paper (2)
+
+; White border
+BORDER_ATTR equ     %01111000       ; White paper (7)
+
+; Flashing border (dramatic!)
+BORDER_ATTR equ     %11110000       ; Flash + Bright + Yellow
+```
+
+## Dynamic Screen Border
+
+The screen border (the area outside the main display) changes colour based on whose turn it is:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-05-ink-war/unit-03/snippets/02-border-colours.asm" />
+
+This is different from attribute memory. The screen border is set by outputting a value (0-7) to port $FE:
+
+```asm
+            ld      a, 2            ; Red
+            out     ($fe), a        ; Set border
+```
+
+The border colour gives immediate visual feedback about game state.
+
+## Try This: Different Turn Colours
+
+```asm
+; Green for P1, Cyan for P2
+P1_BORDER   equ     4               ; Green
+P2_BORDER   equ     5               ; Cyan
+
+; Yellow for P1, Magenta for P2
+P1_BORDER   equ     6               ; Yellow
+P2_BORDER   equ     3               ; Magenta
+```
+
+## The Cursor: Flash vs Bright
+
+The original cursor used FLASH (bit 7):
+
+```asm
+CURSOR_ATTR equ     %10111000       ; Flash + white paper
+```
+
+The FLASH attribute alternates the cell between normal and inverted colours every 16 frames (about 0.32 seconds). It's automatic - the hardware does it.
+
+The new cursor uses BRIGHT instead:
+
+```asm
+CURSOR_ATTR equ     %01111000       ; Bright + white paper (no flash)
+```
+
+BRIGHT makes colours more vivid. The cursor now stands out by being brighter than surrounding cells, rather than flashing.
+
+Which do you prefer? Try both.
+
+## The Colour Palette
+
+Here's the complete Spectrum palette:
+
+| Value | Normal | Bright |
+|-------|--------|--------|
+| 0 | Black | Black |
+| 1 | Blue | Bright Blue |
+| 2 | Red | Bright Red |
+| 3 | Magenta | Bright Magenta |
+| 4 | Green | Bright Green |
+| 5 | Cyan | Bright Cyan |
+| 6 | Yellow | Bright Yellow |
+| 7 | Grey | White |
+
+Note that "white" only exists as bright 7. Normal 7 is actually grey.
+
+## The Complete Code
+
+<CodeFromFile src="sinclair-zx-spectrum/game-05-ink-war/unit-03/inkwar.asm" />
+
+## Challenge: Create Your Theme
+
+Design a complete colour scheme:
+1. Choose a board colour that looks good
+2. Choose a contrasting border colour
+3. Pick screen border colours that clearly indicate whose turn it is
+4. Decide between flash and bright for the cursor
+5. Make sure player colours (red/blue) still stand out
+
+Document your choices in comments. Share your theme.
+
+## What You've Learnt
+
+- **Attribute byte format** - FBPPPIII: flash, bright, paper, ink packed into 8 bits
+- **Calculating attributes** - Shift paper left 3, add ink, optionally add 64 (bright) or 128 (flash)
+- **Screen border** - OUT ($FE), A sets the border to colours 0-7
+- **FLASH vs BRIGHT** - Flash alternates automatically; bright intensifies colours
+- **Colour palette** - 8 colours × 2 brightness levels, but black stays black
+
+## What's Next
+
+In Unit 4, we'll add score and turn display - text on screen showing whose turn it is and how many cells each player controls.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 2 → Unit 3"
+  before="sinclair-zx-spectrum/game-05-ink-war/unit-02/inkwar.asm"
+  after="sinclair-zx-spectrum/game-05-ink-war/unit-03/inkwar.asm"
+  context={3}
+/>

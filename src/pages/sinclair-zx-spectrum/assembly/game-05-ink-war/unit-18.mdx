@@ -1,0 +1,171 @@
+---
+title: "Cursor Animation"
+description: "Animate the cursor with colour cycling for better visibility and a more engaging visual experience."
+pubDate: 2026-01-17
+game: 5
+gameName: "Ink War"
+unit: 18
+totalUnits: 128
+system: "Sinclair ZX Spectrum"
+tags: ["assembly", "Z80", "animation", "cursor", "visuals"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-05-ink-war/unit-17"
+nextLesson: "/sinclair-zx-spectrum/assembly/game-05-ink-war/unit-19"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+A static cursor is functional but forgettable. An animated cursor draws the eye and feels alive.
+
+## Run It
+
+Assemble and run:
+
+```bash
+pasmonext --sna inkwar.asm inkwar.sna
+```
+
+![Unit 18 Screenshot](/images/sinclair-zx-spectrum/game-05-ink-war/unit-18/screenshot.png)
+
+Version shows "PHASE 2 V0.2". Start a game to see the cursor pulsing.
+
+## Animation Philosophy
+
+Simple animations create immediate polish:
+
+| Type | Effect | Cost |
+|------|--------|------|
+| **Colour cycling** | Eye-catching, visible | Minimal CPU |
+| **Brightness pulse** | Subtle, professional | Minimal CPU |
+| **Position wobble** | Playful, distracting | Higher complexity |
+
+We'll use colour cycling for empty cells and brightness pulsing for claimed cells.
+
+## Frame Counter
+
+Animations need timing. A frame counter increments every game loop:
+
+```asm
+main_loop:
+            halt
+
+            ; Increment frame counter for animations
+            ld      a, (frame_counter)
+            inc     a
+            ld      (frame_counter), a
+
+            ; ... rest of game loop
+```
+
+With HALT syncing to the 50Hz interrupt, this gives us 50 increments per second.
+
+## Cursor Animation Logic
+
+Use different bits of the frame counter for different animation speeds:
+
+```asm
+get_cursor_anim_attr:
+            ; Cycle: White → Cyan → White → Yellow
+            ld      a, (frame_counter)
+            and     %00110000           ; Bits 4-5 cycle every 16 frames
+            rrca
+            rrca
+            rrca
+            rrca                        ; Now 0-3 in low bits
+
+            ; Map to colour
+            or      a
+            jr      z, .white
+            cp      1
+            jr      z, .cyan
+            cp      2
+            jr      z, .white
+            ; else yellow
+
+.yellow:    ld      a, %01110000        ; Yellow paper + BRIGHT
+            ret
+.cyan:      ld      a, %01101000        ; Cyan paper + BRIGHT
+            ret
+.white:     ld      a, %01111000        ; White paper + BRIGHT
+            ret
+```
+
+The cycle completes in 64 frames (about 1.3 seconds at 50Hz).
+
+## Brightness Pulsing
+
+For cells already claimed, toggle BRIGHT to avoid colour confusion:
+
+```asm
+apply_cursor_pulse:
+            ld      b, a                ; Save base attribute
+
+            ; Toggle BRIGHT every 8 frames
+            ld      a, (frame_counter)
+            and     %00001000           ; Check bit 3
+            jr      z, .bright_on
+
+            ; BRIGHT off
+            ld      a, b
+            and     %10111111           ; Clear BRIGHT bit
+            ret
+
+.bright_on:
+            ; BRIGHT on
+            ld      a, b
+            or      %01000000           ; Set BRIGHT bit
+            ret
+```
+
+This toggles every 8 frames—a gentle pulse at about 3Hz.
+
+## Continuous Redraw
+
+The cursor must be redrawn every frame for animation:
+
+```asm
+state_playing:
+            ; Update cursor animation every frame
+            call    draw_cursor
+
+            ; ... rest of playing state
+```
+
+This costs some cycles but keeps the animation smooth.
+
+## Animation Speed Guidelines
+
+| Speed | Frames | Hz | Use for |
+|-------|--------|----|---------|
+| Very fast | 2-4 | 12-25 | Urgent feedback |
+| Fast | 8-16 | 3-6 | Active elements |
+| Medium | 32 | 1.5 | Background effects |
+| Slow | 64+ | Less than 1 | Subtle ambient |
+
+Our cursor uses 16-frame colour cycles (3Hz) and 8-frame brightness toggles (6Hz).
+
+## The Complete Code
+
+<CodeFromFile src="sinclair-zx-spectrum/game-05-ink-war/unit-18/inkwar.asm" />
+
+## What You've Learnt
+
+- **Frame counting** - Track time for animation timing
+- **Bit masking for speed** - Different bits give different frequencies
+- **Colour cycling** - Cycle through attribute colours
+- **Brightness pulsing** - Toggle BRIGHT for subtle animation
+- **Continuous redraw** - Animation requires per-frame updates
+
+## What's Next
+
+Unit 19 adds claim animation—a satisfying flash when cells are captured.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 17 → Unit 18"
+  before="sinclair-zx-spectrum/game-05-ink-war/unit-17/inkwar.asm"
+  after="sinclair-zx-spectrum/game-05-ink-war/unit-18/inkwar.asm"
+  context={3}
+/>

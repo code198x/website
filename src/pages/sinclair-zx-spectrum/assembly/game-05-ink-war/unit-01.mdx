@@ -1,0 +1,190 @@
+---
+title: "Hello Spectrum"
+description: "Your first ZX Spectrum program. See the game board. Move the cursor. Attributes are your canvas."
+pubDate: 2026-01-12
+game: 5
+gameName: "Ink War"
+unit: 1
+totalUnits: 128
+system: "Sinclair ZX Spectrum"
+tags: ["assembly", "z80", "attributes", "scaffold"]
+nextLesson: "/sinclair-zx-spectrum/assembly/game-05-ink-war/unit-02"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The game board is waiting. Eight rows, eight columns, sixty-four cells to claim.
+
+This unit gives you a working ZX Spectrum program immediately. You'll run it, see the board, move the cursor with the keyboard, and make your first changes to the code. Experience first, explanation after.
+
+## Run It
+
+Download the code and assemble it:
+
+```bash
+pasmonext --tapbas inkwar.asm inkwar.tap
+```
+
+Load the TAP file in Fuse (or your preferred emulator). You'll see this:
+
+![Unit 1 Screenshot](/images/sinclair-zx-spectrum/game-05-ink-war/unit-01/screenshot.png)
+
+A black screen with a white 8×8 grid in the centre. The top-left cell flashes - that's your cursor.
+
+Press **Q** to move up. Press **A** to move down. Press **O** to move left. Press **P** to move right.
+
+The cursor moves around the board. You're controlling a ZX Spectrum program.
+
+## The Complete Code
+
+Here's everything that makes this work:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-05-ink-war/unit-01/inkwar.asm" />
+
+That's about 200 lines. Don't worry about understanding all of it yet - we'll explore each piece. For now, let's look at the structure and make some changes.
+
+## The Main Loop
+
+Every game follows the same pattern: set up, then loop forever.
+
+<CodeFromFile src="sinclair-zx-spectrum/game-05-ink-war/unit-01/snippets/02-main-loop.asm" />
+
+The `halt` instruction waits for the next frame - the Spectrum draws the screen 50 times per second, and `halt` synchronises our code to that rhythm. Without it, the cursor would move impossibly fast.
+
+## Try This: Change the Border
+
+Find this line near the top of `init_screen`:
+
+```asm
+            xor     a               ; A = 0 (black)
+            out     (KEY_PORT), a   ; Set border colour
+```
+
+The `xor a` sets A to 0 (black). Change it to:
+
+```asm
+            ld      a, 1            ; A = 1 (blue)
+            out     (KEY_PORT), a   ; Set border colour
+```
+
+Reassemble and run. The border is now blue.
+
+The Spectrum's border colour is set by sending a value (0-7) to port $FE. The colours are:
+
+| Value | Colour  |
+|-------|---------|
+| 0     | Black   |
+| 1     | Blue    |
+| 2     | Red     |
+| 3     | Magenta |
+| 4     | Green   |
+| 5     | Cyan    |
+| 6     | Yellow  |
+| 7     | White   |
+
+Try different values. See what happens with 2, 4, or 6.
+
+## Try This: Change the Board Colour
+
+The board cells are white because of this constant:
+
+```asm
+EMPTY_ATTR  equ     %00111000       ; White paper, black ink (empty cell)
+```
+
+That binary value `%00111000` means:
+- Bits 5-3 (PAPER): `111` = 7 = white
+- Bits 2-0 (INK): `000` = 0 = black
+
+Change it to cyan paper:
+
+```asm
+EMPTY_ATTR  equ     %00101000       ; Cyan paper, black ink
+```
+
+The `101` in bits 5-3 is 5 = cyan. Reassemble and run - the board is now cyan.
+
+## Try This: Change the Cursor
+
+The cursor flashes because of the FLASH bit:
+
+```asm
+CURSOR_ATTR equ     %10111000       ; White paper, black ink + FLASH
+```
+
+The `1` at the start (bit 7) enables FLASH. Try changing it to BRIGHT instead:
+
+```asm
+CURSOR_ATTR equ     %01111000       ; White paper, black ink + BRIGHT
+```
+
+Now the cursor doesn't flash - it's just brighter than the other cells. Which do you prefer?
+
+## The Attribute Byte
+
+You've been changing attribute values without fully understanding them. Here's the format:
+
+```
+Bit:  7      6      5  4  3    2  1  0
+      FLASH  BRIGHT PAPER      INK
+```
+
+- **FLASH** (bit 7): When set, the cell alternates between normal and inverted colours
+- **BRIGHT** (bit 6): When set, colours are brighter
+- **PAPER** (bits 5-3): Background colour (0-7)
+- **INK** (bits 2-0): Foreground colour (0-7)
+
+So `%00111000` means: no flash, no bright, paper=7 (white), ink=0 (black).
+
+And `%10111000` means: flash ON, no bright, paper=7, ink=0.
+
+## Where Attributes Live
+
+The Spectrum screen has 768 attribute cells arranged in a 32×24 grid. Each cell controls the colours of an 8×8 pixel area.
+
+Attributes start at address $5800 (22528 decimal) and run to $5AFF. To find the attribute for row R, column C:
+
+```
+Address = $5800 + (R × 32) + C
+```
+
+Our board starts at row 8, column 12, so the top-left board cell is at:
+
+```
+$5800 + (8 × 32) + 12 = $5800 + 256 + 12 = $590C
+```
+
+That's what the `draw_board` routine calculates.
+
+## The Keyboard
+
+The Spectrum keyboard is arranged in half-rows. Each half-row has its own port address:
+
+| Port    | Keys (bit 0 → bit 4) |
+|---------|----------------------|
+| $FEFE   | CAPS V C X Z         |
+| $FDFE   | A S D F G            |
+| $FBFE   | Q W E R T            |
+| $F7FE   | 1 2 3 4 5            |
+| $EFFE   | 0 9 8 7 6            |
+| $DFFE   | P O I U Y            |
+| $BFFE   | ENTER L K J H        |
+| $7FFE   | SPACE SYM M N B      |
+
+To check if Q is pressed, we read port $FBFE and check bit 0. If the bit is 0 (active low), the key is down.
+
+That's what `read_keyboard` does for Q, A, O, and P.
+
+## What You've Learnt
+
+- **Running Z80 code** - The `org 32768` puts code at a safe address; `end start` tells the assembler where execution begins
+- **The main loop** - Setup once, then halt-read-update forever at 50Hz
+- **Border colour** - `out (254), a` sets the border to colour 0-7
+- **Attribute memory** - $5800-$5AFF, one byte per 8×8 cell
+- **Attribute format** - FBPPPIII: flash, bright, paper colour, ink colour
+- **Keyboard reading** - `in a, (port)` reads a half-row; bits are active low
+
+## What's Next
+
+In Unit 2, we'll add the ability to claim cells. Press Space, and the cell turns your colour. The game begins.
