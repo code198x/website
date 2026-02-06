@@ -1,0 +1,103 @@
+---
+title: "Enemy Waves"
+description: "Parallel arrays and indexed addressing track three enemies at once, while a spawn_enemy subroutine handles init and respawn with JSR and RTS."
+pubDate: 2026-02-06
+game: 1
+gameName: "Starfield"
+unit: 9
+totalUnits: 128
+system: "Commodore 64"
+tags: ["assembly", "6510", "indexed addressing", "data tables", "subroutines", "JSR", "RTS"]
+prevLesson: "/commodore-64/assembly/game-01-starfield/unit-08"
+nextLesson: "/commodore-64/assembly/game-01-starfield/unit-10"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+One enemy drifting down is target practice. Three changes everything — now there's a formation. Data tables hold the positions, indexed addressing processes them in a loop, and subroutines keep the code manageable.
+
+## Data Tables
+
+Three enemies need three X positions, three Y positions, three flash timers. Parallel arrays in zero page solve this: `enemy_x_tbl`, `enemy_y_tbl`, `flash_tbl`. Index 0 is enemy 0 (sprite 2), index 1 is enemy 1 (sprite 3), index 2 is enemy 2 (sprite 4).
+
+```
+enemy_x_tbl  = $08     ; 3 bytes: $08, $09, $0A
+enemy_y_tbl  = $0B     ; 3 bytes: $0B, $0C, $0D
+flash_tbl    = $0E     ; 3 bytes: $0E, $0F, $10
+```
+
+Each table uses consecutive bytes. The index into one table is the same index into all of them — enemy 1's X is at `enemy_x_tbl + 1`, its Y at `enemy_y_tbl + 1`, its flash timer at `flash_tbl + 1`.
+
+## Indexed Addressing
+
+`LDA enemy_x_tbl,X` reads from `enemy_x_tbl` + X. When X is 0, it reads enemy 0's X position. When X is 1, enemy 1's. When X is 2, enemy 2's. One instruction, three enemies.
+
+The X register steps through: `LDX #$00` starts at enemy 0, `INX` moves to the next, `CPX #$03` / `BNE` loops until all three are done.
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-09/snippets/01-indexed-addressing.asm" />
+
+The loop handles three cases. If the flash timer is zero, the enemy moves down one pixel per frame. If it's gone off-screen (Y >= 248), it respawns at the top. If the flash timer is active, it counts down — and when it hits zero, the enemy respawns.
+
+## The Y Register
+
+X is busy tracking which enemy. For VIC-II register access, we need a second index — the Y register. Lookup tables map enemy index to sprite register offsets.
+
+`sprite_pos_off` holds `[$04, $06, $08]` — the VIC-II offsets for sprites 2, 3, 4. `LDY sprite_pos_off,X` loads the right offset, then `STA $D000,Y` writes to the correct sprite register. Y does for hardware registers what X does for game data.
+
+`sprite_colour_off` works the same way — `[$29, $2A, $2B]` map to the colour registers for sprites 2, 3, 4. When an enemy is hit, `LDY sprite_colour_off,X` followed by `STA $D000,Y` turns that specific enemy white.
+
+## Subroutines: JSR and RTS
+
+The same respawn code is needed in two places — once during init (to set up three enemies at staggered heights) and again at runtime (when an enemy goes off-screen or finishes flashing). Duplicating code is fragile. Change one copy and forget the other, and you've got a bug.
+
+`JSR spawn_enemy` pushes the return address onto the stack and jumps. `RTS` pulls it back and returns to the instruction after the `JSR`. The 6502's stack lives at `$0100`–`$01FF` and manages itself — no setup needed.
+
+`spawn_enemy` takes the starting Y position in A and the enemy index in X. It sets the table values, reads the raster register for a random X position, clears the flash timer, restores the sprite colour to green, and updates the VIC-II registers.
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-09/snippets/02-subroutines.asm" />
+
+At init, the three calls pass different Y positions to stagger the enemies:
+
+```
+        lda #$32            ; Top
+        ldx #$00
+        jsr spawn_enemy
+        lda #$82            ; Middle
+        ldx #$01
+        jsr spawn_enemy
+        lda #$d2            ; Lower
+        ldx #$02
+        jsr spawn_enemy
+```
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-09/starfield.asm" />
+
+## If It Doesn't Work
+
+- **Enemies don't appear?** Check sprite data pointers (`$07FA`–`$07FC`) all point to block 130. Check `$D015` enables bits 2, 3, and 4.
+- **Only one enemy moves?** The update loop must increment X and branch back. Check `INX` / `CPX #$03` / `BNE`.
+- **All at the same position?** `spawn_enemy` uses the raster register for X. The staggered init Y positions ensure vertical separation.
+- **Score increments by more than 1?** The collision loop must break out after the first hit (`JMP hit_enemy` exits the loop).
+- **Wrong enemy flashes?** Check X still holds the correct index when writing to `flash_tbl` and the sprite colour register.
+
+## Try This: Different Enemy Speeds
+
+Use a speed table: `speed_tbl` with values 1, 2, 1. Load `speed_tbl,X` instead of the constant `#$01` in the movement code. Faster enemies are harder to hit.
+
+## Try This: More Enemies
+
+Add a fourth. Sprite 5 (pointer `$07FD`, colour `$D02C`), a fourth entry in each table and lookup, `CPX #$04`. The 6502 can handle it.
+
+## What You've Learnt
+
+- **Indexed addressing** (`LDA table,X`) — one instruction, multiple objects.
+- **Data tables** — parallel arrays for multi-object game state.
+- **The Y register** — a second index for when X is busy.
+- **Subroutines** (`JSR`/`RTS`) — reusable code called from multiple places.
+
+## What's Next
+
+Three enemies descend, but the ship is untouchable. In Unit 10, enemy-ship collision means the game can end — and suddenly you need to play carefully.
