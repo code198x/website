@@ -1,0 +1,267 @@
+---
+/**
+ * MemoryMap - Vertical bar showing address ranges with highlighted zones
+ *
+ * Works across platforms:
+ *   C64 (64KB):    <MemoryMap ranges={[...]} endAddress={0xFFFF} />
+ *   Spectrum (48K): <MemoryMap ranges={[...]} endAddress={0xBFFF} />
+ *   Amiga (24-bit): <MemoryMap ranges={[...]} endAddress={0xFFFFFF} />
+ */
+
+interface MemoryRange {
+  start: number;
+  end: number;
+  label: string;
+  color?: string;
+  sublabel?: string;
+}
+
+interface Props {
+  ranges: MemoryRange[];
+  startAddress?: number;
+  endAddress?: number;
+  caption?: string;
+  showAddresses?: boolean;
+}
+
+const {
+  ranges,
+  startAddress = 0,
+  endAddress = 0xFFFF,
+  caption,
+  showAddresses = true,
+} = Astro.props;
+
+// Colour palette for ranges without explicit colour
+const PALETTE = [
+  '#4a4dff', // blue
+  '#2ecc71', // green
+  '#e74c3c', // red
+  '#f39c12', // amber
+  '#9b59b6', // purple
+  '#1abc9c', // teal
+  '#e67e22', // orange
+  '#3498db', // light blue
+];
+
+// Sort ranges by start address (ascending)
+const sorted = [...ranges].sort((a, b) => a.start - b.start);
+
+// Layout constants
+const PADDING_X = 12;
+const PADDING_Y = 12;
+const BAR_X = 90;
+const BAR_W = 140;
+const LABEL_X = BAR_X + BAR_W + 12;
+const MIN_RANGE_H = 36;
+const GAP_H = 8;
+const TOTAL_W = 480;
+
+// Format address as hex string
+function fmtAddr(addr: number): string {
+  if (endAddress > 0xFFFF) {
+    return '$' + addr.toString(16).toUpperCase().padStart(6, '0');
+  }
+  return '$' + addr.toString(16).toUpperCase().padStart(4, '0');
+}
+
+// Build visual segments: ranges + gaps between them
+interface Segment {
+  type: 'range' | 'gap';
+  start: number;
+  end: number;
+  range?: MemoryRange;
+  color: string;
+  height: number;
+}
+
+const segments: Segment[] = [];
+let cursor = startAddress;
+
+for (let i = 0; i < sorted.length; i++) {
+  const r = sorted[i];
+
+  // Gap before this range
+  if (r.start > cursor) {
+    segments.push({
+      type: 'gap',
+      start: cursor,
+      end: r.start - 1,
+      color: 'none',
+      height: GAP_H,
+    });
+  }
+
+  segments.push({
+    type: 'range',
+    start: r.start,
+    end: r.end,
+    range: r,
+    color: r.color || PALETTE[i % PALETTE.length],
+    height: MIN_RANGE_H,
+  });
+
+  cursor = r.end + 1;
+}
+
+// Gap after last range
+if (cursor <= endAddress) {
+  segments.push({
+    type: 'gap',
+    start: cursor,
+    end: endAddress,
+    color: 'none',
+    height: GAP_H,
+  });
+}
+
+// Calculate Y positions (low addresses at bottom)
+const reversed = [...segments].reverse();
+let currentY = PADDING_Y;
+const positions: { seg: Segment; y: number }[] = [];
+for (const seg of reversed) {
+  positions.push({ seg, y: currentY });
+  currentY += seg.height + 2;
+}
+
+const TOTAL_H = currentY + PADDING_Y;
+---
+
+<figure class="memory-map-figure">
+  <svg
+    viewBox={`0 0 ${TOTAL_W} ${TOTAL_H}`}
+    class="memory-map-svg"
+    role="img"
+    aria-label={caption ?? 'Memory map'}
+  >
+    {/* Background */}
+    <rect x="0" y="0" width={TOTAL_W} height={TOTAL_H} rx="6" fill="#1a1a2e" />
+
+    {positions.map(({ seg, y }) => {
+      if (seg.type === 'gap') {
+        // Dashed gap separator
+        return (
+          <g>
+            <line
+              x1={BAR_X}
+              y1={y + seg.height / 2}
+              x2={BAR_X + BAR_W}
+              y2={y + seg.height / 2}
+              stroke="#444"
+              stroke-width="1"
+              stroke-dasharray="4 3"
+            />
+            {showAddresses && (
+              <text
+                x={BAR_X - 8}
+                y={y + seg.height / 2}
+                text-anchor="end"
+                dominant-baseline="central"
+                fill="#555"
+                font-family="var(--font-family-mono, monospace)"
+                font-size="9"
+              >
+                {fmtAddr(seg.start)}
+              </text>
+            )}
+          </g>
+        );
+      }
+
+      // Range block
+      return (
+        <g>
+          <rect
+            x={BAR_X}
+            y={y}
+            width={BAR_W}
+            height={seg.height}
+            rx="3"
+            fill={seg.color}
+            fill-opacity="0.25"
+            stroke={seg.color}
+            stroke-width="1.5"
+          />
+
+          {/* Address labels */}
+          {showAddresses && (
+            <g>
+              <text
+                x={BAR_X - 8}
+                y={y + seg.height - 4}
+                text-anchor="end"
+                dominant-baseline="auto"
+                fill="#aaa"
+                font-family="var(--font-family-mono, monospace)"
+                font-size="10"
+              >
+                {fmtAddr(seg.start)}
+              </text>
+              <text
+                x={BAR_X - 8}
+                y={y + 12}
+                text-anchor="end"
+                dominant-baseline="auto"
+                fill="#aaa"
+                font-family="var(--font-family-mono, monospace)"
+                font-size="10"
+              >
+                {fmtAddr(seg.end)}
+              </text>
+            </g>
+          )}
+
+          {/* Label */}
+          <text
+            x={LABEL_X}
+            y={seg.range?.sublabel ? y + seg.height / 2 - 6 : y + seg.height / 2}
+            text-anchor="start"
+            dominant-baseline="central"
+            fill="#e0e0e0"
+            font-family="var(--font-family-mono, monospace)"
+            font-size="11"
+          >
+            {seg.range!.label}
+          </text>
+
+          {/* Sublabel */}
+          {seg.range?.sublabel && (
+            <text
+              x={LABEL_X}
+              y={y + seg.height / 2 + 8}
+              text-anchor="start"
+              dominant-baseline="central"
+              fill="#888"
+              font-family="var(--font-family-mono, monospace)"
+              font-size="9"
+            >
+              {seg.range.sublabel}
+            </text>
+          )}
+        </g>
+      );
+    })}
+  </svg>
+  {caption && <figcaption class="memory-map-caption">{caption}</figcaption>}
+</figure>
+
+<style>
+  .memory-map-figure {
+    margin: var(--space-6, 1.5rem) 0;
+    padding: 0;
+  }
+
+  .memory-map-svg {
+    max-width: 500px;
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .memory-map-caption {
+    margin-top: var(--space-2, 0.5rem);
+    font-size: 0.875rem;
+    color: var(--color-text-muted, #888);
+    font-style: italic;
+  }
+</style>

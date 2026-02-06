@@ -1,0 +1,181 @@
+---
+/**
+ * SpriteGrid - Visualise sprite/tile data as a pixel grid
+ *
+ * Works across platforms:
+ *   C64 sprites: <SpriteGrid bytes={[...]} width={24} height={21} bytesPerRow={3} />
+ *   NES 8x8:    <SpriteGrid bytes={[...]} width={8} height={8} bytesPerRow={1} />
+ *   NES 8x16:   <SpriteGrid bytes={[...]} width={8} height={16} bytesPerRow={1} />
+ *   Spectrum:    <SpriteGrid bytes={[...]} width={8} height={8} bytesPerRow={1} />
+ *   Amiga 16px:  <SpriteGrid bytes={[...]} width={16} height={16} bytesPerRow={2} />
+ *
+ * Each row has `bytesPerRow` bytes. Each byte = 8 pixels (bit 7 = leftmost).
+ * Byte boundaries are marked every 8 columns with divider lines.
+ */
+
+interface Props {
+  bytes: number[];
+  width?: number;        // Pixels wide (must be multiple of 8)
+  height?: number;       // Pixels tall
+  bytesPerRow?: number;  // Bytes per row (width / 8)
+  caption?: string;
+  pixelColor?: string;
+  showHex?: boolean;
+}
+
+const {
+  bytes,
+  width = 24,
+  height = 21,
+  bytesPerRow = width / 8,
+  caption,
+  pixelColor = '#ffffff',
+  showHex = true,
+} = Astro.props;
+
+const COLS = width;
+const ROWS = height;
+const CELL = 14;
+const GAP = 1;
+const BYTE_BORDER = 2;
+const numByteCols = bytesPerRow;
+
+// Left margin for hex labels — scale with number of byte columns
+const hexCharWidth = 7;
+const hexLabelChars = numByteCols * 4 - 1; // "$XX $XX $XX" pattern
+const HEX_WIDTH = showHex ? hexLabelChars * hexCharWidth + 16 : 0;
+
+const SVG_HEIGHT = ROWS * (CELL + GAP) + GAP;
+
+// Decode bytes into a 2D pixel array
+function decodePixels(data: number[]): boolean[][] {
+  const pixels: boolean[][] = [];
+  for (let row = 0; row < ROWS; row++) {
+    const rowPixels: boolean[] = [];
+    for (let byteIdx = 0; byteIdx < numByteCols; byteIdx++) {
+      const b = data[row * numByteCols + byteIdx] ?? 0;
+      for (let bit = 7; bit >= 0; bit--) {
+        rowPixels.push(((b >> bit) & 1) === 1);
+      }
+    }
+    pixels.push(rowPixels);
+  }
+  return pixels;
+}
+
+const pixels = decodePixels(bytes);
+
+// Build hex labels per row
+function hexRow(row: number): string {
+  const parts: string[] = [];
+  for (let i = 0; i < numByteCols; i++) {
+    const b = bytes[row * numByteCols + i] ?? 0;
+    parts.push('$' + b.toString(16).padStart(2, '0').toUpperCase());
+  }
+  return parts.join(' ');
+}
+
+// Calculate cell position, accounting for byte borders
+function cellX(col: number): number {
+  const byteGroup = Math.floor(col / 8);
+  return HEX_WIDTH + GAP + col * (CELL + GAP) + byteGroup * BYTE_BORDER;
+}
+
+function cellY(row: number): number {
+  return GAP + row * (CELL + GAP);
+}
+
+const totalWidth = cellX(COLS - 1) + CELL + GAP;
+
+// Byte boundary column positions (between groups, not at edges)
+const byteBoundaries: number[] = [];
+for (let col = 8; col < COLS; col += 8) {
+  byteBoundaries.push(col);
+}
+---
+
+<figure class="sprite-grid-figure">
+  <svg
+    viewBox={`0 0 ${totalWidth} ${SVG_HEIGHT}`}
+    class="sprite-grid-svg"
+    role="img"
+    aria-label={caption ?? 'Sprite pixel grid'}
+  >
+    {/* Background */}
+    <rect x={HEX_WIDTH} y="0" width={totalWidth - HEX_WIDTH} height={SVG_HEIGHT} rx="4" fill="#1a1a2e" />
+
+    {/* Grid cells */}
+    {pixels.map((row, rowIdx) =>
+      row.map((on, colIdx) => (
+        <rect
+          x={cellX(colIdx)}
+          y={cellY(rowIdx)}
+          width={CELL}
+          height={CELL}
+          rx="1"
+          fill={on ? pixelColor : '#0d0d1a'}
+          class={on ? 'pixel-on' : 'pixel-off'}
+        />
+      ))
+    )}
+
+    {/* Byte boundary lines */}
+    {byteBoundaries.map((col) => {
+      const x = cellX(col) - BYTE_BORDER / 2 - GAP / 2;
+      return (
+        <line
+          x1={x} y1={0}
+          x2={x} y2={SVG_HEIGHT}
+          stroke="#4a4dff"
+          stroke-width={BYTE_BORDER}
+          stroke-opacity="0.5"
+        />
+      );
+    })}
+
+    {/* Hex labels */}
+    {showHex && pixels.map((_, rowIdx) => (
+      <text
+        x={HEX_WIDTH - 8}
+        y={cellY(rowIdx) + CELL / 2}
+        text-anchor="end"
+        dominant-baseline="central"
+        fill="#888"
+        font-family="var(--font-family-mono, monospace)"
+        font-size="10"
+      >
+        {hexRow(rowIdx)}
+      </text>
+    ))}
+  </svg>
+  {caption && <figcaption class="sprite-grid-caption">{caption}</figcaption>}
+</figure>
+
+<style>
+  .sprite-grid-figure {
+    margin: var(--space-6, 1.5rem) 0;
+    padding: 0;
+  }
+
+  .sprite-grid-svg {
+    max-width: 500px;
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .pixel-on {
+    transition: opacity 0.15s ease;
+  }
+
+  .pixel-off {
+    opacity: 0.3;
+  }
+
+  .sprite-grid-caption {
+    margin-top: var(--space-2, 0.5rem);
+    font-size: 0.875rem;
+    color: var(--color-text-muted, #888);
+    font-style: italic;
+  }
+</style>

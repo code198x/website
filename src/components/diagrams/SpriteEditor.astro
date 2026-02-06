@@ -1,0 +1,431 @@
+---
+/**
+ * SpriteEditor - Interactive pixel editor that outputs assembler byte directives
+ *
+ * Works across platforms:
+ *   C64:      <SpriteEditor width={24} height={21} syntax="acme" />
+ *   Spectrum: <SpriteEditor width={8} height={8} syntax="pasmo" />
+ *   Amiga:    <SpriteEditor width={16} height={16} syntax="vasm" />
+ *   NES:      <SpriteEditor width={8} height={8} syntax="ca65" />
+ *
+ * Click cells to toggle pixels. The byte output updates live.
+ * Optional `bytes` prop pre-fills the grid with existing data.
+ */
+
+interface Props {
+  width?: number;
+  height?: number;
+  syntax?: 'acme' | 'pasmo' | 'vasm' | 'ca65';
+  bytes?: number[];
+  pixelColor?: string;
+  caption?: string;
+}
+
+const {
+  width = 24,
+  height = 21,
+  syntax = 'acme',
+  bytes = [],
+  pixelColor = '#ffffff',
+  caption,
+} = Astro.props;
+
+const COLS = width;
+const ROWS = height;
+const bytesPerRow = width / 8;
+const CELL = 14;
+const GAP = 1;
+const BYTE_BORDER = 2;
+
+function cellX(col: number): number {
+  const byteGroup = Math.floor(col / 8);
+  return GAP + col * (CELL + GAP) + byteGroup * BYTE_BORDER;
+}
+
+function cellY(row: number): number {
+  return GAP + row * (CELL + GAP);
+}
+
+const totalWidth = cellX(COLS - 1) + CELL + GAP;
+const totalHeight = ROWS * (CELL + GAP) + GAP;
+
+// Decode initial bytes into pixel state
+function decodePixels(data: number[]): boolean[][] {
+  const pixels: boolean[][] = [];
+  for (let row = 0; row < ROWS; row++) {
+    const rowPixels: boolean[] = [];
+    for (let byteIdx = 0; byteIdx < bytesPerRow; byteIdx++) {
+      const b = data[row * bytesPerRow + byteIdx] ?? 0;
+      for (let bit = 7; bit >= 0; bit--) {
+        rowPixels.push(((b >> bit) & 1) === 1);
+      }
+    }
+    pixels.push(rowPixels);
+  }
+  return pixels;
+}
+
+const initialPixels = decodePixels(bytes);
+
+// Byte boundary positions
+const byteBoundaries: number[] = [];
+for (let col = 8; col < COLS; col += 8) {
+  byteBoundaries.push(col);
+}
+
+// Unique ID for this instance
+const editorId = `sprite-editor-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<figure class="sprite-editor-figure">
+  <div
+    class="sprite-editor"
+    id={editorId}
+    data-cols={COLS}
+    data-rows={ROWS}
+    data-bytes-per-row={bytesPerRow}
+    data-syntax={syntax}
+    data-pixel-color={pixelColor}
+  >
+    <div class="editor-grid-area">
+      <svg
+        viewBox={`0 0 ${totalWidth} ${totalHeight}`}
+        class="sprite-editor-svg"
+        role="application"
+        aria-label="Sprite pixel editor — click cells to toggle pixels"
+      >
+        {/* Background */}
+        <rect x="0" y="0" width={totalWidth} height={totalHeight} rx="4" fill="#1a1a2e" />
+
+        {/* Grid cells */}
+        {initialPixels.map((row, rowIdx) =>
+          row.map((on, colIdx) => (
+            <rect
+              x={cellX(colIdx)}
+              y={cellY(rowIdx)}
+              width={CELL}
+              height={CELL}
+              rx="1"
+              fill={on ? pixelColor : '#0d0d1a'}
+              data-row={rowIdx}
+              data-col={colIdx}
+              class="editor-cell"
+              style="cursor: pointer;"
+            />
+          ))
+        )}
+
+        {/* Byte boundary lines */}
+        {byteBoundaries.map((col) => {
+          const x = cellX(col) - BYTE_BORDER / 2 - GAP / 2;
+          return (
+            <line
+              x1={x} y1={0}
+              x2={x} y2={totalHeight}
+              stroke="#4a4dff"
+              stroke-width={BYTE_BORDER}
+              stroke-opacity="0.5"
+              style="pointer-events: none;"
+            />
+          );
+        })}
+      </svg>
+
+      <div class="editor-controls">
+        <button class="editor-btn" data-action="clear" title="Clear all pixels">Clear</button>
+        <button class="editor-btn" data-action="invert" title="Invert all pixels">Invert</button>
+      </div>
+    </div>
+
+    <div class="editor-output-area">
+      <div class="output-header">
+        <span class="output-label">Output</span>
+        <button class="editor-btn copy-btn" data-action="copy" title="Copy to clipboard">Copy</button>
+      </div>
+      <pre class="editor-output"><code class="byte-output"></code></pre>
+    </div>
+  </div>
+  {caption && <figcaption class="sprite-editor-caption">{caption}</figcaption>}
+</figure>
+
+<style>
+  .sprite-editor-figure {
+    margin: var(--space-6, 1.5rem) 0;
+    padding: 0;
+  }
+
+  .sprite-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4, 1rem);
+  }
+
+  .editor-grid-area {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2, 0.5rem);
+  }
+
+  .sprite-editor-svg {
+    max-width: 500px;
+    width: 100%;
+    height: auto;
+    display: block;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .editor-cell {
+    transition: fill 0.05s ease;
+  }
+
+  .editor-cell:hover {
+    filter: brightness(1.3);
+  }
+
+  .editor-controls {
+    display: flex;
+    gap: var(--space-2, 0.5rem);
+  }
+
+  .editor-btn {
+    font-family: var(--font-family-mono, monospace);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--color-surface, #1a1a2e);
+    color: var(--color-text-secondary, #aaa);
+    border: 1px solid var(--color-border, #333);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .editor-btn:hover {
+    border-color: #4a4dff;
+    color: #4a4dff;
+  }
+
+  .editor-output-area {
+    max-width: 500px;
+    width: 100%;
+  }
+
+  .output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2, 0.5rem);
+  }
+
+  .output-label {
+    font-family: var(--font-family-mono, monospace);
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #aaa);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .editor-output {
+    background: var(--color-surface, #1a1a2e);
+    border: 1px solid var(--color-border, #333);
+    border-radius: 0.375rem;
+    padding: var(--space-3, 0.75rem);
+    margin: 0;
+    font-family: var(--font-family-mono, monospace);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--color-text, #ddd);
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .copy-btn.copied {
+    color: #22c55e;
+    border-color: #22c55e;
+  }
+
+  .sprite-editor-caption {
+    margin-top: var(--space-2, 0.5rem);
+    font-size: 0.875rem;
+    color: var(--color-text-muted, #888);
+    font-style: italic;
+  }
+
+</style>
+
+<script>
+  document.addEventListener('astro:page-load', () => {
+    document.querySelectorAll<HTMLElement>('.sprite-editor').forEach(initEditor);
+  });
+
+  // Also init on first load (non-SPA)
+  document.querySelectorAll<HTMLElement>('.sprite-editor').forEach(initEditor);
+
+  function initEditor(container: HTMLElement) {
+    if (container.dataset.initialised) return;
+    container.dataset.initialised = 'true';
+
+    const cols = Number(container.dataset.cols);
+    const rows = Number(container.dataset.rows);
+    const bytesPerRow = Number(container.dataset.bytesPerRow);
+    const syntax = container.dataset.syntax as string;
+    const pixelColor = container.dataset.pixelColor as string;
+    const offColor = '#0d0d1a';
+
+    // Pixel state: true = on
+    const pixels: boolean[][] = [];
+    for (let r = 0; r < rows; r++) {
+      pixels[r] = [];
+      for (let c = 0; c < cols; c++) {
+        pixels[r][c] = false;
+      }
+    }
+
+    // Read initial state from SVG cells
+    const cells = container.querySelectorAll<SVGRectElement>('.editor-cell');
+    cells.forEach((cell) => {
+      const r = Number(cell.dataset.row);
+      const c = Number(cell.dataset.col);
+      const fill = cell.getAttribute('fill');
+      pixels[r][c] = fill !== offColor;
+    });
+
+    const output = container.querySelector<HTMLElement>('.byte-output')!;
+
+    // Byte directive prefix per syntax
+    const directives: Record<string, string> = {
+      acme: '        !byte ',
+      pasmo: '        db ',
+      vasm: '        dc.b ',
+      ca65: '        .byte ',
+    };
+    const directive = directives[syntax] ?? directives.acme;
+
+    function formatByte(b: number): string {
+      return '$' + b.toString(16).padStart(2, '0');
+    }
+
+    function updateOutput() {
+      const lines: string[] = [];
+      for (let r = 0; r < rows; r++) {
+        const byteValues: string[] = [];
+        for (let byteIdx = 0; byteIdx < bytesPerRow; byteIdx++) {
+          let b = 0;
+          for (let bit = 0; bit < 8; bit++) {
+            if (pixels[r][byteIdx * 8 + bit]) {
+              b |= (1 << (7 - bit));
+            }
+          }
+          byteValues.push(formatByte(b));
+        }
+        lines.push(directive + byteValues.join(','));
+      }
+      output.textContent = lines.join('\n');
+    }
+
+    function updateCell(cell: SVGRectElement, on: boolean) {
+      cell.setAttribute('fill', on ? pixelColor : offColor);
+    }
+
+    // Paint mode: click-and-drag
+    let painting = false;
+    let paintValue = true;
+
+    const svg = container.querySelector<SVGSVGElement>('.sprite-editor-svg')!;
+
+    function handleCellEvent(cell: SVGRectElement) {
+      const r = Number(cell.dataset.row);
+      const c = Number(cell.dataset.col);
+      pixels[r][c] = paintValue;
+      updateCell(cell, paintValue);
+      updateOutput();
+    }
+
+    svg.addEventListener('pointerdown', (e) => {
+      const target = e.target as Element;
+      if (!target.classList.contains('editor-cell')) return;
+      e.preventDefault();
+      svg.setPointerCapture(e.pointerId);
+
+      const r = Number((target as SVGRectElement).dataset.row);
+      const c = Number((target as SVGRectElement).dataset.col);
+      paintValue = !pixels[r][c];
+      painting = true;
+
+      pixels[r][c] = paintValue;
+      updateCell(target as SVGRectElement, paintValue);
+      updateOutput();
+    });
+
+    svg.addEventListener('pointermove', (e) => {
+      if (!painting) return;
+      // Find cell under pointer
+      const pt = svg.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      const svgPt = pt.matrixTransform(svg.getScreenCTM()!.inverse());
+
+      // Check each cell (fast enough for small grids)
+      cells.forEach((cell) => {
+        const x = Number(cell.getAttribute('x'));
+        const y = Number(cell.getAttribute('y'));
+        const w = Number(cell.getAttribute('width'));
+        const h = Number(cell.getAttribute('height'));
+        if (svgPt.x >= x && svgPt.x <= x + w && svgPt.y >= y && svgPt.y <= y + h) {
+          const r = Number(cell.dataset.row);
+          const c = Number(cell.dataset.col);
+          if (pixels[r][c] !== paintValue) {
+            pixels[r][c] = paintValue;
+            updateCell(cell, paintValue);
+            updateOutput();
+          }
+        }
+      });
+    });
+
+    svg.addEventListener('pointerup', () => { painting = false; });
+    svg.addEventListener('pointerleave', () => { painting = false; });
+
+    // Control buttons
+    container.querySelector('[data-action="clear"]')?.addEventListener('click', () => {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          pixels[r][c] = false;
+        }
+      }
+      cells.forEach((cell) => updateCell(cell, false));
+      updateOutput();
+    });
+
+    container.querySelector('[data-action="invert"]')?.addEventListener('click', () => {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          pixels[r][c] = !pixels[r][c];
+        }
+      }
+      cells.forEach((cell) => {
+        const r = Number(cell.dataset.row);
+        const c = Number(cell.dataset.col);
+        updateCell(cell, pixels[r][c]);
+      });
+      updateOutput();
+    });
+
+    container.querySelector('[data-action="copy"]')?.addEventListener('click', (e) => {
+      const text = output.textContent ?? '';
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = e.currentTarget as HTMLElement;
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 1500);
+      });
+    });
+
+    // Initial output
+    updateOutput();
+  }
+</script>

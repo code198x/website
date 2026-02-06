@@ -1,0 +1,227 @@
+---
+/**
+ * RegisterBits - Visualise an 8-bit hardware register as labelled cells
+ *
+ * Works across platforms:
+ *   C64:     <RegisterBits address="$D015" name="Sprite Enable" bits={[{index: 0, label: "Spr 0", active: true}]} />
+ *   Amiga:   <RegisterBits address="$DFF096" name="DMACON" bits={[...]} />
+ *   Spectrum: <RegisterBits address="$FE" name="Border/Ear/Mic" bits={[...]} />
+ */
+
+interface BitInfo {
+  index: number;
+  label: string;
+  active?: boolean;
+  activeLow?: boolean;
+}
+
+interface Props {
+  address: string;
+  name?: string;
+  bits: BitInfo[];
+  value?: number;
+  caption?: string;
+  accentColor?: string;
+}
+
+const {
+  address,
+  name,
+  bits,
+  value,
+  caption,
+  accentColor = '#4a4dff',
+} = Astro.props;
+
+// Build a lookup from bit index to BitInfo
+const bitMap = new Map<number, BitInfo>();
+for (const bit of bits) {
+  bitMap.set(bit.index, bit);
+}
+
+// Layout constants
+const CELL_W = 58;
+const CELL_H = 32;
+const GAP = 3;
+const PADDING_X = 14;
+const PADDING_TOP = 8;
+
+// Row positions
+const headerY = PADDING_TOP;
+const headerH = 20;
+const indexY = headerY + headerH + 6;
+const indexH = 14;
+const cellY = indexY + indexH + 4;
+const labelY = cellY + CELL_H + 4;
+const labelH = 14;
+const valueY = value !== undefined ? labelY + labelH + 4 : labelY;
+const valueH = value !== undefined ? 20 : 0;
+const totalH = (value !== undefined ? valueY + valueH : labelY + labelH) + PADDING_TOP;
+
+const gridW = 8 * (CELL_W + GAP) - GAP;
+const totalW = gridW + PADDING_X * 2;
+
+// Determine bit value for display
+function bitValue(index: number): number {
+  if (value === undefined) return 0;
+  return (value >> index) & 1;
+}
+
+const ariaLabel = name ? `${address} ${name} register` : `${address} register`;
+---
+
+<figure class="register-bits-figure">
+  <svg
+    viewBox={`0 0 ${totalW} ${totalH}`}
+    class="register-bits-svg"
+    role="img"
+    aria-label={ariaLabel}
+  >
+    {/* Background */}
+    <rect x="0" y="0" width={totalW} height={totalH} rx="6" fill="#1a1a2e" />
+
+    {/* Header: address + name */}
+    <text
+      x={totalW / 2}
+      y={headerY + headerH / 2}
+      text-anchor="middle"
+      dominant-baseline="central"
+      fill="#e0e0e0"
+      font-family="var(--font-family-mono, monospace)"
+      font-size="13"
+      font-weight="bold"
+    >
+      {name ? `${address} — ${name}` : address}
+    </text>
+
+    {/* Bit cells (7 → 0, left to right) */}
+    {Array.from({ length: 8 }, (_, i) => {
+      const bitIdx = 7 - i;
+      const info = bitMap.get(bitIdx);
+      const isLabelled = !!info;
+      const isActive = info?.active ?? false;
+      const isActiveLow = info?.activeLow ?? false;
+      const x = PADDING_X + i * (CELL_W + GAP);
+
+      const cellFill = isActive
+        ? accentColor
+        : isLabelled
+          ? '#2a2a4a'
+          : '#16162a';
+
+      const cellStroke = isActive
+        ? accentColor
+        : isLabelled
+          ? '#444'
+          : '#2a2a3a';
+
+      return (
+        <g>
+          {/* Bit index */}
+          <text
+            x={x + CELL_W / 2}
+            y={indexY + indexH / 2}
+            text-anchor="middle"
+            dominant-baseline="central"
+            fill={isLabelled ? '#aaa' : '#555'}
+            font-family="var(--font-family-mono, monospace)"
+            font-size="10"
+          >
+            {bitIdx}
+          </text>
+
+          {/* Cell */}
+          <rect
+            x={x}
+            y={cellY}
+            width={CELL_W}
+            height={CELL_H}
+            rx="3"
+            fill={cellFill}
+            stroke={cellStroke}
+            stroke-width="1"
+          />
+
+          {/* Cell label or bit index */}
+          <text
+            x={x + CELL_W / 2}
+            y={cellY + CELL_H / 2}
+            text-anchor="middle"
+            dominant-baseline="central"
+            fill={isActive ? '#fff' : isLabelled ? '#ccc' : '#444'}
+            font-family="var(--font-family-mono, monospace)"
+            font-size={isLabelled ? '9' : '11'}
+          >
+            {isLabelled ? info!.label : bitIdx}
+          </text>
+
+          {/* Label row (active-low marker or blank) */}
+          {isActiveLow && (
+            <text
+              x={x + CELL_W / 2}
+              y={labelY + labelH / 2}
+              text-anchor="middle"
+              dominant-baseline="central"
+              fill="#f88"
+              font-family="var(--font-family-mono, monospace)"
+              font-size="9"
+            >
+              active low
+            </text>
+          )}
+
+          {/* Value row */}
+          {value !== undefined && (
+            <text
+              x={x + CELL_W / 2}
+              y={valueY + valueH / 2}
+              text-anchor="middle"
+              dominant-baseline="central"
+              fill={bitValue(bitIdx) ? '#6f6' : '#888'}
+              font-family="var(--font-family-mono, monospace)"
+              font-size="12"
+              font-weight="bold"
+            >
+              {bitValue(bitIdx)}
+            </text>
+          )}
+        </g>
+      );
+    })}
+
+    {/* Value label on the left */}
+    {value !== undefined && (
+      <text
+        x={PADDING_X - 2}
+        y={valueY + valueH / 2}
+        text-anchor="end"
+        dominant-baseline="central"
+        fill="#888"
+        font-family="var(--font-family-mono, monospace)"
+        font-size="9"
+      />
+    )}
+  </svg>
+  {caption && <figcaption class="register-bits-caption">{caption}</figcaption>}
+</figure>
+
+<style>
+  .register-bits-figure {
+    margin: var(--space-6, 1.5rem) 0;
+    padding: 0;
+  }
+
+  .register-bits-svg {
+    max-width: 540px;
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .register-bits-caption {
+    margin-top: var(--space-2, 0.5rem);
+    font-size: 0.875rem;
+    color: var(--color-text-muted, #888);
+    font-style: italic;
+  }
+</style>
