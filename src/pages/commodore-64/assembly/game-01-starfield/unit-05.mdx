@@ -1,0 +1,191 @@
+---
+title: "Enemy Appears"
+description: "A green enemy sprite drifts down the screen — your first autonomous game object. Three sprites, one enemy, and a reason to aim."
+pubDate: 2026-02-06
+game: 1
+gameName: "Starfield"
+unit: 5
+totalUnits: 128
+system: "Commodore 64"
+tags: ["assembly", "6510", "sprites", "movement", "shooter"]
+prevLesson: "/commodore-64/assembly/game-01-starfield/unit-04"
+nextLesson: "/commodore-64/assembly/game-01-starfield/unit-06"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import RegisterBits from "@components/diagrams/RegisterBits.astro";
+import SpriteGrid from "@components/diagrams/SpriteGrid.astro";
+
+A green shape drifts down from the top of the screen. It doesn't shoot, doesn't dodge, doesn't even notice you're there. You can't destroy it yet — but now there's something to aim for.
+
+## A Third Sprite
+
+The VIC-II has eight hardware sprites, numbered 0 to 7. We've used two so far — sprite 0 for the ship and sprite 1 for the bullet. Now we add sprite 2 for the enemy.
+
+Each sprite has its own set of registers. The pattern is the same as before — position, colour, data pointer — just at different addresses:
+
+| Register | Sprite 0 (Ship) | Sprite 1 (Bullet) | Sprite 2 (Enemy) |
+|----------|------------------|--------------------|-------------------|
+| X position | `$D000` | `$D002` | `$D004` |
+| Y position | `$D001` | `$D003` | `$D005` |
+| Colour | `$D027` | `$D028` | `$D029` |
+| Data pointer | `$07F8` | `$07F9` | `$07FA` |
+
+The spacing is consistent: each sprite's registers are two bytes apart. Sprite *n* has its X at `$D000 + 2n` and Y at `$D001 + 2n`.
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-05/snippets/01-enemy-setup.asm" />
+
+We store the enemy's position in zero-page variables `enemy_x` and `enemy_y`, just like we did with `bullet_y`. The zero page is fast to access, and we'll need to read and update these values every frame.
+
+## Enabling Multiple Sprites
+
+The sprite enable register at `$D015` controls which sprites are visible. Each bit corresponds to one sprite:
+
+<RegisterBits
+  address="$D015"
+  name="Sprite Enable"
+  bits={[
+    { index: 7, label: "Spr 7" },
+    { index: 6, label: "Spr 6" },
+    { index: 5, label: "Spr 5" },
+    { index: 4, label: "Spr 4" },
+    { index: 3, label: "Spr 3" },
+    { index: 2, label: "Enemy", active: true },
+    { index: 1, label: "Bullet" },
+    { index: 0, label: "Ship", active: true },
+  ]}
+  value={0x05}
+  caption="Bits 0 and 2 active = ship and enemy visible. Bit 1 (bullet) enabled on fire. Value: $05."
+/>
+
+At startup we write `%00000101` — bits 0 and 2 — to enable the ship and enemy. The bullet's bit stays off until the player fires.
+
+When a bullet spawns, we use `ORA` to set bit 1 without disturbing the other bits:
+
+```asm
+lda $d015
+ora #%00000010       ; Set bit 1 (bullet)
+sta $d015
+```
+
+When the bullet leaves the screen, we use `AND` to clear bit 1:
+
+```asm
+lda $d015
+and #%11111101       ; Clear bit 1 (bullet)
+sta $d015
+```
+
+`ORA` sets bits. `AND` clears them. Together they let you control individual sprites without affecting the rest of the register. This is a pattern you'll use constantly — not just for sprites, but for any register where different bits mean different things.
+
+## The Enemy Sprite
+
+The ship points up. The enemy descends — so it faces down. A classic invader silhouette: antennae at the top, body widening, then legs splayed at the bottom.
+
+<SpriteGrid
+  bytes={[
+    0x00, 0x66, 0x00,
+    0x00, 0x3C, 0x00,
+    0x00, 0x7E, 0x00,
+    0x00, 0xDB, 0x00,
+    0x00, 0xFF, 0x00,
+    0x01, 0xFF, 0x80,
+    0x01, 0x7E, 0x80,
+    0x01, 0x3C, 0x80,
+    0x00, 0xA5, 0x00,
+    0x01, 0x81, 0x80,
+    0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00,
+  ]}
+  pixelColor="#68D64B"
+  caption="The enemy sprite — 10 rows of pixel data, stored at $2080 (block 130). Green, because enemies are green."
+/>
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-05/snippets/03-enemy-sprite.asm" />
+
+The sprite data sits at `$2080` — block 130. Same 63-byte format as the ship and bullet: 3 bytes per row, 21 rows, each byte encoding 8 pixels. The data pointer at `$07FA` tells the VIC-II where to find it.
+
+## Moving the Enemy
+
+The enemy drifts down the screen at one pixel per frame. No joystick input, no complex logic — just a constant downward march.
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-05/snippets/02-enemy-movement.asm" />
+
+`CLC` followed by `ADC #$01` adds 1 to the Y position. `CLC` clears the carry flag first — without it, a stray carry from a previous operation could add an extra pixel. Always clear carry before addition.
+
+The updated value goes into both the zero-page variable (`enemy_y`) and the VIC-II register (`$D005`). The variable tracks the position in code; the register tells the hardware where to draw.
+
+## Respawning
+
+When the enemy's Y position passes 248 (`$F8`), it's below the visible screen. Time to respawn:
+
+```asm
+cmp #$f8
+bcc no_respawn       ; Y < 248, still on screen
+```
+
+`BCC` (Branch if Carry Clear) branches when the accumulator is less than the comparison value. If Y is 248 or more, we fall through to the respawn code.
+
+Respawning means resetting Y to the top (`$32`) and picking a new X position. For the X, we read the raster register:
+
+```asm
+lda $d012            ; Pseudo-random from raster position
+and #$7f             ; Range 0-127
+clc
+adc #$30             ; Range 48-175
+```
+
+`$D012` holds the current raster line — which line of the screen the electron beam is drawing right now. It changes constantly, making it a quick-and-dirty source of unpredictable values.
+
+`AND #$7F` masks the value to 0–127. `ADC #$30` shifts it up to 48–175, keeping the enemy within the visible horizontal range. It's not truly random — but it's good enough that the enemy doesn't always reappear in the same column.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-05/starfield.asm" />
+
+## If It Doesn't Work
+
+- **No enemy visible?** Check `$D015` has bit 2 set, and `$07FA` points to block 130.
+- **Enemy stuck?** Make sure `enemy_y` is being incremented and stored to `$D005`.
+- **Enemy never respawns?** Check the `CMP #$F8` / `BCC` logic — `BCC` branches when *less than*, so values >= 248 fall through to respawn.
+- **Enemy always spawns at the same X?** `$D012` changes every frame — make sure you're reading it at respawn time, not during init.
+
+## Try This: Change Enemy Speed
+
+`ADC #$01` moves the enemy down one pixel per frame — a slow drift. Try different values:
+
+- **`ADC #$02`** — Twice as fast. A brisk descent.
+- **`ADC #$03`** — Aggressive. Hard to track visually.
+
+Higher speeds make the game feel more urgent, but they also mean less time for the player to line up a shot (once we add collision in Unit 6).
+
+## Try This: Change Enemy Colour
+
+The colour register at `$D029` accepts standard C64 colour values:
+
+- **`$02`** — Red. Classic danger colour.
+- **`$07`** — Yellow. Bright and visible.
+- **`$0A`** — Light red. Softer, pinker.
+- **`$0E`** — Light blue. Sci-fi alien feel.
+
+## What You've Learnt
+
+- **Sprite 2** — registers at `$D004`/`$D005`, colour at `$D029`, data pointer at `$07FA`.
+- **Sprite enable register (`$D015`)** — `ORA` to enable individual bits, `AND` to disable them.
+- **Autonomous movement** — `CLC` + `ADC` each frame for constant-speed motion.
+- **Respawn pattern** — detect when a sprite leaves the screen, reset its position.
+- **Pseudo-random values** — `$D012` (raster register) as a quick source of unpredictable numbers.
+
+## What's Next
+
+The enemy drifts past untouched. In Unit 6, your bullets will finally connect — and the enemy will know about it.
