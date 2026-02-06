@@ -1,0 +1,369 @@
+---
+/**
+ * FlowDiagram - Simple box-and-arrow flowchart with optional loop-back arrows
+ *
+ * Works across platforms — entirely content-driven, no platform assumptions.
+ *
+ * Usage:
+ *   <FlowDiagram
+ *     steps={[
+ *       {id: "start", label: "Start", type: "start"},
+ *       {id: "setup", label: "Setup\nregisters", type: "process"},
+ *       {id: "end", label: "End", type: "end"},
+ *     ]}
+ *     connections={[{from: "setup", to: "start", label: "loop"}]}
+ *     caption="Basic flow"
+ *   />
+ */
+
+interface Step {
+  id: string;
+  label: string;
+  type: 'start' | 'process' | 'decision' | 'end';
+}
+
+interface Connection {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+interface Props {
+  steps: Step[];
+  connections?: Connection[];
+  caption?: string;
+}
+
+const {
+  steps,
+  connections = [],
+  caption,
+} = Astro.props;
+
+// Layout constants
+const BOX_W = 200;
+const BOX_H = 40;
+const DIAMOND_SIZE = 50;
+const STEP_GAP = 60;
+const PADDING_X = 60;
+const PADDING_Y = 30;
+const LOOP_OFFSET = 50;
+const SKIP_OFFSET = 50;
+
+// Detect if any connections skip forward (need left-side space)
+const hasSkipArrows = connections.some(conn => {
+  const fromIdx = steps.findIndex(s => s.id === conn.from);
+  const toIdx = steps.findIndex(s => s.id === conn.to);
+  return toIdx > fromIdx + 1;
+});
+const SKIP_SPACE = hasSkipArrows ? SKIP_OFFSET + 30 : 0;
+
+// Centre X
+const CX = PADDING_X + SKIP_SPACE + BOX_W / 2;
+
+// Calculate Y position for each step
+const stepPositions = new Map<string, { x: number; y: number; step: Step }>();
+let currentY = PADDING_Y;
+
+for (const step of steps) {
+  const h = step.type === 'decision' ? DIAMOND_SIZE : BOX_H;
+  stepPositions.set(step.id, { x: CX, y: currentY + h / 2, step });
+  currentY += h + STEP_GAP;
+}
+
+const TOTAL_W = PADDING_X * 2 + SKIP_SPACE + BOX_W + LOOP_OFFSET + 30;
+const TOTAL_H = currentY - STEP_GAP + BOX_H / 2 + PADDING_Y;
+
+// Split multiline labels into tspan arrays
+function labelLines(label: string): string[] {
+  return label.split('\\n');
+}
+
+// Colours by step type
+function fillColor(type: Step['type']): string {
+  switch (type) {
+    case 'start': return '#1a6b3c';
+    case 'end': return '#8b2020';
+    case 'decision': return '#7a5c1e';
+    case 'process': return '#2a2a4a';
+  }
+}
+
+function strokeColor(type: Step['type']): string {
+  switch (type) {
+    case 'start': return '#2ecc71';
+    case 'end': return '#e74c3c';
+    case 'decision': return '#f39c12';
+    case 'process': return '#4a4dff';
+  }
+}
+
+// Build forward connections (linear, top to bottom)
+interface Arrow {
+  type: 'forward' | 'loopback' | 'skip';
+  fromId: string;
+  toId: string;
+  label?: string;
+}
+
+const arrows: Arrow[] = [];
+
+// If no explicit connections, connect steps linearly
+if (connections.length === 0) {
+  for (let i = 0; i < steps.length - 1; i++) {
+    arrows.push({ type: 'forward', fromId: steps[i].id, toId: steps[i + 1].id });
+  }
+} else {
+  // Build linear connections first
+  for (let i = 0; i < steps.length - 1; i++) {
+    arrows.push({ type: 'forward', fromId: steps[i].id, toId: steps[i + 1].id });
+  }
+  // Process explicit connections
+  for (const conn of connections) {
+    const fromIdx = steps.findIndex(s => s.id === conn.from);
+    const toIdx = steps.findIndex(s => s.id === conn.to);
+    if (fromIdx < 0 || toIdx < 0) continue;
+
+    if (toIdx === fromIdx + 1) {
+      // Label the existing sequential forward arrow
+      const existing = arrows.find(a => a.fromId === conn.from && a.toId === conn.to);
+      if (existing) existing.label = conn.label;
+    } else if (toIdx > fromIdx) {
+      // Forward skip — drawn on the left side
+      arrows.push({ type: 'skip', fromId: conn.from, toId: conn.to, label: conn.label });
+    } else {
+      // Loopback — drawn on the right side
+      arrows.push({ type: 'loopback', fromId: conn.from, toId: conn.to, label: conn.label });
+    }
+  }
+}
+
+// Arrowhead marker ID
+const markerId = 'arrowhead-' + Math.random().toString(36).slice(2, 7);
+---
+
+<figure class="flow-diagram-figure">
+  <svg
+    viewBox={`0 0 ${TOTAL_W} ${TOTAL_H}`}
+    class="flow-diagram-svg"
+    role="img"
+    aria-label={caption ?? 'Flow diagram'}
+  >
+    <defs>
+      <marker
+        id={markerId}
+        markerWidth="8"
+        markerHeight="6"
+        refX="8"
+        refY="3"
+        orient="auto"
+      >
+        <path d="M0,0 L8,3 L0,6 Z" fill="#888" />
+      </marker>
+    </defs>
+
+    {/* Background */}
+    <rect x="0" y="0" width={TOTAL_W} height={TOTAL_H} rx="6" fill="#1a1a2e" />
+
+    {/* Draw arrows first (behind boxes) */}
+    {arrows.map((arrow) => {
+      const from = stepPositions.get(arrow.fromId)!;
+      const to = stepPositions.get(arrow.toId)!;
+      const fromH = from.step.type === 'decision' ? DIAMOND_SIZE / 2 : BOX_H / 2;
+      const toH = to.step.type === 'decision' ? DIAMOND_SIZE / 2 : BOX_H / 2;
+
+      if (arrow.type === 'forward') {
+        const y1 = from.y + fromH;
+        const y2 = to.y - toH;
+        return (
+          <g>
+            <line
+              x1={CX}
+              y1={y1}
+              x2={CX}
+              y2={y2}
+              stroke="#888"
+              stroke-width="1.5"
+              marker-end={`url(#${markerId})`}
+            />
+            {arrow.label && (
+              <text
+                x={CX + 8}
+                y={(y1 + y2) / 2}
+                text-anchor="start"
+                dominant-baseline="central"
+                fill="#aaa"
+                font-family="var(--font-family-mono, monospace)"
+                font-size="10"
+              >
+                {arrow.label}
+              </text>
+            )}
+          </g>
+        );
+      }
+
+      if (arrow.type === 'skip') {
+        const y1 = from.y;
+        const y2 = to.y;
+        const skipX = CX - BOX_W / 2 - SKIP_OFFSET;
+        const startX = from.step.type === 'decision' ? CX - DIAMOND_SIZE / 2 : CX - BOX_W / 2;
+        const endX = to.step.type === 'decision' ? CX - DIAMOND_SIZE / 2 : CX - BOX_W / 2;
+
+        // Right-angle path: left from source, down, right into target
+        const points = `${startX},${y1} ${skipX},${y1} ${skipX},${y2} ${endX},${y2}`;
+
+        return (
+          <g>
+            <polyline
+              points={points}
+              fill="none"
+              stroke="#888"
+              stroke-width="1.5"
+              stroke-dasharray="4 3"
+              marker-end={`url(#${markerId})`}
+            />
+            {arrow.label && (
+              <text
+                x={(startX + skipX) / 2}
+                y={y1 - 6}
+                text-anchor="middle"
+                dominant-baseline="auto"
+                fill="#aaa"
+                font-family="var(--font-family-mono, monospace)"
+                font-size="10"
+              >
+                {arrow.label}
+              </text>
+            )}
+          </g>
+        );
+      }
+
+      // Loopback: right side right-angle path
+      const y1 = from.y;
+      const y2 = to.y;
+      const loopX = CX + BOX_W / 2 + LOOP_OFFSET;
+      const startX = CX + BOX_W / 2;
+      const endX = CX + BOX_W / 2;
+
+      // Right-angle path: right from source, up, left into target
+      const points = `${startX},${y1} ${loopX},${y1} ${loopX},${y2} ${endX},${y2}`;
+
+      return (
+        <g>
+          <polyline
+            points={points}
+            fill="none"
+            stroke="#888"
+            stroke-width="1.5"
+            stroke-dasharray="4 3"
+            marker-end={`url(#${markerId})`}
+          />
+          {arrow.label && (
+            <text
+              x={(startX + loopX) / 2}
+              y={y1 - 6}
+              text-anchor="middle"
+              dominant-baseline="auto"
+              fill="#aaa"
+              font-family="var(--font-family-mono, monospace)"
+              font-size="10"
+            >
+              {arrow.label}
+            </text>
+          )}
+        </g>
+      );
+    })}
+
+    {/* Draw step boxes */}
+    {steps.map((step) => {
+      const pos = stepPositions.get(step.id)!;
+      const lines = labelLines(step.label);
+      const lineHeight = 14;
+      const textStartY = pos.y - ((lines.length - 1) * lineHeight) / 2;
+
+      if (step.type === 'decision') {
+        // Diamond shape
+        const s = DIAMOND_SIZE / 2;
+        const points = `${pos.x},${pos.y - s} ${pos.x + s},${pos.y} ${pos.x},${pos.y + s} ${pos.x - s},${pos.y}`;
+        return (
+          <g>
+            <polygon
+              points={points}
+              fill={fillColor(step.type)}
+              stroke={strokeColor(step.type)}
+              stroke-width="1.5"
+            />
+            {lines.map((line, i) => (
+              <text
+                x={pos.x}
+                y={textStartY + i * lineHeight}
+                text-anchor="middle"
+                dominant-baseline="central"
+                fill="#e0e0e0"
+                font-family="var(--font-family-mono, monospace)"
+                font-size="11"
+              >
+                {line}
+              </text>
+            ))}
+          </g>
+        );
+      }
+
+      // Rectangle (rounded for start/end)
+      const rx = (step.type === 'start' || step.type === 'end') ? 16 : 4;
+      return (
+        <g>
+          <rect
+            x={pos.x - BOX_W / 2}
+            y={pos.y - BOX_H / 2}
+            width={BOX_W}
+            height={BOX_H}
+            rx={rx}
+            fill={fillColor(step.type)}
+            stroke={strokeColor(step.type)}
+            stroke-width="1.5"
+          />
+          {lines.map((line, i) => (
+            <text
+              x={pos.x}
+              y={textStartY + i * lineHeight}
+              text-anchor="middle"
+              dominant-baseline="central"
+              fill="#e0e0e0"
+              font-family="var(--font-family-mono, monospace)"
+              font-size="11"
+            >
+              {line}
+            </text>
+          ))}
+        </g>
+      );
+    })}
+  </svg>
+  {caption && <figcaption class="flow-diagram-caption">{caption}</figcaption>}
+</figure>
+
+<style>
+  .flow-diagram-figure {
+    margin: var(--space-6, 1.5rem) 0;
+    padding: 0;
+  }
+
+  .flow-diagram-svg {
+    max-width: 500px;
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .flow-diagram-caption {
+    margin-top: var(--space-2, 0.5rem);
+    font-size: 0.875rem;
+    color: var(--color-text-muted, #888);
+    font-style: italic;
+  }
+</style>
