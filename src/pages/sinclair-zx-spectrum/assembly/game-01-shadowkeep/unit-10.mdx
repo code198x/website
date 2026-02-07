@@ -1,0 +1,154 @@
+---
+title: "Collect Treasure"
+description: "Check the BRIGHT bit when the player moves onto a cell. If set, clear it with RES 6,A — the treasure dims from bright to dark. A counter tracks collected items."
+pubDate: 2026-02-06
+game: 1
+gameName: "Shadowkeep"
+unit: 10
+totalUnits: 128
+system: "Sinclair ZX Spectrum"
+tags: ["assembly", "z80", "collection", "res", "treasure"]
+prevLesson: "/sinclair-zx-spectrum/assembly/game-01-shadowkeep/unit-09"
+nextLesson: "/sinclair-zx-spectrum/assembly/game-01-shadowkeep/unit-11"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+In Unit 9, treasure reappears when the player walks away. That's preservation, not collection. The player can walk over every treasure cell and leave them all intact. Nothing is gained, nothing changes.
+
+This unit adds collection. When the player steps onto a cell with the BRIGHT bit set, three things happen:
+
+1. `RES 6, A` clears the BRIGHT bit — the cell dims from bright yellow to dark yellow
+2. The dimmed value replaces `player_under` — so the dim cell appears when the player moves away
+3. `INC (HL)` increments a counter — the game knows how many treasures have been collected
+
+Walk onto bright yellow, walk away, see dark yellow. The treasure is gone. Collect all three and the border turns green.
+
+## RES — Reset a Bit
+
+`RES n, A` clears bit n in register A. It's the complement of `SET` (which sets a bit) and the destructive version of `BIT` (which only tests):
+
+| Instruction | Effect | A unchanged? |
+|------------|--------|-------------|
+| `BIT 6, A` | Test bit 6, set Z flag | Yes |
+| `RES 6, A` | Clear bit 6 to 0 | **No** — A is modified |
+| `SET 6, A` | Set bit 6 to 1 | **No** — A is modified |
+
+`BIT` was introduced in Unit 4 for keyboard reading and Unit 9 for treasure detection. `RES` is new — it changes the value. Clearing the BRIGHT bit transforms `$70` (BRIGHT + PAPER 6) into `$30` (PAPER 6 only). Same yellow, less bright. Visually: collected.
+
+## The Collection Pattern
+
+After the wall check passes and the target attribute is saved, check for treasure:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-10/snippets/01-collect-treasure.asm" />
+
+The sequence:
+
+1. **Save** — `LD (player_under), A` stores the full attribute (same as Unit 9)
+2. **Test** — `BIT 6, A` checks BRIGHT without changing A
+3. **Clear** — `RES 6, A` removes the BRIGHT bit from A
+4. **Update** — `LD (player_under), A` overwrites the saved value with the dimmed version
+5. **Count** — `INC (HL)` adds one to the counter in memory
+
+When the player moves away, `player_under` holds the dimmed attribute (`$30` instead of `$70`). The cell appears as dark yellow — visually distinct from the bright uncollected treasure.
+
+## INC (HL) — Increment Memory Directly
+
+`INC (HL)` reads the byte at address HL, adds one, and writes it back — all in a single instruction. No need to load into A first:
+
+```z80
+            ld      hl, treasure_count
+            inc     (hl)                ; Read, add 1, write back
+```
+
+Compare with the longer version:
+
+```z80
+            ld      a, (treasure_count)
+            inc     a
+            ld      (treasure_count), a
+```
+
+Both do the same thing. `INC (HL)` is shorter and faster. The Z80 can modify memory through HL without touching A — useful when A holds something else you don't want to lose.
+
+## Collection Happens in Each Direction
+
+The same collection check appears after each direction's wall check — four copies for Q, A, O, and P. This is repetitive but correct. Each direction needs its own check because the save and collection happen at the moment of movement, not as a separate step.
+
+The repetition is a sign that something could be tidied up. In Unit 11, `CALL` and `RET` will let us extract the repeated code into a subroutine. For now, four copies work.
+
+## All Collected — Green Border
+
+After drawing the player, the code checks whether all treasures have been found:
+
+```z80
+            ld      a, (treasure_count)
+            cp      TOTAL_TREASURE      ; All 3 collected?
+            jr      nz, .not_all
+            ld      a, 4                ; Green border
+            out     ($fe), a
+            jp      .loop
+.not_all:
+            ld      a, 0                ; Black border
+            out     ($fe), a
+```
+
+`CP TOTAL_TREASURE` compares without changing A. If they're equal, the Z flag is set and the border turns green. This is a simple reward — a visual confirmation that all items are collected. In Unit 14, collecting all treasures will open the exit door.
+
+## The Complete Code
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-10/shadowkeep.asm" />
+
+![Shadowkeep Unit 10](/images/sinclair-zx-spectrum/game-01-shadowkeep/unit-10/screenshot.png)
+
+Three bright yellow treasure cells are scattered around the room. Move the player onto one — the diamond covers it. Move away — the cell is now dark yellow. Collected. Find all three and the border turns green. The room has stakes now — there's something to do, something to find, and a way to win.
+
+## Try This: Watch the Dimming
+
+Walk onto the treasure at row 12, col 14 (one step right from the start). Move away. The cell changes from bright yellow to a darker yellow. That colour difference is BRIGHT being cleared — the same cell, the same PAPER colour, but without the brightness boost.
+
+## Try This: Count on the Border
+
+Replace the all-or-nothing border check with a progressive one:
+
+```z80
+            ld      a, (treasure_count)
+            out     ($fe), a
+```
+
+The border colour changes with each collection: 0 = black, 1 = blue, 2 = red, 3 = magenta. Not meaningful colours, but a visible counter while there's no score display.
+
+## Try This: Double-Collection Bug
+
+What happens if the player walks onto a collected treasure (dark yellow, BRIGHT cleared)? `BIT 6, A` tests zero — the `JR Z` skips the collection. The counter doesn't increment twice. The pattern is naturally idempotent — clearing a bit that's already clear does nothing.
+
+## Try This: Uncollectable Treasure
+
+What if a treasure cell used INK 1 instead of INK 0?
+
+```z80
+LOCKED_TREASURE equ  $71            ; BRIGHT + PAPER 6 + INK 1
+```
+
+INK 1 is the wall colour. The collision check blocks movement before the collection check runs. The treasure is visible but unreachable — a locked item. Changing its INK to 0 later (perhaps when a key is collected) would make it accessible. The attribute system handles access control too.
+
+## If It Doesn't Work
+
+- **Treasure doesn't dim?** Check that `RES 6, A` is followed by `LD (player_under), A`. Without the second save, the dimmed value is lost — `player_under` still holds the original bright attribute.
+- **Counter increments twice?** Make sure the collection check only runs when a move is valid (after the wall check passes). If it runs on blocked moves too, it counts wall cells.
+- **Border doesn't turn green?** Check `TOTAL_TREASURE` matches the number of treasure cells in the room data. Three `TREASURE` bytes in the data means `TOTAL_TREASURE` should be 3.
+- **Player leaves bright trail?** The `RES 6, A` must update `player_under`, not write directly to screen memory. The screen update happens in the erase step using `player_under`.
+- **Collecting one treasure dims them all?** Each direction has its own collection check with its own `JR Z` label. If the labels are wrong, one direction's code might jump into another's.
+
+## What You've Learnt
+
+- **RES 6, A** — clear bit 6 (BRIGHT) to mark treasure as collected. The attribute changes from `$70` to `$30` — same colour, less bright. One instruction transforms an item from uncollected to collected.
+- **INC (HL)** — increment a byte in memory without loading it into A. Shorter, faster, and doesn't disturb whatever A currently holds.
+- **Collection at the point of movement** — check and collect in the same code block as the move. The save, test, clear, and count happen together, keeping the logic self-contained.
+- **Visual feedback** — the dimmed cell is proof of collection. No score display needed yet — the world itself shows what's been collected.
+- **TOTAL_TREASURE** — a constant that knows how many items exist. Comparing the counter against it detects completion. Simple, but it's the foundation of win conditions.
+
+## What's Next
+
+The counter tracks treasure, but nobody can see it. In Unit 11, you'll display the score on a status line using `CALL` to invoke a ROM routine — the Spectrum's built-in number printing. This also introduces subroutines: `CALL` pushes the return address, `RET` pops it back. The repeated collection code becomes a candidate for extraction.
