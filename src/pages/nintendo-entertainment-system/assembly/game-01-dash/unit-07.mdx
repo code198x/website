@@ -1,0 +1,219 @@
+---
+title: "Platform Collision"
+description: "The game reads the level data to detect what tile is below the player's feet. A floating platform proves the system — platforms become real."
+pubDate: 2026-02-06
+game: 1
+gameName: "Dash"
+unit: 7
+totalUnits: 128
+system: "Nintendo Entertainment System"
+tags: ["assembly", "6502", "collision", "tiles", "indirect-indexed", "pointer-tables"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-dash/unit-06"
+nextLesson: "/nintendo-entertainment-system/assembly/game-01-dash/unit-08"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The ground is visible — but the player doesn't actually know it's there. The floor collision still uses a hardcoded Y position. If you added a floating platform, the player would fall right through it. The tiles are decoration, not structure.
+
+This unit replaces the invisible floor line with real tile-based collision. The game reads the level data, finds what tile is below the player's feet, and decides whether to land. A floating platform proves the system works — the player can stand on any solid tile, anywhere on screen.
+
+## Pixels to Tiles
+
+The player position is in pixels. The level is in tiles. To check collision, we need to convert between the two. Each tile is 8 pixels wide and 8 pixels tall, so:
+
+```
+tile_column = pixel_x / 8
+tile_row    = pixel_y / 8
+```
+
+Division by 8 is three right shifts. The 6502 has `LSR` (Logical Shift Right), which shifts every bit one position to the right — the same as dividing by 2. Three `LSR` instructions divide by 8:
+
+```ca65
+    lda player_y
+    lsr                     ; / 2
+    lsr                     ; / 4
+    lsr                     ; / 8
+```
+
+The remainder is discarded. Pixel 161 becomes tile row 20. Pixel 207 becomes tile row 25. The conversion is instant — no multiplication, no lookup table, just three shifts.
+
+## Level Data
+
+The tile collision needs to know which tiles are solid. We store this as level data in ROM — three row templates that represent every row on screen:
+
+<CodeFromFile src="nintendo-entertainment-system/game-01-dash/unit-07/snippets/02-level-data.asm" />
+
+`level_empty_row` is 32 zeros — an entire row of empty sky. `level_ground_row` is 32 threes — a full row of ground tiles. `level_platform_row` has ground tiles at columns 12–19 and empty space elsewhere — the floating platform.
+
+The pointer tables are the key. Each of the 30 nametable rows gets a two-byte pointer (low byte and high byte stored in separate tables) to its row data. Rows 0–19 point to `level_empty_row`. Row 20 points to `level_platform_row`. Rows 26–29 point to `level_ground_row`.
+
+Most rows share the same data — 20 empty rows all point to the same 32 bytes. The entire level definition is 96 bytes of row data plus 60 bytes of pointers. Compact.
+
+### Why Split Tables?
+
+The 6502 is an 8-bit processor. It can't store a 16-bit address in one byte. Every pointer needs two bytes: a low byte and a high byte. Storing them in separate tables (all the low bytes together, all the high bytes together) lets us use the tile row as a direct index:
+
+```ca65
+    lda level_rows_lo, x       ; Low byte of pointer
+    sta tile_ptr
+    lda level_rows_hi, x       ; High byte of pointer
+    sta tile_ptr+1
+```
+
+X holds the tile row. One indexed load gets the low byte, another gets the high byte. The two bytes form a complete 16-bit address in zero page.
+
+## Reading a Tile
+
+With the row pointer in `tile_ptr`, we need to read the tile at a specific column. This is where **indirect indexed addressing** comes in — the most important addressing mode for NES development.
+
+```ca65
+    lda (tile_ptr), y
+```
+
+This instruction does three things:
+1. Reads the 16-bit address stored at `tile_ptr` (and `tile_ptr+1`) in zero page
+2. Adds Y to that address
+3. Loads the byte at the resulting address
+
+Y holds the tile column. The instruction reads: "go to the address stored in `tile_ptr`, advance Y bytes forward, and load what's there." One instruction replaces what would otherwise be complex 16-bit arithmetic.
+
+## The Collision Check
+
+<CodeFromFile src="nintendo-entertainment-system/game-01-dash/unit-07/snippets/01-tile-collision.asm" />
+
+The check runs every frame after applying gravity and velocity. Step by step:
+
+**Skip if moving upward.** `BMI` checks the sign bit of `vel_y`. If the player is moving upward (negative velocity), skip the floor check entirely. This means the player can jump up through platforms from below — a natural behaviour that many NES games use.
+
+**Calculate the tile row.** Add 8 to `player_y` to get the feet position (the bottom of the sprite), then shift right three times to divide by 8. The result is the tile row.
+
+**Bounds check.** If the tile row is 30 or higher, the player is below the screen — treat it as solid ground.
+
+**Load the row pointer.** Use the tile row as an index into the pointer tables. Store the two-byte address in `tile_ptr`.
+
+**Calculate the tile column.** Add 4 to `player_x` (the centre of the 8-pixel sprite) and shift right three times. Using the centre rather than the left edge means the player falls when their midpoint crosses the platform edge — it feels more natural.
+
+**Read the tile.** `LDA (tile_ptr), Y` reads the tile at the calculated row and column. If it's zero (empty), there's no floor.
+
+**Snap to the surface.** If the tile is solid, we align the player to the tile grid. `AND #%11111000` clears the bottom three bits of the feet position — rounding down to the nearest multiple of 8 (the top of the tile). Subtract 8 to get the sprite's top position. The player's feet sit exactly on the tile surface.
+
+**Walking off edges.** If no solid tile is found, `on_ground` is cleared to zero. The player starts falling — gravity takes over. Walk past the edge of a platform and you drop. No special code needed.
+
+### AND for Alignment
+
+`AND #%11111000` is a bit-masking trick. The binary mask `%11111000` keeps the top 5 bits and clears the bottom 3. Since each tile is 8 pixels (2³), clearing the bottom 3 bits rounds down to the tile boundary:
+
+```
+Feet at pixel 163:  %10100011
+AND #%11111000:     %10100000 = 160   (tile row 20 starts here)
+```
+
+The result is always the top pixel of the tile — exactly where the player should stand.
+
+## The Floating Platform
+
+The nametable init writes 8 ground tiles at row 20, columns 12–19:
+
+```ca65
+    bit PPUSTATUS
+    lda #$22
+    sta PPUADDR
+    lda #$8C
+    sta PPUADDR             ; PPU address $228C (row 20, col 12)
+
+    lda #GROUND_TILE
+    ldx #8                  ; 8 tiles wide
+@write_platform:
+    sta PPUDATA
+    dex
+    bne @write_platform
+```
+
+Row 20 starts at PPU address `$2000 + (20 × 32) = $2280`. Column 12 adds 12 more: `$228C`. Eight writes place the platform tiles.
+
+The attribute table also needs updating. The platform attributes go at attribute row 5 (`$23E8`), which covers tile rows 20–23. The code writes all attribute data from a table:
+
+```ca65
+attr_data:
+    ; Attribute row 5 — platform
+    .byte $00, $00, $00, $05, $05, $00, $00, $00
+    ; Attribute row 6 — ground (bottom quadrants)
+    .byte $50, $50, $50, $50, $50, $50, $50, $50
+    ; Attribute row 7 — ground (top quadrants)
+    .byte $05, $05, $05, $05, $05, $05, $05, $05
+```
+
+`$05` at attribute columns 3 and 4 of row 5 sets palette 1 for the top quadrants — exactly where the platform tiles sit. The remaining columns stay at `$00` (palette 0, the sky).
+
+## Obstacle Height Check
+
+With a floating platform, the player can be `on_ground` at two different heights — the ground (Y = 200) or the platform (Y = 152). The obstacle still runs along the ground. Without an extra check, the player standing on the high platform would collide with the obstacle passing far below them.
+
+A simple Y comparison fixes it:
+
+```ca65
+    lda player_y
+    cmp #(FLOOR_Y - 7)
+    bcc @no_collide         ; Player above obstacle — on a platform
+```
+
+If the player's Y position is less than 193 (more than 7 pixels above the ground-level obstacle), skip the collision. The player on the platform is safe. The player on the ground still collides normally.
+
+## The Complete Code
+
+<CodeFromFile src="nintendo-entertainment-system/game-01-dash/unit-07/dash.asm" />
+
+![Dash Unit 7](/images/nintendo-entertainment-system/game-01-dash/unit-07/screenshot.png)
+
+Black sky, a green floating platform in the centre, green ground below. The player stands on the ground with the obstacle. Jump up to the platform and the player lands on it — stands on it, walks across it, falls off the edge. The hardcoded floor line is gone. The tiles are the level.
+
+## Try This: Move the Platform
+
+Change the platform position by editing `level_platform_row` and the nametable write address. Put it at row 16, columns 4–11:
+
+```ca65
+level_platform_row:
+    .byte 0,0,0,0, 3,3,3,3, 3,3,3,3, 0,0,0,0
+    .byte 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
+```
+
+Update the pointer table: change row 20 back to `level_empty_row` and point row 16 to `level_platform_row` instead. Update the nametable write address to `$2200 + 4 = $2204`. Don't forget the attribute table — row 16 is in attribute row 4 (`$23E0`).
+
+## Try This: Two Platforms
+
+Add a second row template and pointer entry. Put one platform at row 16 (left side) and another at row 22 (right side). The player can jump between them and the ground — a miniature level.
+
+## Try This: Wider Ground Gap
+
+Make the ground row partial — leave a gap in the middle:
+
+```ca65
+level_ground_gap_row:
+    .byte 3,3,3,3, 3,3,3,3, 3,3,3,3, 0,0,0,0
+    .byte 0,0,0,0, 3,3,3,3, 3,3,3,3, 3,3,3,3
+```
+
+Point rows 26–29 to this instead of `level_ground_row`. The gap creates a pit — fall in and the player drops below the screen. You'd need a respawn mechanism (coming in later units), but the collision system handles the gap automatically.
+
+## If It Doesn't Work
+
+- **Player falls through the platform?** Check the pointer tables. The entry for row 20 must point to `level_platform_row`, not `level_empty_row`. Both the `_lo` and `_hi` tables need the correct row.
+- **Player gets stuck or jitters?** The snap logic may be wrong. The sequence is: `player_y + 8` (feet), `AND #%11111000` (tile top), `- 8` (sprite top). Each step matters.
+- **Wrong colours on the platform?** Check the attribute data. `$05` at attribute row 5, columns 3 and 4 sets palette 1 for the platform area. Wrong column or wrong value produces grey tiles.
+- **Player can't jump through the platform from below?** The `BMI` check on `vel_y` must come before the tile lookup. If it's missing, the player collides with platforms while moving upward.
+- **Collision triggers while on the platform?** The Y comparison (`CMP #(FLOOR_Y - 7)`) must skip obstacle collision when the player is high up. Without it, standing on the platform triggers a hit from the obstacle below.
+
+## What You've Learnt
+
+- **Pixel-to-tile conversion** — `LSR` three times divides by 8, converting pixel coordinates to tile row and column. No multiplication needed.
+- **Level data in ROM** — shared row templates keep memory compact. 30 pointer entries map every nametable row to its tile data.
+- **Pointer tables** — split low/high byte tables let the 6502 build 16-bit addresses from an 8-bit index. This pattern appears everywhere in NES code.
+- **Indirect indexed addressing** — `LDA (tile_ptr), Y` reads a byte at an address stored in zero page, offset by Y. The most powerful 6502 addressing mode.
+- **Bit masking for alignment** — `AND #%11111000` rounds a pixel position down to the nearest tile boundary. A single instruction replaces division and multiplication.
+- **One-way platforms** — checking `vel_y` with `BMI` skips collision when the player moves upward. Platforms are solid from above, passable from below.
+
+## What's Next
+
+The player can stand on tiles, but can walk straight through walls. In Unit 8, the game checks tiles to the left and right of the player — and walls become solid.

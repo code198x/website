@@ -1,0 +1,202 @@
+---
+title: "Collectible Items"
+description: "Three coin sprites appear around the level. A subroutine checks whether the player overlaps each one — the first use of JSR and RTS."
+pubDate: 2026-02-06
+game: 1
+gameName: "Dash"
+unit: 9
+totalUnits: 128
+system: "Nintendo Entertainment System"
+tags: ["assembly", "6502", "sprites", "collectibles", "jsr", "rts", "subroutines"]
+prevLesson: "/nintendo-entertainment-system/assembly/game-01-dash/unit-08"
+nextLesson: "/nintendo-entertainment-system/assembly/game-01-dash/unit-10"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The level has ground, a platform, and a wall — but nothing to do except avoid the obstacle. There's no goal, no reward. This unit adds three collectable coins. Touch one and it disappears. The level has things to find.
+
+The coins introduce two new ideas: managing multiple sprites and using **subroutines**. The same overlap check runs for each coin — but instead of writing it three times, we write it once and call it with `JSR`.
+
+## Three Coins
+
+Each coin is a sprite: an OAM entry with a position, tile, and palette. The game already has two sprites (player and obstacle). The coins are OAM entries 2, 3, and 4:
+
+```ca65
+    ; Coin 0: on the platform
+    lda #152                ; Y = 152 (sits on row 20 platform)
+    sta oam_buffer+8
+    lda #COIN_TILE
+    sta oam_buffer+9
+    lda #2                  ; Sprite palette 2 (yellow)
+    sta oam_buffer+10
+    lda #128                ; X = 128 (centre of platform)
+    sta oam_buffer+11
+```
+
+Each OAM entry is 4 bytes: Y position, tile index, attributes, X position. Entry 2 starts at offset 8 in the OAM buffer (2 × 4). The attribute byte selects sprite palette 2.
+
+The three coins are placed to test different skills:
+- **Coin 0** sits on the floating platform — reach it by jumping up
+- **Coin 1** is on the ground past the wall — jump over the wall to get it
+- **Coin 2** floats in the air on the left — jump and catch it mid-flight
+
+## The Coin Tile
+
+Tile 4 in CHR-ROM is a filled circle:
+
+```ca65
+; Tile 4: Coin
+.byte %00111100              ; Plane 0
+.byte %01111110
+.byte %11111111
+.byte %11111111
+.byte %11111111
+.byte %11111111
+.byte %01111110
+.byte %00111100
+.byte %00000000              ; Plane 1 (all zero = colour 1 only)
+.byte %00000000
+.byte %00000000
+.byte %00000000
+.byte %00000000
+.byte %00000000
+.byte %00000000
+.byte %00000000
+```
+
+Only plane 0 is set, so every visible pixel is colour index 1. With sprite palette 2 (`$0F, $28, $38, $30`), colour 1 is `$28` — yellow. A bright circle against the black sky.
+
+## JSR and RTS
+
+The overlap check for one coin takes about 20 instructions. Three coins would mean 60 instructions of nearly identical code — the only difference is the OAM offset. That's wasteful and error-prone. Change the check logic, and you'd need to update it in three places.
+
+The 6502 has a solution: **subroutines**.
+
+```ca65
+    jsr check_collect       ; Jump to Subroutine
+```
+
+`JSR` does two things:
+1. Pushes the return address onto the stack (the address of the instruction after `JSR`, minus one)
+2. Jumps to the specified label
+
+The subroutine runs until it hits `RTS` (Return from Subroutine), which pulls the return address from the stack and jumps back. Execution continues after the original `JSR`.
+
+The **stack** is a region of memory at `$0100`–`$01FF`. The stack pointer (S register, set to `$FF` during reset with `TXS`) tracks the top. `JSR` pushes two bytes (the return address); `RTS` pulls them back. The stack grows downward — each push decrements the pointer.
+
+## The check_collect Subroutine
+
+<CodeFromFile src="nintendo-entertainment-system/game-01-dash/unit-09/snippets/01-check-collect.asm" />
+
+The subroutine takes the OAM offset in the X register. X acts as a **parameter** — it tells the subroutine which sprite to check. The calling code sets X before each `JSR`:
+
+```ca65
+    ldx #8                  ; OAM entry 2 (coin 0)
+    jsr check_collect
+    ldx #12                 ; OAM entry 3 (coin 1)
+    jsr check_collect
+    ldx #16                 ; OAM entry 4 (coin 2)
+    jsr check_collect
+```
+
+Three calls, one subroutine. Each call checks a different coin.
+
+### How It Works
+
+**Already collected?** If the sprite's Y position is `$EF` (off-screen), it's been collected. Skip the check.
+
+**Y overlap.** Two conditions: the player's bottom (`player_y + 8`) must be past the item's top, AND the item's bottom (`oam_y + 8`) must be past the player's top. Both must be true for vertical overlap.
+
+**X overlap.** Same pattern: the player's right edge (`player_x + 8`) past the item's left, AND the item's right edge past the player's left.
+
+**Collect.** If all four conditions pass, the sprites overlap. Set the OAM Y to `$EF` — the sprite moves off-screen and disappears.
+
+### Indexed OAM Access
+
+The subroutine reads sprite positions with `LDA oam_buffer, X` (Y position) and `LDA oam_buffer+3, X` (X position). When X is 8, these read offsets 8 and 11 — the Y and X of OAM entry 2. When X is 12, they read offsets 12 and 15 — entry 3. The same code addresses different sprites.
+
+`oam_buffer+3` is resolved at assemble time: ca65 adds 3 to the base address of `oam_buffer`. At runtime, X is added again. The result is `oam_buffer[X + 3]` — the X position of whichever entry X points to.
+
+## Hiding Sprites
+
+The hide-sprites loop now starts at offset 20 (after 5 sprites) instead of 8 (after 2):
+
+```ca65
+    lda #$EF
+    ldx #20
+@hide_sprites:
+    sta oam_buffer, x
+    inx
+    bne @hide_sprites
+```
+
+OAM entries 0–4 are the player, obstacle, and three coins. Everything from entry 5 onward is hidden. The Y value `$EF` (239) places sprites below the visible area — the PPU still processes them but they never appear on screen.
+
+When a coin is collected, its Y is also set to `$EF`. The coin joins the hidden sprites — invisible, but still occupying its OAM slot. The subroutine checks for `$EF` and skips the overlap test, so collected coins are never checked again.
+
+## The Complete Code
+
+<CodeFromFile src="nintendo-entertainment-system/game-01-dash/unit-09/dash.asm" />
+
+![Dash Unit 9](/images/nintendo-entertainment-system/game-01-dash/unit-09/screenshot.png)
+
+Three yellow coins in the level: one on the platform, one past the wall, one floating in the air. The player starts on the ground to the left. Jump up to the platform for the first coin. Jump over the wall for the second. Jump from the ground to catch the third mid-air. Each coin vanishes on contact.
+
+## Try This: More Coins
+
+Add a fourth coin at OAM entry 5 (offset 20). Update the hide-sprites start to 24 and add another `JSR check_collect` with `LDX #20`. The subroutine handles any number of coins — just pass the right offset.
+
+## Try This: A Coin on the Wall
+
+Place a coin directly on top of the wall (X = 176, Y = 184). The player has to land precisely on the wall's top to collect it. This tests both platform collision and coin collection in the same move.
+
+## Try This: Respawning Coins
+
+After all three coins are collected, reset them. In the main loop, check if all three OAM Y values are `$EF`. If so, write the original Y positions back:
+
+```ca65
+    lda oam_buffer+8
+    cmp #$EF
+    bne @coins_remain
+    lda oam_buffer+12
+    cmp #$EF
+    bne @coins_remain
+    lda oam_buffer+16
+    cmp #$EF
+    bne @coins_remain
+
+    ; All collected — respawn
+    lda #152
+    sta oam_buffer+8
+    lda #200
+    sta oam_buffer+12
+    lda #168
+    sta oam_buffer+16
+
+@coins_remain:
+```
+
+The coins reappear and the player can collect them again. This is the beginning of a game loop.
+
+## If It Doesn't Work
+
+- **Coins don't appear?** Check the OAM setup. Each coin needs all four bytes: Y position, tile index (4), attributes (2 for palette 2), and X position. A missing tile index shows tile 0 (empty).
+- **Coins are the wrong colour?** The attribute byte must be 2 (sprite palette 2). If it's 0, the coins appear white (palette 0). Check that palette 2 in the palette data is `$0F, $28, $38, $30`.
+- **Coins don't disappear?** The `check_collect` subroutine must be called with the correct OAM offsets: 8, 12, 16. A wrong offset checks the wrong sprite — or worse, overwrites unrelated OAM data.
+- **Game crashes or behaves oddly after JSR?** Make sure the subroutine ends with `RTS`, not `RTI` (that's for interrupts). Also check that nothing else modifies the stack pointer — mismatched pushes and pulls corrupt the return address.
+- **Hide-sprites overwrites coins?** The loop must start at offset 20 (after 5 sprites), not 8. Starting at 8 would immediately hide the coins.
+
+## What You've Learnt
+
+- **Subroutines with JSR/RTS** — `JSR` pushes the return address and jumps; `RTS` pulls it back and returns. Write the code once, call it many times.
+- **Register parameters** — the X register passes the OAM offset to the subroutine. Different values make the same code operate on different data.
+- **Multiple sprite management** — each OAM entry is 4 bytes. Entries are addressed by offset: entry N starts at `oam_buffer + (N × 4)`.
+- **Bounding box overlap** — four comparisons check if two 8×8 sprites overlap: right-of-left and left-of-right in both axes.
+- **Sprite hiding** — setting OAM Y to `$EF` moves a sprite off-screen. The same technique hides collected items and unused sprite slots.
+- **The stack** — a hardware-managed region at `$0100`–`$01FF`. `JSR` and `RTS` use it automatically. The stack pointer tracks the top.
+
+## What's Next
+
+The coins disappear — but nothing else happens. In Unit 10, collecting a coin adds to a score displayed on screen. The nametable becomes a HUD.
