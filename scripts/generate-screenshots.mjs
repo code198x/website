@@ -5,7 +5,7 @@
  * Usage:
  *   node scripts/generate-screenshots.mjs                    # Generate all missing
  *   node scripts/generate-screenshots.mjs --platform c64     # Specific platform
- *   node scripts/generate-screenshots.mjs --game game-01-sid-symphony --unit 8
+ *   node scripts/generate-screenshots.mjs --game game-01-starfield --unit 8
  *   node scripts/generate-screenshots.mjs --force            # Regenerate existing
  *   node scripts/generate-screenshots.mjs --dry-run          # Show what would run
  */
@@ -40,7 +40,7 @@ const PLATFORMS = {
     romsMount: '/Users/stevehill/Projects/Code198x/commodore-64-dev/roms:/roms',
     scriptsMount: '/Users/stevehill/Projects/Code198x/commodore-64-dev/scripts:/scripts',
     getAsmName: (gameSlug) => {
-      // Extract base name from slug (e.g., game-01-sid-symphony -> symphony)
+      // Extract base name from slug (e.g., game-01-starfield -> starfield)
       const parts = gameSlug.split('-');
       return parts[parts.length - 1];
     }
@@ -115,7 +115,7 @@ Usage: node scripts/generate-screenshots.mjs [options]
 
 Options:
   -p, --platform <name>  Filter by platform (c64, spectrum, amiga, nes)
-  -g, --game <slug>      Filter by game slug (e.g., game-01-sid-symphony)
+  -g, --game <slug>      Filter by game slug (e.g., game-01-starfield)
   -u, --unit <number>    Filter by unit number
   -f, --force            Regenerate existing screenshots
   -n, --dry-run          Show what would be generated without running
@@ -124,7 +124,7 @@ Options:
 Examples:
   node scripts/generate-screenshots.mjs
   node scripts/generate-screenshots.mjs --platform c64
-  node scripts/generate-screenshots.mjs --game game-01-sid-symphony --unit 8 --force
+  node scripts/generate-screenshots.mjs --game game-01-starfield --unit 8 --force
   node scripts/generate-screenshots.mjs --dry-run
 `);
 }

@@ -24,9 +24,9 @@ const GAMES = [
   {
     platform: 'commodore-64',
     track: 'assembly',
-    slug: 'game-01-sid-symphony',
-    asmFile: 'symphony.asm',
-    units: 32
+    slug: 'game-01-starfield',
+    asmFile: 'starfield.asm',
+    units: 128
   },
   {
     platform: 'commodore-amiga',

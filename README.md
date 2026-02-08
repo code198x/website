@@ -18,7 +18,7 @@ website/
 │   │   ├── units/                    # Unit details (phases, availability)
 │   │   │   ├── commodore-64/
 │   │   │   │   ├── assembly/
-│   │   │   │   │   ├── game-01-sid-symphony.yaml
+│   │   │   │   │   ├── game-01-starfield.yaml
 │   │   │   │   │   └── ...
 │   │   │   │   └── basic/
 │   │   │   └── ...
@@ -60,10 +60,10 @@ platform: commodore-64
 track: assembly
 games:
   - number: 1
-    slug: game-01-sid-symphony
-    name: SID Symphony
-    tagline: A rhythm game that makes the SID chip sing
-    skills: [Screen layout, SID audio, Input handling]
+    slug: game-01-starfield
+    name: Starfield
+    tagline: Single-screen space shooter with hardware sprites
+    skills: [VIC-II sprites, Joystick input, SID sound, Raster interrupts]
     status: in-progress
 ```
 
@@ -72,22 +72,22 @@ games:
 Stores phases and unit details for each game. This is the single source of truth for unit counts and availability.
 
 ```yaml
-# commodore-64/assembly/game-01-sid-symphony.yaml
+# commodore-64/assembly/game-01-starfield.yaml
 platform: commodore-64
 track: assembly
-gameSlug: game-01-sid-symphony
+gameSlug: game-01-starfield
 phases:
   - name: Foundation
-    description: Build a complete playable game with one song
+    description: Build a complete playable game
     hours: "16-24"
     start: 1
     end: 16
 units:
   - number: 1
-    title: Hello SID
+    title: "Unit 1"
     available: true
   - number: 2
-    title: Notes Appear
+    title: "Unit 2"
     available: true
 ```
 
@@ -101,7 +101,7 @@ const games = await getGamesWithCounts('commodore-64', 'assembly');
 
 // Get unit details
 import { getUnitsEntry, getPhases, getUnits } from '../lib/units';
-const entry = await getUnitsEntry('commodore-64', 'assembly', 'game-01-sid-symphony');
+const entry = await getUnitsEntry('commodore-64', 'assembly', 'game-01-starfield');
 ```
 
 ## Commands
