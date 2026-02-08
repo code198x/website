@@ -1,0 +1,148 @@
+---
+title: "Creature Sprite"
+description: "A hardware sprite appears over the terrain. Sprite data defines a 16-pixel-wide creature. The Copper points the sprite DMA to our data."
+pubDate: 2026-02-06
+game: 1
+gameName: "Exodus"
+unit: 4
+totalUnits: 128
+system: "Commodore Amiga"
+tags: ["assembly", "68000", "sprite", "DMA", "Copper", "creature"]
+prevLesson: "/commodore-amiga/assembly/game-01-exodus/unit-03"
+nextLesson: "/commodore-amiga/assembly/game-01-exodus/unit-05"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The terrain exists but nothing lives on it. This unit adds a creature — a small figure drawn by the hardware sprite system, floating independently of the bitplane.
+
+The Amiga has **8 hardware sprites**, each 16 pixels wide and any height. Denise draws them on top of the playfield automatically — no CPU time spent rendering. The sprite data lives in Chip RAM, and the DMA controller reads it every frame. All we do is define the image and tell the hardware where it is.
+
+![Exodus Unit 4](/images/commodore-amiga/game-01-exodus/unit-04/screenshot.png)
+
+A small creature hovers above the cliff. The sprite overlays the bitplane — it doesn't modify the terrain bitmap. In later units, this creature will walk, fall, and interact with the terrain below.
+
+## Sprite Structure
+
+Each sprite is a block of data in Chip RAM with a specific format:
+
+| Offset | Content |
+|--------|---------|
+| Word 0 | Control word 0: vertical start + horizontal position |
+| Word 1 | Control word 1: vertical stop + control bits |
+| Words 2+ | Image data: 2 words per row (plane A, plane B) |
+| Last 2 words | `$0000, $0000` (end marker) |
+
+Each row of the sprite is **two words** (4 bytes). The two words form two bitplanes, giving four possible values per pixel:
+
+| Plane A | Plane B | Result |
+|---------|---------|--------|
+| 0 | 0 | Transparent |
+| 1 | 0 | Colour 1 |
+| 0 | 1 | Colour 2 |
+| 1 | 1 | Colour 3 |
+
+Sprite 0 uses palette slots 17, 18, and 19 — separate from the playfield colours.
+
+## Defining the Creature
+
+<CodeFromFile src="commodore-amiga/game-01-exodus/unit-04/snippets/01-sprite-data.asm" />
+
+The binary values make the sprite shape visible in the source code. Each `%` number is a 16-bit pattern where 1s mark active pixels. Reading the two planes together:
+- Where both planes have 0: transparent (sky or terrain shows through)
+- Plane A only: white outline
+- Plane B only: orange fill
+- Both planes: black detail (eyes)
+
+The creature is 16 pixels wide and 12 rows tall — a head, body, and legs. The end marker (`$0000, $0000`) tells the DMA controller to stop reading.
+
+## Positioning the Sprite
+
+The control words encode the sprite's position in a packed format. The hardware needs vertical start/stop lines and a horizontal position, but these aren't simply x and y — they're offset by the display window position and packed into specific bit positions:
+
+<CodeFromFile src="commodore-amiga/game-01-exodus/unit-04/snippets/02-sprite-position.asm" />
+
+The offsets `$2C` (vertical) and `$80` (horizontal) align sprite coordinates with the display window. Without them, position (0,0) would be off-screen in the overscan area.
+
+**Control word 0** packs VSTART (low 8 bits) into the high byte and HSTART shifted right by 1 into the low byte. **Control word 1** packs VSTOP (low 8 bits) into the high byte, with the low byte holding overflow bits: VSTART bit 8, VSTOP bit 8, and HSTART bit 0.
+
+This packed format dates from the original Amiga chipset design. The hardware reads these two words at DMA time to know where to start and stop drawing the sprite on each frame.
+
+## Sprite DMA
+
+The Copper list now includes a pointer to the sprite data:
+
+```asm
+            dc.w    SPR0PTH
+spr0pth_val:
+            dc.w    $0000
+            dc.w    SPR0PTL
+spr0ptl_val:
+            dc.w    $0000
+```
+
+This works exactly like the bitplane pointer — the CPU patches the address at startup, and the DMA controller reads from that address every frame.
+
+DMA also needs sprite DMA enabled. The DMACON write changed from `$8380` to `$83a0`:
+
+```asm
+            move.w  #$83a0,DMACON(a5)   ; SET + DMAEN + COPEN + BPLEN + SPREN
+```
+
+Bit 5 (`SPREN`) enables sprite DMA. Without it, the sprite data exists in memory but Denise never reads it.
+
+## Sprite Colours
+
+Sprite 0 uses palette slots 17-19 (`COLOR17` through `COLOR19`), set in the Copper list:
+
+```asm
+            dc.w    COLOR17,COLOUR_SPR0_1   ; White (body outline)
+            dc.w    COLOR18,COLOUR_SPR0_2   ; Orange (body fill)
+            dc.w    COLOR19,COLOUR_SPR0_3   ; Black (eyes/detail)
+```
+
+These are completely independent of the playfield colours (`COLOR00` and `COLOR01`). Each sprite pair (0-1, 2-3, 4-5, 6-7) shares a palette of 3 colours plus transparent.
+
+## Experiment: Move the Creature
+
+Change the position constants:
+
+```asm
+CREATURE_X          equ 160         ; Try 40, 160, 280
+CREATURE_Y          equ 110         ; Try 60, 110, 200
+```
+
+The sprite floats over whatever is beneath it — sky, terrain, or the cliff edge. It doesn't interact with the bitplane at all. That comes later.
+
+## Experiment: Change Sprite Colours
+
+```asm
+COLOUR_SPR0_1       equ $0FFF       ; Try $0F00 (red outline)
+COLOUR_SPR0_2       equ $0F80       ; Try $00F0 (green fill)
+COLOUR_SPR0_3       equ $0000       ; Try $0FFF (white eyes)
+```
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/game-01-exodus/unit-04/exodus.asm" />
+
+## If It Doesn't Work
+
+- **No sprite visible?** Check DMACON is `$83a0` (not `$8380`). Bit 5 enables sprite DMA. Also check the sprite pointer is patched correctly in the Copper list.
+- **Sprite in wrong position?** The display offsets are `$2C` for vertical and `$80` for horizontal. Without them, the sprite appears off-screen. Also check that VSTOP = VSTART + SPRITE_HEIGHT.
+- **Sprite is a horizontal line?** The control word packing may be wrong. VSTART goes in the high byte of word 0, not the low byte.
+- **Wrong colours?** Sprite 0 uses `COLOR17`-`COLOR19`, not `COLOR01`-`COLOR03`. Check the Copper list has the correct register addresses (`$1A2`, `$1A4`, `$1A6`).
+- **Sprite has gaps or corruption?** Each row needs exactly 2 words (plane A then plane B). Missing or extra words shift all subsequent rows.
+
+## What You've Learnt
+
+- **Hardware sprites** — the Amiga has 8 sprites, each 16 pixels wide. Denise draws them automatically via DMA, overlaying the playfield at zero CPU cost.
+- **Sprite data format** — two control words (position), then pairs of words per row (two bitplanes giving 4 colours), ending with two zero words.
+- **Control word packing** — positions are encoded in a specific bit layout. VSTART/VSTOP use display line numbers; HSTART uses pixel position. All offset by the display window start.
+- **Sprite DMA** — enabled via DMACON bit 5. The Copper list holds the sprite pointer, patched by the CPU at startup.
+- **Sprite palette** — each sprite pair uses 3 colours from dedicated palette slots, independent of playfield colours.
+
+## What's Next
+
+The creature is frozen in place — a still image at a fixed position. In Unit 5, the position updates every frame to make the creature walk across the screen. Movement means modifying the sprite control words inside the main loop.

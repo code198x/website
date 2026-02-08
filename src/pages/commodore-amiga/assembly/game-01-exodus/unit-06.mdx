@@ -1,0 +1,107 @@
+---
+title: "Creature Turns"
+description: "The creature reverses direction at screen edges. A direction variable tracks left or right. CMP.W checks boundaries; NEG.W flips the direction."
+pubDate: 2026-02-06
+game: 1
+gameName: "Exodus"
+unit: 6
+totalUnits: 128
+system: "Commodore Amiga"
+tags: ["assembly", "68000", "CMP", "NEG", "boundary-check", "direction"]
+prevLesson: "/commodore-amiga/assembly/game-01-exodus/unit-05"
+nextLesson: "/commodore-amiga/assembly/game-01-exodus/unit-07"
+layout: "../../../../layouts/UnitLayout.astro"
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The creature walked off the right edge and disappeared. Now it turns around. When it hits a screen boundary, the direction reverses and it walks back the other way.
+
+This introduces two new instructions: `CMP.W` (compare) and `NEG.W` (negate). Together they create the simplest form of AI — a creature that stays on screen by bouncing between the edges.
+
+![Exodus Unit 6](/images/commodore-amiga/game-01-exodus/unit-06/screenshot.png)
+
+The creature paces back and forth across the terrain. It bounces off both edges of the screen, walking left and right indefinitely.
+
+## Direction as a Variable
+
+In Unit 5, speed was a constant — always `+1`, always right. Now direction needs to change at runtime. A new variable `creature_dx` holds the horizontal speed with sign:
+
+```asm
+creature_dx: dc.w   0               ; +speed = right, -speed = left
+```
+
+At startup, it's set to `+CREATURE_SPEED`:
+
+```asm
+            move.w  #CREATURE_SPEED,creature_dx
+```
+
+The movement code uses this variable instead of a constant:
+
+```asm
+            add.w   creature_dx,d0
+```
+
+When `creature_dx` is positive, the creature moves right. When negative, left. The magnitude stays the same — only the sign changes.
+
+## Boundary Checking
+
+<CodeFromFile src="commodore-amiga/game-01-exodus/unit-06/snippets/01-boundary-check.asm" />
+
+`CMP.W #RIGHT_EDGE,D0` compares the creature's x position against the right boundary (304 — the screen width minus the sprite width). `BLT.S` (Branch if Less Than) skips the reversal if the creature hasn't reached the edge.
+
+If it has, two things happen: the position is clamped to the edge value, and `NEG.W creature_dx` flips the sign of the direction. If `creature_dx` was `+1`, it becomes `-1`. If it was `-1`, it becomes `+1`.
+
+The left edge check works the same way with `BGE.S` (Branch if Greater or Equal). The creature can't go below pixel 0.
+
+## CMP and Conditional Branches
+
+`CMP.W` subtracts the source from the destination without storing the result — it only updates the condition codes (flags). The branch instruction that follows reads these flags:
+
+| Instruction | Meaning | Use |
+|-------------|---------|-----|
+| `BEQ` | Branch if Equal | Result was zero |
+| `BNE` | Branch if Not Equal | Result was not zero |
+| `BLT` | Branch if Less Than | Signed less than |
+| `BGE` | Branch if Greater or Equal | Signed greater or equal |
+| `BGT` | Branch if Greater Than | Signed greater than |
+| `BLE` | Branch if Less or Equal | Signed less or equal |
+
+The `.S` suffix means "short branch" — the target must be within 128 bytes. It saves one word of code compared to a long branch. The assembler warns if the target is too far away.
+
+## NEG: Simple Direction Reversal
+
+`NEG.W creature_dx` negates the value in memory: it subtracts the value from zero. `+1` becomes `-1`, `-1` becomes `+1`. One instruction reverses the creature's direction.
+
+This only works because the speed is symmetric — the creature moves at the same pace in both directions. For asymmetric movement, you'd need separate logic for each direction.
+
+## Experiment: Change the Boundaries
+
+```asm
+LEFT_EDGE           equ 40          ; Creature can't reach the left edge
+RIGHT_EDGE          equ 200         ; Shorter patrol range
+```
+
+The creature bounces within whatever range you define. In later units, these boundaries will be replaced by terrain collision — the creature turns when it hits a wall, not an arbitrary pixel position.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/game-01-exodus/unit-06/exodus.asm" />
+
+## If It Doesn't Work
+
+- **Creature still walks off-screen?** Check that `creature_dx` is used (not a constant) in the `ADD.W` instruction. Also check that `NEG.W` operates on `creature_dx` in memory, not a register.
+- **Creature sticks to one edge?** The position might not be clamped before the direction reverses. Without `MOVE.W #RIGHT_EDGE,D0`, the creature could overshoot the boundary and the next frame's check could re-reverse the direction.
+- **Creature doesn't move at all?** Check that `creature_dx` is initialised to `CREATURE_SPEED` at startup, not left at zero.
+
+## What You've Learnt
+
+- **CMP.W** — compare two values by subtracting without storing the result. Sets condition codes for subsequent branch instructions.
+- **Conditional branches** — `BLT`, `BGE`, `BEQ`, `BNE` read the condition codes set by CMP. The `.S` suffix uses a compact encoding for nearby targets.
+- **NEG.W** — negate a value (subtract from zero). Reverses the sign, turning positive into negative and vice versa.
+- **Signed direction** — storing speed with sign (+1 or -1) in a variable allows simple direction reversal with a single NEG instruction.
+
+## What's Next
+
+The creature bounces off invisible walls at the screen edges. In Unit 7, it checks the actual terrain — reading pixels from the bitplane to detect the floor beneath its feet. This is the first real interaction between the sprite and the bitmap.
