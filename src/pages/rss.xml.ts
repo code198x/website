@@ -29,7 +29,7 @@ export async function GET(context: APIContext) {
   return rss({
     title: "Code Like It's 198x",
     description: "Learn assembly by building games on classic 8-bit and 16-bit systems. New lessons, tutorials, and articles about retro game development.",
-    site: context.site?.toString() || 'https://code198x.stevehill.xyz',
+    site: context.site?.toString() || 'https://code198x.com',
     items,
     customData: `<language>en-gb</language>`,
   });

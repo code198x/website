@@ -18,7 +18,7 @@ import m68kGrammar from './src/syntax/m68k.tmLanguage.json' assert { type: 'json
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://code198x.stevehill.xyz',
+  site: 'https://code198x.com',
   integrations: [mdx(), sitemap(), icon()],
   markdown: {
     // Use CSS Custom Highlight API for syntax highlighting

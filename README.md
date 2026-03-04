@@ -142,4 +142,4 @@ This extracts unit data from existing MDX frontmatter or creates placeholder fil
 
 ## Live Site
 
-[code198x.stevehill.xyz](https://code198x.stevehill.xyz)
+[code198x.com](https://code198x.com)
