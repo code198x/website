@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig, fontProviders } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import icon from 'astro-icon';
@@ -19,6 +19,23 @@ import m68kGrammar from './src/syntax/m68k.tmLanguage.json' with { type: 'json' 
 // https://astro.build/config
 export default defineConfig({
   site: 'https://code198x.com',
+  experimental: {
+    queuedRendering: { enabled: true },
+  },
+  fonts: [
+    {
+      name: 'Inter',
+      cssVariable: '--font-family-sans',
+      provider: fontProviders.fontsource(),
+      fallbacks: ['system-ui', '-apple-system', 'sans-serif'],
+    },
+    {
+      name: 'JetBrains Mono',
+      cssVariable: '--font-family-mono',
+      provider: fontProviders.fontsource(),
+      fallbacks: ['Courier New', 'monospace'],
+    },
+  ],
   integrations: [mdx(), sitemap(), icon()],
   markdown: {
     // Use CSS Custom Highlight API for syntax highlighting
