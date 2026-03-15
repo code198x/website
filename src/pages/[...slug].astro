@@ -1,0 +1,153 @@
+---
+/**
+ * Catch-all route for content collection pages.
+ *
+ * Replaces 578 MDX files that were previously in src/pages/.
+ * Computes layout, prev/next links, totalUnits, system, and gameName
+ * from the entry's path instead of duplicating in frontmatter.
+ */
+import { getCollection, render } from 'astro:content';
+import UnitLayout from '../layouts/UnitLayout.astro';
+import GameLayout from '../layouts/GameLayout.astro';
+import GettingStartedLayout from '../layouts/GettingStartedLayout.astro';
+import { getUnitsEntry } from '../lib/units';
+
+type PageType = 'unit' | 'game' | 'getting-started';
+
+interface PageEntry {
+  type: PageType;
+  entry: any;
+  slug: string;
+}
+
+export async function getStaticPaths() {
+  const [unitEntries, gameEntries, gettingStartedEntries] = await Promise.all([
+    getCollection('unit-pages'),
+    getCollection('game-pages'),
+    getCollection('getting-started-pages'),
+  ]);
+
+  const paths: Array<{ params: { slug: string }; props: PageEntry }> = [];
+
+  for (const entry of unitEntries) {
+    paths.push({
+      params: { slug: entry.id },
+      props: { type: 'unit', entry, slug: entry.id },
+    });
+  }
+
+  for (const entry of gameEntries) {
+    // index.mdx: ID "commodore-64/assembly/game-01-starfield/index" → URL without /index
+    const slug = entry.id.replace(/\/index$/, '');
+    paths.push({
+      params: { slug },
+      props: { type: 'game', entry, slug },
+    });
+  }
+
+  for (const entry of gettingStartedEntries) {
+    paths.push({
+      params: { slug: entry.id },
+      props: { type: 'getting-started', entry, slug: entry.id },
+    });
+  }
+
+  return paths;
+}
+
+const { type, entry, slug } = Astro.props;
+const { Content } = await render(entry);
+
+// Parse path segments
+const pathParts = slug.split('/');
+const platformSlug = pathParts[0] || '';
+const trackPath = pathParts[1] || '';
+const gameSlug = pathParts[2] || '';
+
+// Look up totalUnits from the units YAML collection (for unit and game pages)
+let totalUnits = 8; // fallback
+if ((type === 'unit' || type === 'game') && platformSlug && trackPath && gameSlug) {
+  const unitsEntry = await getUnitsEntry(
+    platformSlug,
+    trackPath as 'assembly' | 'basic' | 'amos',
+    gameSlug
+  );
+  if (unitsEntry) {
+    totalUnits = unitsEntry.data.units.length;
+  }
+}
+
+// Compute prev/next navigation for unit pages
+function computeUnitNav(unitNumber: number, total: number) {
+  const basePath = slug.replace(/\/unit-\d+$/, '');
+  const prevNum = unitNumber - 1;
+  const nextNum = unitNumber + 1;
+
+  return {
+    prevLesson: prevNum >= 1
+      ? `/${basePath}/unit-${String(prevNum).padStart(2, '0')}`
+      : undefined,
+    nextLesson: nextNum <= total
+      ? `/${basePath}/unit-${String(nextNum).padStart(2, '0')}`
+      : undefined,
+  };
+}
+
+// "game-01-starfield" → "Starfield"
+function formatGameName(gameSlug: string): string {
+  return gameSlug
+    .replace(/^game-\d+-/, '')
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+---
+
+{type === 'unit' && (() => {
+  const { prevLesson, nextLesson } = computeUnitNav(entry.data.unit, totalUnits);
+  const gameName = formatGameName(gameSlug);
+  return (
+    <UnitLayout
+      title={entry.data.title}
+      description={entry.data.description}
+      game={entry.data.game}
+      gameName={gameName}
+      unit={entry.data.unit}
+      totalUnits={totalUnits}
+      nextLesson={nextLesson}
+      prevLesson={prevLesson}
+      learningTime={entry.data.learningTime}
+    >
+      <Content />
+    </UnitLayout>
+  );
+})()}
+
+{type === 'game' && (
+  <GameLayout
+    title={entry.data.title}
+    description={entry.data.description}
+    game={entry.data.game}
+    gameName={entry.data.title}
+    totalUnits={totalUnits}
+    heroImage={entry.data.heroImage}
+    heroAlt={entry.data.heroAlt}
+    units={entry.data.units}
+  >
+    <Content />
+  </GameLayout>
+)}
+
+{type === 'getting-started' && (
+  <GettingStartedLayout
+    frontmatter={{
+      title: entry.data.title,
+      description: entry.data.description,
+      system: platformSlug,
+      systemSlug: entry.data.systemSlug,
+      accentColor: entry.data.accentColor,
+    }}
+  >
+    <Content />
+  </GettingStartedLayout>
+)}

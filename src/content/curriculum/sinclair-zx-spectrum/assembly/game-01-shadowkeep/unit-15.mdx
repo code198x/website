@@ -1,0 +1,213 @@
+---
+title: "Hazards and Lives"
+description: "The FLASH hazard cell finally hurts. BIT 7 detects danger, DEC (HL) counts down lives, and the player resets to start on contact. Three lives — then game over."
+pubDate: 2026-02-06
+game: 1
+unit: 15
+tags: ["assembly", "z80", "hazards", "lives", "bit", "dec", "game-over"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The red flashing cell has been in the room since Unit 8. It looks dangerous — FLASH makes it alternate between red and black. But walking onto it does nothing. The hazard is decoration. That changes now.
+
+Step on the hazard and you lose a life. Three lives, shown on the score line. When they're gone, it's game over. The room has consequences for the first time.
+
+## BIT 7 — Testing FLASH
+
+You've used `BIT 6` to detect BRIGHT (treasure). The FLASH bit is bit 7 — one position higher. Same instruction, different bit number:
+
+```z80
+            ld      a, (player_under)
+            bit     7, a                ; FLASH = hazard?
+            jr      z, .not_hazard      ; No FLASH — safe
+```
+
+The pattern is identical to treasure detection. Read the attribute, test a single bit, branch on the result. The attribute byte encodes the entire game world — each bit has a meaning:
+
+| Bit | Name | Test | Meaning |
+|-----|------|------|---------|
+| 7 | FLASH | `BIT 7` | Hazard — lose a life |
+| 6 | BRIGHT | `BIT 6` | Treasure — collect it |
+| 5-3 | PAPER | `AND $38` | Background colour |
+| 2-0 | INK | `AND $07` | Foreground colour (wall check) |
+
+Four different checks on one byte. No lookup tables, no sprite collision boxes. The Spectrum's attribute system is the collision system.
+
+## When to Check
+
+The hazard check happens after the player is drawn at their new position. If `player_under` has FLASH set, the player stepped on danger:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-15/snippets/01-hazard-check.asm" />
+
+The sequence: erase the player from the hazard cell (restore its attribute), then decrement lives. This order matters — the hazard cell needs its FLASH attribute back before the player vanishes, otherwise the flashing stops.
+
+## DEC (HL) Sets Flags
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-15/snippets/02-dec-hl-flags.asm" />
+
+`DEC (HL)` decrements the byte at address HL and sets the Z flag if the result is zero. One instruction to decrement and test. This is unlike `DEC HL` (the 16-bit version from Unit 12) which does NOT set flags and needs the `LD A, H` / `OR L` idiom.
+
+The distinction matters. The Z80 has two kinds of DEC:
+
+- **`DEC r`** and **`DEC (HL)`** — 8-bit, sets flags (Z, S, H, N)
+- **`DEC rr`** — 16-bit register pair, does NOT set flags
+
+The same pattern applies to INC. `INC (HL)` (used for treasure count in Unit 10) also sets flags, though we didn't need them then.
+
+## Death and Reset
+
+When the player touches a hazard:
+
+1. **Erase** — clear the player's bitmap from the hazard cell, restore the hazard attribute
+2. **Decrement** — `DEC (HL)` on the lives counter
+3. **Check zero** — `JP Z, .game_over` if no lives remain
+4. **Sound** — a short descending two-note tone (the opposite of the collect chirp)
+5. **Reset** — restore all position variables to their starting values
+
+```z80
+            ; Reset to start position
+            ld      a, START_ROW
+            ld      (player_row), a
+            ld      a, START_COL
+            ld      (player_col), a
+            ld      hl, START_SCR
+            ld      (player_scr), hl
+            ld      hl, START_ATT
+            ld      (player_att), hl
+
+            ld      a, (START_ATT)
+            ld      (player_under), a
+```
+
+Six variables need resetting: row, column, screen address, attribute address, and `player_under`. Miss any one and the player appears at the wrong position or corrupts a cell. The reset is verbose but simple — load constant, store to variable, repeat.
+
+The last line reads the current value at `START_ATT` and saves it as `player_under`. This is the same pattern used during initialisation — save what's underneath before the player is drawn on top.
+
+## Game Over
+
+When lives reaches zero, the game ends differently from victory:
+
+```z80
+.game_over:
+            ; Four descending notes — the opposite of the victory fanfare
+            ld      hl, 100
+            ld      e, 18               ; High
+            call    beep
+            ld      hl, 100
+            ld      e, 25               ; Mid-high
+            call    beep
+            ld      hl, 100
+            ld      e, 35               ; Mid-low
+            call    beep
+            ld      hl, 300
+            ld      e, 50               ; Sustained low
+            call    beep
+```
+
+The descending fanfare mirrors the ascending victory sound. Same structure (four notes, last one sustained), reversed direction. The border turns red instead of green. "GAME OVER!" replaces the score line.
+
+Two ways to leave the main loop, two endings:
+
+| Ending | Condition | Sound | Border | Message |
+|--------|-----------|-------|--------|---------|
+| Victory | Exit + all treasure | Ascending | Green | ROOM COMPLETE! |
+| Game over | Lives = 0 | Descending | Red | GAME OVER! |
+
+## Lives on the Score Line
+
+The score display now shows both treasure and lives:
+
+```z80
+            ; "TREASURE 0/3  L:3"
+            ld      hl, score_text      ; "TREASURE "
+            call    print_str
+            ; ... treasure count ...
+            ld      hl, lives_text      ; "L:"
+            call    print_str
+            ld      a, (lives)
+            add     a, '0'
+            call    print_char
+```
+
+`print_score` prints 17 characters total. The `SCORE_LEN` constant (which sets how many attribute cells get the white-on-black treatment) is now 18 to cover the full width.
+
+The victory and game over messages are padded with spaces to overwrite all 17 characters cleanly. Without padding, leftover characters from the score would remain visible.
+
+## The Complete Code
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-15/shadowkeep.asm" />
+
+![Shadowkeep Unit 15](/images/sinclair-zx-spectrum/game-01-shadowkeep/unit-15/screenshot.png)
+
+The score line now reads "TREASURE 0/3  L:3". Walk onto the flashing red hazard cell and you'll hear a descending tone, lose a life (L:2), and reappear at the starting position. Lose all three lives and the game ends with "GAME OVER!" and a red border. Collect all treasure and reach the exit to win.
+
+## Try This: More Hazards
+
+Add more hazard cells to make the room harder:
+
+```z80
+room_data:
+            db      WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL
+            db      WALL, FLOOR, WALL, FLOOR, HAZARD, FLOOR, TREASURE, FLOOR, WALL
+            db      WALL, FLOOR, TREASURE, FLOOR, FLOOR, FLOOR, WALL, FLOOR, WALL
+            db      WALL, FLOOR, HAZARD, FLOOR, HAZARD, FLOOR, FLOOR, TREASURE, WALL
+            db      WALL, WALL, WALL, WALL, WALL, EXIT, WALL, WALL, WALL
+```
+
+Three hazards instead of one. The player must weave between them to collect treasure and reach the exit. With only three lives, every move towards the hazards is a risk.
+
+## Try This: Extra Lives
+
+Change the starting lives and display:
+
+```z80
+START_LIVES equ     5               ; More forgiving
+```
+
+With more lives, the room is easier. With fewer (try `1`), every hazard touch is fatal. The balance between lives and hazard placement defines the difficulty.
+
+## Try This: Invincibility Frames
+
+After dying, the player is vulnerable immediately. Add a brief grace period:
+
+```z80
+            ; After reset, set an invincibility counter
+            ld      a, 30               ; 30 frames = 0.6 seconds
+            ld      (invuln), a
+
+            ; In hazard check, skip if invulnerable
+            ld      a, (invuln)
+            or      a
+            jr      nz, .not_hazard     ; Still invulnerable
+
+            ; In main loop, decrement counter each frame
+            ld      a, (invuln)
+            or      a
+            jr      z, .no_invuln
+            dec     a
+            ld      (invuln), a
+.no_invuln:
+```
+
+This prevents the player from dying repeatedly on the same hazard. A common pattern in action games — a moment of safety after taking damage.
+
+## If It Doesn't Work
+
+- **Hazard doesn't hurt?** Check that `BIT 7, A` is testing `player_under`, not the target cell before movement. The hazard check happens after the player is drawn at the new position.
+- **Lives don't decrease?** Check `DEC (HL)` where HL points to `lives`. If HL points elsewhere, you're decrementing the wrong byte.
+- **Player doesn't reset?** All six position variables must be restored: `player_row`, `player_col`, `player_scr`, `player_att`, and `player_under`. Miss one and the player appears at the wrong position.
+- **Game over triggers immediately?** Make sure `lives` starts at `START_LIVES` (3), not 0. Check that `DEC (HL)` is followed by `JP Z` (not `JR Z` — the game over code is too far for a relative jump).
+- **Score line shows wrong lives?** Check that `lives` is decremented with `DEC (HL)`, not `DEC A`. The counter must be in memory for `print_score` to read it later.
+
+## What You've Learnt
+
+- **BIT 7 for FLASH** — hazard detection, completing the attribute bit tests: BIT 6 = treasure, BIT 7 = hazard, AND $07 = wall.
+- **DEC (HL) sets flags** — 8-bit memory decrement sets Z when the result is zero. Unlike DEC HL (16-bit, no flags), DEC (HL) combines decrement and test in one instruction.
+- **JP vs JR** — `JP Z` when the target is far away (game over code), `JR Z` when it's close. JR is smaller (2 bytes vs 3) but limited to -128/+127 bytes.
+- **Death and reset** — erase the player, restore the cell, reset six position variables, save what's under the new position. The same initialisation pattern, repeated on death.
+- **Two exit conditions** — the main loop can end in victory or game over. Two paths out, two endings, two sounds. The game has both success and failure.
+
+## What's Next
+
+Unit 16 is the final unit of Phase 1. The single room is playable — you can win or lose. But there are rough edges: the player starts on top of existing content, there's no title screen, and restarting requires reloading. Unit 16 integrates everything into a polished single-room experience.

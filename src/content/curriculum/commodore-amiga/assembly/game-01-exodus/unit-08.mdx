@@ -1,0 +1,106 @@
+---
+title: "Gravity"
+description: "The creature falls when there's no floor below. A state machine switches between walking and falling. Each frame checks directly beneath the feet — falling stops when terrain is found."
+pubDate: 2026-02-06
+game: 1
+unit: 8
+tags: ["assembly", "68000", "gravity", "state-machine", "falling", "physics"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The creature stops at cliff edges but never falls. It checks ahead for floor and turns around — but what about the gap below? In this unit, the creature gains gravity. Walk off a ledge and it drops until it lands on something solid.
+
+This needs a **state machine** — the creature is either walking or falling, and the code does different things depending on which state it's in.
+
+![Exodus Unit 8](/images/commodore-amiga/game-01-exodus/unit-08/screenshot.png)
+
+The creature starts on the floating platform. It walks to the edge, steps off, and falls down to the low ground below. Once it lands, it resumes walking. Gravity is working.
+
+## Two States
+
+The creature needs two modes of behaviour:
+
+- **Walking** — move horizontally, check for floor ahead, turn at edges
+- **Falling** — move downward, check for floor below, land when found
+
+A single variable tracks which state the creature is in:
+
+```asm
+STATE_WALKING   equ 0
+STATE_FALLING   equ 1
+
+creature_state: dc.w    0           ; 0=walking, 1=falling
+```
+
+Each frame, the main loop checks `creature_state` and branches to the right code. This is a state machine — the simplest useful pattern for game objects that behave differently over time.
+
+## The Walking State
+
+Walking is more complex than before. The creature still checks ahead for floor and turns if there's none. But now it also checks *under its current position* after moving — if it's walked onto empty space, it starts falling:
+
+<CodeFromFile src="commodore-amiga/game-01-exodus/unit-08/snippets/01-state-machine.asm" />
+
+There are two floor checks per frame when walking. The first checks ahead (the look-ahead from Unit 7). The second checks underneath after the move — this catches the case where the creature walks off the edge of a platform. The look-ahead only checks one pixel ahead, so the creature can step past the edge before the gap is detected below.
+
+When no floor is found underneath, `creature_state` switches to `STATE_FALLING`. The creature doesn't fall this frame — it starts falling next frame.
+
+## The Falling State
+
+Falling is simpler. Each frame, add `FALL_SPEED` to the y position and check if there's terrain below:
+
+<CodeFromFile src="commodore-amiga/game-01-exodus/unit-08/snippets/02-falling.asm" />
+
+`FALL_SPEED` is set to 2 — the creature drops 2 pixels per frame. At 50fps that's 100 pixels per second, which feels like a brisk fall without being instant.
+
+The safety check prevents the creature from falling below the screen. If y exceeds `SCREEN_HEIGHT - SPRITE_HEIGHT`, it's clamped and the creature resumes walking. This handles the edge case where terrain doesn't cover the entire bottom of the screen.
+
+When the pixel check finds terrain, the state switches back to `STATE_WALKING`. The creature lands wherever it is — it doesn't snap to an exact surface position. At 2 pixels per frame, the creature might land 1 pixel into the terrain, but this is invisible at this resolution.
+
+## Starting Position
+
+The creature now starts on the floating platform instead of the low ground:
+
+```asm
+CREATURE_START_X    equ 80
+CREATURE_START_Y    equ 92
+```
+
+The platform top is at y=104 and the sprite is 12 pixels tall, so y=92 places the creature's feet exactly on the platform surface. This lets you see gravity in action — the creature walks right, reaches the platform edge, and falls to the ground below.
+
+## Experiment: Change the Fall Speed
+
+```asm
+FALL_SPEED          equ 1           ; Slow, floaty fall
+```
+
+At 1 pixel per frame, the fall feels gentle — almost like the creature is floating. Try `4` for a snappy, heavy drop. The right speed depends on the game's feel.
+
+```asm
+FALL_SPEED          equ 8           ; Instant plummet
+```
+
+At 8 pixels per frame, the creature practically teleports to the ground. Falls happen so fast you barely see them. Real platformers often start slow and accelerate — that's for a later unit.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/game-01-exodus/unit-08/exodus.asm" />
+
+## If It Doesn't Work
+
+- **Creature never falls?** Check that the starting position is on the platform (y=92), not on the low ground. If the creature starts on solid ground, it has nowhere to fall.
+- **Creature falls forever?** The landing check might not find terrain. Verify `FALL_SPEED` isn't so large that the creature skips past the ground entirely (at speed 2, the ground needs to be at least 2 pixels thick).
+- **Creature jitters between walking and falling?** The two states might be fighting. Make sure the walking state only transitions to falling when there's genuinely no floor underneath — not when the look-ahead check fails.
+- **Build error: branch out of range?** The code is now large enough that `BNE.S` (short branch, 128-byte range) can't reach `mainloop`. Use `BNE` without the `.S` suffix for a long branch.
+
+## What You've Learnt
+
+- **State machines** — a variable that tracks what the game object is doing. Different code runs depending on the current state. The simplest useful pattern for game object behaviour.
+- **Gravity** — adding a constant to y each frame. The creature falls at a fixed speed until it hits something.
+- **Two-check walking** — checking ahead before moving (Unit 7's look-ahead) and checking underneath after moving (detecting walked-off-ledge). Both checks are needed for reliable terrain interaction.
+- **Safety bounds** — clamping position to screen limits prevents the creature from falling into invalid memory.
+- **Short vs long branches** — `.S` branches have a 128-byte range. As code grows, you'll need to remove the `.S` suffix for branches that span larger distances.
+
+## What's Next
+
+The creature walks and falls, but the world is silent. In Unit 9, we'll add a footstep sound — a short sample played through the Amiga's Paula audio chip every time the creature takes a step.

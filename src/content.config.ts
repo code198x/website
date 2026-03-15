@@ -262,6 +262,52 @@ const units = defineCollection({
   }),
 });
 
+// MDX page collections — migrated from src/pages/ file-based routing
+// Computed fields (layout, prevLesson, nextLesson, totalUnits, system, gameName)
+// are derived at render time from the entry's ID path in [...slug].astro
+
+const unitPages = defineCollection({
+  loader: glob({ pattern: '**/unit-*.mdx', base: 'src/content/curriculum' }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string().optional(),
+    pubDate: z.coerce.date().optional(),
+    game: z.number(),
+    unit: z.number(),
+    tags: z.array(z.string()).default([]),
+    status: z.string().optional(),
+    heroImage: z.string().optional(),
+    learningTime: z.number().optional(),
+  }),
+});
+
+const gamePages = defineCollection({
+  loader: glob({ pattern: '**/index.mdx', base: 'src/content/curriculum' }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string().optional(),
+    status: z.enum(['in-progress', 'coming-soon', 'complete']).optional(),
+    game: z.number().optional(),
+    heroImage: z.string().optional(),
+    heroAlt: z.string().optional(),
+    units: z.array(z.object({
+      number: z.number(),
+      title: z.string(),
+      available: z.boolean().default(false),
+    })).default([]),
+  }),
+});
+
+const gettingStartedPages = defineCollection({
+  loader: glob({ pattern: '**/getting-started.mdx', base: 'src/content/curriculum' }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string().optional(),
+    systemSlug: z.string().optional(),
+    accentColor: z.string().optional(),
+  }),
+});
+
 export const collections = {
   platforms,
   manufacturers,
@@ -274,4 +320,7 @@ export const collections = {
   'pattern-categories': patternCategories,
   'pattern-difficulties': patternDifficulties,
   'vault-categories': vaultCategories,
+  'unit-pages': unitPages,
+  'game-pages': gamePages,
+  'getting-started-pages': gettingStartedPages,
 };

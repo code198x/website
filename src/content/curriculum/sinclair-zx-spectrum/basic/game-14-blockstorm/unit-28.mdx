@@ -1,0 +1,59 @@
+---
+title: "Optimisation Pass"
+description: "Speed up the critical path — short variable names, GO SUB placement, selective redraw."
+pubDate: 2026-03-14
+game: 14
+unit: 28
+tags: ["basic", "optimisation", "performance", "variable-names", "redraw"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The performance numbers are clear: the game loop takes too long on dense waves. This unit applies optimisation techniques specific to Sinclair BASIC. None of them change what the game does. They change how fast BASIC can do it. Measure before and after — the improvement is real, if modest.
+
+## The Program
+
+<CodeFromFile src="sinclair-zx-spectrum/basic/game-14-blockstorm/unit-28/blockstorm.bas" />
+
+## How It Works
+
+### Short Variable Names
+
+Every variable access requires the interpreter to search the variable table. The search compares character by character. A variable named `score` requires five character comparisons per access. A variable named `s` requires one.
+
+Blockstorm already uses short names: `sc` for score, `px` for player x, `fx` for formation x. The two-character names are a compromise between readability and speed. For the most frequently accessed variables (the ones used inside enemy loops), single characters would be fastest — but the code becomes harder to maintain.
+
+### GO SUB Placement
+
+When BASIC executes GO SUB 350, it starts at line 1 and scans forward to find line 350. Every line it passes consumes time. Moving frequently called routines to low line numbers reduces this scan time.
+
+The bullet movement routine (called every frame) benefits from being at a low line number. The UDG setup routine (called once at startup) can live at line 800 — its one-time scan cost is irrelevant.
+
+In the final code, the most frequently called routines sit at the lowest available line numbers. The main loop itself is at line 80. GO SUB targets stay as close to the caller as the line number scheme allows.
+
+### Selective Redraw
+
+The original drawing code redraws every enemy every frame, regardless of whether it moved. An enemy that did not move this frame does not need erasing and redrawing. By only drawing enemies during formation movement ticks (not every game loop iteration), the number of PRINT AT calls per frame drops significantly on off-tick frames.
+
+The HUD is similar. Redrawing the entire HUD every frame costs a PRINT AT call. If the score has not changed, the HUD does not need updating. A dirty flag — a variable that is set to 1 when the score changes and reset after the HUD is redrawn — skips unnecessary updates.
+
+### Fewer Conditional Checks
+
+Each IF statement has a cost. Checking `IF h(i) <= 0 THEN GO TO 420` inside a loop of 20 enemies means 20 conditional evaluations. Removing dead enemies from the array (shifting remaining enemies down) would eliminate these checks, but the shifting cost is higher than the check cost. The current approach — check and skip — is already the fastest option in BASIC.
+
+## Measuring the Improvement
+
+After applying all optimisations, measure again with PEEK 23672:
+
+| Wave | Before (ticks) | After (ticks) | Improvement |
+|------|----------------|---------------|-------------|
+| 1 | 4-6 | 3-5 | ~15-20% |
+| 10 | 12-18 | 10-15 | ~15-20% |
+
+The improvement is real but not dramatic. BASIC optimisation cannot overcome the interpreter overhead. It shaves time at the margins. The fundamental limit remains: interpreted BASIC on a 3.5 MHz processor cannot match compiled or hand-written machine code.
+
+## Try This
+
+**Rename all variables.** Replace every two-character variable name with a single character. Measure the difference. Is it worth the reduced readability?
+
+**Skip the HUD.** Comment out the HUD update call in the main loop. How much faster does the game run? One PRINT AT call for the entire status bar is surprisingly expensive.

@@ -1,0 +1,147 @@
+---
+title: "Room from Loops"
+description: "Use DJNZ to draw rooms with loops instead of individual writes — the same instruction, fewer lines, bigger rooms."
+pubDate: 2026-02-06
+game: 1
+unit: 3
+tags: ["assembly", "z80", "djnz", "loops"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The Unit 1 room was five cells wide and took 25 individual writes. What about a room nine cells wide? Or twenty? Writing each cell by hand doesn't scale. You need a loop.
+
+The Z80 has an instruction designed exactly for this: `DJNZ` — **D**ecrement B and **J**ump if **N**ot **Z**ero. Load a count into B, write a cell, increment the address, and DJNZ loops back until B hits zero. One loop replaces an entire row of writes.
+
+## Filling a Row
+
+The simplest loop fills an entire row with one colour:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-03/snippets/01-fill-row.asm" />
+
+Three instructions do the work:
+
+```z80
+.fill:      ld      (hl), a         ; Write attribute
+            inc     hl              ; Next cell
+            djnz    .fill           ; B = B - 1, loop if not zero
+```
+
+`ld (hl), a` writes the colour value in A to the address held in HL. `inc hl` advances HL to the next cell. `djnz .fill` subtracts 1 from B and jumps back to `.fill` if B isn't zero yet.
+
+Before the loop, B holds 32 — one for every column. After 32 iterations, B reaches zero, DJNZ falls through, and the entire row is filled.
+
+Assemble and run this snippet. Row 12 turns solid blue — 32 cells, 3 instructions.
+
+### Why HL?
+
+In Units 1 and 2, you wrote to fixed addresses: `ld ($594e), a`. That works for individual cells but won't work inside a loop — you need the address to advance each time.
+
+The Z80 can use register pairs as pointers. `HL` is the most common one. `ld (hl), a` means "store A at the address held in HL." `inc hl` advances the pointer by one byte — which, in attribute memory, means the next cell to the right.
+
+Other register pairs (`BC`, `DE`) can also hold addresses, but HL has the most instructions built around it. You'll use HL as your primary pointer throughout Shadowkeep.
+
+## Drawing a Middle Row
+
+A wall row is simple — every cell is the same colour. A middle row has structure: wall on the left, floor in the middle, wall on the right.
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-03/snippets/02-middle-row.asm" />
+
+The pattern is straightforward:
+
+1. Write one wall cell (left edge)
+2. Advance HL past it
+3. Load FLOOR into A, loop 7 times for the floor
+4. Write one wall cell (right edge)
+
+The DJNZ loop handles the floor — 7 cells wide. The two walls are single writes before and after the loop. This scales: change the 7 to 20 and you get a room 22 cells wide. The structure of the code doesn't change, only the count.
+
+## Named Constants
+
+Hard-coded numbers make code difficult to modify. Named constants fix this:
+
+```z80
+ROOM_WIDTH  equ     9               ; Total width including walls
+ROOM_INNER  equ     7               ; Floor width (width - 2 walls)
+```
+
+Now the loop uses `ld b, ROOM_INNER` instead of `ld b, 7`. Change `ROOM_INNER` once and every floor loop updates. This matters when the room dimensions change — and they will.
+
+The `equ` directive doesn't generate any code. It tells the assembler "whenever you see ROOM_INNER, substitute 7." The assembled output is identical.
+
+## The Complete Room
+
+The program draws a 9×5 room — top wall, three middle rows, bottom wall:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-03/shadowkeep.asm" />
+
+![Shadowkeep Unit 3](/images/sinclair-zx-spectrum/game-01-shadowkeep/unit-03/screenshot.png)
+
+The room is wider than Unit 1's version, but the code is shorter. Five DJNZ loops replace what would have been 45 individual writes. The top and bottom walls each take one loop. Each middle row takes a loop for the floor plus two single writes for the side walls.
+
+Notice the three middle rows are nearly identical — same pattern, different starting addresses. That repetition is a hint. In a later unit, you'll use an *outer* loop to avoid writing each row separately. For now, seeing the repetition helps you understand what the outer loop will replace.
+
+## Try This: Wider Room
+
+Change the constants to make a wider room:
+
+```z80
+ROOM_LEFT   equ     8               ; Move left edge to column 8
+ROOM_WIDTH  equ     17              ; 17 cells wide
+ROOM_INNER  equ     15              ; 15 floor cells
+```
+
+You'll also need to recalculate the starting addresses. Row 10, column 8:
+
+```
+$5800 + (10 × 32) + 8 = $5948
+```
+
+Update all five `ld hl` instructions to use the new column offset. The DJNZ loops handle the wider rows automatically — only the counts and addresses change.
+
+## Try This: Taller Room
+
+Add rows 15 and 16 as middle rows, and move the bottom wall to row 17. You'll need two more middle-row blocks (copy the pattern from rows 11–13) and a new bottom wall address:
+
+```
+Row 15: $5800 + (15 × 32) + 12 = $59EC
+Row 16: $5800 + (16 × 32) + 12 = $5A0C
+Row 17: $5800 + (17 × 32) + 12 = $5A2C  (bottom wall)
+```
+
+The room grows taller but the code pattern stays the same. Each new row is the same wall-floor-wall structure.
+
+## Try This: Row of Treasure
+
+Replace one middle row's floor loop with treasure cells:
+
+```z80
+            ld      a, TREASURE
+            ld      b, ROOM_INNER
+.treasure:  ld      (hl), a
+            inc     hl
+            djnz    .treasure
+```
+
+An entire row of bright yellow. When the game has movement and collision detection, you'll collect these.
+
+## If It Doesn't Work
+
+- **Row appears in the wrong place?** Check the starting address. Each row is 32 bytes apart. Row 10 starts at $5800 + 320 = $5940, plus the column offset.
+- **Loop runs too many or too few times?** B must be set *before* the loop label. If `ld b, ROOM_WIDTH` is inside the loop, B resets every iteration and the loop never ends.
+- **Only part of the row fills?** Make sure `inc hl` is inside the loop. Without it, every iteration writes to the same cell.
+- **Floor overwrites the wall?** The left wall must be written *before* the floor loop starts, and HL must be incremented past it before the loop.
+- **DJNZ jumps to the wrong label?** Each loop needs its own label. `.top`, `.r11`, `.r12` — reusing a label causes the assembler to error or the wrong loop to repeat.
+
+## What You've Learnt
+
+- **DJNZ label** — decrement B and jump if not zero. The Z80's built-in counted loop. B is always the counter.
+- **LD (HL), A** — store A at the address held in HL. HL acts as a pointer into memory.
+- **INC HL** — advance the pointer by one byte. In attribute memory, this moves one cell to the right.
+- **Loop structure** — set HL to the start address, B to the count, A to the value, then loop: write, advance, decrement.
+- **EQU constants** — named values that make code readable and easy to change. No code is generated.
+- **Pattern recognition** — the three identical middle rows hint at a future optimisation. Repetition in code is a sign that a loop could replace it.
+
+## What's Next
+
+The room is drawn but nothing moves. In Unit 4, you'll read the keyboard with `IN A,($FE)` and move a marker around the screen — the first step toward a player character exploring the maze.

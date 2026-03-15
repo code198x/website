@@ -1,0 +1,177 @@
+---
+title: "Beeper Sound"
+description: "Toggle bit 4 of port $FE in a timed loop to make the speaker vibrate. A rising three-note tone plays when treasure is collected — the game's first sound."
+pubDate: 2026-02-06
+game: 1
+unit: 12
+tags: ["assembly", "z80", "beeper", "sound", "xor"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The 48K Spectrum has no sound chip. It has a beeper — a single speaker connected to one bit of an I/O port. Bit 4 of port `$FE`. Set it high and the speaker cone pushes out. Set it low and it pulls back. Toggle it fast enough and the speaker vibrates. Vibration is sound.
+
+That's it. One bit. Every sound the 48K Spectrum makes — every explosion, every melody, every loading screech — comes from toggling one bit at the right speed.
+
+## How the Beeper Works
+
+Port `$FE` controls several things. Bits 0–2 set the border colour (you've been using these since Unit 4). Bit 4 controls the speaker. The other bits have other purposes.
+
+To make a tone:
+1. Set bit 4 high — `LD A, $10` / `OUT ($FE), A`
+2. Wait a precise delay
+3. Set bit 4 low — `XOR $10` / `OUT ($FE), A`
+4. Wait the same delay
+5. Repeat
+
+The delay controls the pitch. Short delay = fast toggling = high pitch. Long delay = slow toggling = low pitch. The duration (number of repetitions) controls how long the note lasts.
+
+## XOR — Toggle a Bit
+
+`XOR $10` flips bit 4 without touching any other bits. XOR (exclusive OR) follows this rule: if the mask bit is 1, the result bit flips. If the mask bit is 0, the result bit stays.
+
+```
+  A:        00010000    (bit 4 is 1 — speaker on)
+  XOR $10:  00010000    (mask: flip bit 4)
+  Result:   00000000    (bit 4 is 0 — speaker off)
+
+  A:        00000000    (bit 4 is 0 — speaker off)
+  XOR $10:  00010000    (mask: flip bit 4)
+  Result:   00010000    (bit 4 is 1 — speaker on)
+```
+
+Two XORs bring A back to its original value. This is why XOR is used for toggling — it's its own inverse.
+
+Compare with `AND` (which clears bits) and `OR` (which sets bits). `XOR` is the toggling operator. You've now met all three bitwise operations:
+
+| Operation | Effect | Used for |
+|-----------|--------|----------|
+| `AND` | Clear bits to 0 | Extract fields (INK colour) |
+| `OR` | Set bits to 1 | Combine flags |
+| `XOR` | Flip bits | Toggle (speaker, animation) |
+
+## The Beep Subroutine
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-12/snippets/01-beep.asm" />
+
+The subroutine takes two parameters:
+- **HL** = duration — how many wave cycles to play
+- **E** = pitch — the DJNZ delay per half-cycle (lower = higher pitch)
+
+Each iteration toggles the speaker twice (on, off) with a delay in between. That's one complete wave cycle. `DEC HL` counts down the duration. When HL reaches zero, the tone stops.
+
+### Testing HL for Zero
+
+The Z80 has no single instruction to test whether HL is zero. `DEC HL` doesn't set flags (unlike `DEC A`). The idiom is:
+
+```z80
+            dec     hl
+            ld      a, h
+            or      l               ; Z set only if both H and L are 0
+```
+
+`OR L` combines H and L — if both are zero, the result is zero and Z is set. If either has any bits set, the result is non-zero. This three-instruction pattern appears whenever you need to test a 16-bit counter.
+
+### Why LD A, $10 After the Zero Test?
+
+The `OR L` instruction modifies A (it contains H OR L). But the loop needs A to hold `$10` for the next `OUT`. `LD A, $10` reloads it — and crucially, `LD` doesn't affect flags. The Z flag from `OR L` survives the reload, so the `JR NZ` check still works correctly.
+
+## A Rising Collect Sound
+
+Three notes, each higher than the last:
+
+```z80
+            ld      hl, 80              ; Duration
+            ld      e, 40               ; Low pitch
+            call    beep
+            ld      hl, 80
+            ld      e, 30               ; Medium pitch
+            call    beep
+            ld      hl, 80
+            ld      e, 20               ; High pitch
+            call    beep
+```
+
+The pitch values (40, 30, 20) are DJNZ delay counts. Lower delay means faster toggling and a higher note. The three calls play in sequence — a quick ascending chirp that says "got it."
+
+The sound plays inside `check_collect`, after the treasure counter is incremented. The game pauses briefly for the sound (the beeper is synchronous — the CPU does nothing else while generating the tone). For a short chirp this is barely noticeable.
+
+## The Complete Code
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-12/shadowkeep.asm" />
+
+![Shadowkeep Unit 12](/images/sinclair-zx-spectrum/game-01-shadowkeep/unit-12/screenshot.png)
+
+The screen looks the same as Unit 11 — the new feature is audio. Walk onto a bright yellow treasure cell and you'll hear a rising three-note chirp as the treasure is collected. The border may flash briefly during the sound (the `OUT ($FE)` also writes to the border bits).
+
+## Try This: Different Sounds
+
+Change the pitch and duration for different effects:
+
+```z80
+            ; Low thud (for hitting a wall)
+            ld      hl, 30
+            ld      e, 80               ; Low pitch, short
+            call    beep
+
+            ; Alarm (for touching a hazard)
+            ld      hl, 200
+            ld      e, 15               ; High pitch, long
+            call    beep
+```
+
+Experiment with values. Pitch below 10 is barely audible (too fast). Pitch above 100 sounds like a low rumble. Duration of 50–100 is a quick blip; 500+ is a sustained tone.
+
+## Try This: Simple Melody
+
+Play a sequence of notes with different pitches:
+
+```z80
+            ld      hl, 150
+            ld      e, 48               ; C-ish
+            call    beep
+            ld      hl, 150
+            ld      e, 36               ; E-ish
+            call    beep
+            ld      hl, 150
+            ld      e, 24               ; G-ish
+            call    beep
+```
+
+The pitch values don't correspond to exact musical notes (that requires precise frequency calculation), but relative values produce recognisable intervals. Commercial Spectrum games used lookup tables to map musical notes to exact delay values.
+
+## Try This: Border Flash
+
+The border changes colour during sound because `OUT ($FE)` writes both the speaker (bit 4) and border (bits 0–2). To keep the border black during sound, mask the border bits:
+
+```z80
+            ld      a, $10              ; Speaker on, border black (bits 0-2 = 0)
+```
+
+To make the border flash with the sound (a visual effect), set the border bits:
+
+```z80
+            ld      a, $14              ; Speaker on, border green (bits 0-2 = 4)
+```
+
+Many Spectrum games used coloured borders during loading and sound effects as a visual flourish.
+
+## If It Doesn't Work
+
+- **No sound?** Check that `OUT ($FE), A` is present and that A has bit 4 set (`$10`). Without the OUT, the speaker doesn't toggle.
+- **Constant tone that never stops?** Check the duration counter. `DEC HL` followed by `LD A, H` / `OR L` tests for zero. If the `JR NZ` condition is wrong, the loop runs forever.
+- **Sound is too quiet or too loud?** The Spectrum beeper has one volume. If you can't hear it, check your emulator's audio settings.
+- **Game freezes during sound?** The beeper is synchronous — the CPU generates the tone in a tight loop. Long durations (thousands of cycles) will pause the game noticeably. Keep collect sounds short (80–150 cycles per note).
+- **Border flashes during sound?** Expected behaviour. `OUT ($FE)` writes to both speaker and border. Set bits 0–2 to 0 in the speaker value to keep the border black.
+
+## What You've Learnt
+
+- **Beeper output** — bit 4 of port `$FE` controls the speaker. Toggle it in a timed loop to produce a tone. Delay = pitch, repetitions = duration.
+- **XOR $10** — toggle bit 4 without affecting other bits. XOR flips where the mask is 1, preserves where it's 0. Two XORs return to the original value.
+- **Testing HL for zero** — `DEC HL` doesn't set flags. Use `LD A, H` / `OR L` to test if both bytes are zero. A three-instruction idiom.
+- **LD doesn't affect flags** — `LD A, $10` after `OR L` preserves the Z flag. This lets you reload a register without losing a condition.
+- **Synchronous sound** — the CPU generates the tone directly. While the beeper is active, nothing else happens. Keep sounds short for responsive gameplay.
+
+## What's Next
+
+The room has no exit — there's nowhere to go after collecting the treasure. In Unit 13, you'll add an exit door marked by a specific attribute value. When the player stands on it, the room is complete. This is the first win condition — the goal that makes Shadowkeep a game.

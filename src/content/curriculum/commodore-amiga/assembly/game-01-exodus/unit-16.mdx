@@ -1,0 +1,110 @@
+---
+title: "Integration and Polish"
+description: "The Phase 1 finale: five creatures use hardware sprites 0-4, staggered across the terrain. The Copper list grows to patch five sprite pointers. The complete game loop runs from title to result and back."
+pubDate: 2026-02-06
+game: 1
+unit: 16
+tags: ["assembly", "68000", "sprites", "Copper", "integration", "game-loop"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Three creatures proved the mechanics. Five creatures prove the design. In this unit — the Phase 1 finale — we increase to five hardware sprites, stagger the spawn positions, and patch all five sprite pointers through the Copper list.
+
+![Exodus Unit 16](/images/commodore-amiga/game-01-exodus/unit-16/screenshot.png)
+
+The title screen appears first. Press fire, and five creatures begin their journey across the terrain. The score now reads "0/5" — there are more to save, and the terrain hasn't changed.
+
+## Five Hardware Sprites
+
+The Amiga's OCS chipset provides eight hardware sprites. We've been using three (SPR0-SPR2). Now we add SPR3 and SPR4:
+
+```asm
+SPR3PTH     equ $12c
+SPR3PTL     equ $12e
+SPR4PTH     equ $130
+SPR4PTL     equ $132
+```
+
+Each sprite needs its own data block and Copper list entries. The Copper patches all five pointers during initialisation:
+
+```asm
+            lea     sprite3_data,a0
+            move.l  a0,d0
+            swap    d0
+            lea     spr3pth_val,a1
+            move.w  d0,(a1)
+            swap    d0
+            lea     spr3ptl_val,a1
+            move.w  d0,(a1)
+```
+
+The pattern is identical for every sprite — load address, split into high/low words, write to the Copper list labels. Five sprites means five copies of this sequence.
+
+## Staggered Spawning
+
+Five creatures need different starting positions and step timers to avoid clumping:
+
+<CodeFromFile src="commodore-amiga/game-01-exodus/unit-16/snippets/01-five-creatures.asm" />
+
+Creatures 0 and 2 start on higher terrain (the platform and right ground). Creatures 1, 3, and 4 are spread across different x positions. The `CR_STEP` values are staggered so footstep sounds don't all trigger on the same frame.
+
+The same initialisation appears in both the startup code and `start_game` — when the game restarts, all five creatures return to their starting positions.
+
+## Five Sprite Updates
+
+The main loop updates sprite positions for all five creatures after the processing loop:
+
+<CodeFromFile src="commodore-amiga/game-01-exodus/unit-16/snippets/02-five-sprites.asm" />
+
+Each creature's data is paired with its sprite data block. `write_sprite_pos` handles the position encoding — or hides the sprite if the creature is saved or lost.
+
+## The Copper List
+
+The Copper list now includes entries for all five sprites:
+
+```asm
+            dc.w    SPR0PTH
+spr0pth_val: dc.w   $0000
+            dc.w    SPR0PTL
+spr0ptl_val: dc.w   $0000
+            ; ...same for SPR1, SPR2, SPR3, SPR4...
+```
+
+All five pointer pairs sit in the Copper list before the colour registers. The Copper loads them every frame, so the DMA hardware always knows where to fetch sprite data from.
+
+## What Phase 1 Built
+
+Sixteen units have constructed a complete game from nothing:
+
+- **Copper list** — defines the entire display: bitplane pointers, colours, screen split, sprite pointers, gradient sky
+- **Bitplane graphics** — terrain drawn directly in memory, pixel collision for gameplay
+- **Hardware sprites** — five creatures with position encoding and visibility control
+- **Creature AI** — walking, falling, direction reversal, exit detection, lost detection
+- **Audio** — Paula footstep samples with timing control
+- **Score display** — Copper screen split with bitmap font rendering
+- **Game loop** — title, play, and result states with fire button transitions
+
+The program boots from floppy, takes over the hardware, and runs a complete game loop. No operating system, no libraries, no abstractions — just 68000 instructions talking directly to custom chips.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/game-01-exodus/unit-16/exodus.asm" />
+
+## If It Doesn't Work
+
+- **Only 3 creatures visible?** Check that sprite 3 and 4 pointers are patched in the init section, and that `spr3pth_val`/`spr4pth_val` labels exist in the Copper list.
+- **Creatures 3-4 don't move?** Make sure they're initialised in both the startup code and `start_game`. Check that `NUM_CREATURES` is 5.
+- **Score shows wrong total?** The total digit draws `NUM_CREATURES`. If it shows 3 instead of 5, the constant wasn't updated.
+- **Sprite glitches?** Each sprite needs its own data block (`sprite3_data`, `sprite4_data`). Sharing data blocks between sprites causes display corruption.
+
+## What You've Learnt
+
+- **Multiple hardware sprites** — the Amiga supports 8 sprites via DMA. Each needs its own data block, Copper pointer entries, and position updates.
+- **Staggered initialisation** — spreading creatures across different positions and step timers prevents clustering and creates natural movement patterns.
+- **System scaling** — the data table, processing loop, and sprite update pattern scale linearly. Adding creatures means adding data, not changing logic.
+- **Integration** — combining all previous systems (Copper, bitplanes, sprites, audio, state machine) into a cohesive game. Each piece was built incrementally and fits together cleanly.
+
+## What's Next
+
+Phase 1 is complete. In Phase 2, the Blitter arrives — Amiga's hardware-accelerated drawing engine. Creatures gain abilities, terrain becomes interactive, and the game transforms from a walking demo into a genuine puzzle.

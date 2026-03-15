@@ -1,0 +1,128 @@
+---
+title: "Move Validation"
+description: "Error feedback when you try to claim an occupied cell. The game pushes back."
+pubDate: 2026-01-12
+game: 5
+unit: 5
+tags: ["assembly", "z80", "sound", "feedback"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+Try claiming a cell that's already taken. In the previous unit, nothing happened. That's confusing - did the game register your keypress? Did something break?
+
+This unit adds clear feedback: when you try to claim an occupied cell, you hear an error buzz and the border flashes red. The turn doesn't change. You know exactly what went wrong.
+
+## Run It
+
+```bash
+pasmonext --sna inkwar.asm inkwar.sna
+```
+
+![Unit 5 Screenshot](/images/sinclair-zx-spectrum/game-05-ink-war/unit-05/screenshot.png)
+
+Claim a few cells. Then try to claim one that's already taken. You'll hear a harsh buzz and see the border flash red. Your turn doesn't switch - you get another chance.
+
+## Validation Logic
+
+The updated `try_claim` routine now branches on the cell state:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-05-ink-war/unit-05/snippets/01-try-claim.asm" />
+
+The key change is replacing `ret nz` with a jump to error handling. If the cell is empty (state = 0), we proceed with the claim. If it's occupied (state ≠ 0), we provide feedback and return without changing turns.
+
+## The Error Sound
+
+A harsh, low-frequency buzz signals "that's wrong":
+
+<CodeFromFile src="sinclair-zx-spectrum/game-05-ink-war/unit-05/snippets/02-sound-error.asm" />
+
+Compared to the pleasant rising tone for valid claims, this sound is deliberately unpleasant:
+- **Longer delay** (80 cycles) creates a lower pitch
+- **Shorter duration** (30 loops) keeps it brief
+- The result is a quick "BZZT" that says "nope"
+
+## The Border Flash
+
+Visual feedback reinforces the audio:
+
+<CodeFromFile src="sinclair-zx-spectrum/game-05-ink-war/unit-05/snippets/03-flash-border.asm" />
+
+The border flashes red three times, with black gaps between flashes. Then `update_border` restores the correct player colour. The flashing is fast enough to feel urgent but not so fast it's imperceptible.
+
+## Why Both Audio and Visual?
+
+Good feedback uses multiple channels:
+- **Audio** grabs attention even when you're not looking at the screen
+- **Visual** confirms what happened and draws your eye to the relevant area
+- Together, they create unmistakable feedback
+
+In 1980s arcades, this pattern was everywhere. Error sounds and screen flashes told players "try again" without breaking the flow.
+
+## Delay Timing
+
+The delays use simple countdown loops:
+
+```asm
+            ld      bc, 8000
+.delay:
+            dec     bc
+            ld      a, b
+            or      c
+            jr      nz, .delay
+```
+
+At 3.5 MHz, this gives roughly 8000 × 30 cycles ≈ 70ms per flash. We check `b or c` because DEC BC doesn't set the zero flag - we need to explicitly test if BC has reached zero.
+
+## The Complete Code
+
+<CodeFromFile src="sinclair-zx-spectrum/game-05-ink-war/unit-05/inkwar.asm" />
+
+## Try This: Different Error Sound
+
+```asm
+; Higher pitch, longer duration (more annoying!)
+sound_error:
+            ld      b, 50               ; Longer
+.se_loop:
+            ; ... same inner loop ...
+            ld      c, 30               ; Shorter delay = higher pitch
+```
+
+## Try This: Screen Flash Instead
+
+Instead of flashing the border, flash the whole screen by temporarily setting all attributes to red:
+
+```asm
+; Warning: This is more disruptive!
+flash_screen_error:
+            ld      hl, $5800
+            ld      de, $5801
+            ld      bc, 767
+            ld      (hl), %01010000     ; Red paper
+            ldir
+            ; ... delay ...
+            ; Then redraw everything
+```
+
+## What You've Learnt
+
+- **Input validation** - Check before acting, provide feedback for invalid input
+- **Multi-channel feedback** - Combine audio and visual cues for clarity
+- **Error sounds** - Low frequency + short duration = unpleasant buzz
+- **Border control** - OUT ($FE), A with colour in bits 0-2
+- **Delay loops** - BC countdown for timing (DEC BC doesn't set flags, need OR test)
+
+## What's Next
+
+In Unit 6, we'll detect when the board is full and declare a winner. The game gets a proper ending.
+
+## What Changed
+
+<CodeDiff
+  title="Unit 4 → Unit 5"
+  before="sinclair-zx-spectrum/game-05-ink-war/unit-04/inkwar.asm"
+  after="sinclair-zx-spectrum/game-05-ink-war/unit-05/inkwar.asm"
+  context={3}
+/>

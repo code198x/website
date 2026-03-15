@@ -1,0 +1,187 @@
+---
+title: "Moving the Frog"
+description: "Read the joystick. Move the sprite. Interactivity in Unit 2."
+pubDate: 2026-01-12
+game: 2
+unit: 2
+tags: ["assembly", "68000", "input", "sprites"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+
+## What You're Building
+
+Joystick control. The frog responds to your input.
+
+By the end of this unit:
+- Push joystick up — frog moves up
+- Push joystick down — frog moves down
+- Left and right work too
+- Frog stays within screen bounds
+
+![Unit 2 Screenshot](/images/commodore-amiga/game-01-signal/unit-02/screenshot.png)
+
+## From Static to Interactive
+
+In Unit 1, the frog just sat there. The custom chipset drew it automatically, but it never moved. That's not a game—that's a painting.
+
+A game needs input. The player pushes, the game responds. That feedback loop is everything.
+
+## The Joystick Hardware
+
+The Amiga reads joystick data through the **JOY1DAT** register at `$DFF00C`. This register contains the position of joystick port 2 (the primary game port).
+
+But the data isn't straightforward. It's not four bits saying "up, down, left, right". Instead, it uses a quirky encoding inherited from the Atari design:
+
+```
+JOY1DAT register ($DFF00C):
+  Bit 9 = Left XOR'd with vertical
+  Bit 8 = Up XOR'd with vertical
+  Bit 1 = Right XOR'd with vertical
+  Bit 0 = Down XOR'd with vertical
+```
+
+The vertical axis affects the horizontal bits through XOR. To decode it properly, we XOR the register with itself shifted right by one bit:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-02/snippets/01-joystick-reading.asm" />
+
+After decoding, the bits become meaningful:
+- **Bit 8** = Up pressed
+- **Bit 0** = Down pressed
+- **Bit 9** = Left pressed
+- **Bit 1** = Right pressed
+
+## The Main Loop
+
+Unit 1's main loop just waited for vertical blank and checked the mouse button. Now it does real work:
+
+```asm
+mainloop:
+            bsr.s   wait_vblank         ; Wait for vertical blank
+            bsr.s   read_joystick       ; Read joystick into D0
+            bsr.s   move_frog           ; Move frog based on input
+            bsr     update_sprite       ; Update sprite control words
+            bra.s   mainloop
+```
+
+Every frame:
+1. **Wait for VBlank** — synchronises with display refresh (50 times per second on PAL)
+2. **Read joystick** — get current direction
+3. **Move frog** — update position if direction pressed
+4. **Update sprite** — write new position to sprite control words
+
+The hardware does the rest. We just change numbers; the chipset draws.
+
+## Moving the Frog
+
+The `move_frog` routine checks each direction and adjusts the frog's position:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-02/snippets/02-move-frog.asm" />
+
+Each direction:
+1. Test the bit for that direction
+2. Load current position
+3. Add or subtract MOVE_SPEED
+4. Check against boundary
+5. Store new position (if within bounds)
+
+## Boundaries
+
+Without boundaries, the frog would fly off screen and disappear into memory. We define limits:
+
+```asm
+MIN_X           equ 48          ; Left edge
+MAX_X           equ 280         ; Right edge
+MIN_Y           equ 44          ; Top of play area
+MAX_Y           equ 196         ; Bottom of play area
+```
+
+These keep the frog within the visible playfield. The numbers match where our Copper list draws the game zones.
+
+## Updating the Sprite
+
+When `frog_x` or `frog_y` changes, we must update the sprite's control words:
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-02/snippets/03-update-sprite.asm" />
+
+The sprite's first two words control its position:
+- **Word 1**: Vertical start (high byte) and horizontal start divided by 2 (low byte)
+- **Word 2**: Vertical stop (high byte) and control bits (low byte)
+
+We pack these values every frame. The chipset reads them during display and draws the sprite at the new position.
+
+## Run It
+
+Build and create the disk:
+
+```bash
+vasmm68k_mot -Fhunkexe -kick1hunks -o signal signal.asm
+
+xdftool signal.adf create
+xdftool signal.adf format "Signal"
+xdftool signal.adf makedir s
+xdftool signal.adf boot install
+echo "signal" > startup-sequence
+xdftool signal.adf write startup-sequence s/startup-sequence
+rm startup-sequence
+xdftool signal.adf write signal
+```
+
+Run in FS-UAE with a joystick (or keyboard arrows mapped to joystick). Push any direction. The frog moves.
+
+## Experiment: Change the Feel
+
+Open `signal.asm` and find the tweakable values:
+
+```asm
+MOVE_SPEED      equ 2           ; Pixels per frame
+```
+
+Try these:
+- `MOVE_SPEED equ 1` — Slow, precise movement
+- `MOVE_SPEED equ 4` — Fast, twitchy movement
+- `MOVE_SPEED equ 8` — Too fast! Hard to control
+
+The boundaries are also tweakable:
+- Make `MIN_Y` larger to prevent reaching the home zone
+- Make `MAX_Y` smaller to shrink the play area
+
+## What We Added
+
+Comparing Unit 2 to Unit 1:
+
+| Feature | Unit 1 | Unit 2 |
+|---------|--------|--------|
+| Joystick reading | No | Yes |
+| Sprite movement | No | Yes |
+| Boundary checking | No | Yes |
+| Variables (frog_x, frog_y) | No | Yes |
+| Code size | 326 bytes | 506 bytes |
+
+The extra 180 bytes give us interactivity.
+
+## Key Takeaways
+
+- **JOY1DAT** (`$DFF00C`) contains joystick port 2 data
+- The joystick encoding requires XOR decoding
+- Update `frog_x`/`frog_y` variables, then write to sprite control words
+- Boundary checking prevents the sprite from leaving the play area
+- 50 updates per second (PAL VBlank rate) gives smooth movement
+
+## What's Next
+
+In Unit 3, we'll step back and understand everything we've built. How does the Copper really work? What are those sprite control word bits doing? A theory unit to cement the concepts.
+
+## The Code
+
+<CodeFromFile src="commodore-amiga/game-01-signal/unit-02/signal.asm" />
+
+## What Changed
+
+<CodeDiff
+  title="Unit 1 → Unit 2"
+  before="commodore-amiga/game-01-signal/unit-01/signal.asm"
+  after="commodore-amiga/game-01-signal/unit-02/signal.asm"
+  context={3}
+/>

@@ -1,0 +1,72 @@
+---
+title: "Scoring Points"
+description: "Screen RAM displays a two-digit score in the top-left corner, updated with BCD arithmetic and nybble extraction every time a bullet hits the enemy."
+pubDate: 2026-02-06
+game: 1
+unit: 8
+tags: ["assembly", "6510", "screen RAM", "colour RAM", "BCD", "score"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The enemy explodes — flash, noise, respawn. But nothing records the hit. Screen RAM changes that. Two bytes at `$0400` become a score counter, updated every time a bullet connects.
+
+## Screen RAM
+
+The VIC-II reads character data from screen RAM starting at `$0400`. It's a 40×25 grid — 1,000 bytes, one per character cell. Write a value and the character appears immediately.
+
+Screen codes for digits: `$30` = '0', `$31` = '1', ... `$39` = '9'. To display a digit, add `$30` to its value and write to screen RAM.
+
+## Colour RAM
+
+Each character cell also has a colour byte at `$D800`+. Same layout as screen RAM — `$D800` maps to `$0400`, `$D801` to `$0401`, and so on. Write a colour value and the character changes colour immediately.
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-08/snippets/01-screen-ram.asm" />
+
+The init code writes two '0' characters and colours them white. The score sits at row 0, columns 0–1 — top-left corner.
+
+## Decimal Mode
+
+The 6502 has a decimal mode. `SED` activates it, `CLD` turns it off. In decimal mode, `ADC` carries at 10 instead of 16. The byte `$09` plus `$01` gives `$10`, not `$0A`. This is BCD — binary-coded decimal.
+
+Each nybble (4 bits) holds one decimal digit. The byte `$42` means forty-two: high nybble is 4, low nybble is 2. No conversion needed between the stored value and the display — the digits are right there in the byte.
+
+Important: always `CLD` after BCD arithmetic. Forgetting leaves decimal mode active, and every `ADC`/`SBC` in the game will behave differently.
+
+## Updating the Display
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-08/snippets/02-score-increment.asm" />
+
+Three steps: increment the score in decimal mode, extract the tens digit with four `LSR` shifts, extract the ones digit with `AND $0F`. Add `$30` to each and write to screen RAM.
+
+`LSR` shifts the accumulator right by one bit. Four shifts move the high nybble down to the low nybble position. `AND #$0F` masks off the high nybble, leaving only the low four bits.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-08/starfield.asm" />
+
+## If It Doesn't Work
+
+- **Score doesn't appear?** Check you're writing to `$0400`/`$0401` in the init section. The screen must be cleared first (it is — the clear loop runs before the score write).
+- **Score shows wrong characters?** Screen code for '0' is `$30`, not `$00`. If you see '@' symbols, you forgot to add `$30`.
+- **Score jumps by strange amounts?** Make sure `SED` is before the `ADC` and `CLD` is after. Without decimal mode, `$09` + `$01` = `$0A`, which displays as a letter.
+- **Score doesn't update on hit?** The increment code must be inside the `hit_enemy` block, after the flash/sound setup.
+
+## Try This: Different Score Position
+
+Move the score to the top-right corner. Row 0, columns 38–39: `$0400` + 38 = `$0426` and `$0400` + 39 = `$0427`. Change the `STA` addresses in both init and the display update.
+
+## Try This: Score Cap
+
+Stop the score at 99. Before the BCD increment, check if score equals `$99`. If it does, skip the `ADC`. One `CMP` and one `BEQ`.
+
+## What You've Learnt
+
+- **Screen RAM at `$0400`** — direct character output to the 40×25 grid.
+- **Colour RAM at `$D800`** — per-character colour, same layout as screen RAM.
+- **BCD / decimal mode** — `SED` makes `ADC` count in tens. Always `CLD` after.
+- **Nybble extraction** — `LSR` ×4 for the high nybble, `AND #$0F` for the low.
+
+## What's Next
+
+One enemy at a time feels like target practice. In Unit 9, indexed addressing lets you track a whole fleet — three enemies descending at once.

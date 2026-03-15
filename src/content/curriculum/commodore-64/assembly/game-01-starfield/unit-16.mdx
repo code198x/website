@@ -1,0 +1,82 @@
+---
+title: "Screen Edges"
+description: "The ship can only reach half the screen. The $D010 register adds a ninth bit to each sprite's X position, EOR toggles it at the boundary, and clamping keeps everything visible."
+pubDate: 2026-02-06
+game: 1
+unit: 16
+tags: ["assembly", "6510", "$D010", "EOR", "boundary clamping", "9-bit position", "sprites"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Move the ship to the right edge of the screen. It stops halfway — the X position register is 8 bits, giving a range of 0 to 255, but the C64 screen is 320 pixels wide. Sixty-five pixels of space are unreachable. This unit fixes that with a ninth bit, a new instruction for toggling it, and boundary checks that keep sprites visible.
+
+## The Ninth Bit
+
+The VIC-II stores each sprite's X position in a single byte: `$D000` for sprite 0, `$D002` for sprite 1, and so on. Eight bits give a range of 0–255, but the visible screen extends to around X=344. The missing piece is `$D010` — a register where each bit holds the ninth bit of the corresponding sprite's X position.
+
+Bit 0 of `$D010` is the high bit for sprite 0. When it's clear, sprite 0's X position is the value in `$D000` (0–255). When it's set, the position is `$D000` + 256. Together, the two storage locations give a range of 0–511 — more than enough for the full screen width.
+
+## Toggling Bits with EOR
+
+When the ship crosses from X=255 to X=256, the low byte wraps from `$FF` to `$00` and the MSB needs to flip from 0 to 1. When it crosses back, the MSB flips from 1 to 0. `EOR` handles both directions with one instruction.
+
+`EOR #$01` flips bit 0 without touching the other seven bits. If bit 0 was 0, it becomes 1. If it was 1, it becomes 0. The toggle works regardless of the current state — no need to check first.
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-16/snippets/01-x-bit-8.asm" />
+
+After each `INC $D000`, `BNE` checks whether the result wrapped to zero. If it did, the low byte crossed from `$FF` to `$00`, and `EOR #$01` toggles the MSB. Left movement uses the same logic in reverse — check before each `DEC` whether the low byte is `$00`, toggle the MSB if so, then decrement.
+
+## Staying on Screen
+
+Without boundary checks, the ship wraps around the edges. Moving left past X=0 jumps to X=511. Moving down past the bottom reappears at the top. Boundary clamping prevents this by checking the position before each move.
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-16/snippets/02-boundary-clamp.asm" />
+
+Y clamping is a single comparison — `CMP` against the boundary, branch if already there. X clamping needs the MSB: when bit 0 of `$D010` is set, the ship is past X=255 and always safe to move left; when it's clear, `CMP` against the left boundary works normally. The right boundary reverses the logic.
+
+The collision checks also gain MSB awareness. Enemies always spawn below X=256, so when the ship or bullet has its MSB set, collisions are impossible. A quick check of `$D010` skips the distance calculations entirely.
+
+## Clean Restarts
+
+Two places reset the game: `init_game` (starting a new game) and `init_title` (returning to the title screen). Both now clear `$D010` — no stale MSB values carrying across. They also silence all three SID voices by writing zero to each control register. Any sound left playing from the previous session cuts off cleanly.
+
+In `life_lost`, the ship resets to X=172 — well under 256. The code clears bit 0 of `$D010` so the MSB matches the new position.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-16/starfield.asm" />
+
+## If It Doesn't Work
+
+- **Ship still stops at X=255?** Check `$D010` is being toggled with `EOR #$01` when the low byte wraps. Both `INC` and `DEC` paths need it.
+- **Ship wraps around the screen?** Boundary checks must run before the movement code. Verify `CMP` values: 52 for top, 233 for bottom, 26 for left, 63 for right (when MSB is set).
+- **Ship teleports to the right on death?** `life_lost` must clear bit 0 of `$D010` with `AND #%11111110`. The reset position X=172 needs MSB=0.
+- **False collisions when ship is on the right?** The collision loop must check `$D010 AND #$01` and skip when set. Without this, the low byte alone matches nearby enemy positions.
+- **Sound lingers between games?** `init_game` and `init_title` must write `$00` to `$D404`, `$D40B`, and `$D412` to silence all three SID voices.
+- **Bullet hits enemies from the wrong side?** When the bullet spawns, copy the ship's MSB (bit 0) to the bullet's MSB (bit 1) in `$D010`. Check bit 1 before running the collision loop.
+
+## Try This: Wider Enemy Range
+
+Enemies currently spawn between X=48 and X=175 — always in the left half. Increase the range to use the full screen width by setting their MSBs when X > 255. This means the collision code needs to compare MSBs for both ship-enemy and bullet-enemy pairs.
+
+## Try This: Screen Wrap Mode
+
+Remove the boundary clamping and let the ship wrap from the right edge to the left. When the MSB toggles past the right boundary, reset it and the ship appears on the other side. Asteroids-style movement in a vertical shooter.
+
+## What You've Learnt
+
+- **`$D010` for 9-bit positions** — each bit extends one sprite's X range past 255.
+- **`EOR` for bit toggling** — flipping a single bit without checking its current state.
+- **Boundary clamping** — `CMP` and branch to keep values in a valid range.
+- **MSB-aware collision** — skipping distance checks when positions can't overlap.
+
+## Phase 1 Complete
+
+Sixteen units. The game started as a black screen with a single sprite. It now has a title screen, a ship that moves across the full screen width, a bullet, three enemies, a score, lives, a starfield, sound effects, and a state machine cycling between title, playing, and game over.
+
+Along the way: hardware registers, the accumulator, branches, loops, indexed addressing, subroutines, indirect pointers, BCD arithmetic, and the SID sound chip. The foundation is solid.
+
+## What's Next
+
+Phase 2 replaces the simple enemy arrays with structured data tables — type, position, speed, and status packed together. Different enemy types with distinct behaviours. The fleet is coming.

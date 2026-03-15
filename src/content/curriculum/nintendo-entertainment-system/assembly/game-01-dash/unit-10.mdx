@@ -1,0 +1,162 @@
+---
+title: "Score Display"
+description: "Collecting a coin increments a score variable. The NMI handler writes the digit to the nametable every frame — the first VBlank update."
+pubDate: 2026-02-06
+game: 1
+unit: 10
+tags: ["assembly", "6502", "nametable", "vblank", "score", "nmi", "chr-rom"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The coins vanish on contact — but nothing records it. There's no feedback, no progress. This unit adds a score. Collect a coin and a digit changes on screen. The nametable becomes a HUD.
+
+The score introduces two new techniques: **storing game state in zero page** (a score variable that persists across frames) and **updating the nametable during VBlank** (the NMI handler writes the digit every frame).
+
+## The Score Variable
+
+One new byte in zero page:
+
+```ca65
+score:      .res 1             ; Current score (0-255)
+```
+
+It starts at zero. When a coin is collected, the `check_collect` subroutine increments it:
+
+```ca65
+    ; Collected! Hide the sprite and add to score
+    lda #$EF
+    sta oam_buffer, x
+    inc score
+```
+
+One instruction — `INC score` — adds 1 to the byte at that address. The score ticks up every time a coin disappears. With three coins, the maximum score is 3.
+
+## Digit Tiles
+
+The score needs to appear on screen. Background tiles are the only way to draw fixed text on the NES — sprites flicker and have per-scanline limits. A score display belongs on the nametable.
+
+Each digit 0–9 gets its own tile in CHR-ROM. The digit tiles start at tile index 5 (tiles 0–4 are already used for empty, player, obstacle, ground, and coin):
+
+```ca65
+DIGIT_ZERO     = 5             ; First digit tile (0-9 are tiles 5-14)
+```
+
+Each tile has both bit planes set identically. When both planes are 1, the colour index is 3. On background palette 0, colour 3 is `$20` — white. The digits appear as white pixels on the black sky.
+
+Here's digit "0" — a 5-pixel-wide oval:
+
+```ca65
+; Tile 5: Digit 0
+.byte $70,$88,$88,$88,$88,$88,$70,$00  ; Plane 0
+.byte $70,$88,$88,$88,$88,$88,$70,$00  ; Plane 1
+```
+
+`$70` is `%01110000` — three pixels across the top. `$88` is `%10001000` — left and right edges. The same bytes in both planes make every lit pixel colour 3. The pattern repeats for all ten digits, each 16 bytes (8 per plane).
+
+## VBlank Nametable Updates
+
+During gameplay, the PPU is busy drawing the screen. You can't write to VRAM while the PPU is rendering — the writes would corrupt the display. The safe window is **VBlank**: the brief pause between frames when the PPU has finished one frame and hasn't started the next.
+
+The NMI fires at the start of every VBlank. The NMI handler already runs OAM DMA. Now it also writes the score digit to the nametable:
+
+<CodeFromFile src="nintendo-entertainment-system/game-01-dash/unit-10/snippets/01-nmi-score.asm" />
+
+The sequence: `bit PPUSTATUS` resets the address latch. Two writes to `PPUADDR` set the target — `$2022` is row 1, column 2 of the nametable. One write to `PPUDATA` places the tile. The score value plus `DIGIT_ZERO` converts the number to a tile index: score 0 becomes tile 5 ("0"), score 3 becomes tile 8 ("3").
+
+### PPUSCROLL Reset
+
+Any write to `PPUADDR` corrupts the scroll position. The PPU uses the same internal register for both the VRAM address and scroll position. After the nametable update, `PPUSCROLL` must be reset to 0,0 — otherwise the screen shifts to wherever `PPUADDR` was pointing.
+
+```ca65
+    ; Reset scroll (required after PPUADDR writes)
+    lda #0
+    sta PPUSCROLL
+    sta PPUSCROLL
+```
+
+Two writes: first sets horizontal scroll, second sets vertical scroll. Both zero — no scrolling. This is the pattern you'll use every time the NMI handler writes to the nametable.
+
+## Initial Score Display
+
+During setup (before rendering is enabled), the nametable position is written with the initial "0":
+
+```ca65
+    ; Write initial score display
+    bit PPUSTATUS
+    lda #$20
+    sta PPUADDR
+    lda #$22
+    sta PPUADDR             ; PPU address $2022 (row 1, col 2)
+    lda #DIGIT_ZERO         ; Tile for "0"
+    sta PPUDATA
+```
+
+This ensures the score is visible from the first frame. Without it, the tile at that position would be 0 (empty) until the first NMI fires.
+
+## The Complete Code
+
+<CodeFromFile src="nintendo-entertainment-system/game-01-dash/unit-10/dash.asm" />
+
+![Dash Unit 10](/images/nintendo-entertainment-system/game-01-dash/unit-10/screenshot.png)
+
+A white "0" appears near the top-left corner of the screen. The level is the same — ground, platform, wall, three coins, the obstacle. Collect a coin and the digit changes: 1, 2, 3. The nametable now serves as a HUD.
+
+## Try This: Two-Digit Score
+
+Display the score as two digits. Divide by 10 to get the tens digit, use the remainder as the ones digit. The 6502 has no division instruction, so use repeated subtraction:
+
+```ca65
+    lda score
+    ldx #0
+@div10:
+    cmp #10
+    bcc @div_done
+    sec
+    sbc #10
+    inx
+    jmp @div10
+@div_done:
+    ; X = tens digit, A = ones digit
+```
+
+Write both digits to the nametable: the tens at `$2022`, the ones at `$2023`. Two `PPUDATA` writes in sequence — the PPU auto-increments the address after each write.
+
+## Try This: High Score
+
+Add a `high_score` variable. After each collection, compare `score` with `high_score`:
+
+```ca65
+    lda score
+    cmp high_score
+    bcc @not_high
+    sta high_score
+@not_high:
+```
+
+Display the high score at a different nametable position (e.g. `$203C` — row 1, column 28, right side). The high score persists until the console is powered off.
+
+## Try This: Score at Collection Point
+
+Instead of a fixed HUD position, briefly display the score digit at the coin's location using a sprite. Set an OAM entry's tile to the digit tile and position it where the coin was. After 30 frames, hide it. This creates a floating number effect.
+
+## If It Doesn't Work
+
+- **No digit appears?** Check that the digit tiles exist in CHR-ROM at tiles 5–14. Both planes must be set — if only one plane has data, the colour is 1 or 2 (dark grey or light grey), hard to see against black.
+- **Score doesn't change?** Make sure `inc score` is inside `check_collect`, after the line that hides the sprite. If it's outside the subroutine, it runs every frame regardless of collection.
+- **Screen jumps or shakes?** The `PPUSCROLL` reset is missing or in the wrong place. It must come after all `PPUADDR`/`PPUDATA` writes in the NMI handler, before the handler returns.
+- **Digit is in the wrong position?** `$2022` is row 1, column 2. Each row is 32 tiles ($20 bytes). Row 1 starts at `$2020`. Column 2 is offset `$02`. To move the digit, adjust the low byte of the PPUADDR write.
+- **Digit shows the wrong character?** The tile index must be `score + DIGIT_ZERO`. If `DIGIT_ZERO` is wrong (not matching where the digit tiles actually start in CHR-ROM), the display shows the wrong tile.
+- **Score keeps going up?** The `check_collect` subroutine checks for `$EF` (already collected) before doing the overlap test. If that check is missing, the subroutine collects the same coin every frame.
+
+## What You've Learnt
+
+- **VBlank nametable updates** — the NMI handler is the safe window for writing to VRAM. `PPUADDR` sets the position, `PPUDATA` writes the tile.
+- **PPUSCROLL reset** — any `PPUADDR` write corrupts the scroll. Always reset `PPUSCROLL` after nametable updates in the NMI handler.
+- **Score tracking** — a zero-page variable incremented by `INC`. Simple, fast, and persistent across frames.
+- **Digit tiles** — both CHR-ROM bit planes set identically produce colour index 3. Ten tiles (0–9) starting at a known offset let you convert numbers to tile indices with a single `ADC`.
+- **HUD on the nametable** — background tiles are the right tool for fixed UI elements. Sprites are for moving objects; tiles are for the interface.
+
+## What's Next
+
+The score changes silently. In Unit 11, collecting a coin plays a sound — a short note on the APU triangle channel. The game starts to feel responsive.

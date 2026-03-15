@@ -1,0 +1,81 @@
+---
+title: "Game Over"
+description: "Screen codes write GAME OVER to the display, fire button restarts via an init_game subroutine that resets all state cleanly."
+pubDate: 2026-02-06
+game: 1
+unit: 11
+tags: ["assembly", "6510", "screen codes", "game state", "subroutines", "restart"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The ship turns red and the game freezes. But there's no message and no way to try again. This unit adds "GAME OVER" text to the screen and lets the player restart by pressing fire.
+
+## Screen Codes
+
+The VIC-II reads character data from screen RAM at `$0400`. Each byte is a screen code — a number that maps to a character in the ROM character set. Screen codes are not the same as PETSCII (the C64's text encoding). The mapping for letters: A=1, B=2, C=3, ... Z=26. Digits stay at `$30`–`$39`. Space is `$20`.
+
+To display "GAME OVER":
+- G = `$07`, A = `$01`, M = `$0D`, E = `$05`
+- Space = `$20`
+- O = `$0F`, V = `$16`, E = `$05`, R = `$12`
+
+## Positioning Text on Screen
+
+Screen RAM is a 40×25 grid. Row 0 starts at `$0400`, row 1 at `$0400` + 40 = `$0428`, and so on. The formula: `$0400` + (row × 40) + column.
+
+"GAME OVER" is 9 characters. Centred on a 40-column screen: column 16 (since (40 − 9) ÷ 2 ≈ 15.5). Row 12 puts it vertically centred. That gives `$0400` + (12 × 40) + 16 = `$05F0`.
+
+Colour RAM mirrors the layout at `$D800`. The colour for position `$05F0` is at `$D9F0`. Write `$01` (white) to make the text visible against the black background.
+
+## The Game Over Display
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-11/snippets/01-game-over-text.asm" />
+
+Nine `LDA`/`STA` pairs write the characters, then nine more set the colours. It's direct and clear. A loop with a data table would be shorter, but for nine characters the explicit writes are easier to follow — and every character's screen code is visible in the source.
+
+## Press Fire to Restart
+
+The game loop already checks `game_state` at the top. In Unit 10, when `game_state` was 1, the loop just jumped back — frozen. Now it does something: poll the fire button. When pressed, clear the screen and reinitialise.
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-11/snippets/02-restart.asm" />
+
+`clear_screen` fills screen RAM with spaces, wiping the "GAME OVER" text and the old score display. `init_game` resets everything — ship position, enemy positions, score, game state. Then the loop continues from the top with `game_state` back at 0.
+
+## Extracting Initialisation
+
+The init code from Unit 10 was inline — it ran once at startup and couldn't be reused. Now it's a subroutine: `init_game`. The boot sequence calls `JSR clear_screen` then `JSR init_game`. The restart path calls the same two subroutines. Same code, two contexts.
+
+Hardware setup that never changes (sprite data pointers, SID voice configuration, score colour) stays outside `init_game` in the one-time boot section. Only state that resets between games belongs in the subroutine: ship position, enemy positions, score, bullet state, and `game_state` itself.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/game-01-starfield/unit-11/starfield.asm" />
+
+## If It Doesn't Work
+
+- **No text appears?** Check the screen code values — G is `$07`, not `$47`. Screen codes differ from PETSCII. Also check colour RAM writes at `$D9F0`+.
+- **Text in the wrong position?** Row 12, column 16 = offset 496 = `$01F0`. The address is `$05F0`, not `$04F0`.
+- **Fire doesn't restart?** The game over state must poll `$DC00` bit 4. Check the `AND #%00010000` and `BNE` back to `game_loop`.
+- **Score persists after restart?** `init_game` must write `$30` to both `$0400` and `$0401`, and set `score` to 0.
+- **Enemies don't reset?** `init_game` must call `spawn_enemy` for all three enemies with staggered Y values.
+- **"GAME OVER" still visible after restart?** `clear_screen` must run before `init_game`. The screen clear wipes the text; `init_game` then writes the fresh "00" score.
+
+## Try This: Coloured Text
+
+Write different colour values for each letter. Red for "GAME", white for the space, green for "OVER". Nine colour bytes — nine chances to experiment.
+
+## Try This: Flash the Text
+
+Toggle the colour between white and another colour every 8 frames. Read a frame counter, `AND #$08`, and branch to set either colour. The text blinks, demanding attention.
+
+## What You've Learnt
+
+- **Screen codes** — the VIC-II's character mapping (A=1, B=2, not the same as PETSCII).
+- **Calculated screen positions** — row × 40 + column + `$0400` for any cell on the 40×25 grid.
+- **Subroutine extraction** — `init_game` and `clear_screen` called from both boot and restart.
+- **Game state with restart** — polling fire during game over, resetting all state cleanly.
+
+## What's Next
+
+One death ends the game. In Unit 12, the player gets three lives — each death costs one, and game over waits until the last life is spent.
