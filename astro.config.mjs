@@ -8,13 +8,13 @@ import { remarkHighlightApi } from 'remark-shiki-highlight-api';
 import { loadCode198xLanguages } from './src/lib/load-custom-languages.ts';
 
 // Load custom syntax grammars
-import basicGrammar from './src/syntax/basic.tmLanguage.json' assert { type: 'json' };
-import asm6502Grammar from './src/syntax/6502.tmLanguage.json' assert { type: 'json' };
-import amosGrammar from './src/syntax/amos.tmLanguage.json' assert { type: 'json' };
-import sinclairBasicGrammar from './src/syntax/sinclair-basic.tmLanguage.json' assert { type: 'json' };
-import ca65Grammar from './src/syntax/ca65.tmLanguage.json' assert { type: 'json' };
-import z80Grammar from './src/syntax/z80.tmLanguage.json' assert { type: 'json' };
-import m68kGrammar from './src/syntax/m68k.tmLanguage.json' assert { type: 'json' };
+import basicGrammar from './src/syntax/basic.tmLanguage.json' with { type: 'json' };
+import asm6502Grammar from './src/syntax/6502.tmLanguage.json' with { type: 'json' };
+import amosGrammar from './src/syntax/amos.tmLanguage.json' with { type: 'json' };
+import sinclairBasicGrammar from './src/syntax/sinclair-basic.tmLanguage.json' with { type: 'json' };
+import ca65Grammar from './src/syntax/ca65.tmLanguage.json' with { type: 'json' };
+import z80Grammar from './src/syntax/z80.tmLanguage.json' with { type: 'json' };
+import m68kGrammar from './src/syntax/m68k.tmLanguage.json' with { type: 'json' };
 
 // https://astro.build/config
 export default defineConfig({

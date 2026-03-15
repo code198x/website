@@ -1,8 +1,9 @@
 import { defineCollection, z } from 'astro:content';
+import { glob, file } from 'astro/loaders';
 
 // Platform/system definitions - the source of truth for all platform data
 const platforms = defineCollection({
-  type: 'data',
+  loader: glob({ pattern: '**/*.yaml', base: 'src/content/platforms' }),
   schema: z.object({
     // Identity
     name: z.string(),
@@ -59,7 +60,7 @@ const platforms = defineCollection({
 });
 
 const vault = defineCollection({
-  type: 'content',
+  loader: glob({ pattern: '**/*.mdx', base: 'src/content/vault' }),
   schema: z.object({
     title: z.string(),
     subtitle: z.string(),
@@ -110,7 +111,7 @@ const vault = defineCollection({
 });
 
 const patterns = defineCollection({
-  type: 'content',
+  loader: glob({ pattern: '**/*.mdx', base: 'src/content/patterns' }),
   schema: z.object({
     title: z.string(),
     summary: z.string(),
@@ -144,7 +145,7 @@ const patterns = defineCollection({
 });
 
 const timeline = defineCollection({
-  type: 'content',
+  loader: glob({ pattern: '**/*.mdx', base: 'src/content/timeline' }),
   schema: z.object({
     title: z.string(),
     year: z.number(),
@@ -157,7 +158,7 @@ const timeline = defineCollection({
 
 // Pattern library categories (rendering, input, audio, etc.)
 const patternCategories = defineCollection({
-  type: 'data',
+  loader: glob({ pattern: '**/*.yaml', base: 'src/content/pattern-categories' }),
   schema: z.object({
     name: z.string(),
     description: z.string(),
@@ -168,7 +169,7 @@ const patternCategories = defineCollection({
 
 // Pattern library difficulty levels
 const patternDifficulties = defineCollection({
-  type: 'data',
+  loader: glob({ pattern: '**/*.yaml', base: 'src/content/pattern-difficulties' }),
   schema: z.object({
     name: z.string(),
     description: z.string(),
@@ -180,7 +181,7 @@ const patternDifficulties = defineCollection({
 
 // Manufacturers - companies that made the platforms
 const manufacturers = defineCollection({
-  type: 'data',
+  loader: glob({ pattern: '**/*.yaml', base: 'src/content/manufacturers' }),
   schema: z.object({
     name: z.string(),
     shortName: z.string(),
@@ -198,7 +199,7 @@ const manufacturers = defineCollection({
 
 // CPU architectures - groupings for the systems page
 const architectures = defineCollection({
-  type: 'data',
+  loader: glob({ pattern: '**/*.yaml', base: 'src/content/architectures' }),
   schema: z.object({
     name: z.string(),
     shortName: z.string(),
@@ -211,7 +212,7 @@ const architectures = defineCollection({
 
 // Vault categories (systems, hardware, people, etc.)
 const vaultCategories = defineCollection({
-  type: 'data',
+  loader: glob({ pattern: '**/*.yaml', base: 'src/content/vault-categories' }),
   schema: z.object({
     name: z.string(),
     description: z.string(),
@@ -224,7 +225,7 @@ const vaultCategories = defineCollection({
 // Games catalogue - curriculum games organised by platform and track
 // Note: units and unitsAvailable are computed from the units collection
 const games = defineCollection({
-  type: 'data',
+  loader: glob({ pattern: '**/*.yaml', base: 'src/content/games' }),
   schema: z.object({
     platform: z.string(), // e.g., commodore-64, sinclair-zx-spectrum
     track: z.enum(['assembly', 'basic', 'amos']),
@@ -241,7 +242,7 @@ const games = defineCollection({
 
 // Unit details for each game - phases and individual unit information
 const units = defineCollection({
-  type: 'data',
+  loader: glob({ pattern: '**/*.yaml', base: 'src/content/units' }),
   schema: z.object({
     platform: z.string(),
     track: z.enum(['assembly', 'basic', 'amos']),
