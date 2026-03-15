@@ -1,34 +1,41 @@
 import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
 import { getCollection } from 'astro:content';
-import { getActivePlatforms } from '../lib/platforms';
+import { getPlatformBySlug } from '../lib/platforms';
 
 export async function GET(context: APIContext) {
-  const platforms = await getActivePlatforms();
-  const gamesEntries = await getCollection('games');
+  const unitPages = await getCollection('unit-pages');
 
-  const items = platforms
-    .map(platform => {
-      const entry =
-        gamesEntries.find(g => g.data.platform === platform.id && g.data.track === 'assembly') ||
-        gamesEntries.find(g => g.data.platform === platform.id);
-      const game = entry?.data.games?.[0];
+  // Only include units with a pubDate
+  const published = unitPages
+    .filter(entry => entry.data.pubDate)
+    .sort((a, b) => b.data.pubDate!.getTime() - a.data.pubDate!.getTime());
 
-      if (!entry || !game) return null;
+  const items = await Promise.all(published.map(async (entry) => {
+    // ID: "sinclair-zx-spectrum/assembly/game-01-shadowkeep/unit-06"
+    const parts = entry.id.split('/');
+    const platformSlug = parts[0];
+    const gameSlug = parts[2] ?? '';
+    const gameName = gameSlug
+      .replace(/^game-\d+-/, '')
+      .split('-')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
 
-      return {
-        title: `${game.name} - ${platform.data.name}`,
-        pubDate: new Date(),
-        description: game.tagline,
-        link: `/${platform.id}/${entry.data.track}/${game.slug}/`,
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => Boolean(item))
-    .slice(0, 4);
+    const platform = await getPlatformBySlug(platformSlug);
+    const platformName = platform?.data.shortName ?? platformSlug;
+
+    return {
+      title: `Unit ${entry.data.unit}: ${entry.data.title} — ${gameName} (${platformName})`,
+      pubDate: entry.data.pubDate!,
+      description: entry.data.description ?? '',
+      link: `/${entry.id}/`,
+    };
+  }));
 
   return rss({
     title: "Code Like It's 198x",
-    description: "Learn assembly by building games on classic 8-bit and 16-bit systems. New lessons, tutorials, and articles about retro game development.",
+    description: "Learn programming by building games on classic 8-bit and 16-bit systems. New units, tutorials, and articles about retro game development.",
     site: context.site?.toString() || 'https://code198x.com',
     items,
     customData: `<language>en-gb</language>`,
