@@ -236,6 +236,7 @@ const games = defineCollection({
       tagline: z.string(),
       skills: z.array(z.string()),
       status: z.enum(['in-progress', 'coming-soon', 'complete']),
+      thumbnail: z.string().optional(),
     })),
   }),
 });
