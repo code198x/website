@@ -258,6 +258,8 @@ const units = defineCollection({
       number: z.number(),
       title: z.string(),
       available: z.boolean().default(false),
+      description: z.string().optional(),
+      thumbnail: z.string().optional(),
     })),
   }),
 });
