@@ -1,166 +1,475 @@
 ---
-title: "Keyboard Input"
-description: "Read the Spectrum's keyboard matrix with IN A,($FE) — the instruction that connects the player to the game."
-pubDate: 2026-02-06
+title: "Stride"
+description: "The hooded thief learns to walk. Port $FE goes from output to input as the keyboard answers our reads; QAOP move the hero one cell at a time; cell preservation keeps the keep clean as he goes."
+pubDate: 2026-05-14
 game: 1
 unit: 4
-tags: ["assembly", "z80", "keyboard", "input", "ports"]
+tags: ["assembly", "z80", "keyboard", "input", "port-fe", "movement"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-The room exists. Walls, floor, treasure, hazard — all drawn with loops. But press a key and nothing happens. The game doesn't know you're there.
+The thief stands. He has shape, he has colour, he stands in the right cell of the right room. What he doesn't have is *agency*. Hold any key — Q, A, O, P, anything — and nothing happens. The keep is silent toward him.
 
-That changes now. The Spectrum's keyboard is wired to port $FE — the same port that controls the border. `IN A,($FE)` reads a row of keys. `BIT` tests which key is pressed. By the end of this unit, the game responds to your input. Not movement yet — that's Unit 6 — but the connection between player and machine.
+This unit gives him agency.
 
-## How the Keyboard Works
+By the end he walks: one cell up for Q, one cell down for A, one left for O, one right for P. The keep around him stays clean as he moves — the floor he leaves is the floor he leaves, not a smear of red. And the pace at which he walks is the pace the keep deserves: eight cells a second, not the fifty cells a second the Spectrum's frame rate would otherwise inflict on him.
 
-The Spectrum has 40 keys arranged in 8 rows of 5. Each row is connected to a different address line on the data bus. To read a row, you put the row selector in A, then read port $FE:
+We'll get there in four stages: **the keyboard answers**, **a first step**, **the thief walks**, and **a measured stride**. Each stage adds one idea. Stage 2 deliberately ships a bug; Stage 3 demolishes it in a single technique.
 
-```z80
-            ld      a, $7f          ; Select a keyboard row
-            in      a, ($fe)        ; Read it — result goes into A
+## What you'll see by the end
+
+![The hooded thief mid-room after a held P key, eight cells per second](/images/sinclair-zx-spectrum/game-01-shadowkeep/unit-04/04-a-measured-stride.png)
+
+The great hall stands as it stood in Unit 3 — stone walls, white floor, an altar at the top with cascading gold. The thief is no longer at the centre, though. He's moved a few cells east and stopped, exactly where the player released the P key. The keep behind him is unchanged: no trail, no smear, no ghost. Cell preservation has done its job.
+
+The thief stops moving the moment you stop holding the direction key. He moves at a measured pace — about eight cells a second — slow enough that you can react, fast enough that crossing the room takes about two seconds. The pace was chosen, not stumbled into. Stage 4 explains why six frames between moves is the right number.
+
+## Port `$FE` reads the keyboard
+
+Unit 1 used `OUT ($FE), A` to set the BORDER. The lower three bits of the byte we sent decided the colour. The same port works *both ways*: `IN A, ($FE)` (or its more flexible `IN A, (C)` cousin) reads from the port. What it returns is the state of the **keyboard**, not the BORDER.
+
+The Spectrum's 40-key keyboard is wired as eight half-rows of five keys each:
+
+```
+  Half-row port  Keys (bit 0 = leftmost)
+  ─────────────  ────────────────────────
+  $FEFE          CAPS  Z   X   C   V
+  $FDFE          A     S   D   F   G
+  $FBFE          Q     W   E   R   T
+  $F7FE          1     2   3   4   5
+  $EFFE          0     9   8   7   6
+  $DFFE          P     O   I   U   Y
+  $BFFE          ENTER L   K   J   H
+  $7FFE          SPACE SYM M   N   B
 ```
 
-The `IN A,($FE)` instruction is the reverse of `OUT ($FE),A`. Where OUT sends data *to* hardware, IN reads data *from* hardware. The value in A selects which row to scan — it goes on the high byte of the address bus, giving a 16-bit port address of $7FFE.
+The *high* byte of the port selects which half-rows you want to read. Each bit going LOW in the high byte enables one row. So `$FBFE` (high byte `%11111011`, bit 2 clear) reads only the Q half-row.
 
-The result comes back in A. Bits 0–4 each represent one key. **A bit is 0 when the key is pressed, 1 when released.** This is *active low* — the opposite of what you might expect.
+The low byte's `$FE` (binary `11111110`, bit 0 clear) is what makes this a *keyboard* read rather than some other [ULA](/vault/hardware/ula) register read; the Spectrum's I/O decoder uses bit 0 of the port address to distinguish the ULA from other devices.
 
-## Reading a Single Key
+When you do `LD BC, $FBFE` followed by `IN A, (C)`, the lower five bits of A come back telling you which keys in the Q row are pressed. Bit 0 = Q, bit 1 = W, bit 2 = E, bit 3 = R, bit 4 = T. A *clear* bit means *pressed* (the keyboard pulls the wire low when contact is made); a *set* bit means released. That inverted convention is one of the few genuinely surprising design choices in the Spectrum.
 
-The simplest keyboard program — press Space, the border turns red:
+Our four direction keys live in three rows:
 
-<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-04/snippets/01-read-space.asm" />
-
-`$7F` selects the bottom row of the keyboard: Space, Symbol Shift, M, N, B. After `IN A,($FE)`, bit 0 holds the Space key state.
-
-`BIT 0, A` tests bit 0 without changing A. If the bit is 0 (key pressed), the Z80 sets the **Zero flag** and `JR Z` takes the branch. If the bit is 1 (not pressed), the Zero flag is clear and execution falls through.
-
-Run this program and press Space. The border turns red while you hold it, black when you release. The program checks 50 times per second — once per frame, after each `HALT`.
-
-### Why Active Low?
-
-When no key is pressed, the data line is pulled high by a resistor — it reads 1. Pressing a key connects the line to ground — it reads 0. This is how most 8-bit keyboards work. The hardware is simpler, even if the logic feels backwards.
-
-You'll get used to it: **0 = pressed, 1 = released.** `BIT n, A` followed by `JR Z` means "jump if pressed."
-
-## The Keyboard Matrix
-
-Here's the full matrix. Each row is selected by clearing one bit of the high address byte:
-
-| Row Select | Bit 0 | Bit 1 | Bit 2 | Bit 3 | Bit 4 |
-|-----------|-------|-------|-------|-------|-------|
-| `$FE` | Shift | Z | X | C | V |
-| `$FD` | A | S | D | F | G |
-| `$FB` | Q | W | E | R | T |
-| `$F7` | 1 | 2 | 3 | 4 | 5 |
-| `$EF` | 0 | 9 | 8 | 7 | 6 |
-| `$DF` | P | O | I | U | Y |
-| `$BF` | Enter | L | K | J | H |
-| `$7F` | Space | Sym | M | N | B |
-
-The row select values look odd until you see the pattern: each one has a single bit cleared. `$FE` = `11111110` (bit 0 clear), `$FD` = `11111101` (bit 1 clear), `$FB` = `11111011` (bit 2 clear), and so on. The cleared bit selects which row to scan.
-
-Notice the right half of the keyboard is in reverse order — the number row goes 0, 9, 8, 7, 6, not 6, 7, 8, 9, 0. This matches the physical wiring of the Spectrum's membrane keyboard.
-
-## QAOP — Four Directions
-
-Shadowkeep uses QAOP for movement — a classic Spectrum control scheme:
-
-- **Q** = up (row `$FB`, bit 0)
-- **A** = down (row `$FD`, bit 0)
-- **O** = left (row `$DF`, bit 1)
-- **P** = right (row `$DF`, bit 0)
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-04/snippets/02-qaop.asm" />
-
-Each key needs its own `IN` read because Q and A are in different rows. O and P share a row (`$DF`) but need separate bit tests — O is bit 1, P is bit 0. Since `IN A,($FE)` overwrites A with the keyboard data, each test starts with a fresh read.
-
-The pattern is always the same: load the row selector, read the port, test the bit. Four keys, four reads.
-
-## The Complete Code
-
-The program draws the Unit 3 room and enters a keyboard loop. Each direction key changes the border to a different colour — blue for Q, red for A, green for O, yellow for P. No key held means black border.
-
-<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-04/shadowkeep.asm" />
-
-![Shadowkeep Unit 4](/images/sinclair-zx-spectrum/game-01-shadowkeep/unit-04/screenshot.png)
-
-The screenshot shows the idle state — black border, no key pressed. Run it yourself and press the keys. Each direction gives immediate visual feedback. This is the polling loop that will drive all of Shadowkeep's controls.
-
-The border resets to black at the start of each frame (`ld a, 0` / `out ($fe), a`), then each key check can override it. If multiple keys are held simultaneously, the last one checked wins — P overrides O overrides A overrides Q. That's fine for now. A more sophisticated approach would combine the results, but for character-cell movement (Unit 6) you only need one direction per frame.
-
-## Try This: Different Keys
-
-Change the controls to cursor keys (5, 6, 7, 8 on the Spectrum):
-
-```z80
-            ; 5 (left) — row $F7, bit 4
-            ld      a, $f7
-            in      a, ($fe)
-            bit     4, a
-            jr      z, .left
-
-            ; 8 (right) — row $EF, bit 2
-            ld      a, $ef
-            in      a, ($fe)
-            bit     2, a
-            jr      z, .right
+```
+  Q (north):  $FBFE, bit 0
+  A (south):  $FDFE, bit 0
+  O (west):   $DFFE, bit 1
+  P (east):   $DFFE, bit 0
 ```
 
-Look up the row and bit from the keyboard matrix table. The pattern is identical — only the row selector and bit number change.
+O and P share the same half-row, so a single `IN A, (C)` from `$DFFE` reads both in one pass.
 
-## Try This: Two Keys at Once
+## Stage 1: The Keyboard Answers
 
-O and P share the same row. You can test both from a single read if you save the result:
+Before the hero moves, we prove the keyboard can be read. Four indicator cells in a `+` arrangement below the great hall sit at **dark cyan** by default and switch to **bright cyan** while their corresponding direction key is held. Cyan because no other game element in Phase 1 is cyan (doors arrive in Phase 2); dark-and-bright pair because both stay visible against the dark-blue stone of the keep — the unpressed indicators read as faint UI even when nothing's happening.
 
-```z80
-            ld      a, $df          ; Row: P, O, I, U, Y
-            in      a, ($fe)
-            bit     1, a            ; O = bit 1
-            jr      z, .left
-            bit     0, a            ; P = bit 0
-            jr      z, .right
-```
-
-This works because `BIT` doesn't change A — it only sets the Zero flag. After testing O, A still holds the full row data and you can test P immediately. No need to read the port again.
-
-This only works when both keys are in the same row. Q and A are in different rows, so they always need separate `IN` reads.
-
-## Try This: Space to Reset
-
-Add a Space bar check that resets the room colours. After the QAOP checks:
+The poll loop, once per frame:
 
 ```z80
-            ld      a, $7f          ; Row: Space, Sym, M, N, B
-            in      a, ($fe)
-            bit     0, a            ; Space = bit 0
-            jr      nz, .no_space
-            ; Reset the treasure to normal
-            ld      a, TREASURE
-            ld      ($5990), a
-.no_space:
+            ld      bc, KBD_Q
+            in      a, (c)
+            bit     0, a                       ; Z if Q pressed
+            ld      a, IND_OFF
+            jr      nz, .q_off
+            ld      a, IND_ON
+.q_off:
+            ld      (IND_NORTH), a
 ```
 
-Pressing Space rewrites the treasure cell. Combine this with Unit 2's bit manipulation to change cells based on key presses — that's the road toward an interactive game.
+Three new ideas in six instructions.
 
-## If It Doesn't Work
+### `LD BC, port` / `IN A, (C)`
 
-- **Key doesn't respond?** Check the row selector value against the matrix table. Q is `$FB`, not `$BF`. The values are easy to confuse.
-- **Wrong key triggers?** Check the bit number. Q is bit 0, W is bit 1, E is bit 2. Within a row, bits count left to right for the left half of the keyboard, but the right half is reversed.
-- **Border stays black?** Make sure `OUT ($FE), A` comes after setting A to a colour. If A still holds the keyboard data, the border gets a random value.
-- **Border flickers?** The code resets to black each frame. If the key check happens too slowly, you might see one frame of black. This is normal at 50 Hz.
-- **Active low confusion?** Remember: `BIT n, A` / `JR Z` means "jump if key pressed." Zero flag set = bit was 0 = key is down. It's the opposite of what "zero" usually means.
+The Z80's `IN A, (n)` instruction takes only an 8-bit port number — fine for trivial machines, useless for the Spectrum because the high byte is what selects the keyboard row. `IN A, (C)` is the variant that takes its 16-bit port from `BC`. We load `BC` with the full port address (`$FBFE` for the Q row, etc.), and `IN A, (C)` pumps the entire 16-bit address onto the address bus.
 
-## What You've Learnt
+The byte that comes back lands in A.
 
-- **IN A,($FE)** — read a keyboard row. The value in A selects the row (high byte of port address). The result comes back in A with key states in bits 0–4.
-- **Active low** — 0 means pressed, 1 means released. This is a hardware convention, not a software choice.
-- **BIT n, A** — test a single bit without changing A. Sets the Zero flag if the bit is 0. Combined with `JR Z`, this is "jump if key pressed."
-- **The keyboard matrix** — 8 rows of 5 keys each, selected by clearing one bit of the row selector. Port $FE is shared between keyboard input and border output.
-- **Polling loop** — check keys every frame after HALT. 50 checks per second gives responsive input.
-- **EQU for row selectors** — named constants like `KEY_ROW_QT` make the code readable and the mapping explicit.
+### `BIT n, r`
 
-## What's Next
+`BIT 0, A` tests bit 0 of A — sets the Z flag if the bit is *zero*, clears Z if the bit is *one*. The register itself is untouched. Combined with the Spectrum's inverted convention (pressed = 0), `BIT 0, A` after the keyboard read sets Z exactly when the key is pressed.
 
-The keyboard reads work, but there's nothing to move. In Unit 5, you'll put a character on screen by writing to *bitmap* memory — not just attributes. The player's marker will appear inside the room, ready to respond to the keys you've just learnt to read.
+We've seen `BIT` in the planning of Unit 3's UDG design but never written it. Here it earns its keep: one instruction, one bit, one test.
+
+### Reading-without-clobbering using `BIT`
+
+The pattern after `BIT 0, A`:
+
+```z80
+            ld      a, IND_OFF                 ; default: not-pressed colour
+            jr      nz, skip                   ; if Z=0 (not pressed), keep IND_OFF
+            ld      a, IND_ON                  ; if Z=1 (pressed), override
+skip:
+```
+
+`LD A, n` doesn't touch flags, so the `JR NZ` after it tests the *previous* `BIT 0, A` result. We branch on the keyboard bit *after* preloading A with the not-pressed colour. If pressed, we override; if not, we keep the preloaded value.
+
+### O and P share a row
+
+For the P-row read we keep the original byte in `D` so we can test both bits without re-reading:
+
+```z80
+            ld      bc, KBD_P
+            in      a, (c)
+            ld      d, a                       ; save reading
+            bit     1, a                       ; O = bit 1
+            ...                                 ; handle O
+            bit     0, d                       ; P = bit 0 from saved reading
+            ...                                 ; handle P
+```
+
+One port read, two bit tests. A real-time game on the Spectrum saves cycles wherever it can — every `IN A, (C)` costs 12 t-states (about 3.4 microseconds on a stock 48K), and shared-row reads halve the I/O budget for adjacent keys.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-04/01-the-keyboard-answers.asm" />
+
+### What you see
+
+![Stage 1 — the great hall with the indicator + below the room, P lit bright cyan](/images/sinclair-zx-spectrum/game-01-shadowkeep/unit-04/01-the-keyboard-answers.png)
+
+The screenshot was captured while P was being held. Below the great hall, four cyan cells form a `+` — the four directions Q, A, O, P arranged around their compass positions. Three of the cells are dark cyan (Q, A, O at rest), and the east cell (P) glows bright cyan because P is the key the screenshot caught held. Press a different direction and a different cell of the `+` lights up; release everything and all four return to dark cyan.
+
+The thief at the centre of the hall doesn't move. Stage 1 is about the *read*, not the response. The fact that the indicator follows your keystrokes is proof the keyboard is talking and we're listening.
+
+## Stage 2: A First Step
+
+The simplest thing that could possibly work, with one direction (east) and no cell preservation:
+
+```z80
+main_loop:
+            halt
+            ld      bc, KBD_P
+            in      a, (c)
+            bit     0, a
+            jr      nz, main_loop              ; no P, no move
+
+            ld      a, (hero_col)
+            cp      HERO_MAX_COL
+            jr      z, main_loop               ; at the wall
+
+            inc     a
+            ld      (hero_col), a              ; advance one column
+
+            ; ... compute new attribute + bitmap address, draw the hero
+```
+
+Hold P and on every frame, the hero's column increments by one. The new cell gets the hero attribute and the eight bytes of sprite bitmap. The old cell is left alone.
+
+### State in RAM
+
+The hero now has *position state*. A single byte `hero_col` lives in RAM (we declare it with `defb` in our source, which assembles into the binary at a known address). The 48K Spectrum has 48 KB of RAM from `$4000`; our code lives at `$8000` (32768), so any `defb` directives after our code allocate bytes in RAM that survive across `LDIR`s, function calls, and frames.
+
+This is the first piece of state the hero owns. By the end of the unit there'll be three more bytes plus an eight-byte bitmap save area; by the end of Phase 1 the state table will hold lives, score, current room, and inventory.
+
+### Computing the new cell's addresses
+
+Since the hero only moves on row 10, the attribute and bitmap addresses simplify:
+
+```
+  attribute address = $5800 + 10 × 32 + hero_col = $5940 + hero_col
+  bitmap address   = $4000 + $0800 + $0040 + hero_col = $4840 + hero_col
+```
+
+In code:
+
+```z80
+            ld      a, (hero_col)
+            add     a, $40
+            ld      e, a
+            ld      d, $59                     ; DE = $5940 + hero_col
+            ld      a, HERO_ATTR
+            ld      (de), a
+
+            ld      a, (hero_col)
+            add     a, $40
+            ld      l, a
+            ld      h, $48                     ; HL = $4840 + hero_col
+```
+
+For Stage 2 this hardcoding is fine because the hero only moves along one row. Stage 3 generalises — a four-directional hero needs address computation that works for *any* (col, row).
+
+### The deliberate bug
+
+The Stage 2 code never clears the old cell. Each move writes the hero into a new cell, but leaves the previous cell untouched — still carrying the hero attribute and the eight sprite bytes from when the hero was there. Hold P for nine frames and you get nine cells of identical red hooded silhouette in a row, ending at the right wall.
+
+This is the bug Stage 3 fixes. It's left here because seeing it makes the fix obvious.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-04/02-a-first-step.asm" />
+
+### What you see
+
+![Stage 2 — a row of red hooded silhouettes across the room, ending at the right wall](/images/sinclair-zx-spectrum/game-01-shadowkeep/unit-04/02-a-first-step.png)
+
+A trail of red hero silhouettes runs across the middle of the great hall, from where the thief started (centre) to where he stopped (right wall). Every cell he visited is still painted with him. The keep looks haunted — as if every step the thief took left a coloured shadow that won't fade. The lesson is right there in the screenshot: *something has to clear those cells*.
+
+## Stage 3: The Thief Walks
+
+Cell preservation in three subroutines and one piece of state.
+
+### Nine bytes of memory
+
+The cell *under* the hero — whatever was there before he stepped on — is fully described by nine bytes: one attribute byte and eight bitmap bytes.
+
+```
+player_under_attr:  defb 0
+player_under_bitmap:
+            defb 0, 0, 0, 0, 0, 0, 0, 0
+```
+
+When the hero steps into a new cell, we save the new cell's nine bytes into `player_under_*` *before* drawing him over the top. When he leaves, we copy `player_under_*` back to the old cell — restoring whatever was there.
+
+### General address computation
+
+The hero now moves in both axes, so we need a general (col, row) → address routine for both attribute and bitmap.
+
+**Attribute** is straightforward: `$5800 + row × 32 + col`. Implemented with five `ADD HL, HL`s (which is the fastest 16-bit left-shift on the Z80) to multiply row by 32, then add col and the `$5800` base.
+
+```z80
+get_attr_addr:
+            ld      h, 0
+            ld      a, (hero_row)
+            ld      l, a
+            add     hl, hl                     ; row * 2
+            add     hl, hl                     ; row * 4
+            add     hl, hl                     ; row * 8
+            add     hl, hl                     ; row * 16
+            add     hl, hl                     ; row * 32
+            ld      a, (hero_col)
+            add     a, l
+            ld      l, a
+            jr      nc, .ok
+            inc     h
+.ok:
+            ld      a, h
+            add     a, $58
+            ld      h, a
+            ret
+```
+
+**Bitmap** is harder because of the Spectrum's three thirds. We reuse Unit 3's `bitmap_rows` lookup table — which already accounts for the thirds — and index into it by `(hero_row - 2)` (because the table starts at room row 0 = screen row 2).
+
+```z80
+get_bitmap_addr:
+            ld      a, (hero_row)
+            sub     2
+            add     a, a                       ; * 2 bytes per entry
+            ld      e, a
+            ld      d, 0
+            ld      hl, bitmap_rows
+            add     hl, de                     ; HL = table[room_row]
+            ld      a, (hl)
+            inc     hl
+            ld      h, (hl)
+            ld      l, a                       ; HL = base address (col 5)
+            ld      a, (hero_col)
+            sub     5                          ; col offset from room edge
+            add     a, l
+            ld      l, a
+            ret     nc
+            inc     h
+            ret
+```
+
+### Save, restore, draw
+
+Three subroutines that all follow the same shape: get the addresses, then move nine bytes. They differ only in direction.
+
+```z80
+save_under_hero:                                ; screen → RAM
+            call    get_attr_addr
+            ld      a, (hl)
+            ld      (player_under_attr), a
+            call    get_bitmap_addr
+            ld      de, player_under_bitmap
+            ld      b, 8
+.loop:      ld      a, (hl)
+            ld      (de), a
+            inc     de
+            inc     h
+            djnz    .loop
+            ret
+```
+
+`restore_under_hero` is `save_under_hero` with the source and destination swapped — `(de)` reads, `(hl)` writes. `draw_hero` writes `HERO_ATTR` and the eight bytes of the `hero` sprite data, ignoring whatever was there.
+
+### The move helper
+
+`move_by` is the single point through which all movement flows. It takes a `(dcol, drow)` delta in `BC` and does the full restore → update → save → draw cycle.
+
+```z80
+move_by:
+            push    bc                         ; save delta across the restore
+            call    restore_under_hero         ; clobbers BC
+            pop     bc
+            ld      a, (hero_col)
+            add     a, b
+            ld      (hero_col), a
+            ld      a, (hero_row)
+            add     a, c
+            ld      (hero_row), a
+            call    save_under_hero
+            call    draw_hero
+            ret
+```
+
+The four direction handlers in the main loop each push their delta into `BC` and call `move_by`:
+
+```z80
+.move_right:
+            ld      a, (hero_col)
+            cp      ROOM_MAX_COL
+            jr      z, main_loop               ; at the right wall
+            ld      b, 1
+            ld      c, 0                       ; dcol=+1, drow=0
+            call    move_by
+```
+
+`-1` is represented as `$FF` since A is unsigned for our purposes; `ADD A, $FF` decrements A (with the carry flag set, which we don't care about here).
+
+### Bounds, not collision
+
+The bounds check (`CP ROOM_MAX_COL` etc.) keeps the hero inside the rectangular room. It is *not* collision — the hero can still walk over the altar's wall cells in the middle of the room because their attribute is `WALL` but we don't test for that. Attribute-based collision lands in Unit 5 alongside the room transition. For now, the keep is empty enough that even the altar isn't off-limits.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-04/03-the-thief-walks.asm" />
+
+### What you see
+
+![Stage 3 — the thief at the bottom-right corner, the keep clean behind him](/images/sinclair-zx-spectrum/game-01-shadowkeep/unit-04/03-the-thief-walks.png)
+
+The thief stands near the bottom-right corner of the great hall. The screenshot was captured after he walked east, then south. The keep behind him is *exactly* the keep he started in — same altar, same gold, same floor. No trail, no smear, no ghost. Cell preservation has erased every trace of where he was, restoring the floor he crossed back to its original state.
+
+If you watch him move on a real Spectrum, the impression is immediate: the thief *is* moving over the keep, not painting on it. The same nine bytes of state make that illusion stable for the rest of the unit and the rest of the game.
+
+## Stage 4: A Measured Stride
+
+The thief walks. Too fast. At fifty cells a second the great hall is a quarter-second-long stride from end to end. We need to slow him down.
+
+The cleanest approach is to introduce a *frame counter* — a single byte that increments every frame and triggers movement only when it reaches a threshold:
+
+```z80
+MOVE_INTERVAL equ 6                             ; cells/sec = 50/6 ≈ 8.3
+
+main_loop:
+            halt
+            ld      a, (move_tick)
+            inc     a
+            ld      (move_tick), a
+            cp      MOVE_INTERVAL
+            jr      c, main_loop               ; not yet — wait another frame
+            xor     a
+            ld      (move_tick), a             ; reset
+
+            ; ... read keys, move
+```
+
+The tick increments on every interrupt. If it hasn't reached `MOVE_INTERVAL`, we jump back to `HALT` and let another frame elapse. When it finally reaches 6, we reset and run the input-and-move code.
+
+### Why six
+
+Six frames between moves at 50Hz is one move every 120ms, or about 8.3 cells per second. [*Atic Atac*](/vault/games/atic-atac) and [*Sabre Wulf*](/vault/games/sabre-wulf) settled on similar paces — fast enough to feel responsive, slow enough that the player can read what's under their next step before pressing a direction. Drop the interval to 3 and the hero feels skittish; raise it to 12 and he feels stuck in treacle.
+
+The right number depends on the cell size and the scene's complexity. A 22×16-cell room with one cell per move at 8 cells/sec means a full edge-to-edge traversal takes about 2.6 seconds — long enough to plan, short enough to commit.
+
+### `XOR A` for "zero this register"
+
+`XOR A` is the canonical Z80 idiom for setting A to zero. XOR-ing any value with itself produces zero, and the instruction is one byte (4 t-states) — shorter and faster than `LD A, 0` (two bytes, 7 t-states). The cost is that it also clears the carry and sets the Z flag, which is usually irrelevant. Whenever you see `XOR A` in real Spectrum code, it's almost always "I want zero in A and I don't care about flags."
+
+### Polling vs acting
+
+A subtle decision in the loop: we *poll* the keyboard inside the elapsed-tick branch, not outside. That means we miss key states between ticks — if you tap and release a key within a single 120ms window, the move won't happen. For continuous movement (hold to walk) this is fine; for tap-to-step (which we don't need yet), you'd want to poll every frame and latch the press.
+
+Phase 2 may revisit this if the game wants different responsiveness for menus and gameplay. For Phase 1, hold-to-walk is the right interaction.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-shadowkeep/unit-04/04-a-measured-stride.asm" />
+
+### What you see
+
+![Stage 4 — the thief mid-room after the same held-P duration that put him at the wall in Stage 3](/images/sinclair-zx-spectrum/game-01-shadowkeep/unit-04/04-a-measured-stride.png)
+
+The screenshot was captured with P held for the *same* number of frames as the Stage 3 capture. In Stage 3 the thief reached the right wall; in Stage 4 he's barely past mid-room. Same key, same duration, much less travel. The rate limit has done exactly the work it was added to do.
+
+The thief still moves cell-by-cell, still preserves the floor behind him. The only change is *when* he moves — every sixth frame instead of every frame.
+
+## Assemble and run
+
+Each stage has its own `.asm` file. The Makefile builds all four into `.tap` (real-hardware loading) and `.sna` (snapshot for the screenshot pipeline):
+
+```bash
+make
+```
+
+Load any of the four `.tap` files into Fuse or a real Spectrum Next. Type `RUN` at the BASIC prompt. Use Q, A, O, P for the four directions in stages 3 and 4.
+
+## Try this: a faster thief
+
+In `04-a-measured-stride.asm`, change `MOVE_INTERVAL equ 6` to `equ 3`. Reassemble. The thief now moves twice as fast — about 16 cells a second. Pleasingly snappy at first; eventually feels twitchy as you race past gold and hazards before reading them.
+
+Change to `equ 12`. The thief plods. A run across the room takes five seconds. Pleasant for a sneaking thief; impossible for a chase game.
+
+The interval is a single number, but it shapes the feel of the game more than almost anything else.
+
+## Try this: a different start
+
+Find `HERO_START_COL equ 16` and `HERO_START_ROW equ 10` near the top of the file. Change them to `HERO_START_COL equ 7` and `HERO_START_ROW equ 4`. Reassemble. The thief starts near the top-left corner of the room, just below the gold flanking the altar. The save-under-hero step at boot reads the altar's *gold* attribute and bitmap into `player_under_*`, so the first step away from that cell restores the gold cleanly.
+
+The same code handles starting on a wall cell — try `HERO_START_COL equ 5` (the left wall). The hero starts standing on stone; moving away restores the stone pattern exactly. The preservation system doesn't care what's underneath, only that whatever was there was correctly captured before the hero arrived.
+
+## Try this: silence the keyboard
+
+In Stage 3, comment out the `IN A, (C)` line inside the `.move_right` branch's polling block — say, the P-row read:
+
+```z80
+            ld      bc, KBD_P
+;           in      a, (c)
+            ld      d, a
+```
+
+Reassemble. P and O now register as "always released" (because A is whatever it was last). The thief can still walk north and south (Q and A), but no longer east or west. The lesson: the *only* link between the player and the program is what the program reads from port `$FE`. Skip the read, lose the input.
+
+## Try this: a hero who never forgets
+
+In Stage 3, comment out the `call restore_under_hero` line inside `move_by`. Reassemble. You've reproduced Stage 2's trail bug, but now in four directions. The thief paints the room red as he walks — useful for visualising where he's been, useless for a real game. One subroutine call, one line of code, separates a haunted keep from a clean one.
+
+## If it doesn't work
+
+- **No movement at all?** Keyboard ports are easy to mistype. `$FBFE` (Q row) and `$FDFE` (A row) differ by one bit in the high byte. Double-check each port constant; a swapped digit reads the wrong row and the wrong key.
+- **Wrong direction moves on each key?** The bit positions within a row are zero-indexed from the leftmost key. Q is bit 0 of the Q row; P is bit 0 of the P row; O is bit 1 of the P row. If P and O are swapped, double-check the bit numbers.
+- **Movement happens but only in bursts?** The `move_tick` counter might not be resetting. Confirm the `XOR A; LD (move_tick), A` runs *only* on the "elapsed" branch (after the `CP MOVE_INTERVAL` succeeds), not every frame.
+- **Hero leaves trail at start but not on subsequent moves?** The initial `call save_under_hero` is missing or runs in the wrong order. Save *before* the first `draw_hero`. If you draw the hero first and then save, the hero's own bitmap and attribute get saved as "what's underneath", and the first move restores the hero onto the old cell.
+- **Hero corrupts the room when walking onto walls?** That's correct for Stage 3 — no collision check. The hero passes through walls, saves the wall, then restores it when he leaves. The room looks correct after he moves on, because the save/restore handles wall cells identically to floor cells. Unit 5 adds a collision check that stops him stepping onto walls in the first place.
+- **`IN A, (C)` returns `$FF` always?** The high byte of `BC` might not be set. `IN A, (C)` puts the *whole* of `BC` on the address bus, so `B` must hold the half-row select mask. If you do `IN A, ($FE)` (using the 8-bit immediate form), only the low byte is sent — and the high byte is whatever's lying on the bus, often all-ones, which selects no row.
+- **Hero moves on every frame in Stage 4?** The `CP MOVE_INTERVAL` followed by `JR C, main_loop` reads as "if A is less than `MOVE_INTERVAL`, loop back". If the comparison is wrong or the JR condition is wrong (`JR NC` instead of `JR C`), the gate flips and the hero moves every frame except when the tick is in range.
+- **Indicator cells stay dark in Stage 1?** The default-then-conditional-override pattern relies on `LD A, n` *not* affecting flags. If you accidentally use a different instruction that does (e.g., `ADD A, n` to clear A by adding zero), the Z flag may be lost between the `BIT` and the `JR NZ`. Stick with `LD A, value`.
+
+## What you've learnt
+
+- **Port `$FE` reads the keyboard.** Same port that drove BORDER in Unit 1; the read side returns key state. Low byte `$FE` selects the ULA's keyboard register.
+- **The keyboard's half-row layout.** Eight rows of five keys each. High byte of port selects rows; clear bit = read this row.
+- **Pressed = 0.** The Spectrum's keyboard pulls wires *low* when keys are contacted. A clear bit in the read result means pressed; a set bit means released.
+- **`IN A, (C)`.** The 16-bit-port read instruction. `BC` holds the address; A receives the data.
+- **`BIT n, r`.** Test one bit of a register without modifying it. Sets Z when the bit is zero.
+- **The default-then-override pattern.** Preload A with the unconditional value (using `LD A, n` which doesn't touch flags), then branch on the prior `BIT` result to optionally override. Reads cleanly, costs little.
+- **Position state in RAM.** `hero_col`, `hero_row`, `player_under_attr`, and the eight-byte bitmap save area are all `defb`'d in the source and live in RAM. Updated each frame, persist across the main loop.
+- **General (col, row) → address routines.** `get_attr_addr` and `get_bitmap_addr` work for any cell, not just the hero's starting position. Five `ADD HL, HL`s do an 8-bit-to-16-bit row × 32; the bitmap routine indexes through Unit 3's per-row lookup table.
+- **The save → update → restore-on-leave loop.** Nine bytes (one attribute, eight bitmap) describe everything under the hero. Save before drawing; restore before moving; the cell goes back to exactly what it was.
+- **Cell preservation, not collision.** The hero can walk over anything because we don't check what's there — we just remember and restore. Collision rules come in Unit 5.
+- **The `XOR A` zero idiom.** One byte, four t-states, zeros A. Used throughout retro Z80 code.
+- **Frame-counter rate limiting.** A single byte ticked per frame, reset on threshold. Decouples animation speed from frame rate. Six frames at 50Hz gives ~8 cells/sec — the comfortable exploration pace.
+
+## What's next
+
+The thief walks his room. He has nowhere to walk *to*.
+
+In Unit 5 the great hall acquires a neighbour. A second room data table sits next to the first; the keep grows from one room to two. The connection between them lives in a small data structure — a "doors" table that says "the cell at room A's east edge leads to room B, position X". When the thief steps onto an open-door cell, the screen flips: the current room's data is swapped for the destination's, the hero is repositioned at the opposite door, and a beeper SFX marks the transition.
+
+Unit 5 also introduces attribute-based collision: the cell the hero *wants* to step into is read first, and if its attribute is `WALL`, the step doesn't happen. The keep stops being permissive about its walls.
+
+By the end of Unit 5 the thief walks two rooms, can't walk through walls, and transitions between rooms on door cells. That's two of the eight Phase 1 deliverables already in working form.
