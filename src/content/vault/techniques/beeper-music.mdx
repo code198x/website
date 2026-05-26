@@ -1,0 +1,82 @@
+---
+ai_generated: false
+reviewed: true
+title: "Beeper Music"
+subtitle: "Single-channel melody on the Sinclair ZX Spectrum's one-bit speaker"
+summary: "How a £125 home computer with a single-bit speaker produced multi-track music — by toggling one bit fast enough that the human ear hears pitch, harmony, and rhythm."
+category: "techniques"
+platforms: ['sinclair-zx-spectrum']
+tags: ['audio', 'beeper', 'port-fe', 'square-wave']
+
+---
+
+## Overview
+
+The Sinclair ZX Spectrum's 48K model has no dedicated sound chip. It has a single bit — bit 4 of port `$FE` — wired to a small internal speaker (the *beeper*). Setting that bit high pushes the speaker cone out; setting it low lets it spring back. Toggle it fast enough and the cone vibrates, producing a tone whose frequency is half the toggle rate.
+
+This sounds primitive. It is. But the Spectrum's audio library proves what a creative programmer can do with one bit: monophonic melodies, two-and-three-voice harmonies via interleaving, percussion via noise bursts, even speech synthesis via PCM streaming. The Spectrum's most musically ambitious games — *Manic Miner*, *Jet Set Willy*, *Stormlord*, *Sanxion*, *Match Point* — drove that one bit at audio rates and produced tunes that defined the platform's sound.
+
+## How a tone works
+
+To produce a tone at frequency *f* Hz, the program must toggle the speaker bit *2f* times per second. For middle A (440 Hz), that's 880 toggles per second.
+
+The Spectrum's Z80 runs at 3.5 MHz, which is 3,500,000 T-states per second. The delay between toggles for a given frequency:
+
+```
+  delay_t_states = 3,500,000 / (2 × frequency)
+```
+
+For middle A: 3,500,000 / 880 ≈ 3,977 T-states between toggles. A simple tone routine spins a delay loop for that many T-states, toggles the bit, and repeats.
+
+The 48K ROM has a built-in tone generator at `$03B5` (the `BEEPER` routine), called by Sinclair BASIC's `BEEP` command. It takes a duration and a half-period in HL/DE and produces a steady tone. It's good enough for type-in BASIC games' "ping" sound; serious music drivers write their own routines for tighter timing.
+
+## How a melody works
+
+A monophonic melody driver maintains:
+
+1. **A note table** — frequencies (or directly, half-periods) for each pitch in the scale.
+2. **A song** — a list of (note, duration) pairs to play in sequence.
+3. **A driver loop** — for each (note, duration), call the tone routine.
+
+Most period-faithful Spectrum music drivers use a tick-based timing model: the song is in beats; each beat is *N* frames at 50 Hz; the driver runs from the main game's IRQ handler.
+
+```
+note_data:
+    defb NOTE_C4,  4    ; note, duration in ticks
+    defb NOTE_E4,  4
+    defb NOTE_G4,  8
+    defb $FF,      0    ; terminator
+```
+
+The driver advances through the table, plays each note for its duration, and loops back to the start.
+
+## How polyphony works
+
+The beeper has one bit. Two voices at once should be impossible. It almost is.
+
+The trick is **interleaving**. The driver maintains two (or more) virtual voices, each with its own current note and frequency. On every iteration of the toggle loop, the driver advances *both* voices' phase counters. Whenever a voice's phase counter overflows, the speaker bit flips. The two voices' toggle rates combine into a complex waveform that the human ear hears as two simultaneous pitches.
+
+The cost is precision. Each voice's pitch is approximate; tight intervals (a third, a fifth) shimmer slightly. But Tim Follin, Wally Beben, and Mark Cooksey demonstrated repeatedly that 2-voice and 3-voice beeper music was musically viable, producing some of the platform's most memorable tunes.
+
+## Famous examples
+
+- ***Manic Miner*** (1983): Matthew Smith's title screen plays "In the Hall of the Mountain King" on the beeper while the game waits for the player. The first widely-heard demonstration that the Spectrum could play *music*, not just sound effects.
+- ***Jet Set Willy*** (1984): Smith again, with "If I Were a Rich Man" — a longer composition that loops in-game.
+- ***Stormlord*** (1989): Tim Follin pushes the beeper into 3-voice harmony with countermelody. Often cited as the most musically advanced beeper composition on the platform.
+- ***Sanxion*** loader (1986): Mark Cooksey's stylish beeper title music for Stavros Fasoulas's game.
+- ***Match Point*** (1984): The Pat Cash tennis simulator's loading screen tune by Ian Andrew.
+
+## Beeper vs AY-3-8912
+
+The 128K Spectrum (and the +2, +3) added an AY-3-8912 sound chip with three full voices, noise generator, and envelope control. From 1986 onwards, most commercial titles supported both: 48K builds used beeper music; 128K builds used AY. Many games shipped with both versions on the same tape, and the loader detected which model was present.
+
+The beeper-only experience continued throughout the platform's lifetime — *every* commercial Spectrum game had a 48K-compatible audio track, often the original score that the AY version embellished rather than replaced.
+
+## See also
+
+- [Sinclair ZX Spectrum](/vault/systems/zx-spectrum)
+- [AY-3-8912](/vault/hardware/ay-3-8912)
+- [ULA](/vault/hardware/ula)
+- [Manic Miner](/vault/games/manic-miner)
+- [Jet Set Willy](/vault/games/jet-set-willy)
+- [Software Projects](/vault/companies/software-projects)

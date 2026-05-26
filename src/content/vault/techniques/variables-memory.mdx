@@ -1,11 +1,12 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Variables and Memory"
 subtitle: "BASIC memory management"
 summary: "How variables work internally and memory management for BASIC programs"
 category: "techniques"
-tags: ['reference', 'commodore-64', 'variables', 'memory']
+platforms: ['commodore-64']
+tags: ['reference', 'variables', 'memory', 'basic']
 ---
 
 # Variables and Memory
@@ -112,21 +113,24 @@ Surprisingly, integer variables still use 7 bytes. The `%` just tells BASIC to t
 
 ### String Variables
 
-**Storage:** 3 bytes for descriptor + 1 byte per character
+**Variable record:** 7 bytes (matching numeric records). String *content* is allocated separately in the string heap that grows downward from the top of BASIC memory.
+
+The 7-byte variable record splits as:
+
+| Bytes | Field |
+|-------|-------|
+| 0-1 | Variable name (high bit of byte 1 set marks it as a string) |
+| 2 | String length (0-255) |
+| 3-4 | Pointer to string data in the heap |
+| 5-6 | Unused / padding |
 
 ```basic
-a$="hello"     rem 3 bytes descriptor + 5 bytes string = 8 bytes
-name$="steve"  rem 3 bytes descriptor + 5 bytes string = 8 bytes
-text$=""       rem 3 bytes descriptor + 0 bytes = 3 bytes (empty)
+a$="hello"     rem 7-byte record + 5 bytes in string heap = 12 bytes total
+name$="steve"  rem 7-byte record + 5 bytes in string heap = 12 bytes total
+text$=""       rem 7-byte record + 0 bytes in heap        = 7 bytes total
 ```
 
-**String descriptor:**
-- 1 byte: String length
-- 2 bytes: Pointer to string data in memory
-
-**String data:** Stored separately, up in high memory, growing downward.
-
-**Key difference:** String variable name and descriptor stored with other variables, but actual string content lives elsewhere.
+**Key difference:** the string variable's *record* lives in the variable area with all other variables, but the *content* lives in the string heap up high. Heap fragmentation is what triggers garbage collection — see below.
 
 ## Array Storage
 
@@ -300,26 +304,33 @@ Games often need to reserve memory for machine language routines, character sets
 
 ### Lowering BASIC's Top
 
+The pointer to "top of BASIC RAM" is at `$37/$38` (decimal 55-56). Setting it to a lower address makes BASIC stop using memory beyond that point. The high byte at `$38` is the most significant — that's the byte you change to set the boundary in 256-byte units.
+
 ```basic
-poke 56,48:poke 55,0:clr    rem protect 12288+
+poke 56,48:poke 55,0:clr    rem set top of BASIC to $3000 (12288)
 ```
 
 **What this does:**
-- `POKE 56,48`: Set top of BASIC RAM to $C000 (12288)
-- `POKE 55,0`: Set low byte to 0
-- `CLR`: Clear variables and arrays (required!)
+- `POKE 56,48`: high byte of "top of BASIC" = `$30`. Combined with the low byte = `$00`, top is `$3000`.
+- `POKE 55,0`: low byte = 0 (so the boundary lands on a 256-byte page).
+- `CLR`: clear variables and arrays — required, because the array pointers will point above the new boundary.
 
-**Effect:** BASIC now stops at $C000. Memory from $C000-$9FFF is yours for machine language, graphics, etc.
+**Effect:** BASIC now uses RAM from `$0801` up to `$3000`. The region from `$3000` to the next system boundary is yours.
 
 **Common boundaries:**
 
-| Boundary | POKE Values | Effect |
-|----------|-------------|--------|
-| $C000 (49152) | `POKE 56,192:POKE 55,0:CLR` | Protect 49152+ (12KB free) |
-| $A000 (40960) | `POKE 56,160:POKE 55,0:CLR` | Protect 40960+ (24KB free) |
-| $8000 (32768) | `POKE 56,128:POKE 55,0:CLR` | Protect 32768+ (32KB free) |
+The "free" column is what's actually accessible *without* additional bank-switching. With KERNAL banked out via `$01` you can also reclaim the $E000-$FFFF region (8 KB) for RAM, but that's a separate operation.
 
-**Warning:** Must do this **before** defining arrays or variables. CLR wipes everything.
+| Top of BASIC | POKE values | Free RAM | Notes |
+|--------------|-------------|----------|-------|
+| `$C000` (49152) | `POKE 56,192:POKE 55,0:CLR` | $C000-$CFFF = **4 KB** | $D000+ is I/O; $E000+ is KERNAL |
+| `$A000` (40960) | `POKE 56,160:POKE 55,0:CLR` | $A000-$BFFF + $C000-$CFFF = **8 KB** | Only if BASIC ROM is banked out at $A000 |
+| `$8000` (32768) | `POKE 56,128:POKE 55,0:CLR` | $8000-$9FFF + $A000-$CFFF = **12 KB** | Same caveat about banking |
+| `$3000` (12288) | `POKE 56,48:POKE 55,0:CLR` | $3000-$9FFF = **28 KB** | Common for ML game engines that load high |
+
+**Warning:** Must do this **before** defining arrays or variables. `CLR` wipes everything.
+
+**To unlock more RAM, bank ROMs out:** `POKE 1,53` clears HIRAM (KERNAL → RAM at $E000-$FFFF) while keeping I/O visible. Combined with a lowered BASIC top, this can free 16 KB+ contiguous, but you lose KERNAL routines (`PRINT`, `GET`, file I/O) until you re-enable HIRAM.
 
 ## Practical Memory Management
 

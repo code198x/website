@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Agnus: The Amiga's Memory Master"
 subtitle: "DMA controller, Blitter, and Copper in one package"
 summary: "Agnus coordinated all memory access on the Amiga, housing the Blitter for fast graphics and the Copper for beam-synchronised effects."
 category: "hardware"
-platforms: ['amiga']
+platforms: ['commodore-amiga']
 tags: ['custom-chips', 'dma', 'memory-controller', 'commodore']
 introduced: 1985
 discontinued: 1992
@@ -26,18 +26,31 @@ Agnus was the Amiga's traffic controller. Every memory access—from the 68000, 
 
 ## DMA slot allocation
 
-Agnus divides each scanline into time slots:
+Agnus divides each scanline into time slots. The standard PAL/NTSC layout interleaves memory refresh with disk on the early slots:
 
 | Slots | Purpose |
 |-------|---------|
-| 0-3 | Disk DMA |
-| 4-7 | Audio channels 0-3 |
-| 8-15 | Sprites 0-7 |
-| 16-17 | Reserved |
-| 18-53 | Bitplane DMA (display) |
-| Remaining | CPU and Blitter |
+| 0, 2, 4 | Memory refresh (DRAM) |
+| 1, 3, 5 | Disk DMA |
+| 7, 9, 11, 13 | Audio channels 0-3 |
+| 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45 | Sprites 0-7 (two slots each) |
+| 0x38-0xD0 (display window) | Bitplane DMA |
+| Remaining | Copper, Blitter, CPU |
 
-The CPU and Blitter share leftover slots, with Blitter taking priority when running.
+Outside bitplane DMA the CPU and Blitter alternate cycles by default — odd cycles for the CPU, even for the Blitter — so the Blitter operates concurrently with the CPU rather than starving it. Setting the **BLITHOG** bit (BLTCON1 bit 1) gives the Blitter every available cycle, halting the CPU until the blit completes; this is faster but blocks CPU work, so games tend to leave BLITHOG clear unless the blit is short.
+
+### Full DMA priority chain
+
+When multiple DMA channels need the same cycle, Agnus arbitrates in this fixed order (highest to lowest):
+
+1. Memory refresh
+2. Disk
+3. Audio
+4. Sprites (during sprite DMA window)
+5. Bitplanes (during display window)
+6. Copper
+7. Blitter
+8. CPU (gets whatever slots remain)
 
 ## Chip versions
 
@@ -85,11 +98,13 @@ Common minterms:
 
 The Copper is a coprocessor with just three instructions:
 
-| Instruction | Opcode | Purpose |
-|-------------|--------|---------|
-| WAIT | `0001` | Wait for beam position |
-| MOVE | `0000` | Write to register |
-| SKIP | `0001` + skip bit | Conditional skip |
+| Instruction | First-word bit 0 | Second-word bit 0 | Purpose |
+|-------------|------------------|--------------------|---------|
+| MOVE | 0 | (don't care) | Write to register |
+| WAIT | 1 | 0 | Wait for beam position |
+| SKIP | 1 | 1 | Skip next instruction if beam past position |
+
+WAIT and SKIP share the same first-word encoding; the *second* word's low bit distinguishes them.
 
 ### Copper list example
 
@@ -122,7 +137,7 @@ dc.w    $ffff, $fffe    ; End (wait forever)
 
 ## See also
 
-- [Amiga Chipset](/vault/systems/commodore-amiga-chipset)
+- [Amiga Chipset](/vault/hardware/amiga-chipset)
 - [Copper](/vault/hardware/copper)
 - [Blitter](/vault/hardware/blitter)
 - [Denise](/vault/hardware/denise)

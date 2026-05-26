@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "MMC3"
 subtitle: "The NES power expander"
 summary: "Nintendo's MMC3 mapper chip enabled larger, more sophisticated NES games through bank switching, scanline counting, and expanded capabilities."
 category: "hardware"
-platforms: ['nes']
+platforms: ['nintendo-entertainment-system']
 tags: ['mapper', 'nes', 'enhancement']
 introduced: 1988
 
@@ -19,27 +19,68 @@ The NES's base hardware had limitations that mapper chips overcame. The MMC3 (Me
 ## Fast facts
 
 - **Manufacturer:** Nintendo.
-- **Purpose:** extend NES capabilities.
-- **Features:** bank switching, scanline counter, extra RAM.
-- **PRG ROM:** up to 512KB.
-- **CHR ROM/RAM:** up to 256KB.
-- **Notable games:** *SMB3*, *Mega Man 3-6*, *Kirby's Adventure*.
+- **iNES mapper number:** 4 (board family TxROM, including TGROM, TKROM, TLROM, TSROM).
+- **Purpose:** extend NES capabilities beyond the base hardware's 32 KB PRG / 8 KB CHR ceiling.
+- **Features:** PRG and CHR bank switching, A12-clocked IRQ counter for mid-frame splits, mirroring control, optional 8 KB battery-backed PRG-RAM.
+- **PRG ROM:** up to 512 KB (8 KB granularity).
+- **CHR ROM/RAM:** up to 256 KB (1 KB granularity).
+- **PRG-RAM:** 8 KB at $6000-$7FFF (battery-backed in TKROM/TSROM boards).
+- **Notable games:** *Super Mario Bros. 3*, *Mega Man 3-6*, *Kirby's Adventure*, *Crystalis*, *Castlevania III*.
 
-## Capabilities
+## Bank switching
 
-What MMC3 enabled:
-- **Bank switching:** access larger ROM space.
-- **Scanline IRQ:** trigger interrupts at specific lines.
-- **Split screen:** status bars, different scroll regions.
-- **More graphics:** larger tilesets.
+### PRG banking ($8000-$FFFF)
 
-## Programming use
+PRG ROM is split into four 8 KB windows. Two are switchable, one is switchable, and one is fixed to the last bank — but the bank-mode bit (bit 6 of the value written to $8000) decides *which* two are switchable:
 
-MMC3 for developers:
-- **Bank registers:** select active ROM banks.
-- **IRQ counter:** load value, count down per scanline.
-- **PRG banking:** 8KB switchable banks.
-- **CHR banking:** 1KB or 2KB banks.
+| PRG mode (bit 6 of $8000) | $8000-$9FFF | $A000-$BFFF | $C000-$DFFF | $E000-$FFFF |
+|---|---|---|---|---|
+| 0 | bank R6 | bank R7 | second-to-last | last |
+| 1 | second-to-last | bank R7 | bank R6 | last |
+
+The last bank is always fixed at $E000-$FFFF (so reset/IRQ/NMI vectors stay reachable). R6 and R7 are general 8 KB bank registers.
+
+### CHR banking ($0000-$1FFF in PPU space)
+
+CHR is split into two 2 KB regions and four 1 KB regions. The CHR-mode bit (bit 7 of $8000) decides which half of pattern-table space gets the 2 KB banks:
+
+| CHR mode (bit 7 of $8000) | $0000-$07FF | $0800-$0FFF | $1000-$13FF | $1400-$17FF | $1800-$1BFF | $1C00-$1FFF |
+|---|---|---|---|---|---|---|
+| 0 | R0 (2 KB) | R1 (2 KB) | R2 | R3 | R4 | R5 |
+| 1 | R2 | R3 | R4 | R5 | R0 (2 KB) | R1 (2 KB) |
+
+R0 and R1 are 2 KB-aligned (their low bit is ignored). R2-R5 are 1 KB banks.
+
+## Register map
+
+| Address | Even (A0=0) | Odd (A0=1) |
+|---|---|---|
+| $8000-$9FFF | Bank select (bits 0-2 = R0-R7 select; bit 6 = PRG mode; bit 7 = CHR mode) | Bank data (writes the selected R-register) |
+| $A000-$BFFF | Mirroring (bit 0: 0=vertical, 1=horizontal) | PRG-RAM protect (bit 6 = read-only, bit 7 = enable) |
+| $C000-$DFFF | IRQ latch (8-bit reload value) | IRQ reload (writes here force counter reload on next clock) |
+| $E000-$FFFF | IRQ disable + acknowledge | IRQ enable |
+
+Each register pair is selected by the address's low bit — write to even addresses for the first column, odd addresses for the second. Mirroring control via $A000 has no effect on cartridges hard-wired for four-screen mirroring (which use 4 KB of cartridge VRAM instead of CIRAM).
+
+## How the IRQ works
+
+MMC3's IRQ counter is **not** clocked by a scanline counter. It clocks on each **rising edge of PPU address bit A12** — which happens whenever the PPU fetches from $1000-$1FFF after a fetch from $0000-$0FFF.
+
+During normal rendering, the PPU performs background tile fetches in one half of pattern-table space and sprite fetches in the other half. The standard idiom: put background tiles in $0000-$0FFF and sprite tiles in $1000-$1FFF (PPUCTRL bits 3 and 4). On most scanlines this produces exactly one A12 rising edge per scanline (during sprite fetch cycles), so the IRQ counter behaves as a scanline counter — but only if the game arranges its pattern tables that way.
+
+Sequence to schedule an IRQ N scanlines into the visible frame:
+
+1. Write N to `$C000` (IRQ latch).
+2. Write any value to `$C001` to flag "reload on next A12 edge".
+3. Write any value to `$E001` to enable IRQs.
+4. Counter reloads on the first A12 edge, then decrements once per A12 edge thereafter; when it reaches zero (and IRQs are enabled), the IRQ line asserts.
+5. Acknowledge by writing any value to `$E000` (this also disables further IRQs until you re-enable).
+
+The A12-edge mechanism means MMC3 IRQs land slightly differently between background-mode and sprite-mode fetches; emulators that model this correctly require a small low-time filter (~10 PPU cycles) to match real-hardware behaviour. (per `nes-mappers-reference.md`.)
+
+## Why it mattered
+
+MMC3 hit the sweet spot of capability versus cost: it gave developers PRG sizes for sprawling games (SMB3 is 384 KB), CHR-bank rotation for tile animation, and a reliable mid-frame IRQ for status bars and parallax — all at a price low enough for first-party use. By the late NES era, MMC3 (and its variants MMC3A/B/C, which differ subtly in IRQ behaviour) was the default choice for any game that needed more than NROM or MMC1 could provide.
 
 ## See also
 

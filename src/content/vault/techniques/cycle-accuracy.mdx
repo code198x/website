@@ -1,9 +1,9 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Cycle Accuracy"
-subtitle: "Emulation perfection"
-summary: "Cycle-accurate emulation reproduces original hardware behaviour at the CPU cycle level, enabling perfect compatibility at the cost of performance."
+subtitle: "Emulation timing tiers"
+summary: "Cycle-accurate emulation reproduces original hardware behaviour at the CPU cycle level, enabling perfect compatibility at the cost of performance. Sub-cycle and gate-level emulation push it further still."
 category: "techniques"
 platforms: ['cross-platform']
 tags: ['emulation', 'accuracy', 'preservation']
@@ -14,34 +14,76 @@ originated: 1990
 
 ## Overview
 
-Cycle-accurate emulation replicates original hardware at the most granular level: every CPU cycle, every memory access timed exactly as the real machine behaved. This matters because games and demos often exploited precise timing—raster effects, copy protection, and tricks that only work with exact timing. Cycle accuracy trades performance for perfect compatibility.
+Cycle-accurate emulation replicates original hardware at every CPU cycle: each memory access, each video fetch, each interrupt latch, in the exact relative position the real machine produced it. This matters because games and demos routinely exploited timing details that no faster emulator could reproduce — raster splits, sprite-zero hits, contention, copy protection, and the various "shouldn't work but did" tricks of the demoscene.
 
-## Fast facts
+Cycle accuracy is one rung on a ladder of accuracy tiers. Going further still — sub-cycle, half-cycle, gate-level — buys correctness at the edge cases at the cost of more host CPU per emulated cycle.
 
-- **Definition:** emulation matching original timing exactly.
-- **Requirement:** much more CPU power than high-level emulation.
-- **Benefit:** near-perfect compatibility.
-- **Examples:** bsnes/higan, Mesen, VICE.
-- **Tradeoff:** slower than less accurate emulators.
+## The accuracy ladder
+
+| Tier | What's modelled | Typical cost | Examples |
+|------|-----------------|--------------|----------|
+| **Instruction-accurate** | One instruction per host step. CPU runs to the next opcode boundary, then a "catch-up" tick advances peripherals. | 1× | Z26 (Atari 2600, early), early MAME drivers, casual hobby emulators |
+| **Cycle-accurate** | Every CPU cycle ticks the bus and devices. Peripherals see writes in real bus order. | 3-10× instruction-accurate | Mesen, bsnes, FCEUX (modern), VICE (default), Stella |
+| **Sub-cycle / half-cycle** | The bus is sampled at half-cycle granularity (Z80 half-T-state, 68000 half-cycle). Required for ULA contention modelling, FLI on C64, Copper-vs-CPU bus contention on Amiga. | 5-20× | bsnes-mercury, higan, current-generation Spectrum/Amiga emulators, the Emu198x project |
+| **Gate-level** | Every transistor, signal, and propagation delay simulated from a netlist. | 1000-100,000× | Visual 6502, Visual 2A03, Visual2C02, MARSS-x86 (academic) |
+
+The names blur in practice — "cycle-accurate" is loose marketing for "more accurate than the previous version." What matters is whether *your* edge case works.
 
 ## Why it matters
 
-When timing is critical:
-- **Raster effects:** require exact scanline timing.
-- **Copy protection:** timing-based checks.
-- **Demo effects:** exploit hardware quirks.
-- **Edge cases:** games that barely worked on real hardware.
+Real games and demos require specific accuracy levels:
 
-## Emulator examples
+- **Raster effects** — change a hardware register *during* a scanline, not just between frames. Needs cycle accuracy on the CPU and accurate scanline timing on the video chip.
+- **Sprite-zero hit** (NES) — fires at the exact pixel a non-transparent sprite-0 pixel collides with a non-transparent BG pixel; many games use this for HUD splits. Off-by-one timing breaks them.
+- **MMC3 IRQ on PAL/NTSC** — the IRQ is clocked from PPU A12 rising edges. *Akumajou Densetsu* and *Battletoads* expose IRQ-timing differences between regions; emulators that treat NTSC and PAL identically break them.
+- **ZX Spectrum ULA contention** — the ULA steals memory cycles from the Z80 during specific T-states of specific scanlines. Sub-cycle accuracy is required to reproduce the timing wobble that demos like *Shock!* deliberately exploit.
+- **Amiga Copper / Blitter contention** — bus arbitration between Copper, Blitter, Bitplane DMA, Sprite DMA, and CPU is all in the open. Cycle-accurate Agnus is the bar; demos like *State of the Art* are the test.
+- **Copy protection** — Lenslok, Speedlock, Rob Northen — many schemes time-attack the disc loader at the cycle level. An instruction-accurate emulator misses, the protection refuses to verify.
+- **Demo effects** — FLI on C64 (Flexible Line Interpretation: a new colour register write per scanline, requiring exact raster-IRQ timing), DYCP (Different-Y Char Position), VSP (Variable Screen Position) — all rely on exact cycle counts inside the raster routine.
 
-Cycle-accurate implementations:
-- **bsnes/higan:** SNES accuracy focus.
-- **Mesen:** NES with cycle accuracy.
-- **VICE:** Commodore cycle precision.
-- **Analogue systems:** FPGA hardware matching.
+## Implementations
+
+### Software emulators
+
+| Emulator | System | Accuracy notes |
+|----------|--------|----------------|
+| **Mesen** | NES / Famicom | Cycle-accurate; widely considered the gold standard for NES |
+| **bsnes / higan / ares** | SNES, multi-system | byuu/Near's lineage; sub-cycle on critical paths |
+| **VICE** | Commodore 8-bit (C64, VIC-20, PET, etc.) | Cycle-accurate VIC-II + SID emulation |
+| **WinUAE / FS-UAE** | Amiga | Cycle-accurate Agnus/Blitter; sub-cycle for high-precision modes |
+| **Fuse / SpecBAS / SpectaculatorPro** | ZX Spectrum | Contention-aware; sub-cycle for the strict tests |
+| **Stella** | Atari 2600 | Cycle-accurate TIA; required because the 2600 has no framebuffer |
+| **MAME** | Arcade, multi-system | Variable — modern drivers are typically cycle-accurate |
+
+### FPGA implementations
+
+FPGAs sidestep the host-CPU cost by running the netlist directly:
+
+- **MiSTer** — DE10-Nano-based open platform with cores for many systems.
+- **Analogue Pocket** — handheld FPGA emulating Game Boy / GBA / Game Gear / Lynx / Atari 2600 + cores via a JTAG-like loader.
+- **Analogue Mega Sg / Super Nt / Nt mini** — FPGA Mega Drive, SNES, NES.
+
+### Gate-level
+
+- **Visual 6502** — runs a polygon-traced netlist of the actual 6502 die; clicks a transistor to highlight current. Educational rather than performant.
+- **Visual 2A03 / Visual2C02** — same approach for the NES CPU and PPU.
+
+## Trade-offs
+
+| Pressure | Implication |
+|----------|-------------|
+| **Host CPU budget** | A cycle-accurate emulator typically needs the host to run 5-50× faster than the target. Game Boy on a Pi 4 is fine; SNES on a Pi 3 can struggle. |
+| **Battery life** | Mobile / handheld emulators often sacrifice accuracy for power; cycle-accurate Game Boy on a phone is hot. |
+| **Determinism** | Cycle-accurate emulation is fully deterministic, which makes it useful for tool-assisted speedruns (TAS), reverse engineering, and game preservation diff'ing. |
+| **Maintenance** | Each new edge case (each broken game) tightens the accuracy bar. The history of emulator development is one of progressive convergence on the real hardware's behaviour. |
+
+## Why it's the Emu198x bar
+
+The [Emu198x project](https://github.com/emu198x) takes the position that "cycle-accurate" isn't strict enough: the Z80, ULA, and 68000 are modelled at **half-cycle / sub-cycle** granularity, with the master oscillator driving everything and each chip ticking when the clock allows. That eliminates the catch-up-logic class of bugs (where an emulator runs the CPU full-speed and then ticks devices afterwards), which is the only way to get FLI, contention, and raster timing exactly right on every game.
 
 ## See also
 
 - [VICE](/vault/emulators/vice)
 - [Mesen](/vault/emulators/mesen)
 - [Emulation](/vault/emulators/emulation)
+- [Raster Interrupts](/vault/techniques/raster-interrupts)

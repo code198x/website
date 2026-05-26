@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Software Scrolling"
 subtitle: "When hardware won't help"
 summary: "On systems without scroll registers, software must move every byte of screen data—a CPU-intensive technique that defines the feel of ZX Spectrum games."
 category: "techniques"
-platforms: ['zx-spectrum']
+platforms: ['sinclair-zx-spectrum']
 tags: ['graphics', 'scrolling', 'zx-spectrum']
 originated: 1982
 
@@ -91,29 +91,33 @@ Use PUSH/POP for 16-bit moves:
 
 ## Character-based scrolling
 
-Faster than pixel scrolling—move whole characters:
+Faster than pixel scrolling—move whole characters. Each pixel row is 32 bytes; a 1-character left scroll copies bytes 1-31 down to bytes 0-30, then clears or refills byte 31:
 
 ```z80
-; Scroll screen left by 8 pixels (1 character)
+; Scroll screen left by 8 pixels (1 character) — pixel-row by pixel-row
 scroll_char_left:
-    ld hl, $4001        ; source (1 byte right)
-    ld de, $4000        ; destination
-    ld bc, 31           ; 31 bytes to move (32-1)
-
+    ld a, 192               ; 192 pixel rows
+    ld hl, $4001            ; first row source (1 byte right of dest)
+    ld de, $4000            ; first row destination
 .line_loop:
-    push bc
-    ldir                ; move this line
-    inc hl              ; skip last byte
+    push af
+    ld bc, 31               ; 31 bytes per row (32 - 1)
+    ldir                    ; move this row
+    ; Now HL = $4020, DE = $401F. We want HL/DE = next row's source/dest.
+    ; Pixel row N+1's address jumps by + $0100 within a third, OR
+    ; back to start of third + $0020 when crossing character row.
+    ; The simplest robust approach is to recompute from a row counter.
+    ; (See `y_to_address` below for the formula.)
+    ; Skip-over for inline use: increment to next row by +1 byte (HL was at +31 after LDIR, +1 puts it at +32 = next row's start IN MEMORY ORDER but NOT in display order).
+    inc hl
     inc de
-    pop bc
-
-    ; Handle screen line interleaving
-    ; (Spectrum screen isn't linear)
-    ...
-
+    pop af
+    dec a
     jr nz, .line_loop
     ret
 ```
+
+Note that "next row in memory" and "next row on screen" are different on the Spectrum — see the address-formula section below. A correct char scroll either iterates the row counter through `y_to_address` for each pixel row, or unrolls the third-by-third structure. The simple `inc hl / inc de` form above scrolls memory in linear order, which produces visual artefacts at the third boundaries (lines 64 and 128) unless the screen content is uniform.
 
 ## Colour attribute challenges
 
@@ -174,30 +178,36 @@ Third of screen = different base address.
 
 ### Address calculation
 
+The full formula: `addr = $4000 | ((y & $C0) << 5) | ((y & $07) << 8) | ((y & $38) << 2)`. Y[7-6] selects which third of the screen (high byte gets +$00, +$08, or +$10). Y[2-0] picks the pixel row within a character row (high byte +$00 to +$07). Y[5-3] picks the character row within a third (low byte +$00 to +$E0 in steps of $20).
+
 ```z80
-; Convert Y coordinate to screen address
+; Convert Y coordinate to screen address (column 0)
 ; Input: B = Y (0-191)
-; Output: HL = screen address
+; Output: HL = screen address of byte 0 of that pixel row
 
 y_to_address:
     ld a, b
-    and %00000111       ; Y2-Y0
-    or $40              ; $40xx base
-    ld h, a
+    and %00000111       ; Y[2:0]
+    or $40              ; high byte base = $40
+    ld h, a             ; H = $40 | Y[2:0]
 
     ld a, b
-    and %11000000       ; Y7-Y6
+    and %11000000       ; Y[7:6]
     rrca
     rrca
-    rrca
-    ld l, a
+    rrca                ; Y[7:6] >> 3 (puts bits in high byte's bits 4-3)
+    or h                ; merge into high byte
+    ld h, a             ; H = $40 | Y[2:0] | (Y[7:6] >> 3)
 
     ld a, b
-    and %00111000       ; Y5-Y3
-    or l
-    ld l, a
+    and %00111000       ; Y[5:3]
+    rlca
+    rlca                ; Y[5:3] << 2 (gives byte offset 0, $20, $40, ..., $E0)
+    ld l, a             ; L = column 0 of this pixel row
     ret
 ```
+
+Verify: Y=0 → HL=$4000 ✓; Y=8 → HL=$4020 ✓; Y=64 → HL=$4800 ✓; Y=191 → HL=$57E0 (last visible row, column 0) ✓.
 
 ## Common solutions
 

@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Collision Detection"
 subtitle: "When objects meet"
 summary: "Collision detection determined when game objects touched, using techniques from simple bounding boxes to pixel-perfect checks, each trading accuracy for performance."
 category: "techniques"
-platforms: ['c64', 'nes', 'amiga', 'zx-spectrum']
+platforms: ['commodore-64', 'nintendo-entertainment-system', 'commodore-amiga', 'sinclair-zx-spectrum']
 tags: ['programming', 'physics', 'technique']
 originated: 1975
 
@@ -14,87 +14,166 @@ originated: 1975
 
 ## Overview
 
-Did the bullet hit? Did the player land? Collision detection answered gaming's fundamental questions—when objects occupy the same space. Simple boxes worked for most cases, but fighting games needed precision. Each method traded accuracy against CPU cost, and clever programmers chose wisely based on game requirements.
+Did the bullet hit? Did the player land? Collision detection answers gaming's fundamental questions — when objects occupy the same space. Simple boxes worked for most cases; fighting games needed precision; bullet hells need a tiny single-pixel hurtbox in the middle of a busy character. Each method trades accuracy against CPU cost, and clever programmers chose wisely based on game requirements.
+
+This entry covers the fundamental algorithms. For the *design* of hitboxes (what they should be, where to place them) see [Hitboxes](/vault/techniques/hitboxes); for tile-grid-specific collision see [Tile-Based Collision](/vault/techniques/tile-collision).
 
 ## Fast facts
 
 - **Purpose:** Detect object intersection.
-- **Trade-off:** Accuracy vs performance.
-- **Methods:** Bounding box, circle, pixel-perfect.
-- **Application:** Every action game.
+- **Trade-off:** Accuracy vs performance vs determinism.
+- **Methods:** Bounding box, circle, pixel-perfect, polygon, swept.
+- **Application:** Every action game, every physics simulation, every UI hit-test.
 
-## Bounding box collision
+## Bounding box (AABB) collision
 
-| Step | Process |
-|------|---------|
-| 1 | Define rectangle around object |
-| 2 | Check if rectangles overlap |
-| 3 | Overlap = collision |
+The workhorse of 2D games. Two axis-aligned rectangles overlap if and only if they overlap on both axes:
 
-```
+```c
+// AABB intersection test
 if (a.x < b.x + b.width &&
     a.x + a.width > b.x &&
     a.y < b.y + b.height &&
     a.y + a.height > b.y)
-    // Collision!
+{
+    // Collision
+}
 ```
+
+Four comparisons. Cheap on every CPU. Standard for 8-bit and 16-bit games where everything is rectangular.
+
+| Pro | Con |
+|-----|-----|
+| Extremely cheap | Doesn't match non-rectangular shapes well |
+| Easy to implement | "Empty corners" of the box still register as collision |
+| Hardware support on some platforms | Requires careful tuning to feel fair |
 
 ## Circle collision
 
-| Step | Process |
-|------|---------|
-| 1 | Define circle (centre + radius) |
-| 2 | Calculate distance between centres |
-| 3 | Distance < combined radii = collision |
+Two circles intersect if the distance between their centres is less than the sum of their radii:
 
-Good for: Balls, spherical objects, approximate checks.
+```c
+// Circle-circle intersection (using squared distance to avoid sqrt)
+float dx = a.cx - b.cx;
+float dy = a.cy - b.cy;
+float radiusSum = a.r + b.r;
+if (dx*dx + dy*dy < radiusSum*radiusSum) {
+    // Collision
+}
+```
+
+Squaring both sides avoids the expensive `sqrt` call.
+
+| Pro | Con |
+|-----|-----|
+| Rotation-invariant — same answer at any angle | Requires multiplication; 6502 needs lookup tables |
+| Natural for spherical objects | Doesn't fit elongated shapes |
+
+Good for: balls, bullets in some shooters, approximate range checks.
 
 ## Pixel-perfect collision
 
+When two bounding boxes overlap, examine the actual sprite pixels in the overlap region. Both objects' pixels are checked at each shared position; if both are non-transparent, it's a collision.
+
 | Step | Process |
 |------|---------|
-| 1 | Check bounding box first |
-| 2 | If overlap, check overlapping pixels |
-| 3 | Both non-transparent = collision |
+| 1 | Bounding-box test (broad phase) — quickly reject far-apart objects |
+| 2 | If overlap, iterate the overlap region pixel-by-pixel |
+| 3 | At each pixel, test both sprites for non-transparency |
+| 4 | Any "both non-transparent" pixel = collision |
 
-Expensive but precise.
+Expensive on retro hardware — typically tens of comparisons per overlapping pair. Used by *Street Fighter II*, the *Worms* series (where the world is a bitmap), classic *Mortal Kombat*. Modern games rarely use it because GPU-side rendering doesn't expose per-pixel alpha to gameplay code; physics colliders do the job differently.
 
-## Hardware-assisted (C64)
+| Pro | Con |
+|-----|-----|
+| Pixel-accurate | Expensive |
+| Works for arbitrary shapes | Sprite-tied — changes with animation |
+
+## Hardware-assisted collision (C64)
+
+The VIC-II latches collision events into hardware registers — read once per frame to find which sprites collided:
 
 | Register | Function |
 |----------|----------|
-| $D01E | Sprite-sprite collision |
-| $D01F | Sprite-background collision |
-| Usage | Read to check collisions |
+| `$D01E` | Sprite-sprite collision: each bit set when two sprites' opaque pixels overlap |
+| `$D01F` | Sprite-background collision: each bit set when a sprite collides with a non-zero playfield pixel |
+
+The bits are *latched* — they accumulate until you read the register, which clears them. Combined with sprite-priority registers, a fast collision engine on C64 looks like:
+
+```asm
+    lda $d01e          ; sprite-sprite collisions; sets bits + clears on read
+    sta sprite_coll
+    lda $d01f          ; sprite-background
+    sta bg_coll
+    
+    ; Then bit-test which sprite(s) collided
+    lda sprite_coll
+    and #%00000010     ; sprite 1
+    beq .no_sprite1_collision
+    ; ... handle ...
+```
+
+Free hardware collision is one of the C64's underrated features. The NES has a single sprite-zero hit (`$2002` bit 6) — useful but much more limited.
 
 ## Tile-based collision
 
+When the world is a tile grid, collision against the world is a tile lookup. See [Tile-Based Collision](/vault/techniques/tile-collision) for the deep dive.
+
 | Advantage | Detail |
 |-----------|--------|
-| Grid lookup | Check tile at position |
-| Tile properties | Solid, empty, hazard |
-| Performance | Very fast |
-| Limitation | Grid-aligned only |
+| Grid lookup | Check tile at position — O(1) |
+| Tile properties | Solid, empty, hazard, ladder — encoded per tile |
+| Performance | Very fast; shifts and table lookups only |
+| Limitation | Grid-aligned only; not for free-rotation worlds |
+
+## Polygon collision
+
+For arbitrary shapes — separating axis theorem (SAT), GJK algorithm, or polygon clipping. Standard in 3D games and modern 2D physics engines (Box2D, Chipmunk).
+
+Out of scope for retro hardware (the per-pair cost is too high), but used by *Doom*'s BSP-based collision and modern engines.
+
+## Swept collision
+
+Standard collision tests the *current* positions. **Swept collision** tests the *path* an object took since the last frame — preventing **tunnelling**, where a fast object skips through a thin obstacle:
+
+```
+Frame N:    [bullet]       [wall]
+Frame N+1:               [bullet]   (passed through!)
+```
+
+Swept collision sweeps the bullet's bounding box from old to new position, intersecting against the wall — catches the collision that the static test misses.
+
+Common in fast-projectile games: hitscan weapons, bullet sprites, fast-moving platformer characters.
 
 ## Optimisation techniques
 
+Modern games have hundreds of objects; brute-force pair testing is O(n²). The standard optimisations:
+
 | Technique | Purpose |
 |-----------|---------|
-| Broad phase | Quick rejection test |
-| Spatial partitioning | Only check nearby objects |
-| Bitmasks | Fast boolean operations |
-| Frame skipping | Check every N frames |
+| **Broad phase / narrow phase** | Cheap test first (AABB), expensive test second (per-pixel) |
+| **Spatial partitioning** | Quadtree, grid bucket, sweep-and-prune — only test pairs that share a region |
+| **Bitmasks** | Fast group/layer queries — "only test enemies vs player bullets" |
+| **Spatial hashing** | Bucket objects by hashing position; lookup neighbours |
+| **Frame skipping** | Cheap-to-resolve collisions can be checked every N frames |
+| **Hierarchical grouping** | Test the parent body's box first, then per-bone if it hits |
+
+For 8-bit games with ~20 objects max, brute-force AABB is usually fine. The optimisations matter once you hit hundreds.
 
 ## Common issues
 
-| Problem | Cause |
-|---------|-------|
-| Tunnelling | Fast objects skip through |
-| False positives | Bounding box too large |
-| False negatives | Check too infrequent |
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| **Tunnelling** | Fast object skips through thin obstacle in one frame | Swept collision; or smaller timesteps |
+| **False positives** | Bounding box larger than visual sprite | Tighter custom hitboxes |
+| **False negatives** | Check too infrequent (frame-skipping mistake) | Test every frame for fast objects |
+| **Stacking glitches** | Pushed-out characters re-collide | Carefully resolve contacts via penetration depth |
+| **Edge sticking** | Player snags on tile edges when sliding | Bevel corners or use coyote-time logic |
 
 ## See also
 
 - [Tile Maps](/vault/techniques/tile-maps)
+- [Tile-Based Collision](/vault/techniques/tile-collision)
+- [Hitboxes](/vault/techniques/hitboxes)
 - [Fixed Point Math](/vault/techniques/fixed-point-math)
 - [Game Loop](/vault/techniques/game-loop)

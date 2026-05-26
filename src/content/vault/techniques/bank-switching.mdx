@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Bank Switching"
 subtitle: "Expanding memory through hardware tricks"
 summary: "Bank switching allows systems with limited address space to access more memory by swapping different memory regions into the same address range."
 category: "techniques"
-platforms: ["nes", "c64", "zx-spectrum", "sms"]
+platforms: ["nintendo-entertainment-system", "commodore-64", "sinclair-zx-spectrum", "sega-master-system"]
 tags: ["memory", "hardware", "cartridge"]
 originated: 1970
 
@@ -53,26 +53,29 @@ The concept:
 
 The NES used cartridge hardware called "mappers":
 
-| Mapper | Features |
-|--------|----------|
-| **NROM (0)** | No switching, 32KB PRG |
-| **MMC1 (1)** | 256KB PRG, CHR switching |
-| **MMC3 (4)** | 512KB PRG, IRQ counter |
-| **MMC5 (5)** | 1MB PRG, extended features |
+| Mapper | Features | Typical games |
+|--------|----------|---------------|
+| **NROM (0)** | No switching, 16KB or 32KB PRG | Donkey Kong, Mario Bros |
+| **UxROM (2)** | 256KB PRG bank-switching, fixed last bank | Mega Man, Castlevania |
+| **CNROM (3)** | 32KB PRG fixed, 32KB CHR bank-switching | Paperboy |
+| **MMC1 (1)** | Up to 512KB PRG + 128KB CHR, mirroring control, **5-bit serial register** | Zelda, Metroid |
+| **MMC3 (4)** | 512KB PRG + 256KB CHR, **scanline IRQ via PPU A12 edge**, paired even/odd writes | Super Mario Bros 3 |
+| **MMC5 (5)** | 1MB PRG + 1MB CHR, extended attributes, expansion audio | Castlevania III |
 
-Different games used different mappers depending on complexity.
+Different games used different mappers depending on complexity. The NES 2.0 spec catalogues several hundred distinct mappers across licensed and unlicensed cartridges.
 
 ### Commodore 64
 
-The C64 used ROM/RAM banking:
+The C64 banks system ROMs and I/O in and out via the 6510's on-chip processor port at `$01`:
 
-| Region | Banks |
-|--------|-------|
-| **$A000-$BFFF** | BASIC ROM or RAM |
-| **$D000-$DFFF** | I/O or character ROM or RAM |
-| **$E000-$FFFF** | Kernal ROM or RAM |
+| Region | Banks (controlled by `$01` bits 0-2) |
+|--------|--------------------------------------|
+| **$8000-$9FFF** | RAM, or cartridge LO ROM (when `/EXROM` is asserted) |
+| **$A000-$BFFF** | RAM, BASIC ROM, or cartridge HI ROM (LORAM bit) |
+| **$D000-$DFFF** | RAM, character ROM, or I/O area (CHAREN bit) |
+| **$E000-$FFFF** | RAM, KERNAL ROM, or cartridge HI ROM (HIRAM bit) |
 
-Switching via the processor port at $01.
+Bit 0 = LORAM, bit 1 = HIRAM, bit 2 = CHAREN. The Ultimax cartridge mode (`/EXROM=0`, `/GAME=0`) replaces large parts of the map with cartridge ROM regardless of `$01`.
 
 ### ZX Spectrum 128K
 
@@ -80,9 +83,12 @@ The 128K Spectrum banked RAM at $C000-$FFFF:
 
 | Feature | Detail |
 |---------|--------|
-| **Fixed bank** | Bank 5 always at $4000-$7FFF |
-| **Switchable** | Eight 16KB banks at $C000-$FFFF |
-| **Control** | Port $7FFD |
+| **Fixed Bank 5** | Always at $4000-$7FFF (the regular screen) |
+| **Fixed Bank 2** | Always at $8000-$BFFF |
+| **Switchable** | Eight 16KB banks at $C000-$FFFF (banks 0-7, selected by `$7FFD` bits 0-2) |
+| **Control** | Port `$7FFD` (write-only); bit 5 locks paging until reset |
+
+The `+2A`/`+3` add a second paging port at `$1FFD` for "all-RAM" configurations and ROM disk routing.
 
 ## Technical Challenges
 
@@ -102,19 +108,69 @@ The 128K Spectrum banked RAM at $C000-$FFFF:
 | **Trampoline code** | Jump between banks via fixed code |
 | **Bank tables** | Track what's where |
 
-## NES Bank Switching Code
+### Trampoline pattern
 
-A simplified example:
+The trampoline lives in a *fixed* bank (e.g. MMC3's last 8 KB at `$E000-$FFFF`, which never switches). It saves the current bank, switches to the target bank, calls into it, and restores the original bank on return. Code in switchable banks calls foreign functions only via the trampoline:
 
+```asm
+; Lives at $E000 in the fixed bank
+far_call:
+    PHA                  ; save bank arg & target addr (pushed by caller)
+    ; ... swap to target bank using mapper-specific writes ...
+    JSR (target_addr)    ; run the routine in the now-paged bank
+    ; ... swap back to caller's bank ...
+    RTS
 ```
-; Switch to bank 3
-LDA #$03
-STA $8000    ; Bank select register (mapper-specific)
 
-; Now $8000-$BFFF contains bank 3's data
+Without a trampoline, an `RTS` from a foreign bank would land back in the wrong bank's code.
+
+## NES bank switching by mapper
+
+The bank-select interface varies enormously between mappers. Three patterns cover most of them.
+
+### UxROM, CNROM, AxROM — direct write
+
+A single write to any address in the cartridge range latches the bank number:
+
+```asm
+    LDA #$03
+    STA $8000        ; UxROM: select PRG bank 3 at $8000-$BFFF
+                     ; (last bank stays fixed at $C000-$FFFF)
 ```
 
-The exact mechanism varies by mapper hardware.
+### MMC1 — 5-bit serial shift register
+
+MMC1 collects five sequential writes into an internal shift register. Each write latches one bit (bit 0 of the value); on the fifth write the assembled 5-bit value is committed to one of four registers, picked by the address of the *fifth* write:
+
+```asm
+    LDA #%10000000   ; bit 7 set = reset shift register
+    STA $8000        ; (use this to abort a partial write sequence)
+
+    ; Now write the 5 bits of the bank number, LSB first
+    LDA #$1          ; bit 0
+    STA $E000
+    LDA #$1
+    STA $E000
+    LDA #$0
+    STA $E000
+    LDA #$0
+    STA $E000
+    LDA #$0
+    STA $E000        ; fifth write to $E000-$FFFF latches PRG bank %00011 = 3
+```
+
+### MMC3 — paired bank-select / bank-data
+
+MMC3 splits the operation across even and odd addresses. Write the register *index* to an even address in `$8000-$9FFF`, then the bank value to the odd address one byte later:
+
+```asm
+    LDA #$06         ; index 6 = PRG bank at $8000 (in default mode)
+    STA $8000        ; bank select
+    LDA #$0A
+    STA $8001        ; bank data — PRG bank $0A now at $8000
+```
+
+MMC3 also holds an 8-bit IRQ counter that decrements on each rising edge of PPU A12, used for split-screen and status-bar effects.
 
 ## Historical Context
 

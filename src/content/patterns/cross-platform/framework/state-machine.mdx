@@ -81,19 +81,64 @@ gameover_update:
 
 ## Implementation Notes
 
-**6502/Z80 (jump tables):**
-```asm
-; Load state, multiply by 2, use as index into jump table
-lda game_state
-asl              ; * 2 for 16-bit addresses
-tax
-jmp (state_table,x)
+**6502 (NMOS — NES, C64, Apple II, BBC Micro, Atari 8-bit):**
 
+The original NMOS 6502 doesn't have a `JMP (abs,X)` instruction — that was added in the 65C02. So jump-table dispatch on NMOS 6502 needs an indirect through zero-page:
+
+```asm
+; Load state, multiply by 2, fetch the target address into a zp pointer
+lda game_state
+asl                     ; * 2 for word table
+tax
+lda state_table,x
+sta jmp_target
+lda state_table+1,x
+sta jmp_target+1
+jmp (jmp_target)        ; NMOS-compatible indirect jump
+
+; jmp_target lives in zero page (2 bytes)
 state_table:
     .word title_update
     .word playing_update
     .word paused_update
     .word gameover_update
+```
+
+A simpler portable alternative is a CMP/BEQ chain — slower (linear in number of states), but works everywhere and is easier to read:
+
+```asm
+lda game_state
+cmp #STATE_TITLE
+beq title_update
+cmp #STATE_PLAYING
+beq playing_update
+cmp #STATE_PAUSED
+beq paused_update
+jmp gameover_update     ; Default fall-through
+```
+
+**65C02 (Apple IIGS, BBC Master, Atari Lynx):**
+
+```asm
+lda game_state
+asl
+tax
+jmp (state_table,x)     ; 65C02 indexed indirect — NMOS 6502 lacks this
+```
+
+**Z80:**
+```asm
+ld a,(game_state)
+add a,a                 ; * 2
+ld e,a
+ld d,0
+ld hl,state_table
+add hl,de
+ld e,(hl)
+inc hl
+ld d,(hl)
+ex de,hl
+jp (hl)                 ; Jump to address in HL
 ```
 
 **68000 (jump tables):**

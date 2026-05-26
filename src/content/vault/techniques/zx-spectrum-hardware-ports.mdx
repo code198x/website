@@ -1,15 +1,20 @@
 ---
-ai_generated: true
-reviewed: false
-title: "ZX Spectrum Hardware Ports"
-subtitle: "Complete I/O port reference"
-summary: "Complete reference for Spectrum I/O ports - border, keyboard, speaker, and ULA control."
+ai_generated: false
+reviewed: true
+title: "ZX Spectrum hardware ports"
+subtitle: "Talking to the ULA, the AY chip, and the joystick — one port at a time"
+summary: "The Spectrum's I/O port map: port $FE for keyboard, border, beeper, and tape on every model; port $1F for the Kempston joystick; ports $7FFD and $1FFD for 128K and +2A/+3 memory paging; ports $FFFD and $BFFD for the AY-3-8912 sound chip on 128K+ models. The technical reference Shadowkeep Unit 4 and Unit 7 read from."
 category: "techniques"
-platforms: ['spectrum']
+platforms: ['sinclair-zx-spectrum']
 tags: ['hardware', 'ports', 'i/o', 'ula', 'keyboard', 'reference']
+
 ---
 
-The ZX Spectrum uses I/O ports to communicate with hardware devices. This reference covers all standard Spectrum ports with focus on the multi-purpose port $FE.
+## Overview
+
+The Z80 has a separate I/O address space — 256 ports addressed by the low 8 bits of the address bus on the simplest instructions, or by the full 16 bits when using `IN A,(C)` / `OUT (C),A`. On the Spectrum, almost every I/O operation is one of a small set of well-defined port addresses, decoded by the [ULA](/vault/hardware/ula) or by add-on hardware. This entry catalogues the ports that matter for game development on the platform.
+
+The most important port, by a long margin, is **$FE** — the ULA's single multi-purpose port. It carries the keyboard, the border colour, the beeper, and the tape interface, all on one address. Almost every Spectrum game touches $FE on every frame.
 
 ---
 
@@ -68,8 +73,8 @@ OUT ($FE),A      ; Write back
 
 | Bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
 |-----|---|---|---|---|---|---|---|---|
-| **Purpose** | — | Tape | — | — | Key | Key | Key | Key | Key |
-| **Active** | x | EAR | x | x | Row bit 4 | Row bit 3 | Row bit 2 | Row bit 1 | Row bit 0 |
+| **Purpose** | — | EAR | — | Key | Key | Key | Key | Key |
+| **Active** | reads 1 | tape input | reads 1 | row bit 4 | row bit 3 | row bit 2 | row bit 1 | row bit 0 |
 
 **Bit Functions:**
 
@@ -261,24 +266,25 @@ ToneDelay2:
 
 **Problem:** Writing to port $FE affects border **and** speaker.
 
-**Solution:** Read current value, modify only speaker bit:
+**Solution:** **Read-modify-write doesn't work** — `IN A,($FE)` returns the keyboard rows + EAR, **not** the last-written border colour. The Spectrum has no readback path for OUT-set ULA state. You must keep a software variable holding the current border value:
 
 ```nasm
-        IN A,($FE)        ; Read current port
-        AND $F8           ; Clear border bits
-        LD C,A            ; Save base value
+; Globally maintained border colour (bits 0-2, MIC bit 3 if you use tape)
+current_border:
+        DEFB    1               ; Blue border, MIC low
 
-        ; Speaker ON
-        LD A,C
-        OR $10            ; Set speaker bit
+play_click:
+        LD HL,current_border
+        LD A,(HL)
+        OR $10                  ; Speaker on, border preserved
         OUT ($FE),A
-
-        ; Delay...
-
-        ; Speaker OFF
-        LD A,C
-        OUT ($FE),A       ; Restore (speaker bit = 0)
+        ; ... delay ...
+        LD A,(HL)               ; Speaker off, border preserved
+        OUT ($FE),A
+        RET
 ```
+
+To change the border colour, write to `current_border`; the next speaker toggle picks it up.
 
 ---
 
@@ -318,11 +324,52 @@ ToneDelay2:
 
 ### Port $7FFD - 128K Memory Paging (128K models only)
 
-Not available on 48K Spectrum. Used for bank switching on 128K models.
+Not available on 48K Spectrum. Used for bank switching on 128K, +2, +2A, +3 models.
 
-### Port $FFFD - AY-3-8912 Sound Chip (128K models only)
+**Bit layout (write):**
 
-3-channel sound chip on 128K/+2/+3 models. Not present on 48K.
+| Bit | Function |
+|-----|----------|
+| 0-2 | RAM bank at $C000 (selects one of 8 banks) |
+| 3 | Screen RAM bank (0 = normal screen at $C000-$DFFF in bank 5; 1 = shadow screen in bank 7) |
+| 4 | ROM select (0 = 128K editor ROM, 1 = 48K BASIC ROM) |
+| 5 | Paging disable — **once set, can only be cleared by reset**. Preserves the current configuration; some games use this to lock memory after setup. |
+| 6-7 | Reserved |
+
+Bank 5 is always at $4000 (regular screen). Bank 2 is always at $8000. Bank 0-7 is selected by bits 0-2 at $C000.
+
+### Port $1FFD - +2A/+3 Special Paging
+
+The +2A/+3 (Amstrad redesign) adds a second paging port. Only relevant for those models — see the +3 technical reference for bit layout.
+
+### Ports $FFFD / $BFFD - AY-3-8912 Sound Chip (128K+ models only)
+
+3-channel programmable sound generator on 128K/+2/+3 models (not on 48K). Two ports work together:
+
+- **`$FFFD`** — register select. Write the AY register number (0-15) here first.
+- **`$BFFD`** — register data. Write or read the value of the previously selected register.
+
+```nasm
+; Write value $0F to AY register 7 (mixer)
+        LD BC,$FFFD
+        LD A,7              ; Select register 7
+        OUT (C),A
+        LD BC,$BFFD
+        LD A,$0F            ; New value
+        OUT (C),A
+```
+
+See the [AY-3-8910](/vault/hardware/ay-3-8910) entry for the register set and channel layout.
+
+### +3 Disk Drive Ports (+3 only)
+
+The Spectrum +3 has a built-in 3-inch floppy drive controlled by an μPD765 disk controller, accessed through:
+
+- **`$2FFD`** — Disk controller status (read) / command (write)
+- **`$3FFD`** — Disk controller data (read/write)
+- **`$1FFD`** bits 3-4 — Drive motor control + ROM/RAM switch combinations
+
+Most +3 software uses the `+3DOS` BIOS rather than poking these ports directly. See the +3 technical manual for the full interface.
 
 ### Kempston Joystick - Port $1F
 
@@ -340,8 +387,15 @@ Not available on 48K Spectrum. Used for bank switching on 128K models.
 
 ---
 
+## Why hardware ports matter for Code Like It's 198x
+
+Shadowkeep Unit 4 reads $FBFE (Q-row), $FDFE (A-row), and $DFFE (P-row) to implement QAOP input — three of the eight half-row reads listed above. Unit 7 will write to $FE bit 4 in a tight loop to generate beeper music. The 128K AY ports become relevant in Phase 2+ when the Spectrum 128 is brought online. The single most-used line of platform-specific code in the entire Project is `OUT ($FE), A` — every other Spectrum hardware concern flows downstream of this one port.
+
 ## See also
 
 - [ZX Spectrum](/vault/systems/zx-spectrum)
+- [ULA](/vault/hardware/ula) — The chip that decodes most of these ports.
+- [Z80](/vault/hardware/z80) — The CPU side of the conversation.
+- [AY-3-8910](/vault/hardware/ay-3-8910) — The 128K+ sound chip.
+- [Beeper music](/vault/techniques/beeper-music) — What port $FE bit 4 is really for.
 - [ZX Spectrum ROM Disassembly](/vault/techniques/zx-spectrum-rom-disassembly)
-- [Z80 Instruction Set Reference](/vault/techniques/z80-instruction-set)

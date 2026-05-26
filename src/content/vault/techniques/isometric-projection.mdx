@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Isometric Projection"
 subtitle: "3D from 2D"
 summary: "Isometric projection created the illusion of three-dimensional space on 2D screens, enabling exploration games impossible with flat side-views."
 category: "techniques"
-platforms: ['zx-spectrum', 'c64', 'amstrad-cpc', 'nes']
+platforms: ['sinclair-zx-spectrum', 'commodore-64', 'amstrad-cpc', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['graphics', '3d', 'game-design']
 originated: 1982
 
@@ -14,122 +14,152 @@ originated: 1982
 
 ## Overview
 
-Isometric projection displays three-dimensional scenes from a fixed angle where all three axes are equally foreshortened. On 8-bit computers, this created the impression of explorable 3D space while using only 2D sprite and tile techniques. *Knight Lore*, *Marble Madness*, and *Solstice* defined the look.
+Isometric projection displays three-dimensional scenes from a fixed angle where all three axes are equally foreshortened — no axis is preferred over another. On 8-bit computers, this created the impression of explorable 3D space while using only 2D sprite and tile techniques. *Knight Lore* (Spectrum, 1984), *Marble Madness* (arcade, 1984), and *Solstice* (NES, 1990) defined the look. The strategy genre adopted it (*Civilization*, *SimCity 2000*) and never let go — modern indies (*Hades*, *Disco Elysium*) keep it alive.
 
 ## The mathematics
 
-### Standard isometric
+### True isometric
 
-True isometric uses ~30° angles:
-- X-axis: 30° from horizontal
-- Y-axis: 90° (vertical)
-- Z-axis: 30° from horizontal (opposite direction)
+True isometric uses **30°** angles for the X and Z axes (measured from horizontal) with the Y axis straight up:
 
-### Pixel isometric (2:1)
+- **X-axis:** 30° from horizontal (right and slightly down)
+- **Z-axis:** 30° from horizontal (left and slightly down)
+- **Y-axis:** 90° (vertical)
 
-Games often used 2:1 ratio:
-- For every 2 pixels horizontal, 1 pixel vertical
-- Simpler maths for 8-bit processors
-- Visually similar to true isometric
+Each unit step in any axis projects to the same screen distance — true *iso-metric* (equal measure).
+
+### "Pixel isometric" (2:1 ratio)
+
+Most computer games used a **2:1** ratio rather than true 30°:
+
+- For every 2 pixels horizontal, 1 pixel vertical along the X axis (and the same for Z, opposite direction).
+- Slightly off-true (the actual angle is `atan(1/2) ≈ 26.57°` rather than 30°).
+- **Simpler maths** — multiplications and divisions by 2 are shifts on 8-bit hardware.
+- Visually nearly identical to true isometric.
+
+This is what *Knight Lore*, *Solstice*, and basically every 2D isometric game uses. Calling it "isometric" is technically inaccurate (purists call it *dimetric* or *2:1 projection*), but the term has stuck.
 
 ## Coordinate conversion
 
-Converting 3D to screen coordinates:
+Convert from 3D world `(tile_x, tile_y, tile_z)` to 2D screen coordinates:
 
 ```
-screen_x = (tile_x - tile_z) × tile_width / 2
-screen_y = (tile_x + tile_z) × tile_height / 2 - height
+screen_x = (tile_x - tile_z) * (tile_width / 2)
+screen_y = (tile_x + tile_z) * (tile_height / 2) - tile_y * tile_height
+```
+
+Where `tile_width` and `tile_height` are the on-screen dimensions of one tile (typically 32×16 for 2:1 isometric). Note `tile_y` is *up*, so it subtracts.
+
+Inverse — screen back to tile (for click detection, mouse picking):
+
+```
+tile_x = (screen_x / (tile_width / 2) + screen_y / (tile_height / 2)) / 2
+tile_z = (screen_y / (tile_height / 2) - screen_x / (tile_width / 2)) / 2
 ```
 
 ## Rendering order
 
-Objects must be drawn back-to-front (painter's algorithm):
+Objects must be drawn back-to-front (painter's algorithm) so closer objects overlay farther ones:
 
 ```
 for z from far to near:
     for x from left to right:
-        draw_tile(x, z)
+        draw_tile(x, y, z)
+        draw_objects_at(x, y, z)
 ```
 
-Or sort by depth:
-```
-depth = tile_x + tile_z
-```
+For free-position objects (not tile-aligned), sort by depth = `tile_x + tile_z + tile_y` and draw in order.
+
+See [Y-Depth Sorting](/vault/techniques/y-depth-sorting) for the depth-sort details.
 
 ## Collision detection
 
-Separate world coordinates from screen:
-- Store position in 3D (x, y, z)
-- Calculate screen position for display
-- Collide in 3D space, not screen space
+Keep world coordinates separate from screen coordinates:
+
+- Store position in 3D `(x, y, z)` (or 2D `(x, z)` plus height).
+- Calculate screen position only for *display*.
+- Collide in 3D space, not screen space — diagonal-on-screen sprites that are perpendicular in world space shouldn't collide based on screen overlap.
+
+This is the lesson that *Knight Lore* established and every isometric game inherits: **screen position is not world position**.
 
 ## The Filmation engine
 
-Ultimate's approach (*Knight Lore*):
+Ultimate Play the Game's *Filmation* engine — *Knight Lore*, *Alien 8*, *Pentagram*, *Nightshade*, *Gunfright* — is the canonical 8-bit isometric implementation:
 
 | Feature | Implementation |
 |---------|----------------|
-| Solid objects | Z-ordered sprite masking |
-| Room-based | Each room calculated fresh |
-| Object interaction | Physics in isometric space |
-| Memory efficiency | Room data, not full map |
+| Solid objects | Z-ordered sprite masking (write-mask + write-data per object) |
+| Room-based world | Each room rendered fresh as the player enters |
+| Object interaction | Physics computed in 3D space, displayed in 2D |
+| Memory efficiency | Compact room data; objects shared across rooms |
+
+See [Filmation Engine](/vault/techniques/filmation-engine) for the deep dive.
 
 ## Tile-based isometric
 
-Common in strategy games:
+Common in strategy games (*Civilization*, *SimCity 2000*, *Theme Hospital*, *Diablo*):
 
 | Element | Structure |
 |---------|-----------|
-| Ground tiles | Diamond-shaped |
-| Objects | Placed at tile positions |
-| Height | Stack tiles or offset |
+| **Ground tiles** | Diamond-shaped (parallelogram-projected square) |
+| **Objects** | Placed at tile positions, may overhang neighbouring tiles |
+| **Height** | Stacked tiles or vertical offset |
+| **Multi-tile objects** | Big buildings span 2×2, 3×3 tile footprints |
 
 ## Challenges
 
-### Depth sorting
+### Depth sorting in complex scenes
 
-Objects can overlap in complex ways:
-- Characters moving between objects
-- Multi-tile objects
-- Different heights
+Objects can overlap in non-trivial ways:
 
-### Click detection
+- A character moving diagonally between two pillars must be sorted *between* them.
+- Multi-tile objects must be sorted by their entire footprint, not just their anchor.
+- Different heights complicate things further (a flying creature *behind* a wall but *above* it in Y).
 
-Converting screen clicks to tiles:
-```
-tile_x = (screen_x / (tile_width/2) + screen_y / (tile_height/2)) / 2
-tile_z = (screen_y / (tile_height/2) - screen_x / (tile_width/2)) / 2
-```
+Standard solution: depth = `tile_x + tile_z + tile_y` with tie-breakers for stable rendering.
+
+### Click / touch detection
+
+Convert screen-space input to world-space tile via the inverse formula. UI complications: clicks on tile boundaries need rounding rules.
 
 ### Movement
 
-Eight-direction movement maps to 3D:
-- "Up" moves toward back corner
-- "Left" moves toward left corner
-- Diagonal movement along axes
+Eight-direction movement is natural — diagonals along the X/Z axes feel "natural" because they correspond to game-world directions:
+
+- **Up arrow** → moves toward back corner (decreasing screen Y, but in world space a diagonal between -X and -Z).
+- **Left arrow** → moves left-screen, which in world space is "decrease X *and* increase Z".
+- Rotational input via four-way controllers mapping to world axes is its own design problem.
 
 ## Notable games
 
-| Game | Year | Platform |
-|------|------|----------|
-| Zaxxon | 1982 | Arcade |
-| Knight Lore | 1984 | Spectrum |
-| Marble Madness | 1984 | Arcade |
-| Batman | 1986 | Spectrum |
-| Head Over Heels | 1987 | Spectrum |
-| Solstice | 1990 | NES |
+| Game | Year | Platform | Innovation |
+|------|------|----------|------------|
+| *Q*bert** | 1982 | Arcade | Early commercial isometric |
+| *Zaxxon* | 1982 | Arcade | Isometric shoot-em-up; popularised the look |
+| *Ant Attack* | 1983 | ZX Spectrum | One of the first 8-bit isometric games |
+| *Knight Lore* | 1984 | ZX Spectrum | Filmation engine; defined 8-bit isometric |
+| *Marble Madness* | 1984 | Arcade | Atari's isometric ball-rolling masterpiece |
+| *Alien 8* | 1985 | ZX Spectrum | Filmation engine refinement |
+| *Batman* | 1986 | ZX Spectrum | *Knight Lore* engine licensed |
+| *Head Over Heels* | 1987 | ZX Spectrum | Two-character isometric puzzle |
+| *Solstice* | 1990 | NES | Late console-era isometric |
+| *Populous* | 1989 | Various | Bullfrog's god game popularised isometric on 16-bit |
 
 ## Modern use
 
-Isometric persists in:
-- City builders (*SimCity 2000*)
-- Tactical RPGs (*Final Fantasy Tactics*)
-- Action RPGs (*Diablo*)
-- Indie games (*Hades*)
+Isometric persists in many genres:
+
+- **City builders:** *SimCity 2000* / 3000 / 4, *Tropico*, *Cities: Skylines* (modern uses true 3D but isometric-feeling camera).
+- **Tactical RPGs:** *Final Fantasy Tactics*, *Tactics Ogre*, *Disgaea*, *XCOM*.
+- **Action RPGs:** *Diablo* series, *Path of Exile*, *Torchlight*.
+- **Strategy:** *Civilization II / III* used true isometric; later moved to 3D-with-isometric-camera.
+- **Indie:** *Hades*, *Bastion*, *Transistor*, *Pyre* (Supergiant).
+- **Atmospheric / narrative:** *Disco Elysium*.
 
 ## See also
 
 - [Knight Lore](/vault/games/knight-lore)
 - [Filmation Engine](/vault/techniques/filmation-engine)
 - [Head Over Heels](/vault/games/head-over-heels)
-- [Ultimate](/vault/companies/ultimate)
+- [Y-Depth Sorting](/vault/techniques/y-depth-sorting)
+- [Ultimate Play the Game](/vault/companies/ultimate)

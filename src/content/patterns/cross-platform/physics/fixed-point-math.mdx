@@ -141,3 +141,35 @@ apply_gravity:
 ## Signed Movement
 
 For movement in both directions, use signed arithmetic or separate positive/negative velocities. Simplest approach: track direction separately and always add positive velocity.
+
+For genuine signed fixed-point, treat the high byte as a signed two's-complement integer. On 8.8, that gives a range of -128.0 to +127.996 pixels. Negative velocities work naturally with `ADC` because the carry semantics are the same — `$FF80` (-0.5) added to `$0100` (1.0) gives `$0080` (0.5), with the carry rolling out as expected:
+
+```asm
+; Velocity: -0.5 px/frame = $FF80 in signed 8.8
+velocity_x_lo: .byte $80
+velocity_x_hi: .byte $FF        ; Signed -1 in high byte
+
+; Position update is unchanged - the same CLC/ADC sequence works
+update_position:
+    clc
+    lda player_x_lo
+    adc velocity_x_lo
+    sta player_x_lo
+    lda player_x_hi
+    adc velocity_x_hi
+    sta player_x_hi
+    rts
+```
+
+## 16.16 fixed-point for higher precision
+
+When pixel-level resolution isn't enough — fast scrollers, sub-pixel collision, or very slow drift — bump to **16.16 fixed-point** (16 bits integer + 16 bits fraction = 4 bytes per axis):
+
+| Speed | Fixed value | Bytes |
+|-------|-------------|-------|
+| 0.001 px/frame | 65 | $00000041 |
+| 0.5 | 32,768 | $00008000 |
+| 1.0 | 65,536 | $00010000 |
+| Fastest meaningful | varies by pixel range |
+
+The arithmetic costs more (32-bit add = 4 byte adds) but precision rises to 1/65,536 pixel — useful for parallax layers moving at fractional rates per frame, or for accumulated drift in long-running effects. The 68000 makes this cheap (`ADD.L` is one instruction); on 8-bit CPUs it's a 4-byte chained add.

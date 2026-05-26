@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Dithering"
 subtitle: "More colours from fewer"
 summary: "Dithering created the illusion of additional colours by interleaving pixels of different shades, expanding limited palettes through optical mixing."
 category: "techniques"
-platforms: ['c64', 'zx-spectrum', 'amiga', 'pc']
+platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'ibm-pc']
 tags: ['graphics', 'art', 'technique']
 originated: 1980
 
@@ -14,112 +14,155 @@ originated: 1980
 
 ## Overview
 
-When your palette has sixteen colours but your image needs thousands, dithering provides the illusion. By carefully placing pixels of different colours adjacent to each other, artists created apparent gradients and shades that didn't exist in the palette. The eye blends neighbouring pixels, perceiving colours the hardware cannot display.
+When your palette has 16 colours but your image needs thousands, dithering provides the illusion. By carefully placing pixels of different colours adjacent to each other, artists created apparent gradients and shades that didn't exist in the palette. The eye blends neighbouring pixels — at the right viewing distance, on the right display — perceiving colours the hardware cannot literally display.
+
+Dithering is the optical equivalent of a pointillist painting: dots of pure pigment that read as a smooth tone when stepped back from.
 
 ## The principle
 
-| Technique | Result |
-|-----------|--------|
-| Alternating pixels | Apparent mixed colour |
-| Pattern density | Perceived brightness |
-| Colour adjacency | Blended perception |
+Two factors govern perceived colour:
+
+| Factor | Effect |
+|--------|--------|
+| **Pattern density** | More of colour A in the mix → output reads more like A |
+| **Pattern size** | Smaller, finer dots → smoother apparent blend |
+| **Viewing distance** | Further away → better blending; up close, the dots are visible |
+| **Display blur** | CRT phosphor bleed helps; sharp LCDs make dots visible |
 
 ## Common patterns
 
 ### Ordered dithering
 
-Regular patterns:
+Regular, repeating patterns. Cheap to compute, predictable artistic results.
+
 ```
-Checkerboard:    Bayer matrix:
-█ █ █ █          █   █
- █ █ █           █ █
-█ █ █ █            █ █
- █ █ █           █   █
+Bayer 2×2:           Bayer 4×4:
+0 2                  0  8  2 10
+3 1                 12  4 14  6
+                     3 11  1  9
+                    15  7 13  5
 ```
+
+The Bayer matrix gives threshold values: when rendering pixel `(x, y)` in colour `c`, compare to `bayer[x % 4][y % 4]`. Bayer 4×4 is the workhorse of late-80s / early-90s computer graphics — visible in *Deluxe Paint* tutorials, MicroProse simulators, and most Amiga / Atari ST artwork.
 
 ### Error diffusion
 
-Spread quantisation error to neighbours:
-- Floyd-Steinberg algorithm
-- Smoother gradients
-- More computation required
+Spread quantisation error to neighbouring pixels — when picking the closest palette colour, the difference between *exact* and *picked* colour is added to surrounding pixels:
+
+```
+   X  7
+1  5  3        (Floyd-Steinberg distribution, fractions of 16)
+```
+
+The pixel below-right gets 7/16 of the error, etc. Result: smoother gradients, more "natural" look.
+
+| Algorithm | Year | Distribution | Notes |
+|-----------|------|--------------|-------|
+| **Floyd-Steinberg** | 1976 | 7/3/5/1 over 4 neighbours | The classic; default in most image editors |
+| **Stucki** | 1981 | Spread over 12 neighbours | Smoother, slightly more expensive |
+| **Atkinson** | ~1986 | 1/8 over 6 neighbours | Bill Atkinson's original Mac dithering; high contrast |
+| **Sierra** | 1990 | Multiple variants | Speed/quality tradeoffs |
+
+Error diffusion costs more per pixel than ordered, but the result is harder to spot.
 
 ## Platform applications
 
 ### Commodore 64
 
-| Mode | Colours | Dithering use |
-|------|---------|---------------|
-| Multicolour | 4 per cell | Essential |
-| Hi-res | 2 per cell | Very common |
+| Mode | Colours per cell | Dithering use |
+|------|-------------------|---------------|
+| **Hi-res** | 2 (1 BG + 1 FG per 8×8 cell) | Common — alternating-pixel dithering creates 50% blends |
+| **Multicolour** | 4 (3 fixed + background per 8×8 cell) | Essential — multicolour pixels are 2:1 wide so dithering happens at "2 multi-pixels = 1 hi-res" granularity |
+| **FLI** | 8+ per cell | Less needed — VIC-II tricks expose more colours per cell |
+
+The C64's 16-colour palette has limited gradients (especially blues/greens), so dithering between adjacent palette entries was an artist's stock-in-trade.
 
 ### ZX Spectrum
 
-Attribute limitations:
-- 2 colours per 8×8 block
-- Dithering within blocks
-- Colour clash mitigation
+The Spectrum's attribute system (8×8 cells, two colours per cell from a 15-colour palette) makes traditional pixel dithering hard. What Spectrum artists do instead:
+
+- **Dither within the cell** between the two attribute colours.
+- **Choose attribute pairs** that visually blend (alternate hot/cold colours in the cell to imply midpoints).
+- **Rely on CRT blur** to soften the cell boundaries.
+- **Skip dithering entirely** for game graphics — colour-clash means dithering between cells doesn't work cleanly.
 
 ### Amiga
 
-HAM mode alternative:
-- Standard modes: dithering for gradients
-- EHB mode: 64 colours, still dithered
-- Quality vs performance tradeoff
+| Mode | Native colours | Dithering use |
+|------|------------------|----------------|
+| **OCS lores** | 32 from 4096 | Common — 32 colours leaves big gaps in any gradient |
+| **OCS hires** | 16 from 4096 | Heavier dithering — fewer palette entries |
+| **EHB (Extra Half-Brite)** | 64 (32 + 32 half-bright copies) | Less needed for shadows; still useful for warm-cool gradients |
+| **HAM6 / HAM8** | 4096 / 262144 simulated | Different game entirely — HAM lets each pixel modify one R/G/B channel from the previous, costing horizontal neighbour constraints |
 
-### PC (CGA/EGA)
+HAM mode complements rather than replaces dithering — HAM's per-pixel colour-shift constraints often produce streak artefacts that dithering helps mask.
 
-| Mode | Colours | Dithering |
-|------|---------|-----------|
-| CGA | 4 | Essential |
-| EGA | 16 | Common |
-| VGA | 256 | Less needed |
+### IBM PC (CGA / EGA / VGA)
+
+| Mode | Colours | Dithering use |
+|------|---------|---------------|
+| **CGA** | 4 from 16 (limited subset modes) | Essential — CGA's notorious cyan/magenta/white/black palette is mostly dithered for any complex art |
+| **EGA** | 16 from 64 | Common, especially for skin tones and skies |
+| **VGA 13h** | 256 from 262144 | Less needed but still used for smooth gradients |
 
 ## Artist techniques
 
-### Gradient creation
+### Faking gradients
 
-Steps to fake smooth gradients:
-1. Solid colour A
-2. 75% A / 25% B dither
-3. 50% A / 50% B dither
-4. 25% A / 75% B dither
-5. Solid colour B
+Five-step blend between colour A and colour B:
+
+| Step | Pattern |
+|------|---------|
+| 1 | 100% A |
+| 2 | 75% A / 25% B (3 dots A, 1 dot B per 4-pixel block) |
+| 3 | 50% A / 50% B (checkerboard) |
+| 4 | 25% A / 75% B |
+| 5 | 100% B |
+
+Tightening the dot pattern (smaller blocks) gives smoother apparent gradients at the cost of computation or pre-drawn brush authoring.
 
 ### Texture simulation
 
-Dithering creates:
-- Metal surfaces
-- Fabric textures
-- Skin tones
-- Natural surfaces
+Dithering reads as different surfaces:
+
+- **Coarse checkerboard** → fabric, mesh
+- **Random scatter** → noise, dust, water spray
+- **Diagonal stripes** → metal, machined surface
+- **Bayer 2×2** → smooth shading, "computer-y" look
+
+The Bitmap Brothers (*Speedball 2*, *The Chaos Engine*) made aggressive dithering a stylistic signature on the Amiga — metallic surfaces and angular shading that *only* read correctly with their dithering.
 
 ## Tools
 
-| Software | Platform |
-|----------|----------|
-| Deluxe Paint | Amiga |
-| Brilliance | Amiga |
-| Art Studio | C64 |
-| OCP Art Studio | Spectrum |
+| Software | Platform | Notable for |
+|----------|----------|-------------|
+| **Deluxe Paint** | Amiga, PC | The canonical dithering toolset; "dither paint" mode and stencil-based dither brushes |
+| **Brilliance** | Amiga | Better gradient tools; Amiga rival to DPaint |
+| **Art Studio / OCP Art Studio** | C64 / Spectrum | Pixel-level art tools with dither pattern support |
+| **PI / GrafX2** (modern) | PC, modern | DPaint-inspired tools used by current pixel artists |
+| **Photoshop** | Modern | "Bitmap mode" with diffusion-dither output; standard since 90s |
 
 ## Display considerations
 
 | Display | Dithering appearance |
 |---------|---------------------|
-| CRT | Blends naturally |
-| LCD | More visible pattern |
-| Emulator | Depends on filtering |
+| **CRT** | Phosphor bleed naturally blurs adjacent pixels; dithering reads as a smooth blend |
+| **LCD** | Pixels are sharper; dither pattern visible at native resolution; needs higher-frequency dithering |
+| **Emulator** | Depends on filtering — bilinear smooths it; nearest-neighbour preserves the artistic intent |
+| **Modern 4K display** | Original-resolution art is tiny; integer scaling preserves dithering, blurry scaling destroys it |
 
-CRTs' natural blur helped dithering succeed.
+CRTs' natural blur was a critical part of how dithering worked. Modern emulators add CRT shaders specifically to restore this blending.
 
 ## Famous examples
 
-| Game | Dithering use |
-|------|---------------|
-| Deluxe Paint art | Showcase pieces |
-| Sierra adventures | Background gradients |
-| Bitmap Brothers | Metallic surfaces |
+| Game / artwork | Dithering use |
+|----------------|---------------|
+| *Speedball 2* (Bitmap Brothers, Amiga) | Heavy dithering on metallic player armour |
+| *Another World / Out of This World* | Vector art with hand-tuned dithering for shadows |
+| *Sierra adventures* (KQ4 onward, EGA) | Background gradients via 16-colour dithering |
+| *Deluxe Paint art galleries* | Showcase pieces with virtuoso dithering |
+| *Beneath a Steel Sky* (Revolution, 1994) | Comic-book backgrounds dithered for cel-shaded look |
+| *Day of the Tentacle* (LucasArts, 1993) | Selective dithering for cartoon shading |
 
 ## See also
 
@@ -127,3 +170,4 @@ CRTs' natural blur helped dithering succeed.
 - [Character Graphics](/vault/techniques/character-graphics)
 - [Deluxe Paint](/vault/games/deluxe-paint)
 - [VIC-II](/vault/hardware/vic-ii)
+- [Pixel Art](/vault/techniques/pixel-art)

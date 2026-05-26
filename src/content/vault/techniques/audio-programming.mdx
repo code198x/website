@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Audio Programming"
 subtitle: "Sound from code"
 summary: "Audio programming on vintage hardware demanded intimate knowledge of sound chips, precise timing, and clever techniques to achieve musical results."
 category: "techniques"
-platforms: ['c64', 'spectrum', 'amiga', 'nes']
+platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['sound', 'programming', 'music']
 originated: 1977
 
@@ -14,35 +14,94 @@ originated: 1977
 
 ## Overview
 
-Audio programming on 8-bit and 16-bit systems wasn't about calling playSound()—it meant directly manipulating sound chip registers. Programmers set frequencies, waveforms, and envelopes cycle-by-cycle. The SID chip wanted specific register sequences; the AY-3-8910 had different demands; the NES's APU another approach entirely. Understanding the hardware was essential.
+Audio programming on 8-bit and 16-bit systems wasn't about calling `playSound()` — it meant directly manipulating sound chip registers. Programmers set frequencies, waveforms, and envelopes register-by-register. The SID chip wanted specific register sequences with precise gate timing; the AY-3-8910 had different demands; the NES's APU another approach entirely; Paula's DMA-driven sample playback yet another. Understanding the hardware was essential.
+
+This entry is the umbrella overview. For the *driver software* that orchestrates audio, see [Sound Drivers](/vault/techniques/sound-drivers); for *interrupt timing*, [Interrupt-Driven Music](/vault/techniques/interrupt-driven-music); for *specific techniques*, the linked technique entries below.
 
 ## Fast facts
 
-- **Level:** direct hardware manipulation.
-- **Timing:** often interrupt-driven, frame-synchronised.
-- **Chips:** SID (C64), AY (Spectrum), Paula (Amiga), APU (NES).
-- **Techniques:** arpeggios, envelopes, driver routines.
-- **Output:** music, sound effects, samples.
+- **Level:** Direct hardware register manipulation (no abstractions).
+- **Timing:** Almost always interrupt-driven, frame-synchronised at 50/60 Hz.
+- **Chips:** SID (C64), AY-3-8910/12 (Spectrum 128K, MSX, Amstrad), Paula (Amiga), APU (NES), YM2612+SN76489 (Mega Drive), TIA (Atari 2600), POKEY (Atari 8-bit).
+- **Techniques:** Arpeggios, envelopes, filter sweeps, PWM, sample playback.
+- **Output:** Music, sound effects, digitised samples, voice synthesis.
 
 ## Platform approaches
 
-Different hardware, different methods:
-- **C64 SID:** register writes, filter manipulation.
-- **Spectrum AY:** simpler chip, clever envelope tricks.
-- **Amiga Paula:** sample-based, module playback.
-- **NES APU:** pulse, triangle, noise channels.
+| Platform | Chip | Programming style |
+|----------|------|---------------------|
+| **C64** | SID 6581 / 8580 | Three-voice synth: pulse / triangle / saw / noise / ring-mod / sync; built-in filter; ADSR per voice |
+| **ZX Spectrum 128K** | AY-3-8912 | Three square + noise; hardware envelope; software arpeggios for chords |
+| **NES** | 2A03 APU | Two pulse + triangle + noise + DPCM (samples); sweep unit on pulse channels |
+| **Amiga** | Paula | Four 8-bit DMA samples; no synth — sample-based; software pitch shift; LED low-pass filter |
+| **Mega Drive** | YM2612 + SN76489 | 6 FM channels + 4 PSG; DAC mode for sample percussion |
+| **SNES** | SPC700 + DSP | 8-channel BRR-encoded samples; on-board DSP coprocessor |
+| **Atari 2600** | TIA | Two square channels; 5-bit period control; few melodic options |
+| **Atari 8-bit / 5200** | POKEY | Four channels; quirky distortion modes; 16-bit mode possible |
 
 ## Common techniques
 
-Audio programming patterns:
-- **Sound drivers:** reusable playback code.
-- **Interrupt timing:** consistent playback speed.
-- **Arpeggio:** fake chords through rapid note switching.
-- **Volume envelopes:** shape note dynamics.
+Direct-hardware audio programming relies on a small toolkit of techniques shared across platforms:
+
+| Technique | Purpose | Platforms |
+|-----------|---------|-----------|
+| **Arpeggio** | Fake chords by rapid note cycling | All — see [Arpeggio](/vault/techniques/arpeggio) |
+| **Volume envelopes** | Software ADSR or per-frame volume scaling | All non-SID platforms; SID has hardware ADSR |
+| **Pulse-width modulation** | Vary square-wave duty for timbral motion | SID, NES (limited to 4 presets) |
+| **Filter sweeps** | Animate cutoff for evolving timbres | SID only — others lack filters |
+| **Vibrato / pitch modulation** | LFO-style frequency variation | All |
+| **Sample playback** | Digitised sound bytes streamed at variable rate | Paula, NES DPCM, MD DAC, all 16-bit+ |
+| **Software mixing** | Multiple voices on a single channel | NES DPCM, Atari 2600 (rare) |
+| **Hardware-envelope tricks** | AY's envelope generator used as sound source | AY chips |
+
+## Per-frame structure
+
+The standard pattern: a music driver runs in a 50/60 Hz timer interrupt:
+
+```
+each interrupt tick (50 Hz on PAL):
+    update_music_driver()         # advance pattern position
+    for each channel:
+        apply_envelope()           # ADSR, volume curves
+        apply_pitch_modulation()   # vibrato, slides, arpeggio
+        write_to_chip_registers()  # actually program the hardware
+    handle_sound_effects()         # SFX overlay; may interrupt music channels
+```
+
+Per-frame rates of 50 or 60 Hz become the music's tick rate — most C64 / NES songs run at one row per ~6 ticks (~8 Hz row rate at 50 Hz IRQ), giving a typical tempo around 120 BPM.
+
+## Composing for hardware
+
+Composers worked in two main idioms:
+
+### Tracker workflow
+
+Visual grid of rows × channels with hex-encoded note + effect data per cell. Each row triggers a tick of changes. Standard on Amiga (*ProTracker*), modern C64 / NES homebrew (*GoatTracker*, *FamiTracker*).
+
+### MML (Music Macro Language)
+
+Text-based note entry — `c4 d4 e4 f4 g4 a4 b4 >c4` etc. Common in Japanese 8-bit and 16-bit development; PC-88, MSX, Famicom dev tools all had MML toolchains.
+
+### Direct programming
+
+The composer is also the programmer; music is hand-written in assembly with calls to set chip registers. Common in early arcade games and early home games before tracker tools matured.
+
+## Specific technique pages
+
+For deep dives on the major audio techniques:
+
+- [Arpeggio](/vault/techniques/arpeggio) — fake chords on single-voice channels
+- [Pulse Width Modulation](/vault/techniques/pulse-width-modulation) — SID and NES duty-cycle techniques
+- [Filter Sweeps](/vault/techniques/filter-sweeps) — SID-specific filter automation
+- [FM Synthesis](/vault/techniques/fm-synthesis) — Yamaha YM-family programming
+- [Sound Drivers](/vault/techniques/sound-drivers) — driver software architecture
+- [Interrupt-Driven Music](/vault/techniques/interrupt-driven-music) — timer / IRQ patterns
+- [MOD Format](/vault/techniques/mod-format) — Amiga sample-based music
 
 ## See also
 
 - [SID Chip](/vault/hardware/sid-chip)
-- [AY-3-8912](/vault/hardware/ay-3-8912)
+- [AY-3-8910](/vault/hardware/ay-3-8910)
 - [Paula](/vault/hardware/paula)
-- [Interrupt-Driven Music](/vault/techniques/interrupt-driven-music)
+- [APU](/vault/hardware/apu)
+- [YM2612](/vault/hardware/ym2612)

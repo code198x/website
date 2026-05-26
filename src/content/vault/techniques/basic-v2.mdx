@@ -1,6 +1,6 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "BASIC V2 Reference"
 subtitle: "Complete command reference"
 summary: "Complete command reference for Commodore 64 BASIC V2"
@@ -296,7 +296,7 @@ n=int(rnd(1)*50)+50
 
 **Formula:** `INT(RND(1)*RANGE)+START`
 
-**Reseeding:** RND sequence is predictable. Use RND(-TI) at program start for variation.
+**Reseeding:** RND sequence is predictable. `RND(-x)` reseeds with `x` (any non-zero value gives a different seed). For variation between runs, use `RND(-TI)` or `RND(-TI/1000)` — `TI` is the system jiffy clock, so the seed depends on how long the C64 has been on.
 
 ### Trigonometry
 
@@ -413,7 +413,7 @@ b=peek(1024)       rem read first screen position
 - SID registers: 54272-54296
 - CIA registers: 56320-56335, 56576-56591
 
-See [Screen Memory](/vault/techniques/screen-memory) and [VIC-II Chip](/vault/hardware/vic-ii-chip) for complete maps.
+See [Screen Memory](/vault/techniques/screen-memory) and [VIC-II](/vault/hardware/vic-ii) for complete maps.
 
 ### POKE
 
@@ -422,7 +422,7 @@ Write to memory location.
 ```basic
 poke 53280,0       rem black border
 poke 1024,1        rem "A" at top-left of screen
-poke 53265,59      rem blank screen
+poke 53265,peek(53265) and 239   rem blank screen (clear DEN bit 4)
 ```
 
 **Power:** POKE controls everything. Sprites, sound, colours, hardware registers.
@@ -437,9 +437,11 @@ poke 53265,59      rem blank screen
 
 **Numeric variables:**
 ```basic
-a=5            rem floating-point (default)
-a%=5           rem integer (NOT supported in BASIC V2)
+a=5            rem floating-point (default, 5 bytes)
+a%=5           rem integer (2 bytes — supported, but converted to float for arithmetic)
 ```
+
+Integer variables save memory (2 bytes vs 5) but **not** speed — BASIC V2 converts them to floating-point internally before any arithmetic. Use them for tight memory situations or large arrays.
 
 **String variables:**
 ```basic
@@ -455,11 +457,11 @@ dim a(10,10)   rem 2D array (11×11)
 
 ### Naming Rules
 
-- 1-2 characters: `A`, `X`, `A1`, `XY`
+- 1-2 characters significant: `A`, `X`, `A1`, `XY`
 - First character must be letter
 - Second character can be letter or digit
 - Case insensitive: `A` and `a` are same variable
-- Reserved words: Don't use `TO`, `IF`, `OR`, etc.
+- Reserved words: Don't use `TO`, `IF`, `OR`, etc. — and they can't appear as **prefixes within longer names** either, because BASIC tokenises them on entry
 
 **Longer names allowed but only first 2 characters matter:**
 ```basic
@@ -467,6 +469,14 @@ score=10
 scrap=20
 print score    rem 20! (both are "SC")
 ```
+
+**Substring keyword gotcha:**
+```basic
+total=100      rem looks fine
+print total    rem ?SYNTAX ERROR — TOTAL was tokenised as (TO)TAL
+```
+
+The `TO` at the start gets converted to the FOR-loop keyword token, breaking the variable name. Avoid keywords as prefixes: `TOTAL`, `INPUT$`, `RUNNER`, `LIST_X` — all fail. Either rename or split with non-keyword leading characters (`xtotal`, `mytotal`).
 
 **Best practice:** Use single letters or letter+digit for clarity.
 
@@ -621,9 +631,17 @@ sys 49152        rem call ML program at $C000
 ```
 
 **Common addresses:**
-- 64738 ($FCE2): Clear screen
-- 58260 ($E394): Initialize screen
-- 58640 ($E570): Initialize I/O
+- 58648 ($E518): Clear screen (editor's clear-screen routine)
+- 65520 ($FFF0): PLOT — set/get cursor position
+- 65517 ($FFED): SCREEN — get screen dimensions
+- 65505 ($FFE1): STOP — test for STOP key
+- 64931 ($FDA3): IOINIT — initialise I/O (CIA, VIC-II, SID)
+- 65385 ($FF81): SCINIT — initialise screen editor
+
+**Reset (NOT clear screen):**
+```basic
+sys 64738    rem $FCE2 — RESET vector, reboots the C64. Clear-screen is SYS 58648.
+```
 
 **Game use:** ML routines for sprites, sound, fast graphics.
 
@@ -796,16 +814,18 @@ if j and 16=0 then rem fire
 - No string buffer control (garbage collection unpredictable)
 
 **Memory:**
-- ~38KB available for BASIC programs
-- Variables stored at top of BASIC memory
+- ~38 KB available for BASIC programs
+- **Variables grow up** from the end of the program (toward higher addresses)
+- **Strings grow down** from the BASIC ceiling at `$A000` (toward lower addresses)
+- Variables and strings eventually meet — triggering garbage collection, then `?OUT OF MEMORY`
 - Arrays consume significant space
-- Stack depth limited (10 levels GOSUB/FOR)
+- Stack is **shared** between FOR/NEXT and GOSUB/RETURN — typically ~9 levels of either, less if you mix them. Deep recursion exhausts the stack and causes `?OUT OF MEMORY` even with plenty of free RAM.
 
 ## See Also
 
 - [PETSCII Chart](/vault/techniques/petscii-chart) — character codes for PRINT and CHR$()
 - [Screen Memory](/vault/techniques/screen-memory) — direct screen access with POKE
-- [VIC-II Chip](/vault/hardware/vic-ii-chip) — graphics registers
+- [VIC-II](/vault/hardware/vic-ii) — graphics registers
 - [Random Numbers](/vault/techniques/random-numbers) — RND() internals and techniques
 - [Variables and Memory](/vault/techniques/variables-memory) — how variables work internally
 

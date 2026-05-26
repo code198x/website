@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Lookup Tables"
 subtitle: "Trading memory for speed"
 summary: "Lookup tables pre-calculated expensive operations like trigonometry and multiplication, storing results for instant retrieval on processors too slow for real-time maths."
 category: "techniques"
-platforms: ['c64', 'zx-spectrum', 'nes', 'amiga']
+platforms: ['commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system', 'commodore-amiga']
 tags: ['optimisation', 'maths', 'performance']
 originated: 1975
 
@@ -29,18 +29,22 @@ Real-time games couldn't afford these costs.
 
 ## The solution
 
-Pre-calculate and store:
+Pre-calculate and store. The table below stores `(sin(angle) + 1) × 127` so values fit in unsigned bytes (0-254), which is the common signed-sine convention on 8-bit hardware:
 
 ```asm
+; 256 entries: angle 0-255 maps to one full circle
+; entry = round((sin(angle * 2π / 256) + 1) * 127)
 sine_table:
-    .byte 0, 3, 6, 9, 12, 15, 18, 21   ; sin(0°) to sin(7°) × 256
-    .byte 24, 27, 30, 33, 36, 39, 42, 45
-    ; ... continue for full circle
+    .byte 127, 130, 133, 136, 139, 143, 146, 149   ; angles 0-7
+    .byte 152, 155, 158, 161, 164, 167, 170, 173   ; angles 8-15
+    ; ... continue for 256 entries
 
 get_sine:
-    ldx angle          ; angle as index
-    lda sine_table,x   ; instant lookup
-    rts                ; 6 cycles total
+    ldx angle              ; X = angle (0-255), assume zero-page
+    lda sine_table,x       ; A = sine value
+    rts
+    ; Cost: LDX zp (3) + LDA abs,X (4) + RTS (6) = 13 cycles
+    ; vs ~500 cycles to compute sin() in software
 ```
 
 ## Common lookup tables
@@ -55,17 +59,32 @@ get_sine:
 
 ## Multiplication tables
 
-8×8 multiplication via lookup:
+8×8 multiplication via the *quarter-squares* identity:
+
+```
+a × b = ((a + b)² − (a − b)²) / 4
+```
+
+Pre-calculate `f(n) = n² / 4` once for n = 0..510, then `a × b = f(a + b) − f(a − b)`. The full multiply needs only two table lookups and one subtraction:
 
 ```asm
-; Result = (a+b)² - (a-b)² / 4
-; Pre-calculate squares, lookup both terms
+; quarter_squares[n] = (n*n) / 4 for n = 0..510
+; Stored as two 256-byte tables (low byte / high byte)
+qsq_lo:    .byte <(0*0/4), <(1*1/4), <(2*2/4), ...
+qsq_hi:    .byte >(0*0/4), >(1*1/4), >(2*2/4), ...
 
-square_table_lo:
-    .byte <(0*0), <(1*1), <(2*2), ...
-square_table_hi:
-    .byte >(0*0), >(1*1), >(2*2), ...
+; Multiply A × X, leaving result in (qsq_result_hi:qsq_result_lo)
+; Caller has already computed (a+b) into Y and (a-b) into A
+mul8x8:
+    ldy_aplusb:                ; Y = a + b
+    sty .ap1
+    sty .ap2
+    sec
+    ; ... fetch qsq[a+b] - qsq[a-b]
+    rts
 ```
+
+The full quarter-squares routine is ~30 cycles compared to ~120 for shift-and-add multiply.
 
 ## Screen address tables
 
@@ -88,11 +107,18 @@ plot_pixel:
 
 ## Memory vs speed tradeoff
 
-| Table size | Lookup time | Calculation time |
-|------------|-------------|------------------|
-| 256 bytes | ~6 cycles | 100-500 cycles |
-| 1KB | ~8 cycles | Same |
-| Memory cost | Once | Every frame |
+| Table size | Lookup cost (6502) | Calculation cost | Notes |
+|------------|--------------------|-------------------|-------|
+| 256 bytes (8-bit index) | 7 cycles (`LDX` + `LDA abs,X`) | 100-500 cycles | Fits a full circle of sine, page-aligned for free |
+| 512 bytes (9-bit index) | 9-12 cycles | Same | Need extra arithmetic to compose the index |
+| 1024 bytes | 12-15 cycles | Same | Two-table form (low byte / high byte) |
+| 4096 bytes | 15+ cycles | Same | Page-cross overhead becomes significant |
+
+The cost of the table is paid **once** at assembly time; the cost of the calculation is paid **every time it runs**.
+
+### Page alignment
+
+Place tables at addresses ending `$xx00` so `LDA table,X` never crosses a page. A page-cross adds 1 cycle to indexed addressing modes. For 256-byte tables this gives a free, predictable cost; for larger tables, splitting into per-page sections lets you keep the index inside one page.
 
 ## Interpolation
 
@@ -125,9 +151,17 @@ When table resolution insufficient:
 
 | Limitation | Mitigation |
 |------------|------------|
-| Memory cost | Reduce precision |
-| Table generation | Pre-calculate at compile |
-| Precision limits | Interpolate if needed |
+| Memory cost | Reduce precision (8-bit instead of 16-bit), or share tables (sine and cosine differ only by a 90° shift) |
+| Table generation | Generate at assemble time using the assembler's macro language, or once at boot into RAM |
+| Precision limits | Interpolate between adjacent entries if needed |
+| Page-cross cost | Page-align all hot tables |
+
+### Build-time vs runtime generation
+
+Two strategies:
+
+- **Assembled in:** the table is part of the ROM/binary. No startup cost; uses ROM rather than RAM. Best when ROM is plentiful (cartridge era) or when the table is small.
+- **Generated at boot:** a one-shot routine fills a RAM table with computed values, then the program runs from there. Saves ROM at the cost of startup time and RAM. Common when a single table covers many similar uses or when ROM is tight.
 
 ## See also
 

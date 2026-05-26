@@ -1,52 +1,340 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Inside the VIC-II"
 subtitle: "The graphics chip that defined the Commodore 64"
-summary: "Sprites, smooth scrolling, and colour on a budget—how the VIC-II (6567/6569) pulled off the C64’s signature look."
+summary: "Sprites, smooth scrolling, and 16 colours on a budget — the VIC-II (6567/6569) generated everything you saw on a Commodore 64. This entry covers both the historical context and the full programmer's reference."
 category: "hardware"
-platforms: ['c64']
-tags: ['vic-ii', 'raster-interrupts', 'sprites', 'badlines']
+platforms: ['commodore-64']
+tags: ['vic-ii', 'raster-interrupts', 'sprites', 'badlines', 'registers', 'display-modes']
 introduced: 1982
-discontinued: 1992
+discontinued: 1994
 
 ---
 
-
 ## Overview
-The MOS Technology VIC-II (6567 NTSC / 6569 PAL) is the Commodore 64’s video chip. It paints the 40×25 character screen, drives eight hardware sprites, and lets programmers scroll backgrounds smoothly in hardware. Its quirks—especially **badlines**—defined the timing tricks that demo coders exploited for decades.
+
+The MOS Technology VIC-II (6567 NTSC / 6569 PAL) is the Commodore 64's video chip. It paints the 40×25 character screen, drives eight hardware sprites, scrolls backgrounds smoothly in hardware, and exposes 47 registers that let programmers control every aspect of the display. Its quirks — especially **badlines** — defined the timing tricks that demo coders exploited for decades.
 
 ## Fast facts
-- **Display modes:** 320×200 hi-res (two colours per cell) or 160×200 multicolour (four colours per cell).  
-- **Palette:** 16 fixed colours with famously rich blues and browns.  
-- **Sprites:** eight 24×21 pixel sprites, independently positioned and stretchable.  
+
+- **Display modes:** 320×200 hi-res (two colours per cell) or 160×200 multicolour (four colours per cell), plus bitmap and extended-colour variants.
+- **Palette:** 16 fixed colours with famously rich blues and browns.
+- **Sprites:** eight 24×21 pixel sprites, independently positioned, with 2× horizontal stretch (`$D01D`) and 2× vertical stretch (`$D017`).
+- **Registers:** 47 at `$D000-$D02E` (53248-53294 decimal).
 - **Timing:** steals CPU cycles on certain scanlines, so code must dance around the raster beam.
 
+## Chip variants
 
-## Registers by job
-- `$D000–$D00F` — Sprite X/Y positions and enable flags.  
-- `$D010` — High X bits for sprites (values over 255).  
-- `$D011` — Vertical scroll, screen enable, bitmap mode toggle, raster high bit.  
-- `$D012` — Raster line counter, crucial for timed interrupts.  
-- `$D015` — Master sprite enable register.  
-- `$D016` — Horizontal scroll, multicolour mode toggle.  
-- `$D018` — Memory pointers for character set and screen RAM.  
-- `$D019/$D01A` — Interrupt status/control; acknowledge raster IRQs here.  
-- `$D021–$D02E` — Background and sprite colour registers.
+- **6567** (NTSC) — ~60Hz, 263 raster lines per frame, 65 CPU cycles per line
+- **6569** (PAL) — ~50Hz, 312 raster lines per frame, 63 CPU cycles per line
+
+Most programming is identical between variants. Timing-critical code (raster interrupts, sprite multiplexing, music players) needs region-specific values.
+
+## Register map
+
+The VIC-II's registers live at `$D000-$D02E` (53248-53294 decimal). Writing to these addresses controls display hardware directly.
+
+| Address | Register | Purpose |
+|---------|----------|---------|
+| $D000-$D001 | MOB0X, MOB0Y | Sprite 0 position |
+| $D002-$D003 | MOB1X, MOB1Y | Sprite 1 position |
+| $D004-$D005 | MOB2X, MOB2Y | Sprite 2 position |
+| $D006-$D007 | MOB3X, MOB3Y | Sprite 3 position |
+| $D008-$D009 | MOB4X, MOB4Y | Sprite 4 position |
+| $D00A-$D00B | MOB5X, MOB5Y | Sprite 5 position |
+| $D00C-$D00D | MOB6X, MOB6Y | Sprite 6 position |
+| $D00E-$D00F | MOB7X, MOB7Y | Sprite 7 position |
+| $D010 | MSIGX | High X bits (for X > 255) |
+| $D011 | SCROLY | Vertical scroll, screen enable, bitmap mode, raster high bit |
+| $D012 | RASTER | Current raster line counter |
+| $D013-$D014 | LPENX, LPENY | Light pen position |
+| $D015 | SPENA | Sprite enable bits |
+| $D016 | SCROLX | Horizontal scroll, multicolour mode |
+| $D017 | YXPAND | Sprite Y expansion (double height) |
+| $D018 | VMCSB | Memory pointers for screen and character set |
+| $D019 | VICIRQ | Interrupt status |
+| $D01A | IRQMASK | Interrupt enable |
+| $D01B | SPBGPR | Sprite-background priority |
+| $D01C | SPMC | Sprite multicolour enable |
+| $D01D | XXPAND | Sprite X expansion (double width) |
+| $D01E | SPSPCL | Sprite-sprite collision |
+| $D01F | SPBGCL | Sprite-background collision |
+| $D020 | EXTCOL | Border colour |
+| $D021 | BGCOL0 | Background colour 0 |
+| $D022 | BGCOL1 | Background colour 1 |
+| $D023 | BGCOL2 | Background colour 2 |
+| $D024 | BGCOL3 | Background colour 3 |
+| $D025 | SPMC0 | Sprite multicolour 0 |
+| $D026 | SPMC1 | Sprite multicolour 1 |
+| $D027-$D02E | SP0COL-SP7COL | Individual sprite colours |
+
+## Border and background colours
+
+The simplest VIC-II registers to use:
+
+```basic
+POKE 53280,0  : REM Border colour (black)
+POKE 53281,1  : REM Background colour (white)
+```
+
+**Colour values (0-15):**
+
+```
+0=Black   1=White    2=Red      3=Cyan
+4=Purple  5=Green    6=Blue     7=Yellow
+8=Orange  9=Brown   10=Lt Red  11=Dk Grey
+12=Grey  13=Lt Grn  14=Lt Blue 15=Lt Grey
+```
+
+Games use border colour for visual effects — flash red on damage, pulse with music, change per level.
+
+## Screen RAM configuration ($D018)
+
+Register `$D018` (53272) tells the VIC-II where to find screen RAM and the character set.
+
+**Default value:** `$14` (20 decimal)
+
+- Screen RAM at `$0400` (1024)
+- Character ROM at `$1000`
+
+**Bit layout:**
+
+```
+Bits 7-4: Screen RAM location (×$0400)
+Bits 3-1: Character set location (×$0800)
+Bit 0:    Unused
+```
+
+**Example — move screen to `$0C00`:**
+
+```basic
+POKE 53272,(PEEK(53272) AND 15) OR 48
+```
+
+Calculation: `$0C00 / $0400 = 3`, so bits 7-4 = 3 (`0011`), shifted left 4 bits = 48.
+
+Games use this for double-buffering (draw to hidden screen, flip display).
+
+## Display control ($D011)
+
+Register `$D011` (53265) controls vertical scrolling, screen height, and display mode.
+
+**Bit layout:**
+
+```
+Bit 7:    Raster compare bit 8 (for $D012)
+Bit 6:    Extended colour mode
+Bit 5:    Bitmap mode
+Bit 4:    Screen enable (0=blank screen)
+Bit 3:    25/24 row select (1=25 rows)
+Bits 2-0: Vertical scroll (0-7 pixels)
+```
+
+**Default value:** `$1B` (27 decimal) — 25 rows, screen on, text mode, scroll=3.
+
+**Example — enable bitmap mode:**
+
+```basic
+POKE 53265,PEEK(53265) OR 32
+```
+
+Bit 5 set = bitmap mode. Screen now displays 320×200 bitmap instead of 40×25 text.
+
+## Horizontal control ($D016)
+
+Register `$D016` (53270) controls horizontal scrolling and multicolour mode.
+
+**Bit layout:**
+
+```
+Bit 5:    Reset bit (always 0)
+Bit 4:    Multicolour mode
+Bit 3:    40/38 column select (1=40 columns)
+Bits 2-0: Horizontal scroll (0-7 pixels)
+```
+
+**Default value:** `$08` (8 decimal) — 40 columns, single colour, scroll=0.
+
+**Example — enable multicolour text:**
+
+```basic
+POKE 53270,PEEK(53270) OR 16
+```
+
+Multicolour mode gives 4 colours per character cell but halves horizontal resolution (160×200 effectively).
+
+## Raster register ($D012)
+
+Register `$D012` (53266) shows the current raster line (0-311 PAL, 0-261 NTSC).
+
+Read this register to:
+
+- Time code to specific screen positions
+- Create raster interrupts (change colours mid-screen)
+- Synchronise sprite movement
+- Split screen effects (status bars, parallax)
+
+**Example — wait for raster line 100:**
+
+```basic
+10 IF PEEK(53266)<>100 THEN 10
+20 POKE 53280,2  : REM Change border when line 100 reached
+```
+
+## Sprite enable ($D015)
+
+Register `$D015` (53269) enables/disables sprites using bit flags — bit 0 = sprite 0, bit 7 = sprite 7.
+
+**Example — enable sprites 0, 1, and 2:**
+
+```basic
+POKE 53269,7  : REM Binary 00000111 = sprites 0-2 on
+```
+
+**Turn off sprite 1:**
+
+```basic
+POKE 53269,PEEK(53269) AND 253  : REM Clear bit 1
+```
+
+## Sprite positions ($D000-$D010)
+
+Each sprite has X and Y registers. Y is 8-bit (0-255), X is 9-bit (0-511) using `$D010` for high bits.
+
+**Example — position sprite 0 at (150, 100):**
+
+```basic
+POKE 53248,150  : REM X low byte
+POKE 53249,100  : REM Y position
+POKE 53264,PEEK(53264) AND 254  : REM Clear X high bit
+```
+
+**For X > 255:**
+
+```basic
+POKE 53248,260 AND 255  : REM Low byte (260-256=4)
+POKE 53264,PEEK(53264) OR 1  : REM Set bit 0 in $D010
+```
+
+Register `$D010` stores high X bits for all 8 sprites (bit 0 = sprite 0, bit 1 = sprite 1, etc.).
+
+## Sprite data
+
+Sprite shapes are stored in 64-byte blocks (63 bytes used, last byte unused). Each sprite is 24×21 pixels, stored as 3 bytes per row × 21 rows.
+
+**Sprite pointers:** Screen RAM + `$03F8-$03FF` (1016-1023)
+
+- Pointer for sprite 0 at 2040
+- Pointer for sprite 1 at 2041
+- ...
+- Pointer for sprite 7 at 2047
+
+**Example — set sprite 0 to block 13:**
+
+```basic
+POKE 2040,13  : REM Sprite data at 13*64 = 832
+```
+
+**Create simple sprite (vertical line):**
+
+```basic
+10 FOR I=832 TO 894
+20 POKE I,255  : REM First byte of each row = 11111111
+30 NEXT I
+40 POKE 2040,13  : REM Point sprite 0 to block 13
+50 POKE 53269,1  : REM Enable sprite 0
+60 POKE 53248,150  : REM X position
+70 POKE 53249,100  : REM Y position
+```
+
+## Collision detection
+
+- **Sprite-sprite:** `$D01E` (53278)
+- **Sprite-background:** `$D01F` (53279)
+
+Both registers use bit flags (bit 0 = sprite 0, etc.).
+
+**Example — check if sprite 0 hit anything:**
+
+```basic
+10 C=PEEK(53278)  : REM Sprite-sprite
+20 IF C AND 1 THEN PRINT "SPRITE 0 HIT ANOTHER SPRITE"
+30 B=PEEK(53279)  : REM Sprite-background
+40 IF B AND 1 THEN PRINT "SPRITE 0 HIT BACKGROUND"
+```
+
+**Important:** Reading these registers clears them. Check once per frame.
+
+## Display modes
+
+The VIC-II supports multiple display modes via `$D011` and `$D016`:
+
+| Mode | $D011 bit 5-6 | $D016 bit 4 | Resolution | Colours |
+|------|---------------|-------------|------------|---------|
+| **Text** | 00 | 0 | 40×25 chars | 2 per char |
+| **Multicolour text** | 00 | 1 | 40×25 chars | 4 per char |
+| **Bitmap** | 01 | 0 | 320×200 pixels | 2 per 8×8 |
+| **Multicolour bitmap** | 01 | 1 | 160×200 pixels | 4 per 4×8 |
+| **Extended colour** | 10 | 0 | 40×25 chars | 4 backgrounds |
+
+Most games use bitmap modes for graphics, text mode for UI.
+
+## Badlines
+
+Every 8th raster line in the visible area, the VIC-II "steals" 40 CPU cycles to fetch screen data. These are **badlines** — they run from raster line 48 to 247, occurring whenever the bottom three bits of `$D012` match the bottom three bits of `$D011` (the YSCROLL register). With the default YSCROLL value of 3, badlines fall on lines 51, 59, 67…251.
+
+**Effect:** CPU halts for 40 cycles. Code timing becomes unpredictable.
+
+**Solutions:**
+
+- Execute time-critical code outside badlines
+- Disable screen during tight loops (`POKE 53265,PEEK(53265) AND 239`)
+- Use raster interrupts to run code in overscan area
+
+Demo coders exploit badlines for FLI (Flexible Line Interpretation): by writing YSCROLL into `$D011` to match the current raster line's low three bits, every line becomes a badline. Then changing `$D018` each line points the VIC-II at a fresh character set per row, yielding 8 colours per 8×8 cell instead of 2.
 
 ## Famous quirks
-- **Badlines:** every eighth raster line, VIC-II halts the CPU for 40 cycles to fetch character data. Miss your timing and animation glitches appear.  
-- **Sprite priority:** sprites can pass in front of or behind the background with per-sprite control bits.  
-- **Open borders:** carefully timed writes to `$D011` and `$D016` remove the top/bottom border for full-screen effects.  
-- **Sprite crunching:** repositioning sprites mid-frame creates the illusion of more than eight on screen—critical for shooters.
+
+- **Sprite priority:** sprites can pass in front of or behind the background with per-sprite control bits.
+- **Open borders:** the top/bottom border opens via `$D011` bit 3 (switch to 24-row mode at the right cycle); the side borders open via `$D016` bit 3 (switch to 38-column mode). Both rely on cycle-exact timing relative to the raster beam.
+- **Sprite crunching:** repositioning sprites mid-frame creates the illusion of more than eight on screen — critical for shooters.
+
+## Practical example: colour cycling border
+
+```basic
+10 FOR C=0 TO 15
+20 POKE 53280,C
+30 FOR D=1 TO 50:NEXT D
+40 NEXT C
+50 GOTO 10
+```
+
+Cycles border through all 16 colours with delay.
+
+## Practical example: raster bars
+
+```basic
+10 POKE 53265,PEEK(53265) AND 239  : REM Blank screen
+20 FOR R=0 TO 255
+30 IF PEEK(53266)<>R THEN 30
+40 POKE 53280,(R AND 15)
+50 NEXT R
+60 GOTO 20
+```
+
+Creates animated colour bars by changing border colour every raster line.
 
 ## Historical notes
-- Designed by Al Charpentier and the MOS team in under a year, reusing ideas from the VIC chip but adding sprites and scrolling.  
-- The chip’s affordability let Commodore ship arcade-like visuals in a $595 home computer, undercutting competitors dramatically.  
-- Demo groups like [Crest](/vault/groups/crest) and Censor Design still find new raster tricks four decades later.
+
+The VIC-II was designed by Al Charpentier at MOS Technology in 1981, evolving from the VIC chip in the VIC-20. Charpentier added hardware sprites (building on the player-missile graphics ideas from earlier Atari hardware), smooth scrolling registers, and collision detection — features that made arcade-quality games possible on a $595 home computer, undercutting competitors dramatically.
+
+Early games used the VIC-II's built-in features straightforwardly — sprites for player/enemies, text mode for screens. By 1985, programmers discovered register tricks: open borders (full-screen graphics), sprite multiplexing (reusing sprites mid-frame), and FLI modes (changing graphics mode per scanline). Demo groups like [Crest](/vault/groups/crest) and Censor Design pushed furthest, creating effects Commodore's engineers never imagined — and still find new raster tricks four decades later.
 
 ## See also
-- [Commodore 64](/vault/systems/commodore-64)
-- [Al Charpentier](/vault/people/al-charpentier)
-- [Raster Tricks 101](/vault/techniques/raster-tricks-101)
+
+- [Commodore 64](/vault/systems/commodore-64) — complete system overview
+- [Al Charpentier](/vault/people/al-charpentier) — chip designer
+- [Screen Memory](/vault/techniques/screen-memory) — text display memory layout
+- [Raster Tricks 101](/vault/techniques/raster-tricks-101) — advanced techniques
 - [Demo Scene 101](/vault/communities/demo-scene-101)

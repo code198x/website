@@ -115,15 +115,42 @@ move.w  #$83a0,DMACON(a5)   ; Set bits 5,7,8,9,15 (enable selected)
 
 ## Common DMACON Values
 
-| Value | Enables |
-|-------|---------|
-| `$83a0` | Master + Copper + Sprites + Bitplanes |
-| `$8380` | Master + Copper + Bitplanes (no sprites) |
-| `$83e0` | Master + Copper + Sprites + Bitplanes + Blitter |
-| `$87e0` | All above + Audio |
+| Value | Bits set | Enables |
+|-------|----------|---------|
+| `$83a0` | 15, 9, 8, 7, 5 | Master + Copper + Sprites + Bitplanes |
+| `$8380` | 15, 9, 8, 7 | Master + Copper + Bitplanes (no sprites) |
+| `$83e0` | 15, 9, 8, 7, 6, 5 | Master + Copper + Sprites + Bitplanes + Blitter |
+| `$87e0` | 15, 10, 9, 8, 7, 6, 5 | Above + **BLITHOG** (Blitter takes all CPU cycles when running, faster but starves CPU) |
+| `$83ef` | 15, 9, 8, 7, 6, 5, 3-0 | Above + all four audio channels |
+
+The bit-15 SET/CLR protocol means a single value writes only the bits you want to change:
+
+- Write `$0001` → clears AUD0EN (disables audio channel 0). Other bits unaffected.
+- Write `$8001` → sets AUD0EN (enables audio channel 0). Other bits unaffected.
+- Write `$7FFF` → clears bits 14-0 (disables everything). Atomic full-disable.
+- Write `$BFFF` → sets bits 14-0 (enables everything including reserved bits — usually wrong).
+
+## Saving and restoring exception vectors
+
+For thorough takeover (especially on 68010+ machines that may have a relocated vector base via VBR), save and restore the exception vectors you change. AmigaOS uses level-3 (VBlank) and level-6 (CIA timers) interrupts; if your handlers replace those, save the old vectors before installing yours and restore on exit.
+
+```m68k
+; Save the level-3 vector (VBlank IRQ, autovector at $6c)
+        move.l  $6c.w,saved_vbl_vector
+
+        ; ... install our handler ...
+        move.l  #my_vbl_handler,$6c.w
+
+        ; ... game runs ...
+
+        ; Restore on exit
+        move.l  saved_vbl_vector,$6c.w
+```
+
+On a plain 68000 the vector table is fixed at $0–$3FF, so direct address writes work. On 68010+ with a movable VBR, fetch VBR first via `MOVEC.L VBR,A0`. Most Amiga games target 68000 and skip the VBR step.
 
 ## Related
 
 **Patterns:** [VBlank Game Loop](/patterns/commodore-amiga/framework/vblank-game-loop), [Copper List Basics](/patterns/commodore-amiga/rendering/copper-list-basics)
 
-**Vault:** [Commodore Amiga](/vault/systems/commodore-amiga)
+**Vault:** [Commodore Amiga](/vault/systems/commodore-amiga) | [Amiga Chipset](/vault/hardware/amiga-chipset)

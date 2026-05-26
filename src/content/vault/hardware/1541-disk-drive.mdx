@@ -1,6 +1,6 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Commodore 1541"
 subtitle: "The disk drive with its own computer"
 summary: "The 1541 floppy disk drive was famously slow but contained a complete 6502-based computer, enabling fast loaders and copy protection schemes."
@@ -27,13 +27,14 @@ The **Commodore 1541** was a 5.25-inch floppy disk drive that became synonymous 
 
 ## Why So Slow?
 
-The 1541's default serial protocol was deliberately throttled by Commodore to maintain compatibility with the VIC-20. The handshaking protocol waited unnecessarily between bytes, making transfers painfully slow.
+Commodore originally designed a fast serial protocol that used the **6522 VIA's hardware shift register** to clock bytes at high speed. Late in development, a bug was found in the 6522 shift register that corrupted data at the planned speed. With shipping deadlines closing in, Commodore fell back to a software bit-banged protocol that ignored the buggy hardware — which made the 1541 famously slow at the wire while remaining fully functional.
 
 | Factor | Impact |
 |--------|--------|
-| **Serial protocol** | Bit-banged, not hardware-assisted |
-| **Handshaking** | Excessive waits built into ROM |
-| **VIC-20 compatibility** | Protocol designed for slower machine |
+| **6522 shift-register bug** | Hardware-assisted serial transfer abandoned; software bit-banging instead |
+| **Bit-banged serial** | Each bit clocked manually in software, with timing margins for safety |
+| **Handshaking** | Per-byte ATN/CLK/DATA handshake means the protocol can't pipeline |
+| **VIC-20 compatibility** | The slow protocol was retained on the C64 partly to keep VIC-20 IEC peripherals working |
 
 ## Fast Loaders
 
@@ -52,15 +53,48 @@ The 1541 was essentially a complete computer:
 
 | Component | Purpose |
 |-----------|---------|
-| **6502 CPU** | Runs DOS and custom code |
-| **2 KB RAM** | Buffer and variables |
-| **6522 VIA** | Handles serial bus communication |
-| **Stepper motor** | Positions read/write head |
+| **6502 CPU @ 1 MHz** | Runs DOS and any custom code uploaded by the host |
+| **2 KB RAM** | Buffers and variables |
+| **16 KB ROM (DOS 2.6)** | Two 8 KB EPROMs containing the disk operating system |
+| **VIA-1 (`$1800-$180F`)** | IEC serial bus interface to the C64 |
+| **VIA-2 (`$1C00-$1C0F`)** | Floppy controller — head stepper, motor, write-protect, byte-ready |
+| **4-phase stepper motor** | Positions head; one step = ½ track (78 phases for 35 tracks) |
+| **Spindle motor** | 12 V DC, belt drive, **300 RPM** |
 
 This architecture enabled:
 - **Copy protection** that ran code on the drive itself
 - **Demos** that used the drive's LED as a display
 - **Parallel cables** that bypassed the serial bus entirely
+
+## Disk format
+
+| Item | Value |
+|------|-------|
+| Tracks | 35 standard (some tools used "extended" tracks 36-40) |
+| Sectors per track | Variable: 21/19/18/17 (4 zones from outer to inner) |
+| Capacity | 170 KB formatted (single-sided) |
+| Encoding | **GCR** (Group Coded Recording) — 4 bits of data → 5 bits on disk |
+| Sector size | 256 bytes |
+| Block size | 254 bytes payload + 2 bytes link-pointer (track/sector of next block in file) |
+
+GCR is what makes 1541 disks unreadable on PC drives without special hardware: it's a Commodore-specific encoding rather than the MFM/FM used by IBM-compatible drives. The 1571 (C128 successor) added an MFM mode for cross-compatibility.
+
+### Speed zones
+
+The 1541 spins at constant 300 RPM but writes at four different bit rates depending on track radius — outer tracks hold more sectors than inner ones to keep the linear bit density roughly constant. This complicates copy protection (and emulator timing): a "raw" track read is a different number of bytes depending on which track.
+
+## Job queue
+
+The 1541's DOS uses a **job queue** at fixed RAM locations. The IEC interface code writes a job code (read sector, write sector, seek, etc.) to the job queue, and the floppy controller code services the queue asynchronously. This is what makes parallel-cable speeders work: bypass the IEC serial code, push jobs into the queue directly, and let the FDC handle the disk.
+
+## Variants
+
+| Model | Year | Notes |
+|-------|------|-------|
+| 1541 | 1982 | Original — beige case, internal PSU |
+| 1541C | 1986 | Beige refresh; same internals as 1541 |
+| 1541-II | 1988 | Smaller "lunchbox" case, external PSU, more reliable |
+| 1571 | 1985 | C128 successor — double-sided, MFM-capable, faster IEC burst mode |
 
 ## Copy Protection
 

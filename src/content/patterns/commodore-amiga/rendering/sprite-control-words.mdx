@@ -30,7 +30,10 @@ Amiga sprites have two control words at the start of their data that define vert
 
 SPRITE_HEIGHT   equ 16          ; Sprite height in pixels
 
-; Update sprite control words
+; Update sprite control words (simple version)
+; ASSUMES: even X coordinate (loses HSTART bit 0) and Y < 256
+; (no VSTART[8] / VSTOP[8] support). Use update_sprite_full for those cases.
+;
 ; Input: A0 = sprite data address
 ;        frog_pixel_x, frog_pixel_y = coordinates
 update_sprite:
@@ -50,7 +53,7 @@ update_sprite:
             add.w   #SPRITE_HEIGHT,d0   ; VSTOP = VSTART + height
             lsl.w   #8,d0               ; Shift to high byte
             ; Low byte contains: ATTACH, unused, VSTOP[8], VSTART[8], HSTART[0]
-            ; For simple sprites, low byte is usually 0
+            ; Zero here means: not attached, even X, Y < 256
             move.w  d0,2(a0)            ; Write control word 2
 
             rts
@@ -134,10 +137,29 @@ Bit 0:    HSTART[0]  - Horizontal position bit 0
 
 ## Position Ranges
 
-| Axis | Range | Notes |
-|------|-------|-------|
-| X | 0-447 | Visible area ~64-383 |
-| Y | 0-312 (PAL) | Visible area ~44-300 |
+| Axis | Hardware register | Visible area |
+|------|-------------------|--------------|
+| X | 9 bits (0-511) | ~64-448 in lowres (depends on display window) |
+| Y | 9 bits (0-511, but used 0-312 PAL / 0-262 NTSC) | ~44-300 PAL / ~21-260 NTSC |
+
+Setting `HSTART[0]` (bit 0 of word 2) lets you position to odd-pixel X. Without it, sprites can only sit on even X coordinates. Setting `VSTART[8]` (bit 1 of word 2) and `VSTOP[8]` (bit 2 of word 2) extends Y past 255 — required for sprites in the lower half of an interlaced or PAL screen.
+
+## Sprite attach (15-colour sprites)
+
+Setting bit 7 of word 2 on an *odd* sprite (sprite 1, 3, 5, or 7) attaches it to the previous even sprite. The pair then displays one combined 15-colour sprite:
+
+- Each pixel uses 2 bits from sprite N + 2 bits from sprite N+1 = 4 bits total
+- 4 bits = 16 entries, of which entry 0 is transparent → **15 visible colours**
+- The pair must have matching VSTART/VSTOP/HSTART; only sprite N+1 needs ATTACH set
+
+Practical use: bosses, rich playfield characters, status bars where 3-colour sprites look cheap.
+
+```m68k
+; Setting ATTACH on sprite 1 (the odd partner of sprite 0)
+        ; ... compute control word 2 in D3 as usual ...
+        bset    #7,d3               ; ATTACH = 1
+        move.w  d3,2(a0)            ; A0 = sprite 1's data
+```
 
 ## Related
 

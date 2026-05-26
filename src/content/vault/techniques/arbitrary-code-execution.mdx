@@ -1,6 +1,6 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Arbitrary Code Execution"
 subtitle: "Playing the game's memory"
 summary: "The most powerful speedrunning exploit - manipulating game memory through normal inputs to execute arbitrary code, enabling impossible shortcuts and instant wins."
@@ -11,87 +11,86 @@ tags: ["speedrunning", "exploit", "memory", "glitch"]
 
 ## Overview
 
-**Arbitrary Code Execution** (ACE) is the most powerful class of speedrunning exploit. By manipulating game memory through careful input sequences, runners can make the game execute code of their choosing—including jumping directly to the ending or triggering credits.
+**Arbitrary Code Execution** (ACE) is the most powerful class of speedrunning exploit. By manipulating game memory through carefully chosen inputs — controller presses, item arrangements, screen positions — runners trick the game into running code of their own design. The "code" is whatever bytes happen to occupy a region the CPU is about to jump to. The runner shapes those bytes through gameplay, then triggers the jump.
 
-## Fast Facts
+Done well, ACE collapses entire games to seconds: skip to the credits, set the win flag, jump to a custom payload. Done well *and tastefully*, ACE inserts a Twitch-Plays-Pokemon-style live console into the game, or boots a different game from inside the running one. ACE is computer security's "buffer overflow + code injection" applied to games — same skill set, friendlier consequences.
 
-- **What:** Execute custom code via gameplay
-- **How:** Memory manipulation through inputs
-- **Result:** Nearly anything possible
-- **Category:** Usually separated from "glitchless"
+## How ACE works
 
-## How ACE Works
+Every ACE exploit chain has three parts:
 
-| Step | Process |
-|------|---------|
-| 1 | Find memory corruption bug |
-| 2 | Identify exploitable memory region |
-| 3 | Craft input sequence as "code" |
-| 4 | Trigger execution |
-| 5 | Game runs crafted instructions |
+| Step | What it does | Typical mechanism |
+|------|---------------|-------------------|
+| 1. Memory write primitive | The runner needs to write *chosen bytes* to *chosen addresses*. | Stack overflow, off-by-one in an inventory loop, buffer that wraps past its bounds, misindexed array. |
+| 2. Code crafting | Those chosen bytes become CPU instructions. The runner thinks in opcodes, not items. | Item slots whose IDs encode 6502/Z80/ARM bytes; controller buttons writing into a polled-input buffer; sprite coordinates landing as immediate operands. |
+| 3. Control flow hijack | The CPU has to actually *jump* to the crafted region. | Function pointer overwrite, return address corruption, jump table index out of range, trampoline through a known address. |
 
-## Prerequisites
+## A worked example: Pokemon Red/Blue 8F
 
-ACE requires:
+The classic 8-bit ACE: in *Pokémon Red/Blue* (Game Boy), an obscure item glitch lets you insert item ID `0x5C` (the unused "ws m" item, called **8F** in the speedrun community) into your bag.
 
-| Requirement | Purpose |
-|-------------|---------|
-| **Memory overflow** | Write to unintended locations |
-| **Controllable data** | Player inputs become code |
-| **Execution trigger** | Jump to corrupted area |
+When you "Use" item 8F, the game's switch statement falls through to a handler at an unintended address — specifically, the *game's own item-effect dispatch table*, indexed by the item ID. With your item *quantities* corresponding to specific opcodes (e.g. quantity 76 = `$4C`, low byte of `JP nn`), the bytes the dispatcher reads are exactly the Z80 instructions you placed there by buying and selling carefully chosen item counts.
 
-## Famous ACE Examples
+The runner builds a tiny Z80 program — half a dozen items' quantities — that writes the "won the game" flag and jumps to credits. Total exploit: under a minute of in-game prep.
 
-| Game | Achievement |
-|------|-------------|
-| **Super Mario World** | Credits warp via controller inputs |
-| **Pokemon** | Complete control of game state |
-| **Zelda: OoT** | Instant ending |
-| **Super Mario Bros. 3** | Controller-based ACE |
+## Other famous ACE exploits
+
+| Game | System | Mechanism |
+|------|--------|-----------|
+| **Super Mario World** | SNES | Yoshi-stack glitch + sprite-table corruption → controller-2 inputs become 65816 code |
+| **Ocarina of Time** | N64 | Stale Reference Manipulation (SRM, 2019, ZFG et al.): a freed actor reference is reused, letting Link's animation data overwrite return addresses |
+| **Super Mario 64** | N64 | Parallel Universes + held-object pointer corruption — the famous "0.5 A-press" sub-genre |
+| **Super Mario Bros. 3** | NES | Wrong-warp via PRG-bank desync; minor controller-2 ACE variants |
+| **Pokémon Crystal** | Game Boy Color | Coin-case glitch: reading an undefined save flag exposes the box-name buffer to an instruction fetch |
+| **Twilight Princess** | GameCube / Wii | Wii version's "stack smash" — careful jar/torch placement smashes the return address |
 
 ## Categories and ACE
 
-| Category | ACE Status |
-|----------|------------|
-| **Any%** | Often allowed |
-| **No ACE** | Common restriction |
-| **Glitchless** | ACE prohibited |
-| **TAS** | ACE demonstrations popular |
+| Category | ACE Status | Notes |
+|----------|------------|-------|
+| **Any%** | Often allowed | The "anything goes" category — beat the game by any means |
+| **No ACE** | Common restriction | Carve out the "go to credits" exploits but allow ordinary glitches |
+| **Glitchless** | ACE prohibited | Plus most other glitches |
+| **TAS** | ACE demos popular | TAS communities push ACE into "playaround" art — running custom games inside the original |
 
-## Technical Depth
+## How it works on 8-bit hardware
 
-ACE demonstrates:
+The 6502 and Z80 don't have memory protection. There's no W^X, no executable bit, no stack cookie. *Every byte is potentially executable code*. If you can:
 
-| Concept | Application |
-|---------|-------------|
-| **Memory layout** | How games store data |
-| **Code execution** | How CPUs run programs |
-| **Security** | Why bounds checking matters |
-| **Exploitation** | General security concepts |
+1. Write bytes you control to a known location, **and**
+2. Get the program counter to that location
 
-## TAS and ACE
+you have arbitrary code execution. On a real 8-bit system this can be as simple as:
 
-Tool-Assisted Speedruns use ACE for:
+- An OAM buffer (sprite data) that the game blindly trusts as instructions if a separate bug points the PC there. Sprite Y-coordinates and tile indices become opcodes.
+- A controller-2 polling loop that reads the second player's button pattern into RAM. Press the right combination, and the bytes there are valid 6502 — let a corrupted return address pop into PC and you're executing controller input.
+- A high score table written to non-volatile RAM. Enter your initials carefully; on the next boot, a load-game routine with a swapped pointer treats your initials as code.
 
-- Demonstrating theoretical exploits
-- Entertainment runs
-- Total game control
-- "Playaround" creativity
+The pattern is always the same: **find a place where user input lands in RAM, find a way to redirect the PC there, and translate your goal into the target CPU's machine code.**
 
-## Educational Value
+## Connection to security
+
+ACE on consoles is exactly **buffer-overflow code injection** on PCs. Same primitives, same defences (none, on retro hardware), same pay-off. Modern consoles ship with hardware DEP and W^X to make ACE painful; jailbreak chains on PS3, PS4, 3DS, and Switch are all extended ACE exploits scaled up to deal with kernel-mode signatures and hypervisors.
+
+The skills cross over directly. A retro speedrunner reverse-engineering an N64 ROM to find a stack overflow is doing the same job as a CTF player attacking a Linux binary — different ABI, same playbook.
+
+## Educational value
 
 Understanding ACE teaches:
 
-- Computer architecture fundamentals
-- Security concepts
-- Memory management
-- Low-level programming
+- **Computer architecture fundamentals** — what's a stack, what's a return address, why does PC matter
+- **Memory layout** — code, data, stack, heap; what happens when they touch
+- **Security concepts** — bounds checking, validation, why "user input as code" is dangerous
+- **Low-level programming** — opcode encoding, addressing modes, calling conventions
+
+Pretty much any low-level concept — short of caches and pipelines — has a 1-to-1 ACE example you can watch on YouTube.
 
 ## Legacy
 
-ACE represents the ultimate mastery of a game—understanding it so completely that players can make it do anything, including things developers never imagined possible.
+ACE represents the ultimate mastery of a game — understanding it so completely that players can make it do *anything*, including things developers never imagined possible. It is also the most direct line from the demo scene to the speedrun community to professional security research: every retro ACE you watch on stream is a primer for binary exploitation.
 
 ## See Also
 
 - [Tool-Assisted Speedrun](/vault/culture/tool-assisted-speedrun)
 - [Sequence Breaking](/vault/techniques/sequence-breaking)
+- [Self-Modifying Code](/vault/techniques/self-modifying-code)

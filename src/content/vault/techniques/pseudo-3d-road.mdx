@@ -1,134 +1,185 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Pseudo-3D Road"
 subtitle: "OutRun's famous perspective"
 summary: "The technique of rendering 3D-like roads using scaled 2D lines and mathematical projection, famously used in OutRun and countless racing games of the 1980s and 1990s."
 category: "techniques"
-platforms: ["cross-platform"]
-tags: ["3d", "racing", "scaling", "outrun", "projection"]
-emerged: 1986
+platforms: ['cross-platform']
+tags: ['3d', 'racing', 'scaling', 'outrun', 'projection']
+originated: 1982
 ---
 
 ## Overview
 
-**Pseudo-3D roads** create the illusion of 3D perspective using purely 2D techniques: scaling sprites, projecting coordinates, and rendering horizontal lines. Popularised by Sega's OutRun (1986), this approach enabled smooth, fast racing games on hardware that couldn't handle true 3D polygons.
+**Pseudo-3D roads** create the illusion of perspective using purely 2D techniques: scaling sprites, projecting horizontal lines, and warping the road's curve segment-by-segment. Popularised by Sega's *OutRun* (1986), this approach enabled smooth, fast racing games on hardware that couldn't handle true 3D polygons. The look — converging road lines, scenery rushing past, hills cresting — is unmistakable, and persists today as both nostalgia and stylistic choice.
 
-## Fast Facts
+The technique blossomed because the maths is simple (scale by inverse distance), the data is small (a list of road segments), and the visual payoff is enormous. *Pole Position* (1982) was the first commercial pseudo-3D road; *OutRun* was the high-water mark; the genre lived on through the SNES and Mega Drive eras and into modern indie revivals (*Slipstream*, *Horizon Chase*).
+
+## Fast facts
 
 | Aspect | Detail |
 |--------|--------|
-| **Defining game** | OutRun (1986) |
-| **Key insight** | Perspective = scale by distance |
-| **Hardware needs** | Sprite scaling, line drawing |
-| **Modern term** | "Mode 7 style" (though distinct) |
+| **Defining game** | *OutRun* (Sega, 1986) |
+| **Originator** | *Pole Position* (Namco, 1982) |
+| **Key insight** | Perspective = scale by 1/distance |
+| **Hardware needs** | Sprite scaling (Sega Super Scaler) or fast software |
+| **Modern term** | "Pseudo-3D" or "fake 3D" — though related to Mode 7 in spirit |
 
-## The Core Technique
+## The core technique
+
+The road is rendered as a stack of horizontal "scanline" segments, each at a different depth from the camera:
 
 | Concept | Implementation |
 |---------|----------------|
-| **Horizon** | Fixed screen Y position |
-| **Near = big** | Road width at bottom = screen width |
-| **Far = small** | Road converges at horizon |
-| **Scaling** | Linear interpolation between near/far |
+| **Horizon** | A fixed screen Y position above which sky is drawn |
+| **Near = wide** | At the bottom of the screen, road is full-width |
+| **Far = narrow** | At the horizon, road converges to nearly nothing |
+| **Scaling** | Linear interpolation between near-width and far-width based on screen Y |
 
-## Road Segment Rendering
-
-Each horizontal line represents one "depth slice":
+Each scanline below the horizon is drawn with:
 
 | Parameter | Formula |
 |-----------|---------|
-| **Scale** | `1 / (y_screen - horizon)` |
+| **Z distance** | `camera_height / (y_screen - horizon_y)` |
+| **Scale factor** | `1 / (y_screen - horizon_y)` |
 | **Road width** | `base_width × scale` |
-| **Z distance** | `camera_height / (y_screen - horizon)` |
-| **X offset** | Player steering × scale |
+| **X offset** | `accumulated_curve × scale` (see Curves below) |
 
-## Creating Curves
+## Creating curves
 
-Roads curve by offsetting X position per segment:
+Roads curve by accumulating an X offset per segment as Z increases:
 
-| Curve Type | Method |
+| Curve type | Method |
 |------------|--------|
-| **Straight** | No X offset |
-| **Gentle curve** | Small cumulative offset |
-| **Sharp curve** | Large cumulative offset |
-| **S-curve** | Direction changes mid-road |
+| **Straight** | No X offset — segments are vertically aligned |
+| **Gentle curve** | Small constant X-offset added per segment |
+| **Sharp curve** | Larger X-offset accumulating per segment |
+| **S-curve** | X-offset direction reverses partway down the road |
 
-The curve "accumulator" adds offset each line, creating smooth bends.
+The curve "accumulator" is the secret: rather than computing each segment's curvature independently, you accumulate the X-offset as you draw segments from far to near (or near to far, depending on style). The accumulated value gives you the natural curving look.
 
-## Hills and Valleys
+```
+x_offset = 0
+curve_per_segment = 0.5    // positive = right curve, negative = left
+
+for each road_segment from horizon to bottom:
+    x_offset += curve_per_segment
+    draw_road_at(screen_x = centre + x_offset, screen_y = current_y)
+```
+
+## Hills and valleys
+
+The horizon position varies to create vertical terrain:
 
 | Terrain | Implementation |
 |---------|----------------|
-| **Flat** | Horizon stays fixed |
-| **Hill** | Horizon moves up, fewer segments |
-| **Valley** | Horizon moves down, more segments |
-| **Crest** | Sudden horizon change |
+| **Flat** | Horizon stays at fixed Y |
+| **Crest of hill** | Horizon moves up; the "next" road segments come up over the rise |
+| **Valley dip** | Horizon moves down; you can see further down the road |
+| **Sudden hill crest** | Horizon snaps; road segments visible become crowded |
 
-## Sprite Scaling
+Pre-computed hill data (per road segment, an "elevation delta") is the standard implementation.
 
-Objects on the road scale with distance:
+## Sprite scaling for objects
 
-| Distance | Scale | Effect |
-|----------|-------|--------|
-| Near | 100% | Full size |
-| Mid | 50% | Half size |
-| Far | 10% | Tiny |
+Cars, signs, trees, and roadside objects scale as you approach them:
 
-Hardware sprite scaling (Sega Super Scaler) made this practical.
+| Distance bucket | Scale | Effect |
+|-----------------|-------|--------|
+| Far horizon | 10% | Tiny sprites at the horizon |
+| Mid distance | 50% | Half-size — visible detail |
+| Close | 100% | Full size — about to overtake |
+| Past camera | (off-screen) | Object disappears below screen |
 
-## The OutRun Innovation
+Hardware sprite scaling (Sega Super Scaler — System 16, X Board, Y Board) made this practical at arcade scale. Home ports relied on **pre-scaled sprite tables** in ROM (*Out Run*'s Mega Drive port shipped multiple scaled copies of every sprite).
+
+See [Sprite Scaling](/vault/techniques/sprite-scaling) for the full deep dive on this.
+
+## The OutRun innovation
+
+*OutRun* combined several novel elements:
 
 | Feature | Implementation |
 |---------|----------------|
-| **Sprite scaling** | Custom Sega hardware |
-| **Road segments** | Pre-calculated curve data |
-| **Parallax layers** | Multiple backgrounds |
-| **Frame rate** | Smooth 30fps |
+| **Hardware sprite scaling** | Custom Sega System 16 + X Board chips |
+| **Pre-calculated curve data** | Road segments stored as track-per-track data |
+| **Parallax layers** | Multiple horizon backgrounds (mountains, clouds, sea) at different scroll rates |
+| **Frame rate** | Smooth ~30 fps even with full road traffic |
+| **Branching tracks** | Multi-route stage selection (left or right path at each stage end) |
+| **Music selection** | Player picks from radio stations during gameplay |
 
-## Platform Variations
+The result was so visually compelling that it defined the arcade racing genre for years.
+
+## Platform variations
 
 | Platform | Approach |
 |----------|----------|
-| **Arcade (Sega)** | Hardware sprite scaling |
-| **SNES (Mode 7)** | Hardware rotation/scaling |
-| **C64/Spectrum** | Software scaling, fewer sprites |
-| **Amiga** | Blitter-assisted scaling |
+| **Arcade (Sega)** | Hardware sprite scaling — Super Scaler family |
+| **SNES** | Mode 7 — different technique, similar visual result; *F-Zero*, *Super Mario Kart* |
+| **Mega Drive** | Software pseudo-3D road; *OutRunners* (1992) is a showcase |
+| **C64 / Spectrum** | Software scaling, fewer sprites; *Out Run* home ports |
+| **Amiga** | Blitter-assisted scaling; *Lotus Esprit Turbo Challenge* (1990) |
+| **GBA** | Affine-mode background (Mode 7-like); *Mario Kart: Super Circuit* |
 
-## Modern Software Implementation
+## Modern software implementation
 
-| Step | Code Approach |
-|------|---------------|
-| 1 | Project road segments to screen Y |
-| 2 | Calculate scale per segment |
-| 3 | Draw road lines back-to-front |
-| 4 | Draw sprites sorted by Z |
-| 5 | Apply camera bob for immersion |
+A simplified recipe in pseudo-code:
 
-## Games Using This Technique
+```
+for screen_y from horizon to bottom:
+    z = camera_height / (screen_y - horizon)
+    scale = 1 / (screen_y - horizon)
+    
+    # Curve and elevation lookups based on z
+    curve_x = curve_function(z)
+    elevation_y = hill_function(z)
+    
+    # Draw a horizontal "slice" of road at this depth
+    draw_road_segment(
+        y = screen_y - elevation_y,
+        scale_x = base_width * scale,
+        offset_x = curve_x * scale,
+        colour = stripe_pattern(z)  # alternating tarmac/centre-line colours
+    )
+
+# Draw scaled sprites sorted by Z (back-to-front)
+for each object sorted_by_z desc:
+    draw_sprite_scaled(object, scale = 1 / object.z)
+```
+
+## Games using this technique
 
 | Game | Year | Innovation |
 |------|------|------------|
-| **Pole Position** | 1982 | Early implementation |
-| **OutRun** | 1986 | Definitive version |
-| **Hang-On** | 1985 | Motorcycle variation |
-| **Road Rash** | 1991 | Combat + racing |
-| **Top Gear** | 1992 | SNES optimised |
+| *Pole Position* | 1982 | Namco's pioneer; first commercial pseudo-3D road |
+| *Hang-On* | 1985 | Sega motorcycle racing; first major Super Scaler title |
+| *OutRun* | 1986 | Definitive version; iconic |
+| *Continental Circus* | 1987 | F1 racing |
+| *Chase H.Q.* | 1988 | Police pursuit driving |
+| *Power Drift* | 1988 | Multi-vehicle Super Scaler racing |
+| *Lotus Esprit Turbo Challenge* | 1990 | Amiga / ST showcase |
+| *Road Rash* | 1991 | Combat + racing |
+| *Top Gear* | 1992 | SNES optimised pseudo-3D (not Mode 7) |
+| *Slipstream* | 2018 | Modern indie pseudo-3D revival |
+| *Horizon Chase Turbo* | 2018 | Modern *OutRun*-aesthetic homage |
 
-## Why It Endures
+## Why it endures
 
-Pseudo-3D roads remain useful:
-- Retro-style indie games
-- Mobile games (performance)
-- Understanding 3D projection principles
-- Stylistic choice (aesthetic)
+Pseudo-3D roads remain useful and appealing:
+
+- **Retro-style indie games** — the look has nostalgic value.
+- **Mobile games** — performance matters; pseudo-3D is *much* cheaper than true 3D.
+- **Educational** — understanding how pseudo-3D works clarifies real perspective projection.
+- **Aesthetic choice** — the slight unreality is part of the charm.
 
 ## Legacy
 
-Pseudo-3D roads taught a generation how perspective projection works. The mathematics—scaling by inverse distance—is the foundation of 3D graphics, made tangible through racing games.
+Pseudo-3D roads taught a generation how perspective projection works. The mathematics — scaling by inverse distance — is the foundation of all 3D graphics, made tangible through racing games. *OutRun*'s visual language influenced not just racing games but every game that used scaling sprites for depth: shooters (*Space Harrier*, *After Burner*), action (*Power Drift*), even the early Sega Saturn / Sega Genesis 3D-feeling games.
 
 ## See Also
 
 - [OutRun](/vault/games/outrun)
 - [Sprite Scaling](/vault/techniques/sprite-scaling)
 - [Mode 7](/vault/techniques/mode-7)
+- [Pole Position](/vault/games/pole-position)

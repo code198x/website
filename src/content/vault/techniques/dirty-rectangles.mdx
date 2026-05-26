@@ -1,84 +1,153 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Dirty Rectangles"
 subtitle: "Efficient screen updates"
 summary: "Dirty rectangle rendering optimised screen updates by tracking and redrawing only the areas that changed, saving CPU cycles when most of the display remained static."
 category: "techniques"
-platforms: ['amiga', 'pc', 'c64']
+platforms: ['commodore-amiga', 'ibm-pc', 'commodore-64']
 tags: ['graphics', 'optimisation', 'rendering']
 originated: 1985
-deprecated: 1999
 
 ---
 
 
 ## Overview
 
-Why redraw the entire screen when only a small part changed? Dirty rectangle rendering tracked which screen regions needed updates and redrawed only those areas. For games with mostly static backgrounds and moving sprites, this dramatically reduced rendering work compared to redrawing every pixel every frame.
+Why redraw the entire screen when only a small part changed? Dirty rectangle rendering tracks which screen regions have changed and redraws only those areas. For games with mostly static backgrounds and a handful of moving sprites — point-and-click adventures, strategy games, GUI applications — this dramatically reduces rendering work compared to redrawing every pixel every frame.
+
+Dirty rectangles fall between [double-buffering](/vault/techniques/double-buffering) (full redraw, swap) and direct screen drawing (write while displaying, risk tearing). They give you tear-free output without the cost of touching unchanged pixels.
 
 ## Fast facts
 
 - **Purpose:** Reduce unnecessary redrawing.
-- **Method:** Track changed screen regions.
-- **Benefit:** Lower CPU usage.
-- **Best for:** Static backgrounds with moving elements.
+- **Method:** Track changed screen regions as bounding rectangles.
+- **Benefit:** Lower CPU usage when most of the screen is static.
+- **Best for:** Static backgrounds with a few moving elements (adventures, GUIs, board games).
+- **Worst for:** Full-screen scrolling, particle systems, fast-moving full-screen action.
 
 ## How it works
 
+Each frame:
+
 | Step | Action |
 |------|--------|
-| 1 | Mark changed areas as "dirty" |
-| 2 | Store old sprite positions |
-| 3 | Erase sprites at old positions |
-| 4 | Draw sprites at new positions |
-| 5 | Only refresh dirty regions |
+| 1 | Mark previous sprite/object positions as "dirty" |
+| 2 | Mark new sprite/object positions as "dirty" |
+| 3 | Coalesce overlapping or adjacent dirty rects |
+| 4 | For each dirty rect: redraw the background, then any objects that overlap it |
+| 5 | Copy only the dirty rects from back buffer to front buffer (or to display) |
+
+The dirty list is typically a small array of `(x, y, w, h)` rectangles, regenerated every frame.
 
 ## Tracking changes
 
 | Change type | Dirty region |
 |-------------|--------------|
-| Sprite moved | Old + new position |
-| Animation frame | Sprite bounds |
-| Score change | Score display area |
-| Background change | Affected tiles |
+| **Sprite moved** | Old position + new position (often coalesced if they overlap) |
+| **Animation frame change** | Sprite bounding box at current position |
+| **Score / HUD update** | Score display area |
+| **Background change** | Affected tiles (e.g. a door opening) |
+| **Particle effect** | Bounding box of all particles (or per-particle if scattered) |
 
 ## Rectangle operations
 
+A small library of rectangle primitives suffices:
+
 | Operation | Purpose |
 |-----------|---------|
-| Union | Combine overlapping |
-| Intersection | Find overlap |
-| Clipping | Screen bounds |
-| Coalescing | Merge nearby rects |
+| **Union** | Combine two overlapping rects into one bounding rect |
+| **Intersection** | Find overlap area |
+| **Containment** | Does rect A entirely contain rect B? |
+| **Clipping** | Restrict rect to within screen bounds |
+| **Coalescing** | Merge nearby rects whose union is cheaper than two separate updates |
+
+The coalescing decision is heuristic: merge if the union area is less than the sum of the individual areas plus some overhead, otherwise keep them separate.
+
+## Pseudo-code
+
+```
+dirty_list = []
+
+each_frame:
+    # Phase 1: erase and remember what was where
+    for sprite in moving_sprites:
+        if sprite.moved or sprite.animated:
+            dirty_list.append(sprite.previous_bbox())
+            dirty_list.append(sprite.current_bbox())
+
+    # Phase 2: coalesce overlapping rects
+    coalesce(dirty_list)
+
+    # Phase 3: redraw each dirty rect
+    for rect in dirty_list:
+        clip rect to screen
+        redraw_background(rect)
+        for sprite in sprites_overlapping(rect):
+            draw_sprite_clipped_to(sprite, rect)
+
+    # Phase 4: blit dirty rects to display
+    for rect in dirty_list:
+        blit(back_buffer, display, rect)
+```
 
 ## Advantages
 
 | Benefit | Impact |
 |---------|--------|
-| CPU savings | More processing for gameplay |
-| Reduced flicker | Smaller updates |
-| Bandwidth | Less memory movement |
+| **CPU savings** | More processing time available for game logic |
+| **Reduced flicker** | Smaller updates blit faster, lower chance of catching the raster mid-update |
+| **Memory bandwidth** | Less data moved per frame; matters on shared-memory systems (Amiga chip RAM) |
+| **Scales with activity** | Idle screens cost nothing to "render" |
 
 ## Limitations
 
 | Drawback | Situation |
 |----------|-----------|
-| Overhead | Tracking adds complexity |
-| Full-screen changes | Worse than redraw |
-| Many objects | Diminishing returns |
-| Scrolling | Usually not applicable |
+| **Tracking overhead** | Bookkeeping is non-trivial; small rects don't pay back |
+| **Full-screen changes** | If everything moves, dirty-rect costs more than full redraw |
+| **Many objects** | Coalesce-and-redraw degenerates toward full-screen as object count rises |
+| **Scrolling** | The whole screen is dirty every frame; no benefit |
+| **Z-ordering** | Rectangles overlapping in depth need careful redraw order |
+| **Complex backgrounds** | Background reconstruction must be cheap, or savings vanish |
 
-## Platform use
+## When to use
+
+| Game style | Dirty rects? |
+|------------|--------------|
+| Point-and-click adventures (Sierra, LucasArts) | Yes — ideal use case |
+| Strategy games with mostly static maps | Yes |
+| Board games, card games | Yes |
+| GUI applications (Workbench, GEM, Windows 1-2) | Yes — original motivating use case |
+| Side-scrolling platformers | No — too much movement |
+| Vertical-scrolling shooters | No |
+| Action games with full-screen scroll | No |
+| Particle-heavy effects | Marginal at best |
+
+## Platform-specific notes
 
 | Platform | Application |
 |----------|-------------|
-| Amiga | Adventure games |
-| PC (early) | Before accelerators |
-| Point-and-click | Ideal use case |
+| **Amiga** | Point-and-click adventures (*Indiana Jones*, *Monkey Island*, *Beneath a Steel Sky*); GUI applications |
+| **PC (pre-VGA)** | EGA-era games before fast hardware blits; Sierra and LucasArts ports |
+| **C64** | Less common — sprites are hardware, so the technique mostly applies to the playfield |
+| **GUI systems** | The Amiga Workbench, Atari ST GEM, early Windows all use dirty-rect updating |
+| **HTML5 Canvas** | Modern web games still use this; Canvas's `clearRect` + redraw pattern is dirty-rect rendering |
+
+## Modern relevance
+
+Dirty rectangles remain alive in:
+
+- **Web rendering** — browsers track dirty regions for repaint optimisation.
+- **Game engines** — UI systems use dirty-rect updating (Unity UGUI, Unreal Slate).
+- **GUI toolkits** — Qt, GTK, AppKit/UIKit all use damage-region tracking under the hood.
+- **Compositing window managers** — every modern window manager tracks per-window damage rectangles.
+
+The terminology has evolved (now "damage tracking" or "invalidation") but the core idea is unchanged from the 1980s.
 
 ## See also
 
 - [Double Buffering](/vault/techniques/double-buffering)
 - [Sprites](/vault/techniques/sprites)
 - [Blitter](/vault/hardware/blitter)
+- [Game Loop](/vault/techniques/game-loop)

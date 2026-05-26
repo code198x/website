@@ -1,43 +1,148 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "MOD Format"
 subtitle: "The tracker music revolution"
-summary: "The MOD format combined samples with pattern-based sequencing, becoming the standard for game music on the Amiga and beyond."
+summary: "The MOD format combined samples with pattern-based sequencing in a single self-contained file, becoming the standard for game and demo music on the Amiga and across the chiptune scene."
 category: "techniques"
-platforms: ['amiga', 'pc']
-tags: ['audio', 'tracker', 'demo-scene']
+platforms: ['commodore-amiga', 'ibm-pc']
+tags: ['audio', 'tracker', 'demo-scene', 'format', 'protracker']
+originated: 1987
+
 ---
 
 ## Overview
 
-The MOD format, introduced with the Ultimate Soundtracker in 1987 for the Amiga, revolutionised game and demo music. It stores both samples and the pattern data to play them, creating a self-contained music format that's far smaller than recorded audio.
+The MOD format, introduced with **Ultimate Soundtracker** (Karsten Obarski, Amiga, 1987) and refined into ProTracker, revolutionised game and demo music. It stores both digitised audio samples *and* the pattern data that tells the player when to play them — a self-contained music format far smaller than recorded audio. A typical 4-channel MOD is 50-200 KB; a comparable WAV recording would be megabytes.
 
-## Technical Structure
+The format's simplicity made it portable. Within a few years of the Amiga release, MOD players existed for PC, Atari ST, Acorn Archimedes, and even Linux — anywhere with a sample-capable sound chip. Demo coders, BBS sysops, and bedroom musicians spread MODs across modems and floppies; the format became the default soundtrack of the demoscene.
 
-A MOD file contains:
-- **Samples:** Short audio recordings (instruments, drums)
-- **Patterns:** Sequences of notes referencing samples
-- **Song data:** Pattern order and tempo information
-- **Effects:** Commands for volume, pitch, and other modulations
+## Fast facts
 
-## Advantages
+- **Origin:** Ultimate Soundtracker (Amiga, 1987); refined by ProTracker (Amiga, 1990).
+- **Channels:** 4 in the canonical MOD (one per Paula channel); extensions add more.
+- **Samples:** 8-bit PCM, up to 31 instruments per file (15 in the earliest variants).
+- **Patterns:** 64 rows × 4 channels of note data, indexed and chained into a song sequence.
+- **Effects:** 16 effect commands per note (volume slide, portamento, vibrato, etc.).
+- **Typical size:** 100 KB – 1 MB.
+- **Extensions:** S3M (Scream Tracker), XM (FastTracker II), IT (Impulse Tracker) — each adding channels, finer envelopes, more samples.
 
-- **Small file size:** Kilobytes instead of megabytes
-- **Flexible:** Change samples to completely alter the sound
-- **Portable:** Same file plays on different hardware
-- **Extensible:** Led to S3M, XM, IT formats
+## File structure
 
-## Cultural Impact
+A standard 31-instrument 4-channel MOD has a fixed layout:
 
-The MOD format enabled:
-- Demo scene music culture
-- Game soundtracks on limited storage
-- Early internet music sharing
-- Influence on later electronic music
+| Offset | Size | Field |
+|--------|------|-------|
+| `$0000` | 20 bytes | Song name (zero-padded ASCII) |
+| `$0014` | 31 × 30 bytes | Instrument records (see below) |
+| `$03B6` | 1 byte | Number of song positions (1-128) |
+| `$03B7` | 1 byte | Restart byte (legacy field, usually 127) |
+| `$03B8` | 128 bytes | Pattern order table (which pattern plays at each song position) |
+| `$0438` | 4 bytes | Format signature: `M.K.` (4-channel), `4CHN`, `6CHN`, `8CHN`, etc. |
+| `$043C` | N × 1024 bytes | Pattern data (N = highest pattern index + 1) |
+| (after) | variable | Sample data — raw 8-bit signed PCM |
 
-## See Also
+The 1084-byte (`$043C`) header is followed by patterns and then samples. Older 15-instrument MODs lack the format signature and start at offset `$01D8`.
 
-- [ProTracker](/vault/tools/protracker)
-- [Paula](/vault/hardware/paula)
+### Instrument record (30 bytes)
+
+| Offset | Size | Field |
+|--------|------|-------|
+| 0 | 22 | Instrument name (zero-padded ASCII) |
+| 22 | 2 | Sample length in **words** (so byte length = ×2) |
+| 24 | 1 | Finetune (-8 to +7, signed nibble) |
+| 25 | 1 | Volume (0-64) |
+| 26 | 2 | Loop start in words |
+| 28 | 2 | Loop length in words (1 if no loop) |
+
+All multi-byte values are big-endian (Motorola 68000 native).
+
+### Pattern data (1024 bytes per pattern)
+
+Each pattern is **64 rows × 4 channels × 4 bytes**:
+
+```
+Row 0: ch0 ch1 ch2 ch3
+Row 1: ch0 ch1 ch2 ch3
+...
+Row 63: ch0 ch1 ch2 ch3
+```
+
+Each cell is 4 bytes encoding the note, sample, and effect:
+
+```
+   Byte 0          Byte 1          Byte 2          Byte 3
++------------+ +------------+ +------------+ +------------+
+| sample.hi  | | period.hi  | | sample.lo  | | effect.hi  |
+| period.hi  | | period.lo  | | effect.hi  | | effect.lo  |
++------------+ +------------+ +------------+ +------------+
+
+Decoded:
+- sample number: bits (byte0 & $F0) | (byte2 >> 4)
+- period:        ((byte0 & $0F) << 8) | byte1
+- effect command: (byte2 & $0F)
+- effect param:   byte3
+```
+
+The **period** is the Paula playback period — directly written to AUDxPER. Smaller period = higher pitch. A note table maps musical notes to periods based on the sample's finetune.
+
+### Effect commands
+
+The effect nibble selects one of 16 commands:
+
+| Code | Command | Behaviour |
+|------|---------|-----------|
+| 0 | Arpeggio | Cycle between three notes within the row |
+| 1 | Slide up | Decrease period (higher pitch) |
+| 2 | Slide down | Increase period (lower pitch) |
+| 3 | Tone portamento | Glide toward target note |
+| 4 | Vibrato | Sine modulation of period |
+| 5 | Tone portamento + volume slide | |
+| 6 | Vibrato + volume slide | |
+| 7 | Tremolo | Sine modulation of volume |
+| 8 | (unused in original) | |
+| 9 | Set sample offset | Skip into sample by `param × 256` |
+| A | Volume slide | Add/subtract from volume |
+| B | Position jump | Jump to song position |
+| C | Set volume | Direct volume set |
+| D | Pattern break | Jump to next pattern at row `param` |
+| E | Extended | Sub-effects in upper nibble of param |
+| F | Set speed/tempo | Speed (1-31) or BPM (32-255) |
+
+## Paula playback
+
+A MOD player runs at the pattern's tempo (default 50 ticks/second on PAL Amiga, divided by the speed value). Each tick:
+
+1. Process effect for each active channel (volume slide, portamento, etc.)
+2. Every `speed` ticks, advance to the next row
+3. New row: load sample, period, volume into AUDxLC/AUDxLEN/AUDxPER/AUDxVOL, enable DMA
+
+The four MOD channels map directly to Paula's four DMA channels:
+
+| MOD ch | Paula ch | Stereo side |
+|--------|----------|-------------|
+| 1 | 0 | Left |
+| 2 | 1 | Right |
+| 3 | 2 | Right |
+| 4 | 3 | Left |
+
+This stereo split is hardwired in Paula and gives MODs their distinctive "channels 1+4 left, 2+3 right" panning. Some players add a software mixer to soften it.
+
+## Format extensions
+
+| Format | Year | Origin | Key additions |
+|--------|------|--------|---------------|
+| MOD | 1987 | Ultimate Soundtracker (Amiga) | Original |
+| S3M | 1993 | Scream Tracker 3 (PC) | Up to 32 channels, multiple effect columns, GM/MIDI mapping |
+| XM | 1994 | FastTracker II (PC) | Volume/panning envelopes, instrument multi-sample, up to 32 channels |
+| IT | 1996 | Impulse Tracker (PC) | New volume column, NNA (new note actions), 64 channels, finer effects |
+
+Modern players (libxmp, OpenMPT) handle all four, often with sample-accurate playback. The chiptune scene continues to produce work in all these formats.
+
+## See also
+
+- [ProTracker](/vault/tools/protracker) — the canonical 4-channel MOD editor
+- [Paula](/vault/hardware/paula) — Amiga audio chip the MOD format was designed around
+- [MOD Format (cultural perspective)](/vault/culture/mod-format) — demoscene impact, BBS distribution, scene history
+- [Tracker Music](/vault/culture/tracker-music)
 - [Demo Scene](/vault/communities/demo-scene)

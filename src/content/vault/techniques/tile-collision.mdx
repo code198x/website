@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Tile-Based Collision"
 subtitle: "Efficient collision detection for platformers"
 summary: "By checking which tiles a character overlaps rather than testing every object, tile collision provides fast, memory-efficient collision detection for platform games."
 category: "techniques"
-platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['gameplay', 'collision', 'platformers']
 originated: 1980
 
@@ -52,27 +52,43 @@ pixel_to_tile_y:
     rts
 
 ; Get tile at (tile_x, tile_y)
+; For map width = 40 we use × 40 = (tile_y << 5) + (tile_y << 3) — × 32 + × 8
+; For non-power-of-2 widths, a precomputed row-offset lookup table is cleaner:
+;     row_offset_lo[y], row_offset_hi[y]
+; This avoids the multiply entirely (each row's address is in the table).
 get_tile:
+    ; Compute tile_y × 40 cleanly: (y << 5) + (y << 3)
     lda tile_y
-    ; multiply by map width (e.g., 40)
-    asl             ; ×2
-    asl             ; ×4
-    asl             ; ×8
+    asl
+    asl
+    asl                  ; A = tile_y × 8 (also we'll add this back after the next shifts)
+    sta tmp              ; save × 8
+    asl
+    asl                  ; A = tile_y × 32
     clc
-    adc tile_y      ; ×9
-    asl             ; ×18
-    asl             ; ×36
-    clc
-    adc tile_y      ; ×37
-    adc tile_y
-    adc tile_y
-    adc tile_y      ; ×40 (close enough for 32-40 width)
-    ; Or use lookup table for exact multiplication
+    adc tmp              ; A = × 32 + × 8 = × 40
 
     clc
     adc tile_x
     tax
     lda map_data,x
+    rts
+```
+
+Note: a 1000-byte map (40 × 25) crosses a 256-byte page in `map_data`, so the index needs to be 16-bit in production code (`map_data + tile_y × 40 + tile_x` may exceed 255). Use a row-pointer table for clean handling:
+
+```asm
+row_lo:    .byte <(map_data + 0*40), <(map_data + 1*40), ..., <(map_data + 24*40)
+row_hi:    .byte >(map_data + 0*40), >(map_data + 1*40), ..., >(map_data + 24*40)
+
+get_tile:
+    ldy tile_y
+    lda row_lo,y
+    sta ptr
+    lda row_hi,y
+    sta ptr+1
+    ldy tile_x
+    lda (ptr),y
     rts
 ```
 

@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Sprite Scaling"
 subtitle: "Pseudo-3D depth"
 summary: "Sprite scaling created the illusion of 3D depth by drawing sprites at different sizes based on distance, enabling racing games, shooters, and flight simulators on 2D hardware."
 category: "techniques"
-platforms: ['arcade', 'sega-mega-drive', 'amiga', 'snes']
+platforms: ['sega-mega-drive', 'commodore-amiga', 'super-nintendo']
 tags: ['graphics', '3D', 'technique']
 originated: 1982
 
@@ -14,83 +14,116 @@ originated: 1982
 
 ## Overview
 
-Make distant things small, close things large. Sprite scaling created convincing 3D without true 3D hardware. Racing games showed cars growing as they approached. Shooters had enemies rushing toward the player. The technique powered the "Super Scaler" arcade era and brought pseudo-3D to home systems.
+Make distant things small, close things large. Sprite scaling created convincing depth without true 3D hardware. Racing games showed cars growing as they approached. Shooters had enemies rushing toward the player. The technique powered the "Super Scaler" arcade era and brought pseudo-3D to home systems for nearly a decade before polygonal hardware took over.
 
 ## Fast facts
 
-- **Purpose:** Simulate 3D depth.
-- **Method:** Size sprites by distance.
+- **Purpose:** Simulate 3D depth on 2D sprite hardware.
+- **Method:** Draw sprites at different sizes based on simulated distance.
 - **Peak:** Mid-1980s to early 1990s.
-- **Hardware:** Often required custom chips.
+- **Hardware:** Often required custom scaling chips (Sega arcade boards) or significant CPU time (home ports).
+- **Successor:** Texture-mapped polygons (1992+).
 
 ## How it works
 
+The basic approach:
+
 | Step | Process |
 |------|---------|
-| 1 | Calculate object distance |
-| 2 | Determine scale factor |
-| 3 | Draw sprite at scaled size |
-| 4 | Position based on perspective |
+| 1 | Calculate object distance in world space |
+| 2 | Determine scale factor (typically `1 / distance`) |
+| 3 | Compute screen position via perspective projection |
+| 4 | Draw sprite at scaled size at the projected position |
 
-## Sega Super Scaler
+Three implementation strategies, with very different cost profiles:
 
-| Game | Year | Innovation |
-|------|------|------------|
-| Hang-On | 1985 | Motorcycle racing |
-| Space Harrier | 1985 | Into-screen shooter |
-| Out Run | 1986 | Driving with scenery |
-| After Burner | 1987 | Air combat |
-| Galaxy Force | 1988 | Space combat |
+- **Hardware scaling** (Sega Super Scaler arcade): the chip does it; sprites can be scaled to any factor in real time, dozens or hundreds simultaneously.
+- **Pre-scaled sprites**: store multiple pre-rendered sizes in ROM, pick the closest match at runtime. No CPU cost, big ROM cost.
+- **Software scaling**: scale at runtime by skipping/duplicating pixels. CPU-intensive; quality varies.
+
+## Sega Super Scaler (the arcade peak)
+
+Sega's Super Scaler hardware family — System 16, X Board, Y Board — had dedicated sprite scalers that could output up to 1,000+ sprites per frame, each scaled independently from 1× down to ~1/16×. The chips embedded line buffers and bilinear-style sprite scalers in silicon, making smooth scaling feel effortless on screen.
+
+| Game | Year | Hardware | Innovation |
+|------|------|----------|------------|
+| *Hang-On* | 1985 | System 16 | Motorcycle racing — the genre-defining title |
+| *Space Harrier* | 1985 | System 16 | "Into-the-screen" rail shooter |
+| *Out Run* | 1986 | X Board (System 16 successor) | Open-road driving with parallax scenery and roadside objects |
+| *After Burner* | 1987 | X Board | Air combat with pitch/roll horizon |
+| *Power Drift* | 1988 | Y Board | Multi-character racing with full-3D-feel cars |
+| *Galaxy Force* | 1988 | Y Board | Space combat with planet-scale scaling |
+| *G-LOC* | 1990 | Y Board | Final-generation; dual-display cabinets common |
+
+The Y Board cabinets in particular — *Galaxy Force II* with its hydraulic moving cockpit — were the high-water mark of Sega's sprite-scaling era.
 
 ## Implementation approaches
 
-| Method | Requirement |
-|--------|-------------|
-| Hardware scaling | Custom arcade chips |
-| Pre-scaled sprites | Multiple sprite versions |
-| Real-time software | CPU intensive |
-| Mode 7 (SNES) | Hardware rotation/scaling |
+| Method | Requirement | Pros | Cons |
+|--------|-------------|------|------|
+| **Hardware scaling** | Custom arcade chips | Fluid, fast, many sprites | Expensive silicon |
+| **Pre-scaled sprites** | Multiple sprite versions in ROM | Zero CPU cost | High ROM cost; visible "snapping" between scale steps |
+| **Real-time software** | CPU cycles to spare | Smooth, flexible | Slow on 16-bit CPUs; limits sprite count |
+| **Mode 7 (SNES BG)** | SNES-specific | Hardware rotation/scaling for one BG layer | Sprites *not* scaled by Mode 7; combine carefully |
 
-## Pre-scaled sprites
+### Pre-scaled sprite tables
 
-| Distance | Sprite version |
-|----------|----------------|
-| Far | 8×8 pixels |
-| Medium | 16×16 pixels |
-| Close | 32×32 pixels |
-| Very close | 64×64 pixels |
+A typical home-port approach:
 
-Requires multiple versions of each sprite in ROM.
+| Distance bucket | Sprite size | Frames per ROM cost |
+|-----------------|-------------|----------------------|
+| Far horizon | 8×8 px | 1 frame |
+| Distant | 16×16 px | 4× |
+| Medium | 32×32 px | 16× |
+| Close | 48×48 px | 36× |
+| Very close | 64×64 px | 64× |
 
-## Mode 7 (SNES)
+A character with 10 animation frames × 5 distance buckets = 50 sprites in ROM. Sega home ports of *Out Run* sometimes spent 80% of ROM on pre-scaled sprite tables.
 
-| Feature | Capability |
-|---------|------------|
-| Background scaling | Real-time |
-| Rotation | Any angle |
-| Sprites | Not scaled by Mode 7 |
-| Games | F-Zero, Mario Kart |
+### Mode 7 (SNES)
 
-## Software scaling
+Mode 7 is a single rotated/scaled background layer with hardware affine transformation. Important caveat: **Mode 7 scales the *background*, not sprites**. To get scaled sprites against a Mode 7 background, you either:
 
-| Platform | Performance |
-|----------|-------------|
-| Amiga | Blitter-assisted |
-| Mega Drive | CPU scaling routines |
-| PC | Later VGA games |
+- **Pre-scale sprites in software** and overlay them on the Mode 7 BG (most racing games on SNES do this).
+- **Use HDMA to scale per-scanline** and trick the eye.
+
+Famous Mode 7 games: *F-Zero* (1990), *Super Mario Kart* (1992), *Pilotwings* (1990).
+
+## Software scaling on home systems
+
+| Platform | Approach | Performance |
+|----------|----------|-------------|
+| **Amiga** | Blitter-assisted line copy with skip/duplicate | Decent for 1-2 large sprites; struggles with many |
+| **Mega Drive** | CPU scaling with self-modifying code unrolled per scale factor | Cycle-tight; *Outrunners* (1992) is a showcase |
+| **SNES** | Software scaling layered on Mode 7 (see above) | Variable |
+| **PC (VGA)** | Software scaling, one of *Doom*'s techniques for visible sprites | Per-column scaling; very fast on 286/386 |
 
 ## Limitations
 
 | Constraint | Effect |
 |------------|--------|
-| Memory | Multiple sprite copies |
-| CPU | Real-time calculation |
-| Quality | Pixelation at large sizes |
-| Animation | Each frame needs all scales |
+| **Memory** | Pre-scaled sprites multiply ROM cost by 5-10× |
+| **CPU** | Real-time scaling on 16-bit hardware can drop frame rate sharply |
+| **Quality** | Pixelation at large sizes; visible scale-step "popping" |
+| **Animation** | Each animation frame needs all scaled versions |
+| **Sprite count** | Even on hardware, scaling reduces total sprite budget |
+
+## Decline
+
+Sprite scaling was supplanted by texture-mapped 3D polygons starting around 1992-93:
+
+- *Virtua Racing* (1992, arcade) and *Virtua Fighter* (1993) — Sega's own move to polygons on Model 1.
+- *Star Fox* (1993, SNES Super FX) — polygons on home consoles.
+- PlayStation / Saturn / N64 launches (1994-1996) — polygons standard.
+
+Pseudo-3D scaling stuck around in handhelds (*F-Zero: Maximum Velocity* on GBA) and indie retro-style games to this day, but as an aesthetic choice rather than a technical necessity.
 
 ## See also
 
 - [Out Run](/vault/games/out-run)
 - [After Burner](/vault/games/after-burner)
 - [Space Harrier](/vault/games/space-harrier)
+- [Mode 7](/vault/techniques/mode-7)
+- [Super FX Chip](/vault/techniques/super-fx-chip)
 - [Parallax Scrolling](/vault/techniques/parallax-scrolling)
+- [Sprites](/vault/techniques/sprites)

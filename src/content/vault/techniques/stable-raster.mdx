@@ -1,6 +1,6 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Stable Raster"
 subtitle: "Cycle-exact timing"
 summary: "The double-IRQ technique that achieves cycle-exact synchronisation with the VIC-II raster beam, enabling perfect mid-screen effects on the Commodore 64."
@@ -56,22 +56,36 @@ The technique uses two interrupts:
 
 ## Code Structure
 
-```
-; First IRQ - unstable, sets up second
+```asm
+; First IRQ - unstable, sets up second one line later
 first_irq:
     lda #<second_irq
-    sta $0314
-    inc $d012        ; Next line
-    ; ... acknowledge IRQ
-    rti
+    sta $0314           ; Point CINV at second handler
+    lda #>second_irq
+    sta $0315
+    inc $d012           ; Next IRQ one line down
+    lda #$01
+    sta $d019           ; Acknowledge
+    tsx
+    cli                 ; Re-enable IRQs (so second can fire)
+    nop : nop : nop : nop : nop : nop : nop : nop
+    ; ... long NOP slide ...
+    ; The second IRQ will fire somewhere inside this slide,
+    ; at one of two cycle positions (jitter is now 0 or 1).
 
 ; Second IRQ - stabilised
 second_irq:
-    ; NOP slide for consistent entry point
-    nop : nop : nop : nop : nop : nop : nop
-    ; Now cycle-exact
-    ; ... do stable raster effect
+    ; Read $d012 to compensate for the remaining 0-1 cycle jitter
+    lda $d012
+    cmp $d012           ; If line just changed, branch to align
+    beq @aligned
+@aligned:
+    ; Now cycle-exact — perform the effect
+    sta $d020           ; Example: change border colour
+    ; ... acknowledge and exit ...
 ```
+
+The standard idiom is "first IRQ enables nested IRQ, NOP slide gives the second IRQ a known entry point, then a CMP+BEQ trick eliminates the last cycle of jitter." This is the backbone of every cycle-exact C64 effect.
 
 ## Why It Works
 
@@ -86,11 +100,12 @@ second_irq:
 
 | Effect | Requirement |
 |--------|-------------|
-| **Border removal** | Exact $D011 writes |
-| **Raster bars** | Colour changes per line |
-| **Split screens** | Mode changes mid-frame |
-| **FLD effects** | Flexible Line Distance |
-| **Tech-tech** | Multi-colour text |
+| **Border removal** | Exact `$D011` / `$D016` bit-3 writes at cycle-precise raster positions |
+| **Raster bars** | Colour changes per scanline |
+| **Split screens** | Mode changes mid-frame (text/bitmap split, multicolour switch) |
+| **FLD (Flexible Line Distance)** | Manipulate `$D011` YSCROLL to space rendered lines vertically — produces the "stretchy screen" effect |
+| **FLI (Flexible Line Interpretation)** | Per-line `$D018` change combined with forced badlines — yields 8 colours per 8×8 cell |
+| **Tech-tech** | Per-line `$D016` XSCROLL change so text undulates in a sine wave |
 
 ## Historical Development
 
@@ -98,8 +113,10 @@ second_irq:
 |-----|-------------|
 | 1986 | Basic double-IRQ discovered |
 | 1987 | Refined techniques |
-| 1990s | Demo scene mastery |
-| Today | Still essential for C64 effects |
+| 1990s | Demo scene mastery — Crest's *Wonderland* series, Censor Design's productions |
+| Today | Still essential for C64 effects; modern toolchains (KickAssembler, Acme) treat stable raster as a standard preamble |
+
+Crest's *Wonderland XII* (1996) is the canonical reference demo for stable raster — every effect in it relies on cycle-exact raster timing.
 
 ## Performance Cost
 

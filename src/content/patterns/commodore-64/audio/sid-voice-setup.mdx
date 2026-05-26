@@ -74,9 +74,10 @@ init_sid:
     sta SID_VOLUME
 
     ; === Configure Voice 1 ===
-    lda #$00
+    ; C5 on PAL: 523.25 Hz × 16777216 / 985248 = 8910 = $22CE
+    lda #$CE
     sta SID_V1_FREQ_LO
-    lda #$1C                    ; Frequency high byte (C5)
+    lda #$22                    ; Frequency high byte (C5 PAL)
     sta SID_V1_FREQ_HI
 
     lda #$08                    ; Pulse width (50% duty cycle)
@@ -92,9 +93,10 @@ init_sid:
     rts
 
 ; Play voice 1 (call init_sid first)
+; The waveform constants above already include the gate bit, so writing one
+; of them directly starts the note.
 play_voice1:
-    lda #WAVE_SAWTOOTH          ; Waveform
-    ora #$01                    ; Set gate bit (start note)
+    lda #WAVE_SAWTOOTH          ; Waveform + gate (gate bit already set)
     sta SID_V1_CTRL
     rts
 
@@ -149,14 +151,44 @@ R = Release - Time to silence after release
 | Pad | $88 | $84 | Slow attack/release, medium sustain |
 | Drum | $09 | $00 | Quick hit, no sustain |
 
-## Frequency Reference
+## Frequency Reference (PAL)
 
-| Note | Freq Hi | Freq Lo |
-|------|---------|---------|
-| C3 | $07 | $00 |
-| C4 | $0E | $00 |
-| C5 | $1C | $00 |
-| C6 | $38 | $00 |
+The 16-bit SID frequency value is `FREQ = Hz × 16777216 / clock`, with PAL clock = 985,248 Hz and NTSC clock = 1,022,727 Hz. Values double per octave:
+
+| Note | Hz | PAL ($Hi $Lo) | NTSC ($Hi $Lo) |
+|------|----|---------------|----------------|
+| C3 | 130.81 | $08 $B3 | $08 $50 |
+| C4 (middle C) | 261.63 | $11 $67 | $10 $A1 |
+| C5 | 523.25 | $22 $CE | $20 $5C |
+| C6 | 1046.5 | $45 $9C | $42 $1B |
+
+For a complete chromatic scale, see the SID frequency tables in the [VIC-II](/vault/hardware/vic-ii) and SID vault entries.
+
+## Multi-voice setup
+
+The SID has three independent voices. Setup is identical for each — the same code with different base addresses. The simplest way to handle all three is to parameterise on the voice's base register:
+
+```asm
+; Configure all three voices with the same envelope and waveform
+init_all_voices:
+    ldx #0                      ; Voice 0
+    jsr setup_voice
+    ldx #7                      ; Voice 1 base offset
+    jsr setup_voice
+    ldx #14                     ; Voice 2 base offset
+    jsr setup_voice
+    rts
+
+; X = voice base offset (0, 7, or 14)
+setup_voice:
+    lda #$09
+    sta SID_V1_AD,x             ; AD register at base+5 (V1=$D405, V2=$D40C, V3=$D413)
+    lda #$00
+    sta SID_V1_SR,x             ; SR register at base+6
+    rts
+```
+
+Voice 1 ($D400-$D406), Voice 2 ($D407-$D40D), and Voice 3 ($D40E-$D414) are evenly spaced at 7-byte intervals.
 
 ## Related
 

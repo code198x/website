@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "6502: The People's Processor"
 subtitle: "Eight bits that changed everything"
 summary: "The MOS 6502 powered the Apple II, Atari 2600, Commodore 64, and NES—making home computing affordable and defining a generation of programmers."
 category: "hardware"
-platforms: ['c64', 'nes', 'atari-2600', 'apple-ii', 'bbc-micro', 'atari-8-bit', 'vic-20']
+platforms: ['commodore-64', 'nintendo-entertainment-system', 'atari-2600', 'apple-ii', 'bbc-micro', 'atari-800', 'commodore-vic-20']
 tags: ['cpu', 'processors', 'mos-technology']
 introduced: 1975
 
@@ -30,6 +30,20 @@ The MOS 6502, designed by Chuck Peddle and released in 1975, democratised comput
 - **Addressing modes:** immediate, absolute, zero-page, indexed, indirect, and combinations.
 - **No multiplication/division:** these must be implemented in software.
 - **Little-endian:** low byte stored first in memory.
+- **Interrupts:** NMI is edge-triggered (vectors via $FFFA-$FFFB), IRQ is level-triggered (vectors via $FFFE-$FFFF, shared with BRK). Reset vectors via $FFFC-$FFFD. All take 7 cycles.
+
+## Status register (P)
+
+| Bit | Flag | Meaning |
+|-----|------|---------|
+| 7 | N | Negative — copy of result bit 7 |
+| 6 | V | Overflow — signed overflow on ADC/SBC |
+| 5 | — | Unused (reads as 1 when pushed to stack) |
+| 4 | B | Break — no physical bit; appears 1 when pushed by BRK/PHP, 0 when pushed by IRQ/NMI |
+| 3 | D | Decimal — selects BCD mode for ADC/SBC (no effect on the NES 2A03) |
+| 2 | I | Interrupt disable — when 1, IRQ is masked |
+| 1 | Z | Zero — set if result == 0 |
+| 0 | C | Carry — unsigned overflow / shift-out / comparison result |
 
 ## Key addressing modes
 
@@ -39,13 +53,36 @@ The MOS 6502, designed by Chuck Peddle and released in 1975, democratised comput
 | Zero-page | $nn | LDA $40 | Fast access to $00-$FF |
 | Absolute | $nnnn | LDA $C000 | Full 16-bit address |
 | Indexed | $nnnn,X | LDA $C000,X | Address + X register |
-| Indirect | ($nnnn) | JMP ($FFFE) | Jump to address stored at location |
+| Indirect | ($nnnn) | JMP ($1234) | Jump to address stored at location |
+
+## Famous quirks
+
+- **JMP indirect page-wrap bug:** if the operand of `JMP ($xxFF)` lies on a page boundary, the high byte of the target is fetched from `$xx00`, not `$xx100` — the high byte wraps within the page. The 65C02 fixes this.
+- **Decimal mode flag behaviour:** in BCD mode, the N, V, and Z flags reflect the **binary** intermediate result, not the BCD output. (Most code re-tests after the operation.)
+- **Page-cross cycle penalty:** read instructions (LDA/CMP/ADC/etc.) using `abs,X`/`abs,Y`/`(zp),Y` cost +1 cycle if the index crosses a page boundary. Read-modify-write (`ASL $nnnn,X`) and store (`STA $nnnn,X`) instructions **always** take the maximum cycle count — they always do a dummy read at the unfixed address.
+- **Reset state:** I=1, D=1 on some early NMOS parts; A/X/Y/SP/PC undefined. Reset code typically begins with `LDX #$FF / TXS / CLD` to set up the stack and clear decimal mode.
+
+## Undocumented (illegal) opcodes
+
+The NMOS 6502 has 105 unused opcode slots, of which several dozen produce reproducible behaviour and are widely used in production NES and C64 software. Common examples:
+
+| Mnemonic | Effect |
+|----------|--------|
+| LAX | Load A and X simultaneously |
+| SAX | Store A AND X |
+| DCP | Decrement memory, then compare with A |
+| ISC | Increment memory, then subtract from A with borrow |
+| SLO/RLA/SRE/RRA | Shift/rotate memory, then OR/AND/EOR/ADC with A |
+| ANC | AND immediate, then copy bit 7 to carry |
+
+The 65C02 (CMOS) replaces most of these with new documented instructions, so code using illegals breaks on CMOS variants.
 
 ## Variants and descendants
 
 - **6510:** C64's version with built-in I/O port.
-- **6507:** stripped-down version for Atari 2600 (13-bit address bus).
-- **65C02:** CMOS version with additional instructions.
+- **6507:** stripped-down version for Atari 2600 (13-bit address bus, 8 KB addressable).
+- **2A03:** NES variant — 6502 core with decimal-mode adder disabled in hardware, integrated APU and DMA controller.
+- **65C02:** CMOS version with additional instructions and the JMP indirect bug fixed.
 - **65816:** 16-bit successor used in Apple IIGS and SNES.
 
 ## Cultural impact

@@ -1,6 +1,6 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Position-Independent Code"
 subtitle: "Code that runs anywhere"
 summary: "Code that executes correctly regardless of memory location, using PC-relative addressing rather than absolute addresses, pioneered on the 6809 and standard in modern systems."
@@ -12,57 +12,94 @@ emerged: 1978
 
 ## Overview
 
-**Position-independent code** (PIC) is code that executes correctly regardless of its location in memory. Rather than using absolute addresses, PIC uses relative addressing (typically PC-relative) so the code works wherever it's loaded. The 6809 pioneered this in microprocessors.
+**Position-independent code** (PIC) executes correctly regardless of where it's loaded in memory. Rather than using absolute addresses, PIC uses PC-relative addressing — every reference is `PC + offset` rather than a fixed location. The 6809 was the first 8-bit CPU to make PIC fully practical; modern operating systems rely on it for shared libraries and ASLR.
 
 ## Fast Facts
 
-- **Concept:** Code works at any address
-- **Method:** PC-relative addressing
-- **Pioneer:** Motorola 6809 (1978)
-- **Modern use:** Shared libraries, ASLR
+- **Concept:** Code that works at any address it's loaded at.
+- **Method:** PC-relative addressing for both branches and data.
+- **8-bit pioneer:** Motorola 6809 (1978) — the first to support PCR for *data* access, not just branches.
+- **Modern use:** Shared libraries (.so / .dylib / .dll), ASLR, position-independent executables.
 
 ## Why It Matters
 
 | Benefit | Application |
 |---------|-------------|
-| **Relocation** | Load anywhere in memory |
-| **Shared libraries** | One copy serves all programs |
-| **Security** | ASLR randomises locations |
-| **ROM cartridges** | Work in various memory maps |
+| **Relocation** | Load anywhere in memory; no fix-up table |
+| **Shared libraries** | One copy of `libc.so` serves every process at different addresses |
+| **Security (ASLR)** | Randomised code locations defeat ROP attacks |
+| **ROM cartridges** | Same code works whether mapped to `$8000` or `$C000` |
+| **Demo cracks/trainers** | Inject patches at any free address |
 
-## 6809 Implementation
+## Support across CPUs
+
+The big difference between CPUs is whether *only branches* are PC-relative or whether *loads/stores* can be too:
+
+| CPU | Branches | PC-relative loads | PIC verdict |
+|-----|----------|-------------------|-------------|
+| **6502 / 6510** | Bxx (signed 8-bit) only | None | Hard — must use SMC or trampolines for non-trivial PIC |
+| **Z80** | `JR`, `JR cc`, `DJNZ` (signed 8-bit) only | None | Hard — same workarounds as 6502 |
+| **6809** | BRA / LBRA / Bcc (signed 8/16-bit) | `LDA offset,PCR` and similar via PCR addressing mode | **Designed in** — fully practical |
+| **68000** | Bcc (signed 8/16-bit), BRA | `MOVE (PC,d),Dn`, `LEA (label,PC),An` | Loads yes, stores no (deliberate ROM-friendly choice) |
+| **ARM** | B / BL (signed 24-bit) | `LDR Rd,[PC,#offset]` ("literal pool" idiom) | Native — almost everything is PC-relative-friendly |
+| **x86 (16/32)** | Jcc (relative) | None for general data; `CALL +0; POP` trick used pre-x64 | Awkward |
+| **x86-64** | Jcc (relative) | RIP-relative addressing on most loads | Native — required for OS-level PIC |
+
+The 6502 / Z80 lineage's lack of PC-relative loads is *the* reason 8-bit code in those families is overwhelmingly written for fixed addresses. When relocation is needed, the loader rewrites a table of fix-up offsets — the cost the 6809 pays once at design time, the 6502 pays at every load.
+
+## 6809 implementation
 
 ```asm
 ; PC-relative data access
-    LEAX DATA,PCR    ; Load effective address, PC-relative
-    LDA ,X           ; Access data
+    LEAX    DATA,PCR        ; X = effective address of DATA, computed as PC+offset
+    LDA     ,X              ; Load byte at DATA via X
+
+; Direct PC-relative load
+    LDA     COUNTER,PCR     ; Load byte at COUNTER, address resolved against PC
 
 ; Relative branching
-    BRA LABEL        ; Always relative on 6809
-    LBRA FAR_LABEL   ; Long relative branch
+    BRA     LABEL           ; Always relative on 6809 (signed 8-bit)
+    LBRA    FAR_LABEL       ; Long relative branch (signed 16-bit)
 ```
 
-## vs Absolute Code
+The assembler emits the offset between the current PC and the target; the runtime fetch reconstructs the absolute address. Move the entire block of code anywhere in memory and it still works.
 
-| Absolute | Position-Independent |
-|----------|---------------------|
-| `JMP $8000` | `BRA LABEL` |
-| `LDA $1234` | `LDA OFFSET,PCR` |
-| Fixed location | Relocatable |
-| Simpler | More flexible |
+## PIC vs SMC
 
-## Modern Relevance
+PIC and self-modifying code solve overlapping problems but at opposite ends of a spectrum:
 
-PIC is now standard:
-- **Shared libraries** use PIC to load at any address
-- **ASLR** randomises code location for security
-- **Dynamic linking** relies on relocatable code
+| | Position-independent | Self-modifying |
+|---|---|---|
+| Addresses | Computed each time from PC | Patched into the instruction stream |
+| Cost | Slightly more cycles per access | One write; subsequent accesses are fastest possible |
+| Relocatability | Free — the code carries its own offsets | None — addresses bake into instructions on first use |
+| Modern viability | Standard | Forbidden by W^X memory protection |
+
+On a Z80 or 6502, SMC often replaced PIC because the CPU forced your hand: there was no PCR mode to exploit, and SMC was *faster* than indexed indirection.
+
+## ROM cartridge example
+
+A 6809 cartridge that wants to be mappable at either `$8000-$BFFF` or `$C000-$FFFF` writes every internal jump and data reference as PC-relative. The same image runs in both windows without an external relocation table. A 6502 cartridge in the same situation either:
+
+- Bakes in one address and refuses to work at the other, **or**
+- Carries a relocation table that the boot routine walks to fix up absolute references at startup.
+
+Modern shared libraries take the same approach as the 6809 cartridge, scaled up: the dynamic linker maps the library at any address and the PC-relative references just work.
+
+## Modern relevance
+
+PIC is now the default rather than the exception:
+
+- **Shared libraries** load at runtime-chosen addresses; PIC means no copy-and-relocate.
+- **ASLR** (Address Space Layout Randomisation) randomises code base addresses to defeat exploits that depend on known gadget locations; PIC is what makes ASLR cheap.
+- **Dynamic linking** relies on the PIC + GOT (Global Offset Table) pattern: code refers to data via PC-relative loads of GOT entries, which the linker fills in at load time.
 
 ## Legacy
 
-The 6809's PIC support was revolutionary for 1978. Concepts that seemed academic then—code that runs anywhere—are now fundamental to operating system security and efficiency.
+The 6809's PCR mode was revolutionary in 1978. The orthogonality of "any addressing mode can use PC as its base register" prefigured how RISC ISAs would design PIC support a decade later. The 6502 / Z80 / 8086 family did not get clean PIC for *data* until much later (x86-64 finally added RIP-relative addressing in 2003) — a 25-year lag from a chip that was already shipping in the TRS-80 Color Computer.
 
 ## See Also
 
 - [Motorola 6809](/vault/hardware/motorola-6809)
-
+- [Self-Modifying Code](/vault/techniques/self-modifying-code)
+- [Bank Switching](/vault/techniques/bank-switching)

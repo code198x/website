@@ -1,15 +1,17 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Z80 Instruction Set Reference"
-subtitle: "Complete CPU instruction reference"
-summary: "Complete reference for Z80 assembly instructions with T-states, bytes, and flag effects."
+subtitle: "Selected CPU instruction reference"
+summary: "Reference for the most common Z80 assembly instructions with T-states, bytes, and flag effects."
 category: "techniques"
-platforms: ['spectrum']
+platforms: ['sinclair-zx-spectrum']
 tags: ['z80', 'instructions', 'assembly', 'reference', 'opcodes']
 ---
 
-Complete reference for Z80 microprocessor instructions as used in the ZX Spectrum. Includes T-states (clock cycles), byte counts, and flag effects for every instruction.
+Selected reference for Z80 microprocessor instructions as used in the ZX Spectrum (and any other Z80 system — MSX, Amstrad CPC, Master System, CP/M machines). Covers the most common instruction families: 8/16-bit loads, arithmetic, logical, jumps, calls, stack, I/O, block moves, and shifts/rotates/bit ops. Each entry lists T-states (clock cycles), byte count, and flag effects.
+
+For the **complete** instruction set including every undocumented opcode, see Zilog's reference manual or the Z80 documentation at [z80.info](http://z80.info/).
 
 ---
 
@@ -302,6 +304,56 @@ Special loop instruction. Decrements B and jumps if B ≠ 0.
 
 ---
 
+## Rotate and Shift Instructions
+
+The "fast" rotates act on A only and are 1-byte / 4 T-states. The general rotates and shifts (CB-prefix) work on any 8-bit register or `(HL)` and are 2-byte / 8 T-states (for register) or 2-byte / 15 T-states (for `(HL)`). All set the carry from the bit shifted out.
+
+### Fast (A-only) rotates
+
+| Instruction | Bytes | T-states | Description |
+|-------------|-------|----------|-------------|
+| RLCA | 1 | 4 | Rotate A left circular (bit 7 → C and → bit 0) |
+| RLA | 1 | 4 | Rotate A left through carry |
+| RRCA | 1 | 4 | Rotate A right circular |
+| RRA | 1 | 4 | Rotate A right through carry |
+
+### General rotates and shifts (CB-prefix)
+
+| Instruction | Bytes | T-states (reg / (HL)) | Description |
+|-------------|-------|----------------------|-------------|
+| RLC r | 2 | 8 / 15 | Rotate left circular |
+| RL r | 2 | 8 / 15 | Rotate left through carry |
+| RRC r | 2 | 8 / 15 | Rotate right circular |
+| RR r | 2 | 8 / 15 | Rotate right through carry |
+| SLA r | 2 | 8 / 15 | Shift left arithmetic (bit 0 ← 0) |
+| SRA r | 2 | 8 / 15 | Shift right arithmetic (bit 7 preserved — sign extend) |
+| SRL r | 2 | 8 / 15 | Shift right logical (bit 7 ← 0) |
+
+**Note:** No `SLL` in documented Z80; it's an undocumented `SL1` that shifts in a 1.
+
+## Bit Operations (CB-prefix)
+
+| Instruction | Bytes | T-states (reg / (HL)) | Description |
+|-------------|-------|----------------------|-------------|
+| BIT b,r | 2 | 8 / 12 | Test bit `b` of register; sets Z if bit clear |
+| SET b,r | 2 | 8 / 15 | Set bit `b` of register to 1 |
+| RES b,r | 2 | 8 / 15 | Reset bit `b` of register to 0 |
+
+`BIT` is a non-destructive test — flags update but the register is unchanged. `SET` and `RES` modify in place.
+
+## Exchange Instructions
+
+The Z80's defining feature is its **alternate register set** — a shadow `BC'/DE'/HL'/AF'` swappable in one cycle. This is what makes interrupt handlers cheap: swap to the shadow set, do work, swap back.
+
+| Instruction | Bytes | T-states | Description |
+|-------------|-------|----------|-------------|
+| EX DE,HL | 1 | 4 | Swap DE ↔ HL |
+| EX AF,AF' | 1 | 4 | Swap AF ↔ AF' (alternate flags) |
+| EXX | 1 | 4 | Swap BC/DE/HL ↔ BC'/DE'/HL' all at once |
+| EX (SP),HL | 1 | 19 | Swap HL with the word at top of stack |
+
+**Interrupt handler idiom:** `EX AF,AF'` + `EXX` saves the entire register state in 8 T-states; the inverse pair restores it. Compare ~50 T-states for `PUSH AF / PUSH BC / PUSH DE / PUSH HL` and the matching `POP`s.
+
 ## Block Instructions
 
 ### LDIR - Load, Increment, Repeat
@@ -344,6 +396,28 @@ Special loop instruction. Decrements B and jumps if B ≠ 0.
 | DI | 1 | 4 | None affected |
 | EI | 1 | 4 | None affected |
 
+`EI` is special: interrupts remain disabled for **one instruction after** `EI` to allow `EI / RETI` patterns. NMI is unmaskable — `DI` does not block it.
+
+## Interrupt Modes
+
+The Z80 supports three interrupt modes selected by the `IM` instruction:
+
+| Mode | Sets via | Behaviour | T-states (interrupt entry) |
+|------|----------|-----------|----------------------------|
+| **IM 0** | `IM 0` (ED 46) | External device places opcode on bus during INTA cycle; CPU executes it. Typically `RST p` (1 byte). | ~13 (for RST-form) |
+| **IM 1** | `IM 1` (ED 56) | CPU pushes PC, jumps to fixed `$0038`. **Used by ZX Spectrum.** | 13 |
+| **IM 2** | `IM 2` (ED 5E) | Device places vector on bus; CPU forms address `(I shifted left 8) OR (vector AND $FE)`, reads target from there. | 19 |
+
+The Spectrum's IM 1 vector at `$0038` is in ROM and runs the keyboard scan + frame counter; custom games install their own handler by setting up `IM 2` with a vector table.
+
+| Instruction | Bytes | T-states | Effect |
+|-------------|-------|----------|--------|
+| IM 0 / IM 1 / IM 2 | 2 | 8 | Select interrupt mode |
+| RETI | 2 | 14 | Return from maskable interrupt; signals to peripherals |
+| RETN | 2 | 14 | Return from NMI; restores IFF1 from IFF2 |
+
+**NMI (non-maskable interrupt)** vectors to `$0066` and is unmaskable. The Spectrum routes the keyboard `RESET` button through NMI (sometimes — varies per model).
+
 ---
 
 ## Common Instruction Patterns
@@ -379,12 +453,14 @@ Delay:  DJNZ Delay    ; 13 × 99 + 8 = 1295 T-states
 - XOR A (clear A): 4 T-states
 - INC/DEC register: 4 T-states
 
-**Optimization tips:**
-1. Use register operations over memory
-2. Use HL instead of IX/IY (3× faster)
-3. Use JR instead of JP when possible (saves 1 byte)
-4. Use DJNZ for loops (very efficient)
-5. Unroll loops in speed-critical code
+**Optimisation tips:**
+1. Use register operations over memory.
+2. Use HL instead of IX/IY for indexed access — `LD r,(HL)` is 7 T-states, `LD r,(IX+d)` is 19 T-states (~2.7× slower).
+3. Prefer `JR` over `JP` for **size**, not speed — `JR e` is 12T (slower than `JP nn` at 10T) but only 2 bytes (vs 3). Conditional `JR cc,e` is 12T taken / 7T not taken; `JP cc,nn` is always 10T. So in tight code where the not-taken path dominates, `JR cc` is faster *and* smaller.
+4. Use `DJNZ` for counted loops — 13/8 T-states with no fiddling with B by hand.
+5. Use `EX AF,AF'` + `EXX` for fast register backup in interrupt handlers (8T total vs ~50T for the equivalent push/pop sequence).
+6. `OR A` (1 byte) clears carry without changing A. `CP 0` does the same flag-wise but is 2 bytes — prefer `OR A` for both register-test and clear-carry idioms.
+7. Unroll loops in speed-critical code (raster effects, audio mixing, sprite blitting).
 
 ---
 

@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "VSync"
 subtitle: "Synchronising with the display"
 summary: "VSync synchronised game updates with the monitor's vertical refresh, preventing screen tearing and providing consistent timing for game logic."
 category: "techniques"
-platforms: ['c64', 'amiga', 'nes', 'atari-2600']
+platforms: ['commodore-64', 'commodore-amiga', 'nintendo-entertainment-system', 'atari-2600']
 tags: ['graphics', 'timing', 'technique']
 originated: 1977
 
@@ -14,114 +14,192 @@ originated: 1977
 
 ## Overview
 
-The CRT electron beam draws the screen line by line, then returns to the top during "vertical blank." Updating graphics while the beam is drawing causes tearing—half the screen shows old data, half shows new. VSync waits for vertical blank before updating, ensuring clean, tear-free visuals.
+The CRT electron beam draws the screen line by line, then returns to the top during the *vertical blank* (VBlank). Updating screen memory while the beam is drawing causes tearing — the upper part of the picture shows the previous frame and the lower part the new one, with a moving seam where they meet. VSync waits for VBlank before updating, so the entire frame's drawing is invisible until it's complete.
 
 ## The problem
 
-Without synchronisation:
 ```
-Frame 1: Beam at line 100
-Game updates screen
-Beam continues drawing
-Result: Top half old, bottom half new
-Visual: Horizontal tear line
+Without synchronisation:
+  Beam at line 100 — actively drawing
+  Game updates screen memory
+  Beam continues drawing the lower half — sees new data
+  Result: top half shows old frame, bottom half shows new
+  → horizontal tear line at line 100
 ```
 
 ## The solution
 
-Wait for vertical blank:
+Wait for VBlank — the period when the beam is between frames and not reading screen memory:
+
 ```asm
+; C64: rough idiom — wait for raster to enter the upper region
 wait_vsync:
-    lda $d011          ; VIC-II control register
-    bpl wait_vsync     ; Wait for bit 7 set (vblank)
-    ; Now safe to update
+    lda $d011                ; bit 7 = high bit of 9-bit raster counter
+    bpl wait_vsync           ; loop while bit 7 clear (raster < 256)
+    ; raster is now ≥ 256, mostly in vblank on PAL
 ```
+
+This is a polling pattern. Most games install a *raster IRQ* at line 0 and do their VBlank work in the handler — no busy-waiting.
 
 ## CRT timing
 
-| Phase | Description |
-|-------|-------------|
-| Active display | Beam draws visible lines |
-| Horizontal blank | Beam returns to left |
-| Vertical blank | Beam returns to top |
-| Available time | VBlank duration |
+| Phase | Description | Beam state |
+|-------|-------------|------------|
+| Active display | Visible scanlines drawing left to right | Reading screen memory |
+| Horizontal blank | Beam returns to left edge between scanlines | Brief; ~10 µs |
+| Vertical blank | Beam returns to top after last visible line | Longer; non-display |
+
+The CPU may safely modify screen memory only during VBlank (or, with care, during borders or behind a status-bar split).
 
 ## Platform implementations
 
 ### Commodore 64
 
 ```asm
+; Wait for raster to cross 256 (enter upper border / vblank region)
 wait_vblank:
     lda $d011
-    bpl wait_vblank    ; Wait for vblank start
-.wait_end:
+    bpl wait_vblank          ; loop while raster < 256
+    ; bit 7 is now set; safe to update upper-screen related state
+```
+
+For a precise vblank-start hook, install a raster IRQ at line 0:
+
+```asm
+    sei
+    lda #<irq_handler
+    sta $0314
+    lda #>irq_handler
+    sta $0315
+    lda #0
+    sta $d012                ; trigger at line 0 (vblank start)
     lda $d011
-    bmi .wait_end      ; Wait for vblank end
+    and #$7f                 ; bit 7 (raster MSB) = 0 → line < 256
+    sta $d011
+    lda #$01
+    sta $d01a                ; enable raster IRQ
+    cli
 ```
 
 ### NES
 
+NMI fires at the start of VBlank automatically (if PPUCTRL bit 7 is set). The conventional pattern is to set a flag in the NMI handler and have the main loop wait on it:
+
 ```asm
+nmi_flag:    .byte 0
+
+nmi_handler:
+    inc nmi_flag             ; mark frame as ready
+    rti
+
 wait_nmi:
     lda nmi_flag
-    beq wait_nmi       ; Wait for NMI (VBlank)
+    beq wait_nmi             ; wait until NMI fires
     lda #0
     sta nmi_flag
+    rts
+```
+
+VBlank on NES is short — about 2270 CPU cycles (≈1.4 ms). Heavy work has to be deferred to the active frame.
+
+### Amiga
+
+The OS-friendly approach is a Level 3 interrupt handler (VBlank) installed via the system. For games that take over the hardware, set up the Copper to fire a `COPPERIRQ` at the desired raster position, or hook `INT3` (vertical blank) directly:
+
+```asm
+; Set up a vertical-blank interrupt
+    move.w  #$4020,$dff09a   ; INTENA: enable INTEN | VERTB
+    move.l  #vbl_handler,$6c ; install Level 3 interrupt vector
 ```
 
 ### Atari 2600
 
-Entire game synced to display:
+The 2600's TIA has no framebuffer — every scanline is generated by the CPU as it runs. A full frame is a precise sequence: 3 scanlines of vertical sync, then 37 lines of vertical blank, then 192 (NTSC) or 228 (PAL) visible lines, then 30 lines of overscan. The kernel runs in lockstep with the beam:
+
 ```asm
-    sta WSYNC          ; Wait for horizontal sync
-    sta VSYNC          ; Signal vertical sync
+; --- Vertical sync (3 scanlines) ---
+    lda  #2
+    sta  VSYNC               ; bit 1 set = vsync active
+    sta  WSYNC               ; line 1 of sync (CPU halts to end of line)
+    sta  WSYNC               ; line 2 of sync
+    sta  WSYNC               ; line 3 of sync
+    lda  #0
+    sta  VSYNC               ; vsync off
+
+; --- Vertical blank (37 scanlines) ---
+    lda  #43
+    sta  TIM64T              ; timer ticks every 64 cycles → ~37 lines
+    lda  #2
+    sta  VBLANK              ; blank video output during vblank
+
+    ; ... game logic runs here, in the time before the visible frame ...
+
+vbl_wait:
+    lda  INTIM
+    bne  vbl_wait            ; wait for timer to hit 0
+    sta  WSYNC               ; align to start of next line
+    lda  #0
+    sta  VBLANK              ; turn video back on for visible frame
+
+; --- 192 visible scanlines: kernel draws each line ---
 ```
+
+The 2600 is the extreme case — every game frame is a hand-timed CPU sequence synchronised to the beam.
 
 ## VBlank duration
 
-| System | VBlank lines | Time |
-|--------|--------------|------|
-| PAL C64 | 25 lines | ~1.2ms |
-| NTSC NES | 20 lines | ~1.1ms |
-| PAL Amiga | 25 lines | ~1.2ms |
+Approximate available time for VBlank work:
 
-Limited time for updates.
+| System | VBlank lines (approx) | Time | Notes |
+|--------|------------------------|------|-------|
+| C64 PAL | 56 lines (raster 256-311 + line 0) | ~3.6 ms | "Vblank" loosely; visible image ends ~line 250 |
+| C64 NTSC | 13 lines (raster 251-262 + line 0) | ~0.8 ms | Much tighter than PAL |
+| Amiga PAL | 25 vsync + ~24 blanking | ~3.1 ms | OCS / ECS, lores |
+| NES NTSC | 20 vblank + 1 pre-render = 21 | ~1.33 ms | About 2273 CPU cycles |
+| NES PAL | 70 lines | ~4.45 ms | Significantly more headroom than NTSC |
+| Atari 2600 NTSC | 3 vsync + 37 vblank + 30 overscan = 70 | ~4.4 ms | All non-display time, of which ~37 lines is the conventional vblank |
+
+PAL gives roughly 3× more vblank than NTSC on most systems — a reason PAL ports of NTSC games sometimes ran "loose" (didn't fill the extra time) while NTSC versions of PAL games sometimes dropped frames.
 
 ## What to do during VBlank
 
-| Task | Priority |
-|------|----------|
-| Screen updates | Highest |
-| Sprite positions | High |
-| Scroll registers | High |
-| Palette changes | Medium |
-| Sound updates | Can extend past VBlank |
+| Task | Priority | Why |
+|------|----------|-----|
+| Pointer / display register updates | Highest | Must complete before active display starts |
+| Sprite position writes (NES OAM DMA, Amiga sprite registers) | Highest | Late writes corrupt mid-frame |
+| Scroll register updates | High | Locked to frame boundary |
+| Palette / colour register updates | High | Mid-frame changes are raster-effect territory |
+| Music driver tick | Medium | Often interrupt-driven independently |
+| Game logic, AI | Lowest | Can run during active display |
 
 ## Game loop structure
 
 ```
 main_loop:
-    jsr wait_vsync     ; Sync to display
-    jsr update_screen  ; Safe to modify video
-    jsr game_logic     ; Can take any time
-    jmp main_loop
+    jsr  wait_vsync          ; sync to display
+    jsr  update_screen       ; safe to modify video registers/memory
+    jsr  game_logic          ; can take any time, even spilling into next frame
+    jmp  main_loop
 ```
+
+If `game_logic` regularly takes longer than one frame, the game runs at half rate (sync-locked at every other vblank). True frame skipping is a modern technique; classic games typically just budget logic to fit a frame.
 
 ## Frame rate locking
 
 VSync naturally creates:
-- 50 fps (PAL)
-- 60 fps (NTSC)
-- Consistent timing
-- Predictable game speed
+
+- **50 fps** (PAL)
+- **60 fps** (NTSC)
+- Consistent timing, identical from boot to boot
+- Predictable game speed — the reason NTSC and PAL versions of the same game often play at different speeds
 
 ## Tearing vs performance
 
 | Choice | Result |
 |--------|--------|
-| Always VSync | No tearing, may skip frames |
-| Never VSync | Tearing, maximum speed |
-| Smart VSync | Balance both |
+| Always VSync | No tearing, may skip frames if logic is slow |
+| Never VSync | Tearing, maximum throughput |
+| Adaptive (modern) | VSync when frame finishes in time, fall through if not — irrelevant on retro hardware where every frame is hand-budgeted |
 
 ## See also
 
@@ -129,3 +207,4 @@ VSync naturally creates:
 - [Raster Interrupts](/vault/techniques/raster-interrupts)
 - [VIC-II](/vault/hardware/vic-ii)
 - [PPU](/vault/hardware/ppu)
+- [Game Loop](/vault/techniques/game-loop)

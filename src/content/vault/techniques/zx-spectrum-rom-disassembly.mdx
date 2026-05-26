@@ -1,21 +1,33 @@
 ---
-ai_generated: true
-reviewed: false
-title: "ZX Spectrum ROM Disassembly"
-subtitle: "Key ROM routines reference"
-summary: "Annotated reference for key ROM routines in the 16K Spectrum ROM."
+ai_generated: false
+reviewed: true
+title: "ZX Spectrum ROM disassembly"
+subtitle: "The 16 KB ROM that boots the machine, runs BASIC, and quietly underpins every Spectrum game"
+summary: "Annotated reference for the ZX Spectrum's 16 KB ROM at $0000-$3FFF — RST vectors, character set, system variables, and the most commonly-called ROM routines. The disassembly Logan and O'Hara published in 1983 (in the Melbourne House book of the same name) became the standard reference; this entry covers the routines most useful to game programmers."
 category: "techniques"
-platforms: ['spectrum']
+platforms: ['sinclair-zx-spectrum']
 tags: ['rom', 'basic', 'system-calls', 'reference']
+originated: 1982
+
 ---
 
-The ZX Spectrum ROM occupies addresses $0000-$3FFF (16,384 bytes) and contains:
-- The BASIC interpreter
-- System variables ($5C00-$5CB5)
-- Character set bitmap ($3D00-$3FFF)
-- Essential system routines
+## Overview
 
-This reference covers the most commonly used ROM routines you'll encounter when writing assembly programs or understanding how BASIC commands work under the hood.
+The 48K Spectrum's 16 KB ROM lives at addresses **$0000-$3FFF**. It contains the BASIC interpreter, the character-set bitmap, the system-variable layout, the interrupt vector for `IM 1`, and a long list of utility routines that BASIC depends on but that any machine-code program is welcome to call directly.
+
+The canonical published reference is **Ian Logan and Frank O'Hara's *The Complete Spectrum ROM Disassembly*** (Melbourne House, 1983) — a line-by-line annotated disassembly of the entire 16K ROM. For Spectrum machine-code work it is, alongside *Programming the Z80* and the *Hints & Tips* books, on every serious developer's shelf.
+
+This entry catalogues the ROM routines and system variables that matter most for game programming. The full disassembly runs to 200+ pages; what follows is a useful subset.
+
+The ROM contains:
+
+- The BASIC interpreter and tokeniser ($0000-$3CFF, broadly).
+- The 768-byte ASCII character bitmap ($3D00-$3FFF).
+- The interrupt service routine entry point ($0038, called every 1/50th of a second via `IM 1`).
+- RST vectors at $0000, $0008, $0010, $0018, $0020, $0028, $0030, $0038.
+- Routines for screen handling, keyboard scanning, BEEP generation, channel I/O, error handling, expression evaluation, and the floating-point calculator.
+
+System variables live in the RAM space immediately above the ROM, at **$5C00-$5CB5**. The ROM reads and writes them constantly; well-behaved machine code can do likewise.
 
 ---
 
@@ -224,15 +236,27 @@ Key system variables you might reference:
 | $5C08 | LAST_K | 1 | Last key pressed |
 | $5C3C | TV_FLAG | 1 | TV control flags |
 | $5C48 | BORDCR | 1 | Border colour (bits 3-5) |
-| $5C6C | FRAMES | 3 | Frame counter (50Hz) |
+| $5C78 | FRAMES | 3 | Frame counter (incremented 50× per second by the IM 1 interrupt) |
 | $5C8D | ATTR_P | 1 | Permanent attributes |
 | $5C8F | ATTR_T | 1 | Temporary attributes |
 
-**Reading frame counter:**
+**Reading the frame counter:**
 ```nasm
-; Get frame count (increments 50 times per second)
-        LD HL,($5C6C)     ; Read low 16 bits
-        LD A,($5C6E)      ; Read high 8 bits (if needed)
+; Get frame count (increments 50 times per second on PAL)
+        LD HL,($5C78)     ; Read low 16 bits
+        LD A,($5C7A)      ; Read high 8 bits (if needed)
+```
+
+The frame counter is the standard way to time short waits without using `HALT` — useful when interrupts can't be relied upon (e.g., under some emulators, or in code paths that briefly disable interrupts):
+
+```nasm
+; Wait one frame
+        ld      hl, $5C78
+        ld      a, (hl)
+        ld      b, a
+.wait:  ld      a, (hl)
+        cp      b
+        jr      z, .wait
 ```
 
 ---
@@ -260,8 +284,17 @@ RST instructions are 1-byte CALL instructions to fixed ROM addresses:
 
 ---
 
+## Why the ROM disassembly matters for Code Like It's 198x
+
+Shadowkeep code is small enough — and the FRAMES-wait pattern important enough — that it sits adjacent to the ROM rather than calling it. Most Shadowkeep code does not invoke ROM routines (CLS, BORDER, BEEP). But the **system-variable area at $5C00-$5CB5 is mandatory reading** — FRAMES at $5C78 is the rate-limiting heartbeat for every unit from U4 onwards, and ATTR_P at $5C8D controls the default ink/paper used in any ROM print calls the title screen makes. Unit 7's beeper code may call the BEEP routine at $15EF; if it does, the framework here is the reference.
+
+For programs that *are* hybrid (BASIC wrapper, machine-code inner loop — common in the BASIC track), `RANDOMIZE USR addr` is the seam from BASIC into machine code, and ROM routines via RST are the small primitives the inner loop can lean on cheaply.
+
 ## See also
 
 - [ZX Spectrum](/vault/systems/zx-spectrum)
-- [ZX Spectrum Hardware Ports](/vault/techniques/zx-spectrum-hardware-ports)
-- [Z80 Instruction Set Reference](/vault/techniques/z80-instruction-set)
+- [Z80](/vault/hardware/z80) — The CPU these routines are written in.
+- [ULA](/vault/hardware/ula) — What `OUT ($FE), A` talks to.
+- [ZX Spectrum hardware ports](/vault/techniques/zx-spectrum-hardware-ports)
+- [Sinclair BASIC](/vault/techniques/sinclair-basic) — The interpreter this ROM hosts.
+- [Machine code for beginners](/vault/culture/machine-code-for-beginners) — Where the Spectrum machine-coder learns to read this disassembly.

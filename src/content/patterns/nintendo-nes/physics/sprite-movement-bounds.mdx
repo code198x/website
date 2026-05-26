@@ -41,7 +41,7 @@ PLAYER_SPEED = 2                ; Pixels per frame
 SCREEN_LEFT   = 0
 SCREEN_RIGHT  = 248             ; 256 - 8 (sprite width)
 SCREEN_TOP    = 0
-SCREEN_BOTTOM = 224             ; 240 - 16 (overscan)
+SCREEN_BOTTOM = 224             ; 240 - 8 (sprite height) - 8 (NTSC bottom overscan)
 
 .segment "ZEROPAGE"
 player_x:    .res 1
@@ -61,8 +61,9 @@ move_player:
         lda player_y
         sec
         sbc #PLAYER_SPEED       ; Move up (subtract)
-        cmp #SCREEN_TOP
-        bcc @check_down         ; Underflow = past top edge
+        bcc @check_down         ; SBC borrow = went below 0, ignore
+        cmp #SCREEN_TOP         ; Optional clamp when SCREEN_TOP > 0
+        bcc @check_down
         sta player_y
 
 @check_down:
@@ -85,8 +86,9 @@ move_player:
         lda player_x
         sec
         sbc #PLAYER_SPEED       ; Move left (subtract)
+        bcc @check_right        ; SBC borrow = went below 0, ignore
         cmp #SCREEN_LEFT
-        bcc @check_right        ; Underflow = past left edge
+        bcc @check_right
         sta player_x
 
 @check_right:
@@ -104,6 +106,8 @@ move_player:
 @done:
         rts
 ```
+
+**Why `BCC` immediately after `SBC`:** `CMP` overwrites the carry flag with its own result, so a `CMP / BCC` after `SBC` doesn't catch underflow when the minimum is 0 — `$FF` (the wrapped result) is still ≥ 0 unsigned, so the carry stays set. The pattern above checks the SBC's borrow first (`BCC` reads SBC's carry), then optionally compares against a non-zero minimum.
 
 ## Trade-offs
 
@@ -123,10 +127,27 @@ The 6502 has no signed comparison, so we use carry flag tricks:
 
 | Direction | Operation | Overflow Check |
 |-----------|-----------|----------------|
-| Up | `SBC` (subtract) | `BCC` - carry clear means underflow |
-| Down | `ADC` (add) | `BCS` - carry set means >= boundary |
-| Left | `SBC` (subtract) | `BCC` - carry clear means underflow |
-| Right | `ADC` (add) | `BCS` - carry set means >= boundary |
+| Up | `SBC` (subtract) | `BCC` directly after — borrow = underflow past 0 |
+| Down | `ADC` (add) | `BCS` after `CMP` — carry set means ≥ boundary |
+| Left | `SBC` (subtract) | `BCC` directly after — borrow = underflow past 0 |
+| Right | `ADC` (add) | `BCS` after `CMP` — carry set means ≥ boundary |
+
+For SBC, the BCC must read the SBC's carry directly. CMP would overwrite it.
+
+## Signed-comparison alternative
+
+For movement that allows negative coordinates (e.g., scrolling worlds where X can be off-screen left), use signed compare via XOR with `#$80`:
+
+```ca65
+; Signed compare: A vs operand, branching on signed condition
+; Trick: XOR both with $80 to flip the sign bit, then compare unsigned
+signed_cmp_max:
+        eor #$80
+        cmp #(MAX + $80)
+        ; Now BCC = signed less, BCS = signed greater-or-equal
+```
+
+Most NES games stick to unsigned 8-bit screen coordinates because the visible area fits in 0-255 anyway. Signed-comparison patterns matter more for off-screen object tracking.
 
 ## Diagonal Movement
 

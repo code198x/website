@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Sprites"
 subtitle: "Hardware-accelerated game objects"
 summary: "Sprites are hardware-supported graphical objects that move independently of the background, fundamental to 2D game graphics across platforms."
 category: "techniques"
-platforms: ['c64', 'nes', 'amiga', 'mega-drive']
+platforms: ['commodore-64', 'nintendo-entertainment-system', 'commodore-amiga', 'sega-mega-drive']
 tags: ['graphics', 'hardware', '2d']
 originated: 1977
 
@@ -14,38 +14,98 @@ originated: 1977
 
 ## Overview
 
-Sprites are graphical objects handled specially by video hardware—characters, projectiles, and items that move without affecting the background. Hardware sprites meant the CPU didn't need to erase and redraw moving objects each frame; the video chip handled compositing. Each platform had different sprite capabilities: size, colour, number limits.
+Sprites are graphical objects handled specially by video hardware — characters, projectiles, items, anything that needs to move without affecting the background. Hardware sprites mean the CPU doesn't have to erase and redraw moving objects; the video chip composites them with the background each scanline, treating sprite memory as a separate layer that overlays the playfield.
+
+The concept dates to the Atari 2600 (1977) — its TIA chip's "player" and "missile" objects are an early form of hardware sprite. Subsequent generations refined the idea: more sprites, larger sprites, more colours, more capabilities (collision detection, scaling, rotation).
 
 ## Fast facts
 
-- **Definition:** hardware-supported moveable graphics.
-- **Advantage:** CPU offload, no background corruption.
-- **Limitations:** per-platform count, size, colour.
-- **C64:** 8 sprites, 24x21 pixels, multicolour or hires.
-- **NES:** 64 sprites in OAM, 8 per scanline limit.
+- **Definition:** Hardware-supported moveable graphics, composited with the playfield by the video chip.
+- **Advantage:** CPU offload — no per-frame redraw, no background corruption.
+- **Limitations:** Per-platform count, size, colour, and per-scanline limits.
+- **Origin:** Atari 2600 TIA (1977) — players and missiles.
 
 ## Platform comparison
 
-Sprite capabilities varied:
+| Platform | Total sprites | Per scanline | Size | Colours per sprite |
+|----------|---------------|--------------|------|---------------------|
+| **Atari 2600** | 5 ("players" + missiles + ball) | All | 8 px wide × variable | 1 + transparent |
+| **C64 (VIC-II)** | 8 | 8 | 24×21 fixed | 3 + transparent (multicolour) or 1 + transparent (hi-res) |
+| **NES (PPU 2C02)** | 64 | 8 | 8×8 or 8×16 | 3 + transparent |
+| **Master System (VDP)** | 64 | 8 | 8×8 or 8×16 | 1 colour from a 16-colour subpalette |
+| **Game Boy (PPU)** | 40 | 10 | 8×8 or 8×16 | 3 + transparent |
+| **Amiga (Denise)** | 8 hardware | 8 | 16 px wide × variable height | 3 + transparent (single) or 15 + transparent (attached pair); BOBs add unlimited via Blitter |
+| **Mega Drive (VDP)** | 80 | 20 | 8×8 to 32×32 in 8-pixel multiples | 15 + transparent |
+| **SNES (PPU)** | 128 | 32 | 8×8 to 64×64 | 15 + transparent |
+| **Neo Geo MVS** | 380+ | ~96 | 16×16 to 16×512 | 15 + transparent |
 
-| Platform | Sprites | Size | Colours |
-|----------|---------|------|---------|
-| C64 | 8 | 24x21 | 3+1 or 1+1 |
-| NES | 64 (8/line) | 8x8 or 8x16 | 3+1 |
-| Amiga | 8 | 16px wide | variable |
-| Mega Drive | 80 | variable | 15+1 |
+The trend across generations: more sprites, larger sprites, more colours, fewer per-scanline limitations.
 
 ## Programming sprites
 
-Common sprite operations:
-- **Position:** set X/Y coordinates.
-- **Pointer:** which graphic to display.
-- **Enable:** turn sprite on/off.
-- **Collision:** detect overlaps.
-- **Priority:** ordering with background.
+The basic operations on any sprite system:
+
+| Operation | Description |
+|-----------|-------------|
+| **Position** | Set X/Y coordinates in screen space |
+| **Pattern / pointer** | Which graphic to display (index into tile / pattern memory) |
+| **Enable** | Turn the sprite on or off |
+| **Priority** | Draw order relative to background and other sprites |
+| **Flip** | Horizontal / vertical mirroring (varies by platform) |
+| **Palette** | Which colour set to draw with |
+| **Collision** | Detect overlap with other sprites or the playfield |
+
+The exact register layout varies wildly between systems — see the linked hardware references for specifics.
+
+## Hardware sprites vs software sprites
+
+| Type | Examples | Trade-off |
+|------|----------|-----------|
+| **Hardware sprites** | C64, NES, MD, SNES, Amiga | Fast (zero CPU cost), but constrained by chip's sprite limits |
+| **Software sprites** | ZX Spectrum, IBM PC pre-VGA, Mac | Unlimited count, any size, but every sprite costs CPU time to render |
+| **Hybrid** (BOBs + sprites) | Amiga, MSX | Hardware sprites for hero, software (BOB / blit) for everything else |
+
+The Spectrum's lack of hardware sprites forced its developers into clever software tricks: pre-shifted sprite tables, OR-blit rather than replace-blit, attribute-only animation. See [Software Sprite Routines (Spectrum)](/vault/techniques/sprite-multiplexing) for the depths of this art.
+
+## Per-scanline limits
+
+Most sprite hardware can only display N sprites simultaneously on a given scanline. If more sprites cross that line, the lowest-priority ones disappear or "flicker" (alternate between visible and hidden frames):
+
+| Platform | Per-line limit | What happens above limit |
+|----------|----------------|---------------------------|
+| C64 | 8 | All visible (no per-line limit; sprites multiplex via raster IRQ tricks) |
+| NES | 8 | Lowest-numbered 8 are drawn; rest disappear (or flicker if shuffled) |
+| Master System | 8 | Same — flicker via shuffling |
+| Game Boy | 10 | Same |
+| Mega Drive | 20 | Same — much more comfortable budget |
+| SNES | 32 | Same |
+
+Sprite multiplexing — using raster interrupts to reposition sprites mid-frame — works around per-line limits on machines like the C64. See [Sprite Multiplexing](/vault/techniques/sprite-multiplexing).
+
+## Special features
+
+### Collision detection
+
+| Platform | Type |
+|----------|------|
+| C64 | Sprite-sprite (`$D01E`), sprite-background (`$D01F`) latching registers |
+| NES | Sprite-0 hit (`$2002` bit 6) — single bit, used for raster effects |
+| Mega Drive / SNES | Software collision typical; some hardware help |
+
+### Sprite scaling and rotation
+
+A late-generation feature; first standard on **SNES Mode 7** (background only, not sprites natively) and **arcade Super Scaler hardware** (Sega Hang-On, Out Run, After Burner). See [Sprite Scaling](/vault/techniques/sprite-scaling).
+
+### Sprite-zero hit
+
+NES-specific: bit 6 of `$2002` sets when sprite 0's first non-transparent pixel collides with a non-transparent BG pixel. Used to trigger mid-frame split effects (status bar above gameplay area in *Super Mario Bros.* and many others).
 
 ## See also
 
-- [VIC-II](/vault/hardware/vic-ii)
-- [Sprite Multiplexing](/vault/techniques/sprite-multiplexing)
-- [PPU](/vault/hardware/ppu)
+- [VIC-II](/vault/hardware/vic-ii) — C64 sprite hardware
+- [PPU](/vault/hardware/ppu) — NES sprite hardware
+- [Denise](/vault/hardware/denise) — Amiga sprite hardware
+- [Sprite Multiplexing](/vault/techniques/sprite-multiplexing) — beating per-line limits
+- [Sprite Animation](/vault/techniques/sprite-animation)
+- [Sprite Scaling](/vault/techniques/sprite-scaling)
+- [BOBs: Blitter Objects](/vault/techniques/bob-graphics) — Amiga software sprites

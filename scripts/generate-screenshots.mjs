@@ -37,8 +37,8 @@ const PLATFORMS = {
     docker: 'c64-dev:latest',
     extension: '.prg',
     screenshotScript: '/scripts/c64-screenshot.sh',
-    romsMount: '/Users/stevehill/Projects/Code198x/commodore-64-dev/roms:/roms',
-    scriptsMount: '/Users/stevehill/Projects/Code198x/commodore-64-dev/scripts:/scripts',
+    romsMount: '/Users/stevehill/Projects/198x/Code198x/commodore-64-dev/roms:/roms',
+    scriptsMount: '/Users/stevehill/Projects/198x/Code198x/commodore-64-dev/scripts:/scripts',
     getAsmName: (gameSlug) => {
       // Extract base name from slug (e.g., game-01-starfield -> starfield)
       const parts = gameSlug.split('-');
@@ -59,7 +59,7 @@ const PLATFORMS = {
     extension: '.adf',
     screenshotScript: '/scripts/amiga-screenshot.sh',
     romsMount: '/tmp/kickstart:/roms',
-    scriptsMount: '/Users/stevehill/Projects/Code198x/commodore-amiga-dev/scripts:/scripts',
+    scriptsMount: '/Users/stevehill/Projects/198x/Code198x/commodore-amiga-dev/scripts:/scripts',
     getAsmName: (gameSlug) => {
       const parts = gameSlug.split('-');
       return parts[parts.length - 1];

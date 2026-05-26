@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Raster Effects"
 subtitle: "Per-scanline graphics tricks"
 summary: "Raster effects change graphics parameters during screen drawing, creating colour bars, split screens, and effects beyond normal hardware limits."
 category: "techniques"
-platforms: ['c64', 'amiga', 'spectrum']
+platforms: ['commodore-64', 'commodore-amiga', 'sinclair-zx-spectrum', 'nintendo-entertainment-system']
 tags: ['graphics', 'effects', 'technical']
 originated: 1977
 
@@ -14,34 +14,85 @@ originated: 1977
 
 ## Overview
 
-Raster effects exploit timing: the screen draws line by line, and code can change parameters mid-draw. Change the background colour at line 100, and the screen has two coloured regions. Chain multiple changes for rainbow effects. Reposition sprites after they're drawn to multiplex them. The technique enabled visuals that specification sheets said were impossible.
+The CRT beam draws the screen one scanline at a time, top to bottom. Most game state stays the same throughout that draw — but it doesn't have to. Raster effects exploit timing: change a hardware register *during* the beam's pass, and the screen below that point reflects the new value. Change the background colour at line 100 and you have two coloured regions. Chain dozens of changes for rainbow stripes. Reposition a sprite after it's been drawn to multiplex it. The technique unlocks visuals that the spec sheet says are impossible.
 
-## Fast facts
-
-- **Mechanism:** modify registers during screen draw.
-- **Timing:** synchronise with raster beam position.
-- **Effects:** colour bars, split screens, sprite multiplexing.
-- **Platforms:** C64, Amiga, NES, and others.
-- **Precision:** cycle-accurate timing often required.
+Cycle-accurate timing is critical: the CPU has to write the right register at the right beam position, every frame, without drift. The game-level effort to *get* this stable across PAL/NTSC and across long routines is what made the C64 demoscene the discipline it became.
 
 ## Common effects
 
-What raster programming enabled:
-- **Colour bars:** different colours per region.
-- **Split screen:** status bar with different mode.
-- **Sprite multiplexing:** more sprites than hardware limit.
-- **Scroll splits:** different scroll positions.
+| Effect | What it does |
+|--------|--------------|
+| **Colour bars** | Change `$D020` (border) or `$D021` (background) per scanline → coloured stripes |
+| **Split screen** | Change graphics mode partway down → status bar in text mode above gameplay in bitmap mode |
+| **Sprite multiplexing** | Reposition sprite registers after the sprite has drawn → reuse 8 hardware sprites for 16+ on-screen sprites |
+| **Scroll splits** | Change scroll position partway down → static HUD over scrolling playfield |
+| **More colours** | More palette entries by changing palette mid-frame (Amiga Copper rainbows) |
+| **FLI / DYCP / NUFLI** | Demo-scene C64 modes that exploit per-line tricks for colour-per-cell |
+| **Mode-7 effects** | Per-scanline matrix change creates ground-plane perspective on SNES |
 
 ## Implementation
 
-Creating raster effects:
-- **Raster interrupt:** trigger code at specific line.
-- **Timing:** precise cycle counting.
-- **Register changes:** update video chip mid-frame.
-- **Stable raster:** eliminate timing jitter.
+### Raster interrupts
+
+The C64's VIC-II generates a configurable interrupt at a chosen scanline (`$D012`). The IRQ handler runs at exactly the moment the beam reaches that line — the CPU writes its registers immediately, the screen below reflects the change. Multiple raster IRQs per frame are common; chained handlers can make per-scanline changes.
+
+See [Raster Interrupts](/vault/techniques/raster-interrupts) for the C64 specifics.
+
+### Copper (Amiga)
+
+The Amiga's Copper is a co-processor running its own program in parallel with the CPU. The Copper waits for specific raster positions and writes specific registers. A "Copper list" of `(WAIT, MOVE)` instructions can change palette, scroll, bitplane pointers per scanline with no CPU intervention. This is what makes Amiga rainbows essentially free.
+
+See [Copper](/vault/hardware/copper) for the chip's design.
+
+### NES sprite-zero hit
+
+The NES PPU sets a "sprite-zero hit" bit (`$2002` bit 6) when sprite 0's first non-transparent pixel collides with a non-transparent BG pixel. Games place sprite 0 at a known scanline (typically the top of the gameplay area) and poll the bit to detect when the beam passes it. The CPU then changes scroll registers (`$2005`) for the scanlines below — status bar above, scrolled playfield below.
+
+### MMC3 IRQ (NES)
+
+The MMC3 mapper has a counter that decrements on every rising edge of PPU A12 (which happens once per scanline during sprite/BG fetches). When it reaches zero it fires an IRQ — gives the CPU per-scanline control. Used by *Battletoads*, *Castlevania III*, *Mega Man 3+*. Different on PAL vs NTSC due to different scanline counts.
+
+### Cycle counting (Spectrum)
+
+The Spectrum has no raster IRQ — only a frame-rate IRQ at the start of every frame. Per-scanline tricks require cycle-counting from that interrupt: "wait exactly N T-states from frame start, then do the write." Famously hard to keep accurate across the contended-memory regions. *Black Lamp* and various demoscene Spectrum effects use this.
+
+## Notable C64 raster effects
+
+| Effect | What it does | Famous example |
+|--------|--------------|----------------|
+| **Border opening** (top/bottom) | Disable `$D011` bit 3 at the right line to remove top/bottom borders | Most demos |
+| **Side-border opening** | Toggle `$D016` bit 3 at the right cycle to remove side borders | Trickier; demos like *Krestology* |
+| **FLI** (Flexible Line Interpretation) | Change colour memory pointer every scanline → 16 colours per character cell | *Crest's FLI Designer*, *FLI Editor* |
+| **DYCP** (Different Y Char Position) | Move text characters at sub-character vertical resolution | Common scroller effect |
+| **VSP** (Variable Screen Position) | Change `$D016` mid-line to shift the screen's start | *Mayhem in Monsterland*, demos |
+| **Sprite stretching** | Re-enable Y-expand mid-sprite | Visual effect for stretchy logos |
+| **Hi-res rasters** | Change colour every cycle for Atari-style coloured stripes | Common backdrop |
+
+## Cycle-accurate timing
+
+Raster effects are extremely demanding on timing:
+
+- **Stable raster** — the IRQ has to fire at a predictable cycle, but interrupt latency varies by 0-7 cycles depending on what instruction was executing. Demoscene technique: NOP-pad the routine before the IRQ fires to absorb the variance.
+- **Badlines on C64** — every 8th scanline the VIC-II steals 40-43 cycles for memory access, breaking inner-loop timing. Demos work around this with carefully-placed code.
+- **PAL vs NTSC** — different scanline counts (312 vs 263) and per-line cycle counts (63 vs 65 PAL/NTSC). Effects timed for one region desync on the other.
+
+See [Stable Raster](/vault/techniques/stable-raster) for the C64 demoscene technique of getting cycle-perfect raster IRQ.
+
+## Per-platform comparison
+
+| Platform | Mechanism | Cost |
+|----------|-----------|------|
+| **C64 / VIC-II** | Raster IRQ at any line | CPU-bound; effects compete with game logic for cycles |
+| **Amiga / Copper** | Copper list runs in parallel | Free — Copper doesn't steal CPU time |
+| **NES / sprite-0 + MMC3** | Sprite-zero hit + mapper IRQ | CPU polling (sprite-0) or hardware IRQ (MMC3); per-scanline is doable |
+| **SNES / HDMA** | Hardware DMA per scanline | Free for direct register changes; fixed-pattern only |
+| **Spectrum / cycle-count** | Cycle-counting from frame IRQ | Hardest — no raster IRQ; contention complicates timing |
 
 ## See also
 
 - [Raster Interrupts](/vault/techniques/raster-interrupts)
-- [Sprite Multiplexing](/vault/techniques/sprite-multiplexing)
 - [Stable Raster](/vault/techniques/stable-raster)
+- [Sprite Multiplexing](/vault/techniques/sprite-multiplexing)
+- [Copper](/vault/hardware/copper)
+- [VIC-II](/vault/hardware/vic-ii)
+- [Mode 7](/vault/techniques/mode-7)

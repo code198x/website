@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Sprite Animation"
 subtitle: "Bringing pixels to life"
 summary: "Frame-by-frame sprite animation creates the illusion of movement by cycling through carefully designed images at controlled intervals."
 category: "techniques"
-platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['graphics', 'animation', 'fundamentals']
 originated: 1978
 
@@ -116,20 +116,34 @@ animate_sprite:
 
 ### NES
 
-Change tile indices in OAM:
+NES sprites are 8×8 or 8×16 (controlled globally by PPUCTRL bit 5). A 16×16 character is built from multiple OAM entries — typically 4 sprites in 8×8 mode (TL/TR/BL/BR) or 2 sprites side-by-side in 8×16 mode. Animation rewrites the tile-index byte of each OAM entry; the OAM buffer is in CPU RAM (commonly `$0200-$02FF`) and pushed to PPU OAM via `$4014` DMA each VBlank.
 
 ```asm
-; OAM structure: Y, tile, attr, X
+; OAM structure (4 bytes per sprite): Y, tile, attr, X
+; A 16x16 character built from 4 hardware sprites in 8x8 mode.
+; Each animation frame uses 4 sequential tiles in CHR, so frame N
+; starts at tile (PLAYER_TILE_BASE + N*4).
 animate_player:
     lda anim_frame
-    asl                 ; 2 tiles per frame (16x16 sprite)
+    asl
+    asl                  ; * 4 -> tile offset for this frame
     clc
     adc #PLAYER_TILE_BASE
-    sta OAM_DATA+1      ; top tile
+
+    sta OAM_DATA+1       ; sprite 0 tile (top-left)
+    clc
     adc #1
-    sta OAM_DATA+5      ; bottom tile
+    sta OAM_DATA+5       ; sprite 1 tile (top-right)
+    clc
+    adc #1
+    sta OAM_DATA+9       ; sprite 2 tile (bottom-left)
+    clc
+    adc #1
+    sta OAM_DATA+13      ; sprite 3 tile (bottom-right)
     rts
 ```
+
+In 8×16 mode the layout collapses to two OAM entries (left and right halves); the hardware fetches each sprite's two tiles from a pair starting at the tile field's index. There the per-frame stride is `2` tiles × `2` sprites = `4`, so the same `* 4` arithmetic applies — but you only update `OAM_DATA+1` and `OAM_DATA+5`, with `+2` between them rather than `+1`.
 
 ### Amiga
 
@@ -181,10 +195,12 @@ Characters facing left/right:
 
 ### Mirrored sprites (hardware)
 
-Some systems support horizontal flip:
-- C64: sprite X-expand, but no flip
-- NES: flip bit in OAM attribute
-- Amiga: no hardware flip for BOBs
+Hardware horizontal/vertical flip support varies:
+
+- **C64:** no flip in hardware. Sprites have X- and Y-expand bits (`$D01D` / `$D017`) but no mirror. Trick: store a pre-mirrored copy of the sprite alongside the original and swap the sprite data pointer (`$07F8-$07FF`) when the character turns.
+- **NES:** flip bits in OAM byte 2 — bit 6 = vertical flip, bit 7 = horizontal flip. Free at the hardware level; no extra tile data.
+- **Amiga (hardware sprites):** no flip. The sprite DMA always reads forwards.
+- **Amiga (BOBs):** the Blitter has no built-in flip; you either pre-flip the source bitmap, or use the Blitter's *descending* mode (BLTCON1 DESC bit) to copy backwards — that mirrors vertically, but horizontal mirror still needs pre-built mirrored data.
 
 ### Separate frames
 
@@ -256,6 +272,13 @@ update_oneshot:
 .done:
     rts
 ```
+
+## Frame double-buffering
+
+If a sprite's animation data lives in main RAM (C64 sprite slots, Amiga BOB sources, Spectrum software-sprite buffers), copying the next frame *while it is on screen* can tear or flash. Two patterns avoid this:
+
+- **Double-buffered sprite data:** keep two slots, draw into the inactive slot, switch the pointer atomically (during VBlank, or by writing the pointer once). The C64 lends itself to this because the sprite data pointer at `$07F8+n` is a single byte — one write swaps a 64-byte sprite atomically.
+- **Stage-and-DMA:** on NES, build the next OAM frame in a `$0200-$02FF` shadow buffer during the active frame, then push the whole 256 bytes via OAM DMA (`STA $4014`) at the start of VBlank. The DMA is atomic from the PPU's perspective.
 
 ## Memory optimisation
 

@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Double Buffering"
 subtitle: "Smooth, tear-free graphics"
 summary: "Double buffering drew to an off-screen buffer while displaying another, eliminating visual tearing and enabling smooth animation even on slow hardware."
 category: "techniques"
-platforms: ['c64', 'amiga', 'nes', 'zx-spectrum']
+platforms: ['commodore-64', 'commodore-amiga', 'nintendo-entertainment-system', 'sinclair-zx-spectrum']
 tags: ['graphics', 'animation', 'memory']
 originated: 1970
 
@@ -14,127 +14,237 @@ originated: 1970
 
 ## Overview
 
-Without double buffering, drawing directly to screen memory creates visible artifacts—half-drawn objects, flickering sprites, tearing during scrolling. Double buffering solves this by maintaining two frame buffers: one displayed, one drawn to. When drawing completes, the buffers swap instantly.
+Drawing directly to visible screen memory is a race against the CRT beam. The display reads pixels left-to-right, top-to-bottom, while the CPU rewrites the same memory in whatever order the game logic produces. The result: the user sees half-erased sprites, partial scrolls, flickering — the canonical *tearing* artefact. Double buffering eliminates the race by giving the CPU its own private buffer to scribble on, then swapping the buffers atomically when drawing is complete.
 
 ## The tearing problem
 
-When drawing to visible memory:
 ```
-Frame drawing starts
-User sees: partial old frame + partial new frame
-Frame drawing completes
+Without double buffering:
+  Scan line 0    [display reads] [CPU writes line 50]
+  Scan line 1    [display reads] [CPU writes line 51]
+  ...
+  Scan line 49   [display reads]  ← shows old frame
+  Scan line 50   [display reads]  ← shows new (CPU just touched it)
+  Scan line 51   [display reads]  ← shows new
+  → tear line at scan line 50
 ```
 
-The "tear line" moves down the screen where old meets new.
+The tear moves down the screen between frames. On fast hardware it appears as a wobbly horizontal seam; on slow hardware it can split a sprite in half.
 
-## The solution
+## The solution: two buffers
 
 | Buffer | State |
 |--------|-------|
-| Front buffer | Currently displayed |
-| Back buffer | Being drawn to |
+| **Front buffer** | Currently displayed by the video chip |
+| **Back buffer** | CPU draws here, invisible to the display |
 
-After drawing completes:
-1. Wait for vertical blank
-2. Swap buffer pointers
-3. Display shows completed frame
-4. Draw next frame to other buffer
+Each frame:
+
+1. CPU draws the next frame into the back buffer.
+2. Wait for vertical blank (so the display isn't reading screen memory).
+3. Swap pointers: the back buffer becomes the front, and vice versa.
+4. Repeat.
+
+The swap itself is a single register write (or a copper-list patch) — atomic from the display's perspective.
 
 ## Implementation approaches
 
-### Pointer swapping
+### Pointer swap (preferred)
 
-Change where the display hardware reads from:
+If the video chip has a programmable screen pointer, just retarget it. No copying required, instant swap. Works on C64, Amiga, NES, and most home computers.
 
-```asm
-; C64: Point VIC-II to different screen
-swap_buffers:
-    lda current_buffer
-    eor #$01
-    sta current_buffer
-    beq .use_buffer_0
+### Memory copy
 
-.use_buffer_1:
-    lda #$18          ; Screen at $0800
-    jmp .set_bank
+If the screen address is fixed (Spectrum), copy the back buffer to screen memory in one block. Slower but still tear-free as long as the copy completes during vblank. For a 6912-byte Spectrum screen the copy alone takes ~140,000 T-states — far longer than vblank — so most Spectrum games copy *part* of the screen each frame, or use partial techniques.
 
-.use_buffer_0:
-    lda #$10          ; Screen at $0400
+### Dirty rectangles
 
-.set_bank:
-    sta $d018
-    rts
-```
+Track which regions changed and copy only those. Trades memory for CPU time. Effective on text-mode games where most of the screen is static.
 
-### Memory copying
-
-If hardware doesn't support pointer swapping, copy back buffer to front:
-- Slower
-- Uses more CPU time
-- Still eliminates tearing if done during vblank
-
-## Platform specifics
+## Platform implementations
 
 ### Commodore 64
 
-| Approach | Memory addresses |
-|----------|------------------|
-| Two character screens | $0400, $0800 |
-| Two bitmap screens | $2000, $4000 |
-| Bank switching | Different 16K banks |
+The VIC-II screen pointer lives in `$D018`:
 
-### Amiga
+- Bits 7-4 (`VM`): **video matrix** (screen base) within VIC bank, in $400 units. Screen address = `VM × $400`.
+- Bits 3-1 (`CB`): **character base** (charset/bitmap base) within VIC bank, in $800 units. Char address = `CB × $800`.
+- Bit 0: unused.
 
-Hardware designed for double buffering:
-- Copper can change display pointers
-- Blitter can clear/fill buffers quickly
-- Triple buffering common for 50fps
+The default power-on value is `$15`: VM = 1 (screen at $0400), CB = 2 (character ROM at $1000), bit 0 set (unused, harmless). To swap to screen at $0800, change VM to 2 — the new value is `$24` if you want CB = 2 preserved.
+
+```asm
+; Two screen buffers in VIC bank 0 ($0000-$3FFF)
+; Screen 1 at $0400, screen 2 at $0800, character ROM at $1000
+
+screen1 = $0400
+screen2 = $0800
+
+; $D018 values — VM in upper nibble, CB=2 in lower nibble for character ROM
+D018_SHOW_SCREEN1 = (1 << 4) | (2 << 1)    ; = $14
+D018_SHOW_SCREEN2 = (2 << 4) | (2 << 1)    ; = $24
+
+current_screen: .byte 0
+draw_ptr_lo:    .byte <screen2   ; start drawing into screen2 while screen1 displays
+draw_ptr_hi:    .byte >screen2
+
+swap_screens:
+    lda current_screen
+    eor #1
+    sta current_screen
+    bne .show_screen2
+
+.show_screen1:
+    lda #D018_SHOW_SCREEN1
+    sta $d018
+    lda #<screen2
+    sta draw_ptr_lo
+    lda #>screen2
+    sta draw_ptr_hi
+    rts
+
+.show_screen2:
+    lda #D018_SHOW_SCREEN2
+    sta $d018
+    lda #<screen1
+    sta draw_ptr_lo
+    lda #>screen1
+    sta draw_ptr_hi
+    rts
+```
+
+> ⚠ **Always preserve the CB bits.** Writing only the screen-pointer nibble (e.g. `lda #$10`) zeroes the character base bits, which makes the VIC fetch character data from `$0000` — usually empty RAM, not the character ROM. The text becomes garbled. Either OR in the existing CB or use a precomputed constant like `D018_SHOW_SCREEN1` above.
+
+### ZX Spectrum
+
+The Spectrum screen lives at a fixed `$4000-$5AFF` (6144 bytes bitmap + 768 bytes attributes = 6912 total). True double buffering needs a second 6912-byte shadow buffer somewhere in RAM and a copy each frame. The full copy is too slow to fit in vblank, so games commonly:
+
+1. **Partial shadow buffer:** maintain a shadow buffer for sprites only; redraw sprites + their backgrounds each frame.
+2. **Attribute-only animation:** change colours (768 bytes is much faster to copy) without touching the bitmap.
+3. **Region-based copy:** identify the active play area and copy only that.
+
+```z80
+; Full-screen LDIR copy from shadow_screen to display memory
+; Bitmap (6144 bytes) + attributes (768 bytes) = 6912 total
+copy_full_screen:
+    ld   hl, shadow_screen
+    ld   de, $4000
+    ld   bc, 6912            ; full screen — bitmap + attributes
+    ldir                      ; ~140,000 T-states; longer than vblank
+    ret
+
+; Bitmap-only variant if attributes don't need updating this frame
+copy_bitmap_only:
+    ld   hl, shadow_bitmap
+    ld   de, $4000
+    ld   bc, 6144            ; bitmap only
+    ldir
+    ret
+```
+
+The Spectrum 128K *does* have a shadow screen at bank 7 (`$C000-$DAFF` when paged in). Games that want true double buffering on 128K can swap which screen the ULA displays via the screen-select bit of `$7FFD`.
 
 ### NES
 
-- Change nametable pointer during vblank
-- PPU has two nametables
-- Scrolling uses this naturally
+The NES doesn't have a framebuffer — the PPU composes the picture each frame from CHR data, nametables, and OAM. Double buffering shows up in two specific places:
+
+- **OAM (sprite list):** maintained in CPU RAM at `$0200-$02FF`, transferred wholesale to PPU OAM via the OAM-DMA register `$4014`. The DMA takes 513-514 CPU cycles and is atomic from the PPU's perspective.
+- **Nametables:** the PPU has 2 KB of nametable RAM, configurable as two distinct nametables via the cartridge mirror mode. Games scroll between them, updating the off-screen nametable column-by-column during VBlank.
+
+```asm
+; Build sprite list in shadow OAM at $0200-$02FF, then DMA in VBlank
+update_sprites:
+    ; ... game writes Y/tile/attr/X into $0200+ ...
+
+    lda #$02
+    sta $4014                 ; trigger OAM DMA from $0200
+    ; CPU stalls 513-514 cycles; PPU OAM now matches shadow
+    rts
+```
+
+### Amiga
+
+The Amiga's bitplane pointers (`BPL1PT-BPL6PT`) live at custom registers `$DFF0E0-$DFF0EF` and are typically loaded by the Copper at the top of each frame. To swap, update the pointer values in the Copper list during vblank.
+
+Each `BPLxPT` is two 16-bit registers — `BPLxPTH` for the high word, `BPLxPTL` for the low word. They're consecutive in the custom register area (`PTH` even, `PTL` odd-aligned). When stored as a longword in CPU memory, the **high word is at offset +0** and the **low word is at offset +2** — easy to invert by accident:
+
+```asm
+; Two screen buffers, each `screen_size` bytes
+buffer1:        ds.b    screen_size
+buffer2:        ds.b    screen_size
+
+display_ptr:    dc.l    buffer1     ; currently displayed
+draw_ptr:       dc.l    buffer2     ; currently being drawn
+
+; Copper list fragment (one bitplane shown):
+;   dc.w  $00E0          ; BPL1PTH register address
+;   dc.w  0              ; high word — patched at runtime  (+2)
+;   dc.w  $00E2          ; BPL1PTL register address
+;   dc.w  0              ; low word — patched at runtime   (+6)
+
+swap_buffers:
+    ; Atomically swap display_ptr and draw_ptr
+    move.l  display_ptr,d0
+    move.l  draw_ptr,display_ptr
+    move.l  d0,draw_ptr
+
+    ; Patch Copper list with the new display pointer
+    move.l  display_ptr,d0
+    move.w  d0,coplist+6        ; low word into BPL1PTL slot
+    swap    d0
+    move.w  d0,coplist+2        ; high word into BPL1PTH slot
+    rts
+```
+
+For a 5-bitplane display, repeat the patch for `BPL2PT-BPL5PT` at the corresponding Copper-list offsets. Most games abstract this into a "patch all bitplane pointers" helper.
 
 ## Memory cost
 
-| Display type | Single buffer | Double buffer |
-|--------------|---------------|---------------|
-| C64 text (40×25) | 1KB | 2KB |
-| C64 bitmap | 8KB | 16KB |
-| Amiga lo-res | 40KB | 80KB |
+| Display type | Single buffer | Double buffer | Notes |
+|--------------|---------------|---------------|-------|
+| C64 text (40×25) | 1 KB + 1 KB colour | 2 KB + 1 KB colour | Colour RAM doesn't double-buffer (single chip) |
+| C64 bitmap | 8 KB + 1 KB colour + 1 KB screen | ~18 KB | Bitmap and screen-RAM (colour codes) both need pairs |
+| ZX Spectrum | 6.75 KB | ~13.5 KB | 48K models cannot afford both buffers in user RAM; 128K shadow screen makes it free |
+| NES nametable | 1 KB (one nametable) | 2 KB (both NTs) | PPU nametable RAM is 2 KB native; CHR is fixed |
+| Amiga lo-res 5-plane | ~40 KB | ~80 KB | A500 with 512 KB chip RAM finds this comfortable |
 
-On memory-constrained systems, double buffering was a luxury.
+On memory-constrained systems double buffering was a luxury — many 48K Spectrum games chose attribute-only animation or careful single-buffered drawing rather than pay the memory cost.
 
 ## Triple buffering
 
-Three buffers enable:
-- One displaying
-- One ready to display
-- One being drawn
+Three buffers decouple draw rate from display rate:
 
-Smoother when drawing time varies.
+- Buffer 1: currently displayed
+- Buffer 2: ready to display (just finished drawing)
+- Buffer 3: being drawn now
 
-## Page flipping vs copying
+When the CPU finishes a frame, it doesn't have to wait for vblank — the next-ready buffer is already queued for display. Smoother when draw time varies, at 50% more memory.
 
-| Method | Speed | Memory |
-|--------|-------|--------|
-| Page flip | Instant | 2× screen |
-| Copy | Slow | 1× screen + buffer |
-| Dirty rectangles | Medium | Minimal |
+Common on Amiga (where 512 KB+ chip RAM makes it affordable) and modern systems.
 
 ## Vertical blank timing
 
-Swap must happen during vertical blank:
+Swap during VBlank when the display isn't reading screen memory:
+
 ```asm
-wait_vblank:
+; C64: rough "wait for upper-screen region" idiom
+; $D011 bit 7 = high bit of 9-bit raster counter
+; Set when raster ≥ 256 (PAL: lines 256-311; NTSC: 256-262)
+wait_upper_screen:
     lda $d011
-    bpl wait_vblank   ; Wait for vblank start
-.wait_end:
-    lda $d011
-    bmi .wait_end     ; Wait for vblank end
-    ; Now safe to swap
+    bpl wait_upper_screen     ; wait for bit 7 to set
+    ; raster is now in upper region (mostly vblank on PAL)
 ```
+
+For exact vblank, install a raster IRQ at line 0 and do the swap in the handler — no polling needed.
+
+## Page flipping vs copy vs dirty rectangles
+
+| Method | Speed | Memory | Use when |
+|--------|-------|--------|----------|
+| Page flip | Instant (one register write) | 2× screen | Hardware supports programmable screen pointer |
+| Full copy | Slow (full screen each frame) | 1× screen + back buffer | Hardware fixes the screen address (Spectrum bitmap) |
+| Dirty rectangles | Medium | Minimal extra | Mostly-static screens with localised changes |
 
 ## See also
 
@@ -142,3 +252,6 @@ wait_vblank:
 - [VIC-II](/vault/hardware/vic-ii)
 - [Copper](/vault/hardware/copper)
 - [Blitter](/vault/hardware/blitter)
+- [Game Loop](/vault/techniques/game-loop)
+- [VSync](/vault/techniques/vsync)
+- [Dirty Rectangles](/vault/techniques/dirty-rectangles)

@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "PRINT vs POKE"
 subtitle: "Why games don't use PRINT statements"
 summary: "Performance comparison of PRINT and POKE for screen output—and why understanding the difference makes you a better C64 programmer."
 category: "techniques"
-platforms: ['c64']
+platforms: ['commodore-64']
 tags: ['performance', 'basic', 'screen-output', 'optimisation']
 originated: 1982
 deprecated: 1994
@@ -109,15 +109,22 @@ Clears screen, homes cursor, prints text. **Takes ~50 milliseconds** (nearly one
 Writes directly to screen RAM. **Takes ~10 milliseconds** (much less than one frame).
 
 ### Method 3: Using POKE (Optimised)
+
+Important: extracting decimal digits requires repeated division by 10, **not** bitwise AND with 15 (`AND 15` extracts the low 4 *binary* bits, not a decimal digit — for `99 AND 15 = 3`, not `9`).
+
 ```basic
 10 SCORE=9999
-20 POKE 1024,48+(SCORE/1000)
-30 POKE 1025,48+((SCORE/100) AND 15)
-40 POKE 1026,48+((SCORE/10) AND 15)
-50 POKE 1027,48+(SCORE AND 15)
+20 D1=INT(SCORE/1000)
+30 D2=INT(SCORE/100)-D1*10
+40 D3=INT(SCORE/10)-INT(SCORE/100)*10
+50 D4=SCORE-INT(SCORE/10)*10
+60 POKE 1024,48+D1
+70 POKE 1025,48+D2
+80 POKE 1026,48+D3
+90 POKE 1027,48+D4
 ```
 
-No string conversion, direct digit extraction. **Takes ~2 milliseconds** (instant).
+No string conversion, direct digit extraction. **Takes ~3 milliseconds** (still much faster than PRINT). For real games, push this into machine code or precompute a digit-table.
 
 ## Frame Time Budget
 
@@ -208,17 +215,35 @@ Two machine language instructions. Done.
 
 ## Advanced: Inline Assembly
 
-For ultimate speed, embed machine code:
+For ultimate speed, embed machine code. To fill the *whole* screen (1000 bytes) you need to chain stores across pages — one `STA $0400,X` covers only 256 bytes:
 
 ```basic
-10 FOR I=0 TO 50
+10 FOR I=0 TO 19
 20 READ B:POKE 49152+I,B
 30 NEXT I
 40 SYS 49152
-50 DATA 162,0,169,1,157,0,4,232,224,232,208,248,96
+50 REM LDA #$01 / LDX #$00 / loop: STA $0400,X / STA $0500,X / STA $0600,X
+60 REM    / STA $0700,X / DEX / BNE loop / RTS  (X starts at 0, wraps to FF, ...0)
+70 DATA 169,1,162,0,157,0,4,157,0,5,157,0,6,157,0,7,202,208,243,96
 ```
 
-This fills the screen in **under 0.5 seconds**—40× faster than PRINT.
+Disassembled:
+
+```asm
+        LDA #$01            ; A9 01
+        LDX #$00            ; A2 00
+loop:   STA $0400,X         ; 9D 00 04
+        STA $0500,X         ; 9D 00 05
+        STA $0600,X         ; 9D 00 06
+        STA $0700,X         ; 9D 00 07
+        DEX                 ; CA
+        BNE loop            ; D0 F3 (-13 from after BNE)
+        RTS                 ; 60
+```
+
+This fills all 1024 bytes (the screen plus a small overshoot — the actual screen is 1000 bytes at `$0400-$07E7`, so the last 24 STA writes go beyond into unused area, harmless). Runs in **under 0.1 seconds** — far faster than PRINT.
+
+The earlier example in some references that uses only one STA `$0400,X / CPX #232` fills only 232 bytes (about 6 rows), not the whole screen.
 
 ## Memory Considerations
 
@@ -275,13 +300,22 @@ Demo coders pushed further, bypassing BASIC entirely. Pure machine code demos li
 Executes in ~30 milliseconds. Causes visible flicker if updated every frame.
 
 ### POKE Version (Fast)
+
+Same digit-extraction caveat — use `INT(... / 10) * 10` rather than `AND 15`:
+
 ```basic
-10 REM Lives (position 7)
+10 REM Lives (single digit at position 7)
 20 POKE 1031,48+L
-30 REM Score (position 20-24)
-40 FOR I=0 TO 4:POKE 1044+I,48+((S/10^(4-I)) AND 15):NEXT
-50 REM Time (position 36-38)
-60 FOR I=0 TO 2:POKE 1060+I,48+((T/10^(2-I)) AND 15):NEXT
+30 REM Score (5 digits at positions 20-24)
+40 FOR I=0 TO 4
+50 D=INT(S/10^(4-I))-INT(S/10^(5-I))*10
+60 POKE 1044+I,48+D
+70 NEXT
+80 REM Time (3 digits at positions 36-38)
+90 FOR I=0 TO 2
+100 D=INT(T/10^(2-I))-INT(T/10^(3-I))*10
+110 POKE 1060+I,48+D
+120 NEXT
 ```
 
 Executes in ~5 milliseconds. No visible delay.
@@ -298,5 +332,5 @@ Learn PRINT first. Master POKE next. Use both wisely.
 
 - [Screen Memory](/vault/techniques/screen-memory) — understanding the layout
 - [PETSCII Chart](/vault/techniques/petscii-chart) — character code reference
-- [VIC-II Chip](/vault/hardware/vic-ii-chip) — the hardware behind the display
+- [VIC-II](/vault/hardware/vic-ii) — the hardware behind the display
 - [Commodore 64](/vault/systems/commodore-64) — system overview

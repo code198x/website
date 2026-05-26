@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Fixed-Point Maths"
 subtitle: "Smooth movement without floating point"
 summary: "Fixed-point arithmetic gives 8-bit systems sub-pixel precision for smooth movement, physics, and animation—all with fast integer operations."
 category: "techniques"
-platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['programming', 'maths', 'performance']
 originated: 1960
 
@@ -34,12 +34,15 @@ The value `$0180` represents 1.5:
 
 ## Common formats
 
-| Format | Range | Precision | Use case |
-|--------|-------|-----------|----------|
-| 8.8 | 0-255 | 1/256 | Positions, velocities |
-| 4.4 | 0-15 | 1/16 | Compact, less precision |
-| 12.4 | 0-4095 | 1/16 | Large coordinates |
-| 1.7 | 0-1 | 1/128 | Interpolation, percentages |
+Range columns assume **unsigned** values; signed two's-complement halves the range and adds negative values.
+
+| Format | Range (unsigned) | Precision | Use case |
+|--------|-------------------|-----------|----------|
+| 8.8 | 0 to 255.996 | 1/256 ≈ 0.0039 | Positions, velocities |
+| 4.4 | 0 to 15.94 | 1/16 ≈ 0.0625 | Compact, less precision |
+| 12.4 | 0 to 4095.94 | 1/16 ≈ 0.0625 | Large coordinates |
+| 1.7 | 0 to ~1.992 | 1/128 ≈ 0.0078 | Interpolation, percentages |
+| 16.16 | 0 to ~65,536 | 1/65,536 | High-precision physics (16/32-bit CPUs) |
 
 ## Basic operations
 
@@ -200,26 +203,32 @@ Subtraction and signed comparison require care.
 
 ## Lookup tables alternative
 
-For complex functions (sine, square root), use pre-calculated tables:
+For complex functions (sine, square root), use pre-calculated tables. The conventional 8-bit signed-sine encoding is `(sin(angle) + 1) × 127`, mapping the full ±1 range into unsigned bytes 0-254 (with 127 representing sin = 0):
 
 ```asm
-; 256-entry sine table (0-255 → sin×127)
+; 256-entry sine table indexed by angle 0-255 = one full circle
+; entry = round((sin(angle * 2π / 256) + 1) * 127)
 sine_table:
-    .byte 0, 3, 6, 9, 12, ...  ; sin(0°) to sin(90°)
+    .byte 127, 130, 133, 136, 139, 143, 146, 149   ; angles 0-7
+    .byte 152, 155, 158, 161, 164, 167, 170, 173   ; angles 8-15
+    ; ... continue for 256 entries (entire circle)
 ```
 
-Tables trade memory for speed—essential on 8-bit systems.
+Tables trade memory for speed — essential on 8-bit systems. See [Lookup Tables](/vault/techniques/lookup-tables) for build-time generation, page alignment, and quarter-squares multiplication.
 
 ## Platform notes
 
 ### NES
-Limited RAM makes 16-bit variables expensive. Use 8.8 sparingly.
+Limited RAM (2 KB main + 8 KB optional cart RAM) makes 16-bit variables expensive. Use 8.8 sparingly; for many gameplay quantities (sub-pixel velocities, fractional health) the 8 fractional bits are overkill — 4.4 fits in a byte.
 
 ### ZX Spectrum
-No index registers for 16-bit—IX/IY help but are slow.
+The Z80 has 16-bit register pairs (BC, DE, HL plus shadow set BC'/DE'/HL') that handle 16-bit add/subtract. `ADD HL,DE` is 11 T-states for a full 16-bit add — fast for fixed-point work. The IX/IY *index* registers are useful for indexed addressing into struct-like records but are roughly 2-3× slower than HL for the same indexing operation; reserve them for one variable at a time.
 
 ### C64
-Zero page makes 16-bit operations faster. Use it for frequently-accessed fixed-point values.
+The 6510 has no native 16-bit registers, but **zero page** behaves as a 256-byte register file: `LDA zp` is 3 cycles vs 4 for absolute, and operations chain cleanly (`CLC; LDA pos_lo; ADC vel_lo; STA pos_lo; LDA pos_hi; ADC vel_hi; STA pos_hi`). Allocate fixed-point variables in zero page wherever possible — the difference adds up across a frame.
+
+### Amiga
+The 68000 is a true 32-bit-internal CPU; 16.16 fixed-point fits naturally into a single `D` register and `ADD.L` / `SUB.L` are one instruction. Demos and games use 16.16 freely for camera transforms, physics, and any sub-pixel work.
 
 ## See also
 

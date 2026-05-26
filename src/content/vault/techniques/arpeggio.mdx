@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Arpeggio"
 subtitle: "Chords from a single channel"
 summary: "Arpeggios rapidly cycled through notes of a chord, simulating polyphony on sound chips limited to single-note channels—a defining technique of chiptune music."
 category: "techniques"
-platforms: ['c64', 'nes', 'zx-spectrum', 'amiga']
+platforms: ['commodore-64', 'nintendo-entertainment-system', 'sinclair-zx-spectrum', 'commodore-amiga']
 tags: ['audio', 'chiptune', 'music']
 originated: 1980
 
@@ -14,100 +14,123 @@ originated: 1980
 
 ## Overview
 
-When a sound chip can only play one note per channel, how do you play chords? Arpeggios cycle through chord tones faster than the ear can separate them, creating the perception of multiple simultaneous notes. This technique became the signature sound of 8-bit music.
+When a sound chip can only play one note per channel, how do you play chords? Arpeggios cycle through chord tones faster than the ear can separate them, creating the perception of multiple simultaneous notes. The trick predates 8-bit hardware (early computer-music research used it on PDP machines), but the SID, AY, and NES APU pushed it from a workaround into a defining sonic signature.
 
 ## The technique
 
 ### Basic concept
 
-Instead of C-E-G simultaneously:
+Instead of playing C-E-G simultaneously, the routine rewrites the channel's pitch every video frame:
+
 ```
-Frame 1: C
-Frame 2: E
-Frame 3: G
-Frame 4: C (repeat)
+Frame 0: C
+Frame 1: E
+Frame 2: G
+Frame 3: C  (cycle restarts)
+...
 ```
 
-At 50/60 Hz, cycling every frame creates a ~17-20 Hz arpeggio rate.
+With a 3-note chord at one note per frame, the cycle restarts every 3 frames. On a 50 Hz PAL system that's 50/3 ≈ **16.67 Hz**; on a 60 Hz NTSC system, **20 Hz**. Around 17-20 Hz the ear stops separating the notes and starts hearing a chord with a buzzy edge — the classic "chip arpeggio" sound.
 
-### Speed considerations
+### Note stride vs cycle rate
 
-| Rate | Effect |
-|------|--------|
-| Slow (every 3-4 frames) | Audible as separate notes |
-| Medium (every 2 frames) | Classic chip sound |
-| Fast (every frame) | Smooth chord perception |
+| Stride (frames per note) | Cycle rate (3-note chord, 50 Hz) | Effect |
+|--------------------------|-----------------------------------|--------|
+| 4 | ~4 Hz | Audibly stepped — sounds like a sequence |
+| 2 | ~8 Hz | Buzzy chord with rhythmic flutter |
+| 1 | ~17 Hz | Smooth chord perception (classic chip sound) |
+
+Some musics use a *4-note* arpeggio (e.g. major 7) at stride 1 — that's 50/4 = 12.5 Hz on PAL, slower and more obviously stepped.
 
 ## Chord types
 
-Common arpeggio patterns:
+Common arpeggio patterns, expressed as semitone offsets from the root:
 
 | Chord | Notes | Semitone offset |
 |-------|-------|-----------------|
 | Major | C-E-G | 0-4-7 |
 | Minor | C-Eb-G | 0-3-7 |
 | Diminished | C-Eb-Gb | 0-3-6 |
+| Sus4 | C-F-G | 0-5-7 |
 | Major 7th | C-E-G-B | 0-4-7-11 |
 
 ## Implementation
 
-### SID (C64)
+### SID (C64) — full example
 
-Software-driven or using sound driver:
+The SID expects a 16-bit frequency value at `$D400/$D401` for voice 1. A note table maps semitones to frequency words:
+
 ```asm
-arpeggio_offsets:
-    .byte 0, 4, 7        ; major chord
+; 12-entry chromatic frequency table for one octave
+; (real code uses a multi-octave table, indexed by MIDI note)
+note_freq_lo:  .byte $17, $27, $39, $4B, $5F, $74, $8A, $A1, $BA, $D5, $F1, $0F
+note_freq_hi:  .byte $11, $12, $13, $14, $15, $16, $17, $18, $19, $1A, $1B, $1D
 
-update_arpeggio:
-    ldx arp_position
-    lda arpeggio_offsets,x
-    ; Add to base note
-    ; Update frequency register
+arp_offsets:   .byte 0, 4, 7        ; major triad
+ARP_LEN = 3
+
+base_note:     .byte 36              ; C3 in this scheme
+arp_pos:       .byte 0
+
+update_arp:
+    ldx arp_pos
+    lda arp_offsets,x
+    clc
+    adc base_note            ; effective semitone
+    tay                      ; index into note table
+    lda note_freq_lo,y
+    sta $d400                ; voice 1 freq lo
+    lda note_freq_hi,y
+    sta $d401                ; voice 1 freq hi
 
     inx
-    cpx #3
-    bcc .no_wrap
+    cpx #ARP_LEN
+    bcc :+
     ldx #0
-.no_wrap:
-    stx arp_position
+:   stx arp_pos
+    rts
 ```
+
+Called from a 50/60 Hz IRQ, this gives stride-1 arpeggio. Stride-2 is one extra frame between writes; just gate the update with a counter.
 
 ### Tracker notation
 
-FamiTracker/ProTracker effect command:
+ProTracker, FastTracker, FamiTracker, GoatTracker — all use the MOD-format command:
+
 ```
-0xy - Arpeggio
-x = first semitone offset
-y = second semitone offset
+0xy   Arpeggio
+      x = first semitone offset above base note
+      y = second semitone offset above base note
 ```
 
-Example: `047` = major chord (0, +4, +7 semitones)
+The cycle is base / +x / +y, looping for as long as the command is on. Example: `047` plays a major triad above the row's base note.
 
 ## Musical uses
 
 | Application | Purpose |
 |-------------|---------|
-| Chords | Harmonic support |
-| Lead decoration | Add interest to melody |
-| Bass lines | Implied harmony |
-| Rhythmic drive | Creates momentum |
+| Chords | Harmonic support without spending three voices |
+| Lead decoration | Add motion to a melody held over a single voice |
+| Bass lines | Implied harmony — bass + chord on one channel |
+| Rhythmic drive | The buzzy texture itself becomes part of the groove |
 
 ## Variations
 
 ### Direction
 
-- Up (C-E-G-C-E-G...)
-- Down (G-E-C-G-E-C...)
-- Up-down (C-E-G-E-C-E-G...)
+- Up (C-E-G-C-E-G…)
+- Down (G-E-C-G-E-C…)
+- Up-down (C-E-G-E-C-E-G…)
 
 ### Speed changes
 
-Varying arpeggio speed within a note creates expression.
+Varying the arpeggio stride within a single sustained note creates expression — a fast intro that slows into a held chord, for example.
 
 ### Combined with effects
 
-Arpeggios layered with:
-- Volume envelope
+Arpeggios layer with:
+
+- Volume envelope (attack/decay shape)
 - Pulse width modulation
 - Vibrato
 - Filter sweeps
@@ -116,28 +139,28 @@ Arpeggios layered with:
 
 ### SID advantages
 
-- Filter can smooth arpeggio
-- Ring modulation adds harmonics
-- Three voices allow chord layers
+- The filter can smooth the buzz between notes.
+- Ring modulation adds inharmonic content for metallic arpeggios.
+- All three SID voices are independent — arpeggio on one voice frees the other two for bass and lead, where a chip without it would have to spend three voices on the chord alone.
 
 ### NES approach
 
-- Clean, sharp arpeggios
-- Two pulse channels for thick chords
-- Triangle for bass arpeggios
+- Clean, sharp arpeggios with no filtering.
+- Two pulse channels lets you stack two arpeggios for thicker chords.
+- Triangle channel arpeggios produce muscular bass lines.
 
-### AY-3-8910
+### AY-3-8910 / YM2149
 
-- Bright, cutting arpeggios
-- Hardware envelope can interact
-- Distinct character
+- Bright, cutting timbre — Spectrum 128K and CPC favourites.
+- Hardware envelope can interact, giving auto-modulated arpeggios.
+- The reason "Spectrum AY music" sounds the way it does.
 
 ## Composition tips
 
-- Don't overuse (can become tiring)
-- Match arpeggio speed to tempo
-- Consider root motion
-- Use to add energy at key moments
+- Don't overuse — extended arpeggios become tiring to listen to.
+- Match arpeggio speed to tempo (faster songs tolerate stride 1; slower songs may want stride 2).
+- Consider root motion — moving the base note while the arp pattern stays constant changes the implied chord.
+- Use to add energy at key moments rather than as the default texture.
 
 ## See also
 

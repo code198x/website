@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Filter Sweeps"
 subtitle: "Moving through the frequency spectrum"
 summary: "Filter sweeps create dynamic timbral changes by gradually adjusting filter cutoff frequency, a signature effect of the C64's SID chip."
 category: "techniques"
-platforms: ['c64', 'amiga']
+platforms: ['commodore-64']
 tags: ['sound', 'sid', 'synthesis']
 originated: 1982
 
@@ -14,31 +14,108 @@ originated: 1982
 
 ## Overview
 
-Filter sweeps move a synthesizer's filter cutoff frequency over time, creating timbral motion from bright to dark or vice versa. The SID chip's multimode resonant filter made sweeps a signature sound of C64 music. Composers like Rob Hubbard exploited filter modulation extensively, creating sounds impossible on chips without filtering.
+A filter sweep moves a synthesiser's cutoff frequency over time, producing timbral motion from bright to dark or vice versa. The SID's state-variable analogue filter — running on the same die as the digital oscillators — made sweeps a signature sound of C64 music. Composers like Rob Hubbard, Martin Galway, and Tim Follin built their identity around modulating it.
 
 ## Fast facts
 
-- **Definition:** gradual filter cutoff change.
-- **Effect:** timbral brightness variation.
-- **SID advantage:** built-in resonant filter.
-- **Programming:** update filter registers over time.
-- **Uses:** bass growls, pad evolution, transitions.
+- **Definition:** gradual change of filter cutoff frequency.
+- **Effect:** timbral brightness variation, often with a resonant peak.
+- **SID advantage:** built-in resonant state-variable filter (LP/BP/HP) per chip.
+- **Programming:** rewrite cutoff registers each frame from an IRQ.
+- **Uses:** bass growls, evolving pads, transitions, percussion fakes.
 
-## SID implementation
+## SID filter registers
 
-Programming filter sweeps:
-- **Register $D418:** filter cutoff low bits.
-- **Register $D416:** filter cutoff high bits.
-- **Resonance:** $D417 controls filter resonance.
-- **Timing:** update each frame for smooth sweep.
+The SID's filter is configured by four registers; the cutoff is **not** at `$D418`. Per the 6581/8580 register map:
+
+| Register | Field | Purpose |
+|----------|-------|---------|
+| **`$D415` (FCLO)** | bits 2:0 | Filter cutoff, low 3 bits |
+| **`$D416` (FCHI)** | bits 7:0 | Filter cutoff, high 8 bits |
+| **`$D417` (RES/FILT)** | bits 7:4 | Resonance (0–15) |
+|                         | bit 3 | Route external audio in through filter |
+|                         | bit 2 | Route voice 3 through filter |
+|                         | bit 1 | Route voice 2 through filter |
+|                         | bit 0 | Route voice 1 through filter |
+| **`$D418` (MODE/VOL)** | bits 6:4 | LP/BP/HP mode bits (mix-selectable) |
+|                         | bit 7 | Voice 3 off (cuts V3 from output) |
+|                         | bits 3:0 | Master volume (0–15) |
+
+The cutoff is an 11-bit value: `cutoff = (FCHI << 3) | (FCLO & 7)`. Voices with their `$D417` bit *clear* bypass the filter and go straight to the mixer.
+
+## Filter modes
+
+`$D418` bits 4-6 are mix-selectable, so combinations are legal:
+
+| Bits set | Result |
+|----------|--------|
+| LP only (bit 4) | Low-pass — bright → dark |
+| BP only (bit 5) | Band-pass — emphasises a frequency range |
+| HP only (bit 6) | High-pass — dark → bright |
+| LP + HP | Notch (band-reject) |
+| LP + BP + HP | Approximately all-pass — filter effectively bypassed |
+
+Setting **all** bits clear silences any voice routed through the filter.
+
+## A simple downward sweep
+
+Update the cutoff each frame from an IRQ:
+
+```asm
+sweep_cutoff:    .word $07F8        ; start near max cutoff
+sweep_step:      .word $0030        ; per-frame decrement
+
+update_filter:
+    ; cutoff -= step
+    sec
+    lda sweep_cutoff
+    sbc sweep_step
+    sta sweep_cutoff
+    lda sweep_cutoff+1
+    sbc sweep_step+1
+    sta sweep_cutoff+1
+
+    ; bottom 3 bits → FCLO, top 8 bits → FCHI
+    lda sweep_cutoff
+    and #$07
+    sta $d415
+    lda sweep_cutoff+1
+    sta $d416
+    rts
+```
+
+For a routed-and-resonant sweep, set `$D417` once with the desired voice routes and resonance:
+
+```asm
+    lda #$F1          ; resonance %1111, voice 1 routed through filter
+    sta $d417
+    lda #%00010000    ; LP only, master volume 0 — set volume separately
+    ora #$0F          ; volume = 15
+    sta $d418
+```
 
 ## Musical uses
 
-When composers used sweeps:
-- **Bass sounds:** growling, evolving bass lines.
-- **Pad textures:** slowly changing atmospheres.
-- **Transitions:** filtering in or out.
-- **Emphasis:** dramatic moments.
+| Application | Effect |
+|-------------|--------|
+| Bass growls | Slow LP cutoff sweep over a sustained bass note |
+| Pad textures | Gentle BP sweep across a held chord |
+| Transitions | Cutoff ramp synced to a section change |
+| Percussion fakes | Snap the cutoff down with high resonance to imitate hi-hats and snares |
+| Wobble bass | LFO-style triangle-wave sweep — the precursor to dubstep wobble |
+
+## 6581 vs 8580
+
+The two SID variants behave very differently in the filter:
+
+| | 6581 (12V, original) | 8580 (9V, revised) |
+|---|---|---|
+| Cutoff curve | Wildly per-chip non-linear | Near-linear, predictable |
+| Distortion | Audible at high signal levels | Mostly clean |
+| Resonance | Less pronounced | Stronger, more peaky |
+| Sound | "Warm", "dirty" | "Clean", "crisp" |
+
+A piece written for the 6581 — most pre-1986 SID music — often sounds wrong on an 8580 because the cutoff curve and distortion are fundamental to how the music was tuned. Modern players (reSIDfp, libsidplayfp) approximate per-chip cutoff curves to compensate.
 
 ## See also
 

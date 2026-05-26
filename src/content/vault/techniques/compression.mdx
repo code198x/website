@@ -1,12 +1,12 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Data Compression"
 subtitle: "Fitting more into less"
 summary: "Compression techniques allowed game developers to fit larger games into limited ROM and RAM by encoding data more efficiently, from simple RLE to sophisticated algorithms."
 category: "techniques"
-platforms: ["nes", "snes", "genesis", "c64", "amiga"]
-tags: ["data", "memory", "optimisation"]
+platforms: ['nintendo-entertainment-system', 'super-nintendo', 'sega-mega-drive', 'commodore-64', 'commodore-amiga']
+tags: ['data', 'memory', 'optimisation']
 originated: 1970
 
 ---
@@ -14,160 +14,223 @@ originated: 1970
 
 ## Overview
 
-**Data compression** makes data smaller for storage, then restores it when needed. For game developers working with kilobytes of ROM, compression wasn't optional—it was essential. Level data, graphics, and music all benefited from compression. The techniques ranged from simple run-length encoding to sophisticated algorithms that squeezed every possible byte.
+**Data compression** makes data smaller for storage, then restores it when needed. For game developers working with kilobytes of ROM, compression wasn't optional — it was essential. Level data, graphics, music, and text all benefited. The techniques ranged from simple run-length encoding to sophisticated dictionary algorithms that squeezed every possible byte. The tradeoff was always the same: less storage, more decompression time and code.
 
 ## Fast Facts
 
 | Aspect | Detail |
 |--------|--------|
 | **Purpose** | Fit more data in limited space |
-| **Trade-off** | Storage space vs decompression time |
-| **Common targets** | Graphics, level data, text |
-| **Modern relevance** | Download sizes, load times |
+| **Trade-off** | Storage space vs decompression time + decoder size |
+| **Common targets** | Graphics, level data, text, music |
+| **Modern relevance** | Download sizes, streaming, GPU texture formats |
 
-## Why Compression Mattered
+## Why compression mattered
 
-Storage constraints by platform:
+| Platform | Typical ROM | Practical ceiling |
+|----------|-------------|-------------------|
+| **NES** | 32 KB-1 MB | ROM cost capped many games at 256 KB-512 KB |
+| **SNES** | 1-4 MB | Largest commercial cart was 6 MB (*Tales of Phantasia*, *Star Ocean*) |
+| **Mega Drive** | 1-4 MB | *Phantasy Star IV* shipped 24 Mbit (3 MB) |
+| **Game Boy** | 32 KB-1 MB | Pokémon Gold/Silver: 16 Mbit = 2 MB |
+| **C64** | 170 KB per disk side | Multi-disk titles: 4-6 disks for big games |
+| **Amiga** | 880 KB per OCS disk | Multi-disk titles: 6-12 disks routine for late-era games |
 
-| Platform | Typical ROM | Context |
-|----------|-------------|---------|
-| **NES** | 32-512KB | Entire game |
-| **SNES** | 1-4MB | Larger but still constrained |
-| **C64** | 170KB | Single floppy disk |
-| **Amiga** | 880KB | OCS-era disk |
+Every byte saved meant more content. *Final Fantasy VI* (3 MB SNES) compressed nearly 6 MB of script and graphics into its cartridge.
 
-Every byte saved meant more content.
-
-## Common Algorithms
+## Common algorithms
 
 ### Run-Length Encoding (RLE)
 
-Replace repeated values with count + value:
+Replace repeated values with `(count, value)` pairs:
 
-| Original | Compressed |
-|----------|------------|
-| `AAAAAABBCCC` | `6A2B3C` |
+| Original | Compressed | Saved |
+|----------|------------|-------|
+| `AAAAAABBCCC` | `6A 2B 3C` | 5 bytes |
 
-Simple, fast, works well for graphics with solid areas.
+Simple, fast, works well for graphics with solid areas. Decoder fits in ~30 bytes of 6502. See [Run-Length Encoding](/vault/techniques/run-length-encoding) for the deep dive.
 
-### LZ-Family (Lempel-Ziv)
+### LZ77 / LZSS / LZ-family
 
-Reference earlier data instead of repeating it:
+Reference earlier data instead of repeating it. Each token is either a literal byte or a back-reference `(offset, length)` into recently-decoded data:
 
-| Variant | Used In |
+```
+Input:    ABCABCABCXYZ
+Encoded:  A B C (offset=3, length=6) X Y Z
+```
+
+Six bytes of literal data plus one back-reference covers a 12-byte input — 50% compression on this small example. LZ77 is the foundation of `gzip`, `zip`, `zlib`, and most general-purpose compressors.
+
+| Variant | Used in |
 |---------|---------|
-| **LZSS** | Many console games |
-| **LZ77** | Later systems |
-| **LZ4** | Modern games |
+| **LZ77** | Original Lempel-Ziv (1977) — sliding-window dictionary |
+| **LZSS** | LZ77 variant with 1-bit flags — common in console games |
+| **LZ78 / LZW** | Dictionary-built variant — used in GIF, early UNIX `compress` |
+| **LZ4 / LZO** | Modern fast variants — Linux kernel, real-time compression |
 
-Look for patterns that appeared before, store reference to earlier occurrence.
+### Huffman coding
 
-### Huffman Coding
-
-Assign shorter codes to common values:
+Assign shorter codes to common values, longer codes to rare ones:
 
 | Value | Frequency | Code |
 |-------|-----------|------|
-| A | 50% | 0 |
-| B | 25% | 10 |
-| C | 25% | 11 |
+| A | 50% | `0` |
+| B | 25% | `10` |
+| C | 12.5% | `110` |
+| D | 12.5% | `111` |
 
-Common data gets fewer bits.
+Theoretically optimal for known frequencies. Often combined with LZ to compress the LZ output further (this is what `gzip` does internally — DEFLATE = LZ77 + Huffman).
 
-## Platform-Specific Techniques
+### Dictionary / lookup compression
+
+Replace repeated multi-byte sequences with a dictionary index:
+
+```
+"the quick brown fox" →
+  dictionary: 0=the, 1=quick, 2=brown, 3=fox
+  encoded:    [0] [1] [2] [3]
+```
+
+Useful for text-heavy games (*Final Fantasy*, *Phantasy Star*) where common words ("the", "and", "Battle!") become single bytes.
+
+### Delta encoding
+
+Store differences between successive values rather than absolute values. Effective for monotonic-ish data: heightmaps, palette gradients, animation curves.
+
+```
+heights: 100 102 103 105 108 110
+deltas:  100  +2  +1  +2  +3  +2
+```
+
+The deltas are smaller numbers, more compressible by RLE or Huffman.
+
+## Platform-specific schemes
 
 ### NES
 
 | Technique | Use |
 |-----------|-----|
-| **CHR-ROM compression** | Tile graphics |
-| **RLE levels** | Repeated tile patterns |
-| **Metatiles** | 2x2 tiles as single unit |
+| **CHR-ROM compression** | Compress in PRG-ROM, decompress to PPU memory at scene load |
+| **RLE level data** | Repeated tile patterns in nametables |
+| **Metatiles** | 2×2 or 4×4 tile groups treated as a single index — compresses level data ~4× |
+| **Custom per-game** | *Super Mario Bros 3*'s level format is a bespoke RLE/dictionary hybrid |
 
 ### SNES
 
 | Technique | Use |
 |-----------|-----|
-| **LZSS variants** | Most data |
-| **Mode 7 compression** | Background maps |
-| **Custom schemes** | Game-specific needs |
+| **LZSS variants** | Most data; dozens of game-specific dialects |
+| **Mode 7 compression** | Heightmap RLE for backgrounds |
+| **Custom schemes** | *Final Fantasy VI*'s text uses dictionary + variable-length codes |
 
-### Mega Drive/Genesis
+### Mega Drive / Genesis
 
-| Technique | Use |
-|-----------|-----|
-| **Kosinski** | Sonic series graphics |
-| **Nemesis** | Tile compression |
-| **Enigma** | Tile mappings |
+Sega and its developers shipped multiple proprietary schemes — most named after the Sonic team programmer who wrote them:
 
-Sega developed multiple proprietary schemes.
+| Format | Use | Notes |
+|--------|-----|-------|
+| **Kosinski** | Art (tiles, mappings, palettes) | LZSS variant; the *Sonic 1* art compression standard; named after Mark Kosinski |
+| **Nemesis** | Tile graphics | Statistical encoder using Huffman-like coding for runs |
+| **Enigma** | Tile-map data | Differential RLE for nametables |
+| **Saxman** | Sound and game data | Used in some Sega titles |
 
-## Compression Targets
+These formats are now well-documented by the Sonic Retro reverse-engineering community; tools exist to decompress them on modern systems.
 
-| Data Type | Approach |
+### Amiga
+
+| Compressor | Use | Notes |
+|------------|-----|-------|
+| **PowerPacker** | Executables and data | Dominated 1990s warez and shareware Amiga distribution |
+| **LhA** (LZH) | General-purpose archives | The ZIP-equivalent of the Amiga era |
+| **ByteKiller** | Demos / 4 KB intros | Tight LZ-style cruncher |
+| **Imploder** | Executables | Decompresses-on-load packers |
+
+### C64
+
+| Compressor | Notes |
+|------------|-------|
+| **Exomizer** | The community standard, still active development |
+| **ByteBoozer** | Smaller decoder, slightly worse ratio |
+| **Doynax LZ** | Optimised for fast decompression |
+| **PuCrunch** | Older but widely used |
+
+The C64 cruncher landscape is unusually rich — every group had a favourite, and benchmark wars between them ran for years.
+
+## Compression targets
+
+| Data type | Approach |
 |-----------|----------|
-| **Tile graphics** | Pattern-based, RLE |
-| **Level maps** | RLE, dictionary |
-| **Music data** | Pattern references |
-| **Text** | Huffman, dictionary |
-| **Sprites** | Custom per-game |
+| **Tile graphics** | Pattern-based, RLE, custom per-format |
+| **Level maps** | RLE + dictionary; metatile indirection |
+| **Music data** | Pattern references (already-compressed by tracker formats); see [MOD Format](/vault/techniques/mod-format) |
+| **Text** | Huffman coding + dictionary |
+| **Sprites** | Custom per-game; transparent-pixel runs compress well |
+| **Audio samples** | Delta encoding + ADPCM |
 
 ## Trade-offs
 
 | Factor | Consideration |
 |--------|---------------|
-| **Compression ratio** | How much smaller? |
-| **Decompression speed** | Can it run in real-time? |
-| **RAM requirement** | Buffer size for decompression |
-| **Code complexity** | Decompressor size |
+| **Compression ratio** | Higher ratio = more storage saved, but typically more CPU + RAM to decompress |
+| **Decompression speed** | Critical for level loading, scene transitions, real-time streams |
+| **RAM requirement** | Decompressor needs working memory (sliding window for LZ, Huffman tree, etc.) |
+| **Decoder size** | Decoder code itself takes ROM — RLE: ~30 bytes; LZSS: ~150 bytes; full Exomizer: ~512 bytes |
 
-Real-time decompression (streaming audio/video) needed fast algorithms. Static data (level loading) could use slower, better compression.
+Real-time decompression (streaming audio, load-during-play) needs fast algorithms. Static data (level loading at scene change) can use slower, better compression.
 
-## Implementation Considerations
+## Implementation considerations
 
 | Challenge | Solution |
 |-----------|----------|
-| **RAM limits** | Decompress to VRAM directly |
-| **CPU budget** | Decompress during loading |
-| **Random access** | Store block offsets |
-| **DMA conflicts** | Time decompression carefully |
+| **RAM limits** | Decompress directly to VRAM/working memory, no intermediate buffer |
+| **CPU budget** | Decompress during load screens or VBlank waits |
+| **Random access** | Store block offsets so individual chunks can be decompressed without sequential walk |
+| **DMA conflicts** | On consoles, time decompression around video DMA windows |
 
-## Notable Examples
+## Notable examples
 
 | Game | Technique | Achievement |
 |------|-----------|-------------|
-| **Sonic the Hedgehog** | Multiple schemes | Large levels, fast loading |
-| **Super Metroid** | LZSS variant | Massive map in 3MB |
-| **Kirby's Adventure** | Heavy compression | 6MB of content in 768KB |
+| *Sonic the Hedgehog* | Kosinski + Nemesis + Enigma | Multiple compressors per data type |
+| *Super Metroid* (1994) | LZSS variant | Massive map in 3 MB cartridge |
+| *Kirby's Adventure* (1993) | Heavy compression | NES MMC5 game with rich graphics in 768 KB |
+| *Chrono Trigger* (1995) | LZSS + dictionary | Multi-language scripts in 4 MB |
+| *Pokémon Gold/Silver* (1999-2000) | Custom compression | Two complete Kanto/Johto regions in 2 MB |
 
-## The Demo Scene Connection
+## The demo scene connection
 
 Demo scene coders pushed compression limits:
 
-| Compo | Constraint |
-|-------|------------|
-| **64K intro** | Entire demo in 64KB |
-| **4K intro** | Extreme compression |
+| Compo | Constraint | Champion compressors |
+|-------|------------|---------------------|
+| **64K intro** | Entire demo in 64 KB | Crinkler (Windows), Stub (Linux) |
+| **4K intro** | Extreme compression | Crinkler, oneKpaq |
+| **256-byte intro** | Pure code golf | Hand-crafted; standard packers don't fit |
 
-Techniques developed for demos influenced game development.
+Crinkler combines a custom compiler-aware linker with a context-mixing arithmetic coder, achieving ratios close to the theoretical limit for the kind of code-and-data mix typical of demos.
 
-## Modern Relevance
+Techniques developed for demos influenced game development: kkrunchy (Farbrausch's tool) is descended from demo-scene compressors and is used in commercial games.
+
+## Modern relevance
 
 | Context | Application |
 |---------|-------------|
-| **Download sizes** | Game distribution |
-| **Load times** | SSD streaming |
-| **Texture compression** | GPU formats (BC, ASTC) |
-| **Asset bundles** | Runtime decompression |
+| **Download sizes** | Steam, Epic, console store budgets |
+| **Load times** | SSD streaming with on-the-fly decompression (LZ4, Zstandard) |
+| **Texture compression** | GPU formats (BC1-7, ASTC, ETC2) — fixed-rate compression for direct GPU sampling |
+| **Asset bundles** | Unity, Unreal asset packs use Zstandard or LZ4 |
+| **Network protocols** | HTTP gzip, HTTP/2 HPACK, QUIC compression |
 
-The principles remain even as storage grows—users still prefer smaller downloads.
+The principles persist even as storage grows — users still prefer smaller downloads, faster loads, and lower memory pressure.
 
 ## Legacy
 
-Compression taught developers to think carefully about data representation. The habit of asking "can this be smaller?" persists. Modern game developers still compress assets, optimise network packets, and minimise memory footprints. The stakes are different, but the discipline of fitting content into constraints remains valuable.
+Compression taught developers to think carefully about data representation. The habit of asking "can this be smaller?" persists. Modern game developers still compress assets, optimise network packets, and minimise memory footprints. The stakes are different — gigabytes instead of kilobytes — but the discipline of fitting content into constraints remains valuable, and the algorithms themselves often trace directly back to 1970s-1980s research.
 
 ## See Also
 
+- [Run-Length Encoding](/vault/techniques/run-length-encoding)
 - [Bank Switching](/vault/techniques/bank-switching)
 - [Tile Graphics](/vault/techniques/tile-graphics)
 - [Demo Scene](/vault/communities/demo-scene)
+- [Size Coding](/vault/techniques/size-coding)

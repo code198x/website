@@ -1,27 +1,114 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Disk Fastloaders"
 subtitle: "Cutting load times on the Commodore 1541"
-summary: "Fastload cartridges and custom DOS routines slashed wait times, turning the C64’s pokey disk drive into an arcade-ready accessory."
+summary: "Fastload cartridges and custom DOS routines slashed wait times, turning the C64's pokey disk drive into an arcade-ready accessory."
 category: "techniques"
-platforms: ['c64']
+platforms: ['commodore-64']
 tags: ['storage', '1541', 'fastload']
 originated: 1983
-deprecated: 1990
 
 ---
 
 
 ## Overview
-The Commodore 1541 disk drive was notoriously slow thanks to a conservative IEC serial protocol. Fastloaders—both cartridges and software routines—rewrote the rulebook, blasting data into memory several times faster.
 
-## Fast facts
-- **Hardware fastloaders:** cartridges like Epyx FastLoad, Action Replay, and Final Cartridge III modified the KERNAL to speed up disk I/O.  
-- **Software fastloaders:** games bundled custom loaders that synced both drive and C64 CPUs for turbo transfers.  
-- **Compatibility:** some copy-protection schemes resisted fastloaders, forcing users to toggle them off.
+The Commodore 1541 disk drive was notoriously slow — about 300 bytes per second using the stock KERNAL routines, slower than many cassette setups. The drive's own 6502 and 2 KB of RAM were perfectly capable of much higher throughput; the bottleneck was the **IEC serial bus** between the C64 and the drive, and the conservative protocol the KERNAL used to drive it. Fastloaders rewrote both ends of that protocol.
+
+For an overview of the broader fast-loader landscape (tape and disk, multiple platforms), see [Fast Loaders](/vault/techniques/fast-loader). This entry goes deep on the C64 1541 specifically.
+
+## Why the 1541 is slow
+
+Commodore designed the IEC bus with three lines:
+
+| Line | Purpose |
+|------|---------|
+| `DATA` | One-bit-at-a-time data transfer |
+| `CLK` | Clock signal — handshake per bit |
+| `ATN` | "Attention" — drive responds to commands |
+
+The stock KERNAL transfer protocol sends **one bit per CLK toggle**, with software timing on both sides:
+
+```
+1. Host pulls CLK low, signals ready
+2. Host releases CLK
+3. Drive sees CLK high, has 200 µs to assert DATA bit
+4. Host samples DATA after delay
+5. Repeat for 8 bits = 1 byte
+```
+
+Eight bits per byte, with software-timed delays between each, gives roughly 400 bytes/second peak — and the stock loader adds further overhead per block, dropping to ~300 B/s in practice. The 1541's CPU spends most of its time waiting.
+
+## How fastloaders break the bottleneck
+
+Every fastloader runs on **both** the C64 and inside the 1541. They upload a small machine-language routine into the drive's 2 KB RAM via the standard `M-W` (memory write) command, then start the drive executing it. The drive's CPU and the host's CPU then negotiate a faster protocol that the standard KERNAL doesn't know about.
+
+### Trick 1: Two bits per CLK toggle
+
+The simplest fastloader trick: use both `CLK` and `DATA` as data lines simultaneously. Send 2 bits per handshake instead of 1. Doubles speed immediately, no other hardware required.
+
+### Trick 2: Tighter timing windows
+
+The stock loader uses generous (microsecond-scale) delays for compatibility with slow or off-brand drives. Fastloaders narrow these to the minimum a real 1541 can support — typically 5-10× faster handshakes.
+
+### Trick 3: Block-based transfers
+
+Stock loader negotiates per-byte. Fastloaders read a whole sector (256 bytes) into drive RAM, then stream it across the bus with one tightly-timed inner loop, no per-byte handshake. Drops protocol overhead to near zero.
+
+### Trick 4: Track-aware sector ordering
+
+Stock DOS reads sectors in the order they're requested, ignoring the disk's rotation. Fastloaders re-order requests to read sectors as the head passes over them — minimising latency. Combined with sequential-track-then-head-step interleave, this saves milliseconds per sector that add up to seconds per file.
+
+### Trick 5: Parallel cable (hardware mod)
+
+A user-port-to-1541-parallel-port cable gives 8 data lines instead of 2. Throughput jumps from ~5 KB/s to ~25 KB/s. Required by speed-runners and demoscene productions; common on flash-cart replacements like the SD2IEC and Ultimate-II+.
+
+## Notable C64 disk fastloaders
+
+| Solution | Format | Speed | Year | Notes |
+|----------|--------|-------|------|-------|
+| **Epyx FastLoad** | Cartridge | ~5 KB/s (≈17×) | 1984 | The mass-market hit. Adds disk command shortcuts (`@`, `↑`, `←`) and a built-in machine-language monitor |
+| **Action Replay** (various versions) | Cartridge | ~5-7 KB/s | 1986+ | Datel's loader; bundled with cheat / freeze / save-to-disk features |
+| **Final Cartridge III** | Cartridge | ~5 KB/s | 1987 | Includes a desktop-style GUI, better disk operations, machine monitor |
+| **JiffyDOS** | KERNAL + DOS ROM swap | ~6-8 KB/s | 1985 | Soldered into both C64 and 1541; the de facto standard for serious 1541 users |
+| **Speeddos** | ROM swap (C64 only) | ~3-5 KB/s | Mid-80s | Slightly faster stock-protocol-compatible variant |
+| **Dolphin DOS** | ROM swap (both ends) + parallel cable | ~12-25 KB/s | 1987 | Required parallel cable; the high end before SD-card replacements arrived |
+| **Krill's Loader** | Software-only | Up to ~10 KB/s | 2000s | Modern demoscene-grade loader; standard for new C64 productions |
+| **ELoad / Bitfire** | Software-only | ~6-12 KB/s | 2010s | Lightweight loader libraries for indie C64 development |
+
+## How a cartridge fastloader works
+
+A fastloader cartridge maps its own ROM into the C64 address space at boot. The cartridge ROM:
+
+1. **Replaces the LOAD vector** in the KERNAL jump table (`$0330` typically) with its own routine.
+2. **On LOAD**, sends the file name to the drive normally, but then uploads a custom drive-side fastloader routine via `M-W` commands.
+3. **Starts the drive routine** with `M-E` (memory execute).
+4. **Streams data** using the cartridge's protocol over the IEC bus, decoding it on the C64 side.
+5. **Falls back to stock loading** if the drive doesn't respond to the protocol upload (e.g. a 1571 in 1541 mode, or some clones).
+
+Programs that bypass `LOAD` (using their own loader, common in games) coexist with the cartridge — they don't see the cartridge's hooks because they don't use the KERNAL jump table.
+
+## Compatibility issues
+
+Fastloaders are not universally compatible:
+
+- **Copy-protected disks** with custom track formats (e.g. nibble-counted protections, fat-track schemes) confuse fastloaders that assume standard sector layouts. The user must disable the fastloader (cartridge has a switch) to load these.
+- **Multi-load games** that use their own loader between levels may conflict with the cartridge's hooks.
+- **Drive variants** other than the 1541 — particularly third-party clones with slightly different timing — may fail with stricter fastloaders.
+- **The 1571 in 1541 mode** runs a different ROM that some fastloaders don't recognise.
+
+## Modern equivalents
+
+Fastloaders haven't disappeared — they've evolved:
+
+- **SD2IEC / 1541U / Ultimate-II+** — modern flash-cart drive emulators implement fastloaders natively, often achieving full parallel-cable speeds without needing a hardware mod.
+- **Krill's Loader, Bitfire, ELoad** — modern software loaders that *most* new C64 demos and games use, written for the demoscene era's accuracy bar.
 
 ## See also
-- [How a Cassette Becomes a Game](/vault/techniques/cassette-loading)  
-- [KERNAL I/O Routines](/vault/techniques/kernal-io)  
+
+- [Fast Loaders](/vault/techniques/fast-loader)
+- [Cassette Loading](/vault/techniques/cassette-loading)
+- [KERNAL I/O Routines](/vault/techniques/kernal-io)
 - [Commodore 64](/vault/systems/commodore-64)
+- [Copy Protection](/vault/techniques/copy-protection)

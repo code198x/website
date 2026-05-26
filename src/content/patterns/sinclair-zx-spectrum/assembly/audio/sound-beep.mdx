@@ -16,7 +16,11 @@ related:
 
 ## Overview
 
-The Spectrum has no dedicated sound chip - just a 1-bit speaker controlled through port `$FE`. Toggle bit 4 on and off at different speeds to create tones. Vary the delay between toggles for pitch, and loop duration for length. Simple but effective for game feedback.
+The Spectrum 16K/48K has no dedicated sound chip - just a 1-bit speaker controlled through port `$FE`. Toggle bit 4 on and off at different speeds to create tones. Vary the delay between toggles for pitch, and loop duration for length. Simple but effective for game feedback.
+
+**Important:** port `$FE` writes also control the **border colour** (bits 0-2) and **MIC out** (bit 3). The naive code below clobbers both. See "Border-safe writes" further down.
+
+The 128K Spectrum and beyond add an [AY-3-8912](/vault/hardware/ay-3-8912) sound chip with three voices and proper envelopes — preferred for music when targeting 128K+ machines.
 
 ## Code
 
@@ -170,6 +174,41 @@ short_delay:
 4. The speed of toggling determines the pitch
 5. Smaller delay = higher frequency = higher pitch
 
+## Border-safe writes
+
+The naive code in this pattern writes `$10` and `$00` to port `$FE`, which forces the border to colour 0 (black) and MIC low on every toggle. Any game with a coloured border will see it flash to black during sound playback. The fix is to OR the speaker bit with a stored border value:
+
+```z80
+; Globally maintained border colour (bits 0-2)
+current_border:
+    defb    1               ; Blue border, MIC low
+
+play_click_safe:
+    ld      b, 50           ; Number of toggles
+.loop:
+    ld      a, (current_border)
+    or      #SPEAKER_BIT    ; Speaker on, border preserved
+    out     ($fe), a
+    call    delay
+    ld      a, (current_border)
+    out     ($fe), a        ; Speaker off, border preserved
+    call    delay
+    djnz    .loop
+    ret
+```
+
+To change the border colour later, update `current_border` and the next toggle picks it up.
+
+## Louder beeper (issue 1 hardware trick)
+
+On issue 1 Spectrum boards, MIC out (bit 3) is connected to the speaker through a passive feedback path. Setting bits 3 and 4 together produces a noticeably louder click than bit 4 alone. Issue 2+ boards isolated MIC from EAR, so the trick has minimal effect there:
+
+```z80
+SPEAKER_LOUD equ %00011000  ; Bits 3 + 4 (MIC + EAR)
+```
+
+Use sparingly — the louder click is also harsher and bypasses the saturation curve of the standard beeper.
+
 ## Pitch Reference
 
 | Delay Value | Approximate Note |
@@ -183,4 +222,4 @@ short_delay:
 
 **Patterns:** [Game Loop (HALT)](/patterns/sinclair-zx-spectrum/framework/game-loop-halt)
 
-**Vault:** [ZX Spectrum](/vault/systems/zx-spectrum)
+**Vault:** [ULA](/vault/hardware/ula) — port $FE bit layout | [AY-3-8912](/vault/hardware/ay-3-8912) — 128K sound chip | [ZX Spectrum](/vault/systems/zx-spectrum)

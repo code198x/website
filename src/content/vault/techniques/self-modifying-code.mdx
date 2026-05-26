@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Self-Modifying Code"
 subtitle: "Code that rewrites itself"
 summary: "Self-modifying code changed its own instructions at runtime, enabling impossible optimisations on 8-bit systems by treating code as data."
 category: "techniques"
-platforms: ['c64', 'zx-spectrum', 'nes']
+platforms: ['commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system']
 tags: ['optimisation', 'assembly', 'advanced']
 originated: 1975
 
@@ -105,18 +105,41 @@ fetch:
 
 ## Z80 differences
 
-Z80 self-modification:
-- Slower due to instruction prefetch
-- Some instructions partially cached
-- Still used, more carefully
+The Z80 has no instruction prefetch or cache in the modern sense, so SMC works the same way as on the 6502 — write to the byte that holds an operand, the next M1 fetch sees the new value. The differences are subtler:
+
+- **The R register increments** during M1 cycles. Code that uses `LD A,R` for a "random" seed sees the seed shift if SMC changes instruction lengths nearby.
+- **Refresh cycles** put the R register on the address bus during the second half of every M1 — this is invisible to RAM-side SMC but interacts with some peripherals if the address decode is loose.
+- **Multi-byte instructions are not atomic.** A `LD (HL),n` or `LD A,(nn)` that targets the *next* instruction's operand byte after the M1 fetch but before its operand fetch produces a hybrid execution. Real Z80 does this faithfully; emulators with instruction-level abstraction can miss it.
+
+In practice, SMC on Z80 is just as common as on 6502 — Spectrum games use it constantly.
+
+## Famous examples
+
+| Game / demo | Use of SMC |
+|-------------|------------|
+| **Mayhem in Monsterland** (C64, 1993) | Sprite renderer self-modifies addresses for speed; Apex's "impossible-on-C64" 50 fps comes partly from this |
+| **Turrican / Turrican II** (C64) | Hubbard-era SID drivers patch their own table addresses each frame |
+| **Knight Lore** (Spectrum, Ultimate Play the Game, 1984) | Filmation engine uses SMC to swap render routines per object class |
+| **Demoscene FLI routines** (C64) | The "stable raster" inner loop modifies VIC register write targets to dodge a single cycle of jitter |
+| **Sprite multiplexers** (C64) | Sprite Y-position writes self-modify the destination register so one sprite slot serves many on-screen sprites |
+
+## Emulator and JIT compatibility
+
+SMC is a chronic source of bugs in emulators that compile blocks of guest code ahead of time:
+
+- **JIT-based emulators** (some PSX, GBA, and N64 cores) cache compiled translations of guest code. When the guest writes to that code, the cache is stale. Robust JITs invalidate the affected block on write — costly, and easy to get wrong if the write granularity doesn't match the block boundary.
+- **Cycle-accurate emulators** that step instruction-by-instruction handle SMC for free; the next fetch reads from current memory.
+- **Static recompilers** (often used for retro ports) can't handle SMC at all without falling back to interpretation.
+
+This is why retro emulator authors stay loyal to interpretation despite its host-CPU cost — JIT speedups don't survive contact with a self-modifying *Mayhem in Monsterland*.
 
 ## Modern perspective
 
 Self-modifying code today:
-- Usually forbidden (security)
-- JIT compilation uses similar concepts
-- No longer necessary for speed
-- Historical curiosity
+- **Forbidden by W^X memory protection** — modern OSes mark pages either Writable or eXecutable, never both. Programs that legitimately need SMC (JIT compilers) explicitly toggle protection between phases.
+- **JIT compilation** is the modern descendant — generate code at runtime, then mark the page executable.
+- **Polymorphic malware** uses SMC to evade signature scanners.
+- **Embedded firmware** sometimes still uses SMC where Flash and RAM are unified and tight loops need every cycle.
 
 ## Debugging tips
 

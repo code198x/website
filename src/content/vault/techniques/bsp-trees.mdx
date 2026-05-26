@@ -1,88 +1,155 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "BSP Trees"
 subtitle: "3D rendering optimisation"
 summary: "Binary Space Partitioning trees enabled Doom's impossible 3D by pre-calculating visibility, determining which surfaces could see which others to eliminate overdraw."
 category: "techniques"
-platforms: ['pc', 'playstation', 'sega-saturn']
+platforms: ['ibm-pc', 'sony-playstation', 'sega-saturn']
 tags: ['3d', 'rendering', 'optimisation']
 originated: 1993
-deprecated: 1999
 
 ---
 
 
 ## Overview
 
-Doom looked 3D but ran on hardware that couldn't do 3D. BSP trees made it possible by pre-computing spatial relationships during level compilation. The algorithm recursively divided space into regions, creating a tree structure that told the engine exactly what to draw and in what order—no wasted pixels, no z-fighting.
+*Doom* looked 3D but ran on hardware that couldn't do real 3D — 386 PCs in 1993 had no GPU, no floating-point unit by default, no depth buffer. **Binary Space Partitioning (BSP)** trees made it possible by pre-computing the level's spatial structure during compilation. The algorithm recursively divided space into convex regions, building a tree the engine could walk at runtime to render every wall in correct front-to-back order, with no z-fighting and no wasted overdraw.
+
+BSP became the foundation of *Doom*, *Quake*, *Duke Nukem 3D*, and the entire 1990s first-person genre. Modern GPU pipelines have replaced it for raw rendering, but BSP-derived ideas — visibility pre-computation, spatial indexing, level compilation — persist in modern engines as PVS, occlusion culling, and BVH structures.
 
 ## Fast facts
 
-- **Origin:** Computer science (1969).
-- **Gaming use:** Doom (1993).
-- **Purpose:** Visibility determination.
-- **Compile time:** Pre-calculated.
+- **Computer-science origin:** Schumacker, Brand, Gilliland, Sharp (1969); Fuchs/Kedem/Naylor (1980) refined the algorithm.
+- **Gaming use:** *Doom* (1993, John Carmack at id Software).
+- **Purpose:** Visibility determination and back-to-front render ordering without a depth buffer.
+- **Compile time:** Pre-calculated when the level is built; runtime is a tree walk.
+- **Tree size:** *Doom* maps typically 200-2000 BSP nodes.
 
 ## How BSP works
 
+The algorithm recursively divides space using planes (lines in 2D). Each split produces two half-spaces — one in front of the splitting plane, one behind:
+
 | Step | Process |
 |------|---------|
-| 1 | Choose splitting plane |
-| 2 | Divide space in two |
-| 3 | Recurse on each half |
-| 4 | Build tree structure |
+| 1 | Choose a splitting plane (typically a wall in the level) |
+| 2 | Divide level geometry into "in front of" and "behind" subsets |
+| 3 | Recurse on each subset |
+| 4 | Stop when a subset is convex (or fits a leaf-size criterion) |
+| 5 | The recursion structure becomes a binary tree |
 
-## Doom implementation
+The result is a tree where each internal node is a splitting plane and each leaf is a convex region of empty space.
+
+### Front-to-back traversal
+
+The magic: from any camera position, you can walk the tree to render geometry in correct front-to-back (or back-to-front) order:
+
+```
+function render_bsp(node, camera_pos):
+    if node is a leaf:
+        render_polygons_in_leaf(node)
+        return
+    
+    if camera_pos is in front of node.plane:
+        # Far side first (back), then this plane, then near side (front)
+        render_bsp(node.back_child, camera_pos)
+        render_polygons_on_plane(node)
+        render_bsp(node.front_child, camera_pos)
+    else:
+        render_bsp(node.front_child, camera_pos)
+        render_polygons_on_plane(node)
+        render_bsp(node.back_child, camera_pos)
+```
+
+This produces a **correct sort order from any viewpoint** in O(n) per frame, where n is tree size — much faster than sorting all polygons every frame.
+
+### 2D vs 3D BSP
+
+*Doom*'s BSP is **2D** — it partitions the level's floor plan with vertical splitting planes. *Doom* worlds are "2.5D" (no rooms over rooms, no looking up/down beyond pitch limit), so 2D BSP suffices. *Quake* (1996) generalised to **3D BSP** with arbitrary splitting planes — true volumetric partitioning.
+
+## Doom's BSP implementation
 
 | Use | Benefit |
 |-----|---------|
-| Wall rendering | Back-to-front order |
-| Collision detection | Efficient spatial queries |
-| AI pathfinding | Navigation assistance |
+| **Wall rendering** | Front-to-back order via tree walk; no z-buffer needed |
+| **Collision detection** | Walk the tree to find what convex region the player is in |
+| **Sound propagation** | Trace through the BSP tree to find paths between rooms |
+| **Lighting** | Per-sector lighting computed via BSP traversal |
+| **AI line-of-sight** | Trace ray through BSP to check visibility |
+
+The BSP file (`*.WAD` LUMP types `NODES`, `SUBSECTORS`, `SEGS`, `SSECTORS`) contains pre-built trees compiled by tools like *DoomBuilder* / *Slade*.
 
 ## Compile-time calculation
 
 | Advantage | Trade-off |
 |-----------|-----------|
-| No runtime cost | Level must compile |
-| Optimal ordering | Static geometry only |
-| Consistent speed | Map changes need rebuild |
+| **No runtime cost** | Each level must be compiled before play |
+| **Optimal ordering** | Static geometry only — moving walls don't fit cleanly |
+| **Consistent speed** | Predictable frame budget |
+| **Map changes need rebuild** | Editor must recompile each save |
+
+*Doom* level editors take seconds-to-minutes to rebuild the BSP after edits. *Quake*'s BSP compilation is famously slow — large maps could compile for hours.
 
 ## Visibility benefits
 
 | Problem solved | Method |
 |----------------|--------|
-| Overdraw | Render visible only |
-| Sorting | Automatic ordering |
-| Occlusion | Behind walls skipped |
+| **Overdraw** | Front-to-back rendering with implicit occlusion — closer walls hide farther ones |
+| **Sorting** | Automatic ordering during tree walk |
+| **Occlusion** | Walls behind solid walls aren't drawn |
+| **No z-buffer** | Tree provides ordering; no per-pixel depth test needed |
 
-## Quake evolution
+## Quake evolution: PVS
+
+*Quake* added the **Potentially Visible Set (PVS)** — for each leaf in the BSP, pre-compute which other leaves can be visible from it. At runtime, the camera's leaf's PVS gives an instant list of all leaves to even consider rendering. Most of the level is rejected without any geometry test.
 
 | Enhancement | Purpose |
 |-------------|---------|
-| PVS | Potentially Visible Set |
-| Portals | Room connectivity |
-| Lightmaps | Pre-calculated lighting |
+| **PVS (Potentially Visible Set)** | Leaf-to-leaf visibility table; renders only visible leaves |
+| **Portals** | Room-connectivity hints used during PVS computation |
+| **Lightmaps** | Pre-calculated radiosity-style lighting per surface |
+| **Surface caching** | Cache rendered surfaces to skip re-rendering |
+
+PVS extended *Doom*'s BSP idea from "draw in correct order" to "skip drawing entirely what isn't visible". The combination is what made *Quake*'s 3D feasible on 1996 hardware.
 
 ## Legacy
 
 | Use | Application |
 |-----|-------------|
-| Collision detection | Spatial queries |
-| AI navigation | Pathfinding |
-| CSG operations | Level building |
+| **Collision detection** | Spatial queries — walk the tree to find what region a point/ray hits |
+| **AI navigation** | Pathfinding through BSP regions (*Doom*'s reject-table optimisation) |
+| **CSG operations** | Constructive Solid Geometry — adding/removing geometry from a BSP-organised world |
+| **Modern engines** | Source engine (*Half-Life 2*) and successors still use BSP for static world geometry |
 
 ## Modern alternatives
 
+BSP isn't the universal answer anymore — modern hardware and dynamic worlds favour different structures:
+
 | Technique | Use case |
 |-----------|----------|
-| Octrees | Dynamic scenes |
-| BVH | Ray tracing |
-| GPU culling | Hardware acceleration |
+| **Octrees** | Dynamic scenes, voxel worlds, 3D-axis-aligned subdivision |
+| **BVH (Bounding Volume Hierarchy)** | Ray tracing, dynamic object collision |
+| **GPU culling** | Hardware occlusion queries; modern engines do per-frame culling on GPU |
+| **K-D trees** | Spatial indexing for nearest-neighbour queries |
+| **Cluster / portal systems** | Large open-world games partition by sectors |
+
+For static worlds with predictable geometry, BSP still wins on simplicity and predictability — many modern engines compile static level geometry into BSP-or-similar structures even when the runtime uses GPU rasterisation.
+
+## Famous engines using BSP
+
+| Engine | Era | BSP use |
+|--------|-----|---------|
+| **Doom engine** | 1993 | 2D BSP for level rendering |
+| **Quake engine** | 1996 | 3D BSP + PVS |
+| **Quake II engine** | 1997 | Refined BSP + PVS, hardware acceleration |
+| **GoldSrc** (Half-Life 1) | 1998 | Quake-derived BSP |
+| **Source** (Half-Life 2) | 2004 | Full 3D BSP, modern compilation |
+| **id Tech 4** (Doom 3) | 2004 | Portal-based culling layered on BSP |
+| **id Tech 5+** | 2011+ | Gradually replaced BSP with mega-texture approaches |
 
 ## See also
 
 - [Doom](/vault/games/doom)
 - [Quake](/vault/games/quake)
 - [id Software](/vault/companies/id-software)
+- [Texture Mapping](/vault/techniques/texture-mapping)

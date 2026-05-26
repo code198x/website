@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Interrupt-Driven Music"
 subtitle: "Sound without blocking"
 summary: "Interrupt-driven music used timer interrupts to update sound chips at regular intervals, allowing music playback while the CPU handled game logic."
 category: "techniques"
-platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['audio', 'programming', 'technique']
 originated: 1980
 
@@ -47,38 +47,102 @@ main_loop:
 
 ## C64 implementation
 
-### Using CIA timer
+### Two common patterns
+
+C64 game music driver IRQs come from one of two sources, both clocked off the same φ2 = 985,248 Hz on PAL (1,022,727 Hz on NTSC):
+
+- **Raster IRQ from VIC-II** — set the raster compare register `$D012` and enable raster IRQs in `$D01A`. Triggers once per frame at the chosen scanline. This is the most common pattern in games because it costs nothing extra (the system already has VIC running) and lets you do per-line tricks alongside the music tick.
+- **CIA Timer A** — programmable interval, useful for non-50/60 Hz playback rates (e.g. multi-speed tunes that update twice per frame for finer modulation).
+
+The KERNAL routes IRQs through the RAM vector at `$0314/$0315`, so installing a custom handler is a write to those two bytes — but you must mask interrupts first.
+
+### Raster IRQ skeleton (the typical game pattern)
 
 ```asm
+install_irq:
+    sei                   ; Mask IRQs while we rewire the vector
     lda #<irq_handler
     sta $0314
     lda #>irq_handler
     sta $0315
 
-    lda #$00              ; Timer low byte
-    sta $dc04
-    lda #$40              ; Timer high byte (~50Hz)
-    sta $dc05
-
-    lda #$01              ; Enable timer interrupt
+    lda #$7f              ; Disable CIA #1 timer IRQs (we want VIC, not CIA)
     sta $dc0d
+    lda $dc0d             ; Acknowledge any pending CIA IRQ
 
-    cli                   ; Enable interrupts
+    lda #$01              ; Enable raster IRQ in VIC-II
+    sta $d01a
+    lda #100              ; Trigger at scanline 100 (anywhere in lower border works)
+    sta $d012
+    lda $d011
+    and #$7f              ; Clear bit 7 (raster MSB) — line < 256
+    sta $d011
+
+    cli                   ; Re-enable IRQs
+    rts
+
+irq_handler:
+    pha                   ; Save A/X/Y
+    txa
+    pha
+    tya
+    pha
+
+    jsr update_music
+
+    lda #$01              ; Acknowledge VIC raster IRQ
+    sta $d019
+
+    pla                   ; Restore Y/X/A
+    tay
+    pla
+    tax
+    pla
+    rti                   ; Return from interrupt — must be RTI, not RTS
+```
+
+### CIA Timer A skeleton
+
+If you do want a CIA-driven IRQ, the timer must be **started** via `$DC0E` — the most common bug here is setting the latch and enabling the IRQ but never actually starting the timer.
+
+```asm
+install_cia_irq:
+    sei
+    lda #<irq_handler
+    sta $0314
+    lda #>irq_handler
+    sta $0315
+
+    ; PAL φ2 = 985248 Hz. For 50 Hz, latch = 985248/50 = 19705 = $4CF9
+    lda #$f9
+    sta $dc04             ; Timer A latch lo
+    lda #$4c
+    sta $dc05             ; Timer A latch hi
+
+    lda #$81              ; %10000001: bit 7 set = "set mask", bit 0 = Timer A IRQ
+    sta $dc0d             ; Enable Timer A interrupts
+
+    lda #%00010001        ; Force latch load + start timer in continuous mode
+    sta $dc0e             ; Control register A — without this, timer never runs
+
+    cli
+    rts
 ```
 
 ### Music routine requirements
 
 | Requirement | Reason |
 |-------------|--------|
-| Fast execution | Don't block too long |
-| Register preservation | Don't corrupt game state |
-| Consistent timing | Musical accuracy |
+| Fast execution | The IRQ steals CPU from the main game; long handlers cause frame drops |
+| Save/restore registers | The handler runs asynchronously; trashing A/X/Y corrupts whatever code was interrupted |
+| End with `RTI` | Not `RTS` — the stack frame includes the saved P register |
+| Acknowledge the source | Write to `$D019` (VIC) or read `$DC0D` (CIA) so the IRQ line drops |
 
 ## NES implementation
 
 ### Using NMI
 
-The NES uses NMI (Non-Maskable Interrupt) during VBlank:
+The NES uses NMI (Non-Maskable Interrupt) at the start of VBlank — the PPU asserts NMI automatically every frame if PPUCTRL (`$2000`) bit 7 is set. Music drivers run in the NMI handler:
 ```asm
 nmi_handler:
     pha                   ; Save registers
@@ -101,12 +165,12 @@ nmi_handler:
 
 ### Using CIA or VBlank
 
-| Source | Frequency |
-|--------|-----------|
-| VBlank | 50/60 Hz |
-| CIA timer | Programmable |
+| Source | Frequency | Typical use |
+|--------|-----------|-------------|
+| VBlank (Level 3 IRQ) | 50/60 Hz | The standard MOD player tick |
+| CIA Timer A or B | Programmable | Multi-speed playback, non-frame-rate-locked drivers |
 
-Paula handles sample playback; CPU sets up patterns.
+Paula handles the actual sample playback continuously via DMA; the music driver only needs to load new sample/period/volume values into Paula's audio registers when each row advances. ProTracker and most MOD replayers tick at 50 Hz on PAL by default.
 
 ## Music routine structure
 
@@ -136,13 +200,17 @@ update_music:
 | Routine length | CPU availability |
 | Nested interrupts | Complexity |
 
-## Professional music drivers
+## Notable music drivers
 
-| Driver | Platform | Creator |
-|--------|----------|---------|
-| Custom | C64 | Rob Hubbard |
-| FamiTracker driver | NES | Various |
-| ProTracker | Amiga | Various |
+| Driver | Platform | Notes |
+|--------|----------|-------|
+| Rob Hubbard's custom drivers | C64 | Hand-rolled per game; *Monty on the Run*, *Commando* etc. each have their own engine |
+| Martin Galway's drivers | C64 | Distinct envelope engine, used in *Wizball*, *Times of Lore* |
+| GoatTracker / SID-Wizard | C64 | Modern community-standard SID drivers |
+| Future Composer | C64 / Amiga | One of the cross-platform pattern drivers |
+| FamiTracker / FamiStudio | NES | De facto modern NES driver |
+| ProTracker | Amiga | The MOD-format replayer; basis for most Amiga game music |
+| TFMX | Amiga | Chris Hülsbeck's driver for the *Turrican* series |
 
 ## See also
 

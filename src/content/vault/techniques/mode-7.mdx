@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Mode 7"
 subtitle: "SNES rotation and scaling"
 summary: "Mode 7 was the SNES's signature graphical feature, enabling real-time rotation and scaling of background layers to create pseudo-3D effects in racing games and RPG world maps."
 category: "techniques"
-platforms: ['snes']
+platforms: ['super-nintendo']
 tags: ['graphics', 'hardware', 'nintendo']
 originated: 1990
 
@@ -14,89 +14,142 @@ originated: 1990
 
 ## Overview
 
-The floor rushes toward you. Mode 7 was the Super Nintendo's showcase feature—hardware-accelerated rotation and scaling of a single background layer. Racing games created the illusion of 3D tracks. RPGs displayed rotating world maps. The effect defined the SNES era and gave Nintendo a clear technical advantage over competitors.
+The floor rushes toward you. Mode 7 was the Super Nintendo's showcase feature — hardware-accelerated rotation, scaling, and shearing of a single background layer via a 2D affine transformation matrix. Racing games created the illusion of 3D tracks. RPGs displayed rotating world maps. *F-Zero* and *Super Mario Kart* defined the SNES era.
+
+Mode 7 is **a screen mode**, not a generic SNES feature — it occupies a specific graphics-mode slot ("mode 7" out of modes 0-7) and replaces the normal multi-BG layer model with a single transformable layer.
 
 ## Fast facts
 
-- **Platform:** Super Nintendo (exclusive).
-- **Function:** Background rotation and scaling.
-- **Effect:** Pseudo-3D visuals.
-- **Limitation:** One background layer only.
+- **Platform:** Super Nintendo (exclusive at hardware level).
+- **Function:** Affine transformation (rotation, scaling, shearing) of one background layer.
+- **Effect:** Pseudo-3D ground planes, rotating maps.
+- **Limitation:** Only one BG layer (BG1); no other layer can be on screen except sprites.
+- **Sprites:** *Not* transformed by Mode 7 — they overlay the transformed BG normally.
 
 ## How Mode 7 works
 
+The PPU computes each output pixel via a 2×2 affine matrix transformation of the source background:
+
+```
+[ x' ]   [ A  B ] [ x − Cx ]   [ Cx ]
+[    ] = [      ] [        ] + [    ]
+[ y' ]   [ C  D ] [ y − Cy ]   [ Cy ]
+
+where:
+  (x, y)   = output screen coordinate
+  (x', y') = source texture coordinate
+  A, B, C, D = matrix elements (16-bit signed fixed-point at $211B-$2120)
+  (Cx, Cy) = rotation centre ($211F-$2120)
+```
+
+The matrix elements `A`, `B`, `C`, `D` set rotation + scaling + shearing. Combined with **HDMA** (Horizontal DMA — see below), the matrix can be rewritten *every scanline*, producing perspective-projected ground planes.
+
 | Step | Process |
 |------|---------|
-| 1 | Flat texture stored in VRAM |
-| 2 | Hardware applies transformation matrix |
-| 3 | Each scanline calculated independently |
-| 4 | Result: rotated/scaled output |
+| 1 | Source texture stored in VRAM as one large bitmap (typically 1024×1024 px) |
+| 2 | CPU writes the 2×2 affine matrix to `$211B-$2120` |
+| 3 | Per scanline, hardware applies matrix to compute source coordinates |
+| 4 | HDMA can change matrix elements per scanline → perspective-warp |
+| 5 | Output pixel sampled from the source bitmap at `(x', y')` |
 
 ## Technical capabilities
 
 | Feature | Hardware support |
 |---------|------------------|
-| Rotation | Any angle |
-| Scaling | Zoom in/out |
-| Perspective | Simulated via scaling |
-| Per-scanline | Different transformation each line |
+| **Rotation** | Any angle (matrix elements via 16-bit fixed-point) |
+| **Scaling** | Zoom in/out, independent X/Y |
+| **Shearing** | Skew transforms |
+| **Perspective** | Simulated by varying matrix per scanline (HDMA) |
+| **Per-scanline change** | HDMA writes new matrix at each line |
+| **Mirroring** | Wrap modes for the source texture |
+
+## HDMA: the perspective trick
+
+Mode 7 itself is just one matrix — same transform for every output pixel. To get **perspective** (the floor that converges to a horizon), the matrix must be different per scanline: closer to the horizon, the X/Y scale is large; near the bottom of the screen, scale is small. Each scanline has its own affine matrix.
+
+HDMA (`$420C / $4300-$437F`) lets the CPU set up an HDMA transfer that automatically writes new matrix values to `$211B-$2120` at each scanline transition. The CPU sets up the table once per frame; the PPU does the per-line writes for free.
+
+Without HDMA, Mode 7 only produces "rotated/scaled images". With HDMA, it produces *F-Zero*'s rushing road.
 
 ## Famous Mode 7 games
 
-| Title | Use |
-|-------|-----|
-| F-Zero | Racing track |
-| Super Mario Kart | Track surface |
-| Pilotwings | Flight perspective |
-| Final Fantasy VI | World map, airship |
-| Contra III | Rotating stages |
+| Title | Year | Use |
+|-------|------|-----|
+| *F-Zero* (Nintendo, 1990 launch title) | 1990 | Racing track with rushing horizon |
+| *Pilotwings* (Nintendo) | 1990 | Flight perspective + DSP-1 enhancement chip |
+| *Super Mario Kart* (Nintendo) | 1992 | Track surface |
+| *Final Fantasy IV / V / VI* (Square) | 1991-94 | World map, airship, dragon flight |
+| *Contra III: The Alien Wars* | 1992 | Rotating boss stages |
+| *Yoshi's Safari* | 1993 | First-person rail-shooter via Super Scope |
+| *Star Fox* (with Super FX) | 1993 | Mode 7 used for distant terrain alongside Super FX polygons |
 
 ## F-Zero showcase
 
 | Effect | Implementation |
 |--------|----------------|
-| Track rushing | Scaled floor |
-| Turns | Rotation |
-| Speed sense | Rapid scaling |
-| Horizon | Background layer |
+| **Track rushing** | HDMA matrix scaling up per scanline as Y approaches bottom |
+| **Turns** | Rotation matrix (cos/sin) updated each frame from steering input |
+| **Speed sense** | Rapid HDMA matrix change rate at high speed |
+| **Horizon** | Background layer (BG2 in extended Mode 7 if available, or simply scrolled BG1 above the transformed area) |
 
 ## Limitations
 
 | Constraint | Effect |
 |------------|--------|
-| Single layer | Only background 1 |
-| No sprite scaling | Sprites unaffected |
-| Memory | Texture size limits |
-| CPU cost | Per-scanline calculation |
+| **Single layer** | Mode 7 replaces the multi-BG layer model — only BG1 exists |
+| **No sprite scaling** | Sprites overlay normally; "scaled sprites against Mode 7 floor" requires pre-scaled sprite art |
+| **Texture size** | One source bitmap, typically 128×128 tiles = 1024×1024 px |
+| **Memory bandwidth** | HDMA per-scanline matrix updates consume DMA cycles |
+| **CPU cost** | Per-frame matrix calculation (cos/sin) is non-trivial without DSP chip |
 
 ## Workarounds
 
 | Technique | Purpose |
 |-----------|---------|
-| Pre-scaled sprites | Fake sprite scaling |
-| Careful design | Hide limitations |
-| DSP chips | Enhanced effects |
+| **DSP-1 enhancement chip** | Offloads matrix maths (used in *Pilotwings*, *Super Mario Kart*) |
+| **Pre-scaled sprites** | Fake sprite scaling against Mode 7 backgrounds |
+| **HDMA scripting** | Pre-computed matrix tables for fixed effects |
+| **Combine with HDMA palette change** | Add gradient sky + floor effect |
 
 ## Competition comparison
 
-| System | Equivalent |
-|--------|------------|
-| Mega Drive | None (software only) |
-| PC Engine | None |
-| Neo Geo | None |
-| SNES | Hardware Mode 7 |
+| System | Mode 7 equivalent? |
+|--------|---------------------|
+| **Mega Drive** | No hardware affine; software rotation/scale via DMA tricks (*Toy Story*, *Sonic 3D Blast*) — slower, lower quality |
+| **PC Engine** | No |
+| **Neo Geo** | Hardware sprite scaling (no BG affine) — different feature, different aesthetic |
+| **SNES** | **Yes — hardware Mode 7** |
+
+Mode 7 was a real SNES advantage. The Mega Drive could *fake* rotated backgrounds via expensive software, but at lower quality and with frame-rate cost. Sega's response was Sega Virtua Processor (SVP) chip in *Virtua Racing* (1994) — polygon rendering, a different solution to the same "we need 3D" problem.
+
+## DSP enhancement chips
+
+Mode 7 alone is impressive; combined with the SNES's **DSP-1** (or DSP-2/3/4, Cx4, etc.) it becomes much more flexible:
+
+| Chip | Use |
+|------|-----|
+| **DSP-1** | Matrix multiplication; *Pilotwings*, *Super Mario Kart*, *Top Gear 3000* |
+| **DSP-2** | Different firmware; *Dungeon Master* |
+| **DSP-3 / DSP-4** | Variants for specific games |
+| **Cx4** | Capcom's matrix coprocessor; *Mega Man X2*, *X3* |
+
+These chips are functionally programmable matrix-maths coprocessors that the SNES CPU offloads to. Without them, Mode 7 racing-game maths consume 30%+ of frame budget.
 
 ## Legacy
 
 | Impact | Significance |
 |--------|--------------|
-| SNES identity | Defining feature |
-| Racing games | Genre showcase |
-| Technical benchmark | Competitive advantage |
-| Nostalgia | Era-defining effect |
+| **SNES identity** | Mode 7 was Nintendo's marketing differentiator vs the Mega Drive |
+| **Racing genre** | *F-Zero* / *Super Mario Kart* defined kart-racing; influenced *Mario Kart* on every subsequent platform |
+| **Technical benchmark** | "Mode 7 effect" became shorthand for any hardware-accelerated affine transformation |
+| **Modern recreations** | Game Boy Advance had similar affine modes; modern indie games emulate the Mode 7 look as a stylistic choice |
+
+The Game Boy Advance (2001) shipped with Modes 1-2 supporting **affine background transformation** — essentially Mode 7 generalised. *Mario Kart: Super Circuit* and many GBA games inherit the SNES Mode 7 aesthetic directly.
 
 ## See also
 
 - [Sprite Scaling](/vault/techniques/sprite-scaling)
 - [Parallax Scrolling](/vault/techniques/parallax-scrolling)
-- [SNES](/vault/systems/super-nintendo)
+- [Super FX Chip](/vault/techniques/super-fx-chip)
+- [Raster Effects](/vault/techniques/raster-effects)
+- [Super Nintendo](/vault/systems/super-nintendo)

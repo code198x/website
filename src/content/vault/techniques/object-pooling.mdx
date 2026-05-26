@@ -1,6 +1,6 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Object Pooling"
 subtitle: "Reuse, don't reallocate"
 summary: "Object pooling pre-allocates and reuses game objects instead of creating and destroying them, avoiding memory fragmentation and allocation overhead."
@@ -14,34 +14,164 @@ originated: 1970
 
 ## Overview
 
-Creating and destroying objects during gameplay causes problems: memory allocation takes time, and frequent allocation/deallocation fragments memory. Object pooling solves this by pre-allocating a fixed number of objects and recycling them. Bullets don't get created—they're borrowed from a pool. When finished, they return to the pool rather than being destroyed.
+Creating and destroying objects during gameplay causes problems: memory allocation takes time, and frequent allocation/deallocation fragments memory. On 8-bit hardware there's usually no `malloc` at all — your "allocator" is "find a free slot in this fixed array." Object pooling formalises that: pre-allocate a fixed number of slots and recycle them. Bullets don't get *created* — they're borrowed from a pool. When finished, they return to the pool rather than being destroyed.
 
 ## Fast facts
 
-- **Problem solved:** allocation overhead and fragmentation.
-- **Solution:** pre-allocate and recycle objects.
-- **Common uses:** bullets, particles, enemies.
-- **Implementation:** array of pre-created objects, active flag.
-- **Tradeoff:** fixed maximum count, slightly complex management.
+- **Problem solved:** allocation overhead, memory fragmentation, unpredictable performance.
+- **Solution:** pre-allocate a fixed-size array of objects; recycle in-place.
+- **Common uses:** bullets, particles, enemies, pickups, sound channels, network packets.
+- **Implementation:** array of objects + active flag, or free-list of indices.
+- **Tradeoff:** fixed maximum count; new requests fail or replace oldest.
 
 ## How it works
 
-Object pooling pattern:
-1. **Initialisation:** create pool of objects at startup.
-2. **Request:** mark object active, return reference.
-3. **Use:** treat as normal object.
-4. **Release:** mark inactive, stays in pool.
-5. **Reuse:** next request uses same object.
+The "active flag" pattern:
+
+1. **Initialisation:** allocate an array of N objects with `active = false` for all.
+2. **Request:** linear scan for first inactive slot. Mark active, return reference.
+3. **Use:** treat as a normal object — update each frame in the main loop.
+4. **Release:** mark inactive. Slot stays in the array but is no longer processed.
+5. **Reuse:** next request lands on the same slot or another inactive one.
+
+## Active-flag pool — 6502 example
+
+A 16-slot bullet pool, the canonical 8-bit shooter pattern. Each bullet has X, Y, velocity, and an active flag — five bytes per slot:
+
+```asm
+NUM_BULLETS = 16
+
+; Parallel arrays — better than struct-of-arrays for 6502 indexed access
+bullet_x:        .res NUM_BULLETS
+bullet_y:        .res NUM_BULLETS
+bullet_vx:       .res NUM_BULLETS    ; signed
+bullet_vy:       .res NUM_BULLETS
+bullet_active:   .res NUM_BULLETS    ; 0 = free, 1 = in use
+
+; Spawn a bullet at A=x, X=y, returns Y = slot index (or carry set if full)
+spawn_bullet:
+    sta tmp_x
+    stx tmp_y
+    ldy #0
+.find_free:
+    lda bullet_active,y
+    beq .found              ; first inactive slot
+    iny
+    cpy #NUM_BULLETS
+    bne .find_free
+    sec                     ; pool full
+    rts
+.found:
+    lda tmp_x
+    sta bullet_x,y
+    lda tmp_y
+    sta bullet_y,y
+    lda #1
+    sta bullet_active,y
+    clc                     ; success
+    rts
+
+; Update all active bullets each frame
+update_bullets:
+    ldy #0
+.next:
+    lda bullet_active,y
+    beq .skip
+    ; advance position by velocity
+    clc
+    lda bullet_x,y
+    adc bullet_vx,y
+    sta bullet_x,y
+    ; ... y axis, off-screen check, collision, etc.
+    ; if off-screen: lda #0 : sta bullet_active,y
+.skip:
+    iny
+    cpy #NUM_BULLETS
+    bne .next
+    rts
+```
+
+Cost per frame: ~10 cycles per inactive slot, ~50-200 per active slot. For a 16-slot pool that's a flat ~1000-3000 cycle budget — predictable, fits comfortably in any frame.
+
+## Free-list pool
+
+The active-flag pattern's weakness: spawning is O(n) because you scan for a free slot. The **free-list** alternative trades a few extra bytes for O(1) spawn:
+
+- Keep a stack (or linked list) of free indices.
+- Spawn = pop from stack.
+- Release = push onto stack.
+
+```asm
+free_list:    .res NUM_BULLETS
+free_count:   .byte NUM_BULLETS    ; initially all free
+
+init_pool:
+    ldy #NUM_BULLETS - 1
+    tya
+.fill:
+    sta free_list,y                ; free_list[i] = i  (any order works)
+    dey
+    bpl .fill
+    rts
+
+; Returns index in A, carry set if pool full
+alloc_bullet:
+    ldy free_count
+    beq .full
+    dey
+    sty free_count
+    lda free_list,y
+    clc
+    rts
+.full:
+    sec
+    rts
+
+; A = index to release
+free_bullet:
+    ldy free_count
+    sta free_list,y
+    iny
+    sty free_count
+    rts
+```
+
+Best when spawn rate is high. The active-flag pattern wins for small pools (≤32 slots) where the linear scan is cheap.
+
+## Active/inactive compaction
+
+A third pattern, used by NES sprite engines: keep all active objects packed at the start of the array and one *count* variable. On release, swap the released slot with the last active slot and decrement the count.
+
+| Pattern | Spawn cost | Update cost | Best for |
+|---------|-----------|-------------|----------|
+| Active flag | O(n) scan | O(n) scan, skip inactive | Small pools, simple code |
+| Free list | O(1) | O(n) scan, skip inactive | High spawn rate |
+| Compaction | O(1) | O(active-count) — no skip | Tight per-frame budget |
+
+The NES OAM is naturally compaction-friendly: 64 sprite slots, 4 bytes each. Engines maintain `num_active_sprites` and only push the first `num_active_sprites × 4` bytes via OAM DMA.
 
 ## When to use
 
-Object pooling benefits:
-- **Frequent creation:** many short-lived objects.
-- **Predictable count:** known maximum needed.
-- **Performance critical:** allocation pauses unacceptable.
-- **Constrained memory:** fragmentation dangerous.
+| Situation | Pool? |
+|-----------|-------|
+| Frequent creation of same-class objects (bullets, particles, decals) | Yes |
+| Predictable maximum count | Yes |
+| Performance-critical (no allocation pauses tolerated) | Yes |
+| Constrained memory (no `malloc` at all) | Required |
+| One-of-a-kind objects (player, boss) | Static allocation, not pooling |
+| Highly variable counts (UI windows, dialog systems) | Dynamic allocation may be simpler |
+
+## Modern equivalents
+
+- **Unity ObjectPool** (since 2021) — official pooling API for prefabs.
+- **Unreal `UObjectPool`** patterns — community plugins; engine doesn't ship one.
+- **ECS pools** — Entity-Component-System architectures pool components by type natively.
+- **Network packet rings** — kernel and userspace networking stacks use ring-buffered packet pools.
+- **Game engines generally** — particle systems, audio voices, AI agents almost always live in pools.
 
 ## See also
 
 - [Memory Management](/vault/techniques/memory-management)
 - [Game Loop](/vault/techniques/game-loop)
+- [Ring Buffer](/vault/techniques/ring-buffer)
+- [Sprite Multiplexing](/vault/techniques/sprite-multiplexing)

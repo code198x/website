@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Unit Pathfinding"
 subtitle: "Navigation intelligence"
 summary: "Unit pathfinding algorithms determine how game units navigate terrain, with RTS games demanding solutions that scale to hundreds of units finding optimal routes simultaneously."
 category: "techniques"
-platforms: ['pc', 'amiga', 'sega-mega-drive']
+platforms: ['ibm-pc', 'commodore-amiga', 'sega-mega-drive']
 tags: ['programming', 'ai', 'rts']
 originated: 1992
 
@@ -14,69 +14,117 @@ originated: 1992
 
 ## Overview
 
-Getting from A to B, intelligently. Pathfinding seems simple until hundreds of units need simultaneous routes through dynamic terrain while avoiding each other. RTS games pushed pathfinding algorithms to their limits—A* became industry standard, flow fields handled mass movement, and hierarchical approaches managed computational cost. Bad pathfinding ruins otherwise excellent games.
+Getting from A to B, intelligently. Pathfinding seems simple until hundreds of units need simultaneous routes through dynamic terrain while avoiding each other. RTS games pushed pathfinding algorithms to their limits — A\* became the industry standard, flow fields handled mass movement, and hierarchical approaches managed computational cost. Bad pathfinding ruins otherwise excellent games (*Total Annihilation* and the original *Warcraft III* had famous pathfinding gripes).
+
+Modern engines (Unreal, Unity NavMesh, Godot) ship with mature pathfinding stacks that abstract these problems away — but the core algorithms haven't changed since the 1990s.
 
 ## Fast facts
 
-- **Core algorithm:** A* (A-star).
-- **Challenge:** Scale and performance.
-- **Modern approach:** Flow fields, hierarchical.
-- **Failure mode:** Units stuck, wrong routes.
+- **Core algorithm:** A* (A-star) — Hart, Nilsson, Raphael, 1968.
+- **Game adoption:** Standard from mid-90s onward.
+- **Modern approaches:** Flow fields (*Supreme Commander 2*, *Planetary Annihilation*), hierarchical (*Warhammer 40K Dawn of War 2*).
+- **Failure modes:** Units stuck, choosing wrong routes, "dancing" in traffic, formation breaking.
 
 ## A* algorithm
 
+A* is the workhorse — a graph search that finds the shortest path from start to goal, exploring nodes in best-first order using a heuristic estimate of remaining distance.
+
 | Component | Function |
 |-----------|----------|
-| Open list | Nodes to evaluate |
-| Closed list | Evaluated nodes |
-| Heuristic | Distance estimation |
-| Cost function | Path optimisation |
+| **Open list** | Nodes discovered but not yet evaluated; sorted by f-score |
+| **Closed list** | Nodes already evaluated |
+| **g(n)** | Cost from start to node n (actual) |
+| **h(n)** | Heuristic estimate of cost from n to goal |
+| **f(n) = g(n) + h(n)** | Total estimated cost through n |
+| **Heuristic** | Manhattan distance for grid worlds; Euclidean for free-space; must be admissible (never overestimate) |
+
+A* is **optimal** if the heuristic never overestimates remaining distance — guaranteed to find the shortest path if one exists.
+
+For a 100×100 grid with one obstacle, A* typically explores ~1000-5000 nodes vs Dijkstra's ~10,000. The heuristic is what saves time.
 
 ## RTS challenges
 
+A* alone doesn't scale to RTS:
+
 | Problem | Difficulty |
 |---------|------------|
-| Unit count | Hundreds simultaneously |
-| Dynamic obstacles | Moving units |
-| Terrain variation | Different costs |
-| Formation keeping | Group movement |
+| **Unit count** | Hundreds simultaneously, each with its own path |
+| **Dynamic obstacles** | Other units move; paths invalidate constantly |
+| **Terrain variation** | Different costs (grass cheap, swamp expensive, water blocked) |
+| **Formation keeping** | A group must move *as a group*, not as individual chaotic agents |
+| **Local avoidance** | Units must avoid each other without losing global path |
+| **Long paths** | A 256×256 map with a long path through corridors stresses A* |
 
-## Flow fields
+The naive solution — A* per unit per re-plan — falls over at ~50 units.
+
+## Modern approaches
+
+### Flow fields (mass movement)
+
+Instead of computing a path *per unit*, compute a **flow field** for the whole map: for every cell, store the direction that points toward the goal. Every unit reads its current cell, follows the arrow.
 
 | Advantage | Application |
 |-----------|-------------|
-| Shared calculation | Mass movement |
-| Scalability | Any unit count |
-| Smooth paths | Natural movement |
-| Pre-computation | Performance gain |
+| **Shared calculation** | One field serves all units going to the same goal |
+| **Scalability** | 1,000 units cost almost the same as 10 |
+| **Smooth paths** | Continuous direction field, no jagged grid steps |
+| **Pre-computation** | Flow field can be cached for static destinations |
 
-## Hierarchical pathfinding
+*Supreme Commander 2* (2010) and *Planetary Annihilation* (2014) popularised flow fields for RTS. *Total War: Warhammer III* uses them for massive battles.
+
+### Hierarchical pathfinding (HPA*)
+
+Decompose the map into clusters (regions). Find a path between clusters first, then refine within each cluster:
 
 | Level | Function |
 |-------|----------|
-| Strategic | Region navigation |
-| Tactical | Local movement |
-| Reactive | Immediate avoidance |
+| **Strategic / region** | Find route through high-level regions |
+| **Tactical / local** | A* within each region as the unit traverses |
+| **Reactive** | Per-frame avoidance of dynamic obstacles |
+
+*HPA\** (Hierarchical Pathfinding A\*, Botea/Müller/Schaeffer 2004) is the canonical formulation. Modern engines apply HPA* to NavMesh structures.
+
+### Navigation meshes (NavMesh)
+
+For 3D worlds, the map is decomposed into convex polygonal cells (the navmesh). Pathfinding is per-cell rather than per-grid-square:
+
+- Far fewer cells than grid squares
+- Naturally handles non-grid-aligned worlds
+- Standard in modern 3D engines (Unity NavMesh, Unreal NavMesh, Godot Navigation)
+- Generated from level geometry by recast tools
+
+### Steering behaviours
+
+Local-avoidance algorithms (Reynolds 1999): *seek*, *flee*, *arrive*, *wander*, *flock*, *avoid*. Layered on top of pathfinding to handle dynamic obstacles. The pathfinding gives the high-level route; steering handles the moment-to-moment movement.
 
 ## Common failures
 
-| Issue | Player experience |
-|-------|-------------------|
-| Stuck units | Frustration |
-| Suboptimal routes | Inefficiency |
-| Traffic jams | Bottlenecks |
-| Formation breaking | Tactical loss |
+| Issue | Player experience | Cause |
+|-------|-------------------|-------|
+| **Stuck units** | Frustration | Path invalidates and re-plan fails |
+| **Suboptimal routes** | Inefficiency | Heuristic too aggressive; cluster-level planning misses local shortcut |
+| **Traffic jams** | Bottlenecks | Unit avoidance conflicts at chokepoints |
+| **Formation breaking** | Tactical loss | Mass movement loses cohesion in cluttered areas |
+| **"Dancing" units** | Visual glitch | Two units swap path repeatedly each frame; stalemate |
+| **Wrong-side detours** | Visible inefficiency | Pathfinding takes "scenic route" through unblocked but undesired terrain |
 
 ## Notable implementations
 
-| Game | Achievement |
-|------|-------------|
-| Age of Empires II | Smooth group movement |
-| StarCraft II | Responsive micro |
-| Supreme Commander | Thousands of units |
+| Game | Year | Achievement |
+|------|------|-------------|
+| *Dune II* | 1992 | Early RTS pathfinding — basic A* per unit |
+| *Warcraft II* | 1995 | Refined A* with terrain costs |
+| *Age of Empires II* | 1999 | Smooth group movement; visible improvement over AoE I |
+| *StarCraft* | 1998 | Per-unit A* with local steering |
+| *Total Annihilation* | 1997 | Notorious pathfinding limits with thousands of units |
+| *StarCraft II* | 2010 | Responsive micro at high unit counts |
+| *Supreme Commander* | 2007 | Thousands of units; introduced flow-field-style approaches |
+| *Planetary Annihilation* | 2014 | Flow fields scaled to massive battles |
+| *Total War: Warhammer III* | 2022 | Modern flow-field hybrid |
 
 ## See also
 
 - [Age of Empires](/vault/games/age-of-empires)
 - [Total Annihilation](/vault/games/total-annihilation)
-- [RTS Genre](/vault/genres/rts-genre)
+- [Ghost AI](/vault/techniques/ghost-ai)
+- [Enemy Design](/vault/techniques/enemy-design)

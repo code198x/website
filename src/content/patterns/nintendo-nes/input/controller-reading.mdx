@@ -132,6 +132,49 @@ main_loop:
 | 1 | Left | `$02` |
 | 0 | Right | `$01` |
 
+## DMC DMA conflict
+
+The 2A03 (NTSC NES) has a known hardware bug: when the DMC sample channel runs DMA, controller reads at `$4016`/`$4017` can return corrupted bits. The PAL 2A07 fixes this — its DMC DMA halts on opcode-fetch cycles only, sidestepping the conflict.
+
+Standard mitigation when DMC is active: read the controller 2-3 times and accept a value only when consecutive reads match.
+
+```ca65
+read_controller_safe:
+@retry:
+    jsr read_controller
+    lda buttons
+    pha                     ; Save first read
+    jsr read_controller     ; Read again
+    pla
+    cmp buttons             ; Match?
+    bne @retry              ; If not, try again
+    rts
+```
+
+Games that don't use DMC samples can ignore this — it only matters when you're streaming voice/percussion samples.
+
+## Controller 2
+
+`$4017` is dual-purpose: writing it configures the APU frame counter; reading it returns controller 2's serial bits. The strobe to `$4016` latches both controllers simultaneously.
+
+```ca65
+read_controller2:
+    ; Strobe (latches both controllers)
+    lda #1
+    sta JOYPAD1
+    lda #0
+    sta JOYPAD1
+
+    ldx #8
+@read_loop:
+    lda JOYPAD2             ; Read $4017 instead of $4016
+    lsr a
+    rol buttons2
+    dex
+    bne @read_loop
+    rts
+```
+
 ## Related
 
 **Patterns:** [NMI Game Loop](/patterns/nintendo-nes/framework/nmi-game-loop)

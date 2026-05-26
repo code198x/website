@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Tile Maps"
 subtitle: "Building worlds from blocks"
 summary: "Tile maps constructed game worlds from small reusable graphic blocks, enabling large levels within tight memory constraints while simplifying collision detection and level design."
 category: "techniques"
-platforms: ['nes', 'c64', 'sega-mega-drive', 'game-boy']
+platforms: ['nintendo-entertainment-system', 'commodore-64', 'sega-mega-drive', 'game-boy']
 tags: ['graphics', 'level-design', 'technique']
 originated: 1980
 
@@ -14,49 +14,77 @@ originated: 1980
 
 ## Overview
 
-Don't draw a forest—draw one tree and repeat it. Tile maps built game worlds from small graphic blocks (typically 8×8 or 16×16 pixels) arranged in a grid. One set of tiles could create endless levels. Super Mario Bros. used only 256 unique tiles to build its entire Mushroom Kingdom. Memory efficient, collision-friendly, and enabling rapid level design.
+Don't draw a forest — draw one tree and repeat it. Tile maps build game worlds from small graphic blocks (typically 8×8 or 16×16 pixels) arranged in a grid. One set of tiles can compose endless levels. *Super Mario Bros.* uses around 256 unique tiles to build its entire Mushroom Kingdom. Memory-efficient, collision-friendly, and the foundation for almost every 2D level editor of the era.
+
+For the *concept* of tile-based rendering and which platforms supported it, see [Tile-Based Graphics](/vault/techniques/tile-graphics); this entry focuses on the *map data structure*.
 
 ## Fast facts
 
 - **Purpose:** Construct levels from reusable blocks.
 - **Tile size:** Typically 8×8 or 16×16 pixels.
-- **Memory saving:** Huge compared to bitmap.
+- **Memory saving:** ~98% versus a 1-byte-per-pixel bitmap of the same screen.
 - **Usage:** Nearly universal in 8/16-bit era.
 
 ## Memory efficiency
 
-| Method | Memory for 256×240 screen |
-|--------|---------------------------|
-| Bitmap | 61,440 bytes (at 1bpp) |
-| Tile map (8×8) | 960 bytes + tile set |
-| Saving | ~98% reduction |
+Comparison for a single 256×240 NES screen:
+
+| Method | Memory | Notes |
+|--------|--------|-------|
+| 1-byte-per-pixel bitmap | 61,440 bytes | One palette index per pixel |
+| Tile map (32×30 cells, 8×8 tiles) | 960 bytes | Plus a shared 4 KB tile set in CHR |
+| **Saving** | **~98%** | Tile set is paid once; map data alone is ~1.5% |
 
 ## Tile map structure
 
 | Component | Purpose |
 |-----------|---------|
-| Tile set | Graphics definitions |
-| Map data | Which tile where |
-| Attributes | Colour, flip, palette |
-| Collision flags | Solid, platform, hazard |
+| Tile set | Pixel definitions (CHR-ROM on NES, charset RAM on C64, VRAM on Mega Drive) |
+| Map data | One byte (or word) per cell, indexing the tile set |
+| Attributes | Per-region palette/flip/priority data |
+| Collision flags | Solid, platform, hazard — usually a parallel array keyed by tile index |
 
-## NES implementation
+## NES nametables
+
+The NES PPU stores one screen's worth of tile indices in a *nametable*:
 
 | Element | Specification |
 |---------|---------------|
 | Tile size | 8×8 pixels |
-| Nametable | 32×30 tiles |
-| Pattern tables | 256 tiles each |
-| Attributes | 2×2 tile colour areas |
+| Nametable | 32×30 tiles = 960 bytes |
+| Pattern tables | 256 tiles each (two 4 KB tables in CHR memory) |
+| Attribute table | 64 bytes after each nametable; 4×4 tiles per byte, 2×2 tile palette resolution |
+| Hardware nametables | 4 logical, 2 in PPU VRAM; mirroring (horizontal / vertical / four-screen via mapper) decides how the four logical tables overlap |
+
+### Nametable address layout
+
+```
+$2000 + (row × 32) + col   ; row 0-29, col 0-31
+```
+
+For example, the bottom-right tile of nametable 0 is at `$2000 + (29 × 32) + 31 = $23BF`. The 64 attribute bytes for that nametable live at `$23C0-$23FF`.
+
+### Attribute byte layout
+
+Each attribute byte covers a 32×32-pixel block (4×4 tiles), divided into four 2×2-tile palette quadrants:
+
+```
+bits 7-6: bottom-right 2×2 tiles
+bits 5-4: bottom-left  2×2 tiles
+bits 3-2: top-right    2×2 tiles
+bits 1-0: top-left     2×2 tiles
+```
+
+Two tiles in the same 2×2 quadrant are forced to share a palette — a constraint that shapes NES tile design.
 
 ## Collision detection
 
 | Advantage | Explanation |
 |-----------|-------------|
-| Grid-based | Simple coordinate lookup |
-| Tile properties | Each tile has collision type |
-| Efficient | No per-pixel checking |
-| Consistent | Predictable behaviour |
+| Grid-based | Simple coordinate lookup — `tile = map[y >> 3][x >> 3]` for 8×8 tiles |
+| Tile properties | A parallel `tile_attrs[]` table maps tile index → collision class |
+| Efficient | No per-pixel checking; one shift and one indirect read per query |
+| Consistent | Predictable behaviour, easy to debug |
 
 ## Level design workflow
 
@@ -82,12 +110,15 @@ Don't draw a forest—draw one tree and repeat it. Tile maps built game worlds f
 
 | Challenge | Solution |
 |-----------|----------|
-| New tiles needed | Load as player moves |
-| Seam hiding | Update off-screen |
-| Large levels | Stream map data |
+| New tiles needed at edge | Update the nametable column/row off-screen each frame |
+| Seam visibility | Update during VBlank or under the status bar split |
+| Large levels | Stream map data from ROM/disk in chunks |
+
+The NES updates one column (30 tiles) per frame as the screen scrolls horizontally — small enough to fit in the VBlank window. The Mega Drive does the same with two BG planes; the C64 typically updates a screen-edge column from a larger off-screen "level map" array.
 
 ## See also
 
+- [Tile-Based Graphics](/vault/techniques/tile-graphics) — the rendering concept and platform support
 - [Character Graphics](/vault/techniques/character-graphics)
 - [Hardware Scroll](/vault/techniques/hardware-scroll)
 - [PPU](/vault/hardware/ppu)

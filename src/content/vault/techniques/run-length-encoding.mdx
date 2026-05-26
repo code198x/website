@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Run-Length Encoding"
 subtitle: "Simple compression"
 summary: "Run-length encoding compressed data by storing repeated values as count-value pairs, dramatically reducing storage for graphics with large uniform areas."
 category: "techniques"
-platforms: ['c64', 'zx-spectrum', 'amiga', 'nes']
+platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['compression', 'data', 'technique']
 originated: 1967
 
@@ -14,84 +14,139 @@ originated: 1967
 
 ## Overview
 
-Why store "AAAAAABBBBCC" when you can store "6A4B2C"? Run-length encoding replaced sequences of identical values with a count and single value. For graphics with large uniform areas—backgrounds, simple sprites, text screens—RLE achieved significant compression with minimal decoding overhead.
+Why store `AAAAAABBBBCC` when you can store `6A4B2C`? Run-length encoding (RLE) replaces sequences of identical values with a count and a single value. For graphics with large uniform areas — backgrounds, simple sprites, text screens — RLE achieves significant compression with a decoder small enough to fit in a few hundred bytes of code, and fast enough to run during a screen load.
 
 ## The algorithm
 
-| Original | Encoded |
-|----------|---------|
-| AAAAAAA | 7A |
-| BBBBB | 5B |
-| CC | 2C |
-| AAAAAABBBBBC | 6A5B1C |
+| Original | Encoded | Saved |
+|----------|---------|-------|
+| `AAAAAAA` | `7A` | 5 bytes (7 → 2) |
+| `BBBBB` | `5B` | 3 bytes |
+| `CC` | `2C` | 0 bytes (break-even) |
+| `A` | `1A` | -1 byte (cost!) |
+| `AAAAAABBBBBC` | `6A5B1C` | 6 bytes |
 
-## Implementation
+The break-even point is a run of 2: a single byte costs more in RLE than uncompressed. Real encoders address this — see [Variants](#variants) below.
+
+## Encoder pseudocode
 
 ```
-Encoding:
-- Read input byte
-- Count consecutive identical bytes
-- Output count, then byte value
-- Repeat until end
+input = bytes to encode
+output = empty
+i = 0
+while i < length(input):
+    run_value = input[i]
+    run_length = 1
+    while i + run_length < length(input)
+       and input[i + run_length] == run_value
+       and run_length < 255:
+        run_length += 1
+    emit(output, run_length)
+    emit(output, run_value)
+    i += run_length
+```
 
-Decoding:
-- Read count
-- Read value
-- Output value 'count' times
-- Repeat until end
+## Decoder pseudocode
+
+```
+while not at end of input:
+    count = read_byte()
+    value = read_byte()
+    repeat count times:
+        emit(output, value)
+```
+
+## 6502 decoder
+
+A working RLE-decompress routine for an NES nametable, fitting in about 30 bytes:
+
+```asm
+; Decompress RLE stream from (src) to (dst)
+; Stream ends on count == 0
+; src and dst are zero-page pointers
+rle_decode:
+    ldy #0
+.next_run:
+    lda (src),y          ; read count
+    beq .done            ; count == 0 -> end of stream
+    iny
+    bne :+
+    inc src+1            ; (also handle src page wrap)
+:   tax                  ; X = run length
+    lda (src),y          ; read value
+    iny
+    bne :+
+    inc src+1
+:
+.fill:
+    sta (dst),y          ; this is a simplification — real code
+    iny                  ; would advance dst across pages too
+    bne :+
+    inc dst+1
+:   dex
+    bne .fill
+    jmp .next_run
+.done:
+    rts
 ```
 
 ## Ideal use cases
 
-| Content | Compression ratio |
-|---------|-------------------|
-| Solid backgrounds | Excellent (90%+) |
-| Simple sprites | Good (50-70%) |
-| Text screens | Very good (70-80%) |
-| Detailed images | Poor (may expand) |
+| Content | Compression ratio | Why |
+|---------|-------------------|-----|
+| Solid backgrounds | Excellent (90%+) | Long runs of identical bytes |
+| Title screens, text | Very good (70-80%) | Lots of repeated spaces / blanks |
+| Simple sprites | Good (50-70%) | Transparent regions form runs |
+| Tile-attribute tables | Good (60-80%) | Repeated palette assignments |
+| Detailed images | Poor (may **expand**) | Few long runs to compress |
+| Random / encrypted data | Always expands | No runs at all |
 
-## Variations
+In the worst case, naive RLE doubles the output: every input byte becomes a `1, byte` pair. Real encoders use one of the variants below to avoid this.
 
-| Variant | Feature |
-|---------|---------|
-| PackBits | Escape byte for literals |
-| PCX format | RLE for image rows |
-| ILBM | Amiga bitmap format |
-| Vertical RLE | Column-wise encoding |
+## Variants
+
+| Variant | Format | Notes |
+|---------|--------|-------|
+| **PackBits** (Apple/Adobe) | Signed count byte: `n ≥ 0` = literal run of `n+1` bytes; `n < 0` = repeat next byte `−n+1` times. Count of `−128` is reserved (no-op) | Used in TIFF, Apple file formats; gracefully handles incompressible data |
+| **PCX** | Bytes with top two bits `11` = repeat count (low 6 bits) followed by value; everything else is a literal byte | Limits run length to 63; fast on 286-era PCs |
+| **ILBM BODY** | PackBits applied per scanline | Standard Amiga / IFF bitmap format; *Deluxe Paint* and most Amiga games |
+| **NES nametable RLE** | Many homebrew encoders use a "0 = end of stream" sentinel and may special-case single-tile literal bytes | Hand-rolled per-game; SMB-style games use bespoke encoders tuned to their level data |
+| **Vertical RLE** | Encode column-wise instead of row-wise | Better for scenes with vertical structure |
 
 ## Platform examples
 
 ### ZX Spectrum
 
-Screen loading with RLE:
-- 6912 bytes uncompressed
-- Often 2-4KB compressed
-- Fast decompression
+- **Screen loaders:** the Spectrum screen is 6912 bytes (6144 bitmap + 768 attribute). RLE-compressed loading screens commonly land in 1.5-3 KB. Loaders display the picture progressively as it decompresses, hiding the decode time behind tape-load speed.
+- **Trainers and POKE collections:** RLE compresses the runs of `00`s and `FF`s that crop up in unused-RAM dumps.
 
 ### C64
 
-Character/colour data:
-- Screen memory (1000 bytes)
-- Colour memory (1000 bytes)
-- Significant savings
+- **Character + colour data:** screen memory (1000 bytes) and colour memory (1000 bytes) often have long horizontal runs of one colour, especially in title screens. RLE compresses them to a couple of hundred bytes.
+- **Cruncher tools:** Exomizer, ByteBoozer, Doynax LZ — the canonical C64 crunchers use LZ77-family algorithms but include RLE-equivalent literal-run handling for compatibility.
 
 ### NES
 
-Tile and nametable compression:
-- ROM space critical
-- Simple decoder in 6502
+- **Nametable / attribute compression:** ROM space is precious, especially on NROM. Many NES homebrew engines store level nametables RLE-compressed and expand them into PPU memory at scene load.
+- **Some commercial games** (notably *Super Mario Bros 3*) use a more sophisticated dictionary-based scheme on top of RLE for level data.
+
+### Amiga
+
+- **IFF ILBM** is the standard interchange format; PackBits (RLE) is its compression mode. Almost every Amiga bitmap on disk is PackBits-encoded.
 
 ## Limitations
 
 | Issue | Cause |
 |-------|-------|
-| Random data expands | No runs to compress |
-| Overhead | Count byte per run |
-| Fixed ratio | No adaptive compression |
-| Horizontal bias | Works best row-by-row |
+| Random data expands | No runs to find |
+| Overhead per run | Count byte costs 1 byte; runs of 1 are net negative |
+| Fixed scheme | No adaptive model — LZ77 / LZSS does much better on natural data |
+| Horizontal bias | Row-major encoding misses vertical runs unless the data is transposed first |
+
+When RLE isn't enough, the next step up is **LZ77 / LZSS** — replace runs *and* repeated *patterns* with back-references. Most 8-bit / 16-bit crunchers (Exomizer, ByteKiller, PowerPacker) use LZSS variants tuned for fast in-place decompression.
 
 ## See also
 
-- [Memory Banking](/vault/techniques/memory-banking)
+- [Bank Switching](/vault/techniques/bank-switching)
 - [Character Graphics](/vault/techniques/character-graphics)
 - [ZX Spectrum](/vault/systems/zx-spectrum)
