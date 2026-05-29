@@ -2,8 +2,8 @@ import { defineCollection, z } from 'astro:content';
 import { glob, file } from 'astro/loaders';
 
 // Platform/system definitions - the source of truth for all platform data
-const platforms = defineCollection({
-  loader: glob({ pattern: '**/*.yaml', base: 'src/content/platforms' }),
+const systems = defineCollection({
+  loader: glob({ pattern: '**/*.yaml', base: 'src/content/systems' }),
   schema: z.object({
     // Identity
     name: z.string(),
@@ -317,7 +317,7 @@ const gettingStartedPages = defineCollection({
 });
 
 export const collections = {
-  platforms,
+  systems,
   manufacturers,
   architectures,
   vault,
