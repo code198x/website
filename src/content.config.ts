@@ -53,6 +53,10 @@ const platforms = defineCollection({
 
     // Navigation & Status
     status: z.enum(['active', 'coming-soon']),
+    // Honest fleet tier (drives /systems/ wall). live = shipping; next = validated, in build;
+    // planned = skeleton + subscribe; edge = strains the method (vector/3D-first/add-ons);
+    // beyond = outside the curriculum's domain (kit micros, CD-multimedia, gen-6 consoles).
+    tier: z.enum(['live', 'next', 'planned', 'edge', 'beyond']).optional(),
     curriculumStatus: z.string().optional(), // e.g. "Game 1 Phase 2 live"
     recommendationTag: z.string().optional(), // Optional badge for systems page recommendations
     navOrder: z.number(),
