@@ -1,21 +1,26 @@
 ---
 /**
- * ThemeToggle - Dark/light mode toggle button
+ * ThemeToggle — three-way Auto / Light / Dark.
  *
- * Usage:
- *   import ThemeToggle from '@components/ThemeToggle.astro';
- *   <ThemeToggle />
- *
- * Persists preference to localStorage and respects system preference as default.
+ * Cycles Auto → Light → Dark → Auto. "Auto" follows the OS via
+ * prefers-color-scheme and is represented by the ABSENCE of data-theme
+ * (so the prefers-color-scheme token block in Layout.astro keeps working).
+ * The button shows its current mode via its own data-mode attribute, kept
+ * separate from the document's data-theme. Persists to localStorage.
  */
 ---
 
 <button
   class="theme-toggle"
-  aria-label="Toggle dark mode"
-  title="Toggle dark mode"
+  data-mode="system"
+  aria-label="Theme: auto"
+  title="Theme: auto"
 >
-  <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <svg class="icon-auto" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9"></circle>
+    <path d="M12 3 a9 9 0 0 0 0 18 z" fill="currentColor" stroke="none"></path>
+  </svg>
+  <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <circle cx="12" cy="12" r="5"></circle>
     <line x1="12" y1="1" x2="12" y2="3"></line>
     <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -26,7 +31,7 @@
     <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
     <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
   </svg>
-  <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
   </svg>
 </button>
@@ -57,79 +62,65 @@
     outline-offset: 2px;
   }
 
-  /* Show sun in dark mode, moon in light mode */
-  .icon-sun {
-    display: none;
-  }
-
+  /* One icon visible per mode, driven by the button's own data-mode */
+  .icon-auto,
+  .icon-sun,
   .icon-moon {
-    display: block;
-  }
-
-  :global([data-theme="dark"]) .icon-sun {
-    display: block;
-  }
-
-  :global([data-theme="dark"]) .icon-moon {
     display: none;
   }
-
-  /* When following system preference */
-  @media (prefers-color-scheme: dark) {
-    :global(:not([data-theme])) .icon-sun,
-    :global([data-theme="system"]) .icon-sun {
-      display: block;
-    }
-
-    :global(:not([data-theme])) .icon-moon,
-    :global([data-theme="system"]) .icon-moon {
-      display: none;
-    }
+  .theme-toggle[data-mode="system"] .icon-auto {
+    display: block;
+  }
+  .theme-toggle[data-mode="light"] .icon-sun {
+    display: block;
+  }
+  .theme-toggle[data-mode="dark"] .icon-moon {
+    display: block;
   }
 </style>
 
 <script>
-  const toggle = document.querySelector('.theme-toggle');
+  const MODES = ['system', 'light', 'dark'];
 
-  function getSystemTheme(): 'light' | 'dark' {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  function currentMode() {
+    const stored = localStorage.getItem('theme');
+    return stored === 'light' || stored === 'dark' ? stored : 'system';
   }
 
-  function getStoredTheme(): string | null {
-    return localStorage.getItem('theme');
+  function label(mode) {
+    if (mode === 'system') return 'Theme: auto (following system) — click for light';
+    if (mode === 'light') return 'Theme: light — click for dark';
+    return 'Theme: dark — click for auto';
   }
 
-  function setTheme(theme: 'light' | 'dark' | 'system') {
-    if (theme === 'system') {
+  function syncButton() {
+    const btn = document.querySelector('.theme-toggle');
+    if (!btn) return;
+    const mode = currentMode();
+    btn.setAttribute('data-mode', mode);
+    btn.setAttribute('aria-label', label(mode));
+    btn.setAttribute('title', label(mode));
+  }
+
+  function apply(mode) {
+    if (mode === 'system') {
       document.documentElement.removeAttribute('data-theme');
       localStorage.removeItem('theme');
     } else {
-      document.documentElement.setAttribute('data-theme', theme);
-      localStorage.setItem('theme', theme);
+      document.documentElement.setAttribute('data-theme', mode);
+      localStorage.setItem('theme', mode);
     }
+    syncButton();
   }
 
-  function getCurrentEffectiveTheme(): 'light' | 'dark' {
-    const stored = getStoredTheme();
-    if (stored === 'dark' || stored === 'light') {
-      return stored;
-    }
-    return getSystemTheme();
-  }
-
-  // Toggle cycles: current -> opposite
-  toggle?.addEventListener('click', () => {
-    const current = getCurrentEffectiveTheme();
-    const next = current === 'dark' ? 'light' : 'dark';
-    setTheme(next);
+  // Delegated click so it survives View Transitions re-renders.
+  document.addEventListener('click', (e) => {
+    const btn = e.target instanceof Element ? e.target.closest('.theme-toggle') : null;
+    if (!btn) return;
+    const next = MODES[(MODES.indexOf(currentMode()) + 1) % MODES.length];
+    apply(next);
   });
 
-  // Listen for system preference changes
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    // Only react if user hasn't set a preference
-    if (!getStoredTheme()) {
-      // Force re-render by toggling a class (CSS will handle the rest)
-      document.documentElement.classList.toggle('theme-transition');
-    }
-  });
+  syncButton();
+  document.addEventListener('astro:after-swap', syncButton);
 </script>
