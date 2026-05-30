@@ -35,6 +35,13 @@ export default defineConfig({
       provider: fontProviders.fontsource(),
       fallbacks: ['Courier New', 'monospace'],
     },
+    {
+      name: 'Caveat',
+      cssVariable: '--font-family-script',
+      provider: fontProviders.fontsource(),
+      weights: [600, 700],
+      fallbacks: ['Bradley Hand', 'cursive'],
+    },
   ],
   integrations: [mdx(), sitemap(), icon()],
   markdown: {

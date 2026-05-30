@@ -1,0 +1,156 @@
+---
+/**
+ * TrackGames — the games list shared by every track-overview page.
+ *
+ * Replaces the near-identical game-card grid that was copy-pasted across the
+ * assembly/BASIC/AMOS track pages. Synthesis-styled once (square, chunky, with
+ * the platform colour as the accent), so the look can't drift between platforms.
+ *
+ * - Groups by the catalogue `phase` field when any game has one (BASIC tracks),
+ *   otherwise renders a flat list (assembly tracks).
+ * - Shows a progress bar only when canonical unit counts exist (units > 0);
+ *   otherwise shows an honest status label — never "0 / 0 units".
+ * - Thumbnail: the catalogue `thumbnail` if set, else the latest available unit's
+ *   screenshot, else a "soon" placeholder.
+ */
+interface Game {
+  number: number;
+  slug: string;
+  name: string;
+  tagline: string;
+  skills: string[];
+  status: 'complete' | 'in-progress' | 'coming-soon';
+  units: number;
+  unitsAvailable: number;
+  thumbnail?: string;
+  phase?: string;
+}
+
+interface Props {
+  games: Game[];
+  platform: string;
+  track: string;
+  platformColor: string;
+  /** Optional one-line description per phase name, shown under the phase header. */
+  phaseSubtitles?: Record<string, string>;
+}
+
+const { games, platform, track, platformColor, phaseSubtitles } = Astro.props;
+
+const groupByPhase = games.some(g => g.phase);
+const phaseNames: string[] = [];
+for (const g of games) {
+  if (g.phase && !phaseNames.includes(g.phase)) phaseNames.push(g.phase);
+}
+const groups = groupByPhase
+  ? phaseNames.map((name, i) => ({ name, number: i + 1, games: games.filter(g => g.phase === name) }))
+  : [{ name: null, number: 0, games }];
+
+const statusLabel: Record<string, string> = { complete: 'Complete', 'in-progress': 'In progress', 'coming-soon': 'Coming soon' };
+const thumbFor = (g: Game): string | null =>
+  g.thumbnail ?? (g.unitsAvailable > 0
+    ? `/images/${platform}/${g.slug}/unit-${String(g.unitsAvailable).padStart(2, '0')}/screenshot.png`
+    : null);
+---
+
+<div class="track-games" style={`--pc: ${platformColor};`}>
+  {groups.map(group => (
+    <div class="group">
+      {group.name && (
+        <div class="phead">
+          <span class="pnum">{String(group.number).padStart(2, '0')}</span>
+          <div class="ptext">
+            <span class="pname">{group.name}</span>
+            {phaseSubtitles?.[group.name] && <span class="psub">{phaseSubtitles[group.name]}</span>}
+          </div>
+          <span class="pcount">{group.games.length} games</span>
+        </div>
+      )}
+      <div class="grid">
+        {group.games.map(game => {
+          const live = game.status !== 'coming-soon';
+          const thumb = thumbFor(game);
+          return (
+            <a
+              href={live ? `/${platform}/${track}/${game.slug}` : undefined}
+              class={`gcard ${live ? '' : 'soon'}`}
+            >
+              <div class="gnum">{game.number}</div>
+              <div class="gthumb">
+                {thumb ? <img src={thumb} alt={`${game.name} screenshot`} loading="lazy" /> : <span class="ph">Soon</span>}
+              </div>
+              <div class="ginfo">
+                <div class="gname">{game.name}</div>
+                <div class="gtag">{game.tagline}</div>
+                {game.skills?.length > 0 && (
+                  <div class="gskills">
+                    {game.skills.map(skill => <span class="skill">{skill}</span>)}
+                  </div>
+                )}
+              </div>
+              <div class="gmeta">
+                {game.units > 0 ? (
+                  <>
+                    <div class="bar"><div class="fill" style={`width: ${(game.unitsAvailable / game.units) * 100}%`}></div></div>
+                    <span class="units">{game.unitsAvailable} / {game.units} units</span>
+                  </>
+                ) : (
+                  <span class={`status ${game.status}`}>{statusLabel[game.status] ?? ''}</span>
+                )}
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  ))}
+</div>
+
+<style>
+  .track-games { display: flex; flex-direction: column; gap: var(--space-8); }
+  .group { display: flex; flex-direction: column; gap: var(--space-4); }
+
+  .phead { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); background: var(--color-surface); border: 3px solid var(--color-text); border-left-width: 6px; border-left-color: var(--pc); box-shadow: var(--shadow-chunky); }
+  .pnum { font-family: var(--font-family-mono); font-size: 1.6rem; font-weight: 900; line-height: 1; color: var(--pc); }
+  .ptext { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .pname { font-family: var(--font-family-script); font-weight: 700; font-size: 1.5rem; line-height: 1; }
+  .psub { font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.4; }
+  .pcount { margin-left: auto; align-self: flex-start; font-family: var(--font-family-mono); font-size: 0.7rem; color: var(--color-text-secondary); white-space: nowrap; }
+
+  .grid { display: flex; flex-direction: column; gap: var(--space-4); }
+
+  .gcard { display: grid; grid-template-columns: auto 80px 1fr auto; gap: var(--space-4); align-items: center; padding: var(--space-5); background: var(--color-surface); border: 3px solid var(--color-border); text-decoration: none; color: var(--color-text); transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base); }
+  a.gcard:hover, a.gcard:focus-visible { border-color: var(--pc); transform: translate(-4px, -4px); box-shadow: 8px 8px 0 var(--pc); }
+  .gcard.soon { opacity: 0.6; }
+
+  .gnum { font-family: var(--font-family-mono); font-size: 2rem; font-weight: 900; color: var(--pc); width: 2.5rem; text-align: center; }
+  .gcard.soon .gnum { color: var(--color-text-secondary); }
+
+  .gthumb { width: 80px; height: 60px; overflow: hidden; background: var(--color-bg); border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; }
+  .gthumb img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+  .gthumb .ph { font-family: var(--font-family-mono); font-size: 0.6rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .ginfo { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+  .gname { font-size: 1.35rem; font-weight: 700; }
+  .gtag { color: var(--color-text-secondary); font-size: 0.95rem; }
+  .gskills { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+  .skill { font-family: var(--font-family-mono); font-size: 0.68rem; padding: 2px 7px; background: color-mix(in srgb, var(--pc) 12%, transparent); color: var(--pc); }
+  .gcard.soon .skill { background: var(--color-bg); color: var(--color-text-secondary); }
+
+  .gmeta { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: var(--space-2); min-width: 110px; }
+  .bar { width: 110px; height: 8px; border: 1.5px solid var(--color-text); }
+  .fill { height: 100%; background: var(--pc); }
+  .units { font-family: var(--font-family-mono); font-size: 0.7rem; color: var(--color-text-secondary); }
+  .status { font-family: var(--font-family-mono); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px; border: 2px solid var(--color-border); color: var(--color-text-secondary); }
+  .status.complete { color: #16a34a; border-color: #16a34a; }
+  .status.in-progress { color: var(--pc); border-color: var(--pc); }
+
+  @media (max-width: 768px) {
+    .gcard { grid-template-columns: auto 1fr; grid-template-rows: auto auto; }
+    .gnum { grid-row: 1 / 3; width: auto; }
+    .gthumb { display: none; }
+    .ginfo { grid-column: 2; }
+    .gmeta { grid-column: 2; align-items: flex-start; }
+    .gskills { display: none; }
+  }
+</style>

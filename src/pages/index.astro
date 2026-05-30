@@ -1,983 +1,237 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import SystemCard from '../components/SystemCard.astro';
-import VaultCard from '../components/VaultCard.astro';
-import { Gamepad2, Cpu, Terminal } from '@lucide/astro';
-import { getActivePlatforms } from '../lib/platforms';
+import { getAllPlatforms } from '../lib/platforms';
 
-const platformsData = await getActivePlatforms();
-const platformCount = platformsData.length;
-const platformPalette = platformsData.map(platform => platform.data.color);
-const palette = {
-  primary: platformPalette[0] ?? '#4a4dff',
-  secondary: platformPalette[1] ?? '#ff00ff',
-  tertiary: platformPalette[2] ?? '#e30613',
-  quaternary: platformPalette[3] ?? '#ff6600',
-};
+const all = await getAllPlatforms();
 
-// Transform to the shape expected by SystemCard
-const systems = platformsData.map(p => ({
-  href: `/${p.id}`,
-  name: p.data.shortName.toUpperCase(),
-  year: String(p.data.year),
-  chip: p.data.cpu,
-  tagline: p.data.tagline,
-  platformColor: p.data.color,
-  status: p.data.curriculumStatus ?? '',
+// Per the October launch spec: Spectrum is live; C64/NES/Amiga are the validated "next"
+// tier. The manifest marks several platforms 'active', so we curate live vs next here.
+const liveSlugs = ['sinclair-zx-spectrum'];
+const nextSlugs = ['commodore-64', 'nintendo-entertainment-system', 'commodore-amiga'];
+const live = liveSlugs.map(s => all.find(p => p.id === s)).filter(Boolean) as typeof all;
+const next = nextSlugs.map(s => all.find(p => p.id === s)).filter(Boolean) as typeof all;
+
+const totalCount = all.length;
+const liveCount = live.length;
+
+// Decade strip, counts derived from the manifest.
+const decadeDefs: [string, number, number, string][] = [
+  ['1975–79', 1975, 1979, 'Genesis'],
+  ['1980–84', 1980, 1984, 'The home-computer boom'],
+  ['1985–89', 1985, 1989, 'Where the curriculum grows'],
+  ['1990–94', 1990, 1994, '16-bit · the bridge'],
+  ['1995–99', 1995, 1999, 'Edge of the canon'],
+  ['2000–05', 2000, 2005, 'The strain test'],
+];
+const decades = decadeDefs.map(([label, lo, hi, blurb]) => ({
+  label, blurb,
+  count: all.filter(p => p.data.year >= lo && p.data.year <= hi).length,
+  live: live.some(p => p.data.year >= lo && p.data.year <= hi),
 }));
 
-const vaultArticles = [
-  {
-    href: '/vault/culture/bedroom-coder',
-    kicker: 'Culture',
-    title: 'The Rise of the Bedroom Coder',
-    description: 'How teenagers in their bedrooms created an industry and changed gaming forever.',
-  },
-  {
-    href: '/vault/hardware/vic-ii',
-    kicker: 'Hardware',
-    title: 'Inside the VIC-II',
-    description: 'The graphics chip that gave the C64 its visual identity and pushed developers to new heights.',
-  },
-  {
-    href: '/vault/hardware/sid-chip',
-    kicker: 'Hardware',
-    title: 'The SID Chip',
-    description: 'Why the 6581 became legendary and how composers created music that still resonates.',
-  },
+const pillars = [
+  { url: '/vault', title: 'The Vault', blurb: 'People · games · hardware · culture' },
+  { url: '/patterns', title: 'Pattern Library', blurb: 'Production-ready code, per system' },
+  { url: '/timeline', title: 'The Timeline', blurb: 'Hardware alongside the world that shaped it' },
+  { url: '/systems', title: 'The Fleet', blurb: 'Every machine, honestly tiered' },
 ];
+
+const rainbow = ['#d52b2b', '#e8b11f', '#2f9e44', '#2d8acf'];
 ---
 
 <Layout
-  title="Learn Programming by Building Retro Games"
-  description="Learn programming by building real games for classic systems. Master assembly through complete game projects. Modern Docker toolchain, 100% open source."
+  title="Make a real game, on a real old machine"
+  description="Learn programming by building complete games on classic 8-bit and 16-bit systems, in the languages people used at the time."
 >
-  <style define:vars={{
-    platform1: palette.primary,
-    platform2: palette.secondary,
-    platform3: palette.tertiary,
-    platform4: palette.quaternary,
-  }}>
-    /* ============================================
-       CRT + Retro Effects
-       ============================================ */
-    @keyframes flicker {
-      0%, 100% { opacity: 1; }
-      92% { opacity: 1; }
-      93% { opacity: 0.8; }
-      94% { opacity: 1; }
-    }
-
-    @keyframes scanline {
-      0% { transform: translateY(-100%); }
-      100% { transform: translateY(100vh); }
-    }
-
-    @keyframes glitch-1 {
-      0%, 100% { clip-path: inset(0 0 0 0); transform: translate(0); }
-      20% { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 2px); }
-      40% { clip-path: inset(60% 0 10% 0); transform: translate(3px, -2px); }
-      60% { clip-path: inset(40% 0 40% 0); transform: translate(-2px, 1px); }
-      80% { clip-path: inset(10% 0 70% 0); transform: translate(2px, -1px); }
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0) rotate(0deg); }
-      50% { transform: translateY(-20px) rotate(2deg); }
-    }
-
-    @keyframes pulse-glow {
-      0%, 100% { filter: drop-shadow(0 0 20px rgba(244, 67, 54, 0.4)); }
-      50% { filter: drop-shadow(0 0 40px rgba(244, 67, 54, 0.7)) drop-shadow(0 0 60px rgba(3, 169, 244, 0.3)); }
-    }
-
-    @keyframes typing {
-      from { width: 0; }
-      to { width: 100%; }
-    }
-
-    @keyframes blink-caret {
-      from, to { border-color: transparent; }
-      50% { border-color: var(--color-accent); }
-    }
-
-    @keyframes card-entrance {
-      from {
-        opacity: 0;
-        transform: translateY(40px) scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    @keyframes rainbow-shift {
-      0% { background-position: 0% 50%; }
-      100% { background-position: 200% 50%; }
-    }
-
-    /* ============================================
-       Hero Section - Maximum Drama
-       ============================================ */
-    .hero {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: var(--space-8) var(--space-4);
-      position: relative;
-      overflow: hidden;
-      background:
-        radial-gradient(ellipse 80% 50% at 50% 0%, color-mix(in oklab, var(--platform1) 15%, transparent) 0%, transparent 50%),
-        radial-gradient(ellipse 60% 40% at 80% 100%, color-mix(in oklab, var(--platform3) 10%, transparent) 0%, transparent 40%),
-        radial-gradient(ellipse 50% 30% at 20% 80%, color-mix(in oklab, var(--platform4) 8%, transparent) 0%, transparent 40%),
-        var(--color-bg);
-    }
-
-    /* CRT Scanline overlay */
-    .hero::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0, 0, 0, 0.03) 2px,
-        rgba(0, 0, 0, 0.03) 4px
-      );
-      pointer-events: none;
-      z-index: 10;
-    }
-
-    /* Moving scanline beam */
-    .hero::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 100px;
-      background: linear-gradient(
-        180deg,
-        transparent,
-        rgba(255, 255, 255, 0.03) 50%,
-        transparent
-      );
-      animation: scanline 8s linear infinite;
-      pointer-events: none;
-      z-index: 11;
-    }
-
-    /* Pixel grid pattern */
-    .hero-grid {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-image:
-        linear-gradient(color-mix(in oklab, var(--platform1) 3%, transparent) 1px, transparent 1px),
-        linear-gradient(90deg, color-mix(in oklab, var(--platform1) 3%, transparent) 1px, transparent 1px);
-      background-size: 20px 20px;
-      opacity: 0.6;
-    }
-
-    /* Floating geometric shapes */
-    .hero-shapes {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      overflow: hidden;
-      pointer-events: none;
-    }
-
-    .shape {
-      position: absolute;
-      opacity: 0.15;
-    }
-
-    .shape-1 {
-      top: 10%;
-      left: 5%;
-      width: 80px;
-      height: 80px;
-      border: 4px solid var(--platform1);
-      animation: float 12s ease-in-out infinite;
-    }
-
-    .shape-2 {
-      top: 60%;
-      right: 8%;
-      width: 60px;
-      height: 60px;
-      background: var(--platform3);
-      transform: rotate(45deg);
-      animation: float 10s ease-in-out infinite reverse;
-    }
-
-    .shape-3 {
-      bottom: 20%;
-      left: 12%;
-      width: 100px;
-      height: 100px;
-      border: 4px solid var(--platform4);
-      border-radius: 50%;
-      animation: float 14s ease-in-out infinite;
-      animation-delay: -3s;
-    }
-
-    .shape-4 {
-      top: 25%;
-      right: 15%;
-      width: 0;
-      height: 0;
-      border-left: 40px solid transparent;
-      border-right: 40px solid transparent;
-      border-bottom: 70px solid var(--platform2);
-      animation: float 11s ease-in-out infinite;
-      animation-delay: -5s;
-    }
-
-    .hero-content {
-      max-width: 1200px;
-      text-align: center;
-      z-index: 20;
-      position: relative;
-    }
-
-    /* Status badge with glitch effect */
-    .status-badge {
-      display: inline-block;
-      background: linear-gradient(135deg, var(--color-surface) 0%, color-mix(in oklab, var(--color-surface) 90%, var(--platform1) 10%) 100%);
-      border: 3px solid var(--platform1);
-      color: var(--platform1);
-      padding: var(--space-2) var(--space-6);
-      border-radius: 0;
+  <style>
+    .home { max-width: 1160px; margin: 0 auto; padding: 0 var(--space-6) var(--space-16); }
+    .kicker {
       font-family: var(--font-family-mono);
-      font-weight: 700;
-      font-size: 0.875rem;
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
-      margin-bottom: var(--space-8);
-      position: relative;
-      box-shadow:
-        4px 4px 0 var(--platform1),
-        inset 0 0 20px color-mix(in oklab, var(--platform1) 20%, transparent 80%);
-      animation: flicker 4s infinite;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--color-text-secondary);
     }
+    .house-rule { height: 9px; width: 220px; background: var(--color-house); position: relative; margin: var(--space-3) 0; }
+    .house-rule::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 24%; background: var(--color-house-2); }
 
-    .status-badge::before {
-      content: '>';
-      margin-right: var(--space-2);
-      animation: blink-caret 1s infinite;
-    }
+    /* ---- hero ---- */
+    .hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: var(--space-10); align-items: end; padding: var(--space-12) 0 var(--space-8); }
+    .hero-title { font-family: var(--font-family-script); font-weight: 700; font-size: clamp(3.4rem, 7.4vw, 6.25rem); line-height: 0.85; margin: var(--space-2) 0 0; color: var(--color-text); }
+    .hero-title .hl { color: var(--color-house-2); }
+    .lede { font-size: 1.05rem; max-width: 48ch; margin: var(--space-3) 0 0; color: var(--color-text); }
+    .lede .mk { background: linear-gradient(180deg, transparent 58%, var(--color-house-tint) 58%); padding: 0 2px; }
+    .cta-row { display: flex; gap: var(--space-3); margin-top: var(--space-5); flex-wrap: wrap; }
+    .btn-sm { padding: var(--space-2) var(--space-4); font-size: 0.8rem; }
 
-    /* Hero logo - dramatic scale */
-    .hero-logo-container {
-      position: relative;
-      margin-bottom: var(--space-8);
-    }
+    .statbox { border: 3px solid var(--color-text); background: var(--color-surface); box-shadow: var(--shadow-chunky); padding: var(--space-5); }
+    .stats { margin: var(--space-3) 0 0; display: grid; gap: var(--space-2); }
+    .stats > div { display: grid; grid-template-columns: 3.2rem 1fr; gap: var(--space-3); align-items: baseline; }
+    .stats dt { font-family: var(--font-family-mono); font-weight: 700; color: var(--color-house-2); text-align: right; }
+    .stats dd { margin: 0; font-size: 0.9rem; }
+    .deal { font-family: var(--font-family-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; color: var(--color-house); margin: var(--space-4) 0 0; }
 
-    .hero-logo {
-      width: 100%;
-      max-width: 600px;
-      height: auto;
-      animation: pulse-glow 3s ease-in-out infinite;
-      filter: drop-shadow(0 0 30px rgba(244, 67, 54, 0.3));
-    }
+    /* ---- section band ---- */
+    .band { margin-top: var(--space-12); }
+    .band-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 3px solid var(--color-text); padding-bottom: var(--space-2); margin-bottom: var(--space-6); }
+    .band-url { font-family: var(--font-family-mono); font-size: 0.7rem; letter-spacing: 0.12em; color: var(--color-text-secondary); }
 
-    /* Glitch layers */
-    .hero-logo-glitch {
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100%;
-      max-width: 600px;
-      height: auto;
-      opacity: 0;
-    }
+    /* ---- platform cards ---- */
+    .fleet-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: var(--space-4); }
+    .pcard { border: 3px solid var(--color-text); background: var(--color-surface); box-shadow: var(--shadow-chunky); text-decoration: none; color: var(--color-text); display: flex; flex-direction: column; overflow: hidden; transition: all var(--transition-base); }
+    .pcard:hover, .pcard:focus-visible { transform: translate(-4px, -4px); box-shadow: 8px 8px 0 var(--pc); }
+    .pcard .top { height: 7px; background: var(--pc); }
+    .pcard.live .top { height: 12px; }
+    .pcard .body { padding: var(--space-4); display: flex; flex-direction: column; flex: 1; }
+    .pcard .reg { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-family-mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-secondary); }
+    .pcard h3 { font-size: 1.3rem; margin: var(--space-1) 0 0; }
+    .pcard.live h3 { font-size: 1.7rem; }
+    .pcard .chip { font-family: var(--font-family-mono); font-size: 0.7rem; color: var(--color-text-secondary); margin-top: var(--space-1); }
+    .pcard p { font-size: 0.82rem; color: var(--color-text-secondary); margin: var(--space-2) 0 0; }
+    .pcard .go { margin-top: auto; padding-top: var(--space-3); font-family: var(--font-family-mono); font-size: 0.72rem; font-weight: 700; color: var(--pc); }
+    .badge { font-family: var(--font-family-mono); font-size: 0.55rem; font-weight: 700; letter-spacing: 0.12em; padding: 2px 6px; border: 2px solid; }
+    .rainbow-mini { display: flex; height: 7px; width: 80px; border: 1.5px solid var(--color-text); margin-top: var(--space-3); }
+    .rainbow-mini span { flex: 1; }
 
-    .hero-logo-container:hover .hero-logo-glitch {
-      animation: glitch-1 0.3s infinite;
-      opacity: 0.8;
-    }
+    /* ---- decades ---- */
+    .decades { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-3); }
+    .dec { border: 3px solid var(--color-border); background: var(--color-surface); padding: var(--space-3); }
+    .dec.live { border-color: var(--color-house-2); background: var(--color-house-tint); }
+    .dec .n { font-family: var(--font-family-mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-secondary); }
+    .dec .yr { font-family: var(--font-family-script); font-weight: 700; font-size: 1.6rem; line-height: 0.9; margin-top: 2px; }
+    .dec p { font-size: 0.72rem; color: var(--color-text-secondary); margin: var(--space-2) 0 0; line-height: 1.35; }
 
-    .hero-logo-glitch.red {
-      filter: hue-rotate(-30deg) saturate(2);
-      mix-blend-mode: multiply;
-    }
+    /* ---- pillars ---- */
+    .pillars { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); }
+    .pillar { border: 3px solid var(--color-border); background: var(--color-surface); padding: var(--space-4); text-decoration: none; color: var(--color-text); transition: all var(--transition-base); }
+    .pillar:hover { transform: translate(-3px, -3px); box-shadow: var(--shadow-chunky); border-color: var(--color-text); }
+    .pillar .u { font-family: var(--font-family-mono); font-size: 0.68rem; color: var(--color-house-2); }
+    .pillar h3 { font-size: 1.2rem; margin: var(--space-1) 0 0; }
+    .pillar p { font-size: 0.8rem; color: var(--color-text-secondary); margin: var(--space-2) 0 0; }
 
-    .hero-logo-glitch.blue {
-      filter: hue-rotate(180deg) saturate(2);
-      mix-blend-mode: screen;
-    }
+    /* ---- honest ask (inverted) ---- */
+    .ask { margin-top: var(--space-12); border: 3px solid #241a12; background: #3a2c1f; box-shadow: var(--shadow-chunky); padding: var(--space-8); display: grid; grid-template-columns: 1fr auto; gap: var(--space-8); align-items: center; }
+    .ask .kicker { color: #e8a07e; }
+    .ask h2 { font-family: var(--font-family-script); font-weight: 700; font-size: clamp(1.8rem, 3.5vw, 2.8rem); line-height: 0.95; color: #f6efe2; margin: var(--space-1) 0 0; }
+    .ask p { color: #dac9b4; max-width: 60ch; margin: var(--space-3) 0 0; font-size: 0.95rem; }
+    .ask .ask-cta { text-align: right; }
+    .ask .wanted { display: inline-block; font-family: var(--font-family-mono); font-size: 1.2rem; font-weight: 700; letter-spacing: 0.12em; border: 3px solid #f6efe2; color: #f6efe2; padding: 6px 14px; transform: rotate(-6deg); }
+    .ask .btn { margin-top: var(--space-4); }
 
-    .hero-subtitle {
-      font-family: var(--font-family-mono);
-      font-size: clamp(1.5rem, 4vw, 2.5rem);
-      font-weight: 800;
-      color: var(--color-text);
-      margin-bottom: var(--space-4);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      position: relative;
-    }
-
-    .hero-subtitle::after {
-      content: '';
-      position: absolute;
-      bottom: -8px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 200px;
-      height: 4px;
-      background: linear-gradient(90deg, var(--platform1), var(--platform2), var(--platform3), var(--platform4));
-      background-size: 200% 100%;
-      animation: rainbow-shift 3s linear infinite;
-    }
-
-    .hero-tagline {
-      font-style: italic;
-      font-size: 1.125rem;
-      color: var(--color-text-secondary);
-      margin-bottom: var(--space-8);
-      opacity: 0.9;
-    }
-
-    .hero-description {
-      font-size: 1.25rem;
-      line-height: 1.8;
-      color: var(--color-text);
-      margin-bottom: var(--space-12);
-      max-width: 800px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .hero-description strong {
-      color: var(--platform1);
-      font-weight: 700;
-    }
-
-    /* ============================================
-       Platform Cards Grid - Bold Layout
-       ============================================ */
-    .systems-section {
-      position: relative;
-      padding: var(--space-16) 0;
-    }
-
-    .systems-header {
-      text-align: center;
-      margin-bottom: var(--space-12);
-    }
-
-    .systems-title {
-      font-family: var(--font-family-mono);
-      font-size: clamp(1.5rem, 3vw, 2rem);
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
-      color: var(--color-text-secondary);
-      margin: 0;
-      position: relative;
-      display: inline-block;
-    }
-
-    .systems-title::before,
-    .systems-title::after {
-      content: '//';
-      color: var(--platform1);
-      margin: 0 var(--space-4);
-    }
-
-    .systems-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: var(--space-6);
-      width: 100%;
-    }
-
-    /* Card entrance animations */
-    .systems-grid > :global(*) {
-      animation: card-entrance 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-    }
-
-    .systems-grid > :global(*:nth-child(1)) { animation-delay: 0.1s; }
-    .systems-grid > :global(*:nth-child(2)) { animation-delay: 0.2s; }
-    .systems-grid > :global(*:nth-child(3)) { animation-delay: 0.3s; }
-    .systems-grid > :global(*:nth-child(4)) { animation-delay: 0.4s; }
-
-    /* ============================================
-       Features Section - Dramatic Treatment
-       ============================================ */
-    .features {
-      padding: var(--space-16) var(--space-4);
-      max-width: var(--container-max-width);
-      margin: 0 auto;
-      position: relative;
-    }
-
-    .features::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 1px;
-      height: 100px;
-      background: linear-gradient(to bottom, transparent, var(--color-border), transparent);
-    }
-
-    .features-header {
-      text-align: center;
-      margin-bottom: var(--space-12);
-    }
-
-    .features-title {
-      font-size: clamp(2rem, 5vw, 3rem);
-      font-weight: 800;
-      margin-bottom: var(--space-4);
-      line-height: 1.1;
-    }
-
-    .features-subtitle {
-      color: var(--color-text-secondary);
-      max-width: 700px;
-      margin: 0 auto;
-      font-size: 1.125rem;
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: var(--space-8);
-    }
-
-    .feature {
-      text-align: center;
-      padding: var(--space-8);
-      background: var(--color-surface);
-      border: 2px solid var(--color-border);
-      border-radius: 0;
-      position: relative;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .feature::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: var(--feature-color, var(--platform1));
-      transform: scaleX(0);
-      transform-origin: left;
-      transition: transform 0.3s ease;
-    }
-
-    .feature:hover::before {
-      transform: scaleX(1);
-    }
-
-    .feature:hover {
-      transform: translateY(-8px);
-      box-shadow:
-        0 20px 40px rgba(0, 0, 0, 0.1),
-        0 0 0 2px var(--feature-color, var(--platform1));
-      border-color: var(--feature-color, var(--platform1));
-    }
-
-    .feature:nth-child(1) { --feature-color: var(--platform1); }
-    .feature:nth-child(2) { --feature-color: var(--platform2); }
-    .feature:nth-child(3) { --feature-color: var(--platform3); }
-
-    .feature-icon {
-      width: 72px;
-      height: 72px;
-      margin: 0 auto var(--space-6);
-      color: var(--feature-color, var(--platform1));
-      padding: var(--space-4);
-      background: color-mix(in oklab, var(--feature-color, var(--platform1)) 10%, transparent 90%);
-      border-radius: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.3s ease;
-    }
-
-    .feature:hover .feature-icon {
-      transform: scale(1.1) rotate(-5deg);
-      background: color-mix(in oklab, var(--feature-color, var(--platform1)) 20%, transparent 80%);
-    }
-
-    .feature-icon svg {
-      width: 100%;
-      height: 100%;
-    }
-
-    .feature-title {
-      font-family: var(--font-family-mono);
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: var(--space-3);
-      color: var(--color-text);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .feature-description {
-      color: var(--color-text-secondary);
-      line-height: 1.7;
-      margin: 0;
-    }
-
-    .feature-link {
-      display: block;
-      text-decoration: none;
-      color: inherit;
-    }
-
-    .feature-cta {
-      color: var(--feature-color, var(--platform1));
-      font-weight: 700;
-      font-family: var(--font-family-mono);
-    }
-
-    /* ============================================
-       Vault Section - Editorial Style
-       ============================================ */
-    .vault-section {
-      padding: var(--space-16) var(--space-4);
-      background:
-        linear-gradient(135deg, var(--color-bg-secondary) 0%, var(--color-bg) 100%);
-      border-top: 4px solid var(--color-border);
-      position: relative;
-    }
-
-    .vault-section::before {
-      content: 'THE VAULT';
-      position: absolute;
-      top: var(--space-8);
-      right: var(--space-8);
-      font-family: var(--font-family-mono);
-      font-size: 8rem;
-      font-weight: 900;
-      color: var(--color-border);
-      opacity: 0.3;
-      line-height: 1;
-      pointer-events: none;
-    }
-
-    .vault-container {
-      max-width: var(--container-max-width);
-      margin: 0 auto;
-      position: relative;
-    }
-
-    .vault-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-bottom: var(--space-8);
-      padding-bottom: var(--space-4);
-      border-bottom: 2px solid var(--color-border);
-    }
-
-    .vault-title {
-      font-family: var(--font-family-mono);
-      font-size: clamp(1.5rem, 3vw, 2rem);
-      font-weight: 800;
-      color: var(--color-text);
-      margin: 0;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-    }
-
-    .vault-link {
-      font-family: var(--font-family-mono);
-      font-size: 0.875rem;
-      color: var(--color-primary);
-      text-decoration: none;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      padding: var(--space-2) var(--space-4);
-      border: 2px solid var(--color-primary);
-      transition: all 0.2s ease;
-    }
-
-    .vault-link:hover {
-      background: var(--color-primary);
-      color: white;
-    }
-
-    .vault-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: var(--space-6);
-    }
-
-    /* ============================================
-       CTA Section - Maximum Impact
-       ============================================ */
-    .cta-section {
-      padding: var(--space-16) var(--space-4);
-      background: var(--color-surface);
-      border-top: 4px solid var(--color-border);
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    /* Background pattern */
-    .cta-section::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background:
-        radial-gradient(circle at 20% 50%, color-mix(in oklab, var(--platform1) 5%, transparent) 0%, transparent 50%),
-        radial-gradient(circle at 80% 50%, color-mix(in oklab, var(--platform3) 5%, transparent) 0%, transparent 50%);
-      pointer-events: none;
-    }
-
-    .cta-content {
-      position: relative;
-      z-index: 1;
-      max-width: 800px;
-      margin: 0 auto;
-    }
-
-    .cta-title {
-      font-family: var(--font-family-mono);
-      font-size: clamp(2rem, 5vw, 3.5rem);
-      font-weight: 900;
-      margin-bottom: var(--space-6);
-      line-height: 1.1;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .cta-title span {
-      display: block;
-      background: linear-gradient(90deg, var(--platform1), var(--platform2), var(--platform3), var(--platform4));
-      background-size: 200% 100%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      animation: rainbow-shift 4s linear infinite;
-    }
-
-    .cta-description {
-      font-size: 1.25rem;
-      color: var(--color-text-secondary);
-      margin-bottom: var(--space-10);
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-      line-height: 1.7;
-    }
-
-    .cta-buttons {
-      display: flex;
-      gap: var(--space-4);
-      justify-content: center;
-      flex-wrap: nowrap;
-      margin-top: var(--space-8);
-    }
-
-    .cta-buttons .btn {
-      font-family: var(--font-family-mono);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: var(--space-4) var(--space-6);
-      border-radius: 0;
-      position: relative;
-      overflow: hidden;
-      white-space: nowrap;
-      font-size: 0.875rem;
-    }
-
-    .cta-buttons .btn-primary {
-      background: var(--platform1);
-      box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.2);
-    }
-
-    .cta-buttons .btn-primary:hover {
-      transform: translate(-2px, -2px);
-      box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.2);
-    }
-
-    .cta-buttons .btn-secondary {
-      border-width: 3px;
-      box-shadow: 4px 4px 0 var(--color-border);
-    }
-
-    .cta-buttons .btn-secondary:hover {
-      transform: translate(-2px, -2px);
-      box-shadow: 6px 6px 0 var(--color-border);
-    }
-
-    .cta-buttons .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-2);
-    }
-
-    .cta-footer {
-      margin-top: var(--space-8);
-      color: var(--color-text-muted);
-      font-size: 0.875rem;
-      font-family: var(--font-family-mono);
-    }
-
-    /* ============================================
-       Responsive Adjustments
-       ============================================ */
     @media (max-width: 900px) {
-      .systems-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-4);
-      }
-
-      .vault-section::before {
-        font-size: 4rem;
-        right: var(--space-4);
-      }
-
-      .shape {
-        display: none;
-      }
+      .hero, .ask { grid-template-columns: 1fr; }
+      .fleet-row { grid-template-columns: 1fr 1fr; }
+      .decades { grid-template-columns: repeat(3, 1fr); }
+      .pillars { grid-template-columns: 1fr 1fr; }
     }
-
-    @media (max-width: 600px) {
-      .hero {
-        min-height: auto;
-        padding: var(--space-12) var(--space-4);
-      }
-
-      .systems-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .vault-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .features-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .cta-buttons {
-        flex-direction: column;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-
-      .cta-buttons .btn {
-        width: 100%;
-        max-width: 300px;
-        justify-content: center;
-        white-space: normal;
-      }
-
-      .vault-section::before {
-        display: none;
-      }
-
-      .vault-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--space-4);
-      }
-
-      .systems-title::before,
-      .systems-title::after {
-        display: none;
-      }
-    }
-
-    /* Reduced motion support */
-    @media (prefers-reduced-motion: reduce) {
-      .hero::after,
-      .hero-logo,
-      .status-badge,
-      .shape,
-      .hero-subtitle::after,
-      .cta-title span {
-        animation: none;
-      }
-
-      .systems-grid > :global(*) {
-        animation: none;
-      }
+    @media (max-width: 560px) {
+      .fleet-row, .pillars { grid-template-columns: 1fr; }
     }
   </style>
 
-  <!-- Hero Section -->
-  <section class="hero">
-    <div class="hero-grid"></div>
-    <div class="hero-shapes">
-      <div class="shape shape-1"></div>
-      <div class="shape shape-2"></div>
-      <div class="shape shape-3"></div>
-      <div class="shape shape-4"></div>
-    </div>
-
-    <div class="hero-content">
-      <div class="status-badge">Now live: {platformCount} platforms</div>
-
-      <div class="hero-logo-container">
-        <img src="/logo-stacked.svg" alt="Code Like It's 198x" class="hero-logo" />
-        <img src="/logo-stacked.svg" alt="" class="hero-logo-glitch red" aria-hidden="true" />
-        <img src="/logo-stacked.svg" alt="" class="hero-logo-glitch blue" aria-hidden="true" />
-      </div>
-
-      <p class="hero-subtitle">Learn by Building Games</p>
-      <p class="hero-tagline">Still teaching the world to code, 40 years later.</p>
-
-      <p class="hero-description">
-        No experience required. Learn by building complete games — each one teaches new skills
-        while creating something you'll want to play. Pick your platform and work through
-        progressively more ambitious projects.
-        <strong>Modern Docker toolchains. Zero setup. 100% open source.</strong>
-      </p>
-
-      <div class="systems-section">
-        <div class="systems-header">
-          <h2 class="systems-title">Choose Your Platform</h2>
-        </div>
-        <div class="systems-grid">
-          {systems.map((system) => (
-            <SystemCard
-              href={system.href}
-              name={system.name}
-              year={system.year}
-              chip={system.chip}
-              tagline={system.tagline}
-              platformColor={system.platformColor}
-              status={system.status}
-            />
-          ))}
+  <div class="home">
+    <!-- HERO -->
+    <section class="hero">
+      <div>
+        <p class="kicker">Hardware-craft game development · 1975 → 2005</p>
+        <h1 class="hero-title">Make a real game,<br />on a real <span class="hl">old</span> machine.</h1>
+        <div class="house-rule"></div>
+        <p class="lede">Pick a system. Work through complete games — not toy exercises — in the
+          languages people used at the time. <span class="mk">Direct hardware</span>, no engines,
+          no apologies.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="/sinclair-zx-spectrum">Start with ZX Spectrum →</a>
+          <a class="btn btn-secondary" href="/about">How this works</a>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- Features Section -->
-  <section class="features">
-    <div class="features-header">
-      <h2 class="features-title">Complete Games. Real Hardware. Deep Learning.</h2>
-      <p class="features-subtitle">
-        Each game teaches skills you'll use in the next. By the end, you'll have built a library of games and mastered the hardware.
-      </p>
-    </div>
-
-    <div class="features-grid">
-      <div class="feature">
-        <div class="feature-icon">
-          <Gamepad2 size={40} />
+      <aside class="statbox">
+        <p class="kicker">The ambition</p>
+        <dl class="stats">
+          <div><dt>≈{totalCount}</dt><dd>machines · 1975 → 2005</dd></div>
+          <div><dt>dozens</dt><dd>of games per machine, eventually</dd></div>
+          <div><dt>6</dt><dd>regions · the whole world</dd></div>
+          <div><dt>{liveCount}</dt><dd>live right now</dd></div>
+          <div><dt>∞</dt><dd>contributors welcome</dd></div>
+        </dl>
+        <p class="deal">FREE · OPEN SOURCE · FOREVER</p>
+        <div class="cta-row">
+          <a class="btn btn-secondary btn-sm" href="/systems">Open the fleet →</a>
+          <a class="btn btn-primary btn-sm" href="/about">Help build it →</a>
         </div>
-        <h3 class="feature-title">Build Complete Games</h3>
-        <p class="feature-description">
-          Not exercises — real games. Rhythm games, shooters, platformers, puzzle games.
-          Each one you finish is something you'll want to show off and play.
-        </p>
-      </div>
+      </aside>
+    </section>
 
-      <div class="feature">
-        <div class="feature-icon">
-          <Cpu size={40} />
-        </div>
-        <h3 class="feature-title">Master the Hardware</h3>
-        <p class="feature-description">
-          Learn the actual chips that powered the era — graphics, sound, input.
-          Understand cycle timing, memory maps, and the tricks that made classic games possible.
-        </p>
-      </div>
-
-      <a href="/setup" class="feature feature-link">
-        <div class="feature-icon">
-          <Terminal size={40} />
-        </div>
-        <h3 class="feature-title">Zero-Config Setup</h3>
-        <p class="feature-description">
-          No toolchain installation. Docker handles everything — assemblers, emulators, build tools.
-          One command to build and test. <span class="feature-cta">Get started →</span>
-        </p>
-      </a>
-    </div>
-  </section>
-
-  <!-- Vault Section -->
-  <section class="vault-section">
-    <div class="vault-container">
-      <div class="vault-header">
-        <h2 class="vault-title">From the Vault</h2>
-        <a href="/vault" class="vault-link">View all →</a>
-      </div>
-      <div class="vault-grid">
-        {vaultArticles.map((article) => (
-          <VaultCard
-            href={article.href}
-            kicker={article.kicker}
-            title={article.title}
-            description={article.description}
-          />
+    <!-- WHAT'S READY / NEXT -->
+    <section class="band">
+      <div class="band-head"><p class="kicker">What's ready · what's next</p><span class="band-url">/systems/</span></div>
+      <div class="fleet-row">
+        {live.map((p) => (
+          <a class="pcard live" href={`/${p.id}`} style={`--pc: ${p.data.color}`}>
+            <span class="top"></span>
+            <div class="body">
+              <div class="reg"><span>Live · {p.data.region} · {p.data.year}</span><span class="badge" style="border-color: var(--color-text); color: var(--color-text);">Live</span></div>
+              <h3>{p.data.name}</h3>
+              <div class="chip">{p.data.cpu}</div>
+              <p>{p.data.tagline}</p>
+              <div class="rainbow-mini">{rainbow.map((c) => <span style={`background: ${c}`}></span>)}</div>
+              <span class="go">Open the {p.data.shortName} →</span>
+            </div>
+          </a>
+        ))}
+        {next.map((p) => (
+          <a class="pcard" href={`/${p.id}`} style={`--pc: ${p.data.color}`}>
+            <span class="top"></span>
+            <div class="body">
+              <div class="reg"><span>{p.data.region} · {p.data.year}</span><span class="badge" style="border-color: var(--color-house); color: var(--color-house);">Next</span></div>
+              <h3>{p.data.shortName}</h3>
+              <div class="chip">{p.data.cpu}</div>
+              <p>{p.data.tagline}</p>
+              <span class="go">Preview →</span>
+            </div>
+          </a>
         ))}
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- CTA Section -->
-  <section class="cta-section">
-    <div class="cta-content">
-      <h2 class="cta-title">
-        <span>100% Open Source.</span>
-        Forever Free.
-      </h2>
-
-      <p class="cta-description">
-        This project is built in the open. Watch it grow, contribute your own games,
-        or fork it and make it yours. The knowledge belongs to everyone.
-      </p>
-
-      <div class="cta-buttons">
-        <a href="/setup" class="btn btn-primary">
-          Get Your Toolchain
-        </a>
-
-        <a href="https://github.com/code198x" class="btn btn-secondary">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-          </svg>
-          View on GitHub
-        </a>
-
-        <a href="https://www.patreon.com/c/code_like_its_198x" class="btn btn-secondary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M15.386.524c-4.764 0-8.64 3.876-8.64 8.64 0 4.75 3.876 8.613 8.64 8.613 4.75 0 8.614-3.864 8.614-8.613C24 4.4 20.136.524 15.386.524M.003 23.537h4.22V.524H.003"/>
-          </svg>
-          Support on Patreon
-        </a>
+    <!-- DECADES -->
+    <section class="band">
+      <div class="band-head"><p class="kicker">Four decades · pick a year</p><span class="band-url">/timeline/</span></div>
+      <div class="decades">
+        {decades.map((d) => (
+          <div class={`dec${d.live ? ' live' : ''}`}>
+            <div class="n">{d.count} machines</div>
+            <div class="yr">{d.label}</div>
+            <p>{d.blurb}</p>
+          </div>
+        ))}
       </div>
+    </section>
 
-      <p class="cta-footer">
-        All games and lessons are free and open source. If you find value in this project, consider supporting its development.
-      </p>
-    </div>
-  </section>
+    <!-- PILLARS -->
+    <section class="band">
+      <div class="band-head"><p class="kicker">Wander sideways</p><span class="band-url">the rest of the site</span></div>
+      <div class="pillars">
+        {pillars.map((pl) => (
+          <a class="pillar" href={pl.url}>
+            <div class="u">{pl.url}</div>
+            <h3>{pl.title}</h3>
+            <p>{pl.blurb}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <!-- HONEST ASK -->
+    <section class="ask">
+      <div>
+        <p class="kicker">An honest ask</p>
+        <h2>≈{totalCount} machines. Dozens of games each. One of me.</h2>
+        <p>This is <strong style="color:#f0b48f;">free, open source, and forever</strong> — every page,
+          every binary, every line of prose. The catch: I can't reach the full ambition alone. Author a
+          game on a machine you love. Port the methodology to one I don't own. Fill a vault entry.</p>
+        <a class="btn btn-primary" href="/about">Ways to help →</a>
+      </div>
+      <div class="ask-cta">
+        <span class="wanted">WANTED</span>
+      </div>
+    </section>
+  </div>
 </Layout>

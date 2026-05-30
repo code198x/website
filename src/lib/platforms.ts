@@ -3,7 +3,7 @@
  */
 import { getCollection, type CollectionEntry } from 'astro:content';
 
-export type Platform = CollectionEntry<'platforms'>;
+export type Platform = CollectionEntry<'systems'>;
 export type PlatformData = Platform['data'];
 export type Architecture = CollectionEntry<'architectures'>;
 export type ArchitectureData = Architecture['data'];
@@ -12,7 +12,7 @@ export type ArchitectureData = Architecture['data'];
  * Get all platforms, sorted by navOrder
  */
 export async function getAllPlatforms(): Promise<Platform[]> {
-  const platforms = await getCollection('platforms');
+  const platforms = await getCollection('systems');
   return platforms.sort((a, b) => a.data.navOrder - b.data.navOrder);
 }
 
@@ -38,7 +38,7 @@ export async function getComingSoonPlatforms(): Promise<Platform[]> {
  * Get a single platform by its slug (filename without extension)
  */
 export async function getPlatformBySlug(slug: string): Promise<Platform | undefined> {
-  const platforms = await getCollection('platforms');
+  const platforms = await getCollection('systems');
   return platforms.find(p => p.id === slug);
 }
 

@@ -1,7 +1,21 @@
 ---
+/**
+ * Game landing — synthesis rebuild from docs/design/synthesis/game-landing.html.
+ *
+ * The conversion surface: inside a system, so the platform identity returns
+ * (rainbow + scanline/pixel wash on the Spectrum; system-colour bar elsewhere).
+ * Sell the game (the MDX body carries the pitch, "what it proves" and lineage —
+ * author prose, not a fabricated schema), then put the "Begin Unit 1" CTA and the
+ * tools where the eye lands, with the unit roadmap as the substance below.
+ *
+ * Everything structural is driven by existing data: units/phases from the units
+ * collection (assembly has them; BASIC degrades to a flat list / no roadmap), and
+ * tools from the platforms manifest. Track is carried in the URL throughout.
+ */
 import Layout from './Layout.astro';
 import { getPlatformBySlug } from '../lib/platforms';
 import { getUnitsEntry } from '../lib/units';
+import { getGames } from '../lib/games';
 
 export interface Props {
   title: string;
@@ -12,25 +26,11 @@ export interface Props {
   totalUnits?: number;
   heroImage?: string;
   heroAlt?: string;
-  units?: Array<{
-    number: number;
-    title: string;
-    available: boolean;
-    description?: string;
-    thumbnail?: string;
-  }>;
-  phases?: Array<{
-    name: string;
-    description?: string;
-    hours?: string;
-    start: number;
-    end: number;
-  }>;
+  units?: Array<{ number: number; title: string; available: boolean; description?: string; thumbnail?: string }>;
+  phases?: Array<{ name: string; description?: string; hours?: string; start: number; end: number }>;
 }
 
-// Access frontmatter from MDX
 const frontmatter = Astro.props.frontmatter || Astro.props;
-
 const {
   title = 'Untitled Game',
   description = '',
@@ -40,786 +40,276 @@ const {
   heroAlt = '',
   totalUnits: frontmatterTotalUnits = 8,
   units: frontmatterUnits = [],
-  phases: frontmatterPhases = []
+  phases: frontmatterPhases = [],
 } = frontmatter;
 
-// Extract paths from URL to determine platform, track, and game slug
 const currentPath = Astro.url.pathname;
 const pathParts = currentPath.split('/').filter(Boolean);
 const platformSlug = pathParts[0] || '';
 const trackPath = pathParts[1] || 'assembly';
 const gameSlugFromPath = pathParts[2] || '';
 
-// Try to get units from collection (canonical source when available)
 const unitsEntry = await getUnitsEntry(platformSlug, trackPath as 'assembly' | 'basic' | 'amos', gameSlugFromPath);
-
-// Use collection data if available, otherwise fall back to frontmatter
-const units = unitsEntry?.data.units ?? frontmatterUnits;
+// Canonical unit data only exists for tracks with a units-collection entry (assembly today).
+// BASIC games carry their lessons as unit MDX without a units.yaml, so the layout must not
+// invent counts for them — gate every count/progress/roadmap surface on this flag.
+const hasUnitsData = !!unitsEntry;
+const units = unitsEntry?.data.units ?? [];
 const phases = unitsEntry?.data.phases ?? frontmatterPhases;
-const totalUnits = units.length > 0 ? units.length : frontmatterTotalUnits;
+const totalUnits = units.length;
+const getUnitsForPhase = (start: number, end: number) => units.filter(u => u.number >= start && u.number <= end);
 
-// Helper to get units for a phase
-const getUnitsForPhase = (start: number, end: number) => {
-  return units.filter(u => u.number >= start && u.number <= end);
-};
-
-// Calculate progress
 const availableUnits = units.filter(u => u.available).length;
 const progressPercent = totalUnits > 0 ? (availableUnits / totalUnits) * 100 : 0;
-
-// Language path alias for URL building
 const languagePath = trackPath;
 
-// Get platform data from collection
+// Games catalogue status (drives "Begin" when there's no canonical units data, e.g. BASIC).
+const catalogue = await getGames(platformSlug, trackPath as 'assembly' | 'basic' | 'amos');
+const catalogueGame = catalogue.find(g => g.slug === gameSlugFromPath) ?? catalogue.find(g => g.number === game);
+const gameLaunched = catalogueGame?.status === 'complete' || catalogueGame?.status === 'in-progress';
+
 const platform = await getPlatformBySlug(platformSlug);
 const systemColor = platform?.data.color ?? '#3b82f6';
 const platformName = platform?.data.shortName ?? platformSlug;
+const isSpectrum = platformSlug === 'sinclair-zx-spectrum';
+
+const TRACK_LABEL: Record<string, string> = { assembly: 'Assembly', basic: 'BASIC', amos: 'AMOS' };
+const trackLabel = TRACK_LABEL[trackPath] ?? trackPath;
+const cpuArch = (platform?.data.cpuArchitecture ?? '').toUpperCase();
+const stamp = trackPath === 'basic' ? 'BASIC' : (cpuArch || trackLabel);
 
 const displayGameName = gameName || title;
+const gameNum = String(game).padStart(2, '0');
+const firstUnitHref = `/${platformSlug}/${languagePath}/${gameSlugFromPath}/unit-01`;
+const hasRoadmap = units.length > 0;
+const beginnable = hasUnitsData ? Boolean(units[0]?.available) : gameLaunched;
+
+// Tools from the manifest — honest per track
+const tools = [
+  platform?.data.emulator ? { k: 'Emulator', v: platform.data.emulator } : null,
+  { k: 'Language', v: trackPath === 'basic' ? `${platformName} BASIC` : `${cpuArch} assembly` },
+  trackPath !== 'basic' && platform?.data.assembler ? { k: 'Assembler', v: platform.data.assembler } : null,
+  platform?.data.buildOutput ? { k: 'Output', v: platform.data.buildOutput } : null,
+].filter(Boolean) as Array<{ k: string; v: string }>;
 ---
 
-<Layout title={`Game ${game}: ${displayGameName} - ${platformName}`}>
-  <div class="game-container">
-    <!-- Game Header -->
-    <header class="game-header">
-      <div class="game-title-section">
-        <div class="game-badge">
-          <span class="game-label">Game {game}</span>
-          <span class="unit-count">{totalUnits} Units</span>
+<Layout title={`${displayGameName} · ${platformName} ${trackLabel}`} platformColor={systemColor}>
+  <div class="wrap" style={`--sys: ${systemColor};`}>
+
+    <!-- HERO with pixel-grid + scanline wash -->
+    <section class={`hero ${isSpectrum ? 'spectrum' : ''}`}>
+      <div class="in">
+        <div class="k">
+          <span class="eyebrow">{platformName} · {trackLabel} · Game {gameNum}</span>
+          {stamp && <span class="stamp">{stamp}</span>}
+          {hasUnitsData && totalUnits > 0 && <span class="liveunits">● {availableUnits} of {totalUnits} units live</span>}
         </div>
-        <h1 class="game-title">{displayGameName}</h1>
-        {description && (
-          <p class="game-description">{description}</p>
+        <h1>{displayGameName}</h1>
+        {isSpectrum
+          ? <div class="rainbow bar"><div class="r"></div><div class="y"></div><div class="g"></div><div class="c"></div></div>
+          : <div class="sysbar"></div>}
+        {description && <p class="pitch">{description}</p>}
+      </div>
+    </section>
+
+    <div class="grid">
+      <!-- MAIN -->
+      <div class="main">
+        {heroImage && (
+          <img src={heroImage} alt={heroAlt} class="hero-shot" />
+        )}
+        <div class="prose"><slot /></div>
+
+        {hasRoadmap && (
+          <section class="roadmap">
+            <h2>Unit roadmap</h2>
+            {phases.length > 0 ? (
+              phases.map((phase, phaseIndex) => {
+                const phaseUnits = getUnitsForPhase(phase.start, phase.end);
+                if (phaseUnits.length === 0) return null;
+                const phaseAvailableCount = phaseUnits.filter(u => u.available).length;
+                const isComplete = phaseAvailableCount === phaseUnits.length;
+                const isAvailable = phaseAvailableCount > 0;
+                return (
+                  <div class={`phase ${isAvailable ? 'on' : 'off'}`}>
+                    <div class="phead">
+                      <div class="pinfo">
+                        <span class="pnum">Phase {phaseIndex + 1}</span>
+                        <h3>{phase.name}</h3>
+                        {phase.description && <p class="pdesc">{phase.description}</p>}
+                      </div>
+                      <div class="pmeta">
+                        <span class="prange">Units {phase.start}–{phase.end}</span>
+                        {isComplete && <span class="pstatus done">Complete</span>}
+                        {!isComplete && isAvailable && <span class="pstatus part">{phaseAvailableCount}/{phaseUnits.length}</span>}
+                        {phaseAvailableCount === 0 && <span class="pstatus soon">Soon</span>}
+                      </div>
+                    </div>
+                    <div class="ulist">
+                      {phaseUnits.map(unit => {
+                        const href = `/${platformSlug}/${languagePath}/${gameSlugFromPath}/unit-${String(unit.number).padStart(2, '0')}`;
+                        return unit.available ? (
+                          <a href={href} class="ucard">
+                            <span class="unum">{unit.number}</span>
+                            <span class="utitle">{unit.title}</span>
+                          </a>
+                        ) : (
+                          <div class="ucard locked" aria-label={`Unit ${unit.number}: ${unit.title} — coming soon`}>
+                            <span class="unum">{unit.number}</span>
+                            <span class="utitle">{unit.title}</span>
+                            <span class="ustatus">Soon</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div class="ulist flat">
+                {units.map(unit => {
+                  const href = `/${platformSlug}/${languagePath}/${gameSlugFromPath}/unit-${String(unit.number).padStart(2, '0')}`;
+                  return unit.available ? (
+                    <a href={href} class="ucard">
+                      <span class="unum">{unit.number}</span>
+                      <span class="utitle">{unit.title}</span>
+                    </a>
+                  ) : (
+                    <div class="ucard locked" aria-label={`Unit ${unit.number}: ${unit.title} — coming soon`}>
+                      <span class="unum">{unit.number}</span>
+                      <span class="utitle">{unit.title}</span>
+                      <span class="ustatus">Soon</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         )}
       </div>
-    </header>
 
-    <!-- Game Content (screenshot, intro, skills) -->
-    {heroImage ? (
-      <main class="game-content game-content--hero">
-        <div class="hero-media">
-          <img src={heroImage} alt={heroAlt} class="hero-image" />
-        </div>
-        <div class="hero-text">
-          <slot />
-        </div>
-      </main>
-    ) : (
-      <main class="game-content">
-        <slot />
-      </main>
-    )}
-
-    <!-- Unit Roadmap -->
-    {units.length > 0 && (
-      <section class="unit-roadmap">
-        <div class="section-divider"></div>
-        <div class="roadmap-header">
-          <h2 class="roadmap-title">Unit Roadmap</h2>
-          <div class="progress-indicator">
-            <span class="progress-text" id="roadmap-progress-label">{availableUnits} of {totalUnits} units available</span>
-            <div
-              class="progress-bar"
-              role="progressbar"
-              aria-valuenow={availableUnits}
-              aria-valuemin="0"
-              aria-valuemax={totalUnits}
-              aria-labelledby="roadmap-progress-label"
-            >
-              <div class="progress-fill" style={`width: ${progressPercent}%`}></div>
-            </div>
-          </div>
+      <!-- SIDEBAR -->
+      <aside class="side">
+        <div class="card cta">
+          <div class="eyebrow">Start building</div>
+          <p class="cta-line">{beginnable
+            ? 'Open Unit 1 and start with an empty screen. By its end you have built something real.'
+            : 'This one is on the way. The units land here as they are written.'}</p>
+          {beginnable && <a class="btn" href={firstUnitHref}>Begin Unit 1 →</a>}
+          {hasUnitsData && totalUnits > 0 && (
+            <>
+              <div class="bar"><div class="fill" style={`width: ${progressPercent}%`}></div></div>
+              <div class="progress">{availableUnits} / {totalUnits} units live</div>
+            </>
+          )}
         </div>
 
-        {phases.length > 0 ? (
-          /* Render units grouped by phase */
-          phases.map((phase, phaseIndex) => {
-            const phaseUnits = getUnitsForPhase(phase.start, phase.end);
-            const phaseAvailableCount = phaseUnits.filter(u => u.available).length;
-            const isPhaseComplete = phaseAvailableCount === phaseUnits.length;
-            const isPhaseAvailable = phaseAvailableCount > 0;
-            return (
-              <div class={`phase-group ${isPhaseAvailable ? 'available' : 'locked'}`}>
-                <div class="phase-header">
-                  <div class="phase-info">
-                    <div class="phase-title-row">
-                      <span class="phase-number">Phase {phaseIndex + 1}</span>
-                      <h3 class="phase-title">{phase.name}</h3>
-                    </div>
-                    {phase.description && <p class="phase-description">{phase.description}</p>}
-                  </div>
-                  <div class="phase-meta">
-                    <span class="phase-range">Units {phase.start}–{phase.end}</span>
-                    {phase.hours && <span class="phase-hours">~{phase.hours} hours</span>}
-                    {isPhaseComplete && <span class="phase-status complete">Complete</span>}
-                    {!isPhaseComplete && phaseAvailableCount > 0 && <span class="phase-status partial">{phaseAvailableCount}/{phaseUnits.length}</span>}
-                    {phaseAvailableCount === 0 && <span class="phase-status upcoming">Coming Soon</span>}
-                  </div>
-                </div>
-                <div class="unit-list">
-                  {phaseUnits.map((unit) => {
-                    const unitHref = `/${platformSlug}/${languagePath}/${gameSlugFromPath}/unit-${String(unit.number).padStart(2, '0')}`;
-                    return unit.available ? (
-                      <a href={unitHref} class={`unit-card ${unit.thumbnail ? 'has-thumbnail' : ''}`}>
-                        {unit.thumbnail && (
-                          <div class="unit-thumbnail">
-                            <img src={unit.thumbnail} alt="" loading="lazy" />
-                          </div>
-                        )}
-                        <div class="unit-card-body">
-                          <div class="unit-card-header">
-                            <span class="unit-number">{unit.number}</span>
-                            <h4 class="unit-card-title">{unit.title}</h4>
-                          </div>
-                          {unit.description && <p class="unit-card-description">{unit.description}</p>}
-                        </div>
-                      </a>
-                    ) : (
-                      <div class="unit-card locked" aria-label={`Unit ${unit.number}: ${unit.title} — Coming soon`}>
-                        <div class="unit-card-body">
-                          <div class="unit-card-header">
-                            <span class="unit-number">{unit.number}</span>
-                            <h4 class="unit-card-title">{unit.title}</h4>
-                            <span class="unit-status">Coming Soon</span>
-                          </div>
-                          {unit.description && <p class="unit-card-description">{unit.description}</p>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          /* Flat list fallback */
-          <div class="unit-list">
-            {units.map((unit) => {
-              const unitHref = `/${platformSlug}/${languagePath}/${gameSlugFromPath}/unit-${String(unit.number).padStart(2, '0')}`;
-              return unit.available ? (
-                <a href={unitHref} class={`unit-card ${unit.thumbnail ? 'has-thumbnail' : ''}`}>
-                  {unit.thumbnail && (
-                    <div class="unit-thumbnail">
-                      <img src={unit.thumbnail} alt="" loading="lazy" />
-                    </div>
-                  )}
-                  <div class="unit-card-body">
-                    <div class="unit-card-header">
-                      <span class="unit-number">{unit.number}</span>
-                      <h4 class="unit-card-title">{unit.title}</h4>
-                    </div>
-                    {unit.description && <p class="unit-card-description">{unit.description}</p>}
-                  </div>
-                </a>
-              ) : (
-                <div class="unit-card locked" aria-label={`Unit ${unit.number}: ${unit.title} — Coming soon`}>
-                  <div class="unit-card-body">
-                    <div class="unit-card-header">
-                      <span class="unit-number">{unit.number}</span>
-                      <h4 class="unit-card-title">{unit.title}</h4>
-                      <span class="unit-status">Coming Soon</span>
-                    </div>
-                    {unit.description && <p class="unit-card-description">{unit.description}</p>}
-                  </div>
-                </div>
-              );
-            })}
+        {tools.length > 0 && (
+          <div class="card">
+            <div class="eyebrow">Tools you'll need</div>
+            <ul class="tools">
+              {tools.map(t => (
+                <li><span class="k">{t.k}</span><span>{t.v}</span></li>
+              ))}
+            </ul>
           </div>
         )}
-      </section>
-    )}
 
-    <!-- Navigation -->
-    <nav class="game-navigation">
-      <a href={`/${platformSlug}`} class="nav-button">
-        <span class="nav-arrow">←</span>
-        <span class="nav-text">All {platformName} Games</span>
-      </a>
-      {units.length > 0 && units[0].available && (
-        <a href={`/${platformSlug}/${languagePath}/${gameSlugFromPath}/unit-01`} class="nav-button nav-start">
-          <span class="nav-text">Begin Unit 1</span>
-          <span class="nav-arrow">→</span>
-        </a>
-      )}
-    </nav>
+        <div class="card">
+          <div class="eyebrow">More {platformName}</div>
+          <p class="cta-line"><a class="ilink" href={`/${platformSlug}`}>All {platformName} games →</a></p>
+        </div>
+      </aside>
+    </div>
   </div>
 
   <style define:vars={{ systemColor }}>
-    .game-container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: var(--space-8) var(--space-4);
-    }
-
-    /* Header */
-    .game-header {
-      margin-bottom: var(--space-10);
-    }
-
-    .game-title-section {
-      margin-bottom: var(--space-6);
-    }
-
-    .game-badge {
-      display: flex;
-      gap: var(--space-3);
-      margin-bottom: var(--space-3);
-    }
-
-    .game-label,
-    .unit-count {
-      font-family: var(--font-family-mono);
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      padding: var(--space-1) var(--space-2);
-      border-radius: 0.25rem;
-    }
-
-    .game-label {
-      background: var(--systemColor);
-      color: white;
-    }
-
-    .unit-count {
-      background: var(--color-surface);
-      color: var(--systemColor);
-      border: 1px solid var(--systemColor);
-    }
-
-    .game-title {
-      font-size: clamp(2rem, 4vw, 3rem);
-      font-weight: 800;
-      line-height: 1.2;
-      margin-bottom: var(--space-4);
-      color: var(--color-text);
-    }
-
-    .game-description {
-      font-size: 1.25rem;
-      color: var(--color-text-secondary);
-      line-height: 1.6;
-    }
-
-    /* Content Area */
-    .game-content {
-      margin-bottom: var(--space-12);
-      line-height: 1.7;
-    }
-
-    /* Hero variant — image left, text right, vertically centred */
-    .game-content--hero {
-      display: flex;
-      align-items: center;
-      gap: var(--space-8);
-    }
-
-    .hero-media {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .hero-text {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .game-content :global(h2) {
-      font-size: 1.5rem;
-      margin-top: var(--space-8);
-      margin-bottom: var(--space-4);
-      color: var(--color-text);
-    }
-
-    .game-content :global(h3) {
-      font-size: 1.25rem;
-      margin-top: var(--space-6);
-      margin-bottom: var(--space-3);
-      color: var(--color-text);
-    }
-
-    .game-content :global(p) {
-      margin-bottom: var(--space-4);
-    }
-
-    .game-content :global(ul),
-    .game-content :global(ol) {
-      margin-bottom: var(--space-4);
-      padding-left: var(--space-6);
-    }
-
-    .game-content :global(li) {
-      margin-bottom: var(--space-2);
-    }
-
-    .hero-image {
-      display: block;
-      width: 100%;
-      height: auto;
-      border: 3px solid var(--systemColor);
-      border-radius: 0.75rem;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-      image-rendering: pixelated;
-      image-rendering: -moz-crisp-edges;
-      image-rendering: crisp-edges;
-    }
-
-    .game-content :global(img) {
-      display: block;
-      margin: var(--space-8) auto;
-      max-width: 100%;
-      height: auto;
-      border: 2px solid var(--color-border);
-      border-radius: 0.5rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      image-rendering: pixelated;
-      image-rendering: -moz-crisp-edges;
-      image-rendering: crisp-edges;
-      width: min(100%, 768px);
-    }
-
-    .game-content :global(pre) {
-      background: var(--color-code-bg);
-      border: 1px solid var(--color-border);
-      border-left: 3px solid var(--systemColor);
-      border-radius: 0.5rem;
-      padding: var(--space-4);
-      overflow-x: auto;
-      margin: var(--space-6) 0;
-    }
-
-    .game-content :global(code) {
-      font-family: var(--font-family-mono);
-      font-size: 0.9rem;
-    }
-
-    .game-content :global(:not(pre) > code) {
-      background: var(--color-surface);
-      padding: 0.125rem 0.375rem;
-      border-radius: 0.25rem;
-      color: var(--systemColor);
-    }
-
-    .game-content :global(pre code) {
-      color: var(--color-code-text);
-    }
-
-    /* Unit Roadmap */
-    .unit-roadmap {
-      margin-bottom: var(--space-12);
-    }
-
-    .section-divider {
-      height: 4px;
-      background: linear-gradient(90deg, transparent, var(--systemColor), transparent);
-      margin-bottom: var(--space-12);
-      border-radius: 2px;
-    }
-
-    .roadmap-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: var(--space-6);
-      margin-bottom: var(--space-8);
-    }
-
-    .roadmap-title {
-      font-size: 1.5rem;
-      margin: 0;
-      color: var(--color-text);
-    }
-
-    .progress-indicator {
-      text-align: right;
-    }
-
-    .progress-text {
-      font-size: 0.875rem;
-      color: var(--color-text-secondary);
-      display: block;
-      margin-bottom: var(--space-2);
-    }
-
-    .progress-bar {
-      width: 200px;
-      height: 6px;
-      background: var(--color-border);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: var(--systemColor);
-      border-radius: 3px;
-      transition: width 0.3s ease;
-    }
-
-    /* Phase Groups */
-    .phase-group {
-      margin-bottom: var(--space-6);
-      padding: var(--space-6);
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: 0.75rem;
-      overflow: hidden;
-    }
-
-    .phase-group.available {
-      border-color: var(--systemColor);
-      border-width: 2px;
-    }
-
-    .phase-group.locked {
-      border-color: var(--color-border);
-    }
-
-    .phase-group.locked .phase-title,
-    .phase-group.locked .phase-description {
-      color: var(--color-text-secondary);
-    }
-
-    .phase-group:last-child {
-      margin-bottom: 0;
-    }
-
-    .phase-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: var(--space-4);
-      margin-bottom: var(--space-4);
-    }
-
-    .phase-info {
-      flex: 1;
-    }
-
-    .phase-title-row {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      margin-bottom: var(--space-1);
-    }
-
-    .phase-number {
-      font-family: var(--font-family-mono);
-      font-size: 0.7rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--color-text-secondary);
-      background: var(--color-border);
-      padding: 0.15rem 0.4rem;
-      border-radius: 0.25rem;
-    }
-
-    .phase-group.available .phase-number {
-      background: var(--systemColor);
-      color: white;
-    }
-
-    .phase-title {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--color-text);
-      margin: 0;
-    }
-
-    .phase-description {
-      font-size: 0.875rem;
-      color: var(--color-text-secondary);
-      margin: 0;
-    }
-
-    .phase-meta {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: var(--space-2);
-    }
-
-    .phase-range {
-      font-family: var(--font-family-mono);
-      font-size: 0.75rem;
-      color: var(--color-text-secondary);
-    }
-
-    .phase-hours {
-      font-size: 0.75rem;
-      color: var(--color-text-secondary);
-    }
-
-    .phase-status {
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: var(--space-1) var(--space-2);
-      border-radius: 0.25rem;
-    }
-
-    .phase-status.complete {
-      background: var(--color-success-muted);
-      color: var(--color-success);
-    }
-
-    .phase-status.partial {
-      background: var(--systemColor)20;
-      color: var(--systemColor);
-    }
-
-    .phase-status.upcoming {
-      background: var(--color-border);
-      color: var(--color-text-secondary);
-    }
-
-    /* Unit List */
-    .unit-list {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-    }
-
-    /* Unit Cards */
-    .unit-card {
-      display: flex;
-      align-items: stretch;
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: 0.75rem;
-      text-decoration: none;
-      color: var(--color-text);
-      transition: all var(--transition-base);
-      overflow: hidden;
-    }
-
-    a.unit-card:hover,
-    a.unit-card:focus-visible {
-      border-color: var(--systemColor);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-      transform: translateY(-2px);
-    }
-
-    a.unit-card:focus-visible {
-      outline: 2px solid var(--systemColor);
-      outline-offset: 2px;
-    }
-
-    .unit-card.locked {
-      cursor: default;
-      opacity: 0.65;
-    }
-
-    /* Thumbnail */
-    .unit-thumbnail {
-      flex-shrink: 0;
-      width: 180px;
-      overflow: hidden;
-      background: #000;
-    }
-
-    .unit-thumbnail img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      image-rendering: pixelated;
-      image-rendering: -moz-crisp-edges;
-      image-rendering: crisp-edges;
-    }
-
-    /* Card Body */
-    .unit-card-body {
-      flex: 1;
-      padding: var(--space-4) var(--space-5);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      min-width: 0;
-    }
-
-    .unit-card-header {
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-      margin-bottom: var(--space-1);
-    }
-
-    .unit-number {
-      font-family: var(--font-family-mono);
-      font-size: 0.8rem;
-      font-weight: 700;
-      width: 1.75rem;
-      height: 1.75rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--systemColor);
-      color: white;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .unit-card.locked .unit-number {
-      background: var(--color-border);
-    }
-
-    .unit-card-title {
-      font-size: 1.05rem;
-      font-weight: 600;
-      margin: 0;
-      color: var(--color-text);
-      flex: 1;
-      min-width: 0;
-    }
-
-    .unit-card.locked .unit-card-title {
-      color: var(--color-text-secondary);
-    }
-
-    .unit-card-description {
-      font-size: 0.875rem;
-      color: var(--color-text-secondary);
-      margin: var(--space-1) 0 0 0;
-      line-height: 1.5;
-      padding-left: calc(1.75rem + var(--space-3));
-    }
-
-    .unit-status {
-      font-size: 0.7rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--color-text-secondary);
-      background: var(--color-border);
-      padding: 0.15rem 0.5rem;
-      border-radius: 0.25rem;
-      flex-shrink: 0;
-    }
-
-    /* Navigation */
-    .game-navigation {
-      display: flex;
-      justify-content: space-between;
-      gap: var(--space-4);
-      padding: var(--space-6) 0;
-      border-top: 1px solid var(--color-border);
-      margin-top: var(--space-12);
-    }
-
-    .nav-button {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      padding: var(--space-3) var(--space-4);
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: 0.5rem;
-      text-decoration: none;
-      color: var(--color-text);
-      font-weight: 500;
-      transition: all var(--transition-base);
-    }
-
-    .nav-button:hover,
-    .nav-button:focus-visible {
-      border-color: var(--systemColor);
-      color: var(--systemColor);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .nav-button:focus-visible {
-      outline: 2px solid var(--systemColor);
-      outline-offset: 2px;
-    }
-
-    .nav-start {
-      background: var(--systemColor);
-      color: white;
-      border-color: var(--systemColor);
-    }
-
-    .nav-start:hover,
-    .nav-start:focus-visible {
-      background: var(--systemColor);
-      color: white;
-      filter: brightness(1.1);
-    }
-
-    .nav-start:focus-visible {
-      outline: 2px solid var(--systemColor);
-      outline-offset: 2px;
-    }
-
-    .nav-arrow {
-      font-size: 1.25rem;
-    }
-
-    /* Responsive — medium screens */
-    @media (max-width: 900px) {
-      .game-content--hero {
-        flex-direction: column;
-      }
-
-      .hero-image {
-        width: min(100%, 640px);
-        margin: 0 auto;
-      }
-    }
-
-    /* Responsive — small screens */
-    @media (max-width: 768px) {
-      .game-badge {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .roadmap-header {
-        flex-direction: column;
-        gap: var(--space-4);
-      }
-
-      .progress-indicator {
-        text-align: left;
-      }
-
-      .progress-bar {
-        width: 100%;
-      }
-
-      .unit-thumbnail {
-        width: 120px;
-      }
-
-      .unit-card.has-thumbnail .unit-card-description {
-        padding-left: 0;
-      }
-
-      .phase-header {
-        flex-direction: column;
-        gap: var(--space-2);
-      }
-
-      .phase-meta {
-        flex-direction: row;
-        align-items: center;
-      }
-
-      .game-navigation {
-        flex-direction: column;
-      }
-
-      .nav-button {
-        justify-content: center;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .unit-thumbnail {
-        display: none;
-      }
-    }
+    .wrap { max-width: var(--container-max-width); margin: 0 auto; padding: var(--space-4) var(--space-6) var(--space-16); }
+    .eyebrow { font-family: var(--font-family-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-text-secondary); }
+
+
+    /* hero with pixel-grid + scanline wash */
+    .hero { position: relative; overflow: hidden; margin-top: var(--space-4); padding: var(--space-6) var(--space-6); border: 3px solid var(--color-text); box-shadow: var(--shadow-chunky); background: var(--color-surface); }
+    .hero.spectrum::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(color-mix(in srgb, var(--sys) 6%, transparent) 1px, transparent 1px) 0 0/16px 16px,
+                  linear-gradient(90deg, color-mix(in srgb, var(--sys) 6%, transparent) 1px, transparent 1px) 0 0/16px 16px; }
+    .hero::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.03) 0 1px, transparent 1px 4px); }
+    .hero .in { position: relative; z-index: 1; }
+    .hero .k { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .hero h1 { font-family: var(--font-family-script); font-weight: 700; font-size: clamp(3.4rem, 8vw, 5.5rem); line-height: 0.82; margin: var(--space-2) 0 0; color: var(--color-text); }
+    .hero .pitch { font-size: 1rem; max-width: 64ch; margin: var(--space-3) 0 0; color: var(--color-text); }
+    .stamp { display: inline-block; font-family: var(--font-family-mono); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+      border: 2px solid var(--color-text); color: var(--color-text); padding: 2px 8px; background: var(--color-surface); transform: rotate(-3deg); }
+    .liveunits { font-family: var(--font-family-mono); font-size: 0.7rem; color: var(--sys); font-weight: 700; letter-spacing: 0.06em; }
+    .rainbow.bar { display: flex; height: 9px; width: 200px; border: 1.5px solid var(--color-text); margin-top: var(--space-3); }
+    .rainbow.bar div { flex: 1; }
+    .rainbow .r { background: #cc0000; } .rainbow .y { background: #cccc00; } .rainbow .g { background: #00cc00; } .rainbow .c { background: #00cccc; }
+    .sysbar { height: 9px; width: 200px; background: var(--sys); margin-top: var(--space-3); }
+
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-8); margin-top: var(--space-6); align-items: start; }
+
+    .hero-shot { display: block; width: 100%; height: auto; border: 3px solid var(--color-text); box-shadow: var(--shadow-chunky); margin-bottom: var(--space-6);
+      image-rendering: pixelated; image-rendering: crisp-edges; }
+
+    /* MDX prose body */
+    .prose { line-height: 1.7; }
+    .prose :global(h2) { font-weight: 800; font-size: 1.3rem; margin: var(--space-8) 0 var(--space-3); color: var(--color-text); }
+    .prose :global(h2)::before { content: ""; display: inline-block; width: 20px; height: 3px; background: var(--sys); vertical-align: middle; margin: -4px 11px 0 0; }
+    .prose :global(h2:first-child) { margin-top: 0; }
+    .prose :global(h3) { font-weight: 700; font-size: 1.1rem; margin: var(--space-6) 0 var(--space-3); color: var(--color-text); }
+    .prose :global(p) { margin-bottom: var(--space-4); }
+    .prose :global(ul), .prose :global(ol) { margin-bottom: var(--space-4); padding-left: var(--space-6); }
+    .prose :global(li) { margin-bottom: var(--space-2); }
+    .prose :global(img) { display: block; max-width: min(100%, 768px); height: auto; margin: var(--space-6) auto; border: 3px solid var(--color-text); box-shadow: var(--shadow-chunky); image-rendering: pixelated; image-rendering: crisp-edges; }
+    .prose :global(pre) { background: var(--color-code-bg); border: 1px solid var(--color-border); border-left: 3px solid var(--sys); padding: var(--space-4); overflow-x: auto; margin: var(--space-6) 0; }
+    .prose :global(code) { font-family: var(--font-family-mono); font-size: 0.9rem; }
+    .prose :global(:not(pre) > code) { background: var(--color-surface); padding: 0.125rem 0.375rem; color: var(--sys); }
+
+    /* roadmap */
+    .roadmap { margin-top: var(--space-10); }
+    .roadmap h2 { font-weight: 800; font-size: 1.3rem; margin: 0 0 var(--space-5); color: var(--color-text); }
+    .roadmap h2::before { content: ""; display: inline-block; width: 20px; height: 3px; background: var(--sys); vertical-align: middle; margin: -4px 11px 0 0; }
+    .phase { margin-bottom: var(--space-5); padding: var(--space-5); background: var(--color-surface); border: 2px solid var(--color-border); }
+    .phase.on { border-color: var(--sys); border-width: 3px; box-shadow: var(--shadow-chunky); }
+    .phead { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); margin-bottom: var(--space-4); }
+    .pinfo { flex: 1; }
+    .pnum { font-family: var(--font-family-mono); font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-secondary); }
+    .phase.on .pnum { color: var(--sys); }
+    .pinfo h3 { font-size: 1.15rem; font-weight: 700; margin: var(--space-1) 0 0; color: var(--color-text); }
+    .pdesc { font-size: 0.85rem; color: var(--color-text-secondary); margin: var(--space-1) 0 0; }
+    .pmeta { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); flex-shrink: 0; }
+    .prange { font-family: var(--font-family-mono); font-size: 0.7rem; color: var(--color-text-secondary); }
+    .pstatus { font-family: var(--font-family-mono); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px; border: 2px solid; }
+    .pstatus.done { color: #16a34a; border-color: #16a34a; }
+    .pstatus.part { color: var(--sys); border-color: var(--sys); }
+    .pstatus.soon { color: var(--color-text-secondary); border-color: var(--color-border); }
+
+    .ulist { display: flex; flex-direction: column; gap: var(--space-2); }
+    .ucard { display: flex; align-items: center; gap: var(--space-3); background: var(--color-bg); border: 2px solid var(--color-border); padding: var(--space-3) var(--space-4); text-decoration: none; color: var(--color-text); transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base); }
+    a.ucard:hover, a.ucard:focus-visible { border-color: var(--sys); transform: translate(-3px, -3px); box-shadow: 5px 5px 0 var(--sys); }
+    .ucard.locked { opacity: 0.6; }
+    .unum { font-family: var(--font-family-mono); font-size: 0.78rem; font-weight: 700; width: 1.75rem; height: 1.75rem; display: flex; align-items: center; justify-content: center; background: var(--sys); color: #fff; flex-shrink: 0; }
+    .ucard.locked .unum { background: var(--color-border); color: var(--color-text-secondary); }
+    .utitle { font-size: 1rem; font-weight: 600; flex: 1; min-width: 0; }
+    .ustatus { font-family: var(--font-family-mono); font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-secondary); border: 1.5px solid var(--color-border); padding: 2px 6px; flex-shrink: 0; }
+
+    /* sidebar */
+    .side .card { border: 3px solid var(--color-border); background: var(--color-surface); padding: 14px 15px; margin-bottom: var(--space-4); }
+    .side .card.cta { border-color: var(--sys); background: color-mix(in srgb, var(--sys) 8%, var(--color-surface)); box-shadow: var(--shadow-chunky); }
+    .cta-line { font-size: 0.85rem; color: var(--color-text-secondary); margin: 6px 0 12px; line-height: 1.5; }
+    .btn { font-family: var(--font-family-mono); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 13px 16px; border: 3px solid var(--sys); background: var(--sys); color: #fff; text-decoration: none; box-shadow: 4px 4px 0 color-mix(in srgb, var(--sys) 35%, transparent); display: block; text-align: center; transition: transform var(--transition-base), box-shadow var(--transition-base); }
+    .btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 color-mix(in srgb, var(--sys) 35%, transparent); }
+    .bar { height: 8px; border: 1.5px solid var(--color-text); margin-top: 12px; }
+    .bar .fill { height: 100%; background: var(--sys); }
+    .progress { font-family: var(--font-family-mono); font-size: 0.7rem; color: var(--color-text-secondary); margin-top: 6px; text-align: center; }
+    .ilink { color: var(--sys); text-decoration: none; font-weight: 700; font-family: var(--font-family-mono); font-size: 0.78rem; }
+    .tools { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.85rem; }
+    .tools li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px dashed var(--color-border); }
+    .tools li:last-child { border-bottom: 0; }
+    .tools .k { font-family: var(--font-family-mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-secondary); align-self: center; }
+
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } .side { order: 2; } }
   </style>
 </Layout>
