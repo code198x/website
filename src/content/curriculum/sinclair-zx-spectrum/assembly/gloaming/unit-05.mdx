@@ -1,0 +1,109 @@
+---
+title: "One Step"
+description: "The lamplighter moves. Keep his column as a byte in memory, and on a held key erase his old cell, change the column, draw the new one. Cell-by-cell movement — working, for now, only because the floor is blank."
+pubDate: 2026-06-01
+game: 1
+unit: 5
+tags: ["assembly", "z80", "sprite", "movement", "state", "memory"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+In Unit 4 the lamplighter felt the keys but stayed put. Now he walks. Hold **O** and he steps left; hold **P** and he steps right, cell by cell along his row. This is the first half of Gloaming's second big technique — the **cell sprite**, a figure with a *position* that moves by being rubbed out where he was and drawn where he's going.
+
+Two new ideas carry the unit: his position becomes **state we keep in memory**, and moving means **erase, then draw**. And one honest limitation, named out loud, sets up the next unit.
+
+## What you'll see by the end
+
+![The walled square with the lamplighter standing right of centre, having walked there — a single figure, no trail behind him.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-05/screenshot.png)
+
+The lamplighter, no longer pinned to the centre — this shot was taken after holding **P** for a moment, and he's walked several cells to the right. One figure, no smear behind him: each step rubs out the old cell before drawing the new one. Hold a key and he glides; let go and he stops where he stands.
+
+## A position is state
+
+Until now his column was fixed in the source — a constant baked in at assembly time. A thing that moves can't have a fixed position; it needs one the program can *change*. So his column becomes a byte in memory:
+
+```
+lamp_col:
+    defb 15        ; his column — we'll write new values here as he walks
+```
+
+That one byte is the difference between a picture and a game. A picture is drawn and done; a game keeps state — where things are, what's happened — and edits it as it runs. `lamp_col` is Gloaming's first piece of living state. Stepping left is `dec` it; stepping right is `inc` it.
+
+## Moving is erase, then draw
+
+You can't just draw him in the new cell — the old one would still show him, and you'd leave a trail of lamplighters down the row. Every move is two halves:
+
+1. **Erase** the cell he's in — blank its eight pixel rows back to bare floor.
+2. **Draw** him in the new cell — once the column has changed.
+
+Erase old, change column, draw new. Miss the erase and he smears; get the order wrong and he rubs himself out. Do it each frame a key is held and the steps blur into smooth cell-by-cell walking.
+
+## Why the address stays simple
+
+He only moves **left and right**, so he never leaves his character row — and that keeps the arithmetic gentle. Every cell in one row shares the same screen third and the same row-within-third (the awkward parts from Unit 2). Only the column changes. So the address of his cell is just:
+
+```
+cell address = ROW_SCR + col
+```
+
+where `ROW_SCR` is the screen address of column 0 of his row, worked out once as an `equ`. No thirds to decode at run time — we add the column and we're there. (When he learns to move *up and down*, in a later unit, the full cell-address sum comes back. Today, one row, one addition.)
+
+## The assumption, named out loud
+
+Here's the catch, and it matters: **erasing means writing zeros over his cell, and that only looks right because the floor is blank.** Cobbles are pure attribute colour — no pixels. So blanking a floor cell destroys nothing.
+
+The moment he steps onto something *with* pixels — a lamp, which arrives in Unit 9 — this same blank-erase would wipe the lamp out as he passed. The naive erase isn't wrong yet; it's wrong *later*, and we'll feel exactly when. Unit 6 fixes it by saving what's underneath him before he stands there. For now: blank floor, blank erase, and it genuinely works.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-05/one-step.asm" />
+
+### What you see
+
+Hold O or P and the lamplighter walks that way, one cell per frame, leaving the floor clean behind him. The `erase_lamp`/`draw_lamp` pair does all the work; `lamp_col` remembers where he is between frames.
+
+## Assemble and run
+
+```
+pasmonext --sna one-step.asm one-step.sna
+```
+
+Tap the keys in Emu198x to step him; hold them to walk. He moves once per frame while held — brisk, since the loop runs fifty times a second. (Taming that into a steadier pace is a nice exercise — see the last "Try this".)
+
+## Try this: take the erase away
+
+Comment out the `call erase_lamp` in one of the step branches and run it. Now he leaves a **trail** of lamplighters across the row — every cell he passes through keeps his shape, because nothing rubbed it out. Ugly, but instructive: it shows you exactly what the erase is *for*. Put it back.
+
+## Try this: watch the assumption bite
+
+Prove the blank-erase flaw to yourself before Unit 6 fixes it. In setup, poke a stray pixel into a floor cell in his path — say a solid bar at column 22:
+
+```
+ld   hl, ROW_SCR + 22
+ld   (hl), %11111111
+```
+
+Walk him over column 22. As he leaves, the erase wipes your bar away — he damaged the floor just by passing. That's the bug Unit 6 exists to kill.
+
+## Try this: slow him to a walk
+
+Moving every frame is fast. Add a one-byte counter that only lets him step every few frames: load it from, say, 4 after a step, and `dec` it each frame, only moving when it reaches zero. Holding a key now repeats at a steady, controllable pace — the start of how real games handle held keys.
+
+## If it doesn't work
+
+- **He leaves a trail of figures.** The erase isn't running, or runs in the wrong place. The order must be: erase the **old** cell, then change `lamp_col`, then draw the **new** cell.
+- **He vanishes the moment you press.** You changed `lamp_col` *before* erasing, so you blanked the cell he's about to move to and never cleaned up the one he left. Erase first.
+- **He runs off the right edge and the screen garbles.** Nothing stops him yet — there are no walls to block him (Unit 7) and no edges to bound him (Unit 8). Tap rather than hold for now.
+- **Nothing moves at all.** The key read isn't reaching the step branches. Check the `IN A,(C)` from Unit 4 and that `jr z` (held) routes into `.step_left` / `.step_right`.
+
+## What you've learnt
+
+- A moving thing keeps its **position as state in memory** (`lamp_col`); moving means editing that state.
+- A move is **erase the old cell, then draw the new one** — order matters.
+- Within a single row, a cell's address is just **`ROW_SCR + col`** — no thirds to decode.
+- The naive **blank-erase only works over blank floor**; pixels underneath would be destroyed — the problem Unit 6 solves.
+
+## What's next
+
+The lamplighter walks, but he can only ever cross *empty* floor without harm. In **Unit 6** we make him safe over anything: before he stands in a cell, **save** the eight bytes (and the colour) already there; when he leaves, **restore** them. He'll be able to walk over lamps, walls, anything — without scrubbing it away. It's the honest "before" of a technique a later game upgrades into true masking.
