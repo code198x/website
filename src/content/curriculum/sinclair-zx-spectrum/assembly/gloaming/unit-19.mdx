@@ -1,0 +1,87 @@
+---
+title: "Again"
+description: "Close the loop. Win or lose, a key returns you to the title; pressing start there builds a brand-new game. The state machine comes full circle — and a short input lock stops a held key from skipping screens."
+pubDate: 2026-06-01
+game: 1
+unit: 19
+tags: ["assembly", "z80", "state-machine", "game-loop", "input", "polish"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Gloaming is a finished game — but it ends and *stays* ended. A real game loops: you finish, and it offers you another go. This unit closes that loop. Win or lose, a key press returns you to the title; press start there and a brand-new game begins. Title → play → win or lose → title → play, round and round, the way an arcade machine waits for the next coin.
+
+## What you'll see by the end
+
+![The win screen — "THE NIGHT IS HELD" with "PRESS SPACE" below it, over the warmed magenta square of lit lamps.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-19/screenshot.png)
+
+The win screen, now inviting you onward: **PRESS SPACE**. The same prompt sits under "NIGHT FALLS" when you lose. Press it and you're back at the title; press it there and the square rebuilds itself fresh — cold and blue, every lamp dark, three lives again. The game has no end now, only pauses between attempts.
+
+## The loop was almost already built
+
+The state machine from Unit 16 did the hard part. The `WIN` and `LOSE` states used to be dead ends — they drew their screen and held forever. Now each watches for a key and hands control back to `TITLE`:
+
+```
+end_step:   ; runs in WIN and LOSE
+    ... wait out the input lock ...
+    read SPACE
+    if pressed:
+        draw the title
+        game_state = TITLE
+```
+
+That's the whole closure. A dead-end state learning to *hand control on* is all "play again" is. And because `title_step` already turns a key press into `init_game` + `PLAY`, the loop completes itself.
+
+## "Play again" and "start" are the same act
+
+The reason this works cleanly is `init_game`. Starting from the title doesn't resume — it **rebuilds**: lamps unlit, tally cleared, three lives, walls cold and blue, the lamplighter and draught at their starts, and (the detail from Unit 16) the bitmap wiped so nothing ghosts through. So "start" and "play again" call the exact same routine, and a replayed game is genuinely new, not a half-cleared echo of the last one. *Per-game* state lives in variables `init_game` resets; if you wanted a score that survived across games, you'd simply keep it in a variable `init_game` leaves alone.
+
+## Debounce: the held-key trap
+
+One real-world snag. When you win, the key you were holding to play is very likely still down. Without care, that key would dismiss the win screen and start a new game in the same instant — you'd never see the screen you earned. So on entering any screen that waits for a key, we set a short **input lock** (a frame countdown) and ignore input until it expires — a beat to let go and read the screen. It's a tiny thing that separates a game that feels considered from one that feels twitchy. (We *don't* lock at boot, though — there's no held key to guard against there.)
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-19/again.asm" />
+
+### What you see
+
+Win the game and the closing line invites another go. Press space — the title returns. Press it again — a fresh square, cold and dark, ready to be lit. You can play Gloaming all evening without once reaching for the reset.
+
+## Assemble and run
+
+```
+pasmonext --sna again.asm again.sna
+```
+
+In Emu198x, play to a win or a loss, press space to the title, and start again. Confirm the new game is truly fresh — no leftover lit lamps, the walls blue again.
+
+## Try this: press any key to continue
+
+Space is fine, but arcades say "press any key". In `end_step`, read a few half-rows and continue if *any* shows a held key (combine the rows; if the low five bits aren't all 1, something's down). Friendlier, and it reuses the keyboard reading you already know.
+
+## Try this: tune the lock
+
+`LOCK` is the debounce length in frames. Set it to `1` and you'll sometimes skip the win screen by still-holding a key; set it to `100` and the screen feels unresponsive. Find the value that reads as "deliberate, not sticky" — somewhere near half a second. Feel is made of numbers like this.
+
+## Try this: a games-played counter
+
+Add a byte that `init_game` does **not** reset, and increment it each time a game starts; print it on the title as "GAME N". You'll have drawn the line between *per-game* state (everything `init_game` clears) and *persistent* state (what survives the loop) — exactly where a high score would live.
+
+## If it doesn't work
+
+- **A key on the end screen does nothing.** `end_step` isn't being called for `WIN`/`LOSE`, or the input lock never reaches zero. The dispatcher must route those states to `end_step`, which counts the lock down.
+- **The end screen flashes past before you can read it.** No input lock — a held key carried straight through. Set the lock when you *enter* the screen.
+- **A replayed game keeps old lamps lit, warm walls, or lost lives.** `init_game` isn't a total reset, or the bitmap wipe is missing. Starting over must rebuild everything.
+- **The title instantly starts a game after a win.** The lock set when returning to the title is missing, so the still-held key triggers `title_step` at once.
+
+## What you've learnt
+
+- **Closing the loop is cheap once a state machine exists** — a dead-end state just learns to hand control to another.
+- **"Play again" is "start"** — one `init_game` that rebuilds everything, so a replay is truly fresh.
+- **Debounce shared keys** with a short per-screen input lock, so a held key doesn't skip the screen you just earned.
+- **Per-game state vs persistent state:** what `init_game` resets versus what survives the loop (a score, a counter).
+
+## What's next
+
+Gloaming is complete — a full arcade loop, played from a title and back again. There's one truth left to confirm, and it's the one that matters most: does it run on a **real Spectrum**? In **Unit 20, "On Real Iron"**, we take the finished game off the emulator and onto actual hardware — a Spectrum Next, and a 48K snapshot or tape — and verify that everything you built behaves exactly as it has on screen. The last step of every real project: trust, but verify, on the metal.
