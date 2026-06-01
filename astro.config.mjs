@@ -19,6 +19,22 @@ import m68kGrammar from './src/syntax/m68k.tmLanguage.json' with { type: 'json' 
 // https://astro.build/config
 export default defineConfig({
   site: 'https://code198x.com',
+  // Redirects from the pre-modules `game-NN-slug` landing URLs to the bare module
+  // slugs. Base pages only (Astro can't validate a spread destination against our
+  // statically-generated routes); focused on the shipped Spectrum BASIC games plus
+  // the Shadowkeep flagship. Cheap insurance, not exhaustive — see
+  // decisions/modules-not-games.md.
+  redirects: {
+    '/sinclair-zx-spectrum/basic/game-01-story-builder': '/sinclair-zx-spectrum/basic/story-builder',
+    '/sinclair-zx-spectrum/basic/game-02-lucky-number': '/sinclair-zx-spectrum/basic/lucky-number',
+    '/sinclair-zx-spectrum/basic/game-03-oracle-stone': '/sinclair-zx-spectrum/basic/oracle-stone',
+    '/sinclair-zx-spectrum/basic/game-04-reflex': '/sinclair-zx-spectrum/basic/reflex',
+    '/sinclair-zx-spectrum/basic/game-05-dice-roller': '/sinclair-zx-spectrum/basic/dice-roller',
+    '/sinclair-zx-spectrum/basic/game-06-bright-spark': '/sinclair-zx-spectrum/basic/bright-spark',
+    '/sinclair-zx-spectrum/basic/game-07-hi-lo': '/sinclair-zx-spectrum/basic/hi-lo',
+    '/sinclair-zx-spectrum/basic/game-08-touchdown': '/sinclair-zx-spectrum/basic/touchdown',
+    '/sinclair-zx-spectrum/assembly/game-01-shadowkeep': '/sinclair-zx-spectrum/assembly/shadowkeep',
+  },
   experimental: {
     queuedRendering: { enabled: true },
   },
