@@ -1,0 +1,88 @@
+---
+title: "It Snuffs the Light"
+description: "The draught earns its menace. When it crosses a lit lamp it puts it out — editing its own saved buffer back to cold cyan, the exact mirror of the lamplighter's lighting — and the tally drops. Two moving things now fight over the same ground."
+pubDate: 2026-06-01
+game: 1
+unit: 14
+tags: ["assembly", "z80", "collision", "game-state", "interaction", "attributes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The draught drifts, but does no harm. This unit gives it its purpose: when it crosses a **lit** lamp, it snuffs it — cold cyan again — and the tally falls. The dark starts winning back the ground you've covered, and for the first time you have to think about *where the draught is going*.
+
+The lovely part: you already know exactly how to do this. It's Unit 10's lighting, run backwards.
+
+## What you'll see by the end
+
+![The square with one lamp lit gold at the left, the draught hovering beside a freshly-cooled cyan lamp at the upper right, and the tally showing one.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/screenshot.png)
+
+Two lamps were lit here — but the draught crossed one and put it out. The survivor still glows gold on the left; the snuffed one is cold cyan again, with the draught hovering right beside it, and the tally has dropped from two to one. That fall in the count is the dark pushing back.
+
+## Snuffing is lighting, mirrored
+
+In Unit 10, when the lamplighter stepped onto a cold lamp, he edited his *saved* buffer from cyan to yellow, so restore painted it lit. The draught does the precise opposite. When it steps onto a cell, it saves the nine bytes as always — and if what it saved is a **lit** lamp, it rewrites the saved attribute back to **unlit**:
+
+```
+ld   a, (under_draught + 8)   ; what the draught just covered
+cp   LAMP_LIT                ; a lit lamp?
+jr   nz, .nosnuff
+ld   a, LAMP_UNLIT           ; then cool the SAVED copy
+ld   (under_draught + 8), a
+call unlight_pip             ; and drop the tally
+.nosnuff:
+```
+
+When the draught drifts off, `restore_draught` writes that cooled lamp back to the screen. The lamplighter edits his buffer to *light*; the draught edits its buffer to *snuff*. Same mechanism, opposite sign — and `unlight_pip` is just `light_pip` run backwards, dropping the count and cooling the top pip.
+
+## Two things fighting over one world
+
+This is the first **entity-versus-world interaction** in the game: one moving thing changing a piece of the world that *another* moving thing cares about. The lamps aren't the lamplighter's, and they aren't the draught's — they're contested ground, and the state of each cell is the running score of who reached it last. The lamplighter lights; the draught snuffs; the board is the argument between them.
+
+It changes how the game *plays*, too. Lighting a lamp is no longer permanent, so the win — all eight lit *at once* — becomes a real test. You have to light faster than the draught can eat, and steer your route to stay ahead of its drift. Mechanics just became a contest.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-14/it-snuffs-the-light.asm" />
+
+### What you see
+
+Light some lamps, then watch the draught wander into one and cool it as it leaves — the gold winking back to cyan, the tally ticking down. The square is no longer a quiet place to tidy up; it's a race.
+
+## Assemble and run
+
+```
+pasmonext --sna it-snuffs-the-light.asm it-snuffs-the-light.sna
+```
+
+In Emu198x, light a few lamps near the draught's path and watch it undo your work. Try to keep more lit than it can put out.
+
+## Try this: a hungrier draught
+
+Lower `DRAUGHT_SPEED` so the draught moves more often and snuffs faster. Find the point where the game tips from "tidy up at leisure" to "genuinely tense" — difficulty lives in that one number, and feeling it move is what tuning *is*.
+
+## Try this: a jolt when it bites
+
+Give the snuff a moment of feedback. In the `.nosnuff` branch (just before it), flash the border for an instant — `ld a,2 / out ($FE),a` then back to `0` — so losing a lamp *registers*. A change the player can't see or feel barely counts; a flash of red sells the loss.
+
+## Try this: turn the enemy kind
+
+Change the draught's `cp LAMP_LIT` to `cp LAMP_UNLIT`, and have it set `LAMP_LIT` (and call `light_pip`). Now the "draught" *lights* lamps as it wanders — a helper, not a threat. It's the same code with two constants swapped, and it shows the mechanic was never "good" or "evil": the rule is whatever you write.
+
+## If it doesn't work
+
+- **Lamps are never snuffed.** The check is misplaced or compares the wrong value. Read `under_draught + 8` **after** `save_draught`, and compare it with `LAMP_LIT`.
+- **The snuffed lamp stays gold.** You changed the live cell, or the wrong buffer. Cool the *saved* copy (`under_draught + 8`) so `restore_draught` paints it cold when the draught leaves.
+- **The tally underflows or goes wrong.** `unlight_pip` only ever runs when a *lit* lamp is snuffed, so the count can't drop below zero — confirm it's inside the `cp LAMP_LIT` branch.
+- **You can never win now.** That may be the game, not a bug: the draught can snuff faster than you light. Slow it (`DRAUGHT_SPEED`) while you test, or get quicker.
+
+## What you've learnt
+
+- **Entity-versus-world interaction:** one actor changes shared world state that another actor cares about.
+- The snuff is the **lighting mechanic mirrored** — edit the saved buffer to the opposite value.
+- Keep **paired counters honest** (`light_pip` / `unlight_pip`) and guard the decrement so it only fires on a real loss.
+- An antagonist that edits the same state turns a set of mechanics into a **contest**.
+
+## What's next
+
+The draught can undo your work — but it still can't touch *you*. In **Unit 15, "Lives, and the Fall of Night"**, it can: if the draught and the lamplighter land on the same cell, you lose a life, and when the lives run out, night falls — the lose state. That's the last piece Phase D needs, and the moment Gloaming becomes a game you can not only win, but *lose*.
