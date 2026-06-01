@@ -1,0 +1,93 @@
+---
+title: "Lives, and the Fall of Night"
+description: "Phase D's finale. The draught and the lamplighter can now collide — each hit costs a life from a row of pips — and when the lives run out, night falls: the screen goes dark and the game ends. Gloaming can be lost as well as won."
+pubDate: 2026-06-01
+game: 1
+unit: 15
+tags: ["assembly", "z80", "collision", "lives", "lose-state", "game-state"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The draught can undo your work, but it still can't touch *you*. This unit lets it — and gives the game its stakes. The two can collide, each collision costs a life, and when the lives run out, **night falls**: the square goes dark and the game ends. With this, Gloaming becomes a real game, one you can lose as well as win — and that closes Phase D.
+
+## What you'll see by the end
+
+![A black screen with the words "NIGHT FALLS" in white across the middle.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-15/screenshot.png)
+
+The lose state, reached by letting the draught catch the lamplighter three times: the square swallowed by darkness, two cold words left behind. During play you'd see three red pips in the corner of the HUD — your lives — winking out one by one until this is all that's left. The dark has won.
+
+## Two sprites, one cell: collision
+
+A collision is the question *are the lamplighter and the draught trying to stand on the same cell?* — a comparison of their columns and rows. But there's a trap. If we simply let them overlap, their save/restore buffers tangle: each sprite assumes it's the only thing on its cell, and two of them sharing one cell corrupts what each thinks is "underneath".
+
+So we don't let them overlap. Instead, **a move onto the other's cell is treated like a move into a wall** — refused — and counted as a hit. We check it in both directions: when the lamplighter steps toward the draught, and when the draught drifts toward the lamplighter.
+
+```
+; about to move onto the other's cell?
+ld   a, (tcol)
+ld   hl, draught_col
+cp   (hl)
+jr   nz, .clear
+ld   a, (trow)
+ld   hl, draught_row
+cp   (hl)
+jr   nz, .clear
+call lose_life      ; same cell — collision, don't move
+```
+
+They never actually share a cell, so the engine stays clean. (Drawing two sprites that genuinely *overlap* — compositing one over the other — is a real technique a later game builds. Here we sidestep it, and the game's none the poorer.)
+
+## Lives, as pips again
+
+Lives are shown the way everything is shown in this game: as coloured cells. Three red pips sit at the right of the HUD, and `lose_life` removes one each hit — the lamp tally's machinery, run in reverse. While lives remain, a hit sends the lamplighter **back to the start**, clear of the draught, and play continues. The reset is also what keeps the two sprites apart after a collision without any overlap to clean up.
+
+## The fall of night
+
+When the last life goes, `lose_life` jumps to `lose`, and night takes the square. It's the win's mirror image: where the win prints its line over the lit board, the loss first **washes every cell to black** — one `LDIR`, the whole attribute map gone dark — and then prints `NIGHT FALLS` into the void, and holds. Two end states now, one bright and one dark, each a place the game comes to rest.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-15/lives-and-the-fall-of-night.asm" />
+
+### What you see
+
+Play it and the draught is suddenly dangerous: brush against it and a life is gone, you're back at the start, and a red pip has vanished. Lose all three and the lamps, the walls, the whole square drop into black. Now there's everything to play for — a win to reach and a loss to avoid.
+
+## Assemble and run
+
+```
+pasmonext --sna lives-and-the-fall-of-night.asm lives-and-the-fall-of-night.sna
+```
+
+In Emu198x, dodge the draught while you light. Get caught three times and watch night fall.
+
+## Try this: more or fewer lives
+
+`LIVES` sets how many pips you start with. Try `1` for a brutal single-life run, or `5` for a gentler game. The pips draw themselves from that one number — change it and the HUD follows. How forgiving the game feels is yours to set.
+
+## Try this: a jolt when caught
+
+A lost life should *land*. In `lose_life`, before the reset, flash the border red for a few frames (`ld a,2 / out ($FE),a`, a short delay, then `ld a,0`). The hit becomes something you feel, not just a pip quietly going out — and it buys a beat before you're thrown back to the start.
+
+## Try this: only the draught is deadly
+
+Right now you lose a life whether *you* walk into the draught or *it* walks into you. Remove the check in `player_step` and keep only the one in `draught_step`: now you can brush past the draught safely, and only its own movement onto you is fatal. It's a subtler, fairer feel — and a single deleted block changes the whole character of the threat.
+
+## If it doesn't work
+
+- **No collisions ever register.** The same-cell test is missing or only in one place. Check **both** `player_step` and `draught_step` compare the two positions before committing a move.
+- **The sprites overlap and garble.** You let a move onto the shared cell go through. The check must come *before* the move commits and refuse it, exactly like the wall test.
+- **Lives go wrong or the count underflows.** `lose_life` decrements then indexes `LIFE_BASE + lives`; make sure it's only ever called on a real hit.
+- **Night never falls.** Lives aren't reaching zero — either collisions aren't registering, or the draught can't reach the lamplighter. Lower `DRAUGHT_SPEED` while testing.
+
+## What you've learnt
+
+- **Entity-versus-entity collision** is a same-cell test — and *blocking* the overlap keeps two sprites' save/restore buffers clean, sidestepping the harder problem of drawing them on top of each other.
+- **Lives are another pip readout**, depleted like the tally in reverse.
+- A **lose state mirrors the win state** — an end the game rests in, here dressed as the dark taking the square.
+- Gloaming is now a **complete game**: a goal, a threat, and both a win and a loss.
+
+## What's next
+
+The mechanics are all here — you can win, and you can lose. What's left is to make it feel like a *game you sit down to play*, and that's **Phase E**. In **Unit 16, "The Title"**, we add a title screen and the **state machine** that ties everything together: title → play → win or lose → back to the title. Gloaming stops being a program that starts in the middle and becomes one with a front door.
