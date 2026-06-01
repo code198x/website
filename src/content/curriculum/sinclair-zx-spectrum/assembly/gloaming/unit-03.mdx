@@ -1,0 +1,121 @@
+---
+title: "The Heartbeat"
+description: "Replace the idle loop with a real one. Tell the Z80 to listen for the 50 Hz frame interrupt (IM 1, EI) and HALT until each arrives — so the game beats once per frame, the heartbeat every later unit moves to."
+pubDate: 2026-06-01
+game: 1
+unit: 3
+tags: ["assembly", "z80", "game-loop", "interrupts", "halt", "timing"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The square is built and the lamplighter stands in it — but the program drew them once and then just sat there, holding the picture with a `halt`/`jr` that did nothing useful. That was fine for a still scene. A game is not a still scene. A game *runs* — frame after frame, reading the player, moving the world, redrawing it — and it never stops until you win or lose.
+
+So the lamplighter needs a **loop**. And not just any loop: one tied to the screen itself, so the game runs at exactly the same pace on every [Spectrum](/vault/systems/zx-spectrum), and so each frame's work lands neatly between one screen-draw and the next. This unit builds that loop. It's the first of Gloaming's two big techniques — the **frame-locked game loop** — and from here on, everything happens inside it.
+
+## What you'll see by the end
+
+![The same walled square and white lamplighter from Unit 2, holding perfectly steady.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-03/screenshot.png)
+
+Exactly what you saw in Unit 2 — the same square, the same lamplighter, not moving. **That's the point.** Underneath, the program is now completely different: instead of running once and idling, it is awake and *beating* fifty times a second, running a real game loop that simply has nothing to do yet. The steadiness is the proof it works. We've built the engine; the next units give it something to drive.
+
+## A game is a loop
+
+Every game, on every machine, is the same shape underneath:
+
+```
+forever:
+    read the INPUT   (what is the player doing?)
+    UPDATE the world (move things, apply the rules)
+    DRAW the result  (show the new state)
+```
+
+Round and round, many times a second. One trip through that cycle is one **frame**. Our job in this unit is to build the `forever` and the three empty stages inside it; the stages get filled in over the next units (input in Unit 4, movement in Unit 5).
+
+## Why lock it to the screen
+
+We could just spin that loop as fast as the Z80 can go. But then the game would run at whatever raw speed the processor manages — and it would do its work at random moments while the screen is being drawn, causing tearing and flicker. Worse, "as fast as possible" is a different speed on a 48K Spectrum, a 128K, and a Next.
+
+The fix is to pace the loop to the **screen** itself. The Spectrum redraws its display **50 times a second**, and every time it finishes one complete screen it raises an **interrupt** — a precise tap on the shoulder, 50 times a second, the same on every machine. If we run our loop exactly once per tap, the game beats at a rock-steady 50 Hz everywhere. That beat is the **heartbeat**.
+
+## IM 1, EI, and the magic of HALT
+
+Three instructions give us the heartbeat:
+
+- **`IM 1`** — *interrupt mode 1*. It tells the Z80 to use the Spectrum ROM's built-in interrupt handler, the one wired to that 50 Hz screen tap. (The ROM routine keeps the clock and scans the keyboard; we get it for free.)
+- **`EI`** — *enable interrupts*. Until we say this, the Z80 ignores the taps entirely. With it, each one gets through.
+- **`HALT`** — sleep the processor until the **next** interrupt arrives.
+
+That last one is the trick. A bare `HALT` would freeze the machine — but with interrupts enabled, `HALT` doesn't freeze, it *waits*: the CPU dozes until the next 50 Hz tap wakes it, then carries straight on. So **one `HALT` is "wait for exactly one frame."** Put it at the top of the loop and the loop can never run faster than 50 times a second — it's bolted to the screen.
+
+```
+game_loop:
+    halt          ; ← wait here for the next frame (50 times a second)
+    ... do this frame's work ...
+    jr game_loop  ; ← round again
+```
+
+## Setup once, then loop forever
+
+The program now splits cleanly in two. Everything that draws the *fixed* scene — the border, cobbles, walls and the lamplighter — happens **once**, in setup, before the heartbeat starts. Then `IM 1` / `EI` start the beat, and the loop runs forever, doing (for now) nothing each frame but waiting. Drawing the static scene every frame would be wasted work; we draw it once and let it sit. The loop is reserved for what *changes*.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-03/heartbeat.asm" />
+
+### What you see
+
+The same steady square. Run it for a second or an hour — it holds, because the loop faithfully waits for each frame and then does nothing. A boring picture hiding a living engine.
+
+## Assemble and run
+
+```
+pasmonext --sna heartbeat.asm heartbeat.sna
+```
+
+It looks identical to Unit 2 in Emu198x — and it should. The difference is in how it runs, not what it shows. The next two "Try this" make the heartbeat visible.
+
+## Try this: see the heartbeat
+
+Prove the loop is really running 50 times a second. Add a one-byte counter and write it to the border each frame, so the border colour cycles:
+
+```
+game_loop:
+    halt
+    ld   a, (tick)
+    inc  a
+    ld   (tick), a
+    out  ($FE), a       ; border steps to a new colour every frame
+    jr   game_loop
+...
+tick:
+    defb 0
+```
+
+The border shimmers through its colours — eight steps every eighth of a second. That flicker *is* the heartbeat, made visible. (Take it back out afterwards; the real game keeps a black border.)
+
+## Try this: slow the beat
+
+Put a **second** `halt` just after the first. Now the loop waits for two frames before going round, so it beats at 25 Hz instead of 50. Combine it with the border-counter above and you'll see the colours step half as fast. The number of `HALT`s per loop sets the pace — a dial you can turn.
+
+## Try this: pull the heartbeat out
+
+Delete the `ei`. Run it. The machine freezes on the very first `halt` — a dead, frozen square — because `HALT` is now waiting for an interrupt that, with interrupts disabled, can never come. Put `ei` back and it lives again. That one line is the difference between a sleep you wake from and a sleep you don't.
+
+## If it doesn't work
+
+- **The screen freezes solid and never settles.** You're missing `ei` (or it runs before `im 1` is set up). With interrupts off, the first `halt` sleeps forever. Order it `im 1` then `ei`, both before the loop.
+- **It runs for about a second, then garbles or crashes.** The ROM's interrupt routine uses the stack; if `SP` has been pointed somewhere bad, it corrupts memory each frame. Don't move `SP` into screen or ROM — leave the snapshot's default alone for now.
+- **The lamplighter flickers or disappears.** You moved his draw *inside* the loop and something is clearing or fighting it. The static scene belongs in **setup**, drawn once; the loop stays empty until Unit 5.
+- **It looks exactly like Unit 2.** Correct — that's the expected result. Nothing should change on screen yet.
+
+## What you've learnt
+
+- A game is a **loop**: read input, update the world, draw it — once per frame, forever.
+- The Spectrum raises a **frame interrupt 50 times a second**; `IM 1` selects the ROM handler and `EI` lets the taps through.
+- **`HALT` waits for the next interrupt** — one `HALT` per loop locks the game to 50 Hz, the same speed on every machine.
+- The program splits into **setup** (the fixed scene, drawn once) and the **loop** (what changes, every frame).
+
+## What's next
+
+The loop has an **INPUT** stage that does nothing. In **Unit 4** we fill it in: reading the keyboard with `IN A,($FE)`, watching one half-row of keys for a direction press. It's the first thing the heartbeat reacts to — and the last piece before the lamplighter takes his first step.
