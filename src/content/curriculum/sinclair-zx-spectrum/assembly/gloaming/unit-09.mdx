@@ -1,0 +1,86 @@
+---
+title: "The Lamps"
+description: "The first real game objects. Keep the lamp positions in a small data table and draw an unlit cyan lantern at each — placement as data, not code. And Unit 6 pays off: the lamplighter walks over them without scrubbing them out."
+pubDate: 2026-06-01
+game: 1
+unit: 9
+tags: ["assembly", "z80", "sprite", "data-table", "game-objects", "attributes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The movement engine is finished — the lamplighter roams the walled square and keeps whatever he crosses. Now the *game* begins, and it begins with the thing he's here to do: light the lamps. So first there must be lamps.
+
+A lamp is just another cell sprite — a little lantern drawn into a cell — but a still one, sitting on the floor in cold cyan, waiting to be lit. The interesting question isn't how to draw one; we've drawn sprites since Unit 2. It's how to place *eight* of them without writing eight copies of the same code. The answer is a **data table**.
+
+## What you'll see by the end
+
+![The walled square with eight small cyan lanterns scattered around the interior and the white lamplighter standing in the centre.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-09/screenshot.png)
+
+Eight cyan lanterns, dotted around the square, and the lamplighter among them. The lamps are cold — unlit — and they don't move. They're the goal made visible: walk to each one and light it. This unit just sets them down; Unit 10 lights them.
+
+## Placement is data, not code
+
+We *could* write `draw a lantern at (4,3)`, `draw a lantern at (27,3)`, eight times over. Instead we write the positions as plain bytes — a small table of column/row pairs — and a loop that draws whatever the table holds:
+
+```
+lamp_data:
+    defb 4, 3
+    defb 27, 3
+    ...
+    defb $FF        ; a column of $FF marks the end
+```
+
+`draw_lamps` walks that table two bytes at a time, drawing an unlit lantern at each pair, and stops when it hits the `$FF` sentinel. Want a different level? Edit the table — the program doesn't change at all. Separating *what* (the data) from *how* (the code) is one of the oldest and best ideas in programming, and a level map is the perfect place to meet it.
+
+## A lamp is walkable floor — with pixels
+
+Two small but vital choices. First, the lantern's colour is `%00000101` — cyan INK on **black** PAPER. Black paper means bit 3 is clear, so the Unit 7 wall test reads a lamp as **floor**: the lamplighter can step *onto* it, which is the whole point — he lights a lamp by standing on it (Unit 10).
+
+Second, and this is the lovely part: a lamp has **pixels**, and the lamplighter can walk straight over it without harm. That's Unit 6 paying off in full. When he steps onto a lamp, `save_under` tucks the lantern's nine bytes safely into the buffer; while he stands there his figure covers it; when he leaves, `restore_under` puts the lantern back exactly as it was. The naive blank-erase from Unit 5 would have wiped the lamp out the instant he touched it. Save/restore protects it for nothing.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-09/the-lamps.asm" />
+
+### What you see
+
+The square lays out, eight lanterns appear from the table, and the lamplighter drops in over the top. Walk him across a lamp and it survives his passing, untouched and still cold.
+
+## Assemble and run
+
+```
+pasmonext --sna the-lamps.asm the-lamps.sna
+```
+
+Roam around in Emu198x and visit the lamps. You can stand on any of them and step off again, and the lantern is right where it was.
+
+## Try this: redraw the level
+
+Change the table. Move a lamp, add a ninth pair, or thin them down to three — just edit the `defb` lines (and keep the `$FF` at the end). The level redraws itself with no other change. Try a lamp right next to a wall, or a tight cluster in one corner. The placement is yours to author, in data.
+
+## Try this: walk over a lamp and watch it live
+
+Steer the lamplighter onto a lamp and off again. The lantern vanishes under him, then reappears, unharmed — proof that save/restore is preserving real pixels now, not just blank floor. For contrast, picture Unit 5's blank-erase doing this: the lamp would be gone the moment he stepped on it. This is exactly the bug Unit 6 existed to prevent, now caught in the act of *not* happening.
+
+## Try this: reshape the lantern
+
+Edit the eight `lantern` bytes. Give it a taller chimney, a wider base, a brighter pane pattern. Sketch the eight rows, write the bytes, and every lamp on the board changes at once — because they all draw from the one shape. One glyph, eight lamps.
+
+## If it doesn't work
+
+- **No lamps appear.** `draw_lamps` isn't called in setup, or the table is missing its `$FF` sentinel so the loop never starts cleanly. Check the call sits after the walls and before the lamplighter.
+- **Lamps appear, then garbage trails off after the last one.** The `$FF` sentinel is missing or wrong, so the loop runs past the table into whatever bytes follow. End the table with `defb $FF`.
+- **A lamp stops him like a wall.** Its attribute has a non-black PAPER (bit 3 set). `LAMP_UNLIT` must be black-paper (`%00000101`) so collision treats it as floor.
+- **Walking over a lamp erases it.** Your save/restore isn't protecting it — make sure you're drawing him with the Unit 6 save/restore, not an erase.
+
+## What you've learnt
+
+- **Game objects can be placed from a data table**, not hard-coded — `what` (data) kept separate from `how` (code).
+- A loop walks a table of pairs with a **sentinel** (`$FF`) marking the end.
+- **Save/restore now protects real pixels**: the lamplighter crosses lamps unharmed — Unit 6's reason for existing.
+- Lamps are **walkable floor-with-pixels** (black PAPER), so he can stand on them — which the next unit needs.
+
+## What's next
+
+The lamps are placed and cold. In **Unit 10** the lamplighter lights them: step onto an unlit lamp and mark it **lit** — bright yellow — by changing the very bytes `save_under` is holding, so when he walks on the lamp glows behind him. The background beneath the sprite stops being scenery and becomes **state he can change**: the heart of how this little game is won.
