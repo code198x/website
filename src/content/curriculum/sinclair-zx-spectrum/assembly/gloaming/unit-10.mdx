@@ -1,0 +1,90 @@
+---
+title: "Light It"
+description: "Light a lamp by editing the bytes save/restore already holds. Step onto an unlit lamp, change its saved attribute from cold cyan to bright yellow, and when you step off, restore paints it back glowing. The floor becomes state you control."
+pubDate: 2026-06-01
+game: 1
+unit: 10
+tags: ["assembly", "z80", "game-state", "collision", "attributes", "sprite"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The lamps are placed and cold. The lamplighter's whole job is to warm them — and the way we do it is so economical it feels like a trick. We're already saving the nine bytes beneath him on every move (Unit 6). To light a lamp, we don't draw anything new: we just **edit the saved copy**. Change the stored colour from cold cyan to bright yellow, and when he steps off, restore paints the lamp back — lit.
+
+## What you'll see by the end
+
+![The square of lamps with one lamp, near the bottom, now glowing yellow, the lamplighter just below it; the other lamps still cyan.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-10/screenshot.png)
+
+One lamp lit. The lamplighter walked onto a cold cyan lamp, lit it, and stepped away — and it stays gold behind him while the others remain cold. Walk a full circuit and you'd leave a trail of warm lamps in your wake. That glow staying put after he's gone is the heart of the unit.
+
+## Lighting is editing what's already saved
+
+Look again at the move we built. When he steps onto a cell, `save_under` copies that cell's nine bytes into the buffer — for a lamp, that's the lantern's pixels plus its cyan attribute. He's now standing on it, covering it. The lamp is *in the buffer*, waiting to be restored when he leaves.
+
+So lighting it is one comparison and one write, right after the save:
+
+```
+ld   a, (under_lamp + 8)   ; the attribute we just saved
+cp   LAMP_UNLIT            ; is it a cold lamp?
+jr   nz, .not_lamp
+ld   a, LAMP_LIT          ; then change the SAVED copy to lit
+ld   (under_lamp + 8), a
+.not_lamp:
+```
+
+Nothing on screen changes yet — he's covering the cell. But the buffer now holds a *lit* lamp, so the instant he moves away and `restore_under` runs, the lamp is painted back in bright yellow. He lights it by walking on, and it glows the moment he walks off.
+
+## Two ideas worth naming
+
+This tiny block carries two of the biggest ideas in game programming:
+
+- **Collision as a rule, not just a barrier.** In Unit 7, touching a cell asked "can I go there?". Here, *being* on a cell *does* something. Collision became the game's rules — step on this kind of thing and the world changes.
+- **Persistent state lives in the world.** The lamp doesn't stay lit because the lamplighter remembers it; it stays lit because we changed the *cell*. The glow lives in the floor, not the sprite. Walk to the far side of the square and back — still lit, because the change is *there*, in memory, where we put it.
+
+And it's naturally **idempotent**: step back onto a lamp that's already lit and the save grabs yellow, the `cp LAMP_UNLIT` fails, nothing changes. A lit lamp stays lit. You can't accidentally un-light one by crossing it twice.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-10/light-it.asm" />
+
+### What you see
+
+Steer onto any cold lamp and off again: it blooms from cyan to bright yellow and stays that way. The cobbles between lamps are untouched — only the lamp cells match `LAMP_UNLIT`, so only they light.
+
+## Assemble and run
+
+```
+pasmonext --sna light-it.asm light-it.sna
+```
+
+In Emu198x, tour the lamps. Each one you cross is left glowing behind you. There's a game here now: light them all.
+
+## Try this: light the lot
+
+Walk a full circuit of the square, stepping on every lamp. By the end the whole board is warm — eight gold lanterns where eight cold ones stood. That circuit *is* the game; the next two units add the score and the win that make it one.
+
+## Try this: a flickering flame
+
+A lit lamp is just an attribute, so make it livelier. Set the FLASH bit in `LAMP_LIT` — `%11000110` — and the lit lamps will pulse, ink and paper swapping a few times a second, like a real flame catching. One bit, and cold becomes alive.
+
+## Try this: make them toggle
+
+Change the rule. Instead of only lighting unlit lamps, compare against `LAMP_LIT` as well and swap either way — step on a lit lamp and it goes cold again. Now lamps *toggle*, and you have a different game entirely (keep them all lit at once?). The point: the rule is yours. "What does stepping here do?" is a line of code you get to write.
+
+## If it doesn't work
+
+- **Lamps never light.** The check runs in the wrong place or tests the wrong value. Read `under_lamp + 8` **after** `save_under`, and compare it against `LAMP_UNLIT`.
+- **A lamp flashes lit while he stands on it, then goes cold.** You changed the live screen cell instead of the buffer. Light it by writing `under_lamp + 8`, never the cell directly — let restore do the painting.
+- **The cobbles light up too.** Your compare is matching floor. Cobbles are `COBBLE`, lamps are `LAMP_UNLIT`; only the exact cyan lamp value should pass the `cp`.
+- **A lit lamp turns cold when you cross it again.** Restore isn't writing the lit attribute back to the real cell, so the second save grabs stale data. Confirm `restore_under` writes `under_lamp + 8` to the attribute.
+
+## What you've learnt
+
+- **Collision as a rule:** stepping onto a kind of cell can *do* something, not just gate movement.
+- **Persistent state lives in the world:** change the cell and it stays changed — the glow is in the floor, not the sprite.
+- Lighting **reuses save/restore**: edit the *saved* attribute, and restore paints the lamp lit when he leaves.
+- The trick is **idempotent** — a lit lamp stays lit, however many times he crosses it.
+
+## What's next
+
+Lamps light, but nothing's counting. A game needs to know how you're doing and tell you. In **Unit 11** we add **the tally**: a row of pips along the bottom, one per lamp, brightening as each is lit — a score you read at a glance. It's a deliberately simple readout (coloured cells, not drawn numbers), and the honest "before" of the digit HUD a later game builds.
