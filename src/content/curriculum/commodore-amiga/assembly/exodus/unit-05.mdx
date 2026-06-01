@@ -1,0 +1,87 @@
+---
+title: "Creature Walks"
+description: "The creature moves right each frame. Variables in RAM track position. The main loop updates sprite control words per frame."
+pubDate: 2026-02-06
+game: 1
+unit: 5
+tags: ["assembly", "68000", "sprite", "movement", "variables", "main-loop"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The creature appeared in Unit 4 but stayed frozen in place. Now it walks. Every frame, the x position increases by one pixel. The sprite slides across the terrain from left to right.
+
+This is the first time the main loop does real work. Until now, the loop just waited for vertical blank and checked the mouse button. Now it also updates the creature's position and writes new values into the sprite control words.
+
+![Exodus Unit 5](/images/commodore-amiga/assembly/exodus/unit-05/screenshot.png)
+
+The creature walks right across the landscape. It doesn't know about the terrain yet — it passes over cliffs and gaps as if they weren't there. Collision comes later.
+
+## Variables in RAM
+
+The creature's position needs to persist between frames. Constants won't work — the position changes every frame. Instead, two words in memory hold the current x and y:
+
+<CodeFromFile src="commodore-amiga/assembly/exodus/unit-05/snippets/02-variables.asm" />
+
+`dc.w 0` defines a word (16-bit) in memory, initialised to zero. The labels `creature_x` and `creature_y` give these memory locations names. The `even` directive ensures word alignment — the 68000 requires word and longword accesses to be on even addresses.
+
+At startup, the program writes the starting position into these variables:
+
+```asm
+            move.w  #CREATURE_START_X,creature_x
+            move.w  #CREATURE_START_Y,creature_y
+```
+
+## The Main Loop
+
+<CodeFromFile src="commodore-amiga/assembly/exodus/unit-05/snippets/01-main-loop.asm" />
+
+Three things happen every frame:
+
+1. **Wait for vertical blank** — the same `VPOSR` polling loop as before. This ensures we update once per frame, not as fast as the CPU can run.
+
+2. **Update position** — read `creature_x` from memory into D0, add the speed, write it back. `ADD.W #CREATURE_SPEED,D0` adds one pixel per frame. At 50 frames per second (PAL), the creature crosses the 320-pixel screen in about 6 seconds.
+
+3. **Update sprite** — `BSR update_sprite` rewrites the sprite control words using the new position. The DMA controller reads these words next frame and draws the sprite at the updated position.
+
+The `update_sprite` subroutine is almost identical to `set_sprite_pos` from Unit 4, but now it reads from the variables instead of using constants.
+
+## Why Variables, Not Registers?
+
+The 68000 has eight data registers (D0-D7) — wouldn't it be faster to keep the position in a register? It would, but registers get destroyed by subroutine calls. `draw_rect` destroys D0-D5, and `update_sprite` uses several registers too. Storing the position in memory means it survives any subroutine call.
+
+Later, when there are multiple creatures, each creature's position will be a pair of words in a data table. RAM variables are the natural pattern.
+
+## Experiment: Change the Speed
+
+```asm
+CREATURE_SPEED      equ 1           ; Try 1, 2, 4
+```
+
+- `1` — slow walk (6 seconds to cross the screen)
+- `2` — brisk walk (3 seconds)
+- `4` — running (1.5 seconds)
+
+The creature still walks off the right edge of the screen. It doesn't stop or turn around — there's no boundary check yet. That's Unit 6.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/exodus/unit-05/exodus.asm" />
+
+## If It Doesn't Work
+
+- **Creature doesn't move?** Check that the main loop calls `update_sprite` after modifying `creature_x`. If the sprite control words aren't rewritten, the DMA reads the old position.
+- **Creature moves too fast?** The vertical blank wait might not be working. Without it, the loop runs thousands of times per frame, moving the creature off-screen instantly.
+- **Creature jumps or flickers?** Make sure `update_sprite` runs after the vertical blank wait, not during active display. Writing sprite data while Denise is reading it causes visual glitches.
+- **Position resets to zero?** Check that `creature_x` and `creature_y` are defined with `dc.w`, not `equ`. Constants (`equ`) are assembler-time values; `dc.w` allocates actual RAM.
+
+## What You've Learnt
+
+- **RAM variables** — `dc.w` defines a word in memory. The label provides a name for reading and writing the value at runtime.
+- **Frame-based movement** — adding a fixed amount to the position each frame creates smooth motion. The vertical blank wait ensures exactly one update per frame.
+- **Main loop structure** — wait for blank, update state, update display. This pattern drives every real-time game.
+- **Register vs memory** — registers are fast but temporary. Memory variables persist across subroutine calls and frames.
+
+## What's Next
+
+The creature walks off the right edge and never comes back. In Unit 6, a boundary check detects the screen edge and reverses the direction. The creature bounces back and forth across the terrain.

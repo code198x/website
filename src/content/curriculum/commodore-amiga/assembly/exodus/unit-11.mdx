@@ -1,0 +1,115 @@
+---
+title: "Exit Zone"
+description: "A target area marks where creatures need to go. Four comparisons check if a creature's foot position is inside the rectangle. Saved creatures are removed from play and counted."
+pubDate: 2026-02-06
+game: 1
+unit: 11
+tags: ["assembly", "68000", "bounding-box", "collision", "game-logic", "exit"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The creatures walk and fall, but there's no goal. A terrain puzzle needs somewhere to go — an exit that creatures walk into and are counted as saved. In this unit, we add an exit zone on the right side of the high ground. Creatures that reach it disappear and increment the saved count.
+
+![Exodus Unit 11](/images/commodore-amiga/assembly/exodus/unit-11/screenshot.png)
+
+The exit zone is marked by thin horizontal lines on the right side of the high ground. One creature approaches it. When it walks inside, it vanishes — saved. The other creatures keep walking.
+
+## Bounding Box Test
+
+The exit zone is a rectangle defined by position and size:
+
+```asm
+EXIT_X              equ 280
+EXIT_Y              equ 108
+EXIT_W              equ 24
+EXIT_H              equ 12
+```
+
+To test if a creature is inside, check all four edges. If the foot position is within the rectangle on every axis, the creature has arrived:
+
+<CodeFromFile src="commodore-amiga/assembly/exodus/unit-11/snippets/01-check-exit.asm" />
+
+Four `CMP.W` + branch instructions test the bounds. If any comparison fails, the creature isn't inside and we branch to `.not_in`. Only if all four pass does the creature get saved.
+
+This is a **bounding box collision test** — the simplest form of rectangular collision detection. It works because both the creature's check point and the exit zone are defined as coordinates. No pixel reading, no bitplane access — pure arithmetic.
+
+## A Third State
+
+The creature now has three possible states:
+
+```asm
+STATE_WALKING       equ 0
+STATE_FALLING       equ 1
+STATE_SAVED         equ 2
+```
+
+When `check_exit` detects the creature inside the exit zone, it sets `STATE_SAVED`. The update loop skips saved creatures entirely — they don't walk, fall, or interact with anything. They're done.
+
+The saved count increments with `ADDQ.W #1,saved_count`. This is the first piece of game state that tracks progress rather than physics.
+
+## Hiding Saved Creatures
+
+A saved creature shouldn't be visible. The `write_sprite_pos` subroutine checks the state before writing position data:
+
+<CodeFromFile src="commodore-amiga/assembly/exodus/unit-11/snippets/02-hide-sprite.asm" />
+
+Setting both control words to zero makes the sprite invisible — VSTART and VSTOP are both 0, so the sprite has zero height and Denise never draws it.
+
+## The Exit Marker
+
+The exit zone needs to be visible so the learner can see where creatures go. Two thin rectangles draw the top and bottom edges:
+
+```asm
+            ; Top edge
+            move.w  #EXIT_X,d0
+            move.w  #EXIT_Y,d1
+            move.w  #EXIT_W,d2
+            move.w  #1,d3
+            bsr     draw_rect
+            ; Bottom edge
+            move.w  #EXIT_X,d0
+            move.w  #EXIT_Y+EXIT_H-1,d1
+            move.w  #EXIT_W,d2
+            move.w  #1,d3
+            bsr     draw_rect
+```
+
+This creates a simple bracket shape — just enough to show where the exit is without filling it solid.
+
+## Experiment: Move the Exit
+
+```asm
+EXIT_X              equ 40
+EXIT_Y              equ 140
+```
+
+Move the exit to the low ground. Now creatures need to fall from the platform, land, and walk to the left to reach it. The terrain shape and exit placement together define the puzzle.
+
+```asm
+EXIT_H              equ 24          ; Taller detection zone
+```
+
+A taller exit is easier to reach — creatures can enter at different heights. A shorter exit (like 4 pixels) requires precise landing.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/exodus/unit-11/exodus.asm" />
+
+## If It Doesn't Work
+
+- **Creature walks through the exit?** Check the exit coordinates match the terrain. The exit zone must overlap with where the creature's feet actually are. If `EXIT_Y` is wrong, the foot check point misses the zone.
+- **Creature saved but still visible?** The `write_sprite_pos` must check for `STATE_SAVED` and write zeros. Make sure the check happens before the normal position code.
+- **Exit zone not visible?** The marker rectangles need to be drawn before the bitplane pointer is patched. The `draw_rect` calls should be in the initialisation section.
+- **Saved count not incrementing?** Verify that `check_exit` is called during the walking state, after the creature has moved. If it's called before the move, the position might not be inside the zone yet.
+
+## What You've Learnt
+
+- **Bounding box collision** — four comparisons test if a point is inside a rectangle. This is the standard method for simple rectangular collision detection.
+- **Game states** — `STATE_SAVED` is the first non-physics state. It removes the creature from the simulation entirely. State machines grow naturally as game rules expand.
+- **Game progress** — `saved_count` tracks how many creatures have reached the exit. This is the seed of a scoring system.
+- **Sprite hiding** — writing zeros to the control words makes a sprite invisible. The hardware draws nothing when VSTART equals VSTOP.
+
+## What's Next
+
+Creatures are saved but we can't see the count. In Unit 12, we'll use a Copper screen split to create a status panel at the bottom of the screen, showing how many creatures have been saved.

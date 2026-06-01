@@ -1,0 +1,173 @@
+---
+title: "Copper Landscape"
+description: "A Copper list paints a landscape on screen — sky gradient, grass, terrain layers, underground. No CPU rendering. The custom chipset does it all."
+pubDate: 2026-02-06
+game: 1
+unit: 1
+tags: ["assembly", "68000", "copper", "landscape", "custom-chipset"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Blue sky. Green grass. Brown earth fading to black. A landscape painted entirely by the Amiga's custom chipset — the CPU barely lifts a finger.
+
+The Amiga has a coprocessor called the **Copper** that runs in sync with the video beam. As the beam sweeps down the screen, the Copper changes the background colour at specific lines. No bitmaps. No pixels. Just a list of instructions that says "when the beam reaches here, switch to this colour." The result is a landscape cross-section: sky above, terrain below, darkness underneath.
+
+This is Unit 1 of Exodus — a terrain puzzle where creatures walk across a bitmap landscape. In later units, the terrain becomes real bitmap data that the Blitter can dig through and build upon. For now, the Copper paints the backdrop. By the end of this unit, you'll have a coloured display running from a bootable Amiga disk.
+
+## The Display
+
+![Exodus Unit 1](/images/commodore-amiga/assembly/exodus/unit-01/screenshot.png)
+
+Five zones, twelve colour changes:
+
+- **Sky** — a five-band gradient from deep navy to pale cyan. The Copper changes `COLOR00` at lines `$34`, `$44`, `$54`, and `$60`. Each change is one instruction.
+- **Grass** — a single green band at line `$68`. The ground surface where creatures will walk.
+- **Terrain** — three earth tones at lines `$74`, `$8C`, and `$A4`. This is the cross-section that the Blitter will later modify — digging tunnels, building bridges.
+- **Rock** — two dark bands at lines `$BC` and `$D4`. Deep underground.
+- **Void** — black from line `$E8` onward.
+
+All of this costs zero CPU time. The Copper runs on its own DMA channel, reading instructions from memory in parallel with the 68000.
+
+## Run It First
+
+### Step 1: Build the Executable
+
+```bash
+vasmm68k_mot -Fhunkexe -kick1hunks -nosym -o exodus exodus.asm
+```
+
+This produces `exodus` — an AmigaDOS executable. The `-kick1hunks` flag ensures compatibility with Kickstart 1.x.
+
+### Step 2: Create a Bootable Disk
+
+The Amiga boots from floppy disks. Create an ADF image using `xdftool` (from the [amitools](https://github.com/cnvogelg/amitools) package):
+
+```bash
+xdftool exodus.adf create + format "Exodus" ofs + boot install boot1x
+xdftool exodus.adf + makedir s
+echo "exodus" > startup-sequence
+xdftool exodus.adf + write startup-sequence s/startup-sequence
+xdftool exodus.adf + write exodus + protect exodus +e
+rm startup-sequence
+```
+
+### Step 3: Run in an Emulator
+
+Use **FS-UAE** or **WinUAE** with:
+- **Kickstart 1.3 ROM** (the A500's operating system)
+- **A500 configuration**
+- **exodus.adf** in drive DF0:
+
+The emulator boots from the disk and runs the program automatically. You should see coloured horizontal bands — a landscape cross-section.
+
+**To exit:** Click the left mouse button, then reset the emulator.
+
+## The Amiga's Custom Chipset
+
+Three custom chips work together inside the Amiga:
+
+**Agnus** is the DMA controller. It manages all memory access for graphics, sound, and the Copper. The Blitter (inside Agnus) copies and modifies rectangular memory regions at hardware speed — this will become the core game mechanic in later units.
+
+**Denise** draws the display. It reads bitplane data from memory, combines it into pixel colours, and overlays hardware sprites. In this unit, we use zero bitplanes — just `COLOR00` changes.
+
+**Paula** handles audio and disk I/O. Four channels of 8-bit sampled sound. We'll use Paula starting in Unit 9.
+
+The **68000 CPU** orchestrates everything. It sets up the Copper list, enables DMA, then loops. The custom chips do the rendering work.
+
+## The Copper
+
+The Copper is a coprocessor that executes a stream of instructions in sync with the video beam. It has only two instructions:
+
+**WAIT** — pause until the beam reaches a specific screen position:
+```asm
+dc.w $3401,$fffe   ; Wait for line $34, horizontal position $01
+```
+
+**MOVE** — write a value to any custom chip register:
+```asm
+dc.w COLOR00,$005B  ; Set background colour to medium blue
+```
+
+Each Copper instruction is two words (4 bytes). A WAIT followed by a MOVE changes a register at a specific screen line. Chain them together and you get a display program:
+
+<CodeFromFile src="commodore-amiga/assembly/exodus/unit-01/snippets/01-copper-landscape.asm" />
+
+The first MOVE sets `BPLCON0` to `$0200` — zero bitplanes with colour burst enabled. This means the display shows only `COLOR00` (the background colour). No bitmap data, no sprites. Pure colour.
+
+Then the pattern repeats: WAIT for a line, MOVE a new colour to `COLOR00`. The beam sweeps down, the Copper changes the colour at each waypoint, and the display shows horizontal bands.
+
+The list ends with `dc.w $ffff,$fffe` — a WAIT for an impossible position (line 255, position 254). The Copper halts here until the next frame, when Agnus automatically restarts it from `COP1LC`.
+
+## Taking Over the Machine
+
+Before installing the Copper list, the program disables all interrupts and DMA:
+
+```asm
+move.w  #$7fff,INTENA(a5)   ; Disable all interrupts
+move.w  #$7fff,INTREQ(a5)   ; Clear pending interrupts
+move.w  #$7fff,DMACON(a5)   ; Disable all DMA
+```
+
+Writing `$7FFF` clears bits 0-14 of each control register (bit 15 is the SET/CLR flag — 0 means clear). This shuts down AmigaOS completely. The program now owns the hardware.
+
+Then the Copper list is installed:
+
+```asm
+lea     copperlist,a0       ; A0 = address of our Copper list
+move.l  a0,COP1LC(a5)       ; Tell Agnus where the list is
+move.w  d0,COPJMP1(a5)      ; Strobe: restart Copper from COP1LC
+```
+
+`COP1LC` is the Copper list pointer — Agnus reads instructions from this address. Writing any value to `COPJMP1` (the strobe register) forces the Copper to restart immediately.
+
+Finally, DMA is enabled:
+
+```asm
+move.w  #$8280,DMACON(a5)   ; SET + DMAEN + COPEN
+```
+
+Bit 15 = 1 (SET mode — turn bits on). Bit 9 = DMAEN (master DMA enable). Bit 7 = COPEN (Copper DMA). The Copper starts executing its list.
+
+## Experiment: Change the Colours
+
+Open `exodus.asm` and find the **TWEAKABLE VALUES** section at the top:
+
+```asm
+COLOUR_SKY_DEEP     equ $0016       ; Deep navy at the top
+COLOUR_GRASS        equ $0080       ; Green surface
+COLOUR_EARTH_TOP    equ $0850       ; Light brown earth
+```
+
+Colours are `$0RGB` — one hex digit each for red, green, blue. Values 0-F (0-15).
+
+Try these:
+- `COLOUR_SKY_DEEP equ $0000` — start with black sky (night scene)
+- `COLOUR_GRASS equ $00F0` — neon green grass
+- `COLOUR_EARTH_TOP equ $0F80` — red mars terrain
+- `COLOUR_SKY_HORIZON equ $0FFF` — white-hot horizon
+
+Rebuild after each change. The entire visual mood shifts with just a few numbers.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/exodus/unit-01/exodus.asm" />
+
+## If It Doesn't Work
+
+- **Black screen?** Check that DMA is enabled: `$8280` to `DMACON`. If the Copper DMA bit isn't set, the Copper list never executes. Also verify the Copper list is in Chip RAM — use `section code,code_c` (the `_c` suffix means Chip RAM).
+- **Wrong colours or garbage?** The Copper list must end with `$FFFF,$FFFE`. Without it, the Copper reads past the list into whatever follows in memory — random colours or a crash.
+- **Nothing boots?** The ADF must have a bootblock (`boot install boot1x`) and a startup-sequence in the `s/` directory that names the executable. Check spelling — AmigaDOS is case-sensitive.
+- **Colours don't change?** Each WAIT instruction must have a line number higher than the previous one. The Copper can only wait forward — it can't go backwards. If two WAITs have the same line, the second is skipped.
+
+## What You've Learnt
+
+- **The Copper** — a coprocessor inside Agnus that executes WAIT and MOVE instructions in sync with the video beam. It changes display registers at specific screen positions, creating colour effects with zero CPU cost.
+- **`COLOR00`** — the background colour register. With zero bitplanes, the entire display shows this colour. Changing it at different lines creates horizontal bands.
+- **DMACON** — the DMA control register. SET/CLR bit (15) determines whether you're turning bits on or off. DMAEN (bit 9) is the master switch. COPEN (bit 7) enables the Copper.
+- **Machine takeover** — Amiga programs can shut down the OS and control hardware directly. Disable interrupts and DMA, install your own Copper list, re-enable what you need.
+- **Bootable ADF** — a floppy disk image with a bootblock and startup-sequence. The Amiga boots from it automatically.
+
+## What's Next
+
+In Unit 2, the landscape becomes real bitmap data — a bitplane that the Copper displays as actual pixels. The terrain you'll later dig through and build upon starts as a filled rectangle of memory. The transition from colour bands to a rendered world.

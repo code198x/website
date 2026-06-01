@@ -1,0 +1,174 @@
+---
+title: "Three Lives"
+description: "The player starts with three lives. Each spike hit or obstacle collision costs one. Run out and the game freezes. A shared damage subroutine keeps the logic clean."
+pubDate: 2026-02-06
+game: 1
+unit: 13
+tags: ["assembly", "6502", "lives", "game-over", "subroutines", "hud"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Until now, touching a spike or the obstacle resets the player instantly — annoying, but no consequence. You can walk into spikes forever and nothing changes. This unit adds **lives**. The player starts with three. Each hit costs one. Run out and the game freezes — game over.
+
+The key change: both the obstacle collision and the hazard check need the same response — deduct a life, reset position, play a sound. Rather than duplicating that logic in two places, a single `take_damage` subroutine handles it. Both callers use `JSR take_damage`.
+
+## The Lives Variable
+
+Two new zero-page variables track the player's state:
+
+```ca65
+lives:      .res 1
+game_over:  .res 1
+```
+
+At startup, `lives` is set to `START_LIVES` (3) and `game_over` to 0:
+
+```ca65
+START_LIVES    = 3
+```
+
+```ca65
+    lda #0
+    sta score
+    sta game_over
+    lda #START_LIVES
+    sta lives
+```
+
+## Displaying Lives
+
+The lives count appears on the right side of the HUD, mirroring the score on the left. During setup, the initial "3" is written to the nametable at `$203C` (row 1, column 28):
+
+```ca65
+    lda #$20
+    sta PPUADDR
+    lda #$3C
+    sta PPUADDR             ; $203C (row 1, col 28) — lives
+    lda #(DIGIT_ZERO + START_LIVES)
+    sta PPUDATA
+```
+
+The expression `DIGIT_ZERO + START_LIVES` evaluates to tile 8 — the digit "3" (tile 5 is "0", tile 6 is "1", and so on).
+
+The NMI handler updates both values every frame:
+
+```ca65
+    ; --- Update score display ---
+    bit PPUSTATUS
+    lda #$20
+    sta PPUADDR
+    lda #$22
+    sta PPUADDR             ; $2022 (row 1, col 2)
+    lda score
+    clc
+    adc #DIGIT_ZERO
+    sta PPUDATA
+
+    ; --- Update lives display ---
+    lda #$20
+    sta PPUADDR
+    lda #$3C
+    sta PPUADDR             ; $203C (row 1, col 28)
+    lda lives
+    clc
+    adc #DIGIT_ZERO
+    sta PPUDATA
+
+    ; --- Reset scroll ---
+    lda #0
+    sta PPUSCROLL
+    sta PPUSCROLL
+```
+
+Two consecutive nametable writes in NMI. After the score write, the PPUADDR toggle is already in the "first write" state — so the lives address pair works without another `bit PPUSTATUS`. The scroll reset at the end is essential because every `PPUADDR` write corrupts the scroll register.
+
+## The take_damage Subroutine
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-13/snippets/01-take-damage.asm" />
+
+The subroutine starts with a guard: `lda lives` / `beq @done`. If lives is already zero (somehow called twice in one frame), it does nothing. This prevents the counter from wrapping to 255.
+
+`dec lives` subtracts one. If the result isn't zero, there are lives remaining — reset the player and play the damage sound. If the result is zero, it's game over: set the `game_over` flag and hide the player by moving it to Y position `$EF`.
+
+The damage sound is the same harsh pulse buzz from Unit 12. The position reset is the same code that used to be inline. The difference is that now it's in one place, called from two.
+
+## Calling take_damage
+
+Both the obstacle collision and the hazard check now end with `jsr take_damage` instead of inline reset code:
+
+```ca65
+    ; --- Collision with obstacle ---
+    ...
+    jsr take_damage
+
+@no_collide:
+
+    ; --- Check for hazard tiles ---
+    ...
+    jsr take_damage
+
+@no_hazard:
+```
+
+The obstacle collision runs **before** the hazard check. This matters: when take_damage resets the player to the start position (column 7), the hazard check runs next — but column 7 has ground tiles, not spikes. No double damage.
+
+## Game Over
+
+When the last life is lost, `game_over` is set to 1. The main loop checks this at the very top:
+
+```ca65
+main_loop:
+    lda nmi_flag
+    beq main_loop
+    lda #0
+    sta nmi_flag
+
+    ; --- Game over check ---
+    lda game_over
+    bne main_loop           ; Frozen — wait for next frame
+```
+
+If `game_over` is non-zero, the code jumps straight back to waiting for the next NMI. No input is read, no physics run, no collisions check. The game freezes.
+
+But NMI still fires every frame. OAM DMA still runs. The HUD still updates. The screen doesn't blank — it just stops moving. The "0" in the lives display tells the player what happened.
+
+## The Complete Code
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-13/dash.asm" />
+
+![Dash Unit 13](/images/nintendo-entertainment-system/assembly/dash/unit-13/screenshot.png)
+
+Score on the left, lives on the right. Three lives to start. The spikes and obstacle are both lethal now — each hit costs a life and resets the player to the start. Lose all three and the game freezes.
+
+## Try This: Flash on Damage
+
+When the player takes damage, briefly change the background colour to red. Write `$16` (red) to palette address `$3F00` in the NMI handler when a `damaged` flag is set, then clear the flag after one frame. The screen flashes red for a single frame — a visual punch to accompany the sound.
+
+## Try This: Invincibility Frames
+
+After taking damage, make the player invincible for 60 frames (one second). Set a `invincible` counter on damage, decrement it each frame, and skip the hazard/obstacle checks while it's non-zero. Flicker the player sprite by toggling bit 5 of the OAM attribute byte (priority) each frame during invincibility.
+
+## Try This: Game Over Text
+
+When `game_over` is set, write "GAME OVER" to the nametable (row 14, centred). You'll need letter tiles in CHR-ROM — add tiles for G, A, M, E, O, V, R. Write them to VRAM during NMI when `game_over` transitions from 0 to 1.
+
+## If It Doesn't Work
+
+- **Lives don't decrease?** Check that both collision paths call `jsr take_damage`, not the old inline reset code. The subroutine must be reachable — make sure the label `take_damage:` exists and isn't inside another subroutine's scope.
+- **Lives show the wrong number?** The initial nametable write must use `DIGIT_ZERO + START_LIVES`, not just `START_LIVES`. Tile 3 is the ground block, not the digit "3".
+- **Player loses two lives at once?** Make sure the obstacle collision runs before the hazard check. After take_damage resets the player to column 7, the hazard check should find ground (tile 3) at that position, not spikes.
+- **Game doesn't freeze on game over?** The `lda game_over` / `bne main_loop` check must be at the top of the main loop, after `nmi_flag` but before any game logic. If it's further down, some logic still runs.
+- **Lives display doesn't update?** The NMI handler must write to `$203C` (not `$2022` — that's the score). Check both PPUADDR bytes: `$20` then `$3C`.
+
+## What You've Learnt
+
+- **Lives system** — a counter that decrements on damage. Zero means game over. The `game_over` flag freezes the main loop while NMI continues.
+- **Shared subroutines** — `take_damage` is called from two different collision checks. One subroutine, one place to maintain. `JSR`/`RTS` makes this natural.
+- **Guard clauses** — `lda lives` / `beq @done` prevents decrementing past zero. Always check the precondition before modifying state.
+- **Execution order matters** — obstacle collision before hazard check prevents double damage. The player's reset position has no spikes, so the second check passes safely.
+- **Multiple nametable writes in NMI** — two PPUADDR/PPUDATA sequences back to back. The PPUADDR toggle tracks correctly without extra `bit PPUSTATUS` calls between them.
+
+## What's Next
+
+Three lives and game over — the game has real stakes now. But once those lives are gone, the only option is to reset the console. In Unit 14, the game gets a proper restart: after game over, pressing Start begins a fresh run with the score and lives reset.

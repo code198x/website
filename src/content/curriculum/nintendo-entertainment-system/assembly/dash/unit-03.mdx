@@ -1,0 +1,185 @@
+---
+title: "Jump"
+description: "The A button launches the player upward. Gravity pulls them back down. Signed velocity, two's complement arithmetic, and the core verb of every platformer."
+pubDate: 2026-02-06
+game: 1
+unit: 3
+tags: ["assembly", "6502", "jump", "gravity", "velocity", "physics"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Left and right. But a platformer needs a vertical verb. Press A — the figure launches upward, hangs in the air for a moment, then falls back to the floor. Gravity, velocity, and the jump arc that defines every platformer.
+
+This unit introduces signed arithmetic on the 6502. The player gets a vertical velocity variable that gravity increases every frame. A negative velocity means upward movement; positive means downward. The A button sets a negative impulse, and gravity does the rest.
+
+## Velocity and Gravity
+
+In Unit 2, movement was instant — press a button, position changes by one pixel. Jumping needs something more: a velocity that changes over time.
+
+The idea is simple. Every frame:
+
+1. **Add gravity to velocity** — velocity gets a little more positive (downward) each frame
+2. **Add velocity to position** — the player moves by the current velocity
+3. **Check for the floor** — if the player has passed through the floor, clamp them to it
+
+When the player jumps, we set velocity to a negative value (upward). Gravity reduces that velocity each frame until it reaches zero (the apex), then increases it again (falling). The result is a smooth parabolic arc — the same curve a ball follows when you throw it.
+
+## Signed Numbers on the 6502
+
+The 6502 doesn't have separate signed and unsigned addition instructions. `CLC` / `ADC` handles both — the hardware adds bytes regardless of whether you interpret them as signed or unsigned.
+
+The trick is **two's complement**. In an unsigned byte, values range from 0 to 255. In two's complement, the same byte represents -128 to +127:
+
+```
+$00 =   0       $7F = +127
+$01 =  +1       $80 = -128
+$02 =  +2       $FE =  -2
+...             $FF =  -1
+```
+
+Values $00–$7F are positive (0 to 127). Values $80–$FF are negative (-128 to -1). The top bit acts as a sign indicator.
+
+Our jump velocity is `$F6`, which in two's complement is -10. Add -10 to a Y position and the sprite moves up by 10 pixels. Add +1 (gravity) to -10 and you get -9 — still moving up, but slower. Eventually velocity reaches 0 (the peak), then goes positive (falling).
+
+The `ADC` instruction doesn't care. It adds bytes. The interpretation — signed or unsigned — is entirely in your head.
+
+## The Jump Check
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-03/snippets/01-jump.asm" />
+
+Two conditions must be true: the A button is pressed, AND the player is on the ground. If either fails, `BEQ` skips the jump.
+
+`JUMP_VEL` is `$F6` — the upward impulse. Writing it to `vel_y` is the only thing the jump does. From this point on, the physics code takes over. Gravity will slow the ascent, stop it, reverse it, and accelerate the fall — all without any jump-specific code.
+
+Setting `on_ground` to 0 prevents mid-air jumps. The player can't jump again until they land.
+
+### Why Two Checks?
+
+Without the `on_ground` check, holding A would reset the velocity every frame — the player would fly upward forever. Without the A button check, the player would jump automatically whenever they're on the ground. Both conditions together mean: jump once, when you press the button, only from the floor.
+
+## The Physics
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-03/snippets/02-physics.asm" />
+
+Three steps, every frame, in order.
+
+**Gravity** adds 1 to `vel_y`. If `vel_y` is -10, it becomes -9. Then -8, -7, ... 0, 1, 2, 3 — the velocity crosses zero and starts accelerating downward. This is exactly how real gravity works: constant acceleration.
+
+**Apply velocity** adds `vel_y` to `player_y`. When velocity is negative, the player moves up. When positive, down. The speed of movement matches the magnitude of the velocity.
+
+**Floor collision** checks if the player has reached or passed `FLOOR_Y` (206). `CMP #FLOOR_Y` sets the carry flag if `player_y >= 206`. `BCC @in_air` skips the landing code if the player is still above the floor (carry clear = less than). When the player hits the floor, three things happen: position is clamped to the floor, velocity is zeroed, and `on_ground` is set back to 1 — ready for the next jump.
+
+### The Arc
+
+With `JUMP_VEL = -10` and `GRAVITY = 1`, the jump arc looks like this:
+
+```
+Frame   vel_y   player_y   Direction
+  0      -10      206      Jump! (on floor)
+  1       -9      196      Rising fast
+  2       -8      187      Rising
+  3       -7      179      Rising
+  4       -6      172      Rising
+  5       -5      166      Slowing
+  6       -4      161      Slowing
+  7       -3      157      Almost stopped
+  8       -2      154      Barely moving
+  9       -1      152      Crawling upward
+ 10        0      151      The apex — zero velocity
+ 11       +1      151      Starting to fall
+ 12       +2      152      Falling
+ 13       +3      154      Faster
+  ...    ...      ...      Accelerating
+ 19       +9      196      Almost back
+ 20      +10      206      Land! (clamp to floor)
+```
+
+The rise is slow at the top and fast at the bottom — the same feel as Mario, Mega Man, and every platformer since. The peak hangs for a moment because the velocity passes through zero. This isn't a special case or an animation trick. It's just maths.
+
+## The New Starting Position
+
+In Units 1 and 2, the player started at Y=120 (centre of the screen). Now there's a floor at Y=206, so the player starts there instead. The `on_ground` flag starts at 1 — ready to jump from the first frame.
+
+```ca65
+PLAYER_Y    = 206           ; Starting Y position (on the floor)
+FLOOR_Y     = 206           ; Y position of the floor
+```
+
+Why 206? An 8×8 sprite at Y=206 sits near the bottom of the visible screen. Below about Y=224, sprites are in the overscan area and may not be visible on all TVs. Leaving some margin keeps the floor visible.
+
+## The Complete Code
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-03/dash.asm" />
+
+![Dash Unit 3](/images/nintendo-entertainment-system/assembly/dash/unit-03/screenshot.png)
+
+The figure stands at the bottom of the screen. Press A and it launches upward in a smooth arc, hangs at the peak, then falls back to the floor. Move left and right while jumping — the horizontal movement from Unit 2 combines with the vertical physics to create diagonal arcs.
+
+## Try This: Change the Gravity
+
+Lower gravity makes floatier jumps:
+
+```ca65
+GRAVITY     = 1             ; Earth-like (current)
+```
+
+Try setting `GRAVITY` to 2 for heavier, snappier jumps. The player reaches the apex faster and falls harder. Or try leaving gravity at 1 and changing `JUMP_VEL` to `$F2` (-14) for a higher jump. The feel of a platformer lives in these two numbers.
+
+## Try This: Double Jump
+
+Remove the `on_ground` check:
+
+```ca65
+    lda buttons
+    and #BTN_A
+    beq @no_jump
+    ; lda on_ground         ; Skip this check
+    ; beq @no_jump          ; Skip this too
+    lda #JUMP_VEL
+    sta vel_y
+@no_jump:
+```
+
+Now the player can jump at any time — even mid-air. Holding A resets the velocity every frame, so the player flies upward forever. This is why the `on_ground` flag matters. A proper double jump (jump once more in mid-air, but only once) needs a counter — we'll build that in a later unit.
+
+## Try This: Variable Jump Height
+
+In most platformers, tapping A gives a short hop while holding A gives a full jump. One way to achieve this:
+
+```ca65
+    ; After the jump check, while airborne and rising:
+    lda buttons
+    and #BTN_A
+    bne @holding_a          ; A still held — let physics run
+    lda vel_y
+    bpl @holding_a          ; Already falling — don't interfere
+    lda #$FE                ; Cut velocity to -2 (gentle rise)
+    sta vel_y
+@holding_a:
+```
+
+When the player releases A while still rising, this cuts the velocity short. The jump ends early, giving a lower arc. This is how Super Mario Bros. handles short hops versus full jumps.
+
+## If It Doesn't Work
+
+- **No jump?** Check that `on_ground` starts at 1 in the initialisation code. If it starts at 0, the jump check fails because the player is "already airborne".
+- **Player falls through the floor?** The `CMP #FLOOR_Y` / `BCC` check must come AFTER the position update. If it runs before, the position hasn't been updated yet and the check uses stale data.
+- **Player stuck at the top?** Make sure gravity is being added to `vel_y`, not to `player_y` directly. Gravity changes velocity, which then changes position.
+- **Jump goes the wrong way?** `JUMP_VEL` must be negative (high bit set). `$F6` is -10. If you accidentally use `$0A` (+10), the player jumps downward.
+- **Jerky arc?** Check that `CLC` appears before both `ADC` instructions. Without it, a stale carry flag adds an extra 1 to the result, corrupting the physics.
+- **Can jump mid-air?** Make sure the `on_ground` check isn't commented out. Both conditions (A pressed AND on ground) must pass.
+
+## What You've Learnt
+
+- **Velocity as a variable** — position changes by velocity each frame, not by a fixed amount. This creates acceleration and deceleration naturally.
+- **Two's complement** — the 6502 represents negative numbers using values $80–$FF. `ADC` handles signed and unsigned identically — the interpretation is yours.
+- **Gravity as constant acceleration** — adding a fixed value to velocity each frame produces a parabolic arc. The same physics that governs a thrown ball.
+- **Jump impulse** — setting velocity to a negative value launches the player upward. Gravity does all the work from there.
+- **Floor collision** — `CMP` / `BCC` detects when the player reaches the floor. Clamping position and zeroing velocity creates a clean landing.
+- **Guard conditions** — two `BEQ` checks ensure the player can only jump when on the ground with A pressed. Without both, the physics breaks.
+- **The on_ground flag** — a single byte that tracks whether the player is standing or airborne. Set on landing, cleared on jump.
+
+## What's Next
+
+The player can run and jump — but there's nothing to jump over. In Unit 4, we add obstacles that scroll across the screen, and the game gets its first challenge.

@@ -1,0 +1,95 @@
+---
+title: "Direct Hit"
+description: "Your bullet meets the enemy — software collision detection using coordinate distance checking. The enemy vanishes and respawns at the top."
+pubDate: 2026-02-06
+game: 1
+unit: 6
+tags: ["assembly", "6510", "collision", "sprites", "shooter"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Fire. Hit. The enemy vanishes and reappears at the top. No explosion, no score — just proof that your bullet knows where the enemy is.
+
+## Collision Detection
+
+Games need to know when things overlap. The VIC-II has hardware collision registers (`$D01E` and `$D01F`) that detect when sprite pixels touch, but they're awkward for precise game logic — they trigger on pixel overlap, not position proximity, and they latch until read. Software collision is more predictable: compare the X and Y coordinates yourself.
+
+The approach: each frame, if the bullet is active, check whether it's close enough to the enemy. "Close enough" means both X and Y are within 16 pixels. If both checks pass, it's a hit.
+
+## Checking Distance
+
+<CodeFromFile src="commodore-64/assembly/starfield/unit-06/snippets/01-collision-check.asm" />
+
+The first line is a guard clause — if `bullet_active` is zero, skip the entire check. No point comparing positions when there's nothing to hit with.
+
+Then comes the Y check. `SEC` / `SBC` subtracts `enemy_y` from `bullet_y`. The result tells us how far apart they are, but there's a subtlety: subtraction wraps around in 8 bits.
+
+If the bullet is *below* the enemy (bullet_y > enemy_y), the result is a small positive number — straightforward. If the bullet is *above* the enemy (bullet_y < enemy_y), the result wraps to a large value near 255.
+
+Both cases can mean "close":
+
+- **bullet_y = 100, enemy_y = 90** — result is 10. Less than `$10` (16), so they're close.
+- **bullet_y = 100, enemy_y = 105** — result is 251 (unsigned). Greater than or equal to `$F0` (240), so they're also close — from the other direction.
+- **bullet_y = 100, enemy_y = 50** — result is 50. Neither less than `$10` nor greater than `$F0`. Too far apart.
+
+The two `CMP` / branch instructions carve out these two "close" ranges. Values 0–15 (`$00`–`$0F`) and 240–255 (`$F0`–`$FF`) both mean "within 16 pixels." Everything in between means "too far."
+
+The X check works identically, reading the bullet's sprite X register at `$D002` and comparing against `enemy_x`.
+
+## On Hit
+
+When both checks pass, two things happen:
+
+**Deactivate the bullet.** Clear `bullet_active` and use `AND` to turn off bit 1 in the sprite enable register — the same pattern from Unit 3, just in a new context.
+
+**Respawn the enemy.** Reset Y to `$32` (top of screen) and pick a new random X from the raster register — the same respawn pattern from Unit 5. The enemy reappears immediately, ready to drift down again.
+
+No explosion sound yet. No score. That's Units 7 and 8. This unit is purely about the geometry — proving that two objects can find each other in screen space.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-64/assembly/starfield/unit-06/starfield.asm" />
+
+## If It Doesn't Work
+
+- **Bullet passes through?** Check the distance threshold — `$10` is 16 pixels. The enemy sprite is roughly 16 pixels wide, so this should catch most overlaps. If sprites are offset, try `$14` (20 pixels).
+- **Hit detection only works sometimes?** Make sure you're comparing `bullet_y` (the zero-page variable) with `enemy_y`. The sprite register `$D003` may lag behind by a frame if you read it before writing the updated position.
+- **Enemy doesn't respawn on hit?** Check the respawn code runs inside the `hit_enemy` block, not unconditionally after it. The `no_hit` label must be *after* the respawn instructions.
+- **Everything dies instantly?** Make sure the collision check is between the bullet update and the enemy update, not overlapping with either.
+
+## Try This: Adjust the Hit Box
+
+`CMP #$10` defines a 16-pixel threshold. You can change the Y and X thresholds independently:
+
+- **`CMP #$08`** — 8 pixels. Tight. Requires precise aim.
+- **`CMP #$18`** — 24 pixels. Very forgiving, hard to miss.
+
+A taller hit box (bigger Y threshold) with a narrow X threshold rewards horizontal aiming. A wide X threshold with a tight Y threshold rewards timing. Experiment with the feel.
+
+## Try This: Count Hits
+
+Add a zero-page variable:
+
+```asm
+hit_count = $06
+```
+
+In the `hit_enemy` block, add:
+
+```asm
+inc hit_count
+```
+
+You can't display it on screen yet (that's Unit 8), but you can verify it's changing by watching address `$06` in a monitor or debugger. It's a preview of what scoring will look like.
+
+## What You've Learnt
+
+- **Software collision detection** — comparing coordinates directly, not relying on hardware sprite collision registers.
+- **Unsigned distance** — `SEC` / `SBC` gives a result where both small values (0–15) and values near 255 (240–255) mean "close."
+- **Nested checks** — Y first, then X. Both must pass for a hit.
+- **Guard clause** — skip the entire check when `bullet_active` is zero. No wasted cycles, no false positives.
+
+## What's Next
+
+The enemy vanishes instantly — no fanfare, no sound. In Unit 7, the SID chip gives explosions a voice, and the enemy flashes white on impact.
