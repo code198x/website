@@ -1,0 +1,99 @@
+---
+title: "Save and Restore"
+description: "Retire the blank-erase. Keep a nine-byte buffer of whatever's beneath the lamplighter — eight bitmap rows plus the attribute — restore it when he leaves and save the next cell as he arrives. He can cross anything unharmed."
+pubDate: 2026-06-01
+game: 1
+unit: 6
+tags: ["assembly", "z80", "sprite", "save-restore", "background", "memory"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Unit 5 moved the lamplighter by blanking the cell he left — and we said plainly why that was a trap: it only works while the floor is empty. The first thing with real pixels he steps onto, the blank-erase will scrub away.
+
+This unit fixes it for good, and it completes the cell-sprite technique. The idea is simple: instead of blanking, **remember**. Before he stands in a cell, save the nine bytes already there; when he leaves, put them back. From now on he can walk over anything without harming it.
+
+## What you'll see by the end
+
+![The walled square with the lamplighter left of centre, having walked there — one clean figure, the floor undamaged.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/screenshot.png)
+
+He's walked left this time — but otherwise it looks exactly like Unit 5: one figure, clean floor, no trail. On bare cobbles, save-and-restore and blank-erase are indistinguishable. The difference is invisible *today* and essential the moment there's something on the floor worth keeping. (The last "Try this" makes it visible — it's the mirror of Unit 5's bug.)
+
+## What's under him
+
+A cell is nine bytes: the **eight bitmap rows** that hold its pixels, plus the **one attribute** that holds its colour. To preserve a cell while the lamplighter stands on it, we copy all nine into a small buffer in memory:
+
+```
+under_lamp:
+    defb 0,0,0,0,0,0,0,0,0   ; 8 pixel rows + 1 attribute
+```
+
+`under_lamp` always holds "whatever is underneath him right now". Save fills it as he arrives; restore empties it back as he leaves.
+
+## The dance: restore, step, save, draw
+
+Every move is now four steps in a strict order:
+
+1. **Restore** — write the buffer back over his current cell. The background he was covering reappears, exactly as it was.
+2. **Step** — change `lamp_col`.
+3. **Save** — copy the new cell's nine bytes into the buffer, *before* we draw over them.
+4. **Draw** — stamp him into the new cell.
+
+Order is everything. Restore before you step (or you'll restore the wrong cell); save before you draw (or you'll save his own figure as the "background" and carry it around like a stain). Get it right and he glides across the floor leaving it untouched.
+
+## The same address, reused four ways
+
+Saving, restoring and drawing all need the address of his cell — and it's the same simple sum from Unit 5: `ROW_SCR + col` for the pixels, `ROW_ATTR + col` for the colour. Rather than write it out four times, two tiny helpers (`scr_addr`, `attr_addr`) hand back the address in `HL`, and save / restore / draw each lean on them. Same arithmetic, three jobs.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-06/save-and-restore.asm" />
+
+### What you see
+
+He walks, just as before — but now every cell he leaves is rebuilt from the buffer, not blanked. On the empty floor you can't tell; under the surface, he's become a well-behaved sprite that respects whatever he stands on.
+
+## Assemble and run
+
+```
+pasmonext --sna save-and-restore.asm save-and-restore.sna
+```
+
+Walk him about. Identical to Unit 5 on screen — the proof is in what *doesn't* break, which the next exercise shows.
+
+## Try this: watch it survive
+
+This is the exact mirror of Unit 5's "watch the assumption bite". Poke a mark into a floor cell in his path, in setup:
+
+```
+ld   hl, ROW_SCR + 9
+ld   (hl), %11111111
+```
+
+In Unit 5, walking over column 9 wiped that bar away. Now walk over it and **it's still there** when he leaves — saved on the way in, restored on the way out. Same scene, opposite outcome: that's the whole unit, made visible.
+
+## Try this: forget to restore
+
+Comment out one `call restore_under`. The trail of lamplighters comes straight back — because the old cell never gets rebuilt, so his figure stays stamped in it. It's a neat way to see that restore is doing real work every single step, even when the floor looks empty.
+
+## Try this: the square hole (a look ahead)
+
+Fill a cell in his path with a stipple instead of a solid bar (`%10101010`), and walk onto it. While he's standing there, notice his cell is a solid block — his white figure on black — and the stipple is completely hidden *under* him, not showing through the gaps in his shape. Save-and-restore protects the background, but he still covers it with an opaque square while he's on it. Drawing only his *lit* pixels, so scenery shows through the gaps, is **masking** — the upgrade a later game makes to this very technique.
+
+## If it doesn't work
+
+- **A trail of figures again.** `restore_under` isn't being called, or runs after the step. Restore the **old** cell first, then change `lamp_col`.
+- **He drags a smear of background around with him.** You saved *after* drawing — so the buffer holds his own figure, and you stamp it into the next cell. Save the new cell **before** `draw_lamp`.
+- **The cell he started on is wrong after he first moves.** Setup must `save_under` *before* the first `draw_lamp`, so the buffer holds real floor, not his figure.
+- **It looks exactly like Unit 5.** Correct, on a blank floor. Use the first "Try this" to see the difference.
+
+## What you've learnt
+
+- Preserve a sprite's background by **saving** the cell's bytes before drawing and **restoring** them when it leaves.
+- A cell is **nine bytes**: eight bitmap rows plus one attribute.
+- The order is **restore (old) → step → save (new) → draw** — and save must come before draw.
+- This solid save/restore is the honest **"before"**; drawing only lit pixels — **masking** — is the upgrade a later game makes.
+
+## What's next
+
+The lamplighter can now stand anywhere safely — so it's time to decide where he's *allowed* to go. In **Unit 7** we add collision: before each step, read the **attribute of the target cell** and `BIT`-test it. If it's a wall, the step is refused. The square's blue frame stops being decoration and becomes a boundary he can't cross.
