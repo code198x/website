@@ -228,15 +228,21 @@ const vaultCategories = defineCollection({
 
 // Games catalogue - curriculum games organised by platform and track
 // Note: units and unitsAvailable are computed from the units collection
-const games = defineCollection({
-  loader: glob({ pattern: '**/*.yaml', base: 'src/content/games' }),
+const modules = defineCollection({
+  loader: glob({ pattern: '**/*.yaml', base: 'src/content/modules' }),
   schema: z.object({
     platform: z.string(), // e.g., commodore-64, sinclair-zx-spectrum
     track: z.enum(['assembly', 'basic', 'amos']),
-    games: z.array(z.object({
+    modules: z.array(z.object({
       number: z.number(),
       slug: z.string(),
       name: z.string(),
+      // What sort of module: a buildable game, a teaching module (the Primer),
+      // or an interval. A game can be taught by several modules (revisits) —
+      // `game` ties them together, `pass` orders them. See decisions/modules-not-games.md
+      kind: z.enum(['game', 'teaching', 'interval']).default('game'),
+      game: z.string().optional(),
+      pass: z.number().optional(),
       tagline: z.string(),
       skills: z.array(z.string()),
       status: z.enum(['in-progress', 'coming-soon', 'complete']),
@@ -252,7 +258,7 @@ const units = defineCollection({
   schema: z.object({
     platform: z.string(),
     track: z.enum(['assembly', 'basic', 'amos']),
-    gameSlug: z.string(),
+    moduleSlug: z.string(),
     phases: z.array(z.object({
       name: z.string(),
       description: z.string(),
@@ -289,7 +295,7 @@ const unitPages = defineCollection({
   }),
 });
 
-const gamePages = defineCollection({
+const modulePages = defineCollection({
   loader: glob({ pattern: '**/index.mdx', base: 'src/content/curriculum' }),
   schema: z.object({
     title: z.string(),
@@ -323,12 +329,12 @@ export const collections = {
   vault,
   patterns,
   timeline,
-  games,
+  modules,
   units,
   'pattern-categories': patternCategories,
   'pattern-difficulties': patternDifficulties,
   'vault-categories': vaultCategories,
   'unit-pages': unitPages,
-  'game-pages': gamePages,
+  'module-pages': modulePages,
   'getting-started-pages': gettingStartedPages,
 };

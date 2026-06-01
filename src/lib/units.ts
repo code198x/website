@@ -10,13 +10,13 @@ export type Unit = UnitsEntry['data']['units'][number];
 export async function getUnitsEntry(
   platform: string,
   track: 'assembly' | 'basic' | 'amos',
-  gameSlug: string
+  moduleSlug: string
 ): Promise<UnitsEntry | undefined> {
   const allUnits = await getCollection('units');
   return allUnits.find(
     u => u.data.platform === platform &&
          u.data.track === track &&
-         u.data.gameSlug === gameSlug
+         u.data.moduleSlug === moduleSlug
   );
 }
 
@@ -26,9 +26,9 @@ export async function getUnitsEntry(
 export async function getUnits(
   platform: string,
   track: 'assembly' | 'basic' | 'amos',
-  gameSlug: string
+  moduleSlug: string
 ): Promise<Unit[]> {
-  const entry = await getUnitsEntry(platform, track, gameSlug);
+  const entry = await getUnitsEntry(platform, track, moduleSlug);
   return entry?.data.units ?? [];
 }
 
@@ -38,9 +38,9 @@ export async function getUnits(
 export async function getPhases(
   platform: string,
   track: 'assembly' | 'basic' | 'amos',
-  gameSlug: string
+  moduleSlug: string
 ): Promise<Phase[]> {
-  const entry = await getUnitsEntry(platform, track, gameSlug);
+  const entry = await getUnitsEntry(platform, track, moduleSlug);
   return entry?.data.phases ?? [];
 }
 
@@ -50,9 +50,9 @@ export async function getPhases(
 export async function getTotalUnitsCount(
   platform: string,
   track: 'assembly' | 'basic' | 'amos',
-  gameSlug: string
+  moduleSlug: string
 ): Promise<number> {
-  const units = await getUnits(platform, track, gameSlug);
+  const units = await getUnits(platform, track, moduleSlug);
   return units.length;
 }
 
@@ -62,9 +62,9 @@ export async function getTotalUnitsCount(
 export async function getUnitsAvailableCount(
   platform: string,
   track: 'assembly' | 'basic' | 'amos',
-  gameSlug: string
+  moduleSlug: string
 ): Promise<number> {
-  const units = await getUnits(platform, track, gameSlug);
+  const units = await getUnits(platform, track, moduleSlug);
   return units.filter(u => u.available).length;
 }
 
@@ -74,10 +74,10 @@ export async function getUnitsAvailableCount(
 export async function getUnit(
   platform: string,
   track: 'assembly' | 'basic' | 'amos',
-  gameSlug: string,
+  moduleSlug: string,
   unitNumber: number
 ): Promise<Unit | undefined> {
-  const units = await getUnits(platform, track, gameSlug);
+  const units = await getUnits(platform, track, moduleSlug);
   return units.find(u => u.number === unitNumber);
 }
 
@@ -94,8 +94,8 @@ export async function getAllUnitsEntries(): Promise<UnitsEntry[]> {
 export async function hasUnitsEntry(
   platform: string,
   track: 'assembly' | 'basic' | 'amos',
-  gameSlug: string
+  moduleSlug: string
 ): Promise<boolean> {
-  const entry = await getUnitsEntry(platform, track, gameSlug);
+  const entry = await getUnitsEntry(platform, track, moduleSlug);
   return entry !== undefined;
 }

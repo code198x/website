@@ -15,8 +15,8 @@ export async function GET(context: APIContext) {
     // ID: "sinclair-zx-spectrum/assembly/game-01-shadowkeep/unit-06"
     const parts = entry.id.split('/');
     const platformSlug = parts[0];
-    const gameSlug = parts[2] ?? '';
-    const gameName = gameSlug
+    const moduleSlug = parts[2] ?? '';
+    const gameName = moduleSlug
       .replace(/^game-\d+-/, '')
       .split('-')
       .map(w => w.charAt(0).toUpperCase() + w.slice(1))
