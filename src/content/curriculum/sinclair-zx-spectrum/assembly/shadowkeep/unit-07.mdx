@@ -1,0 +1,351 @@
+---
+title: "The Beeper Sings"
+description: "Six units of silence end. Bit 4 of port $FE — the same port that carries the BORDER colour and the keyboard — drives the Spectrum's single-bit speaker. Toggle it at audio frequencies and the keep finds its voice. A title theme in D minor, looping forever, built from a (pitch, duration) data table and a hundred-byte driver."
+pubDate: 2026-05-17
+game: 1
+unit: 7
+tags: ["assembly", "z80", "beeper", "audio", "music", "port-fe", "data-driven"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The keep walks. The keep collects. The keep wins. Across six units it does all of that in *silence* — the only sound in Shadowkeep so far has been the brief BORDER flash of a locked exit, and that's a colour, not a sound. The thief moves, the screens flip, the gold falls and the exit fires; the speakers stay quiet.
+
+This unit gives the keep a voice. The ZX Spectrum's 48K beeper is **one bit** — bit 4 of port `$FE`, the same port we already use for [the border colour and the keyboard](/vault/techniques/zx-spectrum-hardware-ports). One bit, on or off. To produce a tone, you toggle that bit at a steady rate. Faster toggling = higher pitch. The speaker itself has no volume, no envelope, no harmony, no concept of a "note" — all that is implemented in software, by the driver that decides when to toggle.
+
+By the end of the unit the title theme plays. A twelve-note D-minor phrase, looping forever, driven by a (pitch, duration) data table that follows the [beeper-music format](/vault/techniques/beeper-music) used by [Matthew Smith](/vault/people/matthew-smith), [Tim Follin](/vault/people/tim-follin), and a generation of Spectrum composers. We get there in four stages: **one note**, **two notes**, **a melody**, and **the theme**.
+
+## What you'll hear by the end
+
+<audio controls src="/audio/sinclair-zx-spectrum/assembly/shadowkeep/unit-07/04-the-theme.wav">Your browser does not support inline audio.</audio>
+
+A slow, sombre D-minor phrase rises from D5 to D6, descends back through C6 and A5, lands on a held D5, pauses for a beat, and loops. Six bars; about six seconds; then the cycle starts again. The screen is deliberately black — the keep is heard before it's seen — and Unit 8 will paint the title proper. For Unit 7 the audio is the whole achievement.
+
+![The title-theme stage running — a clean black screen while the loop plays](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-07/04-the-theme.png)
+
+The rest of this unit is *how the driver produces that*. One bit of speaker, four stages of accumulating skill.
+
+## One bit, one port, one toggle
+
+Port `$FE` carries five different functions across its bits:
+
+| Bit | Function |
+|---|---|
+| 0-2 | BORDER colour |
+| 3 | MIC out (tape signal) |
+| **4** | **EAR out — the speaker** |
+| 5-7 | Unused |
+
+Writing `$10` (bit 4 set) makes the speaker output high. Writing `$00` makes it low. The speaker's cone moves with the bit. Switch the bit on and off ten times per second, you hear a slow click-click-click. Switch it on and off five hundred times per second, you hear a tone — a square wave at 250 Hz, which is about B3 on a piano.
+
+That's the entire technique. Every beeper composition on the Spectrum — from *Manic Miner*'s title march to [*Stormlord*](/vault/games/cybernoid)'s multi-section Follin epic — is built from exactly this primitive: toggle bit 4, wait, toggle bit 4, wait. Faster wait = higher pitch. Variable wait = different notes. A list of wait values + a list of durations = a melody.
+
+## Stage 1: One Note
+
+The minimum-viable beeper program. Set up `IM 1 / EI`, clear BORDER to black, then loop forever: speaker high, wait, speaker low, wait, repeat. The wait is a `DJNZ` countdown of a fixed value; we picked `PITCH = 80`, which produces about 1.6 kHz — somewhere around G6, audibly tonal, not yet musical.
+
+```z80
+tone_loop:
+            ld      a, SPEAKER          ; $10 — bit 4 set
+            out     ($FE), a            ; speaker high
+            ld      b, PITCH
+.half_high:
+            djnz    .half_high          ; wait
+
+            xor     a
+            out     ($FE), a            ; speaker low
+            ld      b, PITCH
+.half_low:
+            djnz    .half_low           ; wait
+
+            jr      tone_loop           ; forever
+```
+
+Each `DJNZ` counts B down to zero (13 T-states per iteration when taken, 8 on the final pass) — at PITCH=80, that's about 1035 T-states. With the OUT and LD overhead, a full cycle (high half + low half) runs about 2130 T-states. At the Spectrum's 3.5 MHz clock that's one cycle every 608 microseconds — a frequency of about 1645 Hz. The actual measured value is closer to 1620 Hz; close enough.
+
+Higher PITCH = more `DJNZ` iterations = longer wait = lower frequency. Try PITCH=160 and the tone roughly halves to ~820 Hz. The relationship is linear-ish, with some fixed overhead per cycle.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-07/01-one-note.asm" />
+
+### What you hear
+
+<audio controls src="/audio/sinclair-zx-spectrum/assembly/shadowkeep/unit-07/01-one-note.wav">Your browser does not support inline audio.</audio>
+
+A sustained, somewhat shrill tone at about 1.6 kHz. The program loops forever — until reset or power-off, this is the entire output. Not music. Proof-of-concept for the beeper.
+
+## Stage 2: Two Notes
+
+A single sustained tone isn't a melody. To play a *melody* we need two new things:
+
+1. **A `play_note` subroutine** that takes a pitch and a duration as parameters. Caller supplies them; the routine toggles the speaker bit at the pitch for the duration, then returns. Different parameters, different notes.
+
+2. **A duration count.** Stage 1's tone played forever. A real note plays for a finite time, then ends, so a second note can follow. We use `DE` as a 16-bit counter — 8 bits maxes out around 250 ms per note even at low pitches, which isn't long enough for a satisfying note.
+
+```z80
+play_note:
+            ld      h, a                ; preserve pitch in H
+.cycle:
+            ld      a, SPEAKER
+            out     ($FE), a
+            ld      b, h
+.h_up:      djnz    .h_up
+
+            xor     a
+            out     ($FE), a
+            ld      b, h
+.h_dn:      djnz    .h_dn
+
+            dec     de                  ; one cycle done
+            ld      a, d
+            or      e
+            jr      nz, .cycle          ; loop until DE = 0
+            ret
+```
+
+The structure mirrors Stage 1 — toggle high, wait, toggle low, wait — but each iteration of `.cycle` is one *full* cycle of the wave, and after each cycle we decrement DE and check for zero. The note ends when DE counts down past zero.
+
+The caller plays two notes back-to-back:
+
+```z80
+            ld      a, NOTE_LOW         ; PITCH=180 ≈ 738 Hz
+            ld      de, TICKS_LO
+            call    play_note
+
+            ld      a, NOTE_HIGH        ; PITCH=90 ≈ 1450 Hz
+            ld      de, TICKS_HI
+            call    play_note
+```
+
+PITCH=180 is roughly F♯5 (738 Hz measured); PITCH=90 is roughly F♯6 (1440 Hz). An octave apart. The audible result is one low note, then one high note, then silence.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-07/02-two-notes.asm" />
+
+### What you hear
+
+<audio controls src="/audio/sinclair-zx-spectrum/assembly/shadowkeep/unit-07/02-two-notes.wav">Your browser does not support inline audio.</audio>
+
+About two seconds of low note, then about one and a half seconds of high note, then silence. The capture includes some trailing silence after the program halts — the actual music is the first three-and-a-half seconds.
+
+This is a melody of length two. The next step generalises it.
+
+## Stage 3: A Melody
+
+A melody is a list of notes. The simplest representation is a flat byte table — pairs of (pitch, duration) — and a driver that walks through, plays each pair, advances, and stops at an end marker.
+
+The table:
+
+```z80
+melody:
+            defb    227, 64             ; D5 quarter
+            defb    191, 64             ; F5 quarter
+            defb    151, 64             ; A5 quarter
+            defb    112, 128            ; D6 half
+            defb    151, 64             ; A5 quarter
+            defb    191, 64             ; F5 quarter
+            defb    227, 128            ; D5 half
+            defb    $FF                 ; end marker
+```
+
+Each note is two bytes: an inner-loop count (pitch) and a tick count (duration). A `$FF` pitch terminates the melody — the player stops when it reads `$FF` instead of starting another note. Eight bytes per group of four notes; the seven-note arpeggio fits in fifteen bytes.
+
+The pitch values are calibrated for the `play_note` inner loop:
+
+| Note | Hz | PITCH constant |
+|---|---|---|
+| D5 | 587 | 227 |
+| E5 | 659 | 202 |
+| F5 | 698 | 191 |
+| G5 | 784 | 170 |
+| A5 | 880 | 151 |
+| C6 | 1047 | 126 |
+| D6 | 1175 | 112 |
+
+The formula is `PITCH = (3500000/frequency - 57) / 26`, where 57 is the fixed per-cycle overhead in T-states and 26 is two `DJNZ` iterations' worth. Different `play_note` shapes need different calibrations; the table above is specific to this driver.
+
+The driver itself is a short loop:
+
+```z80
+            ld      hl, melody
+.next_note:
+            ld      a, (hl)             ; pitch
+            cp      $FF
+            jr      z, .done            ; end?
+            inc     hl
+            ld      c, (hl)             ; duration tick
+            inc     hl
+
+            push    hl
+            ; Expand 8-bit duration to 16-bit cycle count: DE = C << 2
+            ld      d, 0
+            ld      e, c
+            sla     e
+            rl      d
+            sla     e
+            rl      d
+
+            call    play_note
+            pop     hl
+            jr      .next_note
+```
+
+HL walks through the melody table two bytes at a time. The duration byte (in C) is shifted left twice to give a 16-bit cycle count in DE — this is the "tempo" scale: one duration tick = four cycles of the wave. Quarter notes are 64 ticks (256 cycles), half notes 128 ticks, and so on. The exact tempo depends on the average pitch of the notes — higher notes finish faster per cycle, so a duration of 64 at A5 plays in less time than 64 at D5. A more careful driver would compensate; ours doesn't, and the resulting tempo wobble is part of the period feel.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-07/03-a-melody.asm" />
+
+### What you hear
+
+<audio controls src="/audio/sinclair-zx-spectrum/assembly/shadowkeep/unit-07/03-a-melody.wav">Your browser does not support inline audio.</audio>
+
+A rising D-minor arpeggio: D5, F5, A5, climbing to D6, then descending back through A5, F5, and landing on a held D5. Seven notes, about three seconds. After the final note the program halts and the speaker falls silent.
+
+This *is* a melody. It's not yet a *theme* — it plays once and stops. The next stage gives it a loop.
+
+## Stage 4: The Theme
+
+Two changes from Stage 3:
+
+1. **The loop marker.** Reading `$FF` no longer ends the program; instead it resets HL back to the start of the melody and continues. The theme plays forever until something else takes over the program (Unit 8's input handler, eventually).
+
+2. **A rest cell.** Pitch `$00` doesn't play a note — it holds the speaker low for the duration. Silence becomes a first-class part of the composition.
+
+The melody itself is extended from Stage 3's seven notes to twelve, with a clearer two-phrase shape: a rising statement, a descending response, a moment of silence, and a held tonic to land the loop.
+
+```z80
+melody:
+            ; Phrase 1 — the rise.
+            defb    227, 64             ; D5 quarter
+            defb    191, 64             ; F5 quarter
+            defb    151, 64             ; A5 quarter
+            defb    112, 128            ; D6 half
+
+            ; Phrase 2 — the descent.
+            defb    126, 64             ; C6 quarter
+            defb    151, 64             ; A5 quarter
+            defb    191, 64             ; F5 quarter
+            defb    202, 64             ; E5 quarter
+            defb    227, 128            ; D5 half
+
+            ; Cadence — silence, then a low tonic to land the loop.
+            defb    $00, 32             ; brief rest
+            defb    227, 255            ; D5 long
+
+            defb    $FF                 ; loop marker
+```
+
+The driver is the same as Stage 3 with one substitution: where Stage 3's `cp $FF / jr z` jumped to a "done" routine, Stage 4's jumps back to `play_theme` at the top:
+
+```z80
+play_theme:
+            ld      hl, melody
+.next_note:
+            ld      a, (hl)
+            cp      $FF
+            jr      z, play_theme       ; loop
+            inc     hl
+            ld      c, (hl)
+            inc     hl
+
+            cp      $00
+            jr      z, .play_rest       ; rest instead of note
+
+            ; ... rest of driver unchanged ...
+```
+
+A four-line change. Once the player reads the `$FF` byte at the end of the table, control flows back to `play_theme`, which reloads HL with the melody address, and the whole thing starts again.
+
+Stage 4 also clears the screen to black-on-black at the top, before any music plays — `LDIR` zeroes both the bitmap region (`$4000-$57FF`) and the attribute region (`$5800-$5AFF`). The result is a clean dark frame as the music plays. The keep has dignity in its silence-before-the-theme.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-07/04-the-theme.asm" />
+
+### What you see (and hear)
+
+![Stage 4 — black screen, looping title theme](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-07/04-the-theme.png)
+
+The screen is solid black. The audio plays continuously: rising phrase, descending phrase, a beat of silence, a long-held D5, and back to the rising phrase forever. Six seconds per loop; the loop runs until the program is reset or until — in Unit 8 — a key press transitions to gameplay.
+
+The keep has its first voice. A minor-mode title theme, looping, built from twelve note values plus a marker, played by a driver that fits in under a hundred bytes of Z80.
+
+## Assemble and run
+
+Four `.asm` files, four screenshots, four audio captures. The Makefile builds all of them into `.tap` (for real-hardware loading) and `.sna` (for screenshot/audio capture):
+
+```bash
+make
+```
+
+Load any of the four `.tap` files into your Spectrum emulator (Fuse, Spectaculator, Emu198x) or onto a real Spectrum Next. Type `RUN` at the BASIC prompt. Stages 1-3 play their content once and then either loop a single tone (Stage 1) or fall silent (Stages 2-3). Stage 4 plays the title theme forever.
+
+If your computer has working speakers and the emulator is configured to route Spectrum audio through them, you'll hear the same audio captured in the player above. Real hardware sounds slightly different — the 1982 Spectrum speaker is harsh and small compared to modern speakers — and the *real-hardware sound* is what the period composers were tuning their work against.
+
+## Try this: a different pitch
+
+In Stage 1, change `PITCH equ 80` to `PITCH equ 200`. Reassemble. The tone drops from about 1.6 kHz to about 670 Hz — a much lower note, well in the middle of musical range. Try `PITCH equ 30` and the tone climbs to about 4.4 kHz, shrill and bright. The PITCH constant inversely controls the frequency.
+
+A useful exercise: write a small program that sweeps PITCH from 50 to 250 over a few seconds, producing a descending siren. The audio result is unmistakably "1980s computer at work."
+
+## Try this: a different rhythm
+
+In Stage 3 or 4, change all the duration values from 64-quarter / 128-half to a faster set: 32-quarter / 64-half. Reassemble. The melody plays at twice the tempo — about 220 BPM instead of 110.
+
+Then try 96-quarter / 192-half. The tempo halves, the theme becomes ponderous, almost funereal. The same melody at different tempos has very different character. Tempo selection is part of composition.
+
+For more sophistication: vary durations within a single melody. Quarter, eighth, dotted-quarter, sixteenth. The eighth note value would be 32 ticks; sixteenth, 16; dotted quarter, 96. The melody's rhythmic vocabulary expands.
+
+## Try this: your own theme
+
+Replace the Stage 4 melody table with your own composition. Pick a key (D minor was our choice, but A minor, E minor, and C major also work well on the beeper); pick a time signature (4/4 or 3/4); decide on a tempo by setting the duration unit (60-90 BPM if you want sombre, 120-180 if you want urgent); pick a shape (statement-response, ABA, theme-and-variation).
+
+The constraints to design within:
+
+- **One voice.** Monophonic. No harmony.
+- **Limited dynamic range.** No volume control — every note is at the same intensity.
+- **Pitch values 30-255.** Below 30 the wait is too short to sound right (the speaker can't keep up); above 255 the inner loop counter wraps. The musical range covered is roughly A4 (PITCH≈300, would need a longer-counter approach) up to about D7 (PITCH≈25).
+- **Duration values 1-255.** A 16-bit driver duration of `C << 2` gives 4 to 1020 cycles per tick.
+
+Reference points to listen to before composing: [*Manic Miner*](/vault/games/manic-miner)'s title march (Matthew Smith, 1983 — already pushing the platform's range); [*Sabre Wulf*](/vault/games/sabre-wulf)'s opening (Ultimate, 1984 — short loop, strong identity); [*Stormlord*](/vault/games/cybernoid)'s title (Tim Follin, 1989 — beeper at its technical peak, far beyond what this driver can reach). The bar isn't "as good as Follin." The bar is "music that earns its place in front of the player."
+
+## Try this: a rest, used well
+
+Stage 4 uses one rest (`$00, 32`) as a beat of silence between phrases. Rests carry as much weight as notes when used carefully. Try adding rests between every pair of notes (`$00, 8` for a short break), and the melody becomes staccato, marching. Remove the existing rest and the cadence runs straight into the loop point with no breathing room — and the loop becomes harder to perceive as a loop, because there's no boundary marker.
+
+The composer's choice of where silence goes shapes the listener's perception of the melody's structure. Use the `$00` pitch deliberately.
+
+## If it doesn't work
+
+- **No sound at all?** Check your emulator's audio routing. Fuse, Spectaculator, and similar emulators have a master mute. The Spectrum's beeper output is on by default if audio is enabled. On real hardware, the speaker is permanently wired; if it's silent, the program isn't running, or it isn't touching port `$FE`.
+- **Sound is just clicks, not a tone?** The `JR` at the end of Stage 1's `tone_loop` is missing, or the loop isn't being reached. Each `OUT` produces one click as the speaker cone moves; you need continuous toggling at audio frequency to perceive a tone (about 100 toggles per second minimum).
+- **Tone is much higher than expected?** Check that you're using `LD B, PITCH` — `LD B, n` (where `n` is the constant), not `LD B, A` (which loads from the A register). With `LD B, A` the inner loop runs with B = whatever A was, which might be `$10` (the speaker bit), giving a very short loop and a very high pitch.
+- **Tone is much lower than expected?** Same check in reverse; the inner loop might be running too many times due to a missing `LD B, ...` before the `DJNZ` (the loop reads whatever B happened to be from before).
+- **Notes have wrong relative pitches?** The PITCH calibration table is specific to *this* driver's inner-loop structure. If you change the structure of `play_note` (add or remove instructions), the per-cycle T-state count changes and the calibration shifts. Re-measure with a few known pitches and re-derive.
+- **Stage 2 plays only the first note?** Likely an issue with how `DE` is being preserved across the call. Check that `play_note` itself doesn't accidentally clobber DE in a way the caller relies on.
+- **Stage 4 doesn't loop?** The `JR Z, play_theme` should jump to `play_theme`, which reloads HL with the melody address. If it jumps to the wrong label (`.next_note` for instance, which doesn't reload HL), the player walks past the end of the table into whatever memory follows.
+- **Loop has a click between iterations?** The speaker bit's final state (high or low) when the loop wraps may not match the start of the next iteration. Force the speaker low before re-entering `play_theme` if it bothers you.
+
+## What you've learnt
+
+- **The Spectrum 48K beeper is one bit.** Bit 4 of port `$FE`, output-only. Toggling produces sound; the toggle rate is the pitch.
+- **Pitch via inner-loop count.** `LD B, PITCH / DJNZ` is a per-half-period timer. Larger PITCH = longer half-period = lower frequency.
+- **Notes as (pitch, duration) pairs.** A two-byte representation per note. Compact, fast to parse, easy to compose against.
+- **Driver as data interpreter.** The melody is data; the driver is a tiny loop that reads bytes and acts. Same program, different data, different song.
+- **The `$FF` end / loop marker.** A sentinel value flags the end of the data. Stage 3 stops at it; Stage 4 loops back to the start at it. One byte, two meanings depending on context.
+- **The rest as a first-class element.** Pitch `$00` is silence. Composing with silence is composing with timing as much as with notes.
+- **Driver overhead matters.** Each `OUT`, `LD B, H`, `DJNZ` adds T-states to the loop. The per-cycle overhead (≈57 T-states in our driver) shifts the pitch-to-PITCH-constant mapping; tighter drivers can reach higher pitches at smaller PITCH values.
+- **Tempo wobble is intrinsic to constant-duration drivers.** Each duration tick = a fixed number of cycles. Higher pitches finish faster, so the same duration plays for less wall-clock time. Period beeper music has this character; compensating for it would require a per-pitch tempo scale.
+- **16-bit duration counters are necessary.** 8-bit durations cap notes at about 250 ms even at low pitches. DE-as-counter gives the range needed for half-second and longer notes.
+- **`LDIR` for screen-clearing.** Same pattern Unit 5 used for room rendering: `LD HL, src / LD DE, dst / LD (HL), value / LD BC, count / LDIR`. Clears 6 KB of bitmap or 768 bytes of attribute in one instruction call.
+
+## What's next
+
+The keep has a voice. It still doesn't have a face.
+
+Unit 8 brings the title screen proper. The black blank that Stage 4 clears to becomes a presented title — "SHADOWKEEP" rendered from the Spectrum's ROM character set, an Oliver-Frey-tier presentation card before the gameplay begins, the title theme playing under it, an instruction line telling the player which key to press to begin. The title screen flows into the game world we built across Units 1-6, the player wins, the victory state flows back to a title screen, and the loop closes. The keep becomes a complete experience: title → play → end → restart.
+
+By the end of Unit 8, Shadowkeep is a 1987-Hewson-tier vertical slice. The October launch ships eight units; this is the seventh.

@@ -1,0 +1,82 @@
+---
+title: "Colour Is a Separate Map"
+description: "Find out where colour lives — a second map at $5800, one packed byte per cell, completely apart from the pixels. Colour a whole cell with a single byte and never touch a pixel."
+pubDate: 2026-06-01
+game: 0
+unit: 6
+tags: ["assembly", "z80", "attributes", "colour", "screen", "getting-started"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Your pixels last unit came out black on white. You never chose those colours — so where do they come from, and how do you change them?
+
+Not from `$4000`. The pixels at `$4000` say only *which dots are lit*, never what colour. Colour lives in a **separate map** that starts at `$5800` — one byte for each 8×8 cell on the [screen](/vault/systems/zx-spectrum). That single byte sets the colours for the whole cell, and it has nothing to do with the pixel bytes at all. Two maps, two jobs: `$4000` for shape, `$5800` for colour.
+
+## What you'll see by the end
+
+![A single small red square near the top-left of the otherwise white screen.](/images/sinclair-zx-spectrum/assembly/meet-the-machine/unit-06/screenshot.png)
+
+One red cell, top-left. And here's the point: we drew **no pixels** to make it. We wrote a single byte to the colour map, and the whole 8×8 cell turned red. Colour and pixels are genuinely separate things in genuinely separate memory.
+
+## The attribute byte
+
+That colour byte is called an **attribute**, and it packs four things into eight bits:
+
+```
+ bit:  7      6      5  4  3      2  1  0
+       FLASH  BRIGHT  P  P  P      I  I  I
+                    └ PAPER ┘    └  INK  ┘
+                     (0-7)         (0-7)
+```
+
+- **INK** (bits 0–2) — the colour lit pixels show in.
+- **PAPER** (bits 3–5) — the background colour, where pixels aren't lit.
+- **BRIGHT** (bit 6) — a brighter shade of both.
+- **FLASH** (bit 7) — swap ink and paper on and off, twice a second.
+
+So `%00010111` (`$17`) means PAPER 2 (red), INK 7 (white), no bright, no flash. With no pixels set, the whole cell is just its PAPER — a solid red block.
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meet-the-machine/unit-06/colour-map.asm" />
+
+## Two consequences worth holding onto
+
+**This is the root of "attribute clash."** A cell carries *one* ink and *one* paper for all 64 of its pixels. You cannot colour two pixels in the same cell differently — the colour map simply has no room to say so. Every Spectrum game works within that rule, and the good ones make a virtue of it.
+
+**The colour map is laid out *sanely*** — unlike the pixels. Remember Beat 5's puzzle, where `$4020` landed eight rows down? The attribute map has no such tricks: it's plainly `$5800 + row × 32 + col`. The top-left cell is `$5800`, the one to its right is `$5801`, and the cell directly below is `$5820`. Where the pixel map is famously twisted, the colour map is a simple grid.
+
+In BASIC, `INK` and `PAPER` were writing these very bytes for you. Now you write them yourself — and it's the same `ld (addr), a` store you've used since Beat 4.
+
+## Assemble and run
+
+```
+pasmonext --sna colour-map.asm primer.sna
+```
+
+One red cell, top-left, drawn with a single byte and no pixels at all.
+
+## Try this: mix your own colour
+
+Change `%00010111` to other combinations and predict the cell before you run it. PAPER blue, INK yellow is `%00001110`. PAPER black, INK green is `%00000100`. Work out the bits — three for paper, three for ink — then check. (Set BRIGHT, bit 6, and watch the shade lift.)
+
+## Try this: a 2×2 block, one cell bright
+
+Colour four neighbouring cells, and make one of them BRIGHT so you can see the difference side by side:
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meet-the-machine/unit-06/colour-block.asm" />
+
+The bottom-right cell is the same red as the other three but with bit 6 set — bright red against normal red. Notice the addresses: `$5800`, `$5801` across, then `$5820` a row down. The sane grid in action.
+
+## If it doesn't work
+
+- **The cell isn't coloured.** Check the address is `$5800`, not `$4000` — `$4000` is the pixel map; colour lives at `$5800`.
+- **Wrong colour.** Recount the bits: paper is bits 3–5, ink is bits 0–2. It's easy to swap them. `%00010111` is paper *red*, ink *white*; flip to `%00111010` and it's paper *white*, ink... work it out.
+- **The whole cell flashes.** You set bit 7 (FLASH). Clear it unless you meant it.
+
+## What you've learnt
+
+Colour is a separate map at `$5800` — one byte per cell, packing FLASH, BRIGHT, PAPER and INK — stored entirely apart from the pixels, and laid out as a simple grid.
+
+## What's next
+
+You've now met everything the machine *is*: the toolchain, registers, bytes, memory, the screen and its colour. From here we turn to what the machine can *do*. Next — **Test, Then Jump** — there's no `IF` on the Z80; you compare, and you jump on the result. It's where your programs start making decisions.

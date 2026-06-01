@@ -1,0 +1,482 @@
+---
+title: "The Hero"
+description: "The keep needs stones, and the keep needs someone walking them. We meet the Spectrum's bitmap memory at $4000, design the keep's first 8×8 sprite, and stand a hooded thief at the centre of the great hall."
+pubDate: 2026-05-14
+game: 1
+unit: 3
+tags: ["assembly", "z80", "bitmap", "sprites", "udg", "rooms"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The keep has light. The keep has a room. What it doesn't have is anyone in it — and the walls don't look much like *stone*. They're flat panels of bright blue, no joints, no texture, no sense that the keep was *built* rather than painted.
+
+This unit gives the walls their stones, and the keep its first inhabitant.
+
+By the end there's a hooded thief at the centre of the great hall. Around him, every wall — perimeter and altar both — reads as actual stone, with black mortar lines outlining each block. The thief is the first thing in the keep that isn't the keep; he's also the first time we've drawn pixel art rather than coloured cells. Eight bytes design him. Eight bytes design the stone. The whole keep is now a question of pixels and attributes together.
+
+## What you'll see by the end
+
+![The textured great hall with a red hooded thief at its centre](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-03/04-the-thief.png)
+
+The great hall stands as before — bright blue walls outlining a 22×16 room, white floor inside, an altar at the top centre flanked by gold. But every wall cell now carries a stone-block pattern: a bordered rectangle in black mortar, eight pixels square, repeated across the perimeter and through the altar columns. The room reads as masonry, not paintwork.
+
+At the centre, on the white floor, a small red figure: the hooded thief. Narrow at the top where his hood pinches, widening through his cloak, narrowing again toward his feet. Eight pixels tall, eight pixels wide. The keep has its first hero — and from here on, the question that drives every following unit is *how does he move?*
+
+We'll get there in four stages: **a pixel in the dark**, **the first stone**, **the walls remember**, and **the thief**. Each stage adds one idea.
+
+## The pixels and their memory
+
+Until now, every change we've made to the screen has been a change to an attribute byte. The pixels themselves — the actual lit and unlit dots that make up letters, sprites, and textures — have been quietly cleared at boot and left alone.
+
+The Spectrum's pixel data lives at **`$4000` through `$57FF`** — 6,144 bytes of bitmap memory. That's 256 pixels across, 192 pixels tall, eight pixels per byte, no spare bit: `256 × 192 ÷ 8 = 6144`. Every pixel on the playable area is one bit in that range, and every bit you flip changes one pixel.
+
+Each character cell (the 8×8 squares attribute memory tracks one byte each for) corresponds to eight bytes of bitmap memory — one byte per horizontal pixel row of the cell:
+
+```
+  One character cell, 8×8 pixels:
+  
+        col 0 col 1 col 2 ... col 7
+   row 0  bit7  bit6  bit5  ... bit0   ← one byte
+   row 1  bit7  bit6  bit5  ... bit0   ← another byte
+   row 2  ...
+   ...
+   row 7  ...
+```
+
+Each byte's *bits* are eight horizontal pixels — bit 7 is the leftmost, bit 0 is the rightmost (the same way humans read numbers). Write `$FF` and all eight light up. Write `$80` and only the leftmost lights. Write `$01` and only the rightmost.
+
+The attribute byte at `$5800+` decides what *colour* the lit pixels are (INK) and what colour the unlit pixels are (PAPER). A cell whose attribute is `$38` (PAPER 7 white, INK 0 black) renders unlit pixels white and lit pixels black. The same cell with attribute `$3A` (INK 2 red) renders lit pixels red instead. The bitmap defines the *shape*; the attribute defines the *colour*. Two layers of memory, one image.
+
+## Stage 1: A Pixel in the Dark
+
+The simplest possible bitmap experiment: clear the bitmap, dark-stone the attributes, write *one* byte to one address.
+
+```z80
+            ; clear the bitmap (6144 bytes from $4000)
+            ld      hl, $4000
+            ld      de, $4001
+            ld      (hl), 0
+            ld      bc, 6143
+            ldir
+
+            ; dark stone attribute everywhere
+            ld      hl, $5800
+            ld      de, $5801
+            ld      (hl), $08
+            ld      bc, 767
+            ldir
+
+            ; one byte of bitmap data
+            ld      a, %11111111
+            ld      ($4045), a
+```
+
+Three blocks. The first two are revisits of Unit 1's `LDIR`-fill — this time the destination is bitmap memory rather than attribute memory, but the cascade idiom is identical (seed at `HL`, destination at `HL+1`, count of `length − 1` in `BC`). Six thousand one hundred and forty-four bytes filled with zero in one instruction.
+
+The third block writes the headline byte: `%11111111` (which is `$FF`, all eight bits set) to address `$4045`. The byte sits in the bitmap memory of one specific character cell — and since every bit is lit, the cell paints eight black pixels in a horizontal row.
+
+### Why `$4045`?
+
+The address `$4045` is the top pixel row of the cell at **screen row 2, column 5** — exactly where Unit 2's great hall starts its top-left wall. Stage 1 doesn't draw a room, but this experimental byte is placed where the room's first stone will go, so the eye learns the layout in advance.
+
+The address formula for the *top* pixel row of any cell in the *top third* of the screen is:
+
+```
+  bitmap_addr(row, col) = $4000 + (row × $0020) + col
+```
+
+For row 2, column 5: `$4000 + (2 × $0020) + 5 = $4000 + $40 + 5 = $4045`.
+
+(That formula only works for screen rows 0–7, the top third. The middle third starts at `$4800` and the bottom third at `$5000`. Stage 3 is where the irregularity becomes interesting; for Stage 1, the top third is enough.)
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-03/01-a-pixel-in-the-dark.asm" />
+
+### What you see
+
+![Stage 1 — dark keep with eight black pixels in the top-left](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-03/01-a-pixel-in-the-dark.png)
+
+A dark blue keep, same as Unit 1 Stage 1 — and one tiny black mark high in the screen, where the great hall's top-left wall will eventually sit. Eight pixels, side by side, black on dark blue. Half a torch's width, painted as actual pixels rather than as a coloured cell. The first stroke of pixel art in Shadowkeep.
+
+## Stage 2: The First Stone
+
+Eight pixels in a row is a stroke. Eight *bytes* — one for each pixel row of a single cell — is a full square of pixel art, and the smallest unit of meaningful design on the Spectrum.
+
+But there's a subtlety. The eight pixel rows of one cell are *not* at consecutive byte addresses. They're at `$0100` strides.
+
+```
+  Single cell at row 2, column 5:
+  
+    pixel row 0:  $4045   ← top of the cell
+    pixel row 1:  $4145
+    pixel row 2:  $4245
+    pixel row 3:  $4345
+    pixel row 4:  $4445
+    pixel row 5:  $4545
+    pixel row 6:  $4645
+    pixel row 7:  $4745   ← bottom of the cell
+```
+
+Each row's address differs from the previous by exactly `$0100` — that is, the *high* byte goes up by one, the low byte stays the same.
+
+This is the Spectrum's defining screen quirk. The video hardware paints the screen in a specific order during the raster scan, and the address layout reflects that order. The byte-level consequence: to draw eight rows of one cell, you advance the address by `$0100`, not `$0020`. Stage 3 will make this irregularity fully visible at the row level; Stage 2 confines it to a single cell, where the rule is simple: **eight bytes, eight `$0100` strides, one cell of bitmap done**.
+
+### A new wall, with mortar
+
+The Stage 2 program brings back Unit 2's great hall and changes one thing: `WALL = $48` instead of `$49`. The difference is the INK bits — switching from `INK 1` (blue) to `INK 0` (black).
+
+```
+  $49 = 0 1 001 001    PAPER 1 (blue) + BRIGHT, INK 1 (blue)
+  $48 = 0 1 001 000    PAPER 1 (blue) + BRIGHT, INK 0 (black)
+```
+
+With INK and PAPER both blue (Unit 2's `$49`), the bitmap is invisible — every pixel renders blue regardless of its bit. With INK black on bright-blue PAPER (`$48`), lit pixels become a *black mark* on bright blue stone. The wall can now carry texture.
+
+### The stone-block bitmap
+
+The stone-block pattern is a single bordered rectangle, eight pixels square:
+
+```
+  Row 0:  ████████   %11111111   $FF   ← top edge
+  Row 1:  █      █   %10000001   $81
+  Row 2:  █      █   %10000001   $81
+  Row 3:  █      █   %10000001   $81
+  Row 4:  █      █   %10000001   $81
+  Row 5:  █      █   %10000001   $81
+  Row 6:  █      █   %10000001   $81
+  Row 7:  ████████   %11111111   $FF   ← bottom edge
+```
+
+One cell shows as a single stone with mortar all the way around. Two cells side by side share their edge mortar — top of cell A meets top of cell B, the seam invisible. Stretched across a wall, the result reads as a grid of stones with continuous horizontal and vertical joints.
+
+### Writing eight bytes at `$0100` stride
+
+```z80
+            ld      hl, stone_block   ; source
+            ld      de, $4045          ; destination — top pixel row of cell
+            ld      b, 8               ; 8 pixel rows
+
+.stone_loop:
+            ld      a, (hl)            ; read next byte of stone pattern
+            ld      (de), a            ; write to current pixel row
+            inc     hl                  ; next source byte
+            inc     d                   ; +$0100: high byte of DE up by 1
+            djnz    .stone_loop
+```
+
+Three new ideas in five instructions.
+
+**`LD (DE), A`** writes A to the address held in DE. We met `LD (HL), A` in Unit 1 (and `LD (DE), A` in Unit 2's room loop — same idea, different register pair).
+
+**`INC HL` / `INC DE`** advance the source and destination pointers — one byte forward through `stone_block`, one pixel-row stride forward through bitmap memory.
+
+**`INC D`** is the trick. Adding `$0100` to a 16-bit register pair means incrementing only its *high* byte; `INC D` is the one-byte, one-cycle way to do that. Compare to the rigmarole of incrementing all sixteen bits via the accumulator (which Unit 2 had to do when advancing DE by 10 between room rows). When you happen to want exactly `$0100`, the Z80 hands you a single opcode.
+
+The loop runs eight times. After it, `DE` holds `$4745` (the original `$4045` plus eight `$0100` strides — which is `$4045 + $0800 = $4845`. Hmm, that's nine strides, not eight. Let me recount: we increment D *after* the write, eight times, so D goes from `$40` to `$48`. So DE ends at `$4845` — one cell *below* the cell we drew. The loop wrote rows at `$4045, $4145, $4245, $4345, $4445, $4545, $4645, $4745` and then ticked once more before exiting. That's fine — we're done with DE at that point.)
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-03/02-the-first-stone.asm" />
+
+### What you see
+
+![Stage 2 — the great hall with one stone block visible at the top-left](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-03/02-the-first-stone.png)
+
+The great hall returns. Bright blue walls (now `$48`, the colour barely distinguishable from `$49` until you look closely — INK 0 vs INK 1 affects only the *lit* pixels, and most wall cells have no lit pixels yet). White floor. Gold altar.
+
+But the top-left wall cell is different from its neighbours. A thin black border outlines its square — the bordered rectangle of the stone-block bitmap, written one byte at a time at the `$0100` stride. Eight bytes of design, one cell of stone. The next stage extends that one cell across every wall in the room.
+
+## Stage 3: The Walls Remember
+
+One cell was straightforward. Every cell of every wall is sixty-four cells of stone-block to draw, scattered through the room's data. Two problems to solve.
+
+**First problem: addressing.** A cell at room column *c*, room row *r*, lives at screen column *c+5*, screen row *r+2*. Its top-pixel-row bitmap address is *not* a simple linear function of *r* — the Spectrum's three thirds break the linearity.
+
+```
+  Screen rows 0-7   live in the TOP third      ($4000 - $47FF)
+  Screen rows 8-15  live in the MIDDLE third   ($4800 - $4FFF)
+  Screen rows 16-23 live in the BOTTOM third   ($5000 - $57FF)
+```
+
+Within one third, consecutive screen rows are at `$0020` strides. *Across* thirds, the address jumps — between row 7 and row 8, you jump from `$40E0+col` to `$4800+col`, a leap of `$0720`. Between row 15 and row 16, another `$0720` jump.
+
+```
+  Screen row → top-pixel-row bitmap address (column 5):
+  
+    row 0:  $4005   row 8:  $4805   row 16:  $5005
+    row 1:  $4025   row 9:  $4825   row 17:  $5025
+    row 2:  $4045   row 10: $4845   row 18:  ...
+    row 3:  $4065   row 11: $4865
+    row 4:  $4085   row 12: $4885
+    row 5:  $40A5   row 13: $48A5
+    row 6:  $40C5   row 14: $48C5
+    row 7:  $40E5   row 15: $48E5
+```
+
+Computing this at runtime is doable — a few shifts and adds — but the cleaner answer for a 16-row room is a **lookup table**: sixteen 16-bit addresses, one per room row. Pre-computed, packed into 32 bytes of program memory, indexed in O(1).
+
+```z80
+bitmap_rows:
+            defw    $4045        ; room row 0  = screen row 2
+            defw    $4065        ; room row 1  = screen row 3
+            ...                   ; 14 more entries
+            defw    $5005        ; room row 14 = screen row 16
+            defw    $5025        ; room row 15 = screen row 17
+```
+
+`defw` is the assembler directive for "define word" — two bytes, little-endian (low byte first, high byte second), matching how the Z80 reads 16-bit values from memory. Sixteen `defw`s pack into 32 bytes total.
+
+**Second problem: knowing which cells are walls.** The room data already lives in `room_data`, encoded with the `WALL`/`FLOOR`/`GOLD` constants. Stage 3 walks `room_data` a second time (after the attribute pass already drew it), asks each cell "are you `WALL`?", and writes the stone block only where the answer is yes.
+
+### The second pass
+
+```z80
+            ld      hl, room_data           ; source pointer through room_data
+            ld      iy, bitmap_rows         ; pointer into row-start lookup
+            ld      b, 16                    ; outer counter: 16 rows
+
+.row_loop2:
+            push    bc                       ; save outer counter
+
+            ld      e, (iy+0)
+            ld      d, (iy+1)
+            inc     iy
+            inc     iy
+
+            ld      b, 22                    ; inner counter: 22 columns
+
+.col_loop2:
+            ld      a, (hl)                  ; read room_data byte
+            cp      WALL                     ; is it a wall?
+            jr      nz, .not_wall
+
+            push    hl
+            push    de
+            push    bc
+            ex      de, hl
+            call    draw_stone
+            pop     bc
+            pop     de
+            pop     hl
+
+.not_wall:
+            inc     hl
+            inc     de
+            djnz    .col_loop2
+
+            pop     bc
+            djnz    .row_loop2
+```
+
+The outer loop walks rooms rows. At the top of each iteration, it pulls the row's bitmap-start address out of the lookup table into `DE`. The inner loop then walks the 22 cells of that row, advancing `HL` through `room_data` and `DE` through the bitmap.
+
+Three new ideas to absorb.
+
+### `IY` and the index register
+
+`IY` is the Z80's second 16-bit *index* register (its sibling `IX` we'll meet later). `LD E, (IY+0)` reads the byte at the address `IY+0`; `LD D, (IY+1)` reads the byte at `IY+1`. Used together, they load a 16-bit word out of a table. `INC IY` twice advances the pointer to the next entry.
+
+Index registers cost more cycles than the plain register pairs (HL, DE, BC), but they buy you the `(IY+offset)` addressing mode — useful when walking a packed table where each entry is two or more bytes.
+
+### `CP n` — compare without changing A
+
+`CP WALL` compares A to the byte value of `WALL` (which is `$48`) and sets flags accordingly — but doesn't modify A. The Z flag is set if A equals `WALL`; the carry flag is set if A is less than `WALL` (unsigned). For our purposes only the Z flag matters: `JR NZ, .not_wall` jumps if A is *not* equal to `WALL`, skipping the stone-write.
+
+A naïve implementation might subtract or do an XOR, both of which damage A. `CP` is the right tool: read, compare, branch — A unchanged, ready to be read again or written elsewhere.
+
+### `EX DE, HL` — swapping pointers
+
+The `draw_stone` subroutine expects its destination address in `HL`, not `DE`. But our inner loop holds the bitmap address in `DE` (since `HL` is busy walking `room_data`). The `EX DE, HL` instruction swaps the two register pairs in one cycle — `HL` becomes the bitmap address, `DE` becomes the old `room_data` pointer (which we don't care about at this point because we've saved it on the stack).
+
+After `draw_stone` returns, we pop everything back. The three `push`/`pop` pairs around the call save the loop state, run the subroutine, restore the loop state, and carry on. Classic Z80 subroutine call discipline.
+
+### The subroutine
+
+```z80
+draw_stone:
+            ld      de, stone_block
+            ld      b, 8
+.ds_loop:
+            ld      a, (de)
+            ld      (hl), a
+            inc     de
+            inc     h                        ; +$0100
+            djnz    .ds_loop
+            ret
+```
+
+Eight instructions. It expects `HL` to point to the top pixel row of a cell, and writes eight bytes of `stone_block` at `$0100` strides. After return, `HL` has been bumped by `$0800` (eight strides of `$0100`), but the call site doesn't care — it has the original `HL` saved on the stack.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-03/03-the-walls-remember.asm" />
+
+### What you see
+
+![Stage 3 — every wall cell textured with the stone-block pattern](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-03/03-the-walls-remember.png)
+
+The great hall now reads as masonry. Every perimeter cell — top wall, bottom wall, left and right edges — is a bordered rectangle in black mortar on bright blue. So are the altar's wall cells at the top centre. Stones tile across the room's edge in an unbroken grid, neighbour to neighbour. The keep is built rather than painted.
+
+The floor stays smooth white. The gold stays smooth yellow. Only the cells that asked "am I a wall?" and got "yes" received the texture; the rest of the room is untouched. That's data-driven rendering on a second axis — same data, second pass, different rule.
+
+## Stage 4: The Thief
+
+Stones don't walk. A hero does.
+
+The Stage 4 program is Stage 3 with one final pass appended: change the attribute at the centre cell to `$3A` (white PAPER + red INK, no BRIGHT) and write eight bytes of hooded-thief bitmap to the same cell's bitmap address.
+
+### The hero's cell
+
+```
+  Screen position:   col 16, row 10
+  
+  Attribute address: $5800 + (10 × 32) + 16 = $5950
+  Bitmap address:    third 1, row_in_third 2, col 16 = $4850
+```
+
+The room is 22 cells wide, starting at screen column 5; its centre is screen column 15 or 16. The room is 16 cells tall, starting at screen row 2; its vertical centre is screen row 9 or 10. We pick column 16 and row 10 — landing the thief on the white floor of the great hall, on the centre line below the altar.
+
+### The hero sprite
+
+A top-down view of a small hooded figure. Narrowest at the top (the hood pinches to a point), widest at the cloak's mid-body, narrowing again at the base. Two feet poking out at the bottom.
+
+```
+  Row 0:  ░░░██░░░   %00011000   ← tip of hood
+  Row 1:  ░░████░░   %00111100   ← hood
+  Row 2:  ░██████░   %01111110   ← shoulders inside hood
+  Row 3:  ░██████░   %01111110   ← cloak
+  Row 4:  ████████   %11111111   ← cloak at its widest
+  Row 5:  ░██████░   %01111110   ← cloak narrows
+  Row 6:  ░░████░░   %00111100   ← base of the cloak
+  Row 7:  ░░█░░█░░   %00100100   ← two feet
+```
+
+Eight bytes. Symmetric — top-down view doesn't need to face a direction, since the hero looks the same whether walking north, south, east, or west. The hood and cloak together read as "person" at this scale; the feet at the bottom give a sense of grounding.
+
+A 1986 Spectrum developer would have called these [**UDGs**](/vault/techniques/udg) — User Defined Graphics, the term [Sinclair BASIC](/vault/techniques/sinclair-basic) used for programmer-supplied 8×8 patterns. The BASIC ROM reserved 21 UDG slots starting at `USR "a"`. We're not using the BASIC mechanism (we're writing directly to the bitmap), but the design discipline is the same: eight bytes, one bit per pixel, one cell of art.
+
+### Placing the hero
+
+```z80
+            ld      a, $3A                  ; PAPER 7 (white), INK 2 (red)
+            ld      ($5950), a              ; cell at (col 16, row 10)
+
+            ld      hl, $4850                ; bitmap address: top pixel row
+            ld      de, hero
+            ld      b, 8
+
+.hero_loop:
+            ld      a, (de)
+            ld      (hl), a
+            inc     de
+            inc     h                        ; +$0100
+            djnz    .hero_loop
+```
+
+Two writes, then a familiar eight-byte loop. The first write changes the cell's attribute from `$38` (the floor's white-on-black) to `$3A` (white-on-red). The remaining lines copy the eight bytes of `hero` data to the cell's bitmap rows, using the same `inc h` stride pattern we met in Stage 2.
+
+The result: a cell whose unlit pixels show as white PAPER (matching the floor) and whose lit pixels show as red INK (the thief's cloak). The thief is silhouetted in red against the floor's white, his outline traced by which bits of `hero` are set.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-03/04-the-thief.asm" />
+
+### What you see
+
+![Stage 4 — the great hall with the hooded thief at its centre](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-03/04-the-thief.png)
+
+A small red figure stands in the middle of the great hall. Look closely: the hood pinches at the top, the cloak widens below, the feet poke out at the bottom. Around him, the stone walls of the keep he's come to rob; before him, an altar with gold cascading at its sides; under him, a single white cell of floor that's been quietly recoloured to put him in his own attribute.
+
+He doesn't move yet. He doesn't read keys yet. He hasn't tested for what's under his feet. All that begins in Unit 4. For now, he stands — the first living thing in the keep, the first sprite in Shadowkeep, the first character art on screen.
+
+## Assemble and run
+
+Each stage has its own `.asm` file. The Makefile builds all four into `.tap` (real-hardware loading) and `.sna` (screenshot capture):
+
+```bash
+make
+```
+
+Load any of the four `.tap` files into Fuse, your emulator of choice, or a real Spectrum Next. Type `RUN` at the BASIC prompt to see each stage.
+
+## Try this: a different stone pattern
+
+Open `04-the-thief.asm`. Find the `stone_block` data and change the middle six rows:
+
+```z80
+stone_block:
+            defb    %11111111
+            defb    %10000001
+            defb    %11111111            ; ← was %10000001
+            defb    %10000001
+            defb    %11111111            ; ← was %10000001
+            defb    %10000001
+            defb    %11111111            ; ← was %10000001
+            defb    %11111111
+```
+
+Reassemble. The walls now show as *stacked* stones rather than single tall blocks — horizontal mortar lines every two rows. The keep's stonework gets rougher, more cobble-like, less hewn-from-quarry. Same eight bytes of design data; entirely different feel to the architecture.
+
+## Try this: a hero of a different colour
+
+Find the `HERO_ATTR equ $3A` line. Change `$3A` to `$3F` (white PAPER + white INK). Reassemble. The hero vanishes — his bitmap is still there, but with INK and PAPER the same colour, lit and unlit pixels render identically. The cell paints uniform white.
+
+Change again to `$3A | $40` (which is `$7A`) — adding the BRIGHT bit. Reassemble. The thief returns, now in vivid bright red against bright white. The colour vocabulary doesn't change, but the saturation does. Combined with FLASH (`$3A | $C0` = `$FA`), the thief would pulse twice a second between red-on-white and white-on-red — a useful trick later for hit-flash on damage.
+
+## Try this: an absent thief
+
+Comment out the entire hero block in Stage 4 — the attribute write and the bitmap loop:
+
+```z80
+;            ld      a, HERO_ATTR
+;            ld      ($5950), a
+;
+;            ld      hl, $4850
+;            ld      de, hero
+;            ld      b, 8
+;.hero_loop:
+;            ld      a, (de)
+;            ld      (hl), a
+;            inc     de
+;            inc     h
+;            djnz    .hero_loop
+```
+
+Reassemble. The great hall stands with its stone walls — but empty. No hero. The room reads as a *space*, waiting for someone to enter. That's the difference one cell of attribute and eight bytes of bitmap make: with him, a place where a story is happening; without him, a backdrop. Sixteen bytes of difference between a stage and a scene.
+
+## If it doesn't work
+
+- **Floor cells look like static or random noise?** The bitmap clear (`LDIR` fill of `$4000-$57FF` with zero) probably isn't running. Check that the `LD HL, $4000` / `LD DE, $4001` / `LD (HL), 0` / `LD BC, 6143` / `LDIR` block executes before anything else. The `.sna` snapshot pipeline boots into a clean state, but `.tap` loaded from BASIC carries the loader's text in the bitmap — without the clear, that text bleeds through every floor cell.
+- **Walls look solid blue, no mortar pattern?** Two possible causes. (1) `WALL` is still `$49` instead of `$48` — INK 1 on PAPER 1 gives no contrast, so the bitmap is invisible. (2) The stone pass isn't running — check that the `bitmap_rows` table is intact and the row pointer `IY` advances correctly.
+- **Mortar pattern is offset by one row?** The `bitmap_rows` table starts at room row 0 = screen row 2. If you accidentally entered the table starting at screen row 0 (`$4005, $4025, …`), the walls texture two rows above where they should be — outside the actual room. Re-check the table entries against the room's `$5845` starting attribute address.
+- **Stone pattern bleeds into floor cells?** The `CP WALL` check is probably mis-tuned. Confirm `WALL equ $48` matches the constant the inner loop's `CP` compares against. A trailing typo in the attribute byte (say `$09` instead of `$48`) would make `CP WALL` always fail, and no stone gets drawn — or `cp` against the wrong constant draws stones on the floor.
+- **Hero is in the wrong place?** Recompute the bitmap address. For screen cell (col, row): third = row ÷ 8, row_in_third = row mod 8. Address = `$4000 + third × $0800 + row_in_third × $0020 + col`. For (16, 10): third 1, row_in_third 2, address `$4000 + $0800 + $40 + $10 = $4850`. Attribute address: `$5800 + 10×32 + 16 = $5950`.
+- **Hero is the right shape but wrong colour?** Two cells could be at fault. (1) The attribute write `LD ($5950), A` targets the wrong cell — verify the address. (2) The hero's INK is being set BRIGHT by accident — `$3A` is non-BRIGHT red; `$7A` is BRIGHT red.
+- **Hero's hood and cloak look fine, but his feet are missing?** The eighth byte of `hero` (`%00100100`) lives at the eighth pixel row of his cell — bitmap address `$4F50` for our setup. Off-by-one in the loop counter (`LD B, 7` instead of `8`) drops the bottom row. Check `LD B, 8` at the loop preamble.
+- **`defw` not recognised?** Some assemblers spell it `dw` or `dc.w` instead. `pasmonext` accepts `defw`; if you're using a different toolchain, consult its directive table.
+
+## What you've learnt
+
+- **Bitmap memory.** 6,144 bytes at `$4000–$57FF`. One bit per pixel. One byte per horizontal row of 8 pixels.
+- **The address formula (top third).** For screen cells in rows 0–7, top-pixel-row bitmap address = `$4000 + (row × $0020) + column`. The middle third adds `$0800`; the bottom third adds `$1000`.
+- **The `$0100` stride.** Within one character cell, the eight pixel rows are at `$0100` strides — `INC H` advances by one row.
+- **Bitmap and attribute as two layers.** The bitmap defines *shape*; the attribute defines *colour*. Two writes per cell — one to `$4000+` for pixels, one to `$5800+` for colour.
+- **The Spectrum's three thirds.** Screen rows 0–7 live in `$4000–$47FF`, rows 8–15 in `$4800–$4FFF`, rows 16–23 in `$5000–$57FF`. Crossing a third boundary, the address jumps.
+- **Row-start lookup tables.** Sixteen 16-bit addresses (32 bytes) absorb the addressing irregularity. `defw` defines each as a little-endian word.
+- **`INC H`.** The one-byte way to add `$0100` to HL. Single canonical use: stepping through the pixel rows of one cell.
+- **`IY` as a table pointer.** `LD r, (IY+offset)` reads from a table at a fixed offset; `INC IY` walks to the next entry.
+- **`CP n`.** Compare A to a byte without changing A. Sets Z if equal, suitable for `JR Z` / `JR NZ` branching.
+- **`EX DE, HL`.** Swap DE and HL in one cycle — useful when a subroutine wants its argument in a specific register pair.
+- **`PUSH` / `POP` around subroutine calls.** Save what you need before; restore after. The subroutine is free to clobber as long as your call site brackets it correctly.
+- **8×8 sprite design.** Eight bytes, one per pixel row, bit 7 leftmost. Symmetric silhouettes read well at this size; asymmetry needs to be deliberate.
+- **UDGs.** The Spectrum term for programmer-supplied 8×8 patterns. We're writing them directly to bitmap memory rather than through BASIC's UDG mechanism, but the design unit is identical.
+
+## What's next
+
+The hero stands. He cannot yet move.
+
+In Unit 4 the keyboard meets the keep. We'll meet port `$FE` for the *second* time — this time on the read side, where the same port that drove the BORDER in Unit 1 and the beeper later in Unit 7 returns the state of the keyboard's eight half-rows. We'll learn how to scan for the four direction keys (Q/A/O/P — the *Quazatron* convention), how to update the hero's column and row in response, and how to redraw him in his new cell while restoring the floor to the cell he just left. Cell preservation is the technique that lets the thief walk over a room without scuffing it.
+
+By the end of Unit 4 the thief walks. He doesn't yet check what's under his feet — a wall will stop him not by collision but by his cloak vanishing into the stone. That collision check arrives in Unit 5 alongside the room transition.
