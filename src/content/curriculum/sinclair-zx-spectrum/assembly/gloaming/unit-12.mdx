@@ -1,0 +1,92 @@
+---
+title: "Nightheld"
+description: "Win the game. When every lamp is lit, the lamplighter has held back the dark — and the game says so, printing a closing line with the Spectrum's own ROM font, then holding the end state."
+pubDate: 2026-06-01
+game: 1
+unit: 12
+tags: ["assembly", "z80", "win-state", "text", "rom-font", "game-state"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The tally can fill — so filling it should *mean* something. This unit gives Gloaming its ending: light every lamp and the lamplighter has held back the night. The game recognises the moment, prints a closing line, and stops. After this unit you can sit down and *win*.
+
+It also teaches the last new drawing trick the game needs: printing text, using the Spectrum's own font straight out of ROM.
+
+## What you'll see by the end
+
+![All eight lamps lit gold around the square, the tally fully warm at the top, and the words "THE NIGHT IS HELD" printed across the middle.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-12/screenshot.png)
+
+Every lamp gold, every pip warm, and across the heart of the square: **THE NIGHT IS HELD**. The lamplighter has stepped aside, his work done. This is the screen the whole game has been building toward — and it's a screen you earn by playing.
+
+## The win is a single check
+
+We already keep `lit_count`, and it only ever changes at one moment: when a cold lamp is lit. So that's the only place we need to look. Right after lighting, ask the question:
+
+```
+ld   a, (lit_count)
+cp   NUM_LAMPS      ; all of them?
+jp   z, win         ; then the game is won
+```
+
+That's the whole condition. A win isn't a special system — it's a state you're already tracking crossing a line you care about. Checking it the instant the count changes means the game ends the very frame the last lamp warms.
+
+## Printing with the ROM font
+
+The closing line is text, and text is just more glyphs — except we don't have to draw the letters ourselves. The Spectrum keeps its entire character set in ROM, at **`$3C00`**, eight bytes per character, in code order. The shape for character code `c` sits at:
+
+```
+$3C00 + c * 8
+```
+
+So printing a letter is the exact glyph-draw from Unit 2 — eight bytes, `INC H` down the cell — with the bytes coming from ROM instead of our own data. `print_char` does one character; `draw_message` walks a string (ended with `$FF`), printing each and stepping one column along. The Spectrum draws its own font for us; we just copy it where we want it.
+
+## Ending, and staying ended
+
+On a win we do three small things: `restore_under` so the last lamp shows (the lamplighter steps out of the cell he's standing on), `draw_message` to print the line, and then a tiny loop that just `halt`s forever. The game is over; there's nothing more to do but hold the picture. That final loop is the **end state** — every game needs somewhere to come to rest.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-12/nightheld.asm" />
+
+### What you see
+
+Light the eighth lamp and the square freezes into its ending: all gold, the line written across it, the dark held off. Play it from the start and the whole arc is there — wander, light, watch the tally climb, and win.
+
+## Assemble and run
+
+```
+pasmonext --sna nightheld.asm nightheld.sna
+```
+
+In Emu198x, light every lamp. The moment the last one catches, the closing line appears and the game settles into its win.
+
+## Try this: your own closing line
+
+Change `msg_text` to whatever you like — `"WELL DONE"`, `"DAWN COMES"`, your name. Keep the `$FF` on the end, and adjust `MSG_COL` to re-centre it: a line of *N* characters starts at column `(32 - N) / 2`. Different words, same machinery.
+
+## Try this: a flourish on the win
+
+A bare freeze is a little flat. Before printing the line, add a moment of celebration: flash the border a few times (`out ($FE), a` with changing colours in a short loop), or sweep all the lamps to bright white. A win deserves a beat of spectacle — and it's a few instructions.
+
+## Try this: lose your way back
+
+Notice you can't restart without reloading. That's deliberate — restarting is its own unit (Unit 19, "Again"). For now, try adding a single key check in the end loop that jumps back to `start`: the crudest possible "play again". It'll work, and seeing *why* it's crude (the state isn't reset) is exactly the problem that later unit solves properly.
+
+## If it doesn't work
+
+- **The line never appears.** The win check isn't being reached, or `NUM_LAMPS` doesn't match the lamps actually placed, so `lit_count` never gets there. Confirm the `cp NUM_LAMPS` / `jp z, win` sits right after a lamp is lit.
+- **The text is garbled.** The font address is wrong. Each glyph is at `$3C00 + code * 8` — check the `code * 8` (three `ADD HL,HL`) and the `$3C00` base.
+- **The text prints in the wrong place or off the edge.** `MSG_ROW` / `MSG_COL` are off, or the line is too long to fit from that column. Re-centre it.
+- **He keeps moving after the win.** The `win` routine returned to the game loop. It must end in its own `halt` loop and never fall back through.
+
+## What you've learnt
+
+- A **win condition is a state check** at the moment the state changes — not a separate system.
+- The Spectrum's **font lives in ROM at `$3C00`**, eight bytes per character; print text by blitting glyphs exactly like sprites.
+- A game needs an **end state** — a small loop it rests in once it's over.
+- This is the line between a set of mechanics and **a game you can finish**.
+
+## What's next
+
+Gloaming is winnable — but it can't yet be *lost*, and a game with no jeopardy has no tension. **Phase D** brings the threat. In **Unit 13, "The Draught"**, a cold wisp drifts through the square: a *second* moving sprite, driven by the very same cell-sprite engine the lamplighter uses — proof that the technique you built pays for more than one character. The dark starts to push back.
