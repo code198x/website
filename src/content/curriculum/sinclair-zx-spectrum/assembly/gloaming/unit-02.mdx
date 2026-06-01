@@ -1,0 +1,129 @@
+---
+title: "The Lamplighter"
+description: "Leave attribute colour behind and write the bitmap. Meet the Spectrum's famous screen layout — the eight rows of a cell sit 256 bytes apart — and draw an 8×8 figure into one cell with eight INC H steps."
+pubDate: 2026-06-01
+game: 1
+unit: 2
+tags: ["assembly", "z80", "bitmap", "sprite", "screen-layout", "memory"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The square is built. Black cobbles, blue walls — and every cell of it a byte of *colour*, written straight to attribute memory in [Unit 1](/sinclair-zx-spectrum/assembly/gloaming/unit-01). But colour alone draws only blocks. For a *figure* — something with a shape — we need pixels.
+
+This unit draws the first one that isn't just a coloured block: the lamplighter himself, an 8×8 figure poked into a single cell. To do it we leave attribute memory and write the **bitmap** — and there the [Spectrum](/vault/systems/zx-spectrum) springs its most famous surprise on us.
+
+## What you'll see by the end
+
+![The walled square from Unit 1, now with a small white figure standing in the middle — the lamplighter, an 8×8 shape drawn into one character cell.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-02/screenshot.png)
+
+The same walled square — and now a small pale figure standing in the middle of it. He is one character cell, eight pixels square: a head, arms, a body, two legs. He doesn't move yet (that's Unit 3), but he is *there*, drawn from eight bytes you wrote by hand.
+
+## Pixels live somewhere else
+
+In Unit 1 we only ever wrote **attribute** memory at `$5800`. That sets a cell's two colours, but it can't draw a shape — a cell is one INK and one PAPER, nothing finer. The actual pixels — which of the 64 dots in a cell are lit — live in a separate, larger block: the **bitmap**, `$4000` to `$57FF`, 6144 bytes.
+
+So a cell is described by *two* places at once: its pixels in the bitmap, its two colours in attribute memory. A lit pixel is drawn in the cell's INK; an unlit one shows its PAPER. To draw the lamplighter we write his pixels to the bitmap — and give his cell a colour so they show.
+
+## The Spectrum's awkward, generous layout
+
+Here is the surprise. You might expect the eight rows of pixels in a cell to be eight bytes in a row — address, address+1, address+2. They are not. **The eight rows of a single cell sit 256 bytes apart.**
+
+The reason is how the screen is wired. The 192 pixel rows are split into three **thirds** of 64 rows each (top, middle, bottom). Inside a third, the address climbs by 32 for each *character* row down — but by **256** for each *pixel* row inside a character:
+
+```
+The eight pixel rows of ONE cell:
+
+  row 0  →  A          (top of the cell)
+  row 1  →  A + 256
+  row 2  →  A + 512
+  ...
+  row 7  →  A + 1792    (bottom of the cell)
+```
+
+Awkward to picture — but it hands us a gift. Adding 256 to an address adds **1 to its high byte** and leaves the low byte untouched. And the Z80 has an instruction that does exactly that: `INC H`. So to walk down the eight rows of a cell, we just `INC H` eight times. The hard-looking layout collapses into one tidy instruction.
+
+## Finding the cell's address
+
+We still need the address of the cell's *top* row to start from. For a cell at column `col`, row `row` (0–23), it's:
+
+```
+address = $4000 + third*$0800 + (row within third)*32 + col
+```
+
+where `third` is `row / 8` and the row within the third is the remainder. You don't have to work that out in your head — let the **assembler** do the arithmetic. We name the lamplighter's column and row, and write the formula as an `equ`; pasmonext computes the final address at assembly time:
+
+```
+LAMP_COL    equ     15
+LAMP_ROW    equ     11
+THIRD       equ     LAMP_ROW / 8
+CHARROW     equ     LAMP_ROW - THIRD * 8
+LAMP_SCR    equ     $4000 + THIRD * $0800 + CHARROW * 32 + LAMP_COL
+```
+
+Change the column or row and the address recomputes itself. (When the lamplighter starts to *move*, in Unit 5, we'll turn this into a routine that does the same sum for any cell. For now he stands in one place.)
+
+## The shape, and the draw
+
+A sprite is just eight bytes — one per pixel row. A `1` bit is a lit pixel; a `0` shows the PAPER behind. Lay the bits out and you can see the figure stand up:
+
+```
+%00111100   ..XXXX..   head
+%00111100   ..XXXX..   head
+%00011000   ...XX...   neck
+%01111110   .XXXXXX.   arms
+%00011000   ...XX...   body
+%00011000   ...XX...   body
+%00100100   ..X..X..   legs
+%01000010   .X....X.   feet
+```
+
+Drawing him is then two small things: set his cell's attribute to a warm pale colour (so the pixels read against the dark — the one-attribute-write idea from Unit 1), then copy the eight bytes down the eight rows, stepping with `INC H`.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-02/lamplighter.asm" />
+
+### What you see
+
+Everything from Unit 1 — border, cobbles, walls — then the lamplighter drawn over the centre cell in bright white. The eight `INC H` steps lay his rows down the cell; the final `halt`/`jr` loop holds the frame, exactly as before.
+
+## Assemble and run
+
+From the unit's directory:
+
+```
+pasmonext --sna lamplighter.asm lamplighter.sna
+```
+
+Load the snapshot in Emu198x and the figure is there the instant it runs — the draw takes a few hundred T-states, far less than a frame.
+
+## Try this: move him
+
+Change `LAMP_COL` and `LAMP_ROW` — try `LAMP_ROW equ 4` (the top third) or `LAMP_ROW equ 20` (the bottom). The figure jumps to the new cell, and you never touched the address: the `equ` formula recomputed it. Watch what happens at `LAMP_ROW equ 7` then `8` — that's the boundary between the top and middle thirds, and the formula steps across it for you.
+
+## Try this: change his shape
+
+Edit the eight `defb` bytes. Give him a hat (`%01111110` on the top row), or a wider stance (`%10000001` for the feet). Sketch the eight rows on paper first, write down the byte for each, then predict what you'll see before you run it. Each `1` is a pixel of INK; each `0` is PAPER.
+
+## Try this: a warmer figure
+
+Change `LAMP_ATTR` from `%01000111` (bright white INK) to `%01000110` (bright yellow) — a lamplighter who already carries a little warmth. The pixels don't change; only the INK colour they're drawn in does. The bitmap holds the *shape*; the attribute holds the *colour*. Two separate things, as ever.
+
+## If it doesn't work
+
+- **The figure is a vertical smear or scrambled mess.** You stepped the screen pointer with `inc hl` or `add hl, 32` instead of `inc h`. Within a cell the rows are 256 apart — only `inc h` walks them.
+- **The cell is blank where the figure should be.** Either the sprite bytes are all zero, or the cell's INK equals its PAPER (both black) so the pixels are invisible. Check `LAMP_ATTR` has a non-black INK in bits 0–2.
+- **The figure is in the wrong place — off by whole rows.** Re-check `LAMP_ROW`; the thirds formula is sensitive to which third the row falls in. Print the computed `LAMP_SCR` from your assembler's listing if unsure.
+- **The walls or cobbles vanished.** You wrote the figure's pixels into attribute memory (`$5800`+) by mistake. Pixels go to the bitmap (`$4000`+); colour goes to attributes. They are different addresses.
+
+## What you've learnt
+
+- Pixels live in the **bitmap** (`$4000`–`$57FF`), separate from the **attribute** colour at `$5800`+. A cell is described by both at once.
+- The Spectrum's screen is non-linear: the eight rows of one cell are **256 bytes apart**, so `INC H` steps down a cell — the layout's awkwardness turned into one instruction.
+- A **sprite** is eight bytes, one per row; `1` bits draw in INK, `0` bits show PAPER.
+- Let the **assembler** compute a cell's address from `(col, row)` with an `equ` — you write the formula once, it does the sum.
+
+## What's next
+
+The lamplighter stands still because nothing tells him to do otherwise — the program draws him once and idles. In **Unit 3** we replace that idle loop with the real thing: the **frame-locked game loop**, a 50 Hz heartbeat (`IM 1` + `HALT`) that every later unit beats to. It's the first of Gloaming's two big techniques, and the moment the square starts to feel alive.
