@@ -1,0 +1,119 @@
+---
+title: "The Empty Square"
+description: "Hold the BORDER black. Wash the screen in dark cobbles. Frame the square in blue walls. The town square before dusk, drawn entirely in colour — one byte per cell, the screen itself the map."
+pubDate: 2026-06-01
+game: 1
+unit: 1
+tags: ["assembly", "z80", "attributes", "ldir", "djnz", "out", "memory"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The lamps are out. Night is coming to the square, and you are the lamplighter — but before a single lamp, before you can even take a step, there has to *be* a square.
+
+On the [ZX Spectrum](/vault/systems/zx-spectrum) you do not draw the square. You **write** it. The screen is memory, and colour is just bytes in a table; set a byte, a cell changes colour. So your very first [Z80](/vault/hardware/z80) program is a handful of writes to memory — and a walled square appears out of the dark.
+
+By the end of this unit nothing moves and nothing is lit. But every cell on the screen is one you put there, on purpose. Nothing is hidden setup; the square is built byte by byte.
+
+## What you'll see by the end
+
+![A black square framed by a blue rectangular wall, on a black background — the town square at dusk, drawn purely in attribute colour.](/images/sinclair-zx-spectrum/game-01-gloaming/unit-01/screenshot.png)
+
+A black field — the cobbles underfoot — framed by a blue wall, sitting in the black of the coming night. No pixels are drawn yet; every block of colour is a single byte of *attribute* memory. The texture and the lamps come later. Today, the map is pure colour.
+
+## The square's vocabulary
+
+The whole game will be read from colour. Every cell on the screen is one of a small set of types, and the type is decided entirely by one byte — the cell's *attribute*. This unit lays just the first two:
+
+| Cell | Look | Attribute byte |
+|---|---|---|
+| Cobbles (you can walk here) | Black PAPER, blue INK | `$01` |
+| Wall (you cannot) | Blue PAPER, white INK | `$0F` |
+
+The rest — unlit lamp, lit lamp, the lamplighter, the draught — join this table as the game grows. For now: dark ground, blue walls.
+
+## The screen is the map
+
+The Spectrum's 256×192 screen is a grid of **32×24 character cells**, each 8 pixels square. Every cell has exactly **one INK (foreground) and one PAPER (background) colour** — two colours, no more. Those colours live in their own block of memory, **attribute memory**, from `$5800` to `$5AFF`: one byte per cell, 768 bytes in all.
+
+```
+Attribute memory: $5800 → $5AFF (768 bytes, one per cell)
+
+  col:    0     1     2    ...   31
+  row 0  $5800 $5801 $5802 ...  $581F
+  row 1  $5820 $5821 ...        $583F
+  ...
+  row 23 $5AE0 ...              $5AFF   ← last row
+```
+
+The address of any cell is `$5800 + row*32 + col`. Write a byte there and that cell takes those colours immediately — no redraw, no refresh. The screen *is* the map: change the map by changing memory.
+
+## The attribute byte
+
+One byte, packed tight:
+
+```
+ bit:  7      6      5  4  3      2  1  0
+       FLASH  BRIGHT  P  P  P      I  I  I
+              └ PAPER (0-7) ┘   └ INK (0-7) ┘
+```
+
+So **cobbles** `$01` = `%0000_0001` — PAPER 0 (black), INK 1 (blue), no bright, no flash. **Walls** `$0F` = `%0000_1111` — PAPER 1 (blue), INK 7 (white). With no pixels drawn, only the PAPER shows, so each cell is a solid block: cobbles black, walls blue.
+
+## Three writes build the square
+
+The whole program is three acts, each just writing memory.
+
+**The border goes black.** Outside the 256×192 screen is the BORDER, set by port `$FE` (bits 0–2). We hold it black — the night beyond the square. (It must *not* be blue: the walls are blue, and a blue border would swallow the wall frame whole.)
+
+**The cobbles are washed in.** We seed the first attribute cell with `$01` and let the Z80's `LDIR` cascade copy that single byte through all 768 cells — the block-fill idiom you'll use forever. One instruction, 767 copies.
+
+**The walls are framed.** Four edges get the wall byte `$0F`: the top row, the bottom row, and the first and last cell of every row. Each is a small `DJNZ` counting loop — the Z80's "do this B times" workhorse.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/game-01-gloaming/unit-01/empty-square.asm" />
+
+### What you see
+
+A blue wall frames a black square, all of it sitting in a black border — the town square, walled, waiting for dusk. It holds still: the final `halt`/`jr` loop just keeps the frame on screen. (That idle loop becomes the real game loop in Unit 3.)
+
+## Assemble and run
+
+From the unit's directory, assemble to a snapshot and load it in Emu198x:
+
+```
+pasmonext --sna empty-square.asm empty-square.sna
+```
+
+The program writes the whole square in well under a frame, then idles — so the moment it runs, the walled square is there.
+
+## Try this: cobbles of a different mood
+
+Change the cobble seed from `$01` to `$05` (PAPER black, INK cyan) — then to `$41` (the BRIGHT bit set). The block stays black for now (no pixels), but you've changed what the *ink* will be when texture arrives. Predict the byte before you run it: which three bits are PAPER, which three are INK?
+
+## Try this: a thicker wall
+
+The frame is one cell thick. Make the top and bottom walls **two** rows thick: after the top-row loop, repeat it for the next row down (`$5820`), and the same for the row above the bottom (`$5AC0`). Watch the square's proportions change — and notice the interior shrink by exactly the cells you painted.
+
+## Try this: knock through the gate
+
+The lamplighter has to get in. Pick a cell on the bottom wall — say row 23, column 15, at `$5AE0 + 15` — and write `$01` (cobbles) over its `$0F`. A one-cell gap appears in the wall: the gate. (We'll start the lamplighter there in Unit 5.)
+
+## If it doesn't work
+
+- **The whole screen is blue, no black square.** Your `LDIR` count is wrong, or DE wasn't HL+1 — the seed didn't cascade. Check `bc, 767` and `de, $5801`.
+- **No wall frame — just a black screen with a blue border.** The border is the same blue as the walls and is hiding them. Confirm act 1 loads `a, 0` (black), not `a, 1`.
+- **Garbled pixels inside the cells.** Something wrote to the bitmap (`$4000`–`$57FF`). This unit only touches attribute memory (`$5800`+) and the border — check your addresses.
+- **Nothing on screen at all.** The program ran off the end into ROM. Make sure the final `halt`/`jr .loop` is present so it holds the frame.
+
+## What you've learnt
+
+- The screen is **memory**: attribute bytes at `$5800`–`$5AFF`, one per 8×8 cell, decide colour with no redraw.
+- The **attribute byte** packs FLASH, BRIGHT, PAPER and INK into eight bits.
+- `OUT ($FE),A` sets the **border**; `LDIR` is the **block-fill**; `DJNZ` is the **counted loop**.
+- A cell's *type* and its *colour* are the same byte — the idea the whole game is built on.
+
+## What's next
+
+The square is empty. In **Unit 2** we draw the first thing that isn't just colour — the lamplighter, an 8×8 figure poked pixel-by-pixel into a single cell. That's where the screen stops being a grid of blocks and starts holding a character.
