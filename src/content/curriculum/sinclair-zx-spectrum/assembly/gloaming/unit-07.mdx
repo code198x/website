@@ -1,0 +1,112 @@
+---
+title: "Walls"
+description: "Turn the blue frame into a boundary. Read the target cell's attribute and BIT-test PAPER's bottom bit — set on walls, clear on floor — refusing the step if it's solid. Collision for free, because the map is already colour."
+pubDate: 2026-06-01
+game: 1
+unit: 7
+tags: ["assembly", "z80", "collision", "attributes", "bit", "walls"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The lamplighter can stand anywhere and harm nothing — so now we decide where he's *allowed* to stand. Until this unit, the blue frame round the square was scenery he could walk straight through. This unit makes it solid: step toward a wall and he simply stops.
+
+It costs almost nothing, because of a decision we made all the way back in Unit 1: the map *is* colour, and colour lives in memory. We don't need a separate table of what's solid — we read it from the attribute of the cell he's trying to enter.
+
+## What you'll see by the end
+
+![The lamplighter stopped at the right-hand wall, pressed against the blue frame, unable to go further.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-07/screenshot.png)
+
+The lamplighter, walked all the way right and **stopped dead** against the wall. This shot was taken holding P for far longer than it takes to cross the square — and he sits at the last floor cell, refusing to enter the blue. The wall is a boundary now, not decoration.
+
+## Collision is already in the colour
+
+Look at the two cell types as bits:
+
+```
+COBBLE = %0000 0 001    PAPER black (0)  — floor
+WALL   = %0000 1 111    PAPER blue  (1)  — solid
+                  ↑
+                  bit 3 — the bottom bit of PAPER
+```
+
+The walls are the only cells with a non-black PAPER. So **bit 3** — the bottom bit of the PAPER field — is **set on walls and clear on floor**. That single bit answers the only question collision asks: *can I go there?*
+
+```
+bit  3, (hl)     ; HL = the target cell's attribute
+                 ; set   → wall  → no
+                 ; clear → floor → yes
+```
+
+No solidity table, no list of wall coordinates. The colour you already painted *is* the collision map. This is the Unit 1 idea — "a cell's type and its colour are the same byte" — finally paying for itself.
+
+## Test before you step
+
+In Unit 5 we moved first and asked questions never. Now we ask first. Each step:
+
+1. Work out the **target** column — where he *wants* to go (`lamp_col` ± 1).
+2. Read that cell's attribute and `BIT 3` it.
+3. If it's a wall, **refuse** — jump back to the top of the loop, don't move at all.
+4. If it's clear, commit the move exactly as before: restore, step, save, draw.
+
+A small helper, `wall_at`, takes a column, reads its attribute, and comes back with the Z flag set or clear — so the loop reads almost like English: *work out the target; if `wall_at`, go round again; otherwise move there.*
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-07/walls.asm" />
+
+### What you see
+
+Walk him into either side wall and he stops at the last floor cell, however long you hold the key. Notice we wrote **no** "stay on screen" code — the side walls bound him purely because they're solid. The map does the work.
+
+## Assemble and run
+
+```
+pasmonext --sna walls.asm walls.sna
+```
+
+Walk left and right in Emu198x. He's penned between the two side walls of his row — a real corridor now, with ends.
+
+## Try this: knock a gate
+
+Open a hole in the wall. In setup, after the frame is drawn, paint one wall cell as floor — say the right wall of his row:
+
+```
+ld   hl, ROW_ATTR + 31
+ld   (hl), COBBLE
+```
+
+Now walk right: he passes straight through the gap, because `wall_at` reads the *live* attribute and that cell is floor now. Change the map, change the collision — they're the same thing.
+
+## Try this: plant a pillar
+
+The opposite — make a floor cell solid. Set an interior cell in his path to the wall colour:
+
+```
+ld   hl, ROW_ATTR + 20
+ld   (hl), WALL
+```
+
+A blue block appears mid-floor, and he stops at it just as he stops at the frame. Collision isn't about the *edge* of the square — it's about whatever cell he's stepping into, wherever it is.
+
+## Try this: take the wall test out
+
+Comment out the `call wall_at` and its `jr nz`. He walks straight through the wall and off into the dark, exactly like Unit 6. Those three lines are the entire difference between a figure and a figure that respects the world. Put them back.
+
+## If it doesn't work
+
+- **He walks through walls regardless.** The test is inverted. A wall has bit 3 **set**, so `BIT 3` gives **NZ** — and `jr nz` must skip the move. Check `WALL_BIT` is 3 and the branch is `jr nz`.
+- **He won't move at all, anywhere.** You're testing his *current* cell, or always reading non-zero. `wall_at` must test the **target** (`lamp_col` ± 1), worked out before the move.
+- **He stops one cell short of, or one cell inside, the wall.** Off-by-one in the target. The cell to test is the one he's *entering*, not the one he's on.
+- **He slips past the side wall and the screen garbles.** `wall_at` is reading the wrong address — confirm it forms `ROW_ATTR + col`.
+
+## What you've learnt
+
+- Collision can read the map you **already have** — a cell's attribute byte — with no separate solidity table.
+- A single **`BIT` test** (PAPER's bottom bit here) classifies a cell as solid or floor.
+- **Test the target cell before committing** the move, and refuse if it's solid.
+- The walls now bound him with **no dedicated edge code** — being solid is enough.
+
+## What's next
+
+He's penned left and right, but he can only move along one row. In **Unit 8** we complete the movement engine: the other two directions, **up and down**. That brings back the full screen-address arithmetic from Unit 2 (moving between rows crosses those awkward thirds), and the top and bottom walls catch him just as the sides do. By the end he'll be free to roam the whole square — and properly shut inside it.
