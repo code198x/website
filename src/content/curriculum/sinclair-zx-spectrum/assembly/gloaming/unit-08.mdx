@@ -1,0 +1,97 @@
+---
+title: "Edges"
+description: "Complete the movement engine: up and down as well as left and right. Moving between rows brings back Unit 2's full screen-address arithmetic, and the four walls bound him — he roams the whole square, properly shut inside it."
+pubDate: 2026-06-01
+game: 1
+unit: 8
+tags: ["assembly", "z80", "movement", "screen-layout", "collision", "bounds"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The lamplighter walks left and right, stopped by the side walls. This unit gives him the other two directions — up and down — and shuts every edge. By the end he roams the whole square and can't leave it. The cell-sprite technique, four units in the making, is finished here.
+
+The controls become the classic **QAOP**: Q up, A down, O left, P right. But the real work is underneath. The moment he can change *rows*, the gentle address shortcut we've leaned on since Unit 5 breaks — and Unit 2's awkward screen layout comes back to be dealt with properly.
+
+## What you'll see by the end
+
+![The lamplighter tucked into the top-right corner of the square, pressed against both the top and right walls.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-08/screenshot.png)
+
+The lamplighter, walked right to the wall and then *up* to the top — caught in the corner, blocked on two sides at once. He crossed from the middle of the screen to the top to get there, and (as we'll see) that journey crosses one of the Spectrum's layout seams without him ever noticing.
+
+## Why one row was easy and two rows aren't
+
+While he stayed on one row, every cell he touched shared the same screen "third" and the same row-within-third — so his address was just `ROW_SCR + col`, a constant plus the column. The instant he moves to a *different* row, that constant is wrong, because the Spectrum stores rows in three separate bands of memory (the thirds from Unit 2). We need the full address of *any* cell, worked out fresh each time.
+
+Happily, it splits into two clean bytes. For a cell at column `col`, row `row` (0–23):
+
+```
+high byte = $40 + (row AND $18)         ; which third, ×8 in the high byte
+low  byte = ((row AND 7) << 5) OR col   ; row-within-third ×32, plus the column
+```
+
+- **`row AND $18`** keeps just the two bits that say which third he's in — and those bits already sit in the right place to add to `$40` for the high byte.
+- **`row AND 7`** is the row within that third (0–7). Shifting it left 5 multiplies by 32 — and a left-shift-by-5 of a 3-bit value is just **three `RRCA`s**, rotating those three bits up into positions 5, 6 and 7. `OR` the column into the gap below and that's the low byte.
+
+`scr_addr_cr` is that recipe. The attribute address stays the easy linear one — `$5800 + row*32 + col` — built with five `ADD HL,HL` doublings.
+
+## Collision didn't change at all
+
+Here's the quiet reward for doing Unit 7 properly: **none of the collision code changes.** `wall_at` already took an arbitrary target cell and `BIT`-tested its attribute. Now the target can be a row above or below instead of a column left or right — same test, same refusal. The top and bottom walls stop him exactly as the sides do, because they're made of the same solid cells. Four directions, one collision rule, zero special cases for "the edge".
+
+## One move path, four directions
+
+The loop reads QAOP in turn, nudges a *target* cell (`tcol`/`trow`) one step in the chosen direction, then runs the unchanged test-and-commit: if the target is a wall, stay put; otherwise restore, adopt the target, save, draw. Holding two keys just means the first one checked wins — clean four-way movement, no diagonals to reason about.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-08/edges.asm" />
+
+### What you see
+
+Q, A, O, P walk him in all four directions, and every wall — frame top, bottom, left, right — stops him dead. He's free inside the square and trapped by it, both at once. That's a finished movement engine.
+
+## Assemble and run
+
+```
+pasmonext --sna edges.asm edges.sna
+```
+
+Roam the whole square in Emu198x. Try to leave it — you can't. Walk into a corner and two walls hold you at once.
+
+## Try this: a pillar to walk around
+
+Drop a solid block in the middle of the floor, in setup:
+
+```
+ld   hl, $5800 + 11*32 + 15
+ld   (hl), WALL
+```
+
+Now he can't pass through the centre — he has to go *around* it, up or down and back. The collision that bounds the square bounds a single interior cell just the same. You've made the first piece of real level geometry.
+
+## Try this: cross the seam on purpose
+
+Start him at `START_ROW equ 7` and walk **down** one cell to row 8. That step crosses from the top third into the middle third — a jump of over two kilobytes in screen memory — yet he moves by one tidy cell with no glitch. `scr_addr_cr` hides the seam completely. Move him up and down across it a few times and watch how ordinary the hardest part of the screen layout now looks.
+
+## Try this: cursor keys instead
+
+Rework the reads to use the cursor keys: 5 (left), 6 (down), 7 (up), 8 (right). 5 lives in the half-row at `$F7FE`; 6, 7 and 8 share `$EFFE`. Map each to its bit and you've reskinned the controls without touching the movement engine — proof the input and the engine are cleanly separate.
+
+## If it doesn't work
+
+- **He teleports or scrambles when moving up or down.** `scr_addr_cr` is wrong. Check `high = $40 + (row AND $18)`, and that the low byte is `(row AND 7)` rotated right three times (`RRCA`×3) then `OR col`.
+- **Left/right is fine but vertical is offset by a band.** You're mixing the screen and attribute formulas, or the third bits aren't masked with `$18`.
+- **He walks through the top or bottom wall.** The vertical step didn't update `trow`, so `wall_at` tested the wrong cell. Up/down must change the target *row*.
+- **He smears a trail when moving vertically.** Save/restore are still using a fixed-row address. They must go through the `(col, row)` routines so they follow him between rows.
+
+## What you've learnt
+
+- Moving between rows needs the **full `(col, row)` → address** arithmetic; the single-row shortcut only held within one row.
+- The screen address splits into **third (high byte)** and **row-within-third × 32 + column (low byte)** — and a left-shift-by-5 is three `RRCA`s.
+- **Collision and save/restore didn't change** — they were always per-cell; only the address routine generalised.
+- The **four walls bound him with no special edge code** — solid is enough, in every direction.
+
+## What's next
+
+The engine is done: a figure that roams a walled room, preserving everything it crosses. Now the *game* begins. In **Unit 9** we scatter the first real game objects — **the lamps**: unlit cells with a lantern glyph and a cold cyan colour, placed from a small data table. The square stops being empty, and the lamplighter finally has something to do.
