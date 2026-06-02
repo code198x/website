@@ -1,0 +1,104 @@
+---
+title: "A Keep with Character"
+description: "Compose the whole keep as one place. Let a room hold more than one torch — each floor cell lit by its nearest flame — and use that with per-room falloff to give every chamber its own character from one coherent toolset."
+pubDate: 2026-06-02
+game: 3
+unit: 12
+tags: ["assembly", "z80", "lighting", "atmosphere", "design"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+We've given rooms moods one at a time. This unit pulls back and treats the **whole keep** as a single composition: three chambers that read as parts of one place, each lit to its own character, all from the same coherent set of tools. It's the unit that turns "rooms with lighting" into "a keep you believe in", and it closes the Mood and Light sub-arc.
+
+The capability that makes it possible is a small but real upgrade: a room can have **more than one torch**.
+
+## What you'll see by the end
+
+![The Great Hall lit by three sconces — one high in the centre wall and one on each side wall — their pools of light overlapping across the upper hall around the statue and banners, the floor falling into shadow below; the hooded thief stands in the light.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-12/screenshot.png)
+
+The Hall, grandly lit now — three flames, their pools overlapping into a broad wash of light across the upper chamber, the statue and its banners standing in it, the floor sinking to shadow toward the back. Walk to the Vault and it's still a single flame in the black; the Gallery, two torches and a medium glow. One keep, one engine, three characters — and they feel like *the same keep*, lit by the same hand.
+
+## Many flames, nearest wins
+
+Until now a room had one torch and `find_torch` looked for it. Now `find_torches` gathers *every* `T` in the room into a little list:
+
+```
+find_torches:
+            ; ... scan the map; for each 'T', record (col, row) ...
+            ; ... up to MAX_TORCHES, counting them in torch_count ...
+```
+
+And a floor cell takes its light from whichever flame is **closest** — `shade_for_cell` measures the distance to each torch and keeps the smallest:
+
+```
+.sf_loop:
+            ; distance from this cell to torch[i] ...
+            ld      e, a            ; this torch's distance
+            ld      a, (min_dist)
+            cp      e
+            jr      c, .sf_keep     ; already nearer
+            ld      a, e
+            ld      (min_dist), a   ; new nearest
+.sf_keep:
+            djnz    .sf_loop
+            ; ... then shift by the room's falloff and clamp, as before ...
+```
+
+Two torches make two pools that *overlap* where they meet; three light a whole hall. The light stopped being one circle and became as many as the room has fires.
+
+## Character from a shared toolset
+
+Now each room is composed with the same two dials — how many flames, and how fast they fade — turned to a different setting:
+
+```
+room_falloff:
+            defb    2               ; Hall  — 3 sconces, broad: grand and bright
+            defb    1               ; Gallery — 2 torches, medium
+            defb    0               ; Vault — 1 flame on the altar, tight: a crypt
+```
+
+The Hall is generous and public — three sconces, soft falloff, light everywhere you'd gather. The Vault is private and fearful — one flame, sharp falloff, dark everywhere you're not meant to linger. They're *opposites*, and yet they're plainly the same building, because they're drawn with the same stone, the same dither ramp, the same flames. That coherence — variety within one clear hand — is what "character" means for a place. You're no longer lighting rooms; you're lighting a *keep*.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-12/a-keep-with-character.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna a-keep-with-character.asm a-keep-with-character.sna
+```
+
+Load it in Emu198x and walk the whole keep, end to end. Feel the Hall open out under its three flames, the Gallery settle to a working glow, the Vault close in to its one cold light. Three rooms, one place.
+
+## Try this: add a flame, take one away
+
+Drop another `T` into a room's map and watch a new pool bloom and overlap the others; delete one and watch a corner fall dark. You're lighting by placing fires — the most physical way there is. Mind `MAX_TORCHES`; raise it if you want a room ablaze.
+
+## Try this: a colonnade of light
+
+Line a long room's wall with a row of evenly-spaced sconces, falloff 1 or 2. The overlapping pools merge into a continuous band of light down the room — a lit gallery, a cathedral nave. Repetition of one element is its own kind of grandeur.
+
+## Try this: ruin the character
+
+Give the Vault three torches and a falloff of 2. It floods with light and instantly stops being a crypt — it's just another bright room. A useful failure: it shows that the Vault's *character* was never the altar or the stone, it was the **restraint**. Put it back, and notice how much the darkness was doing.
+
+## If it doesn't work
+
+- **Only one torch lights a room.** `find_torches` is stopping at the first `T`, or `shade_for_cell` isn't looping over `torch_count`. Every `T` should be collected and every one measured.
+- **The machine slows to a crawl entering a room.** Many torches × 768 cells is real work; it's a one-time cost on entry, but keep `MAX_TORCHES` modest (a handful) so the redraw stays a flick, not a freeze.
+- **A room is all dark with torches present.** `torch_count` came back zero — the map's `T`s aren't being found, or `min_dist` isn't being reset to a large value before the loop.
+- **Two pools don't overlap / one wins everywhere.** The nearest test is backwards. Keep the *smaller* distance: update `min_dist` only when the new distance is less.
+- **Garbage after adding torches.** `torch_list` overflowed — you placed more than `MAX_TORCHES` and the count guard is missing. The `cp MAX_TORCHES` / `jr nc` check protects the list.
+
+## What you've learnt
+
+- **Light is as many pools as there are flames.** Collect every torch; light each cell from the nearest. Pools overlap into the shape of the room's fires.
+- **Character is variety within one hand.** Two dials — count of flames and falloff — compose grand, working, and fearful rooms that still read as one building.
+- **Restraint is a feature.** The Vault's darkness, not its altar, is its character. Over-light it and it vanishes.
+- **A keep is a composition.** You stopped lighting rooms and started lighting a place — the difference between a set of screens and somewhere to be.
+
+## What's next
+
+The keep looks like somewhere now — lit, furnished, composed. But it's silent. A place you believe in has *sound*: footsteps on stone, the creak of a door, a flame's hiss. The next sub-arc, **The Keep Has a Voice**, gives it that. We begin in **Unit 13, "Footsteps and Doors,"** building a small sound-effects driver on the beeper — the one from your very first game, grown up — so the keep is heard as well as seen. Atmosphere reaches the ear.
