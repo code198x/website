@@ -1,0 +1,126 @@
+---
+title: "Light and Shadow"
+description: "The keep is flatly lit — every cell the same cold blue. Hang a torch and let the dithering you met in Unit 2 become lighting: pick each floor cell's shade by its distance from the flame, so a pool of light fades into the dark."
+pubDate: 2026-06-02
+game: 3
+unit: 9
+tags: ["assembly", "z80", "lighting", "dithering", "atmosphere"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The keep is built, but it's lit like an office — every cell the same even blue, no dark corners, no sense of nightfall. Atmosphere is the whole point of Shadowkeep, and atmosphere starts with light. This unit hangs a torch in each room and lets it throw a pool of light into the gloom — and the tool that does it is one you already have.
+
+Back in Unit 2 you learned that **dither density is shade**: sparse pixels read light, dense read dark. Lighting is simply *choosing that density by distance from a flame*. Close to the torch, sparse and bright; far away, dense and black. Nothing new but the choosing.
+
+## What you'll see by the end
+
+![The Great Hall lit by a single torch set in the top wall: a bright pool of light fans out below the flame and fades through deepening shades of slate to near-black in the corners; the hooded thief stands in the shadow below, the pillars dark around him.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-09/screenshot.png)
+
+A torch burns in the top wall, and the floor beneath it is *lit* — nearly all blue, the stone catching the flame. Step away and the dither thickens: half-and-half slate, then darker, then the far corners almost black. The thief stands down in the shadow, the lit pool above him. Same keep as last unit; an entirely different place to be in.
+
+## A torch is a glyph
+
+A torch is just another tile in the palette — `T`, a yellow flame in its sconce — placed in the room map like any wall:
+
+```
+            defb    "###############T################"   ; the Hall's top wall
+```
+
+It's drawn **bright**, so `wall_at` already treats it as solid stone — a fixture on the wall, not something you walk through. When a room is drawn, we first find its torch:
+
+```
+find_torch:
+            ; ... scan the room map for 'T', record (torch_col, torch_row) ...
+            ; ... or NO_TORCH if the room has none ...
+```
+
+## Distance becomes shade
+
+For each floor cell, how lit it is depends on how far it sits from that flame. We measure the distance — the larger of the row gap and the column gap, which gives a neat square-ish pool — halve it, and clamp it to give a shade from 0 (right by the flame) to 4 (deep dark):
+
+```
+shade_for_cell:                     ; row in B, column in C -> shade 0..4 in A
+            ; ... |row - torch_row| and |col - torch_col| ...
+            ; ... A = the larger of the two (the distance) ...
+            srl     a               ; distance / 2 — a gentle falloff
+            cp      MAX_SHADE + 1
+            jr      c, .sf_done
+            ld      a, MAX_SHADE     ; clamp to the darkest
+.sf_done:
+            ret
+```
+
+And the five shades are five floor tiles, the same blue and black at thickening densities — `shade0` nearly all blue, `shade2` the half-and-half slate from Unit 2, `shade4` nearly all black:
+
+```
+shade_tiles:
+            defw    shade0_tile     ; lit
+            defw    shade1_tile
+            defw    shade2_tile     ; the old floor
+            defw    shade3_tile
+            defw    shade4_tile     ; deep shadow
+```
+
+## Lighting as the room draws
+
+`draw_room` now does the choosing as it paints. A floor cell is shaded by distance; a wall, torch or chalk mark is drawn flat as before:
+
+```
+.room_col:
+            ld      a, (hl)          ; the glyph here
+            cp      '.'
+            jr      nz, .not_floor
+            call    shade_for_cell   ; floor: pick a shade by distance
+            ; ... point tile_ptr at shade_tiles[shade] ...
+            call    draw_tile
+            jr      .cell_done
+.not_floor:
+            call    lookup_tile      ; wall / torch / chalk: flat
+            call    draw_tile
+```
+
+The light is **baked** — worked out once, when the room is drawn. The torch doesn't move, so the pool doesn't either; it's the still light a sconce casts. (A flickering, carried flame comes later.) And it costs nothing as the thief walks: his save-and-restore already preserves whatever's beneath him, lit shade and all, so he moves through the gradient and leaves it untouched.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-09/light-and-shadow.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna light-and-shadow.asm light-and-shadow.sna
+```
+
+Load it in Emu198x. Stand in the lit pool under the Hall's torch, then walk down into the dark and watch the floor thicken to shadow around you. Each room has its own torch — cross to the Gallery and the Vault and see where each casts its light.
+
+## Try this: move the flame
+
+Shift the `T` in a room map to a side wall, or into a corner. The pool moves with it — the lit area is wherever the torch is, computed fresh. Light is data now: you place a flame by typing a letter, and the room lights itself around it.
+
+## Try this: a brighter, wider torch
+
+The falloff is `srl a` — distance halved. Change it: `srl a` twice (distance / 4) makes a *huge* soft pool that barely reaches dark; remove the `srl` entirely (distance itself) and the light collapses to a tight, harsh ring. One shift instruction is the difference between a candle and a bonfire.
+
+## Try this: light the walls too
+
+Only floor is shaded here; the walls stay uniformly lit. Extend the idea: give `#` a shade ramp of its own and shade walls by distance to the torch as well. The far walls sink into the dark with the floor, and the pool becomes a true bubble of light in a black room — a big step toward Knight Lore's gloom.
+
+## If it doesn't work
+
+- **The whole floor is darkest.** No torch was found — check the room map actually contains a `T`, and that `find_torch` runs before the draw. `NO_TORCH` means everything clamps to shade 4.
+- **The pool is the wrong shape or off-centre.** `shade_for_cell` mixed up rows and columns, or isn't taking the larger of the two gaps. Distance is `max(|dr|, |dc|)`.
+- **Floor cells are solid / the thief is trapped.** A shade tile was given a bright attribute. All five shades share `FLOOR_ATTR` (dim); only the *pattern* changes, so they stay walkable.
+- **The torch is walkable / draws as floor.** `T` must be in the palette with a bright attribute, and the floor branch only catches `.` — anything else falls through to the palette.
+- **The lit area is a hard-edged block.** That's the square (Chebyshev) distance showing its corners. It's fine, and very Spectrum; for a rounder pool, add the gaps instead of taking the larger (a diamond) or sum their squares (a circle, more maths).
+
+## What you've learnt
+
+- **Light is dither density chosen by distance.** The shading technique from Unit 2, driven by how far a cell is from a flame — no new drawing, only a new choice.
+- **A light source is data.** A glyph in the map; place it, move it, and the room re-lights around it.
+- **Bake what doesn't change.** Static light is computed once as the room draws, costing nothing per frame — and the hero's save/restore carries the shade for free.
+- **Falloff is a feel knob.** How fast light fades — one shift — sets whether the keep feels candle-lit or floodlit.
+
+## What's next
+
+The keep has light and dark now, but its rooms are bare — stone, pillars, and not much else. A place you believe in has *things* in it: an altar, a sconce, a scatter of rubble, a well. In **Unit 10, "Furnishings,"** we add decorative objects — scenery the thief walks past, not into — that turn a lit room into a room with a story. Atmosphere is light *and* the things the light falls on.
