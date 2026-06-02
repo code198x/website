@@ -1,0 +1,148 @@
+---
+title: "The First Hall"
+description: "The thief stood on flat blue. A keep is made of stone, and stone has shade. Meet dithering — mixing two colours in the bitmap to get the shades between them — and build the keep's first room: a dark slate floor inside lit stone walls."
+pubDate: 2026-06-02
+game: 3
+unit: 2
+tags: ["assembly", "z80", "dithering", "tiles", "graphics"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+In Unit 1 the thief stood on a flat wash of blue — one attribute byte, the same colour in every cell. It did the job, but it was never going to be a *keep*. A keep is built of stone, and stone has texture and shade: dark in the depths, lit where the light falls. This unit gives the thief his first room, and the single trick that makes it look like stone.
+
+That trick is **dithering**, and it's the most useful idea on the whole machine for getting around the Spectrum's two-colours-per-cell limit.
+
+## What you'll see by the end
+
+![A dark, finely-textured slate floor filling a room, framed by a bright blue stone wall border, with the red hooded thief standing in the centre.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-02/screenshot.png)
+
+A hall. A floor of dark, mottled slate, walled in by lit blue stone, the thief standing in the middle of it. Two shades of stone — and yet, look closely, both are made from the *same two colours*: blue and black. No new colours, no attribute trickery. Just a pattern of pixels, and an eye that does the mixing for us.
+
+## Two colours, many shades
+
+A cell only ever holds two colours — its INK and its PAPER. We can't put a third in. But the *bitmap* decides, for each of the cell's 64 pixels, whether it shows INK or PAPER. So if we scatter black INK pixels across blue PAPER, the eye doesn't see individual pixels at arm's length — it **blends** them into a single perceived shade, somewhere between blue and black. And the *density* of that scatter sets where between:
+
+```
+PAPER blue, INK black — perceived shade by dither density:
+
+  none     ████  flat blue            (Unit 1's wash — too bright)
+  sparse   ▓▓▓▓  light, lit stone     (our walls)
+  half     ▒▒▒▒  dark slate           (our floor)
+  most     ░░░░  near-black shadow
+```
+
+This is dithering. One pair of colours, a ramp of shades — and, for free, *texture*: the floor stops being a flat panel and starts looking like worked stone. Everything Shadowkeep does with light and shadow later is built on this one idea.
+
+## The two stone tiles
+
+A tile is just eight bytes — eight rows of eight pixels — drawn into a cell exactly the way Gloaming drew its lantern glyph. Here are our two, and you can read the density straight off the bits:
+
+```
+floor_tile:                 wall_tile:
+    defb %10101010              defb %00010001
+    defb %01010101              defb %00000000
+    defb %10101010              defb %01000100
+    defb %01010101              defb %00000000
+    defb %10101010              defb %00010001
+    defb %01010101              defb %00000000
+    defb %10101010              defb %01000100
+    defb %01010101              defb %00000000
+```
+
+The **floor** is a 50% checker — every other pixel black — which blends to dark slate. The **wall** scatters just a few black specks across mostly-blue, so it stays light; and we give the wall the BRIGHT bit, lifting it into a lit, pale stone. Same blue, same black; the density does the rest. Both patterns tile seamlessly — each cell is identical, and a checker continues unbroken across the joins.
+
+```
+WALL_ATTR   equ     %01001000       ; BRIGHT — lit stone
+FLOOR_ATTR  equ     %00001000       ; dim — dark slate
+```
+
+## Drawing a cell, then a room
+
+`draw_tile` colours a cell and lays its eight bitmap rows. It's Gloaming's glyph-draw, made general — give it a row, a column, a tile and an attribute, and it draws there:
+
+```
+draw_tile:
+            push    bc              ; keep row/column for the loop below
+            call    attr_addr_cr
+            ld      a, (tile_attr)
+            ld      (hl), a
+            call    scr_addr_cr
+            ld      de, (tile_ptr)  ; fetched after the helpers — they use DE
+            ld      b, 8
+.draw_tile_row:
+            ld      a, (de)
+            ld      (hl), a
+            inc     de
+            inc     h
+            djnz    .draw_tile_row
+            pop     bc
+            ret
+```
+
+`draw_hall` then walks every cell of the screen with two nested loops — the very shape of the fill you wrote in Gloaming, row in `B`, column in `C` — and `pick_tile` chooses a wall tile on the edges, floor within:
+
+```
+pick_tile:
+            ld      a, b
+            or      a               ; top row?
+            jr      z, .wall
+            cp      LAST_ROW        ; bottom row?
+            jr      z, .wall
+            ld      a, c
+            or      a               ; left column?
+            jr      z, .wall
+            cp      LAST_COL        ; right column?
+            jr      z, .wall
+            ; ... otherwise floor ...
+```
+
+A bordered rectangle of stone: walls around, slate within. The keep's first room.
+
+### The thief on the floor
+
+The thief is drawn last, on top, exactly as in Unit 1. One honest detail: his solid sprite **replaces** the floor in his single cell — there's no seeing the slate through him, because cell-based drawing writes the whole cell. That's the truthful simple version; a later game teaches *masking*, where a sprite keeps the background showing through its gaps. For now, he stands on the stone, and that's enough.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-02/the-first-hall.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna the-first-hall.asm the-first-hall.sna
+```
+
+Load it in Emu198x. A dark slate hall walled in lit stone, the thief at its centre. Hold the screenshot from Unit 1 beside it: same blue, same black, an entirely different *place*.
+
+## Try this: re-shade the floor
+
+`floor_tile` is a 50% checker. Make it darker — set more bits, say `%11101110` / `%10111011` alternating — and the floor sinks toward black, a deeper dungeon. Make it sparser — `%10001000` / `%00100010` — and it lifts toward the wall's shade. You're sliding the floor up and down the shade ramp by changing nothing but pixel density. Find the slate you like.
+
+## Try this: a wall that reads as blocks
+
+Our wall is a flat sparse dither. Real keep walls have *courses* — stone blocks with mortar between. Design a `wall_tile` with a solid run along the bottom row (`%11111111`) and a vertical line every few pixels, so repeated cells read as a brick course. Texture and shade are the same tool used two ways: pattern for *what the stone is*, density for *how lit it is*.
+
+## Try this: a third shade
+
+Add a `RUBBLE_ATTR` / `rubble_tile` at a density between wall and floor, and have `pick_tile` lay a band of it along the bottom row inside the walls — a drift of broken stone. You'll have three readable shades on screen, all from blue and black. That's the whole vocabulary the atmosphere of this keep is built from.
+
+## If it doesn't work
+
+- **The floor is solid blue, no texture.** `draw_tile` is laying the same byte eight times instead of eight different ones, or `tile_ptr` points at the wrong data. Each `inc de` must walk through the tile's eight bytes.
+- **The pattern smears diagonally or streaks.** The `inc h` after each row is what steps down the cell. With `inc l` you'd write along one pixel row — a streak, not a tile.
+- **The whole screen is one tile (all wall, or all floor).** `pick_tile`'s edge tests are wrong. Wall when row is `0` or `LAST_ROW`, or column is `0` or `LAST_COL`; floor otherwise.
+- **The border colours flicker or the room is the wrong size.** `LAST_ROW`/`LAST_COL` are 23 and 31 — the last valid cell indices, not 24 and 32.
+- **The checker shimmers unpleasantly on a real TV.** A fine 50% dither can buzz on composite video; coarsen it to 2×2 blocks (`%11001100` / `%00110011`) for a calmer texture. On the Next or an emulator it's rock-steady.
+
+## What you've learnt
+
+- **Dithering beats the two-colour limit.** Mixing INK and PAPER pixels in the bitmap makes the eye perceive shades *between* a cell's two colours.
+- **Density is shade.** Sparse INK reads light, half-and-half reads mid, dense reads dark — a whole ramp from one pair of colours.
+- **A tile is eight bytes, drawn like a glyph.** `draw_tile` is Gloaming's glyph-draw made general; a room is that draw, repeated over a grid.
+- **Texture and shade are the same tool.** The pattern decides what the stone *is*; the density decides how *lit* it is — the foundation for this keep's light and shadow.
+- **Cell-based sprites replace their cell.** The thief covers the floor under him; masking, which keeps the background, is a deliberately later lesson.
+
+## What's next
+
+The hall is built, but the thief is rooted to the spot. In **Unit 3, "A Place to Move,"** we bring back Gloaming's keyboard reading, cell-step movement, and wall collision — and set the thief walking the hall. He'll save and restore the dithered stone beneath him as he goes, so the floor survives his passing, and the lit walls will turn him back. The engine you finished in Gloaming, now moving a thief through a room of stone.
