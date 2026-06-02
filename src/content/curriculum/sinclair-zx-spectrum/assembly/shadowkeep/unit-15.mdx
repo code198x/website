@@ -1,0 +1,124 @@
+---
+title: "A Theme in One Voice"
+description: "Write music on one bit. Build a note-table player — a stream of pitch/duration pairs driving the beep primitive — and compose a short, solemn theme in D minor for the keep. One voice, no harmony: the melody carries the whole mood alone."
+pubDate: 2026-06-02
+game: 2
+unit: 15
+tags: ["assembly", "z80", "audio", "music", "beeper"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The keep is a complete game — but it opens in silence. A game announces itself; it has a *theme*, the few seconds of music that tell you what you're about to play. This unit gives the keep one, on the only instrument we have: the single-bit beeper from Unit 13, asked now to carry not a footstep but a *tune*.
+
+## What you'll hear by the end
+
+![The Great Hall, lit and waiting, two coins of gold on its floor — the screen you've built, now opening to a short theme played as the keep comes into view.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-15/screenshot.png)
+
+The screen is the Hall as before — but now, as the keep opens, a short solemn phrase plays: a melody in D minor, rising to a held note and falling home, then a brief answer. Six or seven seconds, one voice, then the game begins. It's the sound of the keep introducing itself. (Load it and listen — the still is silent, the keep is not.)
+
+## Music from a note table
+
+In Unit 13 we toggled the beeper by hand for each effect. Music needs more notes than that, so we write a tiny **player** that reads a tune from data. The tune is just bytes — pairs of *(pitch, duration)*:
+
+```
+play_tune:
+.pt_next:
+            ld      a, (hl)          ; pitch
+            inc     hl
+            cp      $FF
+            ret     z                ; $FF -> end of tune
+            ld      c, a             ; pitch -> C (beep delay)
+            ld      a, (hl)          ; duration
+            inc     hl
+            ld      d, a             ; duration -> D (how long to hold it)
+            ld      a, c
+            or      a
+            jr      z, .pt_rest      ; pitch 0 -> a rest
+            ; ... play the note, then a small gap, then the next ...
+```
+
+A `$FF` pitch ends the tune; a `0` pitch is a rest; anything else is a note. To change the music you change the *data*, never the player — exactly like the room maps drive the level. The player is the engine; the theme is content.
+
+## A long note from a short counter
+
+One `beep` can only run 255 cycles — far too short for a held, solemn note. So a note is `beep` repeated in **chunks**, the duration byte saying how many:
+
+```
+play_note:                           ; C = pitch, D = duration in chunks
+.pn_loop:
+            ld      b, 24            ; one chunk = 24 cycles of the tone
+            push    de
+            call    beep             ; B cycles at pitch C
+            pop     de
+            dec     d
+            jr      nz, .pn_loop
+            ret
+```
+
+Stack a handful of chunks and a note breathes for a third of a second; a couple and it's a quick passing tone. Duration becomes rhythm.
+
+## Composing for one voice
+
+The hard part isn't the code — it's that the beeper is **monophonic**. One bit, one note at a time: no chords, no bass under the melody, no harmony to hide behind. The tune has to carry rhythm, mood and identity entirely on its own line. So we write a small, deliberate phrase in D minor — dark, solemn, the keep before the dark:
+
+```
+theme:
+            defb    75, 8            ; D5
+            defb    63, 8            ; F5
+            defb    50, 8            ; A5
+            defb    50, 12           ; A5 (held)
+            defb    56, 8            ; G5
+            defb    63, 8            ; F5
+            defb    66, 8            ; E5
+            defb    75, 16           ; D5 (resolve)
+            ; ... a breath, then a short answer, then home ...
+            defb    $FF
+```
+
+It rises through the D-minor triad to a held A, then steps back down and resolves home to D — a shape you can hum, which is the whole job of a theme. Play it once as the keep opens; then hand over to the game.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-15/a-theme-in-one-voice.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna a-theme-in-one-voice.asm a-theme-in-one-voice.sna
+```
+
+Load it with the sound up. The theme plays as the Hall appears, then the game begins as before — explore, collect, win. The keep now has a voice that's *its own*, not a generic blip.
+
+> **A note on interrupts.** We `di` (disable interrupts) before the theme and only `im 1` / `ei` afterwards, for the game loop. The 50 Hz interrupt would otherwise tick across every note and roughen the tune. Music wants the CPU's full attention; the game loop wants the interrupt back for `halt`. Each gets what it needs.
+
+## Try this: change the key
+
+Shift every pitch value up or down by the same proportion and the whole theme transposes — higher and brighter, or lower and grimmer. The *shape* (the intervals between notes) is the melody; the absolute pitches are just where you pin it. Try it lower for a darker keep.
+
+## Try this: a faster theme
+
+Halve every duration. The phrase turns urgent, hurried — wrong for a brooding keep, but you can hear instantly how much *rhythm* carries the mood, independent of the notes. Then slow it past the original and feel it become a dirge. Tempo is a dial on emotion.
+
+## Try this: a second voice (the illusion)
+
+True two-part harmony is beyond one bit — but you can *fake* it by alternating two pitches very fast within a chunk, so the ear hears a chord-like shimmer. Sketch it on two notes. It's how advanced Spectrum music squeezed apparent polyphony from a single speaker — and a glimpse of where beeper craft can go.
+
+## If it doesn't work
+
+- **One long tone instead of a tune.** The player isn't advancing `HL`, or every note has the same pitch. Each pair must `inc hl` twice; check the pitches in the data actually differ.
+- **The tune never ends / the game never starts.** No `$FF` terminator, or the end check is wrong. The first byte of each pair is tested against `$FF` before it's used as a pitch.
+- **All notes the same length.** The duration byte isn't reaching `play_note`, or `D` is overwritten. Each note's second byte is its chunk count.
+- **Rough, buzzy tune.** Interrupts are still on — `di` before `play_tune`. (Don't forget to `im 1` / `ei` afterwards, or the game loop's `halt` will hang.)
+- **Rests make noise.** A rest should leave the speaker bit alone; if it clicks, `rest_chunks` is toggling the port. It must only *wait*.
+
+## What you've learnt
+
+- **Music is data plus a player.** A note table of pitch/duration pairs, walked by a tiny interpreter calling `beep` — the player never changes, the tune is content.
+- **Duration is chunks; chunks are rhythm.** Repeating a short beep makes a long note, and the count of repeats is how you compose rhythm from a one-byte counter.
+- **One voice carries everything.** With no harmony to lean on, the melody alone must hold rhythm, mood and identity. That constraint *is* beeper composition.
+- **Give the CPU to the music.** `di` for the tune, `ei` for the loop — each part of the program gets the machine on the terms it needs.
+
+## What's next
+
+Theme, sound, gold, a win — every piece is built. **Unit 16, "The Keep Stands,"** assembles them into a whole: a title screen with the theme looping under it, *press a key to enter*, the game you play, a victory when the keep is cleared, and back to the title. The complete loop — the moment the keep stops being a demo and becomes a game you can sit down and *finish*.

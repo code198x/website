@@ -1,0 +1,154 @@
+---
+title: "The Keep Stands"
+description: "Assemble every piece into a game. A state machine wraps a title screen (ROM font, theme looping), the keep you play, and a victory — title to play to win and back. A fresh game each time, finishable and replayable. The end of Arc 1."
+pubDate: 2026-06-02
+game: 2
+unit: 16
+tags: ["assembly", "z80", "game-loop", "state-machine", "title-screen"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Everything exists now — rooms, light, footsteps, a theme, gold, a win. What's missing is the thing that turns a collection of parts into a *game*: the loop a player sits down to. A title that waits for you. The keep, played. A victory when it's cleared. And back to the title, ready to go again. This unit builds that loop — and with it, Arc 1 of Shadowkeep is a complete, finishable game.
+
+## What you'll see by the end
+
+![The title screen: a black field with the word SHADOWKEEP centred in bright white, and below it PRESS SPACE TO ENTER, the theme playing underneath.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-16/screenshot.png)
+
+The keep opens not into the Hall but into a **title screen** — its name, a prompt, the theme looping quietly. Press space and you're in: explore the chambers, lift the gold. Clear the last coin and the screen turns black again — **THE KEEP STANDS** — a victory flourish, and *press space to return*. Press it, and you're back at the title, the keep reset and waiting. A whole game, beginning to end to beginning.
+
+## A game is a state machine
+
+Up to now the program did one thing: run the keep. A game does *several* things in turn — show a title, play, celebrate a win — and moves between them. That's a **state machine**, and at this scale it's just a few labels and jumps:
+
+```
+main_title:
+            call    show_title       ; wait at the title for SPACE
+            call    new_game         ; reset and draw a fresh keep
+            ei
+.game_loop:
+            halt
+            ld      a, (won)
+            or      a
+            jr      nz, .won          ; cleared? -> win
+            call    player_step
+            call    mark_step
+            jr      .game_loop
+.won:
+            call    show_win          ; "THE KEEP STANDS", wait for SPACE
+            jr      main_title        ; round again
+```
+
+Title → play → win → title. Each state is a routine; the transitions are the jumps between them. No framework, no engine — structure is just deciding *what runs next*.
+
+## A fresh keep every time
+
+Replayable means the second game must be as new as the first — so `new_game` doesn't just redraw, it **resets state**: it copies the room templates back over the working maps (returning every collected coin), and resets the thief, the gold counter and the win flag:
+
+```
+new_game:
+            ; copy room templates -> working state (gold returns)
+            ; ...
+            xor     a
+            ld      (won), a
+            ld      a, TOTAL_GOLD
+            ld      (gold_remaining), a
+            ld      a, START_COL
+            ld      (thief_col), a
+            ; ... draw the opening room ...
+            ret
+```
+
+This is why we always edited the *working* copy of the maps, never the templates: the templates are the pristine original, ready to stamp out a new game on demand. The discipline from Unit 14 pays off here for free.
+
+## Words on screen, borrowed from the ROM
+
+A title needs text — and rather than hand-pixel a font, we borrow the one already in the machine. The Spectrum's 8×8 character set lives in ROM at **`$3D00`**; each glyph is 8 bytes. `print_char` copies a glyph straight to the screen:
+
+```
+print_char:                          ; A = char, B = row, C = col
+            sub     32               ; the font starts at space (code 32)
+            ld      l, a
+            ld      h, 0
+            add     hl, hl
+            add     hl, hl
+            add     hl, hl           ; * 8 bytes per glyph
+            ld      de, $3D00        ; the ROM font
+            add     hl, de           ; HL -> this character's 8 bytes
+            ; ... copy 8 rows to the screen cell, set it bright white ...
+```
+
+`print_string` just walks a zero-terminated string, printing each character one cell to the right. The result is the title and prompts — and a reminder that the machine is full of things you can reach for, the ROM font among them.
+
+```
+str_title:  defb    "SHADOWKEEP", 0
+str_prompt: defb    "PRESS SPACE TO ENTER", 0
+str_won:    defb    "THE KEEP STANDS", 0
+```
+
+## Waiting, and the theme underneath
+
+`show_title` draws the words, then loops: it plays the theme note by note, checking the space key between each, and the moment space is pressed it waits for release and returns. So the music plays *and* the title stays responsive — the tune loops back to its start when it ends, for as long as you linger:
+
+```
+.tt_note:
+            ld      bc, KEYS_SPACE
+            in      a, (c)
+            bit     0, a
+            jr      z, .tt_pressed   ; SPACE -> leave the title
+            ; ... otherwise play the next note of the theme ...
+            ld      a, (hl)
+            inc     hl
+            cp      $FF
+            jr      z, .tt_tune      ; tune ended -> loop it
+            ; ...
+```
+
+Checking input between notes keeps the latency to a single note — short enough to feel instant, and far simpler than running music on the interrupt. `show_win` is the same shape: black screen, the words, the victory flourish, wait for space.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-16/the-keep-stands.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna the-keep-stands.asm the-keep-stands.sna
+```
+
+Load it. You'll meet the title and its theme; press space and play the keep you built across sixteen units; clear it and read **THE KEEP STANDS**; press space and start again. That's a game — one you can hand to someone and say *finish it*.
+
+## Try this: a hand-pixelled logo
+
+The ROM font is honest and clear, but a title can be more. Replace the `SHADOWKEEP` text with a hand-drawn logo — define your own wide letter shapes as tiles, or a small crest, and `draw_tile` them across the top. It's pixel work, not new code, and it's the difference between "a program" and "a presentation".
+
+## Try this: an attract loop
+
+Right now the title waits forever. Make it *demo* instead: after the theme loops twice with no key, drop into the game with input ignored, walk the thief on a scripted path for a few seconds, then return to the title. Arcade machines did this to draw a crowd. It's a third state in your machine — `title → attract → title` — and slots in beside the two you have.
+
+## Try this: remember the best clear
+
+Add a counter of how many moves (or how few) it took to clear the keep, print it on the win screen, and keep the best across plays. Suddenly there's a reason to play *again better* — the smallest possible scoreboard, and a glimpse of why a win screen is worth more than a `HALT`.
+
+## If it doesn't work
+
+- **The second game still shows collected coins gone.** `new_game` isn't copying the templates back over the working state — it's the copy, not a redraw, that resets the gold.
+- **The title text is garbage or in the wrong place.** `print_char`'s glyph address is wrong — it's `$3D00 + (char - 32) * 8`. Check the `sub 32` and the three `add hl,hl` (×8).
+- **Space does nothing at the title.** The key read is `IN A,($7FFE)`, bit 0 for space. If the theme is long you may wait up to one note; that's expected. No response at all means the bit or port is wrong.
+- **It starts the game the instant you press space, then immediately drops a mark.** Space is still held when the game loop begins. `show_title` waits for *release* before returning to prevent exactly this — keep that debounce.
+- **The theme stutters or won't loop.** Interrupts are on during the title — `show_title` runs with `di`; the game loop's `ei` comes after. End-of-tune (`$FF`) must jump back to the tune's start, not fall through.
+- **After winning it hangs instead of returning.** The `.won` branch must `call show_win` and then `jr main_title`; if `show_win` never sees a space release it will wait forever — check its release loop.
+
+## What you've learnt
+
+- **A game is a state machine.** Title, play, win — each a routine, the transitions just jumps. Structure is deciding what runs next; it needs no framework.
+- **Replayable means resettable.** A fresh game restores state, it doesn't only redraw. Editing the working copy of the maps (never the templates) is what makes the reset a single block-copy.
+- **The machine is full of tools.** The ROM font at `$3D00` gives you text for nothing — reach for what's already there before you build your own.
+- **Responsiveness is a design choice.** Checking input between notes keeps the title alive without interrupt-driven music. The simplest thing that feels instant is usually right.
+- **A loop is what makes it a game.** Beginning, middle, end, and back to the beginning — the difference between a tech demo and something a person can sit down and *finish*.
+
+## The keep stands — and what comes after
+
+This is the end of **Arc 1**. You've built, from nothing, a complete cell-based flick-adventure: a multi-room keep you explore, lit by torches with dithered shadow, furnished and given character, heard in footsteps and doors, scored in gold, themed in a single beeper voice, and wrapped in a title-to-win-to-title loop. It's a real game — the kind that could have shipped on a budget label, made the way *Atic Atac* and *Manic Miner* were made: not with an advanced engine, but with art, light, sound, design and completeness.
+
+What's deliberately *not* here — pixel-smooth sprite movement, masked drawing over scenery, isometric depth — is the subject of the games that follow, each introducing one hard rendering technique on the foundation you now have. The keep stands. Next, we make things *move*.

@@ -1,0 +1,141 @@
+---
+title: "Footsteps and Doors"
+description: "Give the keep a voice. Build a small sound-effects driver on the beeper — one tone primitive, B for duration and C for pitch — and from it a footfall under every step and a falling creak at every door. Sound as place, not as feedback."
+pubDate: 2026-06-02
+game: 2
+unit: 13
+tags: ["assembly", "z80", "audio", "beeper", "atmosphere"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The keep looks like somewhere now — lit, furnished, composed. But put your ear to it and there's nothing. A place you believe in has *sound*: stone underfoot, the groan of a heavy door. This unit, the first of the **Keep Has a Voice** sub-arc, gives it that — and the tool is the humblest thing on the machine, the one your very first game already blipped: a single bit of beeper.
+
+## What you'll see (and hear) by the end
+
+![The Great Hall, lit by its three sconces, the hooded thief standing in the light near the centre — unchanged on screen from the last unit, because everything new here is heard, not seen.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-13/screenshot.png)
+
+The screen is the same Hall as before — that's the point. Nothing new is *drawn*. But now, as you walk, a soft low click falls under every footstep on the stone; and when you cross from one chamber to the next, a door groans downward on its hinges. The keep is heard as well as seen. (The stills can't carry it — load it and walk.)
+
+## One bit, one tone
+
+The Spectrum's speaker is a single bit: bit 4 of port `$FE`. Write it high, then low, then high again, fast, and the cone pushes in and out — a square wave, a tone. The pitch is *how fast* you toggle; the volume is fixed (the Spectrum has exactly one: on).
+
+So the whole driver is one primitive. `beep` takes two numbers — **B**, how many cycles to play (the duration), and **C**, how long to wait between toggles (the pitch; a larger `C` waits longer, so the wave is slower and the note lower):
+
+```
+beep:
+.bp_cycle:
+            ld      a, %00010000     ; speaker bit high
+            out     ($FE), a
+            ld      e, c             ; wait C
+.bp_hi:
+            dec     e
+            jr      nz, .bp_hi
+            xor     a                ; speaker bit low (border stays black)
+            out     ($FE), a
+            ld      e, c             ; wait C again
+.bp_lo:
+            dec     e
+            jr      nz, .bp_lo
+            djnz    .bp_cycle        ; B cycles in all
+            ret
+```
+
+That's the entire engine. Everything else is *composition* — choosing B and C, or sweeping them, to make a sound that means something.
+
+## Two sounds about place
+
+A footfall is short and low — a handful of cycles of a low tone, gone almost before you notice it:
+
+```
+sfx_step:
+            ld      b, 5             ; very short
+            ld      c, 90            ; low
+            call    beep
+            ret
+```
+
+A door is a *creak* — not one pitch but a falling one. We start the delay small (higher) and let it grow (lower), a few cycles at each step, so the note groans downward like a heavy door swinging:
+
+```
+sfx_door:
+            ld      c, 36            ; start higher
+.sd_sweep:
+            ld      b, 3
+            push    bc
+            call    beep
+            pop     bc
+            inc     c                ; lower the pitch a touch
+            inc     c
+            ld      a, c
+            cp      130              ; until it has groaned right down
+            jr      c, .sd_sweep
+            ret
+```
+
+These aren't "you pressed a key" beeps. They're about the *place*: the weight of stone, the heaviness of a door. That distinction — sound as atmosphere, not as button-feedback — is the whole reason to bother.
+
+## Wiring it in
+
+Two call sites, and that's all. A footstep on every successful move, dropped in right after the thief is redrawn:
+
+```
+            call    draw_thief
+            call    sfx_step         ; <- the footfall
+            call    check_exit
+```
+
+And a creak the moment we actually pass through to another room, at the top of the room-transition path:
+
+```
+.enter:
+            call    sfx_door         ; <- the hinges
+            call    draw_room
+            ; ...
+```
+
+Walk, and you hear yourself. Cross a threshold, and the door answers.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-13/footsteps-and-doors.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna footsteps-and-doors.asm footsteps-and-doors.sna
+```
+
+Load it in Emu198x, turn the sound up, and walk the Hall. Listen for the click under each step; then walk east into the Gallery and hear the door. Small sounds — but the keep stops being a silent diorama and starts being a place with weight.
+
+## Try this: a heavier tread
+
+Raise `sfx_step`'s `B` to 12 and its `C` to 120. The step gets longer and lower — a booted guard, not a barefoot thief. Sound characterises *who is walking* as surely as the sprite does. Drop B to 2 and the footfall becomes a light tick; you can hear a different body just by changing two numbers.
+
+## Try this: reverse the creak
+
+Swap `sfx_door` to sweep the *other* way — start `C` high and `dec` it down to a small value. Now the door *rises* as it opens instead of falling. One groans shut, the other whines open; pick the one that sounds like the keep you're building. (Mind the loop test — sweeping down means `jr nc` / a different comparison.)
+
+## Try this: a third sound
+
+Give the gold you'll scatter next unit its own voice now: a short, *bright* blip — `B` small, `C` very small (say 12) — two or three of them in a row for a little chime. Sketching the sound before the thing that triggers it is a perfectly good way to design.
+
+## If it doesn't work
+
+- **Total silence.** The speaker is bit 4 — check you're writing `%00010000`, not another bit, and to port `$FE`. If you hear nothing in the emulator, make sure its speaker output is enabled.
+- **A click, but no pitch — just a tick.** `B` is too small (the tone ends before your ear registers it) or `C` is so small the wave is above hearing. Lengthen B; raise C.
+- **The note is the same height whatever C you pass.** You overwrote `C` inside the loop, or `beep` is reading a fixed value. The inner waits must both reload `E` from `C`.
+- **A faint buzz or tick on top of every tone.** That's the 50 Hz interrupt firing mid-tone and nudging a toggle. Harmless for short effects; if it bothers you, `di` before a sound and `ei` after — just remember the main loop needs interrupts back on for `halt`.
+- **The creak runs forever / hangs.** The sweep's exit test is wrong — `C` must move *toward* the limit and the `jr` must let it stop. Walk the comparison through by hand.
+
+## What you've learnt
+
+- **The beeper is one bit, and that's enough.** Toggle bit 4 of `$FE` at a steady rate and you have a tone; rate is pitch, and that's the whole instrument.
+- **A driver is one primitive plus composition.** `beep` (B = duration, C = pitch) is the engine; footstep, door and chime are just different numbers fed to it.
+- **Sound can be about place.** A footfall and a creak aren't feedback that a key worked — they're the weight of stone and the heaviness of a door. Atmosphere reaches the ear.
+- **A sweep is a sound with a shape.** Move the pitch *while* it plays and a flat tone becomes a creak, a chime, a groan. Time is a dimension you can compose in.
+
+## What's next
+
+The keep is heard now, but you're still only wandering it — there's nothing to *do*. A game needs a goal. In **Unit 14, "The Keep's Gold,"** we scatter treasure through the chambers, let the thief lift it (with that bright chime under it), and declare the keep *won* when the last coin is gone. Atmosphere becomes a game.

@@ -1,0 +1,136 @@
+---
+title: "The Keep's Gold"
+description: "Give the keep a goal. Scatter gold through the chambers as walkable map cells, lift it on contact — map cell to floor, a chime, a counter down — and declare the keep won when the last coin is gone. The world becomes a game."
+pubDate: 2026-06-02
+game: 2
+unit: 14
+tags: ["assembly", "z80", "game-design", "collection", "win-condition"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+You can walk the keep, light it, hear it — but you can't *win* it, because there's nothing to win. A place becomes a game the moment it has a goal. This unit gives the keep one, and it costs almost no new engine: gold scattered through the rooms, lifted by the move you already make, and a win when the last coin is gone.
+
+## What you'll see by the end
+
+![The Great Hall with two coins of gold resting on the floor — one high on the left, one low on the right — round and yellow, plainly not torch-flame; the red-cloaked thief stands in the central light, the chambers waiting to be cleared.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/screenshot.png)
+
+Gold, resting on the stone — round yellow coins, two here in the Hall and more through the other chambers. Walk onto one and it's yours: it vanishes with a bright little chime and a counter ticks down. Clear all six and the keep is won — a victory flourish, and the thief stands still in a keep emptied of its treasure. It's a small goal, but it turns wandering into *playing*.
+
+## Gold is just a tile that isn't a wall
+
+The whole trick is that gold lives in the room map like everything else — a `G` cell — and its attribute has **no `BRIGHT` bit**, so the collision test we've used since Unit 4 already treats it as floor you can walk onto:
+
+```
+GOLD_ATTR   equ     %00000110         ; yellow ink, no BRIGHT -> walkable
+```
+
+```
+            defb    'G'
+            defw    gold_tile
+            defb    GOLD_ATTR
+```
+
+Drop `G`s into the maps and they draw as coins and let you stand on them. No new collision rule, no separate list of pickups — the map *is* the level, gold included.
+
+## Lifting it
+
+When the thief steps onto a new cell, we ask one question of the map: is it gold? If so, we turn that map cell into floor — permanently, so the gold is gone for good — repaint the cell, chime, and tick the counter down. At zero, the keep is won:
+
+```
+collect_gold:
+            call    cell_state_addr  ; the map cell we just stepped onto
+            ld      a, (hl)
+            cp      'G'
+            ret     nz               ; not gold — nothing to do
+            ld      (hl), '.'         ; taken: floor from now on
+            call    pos_bc
+            call    draw_floor_cell  ; repaint, so what's "under" us is floor
+            call    sfx_pickup       ; the bright chime
+            ld      hl, gold_remaining
+            dec     (hl)
+            ld      a, (hl)
+            or      a
+            call    z, win           ; last coin? the keep is won
+            ret
+```
+
+It slots into the move between updating the thief's position and saving what's under him — so the "under" we save is the new floor, not the coin, and the gold never comes back when we walk away:
+
+```
+            ld      a, (trow)
+            ld      (thief_row), a
+            call    collect_gold     ; <- lift it before saving "under"
+            call    save_under
+            call    draw_thief
+```
+
+Because we edit the room's *state* (the working copy), a collected coin stays collected even after you leave the room and return. The keep remembers.
+
+## Winning
+
+`win` is almost nothing — a flag the main loop watches, plus a flourish:
+
+```
+win:
+            ld      a, 1
+            ld      (won), a
+            call    sfx_win          ; the ascending victory run
+            ret
+```
+
+```
+.loop:
+            halt
+            ld      a, (won)
+            or      a
+            jr      nz, .loop        ; won: freeze, the keep cleared
+            call    player_step
+            call    mark_step
+            jr      .loop
+```
+
+A win condition doesn't need a screen or a state machine yet — just "stop responding, you're done." (Unit 16 turns this into a proper title-and-win loop.) The point this unit makes is smaller and more important: **a goal is a counter and a check.** Everything else is dressing.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-14/the-keeps-gold.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna the-keeps-gold.asm the-keeps-gold.sna
+```
+
+Load it and clear the keep: two coins in the Hall, two in the Gallery, two in the Vault. Each goes with a chime; the last one wins the game. You've just played the first complete game you built in assembly — explore, collect, win.
+
+## Try this: more gold, harder keep
+
+Scatter more `G`s through the maps and raise `TOTAL_GOLD` to match. The keep takes longer to clear; the goal grows without a line of new logic. (If a coin lands on a wall or a torch it simply won't draw as floor — keep them on open stone.)
+
+## Try this: gold behind the pillars
+
+Tuck a coin into the dark behind the Hall's pillars or in the Vault's gloom. Now clearing the keep means *searching* it — the lighting you built becomes part of the challenge, hiding what the player must find. Design and atmosphere start working together.
+
+## Try this: a coin you can't reach (yet)
+
+Place a coin in a spot walled off from the rest. The counter can never reach zero — the keep is unwinnable. A useful bug to *make on purpose*: it shows that your win condition trusts the level design completely. Reachability is a level-design promise the code can't check for you.
+
+## If it doesn't work
+
+- **Gold is solid — you bump into it.** Its attribute has the `BRIGHT` bit set. Gold must be `%00000110`-style (no bit 6), or the wall test treats it as stone.
+- **The coin comes back when you re-enter the room.** You edited the template, not the state copy — or `collect_gold` runs after `save_under`, so the saved "under" is still the coin. Collect *before* saving.
+- **Collecting never wins.** `TOTAL_GOLD` doesn't match the number of `G`s in the maps. Count them; they must agree, or the counter stops above (or wraps below) zero.
+- **The counter wraps and the game never ends.** A coin was collected twice, or `gold_remaining` started wrong. Each `G` must decrement exactly once — which it does, because the cell becomes floor the instant it's lifted.
+- **It wins the moment you start.** `gold_remaining` initialised to zero. It must start at `TOTAL_GOLD`.
+
+## What you've learnt
+
+- **A goal is a counter and a check.** Collectables down, a win at zero — that's the whole shape of an objective, and it's tiny.
+- **The map is the level, pickups included.** Gold is a walkable tile; collecting is editing the map cell to floor. No parallel list, no special case in collision.
+- **Edit state, not the template, and the world remembers.** Because we change the working copy, a cleared coin stays cleared across room visits — persistence for free.
+- **A win condition trusts the level.** The code counts; *you* promise every coin is reachable. Knowing where that line sits is part of designing a game.
+
+## What's next
+
+The keep is a complete game now — but it opens in silence and ends in silence. A game announces itself. In **Unit 15, "A Theme in One Voice,"** we go back to the beeper and write *music*: a composed theme for the title, a single voice carrying a melody, built on a little note-table player. One bit, one tune — the keep gets its signature.
