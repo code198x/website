@@ -1,0 +1,130 @@
+---
+title: "A Hooded Figure"
+description: "Shadowkeep begins where Gloaming ended — the same engine, a new face. Design a hooded thief as eight bytes and stand him, alone, in the cold blue dark of the keep."
+pubDate: 2026-06-02
+game: 3
+unit: 1
+tags: ["assembly", "z80", "sprites", "attributes", "identity"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+You have already finished a game. Gloaming — a complete thing, played from a title and back again, verified on real iron. Shadowkeep is the next one, and it is bigger: a lit, multi-room keep you explore by night. But it does not start from nothing, and it does not start from a blank file.
+
+It starts from Gloaming's engine. The cell sprite, the save-and-restore, the collision, the game loop, the state machine — you wrote all of it, and Shadowkeep carries it over wholesale. So the very first thing a new game needs isn't new code. It's a **new face**.
+
+## What you'll see by the end
+
+![A single hooded figure, drawn in bright red, standing alone in the centre of a screen washed in cold blue stone, framed by a black border.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-01/screenshot.png)
+
+One small figure, dead centre, in the cold blue dark of the keep. He is a hooded thief — a cloaked silhouette, no arms, a pointed hood — and he is the reason this is Shadowkeep and not Gloaming. He doesn't move yet. He doesn't do anything yet. He just *stands there*, and that's enough: the moment you see him, you know whose game this is.
+
+## Starting from Gloaming
+
+Most of this unit's code you have met before. Lift your eyes from the page and you could almost write it from memory:
+
+- **A black border** — `ld a, 0` / `out ($FE), a`. The keep wants the dark.
+- **The stone wash** — one `LDIR` that pours a single attribute byte across all 768 cells, exactly as Gloaming washed its square in cobble. Here the byte is `STONE`: PAPER 1 (blue), INK 0. Cold, flat, and dim — a keep at night.
+- **The address helpers** — `scr_addr_cr` and `attr_addr_cr`, carried over byte-for-byte. Give them a row in `B` and a column in `C`, and they hand back the screen or attribute address of that cell. You built these in Gloaming; here they are again, doing the same job.
+- **The eight-row draw loop** — `ld a, (de)` / `ld (hl), a` / `inc de` / `inc h`, eight times. The `inc h` is the Spectrum's famous screen quirk: the next pixel row of a character cell lives 256 bytes further on, so stepping `H` up by one walks straight down the cell.
+
+None of that is new. What's new is the eight bytes that loop reads.
+
+## Designing a silhouette
+
+A Spectrum sprite, at its simplest, is eight bytes — eight rows of eight pixels, a bit per pixel. Sixty-four pixels to say "this is the hero." It isn't much. But Ultimate built a whole catalogue of recognisable characters in exactly this budget — Sabre Man, the knight of *Knight Lore* — and the trick is always the same: **get the silhouette right and the detail doesn't matter.**
+
+Here is the thief, written so you can read the figure in the ones and zeros:
+
+```
+            defb    %00011000       ; ...XX...   the hood's peak
+            defb    %00111100       ; ..XXXX..   the hood
+            defb    %01111110       ; .XXXXXX.   hood meets shoulders
+            defb    %01111110       ; .XXXXXX.   the cloak
+            defb    %01111110       ; .XXXXXX.   the cloak
+            defb    %01111110       ; .XXXXXX.   the cloak
+            defb    %00111100       ; ..XXXX..   the cloak narrows
+            defb    %00100100       ; ..X..X..   two feet at the hem
+```
+
+Read the `X`s down the page and the shape is there: a narrow point at the top for the hood, widening through the shoulders, a full cloaked body, then narrowing to two feet at the hem. A `1` bit is a lit pixel; a `0` is bare stone showing through. No face, no hands — a silhouette doesn't need them. Gloaming's hero was a little lamplighter with his arms out; the thief is all cloak and hood. Same eight bytes of effort, an entirely different character.
+
+That difference — same engine, different silhouette — is the whole of this unit.
+
+## His colour, and the keep's
+
+A sprite's *shape* is in the bitmap; its *colour* is in the one attribute byte of the cell it stands in. We wash the whole keep in `STONE` (blue), then overwrite the thief's own cell with `THIEF`:
+
+```
+STONE       equ     %00001000       ; PAPER 1 (blue), INK 0 — cold blue stone
+THIEF       equ     %01001010       ; BRIGHT, PAPER 1 (blue), INK 2 (red)
+```
+
+`THIEF` keeps the blue PAPER, so he stands *on* the same stone as everything around him — but its INK is 2 (red) and its BRIGHT bit is set, so his lit pixels burn a vivid red. A red hooded figure on cold blue stone: he reads at a glance, even one character-cell tall.
+
+## Drawing him
+
+`draw_thief` is Gloaming's `draw_lamp` with one word changed — it points at `thief` instead of the lamplighter:
+
+```
+draw_thief:
+            ld      b, HERO_ROW
+            ld      c, HERO_COL
+            call    attr_addr_cr        ; colour his cell
+            ld      (hl), THIEF
+            call    scr_addr_cr         ; B,C still hold row and column
+            ld      de, thief            ; his eight bytes
+            ld      b, 8
+.dt:
+            ld      a, (de)
+            ld      (hl), a
+            inc     de
+            inc     h
+            djnz    .dt
+            ret
+```
+
+Colour the cell, then lay the eight rows. That's the same draw a moving sprite will use a thousand times a game — but here it runs once, at the centre, and stops.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-01/hooded-figure.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna hooded-figure.asm hooded-figure.sna
+```
+
+Load it in Emu198x. A black border, a screen of cold blue stone, and a single red hooded figure standing in the middle of it. The keep has its first inhabitant.
+
+## Try this: redraw the silhouette
+
+The eight bytes are a drawing grid. Sketch your own hero on paper — eight rows, eight squares each — fill the squares that should be lit, then read each row off as a binary number into a `defb`. Make the hood taller, give him a hint of a face by clearing a pixel, widen the cloak. Reassemble and he changes. This is the most direct relationship in the whole machine: the bits *are* the picture.
+
+## Try this: a thief of a different colour
+
+Change `THIEF`'s INK from 2 (red) to another colour — `%01001110` for yellow (INK 6), `%01001111` for white (INK 7). Which reads best against the blue stone? Try clearing the BRIGHT bit (`%00001010`) and watch him dim into the gloom. You're tuning a character's presence with three bits.
+
+## Try this: a warmer keep
+
+Change `STONE` from `%00001000` (PAPER 1, blue) to `%00010000` (PAPER 2, red) or `%00000000` (black). The whole keep's mood shifts with one byte — a cold blue dungeon, a hellish red one, or a pitch-black void where only the figure shows. We'll keep the cold blue; but feel how much the background colour alone decides the *place*.
+
+## If it doesn't work
+
+- **No figure at all.** `draw_thief` isn't being called, or `de` doesn't point at `thief`. The draw loop reads its eight bytes from `(de)`, so `ld de, thief` must come first.
+- **The figure is there but the wrong shape.** Check the `defb` bytes — a mistyped bit flips a pixel. Read the `X`s in the comments against what's on screen.
+- **The figure is a single solid block, or scrambled.** The `inc h` in the loop is what walks down the cell. With `inc l` instead you'd write eight bytes along one pixel row, not down eight rows — a thin streak, not a figure.
+- **The screen is grey-white, not blue.** The `LDIR` stone wash didn't run, or `DE` wasn't set to `HL + 1`. Without the wash the keep is whatever the ROM left behind.
+- **Wrong place on screen.** `HERO_ROW` and `HERO_COL` set the cell. `scr_addr_cr` and `attr_addr_cr` expect the row in `B`, the column in `C` — swap them and he lands somewhere unexpected.
+
+## What you've learnt
+
+- **A game's identity starts with its silhouette.** Eight bytes, sixty-four pixels — get the shape right and the character reads, even tiny.
+- **A sprite is shape plus colour.** The bitmap (eight `defb` rows) is the shape; the one attribute byte of its cell is the colour.
+- **The bits are the picture.** Lit pixels are `1`s, bare cell is `0`s — you can draw straight in binary.
+- **Shadowkeep stands on Gloaming.** The border, the `LDIR` wash, `scr_addr_cr` / `attr_addr_cr`, the `inc h` draw loop — all carried over. A new game reuses a finished engine; it doesn't rebuild it.
+
+## What's next
+
+The thief stands in an empty blue void. A keep needs *walls*. In **Unit 2, "The First Hall,"** we draw the keep's first room — a designed hall of stone walls and floor, laid from a data table the way Gloaming drew its square, but composed to look like somewhere. By the end the thief will be standing in a *place*, not a void — the first room of a keep that will grow, over this game, into many.
