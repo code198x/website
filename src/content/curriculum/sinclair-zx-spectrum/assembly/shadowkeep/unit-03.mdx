@@ -1,0 +1,123 @@
+---
+title: "A Place to Move"
+description: "Set the thief walking the hall. It's almost all Gloaming — keyboard, cell-step movement, save/restore, wall collision — with two keep-specific twists: the save buffer now carries dithered stone, and a wall is known by its light."
+pubDate: 2026-06-02
+game: 3
+unit: 3
+tags: ["assembly", "z80", "input", "collision", "movement"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The hall is built and the thief is standing in it — frozen. This unit sets him walking, and here's the good news: you've written nearly all of it before. Reading the keyboard, stepping a cell at a time, saving and restoring what's under the hero, turning him back at a wall — every piece came from Gloaming. We're moving a hooded thief through a room of stone instead of a lamplighter round a square, and the engine doesn't care.
+
+Two things *are* new, because the keep is not the empty square — and both are quietly satisfying.
+
+## What you'll see by the end
+
+![The hooded thief, having walked up and to the left, stopped hard against the top wall of lit blue stone; the dark slate floor below him is unbroken, with no trail.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-03/screenshot.png)
+
+Press **Q A O P** — up, down, left, right, the keys Spectrum fingers have known since 1982 — and the thief walks the hall a cell at a time. Push him into a wall and he stops; the lit stone won't let him through. Walk him all over the room and look at the floor behind him: **the slate is unbroken**. No smear, no trail, no holes punched in the dither. He passes over the stone and leaves it exactly as it was.
+
+## Reading the keys, stepping a cell
+
+This is Gloaming, unchanged. Each frame we read the half-rows that hold Q, A, O and P, and a held key (a `0` bit — the keyboard is active-low) sets a target one cell away:
+
+```
+            ld      bc, KEYS_OP
+            in      a, (c)
+            bit     1, a            ; O held? -> left
+            jr      z, .left
+            bit     0, a            ; P held? -> right
+            jr      z, .right
+```
+
+`.left` / `.right` / `.up` / `.down` each nudge a *target* — `tcol`, `trow` — by one. Nothing has moved yet; we've only proposed a move. Whether it happens depends on what's in the way.
+
+## A wall is known by its light
+
+In Gloaming a wall cell carried a tell-tale attribute bit, and `wall_at` tested it. The keep is subtler: its walls and its floor are *both* blue PAPER — what separates them is that the walls are **lit** (BRIGHT) and the floor is dim. So the question "is this a wall?" becomes "is this cell BRIGHT?", and `WALL_BIT` is bit 6:
+
+```
+WALL_BIT    equ     6               ; BRIGHT marks solid stone
+
+wall_at:
+            call    attr_addr_cr
+            bit     WALL_BIT, (hl)  ; Z = not bright = walkable
+            ret
+```
+
+```
+.move:
+            ld      a, (trow)
+            ld      b, a
+            ld      a, (tcol)
+            ld      c, a
+            call    wall_at
+            ret     nz              ; bright stone — stay put
+```
+
+This is the honest cell-based rule: solidity read straight off the look of the cell. It has a limit — it means a wall *must* be lit and a floor *must not* be, so you can't yet have a lit, walkable patch of floor under a torch. Decoupling the two — collision in its own map, the attributes free for pure mood — is a real technique, and it gets its own game later. For the keep we're building, "lit stone is solid" is exactly enough.
+
+## The floor survives him
+
+Here's the twist that's pure Shadowkeep. When the lamplighter moved, the cell under him was blank paper; saving and restoring it was almost free. Under the thief is **dithered stone** — eight bytes of pattern that *must* come back intact, or he'd punch a hole in the floor with every step.
+
+But the nine-byte buffer was always big enough: eight bitmap rows plus one attribute byte. So `save_under` records the slate before he stands on it, and `restore_under` lays it back as he steps off:
+
+```
+.move:
+            ; ... not a wall, so commit:
+            call    restore_under   ; put the old cell's stone back
+            ld      a, (tcol)
+            ld      (thief_col), a
+            ld      a, (trow)
+            ld      (thief_row), a
+            call    save_under      ; remember the stone he's stepping onto
+            call    draw_thief
+```
+
+Restore the old, move, save the new, draw. The same four steps Gloaming used — but now they're carrying texture, and the dither you built in Unit 2 flows back into place behind him, seamless. The engine was ready for this all along.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-03/a-place-to-move.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna a-place-to-move.asm a-place-to-move.sna
+```
+
+Load it in Emu198x and walk the thief round the hall with **Q A O P**. Try to leave the room — the walls turn you back on all four sides. Walk back and forth over the same stretch of floor and watch the slate stay whole.
+
+## Try this: slow his stride
+
+He moves once per frame a key is held — fifty cells a second, a blur. Add a `step_timer` byte: count it down each frame, and only read keys and move when it hits zero, then reset it (to, say, 4). A slower, more deliberate thief. You've just separated *game speed* from *frame rate* — the knob behind every character's sense of weight.
+
+## Try this: footprints (then take them back)
+
+Comment out the `call restore_under` in `.move`. Walk around. Now he *doesn't* tidy up — every cell he leaves keeps his sprite, and he smears a trail of thieves across the floor. Ugly, but instructive: that single call is the whole of "leave the world as you found it." Put it back.
+
+## Try this: rebind to a joystick feel
+
+The cursor keys (5/6/7/8 on a 48K) or QAOP are both period-correct. Change the half-rows and bits in `player_step` to read 5/6/7/8 instead, and feel how a different control scheme changes the game before you've touched a single graphic.
+
+## If it doesn't work
+
+- **He won't move.** The half-row ports must be right — `KEYS_OP` is `$DFFE`, `KEYS_Q` is `$FBFE`, `KEYS_A` is `$FDFE` — and the keyboard is active-low, so a *held* key reads as a `0` bit (test with `BIT`, branch on `Z`).
+- **He walks through walls.** `wall_at` isn't reading the right bit, or your wall cells aren't BRIGHT. `WALL_BIT` is 6; the wall tile's attribute (`%01001000`) has it set, the floor's (`%00001000`) does not.
+- **He leaves a trail of thieves.** `restore_under` isn't being called before the move, so the old cell never gets its stone back.
+- **The floor gets holes / wrong stone behind him.** `save_under` must run *after* the position updates (so it saves the new cell), and *before* `draw_thief` (so it saves stone, not the sprite). Restore old, move, save new, draw — in that order.
+- **He drifts diagonally or jumps two cells.** Only one direction should win per frame — the `jr z` chain returns after the first key found. Make sure each branch falls through to `.move`, not into the next test.
+
+## What you've learnt
+
+- **Movement is a proposal, then a test.** Read a direction into a *target* cell; commit only if it's clear. The same shape as Gloaming.
+- **Collision can read the look.** With walls lit and floor dim, "is it solid?" is "is it BRIGHT?" — honest and cheap, with a limit a later game lifts.
+- **Save/restore carries whatever's under the hero.** The nine-byte buffer holds dithered stone as happily as blank paper; the floor survives his passing, no trail.
+- **Order is the whole trick.** Restore old, move, save new, draw — get the sequence right and the world stays whole.
+
+## What's next
+
+The thief walks a single hand-placed room. Before the keep can become *many* rooms, it needs a way to describe a room as **data** — not cells nailed into the code, but a compact map the same drawing routine can lay out, whatever its shape. In **Unit 4, "The Keep's Hand,"** we build that: a clean tile-and-attribute palette and the room-data format every room of Shadowkeep will share. It's the groundwork that turns one hall into a keep.
