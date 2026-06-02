@@ -1,0 +1,136 @@
+---
+title: "The Keep's Hand"
+description: "One bordered box was baked into the code. The keep needs many shapes, so we describe a room as data: a tile palette, and a room map you can read as a picture in the source. The reward — pillars, and a thief who walks between them."
+pubDate: 2026-06-02
+game: 3
+unit: 4
+tags: ["assembly", "z80", "data", "tiles", "level-design"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+So far the room has been baked into the code. `draw_hall` decided "wall on the edge, floor within" by testing each cell's position — and that makes exactly *one* shape, a bordered box. A keep is many rooms of many shapes, and we can't write a routine for each. So this unit hands the keep a tool: a way to describe a room as **data**, and a single routine that lays it out whatever its shape.
+
+This is the groundwork unit — "the keep's hand" — and it pays off the moment you run it.
+
+## What you'll see by the end
+
+![A walled hall with four bright-blue stone pillars arranged in a square on the dark slate floor; the red thief has walked up against the right side of the top-left pillar and stopped.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-04/screenshot.png)
+
+A pillared hall — four blocks of stone standing in the room, walls a position test could never have drawn. And the thief, who moves exactly as he did in Unit 3, now walks *between* them and stops when he meets one. We didn't touch the movement or collision code. We changed where the room *comes from*.
+
+## A palette: glyphs that name tiles
+
+A tile engine needs a vocabulary. The **palette** is it — one entry per kind of cell, each pairing a glyph (the name we'll use for it), the eight bytes that draw it, and the attribute that colours it:
+
+```
+palette:
+            defb    '.'             ; floor
+            defw    floor_tile
+            defb    FLOOR_ATTR
+            defb    '#'             ; wall
+            defw    wall_tile
+            defb    WALL_ATTR
+```
+
+Two tiles today. To teach the keep a new kind of cell — rubble, water, a doorway — you add one line here, and it's part of the vocabulary. That's what makes this a *hand* and not a one-off.
+
+## A room you can read
+
+Here's the part worth pausing on. The room is twenty-four rows of thirty-two glyphs — and because the glyphs are `#` for wall and `.` for floor, the room is a **picture in the source code**:
+
+```
+room_data:
+            defb    "################################"
+            defb    "#..............................#"
+            defb    "#..............................#"
+            ; ...
+            defb    "#........##..........##........#"
+            defb    "#........##..........##........#"
+            ; ...
+            defb    "################################"
+```
+
+You can *see* the hall: the ring of wall, the pairs of `##` that are the pillars. Designing a room is editing this picture. No coordinates, no maths — draw it, and the keep draws what you drew. (It costs 768 bytes a room, laid out plainly; later, when the keep has many rooms, we can pack them tighter. Readable first.)
+
+## Drawing from the map
+
+`draw_room` walks the map cell by cell. For each glyph it asks the palette "what tile is this?", then draws it:
+
+```
+draw_room:
+            ld      hl, room_data
+            ld      (map_ptr), hl
+            ; for each of 24 rows, 32 columns:
+            ld      a, (hl)          ; the glyph here
+            call    lookup_tile      ; glyph -> tile_ptr, tile_attr
+            call    draw_tile        ; draw it at (row, col)
+            ; ... advance map pointer, column, row ...
+```
+
+And `lookup_tile` is just a walk down the palette until the glyph matches, copying out that entry's pointer and attribute:
+
+```
+lookup_tile:
+            ld      hl, palette
+.scan:
+            cp      (hl)             ; this entry's glyph?
+            jr      z, .found
+            inc     hl               ; skip glyph + pointer + attribute
+            inc     hl
+            inc     hl
+            inc     hl
+            jr      .scan
+.found:
+            inc     hl               ; -> the pointer, then the attribute
+            ; ... copy into tile_ptr / tile_attr ...
+```
+
+`draw_tile` itself is unchanged from Unit 2. We've only changed *what tells it where the walls go*: a picture, not a position test.
+
+## Collision came along for free
+
+The pillars are walls, and the thief stops at them — yet `player_step` and `wall_at` are byte-for-byte what they were in Unit 3. That's the quiet dividend of "a wall is known by its light": pillars are drawn with `WALL_ATTR`, so they're BRIGHT, so `wall_at` already calls them solid. Interior walls, edge walls — the collision never knew the difference. Build the room from data and the rules that were already there just *work* on the new shape.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-04/the-keeps-hand.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna the-keeps-hand.asm the-keeps-hand.sna
+```
+
+Load it in Emu198x and walk the thief around the pillars with **Q A O P**. He threads between them and stops at every face of stone — the hall is a real space now, not an empty box.
+
+## Try this: redraw the hall
+
+Open `room_data` and *draw a different room*. Move the pillars; make a long thin gallery by walling off the middle; carve an alcove into the top wall by turning a run of `#` into `.`. Reassemble and walk it. You're designing levels by editing a picture — the most direct level editor there is.
+
+## Try this: a third kind of stone
+
+Add a `rubble_tile` (a denser dither than the floor) and a palette entry naming it `:`. Now scatter a few `:` glyphs across the floor in `room_data` — a drift of broken stone. One new tile, one new glyph, and the keep has a new texture you place by typing. That's the palette earning its keep.
+
+## Try this: a doorway that goes nowhere (yet)
+
+Turn one `#` in an outer wall into a `.`. The wall now has a gap — a doorway. Walk the thief up to it and through... and off the edge of the room into whatever lies beyond. He doesn't come back, because there's no "next room" yet. That gap is exactly where Unit 6 will hang a flick-screen transition.
+
+## If it doesn't work
+
+- **The room is all one tile.** `lookup_tile` isn't matching glyphs — check the palette entries are glyph / `defw` pointer / `defb` attribute, in that order, four bytes each.
+- **The screen is garbage or the machine hangs.** A glyph in `room_data` isn't in the palette, so `lookup_tile` scans off the end of it forever. Every glyph in the map must have a palette entry (here, only `#` and `.`).
+- **The room is shifted or wraps.** Each `room_data` row must be exactly 32 characters. A row one short or long slides every row after it sideways.
+- **The thief starts inside a pillar.** `START_COL` / `START_ROW` must land on a `.` in the map. (15, 11) is the open centre; if you redraw the room, keep his start clear.
+- **Pillars don't stop him.** They must be drawn with `WALL_ATTR` (BRIGHT). If you gave a "wall" glyph a dim attribute, `wall_at` won't see it as solid.
+
+## What you've learnt
+
+- **A room is data, not code.** One `draw_room` lays out any shape; the shape lives in a map you can change without touching the routine.
+- **A palette is a vocabulary.** Each glyph names a tile — pattern plus colour — and new kinds of cell are one line away.
+- **Readable data is a tool.** A map written as a picture is a level editor you already know how to use: a text editor.
+- **Good structure makes new things free.** Collision worked on pillars with no change, because solidity was read from the tile, and the tile came from the map.
+
+## What's next
+
+One room is a picture; a keep is *many* pictures, and a sense of which lies through each door. In **Unit 5, "The Room Graph,"** we give the keep more than one room and the data that says how they join — which room waits beyond the north wall, the south, the east, the west. It's the map of the map: the structure that, in Unit 6, lets the thief step through a doorway and arrive somewhere new.
