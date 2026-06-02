@@ -1,0 +1,99 @@
+---
+title: "The Hero Remembers"
+description: "Each room is redrawn from its template every time you enter, so the keep forgets everything. Move the rooms into RAM, let the thief chalk his route as he goes, and watch the marks survive leaving and returning. The keep gains a memory."
+pubDate: 2026-06-02
+game: 3
+unit: 7
+tags: ["assembly", "z80", "state", "persistence", "ram"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The thief steps cleanly between rooms now, but the keep has no memory. Each room is painted from its fixed template every time he walks in, so nothing he does to a room can last — change it, leave, come back, and it's pristine again, as if he'd never been. A keep you can get lost in has to *remember*. This unit gives it that.
+
+## What you'll see by the end
+
+![The pillared hall with a line of white chalk-cross marks across its floor, the red thief standing among them — the trail he laid before walking to the next room and back, still exactly where he left it.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-07/screenshot.png)
+
+Hold **SPACE** and the thief chalks the floor as he walks, leaving a trail of marks — the old dungeoneer's trick for not walking in circles. Walk that trail east into the next room, then come back. The marks are **still here**, exactly as you left them. The keep remembered. That's the whole unit: a world that holds onto what you did to it.
+
+## Stop treating the map as read-only
+
+The reason the keep forgets is that the room maps are *templates* — fixed data in the program, never changed. You can't write a chalk mark into a constant. So the first move is to make the keep's rooms **live in RAM**: at start-up we copy each template into a writable buffer, its **state**, and from then on the keep *is* those buffers.
+
+```
+            ld      hl, room0_template
+            ld      de, room0_state      ; a 768-byte RAM buffer
+            ld      bc, 768
+            ldir                          ; copy the template into it
+            ; ... same for room 1 ...
+```
+
+The room table's pointers now name the *state* buffers, not the templates, so `draw_room` paints from RAM. Nothing else about drawing changes — but now there's somewhere to write.
+
+## Chalk is a byte in the buffer
+
+A chalk mark is just a third tile in the palette — glyph `+`, a little white cross — and crucially it's **dim**, so `wall_at` still reads it as walkable. (A bright mark would become solid stone and pen the thief in.) Marking a cell is one write into the room's state, at the thief's position:
+
+```
+mark_step:
+            ; ... SPACE held? ...
+            call    cell_state_addr      ; HL -> this cell in the state buffer
+            ld      (hl), '+'             ; chalk it
+            ; remember the mark as what's "under" him, so it shows when he moves:
+            ld      hl, mark_tile
+            ld      de, under_thief
+            ld      bc, 8
+            ldir
+            ld      a, MARK_ATTR
+            ld      (under_thief + 8), a
+```
+
+Two writes, two effects. Writing `+` into the **state buffer** is what makes the mark *persist* — it's now part of the room, and every future `draw_room` will paint it. Updating `under_thief` is what makes it *appear*: the thief is standing on the cell, so the mark is hidden until he steps off and `restore_under` lays down what we told it was beneath him — the chalk.
+
+## Why it survives the journey
+
+Follow the chalk through a doorway. You marked cells in room 0's state buffer. You walk east — `check_exit` switches to room 1 and `draw_room` paints room 1 *from room 1's buffer*. Room 0's buffer is untouched, sitting in RAM with your marks in it. Walk back west, `draw_room` paints room 0 again from that same buffer — and the chalk is precisely where you left it. Persistence isn't a feature you add; it's what you get for free once the world lives somewhere writable and you stop overwriting it.
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-07/the-hero-remembers.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna the-hero-remembers.asm the-hero-remembers.sna
+```
+
+Load it in Emu198x. Hold **SPACE** and walk **Q A O P** to lay a chalk trail. Walk it out through the east door into the next room, turn around, and walk back. Your marks are waiting. Chalk a different shape in the second room and ferry between the two — each keeps its own.
+
+## Try this: the honest cost
+
+Two rooms cost two 768-byte buffers — 1,536 bytes of RAM just for state. Work out what a hundred-room keep would cost that way (it's most of the machine). This is the *honest* version: a full mutable copy per room, simple and clear. A bigger keep needs the state packed far tighter — a bitmap of "marked or not", or a short list of changed cells. Worth sketching how you'd shrink it; it's a real problem real games solved.
+
+## Try this: an eraser
+
+Add a key (say `M`) that writes `.` back into the cell instead of `+`, scrubbing the chalk. You'll have proved the buffer is genuinely read-write, both ways — and given the thief second thoughts about his route.
+
+## Try this: remember something else
+
+The chalk is only the first thing the keep remembers. Anything you write into a room's state survives the same way. Imagine a cell the thief can switch from wall to floor — a lever that opens a passage, still open when you return. You wouldn't change the engine at all; you'd just write a different glyph. (That's a door, and a later keep is built on it.)
+
+## If it doesn't work
+
+- **Marks vanish when you leave and return.** You're writing the mark to the screen but not into the **state buffer**, or the room table still points at the templates instead of the state buffers. The buffer is the memory; the screen is only its reflection.
+- **The thief can't walk over his own marks.** `MARK_ATTR` is bright (bit 6 set), so `wall_at` thinks chalk is wall. Make it dim.
+- **Marks never appear.** `under_thief` isn't being set to the mark, so when he steps off, the original floor is restored over it. Chalk the cell *and* update what's under him.
+- **The whole keep is corrupted at start.** The `LDIR` copies are wrong — each is `HL` = template, `DE` = state buffer, `BC` = 768. Swap source and destination and you copy blank RAM over nothing.
+- **The machine resets on start-up.** The state buffers (`defs 768` each) must fit in RAM below the stack. They sit after the variables here; if you move them, mind the room left.
+
+## What you've learnt
+
+- **A world that changes must live in RAM.** Templates are read-only; copy them into writable state buffers and the keep becomes something you can alter.
+- **Persistence is the absence of overwriting.** Once each room's state lives in its own buffer and you draw *from* it, anything you write there simply stays. You don't add memory; you stop discarding it.
+- **A mark is a byte.** Chalk, a lever, an opened door — all the same move: write a glyph into the room's state. The palette turns the byte back into a picture.
+- **The simple version has a cost.** A full copy per room is clear but heavy; knowing where it won't scale is the first step to the version that does.
+
+## What's next
+
+The keep remembers, the rooms connect, the thief walks and marks his way through them — the machinery of a flick-screen world is complete. It's time to *use* it. In **Unit 8, "Three Rooms,"** we leave the test chambers behind and design a small, real keep — three connected rooms with character, laid out to be explored — closing the sub-arc with a place worth getting lost in, ready for the light, mood and inhabitants still to come.
