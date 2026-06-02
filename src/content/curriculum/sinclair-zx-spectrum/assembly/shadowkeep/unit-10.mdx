@@ -1,0 +1,92 @@
+---
+title: "Furnishings"
+description: "A lit room is still a bare room. Add the things light falls on — a statue, banners, a scatter of rubble — as tiles in the palette. Bright ones you walk around, dim ones you walk over, and the keep starts to feel inhabited."
+pubDate: 2026-06-02
+game: 3
+unit: 10
+tags: ["assembly", "z80", "level-design", "tiles", "atmosphere"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The keep has light and shadow now, but its rooms are empty — stone, pillars, floor, and nothing to look at. A place you believe in has *things* in it: an altar, a statue, banners on the wall, a heap of rubble where the ceiling came down. This unit furnishes the keep — and it needs almost no new code, because furniture is just more tiles in the palette, placed in the map like everything else.
+
+There's one idea worth naming, and the engine already handles it: the difference between furniture you walk **around** and furniture you walk **over**.
+
+## What you'll see by the end
+
+![The Great Hall, torch-lit, with a pale stone statue standing in the light below the flame, magenta banners hung on the side walls, and a scatter of rubble at the statue's feet; the hooded thief approaches through the pillars.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-10/screenshot.png)
+
+The same lit Hall as last unit, but inhabited: a statue stands in the torchlight, banners hang on the walls, broken stone litters the floor at the statue's base. Walk up to the statue and you stop — it's solid. Walk onto the rubble and you stride right over it, and it's still there behind you. Two kinds of furniture, and the keep didn't need a single new rule to tell them apart.
+
+## Blocking is just brightness
+
+Remember how collision works: a cell is solid if it's **BRIGHT**, walkable if it's dim. That one rule, from way back, sorts the furniture for free:
+
+```
+STATUE_ATTR equ     %01001111       ; BRIGHT white  — solid: walk around it
+BANNER_ATTR equ     %01001011       ; BRIGHT magenta — solid: it's on the wall
+RUBBLE_ATTR equ     %00001000       ; dim (like floor) — walkable: walk over it
+```
+
+A statue is a wall that happens to look like a statue. Rubble is a floor that happens to look like broken stone. `wall_at` never knew the difference and never needs to — it just reads the brightness, exactly as it did for stone walls and slate floor. The furniture sorts itself.
+
+## Furniture is glyphs in the map
+
+Each piece is a palette entry — a glyph, a tile, an attribute — and you place it by typing its letter into the room:
+
+```
+            defb    "B..............S...............B"   ; banners flanking a statue
+            defb    "#.............ooo..............#"   ; rubble at its feet
+```
+
+`S` a statue, `B` a banner, `o` rubble. The Hall now reads as a shrine: a figure in the light, hangings to either side, the floor strewn where time has worked on the stone. None of it is special-cased; it's the same `draw_room`, the same `lookup_tile`, three more rows in the palette.
+
+## Walked-over, and remembered
+
+The rubble is the interesting one, because it's *non-blocking* — the thief walks over it. And here the work you did earlier pays off twice. His save-and-restore carries the rubble beneath him just as it carried slate and chalk, so he crosses it without smearing it. And because rubble is a glyph in the room's state buffer, it *persists*: leave the Hall and come back, and the broken stone is exactly where it lay. Furniture is part of the keep's memory, for free.
+
+(One honesty: furniture is drawn *flat* — it isn't dimmed by distance to the torch the way the floor is. A statue in the dark is as bright as one in the light. Lighting the furniture too is a fine exercise, and the next unit leans hard on shade; for now, objects keep their own look.)
+
+### The code, complete
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-10/furnishings.asm" />
+
+## Assemble and run
+
+```
+pasmonext --sna furnishings.asm furnishings.sna
+```
+
+Load it in Emu198x. In the Hall, walk up to the statue — it turns you back. Walk across the rubble at its feet — you pass straight over. Cross to the Gallery and the Vault and find their furnishings too (a banner and a rubble heap; banners flanking the altar). Chalk a mark on the rubble and leave the room — it remembers both.
+
+## Try this: furnish a room yourself
+
+Open a room template and dress it. Put a statue at the end of the Gallery; line its walls with banners; pile rubble where a wall has failed. You're set-dressing by typing letters — the fastest art tool there is. Keep the thief's start and the doorways clear, and remember bright is solid.
+
+## Try this: rubble you can clear
+
+Rubble is a glyph in the room's state. Add a key that, when the thief stands on rubble, writes `.` over it — he's cleared the debris, and it stays cleared because the state remembers. You've made the world not just furnished but *changeable*: the first step from scenery toward things the player acts on.
+
+## Try this: a new piece
+
+Design one more: a well (a dark round hole — solid, you can't cross it), or a rug (a coloured floor — walkable, just decoration). One tile, one palette line, one attribute (bright to block, dim to walk). See how few bytes a new piece of the world costs.
+
+## If it doesn't work
+
+- **The thief walks through the statue.** Its attribute isn't bright — `wall_at` only blocks bright cells. Statues and banners must have bit 6 set.
+- **The thief can't cross the rubble.** Its attribute *is* bright. Rubble must be dim (share `FLOOR_ATTR`) to stay walkable.
+- **The rubble vanishes when he walks over it.** That's a save/restore fault — but it shouldn't happen, since rubble is in the state buffer and `restore_under` lays back whatever was beneath him. Check you didn't special-case the draw.
+- **A glyph draws as blank or garbage.** It isn't in the palette, so `lookup_tile` scans off the end. Every furniture letter (`S`, `B`, `o`) needs an entry.
+- **A room is shifted.** A furnished template row isn't 32 characters any more — adding a letter means removing a `.`, not pushing the row longer. Count it.
+
+## What you've learnt
+
+- **Furniture is tiles.** A statue, a banner, rubble — each a glyph, a pattern and a colour in the palette, placed by typing into the map.
+- **Blocking is brightness, again.** The collision rule you already had sorts solid furniture from walkable furniture with no new code: bright blocks, dim doesn't.
+- **Non-blocking scenery is free and persistent.** Walkable decoration rides the hero's save/restore and lives in the room's state, so he crosses it cleanly and it remembers.
+- **Set-dressing is design, not engineering.** Once the palette is rich enough, making a room feel inhabited is something you do in a text editor.
+
+## What's next
+
+The keep is lit and furnished — now to *compose* with it. In **Unit 11, "Mood through Constraint,"** we stop adding features and start using restraint: dark rooms with a single lit pool, sharp contrast between gloom and flame, the eye led by light. With only two colours a cell and a ramp of dither, the limit itself becomes the vocabulary — and a plain stone room becomes a place with a feeling. Atmosphere is as much what you withhold as what you add.
