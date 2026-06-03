@@ -19,6 +19,7 @@ const PAGES: Record<string, string> = {
   'getting started': '/sinclair-zx-spectrum/getting-started',
   vault: '/vault',
   family: '/family',
+  'family emu198x': '/family/emu198x',
   setup: '/setup',
   'setup roms': '/setup/roms',
   'setup native': '/setup/sinclair-zx-spectrum/native',
