@@ -5,7 +5,21 @@ import sitemap from '@astrojs/sitemap';
 import icon from 'astro-icon';
 import { bundledLanguages } from 'shiki';
 import { remarkHighlightApi } from 'remark-shiki-highlight-api';
+import { visit } from 'unist-util-visit';
 import { loadCode198xLanguages } from './src/lib/load-custom-languages.ts';
+
+// Code blocks scroll horizontally on overflow; make them keyboard-focusable so
+// keyboard-only users can scroll them (WCAG scrollable-region-focusable).
+function rehypePreTabindex() {
+  return (tree) => {
+    visit(tree, 'element', (node) => {
+      if (node.tagName === 'pre') {
+        node.properties = node.properties || {};
+        if (node.properties.tabindex === undefined) node.properties.tabindex = '0';
+      }
+    });
+  };
+}
 
 // Load custom syntax grammars
 import basicGrammar from './src/syntax/basic.tmLanguage.json' with { type: 'json' };
@@ -68,6 +82,7 @@ export default defineConfig({
         loadLanguages: loadCode198xLanguages
       }]
     ],
+    rehypePlugins: [rehypePreTabindex],
     syntaxHighlight: false,
     shikiConfig: {
       langs: [
