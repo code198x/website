@@ -26,6 +26,18 @@ const PAGES: Record<string, string> = {
   'setup roms': '/setup/roms',
   'setup native': '/setup/sinclair-zx-spectrum/native',
   'pattern category': '/patterns/category/hardware-access',
+  about: '/about',
+  browse: '/browse',
+  contribute: '/contribute',
+  timeline: '/timeline',
+  systems: '/systems',
+  patterns: '/patterns',
+  'patterns platform': '/patterns/platform/sinclair-zx-spectrum',
+  'commodore-64 landing': '/commodore-64',
+  'crash-live': '/crash-live',
+  notfound: '/404',
+  // Not yet gated — carry the deferred "tinted-background ink" debt (#4):
+  // /vault/hardware/* detail pages, /commodore-amiga, /nintendo-entertainment-system.
 };
 
 const baseline: { allow: { rule: string; fg?: string }[] } = JSON.parse(
