@@ -92,13 +92,16 @@ export function contrastRatio(a: string, b: string): number {
 }
 
 /**
- * Standard surfaces the brand-as-text usages sit on (light + dark themes).
- * Light uses the page background (#f4f1e8, the C64 beige) rather than the
- * lighter card surface (#fdfcf7) so the derived ink is conservative — it
- * passes AA on the darker page bg and therefore on cards too.
+ * Reference surfaces the brand-as-text usages are validated against (light +
+ * dark themes). These are deliberately the *darkest tinted* backgrounds brand
+ * text lands on — the deepest light accent-tint (~#f5e2d8) and the lightest dark
+ * accent-tint (~#3d2c21) — not the plain card surface. Deriving ink against the
+ * worst-case background means it passes AA there *and* on every lighter/darker
+ * surface, at the cost of muting brand text very slightly (e.g. Amiga orange
+ * darkens; vibrant reds/blues barely move). Conservative-global by design.
  */
-export const SURFACE_LIGHT = '#f4f1e8';
-export const SURFACE_DARK = '#242019';
+export const SURFACE_LIGHT = '#f5e2d8';
+export const SURFACE_DARK = '#3d2c21';
 
 /**
  * Build the `--ink-l` / `--ink-d` custom-property pair for a brand colour,

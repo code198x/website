@@ -36,8 +36,9 @@ const PAGES: Record<string, string> = {
   'commodore-64 landing': '/commodore-64',
   'crash-live': '/crash-live',
   notfound: '/404',
-  // Not yet gated — carry the deferred "tinted-background ink" debt (#4):
-  // /vault/hardware/* detail pages, /commodore-amiga, /nintendo-entertainment-system.
+  'commodore-amiga landing': '/commodore-amiga',
+  'nintendo landing': '/nintendo-entertainment-system',
+  'vault detail': '/vault/hardware/sid-chip',
 };
 
 const baseline: { allow: { rule: string; fg?: string }[] } = JSON.parse(
