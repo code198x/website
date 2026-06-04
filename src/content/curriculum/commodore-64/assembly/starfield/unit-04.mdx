@@ -1,48 +1,77 @@
 ---
 title: "Laser Sound"
-description: "Make the SID chip produce a laser sound when the fire button is pressed — your first taste of the C64's legendary sound hardware."
+description: "Configure a SID voice and gate it on each shot, so firing makes a sharp laser 'pew' — your first taste of the C64's sound hardware."
 pubDate: 2026-02-06
 game: 1
 unit: 4
 tags: ["assembly", "6510", "sid", "sound", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
 import RegisterBits from "@components/diagrams/RegisterBits.astro";
+import AudioClip from "@components/AudioClip.astro";
 
-Press fire — pew! The bullet launches and a short laser sound plays. Same game as Unit 3, but now the SID chip gives your shots a voice. Two small additions to the code, one giant leap for game feel.
+Press fire — *pew*. The bullet launches and a short laser sound cuts in. The ship already shoots; this unit gives the shot a voice. The new hardware is the **SID** — the C64's sound chip — and we'll meet it the way every voice gets made: set the voice up, then gate it on.
 
-## The SID Chip
+## Where we start
 
-The **SID** (Sound Interface Device) is the C64's sound chip — a three-voice synthesiser built right into the hardware. It lives at addresses `$D400` to `$D418`, just like the VIC-II graphics chip lives at `$D000`.
+Unit 3 left a ship that fires a bullet. It works, but it's silent.
 
-Each voice has its own set of registers for frequency, waveform, and envelope. Voice 1 starts at `$D400`, voice 2 at `$D407`, voice 3 at `$D40E`. There's also a shared volume register at `$D418`.
+![The yellow bullet rising from the ship towards the top of the screen — Unit 3's shot, with no sound.](/images/commodore-64/assembly/starfield/unit-04/shot.png)
 
-We'll only use voice 1 in this unit. The SID can do far more — filters, ring modulation, synchronisation — but that's for later. Right now, we just want a satisfying pew.
+## The SID chip
 
-## Setting Up the Sound
+The **SID** (Sound Interface Device) is a three-voice synthesiser built into the C64. It lives at `$d400`–`$d418`, the same memory-mapped way the VIC-II graphics chip lives at `$d000`. Each voice has registers for pitch, waveform, and an envelope; there's one shared volume for the whole chip. We'll use voice 1:
 
-Before the game loop starts, we configure voice 1 with the right pitch and envelope:
+| Register | Address | Holds |
+|----------|---------|-------|
+| Frequency low | `$d400` | low byte of the pitch |
+| Frequency high | `$d401` | high byte of the pitch |
+| Control | `$d404` | waveform select + gate |
+| Attack / Decay | `$d405` | how the sound rises, then falls |
+| Sustain / Release | `$d406` | the held level, then the tail |
+| Volume | `$d418` | master volume (all three voices) |
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-04/snippets/01-sid-setup.asm" />
+## Milestone 1 — set the voice up
 
-Four things happen here:
+Before the game loop, we configure voice 1: full volume, a mid-high pitch, and an envelope shaped like a laser.
 
-1. **Volume** (`$D418`) — set to `$0F` (maximum). This is the master volume for all three voices. Bits 0–3 control volume; bits 4–7 control filters (we'll ignore those for now).
-2. **Frequency** (`$D400`/`$D401`) — a 16-bit value split across two registers. Low byte in `$D400`, high byte in `$D401`. We set `$1000`, which gives a mid-high pitch suitable for a laser.
-3. **Attack/Decay** (`$D405`) — the upper nibble is Attack (0 = instant), the lower nibble is Decay (9 = quick fade). The sound hits full volume immediately and fades out over about half a second.
-4. **Sustain/Release** (`$D406`) — both zero. After the decay phase, the sound drops to silence and stays there.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-04/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-04/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: configure SID voice 1"
+  context={3}
+/>
 
-## The ADSR Envelope
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-04/steps/step-01.asm" />
+</details>
 
-Every sound has a shape over time. The SID controls this with four parameters packed into two registers:
+Now fire. The bullet launches exactly as before — and you hear nothing.
 
-- **Attack** — how quickly the sound rises from silence to full volume (0 = instant, 15 = slowest)
-- **Decay** — how quickly it falls from full volume to the sustain level (0 = instant, 15 = slowest)
-- **Sustain** — the volume level the sound holds at after the decay phase (0 = silent, 15 = full)
-- **Release** — how quickly it fades to silence after you turn it off (0 = instant, 15 = slowest)
+<AudioClip
+  src="/images/commodore-64/assembly/starfield/unit-04/step-01-silent.wav"
+  title="Step 1: firing with the voice configured but never gated — silence"
+  source="SID 6581 · recorded from a real shot"
+/>
 
-For our laser, we want: instant attack, quick decay, no sustain. The sound punches in and dies away — a sharp "pew".
+That silence is the whole point of this step: **a configured voice makes no sound on its own.** Volume, pitch, and envelope are all set, but nothing has told the voice to *start*. (Play the clip above and you hear nothing — the recording is genuinely silent.) The thing that starts it is the gate, and we add it in Step 2.
+
+### The ADSR envelope
+
+Every sound has a shape over time. The SID builds that shape from four values — attack, decay, sustain, release — packed into two registers:
+
+| Phase | What it controls | Our laser |
+|-------|------------------|-----------|
+| Attack | silence → full volume | `0` — instant |
+| Decay | full → the sustain level | `6` — a short, snappy fall |
+| Sustain | the level it holds at | `0` — none |
+| Release | fade to silence after the gate clears | `0` — instant |
+
+A laser punches in and dies away: instant attack, quick decay, no sustain. Attack and decay share one register, one nibble each:
 
 <RegisterBits
   address="$D405"
@@ -52,18 +81,33 @@ For our laser, we want: instant attack, quick decay, no sustain. The sound punch
     { index: 6, label: "Atk 2" },
     { index: 5, label: "Atk 1" },
     { index: 4, label: "Atk 0" },
-    { index: 3, label: "Dcy 3", active: true },
-    { index: 2, label: "Dcy 2" },
-    { index: 1, label: "Dcy 1" },
-    { index: 0, label: "Dcy 0", active: true },
+    { index: 3, label: "Dcy 3" },
+    { index: 2, label: "Dcy 2", active: true },
+    { index: 1, label: "Dcy 1", active: true },
+    { index: 0, label: "Dcy 0" },
   ]}
-  value={0x09}
-  caption="Attack = 0 (upper nibble), Decay = 9 (lower nibble). Value: $09. Instant attack, quick decay."
+  value={0x06}
+  caption="Attack = 0 (upper nibble), Decay = 6 (lower nibble): $06. Instant attack, a short, snappy fall."
 />
 
-## Waveform and Gate
+## Milestone 2 — gate it on each shot
 
-The control register at `$D404` selects the waveform and controls the gate:
+The control register `$d404` selects the waveform and holds the **gate** — bit 0. Setting the gate to 1 starts the envelope's attack; clearing it begins the release. We pick the sawtooth waveform (bit 5), bright and buzzy, the archetypal laser tone.
+
+There's a catch: writing `$21` when the gate is *already* set does nothing — the envelope won't restart. To retrigger on every shot you clear the gate, then set it: off, then on.
+
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-04/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-04/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: gate the voice when a bullet spawns"
+  context={3}
+/>
+
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-04/steps/step-02.asm" />
+</details>
 
 <RegisterBits
   address="$D404"
@@ -79,66 +123,80 @@ The control register at `$D404` selects the waveform and controls the gate:
     { index: 0, label: "Gate", active: true },
   ]}
   value={0x21}
-  caption="Sawtooth waveform (bit 5) + gate on (bit 0) = $21. The gate starts the ADSR envelope."
+  caption="Sawtooth (bit 5) + gate on (bit 0) = $21. Writing $20 first clears the gate so the next $21 restarts the envelope."
 />
 
-The **waveform bits** (4–7) select which sound shape the voice produces. Only set one at a time:
+Now firing makes a sound — but play it:
 
-- Bit 4 = **Triangle** — soft, flute-like
-- Bit 5 = **Sawtooth** — bright, buzzy (our laser)
-- Bit 6 = **Pulse** — hollow, square-wave-ish (needs pulse width set)
-- Bit 7 = **Noise** — random, good for explosions
+<AudioClip
+  src="/images/commodore-64/assembly/starfield/unit-04/step-02-blip.wav"
+  title="Step 2: a sound at last — but a flat, buzzy blip, not a laser"
+  source="SID 6581 · recorded from a real shot"
+/>
 
-The **gate bit** (bit 0) is the trigger. Setting it to 1 starts the ADSR envelope — the sound begins its attack phase. Clearing it to 0 begins the release phase.
+It's *a* sound, but your ear doesn't buy it as a laser. The pitch just sits there. The arcade laser we all carry in our heads *slides* — it starts high and drops as the shot leaves — and that downward slide is most of what makes a "pew" a pew. We add it in the next step.
 
-## Triggering the Sound
+The off-then-on gate cycle, meanwhile, is the pattern for every repeated SID sound — without it, the second shot in a burst would find the gate already set and stay silent.
 
-Each time a bullet spawns, we need to retrigger the sound. There's a catch: if the gate is already on, writing `$21` again does nothing. The ADSR won't restart. You have to turn the gate **off** then **on** again:
+## Milestone 3 — sweep the pitch into a "pew"
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-04/snippets/02-trigger-sound.asm" />
+A laser isn't a fixed note; it's a fast downward slide. The SID won't sweep on its own, so we do it in software: start the pitch high, then drop it a little every frame while the sound rings.
 
-The first write (`$20`) clears the gate bit while keeping sawtooth selected. The second write (`$21`) sets it again. This OFF→ON cycle resets the envelope, so each shot gets a fresh "pew" regardless of where the previous sound was in its decay.
+One catch makes this a real lesson. **The SID's frequency registers are write-only** — you can't read `$d401` back to find the current pitch. So we keep our own copy in a zero-page byte, lower *that* each frame, and write it to the chip.
 
-This pattern — gate off, gate on — is something you'll use every time you want to retrigger a SID voice. It's one of those small details that makes the difference between sound that works and sound that doesn't.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-04/steps/step-02.asm"
+  after="commodore-64/assembly/starfield/unit-04/steps/step-03.asm"
+  lang="asm"
+  title="Step 3: sweep the pitch each frame"
+  context={3}
+/>
 
-## The Complete Code
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-04/steps/step-03.asm" />
+</details>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-04/starfield.asm" />
+Now it pews:
 
-## If It Doesn't Work
+<AudioClip
+  src="/images/commodore-64/assembly/starfield/unit-04/laser.wav"
+  title="Step 3: the pew — the pitch slides from high to low as the shot fires"
+  source="SID 6581 · recorded from a real shot"
+/>
 
-- **No sound?** Check that volume is set (`$D418` = `$0F`), the gate bit is being set (`$D404` = `$21`), and frequency isn't zero (both `$D400` and `$D401` shouldn't be `$00`).
-- **Sound doesn't stop?** The ADSR sustain should be 0. Check that `$D406` = `$00`. If sustain is non-zero, the sound will hold at that level until the gate is cleared.
-- **Wrong pitch?** Frequency is a 16-bit value split across two registers. `$D400` is the low byte, `$D401` is the high byte. Swapping them gives a very different pitch.
-- **Sound only plays once?** You need the gate OFF→ON cycle to retrigger. Writing `$21` when the gate is already on won't restart the envelope.
+That's the whole difference between a sound and a *laser*: the same gated sawtooth, its pitch dropped from a bright high tone to a low one in under a fifth of a second, fading to silence as it falls. Unit 3 let you *see* the bullet leave; now you *hear* it go. And the tuning — how high it starts, how fast it falls — is exactly the kind of single number that turns "it works" into "it feels good." Start the sweep higher for a sharper zap; fall slower for a longer, lazier pew.
 
-## Try This: Change the Pitch
+## When it's wrong, see why
 
-The frequency value `$1000` gives a mid-high laser pitch. Try different values:
+Silent SID code is the most common frustration on this machine, and guessing rarely finds it. Open the SID register view in Emu198x and check the chain a sound needs, in order:
 
-- **`$0800`** — Lower pitched. More of a "bwom" than a "pew".
-- **`$2000`** — Higher pitched. A sharp, piercing zap.
-- **`$3000`** — Very high. Getting into retro sci-fi territory.
+- **Volume** — is `$d418` non-zero? Zero here and nothing plays, however perfect the rest.
+- **Frequency** — are `$d400`/`$d401` set? A pitch of zero is silence.
+- **Gate** — does `$d404` toggle `$20` → `$21` when you fire? If it stays at `$21`, you've hit the retrigger trap: the envelope never restarts.
+- **Sweep** — no "pew", just a blip? Watch your zero-page copy of the pitch (`laser_freq`): does it get set high on the shot and count down? If it never changes, the sweep block isn't running — and remember you can't read `$d401` back to check, because it's write-only.
 
-Remember: the frequency is 16-bit. Change `$D401` (high byte) for big jumps, `$D400` (low byte) for fine tuning.
+Step 1 was a controlled version of exactly this — every register set *except* the gate. Reading the chip's state (and your own variables) and finding the one link that's missing beats re-reading your code hoping to spot it.
 
-## Try This: Different Waveform
+## Before and after
 
-Swap the waveform bit in the control register:
+Three steps, three results you can hear. Step 1: **silence** — a voice fully configured but never started. Step 2: **a blip** — one off-then-on write to the gate sets the envelope running, but the pitch sits still. Step 3: **a pew** — sweeping that pitch downwards each frame turns the blip into a laser. Same voice throughout; the difference is when it starts and how its pitch moves.
 
-- **`$11`/`$10`** — Triangle. Softer, rounder — more "boop" than "pew".
-- **`$81`/`$80`** — Noise. Random frequencies — sounds like a small explosion or static burst.
-- **`$41`/`$40`** — Pulse. Hollow, square-wave tone. You'll also need to set the pulse width registers (`$D402`/`$D403`) — try `$08` in `$D403` for a 50% duty cycle.
+## Try this
 
-## What You've Learnt
+- **Tune the pew.** Two numbers shape it: the starting pitch (`#$40` into `laser_freq`) and how fast it falls (`sbc #$06` each frame). Start higher (`#$60`) for a sharper zap; subtract less (`#$03`) for a slower, lazier slide. Find the one you like.
+- **Change the waveform.** Swap bit 5 in `$d404`: `$11`/`$10` is triangle (softer, rounder); `$81`/`$80` is noise (a static burst — good for explosions later).
 
-- **SID chip (`$D400`–`$D418`)** — The C64's three-voice synthesiser, mapped to memory just like the VIC-II.
-- **Voice registers** — Each voice has frequency, control, and ADSR registers. Voice 1 starts at `$D400`.
-- **ADSR envelope** — Four parameters that shape how a sound starts, sustains, and fades. Packed into two bytes.
-- **Waveform selection** — Bits 4–7 of the control register select triangle, sawtooth, pulse, or noise.
-- **Gate bit** — Bit 0 of the control register. Setting it starts the envelope; clearing it begins release.
-- **Retrigger pattern** — Gate OFF then ON to restart the ADSR. Essential for repeated sounds.
+## What you've learnt
 
-## What's Next
+- **The SID chip (`$d400`–`$d418`)** — three voices, memory-mapped like the VIC-II.
+- **Voice registers** — frequency, control, and ADSR for voice 1, plus the shared volume at `$d418`.
+- **The ADSR envelope** — attack, decay, sustain, release shape a sound over time; ours is instant-attack, quick-decay, no-sustain.
+- **The gate bit** — bit 0 of `$d404` starts the envelope; a configured voice stays silent until it's set.
+- **The retrigger pattern** — gate off then on, so each shot restarts the sound.
+- **Software pitch sweep** — the SID holds a steady note; sliding the frequency each frame is what turns a blip into a "pew". Game feel lives in that slide.
+- **Write-only registers** — you can't read the SID's frequency back, so keep your own copy in RAM and write it to the chip.
 
-The ship fights alone. In Unit 5, an enemy sprite appears — moving on its own, giving you something to shoot at.
+## What's next
+
+The ship can shoot, and now it sounds like it. Next an enemy appears — a sprite that moves on its own, giving you something to shoot at.

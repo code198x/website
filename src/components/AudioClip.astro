@@ -2,20 +2,73 @@
 /**
  * AudioClip — a captioned audio sample with a waveform strip and source
  * attribution (IA v3 media primitive). For Vault "Listen" sections — SID tunes,
- * BBC chimes, etc.
+ * BBC chimes, etc. — and unit sound effects.
  *
  *   <AudioClip src="/audio/monty-on-the-run.mp3" title="Monty on the Run — main theme"
  *              source="SID 6581 · HVSC" />
+ *
+ * The waveform strip reflects the *real* clip: for a local 16-bit PCM `.wav`
+ * (resolved under `public/`) we read it at build time and draw its actual
+ * amplitude envelope, so a silent clip reads flat and a "pew" shows its
+ * onset-and-fade shape. Anything we can't read as PCM WAV (e.g. `.mp3`) falls
+ * back to a stable decorative pattern.
  */
+import fs from 'node:fs';
+import path from 'node:path';
+
 interface Props { src: string; title: string; source?: string }
 const { src, title, source } = Astro.props;
 
-// Deterministic waveform bars (no randomness — stable across builds).
 const N = 64;
-const bars = Array.from({ length: N }, (_, i) => {
-  const h = 2 + Math.abs(Math.sin(i * 0.7) + 0.5 * Math.sin(i * 0.23)) * 9;
-  return { x: (i * (320 / N)).toFixed(1), y: ((22 - h) / 2).toFixed(1), h: h.toFixed(1) };
-});
+const VIEW_W = 320, VIEW_H = 22, MAX_H = 11, MIN_H = 1.5;
+
+// Build-time amplitude envelope for a local 16-bit PCM WAV; null if not readable.
+function wavEnvelope(srcPath: string): number[] | null {
+  try {
+    if (!srcPath.startsWith('/') || !srcPath.toLowerCase().endsWith('.wav')) return null;
+    const buf = fs.readFileSync(path.join(process.cwd(), 'public', srcPath));
+    if (buf.toString('ascii', 0, 4) !== 'RIFF' || buf.toString('ascii', 8, 12) !== 'WAVE') return null;
+    let off = 12, channels = 1, bits = 16, dataStart = -1, dataLen = 0;
+    while (off + 8 <= buf.length) {
+      const id = buf.toString('ascii', off, off + 4);
+      const size = buf.readUInt32LE(off + 4);
+      if (id === 'fmt ') { channels = buf.readUInt16LE(off + 10); bits = buf.readUInt16LE(off + 22); }
+      else if (id === 'data') { dataStart = off + 8; dataLen = size; break; }
+      off += 8 + size + (size & 1);
+    }
+    if (dataStart < 0 || bits !== 16) return null;
+    const stride = 2 * channels;
+    const frames = Math.floor(Math.min(dataLen, buf.length - dataStart) / stride);
+    if (frames <= 0) return null;
+    const per = Math.max(1, Math.floor(frames / N));
+    const peaks: number[] = [];
+    let max = 1;
+    for (let b = 0; b < N; b++) {
+      let peak = 0;
+      for (let i = 0; i < per; i++) {
+        const f = b * per + i;
+        if (f >= frames) break;
+        const v = Math.abs(buf.readInt16LE(dataStart + f * stride)); // channel 0
+        if (v > peak) peak = v;
+      }
+      peaks.push(peak);
+      if (peak > max) max = peak;
+    }
+    // Normalise to the clip's own peak so the *shape* shows; silence stays flat.
+    return peaks.map((p) => MIN_H + (p / max) * (MAX_H - MIN_H));
+  } catch {
+    return null;
+  }
+}
+
+const envelope = wavEnvelope(src);
+const heights = envelope ?? Array.from({ length: N }, (_, i) =>
+  2 + Math.abs(Math.sin(i * 0.7) + 0.5 * Math.sin(i * 0.23)) * 9);
+const bars = heights.map((h, i) => ({
+  x: (i * (VIEW_W / N)).toFixed(1),
+  y: ((VIEW_H - h) / 2).toFixed(1),
+  h: h.toFixed(1),
+}));
 ---
 
 <figure class="clip">

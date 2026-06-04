@@ -5,6 +5,7 @@ import sitemap from '@astrojs/sitemap';
 import icon from 'astro-icon';
 import { bundledLanguages } from 'shiki';
 import { remarkHighlightApi } from 'remark-shiki-highlight-api';
+import remarkGfm from 'remark-gfm';
 import { visit } from 'unist-util-visit';
 import { loadCode198xLanguages } from './src/lib/load-custom-languages.ts';
 
@@ -77,6 +78,7 @@ export default defineConfig({
   markdown: {
     // Use CSS Custom Highlight API for syntax highlighting
     remarkPlugins: [
+      remarkGfm,
       [remarkHighlightApi, {
         theme: 'dark-plus',
         loadLanguages: loadCode198xLanguages

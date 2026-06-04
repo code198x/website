@@ -1,79 +1,93 @@
 ---
 title: "Joystick Movement"
-description: "Read the joystick through the CIA chip and move your ship with conditional branches — the moment the program becomes a game."
+description: "Wrap the ship in a game loop and read the joystick through the CIA chip, so pushing the stick moves the ship — the moment the program becomes a game."
 pubDate: 2026-02-05
 game: 1
 unit: 2
 tags: ["assembly", "6510", "cia", "input", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
-import RegisterBits from "@components/diagrams/RegisterBits.astro";
 import FlowDiagram from "@components/diagrams/FlowDiagram.astro";
+import RegisterBits from "@components/diagrams/RegisterBits.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 import ImageComparison from "@components/ImageComparison.astro";
 
-Push the joystick up. The ship moves up. Push right, it moves right.
+Push the joystick up and the ship moves up. Push right, it moves right. That reaction — hardware reading your intent, the screen answering — is the moment a program becomes a game.
 
-That reaction — hardware reading your intent and something changing on screen — is the moment a program becomes a game. You'll make it happen with three new concepts: a **game loop** that runs every frame, **bit masking** to read the joystick, and **conditional branches** that skip instructions based on the result.
+You already have most of what you need. In the Primer you read a single bit to check the fire button, built decisions from compare-and-branch, and masked bits with `AND`. The one genuinely new idea here is the **game loop**: code that runs once every frame, reading input and updating the screen, over and over. We'll build it a single direction at a time.
 
-## The Game Loop
+## Where we start
+
+Unit 1 left a ship on screen that does nothing — it sits in a do-nothing loop. That's our starting point.
+
+![The white ship sprite sitting still near the bottom centre of an otherwise black screen.](/images/commodore-64/assembly/starfield/unit-02/before.png)
+
+## Milestone 1 — the game loop, reading up
+
+A game loop is just a loop that repeats at a fixed rate, doing the same work each pass: wait for the right moment, read input, update the screen, repeat.
 
 <FlowDiagram
   steps={[
-    { id: "start", label: "Start", type: "start" },
-    { id: "setup", label: "Setup sprites & screen", type: "process" },
-    { id: "raster", label: "Wait for raster", type: "process" },
-    { id: "joy", label: "Read joystick", type: "process" },
+    { id: "setup", label: "Setup (once)", type: "start" },
+    { id: "raster", label: "Wait for raster line 255", type: "process" },
+    { id: "read", label: "Read joystick", type: "process" },
     { id: "move", label: "Move ship", type: "process" },
   ]}
   connections={[
-    { from: "move", to: "raster", label: "next frame" },
+    { from: "move", to: "raster", label: "every frame" },
   ]}
-  caption="The game loop: setup runs once, then the raster–input–move cycle repeats every frame."
+  caption="Setup runs once. Then the wait–read–move cycle repeats forever, once per frame."
 />
 
-Every game on every platform works the same way: a loop that repeats at a fixed rate, processing input and updating the screen each time. On the C64, we sync to the display by waiting for the VIC-II's raster beam to reach a specific line:
+We turn Unit 1's idle loop into that cycle, and read just one direction — up — to prove the whole pattern before repeating it:
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-02/snippets/01-raster-wait.asm" />
-
-Register `$D012` holds the current raster line (0–255). The VIC-II draws the screen top-to-bottom, one line at a time. When it reaches line 255, we know the visible screen has been drawn and it's safe to update.
-
-- **`CMP #$FF`** compares the accumulator to 255. If they're not equal, it sets a flag.
-- **`BNE`** (**B**ranch if **N**ot **E**qual) jumps back to re-read `$D012`. The loop spins until the raster reaches line 255.
-- **`JMP game_loop`** at the bottom repeats everything for the next frame.
-
-The result: our code runs once per frame, at roughly 50 times per second on a PAL C64.
-
-<RegisterBits
-  address="$D012"
-  name="Raster Line"
-  bits={[
-    { index: 0, label: "Bit 0" },
-    { index: 1, label: "Bit 1" },
-    { index: 2, label: "Bit 2" },
-    { index: 3, label: "Bit 3" },
-    { index: 4, label: "Bit 4" },
-    { index: 5, label: "Bit 5" },
-    { index: 6, label: "Bit 6" },
-    { index: 7, label: "Bit 7" },
-  ]}
-  value={0xFF}
-  caption="$D012 holds the current raster line (0–255). We wait for $FF (line 255) before updating."
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-02/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-02/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: a game loop that reads up"
+  context={3}
 />
 
-## Reading the Joystick
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-02/steps/step-01.asm" />
+</details>
 
-The C64's joystick plugs into a CIA chip (Complex Interface Adapter). Port 2 lives at address `$DC00`. Reading it gives you a single byte where each bit represents one switch:
+Run it and hold up: the ship climbs the screen and stops the moment you let go.
 
-| Bit | Direction | Mask |
-|-----|-----------|------|
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-02/step-01-up.mp4"
+  caption="Holding up: the ship climbs from the bottom of the screen towards the top at two pixels per frame, then stops when the stick is released."
+  autoplay={true}
+  loop={true}
+/>
+
+### Syncing to the screen
+
+```asm
+-       lda $d012
+        cmp #$ff
+        bne -
+```
+
+The VIC-II draws the screen top to bottom, one line at a time, and register `$d012` holds the line it's currently drawing. We wait for line 255 — the bottom of the visible picture — before we touch anything, so the ship never moves halfway through being drawn. `CMP #$ff` compares the line to 255; `BNE` loops back until they match. The result: our code runs once per frame, about 50 times a second on a PAL machine.
+
+### Reading the stick
+
+The joystick plugs into a CIA chip (Complex Interface Adapter). Control port 2 lives at `$dc00`, and reading it gives one byte where each bit is one switch:
+
+| Bit | Switch | Mask |
+|-----|--------|------|
 | 0 | Up | `%00000001` |
 | 1 | Down | `%00000010` |
 | 2 | Left | `%00000100` |
 | 3 | Right | `%00001000` |
 | 4 | Fire | `%00010000` |
 
-**The bits are active-low** — a `0` means pressed, a `1` means released. This catches everyone out at first. When the joystick is untouched, `$DC00` reads `%11111111` ($FF). Push up, and bit 0 drops to 0: `%11111110` ($FE).
+In the Primer you read **one** of these bits — the fire button. Now you read the whole stick. The catch is the same one as then: **the bits are active-low**. A `0` means pressed, a `1` means released. Untouched, `$dc00` reads `%11111111`. Push up and bit 0 drops to `0`:
 
 <RegisterBits
   address="$DC00"
@@ -86,95 +100,82 @@ The C64's joystick plugs into a CIA chip (Complex Interface Adapter). Port 2 liv
     { index: 4, label: "Fire", activeLow: true },
   ]}
   value={0xFE}
-  caption="Joystick pushed up: bit 0 is 0 (active-low means 0 = pressed). Bits 5–7 are unused."
+  caption="Joystick pushed up: bit 0 is 0 (active-low, so 0 = pressed). Bits 5–7 are unused."
 />
 
-## AND Masking
+To test one direction we isolate its bit — the masking you already know:
 
-To check one direction, we need to isolate a single bit from the byte. That's what `AND` does — it keeps only the bits that are `1` in both the accumulator and the mask:
+- **`LDA $dc00`** reads the port into A (no `#` — we're reading an address, not a literal).
+- **`AND #%00000001`** keeps only bit 0. If up is pressed that bit is 0, so the result is 0; if not, the result is 1.
+- **`BNE not_up`** branches past the movement when the result is *not* zero — "not pressed, skip."
+- If we don't branch, up is held, so **`DEC $d001`** lowers the sprite's Y position. Twice, for two pixels a frame.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-02/snippets/02-joystick-up.asm" />
+`DEC` subtracts one from the value at an address in a single instruction. Because the sprite's Y position is a memory-mapped register, `DEC $d001` moves the ship directly — no need to load, change, and store it back.
 
-Step by step:
+## Milestone 2 — all four directions
 
-1. **`LDA $DC00`** reads the joystick byte into A. Note: no `#` — we're reading from an address, not loading a literal value.
-2. **`AND #%00000001`** masks off everything except bit 0. If up is pressed, bit 0 is 0, so the result is 0. If not pressed, bit 0 is 1, so the result is 1.
-3. **`BNE not_up`** branches if the result is *not zero* — meaning "not pressed, skip the movement."
-4. If we didn't branch, the joystick is pushed up, so **`DEC $D001`** decreases the sprite's Y position. We do it twice for a speed of 2 pixels per frame.
+One direction proved the pattern. The other three are the same four instructions with a different mask and a different register — `$d000` is the ship's X, `$d001` its Y:
 
-## All Four Directions
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-02/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-02/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: down, left and right"
+  context={3}
+/>
 
-The same pattern repeats for each direction, changing only the bit mask and the register to modify:
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-02/steps/step-02.asm" />
+</details>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-02/snippets/03-all-directions.asm" />
+Now the ship goes anywhere. Diagonals fall out for free: push up-right and both the up check and the right check fire in the same frame.
 
-Each direction re-reads `$DC00` and masks a different bit. The CIA register doesn't change between reads within a frame, so this is safe. Diagonal movement works automatically — if you push up-right, both the up check and the right check will trigger, moving the ship in both axes.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-02/step-02-fly.mp4"
+  caption="The ship flies right, then up, then diagonally up-and-left, then down — following the stick. Pushing two directions at once moves it on both axes."
+  autoplay={true}
+  loop={true}
+/>
 
-## INC and DEC
+`INC` is the mirror of `DEC` — add one to the value at an address. Down and right `INC` the position register; up and left `DEC` it. Each direction calls its instruction twice, so the ship moves two pixels a frame: at 50 frames a second, that's 100 pixels a second, about two seconds to cross the screen.
 
-Two new instructions move the ship:
+That speed is a choice, and it's worth feeling the difference. One pixel a frame is slow and precise; three is quick and a little twitchy; four starts to feel like it's sliding out from under you. Two is a deliberate middle — responsive without overshooting. Movement speed is the first place a game starts to *feel* like something, and it's a single number you control.
 
-- **`INC address`** — **Inc**rement: adds 1 to the value at that address
-- **`DEC address`** — **Dec**rement: subtracts 1 from the value at that address
+## When it's wrong, see why
 
-Since sprite position registers are memory-mapped, `DEC $D001` directly subtracts 1 from the sprite's Y position. No need to load the value, modify it, and store it back — `INC` and `DEC` do it in one instruction.
+Input bugs are confusing because nothing appears on screen to explain them — the ship just moves wrong, or not at all. The fix is to stop guessing and look at the byte the machine is reading. Open the memory view in Emu198x and watch `$dc00` while you move the stick:
 
-We call each one twice to move 2 pixels per frame. At 50 frames per second, that's 100 pixels per second — about 2 seconds to cross the screen.
+- **At rest it reads `$ff`** (`%11111111`) — every switch open.
+- **Push up** and it reads `$fe` — bit 0 has dropped to 0.
+- **Push up-right** and it reads `$f6` (`%11110110`) — bits 0 *and* 3 dropped.
 
-## The Complete Code
+If the ship moves the wrong way, the byte tells you whether the problem is your reading (wrong bit in the byte) or your moving (wrong `INC`/`DEC`). If pushing up gives you `$fd` instead of `$fe`, you're testing down's bit, not up's. Reading the hardware's real state — instead of re-reading your own code hoping to spot the mistake — is the single most useful debugging habit on this machine, and it's one the C64 lets you do directly.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-02/starfield.asm" />
-
-## If It Doesn't Work
-
-- **Ship doesn't move?** In VICE, check Settings → Joystick to ensure joystick 2 is mapped. Try keyboard arrows or numpad.
-- **Ship moves the wrong way?** Up should decrease Y (screen Y runs top-to-bottom). Check you're using `DEC` for up and `INC` for down.
-- **Ship moves without touching joystick?** Make sure you're reading `$DC00` (port 2), not `$DC01` (port 1). If another device is connected to port 1, it can interfere.
-- **Ship moves too fast?** Remove one of the two `DEC`/`INC` instructions per direction. One pixel per frame = 50 pixels per second.
-- **Ship disappears at screen edges?** That's expected — we haven't added boundary checking yet. The X register wraps from 255 to 0, and Y does the same. We'll fix this in a later unit.
-
-## Try This: Change the Speed
-
-Each `DEC`/`INC` pair moves the ship 2 pixels per frame. Try changing it:
-
-- **1 pixel/frame** — Remove one `DEC`/`INC` from each direction. Slow and precise.
-- **3 pixels/frame** — Add a third `DEC`/`INC`. Noticeably faster.
-- **4 pixels/frame** — Getting twitchy. This is roughly how fast Arcadia moves.
-
-## Try This: Disable a Direction
-
-Comment out the LEFT block:
-
-```asm
-        ; LEFT (bit 2)
-        ; lda $dc00
-        ; and #%00000100
-        ; bne not_left
-        ; dec $d000
-        ; dec $d000
-not_left:
-```
-
-The ship can only move up, down, and right. Games use this trick for scrolling levels where the player can only advance forward.
+## Before and after
 
 <ImageComparison
-  before="/images/commodore-64/assembly/starfield/unit-01/screenshot.png"
-  after="/images/commodore-64/assembly/starfield/unit-02/screenshot.png"
-  beforeLabel="Unit 1: Static ship"
-  afterLabel="Unit 2: Joystick movement"
-  beforeAlt="Static ship sprite on a black screen"
-  afterAlt="Ship sprite that can be moved with the joystick"
+  before="/images/commodore-64/assembly/starfield/unit-02/before.png"
+  after="/images/commodore-64/assembly/starfield/unit-02/after.png"
+  beforeLabel="Unit 1: a ship that sits"
+  afterLabel="Unit 2: a ship you steer"
+  beforeAlt="The white ship sprite sitting still near the bottom centre of a black screen."
+  afterAlt="The white ship sprite moved up and to the right of its starting position, where the joystick steered it."
 />
 
-## What You've Learnt
+## Try this
 
-- **The game loop** — Every game runs in a loop: wait for frame, read input, update state, repeat. The raster wait at `$D012` syncs us to the display.
-- **CIA port ($DC00)** — The joystick is read as a single byte. Each bit is a direction or the fire button. Bits are active-low: 0 = pressed.
-- **AND masking** — `AND #mask` isolates specific bits. The result is zero if the tested bit was 0, non-zero if it was 1.
-- **BNE (Branch if Not Equal)** — Skips ahead if the last operation's result was not zero. Used here to skip movement when a direction isn't pressed.
-- **INC and DEC** — Increment and decrement a value at a memory address in a single instruction. Perfect for adjusting sprite positions.
-- **CMP (Compare)** — Compares the accumulator to a value and sets flags, used here in the raster wait.
+- **Change the speed.** Add or remove an `INC`/`DEC` in each direction. One each is slow and precise; three each is fast and twitchy. Feel where it stops being comfortable.
+- **Forward only.** Comment out the whole `LEFT` block. The ship can move up, down and right but never left — the trick scrolling shooters use to stop you backing out of a level.
 
-## What's Next
+## What you've learnt
 
-The ship moves but can't fight back. In Unit 3, you'll add a bullet that fires from the ship when you press the fire button — using zero-page variables to track whether a bullet is active.
+- **The game loop** — wait for the frame, read input, update, repeat. The raster wait at `$d012` is what locks it to the display.
+- **Reading the joystick** — control port 2 at `$dc00` is one byte, one bit per switch, active-low (0 = pressed).
+- **AND masking, in anger** — the same bit-isolating you met in the Primer, now picking one direction out of the port.
+- **`BNE` to skip** — branch past the movement when a direction isn't pressed.
+- **`INC` and `DEC`** — change a memory-mapped register in one instruction, moving the sprite directly.
+
+## What's next
+
+The ship moves but can't fight back. Next you'll add a bullet that fires when you press the fire button — tracking it with a zero-page variable so the ship can shoot.
