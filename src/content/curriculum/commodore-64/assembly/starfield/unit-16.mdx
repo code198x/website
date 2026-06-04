@@ -1,86 +1,104 @@
 ---
 title: "Title Screen"
-description: "The game starts with a title screen. The state machine grows from two states to three — title, playing, and game over — with stars scrolling behind everything."
+description: "Turn the program into a finished game — a title screen and a three-state machine (title, playing, game over) that opens, plays, ends, and loops back to the start."
 pubDate: 2026-02-06
 game: 1
 unit: 16
-tags: ["assembly", "6510", "state machine", "title screen", "screen RAM", "game states"]
+tags: ["assembly", "6510", "state-machine", "game-loop", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-The game launches straight into action — no introduction, no context. This unit adds a title screen that greets the player before the first enemy appears. The state machine that already handles playing and game over gains a third state: title.
+The game is complete — it flies, shoots, scores, ends, and looks like space. But switch the machine on and it drops you straight into the action, mid-wave, no warning. Real games have a front door: a title screen that names the game and waits for you to be ready. This final unit adds it, and in doing so turns the loose "playing / game over" handling into a proper **state machine** — the structure that makes a program feel like a finished thing.
 
-## A Third State
+## Where we start
 
-Until now, `game_state` held two values: 0 for playing, 1 for game over. A third state means renumbering:
+Unit 15 is the whole game, but it boots into play and, on game over, restarts straight back into play. We give it a title, and a clean cycle between its states.
 
-```
-; game_state: 0 = title, 1 = playing, 2 = game over
-```
+## Milestone 1 — a title screen and three states
 
-Title is state 0 because it's the starting state — no initialisation needed to reach it. The game boots into title, transitions to playing when fire is pressed, shifts to game over on the last death, and returns to title when fire is pressed again. A cycle with three stops.
+So far a single flag, `game_over`, has carried the game's status: playing, or over. A title adds a third status, so the flag becomes a **state**: `0` title, `1` playing, `2` game over. The loop reads it once a frame and branches — the dispatch at the heart of every game.
 
-## State Dispatch
+Each state needs its own setup, so the old one-shot init splits in three. The *one-time* hardware (colours, SID, star positions) stays at the top and runs once. Everything game-specific moves into `enter_game` — spawn the wave, reset the score and lives, enable the sprites. And a new `enter_title` does the title: clear to the stars, switch the sprites *off* (the title has no ship or wave), and print **STARFIELD** and **PRESS FIRE**. Boot now opens the title; fire starts a game.
 
-The game loop checks `game_state` and branches to the right handler. `BEQ` catches state 0 (title). `CMP #$02` / `BEQ` catches state 2 (game over). Everything else falls through to gameplay via `JMP game_active`.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-16/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-16/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: a state machine with a title state"
+  context={3}
+/>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-16/snippets/02-three-states.asm" />
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-16/steps/step-01.asm" />
+</details>
 
-Each non-playing state polls the fire button. When pressed, it clears the screen and calls the appropriate init routine — `init_game` to start playing, `init_title` to return to the title. The `state_done` label is a shared exit point: one `JMP game_loop` that both states branch to when fire isn't pressed.
+One subtlety bit hard while building this, and it's worth knowing: the **sprite data pointers live in screen RAM** (`$07f8`–`$07fc`, the last bytes of the screen). Clearing the screen wipes them — so they must be set *after* every clear, inside `enter_game`, not once at boot. Set them before the clear and the sprites render garbage. Here's the title, and the game it starts:
 
-## The Title Screen
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-16/step-01-title.mp4"
+  caption="The game opens on a title — STARFIELD and PRESS FIRE over the drifting stars, no ship or wave. Press fire and the game proper begins: ship, enemies, score and lives."
+  autoplay={true}
+  loop={true}
+/>
 
-`show_title` writes two lines of text to screen RAM using screen codes — the same technique as `show_game_over`, just more characters. "STARFIELD" in white at row 10. "PRESS FIRE" in light grey at row 14.
+## Milestone 2 — closing the loop
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-16/snippets/01-title-screen.asm" />
+The cycle still has a loose end: game over restarts straight into a new game, skipping the title we just built. With the state machine in place, fixing that is a *single line* — game over's fire press calls `enter_title` instead of `enter_game`.
 
-Screen codes map letters starting from 1: A=`$01`, B=`$02`, through to Z=`$1A`. The address calculation is the same as before: row number times 40, plus the column, plus `$0400`. Colour RAM mirrors the position with a base of `$D800`.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-16/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-16/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: game over returns to the title"
+  context={3}
+/>
 
-## Stars Behind Everything
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-16/steps/step-02.asm" />
+</details>
 
-Stars now update in every state — not just during gameplay. The star loop runs before the state dispatch, so the starfield scrolls behind the title text, behind the game, and behind the game over message.
+Now the loop is closed: title, play, game over, back to the title — a complete arcade cycle from one well-named byte.
 
-When a star drifts across a title character, it briefly overwrites it. The fix is simple: `show_title` redraws the text every frame during title state. Any star damage is repaired before the frame is drawn. The same approach applies to `show_game_over` during the game over state.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-16/step-02-cycle.mp4"
+  caption="The full cycle: from the title, a game is played out until all three lives are lost; GAME OVER now offers a way back, and a press of fire returns to the title, ready to go again."
+  autoplay={true}
+  loop={true}
+/>
 
-## Init Routines
+## When it's wrong, see why
 
-Two init routines handle the two entry points:
+A state machine fails by getting stuck in the wrong state or doing the wrong setup:
 
-**`init_title`** sets up the title screen — disables all sprites, draws the stars, shows the title text, and sets `game_state` to 0.
+- **The sprites are garbage.** The pointer trap. `$07f8`–`$07fc` sit *in* screen RAM, so the screen clear blanks them to spaces. They must be written in `enter_game`, after the clear — set them at boot and the first clear destroys them.
+- **The title shows the ship and enemies.** `enter_title` didn't disable the sprites. It must write `$00` to `$d015`; the playing state turns them back on.
+- **The game starts on its own / the title flashes past.** Held fire chaining two transitions in one press: game over sets the state to title, and the *same* still-held press is then read by the title and starts a game. A real fix is to wait for the button to be released before accepting it again.
+- **A state never changes.** The dispatch or the state writes. `state` must be `0`/`1`/`2`, set by `enter_title`/`enter_game`/the game-over path, and the loop's compares must route each value to its block.
 
-**`init_game`** sets up gameplay — positions the ship, spawns enemies, enables sprites, resets the score and lives, draws the stars, and sets `game_state` to 1.
+## Before and after
 
-Both call a shared `init_stars` subroutine that resets star positions and draws them. One piece of star setup code, two callers.
+We started with a game that dropped you straight into the wave and finished with one that opens on a title, plays, ends, and returns — the difference between a *program* that runs a game loop and a *game* you sit down to. It cost one extra state value, two setup routines, and a dispatch; the whole game now turns on that single byte.
 
-## The Complete Code
+## Try this
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-16/starfield.asm" />
+- **Debounce the button.** Track last frame's fire state and only act on a *fresh* press, so holding fire through game over doesn't skip the title. It's the polish that separates "works" from "feels right."
+- **Show the high score.** Keep the best score in a spare byte and draw it on the title — survival now has a number to beat across games.
+- **An attract mode.** After a while on the title with no input, let a few demo frames play themselves. The endless attract loop is the sound of an arcade.
 
-## If It Doesn't Work
+## What you've learnt
 
-- **No title screen?** Check the boot sequence calls `init_title`, not `init_game`. The game should start in state 0.
-- **Title text doesn't appear?** Check `show_title` writes to `$05A0` (row 10, col 16) and `$063F` (row 14, col 15). Check colour RAM writes use `$D9A0` and `$DA3F`.
-- **Fire button doesn't start the game?** The title state handler must check bit 4 of `$DC00` and call `init_game` on press. Check `game_state` is set to 1 inside `init_game`.
-- **Game over doesn't return to title?** The game over handler must call `init_title`, not `init_game`. Check `game_state` is set to 2 (not 1) in `ship_hit`.
-- **Stars freeze on title screen?** The star update loop must run before the state dispatch, not inside `game_active`.
-- **Title text flickers?** `show_title` must be called every frame in `title_state` to repair star overwrites. Check `JSR show_title` appears before the fire button check.
+- **A state machine** — one byte naming the program's mode, read once a frame and dispatched; the backbone of a game's structure.
+- **Per-state setup routines** — `enter_title` and `enter_game` each put the machine into a known state, so a transition is a single call.
+- **The screen-RAM pointer trap** — sprite pointers live in the screen, so they survive only if set after the last clear.
+- **Closing the loop** — wiring every ending back to a beginning is what turns a running program into a finished game.
 
-## Try This: Colour Cycling on the Title
+## You've built a game
 
-Change the title text colour each frame. Use `frame_count AND #$07` to cycle through 8 colours. Write the result to the colour RAM positions for "STARFIELD". The title pulses with colour while the stars drift behind it.
+That's the whole of it. From a single white sprite on a black screen, you've assembled — by hand, in 6510 — a complete game: a ship you fly and clamp to the edges, a shot with a voice, a wave of enemies driven from one indexed loop, collisions that score and explode, lives and death and a fair respawn, a starfield with real depth, and a title that opens and closes the whole cycle. Every piece runs on the bare metal, with no operating system underneath doing the work for you.
 
-## Try This: Hide Score and Lives on Title
-
-The score and lives display from the previous game lingers on the title screen. Clear them in `init_title` by writing spaces to `$0400`-`$0401` and `$0427`. The title screen shows only the title and stars.
-
-## What You've Learnt
-
-- **Three-state machines** — `CMP` and `BEQ` to dispatch between title, playing, and game over.
-- **State transitions** — each state handles its own exit condition and calls the right init routine.
-- **Screen RAM text** — writing characters and colours to fixed positions for UI elements.
-- **Shared subroutines** — `init_stars` called from both `init_title` and `init_game`.
-
-## What's Next
-
-The ship can only move across half the screen — sprite X positions are 8-bit, but the C64 screen is 320 pixels wide. In Unit 16, the `$D010` register unlocks the ninth bit, and boundary clamping keeps everything on screen.
+The techniques here aren't specific to this game. Sprites and collision, sound and state, lookup tables and indirect addressing, the game loop and its machine — they're the vocabulary of every game on this hardware. The next game is the same vocabulary, arranged differently. Go and build it.

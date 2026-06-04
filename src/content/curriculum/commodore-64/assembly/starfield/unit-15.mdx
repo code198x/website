@@ -1,90 +1,109 @@
 ---
 title: "Starfield"
-description: "Characters written to screen RAM become a scrolling starfield. Colour RAM adds depth, and two speed layers create a parallax illusion — the game gets its name."
+description: "Fill the empty space — draw a scrolling starfield straight into screen RAM with indirect indexed addressing, then split it into three depths moving at three speeds."
 pubDate: 2026-02-06
 game: 1
 unit: 15
-tags: ["assembly", "6510", "screen RAM", "colour RAM", "indirect addressing", "parallax", "starfield"]
+tags: ["assembly", "6510", "indirect-addressing", "screen-ram", "parallax", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-Black space is empty space. This unit fills it with stars — the game finally earns its name. No new sprites, no new hardware. Just characters written to screen RAM, coloured for depth, and scrolled at two different speeds.
+The game plays — fly, shoot, score, survive — but it all happens in flat black nothing. The ship isn't going anywhere; it's just sitting in the dark. This unit gives the game its name and its sense of place: a starfield, scrolling down behind everything, with stars at different depths moving at different speeds so the screen reads as *deep*. And it's where a technique the Primer planted finally earns its keep.
 
-## Characters as Stars
+## Where we start
 
-Every position on the C64 screen holds a character code. Writing `$2A` (an asterisk) to screen RAM puts a small dot on screen. Writing `$2E` (a period) puts an even smaller one. Eight of these, scattered across the display, and the background has stars.
+Unit 14 is the complete game on an empty background. Everything below paints stars behind it.
 
-Two tables track each star's position — `star_row` (0 to 24) and `star_col` (0 to 39). Eight stars total: four close, four distant.
+## Milestone 1 — stars in screen RAM
 
-## A New Addressing Mode
+A star is a character — an asterisk — written into a screen-RAM cell. The catch is *which* cell. A star at row R, column C lives at `$0400 + R × 40 + C`, and that multiply-by-40 is the snag: doing it for every star, every frame, by hand is slow and fiddly.
 
-Stars need to be written to specific screen RAM addresses. Row 0 starts at `$0400`, row 1 at `$0428`, row 12 at `$05E0`. The address depends on the row, and it spans more than 8 bits — `LDA table,X` can't reach it.
+This is exactly the shape the Primer's **"finger on the boxes"** was for — **indirect indexed addressing**, `sta ($fb),y`. You keep a *pointer* in two zero-page bytes (`$fb`/`$fc`) — the finger — and point it at the *start of a row*. Then the Y register is the column, and `sta ($fb),y` writes to "the address the finger holds, plus Y." Point at the row, count along to the column, drop the character. No multiply in sight — because the row start comes from a small lookup table, `row_addr_lo`/`row_addr_hi`, that has the address of all 25 rows precomputed.
 
-The 6502 has an addressing mode for exactly this: **indirect indexed**. Store a 16-bit address in two zero-page bytes (`$fb` and `$fc`), then use `STA ($fb),Y` to write at that address plus Y. The column goes in Y, the row address goes in the pointer.
+One more trick rides along. Colour RAM at `$d800` mirrors screen RAM's layout exactly, and `$d8` is `$04 + $d4` — so once the pointer is at a screen cell, adding `$d4` to its high byte moves it to the *matching* colour cell. The same `,y` offset then colours the same square.
 
-Where does the row address come from? A lookup table. Twenty-five entries — one per row — pre-calculated at assembly time:
+We wrap that in `draw_star` and `erase_star`, and the loop each frame is: erase every star, move it down a row (wrapping at the bottom), draw it again.
 
-```
-row_addr_lo:  !byte $00, $28, $50, $78, ...
-row_addr_hi:  !byte $04, $04, $04, $04, ...
-```
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-15/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-15/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: draw and scroll stars with sta ($fb),y"
+  context={3}
+/>
 
-Load the row number into Y, look up both bytes, store them in `$fb`/`$fc`. Now `STA ($fb),Y` with the column in Y writes to exactly the right screen position.
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-15/steps/step-01.asm" />
+</details>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-15/snippets/01-star-init.asm" />
+The columns are chosen to dodge the score and lives cells, so the readouts stay put. Now the black is full of drifting stars, behind the ship and the wave:
 
-The `draw_star` subroutine builds the screen address from the row lookup, then writes the character. To set the colour, it adds `$D4` to the high byte of the pointer — screen RAM at `$0400` becomes colour RAM at `$D800`. Same column, same `STA ($fb),Y`, different target.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-15/step-01-scroll.mp4"
+  caption="A field of white stars scrolls down behind the ship and the wave — each one written straight into screen RAM through the indirect pointer. They all move at one speed for now."
+  autoplay={true}
+  loop={true}
+/>
 
-## Colour for Depth
+## Milestone 2 — depth, through speed
 
-Colour RAM at `$D800` mirrors screen RAM — every character position has a corresponding colour byte. Close stars get white (`$01`), distant stars get dark grey (`$0B`). Two lookup tables hold the character and colour for each star:
+A flat field of identical stars all moving together reads as a moving *wall*, not space. Depth comes from **parallax**: things that are near move faster than things that are far. We sort the twelve stars into three layers — near, middle, far — and move each layer at a different rate by checking the frame counter. The near four move every frame; the middle four every second frame; the far four every fourth. Two `and` masks on `frame_count` decide it — no division needed, because the rates are powers of two.
 
-```
-star_char_tbl:    !byte $2a, $2a, $2a, $2a, $2e, $2e, $2e, $2e
-star_colour_tbl:  !byte $01, $01, $01, $01, $0b, $0b, $0b, $0b
-```
+We back the speed up with brightness: the near stars stay bright white asterisks, the middle ones light grey, the far ones a dim grey dot. Fast-and-bright versus slow-and-faint is the cue the eye reads as distance.
 
-Stars 0 to 3 are bright asterisks. Stars 4 to 7 are dim periods. Same drawing code, different data.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-15/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-15/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: three layers at three speeds"
+  context={3}
+/>
 
-## Parallax: Two Speed Layers
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-15/steps/step-02.asm" />
+</details>
 
-Close stars scroll down every frame. Distant stars scroll every other frame — half the speed. A frame counter and one `AND` instruction decide:
+Now the field has depth — the front rushes past while the back barely moves, and the ship finally feels like it's travelling through somewhere:
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-15/snippets/02-star-scroll.asm" />
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-15/step-02-parallax.mp4"
+  caption="Three depths at three speeds: bright white stars race down the front, light-grey ones drift slower, and dim grey ones crawl at the back — flat space becomes deep space."
+  autoplay={true}
+  loop={true}
+/>
 
-`CPX #$04` / `BCC move_star` sends close stars (indices 0 to 3) straight to the movement code. Distant stars check `frame_count AND #$01` — on even frames, `BEQ skip_move` skips the increment. The result: close stars drift steadily, distant stars lag behind, and the brain reads this as depth.
+## When it's wrong, see why
 
-Each star erases its old position (writes a space), moves down one row, wraps from row 24 back to row 0, then redraws at the new position.
+The pointer and the loop order are where star bugs live:
 
-## The Complete Code
+- **No stars, or they land in the wrong place.** The pointer setup. `$fb`/`$fc` must be loaded from `row_addr_lo`/`row_addr_hi` for the star's row, with Y holding the column, before the `sta ($fb),y`. A pointer left from a previous star scatters characters across the screen.
+- **Stars are invisible until something else colours them.** The colour write. After `$d4` is added to `$fc`, the same `sta ($fb),y` must run again with the colour value — skip it and the character is drawn in whatever colour the cell already had (often black on black).
+- **Stars leave a trail of asterisks.** Erase order. Each star must be erased at its *old* position before it moves, then drawn at the new one. Move first and the old cell is never cleared.
+- **The score or lives digit flickers or vanishes.** A star column hit `0`, `1`, or `39`. Those cells hold the readouts; keep every star's column away from them.
+- **All the layers move together.** The frame-count masks. Far should advance only when `frame_count and %00000011` is zero, middle when `and %00000001` is zero; a wrong mask collapses the depth back to one speed.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-15/starfield.asm" />
+## Before and after
 
-## If It Doesn't Work
+We started with the game adrift in black and finished with it moving through a three-deep starfield — the same `sta ($fb),y` the Primer taught, now carrying the whole background. The depth is free in cycles: it's the *same* draw loop, with two `and` masks deciding which stars step this frame. Flat became deep for the cost of a brightness table and a comparison.
 
-- **No stars visible?** Check `init_game` calls `draw_star` for all 8 stars. Check the row address lookup tables have exactly 25 entries each.
-- **Stars appear but don't move?** The star update loop must be inside `game_active`. Check `INX` / `CPX #$08` / `BNE star_loop`.
-- **All stars move at the same speed?** The parallax check must test `CPX #$04` before the frame counter test. Stars 0 to 3 should always move.
-- **Stars leave trails?** `erase_star` must write `$20` (space) to the old position before the star moves. Check it uses the correct row/column.
-- **Garbled characters instead of stars?** Check `star_char_tbl` uses `$2A` (asterisk) and `$2E` (period). Screen codes, not PETSCII.
-- **Stars overwrite score or lives?** Star columns must not be 0, 1, or 39. Check `star_init_col` values.
+## Try this
 
-## Try This: More Stars
+- **A denser sky.** Add more stars — extend the tables and the loop count. Watch the cost: every star is an erase and a draw each frame, so there's a budget; find where it starts to bite.
+- **A fourth, faster layer.** Add a near-near layer that moves *two* rows a frame for streaking, close-up stars. Speed alone changes how fast the game feels like it's flying.
+- **Twinkle.** Flip a star's colour between two values based on a bit of `frame_count`, and the field shimmers — a lot of life for a couple of instructions.
 
-Add four more stars to each layer — 16 total. Extend the tables to 16 entries, change `CPX #$08` to `CPX #$10`, and split the speed boundary at index 8 instead of 4. More stars, more atmosphere.
+## What you've learnt
 
-## Try This: Three Depth Layers
+- **Indirect indexed addressing** — `sta ($fb),y`: a pointer you aim at a row, plus Y for the column, to write anywhere on screen without arithmetic in the loop. The Primer's "finger on the boxes," put to work.
+- **A row-address lookup table** — the start of every row precomputed, so the per-frame loop never multiplies by 40.
+- **The colour-RAM mirror** — add `$d4` to a screen pointer's high byte to reach the matching colour cell.
+- **Parallax from speed** — layers moving at different rates (set by power-of-two frame masks) read as depth, reinforced by brightness.
 
-Add a third speed: stars that move every fourth frame (`AND #$03`). Use a medium grey (`$0C`) and a different character. Three layers of parallax sells the depth even more convincingly.
+## What's next
 
-## What You've Learnt
-
-- **Indirect indexed addressing** — `STA ($fb),Y` writes to a calculated 16-bit address. The pointer lives in zero page, the offset in Y.
-- **Row address lookup tables** — pre-calculated addresses turn a row number into a screen position without runtime multiplication.
-- **Colour RAM** — `$D800` mirrors `$0400`, one colour byte per character. Adding `$D4` to the screen address high byte reaches the colour RAM equivalent.
-- **Parallax scrolling** — two speed layers from one frame counter. Close objects move faster, distant objects slower, and the screen gains depth.
-
-## What's Next
-
-The game launches straight into action — no introduction, no title. In Unit 15, a title screen greets the player, and the state machine grows to handle three states: title, playing, and game over.
+The game is whole — it plays, it looks like space, it ends and restarts. The one thing it drops you into with no warning is the game itself. Next, the final piece: a title screen, and the front-to-back states that turn a program into something that feels finished.
