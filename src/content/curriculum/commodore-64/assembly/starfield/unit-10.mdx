@@ -1,65 +1,112 @@
 ---
-title: "Player Death"
-description: "Ship-enemy collision loops through all three enemies each frame, and a game_over flag freezes the action when the ship is hit."
+title: "Enemy Waves"
+description: "Turn one enemy into a wave — parallel arrays and indexed addressing drive several enemies from a single loop, with the Y register and a spawn subroutine doing the repetitive work."
 pubDate: 2026-02-06
 game: 1
 unit: 10
-tags: ["assembly", "6510", "collision", "game state", "game over"]
+tags: ["assembly", "6510", "indexed-addressing", "arrays", "subroutines", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-Three enemies descend, but the ship is untouchable. Not any more. This unit adds ship-enemy collision — and when an enemy reaches the ship, the game is over.
+One enemy is target practice. A wave — several descending at once, each in its own column — is a game. The naive way to add enemies is to copy the movement code three times with different variables, and it falls apart fast. The real tool is **indexed addressing**: store each enemy's state in an array, and write the movement *once*, with the index doing the work. This is the unit where one becomes many.
 
-## Reusing the Collision Pattern
+## Where we start
 
-The bullet-enemy collision from Unit 6 checks Y distance, then X distance, using subtraction and range comparison. Ship-enemy collision is the same pattern — different sprites, same maths.
+Unit 9 has a single enemy — one `enemy_x`, one `enemy_y`, one `flash_timer` — and a score. Everything below generalises that "one" into "however many."
 
-For each enemy: subtract the enemy's Y from the ship's Y. If the result is less than `$10` (within 16 pixels positive) or greater than `$F0` (within 16 pixels negative/wrapped), the Y coordinates are close enough. Then check X the same way.
+## Milestone 1 — many from one loop
 
-## Checking All Enemies
+Three enemies need three X positions, three Ys, three flash timers. Rather than naming them all, we lay each set out as a **parallel array** in zero page — consecutive bytes, one per enemy — so the *same* index reaches the matching slot in every array:
 
-The ship collision loop mirrors the bullet collision loop. X steps from 0 to 2, skipping flashing enemies (they're mid-explosion, not solid). The first hit ends the loop — one collision is enough to end the game.
+| Index | `enemy_x_tbl` | `enemy_y_tbl` | `flash_tbl` | Sprite |
+|-------|---------------|---------------|-------------|--------|
+| 0 | `$07` | `$0a` | `$0d` | 2 |
+| 1 | `$08` | `$0b` | `$0e` | 3 |
+| 2 | `$09` | `$0c` | `$0f` | 4 |
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-10/snippets/01-ship-collision.asm" />
+`lda enemy_x_tbl,x` reads the byte at `enemy_x_tbl + X` — enemy 0's X when X is 0, enemy 1's when X is 1. So the movement code is written once and run inside a loop: `ldx #$00`, do the work, `inx`, `cpx #$02`, `bne` back. One body, every enemy.
 
-On hit, three things happen: the `game_over` flag is set to 1, the ship sprite turns red (`$02`), and SID voice 3 plays a descending sawtooth — a falling tone that contrasts with the sharp noise of enemy explosions.
+There's a second problem the loop creates. While X tracks *which enemy*, we still need to address the right *sprite registers* — and those aren't an array we control, they're fixed VIC-II locations two bytes apart (`$d004` for sprite 2, `$d006` for sprite 3…). So we use the **Y register** as a second index, fed from a small lookup table of offsets: `ldy sprite_pos_off,x` then `sta $d000,y`. X indexes our data; Y indexes the hardware.
 
-## Freezing the Game
+Finally, the spawn logic — set a position, pick a column, restore the colour, write the registers — is now needed in three places (initial setup and two respawn paths). Copying it three times invites bugs, so it becomes a **subroutine**: `jsr spawn_enemy` jumps in, `rts` returns to just after the call. The 6502's stack at `$0100` remembers the return address for us. We pass it the start Y in A and the enemy index in X.
 
-A single byte controls everything. At the top of the game loop, after the raster wait, check `game_over`. If it's non-zero, jump straight back to `game_loop` — no input, no movement, no collision checks. The screen freezes exactly as it was when the ship was hit.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-10/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-10/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: arrays, an indexed loop, and a spawn subroutine (two enemies)"
+  context={3}
+/>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-10/snippets/02-game-over-flag.asm" />
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-10/steps/step-01.asm" />
+</details>
 
-The raster wait still runs, so the VIC-II keeps displaying. The game isn't locked up — it's deliberately frozen. The player sees the red ship, the enemies still visible, and knows what happened.
+It's a big change, but it buys the whole rest of the game. With two enemies started at different heights, the one loop drives both — each drifting, leaving, and respawning independently:
 
-## The Complete Code
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-10/step-01-two.mp4"
+  caption="Two enemies, started at different heights and run by a single indexed loop — each drifts and respawns on its own, from the same shared code."
+  autoplay={true}
+  loop={true}
+/>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-10/starfield.asm" />
+## Milestone 2 — the full wave
 
-## If It Doesn't Work
+Here's the payoff of writing it indexed: going from two enemies to three is almost no code. One more sprite enabled, one more data pointer, one more `spawn_enemy` call at init — and the two loop limits change from `#$02` to `#$03`. The movement and collision bodies don't change at all.
 
-- **Ship never dies?** Check the collision loop runs after the enemy update loop. The ship position must be read from `$D000`/`$D001`, not from zero-page variables.
-- **Game freezes immediately?** Make sure `game_over` is initialised to 0 in the init section. An uninitialised zero-page byte might be non-zero.
-- **Wrong enemy triggers death?** The loop must skip flashing enemies — they're mid-explosion and shouldn't count as solid.
-- **No death sound?** Check voice 3 registers (`$D40E`–`$D413`). The gate must go off then on to trigger the envelope.
-- **Ship doesn't turn red?** Sprite 0's colour register is `$D027`. Write `$02` (red) after setting the game_over flag.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-10/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-10/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: one constant and one sprite more — three enemies"
+  context={3}
+/>
 
-## Try This: Death Animation
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-10/steps/step-02.asm" />
+</details>
 
-Instead of an instant freeze, flash the ship between red and white for 16 frames before setting `game_over`. Use a `death_timer` — the same pattern as the enemy flash timer. The game continues running during the flash, giving the player a moment to see what hit them.
+The collision is a loop now too: it walks the wave and stops at the first enemy the bullet overlaps, so the shot picks off whichever one it meets — and the score counts each. Three enemies descend, and any of them can be shot:
 
-## Try This: Border Flash
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-10/step-02-three.mp4"
+  caption="One more constant and an extra sprite turns two into three. The full wave descends, the ship picks enemies off individually, and the score climbs with each kill."
+  autoplay={true}
+  loop={true}
+/>
 
-Set `$D020` to red on death. A single `STA` turns the entire border red — a dramatic whole-screen effect that screams danger.
+## When it's wrong, see why
 
-## What You've Learnt
+Indexed bugs usually hit one enemy or all of them — the index is the thing to watch:
 
-- **Reusing collision patterns** — the same distance check works for any two sprites.
-- **Game state flag** — one byte controls whether the entire game loop runs.
-- **Looped collision** — checking one sprite against a table of others with indexed addressing.
-- **SID voice 3** — the third independent voice, used here for a death sound distinct from laser and explosion.
+- **Enemies missing.** A pointer or an enable bit. Sprites 2–4 all point to block 130 (`$07fa`–`$07fc` = 130), and `$d015` must enable bits 2, 3, 4 (`$1d` for all three plus the ship). A blank slot is almost always the data pointer.
+- **Only one enemy moves.** The loop isn't looping. Check the tail — `inx`, then `cpx` against the count, then `bne` back to the top. A wrong count or a missing `inx` processes one and stops.
+- **They all pile into the same spot.** The stagger or the spawn. The init calls pass different start Ys; `spawn_enemy` reads the raster for a fresh column each time. If they overlap, the start Ys are equal or the raster read is missing.
+- **The score jumps by more than one per hit.** The collision loop must *stop* at the first hit — `jmp hit_enemy` leaves the loop. Without it, one bullet can register against several enemies in the same pass.
+- **The wrong enemy flashes.** X has been disturbed. The hit handler writes `flash_tbl,x` and the colour via `sprite_colour_off,x`, so X must still hold the index of the enemy that was hit when you get there.
 
-## What's Next
+## Before and after
 
-The game freezes on death, but there's no message and no way to try again. In Unit 11, "GAME OVER" appears on screen and pressing fire restarts the game.
+We started with a single enemy and the movement written out once for it, and finished with a wave of three driven by the *same* one loop — the difference between them is a loop count, not three copies of the code. Arrays hold the state, the X register walks them, the Y register reaches the hardware, and a subroutine does the spawning. Adding a fourth enemy is now a five-minute change.
+
+## Try this
+
+- **Give them different speeds.** Add a `speed_tbl` of three bytes — say 1, 2, 1 — and load `speed_tbl,x` instead of the constant `#$01` in the drift. A faster enemy is a harder target, and a mixed wave reads as more alive.
+- **Add a fourth.** Sprite 5 (pointer `$07fd`, enable bit 5, colour offset `$2c`), a fourth entry in each array and the offset tables, and `#$03` becomes `#$04`. The machinery already scales — prove it to yourself.
+
+## What you've learnt
+
+- **Parallel arrays** — one array per attribute, a shared index reaching the matching slot in each; the way to hold many objects' state.
+- **Indexed addressing** — `lda table,x` writes the body once and lets the index pick the object; a loop runs it for all.
+- **The Y register as a second index** — X for your data, Y for hardware registers, fed by a small offset lookup table.
+- **Subroutines** — `jsr`/`rts` and the stack at `$0100`, so shared logic (spawning) lives in one place and is called from many.
+
+## What's next
+
+The wave comes at you and you're untouchable — the enemies pass through the ship with no consequence. Next you'll detect enemy-on-ship collision, and the game gains its first way to *lose*.

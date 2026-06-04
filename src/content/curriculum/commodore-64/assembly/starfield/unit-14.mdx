@@ -1,61 +1,45 @@
 ---
-title: "Starfield"
-description: "Characters written to screen RAM become a scrolling starfield. Colour RAM adds depth, and two speed layers create a parallax illusion — the game gets its name."
+title: "Life Lost Flash"
+description: "The border flashes red when the player loses a life. A death timer counts down frames of invulnerability, preventing instant re-death while the screen recovers."
 pubDate: 2026-02-06
 game: 1
 unit: 14
-tags: ["assembly", "6510", "screen RAM", "colour RAM", "indirect addressing", "parallax", "starfield"]
+tags: ["assembly", "6510", "border colour", "death timer", "invulnerability", "$D020"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-Black space is empty space. This unit fills it with stars — the game finally earns its name. No new sprites, no new hardware. Just characters written to screen RAM, coloured for depth, and scrolled at two different speeds.
+Losing a life should feel like something happened. Right now the ship just teleports back to its starting position — no flash, no pause, no feedback. This unit adds a red border flash that lasts 16 frames, and while the border is red, the ship can't be hit again.
 
-## Characters as Stars
+## The Death Timer
 
-Every position on the C64 screen holds a character code. Writing `$2A` (an asterisk) to screen RAM puts a small dot on screen. Writing `$2E` (a period) puts an even smaller one. Eight of these, scattered across the display, and the background has stars.
-
-Two tables track each star's position — `star_row` (0 to 24) and `star_col` (0 to 39). Eight stars total: four close, four distant.
-
-## A New Addressing Mode
-
-Stars need to be written to specific screen RAM addresses. Row 0 starts at `$0400`, row 1 at `$0428`, row 12 at `$05E0`. The address depends on the row, and it spans more than 8 bits — `LDA table,X` can't reach it.
-
-The 6502 has an addressing mode for exactly this: **indirect indexed**. Store a 16-bit address in two zero-page bytes (`$fb` and `$fc`), then use `STA ($fb),Y` to write at that address plus Y. The column goes in Y, the row address goes in the pointer.
-
-Where does the row address come from? A lookup table. Twenty-five entries — one per row — pre-calculated at assembly time:
+A new zero-page variable:
 
 ```
-row_addr_lo:  !byte $00, $28, $50, $78, ...
-row_addr_hi:  !byte $04, $04, $04, $04, ...
+death_timer = $13   ; Death flash countdown (0 = no flash)
 ```
 
-Load the row number into Y, look up both bytes, store them in `$fb`/`$fc`. Now `STA ($fb),Y` with the column in Y writes to exactly the right screen position.
+When the player loses a life (but the game isn't over), `death_timer` is set to 16. Each frame, the game loop decrements it. When it reaches zero, the border returns to black. Same pattern as `flash_tbl` for enemy explosions — a countdown that drives a visual effect.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-14/snippets/01-star-init.asm" />
+## The Border as Feedback
 
-The `draw_star` subroutine builds the screen address from the row lookup, then writes the character. To set the colour, it adds `$D4` to the high byte of the pointer — screen RAM at `$0400` becomes colour RAM at `$D800`. Same column, same `STA ($fb),Y`, different target.
+The VIC-II border colour register at `$D020` controls the entire border area surrounding the screen. One store to `$D020` and the whole frame changes colour — the most dramatic single-byte visual effect on the C64.
 
-## Colour for Depth
+On death: `LDA #$02` / `STA $D020` turns the border red. When the timer expires: `LDA #$00` / `STA $D020` restores it to black. The flash is visible for exactly 16 frames — about a third of a second at PAL timing.
 
-Colour RAM at `$D800` mirrors screen RAM — every character position has a corresponding colour byte. Close stars get white (`$01`), distant stars get dark grey (`$0B`). Two lookup tables hold the character and colour for each star:
+<CodeFromFile src="commodore-64/assembly/starfield/unit-14/snippets/01-death-flash.asm" />
 
-```
-star_char_tbl:    !byte $2a, $2a, $2a, $2a, $2e, $2e, $2e, $2e
-star_colour_tbl:  !byte $01, $01, $01, $01, $0b, $0b, $0b, $0b
-```
+The timer check runs every frame, right at the start of the game logic. `BEQ` skips the entire block when the timer is zero — three instructions of overhead during normal play. When the timer is running, `DEC` subtracts one and `BNE` skips the border restore unless the timer just hit zero.
 
-Stars 0 to 3 are bright asterisks. Stars 4 to 7 are dim periods. Same drawing code, different data.
+## Invulnerability During Flash
 
-## Parallax: Two Speed Layers
+Without protection, the ship would die again immediately — the enemy that killed it is still right there. The death timer doubles as an invulnerability window. Before checking ship-enemy collisions, one test decides whether to skip the entire collision loop.
 
-Close stars scroll down every frame. Distant stars scroll every other frame — half the speed. A frame counter and one `AND` instruction decide:
+<CodeFromFile src="commodore-64/assembly/starfield/unit-14/snippets/02-invulnerability.asm" />
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-14/snippets/02-star-scroll.asm" />
+`LDA death_timer` / `BNE skip_ship_collision` — if the timer is running, branch past the entire collision loop to `JMP game_loop`. The ship still moves, bullets still fire, enemies still descend. Only the collision check is disabled.
 
-`CPX #$04` / `BCC move_star` sends close stars (indices 0 to 3) straight to the movement code. Distant stars check `frame_count AND #$01` — on even frames, `BEQ skip_move` skips the increment. The result: close stars drift steadily, distant stars lag behind, and the brain reads this as depth.
-
-Each star erases its old position (writes a space), moves down one row, wraps from row 24 back to row 0, then redraws at the new position.
+The label `skip_ship_collision` sits right after the loop's natural end. When the loop finishes without finding a hit, it falls through to the same `JMP game_loop`. One label, two paths to it.
 
 ## The Complete Code
 
@@ -63,28 +47,26 @@ Each star erases its old position (writes a space), moves down one row, wraps fr
 
 ## If It Doesn't Work
 
-- **No stars visible?** Check `init_game` calls `draw_star` for all 8 stars. Check the row address lookup tables have exactly 25 entries each.
-- **Stars appear but don't move?** The star update loop must be inside `game_active`. Check `INX` / `CPX #$08` / `BNE star_loop`.
-- **All stars move at the same speed?** The parallax check must test `CPX #$04` before the frame counter test. Stars 0 to 3 should always move.
-- **Stars leave trails?** `erase_star` must write `$20` (space) to the old position before the star moves. Check it uses the correct row/column.
-- **Garbled characters instead of stars?** Check `star_char_tbl` uses `$2A` (asterisk) and `$2E` (period). Screen codes, not PETSCII.
-- **Stars overwrite score or lives?** Star columns must not be 0, 1, or 39. Check `star_init_col` values.
+- **Border never flashes?** Check `life_lost` stores `$02` to `$D020` and sets `death_timer` to 16.
+- **Border stays red forever?** The timer decrement must run every frame. Check the `death_timer` section appears after `game_active` and before the joystick code.
+- **Ship dies immediately after respawn?** The invulnerability check must test `death_timer` before the ship collision loop. `BNE` must branch to `skip_ship_collision`, not back into the loop.
+- **Border red on restart?** `init_game` must clear `$D020` to zero. Check `STA $D020` appears in the reset section.
+- **Flash too short or too long?** The timer starts at 16 (about 0.3 seconds at PAL). Increase for longer invulnerability, decrease for shorter.
 
-## Try This: More Stars
+## Try This: Flash the Border Rapidly
 
-Add four more stars to each layer — 16 total. Extend the tables to 16 entries, change `CPX #$08` to `CPX #$10`, and split the speed boundary at index 8 instead of 4. More stars, more atmosphere.
+Instead of solid red for 16 frames, alternate between red and black. Test bit 0 of `death_timer`: `LDA death_timer` / `AND #$01` / `BEQ` to choose red or black. The border strobes — more urgent, more dramatic.
 
-## Try This: Three Depth Layers
+## Try This: Change Ship Colour During Flash
 
-Add a third speed: stars that move every fourth frame (`AND #$03`). Use a medium grey (`$0C`) and a different character. Three layers of parallax sells the depth even more convincingly.
+Set the ship sprite colour to red (`$D027 = $02`) when the timer starts. Restore it to white when the timer expires. Visual feedback on the ship itself, not just the border.
 
 ## What You've Learnt
 
-- **Indirect indexed addressing** — `STA ($fb),Y` writes to a calculated 16-bit address. The pointer lives in zero page, the offset in Y.
-- **Row address lookup tables** — pre-calculated addresses turn a row number into a screen position without runtime multiplication.
-- **Colour RAM** — `$D800` mirrors `$0400`, one colour byte per character. Adding `$D4` to the screen address high byte reaches the colour RAM equivalent.
-- **Parallax scrolling** — two speed layers from one frame counter. Close objects move faster, distant objects slower, and the screen gains depth.
+- **`$D020` for visual feedback** — the border colour register is the simplest whole-screen effect.
+- **Frame-counting timers** — decrement each frame, act when zero. The same pattern used for enemy flash timers.
+- **Invulnerability windows** — one branch instruction skips an entire collision loop, protecting the player during recovery.
 
 ## What's Next
 
-The game launches straight into action — no introduction, no title. In Unit 15, a title screen greets the player, and the state machine grows to handle three states: title, playing, and game over.
+Black space is empty space. In Unit 14, characters written to screen RAM become a scrolling starfield — the game gets its name, and the background finally has depth.

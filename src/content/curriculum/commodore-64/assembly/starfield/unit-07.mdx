@@ -1,89 +1,125 @@
 ---
-title: "Explosion"
-description: "The SID chip fires a noise burst on voice 2 while the enemy flashes white — eight frames of audio-visual feedback before the respawn."
+title: "Direct Hit"
+description: "Make the bullet and enemy notice each other — software collision by comparing coordinates on both axes, with the unsigned-distance trick and a ninth-bit guard."
 pubDate: 2026-02-06
 game: 1
 unit: 7
-tags: ["assembly", "6510", "SID", "sound", "explosion", "sprites"]
+tags: ["assembly", "6510", "collision", "sprites", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-The enemy doesn't just vanish — it flashes white and the SID fires a burst of noise. Eight frames of feedback, then the enemy respawns. Every hit feels like it matters.
+The enemy drifts down, your bullet flies up, and they pass straight through each other as if neither existed. They don't yet share any code that says "are you touching?" This unit adds that question — collision detection — and the answer makes the first real interaction in the game: a shot that meets the enemy destroys it.
 
-## Two Voices
+## Where we start
 
-The SID has three independent voices. Voice 1 handles the laser sound from Unit 4. Voice 2 now handles explosions. Each voice has its own frequency registers, ADSR envelope, and waveform selector — they play simultaneously without interfering.
+Unit 6's enemy comes at you and respawns forever; Unit 5's bullet fires and climbs. Neither knows the other is there.
 
-Voice 2's registers sit seven bytes above voice 1:
+![The white ship at the bottom and the green enemy partway down the screen, in different columns — a bullet fired now would pass the enemy without effect.](/images/commodore-64/assembly/starfield/unit-07/before.png)
 
-| Register | Purpose |
-|----------|---------|
-| `$D407` | Frequency low byte |
-| `$D408` | Frequency high byte |
-| `$D40B` | Control register (waveform + gate) |
-| `$D40C` | Attack / Decay |
-| `$D40D` | Sustain / Release |
+The VIC-II *does* have hardware collision registers (`$d01e`, `$d01f`), but they're awkward for game logic: they report which sprites overlapped, not by how much, and they latch until you read them. Comparing coordinates ourselves is more predictable and teaches the idea cleanly. Each frame, if a bullet is flying, we ask: is it close enough to the enemy to count as a hit?
 
-The control register at `$D40B` works the same way as voice 1's `$D404`. Bit 0 is the gate (on/off). Bits 4–7 select the waveform. For explosions, we want **noise** — bit 7. So `$80` means noise with gate off, and `$81` means noise with gate on.
+## Milestone 1 — same row
 
-## The Hit Response
+"Close" is a distance, and distance is a subtraction: `bullet_y − enemy_y`. But these are unsigned bytes, and subtraction wraps — which is the one trick this whole unit turns on. When the bullet is just *below* the enemy the result is a small positive number; when it's just *above*, the result wraps round near 255. **Both** mean close — from opposite sides:
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-07/snippets/01-explosion-sound.asm" />
+| Situation | `bullet_y − enemy_y` | Reading |
+|-----------|----------------------|---------|
+| bullet 10 below the enemy | `10` | `0`–`15` → close |
+| bullet 5 above the enemy | `251` | wraps high, `240`–`255` → close |
+| bullet 50 below the enemy | `50` | `16`–`239` → too far |
 
-Three things happen when a bullet hits the enemy.
+So two compares carve out the two "close" bands: under `$10` (0–15), or `$f0` and over (240–255). Anything between is too far apart. For this first step we check *only* Y — are they on the same row? — and on a match we remove the bullet and respawn the enemy:
 
-**Deactivate the bullet.** Same as Unit 6 — clear `bullet_active` and disable sprite 1.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-07/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-07/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: a hit is any bullet on the enemy's row"
+  context={3}
+/>
 
-**Flash the enemy white.** Write `$01` (white) to `$D029`, the sprite 2 colour register. Then set `flash_timer` to 8 — the enemy will stay white for 8 frames.
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-07/steps/step-01.asm" />
+</details>
 
-**Trigger the explosion sound.** Voice 2 gets a low frequency (`$0800`) for a bass rumble. The ADSR has zero attack and a moderate decay (`$09`) — the sound starts loud and fades quickly. The noise waveform is selected by setting bit 7 of `$D40B`. We write `$80` first (gate off) to reset the envelope, then `$81` (gate on) to trigger it — the same off-then-on pattern we used for the laser in Unit 4.
+A guard comes first: if `bullet_active` is zero there's nothing to test, so we skip the whole block — no wasted work, no false hits from a stale position. Run it and the flaw is obvious. Fire straight up the middle and the enemy dies even though the bullet is nowhere near it horizontally:
 
-No respawn happens here. The enemy freezes in place during the flash.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-07/step-01-yonly.mp4"
+  caption="Y-only is too eager: the bullet rises up the centre while the enemy sits well to the left — yet the enemy vanishes the instant the bullet reaches its row, then respawns."
+  autoplay={true}
+  loop={true}
+/>
 
-## Timing the Flash
+Checking one axis answers "same height?" — not "same place?". A row is the whole width of the screen.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-07/snippets/02-flash-timer.asm" />
+## Milestone 2 — same column too
 
-The enemy update section now checks `flash_timer` before doing anything else. If it's zero, the enemy moves normally — same code as Unit 6. If it's non-zero, the enemy is frozen mid-explosion.
+A real hit needs both: same row **and** same column. We add the identical distance test on X, reading the bullet's sprite-X register `$d002` against `enemy_x`.
 
-Each frame, `flash_timer` decrements by one. While it's still positive, we skip straight to the end of the loop — no movement, no off-screen check. The enemy just sits there, white.
+One wrinkle the bullet picked up in Unit 4: it can carry a ninth X bit. The enemy always sits under X=176, so a bullet whose ninth bit is set is past X=255 — a screen-width away, never a real hit. If we compared low bytes alone, such a shot could *falsely* match an enemy on the left. So before the X compare we rule it out: ninth bit set on the bullet means no hit.
 
-When the timer reaches zero, we restore the colour to green (`$05`) and respawn the enemy at the top with a new random X position. Then normal movement resumes.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-07/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-07/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: require the column to match, ninth-bit-aware"
+  context={3}
+/>
 
-This **frame counter** pattern — set a value, decrement each frame, act when it reaches zero — is one you'll use constantly. Invulnerability windows, animation timers, delayed events. It's the simplest form of game timing.
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-07/steps/step-02.asm" />
+</details>
 
-## The Complete Code
+Now the centred shot — same one that killed before — sails right past the enemy in its own column:
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-07/starfield.asm" />
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-07/step-02-miss.mp4"
+  caption="With the column check in place, the centred shot passes the enemy's row harmlessly — different column, no hit. The enemy drifts on."
+  autoplay={true}
+  loop={true}
+/>
 
-## If It Doesn't Work
+Line the ship up under the enemy first, and the same fire button finally connects:
 
-- **No explosion sound?** Check `$D418` volume is `$0F` (set during init) and that voice 2's gate is toggled — `$80` then `$81` written to `$D40B`. If you only write `$81`, the envelope may not retrigger.
-- **Flash doesn't show?** Make sure `$D029` is set to `$01` in the hit block and restored to `$05` when the timer expires.
-- **Enemy keeps moving during flash?** The `flash_timer` check must come *before* the normal movement code. If you put it after, the enemy moves for one frame before freezing.
-- **Sound plays but wrong?** Make sure you're writing to `$D407`–`$D40D` (voice 2), not `$D400`–`$D406` (voice 1). Easy mistake — the registers look identical, just offset by 7.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-07/step-02-hit.mp4"
+  caption="Same row, same column: a real hit. The bullet rises into the enemy, which is destroyed and respawns at the top."
+  autoplay={true}
+  loop={true}
+/>
 
-## Try This: Different Explosion Sounds
+## When it's wrong, see why
 
-Change voice 2's frequency and envelope to hear different effects:
+Collision bugs are quiet — nothing crashes, the hit just lands wrong. Read the positions and the flags:
 
-- **`$D408` = `$02`** — Very low. Subterranean rumble.
-- **`$D408` = `$18`** — Higher. More of a crackle.
-- **`$D40C` = `$0F`** — Longer decay. The explosion lingers.
-- **`$D40C` = `$03`** — Short decay. A sharp pop.
+- **Bullet passes through a dead-centre shot.** A threshold or an axis is off. `$10` is 16 pixels, about the sprite's width; widen it to `$14` if your sprites sit a little apart. And confirm *both* compares run — a missing X test reverts you to Milestone 1's behaviour.
+- **The enemy dies wherever you fire.** The X check isn't gating the hit — the Y match is reaching `hit_enemy` on its own. The Y-close branch must fall into the X test, not straight into the hit.
+- **Phantom kills when firing from the right.** The ninth-bit guard. Read `$d010`: if the bullet's bit (bit 1) is set, its real X is 256-plus and it can't touch a left-side enemy — that shot must score no hit.
+- **Hit registers but the enemy doesn't reappear.** The respawn lives inside `hit_enemy`; if `no_hit` sits above it, the reset is skipped. Walk `enemy_y` — it should snap back to `$32` on a hit.
 
-## Try This: Longer Flash
+## Before and after
 
-Change `flash_timer` from 8 to 16. Or try 4 for a quick blink. At 50 fps (PAL), 8 frames is about 160ms — just long enough to notice.
+We started with a bullet and an enemy that ignored each other, and finished with a shot that destroys the enemy when — and only when — it genuinely overlaps it on both axes. The geometry is all that's here: no sound, no score, no flash. Just two objects finding each other in screen space.
 
-## What You've Learnt
+## Try this
 
-- **SID voice 2** — an independent sound channel with its own registers, offset 7 bytes from voice 1.
-- **Noise waveform** — bit 7 of the control register. Good for explosions, static, percussion.
-- **Frame counter** — set a value, decrement each frame, act when it reaches zero. The simplest game timer.
-- **Timed visual effects** — temporary colour change with a countdown, frozen movement during the effect.
+- **Resize the hit box.** `cmp #$10` sets a 16-pixel reach on each axis, and you can tune them apart. `#$08` demands precise aim; `#$18` is forgiving. A tall, narrow box rewards lining up the column; a short, wide one rewards timing the row. The feel is yours to set.
+- **Count the kills.** Add `hit_count = $08` to the zero-page list (the bytes up to `$07` are taken), and `inc hit_count` inside `hit_enemy`. You can't show it on screen yet — that's the scoring unit — but you can watch address `$08` climb in a monitor. It's a preview of where this is heading.
 
-## What's Next
+## What you've learnt
 
-The enemy explodes but there's no record of the carnage. In Unit 8, screen RAM gives you a score display — proof of every hit.
+- **Software collision** — comparing coordinates directly, rather than leaning on the VIC-II's latch-and-overlap registers.
+- **Unsigned distance** — one subtraction, where both `0`–`15` and `240`–`255` mean "close," because the byte wraps.
+- **Two axes, both required** — a row match alone hits the whole screen width; the column check is what makes it a real overlap.
+- **A ninth-bit guard** — a bullet past X=255 can't touch a left-side enemy, so rule it out before comparing low bytes.
+- **The guard clause** — skip the whole test when no bullet is flying.
+
+## What's next
+
+The enemy blinks out of existence with no fanfare at all. Next you'll sell the hit — a white flash on the enemy and an explosion from the SID, the difference between "it worked" and "it felt good."

@@ -1,57 +1,61 @@
 ---
-title: "Title Screen"
-description: "The game starts with a title screen. The state machine grows from two states to three — title, playing, and game over — with stars scrolling behind everything."
+title: "Starfield"
+description: "Characters written to screen RAM become a scrolling starfield. Colour RAM adds depth, and two speed layers create a parallax illusion — the game gets its name."
 pubDate: 2026-02-06
 game: 1
 unit: 15
-tags: ["assembly", "6510", "state machine", "title screen", "screen RAM", "game states"]
+tags: ["assembly", "6510", "screen RAM", "colour RAM", "indirect addressing", "parallax", "starfield"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-The game launches straight into action — no introduction, no context. This unit adds a title screen that greets the player before the first enemy appears. The state machine that already handles playing and game over gains a third state: title.
+Black space is empty space. This unit fills it with stars — the game finally earns its name. No new sprites, no new hardware. Just characters written to screen RAM, coloured for depth, and scrolled at two different speeds.
 
-## A Third State
+## Characters as Stars
 
-Until now, `game_state` held two values: 0 for playing, 1 for game over. A third state means renumbering:
+Every position on the C64 screen holds a character code. Writing `$2A` (an asterisk) to screen RAM puts a small dot on screen. Writing `$2E` (a period) puts an even smaller one. Eight of these, scattered across the display, and the background has stars.
+
+Two tables track each star's position — `star_row` (0 to 24) and `star_col` (0 to 39). Eight stars total: four close, four distant.
+
+## A New Addressing Mode
+
+Stars need to be written to specific screen RAM addresses. Row 0 starts at `$0400`, row 1 at `$0428`, row 12 at `$05E0`. The address depends on the row, and it spans more than 8 bits — `LDA table,X` can't reach it.
+
+The 6502 has an addressing mode for exactly this: **indirect indexed**. Store a 16-bit address in two zero-page bytes (`$fb` and `$fc`), then use `STA ($fb),Y` to write at that address plus Y. The column goes in Y, the row address goes in the pointer.
+
+Where does the row address come from? A lookup table. Twenty-five entries — one per row — pre-calculated at assembly time:
 
 ```
-; game_state: 0 = title, 1 = playing, 2 = game over
+row_addr_lo:  !byte $00, $28, $50, $78, ...
+row_addr_hi:  !byte $04, $04, $04, $04, ...
 ```
 
-Title is state 0 because it's the starting state — no initialisation needed to reach it. The game boots into title, transitions to playing when fire is pressed, shifts to game over on the last death, and returns to title when fire is pressed again. A cycle with three stops.
+Load the row number into Y, look up both bytes, store them in `$fb`/`$fc`. Now `STA ($fb),Y` with the column in Y writes to exactly the right screen position.
 
-## State Dispatch
+<CodeFromFile src="commodore-64/assembly/starfield/unit-15/snippets/01-star-init.asm" />
 
-The game loop checks `game_state` and branches to the right handler. `BEQ` catches state 0 (title). `CMP #$02` / `BEQ` catches state 2 (game over). Everything else falls through to gameplay via `JMP game_active`.
+The `draw_star` subroutine builds the screen address from the row lookup, then writes the character. To set the colour, it adds `$D4` to the high byte of the pointer — screen RAM at `$0400` becomes colour RAM at `$D800`. Same column, same `STA ($fb),Y`, different target.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-15/snippets/02-three-states.asm" />
+## Colour for Depth
 
-Each non-playing state polls the fire button. When pressed, it clears the screen and calls the appropriate init routine — `init_game` to start playing, `init_title` to return to the title. The `state_done` label is a shared exit point: one `JMP game_loop` that both states branch to when fire isn't pressed.
+Colour RAM at `$D800` mirrors screen RAM — every character position has a corresponding colour byte. Close stars get white (`$01`), distant stars get dark grey (`$0B`). Two lookup tables hold the character and colour for each star:
 
-## The Title Screen
+```
+star_char_tbl:    !byte $2a, $2a, $2a, $2a, $2e, $2e, $2e, $2e
+star_colour_tbl:  !byte $01, $01, $01, $01, $0b, $0b, $0b, $0b
+```
 
-`show_title` writes two lines of text to screen RAM using screen codes — the same technique as `show_game_over`, just more characters. "STARFIELD" in white at row 10. "PRESS FIRE" in light grey at row 14.
+Stars 0 to 3 are bright asterisks. Stars 4 to 7 are dim periods. Same drawing code, different data.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-15/snippets/01-title-screen.asm" />
+## Parallax: Two Speed Layers
 
-Screen codes map letters starting from 1: A=`$01`, B=`$02`, through to Z=`$1A`. The address calculation is the same as before: row number times 40, plus the column, plus `$0400`. Colour RAM mirrors the position with a base of `$D800`.
+Close stars scroll down every frame. Distant stars scroll every other frame — half the speed. A frame counter and one `AND` instruction decide:
 
-## Stars Behind Everything
+<CodeFromFile src="commodore-64/assembly/starfield/unit-15/snippets/02-star-scroll.asm" />
 
-Stars now update in every state — not just during gameplay. The star loop runs before the state dispatch, so the starfield scrolls behind the title text, behind the game, and behind the game over message.
+`CPX #$04` / `BCC move_star` sends close stars (indices 0 to 3) straight to the movement code. Distant stars check `frame_count AND #$01` — on even frames, `BEQ skip_move` skips the increment. The result: close stars drift steadily, distant stars lag behind, and the brain reads this as depth.
 
-When a star drifts across a title character, it briefly overwrites it. The fix is simple: `show_title` redraws the text every frame during title state. Any star damage is repaired before the frame is drawn. The same approach applies to `show_game_over` during the game over state.
-
-## Init Routines
-
-Two init routines handle the two entry points:
-
-**`init_title`** sets up the title screen — disables all sprites, draws the stars, shows the title text, and sets `game_state` to 0.
-
-**`init_game`** sets up gameplay — positions the ship, spawns enemies, enables sprites, resets the score and lives, draws the stars, and sets `game_state` to 1.
-
-Both call a shared `init_stars` subroutine that resets star positions and draws them. One piece of star setup code, two callers.
+Each star erases its old position (writes a space), moves down one row, wraps from row 24 back to row 0, then redraws at the new position.
 
 ## The Complete Code
 
@@ -59,28 +63,28 @@ Both call a shared `init_stars` subroutine that resets star positions and draws 
 
 ## If It Doesn't Work
 
-- **No title screen?** Check the boot sequence calls `init_title`, not `init_game`. The game should start in state 0.
-- **Title text doesn't appear?** Check `show_title` writes to `$05A0` (row 10, col 16) and `$063F` (row 14, col 15). Check colour RAM writes use `$D9A0` and `$DA3F`.
-- **Fire button doesn't start the game?** The title state handler must check bit 4 of `$DC00` and call `init_game` on press. Check `game_state` is set to 1 inside `init_game`.
-- **Game over doesn't return to title?** The game over handler must call `init_title`, not `init_game`. Check `game_state` is set to 2 (not 1) in `ship_hit`.
-- **Stars freeze on title screen?** The star update loop must run before the state dispatch, not inside `game_active`.
-- **Title text flickers?** `show_title` must be called every frame in `title_state` to repair star overwrites. Check `JSR show_title` appears before the fire button check.
+- **No stars visible?** Check `init_game` calls `draw_star` for all 8 stars. Check the row address lookup tables have exactly 25 entries each.
+- **Stars appear but don't move?** The star update loop must be inside `game_active`. Check `INX` / `CPX #$08` / `BNE star_loop`.
+- **All stars move at the same speed?** The parallax check must test `CPX #$04` before the frame counter test. Stars 0 to 3 should always move.
+- **Stars leave trails?** `erase_star` must write `$20` (space) to the old position before the star moves. Check it uses the correct row/column.
+- **Garbled characters instead of stars?** Check `star_char_tbl` uses `$2A` (asterisk) and `$2E` (period). Screen codes, not PETSCII.
+- **Stars overwrite score or lives?** Star columns must not be 0, 1, or 39. Check `star_init_col` values.
 
-## Try This: Colour Cycling on the Title
+## Try This: More Stars
 
-Change the title text colour each frame. Use `frame_count AND #$07` to cycle through 8 colours. Write the result to the colour RAM positions for "STARFIELD". The title pulses with colour while the stars drift behind it.
+Add four more stars to each layer — 16 total. Extend the tables to 16 entries, change `CPX #$08` to `CPX #$10`, and split the speed boundary at index 8 instead of 4. More stars, more atmosphere.
 
-## Try This: Hide Score and Lives on Title
+## Try This: Three Depth Layers
 
-The score and lives display from the previous game lingers on the title screen. Clear them in `init_title` by writing spaces to `$0400`-`$0401` and `$0427`. The title screen shows only the title and stars.
+Add a third speed: stars that move every fourth frame (`AND #$03`). Use a medium grey (`$0C`) and a different character. Three layers of parallax sells the depth even more convincingly.
 
 ## What You've Learnt
 
-- **Three-state machines** — `CMP` and `BEQ` to dispatch between title, playing, and game over.
-- **State transitions** — each state handles its own exit condition and calls the right init routine.
-- **Screen RAM text** — writing characters and colours to fixed positions for UI elements.
-- **Shared subroutines** — `init_stars` called from both `init_title` and `init_game`.
+- **Indirect indexed addressing** — `STA ($fb),Y` writes to a calculated 16-bit address. The pointer lives in zero page, the offset in Y.
+- **Row address lookup tables** — pre-calculated addresses turn a row number into a screen position without runtime multiplication.
+- **Colour RAM** — `$D800` mirrors `$0400`, one colour byte per character. Adding `$D4` to the screen address high byte reaches the colour RAM equivalent.
+- **Parallax scrolling** — two speed layers from one frame counter. Close objects move faster, distant objects slower, and the screen gains depth.
 
 ## What's Next
 
-The ship can only move across half the screen — sprite X positions are 8-bit, but the C64 screen is 320 pixels wide. In Unit 16, the `$D010` register unlocks the ninth bit, and boundary clamping keeps everything on screen.
+The game launches straight into action — no introduction, no title. In Unit 15, a title screen greets the player, and the state machine grows to handle three states: title, playing, and game over.

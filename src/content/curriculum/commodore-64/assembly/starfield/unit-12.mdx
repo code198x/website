@@ -1,43 +1,52 @@
 ---
-title: "Three Lives"
-description: "A lives counter at the top-right gives the player three chances. DEC decrements the count, and game over waits until the last life is spent."
+title: "Game Over"
+description: "Screen codes write GAME OVER to the display, fire button restarts via an init_game subroutine that resets all state cleanly."
 pubDate: 2026-02-06
 game: 1
 unit: 12
-tags: ["assembly", "6510", "lives", "DEC", "game state", "HUD"]
+tags: ["assembly", "6510", "screen codes", "game state", "subroutines", "restart"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-One hit, game over. That's harsh. This unit gives the player three lives. Each death costs one — the game only ends when the last life is spent.
+The ship turns red and the game freezes. But there's no message and no way to try again. This unit adds "GAME OVER" text to the screen and lets the player restart by pressing fire.
 
-## Tracking Lives
+## Screen Codes
 
-A new zero-page variable:
+The VIC-II reads character data from screen RAM at `$0400`. Each byte is a screen code — a number that maps to a character in the ROM character set. Screen codes are not the same as PETSCII (the C64's text encoding). The mapping for letters: A=1, B=2, C=3, ... Z=26. Digits stay at `$30`–`$39`. Space is `$20`.
 
-```
-lives = $12     ; Lives remaining (starts at 3)
-```
+To display "GAME OVER":
+- G = `$07`, A = `$01`, M = `$0D`, E = `$05`
+- Space = `$20`
+- O = `$0F`, V = `$16`, E = `$05`, R = `$12`
 
-`init_game` sets it to 3. The value is a plain byte — not BCD, not packed. One variable, one digit, values 0 to 3. Simple.
+## Positioning Text on Screen
 
-## The Lives Display
+Screen RAM is a 40×25 grid. Row 0 starts at `$0400`, row 1 at `$0400` + 40 = `$0428`, and so on. The formula: `$0400` + (row × 40) + column.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-12/snippets/02-lives-display.asm" />
+"GAME OVER" is 9 characters. Centred on a 40-column screen: column 16 (since (40 − 9) ÷ 2 ≈ 15.5). Row 12 puts it vertically centred. That gives `$0400` + (12 × 40) + 16 = `$05F0`.
 
-The lives count appears at column 39, row 0 — the top-right corner. Screen RAM address: `$0400` + 39 = `$0427`. Colour RAM: `$D827`, set to white in the one-time setup (it never changes, even across restarts).
+Colour RAM mirrors the layout at `$D800`. The colour for position `$05F0` is at `$D9F0`. Write `$01` (white) to make the text visible against the black background.
 
-Converting the count to a screen code: add `$30`. Lives = 3 becomes screen code `$33`, which displays as '3'. The same trick as the score digits — all single-digit values map to `$30`–`$39`.
+## The Game Over Display
 
-## Death Without Game Over
+<CodeFromFile src="commodore-64/assembly/starfield/unit-12/snippets/01-game-over-text.asm" />
 
-When an enemy hits the ship, `DEC lives` subtracts one. Then the code branches: if lives is zero, game over. If lives is non-zero, the ship resets to its starting position and the game continues.
+Nine `LDA`/`STA` pairs write the characters, then nine more set the colours. It's direct and clear. A loop with a data table would be shorter, but for nine characters the explicit writes are easier to follow — and every character's screen code is visible in the source.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-12/snippets/01-lives-counter.asm" />
+## Press Fire to Restart
 
-`DEC` is the zero-page decrement instruction — it subtracts 1 from the byte in memory and sets the zero flag if the result is 0. The `BNE life_lost` branch tests that flag: non-zero means lives remain, zero means the last life is gone.
+The game loop already checks `game_state` at the top. In Unit 10, when `game_state` was 1, the loop just jumped back — frozen. Now it does something: poll the fire button. When pressed, clear the screen and reinitialise.
 
-Both paths play the death sound. The game over path also turns the ship red and displays "GAME OVER". The life lost path just moves the ship back to its starting position — the enemies keep descending, the score stays, and the game continues immediately.
+<CodeFromFile src="commodore-64/assembly/starfield/unit-12/snippets/02-restart.asm" />
+
+`clear_screen` fills screen RAM with spaces, wiping the "GAME OVER" text and the old score display. `init_game` resets everything — ship position, enemy positions, score, game state. Then the loop continues from the top with `game_state` back at 0.
+
+## Extracting Initialisation
+
+The init code from Unit 10 was inline — it ran once at startup and couldn't be reused. Now it's a subroutine: `init_game`. The boot sequence calls `JSR clear_screen` then `JSR init_game`. The restart path calls the same two subroutines. Same code, two contexts.
+
+Hardware setup that never changes (sprite data pointers, SID voice configuration, score colour) stays outside `init_game` in the one-time boot section. Only state that resets between games belongs in the subroutine: ship position, enemy positions, score, bullet state, and `game_state` itself.
 
 ## The Complete Code
 
@@ -45,26 +54,28 @@ Both paths play the death sound. The game over path also turns the ship red and 
 
 ## If It Doesn't Work
 
-- **Lives display doesn't appear?** Check `$0427` is written in `init_game` and `$D827` is set to white in the one-time setup.
-- **Lives never decrement?** `DEC lives` must be in the `ship_hit` section. Check the ship-enemy collision loop still works.
-- **Game over on first hit?** `init_game` must set `lives` to 3. If it starts at 0, `DEC` wraps to 255 — you'll never reach zero again.
-- **Display shows wrong digit?** Make sure you add `$30` to convert the count to a screen code. Lives = 2 should write `$32`, not `$02`.
-- **Ship doesn't reset after hit?** The `life_lost` path must write 172 to `$D000` and 220 to `$D001`.
+- **No text appears?** Check the screen code values — G is `$07`, not `$47`. Screen codes differ from PETSCII. Also check colour RAM writes at `$D9F0`+.
+- **Text in the wrong position?** Row 12, column 16 = offset 496 = `$01F0`. The address is `$05F0`, not `$04F0`.
+- **Fire doesn't restart?** The game over state must poll `$DC00` bit 4. Check the `AND #%00010000` and `BNE` back to `game_loop`.
+- **Score persists after restart?** `init_game` must write `$30` to both `$0400` and `$0401`, and set `score` to 0.
+- **Enemies don't reset?** `init_game` must call `spawn_enemy` for all three enemies with staggered Y values.
+- **"GAME OVER" still visible after restart?** `clear_screen` must run before `init_game`. The screen clear wipes the text; `init_game` then writes the fresh "00" score.
 
-## Try This: Extra Life at Score Threshold
+## Try This: Coloured Text
 
-After the BCD score increment, compare the score to `$10` (BCD for 10). If it matches and lives is less than 3, increment lives. One `CMP`, one `BNE`, one `INC`. Reward the player for accuracy.
+Write different colour values for each letter. Red for "GAME", white for the space, green for "OVER". Nine colour bytes — nine chances to experiment.
 
-## Try This: Display Lives as Sprites
+## Try This: Flash the Text
 
-Instead of a digit, show small ship icons. Three sprites along the top — or simpler, write ship-shaped characters to screen RAM. More visual, same data.
+Toggle the colour between white and another colour every 8 frames. Read a frame counter, `AND #$08`, and branch to set either colour. The text blinks, demanding attention.
 
 ## What You've Learnt
 
-- **`DEC` for counters** — decrement a zero-page byte, zero flag set when it reaches 0.
-- **Conditional state transition** — game over only when lives reach zero, not on every death.
-- **Display update** — keeping screen RAM in sync with the game state after every change.
+- **Screen codes** — the VIC-II's character mapping (A=1, B=2, not the same as PETSCII).
+- **Calculated screen positions** — row × 40 + column + `$0400` for any cell on the 40×25 grid.
+- **Subroutine extraction** — `init_game` and `clear_screen` called from both boot and restart.
+- **Game state with restart** — polling fire during game over, resetting all state cleanly.
 
 ## What's Next
 
-Death is instant and silent — the ship just resets. In Unit 13, the border flashes red, a mournful tone plays, and a brief invulnerability timer prevents the ship from dying twice in a row.
+One death ends the game. In Unit 12, the player gets three lives — each death costs one, and game over waits until the last life is spent.

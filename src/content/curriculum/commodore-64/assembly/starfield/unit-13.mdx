@@ -1,45 +1,43 @@
 ---
-title: "Life Lost Flash"
-description: "The border flashes red when the player loses a life. A death timer counts down frames of invulnerability, preventing instant re-death while the screen recovers."
+title: "Three Lives"
+description: "A lives counter at the top-right gives the player three chances. DEC decrements the count, and game over waits until the last life is spent."
 pubDate: 2026-02-06
 game: 1
 unit: 13
-tags: ["assembly", "6510", "border colour", "death timer", "invulnerability", "$D020"]
+tags: ["assembly", "6510", "lives", "DEC", "game state", "HUD"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-Losing a life should feel like something happened. Right now the ship just teleports back to its starting position — no flash, no pause, no feedback. This unit adds a red border flash that lasts 16 frames, and while the border is red, the ship can't be hit again.
+One hit, game over. That's harsh. This unit gives the player three lives. Each death costs one — the game only ends when the last life is spent.
 
-## The Death Timer
+## Tracking Lives
 
 A new zero-page variable:
 
 ```
-death_timer = $13   ; Death flash countdown (0 = no flash)
+lives = $12     ; Lives remaining (starts at 3)
 ```
 
-When the player loses a life (but the game isn't over), `death_timer` is set to 16. Each frame, the game loop decrements it. When it reaches zero, the border returns to black. Same pattern as `flash_tbl` for enemy explosions — a countdown that drives a visual effect.
+`init_game` sets it to 3. The value is a plain byte — not BCD, not packed. One variable, one digit, values 0 to 3. Simple.
 
-## The Border as Feedback
+## The Lives Display
 
-The VIC-II border colour register at `$D020` controls the entire border area surrounding the screen. One store to `$D020` and the whole frame changes colour — the most dramatic single-byte visual effect on the C64.
+<CodeFromFile src="commodore-64/assembly/starfield/unit-13/snippets/02-lives-display.asm" />
 
-On death: `LDA #$02` / `STA $D020` turns the border red. When the timer expires: `LDA #$00` / `STA $D020` restores it to black. The flash is visible for exactly 16 frames — about a third of a second at PAL timing.
+The lives count appears at column 39, row 0 — the top-right corner. Screen RAM address: `$0400` + 39 = `$0427`. Colour RAM: `$D827`, set to white in the one-time setup (it never changes, even across restarts).
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-13/snippets/01-death-flash.asm" />
+Converting the count to a screen code: add `$30`. Lives = 3 becomes screen code `$33`, which displays as '3'. The same trick as the score digits — all single-digit values map to `$30`–`$39`.
 
-The timer check runs every frame, right at the start of the game logic. `BEQ` skips the entire block when the timer is zero — three instructions of overhead during normal play. When the timer is running, `DEC` subtracts one and `BNE` skips the border restore unless the timer just hit zero.
+## Death Without Game Over
 
-## Invulnerability During Flash
+When an enemy hits the ship, `DEC lives` subtracts one. Then the code branches: if lives is zero, game over. If lives is non-zero, the ship resets to its starting position and the game continues.
 
-Without protection, the ship would die again immediately — the enemy that killed it is still right there. The death timer doubles as an invulnerability window. Before checking ship-enemy collisions, one test decides whether to skip the entire collision loop.
+<CodeFromFile src="commodore-64/assembly/starfield/unit-13/snippets/01-lives-counter.asm" />
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-13/snippets/02-invulnerability.asm" />
+`DEC` is the zero-page decrement instruction — it subtracts 1 from the byte in memory and sets the zero flag if the result is 0. The `BNE life_lost` branch tests that flag: non-zero means lives remain, zero means the last life is gone.
 
-`LDA death_timer` / `BNE skip_ship_collision` — if the timer is running, branch past the entire collision loop to `JMP game_loop`. The ship still moves, bullets still fire, enemies still descend. Only the collision check is disabled.
-
-The label `skip_ship_collision` sits right after the loop's natural end. When the loop finishes without finding a hit, it falls through to the same `JMP game_loop`. One label, two paths to it.
+Both paths play the death sound. The game over path also turns the ship red and displays "GAME OVER". The life lost path just moves the ship back to its starting position — the enemies keep descending, the score stays, and the game continues immediately.
 
 ## The Complete Code
 
@@ -47,26 +45,26 @@ The label `skip_ship_collision` sits right after the loop's natural end. When th
 
 ## If It Doesn't Work
 
-- **Border never flashes?** Check `life_lost` stores `$02` to `$D020` and sets `death_timer` to 16.
-- **Border stays red forever?** The timer decrement must run every frame. Check the `death_timer` section appears after `game_active` and before the joystick code.
-- **Ship dies immediately after respawn?** The invulnerability check must test `death_timer` before the ship collision loop. `BNE` must branch to `skip_ship_collision`, not back into the loop.
-- **Border red on restart?** `init_game` must clear `$D020` to zero. Check `STA $D020` appears in the reset section.
-- **Flash too short or too long?** The timer starts at 16 (about 0.3 seconds at PAL). Increase for longer invulnerability, decrease for shorter.
+- **Lives display doesn't appear?** Check `$0427` is written in `init_game` and `$D827` is set to white in the one-time setup.
+- **Lives never decrement?** `DEC lives` must be in the `ship_hit` section. Check the ship-enemy collision loop still works.
+- **Game over on first hit?** `init_game` must set `lives` to 3. If it starts at 0, `DEC` wraps to 255 — you'll never reach zero again.
+- **Display shows wrong digit?** Make sure you add `$30` to convert the count to a screen code. Lives = 2 should write `$32`, not `$02`.
+- **Ship doesn't reset after hit?** The `life_lost` path must write 172 to `$D000` and 220 to `$D001`.
 
-## Try This: Flash the Border Rapidly
+## Try This: Extra Life at Score Threshold
 
-Instead of solid red for 16 frames, alternate between red and black. Test bit 0 of `death_timer`: `LDA death_timer` / `AND #$01` / `BEQ` to choose red or black. The border strobes — more urgent, more dramatic.
+After the BCD score increment, compare the score to `$10` (BCD for 10). If it matches and lives is less than 3, increment lives. One `CMP`, one `BNE`, one `INC`. Reward the player for accuracy.
 
-## Try This: Change Ship Colour During Flash
+## Try This: Display Lives as Sprites
 
-Set the ship sprite colour to red (`$D027 = $02`) when the timer starts. Restore it to white when the timer expires. Visual feedback on the ship itself, not just the border.
+Instead of a digit, show small ship icons. Three sprites along the top — or simpler, write ship-shaped characters to screen RAM. More visual, same data.
 
 ## What You've Learnt
 
-- **`$D020` for visual feedback** — the border colour register is the simplest whole-screen effect.
-- **Frame-counting timers** — decrement each frame, act when zero. The same pattern used for enemy flash timers.
-- **Invulnerability windows** — one branch instruction skips an entire collision loop, protecting the player during recovery.
+- **`DEC` for counters** — decrement a zero-page byte, zero flag set when it reaches 0.
+- **Conditional state transition** — game over only when lives reach zero, not on every death.
+- **Display update** — keeping screen RAM in sync with the game state after every change.
 
 ## What's Next
 
-Black space is empty space. In Unit 14, characters written to screen RAM become a scrolling starfield — the game gets its name, and the background finally has depth.
+Death is instant and silent — the ship just resets. In Unit 13, the border flashes red, a mournful tone plays, and a brief invulnerability timer prevents the ship from dying twice in a row.

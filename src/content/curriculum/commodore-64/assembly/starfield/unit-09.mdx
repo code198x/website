@@ -1,97 +1,103 @@
 ---
-title: "Enemy Waves"
-description: "Parallel arrays and indexed addressing track three enemies at once, while a spawn_enemy subroutine handles init and respawn with JSR and RTS."
+title: "Scoring Points"
+description: "Write a score to screen RAM — character output and colour RAM for the readout, then BCD arithmetic and nybble extraction to count each hit."
 pubDate: 2026-02-06
 game: 1
 unit: 9
-tags: ["assembly", "6510", "indexed addressing", "data tables", "subroutines", "JSR", "RTS"]
+tags: ["assembly", "6510", "screen-ram", "bcd", "score", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-One enemy drifting down is target practice. Three changes everything — now there's a formation. Data tables hold the positions, indexed addressing processes them in a loop, and subroutines keep the code manageable.
+Hits flash and boom now, but the game forgets them the instant they happen. Destroy ten enemies and the screen looks exactly as it did before the first. This unit gives the player something to play *for*: a score in the corner that ticks up with every kill. Two new ideas carry it — writing characters to the screen, and counting in a way that's trivial to display.
 
-## Data Tables
+## Where we start
 
-Three enemies need three X positions, three Y positions, three flash timers. Parallel arrays in zero page solve this: `enemy_x_tbl`, `enemy_y_tbl`, `flash_tbl`. Index 0 is enemy 0 (sprite 2), index 1 is enemy 1 (sprite 3), index 2 is enemy 2 (sprite 4).
+Unit 8's hit lands with a flash and an explosion, then the enemy respawns. Nothing is recorded.
 
-```
-enemy_x_tbl  = $08     ; 3 bytes: $08, $09, $0A
-enemy_y_tbl  = $0B     ; 3 bytes: $0B, $0C, $0D
-flash_tbl    = $0E     ; 3 bytes: $0E, $0F, $10
-```
+## Milestone 1 — a readout on screen
 
-Each table uses consecutive bytes. The index into one table is the same index into all of them — enemy 1's X is at `enemy_x_tbl + 1`, its Y at `enemy_y_tbl + 1`, its flash timer at `flash_tbl + 1`.
+You've written to screen RAM since Unit 1 — the clear loop fills `$0400` onward with spaces (`$20`). The screen is a 40×25 grid of character cells starting at `$0400`; write a byte, the matching character appears at once. The difference now is that we write a *visible* character instead of a blank.
 
-## Indexed Addressing
+Characters have **screen codes**, and the digits are conveniently in order: `$30` is `'0'`, `$31` is `'1'`, on to `$39` for `'9'`. So a digit 0–9 becomes its character by adding `$30`. Each cell also has a colour, in a parallel grid at `$d800` (same layout — `$d800` colours the cell at `$0400`). We write `"00"` into the first two cells and colour them white:
 
-`LDA enemy_x_tbl,X` reads from `enemy_x_tbl` + X. When X is 0, it reads enemy 0's X position. When X is 1, enemy 1's. When X is 2, enemy 2's. One instruction, three enemies.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-09/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-09/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: a static 00 in the top-left"
+  context={3}
+/>
 
-The X register steps through: `LDX #$00` starts at enemy 0, `INX` moves to the next, `CPX #$03` / `BNE` loops until all three are done.
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-09/steps/step-01.asm" />
+</details>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-09/snippets/01-indexed-addressing.asm" />
+The write happens *after* the clear loop — otherwise the clear would wipe it. The readout sits in the top-left corner, doing nothing yet:
 
-The loop handles three cases. If the flash timer is zero, the enemy moves down one pixel per frame. If it's gone off-screen (Y >= 248), it respawns at the top. If the flash timer is active, it counts down — and when it hits zero, the enemy respawns.
+![A white 00 in the top-left corner of the screen, above the ship and the descending green enemy — the score readout, not yet counting.](/images/commodore-64/assembly/starfield/unit-09/step-01-readout.png)
 
-## The Y Register
+## Milestone 2 — count each hit
 
-X is busy tracking which enemy. For VIC-II register access, we need a second index — the Y register. Lookup tables map enemy index to sprite register offsets.
+We could store the score as an ordinary number and convert it to digits, but the 6502 offers a shortcut built for exactly this: **decimal mode**. `sed` turns it on, `cld` turns it off, and while it's on `adc` carries at 10 instead of 16 — so `$09 + $01` gives `$10`, not `$0a`. This is **BCD** (binary-coded decimal): each nybble (4 bits) holds one decimal digit, so the stored byte already *is* the two digits, no conversion needed.
 
-`sprite_pos_off` holds `[$04, $06, $08]` — the VIC-II offsets for sprites 2, 3, 4. `LDY sprite_pos_off,X` loads the right offset, then `STA $D000,Y` writes to the correct sprite register. Y does for hardware registers what X does for game data.
+| Score byte | High nybble (tens) | Low nybble (ones) | Shows |
+|------------|--------------------|-------------------|-------|
+| `$05` | 0 | 5 | `05` |
+| `$42` | 4 | 2 | `42` |
 
-`sprite_colour_off` works the same way — `[$29, $2A, $2B]` map to the colour registers for sprites 2, 3, 4. When an enemy is hit, `LDY sprite_colour_off,X` followed by `STA $D000,Y` turns that specific enemy white.
+To display it, split the byte into its two nybbles. Four `lsr` shifts slide the high nybble down into the low four bits (the tens); `and #$0f` masks off the high nybble to leave the ones. Add `$30` to each and write them to the two screen cells. We do this in the hit handler, right after the flash and explosion:
 
-## Subroutines: JSR and RTS
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-09/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-09/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: increment in BCD and refresh the digits"
+  context={3}
+/>
 
-The same respawn code is needed in two places — once during init (to set up three enemies at staggered heights) and again at runtime (when an enemy goes off-screen or finishes flashing). Duplicating code is fragile. Change one copy and forget the other, and you've got a bug.
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-09/steps/step-02.asm" />
+</details>
 
-`JSR spawn_enemy` pushes the return address onto the stack and jumps. `RTS` pulls it back and returns to the instruction after the `JSR`. The 6502's stack lives at `$0100`–`$01FF` and manages itself — no setup needed.
+The `cld` immediately after the add matters as much as the `sed` before it: leave decimal mode on and *every* later `adc`/`sbc` in the game — bullet movement, the laser sweep — quietly counts in tens. Now each kill ticks the counter:
 
-`spawn_enemy` takes the starting Y position in A and the enemy index in X. It sets the table values, reads the raster register for a random X position, clears the flash timer, restores the sprite colour to green, and updates the VIC-II registers.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-09/step-02-counting.mp4"
+  caption="Every hit adds one. Across this run five enemies fall and the readout climbs in step — 00, 01, on up to 05 — each a real BCD count poked into screen RAM."
+  autoplay={true}
+  loop={true}
+/>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-09/snippets/02-subroutines.asm" />
+## When it's wrong, see why
 
-At init, the three calls pass different Y positions to stagger the enemies:
+A score bug shows on screen as the wrong glyph or the wrong number — read what's actually in the cell:
 
-```
-        lda #$32            ; Top
-        ldx #$00
-        jsr spawn_enemy
-        lda #$82            ; Middle
-        ldx #$01
-        jsr spawn_enemy
-        lda #$d2            ; Lower
-        ldx #$02
-        jsr spawn_enemy
-```
+- **Nothing in the corner.** The write is landing before the clear, or in the wrong place. The `"00"` must be written *after* the clear loop, to `$0400`/`$0401`.
+- **Letters or symbols instead of digits.** You skipped the `+ $30`. A raw `0` is screen code `$00` (`@`); the digit `'0'` is `$30`. If `9 + 1` shows a letter, decimal mode was off — `$0a` plus `$30` is a screen code past the digits.
+- **The score jumps in strange steps.** The `sed`/`cld` pair. Without `sed`, `$09 + $01` is `$0a` and the ones digit skips into the letters; without the `cld` afterwards, the rest of the game miscounts.
+- **The number never moves.** The increment isn't in the hit path. It belongs inside `hit_enemy`, alongside the flash and the boom — read `score` and confirm it changes only when a shot connects.
 
-## The Complete Code
+## Before and after
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-09/starfield.asm" />
+We started with hits that vanished without a trace and finished with a running score in the corner — characters poked straight into screen RAM, counted in BCD so the byte and the display are the same thing. The game now keeps a record, and the player has a number to push.
 
-## If It Doesn't Work
+## Try this
 
-- **Enemies don't appear?** Check sprite data pointers (`$07FA`–`$07FC`) all point to block 130. Check `$D015` enables bits 2, 3, and 4.
-- **Only one enemy moves?** The update loop must increment X and branch back. Check `INX` / `CPX #$03` / `BNE`.
-- **All at the same position?** `spawn_enemy` uses the raster register for X. The staggered init Y positions ensure vertical separation.
-- **Score increments by more than 1?** The collision loop must break out after the first hit (`JMP hit_enemy` exits the loop).
-- **Wrong enemy flashes?** Check X still holds the correct index when writing to `flash_tbl` and the sprite colour register.
+- **Move the readout.** The corner is just two addresses. The top-right is `$0400 + 38` and `+ 39` (`$0426`/`$0427`); change them in both the init and the update, and the colour cells to match (`$d826`/`$d827`).
+- **Cap it at 99.** Before the increment, `cmp #$99` and `beq` past the `adc` — the score holds at the top instead of rolling over to `00`. One compare, one branch.
 
-## Try This: Different Enemy Speeds
+## What you've learnt
 
-Use a speed table: `speed_tbl` with values 1, 2, 1. Load `speed_tbl,X` instead of the constant `#$01` in the movement code. Faster enemies are harder to hit.
+- **Character output** — screen RAM at `$0400` shows whatever byte you write; digits are screen codes `$30`–`$39`, a 0–9 value plus `$30`.
+- **Colour RAM** — the parallel grid at `$d800` sets each cell's colour, same layout as the screen.
+- **BCD / decimal mode** — `sed` makes `adc` carry at ten, so one decimal digit lives in each nybble and the byte displays directly. Always `cld` after.
+- **Nybble extraction** — four `lsr` for the high nybble, `and #$0f` for the low.
 
-## Try This: More Enemies
+## What's next
 
-Add a fourth. Sprite 5 (pointer `$07FD`, colour `$D02C`), a fourth entry in each table and lookup, `CPX #$04`. The 6502 can handle it.
-
-## What You've Learnt
-
-- **Indexed addressing** (`LDA table,X`) — one instruction, multiple objects.
-- **Data tables** — parallel arrays for multi-object game state.
-- **The Y register** — a second index for when X is busy.
-- **Subroutines** (`JSR`/`RTS`) — reusable code called from multiple places.
-
-## What's Next
-
-Three enemies descend, but the ship is untouchable. In Unit 10, enemy-ship collision means the game can end — and suddenly you need to play carefully.
+One enemy at a time is target practice, not a game. Next you'll use indexed addressing to drive a whole wave — several enemies descending at once, each with its own position, from one shared loop.

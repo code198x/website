@@ -1,185 +1,202 @@
 ---
-title: "Enemy Appears"
-description: "A green enemy sprite drifts down the screen — your first autonomous game object. Three sprites, one enemy, and a reason to aim."
+title: "Laser Sound"
+description: "Configure a SID voice and gate it on each shot, so firing makes a sharp laser 'pew' — your first taste of the C64's sound hardware."
 pubDate: 2026-02-06
 game: 1
 unit: 5
-tags: ["assembly", "6510", "sprites", "movement", "shooter"]
+tags: ["assembly", "6510", "sid", "sound", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
 import RegisterBits from "@components/diagrams/RegisterBits.astro";
-import SpriteGrid from "@components/diagrams/SpriteGrid.astro";
+import AudioClip from "@components/AudioClip.astro";
 
-A green shape drifts down from the top of the screen. It doesn't shoot, doesn't dodge, doesn't even notice you're there. You can't destroy it yet — but now there's something to aim for.
+Press fire — *pew*. The bullet launches and a short laser sound cuts in. The ship already shoots; this unit gives the shot a voice. The new hardware is the **SID** — the C64's sound chip — and we'll meet it the way every voice gets made: set the voice up, then gate it on.
 
-## A Third Sprite
+## Where we start
 
-The VIC-II has eight hardware sprites, numbered 0 to 7. We've used two so far — sprite 0 for the ship and sprite 1 for the bullet. Now we add sprite 2 for the enemy.
+Unit 4 left a ship that fires a bullet. It works, but it's silent.
 
-Each sprite has its own set of registers. The pattern is the same as before — position, colour, data pointer — just at different addresses:
+![The yellow bullet rising from the ship towards the top of the screen — Unit 4's shot, with no sound.](/images/commodore-64/assembly/starfield/unit-05/shot.png)
 
-| Register | Sprite 0 (Ship) | Sprite 1 (Bullet) | Sprite 2 (Enemy) |
-|----------|------------------|--------------------|-------------------|
-| X position | `$D000` | `$D002` | `$D004` |
-| Y position | `$D001` | `$D003` | `$D005` |
-| Colour | `$D027` | `$D028` | `$D029` |
-| Data pointer | `$07F8` | `$07F9` | `$07FA` |
+## The SID chip
 
-The spacing is consistent: each sprite's registers are two bytes apart. Sprite *n* has its X at `$D000 + 2n` and Y at `$D001 + 2n`.
+The **SID** (Sound Interface Device) is a three-voice synthesiser built into the C64. It lives at `$d400`–`$d418`, the same memory-mapped way the VIC-II graphics chip lives at `$d000`. Each voice has registers for pitch, waveform, and an envelope; there's one shared volume for the whole chip. We'll use voice 1:
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-05/snippets/01-enemy-setup.asm" />
+| Register | Address | Holds |
+|----------|---------|-------|
+| Frequency low | `$d400` | low byte of the pitch |
+| Frequency high | `$d401` | high byte of the pitch |
+| Control | `$d404` | waveform select + gate |
+| Attack / Decay | `$d405` | how the sound rises, then falls |
+| Sustain / Release | `$d406` | the held level, then the tail |
+| Volume | `$d418` | master volume (all three voices) |
 
-We store the enemy's position in zero-page variables `enemy_x` and `enemy_y`, just like we did with `bullet_y`. The zero page is fast to access, and we'll need to read and update these values every frame.
+## Milestone 1 — set the voice up
 
-## Enabling Multiple Sprites
+Before the game loop, we configure voice 1: full volume, a mid-high pitch, and an envelope shaped like a laser.
 
-The sprite enable register at `$D015` controls which sprites are visible. Each bit corresponds to one sprite:
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-05/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-05/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: configure SID voice 1"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-05/steps/step-01.asm" />
+</details>
+
+Now fire. The bullet launches exactly as before — and you hear nothing.
+
+<AudioClip
+  src="/images/commodore-64/assembly/starfield/unit-05/step-01-silent.wav"
+  title="Step 1: firing with the voice configured but never gated — silence"
+  source="SID 6581 · recorded from a real shot"
+/>
+
+That silence is the whole point of this step: **a configured voice makes no sound on its own.** Volume, pitch, and envelope are all set, but nothing has told the voice to *start*. (Play the clip above and you hear nothing — the recording is genuinely silent.) The thing that starts it is the gate, and we add it in Step 2.
+
+### The ADSR envelope
+
+Every sound has a shape over time. The SID builds that shape from four values — attack, decay, sustain, release — packed into two registers:
+
+| Phase | What it controls | Our laser |
+|-------|------------------|-----------|
+| Attack | silence → full volume | `0` — instant |
+| Decay | full → the sustain level | `6` — a short, snappy fall |
+| Sustain | the level it holds at | `0` — none |
+| Release | fade to silence after the gate clears | `0` — instant |
+
+A laser punches in and dies away: instant attack, quick decay, no sustain. Attack and decay share one register, one nibble each:
 
 <RegisterBits
-  address="$D015"
-  name="Sprite Enable"
+  address="$D405"
+  name="Attack / Decay"
   bits={[
-    { index: 7, label: "Spr 7" },
-    { index: 6, label: "Spr 6" },
-    { index: 5, label: "Spr 5" },
-    { index: 4, label: "Spr 4" },
-    { index: 3, label: "Spr 3" },
-    { index: 2, label: "Enemy", active: true },
-    { index: 1, label: "Bullet" },
-    { index: 0, label: "Ship", active: true },
+    { index: 7, label: "Atk 3" },
+    { index: 6, label: "Atk 2" },
+    { index: 5, label: "Atk 1" },
+    { index: 4, label: "Atk 0" },
+    { index: 3, label: "Dcy 3" },
+    { index: 2, label: "Dcy 2", active: true },
+    { index: 1, label: "Dcy 1", active: true },
+    { index: 0, label: "Dcy 0" },
   ]}
-  value={0x05}
-  caption="Bits 0 and 2 active = ship and enemy visible. Bit 1 (bullet) enabled on fire. Value: $05."
+  value={0x06}
+  caption="Attack = 0 (upper nibble), Decay = 6 (lower nibble): $06. Instant attack, a short, snappy fall."
 />
 
-At startup we write `%00000101` — bits 0 and 2 — to enable the ship and enemy. The bullet's bit stays off until the player fires.
+## Milestone 2 — gate it on each shot
 
-When a bullet spawns, we use `ORA` to set bit 1 without disturbing the other bits:
+The control register `$d404` selects the waveform and holds the **gate** — bit 0. Setting the gate to 1 starts the envelope's attack; clearing it begins the release. We pick the sawtooth waveform (bit 5), bright and buzzy, the archetypal laser tone.
 
-```asm
-lda $d015
-ora #%00000010       ; Set bit 1 (bullet)
-sta $d015
-```
+There's a catch: writing `$21` when the gate is *already* set does nothing — the envelope won't restart. To retrigger on every shot you clear the gate, then set it: off, then on.
 
-When the bullet leaves the screen, we use `AND` to clear bit 1:
-
-```asm
-lda $d015
-and #%11111101       ; Clear bit 1 (bullet)
-sta $d015
-```
-
-`ORA` sets bits. `AND` clears them. Together they let you control individual sprites without affecting the rest of the register. This is a pattern you'll use constantly — not just for sprites, but for any register where different bits mean different things.
-
-## The Enemy Sprite
-
-The ship points up. The enemy descends — so it faces down. A classic invader silhouette: antennae at the top, body widening, then legs splayed at the bottom.
-
-<SpriteGrid
-  bytes={[
-    0x00, 0x66, 0x00,
-    0x00, 0x3C, 0x00,
-    0x00, 0x7E, 0x00,
-    0x00, 0xDB, 0x00,
-    0x00, 0xFF, 0x00,
-    0x01, 0xFF, 0x80,
-    0x01, 0x7E, 0x80,
-    0x01, 0x3C, 0x80,
-    0x00, 0xA5, 0x00,
-    0x01, 0x81, 0x80,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-  ]}
-  pixelColor="#68D64B"
-  caption="The enemy sprite — 10 rows of pixel data, stored at $2080 (block 130). Green, because enemies are green."
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-05/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-05/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: gate the voice when a bullet spawns"
+  context={3}
 />
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-05/snippets/03-enemy-sprite.asm" />
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-05/steps/step-02.asm" />
+</details>
 
-The sprite data sits at `$2080` — block 130. Same 63-byte format as the ship and bullet: 3 bytes per row, 21 rows, each byte encoding 8 pixels. The data pointer at `$07FA` tells the VIC-II where to find it.
+<RegisterBits
+  address="$D404"
+  name="Voice 1 Control"
+  bits={[
+    { index: 7, label: "Noise" },
+    { index: 6, label: "Pulse" },
+    { index: 5, label: "Saw", active: true },
+    { index: 4, label: "Tri" },
+    { index: 3, label: "Test" },
+    { index: 2, label: "Ring" },
+    { index: 1, label: "Sync" },
+    { index: 0, label: "Gate", active: true },
+  ]}
+  value={0x21}
+  caption="Sawtooth (bit 5) + gate on (bit 0) = $21. Writing $20 first clears the gate so the next $21 restarts the envelope."
+/>
 
-## Moving the Enemy
+Now firing makes a sound — but play it:
 
-The enemy drifts down the screen at one pixel per frame. No joystick input, no complex logic — just a constant downward march.
+<AudioClip
+  src="/images/commodore-64/assembly/starfield/unit-05/step-02-blip.wav"
+  title="Step 2: a sound at last — but a flat, buzzy blip, not a laser"
+  source="SID 6581 · recorded from a real shot"
+/>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-05/snippets/02-enemy-movement.asm" />
+It's *a* sound, but your ear doesn't buy it as a laser. The pitch just sits there. The arcade laser we all carry in our heads *slides* — it starts high and drops as the shot leaves — and that downward slide is most of what makes a "pew" a pew. We add it in the next step.
 
-`CLC` followed by `ADC #$01` adds 1 to the Y position. `CLC` clears the carry flag first — without it, a stray carry from a previous operation could add an extra pixel. Always clear carry before addition.
+The off-then-on gate cycle, meanwhile, is the pattern for every repeated SID sound — without it, the second shot in a burst would find the gate already set and stay silent.
 
-The updated value goes into both the zero-page variable (`enemy_y`) and the VIC-II register (`$D005`). The variable tracks the position in code; the register tells the hardware where to draw.
+## Milestone 3 — sweep the pitch into a "pew"
 
-## Respawning
+A laser isn't a fixed note; it's a fast downward slide. The SID won't sweep on its own, so we do it in software: start the pitch high, then drop it a little every frame while the sound rings.
 
-When the enemy's Y position passes 248 (`$F8`), it's below the visible screen. Time to respawn:
+One catch makes this a real lesson. **The SID's frequency registers are write-only** — you can't read `$d401` back to find the current pitch. So we keep our own copy in a zero-page byte, lower *that* each frame, and write it to the chip.
 
-```asm
-cmp #$f8
-bcc no_respawn       ; Y < 248, still on screen
-```
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-05/steps/step-02.asm"
+  after="commodore-64/assembly/starfield/unit-05/steps/step-03.asm"
+  lang="asm"
+  title="Step 3: sweep the pitch each frame"
+  context={3}
+/>
 
-`BCC` (Branch if Carry Clear) branches when the accumulator is less than the comparison value. If Y is 248 or more, we fall through to the respawn code.
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-05/steps/step-03.asm" />
+</details>
 
-Respawning means resetting Y to the top (`$32`) and picking a new X position. For the X, we read the raster register:
+Now it pews:
 
-```asm
-lda $d012            ; Pseudo-random from raster position
-and #$7f             ; Range 0-127
-clc
-adc #$30             ; Range 48-175
-```
+<AudioClip
+  src="/images/commodore-64/assembly/starfield/unit-05/laser.wav"
+  title="Step 3: the pew — the pitch slides from high to low as the shot fires"
+  source="SID 6581 · recorded from a real shot"
+/>
 
-`$D012` holds the current raster line — which line of the screen the electron beam is drawing right now. It changes constantly, making it a quick-and-dirty source of unpredictable values.
+That's the whole difference between a sound and a *laser*: the same gated sawtooth, its pitch dropped from a bright high tone to a low one in under a fifth of a second, fading to silence as it falls. Unit 4 let you *see* the bullet leave; now you *hear* it go. And the tuning — how high it starts, how fast it falls — is exactly the kind of single number that turns "it works" into "it feels good." Start the sweep higher for a sharper zap; fall slower for a longer, lazier pew.
 
-`AND #$7F` masks the value to 0–127. `ADC #$30` shifts it up to 48–175, keeping the enemy within the visible horizontal range. It's not truly random — but it's good enough that the enemy doesn't always reappear in the same column.
+## When it's wrong, see why
 
-## The Complete Code
+Silent SID code is the most common frustration on this machine, and guessing rarely finds it. Walk the chain a sound needs, in order — check each value in your code, or live if your emulator has a monitor:
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-05/starfield.asm" />
+- **Volume** — is `$d418` non-zero? Zero here and nothing plays, however perfect the rest.
+- **Frequency** — are `$d400`/`$d401` set? A pitch of zero is silence.
+- **Gate** — does `$d404` toggle `$20` → `$21` when you fire? If it stays at `$21`, you've hit the retrigger trap: the envelope never restarts.
+- **Sweep** — no "pew", just a blip? The SID's frequency registers are write-only, so you can't read `$d401` back — check your zero-page copy (`laser_freq`) instead: it should jump high on the shot and count down. If it never changes, the sweep block isn't running.
 
-## If It Doesn't Work
+Step 1 was a controlled version of exactly this — every register set *except* the gate. Finding the one missing link in the chain beats re-reading the whole program hoping to spot it.
 
-- **No enemy visible?** Check `$D015` has bit 2 set, and `$07FA` points to block 130.
-- **Enemy stuck?** Make sure `enemy_y` is being incremented and stored to `$D005`.
-- **Enemy never respawns?** Check the `CMP #$F8` / `BCC` logic — `BCC` branches when *less than*, so values >= 248 fall through to respawn.
-- **Enemy always spawns at the same X?** `$D012` changes every frame — make sure you're reading it at respawn time, not during init.
+## Before and after
 
-## Try This: Change Enemy Speed
+Three steps, three results you can hear. Step 1: **silence** — a voice fully configured but never started. Step 2: **a blip** — one off-then-on write to the gate sets the envelope running, but the pitch sits still. Step 3: **a pew** — sweeping that pitch downwards each frame turns the blip into a laser. Same voice throughout; the difference is when it starts and how its pitch moves.
 
-`ADC #$01` moves the enemy down one pixel per frame — a slow drift. Try different values:
+## Try this
 
-- **`ADC #$02`** — Twice as fast. A brisk descent.
-- **`ADC #$03`** — Aggressive. Hard to track visually.
+- **Tune the pew.** Two numbers shape it: the starting pitch (`#$40` into `laser_freq`) and how fast it falls (`sbc #$06` each frame). Start higher (`#$60`) for a sharper zap; subtract less (`#$03`) for a slower, lazier slide. Find the one you like.
+- **Change the waveform.** Swap bit 5 in `$d404`: `$11`/`$10` is triangle (softer, rounder); `$81`/`$80` is noise (a static burst — good for explosions later).
 
-Higher speeds make the game feel more urgent, but they also mean less time for the player to line up a shot (once we add collision in Unit 6).
+## What you've learnt
 
-## Try This: Change Enemy Colour
+- **The SID chip (`$d400`–`$d418`)** — three voices, memory-mapped like the VIC-II.
+- **Voice registers** — frequency, control, and ADSR for voice 1, plus the shared volume at `$d418`.
+- **The ADSR envelope** — attack, decay, sustain, release shape a sound over time; ours is instant-attack, quick-decay, no-sustain.
+- **The gate bit** — bit 0 of `$d404` starts the envelope; a configured voice stays silent until it's set.
+- **The retrigger pattern** — gate off then on, so each shot restarts the sound.
+- **Software pitch sweep** — the SID holds a steady note; sliding the frequency each frame is what turns a blip into a "pew". Game feel lives in that slide.
+- **Write-only registers** — you can't read the SID's frequency back, so keep your own copy in RAM and write it to the chip.
 
-The colour register at `$D029` accepts standard C64 colour values:
+## What's next
 
-- **`$02`** — Red. Classic danger colour.
-- **`$07`** — Yellow. Bright and visible.
-- **`$0A`** — Light red. Softer, pinker.
-- **`$0E`** — Light blue. Sci-fi alien feel.
-
-## What You've Learnt
-
-- **Sprite 2** — registers at `$D004`/`$D005`, colour at `$D029`, data pointer at `$07FA`.
-- **Sprite enable register (`$D015`)** — `ORA` to enable individual bits, `AND` to disable them.
-- **Autonomous movement** — `CLC` + `ADC` each frame for constant-speed motion.
-- **Respawn pattern** — detect when a sprite leaves the screen, reset its position.
-- **Pseudo-random values** — `$D012` (raster register) as a quick source of unpredictable numbers.
-
-## What's Next
-
-The enemy drifts past untouched. In Unit 6, your bullets will finally connect — and the enemy will know about it.
+The ship can shoot, and now it sounds like it. Next an enemy appears — a sprite that moves on its own, giving you something to shoot at.

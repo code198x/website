@@ -1,202 +1,126 @@
 ---
-title: "Fire Button Shoots"
-description: "Read the fire button and launch a bullet sprite using zero-page variables — the first step toward a shooting game."
+title: "Screen Edges"
+description: "Push the ship to the right and it wraps off the screen. Add a ninth X bit and boundary clamping so it reaches the full width and stops cleanly at every edge."
 pubDate: 2026-02-06
 game: 1
 unit: 3
-tags: ["assembly", "6510", "cia", "sprites", "shooter"]
+tags: ["assembly", "6510", "cia", "input", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
 import RegisterBits from "@components/diagrams/RegisterBits.astro";
-import FlowDiagram from "@components/diagrams/FlowDiagram.astro";
-import SpriteGrid from "@components/diagrams/SpriteGrid.astro";
-import ImageComparison from "@components/ImageComparison.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-Press fire. A yellow bullet appears at the ship and streaks upward. Let go — only one bullet at a time. When it flies off the top, you can fire again.
+The ship moves now — but push it right and something's wrong. It slides across, then jumps straight back to the left edge, and the rightmost slice of screen is simply unreachable. This unit fixes both problems: a ninth bit so the ship can reach the whole screen, and boundary checks so it stops at the edges instead of wrapping.
 
-One button, one new sprite, and a pair of **zero-page variables** to track the bullet's state. This is the foundation of every shooting game: spawn a projectile, move it each frame, remove it when it's done.
+## Where we start
 
-## Zero Page
+Here's the trouble. Hold right on Unit 2's ship and watch it wrap:
 
-The 6510 has a special region of memory called the **zero page** — addresses `$00` to `$FF`. Instructions that access zero page are one byte shorter and one cycle faster than instructions that access the rest of memory:
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-03/step-00-wrap.mp4"
+  caption="The ship slides right, reaches about seven-eighths across, then jumps back to the left edge — the X position wrapped past 255, and the right strip of screen is unreachable."
+  autoplay={true}
+  loop={true}
+/>
 
-| Instruction | Cycles | Bytes |
-|-------------|--------|-------|
-| `LDA $03` (zero page) | 3 | 2 |
-| `LDA $0400` (absolute) | 4 | 3 |
+The cause is the X register's range. `$d000` holds the ship's X position in a single byte, so it counts 0–255. But the visible screen runs wider than that — to about X=344. When the ship passes 255, the byte wraps to 0 and the ship leaps to the left. Sixty-odd pixels on the right are out of reach.
 
-That might not sound like much, but in a game loop running 50 times per second, those saved cycles add up. The zero page is where you put variables that get read and written constantly.
+## Milestone 1 — the ninth bit
 
-Addresses `$00` and `$01` are reserved by the C64's hardware. We start our variables at `$02`:
-
-<CodeFromFile src="commodore-64/assembly/starfield/unit-03/snippets/01-zero-page.asm" />
-
-`bullet_active` is a flag: 0 means no bullet on screen, 1 means there is one. `bullet_y` tracks the bullet's Y position so we can move it each frame. We also set up sprite 1 during initialisation — its data pointer (`$07F9`) points to block 129 (`$2040`), and its colour is yellow (`$07`). But we don't enable it yet. The bullet only appears when you press fire.
-
-## Reading the Fire Button
-
-You already know `$DC00` — the joystick register. Bits 0–3 are directions. Bit 4 is the fire button, and it follows the same **active-low** pattern: 0 means pressed, 1 means released.
+The VIC-II keeps a *ninth* X bit for each sprite in register `$d010` — one bit per sprite, bit 0 for sprite 0. With it clear, the ship's X is just `$d000` (0–255). With it set, the position is `$d000` + 256. Together they count 0–511, more than enough for the full width.
 
 <RegisterBits
-  address="$DC00"
-  name="Joystick Port 2"
+  address="$D010"
+  name="Sprite X high bits (bit 8)"
   bits={[
-    { index: 0, label: "Up", activeLow: true },
-    { index: 1, label: "Down", activeLow: true },
-    { index: 2, label: "Left", activeLow: true },
-    { index: 3, label: "Right", activeLow: true },
-    { index: 4, label: "Fire", activeLow: true, active: true },
+    { index: 0, label: "Spr 0", active: true },
+    { index: 1, label: "Spr 1" },
+    { index: 2, label: "Spr 2" },
+    { index: 3, label: "Spr 3" },
+    { index: 4, label: "Spr 4" },
+    { index: 5, label: "Spr 5" },
+    { index: 6, label: "Spr 6" },
+    { index: 7, label: "Spr 7" },
   ]}
-  value={0xEF}
-  caption="Fire button pressed: bit 4 is 0 ($EF). Same active-low pattern as the directions."
+  value={0x01}
+  caption="Bit 0 is sprite 0's ninth X bit. Set, it adds 256 to the ship's position — the right half of the screen."
 />
 
-The check works exactly like the direction checks from Unit 2:
+So when the low byte wraps — `$ff` → `$00` going right, or `$00` → `$ff` going left — we flip that ninth bit. Flipping a single bit is exactly the `eor` you met in the Primer:
 
-```asm
-        lda $dc00
-        and #%00010000      ; Isolate bit 4
-        bne no_fire         ; Bit is 1 = NOT pressed
-```
-
-If the result is zero, fire is pressed.
-
-## Spawning the Bullet
-
-Pressing fire isn't enough — we also need to check that there isn't already a bullet on screen. Without this guard, holding fire would reset the bullet's position every frame:
-
-<FlowDiagram
-  steps={[
-    { id: "read", label: "Read $DC00", type: "process" },
-    { id: "fire", label: "Fire pressed?", type: "decision" },
-    { id: "active", label: "Bullet active?", type: "decision" },
-    { id: "spawn", label: "Spawn bullet", type: "process" },
-    { id: "update", label: "Update bullet", type: "process" },
-  ]}
-  connections={[
-    { from: "fire", to: "active", label: "yes" },
-    { from: "fire", to: "update", label: "no" },
-    { from: "active", to: "spawn", label: "no" },
-    { from: "active", to: "update", label: "yes" },
-  ]}
-  caption="Only spawn a bullet if fire is pressed AND no bullet is currently active."
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-03/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-03/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: carry the ninth bit with EOR"
+  context={3}
 />
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-03/snippets/02-fire-button.asm" />
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-03/steps/step-01.asm" />
+</details>
 
-When we spawn the bullet:
+Going right, we `inc $d000`; if it wrapped to `$00`, `eor #$01` flips the ninth bit on. Going left, we check for `$00` *before* decrementing and flip the bit back off. `eor` doesn't care which way the bit is currently set — it just flips it — so the same instruction handles both crossings. Now the ship reaches the whole width:
 
-1. **Copy the ship's X position** (`$D000`) to the bullet's X position (`$D002`) — the bullet launches from where the ship is
-2. **Copy the ship's Y position** (`$D001`) to `bullet_y` — this is our zero-page variable, not the sprite register directly
-3. **Enable sprite 1** by OR-ing bit 1 into `$D015` — this turns on the bullet without affecting sprite 0
-4. **Set `bullet_active` to 1** — so we won't spawn another bullet until this one is gone
-
-The `ORA #%00000010` instruction sets bit 1 of the sprite enable register. It's the opposite of the `AND` masking you learnt in Unit 2 — `AND` clears bits, `ORA` sets them.
-
-## Moving the Bullet
-
-Each frame, if the bullet is active, we subtract 4 from its Y position. When Y drops below 30 (above the visible screen area), we deactivate it:
-
-<CodeFromFile src="commodore-64/assembly/starfield/unit-03/snippets/03-bullet-update.asm" />
-
-A new instruction here: **`SBC`** (**S**u**B**tract with **C**arry). It subtracts a value from the accumulator. The `SEC` beforehand sets the carry flag — `SBC` needs this to subtract correctly (it's the opposite of how `ADC` needs a clear carry to add).
-
-The `CMP #$1E` / `BCS no_bullet` pair checks if Y is still 30 or above. `BCS` (**B**ranch if **C**arry **S**et) branches when the value is greater than or equal to the comparison value. If the bullet has gone above line 30, we clear `bullet_active` and disable sprite 1 with `AND #%11111101` — clearing bit 1 while keeping bit 0 (the ship) enabled.
-
-## The Bullet Sprite
-
-The bullet is a simple vertical line — 2 pixels wide, 6 pixels tall, centred in the 24×21 sprite frame:
-
-<SpriteGrid
-  bytes={[
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x18, 0x00,
-    0x00, 0x18, 0x00,
-    0x00, 0x18, 0x00,
-    0x00, 0x18, 0x00,
-    0x00, 0x18, 0x00,
-    0x00, 0x18, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00,
-  ]}
-  pixelColor="#EDD400"
-  caption="The bullet sprite — a 2-pixel-wide vertical line centred in the 24×21 frame. Rendered in yellow ($07) to contrast with the white ship."
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-03/step-01-fullwidth.mp4"
+  caption="With the ninth bit carried across, holding right takes the ship smoothly past the old wrap point all the way to the right edge."
+  autoplay={true}
+  loop={true}
 />
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-03/snippets/04-bullet-sprite.asm" />
+## Milestone 2 — stop at the edges
 
-The bullet data lives at `$2040` — that's block 129 (the next 64-byte block after the ship at `$2000`). The sprite pointer at `$07F9` tells the VIC-II where to find sprite 1's data, just as `$07F8` does for sprite 0.
+Reaching the edge is progress, but nothing stops the ship running clean off it and wrapping round. We hold it in with **boundary clamping**: before each move, compare the position against the limit and skip the move if it's already there. That `cmp`-then-branch is the same compare-and-decide from the Primer.
 
-## The Complete Code
-
-<CodeFromFile src="commodore-64/assembly/starfield/unit-03/starfield.asm" />
-
-## If It Doesn't Work
-
-- **No bullet appears?** Check that `$D015` has bit 1 set when firing, that `$07F9` points to block 129, and that `bullet_active` is being set to 1.
-- **Bullet stuck in place?** Make sure `bullet_y` is being decremented and that you're storing the result to `$D003` (sprite 1 Y register).
-- **Bullet fires continuously?** The `bullet_active` guard is missing or broken. The `LDA bullet_active` / `BNE no_fire` pair should prevent respawning while a bullet is on screen.
-- **Bullet appears in the wrong position?** The bullet's X should be copied from `$D000` (ship X) to `$D002` (bullet X). The Y comes from `$D001` via `bullet_y`.
-- **Bullet never disappears?** Check the `CMP #$1E` / `BCS` logic. The comparison should deactivate the bullet when Y drops below 30.
-
-## Try This: Change Bullet Speed
-
-The bullet moves 4 pixels per frame. Change the `SBC #$04` value:
-
-- **`SBC #$02`** — Slow, deliberate shots. Easier to see what's happening.
-- **`SBC #$04`** — The default. A brisk, arcade-like speed.
-- **`SBC #$06`** — Fast. The bullet zips across the screen in about a second.
-
-## Try This: Fire Downward
-
-Replace the bullet update section to make it fire downward:
-
-```asm
-        ; Move bullet down instead of up
-        lda bullet_y
-        clc
-        adc #$04
-        sta bullet_y
-        sta $d003
-
-        ; Deactivate when Y > 250
-        cmp #$fa
-        bcc no_bullet       ; Y < 250, still on screen
-```
-
-`ADC` (**AD**d with **C**arry) adds to the accumulator — the opposite of `SBC`. `CLC` clears the carry before adding, just as `SEC` sets it before subtracting. `BCC` (**B**ranch if **C**arry **C**lear) is the counterpart to `BCS`.
-
-<ImageComparison
-  before="/images/commodore-64/assembly/starfield/unit-02/screenshot.png"
-  after="/images/commodore-64/assembly/starfield/unit-03/screenshot.png"
-  beforeLabel="Unit 2: Movement only"
-  afterLabel="Unit 3: Fire button shoots"
-  beforeAlt="Ship sprite that can be moved with the joystick"
-  afterAlt="Ship sprite with bullet firing capability"
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-03/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-03/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: clamp to the visible area"
+  context={3}
 />
 
-## What You've Learnt
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-03/steps/step-02.asm" />
+</details>
 
-- **Zero page (`$02`–`$FF`)** — Fast variable storage. One byte shorter, one cycle faster than absolute addressing. Put your most-used variables here.
-- **Fire button (bit 4 of `$DC00`)** — Same active-low pattern as directions. 0 = pressed, 1 = released.
-- **Sprite 1** — A second hardware sprite with its own position registers (`$D002`/`$D003`), colour (`$D028`), and data pointer (`$07F9`).
-- **Bullet state** — An active flag prevents multiple bullets on screen. Check the flag before spawning, clear it when the bullet leaves the screen.
-- **Conditional spawning** — Two checks in sequence: is fire pressed? Is the bullet inactive? Both must pass to spawn.
-- **SBC for movement** — Subtract with carry moves the bullet upward. SEC before SBC, just as CLC before ADC.
+Up and down are one comparison each — `cmp` the Y position against the top (50) or bottom (234) and branch away if we're there. Left and right need the ninth bit: when it's set the ship is past X=255 and always safe to move left, so we only compare the low byte against the edge when the bit is clear (and the mirror for the right). Now it runs to each edge and stops:
 
-## What's Next
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-03/step-02-clamp.mp4"
+  caption="Clamped: the ship runs to the right edge and stops dead, then to the left edge and stops — always fully on screen, never wrapping."
+  autoplay={true}
+  loop={true}
+/>
 
-The bullet fires silently. In Unit 4, you'll make the SID chip produce a laser sound when the fire button is pressed — your first taste of the C64's legendary sound hardware.
+## When it's wrong, see why
+
+Two failure shapes here, and the values to check for each:
+
+- **Ship still teleports across the screen.** The ninth bit isn't keeping up. Check that `$d010` flips on *both* the right wrap (`$ff` → `$00`) and the left wrap (`$00` → `$ff`). If it flips going one way but not the other, the ship jumps the moment it crosses 256.
+- **Ship runs off an edge, or stops too early.** A clamp comparison is off. The limits are Y ≥ 52 (top), Y ≤ 233 (bottom), X ≥ 26 (left), and X ≤ 63 *with the ninth bit set* (right). Walk the value the ship reaches at the edge against the number it's compared with — an off-by-one there shows up as a one-pixel gap or a sprite half in the border.
+
+## Before and after
+
+We started with a ship that wrapped off the screen at the three-quarter mark and finished with one that reaches the full width and stops cleanly at every edge.
+
+## Try this
+
+- **Asteroids wrap.** Take the clamps back out and let the ninth bit run: the ship leaves the right edge and reappears on the left. That wrap was a bug a moment ago — here it's a design choice. Which feels right for a shooter?
+- **A tighter cage.** Raise the left limit and lower the right so the ship can only roam the middle of the screen. Boundaries are just numbers; move them and the playfield changes.
+
+## What you've learnt
+
+- **The ninth X bit (`$d010`)** — one bit per sprite extends its X range past 255 to the full screen width.
+- **`eor` to carry the bit** — flipping `$d010` on each wrap, the same single-bit flip you used in the Primer.
+- **Boundary clamping** — `cmp` against a limit and branch away to hold a value in range.
+- **Nine-bit comparisons** — checking the ninth bit first, then the low byte, to clamp a position that spans two registers.
+
+## What's next
+
+The ship goes anywhere on screen now, but it's unarmed. Next you'll read the fire button and launch a bullet — the ship's first shot.

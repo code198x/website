@@ -1,47 +1,70 @@
 ---
-title: "Laser Sound"
-description: "Configure a SID voice and gate it on each shot, so firing makes a sharp laser 'pew' — your first taste of the C64's sound hardware."
+title: "Fire Button Shoots"
+description: "Read the fire button and launch a bullet from the ship — then make the shot spawn correctly wherever the ship is, using the ninth X bit from the last unit."
 pubDate: 2026-02-06
 game: 1
 unit: 4
-tags: ["assembly", "6510", "sid", "sound", "shooter"]
+tags: ["assembly", "6510", "cia", "sprites", "shooter"]
 ---
 
 import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
 import RegisterBits from "@components/diagrams/RegisterBits.astro";
-import AudioClip from "@components/AudioClip.astro";
+import SpriteGrid from "@components/diagrams/SpriteGrid.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-Press fire — *pew*. The bullet launches and a short laser sound cuts in. The ship already shoots; this unit gives the shot a voice. The new hardware is the **SID** — the C64's sound chip — and we'll meet it the way every voice gets made: set the voice up, then gate it on.
+The ship flies anywhere on screen now and stops cleanly at every edge — but it's unarmed. A shooter needs a shot. This unit reads the fire button and launches a bullet that streaks up the screen, then fixes the one thing that breaks the moment you fire from the right: the ninth X bit you added last unit.
 
 ## Where we start
 
-Unit 3 left a ship that fires a bullet. It works, but it's silent.
+We have last unit's ship: full-width movement, clamped to the screen, sprite 0 in white. Nothing happens when you press fire — the button isn't read yet, and there's no second sprite to launch. We'll give the ship a bullet on sprite 1.
 
-![The yellow bullet rising from the ship towards the top of the screen — Unit 3's shot, with no sound.](/images/commodore-64/assembly/starfield/unit-04/shot.png)
+## Milestone 1 — fire a bullet
 
-## The SID chip
+The fire button is one more bit on the same joystick byte you read for movement. Port 2 sits at `$dc00`; bits 0–3 are the four directions, and **bit 4 is fire** — active-low like the rest, so a *pressed* button reads as a `0`.
 
-The **SID** (Sound Interface Device) is a three-voice synthesiser built into the C64. It lives at `$d400`–`$d418`, the same memory-mapped way the VIC-II graphics chip lives at `$d000`. Each voice has registers for pitch, waveform, and an envelope; there's one shared volume for the whole chip. We'll use voice 1:
+<RegisterBits
+  address="$DC00"
+  name="CIA 1 Port B — joystick 2 (active low)"
+  bits={[
+    { index: 0, label: "Up" },
+    { index: 1, label: "Down" },
+    { index: 2, label: "Left" },
+    { index: 3, label: "Right" },
+    { index: 4, label: "Fire", active: true },
+    { index: 5, label: "—" },
+    { index: 6, label: "—" },
+    { index: 7, label: "—" },
+  ]}
+  value={0x10}
+  caption="Bit 4 is the fire button. Like the direction bits it reads 0 when pressed, so we isolate it and branch when it's clear."
+/>
 
-| Register | Address | Holds |
-|----------|---------|-------|
-| Frequency low | `$d400` | low byte of the pitch |
-| Frequency high | `$d401` | high byte of the pitch |
-| Control | `$d404` | waveform select + gate |
-| Attack / Decay | `$d405` | how the sound rises, then falls |
-| Sustain / Release | `$d406` | the held level, then the tail |
-| Volume | `$d418` | master volume (all three voices) |
+The bullet rides on **sprite 1**. We point it at a tall, thin shape, colour it yellow, and leave it disabled until the moment of firing. A single zero-page flag, `bullet_active`, tracks whether a shot is in flight — and that flag is also the guard: we only spawn a new bullet when no bullet is already flying, so holding fire down gives one shot at a time rather than a solid beam.
 
-## Milestone 1 — set the voice up
+<SpriteGrid
+  bytes={[
+    0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00,
+    0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00,
+    0x00,0x18,0x00, 0x00,0x18,0x00, 0x00,0x18,0x00,
+    0x00,0x18,0x00, 0x00,0x18,0x00, 0x00,0x18,0x00,
+    0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00,
+    0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00,
+  ]}
+  width={24}
+  height={21}
+  bytesPerRow={3}
+  pixelColor="#bfce72"
+  caption="The bullet sprite: a short vertical bar in the middle columns, stored in block 129 at $2040."
+/>
 
-Before the game loop, we configure voice 1: full volume, a mid-high pitch, and an envelope shaped like a laser.
+Here's the whole step — reading fire, the spawn guard, and moving the bullet up the screen each frame:
 
 <CodeDiff
   before="commodore-64/assembly/starfield/unit-04/steps/step-00.asm"
   after="commodore-64/assembly/starfield/unit-04/steps/step-01.asm"
   lang="asm"
-  title="Step 1: configure SID voice 1"
+  title="Step 1: read fire, launch a bullet, fly it up"
   context={3}
 />
 
@@ -50,57 +73,39 @@ Before the game loop, we configure voice 1: full volume, a mid-high pitch, and a
 <CodeFromFile src="commodore-64/assembly/starfield/unit-04/steps/step-01.asm" />
 </details>
 
-Now fire. The bullet launches exactly as before — and you hear nothing.
+Three pieces fit together here:
 
-<AudioClip
-  src="/images/commodore-64/assembly/starfield/unit-04/step-01-silent.wav"
-  title="Step 1: firing with the voice configured but never gated — silence"
-  source="SID 6581 · recorded from a real shot"
+- **Read fire.** Load `$dc00`, mask bit 4 with `and #%00010000`, and `bne` past the spawn when it's set (not pressed) — the same isolate-and-branch you used for each direction in Unit 2.
+- **Spawn, once.** If `bullet_active` is already non-zero a bullet is flying, so we skip. Otherwise we copy the ship's X and Y to the bullet, enable sprite 1 alongside sprite 0 (`ora #%00000010` into `$d015`), and set the flag.
+- **Fly it up.** Each frame, while the flag is set, we pull the bullet's Y down by four with `sec` / `sbc #$04` — the subtraction from the Primer — and write it to sprite 1's Y register. When it passes the top of the screen we clear the flag and switch sprite 1 off again.
+
+Press fire and the shot launches:
+
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-04/shoot.mp4"
+  caption="Press fire and a yellow bullet launches from the ship and streaks up the screen, vanishing off the top."
+  autoplay={true}
+  loop={true}
 />
 
-That silence is the whole point of this step: **a configured voice makes no sound on its own.** Volume, pitch, and envelope are all set, but nothing has told the voice to *start*. (Play the clip above and you hear nothing — the recording is genuinely silent.) The thing that starts it is the gate, and we add it in Step 2.
+## Milestone 2 — fire from anywhere
 
-### The ADSR envelope
+There's a bug hiding in that spawn, and last unit is exactly what exposes it. Fly the ship over to the *right* half of the screen — past X=255, where the ninth bit is set — and fire. The bullet appears way over on the left:
 
-Every sound has a shape over time. The SID builds that shape from four values — attack, decay, sustain, release — packed into two registers:
-
-| Phase | What it controls | Our laser |
-|-------|------------------|-----------|
-| Attack | silence → full volume | `0` — instant |
-| Decay | full → the sustain level | `6` — a short, snappy fall |
-| Sustain | the level it holds at | `0` — none |
-| Release | fade to silence after the gate clears | `0` — instant |
-
-A laser punches in and dies away: instant attack, quick decay, no sustain. Attack and decay share one register, one nibble each:
-
-<RegisterBits
-  address="$D405"
-  name="Attack / Decay"
-  bits={[
-    { index: 7, label: "Atk 3" },
-    { index: 6, label: "Atk 2" },
-    { index: 5, label: "Atk 1" },
-    { index: 4, label: "Atk 0" },
-    { index: 3, label: "Dcy 3" },
-    { index: 2, label: "Dcy 2", active: true },
-    { index: 1, label: "Dcy 1", active: true },
-    { index: 0, label: "Dcy 0" },
-  ]}
-  value={0x06}
-  caption="Attack = 0 (upper nibble), Decay = 6 (lower nibble): $06. Instant attack, a short, snappy fall."
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-04/right-bug.mp4"
+  caption="Fire with the ship on the right half of the screen and the bullet appears way over on the left — only the low byte of the ship's X was copied, not its ninth bit."
+  autoplay={true}
+  loop={true}
 />
 
-## Milestone 2 — gate it on each shot
-
-The control register `$d404` selects the waveform and holds the **gate** — bit 0. Setting the gate to 1 starts the envelope's attack; clearing it begins the release. We pick the sawtooth waveform (bit 5), bright and buzzy, the archetypal laser tone.
-
-There's a catch: writing `$21` when the gate is *already* set does nothing — the envelope won't restart. To retrigger on every shot you clear the gate, then set it: off, then on.
+We copied `$d000`, the ship's low X byte, into the bullet's — but not the ninth bit. When the ship is past 255 its real position is "low byte + 256", and dropping the +256 lands the bullet a screen-width to the left. Sprite 1's ninth bit lives in the same `$d010` register as the ship's, just one bit over: **bit 0 is sprite 0 (the ship), bit 1 is sprite 1 (the bullet)**. So at spawn we copy the ship's bit across to the bullet's:
 
 <CodeDiff
   before="commodore-64/assembly/starfield/unit-04/steps/step-01.asm"
   after="commodore-64/assembly/starfield/unit-04/steps/step-02.asm"
   lang="asm"
-  title="Step 2: gate the voice when a bullet spawns"
+  title="Step 2: carry the ninth bit to the bullet too"
   context={3}
 />
 
@@ -109,94 +114,39 @@ There's a catch: writing `$21` when the gate is *already* set does nothing — t
 <CodeFromFile src="commodore-64/assembly/starfield/unit-04/steps/step-02.asm" />
 </details>
 
-<RegisterBits
-  address="$D404"
-  name="Voice 1 Control"
-  bits={[
-    { index: 7, label: "Noise" },
-    { index: 6, label: "Pulse" },
-    { index: 5, label: "Saw", active: true },
-    { index: 4, label: "Tri" },
-    { index: 3, label: "Test" },
-    { index: 2, label: "Ring" },
-    { index: 1, label: "Sync" },
-    { index: 0, label: "Gate", active: true },
-  ]}
-  value={0x21}
-  caption="Sawtooth (bit 5) + gate on (bit 0) = $21. Writing $20 first clears the gate so the next $21 restarts the envelope."
+We clear the bullet's ninth bit first (`and #%11111101`), then read the ship's bit (`and #$01`), shift it one place left with `asl` so it lines up over the bullet's position, and `ora` it back in. When the bullet despawns we clear its ninth bit again, so the next shot starts clean. Now the same shot from the right launches from under the ship:
+
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-04/right-fixed.mp4"
+  caption="With the ninth bit copied across, the same shot from the right launches correctly from under the ship."
+  autoplay={true}
+  loop={true}
 />
-
-Now firing makes a sound — but play it:
-
-<AudioClip
-  src="/images/commodore-64/assembly/starfield/unit-04/step-02-blip.wav"
-  title="Step 2: a sound at last — but a flat, buzzy blip, not a laser"
-  source="SID 6581 · recorded from a real shot"
-/>
-
-It's *a* sound, but your ear doesn't buy it as a laser. The pitch just sits there. The arcade laser we all carry in our heads *slides* — it starts high and drops as the shot leaves — and that downward slide is most of what makes a "pew" a pew. We add it in the next step.
-
-The off-then-on gate cycle, meanwhile, is the pattern for every repeated SID sound — without it, the second shot in a burst would find the gate already set and stay silent.
-
-## Milestone 3 — sweep the pitch into a "pew"
-
-A laser isn't a fixed note; it's a fast downward slide. The SID won't sweep on its own, so we do it in software: start the pitch high, then drop it a little every frame while the sound rings.
-
-One catch makes this a real lesson. **The SID's frequency registers are write-only** — you can't read `$d401` back to find the current pitch. So we keep our own copy in a zero-page byte, lower *that* each frame, and write it to the chip.
-
-<CodeDiff
-  before="commodore-64/assembly/starfield/unit-04/steps/step-02.asm"
-  after="commodore-64/assembly/starfield/unit-04/steps/step-03.asm"
-  lang="asm"
-  title="Step 3: sweep the pitch each frame"
-  context={3}
-/>
-
-<details>
-<summary>The complete program</summary>
-<CodeFromFile src="commodore-64/assembly/starfield/unit-04/steps/step-03.asm" />
-</details>
-
-Now it pews:
-
-<AudioClip
-  src="/images/commodore-64/assembly/starfield/unit-04/laser.wav"
-  title="Step 3: the pew — the pitch slides from high to low as the shot fires"
-  source="SID 6581 · recorded from a real shot"
-/>
-
-That's the whole difference between a sound and a *laser*: the same gated sawtooth, its pitch dropped from a bright high tone to a low one in under a fifth of a second, fading to silence as it falls. Unit 3 let you *see* the bullet leave; now you *hear* it go. And the tuning — how high it starts, how fast it falls — is exactly the kind of single number that turns "it works" into "it feels good." Start the sweep higher for a sharper zap; fall slower for a longer, lazier pew.
 
 ## When it's wrong, see why
 
-Silent SID code is the most common frustration on this machine, and guessing rarely finds it. Open the SID register view in Emu198x and check the chain a sound needs, in order:
+The bullet's behaviour points straight at which piece is off — check these values:
 
-- **Volume** — is `$d418` non-zero? Zero here and nothing plays, however perfect the rest.
-- **Frequency** — are `$d400`/`$d401` set? A pitch of zero is silence.
-- **Gate** — does `$d404` toggle `$20` → `$21` when you fire? If it stays at `$21`, you've hit the retrigger trap: the envelope never restarts.
-- **Sweep** — no "pew", just a blip? Watch your zero-page copy of the pitch (`laser_freq`): does it get set high on the shot and count down? If it never changes, the sweep block isn't running — and remember you can't read `$d401` back to check, because it's write-only.
-
-Step 1 was a controlled version of exactly this — every register set *except* the gate. Reading the chip's state (and your own variables) and finding the one link that's missing beats re-reading your code hoping to spot it.
+- **Nothing fires.** The button read or the guard is the suspect. Watch `bullet_active`: if it never reaches 1 when you press fire, the bit-4 test is wrong — an inverted branch, or the wrong mask. If it sticks at 1 forever, the despawn never runs and the guard blocks every later shot, so confirm the bullet's Y is actually being compared against the top-of-screen limit.
+- **A solid beam instead of single shots.** The guard isn't guarding. `bullet_active` must be checked *before* spawning and only cleared when the bullet leaves — spawn regardless and every frame fire is held launches a fresh bullet.
+- **Bullet spawns in the wrong place from the right.** The ninth bit. Read `$d010`: bit 0 is the ship, bit 1 is the bullet. After firing from the right half they should match; if bit 1 stays clear while bit 0 is set, the copy isn't happening and the bullet is a screen-width off.
 
 ## Before and after
 
-Three steps, three results you can hear. Step 1: **silence** — a voice fully configured but never started. Step 2: **a blip** — one off-then-on write to the gate sets the envelope running, but the pitch sits still. Step 3: **a pew** — sweeping that pitch downwards each frame turns the blip into a laser. Same voice throughout; the difference is when it starts and how its pitch moves.
+We started with an unarmed ship and finished with one that fires a single bullet on demand — and fires it from the right place wherever the ship is sitting, because the shot now carries the same ninth X bit the ship does.
 
 ## Try this
 
-- **Tune the pew.** Two numbers shape it: the starting pitch (`#$40` into `laser_freq`) and how fast it falls (`sbc #$06` each frame). Start higher (`#$60`) for a sharper zap; subtract less (`#$03`) for a slower, lazier slide. Find the one you like.
-- **Change the waveform.** Swap bit 5 in `$d404`: `$11`/`$10` is triangle (softer, rounder); `$81`/`$80` is noise (a static burst — good for explosions later).
+- **A faster shot.** The bullet climbs four pixels a frame (`sbc #$04`). Make it six or eight and feel how a quicker bullet changes the timing of a shot — how far ahead of a target you have to aim.
+- **Rapid fire.** Right now the guard allows one bullet at a time. Leave it as is and tap fire repeatedly; then picture what a second bullet sprite would buy you. (We'll come back to multiple shots later — for now, notice how much the single-shot limit shapes the feel.)
 
 ## What you've learnt
 
-- **The SID chip (`$d400`–`$d418`)** — three voices, memory-mapped like the VIC-II.
-- **Voice registers** — frequency, control, and ADSR for voice 1, plus the shared volume at `$d418`.
-- **The ADSR envelope** — attack, decay, sustain, release shape a sound over time; ours is instant-attack, quick-decay, no-sustain.
-- **The gate bit** — bit 0 of `$d404` starts the envelope; a configured voice stays silent until it's set.
-- **The retrigger pattern** — gate off then on, so each shot restarts the sound.
-- **Software pitch sweep** — the SID holds a steady note; sliding the frequency each frame is what turns a blip into a "pew". Game feel lives in that slide.
-- **Write-only registers** — you can't read the SID's frequency back, so keep your own copy in RAM and write it to the chip.
+- **Reading the fire button** — bit 4 of `$dc00`, isolated and branched the same way as the direction bits.
+- **A spawn guard** — one zero-page flag that both tracks the bullet and stops a held button firing a continuous stream.
+- **A second sprite in motion** — enabling sprite 1, moving it each frame with `sbc`, and switching it off when it leaves the screen.
+- **Carrying the ninth bit between sprites** — copying sprite 0's `$d010` bit to sprite 1's so a shot fired past X=255 spawns in the right place.
 
 ## What's next
 
-The ship can shoot, and now it sounds like it. Next an enemy appears — a sprite that moves on its own, giving you something to shoot at.
+The shot works, but it's silent. Next you'll give it a voice — program the SID chip to fire a laser sound the moment a bullet launches.

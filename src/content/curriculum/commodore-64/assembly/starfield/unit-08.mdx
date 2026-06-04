@@ -1,72 +1,134 @@
 ---
-title: "Scoring Points"
-description: "Screen RAM displays a two-digit score in the top-left corner, updated with BCD arithmetic and nybble extraction every time a bullet hits the enemy."
+title: "Explosion"
+description: "Sell the hit — flash the enemy white with a frame-counter freeze, then fire an explosion on the SID's second voice while the laser still rings."
 pubDate: 2026-02-06
 game: 1
 unit: 8
-tags: ["assembly", "6510", "screen RAM", "colour RAM", "BCD", "score"]
+tags: ["assembly", "6510", "sid", "sound", "sprites", "game-feel"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
+import RegisterBits from "@components/diagrams/RegisterBits.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
+import AudioClip from "@components/AudioClip.astro";
 
-The enemy explodes — flash, noise, respawn. But nothing records the hit. Screen RAM changes that. Two bytes at `$0400` become a score counter, updated every time a bullet connects.
+The collision works, but the hit is hollow: the enemy just blinks out of existence, in silence, and a fresh one slides down. It *functions* — and it feels like nothing. This unit is about the gap between "it works" and "it feels good." We sell the kill two ways: the enemy flashes white and freezes for a beat, and the SID fires an explosion that booms over the laser.
 
-## Screen RAM
+## Where we start
 
-The VIC-II reads character data from screen RAM starting at `$0400`. It's a 40×25 grid — 1,000 bytes, one per character cell. Write a value and the character appears immediately.
+Unit 7 ends with an instant, silent disappearance — the bullet meets the enemy and it's gone the same frame, no acknowledgement. Everything below adds feedback to that one moment.
 
-Screen codes for digits: `$30` = '0', `$31` = '1', ... `$39` = '9'. To display a digit, add `$30` to its value and write to screen RAM.
+## Milestone 1 — a flash you can see
 
-## Colour RAM
+A hit should register on screen for long enough to notice. So instead of respawning the enemy the instant it's hit, we turn it **white** and hold it there for a few frames, frozen, before it respawns. That hold is the first real **frame counter** — a pattern you'll reach for constantly:
 
-Each character cell also has a colour byte at `$D800`+. Same layout as screen RAM — `$D800` maps to `$0400`, `$D801` to `$0401`, and so on. Write a colour value and the character changes colour immediately.
+> Set a value; subtract one each frame; act when it reaches zero.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-08/snippets/01-screen-ram.asm" />
+Here `flash_timer` starts at 8. While it's non-zero the enemy update freezes the enemy and counts the timer down; the frame it hits zero, we restore the green colour and respawn. Eight frames at 50 Hz is about 160 ms — long enough to read as a flash, short enough to feel snappy.
 
-The init code writes two '0' characters and colours them white. The score sits at row 0, columns 0–1 — top-left corner.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-08/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-08/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: flash white and freeze, then respawn"
+  context={3}
+/>
 
-## Decimal Mode
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-08/steps/step-01.asm" />
+</details>
 
-The 6502 has a decimal mode. `SED` activates it, `CLD` turns it off. In decimal mode, `ADC` carries at 10 instead of 16. The byte `$09` plus `$01` gives `$10`, not `$0A`. This is BCD — binary-coded decimal.
+Two edits make it work. The hit no longer respawns — it writes `$01` (white) to the enemy's colour register `$d029` and sets `flash_timer`. And the enemy update gains a guard at the top: while the timer runs, freeze and count down; when it expires, restore green (`$05`) and respawn. The freeze check sits *before* the movement, so the enemy stops dead the moment it's hit rather than drifting through its own death.
 
-Each nybble (4 bits) holds one decimal digit. The byte `$42` means forty-two: high nybble is 4, low nybble is 2. No conversion needed between the stored value and the display — the digits are right there in the byte.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-08/step-01-flash.mp4"
+  caption="On a hit the enemy snaps from green to white and holds still for eight frames before respawning — the kill lands with a visible beat instead of blinking out."
+  autoplay={true}
+  loop={true}
+/>
 
-Important: always `CLD` after BCD arithmetic. Forgetting leaves decimal mode active, and every `ADC`/`SBC` in the game will behave differently.
+## Milestone 2 — an explosion you can hear
 
-## Updating the Display
+You met the SID on voice 1 for the laser. It has **three** voices, fully independent — so we leave the laser on voice 1 and give the explosion its own, voice 2. Its registers are the same set, just offset seven bytes up:
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-08/snippets/02-score-increment.asm" />
+| Register | Voice 1 (laser) | Voice 2 (explosion) |
+|----------|-----------------|---------------------|
+| Frequency low | `$d400` | `$d407` |
+| Frequency high | `$d401` | `$d408` |
+| Control (waveform + gate) | `$d404` | `$d40b` |
+| Attack / Decay | `$d405` | `$d40c` |
+| Sustain / Release | `$d406` | `$d40d` |
 
-Three steps: increment the score in decimal mode, extract the tens digit with four `LSR` shifts, extract the ones digit with `AND $0F`. Add `$30` to each and write to screen RAM.
+An explosion isn't a note — it's a *crash*, so we pick the **noise** waveform: bit 7 of the control register. With a low frequency it reads as a bass rumble. Then it's the same gate dance as the laser — write the waveform with the gate off, then on, to retrigger the envelope:
 
-`LSR` shifts the accumulator right by one bit. Four shifts move the high nybble down to the low nybble position. `AND #$0F` masks off the high nybble, leaving only the low four bits.
+<RegisterBits
+  address="$D40B"
+  name="Voice 2 control"
+  bits={[
+    { index: 7, label: "Noise", active: true },
+    { index: 6, label: "Pulse" },
+    { index: 5, label: "Saw" },
+    { index: 4, label: "Tri" },
+    { index: 3, label: "Test" },
+    { index: 2, label: "Ring" },
+    { index: 1, label: "Sync" },
+    { index: 0, label: "Gate", active: true },
+  ]}
+  value={0x81}
+  caption="Noise (bit 7) + gate on (bit 0) = $81. Write $80 first to clear the gate, then $81, so each hit retriggers the burst."
+/>
 
-## The Complete Code
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-08/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-08/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: fire the explosion on voice 2"
+  context={3}
+/>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-08/starfield.asm" />
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-08/steps/step-02.asm" />
+</details>
 
-## If It Doesn't Work
+Because the voices are independent, the laser doesn't have to finish first. Fire, and the pew rings on voice 1; the instant the shot connects, the boom lands on voice 2 — both sounding together:
 
-- **Score doesn't appear?** Check you're writing to `$0400`/`$0401` in the init section. The screen must be cleared first (it is — the clear loop runs before the score write).
-- **Score shows wrong characters?** Screen code for '0' is `$30`, not `$00`. If you see '@' symbols, you forgot to add `$30`.
-- **Score jumps by strange amounts?** Make sure `SED` is before the `ADC` and `CLD` is after. Without decimal mode, `$09` + `$01` = `$0A`, which displays as a letter.
-- **Score doesn't update on hit?** The increment code must be inside the `hit_enemy` block, after the flash/sound setup.
+<AudioClip
+  src="/images/commodore-64/assembly/starfield/unit-08/explosion.wav"
+  title="The shot pews on voice 1, then the hit booms on voice 2 — two voices at once"
+  source="SID 6581 · recorded from a real hit"
+/>
 
-## Try This: Different Score Position
+That layering is the point of a multi-voice chip: the laser and the explosion occupy different voices, so one never cuts the other off. The same one-byte volume at `$d418` carries both.
 
-Move the score to the top-right corner. Row 0, columns 38–39: `$0400` + 38 = `$0426` and `$0400` + 39 = `$0427`. Change the `STA` addresses in both init and the display update.
+## When it's wrong, see why
 
-## Try This: Score Cap
+The flash and the boom fail independently — check them apart:
 
-Stop the score at 99. Before the BCD increment, check if score equals `$99`. If it does, skip the `ADC`. One `CMP` and one `BEQ`.
+- **No flash.** The colour writes are the suspects. On a hit `$d029` should become `$01` (white); when `flash_timer` expires it should return to `$05` (green). If it sticks white, the restore isn't running; if it never whitens, the hit isn't writing the colour.
+- **The enemy drifts during its death.** The freeze guard is in the wrong place. The `flash_timer` test must come *before* the movement code, or the enemy steps once before freezing.
+- **No boom.** Walk the voice-2 chain: master volume `$d418` non-zero (set once at startup), and the gate at `$d40b` toggling `$80` → `$81`. A lone `$81` won't retrigger if the gate was already set.
+- **A boom, but wrong or stepping on the laser.** Check you wrote `$d407`–`$d40d` (voice 2), not `$d400`–`$d406` (voice 1). They're identical layouts seven bytes apart, and hitting voice 1 by mistake overwrites the laser mid-pew.
 
-## What You've Learnt
+## Before and after
 
-- **Screen RAM at `$0400`** — direct character output to the 40×25 grid.
-- **Colour RAM at `$D800`** — per-character colour, same layout as screen RAM.
-- **BCD / decimal mode** — `SED` makes `ADC` count in tens. Always `CLD` after.
-- **Nybble extraction** — `LSR` ×4 for the high nybble, `AND #$0F` for the low.
+We started with a hit that blinked out in silence and finished with one that flashes white, holds for a beat, and booms — the same collision, now with the feedback that makes destroying something *feel* like destroying something. None of it changes what the code does; all of it changes how the moment lands.
 
-## What's Next
+## Try this
 
-One enemy at a time feels like target practice. In Unit 9, indexed addressing lets you track a whole fleet — three enemies descending at once.
+- **Reshape the boom.** Voice 2's frequency and decay set its character. `$d408 = $02` is a subterranean rumble; `$18` is more of a crackle. A longer decay (`$d40c = $0f`) lets it linger; a short one (`$03`) snaps it off. Find the explosion that fits your game.
+- **Time the flash.** `flash_timer` is 8 frames. Drop it to 4 for a quick blink, raise it to 16 for a heavier hit. Too long and the game feels like it's pausing on every kill — feel where the line is.
+
+## What you've learnt
+
+- **Game feel** — the same hit, made to land: feedback in the medium the player can see and hear, not just in the logic.
+- **The frame-counter pattern** — set a value, decrement each frame, act at zero. Flash windows, animation, delays — all the same shape.
+- **A timed visual effect** — a temporary colour change with a countdown, and freezing movement while it runs.
+- **SID voice 2** — an independent channel, its registers seven bytes up from voice 1, sounding at the same time.
+- **The noise waveform** — bit 7 of the control register, the raw material for explosions, static, and percussion.
+
+## What's next
+
+Every hit now flashes and booms, but the screen keeps no tally — destroy ten enemies and there's nothing to show for it. Next you'll write a score to the screen directly, poking digits into screen RAM.

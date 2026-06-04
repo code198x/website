@@ -1,95 +1,156 @@
 ---
-title: "Direct Hit"
-description: "Your bullet meets the enemy — software collision detection using coordinate distance checking. The enemy vanishes and respawns at the top."
+title: "Enemy Appears"
+description: "Add a third sprite that moves on its own — a green enemy that drifts down the screen and keeps coming, respawning in a new column each time it leaves."
 pubDate: 2026-02-06
 game: 1
 unit: 6
-tags: ["assembly", "6510", "collision", "sprites", "shooter"]
+tags: ["assembly", "6510", "sprites", "movement", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
+import RegisterBits from "@components/diagrams/RegisterBits.astro";
+import SpriteGrid from "@components/diagrams/SpriteGrid.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-Fire. Hit. The enemy vanishes and reappears at the top. No explosion, no score — just proof that your bullet knows where the enemy is.
+Your ship flies, shoots, and the shot has a voice. But it's firing into an empty sky — there's nothing up there. This unit adds the first thing that *isn't* you: a green enemy that moves on its own, with no joystick behind it. It drifts down, leaves the screen, and comes straight back from a new direction.
 
-## Collision Detection
+## Where we start
 
-Games need to know when things overlap. The VIC-II has hardware collision registers (`$D01E` and `$D01F`) that detect when sprite pixels touch, but they're awkward for precise game logic — they trigger on pixel overlap, not position proximity, and they latch until read. Software collision is more predictable: compare the X and Y coordinates yourself.
+We have Unit 5's ship: it moves, clamps to the edges, fires a bullet, and pews. The sky above it is empty.
 
-The approach: each frame, if the bullet is active, check whether it's close enough to the enemy. "Close enough" means both X and Y are within 16 pixels. If both checks pass, it's a hit.
+![The white ship at the bottom centre of an empty black screen — armed and sounding, but with nothing to shoot at.](/images/commodore-64/assembly/starfield/unit-06/before.png)
 
-## Checking Distance
+## Milestone 1 — a sprite that moves itself
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-06/snippets/01-collision-check.asm" />
+So far every sprite has been driven by you (the ship) or by a button (the bullet). The enemy is different: nothing reads input for it. Each frame, code nudges it along — that's all "movement" is on this machine.
 
-The first line is a guard clause — if `bullet_active` is zero, skip the entire check. No point comparing positions when there's nothing to hit with.
+It rides on **sprite 2**. The VIC-II gives all eight sprites the same shape of registers, spaced two bytes apart, so sprite 2's are a short step on from the ones you already know:
 
-Then comes the Y check. `SEC` / `SBC` subtracts `enemy_y` from `bullet_y`. The result tells us how far apart they are, but there's a subtlety: subtraction wraps around in 8 bits.
+| Register | Sprite 0 (ship) | Sprite 1 (bullet) | Sprite 2 (enemy) |
+|----------|-----------------|-------------------|------------------|
+| X position | `$d000` | `$d002` | `$d004` |
+| Y position | `$d001` | `$d003` | `$d005` |
+| Colour | `$d027` | `$d028` | `$d029` |
+| Data pointer | `$07f8` | `$07f9` | `$07fa` |
 
-If the bullet is *below* the enemy (bullet_y > enemy_y), the result is a small positive number — straightforward. If the bullet is *above* the enemy (bullet_y < enemy_y), the result wraps to a large value near 255.
+To make it visible we set bit 2 of the sprite-enable register — the same `$d015` whose bit 0 is the ship and bit 1 the bullet:
 
-Both cases can mean "close":
+<RegisterBits
+  address="$D015"
+  name="Sprite enable"
+  bits={[
+    { index: 0, label: "Ship", active: true },
+    { index: 1, label: "Bullet" },
+    { index: 2, label: "Enemy", active: true },
+    { index: 3, label: "—" },
+    { index: 4, label: "—" },
+    { index: 5, label: "—" },
+    { index: 6, label: "—" },
+    { index: 7, label: "—" },
+  ]}
+  value={0x05}
+  caption="Bits 0 and 2 set ($05): ship and enemy on. The bullet's bit 1 still flips on and off as you fire."
+/>
 
-- **bullet_y = 100, enemy_y = 90** — result is 10. Less than `$10` (16), so they're close.
-- **bullet_y = 100, enemy_y = 105** — result is 251 (unsigned). Greater than or equal to `$F0` (240), so they're also close — from the other direction.
-- **bullet_y = 100, enemy_y = 50** — result is 50. Neither less than `$10` nor greater than `$F0`. Too far apart.
+The enemy faces *down* — it's coming at you. A classic invader silhouette: antennae on top, a widening body, legs splayed below.
 
-The two `CMP` / branch instructions carve out these two "close" ranges. Values 0–15 (`$00`–`$0F`) and 240–255 (`$F0`–`$FF`) both mean "within 16 pixels." Everything in between means "too far."
+<SpriteGrid
+  bytes={[
+    0x00,0x66,0x00, 0x00,0x3c,0x00, 0x00,0x7e,0x00, 0x00,0xdb,0x00,
+    0x00,0xff,0x00, 0x01,0xff,0x80, 0x01,0x7e,0x80, 0x01,0x3c,0x80,
+    0x00,0xa5,0x00, 0x01,0x81,0x80,
+    0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00,
+    0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00,
+    0x00,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00,
+  ]}
+  width={24}
+  height={21}
+  bytesPerRow={3}
+  pixelColor="#68d64b"
+  caption="The enemy sprite — an invader facing down, stored in block 130 at $2080. Green, to read instantly as 'not you'."
+/>
 
-The X check works identically, reading the bullet's sprite X register at `$D002` and comparing against `enemy_x`.
+We give it a starting position, then move it one pixel down every frame. Moving down means *adding* to the Y register — `clc` then `adc`, the addition from the Primer:
 
-## On Hit
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-06/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-06/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: a third sprite, drifting down on its own"
+  context={3}
+/>
 
-When both checks pass, two things happen:
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-06/steps/step-01.asm" />
+</details>
 
-**Deactivate the bullet.** Clear `bullet_active` and use `AND` to turn off bit 1 in the sprite enable register — the same pattern from Unit 3, just in a new context.
+The enemy drifts steadily down with no input at all:
 
-**Respawn the enemy.** Reset Y to `$32` (top of screen) and pick a new random X from the raster register — the same respawn pattern from Unit 5. The enemy reappears immediately, ready to drift down again.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-06/step-01-drift.mp4"
+  caption="The enemy drifts down one pixel a frame and slides off the bottom — then, with no respawn logic, the Y byte wraps from 255 back to 0 and it pops in again at the top, in the very same column."
+  autoplay={true}
+  loop={true}
+/>
 
-No explosion sound yet. No score. That's Units 7 and 8. This unit is purely about the geometry — proving that two objects can find each other in screen space.
+That reappearance is an accident, not a feature. The Y position is a single byte, so when it climbs past 255 it wraps to 0 — the top — and the enemy falls again down the *same* column. It works, but it's mechanical and predictable. A real wave comes from somewhere new each time.
 
-## The Complete Code
+## Milestone 2 — make it keep coming
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-06/starfield.asm" />
+We want the enemy to leave at the bottom and return from a fresh column, deliberately. Two pieces: notice when it's gone, and pick a new spot.
 
-## If It Doesn't Work
+Noticing is a compare. Once the Y position reaches the bottom (248), we respawn — `cmp` against the limit and branch away if we're not there yet, the compare-and-decide from the Primer. For the new column we need an unpredictable number, and the C64 hands us a cheap one: `$d012`, the **raster register**, holds the screen line the beam is drawing right now. It races up the screen 50-odd times a second, so reading it at the unpredictable moment the enemy happens to exit gives a different value almost every time.
 
-- **Bullet passes through?** Check the distance threshold — `$10` is 16 pixels. The enemy sprite is roughly 16 pixels wide, so this should catch most overlaps. If sprites are offset, try `$14` (20 pixels).
-- **Hit detection only works sometimes?** Make sure you're comparing `bullet_y` (the zero-page variable) with `enemy_y`. The sprite register `$D003` may lag behind by a frame if you read it before writing the updated position.
-- **Enemy doesn't respawn on hit?** Check the respawn code runs inside the `hit_enemy` block, not unconditionally after it. The `no_hit` label must be *after* the respawn instructions.
-- **Everything dies instantly?** Make sure the collision check is between the bullet update and the enemy update, not overlapping with either.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-06/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-06/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: respawn at the top in a new column"
+  context={3}
+/>
 
-## Try This: Adjust the Hit Box
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-06/steps/step-02.asm" />
+</details>
 
-`CMP #$10` defines a 16-pixel threshold. You can change the Y and X thresholds independently:
+When Y reaches 248 we snap it back to the top and read `$d012`. That raw line number could land anywhere, so we trim it: `and #$7f` keeps it in 0–127, then `adc #$30` shifts it to 48–175 — safely inside the visible width, never tucked behind the border. It isn't true randomness, but the enemy no longer marches down the same lane:
 
-- **`CMP #$08`** — 8 pixels. Tight. Requires precise aim.
-- **`CMP #$18`** — 24 pixels. Very forgiving, hard to miss.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-06/step-02-respawn.mp4"
+  caption="With respawn, the enemy reaches the bottom, jumps straight back to the top in a different column, and comes again — a stream instead of a single pass."
+  autoplay={true}
+  loop={true}
+/>
 
-A taller hit box (bigger Y threshold) with a narrow X threshold rewards horizontal aiming. A wide X threshold with a tight Y threshold rewards timing. Experiment with the feel.
+## When it's wrong, see why
 
-## Try This: Count Hits
+An autonomous sprite has only a few ways to misbehave, and each names its own value:
 
-Add a zero-page variable:
+- **No enemy at all.** Either it's disabled or pointed at empty data. Check `$d015` has bit 2 set (the value should be `$05`, not `$01`), and that `$07fa` holds 130 — the block where the sprite data lives. A blank sprite usually means the pointer is wrong.
+- **Enemy frozen at the top.** The movement isn't running. Watch `enemy_y`: it should climb by one every frame and be copied to `$d005`. If the variable changes but the sprite doesn't move, you updated the zero-page copy but forgot to write the register (or wrote the wrong one).
+- **It never comes back.** The respawn test is inverted. `bcc` skips the respawn while Y is *below* 248; if the branch goes the wrong way the reset never runs and the enemy just wraps. Confirm the compare is `cmp #$f8` and the branch is `bcc`.
+- **Always the same column.** You're reading `$d012` once at startup instead of at respawn. The raster value is only unpredictable if you read it *at the moment the enemy exits* — read it in the init code and it's frozen.
 
-```asm
-hit_count = $06
-```
+## Before and after
 
-In the `hit_enemy` block, add:
+We started with an empty sky and finished with an enemy that arrives on its own, leaves at the bottom, and returns from a new column — the first object in the game the player doesn't control, and the first reason the shooting will matter.
 
-```asm
-inc hit_count
-```
+## Try this
 
-You can't display it on screen yet (that's Unit 8), but you can verify it's changing by watching address `$06` in a monitor or debugger. It's a preview of what scoring will look like.
+- **A faster descent.** The enemy falls one pixel a frame (`adc #$01`). Make it two or three and feel how much less time you get to line up under it. Speed is difficulty, set by a single byte.
+- **A different threat colour.** `$d029` takes any C64 colour: `$02` red, `$07` yellow, `$0e` light blue. Pick one that reads clearly against black without competing with the white ship.
 
-## What You've Learnt
+## What you've learnt
 
-- **Software collision detection** — comparing coordinates directly, not relying on hardware sprite collision registers.
-- **Unsigned distance** — `SEC` / `SBC` gives a result where both small values (0–15) and values near 255 (240–255) mean "close."
-- **Nested checks** — Y first, then X. Both must pass for a hit.
-- **Guard clause** — skip the entire check when `bullet_active` is zero. No wasted cycles, no false positives.
+- **Sprite 2** — registers two bytes on from sprite 1 (`$d004`/`$d005`, colour `$d029`, pointer `$07fa`), following the VIC-II's even spacing.
+- **The enable register as bits** — `$d015` value `$05` turns on sprites 0 and 2 together; each bit is one sprite.
+- **Autonomous movement** — `clc` + `adc` on a position every frame is all it takes to make a sprite move with no input.
+- **Respawning** — compare a position against a limit, and reset it when it's past.
+- **A cheap pseudo-random** — the raster register `$d012`, read at an unpredictable moment, masked and shifted into a usable range.
 
-## What's Next
+## What's next
 
-The enemy vanishes instantly — no fanfare, no sound. In Unit 7, the SID chip gives explosions a voice, and the enemy flashes white on impact.
+The enemy comes at you and your bullet flies past it — they don't notice each other yet. Next you'll add collision detection, so a shot that meets the enemy actually destroys it.
