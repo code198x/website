@@ -1,0 +1,68 @@
+---
+title: "The Machine Can Hear You"
+description: "Read the joystick the honest way — read a port, isolate one bit, branch on it. Push the stick and watch the border react, every pass of the loop. The first time the machine answers to you."
+pubDate: 2026-06-04
+game: 0
+unit: 8
+tags: ["assembly", "6510", "input", "joystick", "control-flow", "getting-started"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+A program that decides things (Unit 7) gets interesting when the thing it decides on is *you*. So: how does the machine know the joystick is pushed?
+
+There's no `INKEY$` waiting around for you. You **read the joystick yourself**, exactly the way you read any box — it lives at a hardware address, like the border did. Joystick port 2 sits at **`$DC00`**, and each of its low five bits is one direction:
+
+- **bit 0** up · **bit 1** down · **bit 2** left · **bit 3** right · **bit 4** fire.
+
+To test a single bit, you can't just name it — the 6510 has no "test bit 4" instruction for this. You **mask** it: `and #%00010000` keeps bit 4 and zeroes the rest, so the result is either "bit 4's value" or nothing. Then you branch on whether the result is zero.
+
+And there's one twist that catches everyone once: **a pushed direction reads as 0, not 1.** The bit is *cleared* while the stick is held that way. So after the mask, a *zero* result means fire is **down**.
+
+## What you'll see by the end
+
+![The C64 screen with a red border, fire held down.](/images/commodore-64/assembly/meet-the-machine/unit-08/screenshot.png)
+
+A red border — *while fire is held*. Let go and it springs back to blue. The program reads the stick every pass of the loop and repaints the border to match, so the colour is a live readout of whether you're pressing. (The screenshot catches it mid-press; at rest it's blue.)
+
+## Reading the stick, round and round
+
+<CodeFromFile src="commodore-64/assembly/meet-the-machine/unit-08/read-joystick.asm" />
+
+It's the test-then-branch from Unit 7, now fed by the joystick instead of a fixed value. The loop you've had since Unit 1 finally earns its keep: each time round, it reads `$DC00` afresh and paints accordingly. That "read, decide, draw, repeat" rhythm is the heartbeat of every game; you're feeling it for the first time here.
+
+**Remember the twist:** `beq pressed` branches when the masked result is *zero*, and the bit is *clear* (zero) when fire is held — so "result zero" means "fire is down." Pushed is 0. It reads backwards until it doesn't.
+
+## One bit now; the rest later
+
+This reads exactly **one direction, one bit**. The whole stick is five bits, and reading several at once — up, down, left, right, fire, all in a pass — is a job of its own. We're leaving it here: that belongs to the **first game**, where moving a ship actually needs it. For now, the machine can hear one push, and that's the whole idea.
+
+## Assemble and run
+
+```
+acme -f cbm -o joystick.prg joystick.asm
+```
+
+Load it, plug a joystick into **port 2**, and **hold fire**: the border turns red, and releases back to blue when you let go. The machine is answering you in real time.
+
+## Try this: a different direction
+
+`up` is bit 0 of the same port. Change `and #%00010000` to `and #%00000001` and now the border answers when you push *up* instead. (Down is `%00000010`, left `%00000100`, right `%00001000` — the same `lda $dc00`, a different mask.)
+
+## Try this: invert it
+
+Swap the two colours — `lda #2` (red) on the not-pressed path and `lda #6` (blue) on the `pressed` path — so the border is red *until* you push, then goes blue while held. Same reading, opposite reaction. Predict it, then confirm.
+
+## If it doesn't work
+
+- **The border never changes.** Check the joystick is in **port 2** (`$DC00`); port 1 is `$DC01`, a different box. And check the mask matches the bit you mean.
+- **It's backwards — red at rest, blue when pushed.** That's the active-low twist biting: pushed is 0. Make sure `beq` is the branch you treat as "pressed."
+- **It reacts once then freezes.** A `jmp read` is missing, so the read never repeats. Both paths must jump back to `read`, above the `lda $dc00`.
+
+## What you've learnt
+
+You read the joystick by reading a port (`lda $dc00`), masking the bit you care about (`and #…`), and branching on the result — and a pushed direction reads as **0**, not 1.
+
+## What's next
+
+You've been baking a fixed address into every store. Next — **A Finger on the Boxes** — we stop doing that: one instruction learns to write all the way along memory, by sliding an *index* instead of changing the line. It's the idea every loop that fills the screen is built on.

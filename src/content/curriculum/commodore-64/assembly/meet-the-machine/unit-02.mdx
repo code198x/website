@@ -1,0 +1,92 @@
+---
+title: "LDA Is Not LET"
+description: "Meet the registers — the three physical 8-bit stores inside the 6510. Send a value from A into X and back again, and watch the border prove it made the trip. And learn why 'load' comes in three flavours."
+pubDate: 2026-06-03
+game: 0
+unit: 2
+tags: ["assembly", "6510", "registers", "lda", "transfer", "getting-started"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Last time you sent a number to the border and met the build-run loop. You used a register — `A` — without really meeting it. Let's meet it now, because this is the first place the machine stops behaving like the language you came from.
+
+In BASIC, `LET A = 5` gave you a variable, and you could have as many as you liked — `SC`, `LI`, `NA$`, on and on. The [6510](/vault/hardware/6510) is not so generous. It has **three** registers — small stores *inside the chip itself* — and that's all. Their names are fixed: **`A`** (the *accumulator*, where most work happens) and **`X`** and **`Y`** (two helpers we'll lean on later). You don't declare new ones. You learn to *orchestrate the three you have*.
+
+And each one holds a single **8-bit** number: 0 to 255, nothing larger. A register isn't a roomy named box; it's a tiny slot with a hard limit. That constraint shapes everything you'll write.
+
+## Load comes in threes
+
+There's a second surprise. On the Spectrum's Z80, one instruction — `LD` — moved a number anywhere: into any register, between any two. The 6510 is blunter. *Load* comes in three flavours, one per register:
+
+- **`LDA #5`** — load 5 into `A`
+- **`LDX #5`** — load 5 into `X`
+- **`LDY #5`** — load 5 into `Y`
+
+And there's no general "copy A into X" load at all. For moving a value *between* registers you need a different idea — a **transfer**:
+
+- **`TAX`** — Transfer `A` to `X` · **`TXA`** — Transfer `X` to `A`
+- **`TAY`** — Transfer `A` to `Y` · **`TYA`** — Transfer `Y` to `A`
+
+Four transfers, and notice what's *missing*: there's no `TXY`. You can't move `X` straight to `Y`. To get there you route through `A` — we'll prove that at the end.
+
+## What you'll see by the end
+
+![The C64's screen surrounded by a solid green border.](/images/commodore-64/assembly/meet-the-machine/unit-02/screenshot.png)
+
+A green border — colour 5. But the colour isn't really the point this time. The point is *how the 5 got there*: it travelled from `A` into `X`, survived us wiping `A`, and came back. The border is just the proof you can see. The real show is in the **register view** — VICE's monitor shows `A`, `X` and `Y`, and you can watch them change step by step.
+
+## The round trip
+
+To *prove* a value really moves between registers — rather than just trusting it — we send `5` from `A` into `X` and back:
+
+<CodeFromFile src="commodore-64/assembly/meet-the-machine/unit-02/registers.asm" />
+
+This is last unit's program with three lines added in the middle. Follow `A` and `X` down the steps:
+
+| After… | `A` | `X` |
+|---|---|---|
+| `lda #5` | 5 | — |
+| `tax` | 5 | 5 |
+| `lda #0` | 0 | 5 |
+| `txa` | 5 | 5 |
+
+We deliberately wipe `A` to 0, then bring the value *back from `X`*. The border ends up green — so the `5` must have been safe in `X` the whole time. That's the proof the copy was real.
+
+**Couldn't we just show `X` directly?** On the C64, yes — `stx $d020` would store `X` straight to the border, no round trip needed. We do the trip anyway, on purpose: it's the cleanest way to *watch* a value leave a register, sit safely somewhere else, and come home.
+
+## Assemble and run
+
+Same loop as before — change, build, run:
+
+```
+acme -f cbm -o registers.prg registers.asm
+```
+
+Load `registers.prg` and open the register view, then watch `A` and `X` move through the table above before the border settles on green.
+
+## Try this: too big to fit
+
+Change `lda #5` to `lda #300` and assemble. This time the assembler stops you: 300 won't fit. A register holds 8 bits — 0 to 255 — and 300 is past the top. Here ACME catches it for you and refuses to build. But don't read that as "the tools have my back": once you're doing *arithmetic*, values roll past 255 and wrap around silently, with no error at all. The machine keeps the bits that fit and carries on — a theme we'll return to. For now, just feel the ceiling: 255, and not one more.
+
+## Try this: the longer trip
+
+Remember there's no `TXY`. So how do you get a value from `X` into `Y`? You route it through `A`. This sends `6` all the way round — `A` → `X` → `A` → `Y` → `A` — before showing it:
+
+<CodeFromFile src="commodore-64/assembly/meet-the-machine/unit-02/longer-trip.asm" />
+
+Before you run it, predict `A`, `X` and `Y` at each step — then open the register view and check. (`6` is blue.) The wipes between transfers are there to *prove* each leg: if the value shows up at the end, it really did travel, because we kept clearing `A` behind it.
+
+## If it doesn't work
+
+- **`acme` says something like "too large" on the `lda` line.** You've left `lda #300` (or another value over 255) in place — that's the *too big to fit* experiment. Put a value from 0 to 255 back.
+- **The border is black, not green.** The `txa` step is missing or mistyped, so `A` was still 0 (from the wipe) when you showed it. Put the round trip back exactly as shown.
+- **The border's the wrong colour.** Check the number in `lda #…`. The sixteen C64 colours run 0–15; `5` is green, `6` is blue.
+
+## What you've learnt
+
+A register is a physical, finite **8-bit** store — the 6510 has only three (`A`, `X`, `Y`) — `LDA`/`LDX`/`LDY` load values into them, and the `TAX`/`TXA`/`TAY`/`TYA` transfers move values *between* them. There's no `TXY`, so X-to-Y goes the long way, through `A`.
+
+## What's next
+
+This isn't a C64 quirk: nearly every CPU is built around a small set of registers — some have more, some fewer, and the way you move values between them differs machine to machine. You're learning how machines work, not a C64 trick. Next — **Everything Is a Number** — we look at what those bytes you're moving around actually *are*, and discover the machine doesn't know a letter from a colour from a number. They're all just bytes.

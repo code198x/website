@@ -1,0 +1,87 @@
+---
+title: "Assemble and Run"
+description: "Write a few lines of assembly, turn them into a program with a build step, run it on the C64, and watch the border change colour. Meet the loop you'll use all course — and the idea that makes the C64 the C64."
+pubDate: 2026-06-03
+game: 0
+unit: 1
+tags: ["assembly", "6510", "getting-started", "toolchain", "memory-mapped-io", "border"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+> **New to programming entirely?** You'll have a smoother time meeting the fundamentals in our [BASIC course](/sinclair-zx-spectrum/basic) first — this track assumes you've already met variables, loops and subroutines somewhere. If you have, in any language, you're in the right place.
+
+This is the Primer — *Meet the Machine*. Its whole job is to make the [Commodore 64](/vault/systems/commodore-64) stop feeling like magic, one small idea at a time. No game yet, no sprites, no SID, no clever code. Just you and the machine, getting introduced.
+
+And the first idea is the smallest one there is: **there's a build step now.** In BASIC you typed `RUN` and it went. In assembly you write text, a tool called an *assembler* turns that text into a program the machine can actually run, and *then* it goes. That extra step — write, assemble, run — is the loop you'll repeat for the rest of the course. This unit is just that loop, done once, with the simplest visible result on the whole machine.
+
+## What you'll see by the end
+
+![The C64's empty screen surrounded by a solid red border.](/images/commodore-64/assembly/meet-the-machine/unit-01/screenshot.png)
+
+A red border. That's it — and that's the win. You wrote it, you built it, the machine did it. The instant the program runs, the border turns red.
+
+## The three words you need
+
+Before the code, three pieces of vocabulary — the model, then the syntax:
+
+- **Register `A`.** A tiny store *inside* the CPU that holds one number. The machine has a handful of these; `A` — the *accumulator* — is the one we use most. Think of it as the value you're holding in your hand right now.
+- **A memory-mapped register.** Here's the idea that makes the C64 the C64. The hardware doesn't sit behind some separate "port" you reach through a special door. It lives at an ordinary *memory address*, and you talk to it by storing a number there — exactly the way you'd write to any other box in memory. The border colour lives at **`$D020`** (that `$` just means the number is written in hex — more on that later; for now it's a name). Write a value to `$D020` and the border changes. This is *memory-mapped I/O*, and it's how you talk to everything on this machine.
+- **The border.** The frame around the screen. It shows one of sixteen colours, and the number sitting at `$D020` picks which one. `2` is red.
+
+So the plan in plain words: *put 2 into A; store A at $D020.* Two instructions. The border turns red.
+
+## The program
+
+This is the whole thing:
+
+<CodeFromFile src="commodore-64/assembly/meet-the-machine/unit-01/border.asm" />
+
+`lda #2` puts the number 2 into register `A`. `sta $d020` stores it at the border colour register — and that store *is* the act of changing the border. `loop jmp loop` at the end just holds the picture still: it jumps to itself, forever. Without it the machine would carry on past our two instructions into whatever bytes happen to come next, and do something we never asked for. (The 6502 has no "stop" — it always runs on. That "the machine just keeps going" is a big idea; we'll meet it properly at the end of the Primer.)
+
+The block above the code — the `!byte` line — is the one thing the C64 asks for that the toolchain on other machines doesn't. The C64 switches on into BASIC, so to launch a machine-code program you smuggle it in behind a one-line BASIC program: `10 SYS 2061`, which means "jump to the machine code at address 2061." Those twelve bytes *are* that BASIC line. You don't need to memorise them — they're identical for every program in this course, and they always hand control to your code at `$080d`. Meet it once here; from now on it's just the line you paste at the top.
+
+One thing for when you type it in: the assembler doesn't care about capitals in instruction names — `lda` and `LDA` are the same instruction. We write instructions in lowercase all course, so pick the habit up now.
+
+Don't worry about understanding every line yet. Right now we're learning the *loop*, not the instructions.
+
+## Assemble and run
+
+From this unit's directory, turn the source into a program the emulator can load:
+
+```
+acme -f cbm -o border.prg border.asm
+```
+
+That's the build step — `border.asm` (the text you wrote) goes in, `border.prg` (a program the C64 can run) comes out. Load `border.prg` in your emulator — `x64sc border.prg` — and the border is red the moment it starts.
+
+You just did the whole cycle: **write → assemble → run.** Everything else in this course is that loop, again and again, with more interesting things in the middle.
+
+## Try this: a different colour
+
+Change the `2` in `lda #2` to another number from 0 to 15, then assemble and run again. The C64's sixteen colours are: `0` black, `1` white, `2` red, `3` cyan, `4` purple, `5` green, `6` blue, `7` yellow, `8` orange, `9` brown, `10` light red, `11` dark grey, `12` grey, `13` light green, `14` light blue, `15` light grey. Predict the colour before you run it, then check. (This is the loop again — change, assemble, run — and it's already becoming second nature.)
+
+## Try this: the background too
+
+Right next door to the border, at `$D021`, is the *background* colour register — the big area inside the border. Add a second pair of lines to set it as well:
+
+```
+        lda #6
+        sta $d021       ; background colour — blue
+```
+
+A blue screen inside a red border. Notice what you *didn't* do: you didn't learn a new kind of instruction. You stored a number to a different address, and a different piece of hardware noticed. Once you can write to a memory-mapped register, you can write to all of them — and almost everything on the C64 is one.
+
+## If it doesn't work
+
+- **`acme` reports an error and writes no `.prg`.** Read the line number it gives — usually a mistyped instruction or a stray character. Fix that one line and assemble again; the rest of the file is fine.
+- **The border doesn't change.** The `.prg` didn't load, or it's an old build. Re-run the `acme` line, then load the freshly-written `border.prg`.
+- **`RUN` does nothing, or the machine locks up with garbage.** Two usual causes: the `loop jmp loop` at the end is missing or mistyped, so the program ran off into nonsense — put it back exactly as shown; or the BASIC stub line was changed, so `SYS` jumped to the wrong place. The `!byte` line and the `*= $080d` after it must match the listing exactly.
+
+## What you've learnt
+
+Writing assembly means **write → assemble → run** — there's a build step between your text and a running program, and you've now been all the way round it once. And you've met the idea the whole machine is built on: you change the hardware by *storing numbers at addresses*. The border was the first one.
+
+## What's next
+
+You used register `A` without really meeting it. Next — **LDA Is Not LET** — we slow down and look at what a register actually *is*: not an unlimited pool of named variables like BASIC's `LET`, but a handful of physical, finite, 8-bit stores inside the chip. It's the first place the machine stops behaving like the language you came from.
