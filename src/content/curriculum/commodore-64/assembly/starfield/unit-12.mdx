@@ -1,81 +1,103 @@
 ---
 title: "Game Over"
-description: "Screen codes write GAME OVER to the display, fire button restarts via an init_game subroutine that resets all state cleanly."
+description: "Tell the player it's over and let them try again — print GAME OVER into screen RAM with a text subroutine, then restart the whole game on a press of fire."
 pubDate: 2026-02-06
 game: 1
 unit: 12
-tags: ["assembly", "6510", "screen codes", "game state", "subroutines", "restart"]
+tags: ["assembly", "6510", "screen-ram", "subroutines", "game-state", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-The ship turns red and the game freezes. But there's no message and no way to try again. This unit adds "GAME OVER" text to the screen and lets the player restart by pressing fire.
+The game freezes when you die — and just sits there. No word to the player, no way back; the only option is to reset the machine. This unit closes the loop: a GAME OVER message so the player knows what happened, and a press of fire to start again. With it, the game becomes something you can actually play in rounds.
 
-## Screen Codes
+## Where we start
 
-The VIC-II reads character data from screen RAM at `$0400`. Each byte is a screen code — a number that maps to a character in the ROM character set. Screen codes are not the same as PETSCII (the C64's text encoding). The mapping for letters: A=1, B=2, C=3, ... Z=26. Digits stay at `$30`–`$39`. Space is `$20`.
+Unit 11 ends in a silent frozen screen the instant the ship dies. We give that screen a voice and an exit.
 
-To display "GAME OVER":
-- G = `$07`, A = `$01`, M = `$0D`, E = `$05`
-- Space = `$20`
-- O = `$0F`, V = `$16`, E = `$05`, R = `$12`
+## Milestone 1 — say GAME OVER
 
-## Positioning Text on Screen
+In Unit 9 you wrote digits to the top-left corner. A word anywhere on screen is the same idea, twice over: pick the cell, and write each character's screen code. The screen is 40 columns wide and laid out row by row, so the address of any cell is `$0400 + row × 40 + col`. For the middle of the screen — row 12, column 16 — that's `$0400 + 496` = `$05f0`.
 
-Screen RAM is a 40×25 grid. Row 0 starts at `$0400`, row 1 at `$0400` + 40 = `$0428`, and so on. The formula: `$0400` + (row × 40) + column.
+Letters have screen codes too, and they're not the ASCII you might expect: `A` is `1`, `B` is `2`, up to `Z` at `26`, with space at `32`. So "GAME OVER" is the codes `7, 1, 13, 5, 32, 15, 22, 5, 18`, written into consecutive cells from `$05f0`, and coloured white through the matching colour-RAM cells at `$d9f0`. We wrap that in a `show_game_over` subroutine and call it the moment the ship dies:
 
-"GAME OVER" is 9 characters. Centred on a 40-column screen: column 16 (since (40 − 9) ÷ 2 ≈ 15.5). Row 12 puts it vertically centred. That gives `$0400` + (12 × 40) + 16 = `$05F0`.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-12/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-12/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: print GAME OVER on death"
+  context={3}
+/>
 
-Colour RAM mirrors the layout at `$D800`. The colour for position `$05F0` is at `$D9F0`. Write `$01` (white) to make the text visible against the black background.
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-12/steps/step-01.asm" />
+</details>
 
-## The Game Over Display
+The freeze from Unit 11 still holds the scene, so the message lands on top of it and stays:
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-12/snippets/01-game-over-text.asm" />
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-12/step-01-message.mp4"
+  caption="On death the frozen screen now says so: GAME OVER prints across the middle in white, held there with the red ship and the stalled wave."
+  autoplay={true}
+  loop={true}
+/>
 
-Nine `LDA`/`STA` pairs write the characters, then nine more set the colours. It's direct and clear. A loop with a data table would be shorter, but for nine characters the explicit writes are easier to follow — and every character's screen code is visible in the source.
+## Milestone 2 — play again
 
-## Press Fire to Restart
+A dead end isn't a game. We turn the freeze into a prompt: while the game is over, instead of looping forever, we watch the fire button — and when it's pressed, we start the whole game again.
 
-The game loop already checks `game_state` at the top. In Unit 10, when `game_state` was 1, the loop just jumped back — frozen. Now it does something: poll the fire button. When pressed, clear the screen and reinitialise.
+Restarting cleanly is easier than it sounds. The init code at the top already sets *everything* to a known state: black screen cleared, ship white at the bottom, score `00`, the wave spawned, `game_over` cleared. So "restart" is just "run the init again" — we label its entry `start` and `jmp` there. The screen clear wipes the GAME OVER text for free.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-12/snippets/02-restart.asm" />
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-12/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-12/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: poll fire and restart from the top"
+  context={3}
+/>
 
-`clear_screen` fills screen RAM with spaces, wiping the "GAME OVER" text and the old score display. `init_game` resets everything — ship position, enemy positions, score, game state. Then the loop continues from the top with `game_state` back at 0.
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-12/steps/step-02.asm" />
+</details>
 
-## Extracting Initialisation
+The game-over branch now reads fire (`$dc00` bit 4) and jumps to `start` when it's pressed; otherwise it holds the screen. Press fire and the round resets — message gone, ship white, score back to `00`, a fresh wave on its way down:
 
-The init code from Unit 10 was inline — it ran once at startup and couldn't be reused. Now it's a subroutine: `init_game`. The boot sequence calls `JSR clear_screen` then `JSR init_game`. The restart path calls the same two subroutines. Same code, two contexts.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-12/step-02-restart.mp4"
+  caption="GAME OVER now waits for input: a press of fire jumps back to the top. The message clears, the ship is white again, the score resets to 00, and a new wave descends."
+  autoplay={true}
+  loop={true}
+/>
 
-Hardware setup that never changes (sprite data pointers, SID voice configuration, score colour) stays outside `init_game` in the one-time boot section. Only state that resets between games belongs in the subroutine: ship position, enemy positions, score, bullet state, and `game_state` itself.
+## When it's wrong, see why
 
-## The Complete Code
+Text and restart fail in their own ways — the cell and the flag tell you which:
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-12/starfield.asm" />
+- **No message, or it's in the wrong place.** The address maths. `$0400 + row × 40 + col` — row 12, col 16 is `$05f0`; an off-by-40 lands it on the wrong row. And the colour cells (`$d9f0`+) must be set, or white-on-black text is invisible until something else colours them.
+- **Gibberish instead of letters.** Screen codes, not ASCII. `A` is `1`, not `$41`; writing `$41` shows a graphics character. Check the codes against `A`=1 … `Z`=26.
+- **Fire doesn't restart.** The poll or the jump. In the game-over branch, `$dc00` bit 4 should send you to `start`; if nothing happens, the branch is reading the wrong bit or jumping to the wrong label.
+- **Restart leaves stale state.** Something the init doesn't reset. The score, the ship colour, `game_over`, and the wave must all be set at `start` — if the score keeps its old value or the ship stays red, that init step is missing.
 
-## If It Doesn't Work
+## Before and after
 
-- **No text appears?** Check the screen code values — G is `$07`, not `$47`. Screen codes differ from PETSCII. Also check colour RAM writes at `$D9F0`+.
-- **Text in the wrong position?** Row 12, column 16 = offset 496 = `$01F0`. The address is `$05F0`, not `$04F0`.
-- **Fire doesn't restart?** The game over state must poll `$DC00` bit 4. Check the `AND #%00010000` and `BNE` back to `game_loop`.
-- **Score persists after restart?** `init_game` must write `$30` to both `$0400` and `$0401`, and set `score` to 0.
-- **Enemies don't reset?** `init_game` must call `spawn_enemy` for all three enemies with staggered Y values.
-- **"GAME OVER" still visible after restart?** `clear_screen` must run before `init_game`. The screen clear wipes the text; `init_game` then writes the fresh "00" score.
+We started with a dead-end freeze and finished with a real round: the game announces its end and offers a way back, all from one screen-writing subroutine and a jump to the top. The clean-slate restart is almost free — because the init already does the work of setting a fresh game, "play again" is just "do that again."
 
-## Try This: Coloured Text
+## Try this
 
-Write different colour values for each letter. Red for "GAME", white for the space, green for "OVER". Nine colour bytes — nine chances to experiment.
+- **Centre it properly.** "GAME OVER" is nine characters; true-centre on a 40-column row starts at column 15 or 16. Nudge the start address and see the word shift. While you're there, add a second line — PRESS FIRE — a row below, so the prompt is explicit.
+- **A beat before restart.** Right now any fire press restarts instantly, even one held from the shot that killed you. Add a short countdown — a frame counter, like the flash — before the game starts accepting fire, so the round doesn't restart by accident.
 
-## Try This: Flash the Text
+## What you've learnt
 
-Toggle the colour between white and another colour every 8 frames. Read a frame counter, `AND #$08`, and branch to set either colour. The text blinks, demanding attention.
+- **Screen position maths** — any cell is `$0400 + row × 40 + col`; the screen is row-major, 40 wide.
+- **Letter screen codes** — `A`=1 … `Z`=26, space 32 — distinct from ASCII; they're not offset like the digits were.
+- **A text subroutine** — wrapping a fixed message in `jsr`/`rts` so it's one call from anywhere.
+- **Restart by re-init** — labelling the init `start` and jumping to it gives a clean slate without duplicating the setup.
 
-## What You've Learnt
+## What's next
 
-- **Screen codes** — the VIC-II's character mapping (A=1, B=2, not the same as PETSCII).
-- **Calculated screen positions** — row × 40 + column + `$0400` for any cell on the 40×25 grid.
-- **Subroutine extraction** — `init_game` and `clear_screen` called from both boot and restart.
-- **Game state with restart** — polling fire during game over, resetting all state cleanly.
-
-## What's Next
-
-One death ends the game. In Unit 12, the player gets three lives — each death costs one, and game over waits until the last life is spent.
+Right now one hit ends everything. Next you'll give the player three lives — a death costs a life and respawns the ship, and only running out of lives brings up GAME OVER.

@@ -1,70 +1,98 @@
 ---
 title: "Three Lives"
-description: "A lives counter at the top-right gives the player three chances. DEC decrements the count, and game over waits until the last life is spent."
+description: "Soften the one-hit ending — give the player three lives, a counter that ticks down on each hit and respawns the ship, with game over held back until the last life is gone."
 pubDate: 2026-02-06
 game: 1
 unit: 13
-tags: ["assembly", "6510", "lives", "DEC", "game state", "HUD"]
+tags: ["assembly", "6510", "game-state", "screen-ram", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-One hit, game over. That's harsh. This unit gives the player three lives. Each death costs one — the game only ends when the last life is spent.
+One touch and it's over — which is honest, but harsh. A single misjudged move ends the whole run, and the game punishes the smallest mistake as hard as the biggest. Almost every arcade game softened this the same way: a stock of lives. This unit gives the player three. A hit now costs a life and puts the ship back; only when the last one is spent does the game actually end.
 
-## Tracking Lives
+## Where we start
 
-A new zero-page variable:
+Unit 12 ends the game on the first hit. We turn that single, fatal collision into one of three.
 
-```
-lives = $12     ; Lives remaining (starts at 3)
-```
+## Milestone 1 — three lives, one spent per hit
 
-`init_game` sets it to 3. The value is a plain byte — not BCD, not packed. One variable, one digit, values 0 to 3. Simple.
+A life count is a number on screen you already know how to make: store it in a byte, show it as a digit. We keep `lives` in zero page, start it at 3, and display it in the top-right corner (the score sits top-left). On a hit, instead of ending the game, we decrement the count, redraw the digit, and put the ship back at its start position to fly again.
 
-## The Lives Display
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-13/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-13/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: a lives counter; a hit costs one and respawns the ship"
+  context={3}
+/>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-13/snippets/02-lives-display.asm" />
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-13/steps/step-01.asm" />
+</details>
 
-The lives count appears at column 39, row 0 — the top-right corner. Screen RAM address: `$0400` + 39 = `$0427`. Colour RAM: `$D827`, set to white in the one-time setup (it never changes, even across restarts).
+The ship-hit handler is now a survivable event: `dec lives`, redraw, and reset `$d000`/`$d001` (and clear the ship's ninth bit, in case it died over on the right). The death tone still plays — a hit should still sting — but the wave rolls on:
 
-Converting the count to a screen code: add `$30`. Lives = 3 becomes screen code `$33`, which displays as '3'. The same trick as the score digits — all single-digit values map to `$30`–`$39`.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-13/step-01-lose-life.mp4"
+  caption="A hit no longer ends the game — it costs a life. The counter in the top-right ticks from 3 to 2, the ship reappears at the bottom, and play carries on."
+  autoplay={true}
+  loop={true}
+/>
 
-## Death Without Game Over
+## Milestone 2 — the last life ends it
 
-When an enemy hits the ship, `DEC lives` subtracts one. Then the code branches: if lives is zero, game over. If lives is non-zero, the ship resets to its starting position and the game continues.
+As written, the count would tick straight past zero into nonsense and the ship would never stop respawning. The fix is one comparison: after decrementing, check whether any lives remain. If they do, respawn as before; if not, fall into the Unit 11–12 ending — game over, red ship, the GAME OVER message, the freeze.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-13/snippets/01-lives-counter.asm" />
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-13/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-13/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: out of lives means game over"
+  context={3}
+/>
 
-`DEC` is the zero-page decrement instruction — it subtracts 1 from the byte in memory and sets the zero flag if the result is 0. The `BNE life_lost` branch tests that flag: non-zero means lives remain, zero means the last life is gone.
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-13/steps/step-02.asm" />
+</details>
 
-Both paths play the death sound. The game over path also turns the ship red and displays "GAME OVER". The life lost path just moves the ship back to its starting position — the enemies keep descending, the score stays, and the game continues immediately.
+Now the stock matters. Each hit spends a life — 3, 2, 1 — and only the loss of the last one brings the game to a halt:
 
-## The Complete Code
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-13/step-02-last-life.mp4"
+  caption="The counter falls 3, 2, 1 as the ship takes hit after hit — and when the last life is gone, the ship stays red, GAME OVER returns, and the game freezes."
+  autoplay={true}
+  loop={true}
+/>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-13/starfield.asm" />
+## When it's wrong, see why
 
-## If It Doesn't Work
+The counter and the branch are the two moving parts:
 
-- **Lives display doesn't appear?** Check `$0427` is written in `init_game` and `$D827` is set to white in the one-time setup.
-- **Lives never decrement?** `DEC lives` must be in the `ship_hit` section. Check the ship-enemy collision loop still works.
-- **Game over on first hit?** `init_game` must set `lives` to 3. If it starts at 0, `DEC` wraps to 255 — you'll never reach zero again.
-- **Display shows wrong digit?** Make sure you add `$30` to convert the count to a screen code. Lives = 2 should write `$32`, not `$02`.
-- **Ship doesn't reset after hit?** The `life_lost` path must write 172 to `$D000` and 220 to `$D001`.
+- **No number in the top-right.** The display write. The digit goes to `$0427` (row 0, column 39), coloured via `$d827`, and the value is a screen code — `3` is `$33`, a `0`–`9` value plus `$30`. Miss the colour and white-on-black is invisible.
+- **The count runs past zero into letters.** The zero check is missing or after the respawn. `dec lives` then `lda lives` / `bne` — the branch to game over must happen when the result is zero, before anything respawns.
+- **The ship never comes back.** The respawn writes. On a non-final hit, `$d000`/`$d001` must be set to the start position; if they aren't, the ship stays where it died (often off-screen or on top of the enemy that hit it).
+- **A single hit drains several lives at once.** The ship respawns on top of, or right next to, the enemy that just hit it, and is hit again immediately. There's no grace period yet — that's the very next unit. For now, the fixed respawn point keeps it mostly clear.
 
-## Try This: Extra Life at Score Threshold
+## Before and after
 
-After the BCD score increment, compare the score to `$10` (BCD for 10). If it matches and lives is less than 3, increment lives. One `CMP`, one `BNE`, one `INC`. Reward the player for accuracy.
+We started with a one-hit kill and finished with a stock of three lives: a hit costs one and returns the ship, and the GAME OVER ending waits for the last life to go. The whole change rides on a counter you display the same way as the score and a single branch that chooses between "respawn" and "end the game."
 
-## Try This: Display Lives as Sprites
+## Try this
 
-Instead of a digit, show small ship icons. Three sprites along the top — or simpler, write ship-shaped characters to screen RAM. More visual, same data.
+- **Change the stock.** Start `lives` at 5 for a gentler game, or 1 for a brutal one. The starting number is the difficulty dial — set it where the game feels fair.
+- **An extra life for a good run.** When the score passes a milestone — say `$50` — add one to `lives` and redraw the digit. Rewarding survival with more survival is one of the oldest hooks in the medium.
 
-## What You've Learnt
+## What you've learnt
 
-- **`DEC` for counters** — decrement a zero-page byte, zero flag set when it reaches 0.
-- **Conditional state transition** — game over only when lives reach zero, not on every death.
-- **Display update** — keeping screen RAM in sync with the game state after every change.
+- **A lives counter** — a byte shown as a digit, decremented on each hit, the same display technique as the score.
+- **Respawn versus game over** — one branch on the remaining count chooses between putting the ship back and ending the game.
+- **Reusing the ending** — the game-over path from the last two units is called only when the stock is empty, no new code for it.
 
-## What's Next
+## What's next
 
-Death is instant and silent — the ship just resets. In Unit 13, the border flashes red, a mournful tone plays, and a brief invulnerability timer prevents the ship from dying twice in a row.
+Respawning straight back into the wave is rough — the ship can reappear on top of an enemy and lose another life instantly. Next you'll add a brief flash of invulnerability after each death, so a lost life always gives the player a fair moment to recover.

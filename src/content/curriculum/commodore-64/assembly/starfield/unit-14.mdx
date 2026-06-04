@@ -1,72 +1,101 @@
 ---
 title: "Life Lost Flash"
-description: "The border flashes red when the player loses a life. A death timer counts down frames of invulnerability, preventing instant re-death while the screen recovers."
+description: "Make losing a life fair — a border flash marks each hit and doubles as a short window of invulnerability, so a respawn can't die on the spot."
 pubDate: 2026-02-06
 game: 1
 unit: 14
-tags: ["assembly", "6510", "border colour", "death timer", "invulnerability", "$D020"]
+tags: ["assembly", "6510", "game-feel", "timers", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-Losing a life should feel like something happened. Right now the ship just teleports back to its starting position — no flash, no pause, no feedback. This unit adds a red border flash that lasts 16 frames, and while the border is red, the ship can't be hit again.
+Three lives sounds fair until you respawn straight into the enemy that just killed you and lose a second life before you've touched the joystick. The last unit flagged it; this one fixes it. After every hit the ship gets a brief, visible window where it can't be hit — the standard arcade grace that makes a death feel like a setback, not a pile-up. We show that window as a flashing border, and we make the flash mean something.
 
-## The Death Timer
+## Where we start
 
-A new zero-page variable:
+Unit 13 gives the player three lives, but a fresh ship is vulnerable the instant it appears. We add a short timer that both signals the hit and protects the ship while it runs.
 
-```
-death_timer = $13   ; Death flash countdown (0 = no flash)
-```
+## Milestone 1 — a flash marks the hit
 
-When the player loses a life (but the game isn't over), `death_timer` is set to 16. Each frame, the game loop decrements it. When it reaches zero, the border returns to black. Same pattern as `flash_tbl` for enemy explosions — a countdown that drives a visual effect.
+The tool is the frame counter again: a `death_timer` set to a number of frames when a life is lost, counted down one per frame. While it runs, we flash the border — toggling it between red and black every few frames using a bit of the timer itself — and when it reaches zero we set the border back to black. The flash is loud and central, so a lost life is impossible to miss.
 
-## The Border as Feedback
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-14/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-14/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: flash the border for a moment after each hit"
+  context={3}
+/>
 
-The VIC-II border colour register at `$D020` controls the entire border area surrounding the screen. One store to `$D020` and the whole frame changes colour — the most dramatic single-byte visual effect on the C64.
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-14/steps/step-01.asm" />
+</details>
 
-On death: `LDA #$02` / `STA $D020` turns the border red. When the timer expires: `LDA #$00` / `STA $D020` restores it to black. The flash is visible for exactly 16 frames — about a third of a second at PAL timing.
+Lose a life and the screen tells you, unmistakably:
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-14/snippets/01-death-flash.asm" />
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-14/step-01-flash.mp4"
+  caption="Losing a life now flashes the border red for about a second, so the hit is unmissable — then it settles back to black and play resumes."
+  autoplay={true}
+  loop={true}
+/>
 
-The timer check runs every frame, right at the start of the game logic. `BEQ` skips the entire block when the timer is zero — three instructions of overhead during normal play. When the timer is running, `DEC` subtracts one and `BNE` skips the border restore unless the timer just hit zero.
+## Milestone 2 — the flash is a shield
 
-## Invulnerability During Flash
+Right now the flash is only decoration — the ship is still vulnerable during it, so the pile-up the last unit warned about can still happen. We make the flash *mean* invulnerability with one check: at the top of the ship-enemy collision test, if `death_timer` is running, skip the whole test. No collision is even looked for while the timer counts down, so for that window the ship is untouchable.
 
-Without protection, the ship would die again immediately — the enemy that killed it is still right there. The death timer doubles as an invulnerability window. Before checking ship-enemy collisions, one test decides whether to skip the entire collision loop.
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-14/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-14/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: skip ship collision while the flash runs"
+  context={3}
+/>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-14/snippets/02-invulnerability.asm" />
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-14/steps/step-02.asm" />
+</details>
 
-`LDA death_timer` / `BNE skip_ship_collision` — if the timer is running, branch past the entire collision loop to `JMP game_loop`. The ship still moves, bullets still fire, enemies still descend. Only the collision check is disabled.
+One detail in that diff is worth a look: the skip is written as `beq do_ship_collision` / `jmp no_ship_hit` rather than a single `bne no_ship_hit`. A branch only reaches about 127 bytes, and the collision code it has to jump over is longer than that — so we branch a short way over an unconditional `jmp`, which has no range limit. It's a pattern you hit whenever a conditional skip spans a big block.
 
-The label `skip_ship_collision` sits right after the loop's natural end. When the loop finishes without finding a hit, it falls through to the same `JMP game_loop`. One label, two paths to it.
+Now the window after a hit is genuinely safe — the ship flies back into the wave and keeps the lives it has left, for exactly as long as the border flashes:
 
-## The Complete Code
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-14/step-02-invulnerable.mp4"
+  caption="The flash is now a shield: while the border blinks, the ship flies straight back up among the wave and keeps its remaining lives. The protection lasts exactly as long as the flash, then it can be hit again."
+  autoplay={true}
+  loop={true}
+/>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-14/starfield.asm" />
+## When it's wrong, see why
 
-## If It Doesn't Work
+The timer drives both the look and the safety — watch it:
 
-- **Border never flashes?** Check `life_lost` stores `$02` to `$D020` and sets `death_timer` to 16.
-- **Border stays red forever?** The timer decrement must run every frame. Check the `death_timer` section appears after `game_active` and before the joystick code.
-- **Ship dies immediately after respawn?** The invulnerability check must test `death_timer` before the ship collision loop. `BNE` must branch to `skip_ship_collision`, not back into the loop.
-- **Border red on restart?** `init_game` must clear `$D020` to zero. Check `STA $D020` appears in the reset section.
-- **Flash too short or too long?** The timer starts at 16 (about 0.3 seconds at PAL). Increase for longer invulnerability, decrease for shorter.
+- **No flash.** The timer isn't being set, or the border isn't being written. On a life lost, `death_timer` should become non-zero; each frame it runs, `$d020` should change. If the value sets but the border stays black, the flash branch isn't writing the bright colour.
+- **The border flashes forever.** The countdown or the restore. `dec death_timer` must run every frame, and when it reaches zero the border must be forced back to `$00` — miss that and it sticks on whatever the last flash phase wrote.
+- **Still dying on respawn.** The invulnerability check is missing or in the wrong place. The `death_timer` test must sit at the *top* of the ship-collision section and skip the whole thing; if it's after the loop, the collision still runs.
+- **The skip won't assemble.** "Target out of range" — a `bne`/`beq` can't reach across the long collision block. Branch over a `jmp` instead, as the diff does.
 
-## Try This: Flash the Border Rapidly
+## Before and after
 
-Instead of solid red for 16 frames, alternate between red and black. Test bit 0 of `death_timer`: `LDA death_timer` / `AND #$01` / `BEQ` to choose red or black. The border strobes — more urgent, more dramatic.
+We started with a respawn that could die on the spot and finished with a fair one: every lost life flashes the border and grants a short, visible stretch of invulnerability. It's the same frame-counter pattern as the hit flash, used twice over — once to *show* the moment, once to *protect* it — and it's the difference between a death that feels cheap and one that feels earned.
 
-## Try This: Change Ship Colour During Flash
+## Try this
 
-Set the ship sprite colour to red (`$D027 = $02`) when the timer starts. Restore it to white when the timer expires. Visual feedback on the ship itself, not just the border.
+- **Tune the grace.** The window is about a second and a half. Shorten it for a tense game where you must reposition fast, lengthen it for a forgiving one. Too long and the ship feels like a ghost; too short and the pile-up returns.
+- **Flash the ship, not the border.** Instead of (or as well as) the border, blink sprite 0 on and off with the timer — toggle its bit in `$d015`. The blinking-ship invulnerability is the look most arcade games used; see which reads better to you.
 
-## What You've Learnt
+## What you've learnt
 
-- **`$D020` for visual feedback** — the border colour register is the simplest whole-screen effect.
-- **Frame-counting timers** — decrement each frame, act when zero. The same pattern used for enemy flash timers.
-- **Invulnerability windows** — one branch instruction skips an entire collision loop, protecting the player during recovery.
+- **A timer that drives a visual** — a frame counter whose value both counts down a window and, through one of its bits, toggles a colour.
+- **Temporary invulnerability** — gating a collision check on a timer, so an object simply can't be hit for a stretch.
+- **Branching over a jump** — the fix when a conditional skip has to clear a block bigger than a branch can reach.
+- **Game feel as fairness** — a respawn that the player can survive is the difference between difficulty and cheapness.
 
-## What's Next
+## What's next
 
-Black space is empty space. In Unit 14, characters written to screen RAM become a scrolling starfield — the game gets its name, and the background finally has depth.
+The game plays fair now, but the ship and its wave hang in flat black space. Next you'll fill that space with a scrolling starfield — layers of stars drifting at different speeds — and the game finally looks like it's moving through somewhere.

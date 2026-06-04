@@ -1,65 +1,112 @@
 ---
 title: "Player Death"
-description: "Ship-enemy collision loops through all three enemies each frame, and a game_over flag freezes the action when the ship is hit."
+description: "Make the ship killable — detect enemy-on-ship collision, freeze the game with a game-over flag, and play a death tone on the SID's third and final voice."
 pubDate: 2026-02-06
 game: 1
 unit: 11
-tags: ["assembly", "6510", "collision", "game state", "game over"]
+tags: ["assembly", "6510", "collision", "game-state", "sid", "shooter"]
 ---
 
+import CodeDiff from "@components/CodeDiff.astro";
 import CodeFromFile from "@components/CodeFromFile.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
+import AudioClip from "@components/AudioClip.astro";
 
-Three enemies descend, but the ship is untouchable. Not any more. This unit adds ship-enemy collision — and when an enemy reaches the ship, the game is over.
+The wave descends on you and you fly straight through it, untouched. There's no way to lose — which means there's nothing at stake, and the enemies are scenery. This unit gives them teeth: when an enemy reaches the ship, the ship dies, the game freezes, and the SID's last voice marks the moment. Suddenly you have to play carefully.
 
-## Reusing the Collision Pattern
+## Where we start
 
-The bullet-enemy collision from Unit 6 checks Y distance, then X distance, using subtraction and range comparison. Ship-enemy collision is the same pattern — different sprites, same maths.
+Unit 10 has a wave of three enemies you can shoot, a score, and a ship that nothing can hurt. We add the consequence.
 
-For each enemy: subtract the enemy's Y from the ship's Y. If the result is less than `$10` (within 16 pixels positive) or greater than `$F0` (within 16 pixels negative/wrapped), the Y coordinates are close enough. Then check X the same way.
+## Milestone 1 — the enemies can kill you
 
-## Checking All Enemies
+Detecting an enemy hitting the ship is the *same* geometry you already wrote for the bullet — a distance check on both axes — just with the ship's position in place of the bullet's. We walk the wave with the same indexed loop, comparing each enemy against the ship at `$d000`/`$d001`. The one new wrinkle: the ship can roam past X=255 (its ninth bit), and an enemy never does, so a ship in the right portion is ruled out before the low-byte compare — the guard you met in Unit 7, now on the ship.
 
-The ship collision loop mirrors the bullet collision loop. X steps from 0 to 2, skipping flashing enemies (they're mid-explosion, not solid). The first hit ends the loop — one collision is enough to end the game.
+When an enemy connects, we don't respawn it — we end the game. A single byte, `game_over`, becomes the game's state: set it to 1, turn the ship red, and at the top of the loop check it. If it's set, the loop does nothing but wait — every other system (input, movement, collision) is skipped, so the screen holds exactly as it was at the moment of death.
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-11/snippets/01-ship-collision.asm" />
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-11/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-11/steps/step-01.asm"
+  lang="asm"
+  title="Step 1: ship-enemy collision, a game-over flag, and the freeze"
+  context={3}
+/>
 
-On hit, three things happen: the `game_over` flag is set to 1, the ship sprite turns red (`$02`), and SID voice 3 plays a descending sawtooth — a falling tone that contrasts with the sharp noise of enemy explosions.
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-11/steps/step-01.asm" />
+</details>
 
-## Freezing the Game
+That `lda game_over` / `bne game_loop` at the top of the loop is the whole of "game over" — a flag checked once a frame that gates everything after it. Touch an enemy and the game stops dead:
 
-A single byte controls everything. At the top of the game loop, after the raster wait, check `game_over`. If it's non-zero, jump straight back to `game_loop` — no input, no movement, no collision checks. The screen freezes exactly as it was when the ship was hit.
+<VideoPlayer
+  src="/images/commodore-64/assembly/starfield/unit-11/step-01-death.mp4"
+  caption="An enemy reaches the ship: it turns red and the game freezes. Afterwards nothing responds — the wave hangs where it was, mid-descent."
+  autoplay={true}
+  loop={true}
+/>
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-11/snippets/02-game-over-flag.asm" />
+## Milestone 2 — the sound of dying
 
-The raster wait still runs, so the VIC-II keeps displaying. The game isn't locked up — it's deliberately frozen. The player sees the red ship, the enemies still visible, and knows what happened.
+The SID has three voices. Voice 1 is the laser, voice 2 the explosion — and the third has been sitting idle. Death is its moment: a low sawtooth note with a long, slow decay, gated once as the ship dies and left to ring out.
 
-## The Complete Code
+Each voice is a block of seven registers, so voice 3 starts seven bytes above voice 2 (`$d40e`, where voice 1 was `$d400` and voice 2 `$d407`). The layout inside the block is identical — but the offsets are easy to miscount, and getting them wrong is the classic silent-SID bug:
 
-<CodeFromFile src="commodore-64/assembly/starfield/unit-11/starfield.asm" />
+| Voice 3 register | Address |
+|------------------|---------|
+| Frequency low / high | `$d40e` / `$d40f` |
+| Control (waveform + gate) | `$d412` |
+| Attack / Decay | `$d413` |
+| Sustain / Release | `$d414` |
 
-## If It Doesn't Work
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-11/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-11/steps/step-02.asm"
+  lang="asm"
+  title="Step 2: a death tone on voice 3"
+  context={3}
+/>
 
-- **Ship never dies?** Check the collision loop runs after the enemy update loop. The ship position must be read from `$D000`/`$D001`, not from zero-page variables.
-- **Game freezes immediately?** Make sure `game_over` is initialised to 0 in the init section. An uninitialised zero-page byte might be non-zero.
-- **Wrong enemy triggers death?** The loop must skip flashing enemies — they're mid-explosion and shouldn't count as solid.
-- **No death sound?** Check voice 3 registers (`$D40E`–`$D413`). The gate must go off then on to trigger the envelope.
-- **Ship doesn't turn red?** Sprite 0's colour register is `$D027`. Write `$02` (red) after setting the game_over flag.
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-11/steps/step-02.asm" />
+</details>
 
-## Try This: Death Animation
+It's the same gate dance as the laser and the explosion — waveform with the gate off, then on — written to voice 3's control register. Now the death has a voice:
 
-Instead of an instant freeze, flash the ship between red and white for 16 frames before setting `game_over`. Use a `death_timer` — the same pattern as the enemy flash timer. The game continues running during the flash, giving the player a moment to see what hit them.
+<AudioClip
+  src="/images/commodore-64/assembly/starfield/unit-11/death.wav"
+  title="The death tone — a low sawtooth on voice 3, gated once and left to fade"
+  source="SID 6581 · recorded from a real death"
+/>
 
-## Try This: Border Flash
+With all three voices now spoken for — laser, explosion, death — the SID is fully in play, each event on its own channel, none cutting another off.
 
-Set `$D020` to red on death. A single `STA` turns the entire border red — a dramatic whole-screen effect that screams danger.
+## When it's wrong, see why
 
-## What You've Learnt
+Death bugs are either "never happens" or "happens wrong" — the flag and the offsets tell you which:
 
-- **Reusing collision patterns** — the same distance check works for any two sprites.
-- **Game state flag** — one byte controls whether the entire game loop runs.
-- **Looped collision** — checking one sprite against a table of others with indexed addressing.
-- **SID voice 3** — the third independent voice, used here for a death sound distinct from laser and explosion.
+- **The ship is still invincible.** The collision loop isn't reaching `ship_hit`. Check it walks all three enemies (`cpx #$03`), compares against `$d000`/`$d001`, and that the ninth-bit guard isn't rejecting every frame (`$d010` bit 0 should be 0 while the ship is in the left portion).
+- **The game doesn't freeze.** The `game_over` check is misplaced or the flag isn't set. It must be read at the *top* of the loop, before input — and `ship_hit` must write 1 to it. Watch `game_over`: it should flip to 1 exactly once, on contact.
+- **Silent death.** The voice-3 offsets. This is the trap: voice 3's control is `$d412`, attack/decay `$d413`, sustain/release `$d414` — *not* `$d411`. Gate to the wrong register and the envelope never starts. Read the values you're writing against the table above; a gate written to `$d411` (a pulse-width byte) makes no sound at all.
+- **The ship dies the instant it boots.** An enemy spawned on top of it. The init staggers the wave's start heights; if one starts at the ship's row in the ship's column, it collides on frame one. Spread the start positions.
 
-## What's Next
+## Before and after
 
-The game freezes on death, but there's no message and no way to try again. In Unit 11, "GAME OVER" appears on screen and pressing fire restarts the game.
+We started with a ship the wave couldn't touch and finished with one that dies on contact — the game's first fail state. A one-byte flag holds the game's life-or-death status, the freeze is a single check at the top of the loop, and the SID's third voice gives the moment weight. The stakes are real now: every pass of the wave is a threat.
+
+## Try this
+
+- **A different end.** The ship turns red (`$02`). Try flashing the border instead — write the death colour to `$d020` — or both, for a louder failure. The fail state should be unmissable.
+- **Tune the dirge.** Voice 3's pitch (`$d40e`/`$d40f`) and decay (`$d413`) shape the death. Lower and longer feels like a slow collapse; higher and shorter, a sharp end. Match it to how the game should feel when you lose.
+
+## What you've learnt
+
+- **A game-state flag** — one byte (`game_over`) that the loop checks each frame to gate every system at once.
+- **Freezing the game** — a single branch at the top of the loop that skips input, movement, and collision when the game is over.
+- **Ship-enemy collision** — the bullet's distance check reused with the ship's position, ninth-bit guard included.
+- **SID voice 3** — the third channel, seven bytes above voice 2, and the offset trap that silences it when miscounted.
+
+## What's next
+
+The game freezes on death, but it just sits there — no word to the player, no way back. Next you'll print a GAME OVER message and let a key press restart the wave.
