@@ -8,22 +8,23 @@ tags: ["assembly", "z80", "movement", "screen-layout", "collision", "bounds"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
 The lamplighter walks left and right, stopped by the side walls. This unit gives him the other two directions — up and down — and shuts every edge. By the end he roams the whole square and can't leave it. The cell-sprite technique, four units in the making, is finished here.
 
-The controls become the classic **QAOP**: Q up, A down, O left, P right. But the real work is underneath. The moment he can change *rows*, the gentle address shortcut we've leaned on since Unit 5 breaks — and Unit 2's awkward screen layout comes back to be dealt with properly.
+The controls become the classic **QAOP**: Q up, A down, O left, P right. But the real work is underneath. The moment he can change *rows*, the address shortcut we've leaned on since Unit 5 breaks — and Unit 2's awkward screen layout comes back to be dealt with properly.
 
-## What you'll see by the end
+## Where we start
 
-![The lamplighter tucked into the top-right corner of the square, pressed against both the top and right walls.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-08/screenshot.png)
+Unit 7's walker — penned left and right by the side walls, but stuck on a single row, with a one-row address shortcut baked in. We generalise the addressing and open up the other two directions.
 
-The lamplighter, walked right to the wall and then *up* to the top — caught in the corner, blocked on two sides at once. He crossed from the middle of the screen to the top to get there, and (as we'll see) that journey crosses one of the Spectrum's layout seams without him ever noticing.
+## Why one row was a shortcut
 
-## Why one row was easy and two rows aren't
+While he stayed on one row, every cell he touched shared the same screen "third" and the same row-within-third — so his address was `ROW_SCR + col`, a constant plus the column. The instant he moves to a *different* row, that constant is wrong, because the Spectrum stores rows in three separate bands of memory (the thirds from Unit 2). We need the full address of *any* cell, worked out fresh each time.
 
-While he stayed on one row, every cell he touched shared the same screen "third" and the same row-within-third — so his address was just `ROW_SCR + col`, a constant plus the column. The instant he moves to a *different* row, that constant is wrong, because the Spectrum stores rows in three separate bands of memory (the thirds from Unit 2). We need the full address of *any* cell, worked out fresh each time.
-
-Happily, it splits into two clean bytes. For a cell at column `col`, row `row` (0–23):
+It splits into two clean bytes. For a cell at column `col`, row `row` (0–23):
 
 ```
 high byte = $40 + (row AND $18)         ; which third, ×8 in the high byte
@@ -31,33 +32,56 @@ low  byte = ((row AND 7) << 5) OR col   ; row-within-third ×32, plus the column
 ```
 
 - **`row AND $18`** keeps just the two bits that say which third he's in — and those bits already sit in the right place to add to `$40` for the high byte.
-- **`row AND 7`** is the row within that third (0–7). Shifting it left 5 multiplies by 32 — and a left-shift-by-5 of a 3-bit value is just **three `RRCA`s**, rotating those three bits up into positions 5, 6 and 7. `OR` the column into the gap below and that's the low byte.
+- **`row AND 7`** is the row within that third (0–7). Shifting it left 5 multiplies by 32 — and a left-shift-by-5 of a 3-bit value is three `RRCA`s, rotating those three bits up into positions 5, 6 and 7. `OR` the column into the gap below and that's the low byte.
 
-`scr_addr_cr` is that recipe. The attribute address stays the easy linear one — `$5800 + row*32 + col` — built with five `ADD HL,HL` doublings.
+`scr_addr_cr` is that recipe. The attribute address stays the linear one — `$5800 + row*32 + col` — built with five `ADD HL,HL` doublings.
 
 ## Collision didn't change at all
 
-Here's the quiet reward for doing Unit 7 properly: **none of the collision code changes.** `wall_at` already took an arbitrary target cell and `BIT`-tested its attribute. Now the target can be a row above or below instead of a column left or right — same test, same refusal. The top and bottom walls stop him exactly as the sides do, because they're made of the same solid cells. Four directions, one collision rule, zero special cases for "the edge".
+Here's the quiet reward for doing Unit 7 properly: **none of the collision code changes.** `wall_at` already took an arbitrary target cell and `BIT`-tested its attribute. Now the target can be a row above or below instead of a column left or right — same test, same refusal. The top and bottom walls stop him exactly as the sides do, because they're made of the same solid cells. Four directions, one collision rule, no special cases for "the edge".
 
-## One move path, four directions
+## Milestone — complete the engine
 
-The loop reads QAOP in turn, nudges a *target* cell (`tcol`/`trow`) one step in the chosen direction, then runs the unchanged test-and-commit: if the target is a wall, stay put; otherwise restore, adopt the target, save, draw. Holding two keys just means the first one checked wins — clean four-way movement, no diagonals to reason about.
+The loop reads QAOP in turn, nudges a *target* cell (`tcol`/`trow`) one step in the chosen direction, then runs the unchanged test-and-commit: if the target is a wall, stay put; otherwise restore, adopt the target, save, draw. Save, restore and draw all route through the new `(col, row)` address routines now, so they follow him between rows. Holding two keys means the first one checked wins — clean four-way movement, no diagonals to reason about.
 
-### The code, complete
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-08/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-08/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: up/down on QAOP, and a full (col,row) address routine"
+  context={3}
+/>
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-08/edges.asm" />
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-08/steps/step-01.asm" lang="z80" />
+</details>
 
-### What you see
+Now Q, A, O and P walk him in all four directions, and every wall stops him — he roams the square and is trapped by it at once:
 
-Q, A, O, P walk him in all four directions, and every wall — frame top, bottom, left, right — stops him dead. He's free inside the square and trapped by it, both at once. That's a finished movement engine.
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-08/step-01-roam.mp4"
+  caption="Holding P then Q, the lamplighter walks right to the wall and then up to the top, tucking into the corner. The trip from the middle of the screen to the top crosses one of the Spectrum's layout seams — the boundary between two thirds, a jump of over two kilobytes in screen memory — and he never notices."
+  autoplay={true}
+  loop={true}
+/>
 
-## Assemble and run
+Drive him into a corner and two walls hold him at once:
 
-```
-pasmonext --sna edges.asm edges.sna
-```
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-08/step-01-corner.png" alt="The lamplighter tucked into the top-right corner of the square, pressed against both the top and right walls." caption="The top-right corner: blocked right and up at the same time. He's at the last floor cell in both directions — confirmed by reading his column and row straight out of memory (30, 1)." />
 
-Roam the whole square in Emu198x. Try to leave it — you can't. Walk into a corner and two walls hold you at once.
+## When it's wrong, see why
+
+Vertical movement is where the new arithmetic shows its bugs:
+
+- **He teleports or scrambles when moving up or down.** `scr_addr_cr` is wrong. Check `high = $40 + (row AND $18)`, and that the low byte is `(row AND 7)` rotated right three times (`RRCA`×3) then `OR col`.
+- **Left/right is fine but vertical is offset by a band.** You're mixing the screen and attribute formulas, or the third bits aren't masked with `$18`.
+- **He walks through the top or bottom wall.** The vertical step didn't update `trow`, so `wall_at` tested the wrong cell. Up/down must change the target *row*.
+- **He smears a trail when moving vertically.** Save/restore are still using a fixed-row address. They must go through the `(col, row)` routines so they follow him between rows.
+
+## Before and after
+
+You started with a figure penned to one row and finished with one that roams the whole square and can't escape it. The new piece is one routine — turn any `(col, row)` into a screen address — and everything else you already had: the collision from Unit 7 and the save/restore from Unit 6 worked unchanged, because they were always per-cell. The cell-sprite engine is complete: a figure that moves anywhere, respects every wall, and damages nothing it crosses.
 
 ## Try this: a pillar to walk around
 
@@ -72,18 +96,11 @@ Now he can't pass through the centre — he has to go *around* it, up or down an
 
 ## Try this: cross the seam on purpose
 
-Start him at `START_ROW equ 7` and walk **down** one cell to row 8. That step crosses from the top third into the middle third — a jump of over two kilobytes in screen memory — yet he moves by one tidy cell with no glitch. `scr_addr_cr` hides the seam completely. Move him up and down across it a few times and watch how ordinary the hardest part of the screen layout now looks.
+Start him at `START_ROW equ 7` and walk **down** one cell to row 8. That step crosses from the top third into the middle third — a jump of over two kilobytes in screen memory — yet he moves by one tidy cell with no glitch. `scr_addr_cr` hides the seam completely. Move up and down across it a few times and watch how ordinary the hardest part of the screen layout now looks.
 
 ## Try this: cursor keys instead
 
 Rework the reads to use the cursor keys: 5 (left), 6 (down), 7 (up), 8 (right). 5 lives in the half-row at `$F7FE`; 6, 7 and 8 share `$EFFE`. Map each to its bit and you've reskinned the controls without touching the movement engine — proof the input and the engine are cleanly separate.
-
-## If it doesn't work
-
-- **He teleports or scrambles when moving up or down.** `scr_addr_cr` is wrong. Check `high = $40 + (row AND $18)`, and that the low byte is `(row AND 7)` rotated right three times (`RRCA`×3) then `OR col`.
-- **Left/right is fine but vertical is offset by a band.** You're mixing the screen and attribute formulas, or the third bits aren't masked with `$18`.
-- **He walks through the top or bottom wall.** The vertical step didn't update `trow`, so `wall_at` tested the wrong cell. Up/down must change the target *row*.
-- **He smears a trail when moving vertically.** Save/restore are still using a fixed-row address. They must go through the `(col, row)` routines so they follow him between rows.
 
 ## What you've learnt
 
