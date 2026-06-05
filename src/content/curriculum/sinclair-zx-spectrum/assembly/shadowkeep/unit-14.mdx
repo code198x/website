@@ -8,12 +8,16 @@ tags: ["assembly", "z80", "game-design", "collection", "win-condition"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
+import AudioClip from "@components/AudioClip.astro";
 
 You can walk the keep, light it, hear it — but you can't *win* it, because there's nothing to win. A place becomes a game the moment it has a goal. This unit gives the keep one, and it costs almost no new engine: gold scattered through the rooms, lifted by the move you already make, and a win when the last coin is gone.
 
 ## What you'll see by the end
 
-![The Great Hall with two coins of gold resting on the floor — one high on the left, one low on the right — round and yellow, plainly not torch-flame; the red-cloaked thief stands in the central light, the chambers waiting to be cleared.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/screenshot.png)
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/step-01-hall.png" alt="The Hall with two coins of gold resting on the floor — one high on the left, one low on the right — round and yellow, plainly not torch-flame; the red-cloaked thief stands in the central light, the chambers waiting to be cleared." caption="Gold resting on the stone — two coins here in the Hall, more through the other chambers. Walk onto one and it's yours: a bright chime, and the counter ticks down. Clear all six and the keep is won." />
 
 Gold, resting on the stone — round yellow coins, two here in the Hall and more through the other chambers. Walk onto one and it's yours: it vanishes with a bright little chime and a counter ticks down. Clear all six and the keep is won — a victory flourish, and the thief stands still in a keep emptied of its treasure. It's a small goal, but it turns wandering into *playing*.
 
@@ -92,21 +96,57 @@ win:
 
 A win condition doesn't need a screen or a state machine yet — just "stop responding, you're done." (Unit 16 turns this into a proper title-and-win loop.) The point this unit makes is smaller and more important: **a goal is a counter and a check.** Everything else is dressing.
 
-### The code, complete
+## Milestone — give the keep a goal
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-14/the-keeps-gold.asm" />
+Gold is a walkable `G` tile (no `BRIGHT` bit), so collision already lets the thief
+stand on it. `collect_gold` runs between the move and the save: if the new cell is
+gold, it rewrites that **state** cell to floor (so the coin is gone for good), repaints
+it, chimes, and drops `gold_remaining`. At zero it calls `win`, which sets a flag the
+main loop watches and plays the victory run. A goal is a counter and a check.
 
-## Assemble and run
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-14/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-14/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: gold tiles, lift-on-contact, and a win at zero"
+  context={3}
+/>
 
-```
-pasmonext --sna the-keeps-gold.asm the-keeps-gold.sna
-```
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-14/steps/step-01.asm" lang="z80" />
+</details>
 
-Load it and clear the keep: two coins in the Hall, two in the Gallery, two in the Vault. Each goes with a chime; the last one wins the game. You've just played the first complete game you built in assembly — explore, collect, win.
+Walk onto a coin and it's lifted — it vanishes the instant you stand on it, and the counter drops:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/step-01-collect.mp4"
+  caption="The thief crosses to the Hall's upper-left coin and steps onto it — gone, turned to floor, the keep one coin nearer cleared. Because we edit the room's state, it stays gone when you leave and return."
+  autoplay={true}
+  loop={true}
+/>
+
+The lift is a bright chime — the gold's voice, sketched in the last unit:
+
+<AudioClip
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/step-01-pickup.wav"
+  title="Lifting a coin — footfalls, then the bright pickup chime"
+  source="ZX Spectrum beeper · port $FE bit 4"
+/>
+
+And when the last coin is gone, the keep is won — an ascending victory run, and the thief stands still in a keep emptied of its treasure:
+
+<AudioClip
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/step-01-win.wav"
+  title="The keep cleared — the ascending win flourish"
+  source="ZX Spectrum beeper · port $FE bit 4"
+/>
+
+Clear the keep — two coins in the Hall, two in the Gallery, two in the Vault, each with a chime, the last one winning the game — and you've played the first complete game you built in assembly: explore, collect, win.
 
 ## Try this: more gold, harder keep
 
-Scatter more `G`s through the maps and raise `TOTAL_GOLD` to match. The keep takes longer to clear; the goal grows without a line of new logic. (If a coin lands on a wall or a torch it simply won't draw as floor — keep them on open stone.)
+Scatter more `G`s through the maps and raise `TOTAL_GOLD` to match. The keep takes longer to clear; the goal grows without a line of new logic. (If a coin lands on a wall or a torch it won't draw as floor — keep them on open stone.)
 
 ## Try this: gold behind the pillars
 
@@ -116,13 +156,17 @@ Tuck a coin into the dark behind the Hall's pillars or in the Vault's gloom. Now
 
 Place a coin in a spot walled off from the rest. The counter can never reach zero — the keep is unwinnable. A useful bug to *make on purpose*: it shows that your win condition trusts the level design completely. Reachability is a level-design promise the code can't check for you.
 
-## If it doesn't work
+## When it's wrong, see why
 
 - **Gold is solid — you bump into it.** Its attribute has the `BRIGHT` bit set. Gold must be `%00000110`-style (no bit 6), or the wall test treats it as stone.
 - **The coin comes back when you re-enter the room.** You edited the template, not the state copy — or `collect_gold` runs after `save_under`, so the saved "under" is still the coin. Collect *before* saving.
 - **Collecting never wins.** `TOTAL_GOLD` doesn't match the number of `G`s in the maps. Count them; they must agree, or the counter stops above (or wraps below) zero.
 - **The counter wraps and the game never ends.** A coin was collected twice, or `gold_remaining` started wrong. Each `G` must decrement exactly once — which it does, because the cell becomes floor the instant it's lifted.
 - **It wins the moment you start.** `gold_remaining` initialised to zero. It must start at `TOTAL_GOLD`.
+
+## Before and after
+
+You started with a keep you could wander but never finish, and ended with a game — gold to find, a chime when you lift it, and a win when the last coin is gone. It cost almost no new engine: gold is a walkable tile, collecting is rewriting that map cell to floor, and the goal is a counter and a check. Because you edit the room's working state, a cleared coin stays cleared across visits — the persistence from Unit 7 paying off again. A win condition turned out to be tiny, and trusting: the code counts, and *you* promise every coin can be reached. Wandering became playing.
 
 ## What you've learnt
 
