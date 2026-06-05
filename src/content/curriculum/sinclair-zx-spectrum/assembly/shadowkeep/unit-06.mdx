@@ -8,6 +8,9 @@ tags: ["assembly", "z80", "flick-screen", "transitions", "level-design"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
 Last unit the thief could travel the keep, but the crossing cheated: walk through any door and you appeared in the *middle* of the next room. It worked, but it didn't feel like a doorway — it felt like a blink. This unit fixes that, and the fix is the beating heart of the flick-screen adventure.
 
@@ -15,7 +18,7 @@ The rule: **leave by one edge, arrive at the opposite edge — at the same heigh
 
 ## What you'll see by the end
 
-![The second chamber, with the red thief standing right at the doorway gap in its west wall, mid-height — exactly where he'd emerge after stepping east through the first room's east door.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-06/screenshot.png)
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-06/step-01-at-door.png" alt="The second chamber, with the red thief standing right at the doorway gap in its west wall, mid-height — exactly where he'd emerge after stepping east through the first room's east door." caption="Walked east, arrived at the next room's west doorway — at the same height he left, not dumped in the middle. The seam reads as a step through the wall, not a blink." />
 
 Walk east out of the pillared hall and you don't land in the middle of the next room — you arrive **at its west doorway**, at the same height you left, as if you'd walked straight through the wall. Turn around and walk back west, and you emerge at the *east* doorway of the hall, again at the same height. The two rooms feel joined at the threshold now, not wired together by teleport.
 
@@ -40,23 +43,37 @@ North and south mirror this on the other axis: leave by the top, arrive near the
 
 ## One cell in, not on the edge
 
-Notice the entry column is `1`, not `0` — one cell *inside* the west wall, not on it. That matters. The west edge is column `0`; if we dropped him exactly there, `check_exit` would see him on an edge the very next frame and bounce him straight back out. Landing one cell in puts him safely on the floor just past the doorway, free to walk on. The same reason gives `30` (not `31`) for the east, `22` for the bottom, `1` for the top.
+Notice the entry column is `1`, not `0` — one cell *inside* the west wall, not on it. That matters. The west edge is column `0`; if we dropped him exactly there, `check_exit` would see him on an edge the next frame and bounce him straight back out. Landing one cell in puts him safely on the floor just past the doorway, free to walk on. The same reason gives `30` (not `31`) for the east, `22` for the bottom, `1` for the top.
 
 ## Doors have to line up
 
 For this to land him on floor and not face-first into stone, the doorways must **agree**: room 0's east door is at row 11, so room 1's west door is at row 11 too. Leave east at row 11, arrive west at row 11 — straight onto the doorway floor of the next room. Lining up connected doors is now part of designing the keep; a door that leads to a blank stretch of the next room's wall would strand the thief against it. (Our two rooms agree, so the step is clean both ways.)
 
-### The code, complete
+## Milestone — make the crossing a step
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-06/through-the-doorway.asm" />
+`check_exit` keeps Unit 5's link-following, but instead of dropping the thief in the centre it sets only the axis he crossed — to the *opposite* edge, one cell in — and leaves the other axis alone. Leave east at row 11, arrive west at row 11; his height carries across the seam.
 
-## Assemble and run
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-06/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-06/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: arrive at the opposite edge, same height — a step, not a teleport"
+  context={3}
+/>
 
-```
-pasmonext --sna through-the-doorway.asm through-the-doorway.sna
-```
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-06/steps/step-01.asm" lang="z80" />
+</details>
 
-Load it in Emu198x. Walk east through the hall's right-hand door — you arrive at the left edge of the next room, level with where you left. Walk back west — you return to the hall's right edge, same height. Pace back and forth through the doorway; it feels like one place now.
+Walk east through the hall's right-hand door and you arrive at the left edge of the next room, level with where you left — then walk on. It feels like one place now:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-06/step-01-step.mp4"
+  caption="East through the hall's doorway — and the thief steps in at the next room's west doorway, the same height he left, then walks on into the chamber. His position across the seam is preserved; only the side flipped. A teleport became a step."
+  autoplay={true}
+  loop={true}
+/>
 
 ## Try this: misalign a door
 
@@ -70,13 +87,17 @@ Right now his row carries across unchanged — try *breaking* it on purpose: in 
 
 Add a third room east of room 1 (room 1 gains an east door and link; room 2 gets a west door and link back). Now you can walk a straight line of three chambers, the screen flicking each time you cross a threshold, your height carried the whole way. A keep is just enough rooms with enough agreeing doors.
 
-## If it doesn't work
+## When it's wrong, see why
 
 - **He bounces straight back through the door.** The entry cell is on the edge (column 0 or 31, row 0 or 23). Use one cell in — 1, 30, 22, 1 — so he doesn't re-trigger `check_exit` on arrival.
 - **He arrives stuck against a wall.** The connected doors don't share a row (for east/west) or column (for north/south). Line them up.
 - **He jumps to a different height when crossing.** An entry branch is writing the cross-axis too. East/west should set only `thief_col`; north/south only `thief_row`.
 - **He enters at the wrong side.** Check the mapping: leave east → enter west (small column); leave west → enter east (large column). It's the *opposite* edge, not the same one.
 - **The screen tears for a moment on crossing.** That's the full-room repaint — the genre flick. It settles at once in play.
+
+## Before and after
+
+You started with travel that worked but felt like a blink, and finished with a crossing that reads as a walk — leave one edge, arrive at the opposite one at the same height, one cell in so the exit check doesn't fire again. It is a handful of bytes: which axis to set, which edge to set it to, and the discipline of landing just inside. But it's the difference between a wired-up pair of screens and a keep that feels like a continuous place — and a new level-design rule, that connected doors must agree, came with it.
 
 ## What you've learnt
 
