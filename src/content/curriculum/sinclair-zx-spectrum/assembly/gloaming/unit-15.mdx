@@ -8,20 +8,20 @@ tags: ["assembly", "z80", "collision", "lives", "lose-state", "game-state"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
 
 The draught can undo your work, but it still can't touch *you*. This unit lets it — and gives the game its stakes. The two can collide, each collision costs a life, and when the lives run out, **night falls**: the square goes dark and the game ends. With this, Gloaming becomes a real game, one you can lose as well as win — and that closes Phase D.
 
-## What you'll see by the end
+## Where we start
 
-![A black screen with the words "NIGHT FALLS" in white across the middle.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-15/screenshot.png)
-
-The lose state, reached by letting the draught catch the lamplighter three times: the square swallowed by darkness, two cold words left behind. During play you'd see three red pips in the corner of the HUD — your lives — winking out one by one until this is all that's left. The dark has won.
+Unit 14's contest — the draught snuffs lamps, but passes through the lamplighter harmlessly. We make the two of them dangerous to each other.
 
 ## Two sprites, one cell: collision
 
-A collision is the question *are the lamplighter and the draught trying to stand on the same cell?* — a comparison of their columns and rows. But there's a trap. If we simply let them overlap, their save/restore buffers tangle: each sprite assumes it's the only thing on its cell, and two of them sharing one cell corrupts what each thinks is "underneath".
+A collision is the question *are the lamplighter and the draught trying to stand on the same cell?* — a comparison of their columns and rows. But there's a trap. If we let them overlap, their save/restore buffers tangle: each sprite assumes it's the only thing on its cell, and two sharing one cell corrupts what each thinks is "underneath".
 
-So we don't let them overlap. Instead, **a move onto the other's cell is treated like a move into a wall** — refused — and counted as a hit. We check it in both directions: when the lamplighter steps toward the draught, and when the draught drifts toward the lamplighter.
+So we don't let them overlap. Instead, **a move onto the other's cell is treated like a move into a wall** — refused — and counted as a hit. We check it both ways: when the lamplighter steps toward the draught, and when the draught drifts toward the lamplighter.
 
 ```
 ; about to move onto the other's cell?
@@ -36,31 +36,53 @@ jr   nz, .clear
 call lose_life      ; same cell — collision, don't move
 ```
 
-They never actually share a cell, so the engine stays clean. (Drawing two sprites that genuinely *overlap* — compositing one over the other — is a real technique a later game builds. Here we sidestep it, and the game's none the poorer.)
+They never share a cell, so the engine stays clean. (Drawing two sprites that genuinely *overlap* — compositing one over the other — is a real technique a later game builds. Here we sidestep it, and the game's none the poorer.)
 
 ## Lives, as pips again
 
-Lives are shown the way everything is shown in this game: as coloured cells. Three red pips sit at the right of the HUD, and `lose_life` removes one each hit — the lamp tally's machinery, run in reverse. While lives remain, a hit sends the lamplighter **back to the start**, clear of the draught, and play continues. The reset is also what keeps the two sprites apart after a collision without any overlap to clean up.
+Lives are shown the way everything is shown in this game: as coloured cells. Three red pips sit at the right of the HUD, and `lose_life` removes one each hit — the lamp tally's machinery, run in reverse. While lives remain, a hit sends the lamplighter **back to the start**, clear of the draught, and play continues. The reset is also what keeps the two sprites apart after a collision, with no overlap to clean up.
 
 ## The fall of night
 
-When the last life goes, `lose_life` jumps to `lose`, and night takes the square. It's the win's mirror image: where the win prints its line over the lit board, the loss first **washes every cell to black** — one `LDIR`, the whole attribute map gone dark — and then prints `NIGHT FALLS` into the void, and holds. Two end states now, one bright and one dark, each a place the game comes to rest.
+When the last life goes, `lose_life` jumps to `lose`, and night takes the square. It's the win's mirror image: where the win prints its line over the lit board, the loss first **washes every cell to black** — one `LDIR`, the whole attribute map gone dark — then prints `NIGHT FALLS` into the void, and holds. Two end states now, one bright and one dark, each a place the game comes to rest.
 
-### The code, complete
+## Milestone — the lose state
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-15/lives-and-the-fall-of-night.asm" />
+We add the same-cell check to both `player_step` and `draught_step`, a `lose_life` that drains a red pip and resets the lamplighter (or jumps to `lose` at zero), and a `lose` routine that blacks the board and prints `NIGHT FALLS`.
 
-### What you see
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-15/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-15/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: collision, lives, and the fall of night"
+  context={3}
+/>
 
-Play it and the draught is suddenly dangerous: brush against it and a life is gone, you're back at the start, and a red pip has vanished. Lose all three and the lamps, the walls, the whole square drop into black. Now there's everything to play for — a win to reach and a loss to avoid.
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-15/steps/step-01.asm" lang="z80" />
+</details>
 
-## Assemble and run
+The HUD now carries your lives — three red pips at the top right, beside the lamp tally:
 
-```
-pasmonext --sna lives-and-the-fall-of-night.asm lives-and-the-fall-of-night.sna
-```
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-15/step-01-lives.png" alt="The square in play, with the cyan lamp tally at the top left of the HUD and three red life pips at the top right." caption="Three lives, shown as red pips at the right of the HUD. Each time the draught catches you, one winks out — and the lamplighter is thrown back to the start." />
 
-In Emu198x, dodge the draught while you light. Get caught three times and watch night fall.
+Let the draught catch you three times and the square is swallowed whole — the lose state, earned by losing:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-15/step-01-night.png" alt="A black screen with the words NIGHT FALLS in white across the middle." caption="Night falls: the whole attribute map washed to black and two cold words left behind. Reached by play — three collisions, lives counted down to zero in memory. The win's mirror image." />
+
+## When it's wrong, see why
+
+Collision and the lose state fail in their own ways:
+
+- **No collisions ever register.** The same-cell test is missing or only in one place. Check **both** `player_step` and `draught_step` compare the two positions before committing a move.
+- **The sprites overlap and garble.** You let a move onto the shared cell go through. The check must come *before* the move commits and refuse it, exactly like the wall test.
+- **Lives go wrong or the count underflows.** `lose_life` decrements then indexes `LIFE_BASE + lives`; make sure it's only ever called on a real hit.
+- **Night never falls.** Lives aren't reaching zero — either collisions aren't registering, or the draught can't reach the lamplighter. Lower `DRAUGHT_SPEED` while testing.
+
+## Before and after
+
+You started with a game you could only win and finished with one you can also *lose* — and both stakes are the same machinery you already had. Collision is the wall test pointed at another sprite; lives are the tally in reverse; the lose state is the win state dressed in black. The two sprites never overlap, so nothing about the engine had to change to make them deadly — refusing the shared cell was enough. Gloaming has a goal, a threat, and two ways to end.
 
 ## Try this: more or fewer lives
 
@@ -68,18 +90,11 @@ In Emu198x, dodge the draught while you light. Get caught three times and watch 
 
 ## Try this: a jolt when caught
 
-A lost life should *land*. In `lose_life`, before the reset, flash the border red for a few frames (`ld a,2 / out ($FE),a`, a short delay, then `ld a,0`). The hit becomes something you feel, not just a pip quietly going out — and it buys a beat before you're thrown back to the start.
+A lost life should *land*. In `lose_life`, before the reset, flash the border red for a few frames (`ld a,2 / out ($FE),a`, a short delay, then `ld a,0`). The hit becomes something you feel, not a pip quietly going out — and it buys a beat before you're thrown back to the start.
 
 ## Try this: only the draught is deadly
 
 Right now you lose a life whether *you* walk into the draught or *it* walks into you. Remove the check in `player_step` and keep only the one in `draught_step`: now you can brush past the draught safely, and only its own movement onto you is fatal. It's a subtler, fairer feel — and a single deleted block changes the whole character of the threat.
-
-## If it doesn't work
-
-- **No collisions ever register.** The same-cell test is missing or only in one place. Check **both** `player_step` and `draught_step` compare the two positions before committing a move.
-- **The sprites overlap and garble.** You let a move onto the shared cell go through. The check must come *before* the move commits and refuse it, exactly like the wall test.
-- **Lives go wrong or the count underflows.** `lose_life` decrements then indexes `LIFE_BASE + lives`; make sure it's only ever called on a real hit.
-- **Night never falls.** Lives aren't reaching zero — either collisions aren't registering, or the draught can't reach the lamplighter. Lower `DRAUGHT_SPEED` while testing.
 
 ## What you've learnt
 
