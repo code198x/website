@@ -8,16 +8,16 @@ tags: ["assembly", "z80", "keyboard", "input", "in", "ports"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
 
-The heartbeat beats, but the lamplighter can't feel you. The loop's **INPUT** stage is still empty — each frame it reads nothing, decides nothing. This unit fills it in. By the end, the figure changes colour the instant you touch a key: red while you hold **O**, green while you hold **P**, pale white when you hold nothing.
+The heartbeat beats, but the lamplighter can't feel you. The loop's **INPUT** stage is still empty — each frame it reads nothing, decides nothing. This unit fills it in, one key at a time. By the end, the figure changes colour the instant you touch a key: red while you hold **O**, green while you hold **P**, pale white when you hold nothing.
 
-He won't *move* yet — that's the very next unit — but he will *react*, fifty times a second. This is the moment the machine starts listening.
+He won't *move* yet — that's the next unit — but he will *react*, fifty times a second. This is the moment the machine starts listening.
 
-## What you'll see by the end
+## Where we start
 
-![The walled square with the lamplighter in the middle, now coloured green — captured while the P key is held down.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/screenshot.png)
-
-The same square and figure — but here he's **green**, because the screenshot was taken with **P** (right) held down. Let go and he returns to white; hold **O** (left) instead and he turns red. The colour is just a flag we raise to prove the read works: every frame, the program asks the keyboard a question and acts on the answer.
+Unit 3's heartbeat, looping at 50 Hz with an empty INPUT stage — the figure stands white and unfeeling. We give the loop something to read.
 
 ## One port, eight half-rows
 
@@ -38,50 +38,76 @@ port $DFFE, bottom five bits:
 
 Here's the catch that trips everyone once. The bits are **active low**. A key's bit reads **1 when the key is up**, and **0 when it's held down**. It's backwards from what you'd guess — but it's how the hardware works: pressing a key pulls its line *down* to zero. So "pressed" is the *absence* of the usual 1, and to find a held key we test for a **zero** bit.
 
-## IN A,(C), then BIT
+## Milestone 1 — read one key
 
-Two instructions do the work. First the read:
+Start with just **P**. Read the port with `IN A,(C)` — where `BC` holds the full address `$DFFE`, so the row-select rides on the bus — then test P's bit with `BIT 0,A`. `BIT n,A` sets the **Z flag** when bit `n` is **zero**, and zero means *held* — so `jr nz` is "key is up, skip." If P is down we colour the figure green; otherwise he stays white. All of it goes in the loop's INPUT stage, so it runs every single frame.
 
-```
-ld   bc, $DFFE   ; BC is the full port address — the address IS the question
-in   a, (c)      ; A = the five keys (plus three high bits we ignore)
-```
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: read P through $DFFE and recolour while it's held"
+  context={3}
+/>
 
-`IN A,(C)` puts the whole of `BC` on the address bus — so `B` carries our `$DF` row-select and `C` carries `$FE`. The byte that comes back has our five keys in its low bits.
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-01.asm" lang="z80" />
+</details>
 
-Then we test each key's bit with `BIT`:
+Hold nothing and he's white; hold **P** and he turns green — and the change feels instant because it *is*, happening fifty times a second:
 
-```
-bit  1, a        ; look at O's bit
-jr   nz, .not_left   ; non-zero = bit is 1 = key is UP, so skip
-... it's held: O is down ...
-```
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/step-01-rest.png" alt="The lamplighter in the centre of the square, pale white — no key held." caption="At rest: nothing held, the figure stays white." />
 
-`BIT n,A` sets the **Z flag** when bit `n` is **zero**. Zero means held — so `jr z` is "key is down", `jr nz` is "key is up". We check O, then P, and choose the figure's colour to match. Drop the whole thing into the loop's INPUT stage and it runs every single frame.
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/step-01-right.png" alt="The lamplighter in the centre of the square, now green — captured while P is held." caption="Holding P: the loop reads bit 0 as zero, sees the key down, and recolours his cell green this frame." />
 
-### The code, complete
+The colour is just a flag we raise to prove the read worked — every frame, the program asks the keyboard a question and acts on the answer.
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-04/reading-the-keys.asm" />
+## Milestone 2 — add the other key
 
-### What you see
+The single `in a, (c)` already read **all five** keys of the half-row — we only looked at P. Add a test for **O** (bit 1) above the P test, colouring the figure red when it's held. Nothing about the read changes; we just check one more bit.
 
-Run it and hold keys. **O** paints the lamplighter red, **P** paints him green, nothing leaves him white. Each frame the loop reads the port fresh and rewrites his cell's colour — so the response feels instant, because it *is* instant: it's happening 50 times a second.
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: test O as well, red while it's held"
+  context={3}
+/>
 
-## Assemble and run
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-02.asm" lang="z80" />
+</details>
 
-```
-pasmonext --sna reading-the-keys.asm reading-the-keys.sna
-```
+Now **O** paints him red and **P** paints him green — two keys answered from one read:
 
-Load it in Emu198x and press O or P. (Recolouring is just this unit's way of *showing* the read; Unit 5 throws the colour away and uses the same key test to move him instead.)
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/step-02-left.png" alt="The lamplighter in the centre of the square, red — captured while O is held." caption="Holding O: bit 1 reads zero, and his cell recolours red." />
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/step-02-right.png" alt="The lamplighter in the centre of the square, green — captured while P is held." caption="Holding P: bit 0 reads zero, and the same loop recolours him green — two keys, one read." />
+
+There's a detail hiding in the order. We test O *first*, then P, and the last match wins — so holding both shows green. Swap the two blocks and O would win instead. When two inputs can be true at once, the order you test them in decides; you choose it on purpose.
+
+## When it's wrong, see why
+
+The read fails in ways that point at which half of it slipped:
+
+- **The figure shows a "pressed" colour even when you hold nothing.** The active-low test is backwards — you're treating bit-*set* as pressed. A held key reads **0**: use `jr z` for "down", `jr nz` for "up", and reset to white at the top of each frame.
+- **Nothing responds at all.** Wrong port, or only `C` loaded. O and P need `$DFFE`, and `IN A,(C)` drives the whole of **BC** onto the bus — so load `bc, $DFFE`, not just `c`.
+- **The wrong keys respond.** Wrong half-row. Map the key you want to its half-row and use that high byte.
+- **The colour flickers or sticks.** You didn't reset the default (`ld d, LAMP_ATTR`) at the top of the INPUT stage, so last frame's colour leaks into this one. Reset it every frame before testing.
+
+## Before and after
+
+You started with a loop that read nothing and finished with one that feels the keyboard every frame — built up one key at a time, so a wrong colour told you exactly which test to check. The recolour is throwaway (Unit 5 drops it), but the read underneath — select a half-row, `IN A,(C)`, test an active-low bit — is the exact mechanism that will steer the lamplighter for the rest of the game.
 
 ## Try this: hold both at once
 
-Hold **O** and **P** together. The figure goes green — P wins. Why? We test O first, then P, and the last one to match overwrites the colour. Swap the two `bit` blocks and now O wins. There's a small lesson here: when two inputs can be true at once, *order decides*, and you have to choose that order on purpose.
+Hold **O** and **P** together. The figure goes green — P wins, because we test O first and P overwrites it. Swap the two `bit` blocks and now O wins. Two inputs true at once, and order decides.
 
 ## Try this: a third key from the same row
 
-The single `in a, (c)` already read **all five** keys of the half-row — we only looked at two. Add a test for **I** (bit 2) and give it a third colour, say bright cyan (`%01000101`):
+You already read all five keys of the half-row. Add a test for **I** (bit 2) and give it a third colour, say bright cyan (`%01000101`):
 
 ```
 bit  2, a
@@ -94,21 +120,14 @@ One read, three keys answered. That's the half-row paying off.
 
 ## Try this: a different half-row
 
-Pick a key on another row — say **Q** (up, in the half-row at high byte `$FB`). Read `$FBFE` into BC, and test Q's bit (bit 0 of that row). Each half-row is one `IN`; the high byte is the only thing that changes. (This is exactly how we'll add up/down movement later.)
-
-## If it doesn't work
-
-- **The figure shows a "pressed" colour even when you hold nothing.** You've got the active-low test backwards — you're treating bit-*set* as pressed. A held key reads **0**: use `jr z` for "down", `jr nz` for "up", and reset the colour to white at the top of each frame.
-- **Nothing responds at all.** Wrong port. O and P need `$DFFE` — and you must load **BC**, not just C, because `IN A,(C)` drives the whole of BC onto the address bus. Check `ld bc, $DFFE`.
-- **The wrong keys respond.** You're reading the wrong half-row. Map the key you want to its half-row and use that high byte.
-- **The colour flickers or sticks.** You didn't set the default (`ld d, LAMP_ATTR`) at the start of the INPUT stage, so last frame's colour leaks into this one. Reset it every frame before testing.
+Pick a key on another row — say **Q** (in the half-row at high byte `$FB`). Read `$FBFE` into BC and test Q's bit. Each half-row is one `IN`; the high byte is the only thing that changes. (This is exactly how we'll add up/down movement later.)
 
 ## What you've learnt
 
 - The whole keyboard is read through port **`$FE`**; the **high byte** of the address picks one of **eight half-rows** of five keys.
 - Read a half-row with **`IN A,(C)`**, where **BC** is the full port (e.g. `$DFFE` for O and P).
 - Keys are **active low**: a bit is **0 while held**. Test for zero with `BIT` — **Z set means pressed**.
-- The **INPUT stage runs every frame**, so the machine feels the keys continuously, not just once.
+- The **INPUT stage runs every frame**, so the machine feels the keys continuously — and one read serves every key in the row.
 
 ## What's next
 
