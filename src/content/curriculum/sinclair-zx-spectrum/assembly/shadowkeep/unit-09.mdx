@@ -8,14 +8,17 @@ tags: ["assembly", "z80", "lighting", "dithering", "atmosphere"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
 The keep is built, but it's lit like an office — every cell the same even blue, no dark corners, no sense of nightfall. Atmosphere is the whole point of Shadowkeep, and atmosphere starts with light. This unit hangs a torch in each room and lets it throw a pool of light into the gloom — and the tool that does it is one you already have.
 
-Back in Unit 2 you learned that **dither density is shade**: sparse pixels read light, dense read dark. Lighting is simply *choosing that density by distance from a flame*. Close to the torch, sparse and bright; far away, dense and black. Nothing new but the choosing.
+Back in Unit 2 you learned that **dither density is shade**: sparse pixels read light, dense read dark. Lighting is *choosing that density by distance from a flame*. Close to the torch, sparse and bright; far away, dense and black. Nothing new but the choosing.
 
 ## What you'll see by the end
 
-![The Great Hall lit by a single torch set in the top wall: a bright pool of light fans out below the flame and fades through deepening shades of slate to near-black in the corners; the hooded thief stands in the shadow below, the pillars dark around him.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-09/screenshot.png)
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-09/step-01-lit.png" alt="The Hall lit by a single torch set in the top wall: a bright pool of light fans out below the flame and fades through deepening shades of slate to near-black in the corners; the hooded thief stands in the shadow below, the pillars dark around him." caption="One torch in the top wall, and the floor lights itself: a pool of near-blue under the flame, thickening through slate to near-black in the corners. Same room as last unit, the same blue and black — only the dither density, chosen now by distance from the flame." />
 
 A torch burns in the top wall, and the floor beneath it is *lit* — nearly all blue, the stone catching the flame. Step away and the dither thickens: half-and-half slate, then darker, then the far corners almost black. The thief stands down in the shadow, the lit pool above him. Same keep as last unit; an entirely different place to be in.
 
@@ -82,17 +85,35 @@ shade_tiles:
 
 The light is **baked** — worked out once, when the room is drawn. The torch doesn't move, so the pool doesn't either; it's the still light a sconce casts. (A flickering, carried flame comes later.) And it costs nothing as the thief walks: his save-and-restore already preserves whatever's beneath him, lit shade and all, so he moves through the gradient and leaves it untouched.
 
-### The code, complete
+## Milestone — light the keep
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-09/light-and-shadow.asm" />
+`find_torch` scans each room's map for a `T`; `shade_for_cell` turns a floor cell's
+distance from that flame into a shade 0–4; and `draw_room` now picks a floor tile
+from a five-step density ramp as it paints, walls and torches still drawn flat. The
+light is baked once, as the room draws — and the thief's save/restore carries each
+shade beneath him for free.
 
-## Assemble and run
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-09/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-09/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: a torch glyph, distance-to-shade, and a five-step floor ramp"
+  context={3}
+/>
 
-```
-pasmonext --sna light-and-shadow.asm light-and-shadow.sna
-```
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-09/steps/step-01.asm" lang="z80" />
+</details>
 
-Load it in Emu198x. Stand in the lit pool under the Hall's torch, then walk down into the dark and watch the floor thicken to shadow around you. Each room has its own torch — cross to the Gallery and the Vault and see where each casts its light.
+Stand in the lit pool under the Hall's torch, then walk straight down into the dark — the floor thickens to shadow around you, and the gradient closes behind you untouched:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-09/step-01-into-dark.mp4"
+  caption="From the bright pool under the torch, down into the deepening slate and back up. The light is a real space the thief moves through — and his save/restore lays each shade back as he steps off, so the gradient is never smeared. Baked light, carried for free."
+  autoplay={true}
+  loop={true}
+/>
 
 ## Try this: move the flame
 
@@ -106,13 +127,17 @@ The falloff is `srl a` — distance halved. Change it: `srl a` twice (distance /
 
 Only floor is shaded here; the walls stay uniformly lit. Extend the idea: give `#` a shade ramp of its own and shade walls by distance to the torch as well. The far walls sink into the dark with the floor, and the pool becomes a true bubble of light in a black room — a big step toward Knight Lore's gloom.
 
-## If it doesn't work
+## When it's wrong, see why
 
-- **The whole floor is darkest.** No torch was found — check the room map actually contains a `T`, and that `find_torch` runs before the draw. `NO_TORCH` means everything clamps to shade 4.
+- **The whole floor is darkest.** No torch was found — check the room map contains a `T`, and that `find_torch` runs before the draw. `NO_TORCH` means everything clamps to shade 4.
 - **The pool is the wrong shape or off-centre.** `shade_for_cell` mixed up rows and columns, or isn't taking the larger of the two gaps. Distance is `max(|dr|, |dc|)`.
 - **Floor cells are solid / the thief is trapped.** A shade tile was given a bright attribute. All five shades share `FLOOR_ATTR` (dim); only the *pattern* changes, so they stay walkable.
 - **The torch is walkable / draws as floor.** `T` must be in the palette with a bright attribute, and the floor branch only catches `.` — anything else falls through to the palette.
-- **The lit area is a hard-edged block.** That's the square (Chebyshev) distance showing its corners. It's fine, and very Spectrum; for a rounder pool, add the gaps instead of taking the larger (a diamond) or sum their squares (a circle, more maths).
+- **The lit area is a hard-edged block.** That's the square (Chebyshev) distance showing its corners. It's fine, and true to the machine; for a rounder pool, add the gaps instead of taking the larger (a diamond) or sum their squares (a circle, more maths).
+
+## Before and after
+
+You started with a keep lit like an office — every cell the same flat blue — and finished with rooms that have a pool of light and a dark to step into. Nothing new drew the change: it's the dither-is-shade idea from Unit 2, with the density now *chosen by distance from a flame* instead of fixed. A torch is a glyph you type into the map; the light bakes itself as the room paints; and the thief carries each shade beneath him without a line of extra code. The keep stopped being evenly lit and started having somewhere to hide — the first real stroke of atmosphere.
 
 ## What you've learnt
 
