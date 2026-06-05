@@ -8,12 +8,15 @@ tags: ["assembly", "z80", "state", "persistence", "ram"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
 The thief steps cleanly between rooms now, but the keep has no memory. Each room is painted from its fixed template every time he walks in, so nothing he does to a room can last — change it, leave, come back, and it's pristine again, as if he'd never been. A keep you can get lost in has to *remember*. This unit gives it that.
 
 ## What you'll see by the end
 
-![The pillared hall with a line of white chalk-cross marks across its floor, the red thief standing among them — the trail he laid before walking to the next room and back, still exactly where he left it.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-07/screenshot.png)
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-07/step-01-chalk.png" alt="The pillared hall with a line of white chalk-cross marks across its floor, the red thief standing at the end of the trail he laid." caption="A trail of white chalk crosses laid across the slate, the thief at its end. He'll walk this out through the east door and back — and find it exactly where he left it." />
 
 Hold **SPACE** and the thief chalks the floor as he walks, leaving a trail of marks — the old dungeoneer's trick for not walking in circles. Walk that trail east into the next room, then come back. The marks are **still here**, exactly as you left them. The keep remembered. That's the whole unit: a world that holds onto what you did to it.
 
@@ -55,21 +58,35 @@ Two writes, two effects. Writing `+` into the **state buffer** is what makes the
 
 Follow the chalk through a doorway. You marked cells in room 0's state buffer. You walk east — `check_exit` switches to room 1 and `draw_room` paints room 1 *from room 1's buffer*. Room 0's buffer is untouched, sitting in RAM with your marks in it. Walk back west, `draw_room` paints room 0 again from that same buffer — and the chalk is precisely where you left it. Persistence isn't a feature you add; it's what you get for free once the world lives somewhere writable and you stop overwriting it.
 
-### The code, complete
+## Milestone — give the keep a memory
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-07/the-hero-remembers.asm" />
+At start-up we `LDIR` each room's template into a 768-byte RAM **state buffer** and point the room table at the buffers, so `draw_room` paints from RAM. `mark_step` writes a dim `+` into that buffer at the thief's cell when **SPACE** is held — and into `under_thief`, so the mark shows the moment he steps off. Drawing reads from the buffer, so the chalk is now part of the room.
 
-## Assemble and run
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-07/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-07/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: rooms in RAM, and a chalk mark that's a byte in the buffer"
+  context={3}
+/>
 
-```
-pasmonext --sna the-hero-remembers.asm the-hero-remembers.sna
-```
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-07/steps/step-01.asm" lang="z80" />
+</details>
 
-Load it in Emu198x. Hold **SPACE** and walk **Q A O P** to lay a chalk trail. Walk it out through the east door into the next room, turn around, and walk back. Your marks are waiting. Chalk a different shape in the second room and ferry between the two — each keeps its own.
+Hold **SPACE** and walk **Q A O P** to chalk a trail. Walk it out through the east door, turn around, walk back — and the marks are waiting exactly where you left them. The keep remembered:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-07/step-01-remember.mp4"
+  caption="A chalk trail laid in the hall, then east through the doorway to the next room and back. Room 0's marks never moved — they sat in its state buffer while room 1 was on screen, and painted straight back when the thief returned. Persistence is the absence of overwriting."
+  autoplay={true}
+  loop={true}
+/>
 
 ## Try this: the honest cost
 
-Two rooms cost two 768-byte buffers — 1,536 bytes of RAM just for state. Work out what a hundred-room keep would cost that way (it's most of the machine). This is the *honest* version: a full mutable copy per room, simple and clear. A bigger keep needs the state packed far tighter — a bitmap of "marked or not", or a short list of changed cells. Worth sketching how you'd shrink it; it's a real problem real games solved.
+Two rooms cost two 768-byte buffers — 1,536 bytes of RAM just for state. Work out what a hundred-room keep would cost that way (it's most of the machine). This is the *honest* version: a full mutable copy per room, plain and clear. A bigger keep needs the state packed far tighter — a bitmap of "marked or not", or a short list of changed cells. Worth sketching how you'd shrink it; it's a real problem real games solved.
 
 ## Try this: an eraser
 
@@ -79,7 +96,7 @@ Add a key (say `M`) that writes `.` back into the cell instead of `+`, scrubbing
 
 The chalk is only the first thing the keep remembers. Anything you write into a room's state survives the same way. Imagine a cell the thief can switch from wall to floor — a lever that opens a passage, still open when you return. You wouldn't change the engine at all; you'd just write a different glyph. (That's a door, and a later keep is built on it.)
 
-## If it doesn't work
+## When it's wrong, see why
 
 - **Marks vanish when you leave and return.** You're writing the mark to the screen but not into the **state buffer**, or the room table still points at the templates instead of the state buffers. The buffer is the memory; the screen is only its reflection.
 - **The thief can't walk over his own marks.** `MARK_ATTR` is bright (bit 6 set), so `wall_at` thinks chalk is wall. Make it dim.
@@ -87,12 +104,16 @@ The chalk is only the first thing the keep remembers. Anything you write into a 
 - **The whole keep is corrupted at start.** The `LDIR` copies are wrong — each is `HL` = template, `DE` = state buffer, `BC` = 768. Swap source and destination and you copy blank RAM over nothing.
 - **The machine resets on start-up.** The state buffers (`defs 768` each) must fit in RAM below the stack. They sit after the variables here; if you move them, mind the room left.
 
+## Before and after
+
+You started with a keep that forgot — every room repainted from a fixed template, every chalk mark wiped the moment you crossed a threshold. You finished with a keep that holds onto what you did: rooms copied into RAM at start-up, a chalk glyph written straight into a room's state, and the marks surviving a walk to the next room and back. The change was small — a copy at boot, a write on **SPACE**, and pointing the room table at the buffers — but it's the difference between a set of pictures and a place with a history. Persistence cost no new machinery; it cost you *stopping* discarding the world each time you drew it.
+
 ## What you've learnt
 
 - **A world that changes must live in RAM.** Templates are read-only; copy them into writable state buffers and the keep becomes something you can alter.
-- **Persistence is the absence of overwriting.** Once each room's state lives in its own buffer and you draw *from* it, anything you write there simply stays. You don't add memory; you stop discarding it.
+- **Persistence is the absence of overwriting.** Once each room's state lives in its own buffer and you draw *from* it, anything you write there stays. You don't add memory; you stop discarding it.
 - **A mark is a byte.** Chalk, a lever, an opened door — all the same move: write a glyph into the room's state. The palette turns the byte back into a picture.
-- **The simple version has a cost.** A full copy per room is clear but heavy; knowing where it won't scale is the first step to the version that does.
+- **The plain version has a cost.** A full copy per room is clear but heavy; knowing where it won't scale is the first step to the version that does.
 
 ## What's next
 
