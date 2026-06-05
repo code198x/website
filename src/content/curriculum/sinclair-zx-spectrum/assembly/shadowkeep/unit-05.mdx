@@ -8,12 +8,15 @@ tags: ["assembly", "z80", "data-structures", "level-design", "flick-screen"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
 A keep is more than one room, and the rooms know each other: north of this hall lies that one, east lies another. This unit gives the keep that structure — a **graph** of rooms — and lets the thief travel it. It's the map of the map: the data that says how the pictures from Unit 4 join up.
 
 ## What you'll see by the end
 
-![A second, plainer chamber with a single block near the top and a doorway gap in its west wall; the red thief stands in it, having walked east out of the pillared hall and into here.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-05/screenshot.png)
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-05/step-01-room1.png" alt="A second, plainer chamber with a single block near the top and a doorway gap in its west wall; the red thief stands in it, having walked east out of the pillared hall and into here." caption="The second chamber — reached by walking east out of the pillared hall. A block of its own, a doorway back west, and the thief arrived. The keep has somewhere else in it now." />
 
 Walk the thief east, out through the doorway in the pillared hall's right-hand wall, and the screen **flicks** to a new room — a plainer chamber with a block of its own and a doorway back the way you came. Walk west and you return. Two rooms, joined, and a thief who travels between them. The keep has become a place with *elsewhere* in it.
 
@@ -42,7 +45,7 @@ room_entry_addr:                ; HL = rooms + current_room * 6
 
 ## A doorway is a gap
 
-How does the thief leave? Through a **doorway** — and a doorway is nothing more than a `.` where the wall would be a `#`. Room 0's east wall has one floor cell, at row 11; room 1's west wall has one too. Because a doorway is dim floor, not bright wall, the thief can simply walk onto it — collision already lets him.
+How does the thief leave? Through a **doorway** — and a doorway is nothing more than a `.` where the wall would be a `#`. Room 0's east wall has one floor cell, at row 11; room 1's west wall has one too. Because a doorway is dim floor, not bright wall, the thief can walk onto it — collision already lets him.
 
 The moment he stands on an edge cell, we look up that edge's link and travel:
 
@@ -76,17 +79,31 @@ Travelling repaints the entire screen — all 768 cells — as the new room. Tha
 
 There's one rough edge, though, and it's deliberate. When the thief travels, we drop him in the **centre** of the new room — a small teleport. Walk east through a door and you ought to arrive at the *west* edge of the next room, mid-stride, as if you'd stepped through. Right now you appear in the middle instead. It works — you can roam the whole keep — but it doesn't yet *feel* like a doorway. This unit is the map; making the step feel like a step is the next one.
 
-### The code, complete
+## Milestone — a graph of rooms
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-05/the-room-graph.asm" />
+We turn the single map into a room table — each entry a map pointer plus four links (N/S/E/W, or `NO_EXIT`) — add a `current_room`, and have `check_exit` read the link of whatever edge the thief stands on and travel there, repainting the screen as the new room.
 
-## Assemble and run
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-05/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-05/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: a room table with edge-links, and travel through a doorway"
+  context={3}
+/>
 
-```
-pasmonext --sna the-room-graph.asm the-room-graph.sna
-```
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-05/steps/step-01.asm" lang="z80" />
+</details>
 
-Load it in Emu198x. Walk east with **P** until you reach the gap in the right-hand wall; the screen flicks to the second room. Walk west with **O** to its left-hand doorway and you flick back. You're navigating a graph of rooms with your feet.
+Walk east with **P** to the gap in the right-hand wall and the screen flicks to the second room; walk west with **O** to its doorway and you flick back. You're navigating a graph of rooms with your feet:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-05/step-01-travel.mp4"
+  caption="East through the pillared hall's doorway, and the whole screen flicks to the second chamber; west through its doorway, and back again. The brief repaint is the flick — the sound of the genre, not a flaw. (He lands mid-room for now; Unit 6 makes him arrive at the threshold.)"
+  autoplay={true}
+  loop={true}
+/>
 
 ## Try this: a room to the north
 
@@ -98,15 +115,19 @@ Give room 0 an east link to room 1, but leave room 1's west link as `NO_EXIT` an
 
 ## Try this: lengthen the flick
 
-The repaint is plain — the new room simply appears. Before the `draw_room` in `.travel`, try blacking the screen (an `LDIR` wash over the bitmap) for a frame or two, so the old room clears before the new one paints. A heavier, more deliberate transition. Feel how much the *timing* of the flick changes the keep's mood.
+The repaint is plain — the new room appears all at once. Before the `draw_room` in `.travel`, try blacking the screen (an `LDIR` wash over the bitmap) for a frame or two, so the old room clears before the new one paints. A heavier, more deliberate transition. Feel how much the *timing* of the flick changes the keep's mood.
 
-## If it doesn't work
+## When it's wrong, see why
 
 - **He walks to the edge and nothing happens.** The doorway cell must be floor (`.`), and that edge's link must not be `$FF`. A `#` in the wall blocks him before he reaches the edge; a `$FF` link is a door to nowhere.
 - **He vanishes / the screen is half-painted.** You caught the repaint mid-flick — it takes a few frames. In real play it settles immediately; it's only visible as the brief genre flick.
 - **He travels to the wrong room.** Check the link order in each entry: North, South, East, West. East is the third link byte, west the fourth.
 - **The machine hangs on travel.** A link points at a room number with no table entry, so `room_entry_addr` computes off into nowhere. Every link must be `$FF` or a real room index.
 - **He arrives stuck in a wall.** The centre cell (15, 11) must be floor in every room. If a room has a block there, he'll spawn inside it — Unit 6's edge re-entry will fix the spawn, but for now keep the centre clear.
+
+## Before and after
+
+You started with a single room you could fill but never leave, and finished with a keep you can walk across — two rooms joined by doorways, the thief travelling between them by foot. The world turned out to be a graph: each room a map, each wall an edge that either holds or leads somewhere. A doorway is the absence of a wall; travel is a table lookup; the flick is the genre showing its hand. The keep has *elsewhere* in it now — and one honest seam left, the centre-landing, for the next unit to close.
 
 ## What you've learnt
 
