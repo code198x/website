@@ -8,14 +8,15 @@ tags: ["assembly", "z80", "game-state", "collision", "attributes", "sprite"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-The lamps are placed and cold. The lamplighter's whole job is to warm them — and the way we do it is so economical it feels like a trick. We're already saving the nine bytes beneath him on every move (Unit 6). To light a lamp, we don't draw anything new: we just **edit the saved copy**. Change the stored colour from cold cyan to bright yellow, and when he steps off, restore paints the lamp back — lit.
+The lamps are placed and cold. The lamplighter's whole job is to warm them — and the way we do it is so economical it feels like a trick. We're already saving the nine bytes beneath him on every move (Unit 6). To light a lamp, we don't draw anything new: we **edit the saved copy**. Change the stored colour from cold cyan to bright yellow, and when he steps off, restore paints the lamp back — lit.
 
-## What you'll see by the end
+## Where we start
 
-![The square of lamps with one lamp, near the bottom, now glowing yellow, the lamplighter just below it; the other lamps still cyan.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-10/screenshot.png)
-
-One lamp lit. The lamplighter walked onto a cold cyan lamp, lit it, and stepped away — and it stays gold behind him while the others remain cold. Walk a full circuit and you'd leave a trail of warm lamps in your wake. That glow staying put after he's gone is the heart of the unit.
+Unit 9's level — eight cold lanterns the lamplighter can cross but not change. We give crossing a lamp a *consequence*.
 
 ## Lighting is editing what's already saved
 
@@ -43,21 +44,48 @@ This tiny block carries two of the biggest ideas in game programming:
 
 And it's naturally **idempotent**: step back onto a lamp that's already lit and the save grabs yellow, the `cp LAMP_UNLIT` fails, nothing changes. A lit lamp stays lit. You can't accidentally un-light one by crossing it twice.
 
-### The code, complete
+## Milestone — light it
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-10/light-it.asm" />
+Right after `save_under`, we read the attribute we just stored, and if it's a cold lamp, overwrite the *saved* copy with the lit colour. That's the whole feature — a compare and a write, no new drawing.
 
-### What you see
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-10/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-10/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: edit the saved attribute — cold lamp becomes lit"
+  context={3}
+/>
 
-Steer onto any cold lamp and off again: it blooms from cyan to bright yellow and stays that way. The cobbles between lamps are untouched — only the lamp cells match `LAMP_UNLIT`, so only they light.
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-10/steps/step-01.asm" lang="z80" />
+</details>
 
-## Assemble and run
+Walk him across a cold lamp and it blooms from cyan to gold as he steps off, and stays that way behind him:
 
-```
-pasmonext --sna light-it.asm light-it.sna
-```
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-10/step-01-light.mp4"
+  caption="The lamplighter walks down and then across a cold lamp. He lights it by standing on it — nothing shows while he covers it — and the instant he steps off, restore paints it back bright yellow. The glow stays put in the floor behind him."
+  autoplay={true}
+  loop={true}
+/>
 
-In Emu198x, tour the lamps. Each one you cross is left glowing behind you. There's a game here now: light them all.
+He's left one lamp glowing gold while the rest stay cold — and that glow lives in the cell, not in him:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-10/step-01-glow.png" alt="The square of lamps with one lamp near the bottom now glowing yellow, the lamplighter just beside it; the other lamps still cyan." caption="One lit, seven cold. Walk a full circuit and you'd leave a trail of warm lamps — the glow stays because we changed the cell, not the sprite." />
+
+## When it's wrong, see why
+
+Lighting fails in ways that point at *where* you wrote the change:
+
+- **Lamps never light.** The check runs in the wrong place or tests the wrong value. Read `under_lamp + 8` **after** `save_under`, and compare it against `LAMP_UNLIT`.
+- **A lamp flashes lit while he stands on it, then goes cold.** You changed the live screen cell instead of the buffer. Light it by writing `under_lamp + 8`, never the cell directly — let restore do the painting.
+- **The cobbles light up too.** Your compare is matching floor. Cobbles are `COBBLE`, lamps are `LAMP_UNLIT`; only the exact cyan lamp value should pass the `cp`.
+- **A lit lamp turns cold when you cross it again.** Restore isn't writing the lit attribute back to the real cell, so the second save grabs stale data. Confirm `restore_under` writes `under_lamp + 8` to the attribute.
+
+## Before and after
+
+You started with lamps you could only cross and finished with lamps you can *light* — and the whole mechanic is a compare and a write slipped into a move you already had. No new drawing, because restore does the painting; no memory of which lamps are lit, because the lit state lives in the cells themselves. Crossing a lamp now *means* something. There's a game here: light them all.
 
 ## Try this: light the lot
 
@@ -65,18 +93,11 @@ Walk a full circuit of the square, stepping on every lamp. By the end the whole 
 
 ## Try this: a flickering flame
 
-A lit lamp is just an attribute, so make it livelier. Set the FLASH bit in `LAMP_LIT` — `%11000110` — and the lit lamps will pulse, ink and paper swapping a few times a second, like a real flame catching. One bit, and cold becomes alive.
+A lit lamp is an attribute, so make it livelier. Set the FLASH bit in `LAMP_LIT` — `%11000110` — and the lit lamps pulse, ink and paper swapping a few times a second, like a real flame catching. One bit, and cold becomes alive.
 
 ## Try this: make them toggle
 
-Change the rule. Instead of only lighting unlit lamps, compare against `LAMP_LIT` as well and swap either way — step on a lit lamp and it goes cold again. Now lamps *toggle*, and you have a different game entirely (keep them all lit at once?). The point: the rule is yours. "What does stepping here do?" is a line of code you get to write.
-
-## If it doesn't work
-
-- **Lamps never light.** The check runs in the wrong place or tests the wrong value. Read `under_lamp + 8` **after** `save_under`, and compare it against `LAMP_UNLIT`.
-- **A lamp flashes lit while he stands on it, then goes cold.** You changed the live screen cell instead of the buffer. Light it by writing `under_lamp + 8`, never the cell directly — let restore do the painting.
-- **The cobbles light up too.** Your compare is matching floor. Cobbles are `COBBLE`, lamps are `LAMP_UNLIT`; only the exact cyan lamp value should pass the `cp`.
-- **A lit lamp turns cold when you cross it again.** Restore isn't writing the lit attribute back to the real cell, so the second save grabs stale data. Confirm `restore_under` writes `under_lamp + 8` to the attribute.
+Change the rule. Instead of only lighting unlit lamps, compare against `LAMP_LIT` as well and swap either way — step on a lit lamp and it goes cold again. Now lamps *toggle*, and you have a different game (keep them all lit at once?). The point: the rule is yours. "What does stepping here do?" is a line of code you get to write.
 
 ## What you've learnt
 
@@ -87,4 +108,4 @@ Change the rule. Instead of only lighting unlit lamps, compare against `LAMP_LIT
 
 ## What's next
 
-Lamps light, but nothing's counting. A game needs to know how you're doing and tell you. In **Unit 11** we add **the tally**: a row of pips along the bottom, one per lamp, brightening as each is lit — a score you read at a glance. It's a deliberately simple readout (coloured cells, not drawn numbers), and the honest "before" of the digit HUD a later game builds.
+Lamps light, but nothing's counting. A game needs to know how you're doing and tell you. In **Unit 11** we add **the tally**: a row of pips along the bottom, one per lamp, brightening as each is lit — a score you read at a glance. It's a coloured-cell readout, not drawn numbers, and the honest "before" of the digit HUD a later game builds.
