@@ -8,12 +8,15 @@ tags: ["assembly", "z80", "game-loop", "state-machine", "title-screen"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
 Everything exists now — rooms, light, footsteps, a theme, gold, a win. What's missing is the thing that turns a collection of parts into a *game*: the loop a player sits down to. A title that waits for you. The keep, played. A victory when it's cleared. And back to the title, ready to go again. This unit builds that loop — and with it, Arc 1 of Shadowkeep is a complete, finishable game.
 
 ## What you'll see by the end
 
-![The title screen: a black field with the word SHADOWKEEP centred in bright white, and below it PRESS SPACE TO ENTER, the theme playing underneath.](/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-16/screenshot.png)
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-16/step-01-title.png" alt="The title screen: a black field with the word SHADOWKEEP centred in bright white, and below it PRESS SPACE TO ENTER." caption="The keep opens not into the Hall but into a title — its name in the ROM font, a prompt, the theme looping underneath. Press space and you're in; clear the keep and you're shown the door back here." />
 
 The keep opens not into the Hall but into a **title screen** — its name, a prompt, the theme looping quietly. Press space and you're in: explore the chambers, lift the gold. Clear the last coin and the screen turns black again — **THE KEEP STANDS** — a victory flourish, and *press space to return*. Press it, and you're back at the title, the keep reset and waiting. A whole game, beginning to end to beginning.
 
@@ -63,7 +66,7 @@ This is why we always edited the *working* copy of the maps, never the templates
 
 ## Words on screen, borrowed from the ROM
 
-A title needs text — and rather than hand-pixel a font, we borrow the one already in the machine. The Spectrum's 8×8 character set lives in ROM at **`$3D00`**; each glyph is 8 bytes. `print_char` copies a glyph straight to the screen:
+A title needs text — and instead of hand-pixelling a font, we borrow the one already in the machine. The Spectrum's 8×8 character set lives in ROM at **`$3D00`**; each glyph is 8 bytes. `print_char` copies a glyph straight to the screen:
 
 ```
 print_char:                          ; A = char, B = row, C = col
@@ -106,17 +109,42 @@ str_won:    defb    "THE KEEP STANDS", 0
 
 Checking input between notes keeps the latency to a single note — short enough to feel instant, and far simpler than running music on the interrupt. `show_win` is the same shape: black screen, the words, the victory flourish, wait for space.
 
-### The code, complete
+## Milestone — wrap it in a game
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-16/the-keep-stands.asm" />
+A few labels and jumps make the state machine: `show_title` waits at the title (theme
+looping, space polled between notes); `new_game` stamps the pristine templates back over
+the working maps — returning every coin — and resets the thief, counter and win flag;
+the game loop runs until `won`; `show_win` draws **THE KEEP STANDS** and waits. Title →
+play → win → title. Text comes free from the ROM font at `$3D00`. The diff is structure,
+not engine — and it's what turns sixteen units of parts into a game.
 
-## Assemble and run
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-16/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-16/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: a title-to-play-to-win-to-title state machine"
+  context={3}
+/>
 
-```
-pasmonext --sna the-keep-stands.asm the-keep-stands.sna
-```
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-16/steps/step-01.asm" lang="z80" />
+</details>
 
-Load it. You'll meet the title and its theme; press space and play the keep you built across sixteen units; clear it and read **THE KEEP STANDS**; press space and start again. That's a game — one you can hand to someone and say *finish it*.
+The whole loop, end to end — the title and its theme, space to enter, the keep you built across sixteen units, the win when it's cleared, and space back to the title, reset and waiting:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-16/step-01-loop.mp4"
+  caption="Title to play to win to title. Space enters the keep; the cleared-keep state draws THE KEEP STANDS; space returns to the title, every coin restored by the template copy in new_game. A whole game, beginning to end to beginning. (The win is triggered here for the capture; in play it's the last coin that does it.)"
+  autoplay={true}
+  loop={true}
+/>
+
+And the win itself — the keep cleared, the door held open back to the start:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-16/step-01-win.png" alt="The win screen: a black field with THE KEEP STANDS centred in bright white, and below it PRESS SPACE TO RETURN." caption="THE KEEP STANDS — the keep cleared, the same ROM font, and the prompt that closes the loop: press space, and the title waits again with a fresh keep." />
+
+That's a game — one you can hand to someone and say *finish it*.
 
 ## Try this: a hand-pixelled logo
 
@@ -130,7 +158,7 @@ Right now the title waits forever. Make it *demo* instead: after the theme loops
 
 Add a counter of how many moves (or how few) it took to clear the keep, print it on the win screen, and keep the best across plays. Suddenly there's a reason to play *again better* — the smallest possible scoreboard, and a glimpse of why a win screen is worth more than a `HALT`.
 
-## If it doesn't work
+## When it's wrong, see why
 
 - **The second game still shows collected coins gone.** `new_game` isn't copying the templates back over the working state — it's the copy, not a redraw, that resets the gold.
 - **The title text is garbage or in the wrong place.** `print_char`'s glyph address is wrong — it's `$3D00 + (char - 32) * 8`. Check the `sub 32` and the three `add hl,hl` (×8).
@@ -138,6 +166,10 @@ Add a counter of how many moves (or how few) it took to clear the keep, print it
 - **It starts the game the instant you press space, then immediately drops a mark.** Space is still held when the game loop begins. `show_title` waits for *release* before returning to prevent exactly this — keep that debounce.
 - **The theme stutters or won't loop.** Interrupts are on during the title — `show_title` runs with `di`; the game loop's `ei` comes after. End-of-tune (`$FF`) must jump back to the tune's start, not fall through.
 - **After winning it hangs instead of returning.** The `.won` branch must `call show_win` and then `jr main_title`; if `show_win` never sees a space release it will wait forever — check its release loop.
+
+## Before and after
+
+You started this unit with every part built but no game to sit down to — the program ran the keep and nothing wrapped it. You finished with the loop: a title that waits, the keep played, a win when it's cleared, and the title again with a fresh keep. It took no new engine — a handful of labels and jumps for the states, a block-copy of the templates for the reset, and the ROM font for the words. The discipline of always editing the working maps, never the templates, is what made "a fresh game" a single copy. A pile of parts became something a person can finish and play again.
 
 ## What you've learnt
 
