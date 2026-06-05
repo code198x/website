@@ -8,20 +8,20 @@ tags: ["assembly", "z80", "sprite", "save-restore", "background", "memory"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
 
-Unit 5 moved the lamplighter by blanking the cell he left — and we said plainly why that was a trap: it only works while the floor is empty. The first thing with real pixels he steps onto, the blank-erase will scrub away.
+Unit 5 moved the lamplighter by blanking the cell he left — and we named the flaw out loud: it only works while the floor is empty. The first thing with real pixels he steps onto, the blank-erase will scrub away.
 
-This unit fixes it for good, and it completes the cell-sprite technique. The idea is simple: instead of blanking, **remember**. Before he stands in a cell, save the nine bytes already there; when he leaves, put them back. From now on he can walk over anything without harming it.
+This unit fixes it for good, and it completes the cell-sprite technique. Instead of blanking, we **remember**: before he stands in a cell, save the nine bytes already there; when he leaves, put them back. From now on he can walk over anything without harming it.
 
-## What you'll see by the end
+## Where we start
 
-![The walled square with the lamplighter left of centre, having walked there — one clean figure, the floor undamaged.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/screenshot.png)
-
-He's walked left this time — but otherwise it looks exactly like Unit 5: one figure, clean floor, no trail. On bare cobbles, save-and-restore and blank-erase are indistinguishable. The difference is invisible *today* and essential the moment there's something on the floor worth keeping. (The last "Try this" makes it visible — it's the mirror of Unit 5's bug.)
+Unit 5's walker, still erasing by blanking — clean on bare floor, destructive the moment there's a pixel beneath him. We swap that erase for something that preserves what it covers.
 
 ## What's under him
 
-A cell is nine bytes: the **eight bitmap rows** that hold its pixels, plus the **one attribute** that holds its colour. To preserve a cell while the lamplighter stands on it, we copy all nine into a small buffer in memory:
+A cell is nine bytes: the **eight bitmap rows** that hold its pixels, plus the **one attribute** that holds its colour. To preserve a cell while the lamplighter stands on it, we copy all nine into a small buffer:
 
 ```
 under_lamp:
@@ -34,58 +34,79 @@ under_lamp:
 
 Every move is now four steps in a strict order:
 
-1. **Restore** — write the buffer back over his current cell. The background he was covering reappears, exactly as it was.
+1. **Restore** — write the buffer back over his current cell. The background reappears, exactly as it was.
 2. **Step** — change `lamp_col`.
 3. **Save** — copy the new cell's nine bytes into the buffer, *before* we draw over them.
 4. **Draw** — stamp him into the new cell.
 
-Order is everything. Restore before you step (or you'll restore the wrong cell); save before you draw (or you'll save his own figure as the "background" and carry it around like a stain). Get it right and he glides across the floor leaving it untouched.
+Order is everything. Restore before you step (or you'll restore the wrong cell); save before you draw (or you'll save his own figure as the "background" and carry it around like a stain).
 
-## The same address, reused four ways
+## Milestone — remember, don't blank
 
-Saving, restoring and drawing all need the address of his cell — and it's the same simple sum from Unit 5: `ROW_SCR + col` for the pixels, `ROW_ATTR + col` for the colour. Rather than write it out four times, two tiny helpers (`scr_addr`, `attr_addr`) hand back the address in `HL`, and save / restore / draw each lean on them. Same arithmetic, three jobs.
+We retire `erase_lamp` and build the buffer machinery: a nine-byte `under_lamp`, a `save_under` and a `restore_under` that copy a cell to and from it, and two tiny address helpers (`scr_addr`, `attr_addr`) that hand back his cell's address so save, restore, and draw all share the same `ROW_SCR + col` sum. Setup now saves the start cell before drawing him; each move runs the restore / step / save / draw dance.
 
-### The code, complete
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-06/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-06/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: a nine-byte buffer replaces the blank-erase"
+  context={3}
+/>
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-06/save-and-restore.asm" />
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-06/steps/step-01.asm" lang="z80" />
+</details>
 
-### What you see
+On the bare floor he walks exactly as he did in Unit 5 — one figure, no trail, no damage:
 
-He walks, just as before — but now every cell he leaves is rebuilt from the buffer, not blanked. On the empty floor you can't tell; under the surface, he's become a well-behaved sprite that respects whatever he stands on.
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/step-01-walked.png" alt="The lamplighter, having walked left of centre across an empty square, one clean figure with no trail." caption="Walked left across empty floor. On bare cobbles, save-and-restore and blank-erase look identical — which is exactly why the difference needs a marker to show." />
 
-## Assemble and run
+## The difference, made visible
 
-```
-pasmonext --sna save-and-restore.asm save-and-restore.sna
-```
+The whole point of this unit is invisible on an empty floor, so let's put something on the floor. This is the mirror of Unit 5's "watch the assumption bite": we poke a bright marker into a cell in his path and walk him *over* it.
 
-Walk him about. Identical to Unit 5 on screen — the proof is in what *doesn't* break, which the next exercise shows.
+Here he is approaching the marker — a yellow block at the column to his left:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/survives-before.png" alt="The square with a solid yellow block left of centre and the lamplighter standing a few cells to its right." caption="Before: a marker on the floor, the lamplighter a few cells to its right, about to walk left through it." />
+
+And here he is after walking straight through that cell and out the other side — the marker is **still there**:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/survives-after.png" alt="The lamplighter now to the left of the yellow block, which is intact." caption="After: he covered the marker as he passed, then restored it on the way out. In Unit 5 the blank-erase would have wiped it away; here it survives. Same scene, opposite outcome — that's the whole unit." />
+
+He saved the block's nine bytes as he stepped on, and restored them as he stepped off. Nothing destroyed.
+
+## When it's wrong, see why
+
+Save-and-restore bugs are about the *order* of the four steps:
+
+- **A trail of figures again.** `restore_under` isn't being called, or runs after the step. Restore the **old** cell first, then change `lamp_col`.
+- **He drags a smear of background around with him.** You saved *after* drawing — so the buffer holds his own figure, and you stamp it into the next cell. Save the new cell **before** `draw_lamp`.
+- **The cell he started on is wrong after he first moves.** Setup must `save_under` *before* the first `draw_lamp`, so the buffer holds real floor, not his figure.
+- **It looks exactly like Unit 5.** Correct, on a blank floor. The marker above is how you see the difference.
+
+## Before and after
+
+You started with a walker that scrubbed the floor clean behind him and finished with one that leaves it untouched — by remembering nine bytes instead of blanking them. On empty cobbles the two are indistinguishable; over a marker, one destroys and one preserves. This solid save-and-restore is the honest groundwork. Drawing only his *lit* pixels, so scenery shows through the gaps in his shape — **masking** — is the upgrade a later game makes to this exact technique.
 
 ## Try this: watch it survive
 
-This is the exact mirror of Unit 5's "watch the assumption bite". Poke a mark into a floor cell in his path, in setup:
+Poke your own mark into a floor cell in his path, in setup:
 
 ```
 ld   hl, ROW_SCR + 9
 ld   (hl), %11111111
 ```
 
-In Unit 5, walking over column 9 wiped that bar away. Now walk over it and **it's still there** when he leaves — saved on the way in, restored on the way out. Same scene, opposite outcome: that's the whole unit, made visible.
+In Unit 5, walking over column 9 wiped that bar away. Now walk over it and it's still there when he leaves — saved on the way in, restored on the way out.
 
 ## Try this: forget to restore
 
-Comment out one `call restore_under`. The trail of lamplighters comes straight back — because the old cell never gets rebuilt, so his figure stays stamped in it. It's a neat way to see that restore is doing real work every single step, even when the floor looks empty.
+Comment out one `call restore_under`. The trail of lamplighters comes straight back — the old cell never gets rebuilt, so his figure stays stamped in it. A neat way to see that restore is doing real work every step, even when the floor looks empty.
 
 ## Try this: the square hole (a look ahead)
 
-Fill a cell in his path with a stipple instead of a solid bar (`%10101010`), and walk onto it. While he's standing there, notice his cell is a solid block — his white figure on black — and the stipple is completely hidden *under* him, not showing through the gaps in his shape. Save-and-restore protects the background, but he still covers it with an opaque square while he's on it. Drawing only his *lit* pixels, so scenery shows through the gaps, is **masking** — the upgrade a later game makes to this very technique.
-
-## If it doesn't work
-
-- **A trail of figures again.** `restore_under` isn't being called, or runs after the step. Restore the **old** cell first, then change `lamp_col`.
-- **He drags a smear of background around with him.** You saved *after* drawing — so the buffer holds his own figure, and you stamp it into the next cell. Save the new cell **before** `draw_lamp`.
-- **The cell he started on is wrong after he first moves.** Setup must `save_under` *before* the first `draw_lamp`, so the buffer holds real floor, not his figure.
-- **It looks exactly like Unit 5.** Correct, on a blank floor. Use the first "Try this" to see the difference.
+Fill a cell in his path with a stipple instead of a solid bar (`%10101010`), and walk onto it. While he's standing there, his cell is a solid block — his white figure on black — and the stipple is hidden *under* him, not showing through the gaps. Save-and-restore protects the background, but he still covers it with an opaque square. Drawing only his lit pixels, so scenery shows through the gaps, is **masking** — the upgrade a later game makes.
 
 ## What you've learnt
 
