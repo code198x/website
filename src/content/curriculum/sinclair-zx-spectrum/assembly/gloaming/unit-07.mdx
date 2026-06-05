@@ -8,16 +8,17 @@ tags: ["assembly", "z80", "collision", "attributes", "bit", "walls"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-The lamplighter can stand anywhere and harm nothing — so now we decide where he's *allowed* to stand. Until this unit, the blue frame round the square was scenery he could walk straight through. This unit makes it solid: step toward a wall and he simply stops.
+The lamplighter can stand anywhere and harm nothing — so now we decide where he's *allowed* to stand. Until this unit, the blue frame round the square was scenery he could walk straight through. This unit makes it solid: step toward a wall and he stops.
 
-It costs almost nothing, because of a decision we made all the way back in Unit 1: the map *is* colour, and colour lives in memory. We don't need a separate table of what's solid — we read it from the attribute of the cell he's trying to enter.
+It costs almost nothing, because of a decision we made back in Unit 1: the map *is* colour, and colour lives in memory. We don't need a separate table of what's solid — we read it from the attribute of the cell he's trying to enter.
 
-## What you'll see by the end
+## Where we start
 
-![The lamplighter stopped at the right-hand wall, pressed against the blue frame, unable to go further.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-07/screenshot.png)
-
-The lamplighter, walked all the way right and **stopped dead** against the wall. This shot was taken holding P for far longer than it takes to cross the square — and he sits at the last floor cell, refusing to enter the blue. The wall is a boundary now, not decoration.
+Unit 6's walker, safe over anything and stopped by nothing — he strolls clean through the blue frame and off into the dark. We give the frame teeth.
 
 ## Collision is already in the colour
 
@@ -38,45 +39,63 @@ bit  3, (hl)     ; HL = the target cell's attribute
                  ; clear → floor → yes
 ```
 
-No solidity table, no list of wall coordinates. The colour you already painted *is* the collision map. This is the Unit 1 idea — "a cell's type and its colour are the same byte" — finally paying for itself.
+No solidity table, no list of wall coordinates. The colour you already painted *is* the collision map. This is the Unit 1 idea — "a cell's type and its colour are the same byte" — paying for itself.
 
-## Test before you step
+## Milestone — test before you step
 
-In Unit 5 we moved first and asked questions never. Now we ask first. Each step:
+In Unit 5 we moved first and asked questions never. Now we ask first. Each step works out the **target** column (`lamp_col` ± 1), reads that cell's attribute and `BIT 3`s it, and only commits the move — restore, step, save, draw — if the bit is clear. A small helper, `wall_at`, takes a column and comes back with the Z flag set or clear, so the loop reads almost like English: *work out the target; if `wall_at`, go round again; otherwise move there.*
 
-1. Work out the **target** column — where he *wants* to go (`lamp_col` ± 1).
-2. Read that cell's attribute and `BIT 3` it.
-3. If it's a wall, **refuse** — jump back to the top of the loop, don't move at all.
-4. If it's clear, commit the move exactly as before: restore, step, save, draw.
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-07/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-07/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: read the target cell's attribute and refuse a wall"
+  context={3}
+/>
 
-A small helper, `wall_at`, takes a column, reads its attribute, and comes back with the Z flag set or clear — so the loop reads almost like English: *work out the target; if `wall_at`, go round again; otherwise move there.*
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-07/steps/step-01.asm" lang="z80" />
+</details>
 
-### The code, complete
+Walk him into the wall and he stops at the last floor cell — and stays there, however long the key is held:
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-07/walls.asm" />
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-07/step-01-stop.mp4"
+  caption="Holding P, the lamplighter walks right across the square and halts at the last floor cell — the wall refuses the next step. We wrote no 'stay on screen' code; the side walls bound him purely because they're solid."
+  autoplay={true}
+  loop={true}
+/>
 
-### What you see
+Hold the key far longer than it takes to cross, and he sits pressed against the blue, refusing to enter it:
 
-Walk him into either side wall and he stops at the last floor cell, however long you hold the key. Notice we wrote **no** "stay on screen" code — the side walls bound him purely because they're solid. The map does the work.
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-07/step-01-blocked.png" alt="The lamplighter stopped at the right-hand wall, at the last floor cell just inside the blue frame." caption="Stopped at the last floor cell — the cell beyond him is a wall, so wall_at refuses the step. The frame is a boundary now, not decoration." />
 
-## Assemble and run
+Notice there's **no** "stay on screen" code anywhere. The side walls bound him because they're solid; the map does the work.
 
-```
-pasmonext --sna walls.asm walls.sna
-```
+## When it's wrong, see why
 
-Walk left and right in Emu198x. He's penned between the two side walls of his row — a real corridor now, with ends.
+Collision bugs are about which cell you test, and which way the bit reads:
+
+- **He walks through walls regardless.** The test is inverted. A wall has bit 3 **set**, so `BIT 3` gives **NZ** — and `jr nz` must skip the move. Check `WALL_BIT` is 3 and the branch is `jr nz`.
+- **He won't move anywhere.** You're testing his *current* cell, or always reading non-zero. `wall_at` must test the **target** (`lamp_col` ± 1), worked out before the move.
+- **He stops one cell short of, or one cell inside, the wall.** Off-by-one in the target. The cell to test is the one he's *entering*, not the one he's on.
+- **He slips past the side wall and the screen garbles.** `wall_at` is reading the wrong address — confirm it forms `ROW_ATTR + col`.
+
+## Before and after
+
+You started with a frame he ignored and finished with one he can't cross — and the whole boundary is three instructions: work out the target, `BIT`-test its colour, refuse if solid. No coordinate list, no edge checks; the collision map is the attribute memory you painted in Unit 1. Make a wall cell floor, or a floor cell wall, and his world changes with it — because the map and the collision are the same bytes.
 
 ## Try this: knock a gate
 
-Open a hole in the wall. In setup, after the frame is drawn, paint one wall cell as floor — say the right wall of his row:
+Open a hole in the wall. In setup, after the frame is drawn, paint one wall cell as floor — the right wall of his row:
 
 ```
 ld   hl, ROW_ATTR + 31
 ld   (hl), COBBLE
 ```
 
-Now walk right: he passes straight through the gap, because `wall_at` reads the *live* attribute and that cell is floor now. Change the map, change the collision — they're the same thing.
+Walk right: he passes straight through the gap, because `wall_at` reads the *live* attribute and that cell is floor now. Change the map, change the collision.
 
 ## Try this: plant a pillar
 
@@ -91,22 +110,15 @@ A blue block appears mid-floor, and he stops at it just as he stops at the frame
 
 ## Try this: take the wall test out
 
-Comment out the `call wall_at` and its `jr nz`. He walks straight through the wall and off into the dark, exactly like Unit 6. Those three lines are the entire difference between a figure and a figure that respects the world. Put them back.
-
-## If it doesn't work
-
-- **He walks through walls regardless.** The test is inverted. A wall has bit 3 **set**, so `BIT 3` gives **NZ** — and `jr nz` must skip the move. Check `WALL_BIT` is 3 and the branch is `jr nz`.
-- **He won't move at all, anywhere.** You're testing his *current* cell, or always reading non-zero. `wall_at` must test the **target** (`lamp_col` ± 1), worked out before the move.
-- **He stops one cell short of, or one cell inside, the wall.** Off-by-one in the target. The cell to test is the one he's *entering*, not the one he's on.
-- **He slips past the side wall and the screen garbles.** `wall_at` is reading the wrong address — confirm it forms `ROW_ATTR + col`.
+Comment out the `call wall_at` and its `jr nz`. He walks straight through the wall and off into the dark, exactly like Unit 6. Those lines are the whole difference between a figure and a figure that respects the world. Put them back.
 
 ## What you've learnt
 
 - Collision can read the map you **already have** — a cell's attribute byte — with no separate solidity table.
 - A single **`BIT` test** (PAPER's bottom bit here) classifies a cell as solid or floor.
 - **Test the target cell before committing** the move, and refuse if it's solid.
-- The walls now bound him with **no dedicated edge code** — being solid is enough.
+- The walls bound him with **no dedicated edge code** — being solid is enough.
 
 ## What's next
 
-He's penned left and right, but he can only move along one row. In **Unit 8** we complete the movement engine: the other two directions, **up and down**. That brings back the full screen-address arithmetic from Unit 2 (moving between rows crosses those awkward thirds), and the top and bottom walls catch him just as the sides do. By the end he'll be free to roam the whole square — and properly shut inside it.
+He's penned left and right, but he can only move along one row. In **Unit 8** we complete the movement engine: the other two directions, **up and down**. That brings back the full screen-address arithmetic from Unit 2 — moving between rows crosses those awkward thirds — and the top and bottom walls catch him just as the sides do. By the end he'll roam the whole square, and be properly shut inside it.
