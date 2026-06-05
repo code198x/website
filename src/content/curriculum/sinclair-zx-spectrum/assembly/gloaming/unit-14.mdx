@@ -8,20 +8,21 @@ tags: ["assembly", "z80", "collision", "game-state", "interaction", "attributes"
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
 The draught drifts, but does no harm. This unit gives it its purpose: when it crosses a **lit** lamp, it snuffs it — cold cyan again — and the tally falls. The dark starts winning back the ground you've covered, and for the first time you have to think about *where the draught is going*.
 
-The lovely part: you already know exactly how to do this. It's Unit 10's lighting, run backwards.
+The neat part: you already know how to do this. It's Unit 10's lighting, run backwards.
 
-## What you'll see by the end
+## Where we start
 
-![The square with one lamp lit gold at the left, the draught hovering beside a freshly-cooled cyan lamp at the upper right, and the tally showing one.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/screenshot.png)
-
-Two lamps were lit here — but the draught crossed one and put it out. The survivor still glows gold on the left; the snuffed one is cold cyan again, with the draught hovering right beside it, and the tally has dropped from two to one. That fall in the count is the dark pushing back.
+Unit 13's draught — a wisp that drifts and bounces but leaves the world untouched. We give it teeth.
 
 ## Snuffing is lighting, mirrored
 
-In Unit 10, when the lamplighter stepped onto a cold lamp, he edited his *saved* buffer from cyan to yellow, so restore painted it lit. The draught does the precise opposite. When it steps onto a cell, it saves the nine bytes as always — and if what it saved is a **lit** lamp, it rewrites the saved attribute back to **unlit**:
+In Unit 10, when the lamplighter stepped onto a cold lamp, he edited his *saved* buffer from cyan to yellow, so restore painted it lit. The draught does the opposite. When it steps onto a cell, it saves the nine bytes as always — and if what it saved is a **lit** lamp, it rewrites the saved attribute back to **unlit**:
 
 ```
 ld   a, (under_draught + 8)   ; what the draught just covered
@@ -33,7 +34,7 @@ call unlight_pip             ; and drop the tally
 .nosnuff:
 ```
 
-When the draught drifts off, `restore_draught` writes that cooled lamp back to the screen. The lamplighter edits his buffer to *light*; the draught edits its buffer to *snuff*. Same mechanism, opposite sign — and `unlight_pip` is just `light_pip` run backwards, dropping the count and cooling the top pip.
+When the draught drifts off, `restore_draught` writes that cooled lamp back to the screen. The lamplighter edits his buffer to *light*; the draught edits its buffer to *snuff*. Same mechanism, opposite sign — and `unlight_pip` is `light_pip` run backwards, dropping the count and cooling the top pip.
 
 ## Two things fighting over one world
 
@@ -41,21 +42,48 @@ This is the first **entity-versus-world interaction** in the game: one moving th
 
 It changes how the game *plays*, too. Lighting a lamp is no longer permanent, so the win — all eight lit *at once* — becomes a real test. You have to light faster than the draught can eat, and steer your route to stay ahead of its drift. Mechanics just became a contest.
 
-### The code, complete
+## Milestone — let it snuff
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-14/it-snuffs-the-light.asm" />
+Right after `save_draught`, we read what the draught covered, and if it's a lit lamp, cool the saved copy and drop the tally with `unlight_pip`. That's the whole change — the mirror image of Unit 10's six lines.
 
-### What you see
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-14/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-14/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: the draught cools a lit lamp it crosses"
+  context={3}
+/>
 
-Light some lamps, then watch the draught wander into one and cool it as it leaves — the gold winking back to cyan, the tally ticking down. The square is no longer a quiet place to tidy up; it's a race.
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-14/steps/step-01.asm" lang="z80" />
+</details>
 
-## Assemble and run
+Light a lamp in the draught's path, and watch it wink back to cold as the draught drifts through — the tally pip cooling with it:
 
-```
-pasmonext --sna it-snuffs-the-light.asm it-snuffs-the-light.sna
-```
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/step-01-snuff.mp4"
+  caption="A lamp glows gold and the draught drifts straight into it — as it passes, the lamp cools back to cyan and the warm tally pip at the top goes cold with it (lit_count drops from 1 to 0). The dark pushing back, byte by byte."
+  autoplay={true}
+  loop={true}
+/>
 
-In Emu198x, light a few lamps near the draught's path and watch it undo your work. Try to keep more lit than it can put out.
+Light more than one and the contest shows: a survivor glows on while the draught cools another beside it, the tally landing on what's left:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/step-01-snuffed.png" alt="The square with one lamp lit gold at the left beside the lamplighter, the draught hovering by a freshly-cooled cyan lamp at the upper right, and the tally showing one." caption="Two lamps were lit; the draught crossed one and put it out (now cyan, by the draught at upper right). The survivor still glows gold at left, and the tally has dropped to one — confirmed by reading lit_count from memory." />
+
+## When it's wrong, see why
+
+The snuff is the lighting code's mirror, and it fails the same ways:
+
+- **Lamps are never snuffed.** The check is misplaced or compares the wrong value. Read `under_draught + 8` **after** `save_draught`, and compare it with `LAMP_LIT`.
+- **The snuffed lamp stays gold.** You changed the live cell, or the wrong buffer. Cool the *saved* copy (`under_draught + 8`) so `restore_draught` paints it cold when the draught leaves.
+- **The tally underflows or goes wrong.** `unlight_pip` only ever runs when a *lit* lamp is snuffed, so the count can't drop below zero — confirm it's inside the `cp LAMP_LIT` branch.
+- **You can never win now.** That may be the game, not a bug: the draught can snuff faster than you light. Slow it (`DRAUGHT_SPEED`) while you test, or get quicker.
+
+## Before and after
+
+You started with a draught that drifted past everything and finished with one that undoes your work — and the menace is six lines, the lighting mechanic with two constants flipped. The lamps became contested ground; the win became a race; the count can move both ways and still stays honest because the decrement only fires on a real loss. An antagonist didn't need new machinery — it needed permission to edit the same state you do.
 
 ## Try this: a hungrier draught
 
@@ -68,13 +96,6 @@ Give the snuff a moment of feedback. In the `.nosnuff` branch (just before it), 
 ## Try this: turn the enemy kind
 
 Change the draught's `cp LAMP_LIT` to `cp LAMP_UNLIT`, and have it set `LAMP_LIT` (and call `light_pip`). Now the "draught" *lights* lamps as it wanders — a helper, not a threat. It's the same code with two constants swapped, and it shows the mechanic was never "good" or "evil": the rule is whatever you write.
-
-## If it doesn't work
-
-- **Lamps are never snuffed.** The check is misplaced or compares the wrong value. Read `under_draught + 8` **after** `save_draught`, and compare it with `LAMP_LIT`.
-- **The snuffed lamp stays gold.** You changed the live cell, or the wrong buffer. Cool the *saved* copy (`under_draught + 8`) so `restore_draught` paints it cold when the draught leaves.
-- **The tally underflows or goes wrong.** `unlight_pip` only ever runs when a *lit* lamp is snuffed, so the count can't drop below zero — confirm it's inside the `cp LAMP_LIT` branch.
-- **You can never win now.** That may be the game, not a bug: the draught can snuff faster than you light. Slow it (`DRAUGHT_SPEED`) while you test, or get quicker.
 
 ## What you've learnt
 
