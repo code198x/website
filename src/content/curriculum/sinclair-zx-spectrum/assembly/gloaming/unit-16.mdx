@@ -8,25 +8,26 @@ tags: ["assembly", "z80", "state-machine", "title-screen", "game-structure", "in
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
 Gloaming plays, but it starts in the middle — load it and you're already wandering the square. Real games have a front door: a title that waits for you. **Phase E** is about making the game feel finished, and it starts here, with a title screen and the idea that quietly organises every game ever written — a **state machine**.
 
-## What you'll see by the end
+## Where we start
 
-![A black screen with "GLOAMING" centred in white and "PRESS SPACE" below it.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-16/screenshot.png)
-
-A title. Sparse and dark — the name, and an invitation. Press space and the square you know builds itself fresh and the game begins. Win or lose, for now, the game holds on its ending; closing the loop back to here is the next-but-one unit.
+Unit 15's complete game — a goal, a threat, a win and a loss — that drops you straight into play with no beginning and no way to start over. We give it a front door and a structure to hang the rest on.
 
 ## A game is a handful of states
 
-At any moment, Gloaming is doing exactly one of four things:
+At any moment, Gloaming is doing one of four things:
 
 - **TITLE** — showing its name, waiting for you to start.
 - **PLAY** — the game proper: moving, lighting, dodging.
 - **WIN** — all lamps lit, holding the closing line.
 - **LOSE** — out of lives, night fallen.
 
-A **state machine** is just a byte that remembers which — `game_state` — and a loop that, each frame, does the right thing for that state:
+A **state machine** is a byte that remembers which — `game_state` — and a loop that, each frame, does the right thing for that state:
 
 ```
 main_loop:
@@ -49,7 +50,7 @@ Everything you built becomes `play_step` — one state among four. The win and l
 
 ## Setup becomes "start a game"
 
-For the title to mean anything, pressing the key has to build a **fresh** game — and that's a different job from "draw the scene once at boot". So all the world-building moves into `init_game`: reset the lives and the tally, place the lamplighter and the draught at their starts, draw the square, the walls, the lamps. `title_step` waits for space and calls it:
+For the title to mean anything, pressing the key has to build a **fresh** game — a different job from "draw the scene once at boot". So all the world-building moves into `init_game`: reset the lives and the tally, place the lamplighter and the draught at their starts, draw the square, the walls, the lamps. `title_step` waits for space and calls it:
 
 ```
 title_step:
@@ -67,23 +68,50 @@ Because `init_game` builds everything from scratch, it's also exactly what "play
 
 ## A wrinkle: clearing the pixels
 
-The title is *text* — pixels written into the bitmap. When the game starts, `init_game` repaints the **colour** of every cell (the cobbles), but colour isn't pixels: the title's letters are still sitting in the bitmap, and they'd ghost through the new floor in a faint blue. The fix is to wipe the pixel area too — a single `LDIR` clearing `$4000`–`$57FF` — before drawing the board. It's a small thing, but it's the kind of bug that only appears once a game has more than one screen, and worth meeting now.
+The title is *text* — pixels written into the bitmap. When the game starts, `init_game` repaints the **colour** of every cell (the cobbles), but colour isn't pixels: the title's letters are still sitting in the bitmap, and they'd ghost through the new floor in faint blue. The fix is to wipe the pixel area too — a single `LDIR` clearing `$4000`–`$57FF` — before drawing the board. It's a small thing, but it's the kind of bug that only appears once a game has more than one screen, and worth meeting now.
 
-### The code, complete
+## Milestone — the front door
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-16/the-title.asm" />
+We add a `game_state` byte and a dispatch loop, move all the boot-time world-building into `init_game`, add a `title_step` that draws the name and waits for space, and turn the win and lose checks into state changes, not freezes. A bitmap clear in `init_game` stops the title ghosting through.
 
-### What you see
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: a TITLE/PLAY/WIN/LOSE state machine and a title screen"
+  context={3}
+/>
 
-The title holds, patient, until you press space. Then the square assembles and you're playing — lamps unlit, three lives, the draught adrift. The game has a beginning now, not just a middle.
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-01.asm" lang="z80" />
+</details>
 
-## Assemble and run
+Load it and the title waits, patient, for you:
 
-```
-pasmonext --sna the-title.asm the-title.sna
-```
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-16/step-01-title.png" alt="A black screen with GLOAMING centred in white and PRESS SPACE below it." caption="The front door: the name, and an invitation. The TITLE state does nothing but show this and watch for space." />
 
-Load it in Emu198x: the title waits. Press space and play. (Win or lose still freezes for now — Unit 19 sends it home.)
+Press space and the square assembles itself fresh — `init_game` builds a clean board, and the state flips to PLAY:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-16/step-01-start.mp4"
+  caption="The title holds until space is pressed; then init_game clears the screen, builds the square, lamps, lives and draught, and the state machine switches to PLAY. No ghost of the title bleeds through — the bitmap was wiped before the board was drawn."
+  autoplay={true}
+  loop={true}
+/>
+
+## When it's wrong, see why
+
+A second screen surfaces second-screen bugs:
+
+- **The title's letters ghost through the game in blue.** `init_game` repainted the colours but not the pixels. Clear the bitmap (`$4000`–`$57FF`) before drawing the board.
+- **Pressing space does nothing.** `title_step` isn't being reached, or reads the wrong half-row. Space is bit 0 of `$7FFE`, and `game_state` must start as `STATE_TITLE`.
+- **The game starts immediately, skipping the title.** `game_state` wasn't initialised to `STATE_TITLE`, or the dispatcher doesn't branch on it.
+- **Win/lose now breaks the game.** Those states must only *set* `game_state` and draw their screen once — not loop forever inside `play_step`. The dispatcher does the holding.
+
+## Before and after
+
+You started with a game that began in the middle and finished with one that begins at a title and *enters* play on a keypress — and the change is structural, not cosmetic. A byte names the mode; a dispatch loop runs the right step for it; the whole game you built is one of those modes. Win and lose stopped being dead ends and became states the machine moves *to*. That structure is what the next units hang sound, a "play again", and the rest of the polish on.
 
 ## Try this: warm the title
 
@@ -91,18 +119,11 @@ The title is white on black. Print it in a warmer colour to set the mood — giv
 
 ## Try this: any key, not just space
 
-`title_step` only watches space. Make it start on *any* key: read several half-rows and begin if any of them shows a held key. (A neat way: read each row in turn and combine the results — if the low five bits aren't all 1, something's pressed.) "Press any key" is friendlier than hunting for one.
+`title_step` only watches space. Make it start on *any* key: read several half-rows and begin if any shows a held key. (A neat way: read each row in turn and combine the results — if the low five bits aren't all 1, something's pressed.) "Press any key" is friendlier than hunting for one.
 
 ## Try this: a third state — paused
 
 Add a `STATE_PAUSE`. During `PLAY`, watch for a pause key; when pressed, switch to `STATE_PAUSE`, which does nothing but watch for the key again to switch back. You'll see how cheap a new mode is once the machine exists: a state, a way in, a way out.
-
-## If it doesn't work
-
-- **The title's letters ghost through the game in blue.** `init_game` repainted the colours but not the pixels. Clear the bitmap (`$4000`–`$57FF`) before drawing the board.
-- **Pressing space does nothing.** `title_step` isn't being reached, or reads the wrong half-row. Space is bit 0 of `$7FFE`, and `game_state` must start as `STATE_TITLE`.
-- **The game starts immediately, skipping the title.** `game_state` wasn't initialised to `STATE_TITLE`, or the dispatcher doesn't branch on it.
-- **Win/lose now breaks the game.** Those states must only *set* `game_state` and draw their screen once — not loop forever inside `play_step`. The dispatcher does the holding.
 
 ## What you've learnt
 
