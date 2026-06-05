@@ -8,67 +8,88 @@ tags: ["assembly", "z80", "atmosphere", "attributes", "mood", "polish"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-The game plays and sounds right. This unit adds the last layer to the play itself — **atmosphere**. As you light lamps, the square warms: the cold blue stone of the walls catches the spreading light and glows, brightening through to a dusk-magenta as the night is held back. Snuff a lamp and the stone cools again. The *look* of the place starts telling you how you're doing, before you ever glance at the tally.
+The game plays and sounds right. This unit adds the last layer to the play itself — **atmosphere**. As you light lamps, the square warms: the cold blue stone of the walls catches the spreading light and glows, brightening through to a dusk-magenta as the night is held back. Snuff a lamp and the stone cools again. The *look* of the place starts telling you how you are doing, before you ever glance at the tally.
 
-## What you'll see by the end
+## Where we start
 
-![The walled square with the walls glowing magenta, five lamps lit gold, and a tally of five — the square warmed by the spreading light.](/images/sinclair-zx-spectrum/assembly/gloaming/unit-18/screenshot.png)
-
-The same square — but the walls, blue and cold since Unit 1, have warmed to a glowing magenta now that five lamps are lit. Light more and they brighten further; let the draught snuff one and they cool. The whole frame becomes a mood ring for your progress.
+Unit 17's game — it plays, scores, threatens, wins, loses, and now makes a sound, but its walls have been the same flat blue since Unit 1. We make the frame respond to your progress.
 
 ## Mood is just colour, driven by state
 
-There's no new technique here — only the oldest one, used for feeling. We keep a small **table** mapping "lamps lit" to a wall colour, and whenever the count changes we repaint the frame in that colour:
+There is no new technique here — only the oldest one, used for feeling. We keep a small **table** mapping "lamps lit" to a wall colour, and whenever the count changes we repaint the frame in that colour:
 
 ```
 wall_ramp:  blue → bright blue → magenta → bright magenta   (by lamps lit)
 ```
 
-`warm_walls` reads `lit_count`, looks up the colour, and redraws the four edges of the frame in it — the same attribute writes you've made since the very first unit, now reaching for atmosphere instead of just structure. It's called wherever the count changes: after a lamp lights (the stone catches the light) and after one is snuffed (the stone cools).
+`warm_walls` reads `lit_count`, looks up the colour, and redraws the four edges of the frame in it — the same attribute writes you have made since the first unit, now reaching for atmosphere instead of structure. The inline wall-draw that lived in `init_game` becomes this one routine, called wherever the count changes: after a lamp lights (the stone catches the light) and after one is snuffed (the stone cools).
 
 ## One bit you must not break
 
-There's a constraint, and it's a good lesson in respecting your own systems. The walls have to stay **solid** — the collision test from Unit 7 reads the bottom bit of PAPER (bit 3) to decide what's a wall. So every colour in the ramp must keep that bit set. That limits the warm palette to PAPER colours whose low bit is 1: **blue (1)** and **magenta (3)**, brightened for extra warmth. Warm the walls all you like — but never touch the bit that makes them walls. (Reach for red or yellow PAPER and the draught would start drifting straight through the frame.)
+There is a constraint, and it is a good lesson in respecting your own systems. The walls have to stay **solid** — the collision test from Unit 7 reads the bottom bit of PAPER (bit 3) to decide what is a wall. So every colour in the ramp must keep that bit set. That limits the warm palette to PAPER colours whose low bit is 1: **blue (1)** and **magenta (3)**, brightened for extra warmth. Warm the walls all you like — but never touch the bit that makes them walls. (Reach for red or yellow PAPER and the draught would start drifting straight through the frame.)
 
-### The code, complete
+## Milestone — warm the walls
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-18/the-square-warms.asm" />
+We lift the wall-draw out of `init_game` into a `warm_walls` routine, add a `wall_ramp` table mapping each lamp count to a colour, and call `warm_walls` from the two places the count changes — the lamp-lit branch and the snuff branch. Every colour in the ramp keeps the collision bit set, so the walls stay solid as they warm.
 
-### What you see
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-18/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-18/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: a wall-colour ramp keyed to lamps lit, repainted on change"
+  context={3}
+/>
 
-Start cold and blue. Each lamp you light nudges the walls warmer; by the time the square is nearly done they glow a deep magenta, and the draught — when it steals one back — cools them a step. The place *feels* different lit than dark, which is the whole job of atmosphere.
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-18/steps/step-01.asm" lang="z80" />
+</details>
 
-## Assemble and run
+Start cold and blue, then light lamps and watch the frame catch the warmth — the walls step from blue to bright blue and on to magenta as the count climbs:
 
-```
-pasmonext --sna the-square-warms.asm the-square-warms.sna
-```
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-18/step-01-warm.mp4"
+  caption="From a cold blue square, four lamps are lit in turn. The walls warm with the count — blue while one or two burn, bright blue at two, magenta at four — each repaint triggered the instant a lamp catches. The draught drifts through, leaving the lit lamps alone."
+  autoplay={true}
+  loop={true}
+/>
 
-Light lamps in Emu198x and watch the walls warm; let the draught snuff one and watch them cool.
+Held at four lamps, the frame glows a deep magenta — the same square, a warmer hour:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-18/step-01-warmed.png" alt="The walled square with the walls glowing magenta, four lamps lit gold, the lamplighter at the left, and the tally part-filled at the top." caption="Four lamps lit, and the walls — blue and cold since Unit 1 — warmed to magenta. The colour is read straight from wall_ramp[lit_count], so the frame is an at-a-glance readout of how the night is going." />
+
+## When it's wrong, see why
+
+A cosmetic layer over a live mechanic fails in instructive ways:
+
+- **The walls stop blocking — sprites pass through them.** A ramp colour has a PAPER whose bottom bit is clear. Keep every PAPER odd (1, 3, 5, 7).
+- **The walls never change colour.** `warm_walls` is not called where the count changes, or it is indexing the wrong table. Call it after `light_pip` and `unlight_pip`.
+- **The wrong colour, or a crash, at full lamps.** The ramp must have an entry for every count `0`–`8` (nine entries). Indexing past the end reads junk.
+- **A visible flicker as the frame repaints.** Repainting ~110 cells is well within a frame; if you see tearing, you are repainting every frame instead of only when the count changes.
+
+## Before and after
+
+You started with a frame that looked the same whether you were winning or losing and finished with one that *shows* your progress in its colour — and the whole effect is the attribute write from Unit 1, pointed at a ramp table. Mood turned out not to be a new system but an old one used for feeling: a byte of state, a lookup, a repaint on change. The one discipline it demanded — keep the collision bit set — is the real lesson: a cosmetic change must not quietly break a mechanic.
 
 ## Try this: a different mood
 
-Edit `wall_ramp`. You're free to use any PAPER whose bottom bit is set — blue (1), magenta (3), cyan (5), white (7) — plus the BRIGHT bit. Try a cold-to-icy ramp (blue → bright cyan → white) for a frostier night, or hold the cold longer and only warm in the final few lamps for a sudden dawn. The mood is yours; just keep every PAPER odd.
+Edit `wall_ramp`. You are free to use any PAPER whose bottom bit is set — blue (1), magenta (3), cyan (5), white (7) — plus the BRIGHT bit. Try a cold-to-icy ramp (blue → bright cyan → white) for a frostier night, or hold the cold longer and only warm in the final few lamps for a sudden dawn. The mood is yours; keep every PAPER odd.
 
 ## Try this: warm the sky too
 
-The border has no collision to respect, so it's a free second canvas. Add a `border_ramp` table and `out ($FE), a` the border colour alongside the walls — the night sky lifting as the square fills. (Keep it off blue so it doesn't blur into the walls.) Two surfaces warming together reads as a real change of hour.
+The border has no collision to respect, so it is a free second canvas. Add a `border_ramp` table and `out ($FE), a` the border colour alongside the walls — the night sky lifting as the square fills. (Keep it off blue so it does not blur into the walls.) Two surfaces warming together reads as a real change of hour.
 
 ## Try this: break it on purpose
 
-Put a red PAPER (`%00010111`) in the ramp and light enough lamps to reach it. The walls turn red — and the draught sails straight through the frame and off the screen, because red's PAPER bit 0 is clear, so the collision no longer sees a wall. It's a vivid lesson: a cosmetic change quietly violated an invariant. Then put it back.
-
-## If it doesn't work
-
-- **The walls stop blocking — sprites pass through them.** A ramp colour has a PAPER whose bottom bit is clear. Keep every PAPER odd (1, 3, 5, 7).
-- **The walls never change colour.** `warm_walls` isn't called where the count changes, or it's indexing the wrong table. Call it after `light_pip` and `unlight_pip`.
-- **The wrong colour, or a crash, at full lamps.** The ramp must have an entry for every count `0`–`8` (nine entries). Indexing past the end reads junk.
-- **A visible flicker as the frame repaints.** Repainting ~110 cells is well within a frame; if you see tearing, you're repainting every frame rather than only when the count changes.
+Put a red PAPER (`%00010111`) in the ramp and light enough lamps to reach it. The walls turn red — and the draught sails straight through the frame and off the screen, because red's PAPER bit 0 is clear, so the collision no longer sees a wall. It is a vivid lesson: a cosmetic change quietly violated an invariant. Then put it back.
 
 ## What you've learnt
 
-- **Mood is just colour driven by state** — the attribute writes from Unit 1, reaching for atmosphere.
+- **Mood is colour driven by state** — the attribute writes from Unit 1, reaching for atmosphere.
 - A **ramp table** maps progress to appearance; repaint only when the state changes.
 - **Respect your invariants:** the walls must stay solid, so the ramp keeps the collision bit set — a cosmetic change must not break a mechanic.
 - **Atmosphere is feedback you feel** before you read it.
