@@ -1,31 +1,44 @@
 ---
-title: "Targets and Crate States"
-description: "A crate on a target is a new state — and the player must remember where they stood."
+title: "Targets"
+description: "A crate on a target is a fifth cell state with its own colour and behaviour — and the puzzle is won when no bare target is left."
 pubDate: 2026-05-27
 game: 16
 unit: 5
-tags: ["basic", "game-state", "computed-paper", "target", "crate-on-target"]
+tags: ["basic", "game-state", "computed-paper", "target", "win"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import Figure from "@components/Figure.astro";
 
-Pushing crates works. But pushing them *onto* targets — and *off* targets — needs a fourth cell state.
+Pushing works; now it needs a point. Targets are the goal cells, and a crate pushed onto one becomes
+a new combined state — which means the grid must track crate-on-target separately, and the player must
+remember what they are standing on. When no bare target remains, the puzzle is solved.
 
 <CodeFromFile src="sinclair-zx-spectrum/basic/crates/unit-05/targets.bas" />
 
-<Figure src="/images/sinclair-zx-spectrum/basic/crates/unit-05/screenshot.png" alt="A crate pushed onto a target has turned green, with the player just below it" caption="A crate on a target is a fourth cell state, with its own green colour and its own behaviour." />
+<Figure src="/images/sinclair-zx-spectrum/basic/crates/unit-05/screenshot.png" alt="A crate pushed onto a target has turned green, with the player just below it" caption="A crate on a target is a fifth cell state, with its own green colour — solve the puzzle by covering every target." />
 
-Line 140 introduces `ps`, the player-standing-on variable. It tracks what was under the player before they stepped onto the current cell: 0 for floor, 1 for target. Line 440 now branches on `v = 3 OR v = 4` — a crate (3) or a crate-on-target (4). Line 460 uses `PAPER (7-ps*5)` to restore the correct background when erasing the player: white (7) for floor, red (2) for target. Line 470 updates `ps` based on the destination cell.
+## Five states in one grid
 
-The push routine gains matching complexity. Lines 550–560 handle where the crate lands: onto floor (becomes 3, yellow) or onto a target (becomes 4, green). Lines 580–600 handle what the crate leaves behind: a plain crate (3) leaves floor (0), a crate-on-target (4) leaves a target (2).
+The array now holds `0` floor, `1` wall, `2` target, `3` crate and `4` crate-on-target. State `4` is
+the interesting one: a crate on a target is not "a crate and a target together" but a single value with
+its own green `PAPER` and its own behaviour. The push routine grows to match — lines 550–560 land a
+crate as `3` on floor or `4` on a target, and lines 590–600 leave behind `0` or `2` depending on what
+it sat on. Encoding the combination as one number keeps the array the single source of truth, the same
+multi-meaning-per-cell idea you used in Sonar, taken one step further.
 
-## Four cell states
+## Remembering the floor underneath
 
-The array now holds five possible values: 0 (floor), 1 (wall), 2 (target), 3 (crate), and 4 (crate-on-target). State 4 is the interesting one. A crate sitting on a target is not "a crate and a target in the same cell" — it is a single combined state with its own value, its own colour (green PAPER 4), and its own behaviour when pushed off again.
+The player can now stand on a target, so line 140 adds `ps` — what the player is standing on, `0` or
+`1`. When the player moves off, the cell must be repainted the right colour, and `PAPER (7 - ps*5)`
+does it without an `IF`: `ps = 0` gives `PAPER 7` (white floor), `ps = 1` gives `PAPER 2` (red target).
+One expression, two colours, used everywhere the player is drawn or erased.
 
-This is state encoding at work. Rather than tracking crates and targets in separate arrays and cross-referencing them, a single number captures the full reality of each cell. The cost is more branches in the push logic. The benefit is that the array remains the single source of truth — no synchronisation bugs between parallel data structures.
+## Knowing when it is solved
 
-## The computed PAPER trick
+Winning is a sweep of the grid (lines 660–720): assume `win = 1`, then scan every cell, and any bare
+target still showing (`g(r,c) = 2`) sets `win = 0`. If none remain, every target has a crate on it and
+the level is complete. It is the same whole-grid scan Sonar used to find targets and The Caverns used
+to reveal the cave — here it asks one question of the finished board: is anything left uncovered?
 
-`PAPER (7-ps*5)` is a neat expression. When `ps` is 0 (floor), it evaluates to `PAPER 7` — white. When `ps` is 1 (target), it evaluates to `PAPER 2` — red. One expression, two colours, no IF statement. It appears at lines 460, 178, 190, and 197 — every place the player is drawn or erased. The alternative would be four IF/THEN branches. The computed form is shorter and, once you see the pattern, clearer.
+The puzzle is complete. The last unit turns one room into a game of three.
