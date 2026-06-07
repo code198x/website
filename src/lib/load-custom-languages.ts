@@ -24,6 +24,20 @@ export async function loadCode198xLanguages() {
     name: 'basic',
   });
 
+  // Aliases for C64 BASIC — parity with the markdown shiki config in
+  // astro.config.mjs (aliases: ['c64basic', 'commodore-basic']). Registered
+  // as re-named copies, the same way '68000' aliases m68k below, so a
+  // descriptive `lang="commodore-basic"` works in CodeFromFile / CodeDiff
+  // just as `lang="sinclair-basic"` does for the Spectrum.
+  await loadCustomLanguage({
+    ...basicGrammar,
+    name: 'commodore-basic',
+  });
+  await loadCustomLanguage({
+    ...basicGrammar,
+    name: 'c64basic',
+  });
+
   // Load 6502 Assembly
   await loadCustomLanguage({
     ...asm6502Grammar,
