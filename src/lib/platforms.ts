@@ -9,6 +9,16 @@ export type Architecture = CollectionEntry<'architectures'>;
 export type ArchitectureData = Architecture['data'];
 
 /**
+ * Tiers that count as "active": the machine has real curriculum and a
+ * hand-built landing page. Everything else is coming-soon. `tier` is the
+ * single source of truth (see content.config.ts) — there is no separate
+ * status field to keep in sync.
+ */
+export const ACTIVE_TIERS = ['live', 'next'] as const;
+export const isActivePlatform = (p: Platform): boolean =>
+  (ACTIVE_TIERS as readonly string[]).includes(p.data.tier);
+
+/**
  * Get all platforms, sorted by navOrder
  */
 export async function getAllPlatforms(): Promise<Platform[]> {
@@ -17,20 +27,20 @@ export async function getAllPlatforms(): Promise<Platform[]> {
 }
 
 /**
- * Get only active platforms (not coming-soon)
+ * Get only active platforms (live or next), sorted by navOrder
  */
 export async function getActivePlatforms(): Promise<Platform[]> {
   const platforms = await getAllPlatforms();
-  return platforms.filter(p => p.data.status === 'active');
+  return platforms.filter(isActivePlatform);
 }
 
 /**
- * Get coming-soon platforms, sorted by year
+ * Get coming-soon platforms (everything not live/next), sorted by year
  */
 export async function getComingSoonPlatforms(): Promise<Platform[]> {
   const platforms = await getAllPlatforms();
   return platforms
-    .filter(p => p.data.status === 'coming-soon')
+    .filter(p => !isActivePlatform(p))
     .sort((a, b) => a.data.year - b.data.year);
 }
 

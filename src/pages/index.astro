@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { getAllPlatforms } from '../lib/platforms';
+import { getCompleteModulesForPlatform } from '../lib/modules';
 import { accessibleInk } from '../lib/contrast';
 
 const all = await getAllPlatforms();
@@ -10,12 +11,18 @@ const all = await getAllPlatforms();
 const cardStyle = (color: string) =>
   `--pc: ${color}; --ink-l: ${accessibleInk(color, '#fdfcf7')}; --ink-d: ${accessibleInk(color, '#242019')}`;
 
-// Per the October launch spec: Spectrum is live; C64/NES/Amiga are the validated "next"
-// tier. The manifest marks several platforms 'active', so we curate live vs next here.
-const liveSlugs = ['sinclair-zx-spectrum'];
-const nextSlugs = ['commodore-64', 'nintendo-entertainment-system', 'commodore-amiga'];
-const live = liveSlugs.map(s => all.find(p => p.id === s)).filter(Boolean) as typeof all;
-const next = nextSlugs.map(s => all.find(p => p.id === s)).filter(Boolean) as typeof all;
+// The feature band derives entirely from each machine's manifest `tier` (the
+// single source of truth, shared with /systems) and its catalogue content, so
+// it can never drift. Membership and badge come from `tier`; the order is "most
+// content first", measured by shipped (complete) modules — the machine with the
+// most curriculum leads, on merit rather than a hand-kept list.
+const contentScore = new Map(
+  await Promise.all(all.map(async p => [p.id, await getCompleteModulesForPlatform(p.id)] as const))
+);
+const byContent = (a: typeof all[number], b: typeof all[number]) =>
+  (contentScore.get(b.id) ?? 0) - (contentScore.get(a.id) ?? 0);
+const live = all.filter(p => p.data.tier === 'live').sort(byContent);
+const next = all.filter(p => p.data.tier === 'next').sort(byContent);
 
 const totalCount = all.length;
 const liveCount = live.length;

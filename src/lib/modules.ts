@@ -81,3 +81,15 @@ export async function getModulesCountForPlatform(platform: string): Promise<numb
     .filter(entry => entry.data.platform === platform)
     .reduce((total, entry) => total + entry.data.modules.length, 0);
 }
+
+/**
+ * Count *shipped* (complete) modules for a platform, across all tracks — a
+ * catalogue-derived proxy for "how much curriculum this machine has". Used to
+ * rank the homepage feature band so the machines with the most content lead.
+ */
+export async function getCompleteModulesForPlatform(platform: string): Promise<number> {
+  const allEntries = await getCollection("modules");
+  return allEntries
+    .filter(entry => entry.data.platform === platform)
+    .reduce((total, entry) => total + entry.data.modules.filter(m => m.status === 'complete').length, 0);
+}
