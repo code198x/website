@@ -1,0 +1,78 @@
+---
+title: "Working With Bits"
+description: "Sometimes a value isn't a number — it's a row of independent switches. AND, OR and EOR work on those switches: OR turns bits on, AND clears the ones outside a mask, EOR flips them. This is how you pack flags and read hardware registers."
+pubDate: 2026-06-08
+game: 0
+unit: 15
+tags: ["assembly", "68000", "bits", "logic", "mask", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+The last unit treated a value as a number to add to. This one treats the same value as something else entirely: a row of sixteen **switches**, each on or off, that you flip one at a time. Both views are true at once — it's the *instruction* you pick that decides which one you mean.
+
+Three instructions work on the switches:
+
+- **`OR`** turns bits **on**. Wherever the mask has a 1, the result gets a 1; the rest are left alone.
+- **`AND`** clears the bits **outside** a mask. Wherever the mask has a 0, the result gets a 0; where it has a 1, the original bit survives.
+- **`EOR`** **flips** bits. Wherever the mask has a 1, that bit toggles.
+
+You've already met bit-work without naming it: `btst` in Unit 10 *tested* a bit, and a colour's channels are just groups of bits. Now we set and clear them on purpose. The demo uses `OR` to switch a colour on one channel at a time until every bit is lit — white.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-15/screenshot.png"
+  alt="The Amiga screen filled with solid white."
+  caption="White — every colour bit switched on, one OR at a time."
+/>
+
+A white screen. White is what you get when all twelve colour bits are on at once, and the code reaches it by `OR`-ing in one channel, then the next, then the last. Each `OR` lights more switches and never touches the ones already lit.
+
+## Set the bits
+
+<CodeFromFile src="commodore-amiga/assembly/meet-the-machine/unit-15/bits.asm" />
+
+Three `OR`s build the answer:
+
+```
+move.w  #$0f00,d0           ; red bits on
+or.w    #$00f0,d0           ; OR in green -> $0ff0
+or.w    #$000f,d0           ; OR in blue  -> $0fff (white)
+move.w  d0,colourval        ; every colour bit set
+```
+
+Start with the red channel's bits on. `or.w #$00f0,d0` lights the green channel — the red bits are already 1 and `OR` leaves them that way, so the value grows to `$0ff0`. The third `OR` lights blue and you reach `$0fff`: every colour bit on, which is white. `OR` only ever *adds* bits; it can't switch one off. That's what makes it the tool for "make sure this bit is set" without disturbing the rest.
+
+This is exactly how you talk to hardware. Back in the harness, `$8280` written to `DMACON` is a set of switches — master DMA on, Copper DMA on — and a register like that is read and written one bit at a time, with the instructions you're using now.
+
+## Assemble, master, and run
+
+```
+make
+```
+
+A white screen — every colour bit switched on.
+
+## Try this: mask with AND
+
+Add `and.w #$00ff,d0` after the last `OR`. `AND` keeps only the bits the mask allows: `$00ff` permits the low byte — green and blue — and clears the red channel above it. White becomes cyan (`$00ff`). `AND` with a mask is how you isolate a field: keep these bits, drop the rest. It's the write-side partner of the `btst` read.
+
+## Try this: toggle with EOR
+
+Replace the masking line with `eor.w #$0fff,d0`. `EOR` flips every bit the mask marks, so white (`$0fff`) flips to black (`$0000`) — run it twice and you're back to white. A bit that toggles each time is how you make something blink, or remember an on/off state without an `IF`.
+
+## If it doesn't work
+
+- **A channel won't switch on.** The mask's 1s aren't where you think. `OR` lights a bit only where the mask has a 1 — line the nibbles up: `$00f0` is the green channel, `$000f` is blue.
+- **OR clears something instead of setting it.** It can't — `OR` only sets bits. If a bit went *off*, an `AND` or `EOR` crept in, or a `move` overwrote the value.
+- **The result is shifted into the wrong channel.** A size suffix mismatch — keep the masks and the `.w` consistent so the bits land in the nibble you mean.
+
+## What you've learnt
+
+A value is also a row of bits, and three instructions work them: **`OR`** sets bits, **`AND`** clears everything outside a mask, **`EOR`** flips bits. Masking with `AND` isolates a field; `OR` forces bits on without disturbing the rest; `EOR` toggles. This is the language of hardware registers — the same bit-setting you've been doing to `DMACON` since Unit 1, now in your own hands.
+
+## What's next
+
+That's the toolkit rounded out — decisions, loops, pointers, calls, arithmetic, bits. Everything so far has been the 68000 working alone. Now we wake the custom chips that make an Amiga an Amiga. Next — **The Blitter Moves It** — a dedicated chip that shifts blocks of graphics around far faster than the CPU could, the engine behind every Amiga game's smooth motion.
