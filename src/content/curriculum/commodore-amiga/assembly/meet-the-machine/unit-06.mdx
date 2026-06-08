@@ -1,0 +1,75 @@
+---
+title: "The Screen Is a Bitmap"
+description: "The picture is a map of bits in memory. Each bit is one pixel — 1 lights it, 0 leaves it dark. Point the display at a stretch of Chip RAM, set some bits, and watch them become a block on the glass."
+pubDate: 2026-06-08
+game: 0
+unit: 6
+tags: ["assembly", "68000", "bitplane", "graphics", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+So far the screen has been one flat colour, painted by the Copper. Now we draw on it — and to draw, you need to know what the screen *is*.
+
+On the Amiga, the screen is a **bitmap**: a stretch of memory where **each bit is one pixel**. A `1` bit lights its pixel; a `0` leaves it dark. That stretch of memory is called a **bitplane**, and it lives in **Chip RAM** — the memory the custom chips can reach. The display hardware reads the bitplane forty times a second and turns its bits into the picture you see. So to draw, you don't call a routine — you **set bits in memory**, and the hardware shows them.
+
+This is the C64 and NES parted ways from: those machines drew with *tiles*, fixed 8×8 shapes you placed in a grid. The Amiga has no grid and no fixed shapes — just a field of bits, one per pixel, entirely yours to set. (If you met the Spectrum's screen, this will feel familiar — a bitmap of pixels — but laid out in plain, linear order, with none of the Spectrum's famous twists.)
+
+## What you'll see by the end
+
+<Figure
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-06/screenshot.png"
+  alt="A solid yellow rectangle in the top-left corner of an otherwise black Amiga screen."
+  caption="A yellow block — just bits set to 1 in a bitplane, which the display hardware turned into lit pixels."
+/>
+
+A yellow block in the top-left. There's no "draw rectangle" instruction behind it — only bits. We cleared the bitplane to all `0` (a black screen), then set a patch of bits to `1`, and the hardware drew them.
+
+## Setting bits, getting pixels
+
+The harness has grown: it now sets up a **one-bitplane display** — 320 pixels across, 256 down — by telling the hardware where the bitplane lives and switching the display DMA on. That set-up is ceremony (display window, data-fetch, the bitplane pointer); treat it as the sealed box, the way you did the Copper. Your job is the `YOUR CODE` block, where the bits become pixels.
+
+<CodeFromFile src="commodore-amiga/assembly/meet-the-machine/unit-06/bitmap.asm" />
+
+The bitplane is `320 / 8 = 40` bytes per row. We first clear all 10,240 bytes to `0`, then light a block:
+
+```
+lea     bitplane,a0
+move.w  #24-1,d1
+.row:   move.l  #$ffffffff,(a0)     ; 32 bits = 32 lit pixels in this row
+        lea     ROWBYTES(a0),a0     ; step down to the next row
+        dbra    d1,.row
+```
+
+Each `move.l #$ffffffff,(a0)` sets 32 bits — 32 pixels — to `1`. Stepping `a0` on by 40 bytes (`ROWBYTES`) moves to the row below, and 24 rows make the block. A `1` bit shows colour 1 (yellow, set in the Copper list); a `0` bit shows colour 0 (black). **Bit, pixel — that's the whole relationship.** (`dbra` is the 68000's count-and-loop instruction; it's Unit 12's job, used early here.)
+
+## Assemble, master, and run
+
+```
+make
+```
+
+A yellow block in the corner — drawn one bit at a time.
+
+## Try this: a wider, taller block
+
+Change `#24-1` to `#48-1` for twice the height, or write two longs per row (`move.l #$ffffffff,(a0)` then `move.l #$ffffffff,4(a0)`) for 64 pixels wide. More bits set, more pixels lit. The block is only ever as big as the run of `1`s you write.
+
+## Try this: a different colour
+
+The block's colour isn't in the bitplane — the bitplane only says *which* pixels are lit (1) or dark (0). The colour comes from the palette, exactly as before. Find `COLOR01,$0ff0` in the Copper list and change `$0ff0` to another `$0RGB`. The same block appears in the new colour, because you changed the palette, not a single pixel.
+
+## If it doesn't work
+
+- **The screen is all black.** The bits were set but the display can't see them — most often the bitplane pointer wasn't patched into the Copper, or the DMA enable (`$8380`) is missing. Leave the harness exactly as shown.
+- **The block is in the wrong place or smeared.** Check `ROWBYTES` is 40 and the step is `lea ROWBYTES(a0),a0` — a wrong stride lands each row in the wrong column.
+- **Garbage fills the screen.** The bitplane wasn't cleared first, so old memory shows as random pixels. The clear loop runs before you draw.
+
+## What you've learnt
+
+The Amiga screen is a **bitmap** — a bitplane in Chip RAM where each bit is a pixel, `1` lit and `0` dark. You draw by setting bits in memory; the display hardware turns them into the picture. No tiles, no grid — just pixels, all yours.
+
+## What's next
+
+We've leaned on the Copper twice now — it set the flat colour, and just now it set up the whole display — without ever explaining it. Next — **Colour and the Copper** — we open that box: the little co-processor that runs alongside the CPU, changing the hardware in step with the beam, and paints a band of colours down the screen.

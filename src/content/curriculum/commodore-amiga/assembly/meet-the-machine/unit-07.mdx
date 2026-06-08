@@ -1,0 +1,78 @@
+---
+title: "Colour and the Copper"
+description: "Open the box we've leaned on since Unit 1. The Copper is a tiny co-processor that runs in step with the video beam, changing the hardware mid-screen — and with two instructions it paints a band of colours the CPU never touches."
+pubDate: 2026-06-08
+game: 0
+unit: 7
+tags: ["assembly", "68000", "copper", "colour", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+Every unit so far handed something to "the Copper" and moved on. Time to open the box, because the Copper is one of the things that makes an Amiga an Amiga.
+
+The **Copper** is a tiny **co-processor** living inside the chip Agnus. It runs its own little program — the **Copper list** you've been writing — *in step with the video beam* as it sweeps down the screen. It's not the 68000; it runs alongside it, for free, while your CPU does other things. And it knows just **two instructions**:
+
+- **WAIT** — pause until the beam reaches a given line. Written `dc.w $VVHH,$fffe`, where `$VV` is the line number.
+- **MOVE** — write a value to a chip register. Written `dc.w register,value`.
+
+That's the whole language. But "wait for a line, then change a register" is enough to do something the CPU would sweat over: change a colour **part-way down the screen**. Do it at several lines and you get a gradient — bands of colour — drawn by the Copper while the CPU sits idle.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-07/screenshot.png"
+  alt="The Amiga screen filled with seven horizontal colour bands, deep blue at the top through to red at the bottom."
+  caption="A seven-band gradient — the Copper changing the background colour at each line it waits for, while the CPU does nothing but spin."
+/>
+
+A gradient of colour bands, deep blue at the top fading down through cyan and green and yellow to red at the bottom. The CPU set none of it after start-up — the Copper painted every band, in step with the beam.
+
+## Wait, then move
+
+<CodeFromFile src="commodore-amiga/assembly/meet-the-machine/unit-07/copper.asm" />
+
+Read the Copper list as a script that runs top to bottom, once per frame:
+
+```
+dc.w    COLOR00,$0008       ; from the top of the screen: deep blue
+dc.w    $3001,$fffe         ; WAIT until the beam reaches line $30...
+dc.w    COLOR00,$000f       ; ...then MOVE a new colour into the background
+dc.w    $5001,$fffe         ; wait for line $50...
+dc.w    COLOR00,$00af       ; ...change it again
+```
+
+Each `WAIT`/`MOVE` pair says "when the beam gets *here*, make the background *this*." The background holds each colour until the next `WAIT` fires, so the screen shows solid bands. The CPU wrote the *list* once, at start-up; the Copper has re-run it every frame since, all by itself.
+
+This is why the harness always pointed the hardware at a Copper list, even in Unit 1: the Copper is how you change the display **in time with the beam** — the one thing the CPU, running to its own clock, can't do in lockstep.
+
+## Assemble, master, and run
+
+```
+make
+```
+
+A seven-band gradient down the screen, painted by the Copper.
+
+## Try this: move the bands
+
+Change the WAIT lines — `$3001`, `$5001`, and so on. The `$VV` digits are the line number (the screen runs from `$00` at the top to about `$FF` at the bottom). Move a `WAIT` higher and its band starts higher; bunch them together for thin bands, spread them out for fat ones.
+
+## Try this: a smoother fade
+
+Add more `WAIT`/`MOVE` pairs between the existing ones, stepping the colour by a little each time — `$0008`, `$0009`, `$000a`… The more bands you add, the smoother the fade, until it looks like a continuous gradient. (Real Amiga demos change the colour on *every* line this way — a "copper gradient" — and it costs the CPU nothing.)
+
+## If it doesn't work
+
+- **The whole screen is one colour.** A `WAIT` is malformed — each is two words, `dc.w $VVHH,$fffe`, and the `$fffe` matters. Without it the Copper doesn't pause and the last colour wins.
+- **The bands are in the wrong place.** Check the `$VV` line numbers are in increasing order down the list; the beam only moves down, so a `WAIT` for a line already passed never fires.
+- **Nothing shows / a black screen.** The Copper DMA isn't on — the harness enables it with `$8280` to `DMACON`. Leave that line as shown.
+
+## What you've learnt
+
+The **Copper** is a co-processor that runs a list of **WAIT** and **MOVE** instructions in step with the video beam. With "wait for a line, then change a register" it paints colour bands down the screen — a gradient drawn entirely in hardware, while the CPU is free to do other work. It's been quietly running your display since Unit 1.
+
+## What's next
+
+That's *what the machine is* — the 68000, its memory, the bitmap, the Copper. Now we turn to what it can *do*. Next — **Test, Then Branch** — the 68000 makes a decision: compare two values and jump one way or the other, the `IF` you build by hand.
