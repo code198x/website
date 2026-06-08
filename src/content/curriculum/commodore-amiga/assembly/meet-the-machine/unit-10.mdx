@@ -1,0 +1,84 @@
+---
+title: "Reading the Player"
+description: "Input is just memory you read instead of write. The left mouse button lives in one bit of a chip register — and it reads backwards, 0 for held and 1 for up. Test that bit every frame and the screen answers to a human hand."
+pubDate: 2026-06-08
+game: 0
+unit: 10
+tags: ["assembly", "68000", "input", "mouse", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+The loop from the last unit does the same thing every frame no matter what. A game reacts — it watches the player and changes course. This unit adds the watching.
+
+Reading input is no harder than reading memory, because on the Amiga that's all it is. The state of the buttons and joysticks lives in **chip registers** at fixed addresses; you read them the same way you'd read any byte. The left mouse button sits in **bit 6** of the register at address `$BFE001`.
+
+Two things trip people up. First, the button is a single **bit** in a byte full of other signals, so you can't just read the byte — you have to test the one bit. The 68000 has an instruction for exactly that: `btst`. Second, the bit reads **backwards**: it's `0` while the button is *held* and `1` while it's *up*. Hardware buttons are wired "active-low" like this all over the machine, so it's worth meeting now.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-10/screenshot-up.png"
+  alt="The Amiga screen filled with solid red."
+  caption="Button up — the screen rests on red."
+/>
+
+<Figure
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-10/screenshot-down.png"
+  alt="The Amiga screen filled with solid green."
+  caption="Button held — the same loop, reading the same bit, paints green."
+/>
+
+Two screens from one program. Leave the mouse alone and it's red; hold the left button and it turns green, the moment you press and the moment you let go. The code never stops asking.
+
+## Test the bit, every frame
+
+<CodeFromFile src="commodore-amiga/assembly/meet-the-machine/unit-10/input.asm" />
+
+The whole game is four lines inside the loop:
+
+```
+btst    #6,CIAAPRA          ; test bit 6 of $BFE001 (the left mouse button)
+bne.s   .up                 ; bit set (1) -> button is UP
+move.w  #$00f0,colourval    ; held: green
+bra.s   .next
+.up:
+move.w  #$0f00,colourval    ; up: red
+```
+
+`btst #6,CIAAPRA` reads the byte at `$BFE001` and tests bit 6, setting the zero flag to match: if the bit is `0` the zero flag is set, if it's `1` the flag is clear. Because the button is active-low, a *held* button means bit 6 is `0`, which sets the zero flag.
+
+`bne.s .up` branches when the bit is **set** — that is, when the button is **up** — and paints red. Fall through instead and the button is down, so it paints green. Then `bra.s mainloop` runs the whole test again on the next pass. There's no "wait for a press"; the loop reads the truth of the button thousands of times a second and the screen always shows the current answer.
+
+This is the shape of every control scheme: read the input register, mask out the one bit you care about, branch on it. Swap the mouse button for a joystick direction and you're moving a player.
+
+## Assemble, master, and run
+
+```
+make
+```
+
+Red on its own; green while you hold the left mouse button.
+
+## Try this: invert it
+
+Swap `bne.s` for `beq.s`. Now the branch fires when the button is *down*, and the colours trade places — green at rest, red when held. Same bit, opposite reading. Seeing the active-low logic flip under you is the fastest way to make it stick.
+
+## Try this: the right button too
+
+The right mouse button lives elsewhere — it's bit 10 of the register at `$DFF016` (POTGOR). Reading it takes a word, not a byte: `move.w $dff016,d0` then `btst #10,d0`. Wire it to a third colour and you've read two buttons in one loop.
+
+## If it doesn't work
+
+- **The screen never changes.** `btst` is testing the wrong bit or address. The left button is bit 6 of `$BFE001` — check both numbers.
+- **The colours are the wrong way round.** That's the active-low logic: `bne` branches when the button is *up*. If red and green are swapped from what you meant, you want the other branch — or `beq`.
+- **It reacts once, then freezes.** The `bra.s mainloop` at the bottom is missing, so the loop runs once and stops. Input has to be read *every* frame, forever.
+
+## What you've learnt
+
+Input is memory you read. The Amiga keeps button and joystick state in **chip registers** at fixed addresses; **`btst`** tests a single bit and sets the flags, and a **`Bcc`** branch acts on the result. The left mouse button is bit 6 of `$BFE001`, wired **active-low** — `0` held, `1` up. Read it inside the frame loop and the program answers to a hand.
+
+## What's next
+
+You've read one value out of memory by its address. Next — **Pointers and the Address Registers** — we hold an address in a register and walk it along a table, reading box after box. That's how you handle a list of anything: enemies, bullets, the letters of a word.

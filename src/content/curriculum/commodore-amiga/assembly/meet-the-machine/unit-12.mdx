@@ -1,0 +1,78 @@
+---
+title: "The Counted Loop"
+description: "Doing a thing a hundred times shouldn't mean writing it a hundred times. DBRA is the 68000's count-and-loop instruction: it decrements a register and branches back until it runs past zero. One short loop replaces a wall of repeated lines."
+pubDate: 2026-06-08
+game: 0
+unit: 12
+tags: ["assembly", "68000", "loop", "dbra", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+The last unit walked a table by writing the read out by hand, once per entry. Four entries, three lines — fine. Forty entries would be absurd. Every program needs to repeat a block a *counted* number of times, and the 68000 has one instruction built for it.
+
+`DBRA` — "decrement and branch" — is the count-and-loop. Put a count in a data register, mark the top of the loop with a label, and end it with `dbra d0,label`. Each time it runs, `DBRA` knocks one off `d0` and branches back to the label — until `d0` would go below zero, when it stops and falls through. The loop body in between runs once per count.
+
+One wrinkle worth meeting head-on: `DBRA` keeps going until the register passes zero, *through* zero, so it runs **count + 1** times. To loop fifteen times you load fourteen. It catches everyone once; after that it's muscle memory.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-12/screenshot.png"
+  alt="The Amiga screen filled with solid magenta."
+  caption="Magenta — a colour built up from zero by a loop that added the same step fifteen times."
+/>
+
+A magenta screen. No single instruction set that colour. A loop started from zero and added a small step on every pass; after fifteen passes the running total had grown into magenta, and that's what fills the screen.
+
+## Count it down
+
+<CodeFromFile src="commodore-amiga/assembly/meet-the-machine/unit-12/loop.asm" />
+
+The loop is four lines:
+
+```
+moveq   #0,d1               ; the colour, built up from zero
+move.w  #15-1,d0            ; loop 15 times (dbra runs count+1 passes)
+.loop:
+add.w   #$0101,d1           ; add a step to the colour each pass
+dbra    d0,.loop            ; decrement d0, branch back until it's -1
+move.w  d1,colourval        ; 15 * $0101 = $0f0f -> magenta
+```
+
+`d1` is the accumulator — the running total — and it starts at zero. `d0` is the **counter**, loaded with `15-1` because `DBRA` runs one extra pass; the assembler works out that's 14, and the comment keeps the intent ("loop 15 times") in plain sight.
+
+Inside, `add.w #$0101,d1` adds a step to the colour: one to the red channel, one to the blue, leaving green alone. `dbra d0,.loop` then drops `d0` by one and jumps back to `.loop` — fifteen times in all. Fifteen steps of `$0101` add up to `$0f0f`: full red, no green, full blue — magenta. Loop done, the total goes to the screen.
+
+Change the count and the colour changes with it, because the answer is the count doing the same small thing over and over. That's every loop: a body that does a little, run a controlled number of times.
+
+## Assemble, master, and run
+
+```
+make
+```
+
+A magenta screen, built one step at a time.
+
+## Try this: change the count
+
+Make it `#10-1` and the loop runs ten times — ten steps of `$0101` is `$0a0a`, a darker purple. Make it `#15-1` again for magenta. The colour is a readout of how many times the loop went round.
+
+## Try this: walk the table with a loop
+
+Bring back Unit 11's `colours` table. Point `a0` at it, load `#4-1` into `d0`, and inside the loop do `move.w (a0)+,d1` followed by `dbra d0,.loop`. Now one short loop reads all four entries — and it would read four hundred just as happily. This is the counted loop and the pointer working together, which is most of what real code does.
+
+## If it doesn't work
+
+- **The colour is one step off.** That's the `count + 1` rule biting. To loop N times, load `N-1`. Writing `#15` instead of `#15-1` runs sixteen passes.
+- **The screen is black or frozen.** The label and the `dbra` target don't match, so the loop never closes. `.loop:` at the top and `dbra d0,.loop` at the bottom must spell the same name.
+- **The total is far too big or too small.** `d0` and `d1` got crossed — the counter and the accumulator are different registers doing different jobs. Counting in the accumulator, or adding to the counter, scrambles both.
+
+## What you've learnt
+
+**`DBRA`** is the counted loop: it decrements a register and branches back to a label until the register passes zero, running the body a fixed number of times. Because it loops **count + 1** times, you load `N-1` to repeat N times. A counter register drives the loop; an accumulator builds the result. One short loop does the work of a hundred written-out lines.
+
+## What's next
+
+Your loop calls back to the same label again and again. The next step is calling a whole *block* of code — a named routine — and getting back to where you were. Next — **Call, Return, and the Stack** — `BSR` jumps to a subroutine and remembers the way home, and `RTS` walks it back.

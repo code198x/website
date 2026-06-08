@@ -1,0 +1,79 @@
+---
+title: "The Vertical Blank"
+description: "Fifty times a second the video beam finishes the screen and returns to the top — the vertical blank. A game does one frame's work in that gap and waits for the next. Wait for the beam, do a little, repeat: that's the loop every game lives inside."
+pubDate: 2026-06-08
+game: 0
+unit: 9
+tags: ["assembly", "68000", "vertical-blank", "loop", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+Every unit so far ran once and then spun forever on `bra.s forever`, holding a still screen. A game isn't still — it moves. And it moves in time with the display, because the screen redraws itself fifty times a second whether your code is ready or not.
+
+The Amiga draws the screen with a **beam** that sweeps left to right, top to bottom. When it reaches the bottom it switches off and races back to the top to start again. That brief pause is the **vertical blank** — the vblank — and it happens fifty times a second on a PAL machine.
+
+That gap is the game's heartbeat. Wait for the vblank, do one frame's worth of work — move the player a pixel, nudge a colour, count down a timer — then wait for the next. Sync your work to the beam and the motion is smooth; ignore the beam and the screen tears. This unit builds the heartbeat with the smallest possible job: change the colour a little, every frame.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-09/screenshot.png"
+  alt="The Amiga screen filled with solid cyan, one colour from a continuous cycle."
+  caption="A single frame caught mid-cycle. On a running machine the colour drifts on and on — proof the loop is turning over, one step per frame."
+/>
+
+A screen that won't sit still. The colour creeps through the whole spectrum and round again, changing a touch every frame. A screenshot can only freeze one instant of it — here, a cyan caught mid-cycle — but on the machine it never stops, because the loop never stops.
+
+## Wait for the beam, then work
+
+<CodeFromFile src="commodore-amiga/assembly/meet-the-machine/unit-09/heartbeat.asm" />
+
+The loop has three parts:
+
+```
+.wait:  move.l  VPOSR(a5),d0
+        and.l   #$1ff00,d0          ; isolate the beam's line number
+        bne.s   .wait               ; loop until it's line 0
+
+        add.w   #$0011,colourval    ; one frame's work: nudge the colour
+
+.leave: move.l  VPOSR(a5),d0
+        and.l   #$1ff00,d0
+        beq.s   .leave              ; wait for the beam to leave the top
+```
+
+`VPOSR` is a hardware register that reports where the beam is. The `and.l` keeps the bits that hold the **line number** and discards the rest. The first wait loops *until* the line is zero — the top of the screen, the vblank. Then it does its one job: add a small step to the colour.
+
+The second wait is the part beginners forget. The beam sits at line zero for many processor cycles, so without it the code would race round and bump the colour dozens of times during a single vblank. Waiting for the beam to *leave* the top guarantees one bump per frame. The pattern is "wait for the edge, act once, wait for it to pass" — and it's exactly how you'll read input and move sprites later, one clean step per frame.
+
+## Assemble, master, and run
+
+```
+make
+```
+
+The background cycles through colour after colour, smoothly, forever.
+
+## Try this: change the speed
+
+The step is `$0011`. Make it bigger — `$0044`, `$0111` — and the colour races; make it `$0001` and it crawls. The number is how far round the colour wheel you turn on each beat of the heartbeat.
+
+## Try this: count the frames
+
+Add a counter. Before the loop, `moveq #0,d2`; inside, after the colour bump, `addq.w #1,d2`. After fifty frames `d2` reaches 50 — one second of real time. Counting frames *is* how a game keeps time: "fifty frames" and "one second" are the same sentence on a PAL Amiga.
+
+## If it doesn't work
+
+- **The colour flickers wildly instead of drifting.** The second wait — the `.leave` loop — is missing or wrong, so the colour bumps many times per frame. Both waits matter: one for the beam to arrive, one for it to go.
+- **The screen sits on one colour.** The first wait never finishes, or the `add` is outside the loop. Check the `bra.s mainloop` at the bottom sends control back to the top of the loop.
+- **Nothing shows at all.** The Copper DMA isn't on — the harness enables it with `$8280` to `DMACON`. Leave that line as shown.
+
+## What you've learnt
+
+The screen redraws fifty times a second, and the **vertical blank** is the gap between frames. Polling `VPOSR` for line zero — and then waiting for the beam to leave it — gives a clean once-per-frame heartbeat. Do one small job each beat and you have the loop every game runs inside: wait, work, repeat.
+
+## What's next
+
+The loop turns; now let's make it listen. Next — **Reading the Player** — we test the mouse button every frame and paint the screen to match. Wire a person's hand into that heartbeat and the program stops being a demo and starts being a game.

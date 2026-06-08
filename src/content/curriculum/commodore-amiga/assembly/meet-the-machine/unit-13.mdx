@@ -1,0 +1,83 @@
+---
+title: "Call, Return, and the Stack"
+description: "A subroutine is a job you write once and call from anywhere. BSR jumps to it and quietly remembers the way back on the stack; RTS reads that note and returns. Together they let code call code — the foundation every program is built on."
+pubDate: 2026-06-08
+game: 0
+unit: 13
+tags: ["assembly", "68000", "subroutine", "stack", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+So far every jump has been one-way. `bra` goes somewhere and never comes back; `dbra` loops to a fixed label. But the most useful kind of jump is a *round trip*: go and do a job, then **return to exactly where you left off**. That's a subroutine, and it's how programs are built out of reusable parts.
+
+Two instructions make the round trip:
+
+- **`BSR`** — branch to subroutine. It jumps to a label like `bra` does, but first it writes down the address of the *next* instruction — the way back.
+- **`RTS`** — return from subroutine. It reads that address back and jumps to it, landing you right after the original call.
+
+Where does `BSR` write the return address? On the **stack** — a scratch area of memory the 68000 manages for you through `a7`, the stack pointer. `BSR` pushes the return address on; `RTS` pops it off. You don't touch the stack by hand here, but knowing the note lives there explains how the machine ever finds its way home — and why a subroutine can call another subroutine without losing the trail.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-13/screenshot.png"
+  alt="The Amiga screen filled with solid yellow."
+  caption="Yellow — set by a subroutine the main code called, then returned cleanly from."
+/>
+
+A yellow screen. The main code didn't set the colour itself — it loaded yellow into a register, *called* a small routine to do the writing, and the routine returned. The colour on screen is proof the call went out and came back.
+
+## Call out, come back
+
+<CodeFromFile src="commodore-amiga/assembly/meet-the-machine/unit-13/subroutine.asm" />
+
+The call and the routine are a few lines apart:
+
+```
+            move.w  #$0ff0,d0           ; the colour to pass in (yellow)
+            bsr     set_colour          ; call the subroutine, remember the way back
+forever:
+            bra.s   forever
+
+set_colour:
+            move.w  d0,colourval        ; write the colour in d0 to the Copper's slot
+            rts                         ; return to just after the bsr
+```
+
+The main code puts yellow in `d0` and calls `set_colour`. That register is how you **pass a value in** — the routine reads whatever the caller left in `d0`. `bsr` jumps to `set_colour` and, on the quiet, pushes the return address onto the stack.
+
+Inside, `set_colour` does its one job — write `d0` into the Copper's `colourval` slot — and hits `rts`. `RTS` pops the saved address off the stack and jumps back to it, which is the `forever` line right after the `bsr`. The main code carries on as if the routine had been written inline, but you only wrote it once and could call it from a dozen places.
+
+That's the whole machinery of structured code. `BSR` out, `RTS` back, values handed over in registers — build a program out of named jobs instead of one long ribbon of instructions.
+
+## Assemble, master, and run
+
+```
+make
+```
+
+A yellow screen — set by the routine, returned from cleanly.
+
+## Try this: call it twice
+
+Before `forever`, add `move.w #$0f00,d0` then `bsr set_colour` a second time. The routine runs again with a new value and the screen ends red. One routine, called twice, with different input each time — that's reuse, the reason subroutines exist.
+
+## Try this: a routine that calls a routine
+
+Add a second routine, `paint`, whose whole body is `bsr set_colour` then `rts`, and call `paint` from the main code instead. Now the call goes two deep — main calls `paint`, `paint` calls `set_colour` — and still returns all the way home. The stack holds *two* return notes at once and unwinds them in order. That nesting is why the stack exists.
+
+## If it doesn't work
+
+- **The screen is black, or the machine wanders off.** An `rts` is missing, so the routine runs off its own end into whatever follows. Every subroutine ends with `rts`.
+- **The wrong colour shows.** The value handed over in `d0` isn't what you think — set `d0` *before* the `bsr`, since the routine reads it on entry.
+- **It runs once then crashes.** A stray `rts` in the main code, with no matching `bsr`, pops a return address that was never pushed and jumps to nonsense. `bsr` and `rts` come in pairs.
+
+## What you've learnt
+
+A **subroutine** is reusable code you reach with **`BSR`** and leave with **`RTS`**. `BSR` pushes the return address onto the **stack** before jumping; `RTS` pops it and returns to just after the call. Values pass in through **registers**. Because the stack remembers every return in order, routines can call routines and always find the way back. This is how programs are assembled from named, reusable jobs.
+
+## What's next
+
+That closes out *what the machine can do* — decisions, loops, input, pointers, and now calls. Next we round out the toolkit. Next — **Adding and Taking Away** — a proper look at the 68000's arithmetic: the sizes, the carry between them, and the flags that arithmetic leaves behind for your branches to read.
