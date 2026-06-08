@@ -1,0 +1,92 @@
+---
+title: "Test, Then Jump"
+description: "There's no IF on the 6502. Learn how the machine makes decisions instead — compare a value, which sets a flag, then branch on that flag. Build your own IF, and write your first labels."
+pubDate: 2026-06-08
+game: 0
+unit: 8
+tags: ["assembly", "2a03", "flags", "branch", "control-flow", "nes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+You've met everything the machine *is* — registers, memory, the screen, colour, the shapes. Phase 2 is about what it can *do*, and it starts where every program eventually must: making a decision.
+
+In BASIC you wrote `IF X = 5 THEN …`. The 6502 has no `IF`. It does something smaller and stranger, in two steps — and because it's the same chip as the C64, this is identical to the C64 Primer's version:
+
+1. **Compare.** `cmp #5` subtracts 5 from `A`, throws the answer away, and keeps only the **flags** — little yes/no bits the last operation leaves behind. If `A` was exactly 5, the result was zero, so the **zero flag** is set.
+2. **Branch.** `beq equal` means "branch to *equal* if the zero flag is set" (**B**ranch if **EQ**ual). If it isn't set, the machine carries straight on.
+
+Test, then branch. You assemble the `IF` yourself out of those two pieces — and it turns out that's all `IF` ever was.
+
+We're back to the bare harness for this one: leave a colour in `A`, and the screen shows it. The whole question is *which* colour the program decides to leave there.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-08/screenshot.png"
+  alt="The NES screen filled with solid green."
+  caption="Green because the program decided: it compared a number with 5, matched, and branched to the road that loads green."
+/>
+
+A green screen — because the program *decided* on green. We put 5 in `A`, compared it with 5, and because they matched, the program branched to the road that loads green. Put a different number in and it takes the other road, to red. The colour is the program's answer to a question.
+
+## Building the IF
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-08/decide.asm" />
+
+Read the `YOUR CODE` block as a fork in the road. `cmp #5` asks the question; `beq equal` takes the green road if the answer is "equal"; otherwise the code falls through to the red road, then `jmp show_it` skips *over* the green branch so it isn't run by accident. That `jmp` is the **unconditional jump** — go there, always, no flag consulted. (It's the same `jmp` you've used to hold the picture since Unit 1, now doing a second job: skipping past code.) Either road ends with a colour in `A`, and the harness shows it.
+
+## Labels — and here your *assembler* starts to matter
+
+`equal` and `show_it` are **labels you named** — the first you've written; until now you were only given `reset` and `forever`. A label is just a name for a place in the code, so a jump or branch can aim at it. They come with one rule worth meeting head-on:
+
+- **They're case-sensitive.** `equal` and `Equal` are two different labels. Branch to one having defined the other and the assembler stops with *"symbol not defined."* Pick a spelling and keep it.
+
+Here's the important part. Everything you've learned about the *machine* — registers, the screen, the flags — is **universal**: true of any 6502, in any tool. But how you *write* labels is a rule of the **assembler**, not of the chip. We use **ca65**; a different assembler might want different punctuation. This is the first time the *tool* has a say, not just the machine. From here on, when a rule belongs to the assembler and not the 6502, we'll say so.
+
+## Assemble and run
+
+```
+ca65 decide.asm -o decide.o && ld65 -C nes.cfg decide.o -o decide.nes
+```
+
+`A` starts as 5, so the screen comes up green — the program took the equal road.
+
+## Try this: change the answer
+
+Change `lda #5` to `lda #3`, assemble and run: red, because 3 isn't 5 and the program takes the other road. Put it back to `5`: green again. You're not changing the *question* (`cmp #5`), only the value being asked about — and watching the decision flip.
+
+## Try this: branch three ways
+
+One compare can sort a value into *less*, *equal* or *greater* with a second branch. Replace the `YOUR CODE` block with:
+
+```
+    lda #5                  ; the value to sort
+    cmp #5
+    bcc less                ; A < 5  -> branch (carry clear)
+    beq equal               ; A = 5  -> branch
+    lda #$16                ; A > 5  -> red
+    jmp show_it
+less:
+    lda #$12                ; blue
+    jmp show_it
+equal:
+    lda #$2a                ; green
+```
+
+`bcc less` branches when `A` was *less* than the value — that's the **carry flag**, the other half of a comparison: `cmp` leaves carry *clear* when `A` is below the value, *set* when it's at or above. (We'll meet carry properly in Unit 14; here, just use it.) Change the first `lda` to 3, 5 and 9 and watch the screen go blue, green, red.
+
+## If it doesn't work
+
+- **`ca65` says a symbol is not defined.** A label's spelling doesn't match between where you defined it and where you branch to it — most often a capital letter. Labels are case-sensitive: `equal` ≠ `Equal`.
+- **The screen is always the same colour whatever you load.** A branch is testing the wrong flag, or the `jmp show_it` that skips the green branch is missing, so both roads run. Compare against the listing.
+- **The program runs off and the screen garbles.** A label is misplaced so a jump lands in the wrong spot. Check `equal` and `show_it` sit exactly where shown.
+
+## What you've learnt
+
+There's no `IF` — you `cmp` to compare (which sets flags), then `beq` (or `bcc`, `bne`…) to branch on the result or carry straight on; every decision the machine makes is built from test-then-branch. Same chip, same idea as the C64.
+
+## What's next
+
+So far the machine does its work once and stops. A game has to do its work *sixty times a second*, in step with the screen. Next — **The Machine Has a Heartbeat** — we meet the NMI: the pulse the NES gives you once per frame, and the place all the real work happens. This one has no C64 equivalent.

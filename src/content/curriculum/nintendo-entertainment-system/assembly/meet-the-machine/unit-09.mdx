@@ -1,0 +1,74 @@
+---
+title: "The Machine Has a Heartbeat"
+description: "A console runs in step with its screen. Sixty times a second the PPU finishes a frame and taps the CPU on the shoulder — the NMI. Turn that heartbeat on, do one small job each beat, and watch the screen change all by itself."
+pubDate: 2026-06-08
+game: 0
+unit: 9
+tags: ["assembly", "2a03", "ppu", "nmi", "vblank", "frame-loop", "nes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+This is the unit with no C64 counterpart — the one that makes a console a console.
+
+Every machine you've met so far runs your code once, top to bottom, and stops (we hold it still with `jmp forever`). But a *game* doesn't stop. It runs in lockstep with the television: the picture is redrawn sixty times a second, and the game has to do a little work for each of those frames — move the player a step, check the controller, update the score — exactly once per frame, in time with the screen.
+
+The NES gives you a pulse to march to. The PPU, having finished drawing a frame, enters a brief rest called **vertical blank** (VBlank) before it starts the next. At that moment it can **tap the CPU on the shoulder** — an interrupt called the **NMI**. When the NMI fires, the CPU drops what it's doing, runs a special handler you wrote, and then carries on. Turn the NMI on, put your per-frame work in the handler, and you have the **heartbeat** every NES game heartbeat is built on.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-09/screenshot.png"
+  alt="The NES screen filled with solid blue, caught mid-cycle."
+  caption="One instant of a screen that is changing colour by itself — the backdrop sweeps through all 64 NES colours, nudged one step on every heartbeat."
+/>
+
+A blue screen — but caught in the act. Run it and the backdrop *cycles*, sweeping through every NES colour and starting over, about once a second. The main program does **nothing** but spin; all the colour-changing happens in the heartbeat handler, once per frame. The still above is just the one frame the screenshot happened to catch.
+
+## Wiring up the heartbeat
+
+Two new pieces, and you've met the shape of both:
+
+- **Turn the NMI on.** Bit 7 of `PPUCTRL` (`$2000`) is the switch: write `$80` there and the PPU will fire an NMI every VBlank. We've held it at `$00` (off) since Unit 1.
+- **Write a handler.** The label `nmi` already sits at the bottom of every harness, doing nothing but `rti` (**R**e**T**urn from **I**nterrupt — the interrupt's version of `rts`). We fill it in. When the CPU is tapped, it runs from `nmi`, does our job, and `rti`s back to wherever the main loop was spinning.
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-09/heartbeat.asm" />
+
+The job each beat is tiny: bump a frame counter in box `$10`, then write that counter to the backdrop colour at `$3F00` — through the window you've used since Unit 5. Because the counter climbs by one every frame, the backdrop steps to the next colour every frame, and the screen sweeps. (We re-aim the window at `$3F00` at the end so the colour we display is the one we just set — a small PPU nicety.)
+
+Notice the division of labour: `forever: jmp forever` is the *entire* main loop, and it does nothing at all. Every visible thing happens in the handler. That's the NES game shape in miniature — a quiet main loop, and a heartbeat that does the work.
+
+## Why the handler, and not the main loop?
+
+You might ask: why not just change the colour in the main loop? Two reasons, and they're the whole point of VBlank. First, the NMI fires in perfect step with the screen — exactly once per frame, no faster, no slower — so motion driven from it is smooth and even. Second, VBlank is the *only* moment the PPU is resting, and so the only safe time to send it big updates to the screen. Touch the screen mid-draw and you get tearing and snow. The heartbeat handler is where a game does its screen work, because it's the one place the screen will hold still and listen.
+
+## Assemble and run
+
+```
+ca65 heartbeat.asm -o heartbeat.o && ld65 -C nes.cfg heartbeat.o -o heartbeat.nes
+```
+
+The backdrop cycles through the colours by itself, forever. You wrote a loop that does nothing — the heartbeat is doing it all.
+
+## Try this: slow the pulse down
+
+Sixty steps a second is a blur. Make the colour change every *half*-second instead: only advance the colour when the counter passes a multiple of 32. The quick way is to show `counter / 32` — but we don't have division yet, so try the cheap version: change `inc COUNTER` to happen, then load `COUNTER`, and before storing it, `lsr` it a few times (each `lsr` halves the value — Unit 15's trick, borrowed early). Three `lsr`s and the sweep runs eight times slower. Predict the speed, then watch.
+
+## Try this: prove the main loop is idle
+
+Put a colour-set in the main loop *before* `forever` — `lda #$16` and the Unit-1 show tail — then run. You'll see the cycling continue regardless, because the main loop runs *once* and then just spins on `jmp forever`, while the heartbeat keeps firing. The handler always gets the last word.
+
+## If it doesn't work
+
+- **The screen sits on one colour and never changes.** The NMI never got switched on — check `lda #$80` / `sta $2000` is present, after the warm-up.
+- **The screen flickers wildly or shows garbage.** The handler isn't balanced — make sure it ends in `rti`, not `rts`, and doesn't run off its end into the vectors.
+- **It changes once and stops.** You put the counter work in the main loop by mistake; it belongs in the `nmi` handler, which is the only part that runs every frame.
+
+## What you've learnt
+
+A console runs in step with its screen. The PPU fires an **NMI** every frame during **VBlank**; you switch it on with bit 7 of `$2000` and handle it in the `nmi` routine, ending with `rti`. That handler is the **heartbeat** — the once-per-frame slot where a game does its work, and the safe moment to touch the screen.
+
+## What's next
+
+The heartbeat gives the machine a sense of time. Now let's give it a sense of *you*. Next — **The Joypad in Your Hand** — we read the NES controller: strobe it, shift the buttons out one at a time, and branch on whether one is held. The first time the machine answers to you.

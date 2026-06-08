@@ -1,0 +1,81 @@
+---
+title: "The Joypad in Your Hand"
+description: "Read the NES controller the honest way — strobe it, shift the buttons out one at a time, isolate the one you care about, and branch on it. Hold A and watch the screen react, every pass of the loop."
+pubDate: 2026-06-08
+game: 0
+unit: 10
+tags: ["assembly", "2a03", "input", "controller", "joypad", "control-flow", "nes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+A program that decides things (Unit 8) gets interesting when the thing it decides on is *you*. So: how does the NES know a button is pressed?
+
+There's no `INKEY$` waiting around. You **read the controller yourself**, from a hardware address — but the NES does it in a way the C64's joystick never did. The eight buttons don't each get their own bit sitting ready to read. They come out **one at a time**, through a single door at `$4016`, and you have to ask for them in order. It's a tiny conveyor belt:
+
+1. **Strobe.** Write a `1` then a `0` to `$4016`. That snapshot-latches the current state of all eight buttons and rewinds the belt to the start.
+2. **Read, eight times.** Each read of `$4016` hands you *one* button in **bit 0**, in a fixed order: **A, B, Select, Start, Up, Down, Left, Right.** The first read is A; read again for B; and so on.
+
+To test the button you've got, you **mask** it: `and #%00000001` keeps bit 0 and zeroes the rest. Then you branch on whether the result is zero. And here's the flip from the C64: on the NES a pressed button reads as **1**, not 0. (The C64's joystick read backwards — pushed was 0. The NES reads the natural way.)
+
+## What you'll see by the end
+
+<Figure
+  src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-10/screenshot.png"
+  alt="The NES screen filled with solid green while button A is held."
+  caption="Green while A is held, springing back to red on release — a live readout of the controller, caught mid-press."
+/>
+
+A green screen — *while A is held*. Let go and it springs back to red. The program reads the pad every pass of the loop and repaints the backdrop to match, so the colour is a live readout of whether you're pressing. (The screenshot catches it mid-press; at rest it's red.)
+
+## Reading the pad, round and round
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-10/read-pad.asm" />
+
+It's the test-then-branch from Unit 8, now fed by the controller instead of a fixed value. The loop you've had since Unit 1 finally earns its keep: each time round, it strobes, reads A afresh, and paints accordingly. That "read, decide, draw, repeat" rhythm is the heartbeat of every game's input — and from Unit 9 you know where the real version of that loop will live: the NMI.
+
+**Why strobe every time?** The strobe is what *takes the snapshot*. Without it you'd read stale buttons, or read them out of order. Strobe, then read A: that pairing is the habit to keep.
+
+## One button now; the rest later
+
+This reads exactly **one button** — A, the first off the belt. Reading several at once (A, B, and a direction, all in a pass) means reading `$4016` eight times and stashing each bit, usually shifting them into one byte with `lsr`. That's a job of its own, and it belongs to the **first game**, where moving a character needs the D-pad. For now, the machine can hear one press, and that's the whole idea.
+
+## Assemble and run
+
+```
+ca65 read-pad.asm -o read-pad.o && ld65 -C nes.cfg read-pad.o -o read-pad.nes
+```
+
+Load it, and **hold A**: the screen turns green, and releases back to red when you let go. The machine is answering you in real time.
+
+## Try this: a different button
+
+B is the *second* button off the belt. Read `$4016` a second time before you mask, and you're testing B instead of A:
+
+```
+    lda $4016               ; first read - button A (discard it)
+    lda $4016               ; second read - button B
+    and #$01
+    beq not_pressed
+```
+
+Now the screen answers to **B**. Read it a third and fourth time and you reach Select, then Start — the belt's fixed order.
+
+## Try this: invert it
+
+Swap the two colours — `lda #$16` (red) on the held path and `lda #$2a` (green) at rest — so the screen is green *until* you push, then goes red while held. Same reading, opposite reaction. Predict it, then confirm.
+
+## If it doesn't work
+
+- **The screen never changes.** Check the strobe is there — `1` then `0` to `$4016` — before the read. Without it the belt never latches.
+- **It's backwards — green at rest, red when pushed.** You've treated `beq` as "pressed". On the NES pressed is **1**, so a *non-zero* mask result means held: `beq` is the *not-pressed* road.
+- **It reacts once then freezes.** A `jmp read` is missing, so the pad is never re-read. The loop must run back to the strobe every pass.
+
+## What you've learnt
+
+You read the NES controller by **strobing** `$4016` (a `1` then a `0`), then **reading it once per button** in the fixed order A, B, Select, Start, Up, Down, Left, Right — each arriving in bit 0. Mask the bit, branch on it, and remember: on the NES a pressed button reads as **1**.
+
+## What's next
+
+You've stepped back to a one-cell screen for these CPU lessons. Time to fill it again — but cleverly. Next — **A Finger on the Boxes** — we stop baking a fixed address into every instruction and meet indexing: a register used as a finger that slides along a table, reading or writing as it goes.

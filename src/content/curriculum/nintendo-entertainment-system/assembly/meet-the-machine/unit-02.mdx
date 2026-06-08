@@ -1,0 +1,103 @@
+---
+title: "LDA Is Not LET"
+description: "Meet the registers — the three physical 8-bit stores inside the 2A03. Send a value from A into X and back again, and watch the screen prove it made the trip. And learn why 'load' comes in three flavours."
+pubDate: 2026-06-08
+game: 0
+unit: 2
+tags: ["assembly", "6502", "2a03", "registers", "lda", "transfer", "nes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+Last time you left a colour in `A` and the harness put it on screen. You used a register — `A` — without stopping to meet it. Let's meet it now, because this is the first place the machine stops behaving like the language you came from.
+
+In BASIC, `LET A = 5` gave you a variable, and you could have as many as you liked. The [2A03](/vault/systems/nes) — the NES's 6502 — is not so generous. It has **three** registers — small stores *inside the chip itself* — and that's all. Their names are fixed: **`A`** (the *accumulator*, where most work happens) and **`X`** and **`Y`** (two helpers we'll lean on later). You don't declare new ones. You learn to *orchestrate the three you have*.
+
+And each one holds a single **8-bit** number: 0 to 255, nothing larger. A register isn't a roomy named box; it's a tiny slot with a hard limit. That constraint shapes everything you'll write — and it's exactly the same on the NES as on the C64, because underneath, it's the same 6502.
+
+## Load comes in threes
+
+There's a second surprise, if you've used a chip like the Z80. The 6502 is blunt: *load* comes in three flavours, one per register.
+
+- **`lda #5`** — load 5 into `A`
+- **`ldx #5`** — load 5 into `X`
+- **`ldy #5`** — load 5 into `Y`
+
+And there's no general "copy A into X" load at all. For moving a value *between* registers you need a different idea — a **transfer**:
+
+- **`tax`** — Transfer `A` to `X` · **`txa`** — Transfer `X` to `A`
+- **`tay`** — Transfer `A` to `Y` · **`tya`** — Transfer `Y` to `A`
+
+Four transfers, and notice what's *missing*: there's no `txy`. You can't move `X` straight to `Y`. To get there you route through `A`.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-02/screenshot.png"
+  alt="The NES screen filled with solid green."
+  caption="A green screen — but the real show is in the registers: $2a travelled from A into X, survived A being wiped, and came back."
+/>
+
+A green screen — colour `$2a`. But the colour isn't the point this time. The point is *how it got there*: the value travelled from `A` into `X`, survived us wiping `A`, and came back. The screen is just the proof you can see. The real show is in the **registers** — your emulator's debugger shows `A`, `X` and `Y`, and you can watch them change step by step.
+
+## The round trip
+
+To *prove* a value moves between registers — instead of just trusting it — we send `$2a` from `A` into `X` and back. Only the `YOUR CODE` block changes; the harness around it is the same sealed box from Unit 1:
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-02/registers.asm" />
+
+Follow `A` and `X` down the steps:
+
+| After… | `A` | `X` |
+|---|---|---|
+| `lda #$2a` | `$2a` | — |
+| `tax` | `$2a` | `$2a` |
+| `lda #$00` | `$00` | `$2a` |
+| `txa` | `$2a` | `$2a` |
+
+We deliberately wipe `A` to 0, then bring the value *back from `X`*. The screen ends up green — so `$2a` must have been safe in `X` the whole time. That's the proof the copy was real. (The harness leaves `X` untouched, so if you halt and look, `X` still holds `$2a` too.)
+
+## Assemble and run
+
+Same loop as before — change, assemble, link, run:
+
+```
+ca65 registers.asm -o registers.o && ld65 -C nes.cfg registers.o -o registers.nes
+```
+
+Load `registers.nes` and open the register view, then watch `A` and `X` move through the table above before the screen settles on green.
+
+## Try this: too big to fit
+
+Change `lda #$2a` to `lda #300` and assemble. This time the assembler stops you: 300 won't fit. A register holds 8 bits — 0 to 255 — and 300 is past the top. Here `ca65` catches it and refuses to build. But don't read that as "the tools have my back": once you're doing *arithmetic*, values roll past 255 and wrap around silently, with no error at all. For now, just feel the ceiling: 255, and not one more.
+
+## Try this: the longer trip
+
+Remember there's no `txy`. So how do you get a value from `X` into `Y`? You route it through `A`. Replace the `YOUR CODE` block with this, which sends `$12` (a blue) all the way round — `A` → `X` → `A` → `Y` → `A` — before the harness shows it:
+
+```
+    lda #$12                ; A = $12 (a blue)
+    tax                     ; X = $12
+    lda #$00                ; wipe A
+    txa                     ; A = $12  (back from X)
+    tay                     ; Y = $12
+    lda #$00                ; wipe A again
+    tya                     ; A = $12  (back from Y)
+```
+
+Before you run it, predict `A`, `X` and `Y` at each step — then open the register view and check. The screen comes up blue, proof the value travelled the long way round.
+
+## If it doesn't work
+
+- **`ca65` says something like "range error" on the `lda` line.** You've left `lda #300` (or another value over 255) in place — that's the *too big to fit* experiment. Put a value from 0 to 255 back.
+- **The screen is black, not green.** The `txa` step is missing or mistyped, so `A` was still 0 (from the wipe) when the harness showed it. Put the round trip back exactly as shown.
+- **The screen's the wrong colour.** Check the value in `lda #…`. The harness shows whatever you leave in `A`; `$2a` is a green.
+
+## What you've learnt
+
+A register is a physical, finite **8-bit** store — the 2A03 has only three (`A`, `X`, `Y`) — `lda`/`ldx`/`ldy` load values into them, and the `tax`/`txa`/`tay`/`tya` transfers move values *between* them. There's no `txy`, so X-to-Y goes the long way, through `A`. None of this is NES-specific: it's the 6502, the same chip the C64 runs.
+
+## What's next
+
+You've been moving bytes around without asking what a byte *is*. Next — **Everything Is a Number** — we load a *letter* into a number register and watch the machine shrug. To it, a letter, a colour and a number are the same thing: just a byte.

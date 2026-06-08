@@ -1,0 +1,84 @@
+---
+title: "Where the Shapes Come From"
+description: "The last mystery in the harness. Tile 1 has been a 'solid block' only because of sixteen bytes of CHR ROM — a tiny picture. Edit those bytes and the block becomes whatever you draw. Here, a heart."
+pubDate: 2026-06-08
+game: 0
+unit: 7
+tags: ["assembly", "2a03", "ppu", "chr", "pattern-table", "graphics", "nes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+Two mysteries down, one to go. We've opened up the window (Unit 5) and the palette (Unit 6). The last sealed thing is the oldest: every unit, we've written tile number `1` and called it "a solid block" — but *why* is tile 1 a block? Where does the shape live?
+
+On the C64, you don't ask this question: the machine has a character set baked into ROM, and you just pick a code. The NES gives you nothing baked in. **You supply the shapes yourself**, in a region of the cartridge called **CHR ROM** — the *pattern table*. It holds 256 little 8×8 pictures, numbered 0 to 255, and when the PPU draws tile `1`, it looks up picture number 1 in there. The harness has quietly been providing that picture all along. It's just sixteen bytes. Change them, and tile 1 becomes anything you like.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-07/screenshot.png"
+  alt="A small red heart in the top-left corner of a light-blue NES screen."
+  caption="A heart where the block used to be. The screen write didn't change — we still draw tile 1 at the top-left. We only redrew tile 1's sixteen bytes of shape."
+/>
+
+A small red heart, top-left. The program still writes tile `1` to the same cell with the same palette — but tile 1 is no longer a block, because we rewrote its picture. Shape, like colour, turned out to be data you control.
+
+## A tile is sixteen bytes, in two layers
+
+Here's how an 8×8 tile is stored. Each row of 8 pixels is a byte — one bit per pixel, left to right, a `1` meaning "lit". Eight rows, eight bytes. So a solid block is eight `%11111111`s; a heart is eight rows drawn in bits:
+
+```
+    .byte %01100110         ; .##..##.
+    .byte %11111111         ; ########
+    .byte %11111111         ; ########
+    .byte %11111111         ; ########
+    .byte %01111110         ; .######.
+    .byte %00111100         ; ..####..
+    .byte %00011000         ; ...##...
+    .byte %00000000         ; ........
+```
+
+Read the comments like a picture and you can *see* the heart in the bits. That's the whole trick: a shape is just a little bitmap you write by hand.
+
+But a tile is **sixteen** bytes, not eight — because NES pixels can be one of *four* colours, and one bit per pixel only counts to two. So each tile has **two layers** (the PPU calls them bit-planes): eight bytes for the low bit of every pixel, then eight bytes for the high bit. A pixel's colour number is `high × 2 + low` — 0, 1, 2 or 3 — which is exactly the palette slot it draws from (Unit 6). Our heart sets only the low layer, so every lit pixel is colour 1; the high layer is all zeros.
+
+## The program
+
+The code up top is unchanged from Unit 6 — same palette, same tile write. *All* that moved is the `CHARS` block at the bottom, where tile 1's bytes now spell a heart:
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-07/shapes.asm" />
+
+## Assemble and run
+
+```
+ca65 shapes.asm -o shapes.o && ld65 -C nes.cfg shapes.o -o shapes.nes
+```
+
+A red heart sits where the block was. You drew it — eight rows of bits, by hand.
+
+## Try this: draw your own
+
+Replace the heart's eight low-plane rows with a shape of your own. Sketch an 8×8 grid on paper, fill in squares, then turn each row into a byte — a filled square is `1`, an empty one `0`. A letter, an arrow, a face. Assemble and run, and your shape appears in the corner. This is pixel art at its most direct: you are writing the picture one bit at a time.
+
+## Try this: a second colour
+
+So far every lit pixel is colour 1, because the high plane is all zeros. Set some high-plane bits and those pixels jump to a *different* palette slot. Try making the high plane's rows match the low plane's middle — the overlapping pixels become colour 3 (`high 1 + low 1`), which is white at `$3F03`, while the edges stay red at `$3F01`. Two colours in one tile, straight from the two layers.
+
+## Try this: tiles are small — that's the point
+
+The heart is only 8×8 pixels, and on a 256×240 screen that's tiny. That's not a limitation to fight; it's how the NES thinks. Every NES game you've ever seen — Mario, Zelda, Mega Man — is built from thousands of these little 8×8 tiles, laid side by side across the nametable. A big sprite is a handful of tiles; a whole level is a field of them. You've just learnt to draw the atom that all of it is made from.
+
+## If it doesn't work
+
+- **The shape is a solid block still.** You edited the bytes but they didn't take — make sure you changed tile *1* (the second tile in the `CHARS` block, after tile 0's sixteen blank bytes), and rebuilt.
+- **The shape is upside-down or mirrored.** Bytes run top row to bottom; within a byte, the *most significant* bit (`%1.......`) is the *left* pixel. Flip your reading if it came out wrong.
+- **Half the shape is missing or wrong colour.** Check you still have sixteen bytes for tile 1 — eight low-plane, then eight high-plane. Drop a byte and everything after it shifts.
+
+## What you've learnt
+
+Tile shapes live in **CHR ROM**, the pattern table — 256 little 8×8 pictures you supply yourself. Each tile is sixteen bytes: eight for the low bit-plane, eight for the high, together giving every pixel a colour number 0–3. Edit the bytes and the tile becomes whatever you draw. With shape (CHR), position (nametable) and colour (palette) all in your hands, you've now met every piece of how the NES builds a picture.
+
+## What's next
+
+That's the whole machine's picture system, met one piece at a time. Phase 1 is done — you know what the NES *is*. Next we turn to what it can *do*, starting where every program eventually must: making a decision. Next — **Test, Then Jump** — the `IF` you build from compare-and-branch.

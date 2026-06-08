@@ -1,0 +1,70 @@
+---
+title: "The Counted Loop"
+description: "Hand the repetition to the machine. Load a count, run the body, step on, and branch back until you've done them all — and the PPU's auto-stepping port turns one short loop into a whole row across the screen."
+pubDate: 2026-06-08
+game: 0
+unit: 12
+tags: ["assembly", "2a03", "loops", "ppu", "control-flow", "nes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+Back in Units 5 to 7 you wrote a single tile to the screen, by hand, one cell at a time. Filling a whole row that way would be thirty-two near-identical writes — absurd. So you don't write it thirty-two times. You tell the machine to.
+
+That's a **loop**, built from pieces you already have: a counter, a step, and the test-then-branch from Unit 8.
+
+- `ldx #0` — start the counter at 0.
+- `inx` — step it on after each pass.
+- `cpx #32` — compare with 32: have we done them all?
+- `bne fill` — if not equal yet, branch back and go round again.
+
+And the NES hands you a gift that makes the loop body tiny: **the PPU's data port steps itself.** Every time you write a tile through `$2007`, the window automatically moves to the *next* cell. So the loop body doesn't even have to work out where to write — it just pours another tile, and the port advances. One short loop, a whole row.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-12/screenshot.png"
+  alt="A solid red bar running the full width of the screen, along the top, on a light-blue field."
+  caption="The whole 32-cell top row, painted by a loop that poured one tile thirty-two times — written once."
+/>
+
+A red bar clear across the top — the whole 32-cell top row, painted by a loop that ran the same body thirty-two times. You wrote that body *once*.
+
+## The loop
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-12/loop.asm" />
+
+We aim the window at the top-left cell once, before the loop. Then the body — `lda #$01` / `sta $2007` — pours a block and lets the port step on; `inx` counts it; `cpx #32` / `bne fill` asks "done yet?" each pass and goes round if not. Thirty-two passes, thirty-two cells, one row. It's BASIC's `FOR I = 0 TO 31 … NEXT`, assembled from a counter and a branch you already know.
+
+(There's a leaner way the CPU quietly prefers — counting *down* to zero, where the test comes free and you can drop the `cpx`. It takes one small trick to line up, so we'll save it for later, once the plain loop is second nature. Counting up is the clearer place to start.)
+
+## Assemble and run
+
+```
+ca65 loop.asm -o loop.o && ld65 -C nes.cfg loop.o -o loop.nes
+```
+
+One loop, a full red row.
+
+## Try this: change the count
+
+Set `cpx #16` for half a row, `cpx #8` for eight cells. The number in the `cpx` is your `FOR I = 0 TO N-1` — it's the loop's whole story. Predict how much of the row fills before you run it.
+
+## Try this: fill the whole screen
+
+A row is 32 cells; the whole screen is 960 (`32 × 30`). That's more than fits in `X` (which stops at 255), so a full-screen fill needs a *bigger* count — and that's the cliffhanger for Unit 16, where numbers grow past a single byte. For now, push `cpx` up to `#192` and watch six rows fill: the loop doesn't care how many, only when to stop.
+
+## If it doesn't work
+
+- **Only one cell fills.** The `inx` is missing or sits outside the loop, so the count never climbs. The step belongs inside, before the `cpx`.
+- **The whole screen fills, or garbage appears.** Your `cpx` value is wrong or missing, so the loop runs too long. Check it reads `cpx #32`.
+- **`ca65` can't find `fill`.** The label and the `bne fill` must match exactly, case and all — labels are the assembler's rule, from Unit 8.
+
+## What you've learnt
+
+`ldx #0`, a body, `inx`, then `cpx #N` / `bne` runs the loop body N times. Paired with the PPU port that auto-steps to the next cell on every write, one short loop paints a whole row — what would have been thirty-two writes by hand.
+
+## What's next
+
+Your programs are growing, and chunks of them want names. Next — **Call, Return, and a Stack You Can See** — we package a job into a subroutine you can `jsr` to from anywhere and `rts` from, and watch where the machine remembers its way back: the stack, sitting in plain memory.

@@ -1,0 +1,98 @@
+---
+title: "The Screen Is Behind a Window"
+description: "The big one. The harness has been writing your colour through a little two-register window all along — and that same window reaches the screen itself. Aim it at the nametable, write a tile, turn the picture on, and a block appears."
+pubDate: 2026-06-08
+game: 0
+unit: 5
+tags: ["assembly", "2a03", "ppu", "nametable", "graphics", "nes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+This is the one the last four units were walking towards — and the moment we finally open up the harness.
+
+On the C64, the screen *is* memory: poke a byte to address `$0400` and a character appears in the top-left, because that box is wired straight to the glass. The NES does not work that way, and this is the deepest difference between a home computer and a console. The chip that draws the screen — the **PPU** — keeps the screen's memory *inside itself*, where the CPU can't reach. You can't `sta` to it. There's a wall.
+
+In the wall there's a **window**: two registers, `$2006` and `$2007`. You've been using it since Unit 1 without knowing — it's the part of the harness that paints your colour. Here's how it works, and you've seen every line of it:
+
+- Write an address to **`$2006`**, one byte at a time, high then low — this *aims* the window at one of the PPU's internal addresses.
+- Write data to **`$2007`** — this pours a byte through the window to wherever you aimed.
+
+The harness aimed at `$3F00` (the backdrop colour) and poured a colour in. But the window reaches *all* of the PPU's memory — and the **screen** lives there too, at address `$2000`. Aim the window at `$2000` instead, pour in a tile number, and you've drawn on the screen.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-05/screenshot.png"
+  alt="A single small white block in the top-left corner of an otherwise black NES screen."
+  caption="A white block in the top-left corner — written straight into the screen's own memory through the PPU window, then lit up by turning the picture on."
+/>
+
+A small white block, top-left. You aimed the window at the screen and poured in a tile number; the PPU drew it. (Most of the program is the stage crew — palette and the picture switch — that makes the block visible. We open those up over the next two units.)
+
+## The screen is a grid of tile numbers
+
+The PPU's screen memory is called the **nametable**, and it starts at address `$2000`. It's a grid: 32 cells across, 30 down, each cell holding *one byte* — a **tile number**. The byte doesn't hold a colour or a shape; it names which 8×8 shape to draw there, chosen from a set of 256 shapes called the **pattern table**. Cell `$2000` is the top-left; `$2001` is the cell to its right; and so on across each row.
+
+So drawing the block is three writes through the window — exactly the shape of the harness's paint line, just aimed somewhere new:
+
+```
+    bit $2002               ; reset the window's address latch
+    lda #$20
+    sta $2006               ; aim high byte...
+    lda #$00
+    sta $2006               ; ...and low byte: address $2000, the top-left cell
+    lda #$01                ; tile number 1 - a solid block
+    sta $2007               ; pour it through: the cell now names tile 1
+```
+
+Tile `1` is a solid block because the harness quietly defines it that way in the pattern table — that's Unit 7's job to explain. For now: you wrote a tile *number* to a screen *cell*, and the PPU drew that tile there.
+
+## The program
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-05/screen-window.asm" />
+
+Three jobs, in order. First the **stage light**: two colours written to the palette at `$3F00`, so the block has something to be drawn in — that's the harness line you already know, and we open it up properly next unit. Then the **tile write** above — the new idea, the block onto the screen. Finally we **turn the picture on**: until now we've left rendering *off* (`$2001 = 0`), which is why every earlier unit showed only a flat backdrop. Writing `$1e` to `$2001` switches the picture on, and the block appears. (We reset the scroll to zero just before, so the picture sits square — more on that much later.)
+
+## Assemble and run
+
+```
+ca65 screen-window.asm -o screen-window.o && ld65 -C nes.cfg screen-window.o -o screen-window.nes
+```
+
+A white block sits in the top-left corner. You drew it by aiming the PPU's window at the screen's memory and pouring in a tile number — the same window the harness has used all along.
+
+## Try this: move the block
+
+The top-left cell is `$2000`. The cell to its right is `$2001`. Change the address you aim at — make the low-byte write `lda #$01` then `sta $2006` (so the address is `$2001`) — assemble and run. The block jumps one cell to the right. Each `+1` in the address is one cell across; a row is 32 cells, so `$2020` is the start of the second row. Try landing the block in the middle of the top row.
+
+## Try this: a second block
+
+After the first tile write, add another — aim at a different cell and pour another `1` in:
+
+```
+    bit $2002
+    lda #$20
+    sta $2006
+    lda #$02                ; address $2002, two cells from the left
+    sta $2006
+    lda #$01
+    sta $2007
+```
+
+Two blocks now, with a gap between them. You're writing the screen one cell at a time — which is exactly the itch **Unit 11's indexing** and **Unit 12's loop** will scratch when you want a whole row.
+
+## If it doesn't work
+
+- **The screen is all black, no block.** Most likely the picture never came on — check `lda #$1e` / `sta $2001` is present and last. Or the palette stage-light is missing, so the block is being drawn in a colour you can't see.
+- **The block is in the wrong place.** Check the address you aimed at: high byte `$20`, then the low byte for the cell. `$2000` is top-left; a stray digit moves it.
+- **A block appears but the screen slowly drifts sideways.** The scroll reset (`sta $2005` twice) is missing or out of order — it must come after the last `$2006` write and before you turn the picture on.
+
+## What you've learnt
+
+The NES screen lives *inside* the PPU, behind a wall, reached only through a two-register window: aim `$2006` at an address, pour bytes through `$2007`. The screen's memory is the **nametable** at `$2000` — a grid of tile *numbers*. Writing a number to a cell tells the PPU which shape to draw there. And the picture only shows once you turn rendering on at `$2001`.
+
+## What's next
+
+The block came out white — but we never said *white*, we just wrote two mystery bytes to `$3F00`. Next — **Colour Lives in a Palette** — we open up that stage light. On the NES, colour isn't stored with the tile; it lives in a separate little table, and the tile only *points* at it.

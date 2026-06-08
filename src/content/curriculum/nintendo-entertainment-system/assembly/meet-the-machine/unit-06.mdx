@@ -1,0 +1,95 @@
+---
+title: "Colour Lives in a Palette"
+description: "Open up the stage light. On the NES, a tile's colour isn't stored with the tile — it lives in a separate little table, and the tile only points at it. Change the palette and the same block changes colour, with no touch to the screen at all."
+pubDate: 2026-06-08
+game: 0
+unit: 6
+tags: ["assembly", "2a03", "ppu", "palette", "colour", "nes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+Last unit the block came out white, and we never said *white* — we just wrote two mystery bytes to `$3F00` and called them the stage light. Time to open it up.
+
+Here's the idea that catches every newcomer to the NES: **a tile carries no colour of its own.** The byte you wrote to the nametable was a tile *number* — a shape. The shape's colour is decided somewhere else entirely, in a separate little table called the **palette**. The tile's pixels don't say "white"; they say "colour 1", and *colour 1 is whatever the palette currently says it is.* Change the palette, and every pixel pointing at that slot changes with it — though you never touched the screen's memory.
+
+This is the opposite of how it feels in BASIC, where a thing you draw *is* a colour. On the NES, shape and colour are two separate maps, and the tile is just a pointer from one into the other.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-06/screenshot.png"
+  alt="A small red block in the top-left corner of a light-blue NES screen."
+  caption="The very same block as last unit — now red on a light-blue field. Nothing in the screen's memory changed; we only rewrote the palette."
+/>
+
+A red block on a light-blue screen. The tile write is *identical* to Unit 5 — same number, same cell. The only thing that changed is the palette, and that changed both the block's colour and the colour of everything behind it.
+
+## A background palette is four colours
+
+The PPU's palette table starts at `$3F00`. A background palette is **four entries**:
+
+| Address | Role |
+|---|---|
+| `$3F00` | the **backdrop** — the colour behind everything, and what "colour 0" draws |
+| `$3F01` | colour 1 |
+| `$3F02` | colour 2 |
+| `$3F03` | colour 3 |
+
+Every background pixel is two bits — a number from 0 to 3 — picking *one of these four*. Our solid block is made entirely of "colour 1" pixels, so it draws in whatever sits at `$3F01`. Last unit that was white; this unit it's red (`$16`). The blank tiles everywhere else are all "colour 0", so they draw in the backdrop at `$3F00` — light blue (`$21`) this time. Same four pour-throughs of the window you already know:
+
+```
+    lda #$21                ; $3F00 backdrop      = light blue
+    sta $2007
+    lda #$16                ; $3F01 colour 1      = red  (the block)
+    sta $2007
+    lda #$27                ; $3F02 colour 2      = orange
+    sta $2007
+    lda #$30                ; $3F03 colour 3      = white
+    sta $2007
+```
+
+(Colours 2 and 3 aren't used by our block — it's all colour 1 — but a palette is always four entries, so we fill them in. We'll use the other slots once a tile has more than one colour in it, next unit.)
+
+## The program
+
+The tile write in the middle is *exactly* Unit 5's. Only the palette at the top has changed:
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-06/palette.asm" />
+
+That's the whole point this unit makes: colour and shape are independent. You recoloured the block by editing a table that has nothing to do with the screen's memory.
+
+## Assemble and run
+
+```
+ca65 palette.asm -o palette.o && ld65 -C nes.cfg palette.o -o palette.nes
+```
+
+A red block on a light-blue field. Prove the independence to yourself: the nametable write is unchanged from last unit, yet the colour is completely different.
+
+## Try this: recolour without touching the screen
+
+Change the `$3F01` value — `lda #$16` — to another NES colour and run: `$2a` green, `$30` white, `$28` yellow, `$12` blue. The block changes colour each time, and you never went near the nametable. Shape stays; colour moves.
+
+## Try this: change the world behind it
+
+Now change the `$3F00` backdrop — `lda #$21` — instead. The *whole field* changes colour, because every blank cell is colour 0, which is the backdrop. Set it to `$0f` and the background goes black, throwing the block into sharp relief. One byte repaints everything behind your tiles.
+
+## Try this: four palettes, and the catch
+
+The NES has *four* background palettes (`$3F00`, `$3F04`, `$3F08`, `$3F0C`), so different parts of the screen can use different four-colour sets. Which palette a cell uses isn't stored in the cell, though — it's chosen in coarse 16×16-pixel blocks by a separate **attribute table**. That's why neighbouring tiles often have to share colours: a famous NES constraint, and a cousin of the Spectrum's attribute clash. We lean on just palette 0 in the Primer; the attribute table is a game's concern.
+
+## If it doesn't work
+
+- **The block is invisible.** `$3F01` probably matches `$3F00` — colour 1 is the same as the backdrop, so the block blends in. Give them different values.
+- **The colours look wrong or washed.** Check you wrote the four palette bytes in order through `$2007` after aiming at `$3F00`, and that you didn't swap a digit — NES colour codes run `$00`–`$3F`.
+- **Nothing shows at all.** As ever, check the picture is turned on (`lda #$1e` / `sta $2001`) at the end.
+
+## What you've learnt
+
+Colour lives in the **palette**, separate from the screen. A background palette is four entries from `$3F00`; a tile's pixels point at one of them by number, so the same tile draws in whatever colour the palette currently holds. Change the palette and the picture recolours without a single write to the nametable.
+
+## What's next
+
+We keep calling tile `1` "a solid block" — but where does that shape come from? Next — **Where the Shapes Come From** — we open the last mystery in the harness: the pattern table, the 8×8 shapes the PPU draws from. And you'll draw your own.

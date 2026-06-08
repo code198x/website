@@ -1,0 +1,67 @@
+---
+title: "Bigger Than a Byte"
+description: "A byte stops at 255 — too small for an address. The 6502 has no 16-bit registers, so you hold a big number as two bytes and add it by hand, low byte first — and the carry flag becomes the bridge between them."
+pubDate: 2026-06-08
+game: 0
+unit: 16
+tags: ["assembly", "2a03", "16-bit", "carry", "nes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+One byte holds 0 to 255. But a screen address runs up to 65535 — far past what a byte can carry. You've been using numbers that big all along: `$2000` (the nametable), `$3F00` (the palette), `$8000` (where your code lives) are all sixteen-bit. So how does the machine hold them?
+
+The 6502 has **no sixteen-bit registers.** `A`, `X` and `Y` are each eight bits, full stop. So a sixteen-bit number is kept as **two bytes** — a **low byte** and a **high byte** — like the units and the "hundreds" of a number, except each digit counts to 255 before it rolls over. `$2FF0` is high byte `$2F`, low byte `$F0`.
+
+To add to a sixteen-bit value, you add **byte by byte, low first** — and here the carry flag from last unit finally shows what it's for. Add the low bytes; if they overflow, the carry comes on. Add the high bytes **without clearing it**, and that carry flows in — the "carry the one" from school arithmetic, in silicon.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-16/screenshot.png"
+  alt="The NES screen filled with white."
+  caption="A 16-bit add by hand: $28 added to $2FF0 carries into the high byte, climbing $2F to $30 (white), with nothing added to it directly."
+/>
+
+A white screen — colour `$30`. We held the value `$2FF0`, added `$28` to it, and showed the **high byte**. It was `$2F`. It came out `$30` — white. The high byte climbed by one, and *nothing added directly to it*: the carry from the low byte did it.
+
+## Adding two bytes, low first
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-16/wide.asm" />
+
+We park `$2FF0` in two zero-page boxes, `$10` (low) and `$11` (high). Then: `clc`, add `$28` to the low byte — `$F0 + $28` is `$118`, too big for a byte, so it keeps `$18` and **sets the carry**. Now add the high byte with `adc #$00` — zero, *plus that carry* — and `$2F` becomes `$30`. No `clc` between the two adds: the whole point is to let the carry climb from the low byte to the high one. Show the high byte and the screen goes white.
+
+## Assemble and run
+
+```
+ca65 wide.asm -o wide.o && ld65 -C nes.cfg wide.o -o wide.nes
+```
+
+The high byte ticks from `$2F` to `$30` — white — carried up from below.
+
+## Try this: a step that doesn't carry
+
+Change the starting low byte to `lda #$00` (so the value is `$2F00`). Now `$00 + $28` is `$28` — no overflow, carry stays clear — and the high byte stays `$2F`. (`$2F` is one of the NES's blank codes, so the screen comes up black — a stark "nothing carried" against the white.) Adding only moves the high byte when the low byte overflows into it. Same code; this time the carry has nothing to climb.
+
+## Try this: show the low byte instead
+
+Change the last `lda $11` to `lda $10` (the low byte). With the original `$2FF0` start you'll see `$18`'s colour instead — the other half of the sixteen-bit answer. Two bytes, one number.
+
+## A pointer is the next step — but not here
+
+A sixteen-bit value like this is how you hold a screen *address* — and stepping it is how a game walks through the nametable or scrolls a level. But to *write through* an address you compute, not one baked into the instruction, needs a different addressing mode — the indirect, indexed pointer (`(ptr),y`). That's among the first things the first game teaches, exactly when you need it. Here, the arithmetic; there, the pointer.
+
+## If it doesn't work
+
+- **The high byte didn't change.** Either the low add didn't overflow (check the start is `$F0`), or you slipped a `clc` *between* the two adds and wiped out the carry before it could climb. The low add gets the `clc`; the high add must not.
+- **The answer is off by 256-ish.** You added to the wrong byte, or in the wrong order. Low byte first, then high.
+- **`ca65` complains about `$10`.** Zero-page boxes `$10`/`$11` are free RAM to borrow; check there's no `#` — `lda $11` reads the box, `lda #$11` would load the number.
+
+## What you've learnt
+
+The 6502 has no 16-bit registers, so a number bigger than a byte is two bytes — low and high — and you add it low-first, letting the carry chain into the high byte. The carry flag is the bridge between them.
+
+## What's next
+
+That's the last of the machine's everyday fluency. One unit remains — and it's the most important. Next — **The Machine Trusts You** — we face what happens when you get a byte wrong: nothing stops you, nothing warns you, and learning to live with that is the mindset the whole course is built on.

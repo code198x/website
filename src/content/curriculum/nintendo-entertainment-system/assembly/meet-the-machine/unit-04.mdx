@@ -1,0 +1,83 @@
+---
+title: "A Street of Numbered Boxes"
+description: "Meet memory — a street of numbered boxes, each holding a byte. Store a byte at an address and read it back, the same round-trip you used for registers. And learn why the NES's street is far shorter than you'd guess."
+pubDate: 2026-06-08
+game: 0
+unit: 4
+tags: ["assembly", "6502", "2a03", "memory", "address", "nes"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+A byte in a register is a byte you're holding in your hand. But there are only three registers, and you can't put a whole game in your hands. So where do bytes *live* the rest of the time?
+
+In **memory**. Picture a street of numbered boxes, each with an **address** — just a number, like a house number — holding exactly one byte. You write a byte into a free box and read it back whenever you like. You met this in BASIC through a side door — `POKE` to write a box, `PEEK` to read one. Here it's your *main tool*, and it's two ordinary instructions.
+
+But here's the first place the NES surprises a C64 programmer: **its street is short.** The 2A03 can *name* 65,536 addresses, like any 6502 — but the NES only wires up **2 KB of actual RAM**, the boxes from `$0000` to `$07FF`. That's all the free workspace you get. The rest of the address range isn't yours: `$8000` and up is the **cartridge ROM** (you can read your program there, but you can't store into it), and the ranges around `$2000` and `$4000` are **hardware** — the PPU and the sound and controller chips. Write there and you change the machine, not memory. Two kilobytes sounds tiny, and it is; NES games learn to be frugal.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-04/screenshot.png"
+  alt="The NES screen filled with solid green."
+  caption="A green screen proving a round trip: the value $2a stored out to a memory box, the register wiped, then fetched back from the box."
+/>
+
+A green screen — value `$2a`. But as in Unit 2, the colour isn't the point: this value went *out into memory* and came back. We stored it at a box, wiped the register clean, then fetched it from the box again. The screen is the proof; the real evidence is in the **memory view** — watch box `$0300` fill with `$2a`.
+
+## Store and read: two mirror-image instructions
+
+| Instruction | Means |
+|---|---|
+| `sta $0300` | **store** — put `A`'s byte into the box at address `$0300` |
+| `lda $0300` | **read** — fetch the box at `$0300` back into `A` |
+
+You already know `lda` — earlier it loaded a *value* (`lda #$2a`). Here it loads from a *box* (`lda $0300`). The difference is that little `#`: **`#$2a` means the number `$2a`; plain `$0300` means the box at address `$0300`.** Forget the `#` and you load the *contents of address `$2a`* instead of the number — a mix-up worth meeting now, because it's the most common one there is.
+
+It's the same round trip you ran for registers in Unit 2 — but the value travels out to a memory box and back, instead of into `X`:
+
+| After… | `A` | box `$0300` |
+|---|---|---|
+| `lda #$2a` | `$2a` | — |
+| `sta $0300` | `$2a` | `$2a` |
+| `lda #$00` | `$00` | `$2a` |
+| `lda $0300` | `$2a` | `$2a` |
+
+## The program
+
+Same sealed harness; the `YOUR CODE` block is the round trip:
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-04/boxes.asm" />
+
+We wipe `A` to 0 between storing and reading, so the green screen can *only* mean the `$2a` came back from memory. `sta $0300` is your `POKE`; `lda $0300` is your `PEEK`.
+
+## Assemble and run
+
+```
+ca65 boxes.asm -o boxes.o && ld65 -C nes.cfg boxes.o -o boxes.nes
+```
+
+Load it with the memory view open, and watch box `$0300` take the `$2a` before the screen turns green.
+
+## Try this: any free box will do
+
+Change both `$0300`s to another free RAM address — say `$0310`. Same green screen. Nothing is special about `$0300`; any box from `$0000` to `$07FF` holds your byte just as well. (Steer clear of three areas: `$0000`, which the harness borrows as scratch; `$0200`, which games reserve for sprites; and anything from `$2000` up, where the hardware and the cartridge live — that's not free RAM.)
+
+## Try this: store past the end of RAM
+
+Change the store to `sta $4000` — an address the NES *can* name, but one that belongs to the sound hardware, not RAM. Assemble and run. The screen does **not** come up green: the `$2a` never lands in a box you can read back, because `$4000` isn't memory — it's a register on the APU, and writing there does something else entirely. The lesson: only `$0000`–`$07FF` behaves like the street of boxes. Put `$0300` back.
+
+## If it doesn't work
+
+- **The screen is black, not green.** The `lda $0300` read is missing or mistyped, so `A` was still 0 from the wipe. Check there's no `#` on it — `lda $0300`, not `lda #$0300`.
+- **`ca65` complains about the store.** Check it's `sta $0300` (no `#`). With the `#` it's not a valid store at all.
+- **Nothing in the memory view changes.** Make sure you're looking at `$0300` in the 2 KB RAM window, not somewhere up in the cartridge range.
+
+## What you've learnt
+
+Memory is a street of numbered boxes, each holding one byte: `sta addr` stores `A`'s byte at an address, `lda addr` reads it back, and the `#` is what separates a *number* from *the box at that number*. On the NES only `$0000`–`$07FF` is real RAM — a frugal 2 KB.
+
+## What's next
+
+Some addresses aren't quiet boxes at all — write to the right ones and you change what's *on the screen*. But on the NES the screen doesn't sit in this street the way it does on a home computer. Next — **The Screen Is Behind a Window** — we finally open up that harness line that's been painting your colour, and meet the PPU.
