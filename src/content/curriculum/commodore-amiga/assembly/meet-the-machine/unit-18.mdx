@@ -1,0 +1,92 @@
+---
+title: "Paula Makes a Sound"
+description: "The last custom chip is the one you hear. Paula plays sound by reading a sample — a list of numbers describing a waveform — straight out of memory. Hand her the sample, set how loud and how fast, switch on her DMA, and she plays it on her own, forever."
+pubDate: 2026-06-09
+game: 0
+unit: 18
+tags: ["assembly", "68000", "paula", "audio", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+import AudioClip from "@components/AudioClip.astro";
+
+Every unit so far has been about the screen. The Amiga's fourth custom chip, **Paula**, is about the speakers — and she works on the same idea as everything else: hand a chip some data in memory and switch on its DMA.
+
+Paula plays **samples**. A sample is a list of numbers, each one describing the height of a sound wave at one instant. Feed those numbers to a speaker fast enough and you hear the waveform they trace. Paula reads them out of memory by herself, on a DMA channel — she has four, one per voice — looping back to the start when she reaches the end. The CPU sets her going and then does nothing; the sound keeps playing.
+
+To start a voice you give Paula four things: where the sample is, how long it is, how fast to play it (the **period** — the pitch), and how loud (the **volume**). Then you switch on her DMA. This unit plays one steady tone.
+
+## What you'll hear by the end
+
+<AudioClip
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-18/tone.wav"
+  title="A square-wave tone — Paula playing one looping sample"
+  source="Amiga Paula · channel 0 · sample loop"
+/>
+
+A steady tone, held for as long as the machine runs. It's a **square wave** — the sample is half high, half low — which is why it has that flat, buzzy, early-computer voice. The waveform strip above is the real captured output: a sample whose two halves are plainly visible.
+
+<Figure
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-18/screenshot.png"
+  alt="A flat blue screen."
+  caption="There's nothing to see — the work is in the speakers. The blue is just a sign the program is running."
+/>
+
+## Hand Paula the sample
+
+<CodeFromFile src="commodore-amiga/assembly/meet-the-machine/unit-18/sound.asm" />
+
+The sound is five lines:
+
+```
+lea     sample,a0
+move.l  a0,AUD0LC(a5)       ; where the waveform lives
+move.w  #SAMPLELEN/2,AUD0LEN(a5)  ; its length in words
+move.w  #320,AUD0PER(a5)    ; period - lower is higher-pitched
+move.w  #64,AUD0VOL(a5)     ; full volume
+
+move.w  #$8281,DMACON(a5)   ; DMA on: master + Copper + audio ch0
+```
+
+`AUD0LC` is the sample's address — channel 0's "where." `AUD0LEN` is its length in words. `AUD0PER` is the period: it sets how fast Paula steps through the sample, and so the pitch — a *smaller* period plays faster and sounds higher. `AUD0VOL` is the volume, 0 to 64. With those four set, switching on the audio-0 DMA bit in `DMACON` starts the voice, and Paula loops the sample for as long as the channel stays on.
+
+The sample itself is a single square-wave cycle — sixteen high numbers, then sixteen low:
+
+```
+sample:
+        dc.b    $40,$40,...     ; +64, the top of the wave
+        dc.b    $c0,$c0,...     ; -64, the bottom
+```
+
+Paula reads these as signed 8-bit numbers, so `$40` is +64 and `$c0` is −64. Played in a loop, that step from high to low and back is the square wave you hear. A richer sample — a recorded instrument, a voice — is the same idea with more numbers.
+
+## Assemble, master, and run
+
+```
+make
+```
+
+A steady tone from the speakers; a blue screen that does nothing.
+
+## Try this: change the pitch
+
+`AUD0PER` is the period — `#320` here. Halve it to `#160` and the tone jumps an octave; double it to `#640` and it drops one. The sample doesn't change; you're telling Paula to read it faster or slower.
+
+## Try this: shape the wave
+
+Edit the sample. Make it eight high and twenty-four low and the tone goes thin and reedy; ramp the numbers up and down instead of stepping (`$00, $20, $40, $60`…) for a softer, rounder sound. The numbers *are* the waveform — change their shape and you change the timbre.
+
+## If it doesn't work
+
+- **Silence.** The audio-0 DMA bit isn't set — `DMACON` needs it (`$8281` here switches on audio channel 0). Volume at `0` is silent too.
+- **A click, then nothing.** `AUD0LEN` is wrong. It's the length in *words* (bytes ÷ 2); too short and Paula loops a sliver, too long and she reads past the sample.
+- **The pitch is wildly off.** A tiny `AUD0PER` plays faster than Paula can sustain. Keep it in the hundreds until the tone is steady.
+
+## What you've learnt
+
+**Paula** plays sound by reading a **sample** — a list of numbers tracing a waveform — out of memory on a DMA channel. You set four registers per voice: location (`AUD0LC`), length (`AUD0LEN`), period (`AUD0PER`, the pitch), and volume (`AUD0VOL`), then switch on the channel's DMA. She loops it on her own while the CPU is free. The numbers in the sample are the waveform itself; their shape is the sound.
+
+## What's next
+
+That's all four custom chips — Copper, Blitter, sprites, and now Paula — and the whole of the 68000 underneath them. One unit remains, and it isn't about a new instruction. Next — **The Machine Trusts You** — what it means to program a computer that hands you the hardware and gets out of the way.

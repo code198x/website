@@ -1,0 +1,86 @@
+---
+title: "The Blitter Moves It"
+description: "Everything so far has been the 68000 alone. The Blitter is a chip built for one job — shifting blocks of graphics through memory far faster than the CPU can. You point it at a source, a destination, and a size, and it moves the block while the CPU does something else."
+pubDate: 2026-06-09
+game: 0
+unit: 16
+tags: ["assembly", "68000", "blitter", "custom-chips", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+This is where the Amiga stops being a fast 68000 and starts being an Amiga. Until now every pixel was moved by the CPU, one instruction at a time. The custom chips change that — and the first of them is the **Blitter**.
+
+The Blitter (block image transferrer) does one thing: it shifts rectangular blocks of memory from one place to another, at speed, on its own. Moving a 32×24 graphic with the CPU is hundreds of instructions; the Blitter does it with a handful of register writes and then runs while the 68000 is free to do other work. Every smooth-moving Amiga game leans on it — drawing, erasing, scrolling, all blitter work.
+
+You set up a blit by filling in registers: where the source is, where the destination is, how the chip steps between rows, and — last — the size, which *starts* the blit. This unit copies one block to a second spot, on the one-bitplane display from Unit 6.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-16/screenshot.png"
+  alt="A black screen with two yellow rectangles: one at the top-left, one lower and to the right."
+  caption="Two blocks. The CPU drew the top-left one; the Blitter copied it down and across. The CPU only ever drew once."
+/>
+
+Two yellow blocks on black. The CPU drew exactly one — top-left, the same way as Unit 6. The second, lower and to the right, is that block copied by the Blitter in a single operation.
+
+## Set it up, then start it
+
+<CodeFromFile src="commodore-amiga/assembly/meet-the-machine/unit-16/blitter.asm" />
+
+The copy is the block inside `YOUR CODE`:
+
+```
+.waitblit:  btst    #6,DMACONR(a5)      ; wait until the Blitter is idle
+            bne.s   .waitblit
+
+            move.w  #$ffff,BLTAFWM(a5)  ; no masking of the first/last word
+            move.w  #$ffff,BLTALWM(a5)
+            move.w  #$09f0,BLTCON0(a5)  ; use A and D; D = A (a straight copy)
+            move.w  #$0000,BLTCON1(a5)
+            move.w  #ROWBYTES-BLTW*2,BLTAMOD(a5)   ; skip the rest of each row
+            move.w  #ROWBYTES-BLTW*2,BLTDMOD(a5)
+
+            lea     bitplane,a0
+            move.l  a0,BLTAPTH(a5)      ; source = the block the CPU drew
+            lea     bitplane+DESTOFF,a0
+            move.l  a0,BLTDPTH(a5)      ; dest = down and across
+
+            move.w  #(BLTH<<6)!BLTW,BLTSIZE(a5)    ; this starts the blit
+```
+
+Read it as filling in a form. First **wait** for the Blitter to be free — `btst #6,DMACONR` tests the busy bit, and you never start a blit on top of a running one. Then the settings: `BLTCON0 = $09f0` says "read channel A, write channel D, and make D a straight copy of A." The **modulo** registers (`BLTAMOD`, `BLTDMOD`) tell the chip how many bytes to skip at the end of each row, so a 32-pixel-wide block steps correctly down a 320-pixel-wide screen. `BLTAPT` and `BLTDPT` are the source and destination addresses.
+
+The last write does the work. `BLTSIZE` packs the height and width together, and writing it is what **starts** the blit. The chip then copies all 24 rows by itself; the CPU has already moved on to the `forever` loop. You described a move; the Blitter performed it.
+
+## Assemble, master, and run
+
+```
+make
+```
+
+Two yellow blocks — one drawn, one blitted.
+
+## Try this: move the copy
+
+`DESTOFF` decides where the copy lands — `80*ROWBYTES+8` means 80 rows down and 8 bytes (64 pixels) across. Change it: `40*ROWBYTES` puts the copy straight below the original; `+20` shifts it further right. The source never moves; only where the Blitter writes does.
+
+## Try this: many copies
+
+Wrap the blit in a loop (Unit 12's `DBRA`), bumping `BLTDPT` each pass so each copy lands in a new spot — remembering to wait for the Blitter between blits. One drawn block becomes a field of them, and the CPU barely lifts a finger. That is how a game paints a screen full of bricks or stars.
+
+## If it doesn't work
+
+- **Only one block shows.** The blit didn't start — `BLTSIZE` must be the *last* Blitter register you write, because writing it is the trigger.
+- **The copy is smeared or skewed.** The modulo is wrong. `BLTAMOD`/`BLTDMOD` must be the row width minus the blit width in bytes, so the chip lines up each row under the last.
+- **The machine locks up.** A blit was started while another was running. Always `btst #6,DMACONR` and wait before setting up the next one.
+
+## What you've learnt
+
+The **Blitter** moves rectangular blocks of graphics through memory far faster than the CPU. You fill in registers — `BLTCON0` for the operation, the **modulo** registers for the row stride, `BLTAPT`/`BLTDPT` for source and destination — and writing **`BLTSIZE`** starts the blit. It runs on its own while the CPU works, and you wait on the busy bit before starting another. This is the engine behind Amiga graphics.
+
+## What's next
+
+The Blitter draws *into* the bitplane. The next chip puts an object on screen that isn't in the bitplane at all — it floats over the top, moved by setting two numbers. Next — **A Sprite of Your Own** — the hardware sprite.

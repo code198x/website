@@ -1,0 +1,86 @@
+---
+title: "A Sprite of Your Own"
+description: "A sprite is a small picture the hardware draws over the background, on its own, wherever you point it. No bitplane, no blitting — you hand the chips a shape and a position and they put it on the glass and keep it there. This is how you make a player."
+pubDate: 2026-06-09
+game: 0
+unit: 17
+tags: ["assembly", "68000", "sprite", "custom-chips", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+
+The Blitter draws *into* the bitplane — it changes the picture. A **sprite** is different: it's a small object the hardware draws *over* the picture, independently, without disturbing a single pixel of the background. You give it a shape and a position; the chips composite it onto the screen as the beam sweeps past.
+
+This is exactly what you want for a player, an enemy, a bullet — something that moves around freely on top of a scene. Move a sprite and the background underneath is untouched, so there's nothing to redraw. The Amiga has eight of them, each with its own little palette.
+
+A sprite is just data in memory: two **control words** that say *where* (a vertical start, a horizontal start, a vertical stop), then the image itself — two bits per pixel, picking one of three colours or transparent. You point the sprite hardware at that data, switch on sprite DMA, and it appears.
+
+## What you'll see by the end
+
+<Figure
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-17/screenshot.png"
+  alt="A deep blue screen with a single orange diamond floating near the centre."
+  caption="One hardware sprite — an orange diamond — composited over the blue background by the chips, from a shape and a position in memory."
+/>
+
+A deep blue screen with an orange diamond near the middle. The background is a flat colour with no bitplane at all; the diamond is a sprite, drawn over the top by the hardware from the shape you hand it.
+
+## A shape and a position
+
+<CodeFromFile src="commodore-amiga/assembly/meet-the-machine/unit-17/sprite.asm" />
+
+A sprite is two parts. First the data — control words, then image rows:
+
+```
+sprite_data:
+        dc.w    $7c80,$8c00         ; VSTART/HSTART, VSTOP/control
+        ;          plane A          plane B
+        dc.w    %0000000110000000,0 ; every set bit -> sprite colour 1
+        dc.w    %0000001111000000,0
+        ...
+        dc.w    $0000,$0000         ; end of sprite
+```
+
+The two control words encode the position — `$7c80`/`$8c00` places the sprite around (128, 80) on screen. The packing is fiddly (vertical start and stop, horizontal start, split across the words), which is why real code writes a helper to work them out; here they're filled in directly so you can see the shape. Each image row is two words — plane A and plane B — and the two bits for each pixel choose its colour: `00` is transparent, so the background shows through, and `01` is sprite colour 1.
+
+Then the code points the hardware at the data and switches it on:
+
+```
+lea     sprite_data,a0
+move.l  a0,d0
+... patch the Copper's SPR0PT pointer with this address ...
+move.w  #$82a0,DMACON(a5)   ; DMA on: master + Copper + sprites
+```
+
+The Copper holds the sprite's pointer (`SPR0PT`) and reloads it every frame; `$82a0` to `DMACON` switches on sprite DMA. From then on the hardware fetches the shape and paints it over the background every frame, with no further help from the CPU. The two sprite colours are set in the Copper list — `COLOR17` is the orange.
+
+## Assemble, master, and run
+
+```
+make
+```
+
+An orange diamond floating on blue.
+
+## Try this: move it
+
+The position is in the first control word. Change `$7c80` — the high byte is the vertical start, so `$5080` moves the diamond up, `$a080` down. (Move the vertical *stop* in the second word to match, or the diamond stretches or vanishes.) Nudge that number every frame inside Unit 9's vblank loop and the sprite glides — and the background never needs redrawing.
+
+## Try this: redraw the shape
+
+The image is sixteen rows of bits. Edit them — every `1` is a lit pixel, every `0` transparent. Draw a ball, a ship, a letter. Keep plane B at `0` and every lit pixel is colour 1; set bits in plane B too and you unlock colours 2 and 3 for a three-colour sprite.
+
+## If it doesn't work
+
+- **No sprite, just background.** Sprite DMA isn't on — `DMACON` needs the sprite bit (`$82a0` here), and the Copper must point `SPR0PT` at your data.
+- **The sprite is a torn smear.** The vertical start and stop in the control words don't bracket the image height. Stop minus start should equal the number of image rows.
+- **It's in the wrong place or off-screen.** The position packing is unforgiving — keep the control words as shown until the diamond appears, then move it one step at a time.
+
+## What you've learnt
+
+A **sprite** is a small picture the hardware draws *over* the background, from data in memory: two **control words** for the position, then image rows of two bits per pixel. You point `SPR0PT` at the data (through the Copper, so it reloads each frame), switch on **sprite DMA**, and the chips composite it every frame. Moving it costs nothing — the background is never touched. This is the natural way to put a player on screen.
+
+## What's next
+
+You've used the Copper, the bitmap, the Blitter, and now sprites — everything you can *see*. One chip is left, and it's the one you *hear*. Next — **Paula Makes a Sound** — hand the sound chip a waveform and she plays it.
