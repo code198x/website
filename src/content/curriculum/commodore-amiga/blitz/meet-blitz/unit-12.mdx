@@ -1,0 +1,94 @@
+---
+title: "Smooth Scrolling"
+description: "Every great Amiga game scrolls — a world wider than the screen, sliding past pixel by pixel. The trick isn't redrawing fast; it's drawing a bitmap bigger than the display and letting the hardware slide a window across it. Blitz hands you that window directly."
+pubDate: 2026-06-09
+game: 0
+unit: 12
+tags: ["blitz", "basic", "scrolling", "slices", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
+
+Think of the games that made the Amiga's name — *Shadow of the Beast*, *Turrican*, *Apidya*. The first thing they did was **scroll**: a world far wider than the screen, gliding past one pixel at a time, smooth as glass. That smoothness is the Amiga's signature, and it doesn't come from redrawing the screen quickly. It comes from a different idea entirely — **draw a picture bigger than the screen, then slide a window across it**. The hardware does the sliding; your program just moves the window. Blitz hands you that window directly, and that's what this unit is about.
+
+## What you'll see by the end
+
+<VideoPlayer
+  src="/images/commodore-amiga/blitz/meet-blitz/unit-12/scroll.mp4"
+  poster="/images/commodore-amiga/blitz/meet-blitz/unit-12/screenshot.png"
+  caption="A field of stripes sliding smoothly left and right — but the stripes never move. The display window is panning across a bitmap twice the width of the screen."
+/>
+
+Coloured stripes drift across the display and back again, perfectly fluid. Here's the thing to hold onto: **nothing in that picture is being redrawn**. The stripes are painted once, at the start, onto a bitmap that's twice as wide as the screen. Everything you see moving is the *window* moving — the hardware reading from a different starting point each frame.
+
+## The whole program
+
+<CodeFromFile src="commodore-amiga/blitz/meet-blitz/unit-12/scroll.bb2" />
+
+It's short, and most of it is painting the backdrop once. The scrolling is four lines.
+
+### A bitmap wider than the screen
+
+```
+BitMap 0,640,256,3
+Cls 0
+For i=0 To 39
+  Boxf i*16,30,i*16+13,220,1+(i mod 7)
+Next
+```
+
+The screen shows **320** pixels across. This bitmap is **640** — twice as wide. We paint 40 coloured stripes right across the whole 640 pixels, cycling through seven colours (`1+(i mod 7)`). Half of those stripes are off the right-hand edge of the screen, waiting. That's the whole secret of scrolling: **the picture is bigger than what you can see**, and there's always more of it just out of view.
+
+### A slice that can pan
+
+```
+Slice 0,44,320,256,$fff8,3,8,8,640,640
+Use Slice 0
+```
+
+Back in unit 6 you made a Slice the short way. This is the **long form**, and the two numbers at the end are why we need it. They tell the display how wide the *source bitmap* is — **640**, not 320. Now the slice knows it's looking at a wide picture, and it's allowed to show any 320-pixel-wide section of it. Without that, the display would assume the bitmap is screen-width and there'd be nothing to scroll to.
+
+### Move the window
+
+```
+sx.w=0
+sdx.w=2
+While Joyb(0)=0
+  VWait
+  Show 0,sx,0
+  sx=sx+sdx
+  If sx>318 Then sdx=-sdx
+  If sx<1 Then sdx=-sdx
+Wend
+```
+
+This is the scroll. **`Show 0,sx,0`** is the line you met for double-buffering — but those last two numbers, which we ignored before, are an **offset**: "start showing bitmap 0 from `sx` pixels in." Each frame we nudge `sx` along by `sdx` (2 pixels), and the window slides. When it reaches the far edge (`sx>318` — we can pan 320 pixels into a 640-wide bitmap before running out) we flip `sdx` negative and it slides back. The picture never changes; only where we *start looking* changes.
+
+## This is what the hardware is for
+
+Stop and notice how little work the program does per frame. No `Cls`, no redrawing the stripes, no blitting — just **one number going up by two**. The Amiga's display hardware can be pointed at any address in a bitmap, and it'll happily start reading from there. Scrolling is nothing more than changing that address a little each frame. Sixty-odd stripes, a whole screen of movement, for the cost of one addition.
+
+This is the line that separates the Amiga from the machines before it. On a Spectrum or an unaccelerated micro, scrolling means **moving every pixel by hand**, every frame — and it shows, in juddery, character-wide steps. The Amiga slides the window in hardware, so the motion is **per-pixel smooth and costs you a single addition a frame**. It's exactly the thing the Beast and Turrican programmers reached for, and Blitz puts it one `Show` away.
+
+## Type it and compile it
+
+Type the program into Ted and press **right-Amiga + X**. The stripes glide left and right. Press fire — or reset — to stop.
+
+## Try this: change the speed and width
+
+Change `sdx.w=2` to `sdx.w=1` for a slow drift, or `sdx.w=8` for a fast sweep — that's your scroll speed, in pixels per frame. Then try making the bitmap *wider* still: change both the `BitMap` width and the slice's last two numbers to `1280`, change the loop to `For i=0 To 79`, and raise the turn-around test to `sx>958`. A wider world to roam, the same four lines moving the window.
+
+## If it doesn't work
+
+- **It jumps in big steps instead of gliding.** Check `VWait` is in the loop — without it you're moving the window faster than the screen refreshes, and the motion tears.
+- **It scrolls a little then stops dead at the edge.** The turn-around tests (`sx>318`, `sx<1`) must flip `sdx`. If `sx` runs past the bitmap width the display shows blank — clamp or reverse before then.
+- **Nothing scrolls, the stripes just sit there.** The slice's last two numbers must be the wide bitmap width (`640`), not `320`. A screen-width slice has nowhere to pan to.
+
+## What you've learnt
+
+Hardware scrolling is **a bitmap wider than the screen, with the display window panning across it**. You paint the world once onto an oversized bitmap, make a Slice that knows the bitmap's true width, then move the window each frame with the offset in **`Show bitmap,x,y`** — one number going up. The hardware reads from wherever you point it, so a whole screen of smooth, per-pixel motion costs a single addition. That's the Amiga's signature effect, and the reason its games looked a generation ahead.
+
+## What's next
+
+You've been reaching closer to the hardware with every unit — slices, the blitter, now the scroll registers. Next — **Reaching the Hardware** — we cross the last line: calling the Amiga's own libraries and touching the chips directly from Blitz, the thing AMOS keeps firmly out of reach.

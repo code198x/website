@@ -1,0 +1,101 @@
+---
+title: "Reaching the Hardware"
+description: "AMOS keeps the machine at arm's length. Blitz hands you the chips. The Amiga's colours don't live in your picture — they live in registers, and you can rewrite them directly, every frame. Change the registers and the picture changes colour without a single pixel being redrawn. That's colour cycling, and it's your first real touch of the metal."
+pubDate: 2026-06-09
+game: 0
+unit: 13
+tags: ["blitz", "basic", "hardware", "palette", "amiga"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
+
+Everything you've drawn so far used colours by *number* — `Boxf ...,3`, colour 3. But colour 3 isn't a fixed thing. The Amiga keeps its colours in a set of **hardware registers**, one per colour number, and what you see on screen is whatever those registers happen to hold *right now*. Change a register and every pixel using that colour changes at once — instantly, with no redrawing. AMOS hides those registers behind its own commands; Blitz lets you write them directly with `RGB`. This unit is about reaching past the picture to the registers underneath — your first real touch of the hardware, and the same move you'll make again in assembly.
+
+## What you'll see by the end
+
+<VideoPlayer
+  src="/images/commodore-amiga/blitz/meet-blitz/unit-13/cycle.mp4"
+  poster="/images/commodore-amiga/blitz/meet-blitz/unit-13/screenshot.png"
+  caption="Seven solid bars, colours flowing through them like a current — yet not one pixel is ever redrawn. Only the colour registers change."
+/>
+
+Seven coloured bars, with colour seeming to *flow* across them — a current running left to right. Here's the trick, and it's the whole point of the unit: **the bars are painted once and never touched again**. Every bar is filled with a different colour *number*. What's moving is the **registers** — each frame we shuffle which colour each number holds, and the picture re-colours itself. This is **colour cycling**, the effect behind a thousand Amiga waterfalls, lava flows and twinkling skies.
+
+## The whole program
+
+<CodeFromFile src="commodore-amiga/blitz/meet-blitz/unit-13/cycle.bb2" />
+
+Three parts: **a table of colours**, **bars painted once**, then **a loop that rewrites the registers**.
+
+### A table of colours
+
+```
+Dim r(6)
+Dim g(6)
+Dim b(6)
+r(0)=15 : g(0)=0  : b(0)=0
+r(1)=15 : g(1)=8  : b(1)=0
+...
+```
+
+`Dim` makes an **array** — a numbered row of variables. We make three: `r`, `g`, `b`, holding the red, green and blue amounts of seven colours (0 to 6). Each Amiga colour component runs **0 to 15**, so `r(0)=15 : g(0)=0 : b(0)=0` is pure red, and the rest walk round the spectrum. (The `:` just puts three statements on one line.) This is our *palette of hues* — separate from the screen, waiting to be poured into the registers.
+
+### Bars painted once
+
+```
+For i=0 To 6
+  Boxf i*44+6,40,i*44+44,210,i+1
+Next
+```
+
+Seven tall bars, side by side. The important part is the last number: **`i+1`**. Bar 0 is filled with colour *number* 1, bar 1 with number 2, and so on — each bar uses a **different colour register**. We draw them once, before the loop, and never draw them again.
+
+### Rewrite the registers
+
+```
+While Joyb(0)=0
+  VWait 5
+  For i=0 To 6
+    c=i+n
+    If c>6 Then c=c-7
+    RGB i+1,r(c),g(c),b(c)
+  Next
+  n=n+1
+  If n>6 Then n=0
+Wend
+```
+
+This is the cycling. **`RGB reg,red,green,blue`** writes one colour register directly — `reg` is the colour number, then the three components. Each frame we run through all seven registers and set each one to a hue from the table, **offset by `n`**. Next frame `n` goes up by one, so every register takes the *next* hue along, and the colours appear to slide across the bars. When `n` passes the end (`If n>6 Then n=0`) it wraps, and the current flows forever. `VWait 5` slows it to a pleasant pace.
+
+## This is what the hardware is for
+
+Look at what the loop does *not* do. No `Cls`, no `Boxf`, no blitting — **the picture is never touched**. All that changes, 50 times a second, is seven small numbers in the Amiga's colour hardware. The chips redraw the screen from those registers every frame anyway, so the moment you change one, the change is *there*. Animating a whole screen of colour costs you seven register writes.
+
+This is the line that AMOS won't let you cross. AMOS owns the palette; it gives you tidy commands and keeps the registers to itself. Blitz hands them over — `RGB` writes straight to the colour hardware — and once you can do that, you can think about the machine the way an assembly programmer does: *the screen is just memory and registers, and if I change them, the picture changes.* Colour cycling is the gentlest possible version of that idea. The fiercest version — writing those same registers from 68000 — is the track waiting after this one.
+
+## Type it and compile it
+
+Type the program into Ted and press **right-Amiga + X** (recompile if Blitz asks about memory). The colours flow across the bars. Press fire — or reset — to stop.
+
+## Try this: change the current
+
+Change `VWait 5` to `VWait 1` for a fast, electric flicker, or `VWait 15` for a slow, lava-like ooze — that single number is the speed of the current. Then make `n` count **down** instead of up (`n=n-1`, and `If n<0 Then n=6`) to send the colour flowing the other way.
+
+## Try this: a narrower band
+
+Real Amiga effects often cycle only *part* of the palette — say a waterfall's few blues — leaving the rest still. Change both `For` loops to `For i=0 To 3` and fill only the first four bars (`Boxf` loop to `0 To 3`). Now four colours cycle among themselves while nothing else moves — exactly how a paint program animates one region of a picture.
+
+## If it doesn't work
+
+- **`Syntax Error` on a line with a variable.** Ted capitalises any word it recognises as a keyword. If your variable name turns a colour when you type it (like `off` or `step`), it clashes with a Blitz keyword — rename it (we use plain `n` and `c` for that reason).
+- **The colours don't move.** Check `n` climbs each frame and wraps (`If n>6 Then n=0`), and that the `RGB` line uses `c` — the *offset* index — not `i`. If you write `RGB i+1,r(i),...` the registers never change.
+- **The bars are black or wrong.** Each colour component must be **0 to 15**. A value outside that range, or a `Dim` that's too small for the index you read, gives black or garbage.
+
+## What you've learnt
+
+The Amiga's colours live in **hardware registers**, not in your picture, and **`RGB reg,r,g,b`** writes one directly. Because the chips rebuild the screen from those registers every frame, changing a register re-colours every pixel using that colour *instantly* — no redrawing. **Colour cycling** is the classic use: paint once, then shuffle the registers each frame so colour flows through a still image, a whole screen of motion for a handful of writes. More than an effect, it's your first reach past the friendly commands to the chips themselves — the mindset the assembly track is built on.
+
+## What's next
+
+You've climbed a long way — from typing your first compiled line to writing the colour hardware by hand. The last unit steps back to look at the whole ladder: **The Blitz Way** — where Blitz sits between AMOS and assembly, what it's for, and the real games that were built on it.
