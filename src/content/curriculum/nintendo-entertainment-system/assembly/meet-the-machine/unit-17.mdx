@@ -1,65 +1,87 @@
 ---
-title: "The Machine Trusts You"
-description: "The last unit, and the most important. There's no error message, no bounds check, no guard rail — the machine does exactly what you wrote, even when you're wrong. Learn to debug by observing, not by reading errors."
-pubDate: 2026-06-08
+title: "The Machine Speaks Back"
+description: "Unit 10 taught the machine to hear you. This one teaches it to answer. The NES has a sound chip — the APU — built into the same 2A03 as the CPU. Set up a pulse channel, switch it on, and it holds the note on its own while your code does nothing."
+pubDate: 2026-06-09
 game: 0
 unit: 17
-tags: ["assembly", "2a03", "debugging", "mindset", "nes"]
+tags: ["assembly", "2a03", "apu", "sound", "nes"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import Figure from "@components/Figure.astro";
+import AudioClip from "@components/AudioClip.astro";
 
-Every unit so far ended with something that worked. This one ends with something that's **wrong** — on purpose — because the single most important thing to learn about this machine is what it does when *you* are wrong.
+Back in Unit 10 the machine learned to *hear* you, reading the joypad through a register. This unit is the answer: the machine speaking back. On the NES, the sound comes from the **APU**.
 
-## What you'll see by the end
+The APU (Audio Processing Unit) lives inside the **same chip as the CPU** — the 2A03 is a 6502 with a sound generator bolted on. It has five voices: two **pulse** channels, a **triangle**, a **noise** channel, and a sample player. You don't generate the waveform yourself; you set a channel's registers — volume, pitch, length — switch it on, and the APU produces the sound while the CPU is free.
+
+This unit plays one steady tone on pulse channel 1. Its registers live from `$4000`, with the master switch for all channels at `$4015`.
+
+## What you'll hear by the end
+
+<AudioClip
+  src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-17/tone.wav"
+  title="A pulse-wave tone — APU pulse channel 1 holding one note"
+  source="NES · 2A03 APU · pulse channel 1"
+/>
+
+A steady square-ish tone, held for as long as the machine runs. It's a **pulse wave** at 50% duty — the bright, hollow voice behind countless NES melodies. The waveform strip above is the real captured output.
 
 <Figure
   src="/images/nintendo-entertainment-system/assembly/meet-the-machine/unit-17/screenshot.png"
-  alt="The top eight rows of the NES screen filled solid red, far more than one row, on a light-blue field."
-  caption="Eight rows, not one — the machine filled exactly 255 cells because 255 is the number we wrote; a 'mistake' only because we meant 32."
+  alt="A flat blue NES screen with nothing drawn on it."
+  caption="There's nothing to see — the work is in the speakers. The blue is just a sign the program is running."
 />
 
-That was *supposed* to be one row of 32. It's eight. The machine filled precisely 255 cells — right down to the last one — because 255 is the number we wrote. It is only a "mistake" because *we* know we meant 32. The machine couldn't know, and didn't ask.
+## Set the registers, switch it on
 
-## The bug, running
+<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-17/apu.asm" />
 
-<CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-17/oops.asm" />
+The sound is one block of stores, after the usual reset and a blue backdrop:
 
-This is the row-fill from *The Counted Loop* with one wrong number: `cpx #255` where we meant `cpx #32`. It assembled without a murmur — a wrong *count* is not a wrong *spelling*, so the assembler had nothing to object to. Then it ran exactly as written, pouring 255 blocks across eight rows.
+```
+lda #$01
+sta $4015               ; switch pulse 1 on
+lda #$bf
+sta $4000               ; 50% duty, hold the note, constant volume 15
+lda #$00
+sta $4001               ; sweep off (leave the pitch alone)
+lda #$fd
+sta $4002               ; timer low byte  -> the pitch
+lda #$08
+sta $4003               ; timer high + length  -> the note starts
+```
 
-## There is no safety net
+`$4015` is the master enable — bit 0 switches pulse 1 on. `$4000` packs several controls into one byte: the top bits choose the **duty** (the shape of the square), and the rest set a **constant volume** of 15 and tell the channel to **hold** its note instead of counting itself down. `$4001` is the sweep unit, which can slide the pitch — we switch it off so the note stays put.
 
-In BASIC, mistakes were met with a friendly stop: `?SYNTAX ERROR`, `?ILLEGAL QUANTITY`, `?OUT OF MEMORY`. The language watched over you and halted when something looked off.
-
-The bare machine does none of that. There is no bounds check, no type check, no "are you sure," no error at all. Write past where you meant to, point at the wrong address, leave a `jsr` without its `rts`, forget the `clc` before an add — and the 6502 does **exactly what the bytes say** and carries straight on, overwriting whatever it touches, never pausing to warn you. The machine trusts you completely. That trust is the freedom that let you draw the screen, drive the heartbeat, and read the pad with nothing but stores and loads — and the responsibility that means every byte is yours to get right.
-
-So debugging here is a different craft. It is not reading an error message, because there isn't one. It is **observing the state** — the register view, the memory view, the stack you watched in *Call, Return, and a Stack* — and reasoning about what the machine *did* versus what you *meant*. Every view you've leaned on through this Primer was you learning to debug by looking. That's the discipline the whole course rests on.
+`$4002` and `$4003` set the **pitch** as an 11-bit timer, low byte then high. Writing `$4003` is the trigger: it loads the note's length and restarts the channel, so the tone begins the instant that store lands. Because the channel is set to hold, it rings on while the CPU sits in `forever`. You set the registers and walked away; the APU does the rest.
 
 ## Assemble and run
 
 ```
-ca65 oops.asm -o oops.o && ld65 -C nes.cfg oops.o -o oops.nes
+ca65 apu.asm -o apu.o && ld65 -C nes.cfg apu.o -o apu.nes
 ```
 
-Eight rows of red blocks where you wanted one — and not a word of complaint.
+A steady pulse tone; a blank blue screen.
 
-## Try this: it was never broken — your number was
+## Try this: change the pitch
 
-Change `cpx #255` to `cpx #32`. One clean row. Nothing about the machine changed; only your number did. That's the whole lesson in one edit: the machine was doing its job perfectly the entire time.
+`$4002`/`$4003` are the timer — a *smaller* number is a *higher* note (the timer counts down, so fewer counts means a faster wave). Lower the timer low byte toward `$80` and the note rises; raise it and the note falls. The number is the pitch.
 
-## Try this: break it a different way
+## Try this: a different duty
 
-Change the tile load `lda #$01` to `lda #$00` (the blank tile) and run the buggy 255 version again. Now eight rows fill with *nothing visible* — the same faithful execution of a different wrong intention, writing blank tiles exactly where you said. Predict what you'll see before you run it, then confirm. Again: no error, just the wrong thing done exactly.
+The top two bits of `$4000` set the duty cycle. Try `$3f` (duty 0 — a thin, nasal 12.5%), `$7f` (25%), or back to `$bf` (50%). Same channel, same pitch; a different duty gives the note a different colour. That choice is most of what makes one NES instrument sound unlike another.
+
+## If it doesn't work
+
+- **Silence.** Pulse 1 isn't enabled — `$4015` needs bit 0 set (`$01`). And a sweep with the *negate* bit set can mute the channel even when it looks off; keep `$4001` at `$00`.
+- **A click, then nothing.** The channel counted its length down to zero. Bit 5 of `$4000` tells it to **hold** — set it (the `$bf` here does) so the note sustains.
+- **A tone that drifts in pitch.** The sweep unit is running. `$4001` at `$00` leaves the pitch alone.
 
 ## What you've learnt
 
-The machine has no safety net: it does exactly what you wrote, even when you're wrong, and never warns you — so you debug by observing the state, not by reading errors.
+The **APU** is the NES's sound chip, inside the 2A03 itself. You set a pulse channel's **duty and volume** (`$4000`), its **pitch** (`$4002`/`$4003`), switch it on at `$4015`, and the write to `$4003` starts the note. Told to hold, the channel rings on its own while the CPU is free. You set the registers; the chip plays.
 
-## What's next — you've met the machine
+## What's next
 
-That's the Primer. Look back at what stopped being magic: the build-and-link loop; the three registers; bytes with no type; the short street of memory; the screen behind the PPU window, its colour in a palette, its shapes in CHR; decisions built from test-and-branch; the NMI heartbeat; reading the joypad; the sliding index; counted loops; subroutines and the stack; arithmetic and the carry it makes you mind; setting and clearing bits; numbers bigger than a byte — and now the mindset that ties it together.
-
-You haven't built a game yet — that's the point. You've built the *understanding* a game needs. Next comes **Dash**, your first complete NES game, where this all turns into something you play — and where the two things we deliberately left open get solved: reading the whole controller at once (*The Joypad in Your Hand*), and the movable pointer that writes through an address you compute (*Bigger Than a Byte*), each resolved exactly when the game needs it.
-
-And notice what carried you here: the chip is the same 6502 the C64 runs, so half of this Primer was the same lessons in a new setting. What was genuinely new — the PPU window, the palette, CHR, the NMI heartbeat, the controller's conveyor belt — was the *console* around the chip. That's the shape of every new machine you'll ever meet: a familiar processor, wrapped in hardware with its own personality. Go and write something the NES will trust you to get right.
+That's the last of what the machine can *do* — its screen, its colour, its shapes, its input, and now its sound. One unit remains, and it isn't about a new instruction. Next — **The Machine Trusts You** — what it means to program a machine that does exactly what you wrote, even when you're wrong.
