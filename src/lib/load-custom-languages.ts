@@ -8,6 +8,7 @@ import asmLang from 'shiki/langs/asm.mjs';
 import basicGrammar from '../syntax/basic.tmLanguage.json';
 import asm6502Grammar from '../syntax/6502.tmLanguage.json';
 import amosGrammar from '../syntax/amos.tmLanguage.json';
+import blitzGrammar from '../syntax/blitz.tmLanguage.json';
 import sinclairBasicGrammar from '../syntax/sinclair-basic.tmLanguage.json';
 import ca65Grammar from '../syntax/ca65.tmLanguage.json';
 import z80Grammar from '../syntax/z80.tmLanguage.json';
@@ -48,6 +49,12 @@ export async function loadCode198xLanguages() {
   await loadCustomLanguage({
     ...amosGrammar,
     name: 'amos',
+  });
+
+  // Load Blitz BASIC 2
+  await loadCustomLanguage({
+    ...blitzGrammar,
+    name: 'blitz',
   });
 
   // Load Sinclair BASIC
