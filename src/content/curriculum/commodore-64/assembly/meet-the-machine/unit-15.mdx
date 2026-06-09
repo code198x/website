@@ -1,71 +1,92 @@
 ---
-title: "The Machine Trusts You"
-description: "The last unit, and the most important. There's no error message, no bounds check, no guard rail — the machine does exactly what you wrote, even when you're wrong. Learn to debug by observing, not by reading errors."
-pubDate: 2026-06-04
+title: "The Machine Speaks Back"
+description: "Unit 8 taught the machine to hear you. This one teaches it to answer. The SID is the C64's three-voice synthesiser — set a voice's pitch, its envelope, and the volume, open the gate, and the chip holds the note on its own while your code does nothing."
+pubDate: 2026-06-09
 game: 0
 unit: 15
-tags: ["assembly", "6510", "debugging", "mindset", "getting-started"]
+tags: ["assembly", "6510", "sid", "sound", "getting-started"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import Figure from "@components/Figure.astro";
+import AudioClip from "@components/AudioClip.astro";
 
-Every unit so far ended with something that worked. This one ends with something that's **wrong** — on purpose — because the single most important thing to learn about this machine is what it does when *you* are wrong.
+Back in Unit 8 the machine learned to *hear* you — reading the joystick through a register. This unit is the other half: the machine answering back. And on the C64, answering means the **SID**.
 
-## What you'll see by the end
+The SID (Sound Interface Device) is a proper **synthesiser** on a chip — three independent voices, each with its own pitch, waveform, and volume envelope. It's why C64 music still sounds like nothing else. You don't bang out the waveform yourself the way a lesser machine would; you set the chip's registers — the knobs on the synth — and it generates the sound on its own, holding the note while your code moves on.
+
+A voice needs four things set: its **pitch** (a frequency), its **envelope** (how the note swells and fades — attack, decay, sustain, release), the master **volume**, and a **waveform** with the **gate** opened to start it. This unit plays one steady note on voice 1.
+
+## What you'll hear by the end
+
+<AudioClip
+  src="/images/commodore-64/assembly/meet-the-machine/unit-15/tone.wav"
+  title="A sawtooth tone — SID voice 1 holding one note"
+  source="Commodore 64 · SID 6581 · voice 1 sawtooth"
+/>
+
+A steady, bright tone, held for as long as the machine runs. It's a **sawtooth** wave — the buzzy, reedy voice that carries a thousand C64 basslines. The waveform strip above is the real captured output.
 
 <Figure
   src="/images/commodore-64/assembly/meet-the-machine/unit-15/screenshot.png"
-  alt="Several rows of solid red blocks filling the top of the C64 screen, far more than one."
-  caption="Six-and-a-bit rows, not one — the machine filled exactly 255 cells because 255 is the number we wrote; a 'mistake' only because we meant 40."
+  alt="A flat blue C64 screen with a black border, nothing drawn on it."
+  caption="There's nothing to see — the work is in the speakers. The blank screen is just a sign the program is running."
 />
 
-That was *supposed* to be one row of 40. It's six and a bit. The machine filled precisely 255 cells — right down to the last one — because 255 is the number we wrote. It is only a "mistake" because *we* know we meant 40. The machine couldn't know, and didn't ask.
+## Set the knobs, open the gate
 
-## The bug, running
+<CodeFromFile src="commodore-64/assembly/meet-the-machine/unit-15/sid.asm" />
 
-<CodeFromFile src="commodore-64/assembly/meet-the-machine/unit-15/no-safety-net.asm" />
+The sound is one block of stores to the SID's registers, which live from `$D400`:
 
-This is the row-fill from *The Counted Loop* with one wrong number: `cpx #255` where we meant `cpx #40`. It assembled without a murmur — a wrong *count* is not a wrong *spelling*, so the assembler had nothing to object to. Then it ran exactly as written, laying 255 blocks across six rows.
+```
+lda #$0f
+sta $d418           ; master volume to maximum (0-15)
 
-## There is no safety net
+lda #$00
+sta $d400           ; frequency, low byte
+lda #$11
+sta $d401           ; frequency, high byte  -> the pitch
 
-In BASIC, mistakes were met with a friendly stop: `?SYNTAX ERROR`, `?ILLEGAL QUANTITY`, `?OUT OF MEMORY`. The language watched over you and halted when something looked off.
+lda #$00
+sta $d405           ; attack 0, decay 0
+lda #$f0
+sta $d406           ; sustain 15, release 0  -> the note holds at full
 
-The bare machine does none of that. There is no bounds check, no type check, no "are you sure," no error at all. Write past where you meant to, point at the wrong address, leave a `jsr` without its `rts` — and the 6510 does **exactly what the bytes say** and carries straight on, overwriting whatever it touches, never pausing to warn you. The machine trusts you completely. That trust is the freedom that lets you draw the screen with a single store — and the responsibility that means every byte is yours to get right.
+lda #$21
+sta $d404           ; sawtooth waveform + gate ON  -> the note starts
+```
 
-So debugging here is a different craft. It is not reading an error message, because there isn't one. It is **observing the state** — the register view, the memory view, the stack you watched in *Call, Return, and a Stack* — and reasoning about what the machine *did* versus what you *meant*. Every view you've leaned on through this Primer was you learning to debug by looking. That's the discipline the whole course rests on.
+Every line is a `sta` to a SID register — you're turning knobs on a synthesiser. `$D418` is the master volume. `$D400`/`$D401` set the pitch as a 16-bit frequency, low byte then high (the two-byte numbers from Unit 14). `$D405`/`$D406` set the **envelope**: with sustain at maximum and release at zero, the note holds at full level for as long as it's gated.
+
+The last store does two things at once. `$D404` is voice 1's control register; `$21` selects the **sawtooth** waveform (bit 5) *and* opens the **gate** (bit 0). Opening the gate is what starts the note — and because nothing ever closes it, the note rings on while the CPU sits in `loop`. You set the chip going and walked away; the SID does the rest.
 
 ## Assemble and run
 
 ```
-acme -f cbm -o oops.prg oops.asm
+acme -f cbm -o sid.prg sid.asm
 ```
 
-Six rows of red blocks where you wanted one — and not a word of complaint.
+A steady sawtooth tone; a blank blue screen.
 
-## Try this: it was never broken — your number was
+## Try this: change the pitch
 
-Change `cpx #255` to `cpx #40`. One clean row. Nothing about the machine changed; only your number did. That's the whole lesson in one edit: the machine was doing its job perfectly the entire time.
+`$D400`/`$D401` are the frequency. Raise the high byte — `lda #$22` instead of `#$11` — and the note jumps roughly an octave; lower it and the note drops. The number is the pitch; the SID turns it into a tone.
 
-## Try this: break it a different way
+## Try this: a different voice
 
-Change the shape load `lda #$a0` to `lda #1` (screen code for `A`) and run the buggy 255 version again. Now six rows fill with red letter `A`s instead of blocks — the same faithful execution of a different wrong intention. Predict what you'll see before you run it, then confirm. Again: no error, just the wrong thing done exactly.
+Change `$D404` from `$21` to `$11` (triangle + gate) for a softer, flute-like note, or `$41` (pulse + gate) for a hollow square — though pulse also wants a width set in `$D402`/`$D403`. Same chip, same four steps; a different waveform bit gives a different timbre.
 
 ## If it doesn't work
 
-- **The machine seems to freeze or the screen fills further than expected.** Push the count higher and the fill runs past the screen into other memory — exactly the "no guard rail" lesson biting for real. Reset, and bring the count back down.
-- **Nothing happens at all.** The `fill` loop or its `bne` is mistyped, so the body never runs. Compare against the listing.
-- **You wanted it to misbehave and it didn't.** Then you fixed the bug — the happiest failure on this page.
+- **Silence.** Volume at `$D418` is zero, or the gate never opened — the control write to `$D404` must have bit 0 set (`$21`, not `$20`).
+- **A click, then nothing.** The envelope released. With release in the low nibble of `$D406` set above zero, the note fades after the gate; keep sustain high and release at zero for a held tone.
+- **A tone that never stops even when you mean it to.** That's the gate staying open — clearing bit 0 of `$D404` (write `$20`) closes the gate and starts the release. Sound is something you turn off as well as on.
 
 ## What you've learnt
 
-The machine has no safety net: it does exactly what you wrote, even when you're wrong, and never warns you — so you debug by observing the state, not by reading errors.
+The **SID** is the C64's three-voice synthesiser. You set a voice's **pitch** (`$D400`/`$D401`), its **envelope** (`$D405`/`$D406`), the master **volume** (`$D418`), then write a **waveform plus the gate** to `$D404` to start the note. The chip holds it on its own while the CPU is free. You turn the knobs; the synth plays.
 
-## What's next — you've met the machine
+## What's next
 
-That's the Primer. Look back at what stopped being magic: the build-run loop; the three registers; bytes with no type; memory as a street of boxes; the screen and its colour as *just memory*; decisions built from test-and-branch; reading the joystick; the sliding index; counted loops; subroutines and the stack; arithmetic and the carry it makes you mind; setting and clearing bits; numbers bigger than a byte — and now the mindset that ties it together.
-
-You haven't built a game yet — that's the point. You've built the *understanding* a game needs. Next comes **Starfield**, your first complete game, where this all turns into something you play — and where the two things we deliberately left open get solved: reading the whole joystick at once (*The Machine Can Hear You*), and the movable pointer that writes through an address you compute (*A Finger on the Boxes*), each resolved exactly when the game needs it.
-
-Go and write something the machine will trust you to get right.
+That's the last of what the machine can *do* — you've now driven its screen, its colour, its input, and its sound. One unit remains, and it isn't about a new instruction. Next — **The Machine Trusts You** — what it means to program a machine that does exactly what you wrote, even when you're wrong.
