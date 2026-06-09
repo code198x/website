@@ -1,67 +1,99 @@
 ---
-title: "The Machine Trusts You"
-description: "The last beat, and the most important. There's no error message, no bounds check, no guard rail — the machine does exactly what you wrote, even when you're wrong. Learn to debug by observing, not by reading errors."
-pubDate: 2026-06-01
+title: "The Machine Speaks Back"
+description: "The 48K Spectrum has no sound chip. Sound is the CPU's own job: flip one bit of one port to push the speaker, wait, flip it back, wait — over and over. That square wave is the tone, and the CPU does nothing else while it plays. On this machine, you are the sound chip."
+pubDate: 2026-06-09
 game: 0
 unit: 15
-tags: ["assembly", "z80", "debugging", "mindset", "getting-started"]
+tags: ["assembly", "z80", "beeper", "sound", "getting-started"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import Figure from "@components/Figure.astro";
+import AudioClip from "@components/AudioClip.astro";
 
-Every unit so far ended with something that worked. This one ends with something that's **wrong** — on purpose — because the single most important thing to learn about this machine is what it does when *you* are wrong.
+Back in Unit 8 the machine learned to *hear* you, reading the keyboard through a port. This unit is the answer — and here the Spectrum stands apart from every other machine in this course.
 
-## What you'll see by the end
+The C64 has the SID. The NES has its APU. The Amiga has Paula. The 48K Spectrum has **nothing** — no sound chip at all. So how does it make a sound? The **CPU does it by hand.** There is one bit, bit 4 of port `$FE`, wired straight to the speaker. Write a 1 and the speaker cone pushes out; write a 0 and it pulls back. Do that fast enough, evenly enough, and the in-and-out becomes a **tone**.
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/meet-the-machine/unit-15/overrun.png" alt="A solid red block about eight rows tall near the top of the screen, its bottom-right corner stopping one cell short." caption="Meant to be one row; it's about eight, the bottom-right corner one cell short. The machine filled exactly 255 cells — the number we wrote — and never said a word." />
+That's the whole trick: flip the bit, wait, flip it back, wait, forever. The waiting sets the pitch — a longer wait is a lower note. And because the CPU is busy counting out those waits, it can do *nothing else* while the sound plays. On this machine, you aren't programming a sound chip. You **are** the sound chip.
 
-That was *supposed* to be one red row. It's about eight. Count them — and notice the last row stops one cell short. That short corner is cell number 255, exactly. The machine filled precisely 255 cells, right to the last one, because that's the number we wrote. It is only a "mistake" because *we* know we meant 32. The machine couldn't know, and didn't ask.
+## What you'll hear by the end
 
-## The bug, running
+<AudioClip
+  src="/images/sinclair-zx-spectrum/assembly/meet-the-machine/unit-15/tone.wav"
+  title="A beeper tone — the CPU toggling the speaker by hand"
+  source="ZX Spectrum 48K · beeper · port $FE bit 4"
+/>
 
-<CodeFromFile src="sinclair-zx-spectrum/assembly/meet-the-machine/unit-15/no-safety-net.asm" />
+A plain, buzzy tone, held steady. It's a square wave — the speaker slammed between its two positions — and that thin, direct sound is the voice of a thousand Spectrum games. The waveform strip above is the real captured output: two flat halves, exactly as the bit goes high then low.
 
-This is the row-fill from *Counting Toward Zero* with one wrong number: `ld b, 255` where we meant `ld b, 32`. It assembled without a murmur — a wrong *count* is not a wrong *spelling*, so the assembler had nothing to object to. Then it ran exactly as written.
+<Figure
+  src="/images/sinclair-zx-spectrum/assembly/meet-the-machine/unit-15/screenshot.png"
+  alt="A flat cyan Spectrum screen and border, nothing drawn on it."
+  caption="There's nothing to see — the work is in the speaker. The flat colour is just a sign the program is running."
+/>
 
-## There is no safety net
+## Flip the bit, wait, repeat
 
-In BASIC, mistakes were met with a friendly stop: *Variable not found*, *Subscript wrong*, *Out of memory*. The language watched over you and halted when something looked off.
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meet-the-machine/unit-15/beeper.asm" />
 
-The bare machine does none of that. There is no bounds check, no type check, no "are you sure," no error at all. Write past where you meant to, point at the wrong address, leave a `call` without its `ret` — and the Z80 does **exactly what the bytes say** and carries straight on, corrupting whatever it touches, never pausing to warn you. The machine trusts you completely. That trust is the freedom that lets you write the screen with a single poke — and the responsibility that means every byte is yours to get right.
+After clearing the screen to a flat colour, the tone is one short loop:
 
-So debugging here is a different craft. It is not reading an error message, because there isn't one. It is **observing the state** — the register view, the memory view, the stack at `SP` you watched in *Call, Return, and a Stack* — and reasoning about what the machine *did* versus what you *meant*. Every view you've leaned on through this Primer was you learning to debug by looking. That's the discipline the whole course rests on.
+```
+loop:
+        ld      a, $15           ; speaker bit (4) HIGH, border cyan (bits 0-2)
+        out     ($fe), a
+        call    delay            ; hold...
+
+        ld      a, $05           ; speaker bit LOW, border still cyan
+        out     ($fe), a
+        call    delay            ; ...hold
+
+        jr      loop             ; forever - the toggling is the tone
+```
+
+`out ($fe), a` writes a byte to port `$FE`. Bit 4 is the speaker: `$15` has it set (high), `$05` has it clear (low) — and both keep bits 0–2 at `5`, so the border stays cyan the whole time. Between the two writes is a `delay`: a loop that counts a register down to zero and does nothing else. That pause is half of one wave. Flip high, wait; flip low, wait; round again — a square wave, built one instruction at a time.
+
+The `delay` routine *is* the pitch:
+
+```
+delay:
+        ld      bc, 200          ; the wait length - bigger is a lower note
+.wait:  dec     bc
+        ld      a, b
+        or      c
+        jr      nz, .wait
+        ret
+```
+
+It loads a number and counts it down. A bigger number is a longer wait, a slower flip, a lower note. There is no frequency register to set — the *time the CPU spends counting* is the frequency. And note the `di` at the top of the program: with interrupts off, nothing else steals the CPU's attention, so the waits stay even and the tone stays pure.
 
 ## Assemble and run
 
 ```
-pasmonext --sna no-safety-net.asm primer.sna
+pasmonext --sna beeper.asm beeper.sna
 ```
 
-Eight rows of red where you wanted one — and not a word of complaint.
+A steady tone from the speaker; a flat cyan screen.
 
-## Try this: it was never broken — your number was
+## Try this: change the pitch
 
-Change `ld b, 255` to `ld b, 32`. One clean row. Nothing about the machine changed; only your number did. That's the whole lesson in one edit: the machine was doing its job perfectly the entire time.
+The wait length is `ld bc, 200`. Make it `ld bc, 100` and the note jumps higher; `ld bc, 400` and it drops lower. You're not setting a pitch — you're setting how long the CPU dawdles between flips, and that *is* the pitch.
 
-## Try this: break it a different way
+## Try this: a two-note tune
 
-Point the fill at the wrong street: change `ld hl, $5800` to `ld hl, $4000`. Now the same bytes land in the *pixel* map instead of the colour map, and you'll get a block of garbage pixels instead of colour. Predict what you'll see before you run it — then confirm. Again: no error, just the wrong thing done faithfully.
+Wrap the loop in an outer counter so it flips a few hundred times, then change `bc` and flip a few hundred more. Two waits, two pitches — the start of a melody. This is exactly how Spectrum games played music: not by handing notes to a chip, but by the CPU counting out every single wave of every single note, itself.
 
-## When it's wrong, see why
+## If it doesn't work
 
-- **The whole screen goes red and the machine seems stuck.** You pushed the count even higher and the fill ran past the colour map into other memory. Reset the machine and bring the count back down — this is exactly the "no guard rail" lesson biting for real.
-- **Nothing happens at all.** The `.fill` loop or its `djnz` is mistyped, so the body never runs. Compare against the listing.
-- **You wanted it to misbehave and it didn't.** Then you fixed the bug — which is the happiest failure on this page.
+- **Silence.** Bit 4 isn't toggling — both `out` values must differ in bit 4 (`$15` high, `$05` low). If they're the same, the speaker never moves.
+- **A faint or harsh click instead of a tone.** The two delays aren't equal, or the loop isn't repeating — the wave needs an even high-then-low, over and over, to sound like a note.
+- **The tone wavers in pitch.** Interrupts are firing and stealing time. The `di` at the top keeps the CPU's count even; without it the 50-times-a-second interrupt jitters the note.
 
 ## What you've learnt
 
-The machine has no safety net: it does exactly what you wrote, even when you're wrong, and never warns you — so you debug by observing the state, not by reading errors.
+The 48K Spectrum has **no sound chip**. Sound is made by the CPU itself: toggling **bit 4 of port `$FE`** to drive the speaker, with a counted **delay** between flips that sets the pitch. The CPU does nothing else while the tone plays — it *is* the oscillator. It's the opposite of a sound chip you set going and leave; here, the sound is the program.
 
-## What's next — you've met the machine
+## What's next
 
-That's the Primer. Look back at what stopped being magic: the build-run loop; registers; bytes with no type; memory as a street of boxes; the screen and its colour as *just memory*; decisions built from test-and-jump; reading a key; pointers; counted loops; subroutines and the stack; arithmetic; setting and clearing bits; numbers bigger than a byte — and now the mindset that ties it together.
-
-You haven't built a game yet — that's the point. You've built the *understanding* a game needs. Next comes the **tiny first game**, where this all turns into something you play, and where the two mysteries we deliberately left open get solved: the screen's strange layout (*The Screen Is Memory*) and the full keyboard (*The Machine Can Hear You*), each resolved exactly when the game needs it.
-
-Go and write something the machine will trust you to get right.
+That's the last of what the machine can *do* — its screen, its colour, its input, and now its sound, all of it driven straight by the CPU. One unit remains, and it isn't about a new instruction. Next — **The Machine Trusts You** — what it means to program a machine that does exactly what you wrote, even when you're wrong.
