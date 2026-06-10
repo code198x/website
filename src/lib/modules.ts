@@ -93,3 +93,22 @@ export async function getCompleteModulesForPlatform(platform: string): Promise<n
     .filter(entry => entry.data.platform === platform)
     .reduce((total, entry) => total + entry.data.modules.filter(m => m.status === 'complete').length, 0);
 }
+
+/**
+ * Catalogue-derived stat cards for a track's PathCard — honest by construction
+ * (never hand-typed). Shows "complete / total modules" and the count of units
+ * actually live, so the numbers can't overclaim coming-soon content. See
+ * decisions/state-lives-in-catalogues.md.
+ */
+export async function getTrackStatCards(
+  platform: string,
+  track: 'assembly' | 'basic' | 'amos' | 'blitz'
+): Promise<Array<{ value: string; label: string }>> {
+  const mods = await getModulesWithCounts(platform, track);
+  const complete = mods.filter(m => m.status === 'complete');
+  const unitsLive = complete.reduce((sum, m) => sum + (m.unitsAvailable ?? 0), 0);
+  return [
+    { value: `${complete.length}/${mods.length}`, label: 'Modules live' },
+    { value: String(unitsLive), label: 'Units live' },
+  ];
+}
