@@ -1,0 +1,119 @@
+---
+title: "The Farmyard"
+description: "Compose the playfield: the Copper paints the farmyard's bands from above, and one bitplane plays fence, footbridge and lane markings — recoloured per band."
+pubDate: 2026-06-11
+game: 1
+unit: 1
+tags: ["assembly", "68000", "copper", "bitplane", "playfield"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+A green fold with five pens. A stream with a footbridge. A grey lane with dashed markings. A wide field at the bottom where the flock will wait. One screen that reads as a *place* — and the trick that draws it is the unit's whole lesson.
+
+This is Unit 1 of **Flock**, a sheep-crossing arcade game. Over the coming units you'll put a sheep on this screen, steer her, dodge tractors, ride hay bales, and fill the fold. Today there are no sheep — today you build the farm. The Primer taught you the Copper and the bitplane as separate ideas; this unit composes them with intent, and adds one move the Primer didn't: making a single bitplane do four different jobs.
+
+## The Display
+
+![Flock Unit 1](/images/commodore-amiga/assembly/flock/unit-01/screenshot.png)
+
+Looked at from above, the farmyard is horizontal bands — and horizontal bands are what the Copper does best:
+
+- **The fold** (top) — brighter pasture, with a fence and five pens drawn into the bitplane. Each pen opens to the south. This is where saved sheep will live.
+- **The stream** — a blue band with a wooden footbridge across the middle. In Arc 1 the bridge is the only way over.
+- **The lane** — grey tarmac, two dashed lines dividing it into three traffic lanes. Tractors arrive in Unit 5.
+- **The field** (bottom) — where the flock waits its turn.
+
+Between each pair, a thin dark strip of hedgerow, bank or verge keeps the bands from touching.
+
+## Run It First
+
+### Step 1: Build the Executable
+
+```bash
+vasmm68k_mot -Fhunkexe -kick1hunks -nosym -o flock flock.asm
+```
+
+### Step 2: Create a Bootable Disk
+
+```bash
+xdftool flock.adf create + format "Flock" ofs + boot install boot1x
+xdftool flock.adf + makedir s
+echo "flock" > startup-sequence
+xdftool flock.adf + write startup-sequence s/startup-sequence
+xdftool flock.adf + write flock + protect flock +e
+rm startup-sequence
+```
+
+### Step 3: Run in an Emulator
+
+Boot `flock.adf` in an A500 configuration with a Kickstart 1.3 ROM (FS-UAE, WinUAE, or Emu198x). The disk boots straight into the farmyard. **To exit:** click the left mouse button, then reset.
+
+## One Plane, Four Jobs
+
+Here's the move that makes this screen cheap. The detail — fence, bridge, lane dashes — is all drawn into **one bitplane**. A single plane gives every set pixel the same colour: whatever's in `COLOR01`. That sounds like a limitation, until you remember the Copper can rewrite *any* register as the beam sweeps down.
+
+So at each band boundary, the Copper changes two colours, not one:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-01/snippets/01-copper-bands.asm" />
+
+`COLOR00` is the band itself — pasture, water, tarmac. `COLOR01` is **what a set pixel means in that band**: brown fence in the fold, wood on the stream, white paint on the lane. The same plane, recoloured by position, plays four parts. The fence and the lane markings can never collide, because they live in different bands — so they can share a bitplane without ever sharing a colour.
+
+This is the Amiga way of thinking: don't draw more, *redefine* what you've drawn as the beam passes.
+
+## Drawing the Detail
+
+The shapes themselves are nothing exotic — byte-aligned rectangles of set pixels, written by the CPU at startup:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-01/snippets/02-rectfill.asm" />
+
+`rectfill` walks the plane row by row — the address arithmetic is `row × 40 + x`, since a 320-pixel row is 40 bytes. Everything on screen is calls to this one routine: a full-width bar plus six posts makes the fence and pens; a 4-byte-wide block makes the bridge; a loop of short bars makes each dashed line.
+
+One habit worth noticing: the band rows live in named constants (`ROW_STREAM`, `ROW_LANE`...) and the Copper waits are derived from the same numbers — the display window starts at beam line `$2C`, so *band row 48* means *wait for line `$2C + 48 = $5C`*. Keep the map in one place and the bands and their detail can't drift apart.
+
+## Experiment: Rearrange the Farm
+
+Everything tweakable sits at the top of `flock.asm`:
+
+```asm
+COLOUR_WATER        equ $036A       ; The stream
+COLOUR_LANE         equ $0666       ; The lane's tarmac
+ROW_STREAM          equ 48
+ROW_LANE            equ 96
+```
+
+Try these:
+
+- `COLOUR_WATER equ $0248` — a deeper, moodier stream.
+- `COLOUR_FIELD equ $0640` — parched late-summer grass.
+- Move `ROW_LANE` to `80` — but remember to move its Copper WAIT to match (`$2C + 80 = $7C`). Watch what happens to the dashes if you move the band but not the bitplane rows: the markings stay where they were drawn, and stop being white. That mismatch *is* the lesson of this unit, seen from the other side.
+- Widen the bridge: in `drawfarmyard`, change the bridge's width from `4` to `6` bytes.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-01/flock.asm" />
+
+## If It Doesn't Work
+
+- **Black screen?** DMA needs `$8380` — SET + DMAEN + **BPLEN** + COPEN. This unit displays a bitplane, so bit 8 (BPLEN) matters now; the Primer's pure-Copper screens got away without it.
+- **Bands but no detail?** The Copper list's `BPL1PTH`/`BPL1PTL` MOVEs must point at the plane — the CPU pokes the address into the list at startup (`copbpl`). If those two words are still zero, Denise fetches plane data from address 0 and you'll see garbage or nothing.
+- **Detail in the wrong colours?** Check the WAIT lines. Band row *N* is beam line `$2C + N` — in hex. Mixing decimal rows with hex lines puts a band's `COLOR01` change on the wrong boundary, and the bridge turns fence-brown.
+- **Everything shifted or smeared?** `BPL1MOD` must be 0 for a 320-wide plane with no extra fetch — and `DDFSTRT`/`DDFSTOP` should be `$38`/`$D0` for lores.
+
+## Try This
+
+1. **A second hedgerow.** Add a dark strip between the fold's pens and the hedge — a new WAIT + two MOVEs. Bands cost four words each; spend a few.
+2. **Plank the bridge.** The bridge is a solid block. In `drawfarmyard`, skip every eighth row of it (draw four 7-row blocks instead of one 32-row block) and it reads as planks over the water.
+3. **Count the cost.** The whole farmyard's detail is one subroutine and a handful of calls. Estimate how many bytes of bitplane the fence touches — then check it against the plane's 10,240 total. How much of the screen did you *not* have to draw?
+
+## What You've Learnt
+
+- **Composing a playfield** — Copper bands for the zones, one bitplane for the detail, and named constants keeping the two in step.
+- **`COLOR01` per band** — a single plane's pixels can mean different things at different screen positions. Recolour, don't redraw.
+- **`BPLEN`** — bitplane DMA has its own enable bit; a display with planes needs `$8380`, not the Primer's `$8280`.
+- **Poking the Copper list** — the CPU writes the plane's address into the list's `BPL1PTH`/`BPL1PTL` MOVEs at startup, so the Copper re-points Denise at the plane every frame.
+- **`rectfill`** — row × 40 + x, and a rectangle is two nested loops. The workhorse this game will lean on until the Blitter takes over (that's Exodus, the next game).
+
+## What's Next
+
+In Unit 2, the first **hardware sprite** appears: a white sheep, standing in the field. No bitplane drawing, no erasing — the chip overlays her on the farmyard for free, and from then on the screen has a character in it.
