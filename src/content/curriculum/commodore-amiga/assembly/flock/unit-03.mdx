@@ -1,0 +1,109 @@
+---
+title: "Steering"
+description: "The joystick arrives. Read the stick each frame, hop the sheep in 8-pixel steps, rewrite the sprite's POS/CTL — position is data, and now the player owns it."
+pubDate: 2026-06-11
+game: 1
+unit: 3
+tags: ["assembly", "68000", "joystick", "input", "game-loop"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Push the stick, and the sheep goes where you point her.
+
+That sentence is the whole of game programming, reduced to its bones: read an input, change a number, show the result, every frame. Unit 2 ended with a promise — that movement is nothing but rewriting the sprite's two control words. This unit keeps it. The sheep's position becomes a pair of variables; the joystick edits them; `updsprite` packs them back into POS/CTL each frame. The screen has a player now.
+
+## The Display
+
+![Flock Unit 3](/images/commodore-amiga/assembly/flock/unit-03/screenshot.png)
+
+She's left the field. The screenshot's capture script holds *up* for forty frames and *right* for twenty — six hops north and three east — and there she stands, mid-lane, on tarmac she has no business being on. Nothing dangerous drives it. Yet.
+
+## Reading the Stick
+
+The joystick lives on **control port 2**, readable at `JOY1DAT`. And the Amiga's joystick decode is famously sideways — the register was designed for mice, and stick directions hide in counter bits:
+
+- **right** = bit 1, **left** = bit 9 — fine so far;
+- **down** = bit 0 *XOR* bit 1, **up** = bit 8 *XOR* bit 9 — not fine.
+
+One trick untangles it: XOR the register with itself shifted right a bit, and the awkward pairs collapse into plainly testable bits.
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-03/snippets/01-steer.asm" />
+
+After the XOR, `d1` bit 8 means *up* and bit 0 means *down*, while `d0` keeps *left* and *right* where they always were. Four `btst`s, four directions.
+
+### Hop, Don't Glide
+
+A crosser wants **steps**, not sliding — Frogger's frog hops, and so does our sheep. Two tweakables make the feel:
+
+```asm
+STEP        equ 8           ; Pixels per hop
+COOLDOWN    equ 6           ; Frames between hops
+```
+
+When she hops, `cooldown` is set; until it counts back to zero, the stick is ignored. Hold *up* and she crosses the farm in a steady hop-hop-hop rhythm instead of gliding like a cursor. (Try `COOLDOWN equ 0` and feel the difference — she stops being an animal at all.)
+
+The last job in `steer` is the clamp: hold her inside the farm's 320×256, so the bounds are part of the same routine that moves her.
+
+## Position Is Data
+
+What the assembler computed once at build time in Unit 2, the CPU now computes sixty times a second:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-03/snippets/02-updsprite.asm" />
+
+Same packing, new author. Screen coordinates gain their beam offsets (`+$2C`, `+$80`), POS takes the vertical start and the top eight horizontal bits, CTL takes the stop row and the leftover ninth bits — needed for real now, because the bottom of the field pushes `VSTART` past 255. The sprite data's control words start as zeros; `updsprite` writes them before the first frame is ever fetched, and every frame after.
+
+## One Frame, Exactly Once
+
+This unit hides a trap that catches nearly everyone, so it's worth springing deliberately. The Unit 1 main loop waited for the beam to reach line 0 — and that was fine while the loop body did nothing. Now the body does work, and a subtle bug appears: if `steer` and `updsprite` finish while the beam is *still on line 0*, the wait falls straight through and the body runs **again in the same frame**. The sheep hops at double speed, or worse — and inconsistently, because it depends on how long the body took.
+
+The fix is to wait in two phases:
+
+```asm
+.vbleave:                               ; First: wait to LEAVE line 0
+            move.l  VPOSR(a5),d0
+            and.l   d1,d0
+            beq.s   .vbleave
+.vbwait:                                ; Then: wait to reach it again
+            move.l  VPOSR(a5),d0
+            and.l   d1,d0
+            bne.s   .vbwait
+```
+
+Leave the line, then catch it coming round again — the body now runs exactly once per frame, whatever it costs. This capture caught the bug live: the first build of this unit hopped the sheep twice as far as the cooldown allowed, and the two-phase wait was the cure.
+
+## Experiment: The Feel of Her
+
+- `STEP equ 4` with `COOLDOWN equ 2` — small quick steps; more nervous, more rodent.
+- `STEP equ 16` with `COOLDOWN equ 10` — full body-length bounds; more deliberate, almost turn-based.
+- Swap the order of the direction tests so *down* wins over *up* — then hold both (you can't on a real stick, but the register can show it). Which direction should win a conflict, and why is "the first one tested" a design decision?
+- Remove the clamp and walk her off the right-hand edge. Where does she reappear, and what does that tell you about HSTART's nine bits?
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-03/flock.asm" />
+
+## If It Doesn't Work
+
+- **She moves too fast, or inconsistently?** Your loop is running more than once per frame — the single-phase vblank wait bug from above. Wait to leave line 0 before waiting to reach it.
+- **She doesn't move at all?** Check you're reading `JOY1DAT` (`$DFF00C`, port 2) — `JOY0DAT` is the mouse port. In an emulator, make sure a joystick is mapped to port 2.
+- **Up/down work but left/right are swapped — or diagonal chaos?** The decode is the sideways part: left is bit *9*, right is bit *1*, and up/down need the XOR. Test against the table, not intuition.
+- **She tears or vanishes near the bottom of the field?** The ninth bits. Below screen row 211, `VSTART` exceeds 255 and the `V8` flags in CTL must be set — `updsprite` handles it; a hand-packed POS/CTL probably doesn't.
+
+## Try This
+
+1. **Diagonals.** The current `steer` takes the first active direction and ignores the rest. Make a hop apply both axes when the stick is diagonal. Does the farm feel better with or without it? (Frogger says without; you're allowed to disagree.)
+2. **A footprint trail.** Each hop, before moving, write one dark pixel into the bitplane at her old position — `rectfill` with a 1×1 rectangle. Watch her path accumulate across the farm. (You've built a primitive paint program; you've also previewed why moving *bitplane* graphics needs save/restore, which sprites let us skip.)
+3. **Count her speed.** At `STEP 8` / `COOLDOWN 6`, how many seconds does she take to cross all 256 rows on a 50Hz PAL machine? Check your answer against the screen with a stopwatch.
+
+## What You've Learnt
+
+- **`JOY1DAT`** — control port 2's stick, and the sideways decode: right bit 1, left bit 9, up/down behind an XOR.
+- **Hop-and-cooldown** — input feel as two constants; a step rhythm instead of a glide. The first *game-feel* decision in the track.
+- **Runtime POS/CTL packing** — the same arithmetic the assembler did, now done per frame; the ninth bits earn their keep at the bottom of the screen.
+- **The two-phase vblank wait** — run the loop body exactly once per frame, however fast it finishes. Every later unit stands on this loop.
+- **Bounds as part of movement** — clamp where you move, so there's exactly one place position changes.
+
+## What's Next
+
+In Unit 4 she stops gliding rigidly and starts to **amble** — a two-frame walk cycle, swapped by pointing the sprite at different data as she steps. One sheep, two pictures, and suddenly she's alive.
