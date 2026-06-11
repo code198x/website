@@ -1,0 +1,83 @@
+---
+title: "The Stream"
+description: "The rule flips: in the water, the only safe place is aboard a drifting hay bale — one collision latch carrying two laws, a forgiving landing, and a phantom vertical blank that nearly sank the ride."
+pubDate: 2026-06-11
+game: 1
+unit: 12
+tags: ["assembly", "68000", "collision", "sprites", "ride-mode", "vblank"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Arc 1 built a road, and the road has one law: touch nothing. Every collision bit that lights is a lost sheep. Arc 2 opens at the stream that's been waiting at the top of the farmyard since Unit 1 — and the stream inverts the law. In the water, *not* touching is what kills you. A hay bale drifts along the current; aboard it she's safe, and it carries her. Same hardware, same `CLXDAT` latch, the opposite meaning.
+
+## The Display
+
+![Flock Unit 12](/images/commodore-amiga/assembly/flock/unit-12/screenshot.png)
+
+Just east of the footbridge, aboard the bale, drifting with the current — five in hand, and the road's five points on the board.
+
+## One Latch, Two Laws
+
+The bale is sprite 5 — the cart's pair, so it borrows the cart's palette and, more importantly, the cart's **collision bit**. Denise reports sprites in pairs: bit 10 of `CLXDAT` means "the sheep touched sprite 4 *or* 5", and nothing in the hardware will tell you which. The disambiguation is ours, and it's geometric: the cart lives on the road, the bale lives in the stream, and the sheep's row says which world she's in. `checksquash` only treats bit 10 as the cart when she's on the road side of the bank; `checkstream` only treats it as the bale when she's in the water rows. One bit, two judges, separated by a `cmp`.
+
+Two pieces of wiring make it work. First, odd-numbered sprites sit *outside* collision detection unless invited — `ENSP5` in `CLXCON` is the invitation, and without it the bale never registers at all. Second, `CLXDAT` clears when read, so the main loop reads it **exactly once** per frame into `contacts`, and every judge shares the copy. Two routines doing their own reads would silently steal each other's evidence.
+
+## The Water's Law
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-12/snippets/01-checkstream.asm" />
+
+The shape is a chain of acquittals: not in the water rows — dry; centred on the footbridge planks — dry; touching the bale — safe, *and carried*. Only when every excuse runs out does the water start counting.
+
+The carried part is one instruction, and it's the whole feel of the mechanic: `add.w #BALE_SPEED,sheepx`. The bale's drift becomes her movement. She isn't *standing* on a platform, she's *aboard* it — and if she rides too long, the current takes her off the edge of the world, which is still a loss. The stream offers a free ride and charges for oversleeping.
+
+And the landing is forgiven. `CLXDAT` reports the *previous* frame's drawing — the instant she lands on the bale, the evidence hasn't been drawn yet. Drown her on frame one and the mechanic feels broken; that's what `drownarm` is for. Three contactless wet frames before the water takes her: enough to swallow the latch's one-frame lag, short enough that genuinely missing the bale still drowns.
+
+## The Phantom Vertical Blank
+
+This unit found a bug that has been in the game since Unit 3 — and the bale is what exposed it.
+
+The first working ride didn't hold. She boarded cleanly, rode for a second or two, then slid slowly off the *back* of the bale and drowned — losing about a pixel every nine frames. The bale moved once per loop iteration; the ride moved once per *contact*. They should be the same number. They weren't.
+
+The culprit is Unit 3's vertical-blank wait. The beam's line number is nine bits, and it spans **two registers** — `VPOSR` holds the top bit, `VHPOSR` the lower eight. A `move.l` reads them one after the other, and the 68000 makes no promise the beam holds still in between. Catch the crossing from line 255 to 256 and the halves disagree: the top bit from the old line, the low eight from the new one — a line that reads as 0 but isn't. Our wait saw that phantom roughly one frame in nine, ran the loop twice in the frame, and on the extra lap the collision latch was empty: the bale collected its `+1`, the ride went hungry.
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-12/snippets/02-vblank-phantom.asm" />
+
+The fix is the classic idiom: **read it again**. A real line 0 is still line 0 on the second look; a phantom is gone. Two instructions, and the game's clock is honest for the first time since Unit 3 — every earlier unit ran a shade fast and nobody could tell, because *everything* shared the same stretched time. The first mechanic that needed two clocks to agree is the one that told us.
+
+## Experiment: Trust Nothing, Measure Everything
+
+- Delete the confirm read and watch her slide off the back of the bale again. A hardware race you can switch on and off is worth ten paragraphs about one you can't.
+- `BALE_SPEED equ 2` — a faster current. The ride still holds (the carried `add` uses the same constant), but boarding becomes a harder shot. Speed tuning is one number.
+- Shrink the footbridge: `BRIDGE_MAXX equ 160`. The dry column narrows and the bale becomes the *only* sensible route. Level design lives in two constants.
+- `drownarm` threshold to 1 — landings become frame-perfect. Feel how much kindness three frames buys.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-12/flock.asm" />
+
+## If It Doesn't Work
+
+- **She drowns the instant she boards?** Either the grace is missing, or something else reads `CLXDAT` in the same frame — the second read clears the latch and steals the evidence. One read, one shared copy.
+- **The bale never registers at all?** `ENSP5` in `CLXCON`. Odd sprites are out of the collision circuit unless explicitly invited — the hardware default is silence, not safety.
+- **She dies standing on the bridge?** The bridge test is a *sheep-centre* span, not a sprite-left span. Off-by-eight here reads as "the bridge is a lie".
+- **She boards, then slips slowly off the back?** That's the phantom. Your vertical-blank wait is reading a nine-bit counter in two halves and believing a torn answer. Confirm the zero with a second read.
+
+## Try This
+
+1. **A second bale, drifting the other way.** One `vehtab` row with a negative speed — the mover from Unit 8 already knows how to wrap the other edge. Two lanes of water traffic, no new code.
+2. **Pay the crossing.** The road pays `ROAD_POINTS` the first time she clears it; the stream should pay too. Find where the road sets `roadflag` and build the water's twin.
+3. **Hop along the bale.** Steer while riding: the carried `add` and the hop both move her, and suddenly she can walk the deck of a moving ship. Is that a bug, a feature, or a level-design tool? Decide, then defend it.
+
+## What You've Learnt
+
+- **Sprite pairs share collision bits** — bit 10 is "sprite 4 *or* 5", and disambiguation is yours; position is the cheapest witness.
+- **`CLXCON` invitations** — odd sprites don't collide until `ENSPx` says so.
+- **Ride-mode collision** — the same latch can mean death on one row and salvation on another; collision is evidence, the *meaning* is the game's.
+- **Carried-by-platform movement** — the platform's velocity added to the rider, one instruction, the entire Frogger-log feel.
+- **The latch lags the world** — `CLXDAT` testifies about the previous frame; grace windows (`drownarm`) absorb the lag honestly.
+- **Torn reads of split counters** — a 9-bit value across two registers can lie mid-crossing; read twice to confirm. The two-phase wait from Unit 3 needed a third phase all along.
+
+## What's Next
+
+The bale is a kind platform: always there, always solid. The next passenger across the stream is a **duck** — she paddles a steady beat, then dips under to feed, on a cycle you can learn. Don't be standing on her when she does. The platform itself is about to become the hazard.
