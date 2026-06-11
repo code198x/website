@@ -1,0 +1,78 @@
+---
+title: "Squashed"
+description: "CLXDAT arrives — the hardware that watches every sprite and reports what touched what. Sheep meets tractor, the bit goes up, and Flock becomes a game."
+pubDate: 2026-06-11
+game: 1
+unit: 6
+tags: ["assembly", "68000", "collision", "clxdat", "sprites"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Walk her onto the lane now and the lane answers back.
+
+Until this unit, Flock was a diorama — a sheep, a tractor, no relationship between them. The relationship is one register. **`CLXDAT`** is filled in by Denise as she draws: every time two sprites' solid pixels overlap anywhere on screen, the matching bit goes up. The chip does per-pixel collision detection for every pair of sprite groups, every frame, as a side effect of displaying them. You don't compute it. You *read* it.
+
+This is the technique the whole game stands on — the question every crossing turns on is *did the sheep touch that?*, and from this unit to the last one, `CLXDAT` is how it's answered.
+
+## The Display
+
+![Flock Unit 6](/images/commodore-amiga/assembly/flock/unit-06/screenshot.png)
+
+An honest screenshot of a failure. The capture script drove her twelve hops up — far enough to stand deep in the traffic lane — but the tractor met her on the way. This frame is moments later: the lane rolls on, and she's back at the start of the field, where lost sheep restart. The input said *climb*; the world said *no*.
+
+## Reading the Verdict
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-06/snippets/01-checksquash.asm" />
+
+Three things carry all the weight:
+
+- **Bit 9** means *sprite 0 or 1 touched sprite 2 or 3* — our sheep group against our tractor group. `CLXDAT`'s sixteen bits cover every pairing of the four sprite groups (and the playfield, which we'll meet in Arc 2); for now, one bit is the entire law of the lane.
+- **Reading `CLXDAT` clears it.** The register is a latch that accumulates collisions since the last read — so read it **exactly once per frame** and keep the copy. A second read in the same frame sees an empty register and tells you everything is fine while the sheep is under a tractor. This is the classic trap, and half of this unit's troubleshooting table.
+- **The collision is per-pixel,** not per-box. Her transparent corners don't count; fleece against tyre does. The hardware compared every overlapping pixel pair while drawing — free, exact, and already done by the time the frame ends.
+
+One small startup duty: `CLXCON` is written once (even-numbered sprites always take part in comparisons — sheep and tractor both qualify, so zero suffices, but own the register deliberately), and `CLXDAT` is read once to flush whatever the boot left in the latches.
+
+## A Beat of Stillness
+
+What *happens* on a squash is a design decision, and this unit keeps it almost liturgical: she reappears at the start of the field, and for `SQUASH_BEAT` frames (twenty-five — half a second) the stick does nothing. Then life resumes.
+
+That pause earns its place. Without it, a squash teleports her instantly and the player barely registers what happened — death becomes noise. With it, there's a beat to *understand*: I was there, now I'm here, that cost me. The freeze lives in two gates — `checksquash` counts the timer down instead of watching the register, and `steer` refuses input while it runs. (The tractor doesn't pause. The lane doesn't care. That's the point of the lane.)
+
+There's no lost-sheep counter yet, no splat sound, no little legs-in-the-air sprite — those arrive in the coming units. What exists now is the contract: **the lane can take her**. That's the minimum a game needs, and it changes how the farm feels to walk around.
+
+## Experiment: The Rules of Contact
+
+- `SQUASH_BEAT equ 50` — a full second of stillness. Sombre. `equ 5` — barely a stumble. Where's the line between *consequence* and *interruption*?
+- Respawn her somewhere else — the left edge of the field, or exactly where she was hit (set the timer but skip the position reset). Feel how "restart from where you died" deflates the lane entirely.
+- Read `CLXDAT` twice in `checksquash` — keep the `btst` on the *second* read — and drive her under the tractor. She survives. You've built the once-per-frame rule into your fingers now.
+- Make the *tractor* respawn instead: on collision, reset `tractx` to `-16` and leave her standing. Congratulations, the sheep is now the hazard. (Put it back.)
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-06/flock.asm" />
+
+## If It Doesn't Work
+
+- **Collisions never trigger?** Something else is reading `CLXDAT` first — it clears on read, and one read per frame is the budget. Also check the prime read at startup isn't *inside* the loop.
+- **Collisions trigger constantly, even apart?** You're testing the wrong bit. Bit 9 is sprite 0/1-vs-2/3; bits 1–8 involve the *playfield*, and with no bitplanes enabled in `CLXCON` some of those report true permanently. The sprite-to-sprite bits are 9 through 14.
+- **She dies the instant the game starts?** The boot left stale bits in the latch — that's what the startup prime read is for.
+- **She freezes but never comes back?** The timer must be decremented exactly once per frame — in `checksquash`'s already-mid-beat path — and `steer`'s gate must test for zero, not for the constant.
+
+## Try This
+
+1. **Near-miss detector.** Before the `btst`, compare her column with the tractor's: if they're within 24 pixels and it *didn't* hit, you have a near miss. Count them. (No display yet — the score HUD is Unit 10's job — but a memory location you can inspect is enough to prove it.)
+2. **Whose fault was it?** A squash can happen because she hopped into the tractor, or because it drove into her standing still. Can `CLXDAT` tell the difference? (No — it reports contact, not blame. If a design wanted blame, what extra state would *you* keep?)
+3. **The full matrix.** Write out which `CLXDAT` bit would fire for each pairing this game will eventually need: sheep-vs-cart, sheep-vs-bale, sheep-vs-duck. The eight channels and four groups force choices about *which sprite number each cast member gets* — sketch the casting before Unit 8 makes it real.
+
+## What You've Learnt
+
+- **`CLXDAT`** — per-pixel sprite collision, computed by Denise as a side effect of drawing. Bit 9 covers sprite group 0/1 against 2/3; the verdict is read, not calculated.
+- **Clear-on-read discipline** — one read per frame, kept in a register. The second read lies.
+- **`CLXCON`** — the matchmaker: which sprites and planes take part. Even sprites always do; write it deliberately anyway.
+- **The squash beat** — consequence needs a pause to be felt. A timer plus two gates is enough drama for now.
+- **Avoid-mode collision** — touching the hazard loses. Arc 2 inverts the same register into ride-mode, where *not* touching loses. Same hardware, opposite law.
+
+## What's Next
+
+One squash and she's back, free, forever — the lane has teeth but the game has no stakes. Unit 7 counts the cost: **the flock in hand** — a row of little sheep icons, one fewer each time the lane wins, and a game over when the field is empty.
