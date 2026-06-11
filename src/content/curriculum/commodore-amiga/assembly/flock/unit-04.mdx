@@ -1,0 +1,85 @@
+---
+title: "The Amble"
+description: "Two pictures of the same sheep and a pointer that alternates between them on every hop. Animation is choosing which data the sprite channel fetches — nothing more."
+pubDate: 2026-06-11
+game: 1
+unit: 4
+tags: ["assembly", "68000", "sprites", "animation", "pointer-swap"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+She waddles now.
+
+Hold the stick and watch her: feet plant on one diagonal, then the other; her tail swings with each step. Stop, and she stands still. The sheep has gone from a token that teleports in 8-pixel jumps to an animal that *walks* — and the entire mechanism is one variable and a pointer.
+
+This is the cheapest animation on any machine, and the Amiga makes it almost embarrassing: the sprite channel fetches its image from wherever its pointer aims, every frame, forever. Aim it somewhere else and the sheep *is* the other picture. No drawing, no copying, no erasing. Choosing **which data gets fetched** is the whole art.
+
+## The Display
+
+![Flock Unit 4](/images/commodore-amiga/assembly/flock/unit-04/screenshot.png)
+
+Caught mid-amble at the lane's edge: one forefoot out on her left, the opposite hind foot trailing on her right, tail mid-swing. The other step image mirrors the diagonal. Alternating between them as she hops is what your eye reads as walking.
+
+## Two Pictures of One Sheep
+
+The data section now holds `sheep0` and `sheep1` — the full sprite structure twice, each with its own control words, image and terminator:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-04/snippets/02-step-images.asm" />
+
+Compare the `%` grids row by row. The body, head, ears and flecks are identical; what changes is four bits of plane B — a foot nub at each end of one diagonal, then the other — and the tail's two pixels swinging side to side. Tiny differences read as *gait*; big differences read as flicker. The restraint is the craft.
+
+(Each image gets its own POS/CTL words because each is a complete, fetchable sprite. `updsprite` now writes the same position into both, so whichever picture shows, she stands in the same spot.)
+
+## The Pointer Is the Animator
+
+One new variable holds which step she's on, and `steer` flips it as part of taking a hop:
+
+```asm
+.stepped:
+            move.w  #COOLDOWN,cooldown  ; Set the hop rhythm
+            eori.w  #1,curframe         ; The other feet, next picture
+```
+
+Note where that flip lives: inside the *hop*, not the main loop. She changes step when she **steps** — stand still and the picture freezes mid-stance, exactly as an animal stands. Animation driven by movement, not by time, is the right feel for an amble (a flag fluttering or water shimmering would want the opposite choice).
+
+Then, once per frame, `showframe` aims the hardware at the current picture:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-04/snippets/01-showframe.asm" />
+
+It's the same poke the startup code performed in Unit 2 — write an address into the Copper list's sprite 0 pointer words — now performed every frame with a *chosen* address. That's the upgrade in one sentence: the pointer stopped being configuration and became state.
+
+## Experiment: Her Gait Is Yours
+
+- Make the feet bigger — two bits per foot instead of one. At what size does "waddle" become "scuttle"?
+- Re-time her: `COOLDOWN equ 10` gives a slow, deliberate plod that shows each stance in full. `COOLDOWN equ 3` trots.
+- Add a third step image — `sheep2`, feet tucked — and cycle 0 → 1 → 0 → 2 (plant, pass, plant, pass). `curframe` becomes a counter and `showframe` a table lookup. Does four-beat read better than two-beat?
+- Break the discipline on purpose: flip `curframe` in the main loop instead of in `.stepped`, every frame. She vibrates on the spot — animation divorced from movement. Now you've *felt* why the flip lives in the hop.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-04/flock.asm" />
+
+## If It Doesn't Work
+
+- **She walks but never animates?** `showframe` must run every frame (after `updsprite` in the main loop), and the flip must be inside `.stepped`. If `curframe` never changes, check the `eori` — it toggles a *word* in memory.
+- **She animates but jumps position as the picture changes?** One of the step images isn't getting the position write. `updsprite` must write POS/CTL into **both** structures — two sprites, two sets of control words, one location.
+- **One step image is garbage?** Each structure needs its own `dc.w 0,0` terminator. Miss one and the channel reads on into whatever follows.
+- **She flickers between pictures while standing still?** The flip has escaped into the per-frame path. Movement-driven animation changes only when movement happens.
+
+## Try This
+
+1. **A nervous idle.** Leave her gait alone, but after ~100 frames without a hop, swap briefly to the other stance and back — a little weight-shift fidget. (You'll want a second counter. You're also one step from Unit 16's nervous clock — file the thought.)
+2. **Face the way she walks.** Two more images — a left-facing and right-facing head row — selected by the direction of the last hop. `curframe` is about to become two pieces of state: *stance* and *facing*. Sketch how `showframe`'s pick grows before you code it.
+3. **Count the cost again.** Unit 2's sum, revisited: what did this whole walk cycle cost in bytes and in per-frame CPU work? Compare that with redrawing a 16×16 into the bitplane twice per step. (This is the argument the Blitter will have to beat in the next game.)
+
+## What You've Learnt
+
+- **Pointer-swap animation** — the sprite channel fetches what its pointer names; naming different data *is* the animation. No drawing happens at all.
+- **Movement-driven frames** — flip the image where the hop happens, so her gait belongs to her steps. Time-driven animation exists too; choosing between them is a design decision, made deliberately.
+- **Multiple sprite structures** — each image is a complete sprite (POS/CTL, data, terminator), and shared state (her position) must be written to all of them.
+- **Subtlety in sprite art** — four bits of feet and two of tail turn a token into an animal. Restraint reads; excess flickers.
+
+## What's Next
+
+She can walk the whole farm, and nothing can stop her — which is exactly the problem. In Unit 5 the **tractor** arrives: a second sprite, moving on its own deterministic loop across the lane. Nobody steers it. Learning to read it is the game's first real skill.
