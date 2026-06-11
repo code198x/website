@@ -1,0 +1,84 @@
+---
+title: "The Tractor"
+description: "The first sprite nobody steers. A red tractor crosses the lane on a fixed, learnable loop — deterministic traffic is the skill this whole game is built on."
+pubDate: 2026-06-11
+game: 1
+unit: 5
+tags: ["assembly", "68000", "sprites", "hazards", "determinism"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Something else is moving.
+
+A red tractor trundles along the top traffic lane — off the right-hand edge, back on at the left, the same pace, forever. Nobody steers it. It doesn't react to the sheep, the stick, or you. And that indifference is precisely what makes it a *game object* and not a decoration: it follows a rule, the rule never changes, and so the rule can be **learnt**.
+
+Watch it for ten seconds and you already know everything it will ever do. That act — reading a moving hazard until its rhythm is yours — is the skill every crosser is built on, from *Freeway* to *Frogger*. This unit builds the thing worth reading. (It can't hurt her yet: she's a ghost to it until the next unit. Walk her through it and feel how wrong that is.)
+
+## The Display
+
+![Flock Unit 5](/images/commodore-amiga/assembly/flock/unit-05/screenshot.png)
+
+The tractor mid-lane, bonnet pointing the way it drives; the sheep in the field below, with a decision to make for the first time in her life.
+
+## A Sprite Nobody Steers
+
+The tractor is sprite 2, and its mover is almost insultingly short:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-05/snippets/01-drivetractor.asm" />
+
+Add the speed, wrap at the edge, done. No input, no cooldown, no decisions. Compare it with `steer` — the sheep's mover is five times the code, because she has a *player* attached. The tractor just has physics. One detail does real work: it re-enters at `-16`, a full body off-screen left, so it drives **into** view instead of popping into existence. (HSTART's arithmetic swallows the negative x without complaint — `-16 + $80` is still a valid beam position, just one in the border.)
+
+And note what the mover *doesn't* contain: position packing. `drivetractor` only changes a number.
+
+## One Packer for Everyone
+
+Unit 3's `updsprite` knew too much — it packed coordinates *and* knew they were the sheep's. With two moving things that splits cleanly in half:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-05/snippets/02-setpos.asm" />
+
+`setpos` packs any (x, y) into any sprite structure — the same beam arithmetic, now taking its target in `a0`. `updsprite` becomes the roll-call: sheep image 0, sheep image 1, tractor, each one `lea` + two `move.w` + `bsr`. Every later unit adds traffic by adding a line to the roll-call, not by writing another packer.
+
+The tractor also brings the sprite palette story forward: sprites come in **pairs**. Sprites 0–1 share colours 17–19 (the sheep's wool, face and shade); sprites **2–3 share colours 21–23**, which is why the tractor can be red, dark-tyred and grey-cabbed without touching the sheep's palette. Eight sprites, four palettes — remember that exchange rate when the lane gets busy.
+
+## Deterministic Is a Promise
+
+`TRACTOR_SPEED equ 2` and the wrap rule are the tractor's entire personality, and they are a *promise to the player*: it will be at the same place, at the same time, every loop. The gap you spot on this pass will be there on the next one. Frogger kept that promise; so does every fair crosser — the moment traffic moves randomly, reading the lane stops being a skill and starts being a gamble.
+
+It's also, quietly, a promise to the **toolchain**: this game's screenshots and videos are captured by scripts that replay fixed inputs, and they only stay truthful because the world unfolds identically every run. Determinism is a gameplay value *and* an engineering value, and Flock keeps it everywhere — there is no RNG in this game's hazards, ever.
+
+## Experiment: Run the Lane
+
+- `TRACTOR_SPEED equ 4` — the lane gets serious. At what speed does crossing stop feeling possible? (Remember the sheep covers 8 pixels per hop, no faster.)
+- Make it drive the *other* way: subtract the speed, wrap at the left edge to re-enter from `320`. Which direction is harder to judge, and why might alternating lanes alternate directions?
+- Put it in the bottom traffic lane instead: `TRACTOR_Y equ 140`. Now the dangerous part of the crossing is the *last* moment, not the first. Feel how different the same hazard is by position alone.
+- Walk the sheep straight through it. Nothing happens — and now the next unit needs no introduction.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-05/flock.asm" />
+
+## If It Doesn't Work
+
+- **No tractor?** Sprite 2's pointer words must be poked *after* the null-sprite loop parks sprites 1–7 — the loop covers all seven, then the tractor poke overwrites sprite 2's pair. Get the order backwards and the tractor pointer gets parked at nothing.
+- **The tractor is wool-coloured?** It's reading the wrong palette. Sprites 2–3 use `COLOR21`–`23` (`$1AA`–`$1AE`) — setting 17–19 twice recolours the sheep instead.
+- **It crosses, vanishes, and never returns?** Check the wrap: past `320` it must reset to `-16`, and `tractx` must be treated as a *signed* word for that to mean "off the left edge".
+- **It flickers or tears at the left edge?** That's the one-frame window where it straddles the border — harmless, and instructive: sprites exist in beam space, not screen space.
+
+## Try This
+
+1. **A puff of pace.** Make the tractor's speed vary by *position* — slower up the slight hill (left half), faster down (right half). Still deterministic, still learnable, but now the gap breathes. Two speeds and one comparison.
+2. **The roll-call grows.** Without writing it, count the lines `updsprite` needs for Unit 8's full lane (cart and Land Rover joining). Then count the sprite channels used so far — sheep, tractor — against the budget of eight. Which runs out first, code or channels?
+3. **Watch like a player.** Boot the game and don't touch the stick for a full minute. Can you predict, to the hop, when it's safe to cross? That feeling of *earned certainty* is what deterministic design buys — and what you'd lose with one line of randomness.
+
+## What You've Learnt
+
+- **The autonomous mover** — a hazard is position + rule, run every frame; no input attached. The shortest routine in the program is the whole personality of its first antagonist.
+- **`setpos`** — coordinate packing generalised to any sprite; `updsprite` becomes a roll-call that grows by one line per moving thing.
+- **Sprite pairs and palettes** — 0–1 share 17–19, 2–3 share 21–23; eight sprites, four palettes.
+- **Off-screen entry** — start a body-width outside and drive in; beam coordinates make negative screen x legal.
+- **Determinism as design** — fixed loops are a promise to the player (readable lanes), and to the pipeline (replayable captures). This game keeps it everywhere.
+
+## What's Next
+
+She can walk through a tractor and shrug. In Unit 6, `CLXCON` and `CLXDAT` arrive — the hardware that watches every sprite and reports what touched what — and the lane finally gets its teeth. **Squashed** is the unit where Flock becomes a game.
