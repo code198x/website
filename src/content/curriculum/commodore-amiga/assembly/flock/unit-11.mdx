@@ -1,0 +1,82 @@
+---
+title: "A Soft Baa"
+description: "Paula speaks: one looping square wave, and three farmyard sounds made of nothing but pitch, volume and time — a baa on the hop, a squelch for a loss, a rising bleat at the pen."
+pubDate: 2026-06-11
+game: 1
+unit: 11
+tags: ["assembly", "68000", "paula", "audio", "sound-design"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The farm has a voice now.
+
+Hold the stick and she trots upfield to a staccato *baa-baa-baa*. Lose her and the lane answers with a low squelch. Get her home and the pen greets her with a rising bleat. Three sounds, and they're all the same eight bytes — what differs is **pitch, volume and time**, which is most of what sound design *is*.
+
+Listen to a real run — the trot, and (this being an honest farmyard) one squelch along the way:
+
+<audio controls src="/audio/commodore-amiga/assembly/flock/unit-11/baa-run.wav"></audio>
+
+## The Display
+
+![Flock Unit 11](/images/commodore-amiga/assembly/flock/unit-11/screenshot.png)
+
+One home, one lost, the third sheep up — the run you just heard.
+
+## Paula Plays Loops
+
+Paula's model is unlike the beepers and tone chips of the 8-bit world: each of her four channels **loops a sample from Chip RAM on its own DMA**. Point the channel at some bytes, tell her how many, how fast (the **period** — bigger is lower), and how loud; switch the channel's DMA on; she plays it round and round until you stop her, costing the CPU nothing.
+
+Our "sample" is the humblest one possible — one cycle of a square wave, eight signed bytes:
+
+```asm
+squarewave: dc.b    64,64,64,64,-64,-64,-64,-64
+```
+
+Loop that fast enough and it's a tone. Every pitch in the game is this same wave at a different period. (Real *sampled* sound — a recorded baa — is the same machinery with more bytes; that's Shatter Point's rung, and now you know exactly what it'll cost.)
+
+## Two Notes and a Clock
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-11/snippets/01-playsound.asm" />
+
+`playsound` is the entire voice: wave, length, pitch, volume, DMA on — and three words of state for `soundtick` to act on, once per frame. At halfway, the period slides to the second note; at zero, DMA off and volume down. That mid-flight slide is the whole character of each sound: the baa *droops* (1800 → 2100), the squelch *sags* (2800 → 3600), the bleat *rises* (1700 → 1250). Pitch movement is emotion — down is deflating, up is delight — and it costs one register write.
+
+One design decision is worth saying out loud: **new sounds steal the channel.** A baa interrupted by a squelch just *becomes* the squelch — no queue, no mixing. With one channel that's not laziness, it's correctness: the newest event is the one that matters. (Paula has four channels; giving the sheep her own and the world another is exactly where this grows next.)
+
+The events were all built in earlier units — the hop in `steer`, the loss in `checksquash`, the arrival in `trypen` — so wiring the voice is four lines at each site. Sound bolted onto clean event points is cheap; sound retrofitted into tangled logic isn't. You've been earning this unit since Unit 3.
+
+## Experiment: Tune the Farmyard
+
+- `BAA_PER1 equ 900` — a lamb. `equ 3000` — a sheep the size of a barn. Pitch *is* character.
+- Swap each sound's two periods. The baa now rises, the bleat droops. Listen to how wrong the same events feel — then put joy back where it belongs.
+- `BAA_FRAMES equ 12` and hold up: the baas merge into a drone (each hop re-steals the channel before the last baa ends). The first cut of this unit shipped exactly that by accident — five frames is what made the trot staccato.
+- A gentler wave: `dc.b 0,45,64,45,0,-45,-64,-45` — eight points of a sine-ish curve. Same notes, rounder voice. The waveform is timbre; the period is pitch; you now control both.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-11/flock.asm" />
+
+## If It Doesn't Work
+
+- **Silence?** Audio DMA is its own enable: `$8001` to `DMACON` (SET + AUD0EN) at trigger time — the display's `$83A0` doesn't cover it. And the wave must live in Chip RAM (`data_c`); Paula can't fetch from anywhere else.
+- **A sound that never stops?** `soundtick` must run every frame and must *clear* the channel (`$0001` — CLR + AUD0EN) when the timer dies. A forgotten volume write leaves a faint whine even with DMA off.
+- **Pops and clicks at sound boundaries?** The wave is interrupted mid-cycle when a new sound steals the channel — at these volumes it reads as farmyard texture, but the experiment with longer waves will expose it. Fading volume over the last frames is the classic cure.
+- **Wrong pitches everywhere?** Period is *samples-per-step in clock ticks*: PAL Paula steps at 3,546,895 ticks/sec, and our wave is 8 samples long — so frequency = 3546895 ÷ (period × 8). Check your arithmetic against a pitch you trust.
+
+## Try This
+
+1. **A near-miss whistle.** Unit 6's Try This built a near-miss detector; give it a voice — short, high, quiet. Suddenly the lane *taunts*.
+2. **Channel 1.** Move the world's sounds (squelch) to `AUD1LC`/`AUD1PER`/`AUD1VOL` (`$0B0`–`$0B8`, DMA bit 1) and keep the sheep on channel 0. Two voices, no stealing — the start of a mixer.
+3. **The win deserves a fanfare.** Three notes, rising, on the `won` transition — three `playsound` calls won't work (each steals the last). What's the smallest change to `soundtick` that plays a *sequence*? Sketch it; Unit 17's title music will want your answer.
+
+## What You've Learnt
+
+- **Paula's model** — looping samples from Chip RAM on per-channel DMA: address, length, period, volume, enable. Tones are the shortest possible sample.
+- **Period arithmetic** — pitch = clock ÷ (period × sample length); bigger period, lower note.
+- **Two-note sound design** — a pitch slide at halfway gives each event its emotional shape; down deflates, up delights.
+- **Channel stealing** — one channel, newest sound wins: correct for feedback sounds, and the motivation for a second channel.
+- **Sound bolts onto events** — clean event points from Units 3–9 made the voice a four-line addition at each site.
+
+## What's Next
+
+That's Arc 1's systems complete: the farmyard, a steerable animated sheep, deterministic traffic, collision, lives, the fold, score and sound — **a whole road-crossing game**. What remains for the arc is making it *finish* properly: levels that escalate, the clean-level bonus, and the game-over and victory beats — the polish pass where it stops being systems and becomes a thing you'd hand someone.
