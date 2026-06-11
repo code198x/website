@@ -1,0 +1,89 @@
+---
+title: "The Flock in Hand"
+description: "The flock is finite: five sheep, shown as icons on a HUD strip at the foot of the screen. Each loss takes one. When the strip empties, the field empties too."
+pubDate: 2026-06-11
+game: 1
+unit: 7
+tags: ["assembly", "68000", "lives", "hud", "copper", "game-over"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Look at the bottom of the screen. Those are your sheep.
+
+Until now a squash cost nothing — she came back, free, forever, and the lane was a toy. This unit makes the flock **finite**: five in hand, shown as a row of little white icons on a strip at the foot of the screen. Each time the lane wins, an icon goes. When the last one goes, no sheep steps up from the field — the farm stands empty, the tractor drives on, and the game is over.
+
+Stakes are what turn a hazard into a *threat*. Same lane, same tractor, same collision bit — but now you'll find yourself waiting for the gap.
+
+## The Display
+
+![Flock Unit 7](/images/commodore-amiga/assembly/flock/unit-07/screenshot.png)
+
+Three icons left. The capture script fed two sheep to the lane — parked each one in the tractor's path and let determinism do the rest — and the strip kept the score. The third sheep stands at the field start, up next.
+
+## A Strip of Its Own
+
+The icons live on a **HUD band** — the same per-band Copper trick as Unit 1's fence and dashes: a new `COLOR00` for the strip itself, and a new `COLOR01` so bitplane pixels there read as white icons, not green tufts. One more band in the list... except this band starts at **row 240**, and row 240 is a problem worth meeting:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-07/snippets/02-hud-crossing.asm" />
+
+Row 240 is beam line `$11C` — **past 255**, and the Copper's WAIT compares only eight bits of line number. It cannot name line 284 directly. The classic move, used by almost every full-height PAL game ever shipped: wait for the *tail end of line 255* (`$FFDF`), which carries you across the boundary — then wait for the low byte (`$1C`), which can only match on the far side. Two waits, and the bottom of the PAL screen belongs to you.
+
+## Drawing the Hand
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-07/snippets/01-drawflock.asm" />
+
+`drawflock` is clear-then-draw: wipe the icon area (`rectclear` — `rectfill`'s opposite, eight lines of `clr.b`), then stamp one 8×8 sheep glyph per life via `drawglyph` — a byte-per-row copy, the smallest possible blit. The glyph itself is eight `dc.b` rows you can read like a pixel grid, same as the sprite art.
+
+Redrawing the *whole* strip on every change, not erasing one icon, is a deliberate habit: state lives in `lives`, and the display is a *function of it*. There's no way for the strip and the number to disagree.
+
+## Spending a Sheep
+
+`checksquash` grows up. On a hit: one off `lives`, redraw the strip, and *then* decide — sheep remaining means the next one steps up at the field start; none means `gameover`, and three gates close at once: `steer` refuses input, `checksquash` stops watching, and `showframe` points sprite 0 at the null sprite. The field is empty. (The tractor doesn't stop. By now you know why.)
+
+One subtlety earned its place the hard way during this unit's testing. `CLXDAT` accumulates during the squash beat — nobody reads it while the timer runs, and the collision frame itself was still drawn overlapped — so the moment the beat ended, a **stale collision** was waiting in the latch, and every squash double-counted. The cure is a flush as the beat expires:
+
+```asm
+            subq.w  #1,squashtimer      ; Count the stillness down
+            bne.s   .out
+            move.w  CLXDAT(a5),d0       ; Beat over: flush the contact
+.out:       rts                         ;   that accumulated during it
+```
+
+Clear-on-read cuts both ways: it's how you consume the verdict, and how you discard one. Any time your design *stops reading* the latch, plan for what's in it when you start again.
+
+## Experiment: How Many Is a Flock?
+
+- `FLOCK_SIZE equ 1` — sudden death. `equ 9` — an afternoon's grazing. Watch how the *same lane* changes character with the size of the hand.
+- Move the strip: icons at the top-left instead (no line-255 crossing needed — what does that tell you about why status bars lived where they did?).
+- Drop the flush and squash a sheep. Count what one contact costs now. Then put it back.
+- On game over, leave the last sheep's icon *half* drawn — clear the area but stamp the glyph's top four rows only. Morbid, but you'll have written your first partial-glyph draw.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-07/flock.asm" />
+
+## If It Doesn't Work
+
+- **The strip appears too high, or mid-field?** The two-wait crossing matters: a single WAIT for `$1C01` without the `$FFDF` first matches *before* line 255 ever arrives (line `$1C` exists on the way down!). Order is everything.
+- **Each squash costs two sheep?** The stale-latch problem from above — flush `CLXDAT` when the beat ends.
+- **Icons never change?** `drawflock` must be called *after* `lives` changes, and its clear must cover the full icon area — a too-narrow `rectclear` leaves ghost icons beyond it.
+- **The sheep wanders into the HUD?** Her clamp is `ROW_HUD-16` now, not the screen edge. The strip is not a pasture.
+
+## Try This
+
+1. **A sixth life.** Award a bonus sheep the first time... well, there's nothing to reward yet — but write `addq.w #1,lives` + `bsr drawflock` behind a key press, and you've built the mechanism Unit 9's fold will want.
+2. **Game-over honesty.** Right now the field just empties. Sketch (don't build) what the game-over *screen* needs — Unit 17's state machine will want your list.
+3. **Count the cost of the strip.** `drawflock` redraws up to five glyphs — how many byte writes is that, worst case? Would erasing exactly one icon be cheaper? Why is "cheaper" the wrong measure here?
+
+## What You've Learnt
+
+- **The life pool** — stakes as a number plus a visible hand; consequence now compounds.
+- **The PAL line-255 crossing** — `$FFDF` then the low byte: the two-WAIT idiom behind every full-height Copper list.
+- **Glyph drawing** — `drawglyph` (a byte-per-row stamp) and `rectclear`; the bitplane HUD as a *function of state*, redrawn whole.
+- **Latch hygiene** — `CLXDAT` accumulates while unread; flush it when a pause in reading ends. Clear-on-read is a contract, not a convenience.
+- **Game over as closed gates** — input, judgement and display each check one flag; the world (the tractor) deliberately doesn't.
+
+## What's Next
+
+Five sheep, one tractor — the lane is dangerous but *legible at a glance*. In Unit 8 the cart and the Land Rover join at their own speeds, and reading the lanes becomes the skill the whole game advertised: **Busy Lanes**.
