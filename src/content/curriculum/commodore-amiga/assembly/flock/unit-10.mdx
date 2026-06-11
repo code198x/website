@@ -1,0 +1,74 @@
+---
+title: "Keeping Score"
+description: "The HUD strip's second job: +5 for surviving the road, +25 for a sheep safely home — one binary word, peeled into decimal digits with DIVU and stamped in a glyph font."
+pubDate: 2026-06-11
+game: 1
+unit: 10
+tags: ["assembly", "68000", "score", "divu", "fonts", "hud"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Safe arrivals deserve counting.
+
+Two events now pay out: the first time each sheep puts the whole road behind her, **+5**; a sheep safely penned, **+25**. The total sits at the right end of the HUD strip in four white digits — and between the number and the screen lie two small, permanent lessons: how a binary word becomes decimal digits, and how a font is nothing but a table of glyphs.
+
+## The Display
+
+![Flock Unit 10](/images/commodore-amiga/assembly/flock/unit-10/screenshot.png)
+
+`0030` — one road survived, one sheep home. The same scripted run as Unit 9's capture, now with a paper trail.
+
+## Peeling Digits
+
+The score lives as **one binary word** — `add.w #PEN_POINTS,score` and arithmetic stays plain addition. The *display* is decimal, and the bridge between them is the 68000's `DIVU`:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-10/snippets/01-drawscore.asm" />
+
+`DIVU #10` divides and hands back both halves in one register — quotient in the low word, remainder in the high. The remainder *is* the rightmost digit; the quotient is what's left to convert. Four passes, stamped right to left, and the binary word reads as decimal. (The `swap` is the idiomatic 68000 move for reaching a result's high word — you'll use it constantly.)
+
+The digits themselves are `drawglyph` again — the same byte-per-row stamp the flock icons use. `digitfont` is ten glyphs end to end, and *digit × 8* indexes straight into it: a font is a table, a character is an offset, and text is a loop. Every HUD, menu and title screen you'll ever build on this machine is that sentence scaled up.
+
+## Paying Out
+
+Where the points land says what the game values:
+
+- **The road bonus** lives in `steer`, on a completed hop: the first time a sheep's `y` clears the bank line, `roadflag` goes up and 5 points land. The flag resets when the *next* sheep steps up — penned or squashed, her successor's road is still ahead of her. One flag per life, the cheapest possible "once per sheep".
+- **The pen bonus** lives in `trypen`, beside the resident glyph — 25 points at the moment of arrival.
+
+Both call `drawscore` immediately. Same discipline as the flock strip: the display is a *function of the number*, redrawn whole at the moment of change. Nobody ever wonders whether the screen is stale.
+
+## Experiment: The Economy of a Farmyard
+
+- Rebalance: `ROAD_POINTS equ 20`, `PEN_POINTS equ 5`. Now the game rewards *daring* over *finishing*. Play a level and feel your own behaviour shift — scoring is a steering wheel for the player.
+- Pay the road bonus *every* crossing of the bank line (drop the flag). She can now farm points by shuttling. Watch how fast a kind rule becomes an exploit.
+- Five digits: widen the loop and the columns. What's the biggest score the word can hold, and what happens just past it?
+- Stamp `SCORE` as a label — five more glyphs in the table, letters this time. (You now own a font pipeline. It cost one table and zero new routines.)
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-10/flock.asm" />
+
+## If It Doesn't Work
+
+- **Garbage digits?** The font index is *digit × 8* — three `add.w d1,d1` doublings. Miscount the doublings and you're reading between glyphs.
+- **The score never draws?** `drawscore` runs at startup and on every change — if you add a payout, the call goes beside it.
+- **Division surprises?** `DIVU` wants the dividend as a *long* — clear the register first (`moveq #0,d0` before the `move.w`). A stale high word divides into nonsense.
+- **The same sheep keeps earning the road bonus?** `roadflag` must reset on respawn *and* on penning — the successor's flag, not the veteran's.
+
+## Try This
+
+1. **High score.** A second word, updated at game over if beaten, drawn dimmer beside the live score. Decide *where* it draws from — and notice you've just invented persistent state that outlives a flock.
+2. **Score the squash.** Minus points for a loss? Trace what `sub.w` does when the score would go below zero, and decide whether your farmyard is the kind that does debt.
+3. **The cost of drawing.** `drawscore` converts and stamps four digits on every change. Would caching the digits and redrawing only the changed ones be worth it? Count the writes before you answer — then remember which machine drew the *rest* of this frame for free.
+
+## What You've Learnt
+
+- **`DIVU`** — quotient and remainder in one instruction; repeated division by 10 is binary-to-decimal. `swap` reaches the high word.
+- **Fonts as tables** — glyph = font + character × height; text is a loop over stamps. The HUD font and the flock icons are the same machinery.
+- **Once-per-life flags** — `roadflag` pays a bonus exactly once per sheep, reset where the next life begins.
+- **Display as a function of state, again** — the score redraws at the moment it changes, whole. The habit generalises.
+
+## What's Next
+
+The farm is silent. In Unit 11, **Paula** speaks: a soft baa on the hop, a squelch for a loss, a contented bleat at the pen — tones from the Amiga's sound chip, triggered from the events you've already built. The last sense arrives.
