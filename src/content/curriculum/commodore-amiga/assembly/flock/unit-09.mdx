@@ -1,0 +1,78 @@
+---
+title: "The Fold"
+description: "Somewhere to arrive: reach an empty pen and she's safe for good — a white resident in the fold, drawn on the scene's new second bitplane. Fill all five and the level is won."
+pubDate: 2026-06-11
+game: 1
+unit: 9
+tags: ["assembly", "68000", "bitplanes", "game-state", "win-condition"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Until now, the top of the screen was scenery. Now it's *home*.
+
+Walk her up to the fence and she stops — unless she's facing an open pen, in which case she trots in and **stays**: a white resident appears between the fence posts, the next sheep steps up from the field, and the crossing begins again. Five pens. Fill them all and the level is won. The game has had teeth since Unit 6 and stakes since Unit 7; this is the unit it gets a *point*.
+
+## The Display
+
+![Flock Unit 9](/images/commodore-amiga/assembly/flock/unit-09/screenshot.png)
+
+One home, four to go. The capture script steered a sheep up from the field, threaded all three lanes on the first attempt — determinism rewards a well-timed departure — and into the middle pen. Five icons still in hand: arriving costs nothing. The next sheep waits at the start.
+
+## The Second Bitplane
+
+A small art problem forces a real hardware step. The resident sheep must read **white**, inside a band where plane-1 pixels are *fence brown* — one plane can't show two colours in the same band. So the scene grows its **second bitplane**, and every band gains four colours:
+
+| Pixel value | Planes | Means |
+|---|---|---|
+| `00` | neither | the band colour (`COLOR00`) |
+| `01` | plane 1 | fence / bridge / dashes / icons — **everything so far, unchanged** |
+| `10` | plane 2 | **the fold's residents** (`COLOR02`, white) |
+| `11` | both | `COLOR03` — spare (set white; fence and sheep never overlap) |
+
+That table is why the upgrade is painless: plane 1's pixels keep their meaning *exactly*, because `01` is the same colour index it always was. The changes are mechanical — `BPLCON0` says two planes (`$2200`), the Copper list gains `BPL2MOD` and a second pointer pair for the CPU to poke, the data section gains 10KB of `plane2` — and one new habit: **layers by plane**. Background detail on plane 1, residents on plane 2, never interfering, erasable independently. (You've been using this idea all along — the sprites are layers the *chip* composites. Now the playfield does it too.)
+
+## The Pens Are a Table
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-09/snippets/01-trypen.asm" />
+
+`pentab` is Unit 8's lesson again — identity in data: each pen is the span of sheep-centre positions it accepts, the byte column its resident is drawn at, and a *taken* flag. `trypen` runs only at the fence line: find the pen she's facing, refuse if it's taken (or if she's facing a post), otherwise mark it, stamp the resident glyph into **plane 2**, send the next sheep up, and count down `unpenned` — zero means the fold is full and `won` goes up.
+
+Movement meets the fold in `steer`: the clamp that used to stop her at the screen edge now stops her at `FENCE_Y`, and the *up* branch at the fence calls `trypen` instead of stepping. The fence is the ceiling; pens are the only doors.
+
+The win state mirrors game over — `steer` and `showframe` each gain a `won` gate — but the *picture* differs in the way that matters: game over is an empty farm; victory is a full fold, five white residents watching the traffic that can't touch them any more.
+
+## Experiment: Re-Architect the Fold
+
+- Take a pen away — set one `pentab` flag to 1 at assembly time. Four homes, five sheep: the flock now has a spare. How does knowing that change how you play the last crossing?
+- `PEN_BEAT equ 50` — a long, proud pause after each arrival. Does ceremony improve arriving, or slow the game down? Compare with the squash beat's length and decide what the *difference* between the two should say.
+- Widen pen spans by 8 each side, so a sheep half-over a post still counts. Kinder — and sloppier? Where's the line between forgiving and mushy?
+- Make the resident glyphs accumulate left to right regardless of which pen she entered. Easier to read at a glance — but now the fold lies about *where* she went in. Which truth matters?
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-09/flock.asm" />
+
+## If It Doesn't Work
+
+- **Residents are brown, or invisible?** Plane 2's pixels read colour 2 — `COLOR02` must be set (the list sets it once at the top), and the second pointer pair must be poked or Denise fetches plane 2 from address 0.
+- **The whole screen shifted or doubled?** `BPLCON0` must say two planes (`$2200`) *and* `BPL2MOD` must be zero — a missing modulo makes plane 2 drift against plane 1.
+- **She walks straight through the fence?** The movement clamp must use `FENCE_Y`, and the up-branch must test *before* stepping. The order of the test and the move is the whole gate.
+- **She can enter the same pen twice?** The taken flag — `trypen` must test `5(a2)` before accepting, and set it after. (Five residents in one pen is a charming bug, but it isn't a win condition.)
+
+## Try This
+
+1. **A homecoming wiggle.** When she pens, stamp the glyph, wait `PEN_BEAT`, then re-stamp it one pixel lower. A settle. Two lines, and the fold feels alive.
+2. **Score the route.** Note which lane order you cross in a winning run, then change your departure timing by ten frames and run it again. The traffic is deterministic — every winning route is a *repeatable recipe*. Write yours down like a speedrunner would.
+3. **The empty-hand draw.** What happens if her *last* life pens the *last* sheep? Trace the code: `won` and `lives` — which gate wins? Decide what *should* happen before you read what does.
+
+## What You've Learnt
+
+- **The second bitplane** — four colours per band; plane 1's pixels keep their meaning because `01` is still `01`. Layers by plane: detail under, residents over.
+- **Goal slots as data** — `pentab` carries span, glyph position and state; `trypen` is one loop over it. The fold can be re-architected without touching logic.
+- **The fence gate** — clamp to the boundary, and make crossing it a *test*, not a step. Doors are conditions.
+- **Win as a mirrored state** — `won` closes the same gates as `gameover`; the difference is what's on screen when the world keeps rolling.
+
+## What's Next
+
+Safe arrivals deserve counting. In Unit 10 the HUD strip earns a second job: **score** — points per crossing and per penning, drawn with a CPU-stamped font. The strip stops being a hand of sheep and becomes a scoreboard.
