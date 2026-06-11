@@ -1,0 +1,97 @@
+---
+title: "The Sheep"
+description: "The first hardware sprite: a white sheep standing in the field. Denise overlays her on the farmyard for free — sprite data is a list of words, her position is two more."
+pubDate: 2026-06-11
+game: 1
+unit: 2
+tags: ["assembly", "68000", "sprites", "denise", "sprite-dma"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+There's a sheep in the field.
+
+She wasn't drawn into the bitplane. Nothing erased the grass to make room for her, and nothing will repair it when she moves. She's a **hardware sprite** — Denise overlays her on the farmyard as the beam passes, every frame, for free. The playfield underneath doesn't know she exists.
+
+This is the Amiga's cheapest moving graphic, and the foundation of this whole game. The sheep is a sprite. The tractors will be sprites. The hay bales you'll ride are sprites. Today: what a sprite *is*, and how to put one on screen.
+
+## The Display
+
+![Flock Unit 2](/images/commodore-amiga/assembly/flock/unit-02/screenshot.png)
+
+One white sheep, standing in the field, facing the lane she'll someday have to cross. Fleece, two dark ears, a dark face, a tail nub. Sixteen pixels square.
+
+## A Sprite Is a List of Words
+
+A hardware sprite is nothing more than a structure in Chip RAM:
+
+- **Two control words** — `POS` and `CTL` — say *where* the sprite appears.
+- **Two data words per row** — plane A and plane B — say *what* it looks like. Two planes give each pixel four possible values: `00` transparent, `01`, `10`, `11` — three colours plus see-through.
+- **Two zero words** end the sprite.
+
+That's the entire format. No registers to load pixel data into, no drawing calls — Denise's sprite DMA fetches the list itself, row by row, as the beam reaches the sprite's position.
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-02/snippets/01-sheep-data.asm" />
+
+Read the `%` patterns like a pixel grid — the art is right there in the source. Plane A lights the fleece (colour 1), plane B the face, ears and tail (colour 2), and both planes together make the shade flecks (colour 3).
+
+### Where She Stands
+
+The control words speak **beam coordinates**, not screen rows. The display window opens at beam line `$2C`, and its left edge sits at horizontal position `$80` — so a screen position becomes a sprite position like this:
+
+```asm
+VSTART      equ $2c+SHEEP_Y         ; beam line of her top row
+VSTOP       equ VSTART+16           ; 16 rows tall
+HSTART      equ $80+SHEEP_X         ; beam position of her left edge
+```
+
+`POS` packs `VSTART` with the top eight bits of `HSTART`; `CTL` packs `VSTOP` with the leftover low bits. The assembler does the packing at build time — change `SHEEP_X` and `SHEEP_Y` at the top of the file and she stands somewhere else. (In Unit 3 the CPU starts rewriting these words at runtime. That's all "movement" is.)
+
+## Eight Channels, All Accounted For
+
+Denise has **eight sprite channels**. Each needs a pointer — set in the Copper list, every frame, exactly like the bitplane pointer from Unit 1:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-02/snippets/02-sprite-pointers.asm" />
+
+The sheep goes into sprite 0. The other seven point at `nullspr` — an empty sprite that displays nothing. This isn't optional tidiness: once sprite DMA is on, **every channel fetches from somewhere**. Leave a pointer at zero and channel hardware happily interprets whatever lives at address 0 as sprite data — garbage pixels in unpredictable places. Park the unused channels somewhere safe.
+
+Two more pieces and she's on screen:
+
+- **Colours.** Sprites 0 and 1 share palette entries 17–19 (`COLOR17`–`COLOR19`). The Copper sets them: wool white, face brown, shade grey.
+- **DMA.** `DMACON` gains a bit: `$83A0` — the Unit 1 set plus **SPREN** (bit 5), sprite DMA enable.
+
+## Experiment: A Different Sheep
+
+- Move her: `SHEEP_X equ 40` puts her by the left hedge; `SHEEP_Y equ 100` stands her in the middle of the lane (ominous).
+- Recolour her: `COLOUR_WOOL equ $0221` is a sheep that needs a bath. `COLOUR_FACE equ $0FFF` with `COLOUR_WOOL equ $0210` is the negative — a black sheep with a white face. Worth remembering for later.
+- Redraw her: the `%` grid is yours. Give her a wonky ear. Make the shade flecks a pattern. The fastest pixel-art tool on the Amiga is the binary literal.
+- Break her on purpose: delete the terminating `dc.w 0,0` and see what Denise makes of the words that follow.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-02/flock.asm" />
+
+## If It Doesn't Work
+
+- **No sheep?** Check `DMACON` is `$83A0` — without SPREN (bit 5) the sprite channels never fetch. And check the Copper list pokes: the CPU writes the sheep's address into the sprite 0 pointer words at startup, the same trick as the bitplane pointer.
+- **Garbage sprites scattered around?** The unused channels aren't parked. All eight pointers need a target; sprites 1–7 must point at the null sprite.
+- **She's in the wrong place — or torn?** The control words are beam coordinates: screen Y + `$2C`, screen X + `$80`. And `VSTOP` must equal `VSTART + 16` exactly — a mismatched stop row makes Denise fetch the wrong number of rows and the image shears.
+- **Wrong colours?** Sprite 0 uses `COLOR17`–`COLOR19`, not the playfield's `COLOR01`. The bitplane's colours and the sprite's colours are separate palettes.
+
+## Try This
+
+1. **A second sheep.** Point sprite 1 at the same `sheep` data — two identical sheep from one set of words. (They'll be the same colours: sprites 0 and 1 share a palette. That sharing becomes interesting in Unit 15.)
+2. **Behind the fence.** `BPLCON2` controls whether sprites pass in front of or behind the playfield. Change `$0024` to `$0000` and walk her... no, *stand* her behind the bitplane's detail. Where might hiding-behind-scenery be useful in a farmyard?
+3. **Count her cost.** The sheep is 2 + 32 + 2 words. Work out what 16×16 of her would cost drawn into the bitplane instead — bytes touched, and the save/restore you'd need when she moves. That difference is the whole argument for sprites.
+
+## What You've Learnt
+
+- **Hardware sprites** — a list of words in Chip RAM: POS, CTL, two data words per row, zero-terminated. Denise overlays them; the playfield never knows.
+- **Beam coordinates** — sprite positions are display coordinates (`$2C`/`$80` offsets), packed into POS/CTL. Position is *data*, which is why movement will be cheap.
+- **Eight channels** — every sprite channel needs a pointer once SPREN is on; unused ones park at a null sprite.
+- **Sprite palettes** — sprites 0/1 share `COLOR17`–`19`; sprite colours live apart from playfield colours.
+- **Art in binary** — a 4-colour sprite is two `%` patterns per row, and the source listing *is* the pixel grid.
+
+## What's Next
+
+In Unit 3 the joystick arrives, and those POS/CTL words stop being constants: read the stick, rewrite the words, and the sheep steps where you point her. Steering — the moment the screen gets a player.
