@@ -1,0 +1,95 @@
+---
+title: "Busy Lanes"
+description: "The cart and the Land Rover join the tractor — three speeds, two directions, one data-driven mover, and a collision mask that watches every lane at once."
+pubDate: 2026-06-11
+game: 1
+unit: 8
+tags: ["assembly", "68000", "sprites", "data-driven", "collision", "game-design"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Now it's a road.
+
+A hay cart plods leftward along the bottom lane. The farmer's Land Rover tears through the middle, also leftward, three times the cart's speed. The tractor keeps its steady rightward row up top. Three vehicles, three rhythms, two directions — and suddenly crossing isn't *time one gap*, it's *read three moving systems and find the moment they align*. This is the skill the whole game advertised on its tin.
+
+The engineering lesson is how little code that took.
+
+## The Display
+
+![Flock Unit 8](/images/commodore-amiga/assembly/flock/unit-08/screenshot.png)
+
+The full cast: tractor up top, Land Rover mid-lane, the hay cart trailing golden across the bottom. Five in hand. She hasn't moved yet — and for the first time, you can feel why she's hesitating.
+
+## Casting the Channels
+
+Adding two vehicles forces the decision Unit 6 told you to sketch: **which sprite number does each cast member get?** The answer is shaped entirely by the collision hardware. `CLXDAT`'s sprite bits see four *groups* — 0/1, 2/3, 4/5, 6/7 — so each hazard takes the **even sprite of its own pair**:
+
+- Tractor → sprite **2** (group 1: bit 9 against the sheep)
+- Hay cart → sprite **4** (group 2: bit **10**)
+- Land Rover → sprite **6** (group 3: bit **11**)
+
+Two things fall out for free. Each vehicle gets **its own palette** (pairs share colours: 21–23 the tractor's reds, 25–27 the cart's wood-and-hay, 29–31 the Rover's green) — no repaints, no sharing. And the sheep-versus-*anything* test becomes one mask instead of three branches:
+
+```asm
+            move.w  CLXDAT(a5),d0       ; Read once — this clears it
+            and.w   #$0e00,d0           ; Bits 9/10/11: the sheep against
+            beq.s   .safe               ;   ANY of the three vehicle groups
+```
+
+Whichever lane wins, the same squash path runs. (The capture proved the middle bit the honest way: a sheep parked in the Rover's lane came home an icon lighter.)
+
+## One Mover, Three Vehicles
+
+Unit 5's `drivetractor` was a routine about *the tractor*. Multiply the traffic and you don't multiply the routine — you turn the differences into **data**:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-08/snippets/01-drivelanes.asm" />
+
+`vehtab` is the entire traffic system: each row says *where this vehicle's x lives* and *how fast it moves*, with the sign carrying the direction. The loop adds, wraps off whichever edge the speed points at, stores. Adding a fourth vehicle to the game is now one table row, one `updsprite` line, one sprite poke — no new logic anywhere.
+
+This is the same promotion the Copper bands and the flock strip already made: behaviour stays in one routine, *identity* moves into data. It's the single most reusable habit in this whole track.
+
+## Designing a Road
+
+The three rhythms aren't arbitrary — each lane asks a different question:
+
+- **The cart (bottom, slow, leftward)** is the gentle gatekeeper: the first lane she crosses, slow enough to read on your first try, but wide enough to punish standing still.
+- **The Rover (middle, fast, leftward)** is the heart-rate: too quick to react to, so you must *plan* — note where it is before you commit to the cart.
+- **The tractor (top, steady, rightward)** runs *against* the others, which quietly defeats the strategy of scanning one direction once.
+
+Alternating directions and staggering speeds is the whole craft of crosser lane design — *Frogger*'s five lanes are exactly this idea, tuned. And it all stays deterministic: three loops, fixed speeds, learnable to the frame.
+
+## Experiment: Be the Traffic Engineer
+
+- Swap the cart and Rover lanes — fast lane first. Count how many sheep your own design costs you.
+- `CART_SPEED equ -2` — the gentle gatekeeper stops being gentle. How slow can the *slowest* lane be before the game gets boring instead of kind?
+- Send all three the same way: every speed positive. Feel how much easier scanning becomes — and why real crossers almost never do it.
+- Add a fourth vehicle yourself: another cart in the top lane, offset from the tractor (`dc.l cart2x` + speed in `vehtab`, an x variable, a row in `updsprite`, a sprite-3 poke — it can share the cart's data and palette as the odd sprite of pair 2/3... or can it? Check which collision bit it would fire, and whether you mind).
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-08/flock.asm" />
+
+## If It Doesn't Work
+
+- **A vehicle is invisible?** Its even-sprite pointer poke must come *after* the null loop parks 1–7, and its palette MOVEs must be in the Copper list — an unpoked sprite shows nothing; an unpainted one shows the wrong pair's colours.
+- **One lane never kills?** The mask: `$0E00` covers bits 9, 10 and 11. If you cast a hazard on an *odd* sprite, it joined an existing group — its collisions land on that group's bit, not a new one.
+- **Leftward traffic teleports?** The wrap test is direction-sensitive: leftward wraps at `-16` back to `320`. One comparison the wrong way round and the cart pops instead of cruising.
+- **Everything moves but at the wrong speeds?** `vehtab` rows are `dc.l` (pointer) then `dc.w` (speed) — misalign one row and every row after it reads garbage. Keep the table tight.
+
+## Try This
+
+1. **Convoys.** Give the bottom lane *two* carts half a screen apart (they can share sprite data — two table rows, two x variables, but think about the sprite budget and the collision group before you wire it).
+2. **Rush hour.** Make the Rover's speed climb by 1 every time the flock loses a sheep (`checksquash` already knows). Difficulty that *reacts* — is it fairer or crueller than difficulty that escalates by level?
+3. **Count the budget.** Sheep, tractor, cart, Rover — four sprites of eight, four groups of four. The stream's bales and the duck are still to come. Sketch the Arc 2 casting *now* and find the squeeze. (The plan's level tables exist for exactly this reason.)
+
+## What You've Learnt
+
+- **Casting by collision group** — sprite numbers are a design decision: even sprites of separate pairs give each hazard its own collision bit and its own palette.
+- **The collision mask** — `and.w #$0E00` watches three lanes in one test; group bits compose.
+- **Data-driven movers** — `vehtab` turns N vehicles into one routine plus N rows. Behaviour in code, identity in data.
+- **Lane design** — speeds, directions and order are the difficulty curve; alternation defeats one-glance scanning; determinism keeps it fair.
+
+## What's Next
+
+She can cross — with nerve and a plan — but there's nowhere to *arrive*. In Unit 9 the fold opens: reach a pen and she's safe for good, the next sheep steps up, and filling all five wins the level. The goal, at last.
