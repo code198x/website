@@ -1,0 +1,84 @@
+---
+title: "The Whole Flock Home"
+description: "The finale: a level table that quickens the lanes, hurries the duck and frays her nerves; a shepherd's bonus for a clean flock; and a feel pass on the hop itself. Eighteen units, one finished game."
+pubDate: 2026-06-12
+game: 1
+unit: 18
+tags: ["assembly", "68000", "levels", "escalation", "game-feel", "consolidation"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Everything works; nothing *escalates*. The same five vehicles at the same five speeds make crossing twelve the same crossing as crossing one, and a game with no curve isn't finished — it's a demo with a title screen. The finale instals the curve: a **level table** that hands each new field faster lanes, a hungrier duck and thinner nerves; a **shepherd's bonus** for bringing the whole flock home untouched; and one last pass on the thing the player touches five times a second — the hop itself.
+
+## The Display
+
+![Flock Unit 18](/images/commodore-amiga/assembly/flock/unit-18/screenshot.png)
+
+A full fold. Five hearts in the pens, the flock strip still whole below, and 0500 on the board: five crossings, one black sheep's gamble, and the shepherd's bonus for losing nobody.
+
+## The Escalation Is a Table Row
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-18/snippets/01-the-level-table.asm" />
+
+Here is the reward for seventeen units of putting things in tables. Everything that should get harder **already lives in pokeable data**: the vehicle speeds sit in `vehtab` (and Unit 14 made them 16.16, so *half-pixel* difficulty steps exist — level two's cart is minus one and a half, a speed that couldn't be expressed before the cow); the duck's stamina and the bolt threshold were constants promoted to variables with two edits. A level is sixteen bytes:
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-18/snippets/02-leveltab.asm" />
+
+`applylevel` pokes a row over the live game — the same move that recoloured the black sheep, aimed at physics instead of palette. No `if level >= 3` scattered through the code, no per-level routines: the systems never learn that levels exist. They read their tuning every frame, and the tuning changed while they weren't looking. When the last row runs out it repeats: the curve flattens, the game stays honest, and the score becomes the measure.
+
+Win and loss now part ways in `endtick`: a lost flock takes the long walk back to the title, but a **full fold goes to the next field** — pens emptied, farm redrawn, lives carried over. The flock is the run's resource; the levels are what spends it.
+
+## The Shepherd's Bonus
+
+Two instructions in `trypen`, at the moment the fifth pen fills: if `lives` still equals `FLOCK_SIZE` — five crossings, five arrivals, nobody lost — `SHEPHERD_BONUS` lands on the score. It's the risk/reward lesson from Unit 15 turned structural: the black sheep gambles a *crossing*; the clean-flock bonus gambles a whole *level*, because protecting the bonus means refusing every reckless shortcut for five sheep in a row. The best bonuses price a behaviour, not a moment.
+
+## The Feel Pass: a Banked Hop
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-18/snippets/03-buffered-hop.asm" />
+
+The promise of a final feel pass comes down to one injustice: a quick tap during the hop cooldown used to vanish. The player did the right thing at *almost* the right time and the game pretended nothing happened. The fix is **input buffering** — during the cooldown the stick is still read, and a fresh press is banked and served the instant she's ready.
+
+Two details cost us a debugging session each, and they carry the lesson:
+
+- **The press that caused the hop must not echo.** Bank naively and a single tap fires twice — the tail of the press is still there on cooldown frame one, gets banked, and replays. The `sawneutral` gate (the stick must come home before anything banks) is the difference between responsiveness and a sheep that overshoots every move. We shipped Unit 16 a latch pattern; here it is again, guarding *against* input instead of fire.
+- **Replay what the code reads, where it reads it.** Our first buffer banked the *decoded* stick and replayed it into the decode's output — but `steer` tests left and right on the **raw** register and up and down on the decoded one — so a banked right hop silently never fired. Replay the raw word *before* the decode and every consumer sees a consistent world. When you intercept an input path, intercept it at the top.
+
+## Experiment: Bend the Curve
+
+- Write a level five: gentler than four. Difficulty that *breathes* — hard field, kind field — is one more table row, and it's how the great arcade curves are built.
+- `SHEPHERD_BONUS equ 1000`. Now the bonus is the game and the sheep are the obstacle. Watch how one constant rebalances every decision you make at the road's edge.
+- Put the buffered hop back the naive way (bank without `sawneutral`) and play thirty seconds. The overshoot is *infuriating* — and invisible in a screenshot. Feel bugs are why you playtest with hands, not eyes.
+- Make `MAXLEVEL` wrap to level one instead of repeating level four. An endless gentle loop instead of a wall — which game is better? (Trick question: it depends who's playing. That's what difficulty design *is*.)
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-18/flock.asm" />
+
+## If It Doesn't Work
+
+- **Level two plays exactly like level one?** `applylevel` must poke the *live* table — check it writes `vehtab`'s speed slots, not a copy, and that `nextlevel` calls it at all.
+- **Level two opens with five ghost hearts in the pens?** Ours did. The residents' glyphs live in *plane 2*, and the farm-wide clear only wipes plane 1 — the pens were logically empty and visibly full. Every reset must reset every plane that holds state. (`clearfold` is the two lines that fix it.)
+- **The fold never advances the level?** `won` has two consumers now — the pen logic that sets it and `endtick` that acts on it. If a stray reset clears it before `WINWAIT` elapses, the win evaporates.
+- **A vehicle goes backwards on level up?** Sign error in the table: leftward lanes need *more negative* each level. `-(3<<16)/2` and `(-3<<16)/2` agree, but `(3<<16)/-2` is a typo the assembler may swallow whole.
+- **She hops twice per tap?** The echo. `sawneutral` missing, or not cleared on the hop, or the buffer not cleared on `newsheep` — a banked intention haunting the next sheep is a genuinely confusing ghost.
+
+## Try This
+
+1. **Show the level.** The HUD has lives on the left and score on the right; the centre is empty. The digit glyphs from Unit 10 are sitting right there. One number changes how players talk about the game — "I died on four" needs a four to die on.
+2. **Escalate the *world*, not just the numbers.** Level three could add a second bale row; level four could send the cow the other way. `vehtab` rows are just data — could a level table add and remove *rows*? Sketch what `applylevel` becomes when levels change the cast, not the tempo.
+3. **The whole game, from memory.** Close the source. On paper, list every system in the main loop and what state it owns. If you can draw Flock's skeleton unaided, eighteen units did their job — and you're ready to design the next game instead of following it.
+
+## What You've Learnt
+
+- **Levels are data** — escalation as table rows poked over live state; the systems never know what level it is.
+- **Architecture compounds** — the level table only costs sixteen bytes a row because vehtab, 16.16 speeds, promoted constants and `newsheep` were already there. Every earlier discipline got cheaper to build on.
+- **Bonuses price behaviour** — the shepherd's bonus pays for a whole level of restraint, not one lucky moment.
+- **Input buffering, honestly** — bank fresh presses during cooldowns, gate on seen-neutral, replay raw. Feel is mostly justice for inputs.
+- **A finished game is a loop with a curve** — title in, escalating levels through, title out. Eighteen units ago this was a black screen with a coloured stripe.
+
+## What's Next
+
+That's Flock: a complete, charming arcade crosser — sprites and their pairs, two opposite collision laws, a farmyard of deterministic hazards, a gamble, a clock made of courage, music, a title, levels and a play-again loop. The Amiga's first game on this course, and a real one.
+
+The next game starts from everything this one earned. The Blitter has been waiting since the lineup reshuffle — and now you have a working game's worth of reasons to want to draw *more than eight things*.
