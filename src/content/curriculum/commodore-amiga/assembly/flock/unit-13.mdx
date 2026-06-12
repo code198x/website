@@ -1,0 +1,76 @@
+---
+title: "The Duck"
+description: "A second ferry paddles the other way — and dips under to feed on a cycle you can learn. The platform becomes the hazard, and the vanishing trick costs no new death code at all: no pixels, no evidence."
+pubDate: 2026-06-12
+game: 1
+unit: 13
+tags: ["assembly", "68000", "sprites", "state-machine", "collision", "platforms"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+The bale is a kind platform: always there, always solid, one direction. Unit 12's stream deserves a second ferry with a personality — a duck who paddles the *other* way, faster routes for braver sheep. And ducks feed. Every few seconds she tips tail-up — fair warning — then disappears below for a long moment. If your sheep is standing on her when she goes, the water remembers its law from Unit 12 and applies it without a single new line of death code. That economy is the whole lesson.
+
+## The Display
+
+![Flock Unit 13](/images/commodore-amiga/assembly/flock/unit-13/screenshot.png)
+
+Aboard the duck's stern, her green head leading the way west — while the bale ferries the other direction beyond the bridge.
+
+## The Last Sprite
+
+The duck takes sprite 7 — the final slot, the Land Rover's pair. Like the bale before her, she inherits her partner's palette (the Rover's green, dark trim and pale grey become a mallard's head, tail and flank) and her partner's **collision bit**: bit 11 of `CLXDAT` now means "Rover *or* duck", exactly as bit 10 means "cart or bale". The disambiguation is the one you already know — the road judge only believes the road pair when she's road-side, and the water judge only believes the ferries in the water rows. Unit 12 taught the trick for one shared bit; the duck proves it's a *pattern*: `checksquash` now gates **both** shared bits behind the row test, and only the tractor's bit 9 kills unconditionally. The hardware gives you four collision groups for eight sprites; position gives you the other four.
+
+Two reminders from the wiring: `ENSP7` joins `ENSP5` in `CLXCON` (odd sprites stay out of the collision circuit until invited), and the duck is one more row in `vehtab` — a negative speed, because the mover from Unit 8 has known how to drive leftward since the day it was data.
+
+## Two Decks, Two Drifts
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-13/snippets/02-two-decks.asm" />
+
+The water's law grows three lines. Either ferry bit clears the drown-arm; *which* bit decides which drift carries her — the bale's eastward `+1` or the duck's westward `-1`. Ride the duck and the stream flows backwards under you; ride too far either way and the edge of the world is still the edge of the world (the westward edge is new — the bale could never take her there).
+
+## The Paddle, the Warning, the Gone
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-13/snippets/01-tendduck.asm" />
+
+The duck's mind is a timer and three states, and here's the part worth keeping: **the sprite pointer is the state**. Paddling points at the swimming art. Warning points at the tail-up art — same spot, same collision bit, still a perfectly good deck, but every player learns within two drownings what that posture means. Under points at the **null sprite**.
+
+And that's the entire vanishing mechanic. No `if duck_is_under` in the water judge. No special case in the collision read. When the pointer says null, Denise draws no pixels; no pixels means nothing for the sheep to touch; nothing to touch means no bit 11 in `CLXDAT`; and a wet sheep touching nothing is already, by Unit 12's law, drowning. The rider doesn't fall off the duck — the duck stops *existing*, and the world's standing rules do the rest. When a mechanic costs zero code, that's usually the sign the architecture underneath is right.
+
+She keeps swimming while she's under, too — `vehtab` never stops moving her x — so she surfaces a learnable distance further west. Count her steps.
+
+## Experiment: Tune the Bird
+
+- `DUCK_WARN equ 10` — the warning becomes a blink. Feel how unfair the same dive now is; kindness is a constant.
+- `DUCK_UNDER equ 30` — barely a sip. The duck becomes the *safe* ferry and the bale the slow boat; difficulty inverted with one number.
+- Make her surface where she dived: stop her `vehtab` row while under (set the speed field to 0 and back — it's data, you can write it). Does a duck that waits feel friendlier or eerier?
+- Swap `DUCK_SPEED` to `+2`. Two ferries the same way, different speeds — suddenly crossing is about *choosing*, not waiting.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-13/flock.asm" />
+
+## If It Doesn't Work
+
+- **The duck never registers underfoot?** `CLXCON` needs *both* invitations now — `$c000`, `ENSP5+ENSP7`. Forgetting the second is the same silence the bale taught you.
+- **She dies on the duck mid-ride for no reason?** Check `checksquash`: if bit 11 still sits in the unconditional mask, the road judge is executing her for riding. Both shared bits belong behind the row gate now.
+- **The rider survives the dive?** Your "under" state must point at the null sprite, not at art that happens to look like water. Invisible-but-present pixels still latch collisions — the hardware has no opinion about what your art *means*.
+- **The duck renders in the wrong colours?** Sprite 7 shares COLOR29–31 with sprite 6. There is no private palette for the last sprite; design inside your neighbour's wardrobe.
+
+## Try This
+
+1. **A splash where she dived.** One more state — `gone` could point at a brief ripple art for its first dozen frames before the null sprite. Pure theatre, zero mechanics: the pointer-as-state machine makes it a four-line addition.
+2. **A second duck.** Sprite budget says no — all eight are spoken for. But the *bale* only uses its sprite in the stream rows… could one sprite be two actors on different rows? (This question is the seed of every sprite multiplexer ever written. Let it sit until Signal.)
+3. **Score the brave route.** The duck crossing is faster and riskier than the bridge. Pay it double. Find where `trypen` scores and make the route she took change the price.
+
+## What You've Learnt
+
+- **The shared-bit trick is a pattern, not a one-off** — both odd-sprite collision bits now carry two meanings each, separated by the row gate; eight sprites, four bits, no ambiguity.
+- **Pointer-as-state** — a state machine whose output *is* the sprite pointer: art, warning art, null. The display list is the state display.
+- **Absence is mechanics** — the null sprite produces no pixels, no pixels produce no collision evidence, and the standing water law converts that silence into drowning. The best new feature is often the one the old rules already handle.
+- **Negative speeds were always there** — the data-driven mover takes `-1` as calmly as `+1`; the second ferry cost one table row.
+- **Telegraphed danger** — the warn state is pure art with full mechanics underneath; players learn cycles from posture, not manuals.
+
+## What's Next
+
+The stream is finished — bridge, bale, duck, and a law that handles all three without exceptions. Arc 2 turns back to the road: the farmyard's biggest resident wants a lane of her own, and she doesn't move for anybody. The cow is not a gap to time. She's a bulk to squeeze past.
