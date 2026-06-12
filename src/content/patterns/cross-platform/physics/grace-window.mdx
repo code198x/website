@@ -1,0 +1,72 @@
+---
+title: "The Grace Window"
+summary: "A second of invulnerability after every respawn, covering every damage source, made visible by blinking the player. Without it, dying once where a hazard sits can spend every life in as many frames."
+platform: "cross-platform"
+category: "physics"
+difficulty: "beginner"
+taught_in: "Starfield Unit 14 (C64) · Dash Unit 17 (NES)"
+tags: ["collision", "respawn", "game-feel", "fairness"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["aabb-collision", "blink-on-a-clock"]
+  vault: []
+---
+
+## Overview
+
+Respawn points are fixed; hazards move. Sooner or later a player dies while a hazard is sitting over the respawn point — and without protection it hits them again the next frame, and again the frame after. Three lives in three frames, and the player never saw it happen. (Dash shipped this way; the first scripted attempt to *win* the game found it inside a minute.)
+
+The fix is a **grace window**: a frame counter loaded on every respawn, during which damage checks are skipped. Two rules make it honest:
+
+- **Cover every damage source.** Gate only the obstacle and the player dies to the spikes instead — the cascade just changes costume. One timer, checked at the top of every damage path.
+- **Make it visible.** Blink the player's sprite while the window lasts (hide it on a low bit of the timer). Fairness needs to be *seen* to be believed — the blink isn't decoration, it's the game telling the player the rules, and telling them when the protection ends.
+
+## Pseudocode
+
+```text
+on_damage (still alive):
+    lives -= 1
+    respawn player at start
+    hurt_timer = 60                     ; a second of grace
+
+per-frame, before any damage check:
+    if hurt_timer > 0:
+        hurt_timer -= 1
+        skip ALL damage checks this frame
+
+sprite update:
+    if hurt_timer > 0 and (hurt_timer AND %0100):
+        hide player sprite              ; the blink: rules made visible
+    else:
+        draw player normally
+```
+
+## Implementation Notes
+
+**6502 (NES — Dash):** `hurt_timer` in zero page; the obstacle check opens with `lda hurt_timer / bne skip`, the spike check decrements it (one decrement per frame, whichever path runs), and the OAM update swaps the sprite's Y to the off-screen value on `hurt_timer AND #%00000100` — a 4-frame flicker.
+
+**6510 (C64 — Starfield):** the `death_timer` doubles as the life-lost border flash and the invulnerability gate — the ship-versus-wave check is skipped while it runs. Same byte, both jobs: the *feedback* and the *mechanics* share a clock, so they can't disagree.
+
+**Choose what the window forgives.** Collision damage, yes. Falling off the world, usually not. Pickups keep working — the window gates *harm*, not *interaction*.
+
+**Don't let movement freeze.** The player must be able to walk out of danger during the grace — gate the damage checks, never the input or movement code.
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | One load/branch at the head of each damage path |
+| Memory | One byte |
+| Complexity | Low — the discipline is gating *every* path and showing it |
+
+**When to use:** any game with lives, respawning, and hazards that persist across the death.
+
+**When to avoid:** one-life games and games where the respawn point is provably safe — though "provably" deserves a scripted check, not a feeling.
+
+## Benefits
+
+- **No death cascades** — one mistake costs one life
+- **Seen fairness** — the blink tells the player the rules in real time
+- **Tunable mercy** — the window length is one byte of difficulty design

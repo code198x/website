@@ -1,0 +1,65 @@
+---
+title: "Blink on a Clock"
+summary: "PRESS START winks on a 32-frame beat read straight off a frame counter — one AND instruction selects draw or clear. A blink is two renderers taking turns on a clock you already had."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "beginner"
+taught_in: "Flock Unit 18 (Amiga) · Dash Unit 17 (NES)"
+tags: ["title-screen", "hud", "frame-counter", "polish"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["state-machine"]
+  vault: []
+---
+
+## Overview
+
+Every arcade machine in history has blinked its PRESS START — and the whole mechanism is one `AND`. A free-running frame counter already exists in any frame-locked game; a single bit of it toggles at a fixed beat (bit 5 flips every 32 frames ≈ 0.6s at 50/60 Hz). Test the bit: one way draws the prompt, the other clears its cells.
+
+There is no blink *state* to manage, no timer to reset, nothing to get out of sync — the counter was already counting. Pick a higher bit for a slower wink, a lower bit for urgency.
+
+The pattern generalises past blinking: any visual that alternates on a beat (a tremble, a pulse, a two-frame idle animation) is the same `AND` against the same counter, choosing between two renders.
+
+## Pseudocode
+
+```text
+; somewhere in the per-frame loop (or already there)
+frame_count += 1
+
+; on the title screen
+title_draw:
+    if frame_count AND %00100000:       ; bit 5: 32 on, 32 off
+        clear the prompt cells
+    else:
+        draw "PRESS START"
+```
+
+## Implementation Notes
+
+**Where the writes happen matters more than the test.** On the NES (Dash), nametable writes belong to vblank — so the main loop only increments `blink_timer`, and the **NMI handler** reads bit 5 and writes either the text tiles or eleven blanks through `PPUDATA`. Splitting clock from writes is the real lesson: the main loop owns time, the vblank handler owns VRAM.
+
+**On framebuffer machines** (Amiga — Flock), the test and the writes can live together: `move.w framecnt,d0 / and.w #32,d0 / beq draw / bsr clear`. Flock draws its prompt through the same glyph routine the score uses, and clears with the same `rectclear` that built the farm.
+
+**Clear exactly what you drew.** The clear path must blank precisely the prompt's cells — clearing wider eats the background; clearing narrower leaves ghost pixels at the prompt's edges.
+
+**Same clock, different effect:** Flock's frightened-sheep tremble is this pattern at bit 2 — a two-frame jitter selected by `framecnt`, no new state.
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | One AND and a branch per frame, plus the draw/clear itself |
+| Memory | Zero — the frame counter was already there |
+| Complexity | One AND |
+
+**When to use:** prompts, cursors, alarms, idle pulses — anything that should breathe on a beat.
+
+**When to avoid:** when the player must not miss the message mid-blink — critical text stays solid.
+
+## Benefits
+
+- **No state** — the clock is the state, and it can't drift
+- **Tunable with one constant** — the bit you test *is* the tempo
+- **Composable** — different bits drive different effects from the same counter

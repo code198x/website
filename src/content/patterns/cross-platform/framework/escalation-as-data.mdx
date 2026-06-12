@@ -1,0 +1,78 @@
+---
+title: "Escalation as Data"
+summary: "Difficulty lives in a table; a level-up pokes the next row into live tuning variables the systems read fresh every frame. The systems never learn that levels exist."
+platform: "cross-platform"
+category: "framework"
+difficulty: "intermediate"
+taught_in: "Flock Unit 18 (Amiga) · Starfield Unit 17 (C64) · Dash Unit 17 (NES)"
+tags: ["difficulty", "levels", "data-driven", "game-design"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["three-caps", "state-machine"]
+  vault: []
+---
+
+## Overview
+
+A game with no curve isn't finished — it's a demo with a title screen. The cheapest honest curve is a **table**: one row per level, each row holding the handful of numbers that should get harder. A `next_level` routine pokes the new row into **live tuning variables**, and the game's systems read those variables fresh every frame.
+
+The structural point is what *isn't* there: no `if level >= 3` scattered through the movement code, no per-level routines. The enemy that falls, the lane that scrolls, the duck that dives — none of them know what level it is. They read their tuning every frame, and the tuning changed while they weren't looking.
+
+The corollary is that **difficulty design becomes data entry**. Bending the curve — a gentler ramp, a breather level, a sharper wall — is editing bytes, not code. That's also what makes post-playtest tuning cheap.
+
+## Pseudocode
+
+```text
+; One row per level: every number that escalates
+level_table:
+    row 0:  speed 1, spawn_rate 90, nerve 250
+    row 1:  speed 2, spawn_rate 75, nerve 220
+    row 2:  speed 2, spawn_rate 60, nerve 190
+    row 3:  speed 3, spawn_rate 50, nerve 160      ; the last row is the wall
+
+; Live tuning — what the systems actually read
+fall_speed:  byte
+spawn_rate:  byte
+nerve_bolt:  byte
+
+next_level:
+    level += 1
+    index = min(level - 1, LAST_ROW)               ; clamp: see Three Caps
+    (fall_speed, spawn_rate, nerve_bolt) = level_table[index]
+    reset the field                                ; every reset, every plane
+    play the fanfare
+
+; Meanwhile, in the systems — every frame, no questions asked:
+enemy_update:
+    enemy_y += fall_speed
+```
+
+## Implementation Notes
+
+**68000 (Amiga — Flock):** a level is sixteen bytes — three 16.16 fixed-point lane speeds plus two word variables. `applylevel` pokes the speeds straight over the live vehicle table's speed slots: the same move that recolours a sprite via the Copper list, aimed at physics instead of palette. Fixed-point speeds mean *half-pixel* difficulty steps exist between "too gentle" and "too cruel".
+
+**6510 (C64 — Starfield):** `wave_speed_tbl` is five bytes; `advance_wave` clamps the index (`cpy #WAVE_TOP / bcc / ldy #WAVE_TOP`) and stores into `fall_speed`. The enemy drift does `adc fall_speed` where it once did `adc #$01` — a one-instruction change that makes the whole loop tunable.
+
+**6502 (NES — Dash):** `level_speed_tbl`, same clamp shape with `cpx`/`bcc`. The level turn also returns the runner to the gate and respawns the pickups — *every reset resets every plane*, or the respawned coin under the player's feet collects itself on the next frame (a shipped-for-six-minutes bug).
+
+**Z80:** identical shape — `ld hl, level_table` plus a clamped offset, `ldir` the row into the live variables.
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | One table copy per level turn; zero per-frame cost over hardcoded values |
+| Memory | Bytes per level row, plus one live variable per tuned quantity |
+| Complexity | Low — but demands the discipline of routing *all* tuning through the live variables |
+
+**When to use:** any game where something should escalate — which is any game with a second minute.
+
+**When to avoid:** when levels change *structure*, not just *numbers* (new layouts, new cast). Then the table holds pointers to level data, not just tuning values — a bigger pattern this one grows into.
+
+## Benefits
+
+- **The systems stay ignorant** — no level checks anywhere in the per-frame code
+- **Tuning is a data edit** — playtest feedback turns into byte changes, not refactors
+- **The curve is visible in one place** — the table *is* the difficulty design, readable at a glance

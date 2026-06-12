@@ -1,0 +1,73 @@
+---
+title: "The Ending Dwell"
+summary: "Win or lose, the screen holds for a beat before any button is believed. The pause is the punctuation that lets the player read their own ending — and it stops a held button blowing through three screens in three frames."
+platform: "cross-platform"
+category: "framework"
+difficulty: "beginner"
+taught_in: "Flock Unit 17 (Amiga) · Gloaming Unit 19 (Spectrum) · Starfield Unit 17 (C64)"
+tags: ["game-feel", "state-machine", "input", "endings"]
+evolution:
+  previous: "state-machine"
+  next: null
+related:
+  patterns: ["state-machine", "edge-detection"]
+  vault: []
+---
+
+## Overview
+
+Players die with the fire button held — that's how everyone dies. Without protection, the game-over screen reads that held button on its first frame, snaps to the title, the title reads the same held button, and a new game starts before the death tone finishes. Three screens in three frames; the player never reads their own ending.
+
+The fix is a **dwell**: entering any screen that waits for a button loads a frame counter, and the screen refuses to believe the button until the counter runs out. A second of stillness on game over; half a second on the title. The pause isn't dead time — it's the punctuation that makes win and loss *land*.
+
+This is the timer-based sibling of [edge detection](/patterns/cross-platform/input/edge-detection). Edge detection ignores a held button entirely (act on the press, not the level); the dwell slows everything down regardless of edges, which also gives the moment room to breathe. Finished games often want both: the dwell for the beat, the edge for the button.
+
+## Pseudocode
+
+```text
+; entering an ending screen — wherever the state changes
+enter_game_over:
+    state = GAME_OVER
+    ui_lock = 60                ; a second of stillness
+
+enter_title:
+    state = TITLE
+    ui_lock = 25                ; half a second
+
+; in the screen's per-frame handler
+game_over_update:
+    draw the screen
+    if ui_lock > 0:
+        ui_lock -= 1
+        return                  ; the button is not yet believed
+    if fire pressed:
+        enter_title
+```
+
+## Implementation Notes
+
+**The lock loads where the state changes, not where the screen draws.** A screen that repaints every frame would reload the lock every frame and never expire. Flock's `endtick` dwells via `WINWAIT`/`ENDWAIT` loaded at the win/loss moment; Starfield's `ui_lock` loads in the out-of-lives branch and in `enter_title`.
+
+**One variable serves every screen** — the title and the game-over screen never run at the same time, so a single `ui_lock` byte with different load values per screen is enough.
+
+**Differentiate the two endings.** Flock dwells longer on a win (180 frames, then straight to the next level) than on a loss (300 frames, then the long walk back to the title) — the dwell length is part of how each ending *feels*.
+
+**Verification note:** the dwell is invisible in screenshots. Starfield's was verified frame-exact by scripted runs — GAME OVER must survive a held button at +30 and +55 frames, flip to the title at +75, and start a new game at +105. If you can't see a behaviour in a still, script it.
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | One decrement and branch per frame on ending screens |
+| Memory | One byte |
+| Complexity | One byte and a branch — the discipline is loading it at every state change |
+
+**When to use:** every screen that waits for a button, in every game.
+
+**When to avoid:** mid-game prompts where responsiveness matters more than ceremony — there, use edge detection alone.
+
+## Benefits
+
+- **Endings land** — the player reads the screen because the game makes them
+- **No accidental skip-through** — a held button can't chain across screens
+- **Tunable feel** — the dwell lengths are two bytes of game-design intent

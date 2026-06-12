@@ -1,0 +1,97 @@
+---
+title: "Tune Sequencer with Two Terminators"
+summary: "A melody is a table of pitch and duration; a once-per-frame tick serves it. One terminator loops (title music), the other stops (fanfares and stings) — win and lose having voices costs one extra marker."
+platform: "cross-platform"
+category: "audio"
+difficulty: "intermediate"
+taught_in: "Flock Units 17–18 (Amiga) · Starfield Unit 17 (C64) · Dash Unit 17 (NES)"
+tags: ["music", "sequencer", "jingle", "fanfare", "data-driven"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["state-machine"]
+  vault: []
+---
+
+## Overview
+
+Every game music driver ever written is this routine with more columns. A melody is rows of **pitch** and **duration**; a tick routine runs once per frame, counts the current note down, and serves the next row when it expires. The sound chip holds each note by itself — the CPU touches it twice per note, and the game runs on regardless.
+
+Three details carry the pattern:
+
+- **A rest is a note.** A pitch of zero gates the channel off and keeps counting. Silence is part of the phrase — run notes together and they smear.
+- **Two terminators, two meanings.** One marker loops to the top: that's title music, round and round until the player presses start. A second marker stops for good: that's a fanfare or a sting, which says its piece once. Win and lose having voices costs the sequencer exactly one extra marker.
+- **Retrigger on every note.** Gate the voice off then on (or rewrite the period register that restarts the phase) so each note attacks cleanly instead of sliding.
+
+The exception that proves the pattern: on a one-bit beeper (ZX Spectrum), the tune *owns the CPU* — every half-cycle of every note is a software loop, and the game stops while music plays. The table idea survives; the "game runs on regardless" part is what a sound *chip* buys you over a sound *bit*.
+
+## Pseudocode
+
+```text
+; A phrase: rows of (pitch, frames)
+; pitch 0        = rest
+; frames LOOP    = back to the top (title music)
+; frames STOP    = played once, now silent (fanfare / sting)
+
+tune_tick:                      ; called once per frame, every state
+    if sequencer_off: return
+    tune_timer -= 1
+    if tune_timer > 0: return
+
+next_row:
+    (pitch, frames) = table[tune_idx]
+    tune_idx += 1
+    if frames == LOOP:  tune_idx = 0; goto next_row
+    if frames == STOP:  silence channel; sequencer_off = true; return
+    tune_timer = frames
+    if pitch == 0:      silence channel; return     ; the rest
+    set channel pitch
+    retrigger channel                               ; gate off, gate on
+```
+
+## Implementation Notes
+
+**68000 + Paula (Amiga — Flock):** rows are `dc.w period, frames`; period 0 is a rest (audio DMA off), `-1` loops, `-2` stops. Each note is an ordinary one-shot sample play with steady pitch.
+
+```asm
+tunetick:
+            subq.w  #1,jingletimer
+            bne.s   .out
+.next:      move.l  jinglep,a0
+            move.w  (a0)+,d0            ; period — or a marker
+            cmp.w   #-1,d0
+            beq.s   .loop               ; round again
+            cmp.w   #-2,d0
+            beq.s   .halt               ; played once, now stop
+            move.w  (a0)+,d1            ; frames
+            move.l  a0,jinglep
+            move.w  d1,jingletimer
+            tst.w   d0
+            beq.s   .rest               ; silence is a note too
+            ; ...point Paula at the sample, set AUDxPER from d0, DMA on...
+```
+
+**6510 + SID (C64 — Starfield):** three parallel tables (`jingle_lo`, `jingle_hi`, `jingle_dur`), `$FF` in the high byte as the loop marker. Retrigger by writing gate-off then gate-on to the voice control register. The title lends the laser's voice to the band — both halves of the envelope handover live in the state transitions (`enter_title` installs the music envelope, `enter_game` restores the laser's).
+
+**6502 + APU (NES — Dash):** rows of three bytes (`period_lo, period_hi, frames`); `$FF` loops, `$FE` stops. Writing the period high register restarts the note. Watch the sweep unit: disable it with a write that can't mute your period range.
+
+**Z80 + beeper (Spectrum — the honest "before"):** Gloaming Unit 21 plays its three phrases as straight-line `beep` calls with `HALT`-loop rests — blocking, like every beeper sound. Shadowkeep's theme is the table version, still CPU-held: the tick *is* the note. Same data idea, no free lunch.
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | Negligible on a sound chip (two register writes per note); the whole CPU on a beeper |
+| Memory | 2–3 bytes per note plus a ~30-instruction tick |
+| Complexity | Low — and tempo, key and melody become data edits |
+
+**When to use:** any game that wants title music, a fanfare, or a sting — which is any finished game.
+
+**When to avoid:** when you need chords, instruments, or per-channel effects — at that point you're building a tracker replayer, which is this pattern with more columns.
+
+## Benefits
+
+- **Melody is data** — transpose by multiplying pitches, change tempo by scaling durations, swap tunes by swapping a pointer
+- **Endings get voices cheaply** — the stop terminator turns the title-music engine into a fanfare/sting engine for free
+- **The game never waits** — on real sound hardware the tick costs two writes per note, not per frame

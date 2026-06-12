@@ -1,0 +1,69 @@
+---
+title: "Three Caps: Counter, Index, Digit"
+summary: "A level counter, a table index, and a HUD digit are three different numbers with three different caps. The counter never stops, the index clamps for safety, the digit caps for display — conflate them and the game lies about one of them."
+platform: "cross-platform"
+category: "framework"
+difficulty: "beginner"
+taught_in: "Flock Unit 18 (Amiga) · Starfield Unit 17 (C64) · Dash Unit 17 (NES)"
+tags: ["levels", "hud", "honesty", "bounds-checking"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["escalation-as-data"]
+  vault: []
+---
+
+## Overview
+
+When a game gains levels, one value quietly becomes three, and each wants a different cap:
+
+- **The counter** never stops climbing. It's the truth about how far the player got, and capping it makes the game lie.
+- **The table index** clamps at the last row. Past the end of the difficulty table, an unclamped index reads whatever bytes happen to follow and calls them physics — the classic out-of-bounds read, except the symptom is "level six is absurdly fast", not a crash.
+- **The display digit** caps at what the HUD can show. A single-digit readout shows 9 forever after; the alternative is rendering whatever tile sits past `'9'` in the character set.
+
+The honest result: the player's number tells the truth about how far they got, the physics quietly admits it ran out of new ideas, and the screen never shows garbage. Conflating any two of these — capping the counter because the digit caps, or letting the index run because the counter runs — is how games end up lying about one of them.
+
+## Pseudocode
+
+```text
+next_level:
+    level += 1                          ; the COUNTER: never stops
+
+    index = level - 1
+    if index > LAST_ROW:
+        index = LAST_ROW                ; the INDEX: clamps at the wall
+    tuning = level_table[index]
+
+draw_hud:
+    digit = level
+    if digit > 9:
+        digit = 9                       ; the DIGIT: shows 9 forever after
+    print DIGIT_ZERO + digit
+```
+
+## Implementation Notes
+
+**6510 / 6502 (Starfield, Dash):** the clamp is two instructions on the index register (`cpx #TOP / bcc ok / ldx #TOP`) and two on the display value (`cmp #10 / bcc ok / lda #9`). The counter itself gets no comparison at all — that absence is the point.
+
+**68000 (Flock):** the level counter is a word and just increments; the table index clamps at `MAXLEVEL`; the HUD digit caps at 9 in the score-drawing path. Three caps in three places, each commented as a different decision.
+
+**Wrap-around honesty:** an 8-bit counter does eventually wrap at 255. Decide whether that's reachable in honest play (Dash: 255 levels = a thousand-plus coins; accepted) and write the decision down instead of discovering it.
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | Four instructions per level turn, four per HUD draw |
+| Memory | Zero beyond the values you already had |
+| Complexity | Conceptual only — the discipline of seeing one value as three |
+
+**When to use:** any time a climbing value feeds both a lookup table and a display.
+
+**When to avoid:** never — but a multi-digit HUD readout moves the display cap from 9 to 99 or 999; the *shape* stays.
+
+## Benefits
+
+- **No out-of-bounds physics** — the index can't read past the table
+- **No HUD garbage** — the digit can't render past the glyph set
+- **The score sheet stays honest** — "I died on wave 14" is real even when the digit said 9
