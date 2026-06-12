@@ -1,0 +1,82 @@
+---
+title: "The Title"
+description: "FLOCK over the farmyard, Baa Baa Black Sheep on Paula, press fire to begin — and underneath it the state machine every finished game runs on: title, play, won, lost, and back round for one more go."
+pubDate: 2026-06-12
+game: 1
+unit: 17
+tags: ["assembly", "68000", "state-machine", "audio", "sequencer", "game-structure"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Until now the game has started the only way a prototype can — abruptly, mid-farmyard, sheep already on the grass — and ended the only way a prototype does, frozen until you pull the plug. What separates that from a *finished* game is one idea: the game is a **loop of states**, and play is only one of them. This unit builds the loop: a title screen with the farm idling behind it, a daft Paula jingle, *press fire to begin* — and when the last sheep is home or lost, a beat of stillness and back to the title for one more go.
+
+## The Display
+
+![Flock Unit 17](/images/commodore-amiga/assembly/flock/unit-17/screenshot.png)
+
+FLOCK, eight pixels at a stroke — and the farm doesn't stop for it: the tractor clips the F, the cow keeps the verge, both ferries run. The world *is* the attract mode.
+
+## The Spine
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-17/snippets/01-the-spine.asm" />
+
+The main loop now opens with one test: `gamestate`. The title is not a separate program — it's the same loop with different systems switched in. The traffic drives, the duck dips, the jingle plays; what's missing is the sheep and everything that judges her. One branch, two games.
+
+The transitions are where the real lessons live:
+
+- **`startgame` is the only place the game becomes new.** Lives, score, pens, nerves, the playfield itself — every reset in one routine. This is the discipline that matters: scatter your resets and the second game inherits the first one's ghosts. (Our first draft forgot nothing — but only because thirteen units of state had already been listed in one place by `newsheep` and friends. Architecture pays compound interest.)
+- **`checkfire` watches the *edge*, not the level.** A held button is one press, not fifty starts a second. `firewas` is the same latch pattern as Unit 16's worried baa — fired once, reset on release.
+- **`endtick` lets the moment land.** Win or lose, the screen holds for `ENDWAIT` frames before the title returns. Snap back instantly and the player never reads their own ending; the pause is the punctuation. And when the title does return, the score and flock stay on the HUD — the title wears your last game like a rosette until fire wipes it.
+
+The title text itself is `rectfill` walking a table — the same routine that built the farm in Unit 1, fed letter-shaped data. The road band is bared first so the lane markings don't thread through the lettering. Fonts are just data with opinions.
+
+## The Sequencer Soundtick Was Always Going to Need
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-17/snippets/02-tunetick.asm" />
+
+Unit 11 ended with a question: `playsound` plays one sound, so what's the smallest change that plays a *sequence*? This is the answer, and it's barely a routine. A melody is a table — period, frames, period, frames — and `tunetick` watches the clock and serves the next entry. Zero period is a rest (silence is a note too — switch the channel off and keep counting); the terminator loops back to the top. Every note is an ordinary `playsound` call with both periods equal: steady pitch, no slide.
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-17/snippets/03-the-jingle.asm" />
+
+And the tune had to be *Baa Baa Black Sheep* — public domain since before electricity, and this game has earned it: you met her in Unit 15. Six note constants, eighteen table entries, and the farm has theme music — here's one loop of it:
+
+<audio controls src="/audio/commodore-amiga/assembly/flock/unit-17/jingle.wav"></audio>
+
+The whole apparatus — table, tick, rest, loop — is the seed of every tracker and game-music driver ever written; they are this routine with more columns.
+
+## Experiment: Conduct
+
+- Halve every duration in the jingle table. Double them. Tempo is data; nobody recompiles an orchestra.
+- Transpose it: multiply every period by 2 for an octave down (and feel a Paula truth: *bigger* period, *lower* note). Write `NOTE_C*2` and let the assembler do the arithmetic.
+- Give the rests a pulse: replace the `0,14` rest with a whisper-quiet low note. The silence becomes a heartbeat and the jingle suddenly has a rhythm section.
+- `ENDWAIT equ 25` — the ending barely registers before the title snatches the screen. `equ 900` — it overstays. Find the dwell where a lost game stings and a won one glows.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-17/flock.asm" />
+
+## If It Doesn't Work
+
+- **The second game starts with last game's pens full?** Something `startgame` doesn't reset. Walk every variable the game writes and ask "who zeroes this?" — the answer must be `startgame` or *deliberately nobody* (the title keeps the old score on purpose).
+- **The game starts fifty times a second while fire is held?** Edge, not level: the `firewas` latch is missing or never clears.
+- **The jingle plays one note and stops?** `tunetick` must run every title frame and `soundtick` must still run too — the note's end is `soundtick`'s job, the next note's start is `tunetick`'s. They share the channel by taking turns.
+- **The lettering has road markings through it?** Bare the band before drawing. `rectfill` ORs nothing — it sets bytes — but the dashes outside your letters are still there unless you clear them.
+
+## Try This
+
+1. **Press fire — say so.** The title doesn't tell the player what to do. "PRESS FIRE" in half-height letters is another rect table and a second `drawtitle`-style call — and a classic touch is making it blink: draw it, clear it, on a frame-counter schedule. Everything you need is already on the page.
+2. **Attract the attract mode.** Period games let a ghost sheep wander the farm on the title. You have `panic` — a sheep who is *always* bolting, steered by nobody. Three lines in `steer`'s gate. Decide if she should be black.
+3. **A lose sting and a win fanfare.** `endtick` knows which ending it's sitting with; `tunetick` plays tables. Two more tiny tables — a falling phrase for the empty field, a rising one for the full fold — served during `ENDWAIT`. The structure begs for it.
+
+## What You've Learnt
+
+- **The game state machine** — title, play, won, lost: one loop, one state word, systems switched per state. Every finished game has this spine; most unfinished ones are missing exactly it.
+- **Resets live in transitions** — `startgame` owns making-new; miss one variable and game two haunts you. List your state, name its zeroer.
+- **Edge detection for buttons** — act on the press, not the hold; one latch word per button.
+- **The sequencer** — melody as a table of (pitch, duration), a tick that serves it, rests as silent notes, a loop marker. The embryo of every music driver.
+- **Endings need dwell** — a beat of stillness is what lets win and loss *mean*; the pause is part of the design, not dead time.
+
+## What's Next
+
+One unit remains. The game has everything — except *escalation*: every crossing is the same difficulty, and a full fold just stops. The finale builds the level table (lanes quicken, the duck dips sooner, nerves fray faster), pays a shepherd's bonus for a clean flock, and closes the loop the title opened. The whole flock home.
