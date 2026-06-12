@@ -1,0 +1,80 @@
+---
+title: "The Black Sheep"
+description: "One sheep in eight is black — worth four crossings' score, and quicker on her feet than you're used to. Randomness on a machine that has none, palette pokes into a live Copper list, and the game's best sound."
+pubDate: 2026-06-12
+game: 1
+unit: 15
+tags: ["assembly", "68000", "random", "copper", "risk-reward", "audio"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Every sheep so far has been worth the same twenty-five points, and the only reason to hurry was boredom. This unit instals a gamble. Rarely — one roll in eight — the next sheep out of the field is **black**: worth a fat bonus at the fold, and a touch quicker on her feet than the flock you've learnt to steer. Quicker sounds like a gift until you're threading the rhythm you grooved over fourteen units with a sheep who arrives everywhere half a beat early. Risk, reward, and a chime at the pen that makes the whole detour feel earned.
+
+## The Display
+
+![Flock Unit 15](/images/commodore-amiga/assembly/flock/unit-15/screenshot.png)
+
+The gamble herself, mid-bridge — pale face forward, the duck paddling one way and the bale drifting the other, and a whole road already behind her.
+
+## Where Randomness Comes From
+
+The Amiga has no dice. No instruction returns an unpredictable number; the machine will do exactly the same thing every time you switch it on, forever. Randomness has to be *manufactured*, and the standard machinery is the **xorshift generator**: take a seed, fold it into itself with shifts and exclusive-ORs, and the bits churn through a sequence thousands of states long with no visible pattern.
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-15/snippets/01-newsheep-and-rnd.asm" />
+
+But a generator alone isn't random — it's just a long, fixed list read in order. The same machine booting the same game would roll the same sheep at the same moments, every single time. The entropy comes from the second ingredient: `framecnt`, a counter that has been ticking once a frame since the farm woke up, folded into the seed at each roll. The roll happens when a sheep steps up — which is to say, when the *previous* sheep died or came home — and that moment depends on every hop you've made all game. **The machine borrows its randomness from you.** Two players, identical machines: different sheep. It's the same trick every 8-bit and 16-bit game leaned on, from card shuffles waiting on a keypress to invader patterns seeded by the title screen.
+
+`newsheep` itself is the factoring this code wanted for three units — losesheep and the pen both used to place the next sheep by hand, in duplicate. Now there is one doorway every sheep steps through, and the dice live in the doorway.
+
+## Painting With the Copper List
+
+A black sheep needs black art — or so you'd think. She uses the same two step images the white flock has used since Unit 4. What changes is the **palette**: her three colours live in the Copper list as plain `dc.w` pairs, and the Copper list is only data. The same trick that repoints a sprite at a new image (Unit 13's diving duck) repaints a sheep: label the palette entries, poke three words before she steps out. Wool to soot, face to pale, shading to shadow — and the un-poke when a white sheep follows, or the whole flock inherits her coat. No second art, no second sprite, twelve bytes of writes.
+
+Her temperament is one more word: `steer` now loads its hop rhythm from a variable instead of a constant, and the black sheep's is shorter. That single number — six frames against four — is the entire difference between a sheep you steer and a sheep you *negotiate with*.
+
+## The Gamble Pays
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-15/snippets/02-the-gamble-pays.asm" />
+
+At the pen, two `tst.w isblack` branches finish the unit: a hundred points on top of the usual twenty-five, and the bleat swapped for a **chime** — the same two-note `playsound` machinery from Unit 11, tuned high, bright and rising. Five times the score deserves a sound nothing else in the game makes. Sound design is still pitch, volume and time; *meaning* is which events get which voices.
+
+Listen to her come home — the quick trot first (her five-frame rhythm re-steals the channel so fast the baas blur into a drone, which is Unit 11's "merged baas" accident turned into characterisation), then the chime over the top:
+
+<audio controls src="/audio/commodore-amiga/assembly/flock/unit-15/chime.wav"></audio>
+
+## Experiment: Load the Dice
+
+- `and.w #7,d0` is the odds. `#3` makes one sheep in four black; `#15`, one in sixteen. Feel how the gamble's *frequency* changes the game's whole temperature.
+- `SKITTISH equ 2` — a black sheep with a three-frame rhythm. Somewhere between thrilling and unsteerable is a line; find it and ask what the bonus would have to pay to make crossing it worth your while.
+- Remove the `framecnt` stir and play twice. Same sheep, same moments, both runs. Determinism isn't broken randomness — but feel how dead it goes when you can predict the gamble.
+- Make the chime three notes. `soundtick` plays two; Unit 11's Try This sketched the sequencer. The black sheep is the right excuse to build it.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-15/flock.asm" />
+
+## If It Doesn't Work
+
+- **Every sheep is black, forever?** The poke works; the un-poke doesn't. White sheep must write the white palette back — the Copper list remembers whatever was poked last.
+- **No sheep is ever black?** Check the roll's mask against the branch sense: `and.w #7` leaves zero one time in eight, and zero takes the `beq`. An inverted branch makes seven sheep in eight black — loud — but a wrong mask makes none, silently.
+- **The same sheep every game?** Your seed never moves, or the stir got lost. A xorshift with a constant seed is a metronome.
+- **She rolls black but moves like a white sheep?** `steer` must read `hopgap`, not the `COOLDOWN` constant. An assembler will happily keep the old immediate and never warn you the variable exists.
+
+## Try This
+
+1. **Show the gamble coming.** The flock strip at the bottom counts lives — could it show the *next* sheep's colour? One glyph redrawn at roll time. Decide whether the game is better when you can see her coming or when she's a surprise at the gate.
+2. **A skittish tell.** She's quicker — but players learn that only by losing her. Give the black sheep an idle fidget: every couple of seconds with no input, a single involuntary hop. (One timer, one `bsr` into the hop you already have. Decide which direction she fidgets — toward danger is crueller and funnier.)
+3. **Bank the bonus.** A hundred points for a black sheep penned — what about a *streak*? Two black sheep in a row could pay double. One word of state and one compare; ask whether the game wants memory in its gambling.
+
+## What You've Learnt
+
+- **Pseudo-randomness** — xorshift folds a seed into itself; the sequence is fixed, long, and patternless to the eye.
+- **Entropy from the player** — a free-running frame counter stirred in at event time makes the fixed sequence land differently every game. The human is the dice.
+- **The Copper list is writable data, part two** — sprite pointers in Unit 13, palette entries now. Anything the list sets, the CPU can re-set between frames.
+- **Character is a constant** — one rhythm variable distinguishes the gamble from the flock; personality costs a word.
+- **One doorway for every spawn** — factoring duplicated "next sheep" code into `newsheep` is what made a per-sheep roll possible at all. Features land easiest where the architecture already has a door.
+
+## What's Next
+
+The farmyard has its full cast and its gamble. What it doesn't have is an ending — levels that escalate, a clean-flock bonus, a game-over that means something and a victory worth the climb. Three units remain, and they're the polish that turns systems into a *game*.
