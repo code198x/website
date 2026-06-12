@@ -1,0 +1,118 @@
+---
+title: "Three Phrases"
+description: "Playing Gloaming on real hardware tells you what the emulator never did: the three biggest moments are silent. A dusk chime for the title, a rising fanfare for the win, a falling sting for the loss — each a handful of beep calls in a row, with rests between."
+pubDate: 2026-06-12
+game: 1
+unit: 21
+tags: ["assembly", "z80", "sound", "beeper", "fanfare", "polish"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import AudioClip from "@components/AudioClip.astro";
+
+Unit 20 put Gloaming on real iron, and playing it there — with real hands, on a real evening — teaches you something no checklist does: you *hear* the gaps. The title appears in silence. THE NIGHT IS HELD prints in silence. Night falls in silence. The two little blips of Unit 17 carry the whole game's voice, and the three moments with the most feeling in them say nothing at all. This unit gives each one a phrase: a chime for the dusk, a fanfare for the held night, a sting for the fallen one.
+
+## Where we start
+
+Unit 19's finished, looping game (the same code Unit 20 put on tape). It already knows how to beep — `beep` takes a length in `B` and a pitch in `C` and that is the whole engine. What it has never done is say two notes in a row.
+
+## A phrase is beeps in a row
+
+There is no new machinery in this unit, and that is the point. A musical phrase, on the beeper, is just `beep` called a few times with different numbers:
+
+```
+ld  b, $83          ; length — how many cycles
+ld  c, $CF          ; pitch  — the flip delay (smaller is higher)
+call beep           ; one note
+...                 ; a breath
+ld  b, $A5
+ld  c, $A4
+call beep           ; the next note, a third higher
+```
+
+Between the notes sits a **rest** — and a rest is not nothing, it is *part of the phrase*. Run the notes together and they smear into one another; give them a breath and each one lands. Our `rest` is the smallest possible: `B` frames of `halt`. Which hides one trap — `halt` waits for an interrupt, so a phrase can only play **after `ei`**. That is why the title chime is called *below* the `im 1` / `ei` pair in setup, not beside `draw_title_screen` where you might first reach to put it.
+
+## The shape carries the meaning
+
+Three phrases, three shapes — and the shape *is* the message:
+
+- **`chime_dusk`** — two bell notes, a bright strike and a lower answer, like a clock sounding over the square. It plays when the title appears, and again every time you come back to it.
+- **`fanfare_held`** — a rising run: C, E, G, and a held top C. Up means triumph; it has meant triumph since long before computers. One Z80 detail: `B` only counts to 255, so the held note is *two* beeps back to back — listen for the join and you won't find it.
+- **`sting_nightfall`** — two steps down and then a long, low note the phrase settles on. Down means loss. The night arrives on the A below the fanfare's first note.
+
+Nobody reads the screen text first. The phrase tells you which ending you got before a single word lands — exactly the job the lamp blips do in miniature, scaled up to the moments that decide the game.
+
+If you tried Unit 17's last experiment — "a win fanfare" — you have already written the middle of this unit. Here it is grown up, with rests and a held note, and joined by its two siblings.
+
+## Milestone — the endings sing
+
+We add a `rest`, the three phrases, and four calls: the chime after `ei` in setup and on every return to the title, the fanfare after `draw_win_screen`, the sting after `draw_lose_screen`. The phrases are blocking, like every beeper sound — and here that is a *feature*: the game holds still while the moment sounds, and the input lock picks up where the phrase ends.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-21/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-21/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: a dusk chime, a win fanfare, a nightfall sting"
+  context={3}
+/>
+
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-21/steps/step-01.asm" lang="z80" />
+</details>
+
+The screen is the same win you first earned in Unit 12 — but now it announces itself:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-21/step-01-won.png" alt="The win screen: THE NIGHT IS HELD and PRESS SPACE over the square, all eight lamps gold, the walls fully warmed to bright magenta, the full tally and three lives in the HUD." caption="THE NIGHT IS HELD, all eight lamps gold, the walls at full warmth. The picture is Unit 12's — the difference is that this time it arrived on a fanfare." />
+
+Here are all three phrases. First the chime that now greets every dusk:
+
+<AudioClip src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-21/chime-dusk.wav" title="The title chime — two bell notes over the square" source="ZX Spectrum beeper · port $FE bit 4" />
+
+The win — the last lamp's blip, a breath, then the rising run:
+
+<AudioClip src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-21/fanfare-held.wav" title="The win fanfare — C, E, G, and a held top C" source="ZX Spectrum beeper · port $FE bit 4" />
+
+And the loss — two steps down, and the night settles:
+
+<AudioClip src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-21/sting-nightfall.wav" title="The nightfall sting — falling, ending low" source="ZX Spectrum beeper · port $FE bit 4" />
+
+## When it's wrong, see why
+
+- **The machine hangs at the title, silent.** The chime ran before `ei` — `rest` uses `halt`, and `halt` with interrupts off waits forever. The phrase calls live *after* `im 1` / `ei`.
+- **The notes smear into one buzz.** No rests. Even `B` = 3 or 4 frames of silence between notes is the difference between a phrase and a noise.
+- **The held note has a hiccup in the middle.** That is the join between the two back-to-back beeps — a few microseconds of cone-settle. If yours is audible, the second beep's `B`/`C` don't match the first.
+- **The fanfare plays but the win screen is blank behind it.** Call order: draw first, *then* sing. The phrase blocks for over a second — the player stares at whatever was on screen when it started.
+- **A warble on every note.** Same as Unit 17: the frame interrupt is cutting in. `beep` already wraps itself in `di` … `ei`; if you wrote a new phrase helper, it must run its notes through `beep`, not toggle the port itself.
+
+## Before and after
+
+You started with a game whose endings happened and finished with a game whose endings *land*. The machinery was already there — one `beep` routine, four years old in game-time — and the whole unit is just calling it in patterns: up for triumph, down for loss, two bells for the dusk. That is the deepest lesson Gloaming's sound has to offer: feeling, on a one-bit speaker, lives in the *sequence*, not the synth.
+
+## Try this: re-pitch the dusk
+
+The chime is two numbers twice. Make both notes lower and the title turns solemn; make the second note *higher* than the first and the square sounds like it is asking a question. The game's whole opening mood is four bytes.
+
+## Try this: a phrase for the eighth lamp
+
+The last lamp before the win is a moment the game knows about — `lit_count` reaches `NUM_LAMPS - 1`. Give it a two-note "almost there" flourish, a little brighter than the ordinary blip. One comparison, one new phrase: the game starts building tension on its own.
+
+## Try this: feel the itch
+
+Look at the three phrases side by side. The same five lines repeat — load `B`, load `C`, call `beep`, load a rest, call `rest` — with only the numbers changing. Code where only the *data* changes is begging to become a table with a loop reading it. Don't fix it here; just notice it. Shadowkeep's theme music is exactly that fix, and you will recognise it the moment you meet it.
+
+## What you've learnt
+
+- A **phrase is sequenced beeps** — the same `beep`, called in a row with rests between; no new engine needed.
+- **Rests are notes** — silence between tones is part of the music, and `halt` only works after `ei`.
+- **Shape carries meaning** — rising for triumph, falling for loss, paired bells for arrival; the pattern speaks before any text does.
+- **`B` is 8-bit** — a held note longer than 255 cycles is two beeps back to back.
+- **Polish is hearing-driven** — this unit exists because playing the finished game on real hardware exposed silences no checklist listed.
+
+## What's next
+
+*Now* Gloaming is finished — finished the way the games in the magazines were finished, where the ending reaches your ears before your eyes. If your tape from Unit 20 is still to hand, rebuild it: the iron deserves the singing version.
+
+Next in the track is **Shadowkeep**, the first *substantial* game — and it does not start from scratch. The cell sprite, the save/restore, the collision, the game loop, the state machine, the HUD, the sound: every one of them was born here, in Gloaming, and Shadowkeep picks them up and builds a whole walled keep on top — including, in its fourth act, the tune-as-a-table that these three phrases were itching to become. You did not just make a game. You made the engine your next game runs on.

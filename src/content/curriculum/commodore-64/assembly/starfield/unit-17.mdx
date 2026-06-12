@@ -1,0 +1,111 @@
+---
+title: "The Curve"
+description: "Starfield works; nothing escalates. A wave counter, a speed table and a live fall speed put a difficulty curve in the game; a SID jingle gives the title a voice; and a dwell on both ends of the loop lets the endings land."
+pubDate: 2026-06-12
+game: 1
+unit: 17
+tags: ["assembly", "6510", "difficulty", "sid", "music", "game-feel"]
+---
+
+import CodeDiff from "@components/CodeDiff.astro";
+import CodeFromFile from "@components/CodeFromFile.astro";
+import Figure from "@components/Figure.astro";
+import AudioClip from "@components/AudioClip.astro";
+
+Unit 16 closed the loop, and called the game finished. Play it for five minutes and you'll find the two things the loop is missing. First: the fiftieth enemy falls exactly like the first — there is no *curve*, nothing that answers skill with pressure. Second: the machine is silent everywhere except mid-fight, and the title — the screen you stare at the longest — says nothing at all. This unit fixes both, and tucks in one piece of justice the state machine owed us from the start.
+
+## Where we start
+
+Unit 16's complete game: title, play, game over, round again. Three enemies fall at one pixel per frame, forever.
+
+## Milestone 1 — the lanes quicken
+
+A difficulty curve needs three small ideas, and they are worth keeping apart in your head:
+
+- **`wave`** counts where you are — it starts at 1 and *never stops climbing*.
+- **`wave_speed_tbl`** says what each wave means — one byte per wave, pixels of fall per frame.
+- **`fall_speed`** is the live tuning — the one byte the enemy loop reads, every frame.
+
+Ten kills end a wave. `advance_wave` resets the kill count, bumps the counter, looks up the new speed and pokes it into `fall_speed` — and that is the whole trick: **the enemies never learn that waves exist**. The drift code reads its tuning fresh each frame, and the tuning changed while it wasn't looking. No `if wave >= 3` scattered through the loop, no per-wave code at all.
+
+Three different caps live in this milestone, and they are not the same thing. The wave *counter* never stops. The table *index* clamps at the last entry — past wave five the game repeats its hardest setting, because an unclamped index would read whatever byte happens to follow the table and call it a speed. And the HUD *digit* shows 9 forever after. The player's number tells the truth about how far they got; the physics quietly admits it ran out of new ideas. Conflate those caps and the game ends up lying about one of them.
+
+The wave-up also *says so*: a bright triangle ding on voice 3, right over the explosion that earned it, and a `W` readout at the top of the screen — "I died on wave four" finally has a four.
+
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-17/steps/step-00.asm"
+  after="commodore-64/assembly/starfield/unit-17/steps/step-01.asm"
+  lang="6502"
+  title="Step 1: a wave counter, a speed table, a live fall speed, and a readout"
+  context={3}
+/>
+
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-17/steps/step-01.asm" lang="6502" />
+</details>
+
+<Figure src="/images/commodore-64/assembly/starfield/unit-17/step-01-wave-a.png" alt="Mid-game: the white ship holding a column on the left, green enemies falling, the score and lives readouts at the corners and a white W2 wave readout at the top centre." caption="Wave two, mid-fight: the W readout at the top centre, and every enemy on screen falling twice as fast as it did a minute ago." />
+
+Here is the moment the curve bends — the tenth kill's explosion with the wave-up chirp riding on top of it:
+
+<AudioClip src="/images/commodore-64/assembly/starfield/unit-17/wave-up.wav" title="The tenth kill — explosion, chirp, and a faster game" source="SID voices 2 and 3 · noise and triangle" />
+
+## Milestone 2 — the band, and a beat of stillness
+
+The title music is the same table idea pointed at the SID. A melody is rows of *pitch* and *duration*; `jingle_tick` runs once per title frame, counts the current note down, and serves the next row when it expires. A pitch of zero is a **rest** — gate the voice off and keep counting, because silence is a note too — and `$ff` loops back to the top.
+
+Notice how little the 6510 does. On the Spectrum, in Gloaming, a beeper tune *owns the processor* — every half-cycle of every note is a CPU loop, and the game stops while music plays. Here the SID holds each note by itself: `jingle_tick` touches the chip **twice per note**, at the start and at the end, and the starfield scrolls on regardless. That is what a sound *chip* buys you over a sound *bit* — and the tune is Twinkle Twinkle, Little Star, because what else would a starfield play?
+
+One catch worth meeting now: voice 1 already belongs to the laser. The title lends it to the band — `enter_title` installs a softer envelope, `enter_game` gates the voice off and hands the laser its envelope back. One voice, two owners, and the transitions are exactly where the handover lives. Miss half of it and the laser comes back sounding like a flute.
+
+<AudioClip src="/images/commodore-64/assembly/starfield/unit-17/jingle.wav" title="The title jingle — one loop of Twinkle Twinkle on voice 1" source="SID voice 1 · triangle wave" />
+
+The last change is the smallest and the most felt. In Unit 16, dying with the fire button held — which is how everyone dies — blew straight through the ending: game over read the held button, snapped to the title, the title read the same held button, and a new game started before the old one's death tone finished. Three screens in three frames. The fix is `ui_lock`: entering game over loads it with a second of frames, entering the title with half a second, and neither screen *believes* the fire button until the lock runs out. The pause is not dead time — it is the punctuation that lets you read your own ending.
+
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-17/steps/step-01.asm"
+  after="commodore-64/assembly/starfield/unit-17/steps/step-02.asm"
+  lang="6502"
+  title="Step 2: a table-driven SID jingle, and a dwell on both ends of the loop"
+  context={3}
+/>
+
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-17/steps/step-02.asm" lang="6502" />
+</details>
+
+## When it's wrong, see why
+
+- **The jingle plays its first note and holds it forever.** `jingle_timer` isn't being reloaded, or `jingle_idx` never increments — the tick serves one row and then keeps agreeing with itself.
+- **The jingle keeps playing into the game.** `enter_game` must gate voice 1 off. The SID holds notes by itself — that is the feature — so nobody stops the band except you.
+- **The laser sounds soft and woolly after a game.** The envelope handover is half-done: `enter_title` installed the band's attack/decay and `enter_game` never restored the laser's. Write both registers back.
+- **The wave never advances.** `kills` isn't reset in `advance_wave` (it sails past 10 and the `cmp #10` / `bcc` never matches again), or the increment isn't in the hit path at all.
+- **Wave six is absurdly, unplayably fast.** The table index isn't clamped — past the end of `wave_speed_tbl` the lookup reads neighbouring bytes as speeds. `WAVE_TOP` is the wall.
+- **Fire still skips the game-over screen.** `ui_lock` has to be loaded *where the state changes* — in the out-of-lives branch — not in `show_game_over`, which repaints every frame and would reload the lock forever.
+
+## Before and after
+
+We started with a finished loop that treated every minute the same and ended with a game that pushes back: waves that quicken on a schedule the data owns, a title with a voice, endings with room to land. None of it touched the systems built in Units 1–16 — the curve is a poked byte, the music is a visited table, the dwell is a counted-down lock. That is what the architecture was for.
+
+## Try this
+
+- **Act on the press, not the hold.** `ui_lock` slows a held button down; a *latch* ignores it entirely — keep last frame's fire bit, act only on the 1→0 edge. It's the full fix Unit 16's "Try this" promised, and every screen with a button wants it.
+- **Bend the curve.** Make the table longer and gentler: `1, 1, 2, 2, 2, 3` with a wave every *fifteen* kills. Difficulty design is now a data-entry job — that was the point.
+- **Transpose the jingle.** Double every pitch value and the tune jumps an octave (on the SID, *bigger* number means *higher* note — the opposite of the Spectrum's delay loops). `NOTE*2` arithmetic is the assembler's job, not yours.
+- **A two-note chirp.** The wave-up ding is one gate of voice 3. Make it a quick low-high pair — two pokes and a few frames apart — and it starts to sound like a promotion instead of a doorbell.
+
+## What you've learnt
+
+- **Escalation is data** — a counter, a table, and one live byte the game reads fresh every frame; the systems never know what wave it is.
+- **Three caps, three jobs** — the counter tells the truth, the index clamps for safety, the digit caps for display. Keeping them separate keeps the game honest.
+- **A sequencer is a table and a tick** — pitch, duration, rest-as-a-note, a loop marker; the SID holds the notes so the game keeps running.
+- **Shared voices change hands at transitions** — the title lends the laser's voice to the band; both halves of the handover live in `enter_title` and `enter_game`.
+- **Endings need dwell** — a lock the ending screens count down before believing the button; the pause is part of the design.
+
+## What's next
+
+*Now* Starfield is finished — opening music, a curve that answers your skill, endings that land, and a number on screen for the wave you died on. The vocabulary list from Unit 16 gains its last three entries: escalation as data, music as a table, and patience as a lock.
+
+The next game on this machine starts from all of it. **Platform Panic** trades the open sky for floors and ladders — and brings the first problem sprites can't solve alone.

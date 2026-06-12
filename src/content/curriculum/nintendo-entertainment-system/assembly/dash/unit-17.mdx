@@ -1,0 +1,116 @@
+---
+title: "The Last Yard"
+description: "A win that means something: collect every coin and the level turns over — coins return, the obstacle quickens from a speed table, an L digit joins the HUD. A tiny pulse-channel sequencer gives the title a tune and both endings a voice. The game becomes a loop with a curve."
+pubDate: 2026-06-12
+game: 1
+unit: 17
+tags: ["assembly", "6502", "levels", "apu", "sequencer", "game-feel", "polish"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Unit 16 called Phase 1 complete, and mechanically it was. Then we tried to *win* it — drove a controller script through every coin in one run — and learnt three things in an afternoon. There was nothing to win: the third coin was exactly like the second. The spike gap was one pixel wider than the jump, so the right half of the level had never been reached. And dying once next to the obstacle could spend all three lives in three frames. This unit is everything that came out of that afternoon: a level loop, a tune, two stings, a blink — and two honest fixes the game needed before any of it could matter.
+
+![Dash Unit 17](/images/nintendo-entertainment-system/assembly/dash/unit-17/screenshot.png)
+
+That's level two: all three coins back on their spots, the runner returned to the gate, **L2** in the HUD — and the obstacle already inbound, half again as fast as it was a minute ago.
+
+## Every Coin Home
+
+The win condition was sitting in the data all along: three coins, a `coins_left` counter, and one comparison after the collect checks. When the last coin goes, `next_level` turns the world over:
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-17/snippets/01-next-level.asm" />
+
+Three details carry the unit's weight:
+
+- **The runner returns to the gate.** Leave them where they stand and the respawned coin under their feet collects itself on the next frame — we shipped that bug for about six minutes. Every reset, every plane: the rule from the title screen applies to level turns too.
+- **The speed lives in a table, and the table is the difficulty curve:**
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-17/snippets/02-the-speed-table.asm" />
+
+The obstacle's move code reads `obstacle_speed` fresh every frame and never learns that levels exist; `next_level` pokes the new value while nobody's looking. No `if level >= 3` anywhere.
+
+- **Three caps, three jobs.** The level *counter* never stops climbing. The table *index* clamps at the last entry — past level five the game repeats its hardest setting, because an unclamped index would read whatever byte follows the table and call it a speed. And the HUD *digit* shows 9 forever after. The player's number tells the truth; the physics quietly admits it ran out of new ideas. Conflate those caps and the game lies about one of them.
+
+## A Table and a Tick
+
+The title was silent; the endings were silent. One routine fixes all three, because a melody — on the NES as on every machine — is just a table of pitch and duration with a clock walking it:
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-17/snippets/03-tune-tick.asm" />
+
+The APU holds each note by itself: `tune_tick` touches the chip twice per note — once to start it, once when its time is up — and the game runs on regardless. A period of zero is a **rest**: silence is a note too, so the channel gates off and the clock keeps counting.
+
+The part worth keeping is the *two terminators*. `$FF` loops to the top — that's the title jingle, round and round until START. `$FE` stops for good — that's a fanfare or a sting, which says its piece once and goes quiet. Win and lose having voices cost the sequencer exactly one extra marker:
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-17/snippets/04-the-phrases.asm" />
+
+The tune is Camptown Races — a hundred and seventy years old, and what else would a game called Dash play? Here's one loop of it on pulse 1:
+
+<audio controls src="/images/nintendo-entertainment-system/assembly/dash/unit-17/jingle.wav"></audio>
+
+The level fanfare — the third coin's ding, then a rising run to a held top C:
+
+<audio controls src="/images/nintendo-entertainment-system/assembly/dash/unit-17/fanfare.wav"></audio>
+
+And the lose sting — the damage buzz finishes its own sentence, then two steps down and the floor:
+
+<audio controls src="/images/nintendo-entertainment-system/assembly/dash/unit-17/sting.wav"></audio>
+
+One confession from the building of it: our first jingle was completely silent, and the code was correct on paper. The culprit was the sweep-disable write — the classic NES idiom is `$08` (negate set, shift zero), and the emulator's sweep unit mutes pulse 1 on exactly that pattern (bug filed). `$00` disables the sweep just as thoroughly for every period in our tables, so that's what ships. When your sound is silent and your code looks right, read the sweep register twice.
+
+## The Blink
+
+PRESS START now winks on a 32-frame beat — and the lesson is *where* the code lives. Nametable writes belong to vblank, so the blink is the NMI handler's job: the main loop just increments `blink_timer`, and the NMI reads bit 5 and writes either the text or eleven blanks:
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-17/snippets/05-the-blink.asm" />
+
+A blink is a draw and a clear taking turns on a clock you already had. The whole thing is one `AND`.
+
+## The Two Fixes
+
+**The spike gap was unjumpable.** The jump carries the runner about fifteen pixels; the spikes spanned sixteen. Nobody had ever crossed them — every screenshot before this unit was taken on the left half of the level. One spike tile instead of two, and the game's geometry finally agrees with its physics. The test that catches this class of bug is brutally short: *can the game be finished?* Run it before you call anything complete.
+
+**Dying could cascade.** Take a hit while the obstacle is over the respawn point and it hit you again the next frame, and again the frame after — three lives in three frames. The fix is a **grace window**: a second of invulnerability after every respawn, covering every damage source, made *visible* by blinking the runner while it lasts:
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-17/snippets/06-the-grace-window.asm" />
+
+Fairness needs to be seen to be believed — the blink isn't decoration, it's the game telling you the rules.
+
+## Try This: Bend the Curve
+
+Make the table longer and gentler — `2, 2, 3, 3, 3, 4` — or sharper. Add a sixth level that's *slower* than the fifth and watch what a breather does to the game's rhythm. Difficulty design is data entry now; that was the point of the table.
+
+## Try This: A Second Voice
+
+The whole tune sits on pulse 1. Pulse 2 is idle — duplicate the sequencer state (three more zero-page bytes, a second tick) and play a bass line under Camptown. Two voices is where a jingle starts sounding like *music*, and the structure doesn't change at all.
+
+## Try This: Show the Level on the Title
+
+"REACHED LEVEL 4" under PRESS START is the classic arcade brag. The level byte survives the trip back to the title — the only question is whether the title should advertise your best run or your last one. (They're different bytes.)
+
+## The Complete Code
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-17/dash.asm" />
+
+## If It Doesn't Work
+
+- **The jingle plays one note and holds it forever?** `tune_timer` isn't reloaded from the duration column, or `tune_idx` never advances — the tick keeps agreeing with itself.
+- **The tune is silent and the code looks right?** The sweep register. `$00` here; and remember the channel must be enabled in `$4015` too.
+- **The jingle keeps playing into the game?** Nothing stops the band but you — `init_game_screen` gates the channel off and clears the sequencer pointer. The APU holding notes by itself cuts both ways.
+- **Level 2 starts with a coin already collected?** The runner wasn't returned to the gate — they're standing on the respawned coin. Every reset resets the player too.
+- **The level digit shows `:` or worse after level 9?** The digit isn't capped — `DIGIT_ZERO + 10` is whatever tile lives past the digits. Cap the *display*, clamp the *index*, let the *counter* run.
+- **PRESS START flickers garbage or tears?** The blink writes are happening outside the NMI. Nametable writes during rendering corrupt the PPU address — the main loop owns the clock, the NMI owns the VRAM.
+
+## What You've Learnt
+
+- **Levels are data** — a counter, a clamped table index, and one live byte the game reads fresh every frame.
+- **A sequencer is a table and a tick** — pitch, duration, rest-as-a-note, and two terminators: loop for the jingle, stop for the stings.
+- **VRAM work belongs to the NMI** — the blink is a one-`AND` clock in the main loop and a few `PPUDATA` writes in vblank.
+- **Winnability is a test** — the spike gap was unjumpable and no screenshot ever showed it; driving the game to a *win* found it in one run.
+- **Fairness is mechanics plus visibility** — the grace window stops the cascade; the blink tells the player it exists.
+
+## The Game Is Whole
+
+Seventeen units. A runner with a world to cross, coins worth winning, levels that answer skill with speed, a tune at the front door, a fanfare for the fold and a sting for the floor — and a title that blinks the way every arcade machine in history has blinked. Phase 1 isn't just complete now; it's *finished*, in the sense that matters: a stranger could pick up the pad, understand it, win at it, lose at it, and go again.
+
+Phase 2 begins with the world beyond a single screen.
