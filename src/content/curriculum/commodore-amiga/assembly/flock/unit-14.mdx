@@ -1,0 +1,76 @@
+---
+title: "The Cow"
+description: "The farmyard's biggest resident takes the verge — half a pixel a frame of patient, unstoppable bulk. The mover learns fixed-point fractions, the last sprite pair fills up, and one forgotten invitation tells on itself."
+pubDate: 2026-06-12
+game: 1
+unit: 14
+tags: ["assembly", "68000", "sprites", "fixed-point", "collision"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+
+Every hazard so far moves faster than the sheep or vanishes beneath her. The cow does neither. She takes the verge — the grass strip between the road and the home field — at half a pixel a frame, and she does not care what's in the way. There's no gap to time, no cycle to learn: she's a *bulk*, and crossing her lane is about being somewhere else when the bulk arrives. A slow threat reads completely differently from a fast one, and she costs almost nothing: one table row, one sprite, and a mover that learns fractions.
+
+## The Display
+
+![Flock Unit 14](/images/commodore-amiga/assembly/flock/unit-14/screenshot.png)
+
+Nose to nose on the verge — four pixels and closing, at half a pixel a frame. The whole cast in one field: three lanes of traffic above, the bale adrift on the stream, the duck feeding somewhere below it.
+
+## The Last Pair Fills Up
+
+The cow takes sprite 3 — and with it, the sprite budget closes. Eight sprites: the sheep, the tractor *and the cow*, the cart *and the bale*, the Rover *and the duck*. Every odd sprite is now a farmyard animal or cargo sharing its partner's palette, and the tractor's colours turn out to make a perfectly respectable cow: the bodywork red is a rusty hide, the tyre black is patches and hooves, the cab grey is a blaze and an udder.
+
+She shares the tractor's **collision bit** too — bit 9 — and here the sharing costs *nothing at all*. Bits 10 and 11 needed the row gate because each carries a killer and a saviour. Bit 9 carries the tractor and the cow: two things you must never touch, anywhere. `checksquash` doesn't change by a single instruction. The comment changes — "tractor or cow: it kills wherever she stands" — and that's the whole integration.
+
+## The Mover Learns Fractions
+
+Half a pixel a frame. The position is a whole number; the speed isn't. The classic 68000 answer is **16.16 fixed point**: store every position as a longword whose top word is the pixel and whose bottom word is the fraction the vehicle has earned but not yet shown.
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-14/snippets/01-fractional-mover.asm" />
+
+`add.l` does all the work. Each frame the cow's position gains $8000 — half of $10000 — so her pixel ticks every *second* frame, automatically, with no special case. The tractor's speed becomes `2<<16`, the duck's `-1<<16`; whole-number movers are just fixed-point movers whose fractions stay zero. One loop drives a Land Rover at three pixels a frame and a cow at half, and never knows the difference.
+
+The trick that makes the upgrade nearly free is byte order. The 68000 stores a longword **high word first**, so a `move.w` at the position's label reads the top sixteen bits — the pixel — exactly as before. `updsprite` still says `move.w cowx,d0` and gets a whole number; `checkstream` still adds whole pixels to `sheepx`; every word-sized consumer of a position keeps working untouched. The fraction lives in the two bytes nobody was reading.
+
+## The Third Invitation
+
+A confession from the build. The first cow ambled the verge beautifully, half a pixel a frame — straight *through* the sheep. Pixels overlapping, nothing dying, bit 9 silent.
+
+You already know the answer, because Unit 12 taught it: odd sprites sit outside the collision circuit until `CLXCON` invites them in. The bale needed `ENSP5`. The duck needed `ENSP7`. The cow is sprite 3 — she needs `ENSP3`, and the register is now `$e000`, three invitations strong. Knowing a rule and remembering it under your own deadline are different skills; the hardware will hand you the same lesson as many times as you ask for it. The diagnostic shape is worth keeping: *art moving correctly + collisions silent = the comparator never heard about it.*
+
+## Experiment: Feel the Bulk
+
+- `COW_SPEED equ 1<<14` — a quarter pixel a frame. The verge becomes a long, slow dread. At `3<<15` (one and a half) she's suddenly a vehicle. The personality lives entirely in one constant's fraction.
+- Give the *cart* a fraction: `dc.l (CART_SPEED<<16)|$8000`. Minus one and a half a frame — watch how a fractional tweak retunes a lane you built six units ago without touching its code.
+- Park her: speed `0`. A stationary bulk is a wall, and the verge becomes a maze with one corridor. Level design by table entry.
+- Two cows? There is no sprite left — all eight are spoken for. Feel that wall properly: the next big idea on this machine (the Blitter, and one day a multiplexer) exists because designers kept hitting exactly this.
+
+## The Complete Code
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-14/flock.asm" />
+
+## If It Doesn't Work
+
+- **The cow glides through the sheep, no harm done?** `ENSP3`. The third invitation. It's always the invitation.
+- **She moves at full pixels, or not at all?** Check the table: positions and speeds are *both* longs now. A `dc.w` smuggled into `vehtab` shifts every row after it and the whole farmyard goes strange at once — that failure is loud and diagnostic.
+- **A vehicle teleports off the edge?** The wrap compares are `cmp.l` against `320<<16` and `-16<<16`. Compare a 16.16 position against a plain integer and the wrap fires on frame one.
+- **Everything moves but positions read as zero?** You're reading the *low* word — the fraction. The pixel is the word *at* the label, not after it.
+
+## Try This
+
+1. **A sub-pixel sheep.** Her hops are 8 whole pixels — but what would a 16.16 `sheepx` buy you? Sketch what `steer` and the carried-by-ferry adds would look like; decide whether hop-based movement *wants* fractions or is better off without them. (There's a right answer, and it's about feel, not arithmetic.)
+2. **The cow pauses to graze.** Borrow `tendduck`'s shape: a timer, two states, speed swapped between `COW_SPEED` and 0 — the state machine pattern from Unit 13, reused on motion instead of existence.
+3. **Honest dread.** Make the squash beat longer when the cow does the squashing — she'd take her time. One compare on `contacts` before the timer load. Does differentiated death make the world feel heavier?
+
+## What You've Learnt
+
+- **16.16 fixed point** — positions carry their own fractions; `add.l` accumulates them; the pixel ticks when the fraction overflows. Sub-pixel speed with zero per-frame cost.
+- **The high-word trick** — big-endian longs put the integer where every existing `move.w` already looks. Upgrades that respect old readers are upgrades you can ship the same day.
+- **Bulk as a hazard class** — slow-wide against fast-narrow; threat personality is a speed constant, not new code.
+- **Shared bits, third time** — bit 9's two actors both kill, so the sharing needs no gate at all. The cheapest case of the pattern is the one where the meanings agree.
+- **The invitation, learnt twice** — `CLXCON`'s `ENSPx` bits gate every odd sprite, every time, including the times you're sure you'd never forget.
+
+## What's Next
+
+The farmyard is full and every sprite is working. What's missing is a reason to take risks. Rarely — just rarely — the next sheep out of the pen is *black*: worth a fat bonus at the fold, and a touch more skittish on the way. Risk and reward arrive in Unit 15, and her chime is the best sound in the game.
