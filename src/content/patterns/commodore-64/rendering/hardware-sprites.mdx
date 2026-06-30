@@ -1,0 +1,114 @@
+---
+title: "Hardware Sprites"
+summary: "Enable, position, and colour one of the C64's eight hardware sprites — moveable objects the VIC-II draws over the background for free."
+platform: "commodore-64"
+category: "rendering"
+difficulty: "beginner"
+tags: ["sprites", "vic-ii", "movable-object-block"]
+evolution:
+  previous: null
+  next: "sprite-multiplexing"
+related:
+  patterns: ["sprite-movement-bounds", "game-loop-basic"]
+  vault: ["vic-ii", "commodore-64"]
+---
+
+## Overview
+
+A sprite (the VIC-II calls them *movable object blocks*) is a small bitmap — **24×21 pixels** — that the chip draws over the background entirely in hardware. The C64 has **eight** of them. Each has its own position, colour, and shape, moves with a single register write, and costs the CPU nothing to display. Sprites are how almost every C64 game draws its player, enemies, and bullets.
+
+Setting one up is four steps: point it at its shape, position it, colour it, switch it on.
+
+## Code
+
+```asm
+; =============================================================================
+; HARDWARE SPRITES - C64
+; Show sprite 0: point it at data, position it, colour it, enable it
+; CPU: None (the VIC-II draws it) | Memory: 63 bytes of shape data
+; =============================================================================
+
+SPR_ENABLE  = $D015         ; Sprite enable — one bit per sprite
+SPR0_X      = $D000         ; Sprite 0 X position (sprite n X = $D000 + 2*n)
+SPR0_Y      = $D001         ; Sprite 0 Y position (sprite n Y = $D001 + 2*n)
+SPR_X_MSB   = $D010         ; X position bit 8 — one bit per sprite (X >= 256)
+SPR0_COLOR  = $D027         ; Sprite 0 colour ($D027..$D02E for sprites 0..7)
+
+SCREEN      = $0400         ; Default screen RAM
+SPR0_PTR    = SCREEN + $3F8 ; Sprite pointers live at the end of screen RAM ($07F8)
+
+SHAPE       = $0340         ; Put the shape in the spare cassette buffer
+SHAPE_BLOCK = SHAPE / 64    ; Pointer value = address / 64  (= 13)
+
+init_sprite:
+    ; --- 1. Point sprite 0 at its shape ---
+    lda #SHAPE_BLOCK        ; The pointer is a 64-byte block number, not an address
+    sta SPR0_PTR
+
+    ; --- 2. Position it (X=160, Y=120 — middle of the screen) ---
+    lda #160
+    sta SPR0_X
+    lda #120
+    sta SPR0_Y
+    lda #0
+    sta SPR_X_MSB           ; X < 256, so its high bit is clear
+
+    ; --- 3. Colour it ---
+    lda #1                  ; 1 = white
+    sta SPR0_COLOR
+
+    ; --- 4. Switch it on ---
+    lda #%00000001          ; Bit 0 = sprite 0
+    sta SPR_ENABLE
+    rts
+
+; --- The shape: 24 wide x 21 tall = 63 bytes (3 bytes per row) ---
+    * = SHAPE
+    .byte %00000000,%01111110,%00000000
+    .byte %00000001,%11111111,%10000000
+    .byte %00000111,%11111111,%11100000
+    .byte %00001111,%11111111,%11110000
+    ; ... 16 more rows make up the 21-row, 63-byte shape ...
+    .byte %00000000,%01111110,%00000000
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | None — the VIC-II composites the sprite during display |
+| Memory | 63 bytes of shape data per frame, plus a 1-byte pointer |
+| Limitation | **Eight** sprites only; 24×21 each. More needs multiplexing |
+
+**When to use:** Players, enemies, bullets, the cursor — anything that moves over the background independently.
+
+**When to avoid:** Large or numerous moving areas — past eight objects you must reuse sprites down the screen (see [Sprite Multiplexing](/patterns/commodore-64/rendering/sprite-multiplexing)), or draw into the bitmap instead.
+
+## Sprite registers
+
+All live in the VIC-II at `$D000`. For sprite *n*, replace the index:
+
+| Register | Purpose |
+|----------|---------|
+| `$D000 + 2n` / `$D001 + 2n` | X / Y position |
+| `$D010` | X bit 8 (one bit per sprite — X positions 256–511) |
+| `$D015` | Enable (one bit per sprite) |
+| `$D027 + n` | Colour |
+| `$D01D` / `$D017` | Expand X / Expand Y (double width / height) |
+| `$D01B` | Priority — set bit *n* to draw the sprite *behind* the background |
+| `$D01C` | Multicolour select (one bit per sprite) |
+| `$D025` / `$D026` | The two shared multicolour sprite colours |
+
+## The pointer is a block number
+
+A sprite pointer isn't an address — it's the address **divided by 64**. So shape data at `$0340` gives a pointer of `$0340 / 64 = 13`. The eight pointers sit at the very end of screen RAM (`$07F8`–`$07FF` for a screen at `$0400`), so moving the screen moves the pointers with it.
+
+## Multicolour sprites
+
+Setting a sprite's bit in `$D01C` switches it to **multicolour** mode: pixels are read in pairs, giving four colours (transparent, the two shared colours in `$D025`/`$D026`, and the sprite's own colour) at half the horizontal resolution — 12 fat pixels instead of 24. The trade is colour for detail, and it's how most C64 game characters were drawn.
+
+## Related
+
+**Patterns:** [Sprite Movement & Bounds](/patterns/commodore-64/physics/sprite-movement-bounds), [Game Loop (Basic)](/patterns/commodore-64/framework/game-loop-basic)
+
+**Vault:** [VIC-II](/vault/hardware/vic-ii) | [Commodore 64](/vault/systems/commodore-64)
