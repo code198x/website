@@ -37,6 +37,7 @@ const systems = defineCollection({
       'tms9900',   // Texas Instruments TMS9900
       '6502',      // MOS 6502 and variants
       'z80',       // Zilog Z80
+      '6800',      // Motorola 6800/6801/6803
       '6809',      // Motorola 6809
       // 16-bit families
       '65c816',    // WDC 65C816 (16-bit 6502)
