@@ -1,9 +1,9 @@
 /**
  * Cross-platform sections — areas of the curriculum that sit *outside* any single
  * platform. The Foundations layer (universal — General Programming, Numbers & Bits)
- * lives here, as does Meet Assembly (per-CPU — one instruction-set course shared by
- * every machine that runs that processor) and Meet the Machine (per-machine briefings —
- * what each computer is and the constraints it imposes).
+ * lives here — the genuinely machine-independent groundwork. Per-machine and
+ * per-language teaching stays with its machine; the curriculum's subject is each
+ * machine's own character, not shared instruction sets.
  *
  * A section's content is laid out as `{section}/{module}/unit-NN` — one level
  * shallower than a platform's `{platform}/{track}/{module}/unit-NN`, because a
@@ -24,18 +24,6 @@ const SECTIONS: Record<string, Section> = {
     name: 'Foundations',
     color: '#64748b',
     tagline: 'The ideas every machine and language shares — taught once, before you pick one.',
-  },
-  'meet-assembly': {
-    slug: 'meet-assembly',
-    name: 'Meet Assembly',
-    color: '#78716c',
-    tagline: 'One instruction set, every machine that runs it — learn the CPU once, by processor.',
-  },
-  'meet-the-machine': {
-    slug: 'meet-the-machine',
-    name: 'Meet the Machine',
-    color: '#5b7a8c',
-    tagline: 'What each machine is, and the constraints it imposes — the part that is its, not the processor\'s.',
   },
 };
 
