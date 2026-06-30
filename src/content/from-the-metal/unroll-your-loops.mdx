@@ -1,0 +1,90 @@
+---
+title: Why "unroll your loops" is real advice
+description: "On a 6502 the loop is not free — it's instructions that run every iteration. Count the cycles by hand and 'unroll your loops' stops being folklore."
+lede: "You've heard it for twenty years. Up where you work, it's a micro-optimisation the compiler probably already did for you. Drop down to a 6502 and you can finally see the advice for what it is — because down here, the loop is not free. It's a set of instructions that run every single time round. Unrolling deletes them."
+kicker: PERFORMANCE · WHAT'S UNDERNEATH
+pubDate: 2026-06-30
+cpu: "6502"
+category: Performance
+accent: "#be123c"
+order: 1
+audiences: ["Performance-aware", "The abstraction-curious"]
+teaser: "Twenty-year-old advice, finally visible. On a 6502 the loop is just instructions that run every time round — and unrolling deletes them."
+---
+
+import CodeFigure from '@components/CodeFigure.astro';
+
+## There is no `for` down here
+
+A loop is a convenience your language invented. The processor has never heard of it. What it has is a counter, an address, and a branch — and a "loop" is just those three, arranged so the program jumps back over itself until the counter runs out. Here's a real one: copy 256 bytes from one place to another.
+
+<CodeFigure
+  lang="6502"
+  label="6502 · ROLLED"
+  metric="3,584 cycles"
+  state="bad"
+  caption="Two instructions copy a byte. Two more just keep the loop going."
+  code={`        ldx #0
+loop:   lda source,x   ; 4 cycles
+        sta dest,x     ; 5 cycles
+        inx            ; 2 cycles  — pure bookkeeping
+        bne loop       ; 3 cycles  — pure bookkeeping
+                       ; 14 per byte × 256 = 3,584`}
+/>
+
+Look at what each round actually costs. The `lda` and `sta` do your work — 9 cycles. The `inx` and `bne` do none of it — 5 cycles, spent entirely on running the loop. That's more than a third of every iteration paying the loop's own tax. Multiply it by 256 and you've burned roughly 1,280 cycles doing nothing but counting.
+
+## Delete the loop entirely
+
+So don't loop. Write the copies out, one after another, with no counter and no branch. And here is the part that surprises people coming down from a high-level language — it isn't the same instructions running fewer times. It's *different opcodes*. No index register, so `lda source,x` (4 cycles) becomes plain `lda source` (4) and `sta dest,x` (5) becomes `sta dest` (4). The `inx` and `bne` are simply gone.
+
+<CodeFigure
+  lang="6502"
+  label="6502 · FULLY UNROLLED"
+  metric="2,048 cycles"
+  state="good"
+  caption="No loop means no loop tax — and a cheaper store, because there's no index to add in."
+  code={`        lda source     ; 4 cycles
+        sta dest       ; 4 cycles  — note: 4, not 5
+        lda source+1   ; 4
+        sta dest+1     ; 4
+        …  256 times, no counter, no branch
+                       ; 8 per byte × 256 = 2,048`}
+/>
+
+From 3,584 cycles to 2,048 — about **43% faster**, for the price of a much bigger program. That trade is the catch: the fully-unrolled version is 512 instructions and over a kilobyte. On a machine with 64&nbsp;KB total, you can't unroll everything.
+
+## The compromise everyone actually ships
+
+So you unroll partway — do four bytes per turn, then branch once. The work stays indexed, but now a single `bne` is shared across four copies instead of paying for itself on every one.
+
+<CodeFigure
+  lang="6502"
+  label="6502 · UNROLLED ×4"
+  metric="~3,008 cycles"
+  state="mid"
+  caption="~16% of the speed-up for a fraction of the size. This is the version that ships."
+  code={`        ldx #0
+loop:   lda source,x   ; 4
+        sta dest,x     ; 5
+        lda source+1,x ; 4
+        sta dest+1,x   ; 5
+        lda source+2,x ; 4
+        sta dest+2,x   ; 5
+        lda source+3,x ; 4
+        sta dest+3,x   ; 5
+        txa            ; 2 ┐
+        clc            ; 2 │ one branch's worth of
+        adc #4         ; 2 │ bookkeeping, now shared
+        tax            ; 2 │ across four bytes
+        bne loop       ; 3 ┘
+                       ; ~11.75 per byte`}
+/>
+
+## Why the advice survived to your machine
+
+Your CPU has a branch predictor, speculative execution, a hot instruction cache and the ability to run several instructions at once. None of that existed in 1982. So why does the same forty-year-old advice still help you?
+
+Because the root cause never moved. A loop is still control-flow instructions that aren't your work, sitting between the things that are. Modern silicon hides the cost brilliantly — until a mispredicted branch stalls the pipeline, or the loop body is too small to fill it. The mechanism changed; the shape didn't. The advice is a shadow cast by the hardware, and it falls the same way on a 6510 and a Ryzen.
+
+> Every abstraction you lean on resolves, eventually, to opcodes like these. You don't need to write assembly to do your job. But once you've counted the cycles by hand, "unroll your loops" stops being folklore and becomes something you can *see*.

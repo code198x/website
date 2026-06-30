@@ -333,6 +333,27 @@ const gettingStartedPages = defineCollection({
   }),
 });
 
+// From the Metal — short essays that reframe modern programming advice by
+// dropping down to a vintage CPU where the cost is visible. One MDX per article;
+// the per-article `accent` is a topic-coded hue (deliberately beyond the four
+// brand colours). See docs/tracker/from-the-metal/build-plan.md.
+const fromTheMetal = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: 'src/content/from-the-metal' }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),       // meta description
+    lede: z.string(),              // on-page opening paragraph
+    kicker: z.string(),            // mono eyebrow, e.g. "PERFORMANCE · WHAT'S UNDERNEATH"
+    pubDate: z.coerce.date(),
+    cpu: z.string(),               // "6502" | "Z80" | "68000" | "6502 vs 68000"
+    category: z.string(),          // PERFORMANCE, ARITHMETIC, …
+    accent: z.string(),            // topic-coded hex
+    order: z.number(),             // hub sort order
+    audiences: z.array(z.string()).default([]),
+    teaser: z.string(),            // hub card body
+  }),
+});
+
 export const collections = {
   systems,
   manufacturers,
@@ -340,6 +361,7 @@ export const collections = {
   vault,
   patterns,
   timeline,
+  'from-the-metal': fromTheMetal,
   modules,
   units,
   'pattern-categories': patternCategories,
