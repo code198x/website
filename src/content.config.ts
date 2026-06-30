@@ -15,7 +15,16 @@ const systems = defineCollection({
     // Classification
     type: z.enum(['computer', 'console', 'handheld']),
     bits: z.enum(['8', '16', '32', '64', '128']),
-    region: z.enum(['US', 'UK', 'Japan', 'Europe', 'Netherlands']),
+    region: z.enum([
+      // Core markets
+      'US', 'UK', 'Japan', 'Europe', 'Netherlands',
+      // Regional scenes — first-class per the cultural-scope axis (see umbrella CLAUDE.md).
+      // Add new values as catalogued machines require them; not speculatively.
+      'USSR', 'East Germany', 'West Germany', 'Czechoslovakia', 'Romania', 'Bulgaria',
+      'Yugoslavia', 'Poland', 'Hungary', 'Spain', 'Italy', 'France', 'Belgium',
+      'Brazil', 'Argentina', 'Australia', 'New Zealand', 'Canada',
+      'South Korea', 'Hong Kong', 'Taiwan',
+    ]),
     manufacturer: z.string(), // references manufacturers collection
     cpu: z.string(),
     cpuArchitecture: z.enum([
