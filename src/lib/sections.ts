@@ -22,7 +22,10 @@ const SECTIONS: Record<string, Section> = {
   foundations: {
     slug: 'foundations',
     name: 'Foundations',
-    color: '#64748b',
+    // Teal — a distinct identity that borrows no platform's colour (the catalogue is
+    // reds/oranges/browns with two blues) and reads with life in both light and dark,
+    // unlike the old neutral grey. Layouts derive a brightened variant for dark mode.
+    color: '#0d9488',
     tagline: 'The ideas every machine and language shares — taught once, before you pick one.',
   },
 };
