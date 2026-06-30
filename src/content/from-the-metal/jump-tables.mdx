@@ -1,0 +1,59 @@
+---
+title: "What a switch actually compiles to"
+description: "A switch doesn't test your value — it uses it as an index to jump. The Z80 shows exactly what your compiler does, and why dense cases win."
+lede: "You've heard that a switch can be faster than an if/else chain, and that it likes dense integer cases starting near zero. Both are true, and the Z80 shows you why in one move: a switch doesn't test your value at all — it uses it as an index to look up where to jump."
+kicker: "CONTROL FLOW · WHAT'S UNDERNEATH"
+pubDate: 2026-06-30
+cpu: "Z80"
+category: "CONTROL FLOW"
+accent: "#cc0000"
+order: 14
+audiences: ["Performance-aware", "CS students & self-taught"]
+teaser: "A switch compiles to an index-and-jump, not a list of questions — build it by hand on the Z80 and see why dense, zero-based cases are real advice."
+---
+
+import CodeFigure from '@components/CodeFigure.astro';
+
+## The slow way: ask, ask, ask
+
+An `if/else` chain compares the value against each case in turn. Case 0 is quick; case 9 means nine comparisons and nine branches first. The cost grows with how far down the list you land — linear, and unpredictable:
+
+<CodeFigure
+  lang="z80"
+  label="Z80 · THE IF/ELSE CHAIN"
+  caption="Every case you don't match is a comparison you still paid for."
+  code={`        cp   0
+        jp   z, state_idle
+        cp   1
+        jp   z, state_walk
+        cp   2
+        jp   z, state_jump    ; ... and on, and on`}
+/>
+
+## The fast way: compute the destination
+
+Instead, lay the destination addresses out in a table. Take the value, double it (each address is two bytes), read the address from the table, and jump straight there. No comparisons — the value *is* the index:
+
+<CodeFigure
+  lang="z80"
+  label="Z80 · THE JUMP TABLE"
+  metric="no compares"
+  state="good"
+  caption="Case 0 and case 99 cost exactly the same. The work is a multiply-by-two and an indexed read — constant time."
+  code={`        ld   l, a
+        ld   h, 0
+        add  hl, hl       ; index × 2 (addresses are 2 bytes)
+        ld   de, table
+        add  hl, de       ; hl -> the slot for this case
+        ld   e, (hl)
+        inc  hl
+        ld   d, (hl)
+        ex   de, hl
+        jp   (hl)         ; jump to the address we looked up
+
+table:  dw   state_idle, state_walk, state_jump, ...`}
+/>
+
+Now the compiler's habits make sense. It wants *dense* cases — `0,1,2,3` — because the value is a direct index into the table; gaps mean wasted slots or a fallback. Sparse cases like `1, 1000, 50000` can't be a clean table, so it quietly falls back to comparisons or a binary search. That's why "use an enum starting at zero" is real performance advice, not style.
+
+> A state machine, a bytecode interpreter's dispatch loop, a `switch` over an opcode — all the same trick: don't ask a long list of questions when the answer can be an address you look up. The Z80 has no `switch` keyword, so you build the mechanism yourself and see precisely what your compiler has been doing all along.

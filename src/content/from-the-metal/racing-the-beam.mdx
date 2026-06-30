@@ -1,0 +1,52 @@
+---
+title: "Racing the beam"
+description: "The NES has no framebuffer: the beam paints one scanline at a time, so all video work happens in vblank — where VSync, tearing and double buffering come from."
+lede: "You flip \"VSync\" in a settings menu. You've watched the screen tear — the top half a frame ahead of the bottom. You know games run at 60fps and a frame is \"16 milliseconds.\" The NES has nowhere to hide any of it: the picture is generated one line at a time as the beam sweeps, and your code has to keep pace."
+kicker: "GRAPHICS · WHAT'S UNDERNEATH"
+pubDate: 2026-06-30
+cpu: "NES (6502)"
+category: GRAPHICS
+accent: "#0e7490"
+order: 5
+audiences: ["Game devs", "Retro enthusiasts"]
+teaser: "The NES paints to a moving beam, not a buffer — so everything happens in vblank. Every frame budget and VSync toggle you know starts here."
+---
+
+import CodeFigure from '@components/CodeFigure.astro';
+
+## There is no framebuffer
+
+The PPU paints 240 visible scanlines, 60 times a second, left-to-right and top-to-bottom — because it was literally driving a CRT's electron beam. There is no buffer of pixels you can poke whenever you like. The image exists only in the instant it's being scanned out. Write to video memory while the beam is live and you get garbage on screen: tearing, made of glitches.
+
+## Which is why everything happens in vblank
+
+After the last visible line, the beam flies back to the top — vertical blank — and for a few hundred microseconds the PPU draws nothing. That gap is your window. The PPU fires an NMI the instant it opens, and all your video work happens inside it:
+
+<CodeFigure
+  lang="6502"
+  label="6502 · THE VBLANK HANDLER"
+  caption={`The NMI is the beam telling you "I'm off-screen — you have until I start drawing again."`}
+  code={`nmi:    lda #$00
+        sta $2003      ; OAM address = 0
+        lda #$02
+        sta $4014      ; copy sprites to the PPU — safe only now
+        ...            ; scroll, palette updates
+        rti`}
+/>
+
+Miss that window and you're racing the beam, and losing. VSync on your machine is the same promise, kept by the OS: wait for vblank before you swap buffers. Double buffering is the follow-on trick — draw into a spare frame, show it only once it's whole.
+
+## Splitting the screen by watching the beam
+
+You can also read the beam's position. Park "sprite 0" at a known row; the PPU raises a flag the moment the beam touches it. Spin on that flag and you know exactly which scanline is being drawn — enough to change the scroll mid-frame and pin a status bar above a scrolling world. The *Super Mario Bros.* HUD is precisely this:
+
+<CodeFigure
+  lang="6502"
+  label="6502 · THE SPRITE-0 SPLIT"
+  caption="A static score bar over a scrolling playfield — drawn in one pass by timing the beam."
+  code={`wait0:  bit $2002      ; PPUSTATUS
+        bvs wait0      ; bit 6 = sprite-0 hit — spin until the beam arrives
+        ...            ; mid-frame, known line: change scroll for the split`}
+/>
+
+> Every "16.6 ms frame budget," every VSync toggle, every tear you've ever cursed is this — a beam sweeping at 60 Hz, indifferent to whether your code is ready. Modern hardware hides it behind buffers and a compositor. The NES simply won't let you forget it's there.

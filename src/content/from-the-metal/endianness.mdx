@@ -1,0 +1,48 @@
+---
+title: "Why the bytes come out backwards"
+description: "The 6502 stores the low byte first, the 68000 the high byte first. Watch both side by side and see where garbled hex dumps and htons() come from."
+lede: "You dump memory and the value 0x12345678 shows up as 78 56 34 12. You call htons() before sending a port number and aren't entirely sure why. The 6502 and the 68000 settle it the fastest possible way: they flatly disagree about which byte of a number comes first — and you can watch both."
+kicker: "MEMORY · WHAT'S UNDERNEATH"
+pubDate: 2026-06-30
+cpu: "6502 vs 68000"
+category: "MEMORY"
+accent: "#0d9488"
+order: 10
+audiences: ["CS students", "Embedded"]
+teaser: "The 6502 stores low byte first, the 68000 high byte first — set them side by side and byte-swaps, hex dumps and htons() stop being mysteries."
+---
+
+import CodeFigure from '@components/CodeFigure.astro';
+
+## A number doesn't fit in a byte
+
+Memory is addressed one byte at a time, but an address — or a score, or a coordinate — needs two bytes or more. So the CPU has to choose: when it stores the 16-bit value `$1234`, does the low byte (`$34`) go first, or the high byte (`$12`)? Both are reasonable. Both shipped.
+
+<CodeFigure
+  lang="6502"
+  label="6502 · LITTLE-ENDIAN — LOW BYTE FIRST"
+  caption="The 6502 stores the little end first. Every two-byte address it uses is laid out low-then-high."
+  code={`        lda #$34
+        sta $2000      ; $2000 = $34   ← low byte
+        lda #$12
+        sta $2001      ; $2001 = $12   ← high byte
+                       ; memory reads: 34 12  — "backwards"`}
+/>
+
+<CodeFigure
+  lang="68000"
+  label="68000 · BIG-ENDIAN — HIGH BYTE FIRST"
+  caption="The 68000 stores the big end first — high byte at the lower address. Same value, opposite order in RAM."
+  code={`        move.w #$1234,d0
+        move.w d0,$2000   ; $2000 = $12   ← high byte
+                          ; $2001 = $34   ← low byte
+                          ; memory reads: 12 34  — the way you wrote it`}
+/>
+
+## Neither is wrong — and that's the problem
+
+Little-endian has a quiet elegance: the low byte sits at the low address, so reading a 32-bit value as an 8-bit one just works — the byte you want is already there. Big-endian matches how humans write, most-significant digit first, which is why a hex dump of a 68000 reads cleanly and a 6502 dump looks scrambled. The CPU doesn't care; it only ever sees its own order. *You* see the difference the moment two machines try to share a file.
+
+That's the whole reason "network byte order" exists. When machines that disagree have to exchange bytes, someone has to pick a canonical order — and the internet chose big-endian. `htons` and `htonl` — "host to network short/long" — are byte-swaps that do nothing on a big-endian host and reverse the bytes on a little-endian one. The function you call without thinking is reconciling the exact disagreement these two chips embody.
+
+> A garbled hex dump, a byte-swap call, a file that's fine on one box and corrupt on another — they all trace back to a choice made in silicon before you were born, made two different ways. Put a 6502 and a 68000 next to each other and the abstraction isn't a footnote anymore; it's two columns of bytes, pointing opposite directions.

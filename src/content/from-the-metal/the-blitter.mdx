@@ -1,0 +1,38 @@
+---
+title: "Why there's a chip that does nothing but move memory"
+description: "The Amiga's Blitter was a coprocessor that did nothing but move memory — and it's where 'offload the bulk work to dedicated hardware' begins."
+lede: "You offload work to the GPU without thinking about why a second processor exists at all. You fire off a memcpy and assume it's free. The Amiga had a coprocessor — the Blitter — whose entire job was moving blocks of memory while the CPU did something else. It's where \"let dedicated hardware handle the bulk work\" begins."
+kicker: "HARDWARE · WHAT'S UNDERNEATH"
+pubDate: 2026-06-30
+cpu: "68000"
+category: HARDWARE
+accent: "#ff6600"
+order: 12
+audiences: ["Experienced devs", "The abstraction-curious"]
+teaser: "A second chip whose only job was moving memory in parallel with the CPU — the same bargain you make every time you reach for the GPU or a DMA copy."
+---
+
+import CodeFigure from '@components/CodeFigure.astro';
+
+## The CPU is the wrong tool for bulk copies
+
+To move a sprite, the 68000 would `move` word after word after word, burning every cycle on plumbing while the game logic waits. Shifting a screen's worth of pixels at 50 frames a second is hopeless that way. So Commodore built a chip that does only this — block image transfer, "blit" — and the CPU's job shrinks to writing down *what* to move and walking away:
+
+<CodeFigure
+  lang="68000"
+  label="68000 · HANDING WORK TO THE BLITTER"
+  caption="A handful of register writes describe the job. The last one kicks it off, and the 68000 moves on while the Blitter grinds through the pixels in parallel."
+  code={`        move.l #source,$dff050   ; BLTAPT  — where to copy from
+        move.l #dest,$dff054     ; BLTDPT  — where to copy to
+        move.w #$09f0,$dff040    ; BLTCON0 — operation
+        move.w #blitsize,$dff058 ; start it — and the CPU is free NOW
+        ...                      ; run game logic while it copies`}
+/>
+
+## This is the whole idea behind a GPU
+
+Describe the work, hand it to dedicated hardware, carry on, collect the result later. That's a Blitter in 1985 and a graphics card today — same bargain, more zeros. The asynchronous part is the point: the Blitter ran *alongside* the CPU, which is exactly why you queue draw calls and why a `memcpy` on a modern machine is quietly handed to a DMA engine rather than executed one byte at a time.
+
+It also explains a bug class you've met without naming. Start a blit, then touch the source memory before it finishes, and you corrupt the copy — the coprocessor is mid-read. "Wait for the GPU," "fence before you reuse the buffer," "don't write the array while the async job runs" — all the same hazard the Amiga taught with a single busy flag.
+
+> Every time you reach for the GPU, a DMA copy or an async worker, you're using the Blitter's idea: the main processor shouldn't waste itself on bulk drudgery when a specialist can do it in parallel. The Amiga just made the specialist a chip you could see on the board.

@@ -1,0 +1,53 @@
+---
+title: "Why everything is a power of two"
+description: "The Z80 has no multiply instruction, so it lays bare why a power-of-two size makes modulo free — and why hash tables get rounded to 1,024."
+lede: "You round your hash tables to 1,024. You write x & (n-1) instead of x % n and half-trust that it works. You know a shift is \"faster\" than a multiply but you've never watched the difference. The Z80 in your Spectrum can't multiply at all — so it has to show you."
+kicker: "ARITHMETIC · WHAT'S UNDERNEATH"
+pubDate: 2026-06-30
+cpu: "Z80"
+category: ARITHMETIC
+accent: "#cc0000"
+order: 3
+audiences: ["Performance-aware", "CS students & self-taught"]
+teaser: "The Z80 can't multiply, so it has to show you why a power-of-two capacity makes modulo free and 1,024 is engineering, not superstition."
+---
+
+import CodeFigure from '@components/CodeFigure.astro';
+
+## The Z80 cannot multiply
+
+There is no multiply instruction. None. The Z80 has add, subtract, the logic ops and shifts — and that's the toolbox. To double a number you shift it left one bit, because a left shift *is* a multiply by two. Anything else, you build by hand from shifts and adds.
+
+<CodeFigure
+  lang="z80"
+  label="Z80 · MULTIPLY BY TEN"
+  metric="52 T-states"
+  state="bad"
+  caption="A single multiply, assembled from shifts. Ten is cheap — it's 8 + 2. A prime like 23 is real misery."
+  code={`        add hl,hl     ; ×2          11 T
+        ld   d,h      ; stash ×2     4
+        ld   e,l      ;              4
+        add  hl,hl    ; ×4          11
+        add  hl,hl    ; ×8          11
+        add  hl,de    ; ×8 + ×2 = ×10   11`}
+/>
+
+Each `add hl,hl` doubles the value — that's your left shift. "Times ten" becomes six instructions because 10 factors into powers of two you can reach by shifting. The further a number is from a power of two, the more shuffling it takes.
+
+## So a power of two costs nothing
+
+If multiplying by ten is six instructions, multiplying by 256 is… zero. A 16-bit value sits in the register pair `HL` as a high byte `H` and a low byte `L`. Dividing by 256 is reading `H`. The remainder mod 256 is reading `L`. There is no operation — only a choice of register.
+
+<CodeFigure
+  lang="z80"
+  label="Z80 · DIVIDE AND MOD BY 256"
+  metric="free"
+  state="good"
+  caption="% 256 and / 256 aren't operations here. They're which half of the register you look at."
+  code={`        ld   a,l      ; a = value mod 256  — the low byte
+        ld   a,h      ; a = value / 256    — the high byte`}
+/>
+
+This is the whole reason `x & (n-1)` can stand in for `x % n` when `n` is a power of two: masking off the low bits *is* the remainder. `x & 255` keeps the low byte — which is exactly what `x % 256` means. Modulo by a power of two is free; modulo by anything else is a division routine you don't have. So ring buffers, hash tables and texture atlases get sized to 256, 1,024, 4,096 — not superstition, but because it turns a loop into a single masked read.
+
+> A modern compiler handed `x * 10` doesn't emit a multiply either — it emits the same shift-and-add chain, folded into a single address calculation. When you choose a power-of-two capacity, you're quietly handing every `%` in your hot loop a free pass. The Z80 just itemises the bill.

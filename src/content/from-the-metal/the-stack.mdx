@@ -1,0 +1,70 @@
+---
+title: "\"Stack overflow\" is a real place"
+description: "On the 68000 the stack is just the A7 register walking down through RAM — making stack frames, recursion's cost and 'stack overflow' all literal."
+lede: "You've hit \"Maximum call stack size exceeded.\" You know recursion \"uses memory\" and that local variables live \"on the stack.\" On the Motorola 68000 in your Amiga, the stack isn't a metaphor — it's an address held in a register, walking downward through RAM. Watch it move and three mysteries solve at once."
+kicker: "ARCHITECTURE · WHAT'S UNDERNEATH"
+pubDate: 2026-06-30
+cpu: "68000"
+category: ARCHITECTURE
+accent: "#ff6600"
+order: 4
+audiences: ["CS students & self-taught", "Embedded engineers"]
+teaser: "On the 68000 the stack is just A7 walking down through RAM — watch the pointer move and stack frames, recursion's cost and 'stack overflow' all turn literal."
+---
+
+import CodeFigure from '@components/CodeFigure.astro';
+
+## The stack is a register pointing at memory
+
+The 68000 has eight address registers. `A7` is special — it's the stack pointer, and it holds an address. "The stack" is simply the memory just below it. Calling a subroutine pushes the return address there and jumps:
+
+<CodeFigure
+  lang="68000"
+  label="68000 · CALL & RETURN"
+  caption="Every bsr drops A7 by four — the size of an address. rts lifts it back."
+  code={`        bsr  draw_sprite   ; push 4-byte return addr, jump
+        ...                ; A7 is now 4 lower
+draw_sprite:
+        ...
+        rts                ; pop it back into PC, return`}
+/>
+
+The stack grows *downward* — toward lower addresses — which is exactly why "the stack" and "the heap" are always drawn growing toward each other.
+
+## Local variables are stack you borrowed
+
+Where do a function's locals live? The 68000 has one instruction to carve them off the stack — `LINK` — and one to give them back — `UNLK`:
+
+<CodeFigure
+  lang="68000"
+  label="68000 · A STACK FRAME"
+  caption="link reserves locals by subtracting from the stack pointer. That subtraction is all a stack frame is."
+  code={`func:   link a6,#-8        ; reserve 8 bytes of locals
+        move.l d0,-4(a6)   ; a local, addressed off the frame
+        ...
+        unlk a6            ; hand the 8 bytes back
+        rts                ; return addr is waiting just above`}
+/>
+
+That's what your debugger means by a "frame," and why a stack trace can exist at all: every return address is sitting in a chain in memory, each frame pointing back at the one that called it. Here it is laid out in RAM:
+
+<CodeFigure
+  lang="68000"
+  label="68000 · THE STACK IN RAM"
+  caption="Each call stacks another block below the last, and A7 sinks with it."
+  code={` high addr   ┌─────────────────────┐
+   $40000    │   caller's frame    │
+             ├─────────────────────┤
+             │   return address    │  push, by bsr
+             ├─────────────────────┤
+             │   saved a6          │  ┐ the frame,
+             │   locals (8 bytes)  │  ┘ by link
+   A7 ─────► └─────────────────────┘
+ low addr        ...grows downward...`}
+/>
+
+## So overflow is literal
+
+Every level of recursion does the whole dance again: another return address, another `link`, another few bytes off `A7`. Nest `factorial(n)` deep enough and `A7` marches straight past the memory the stack was given — on an Amiga, into someone else's RAM and a Guru Meditation.
+
+> "Maximum call stack size exceeded" is just your runtime catching `A7` before it walks off the edge. Recursion costs memory because each call is a physical push. Once you've watched the pointer move, the error message reads like a description of the hardware — because that's all it ever was.

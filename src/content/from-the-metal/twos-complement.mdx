@@ -1,0 +1,53 @@
+---
+title: "When 255 + 1 = 0"
+description: "On a 6502, 255 + 1 = 0 and $80 is both 128 and −128. The byte quirks that look like language bugs are two's complement out in the open."
+lede: "INT_MAX + 1 rolls over to a huge negative number. A byte in Java runs −128 to 127, not 0 to 255. Math.abs(Integer.MIN_VALUE) comes back negative. These look like language quirks. They're the same eight bits the 6502 in your Commodore 64 has always pushed around — just out in the open."
+kicker: "ARITHMETIC · WHAT'S UNDERNEATH"
+pubDate: 2026-06-30
+cpu: "6502"
+category: ARITHMETIC
+accent: "#4a4dff"
+order: 2
+audiences: ["CS students & self-taught", "The abstraction-curious"]
+teaser: "255 + 1 = 0 with a carry, $80 is both 128 and −128, and abs(MIN) comes back negative — two's complement, shown whole in three 6502 instructions."
+---
+
+import CodeFigure from '@components/CodeFigure.astro';
+
+## It wraps because there's nowhere to carry
+
+The 6502's accumulator is eight bits wide. Add past 255 and the ninth bit has nowhere to land but the carry flag:
+
+<CodeFigure
+  lang="6502"
+  label="6502 · OVERFLOW"
+  caption="255 + 1 = 0, with a carry. The result didn't fit, so the visible part wrapped. No exception is thrown — there's a flag, and it's your job to look."
+  code={`        lda #$ff      ; a = 255
+        clc
+        adc #$01      ; a = $00 — and the carry flag is now set`}
+/>
+
+That's `INT_MAX + 1` in miniature — the exact same event, just in a wider register.
+
+## The bits don't know if they're signed
+
+Here's the part that catches people. The byte `$80` is 128. It is also −128. The 6502 stores neither reading — only the bits. *You* decide which you meant by which flag you read afterwards:
+
+<CodeFigure
+  lang="6502"
+  label="6502 · ONE SUM, TWO TRUTHS"
+  caption="One addition, two readings. The carry flag tracks the unsigned story; the overflow (V) flag tracks the signed one. The CPU computes both and lets you pick."
+  code={`        lda #$7f      ; +127
+        clc
+        adc #$01      ; a = $80
+                      ; unsigned -> 128   (carry clear, all fine)
+                      ; signed   -> -128  (overflow! the V flag is set)`}
+/>
+
+This is why `−1` is stored as `$FF`, why casting a byte to an int can ambush you, and why `(unsigned)a < b` compiles to a *different branch* than `a < b`. The comparison is the same subtraction underneath — only the flag you branch on changes: `BCC` for unsigned, a mix of `N` and `V` for signed.
+
+## Which is why abs(MIN) breaks
+
+A signed byte holds −128 to +127. There is no +128 in it. So `abs(−128)` has no answer that fits — and comes back −128, the one value that is its own negative.
+
+> `Math.abs(Integer.MIN_VALUE)` is that exact corner, 24 bits wider. None of it is a bug in the language. It's two's complement — and the 6502 will show you the whole thing in three instructions.

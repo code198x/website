@@ -1,0 +1,52 @@
+---
+title: "Why your structs have holes in them"
+description: "On the 68000 a misaligned word read traps, it doesn't run slow. Struct padding is the silicon keeping every field on a legal even address."
+lede: "You've seen sizeof(struct) come out bigger than its fields add up to. You've met #pragma pack and alignas and assumed they were compiler fussiness. They're not. On the 68000 in your Amiga, a misaligned read doesn't run slow — it crashes. The padding is the silicon's rule, not the compiler's preference."
+kicker: "MEMORY · WHAT'S UNDERNEATH"
+pubDate: 2026-06-30
+cpu: "68000"
+category: "MEMORY"
+accent: "#475569"
+order: 9
+audiences: ["Embedded", "CS students"]
+teaser: "On the 68000 a misaligned word read traps — so the compiler pads your structs to keep every field on an even address. Padding is hardware law, not fussiness."
+---
+
+import CodeFigure from '@components/CodeFigure.astro';
+
+## An odd address is illegal
+
+A byte can sit anywhere. But a 16-bit word or a 32-bit long must begin at an *even* address. Ask the 68000 to read a word from an odd one and it doesn't shrug and do it slowly — it raises an Address Error exception and traps. On an Amiga that's a one-way trip to the Guru Meditation screen.
+
+<CodeFigure
+  lang="68000"
+  label="68000 · THE FAULT"
+  metric="traps"
+  state="bad"
+  caption="Same instruction, even address: fine. Odd address: exception. The hardware checks the low bit before it will fetch."
+  code={`        move.l #$00FF01,a0   ; a0 = an odd address
+        move.w (a0),d0       ; read a 16-bit word from it
+                             ; -> ADDRESS ERROR. the CPU traps here.`}
+/>
+
+## So the compiler pads, to keep you legal
+
+Lay out a struct with a byte followed by a word and the word would land on an odd address. The compiler can't allow that, so it slips an invisible pad byte in between — the field gets nudged to the next even slot:
+
+<CodeFigure
+  lang="68000"
+  label="68000 · WHAT THE PADDING BUYS"
+  caption="The pad byte holds no data. It buys one thing only: a legal address for count. That's all struct padding has ever been."
+  code={`flags:   ds.b 1     ; @ +0   one byte
+         ds.b 1     ; @ +1   PAD — inserted by the compiler
+count:   ds.w 1     ; @ +2   even — legal word
+pointer: ds.l 1     ; @ +4   even — legal long`}
+/>
+
+It's also why reordering fields can shrink a struct: group the big, strongly-aligned members together and the holes between them vanish. "Order your struct members large-to-small" is folk wisdom with a hardware reason underneath — fewer gaps needed to keep every field on its boundary.
+
+## Even where it's "allowed," it still bites
+
+Your laptop's x86 will quietly do a misaligned read — but it pays for it, splitting the access across two memory fetches or a cache line. Older ARM chips faulted just like the 68000. And alignment is what makes a value safe to update atomically, which is why lock-free code and DMA buffers insist on it. The 68000 just states the rule out loud instead of hiding the cost.
+
+> You're right that alignment is a C and C++ topic — but only because those languages let you feel the floor. Drop one level further and the floor has teeth: the 68000 won't even *fetch* a misaligned word. Once you've hit that exception, `#pragma pack` stops being a mystery and starts being a promise you make to the hardware.
