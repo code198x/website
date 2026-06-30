@@ -1,7 +1,8 @@
 /**
  * Cross-platform sections — areas of the curriculum that sit *outside* any single
- * platform, before a learner picks one. The Foundations layer (General Programming,
- * and later Number Systems / Bit Logic) lives here.
+ * platform. The Foundations layer (universal — General Programming, Numbers & Bits)
+ * lives here, as does Meet Assembly (per-CPU — one instruction-set course shared by
+ * every machine that runs that processor).
  *
  * A section's content is laid out as `{section}/{module}/unit-NN` — one level
  * shallower than a platform's `{platform}/{track}/{module}/unit-NN`, because a
@@ -22,6 +23,12 @@ const SECTIONS: Record<string, Section> = {
     name: 'Foundations',
     color: '#64748b',
     tagline: 'The ideas every machine and language shares — taught once, before you pick one.',
+  },
+  'meet-assembly': {
+    slug: 'meet-assembly',
+    name: 'Meet Assembly',
+    color: '#78716c',
+    tagline: 'One instruction set, every machine that runs it — learn the CPU once, by processor.',
   },
 };
 
