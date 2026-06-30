@@ -41,7 +41,7 @@ export async function getComingSoonPlatforms(): Promise<Platform[]> {
   const platforms = await getAllPlatforms();
   return platforms
     .filter(p => !isActivePlatform(p))
-    .sort((a, b) => a.data.year - b.data.year);
+    .sort((a, b) => a.data.year - b.data.year || a.id.localeCompare(b.id));
 }
 
 /**
