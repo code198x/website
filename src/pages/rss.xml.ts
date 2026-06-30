@@ -39,8 +39,10 @@ export async function GET(context: APIContext) {
       })
   );
 
-  // From the Metal essays (pubDate is required on the collection)
-  const ftm = await getCollection('from-the-metal');
+  // From the Metal essays — published (pubDate-arrived) only, so the weekly
+  // drip doesn't leak future pieces into the feed.
+  const ftm = (await getCollection('from-the-metal'))
+    .filter((entry) => entry.data.pubDate <= new Date());
   const ftmItems: FeedItem[] = ftm.map((entry) => ({
     title: `From the Metal: ${entry.data.title}`,
     pubDate: entry.data.pubDate,
