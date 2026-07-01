@@ -1,0 +1,97 @@
+---
+title: "Bitmap Addressing"
+summary: "Turn an (x, y) pixel into a Spectrum screen address — where consecutive lines are nowhere near each other in memory. The interleaved layout that every Spectrum drawing routine has to reckon with."
+platform: "sinclair-zx-spectrum"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["screen", "bitmap", "addressing", "ula", "graphics"]
+evolution:
+  previous: null
+  next: "masked-sprites"
+related:
+  patterns: ["masked-sprites", "attribute-writing"]
+  vault: ["ula", "zx-spectrum"]
+---
+
+## Overview
+
+The Spectrum has no hardware sprites and no drawing chip — every pixel is placed by the CPU, straight into the screen bitmap at `$4000`. And that bitmap is laid out unlike any other: **consecutive screen lines are not consecutive addresses.** The [ULA](/vault/hardware/ula) stores pixels interleaved by third-of-screen and character row, so moving one pixel *down* the screen can jump the address by 256 bytes or by thousands. Every Spectrum graphics routine begins by taming this — turning an `(x, y)` into the right byte, and then stepping between lines without recomputing from scratch. Get this right and the rest of Spectrum drawing follows; get it wrong and your sprite scatters itself across the screen.
+
+## Code
+
+```z80
+; =============================================================================
+; BITMAP ADDRESSING - ZX SPECTRUM
+; Pixel (D = y 0..191, E = x 0..255) -> HL = screen byte address
+; High byte:  0 1 0 y7 y6 y2 y1 y0     Low byte:  y5 y4 y3 x4 x3 x2 x1 x0
+; =============================================================================
+
+pixel_addr:
+    ld   a,d
+    and  %00000111         ; y2 y1 y0
+    ld   h,a
+    ld   a,d
+    and  %11000000         ; y7 y6 (which third)
+    rrca
+    rrca
+    rrca                   ; -> bits 4,3
+    or   h
+    or   %01000000         ; the $40 base
+    ld   h,a               ; H = 010 y7 y6 y2 y1 y0
+
+    ld   a,d
+    and  %00111000         ; y5 y4 y3 (char row within third)
+    rlca
+    rlca                   ; -> bits 7,6,5
+    ld   l,a
+    ld   a,e
+    rrca
+    rrca
+    rrca
+    and  %00011111         ; x / 8 -> column 0..31
+    or   l
+    ld   l,a               ; L = y5 y4 y3 x4 x3 x2 x1 x0
+    ; the pixel within the byte is bit (7 - (x AND 7)); mask = $80 >> (x AND 7)
+    ret
+
+; Step HL down exactly one pixel line — the interleave made cheap
+pixel_down:
+    inc  h                 ; within a cell, the next line is simply H+1
+    ld   a,h
+    and  %00000111
+    ret  nz                ; still inside this character cell — done
+    ld   a,l
+    add  a,32              ; crossed a cell: move to the next character row
+    ld   l,a
+    ret  c                 ; carried into the next third — H is already right
+    ld   a,h
+    sub  8                 ; else undo the cell carry that inc h left in H
+    ld   h,a
+    ret
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~40–60 T-states to compute an address from scratch; far less to step |
+| Memory | Nothing — or 192×2 bytes for a line-address lookup table |
+| Limitation | The layout resists straight-line arithmetic; plan routines around it |
+
+**When to use:** Every pixel-level draw — [sprites](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites), lines, plotting, scrolling.
+
+**When to avoid:** Character-cell work; [printing](/patterns/sinclair-zx-spectrum/assembly/rendering/character-printing) and colour move a whole 8×8 block at a time and dodge the pixel maths.
+
+## Why the layout is this way
+
+The address decomposes into three pieces of the `y` coordinate scattered across the two bytes: the **third** of the screen (`y7 y6`), the **character row** within that third (`y5 y4 y3`), and the **pixel row** within the character (`y2 y1 y0`). It reads as chaos, but it exactly matches the order the ULA fetches bytes to build the display, which let Ferranti shave gates off the address logic. The cost landed on the programmer: there's no `base + y*32`, so serious code either computes the address with the bit-shuffle above or, more often, looks it up in a precomputed 192-entry table of line addresses.
+
+## Stepping down is the common case
+
+You rarely need a fresh address per line — you need the line *below* the one you have, which is what `pixel_down` gives cheaply. Inside a character cell, `y2 y1 y0` live in the low three bits of the high byte, so the next line down is just `inc h`. Only when those bits overflow — every eighth line, at a cell boundary — do you move to the next character row (`L += 32`) and, unless you've crossed into a new third, undo the carry the `inc h` left behind. That asymmetry — seven cheap steps then one expensive one — is the shape of every Spectrum draw loop.
+
+## Related
+
+**Patterns:** [Masked Sprites](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites), [Attribute Writing](/patterns/sinclair-zx-spectrum/assembly/rendering/attribute-writing)
+
+**Vault:** [ULA](/vault/hardware/ula) — the screen layout | [ZX Spectrum](/vault/systems/zx-spectrum)

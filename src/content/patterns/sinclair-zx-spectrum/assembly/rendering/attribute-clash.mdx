@@ -1,0 +1,94 @@
+---
+title: "Attribute Clash"
+summary: "The Spectrum stores one ink-and-paper colour per 8×8 cell, so pixels and colour live on different grids — the source of colour clash. Understanding it, and the design craft that turns the constraint into the platform's look."
+platform: "sinclair-zx-spectrum"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["attributes", "colour-clash", "design", "ula", "graphics"]
+evolution:
+  previous: "masked-sprites"
+  next: null
+related:
+  patterns: ["masked-sprites", "attribute-writing"]
+  vault: ["ula", "zx-spectrum"]
+---
+
+## Overview
+
+The Spectrum keeps pixels and colour on two different grids. Pixels are one bit each, 256×192; colour is one byte per **8×8 cell**, 32×24 — a single ink and a single paper for all 64 pixels in that square. So a pixel that's set shows in the cell's ink, a clear pixel in its paper, and **nothing in a cell can be more than two colours**. When a [moving sprite](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites) crosses into a cell that belongs to something else-coloured, one of them changes colour at the cell edge: **attribute clash**. It's not a bug to fix — there's no fixing it — it's the constraint every Spectrum game is designed around, and learning to work with it is learning to make the Spectrum look like the Spectrum.
+
+## Code
+
+```z80
+; =============================================================================
+; ATTRIBUTE CLASH - ZX SPECTRUM
+; Colour lives at $5800, one byte per 8x8 cell: attr = $5800 + row*32 + col
+; Attribute byte: FLASH(7) BRIGHT(6) PAPER(5-3) INK(2-0)
+; =============================================================================
+
+; Pixel (D = y 0..191, E = x 0..255) -> HL = its attribute-cell address
+attr_addr:
+    ld   a,d
+    rrca
+    rrca
+    rrca
+    and  %00011111         ; y / 8  -> cell row 0..23
+    ld   l,a
+    ld   h,0
+    add  hl,hl
+    add  hl,hl
+    add  hl,hl
+    add  hl,hl
+    add  hl,hl              ; row * 32
+    ld   a,e
+    rrca
+    rrca
+    rrca
+    and  %00011111         ; x / 8  -> cell column 0..31
+    or   l
+    ld   l,a
+    ld   a,h
+    or   $58                ; base $5800
+    ld   h,a
+    ret                     ; HL -> the one byte that colours this whole cell
+
+; Colour a sprite's cell to match it — the "paint the footprint" fix for clash
+    ld   a,%00000110        ; BRIGHT 0, PAPER 0 (black), INK 6 (yellow)
+    ld   (hl),a
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | Attributes are cheap — 768 bytes, one per cell, no pixel maths |
+| Memory | 768 bytes of attribute RAM total |
+| Limitation | Two colours per 8×8 cell, full stop — the whole design problem |
+
+**When to use:** Always — every Spectrum screen has colour, so every Spectrum screen has this constraint.
+
+**When to avoid:** You can't avoid it; you can only design with it. Ignoring it is what *causes* ugly clash.
+
+## Where clash comes from
+
+Move a cyan sprite one pixel into a cell that's currently blue-on-black, and the hardware has one attribute byte for that cell — it cannot hold both. Whichever colour the byte says, *all* the set pixels in that cell take it: your sprite tints to the background's colour, or the background tints to the sprite's, at a hard 8-pixel edge. The pixels are pin-sharp; only the colour smears. That mismatch between a fine pixel grid and a coarse colour grid is the single most recognisable thing about Spectrum graphics.
+
+## Designing with it, not against it
+
+The [craft the platform is famous for](/vault/techniques/attribute-aware-design) is a handful of moves that keep clash invisible or intentional:
+
+- **Monochrome sprites.** Draw moving objects in one ink over black paper and let them share whatever cell they're in — most Spectrum arcade games do exactly this. No two-colour object, no clash.
+- **Black is free.** Black ink on any paper, or black paper under any ink, reads cleanly because black hides the seam. A black outline around a sprite lets it cross any background without a visible colour jump.
+- **Colour the cells, not the pixels.** Keep the pixel bitmap busy and set colour per cell to taste — the *attribute-only* style of many puzzle and strategy games, where nothing moves at pixel resolution so nothing clashes.
+- **Move on the grid.** Confine an object (or its colour) to 8-pixel steps so it only ever fills whole cells — clash can't happen if things never share a cell.
+- **Make it the game.** Colour zones as rules, deliberate clash as a loading effect — the constraint turned into content.
+
+## The two-grid split
+
+It helps to hold the two layers apart in your head: the **bitmap** at `$4000` decides the *shape*, and the **attributes** at `$5800` decide the *colour*, each on its own grid. A [masked sprite](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites) writes only the bitmap — so by default a moving object inherits whatever colours its cells already hold. If you want it to carry its own colour, you also write the attribute cells it covers (the `attr_addr` routine above), and accept that those cells are now that colour until something repaints them. Most of Spectrum visual design is choosing, per object, whether to fight for its colour or let it wear the background's.
+
+## Related
+
+**Patterns:** [Masked Sprites](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites), [Attribute Writing](/patterns/sinclair-zx-spectrum/assembly/rendering/attribute-writing)
+
+**Vault:** [ULA](/vault/hardware/ula) | [Attribute-Aware Design](/vault/techniques/attribute-aware-design) | [ZX Spectrum](/vault/systems/zx-spectrum)
