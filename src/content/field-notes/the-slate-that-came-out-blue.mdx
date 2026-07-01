@@ -1,0 +1,43 @@
+---
+title: "The Slate That Came Out Blue"
+description: "A dithered dark-slate checkerboard came out of the video encoder as flat bright blue. The culprit — 4:2:0 chroma subsampling — is a codec quietly doing the eye's job at the wrong scale."
+dek: "Dithering asks the eye to blend two colours into one. A codec will do it for you — at the wrong scale, in the wrong direction."
+kicker: "CAPTURE · DITHERING"
+pubDate: 2026-06-26
+accent: "#155e75"
+order: 7
+teaser: "A 50% blue-and-black dither, meant to read as dark slate, came out of the mp4 as flat bright blue. The encoder had blended the pixels for me — which is exactly what dithering was counting on the eye to do."
+draft: true
+---
+
+A Shadowkeep unit uses a dither to make a colour the Spectrum doesn't have. Half the pixels blue, half black, in a fine checker — from a normal viewing distance your eye fuses them into a dark slate, a moody in-between the palette can't name. The still image, captured to PNG, had it exactly. The video capture of the same screen came out flat, even, and *bright blue*. Not slate. Not dark. The wrong colour entirely, and confidently so.
+
+I'd changed nothing about the program. The only difference between the two files was the thing that wrote them.
+
+**[ASSET: the tell, in one image — the dithered dark-slate cell as the PNG captured it (crisp blue/black checker) beside the old mp4's flat bright blue. A `FieldVideo` before/after would be stronger still: same screen, two encodes. Generatable from a Shadowkeep unit through Emu198x's old vs new capture path.]**
+
+## Dithering is a con run on the eye
+
+The trick a dither pulls is honest about being a trick: it can't make dark slate, so it puts a blue pixel next to a black pixel and trusts your retina to average them at viewing distance. Two colours in, one colour out — but the blending happens in *you*, at the screen's native pixel pitch, which is exactly fine enough for the con to work. Every crosshatched shadow and stippled gradient on an 8-bit machine is the same bet: the artist places pixels, the eye mixes paint.
+
+Which is a lovely bet right up until something *else* decides to do the mixing first.
+
+## The codec is also an eye
+
+A video encoder's whole job is to throw away detail you won't miss, and it has strong opinions about colour in particular. The old capture path handed the frames to `libx264` as `yuv420p` — 4:2:0 chroma subsampling — which keeps full detail in brightness but stores *one* colour sample for every 2×2 block of pixels. On a fine blue/black checker, "one colour for this 2×2 block" is a coin-flip averaged into a muddy middle. Then the encoder, running at its default quality (CRF 23, no rate control specified), quantised that already-averaged chroma further, pulling everything toward the mean. The dither got blended — but at block scale, by a machine, toward the average of blue-and-black, which the codec rounded up into a single cheerful blue.
+
+The eye was going to do this blending anyway, gently, at pixel pitch. The codec did it first, coarsely, at block pitch, and left the eye nothing to work with. Same operation, wrong scale, and the art loses.
+
+## The fix, and the half that isn't a codec
+
+Encode `yuv444p` instead — no chroma subsampling, one colour sample *per pixel* — and drop the quality target to near-lossless (`-crf 12`). Now every pixel keeps its own colour, and the eye gets to run its con as designed. I checked it against the two worst cases I could build: per-scanline red/cyan tape-loading stripes, and a synthetic red/cyan checkerboard alternating *every single pixel*. Both came through the mp4 all but identical to the PNG — the checker measured a per-pixel colour spread within a whisker of the still, with zero pixels blended to grey. High-frequency chroma survives.
+
+But there's a second eye in the pipeline, and it isn't the codec. Dithering only works while the pixels stay at a pitch fine enough to fuse and no finer. Scale the video *player* down aggressively with CSS and the browser re-blends those crisp adjacent pixels on the way to the screen — merging the dither visually all over again, no codec required. So a perfect encode is necessary and not sufficient: you have to check the *played-back* result at the size it displays at, not the raw frame. When motion isn't the point, a crisp still shown at native size is still the safest medium — it's the one place nobody gets to average your pixels but the person looking.
+
+## Everyone in the pipeline has a blend button
+
+None of this is a retro problem; the machines just make it legible. Every "why does my image look washed out / muddy / posterised" is some stage in a pipeline exercising a blending decision you didn't authorise — a thumbnail service, a screenshot compressor, a video call downsampling your chroma so your red shirt smears. The dither and the codec are the *same technique* aimed in opposite directions: one spends the eye's blending to buy a colour, the other spends it to save bits. Point them at the same pixels and the one that runs first wins. On the Spectrum you can see exactly who won, because the answer is a slate that came out blue.
+
+---
+
+*The dither units are in the Spectrum assembly track (Shadowkeep). The encoder settings live in Emu198x's capture pipeline (`yuv444p`, `-crf 12`); the pipeline notes are in the project's capture docs.*
