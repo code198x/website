@@ -1,0 +1,110 @@
+---
+title: "Playing a Sample"
+summary: "Point one of Paula's four audio channels at an 8-bit sample in chip RAM, set its pitch and volume, and let DMA play it — the foundation of all Amiga sound."
+platform: "commodore-amiga"
+category: "audio"
+difficulty: "beginner"
+tags: ["paula", "samples", "dma", "audio"]
+evolution:
+  previous: null
+  next: "one-shot-samples"
+related:
+  patterns: ["vblank-game-loop"]
+  vault: ["paula", "commodore-amiga"]
+---
+
+## Overview
+
+Paula, the Amiga's sound chip, has **four audio channels**, and each plays a stream of **8-bit signed samples straight from chip RAM by DMA** — no CPU involvement once it's running. That's what made Amiga audio feel a generation ahead: real recorded sound, four voices, for free. Getting one channel going is four steps: point it at the sample, tell it how long, set the pitch and the volume, then switch its DMA on.
+
+## Code
+
+```m68k
+; =============================================================================
+; PLAYING A SAMPLE - AMIGA (Paula)
+; Channel 0 loops an 8-bit sample from chip RAM via DMA
+; CPU: None (DMA plays it) | Memory: the sample, which MUST be in chip RAM
+; =============================================================================
+
+CUSTOM   equ $dff000
+DMACON   equ $096            ; DMA control
+AUD0LC   equ $0a0            ; Channel 0 sample pointer (longword)
+AUD0LEN  equ $0a4            ; Channel 0 length, in WORDS (bytes / 2)
+AUD0PER  equ $0a6            ; Channel 0 period (pitch)
+AUD0VOL  equ $0a8            ; Channel 0 volume (0-64)
+
+            section code,code_c
+
+start:
+            lea     CUSTOM,a5
+
+            ; --- 1. Point channel 0 at the sample, and give its length ---
+            move.l  #sample,AUD0LC(a5)
+            move.w  #(sample_end-sample)/2,AUD0LEN(a5)   ; length in words
+
+            ; --- 2. Pitch, then 3. volume ---
+            move.w  #428,AUD0PER(a5)     ; period 428 = the note C-3 (~8.3 kHz PAL)
+            move.w  #64,AUD0VOL(a5)      ; 64 = full volume
+
+            ; --- 4. Enable channel 0's DMA — Paula begins, and loops, at once ---
+            move.w  #$8201,DMACON(a5)    ; SET | DMAEN | AUD0
+
+mainloop:
+            bra.s   mainloop
+
+; --- 8-bit SIGNED sample, in CHIP RAM (one cycle of a sine; Paula loops it) ---
+            section data,data_c
+            even
+sample:
+            dc.b    0,48,90,117,127,117,90,48,0,-48,-90,-117,-127,-117,-90,-48
+sample_end:
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | None — DMA streams the sample by itself |
+| Memory | The sample, in **chip** RAM (Paula can't see fast RAM) |
+| Limitation | 8-bit samples; Paula **loops** by default — a one-shot needs a little more |
+
+**When to use:** Every Amiga sound — music, effects, speech. This is the base case.
+
+**When to avoid:** Never for sound; it's the only way in. (For a single beep you could poke `AUDxDAT` by hand, but DMA is how real audio is done.)
+
+## Paula's four channels
+
+Each channel is a 16-byte block of registers; channel *n* is at `$DFF0A0 + n*$10`:
+
+| Offset | Register | Purpose |
+|--------|----------|---------|
+| `+$0` | AUDxLC | Sample start (longword pointer) |
+| `+$4` | AUDxLEN | Length, in words |
+| `+$6` | AUDxPER | Period (pitch) |
+| `+$8` | AUDxVOL | Volume, 0–64 |
+
+And the channels are wired to the stereo outputs: **0 and 3 go left, 1 and 2 go right.** Music that wants a channel each side pairs (0,3) against (1,2).
+
+## Period and pitch
+
+Pitch is set by the **period** — the number of bus cycles between output samples — so *lower period means higher pitch*. On PAL the playback rate is:
+
+```
+sample rate (Hz) = 3546895 / period
+```
+
+Trackers pick periods from a fixed table where each entry is a semitone; period **428 is C-3**, halve it (214) and you're an octave up. To play a recorded sample at the right pitch you set the period to match how it was sampled.
+
+## Chip RAM, always
+
+The single most common Amiga audio bug: **Paula's DMA reads only chip RAM.** A sample left in fast RAM produces silence or noise. Put sample data in a `_c` (chip) section, or copy it to chip RAM before playing — hence `section data,data_c` above.
+
+## Looping vs one-shot
+
+Enable a channel and Paula plays `AUD0LC`/`AUD0LEN` and then **loops it forever** — perfect for a sustained instrument. To play a sound *once*, you catch Paula's channel interrupt after the first pass and repoint it at a silent word; see [One-Shot Samples](/patterns/commodore-amiga/audio/one-shot-samples).
+
+## Related
+
+**Patterns:** [VBlank Game Loop](/patterns/commodore-amiga/framework/vblank-game-loop)
+
+**Vault:** [Paula](/vault/hardware/paula) | [Commodore Amiga](/vault/systems/commodore-amiga)
