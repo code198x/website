@@ -1,0 +1,89 @@
+---
+title: "Copper Colour Bars"
+summary: "Change the background colour at chosen scanlines from the copper list — no CPU, no interrupt, no jitter — to paint horizontal bars or a smooth vertical gradient the beam draws for you."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["copper", "colour-bars", "gradient", "raster", "graphics"]
+evolution:
+  previous: "copper-list-basics"
+  next: "copper-split-screen"
+related:
+  patterns: ["copper-list-basics", "copper-split-screen"]
+  vault: ["copper", "commodore-amiga"]
+---
+
+## Overview
+
+The [copper](/patterns/commodore-amiga/assembly/rendering/copper-list-basics) runs in lock-step with the video beam, so a `WAIT` for a scanline followed by a `MOVE` to a colour register changes that colour *part-way down the screen*. Stack a few and you get horizontal colour bars; change the colour a little on every line and you get a smooth gradient — a sky, a metallic sheen, a demo backdrop. The processor does nothing: the copper list *is* the effect, drawn fresh every frame, and because it's beam-locked it never wobbles. This is the copper's signature trick, and where the [C64 needs a cycle-counted stable raster](/patterns/commodore-64/assembly/rendering/raster-splits) to hold a clean colour split, the Amiga gets it for free.
+
+## Code
+
+```m68k
+; =============================================================================
+; COPPER COLOUR BARS - AMIGA
+; Change COLOR00 at chosen scanlines: hand-built bars, then a runtime gradient
+; =============================================================================
+
+COLOR00  equ $0180
+
+; --- Hand-built: three colour bands down the screen ---
+bars_list:
+            dc.w    $2c07,$fffe         ; WAIT line $2C (top of the display)
+            dc.w    COLOR00,$000f       ; deep blue
+            dc.w    $6007,$fffe         ; WAIT line $60
+            dc.w    COLOR00,$008f       ; lighter blue
+            dc.w    $9407,$fffe         ; WAIT line $94
+            dc.w    COLOR00,$00df       ; cyan
+            dc.w    $ffff,$fffe         ; end of list (WAIT forever)
+
+; --- Runtime: build a smooth vertical gradient into a copper list ---
+; a0 -> buffer to build into, d0.b = first line, d1 = line count - 1,
+; a1 -> table of d1+1 colour words ($0RGB)
+build_gradient:
+.line:
+            move.b  d0,d3
+            lsl.w   #8,d3
+            or.w    #$0007,d3           ; (line << 8) | $07 | WAIT bit -> WAIT this line
+            move.w  d3,(a0)+
+            move.w  #$fffe,(a0)+        ; ...second WAIT word
+            move.w  #COLOR00,(a0)+      ; MOVE COLOR00, ...
+            move.w  (a1)+,(a0)+         ; ...the next colour from the table
+            addq.b  #1,d0               ; next scanline
+            dbf     d1,.line
+            move.l  #$fffffffe,(a0)+    ; $FFFF,$FFFE — end of list
+            rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | None — the copper writes each colour as the beam passes |
+| Memory | 8 bytes per line (one WAIT + one MOVE) — a full-screen gradient is ~2 KB |
+| Limitation | One register write per copper instruction; beam moves top-to-bottom only |
+
+**When to use:** Skies, backdrops, title screens, loading bars, any vertical colour ramp.
+
+**When to avoid:** A single flat colour (one `MOVE` at the top is enough) — and horizontal gradients, which the copper can't paint (it follows the beam down, not across).
+
+## Any register, not just COLOR00
+
+Nothing about this is special to the background. Swap `COLOR00` for a bitplane colour and the *artwork* recolours per band; write the sprite-colour registers and a sprite changes hue down its height; write two or three colours per line and the whole palette animates as the beam descends. The colour-bar loop is really "reprogram the display at this scanline", and the [split screen](/patterns/commodore-amiga/assembly/rendering/copper-split-screen) is the same idea aimed at the bitplane pointers instead of the palette.
+
+## Waiting past line 255
+
+The `WAIT` vertical position is only 8 bits, so it can't name a line above 255 directly — and PAL screens run to ~312. The idiom is to first wait out the top half with a throwaway `WAIT` for line 255, *then* wait for the low-numbered line in the second field:
+
+```m68k
+            dc.w    $ffdf,$fffe         ; WAIT line 255 (VP=$FF, mask lets HP through)
+            dc.w    $2c07,$fffe         ; now WAIT line $12C-256 = line $2C of the lower half
+```
+
+Forget it and a gradient meant for the bottom of a tall display simply stops at line 255. Most game displays sit inside the first 256 lines and never meet this, but full-overscan effects must handle the wrap.
+
+## Related
+
+**Patterns:** [Copper List Basics](/patterns/commodore-amiga/assembly/rendering/copper-list-basics), [Copper Split Screen](/patterns/commodore-amiga/assembly/rendering/copper-split-screen), [Raster Splits (C64)](/patterns/commodore-64/assembly/rendering/raster-splits)
+
+**Vault:** [Copper](/vault/hardware/copper) | [Commodore Amiga](/vault/systems/commodore-amiga)

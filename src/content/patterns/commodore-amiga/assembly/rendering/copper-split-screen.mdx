@@ -1,0 +1,90 @@
+---
+title: "Copper Split Screen"
+summary: "Have the copper reprogram the bitplane pointers part-way down the frame so the top and bottom of the screen show different bitmaps — a scrolling playfield above a rock-steady status panel, beam-locked and free."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "advanced"
+tags: ["copper", "split-screen", "bitplane", "status-panel", "graphics"]
+evolution:
+  previous: "copper-colour-bars"
+  next: null
+related:
+  patterns: ["copper-colour-bars", "copper-list-basics"]
+  vault: ["copper", "commodore-amiga"]
+---
+
+## Overview
+
+[Colour bars](/patterns/commodore-amiga/assembly/rendering/copper-colour-bars) reprogram the *palette* mid-screen; a split screen reprograms the *bitplane pointers* — the addresses the display fetches pixels from. Point them at one bitmap for the top of the frame and, at a chosen scanline, have the copper point them at another for the bottom. The result is the layout behind countless Amiga games: a large scrolling play area with a fixed score-and-lives panel bolted underneath that never scrolls, never tears, and costs the CPU nothing. Because the copper is beam-synced, the join is perfectly steady — the effect the C64 spends a [stable raster](/patterns/commodore-64/assembly/rendering/raster-splits) to achieve, the Amiga gets by writing a few registers at the right line.
+
+## Code
+
+```m68k
+; =============================================================================
+; COPPER SPLIT SCREEN - AMIGA
+; Top: scrolling playfield.  Bottom (from line $A0): a fixed status panel.
+; Bitplane pointers are latched per line, so set the panel's a line EARLY.
+; =============================================================================
+
+BPL1PTH  equ $00e0            ; bitplane 1 pointer (high word); +4 per plane
+BPL1PTL  equ $00e2
+BPLCON1  equ $0102            ; horizontal scroll
+BPL1MOD  equ $0108            ; odd-plane modulo
+BPL2MOD  equ $010a            ; even-plane modulo
+
+; The playfield pointers (PF_P1H/L … ) are rewritten every frame by the CPU as
+; the map scrolls; the panel pointers (PANEL_*) are constant.
+
+split_list:
+            ; --- top of frame: point the display at the scrolling playfield ---
+            dc.w    BPL1PTH,0           ; \  filled in each frame from the
+            dc.w    BPL1PTL,0           ; /  current scroll position
+            ; ... BPL2PTH/L … BPLnPTH/L for the rest of the playfield's planes ...
+
+            ; --- the split: just above line $A0, swap to the panel bitmap ---
+            dc.w    $9f07,$fffe         ; WAIT line $9F (one line before the panel)
+            dc.w    BPLCON1,$0000       ; panel does not scroll — zero the fine scroll
+            dc.w    BPL1MOD,0           ; panel is full-width — no modulo gap
+            dc.w    BPL2MOD,0
+            dc.w    BPL1PTH,PANEL_P1>>16 & $ffff
+            dc.w    BPL1PTL,PANEL_P1 & $ffff
+            ; ... panel's remaining BPLnPTH/L ...
+
+            dc.w    $ffff,$fffe         ; end of list
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | Rewrites only the *top* pointers each frame (the scroll); the split is free |
+| Memory | Two bitmaps — playfield and panel — both in chip RAM |
+| Limitation | Both regions share the display's depth and resolution; the split is horizontal |
+
+**When to use:** A scrolling game with a fixed HUD, a level view over a map, any two-zone layout.
+
+**When to avoid:** A single full-screen view, or when the two regions need different bitplane *counts* (possible, but you must also reprogram `BPLCON0` and `DDFSTOP` at the split).
+
+## Why the split is a line early
+
+Bitplane pointers are **latched once per line**, at the start of that line's fetch — so a `MOVE` that lands *during* line `$A0` is already too late for `$A0` and takes effect on `$A1`. Wait for the line *before* the panel (`$9F`) and do the reprogramming in its horizontal blank, and the panel's first line displays cleanly. The same rule governs anything you change at a split: reprogram it in the gap above the boundary, not on the boundary.
+
+## What you reprogram, and what you don't
+
+The panel needs its own **pointers**, but usually a different **scroll and modulo** too:
+
+- **`BPLCON1 = 0`** — the playfield scrolls a pixel at a time via the fine-scroll register; the panel must sit still, so zero it at the split.
+- **`BPL1MOD` / `BPL2MOD`** — the playfield's modulo skips the off-screen columns of a wide map; a full-width panel has no gap, so its modulo is 0.
+- **The pointers** — each plane's `BPLxPTH/L` set to the panel bitmap.
+
+The copper restores the playfield's values at the top of the next frame (the pointers the CPU rewrote for the new scroll position), and the cycle repeats. Nothing here touches the processor during the frame — the whole two-zone display is a data structure the beam walks through.
+
+## Two lists, double-buffered
+
+Because the top pointers change every frame with the scroll, a robust engine keeps **two copper lists** and swaps which one `COP1LC` points at each [vblank](/patterns/commodore-amiga/assembly/framework/vblank-game-loop) — writing next frame's pointers into the list the copper *isn't* currently running, then flipping. That's the copper equivalent of double-buffering, and it stops the beam from reading a half-updated pointer mid-frame.
+
+## Related
+
+**Patterns:** [Copper Colour Bars](/patterns/commodore-amiga/assembly/rendering/copper-colour-bars), [Copper List Basics](/patterns/commodore-amiga/assembly/rendering/copper-list-basics)
+
+**Vault:** [Copper](/vault/hardware/copper) | [Commodore Amiga](/vault/systems/commodore-amiga)
