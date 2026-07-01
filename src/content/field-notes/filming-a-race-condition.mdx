@@ -1,0 +1,75 @@
+---
+title: "Filming a Race Condition"
+description: "The fixed Amiga build refused to show its own bug — because a race condition's real inputs are cycles, and everything that costs cycles is secretly an input."
+dek: "In which I fail to reproduce my own bug, four nops at a time."
+kicker: "AMIGA · THE CAPTURE RIG"
+pubDate: 2026-06-14
+accent: "#ff6600"
+order: 2
+teaser: "To film the sheep bug, I deleted the three-line fix and pointed the camera. The build refused to misbehave — and finding out why meant sweeping the poll phase one nop at a time."
+---
+
+The last post ended with a sheep riding a hay bale, and a three-instruction fix. While writing it I wanted the obvious thing: footage. The bug, on film — board the bale, creep off the back, drown — and then the fixed build, same scene, riding true. I had the published source, I had the fix, and the fix was three lines. Delete them, point the camera. An afternoon, at most.
+
+The deleted-fix build refused to exhibit the bug.
+
+## The rig
+
+It's worth a paragraph on what "point the camera" means here, because it's my favourite part. The emulator runs headless and exposes everything over a scripting interface — so the camera operator is a Python script that reads the game's actual variables out of emulated RAM, every frame. It finds them the honest way: scan chip memory for the sheep's known spawn coordinates, subtract the offset from the assembler's symbol listing, and you have live addresses for the sheep, the bale, and all three lanes of traffic. Crossing the road stops being gameplay and becomes scheduling: simulate the lanes forward, hold *up* when the whole climb is clear. (The first version stood her politely between two lanes to wait. There is no between — the gaps are six pixels and she is sixteen. The rover explained this several times.)
+
+So: scripted sheep, deterministic traffic, board the bale on cue. The fixed build performed perfectly — locked to the bale, five pixels of offset, never wavering, all the way across. Then the same choreography on the build with the fix deleted, ready for the tragic version.
+
+She rode perfectly. Locked on, dry, smug. Five lives.
+
+## The bug that wasn't there
+
+My first suspicion was the rig — some accident of scripted timing. Second suspicion, with a sinking feeling, was the original diagnosis: had I fixed a bug that was never real? I checked the phantom directly. In the idle state, before anyone rides anything, the deleted-fix build runs visibly hot: the bale advances 1.18 pixels per frame instead of 1.00 — the game loop lapping itself on phantom vblanks 18% of frames. The torn read is firing. The bug is *there*.
+
+Then I watched the loop while she rode: one pass per frame, fifty times in fifty frames. Zero phantoms. The same build that phantoms on 18% of frames while idle catches *none* — not one — while riding.
+
+The resolution is in the last post's own mechanism, taken more seriously than I'd taken it. The phantom needs the polling loop to read the beam position inside a window about four cycles wide, at one specific crossing, once per frame. Whether any given poll lands in that window depends on where the loop body finished — which depends on the body's length in cycles — which depends on *which code ran this frame*. Riding runs different branches than idling. The body length changes; the phase shifts; the window stops being sampled at all. I had written "same bug, different fingerprint" about reassembled builds. I had not appreciated that the fingerprint changes when a sheep sits down.
+
+Which means my "before" build — published source minus three lines — was a build that never existed. The historical pre-fix build differed in other ways too, and its riding-state phase happened to clip the window. Mine happened to miss it. Same source. Same bug. Different universe.
+
+## Four nops
+
+If the phase is the problem, the phase can be the dial. A `nop` is four CPU cycles of nothing. Pad the loop body with nops, one at a time, and walk the poll phase across the frame:
+
+| nops | slide while riding | what it looks like |
+|------|--------------------|--------------------|
+| 0 | none | she rides forever |
+| 1 | 1.95 px/frame | flung off in about a second |
+| 2 | 1.83 px/frame | the same, slightly politer |
+| 3 | 0.119 px/frame | the gentle historical creep |
+| 4 | **0.109 px/frame** | **the bug, almost exactly as I had it** |
+| 5 | 1.88 px/frame | catastrophe again |
+| 6 | 0.119 px/frame | gentle again |
+| 7 | none | nothing at all |
+
+The number I'd recorded when the bug was real works out to 0.111 pixels per frame — a pixel every nine frames. Four nops of padding: 0.109. Sixteen cycles of nothing, inserted in the right place, is the difference between "this bug does not exist" and "this bug, at the rate I measured it in the wild." One nop in either direction is the difference between a creep you'd miss on first viewing and a sheep leaving the bale like it owed her money.
+
+## And then the camera lied
+
+With the n4 build sliding at the proper rate, I recorded the take. The video showed her standing on the bank for three and a half seconds while the bale drifted past, hearts never moving. The emulator's memory, read the same moment, said she'd boarded, ridden, slid, and drowned — four lives.
+
+The video recorder, it turned out, had its own bug: it resolved the display pointers once, when recording started, and never again. Anything the game animates by *rewriting data in place* — the cars, the bale — recorded fine. Anything animated by *flipping between two buffers* — the sheep's sprite frames, the HUD hearts on the double-buffered playfield — froze at recording-start state, forever. Screenshots were immune; they re-read the pointers every time. So the truth was available one frame at a time, and the final clips were assembled from 187 individual screenshots, like stop-motion. (The recorder bug was filed and fixed the same afternoon, which is the kind of turnaround you get when the emulator maintainer is in the room.)
+
+<figure class="still">
+  <img
+    src="/images/field-notes/recorder-freeze-strip.png"
+    alt="A strip of frames: the sheep's sprite frozen at its recording-start pose while the hay bale animates past her along the river."
+  />
+  <figcaption>The recorder's own bug, caught in the act — the sheep frozen at recording-start state while the bale laps the river behind her.</figcaption>
+</figure>
+
+## Honest staging
+
+So, full disclosure: the "before" footage in the last post is a reconstruction. Published source, fix deleted, four nops to land the phase — the same physics, restaged to run at the measured historical rate, filmed frame by frame because the camera couldn't be trusted either. Nature documentaries have the same problem and the same answer: you cannot schedule the leopard, so you light the scene honestly and say so in the credits. These are the credits.
+
+What stays with me is what "reproducing a bug" turned out to mean. We usually mean: same code, same inputs, same result. But a race condition's inputs aren't in the input. They're a phase relationship between two clocks, and *everything that costs cycles is secretly an input* — the build layout, the code path, whether a sheep is sitting down. This is the whole taxonomy of heisenbugs in one sheep: the bug that vanishes when you add a print statement vanishes because the print statement is a few hundred nops. The bug that only ships in release builds ships because the optimiser deleted somebody's nops. Nothing about this is retro. The Amiga's only contribution is scale — the window is four cycles wide and the clocks are slow enough that you can land on it *on purpose*, count it, and put a number in a table.
+
+Last time I said the machine you can see all the way down includes floorboards that move. It turns out the camera is standing on them too.
+
+---
+
+*The capture rig, the nop sweep, and the recorder bug live in the Emu198x and Code198x repos. Flock is unit 12 of the Amiga assembly track.*

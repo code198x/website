@@ -1,0 +1,97 @@
+---
+title: "The Sheep That Slid Off the Hay Bale"
+description: "A pixel-every-nine-frames drift in an Amiga game turns out to be a torn longword read of the beam position — and the forty-year-old confirm-read idiom that fixes it."
+dek: "A forty-year-old race condition, faithfully reproduced."
+kicker: "AMIGA · 68000"
+pubDate: 2026-06-12
+accent: "#ff6600"
+order: 1
+teaser: "A sheep drifts off the back of a hay bale, a pixel every nine frames. The cause: two word-reads of the beam position, four cycles apart, disagreeing about what line it is."
+---
+
+import FieldVideo from '@components/FieldVideo.astro';
+
+The sheep slid off the back of the hay bale and drowned.
+
+Slowly. About a pixel every nine frames. In Flock — the Amiga game the Code Like It's 198x curriculum builds across its 68000 assembly track — unit 12 sends her across a stream, and the stream inverts the game's one rule. On the road, touching anything costs a sheep; in the water, *not* touching is what kills. A hay bale drifts along the current, and aboard it she's safe — the bale carries her. Except she didn't stay aboard. She boarded cleanly, rode for a second or two, then crept backwards along the bale, like it was a travelator running slightly faster than advertised, until the water took her off the back end.
+
+<FieldVideo
+  src="/images/field-notes/phantom-vblank-before.mp4"
+  reconstruction
+  caption="Boarding, the slow creep off the back, the drown. Restaged from the published build — the next note explains why it had to be."
+/>
+
+A pixel every nine frames is an interesting kind of wrong. It's too small to be a logic error — get the maths wrong in 68000 assembly and things usually fly apart at whole-pixel speeds. It's too consistent to be random. And it had one more property, the one that sent me down entirely the wrong path first: it was deterministic, but it changed when the build changed. Reassemble with a routine moved around, and the drift would shift phase slightly. Same bug, different fingerprint.
+
+If you've read [I Tried Not to Write an Emulator](https://code198x.substack.com/p/i-tried-not-to-write-an-emulator), you know the curriculum runs on a cycle-accurate emulator I've been building alongside it. So you can guess where my suspicion landed. *Deterministic but build-dependent* smells like emulator nondeterminism — some timing path I'd got subtly wrong, surfacing differently depending on how the code happened to land in memory. I went looking for the bug in the emulator.
+
+The emulator was innocent. Worse than innocent: it was *right*. But to explain that, we need to talk about how an Amiga knows where its electron beam is.
+
+## Nine bits, two registers
+
+A PAL Amiga draws 312-odd lines per frame, so the current line number needs nine bits. The hardware splits them across two registers: the top bit, V8, lives in bit 0 of VPOSR at address $DFF004, and the other eight, V7 down to V0, live in the high byte of VHPOSR at $DFF006, two bytes along.
+
+That placement is no accident — the registers sit adjacent precisely so one 32-bit read can collect the whole beam position in a single instruction:
+
+```m68k
+    move.l  $dff004,d0      ; V8 and V7-V0 in one go
+```
+
+One instruction. Not one read. The 68000 has a 16-bit data bus, so a longword read is two word reads, back to back, about four cycles apart. For almost the entire frame, that gap is harmless: both halves describe the same line, or two lines that agree in every bit you care about.
+
+But once per frame, the beam crosses from line 255 to line 256. In binary, that's `0 11111111` becoming `1 00000000` — every single bit changes at once. Now run the two-read sequence across that exact moment. The first read captures V8 from the old line: 0. The beam advances. The second read captures V7–V0 from the new line: also 0. Stitch them together and you get line 0.
+
+The beam is at line 256, mid-screen, busily drawing sheep. The CPU has just been told, with complete confidence, that it's the top of the frame.
+
+## Once every nine frames
+
+A phantom line 0 would be a curiosity if nothing important happened at line 0. Unfortunately, line 0 is the most load-bearing number in the whole program. The classic Amiga game loop waits for it — that's the vertical blank, the moment the beam has finished one picture and not yet started the next, when it's safe to move everything for the next frame:
+
+```m68k
+.vbwait:
+    move.l  VPOSR(a5),d0    ; Read beam position
+    and.l   d1,d0           ; Isolate line number
+    bne.s   .vbwait         ; Loop until line 0
+```
+
+That loop — written back in unit 3, nine units before the bale existed — polls the beam position roughly every 36 cycles. The torn read has a window of about 4 cycles, at one crossing per frame. Four in thirty-six — the loop swallows a phantom roughly once every nine frames. When it does, the game loop runs *twice* in one frame: once for the real vblank, once for line 256 wearing a line-0 costume.
+
+Twice the game loop means twice the movement. One frame in nine, everything in Flock moved twice — which is to say the whole game ran about 11% fast, with a lumpy, build-dependent rhythm. There's the changed-fingerprint mystery solved, too: move the code around and you move the polling loop's phase relative to the crossing, which shifts *which* frames catch the phantom. The race was the same; the dice landed differently.
+
+So why did only the sheep visibly suffer? Because the bale and the sheep kept time by different clocks. The bale moves every pass through the game loop — phantom passes included. The sheep's ride is keyed to collision: it advances when the hardware says sheep-touches-bale, and the collision register only latches when the display chip actually draws the overlap. No drawing happens during a phantom pass — the "frame" is imaginary. The bale banked the extra movement; the sheep didn't. Ledger discrepancy: about 11% of the bale's speed, or a pixel every nine frames, paid by the sheep, sliding gently off the back.
+
+## Read it again
+
+The fix is one of the oldest idioms on the machine, and it's beautiful in a way only assembly fixes are. A real line 0 lasts for a whole scanline — read it again and it's still 0. A phantom evaporates instantly — the beam is actually at line 256, and the next read says so. So: don't trust the first 0 you see.
+
+```m68k
+.vbwait:
+    move.l  VPOSR(a5),d0    ; Read beam position
+    and.l   d1,d0           ; Isolate line number
+    bne.s   .vbwait         ; Loop until line 0
+    move.l  VPOSR(a5),d0    ; Confirm against a second read
+    and.l   d1,d0
+    bne.s   .vbwait         ; Phantom — keep waiting
+```
+
+Three instructions. She rides the bale all the way across the stream. The two-phase wait from unit 3 needed a third phase all along.
+
+<FieldVideo
+  src="/images/field-notes/phantom-vblank-after.mp4"
+  poster="/images/field-notes/aboard-still.png"
+  caption="The confirm-read in place: she rides the bale locked at a constant five-pixel offset, all the way across."
+/>
+
+## The emulator was right
+
+Here's the part I keep turning over.
+
+When I verified the fix, I set up a clean experiment: an object moving one pixel per frame, counted over a few hundred frames. With the confirm-read, it tracked the frame count exactly — 336 frames, 336 pixels. Without it, 1.11 pixels per frame, drifting with the phase of the polling loop. The emulator wasn't being nondeterministic. It was reproducing a genuine race in the real hardware — it advances the emulated beam between the two word reads of a longword access, because that's what the real bus does — and it was reproducing it *deterministically*, which is exactly what made the bug look like an emulator artifact in the first place. Real hardware would have given me the same bug with worse dice.
+
+I could have built an emulator where `move.l $dff004` returns a coherent beam position — one atomic read, no tear, no phantom. It would have been easier. Ninety-nine programs in a hundred would never notice. And it would have quietly deleted this bug from the universe, along with the lesson attached to it: that Amiga programmers in 1987 hit this exact phantom, swore at it, and left us the confirm-read idiom as a fossil of the encounter. The idiom only makes sense if the trapdoor is real. Keep the trapdoor, keep the understanding.
+
+Last time I wrote that going back to 198x hardware is the cleanest way to put yourself somewhere you can see all the way down. I should amend that: all the way down includes the floorboards that move. A machine simple enough to understand completely is still a machine where two reads, four cycles apart, can disagree about what time it is — and learning to write code that stays honest in that gap is not retro nostalgia. Every multi-core system you'll ever touch is this problem, multiplied. The Amiga just lets you meet it one sheep at a time.
+
+---
+
+*Flock is built in unit 12 of the Commodore Amiga assembly track. The emulator that faithfully ruined and then explained my afternoon is Emu198x.*

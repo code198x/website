@@ -50,7 +50,17 @@ export async function GET(context: APIContext) {
     link: `/from-the-metal/${entry.id}/`,
   }));
 
-  const items = [...unitItems, ...ftmItems].sort(
+  // Field Notes — same published-only gate as From the Metal.
+  const fn = (await getCollection('field-notes'))
+    .filter((entry) => entry.data.pubDate <= new Date());
+  const fnItems: FeedItem[] = fn.map((entry) => ({
+    title: `Field Notes: ${entry.data.title}`,
+    pubDate: entry.data.pubDate,
+    description: entry.data.description ?? '',
+    link: `/field-notes/${entry.id}/`,
+  }));
+
+  const items = [...unitItems, ...ftmItems, ...fnItems].sort(
     (a, b) => b.pubDate.getTime() - a.pubDate.getTime()
   );
 

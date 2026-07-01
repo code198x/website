@@ -354,6 +354,23 @@ const fromTheMetal = defineCollection({
   }),
 });
 
+// Field Notes — first-person narrative dev-diary: the bugs, wrong turns, and
+// lessons from building the curriculum + emulator. Site-canonical (the Substack
+// mirrors and links back). Per-post accent is platform-tied.
+const fieldNotes = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: 'src/content/field-notes' }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),       // meta description
+    dek: z.string(),               // italic standfirst under the title
+    kicker: z.string(),            // mono eyebrow, e.g. "FIELD NOTES · AMIGA"
+    pubDate: z.coerce.date(),
+    accent: z.string(),            // per-post hex (platform-tied)
+    order: z.number(),             // arc sort order
+    teaser: z.string(),            // hub card body
+  }),
+});
+
 export const collections = {
   systems,
   manufacturers,
@@ -362,6 +379,7 @@ export const collections = {
   patterns,
   timeline,
   'from-the-metal': fromTheMetal,
+  'field-notes': fieldNotes,
   modules,
   units,
   'pattern-categories': patternCategories,
