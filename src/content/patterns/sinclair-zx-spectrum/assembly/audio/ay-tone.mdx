@@ -1,0 +1,98 @@
+---
+title: "AY Tone"
+summary: "Play a tone on the 128K's AY-3-8912 sound chip — select a register through port $FFFD, write it through $BFFD, and the chip holds the note on its own while the CPU gets on with the game."
+platform: "sinclair-zx-spectrum"
+category: "audio"
+difficulty: "beginner"
+tags: ["ay", "psg", "sound-chip", "audio"]
+evolution:
+  previous: null
+  next: "ay-envelopes-noise"
+related:
+  patterns: ["beeper-music"]
+  vault: ["ay-3-8912", "zx-spectrum"]
+---
+
+## Overview
+
+The 128K, +2 and +3 add what the 48K never had: a real sound chip, the [AY-3-8912](/vault/hardware/ay-3-8912). Where the [beeper](/patterns/sinclair-zx-spectrum/assembly/audio/beeper-music) needs the CPU to toggle a bit thousands of times a second, the AY has three tone channels that oscillate in hardware — you set a channel up once and it plays *while your game runs*. It's a register-file chip: you pick a register through port `$FFFD`, write a value through `$BFFD`, and sixteen registers between them control the whole chip. A tone is four writes: the 12-bit pitch, the mixer to switch the channel on, and a volume.
+
+## Code
+
+```z80
+; =============================================================================
+; AY TONE - ZX SPECTRUM 128K (AY-3-8912)
+; Hold a continuous tone on channel A
+; =============================================================================
+
+; The two AY ports on the 128K
+AY_SELECT equ $fffd        ; write a register number here to select it
+; data is written to $BFFD (we build that port in B below)
+
+R_A_LO  equ 0              ; channel A tone period, low 8 bits
+R_A_HI  equ 1              ; channel A tone period, high 4 bits
+R_MIXER equ 7              ; tone / noise enables — ACTIVE LOW
+R_A_VOL equ 8              ; channel A volume (0-15; bit 4 = follow envelope)
+
+start:
+    ld   a,R_A_LO          ; channel A pitch — a 12-bit period
+    ld   e,$fc             ; period 252 -> ~440 Hz (A-4) at the 1.77 MHz clock
+    call ay_out
+    ld   a,R_A_HI
+    ld   e,$00             ; high nibble of the period
+    call ay_out
+
+    ld   a,R_MIXER
+    ld   e,%00111110       ; tone A ON (bit 0 = 0); B, C and all noise off
+    call ay_out
+
+    ld   a,R_A_VOL
+    ld   e,15              ; full, fixed volume (bit 4 clear = not envelope)
+    call ay_out
+
+    ret                    ; the tone plays on — the AY needs no more CPU
+
+; A = register number, E = value to write
+ay_out:
+    ld   bc,AY_SELECT      ; BC = $FFFD
+    out  (c),a             ; select the register
+    ld   b,$bf             ; BC = $BFFD
+    out  (c),e             ; write the value
+    ret
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | None once set — the chip oscillates by itself |
+| Memory | A few register writes |
+| Limitation | 128K only; a 48K game has to fall back to the [beeper](/patterns/sinclair-zx-spectrum/assembly/audio/beeper-music) |
+
+**When to use:** Any sound on a 128K machine — it's better than the beeper in every way that matters.
+
+**When to avoid:** A game that must also run on a 48K, where the AY simply isn't there.
+
+## Two ports, sixteen registers
+
+The AY hides behind just two I/O ports. `$FFFD` is the **address latch** — write a register number (0–15) and that register becomes "current". `$BFFD` is the **data port** — the next write lands in whichever register you latched. The `ld bc,$fffd / out (c),a / ld b,$bf / out (c),e` idiom is the whole access method: the two ports differ only in their high byte, so you swap `B` from `$FF` to `$BF` between the two `out`s. Every AY routine is built on this pair of writes.
+
+## Pitch is a 12-bit period
+
+Each channel's pitch is a 12-bit **period** split across two registers — the low byte and the low nibble of the next. As with most such chips, a bigger period is a *lower* note:
+
+```
+frequency (Hz) = 1773400 / (16 * period)
+```
+
+The 1773400 is the Spectrum 128K's AY clock. Period 252 gives ≈440 Hz. Music routines keep a table of periods, one per semitone; the *same* chip in a CPC or an Atari ST uses a different clock, so only the table changes when you port a tune.
+
+## The mixer is active-low
+
+Register 7 is the trap that silences every first AY tone. Its low bits enable **tone** on channels A, B, C (bits 0–2) and **noise** on the same channels (bits 3–5) — but a **0 turns a source ON**, not off. So `%00111110` means "tone A on, everything else off": bit 0 clear for tone A, the rest set. Forget the inversion and write `%00000001`, and you switch *off* the very channel you meant to play.
+
+## Related
+
+**Patterns:** [Beeper Music](/patterns/sinclair-zx-spectrum/assembly/audio/beeper-music) — the 48K alternative
+
+**Vault:** [AY-3-8912](/vault/hardware/ay-3-8912) | [ZX Spectrum](/vault/systems/zx-spectrum)

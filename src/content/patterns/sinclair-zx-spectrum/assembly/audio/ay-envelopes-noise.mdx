@@ -1,0 +1,120 @@
+---
+title: "AY Envelopes and Noise"
+summary: "Let the AY shape a note's volume in hardware and add its noise channel — a decaying pluck from the envelope generator, an explosion from noise, each fired with a single register write."
+platform: "sinclair-zx-spectrum"
+category: "audio"
+difficulty: "intermediate"
+tags: ["ay", "psg", "envelope", "noise", "audio"]
+evolution:
+  previous: "ay-tone"
+  next: "ay-music"
+related:
+  patterns: ["ay-tone"]
+  vault: ["ay-3-8912", "zx-spectrum"]
+---
+
+## Overview
+
+A [flat tone](/patterns/sinclair-zx-spectrum/assembly/audio/ay-tone) at a fixed volume is a starting point; a sound *moves*. The AY has two things to move it: an **envelope generator** that sweeps a channel's volume through a chosen shape, and a **noise generator** of pseudo-random hiss for anything that isn't a pitch — drums, explosions, wind. Point a channel's volume at the envelope, pick a shape, and the chip fades or repeats it for you; enable noise in the mixer and a channel plays hiss instead of, or alongside, its tone. Each effect is a handful of register writes and then the chip runs it.
+
+## Code
+
+```z80
+; =============================================================================
+; AY ENVELOPES AND NOISE - ZX SPECTRUM 128K
+; A plucked tone (envelope-shaped) and an explosion (noise + envelope)
+; =============================================================================
+
+R_NOISE  equ 6            ; noise period (5 bits) — timbre of the hiss
+R_MIXER  equ 7            ; tone / noise enables (ACTIVE LOW)
+R_A_VOL  equ 8            ; channel A volume  (bit 4 = follow envelope)
+R_C_VOL  equ 10           ; channel C volume
+R_ENV_LO equ 11           ; envelope period, low byte
+R_ENV_HI equ 12           ; envelope period, high byte
+R_ENV_SH equ 13           ; envelope SHAPE — writing it retriggers the envelope
+
+; A plucked note: channel A's volume follows a one-shot decay
+ay_pluck:
+    ld   a,R_ENV_LO
+    ld   e,$00
+    call ay_out
+    ld   a,R_ENV_HI
+    ld   e,$10             ; envelope period -> how long the decay lasts
+    call ay_out
+
+    ld   a,R_A_VOL
+    ld   e,%00010000       ; bit 4 set: volume tracks the envelope, not a number
+    call ay_out
+
+    ld   a,R_ENV_SH
+    ld   e,$00             ; shape %0000 = \___  (fall once, hold silent)
+    call ay_out            ; the write itself fires the envelope
+    ret
+
+; An explosion: channel C plays noise, shaped by the same decay
+ay_explode:
+    ld   a,R_NOISE
+    ld   e,$10             ; noise period — lower = deeper rumble
+    call ay_out
+
+    ld   a,R_MIXER
+    ld   e,%00011111       ; noise C ON (bit 5 = 0); all tones off
+    call ay_out
+
+    ld   a,R_C_VOL
+    ld   e,%00010000       ; channel C volume follows the envelope
+    call ay_out
+
+    ld   a,R_ENV_SH
+    ld   e,$00             ; one-shot decay again
+    call ay_out
+    ret
+
+; A = register, E = value
+ay_out:
+    ld   bc,$fffd
+    out  (c),a
+    ld   b,$bf
+    out  (c),e
+    ret
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | None after the trigger — the chip runs the shape |
+| Memory | A short routine per effect |
+| Limitation | **One** envelope generator, shared by all three channels |
+
+**When to use:** Plucked and percussive sounds — anything that fades, and any drum or explosion.
+
+**When to avoid:** A sustained held tone; that's just a fixed volume, no envelope needed.
+
+## The envelope shape
+
+Register 13 is a 4-bit **shape**, and writing it restarts the envelope from the top. The four bits — Continue, Attack, Alternate, Hold — combine into the classic set:
+
+| Value | Shape | Sounds like |
+|------:|-------|-------------|
+| `$00`–`$03` | `\___` | a pluck — fall once, stay silent |
+| `$08` | `\|\|\|` | a repeating saw-down — a buzz or drone |
+| `$0A` | `/\/\` | a rising-falling wobble |
+| `$0C` | `/\|/\|` | a repeating ramp-up |
+| `$0D` | `/‾‾‾` | swell up, then hold loud |
+
+The envelope **period** (registers 11–12) sets how long a shape takes — a short period for a snappy pluck, a long one for a slow swell or an audible LFO-style wobble on the repeating shapes.
+
+## One envelope, three channels
+
+The catch every AY musician hits: there is a *single* envelope generator, and every channel that sets its volume bit 4 follows the **same** shape at the **same** time. You cannot pluck channel A while channel B swells — not in hardware. Drivers work around it two ways: reserve the envelope for one channel (often the bass or the drums) and give the others fixed volumes, or drop the hardware envelope entirely and **write each channel's volume by hand every frame** — a software envelope, which the [music player](/patterns/sinclair-zx-spectrum/assembly/audio/ay-music) sets up next.
+
+## Noise, and mixing it in
+
+The noise generator is a single pseudo-random source shared by all channels; register 6's 5-bit period sets how fast it runs — low for a deep rumble, high for a bright hiss. In the mixer, a channel can take **tone, noise, or both**: clear a channel's tone bit *and* its noise bit and you get a pitched note with a rough edge — the standard recipe for a snare or a hi-hat.
+
+## Related
+
+**Patterns:** [AY Tone](/patterns/sinclair-zx-spectrum/assembly/audio/ay-tone)
+
+**Vault:** [AY-3-8912](/vault/hardware/ay-3-8912) | [ZX Spectrum](/vault/systems/zx-spectrum)

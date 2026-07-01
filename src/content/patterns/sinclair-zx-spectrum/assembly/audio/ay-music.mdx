@@ -1,0 +1,157 @@
+---
+title: "AY Music"
+summary: "Step a note pattern once per interrupt, handing each of the AY's three channels its note from a period table — a full three-voice tune that plays in the background while the game runs."
+platform: "sinclair-zx-spectrum"
+category: "audio"
+difficulty: "advanced"
+tags: ["ay", "psg", "music", "interrupt", "sound-driver", "audio"]
+evolution:
+  previous: "ay-envelopes-noise"
+  next: null
+related:
+  patterns: ["ay-envelopes-noise", "ay-tone", "game-loop-halt"]
+  vault: ["ay-3-8912", "zx-spectrum"]
+---
+
+## Overview
+
+One channel plays [one tone](/patterns/sinclair-zx-spectrum/assembly/audio/ay-tone); [envelopes](/patterns/sinclair-zx-spectrum/assembly/audio/ay-envelopes-noise) make it move. Music is the step up: **all three channels at once**, each handed a fresh note on a regular beat. And here the AY earns its keep — where [beeper music](/patterns/sinclair-zx-spectrum/assembly/audio/beeper-music) seizes the whole CPU, an AY tune plays from the *interrupt*: step the pattern once a frame, and between those steps the chip holds all three notes on its own while your game runs. Count the interrupts into rows, look up a **period per channel** from a note table, write it, and you have the skeleton of every AY player — and, with only the port addresses changed, of CPC and Atari ST players too.
+
+## Code
+
+```z80
+; =============================================================================
+; AY MUSIC - ZX SPECTRUM 128K
+; ay_music_tick, called once per 50 Hz interrupt, feeds all three channels
+; =============================================================================
+
+TEMPO equ 6                ; interrupts per row
+ROWS  equ 8
+
+ay_music_init:
+    ld   a,7               ; mixer: all three tones ON, noise off
+    ld   e,%00111000
+    call ay_out
+    ld   d,3               ; set channels A, B, C to full fixed volume
+.vol:
+    ld   a,7
+    add  a,d               ; volume registers are 8, 9, 10
+    ld   e,15
+    call ay_out
+    dec  d
+    jr   nz,.vol
+    ld   a,TEMPO
+    ld   (mtimer),a
+    xor  a
+    ld   (mrow),a
+    ret
+
+; --- Call once per interrupt; a new row lands every TEMPO frames ---
+ay_music_tick:
+    ld   hl,mtimer
+    dec  (hl)
+    ret  nz                ; between rows — the chip holds the notes, no work
+    ld   (hl),TEMPO
+
+    ld   a,(mrow)          ; channel A's note this row
+    ld   c,a
+    ld   b,0
+    ld   hl,pat_a
+    add  hl,bc
+    ld   a,(hl)
+    ld   d,0               ; A's tone registers are 0 / 1
+    call set_channel
+
+    ld   a,(mrow)          ; reload row (ay_out clobbers BC)
+    ld   c,a
+    ld   b,0
+    ld   hl,pat_b
+    add  hl,bc
+    ld   a,(hl)
+    ld   d,2               ; B -> registers 2 / 3
+    call set_channel
+
+    ld   a,(mrow)
+    ld   c,a
+    ld   b,0
+    ld   hl,pat_c
+    add  hl,bc
+    ld   a,(hl)
+    ld   d,4               ; C -> registers 4 / 5
+    call set_channel
+
+    ld   a,(mrow)          ; step the pattern, loop at ROWS
+    inc  a
+    cp   ROWS
+    jr   c,.save
+    xor  a
+.save:
+    ld   (mrow),a
+    ret
+
+; A = note index (0 = rest/hold), D = channel's tone-LO register (0, 2 or 4)
+set_channel:
+    or   a
+    ret  z                 ; 0 = leave the channel playing its last note
+    add  a,a               ; note index * 2 (two bytes per entry)
+    ld   l,a
+    ld   h,0
+    ld   bc,note_tab
+    add  hl,bc             ; HL -> {period lo, period hi}
+    ld   a,d
+    ld   e,(hl)
+    call ay_out            ; period low  -> register D
+    inc  hl
+    ld   a,d
+    inc  a
+    ld   e,(hl)
+    call ay_out            ; period high -> register D+1
+    ret
+
+; A = register, E = value
+ay_out:
+    ld   bc,$fffd
+    out  (c),a
+    ld   b,$bf
+    out  (c),e
+    ret
+
+mtimer: defb 0
+mrow:   defb 0
+; AY tone periods (128K clock). Index 0 = rest.
+;              C-3     C-4     E-4     G-4
+note_tab: defw 0, $034F,  $01A8,  $0150,  $011B
+pat_a:    defb 2,3,4,3, 2,3,4,3   ; lead
+pat_b:    defb 4,4,2,2, 4,4,2,2   ; harmony
+pat_c:    defb 1,0,1,0, 1,0,1,0   ; bass
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | A few bytes of work most interrupts; a little more on a row change |
+| Memory | The period table, the patterns, two bytes of state |
+| Limitation | Three channels, and one shared envelope generator across them |
+
+**When to use:** Any 128K game that wants music *during* play — which is most of them.
+
+**When to avoid:** Nothing about music; for a single reactive blip, a one-shot [envelope](/patterns/sinclair-zx-spectrum/assembly/audio/ay-envelopes-noise) effect is lighter.
+
+## It plays from the interrupt
+
+This is the whole reason the AY beats the beeper for games. The Spectrum raises an interrupt 50 times a second; hook it (the [HALT game loop](/patterns/sinclair-zx-spectrum/assembly/framework/game-loop-halt) already waits on it) and call `ay_music_tick` there. Each call is tiny — usually just a counter decrement — and only every `TEMPO`-th one writes a row. In between, the chip sustains all three notes with no help at all, so the same frame that nudges the music also moves the sprites and reads the keys. `TEMPO` sets the speed; 6 interrupts a row is a common default.
+
+## Three channels, one envelope
+
+The player above gives every channel a fixed volume, so all three ring flat. Bring in the [envelope generator](/patterns/sinclair-zx-spectrum/assembly/audio/ay-envelopes-noise) and you meet its one hard limit: a single envelope, shared. Real AY drivers get around it by writing **volumes by hand every interrupt** — a software envelope table per channel, stepped alongside the note table — so each voice can pluck or swell independently. That per-frame volume work, plus **ornaments** (fast note wobbles that fake vibrato and chords), is most of what separates this skeleton from a tracker replay.
+
+## The same chip, other machines
+
+The AY-3-8912 and its near-twins sit in the [Amstrad CPC](/vault/hardware/ay-3-8912), the Oric, the MSX, and — as the YM2149 — the Atari ST. The register map is identical, so this player ports almost verbatim: change the two port addresses (the CPC reaches the AY through its PPI, not `$FFFD`/`$BFFD`) and rebuild the period table for that machine's clock, and the same pattern, the same tick, the same three voices play on. It's why AY tracker formats like PT3 and the Vortex Tracker lineage span so many machines at once.
+
+## Related
+
+**Patterns:** [AY Envelopes and Noise](/patterns/sinclair-zx-spectrum/assembly/audio/ay-envelopes-noise), [AY Tone](/patterns/sinclair-zx-spectrum/assembly/audio/ay-tone), [Game Loop (HALT)](/patterns/sinclair-zx-spectrum/assembly/framework/game-loop-halt)
+
+**Vault:** [AY-3-8912](/vault/hardware/ay-3-8912) | [ZX Spectrum](/vault/systems/zx-spectrum)
