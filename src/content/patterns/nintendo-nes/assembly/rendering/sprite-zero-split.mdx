@@ -1,0 +1,95 @@
+---
+title: "Sprite 0 Split"
+summary: "Keep a status bar fixed at the top of the screen while the playfield below scrolls — by placing sprite 0 at the boundary and changing the scroll the instant its hit flag fires. The NES's answer to the mid-screen split."
+platform: "nintendo-nes"
+category: "rendering"
+difficulty: "advanced"
+tags: ["ppu", "sprite-0", "split-screen", "scrolling", "status-bar"]
+evolution:
+  previous: "column-feeding"
+  next: null
+related:
+  patterns: ["nametable-scrolling", "column-feeding"]
+  vault: ["ppu", "nintendo-nes"]
+---
+
+## Overview
+
+[Scroll](/patterns/nintendo-nes/assembly/rendering/nametable-scrolling) is set once per frame, so the whole screen scrolls together — yet almost every NES game has a **fixed status bar**: score, lives, a map, sitting still above a scrolling world. The PPU has no scroll-per-line register, so the trick is timing. The hardware raises a **sprite 0 hit** flag the moment sprite 0's first opaque pixel is drawn over an opaque background pixel. Park sprite 0 on the boundary line, keep the top of the frame at scroll zero, and the instant that flag fires — mid-screen — rewrite the scroll for the playfield below. One flag, watched by the CPU, turns a single-scroll machine into a two-zone display. It's the NES cousin of the [C64 raster split](/patterns/commodore-64/assembly/rendering/raster-splits) and the [Amiga copper split](/patterns/commodore-amiga/assembly/rendering/copper-split-screen) — same effect, three very different mechanisms.
+
+## Code
+
+```ca65
+; =============================================================================
+; SPRITE 0 SPLIT - NES
+; Top: fixed status bar (scroll 0). Below: the scrolling playfield.
+; The main thread watches sprite 0 hit and switches scroll at the boundary.
+; =============================================================================
+
+PPUCTRL   = $2000
+PPUSTATUS = $2002
+PPUSCROLL = $2005
+
+.segment "ZEROPAGE"
+pf_scroll_x:  .res 1       ; the playfield's scroll (set by game logic)
+pf_nametable: .res 1
+
+.segment "CODE"
+
+; --- Call once per frame, after the NMI has set the status bar at scroll 0 ---
+do_split:
+    ; 1. wait until LAST frame's sprite 0 hit has cleared
+:   bit PPUSTATUS          ; copies bit 6 (sprite 0 hit) into the V flag
+    bvs :-                 ; still set? keep waiting
+
+    ; 2. wait until THIS frame's hit fires — the beam has reached the boundary
+:   bit PPUSTATUS
+    bvc :-
+
+    ; 3. we're on the split line: hand the lower screen the playfield scroll
+    bit PPUSTATUS          ; reset the write latch
+    lda pf_scroll_x
+    sta PPUSCROLL          ; horizontal
+    lda #0
+    sta PPUSCROLL          ; vertical (the playfield starts at its own top)
+    lda #%10000000
+    ora pf_nametable
+    sta PPUCTRL
+    rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | The main thread **busy-waits** on the hit flag — a slice of every frame burned |
+| Memory | Sprite 0 reserved on the boundary; a few bytes of state |
+| Limitation | Only one hit per frame — one split; and sprite 0 must be positioned exactly |
+
+**When to use:** A fixed HUD over a scrolling playfield — the standard NES game layout.
+
+**When to avoid:** Full-screen scroll with no panel — and games with a mapper that provides **scanline IRQs** (MMC3), which give steadier splits without burning CPU on the poll.
+
+## Making the hit happen
+
+Sprite 0 hit only fires under specific conditions, and each is a classic bug when missed:
+
+- **Opaque over opaque.** Sprite 0's non-transparent pixel must overlap a non-transparent background pixel. A sprite 0 sat over blank sky never triggers — put a solid background tile under it.
+- **Rendering on.** Both background and sprites must be enabled in `PPUMASK`; the hit is a rendering side effect.
+- **Not at the far edge.** The hit can't be detected at x=255, so keep sprite 0 clear of the extreme right.
+
+Place sprite 0's bottom on the last line of the status bar, and the flag fires just as the beam finishes the bar and reaches the playfield.
+
+## Two waits, then the switch
+
+The poll is two-phase, and the order matters. First wait for the hit flag to be *clear* — otherwise last frame's stale hit fires the split instantly, at the top. Then wait for it to *set*. `bit PPUSTATUS` is the whole idiom: it drops bit 6 into the 6502's overflow flag, so `bvs`/`bvc` branch on the hit directly, no masking. When the second wait falls through you're on the boundary line — reset the latch and write the playfield's scroll, and everything below renders shifted while the bar above stayed put.
+
+## The cost, and the alternative
+
+This works on any NES, mapper or not — but it **spends the CPU** waiting for the beam, often a good fraction of the frame, and the split can jitter a scanline if the poll loop is interrupted. Games built on the **MMC3** mapper skip the poll entirely and use its **scanline counter IRQ** to fire an interrupt at the chosen line — steadier, cheaper, and able to split the screen more than once. Sprite 0 is the universal method; the mapper IRQ is the professional one.
+
+## Related
+
+**Patterns:** [Nametables and Scrolling](/patterns/nintendo-nes/assembly/rendering/nametable-scrolling), [Feeding New Columns](/patterns/nintendo-nes/assembly/rendering/column-feeding)
+
+**Vault:** [PPU](/vault/hardware/ppu) | [Nintendo Entertainment System](/vault/systems/nes)

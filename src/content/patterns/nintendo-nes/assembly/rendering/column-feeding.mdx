@@ -1,0 +1,94 @@
+---
+title: "Feeding New Columns"
+summary: "As the NES scrolls sideways, write a fresh column of tiles into the offscreen nametable each time the view crosses a tile boundary — so a level far wider than two screens rolls past seamlessly."
+platform: "nintendo-nes"
+category: "rendering"
+difficulty: "advanced"
+tags: ["ppu", "nametable", "scrolling", "streaming", "vblank"]
+evolution:
+  previous: "nametable-scrolling"
+  next: "sprite-zero-split"
+related:
+  patterns: ["nametable-scrolling", "sprite-zero-split"]
+  vault: ["ppu", "nintendo-nes"]
+---
+
+## Overview
+
+Two nametables give 512 pixels of scrolling — but a real level is thousands of pixels wide, so the PPU has to *recycle* that memory. The trick is to run just ahead of the view: every time [scrolling](/patterns/nintendo-nes/assembly/rendering/nametable-scrolling) crosses an 8-pixel tile boundary, one new column of tiles has appeared at the leading edge, and you write it into the nametable the view is *about* to reach — the one currently offscreen behind the player. Do it a column at a time, in vblank, and the seam is invisible: the world scrolls forever through two nametables' worth of memory that never stops being rewritten.
+
+## Code
+
+```ca65
+; =============================================================================
+; FEEDING NEW COLUMNS - NES
+; On each 8-px scroll step, write one 30-tile column into the offscreen nametable
+; Runs in the NMI (vblank); the column data is prepared during the frame
+; =============================================================================
+
+PPUCTRL   = $2000
+PPUSTATUS = $2002
+PPUADDR   = $2006
+PPUDATA   = $2007
+
+.segment "ZEROPAGE"
+col_addr_hi: .res 1        ; $2006 target for the top of the column
+col_addr_lo: .res 1
+col_buf:     .res 30       ; the 30 tiles, prepared in the main loop
+
+.segment "CODE"
+
+; --- Call in the NMI when a new column is due ---
+feed_column:
+    lda #%10000100         ; NMI on + VRAM increment = 32 (step DOWN a column)
+    sta PPUCTRL
+
+    bit PPUSTATUS          ; reset the write latch
+    lda col_addr_hi
+    sta PPUADDR            ; point at the top tile of the target column...
+    lda col_addr_lo
+    sta PPUADDR
+
+    ldx #0
+:   lda col_buf,x
+    sta PPUDATA            ; each write steps 32 bytes -> straight down the column
+    inx
+    cpx #30
+    bne :-
+
+    ; ... write this column's attribute bytes too (one per 2 columns / 4 tiles) ...
+
+    lda #%10000000         ; restore VRAM increment = 1 for normal writes
+    sta PPUCTRL
+    rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | 30 `PPUDATA` writes per tile-column crossed (plus attributes) — sized to fit vblank |
+| Memory | A column buffer, and the level map to source tiles from |
+| Limitation | ~2270 vblank cycles cap what you can write; fast scroll may need two columns a frame |
+
+**When to use:** Any horizontally scrolling level wider than two screens.
+
+**When to avoid:** A world that fits in the two nametables outright — then just [scroll](/patterns/nintendo-nes/assembly/rendering/nametable-scrolling), no feeding.
+
+## The +32 increment trick
+
+Tiles in a nametable are stored row by row, so consecutive addresses run *across* the screen — wrong for writing a vertical column. The fix is `PPUCTRL` bit 2: set it and every `PPUDATA` write advances the VRAM address by **32 instead of 1**, stepping straight down a column. Point `$2006` at the top tile, blast 30 bytes, and you've drawn a full-height column with a plain loop. Set the increment back to 1 afterwards, or your next normal write walks down the screen too.
+
+## Where the column goes
+
+The address is the leading edge translated into nametable space. As the view scrolls right, the column entering from the right belongs 32 tiles (one screen) ahead of the left edge — which, once you pass the nametable's width, **wraps** into the other nametable. So the target address cycles through both nametables' column slots as you travel, always writing into the strip that's offscreen. Getting this wrap right — and matching the attribute writes, which cover a coarser 32×32-pixel grid so they update only every *four* tile-columns — is the fiddly heart of a scroll engine.
+
+## Prepare in the frame, write in vblank
+
+There isn't time to *decide* what to draw during vblank — only to draw it. So the pattern splits in two: during the visible frame the main loop reads the level map, works out the next column's 30 tiles and its attributes, and stashes them in a buffer; then the NMI does nothing but stream that buffer to the PPU. Vblank is roughly 2270 cycles, enough for a column and its attributes with room to spare — but decode work done there instead of in the buffer is how a scroll engine runs out of vblank and tears.
+
+## Related
+
+**Patterns:** [Nametables and Scrolling](/patterns/nintendo-nes/assembly/rendering/nametable-scrolling), [Sprite 0 Split](/patterns/nintendo-nes/assembly/rendering/sprite-zero-split)
+
+**Vault:** [PPU](/vault/hardware/ppu) | [Nintendo Entertainment System](/vault/systems/nes)
