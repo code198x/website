@@ -1,0 +1,166 @@
+---
+title: "NMI Game Loop"
+summary: "Frame-synchronised game loop using the NMI interrupt for VBlank timing and OAM DMA transfer."
+platform: "nintendo-nes"
+category: "framework"
+difficulty: "beginner"
+taught_in: "Game 1, Unit 1"
+tags: ["game-loop", "nmi", "vblank", "oam-dma"]
+evolution:
+  previous: null
+  next: "nmi-game-loop-buffered"
+related:
+  patterns: ["controller-reading", "palette-loading"]
+  vault: ["nintendo-nes"]
+---
+
+## Overview
+
+The NES generates an NMI (Non-Maskable Interrupt) at the start of each VBlank period. This is your signal that it's safe to update the PPU. The NMI handler copies sprite data via DMA and updates positions. Game logic runs in the main loop and waits for the NMI to complete each frame.
+
+## Code
+
+```ca65
+; =============================================================================
+; NMI GAME LOOP - NES
+; VBlank-synchronised game loop with OAM DMA
+; Taught: Game 1 (Neon Nexus), Unit 1
+; CPU: Variable | Memory: ~50 bytes
+; =============================================================================
+
+PPUCTRL   = $2000
+PPUMASK   = $2001
+PPUSTATUS = $2002
+OAMADDR   = $2003
+PPUSCROLL = $2005
+OAMDMA    = $4014
+
+.segment "ZEROPAGE"
+player_x:  .res 1
+player_y:  .res 1
+nmi_ready: .res 1               ; Flag: main loop sets, NMI clears
+
+.segment "OAM"
+oam_buffer: .res 256            ; Sprite data at $0200
+
+.segment "CODE"
+
+; === MAIN LOOP ===
+main_loop:
+    ; Wait for NMI to complete
+    lda #1
+    sta nmi_ready
+@wait:
+    lda nmi_ready
+    bne @wait
+
+    ; Game logic runs here (after NMI)
+    jsr read_controller
+    jsr update_game
+
+    jmp main_loop
+
+; === NMI HANDLER ===
+nmi:
+    pha
+    txa
+    pha
+    tya
+    pha
+
+    ; Copy sprites to PPU via DMA
+    lda #0
+    sta OAMADDR
+    lda #>oam_buffer            ; High byte of $0200
+    sta OAMDMA                  ; Triggers 256-byte DMA transfer
+
+    ; Update sprite positions from game variables
+    lda player_y
+    sta oam_buffer+0            ; Sprite 0 Y position
+    lda player_x
+    sta oam_buffer+3            ; Sprite 0 X position
+
+    ; Reset scroll position
+    lda #0
+    sta PPUSCROLL
+    sta PPUSCROLL
+
+    ; Clear the ready flag
+    lda #0
+    sta nmi_ready
+
+    pla
+    tay
+    pla
+    tax
+    pla
+    rti
+```
+
+**Enable NMI during initialisation:**
+
+```ca65
+    ; After all setup is complete...
+    lda #%10010000              ; Enable NMI (bit 7)
+    sta PPUCTRL
+    lda #%00011110              ; Enable sprites and background
+    sta PPUMASK
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | 513–514 cycles for DMA + overhead |
+| Memory | 256 bytes OAM buffer at $0200 |
+| Limitation | All PPU updates must happen in VBlank |
+
+**When to use:** Every NES game. This is the foundation of NES programming.
+
+**When to avoid:** Never - you always need NMI-synchronised updates.
+
+## How It Works
+
+1. The PPU generates NMI at the start of VBlank — about 60 NMIs per second on NTSC; VBlank lasts ~2273 CPU cycles per frame.
+2. Your NMI handler runs automatically.
+3. DMA the OAM buffer to the PPU (513–514 CPU cycles, fully automatic — odd starting cycles add one).
+4. Update any other PPU state (palettes, nametables) if needed.
+5. Reset scroll position (important after any `$2006`/`$2007` access — those writes corrupt the internal scroll register).
+6. Main loop continues with game logic.
+
+## One-frame latency
+
+This pattern carries a deliberate one-frame display latency. The NMI runs in roughly this order:
+
+1. DMA the *previous frame's* `oam_buffer` contents into PPU OAM (this is what the player sees this frame).
+2. Update `oam_buffer` from current `player_x`/`player_y` (will be visible next frame).
+
+So game state updated in the main loop becomes visible one frame later. This is normal NES practice and matches how most published games work — it's how you get a stable, glitch-free display. If you ever see "input feels delayed by one frame," this is why.
+
+## OAM Buffer Layout
+
+The OAM buffer at `$0200` holds 64 sprites, 4 bytes each:
+
+| Offset | Purpose |
+|--------|---------|
+| +0 | Y position |
+| +1 | Tile index |
+| +2 | Attributes (palette, flip, priority) |
+| +3 | X position |
+
+To hide unused sprites, set their Y position to `$FF` (off-screen).
+
+## Vector Table
+
+```ca65
+.segment "VECTORS"
+    .word nmi                   ; NMI vector ($FFFA)
+    .word reset                 ; Reset vector ($FFFC)
+    .word irq                   ; IRQ vector ($FFFE)
+```
+
+## Related
+
+**Patterns:** [Controller Reading](/patterns/nintendo-nes/assembly/input/controller-reading), [Palette Loading](/patterns/nintendo-nes/assembly/rendering/palette-loading)
+
+**Vault:** [NES](/vault/systems/nes)

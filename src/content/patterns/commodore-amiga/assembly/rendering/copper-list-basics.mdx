@@ -1,0 +1,192 @@
+---
+title: "Copper List Basics"
+summary: "Build a copper list to set colours and sprite pointers. The foundation of all Amiga graphics programming."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "beginner"
+taught_in: "Game 1, Unit 1"
+tags: ["copper", "colours", "sprites", "custom-chips"]
+evolution:
+  previous: null
+  next: "copper-colour-bars"
+related:
+  patterns: ["vblank-game-loop"]
+  vault: ["commodore-amiga"]
+---
+
+## Overview
+
+The Copper is a coprocessor that executes a list of instructions in sync with the display beam. It can wait for specific scanlines and write to custom chip registers, enabling per-scanline colour changes, sprite multiplexing, and complex visual effects. Every Amiga program needs a copper list.
+
+## Code
+
+```m68k
+; =============================================================================
+; COPPER LIST BASICS - AMIGA
+; Simple copper list with colours and sprite pointer
+; Taught: Game 1 (Signal), Unit 1
+; Memory: Variable (depends on complexity)
+; =============================================================================
+
+CUSTOM      equ $dff000
+COP1LC      equ $080            ; Copper list 1 pointer
+COPJMP1     equ $088            ; Copper jump strobe
+DMACON      equ $096
+COLOR00     equ $180            ; Background colour
+SPR0PTH     equ $120            ; Sprite 0 pointer high
+SPR0PTL     equ $122            ; Sprite 0 pointer low
+
+            section code,code_c
+
+start:
+            lea     CUSTOM,a5
+
+            ; --- Set sprite pointer in copper list ---
+            lea     sprite_data,a0
+            move.l  a0,d0
+            swap    d0                  ; High word first
+            lea     sprpth_val,a1
+            move.w  d0,(a1)             ; Store high word
+            swap    d0
+            lea     sprptl_val,a1
+            move.w  d0,(a1)             ; Store low word
+
+            ; --- Install copper list ---
+            lea     copperlist,a0
+            move.l  a0,COP1LC(a5)       ; Set copper list address
+            move.w  d0,COPJMP1(a5)      ; Strobe to start copper
+
+            ; --- Enable DMA ---
+            move.w  #$83a0,DMACON(a5)   ; Master + copper + sprites + bitplanes
+
+mainloop:
+            bra.s   mainloop
+
+; === COPPER LIST ===
+copperlist:
+            ; Set background colour
+            dc.w    COLOR00,$0048       ; Blue background
+
+            ; Set sprite palette (colours 17-19)
+            dc.w    $01a2,$00f0         ; Sprite colour 1: bright green
+            dc.w    $01a4,$0ff0         ; Sprite colour 2: yellow
+            dc.w    $01a6,$0000         ; Sprite colour 3: black
+
+            ; Sprite 0 pointer (filled in by code)
+            dc.w    SPR0PTH
+sprpth_val: dc.w    $0000
+            dc.w    SPR0PTL
+sprptl_val: dc.w    $0000
+
+            ; Wait for specific scanline and change colour
+            dc.w    $8007,$fffe         ; WAIT for line $80
+            dc.w    COLOR00,$0080       ; Change to green
+
+            dc.w    $c007,$fffe         ; WAIT for line $C0
+            dc.w    COLOR00,$0444       ; Change to grey
+
+            ; End copper list
+            dc.w    $ffff,$fffe         ; WAIT forever (end marker)
+
+; === SPRITE DATA ===
+            even
+sprite_data:
+            dc.w    $6050,$7000         ; Control words (Y=96, X=80, height=16)
+            ; 16 lines of sprite graphics
+            dc.w    $0000,$0000
+            dc.w    $07e0,$0000
+            dc.w    $1ff8,$0420
+            ; ... more sprite data ...
+            dc.w    $0000,$0000         ; End marker
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | None (copper runs independently) |
+| Memory | 4 bytes per MOVE, 4 bytes per WAIT |
+| Limitation | Can only write to custom chip registers |
+
+**When to use:** All Amiga programs. You need a copper list for any graphics.
+
+**When to avoid:** Never - it's mandatory for display setup.
+
+## Copper Instructions
+
+The copper understands only two instructions:
+
+### WAIT
+
+Wait for the beam to reach a position:
+```
+dc.w    $VVHH,$fffe
+```
+- `VV` = Vertical position (scanline, $00-$FF)
+- `HH` = Horizontal position (usually `$07` for "any horizontal")
+- `$fffe` = WAIT instruction marker
+
+### MOVE
+
+Write a value to a register:
+```
+dc.w    REGISTER,VALUE
+```
+- Register must be in range `$000-$1FE`
+- Writes happen instantly when the beam reaches that position
+
+## Colour Register Reference
+
+| Register | Purpose |
+|----------|---------|
+| `$0180` (COLOR00) | Background/border |
+| `$0182` (COLOR01) | Bitplane colour 1 |
+| `$0184` (COLOR02) | Bitplane colour 2 |
+| `$01A2-$01A6` (COLOR17-19) | Sprites **0 and 1** colours 1, 2, 3 |
+| `$01AA-$01AE` (COLOR21-23) | Sprites **2 and 3** colours 1, 2, 3 |
+| `$01B2-$01B6` (COLOR25-27) | Sprites **4 and 5** colours 1, 2, 3 |
+| `$01BA-$01BE` (COLOR29-31) | Sprites **6 and 7** colours 1, 2, 3 |
+
+Sprite palettes are shared in pairs — sprite 0 and sprite 1 both draw from the same three colours. Use *attached* sprites to combine a pair into a single 15-colour sprite (see [Sprite Control Words](/patterns/commodore-amiga/assembly/rendering/sprite-control-words)).
+
+## Colour Format
+
+Amiga colours are 12-bit RGB:
+```
+$0RGB
+```
+Where R, G, B are each 0-F (4 bits).
+
+Examples:
+- `$0F00` = Red
+- `$00F0` = Green
+- `$000F` = Blue
+- `$0FFF` = White
+- `$0000` = Black
+- `$0888` = Grey
+
+## Two copper lists
+
+The Copper has *two* program pointers: COP1LC (`$DFF080`) and COP2LC (`$DFF084`), with corresponding strobes COPJMP1 (`$DFF088`) and COPJMP2 (`$DFF08A`). Strobing either one restarts the Copper at that list. A common pattern:
+
+- COP1 = short setup list run from VBlank — set up display window, palette, restart COP2
+- COP2 = the per-frame "main" list with all the WAIT/MOVE work
+
+To jump from COP1 to COP2: have COP1 end with a strobe-write to COPJMP2, and COP2 ends with `dc.w $ffff,$fffe` (wait forever). This way you can swap COP2 between frames (double-buffer copper lists) without disturbing COP1.
+
+## SKIP instruction
+
+Beyond MOVE and WAIT, the Copper has a SKIP instruction — same word format as WAIT but with bit 0 of the *second* word set:
+
+```m68k
+        dc.w    $4007,$ffff             ; SKIP: skip next instruction if beam past line $40
+        dc.w    COLOR00,$0f00           ; Skipped if condition met
+```
+
+SKIP enables limited conditional branching. Standard idiom: SKIP followed by a "jump back to start" MOVE that strobes COPJMP1 — a poor-man's loop.
+
+## Related
+
+**Patterns:** [VBlank Game Loop](/patterns/commodore-amiga/assembly/framework/vblank-game-loop), [Sprite Control Words](/patterns/commodore-amiga/assembly/rendering/sprite-control-words)
+
+**Vault:** [Commodore Amiga](/vault/systems/commodore-amiga) | [Copper](/vault/hardware/copper)

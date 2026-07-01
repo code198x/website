@@ -1,0 +1,125 @@
+---
+title: "Joystick Edge Detection"
+summary: "Detect newly-pressed joystick directions, ignoring held inputs. Essential for grid-based movement and menu navigation."
+platform: "commodore-amiga"
+category: "input"
+difficulty: "beginner"
+taught_in: "Game 1, Unit 5"
+tags: ["joystick", "input", "edge-detection", "debounce"]
+evolution:
+  previous: "joystick-reading"
+  next: null
+related:
+  patterns: ["joystick-reading", "vblank-game-loop"]
+  vault: ["commodore-amiga"]
+---
+
+## Overview
+
+Basic joystick reading returns the current state - fine for continuous movement, but problematic for grid-based games where holding a direction shouldn't cause repeated steps. Edge detection returns only *newly* pressed directions by comparing current state to the previous frame.
+
+## Code
+
+```m68k
+; =============================================================================
+; JOYSTICK EDGE DETECTION - AMIGA
+; Return only newly-pressed directions
+; Taught: Game 1 (Signal), Unit 5
+; CPU: ~30 cycles | Memory: ~20 bytes
+; =============================================================================
+
+CUSTOM      equ $dff000
+JOY1DAT     equ $00c            ; Joystick port 2 data
+
+; Read joystick with edge detection
+; Input:  A5 = CUSTOM chip base
+; Output: D0 = newly pressed directions only
+;         Bit 8 = up (new), Bit 0 = down (new)
+;         Bit 9 = left (new), Bit 1 = right (new)
+read_joystick_edge:
+            ; Read and decode current joystick state
+            move.w  JOY1DAT(a5),d0
+            move.w  d0,d1
+            lsr.w   #1,d1
+            eor.w   d1,d0               ; D0 = decoded current state
+
+            ; Edge detection: current AND NOT previous
+            move.w  joy_prev,d1
+            not.w   d1                  ; D1 = inverted previous
+            and.w   d0,d1               ; D1 = bits that are new
+
+            ; Save current state for next frame
+            move.w  d0,joy_prev
+
+            move.w  d1,d0               ; Return newly pressed
+            rts
+
+joy_prev:   dc.w    0                   ; Previous frame's joystick state
+```
+
+**Usage example (grid-based movement):**
+
+```m68k
+update_player:
+            bsr     read_joystick_edge
+            tst.w   d0
+            beq     .done               ; No new input
+
+            ; Check each direction
+            btst    #8,d0               ; Up?
+            beq.s   .not_up
+            subq.w  #1,player_grid_y    ; Move one cell up
+            bra.s   .done
+.not_up:
+            btst    #0,d0               ; Down?
+            beq.s   .not_down
+            addq.w  #1,player_grid_y    ; Move one cell down
+            bra.s   .done
+.not_down:
+            btst    #9,d0               ; Left?
+            beq.s   .not_left
+            subq.w  #1,player_grid_x
+            bra.s   .done
+.not_left:
+            btst    #1,d0               ; Right?
+            beq.s   .done
+            addq.w  #1,player_grid_x
+.done:
+            rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~30 cycles |
+| Memory | ~20 bytes + 2 bytes state |
+| Limitation | Requires per-frame update to work correctly |
+
+**When to use:** Grid-based movement, menu navigation, any single-step input.
+
+**When to avoid:** Continuous movement (shooters, racing) - use basic joystick reading instead.
+
+## How It Works
+
+1. Read current joystick state (decoded)
+2. Invert previous state: `NOT previous`
+3. AND with current: `current AND (NOT previous)`
+4. Result: bits set only where current=1 AND previous=0
+
+This gives you a pulse on the first frame of a press, then nothing until released and pressed again.
+
+## Comparison
+
+| Scenario | Basic Read | Edge Detection |
+|----------|------------|----------------|
+| Press right | Returns "right" | Returns "right" |
+| Hold right | Returns "right" | Returns nothing |
+| Release | Returns nothing | Returns nothing |
+| Press again | Returns "right" | Returns "right" |
+
+## Related
+
+**Patterns:** [Joystick Reading](/patterns/commodore-amiga/assembly/input/joystick-reading), [VBlank Game Loop](/patterns/commodore-amiga/assembly/framework/vblank-game-loop)
+
+**Vault:** [Commodore Amiga](/vault/systems/commodore-amiga)

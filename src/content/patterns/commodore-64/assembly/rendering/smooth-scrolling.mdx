@@ -1,0 +1,95 @@
+---
+title: "Smooth Scrolling"
+summary: "Scroll the screen a pixel at a time with the VIC-II fine-scroll registers, then coarse-shift the character map every eighth pixel — the trick behind every smooth C64 playfield."
+platform: "commodore-64"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["scrolling", "fine-scroll", "vic-ii"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["raster-splits", "game-loop-basic"]
+  vault: ["vic-ii", "commodore-64"]
+---
+
+## Overview
+
+The C64's character display is locked to an 8×8 grid, so you can't just nudge it one pixel. But the VIC-II has a **fine-scroll** offset: three bits in `$D016` shift the whole screen 0–7 pixels horizontally (and three bits in `$D011` do the same vertically). Run that offset down from 7 to 0 and the screen creeps smoothly by a pixel a frame. When it would pass 8 — a whole character — you reset the offset and do one **coarse scroll**: shift the character map by a column and fill the new edge. Smooth motion the eye sees, character-sized work the CPU does.
+
+## Code
+
+```asm
+; =============================================================================
+; SMOOTH SCROLLING - C64 (horizontal, leftward)
+; Fine-scroll 7->0 with $D016; on wrap, coarse-shift the map one column
+; CPU: Light per frame; heavy on the 1-in-8 coarse step
+; =============================================================================
+
+VIC_CTRL2   = $D016     ; bits 0-2 = X fine scroll (0-7); bit 3 = 40/38 columns
+SCREEN      = $0400
+
+scroll_x    = $FB       ; a free zero-page byte: our shadow of the fine offset
+
+init_scroll:
+    lda VIC_CTRL2
+    and #%11110111      ; bit 3 = 0 -> 38-column mode (hides the edge characters)
+    sta VIC_CTRL2
+    lda #7
+    sta scroll_x
+    rts
+
+; Call once a frame (after raster sync) to scroll the world left by one pixel
+scroll_left:
+    dec scroll_x
+    bpl set_fine        ; still 0..7? just update the fine offset
+    lda #7              ; passed 0: a whole character has gone by
+    sta scroll_x
+    jsr coarse_left     ; shift the map one column left, fill the new right edge
+set_fine:
+    lda VIC_CTRL2
+    and #%11111000      ; clear the low 3 bits
+    ora scroll_x        ; set the new fine-scroll offset
+    sta VIC_CTRL2
+    rts
+
+; Coarse scroll: every character moves one column left; column 39 gets new data.
+; Do this for all 25 rows of screen RAM *and* of colour RAM ($D800).
+coarse_left:
+    ldx #0
+-   lda SCREEN+1,x      ; copy char at column n+1 down to column n...
+    sta SCREEN,x
+    inx
+    ; ... (loop across all 1000 cells, then write the new column 39 from the map) ...
+    rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | Cheap most frames (one `$D016` write); the coarse step moves ~1000 cells |
+| Memory | A wider-than-screen map to pull new columns from |
+| Limitation | The coarse step is a big lump of work — spread it, or it shows as a stutter |
+
+**When to use:** Side-scrolling playfields, scrolling backgrounds, anything that pans smoothly.
+
+**When to avoid:** Static or screen-flip layouts. And if the coarse copy is too slow, a *bitmap* scroll or a different map layout may suit better.
+
+## Hiding the edges
+
+In normal 40-column mode the characters scrolling in and out sit right at the screen edge, half-drawn and ugly. The fix is **38-column mode**: clearing bit 3 of `$D016` pulls the side borders in by a character on each side, covering the partial columns. The standard pairing — fine-scroll *and* 38 columns — is why the trick looks clean.
+
+## The coarse step, spread out
+
+Moving 1000 screen cells (and 1000 colour cells) in a single frame is a lot, and dropping it all on the eighth frame can show as a hitch. Two common cures: **unroll** the copy (no loop overhead), or **spread** it — move a few rows each frame across the eight fine-scroll steps so the work is level. Demos that scroll a full bitmap go further and cycle through several screens.
+
+## Vertical is the same idea
+
+Vertical scrolling uses the **`$D011`** fine offset (bits 0–2) instead, with **24-row mode** (clear bit 3 of `$D011`) hiding the top and bottom partial rows. The coarse step shifts the map by a *row* — and because a row is 40 contiguous bytes, it's often cheaper than the horizontal column shuffle.
+
+## Related
+
+**Patterns:** [Raster Splits](/patterns/commodore-64/assembly/rendering/raster-splits), [Game Loop (Basic)](/patterns/commodore-64/assembly/framework/game-loop-basic)
+
+**Vault:** [VIC-II](/vault/hardware/vic-ii) | [Commodore 64](/vault/systems/commodore-64)

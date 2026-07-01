@@ -1,0 +1,175 @@
+---
+title: "VBlank Game Loop"
+summary: "Frame-synchronised game loop that waits for vertical blank using the VPOSR register. 50Hz timing on PAL systems."
+platform: "commodore-amiga"
+category: "framework"
+difficulty: "beginner"
+taught_in: "Game 1, Unit 2"
+tags: ["game-loop", "vblank", "timing", "custom-chips"]
+evolution:
+  previous: null
+  next: "vblank-interrupt-loop"
+related:
+  patterns: ["joystick-reading", "copper-list-basics"]
+  vault: ["commodore-amiga"]
+---
+
+## Overview
+
+Synchronise your game to the display refresh by polling the vertical position register. When VPOS reaches zero, you're at the start of a new frame. This provides consistent 50Hz timing on PAL Amigas (60Hz on NTSC) without using interrupts.
+
+## Code
+
+```m68k
+; =============================================================================
+; VBLANK GAME LOOP - AMIGA
+; Poll-based vertical blank synchronisation
+; Taught: Game 1 (Signal), Unit 2
+; CPU: Variable | Memory: ~40 bytes
+; =============================================================================
+
+CUSTOM      equ $dff000
+VPOSR       equ $004            ; Vertical position register (offset)
+
+            section code,code_c
+
+start:
+            lea     CUSTOM,a5           ; Custom chip base in A5
+
+            ; --- System takeover ---
+            move.w  #$7fff,INTENA(a5)   ; Disable all interrupts
+            move.w  #$7fff,INTREQ(a5)   ; Clear pending interrupts
+            move.w  #$7fff,DMACON(a5)   ; Disable all DMA
+
+            ; --- Your setup code here ---
+            bsr     init_game
+
+            ; --- Install copper list ---
+            lea     copperlist,a0
+            move.l  a0,COP1LC(a5)
+            move.w  d0,COPJMP1(a5)
+
+            ; --- Enable DMA ---
+            move.w  #$83a0,DMACON(a5)   ; Master + copper + sprites + bitplanes
+
+; === MAIN LOOP ===
+mainloop:
+            bsr.s   wait_vblank
+            bsr     read_input
+            bsr     update_game
+            bsr     update_graphics
+            bra.s   mainloop
+
+; Wait for vertical blank (VPOS = 0)
+wait_vblank:
+            move.l  #$1ff00,d1          ; Mask for vertical position
+.wait:
+            move.l  VPOSR(a5),d0        ; Read vertical position
+            and.l   d1,d0               ; Isolate VPOS bits
+            bne.s   .wait               ; Loop until VPOS = 0
+            rts
+
+; Placeholder routines
+init_game:
+            rts
+read_input:
+            rts
+update_game:
+            rts
+update_graphics:
+            rts
+```
+
+**Complete example with exit handling:**
+
+```m68k
+mainloop:
+            bsr.s   wait_vblank
+            bsr     read_joystick
+            bsr     move_player
+            bsr     update_sprite
+
+            ; Check left mouse button for exit
+            btst    #6,$bfe001
+            bne.s   mainloop            ; Loop if not pressed
+
+            ; Exit - restore system and return to CLI
+            bra     cleanup
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | Busy-waits during VBlank wait |
+| Memory | ~20 bytes for wait routine |
+| Limitation | Wastes CPU cycles while waiting |
+
+**When to use:** Simple games, demos, when you don't need background processing.
+
+**When to avoid:** Complex games that need to use wait time productively. Use interrupts instead.
+
+## How It Works
+
+1. `VPOSR` (`$DFF004`) holds bits 8-15 plus a few status flags; `VHPOSR` (`$DFF006`) holds vertical bits 0-7 plus the horizontal beam position.
+2. Reading them as a single long via `move.l VPOSR(a5),d0` packs both into D0: D0 bits 16-23 = VPOSR, bits 8-15 = V[7:0], bits 0-7 = horizontal.
+3. Masking with `$1FF00` extracts the 9-bit vertical position (V[8] at bit 16, V[7:0] at bits 15-8).
+4. When the masked value = 0, the beam is at line 0 (top of screen, inside VBlank). Loop until it does, then run your frame logic.
+
+## Interrupt-driven alternative
+
+Polling the beam burns CPU cycles. The cleaner alternative is to enable the VERTB (level-3) interrupt and let the CPU sleep until VBlank fires:
+
+```m68k
+            ; Install VBlank handler at autovector level-3 ($6C)
+            move.l  #vbl_handler,$6c.w
+            move.w  #$c020,INTENA(a5)   ; Enable: master + VERTB
+
+            ; Main loop: STOP halts CPU until interrupt
+mainloop:
+            stop    #$2000              ; Sleep at IPL 0
+            ; CPU resumes here after VBlank IRQ
+            bra.s   mainloop
+
+vbl_handler:
+            ; Frame logic runs at IRQ level
+            move.w  #$0020,INTREQ(a5)   ; Acknowledge VERTB
+            rte
+```
+
+The polling pattern is simpler to teach but the interrupt pattern is what most production Amiga games use.
+
+## Frame Budget
+
+On a PAL Amiga at 50Hz:
+- **20ms per frame**
+- At 7.09MHz (68000), approximately **140,000 cycles per frame**
+- VBlank itself is ~25 scanlines (~1.6ms)
+
+If your game logic exceeds the frame budget, it will skip frames and slow down.
+
+## System Takeover Pattern
+
+Always disable system interrupts and DMA before taking over:
+
+```m68k
+            move.w  #$7fff,INTENA(a5)   ; Disable interrupts
+            move.w  #$7fff,INTREQ(a5)   ; Clear pending
+            move.w  #$7fff,DMACON(a5)   ; Disable DMA
+```
+
+Writing `$7fff` with bit 15 clear *disables* those bits.
+
+Then enable only what you need:
+
+```m68k
+            move.w  #$83a0,DMACON(a5)   ; Enable master + copper + sprites + bitplanes
+```
+
+Writing with bit 15 set *enables* those bits.
+
+## Related
+
+**Patterns:** [Joystick Reading](/patterns/commodore-amiga/assembly/input/joystick-reading), [Copper List Basics](/patterns/commodore-amiga/assembly/rendering/copper-list-basics)
+
+**Vault:** [Commodore Amiga](/vault/systems/commodore-amiga)

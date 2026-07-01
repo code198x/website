@@ -1,0 +1,106 @@
+---
+title: "Sound Effects"
+summary: "Let the APU bend pitch and fade volume in hardware — a swept pulse for a laser, a decaying noise burst for an explosion — each fired with a single trigger write."
+platform: "nintendo-nes"
+category: "audio"
+difficulty: "intermediate"
+tags: ["apu", "envelope", "sweep", "noise", "audio"]
+evolution:
+  previous: "square-wave"
+  next: "music-engine"
+related:
+  patterns: ["square-wave"]
+  vault: ["apu", "nintendo-nes"]
+---
+
+## Overview
+
+A [held tone](/patterns/nintendo-nes/assembly/audio/square-wave) is a note; a sound effect *moves*. The APU has hardware to move it for you: an **envelope** that fades a channel's volume from full to nothing, a **sweep** unit that slides a pulse channel's pitch up or down, and a **noise** channel of pseudo-random hiss for anything that isn't a pitch — footsteps, explosions, drums. Set them up, write the trigger register once, and the effect plays and stops itself. No per-frame code, no interrupt: the classic NES "pew" and "boom" are each a few register writes and then silence.
+
+## Code
+
+```ca65
+; =============================================================================
+; SOUND EFFECTS - NES (APU)
+; A pitch-swept pulse (laser) and a decaying noise burst (explosion)
+; Each fires once and silences itself via its length counter
+; =============================================================================
+
+APUSTATUS    = $4015
+
+PULSE2_VOL   = $4004    ; DDLC VVVV
+PULSE2_SWEEP = $4005    ; EPPP NSSS - enable, period, negate, shift
+PULSE2_LO    = $4006
+PULSE2_HI    = $4007    ; timer high + length load (writing this fires it)
+
+NOISE_VOL    = $400C    ; --LC VVVV
+NOISE_PERIOD = $400E    ; M--- PPPP - mode + period index (pitch/timbre)
+NOISE_LEN    = $400F    ; LLLL L--- - length load (writing this fires it)
+
+init_sfx:
+    lda #%00001111         ; all four tone channels enabled
+    sta APUSTATUS
+    rts
+
+; --- A laser: pulse 2, pitch sweeping down, volume decaying ---
+sfx_laser:
+    lda #%01000111         ; 25% duty, length runs, ENVELOPE, decay rate 7
+    sta PULSE2_VOL
+    lda #%10010100         ; sweep ON, period 1, add-to-timer, shift 4 -> pitch falls
+    sta PULSE2_SWEEP
+    lda #$40
+    sta PULSE2_LO          ; starting timer -> starting pitch
+    lda #%00011000         ; length load + timer high 0 -> TRIGGER
+    sta PULSE2_HI
+    rts
+
+; --- An explosion: noise channel, volume decaying to nothing ---
+sfx_explode:
+    lda #%00000110         ; length runs, ENVELOPE, decay rate 6
+    sta NOISE_VOL
+    lda #%00000101         ; noise mode 0, period index 5 (a low rumble)
+    sta NOISE_PERIOD
+    lda #%00110000         ; length load -> TRIGGER
+    sta NOISE_LEN
+    rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | None after the trigger — the hardware runs the effect |
+| Memory | A short routine per effect |
+| Limitation | An effect steals its channel from the music while it plays |
+
+**When to use:** Shots, jumps, hits, explosions — anything short and reactive.
+
+**When to avoid:** Sustained instrument tones for music; those want the length counter *halted*, not running.
+
+## The envelope: fade for free
+
+For an effect you want the opposite of a sustained tone: leave **bit 5 clear** (length counter runs, so the sound ends) and **bit 4 clear** (envelope, not constant volume). Now the low nibble stops being a volume and becomes a **decay rate** — the channel starts at volume 15 and steps down to 0 on its own. A small rate decays fast (a tight *tick*), a large rate slow (a lingering *booom*). That single nibble is the difference between a laser and a cannon.
+
+## The sweep: pitch that slides
+
+The sweep unit (`$4001`/`$4005`) bends a pulse channel's pitch every few frames without any code:
+
+```
+EPPP NSSS
+E    enable
+PPP  how often it steps (0 = fastest)
+N    negate — 0 adds to the timer (pitch falls), 1 subtracts (pitch rises)
+SSS  shift — how big each step is
+```
+
+`%10010100` sweeps the timer *upward*, so the note glides *down* — a descending "pew". Flip the negate bit (`%10011100`) and it rises instead. The sweep can drive the timer out of range and mute the channel — which, for a one-shot effect that's already ending, is exactly what you want.
+
+## Noise for the un-pitched
+
+The noise channel has no timer table; its `$400E` **period index** (0–15) picks one of sixteen pseudo-random rates — low indices give a deep rumble, high ones a bright hiss. Bit 7 switches to a shorter, more metallic pattern. Paired with a fast envelope it's a snare or a hi-hat; with a slow one, an explosion. Writing `$400F` loads its length counter and fires it, exactly like a pulse channel's `$4003`.
+
+## Related
+
+**Patterns:** [A Square Wave](/patterns/nintendo-nes/assembly/audio/square-wave)
+
+**Vault:** [APU](/vault/hardware/apu) | [Nintendo Entertainment System](/vault/systems/nes)

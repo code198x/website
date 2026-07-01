@@ -1,0 +1,219 @@
+---
+title: "Sprite Movement with Bounds"
+summary: "Move sprites with joystick input and screen boundary clamping. Handle the VIC-II's 9-bit X coordinate."
+platform: "commodore-64"
+category: "physics"
+difficulty: "beginner"
+taught_in: "Game 2, Unit 2"
+tags: ["sprites", "movement", "bounds", "joystick", "vic-ii"]
+evolution:
+  previous: "joystick-reading"
+  next: null
+related:
+  patterns: ["joystick-reading", "game-loop-raster"]
+  vault: ["commodore-64"]
+---
+
+## Overview
+
+C64 sprites use a 9-bit X coordinate (0-511) with the high bits stored separately. Read the joystick, apply movement with boundary checks, then update both the position registers and the MSB register. This pattern handles the split coordinate cleanly.
+
+## Code
+
+```asm
+; =============================================================================
+; SPRITE MOVEMENT WITH BOUNDS - COMMODORE 64
+; Move sprite with joystick and boundary clamping
+; Taught: Game 2 (Parallax), Unit 2
+; CPU: ~120 cycles | Memory: ~80 bytes
+; =============================================================================
+
+; VIC-II registers
+VIC         = $D000
+SPR0_X      = $D000             ; Sprite 0 X position (low 8 bits)
+SPR0_Y      = $D001             ; Sprite 0 Y position
+SPR_MSB     = $D010             ; Sprite X position MSB (bit 0 = sprite 0)
+
+; Joystick port
+JOY2        = $DC00             ; Joystick port 2
+
+; Movement settings
+MOVE_SPEED  = 2                 ; Pixels per frame
+
+; Boundaries (visible screen area)
+MIN_X       = 24                ; Left edge
+MAX_X       = 320               ; Right edge (9-bit value)
+MIN_Y       = 50                ; Top edge
+MAX_Y       = 229               ; Bottom edge
+
+; Move sprite 0 based on joystick input
+move_sprite:
+            lda JOY2            ; Read joystick (active low)
+            eor #$FF            ; Invert so 1=pressed
+
+            ; === Check Up (bit 0) ===
+            lsr                 ; Bit 0 -> Carry
+            bcc .no_up
+            lda sprite_y
+            sec
+            sbc #MOVE_SPEED
+            cmp #MIN_Y
+            bcc .no_up          ; Past top
+            sta sprite_y
+.no_up:
+            ; === Check Down (bit 1) ===
+            lda JOY2
+            eor #$FF
+            and #$02
+            beq .no_down
+            lda sprite_y
+            clc
+            adc #MOVE_SPEED
+            cmp #MAX_Y
+            bcs .no_down        ; Past bottom
+            sta sprite_y
+.no_down:
+            ; === Check Left (bit 2) ===
+            lda JOY2
+            eor #$FF
+            and #$04
+            beq .no_left
+            jsr move_left
+.no_left:
+            ; === Check Right (bit 3) ===
+            lda JOY2
+            eor #$FF
+            and #$08
+            beq .no_right
+            jsr move_right
+.no_right:
+            ; Update VIC-II registers
+            jsr update_sprite_pos
+            rts
+
+; Move left (handle 9-bit X)
+move_left:
+            lda sprite_x_lo
+            sec
+            sbc #MOVE_SPEED
+            sta sprite_x_lo
+            lda sprite_x_hi
+            sbc #0              ; Borrow from high byte
+            sta sprite_x_hi
+
+            ; Check minimum (24)
+            lda sprite_x_hi
+            bne .left_ok        ; High byte set = definitely > 255 > 24
+            lda sprite_x_lo
+            cmp #MIN_X
+            bcs .left_ok
+
+            ; Clamp to minimum
+            lda #MIN_X
+            sta sprite_x_lo
+            lda #0
+            sta sprite_x_hi
+.left_ok:
+            rts
+
+; Move right (handle 9-bit X)
+move_right:
+            lda sprite_x_lo
+            clc
+            adc #MOVE_SPEED
+            sta sprite_x_lo
+            lda sprite_x_hi
+            adc #0              ; Carry to high byte
+            sta sprite_x_hi
+
+            ; Check maximum (320 = $140)
+            lda sprite_x_hi
+            cmp #>MAX_X
+            bcc .right_ok       ; High byte less = definitely ok
+            bne .right_clamp    ; High byte greater = clamp
+            lda sprite_x_lo
+            cmp #<MAX_X
+            bcc .right_ok
+
+.right_clamp:
+            lda #<MAX_X
+            sta sprite_x_lo
+            lda #>MAX_X
+            sta sprite_x_hi
+.right_ok:
+            rts
+
+; Copy position to VIC-II
+update_sprite_pos:
+            lda sprite_x_lo
+            sta SPR0_X
+            lda sprite_y
+            sta SPR0_Y
+
+            ; Set/clear MSB for sprite 0
+            lda SPR_MSB
+            and #$FE            ; Clear bit 0
+            ora sprite_x_hi     ; Set if high byte is 1
+            sta SPR_MSB
+            rts
+
+; Variables (16-bit X, 8-bit Y)
+sprite_x_lo:    !byte 160       ; X position low byte
+sprite_x_hi:    !byte 0         ; X position high byte (0 or 1)
+sprite_y:       !byte 140       ; Y position
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~120 cycles |
+| Memory | ~80 bytes |
+| Limitation | 9-bit X handling adds complexity |
+
+**When to use:** Any C64 game with moveable sprites.
+
+**When to avoid:** Character-based movement - simpler single-byte coordinates.
+
+## VIC-II Sprite Coordinates
+
+The X coordinate spans 0-511, requiring a 9th bit:
+
+| Register | Purpose |
+|----------|---------|
+| `$D000` | Sprite 0 X (bits 0-7) |
+| `$D010` | X MSBs for all sprites (bit 0 = sprite 0) |
+
+```
+X = 280 ($118)
+$D000 = $18 (low 8 bits)
+$D010 = $01 (bit 0 set = 9th bit)
+```
+
+## Visible Screen Area
+
+| Edge | X | Y |
+|------|---|---|
+| Left | 24 | - |
+| Right | 343 | - |
+| Top | - | 50 |
+| Bottom | - | 249 |
+
+These are the **raw visible window** — the position values where a sprite's top-left corner is exactly at the visible edge. Because the sprite is 24×21 pixels, the code's `MIN`/`MAX` constants subtract the sprite dimensions: `MAX_X = 343 - 24 ≈ 320`, `MAX_Y = 249 - 21 ≈ 229`. Use the raw values when designing UI layouts; use the adjusted values when clamping movement so the whole sprite stays on-screen.
+
+## Collision detection
+
+When you have moving sprites, you almost always want to detect collisions. The VIC-II provides hardware collision registers that pair naturally with this movement pattern:
+
+| Register | Purpose |
+|----------|---------|
+| `$D01E` (53278) | Sprite-sprite collisions — bit *n* = sprite *n* hit another sprite |
+| `$D01F` (53279) | Sprite-background collisions — bit *n* = sprite *n* hit a non-transparent background pixel |
+
+**Important:** reading either register *clears* its bits, so check them once per frame and store the result if multiple checks are needed. See [VIC-II](/vault/hardware/vic-ii) for the full register reference.
+
+## Related
+
+**Patterns:** [Joystick Reading](/patterns/commodore-64/assembly/input/joystick-reading), Game Loop (Raster)
+
+**Vault:** [Commodore 64](/vault/systems/commodore-64)

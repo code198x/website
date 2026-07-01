@@ -1,0 +1,148 @@
+---
+title: "Joystick Reading"
+summary: "Read Amiga joystick using the JOY1DAT register with XOR decoding for up/down directions."
+platform: "commodore-amiga"
+category: "input"
+difficulty: "beginner"
+taught_in: "Game 1, Unit 2"
+tags: ["joystick", "input", "custom-chips"]
+evolution:
+  previous: null
+  next: "joystick-edge-detection"
+related:
+  patterns: ["vblank-game-loop"]
+  vault: ["commodore-amiga"]
+---
+
+## Overview
+
+Read joystick input from the custom chip register `JOY1DAT`. The Amiga uses quadrature encoding, requiring an XOR operation to decode vertical movement. Horizontal directions are read directly from specific bits. This pattern provides smooth, continuous movement.
+
+## Code
+
+```m68k
+; =============================================================================
+; JOYSTICK READING - AMIGA
+; Read joystick port 2 via JOY1DAT
+; Taught: Game 1 (Signal), Unit 2
+; CPU: ~20 cycles | Memory: ~30 bytes
+; =============================================================================
+
+CUSTOM      equ $dff000
+JOY1DAT     equ $00c            ; Joystick port 2 data (offset from CUSTOM)
+
+; Read joystick directions
+; Input:  A5 = CUSTOM chip base
+; Output: D0 = decoded directions
+;         Bit 8 = up, Bit 0 = down
+;         Bit 9 = left, Bit 1 = right
+read_joystick:
+            move.w  JOY1DAT(a5),d0      ; Read joystick data
+            move.w  d0,d1
+            lsr.w   #1,d1               ; Shift for XOR decode
+            eor.w   d1,d0               ; Decode vertical movement
+            rts
+```
+
+**Usage:**
+
+```m68k
+            lea     CUSTOM,a5           ; Set up custom chip base
+
+mainloop:
+            bsr     wait_vblank
+            bsr     read_joystick       ; D0 = directions
+
+            ; Check directions using BTST
+            btst    #8,d0               ; Up?
+            beq.s   .no_up
+            sub.w   #MOVE_SPEED,player_y
+.no_up:
+            btst    #0,d0               ; Down?
+            beq.s   .no_down
+            add.w   #MOVE_SPEED,player_y
+.no_down:
+            btst    #9,d0               ; Left?
+            beq.s   .no_left
+            sub.w   #MOVE_SPEED,player_x
+.no_left:
+            btst    #1,d0               ; Right?
+            beq.s   .no_right
+            add.w   #MOVE_SPEED,player_x
+.no_right:
+            bra     mainloop
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | ~20 cycles |
+| Memory | ~30 bytes |
+| Limitation | No edge detection (continuous input) |
+
+**When to use:** Games with smooth, continuous movement (shooters, racing).
+
+**When to avoid:** Grid-based games where you want single-step movement per press.
+
+## How It Works
+
+The Amiga joystick uses quadrature encoding (like a mouse). The `JOY1DAT` register returns:
+
+- **Bits 1 and 9:** Directly indicate right and left
+- **Bits 0 and 8:** Require XOR decoding for down and up
+
+The XOR decode formula:
+```
+decoded = raw XOR (raw >> 1)
+```
+
+This converts the quadrature signals into simple direction flags.
+
+## Direction Bit Reference
+
+| Bit | Direction | Check |
+|-----|-----------|-------|
+| 8 | Up | `btst #8,d0` |
+| 0 | Down | `btst #0,d0` |
+| 9 | Left | `btst #9,d0` |
+| 1 | Right | `btst #1,d0` |
+
+## Fire Button
+
+The fire button is read from CIA-A PRA (`$BFE001`), not the custom chips. The two joystick ports map to different bits:
+
+| Bit | Port | Common use |
+|-----|------|------------|
+| 7 | Port 0 (left) | Mouse / second joystick |
+| 6 | Port 1 (right) | Primary joystick |
+
+```m68k
+            btst    #6,$bfe001          ; Joystick port 1 fire (active low)
+            beq.s   fire_pressed        ; Branch if pressed
+```
+
+Use bit 7 if you're reading port 0 (`JOY0DAT`) for a mouse or second player.
+
+## Port 0 (mouse port) reading
+
+To read the mouse / second joystick on port 0, use `JOY0DAT` (`$DFF00A`) instead of `JOY1DAT`:
+
+```m68k
+JOY0DAT     equ $00a            ; Joystick port 0 / mouse data
+
+read_port0:
+            move.w  JOY0DAT(a5),d0
+            move.w  d0,d1
+            lsr.w   #1,d1
+            eor.w   d1,d0               ; Same XOR decode as port 1
+            rts
+```
+
+Reading the mouse rather than a joystick yields *delta* values via the same quadrature encoding — different decode logic if you want pixel-precise mouse movement, but for "two-player digital joystick" the same decode works.
+
+## Related
+
+**Patterns:** [VBlank Game Loop](/patterns/commodore-amiga/assembly/framework/vblank-game-loop)
+
+**Vault:** [Commodore Amiga](/vault/systems/commodore-amiga)

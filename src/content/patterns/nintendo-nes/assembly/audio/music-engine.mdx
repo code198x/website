@@ -1,0 +1,147 @@
+---
+title: "A Music Engine"
+summary: "Step a note pattern once per frame from the NMI, handing each APU channel its note from a timer table — the skeleton of every NES music driver."
+platform: "nintendo-nes"
+category: "audio"
+difficulty: "advanced"
+tags: ["apu", "music", "nmi", "sound-driver", "audio"]
+evolution:
+  previous: "sound-effects"
+  next: null
+related:
+  patterns: ["sound-effects", "square-wave", "nmi-game-loop"]
+  vault: ["apu", "nintendo-nes"]
+---
+
+## Overview
+
+One channel plays [one note](/patterns/nintendo-nes/assembly/audio/square-wave); a [sound effect](/patterns/nintendo-nes/assembly/audio/sound-effects) makes it move. Music is the step up: **several channels at once**, each handed a fresh note on a regular beat. On the NES that beat is already ticking — the [NMI fires every frame](/patterns/nintendo-nes/assembly/framework/nmi-game-loop), 60 times a second on NTSC. Count those frames into rows, and on each row look up a **timer value per channel** from a note table and write it. Pulse 1 takes the lead, pulse 2 the harmony, the triangle the bass; the noise channel drops in drums. That loop — a tick, a pattern, a note table — is every NES sound driver in miniature.
+
+## Code
+
+```ca65
+; =============================================================================
+; A MUSIC ENGINE - NES (APU)
+; music_tick, called once per NMI, steps a pattern and feeds three voices
+; =============================================================================
+
+APUSTATUS  = $4015
+PULSE1_VOL = $4000
+PULSE1_LO  = $4002
+PULSE1_HI  = $4003
+PULSE2_VOL = $4004
+PULSE2_LO  = $4006
+PULSE2_HI  = $4007
+TRI_LINEAR = $4008
+TRI_LO     = $400A
+TRI_HI     = $400B
+
+TEMPO       = 8         ; frames per row (60 / 8 ~ 7.5 rows a second)
+PATTERN_LEN = 8
+
+.segment "ZEROPAGE"
+mus_row:   .res 1
+mus_timer: .res 1
+
+.segment "CODE"
+
+music_init:
+    lda #%00000111         ; pulse 1, pulse 2, triangle enabled
+    sta APUSTATUS
+    lda #%10111111         ; 50% duty, sustained, full volume
+    sta PULSE1_VOL
+    sta PULSE2_VOL
+    lda #%11111111         ; triangle: control set -> plays continuously
+    sta TRI_LINEAR
+    lda #0
+    sta mus_row
+    lda #TEMPO
+    sta mus_timer
+    rts
+
+; --- Call once per NMI; a new row lands only every TEMPO frames ---
+music_tick:
+    dec mus_timer
+    beq @row
+    rts                    ; between rows — hold the current notes
+@row:
+    lda #TEMPO
+    sta mus_timer
+    ldx mus_row
+
+    ldy pat_p1,x           ; lead: note index for this row (0 = hold)
+    beq @p2
+    lda note_lo,y
+    sta PULSE1_LO
+    lda note_hi,y
+    sta PULSE1_HI          ; writing $4003 retriggers the note
+@p2:
+    ldy pat_p2,x           ; harmony
+    beq @tri
+    lda note_lo,y
+    sta PULSE2_LO
+    lda note_hi,y
+    sta PULSE2_HI
+@tri:
+    ldy pat_tri,x          ; bass — same table, an octave lower (triangle /32)
+    beq @step
+    lda note_lo,y
+    sta TRI_LO
+    lda note_hi,y
+    sta TRI_HI
+@step:
+    inx
+    cpx #PATTERN_LEN
+    bne @save
+    ldx #0                 ; loop the pattern
+@save:
+    stx mus_row
+    rts
+
+.segment "RODATA"
+; Pulse timer values (NTSC), 11-bit split lo/hi. Index 0 = rest/hold.
+;                 C-4   E-4   G-4
+note_lo: .byte 0, $AA,  $52,  $1C
+note_hi: .byte 0, $01,  $01,  $01
+
+; The pattern: one note index per channel, per row.
+pat_p1:  .byte 1, 2, 3, 2,  1, 2, 3, 2   ; arpeggiated lead
+pat_p2:  .byte 3, 3, 1, 1,  3, 3, 1, 1   ; harmony
+pat_tri: .byte 1, 0, 1, 0,  1, 0, 1, 0   ; bass on the beat
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | A few bytes of work most frames; a little more on a row change |
+| Memory | The note table, the patterns, two zero-page bytes |
+| Limitation | Five voices total, and an effect must borrow one from the song |
+
+**When to use:** Any in-game music. This *is* how NES music works — every driver is this shape with more on top.
+
+**When to avoid:** A single reactive bleep; that's a [sound effect](/patterns/nintendo-nes/assembly/audio/sound-effects), not a sequencer.
+
+## The tick is the tempo
+
+The engine keeps no clock of its own — it rides the frame. Each NMI decrements `mus_timer`; only when it hits zero does a new row land, and `TEMPO` sets how many frames that takes. `TEMPO` 8 gives ≈7.5 rows a second; drop it to 6 and the song speeds up. Real drivers count *rows into a song* through an order list and run effects — vibrato, slides, arpeggios — on the in-between frames, but the heartbeat is always this: one NMI, one tick.
+
+## One table, two octaves
+
+The lead and harmony are pulse channels; the bass is the triangle — yet they share **one** note table. That's a gift of the hardware: the triangle divides its timer by 32 where the pulse divides by 16, so the *same* timer value sounds exactly an octave lower on the triangle. Write `$1AA` to a pulse channel for C-4 and to the triangle for C-3, no second table needed. The `0` index is the other convention worth keeping — a row of `0` means "leave this channel alone", so a voice holds its note across rows instead of restriking every beat.
+
+## From skeleton to driver
+
+A shipping sound engine adds three things to this frame:
+
+- **Instruments** — a volume envelope and duty per note, rewritten each row, so a channel can pluck, swell or fade rather than blare one flat tone.
+- **Drums** — the [noise channel](/patterns/nintendo-nes/assembly/audio/sound-effects) triggered from its own pattern row; it takes a period index, not a note.
+- **An order list** — a sequence of pattern numbers, so a song reuses a handful of short patterns instead of storing every bar.
+
+Add those and a sound-effect routine that borrows a channel from the music, and you have a driver like FamiTone or the ones behind the NES's best scores.
+
+## Related
+
+**Patterns:** [Sound Effects](/patterns/nintendo-nes/assembly/audio/sound-effects), [A Square Wave](/patterns/nintendo-nes/assembly/audio/square-wave), [NMI Game Loop](/patterns/nintendo-nes/assembly/framework/nmi-game-loop)
+
+**Vault:** [APU](/vault/hardware/apu) | [Nintendo Entertainment System](/vault/systems/nes)
