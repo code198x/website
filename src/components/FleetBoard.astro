@@ -12,7 +12,7 @@
  */
 import { getAllPlatforms, getAllManufacturers } from '../lib/platforms';
 
-interface Props { view: 'decade' | 'maker' | 'tier' }
+interface Props { view: 'decade' | 'maker' | 'tier' | 'region' }
 const { view } = Astro.props;
 
 const platforms = await getAllPlatforms();
@@ -20,13 +20,16 @@ const manufacturers = await getAllManufacturers();
 const makerName = new Map(manufacturers.map(m => [m.id, m.data.shortName]));
 const REGION_CODE: Record<string, string> = { US: 'US', UK: 'UK', Japan: 'JP', Europe: 'EU', Netherlands: 'NL' };
 const KIND: Record<string, string> = { computer: 'home', console: 'console', handheld: 'handheld' };
+// Fuller labels for the region lens; anything not listed shows its raw name.
+const REGION_LABEL: Record<string, string> = { US: 'United States', UK: 'United Kingdom', USSR: 'Soviet Union', Europe: 'Europe (multi-country)' };
 
-interface Sys { year: number; slug: string; name: string; kind: string; maker: string; tier: string; country: string; color: string }
+interface Sys { year: number; slug: string; name: string; kind: string; maker: string; tier: string; region: string; country: string; color: string }
 const fleet: Sys[] = platforms.map(p => ({
   year: p.data.year, slug: p.id, name: p.data.shortName,
   kind: KIND[p.data.type] ?? p.data.type,
   maker: makerName.get(p.data.manufacturer) ?? p.data.manufacturer,
   tier: p.data.tier ?? 'planned',
+  region: p.data.region,
   country: REGION_CODE[p.data.region] ?? p.data.region,
   color: p.data.color,
 })).sort((a, b) => a.year - b.year || a.slug.localeCompare(b.slug));
@@ -49,6 +52,12 @@ if (view === 'decade') {
     ['edge', 'Edge', 'harder to teach here'], ['beyond', 'Beyond', 'beyond our scope'],
   ];
   columns = tiers.map(([st, title, blurb]) => ({ title, blurb, items: fleet.filter(e => e.tier === st) }));
+} else if (view === 'region') {
+  // Every country of origin, largest first — complete, unlike the old browse
+  // by-region which hardcoded five and silently dropped the Eastern bloc.
+  columns = [...new Set(fleet.map(e => e.region))]
+    .map(r => ({ title: REGION_LABEL[r] ?? r, items: fleet.filter(e => e.region === r) }))
+    .sort((a, b) => b.items.length - a.items.length || a.title.localeCompare(b.title));
 } else {
   columns = [...new Set(fleet.map(e => e.maker))]
     .map(m => ({ title: m, items: fleet.filter(e => e.maker === m) }))
@@ -57,7 +66,7 @@ if (view === 'decade') {
 
 const STAMP: Record<string, string> = { live: 'LIVE', next: 'NEXT' };
 const isActive = (t: string) => t === 'live' || t === 'next';
-const tabs: Array<[string, string, string]> = [['decade', '/systems', 'By era'], ['maker', '/systems/by-maker', 'By maker'], ['tier', '/systems/by-tier', 'By tier']];
+const tabs: Array<[string, string, string]> = [['decade', '/systems', 'By era'], ['region', '/systems/by-region', 'By region'], ['maker', '/systems/by-maker', 'By maker'], ['tier', '/systems/by-tier', 'By tier']];
 ---
 
 <div class="wrap">
@@ -67,7 +76,7 @@ const tabs: Array<[string, string, string]> = [['decade', '/systems', 'By era'],
   <p class="intro"><b>The Spectrum, C64, NES and Amiga</b> are live now, and the rest of the fleet is where
     the curriculum grows next. Some machines here have no lessons written yet — they're still real
     pages, each with a plan and a way to be told when the lessons land. Browse by era, by
-    maker, or by how ready each one is.</p>
+    region, by maker, or by how ready each one is.</p>
   <p class="summary" set:html={
     `<b>${counts.total}</b> machines · <b>${counts.live}</b> live · <b>${counts.next}</b> next · ` +
     `<b>${counts.planned}</b> planned · <b>${counts.edge}</b> edge · <b>${counts.beyond}</b> beyond`
@@ -89,7 +98,7 @@ const tabs: Array<[string, string, string]> = [['decade', '/systems', 'By era'],
   </div>
 
   <div class={`board ${view}`}>
-    {columns.map(col => (
+    {columns.filter(col => col.items.length > 0).map(col => (
       <div class="col">
         <div class="chead">
           <span class="t">{col.title}</span><span class="n">{col.items.length}</span>
@@ -147,16 +156,23 @@ const tabs: Array<[string, string, string]> = [['decade', '/systems', 'By era'],
     :global(:root:not([data-theme])) .tabs a.on { color: #241a10; }
   }
 
-  .board { display: grid; gap: var(--space-4); margin-top: var(--space-4); align-items: start; }
-  .board.decade { grid-template-columns: repeat(6, 1fr); }
-  .board.tier { grid-template-columns: repeat(5, 1fr); }
-  .board.maker { grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); }
+  .board { margin-top: var(--space-4); }
+  /* Era, tier and region: stacked full-width bands, each group's systems in a
+     flowing grid, so a huge group (66 in the boom, ~130 planned, 49 US) reads as
+     rows rather than one towering column. */
+  .board.decade, .board.tier, .board.region { display: flex; flex-direction: column; gap: var(--space-8); }
+  /* Maker: a compact wall of columns — many small makers pack better this way. */
+  .board.maker { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: var(--space-4); align-items: start; }
 
   .col .chead { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; border-bottom: 2px solid var(--color-text); padding-bottom: 4px; margin-bottom: 8px; }
   .col .chead .t { font-family: var(--font-family-script); font-weight: 700; font-size: 1.5rem; line-height: 1; }
   .col .chead .n { font-family: var(--font-family-mono); font-size: 0.7rem; color: var(--color-text-secondary); }
   .col .chead .blurb { font-family: var(--font-family-mono); font-size: 0.56rem; letter-spacing: 0.06em; color: var(--color-text-secondary); text-transform: uppercase; width: 100%; margin-top: 2px; }
-  .stack { display: flex; flex-direction: column; gap: 7px; }
+  /* Band views: pills flow in a responsive grid. Maker keeps a vertical list. */
+  .board.decade .stack, .board.tier .stack, .board.region .stack { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 8px; align-items: start; }
+  .board.maker .stack { display: flex; flex-direction: column; gap: 7px; }
+  /* Band headers read as section titles. */
+  .board.decade .chead .t, .board.tier .chead .t, .board.region .chead .t { font-size: 1.9rem; }
 
   .pill { border: 2px solid var(--color-text); background: var(--color-surface); padding: 6px 8px 7px; position: relative; text-decoration: none; color: var(--color-text); display: block; transition: transform var(--transition-base), box-shadow var(--transition-base); }
   .pill:hover, .pill:focus-visible { transform: translate(-2px, -2px); box-shadow: var(--shadow-chunky); }
@@ -178,6 +194,5 @@ const tabs: Array<[string, string, string]> = [['decade', '/systems', 'By era'],
   .foot { margin-top: var(--space-8); border-top: 3px solid var(--color-text); padding-top: var(--space-4); display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3);
     font-family: var(--font-family-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-secondary); }
 
-  @media (max-width: 1000px) { .board.decade { grid-template-columns: repeat(3, 1fr); } .board.tier { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 620px) { .board.decade, .board.tier { grid-template-columns: repeat(2, 1fr); } .wrap h1 { font-size: 3rem; } }
+  @media (max-width: 620px) { .wrap h1 { font-size: 3rem; } }
 </style>
