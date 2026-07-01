@@ -1,0 +1,103 @@
+---
+title: "One-Shot Samples"
+summary: "Play a sample once instead of looping, using Paula's channel interrupt to stop it after a single pass — the way sound effects fire, and the seed of tracker playback."
+platform: "commodore-amiga"
+category: "audio"
+difficulty: "intermediate"
+tags: ["paula", "samples", "interrupt", "audio"]
+evolution:
+  previous: "playing-a-sample"
+  next: null
+related:
+  patterns: ["playing-a-sample"]
+  vault: ["paula", "commodore-amiga"]
+---
+
+## Overview
+
+Enable a channel and Paula [loops the sample forever](/patterns/commodore-amiga/audio/playing-a-sample) — right for a held note, wrong for an explosion. To play a sound **once**, you need to know the moment it finishes. Paula tells you: at the end of every pass it raises that channel's **audio interrupt**. Catch it, silence the channel, and you have a one-shot. That same interrupt, instead of stopping the sound, is how a tracker hands the channel its *next* note — so this pattern is the doorway to music too.
+
+## Code
+
+```m68k
+; =============================================================================
+; ONE-SHOT SAMPLES - AMIGA (Paula)
+; Fire a sample on channel 0; its interrupt stops it after one pass
+; Assumes master interrupts on, and the level-4 autovector ($70) -> audio_irq
+; =============================================================================
+
+CUSTOM   equ $dff000
+DMACON   equ $096
+INTENA   equ $09a            ; Interrupt enable
+INTREQ   equ $09c            ; Interrupt request (acknowledge here)
+AUD0LC   equ $0a0
+AUD0LEN  equ $0a4
+AUD0PER  equ $0a6
+AUD0VOL  equ $0a8
+
+AUD0INT  equ $0080           ; Audio channel 0 interrupt bit (bit 7)
+
+            section code,code_c
+
+play_shot:
+            lea     CUSTOM,a5
+
+            ; --- Set the sample up, exactly as for a looping one ---
+            move.l  #sample,AUD0LC(a5)
+            move.w  #(sample_end-sample)/2,AUD0LEN(a5)
+            move.w  #428,AUD0PER(a5)
+            move.w  #64,AUD0VOL(a5)
+
+            ; --- Arm channel 0's interrupt, then start the DMA ---
+            move.w  #$8080,INTENA(a5)           ; SET | AUD0INT ($8000|$0080) — arm ch 0
+            move.w  #$8201,DMACON(a5)           ; SET | DMAEN | AUD0 — Paula plays
+
+            rts
+
+; --- Level-4 interrupt handler: fires when the pass ends ---
+audio_irq:
+            move.w  #AUD0INT,INTREQ(a5)     ; acknowledge (bit 15 = 0 -> CLEAR)
+            move.w  #$0001,DMACON(a5)       ; CLR | AUD0 — stop the channel
+            rte
+
+            section data,data_c
+            even
+sample:
+            dc.b    0,60,110,127,100,50,-10,-70,-120,-127,-90,-40,10,55,30,0
+sample_end:
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | A tiny interrupt per sound |
+| Memory | Sample in chip RAM, plus a handler |
+| Limitation | The interrupt fires *after* the pass — a stopped channel can replay a sliver |
+
+**When to use:** Sound effects — shots, jumps, hits — and as the tick that drives a tracker's sequencing.
+
+**When to avoid:** Sustained instrument tones that are *meant* to loop; leave those looping.
+
+## The glitch-free variant
+
+Because the interrupt arrives at the *end* of the pass, Paula may already be a moment into the next loop before the handler stops it — a faint replay. The classic cure needs no interrupt at all: right after enabling DMA (once Paula has latched the real sample), point the channel at a **one-word silent loop**:
+
+```m68k
+            move.l  #silence,AUD0LC(a5)     ; queue silence as the loop...
+            move.w  #1,AUD0LEN(a5)          ; ...one word of zero
+; ...
+silence:    dc.w    0                       ; in chip RAM
+```
+
+The real sample plays once, then Paula loops the silence — inaudibly. The catch is timing: you must write the silence pointer *after* Paula has copied the real `LC`/`LEN` into its internal registers (a scanline's wait is ample), or the sample never plays.
+
+## From one-shot to music
+
+Don't silence the channel in the handler — hand it the **next** sample instead (new `LC`/`LEN`/`PER`/`VOL`) — and you've built the core of a sample sequencer. A MOD player is exactly this on all four channels: a per-channel interrupt, a pattern of notes, and the [period table](/patterns/commodore-amiga/audio/playing-a-sample) turning note numbers into pitches.
+
+## Related
+
+**Patterns:** [Playing a Sample](/patterns/commodore-amiga/audio/playing-a-sample)
+
+**Vault:** [Paula](/vault/hardware/paula) | [Commodore Amiga](/vault/systems/commodore-amiga)
