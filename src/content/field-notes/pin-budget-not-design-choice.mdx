@@ -1,0 +1,50 @@
+---
+title: "Pin Budget, Not Design Choice"
+description: "Every 'weird' retro peripheral decision follows from one number — how many spare pins the chipset had. Find the pin budget first, and the quirks become the only options that fit."
+dek: "The chipset's spare pins are the real spec. Everything downstream only looks like a choice."
+kicker: "HARDWARE · PIN BUDGET"
+pubDate: 2026-06-24
+accent: "#5a4fcf"
+order: 6
+teaser: "The Spectrum can't arbitrate its own bus — peripherals fight for it on the Z80's own pins. It reads as an oversight until you learn the ULA had no spare pins left. Every quirk is a pin budget."
+draft: true
+---
+
+To make a disk drive work on a ZX Spectrum, the interface has to watch the CPU fetch each instruction, wait for it to fetch from a particular address, and at that exact moment physically reach in and switch off the machine's own ROM so its own can answer instead. Written down, it sounds unhinged — the kind of thing you'd do only if someone had hidden all the normal tools. Which is precisely what happened, except the someone was arithmetic.
+
+**[ASSET (optional): a die shot or pinout diagram of the Ferranti ULA, rights permitting — the "every pin already spoken for" image.]**
+
+## The real spec is the pin count
+
+Here is the load-bearing question about any old machine's peripherals, the one that dissolves nine-tenths of the "why on earth did they…" once you ask it first: **how many spare pins did the chipset have?** Not what would have been elegant. Not what the designers would have chosen with a free hand. How many physical legs were left on the custom chip after every other function had claimed one.
+
+Pins cost money. Package sizes come in fixed steps, so the difference between a 40-pin and a 48-pin part is real silicon and real cents times a million units, and every pin is a small war between functions that all want it. By the time a chipset ships, its pin budget is spent, and that budget — not intention — is the true specification. Everything downstream (DMA or polling, wait-states or clock-gating, clean arbitration or fighting on the bus) is the change left over.
+
+## The Spectrum had none
+
+Chris Smith's teardown of the Ferranti ULA makes the Spectrum case exactly: Altwasser rejected both `/WAIT` and `/BUSREQ` as contention mechanisms because **there were no spare ULA pins to drive them.** The 6C001 already used every leg it had. So memory contention was done the only way left — by gating the clock from *inside* the ULA — and peripherals were shoved out to fight for the bus on the Z80's own pins, out at the expansion connector, with no chipset to referee.
+
+Every quirk that Spectrum hackers know follows straight from that. `/ROMCS` is totem-pole, so a peripheral can't just wire-OR its own ROM in; it needs an external AND gate or a cut trace. `/INT` is open-collector, so a peripheral *can* wire-OR there — which is the loophole the Beta Disk interface lives in, snooping `/M1` to trap the CPU and gating `/ROMCS` from outside. That looks like a grubby hack. It's the *only architecture the silicon permits*. There was never a cleaner path to not take.
+
+## Everyone else, same lens
+
+Point the same question at the other machines and their peripheral designs stop being personalities and start being budgets:
+
+- **Amiga.** Agnus has explicit bus-master pins and a full DMA channel for every slot — it can afford to be a true arbiter, so peripherals talk *through* the chipset, not around it. Pin-rich, and it shows.
+- **C64.** The VIC-II has a spare `BA` — Bus Available — line that cleanly gates the 6510 when the video chip needs the bus. One spare pin buys clean arbitration.
+- **NES.** The PPU's pin budget didn't stretch to real DMA, so sprite-DMA is a *CPU-side* stunt: the 2A03 suspends itself for 513 cycles to copy 256 bytes into the PPU, and the audio DMC steals CPU cycles the same way. The "DMA" is the CPU holding its own breath, because the graphics chip couldn't do it.
+- **Spectrum.** Nothing. Budget exhausted. Peripherals work the Z80 directly, and the Beta Disk trap is what "directly" costs.
+
+Four machines, four peripheral architectures, and not one of them a matter of taste.
+
+## Why an emulator has to care
+
+This isn't hardware trivia; it's the thing that decides whether an emulator's structure is honest. The tempting move, building one, is a clean peripheral trait — *every peripheral gets a `tick`, an `io_read`, an `io_write`, an `interrupt_line`* — and it works beautifully for the machines whose chipsets had the pins to arbitrate. It falls apart on the pin-starved ones, where peripherals never touched the chipset at all and lived on the CPU's bus directly. Model those with a tidy trait and you've modelled a machine that never existed. The rule that keeps you honest: **emulate the pin budget's consequences, not a folk memory of the behaviour** — if a peripheral snoops `/M1` and gates `/ROMCS` through an external gate, give it a hook into the bus, not a slot on a trait it was never wired to.
+
+## Your APIs have a pin budget too
+
+Nothing about this is nostalgia. Every system you work in has a pin budget wearing a different costume, and its "weird" decisions are the same shape: a rate limit is somebody's throughput budget; a register width or a packet size is somebody's silicon; USB's endpoint count is a pin budget almost literally. The odd corners of an API are rarely whimsy and almost always scarcity, made permanent because it shipped. Constraints explain systems more reliably than intentions do — you just have to find the constraint first. On a 1982 micro it's a chip's spare legs, and you can count them. That's the whole reason to keep going back: not everything simple is small, but everything small can be *counted*.
+
+---
+
+*The Spectrum contention detail is from Chris Smith, "The ZX Spectrum ULA: How to Design a Microcomputer," chapter 22. The four peripheral architectures are the ones Emu198x has to model faithfully rather than tidy away.*

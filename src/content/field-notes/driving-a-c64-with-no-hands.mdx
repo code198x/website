@@ -1,0 +1,59 @@
+---
+title: "Driving a C64 With No Hands"
+description: "Automating a C64 headless for curriculum captures — five small ways the machine lies to you, and the one rule that catches them all: trust the machine's own state, not your eyes."
+dek: "Five ways a headless machine lies to you, and the two witnesses that don't."
+kicker: "C64 · HEADLESS CAPTURE"
+pubDate: 2026-06-22
+accent: "#4a4dff"
+order: 5
+teaser: "Driving a C64 with no hands, for the curriculum's screenshots. It types to itself, hides its own output, and silently drops the one joystick value that's hardware-true. Notes from teaching a machine to pose."
+draft: true
+---
+
+Most of the curriculum's screenshots are taken by a machine that has no hands. A script loads the program, jumps to its entry point, lets it run for a measured number of cycles, and snaps a PNG on the way out — no display, nobody at the keyboard. It's a good way to make sure every image in a lesson is exactly what the code produces, and it's taught me that a C64 left to its own devices will lie to you in at least five small, specific ways. These are the notes.
+
+## The invisible poke
+
+**Symptom:** you write a character to screen memory, the program runs clean, and the screen is empty where the character should be.
+
+**Cause:** on the C64, the shape and the colour live in different places — the screen code goes to `$0400`, but the colour goes to colour RAM at `$D800`, and they're independent. Write the shape without the colour and the cell keeps whatever colour it already had, which after boot is unpredictable and very often equals the background. The character is there. It's just painted in invisible ink.
+
+**Rule:** any C64 output meant to be *seen* has to set colour RAM alongside the shape. (The Spectrum never taught me this, because its default black-on-white hands you contrast for free — one of those places where a "limitation" was quietly doing you a favour.) This shaped an actual curriculum decision: Meet the Machine sets `$D800` from the first unit, and unit 5 introduces a single "stage-light" colour store as a black box that the colour unit later opens up.
+
+## The machine typing to itself
+
+**Symptom:** a capture comes back with random characters sprayed across the screen that the program never printed.
+
+**Cause:** the program was polling the joystick — reading `$DC00` in a tight loop. But `$DC00` is CIA1 Port A, and on the C64 that port is doing two jobs at once: it's joystick port 2 *and* it's half of the keyboard-scan matrix. Hammer it under the live KERNAL and the machine effectively types to itself, one ghost keystroke at a time. An idle machine stays clean; it's the polling loop that provokes it.
+
+**Rule:** when the act of reading provokes the artifact, stop trusting the running screen. Verify the real output at a breakpoint — right after the program has set what it means to set, where screen memory is provably clean — and render *that* verified state for the hero image. The picture is honest because execution proved it before the camera did.
+
+## Blue on blue
+
+**Symptom:** a border that should have changed colour looks like it didn't — or looks like it did, and didn't.
+
+**Cause:** two of them, and telling them apart matters. The first is your eye: a blue-6 border against a blue-6 background has no edge, and it's easy to misread as the unset default (light-blue 14). The second is real and worse — on our emulator, a border-colour write (`POKE 53280`) updates the register but *doesn't reach the rendered border* in a screenshot, while background writes (`POKE 53281`) render fine. So "the border didn't change" was sometimes the eye and sometimes the truth.
+
+**Rule:** don't adjudicate adjacent C64 palette entries by eye — decode the PNG and compare the border pixel against an explicit reference. And design around what actually renders: **Reflex** signals its reaction with a whole-screen background flash (`POKE 53281`), not a border flash — it captures reliably *and* it's the bolder signal anyway. (The border being a no-op in the render is a candidate emulator bug, noted.)
+
+## The joystick value that was too correct
+
+**Symptom:** you inject a fire-button press and nothing happens. No error. No log. The input simply evaporates.
+
+**Cause:** this one cost me twenty minutes and it's the meanest on the list, because the *right* answer is the one that fails. On real hardware the main joystick is Control Port 2 — it's what `LDA $DC00` reads, it's what the curriculum teaches, so `port: 2` is the natural, hardware-true value. But the capture layer used a 0-based scheme where `0` meant the primary stick, `1` was the other port, and **any other value was dropped in silence** — so `1` worked by luck, `0` was the magic word, and `2`, the only value that matches the hardware, was exactly the one that vanished.
+
+**Rule:** an input layer that drops out-of-range values silently will always trap you on the value you were most sure of. (Fixed since — the port now accepts the hardware-faithful `2` on both the C64 and the Amiga — but the lesson stands: silence is the worst error message.)
+
+## The footbridge that kept saving the sheep
+
+One more, on loan from the Amiga rig, because it's the same shape one level up. Scripting *gameplay* — driving a character through a level frame by frame — I kept losing runs to a bug that turned out not to be a bug: my sheep kept surviving a stretch of water she should have drowned in, rescued by a footbridge I'd forgotten was there. The level geometry was part of the interface, and I'd been driving against a mental map, not the real one.
+
+**Rule:** when you drive a machine with no hands, the world it's running is part of the API too.
+
+---
+
+The thread through all five is one rule, and it's the only rule that survives having no hands: **measure the machine's own state; don't trust your eyes or your frame counts.** There are exactly two honest witnesses to what a headless machine did — the screenshot and the memory read — and the discipline is to make them agree before you believe either. A machine with no hands can't lie about its own registers. It can lie about everything you infer instead.
+
+---
+
+*The VICE and Emu198x capture recipes, and the joystick-port fix, live in the Code198x and Emu198x repos. The sheep is from Flock, unit 12 of the Amiga assembly track — see "The Sheep That Slid Off the Hay Bale."*
