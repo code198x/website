@@ -368,6 +368,7 @@ const fieldNotes = defineCollection({
     accent: z.string(),            // per-post hex (platform-tied)
     order: z.number(),             // arc sort order
     teaser: z.string(),            // hub card body
+    draft: z.boolean().default(false), // hidden everywhere until finished — never auto-publishes
   }),
 });
 
