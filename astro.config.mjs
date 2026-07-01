@@ -24,6 +24,16 @@ export default defineConfig({
     '/sinclair-zx-spectrum/basic/game-07-hi-lo': '/sinclair-zx-spectrum/basic/hi-lo',
     '/sinclair-zx-spectrum/basic/game-08-touchdown': '/sinclair-zx-spectrum/basic/touchdown',
     '/sinclair-zx-spectrum/assembly/game-01-shadowkeep': '/sinclair-zx-spectrum/assembly/shadowkeep',
+    // /browse retired — the fleet lenses (era/region/maker/tier) cover its live axes;
+    // the genre/technique/difficulty scaffolds were never built. Technique's real home
+    // is the Pattern Library.
+    '/browse': '/systems',
+    '/browse/by-platform': '/systems',
+    '/browse/by-era': '/systems',
+    '/browse/by-region': '/systems/by-region',
+    '/browse/by-genre': '/systems',
+    '/browse/by-difficulty': '/systems',
+    '/browse/by-technique': '/patterns',
   },
   fonts: [
     {
