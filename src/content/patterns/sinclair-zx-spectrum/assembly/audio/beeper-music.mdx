@@ -1,0 +1,121 @@
+---
+title: "Beeper Music"
+summary: "Play an actual melody on the Spectrum's one-bit speaker — a note table for pitch, a length per note — and coax two or more voices from that single bit with phase accumulators."
+platform: "sinclair-zx-spectrum"
+category: "audio"
+difficulty: "intermediate"
+tags: ["beeper", "music", "speaker", "audio"]
+evolution:
+  previous: "sound-beep"
+  next: null
+related:
+  patterns: ["sound-beep", "game-loop-halt"]
+  vault: ["ula", "ay-3-8912", "zx-spectrum"]
+---
+
+## Overview
+
+A [beep](/patterns/sinclair-zx-spectrum/assembly/audio/sound-beep) is one tone; music is a *sequence* of them, each held for a beat. On the Spectrum's [one-bit speaker](/vault/hardware/ula) there's no oscillator to hand a frequency to — the CPU *is* the oscillator, toggling bit 4 of port `$FE` by hand. So a tune is a table of **periods** (one per note) and **lengths** (how long to hold each), stepped through in a loop. And the Spectrum's party trick, the thing that made its best music astonishing, is that with the right loop you can toggle *fast enough to interleave several tones at once* — real chords and basslines from a single bit.
+
+## Code
+
+```z80
+; =============================================================================
+; BEEPER MUSIC - ZX SPECTRUM
+; Play a melody from a note stream: (period, length) pairs, 0 = end
+; =============================================================================
+
+SPEAKER  equ  $10          ; bit 4 of port $FE
+BORDER   equ  $00          ; keep bits 0-2 as whatever border you want
+
+; DE -> the tune. Plays it once and returns.
+play_tune:
+.next:
+    ld   a,(de)            ; period = pitch; 0 marks the end of the tune
+    or   a
+    ret  z
+    ld   l,a               ; L = period
+    inc  de
+    ld   a,(de)            ; length = how many half-cycles to hold the note
+    ld   b,a
+    inc  de
+    call play_note
+    jr   .next
+
+; L = period (bigger -> lower note), B = length in half-cycles
+play_note:
+.cycle:
+    ld   a,BORDER|SPEAKER  ; speaker high, border preserved
+    out  ($fe),a
+    ld   c,l
+    call delay
+    ld   a,BORDER          ; speaker low
+    out  ($fe),a
+    ld   c,l
+    call delay
+    djnz .cycle
+    ret
+
+delay:                     ; C = period; a constant-cost busy-wait
+.d: dec  c
+    jr   nz,.d
+    ret
+
+; period, length pairs. Periods roughly halve each octave.
+;             C-4       E-4       G-4       C-5
+tune:
+    defb 239,90,  190,90,  159,90,  119,140,  0
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | **All of it** — the routine blocks completely while a note sounds |
+| Memory | The player, a note table, the tune stream |
+| Limitation | One bit: naive playback is one voice, and nothing else can run |
+
+**When to use:** Title screens, jingles, and any 48K game happy to pause for its music.
+
+**When to avoid:** Music *during* play — the CPU can't drive the beeper and run the game at once. That's what the [AY chip](/vault/hardware/ay-3-8912) is for on 128K machines.
+
+## Pitch is a period, and the loop is the clock
+
+There's no frequency register — pitch is however long you wait between toggles. A note of frequency *f* needs a half-period of `3500000 / (2f)` T-states (the Spectrum runs at 3.5 MHz), so the `delay` count is that figure divided by the loop's cost per iteration. Because a *bigger* period is a *longer* wait, bigger means **lower**: halve a period and the note jumps an octave. The one rule that can't bend is that every path through the loop must take the **same** number of T-states — a branch that sometimes costs a few cycles more bends the pitch and the note sours. Constant-time code is the whole discipline of beeper sound.
+
+## Faking channels on one bit
+
+A single bit can be either up or down — it can't add two square waves together. The engines that made the Spectrum sing get around that with **phase accumulators** and a *pin pulse*: give each voice a 16-bit counter and a 16-bit "speed", and in one tight, fixed-rate loop add every voice's speed to its counter. Whenever a counter overflows, fire the speaker with a single short click. The ear reconstructs each voice from the *rate* of its clicks, so several tones ring out at once:
+
+```z80
+; --- Two voices from one bit (the heart of a beeper engine) ---
+; hl = phase 1, bc = speed 1     ; hl' = phase 2, de' = speed 2
+mix2:
+    add  hl,bc              ; advance voice 1; carry set on overflow
+    ; ... remember voice 1's carry ...
+    exx
+    add  hl,de             ; advance voice 2
+    exx
+    ; ... if either voice overflowed, emit ONE short speaker pulse ...
+    ld   a,BORDER|SPEAKER
+    out  ($fe),a
+    ; ... a fixed number of T-states later, drop it low again ...
+    ld   a,BORDER
+    out  ($fe),a
+    ; ... loop, keeping every iteration exactly the same length ...
+```
+
+The catch is that same iron rule: the mixing loop must be *perfectly* constant-time, because its length is the sample rate. This is the technique behind tools like Beepola's *Tritone* engine and the multi-voice arrangements Tim Follin wrung out of the 48K — as many as four voices, plus drums, from a chip that was never meant to play a chord.
+
+## The louder side, and the 128K way out
+
+Two follow-ons worth knowing:
+
+- **Volume.** The beeper has no volume control — a bit is on or off. What little dynamic range exists comes from *pulse width*: a very short pin pulse sounds quieter than a long one, which is how beeper engines fake note envelopes and drums.
+- **The AY.** All of this steals the whole CPU. The 128K, +2 and +3 add the [AY-3-8912](/vault/hardware/ay-3-8912) — three voices with real envelopes that play in the background while your game runs. It's the natural next step when a tune has to share the machine with a moving game.
+
+## Related
+
+**Patterns:** [Sound Beep](/patterns/sinclair-zx-spectrum/assembly/audio/sound-beep), [Game Loop (HALT)](/patterns/sinclair-zx-spectrum/assembly/framework/game-loop-halt)
+
+**Vault:** [ULA](/vault/hardware/ula) — port $FE and the speaker | [AY-3-8912](/vault/hardware/ay-3-8912) — the 128K sound chip | [ZX Spectrum](/vault/systems/zx-spectrum)
