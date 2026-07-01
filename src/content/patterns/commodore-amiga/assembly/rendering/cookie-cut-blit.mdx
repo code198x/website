@@ -1,0 +1,118 @@
+---
+title: "Cookie-Cut Blit"
+summary: "Draw a shaped, transparent object over the background using all four blitter channels — a mask decides pixel by pixel whether to keep the image or the scenery behind it. The heart of every Amiga bob."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "advanced"
+tags: ["blitter", "mask", "bob", "transparency", "graphics"]
+evolution:
+  previous: "blitter-copy"
+  next: null
+related:
+  patterns: ["blitter-copy", "sprite-control-words"]
+  vault: ["blitter", "commodore-amiga"]
+---
+
+## Overview
+
+A [straight copy](/patterns/commodore-amiga/assembly/rendering/blitter-copy) draws a rectangle — but game objects aren't rectangles, and the corners of a spaceship shouldn't paint over the stars behind it. The cookie-cut blit solves both at once: it uses a **mask** to stamp only the object's own pixels onto the background, leaving the scenery showing through everywhere else. This is how the Amiga draws a *bob* (blitter object), and it's the single technique that most defines Amiga game graphics. It puts all four channels to work in one pass.
+
+## Code
+
+```m68k
+; =============================================================================
+; COOKIE-CUT BLIT - AMIGA
+; Draw a masked shape onto the background:
+;   D = (A AND B) OR (NOT A AND C)          minterm $CA
+;   A = mask   B = image   C = background (read)   D = screen (write)
+; =============================================================================
+
+DMACONR  equ $002
+BLTCON0  equ $040
+BLTCON1  equ $042
+BLTAFWM  equ $044
+BLTALWM  equ $046
+BLTCPT   equ $048
+BLTBPT   equ $04c
+BLTAPT   equ $050
+BLTDPT   equ $054
+BLTSIZE  equ $058
+BLTCMOD  equ $060
+BLTBMOD  equ $062
+BLTAMOD  equ $064
+BLTDMOD  equ $066
+
+OBJ_W     equ 2                  ; object is 2 words wide before shifting
+H_LINES   equ 16
+SCR_WORDS equ 20                 ; 320-px bitplane
+
+; a0 = mask, a1 = image, a2 = destination (background: read AND write)
+; d0 = horizontal shift 0..15 (the sub-word part of the X position)
+cookie_cut:
+            lea     $dff000,a5
+            bsr     wait_blit
+
+            move.w  d0,d1
+            ror.w   #4,d1                        ; shift value -> bits 12-15 (ASH)
+            move.w  d1,d2
+            or.w    #$0fca,d2                    ; A,B,C,D all on + minterm $CA
+            move.w  d2,BLTCON0(a5)
+            move.w  d1,BLTCON1(a5)               ; BSH = ASH: shift mask and image alike
+
+            move.w  #$ffff,BLTAFWM(a5)
+            move.w  #$ffff,BLTALWM(a5)
+
+            ; source mask+image are (OBJ_W+1) words wide to hold the shift spill
+            move.w  #0,BLTAMOD(a5)
+            move.w  #0,BLTBMOD(a5)
+            move.w  #(SCR_WORDS-(OBJ_W+1))*2,BLTCMOD(a5)
+            move.w  #(SCR_WORDS-(OBJ_W+1))*2,BLTDMOD(a5)
+
+            move.l  a0,BLTAPT(a5)                ; mask
+            move.l  a1,BLTBPT(a5)                ; image
+            move.l  a2,BLTCPT(a5)                ; background in
+            move.l  a2,BLTDPT(a5)                ; screen out (same address)
+            move.w  #H_LINES*64+(OBJ_W+1),BLTSIZE(a5)  ; +1 word for the shift
+            rts
+
+wait_blit:
+            btst    #6,DMACONR(a5)               ; wait for BBUSY to clear
+.wb:        btst    #6,DMACONR(a5)
+            bne.s   .wb
+            rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | Setup only; the blitter does the compositing |
+| Memory | Mask + image (and one blit **per bitplane**), all in chip RAM |
+| Limitation | Slower than a plain copy — four channels means four times the DMA |
+
+**When to use:** Any moving object that isn't a solid rectangle — players, enemies, shots, pickups.
+
+**When to avoid:** Full-screen background moves (use a plain [copy](/patterns/commodore-amiga/assembly/rendering/blitter-copy) or hardware sprites for a few small objects).
+
+## The $CA minterm, read aloud
+
+The whole trick is one truth table. Minterm **`$CA`** computes `D = (A AND B) OR (NOT A AND C)`:
+
+- **Where the mask (A) is 1** — the object is solid — take the **image** (B).
+- **Where the mask (A) is 0** — the object is transparent — keep the **background** (C).
+
+C and D point at the *same* screen address, so the blitter reads the background, mixes the object in, and writes the result back in a single pass. Build the mask by setting a bit for every pixel the object occupies (a filled silhouette), and the shape cuts itself out cleanly — hence "cookie-cut".
+
+## Placing it at any X: the shift
+
+A bitplane address only lands on 16-pixel word boundaries, but objects move a pixel at a time. The gap is the blitter's **barrel shifter**: word-align the destination to the pixel *left* of where you want the object, then put the leftover 0–15 pixels in the A shift (`ASH`, bits 12–15 of `BLTCON0`) and the matching B shift (`BSH`, in `BLTCON1`). Shifting slides mask and image right by that many pixels — which spills into one extra word on the right, so the blit is **one word wider** than the object (`OBJ_W+1`) and the source graphics are stored that width too. The first/last-word masks can trim the spill at the screen edges.
+
+## One blit per bitplane
+
+An object with colour needs several bitplanes, and each is a separate blit — but they share the **same mask**. So a real bob loops over the planes: for plane *n*, point B at the object's plane-*n* image and D at the screen's plane *n*, keep A pointed at the one mask, and blit. The mask defines the silhouette once; each plane fills in its share of the colour. Erasing the object again — before it moves — is a plain copy of the saved background, which is why bob engines keep a clean copy of what each object covered.
+
+## Related
+
+**Patterns:** [Blitter Copy](/patterns/commodore-amiga/assembly/rendering/blitter-copy), [Sprite Control Words](/patterns/commodore-amiga/assembly/rendering/sprite-control-words)
+
+**Vault:** [Blitter](/vault/hardware/blitter) | [Commodore Amiga](/vault/systems/commodore-amiga)

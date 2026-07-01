@@ -1,0 +1,97 @@
+---
+title: "Blitter Copy"
+summary: "Move a rectangular block of graphics with the Amiga's blitter instead of the CPU — set four registers, write BLTSIZE, and Agnus streams the copy while the processor does something else."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["blitter", "agnus", "graphics", "dma"]
+evolution:
+  previous: null
+  next: "cookie-cut-blit"
+related:
+  patterns: ["cookie-cut-blit", "copper-list-basics"]
+  vault: ["blitter", "commodore-amiga"]
+---
+
+## Overview
+
+The blitter is the engine inside [Agnus](/vault/hardware/blitter) that moves rectangular blocks of memory without the CPU — the single most important reason Amiga games move so much on screen. It has four DMA channels (**A, B, C, D**) and a logic unit that combines them, but its simplest job is a straight block copy: read source through A, write it to destination through D. You point two registers at the memory, tell it the shape, and one write to `BLTSIZE` sets it running. The processor is free the moment the blit starts.
+
+## Code
+
+```m68k
+; =============================================================================
+; BLITTER COPY - AMIGA (Agnus blitter)
+; Copy a rectangular block of one bitplane: D = A
+; =============================================================================
+
+DMACONR  equ $002
+BLTCON0  equ $040
+BLTCON1  equ $042
+BLTAFWM  equ $044
+BLTALWM  equ $046
+BLTAPT   equ $050
+BLTDPT   equ $054
+BLTSIZE  equ $058
+BLTAMOD  equ $064
+BLTDMOD  equ $066
+
+W_WORDS   equ 2                  ; block width  = 2 words = 32 px
+H_LINES   equ 16                 ; block height = 16 lines
+SCR_WORDS equ 20                 ; destination bitplane = 320 px = 20 words wide
+
+; a0 = source, a1 = destination (both in chip RAM)
+blit_copy:
+            lea     $dff000,a5
+            bsr     wait_blit                        ; never touch regs mid-blit
+
+            move.w  #$09f0,BLTCON0(a5)               ; USEA+USED, minterm $F0: D = A
+            move.w  #$0000,BLTCON1(a5)               ; no shift, no special mode
+            move.w  #$ffff,BLTAFWM(a5)               ; use every bit of the first...
+            move.w  #$ffff,BLTALWM(a5)               ; ...and the last word
+
+            move.w  #0,BLTAMOD(a5)                   ; source is packed tight
+            move.w  #(SCR_WORDS-W_WORDS)*2,BLTDMOD(a5) ; dest skips the rest of the line
+
+            move.l  a0,BLTAPT(a5)                    ; source pointer
+            move.l  a1,BLTDPT(a5)                    ; destination pointer
+            move.w  #H_LINES*64+W_WORDS,BLTSIZE(a5)  ; height*64 + width — STARTS IT
+            rts
+
+; The classic blitter wait: btst the high byte, bit 6 = BBUSY
+wait_blit:
+            btst    #6,DMACONR(a5)                   ; dummy read (early-Agnus guard)
+.wb:        btst    #6,DMACONR(a5)
+            bne.s   .wb
+            rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | Almost none — the blitter runs the copy; you only set it up |
+| Memory | Source and destination both in **chip** RAM |
+| Limitation | One bitplane per blit; the blitter and CPU contend for chip-RAM cycles |
+
+**When to use:** Clearing the screen, copying backgrounds, restoring what a moving object erased — any bulk pixel move.
+
+**When to avoid:** A handful of bytes; the setup cost isn't worth it below a few hundred. And a *transparent* shape needs the [cookie-cut](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit) version.
+
+## The channels and the minterm
+
+The blitter has four sources — A, B, C, D — and `BLTCON0`'s low byte is a **minterm**: a truth table saying, for every combination of the A/B/C bits, whether the output bit is 1. All 256 logic functions are available. For a plain copy you enable just A and D (the `$0900` bits) and use minterm **`$F0`**, which means "output = A" — so `$09F0`. Enable more channels and change the minterm and the same hardware masks, merges or [cookie-cuts](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit); the copy is the degenerate case with one source.
+
+## BLTSIZE starts it — then wait
+
+Writing `BLTSIZE` is the trigger: the blit begins immediately, so it must be the **last** register you set. The value packs height and width — `height * 64 + width_in_words` — with width in the low 6 bits (max 64) and height in the top 10. From then the blitter owns those registers until it's done, so before the *next* blit (or any register change) you must wait for it. `BBUSY` in `DMACONR` says whether it's running; the `btst #6,$dff002` idiom tests it in the register's high byte (bit 6 there is bit 14 of the word — see the [Blitter vault entry](/vault/hardware/blitter)). The leading dummy `btst` guards a timing quirk on early Agnus revisions.
+
+## Modulos: minding the screen width
+
+A 32-pixel-wide block is 2 words, but the screen is 20 words wide — so after each copied line the destination pointer must skip the other 18 words to reach the next line down. That skip is the **modulo**: `(screen_words - blit_words) * 2` bytes, added automatically after every line. The source here is a tightly-packed image, so its modulo is 0. Modulos are what let the blitter carve a small rectangle out of, or into, a much wider bitmap.
+
+## Related
+
+**Patterns:** [Cookie-Cut Blit](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit), [Copper List Basics](/patterns/commodore-amiga/assembly/rendering/copper-list-basics)
+
+**Vault:** [Blitter](/vault/hardware/blitter) | [Commodore Amiga](/vault/systems/commodore-amiga)
