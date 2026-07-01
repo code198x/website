@@ -1,0 +1,99 @@
+---
+title: "A Square Wave"
+summary: "Enable one of the NES APU's pulse channels, set its duty, volume and 11-bit timer, and it holds a tone on its own — the foundation of every NES sound."
+platform: "nintendo-nes"
+category: "audio"
+difficulty: "beginner"
+tags: ["apu", "pulse", "square-wave", "audio"]
+evolution:
+  previous: null
+  next: "sound-effects"
+related:
+  patterns: ["nmi-game-loop"]
+  vault: ["apu", "nintendo-nes"]
+---
+
+## Overview
+
+The NES doesn't play samples — its APU **synthesises** five fixed voices: two pulse (square) channels, a triangle, noise, and a one-off sample channel. The two pulse channels are where you start. Unlike [Paula's sample DMA](/patterns/commodore-amiga/audio/playing-a-sample), you don't hand the NES a waveform; you switch a channel on, pick its **duty** (the shape of the square), its **volume**, and an **11-bit timer** that sets the pitch — and the hardware oscillates by itself, forever, until you change it. Getting a tone out is three registers and an enable bit.
+
+## Code
+
+```ca65
+; =============================================================================
+; A SQUARE WAVE - NES (APU)
+; Hold a continuous tone on pulse channel 1
+; =============================================================================
+
+APUSTATUS    = $4015    ; channel enable (write) / status (read)
+PULSE1_VOL   = $4000    ; DDLC VVVV - duty, length-halt, const-vol, volume
+PULSE1_SWEEP = $4001    ; frequency sweep unit
+PULSE1_LO    = $4002    ; timer, low 8 bits
+PULSE1_HI    = $4003    ; timer high 3 bits + length-counter load
+
+start:
+    lda #%00000001         ; bit 0 = enable pulse channel 1
+    sta APUSTATUS
+
+    lda #%10111111         ; duty 10 (50%), length halted, constant vol 15
+    sta PULSE1_VOL
+    lda #%00000000
+    sta PULSE1_SWEEP       ; sweep off — a steady pitch
+
+    lda #$FD               ; timer low  \  253 -> ~440 Hz (A-4)
+    sta PULSE1_LO          ;             /
+    lda #$00               ; timer high bits 0 (length load ignored — halted)
+    sta PULSE1_HI
+
+    ; the note now plays on its own — nothing more to do
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | None — the channel oscillates in hardware |
+| Memory | A handful of register writes |
+| Limitation | Fixed square shape; volume is a coarse 0–15; **no** sample playback here |
+
+**When to use:** Every NES tone — leads, bleeps, the start of any music routine.
+
+**When to avoid:** Nothing simpler exists on the NES; this *is* the base case.
+
+## The five voices
+
+The APU is a fixed synthesiser, not a sampler. Each channel has its own character and its own register block:
+
+| Channel | Registers | Role |
+|---------|-----------|------|
+| Pulse 1 | `$4000–$4003` | Square wave, four duties, lead |
+| Pulse 2 | `$4004–$4007` | A second square, harmony |
+| Triangle | `$4008–$400B` | Fixed-volume triangle, bass |
+| Noise | `$400C–$400F` | Pseudo-random, percussion & effects |
+| DMC | `$4010–$4013` | 1-bit delta samples, drums & speech |
+
+Nothing plays until you set its bit in `$4015`: bit 0 pulse 1, bit 1 pulse 2, bit 2 triangle, bit 3 noise, bit 4 DMC. Write `%00001111` to arm all but the DMC.
+
+## Timer into pitch
+
+Pitch is the **timer** — an 11-bit value split across `$4002` (low 8 bits) and the bottom 3 bits of `$4003`. A pulse channel's frequency on NTSC is:
+
+```
+frequency (Hz) = 1789773 / (16 * (timer + 1))
+```
+
+So a *bigger* timer means a *lower* note. Timer 253 gives ≈440 Hz (A-4). Music routines keep a table of timer values, one per semitone; halving a timer raises the note an octave. The triangle uses the same idea but divides by 32, so it sounds an octave lower for the same value — handy for bass.
+
+## Why a channel goes silent
+
+Three things can mute a pulse channel, and each is a classic first-tone bug:
+
+- **The length counter.** Every channel has a counter that ticks down and silences it. Set **bit 5** of `$4000` (length-counter halt) to freeze it, as above, and the tone sustains. Leave it clear and the note fades out on its own — which is what you *want* for effects.
+- **Constant vs envelope volume.** **Bit 4** set means "the low nibble *is* the volume". Clear it and that nibble becomes an envelope *rate* instead, and the channel decays from 15 to 0.
+- **The sweep unit.** If `$4001` is misconfigured it can drive the pitch out of range and mute the channel. Write `$00` to leave it alone.
+
+## Related
+
+**Patterns:** [NMI Game Loop](/patterns/nintendo-nes/framework/nmi-game-loop)
+
+**Vault:** [APU](/vault/hardware/apu) | [Nintendo Entertainment System](/vault/systems/nes)
