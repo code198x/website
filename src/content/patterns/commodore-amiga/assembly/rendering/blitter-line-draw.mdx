@@ -1,0 +1,156 @@
+---
+title: "Blitter Line Draw"
+summary: "The blitter isn't only a copier — in line mode it plots a Bresenham line in hardware, one pixel at a time, straight into a bitplane. Feed it endpoints and an octant; it draws the line while the CPU moves on."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "advanced"
+tags: ["blitter", "line", "bresenham", "vector", "graphics"]
+evolution:
+  previous: "cookie-cut-blit"
+  next: null
+related:
+  patterns: ["cookie-cut-blit", "blitter-copy"]
+  vault: ["blitter", "commodore-amiga"]
+---
+
+## Overview
+
+Setting bit 0 of `BLTCON1` flips the blitter from a block mover into a **line drawer**. In line mode it reinterprets its own registers to run a Bresenham line algorithm in silicon: the A channel becomes the error accumulator, B a texture pattern, and C/D the bitplane you're drawing into. You hand it a start word, a start column, the two axis lengths and a direction (octant), and it plots a pixel-perfect line — the foundation of wireframe 3D, vector effects, and, with [area fill](#textures-fills-and-solid-shapes), filled polygons. Like every blit, it runs on its own once started.
+
+## Code
+
+```m68k
+; =============================================================================
+; BLITTER LINE DRAW - AMIGA (blitter line mode)
+; Draw a Bresenham line into one bitplane.
+; Inputs, already reduced to an octant so dx (major) >= dy (minor):
+;   d0 = dx    d1 = dy
+;   d2 = octant, as SUD/SUL/AUL already in BLTCON1 bits 4-2
+;   a1 = address of the bitplane word holding (x0,y0)
+;   d3 = x0 AND 15   (start column inside that word)
+; =============================================================================
+
+DMACONR  equ $002
+BLTCON0  equ $040
+BLTCON1  equ $042
+BLTAFWM  equ $044
+BLTALWM  equ $046
+BLTCPT   equ $048
+BLTAPTL  equ $052            ; A pointer, low word = the accumulator in line mode
+BLTDPT   equ $054
+BLTSIZE  equ $058
+BLTCMOD  equ $060
+BLTBMOD  equ $062
+BLTAMOD  equ $064
+BLTDMOD  equ $066
+BLTBDAT  equ $070
+BLTADAT  equ $072
+
+SCR_BYTES equ 40             ; bitplane row = 320 px = 40 bytes
+
+line_draw:
+            lea     $dff000,a5
+            bsr     wait_blit
+
+            ; --- Bresenham accumulator seed and the two step modulos ---
+            move.w  d1,d4
+            add.w   d4,d4
+            add.w   d4,d4                    ; d4 = 4*dy
+            move.w  d4,BLTBMOD(a5)           ; the step taken on every pixel
+            move.w  d4,d5
+            sub.w   d0,d5
+            sub.w   d0,d5                    ; d5 = 4*dy - 2*dx  (the seed)
+            move.w  d5,BLTAPTL(a5)
+            sub.w   d0,d4
+            sub.w   d0,d4                    ; d4 = 4*dy - 4*dx = 4*(dy-dx)
+            move.w  d4,BLTAMOD(a5)           ; the extra step when error turns over
+
+            move.w  #$8000,BLTADAT(a5)       ; the single accumulator bit
+            move.w  #$ffff,BLTBDAT(a5)       ; texture = a solid line
+            move.w  #$ffff,BLTAFWM(a5)       ; line mode: both masks MUST be $FFFF
+            move.w  #$ffff,BLTALWM(a5)
+
+            ; --- Control words: start column, channels, minterm, octant, LINE ---
+            move.w  d3,d6
+            ror.w   #4,d6                    ; x0&15 -> START (bits 12-15)
+            or.w    #$0bca,d6                ; USEA+USEC+USED (fixed) + minterm $CA
+            move.w  d6,BLTCON0(a5)
+
+            or.w    #$0001,d2                ; LINE = 1
+            tst.w   d5
+            bpl.s   .nosign
+            or.w    #$0040,d2                ; seed negative -> set SIGN (bit 6)
+.nosign:    move.w  d2,BLTCON1(a5)
+
+            move.l  a1,BLTCPT(a5)            ; read the bitplane...
+            move.l  a1,BLTDPT(a5)            ; ...and write it back
+            move.w  #SCR_BYTES,BLTCMOD(a5)
+            move.w  #SCR_BYTES,BLTDMOD(a5)
+
+            ; --- height = dx+1 pixels, width fixed at 2 words: this STARTS it ---
+            move.w  d0,d7
+            addq.w  #1,d7
+            lsl.w   #6,d7
+            addq.w  #2,d7
+            move.w  d7,BLTSIZE(a5)
+            rts
+
+wait_blit:
+            btst    #6,DMACONR(a5)
+.wb:        btst    #6,DMACONR(a5)
+            bne.s   .wb
+            rts
+```
+
+## Trade-offs
+
+| Aspect | Cost |
+|--------|------|
+| CPU | Setup per line; the blitter plots the pixels (≈2 cycles each) |
+| Memory | The bitplane, in chip RAM |
+| Limitation | One octant per call; endpoints must be reduced before setup |
+
+**When to use:** Wireframe and vector graphics, polygon outlines, star-lines, any drawn geometry.
+
+**When to avoid:** Axis-aligned rectangles (a plain memory fill is faster) and single short segments (CPU plotting may beat the setup).
+
+## Line mode rewires the blitter
+
+`BLTCON1[0] = 1` gives every register a new job (the bit tables are in the hardware reference). `BLTCON0`'s top nibble stops being the A shift and becomes **START** — the column (`x0 AND 15`) of the first pixel within its word. The channel-use bits are fixed at USEA+USEC+USED; `BLTCON1`'s top nibble becomes a **texture** start, bit 6 is **SIGN**, bits 4–2 are the **octant**, and bit 1 (**SING**) draws one dot per row instead of a run — the mode you use to make polygon outlines for filling.
+
+## The octant
+
+A Bresenham line only steps cleanly when the major axis is the longer one, so before setup you reduce the line to one of **eight octants**: take the absolute spans, make `dx` the larger and `dy` the smaller, and set the three direction bits from the signs and which axis dominates:
+
+| Octant | SUD SUL AUL |
+|-------:|:-----------:|
+| 0 | 1 1 0 |
+| 1 | 0 0 1 |
+| 2 | 0 1 1 |
+| 3 | 1 1 1 |
+| 4 | 1 0 1 |
+| 5 | 0 1 0 |
+| 6 | 0 0 0 |
+| 7 | 1 0 0 |
+
+Pick the octant, drop those three bits into `BLTCON1[4..2]`, and the blitter steps in the right direction and swaps its major/minor axes to match.
+
+## The accumulator and the modulos
+
+Line mode *is* Bresenham, with the A channel holding the running error. Three values drive it, all derived from the axis lengths:
+
+- **Seed** `4·dy − 2·dx` into `BLTAPTL` — the initial error. If it's negative, set the **SIGN** bit so the blitter knows the starting sign.
+- **`BLTBMOD = 4·dy`** — added to the error on every pixel.
+- **`BLTAMOD = 4·(dy − dx)`** — the correction applied on the steps where the minor axis advances.
+
+`BLTADAT` holds a single set bit (`$8000`) — the dot the shifter walks along the line — and `BLTSIZE`'s height is the pixel count (`dx + 1`), width fixed at 2 words. Writing `BLTSIZE` draws the whole line.
+
+## Textures, fills, and solid shapes
+
+`BLTBDAT` is the line's **texture**: `$FFFF` is solid, and other patterns give dashed and dotted lines (the texture bits are consumed as the line advances). The bigger prize is **area fill**. Draw a polygon's edges with `SING = 1` so each row gets exactly one boundary dot per edge, then run a second blit in **fill mode** (`IFE` inclusive or `EFE` exclusive in `BLTCON1`, in **descending** direction): a one-dimensional state machine walks each row and fills between the outline bits. Line mode to draw the edges, fill mode to colour them in — that pairing is how the Amiga rendered solid vector graphics.
+
+## Related
+
+**Patterns:** [Cookie-Cut Blit](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit), [Blitter Copy](/patterns/commodore-amiga/assembly/rendering/blitter-copy)
+
+**Vault:** [Blitter](/vault/hardware/blitter) | [Commodore Amiga](/vault/systems/commodore-amiga)
