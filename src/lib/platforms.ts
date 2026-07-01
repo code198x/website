@@ -129,7 +129,9 @@ export async function getPlatformsForPatternLibrary(): Promise<Array<{
   color: string;
   gradient?: string;
 }>> {
-  const platforms = await getActivePlatforms();
+  // Live systems only — next-tier machines have no patterns yet, so they'd show as
+  // 0-pattern dead-ends. Cross-platform is added below regardless of this filter.
+  const platforms = (await getActivePlatforms()).filter(p => p.data.tier === 'live');
 
   // Map collection IDs to pattern library slugs (NES uses shorter form)
   const patternSlugs: Record<string, string> = {

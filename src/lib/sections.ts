@@ -23,9 +23,10 @@ const SECTIONS: Record<string, Section> = {
     slug: 'foundations',
     name: 'Foundations',
     // Teal — a distinct identity that borrows no platform's colour (the catalogue is
-    // reds/oranges/browns with two blues) and reads with life in both light and dark,
-    // unlike the old neutral grey. Layouts derive a brightened variant for dark mode.
-    color: '#0d9488',
+    // reds/oranges/browns with two blues), alive in both light and dark. Teal-700 (not
+    // -600) so small accent text clears WCAG AA on the cream ground (4.85:1). Layouts
+    // derive a brightened variant for dark mode.
+    color: '#0f766e',
     tagline: 'The ideas every machine and language shares — taught once, before you pick one.',
   },
 };
