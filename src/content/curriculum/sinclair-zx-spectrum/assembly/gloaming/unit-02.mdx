@@ -10,6 +10,8 @@ tags: ["assembly", "z80", "bitmap", "screen-layout", "textures", "memory"]
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
+import RegisterBits from "@components/diagrams/RegisterBits.astro";
+import SpriteGrid from "@components/diagrams/SpriteGrid.astro";
 
 The square stands, but look at it: solid blocks of colour. Paint with no canvas under it. The ground should be *cobbled* — worn stone catching what light is left — and the walls should read as built, course on course of brick. This unit lays both, and on the way it meets the most famous oddity on the machine: how the Spectrum's bitmap is actually arranged.
 
@@ -25,14 +27,39 @@ Unit 1 called the bitmap and the attributes the screen's two memories, and then 
 
 One cell's pixels are eight bytes — but they are **not** eight bytes in a row. The Spectrum's screen is wired in three **thirds** of eight character rows each, and inside a cell the eight pixel rows sit **256 bytes apart**. Step down one pixel row by adding 256 — on the Z80, that's a single `inc h`.
 
-To texture *any* cell, we need its bitmap address from its column and row at run time. This is `scr_addr_cr`, and it's pure bit-shuffling — the row number splits into two pieces that land in different halves of the address:
+To texture *any* cell, we need its bitmap address from its column and row at run time. This is `scr_addr_cr`, and it's pure bit-shuffling: write the row number as `%000ttrrr` — two bits `tt` naming the third, three bits `rrr` for the character row within it — and the pieces land straight into the two halves of the address:
 
-```
-row  = %000ttrrr        col = %000ccccc
+<RegisterBits
+  address="H"
+  name="Bitmap address, high byte"
+  bits={[
+    { index: 7, label: "0" },
+    { index: 6, label: "1" },
+    { index: 5, label: "0" },
+    { index: 4, label: "Third 1", active: true },
+    { index: 3, label: "Third 0", active: true },
+    { index: 2, label: "0" },
+    { index: 1, label: "0" },
+    { index: 0, label: "0" },
+  ]}
+  caption="H: the fixed %010 of the $4000 screen base, then the row's third — the tt bits, kept exactly where they sat in the row number."
+/>
 
-H = %010t t000          the third, under the $4000 screen base
-L = %rrrc cccc          char row within the third, then the column
-```
+<RegisterBits
+  address="L"
+  name="Bitmap address, low byte"
+  bits={[
+    { index: 7, label: "Row 2", active: true },
+    { index: 6, label: "Row 1", active: true },
+    { index: 5, label: "Row 0", active: true },
+    { index: 4, label: "Col 4" },
+    { index: 3, label: "Col 3" },
+    { index: 2, label: "Col 2" },
+    { index: 1, label: "Col 1" },
+    { index: 0, label: "Col 0" },
+  ]}
+  caption="L: the character row within the third — the rrr bits, rotated up to the top — then the column in the low five bits."
+/>
 
 Two ANDs, three rotates, two ORs — no multiplication, no lookup table. The wiring that makes the layout strange also makes the address cheap.
 
@@ -40,16 +67,14 @@ Two ANDs, three rotates, two ORs — no multiplication, no lookup table. The wir
 
 A texture is just eight `defb` bytes — an 8×8 stamp. The cobbles are a *sparse stipple*: a scatter of single pixels, black left dominant so the ground stays dark:
 
-```
-%10000010    X.....X.
-%00000000    ........
-%00001000    ....X...
-%00000000    ........
-%00100001    ..X....X
-%00000000    ........
-%00010000    ...X....
-%00000000    ........
-```
+<SpriteGrid
+  bytes={[0x82, 0x00, 0x08, 0x00, 0x21, 0x00, 0x10, 0x00]}
+  width={8}
+  height={8}
+  bytesPerRow={1}
+  showHex={true}
+  caption="cobble_tex — six lit pixels in 64, no two in the same column, every other row empty. Sparse on purpose: the dusk needs the black."
+/>
 
 `blit_tex` stamps those eight bytes into one cell — `scr_addr_cr` finds the top row, `inc h` walks the other seven. `fill_ground` calls it for every cell in rows 1–23 (row 0 stays clean: the HUD). Note the loop order — texture first, *then* the attribute wash — mirrors what you already know: canvas, then paint.
 
@@ -69,16 +94,14 @@ Look closely at the walls: they've caught the stipple as well, in *their* INK �
 
 The walls deserve their own stamp — mortar courses, staggered verticals:
 
-```
-%00001000    ....X...
-%00001000    ....X...
-%00001000    ....X...
-%11111111    XXXXXXXX
-%10000000    X.......
-%10000000    X.......
-%10000000    X.......
-%11111111    XXXXXXXX
-```
+<SpriteGrid
+  bytes={[0x08, 0x08, 0x08, 0xff, 0x80, 0x80, 0x80, 0xff]}
+  width={8}
+  height={8}
+  bytesPerRow={1}
+  showHex={true}
+  caption="brick_tex — two full mortar courses, with the vertical joints staggered half a brick between them. Tiled across a wall, it reads as bond."
+/>
 
 But which cells get it? Here's the move that matters: **don't keep a second list of where the walls are — ask the screen.** Unit 1 said a cell's type and its colour are the same byte. `fill_walls` walks all the cells, reads each attribute back with `attr_addr_cr`, and tests one bit: wall attributes (`$0F`) have PAPER blue, so bit 3 — `WALL_BIT` — is set; cobble attributes (`$01`) have it clear. Wherever the bit says *wall*, the brick goes down, overwriting the stray stipple from milestone 1.
 

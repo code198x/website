@@ -10,6 +10,8 @@ tags: ["assembly", "z80", "attributes", "ldir", "djnz", "out", "memory"]
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
+import MemoryMap from "@components/diagrams/MemoryMap.astro";
+import RegisterBits from "@components/diagrams/RegisterBits.astro";
 
 The lamps are out. Night is coming to the square, and you are the lamplighter — but before a single lamp, before you can even take a step, there has to *be* a square.
 
@@ -28,29 +30,50 @@ The Spectrum's 256×192 screen is a grid of **32×24 character cells**, each 8 p
 - The **bitmap**, `$4000`–`$57FF`: one bit per pixel. This is the *canvas* — the shapes, the texture, the detail.
 - The **attributes**, `$5800`–`$5AFF`: one byte per cell. This is the *paint* — each cell gets exactly one INK (foreground) and one PAPER (background) colour, and nothing more.
 
-```
-Attribute memory: $5800 → $5AFF (768 bytes, one per cell)
+<MemoryMap
+  startAddress={0x4000}
+  endAddress={0xFFFF}
+  ranges={[
+    { start: 0x4000, end: 0x57FF, label: "Bitmap", sublabel: "the canvas — one bit per pixel, 6,144 bytes" },
+    { start: 0x5800, end: 0x5AFF, label: "Attributes", sublabel: "the paint — one byte per cell, 768 bytes" },
+    { start: 0x8000, end: 0x80FF, label: "Your program", sublabel: "org 32768" },
+  ]}
+  caption="The Spectrum's screen sits at the bottom of RAM: the bitmap first, the attribute table right behind it. Our program loads well clear at 32768."
+/>
 
-  col:    0     1     2    ...   31
-  row 0  $5800 $5801 $5802 ...  $581F
-  row 1  $5820 $5821 ...        $583F
-  ...
-  row 23 $5AE0 ...              $5AFF   ← last row
-```
+Attribute memory is a simple grid, one byte per cell, read left to right and top to bottom — the address of any cell is `$5800 + row*32 + col`:
 
-The address of any cell is `$5800 + row*32 + col`. Write a byte there and that cell takes those colours immediately — no redraw, no refresh. The screen *is* the map: change the map by changing memory.
+| Row | First cell (col 0) | Last cell (col 31) |
+|---|---|---|
+| 0 | `$5800` | `$581F` |
+| 1 | `$5820` | `$583F` |
+| ⋮ | ⋮ | ⋮ |
+| 23 | `$5AE0` | `$5AFF` |
+
+Write a byte anywhere in that grid and the cell takes those colours immediately — no redraw, no refresh. The screen *is* the map: change the map by changing memory.
 
 This unit works entirely in the paint. The canvas we simply *wipe* — whatever was on screen before our program ran is still sitting in the bitmap, and we want a bare stage. Unit 2 comes back for the canvas properly.
 
 ## The attribute byte
 
-One byte, packed tight:
+One byte, packed tight — FLASH and BRIGHT up top, then three bits of PAPER and three of INK, each holding a colour number from 0 (black) to 7 (white):
 
-```
- bit:  7      6      5  4  3      2  1  0
-       FLASH  BRIGHT  P  P  P      I  I  I
-              └ PAPER (0-7) ┘   └ INK (0-7) ┘
-```
+<RegisterBits
+  address="$5800 + row*32 + col"
+  name="The attribute byte"
+  bits={[
+    { index: 7, label: "FLASH" },
+    { index: 6, label: "BRIGHT" },
+    { index: 5, label: "Paper 2" },
+    { index: 4, label: "Paper 1" },
+    { index: 3, label: "Paper 0" },
+    { index: 2, label: "Ink 2" },
+    { index: 1, label: "Ink 1" },
+    { index: 0, label: "Ink 0" },
+  ]}
+  value={0x0f}
+  caption="The wall byte, $0F: PAPER %001 (blue), INK %111 (white), FLASH and BRIGHT clear. The cobble byte $01 differs only in PAPER — %000, black."
+/>
 
 This unit lays just the first two cell types. The rest — unlit lamp, lit lamp, the lamplighter, the draught — join the table as the game grows.
 
