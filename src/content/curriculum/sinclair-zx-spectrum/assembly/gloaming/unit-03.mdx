@@ -1,134 +1,123 @@
 ---
-title: "The Heartbeat"
-description: "Replace the idle loop with a real one. Tell the Z80 to listen for the 50 Hz frame interrupt (IM 1, EI) and HALT until each arrives — so the game beats once per frame, the heartbeat every later unit moves to."
-pubDate: 2026-06-01
+title: "The Lamplighter"
+description: "Draw the game's first character — eight bytes of figure blitted like any texture, his position held as data, and his own attribute colour to lift him out of the dark."
+pubDate: 2026-07-02
 game: 1
 unit: 3
-tags: ["assembly", "z80", "game-loop", "interrupts", "halt", "timing"]
+tags: ["assembly", "z80", "bitmap", "sprite", "attributes", "character"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
-import VideoPlayer from "@components/VideoPlayer.astro";
 
-The square is built and the lamplighter stands in it — but the program drew them once and then just sat there, holding the picture with a `halt`/`jr` that did nothing useful. That was fine for a still scene. A game is not a still scene. A game *runs* — frame after frame, reading the player, moving the world, redrawing it — and it never stops until you win or lose.
+The square is built and the dusk is settling into it. Someone has to light the lamps. This unit draws him — and on this machine, the surprise is how little *new* machinery that takes. You already own almost everything a character needs.
 
-So the lamplighter needs a **loop**. And not just any loop: one tied to the screen itself, so the game runs at exactly the same pace on every [Spectrum](/vault/systems/zx-spectrum), and so each frame's work lands neatly between one screen-draw and the next. This unit builds that loop — the first of Gloaming's two big techniques, the **frame-locked game loop**.
+## A character is a texture with a name
 
-## Where we start
-
-Unit 2's lamplighter, drawn once and idling on a dead `halt`/`jr` loop that holds the picture but does nothing. We replace that idle loop with a living one.
-
-## A game is a loop
-
-Every game, on every machine, is the same shape underneath:
+Unit 2 taught the whole trick: eight `defb` bytes, stamped into a cell's bitmap by `blit_tex`'s `inc h` walk. A character's shape is exactly the same kind of data. Here is the lamplighter — hood, lantern arm out, feet apart on the cobbles:
 
 ```
-forever:
-    read the INPUT   (what is the player doing?)
-    UPDATE the world (move things, apply the rules)
-    DRAW the result  (show the new state)
+%00111100    ..XXXX..    the hood
+%00111100    ..XXXX..
+%00011000    ...XX...    the neck
+%01111110    .XXXXXX.    arms out — one holds the pole
+%00011000    ...XX...    the body
+%00011000    ...XX...
+%00100100    ..X..X..    legs
+%01000010    .X....X.    feet, apart
 ```
 
-Round and round, many times a second. One trip through that cycle is one **frame**. Our job is to build the `forever` and the three empty stages inside it; the stages get filled in over the next units (input in Unit 4, movement in Unit 5).
+What makes him a *character* rather than scenery isn't the drawing. It's two things this unit adds around the drawing: his position lives in **data**, and his cell gets a colour that is **his**.
 
-## Why lock it to the screen
+## Position is data
 
-We could just spin that loop as fast as the Z80 can go. But then the game would run at whatever raw speed the processor manages — and it would do its work at random moments while the screen is being drawn, causing tearing and flicker. Worse, "as fast as possible" is a different speed on a 48K Spectrum, a 128K, and a Next.
+The textures went everywhere; the lamplighter is somewhere. His cell lives in two variables:
 
-The fix is to pace the loop to the **screen** itself. The Spectrum redraws its display **50 times a second**, and every time it finishes one complete screen it raises an **interrupt** — a precise tap on the shoulder, 50 times a second, the same on every machine. If we run our loop exactly once per tap, the game beats at a rock-steady 50 Hz everywhere. That beat is the **heartbeat**.
+```
+lamp_col:   defb  START_COL      ; 15
+lamp_row:   defb  START_ROW      ; 11
+```
 
-## IM 1, EI, and the magic of HALT
+Nothing in the drawing code knows the numbers. `pos_bc` reads the variables into the `(C, B)` registers that `scr_addr_cr` and `attr_addr_cr` already expect, and `draw_lamp` asks it — twice, once per address — rather than remembering anything itself. That indirection looks like ceremony today, drawing one figure in one place. It's the whole future: when he moves, in Unit 6, *changing the data will be changing where he is*. The setup writes `START_COL` and `START_ROW` into the variables before anything draws, and everything downstream just asks.
 
-Three instructions give us the heartbeat:
+## Milestone 1 — the figure, in borrowed clothes
 
-- **`IM 1`** — *interrupt mode 1*. It tells the Z80 to use the Spectrum ROM's built-in interrupt handler, the one wired to that 50 Hz screen tap. (The ROM routine keeps the clock and scans the keyboard; we get it for free.)
-- **`EI`** — *enable interrupts*. Until we say this, the Z80 ignores the taps entirely. With it, each one gets through.
-- **`HALT`** — sleep the processor until the **next** interrupt arrives.
-
-That last one is the trick. A bare `HALT` would freeze the machine — but with interrupts enabled, `HALT` doesn't freeze, it *waits*: the CPU dozes until the next 50 Hz tap wakes it, then carries straight on. So **one `HALT` is "wait for exactly one frame."** Put it at the top of the loop and the loop can never run faster than 50 times a second — it's bolted to the screen.
-
-## Milestone — swap the dead loop for a beating one
-
-The change is small and total. Everything that draws the *fixed* scene — border, cobbles, walls, the lamplighter — stays in setup, drawn once. Then `IM 1` / `EI` start the beat, and the old `halt`/`jr` idle becomes a real `game_loop`: one `HALT` to wait for the frame, the three (still empty) stages, and round again.
+Draw his shape and nothing else — the same eight-byte stamp `blit_tex` does, aimed at his cell:
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-03/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-03/steps/step-01.asm"
   lang="z80"
-  title="Step 1: IM 1 / EI, and an idle loop becomes the game loop"
+  title="Step 1: blit the figure into his cell — shape only, no colour"
+  context={3}
+/>
+
+Run it, and look *carefully* — centre of the square, row 11:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-03/step-01-blue-figure.png" alt="The stippled square with the lamplighter drawn at the centre in the same dark blue as the cobble stipple — the figure is barely distinguishable from the ground around him." caption="He's there — dead centre — and you can hardly see him. His pixels borrow the cell's INK, and the cell is still dressed as ground: cobble blue on black, the same as every stipple dot around him." />
+
+He is almost invisible, and the *almost* is the lesson. Pixels have no colour of their own — they are lit or unlit, and lit pixels show whatever INK their cell's attribute holds. His cell still wears the cobble attribute from Unit 1, so his figure is drawn in the ground's dark blue, camouflaged in a field of dots the same colour. The shape arrived; the identity didn't.
+
+## Milestone 2 — his own light
+
+Three lines: compute his cell's attribute address, and write him a colour of his own before the shape goes down. `LAMP_ATTR` is bright white INK on black PAPER — of everyone in this dusk, only he carries light:
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-03/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-03/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: the cell's attribute becomes his — bright white on black"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-03/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-03/steps/step-02.asm" lang="z80" />
 </details>
 
-On screen, **nothing changes**:
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-03/step-02-lamplighter.png" alt="The stippled square with the lamplighter standing bright white at the centre, clearly visible against the dark ground." caption="The same pixels, his own colour. One attribute write separates a smudge in the stipple from the game's protagonist." />
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-03/step-01-steady.png" alt="The walled square and white lamplighter from Unit 2, holding perfectly steady." caption="Identical to Unit 2 — and that's the proof. The program is no longer running once and idling; it's awake and beating fifty times a second, running a real loop that just has nothing to do yet." />
+The same shape, transformed by one byte. Notice what kind of byte it is: an attribute. Unit 1 said a cell's type and its colour are the same thing, and Unit 2 used that to find the walls. Now it cuts the other way — *giving* a cell a colour is giving it a type. The lamplighter's white, the walls' blue paper, and soon the lamps' own attributes: the game will tell everything apart by the byte its cell wears.
 
-That steadiness *is* the result. We've built the engine; the next units give it something to drive.
-
-## See the heartbeat
-
-A steady picture is a poor way to show a loop is running. So let's make the beat visible: keep everything, but in the loop, bump a one-byte counter each frame and write it to the **border**.
+## Assemble and run
 
 ```
-game_loop:
-    halt                ; wait one frame
-    ld   a, (tick)
-    inc  a
-    ld   (tick), a
-    out  ($FE), a       ; border steps to a new colour every frame
-    jr   game_loop
-...
-tick:
-    defb 0
+pasmonext --sna steps/step-02.asm steps/step-02.sna
 ```
-
-Now the border steps through its eight colours — a full cycle eight times a second — while the square and the lamplighter hold dead still. That flicker *is* the heartbeat, one step per beat:
-
-<VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-03/heartbeat-seen.mp4"
-  caption="The same steady square and figure — but the border now steps colour once per frame, driven by a counter in the loop. The cycling border is the 50 Hz heartbeat made visible; the real game keeps the border black."
-  autoplay={true}
-  loop={true}
-/>
-
-The real game keeps a black border — this is just a way to *see* the beat. (The complete demonstration program is `heartbeat-seen.asm` alongside the steps.)
 
 ## When it's wrong, see why
 
-The heartbeat fails in a couple of distinctive ways:
-
-- **The screen freezes solid and never settles.** Missing `ei`, or it runs before `im 1`. With interrupts off, the first `halt` sleeps forever, waiting for a tap that can't arrive. Order it `im 1` then `ei`, both before the loop.
-- **It runs for about a second, then garbles or crashes.** The ROM's interrupt routine uses the stack; if `SP` points somewhere bad it corrupts memory each frame. Leave the stack pointer alone for now.
-- **The lamplighter flickers or disappears.** His draw drifted *into* the loop, and something is fighting it. The static scene belongs in setup, drawn once; the loop stays empty until Unit 5.
-- **It looks exactly like Unit 2.** Correct — that's the expected result. Nothing should change on screen yet; the border demo above is how you confirm the loop is alive.
+- **No figure at all, anywhere.** `draw_lamp` never ran, or the position variables hold rubbish. Check the setup writes `START_COL`/`START_ROW` into `lamp_col`/`lamp_row` *before* `call draw_lamp`, and that `pos_bc` reads row into `B`, column into `C` — swapped registers put him at (11, 15) instead of (15, 11), or off the map entirely.
+- **A white square, no shape.** The attribute landed, the pixels didn't — the shape half of `draw_lamp` is aiming somewhere else. Check it feeds `scr_addr_cr` the position (via `pos_bc`), points `DE` at `lamplighter`, and walks the rows with `inc h`.
+- **He's there but still blue.** The attribute write is missing or aimed wrong. It goes through `attr_addr_cr` (the `$5800` table), not `scr_addr_cr` — a colour written into the bitmap is just four stray pixels.
+- **The figure is upside down or scrambled.** The `defb` order. The first byte is the top pixel row; check the eight lines against the pattern above.
+- **He has a stipple dot for a hat.** Harmless, and worth understanding: his glyph *replaced* the eight bitmap bytes of his cell, so any stipple in his cell is gone — but the cells around him still carry theirs. If a dot seems to touch him, it belongs to a neighbouring cell.
 
 ## Before and after
 
-You started with a picture that was drawn and abandoned, and finished with the same picture *running* — fifty beats a second, the same on every Spectrum. The change was three instructions and one relabelled loop, and it bought the single most important thing a game has: a steady, screen-locked place to put everything that happens next. From here on, every new behaviour lives inside this loop.
+The square was empty; now its keeper stands in it. The drawing cost almost nothing new — the glyph is Unit 2's texture idea wearing a name, and the address routines were already on the page. What's genuinely new is smaller and more important: **position as data** (two bytes the whole game will steer him by) and **identity as an attribute** (one byte that makes a cell *his*). Both are promises the coming units collect on.
 
-## Try this: slow the beat
+## Try this: redraw him
 
-Put a **second** `halt` just after the first. Now the loop waits two frames before going round, so it beats at 25 Hz. Combine it with the border demo and the colours step half as fast. The number of `HALT`s per loop sets the pace — a dial you can turn.
+Design your own eight bytes — taller hood, a longer pole, a broader stance. Keep the silhouette readable at 8×8: single pixels vanish into the stipple, so build him from runs of two or more. If your figure reads badly, hold the page at arm's length — if it doesn't read there, it won't read on a television either.
 
-## Try this: pull the heartbeat out
+## Try this: start him somewhere else
 
-Delete the `ei`. Run it. The machine freezes on the first `halt` — a dead, frozen square — because `HALT` is now waiting for an interrupt that, with interrupts disabled, can never come. Put `ei` back and it lives again. That one line is the difference between a sleep you wake from and a sleep you don't.
+Change `START_COL` and `START_ROW` — the corner by a wall (`2, 2`), the bottom of the square (`15, 22`). One constant each, and every part of the drawing follows, because nothing but the data knew where he was. (Keep him off row 0 — that ledge belongs to the HUD — and inside the walls, or he'll stand *in* the brick until Unit 9 teaches the game to mind.)
+
+## Try this: a lamplighter less bright
+
+Swap `LAMP_ATTR` to `%00000111` — white, but without the BRIGHT bit. Run it and compare. The Spectrum's BRIGHT gives each colour two intensities, and the difference between the two whites is the difference between "a figure in the dusk" and "the one carrying the light". We spent the bit deliberately.
 
 ## What you've learnt
 
-- A game is a **loop**: read input, update the world, draw it — once per frame, forever.
-- The Spectrum raises a **frame interrupt 50 times a second**; `IM 1` selects the ROM handler and `EI` lets the taps through.
-- **`HALT` waits for the next interrupt** — one `HALT` per loop locks the game to 50 Hz, the same speed on every machine.
-- The program splits into **setup** (the fixed scene, drawn once) and the **loop** (what changes, every frame).
-- A steady screen can still hide a running engine — the border counter is how you *prove* the beat.
+- A character's shape is **texture data** — eight `defb` bytes, drawn with the machinery you already had.
+- **Position is data**: `lamp_col`/`lamp_row` are the only place he *is*; `pos_bc` hands them to the address routines, and nothing else knows.
+- Pixels **borrow their cell's INK** — a shape without its own attribute wears whatever the ground was wearing.
+- **An attribute write is an identity**: one byte marks the cell as his, the way blue paper marks a wall.
+- `draw_lamp` fetches the position **fresh before each address calculation** — cheap insurance that stays correct however the code around it grows.
 
 ## What's next
 
-The loop has an **INPUT** stage that does nothing. In **Unit 4** we fill it in: reading the keyboard with `IN A,($FE)`, watching one half-row of keys for a direction press. It's the first thing the heartbeat reacts to — and the last piece before the lamplighter takes his first step.
+He stands in a square that holds perfectly still — because the program ends in a spin, doing nothing forever. In **Unit 4** that idle spin becomes the game's **heartbeat**: a loop locked to the television's 50 Hz frame, beating once per frame whether there's work to do or not. It looks like nothing — the screen won't change — and you'll build a little probe to prove the pulse is real before taking the probe out again.
