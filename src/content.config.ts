@@ -74,6 +74,15 @@ const systems = defineCollection({
     toolchainExtras: z.array(z.string()).default([]),
     dockerImage: z.string().optional(),
 
+    // Family support surfaces — curated per-machine flags, orthogonal to `tier`
+    // (umbrella decision: 198x/decisions/support-surfaces.md). Only write the
+    // key when true; absence is the queryable gap (`npm run surfaces:gaps`).
+    // Bars: emu198x = an Emu198x core boots and validates this machine;
+    // devReady = the end-to-end path (assemble → frame program → master media)
+    // produces a runnable artefact, whatever toolchain implements it.
+    emu198x: z.boolean().default(false),
+    devReady: z.boolean().default(false),
+
     // Navigation
     navOrder: z.number(),
     // SINGLE SOURCE OF TRUTH for readiness. Everything derives from `tier`:
