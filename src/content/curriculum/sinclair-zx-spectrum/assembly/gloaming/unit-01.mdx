@@ -1,7 +1,7 @@
 ---
 title: "The Empty Square"
-description: "Build the town square in three runnable steps — hold the border black, wash the screen in dark cobbles, frame it in blue walls — drawn entirely in colour, one byte per cell, the screen itself the map."
-pubDate: 2026-06-01
+description: "Build the town square in three runnable steps — hold the border black, wipe the pixel canvas, wash in dark cobbles and frame them in blue walls — one attribute byte per cell, the screen itself the map."
+pubDate: 2026-07-02
 game: 1
 unit: 1
 tags: ["assembly", "z80", "attributes", "ldir", "djnz", "out", "memory"]
@@ -19,11 +19,14 @@ On the [ZX Spectrum](/vault/systems/zx-spectrum) you do not draw the square. You
 
 <Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-01/step-03-frame.png" alt="A black square framed by a blue rectangular wall, on a black background — the town square at dusk, drawn purely in attribute colour." caption="The finished square: a black field framed in blue, sitting in the black of the coming night. No pixels drawn — every block of colour is a single byte of attribute memory." />
 
-A black field — the cobbles underfoot — framed by a blue wall, sitting in the black of the coming night. No pixels are drawn yet; every block of colour is one byte of *attribute* memory. The texture and the lamps come later. Today, the map is pure colour.
+A black field — the cobbles underfoot — framed by a blue wall, sitting in the black of the coming night. No pixels are drawn yet; every block of colour is one byte of *attribute* memory. The texture arrives in Unit 2, the lamps later still. Today, the map is pure colour.
 
-## The screen is the map
+## The screen is two memories
 
-The Spectrum's 256×192 screen is a grid of **32×24 character cells**, each 8 pixels square. Every cell has exactly **one INK (foreground) and one PAPER (background) colour** — two colours, no more. Those colours live in their own block of memory, **attribute memory**, from `$5800` to `$5AFF`: one byte per cell, 768 bytes in all.
+The Spectrum's 256×192 screen is a grid of **32×24 character cells**, each 8 pixels square — and it lives in memory twice over:
+
+- The **bitmap**, `$4000`–`$57FF`: one bit per pixel. This is the *canvas* — the shapes, the texture, the detail.
+- The **attributes**, `$5800`–`$5AFF`: one byte per cell. This is the *paint* — each cell gets exactly one INK (foreground) and one PAPER (background) colour, and nothing more.
 
 ```
 Attribute memory: $5800 → $5AFF (768 bytes, one per cell)
@@ -36,6 +39,8 @@ Attribute memory: $5800 → $5AFF (768 bytes, one per cell)
 ```
 
 The address of any cell is `$5800 + row*32 + col`. Write a byte there and that cell takes those colours immediately — no redraw, no refresh. The screen *is* the map: change the map by changing memory.
+
+This unit works entirely in the paint. The canvas we simply *wipe* — whatever was on screen before our program ran is still sitting in the bitmap, and we want a bare stage. Unit 2 comes back for the canvas properly.
 
 ## The attribute byte
 
@@ -54,25 +59,29 @@ This unit lays just the first two cell types. The rest — unlit lamp, lit lamp,
 | Cobbles (you can walk here) | Black PAPER, blue INK | `$01` = `%0000_0001` |
 | Wall (you cannot) | Blue PAPER, white INK | `$0F` = `%0000_1111` |
 
-With no pixels drawn, only the PAPER shows, so each cell is a solid block: cobbles black, walls blue.
+With no pixels set, only the PAPER shows, so each cell is a solid block: cobbles black, walls blue.
 
-## Milestone 1 — wash in the cobbles
+## Milestone 1 — wipe the canvas, wash in the cobbles
 
-Two writes. First the **border** — the edge outside the 256×192 screen, set by port `$FE` (bits 0–2). We hold it black: the night beyond the square. (It must *not* be blue — the walls are blue, and a blue border would swallow the wall frame whole.)
+Three writes, each to a different kind of place. First the **border** — the edge outside the 256×192 screen, set by port `$FE` (bits 0–2). We hold it black: the night beyond the square. (It must *not* be blue — the walls are blue, and a blue border would swallow the wall frame whole.)
 
-Then the **cobbles**. Instead of writing 768 cells by hand, we seed the *first* cell with `$01`, point `DE` one cell ahead of `HL`, and let the Z80's `LDIR` cascade copy that single byte through all 768 cells — the block-fill idiom you'll use forever. One instruction, 767 copies.
+Then the **canvas**. `clear_bitmap` zeroes all 6,144 bytes of the bitmap by seeding the first byte and letting the Z80's `LDIR` cascade copy it forward — the block-fill idiom you'll use forever. One instruction, six thousand copies.
+
+Then the **cobbles**, and it's the same idiom again an address-range over: seed `$5800` with the cobble byte, point `DE` one cell ahead of `HL`, and `LDIR` washes all 768 cells.
 
 <CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-01/steps/step-01.asm" lang="z80" />
 
 Run it and the screen goes black:
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-01/step-01-cobbles.png" alt="An entirely black Spectrum screen with a black border." caption="The cobbles, washed in. Black PAPER on a black border — so you can't yet tell the fill ran at all. That's exactly why the walls come next: they prove it." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-01/step-01-cobbles.png" alt="An entirely black Spectrum screen with a black border." caption="The canvas wiped, the cobbles washed in. Black PAPER on a black border — so you can't yet tell either fill ran at all. That's exactly why the walls come next: they prove it." />
 
-That black screen is honest, not a mistake: cobbles are black PAPER, the border is black, so a screen full of cobbles *is* a black screen. You can't see that the fill worked — which is the whole reason the next step draws something you can.
+That black screen is honest, not a mistake: cobbles are black PAPER, the border is black, so a screen full of cobbles *is* a black screen. You can't see that the fills worked — which is the whole reason the next step draws something you can.
 
 ## Milestone 2 — the top and bottom walls
 
-Now something visible. Two edges of the frame are whole rows: the top row (32 cells from `$5800`) and the bottom row (32 cells from `$5800 + 23*32 = $5AE0`). Each is a small **`DJNZ`** counting loop — the Z80's "do this B times" workhorse: load `B` with the count, do the work, `djnz` falls through to the next instruction only when `B` hits zero.
+Now something visible. Two edges of the frame are whole rows — but look where the top wall goes: **row 1**, from `$5820`, not row 0. The square keeps its top row of cells back, plain cobble, and later in the game that ledge becomes the HUD — the row where your progress and your lives will live. The bottom wall is row 23, 32 cells from `$5800 + 23*32 = $5AE0`.
+
+Each wall is a small **`DJNZ`** counting loop — the Z80's "do this B times" workhorse: load `B` with the count, do the work, `djnz` falls through only when `B` hits zero. They live in a subroutine, `paint_walls`, because the walls will be repainted more than once before this game is done.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-01/steps/step-01.asm"
@@ -88,7 +97,7 @@ Two blue bars appear across the black — proof the cobble fill did cover the sc
 
 ## Milestone 3 — close the frame
 
-The frame needs its two sides. These aren't a single run of memory — they're column 0 and column 31 of every one of the 24 rows. So we walk down the rows: write the first cell, jump 31 cells to write the last, then add 32 to reach the next row down, and `DJNZ` twenty-four times.
+The frame needs its two sides. These aren't a single run of memory — they're column 0 and column 31 of each walled row, 1 through 23. So we walk down the rows: write the row's first cell, hop 31 cells to write its last, then add 32 to reach the next row down, and `DJNZ` twenty-three times.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-01/steps/step-02.asm"
@@ -107,7 +116,7 @@ The square has all four sides — a blue wall framing a black field, sitting in 
 
 <Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-01/step-03-frame.png" alt="A black square framed by a complete blue rectangular wall, on a black border." caption="All four walls closed. The town square, walled, waiting for dusk." />
 
-It holds still: the final `halt`/`jr` loop just keeps the frame on screen. (That idle loop becomes the real game loop in Unit 3.)
+It holds still: the final `jr forever` just keeps the frame on screen. (That idle spin becomes the real game loop — the heartbeat — in Unit 4.)
 
 ## Assemble and run
 
@@ -125,9 +134,10 @@ The square fails in ways that point straight at which write went wrong:
 
 - **The whole screen is blue, no black field.** The `LDIR` didn't cascade. The seed and the cascade have to agree: write `$01` to `$5800`, set `DE` to `$5801` (one cell ahead of `HL`), and count `BC` as `767`. If `DE` isn't `HL+1`, or the count is off, the fill misbehaves.
 - **A black screen with a black border and no walls.** Either the wall loops didn't run, or the border is hiding them. Confirm the border write loads black (`0`), not blue (`1`) — a blue border the same colour as the walls swallows the frame.
-- **Only top and bottom bars, no sides.** The column walk. Each row needs *two* writes — col 0 and col 31 — and the pointer must advance by 32 (a full row) each time round, twenty-four times.
-- **Garbled pixels inside the cells.** Something wrote to the *bitmap* (`$4000`–`$57FF`) instead of *attributes* (`$5800`+). This unit only ever touches attribute memory and the border — check every address starts `$58`, `$59`, or `$5A`.
-- **Nothing on screen at all.** The program ran off the end into ROM. Every step ends with `halt`/`jr .loop` to hold the frame — make sure it's there.
+- **Only top and bottom bars, no sides.** The column walk. Each row needs *two* writes — col 0 and col 31 — and the pointer must advance by 32 (a full row) each time round, twenty-three times.
+- **The top wall sits flush with the screen edge.** It's on row 0 — the loop started at `$5800` instead of `$5820`. The square deliberately keeps row 0 back for the HUD; the top wall belongs on row 1.
+- **Stray dots or letters showing through the black.** The old screen contents are still in the bitmap — `clear_bitmap` didn't run, or its range is wrong. It must zero `$4000`–`$57FF`, all 6,144 bytes, before the attributes go on.
+- **Nothing on screen at all.** The program ran off the end into ROM. Every step ends with `jr forever` to hold the frame — make sure it's there.
 
 ## Before and after
 
@@ -135,19 +145,19 @@ You started with nothing — a cold machine — and finished with a walled squar
 
 ## Try this: cobbles of a different mood
 
-Change the cobble seed in step 1 from `$01` to `$05` (PAPER black, INK cyan) — then to `$41` (the BRIGHT bit set). The block stays black for now (no pixels), but you've changed what the *ink* will be when texture arrives. Predict the byte before you run it: which three bits are PAPER, which three are INK?
+Change the cobble seed in step 1 from `$01` to `$05` (PAPER black, INK cyan) — then to `$41` (the BRIGHT bit set). The block stays black for now (no pixels), but you've changed what the *ink* will be when texture arrives in Unit 2. Predict the byte before you run it: which three bits are PAPER, which three are INK?
 
 ## Try this: a thicker wall
 
-The frame is one cell thick. In step 2, make the top and bottom walls **two** rows thick: after the top-row loop, repeat it for the next row down (`$5820`), and the same for the row above the bottom (`$5AC0`). Watch the square's proportions change — and notice the interior shrink by exactly the cells you painted.
+The frame is one cell thick. In step 2, make the top and bottom walls **two** rows thick: after the top-row loop, repeat it for the next row down (`$5840`), and the same for the row above the bottom (`$5AC0`). Watch the square's proportions change — and notice the interior shrink by exactly the cells you painted.
 
-## Try this: knock through the gate
+## Try this: knock through a gate
 
-The lamplighter has to get in. After step 3, pick a cell on the bottom wall — say row 23, column 15, at `$5AE0 + 15` — and write `$01` (cobbles) over its `$0F`. A one-cell gap appears in the wall: the gate. (We'll start the lamplighter there in Unit 5.)
+Pick a cell on the bottom wall — say row 23, column 15, at `$5AE0 + 15` — and write `$01` (cobbles) over its `$0F`. A one-cell gap appears in the wall. The game never uses it — the lamplighter starts inside the square — but it's worth doing once to feel the rule the whole game runs on: a cell's *type* is one byte, and changing the byte changes the world.
 
 ## What you've learnt
 
-- The screen is **memory**: attribute bytes at `$5800`–`$5AFF`, one per 8×8 cell, decide colour with no redraw.
+- The screen is **two memories**: the bitmap (`$4000`–`$57FF`, the pixels) and the attributes (`$5800`–`$5AFF`, one colour byte per 8×8 cell, no redraw needed).
 - The **attribute byte** packs FLASH, BRIGHT, PAPER and INK into eight bits.
 - `OUT ($FE),A` sets the **border**; `LDIR` is the **block-fill**; `DJNZ` is the **counted loop**.
 - **Build in runnable steps** — a milestone that shows nothing (the black fill) is still worth running, because the next one proves it worked.
@@ -155,4 +165,4 @@ The lamplighter has to get in. After step 3, pick a cell on the bottom wall — 
 
 ## What's next
 
-The square is empty. In **Unit 2** we draw the first thing that isn't just colour — the lamplighter, an 8×8 figure poked pixel-by-pixel into a single cell. That's where the screen stops being a grid of blocks and starts holding a character.
+The square is solid colour — blocks, not stone. In **Unit 2** we lay the *canvas* under the paint: a sparse stipple of cobble pixels across the ground, brick courses on the walls. That's where the black field starts looking like a place — and where the bitmap you wiped today earns its keep.
