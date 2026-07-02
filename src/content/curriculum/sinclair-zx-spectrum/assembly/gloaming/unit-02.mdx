@@ -1,100 +1,93 @@
 ---
-title: "The Lamplighter"
-description: "Leave attribute colour behind and write the bitmap. Meet the Spectrum's famous screen layout — the eight rows of a cell sit 256 bytes apart — then fill one cell, and shape it into an 8×8 figure with eight INC H steps."
-pubDate: 2026-06-01
+title: "The Cobbles and the Brick"
+description: "Write the bitmap under the attributes — meet the Spectrum's famous screen layout, blit an 8-byte texture into every ground cell, then let the map itself decide where the brick goes."
+pubDate: 2026-07-02
 game: 1
 unit: 2
-tags: ["assembly", "z80", "bitmap", "sprite", "screen-layout", "memory"]
+tags: ["assembly", "z80", "bitmap", "screen-layout", "textures", "memory"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 
-The square is built — black cobbles, blue walls, every cell of it a byte of *colour* written straight to attribute memory in [Unit 1](/sinclair-zx-spectrum/assembly/gloaming/unit-01). But colour alone draws only blocks. For a *figure* — something with a shape — we need pixels. This unit draws the lamplighter himself, an 8×8 figure poked into a single cell, in two steps: first prove we can mark the cell at all, then give the mark a shape.
+The square stands, but look at it: solid blocks of colour. Paint with no canvas under it. The ground should be *cobbled* — worn stone catching what light is left — and the walls should read as built, course on course of brick. This unit lays both, and on the way it meets the most famous oddity on the machine: how the Spectrum's bitmap is actually arranged.
 
-## Where we start
+## A confession, first
 
-Unit 1's finished square — border, cobbles, walls — and nothing else. Everything below draws one figure into the middle of it.
+When we first built this game, we skipped this unit. The attributes worked, the game grew — and weeks later, whole mechanics landed *invisible*, because they worked by recolouring pixels and there were no pixels to recolour. A feature's visibility can live in a different subsystem from its logic. We built the rules before the canvas, and the canvas turned out to be load-bearing. So it comes second in the whole course, right after the square itself: **the canvas precedes the paint.**
 
-## Pixels live somewhere else
+## Writing the canvas
 
-In Unit 1 we only ever wrote **attribute** memory at `$5800`. That sets a cell's two colours, but it can't draw a shape — a cell is one INK and one PAPER, nothing finer. The actual pixels — which of the 64 dots in a cell are lit — live in a separate, larger block: the **bitmap**, `$4000` to `$57FF`, 6144 bytes.
+Unit 1 called the bitmap and the attributes the screen's two memories, and then only ever *wiped* the bitmap. Today we write it. The rules of the game don't change: a lit pixel shows its cell's INK, an unlit one its PAPER. The cobbles' INK has been blue since Unit 1 — set pixels in a ground cell and they'll come up blue on black without touching the attributes at all. The paint has been waiting for the canvas.
 
-So a cell is described by *two* places at once: its pixels in the bitmap, its two colours in attribute memory. A lit pixel is drawn in the cell's INK; an unlit one shows its PAPER. To draw the lamplighter we write his pixels to the bitmap — and give his cell a colour so they show.
+## The famous layout
 
-## The Spectrum's awkward, generous layout
+One cell's pixels are eight bytes — but they are **not** eight bytes in a row. The Spectrum's screen is wired in three **thirds** of eight character rows each, and inside a cell the eight pixel rows sit **256 bytes apart**. Step down one pixel row by adding 256 — on the Z80, that's a single `inc h`.
 
-Here is the surprise. You might expect the eight rows of pixels in a cell to be eight bytes in a row — address, address+1, address+2. They are not. **The eight rows of a single cell sit 256 bytes apart.**
-
-The reason is how the screen is wired. The 192 pixel rows are split into three **thirds** of 64 rows each (top, middle, bottom). Inside a third, the address climbs by 32 for each *character* row down — but by **256** for each *pixel* row inside a character:
+To texture *any* cell, we need its bitmap address from its column and row at run time. This is `scr_addr_cr`, and it's pure bit-shuffling — the row number splits into two pieces that land in different halves of the address:
 
 ```
-The eight pixel rows of ONE cell:
+row  = %000ttrrr        col = %000ccccc
 
-  row 0  →  A          (top of the cell)
-  row 1  →  A + 256
-  row 2  →  A + 512
-  ...
-  row 7  →  A + 1792    (bottom of the cell)
+H = %010t t000          the third, under the $4000 screen base
+L = %rrrc cccc          char row within the third, then the column
 ```
 
-Awkward to picture — but it hands us a gift. Adding 256 to an address adds **1 to its high byte** and leaves the low byte untouched. And the Z80 has an instruction that does exactly that: `INC H`. So to walk down the eight rows of a cell, we just `INC H` eight times. The hard-looking layout collapses into one tidy instruction.
+Two ANDs, three rotates, two ORs — no multiplication, no lookup table. The wiring that makes the layout strange also makes the address cheap.
 
-## Finding the cell's address
+## Milestone 1 — one texture, every ground cell
 
-We still need the address of the cell's *top* row to start from. For a cell at column `col`, row `row` (0–23), it's:
+A texture is just eight `defb` bytes — an 8×8 stamp. The cobbles are a *sparse stipple*: a scatter of single pixels, black left dominant so the ground stays dark:
 
 ```
-address = $4000 + third*$0800 + (row within third)*32 + col
+%10000010    X.....X.
+%00000000    ........
+%00001000    ....X...
+%00000000    ........
+%00100001    ..X....X
+%00000000    ........
+%00010000    ...X....
+%00000000    ........
 ```
 
-where `third` is `row / 8` and the row within the third is the remainder. You don't have to work that out in your head — let the **assembler** do the arithmetic. We name the lamplighter's column and row, and write the formula as an `equ`; the assembler computes the final address at build time. Change the column or row and the address recomputes itself.
-
-## Milestone 1 — fill the cell solid
-
-Before a shape, prove you can hit the cell *at all*. We set the cell's colour (one attribute write, the idea from Unit 1), then walk its eight rows with `INC H` — writing a solid `%11111111` into each, so every pixel lights. If a white block lands exactly where the lamplighter should stand, the address and the row-walk are right; the shape is then just a matter of which bits we write.
+`blit_tex` stamps those eight bytes into one cell — `scr_addr_cr` finds the top row, `inc h` walks the other seven. `fill_ground` calls it for every cell in rows 1–23 (row 0 stays clean: the HUD). Note the loop order — texture first, *then* the attribute wash — mirrors what you already know: canvas, then paint.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-02/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-02/steps/step-01.asm"
   lang="z80"
-  title="Step 1: colour the cell, then fill its eight rows solid with INC H"
+  title="Step 1: blit the cobble stipple into every ground cell"
   context={3}
 />
 
-<details>
-<summary>The complete step 1 program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-02/steps/step-01.asm" lang="z80" />
-</details>
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-02/step-01-stipple.png" alt="The walled square with a sparse pattern of blue dots across the black ground; the blue walls carry faint white dots." caption="The stipple, washed across the whole square. The blue INK laid down in Unit 1 finally shows. The walls have caught the stipple too — in their white INK — because fill_ground doesn't know walls exist yet." />
 
-A solid white block sits in the middle of the square — one cell, all 64 pixels lit:
+Look closely at the walls: they've caught the stipple as well, in *their* INK — white flecks on blue. `fill_ground` textures every cell in its rows; it doesn't know some of them are wall. That's not a bug to fix by making the loop cleverer. It's the cue for the second milestone.
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-02/step-01-solid.png" alt="The walled square with a small solid white block in the centre cell." caption="The cell, filled solid. The block proves the address maths and the eight INC H steps landed in the right place — now there's somewhere to draw a shape." />
+## Milestone 2 — the map decides where the brick goes
 
-## Milestone 2 — give it a shape
-
-A sprite is just eight bytes — one per pixel row. A `1` bit is a lit pixel; a `0` shows the PAPER behind. Lay the bits out and you can see the figure stand up:
+The walls deserve their own stamp — mortar courses, staggered verticals:
 
 ```
-%00111100   ..XXXX..   head
-%00111100   ..XXXX..   head
-%00011000   ...XX...   neck
-%01111110   .XXXXXX.   arms
-%00011000   ...XX...   body
-%00011000   ...XX...   body
-%00100100   ..X..X..   legs
-%01000010   .X....X.   feet
+%00001000    ....X...
+%00001000    ....X...
+%00001000    ....X...
+%11111111    XXXXXXXX
+%10000000    X.......
+%10000000    X.......
+%10000000    X.......
+%11111111    XXXXXXXX
 ```
 
-Nothing about the *draw* changes — same attribute write, same eight `INC H` steps. We only change the eight bytes the loop copies: solid `%11111111` becomes the figure's shape.
+But which cells get it? Here's the move that matters: **don't keep a second list of where the walls are — ask the screen.** Unit 1 said a cell's type and its colour are the same byte. `fill_walls` walks all the cells, reads each attribute back with `attr_addr_cr`, and tests one bit: wall attributes (`$0F`) have PAPER blue, so bit 3 — `WALL_BIT` — is set; cobble attributes (`$01`) have it clear. Wherever the bit says *wall*, the brick goes down, overwriting the stray stipple from milestone 1.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-02/steps/step-01.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-02/steps/step-02.asm"
   lang="z80"
-  title="Step 2: replace the solid block with the figure's eight bytes"
-  context={2}
+  title="Step 2: read the map back, brick wherever the wall bit is set"
+  context={3}
 />
 
 <details>
@@ -102,45 +95,53 @@ Nothing about the *draw* changes — same attribute write, same eight `INC H` st
 <CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-02/steps/step-02.asm" lang="z80" />
 </details>
 
-The block becomes a figure — a head, arms, a body, two legs — standing in the centre of the square:
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-02/step-02-brick.png" alt="The walled square with stippled cobbles inside and brick-patterned walls — mortar lines and staggered joints in white on blue." caption="The brick, laid by the map itself. fill_walls never saw a list of wall positions — it read the attribute bytes back and bricked wherever the wall bit was set." />
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-02/step-02-figure.png" alt="The walled square with a small white human figure standing in the centre cell." caption="The lamplighter, drawn from eight bytes. He doesn't move yet — that's Unit 3 — but he is there, every pixel one you chose." />
+This is why `fill_walls` runs *after* `paint_walls` in the setup: the map has to exist before it can be read. And it's a promise about the future — when buildings appear inside the square later in the game, they'll be painted as wall attributes, and this same loop will brick them without changing a line.
 
-He doesn't move yet (that's Unit 3), but he is *there*, drawn from eight bytes you wrote by hand. The final `halt`/`jr` loop holds the frame, exactly as before.
+## Assemble and run
+
+```
+pasmonext --sna steps/step-02.asm steps/step-02.sna
+```
+
+Both fills together touch every one of the 6,144 bitmap bytes and still finish in a blink — the square is textured before the first frame is out.
 
 ## When it's wrong, see why
 
-A figure drawn wrong points straight at which part of the draw slipped:
+Texture bugs are address bugs, and each symptom names its own bit:
 
-- **A vertical smear, or a scrambled mess instead of a block.** The row-walk used the wrong step. Within a cell the rows are 256 apart — only `inc h` walks them. `inc hl` or `add hl, 32` steps by bytes or character-rows and scatters the shape.
-- **Nothing in the cell at all.** Either the bytes are all zero, or the cell's INK equals its PAPER (both black) so lit pixels are invisible. Check the attribute has a non-black INK in bits 0–2 — that's why Milestone 1 fills *solid* first, so a blank cell means the colour, not the shape.
-- **The block (or figure) is off by whole rows.** The cell address. The thirds formula is sensitive to which third the row falls in; re-check the row number, and have the assembler's listing print the computed address if unsure.
-- **The walls or cobbles vanished.** Pixels went into attribute memory (`$5800`+) by mistake. Pixels go to the bitmap (`$4000`+); colour goes to attributes. Different addresses entirely.
+- **The texture is there but scrambled — slivers in wrong rows.** `scr_addr_cr`. Check the two AND masks: the third comes from row bits 4–3 (`%00011000`), the char row from bits 2–0 (`%00000111`), rotated three times into L's top bits. One wrong mask shreds the layout.
+- **The stamp's rows are consecutive on screen but the cells are wrong.** The `inc h` walk started from a bad base — same routine, check `or %01000000`: the screen lives at `$4000`, and H must carry that base.
+- **Stipple everywhere, but no brick.** `fill_walls` isn't seeing wall. Confirm the bit test reads the *attribute* (via `attr_addr_cr`, `$5800`+) and tests `WALL_BIT` (bit 3 — set in `$0F`, clear in `$01`), and that the branch skips on *zero*.
+- **Brick everywhere, cobbles gone.** The branch is inverted — `jr z` and `jr nz` swapped reads the map exactly backwards.
+- **A stippled HUD row.** The ground loop's bounds. It starts at row 1 and stops before 24; a loop from 0 stipples the ledge the HUD is saving for later.
+- **The texture flickers or tears at the top.** It doesn't — not in this program. Both fills finish well inside a frame. If you see garbage for an instant on a real machine, it's the old screen contents before `clear_bitmap` runs; the wipe from Unit 1 must stay first.
 
 ## Before and after
 
-You started with an empty square and finished with a figure standing in it — built the honest way round. Milestone 1 filled the cell solid to prove the address and the `INC H` walk; Milestone 2 kept every line of that draw and changed only the eight bytes it copies. That split is the whole lesson: *placement* and *shape* are separate problems, and solving placement first makes shape just data.
+The square began this unit as flat colour and ends it as a place — stippled stone inside brick walls. Two ideas did all of it: a texture is **eight bytes stamped through `inc h`**, and the second fill found its targets by **reading the map back** instead of keeping a list. The screen isn't just output — it's the game's own data structure, and that idea does a lot of work between here and the end of the module.
 
-## Try this: move him
+## Try this: cut your own cobbles
 
-Change `LAMP_COL` and `LAMP_ROW` — try `LAMP_ROW equ 4` (the top third) or `LAMP_ROW equ 20` (the bottom). The figure jumps to the new cell, and you never touched the address: the `equ` formula recomputed it. Watch `LAMP_ROW equ 7` then `8` — that's the boundary between the top and middle thirds, and the formula steps across it for you.
+Design a different ground texture on paper — an 8×8 grid, mark the lit pixels, read each row off as a binary `defb`. Keep it sparse (eight to twelve pixels): the dusk needs the black. Swap your bytes into `cobble_tex` and rebuild. If your pattern tiles into obvious stripes, stagger the marks between rows — the shipped stipple never puts two pixels in the same column twice.
 
-## Try this: change his shape
+## Try this: a second wall course
 
-Edit the eight `defb` bytes in step 2. Give him a hat (`%01111110` on the top row), or a wider stance (`%10000001` for the feet). Sketch the eight rows on paper first, write down the byte for each, then predict what you'll see before you run it. Each `1` is a pixel of INK; each `0` is PAPER.
+Make the brick finer: change the two `%11111111` mortar rows to `%01111111` and `%11110111`. The joins break up and the wall reads older, more weathered. One byte per course — texture is cheap to art-direct when it's just data.
 
-## Try this: a warmer figure
+## Try this: prove the map is in charge
 
-Change `LAMP_ATTR` from `%01000111` (bright white INK) to `%01000110` (bright yellow) — a lamplighter who already carries a little warmth. The pixels don't change; only the INK colour they're drawn in does. The bitmap holds the *shape*; the attribute holds the *colour*. Two separate things, as ever.
+In step 2's setup, paint one *interior* cell as wall before `fill_walls` runs — after the `ldir` wash, write `$0F` somewhere mid-square (say `$5800 + 12*32 + 16`). Rebuild: a single bricked block appears in the middle of the cobbles. You never told `fill_walls` about it. That's the promise this unit makes to the rest of the game — and buildings will collect on it.
 
 ## What you've learnt
 
-- Pixels live in the **bitmap** (`$4000`–`$57FF`), separate from the **attribute** colour at `$5800`+. A cell is described by both at once.
-- The Spectrum's screen is non-linear: the eight rows of one cell are **256 bytes apart**, so `INC H` steps down a cell — the layout's awkwardness turned into one instruction.
-- A **sprite** is eight bytes, one per row; `1` bits draw in INK, `0` bits show PAPER.
-- **Placement before shape** — fill the cell solid to prove the address and the walk, then the shape is only the eight bytes you copy.
-- Let the **assembler** compute a cell's address from `(col, row)` with an `equ` — you write the formula once, it does the sum.
+- The bitmap's **thirds layout**: a cell's eight pixel rows sit 256 bytes apart, and `inc h` walks them.
+- **`scr_addr_cr`** — column and row to bitmap address with two masks and three rotates; **`attr_addr_cr`** — the same cell's attribute at `$5800 + row*32 + col`.
+- A texture is **data**: eight `defb` bytes stamped by one small `blit_tex` loop.
+- **Read the map, don't keep a list** — `fill_walls` finds every wall by testing one attribute bit, so future walls get brick for free.
+- Fill order matters: canvas before paint, and the map must be painted before it can be read.
 
 ## What's next
 
-The lamplighter stands still because nothing tells him to do otherwise — the program draws him once and idles. In **Unit 3** we replace that idle loop with the real thing: the **frame-locked game loop**, a 50 Hz heartbeat (`IM 1` + `HALT`) that every later unit beats to. It's the first of Gloaming's two big techniques, and the moment the square starts to feel alive.
+The square is ready for someone to stand in it. In **Unit 3** the lamplighter arrives — an 8×8 figure defined the same way the textures were, eight bytes of data — and the first thing you'll learn about him is that on this machine, a character is just a texture with a name. Until, that is, he needs a colour of his own.
