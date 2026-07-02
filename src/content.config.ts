@@ -1,6 +1,36 @@
 import { defineCollection, z } from 'astro:content';
 import { glob, file } from 'astro/loaders';
 
+// CPU families a system can be keyed by — shared by the primary and secondary
+// architecture fields on the systems collection.
+const cpuArchitectures = z.enum([
+  // 8-bit families
+  '8080',      // Intel 8080/8085
+  'f8',        // Fairchild F8
+  '1802',      // RCA CDP1802
+  'mcs48',     // Intel MCS-48 (8048/8049)
+  'cp1610',    // General Instrument CP1610
+  'tms9900',   // Texas Instruments TMS9900
+  '6502',      // MOS 6502 and variants
+  'huc6280',   // Hudson HuC6280 (PC Engine) — extended 65C02, own encoding extensions
+  'z80',       // Zilog Z80
+  'sm83',      // Sharp SM83/LR35902 (Game Boy) — Z80-flavoured, not Z80-compatible
+  '6800',      // Motorola 6800/6801/6803
+  '6809',      // Motorola 6809
+  // 16-bit families
+  '65c816',    // WDC 65C816 (16-bit 6502)
+  'x86',       // Intel 8086/8088 and successors
+  '68000',     // Motorola 68000
+  // 32-bit families
+  'arm',       // ARM (Acorn RISC Machine)
+  'sh2',       // Hitachi SuperH SH-2
+  'v810',      // NEC V810
+  'mips',      // MIPS R3000/R4300
+  // Later generations
+  'sh4',       // Hitachi SuperH SH-4
+  'tlcs900',   // Toshiba TLCS-900
+]);
+
 // Platform/system definitions - the source of truth for all platform data
 const systems = defineCollection({
   loader: glob({ pattern: '**/*.yaml', base: 'src/content/systems' }),
@@ -27,31 +57,14 @@ const systems = defineCollection({
     ]),
     manufacturer: z.string(), // references manufacturers collection
     cpu: z.string(),
-    cpuArchitecture: z.enum([
-      // 8-bit families
-      '8080',      // Intel 8080/8085
-      'f8',        // Fairchild F8
-      '1802',      // RCA CDP1802
-      'mcs48',     // Intel MCS-48 (8048/8049)
-      'cp1610',    // General Instrument CP1610
-      'tms9900',   // Texas Instruments TMS9900
-      '6502',      // MOS 6502 and variants
-      'z80',       // Zilog Z80
-      '6800',      // Motorola 6800/6801/6803
-      '6809',      // Motorola 6809
-      // 16-bit families
-      '65c816',    // WDC 65C816 (16-bit 6502)
-      'x86',       // Intel 8086/8088 and successors
-      '68000',     // Motorola 68000
-      // 32-bit families
-      'arm',       // ARM (Acorn RISC Machine)
-      'sh2',       // Hitachi SuperH SH-2
-      'v810',      // NEC V810
-      'mips',      // MIPS R3000/R4300
-      // Later generations
-      'sh4',       // Hitachi SuperH SH-4
-      'tlcs900',   // Toshiba TLCS-900
-    ]),
+    // Primary programming identity — the CPU a learner writes for first.
+    cpuArchitecture: cpuArchitectures,
+    // Additional programmer-facing CPU families beyond the primary: sound CPUs
+    // (Mega Drive Z80), CP/M sidecars (C128 Z80), base-console hosts (32X).
+    // Not listed: same-family extras (FM-7's second 6809), peripheral
+    // controllers (1541, keyboard MCUs), and custom coprocessors outside the
+    // enum (SPC700, Tom/Jerry, SCU DSP) until a value is added deliberately.
+    secondaryCpuArchitectures: z.array(cpuArchitectures).default([]),
 
     // Toolchain (optional for coming-soon platforms)
     assembler: z.string().optional(),
