@@ -1,134 +1,144 @@
 ---
-title: "Reading the Keys"
-description: "Fill in the loop's empty INPUT stage. Read the half-row holding O and P through port $DFFE with IN A,(C), test the active-low key bits, and recolour the lamplighter the instant you press — the machine feeling you, fifty times a second."
-pubDate: 2026-06-01
+title: "The Heartbeat"
+description: "Replace the idle spin with a frame-locked loop — IM 1, EI, and HALT beat once per 50 Hz frame — then build a one-line probe to watch the pulse, and take it out again."
+pubDate: 2026-07-02
 game: 1
 unit: 4
-tags: ["assembly", "z80", "keyboard", "input", "in", "ports"]
+tags: ["assembly", "z80", "game-loop", "interrupts", "halt", "timing"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-The heartbeat beats, but the lamplighter can't feel you. The loop's **INPUT** stage is still empty — each frame it reads nothing, decides nothing. This unit fills it in, one key at a time. By the end, the figure changes colour the instant you touch a key: red while you hold **O**, green while you hold **P**, pale white when you hold nothing.
+The square is built and the lamplighter stands in it — but the program drew them once and then just sat there, spinning on a `jr` that goes nowhere. That was fine for a still scene. A game is not a still scene. A game *runs* — frame after frame, reading the player, moving the world, drawing the result — and it never stops until the night is held or fallen.
 
-He won't *move* yet — that's the next unit — but he will *react*, fifty times a second. This is the moment the machine starts listening.
+So this unit builds the loop everything else will live in. On screen it changes nothing at all — and because "nothing" is a hard thing to trust, we'll also build a tiny probe to *watch* the pulse, then take the probe out and move on.
 
-## Where we start
+## A game is a loop
 
-Unit 3's heartbeat, looping at 50 Hz with an empty INPUT stage — the figure stands white and unfeeling. We give the loop something to read.
-
-## One port, eight half-rows
-
-The Spectrum reads its whole keyboard through a single port: `$FE`. Forty keys would never fit in one byte, so they're wired into **eight half-rows of five keys each**, and you choose *which* half-row to read using the **high byte** of the port address. The low byte is always `$FE`; the high byte selects the row.
-
-The half-row we want holds **O** and **P** — the classic left/right keys — and it's selected by high byte `$DF`. So the port we read is `$DFFE`, and its bottom five bits are:
+Every game, on every machine, is the same shape underneath:
 
 ```
-port $DFFE, bottom five bits:
-
-  bit  4    3    2    1    0
-       Y    U    I    O    P
+forever:
+    read the INPUT   (what is the player doing?)
+    UPDATE the world (move things, apply the rules)
+    DRAW the result  (show the new state)
 ```
 
-`P` is bit 0, `O` is bit 1. (The other three — I, U, Y — are along for the ride; we ignore them today.)
+Round and round, many times a second; one trip through the cycle is one **frame**. In our program that trip is a routine called `play_step` — one beat of the game. Today it's empty. Every unit from here to the end of the module earns its living inside it.
 
-## Active low: a held key reads zero
+## Why lock it to the screen
 
-Here's the catch that trips everyone once. The bits are **active low**. A key's bit reads **1 when the key is up**, and **0 when it's held down**. It's backwards from what you'd guess — but it's how the hardware works: pressing a key pulls its line *down* to zero. So "pressed" is the *absence* of the usual 1, and to find a held key we test for a **zero** bit.
+We could spin the loop as fast as the Z80 can go. But "as fast as possible" is a different speed on every machine, and work done at random moments smears across the screen-draw as flicker and tearing.
 
-## Milestone 1 — read one key
+The fix is to pace the loop to the **screen**. The Spectrum redraws its display **50 times a second**, and each time it finishes a screen it raises an **interrupt** — a precise tap on the shoulder, identical on every Spectrum ever made. Run the loop once per tap and the game beats at a rock-steady 50 Hz everywhere. That beat is the heartbeat.
 
-Start with just **P**. Read the port with `IN A,(C)` — where `BC` holds the full address `$DFFE`, so the row-select rides on the bus — then test P's bit with `BIT 0,A`. `BIT n,A` sets the **Z flag** when bit `n` is **zero**, and zero means *held* — so `jr nz` is "key is up, skip." If P is down we colour the figure green; otherwise he stays white. All of it goes in the loop's INPUT stage, so it runs every single frame.
+## IM 1, EI, and the magic of HALT
+
+Three instructions:
+
+- **`IM 1`** — *interrupt mode 1*: use the ROM's built-in handler for that 50 Hz tap. (It keeps the system clock ticking and scans the keyboard — we'll want that in the very next unit.)
+- **`EI`** — *enable interrupts*: until this, the Z80 ignores the taps entirely.
+- **`HALT`** — sleep until the **next** interrupt arrives.
+
+The last one is the trick. With interrupts enabled, `HALT` doesn't freeze — it *waits*: the CPU dozes until the next tap wakes it, then carries straight on. **One `HALT` means "wait for exactly one frame."** Put it at the top of the loop and the loop is bolted to the screen.
+
+## Milestone 1 — the spin becomes the beat
+
+Everything that draws the fixed scene stays in setup, drawn once. Then `IM 1` / `EI` start the pulse, and the dead spin becomes `main_loop`: wait a frame, take one `play_step`, go round:
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-01.asm"
   lang="z80"
-  title="Step 1: read P through $DFFE and recolour while it's held"
+  title="Step 1: IM 1 / EI, and the idle spin becomes the game loop"
   context={3}
 />
 
-<details>
-<summary>The complete step 1 program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-01.asm" lang="z80" />
-</details>
+On screen, **nothing changes**:
 
-Hold nothing and he's white; hold **P** and he turns green — and the change feels instant because it *is*, happening fifty times a second:
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/step-01-steady.png" alt="The walled, stippled square with the white lamplighter at its centre, holding perfectly steady — identical to the previous unit's final screen." caption="Identical to Unit 3 — and that's the point. The program is no longer drawn-and-abandoned; it's awake, beating fifty times a second, running a loop with nothing in it yet." />
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/step-01-rest.png" alt="The lamplighter in the centre of the square, pale white — no key held." caption="At rest: nothing held, the figure stays white." />
+The steadiness is the correct result. But "trust me, it's beating" is not how this course works — so let's *see* it.
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/step-01-right.png" alt="The lamplighter in the centre of the square, now green — captured while P is held." caption="Holding P: the loop reads bit 0 as zero, sees the key down, and recolours his cell green this frame." />
+## Milestone 2 — a probe, to watch the pulse
 
-The colour is just a flag we raise to prove the read worked — every frame, the program asks the keyboard a question and acts on the answer.
-
-## Milestone 2 — add the other key
-
-The single `in a, (c)` already read **all five** keys of the half-row — we only looked at P. Add a test for **O** (bit 1) above the P test, colouring the figure red when it's held. Nothing about the read changes; we just check one more bit.
+One line in `play_step`: pick an attribute cell — the far corner of the HUD row — and increment it every beat.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-01.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-02.asm"
   lang="z80"
-  title="Step 2: test O as well, red while it's held"
+  title="Step 2: the probe — one attribute cell counts the frames"
+  context={3}
+/>
+
+The cell becomes a byte counting upward at 50 Hz, worn as colour — and because you know the attribute byte's layout from Unit 1, you can read the count in the colours. The INK bits tick fastest, but there are no pixels in that cell to show them; the **PAPER** changes every 8 frames, so the block steps through the palette about six times a second; the **BRIGHT** bit flips every 64 frames; wait long enough and **FLASH** joins in. The attribute byte's whole anatomy, animated by a counter:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/step-02-heartbeat-seen.mp4"
+  caption="Two seconds of the probe: the square and the lamplighter hold dead still while the top-right corner cell steps through the palette — paper colour every 8 beats, then brighter. The counting block is the 50 Hz heartbeat made visible."
+  autoplay={true}
+  loop={true}
+/>
+
+Everything else holds still while one cell counts. That's the loop, seen: steady world, steady pulse.
+
+## Milestone 3 — take the probe out
+
+The probe did its job; the game doesn't want a disco tile in its HUD. Remove the line, and `play_step` is empty again — this time with your trust earned:
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-02.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-03.asm"
+  lang="z80"
+  title="Step 3: the probe comes out — the pure heartbeat remains"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-02.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-04/steps/step-03.asm" lang="z80" />
 </details>
 
-Now **O** paints him red and **P** paints him green — two keys answered from one read:
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/step-03-probe-out.png" alt="The walled square and white lamplighter, steady again, the corner cell back to plain ground colour." caption="The probe gone, the beat still running. This still is pixel-identical to milestone 1's — instrument, observe, remove, leave no trace." />
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/step-02-left.png" alt="The lamplighter in the centre of the square, red — captured while O is held." caption="Holding O: bit 1 reads zero, and his cell recolours red." />
-
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-04/step-02-right.png" alt="The lamplighter in the centre of the square, green — captured while P is held." caption="Holding P: bit 0 reads zero, and the same loop recolours him green — two keys, one read." />
-
-There's a detail hiding in the order. We test O *first*, then P, and the last match wins — so holding both shows green. Swap the two blocks and O would win instead. When two inputs can be true at once, the order you test them in decides; you choose it on purpose.
+Build an instrument, observe, take the instrument out, leave no trace: it won't be the last time this course debugs that way. The probe *pattern* costs one line whenever you doubt a loop is running — cheaper than wondering.
 
 ## When it's wrong, see why
 
-The read fails in ways that point at which half of it slipped:
-
-- **The figure shows a "pressed" colour even when you hold nothing.** The active-low test is backwards — you're treating bit-*set* as pressed. A held key reads **0**: use `jr z` for "down", `jr nz` for "up", and reset to white at the top of each frame.
-- **Nothing responds at all.** Wrong port, or only `C` loaded. O and P need `$DFFE`, and `IN A,(C)` drives the whole of **BC** onto the bus — so load `bc, $DFFE`, not just `c`.
-- **The wrong keys respond.** Wrong half-row. Map the key you want to its half-row and use that high byte.
-- **The colour flickers or sticks.** You didn't reset the default (`ld d, LAMP_ATTR`) at the top of the INPUT stage, so last frame's colour leaks into this one. Reset it every frame before testing.
+- **The screen freezes and never settles.** Missing `ei`, or it runs before `im 1`. With interrupts off, the first `halt` sleeps forever, waiting for a tap that can't arrive. Order it `im 1` then `ei`, both before the loop.
+- **It runs briefly, then garbles or crashes.** The ROM's interrupt handler uses the stack every frame; if `SP` points somewhere unfortunate, each tap corrupts a little more memory. Leave the stack pointer alone.
+- **The probe cell doesn't move.** `play_step` isn't being called — check `main_loop` is `halt`, `call play_step`, `jr main_loop` — or the probe wrote to a bitmap address instead of `$5800 + 31`.
+- **The probe cycles absurdly fast or visibly stutters.** More than one `call play_step` per `halt` (double speed), or a second stray `halt` in the path (half speed). One wait, one step, per trip round.
+- **It looks exactly like Unit 3.** Correct — that's milestone 1's expected result. The probe step exists precisely so you don't have to take it on faith.
 
 ## Before and after
 
-You started with a loop that read nothing and finished with one that feels the keyboard every frame — built up one key at a time, so a wrong colour told you exactly which test to check. The recolour is throwaway (Unit 5 drops it), but the read underneath — select a half-row, `IN A,(C)`, test an active-low bit — is the exact mechanism that will steer the lamplighter for the rest of the game.
+The picture didn't change; its nature did. You started with a drawing being *held* and finished with a drawing being *run* — a 50 Hz frame-locked loop with an empty `play_step` waiting for the game. And you proved it, with a one-line instrument you then removed. From here on, every new behaviour — keys, movement, the draught, the win — is a tenant of this loop.
 
-## Try this: hold both at once
+## Try this: slow the beat
 
-Hold **O** and **P** together. The figure goes green — P wins, because we test O first and P overwrites it. Swap the two `bit` blocks and now O wins. Two inputs true at once, and order decides.
+Put a second `halt` above the first. The loop now waits two frames per trip — 25 Hz — and with the probe in, the counting visibly halves in speed. The number of `HALT`s is a pace dial; Gloaming keeps it at one, but knowing the dial exists demystifies every "slow motion" effect you've ever seen.
 
-## Try this: a third key from the same row
+## Try this: probe the border instead
 
-You already read all five keys of the half-row. Add a test for **I** (bit 2) and give it a third colour, say bright cyan (`%01000101`):
+Move the probe outdoors: instead of incrementing the corner cell, count in a variable and `out ($FE), a` the result. The whole border cycles through its eight colours, six-and-a-quarter times a second. Same pulse, bigger dial — and a classic Spectrum debugging trick: the border costs no screen memory, so real games flash it to show where in the frame their work happens.
 
-```
-bit  2, a
-jr   nz, .not_i
-ld   d, %01000101
-.not_i:
-```
+## Try this: time the machine with your eyes
 
-One read, three keys answered. That's the half-row paying off.
-
-## Try this: a different half-row
-
-Pick a key on another row — say **Q** (in the half-row at high byte `$FB`). Read `$FBFE` into BC and test Q's bit. Each half-row is one `IN`; the high byte is the only thing that changes. (This is exactly how we'll add up/down movement later.)
+With the probe in, watch the BRIGHT boundary: the cell runs dark colours, then the same colours brighter, then flips back — that flip is bit 6, every 64 beats. Count the flips over ten seconds: you should see about eight (64 frames ≈ 1.28 s). You've just measured the interrupt rate with no tools but an attribute byte and patience.
 
 ## What you've learnt
 
-- The whole keyboard is read through port **`$FE`**; the **high byte** of the address picks one of **eight half-rows** of five keys.
-- Read a half-row with **`IN A,(C)`**, where **BC** is the full port (e.g. `$DFFE` for O and P).
-- Keys are **active low**: a bit is **0 while held**. Test for zero with `BIT` — **Z set means pressed**.
-- The **INPUT stage runs every frame**, so the machine feels the keys continuously — and one read serves every key in the row.
+- A game is a **loop**: input, update, draw — one trip per frame, here named `play_step`.
+- **`IM 1` + `EI` + `HALT`** lock the loop to the 50 Hz frame interrupt — the same beat on every Spectrum.
+- `HALT` with interrupts enabled means **wait exactly one frame** — the pace of everything.
+- A **one-line probe** turns an invisible loop into a visible one; instrument, observe, remove.
+- The probe was also a lesson in reading the **attribute byte** — paper, bright and flash bits ticking at their own rates as the byte counts.
 
 ## What's next
 
-Now the machine knows which way you're pointing. In **Unit 5** it finally *acts* on that: erase the lamplighter from his cell and redraw him one cell over in the direction you held. That's his first step — and the start of Gloaming's second big technique, the **cell sprite**: a figure that moves, saves what's beneath it, and lives by the rules of the grid.
+The loop beats, and nothing listens. In **Unit 5** the lamplighter starts to feel you: `play_step` learns to scan the keyboard's half-rows through port `$FE`, and the figure glows the instant a direction key goes down. Not movement yet — first, the machine has to notice you exist.
