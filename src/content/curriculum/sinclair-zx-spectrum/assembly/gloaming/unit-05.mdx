@@ -1,51 +1,62 @@
 ---
-title: "One Step"
-description: "The lamplighter moves. Keep his column as a byte in memory, and on a held key erase his old cell, change the column, draw the new one. Cell-by-cell movement — working, for now, only because the floor is blank."
-pubDate: 2026-06-01
+title: "Reading the Keys"
+description: "Fill the loop's INPUT stage: select a keyboard half-row through port $FE, read it with IN A,(C), test the active-low bits — and the lamplighter glows the instant a direction key goes down."
+pubDate: 2026-07-03
 game: 1
 unit: 5
-tags: ["assembly", "z80", "sprite", "movement", "state", "memory"]
+tags: ["assembly", "z80", "keyboard", "input", "in", "ports"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
+import RegisterBits from "@components/diagrams/RegisterBits.astro";
 
-In Unit 4 the lamplighter felt the keys but stayed put — he just changed colour. Now he walks. Hold **O** and he steps left; hold **P** and he steps right, cell by cell along his row. This is the first half of Gloaming's second big technique — the **cell sprite**, a figure with a *position* that moves by being rubbed out where he was and drawn where he's going.
+The heartbeat beats, but the lamplighter can't feel you. The loop's **INPUT** stage is still empty — each frame it reads nothing, decides nothing. This unit fills it in. By the end, the figure glows warm the instant you touch any direction key, and settles back to white the instant you let go.
 
-## Where we start
+He won't *move* yet — that's the next unit — but he will *react*, fifty times a second. This is the moment the machine starts listening.
 
-Unit 4's figure reads O and P and recolours to show it — useful scaffolding, but he doesn't go anywhere. We throw the recolour away and spend the same key read on *movement* instead.
+## One port, eight half-rows
 
-## A position is state
+The Spectrum reads its whole keyboard through a single port: `$FE`. Forty keys would never fit in one byte, so they're wired into **eight half-rows of five keys each**, and you choose *which* half-row to read with the **high byte** of the port address. The low byte is always `$FE`; the high byte selects the row:
 
-Until now his column was fixed in the source — a constant baked in at assembly time. A thing that moves can't have a fixed position; it needs one the program can *change*. So his column becomes a byte in memory:
+| Port | Keys (bit 0 → bit 4) | | Port | Keys (bit 0 → bit 4) |
+|---|---|---|---|---|
+| `$FEFE` | SHIFT Z X C V | | `$EFFE` | 0 9 8 7 6 |
+| `$FDFE` | **A** S D F G | | `$DFFE` | **P O** I U Y |
+| `$FBFE` | **Q** W E R T | | `$BFFE` | ENTER L K J H |
+| `$F7FE` | 1 2 3 4 5 | | `$7FFE` | SPACE SYM M N B |
 
-```
-lamp_col:
-    defb 15        ; his column — we'll write new values here as he walks
-```
+Gloaming steers with the classics — **Q** up, **A** down, **O** left, **P** right — which live in three different half-rows (bolded above). Today's first read is the `$DFFE` row, where O and P sit together.
 
-That one byte is the difference between a picture and a game. A picture is drawn and done; a game keeps state — where things are, what's happened — and edits it as it runs. `lamp_col` is Gloaming's first piece of living state. Stepping left is `dec` it; stepping right is `inc` it.
+## Active low: a held key reads zero
 
-## Moving is erase, then draw
+Here's the catch that trips everyone once. The bits are **active low**: a key's bit reads **1 when the key is up** and **0 when it's held down**. It's backwards from what you'd guess, but it's how the hardware works — pressing a key pulls its line *down* to zero. So to find a held key, we test for a **zero** bit:
 
-You can't just draw him in the new cell — the old one would still show him, and you'd leave a trail of lamplighters down the row. Every move is two halves: **erase** the cell he's in (blank its eight pixel rows back to bare floor), then **draw** him in the new cell once the column has changed. Erase old, change column, draw new. Miss the erase and he smears; get the order wrong and he rubs himself out.
+<RegisterBits
+  address="$DFFE"
+  name="The P-O-I-U-Y half-row"
+  bits={[
+    { index: 4, label: "Y", activeLow: true },
+    { index: 3, label: "U", activeLow: true },
+    { index: 2, label: "I", activeLow: true },
+    { index: 1, label: "O", activeLow: true },
+    { index: 0, label: "P", activeLow: true },
+  ]}
+  value={0b11111101}
+  caption="The half-row as read while O is held: every key rests at 1, and O's bit — bit 1 — drops to 0. The top three bits aren't keys; ignore them."
+/>
 
-## One row, one addition
+## Milestone 1 — read one key
 
-He only moves **left and right**, so he never leaves his character row — and that keeps the arithmetic gentle. Every cell in one row shares the same screen third and row-within-third (the awkward parts from Unit 2); only the column changes. So his cell address is just `ROW_SCR + col`, where `ROW_SCR` is column 0 of his row, worked out once as an `equ`. No thirds to decode at run time — add the column and we're there.
-
-## Milestone 1 — walk right
-
-We swap the whole INPUT stage. Out goes the recolour; in comes a `lamp_col` byte, a `draw_lamp` and an `erase_lamp` routine, and — on a held **P** — the erase / change-column / draw dance. (Left follows in a moment; one direction first proves the machinery.)
+Start with just **O**. Load `BC` with the full port address `$DFFE` — `IN A,(C)` drives the whole of `BC` onto the bus, so the row-select rides along — then test O's bit with `BIT 1,A`. `BIT` sets the **Z flag** when the bit is zero, and zero means *held*: `jr z, .held`. While O is down, the lamplighter's cell takes a warm glow (`LAMP_GLOW` — lamp-yellow, and that's a small promise about where this game is going); otherwise it's repainted his usual white. All of it lives in `player_step`, called from `play_step` — the INPUT stage of the loop, running every single frame.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-05/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-05/steps/step-01.asm"
   lang="z80"
-  title="Step 1: position as state, and a step to the right on P"
+  title="Step 1: read the $DFFE half-row and glow while O is held"
   context={3}
 />
 
@@ -54,19 +65,23 @@ We swap the whole INPUT stage. Out goes the recolour; in comes a `lamp_col` byte
 <CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-05/steps/step-01.asm" lang="z80" />
 </details>
 
-Hold **P** and he walks right, one cell at a time — and the floor stays clean behind him, because each step erases the old cell before drawing the new one:
+Hold nothing and he's white; hold **O** and he glows — and the change feels instant because it *is*, re-decided fifty times a second:
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-05/step-01-walked.png" alt="The lamplighter, having walked from the centre to the right side of the square, with clean black floor behind him — no trail." caption="After holding P: he's several cells right of where he started, and there's no smear behind him. The erase is doing its job." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-05/step-01-idle.png" alt="The lamplighter at the centre of the square, bright white — no key held." caption="At rest: every bit of the half-row reads 1, and the loop repaints him white each frame." />
 
-## Milestone 2 — and back the other way
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-05/step-01-glow.png" alt="The lamplighter at the centre of the square glowing yellow — captured while O is held." caption="Holding O: bit 1 reads zero, and this frame — and every frame until you let go — his cell takes the glow." />
 
-Left is the mirror of right: the same erase / change-column / draw, but `dec lamp_col` instead of `inc`. We add the **O** test above the **P** test, and now he walks both ways.
+The glow is just a flag we raise to prove the read worked. What matters is underneath: every frame, the program asks the keyboard a question and acts on the answer.
+
+## Milestone 2 — all four directions
+
+O's neighbour **P** is one more `BIT` test on the byte we already read. **Q** and **A** each live in a different half-row, so they each need their own `IN` — load the row's address, read, test bit 0. Any of the four hits the same `.held` branch: one glow for "a direction key is down".
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-05/steps/step-01.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-05/steps/step-02.asm"
   lang="z80"
-  title="Step 2: O steps left — the same move, mirrored"
+  title="Step 2: P from the same read; Q and A from their own half-rows"
   context={3}
 />
 
@@ -75,62 +90,49 @@ Left is the mirror of right: the same erase / change-column / draw, but `dec lam
 <CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-05/steps/step-02.asm" lang="z80" />
 </details>
 
-Hold a key and he glides — right on P, left on O — one figure, no trail, the floor wiped clean at every step:
-
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-05/step-02-walk.mp4"
-  caption="The lamplighter walks right while P is held, then back left on O — one cell per frame, so he's brisk. Each step erases his old cell before drawing the new one, so there's never a trail. (Nothing stops him at the walls yet — that's Unit 7.)"
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-05/step-02-any-key.mp4"
+  caption="Five seconds of the machine listening: O, then Q, then A, then P, each held and released. The lamplighter glows the frame a key goes down and settles the frame it comes up — four keys, three half-rows, one answer."
   autoplay={true}
   loop={true}
 />
 
-He moves once per frame while held — brisk, since the loop runs fifty times a second. Taming that into a steadier walk is the last "Try this" below.
-
-## The assumption, named out loud
-
-Here's the catch, and it matters: **erasing means writing zeros over his cell, and that only looks right because the floor is blank.** Cobbles are pure attribute colour — no pixels — so blanking a floor cell destroys nothing.
-
-The moment he steps onto something *with* pixels — a lamp, which arrives in Unit 9 — this same blank-erase would wipe the lamp out as he passed. The naive erase isn't wrong yet; it's wrong *later*, and we'll feel exactly when. Unit 6 fixes it by saving what's underneath him before he stands there. For now: blank floor, blank erase, and it genuinely works.
+Notice the shape of the code: the tests fall through one another, and the *first* held key wins the jump — with four keys and one response it makes no difference which, but the shape matters next unit, when each key will mean a different direction.
 
 ## When it's wrong, see why
 
-Movement bugs are almost always the erase and the order:
+The read fails in ways that point at which half of it slipped:
 
-- **He leaves a trail of figures.** The erase isn't running, or runs in the wrong place. The order must be: erase the **old** cell, then change `lamp_col`, then draw the **new** cell.
-- **He vanishes the moment you press.** You changed `lamp_col` *before* erasing, so you blanked the cell he's moving *to* and never cleaned up the one he left. Erase first.
-- **He runs off the right edge and the screen garbles.** Nothing stops him yet — no wall collision (Unit 7), no edge bounds (Unit 8). Tap instead of holding, for now.
-- **Nothing moves at all.** The key read isn't reaching the step branches. Check the `IN A,(C)` from Unit 4, and that `jr z` (held) routes into `.step_left` / `.step_right`.
+- **He glows even when you hold nothing.** The active-low test is backwards — you're treating bit-*set* as pressed. A held key reads **0**: `jr z` is "down", `jr nz` is "up".
+- **Nothing responds at all.** Wrong port, or only `C` loaded. `IN A,(C)` puts the whole of **BC** on the bus — the row-select lives in `B`, so it must be `ld bc, $DFFE`, not just `ld c, $FE`.
+- **The wrong keys respond.** Wrong half-row, or the wrong bit of the right one. Check the table above — bit 0 is the row's *outermost* key (P on its row, Q and A on theirs).
+- **Q and A do nothing but O and P work.** They aren't on the `$DFFE` row — each needs its own `IN` from its own port. One read only ever answers for five keys.
+- **He glows and never settles.** The not-held path must repaint `LAMP_ATTR` — the glow isn't "set once", it's *re-decided* every frame, and the white is too.
 
 ## Before and after
 
-You started with a figure that could only change colour and finished with one that walks — built by spending the same key read on movement instead of decoration. The two ideas under it carry the rest of the game: a position is **state in memory** you edit, and moving is **erase then draw, in that order**. The figure glides cleanly today only because the floor beneath him is empty — the honest limitation Unit 6 exists to remove.
+You started with a loop that read nothing and finished with one that feels the keyboard every frame — four keys across three half-rows, answered with a glow. The glow is scaffolding: the next unit takes the same reads and spends them on movement instead. But the mechanism underneath — select a half-row, `IN A,(C)`, test an active-low bit — is exactly how the lamplighter will be steered for the rest of the game, and nothing about it changes again.
 
-## Try this: take the erase away
+## Try this: the fifth key
 
-Comment out the `call erase_lamp` in one of the step branches and run it. Now he leaves a **trail** of lamplighters across the row — every cell he passes keeps his shape, because nothing rubbed it out. Ugly, but it shows you exactly what the erase is *for*. Put it back.
+You already read all five keys of the `$DFFE` row. Make **I** (bit 2) glow him a different colour — cyan, say, `%01000101` — with one more test branching to its own attribute write. One read, three keys answered from a single half-row.
 
-## Try this: watch the assumption bite
+## Try this: feel the frame
 
-Prove the blank-erase flaw to yourself before Unit 6 fixes it. In setup, poke a stray pixel into a floor cell in his path — a solid bar at column 22:
+Tap O as briefly as you physically can. He still glows — for one or two frames, a fiftieth of a second, but the loop caught it, because the loop *always* catches it: nothing that happens between two HALTs is ever missed, and nothing needs to be "noticed" — the question is simply asked again next frame. Games built on polling feel solid for exactly this reason.
 
-```
-ld   hl, ROW_SCR + 22
-ld   (hl), %11111111
-```
+## Try this: read SPACE
 
-Walk him over column 22. As he leaves, the erase wipes your bar away — he damaged the floor just by passing. That's the bug Unit 6 exists to kill.
-
-## Try this: slow him to a walk
-
-Moving every frame is fast. Add a one-byte counter that only lets him step every few frames: load it from, say, 4 after a step, `dec` it each frame, and only move when it reaches zero. Holding a key now repeats at a steady, controllable pace — the start of how real games handle held keys.
+Look up SPACE in the half-row table (`$7FFE`, bit 0) and make it glow him too. You've just read the key that will one day start the game from its title screen — same port, same test, fifteen units early.
 
 ## What you've learnt
 
-- A moving thing keeps its **position as state in memory** (`lamp_col`); moving means editing that state.
-- A move is **erase the old cell, then draw the new one** — order matters.
-- Within a single row, a cell's address is just **`ROW_SCR + col`** — no thirds to decode.
-- The naive **blank-erase only works over blank floor**; pixels underneath would be destroyed — the problem Unit 6 solves.
+- The keyboard is **eight half-rows of five keys**, all behind port `$FE`; the address's high byte picks the row.
+- **`IN A,(C)`** reads a port with the full 16-bit address in `BC` on the bus.
+- The bits are **active low** — a held key reads 0, and `BIT n,A` + `jr z` finds it.
+- Keys on the **same row** cost one read; keys on **different rows** cost one read each.
+- Input isn't an event — it's a **question the loop asks every frame**, answered fresh each time.
 
 ## What's next
 
-The lamplighter walks, but he can only ever cross *empty* floor without harm. In **Unit 6** we make him safe over anything: before he stands in a cell, **save** the eight bytes (and the colour) already there; when he leaves, **restore** them. He'll be able to walk over lamps, walls, anything — without scrubbing it away. It's the honest "before" of a technique a later game upgrades into true masking.
+The machine feels you; now the touch has to *do* something. In **Unit 6** the four keys become four directions: erase the lamplighter from his old cell, change his position, draw him in the new one. Movement — honest, cell by cell — and the first crack in the floor: watch what the erase does to the stipple.
