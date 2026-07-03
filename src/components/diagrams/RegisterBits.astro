@@ -6,6 +6,16 @@
  *   C64:     <RegisterBits address="$D015" name="Sprite Enable" bits={[{index: 0, label: "Spr 0", active: true}]} />
  *   Amiga:   <RegisterBits address="$DFF096" name="DMACON" bits={[...]} />
  *   Spectrum: <RegisterBits address="$FE" name="Border/Ear/Mic" bits={[...]} />
+ *
+ * Grouped bit-fields (multi-bit values packed into one byte) render as
+ * coloured spans with a labelled band beneath, place values (4 2 1)
+ * inside multi-bit fields, and value digits tinted per field:
+ *   <RegisterBits address="$5800+…" name="The attribute byte"
+ *     fields={[
+ *       { from: 7, to: 7, label: "FLASH" },
+ *       { from: 5, to: 3, label: "PAPER 0-7" },
+ *     ]}
+ *     value={0x0f} />
  */
 
 interface BitInfo {
@@ -15,10 +25,18 @@ interface BitInfo {
   activeLow?: boolean;
 }
 
+interface FieldInfo {
+  from: number;   // high bit index of the field
+  to: number;     // low bit index of the field
+  label: string;
+  color?: string; // override the palette
+}
+
 interface Props {
   address: string;
   name?: string;
-  bits: BitInfo[];
+  bits?: BitInfo[];
+  fields?: FieldInfo[];
   value?: number;
   caption?: string;
   accentColor?: string;
@@ -27,7 +45,8 @@ interface Props {
 const {
   address,
   name,
-  bits,
+  bits = [],
+  fields = [],
   value,
   caption,
   accentColor = '#4a4dff',
@@ -38,6 +57,18 @@ const bitMap = new Map<number, BitInfo>();
 for (const bit of bits) {
   bitMap.set(bit.index, bit);
 }
+
+// Field palette (dark-background friendly) and per-bit field lookup
+const FIELD_COLORS = ['#e0b341', '#5aa9e6', '#7bd88f', '#d78cf0', '#f2836b'];
+const fieldList = fields.map((f, i) => ({
+  ...f,
+  color: f.color ?? FIELD_COLORS[i % FIELD_COLORS.length],
+}));
+const fieldMap = new Map<number, (typeof fieldList)[number]>();
+for (const f of fieldList) {
+  for (let b = f.to; b <= f.from; b++) fieldMap.set(b, f);
+}
+const hasFields = fieldList.length > 0;
 
 // Layout constants
 const CELL_W = 58;
@@ -52,7 +83,9 @@ const headerH = 20;
 const indexY = headerY + headerH + 6;
 const indexH = 14;
 const cellY = indexY + indexH + 4;
-const labelY = cellY + CELL_H + 4;
+const bandY = cellY + CELL_H + 6;
+const bandH = hasFields ? 20 : 0;
+const labelY = bandY + bandH + (hasFields ? 6 : 0);
 const labelH = 14;
 const valueY = value !== undefined ? labelY + labelH + 4 : labelY;
 const valueH = value !== undefined ? 20 : 0;
@@ -60,6 +93,8 @@ const totalH = (value !== undefined ? valueY + valueH : labelY + labelH) + PADDI
 
 const gridW = 8 * (CELL_W + GAP) - GAP;
 const totalW = gridW + PADDING_X * 2;
+
+const cellX = (bitIdx: number) => PADDING_X + (7 - bitIdx) * (CELL_W + GAP);
 
 // Determine bit value for display
 function bitValue(index: number): number {
@@ -94,26 +129,87 @@ const ariaLabel = name ? `${address} ${name} register` : `${address} register`;
       {name ? `${address} — ${name}` : address}
     </text>
 
+    {/* Field bands beneath the cells */}
+    {fieldList.map((f) => {
+      const x = cellX(f.from);
+      const w = (f.from - f.to + 1) * (CELL_W + GAP) - GAP;
+      const oneBit = f.from === f.to;
+      return (
+        <g>
+          <rect
+            x={x}
+            y={bandY}
+            width={w}
+            height={bandH}
+            fill={f.color}
+            fill-opacity="0.18"
+            stroke={f.color}
+            stroke-width="1"
+          />
+          {!oneBit && (
+            <text
+              x={x + w / 2}
+              y={bandY + bandH / 2}
+              text-anchor="middle"
+              dominant-baseline="central"
+              fill={f.color}
+              font-family="var(--font-family-mono, monospace)"
+              font-size="11"
+              font-weight="bold"
+            >
+              {f.label}
+            </text>
+          )}
+        </g>
+      );
+    })}
+
     {/* Bit cells (7 → 0, left to right) */}
     {Array.from({ length: 8 }, (_, i) => {
       const bitIdx = 7 - i;
       const info = bitMap.get(bitIdx);
+      const field = fieldMap.get(bitIdx);
       const isLabelled = !!info;
       const isActive = info?.active ?? false;
       const isActiveLow = info?.activeLow ?? false;
-      const x = PADDING_X + i * (CELL_W + GAP);
+      const x = cellX(bitIdx);
+      const oneBitField = field && field.from === field.to;
 
       const cellFill = isActive
         ? accentColor
-        : isLabelled
-          ? '#2b2419'
-          : '#16120e';
+        : field
+          ? field.color
+          : isLabelled
+            ? '#2b2419'
+            : '#16120e';
+      const cellFillOpacity = isActive ? 1 : field ? 0.18 : 1;
 
       const cellStroke = isActive
         ? accentColor
-        : isLabelled
-          ? '#444'
-          : '#2b2419';
+        : field
+          ? field.color
+          : isLabelled
+            ? '#444'
+            : '#2b2419';
+
+      // In-cell text: explicit bit label wins; a one-bit field shows its
+      // label; a multi-bit field shows the bit's place value (4 2 1);
+      // otherwise the bit index, dim.
+      const cellText = isLabelled
+        ? info!.label
+        : field
+          ? oneBitField
+            ? field.label
+            : String(1 << (bitIdx - field.to))
+          : String(bitIdx);
+      const cellTextFill = isActive
+        ? '#fff'
+        : field
+          ? field.color
+          : isLabelled
+            ? '#ccc'
+            : '#444';
+      const cellTextSize = isLabelled || oneBitField ? '9' : '11';
 
       return (
         <g>
@@ -123,7 +219,7 @@ const ariaLabel = name ? `${address} ${name} register` : `${address} register`;
             y={indexY + indexH / 2}
             text-anchor="middle"
             dominant-baseline="central"
-            fill={isLabelled ? '#aaa' : '#555'}
+            fill={isLabelled || field ? '#aaa' : '#555'}
             font-family="var(--font-family-mono, monospace)"
             font-size="10"
           >
@@ -138,21 +234,23 @@ const ariaLabel = name ? `${address} ${name} register` : `${address} register`;
             height={CELL_H}
             rx="0"
             fill={cellFill}
+            fill-opacity={cellFillOpacity}
             stroke={cellStroke}
             stroke-width="1"
           />
 
-          {/* Cell label or bit index */}
+          {/* Cell label */}
           <text
             x={x + CELL_W / 2}
             y={cellY + CELL_H / 2}
             text-anchor="middle"
             dominant-baseline="central"
-            fill={isActive ? '#fff' : isLabelled ? '#ccc' : '#444'}
+            fill={cellTextFill}
             font-family="var(--font-family-mono, monospace)"
-            font-size={isLabelled ? '9' : '11'}
+            font-size={cellTextSize}
+            font-weight={oneBitField ? 'bold' : 'normal'}
           >
-            {isLabelled ? info!.label : bitIdx}
+            {cellText}
           </text>
 
           {/* Label row (active-low marker or blank) */}
@@ -177,7 +275,7 @@ const ariaLabel = name ? `${address} ${name} register` : `${address} register`;
               y={valueY + valueH / 2}
               text-anchor="middle"
               dominant-baseline="central"
-              fill={bitValue(bitIdx) ? '#6f6' : '#888'}
+              fill={bitValue(bitIdx) ? (field ? field.color : '#6f6') : '#666'}
               font-family="var(--font-family-mono, monospace)"
               font-size="12"
               font-weight="bold"
@@ -188,19 +286,6 @@ const ariaLabel = name ? `${address} ${name} register` : `${address} register`;
         </g>
       );
     })}
-
-    {/* Value label on the left */}
-    {value !== undefined && (
-      <text
-        x={PADDING_X - 2}
-        y={valueY + valueH / 2}
-        text-anchor="end"
-        dominant-baseline="central"
-        fill="#888"
-        font-family="var(--font-family-mono, monospace)"
-        font-size="9"
-      />
-    )}
   </svg>
   {caption && <figcaption class="register-bits-caption">{caption}</figcaption>}
 </figure>
@@ -212,7 +297,7 @@ const ariaLabel = name ? `${address} ${name} register` : `${address} register`;
   }
 
   .register-bits-svg {
-    max-width: 540px;
+    max-width: 720px;
     width: 100%;
     height: auto;
     display: block;
