@@ -1,103 +1,141 @@
 ---
-title: "A Small Sound"
-description: "Give Gloaming a voice. The Spectrum's beeper is bit 4 of port $FE — toggle it as a square wave for a tone. A bright blip when a lamp lights, a colder note when one is snuffed. The honest single-blip 'before' of a sound driver."
-pubDate: 2026-06-01
+title: "Lives, and the Fall of Night"
+description: "Price the touch: three ember pips, a lose_life that respawns him through the same dance as any move — and the playtest lesson built wrong first: without the wisp's recoil, the night strip-mines every life in under a second."
+pubDate: 2026-07-03
 game: 1
 unit: 17
-tags: ["assembly", "z80", "sound", "beeper", "out", "audio"]
+tags: ["assembly", "z80", "lives", "game-state", "collision", "game-feel"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
-import AudioClip from "@components/AudioClip.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-The game has a front door, a goal, and a threat — but it has never made a sound. This unit gives it the smallest voice the Spectrum has: the beeper. A bright little blip when you light a lamp, a colder, lower note when the draught snuffs one. Two short sounds, a handful of bytes each, and the square suddenly feels alive.
+The wisp can pin him and it costs nothing but nerves. Cornered against a wall with the cold at your side, you wait, it holds, and eventually you slip away — the two contact vetoes from last unit keep the *cells* honest, but nobody pays. This unit prices the touch, and in doing so finishes what phase 4 came for: Gloaming becomes a game you can lose.
 
-## Where we start
+The pieces are almost all reused, which by now is the module's signature. Lives are the tally's machinery run in reverse. The respawn is the movement dance pointed at a constant. The lose screen is the win screen dressed in black. The only genuinely *new* thing this unit teaches is a design lesson — and true to form, we'll learn it by building the wrong version first.
 
-Unit 16's titled game — it opens, plays, wins and loses, but it does all of it in silence. We tie a sound to the two moments that matter most: a lamp catching, and a lamp going cold.
+## Three embers
 
-## The speaker is one bit
-
-The Spectrum's speaker is **bit 4 of port `$FE`** — the same port we set the border with. Write a 1 to bit 4 and the cone pushes out; write a 0 and it pulls back. A single write is a *click*. To make a *tone*, you flip the bit on and off, over and over: each on-off pair is one cycle of a square wave, and **how long you wait between flips sets the pitch** — shorter waits, higher note.
-
-So a beep needs two numbers:
+Lives are shown the way this game shows everything: cells on the ledge.
 
 ```
-beep:   B = how many cycles  (the length of the sound)
-        C = the delay between flips  (the pitch — smaller is higher)
+LIVES      equ  3
+LIFE_PIP   equ  %01010000      ; BRIGHT red PAPER — a small ember
+LIFE_BASE  equ  $5800 + 28     ; row 0, the ledge's right shoulder
 ```
 
-The routine writes `%00010000` (speaker out, border still black), waits `C`, writes `0`, waits `C`, and repeats `B` times. That is the whole sound engine.
+`draw_lives` is `draw_pips` with three substitutions, and losing one is `light_pip` run backwards — the same count-as-cursor trick, downward: decrement `lives`, and the *new* count is the index of the ember to put out. Three, two, one, dark.
 
-## Blocking, and on purpose
+## The anatomy of losing a life
 
-The blip is **blocking**: while it sounds, the game does nothing else — the loop pauses for those few milliseconds. That is exactly how beeper games worked, and you can hear it as a tiny hitch when a lamp lights. It is the honest "before" of a real **sound driver** — one that plays music *while* the game keeps running, which a later, bigger game builds. For a single blip, blocking is right.
+`lose_life` is the whole unit in one routine, and its shape is worth reading before the diff:
 
-One detail: we turn interrupts off (`di`) around the beep and back on (`ei`) after. Without that, the 50 Hz frame interrupt would fire mid-tone and jitter it into a warble. Off for the blip, on for the game.
+1. **Take the ember** — decrement, blank the pip at the new count.
+2. **If none remain, night falls** — more on that below.
+3. **Otherwise, the lamplighter returns to the start** — and look at *how*: `restore_under`, set position, `save_under`, `draw_lamp`. That's Unit 8's dance, verbatim. A respawn isn't a special operation; it's an ordinary move whose destination happens to be a constant. Because it goes through the same four beats, the world stays whole — the cell he was pinned against heals, the start cell banks correctly, and nothing about the buffers needs to know a life was lost.
 
-## Two notes, two events
+Both contact points — the wisp reaching him, him walking into the wisp — now call it. The touch has one price, whoever moves.
 
-The sound is **feedback** — it is tied to things that happen. `blip_lit` (short, bright) plays in the same place the lamp lights; `blip_snuff` (lower, colder) plays where the draught puts one out. Pick different `B`/`C` for each and the two events *sound* different — you can play with your eyes half-closed and still know what just happened.
+## Milestone 1 — priced, and merciless
 
-## Milestone — give it a voice
-
-We add a `beep` routine that toggles bit 4 of `$FE` as a square wave, a `blip_lit` and a `blip_snuff` that call it with their own length and pitch, and one call to each in the branches that already light and snuff a lamp. Nothing else about the game changes — the sound rides on the events that were there all along.
+Build exactly that. Deliberately absent: any change to the *wisp* after a catch. It caught him fair and square; it stays where it is. What could go wrong?
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-17/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-17/steps/step-01.asm"
   lang="z80"
-  title="Step 1: a beeper, and a blip on every lamp lit or snuffed"
+  title="Step 1: embers, lose_life, the lose screen — and no recoil"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-17/steps/step-01.asm" lang="z80" />
+</details>
+
+Stand still and let it come:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-17/step-01-stripmine.mp4"
+  caption="One long, fair chase across the square — then contact, and the game ends three-quarters of a second later. Watch the embers: all three lives go inside a second, because the respawn delivers him back into arms that never left."
+  autoplay={true}
+  loop={true}
+/>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-17/step-01-stripped.png" alt="The lamplighter at his start cell with the wisp directly above him; one ember already out." caption="Mid-strip: he's just respawned at the start — and the wisp is already adjacent, because the start is where it caught him and nothing moved it. The next beat takes the next life. There is no play here, only bookkeeping." />
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-17/step-01-fallen.png" alt="A black screen with NIGHT FALLS printed across the middle." caption="Nine seconds from boot to this, and the player's only mistake was standing still once. The mechanics are all correct. The game is broken." />
+
+Every line of that code does what it should. The catch is legitimate, the ember goes out, the respawn is clean — and the game is unplayable, because the respawn sends him to a fixed, known cell and the thing that hunts him is *standing next to it*. This exact failure is in the shipped game's source as a comment, because it happened: the moment the draught learnt to hunt (rather than drift), leaving it in place after a catch turned one mistake into a stripped set of lives. Mechanics can be individually correct and *jointly* vicious — you find that out by watching them together, which is what playtesting is.
+
+## Milestone 2 — the taking costs the night its reach
+
+The fix is symmetry. A catch costs *you* a life — it should cost *the night* something too: its position, all those beats of patient closing-in. On a catch (with lives remaining), the wisp recoils to the corner it entered from, its timer reset — done through its own engine, the same restore/set/save/draw:
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-17/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-17/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: the recoil — every life buys a whole fresh chase"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-17/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-17/steps/step-02.asm" lang="z80" />
 </details>
 
-The screen looks like any moment of play — a lamp gold beside the lamplighter, the draught adrift, the tally and lives in the HUD — but now each lamp you light *announces itself*:
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-17/step-02-nightfalls.mp4"
+  caption="The same idle probe, now a three-act story: chase, catch, recoil — three full hunts, an ember out per act — before the dark finally earns its ending. Twenty seconds instead of nine, and every one of them is game."
+  autoplay={true}
+  loop={true}
+/>
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-17/step-01-lit.png" alt="The square in play: a gold lit lamp beside the white lamplighter, the cyan draught drifting at the upper right, and the HUD tally and red life pips along the top." caption="A lamp caught, mid-play. The picture is unchanged from Unit 16 — the difference is that lighting this lamp made a sound." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-17/step-02-lifelost.png" alt="The lamplighter back at his start cell, one ember out, and the wisp far away in the north-east corner again." caption="The beat after a catch: one ember down, the lamplighter at his start — and the wisp all the way back in its corner, beginning again. A life now buys the thing it should: time." />
 
-Here are the two blips from lighting two lamps — bright, short, and now resting on true silence:
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-17/step-02-nightfalls.png" alt="A black screen with NIGHT FALLS printed across the middle." caption="Still reachable — night still falls if you spend all three — but now it's earned by the dark and spent by you, one whole chase at a time." />
 
-<AudioClip src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-17/lamp-blips.wav" title="Lighting two lamps — the beeper blip" source="ZX Spectrum beeper · port $FE bit 4" />
+## The win's mirror image
+
+`draw_lose_screen` is `draw_win_screen`'s dark twin, and the contrast is the design. The win *restored* — lifted him out and printed over a golden, finished world. The loss **erases**: one `LDIR` washes all 768 attribute cells to black — lamps, walls, warmth, the tally, the embers, everything — and prints NIGHT FALLS into the void. (The pixels are all still there, black on black; night didn't destroy the town, it just took the light. Which is, of course, the story.) A new state, `STATE_LOSE`, joins the machine, and the Unit 15 gate holds this screen exactly as it holds the win.
+
+One structural detail matters more than it looks: `play_step` now checks `game_state` after the player's beat *and* after the wisp's. Contact can end the game mid-frame — and a frame must not keep happening to a game that's over. Without those guards, a lamplighter who spends his last life walking into the wisp would still hand the wisp its beat, and the wisp would calmly take a step on the blacked-out screen. End states aren't just reached; they have to be *respected*, immediately, by everything still in the pipeline.
 
 ## When it's wrong, see why
 
-A one-bit speaker fails in a few tell-tale ways:
-
-- **No sound at all.** The speaker is **bit 4** of `$FE`. Confirm the beep writes `%00010000` then `%00000000`, and that `blip_lit` is reached in the lamp-lit branch.
-- **A click, not a note.** You are toggling once, not repeatedly. The tone comes from the `B` loop flipping the bit many times — check the `djnz`.
-- **The tone warbles.** The frame interrupt is jittering it. Wrap the beep in `di` … `ei`.
-- **The game hitches hard on a blip.** The sound is too long — shrink `B`. (Some hitch is expected; the blip blocks by design.)
+- **Night never falls.** Contact isn't registering — both contact points must `call lose_life` (Unit 16's vetoes, now with a price), and the wisp must be able to reach him at all.
+- **The wrong ember goes out, or the bar corrupts leftward.** Index with the *new* count, after the decrement — `light_pip`'s trick, mirrored. Off by one here blanks `LIFE_BASE + 3` on the first hit: a cell that was never an ember.
+- **The strip-mine is back.** The recoil block is missing or doesn't reset `draught_timer` — position alone isn't enough; a stale timer near zero gives the recoiled wisp an instant first step.
+- **A catch leaves a wisp-shaped hole, or a phantom, at the catch site.** The recoil must run through `restore_draught` before moving its position — it's a mover like any other, and teleports go through the dance too. Same for him: a respawn that skips `restore_under` leaves him standing in two places.
+- **The fallen screen still shows the pips, or the game keeps playing behind it.** The blackout's `LDIR` count is short (767 from `$5800` covers everything), or the mid-frame state guards are missing from `play_step`.
 
 ## Before and after
 
-You started with a game that played in silence and finished with one that speaks at the two moments that carry its stakes — a lamp lit, a lamp lost. The change is small in bytes and large in feel: a square wave is one bit toggled on a delay, the pitch is the delay, the length is the loop count, and tying a distinct note to a distinct event turns a silent diagram into something that responds. The sound rode on events you already had — it needed a voice, not new machinery.
+Phase 4 opened with a square that couldn't oppose you and closes with a game that can kill you — and the distance was covered almost entirely with parts you already had: pips in reverse, the dance as a teleport, the win screen in black. The one new thing was the one that couldn't be reused: the *design* discovery that correct mechanics compose into broken games, that a catch must cost the catcher too, and that you learn this by sitting still and watching — the cheapest playtest there is. Gloaming is now, in the full sense, a game: a goal, a threat, a win, and a loss.
 
-## Try this: tune the blip
+## Try this: turn the mercy dial
 
-The blip is two numbers. In `blip_lit`, shrink `C` for a higher note, grow `B` for a longer one. Find a tick that feels *bright* without being shrill. A few values in and you will have an ear for what the pair does — that is the whole of beeper sound design.
+`LIVES` is one number and the whole HUD follows it. At `1`, Gloaming is a roguelike — one touch, night falls; at `5`, it's gentle enough for a first evening. Notice the recoil changes what the number *means*: each life is a guaranteed full chase, so `LIVES 3` is really "three acts". Tune it with that in mind.
 
-## Try this: a two-tone chime
+## Try this: make the hit land
 
-Make lighting a lamp a little richer: call `beep` twice in a row with two different pitches — a quick low-then-high gives a cheerful "ding". Chaining a few short beeps is how beeper games built their fanfares, all from this one routine.
+An ember going out is quiet for something that cost a third of the game. In `lose_life`, before the respawn, flash the border red — `ld a, 2 / out ($FE), a`, a short busy-wait, back to black. One jolt, felt in the hands. (Next unit gives the game a *voice*, and the catch will get a sound; the flash is the visual half of the same idea.)
 
-## Try this: a win fanfare
+## Try this: only the night is deadly
 
-On a win, play something celebratory before the line prints. In the win routine, chain three or four rising beeps (drop `C` a little each call) for a short triumphant run. It is the same `beep`, just sequenced — and a tiny tune is a big lift at the end of a game.
+Change the player-side contact from `call lose_life` back to a plain `ret` — walking into the wisp is refused but free; only *its* movement onto you costs. The game softens in a way the numbers don't capture: brushing past danger becomes a skill instead of a suicide. Then decide which game is yours. Both are one line.
 
 ## What you've learnt
 
-- The **beeper is bit 4 of port `$FE`**; a tone is that bit toggled as a square wave, the flip-delay setting the pitch.
-- A **blocking blip** pauses the game for a few milliseconds — authentic, and the honest "before" of a non-blocking sound driver.
-- **`di`/`ei`** around the beep keeps the 50 Hz interrupt from warbling the tone.
-- **Sound is feedback** — tie distinct notes to distinct events and the game speaks.
+- **Lives are the tally in reverse** — count-as-cursor, decrementing, embers out.
+- A **respawn is an ordinary move** — through the same restore/save/draw dance, so the world survives it.
+- **Correct mechanics can compose into a broken game** — the strip-mine was three sound rules and zero play.
+- **A catch should cost the catcher** — recoil turns a death spiral into a three-act structure.
+- **End states bind mid-frame** — check the state between actors, or the dead game keeps moving.
 
 ## What's next
 
-Gloaming looks and sounds like a game now. **Unit 18, "The Square Warms"**, adds the last layer of polish to the play itself: atmosphere. As lamps light, the square *warms* — small attribute touches that make the lit town feel different from the cold, dark one you started in. It is a first taste of the mood-making that a later, larger game makes its whole craft, built from the colour writes you have used since Unit 1.
+Winnable, losable, and completely silent — Gloaming hasn't made a single sound in seventeen units. Phase 5 makes it feel finished, starting with **Unit 18**: the Spectrum's beeper — one bit on one port, toggled by hand — and three small voices built from it: a blip for a lamp lit, a fanfare for the night held, a sting for the fall. The machine has been drawing its own font since Unit 15; now it clears its throat.
