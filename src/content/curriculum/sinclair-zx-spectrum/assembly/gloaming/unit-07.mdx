@@ -1,10 +1,10 @@
 ---
-title: "Walls"
-description: "Turn the blue frame into a boundary. Read the target cell's attribute and BIT-test PAPER's bottom bit — set on walls, clear on floor — refusing the step if it's solid. Collision for free, because the map is already colour."
-pubDate: 2026-06-01
+title: "Taming the Key"
+description: "Pay the WAY-TOO-FAST debt: a combined any-key scan, a countdown timer that gates the step, and a release re-arm — so a tap is one step, instantly, and a hold is a stride at a chosen pace."
+pubDate: 2026-07-03
 game: 1
 unit: 7
-tags: ["assembly", "z80", "collision", "attributes", "bit", "walls"]
+tags: ["assembly", "z80", "input", "timing", "game-feel", "state"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
@@ -12,113 +12,124 @@ import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
 
-The lamplighter can stand anywhere and harm nothing — so now we decide where he's *allowed* to stand. Until this unit, the blue frame round the square was scenery he could walk straight through. This unit makes it solid: step toward a wall and he stops.
+The lamplighter moves — at fifty cells a second, which is not moving so much as teleporting angrily. The trouble is a mismatch of clocks: the loop asks the keyboard fifty times a second, and your thumb answers about seven. Every frame a key stays down, Unit 6 takes another step. When this game was first playtested in its shipped form, the very first line of feedback was **"WAY TOO FAST"** — and this unit is the repair, almost line for line as it was made.
 
-It costs almost nothing, because of a decision we made back in Unit 1: the map *is* colour, and colour lives in memory. We don't need a separate table of what's solid — we read it from the attribute of the cell he's trying to enter.
+## Two questions, not one
 
-## Where we start
-
-Unit 6's walker, safe over anything and stopped by nothing — he strolls clean through the blue frame and off into the dark. We give the frame teeth.
-
-## Collision is already in the colour
-
-Look at the two cell types as bits:
+Unit 5's reads answer *which direction?* — they stay exactly as they are, deciding the step. What's missing is a second, separate question: *is it time to take a step at all?* For that we need a single yes-or-no — **is any direction key down?** — and there's an idiom for it. The port reads are active low, so `CPL` flips each one to make pressed keys read as 1; `AND` masks each half-row down to just the keys we care about; and `OR` gathers the three rows into one byte. Nonzero means *something is held*:
 
 ```
-COBBLE = %0000 0 001    PAPER black (0)  — floor
-WALL   = %0000 1 111    PAPER blue  (1)  — solid
-                  ↑
-                  bit 3 — the bottom bit of PAPER
+in   a, (c)         ; five keys, active low
+cpl                 ; now a pressed key is a 1
+and  %00000011      ; keep only O and P
+or   e              ; gather into the running answer
 ```
 
-The walls are the only cells with a non-black PAPER. So **bit 3** — the bottom bit of the PAPER field — is **set on walls and clear on floor**. That single bit answers the only question collision asks: *can I go there?*
+## A byte that counts down to permission
 
-```
-bit  3, (hl)     ; HL = the target cell's attribute
-                 ; set   → wall  → no
-                 ; clear → floor → yes
-```
+The pacing itself is one variable and one habit. `player_timer` holds "frames until the next step is allowed". While a key is down: if the timer is zero, step — and reload the timer with `PLAYER_REPEAT`; if it isn't, just count it down and do nothing. That's the whole mechanism. Learn its shape well, because it is *the* timing idiom of this machine's games — a byte, a decrement, a zero test — and it will not stay yours alone: much later, when the night itself starts taking steps toward you, it will pace its hunt on exactly this pattern.
 
-No solidity table, no list of wall coordinates. The colour you already painted *is* the collision map. This is the Unit 1 idea — "a cell's type and its colour are the same byte" — paying for itself.
+## Milestone 1 — the gate
 
-## Milestone — test before you step
-
-In Unit 5 we moved first and asked questions never. Now we ask first. Each step works out the **target** column (`lamp_col` ± 1), reads that cell's attribute and `BIT 3`s it, and only commits the move — restore, step, save, draw — if the bit is clear. A small helper, `wall_at`, takes a column and comes back with the Z flag set or clear, so the loop reads almost like English: *work out the target; if `wall_at`, go round again; otherwise move there.*
+The gate slots between the target setup and the direction decode: combined scan, timer check, and only then the keys choose a direction.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-07/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-07/steps/step-01.asm"
   lang="z80"
-  title="Step 1: read the target cell's attribute and refuse a wall"
+  title="Step 1: scan for any key, and a countdown gates the step"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-07/steps/step-01.asm" lang="z80" />
+</details>
+
+With `PLAYER_REPEAT` at 6, a held key steps once every seventh frame — about seven cells a second. Hold P and he *walks*:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-07/step-01-stride.mp4"
+  caption="A held P, then a held A — and instead of the teleport-blur, a measured stride: one step every seventh frame, a pace you can actually steer."
+  autoplay={true}
+  loop={true}
+/>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-07/step-01-tamed.png" alt="The lamplighter two cells right and one down from the centre, with a two-cell nick in the stipple behind him." caption="The exact input that carved Unit 6's long gouge across the square now moves him three cells. Same keys, same frames — a gate in between." />
+
+The pace is the playtest's, verbatim: 6 was the value that came back approved — *"that works."* But hammer a key in quick taps and something's off: some taps step, some vanish. The timer only counts down **while a key is held**, so releasing mid-countdown freezes it — and your next tap can land inside a stale count and die there. Rate-limited, yes. *Crisp*, no.
+
+## Milestone 2 — the re-arm
+
+Two lines fix it. On the *nothing held* path, zero the timer. Now every release re-arms the instant step: the moment you press again, the count is clear and the step happens on that first frame.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-07/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-07/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: releasing every key re-arms the instant first step"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-07/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-07/steps/step-02.asm" lang="z80" />
 </details>
 
-Walk him into the wall and he stops at the last floor cell — and stays there, however long the key is held:
+Here is the same run of five quick taps against both builds — watch how many actually land:
 
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-07/step-01-stop.mp4"
-  caption="Holding P, the lamplighter walks right across the square and halts at the last floor cell — the wall refuses the next step. We wrote no 'stay on screen' code; the side walls bound him purely because they're solid."
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-07/step-01-taps-eaten.mp4"
+  caption="Step 1's gate: five identical taps, and only the first and fourth step — the rest die inside a frozen countdown. He ends two cells from where he started."
   autoplay={true}
   loop={true}
 />
 
-Hold the key far longer than it takes to cross, and he sits pressed against the blue, refusing to enter it:
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-07/step-02-taps-crisp.mp4"
+  caption="Step 2's gate, same five taps: five steps, each landing on the frame of its press. That's the contract — a tap always steps, instantly."
+  autoplay={true}
+  loop={true}
+/>
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-07/step-01-blocked.png" alt="The lamplighter stopped at the right-hand wall, at the last floor cell just inside the blue frame." caption="Stopped at the last floor cell — the cell beyond him is a wall, so wall_at refuses the step. The frame is a boundary now, not decoration." />
+Five taps: two steps against step 1, five against step 2 — the end positions three cells apart tell the story even in a still frame. The finished gate's contract is worth saying in one breath, because the player will *feel* it even if they never name it: **a tap is one step, immediately; a hold is a stride at the game's pace; and letting go always re-arms the tap.**
 
-Notice there's **no** "stay on screen" code anywhere. The side walls bound him because they're solid; the map does the work.
+## Game feel is a number you choose
+
+Nothing about `PLAYER_REPEAT 6` is sacred — it's a dial, and it was set by hands, not arithmetic. Turn it down to 3 and he's skittish, hard to stop on the cell you meant; up at 12 he trudges, and the square feels twice as big. The playtest settled on 6 because lamps are coming: this game will soon be about *stopping on a particular cell*, and crisp taps plus a steerable stride are what make that a skill instead of a fight. When a game of yours feels wrong in the hands, look for the number like this one — there usually is one, and it's usually data.
 
 ## When it's wrong, see why
 
-Collision bugs are about which cell you test, and which way the bit reads:
-
-- **He walks through walls regardless.** The test is inverted. A wall has bit 3 **set**, so `BIT 3` gives **NZ** — and `jr nz` must skip the move. Check `WALL_BIT` is 3 and the branch is `jr nz`.
-- **He won't move anywhere.** You're testing his *current* cell, or always reading non-zero. `wall_at` must test the **target** (`lamp_col` ± 1), worked out before the move.
-- **He stops one cell short of, or one cell inside, the wall.** Off-by-one in the target. The cell to test is the one he's *entering*, not the one he's on.
-- **He slips past the side wall and the screen garbles.** `wall_at` is reading the wrong address — confirm it forms `ROW_ATTR + col`.
+- **He hesitates one frame, then blurs anyway.** The gate's zero test is backwards. `jr z, .stepnow` fires *when the timer is zero*; inverted, the first frame counts the timer down past zero and every frame after that finds it nonzero — gate permanently open.
+- **Still way too fast.** The reload is missing — `.stepnow` must store `PLAYER_REPEAT` back into the timer, or it stays zero and every frame steps.
+- **A held key steps once, then never again.** The countdown path isn't storing the decremented value back; `dec a` alone changes only the copy in `A`.
+- **One key strides, another doesn't.** The combined scan's masks. The `$DFFE` row needs `%00000011` (O *and* P); Q's and A's rows need `%00000001`. A wrong mask makes a key invisible to the gate but visible to the decode — it moves only while another key holds the gate open.
+- **Taps feel muddy.** The re-arm is missing from the nothing-held path — that's step 1's build, and its cure is milestone 2.
 
 ## Before and after
 
-You started with a frame he ignored and finished with one he can't cross — and the whole boundary is three instructions: work out the target, `BIT`-test its colour, refuse if solid. No coordinate list, no edge checks; the collision map is the attribute memory you painted in Unit 1. Make a wall cell floor, or a floor cell wall, and his world changes with it — because the map and the collision are the same bytes.
+Unit 6 ended with movement nobody could steer; it ends here as a hand-tuned instrument. The mechanics are two small things — an any-key answer built from `CPL`/`AND`/`OR`, and a countdown byte standing between "held" and "step" — plus two lines of re-arm that turn a rate limiter into an input contract. The gouge in the floor is still there, unpaid, and it's next.
 
-## Try this: knock a gate
+## Try this: turn the dial
 
-Open a hole in the wall. In setup, after the frame is drawn, paint one wall cell as floor — the right wall of his row:
+Set `PLAYER_REPEAT` to 3, rebuild, and try to stop on a chosen cell. Then 12. Then back to 6, and feel it click. This is the tuning loop every game goes through, compressed to one constant.
 
-```
-ld   hl, ROW_ATTR + 31
-ld   (hl), COBBLE
-```
+## Try this: back to the blur
 
-Walk right: he passes straight through the gap, because `wall_at` reads the *live* attribute and that cell is floor now. Change the map, change the collision.
+Set `PLAYER_REPEAT` to 0. The reload stores zero, the gate is always open — and you're back to Unit 6's fifty steps a second, now as a deliberate setting rather than an accident. Some games *want* a turbo dial; now you own one.
 
-## Try this: plant a pillar
+## Try this: hold two keys
 
-The opposite — make a floor cell solid. Set an interior cell in his path to the wall colour:
-
-```
-ld   hl, ROW_ATTR + 20
-ld   (hl), WALL
-```
-
-A blue block appears mid-floor, and he stops at it just as he stops at the frame. Collision isn't about the *edge* of the square — it's about whatever cell he's stepping into, wherever it is.
-
-## Try this: take the wall test out
-
-Comment out the `call wall_at` and its `jr nz`. He walks straight through the wall and off into the dark, exactly like Unit 6. Those lines are the whole difference between a figure and a figure that respects the world. Put them back.
+Hold O and P together. He walks left — never both, never a wobble. The decode tests O's bit first and takes the jump, so P is never consulted; hold Q and A and Q wins the same way. One direction per beat, and *which* one is decided by the order we wrote the tests in. When you want diagonals — some games do — this is the code that would change.
 
 ## What you've learnt
 
-- Collision can read the map you **already have** — a cell's attribute byte — with no separate solidity table.
-- A single **`BIT` test** (PAPER's bottom bit here) classifies a cell as solid or floor.
-- **Test the target cell before committing** the move, and refuse if it's solid.
-- The walls bound him with **no dedicated edge code** — being solid is enough.
+- Input has **two questions**: which direction (per-key tests) and whether now (the gate) — and they separate cleanly.
+- The **`CPL`/`AND`/`OR` gather**: three active-low half-rows folded into one "anything held?" byte.
+- The **countdown-to-permission idiom**: a byte, a decrement, a zero test — this game's universal timer, soon to be borrowed by its villain.
+- The **release re-arm**, and the input contract it buys: tap = one step now; hold = stride at pace.
+- Feel is **data**: one constant, tuned by hands, checked by playtest.
 
 ## What's next
 
-He's penned left and right, but he can only move along one row. In **Unit 8** we complete the movement engine: the other two directions, **up and down**. That brings back the full screen-address arithmetic from Unit 2 — moving between rows crosses those awkward thirds — and the top and bottom walls catch him just as the sides do. By the end he'll roam the whole square, and be properly shut inside it.
+One debt left. Every step still blanks the cell behind him — the gouge is slower now, but it's still vandalism. **Unit 8** repays it: before he stands anywhere, the game will *remember what was there* — eight bitmap bytes and an attribute in a little buffer — and put it back, exactly, as he leaves. The ground survives your passage.
