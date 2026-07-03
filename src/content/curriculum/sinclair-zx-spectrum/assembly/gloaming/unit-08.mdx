@@ -1,10 +1,10 @@
 ---
-title: "Edges"
-description: "Complete the movement engine: up and down as well as left and right. Moving between rows brings back Unit 2's full screen-address arithmetic, and the four walls bound him — he roams the whole square, properly shut inside it."
-pubDate: 2026-06-01
+title: "Save and Restore"
+description: "Repay the gouge: a nine-byte buffer remembers what the lamplighter stands on — eight bitmap rows and an attribute — and the move becomes a dance with a strict order: restore, step, save, draw."
+pubDate: 2026-07-03
 game: 1
 unit: 8
-tags: ["assembly", "z80", "movement", "screen-layout", "collision", "bounds"]
+tags: ["assembly", "z80", "sprite", "memory", "buffers", "state"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
@@ -12,103 +12,129 @@ import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
 
-The lamplighter walks left and right, stopped by the side walls. This unit gives him the other two directions — up and down — and shuts every edge. By the end he roams the whole square and can't leave it. The cell-sprite technique, four units in the making, is finished here.
+One debt left, and it's the older one. Since Unit 6, every step has blanked the cell behind the lamplighter — the gouge is slower now that he's paced, but it's still there, cutting bare black through the stipple wherever he walks. The erase can't be fixed by adjusting it, because its failure isn't a detail — it's the whole idea. `erase_lamp` repaints an *approximation* of the floor: right attribute, blank canvas. The screen held the only copy of those stippled pixels, he drew over them, and they're gone.
 
-The controls become the classic **QAOP**: Q up, A down, O left, P right. But the real work is underneath. The moment he can change *rows*, the address shortcut we've leaned on since Unit 5 breaks — and Unit 2's awkward screen layout comes back to be dealt with properly.
+So stop approximating. **Remember.**
 
-## Where we start
+## Nine bytes of memory
 
-Unit 7's walker — penned left and right by the side walls, but stuck on a single row, with a one-row address shortcut baked in. We generalise the addressing and open up the other two directions.
-
-## Why one row was a shortcut
-
-While he stayed on one row, every cell he touched shared the same screen "third" and the same row-within-third — so his address was `ROW_SCR + col`, a constant plus the column. The instant he moves to a *different* row, that constant is wrong, because the Spectrum stores rows in three separate bands of memory (the thirds from Unit 2). We need the full address of *any* cell, worked out fresh each time.
-
-It splits into two clean bytes. For a cell at column `col`, row `row` (0–23):
+A character cell is eight bitmap bytes and one attribute — nine bytes describe everything the screen knows about it. Set aside nine bytes of ordinary memory:
 
 ```
-high byte = $40 + (row AND $18)         ; which third, ×8 in the high byte
-low  byte = ((row AND 7) << 5) OR col   ; row-within-third ×32, plus the column
+under_lamp:
+        defb 0, 0, 0, 0, 0, 0, 0, 0, 0
 ```
 
-- **`row AND $18`** keeps just the two bits that say which third he's in — and those bits already sit in the right place to add to `$40` for the high byte.
-- **`row AND 7`** is the row within that third (0–7). Shifting it left 5 multiplies by 32 — and a left-shift-by-5 of a 3-bit value is three `RRCA`s, rotating those three bits up into positions 5, 6 and 7. `OR` the column into the gap below and that's the low byte.
+The name is the contract: *what is under the lamplighter*. Before he's drawn anywhere, copy the cell's nine bytes into the buffer; when he leaves, copy them back. The floor doesn't survive because we redrew it — it survives because it was never lost. Two routines do it, and they're mirror images: `save_under` reads the screen into the buffer, `restore_under` writes the buffer onto the screen. Same nine bytes, opposite directions.
 
-`scr_addr_cr` is that recipe. The attribute address stays the linear one — `$5800 + row*32 + col` — built with five `ADD HL,HL` doublings.
+## The dance
 
-## Collision didn't change at all
+Where those calls go matters more than what they do. Both routines find the cell through `pos_bc` — they operate on wherever `lamp_col`/`lamp_row` *currently* point — so the commit becomes a strict four-beat sequence:
 
-Here's the quiet reward for doing Unit 7 properly: **none of the collision code changes.** `wall_at` already took an arbitrary target cell and `BIT`-tested its attribute. Now the target can be a row above or below instead of a column left or right — same test, same refusal. The top and bottom walls stop him exactly as the sides do, because they're made of the same solid cells. Four directions, one collision rule, no special cases for "the edge".
+1. **Restore** — put the ground back, while the position still names the *old* cell.
+2. **Step** — update the position; only now does he officially move.
+3. **Save** — the position names the *new* cell; capture its ground before anything touches it.
+4. **Draw** — paint him over the cell whose contents are now safe.
 
-## Milestone — complete the engine
+Each beat leans on the one before it. Restore any later and you'd restore the wrong cell; save any later and the buffer would capture *him* instead of the floor. And there's a fifth beat hiding in the setup: at the very start, before the first `draw_lamp` ever runs, the start cell must be saved too — otherwise the buffer's opening zeroes are the "ground" his first step puts back.
 
-The loop reads QAOP in turn, nudges a *target* cell (`tcol`/`trow`) one step in the chosen direction, then runs the unchanged test-and-commit: if the target is a wall, stay put; otherwise restore, adopt the target, save, draw. Save, restore and draw all route through the new `(col, row)` address routines now, so they follow him between rows. Holding two keys means the first one checked wins — clean four-way movement, no diagonals to reason about.
+## Milestone 1 — the buffer, and a witness
+
+Build all of it — the buffer, both routines, the reordered commit — and add one temporary thing: a **marker**, a single loud yellow cell painted on the floor in his path, three cells to his left. It's scaffolding, one attribute write in the setup, and its job is to testify. Anything the old erase crossed was destroyed; if the marker survives being walked over, the floor genuinely comes back.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-08/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-08/steps/step-01.asm"
   lang="z80"
-  title="Step 1: up/down on QAOP, and a full (col,row) address routine"
+  title="Step 1: save_under and restore_under replace the erase — plus a marker to prove it"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-08/steps/step-01.asm" lang="z80" />
+</details>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-08/step-01-marker.png" alt="The lamplighter at the centre of the square with a solid yellow cell on the floor three cells to his left." caption="The witness in place: one yellow cell in his path. Under the old erase, walking over anything meant destroying it." />
+
+Now hold **O** and walk him straight through it:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-08/step-01-crossing.mp4"
+  caption="The crossing: he steps onto the marker — for that beat he covers it entirely — and steps off, and it's simply there again. Saved on arrival, restored on departure, exact to the pixel."
+  autoplay={true}
+  loop={true}
+/>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-08/step-01-survived.png" alt="The lamplighter left of the yellow marker cell, which is intact; the stippled floor shows no trail." caption="After the crossing. The marker stands, the stipple behind him is whole, and the gouge is history." />
+
+Watch the crossing closely and you can see the mechanism's honesty: while he stands *on* the marker, it's gone — the cell holds him, and the yellow lives only in the buffer. The screen shows one thing per cell; memory is where the other thing waits.
+
+## Milestone 2 — strike the scaffolding
+
+The marker has testified; take it down. Removing it changes nothing about the machinery — which is the point of scaffolding.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-08/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-08/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: the marker comes down; the buffer stays"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-08/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-08/steps/step-02.asm" lang="z80" />
 </details>
 
-Now Q, A, O and P walk him in all four directions, and every wall stops him — he roams the square and is trapped by it at once:
+And now the debt is formally repaid. Here is the same walk that carved Unit 6's gouge — right, then down — at the gated pace:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-08/step-02-no-gouge.png" alt="The lamplighter after an L-shaped walk right and down; the stippled floor behind him is completely intact." caption="Unit 6's gouge walk, replayed: the floor doesn't remember he was there. Compare the trail this exact walk used to leave." />
 
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-08/step-01-roam.mp4"
-  caption="Holding P then Q, the lamplighter walks right to the wall and then up to the top, tucking into the corner. The trip from the middle of the screen to the top crosses one of the Spectrum's layout seams — the boundary between two thirds, a jump of over two kilobytes in screen memory — and he never notices."
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-08/step-02-clean-lap.mp4"
+  caption="A full lap of the square — right, down, left, up, back to the start — and the ground is untouched everywhere. Movement finally costs the world nothing."
   autoplay={true}
   loop={true}
 />
 
-Drive him into a corner and two walls hold him at once:
-
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-08/step-01-corner.png" alt="The lamplighter tucked into the top-right corner of the square, pressed against both the top and right walls." caption="The top-right corner: blocked right and up at the same time. He's at the last floor cell in both directions — confirmed by reading his column and row straight out of memory (30, 1)." />
+This is how the machines of this era move *anything* over a background that matters — there's no hardware undo, no layers, no compositor. A sprite that respects the world is a sprite that carries a piece of memory around underneath itself. (The Spectrum has no hardware sprites at all, so this is the whole story here; even machines that have them, like the C64, fall back to exactly this technique the moment they run out.)
 
 ## When it's wrong, see why
 
-Vertical movement is where the new arithmetic shows its bugs:
+Nearly every failure in this unit is an *order* failure — and the commonest ones share a single signature:
 
-- **He teleports or scrambles when moving up or down.** `scr_addr_cr` is wrong. Check `high = $40 + (row AND $18)`, and that the low byte is `(row AND 7)` rotated right three times (`RRCA`×3) then `OR col`.
-- **Left/right is fine but vertical is offset by a band.** You're mixing the screen and attribute formulas, or the third bits aren't masked with `$18`.
-- **He walks through the top or bottom wall.** The vertical step didn't update `trow`, so `wall_at` tested the wrong cell. Up/down must change the target *row*.
-- **He smears a trail when moving vertically.** Save/restore are still using a fixed-row address. They must go through the `(col, row)` routines so they follow him between rows.
+- **He leaves copies of himself, one per step.** The dance is out of order, and there are two ways to get here. If the *save* runs after the draw, the buffer photographs him, and every restore faithfully puts him back. If the *restore* runs after the position update, it heals the wrong cell and the old one keeps his image. Same trail either way — so don't diagnose from the screen; recheck all four beats against the listing. Order bugs are why the order is written down.
+- **His starting cell becomes a black hole.** The setup's `save_under` is missing. The buffer still holds its nine zeroes — black pixels, black-on-black attribute — and his first step "restores" that nothing onto the start cell.
+- **The top of the cell heals but the bottom stays smeared.** One of the copy loops isn't running all eight rows — check both `ld b, 8`s. Nine bytes is eight *plus one*; the attribute travels separately after the loop.
+- **The gouge is back, exactly as before.** The commit still calls `erase_lamp` somewhere, or `restore_under` isn't being reached. The old routine is gone from this build for a reason — approximation and memory can't share the job.
 
 ## Before and after
 
-You started with a figure penned to one row and finished with one that roams the whole square and can't escape it. The new piece is one routine — turn any `(col, row)` into a screen address — and everything else you already had: the collision from Unit 7 and the save/restore from Unit 6 worked unchanged, because they were always per-cell. The cell-sprite engine is complete: a figure that moves anywhere, respects every wall, and damages nothing it crosses.
+Unit 6 built movement wrong twice and named both debts; Unit 7 paid the speed, and this unit pays the vandalism. The mechanism is small — nine bytes, two mirror-image copy loops, and a commit rewritten as a strict four-beat dance — but the consequence is a threshold: **the world now outlives the player's passage through it**. That matters more than tidiness. Lamps are coming, and a lamp the lamplighter can destroy by walking past it isn't a game object — it's set dressing. From here on, things on the floor are *real*.
 
-## Try this: a pillar to walk around
+The detour that began at Unit 5 is over, and it ends exactly on the main road: keys, a gated step, and honest movement over ground that keeps. What's left in this phase is geometry — walls that argue, and edges that hold without scaffolding.
 
-Drop a solid block in the middle of the floor, in setup:
+## Try this: swap the save and the draw
 
-```
-ld   hl, $5800 + 11*32 + 15
-ld   (hl), WALL
-```
+In the commit, move `call save_under` *after* `call draw_lamp`, rebuild, and walk. He duplicates himself across the square, one copy per step — the buffer is photographing him instead of the floor. This is the classic form of the bug, worth seeing once on purpose: when a moving thing leaves images of itself behind, the save/draw order is the first place to look.
 
-Now he can't pass through the centre — he has to go *around* it, up or down and back. The collision that bounds the square bounds a single interior cell just the same. You've made the first piece of real level geometry.
+## Try this: half a cell
 
-## Try this: cross the seam on purpose
+Change `save_under`'s `ld b, 8` to `ld b, 4` and walk around. The top half of every departed cell restores; the bottom half keeps the old smear. The buffer doesn't know what a cell is — it copies exactly as many bytes as you ask, and the screen shows precisely where you stopped asking.
 
-Start him at `START_ROW equ 7` and walk **down** one cell to row 8. That step crosses from the top third into the middle third — a jump of over two kilobytes in screen memory — yet he moves by one tidy cell with no glitch. `scr_addr_cr` hides the seam completely. Move up and down across it a few times and watch how ordinary the hardest part of the screen layout now looks.
+## Try this: a field of witnesses
 
-## Try this: cursor keys instead
-
-Rework the reads to use the cursor keys: 5 (left), 6 (down), 7 (up), 8 (right). 5 lives in the half-row at `$F7FE`; 6, 7 and 8 share `$EFFE`. Map each to its bit and you've reskinned the controls without touching the movement engine — proof the input and the engine are cleanly separate.
+Put the marker back — then add four more, at different spots around the square (any attribute address, any loud colour). Walk over all of them. Each survives, one at a time, because only one cell is ever *under* him — a single nine-byte buffer is enough for any number of things on the floor, so long as there's only one of *him*.
 
 ## What you've learnt
 
-- Moving between rows needs the **full `(col, row)` → address** arithmetic; the single-row shortcut only held within one row.
-- The screen address splits into **third (high byte)** and **row-within-third × 32 + column (low byte)** — and a left-shift-by-5 is three `RRCA`s.
-- **Collision and save/restore didn't change** — they were always per-cell; only the address routine generalised.
-- The **four walls bound him with no special edge code** — solid is enough, in every direction.
+- The screen holds **one copy** of everything — draw over it unremembered, and it's gone.
+- A cell is **nine bytes**: eight bitmap rows plus an attribute, and a buffer that size preserves it exactly.
+- `save_under` and `restore_under` are **mirror loops** — screen→buffer and buffer→screen, addressed through the current position.
+- The commit is a **strict dance**: restore, step, save, draw — and every reordering has a visible signature.
+- **One mover, one buffer** — and the technique scales by adding buffers, not size.
 
 ## What's next
 
-The engine is done: a figure that roams a walled room, preserving everything it crosses. Now the *game* begins. In **Unit 9** we scatter the first real game objects — **the lamps**: unlit cells with a lantern glyph and a cold cyan colour, placed from a small data table. The square stops being empty, and the lamplighter finally has something to do.
+Movement is honest; now the map gets opinions. In **Unit 9** the walls stop being paint: before the commit, the game reads the *attribute* of the cell he's headed for, recognises brick when it sees it, and vetoes the move. The propose-veto-commit shape from Unit 6 has been waiting for this — its first real veto.
