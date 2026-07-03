@@ -1,103 +1,134 @@
 ---
-title: "Nightheld"
-description: "Win the game. When every lamp is lit, the lamplighter has held back the dark — and the game says so, printing a closing line with the Spectrum's own ROM font, then holding the end state."
-pubDate: 2026-06-01
+title: "Light It"
+description: "Give crossing a lamp its consequence — the obvious way first, painting the screen, and the light won't stay. Then the real way: edit the lamp's nine bytes while the buffer holds them, and restore paints it back lit, permanently."
+pubDate: 2026-07-03
 game: 1
 unit: 12
-tags: ["assembly", "z80", "win-state", "text", "rom-font", "game-state"]
+tags: ["assembly", "z80", "game-state", "collision", "attributes", "buffers"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-The tally can fill — so filling it should *mean* something. This unit gives Gloaming its ending: light every lamp and the lamplighter has held back the night. The game recognises the moment, prints a closing line, and stops. After this unit you can sit down and *win*.
-
-It also teaches the last new drawing trick the game needs: printing text, using the Spectrum's own font straight out of ROM.
-
-## Where we start
-
-Unit 11's scored game — the tally fills, but reaching the top means nothing yet. We make filling it the win, and give the game an ending to come to rest in.
-
-## The win is a single check
-
-We already keep `lit_count`, and it only ever changes at one moment: when a cold lamp is lit. So that's the only place we need to look. Right after lighting, ask the question:
+Eight lamps, all cold, and a lamplighter who can stand on any of them and change nothing. This unit gives him his job — and his job is one new colour and a handful of instructions:
 
 ```
-ld   a, (lit_count)
-cp   NUM_LAMPS      ; all of them?
-jp   z, win         ; then the game is won
+LAMP_LIT  equ  %01000110      ; BRIGHT yellow INK on black — a held flame
 ```
 
-That's the whole condition. A win isn't a special system — it's a state you're already tracking crossing a line you care about. Checking it the instant the count changes means the game ends the frame the last lamp warms.
+Bright yellow on black, and bit 3 still clear: a lit lamp remains walkable floor, exactly like a cold one. The question this unit actually answers isn't *what colour is a lit lamp* — it's **where do you write the change so that it keeps?** Getting that wrong is so natural, and the failure so instructive, that we'll do it on purpose first.
 
-## Printing with the ROM font
+## Milestone 1 — the obvious way
 
-The closing line is text, and text is more glyphs — except we don't have to draw the letters ourselves. The Spectrum keeps its entire character set in ROM, at **`$3C00`**, eight bytes per character, in code order. The shape for character code `c` sits at:
-
-```
-$3C00 + c * 8
-```
-
-So printing a letter is the glyph-draw from Unit 2 — eight bytes, `INC H` down the cell — with the bytes coming from ROM instead of our own data. `print_char` does one character; `draw_message` walks a string (ended with `$FF`), printing each and stepping one column along. The Spectrum draws its own font for us; we copy it where we want it.
-
-## Ending, and staying ended
-
-On a win we do three small things: `restore_under` so the last lamp shows (the lamplighter steps out of the cell he's standing on), `draw_message` to print the line, and then a loop that just `halt`s forever. The game is over; there's nothing more to do but hold the picture. That final loop is the **end state** — every game needs somewhere to come to rest.
-
-## Milestone — the win
-
-We add the `cp NUM_LAMPS` / `jp z, win` check right where a lamp lights, a `win` routine that reveals the last lamp and prints the line, and the `print_char` / `draw_message` pair that blits glyphs from the ROM font. Everything else is the game you already had.
+The plan writes itself. He steps onto a cell; if the attribute `save_under` just banked is a cold lamp, paint the cell lit — on the screen, where the lamp is. One compare, an address, a write:
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-12/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-12/steps/step-01.asm"
   lang="z80"
-  title="Step 1: a win check, and a closing line from the ROM font"
+  title="Step 1: light the lamp by painting its cell — the version that can't work"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-12/steps/step-01.asm" lang="z80" />
+</details>
+
+Walk him onto a lamp:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-12/step-01-standing.png" alt="The lamplighter standing on a lamp cell, his figure tinted yellow instead of white." caption="Standing on the lamp: the cell is painted lit, and since the cell currently contains him, what glows yellow is the lamplighter. Promising, if slightly wrong-looking." />
+
+And step off:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-12/step-01-cold.png" alt="The lamplighter beside a lamp that is cold cyan again." caption="One step away, and the lamp is cold. Not flickering, not fading — instantly, perfectly cold, as if nothing ever happened." />
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-12/step-01-wontstay.mp4"
+  caption="The whole failure in three seconds: he arrives, the cell glows — and the moment he leaves, the glow is gone. The light won't stay."
+  autoplay={true}
+  loop={true}
+/>
+
+The light won't stay, and once you see why, you'll never mis-place a write like this again. While he stands on that cell, **the screen isn't where the lamp is**. The lamp — its lantern pixels, its cyan attribute — is sitting in `under_lamp`, banked by `save_under` the moment he arrived. The cell on screen holds *him*. So the yellow you painted landed on his cell, not the lamp's bytes — and when he steps away, `restore_under` does precisely what Unit 8 built it to do: it puts back what it saved. Cold cyan, faithful to the byte. The machinery isn't fighting you; it's *working*, and it's undoing an edit made to the one place it owns.
+
+## Milestone 2 — edit the lamp where it lives
+
+Which is the whole insight, inverted: if the buffer holds the lamp, **edit the buffer**. Right after `save_under`, look at the attribute it banked. Cold lamp? Overwrite the *saved copy* with `LAMP_LIT`. Touch nothing on screen at all:
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-12/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-12/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: rewrite the saved attribute — and let restore do the lighting"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-12/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-12/steps/step-02.asm" lang="z80" />
 </details>
 
-Light the eighth lamp and the square freezes into its ending — every lamp gold, the tally full, the line written across the middle:
+Nothing visible happens at the moment of lighting — he's covering the cell, and the change is nine bytes deep in ordinary memory. But the instant he walks off, `restore_under` paints back what the buffer holds, and the buffer holds a *lit* lamp:
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-12/step-01-win.png" alt="All eight lamps lit gold around the square, the tally fully warm at the top, and the words THE NIGHT IS HELD printed across the middle." caption="The win, reached by playing — all eight lamps lit (lit_count = 8, read from memory), the tally full, and THE NIGHT IS HELD printed in the Spectrum's own ROM font. The screen the whole game was building toward." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-12/step-02-lit.png" alt="A lamp glowing bright yellow behind the lamplighter." caption="Stepping off, the lamp blooms gold — restore did the painting, using the bytes the game quietly rewrote. And this time it stays." />
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-12/step-02-lit.mp4"
+  caption="Lamp one lights and keeps. Then watch the second pass: he walks back over the lit lamp — it vanishes under him, returns still lit, no double-light, no un-light — and carries on to take the second lamp too."
+  autoplay={true}
+  loop={true}
+/>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-12/step-02-two-lit.png" alt="Two lamps glowing yellow along the south of the square, the lamplighter beside the second." caption="Two held flames. Six cold lamps to go — there is, suddenly, a game here." />
+
+The whole feature is a compare and a write — no new drawing code, because `restore_under` was always going to repaint that cell; the game just changed its mind about what "back exactly as it was" contains. `draw_lamp` still runs *after* the edit, so while he stands there he looks like himself; the flame waits its turn in the buffer.
+
+## Two ideas worth naming
+
+That little block carries two of the biggest ideas in game programming, and they deserve their names:
+
+- **Collision became a rule.** Unit 9's `wall_at` asked *can I go there?* — collision as a barrier. This unit asks *what happens because I'm here?* — collision as consequence. Step on this kind of cell and the world changes. Every pickup, switch, trap and goal tile in every game you've played is this compare, wearing different clothes.
+- **State lives in the world.** No list anywhere records which lamps are lit. The glow *is* the record — a changed attribute in a changed cell, sitting in the same memory the map has always lived in. Walk to the far corner and back: still lit, because "lit" is a property of the floor, not a memory of the player.
+
+And the rule is naturally **idempotent** — the video showed it. Recross a lit lamp and `save_under` banks yellow, the `cp LAMP_UNLIT` fails, nothing changes, restore puts yellow back. A lit lamp stays lit, however many times he crosses it, and no code was written to make that true — the compare's precision did it for free.
 
 ## When it's wrong, see why
 
-The win and the text fail in their own ways:
+Lighting fails in ways that point at *where* you wrote the change:
 
-- **The line never appears.** The win check isn't reached, or `NUM_LAMPS` doesn't match the lamps placed, so `lit_count` never gets there. Confirm the `cp NUM_LAMPS` / `jp z, win` sits right after a lamp is lit.
-- **The text is garbled.** The font address is wrong. Each glyph is at `$3C00 + code * 8` — check the `code * 8` (three `ADD HL,HL`) and the `$3C00` base.
-- **The text prints in the wrong place or off the edge.** `MSG_ROW` / `MSG_COL` are off, or the line is too long to fit from that column. Re-centre it.
-- **He keeps moving after the win.** The `win` routine returned to the game loop. It must end in its own `halt` loop and never fall back through.
+- **It glows under him and dies when he leaves.** You built step 1: the write went to the screen, and restore faithfully undid it. Light the buffer — `under_lamp + 8` — and let restore paint.
+- **Nothing ever shows, even while he stands there.** The screen-write variant again, but placed *before* `call draw_lamp` — his own attribute immediately covered your yellow. Same disease, quieter symptom, same cure.
+- **Lamps never light.** The compare reads the wrong byte or runs at the wrong time. It must read `under_lamp + 8` *after* `save_under` has filled it — before that, the buffer still holds the previous cell.
+- **The cobbles light up as he walks.** The compare is too loose — only exact `LAMP_UNLIT` cyan should pass. If you're testing a bit instead of the whole byte, floor and lamps can look alike.
+- **A lit lamp goes cold when recrossed.** Your restore isn't writing the attribute back from `under_lamp + 8`, so the second visit saves stale screen data. Unit 8's loops carry nine bytes, not eight — check the attribute makes the round trip.
 
 ## Before and after
 
-You started with a game that couldn't end and finished with one you can *win* — and the win is a `cp` and a `jp`, slipped in where the only meaningful number changes. The ending is the glyph-draw you've had since Unit 2, fed from the ROM font; the rest-state is one `halt` loop. A loop of mechanics has become a game with a beginning you drop into, a middle you play, and an end you earn.
+The unit began with a decoration he could stand on and ended with the game's core verb: *light it*. You built the write in the wrong place first and watched Unit 8's machinery calmly erase your work — the best possible demonstration that while he covers a cell, the buffer is the cell. Then one compare and one write, aimed nine bytes into ordinary memory, turned crossing into lighting, permanently. No draw calls, no lit-lamp list, no special cases: the world keeps its own score, one warm cell at a time.
 
-## Try this: your own closing line
+## Try this: light the lot
 
-Change `msg_text` to whatever you like — `"WELL DONE"`, `"DAWN COMES"`, your name. Keep the `$FF` on the end, and adjust `MSG_COL` to re-centre it: a line of *N* characters starts at column `(32 - N) / 2`. Different words, same machinery.
+Walk the full round — all eight lamps, every corner of the square. The board warms behind you, cyan to gold, lamp by lamp. That circuit is the whole game Gloaming will ever ask of you; what's missing is a game that *notices* — which is the next three units.
 
-## Try this: a flourish on the win
+## Try this: a flickering flame
 
-A bare freeze is a little flat. Before printing the line, add a beat of celebration: flash the border a few times (`out ($FE), a` with changing colours in a short loop), or sweep all the lamps to bright white. A win deserves a moment of spectacle — and it's a few instructions.
+A lit lamp is an attribute, so borrow the attribute byte's showiest bit: FLASH. Set `LAMP_LIT` to `%11000110` and rebuild — every lit lamp now pulses, ink and paper trading places about three times a second, hardware-animated for free. One bit turns "on" into "alight".
 
-## Try this: lose your way back
+## Try this: change the rule
 
-Notice you can't restart without reloading. That's deliberate — restarting is its own unit (Unit 19, "Again"). For now, try adding a single key check in the end loop that jumps back to `start`: the crudest possible "play again". It'll work, and seeing *why* it's crude — the state isn't reset — is exactly the problem that later unit solves properly.
+Make stepping toggle instead of light: after the `cp LAMP_UNLIT` branch, add a second compare against `LAMP_LIT` that writes `LAMP_UNLIT` back. Now he can snuff lamps by revisiting them — a different, crueller game with the same nine bytes. The point isn't the toggle; it's that *what does standing here do?* is one small block of code, and its author is you.
 
 ## What you've learnt
 
-- A **win condition is a state check** at the moment the state changes — not a separate system.
-- The Spectrum's **font lives in ROM at `$3C00`**, eight bytes per character; print text by blitting glyphs exactly like sprites.
-- A game needs an **end state** — a small loop it rests in once it's over.
-- This is the line between a set of mechanics and **a game you can finish**.
+- **Where a write lands decides whether it keeps** — the screen is his while he stands there; the buffer is the world's.
+- Lighting **reuses save/restore whole**: edit the saved attribute and restore becomes the draw call.
+- **Collision as consequence**: being somewhere can change the world, not just gate movement.
+- **State lives in the cells**: no separate record of lit lamps exists, or needs to.
+- **Idempotence can be free** — an exact compare made "already lit" a no-op without any extra code.
 
 ## What's next
 
-Gloaming is winnable — but it can't yet be *lost*, and a game with no jeopardy has no tension. **Phase D** brings the threat. In **Unit 13, "The Draught"**, a cold wisp drifts through the square: a *second* moving sprite, driven by the same cell-sprite engine the lamplighter uses — proof that the technique you built pays for more than one character. The dark starts to push back.
+Lamps light and stay lit — but nothing is counting, and a game must know how it's going. **Unit 13** adds the tally: a count of lit lamps and a row of pips along the HUD ledge that warms as the number climbs — a score you read at a glance, in coloured cells rather than digits, on the row the game has kept empty since Unit 2.
