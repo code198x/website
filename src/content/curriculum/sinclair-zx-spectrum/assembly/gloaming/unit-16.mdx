@@ -1,10 +1,10 @@
 ---
-title: "The Title"
-description: "Give the game a front door. A sparse GLOAMING title screen, a press-to-begin prompt, and the state machine — TITLE, PLAY, WIN, LOSE — that ties the whole game together and decides what happens each frame."
-pubDate: 2026-06-01
+title: "The Draught"
+description: "The dark gets its agent: a second cell sprite on the lamplighter's own engine, hunting him with one compare-and-step rule that reads as intent — ghosting through stone, tangling buffers on contact, and finally taught to stop at his side."
+pubDate: 2026-07-03
 game: 1
 unit: 16
-tags: ["assembly", "z80", "state-machine", "title-screen", "game-structure", "input"]
+tags: ["assembly", "z80", "sprite", "ai", "game-objects", "buffers"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
@@ -12,126 +12,137 @@ import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
 
-Gloaming plays, but it starts in the middle — load it and you're already wandering the square. Real games have a front door: a title that waits for you. **Phase E** is about making the game feel finished, and it starts here, with a title screen and the idea that quietly organises every game ever written — a **state machine**.
+Gloaming can be won and cannot be lost, and you can feel what that costs it: there's no reason to hurry, no reason to *route*, no pressure on a single decision you make. The game is a stroll. Phase 4 fixes that, and it starts by giving the dark something the lamplighter has had to himself since Unit 3 — a body, and a will.
 
-## Where we start
+Meet the draught: a cold wisp that enters at the far corner, waits, and then comes for him.
 
-Unit 15's complete game — a goal, a threat, a win and a loss — that drops you straight into play with no beginning and no way to start over. We give it a front door and a structure to hang the rest on.
+## Milestone 1 — a second body
 
-## A game is a handful of states
-
-At any moment, Gloaming is doing one of four things:
-
-- **TITLE** — showing its name, waiting for you to start.
-- **PLAY** — the game proper: moving, lighting, dodging.
-- **WIN** — all lamps lit, holding the closing line.
-- **LOSE** — out of lives, night fallen.
-
-A **state machine** is a byte that remembers which — `game_state` — and a loop that, each frame, does the right thing for that state:
-
-```
-main_loop:
-    halt
-    ld   a, (game_state)
-    cp   STATE_TITLE
-    jr   z, .do_title
-    cp   STATE_PLAY
-    jr   z, .do_play
-    jr   main_loop          ; WIN / LOSE — just hold
-.do_title:
-    call title_step
-    jr   main_loop
-.do_play:
-    call play_step
-    jr   main_loop
-```
-
-Everything you built becomes `play_step` — one state among four. The win and lose checks no longer freeze the machine; they just *change the state*, and the loop carries on, now doing whatever that new state needs. This is how a program stops being one long script and becomes a system that can be in different modes and move between them.
-
-## Setup becomes "start a game"
-
-For the title to mean anything, pressing the key has to build a **fresh** game — a different job from "draw the scene once at boot". So all the world-building moves into `init_game`: reset the lives and the tally, place the lamplighter and the draught at their starts, draw the square, the walls, the lamps. `title_step` waits for space and calls it:
-
-```
-title_step:
-    ld   bc, KEYS_SPACE
-    in   a, (c)
-    bit  0, a          ; SPACE down?
-    ret  nz            ; no — keep waiting
-    call init_game     ; yes — build a fresh game
-    ld   a, STATE_PLAY
-    ld   (game_state), a
-    ret
-```
-
-Because `init_game` builds everything from scratch, it's also exactly what "play again" will need later — pressing start and starting over are the same act.
-
-## A wrinkle: clearing the pixels
-
-The title is *text* — pixels written into the bitmap. When the game starts, `init_game` repaints the **colour** of every cell (the cobbles), but colour isn't pixels: the title's letters are still sitting in the bitmap, and they'd ghost through the new floor in faint blue. The fix is to wipe the pixel area too — a single `LDIR` clearing `$4000`–`$57FF` — before drawing the board. It's a small thing, but it's the kind of bug that only appears once a game has more than one screen, and worth meeting now.
-
-## Milestone — the front door
-
-We add a `game_state` byte and a dispatch loop, move all the boot-time world-building into `init_game`, add a `title_step` that draws the name and waits for space, and turn the win and lose checks into state changes, not freezes. A bitmap clear in `init_game` stops the title ghosting through.
+Before it can hunt, it has to *exist* — and here fifteen units of careful machinery pay their largest dividend yet. A mover, in this game, is: a position (two bytes), a glyph (eight), an attribute, a nine-byte under-buffer, and the save/restore/draw trio that shuttles between them. None of that code ever assumed it was about a lamplighter. So the draught is the same engine, run twice:
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-01.asm"
   lang="z80"
-  title="Step 1: a TITLE/PLAY/WIN/LOSE state machine and a title screen"
+  title="Step 1: the lamplighter's engine, pointed at new data"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-01.asm" lang="z80" />
+</details>
+
+Read `save_draught` next to `save_under` and you'll see the lesson *is* the repetition: the same loops, line for line, pointed at `draught_col`/`draught_row` and `under_draught` instead. (A bigger game would fold the pair into one routine taking "which sprite" as a parameter — a later game in this course does exactly that. Seeing them side by side first is how you earn that abstraction.) The one non-negotiable: **its own buffer**. Two movers can share a world, a screen, an engine — never a buffer. Hold that thought; this unit will show you why the hard way.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-16/step-01-gathered.png" alt="A pale cyan orb in the far north-east corner of the square, the lamplighter at the centre." caption="The draught, gathered in the corner it entered from: a soft cyan orb, drawn once at setup. It does nothing at all — and it already changes how the square feels to look at." />
+
+## One rule that reads as intent
+
+Now the will. Here is the entire mind of the thing: **step one cell along the axis with the greater distance to the lamplighter; ties go sideways.** That's it — two absolute differences, one compare, one step, once every `DRAUGHT_SPEED` frames. No pathfinding, no memory, no plan.
+
+Watch it run, though, and none of that is what you'll see. You'll see it *notice* him. You'll see it round on him when he breaks left, cut the corner as he flees, close the last cells with what looks like patience. This is the oldest secret in game AI — the arcade ghosts that terrorised a generation ran rules this size — and it's worth stating as a law: **players read intent into motion, and the intent they read can vastly exceed the rule that made it.** You don't need a clever enemy; you need a *legible* one, stepped toward its goal.
+
+Two details in the design deserve their reasons. The wisp moves on its own timer — `DRAUGHT_SPEED 16`, one step to roughly every two of the lamplighter's flat-out pace — because a threat you can outrun but not ignore is pressure, and a threat you can't outrun is just a countdown. And it doesn't move at all for its first `GATHER 120` frames: two and a half seconds of stillness at boot, long enough for the player to see the whole board, pick a plan, and understand what's about to start moving. Menace benefits from an introduction.
+
+## Milestone 2 — the hunt, with the touch left free
+
+Wire the rule in — `draught_step` on its timer, called from `play_step` right after the player's beat — and deliberately leave one question unanswered: what happens when it *reaches* him? For now, nothing. The proposal commits wherever it lands, including on top of the lamplighter.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: the chase — timer, seek, greater-axis step, and no contact rule"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 2 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-02.asm" lang="z80" />
+</details>
+
+Stand still and let it come:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-16/step-02-covered.png" alt="The cyan orb sitting where the lamplighter stood; no lamplighter visible anywhere." caption="Contact. The wisp has stepped onto his cell and drawn itself over him — save_draught has just photographed a lamplighter and filed him under 'ground'." />
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-16/step-02-tangle.mp4"
+  caption="The hunt works beautifully — right up to the touch. It covers him; he flees; and the square starts growing lamplighters. Every one of those figures is a buffer faithfully restoring what it saved — and what it saved was him."
+  autoplay={true}
+  loop={true}
+/>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-16/step-02-phantom.png" alt="Two lamplighter figures on the square with the orb between them — one real and fleeing, one a phantom left standing." caption="One of these lamplighters is real. The other is a photograph: the wisp's buffer, restored onto the cell where they overlapped, exact to the pixel and completely wrong." />
+
+Unwind it slowly, because this is the two-mover bug and you will meet it in every game you ever write with more than one sprite. The wisp steps onto his cell: its `save_draught` runs, and the "ground" it dutifully banks is *the lamplighter's image*. He flees: his own restore correctly heals his cell — erasing the wisp that was drawn there, which its data doesn't know. Next beat, the wisp moves on and restores what it saved: a pixel-perfect lamplighter, standing where nobody is. Neither buffer malfunctioned. Both did exactly what Unit 8 built them to do — **they photographed each other**. A cell can only ever be *under* one mover, and the moment two occupy it, each one's "ground" is the other.
+
+## Milestone 3 — adjacent is as close as the night comes
+
+So the fix isn't cleverer buffers — it's a rule that keeps the situation from existing. Two rules, in fact, one for each mover, both vetoes in the propose-veto-commit shape that's carried this game since Unit 6:
+
+- In `draught_step`: if the proposed cell is the lamplighter's, **don't move** — the wisp draws up at his side and holds.
+- In `player_step`, right after `wall_at`: if the proposed cell is the wisp's, **the step dies** — you cannot walk through the cold.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-02.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-03.asm"
+  lang="z80"
+  title="Step 3: the two contact vetoes — no cell ever holds two movers"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-16/steps/step-03.asm" lang="z80" />
 </details>
 
-Load it and the title waits, patient, for you:
-
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-16/step-01-title.png" alt="A black screen with GLOAMING centred in white and PRESS SPACE below it." caption="The front door: the name, and an invitation. The TITLE state does nothing but show this and watch for space." />
-
-Press space and the square assembles itself fresh — `init_game` builds a clean board, and the state flips to PLAY:
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-16/step-03-pinned.png" alt="The cyan orb holding position directly above the lamplighter, adjacent." caption="Pinned: the wisp at his side, holding — and the held Q in this shot does nothing, because his own veto refuses the step into it. Cornered by something that hasn't touched him. Yet." />
 
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-16/step-01-start.mp4"
-  caption="The title holds until space is pressed; then init_game clears the screen, builds the square, lamps, lives and draught, and the state machine switches to PLAY. No ghost of the title bleeds through — the bitmap was wiped before the board was drawn."
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-16/step-03-hunt.mp4"
+  caption="The finished hunt: it gathers, descends — passes clean through the building's brick, which heals behind it — pins the idle lamplighter, refuses to overlap him, and gives chase the moment he runs."
   autoplay={true}
   loop={true}
 />
 
+Watch the video's middle third again: the wisp goes *through* the building. That's not an oversight — `draught_step` never calls `wall_at`, and the choice is doing three jobs at once. It's theme: the draught is not of the town, and stone means nothing to what it is. It's threat: no wall between you and it is safe, which changes how every corner of the square feels. And it's engineering: a hunter that respects walls needs to *route around* them — real pathfinding, a different course — while a hunter that ignores them needs nothing but the rule it already has. The brick heals behind it because its under-buffer preserves stone as indifferently as it photographed a lamplighter. Same machinery, now with a rule keeping it honest.
+
+Its touch still costs nothing — pinned is frightening, not fatal. Pricing the touch is the next unit, and it will close phase 4's trap: something that hunts you, that you cannot pass, whose contact you cannot afford.
+
 ## When it's wrong, see why
 
-A second screen surfaces second-screen bugs:
-
-- **The title's letters ghost through the game in blue.** `init_game` repainted the colours but not the pixels. Clear the bitmap (`$4000`–`$57FF`) before drawing the board.
-- **Pressing space does nothing.** `title_step` isn't being reached, or reads the wrong half-row. Space is bit 0 of `$7FFE`, and `game_state` must start as `STATE_TITLE`.
-- **The game starts immediately, skipping the title.** `game_state` wasn't initialised to `STATE_TITLE`, or the dispatcher doesn't branch on it.
-- **Win/lose now breaks the game.** Those states must only *set* `game_state` and draw their screen once — not loop forever inside `play_step`. The dispatcher does the holding.
+- **It never moves.** The timer isn't reaching zero — check the `dec`/reload pair, and that `play_step` calls `draught_step` every frame. (Remember it holds still for `GATHER` frames first; patience before panic.)
+- **The square grows lamplighters.** You've built step 2 — a contact veto is missing or checks the wrong bytes. Both vetoes compare the *proposal* (`dtcol`/`dtrow`, or `tcol`/`trow`) against the *other mover's position*, before any commit.
+- **It leaves a trail of wisps instead.** Its restore isn't running, or both movers share one buffer — the mistake Milestone 1 warned about. One mover, one buffer, no exceptions.
+- **It hunts a spot he left long ago.** The seek must re-read `lamp_col`/`lamp_row` every beat — copy them at the top of each step, not once at boot.
+- **It jams in a corner of a building and never comes out.** You've given it `wall_at` — see the try-this below for why that's a bigger decision than it looks.
+- **He can walk through it (or it stops him a cell early).** The player's veto belongs after `wall_at` and before the commit, comparing against the wisp's *current* cell — not its proposal.
 
 ## Before and after
 
-You started with a game that began in the middle and finished with one that begins at a title and *enters* play on a keypress — and the change is structural, not cosmetic. A byte names the mode; a dispatch loop runs the right step for it; the whole game you built is one of those modes. Win and lose stopped being dead ends and became states the machine moves *to*. That structure is what the next units hang sound, a "play again", and the rest of the polish on.
+The square had one will in it; now it has two, and only one of them is yours. The second mover cost a fraction of the first — the engine was already general — and its mind is a single compare that plays far bigger than it is. The unit's real lesson lived in the middle: two correct buffers photographing each other, phantoms walking, and the discovery that some bugs aren't fixed in the machinery at all — they're fixed by a *rule of the world*: one cell, one occupant. The dark has a body, a will, and a manner. Next it gets a price.
 
-## Try this: warm the title
+## Try this: turn the fear dial
 
-The title is white on black. Print it in a warmer colour to set the mood — give `print_char` a parameter for the attribute, or add a second loop that paints the title cells amber (`%01000110`) after they're drawn. A title screen is the game's first impression; a little warmth in the word "GLOAMING" goes a long way.
+`DRAUGHT_SPEED` is dread, quantified. At `8` the square is barely survivable; at `32` the wisp is a slow tide you plan around. And `GATHER` is the fuse: cut it to `25` and the game starts *mean*. Feel for the pace where you're never safe but always culpable — where every pin was your route's fault. That's where pressure becomes play.
 
-## Try this: any key, not just space
+## Try this: give it respect for stone
 
-`title_step` only watches space. Make it start on *any* key: read several half-rows and begin if any shows a held key. (A neat way: read each row in turn and combine the results — if the low five bits aren't all 1, something's pressed.) "Press any key" is friendlier than hunting for one.
+Add the two lines yourself: `call wall_at / ret nz` on the wisp's proposal, just before its commit. Rebuild, then stand west of a building and watch it arrive — and jam against the east face, stepping into the brick and refusing, forever, because the greater-axis rule has no concept of *around*. To honour walls it would need to route, and routing is pathfinding — a genuinely harder program. Take the lines out and appreciate what the ghosting bought: theme, threat, and a hundred lines you didn't have to write, all from *removing* a check.
 
-## Try this: a third state — paused
+## Try this: a second wisp
 
-Add a `STATE_PAUSE`. During `PLAY`, watch for a pause key; when pressed, switch to `STATE_PAUSE`, which does nothing but watch for the key again to switch back. You'll see how cheap a new mode is once the machine exists: a state, a way in, a way out.
+Duplicate the data — `draught2_col`, its own timer, its own nine-byte buffer, its own step call in the loop — and give it a different corner and a different speed. Two hunters, one rule each, and suddenly routes that dodged one wisp die to the crossfire. Nothing in the engine minds; it never knew how many movers there were. (Watch what happens when the *wisps* overlap each other, though — and now you know exactly which rule they're missing.)
 
 ## What you've learnt
 
-- A **state machine** — one byte plus a dispatch loop — lets a program be in distinct modes and move between them cleanly.
-- Your whole game becomes **one state** (`PLAY`) among several; win and lose just *change the state*.
-- Setup becomes **`init_game`**, a routine that builds a fresh session — the seed of "play again".
-- A second screen surfaces a real bug: **colour isn't pixels**, so a new screen must clear the bitmap too.
+- The cell-sprite engine was **general all along** — a second mover is data plus the same trio, and its own buffer is non-negotiable.
+- **Perceived intent outruns the rule**: a greater-axis compare reads as a hunter with patience.
+- **Per-object timers** give each mover its own tempo — and tempo *is* the threat level.
+- The two-mover bug: **overlapping buffers photograph each other** — and the fix is a world-rule (one cell, one occupant), not smarter code.
+- **Ignoring walls can be a feature** — theme, fairness and simplicity in one deleted check.
 
 ## What's next
 
-The game has a front door and a name. In **Unit 17, "A Small Sound"**, it gets a voice: a short beeper blip when a lamp lights, a colder note when one is snuffed — sound straight from the Spectrum's speaker via `OUT ($FE),A`. It's the honest, single-blip "before" of the sound driver a later game builds, and the first time Gloaming makes a noise.
+Pinned is not punished — the wisp can corner him and cost him nothing but nerves. **Unit 17** makes the dark collect: contact takes a life from a small row of pips, the wisp recoils to its corner to hunt again — and when the last life goes, the screen darkens and NIGHT FALLS. The game Gloaming has been promising since its name: winnable, and now losable.
