@@ -1,108 +1,113 @@
 ---
-title: "Again"
-description: "Close the loop. Win or lose, a key returns you to the title; pressing start there builds a brand-new game. The state machine comes full circle — and a short input lock stops a held key from skipping screens."
-pubDate: 2026-06-01
+title: "The Title"
+description: "The game gets a front door: GLOAMING on a black void, PRESS SPACE, a dusk chime — built hardwired first, then done properly: the boot-time setup becomes init_game, and beginning becomes a thing the game can do, not just a thing that happens once."
+pubDate: 2026-07-03
 game: 1
 unit: 19
-tags: ["assembly", "z80", "state-machine", "game-loop", "input", "polish"]
+tags: ["assembly", "z80", "state-machine", "title-screen", "structure", "text"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
+import AudioClip from "@components/AudioClip.astro";
 
-Gloaming is a finished game — but it ends and *stays* ended. A real game loops: you finish, and it offers you another go. This unit closes that loop. Win or lose, a key press returns you to the title; press start there and a brand-new game begins. Title → play → win or lose → title → play, round and round, the way an arcade machine waits for the next coin.
+Boot Gloaming and you're simply *in the square*, mid-story: the wisp already gathering, the clock already running, no name spoken, no breath taken. Every game you've ever loaded knows better — there's a screen with a name on it, a moment that belongs to you, and a deliberate act of *beginning*. This unit builds that front door twice: once the obvious way, which works and teaches the pieces — and once the right way, which restructures the whole program and hands Unit 20 the key it needs.
 
-## Where we start
+## Milestone 1 — a door, hardwired
 
-Unit 18's game — it plays, scores, threatens, sounds, sets a mood, and reaches a win or a lose screen that then holds forever. We turn those dead ends into doorways back to the title.
+Everything the title needs already exists. The screen is `clear_bitmap`, the blackout `LDIR` from the lose screen, and two `print_string` calls — GLOAMING at row 8, PRESS SPACE at row 14, white on a black void. (Sparse is the aesthetic *and* the budget: on this machine, restraint photographs as atmosphere.) The sound is a fourth phrase for the beeper — `chime_dusk`, two cold tolls on a low A, then the game's little motif far off. And the key is a promise kept: Unit 5's try-this had you read SPACE — `$7FFE`, bit 0 — "fifteen units early". Tonight it's load-bearing.
 
-## The loop was almost already built
-
-The state machine from Unit 16 did the hard part. The `WIN` and `LOSE` states used to be dead ends — they drew their screen and held forever. Now each watches for a key and hands control back to `TITLE`:
-
-```
-end_step:   ; runs in WIN and LOSE
-    ... wait out the input lock ...
-    read SPACE
-    if pressed:
-        draw the title
-        game_state = TITLE
-```
-
-That is the whole closure. A dead-end state learning to *hand control on* is all "play again" is. And because `title_step` already turns a key press into `init_game` + `PLAY`, the loop completes itself.
-
-## "Play again" and "start" are the same act
-
-The reason this works cleanly is `init_game`. Starting from the title does not resume — it **rebuilds**: lamps unlit, tally cleared, three lives, walls cold and blue, the lamplighter and draught at their starts, and (the detail from Unit 16) the bitmap wiped so nothing ghosts through. So "start" and "play again" call the exact same routine, and a replayed game is genuinely new, not a half-cleared echo of the last one. *Per-game* state lives in the variables `init_game` resets; a score you wanted to survive across games would live in a variable `init_game` leaves alone.
-
-## Debounce: the held-key trap
-
-One real-world snag. When you win, the key you were holding to play is most likely still down. Without care, that key would dismiss the win screen and start a new game in the same instant — you would never see the screen you earned. So on entering any screen that waits for a key, we set a short **input lock** (a frame countdown) and ignore input until it expires — a beat to let go and read the screen. It is a tiny thing that separates a game that feels considered from one that feels twitchy. (We do *not* lock at boot — there is no held key to guard against there.)
-
-## Milestone — close the loop
-
-We route the `WIN` and `LOSE` states to a new `end_step` that waits out an input lock, then sends a key press back to the title; we add the lock countdown to `title_step` too, and set the lock whenever we enter a waiting screen. The win and lose screens gain a `PRESS SPACE` line. Everything else is the game you already had — the loop closes with a handful of instructions.
+So wire it the way anyone would first: at boot, draw the title, chime, and sit in a little loop reading SPACE until it drops — then fall through into the setup and the game we've always had.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-19/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-19/steps/step-01.asm"
   lang="z80"
-  title="Step 1: end states hand back to the title, with a debounce lock"
+  title="Step 1: title screen, chime, and an inline wait for SPACE"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-19/steps/step-01.asm" lang="z80" />
+</details>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-19/step-01-title.png" alt="GLOAMING and PRESS SPACE in white ROM-font capitals on a completely black screen." caption="The front door. Two strings, a black void, and everything else left to the imagination — which is exactly where a game about dusk wants your imagination to be." />
+
+<AudioClip src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-19/step-01-chime.wav" title="The dusk chime — two tolls, then the motif far off" source="ZX Spectrum beeper · chime_dusk" />
+
+One ordering detail in the setup rewards attention: the chime is called **after** `im 1 / ei`, unlike everything else sound-adjacent so far. Why? Its rests. `rest` counts silence in `HALT`s, and `HALT` waits for an interrupt — call the chime before `ei` and the first rest waits forever, on a machine that looks perfectly healthy and plays exactly one note. When one subsystem quietly depends on another being switched on, the order of two boot lines becomes a bug you can *hear*.
+
+## What's wrong with the door
+
+Play from it. Title, chime, SPACE, game — it all works. Now win, and look at where you are: THE NIGHT IS HELD, holding forever. Lose: NIGHT FALLS, forever. The title was real, but it wasn't a *place* — it was a preamble, executed once on the way in, unreachable ever after. The deeper problem is structural, and it's worth saying precisely: **"beginning the game" is not a thing this program can do; it's a thing that happened.** The setup code runs once, woven into the boot path, and nothing can ever ask for it again. Unit 20 needs to send you from the end screens back to a title that can start a *fresh night* — and this shape has no handle to grab.
+
+## Milestone 2 — beginning becomes callable
+
+The fix is the last restructure of the module, and not one visible byte changes on screen. Three moves:
+
+1. **The setup body becomes `init_game`** — everything from zeroing `lit_count` to drawing the wisp, lifted whole out of `start` and given a name and a `ret`. Beginning is now a routine.
+2. **The title becomes a state.** `STATE_TITLE` joins the machine — as state zero, the state the `game_state` byte's own `defb` boots into — and `title_step` owns the waiting: each frame, read SPACE; on a press, `call init_game`, switch to `STATE_PLAY`.
+3. **The loop learns to dispatch.** The Unit 15 gate grows into the real thing: TITLE frames go to `title_step`, PLAY frames to `play_step`, WIN and LOSE hold. Each state now *names what a frame means*.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-19/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-19/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: STATE_TITLE, title_step, and setup becomes init_game"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-19/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-19/steps/step-02.asm" lang="z80" />
 </details>
 
-Every end screen now invites another go. Here is the lose screen, carrying the new prompt (the win screen carries the same one):
-
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-19/step-01-again.png" alt="A black screen with NIGHT FALLS and, below it, PRESS SPACE." caption="The lose screen, no longer a dead end: NIGHT FALLS, and an invitation back. The win screen carries the same PRESS SPACE under THE NIGHT IS HELD." />
-
-Press it and the whole loop turns — the end screen hands back to the title, and the title builds a fresh game from scratch:
-
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-19/step-01-loop.mp4"
-  caption="The arcade loop, end to end. Night falls; a press of space returns to the GLOAMING title; another press rebuilds the square — cold blue again, every lamp dark, three lives restored. A replayed game is genuinely fresh, because start and play-again are the same init_game."
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-19/step-02-begins.mp4"
+  caption="The finished opening: the void, the name, the chime — and on SPACE, a whole night assembles in a frame and the lamplighter answers the keys. Identical to step 1 in every pixel and note; nothing alike underneath."
   autoplay={true}
   loop={true}
 />
 
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-19/step-02-play.png" alt="The game in progress moments after starting from the title, the lamplighter a few steps from his start, the wisp gathering in its corner." caption="Begun, properly: init_game built this board on request, inside one frame of title_step. It can do it again, too — which is the whole point, and the next unit's opening move." />
+
+Watch what `start` shrank to: black border, state to TITLE, draw the title, start the heartbeat, chime. Boot no longer knows *anything about the game* — not where the lamplighter stands, not how many lives, nothing. It knows how to open the door; the door knows how to begin. This is the refactor pattern from Unit 10 wearing structural clothes: there, we deleted code the world had made redundant; here, we *moved* code until each piece had exactly one owner. The screen proves nothing changed; the shape proves everything did.
+
 ## When it's wrong, see why
 
-The loop and its debounce fail in their own ways:
-
-- **A key on the end screen does nothing.** `end_step` is not being called for `WIN`/`LOSE`, or the input lock never reaches zero. The dispatcher must route those states to `end_step`, which counts the lock down.
-- **The end screen flashes past before you can read it.** No input lock — a held key carried straight through. Set the lock when you *enter* the screen.
-- **A replayed game keeps old lamps lit, warm walls, or lost lives.** `init_game` is not a total reset, or the bitmap wipe is missing. Starting over must rebuild everything.
-- **The title instantly starts a game after a win.** The lock set when returning to the title is missing, so the still-held key triggers `title_step` at once.
+- **One note, then silence, machine looks hung.** The chime ran before `ei` — its first `rest` is halting for an interrupt that can't arrive. Boot order: interrupts on, *then* anything that rests.
+- **The title flashes past straight into the game.** The SPACE test is inverted — bit 0 reads **1** when up; `ret nz` (or `jr nz, .twait`) keeps waiting. Active-low, Unit 5's oldest lesson, still collecting.
+- **SPACE mid-game restarts the night.** `title_step` is being called in every state — the dispatch must route only TITLE frames to it. A state machine is only as good as its gate.
+- **Starting from the title gives a half-stale board.** Something didn't move into `init_game` — every mutable byte the game touches must be re-established there, not left to a `defb` that was only fresh at boot. (Unit 15's warning about `defb` initial values, now with teeth.)
+- **The game begins on its own after a win.** The end states must *hold* — if WIN or LOSE frames fall through to `title_step`, a held SPACE from your last input starts a game nobody asked for. Unit 20 handles returning deliberately.
 
 ## Before and after
 
-You started with a game that ended and stopped and finished with one that ends and *offers another go* — and the closure cost almost nothing, because the state machine was already there. A dead-end state only had to learn to hand control on; `init_game` was already a full rebuild, so "play again" and "start" became the same act; and one short per-screen lock kept a held key from skipping the screen you earned. That is the shape of every arcade game: a loop with a clean way in and a clean way round again.
+The unit began with a game that started without permission and ended with one that waits to be asked. Milestone 1 built every visible piece — screen, chime, key — and worked; milestone 2 changed nothing visible and mattered more: *beginning* went from an event in the boot sequence to a capability of the program, `init_game`, callable by anyone with a reason. The state machine now has its full shape — TITLE, PLAY, WIN, LOSE — with exactly one arrow missing: nothing yet leads *back*. One unit left.
 
-## Try this: press any key to continue
+## Try this: dress the door
 
-Space is fine, but arcades say "press any key". In `end_step`, read a few half-rows and continue if *any* shows a held key (combine the rows; if the low five bits are not all 1, something is down). Friendlier, and it reuses the keyboard reading you already know.
+The title is two strings and a void, which means it's cheap to art-direct. Recolour the name (write a different attribute in `print_char`'s path — or paint the title row's attributes after printing: lamp-gold `%01000110` reads beautifully on black). Move the rows. Add a third line — a copyright, your initials, `AN EVENING GAME` — one more `defb` string and one more call. Feel how fast iteration is when a screen is data.
 
-## Try this: tune the lock
+## Try this: an impatient door
 
-`LOCK` is the debounce length in frames. Set it to `1` and you will sometimes skip the win screen by still-holding a key; set it to `100` and the screen feels unresponsive. Find the value that reads as "deliberate, not sticky" — somewhere near half a second. Feel is made of numbers like this.
+Make PRESS SPACE breathe: after printing, set FLASH on its cells — eleven attribute writes at row 14 — and the prompt pulses on the hardware's own clock, no code per frame. The oldest attract-mode trick on the machine, and it costs nothing the loop ever sees.
 
-## Try this: a games-played counter
+## Try this: any key to begin
 
-Add a byte that `init_game` does **not** reset, and increment it each time a game starts; print it on the title as "GAME N". You will have drawn the line between *per-game* state (everything `init_game` clears) and *persistent* state (what survives the loop) — exactly where a high score would live.
+Replace the SPACE read in `title_step` with Unit 7's gather idiom — all three direction half-rows plus SPACE's, OR'd together — so any key opens the door. Arcade-style. Then decide if you *want* it: a player resting their hand on QAOP at the title now starts before they meant to. Input design is choices, not just code.
 
 ## What you've learnt
 
-- **Closing the loop is cheap once a state machine exists** — a dead-end state just learns to hand control to another.
-- **"Play again" is "start"** — one `init_game` that rebuilds everything, so a replay is truly fresh.
-- **Debounce shared keys** with a short per-screen input lock, so a held key does not skip the screen you just earned.
-- **Per-game state vs persistent state:** what `init_game` resets versus what survives the loop (a score, a counter).
+- A title screen is **assembled from parts you had**: the printer, the blackout, the beeper, one new phrase.
+- **Boot order can be audible** — anything that rests on the heartbeat needs the heartbeat running first.
+- The hardwired door works and can't be reopened: **preambles aren't places**.
+- **`init_game` turns beginning into a capability** — state zero owns the waiting, the dispatch names each frame's meaning.
+- A pure restructure can be the most important diff in a module: **same bytes on screen, new shape underneath**.
 
 ## What's next
 
-Gloaming is complete — a full arcade loop, played from a title and back again. There is one truth left to confirm, and it is the one that matters most: does it run on a **real Spectrum**? In **Unit 20, "On Real Iron"**, we take the finished game off the emulator and onto actual hardware — built to a tape with an auto-running loader — and verify that everything you built behaves exactly as it has on screen. The last step of every real project: trust, but verify, on the metal.
+Every screen in Gloaming now exists — title, play, gold, black — and they form a line, not a loop: win or lose, the game holds its final screen forever, one SPACE away from a title it can never reach. **Unit 20** draws the last arrow: from either ending, back to a title that remembers your best night — and the module's final lesson is the one every game ends on: what must be reborn, what may persist, and how a state machine closes.
