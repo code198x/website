@@ -1,10 +1,10 @@
 ---
-title: "It Snuffs the Light"
-description: "The draught earns its menace. When it crosses a lit lamp it puts it out — editing its own saved buffer back to cold cyan, the exact mirror of the lamplighter's lighting — and the tally drops. Two moving things now fight over the same ground."
-pubDate: 2026-06-01
+title: "The Square Warms"
+description: "Progress becomes atmosphere: the frame's colour stops being a constant and becomes a nine-entry ramp indexed by lit_count — dusk stone, warming mortar, a bright glow, and gold at eight — repainted at the same event that warms a pip."
+pubDate: 2026-07-03
 game: 1
 unit: 14
-tags: ["assembly", "z80", "collision", "game-state", "interaction", "attributes"]
+tags: ["assembly", "z80", "attributes", "data-table", "game-feel", "atmosphere"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
@@ -12,98 +12,129 @@ import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
 
-The draught drifts, but does no harm. This unit gives it its purpose: when it crosses a **lit** lamp, it snuffs it — cold cyan again — and the tally falls. The dark starts winning back the ground you've covered, and for the first time you have to think about *where the draught is going*.
+The ledge knows the score now — but only the ledge. Step back from the machine and look at the *game*: a dark square that stays exactly as dark on your eighth lamp as on your first. The pips are information; they aren't *feeling*. Good games tell you how it's going through the world itself — the music lifts, the sky pales, the room glows — so that progress is something you sense before you ever read a number. Gloaming is a game about bringing light to a dark place. The dark place should notice.
 
-The neat part: you already know how to do this. It's Unit 10's lighting, run backwards.
+This unit makes the square itself respond: with every lamp lit, the stone frame around the town warms — dusk-blue, then lamplit mortar, then a bright glow, and at the eighth lamp, gold.
 
-## Where we start
+## A colour with nine values
 
-Unit 13's draught — a wisp that drifts and bounces but leaves the world untouched. We give it teeth.
-
-## Snuffing is lighting, mirrored
-
-In Unit 10, when the lamplighter stepped onto a cold lamp, he edited his *saved* buffer from cyan to yellow, so restore painted it lit. The draught does the opposite. When it steps onto a cell, it saves the nine bytes as always — and if what it saved is a **lit** lamp, it rewrites the saved attribute back to **unlit**:
+The frame's colour has been a constant since Unit 1 — `WALL`, one byte, dusk stone with white mortar. Warmth means that byte now *depends on the game*: nine possible values, one for each count of lit lamps from zero to eight. Nine values that depend on an index — that's not a chain of compares, that's a **table**:
 
 ```
-ld   a, (under_draught + 8)   ; what the draught just covered
-cp   LAMP_LIT                ; a lit lamp?
-jr   nz, .nosnuff
-ld   a, LAMP_UNLIT           ; then cool the SAVED copy
-ld   (under_draught + 8), a
-call unlight_pip             ; and drop the tally
-.nosnuff:
+wall_ramp:
+        defb %00001111     ; 0 lamps — dusk stone, white mortar
+        defb %00001111     ; 1
+        defb %00001111     ; 2
+        defb %00001110     ; 3 — the mortar warms: yellow ink
+        defb %00001110     ; 4
+        defb %00001110     ; 5
+        defb %01001110     ; 6 — the stone catches the glow: BRIGHT
+        defb %01001110     ; 7
+        defb %01110000     ; 8 — the square aglow: warm yellow stone
 ```
 
-When the draught drifts off, `restore_draught` writes that cooled lamp back to the screen. The lamplighter edits his buffer to *light*; the draught edits its buffer to *snuff*. Same mechanism, opposite sign — and `unlight_pip` is `light_pip` run backwards, dropping the count and cooling the top pip.
+Nine entries, note — not eight. The count runs 0 through 8 *inclusive*, and the table needs a value for every count it can be asked about, including "none yet". Off-by-one fencepost errors live and die on this.
 
-## Two things fighting over one world
+Read it as design, because it is one — this ramp is the game's art direction in nine bytes. The stone stays dusk-blue for the whole climb: only the *ink* changes at three (the brick texture's mortar lines pick up lamplight), only the BRIGHT bit at six (same colours, more voltage). The full transformation — yellow PAPER, the stone itself gold — is hoarded for the moment all eight burn. Restraint is what makes the last step land. And every value stays in the blue-to-gold family: warmth here is yellow, never a red-shifted magenta — the Spectrum's palette is small enough that discipline about which colours *mean* something is most of what visual style is.
 
-This is the first **entity-versus-world interaction** in the game: one moving thing changing a piece of the world that *another* moving thing cares about. The lamps aren't the lamplighter's, and they aren't the draught's — they're contested ground, and the state of each cell is the running score of who reached it last. The lamplighter lights; the draught snuffs; the board is the argument between them.
+## Milestone 1 — the colour becomes a lookup
 
-It changes how the game *plays*, too. Lighting a lamp is no longer permanent, so the win — all eight lit *at once* — becomes a real test. You have to light faster than the draught can eat, and steer your route to stay ahead of its drift. Mechanics just became a contest.
-
-## Milestone — let it snuff
-
-Right after `save_draught`, we read what the draught covered, and if it's a lit lamp, cool the saved copy and drop the tally with `unlight_pip`. That's the whole change — the mirror image of Unit 10's six lines.
+`paint_walls` has one job-defining line: `ld c, WALL`. Replace the constant with the lookup — read `lit_count`, add it to the table's base, take the byte found there — and rename the routine for what it now does. The painting loop beneath is untouched.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-14/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-14/steps/step-01.asm"
   lang="z80"
-  title="Step 1: the draught cools a lit lamp it crosses"
+  title="Step 1: paint_walls becomes warm_walls — a constant becomes data"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-14/steps/step-01.asm" lang="z80" />
+</details>
+
+Boot it: nothing looks different, and nothing should — at startup `lit_count` is zero and `wall_ramp[0]` *is* the old `WALL` byte. Now light three lamps:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/step-01-stale.png" alt="Three lamps lit and three pips warm, but the walls are still cold dusk-blue." caption="Three lamps, three pips — and stone-cold walls. The mechanism is right there in the code, and nothing is running it." />
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/step-01-stale.mp4"
+  caption="The stale build: lamps light, pips warm, and the frame ignores all of it — warm_walls ran once, at boot, when the count was zero, and never again."
+  autoplay={true}
+  loop={true}
+/>
+
+The lookup is correct and the atmosphere is stale, because **a lookup answers the question when it runs** — and it ran once, in the setup, when the honest answer was "zero lamps". State changed afterwards; nobody asked again. You've met this discipline before, one unit ago, from the other side: the tally worked *because* we hung its update on the event. The same rule, felt as an absence.
+
+## Milestone 2 — ask again at the event
+
+So: one line, in the one place the count changes — right beside `light_pip`, inside the cold-lamp branch.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-14/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-14/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: re-warm the frame at the same event that warms a pip"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-14/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-14/steps/step-02.asm" lang="z80" />
 </details>
 
-Light a lamp in the draught's path, and watch it wink back to cold as the draught drifts through — the tally pip cooling with it:
+And now the full circuit — all eight lamps, watching the frame as you go:
 
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/step-01-snuff.mp4"
-  caption="A lamp glows gold and the draught drifts straight into it — as it passes, the lamp cools back to cyan and the warm tally pip at the top goes cold with it (lit_count drops from 1 to 0). The dark pushing back, byte by byte."
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/step-02-warms.mp4"
+  caption="The whole climb in sixteen seconds: dusk for the first two lamps, the mortar catching lamplight at the third, the stone brightening at the sixth — and at the eighth, the square goes gold."
   autoplay={true}
   loop={true}
 />
 
-Light more than one and the contest shows: a survivor glows on while the draught cools another beside it, the tally landing on what's left:
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/step-02-mortar.png" alt="The square with three lamps lit; the frame's mortar lines are now yellow." caption="Three lamps: look closely at the brickwork — the mortar lines have gone from white to yellow, as if catching the light. Subtle on purpose; atmosphere that shouts is a HUD." />
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/step-01-snuffed.png" alt="The square with one lamp lit gold at the left beside the lamplighter, the draught hovering by a freshly-cooled cyan lamp at the upper right, and the tally showing one." caption="Two lamps were lit; the draught crossed one and put it out (now cyan, by the draught at upper right). The survivor still glows gold at left, and the tally has dropped to one — confirmed by reading lit_count from memory." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/step-02-bright.png" alt="The square with six lamps lit; the frame noticeably brighter." caption="Six lamps: the BRIGHT bit — same colours, more voltage. You feel this one across the room, which is the point of saving it for the second act." />
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-14/step-02-gold.png" alt="The whole frame glowing bright yellow-gold; all eight lamps lit and all eight pips warm." caption="Eight: the stone itself goes gold, the mortar now dark seams in warm rock. The buildings keep their own shadow — the lamplight warms the square's edge, not the world. This screen is the win Unit 15 will hang words on." />
+
+Notice how *cheap* this is. `warm_walls` repaints the frame's hundred-and-ten cells — but only when a lamp lights, which happens exactly eight times a game. Not per frame, not per step: per event. The same placement discipline that kept the tally honest keeps the atmosphere affordable.
+
+One more thing worth seeing: the buildings stay dusk-blue throughout. `warm_walls` inherits `paint_walls`' loop, and that loop paints the perimeter — the buildings were never its job. The warming reads as the *square's edge* catching the collective lamplight, while the town's stone keeps its own shadow. A happy consequence of routine boundaries, doing duty as art direction.
 
 ## When it's wrong, see why
 
-The snuff is the lighting code's mirror, and it fails the same ways:
-
-- **Lamps are never snuffed.** The check is misplaced or compares the wrong value. Read `under_draught + 8` **after** `save_draught`, and compare it with `LAMP_LIT`.
-- **The snuffed lamp stays gold.** You changed the live cell, or the wrong buffer. Cool the *saved* copy (`under_draught + 8`) so `restore_draught` paints it cold when the draught leaves.
-- **The tally underflows or goes wrong.** `unlight_pip` only ever runs when a *lit* lamp is snuffed, so the count can't drop below zero — confirm it's inside the `cp LAMP_LIT` branch.
-- **You can never win now.** That may be the game, not a bug: the draught can snuff faster than you light. Slow it (`DRAUGHT_SPEED`) while you test, or get quicker.
+- **The walls never warm.** Step 1's build — the lookup exists but nothing re-runs it. `call warm_walls` belongs beside `light_pip`, inside the `cp LAMP_UNLIT` branch.
+- **They warm one lamp late.** Order within the branch: `light_pip` increments the count, so `warm_walls` must run *after* it. Before it, the frame paints yesterday's number.
+- **Gold arrives on the seventh lamp, or never.** The ramp is short an entry, or the entries are shifted — nine counts, zero through eight, need nine bytes. Count the `defb`s.
+- **The frame goes black or garish mid-game.** The index escaped the table — if `lit_count` can exceed 8 (see Unit 13's `NUM_LAMPS` agreement), the lookup reads whatever byte follows `wall_ramp` in memory and paints the frame with it. Tables index safely only as far as their data runs.
+- **He walks into the frame at some ramp stage.** You've edited a mid-game entry and dropped bit 3 — the wall bit. `wall_at` reads the frame's *current* colour like any attribute, so every ramp entry that should mean "solid" must keep bit 3 set. (The gold entry gets away without it only because the win freezes play — see the try-this below.)
 
 ## Before and after
 
-You started with a draught that drifted past everything and finished with one that undoes your work — and the menace is six lines, the lighting mechanic with two constants flipped. The lamps became contested ground; the win became a race; the count can move both ways and still stays honest because the decrement only fires on a real loss. An antagonist didn't need new machinery — it needed permission to edit the same state you do.
+A constant became a table, and a repaint found its event. That's the entire mechanical content of this unit — perhaps fifteen lines — and yet it's the moment Gloaming starts to *feel* like the game it's named for: the square answers the work you do in it, quietly at first, then unmistakably, then gold. The number on the ledge and the light on the stone are the same byte, `lit_count`, read out two ways — one for your eyes to check, one for your spine to notice.
 
-## Try this: a hungrier draught
+## Try this: your own dusk
 
-Lower `DRAUGHT_SPEED` so the draught moves more often and snuffs faster. Find the point where the game tips from "tidy up at leisure" to "genuinely tense" — difficulty lives in that one number, and feeling it move is what tuning *is*.
+Rewrite the ramp. A slower burn — dusk holding until five, then three quick steps to gold. A colder opening — start the mortar cyan (`%00001101`) so even the first lamp's warmth is visible against it. All nine entries are yours; rebuild and *feel* the difference in pacing. This is the tuning loop from Unit 7's `PLAYER_REPEAT` again, played on colour instead of time: atmosphere is data, and data is cheap to try.
 
-## Try this: a jolt when it bites
+## Try this: walk through the golden wall
 
-Give the snuff a moment of feedback. In the `.nosnuff` branch (just before it), flash the border for an instant — `ld a,2 / out ($FE),a` then back to `0` — so losing a lamp *registers*. A change the player can't see or feel barely counts; a flash of red sells the loss.
+Light all eight lamps, then walk at the frame. He passes *straight through it* — because the gold entry `%01110000` has black PAPER's bit 3... gone. The paper is yellow now, and yellow's bottom bit is 0: the byte that means "warm stone" to your eye means "floor" to `wall_at`. One byte serving two masters — look and physics — just stopped serving one of them. The shipped game never exposes this: next unit, the win fires on the very frame the eighth lamp lights, and the screen holds before you can take a step. But tonight, in this build, you can walk through a golden wall — remember it as the sharpest lesson this course has about packing meanings into bits: **when one byte carries two jobs, every edit to it must answer to both.**
 
-## Try this: turn the enemy kind
+## Try this: warm the cobbles instead
 
-Change the draught's `cp LAMP_LIT` to `cp LAMP_UNLIT`, and have it set `LAMP_LIT` (and call `light_pip`). Now the "draught" *lights* lamps as it wanders — a helper, not a threat. It's the same code with two constants swapped, and it shows the mechanic was never "good" or "evil": the rule is whatever you write.
+Point the mechanism elsewhere: make a ramp for the *floor* — have `warm_walls` (or a sibling) repaint the ground attribute from a `ground_ramp`, so the whole square pales toward dawn as lamps light. It's a bigger repaint (the full 700-cell interior), still only eight times a game. Does it read better or worse than the frame alone? Atmosphere is taste, and now you have the machinery to have opinions with.
 
 ## What you've learnt
 
-- **Entity-versus-world interaction:** one actor changes shared world state that another actor cares about.
-- The snuff is the **lighting mechanic mirrored** — edit the saved buffer to the opposite value.
-- Keep **paired counters honest** (`light_pip` / `unlight_pip`) and guard the decrement so it only fires on a real loss.
-- An antagonist that edits the same state turns a set of mechanics into a **contest**.
+- **Progress should be felt, not just read** — atmosphere is a readout for the spine.
+- A value that depends on a count is a **table indexed by the count** — nine counts, nine entries, fenceposts included.
+- A lookup answers **when it runs** — state that changes needs the question re-asked, at the event.
+- **Restraint is design**: ink before brightness before paper, and gold hoarded for the win.
+- **Dual-purpose bytes demand double-checked edits** — the golden wall walks because look and physics share a bit.
 
 ## What's next
 
-The draught can undo your work — but it still can't touch *you*. In **Unit 15, "Lives, and the Fall of Night"**, it can: if the draught and the lamplighter land on the same cell, you lose a life, and when the lives run out, night falls — the lose state. That's the last piece Phase D needs, and the moment Gloaming becomes a game you can not only win, but *lose*.
+The square can reach gold — and when it does, nothing says so. The game just… continues, aglow, waiting for a meaning nobody wrote. **Unit 15** writes it: a `game_state` byte, a win check where the count changes, and THE NIGHT IS HELD across the screen in the Spectrum's own ROM font — the first words this game has ever spoken, and the moment a toy with a goal becomes a game you can finish.
