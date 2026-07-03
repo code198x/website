@@ -1,108 +1,145 @@
 ---
-title: "Lives, and the Fall of Night"
-description: "Phase D's finale. The draught and the lamplighter can now collide — each hit costs a life from a row of pips — and when the lives run out, night falls: the screen goes dark and the game ends. Gloaming can be lost as well as won."
-pubDate: 2026-06-01
+title: "The Night Is Held"
+description: "The game learns to end: printing with the Spectrum's own ROM font — demonstrated on a claim nobody earned — then a game_state byte, a gated loop, and a win check that fires the frame the eighth lamp lights. THE NIGHT IS HELD."
+pubDate: 2026-07-03
 game: 1
 unit: 15
-tags: ["assembly", "z80", "collision", "lives", "lose-state", "game-state"]
+tags: ["assembly", "z80", "text", "rom-font", "state-machine", "game-state"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-The draught can undo your work, but it still can't touch *you*. This unit lets it — and gives the game its stakes. The two can collide, each collision costs a life, and when the lives run out, **night falls**: the square goes dark and the game ends. With this, Gloaming becomes a real game, one you can lose as well as win — and that closes Phase D.
+Light all eight lamps and the square turns gold — and then nothing. The game keeps running, aglow and purposeless: the loop beats, the keys work, the lamplighter wanders a town with nothing left to do in it. Reaching the goal *changes* nothing, because no code anywhere knows the goal exists. A game needs to be able to end — and an ending, mechanically, is two things this program doesn't have yet: a way to **say** something, and a way to **stop**.
 
-## Where we start
+This unit builds both. Words first.
 
-Unit 14's contest — the draught snuffs lamps, but passes through the lamplighter harmlessly. We make the two of them dangerous to each other.
+## The machine's own letters
 
-## Two sprites, one cell: collision
-
-A collision is the question *are the lamplighter and the draught trying to stand on the same cell?* — a comparison of their columns and rows. But there's a trap. If we let them overlap, their save/restore buffers tangle: each sprite assumes it's the only thing on its cell, and two sharing one cell corrupts what each thinks is "underneath".
-
-So we don't let them overlap. Instead, **a move onto the other's cell is treated like a move into a wall** — refused — and counted as a hit. We check it both ways: when the lamplighter steps toward the draught, and when the draught drifts toward the lamplighter.
+The closing line is text, and text is glyphs — but not glyphs we have to draw. The Spectrum carries its entire character set in ROM, eight bytes per character, exactly the format every glyph in this game already uses. One constant finds it:
 
 ```
-; about to move onto the other's cell?
-ld   a, (tcol)
-ld   hl, draught_col
-cp   (hl)
-jr   nz, .clear
-ld   a, (trow)
-ld   hl, draught_row
-cp   (hl)
-jr   nz, .clear
-call lose_life      ; same cell — collision, don't move
+FONT  equ  $3C00      ; the ROM font, addressed so that
+                      ; ASCII x 8 lands on the right glyph
 ```
 
-They never share a cell, so the engine stays clean. (Drawing two sprites that genuinely *overlap* — compositing one over the other — is a real technique a later game builds. Here we sidestep it, and the game's none the poorer.)
+The arrangement is tidy enough to feel like a gift: take a character's ASCII code, multiply by eight, add `FONT`, and you're looking at its eight rows. (The font's first real glyph — space, code 32 — physically sits at `$3D00`; the `$3C00` base is chosen 256 bytes early, which is exactly 32 characters' worth, so the codes need no adjusting. The offset is baked into the constant.)
 
-## Lives, as pips again
+So `print_char` is Unit 3's glyph-draw with the bytes coming from ROM: three `add hl, hl` for the times-eight, attribute first, eight rows down the cell. And `print_string` is Unit 11's table-walking loop wearing different clothes — read a byte, `$FF` means done, `push`/`pop` around the call to keep the string pointer safe, step one column right. You have written both of these shapes before; this time they spell.
 
-Lives are shown the way everything is shown in this game: as coloured cells. Three red pips sit at the right of the HUD, and `lose_life` removes one each hit — the lamp tally's machinery, run in reverse. While lives remain, a hit sends the lamplighter **back to the start**, clear of the draught, and play continues. The reset is also what keeps the two sprites apart after a collision, with no overlap to clean up.
+## Milestone 1 — words before meaning
 
-## The fall of night
-
-When the last life goes, `lose_life` jumps to `lose`, and night takes the square. It's the win's mirror image: where the win prints its line over the lit board, the loss first **washes every cell to black** — one `LDIR`, the whole attribute map gone dark — then prints `NIGHT FALLS` into the void, and holds. Two end states now, one bright and one dark, each a place the game comes to rest.
-
-## Milestone — the lose state
-
-We add the same-cell check to both `player_step` and `draught_step`, a `lose_life` that drains a red pip and resets the lamplighter (or jumps to `lose` at zero), and a `lose` routine that blacks the board and prints `NIGHT FALLS`.
+Build the printing pair, add the string — and prove it works the blunt way: print the win line at boot, checked by nothing.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-15/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-15/steps/step-01.asm"
   lang="z80"
-  title="Step 1: collision, lives, and the fall of night"
+  title="Step 1: print_string, print_char, and a claim nobody earned"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-15/steps/step-01.asm" lang="z80" />
+</details>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-15/step-01-unearned.png" alt="THE NIGHT IS HELD printed in white across a dusk square with all eight lamps cold." caption="THE NIGHT IS HELD — over a square with every lamp cold and the tally empty. The Spectrum's own font, crisp as BASIC's listings, saying something plainly untrue." />
+
+The printing works perfectly, and the screen is a lie. Every lamp is cold; the night is *not* held; the machine wrote it anyway, because nothing connects the words to the world. Worse — the words aren't even safe. Look closely at the message row: the lamplighter *boots underneath it* (his start cell sits mid-sentence, wearing a letter), and if you walk him away, restore faithfully puts back the cobbles his buffer saved — tearing a character out of the line. Text on this machine is cells, exactly like everything else: nothing defends it, and nothing earned it. Both jobs belong to the same missing thing.
+
+## The game gains states
+
+That missing thing is a byte:
+
+```
+STATE_PLAY  equ  1
+STATE_WIN   equ  2        ; the night is held — the game is won
+
+game_state:
+        defb STATE_PLAY
+```
+
+And its power is where it's read: the **main loop**, which until tonight has beaten out the same rhythm since Unit 4 — halt, play, repeat, forever. Now the beat asks a question first:
+
+```
+main_loop:
+        halt
+        ld   a, (game_state)
+        cp   STATE_PLAY
+        jr   z, .do_play
+        jr   main_loop        ; WIN or LOSE — the screen holds
+.do_play:
+        call play_step
+        jr   main_loop
+```
+
+Read the non-PLAY path carefully, because it's the whole concept: the machine doesn't stop. The heartbeat still ticks fifty times a second; the loop still spins; the interrupt still fires. What changes is that **the game declines to advance**. Keys are never read, moves never proposed, the screen never touched — the world simply *rests*, held exactly as its last PLAY frame left it. An ending isn't a place where code stops running; it's a state the loop settles into. Every game you have ever finished did this — this byte, wearing different names.
+
+## Milestone 2 — earn it
+
+Strike the boot print. Set the state in the setup, gate the loop, and put the win check where it belongs — in `play_step`, right after the player's beat, the only moment the count can have changed:
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-15/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-15/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: game_state, the gated loop, and the win check — the words come true"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-15/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-15/steps/step-02.asm" lang="z80" />
 </details>
 
-The HUD now carries your lives — three red pips at the top right, beside the lamp tally:
+The check is three lines — a load, a `cp NUM_LAMPS`, a `ret nz` — and a win turns out not to be a system at all: it's state you were already tracking, crossing a line you care about, noticed at the moment it can cross. When it fires, `draw_win_screen` does two things in the right order: `restore_under` first, so the lamplighter steps out of the world and the eighth lamp emerges from the buffer already lit — his work complete, himself no longer needed — and then the line prints, this time over a screen that makes it true. Then `game_state` becomes `STATE_WIN`, and the loop holds it all, forever.
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-15/step-01-lives.png" alt="The square in play, with the cyan lamp tally at the top left of the HUD and three red life pips at the top right." caption="Three lives, shown as red pips at the right of the HUD. Each time the draught catches you, one winks out — and the lamplighter is thrown back to the start." />
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-15/step-02-held.mp4"
+  caption="The full night's work: eight lamps, the square warming to gold — and on the eighth, the same frame it lights, the lamplighter vanishes, the words appear, and the keys go quiet. The presses at the end move nothing; the game has come to rest."
+  autoplay={true}
+  loop={true}
+/>
 
-Let the draught catch you three times and the square is swallowed whole — the lose state, earned by losing:
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-15/step-02-held.png" alt="The gold square with all eight lamps lit, no lamplighter, and THE NIGHT IS HELD across the middle." caption="Earned: every lamp burning, the frame gold, the tally full, the lamplighter gone into his work — and the words, at last, telling the truth. The screen the whole module was building toward." />
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-15/step-01-night.png" alt="A black screen with the words NIGHT FALLS in white across the middle." caption="Night falls: the whole attribute map washed to black and two cold words left behind. Reached by play — three collisions, lives counted down to zero in memory. The win's mirror image." />
+And notice what the same-frame timing quietly guarantees: the golden wall from last unit's try-this — walkable the instant the ramp goes gold — can never be reached, because between the eighth lamp lighting and your next possible keypress, the state has already left PLAY. The win check doesn't just end the game; it seals last unit's loophole without knowing it exists. Tight state machines fix bugs their authors never met.
 
 ## When it's wrong, see why
 
-Collision and the lose state fail in their own ways:
-
-- **No collisions ever register.** The same-cell test is missing or only in one place. Check **both** `player_step` and `draught_step` compare the two positions before committing a move.
-- **The sprites overlap and garble.** You let a move onto the shared cell go through. The check must come *before* the move commits and refuse it, exactly like the wall test.
-- **Lives go wrong or the count underflows.** `lose_life` decrements then indexes `LIFE_BASE + lives`; make sure it's only ever called on a real hit.
-- **Night never falls.** Lives aren't reaching zero — either collisions aren't registering, or the draught can't reach the lamplighter. Lower `DRAUGHT_SPEED` while testing.
+- **The text is garbled — right shapes, wrong letters.** The times-eight is off: three `add hl, hl`, no more, no fewer, before adding `FONT`. One doubling short and every glyph comes from half the right address.
+- **The line never appears, however many lamps you light.** `NUM_LAMPS` disagrees with `lamp_data` — Unit 13's agreement, still binding. Eight pips can fill while a ninth lamp keeps `lit_count` from ever *equalling* the constant... or seven lamps leave it one short forever.
+- **The words appear, but he keeps walking through them.** The check fired and printed, but `game_state` was never set to `STATE_WIN` — or the loop's gate compares against the wrong constant. The state must change *and* the loop must honour it.
+- **The game is dead from boot.** `game_state` never initialised to `STATE_PLAY` — its `defb` says PLAY, but if the setup doesn't write it too, a re-entered game (Unit 20 is coming) would inherit whatever the last game left. Write your states at start-up; never trust a `defb` to stay fresh.
+- **The win screen shows him standing in it.** `draw_win_screen` printed before restoring — or never restored. The order is restore first, then print: he leaves, the lamp he's standing on emerges lit, the words land on a finished world.
 
 ## Before and after
 
-You started with a game you could only win and finished with one you can also *lose* — and both stakes are the same machinery you already had. Collision is the wall test pointed at another sprite; lives are the tally in reverse; the lose state is the win state dressed in black. The two sprites never overlap, so nothing about the engine had to change to make them deadly — refusing the shared cell was enough. Gloaming has a goal, a threat, and two ways to end.
+The unit opened with a machine that could only ever *continue* and closed with a game that can conclude. The printing was the smaller half, for all its charm — two routines you'd effectively written before, pointed at ROM. The larger half is the byte: `game_state`, read at the top of every beat, written at exactly two moments — birth and victory. That byte is the difference between a program that runs and a game that *rests*; between mechanics that happen and an experience with a shape. Phase 3 set out to make "a game" — lamps, a verb, a score, a mood, and now an ending you can reach. It's a game.
 
-## Try this: more or fewer lives
+## Try this: your own closing line
 
-`LIVES` sets how many pips you start with. Try `1` for a brutal single-life run, or `5` for a gentler game. The pips draw themselves from that one number — change it and the HUD follows. How forgiving the game feels is yours to set.
+Change `win_text` — `"DAWN COMES"`, `"WELL DONE"`, your name. Keep the `$FF`, and re-centre: a line of N characters starts at column (32 − N) ÷ 2, which is what `WIN_COL 7` is for seventeen. The machinery doesn't care what it says; that's rather the point of machinery.
 
-## Try this: a jolt when caught
+## Try this: a flourish before the rest
 
-A lost life should *land*. In `lose_life`, before the reset, flash the border red for a few frames (`ld a,2 / out ($FE),a`, a short delay, then `ld a,0`). The hit becomes something you feel, not a pip quietly going out — and it buys a beat before you're thrown back to the start.
+The freeze is dignified but abrupt. In `draw_win_screen`, before the print, flash the border: a short loop of `out ($FE), a` with cycling colours, a few frames each. A win deserves a heartbeat of spectacle — and notice it costs nothing ongoing, because it happens once, on the way *into* the rest state.
 
-## Try this: only the draught is deadly
+## Try this: the crudest restart
 
-Right now you lose a life whether *you* walk into the draught or *it* walks into you. Remove the check in `player_step` and keep only the one in `draught_step`: now you can brush past the draught safely, and only its own movement onto you is fatal. It's a subtler, fairer feel — and a single deleted block changes the whole character of the threat.
+In the loop's non-PLAY path, read SPACE (Unit 5 taught you the port: `$7FFE`, bit 0) and `jp start` when it's pressed. It works — and it's wrong in an instructive way: `start` re-runs the whole setup, but watch carefully for what it *doesn't* reset, and imagine a version where some state slipped through. Restarting properly — what must be reborn, what may persist — is Unit 20's whole subject. For now, enjoy the crude version and notice its edges.
 
 ## What you've learnt
 
-- **Entity-versus-entity collision** is a same-cell test — and *blocking* the overlap keeps two sprites' save/restore buffers clean, sidestepping the harder problem of drawing them on top of each other.
-- **Lives are another pip readout**, depleted like the tally in reverse.
-- A **lose state mirrors the win state** — an end the game rests in, here dressed as the dark taking the square.
-- Gloaming is now a **complete game**: a goal, a threat, and both a win and a loss.
+- The Spectrum's **font lives in ROM** — eight bytes a character, ASCII × 8 from a base that bakes in the offset; printing is sprite-drawing that spells.
+- Text on this machine is **cells like any other** — undefended, and only as truthful as the code behind it.
+- A **win is a check, not a system**: tracked state crossing a meaningful line, tested where it changes.
+- **game_state and the gated loop**: an ending is a state the loop rests in, not a place the program stops.
+- Same-frame checks **seal windows you didn't know were open** — the golden wall was never reachable.
 
 ## What's next
 
-The mechanics are all here — you can win, and you can lose. What's left is to make it feel like a *game you sit down to play*, and that's **Phase E**. In **Unit 16, "The Title"**, we add a title screen and the **state machine** that ties everything together: title → play → win or lose → back to the title. Gloaming stops being a program that starts in the middle and becomes one with a front door.
+Gloaming can be won — which means it now has exactly one flaw as a game: it cannot be lost. Nothing in the square opposes you; the night, so far, just *sits* there while you take it apart lamp by lamp. **Unit 16** gives the dark its agent: the draught — a cold wisp that hunts the lamplighter through the streets, moving on the same engine he does, steered by one compare-and-step rule that reads, on the screen, unmistakably as intent. Phase 4 begins, and the game pushes back.
