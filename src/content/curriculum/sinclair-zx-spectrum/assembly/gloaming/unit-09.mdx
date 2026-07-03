@@ -1,107 +1,165 @@
 ---
-title: "The Lamps"
-description: "The first real game objects. Keep the lamp positions in a small data table and draw an unlit cyan lantern at each — placement as data, not code. And Unit 6 pays off: the lamplighter walks over them without scrubbing them out."
-pubDate: 2026-06-01
+title: "Walls"
+description: "The map gets opinions: two brick buildings arrive as rectangle data, walk on as paint you can ghost through — then wall_at bit-tests the target cell's attribute, and everything brick turns solid at once."
+pubDate: 2026-07-03
 game: 1
 unit: 9
-tags: ["assembly", "z80", "sprite", "data-table", "game-objects", "attributes"]
+tags: ["assembly", "z80", "collision", "attributes", "bit", "data-table"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
+import RegisterBits from "@components/diagrams/RegisterBits.astro";
 
-The movement engine is finished — the lamplighter roams the walled square and keeps whatever he crosses. Now the *game* begins, and it begins with the thing he's here to do: light the lamps. So first there must be lamps.
+Movement is honest now — paced, and the ground survives it. But the map still has no say in where the lamplighter goes. The walls round the square are *paint*: he'd stroll clean through them if the scaffold clamp weren't standing guard, and Unit 6 said as much when the clamp went in. This unit is where the map starts pushing back — and the square gets something worth pushing back *with*.
 
-A lamp is another cell sprite — a little lantern drawn into a cell — but a still one, sitting on the floor in cold cyan, waiting to be lit. The interesting question isn't how to draw one; we've drawn sprites since Unit 2. It's how to place *eight* of them without writing eight copies of the same code. The answer is a **data table**.
+## A town needs buildings
 
-## Where we start
-
-Unit 8's finished engine — a figure roaming an empty walled square. We give the square its contents: the lamps he's here to light.
-
-## Placement is data, not code
-
-We *could* write `draw a lantern at (4,3)`, `draw a lantern at (27,3)`, eight times over. Instead we write the positions as plain bytes — a small table of column/row pairs — and a loop that draws whatever the table holds:
+An empty walled square is an arena; Gloaming is a town square at dusk, and towns have buildings. We could paint one the way we painted the frame — a run of attribute writes at hand-picked addresses — but there are two buildings, and later levels might want a different skyline. So the buildings follow the pattern the whole game will keep returning to: **shape as code, placement as data**. Each building is four bytes — column, row, width, height — in a little table with an `$FF` end-marker:
 
 ```
-lamp_data:
-    defb 4, 3
-    defb 27, 3
-    ...
-    defb $FF        ; a column of $FF marks the end
+bldg_data:
+        defb 5, 5, 4, 3         ; a 4×3 building, north-west
+        defb 23, 5, 4, 3        ; its twin, north-east
+        defb $FF                ; end of the town
 ```
 
-`draw_lamps` walks that table two bytes at a time, drawing an unlit lantern at each pair, and stops when it hits the `$FF` sentinel. Want a different level? Edit the table — the program doesn't change at all. Separating *what* (the data) from *how* (the code) is one of the oldest and best ideas in programming, and a level map is the perfect place to meet it.
+One routine, `paint_buildings`, walks the table and stamps each rectangle's cells with the `WALL` attribute — and that's *all* it does. No pixels. The brick texture arrives free, because Unit 2's `fill_walls` textures every cell whose attribute says wall, wherever it finds one. Paint the colour, and the brickwork follows.
 
-## A lamp is walkable floor — with pixels
+## Milestone 1 — buildings you can walk through
 
-Two small but vital choices. First, the lantern's colour is `%00000101` — cyan INK on **black** PAPER. Black paper means bit 3 is clear, so the Unit 7 wall test reads a lamp as **floor**: the lamplighter can step *onto* it, which is the whole point — he lights a lamp by standing on it (Unit 10).
-
-Second, and this is the lovely part: a lamp has **pixels**, and the lamplighter can walk straight over it without harm. That's Unit 6 paying off in full. When he steps onto a lamp, `save_under` tucks the lantern's nine bytes into the buffer; while he stands there his figure covers it; when he leaves, `restore_under` puts the lantern back exactly as it was. The naive blank-erase from Unit 5 would have wiped the lamp out the instant he touched it. Save/restore protects it for nothing.
-
-## Milestone — scatter the lamps
-
-We add a `lamp_data` table of column/row pairs, a `draw_lamps` loop that places an unlit lantern at each (called in setup, before the lamplighter goes down on top), and the lantern's eight-byte shape. The movement engine, collision, and save/restore are all untouched — the lamps just *are* the floor now.
+Build exactly that much — the table, the painter, one call in the setup — and nothing else. In particular, no collision. The point of stopping here is to *feel* the gap between looking solid and being solid.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-09/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-09/steps/step-01.asm"
   lang="z80"
-  title="Step 1: a lamp data table and the loop that draws it"
+  title="Step 1: two buildings from four bytes each — paint, and only paint"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-09/steps/step-01.asm" lang="z80" />
+</details>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-09/step-01-buildings.png" alt="The walled square with two brick buildings standing in its upper half, the lamplighter at the centre." caption="The town square, populated: two 4×3 buildings, textured in the same brick as the frame — eight bytes of data and one loop." />
+
+Now walk up and hold O, straight at the nearer building:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-09/step-01-ghost.mp4"
+  caption="He walks into the building, through it, and out the other side — a white figure sliding through brick. It looks solid; nothing about it is."
+  autoplay={true}
+  loop={true}
+/>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-09/step-01-ghosted.png" alt="The lamplighter standing west of the left building, which is completely intact." caption="And look behind him: the building he just ghosted through is whole. save_under doesn't know brick from cobbles — nine bytes out, nine bytes back — so last unit's machinery healed every wall cell he crossed." />
+
+Two things are true in that clip, and they're both worth saying. The building isn't solid, because nothing in the move ever *asks* about it — walls are exactly as solid as the code that checks for them, which is currently no code at all. And his passage didn't scar it, because Unit 8's buffer is honestly indifferent to what it preserves. You built that machinery over stipple; it just restored brickwork without a single change.
+
+## The bit that was always waiting
+
+So how does the move ask? The answer was planted in Unit 1. Look at the two attribute bytes this map is made of:
+
+<RegisterBits
+  address="$5800 + row*32 + col"
+  name="Wall and floor, one bit apart"
+  fields={[
+    { from: 7, to: 7, label: "FLASH" },
+    { from: 6, to: 6, label: "BRIGHT" },
+    { from: 5, to: 3, label: "PAPER 0-7" },
+    { from: 2, to: 0, label: "INK 0-7" },
+  ]}
+  value={0x0f}
+  caption="The wall byte, $0F: PAPER %001, blue. The cobble byte, $01, has PAPER %000 — black. They differ in exactly one place: bit 3, the bottom bit of PAPER. Set means wall; clear means floor. The map has been publishing its own collision data since Unit 1."
+/>
+
+Every solid cell on this screen — frame and buildings alike — has bit 3 set; every walkable cell has it clear. There's no need for a table of what's solid, no list of wall coordinates: **the colour you painted is the collision map**. One helper reads it:
+
+```
+wall_at:
+        call attr_addr_cr       ; HL = attribute of cell (C, B)
+        bit  WALL_BIT, (hl)     ; bit 3: set on brick, clear on floor
+        ret                     ; NZ = wall, Z = floor
+```
+
+Three instructions, and the second one is the entire collision system.
+
+## Milestone 2 — the veto
+
+Unit 6 built the move as propose-veto-commit and admitted the veto slot was empty ceremony. Four units later, here's the tenant. At the top of `.pmove`, before anything commits: load the *target* cell into `(C, B)`, call `wall_at`, and if the answer is brick — `ret nz` — the proposal dies. He doesn't bounce, doesn't flash; the step simply never happens.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-09/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-09/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: wall_at, and the veto that fills Unit 6's empty slot"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-09/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-09/steps/step-02.asm" lang="z80" />
 </details>
 
-Eight cyan lanterns appear from the table, and the lamplighter drops in over the top — the square stops being empty:
+Same walk as the ghost — up five, then hold O at the building:
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-09/step-01-lamps.png" alt="The walled square with eight small cyan lanterns scattered around the interior and the white lamplighter standing in the centre." caption="Eight unlit lanterns, placed from the data table, with the lamplighter among them. Move a lamp, add one, thin them out — it's all in the table, not the code." />
-
-And the Unit 6 payoff, caught in the act: walk him straight over a lamp and it survives, untouched and still cold:
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-09/step-02-blocked.png" alt="The lamplighter pressed against the east face of the left building, held O refusing the step." caption="The same input that ghosted him through in step 1 now pins him at the building's east face. However long O is held, wall_at answers NZ fifty times a second, and the answer is no." />
 
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-09/step-01-cross.mp4"
-  caption="The lamplighter walks down and then right, straight across a lantern — it vanishes under him, then reappears intact behind him. Unit 5's blank-erase would have wiped it out; save/restore now protects real pixels, not just blank floor."
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-09/step-02-around.mp4"
+  caption="Blocked isn't stuck: pinned at the east face, he steps down twice, clears the building's south edge, and carries on west. The veto is per-cell, per-frame — it refuses a step, never the player."
   autoplay={true}
   loop={true}
 />
 
+Notice what the video is really showing: the veto never traps him, because it judges one proposed cell at a time and a new direction is a new proposal. That's the difference between collision and a cage — and it's why the propose-veto-commit shape was worth building before anything needed it.
+
+One honest note about the frame. The perimeter walls are now solid too — the same bit, the same test — but you can't see it yet, because the scaffold clamp still stops him one cell earlier, exactly where the walls stand. The clamp has just become redundant; it hasn't yet become *gone*. Proving the walls hold on their own is the next unit's whole job.
+
 ## When it's wrong, see why
 
-The table and the lamp's colour are where this unit slips:
+Collision bugs are about which cell you test and which way the bit reads:
 
-- **No lamps appear.** `draw_lamps` isn't called in setup, or the table is missing its `$FF` sentinel. Check the call sits after the walls and before the lamplighter.
-- **Lamps appear, then garbage trails off after the last one.** The `$FF` sentinel is missing, so the loop runs past the table into whatever bytes follow. End the table with `defb $FF`.
-- **A lamp stops him like a wall.** Its attribute has a non-black PAPER (bit 3 set). `LAMP_UNLIT` must be black-paper (`%00000101`) so collision treats it as floor.
-- **Walking over a lamp erases it.** Your save/restore isn't protecting it — make sure you're drawing him with the Unit 6 save/restore, not an erase.
+- **He still walks through everything.** The branch is inverted. A wall's bit 3 is **set**, so `wall_at` comes back **NZ** — and `ret nz` must abandon the move. `ret z` gives you a world where only walls are walkable, which is memorable but wrong.
+- **He won't move at all.** You're testing his *current* cell instead of the target — his own cell is never a wall, but if the `(C, B)` load reads `lamp_row`/`lamp_col` rather than `trow`/`tcol`, other mistakes (a stale attribute under him, say) surface here. The veto asks about where he's *going*.
+- **The veto works east-west but not north-south** (or the reverse). The load order into `wall_at` is swapped — row belongs in B, column in C, the same convention every address routine has used since Unit 2. Swapped, you're testing a mirrored cell somewhere else on the map.
+- **He stops one cell early, everywhere.** That's not the veto — that's the clamp, still doing its scaffold job at the map's edge. At the *buildings*, one-cell-early means the target calculation nudged before the test; check the veto reads the freshly-nudged `tcol`/`trow`.
 
 ## Before and after
 
-You started with an empty square and finished with a level — eight lamps placed from a table you can rewrite at will, and a lamplighter who crosses them without harm. The placement is *data*, kept apart from the *code* that draws it; the protection is Unit 6, finally tested on something with real pixels to lose. The square has a goal now: those eight cold lamps, waiting.
+The square began this unit as scenery and ended it as geography. Two buildings arrived as eight bytes of rectangle data; a three-instruction helper turned their paint into stone; and Unit 6's veto slot, empty since the day it was built, finally has its tenant. Nothing needed a new table or a new concept — the collision map has been sitting in attribute memory since Unit 1, waiting for someone to read it. And the step-1 ghost proved something quietly important about last unit, too: machinery built honestly doesn't care what you point it at.
 
-## Try this: redraw the level
+## Try this: knock a doorway
 
-Change the table. Move a lamp, add a ninth pair, or thin them down to three — edit the `defb` lines (and keep the `$FF` at the end). The level redraws itself with no other change. Try a lamp right next to a wall, or a tight cluster in one corner. The placement is yours to author, in data.
+In setup, after `call paint_buildings`, repaint one cell of the first building's east face as floor:
 
-## Try this: walk over a lamp and watch it live
+```
+ld   hl, $5800 + 6*32 + 8
+ld   (hl), COBBLE
+```
 
-Steer the lamplighter onto a lamp and off again. The lantern vanishes under him, then reappears, unharmed — proof that save/restore is preserving real pixels now. For contrast, picture Unit 5's blank-erase doing this: the lamp would be gone the moment he stepped on it. This is the bug Unit 6 existed to prevent, caught in the act of *not* happening.
+Walk up five and hold O, the pinning walk — and this time he steps *into* the building through the gap, then pins against the interior wall one cell in. A doorway, and you didn't touch the collision code: `wall_at` reads the live attribute, and that cell now says floor. The map and the collision were never separate things.
 
-## Try this: reshape the lantern
+## Try this: grow the town
 
-Edit the eight `lantern` bytes. Give it a taller chimney, a wider base, a brighter pane pattern. Sketch the eight rows, write the bytes, and every lamp on the board changes at once — because they all draw from the one shape. One glyph, eight lamps.
+Add a third building to `bldg_data` — say `defb 12, 15, 8, 2`, a long low terrace south of centre — and rebuild. It's painted, textured, *and solid*, and you wrote no new code at all. That's the data-table contract: the routine is finished, the town isn't.
+
+## Try this: take the veto out
+
+Comment out the `call wall_at` / `ret nz` pair and walk at a building. You're back to the ghost — those two lines are the entire difference between a picture of a town and a town. Put them back, and as you do, notice how the ghost never once corrupted the screen: solidity and safety turned out to be different jobs, done by different units.
 
 ## What you've learnt
 
-- **Game objects can be placed from a data table**, not hard-coded — *what* (data) kept separate from *how* (code).
-- A loop walks a table of pairs with a **sentinel** (`$FF`) marking the end.
-- **Save/restore now protects real pixels**: the lamplighter crosses lamps unharmed — Unit 6's reason for existing.
-- Lamps are **walkable floor-with-pixels** (black PAPER), so he can stand on them — which the next unit needs.
+- Level geometry as **data**: rectangles in a table, one painter routine, `$FF` to finish — the code is done, the map is editable.
+- Looking solid and **being solid are unrelated** — solidity exists only where code checks for it.
+- The **attribute byte doubles as the collision map**: one `BIT` test of the target cell answers "can I go there?".
+- The **veto** completes propose-veto-commit: test the target before the commit, and refuse by simply not moving.
+- A veto is **per-proposal, not per-player** — blocked in one direction, he's free in the other three.
 
 ## What's next
 
-The lamps are placed and cold. In **Unit 10** the lamplighter lights them: step onto an unlit lamp and mark it **lit** — bright yellow — by changing the same bytes `save_under` is holding, so when he walks on the lamp glows behind him. The background beneath the sprite stops being scenery and becomes **state he can change**: the heart of how this little game is won.
+The walls are solid; the scaffold that impersonated them is now dead weight. In **Unit 10** the numeric clamp comes out, the walls take the boundary job for real — and the movement core converges, byte for byte, with the game this module is building toward. The detour's last trace disappears.
