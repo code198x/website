@@ -1,120 +1,130 @@
 ---
-title: "Save and Restore"
-description: "Retire the blank-erase. Keep a nine-byte buffer of whatever's beneath the lamplighter — eight bitmap rows plus the attribute — restore it when he leaves and save the next cell as he arrives. He can cross anything unharmed."
-pubDate: 2026-06-01
+title: "One Step"
+description: "The four keys become four directions: propose a target cell, clamp it to the map, then move — first without erasing (he smears), then with the naive erase (the floor pays). Honest movement, with its costs on show."
+pubDate: 2026-07-03
 game: 1
 unit: 6
-tags: ["assembly", "z80", "sprite", "save-restore", "background", "memory"]
+tags: ["assembly", "z80", "sprite", "movement", "state", "memory"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-Unit 5 moved the lamplighter by blanking the cell he left — and we named the flaw out loud: it only works while the floor is empty. The first thing with real pixels he steps onto, the blank-erase will scrub away.
+The machine feels you; now the touch has to move him. Hold **P** and the lamplighter steps right, **O** left, **Q** up, **A** down — cell by cell across the square. The reads are last unit's, unchanged. What's new is what a step *is* — and this unit builds it wrong twice, on purpose, because both failures teach something the fix alone never would.
 
-This unit fixes it for good, and it completes the cell-sprite technique. Instead of blanking, we **remember**: before he stands in a cell, save the nine bytes already there; when he leaves, put them back. From now on he can walk over anything without harming it.
+## A move is a proposal
 
-## Where we start
-
-Unit 5's walker, still erasing by blanking — clean on bare floor, destructive the moment there's a pixel beneath him. We swap that erase for something that preserves what it covers.
-
-## What's under him
-
-A cell is nine bytes: the **eight bitmap rows** that hold its pixels, plus the **one attribute** that holds its colour. To preserve a cell while the lamplighter stands on it, we copy all nine into a small buffer:
+Unit 3 made his position data: `lamp_col` and `lamp_row` are the only place he *is*. So moving him is editing two bytes — but not directly. The keys edit a **target** first:
 
 ```
-under_lamp:
-    defb 0,0,0,0,0,0,0,0,0   ; 8 pixel rows + 1 attribute
+tcol:   defb 0      ; where he's trying to go
+trow:   defb 0
 ```
 
-`under_lamp` always holds "whatever is underneath him right now". Save fills it as he arrives; restore empties it back as he leaves.
+Each frame, the target starts as a copy of where he stands; a held key nudges it one cell in its direction; and only then, after anything that wants to object has had its say, does the target become his real position. That shape — **propose, veto, commit** — looks like ceremony today, when the only objector is a boundary check. It is the load-bearing frame of the whole game: walls will veto moves in Unit 9, and the draught will make its own proposals in Unit 16, all through these two bytes.
 
-## The dance: restore, step, save, draw
+## The scaffold at the edge
 
-Every move is now four steps in a strict order:
+One objector exists from the very first step, and honesty demands we name it. Nothing yet stops the lamplighter at the walls — they're paint, not physics — and past the map's edge lies real trouble: Unit 2 taught you the address arithmetic, so you can see it — a row past 23 walks the attribute sum out of `$5800`'s table and into memory the *system* owns. A dozen held frames would crash the machine.
 
-1. **Restore** — write the buffer back over his current cell. The background reappears, exactly as it was.
-2. **Step** — change `lamp_col`.
-3. **Save** — copy the new cell's nine bytes into the buffer, *before* we draw over them.
-4. **Draw** — stamp him into the new cell.
+So the move commits only inside a numeric fence: rows 2–22, columns 1–30. This clamp is **scaffolding, and it's marked as such in the source** — the walls take over the job in Unit 9, and Unit 10 takes the numbers down. Until then, the fence keeps the detour safe.
 
-Order is everything. Restore before you step (or you'll restore the wrong cell); save before you draw (or you'll save his own figure as the "background" and carry it around like a stain).
+## Milestone 1 — move without leaving
 
-## Milestone — remember, don't blank
-
-We retire `erase_lamp` and build the buffer machinery: a nine-byte `under_lamp`, a `save_under` and a `restore_under` that copy a cell to and from it, and two tiny address helpers (`scr_addr`, `attr_addr`) that hand back his cell's address so save, restore, and draw all share the same `ROW_SCR + col` sum. Setup now saves the start cell before drawing him; each move runs the restore / step / save / draw dance.
+Build the move the naive way: decode the four keys into four nudges, clamp, commit, draw at the new cell. Nothing else. In particular — don't clean up.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-06/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-06/steps/step-01.asm"
   lang="z80"
-  title="Step 1: a nine-byte buffer replaces the blank-erase"
+  title="Step 1: propose, clamp, commit, draw — and never erase"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-06/steps/step-01.asm" lang="z80" />
+</details>
+
+Hold P for a moment, then A:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/step-01-smear.png" alt="An L-shaped trail of white lamplighter figures across the square — one copy of him left in every cell he passed through." caption="He moved, all right. He's also still in every cell he moved through — the screen keeps what you write until something overwrites it." />
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/step-01-smear.mp4"
+  caption="Two seconds of the smear painting itself: each step draws him at the new cell, and nothing ever unmakes the old one."
+  autoplay={true}
+  loop={true}
+/>
+
+Of course. The screen is memory, and memory holds what it's given — *drawing him somewhere new never undrew him*. A picture just accumulates; a moving figure has to **leave**. That's not a bug in the drawing, it's a missing half of the move.
+
+## Milestone 2 — the naive erase
+
+So: before the commit, blank the cell he's standing in. `erase_lamp` zeroes the cell's eight bitmap bytes and paints its attribute back to ground colour — then the move proceeds as before.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-06/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-06/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: erase where he was, then move and draw"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-06/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-06/steps/step-02.asm" lang="z80" />
 </details>
 
-On the bare floor he walks exactly as he did in Unit 5 — one figure, no trail, no damage:
+One lamplighter now, no copies. And look at the floor:
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/step-01-walked.png" alt="The lamplighter, having walked left of centre across an empty square, one clean figure with no trail." caption="Walked left across empty floor. On bare cobbles, save-and-restore and blank-erase look identical — which is exactly why the difference needs a marker to show." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/step-02-gouge.png" alt="The lamplighter at the end of an L-shaped trail of smooth black cells gouged through the stippled ground." caption="The same walk with the erase in: one figure — and a gouge. Every cell he crossed has been blanked to bare black; the stipple that was there is simply gone." />
 
-## The difference, made visible
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/step-02-gouge.mp4"
+  caption="The gouge cutting itself: the erase blanks each departed cell to nothing, and the nothing shows, because the floor was never nothing."
+  autoplay={true}
+  loop={true}
+/>
 
-The whole point of this unit is invisible on an empty floor, so let's put something on the floor. This is the mirror of Unit 5's "watch the assumption bite": we poke a bright marker into a cell in his path and walk him *over* it.
+This is the second honest failure, and the subtler one. The erase doesn't *restore* the cell — it **destroys** it and repaints an approximation: right attribute, blank canvas. On a plain floor you'd never see the difference; the course you're in once shipped exactly this code over a plain floor, and the flaw was invisible. Your floor has texture, so the flaw has a shape: a gouged trail everywhere he's been. The move "works" only because the ground is *uniform* — the moment the floor holds anything worth keeping, blanking it is vandalism. Hold that thought for two units; Unit 8 repays it properly.
 
-Here he is approaching the marker — a yellow block at the column to his left:
-
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/survives-before.png" alt="The square with a solid yellow block left of centre and the lamplighter standing a few cells to its right." caption="Before: a marker on the floor, the lamplighter a few cells to its right, about to walk left through it." />
-
-And here he is after walking straight through that cell and out the other side — the marker is **still there**:
-
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-06/survives-after.png" alt="The lamplighter now to the left of the yellow block, which is intact." caption="After: he covered the marker as he passed, then restored it on the way out. In Unit 5 the blank-erase would have wiped it away; here it survives. Same scene, opposite outcome — that's the whole unit." />
-
-He saved the block's nine bytes as he stepped on, and restored them as he stepped off. Nothing destroyed.
+One more thing you can't have missed: he's *fast*. One cell per frame is fifty cells a second — a held key crosses the whole square in just over half a second. When this game was first playtested, the verdict came back in capitals: **"WAY TOO FAST."** That's Unit 7's problem.
 
 ## When it's wrong, see why
 
-Save-and-restore bugs are about the *order* of the four steps:
-
-- **A trail of figures again.** `restore_under` isn't being called, or runs after the step. Restore the **old** cell first, then change `lamp_col`.
-- **He drags a smear of background around with him.** You saved *after* drawing — so the buffer holds his own figure, and you stamp it into the next cell. Save the new cell **before** `draw_lamp`.
-- **The cell he started on is wrong after he first moves.** Setup must `save_under` *before* the first `draw_lamp`, so the buffer holds real floor, not his figure.
-- **It looks exactly like Unit 5.** Correct, on a blank floor. The marker above is how you see the difference.
+- **He smears even with the erase in.** Order. The erase must run while `lamp_col`/`lamp_row` still point at the *old* cell — erase, then update the position, then draw. Erase after the update and he blanks the cell he just arrived in.
+- **He vanishes entirely.** Same family: if the erase runs after the position update *and* the draw, the last thing written is a blank — he's rubbed out every frame.
+- **One direction works, another doesn't.** The decode. Each key's `bit` test jumps to its own nudge; check each key tests the right bit of the right half-row (P and O share `$DFFE`; Q and A have their own rows).
+- **He sticks at an invisible fence one cell short of the wall.** Correct! That's the clamp — rows 2–22, columns 1–30, chosen to match where the walls will stand. If he sticks somewhere *else*, check the four compares: `cp 2 / ret c` rejects row 1 and below, `cp 23 / ret nc` rejects row 23 and beyond.
+- **Garbage appears at the screen edge, or the machine dies.** The clamp is missing or its bounds are wrong — the address sums have left the screen. Put the fence back; this is precisely what it's for.
 
 ## Before and after
 
-You started with a walker that scrubbed the floor clean behind him and finished with one that leaves it untouched — by remembering nine bytes instead of blanking them. On empty cobbles the two are indistinguishable; over a marker, one destroys and one preserves. This solid save-and-restore is the honest groundwork. Drawing only his *lit* pixels, so scenery shows through the gaps in his shape — **masking** — is the upgrade a later game makes to this exact technique.
+The keys stopped being a glow and became a walk: propose a target, clamp it, commit it, draw. You built the move wrong twice and watched each failure announce itself — the smear taught that a mover must leave; the gouge taught that *how* it leaves matters, and that "blank it" is an answer that only survives on an empty floor. Both lessons came free because the canvas came first. And underneath the failures, the propose-veto-commit shape is in place — the frame every mover in this game will use from now on.
 
-## Try this: watch it survive
+## Try this: trace the fence
 
-Poke your own mark into a floor cell in his path, in setup:
+Walk him slowly around the whole edge of the square — as far up, down, left and right as he'll go. He stops one cell short of the wall on every side. That's the clamp's geometry, deliberately matching where the walls will take over in Unit 9 — when they do, nothing about the feel will change, and that's the point.
 
-```
-ld   hl, ROW_SCR + 9
-ld   (hl), %11111111
-```
+## Try this: walk off the world
 
-In Unit 5, walking over column 9 wiped that bar away. Now walk over it and it's still there when he leaves — saved on the way in, restored on the way out.
+In step 2, change the clamp's `cp 23` to `cp 25` and hold A. He walks *into* the bottom wall and one row beyond — and the screen's bottom edge erupts in wrong colours, because at row 24 the bitmap address arithmetic wraps his glyph bytes into the **attribute table**: his pixels are being written as paint. Now delete the two row checks entirely and hold A again. He marches on through the printer buffer and, around row 32, into the system variables — and the machine dies. Reset the emulator, put the fence back, and remember what it guards: past the map, every address still lands *somewhere*.
 
-## Try this: forget to restore
+## Try this: feel the speed
 
-Comment out one `call restore_under`. The trail of lamplighters comes straight back — the old cell never gets rebuilt, so his figure stays stamped in it. A neat way to see that restore is doing real work every step, even when the floor looks empty.
-
-## Try this: the square hole (a look ahead)
-
-Fill a cell in his path with a stipple instead of a solid bar (`%10101010`), and walk onto it. While he's standing there, his cell is a solid block — his white figure on black — and the stipple is hidden *under* him, not showing through the gaps. Save-and-restore protects the background, but he still covers it with an opaque square. Drawing only his lit pixels, so scenery shows through the gaps, is **masking** — the upgrade a later game makes.
+Tap P as lightly as you can and count the cells. Two, three, four? A "tap" is several frames, and every frame is a step. Now hold it and watch him hit the fence almost instantly. Fifty steps a second is not a walking pace — it's why the next unit exists.
 
 ## What you've learnt
 
-- Preserve a sprite's background by **saving** the cell's bytes before drawing and **restoring** them when it leaves.
-- A cell is **nine bytes**: eight bitmap rows plus one attribute.
-- The order is **restore (old) → step → save (new) → draw** — and save must come before draw.
-- This solid save/restore is the honest **"before"**; drawing only lit pixels — **masking** — is the upgrade a later game makes.
+- A move is **propose → veto → commit**: keys edit a target, checks veto it, and only then does state change.
+- The **clamp** is declared scaffolding — a numeric fence standing in for the walls, keeping the address sums inside the screen.
+- A moving figure must **leave its old cell** — drawing doesn't undraw.
+- The naive erase **destroys** what it can't restore — visible on any floor that holds something, invisible only on emptiness.
+- One step per frame is **fifty per second** — input needs pacing, not just reading.
 
 ## What's next
 
-The lamplighter can now stand anywhere safely — so it's time to decide where he's *allowed* to go. In **Unit 7** we add collision: before each step, read the **attribute of the target cell** and `BIT`-test it. If it's a wall, the step is refused. The square's blue frame stops being decoration and becomes a boundary he can't cross.
+Two debts stand: he's uncontrollably fast, and he vandalises the floor. **Unit 7** pays the first — a repeat gate that turns "held" into a stride: one press, one step, then a measured pace. The timer idiom it introduces will be reused by the night itself, later, for stalking you.
