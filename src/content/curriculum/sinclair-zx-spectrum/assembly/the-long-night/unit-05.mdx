@@ -1,0 +1,83 @@
+---
+title: "The Night Bears Grudges"
+description: "The eraser problem: greedy-nearest camps your work, so the night learns to reclaim the ground it lost first — a lit-order queue replaces the Manhattan scan, and the sharpest design lesson in the module gets its name."
+pubDate: 2026-07-03
+game: 3
+unit: 5
+tags: ["assembly", "z80", "ai", "queues", "game-design"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
+
+Before you write a line, go break the game you have. Light the two south lamps — they're five cells apart — and then just watch. The wisp arrives, snuffs one, withdraws, rests, returns… to the other one, five cells away. Snuffs it. Withdraws. And when you re-light the first, it comes straight back, because *nearest* is all it knows and you've built it a larder. The playtest that found this called it **camping**, and round 12's notes are blunt: the rest beat helped, but nearest-light still let the wisp park on a close pair forever — snuff A, short withdraw, return for B, until the player gives up on that half of the square entirely.
+
+Sit with why this is interesting, because it's the deepest design lesson this game will teach you. The AI isn't broken. Greedy-nearest is *correct* — it maximises stolen lamps per cell walked; a route-planning textbook would approve. And it produces a terrible game, because it concentrates all conflict into one corner and turns the rest of your night into unopposed chores. Write the law on the wall: **optimal for the AI is not optimal for the game.** An enemy is not a solver; it's a *pressure instrument*, and its job is to distribute tension where play wants tension to be.
+
+## Milestone 1 — the ledger, and the grudge
+
+The redesign changes what the night *wants*. Not the nearest flame — the **oldest**: the night reclaims the ground it lost *first*. That needs a memory, so the game grows its first queue: `lit_queue`, the lamps you've lit, in order. Light a lamp, it joins the tail (`lit_push`); the wisp snuffs one, it leaves and the gap closes (`lit_remove`); the hunt targets the head. With nothing lit, it hunts your flame as ever — which means lighting your first lamp literally *turns the hunt away from you*, and the opening teaches itself.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-05/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-05/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: lit_push, lit_remove, lamp_index_at — and the hunt retargets to the queue's head"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-05/steps/step-01.asm" lang="z80" />
+</details>
+
+The diff removes as confidently as it adds — `manhattan` and `seek_best` retire outright, the scan with them. Distance no longer has a vote. What replaces them is bookkeeping in three small pieces: `lamp_index_at` translates a cell into a lamp number (both the lighting and the snuffing know only "the cell I'm standing on"); `lit_push` appends; `lit_remove` finds and closes the gap with a shuffle-down. It's a queue built on eight bytes and honesty, and unlike unit 4's ring it *must* support removal from the middle — the wisp doesn't always take the head, because you can re-light out of order.
+
+Why does camping die? Because the oldest lamp is almost never near the newest. You light your way around the square; the night's grievance points backwards along your whole route — usually *across* the board from where you're working. The wisp's journeys get long again, your windows get real, and every lamp you lit stays contested for the rest of the night. Pressure follows your history, not your position.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-05/step-01-grudge.png" alt="Two lit lamps side by side at the south of the square with the lamplighter standing at the newer one; the wisp is crossing the middle of the square toward the older lamp." caption="The camping bait, rejected: both south lamps lit, the lamplighter parked smugly beside the newer — and the wisp walks past the whole arrangement to reclaim the one lit first." />
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-05/step-01-grudge.mp4"
+  caption="The grudge at work: it crosses the square for the older lamp, takes it, and carries the prize home — leaving you and your nearer, newer flame conspicuously unbothered."
+  autoplay={true}
+  loop={true}
+/>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-05/step-01-snuffed.png" alt="The older lamp's pool is gone and the tally has dropped by one; the wisp is withdrawing north-east." caption="Grievance settled, off the ledger, prize going home. Your other lamp survived — not because the night is kind, but because its bookkeeping wants what it lost first." />
+
+One confession from the file itself. The `draught_step` banner in the real prototype went on describing "the nearest light" for the rest of its life — round 12 changed the rule and forgot the comment, and nobody caught it until this course took the build apart. Your step file's banner is updated; the shipped game's never was. Comments rot precisely at the moments code changes meaning, and a stale comment over a subtle rule is worse than none. When you change what code *wants*, read the prose above it as suspiciously as the instructions below.
+
+## When it's wrong, see why
+
+- **The wisp freezes when the first lamp lights.** The queue says one thing and the hunt reads another — `lit_queue`'s head entry is a lamp *index*, which must be doubled to index `lamp_data`'s two-byte entries. An odd address there seeks into a neighbouring lamp's row byte.
+- **It hunts a lamp that's already dead.** `lit_remove` didn't run at the snuff, or it removed by the wrong key. Both push and remove go through `lamp_index_at` on the *cell* — never trust a register left over from the chase.
+- **The queue jams after a few snuffs.** The shuffle-down in `lit_remove` is off by one: it must copy from `HL+1` back to `HL` for each remaining entry, then decrement the count. Draw the eight bytes on paper and run a removal by hand — thirty seconds, and the loop writes itself.
+- **Camping is back.** You've re-lit a lamp and it went to the *head* somehow — push appends at `lit_qcount`, and the count must be the queue's one source of length. If push and remove disagree about it, order rots from there.
+- **It ignores you even with nothing lit.** The empty-queue branch must fall through to the flame seek. Check the `or a / jr nz` pair — reversed, it does exactly the opposite of its comment. Speaking of which.
+
+## Before and after
+
+Same chase, same modes, same theft — and a different night entirely, because the *target policy* changed. That's worth a moment of respect: everything this module has built so far stacked new machinery; this unit's entire diff is swapping which cell goes into `seek_col`. Behaviour lives in wants, not walks. And the phase closes here — the dark now seeks, steals, carries, rests, takes ground, and remembers — every piece of it playtest-shaped: the rhythm because relentless was a slog, the grudge because greedy was boring. You've now iterated an enemy the way the real one was iterated, failure by named failure.
+
+## Try this: watch the opening teach itself
+
+Start a fresh dusk and stand still. The wisp comes for you — nothing lit, you're the only light. Now light one lamp and keep standing there. It turns away mid-hunt. No tutorial text could teach "your progress redirects the threat" as fast as feeling the hunt bend away from your body because you did the thing the game wants you to do.
+
+## Try this: the grudge dial
+
+The night's memory is the whole queue; its grudge is the *head*. Make it target the tail instead — the newest lamp — and play. The wisp now chases your heels, snuffing everything the moment you light it: maximum friction, zero breathing room, a completely different (and much crueller) game from a one-line change. Then try random. Then put oldest back and notice it's not arbitrary: oldest-first is the only policy of the three that guarantees the fight eventually visits every corner of your night.
+
+## What you've learnt
+
+- **The eraser problem**, and its law: optimal for the AI is boring for the player — enemies are pressure instruments, not solvers.
+- A **queue with middle removal**: push at the tail, shuffle-down on remove, one count as the source of truth — the third data structure in your kit, after the table and the ring.
+- **Target policy is design**: oldest, newest, nearest and random share every line of chase code and produce four different games.
+- Index translation (`lamp_index_at`): systems that know "which cell" talk to systems that know "which lamp" through one small function, not through shared guesswork.
+- **Comments rot at rule changes** — the shipped game promised "nearest" in prose for the rest of its life. Update the sentence when you update the want.
+
+## What's next
+
+The dark is finished learning how to fight. **Unit 6** changes what a *night* is: one dusk becomes five watches, each faster and longer-reaching than the last — escalation as data, in two small tables — and the win screen stops ending the game and starts *deepening* it. The module's second phase begins, and the first thing it does is catch the shipped game telling a small lie about your lives.

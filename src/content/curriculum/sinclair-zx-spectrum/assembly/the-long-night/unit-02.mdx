@@ -1,0 +1,102 @@
+---
+title: "It Carries Its Prize Home"
+description: "Behaviour needs rhythm, not just rules: a one-byte mode flag gives the wisp a cycle — hunt, snuff, withdraw, rest — and every theft buys the lamplighter a window he can plan inside."
+pubDate: 2026-07-03
+game: 3
+unit: 2
+tags: ["assembly", "z80", "ai", "state-machine", "game-design"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
+
+You named it at the end of the last unit: the wisp is relentless, and relentless is *bad*. Not bad at its job — bad at being in a game. It snuffs a lamp and pivots instantly to the next target; you re-light, it returns; there is no moment where the square is yours. The playtest that shaped this game recorded the feeling verbatim: *"a pain in the bum to win."* Maximum pressure at every second means pressure never varies, and pressure that never varies stops being information. You can't plan against it; you can only endure it.
+
+The oldest fix in the genre belongs to Namco. Pac-Man's ghosts — already credited in this course for proving how little rule an "intent" needs — hide a second, subtler lesson: they don't hunt continuously. On a timer they break off and *scatter*, each to its own corner, then return. Those exhalations are what make the inhalations frightening, and they're what make the maze occasionally, briefly, yours. The wisp is about to learn the same manners, with a twist that fits this game's fiction: it doesn't retreat on a timer. It retreats **because it took something** — the night carries each stolen flame home.
+
+## Milestone 1 — the mode flag
+
+One byte, `draught_mode`: 0 hunting, 1 withdrawing. The snuff sets it; arriving home clears it. While it's set, the seek ignores every lamp and every flame — the target is home, full stop. That's the entire architecture, and it's worth pausing on what it *is*: your first **behavioural state machine**. Gloaming's `game_state` switched whole screens; this flag switches what one creature *wants*, and the chase code beneath it neither knows nor cares which mode chose its target.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-02/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-02/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: hunt, snuff, withdraw — the mode decides what a beat means"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-02/steps/step-01.asm" lang="z80" />
+</details>
+
+Three details earn their lines. Home is remembered at init (`draught_home_col/row`) rather than hard-coded at the seek, because a later unit will move home each watch and nothing here will need to change. `lose_life`'s recoil now reads the same home variables — and clears the mode, so a wisp that was mid-withdrawal when it caught you doesn't respawn still dreaming of a prize it no longer carries. And the withdraw *reuses the chase*: the mode only chooses the target; the greater-axis step walks there like it walks everywhere.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-02/step-01-home.png" alt="The wisp back in the north-east corner after snuffing the lamp; the tally row is cold." caption="Prize delivered. Watch the journey in play and notice what it does to you: the walk home is a window, and you spend it planning — which is the entire point." />
+
+But run step 1 a while and a flaw shows. Watch the same moment thirty frames later:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-02/step-01-restless.png" alt="The wisp already two cells back out of its corner, heading into the square again immediately after arriving home." caption="Home for an instant, hunting again at once. When home is near the action, the 'window' collapses to nothing — arrival and re-attack in the same breath." />
+
+## Milestone 2 — the rest
+
+The window has to *hold*. Give arrival a cost: on reaching home the wisp rests for `WREST` frames — three quarters of the gather — before the hunt resumes. In play it reads as the night savouring what it took.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-02/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-02/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: the rest — the snuff window holds even when home is close"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 2 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-02/steps/step-02.asm" lang="z80" />
+</details>
+
+The implementation is one register swap — the arrival loads `WREST` into the same timer the pace uses, so the rest costs no new machinery at all. The timer was always "frames until this creature next acts"; the rest just makes that number briefly enormous.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-02/step-02-rests.png" alt="The wisp holding still in its corner at the exact frame where step 1's wisp had already left." caption="The same frame as the restless shot above, on the step 2 build: still home, still resting. One constant is the entire difference — and now the window is yours by contract." />
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-02/step-02-rests.mp4"
+  caption="The full cycle: hunt, take, carry home, rest, and only then the hunt again. The wisp has stopped being weather and started being a character with habits — habits you can play around."
+  autoplay={true}
+  loop={true}
+/>
+
+## When it's wrong, see why
+
+- **It never comes back out.** The mode isn't clearing — the arrival compare must match *both* coordinates against home before writing 0. Check the pair of `cp (hl)` branches.
+- **It jitters at the corner.** You're clearing the mode when *near* home instead of *at* it, or the withdraw target and the stored home disagree. Home is two exact bytes; the arrival test is exact equality.
+- **The rest never happens.** The `WREST` load has to replace the pace reload in the arrival path — if the ordinary reload runs afterwards, it overwrites the rest before a single frame of it elapses.
+- **It walks home after catching you.** `lose_life` must clear `draught_mode`. The recoil already puts it *at* home; a set mode makes its first act a zero-length withdrawal — harmless — but a *mid-withdraw* catch without the clear sends it ambling back across the square, ignoring you completely.
+- **It rests after every single step.** You've written `WREST` into the timer in the wrong branch — it belongs only in the just-arrived-home path, not `.whome`.
+
+## Before and after
+
+The rules barely changed — a byte of state, a constant, a longer timer load — but the *experience* changed species. Pressure now arrives in waves with shape: threat, loss, reprieve, threat. You plan during the withdrawals; you gamble during the rests; you feel the hunt resume in your shoulders. This is the unit's law, and it generalises to every enemy you will ever build: **a behaviour is not a rule, it's a rhythm of rules**. Any creature worth fearing has at least two modes, and the space between them is where the player gets to be clever.
+
+## Try this: turn the mercy dial
+
+`WREST` is the size of your reprieve. At `10` the rest is a rumour and the slog creeps back; at `120` the wisp practically hibernates and the game goes slack. Find the value where you *use* the window every time and still feel rushed inside it. (The shipped game says 48. Argue with it.)
+
+## Try this: scatter on a schedule
+
+For the full Namco: make the wisp withdraw every 500 frames *even without a prize* — a second timer, same mode flag, home and back. Now the pressure has two interleaved rhythms, yours to learn separately. Notice how much design you just bought with one byte of state and two timers — and notice, when you remove it, whether you miss it. Not every rhythm earns its place; this game shipped without the scheduled scatter, and the next unit is partly about why the theft-driven one is enough.
+
+## What you've learnt
+
+- **Mode flags are behaviour**: one byte turns a rule into a repertoire, and the movement machinery underneath never needs to know.
+- **Separate the want from the walk** — the mode chooses a target; the chase is shared by every mode.
+- **Windows are a designed quantity**: the rest constant is player-experience expressed as a number, exactly like `PLAYER_REPEAT` and `GATHER` before it.
+- Respawn logic must **reset every mode** a creature carries — stale state after a dramatic event is where AI bugs breed.
+- Menace is **rhythm, not throughput**: the version that attacks least is the one that frightens most.
+
+## What's next
+
+The night takes; the night withdraws; the night rests. But your light still does nothing except sit in its cells and be stolen. **Unit 3** makes the light *claim ground* — every lit lamp warms a pool of the square around it — and teaches the one discipline that keeps two moving sprites honest while the world recolours itself beneath them.

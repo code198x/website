@@ -1,0 +1,113 @@
+---
+title: "The Night Deepens"
+description: "One dusk becomes a five-watch night: the run/watch state split, a win screen that deepens instead of ending, escalation as two data tables and a corner probe — and a small lie in the lives display, caught and fixed."
+pubDate: 2026-07-03
+game: 3
+unit: 6
+tags: ["assembly", "z80", "game-state", "difficulty", "data-driven-design"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+
+Your redesigned dusk is a genuinely good fight now — and it's over in a few minutes, once, with nowhere to go. The night you've built deserves a *shape*: this unit makes Gloaming's single dusk the first of five **watches**. Hold a dusk and the night doesn't end — it deepens: the square relights, the dark returns faster and hungrier, and your lives — this matters — *carry*. One run, five escalating fights, mounting stakes. That's a game with an arc instead of an encounter.
+
+## Milestone 1 — a run of watches
+
+The design question hiding in "the night continues" is precise: **what resets per watch, and what persists per run?** Lamps, pools, tendril, positions — per watch. Lives and the watch counter — per run. The code draws that line as two entry points: `init_run` (dusk to zero, lives to full) falling through into `init_game` (everything else), so a fresh night enters at the top and a held dusk re-enters halfway down.
+
+And the state machine gets the module's best structural trick for free. When you win a dusk, the game shows THE NIGHT IS HELD and waits — exactly as it always has. The only change is what SPACE *means* there: `end_step` checks whether you're on a win or a loss, and a win now bumps `dusk` and re-enters `init_game` instead of returning to the title. The win screen has become an **interstitial** — the same screen, the same code, re-purposed as a breath between rounds. Only NIGHT FALLS still leads home.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-06/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-06/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: init_run / init_game, and the held screen becomes an interstitial"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-06/steps/step-01.asm" lang="z80" />
+</details>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-06/step-01-held.png" alt="THE NIGHT IS HELD over the fully warmed square; two red ember cells show on the HUD ledge." caption="A held dusk, reached with two lives left — note the two embers on the ledge. PRESS SPACE no longer means 'again from nothing'. It means deeper." />
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-06/step-01-lie.png" alt="Watch two opening on a fresh dark square — but three ember cells show on the ledge." caption="Watch 2, same run, same two lives — and the ledge shows three embers. Hold that thought; the square is about to get more interesting first, but this screen is lying to you and we will come back for it." />
+
+## Milestone 2 — escalation as data
+
+What actually deepens? Two numbers per watch: the wisp's **pace** and the tendril's **reach**. They live in two five-byte tables, and `init_game` reads the current watch's entry from each — code that never changes, difficulty that's pure data. The pace table runs `16, 13, 11, 9, 9`; the reach table `3, 6, 9, 13, 18`. Both rows are playtest scar tissue, and their comments say so. Watch 1 is *gentle on purpose* — the hunt must be readable before it's a threat, and the tendril opens at three cells, because the first tuning front-loaded the reach and a practised player lost at watch 2: the opening should teach the mechanic, and the deep watches punish with it. At the other end, the final pace is 9, not 8 — 8 was play-tested to be the human wall, and the last watch should be the climax, not the ceiling.
+
+There's a third escalation, and it's free: **the dark probes from a new quarter each watch**. Home comes from a four-entry corner table indexed by the watch — NE, SE, SW, NW — so watch 2 *feels* different before a single number of it has landed, because the threat is suddenly coming from behind you.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-06/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-06/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: dusk_table, dusk_lentab, corner_tab — the deepening, in fourteen bytes of data"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 2 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-06/steps/step-02.asm" lang="z80" />
+</details>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-06/step-02-corner.png" alt="Watch two opening with the wisp gathered in the south-east corner instead of the north-east." caption="Watch 2 opens and the dark is in the wrong corner — the right corner, by its own new table. The whole square reorients, and not one line of hunt code knows anything happened." />
+
+Note the small guard: dusks past the table's end (there will be one, briefly, next unit) clamp to the last entry rather than reading whatever byte lives after the table. Every table walk in this game bounds its index; the one time you forget will be the one time a counter goes somewhere you didn't plan.
+
+## Milestone 3 — the ledger must not lie
+
+Now go back to that pair of screenshots. Two embers on the held screen; three when watch 2 opens; and `(lives)` is 2 the whole time. The bug is one line and it's been in the file since before this module started: `draw_lives` paints `LIVES` — the *constant*, three — and until tonight that was fine, because `init_game` only ever ran with full lives. The moment lives *carry* across a re-init, the constant repaint becomes a lie. Worse, it's a compounding one: lose a life in watch 2 and `lose_life` erases the pip at index 1, leaving a lit–dark–lit row — two embers shown, one life held.
+
+We didn't catch this from a screenshot, and neither did fifteen rounds of playtesting the real thing — everyone read the square, and nobody read the ledge across a watch boundary. It was caught when this game was taken apart to build this module, by the boring, wonderful method of trying to *photograph* the lives carrying and discovering they didn't, visually, carry. The machine gate proved the game winnable; only reading every row of the screen caught the HUD lying. Both kinds of checking exist because each finds what the other can't.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-06/steps/step-02.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-06/steps/step-03.asm"
+  lang="z80"
+  title="Step 3: draw_lives reads the carried count — displays read state, never constants"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 3 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-06/steps/step-03.asm" lang="z80" />
+</details>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-06/step-03-carried.png" alt="Watch two opening with exactly two ember cells on the ledge." caption="Watch 2, two lives, two embers. The fix is two instructions — load the count from memory instead of the assembler. The lesson is a law: a display repaints from state, or it will eventually lie." />
+
+## When it's wrong, see why
+
+- **Lives refill every watch.** The `LIVES` reset is still in `init_game` — it belongs in `init_run`, above the fall-through line. What resets where *is* the design; the code must draw the same line the design does.
+- **Every watch plays like watch 1.** `dusk` never increments — the bump lives in `end_step`'s `.deeper` path, before the re-init that reads it.
+- **Watch 6 is impossibly fast or the wisp teleports.** A table overran. The pace read clamps at `NUM_DUSKS - 1`; the corner index masks with `and 3`. Check both.
+- **SPACE on the held screen goes to the title.** The `STATE_WIN` check in `end_step` branches the wrong way, or it runs *after* the title-return code instead of before.
+- **Three embers after a carried loss.** You've built step 2 — the display fix is step 3, and until it's in, the ledge repaints the constant.
+
+## Before and after
+
+A dusk became a night. The run/watch split gives the game persistence; the interstitial gives it continuity out of code that already existed; the tables make five difficulties out of one game with fourteen bytes; the corner probe makes each watch feel new before it *is* new. And the ledge got caught lying — the only bug in this module that shipped in the real prototype and survived every playtest, because it hid in the seam between two facts everyone checked separately. Escalation as data, displays from state: two disciplines, both cheap, both permanent.
+
+## Try this: tune your own night
+
+The two tables are your difficulty designer's console. Try a brutal opening (`11, 9, 9, 9, 8` / `9, 12, 15, 18, 18`) and feel why the shipped game refused to front-load. Try a longer, gentler arc across seven watches (grow the tables, raise `NUM_DUSKS`, widen the clamp). Every experiment is data-only — which is precisely the argument for having built it this way.
+
+## Try this: read the whole screen
+
+The lives lie survived because everyone watched the action. Practise the counter-habit: play one full watch transition and read *every* HUD element across the boundary — pips, embers, anything that claims to be a count. Displays fail at seams (re-inits, restores, screen changes), not in steady state. Knowing where to look is most of catching them.
+
+## What you've learnt
+
+- The **run/watch state split**: two init entry points draw the design's own line between what persists and what resets.
+- The **interstitial**: a win screen re-purposed as a breath between rounds — new meaning for SPACE, zero new screens.
+- **Escalation as data**: pace and reach tables, playtest-tuned (gentle opening, climax-not-ceiling), plus a corner probe that reorients each watch for free.
+- **Clamp every table walk** — counters outlive the tables they index.
+- **Displays repaint from state, never constants** — the constant is only correct until the first time the state can differ, and that's exactly when nobody's looking.
+
+## What's next
+
+Five watches that deepen — and then watch 5 is held, and the night… starts watch 5 again. Forever. The game has an arc with no ending, and the playtest verdict on endless was terminal. **Unit 7** builds the thing this whole module has been climbing toward: hold the fifth watch and *dawn breaks*.

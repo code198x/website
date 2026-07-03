@@ -1,0 +1,108 @@
+---
+title: "The Dark Seeks the Light"
+description: "The hunt generalises: a Manhattan scan over every lit lamp — and your own flame — replaces the single-target chase, and the wisp learns to take back what you lit, using your own saved-under trick against you."
+pubDate: 2026-07-03
+game: 3
+unit: 1
+tags: ["assembly", "z80", "ai", "game-design", "iteration"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
+
+Open the file you finished Gloaming with — the real one, the build that matched the shipped game byte for byte. That's this unit's step 0, unchanged. Now win it twice and pay attention to the second run: the moment a lamp is lit, it's *solved*. The wisp only ever wants you, so every lamp you light is a cell of the board that stops mattering. By the eighth, the night has nothing left to say. The playtest sheet for this game put it more bluntly: the draught is a hazard, not an *antagonist* — it menaces the lamplighter and never once touches the thing the game is actually about.
+
+This module fixes that, and the fix starts with one question: what does the dark actually want? Not you. **The light.**
+
+## Milestone 1 — the nearest light
+
+The wisp's whole mind, as Gloaming shipped, was "seek the lamplighter": copy his position into `seek_col`/`seek_row` and let the greater-axis chase do the rest. The upgrade keeps the chase untouched and generalises the *seeking*: every lit lamp is now a candidate prey, and so is your flame — you are just one more light in the square. The wisp wants whichever is nearest.
+
+Nearest by what measure? Not a ruler's distance — the number of *steps*: `|dc| + |dr|`, the distance a 4-connected walker actually pays. It's called the Manhattan distance, after a city you can only cross by its grid, and it costs eleven instructions:
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-01/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-01/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: manhattan, and the scan that keeps the nearest light"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-01/steps/step-01.asm" lang="z80" />
+</details>
+
+Read the scan's shape: the flame goes in first as the *candidate to beat*, then every lamp in `lamp_data` gets a turn — and only the **lit** ones compete. How does the wisp know which are lit? The same way the collision system knows which cells are wall: it asks the screen. `attr_addr_cr` on the lamp's cell, compare with `LAMP_LIT`, done. The attribute map has been this game's single source of truth since Gloaming unit 9, and the new AI reads it like everything else does. Note the tie-break too: `jr nc, .dnext` keeps the current prey unless a lamp is *strictly* nearer — so with nothing lit, or everything equal, it still comes for you.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-01/step-01-turned.png" alt="The square at dusk with one lamp lit in the north-east; the wisp has left its corner and crossed toward the lit lamp while the lamplighter stands alone at the centre." caption="One lamp lit, and the hunt turns away from you. That sensation — the enemy losing interest — is the design working: your progress is now the thing it wants." />
+
+Watch what it does when it arrives, though:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-01/step-01-guards.png" alt="The wisp sitting directly on the lit lamp's cell, covering it; the tally pip is still lit." caption="Arrival. Distance zero, the chase returns, and the wisp just… sits there, covering your lamp like a paperweight. The pip is still lit. Reaching a thing and taking it are different mechanics — and we've only built the first." />
+
+## Milestone 2 — the snuff
+
+Here is the unit's best idea, and it's one you already own. In Gloaming unit 12 you lit lamps with a single byte: while the lamplighter stands on a lamp, the lamp's truth lives in his under-buffer, so rewriting `under_lamp + 8` from cold to lit made his own departure paint the lamp alight. *Stepping onto state changes it — the saved byte is the rule.*
+
+The wisp has an under-buffer too. Run the same trick in the other direction:
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-01/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-01/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: the snuff — the buffer-edit trick, performed by the villain"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 2 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-01/steps/step-02.asm" lang="z80" />
+</details>
+
+`unlight_pip` is `light_pip` reflected — the count steps back, the pip at the new count goes cold — and `warm_walls` re-reads the ramp so the square's glow honestly retreats with the count. The night can now *undo you*, and every piece of machinery it used was already on the board: the buffer, the tally, the ramp. Villainy turned out to be four lines.
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-01/step-02-undone.mp4"
+  caption="The whole exchange: you light the lamp, retreat, and the wisp crosses the square, takes it back, and turns for you — because with your lamp out, you're the nearest light again."
+  autoplay={true}
+  loop={true}
+/>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-01/step-02-snuffed.png" alt="The lamp in the north-east is cold again and the tally row shows no lit pips; the wisp has moved on westward." caption="After the taking: pip out, lamp cold, ramp cooled — three displays, one truth, all downstream of a single rewritten byte." />
+
+One more thing to notice: the taking is **silent**. A lamp that dies with no sound at all is genuinely unsettling — but the real reason is discipline, the same one Gloaming kept: sound is a finish-phase concern, and this module's finish phase will give the snuff its voice alongside the bells it belongs with. Feel the silence for now; you'll appreciate the falling third more when it arrives.
+
+## When it's wrong, see why
+
+- **The wisp ignores lit lamps entirely.** The scan is comparing the wrong thing — it must read the lamp cell's *attribute* and compare with `LAMP_LIT`, not test the lamp table itself. The table says where lamps are; only the screen says which are alight.
+- **It hunts a lamp that isn't lit.** Same line, inverted: your branch on the compare is backwards, or you're testing `LAMP_UNLIT`.
+- **It never chases you at all.** The flame must be loaded as the first candidate *before* the scan, with its distance in `seek_best` — miss that and an empty queue of lit lamps leaves the seek pointing at stale data.
+- **The pip count drifts.** Every snuff must run the pair: rewrite the buffered attribute *and* call `unlight_pip`. One without the other and the tally lies — this game's displays only stay honest because every change goes through its counter.
+- **It sits beside the lamp and never takes it.** Your snuff checks the wrong buffer byte. The lamp's truth while covered is `under_draught + 8` — the *attribute* slot, the ninth byte, not the bitmap rows before it.
+
+## Before and after
+
+Gloaming's draught wanted one thing and the board was furniture. Now the board is the *contest*: everything you claim becomes something it wants, your own flame is just one candidate among them, and the mechanism it robs you with is the very one you used to build progress in the first place. The design lesson sits in that symmetry — the strongest villains don't get new machinery, they get *your* machinery with opposite intent. The behavioural lesson comes next, because if you played step 2 for more than a minute you already know what's wrong with it.
+
+## Try this: feel the relentlessness
+
+Play a full dusk against step 2 and try to win. After each snuff the wisp re-targets instantly — nearest light, again, forever, with no pause and no shape. It's *effective*. It is also, in the words of the playtest that redesigned this game, "a pain in the bum" — pressure without rhythm reads as harassment, not menace. Name what's missing before the next unit tells you.
+
+## Try this: a night with no self-preservation
+
+Delete the flame-as-first-candidate block, so the wisp only ever wants lamps. The game gets strictly easier — you can stand anywhere — and yet the *opening* gets strange: with nothing lit, the wisp has no target at all and simply waits. An enemy that ignores you until you make progress is a real design (several tower-defence games are built on it); decide what it does to this one, then put the flame back.
+
+## What you've learnt
+
+- **Manhattan distance** — `|dc| + |dr|`, the honest metric of a grid, in eleven instructions.
+- A **candidate scan**: seed with a default, challenge with each contender, keep the winner — the shape of every "find the best X" loop you'll ever write.
+- The screen as shared truth: the AI reads **the same attribute map** the collision and paint systems use; nobody keeps a private list of what's lit.
+- **Mechanics mirror**: the saved-under rewrite that lights lamps also snuffs them; `unlight_pip` is `light_pip` backwards. Villains are cheapest when they reuse the hero's verbs.
+- Reaching and taking are **separate mechanics** — and a game can be wrong in the gap between them.
+
+## What's next
+
+The wisp takes your lamps and never stops coming — efficient, shapeless, exhausting. **Unit 2** gives its behaviour a rhythm: after every theft it carries the prize home and rests, and the game gets its breath back. The lesson has a famous ancestor, and its name is on an arcade cabinet.

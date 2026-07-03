@@ -1,0 +1,104 @@
+---
+title: "The Pools of Light"
+description: "Claimed ground: every lit lamp warms the eight cells around it, rebuilt from lamp truth after every change — and the restore-both-movers discipline that keeps two sprites honest while the world recolours under them."
+pubDate: 2026-07-03
+game: 3
+unit: 3
+tags: ["assembly", "z80", "graphics", "buffers", "derived-state"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
+
+The war over the lamps has stakes now, but you can't *see* the territory. A lit lamp is one warm cell in a dark field; the square you're fighting for looks the same whether you hold one flame or seven. This unit gives light its footprint: every lit lamp warms the eight cells around it into a **pool** — yellow-flecked stipple, ground the light holds — and suddenly the map reads as a war map, yours and theirs, at a glance.
+
+Remember why the stipple exists at all. Gloaming unit 2 called the cobble texture "not decoration" and promised the pixels would earn their keep when the game started recolouring ground. This is that day: a pool is nothing but an attribute change, and it's *visible* precisely because there are ink pixels in every cell to catch the new colour.
+
+## Milestone 1 — derived, not tracked
+
+The tempting design is to paint the ring when a lamp lights and unpaint it when a lamp dies. Resist it. Pools overlap; lamps die in any order; and "unpaint my ring but only the cells no other pool claims" is a bookkeeping problem you'd be debugging for a week. Instead, make pools **derived state**: after *any* change — a lighting, a snuff — throw the whole layer away and rebuild it from what's true. Sweep the field once, dimming every `GLOW` back to `COBBLE`; then walk the lamp table and re-ring every lamp the screen says is lit.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-03/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-03/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: recompute_pools and glow_ring — the light's footprint, rebuilt from truth"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-03/steps/step-01.asm" lang="z80" />
+</details>
+
+`glow_ring` only takes bare cobble — `cp COBBLE` guards it — so walls, lamps and text keep their colours, and the ring table (`ring_offsets`, eight col/row pairs) is data in the same spirit as `lamp_data` and `bldg_data`: the shape of a pool is something you could redesign without touching a line of code. Rebuild-from-truth costs more cycles than bookkeeping would, and buys you something worth far more: the pools *cannot drift*. There is no sequence of lightings and snuffings, however weird, that leaves a stale cell — because nothing is ever remembered.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-03/step-01-pool.png" alt="A lit lamp beside the eastern building with a ring of warm-flecked cells around it; the lamplighter stands inside the ring." caption="First light with a footprint. One lamp now owns a neighbourhood — and the lamplighter is standing in it, which is about to matter a great deal." />
+
+Because run this build a little longer, and:
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-03/step-01-ghost.mp4"
+  caption="The wisp takes the lamp; the pool dies with it — and then the lamplighter walks away and leaves a piece of the dead pool burning behind him."
+  autoplay={true}
+  loop={true}
+/>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-03/step-01-ghost.png" alt="After the snuff, warm golden cells trail behind the lamplighter across ground that should all be dark." caption="The ghost. The lamp is dead, its pool was erased — except where the movers were standing when the recolour ran. What they were 'under' is what their buffers restore, and their buffers are wrong." />
+
+## Milestone 2 — the discipline
+
+Unwind it, because you have seen this bug's family before. When the recompute ran, the lamplighter was *standing in the pool*. His under-buffer — saved when he arrived, back when that cell glowed — still says `GLOW`. The recompute repainted the world but couldn't reach the cell he covers (his sprite is there, not ground), and it certainly couldn't reach his *buffer*. So he walks away, his restore faithfully heals the cell — to a colour that is no longer true. The wisp does exactly the same on its side. In Gloaming unit 16, two buffers photographed *each other*; here, a buffer photographed *a world that then changed*. Same disease: a buffer is a promise about the ground, and the ground broke it.
+
+The fix is a discipline, not a cleverness — and it's the reason this unit exists in the module:
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-03/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-03/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: both movers off, recolour, both movers on — buffers can't go stale if they're not holding anything"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 2 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-03/steps/step-02.asm" lang="z80" />
+</details>
+
+Restore both movers *first* — the screen becomes pure ground, every cell reachable and true. Recolour. Then save both again (their buffers re-photograph ground that now includes the glow) and redraw. Six calls bracketing the work, and the invariant they defend is worth memorising, because every game with sprites over a mutable background has it: **never repaint the world while a sprite is standing in the frame.** Lift, paint, replace.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-03/step-02-clean.png" alt="The same moment as the ghost shot, but the ground behind the walking lamplighter is uniformly dark." caption="Same choreography, step 2 build: the pool dies entirely, no ghosts. The screen and the buffers agree about every cell, because nothing held a stale photograph across the repaint." />
+
+## When it's wrong, see why
+
+- **Warm cells linger after a snuff.** The discipline is missing or half-done — *both* movers must restore before the sweep and re-save after. One mover done and one forgotten leaves exactly one ghost.
+- **A hole appears in a live pool.** Same bug, other direction: a mover saved `COBBLE` before the pool arrived, then restored it into the glow. The re-save after the recompute is what prevents this.
+- **Pools eat the walls or the lamps.** `glow_ring` must only convert bare `COBBLE`. Anything else it touches — brick, a lamp glyph's cell, HUD — is a missing guard.
+- **Pools flicker every frame.** `recompute_pools` belongs on *events* (light, snuff), not in the main loop. Rebuild-from-truth is cheap enough for a keypress, not for fifty times a second.
+- **The lamplighter's own cell goes dark inside a pool.** It hasn't — he's covering it. Walk him off and the glow is there. If it genuinely isn't, his re-save ran *before* the recolour instead of after.
+
+## Before and after
+
+The square finally *shows* the war: territory won glows, territory lost goes dark, and both futures spread out around every lamp like consequences. Mechanically nothing new moves — pools are pure display, derived from lamp truth — and that's the first lesson: **state you can recompute is state you should recompute.** The second is the discipline, and it will outlive this game by decades: buffers and repaints don't mix; lift the sprites before you change the world under them.
+
+## Try this: a wider light
+
+Make pools radius 2. All that changes is data — `ring_offsets` grows from eight pairs to twenty-four, and the loop count with it. Feel how the game changes when light is generous: safer, softer, and noticeably less afraid of the dark. Then try radius 1 but only the four orthogonal cells. The shape of the light is a design lever, and it costs bytes, not code.
+
+## Try this: break the discipline on purpose
+
+Comment out just the *wisp's* restore in the recompute bracket and play until you see its ghost. Knowing exactly which line is missing, watch how the bug presents: it looks random (it needs the wisp mid-pool at an event), it implicates the wrong code (the drawing looks broken, not the recompute), and it survives casual testing. This is what buffer-discipline bugs are like in the wild — cheap to prevent, expensive to find. Put the line back.
+
+## What you've learnt
+
+- **Derived state**: rebuild the pools from lamp truth after each event, and drift becomes impossible — no bookkeeping, no corner cases.
+- The **restore-both-movers discipline**: lift every sprite, repaint the world, re-save, redraw. The bracket is the fix; anything less leaves ghosts.
+- A buffer is a **promise about the ground** — and world-repaints break promises unless the buffer isn't holding one at the time.
+- Shape as data: `ring_offsets` joins the game's tables — pools could be lanterns' crosses or wide halos without touching code.
+- The stipple pays off: **texture is what makes ground-state visible** — an attribute change with no ink under it is invisible.
+
+## What's next
+
+The light holds ground now. In **unit 4**, the dark answers in kind: everywhere the wisp walks, the night pools behind it — a creeping tendril of solid dark you cannot cross, held in a ring buffer that releases its oldest claim so the square can never be walled off. The night gets territory, and the territory has a *length*.

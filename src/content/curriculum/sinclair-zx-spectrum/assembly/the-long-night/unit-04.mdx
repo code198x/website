@@ -1,0 +1,114 @@
+---
+title: "The Tendril"
+description: "The night takes territory: every cell the wisp crosses turns to solid, impassable dark, held in a fixed-length ring buffer whose oldest claim always releases — no permanent walls, by construction — plus the two gap bugs the real build hit, and their fixes."
+pubDate: 2026-07-03
+game: 3
+unit: 4
+tags: ["assembly", "z80", "ring-buffer", "data-structures", "game-design"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
+
+The light claims ground; the dark, so far, only visits. The wisp crosses your square like a rumour — present, then gone, nothing changed by its passing. This unit makes the night *territorial*: everywhere the wisp walks, the ground behind it turns to solid dark — bright-blue mist you cannot step into — and the square starts losing lanes.
+
+Stop there and think like a designer, because that last sentence should frighten you. An enemy that converts floor to wall, forever, is an enemy that can *end the game by walking*: wall off a lamp, wall off you, and no sequence of inputs wins. The playtest history of this game is full of fairness lessons, but this one was caught at the drawing board, and the fix is structural. The night's claim gets a **length**. The tendril is a ring buffer of six cells: when a seventh is taken, the oldest is released. The dark is a vein that moves with the wisp, not a wall that accumulates — and "the square can never be sealed" isn't a rule anyone checks, it's a property of the data structure. That's the unit's biggest idea: **make the dangerous thing impossible by construction, not forbidden by code**.
+
+## Milestone 1 — the take, and the naive release
+
+Three small pieces: a `DARK` attribute with its own mist texture (dense and swirling, unmistakably *there*, next to the sparse cobble stipple); a veto in `player_step` — you cannot walk into the dark, though the wisp of course ghosts through everything; and the take itself in the wisp's move, with `tendril_push` recording each darkened cell into the ring.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-04/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-04/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: the take, the solid dark, and a ring that releases its oldest cell"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-04/steps/step-01.asm" lang="z80" />
+</details>
+
+Walk through the ring's mechanics once, slowly, because ring buffers are everywhere in this trade (sound queues, input buffers, network code) and this one is small enough to hold in your head. `tendril_buf` is slots; `tendril_head` is where the *next* cell will be written; `tendril_len` grows until it hits `tendril_max` and then never moves again. Once full, every push is release-then-overwrite: the slot at head holds the oldest claim (that's the ring property — next-to-write is oldest-written), so restore that cell to cobble, then store the new cell over it and advance the head, wrapping at max.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-04/step-01-vein.png" alt="A diagonal vein of bright mist trailing behind the wisp as it descends toward the centre of the square." caption="The night, taking ground. Six cells of vein slide across the square behind the wisp — the head takes, the tail lets go, and the dark has a body at last." />
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-04/step-01-released.png" alt="The same descent moments later; the earliest mist cells have returned to plain stipple as the vein advanced." caption="The release, caught in the act: the oldest cells give their ground back as new ones are taken. No walls, ever — not because a rule forbids it, but because six is all the night can carry." />
+
+## Milestone 2 — no gaps in the night
+
+Step 1 has a bug, and the real build shipped it for exactly one playtest round before it bit. The wisp is a hunter; hunters double back; and when the wisp **re-crosses its own trail**, the crossed cell is taken *again* — pushed into the ring a second time, while its first entry still sits in an older slot. Now the release logic is wrong twice over. When the *old* slot comes up for release, it dutifully restores a cell the night still claims — punching a gap in the middle of the live vein. And if the wisp is *standing* on the cell being released, the release paints cobble onto the screen where the wisp's sprite is, and its buffer carries the lie forward.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-04/step-01-crossed.png" alt="The wisp's vein after it has doubled back across its own trail during a fresh descent." caption="A hunter's path is full of crossings — every one is a cell that lives in the ring twice, and every double entry is a future gap or a corrupted buffer waiting for its slot to come up." />
+
+The fix asks the ring itself before releasing: **does any newer slot still claim this cell?** If so, the night keeps it — skip the repaint, overwrite the slot, move on. And the standing-on-it case gets its own branch: mend the wisp's *buffer* instead of the screen, because while it stands there, the buffer is the cell's truth — the same law the snuff exploits.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-04/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-04/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: the claim scan, and mending the buffer when the wisp is standing on the release"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 2 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-04/steps/step-02.asm" lang="z80" />
+</details>
+
+Notice the *shape* of the fix — it's unit 3's lesson wearing armour. The naive release trusted a memory ("this slot means that cell is mine alone"); the fixed release **consults the truth** (scan the ring, ask what's actually claimed). Bookkeeping lies when events overlap; scans don't.
+
+## Milestone 3 — the light heals
+
+One interaction left, and the history here is a confession. In the build this course is derived from, pools were first made *immune* to the take — the dark politely refused to enter the light, and the vein punched a visible hole every time the wisp crossed a pool. It looked broken because it was: two territory systems refusing to acknowledge each other. The shipped rule is better in both directions. The dark takes everything — ground *and* spilt light; stone and posts only are refused — and in exchange, the release asks `pooled_at`: is this cell within one cell of a lamp that is *still lit*? Then it returns to **glow**, not bare cobble. The light heals behind the dark.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-04/steps/step-02.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-04/steps/step-03.asm"
+  lang="z80"
+  title="Step 3: pooled_at — released ground inside a live pool returns to glow"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 3 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-04/steps/step-03.asm" lang="z80" />
+</details>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-04/step-03-takes-glow.png" alt="The wisp's mist vein cutting directly across a lamp's glowing pool near the eastern building." caption="The dark takes the light's own ground — no immunity, no holes — and when those claims release, pooled_at hands them back to the glow, because the lamp that cast it still burns." />
+
+## When it's wrong, see why
+
+- **The square slowly fills with permanent dark.** The release isn't running — check that the full-ring path restores *before* storing, and that `tendril_len` actually stops at max (a `jr c` the wrong way lets it grow forever, and the buffer overruns into whatever data lives after it).
+- **Gaps open in the middle of the vein.** Step 1's bug: the claim scan is missing, or it skips the wrong slot — it must ignore the slot *being released* (head) and honour everything else.
+- **A mist cell follows the wisp around like a pet.** The standing-on-release branch mended the screen instead of the buffer, or vice versa. While the wisp covers a cell, `under_draught` is that cell; the screen is the wisp.
+- **Releases inside pools leave cold holes.** `pooled_at` isn't consulted, or it checks the lamp *table* without checking the screen for `LAMP_LIT` — a dead lamp's pool must not heal.
+- **Crash or garbage when the vein wraps.** Ring indices are stored doubled (`add a, a`) because entries are two bytes — double on *every* access, and wrap the head against `tendril_max`, not the buffer's physical size.
+
+## Before and after
+
+The square now has two living territories: pools that spread from what you've won, a vein that follows what hunts you — and lanes that open and close as both breathe. The engineering lesson is the ring: fixed memory, constant time, and a safety property (*no permanent walls*) that holds because of what the structure *is*, not because anyone remembered to check. The debugging lesson is its shadow: when entries can repeat, releases must consult the current truth, never the original claim. And the design lesson came from the playtest graveyard — territory systems must *interact* (take and heal), not ignore each other (immunity and holes).
+
+## Try this: turn the reach dial
+
+`tendril_max` is the night's reach, and the data byte says 6. Set it to 18 and the square becomes a maze that reshapes itself around a hunter you can barely see past; set it to 2 and the dark is a flicker. Hold whatever number felt fair in your head — a later unit turns this exact dial per watch, and you'll get to check your instinct against the shipped table.
+
+## Try this: sharpen the mist
+
+The mist texture is eight `defb`s. Redraw it — diagonal rain, a spiral, solid block — rebuild, and watch how much of the *threat* turns out to live in the pixels. The take mechanics don't change; the game's temperature does. (Keep the density high: a sparse dark reads as reachable ground, and players will walk into it all night and call your veto a bug.)
+
+## What you've learnt
+
+- **Ring buffers**: head, length, wrap — fixed memory, oldest-out, constant-time, and the workhorse of every queue you'll ever meet.
+- **Safety by construction**: "the night cannot wall the square" is a property of a six-slot ring, not a rule that could be forgotten.
+- **Repeated entries poison releases** — when a claim can be re-made, releasing must scan for newer claims instead of trusting the old one.
+- The buffer-truth law, third appearance: whoever stands on a cell *owns its truth* — mend the buffer, not the screen, when they coincide.
+- Territory systems must **negotiate**: the dark takes the light's ground; the light heals what the dark lets go.
+
+## What's next
+
+The night hunts, steals, withdraws, rests, and now walks with a wake. Play a full dusk and you'll meet the last flaw this phase has to fix: light two lamps close together and watch the wisp *camp* them — snuff one, short withdraw, snuff the other, forever, while the rest of your work stands untouched. Greedy-nearest is optimal for the AI and boring for you. **Unit 5** teaches the night to hold a grudge instead — and it's the sharpest design lesson in the module.
