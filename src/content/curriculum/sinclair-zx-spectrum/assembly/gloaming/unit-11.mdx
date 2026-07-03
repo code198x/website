@@ -1,104 +1,144 @@
 ---
-title: "The Tally"
-description: "Add a score you read at a glance. Dedicate row 0 as a HUD strip and lay a row of pips — one per lamp — that warm from cyan to yellow as each lights. Coloured cells, not drawn digits: the honest 'before' of a digit HUD."
-pubDate: 2026-06-01
+title: "The Lamps"
+description: "The game's first real objects: an unlit lantern glyph, drawn once the direct way — then eight of them scattered from a data table, standing on walkable floor, and surviving the lamplighter's passage untouched."
+pubDate: 2026-07-03
 game: 1
 unit: 11
-tags: ["assembly", "z80", "hud", "score", "game-state", "attributes"]
+tags: ["assembly", "z80", "sprite", "data-table", "game-objects", "attributes"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
+import SpriteGrid from "@components/diagrams/SpriteGrid.astro";
+import SpriteEditor from "@components/diagrams/SpriteEditor.astro";
 
-Lamps light, but the game keeps no score and tells you nothing. A game should answer "how am I doing?" at a glance. So we add a **tally**: a row of pips along the top, one for each lamp, cold at the start and warming as you light them. Fill the row and you've filled the square.
+The stage is built — five units of canvas and five of honest movement — and now the *game* starts arriving. Gloaming is about a lamplighter, which means it's about lamps: eight of them, standing cold around the square, waiting for him. This unit puts them there. Nothing lights yet — a lamp you can light needs a lamp that exists first — but by the end the square has contents, a purpose you can see, and one more proof that the machinery you built was worth building carefully.
 
-We build it the plainest way that works — and that way turns out to be the first thing we ever drew, back in Unit 1: a coloured cell.
+## A lantern is a cell
 
-## Where we start
+Like the lamplighter, a lantern is one character cell: eight bitmap bytes and an attribute. Here's its shape —
 
-Unit 10's game — lamps you light, with no record of it. We give it a memory and a face: a count, and a bar that shows it.
+<SpriteGrid
+  bytes={[0x18, 0x24, 0x7e, 0x7e, 0x5a, 0x7e, 0x7e, 0x3c]}
+  width={8}
+  height={8}
+  bytesPerRow={1}
+  showHex={true}
+  caption="The lantern, top row first: the loop of its handle ($18, $24), the glass body ($7E), the wick pinched dark in the middle row ($5A), and the base ($3C)."
+/>
 
-## Pips are coloured cells
-
-A pip doesn't need a picture. It's a single cell showing a colour — **cyan** for a lamp not yet lit, **bright yellow** for one that is. No glyph, no pixels: pure attribute, like the cobbles and walls in Unit 1. The whole tally is eight coloured blocks in a row.
+— and its colour is doing quiet double duty:
 
 ```
-PIP_UNLIT  equ  %00101000   ; PAPER cyan  — cold
-PIP_LIT    equ  %01110000   ; BRIGHT PAPER yellow — warm
+LAMP_UNLIT  equ  %00000101      ; cyan INK on black PAPER
 ```
 
-Drawing actual *numbers* — a "3 / 8" readout — is a genuine technique: you need a font and a way to render digits, and a bigger game later builds exactly that. This coloured-pip bar is the honest, smaller version, and for a game with a handful of lamps it reads instantly, with no arithmetic.
+Cyan on black: cold, unlit, waiting. But look at bit 3 — the PAPER field's bottom bit, the one `wall_at` tests — it's **clear**. That's a design decision, not an accident: a lamp reads as *floor*. The lamplighter has to be able to stand on a lamp, because standing on one is how he'll light it next unit. One byte carries the look *and* the physics, which is the same trick the walls play, pointed the other way.
 
-## A place to put it
+## Milestone 1 — one lantern, the direct way
 
-The pips need to live somewhere the lamplighter can't trample. So we give the game a **HUD strip**: the top wall moves down from row 0 to row 1, and row 0 becomes a black band above the playfield where the pips sit. Because the wall is now at row 1, he's stopped at row 2 — he can never reach the HUD. The playfield loses one row; the score gains a home. (Every later game in the course carves out a HUD the same way.)
-
-## Counting, and warming the next pip
-
-We keep one byte, `lit_count`. The lighting code from Unit 10 already knows the exact moment a *cold* lamp becomes lit — so that's where we bump the count and warm a pip. `light_pip` warms the pip at the current count, then increments it, so pips fill left to right in the order you light lamps. And because Unit 10's lighting is **idempotent**, re-crossing a lit lamp does nothing — the count can never run ahead of reality.
-
-## Milestone — the tally
-
-We carve the HUD strip (top wall to row 1), lay eight cold pips along row 0, keep a `lit_count`, and call `light_pip` in the one place a cold lamp turns lit. Everything else — movement, collision, lighting — is unchanged.
+`draw_lantern` is nothing new — attribute first, then eight glyph bytes down the cell, the exact shape `draw_lamp` has had since Unit 3. Place one, the obvious way: put the column and row in registers and call it.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-11/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-11/steps/step-01.asm"
   lang="z80"
-  title="Step 1: a HUD strip and a pip that warms per lamp lit"
+  title="Step 1: the lantern glyph, its colour, and one hardcoded placement"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-11/steps/step-01.asm" lang="z80" />
+</details>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-11/step-01-lantern.png" alt="A single small cyan lantern near the north-west corner of the square." caption="One cold lantern at (4, 3), placed by two loads and a call. It works — and it doesn't scale." />
+
+It works, and you can feel the problem from here. The game wants eight lamps. Eight lamps this way is twenty-four lines of loads and calls, and every one of them is *placement* pretending to be *code* — change the level and you're editing instructions. You've already seen the better shape: the buildings went through exactly this door two units ago.
+
+## Milestone 2 — the town gets its lamps
+
+So: a table. Column/row pairs, one per lamp, `$FF` to finish — and `draw_lamps`, a loop that reads a pair, draws a lantern there, and goes round again until it meets the sentinel.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-11/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-11/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: lamp_data and the loop — placement moves out of the code"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-11/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-11/steps/step-02.asm" lang="z80" />
 </details>
 
-Each cold lamp lit warms one more pip — light two lamps and two pips glow, the tally and the lamps telling the same story two ways:
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-11/step-02-lanterns.png" alt="The walled square with eight cyan lanterns scattered symmetrically around the interior, the lamplighter at the centre." caption="Eight cold lanterns from sixteen bytes of table — a pair up by the north wall, one at each building's shoulder, a pair mid-square, a pair down by the south. The square has a job now." />
+
+One detail in the loop deserves a look: `push hl` / `pop hl` around the `call draw_lantern`. `HL` is the loop's finger, keeping its place in the table — but `draw_lantern` uses `HL` for screen addresses. The push tucks the finger away on the stack, the pop brings it back; without that pair, the loop would come back from drawing the first lamp having *forgotten where it was reading*. Saving what a call would trample is register hygiene you'll use everywhere loops call helpers.
+
+And that's the second data table in three units, so the pattern is now officially the town's architecture: **shape as code, placement as data**. The buildings are rectangles in `bldg_data`; the lamps are pairs in `lamp_data`; the drawing routines neither know nor care how many of either the town has tonight. A different level is a different table.
+
+## The crossing, again — with something to lose
+
+The lamps sit on the floor and read as floor, so he can walk over them. Should he? Unit 8's marker witness said yes — but the marker was scaffolding *we* painted. The lamps are the first **game objects** to stand in his path, and the buffer has never been tested on something the game can't afford to lose:
 
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-11/step-01-fill.mp4"
-  caption="The lamplighter lights two lamps, and a pip at the top warms from cyan to yellow for each — filling left to right. Re-crossing a lit lamp leaves the bar untouched, because the lighting is idempotent."
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-11/step-02-cross.mp4"
+  caption="Down the square and left, straight across the lamp at (13, 20): it vanishes under him for a beat, and it's back — cold, intact, exactly as placed — the moment he's gone."
   autoplay={true}
   loop={true}
 />
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-11/step-01-tally.png" alt="The square with a HUD strip along the top; two pips are bright yellow and the rest cyan, matching two lit lamps below and the lamplighter beside them." caption="Two pips warm, two lamps lit — confirmed by reading lit_count straight out of memory (2). Glance at the top and you know how close you are without counting a thing." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-11/step-02-stand.png" alt="The lamplighter standing where a lantern was; seven lanterns visible around the square." caption="Standing on the lamp: his cell shows him and only him. The lantern isn't gone — all nine bytes of it are sitting in under_lamp, waiting." />
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-11/step-02-passed.png" alt="The lamplighter two cells left of a restored lantern." caption="Two steps on, the lantern stands again. Unit 6's blank-erase would have deleted it at first touch; the machinery you replaced it with protects real pixels for free." />
+
+Nothing in this unit's diff touches movement, collision or the buffer — the lamps are protected by code that has never heard of them. That's what building the general mechanism honestly buys: `save_under` copies nine bytes of *whatever is there*, and "whatever" now includes the game's most precious objects.
+
+Take one more look at that still, though. While he stands on the lamp, the lantern lives *in the buffer* — nine bytes in ordinary memory, temporarily the only copy in the world. Next unit that stops being trivia and becomes the whole mechanism: if the game were to *edit* those bytes while it holds them, the lamp would come back **changed** when he steps away. Hold that thought — it's the best trick in this module.
 
 ## When it's wrong, see why
 
-The tally drifts when the count and the score disagree:
+The table and the lamp's colour are where this unit slips:
 
-- **Pips never warm.** `light_pip` is in the wrong place — it must be called only inside the "this lamp was cold" branch, right where you set the lit attribute.
-- **The wrong pip warms, or it spills past the bar.** `PIP_BASE` is off, or `lit_count` isn't being used as the index. The first pip is at `PIP_BASE`, the *n*-th at `PIP_BASE + n`.
-- **The lamplighter walks into the HUD.** The top wall isn't at row 1, so row 0 is reachable. Draw the top wall at `$5820`, not `$5800`.
-- **The bar can't fill, or fills too early.** `NUM_LAMPS` doesn't match the number of lamps in `lamp_data`. Keep them in step.
+- **No lamps appear.** `draw_lamps` isn't called, or it's called before the ground exists. Its place in the setup matters: after `fill_walls` (so the floor doesn't overwrite the lamps), before `save_under` (so if a level ever starts him on a lamp, the buffer holds it).
+- **Eight lamps, then garbage marching on across the square.** The `$FF` sentinel is missing, and the loop is reading whatever bytes live after the table as coordinates — in this file, that's the lamplighter's own position data. End the table.
+- **A lamp blocks him like a wall.** Its attribute has bit 3 set. `LAMP_UNLIT` must keep black PAPER — `%00000101` — or `wall_at` reads it as brick. One bit is the difference between an object he can use and an obstacle he can't reach.
+- **The first lamp draws, then the loop goes wild.** The `push hl` / `pop hl` guard is missing — `draw_lantern` trampled the table pointer, and the loop resumed reading from a screen address.
+- **Walking over a lamp deletes it.** The commit isn't the Unit 8 dance — an `erase_lamp` has crept back in somewhere. Restore, step, save, draw; nothing else touches his cells.
 
 ## Before and after
 
-You started with a game that scored nothing and finished with one you read at a glance: a strip of cells outside the playfield, one warming per lamp lit. The HUD is more cells; the score is a byte; the readout is a colour. And because the count rides on the same idempotent lighting from Unit 10, it can't lie — cross a lit lamp a hundred times and the tally holds. Fill the bar and you've filled the square, which is exactly the win we build next.
+The square began this unit empty and ended it as a level: eight cold lanterns, placed from sixteen bytes you can rewrite at will, drawn by a loop that will never need to change. The hardcoded first lamp was the honest "before" — placement as code, three lines per object — and the table is the "after" the buildings already taught. And the crossing settled something no scaffold could: the buffer protects the game's real treasures, sight unseen. Everything on this screen is now either data or protected by code that treats everything as data. The night can begin.
 
-## Try this: change the lamp count
+## Try this: redraw the level
 
-Add or remove lamps in `lamp_data`, and set `NUM_LAMPS` to match. The pip bar grows or shrinks with it — the tally is sized by one constant. (Try it with the count *wrong* on purpose: too few pips and the ninth lamp warms nothing; too many and the bar can never fill. A score and the thing it scores must agree.)
+Edit `lamp_data`: move a lamp, add a ninth pair, thin them to three, tuck one in a corner or flat against a building's wall. Keep the `$FF`, rebuild, and the level redraws itself — no code changed. This is what the table bought: the level is yours to author, in data, exactly as the buildings were.
 
-## Try this: move the HUD
+## Try this: reshape the lantern
 
-Put the pips along the **bottom** instead. They're cells: change `PIP_BASE` to a row-23 address (`$5800 + 23*32 + 12`), and they'll sit in the bottom band. Or recolour them — make unlit pips dim blue and lit ones flashing — to taste. The readout's look is yours.
+Design your own lantern in the editor below — click cells on, read off the bytes, and replace the eight `defb`s under `lantern:`. Every lamp on the board changes at once, because eight lamps share one shape:
 
-## Try this: count down instead
+<SpriteEditor
+  bytes={[0x18, 0x24, 0x7e, 0x7e, 0x5a, 0x7e, 0x7e, 0x3c]}
+  caption="The lantern, editable. A taller chimney? A wider base? Redesign it here and paste the bytes over the lantern: block."
+/>
 
-Flip the meaning: start all eight pips **lit** and turn one **cold** for each lamp you light — "lamps remaining". Same mechanism, opposite reading. Which feels better — filling up, or running down? That's a real design choice, and you can try both in a minute.
+## Try this: a lamp indoors
+
+Add a lamp *inside* a building — `defb 6, 6` — and rebuild. It draws (draw_lantern writes wherever it's told; the buildings are just attributes), but its cell now reads as floor in a sea of brick: he can't reach it, and the level is quietly broken in a way no code can notice. Data tables give you the power to author levels — and with it, the power to author impossible ones. Level *validation* is a real job in real games; here, it's your eyes.
 
 ## What you've learnt
 
-- A **HUD is just more cells** — dedicate a strip outside the playfield and the sprite can't disturb it.
-- A **coloured-cell readout** (pure attribute) is an instantly-readable score — no digits required.
-- Track game state in a byte (`lit_count`) and **reflect it in the HUD** as it changes.
-- **Idempotent lighting keeps the count honest** — the score can't drift ahead of the game.
+- **Game objects arrive as data**: a glyph (shape), an attribute (look *and* physics), and table entries (placement).
+- The hardcoded version is the honest **before** — three lines per object, placement trapped inside code.
+- A **sentinel-terminated table loop** places any number of objects, and `push`/`pop` keeps its pointer safe across calls.
+- One attribute bit decides **walkable or wall** — lamps deliberately read as floor so he can stand on them.
+- **General mechanisms pay compound interest**: save/restore protects objects it was never told about.
 
 ## What's next
 
-The tally can fill — so now filling it should *mean* something. In **Unit 12** we add the **win**: when every pip is warm, the lamplighter has held back the dark, and the game says so with a closing line. A goal, reached, and acknowledged — the moment a loop of mechanics becomes a game you can finish.
+Eight lamps, all cold — and a lamplighter with no way to do the one thing he's named for. **Unit 12** gives him his job: step onto a lamp and *light it*. The mechanism is the one you glimpsed in the stand-still: while he covers a lamp, its nine bytes sit in the buffer — so lighting it is nothing more than editing the saved attribute while the game holds it. The floor stops being scenery and becomes state you can change.
