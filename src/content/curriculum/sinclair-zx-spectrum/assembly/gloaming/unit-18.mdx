@@ -1,99 +1,137 @@
 ---
-title: "The Square Warms"
-description: "Give the square a mood. As lamps light, the cold blue walls warm through to a dusk-magenta — a colour ramp keyed to your progress, repainted from a small table. The first taste of atmosphere, built from Unit 1's attribute writes."
-pubDate: 2026-06-01
+title: "A Small Sound"
+description: "The beeper is one bit on one port, toggled by hand — and from it, three voices: a rising blip when a lamp catches, a fanfare for the night held, a settling sting for the fall. The machine clears its throat."
+pubDate: 2026-07-03
 game: 1
 unit: 18
-tags: ["assembly", "z80", "atmosphere", "attributes", "mood", "polish"]
+tags: ["assembly", "z80", "sound", "beeper", "game-feel", "timing"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
+import AudioClip from "@components/AudioClip.astro";
 
-The game plays and sounds right. This unit adds the last layer to the play itself — **atmosphere**. As you light lamps, the square warms: the cold blue stone of the walls catches the spreading light and glows, brightening through to a dusk-magenta as the night is held back. Snuff a lamp and the stone cools again. The *look* of the place starts telling you how you are doing, before you ever glance at the tally.
+Eighteen units, and Gloaming has never made a sound. It draws, hunts, wins and loses in total silence — and you feel the gap most at the moments that matter: a lamp catches and the world doesn't acknowledge it; night falls and the black just *arrives*. This unit gives the game the smallest voice its machine owns, and spends it in exactly three places.
 
-## Where we start
+## The speaker is one bit
 
-Unit 17's game — it plays, scores, threatens, wins, loses, and now makes a sound, but its walls have been the same flat blue since Unit 1. We make the frame respond to your progress.
-
-## Mood is just colour, driven by state
-
-There is no new technique here — only the oldest one, used for feeling. We keep a small **table** mapping "lamps lit" to a wall colour, and whenever the count changes we repaint the frame in that colour:
+The Spectrum's speaker hangs off **bit 4 of port `$FE`** — the same port that sets the border. Write a 1 to that bit and the speaker cone pushes out; write a 0 and it relaxes back. One write is a *click*. A **tone** is that click repeated: out, wait, in, wait, out — a square wave made by hand, and the whole of beeper audio is two numbers describing it:
 
 ```
-wall_ramp:  blue → bright blue → magenta → bright magenta   (by lamps lit)
+beep:   C = the half-period  (pitch — bigger is lower)
+        B = cycles to sound  (duration)
 ```
 
-`warm_walls` reads `lit_count`, looks up the colour, and redraws the four edges of the frame in it — the same attribute writes you have made since the first unit, now reaching for atmosphere instead of structure. The inline wall-draw that lived in `init_game` becomes this one routine, called wherever the count changes: after a lamp lights (the stone catches the light) and after one is snuffed (the stone cools).
+`beep` writes `%00010000` (speaker out, border still black — same port, different bits), burns `C` loops, writes zero, burns `C` again, and does that `B` times. Fourteen instructions, and it's the entire sound chip this game will ever have.
 
-## One bit you must not break
+One line in it deserves special respect: the `di` at the top. The pitch lives in those busy-wait loops — counted in raw instruction time — and the 50 Hz interrupt has been firing throughout this whole game, every frame, since Unit 4. Let it interrupt mid-tone and random half-periods get stretched by a whole interrupt handler: the note buzzes and warbles. So interrupts go *off* while a tone sounds, *on* again after. Keep that trade in view — it means **while the beeper speaks, the game world stops**. Nothing moves, no keys read, no frames advance. For a blip lasting a twentieth of a second, that's an authentic little hitch every beeper game had; it's also why anything timed against real frames — a demo replay, a capture script, a speedrun timer — drifts slightly for every note played. Blocking sound is honest, cheap, and *costs time*; the non-blocking driver that plays music under gameplay is a later game's whole lesson.
 
-There is a constraint, and it is a good lesson in respecting your own systems. The walls have to stay **solid** — the collision test from Unit 7 reads the bottom bit of PAPER (bit 3) to decide what is a wall. So every colour in the ramp must keep that bit set. That limits the warm palette to PAPER colours whose low bit is 1: **blue (1)** and **magenta (3)**, brightened for extra warmth. Warm the walls all you like — but never touch the bit that makes them walls. (Reach for red or yellow PAPER and the draught would start drifting straight through the frame.)
+## Milestone 1 — the lamp catches, audibly
 
-## Milestone — warm the walls
-
-We lift the wall-draw out of `init_game` into a `warm_walls` routine, add a `wall_ramp` table mapping each lamp count to a colour, and call `warm_walls` from the two places the count changes — the lamp-lit branch and the snuff branch. Every colour in the ramp keeps the collision bit set, so the walls stay solid as they warm.
+The first voice goes where the game's heart beats: the lighting event. `blip_lit` is two chained beeps — a short C6, a slightly longer E6 — a **rising third**, the sound of something small going right. It's called in the cold-lamp branch, right beside `light_pip` and `warm_walls`: one event, three consequences — count, colour, and now sound.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-18/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-18/steps/step-01.asm"
   lang="z80"
-  title="Step 1: a wall-colour ramp keyed to lamps lit, repainted on change"
+  title="Step 1: the beeper, and a rising blip on every lamp caught"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-18/steps/step-01.asm" lang="z80" />
+</details>
+
+<AudioClip src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-18/step-01-blips.wav" title="Two lamps caught — the rising blip, twice" source="ZX Spectrum beeper · port $FE bit 4" />
+
+Two lamps, two blips, resting on true silence. Notice what a difference the *interval* makes: a single flat note would be a beep; the little upward step is an event with a mood. On an instrument this poor — one bit, no volume, no envelope — the music theory is doing most of the work, and it costs nothing.
+
+## Rests, and the two clocks
+
+Before the endings get their phrases, one small routine with a big idea in it:
+
+```
+rest:
+        halt
+        djnz rest
+        ret
+```
+
+Silence, counted in frames. Look at what that means: this program now keeps musical time with **two different clocks**. *Pitch* is measured in instruction time — busy-loops with interrupts off, thousands of counts a second, because a waveform can't wait for a frame. *Rhythm* is measured in heartbeats — `HALT`s with interrupts on, fifty a second, because the gap between notes is game time like any other. Tones live below the frame; rests ride on it. Every sound engine ever written balances these same two clocks; this one just does it in five lines you can see.
+
+## Milestone 2 — each ending finds its phrase
+
+The win and the loss each get a voice, built from nothing but `beep` and `rest` in sequence:
+
+- `fanfare_held` — a **rising run up the chord**: C5, E5, G5, landing on a held C6. (Held how? `B` is one byte, 255 cycles at most — so the long note is simply sounded *twice*, back to back. The seams don't show; the wave just continues.) It plays after THE NIGHT IS HELD prints, blocking gladly — the game it would have paused is already over.
+- `sting_nightfall` — the mirror: E5 stepping down to D5, then settling on a long, low A4. Where the fanfare climbs and arrives, the sting descends and *stays* — the night settling onto the square.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-18/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-18/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: rest, the fanfare, the sting — wired into both endings"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-18/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-18/steps/step-02.asm" lang="z80" />
 </details>
 
-Start cold and blue, then light lamps and watch the frame catch the warmth — the walls step from blue to bright blue and on to magenta as the count climbs:
-
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-18/step-01-warm.mp4"
-  caption="From a cold blue square, four lamps are lit in turn. The walls warm with the count — blue while one or two burn, bright blue at two, magenta at four — each repaint triggered the instant a lamp catches. The draught drifts through, leaving the lit lamps alone."
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-18/step-02-held.mp4"
+  caption="The full night, with sound: eight rising blips as the lamps catch — the wisp hunting underneath the whole time — and as the eighth lights, the fanfare climbs over the golden square. Turn your volume up; this is the game's first breath."
   autoplay={true}
   loop={true}
 />
 
-Held at four lamps, the frame glows a deep magenta — the same square, a warmer hour:
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-18/step-02-held.png" alt="The gold square, THE NIGHT IS HELD, all pips warm — and the wisp frozen mid-square where the win caught it." caption="The screen the fanfare plays over. Note the wisp, frozen mid-hunt where the win found it: the state gate holds everything, and the music plays out over a world that has already stopped." />
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-18/step-01-warmed.png" alt="The walled square with the walls glowing magenta, four lamps lit gold, the lamplighter at the left, and the tally part-filled at the top." caption="Four lamps lit, and the walls — blue and cold since Unit 1 — warmed to magenta. The colour is read straight from wall_ramp[lit_count], so the frame is an at-a-glance readout of how the night is going." />
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-18/step-02-sting.mp4"
+  caption="The other ending: the last catch, the blackout — and the sting stepping down into the dark, settling on the low note and staying there. Four seconds that make losing feel like something happened, rather than something merely stopped."
+  autoplay={true}
+  loop={true}
+/>
+
+Three sounds, three meanings, and no two share a shape: up-quick for progress, up-long for triumph, down-and-settle for the fall. That's the entire discipline of game audio in miniature — **distinct events deserve distinct sounds, and the contour carries the meaning**. A player with their eyes shut can follow this game now.
 
 ## When it's wrong, see why
 
-A cosmetic layer over a live mechanic fails in instructive ways:
-
-- **The walls stop blocking — sprites pass through them.** A ramp colour has a PAPER whose bottom bit is clear. Keep every PAPER odd (1, 3, 5, 7).
-- **The walls never change colour.** `warm_walls` is not called where the count changes, or it is indexing the wrong table. Call it after `light_pip` and `unlight_pip`.
-- **The wrong colour, or a crash, at full lamps.** The ramp must have an entry for every count `0`–`8` (nine entries). Indexing past the end reads junk.
-- **A visible flicker as the frame repaints.** Repainting ~110 cells is well within a frame; if you see tearing, you are repainting every frame instead of only when the count changes.
+- **No sound at all.** The speaker is bit 4 — the beep must write `%00010000` and then zero. Writing to the wrong bits changes the *border*, which is at least a strong visual clue about where your OUTs are landing.
+- **A click instead of a note.** The bit flipped once, not repeatedly — the `djnz .bcyc` is the tone; without the loop you have percussion.
+- **The note warbles or buzzes.** Interrupts are still on — the `di`/`ei` pair is missing or the `ei` comes too early. Fifty times a second, the handler is stealing time mid-half-period.
+- **The fanfare's phrasing is a smear — no gaps between notes.** `rest` isn't resting: without interrupts enabled, `halt` waits forever for an interrupt that can't come. The `ei` at the end of `beep` is what makes the following `rest` possible. (And if `rest` is missing its `ret`, it falls straight through into whatever follows — an entire extra phrase, uninvited.)
+- **Everything works but the game stutters oddly during play.** It's meant to — each blip steals about five frames. If it grates, shorten the blip (`B` down), not the pitch loops.
 
 ## Before and after
 
-You started with a frame that looked the same whether you were winning or losing and finished with one that *shows* your progress in its colour — and the whole effect is the attribute write from Unit 1, pointed at a ramp table. Mood turned out not to be a new system but an old one used for feeling: a byte of state, a lookup, a repaint on change. The one discipline it demanded — keep the collision bit set — is the real lesson: a cosmetic change must not quietly break a mechanic.
+The game found its voice in three phrases and about sixty lines. The instrument couldn't be poorer — one bit, toggled by hand, silencing the whole machine while it speaks — and that poverty is precisely what it teaches: pitch is a busy-loop, rhythm is the heartbeat, meaning is contour, and every note has a cost you choose to pay. Gloaming now announces its progress, celebrates its win, and mourns its loss. What it doesn't yet have is a front door: it still boots straight into the square, mid-story, no name, no invitation.
 
-## Try this: a different mood
+## Try this: retune the blip
 
-Edit `wall_ramp`. You are free to use any PAPER whose bottom bit is set — blue (1), magenta (3), cyan (5), white (7) — plus the BRIGHT bit. Try a cold-to-icy ramp (blue → bright cyan → white) for a frostier night, or hold the cold longer and only warm in the final few lamps for a sudden dawn. The mood is yours; keep every PAPER odd.
+`blip_lit`'s two notes are four bytes. Try a *falling* third — swap the pitches — and feel how wrong it is: the lamp now sounds like a mistake. Try two identical notes: flat, bureaucratic. The rising interval was doing more work than its size suggests. Then make a blip of your own — a fifth (C6 up to G6, `C = $45`), a quick octave — and keep whichever one makes lighting the eighth lamp feel best.
 
-## Try this: warm the sky too
+## Try this: give the catch a voice
 
-The border has no collision to respect, so it is a free second canvas. Add a `border_ramp` table and `out ($FE), a` the border colour alongside the walls — the night sky lifting as the square fills. (Keep it off blue so it does not blur into the walls.) Two surfaces warming together reads as a real change of hour.
+One event still passes in silence: the wisp's touch. Write `sting_caught` — something short and low, two falling notes, cousin to the nightfall sting — and call it at the top of `lose_life`. Now the ember going out lands in the ear as well as the eye. (Notice you place it *once*, in `lose_life`, and both contact directions inherit it — the same event-placement discipline as ever.)
 
-## Try this: break it on purpose
+## Try this: hear the two clocks
 
-Put a red PAPER (`%00010111`) in the ramp and light enough lamps to reach it. The walls turn red — and the draught sails straight through the frame and off the screen, because red's PAPER bit 0 is clear, so the collision no longer sees a wall. It is a vivid lesson: a cosmetic change quietly violated an invariant. Then put it back.
+In `fanfare_held`, change the rests from `B = 3` to `B = 25` — half a second of silence between notes. The phrase falls apart into disconnected beeps: rhythm was carrying the melody's sense of *line*. Now set the rests to zero (delete the `rest` calls): the notes fuse into a portamento smear. Somewhere between lies phrasing — and now you've tuned it by ear on both clocks.
 
 ## What you've learnt
 
-- **Mood is colour driven by state** — the attribute writes from Unit 1, reaching for atmosphere.
-- A **ramp table** maps progress to appearance; repaint only when the state changes.
-- **Respect your invariants:** the walls must stay solid, so the ramp keeps the collision bit set — a cosmetic change must not break a mechanic.
-- **Atmosphere is feedback you feel** before you read it.
+- The beeper is **bit 4 of `$FE`**: a square wave made of two writes and two waits, pitch and duration as two bytes.
+- **`di` while a tone sounds** — and blocking audio stops the world, a cost measured in frames.
+- **Two clocks**: pitch counts instructions below the frame; rhythm counts heartbeats on it.
+- An 8-bit duration holds a long note by **sounding it twice** — seams don't show in a square wave.
+- **Contour is meaning**: rise for progress, climb for triumph, settle for loss — distinct events, distinct shapes.
 
 ## What's next
 
-Gloaming is, by every measure, a finished little game — it plays, scores, threatens, sounds, and sets a mood. Only one thing keeps it from being a game you sit and play in a loop: it ends and stays ended. In **Unit 19, "Again"**, we close that loop — win or lose, a key press returns you to the title for another go — and in doing so make sure a replayed game starts truly fresh. The state machine comes full circle.
+The game is complete and it *feels* nearly finished — but boot it and you're simply *in the square*, no name spoken, no moment to breathe before the night starts moving. **Unit 19** builds the front door: GLOAMING on a dusk screen, PRESS SPACE, a chime — and the setup code you've been growing since Unit 1 becomes `init_game`, called by a title that owns the act of beginning. The state machine gets its first state.
