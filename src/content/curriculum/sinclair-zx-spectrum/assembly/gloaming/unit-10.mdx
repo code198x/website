@@ -1,10 +1,10 @@
 ---
-title: "Light It"
-description: "Light a lamp by editing the bytes save/restore already holds. Step onto an unlit lamp, change its saved attribute from cold cyan to bright yellow, and when you step off, restore paints it back glowing. The floor becomes state you control."
-pubDate: 2026-06-01
+title: "Edges"
+description: "Retire the scaffold: prove the numeric clamp is dead code by moving its fence where you can see it, then delete it whole — the square's own walls are the boundary, and the movement core converges with the finished game, byte for byte."
+pubDate: 2026-07-03
 game: 1
 unit: 10
-tags: ["assembly", "z80", "game-state", "collision", "attributes", "sprite"]
+tags: ["assembly", "z80", "collision", "refactoring", "scaffolding", "bounds"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
@@ -12,100 +12,122 @@ import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
 
-The lamps are placed and cold. The lamplighter's whole job is to warm them — and the way we do it is so economical it feels like a trick. We're already saving the nine bytes beneath him on every move (Unit 6). To light a lamp, we don't draw anything new: we **edit the saved copy**. Change the stored colour from cold cyan to bright yellow, and when he steps off, restore paints the lamp back — lit.
+Unit 6 made a promise. When the numeric clamp went in — four compares boxing him into rows 2–22, columns 1–30 — the source called it *scaffolding* and named the day it would come down: "the walls take this job in unit 9; unit 10 retires the numbers." Unit 9 kept the first half. This unit keeps the second, and it's shorter than any unit before it, because its entire diff is a deletion.
 
-## Where we start
+But deletion done properly, which makes it a lesson rather than a chore. You don't delete a boundary check because you *believe* it's redundant — belief is how machines die at row 32. You prove it first.
 
-Unit 9's level — eight cold lanterns the lamplighter can cross but not change. We give crossing a lamp a *consequence*.
+## Two boundaries are running
 
-## Lighting is editing what's already saved
+Since last unit the map has had two boundary systems, one on top of the other. The **walls** are geometry you can see: attribute data, tested per-proposal by `wall_at`, at the map's actual edge. The **clamp** is numbers you can't: four literal compares in the middle of `player_step`, agreeing with the walls only because someone once chose 2, 23, 1 and 31 to match where the walls stand.
 
-Look again at the move we built. When he steps onto a cell, `save_under` copies that cell's nine bytes into the buffer — for a lamp, that's the lantern's pixels plus its cyan attribute. He's now standing on it, covering it. The lamp is *in the buffer*, waiting to be restored when he leaves.
+That agreement is the problem. Nothing *enforces* it. Redraw the map — move a wall, widen the square for a level 2 — and the clamp's numbers silently disagree with the world. The player hits fences that aren't there, or worse, the fence sits past a wall that's been moved inward and the "protection" guards nothing. Duplicate rules drift; whichever you forget to update becomes a bug. One of them has to go, and it should be the one you can't see.
 
-So lighting it is one comparison and one write, right after the save:
+And notice the order the move asks its questions: the veto runs *first*. Any step toward the perimeter dies at `wall_at` before the clamp is even consulted — brick answers before arithmetic. For the clamp's compares to matter at all, a proposal has to get *past* the walls, and on this map none can. The clamp isn't just redundant — it's unreachable.
 
-```
-ld   a, (under_lamp + 8)   ; the attribute we just saved
-cp   LAMP_UNLIT            ; is it a cold lamp?
-jr   nz, .not_lamp
-ld   a, LAMP_LIT          ; then change the SAVED copy to lit
-ld   (under_lamp + 8), a
-.not_lamp:
-```
+## Milestone 1 — make the invisible visible
 
-Nothing on screen changes yet — he's covering the cell. But the buffer now holds a *lit* lamp, so the instant he moves away and `restore_under` runs, the lamp is painted back in bright yellow. He lights it by walking on, and it glows the moment he walks off.
-
-## Two ideas worth naming
-
-This tiny block carries two of the biggest ideas in game programming:
-
-- **Collision as a rule, not just a barrier.** In Unit 7, touching a cell asked "can I go there?". Here, *being* on a cell *does* something. Collision became the game's rules — step on this kind of thing and the world changes.
-- **Persistent state lives in the world.** The lamp doesn't stay lit because the lamplighter remembers it; it stays lit because we changed the *cell*. The glow lives in the floor, not the sprite. Walk to the far side of the square and back — still lit, because the change is *there*, in memory, where we put it.
-
-And it's naturally **idempotent**: step back onto a lamp that's already lit and the save grabs yellow, the `cp LAMP_UNLIT` fails, nothing changes. A lit lamp stays lit. You can't accidentally un-light one by crossing it twice.
-
-## Milestone — light it
-
-Right after `save_under`, we read the attribute we just stored, and if it's a cold lamp, overwrite the *saved* copy with the lit colour. That's the whole feature — a compare and a write, no new drawing.
+Unreachable is a strong claim, so test it the honest way: make the two systems *disagree*, and see which one the player feels. One byte does it — the south check's `cp 23` becomes `cp 20`, dragging the numeric fence three cells north of the south wall:
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/gloaming/unit-10/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/gloaming/unit-10/steps/step-01.asm"
   lang="z80"
-  title="Step 1: edit the saved attribute — cold lamp becomes lit"
+  title="Step 1: the probe — move the fence where the walls aren't"
+  context={3}
+/>
+
+<details>
+<summary>The complete step 1 program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-10/steps/step-01.asm" lang="z80" />
+</details>
+
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-10/step-01-fence.mp4"
+  caption="Hold A, walking south — and he halts in the open, three cells short of the wall, on nothing at all."
+  autoplay={true}
+  loop={true}
+/>
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-10/step-01-fence.png" alt="The lamplighter stopped on open cobbles, three cells above the south wall." caption="The clamp, caught working. There is no wall here, no marker, no anything — just a number in the code that says row 20 is forbidden. This is what an invisible rule feels like from inside the game: wrong." />
+
+Two things proved at once. The clamp is alive — change its number and the world changes, so those compares really do run. And everywhere its numbers *match* the walls, it never gets to act, because the walls answer first. The probe shows the only thing the clamp can still do to this game: contradict the map. A rule the player can't see, duplicating a rule they can — that's not a safety net, it's a liability with good intentions.
+
+## Milestone 2 — take it down
+
+Put the byte back — and take the whole block with it. The four compares, the two loads, the scaffold comment: fourteen lines out, nothing in.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-10/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-10/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: the scaffold comes down — a diff that only deletes"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-10/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-10/steps/step-02.asm" lang="z80" />
 </details>
 
-Walk him across a cold lamp and it blooms from cyan to gold as he steps off, and stays that way behind him:
+The same held **A** that step 1 stopped in the open now walks him all the way to the stone:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-10/step-02-south.png" alt="The lamplighter pressed against the south wall." caption="Same input as the fence shot, no clamp: he stops where the world stops, pressed against the south wall — because wall_at reads brick, and for no other reason." />
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-10/step-02-edge.png" alt="The lamplighter pinned against the east wall." caption="The east edge, held: the cell beyond him is wall data, and data is the whole boundary now." />
 
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-10/step-01-light.mp4"
-  caption="The lamplighter walks down and then across a cold lamp. He lights it by standing on it — nothing shows while he covers it — and the instant he steps off, restore paints it back bright yellow. The glow stays put in the floor behind him."
+  src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-10/step-02-perimeter.mp4"
+  caption="A full circuit of the square, pinned into every wall and both far corners on the way round — east, south-east, south-west, north-west. Not one numeric check remains; the square itself is the boundary."
   autoplay={true}
   loop={true}
 />
 
-He's left one lamp glowing gold while the rest stay cold — and that glow lives in the cell, not in him:
+## The convergence
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-10/step-01-glow.png" alt="The square of lamps with one lamp near the bottom now glowing yellow, the lamplighter just beside it; the other lamps still cyan." caption="One lit, seven cold. Walk a full circuit and you'd leave a trail of warm lamps — the glow stays because we changed the cell, not the sprite." />
+Here's what makes this small unit a landmark. The clamp was the last piece of scaffolding — the last line in the program that existed for the *course* rather than the *game*. With it gone, the program you have just built is, **byte for byte, the movement core of the finished Gloaming**: assemble it and the snapshot matches the module's target exactly. Not "equivalent to", not "close enough" — identical.
+
+That's worth pausing on, because of what it says about the five units behind you. The detour through smears, gouges, blurring speed and ghost-buildings wasn't a teaching version of the real thing — it *was* the real thing, approached in an order that let every mistake announce itself. From here to the end of the module, everything — lamps, light, the tally, the draught, the night — builds on this exact file.
 
 ## When it's wrong, see why
 
-Lighting fails in ways that point at *where* you wrote the change:
+A deletion unit's failures are about deleting the wrong thing, and each announces itself:
 
-- **Lamps never light.** The check runs in the wrong place or tests the wrong value. Read `under_lamp + 8` **after** `save_under`, and compare it against `LAMP_UNLIT`.
-- **A lamp flashes lit while he stands on it, then goes cold.** You changed the live screen cell instead of the buffer. Light it by writing `under_lamp + 8`, never the cell directly — let restore do the painting.
-- **The cobbles light up too.** Your compare is matching floor. Cobbles are `COBBLE`, lamps are `LAMP_UNLIT`; only the exact cyan lamp value should pass the `cp`.
-- **A lit lamp turns cold when you cross it again.** Restore isn't writing the lit attribute back to the real cell, so the second save grabs stale data. Confirm `restore_under` writes `under_lamp + 8` to the attribute.
+- **He walks through the buildings and the frame.** You took out the veto — the `call wall_at` / `ret nz` pair — instead of, or along with, the clamp. That pair is the boundary now; the clamp was the one that did nothing.
+- **The screen erupts at the edges, or the machine dies.** Same deletion, worse luck: with no veto *and* no clamp, you've rebuilt Unit 6's walk-off-the-world, and past the map every address still lands somewhere. Both protections gone is the one state this program must never ship in.
+- **He still stops short somewhere in the open.** Half the clamp survives — a stray compare left behind. The block was fourteen lines; a deletion diff should show all fourteen gone, which is exactly why diffs of deletions deserve as careful a read as diffs of additions.
+- **Everything works.** Correct. The most suspicious result in programming — but you *proved* it beforehand with the probe, which is the difference between confidence and hope.
 
 ## Before and after
 
-You started with lamps you could only cross and finished with lamps you can *light* — and the whole mechanic is a compare and a write slipped into a move you already had. No new drawing, because restore does the painting; no memory of which lamps are lit, because the lit state lives in the cells themselves. Crossing a lamp now *means* something. There's a game here: light them all.
+The unit began with two boundary systems agreeing by coincidence and ended with one, made of map data, plus fourteen fewer lines of code. The probe is the half worth keeping in your pocket: before deleting anything that looks load-bearing, find the experiment that makes its work *visible* — move the fence, break the agreement, watch what the player feels — and only then delete with a steady hand. Code you can prove idle is code you can remove without faith. And a diff that only deletes, backed by a proof, is about the best kind of diff there is.
 
-## Try this: light the lot
+## Try this: break the wall, find the dark
 
-Walk a full circuit of the square, stepping on every lamp. By the end the whole board is warm — eight gold lanterns where eight cold ones stood. That circuit *is* the game; the next two units add the score and the win that make it one.
+The fence is gone, so the walls carry everything — test *that* honestly too. In setup, after `call paint_walls`, knock one cell out of the north wall:
 
-## Try this: a flickering flame
+```
+ld   hl, $5800 + 1*32 + 15
+ld   (hl), COBBLE
+```
 
-A lit lamp is an attribute, so make it livelier. Set the FLASH bit in `LAMP_LIT` — `%11000110` — and the lit lamps pulse, ink and paper swapping a few times a second, like a real flame catching. One bit, and cold becomes alive.
+Walk up through the gap. He steps into the wall's row, then onto the HUD row — and past that, the row arithmetic leaves the map entirely and his glyph bytes start landing where they shouldn't, painting garbage colour down the screen. Unit 6's dark is still out there; the only thing between him and it is wall data, which is precisely why the map must stay sealed. Reset, remove your hole, and respect the perimeter.
 
-## Try this: make them toggle
+## Try this: reshape the world
 
-Change the rule. Instead of only lighting unlit lamps, compare against `LAMP_LIT` as well and swap either way — step on a lit lamp and it goes cold again. Now lamps *toggle*, and you have a different game (keep them all lit at once?). The point: the rule is yours. "What does stepping here do?" is a line of code you get to write.
+The boundary is data now, so *edit* it: in `bldg_data`, stretch the first building into a long wall — `defb 5, 5, 4, 12` — and rebuild. The square becomes two chambers with a corridor along the south, and the movement code neither knows nor cares: no bounds to retune, no clamp numbers to keep in step. This is what retiring the clamp bought — the map is free to change shape, and collision follows it automatically.
+
+## Try this: read the diff backwards
+
+Open the step 2 diff again and read it as a reviewer would: every changed line is a removal, and the program got *better*. Ask of each deleted line "what did this protect, and what protects it now?" — the row compares (the walls, via `wall_at`), the column compares (same), the loads that fed them (nothing needed them). When you can answer that question for every line, you've done a deletion review properly — a skill exactly as real as writing code.
 
 ## What you've learnt
 
-- **Collision as a rule:** stepping onto a kind of cell can *do* something, not just gate movement.
-- **Persistent state lives in the world:** change the cell and it stays changed — the glow is in the floor, not the sprite.
-- Lighting **reuses save/restore**: edit the *saved* attribute, and restore paints the lamp lit when he leaves.
-- The trick is **idempotent** — a lit lamp stays lit, however many times he crosses it.
+- **Duplicate rules drift**: two systems enforcing one boundary agree only by coincidence, and the invisible one should die.
+- **Prove before deleting**: make the suspect code *disagree* with its twin and observe — unreachable code can't change behaviour, so if behaviour changes only where they conflict, the twin was already doing all the work.
+- **Order matters in the asking**: the veto answers before the clamp ever could — placement made the clamp unreachable, not luck.
+- **Boundaries as data**: the map now bounds the game, so reshaping the map reshapes the game with no code changes.
+- **Convergence**: the movement core is the finished game's, byte for byte — the detour built the real thing all along.
 
 ## What's next
 
-Lamps light, but nothing's counting. A game needs to know how you're doing and tell you. In **Unit 11** we add **the tally**: a row of pips along the bottom, one per lamp, brightening as each is lit — a score you read at a glance. It's a coloured-cell readout, not drawn numbers, and the honest "before" of the digit HUD a later game builds.
+The stage is finished — canvas, heartbeat, honest movement, a town that pushes back. **Unit 11** starts the game that lives on it: eight unlit lanterns, drawn from a data table just like the buildings were, standing on the floor waiting for him. And thanks to Unit 8, he can walk right over them and leave every one standing.
