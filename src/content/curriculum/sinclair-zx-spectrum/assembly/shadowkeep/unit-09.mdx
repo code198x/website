@@ -1,10 +1,10 @@
 ---
-title: "Light and Shadow"
-description: "The keep is flatly lit — every cell the same cold blue. Hang a torch and let the dithering you met in Unit 2 become lighting: pick each floor cell's shade by its distance from the flame, so a pool of light fades into the dark."
-pubDate: 2026-06-02
+title: "The Keep's Gold"
+description: "Three rooms you can wander, and nothing to do in them. Scatter gold through the keep, let the thief lift each coin as he steps on it, and make the last one matter: collect them all and the keep stands."
+pubDate: 2026-07-04
 game: 2
 unit: 9
-tags: ["assembly", "z80", "lighting", "dithering", "atmosphere"]
+tags: ["assembly", "z80", "game-loop", "collectibles", "win-state"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
@@ -12,140 +12,150 @@ import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
 
-The keep is built, but it's lit like an office — every cell the same even blue, no dark corners, no sense of nightfall. Atmosphere is the whole point of Shadowkeep, and atmosphere starts with light. This unit hangs a torch in each room and lets it throw a pool of light into the gloom.
+You have a keep. Three rooms, joined by doorways, a hooded thief who walks them and cannot pass through walls. It is a *place* — but it is not yet a *game*, because there is nothing in it to want. You can wander the Hall, thread the Gallery's gap, circle the Vault's altar, and then… wander back. A place you can leave exactly as you found it is a room, not a level.
 
-You have made light before — but not this way, and the difference is the lesson. In *The Long Night*, every lamp you lit warmed a pool around it: you made light by **recolouring attributes**, cobble turning to glow. That is one of the two ways this machine makes light, and you own it cold. Here is the other, and it could hardly be more different: not colour, but **density**. Back in Unit 2 you learned that dither density is shade — sparse pixels read light, dense read dark. Lighting is *choosing that density by distance from a flame*: close to the torch, sparse and bright; far, dense and near-black. The keep has no glow attributes to spare — its walls are already cold stone, its cells already spent on shape — so it lights the only way left to it: in the bitmap. Two independent routes to the same feeling, and a real Spectrum artist keeps both on the bench.
+This unit gives the keep a **point**. Gold — coins scattered through the rooms — and a reason to move: lift every one, and the keep is yours. It is the oldest bargain in games, the one *Atic Atac* and a hundred others struck: here is treasure, here is somewhere to carry it from, now go. And with the gold comes the shape every finished game needs — a **win**: a state the keep can reach where the playing stops and the flourish plays.
 
 ## What you'll see by the end
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-09/step-01-lit.png" alt="The Hall lit by a single torch set in the top wall: a bright pool of light fans out below the flame and fades through deepening shades of slate to near-black in the corners; the hooded thief stands in the shadow below, the pillars dark around him." caption="One torch in the top wall, and the floor lights itself: a pool of near-blue under the flame, thickening through slate to near-black in the corners. Same room as last unit, the same blue and black — only the dither density, chosen now by distance from the flame." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-09/step-01-gold.png" alt="The Hall, bare stone and four pillars, with the hooded thief near the centre and two yellow coins glinting on the right — one high, one low. The east doorway stands open in the right-hand wall." caption="The same Hall as last unit, with something to want in it: two coins on the right, a counter quietly waiting on six. Walk onto a coin and it lifts with a chime; lift the last and the keep stands." />
 
-A torch burns in the top wall, and the floor beneath it is *lit* — nearly all blue, the stone catching the flame. Step away and the dither thickens: half-and-half slate, then darker, then the far corners almost black. The thief stands down in the shadow, the lit pool above him. Same keep as last unit; an entirely different place to be in.
+Two coins glint in the Hall, more in the rooms beyond — six in all. Walk the thief onto one and it is gone: a bright *ting*, and the counter drops. Clear all six and the screen turns black to tell you so — **THE KEEP STANDS** — then hands you back to the title to do it again. A goal, a tally, an ending: the parts that turn walking into playing.
 
-## A torch is a glyph
+## Gold is a glyph you can stand on
 
-A torch is just another tile in the palette — `T`, a yellow flame in its sconce — placed in the room map like any wall:
-
-```
-            defb    "###############T################"   ; the Hall's top wall
-```
-
-It's drawn **bright**, so `wall_at` already treats it as solid stone — a fixture on the wall, not something you walk through. When a room is drawn, we first find its torch:
+You have placed tiles in the room map before — walls, torches-to-come, the chalk you leave. Gold is one more, `G`, a coin drawn in plain yellow. The difference is in its *attribute*: where a wall is bright (and so reads as solid to `wall_at`), gold is dim — walkable — so the thief steps **onto** it rather than into it:
 
 ```
-find_torch:
-            ; ... scan the room map for 'T', record (torch_col, torch_row) ...
-            ; ... or NO_TORCH if the room has none ...
+GOLD_ATTR   equ     %00000110         ; yellow ink, no BRIGHT -> walkable gold
 ```
 
-## Distance becomes shade
-
-For each floor cell, how lit it is depends on how far it sits from that flame. We measure the distance — the larger of the row gap and the column gap, which gives a neat square-ish pool — halve it, and clamp it to give a shade from 0 (right by the flame) to 4 (deep dark):
+Drop a few into the room maps like any other letter:
 
 ```
-shade_for_cell:                     ; row in B, column in C -> shade 0..4 in A
-            ; ... |row - torch_row| and |col - torch_col| ...
-            ; ... A = the larger of the two (the distance) ...
-            srl     a               ; distance / 2 — a gentle falloff
-            cp      MAX_SHADE + 1
-            jr      c, .sf_done
-            ld      a, MAX_SHADE     ; clamp to the darkest
-.sf_done:
+            defb    "#.........................G....#"   ; a coin on the right
+```
+
+## Lift it as you step
+
+Every successful move already ends the same way: the thief lands on a new cell, and we save what's beneath him and draw him on top. Collecting is one question asked at that moment — *is the cell I just stepped onto gold?* — and if so, we lift it:
+
+```
+collect_gold:
+            call    cell_state_addr  ; the map cell under the thief
+            ld      a, (hl)
+            cp      'G'
+            ret     nz               ; not gold — nothing to do
+            ld      (hl), '.'        ; taken — floor from now on
+            call    draw_floor_cell  ; repaint the cell empty
+            call    sfx_pickup       ; a bright two-blip chime
+            ld      hl, gold_remaining
+            dec     (hl)             ; one fewer to find
             ret
 ```
 
-And the five shades are five floor tiles, the same blue and black at thickening densities — `shade0` nearly all blue, `shade2` the half-and-half slate from Unit 2, `shade4` nearly all black:
+We change the coin **in the map**, not just on screen — `G` becomes `.` — so it stays gone when the room is redrawn, and so `save_under` grabs floor, not treasure, as the thief moves off. The coin is lifted once and for all.
+
+## The last coin matters
+
+A counter you can drive to zero is a game waiting for an ending. `collect_gold` ticks `gold_remaining` down; when it reaches zero, the keep is clear, and we raise a flag — `won` — that the main loop is watching:
 
 ```
-shade_tiles:
-            defw    shade0_tile     ; lit
-            defw    shade1_tile
-            defw    shade2_tile     ; the old floor
-            defw    shade3_tile
-            defw    shade4_tile     ; deep shadow
+            dec     (hl)
+            ld      a, (hl)
+            or      a
+            call    z, win           ; the last coin — the keep stands
 ```
 
-## Lighting as the room draws
-
-`draw_room` now does the choosing as it paints. A floor cell is shaded by distance; a wall, torch or chalk mark is drawn flat as before:
+That flag is the hinge of the whole program. Until now the loop has done one thing forever: read the keys, move the thief, repeat. Now it is a small **state machine** — the same title → play → win → title shape you built in your first game, brought to the keep:
 
 ```
-.room_col:
-            ld      a, (hl)          ; the glyph here
-            cp      '.'
-            jr      nz, .not_floor
-            call    shade_for_cell   ; floor: pick a shade by distance
-            ; ... point tile_ptr at shade_tiles[shade] ...
-            call    draw_tile
-            jr      .cell_done
-.not_floor:
-            call    lookup_tile      ; wall / torch / chalk: flat
-            call    draw_tile
+main_title:
+            call    show_title       ; the name, and PRESS SPACE
+            call    new_game         ; reset the rooms, place the gold
+.game_loop:
+            halt
+            ld      a, (won)
+            or      a
+            jr      nz, .won         ; cleared? -> the flourish
+            call    player_step
+            jr      .game_loop
+.won:
+            call    show_win         ; THE KEEP STANDS
+            jr      main_title       ; round again
 ```
 
-The light is **baked** — worked out once, when the room is drawn. The torch doesn't move, so the pool doesn't either; it's the still light a sconce casts. (A flickering, carried flame comes later.) And it costs nothing as the thief walks: his save-and-restore already preserves whatever's beneath him, lit shade and all, so he moves through the gradient and leaves it untouched.
+`new_game` copies the room templates back into working memory — so the gold you lifted last time returns — resets the counter to six, and stands the thief at the door. The keep is replayable because every game begins by rebuilding it.
 
-## Milestone — light the keep
+## Milestone — a goal and a win
 
-`find_torch` scans each room's map for a `T`; `shade_for_cell` turns a floor cell's
-distance from that flame into a shade 0–4; and `draw_room` now picks a floor tile
-from a five-step density ramp as it paints, walls and torches still drawn flat. The
-light is baked once, as the room draws — and the thief's save/restore carries each
-shade beneath him for free.
+Gold is a walkable glyph you lift by stepping on it; a counter tracks how many
+remain; and the loop that only ever *played* now knows how to *end* — the last
+coin raises the win flag, the flourish plays, and the title returns for another
+run. Two steps: first the gold and the collecting, then the win that makes it mean
+something.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/shadowkeep/unit-09/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/shadowkeep/unit-09/steps/step-01.asm"
   lang="z80"
-  title="Step 1: a torch glyph, distance-to-shade, and a five-step floor ramp"
+  title="Step 1: gold in the rooms, and lifting it as you step"
+  context={3}
+/>
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-09/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-09/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: the last coin wins — a title -> play -> win -> title loop"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-09/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-09/steps/step-02.asm" lang="z80" />
 </details>
 
-Stand in the lit pool under the Hall's torch, then walk straight down into the dark — the floor thickens to shadow around you, and the gradient closes behind you untouched:
+Collect the Hall's two coins, cross to the Gallery and the Vault for the rest, and lift the sixth:
 
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-09/step-01-into-dark.mp4"
-  caption="From the bright pool under the torch, down into the deepening slate and back up. The light is a real space the thief moves through — and his save/restore lays each shade back as he steps off, so the gradient is never smeared. Baked light, carried for free."
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-09/step-02-clear.mp4"
+  caption="Six coins across three rooms, each lifting with a chime and dropping the tally, until the last turns the screen to THE KEEP STANDS. A place became a level the moment there was something to clear from it."
   autoplay={true}
   loop={true}
 />
 
-## Try this: move the flame
+## Try this: a coin behind the altar
 
-Shift the `T` in a room map to a side wall, or into a corner. The pool moves with it — the lit area is wherever the torch is, computed fresh. Light is data now: you place a flame by typing a letter, and the room lights itself around it.
+Move a `G` in the Vault map to a cell hemmed in by the altar's stone, or tuck one in a pillar's shadow in the Hall. The keep is only cleared when *every* coin is lifted, so a coin you have to work to reach is a small puzzle — the beginning of designing a level, not just filling a room.
 
-## Try this: a brighter, wider torch
+## Try this: change the reward
 
-The falloff is `srl a` — distance halved. Change it: `srl a` twice (distance / 4) makes a *huge* soft pool that barely reaches dark; remove the `srl` entirely (distance itself) and the light collapses to a tight, harsh ring. One shift instruction is the difference between a candle and a bonfire.
+`sfx_pickup` is two quick blips. Make the chime yours: a single low *thunk* for a heavy coin, or three rising blips for a richer prize. The sound a game makes when you succeed is half of why success feels good — spend a minute making yours feel good.
 
-## Try this: light the walls too
+## Try this: count up, not down
 
-Only floor is shaded here; the walls stay uniformly lit. Extend the idea: give `#` a shade ramp of its own and shade walls by distance to the torch as well. The far walls sink into the dark with the floor, and the pool becomes a true bubble of light in a black room — a big step toward Knight Lore's gloom.
+We count `gold_remaining` **down** to zero. Flip it: count coins **collected** up, and win when the total equals the number you placed. The same game, a different feeling — a score that grows rather than a debt that shrinks. Which one suits a treasure hunt?
 
 ## When it's wrong, see why
 
-- **The whole floor is darkest.** No torch was found — check the room map contains a `T`, and that `find_torch` runs before the draw. `NO_TORCH` means everything clamps to shade 4.
-- **The pool is the wrong shape or off-centre.** `shade_for_cell` mixed up rows and columns, or isn't taking the larger of the two gaps. Distance is `max(|dr|, |dc|)`.
-- **Floor cells are solid / the thief is trapped.** A shade tile was given a bright attribute. All five shades share `FLOOR_ATTR` (dim); only the *pattern* changes, so they stay walkable.
-- **The torch is walkable / draws as floor.** `T` must be in the palette with a bright attribute, and the floor branch only catches `.` — anything else falls through to the palette.
-- **The lit area is a hard-edged block.** That's the square (Chebyshev) distance showing its corners. It's fine, and true to the machine; for a rounder pool, add the gaps instead of taking the larger (a diamond) or sum their squares (a circle, more maths).
+- **The coin vanishes but comes back.** You repainted the screen but not the map — the redraw put the `G` back. Change the map cell to `.` as well; that is what makes it *gone*.
+- **You win the instant you touch one coin.** The counter is starting at 1, or `dec` runs before the count is set. `gold_remaining` must be reset to the full count in `new_game`, before the loop begins.
+- **The thief walks straight over gold without lifting it.** `collect_gold` isn't called after a move, or it's checking the old cell. It has to run once the thief has landed on the new cell, reading *that* cell's contents.
+- **Second game has no gold.** `new_game` isn't copying the templates back — the working rooms still hold the floors you left. Rebuild the rooms every game and the treasure returns.
+- **The coin is solid — the thief stops dead at it.** `GOLD_ATTR` has its BRIGHT bit set, so `wall_at` reads it as wall. Gold must be dim to be walkable.
 
 ## Before and after
 
-You started with a keep lit like an office — every cell the same flat blue — and finished with rooms that have a pool of light and a dark to step into. Nothing new drew the change: it's the dither-is-shade idea from Unit 2, with the density now *chosen by distance from a flame* instead of fixed. A torch is a glyph you type into the map; the light bakes itself as the room paints; and the thief carries each shade beneath him without a line of extra code. The keep stopped being evenly lit and started having somewhere to hide — the first real stroke of atmosphere.
+You began with three rooms and nothing to do in them, and finished with a keep that can be *cleared* — six coins to lift, a tally that falls, and a black screen with two words that mean you did it. Nothing exotic did the work: a walkable glyph, a question asked after each step, a counter, and a flag the loop watches. That flag is the important thing. It turned a walk that never ended into a game that can — and a game that can end is a game you can win.
 
 ## What you've learnt
 
-- **Light is dither density chosen by distance.** The shading technique from Unit 2, driven by how far a cell is from a flame — no new drawing, only a new choice.
-- **A light source is data.** A glyph in the map; place it, move it, and the room re-lights around it.
-- **Bake what doesn't change.** Static light is computed once as the room draws, costing nothing per frame — and the hero's save/restore carries the shade for free.
-- **Falloff is a feel knob.** How fast light fades — one shift — sets whether the keep feels candle-lit or floodlit.
+- **A collectible is a walkable tile you lift on contact.** Change it in the map, not just on screen, and it stays lifted.
+- **A goal is a counter with an ending.** Track what remains; when it hits zero, the game is won.
+- **A win is a state, not a moment.** A flag the loop watches, turning play into title → play → win → title — the shape every finished game shares.
+- **Replayable means rebuilt.** Every new game copies the keep back from its templates, so the treasure — and the challenge — return.
 
 ## What's next
 
-The keep has light and dark now, but its rooms are bare — stone, pillars, and not much else. A place you believe in has *things* in it: an altar, a sconce, a scatter of rubble, a well. In **Unit 10, "Furnishings,"** we add decorative objects — scenery the thief walks past, not into — that turn a lit room into a room with a story. Atmosphere is light *and* the things the light falls on.
+The keep can be cleared, but nothing stops you. You can take all the time in the world, walk any route, never lose a thing — and a game you cannot lose is only half a game. In **Unit 10, "Something in the Dark,"** the keep stops being empty: a second figure moves in it, walking a slow patrol of its own. It cannot hurt you yet — first we simply give it a body and a route. But the coins are about to get harder to reach.

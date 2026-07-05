@@ -1,10 +1,10 @@
 ---
-title: "Mood through Constraint"
-description: "The lighting engine is built; now compose with it. Give each room its own falloff — one byte — so the Hall reads as a broad lit chamber and the Vault as a near-black crypt lit only at the altar. Same two colours, same dither; restraint is the technique."
-pubDate: 2026-06-02
+title: "Join the Sleepers"
+description: "The Warden walks, but it cannot touch you. Give its touch a consequence — the one the keep has lacked since the first room — and the Place stops being a walk and becomes a game: step where it steps, and you join the sleepers."
+pubDate: 2026-07-04
 game: 2
 unit: 11
-tags: ["assembly", "z80", "atmosphere", "lighting", "design"]
+tags: ["assembly", "z80", "game-loop", "lose-state", "collision"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
@@ -12,114 +12,139 @@ import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
 
-The keep is lit and furnished — but every room is lit the *same*. A grand hall and a burial crypt should not feel alike, and atmosphere is as much about restraint as addition. This unit stops adding features and starts **composing** with the ones we have. The whole palette is still two colours a cell and a ramp of dither; the art is in how we use the limit.
+Here is the unit the whole game has been walking toward. You have a keep, treasure, a way to win, and now a figure that moves. Everything is in place except the one thing that makes any of it *matter*: a way to **lose**.
 
-The lever is a single byte per room: how fast its light fades.
+It is worth saying plainly, because it is the most important idea in the course, and your first game taught it too: **a game needs a way to lose.** Without it, a win is not earned — you were always going to get there, it was only a question of when you could be bothered. The coins are a chore-list; the Warden is scenery. Give the Warden's touch a consequence, and everything tightens at once. The route you took without thinking becomes a route you must *plan*. The coin on the Warden's column becomes a coin you must *time*. Nothing on screen changes. The stakes change, and the stakes are the game.
 
 ## What you'll see by the end
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-11/step-01-vault.png" alt="The Vault as a crypt: a flame burns on the central altar, throwing a small, tight pool of light over the stone immediately around it; the rest of the room falls away into near-black, the hooded thief a dim figure approaching through the dark." caption="The Vault as a crypt: one flame on the altar, a tight pocket of light, and beyond it near-black — the dither thickening cell by cell until the walls are swallowed. The thief, a faint shape, drawn to the only light there is. One byte of falloff makes this room of the same engine that lights the Hall like an open chamber." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-11/step-02-keep-sleeps.png" alt="A black screen, centred white text reading THE KEEP SLEEPS, and below it PRESS SPACE TO RETURN." caption="The other ending. Where THE KEEP STANDS is the win you earn by clearing every coin, THE KEEP SLEEPS is the loss you earn by sharing a cell with the Warden — caught, frozen, one of the keep's sleepers now." />
 
-The Vault, now: a single flame on the altar, a tight pocket of light around it, and beyond that *darkness* — the dither thickening to near-black across the floor, the walls swallowed. The thief is a faint shape down in the gloom, drawn toward the only light there is. Step back into the Hall and it's the opposite: a wide, even glow, an open and unthreatening room. Two rooms, one lighting engine, two completely different feelings.
+Walk into the Warden's path and it will step onto you — and the screen turns black with two cold words: **THE KEEP SLEEPS**. A falling toll, and you are back at the title. You were caught; you froze mid-stride; you joined the sleepers the keep is full of. The keep now has two endings, and the difference between them is whether you were careful.
 
-## One byte of mood
+## You cannot walk into the Warden
 
-Back in Unit 9 every room halved the distance to get its shade (`distance >> 1`). The new idea is to make that shift a property of the *room* — its **falloff**:
+There is a subtlety here worth dwelling on, because it shapes the whole feel of the danger. The Warden is drawn **bright**, and bright reads as solid to `wall_at` — so when *you* try to step onto the Warden's cell, the thief's own movement code refuses, exactly as it refuses a wall. **You can never walk into the Warden.**
 
-```
-room_falloff:
-            defb    2               ; Hall    — distance >> 2: a broad, soft pool
-            defb    1               ; Gallery — distance >> 1: medium
-            defb    0               ; Vault   — distance     : a tight pool, deep dark
-```
+So the catch is never yours to make by accident. It is always the *Warden* stepping onto *you*. That is a fairer, colder kind of danger: you cannot blunder into it, but if you stand in its path and let it come, it will. The threat is the patrol's motion, not a wall you might brush.
 
-A bigger shift makes distance grow slowly, so the light reaches far — a generous, well-lit room. A shift of zero lets distance count cell-for-cell, so the light collapses to a tight ring and everything past it is black. `shade_for_cell` just reads the current room's falloff and shifts by it:
+In `warden_step`, then, before the Warden asks `wall_at` about the cell ahead, it asks a different question first — *is the thief there?* — because the thief's cell would read as a wall and turn the Warden aside, when what we want is for it to **catch** him:
 
 ```
-            ld      a, (current_room)
-            ; ... index room_falloff ...
-            ld      b, (hl)         ; B = this room's falloff
-            ld      a, e            ; A = distance to the torch
-.sf_shift:
-            dec     b
-            jr      z, .sf_clamp
-            srl     a               ; shift by falloff, then clamp
-            jr      .sf_shift
+warden_step:
+            ; ... propose the cell ahead ...
+            ld      a, b             ; is the thief in the cell we're stepping into?
+            ld      hl, thief_row
+            cp      (hl)
+            jr      nz, .not_thief
+            ld      a, c
+            ld      hl, thief_col
+            cp      (hl)
+            jr      nz, .not_thief
+            ld      a, 1
+            ld      (caught), a      ; caught — the keep sleeps
+            ret
+.not_thief:
+            call    wall_at          ; otherwise, wall or floor as before
 ```
 
-That's the entire mechanism. The Hall is welcoming and the Vault is oppressive because of one number each.
+## A flag the loop already knows how to watch
 
-## Composing the dark
-
-Mood isn't only the falloff — it's *where the light is*. The Hall's torch sits high in a wall, washing the room; the Vault has **no wall torch at all**. Its only flame is on the altar itself:
+You have done this once before, this unit's real trick. To **win**, the last coin raises a `won` flag and the loop, seeing it, breaks to the flourish. To **lose** is the mirror image: capture raises a `caught` flag, and the loop, seeing *that*, breaks the other way:
 
 ```
-            defb    "#.............#T##.............#"   ; a flame set in the altar
+.game_loop:
+            halt
+            ld      a, (won)
+            or      a
+            jr      nz, .won         ; cleared -> THE KEEP STANDS
+            call    player_step
+            call    warden_step
+            ld      a, (caught)
+            or      a
+            jr      nz, .lost        ; caught -> THE KEEP SLEEPS
+            jr      .game_loop
 ```
 
-So in the Vault the light is born at the thing you're meant to look at, falls off at once (falloff 0), and leaves the rest to the dark. The eye has nowhere to go but the altar. That's composition: not "make it bright" or "make it dark", but *put the one light where it means something and let the constraint do the rest*. The Spectrum's two-colour cell, which looked like a limitation in Unit 1, is now the instrument.
+The loop that once did one thing forever now has **three** exits: play on, win, or lose. That third exit is all a lose-state *is* — not a new machine, just one more way out of the loop you already have. `new_game` clears `caught` alongside `won`, and the keep begins again, fair each time.
 
-## Milestone — a mood per room
+## The sound of stasis
 
-The shift that used to be fixed (`distance >> 1` everywhere) becomes a per-room
-**falloff** byte: `shade_for_cell` reads the current room's falloff and shifts the
-distance by that many places. A big shift reaches far (the Hall, falloff 2); a shift
-of zero collapses the light to a tight ring (the Vault, falloff 0, its only flame on
-the altar). The whole composition is one number per room.
+A loss deserves a sound as surely as a win does — and the opposite sound. Where the win flourish climbs, the capture **falls**: a quick slide down the pitches, then one deep, held toll, like stone closing over you. It plays on the black screen, under the words, the last thing you hear before the title returns:
+
+```
+sfx_caught:
+            ; a fast fall down the pitches...
+            ; ... then one long, deep toll — the stone closing
+```
+
+## Milestone — the keep can be lost
+
+The Warden's step onto the thief raises a `caught` flag; the main loop, which
+already breaks to the flourish when `won` is set, now breaks the other way when
+`caught` is set — a third exit, THE KEEP SLEEPS, with a falling toll for a sound.
+You can never walk into the Warden (it reads as solid); the catch is always the
+Warden walking into you. First the capture and the reset (step 1), then the screen
+and the sting that give the loss a face (step 2).
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/shadowkeep/unit-11/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/shadowkeep/unit-11/steps/step-01.asm"
   lang="z80"
-  title="Step 1: a per-room falloff byte drives the shade ramp"
+  title="Step 1: the Warden's touch is a loss — caught, back to the title"
+  context={3}
+/>
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-11/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-11/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: THE KEEP SLEEPS — a screen and a falling toll"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-11/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-11/steps/step-02.asm" lang="z80" />
 </details>
 
-Walk the keep end to end and feel the rooms change under you — the broad light of the Hall, the medium Gallery, and the tight, fearful pocket of the Vault where the thief steps from black into a ring of altar-light:
+Stand on the Warden's column and wait for it to come — one step, and the keep sleeps:
 
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-11/step-01-mood.mp4"
-  caption="East out of the broadly-lit Hall, through the Gallery's medium pool, and up into the Vault — where the light collapses to a tight ring on the altar and the thief stands in the dark below it. Same lighting engine in every room; only the falloff byte changes. Restraint is the technique."
-  autoplay={true}
-  loop={true}
-/>
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-11/step-02-caught.mp4"
+  caption="The thief steps onto the Warden's column and waits. The patrol arrives, steps onto his cell — and the screen falls to THE KEEP SLEEPS. The same keep as a minute ago, only now it can take something from you." />
 
-## Try this: re-light a room
+## Try this: a narrow escape, tuned
 
-Change a room's `room_falloff` and watch its character flip. Give the Hall a `0` and the welcoming chamber becomes a cramped, shadowed box. Give the Vault a `3` and the crypt floods with light and loses all its menace. You're not redrawing anything — you're tuning a feeling with a single digit.
+Make the Warden faster or slower and feel how the danger changes. A slow patrol is a puzzle you solve once; a fast one is a nerve you hold. Somewhere between is the pace where a coin on its column is *tempting but tense* — reachable if you read the rhythm, punishing if you don't. That tuning is level design.
 
-## Try this: a pitch-black room with one candle
+## Try this: a second chance (and why we didn't)
 
-Build a small room, no wall torches, a single `T` in a far corner, falloff `0`. Almost the whole room is black; one corner glows. Drop a piece of treasure or a doorway *just* at the edge of the light, so the player has to step into the dark on faith to reach it. Darkness you have to enter is one of the oldest tricks in the genre.
+Right now one touch sends you to the title — the whole run gone. That is harsh, harsher than the arcade games this descends from, which gave you lives. Add a `lives` counter: decrement on capture, and only go to the title at zero. It is a few lines. We hold it back on purpose — being *alone* is this keep's fiction, and lives are a later chapter's idea — but you should feel how a single number changes forgiveness.
 
-## Try this: contrast by neighbour
+## Try this: make the toll yours
 
-Put a bright room next to a dark one and a dark next to bright. Walking from the lit Hall into the black Vault *feels* darker than the Vault would on its own, because your eye arrives expecting light. Mood is relative — you compose the journey, not just the room.
+`sfx_caught` falls and then holds. Reshape it: a single sharp *crack* for a snap-freeze, or a long slow descent with no toll for a slow sinking. The sound of failure is teaching the player how to feel about failing — a comedy boing and a funeral bell are different games.
 
 ## When it's wrong, see why
 
-- **Every room looks the same.** `shade_for_cell` isn't reading `room_falloff` for the current room — check the index is `current_room` and the shift loop runs that many times.
-- **A room is all black.** Its falloff is low *and* its torch is far from the floor (or missing). With falloff 0 the light barely reaches; make sure there's a flame where you want the pool.
-- **A room is flatly bright.** Falloff is too high for the room's size, so even the far corners clamp to the lightest shades. Lower it, or move the torch.
-- **The thief gets darker/lighter as he moves — flickering.** Shade is baked per *draw*, not per frame; if it flickers, something is redrawing the room every frame. It should only redraw on entry.
-- **The pool is square, not round.** Still the Chebyshev distance — fine and characterful. Sum the axes for a diamond, or their squares for a circle, if you want softer pools.
+- **You can walk onto the Warden and nothing happens.** You can't — it reads as a wall. If you *think* you should be able to, you have confused the two catches. The thief never enters the Warden's cell; the Warden enters his.
+- **The Warden turns aside at you instead of catching you.** The thief-check runs *after* `wall_at`, so his solid cell reverses the patrol before the catch is tested. Ask "is the thief there?" *before* asking `wall_at`.
+- **Caught, but the game keeps playing.** The loop isn't testing `caught` after `warden_step`, or `.lost` falls back into the loop. It must break out to the lose screen, like `.won` breaks to the win.
+- **You lose the instant a new game starts.** `caught` isn't cleared in `new_game`. Reset it beside `won`, or you begin every game already frozen.
+- **Both endings fire at once on the last coin.** You collected the sixth coin and were caught on the same step. Decide the order deliberately — usually a win you earned should stand.
 
 ## Before and after
 
-You started with a keep where every room was lit alike and finished with three rooms that *feel* different — the Hall open and welcoming, the Vault a tight, fearful crypt — without adding a thing. The lighting engine is exactly Unit 9's; the change is one falloff byte per room and the choice of where each flame sits. That's composition: not more features but restraint, using the Spectrum's two-colour cell and a dither ramp — the same limit that looked like a wall in Unit 1 — as the instrument. The keep stopped being uniformly lit and started having moods.
+You began with a keep you could clear at your leisure and finished with a keep that can freeze you where you stand. And the machinery was almost nothing: a flag, a check, a third way out of a loop you already had. That is the shape of every lose-state you will ever write — not a new system, but a consequence wired to the loop. The keep has both its endings now, STANDS and SLEEPS, and every step you take is measured against them. It was a place; it became a game the moment it could take something from you.
 
 ## What you've learnt
 
-- **Mood is a parameter.** One byte of falloff per room turns the same lighting engine into welcoming, neutral, or fearful — composition, not new code.
-- **Place the light with intent.** Where the flame sits, and how fast it fades, decides where the eye goes. In the Vault the light is the altar; everything else is permission to be dark.
-- **The constraint is the vocabulary.** Two colours a cell and a dither ramp — the same limit that defined Unit 1 — is enough to make a room feel like somewhere. Restraint, not richness.
-- **Atmosphere is relative.** Rooms read against their neighbours; you compose the walk through the keep, not just each screen.
+- **A game needs a way to lose.** A win you cannot fail to reach is not earned; the lose-state is what gives the win its weight.
+- **A lose-state is a flag and a third exit.** The same loop that breaks to the win breaks to the loss — no new machine, just one more way out.
+- **Danger can be one-sided.** You cannot walk into the Warden; it walks into you. Deciding who can catch whom shapes how the threat feels.
+- **Failure has a sound.** The falling toll teaches the player how to feel about being caught, as surely as the flourish teaches them to feel the win.
 
 ## What's next
 
-Each room can now hold a mood — but they were composed one at a time. In **Unit 12, "A Keep with Character,"** we pull back and treat the *whole keep* as one composition: a consistent hand across every room, so the three chambers read as parts of a single place with a single atmosphere, not three separate experiments. It's the unit that turns "rooms with lighting" into "a keep you believe in" — the close of the Mood and Light sub-arc.
+One Warden, in one room — the Hall is dangerous, but the Gallery and the Vault are still a stroll. A keep with one guarded room and two safe ones isn't a game yet; it's a game with a demo level. In **Unit 12, "A Warden for Every Room,"** the Warden becomes **data**: a table with a line per room, so every room instantiates its own patrol on the coins' ground — and the whole keep, at last, has something to fear in it.

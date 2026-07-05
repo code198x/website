@@ -1,0 +1,142 @@
+---
+title: "A Theme in One Voice"
+description: "Write music on one bit. Turn the note-table into a tune the title loops while it waits — pitch/duration pairs driving the beep primitive — and compose a short, solemn theme in D minor. One voice, no harmony: the melody carries the whole mood alone, and the keypress is never swallowed."
+pubDate: 2026-07-04
+game: 2
+unit: 18
+tags: ["assembly", "z80", "audio", "music", "beeper"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import AudioClip from "@components/AudioClip.astro";
+
+The keep is a complete game, and it is heard as you move through it now — footfalls, doors. But its title opens in *silence*, waiting mutely for you to press SPACE. A game announces itself; it has a *theme*, the few seconds of music that tell you what you're about to play. You have written one before — the dusk bells that tolled over *The Long Night*'s title, note and keyboard-poll interleaved so a waiting keypress was never swallowed. The keep deserves its own, on the same instrument: the single-bit beeper you clicked footsteps with in Unit 17, asked now to carry not a footstep but a *tune* — and looping it under the title, holding to that same discipline a title tune owes the player.
+
+## What you'll hear by the end
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-18/step-01-title.png" alt="The Shadowkeep title screen: the name in white, PRESS SPACE TO ENTER below — the screen unchanged, but now with a short D-minor phrase looping beneath it as it waits." caption="The same title — and a still can't carry what's new. As the keep waits, a short D-minor phrase loops beneath it: one voice, rising and resolving home, the keep introducing itself. Press SPACE at any point and it stops on the beat, mid-phrase or not." />
+
+The title screen is unchanged to look at — but now a short, solemn phrase plays under it, and loops, while the keep waits for you. Press SPACE at any moment and it breaks off cleanly and the game begins. The keep introduces itself before you take a step.
+
+## A note is a stack of beeps
+
+One `beep` runs at most 255 cycles — too short for a note you can hold. So `play_note` stacks `beep`s in **chunks**: a note's duration is a count of fixed-size chunks, and the routine simply runs the tone chunk after chunk until the count runs out:
+
+```
+play_note:                          ; C = pitch, D = duration in chunks
+.pn_loop:
+            ld      b, 24            ; one chunk = 24 square-wave cycles
+            push    de
+            call    beep             ; B cycles at pitch C
+            pop     de
+            dec     d
+            jr      nz, .pn_loop
+            ret
+```
+
+Stack a handful of chunks and a note breathes for a third of a second; a couple and it's a quick passing tone. Duration becomes rhythm. A `rest_chunks` of matched silence gives the rests their weight.
+
+## Composing for one voice
+
+The hard part isn't the code — it's that the beeper is **monophonic**. One bit, one note at a time: no chords, no bass under the melody, no harmony to hide behind. The tune has to carry rhythm, mood and identity entirely on its own line. So we write a small, deliberate phrase in D minor — dark, solemn, the keep before the dark:
+
+```
+theme:
+            defb    75, 8            ; D5
+            defb    63, 8            ; F5
+            defb    50, 8            ; A5
+            defb    50, 12           ; A5 (held)
+            defb    56, 8            ; G5
+            defb    63, 8            ; F5
+            defb    66, 8            ; E5
+            defb    75, 16           ; D5 (resolve)
+            defb    0,  6            ; a breath (pitch 0 = rest)
+            ; ... a short answer, then home ...
+            defb    $FF              ; end
+```
+
+It rises through the D-minor triad to a held A, then steps back down and resolves home to D — a shape you can hum, which is the whole job of a theme.
+
+## Looping without swallowing the keypress
+
+Here is the discipline *The Long Night* taught, applied again. The title doesn't play the theme and *then* wait for SPACE — it would swallow a press that came during the music. Instead the wait-loop **is** the player: it walks the theme note by note, and between every note it checks the keyboard. Reach `$FF` and it loops back to the start; press SPACE and it breaks out at once:
+
+```
+.tt_note:
+            ; check SPACE — pressed? leave immediately
+            ; read the next (pitch, duration) from the theme
+            ; $FF? loop back to the top of the theme
+            ; play the note (or rest), then round again
+```
+
+So the theme loops for as long as you leave the title up, and your keypress is caught the instant it lands — never held hostage by a note in progress.
+
+## Milestone — give the keep a theme
+
+`play_note` stacks the beeper in chunks so a note can breathe; the theme is a short
+D-minor phrase, one voice carrying the whole mood. The title's wait-loop doubles as
+the player: it walks the theme note by note, checks SPACE between each, loops at the
+end, and breaks the instant you press — the interleave that never swallows a keypress.
+`di`/`ei` hand the CPU wholly to the music while the title waits, then back to the loop.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-18/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-18/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: a note player, a D-minor theme, and a title that loops it"
+  context={3}
+/>
+
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-18/steps/step-01.asm" lang="z80" />
+</details>
+
+The theme, looping under the title — one voice, rising through the D-minor triad to a held note, then stepping home, then round again:
+
+<AudioClip
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-18/step-01-theme.wav"
+  title="The keep's theme — a short D-minor phrase on one bit of beeper"
+  source="ZX Spectrum beeper · port $FE bit 4 · note-table player"
+/>
+
+Press SPACE and the game begins as before — explore, collect, hold back the dark, win or sleep. The keep now has a voice that's *its own*, not a generic blip.
+
+> **A note on interrupts.** We `di` (disable interrupts) for the title's music and only `im 1` / `ei` afterwards, for the game loop. The 50 Hz interrupt would otherwise tick across every note and roughen the tune. Music wants the CPU's full attention; the game loop wants the interrupt back for `halt`. Each gets what it needs.
+
+## Try this: change the key
+
+Shift every pitch value up or down by the same proportion and the whole theme transposes — higher and brighter, or lower and grimmer. The *shape* (the intervals between notes) is the melody; the absolute pitches are just where you pin it. Try it lower for a darker keep.
+
+## Try this: a longer phrase
+
+The theme is a dozen notes. Extend it — a second phrase that answers the first, a turn that climbs before it resolves. Watch that it still *loops* cleanly: the last note should lead back to the first without a jolt. Writing a loop that doesn't announce its seam is a craft of its own.
+
+## Try this: a darker resolve
+
+The theme ends home on D — safe, resolved. Try ending it on a note *not* home — the F or the A — so it hangs, unresolved, uneasy. A theme that never quite settles is a keep that never quite lets you relax. The last note is the feeling you leave the player holding.
+
+## When it's wrong, see why
+
+- **The tune plays once and stops.** The loop isn't returning to the theme's start on `$FF` — it should reset to the top, not fall through.
+- **SPACE is ignored during the music.** The keyboard check isn't *between* notes — it must run each time round the note loop, not only before or after the whole tune.
+- **The notes run together into a smear.** No gap between them, or the interrupt is still firing. Add a short rest between notes, and `di` for the music.
+- **A rest plays as a note.** Pitch `0` must be treated as silence (a rest), not fed to `beep` as a pitch.
+- **The tune is lumpy and uneven.** Durations aren't matched to the feel — a chunk count is rhythm, so uneven counts read as uneven timing. Tune them by ear.
+
+## Before and after
+
+You started with a keep that opened in silence and finished with one that announces itself — a short D-minor phrase looping under the title, one voice carrying the whole mood, and breaking off the instant you press to play. The tool was the beeper you already click footsteps with; the new work was a note player that stacks chunks into notes and a wait-loop that doubles as the tune, checking your keypress between every note. Music on one bit is all composition and discipline — no harmony to hide behind, no press allowed to fall through the cracks. The keep has a voice now, and it's unmistakably its own.
+
+## What you've learnt
+
+- **A note is a stack of beeps.** One `beep` is too short to hold; count chunks of it, and the count is your rhythm.
+- **Monophonic means the melody carries everything.** One voice, no harmony — mood, rhythm and identity all ride a single line.
+- **The wait-loop is the player.** Interleave the tune with the keypress check so the theme loops and the press is never swallowed — the discipline a title tune owes the player.
+- **Music wants the CPU; the loop wants the interrupt.** `di` for the tune, `ei` for the game — each gets the machine on its own terms.
+
+## What's next
+
+The keep plays, sounds, lights, and sings — everything is here but the seal on it. In **Unit 19, "Stand or Sleep,"** we crown the title with a hand-pixelled band of stone and prove the whole thing the way the course demands: a run to each ending, THE KEEP STANDS and THE KEEP SLEEPS, both reachable and both real. It's the unit where "a complete, finishable game" becomes true out loud — losable *and* winnable, and finished.

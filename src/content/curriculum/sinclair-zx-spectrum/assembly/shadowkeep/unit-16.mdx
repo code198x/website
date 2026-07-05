@@ -1,10 +1,10 @@
 ---
-title: "The Keep Stands"
-description: "Assemble every piece into a game. A state machine wraps a title screen (ROM font, theme looping), the keep you play, and a victory — title to play to win and back. A fresh game each time, finishable and replayable. The end of Arc 1."
-pubDate: 2026-06-02
+title: "A Keep with Character"
+description: "Compose the whole keep as one place. Let a room hold more than one torch — each floor cell lit by its nearest flame — and use that with per-room falloff to give every chamber its own character from one coherent toolset."
+pubDate: 2026-07-04
 game: 2
 unit: 16
-tags: ["assembly", "z80", "game-loop", "state-machine", "title-screen"]
+tags: ["assembly", "z80", "lighting", "atmosphere", "design"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
@@ -12,117 +12,73 @@ import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
 
-Everything exists now — rooms, light, footsteps, a theme, gold, a win. What's missing is the thing that turns a collection of parts into a *game*: the loop a player sits down to. A title that waits for you. The keep, played. A victory when it's cleared. And back to the title, ready to go again. This unit builds that loop — and with it, Arc 1 of Shadowkeep is a complete, finishable game.
+We've given rooms moods one at a time. This unit pulls back and treats the **whole keep** as a single composition: three chambers that read as parts of one place, each lit to its own character, all from the same coherent set of tools. It's the unit that turns "rooms with lighting" into "a keep you believe in", and it closes the Mood and Light sub-arc.
+
+The capability that makes it possible is a small but real upgrade: a room can have **more than one torch**.
 
 ## What you'll see by the end
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-16/step-01-title.png" alt="The title screen: a black field with the word SHADOWKEEP centred in bright white, and below it PRESS SPACE TO ENTER." caption="The keep opens not into the Hall but into a title — its name in the ROM font, a prompt, the theme looping underneath. Press space and you're in; clear the keep and you're shown the door back here." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-16/step-01-hall.png" alt="The Hall lit by three sconces — one high in the centre wall and one on each side wall — their pools of light overlapping across the upper hall around the statue and banners, the floor falling into shadow below; the hooded thief and the pale Warden in the light, coins on the right." caption="The Hall, grandly lit: three sconces, their pools overlapping into a broad wash across the upper chamber, the statue and banners standing in it, the thief and Warden moving through it, the floor sinking to shadow at the back. The light is no longer one circle but as many as the room has fires." />
 
-The keep opens not into the Hall but into a **title screen** — its name, a prompt, the theme looping quietly. Press space and you're in: explore the chambers, lift the gold. Clear the last coin and the screen turns black again — **THE KEEP STANDS** — a victory flourish, and *press space to return*. Press it, and you're back at the title, the keep reset and waiting. A whole game, beginning to end to beginning.
+The Hall, grandly lit now — three flames, their pools overlapping into a broad wash of light across the upper chamber, the statue and its banners standing in it, the thief and the Warden moving through it, the floor sinking to shadow toward the back. Walk to the Vault and it's still a single flame in the black; the Gallery, two torches and a medium glow. One keep, one engine, three characters — and they feel like *the same keep*, lit by the same hand.
 
-## A game is a state machine
+## Many flames, nearest wins
 
-Up to now the program did one thing: run the keep. A game does *several* things in turn — show a title, play, celebrate a win — and moves between them. That's a **state machine**, and at this scale it's just a few labels and jumps:
-
-```
-main_title:
-            call    show_title       ; wait at the title for SPACE
-            call    new_game         ; reset and draw a fresh keep
-            ei
-.game_loop:
-            halt
-            ld      a, (won)
-            or      a
-            jr      nz, .won          ; cleared? -> win
-            call    player_step
-            call    mark_step
-            jr      .game_loop
-.won:
-            call    show_win          ; "THE KEEP STANDS", wait for SPACE
-            jr      main_title        ; round again
-```
-
-Title → play → win → title. Each state is a routine; the transitions are the jumps between them. No framework, no engine — structure is just deciding *what runs next*.
-
-## A fresh keep every time
-
-Replayable means the second game must be as new as the first — so `new_game` doesn't just redraw, it **resets state**: it copies the room templates back over the working maps (returning every collected coin), and resets the thief, the gold counter and the win flag:
+Until now a room had one torch and `find_torch` looked for it. Now `find_torches` gathers *every* `T` in the room into a little list:
 
 ```
-new_game:
-            ; copy room templates -> working state (gold returns)
-            ; ...
-            xor     a
-            ld      (won), a
-            ld      a, TOTAL_GOLD
-            ld      (gold_remaining), a
-            ld      a, START_COL
-            ld      (thief_col), a
-            ; ... draw the opening room ...
-            ret
+find_torches:
+            ; ... scan the map; for each 'T', record (col, row) ...
+            ; ... up to MAX_TORCHES, counting them in torch_count ...
 ```
 
-This is why we always edited the *working* copy of the maps, never the templates: the templates are the pristine original, ready to stamp out a new game on demand. The discipline from Unit 14 pays off here for free.
-
-## Words on screen, borrowed from the ROM
-
-A title needs text — and instead of hand-pixelling a font, we borrow the one already in the machine. The Spectrum's 8×8 character set lives in ROM at **`$3D00`**; each glyph is 8 bytes. `print_char` copies a glyph straight to the screen:
+And a floor cell takes its light from whichever flame is **closest** — `shade_for_cell` measures the distance to each torch and keeps the smallest:
 
 ```
-print_char:                          ; A = char, B = row, C = col
-            sub     32               ; the font starts at space (code 32)
-            ld      l, a
-            ld      h, 0
-            add     hl, hl
-            add     hl, hl
-            add     hl, hl           ; * 8 bytes per glyph
-            ld      de, $3D00        ; the ROM font
-            add     hl, de           ; HL -> this character's 8 bytes
-            ; ... copy 8 rows to the screen cell, set it bright white ...
+.sf_loop:
+            ; distance from this cell to torch[i] ...
+            ld      e, a            ; this torch's distance
+            ld      a, (min_dist)
+            cp      e
+            jr      c, .sf_keep     ; already nearer
+            ld      a, e
+            ld      (min_dist), a   ; new nearest
+.sf_keep:
+            djnz    .sf_loop
+            ; ... then shift by the room's falloff and clamp, as before ...
 ```
 
-`print_string` just walks a zero-terminated string, printing each character one cell to the right. The result is the title and prompts — and a reminder that the machine is full of things you can reach for, the ROM font among them.
+Two torches make two pools that *overlap* where they meet; three light a whole hall. The light stopped being one circle and became as many as the room has fires.
+
+## Character from a shared toolset
+
+Now each room is composed with the same two dials — how many flames, and how fast they fade — turned to a different setting:
 
 ```
-str_title:  defb    "SHADOWKEEP", 0
-str_prompt: defb    "PRESS SPACE TO ENTER", 0
-str_won:    defb    "THE KEEP STANDS", 0
+room_falloff:
+            defb    2               ; Hall  — 3 sconces, broad: grand and bright
+            defb    1               ; Gallery — 2 torches, medium
+            defb    0               ; Vault — 1 flame on the altar, tight: a crypt
 ```
 
-## Waiting, and the theme underneath
+The Hall is generous and public — three sconces, soft falloff, light everywhere you'd gather. The Vault is private and fearful — one flame, sharp falloff, dark everywhere you're not meant to linger. They're *opposites*, and yet they're plainly the same building, because they're drawn with the same stone, the same dither ramp, the same flames. That coherence — variety within one clear hand — is what "character" means for a place. You're no longer lighting rooms; you're lighting a *keep*.
 
-`show_title` draws the words, then loops: it plays the theme note by note, checking the space key between each, and the moment space is pressed it waits for release and returns. So the music plays *and* the title stays responsive — the tune loops back to its start when it ends, for as long as you linger:
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-16/step-01-vault.png" alt="The Vault, lit by a single flame on the central altar: a tight pool of light around the altar, the rest of the room near-black, the coins and Warden faint in the dark, the hooded thief entering from the south doorway below." caption="The same keep, the opposite character: the Vault's one cold flame and sharp falloff against the Hall's three sconces and broad wash. Same stone, same dither ramp, same fire — one number each sets them apart, and they still read as one building." />
 
-```
-.tt_note:
-            ld      bc, KEYS_SPACE
-            in      a, (c)
-            bit     0, a
-            jr      z, .tt_pressed   ; SPACE -> leave the title
-            ; ... otherwise play the next note of the theme ...
-            ld      a, (hl)
-            inc     hl
-            cp      $FF
-            jr      z, .tt_tune      ; tune ended -> loop it
-            ; ...
-```
+## Milestone — light a keep, not a room
 
-Checking input between notes keeps the latency to a single note — short enough to feel instant, and far simpler than running music on the interrupt. `show_win` is the same shape: black screen, the words, the victory flourish, wait for space.
-
-## Milestone — wrap it in a game
-
-A few labels and jumps make the state machine: `show_title` waits at the title (theme
-looping, space polled between notes); `new_game` stamps the pristine templates back over
-the working maps — returning every coin — and resets the thief, counter and win flag;
-the game loop runs until `won`; `show_win` draws **THE KEEP STANDS** and waits. Title →
-play → win → title. Text comes free from the ROM font at `$3D00`. The diff is structure,
-not engine — and it's what turns sixteen units of parts into a game.
+`find_torch` becomes `find_torches`: it gathers every `T` in a room into a short
+list. `shade_for_cell` then measures a floor cell's distance to each flame and keeps
+the **smallest**, so two torches make two overlapping pools and three light a whole
+hall. Paired with the per-room falloff from Unit 15, two dials — count of flames and
+falloff — compose the grand Hall, the working Gallery and the crypt-dark Vault from
+one shared toolset.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/shadowkeep/unit-16/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/shadowkeep/unit-16/steps/step-01.asm"
   lang="z80"
-  title="Step 1: a title-to-play-to-win-to-title state machine"
+  title="Step 1: many torches per room, each cell lit by its nearest flame"
   context={3}
 />
 
@@ -131,56 +87,39 @@ not engine — and it's what turns sixteen units of parts into a game.
 <CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-16/steps/step-01.asm" lang="z80" />
 </details>
 
-The whole loop, end to end — the title and its theme, space to enter, the keep you built across sixteen units, the win when it's cleared, and space back to the title, reset and waiting:
+Walk the whole keep, end to end: the Hall opens out under its three flames, the Gallery settles to a working glow, the Vault closes in to its one cold light. Three rooms, one place — the two stills above are its grandest and its darkest, drawn by the same hand.
 
-<VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-16/step-01-loop.mp4"
-  caption="Title to play to win to title. Space enters the keep; the cleared-keep state draws THE KEEP STANDS; space returns to the title, every coin restored by the template copy in new_game. A whole game, beginning to end to beginning. (The win is triggered here for the capture; in play it's the last coin that does it.)"
-  autoplay={true}
-  loop={true}
-/>
+## Try this: add a flame, take one away
 
-And the win itself — the keep cleared, the door held open back to the start:
+Drop another `T` into a room's map and watch a new pool bloom and overlap the others; delete one and watch a corner fall dark. You're lighting by placing fires — the most physical way there is. Mind `MAX_TORCHES`; raise it if you want a room ablaze. (Keep them clear of a Warden's route, or you light the danger and not the gold.)
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-16/step-01-win.png" alt="The win screen: a black field with THE KEEP STANDS centred in bright white, and below it PRESS SPACE TO RETURN." caption="THE KEEP STANDS — the keep cleared, the same ROM font, and the prompt that closes the loop: press space, and the title waits again with a fresh keep." />
+## Try this: a colonnade of light
 
-That's a game — one you can hand to someone and say *finish it*.
+Line a long room's wall with a row of evenly-spaced sconces, falloff 1 or 2. The overlapping pools merge into a continuous band of light down the room — a lit gallery, a cathedral nave. Repetition of one element is its own kind of grandeur.
 
-## Try this: a hand-pixelled logo
+## Try this: ruin the character
 
-The ROM font is honest and clear, but a title can be more. Replace the `SHADOWKEEP` text with a hand-drawn logo — define your own wide letter shapes as tiles, or a small crest, and `draw_tile` them across the top. It's pixel work, not new code, and it's the difference between "a program" and "a presentation".
-
-## Try this: an attract loop
-
-Right now the title waits forever. Make it *demo* instead: after the theme loops twice with no key, drop into the game with input ignored, walk the thief on a scripted path for a few seconds, then return to the title. Arcade machines did this to draw a crowd. It's a third state in your machine — `title → attract → title` — and slots in beside the two you have.
-
-## Try this: remember the best clear
-
-Add a counter of how many moves (or how few) it took to clear the keep, print it on the win screen, and keep the best across plays. Suddenly there's a reason to play *again better* — the smallest possible scoreboard, and a glimpse of why a win screen is worth more than a `HALT`.
+Give the Vault three torches and a falloff of 2. It floods with light and instantly stops being a crypt — it's just another bright room. A useful failure: it shows that the Vault's *character* was never the altar or the stone, it was the **restraint**. Put it back, and notice how much the darkness was doing.
 
 ## When it's wrong, see why
 
-- **The second game still shows collected coins gone.** `new_game` isn't copying the templates back over the working state — it's the copy, not a redraw, that resets the gold.
-- **The title text is garbage or in the wrong place.** `print_char`'s glyph address is wrong — it's `$3D00 + (char - 32) * 8`. Check the `sub 32` and the three `add hl,hl` (×8).
-- **Space does nothing at the title.** The key read is `IN A,($7FFE)`, bit 0 for space. If the theme is long you may wait up to one note; that's expected. No response at all means the bit or port is wrong.
-- **It starts the game the instant you press space, then immediately drops a mark.** Space is still held when the game loop begins. `show_title` waits for *release* before returning to prevent exactly this — keep that debounce.
-- **The theme stutters or won't loop.** Interrupts are on during the title — `show_title` runs with `di`; the game loop's `ei` comes after. End-of-tune (`$FF`) must jump back to the tune's start, not fall through.
-- **After winning it hangs instead of returning.** The `.won` branch must `call show_win` and then `jr main_title`; if `show_win` never sees a space release it will wait forever — check its release loop.
+- **Only one torch lights a room.** `find_torches` is stopping at the first `T`, or `shade_for_cell` isn't looping over `torch_count`. Every `T` should be collected and every one measured.
+- **The machine slows to a crawl entering a room.** Many torches × 768 cells is real work; it's a one-time cost on entry, but keep `MAX_TORCHES` modest (a handful) so the redraw stays a flick, not a freeze.
+- **A room is all dark with torches present.** `torch_count` came back zero — the map's `T`s aren't being found, or `min_dist` isn't being reset to a large value before the loop.
+- **Two pools don't overlap / one wins everywhere.** The nearest test is backwards. Keep the *smaller* distance: update `min_dist` only when the new distance is less.
+- **Garbage after adding torches.** `torch_list` overflowed — you placed more than `MAX_TORCHES` and the count guard is missing. The `cp MAX_TORCHES` / `jr nc` check protects the list.
 
 ## Before and after
 
-You started this unit with every part built but no game to sit down to — the program ran the keep and nothing wrapped it. You finished with the loop: a title that waits, the keep played, a win when it's cleared, and the title again with a fresh keep. It took no new engine — a handful of labels and jumps for the states, a block-copy of the templates for the reset, and the ROM font for the words. The discipline of always editing the working maps, never the templates, is what made "a fresh game" a single copy. A pile of parts became something a person can finish and play again.
+You started with rooms that each held a single mood and finished with a whole keep composed as one place — the Hall grand under three sconces, the Vault a crypt with one cold flame, the Gallery somewhere between, and all three plainly the same building. The upgrade was small: a room gathers every torch it holds, and each cell takes its light from the nearest. With that and the falloff byte, two dials compose grand, working and fearful rooms from one shared toolset. You stopped lighting rooms and started lighting a keep — the difference between a set of screens and somewhere you believe in.
 
 ## What you've learnt
 
-- **A game is a state machine.** Title, play, win — each a routine, the transitions just jumps. Structure is deciding what runs next; it needs no framework.
-- **Replayable means resettable.** A fresh game restores state, it doesn't only redraw. Editing the working copy of the maps (never the templates) is what makes the reset a single block-copy.
-- **The machine is full of tools.** The ROM font at `$3D00` gives you text for nothing — reach for what's already there before you build your own.
-- **Responsiveness is a design choice.** Checking input between notes keeps the title alive without interrupt-driven music. The simplest thing that feels instant is usually right.
-- **A loop is what makes it a game.** Beginning, middle, end, and back to the beginning — the difference between a tech demo and something a person can sit down and *finish*.
+- **Light is as many pools as there are flames.** Collect every torch; light each cell from the nearest. Pools overlap into the shape of the room's fires.
+- **Character is variety within one hand.** Two dials — count of flames and falloff — compose grand, working, and fearful rooms that still read as one building.
+- **Restraint is a feature.** The Vault's darkness, not its altar, is its character. Over-light it and it vanishes.
+- **A keep is a composition.** You stopped lighting rooms and started lighting a place — the difference between a set of screens and somewhere to be.
 
-## The keep stands — and what comes after
+## What's next
 
-This is the end of **Arc 1**. You've built, from nothing, a complete cell-based flick-adventure: a multi-room keep you explore, lit by torches with dithered shadow, furnished and given character, heard in footsteps and doors, scored in gold, themed in a single beeper voice, and wrapped in a title-to-win-to-title loop. It's a real game — the kind that could have shipped on a budget label, made the way *Atic Atac* and *Manic Miner* were made: not with an advanced engine, but with art, light, sound, design and completeness.
-
-What's deliberately *not* here — pixel-smooth sprite movement, masked drawing over scenery, isometric depth — is the subject of the games that follow, each introducing one hard rendering technique on the foundation you now have. The keep stands. Next, we make things *move*.
+The keep looks like somewhere now — lit, furnished, composed — and it plays. But it's near-silent: the coins chime, the win and the loss sound, and otherwise the stone is mute. A place you believe in has *ambient* sound — footsteps on stone, the creak of a door. The next sub-arc, **The Keep's Voice**, gives it that. We begin in **Unit 17, "Footsteps and Doors,"** building on the beeper you rang the dusk bells with — turned now to stone and hinges — so the keep is heard as well as seen.

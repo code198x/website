@@ -1,0 +1,163 @@
+---
+title: "Footsteps and Doors"
+description: "The keep's events already sound — coins chime, victory flourishes, capture tolls. What's missing is the sound of the place itself. From the same one-bit beeper, add a footfall under every step and a falling creak at every door: sound as place, not as feedback."
+pubDate: 2026-07-04
+game: 2
+unit: 17
+tags: ["assembly", "z80", "audio", "beeper", "atmosphere"]
+---
+
+import CodeFromFile from "@components/CodeFromFile.astro";
+import CodeDiff from "@components/CodeDiff.astro";
+import Figure from "@components/Figure.astro";
+import AudioClip from "@components/AudioClip.astro";
+
+The keep looks like somewhere, and it *plays* — and it already makes sound when something happens: the coins chime as you lift them, the win flourishes, the Warden's touch tolls you into stone. But those are the sounds of **events**. Put your ear to the keep between them and there's nothing — no weight of stone underfoot, no groan of a door. This unit, the first of the **Keep's Voice** sub-arc, gives the *place* a voice to match its events, and the tool is one already ringing in your game: the single-bit beeper. It rang the coin's chime and the capture's toll a few units ago; you made it *sing* across *The Long Night* — the dusk bells, the dawn phrase. Here it stops being an event and becomes *ambience*: a click of stone underfoot, the groan of a door on its hinge. Same one bit, a wholly different job.
+
+## What you'll see (and hear) by the end
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-17/step-01-hall.png" alt="The Hall, lit by its three sconces, the hooded thief and the pale Warden in the light — unchanged on screen from the last unit, because everything new here is heard, not seen." caption="The same Hall as last unit — and that's the point. Nothing new is drawn; everything new is heard. A click under each footfall, a creak at every door." />
+
+The screen is the same Hall as before — that's the point. Nothing new is *drawn*. But now, as you walk, a soft low click falls under every footstep on the stone; and when you cross from one chamber to the next, a door groans downward on its hinges. The keep is heard as well as seen. (The stills can't carry it — load it and walk.)
+
+## One bit, one tone (already ringing)
+
+You know this driver — it is the same `beep` the coin's chime and the capture's toll already call. Take it as a reminder, not a lesson. The speaker is a single bit — bit 4 of port `$FE`; toggle it high, low, high, fast, and the cone makes a square wave. `beep` takes two numbers — **B**, how many cycles to play (the duration), and **C**, how long to wait between toggles (the pitch; a larger `C` waits longer, so the wave is slower and the note lower):
+
+```
+beep:                               ; already in the game — the chime and the toll use it
+.bp_cycle:
+            ld      a, %00010000     ; speaker bit high
+            out     ($FE), a
+            ; ... wait C, toggle low, wait C ... B cycles in all ...
+            ret
+```
+
+Everything new here is *composition* — choosing B and C to make the sounds the *place* makes, to sit alongside the sounds its *events* already make.
+
+## Two sounds about place
+
+A footfall is short and low — a handful of cycles of a low tone, gone almost before you notice it:
+
+```
+sfx_step:
+            ld      b, 5             ; very short
+            ld      c, 90            ; low
+            call    beep
+            ret
+```
+
+A door is a *creak* — not one pitch but a falling one. We start the delay small (higher) and let it grow (lower), a few cycles at each step, so the note groans downward like a heavy door swinging:
+
+```
+sfx_door:
+            ld      c, 36            ; start higher
+.sd_sweep:
+            ld      b, 3
+            push    bc
+            call    beep
+            pop     bc
+            inc     c                ; lower the pitch a touch
+            inc     c
+            ld      a, c
+            cp      130              ; until it has groaned right down
+            jr      c, .sd_sweep
+            ret
+```
+
+These aren't "you pressed a key" beeps. They're about the *place*: the weight of stone, the heaviness of a door. That distinction — sound as atmosphere, not as button-feedback — is the whole reason to bother.
+
+## Wiring it in
+
+Two call sites, and that's all. A footstep on every successful move, dropped in right after the thief is redrawn:
+
+```
+            call    draw_thief
+            call    sfx_step         ; <- the footfall
+            call    check_exit
+```
+
+And a creak the moment we pass through to another room, at the top of the room-transition path:
+
+```
+.enter:
+            call    sfx_door         ; <- the hinges
+            call    draw_room
+            ; ...
+```
+
+Walk, and you hear yourself. Cross a threshold, and the door answers.
+
+## Milestone — give the keep an ambient voice
+
+The `beep` your chime and toll already use gets two more voices: `sfx_step`, a short
+low blip, and `sfx_door`, a downward pitch-sweep for a falling creak. Two call sites
+wire them in — a footfall after every successful move, a creak the moment the thief
+passes through a doorway. The screen never changes; the diff is two small routines
+and two hooks.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-17/steps/step-00.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-17/steps/step-01.asm"
+  lang="z80"
+  title="Step 1: a footfall and a door creak, on the beeper already in the game"
+  context={3}
+/>
+
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-17/steps/step-01.asm" lang="z80" />
+</details>
+
+Walk a dozen steps across the Hall and a soft low click falls under each one — the weight of stone underfoot:
+
+<AudioClip
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-17/step-01-footsteps.wav"
+  title="Footfalls across the Hall — a short low blip under every step"
+  source="ZX Spectrum beeper · port $FE bit 4"
+/>
+
+Cross from one chamber to the next and the door answers — a single pitch swept downward, groaning on its hinges:
+
+<AudioClip
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-17/step-01-door.wav"
+  title="Crossing a threshold — the door creaks downward"
+  source="ZX Spectrum beeper · port $FE bit 4"
+/>
+
+Small sounds — but the keep stops being a silent diorama between its chimes and starts being a place with weight.
+
+## Try this: a heavier tread
+
+Raise `sfx_step`'s `B` to 12 and its `C` to 120. The step gets longer and lower — a booted guard, not a barefoot thief. Sound characterises *who is walking* as surely as the sprite does. Drop B to 2 and the footfall becomes a light tick; you can hear a different body just by changing two numbers.
+
+## Try this: reverse the creak
+
+Swap `sfx_door` to sweep the *other* way — start `C` high and `dec` it down to a small value. Now the door *rises* as it opens instead of falling. One groans shut, the other whines open; pick the one that sounds like the keep you're building. (Mind the loop test — sweeping down means `jr nc` / a different comparison.)
+
+## Try this: give the Warden a sound
+
+The Warden patrols in silence. Give it a voice — a slow, low pulse each time it steps, so you can *hear* it coming without seeing it. A footstep for the thing that hunts you changes the whole feel of the dark: now the crypt has a heartbeat. (Call your new sound from `warden_step`'s commit path, and keep it quieter and lower than the thief's, so the two tread differently.)
+
+## When it's wrong, see why
+
+- **No sound at all.** `beep` isn't being reached, or the calls aren't wired — check `sfx_step` follows `draw_thief` and `sfx_door` sits at the top of `.enter`.
+- **The footstep is a long buzz.** `B` is far too high — a footfall is a handful of cycles, not a held note. Keep it short.
+- **The door clicks instead of creaks.** The sweep loop runs once — check `C` starts small and the `cp` limit is high enough to sweep across a real range.
+- **Every step stutters the movement.** The sound is long enough to be felt as a pause. Shorten `sfx_step`; ambient sound should sit *under* the action, not interrupt it.
+- **The creak plays twice at a door.** `sfx_door` is called on both the exit test and the enter — call it once, on entry.
+
+## Before and after
+
+You started with a keep that sounded only when something *happened* and finished with one that sounds as you *move through it* — a click of stone under each step, a groan of hinges at each door. The tool was the beeper already ringing your chimes and tolls; the new work was two small routines and two hooks. Nothing on screen changed, and yet the keep feels twice as real, because half of believing a place is hearing it. Sound as atmosphere, not feedback — the difference between a game that pings and a place that breathes.
+
+## What you've learnt
+
+- **Ambient sound is different from event sound.** A footfall and a creak are about the *place*; a chime and a toll are about what *happened*. A believable keep needs both.
+- **One primitive, many voices.** The same `beep` rings a chime, tolls a capture, clicks a footstep and groans a door — the composition is all in B and C.
+- **A sweep is a gesture.** Falling pitch reads as weight and closing; rising reads as opening. A moving tone carries meaning a single note can't.
+- **Ambience sits under the action.** Keep it short and quiet; it should colour the moment, never interrupt it.
+
+## What's next
+
+The keep is heard as you move — but its title screen still waits in silence. A game announces itself. In **Unit 18, "A Theme in One Voice,"** we turn the beeper from effects back to *music*: a short, solemn phrase in D minor that loops on the title while the keep waits for you, the melody carrying the whole mood on one voice. The same bit that clicks your footsteps will, on the title, sing.

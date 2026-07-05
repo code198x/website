@@ -1,124 +1,143 @@
 ---
-title: "A Keep with Character"
-description: "Compose the whole keep as one place. Let a room hold more than one torch — each floor cell lit by its nearest flame — and use that with per-room falloff to give every chamber its own character from one coherent toolset."
-pubDate: 2026-06-02
+title: "A Warden for Every Room"
+description: "One Warden in one room is a demo. Turn the Warden into data — a table with a line per room — so every room instantiates its own patrol on the coins' ground, and the whole keep, at last, is a game."
+pubDate: 2026-07-04
 game: 2
 unit: 12
-tags: ["assembly", "z80", "lighting", "atmosphere", "design"]
+tags: ["assembly", "z80", "data-driven", "tables", "level-design"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-We've given rooms moods one at a time. This unit pulls back and treats the **whole keep** as a single composition: three chambers that read as parts of one place, each lit to its own character, all from the same coherent set of tools. It's the unit that turns "rooms with lighting" into "a keep you believe in", and it closes the Mood and Light sub-arc.
+The keep can be lost — but only in the Hall. Cross to the Gallery or the Vault and the danger evaporates; you collect four of the six coins with no more risk than a walk. A game where two-thirds of the rooms are safe isn't finished. It has a dangerous *level* and two empty ones.
 
-The capability that makes it possible is a small but real upgrade: a room can have **more than one torch**.
+The fix is not to write two more Wardens by hand. You met that temptation last unit and felt how clumsy it was — copy the routines, copy the variables, call each step. The keep already knows a better way, because you already store the **gold** and the **torches** as data: a letter in the map, read at run time. This unit does the same for the Warden. One table, a line per room — *where it starts, which way it walks, along a row or a column* — and every room, on entry, instantiates the patrol that belongs to it. Density from data, not from duplicated code. And because the coins were placed on the Wardens' routes from the very beginning, nothing has to move: the guards simply arrive on the treasure's ground.
 
 ## What you'll see by the end
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-12/step-01-hall.png" alt="The Hall lit by three sconces — one high in the centre wall and one on each side wall — their pools of light overlapping across the upper hall around the statue and banners, the floor falling into shadow below; the hooded thief stands in the light." caption="The Hall, grandly lit: three sconces, their pools overlapping into a broad wash across the upper chamber, the statue and banners standing in it, the floor sinking to shadow at the back. The light is no longer one circle but as many as the room has fires." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-12/step-02-vault.png" alt="The Vault, its central altar of stone, with the two coins low on the floor and a cyan Warden pacing the row between them — the thief entering from the doorway below." caption="The Vault has its own Warden now — and this one paces a row, not a column, guarding the two coins strung along it. One table gave every room its guard; a line of data is all a new patrol costs." />
 
-The Hall, grandly lit now — three flames, their pools overlapping into a broad wash of light across the upper chamber, the statue and its banners standing in it, the floor sinking to shadow toward the back. Walk to the Vault and it's still a single flame in the black; the Gallery, two torches and a medium glow. One keep, one engine, three characters — and they feel like *the same keep*, lit by the same hand.
+Every room has its guard. The Hall's Warden walks its column as before; the Gallery's paces a column of its own; the Vault's strides a **row**, back and forth between the two coins on the floor. Each stands where the gold is, so every coin in the keep is now a coin you must read a patrol to reach. Clear all six and THE KEEP STANDS; touch any Warden and THE KEEP SLEEPS. The whole keep is the game now, not one room of it.
 
-## Many flames, nearest wins
+## A Warden is a line in a table
 
-Until now a room had one torch and `find_torch` looked for it. Now `find_torches` gathers *every* `T` in the room into a little list:
-
-```
-find_torches:
-            ; ... scan the map; for each 'T', record (col, row) ...
-            ; ... up to MAX_TORCHES, counting them in torch_count ...
-```
-
-And a floor cell takes its light from whichever flame is **closest** — `shade_for_cell` measures the distance to each torch and keeps the smallest:
+Here is the table — one row per room, four bytes each: the start column, the start row, the direction, and the **axis** (does it walk a row or a column?):
 
 ```
-.sf_loop:
-            ; distance from this cell to torch[i] ...
-            ld      e, a            ; this torch's distance
-            ld      a, (min_dist)
-            cp      e
-            jr      c, .sf_keep     ; already nearer
-            ld      a, e
-            ld      (min_dist), a   ; new nearest
-.sf_keep:
-            djnz    .sf_loop
-            ; ... then shift by the room's falloff and clamp, as before ...
+warden_table:
+            defb    26, 11, -1, AXIS_VERT    ; Hall — up the coins' column
+            defb    24, 15, -1, AXIS_VERT    ; Gallery — its own column
+            defb    15, 20, -1, AXIS_HORIZ   ; Vault — a row between the coins
 ```
 
-Two torches make two pools that *overlap* where they meet; three light a whole hall. The light stopped being one circle and became as many as the room has fires.
-
-## Character from a shared toolset
-
-Now each room is composed with the same two dials — how many flames, and how fast they fade — turned to a different setting:
+On entering a room, `warden_enter` reads its line and sets the Warden up from it — position, direction, axis, and a fresh gathering beat:
 
 ```
-room_falloff:
-            defb    2               ; Hall  — 3 sconces, broad: grand and bright
-            defb    1               ; Gallery — 2 torches, medium
-            defb    0               ; Vault — 1 flame on the altar, tight: a crypt
+warden_enter:
+            ld      a, (current_room)
+            ; ... index warden_table by room * 4 ...
+            ; ... load warden_col, warden_row, warden_dir, warden_axis ...
+            ld      a, WARDEN_GATHER
+            ld      (warden_timer), a        ; a beat before it moves
+            ret
 ```
 
-The Hall is generous and public — three sconces, soft falloff, light everywhere you'd gather. The Vault is private and fearful — one flame, sharp falloff, dark everywhere you're not meant to linger. They're *opposites*, and yet they're plainly the same building, because they're drawn with the same stone, the same dither ramp, the same flames. That coherence — variety within one clear hand — is what "character" means for a place. You're no longer lighting rooms; you're lighting a *keep*.
+This is exactly how the keep already reads its rooms, its gold, its torches: **data indexed by where you are.** Adding a fourth room's Warden is now a fourth line — no new code at all.
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-12/step-01-vault.png" alt="The Vault, lit by a single flame on the central altar: a tight pool of light around the altar, the rest of the room near-black, the hooded thief a dim figure entering from the south doorway below." caption="The same keep, the opposite character: the Vault's one cold flame and sharp falloff against the Hall's three sconces and broad wash. Same stone, same dither ramp, same fire — one number each sets them apart, and they still read as one building." />
+## One patrol, either axis
 
-## Milestone — light a keep, not a room
+Last unit the Warden walked a column because its step changed the row. To let a room's guard walk *either* way, the step now reads its `axis` and changes the row **or** the column accordingly:
 
-`find_torch` becomes `find_torches`: it gathers every `T` in a room into a short
-list. `shade_for_cell` then measures a floor cell's distance to each flame and keeps
-the **smallest**, so two torches make two overlapping pools and three light a whole
-hall. Paired with the per-room falloff from Unit 11, two dials — count of flames and
-falloff — compose the grand Hall, the working Gallery and the crypt-dark Vault from
-one shared toolset.
+```
+warden_step:
+            ld      a, (warden_axis)
+            or      a
+            jr      nz, .vertical
+.horizontal:
+            ; ... propose the next COLUMN along the row ...
+            jr      .have_cell
+.vertical:
+            ; ... propose the next ROW along the column ...
+.have_cell:
+            ; ... thief there? caught. wall ahead? reverse. else step. ...
+```
+
+The rest — catch the thief, reverse at a wall, restore-move-save-draw — is unchanged. One routine, two kinds of patrol, chosen by a byte in the table.
+
+## The gather earns its keep
+
+Now that every room hands you a Warden the moment you enter, the gathering beat you built two units ago becomes essential rather than pleasant. Each Warden's start cell is chosen **clear of the doorway you arrive through**, and it holds still for `WARDEN_GATHER` frames before it moves — so you never materialise onto a guard, and you always get a breath to read the room before it turns dangerous. Fair danger is danger you were shown before it could touch you.
+
+## Milestone — the whole keep is a game
+
+The Warden becomes a table — a line per room giving its start, direction, and
+axis — and `warden_enter` instantiates the right patrol on every room change; the
+step reads the axis to walk a row or a column. The Gallery and the Vault get their
+guards for two lines of data, each standing on gold placed there since Unit 9. The
+keep is winnable and losable in every room: drive it to THE KEEP STANDS and to THE
+KEEP SLEEPS to prove it.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/shadowkeep/unit-12/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/shadowkeep/unit-12/steps/step-01.asm"
   lang="z80"
-  title="Step 1: many torches per room, each cell lit by its nearest flame"
+  title="Step 1: a patrol that walks a row or a column (the axis byte)"
+  context={3}
+/>
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-12/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-12/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: a Warden for every room, from a table"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-12/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-12/steps/step-02.asm" lang="z80" />
 </details>
 
-Walk the whole keep, end to end: the Hall opens out under its three flames, the Gallery settles to a working glow, the Vault closes in to its one cold light. Three rooms, one place — the two stills above are its grandest and its darkest, drawn by the same hand.
+The whole run, all three rooms, every coin read past its guard — to THE KEEP STANDS:
 
-## Try this: add a flame, take one away
+<VideoPlayer
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-12/step-02-clear.mp4"
+  caption="Six coins across three guarded rooms: time the Hall's column, thread the Gallery, cross into the Vault and take the row between its coins. Every guard is a line of data; every coin is a patrol read and beaten. The keep, cleared — and losable at every step." />
 
-Drop another `T` into a room's map and watch a new pool bloom and overlap the others; delete one and watch a corner fall dark. You're lighting by placing fires — the most physical way there is. Mind `MAX_TORCHES`; raise it if you want a room ablaze.
+## Try this: a fourth patrol
 
-## Try this: a colonnade of light
+The table has a line per room. Give one room a **second** Warden by... well, you can't, quite — one active Warden is instantiated per room here, which keeps the memory tiny. But change a room's line: send the Vault's guard up a column instead of along its row, or start the Gallery's at the other end. Feel how one edited line re-guards a whole room. Level design is table-editing now.
 
-Line a long room's wall with a row of evenly-spaced sconces, falloff 1 or 2. The overlapping pools merge into a continuous band of light down the room — a lit gallery, a cathedral nave. Repetition of one element is its own kind of grandeur.
+## Try this: a coward's route
 
-## Try this: ruin the character
+With three guards, is the keep still winnable *without timing any of them* — by waiting at each doorway for the patrol to be at its far end, then dashing? If it is, the coins are too far from the guards. Nudge a `G` closer to its Warden's route until the only way to it is *through* the patrol's rhythm. That nudge is the difference between a keep you wait out and a keep you play.
 
-Give the Vault three torches and a falloff of 2. It floods with light and instantly stops being a crypt — it's just another bright room. A useful failure: it shows that the Vault's *character* was never the altar or the stone, it was the **restraint**. Put it back, and notice how much the darkness was doing.
+## Try this: read the table aloud
+
+Look at `warden_table` and, without running it, describe each room's danger: where the guard starts, which way it paces, which coins it threatens. Then run it and check. A good data table is one you can read like a level map — and learning to see the level *in* the data is most of what makes a data-driven game buildable.
 
 ## When it's wrong, see why
 
-- **Only one torch lights a room.** `find_torches` is stopping at the first `T`, or `shade_for_cell` isn't looping over `torch_count`. Every `T` should be collected and every one measured.
-- **The machine slows to a crawl entering a room.** Many torches × 768 cells is real work; it's a one-time cost on entry, but keep `MAX_TORCHES` modest (a handful) so the redraw stays a flick, not a freeze.
-- **A room is all dark with torches present.** `torch_count` came back zero — the map's `T`s aren't being found, or `min_dist` isn't being reset to a large value before the loop.
-- **Two pools don't overlap / one wins everywhere.** The nearest test is backwards. Keep the *smaller* distance: update `min_dist` only when the new distance is less.
-- **Garbage after adding torches.** `torch_list` overflowed — you placed more than `MAX_TORCHES` and the count guard is missing. The `cp MAX_TORCHES` / `jr nc` check protects the list.
+- **Only the Hall has a Warden.** `warden_enter` isn't called on room change, or the loop only steps the guard in room 0. Instantiate on every entry; step in every room.
+- **A guard walks the wrong way.** Its axis byte is crossed — `AXIS_VERT` where you meant `AXIS_HORIZ`, or the reverse. The axis says *which coordinate the step changes.*
+- **You're caught the instant you enter a room.** A Warden's start cell sits on the doorway you arrive through. Move its start clear of the entry, and trust the gather to give you a breath.
+- **A guard drifts off its route.** A room's start cell or bounds put it where no wall turns it back, so it wanders into another corridor. Keep each patrol on a stretch walled at both ends.
+- **The table reads the wrong room.** The index is off — it must be `room * 4` for four bytes a line. An off-by-one here hands a room the wrong guard.
 
 ## Before and after
 
-You started with rooms that each held a single mood and finished with a whole keep composed as one place — the Hall grand under three sconces, the Vault a crypt with one cold flame, the Gallery somewhere between, and all three plainly the same building. The upgrade was small: a room gathers every torch it holds, and each cell takes its light from the nearest. With that and the falloff byte, two dials compose grand, working and fearful rooms from one shared toolset. You stopped lighting rooms and started lighting a keep — the difference between a set of screens and somewhere you believe in.
+You began with one dangerous room and two safe ones, and finished with a keep where every room guards its gold. And the second and third guards cost you two lines of data — because you had already learned to store a mover, a light, a coin as *data indexed by place*, and a Warden is no different. This is the pattern that lets a small program hold a big world: don't write the world, write a table and a reader. The game core is complete. The keep wants, threatens, and can be lost or won — everywhere. What remains is to make it *beautiful*.
 
 ## What you've learnt
 
-- **Light is as many pools as there are flames.** Collect every torch; light each cell from the nearest. Pools overlap into the shape of the room's fires.
-- **Character is variety within one hand.** Two dials — count of flames and falloff — compose grand, working, and fearful rooms that still read as one building.
-- **Restraint is a feature.** The Vault's darkness, not its altar, is its character. Over-light it and it vanishes.
-- **A keep is a composition.** You stopped lighting rooms and started lighting a place — the difference between a set of screens and somewhere to be.
+- **Duplicated behaviour wants to be a table.** The moment you copy a routine to make a second one, reach for data instead — a line per instance, read at run time.
+- **A byte can choose behaviour.** One axis field turns a column-walker into a row-walker with no second routine.
+- **Place the danger on the objective.** A guard away from the gold is décor; a guard on the gold's route is the game. The coins were positioned for this from the start.
+- **Fair danger is instantiated fair.** Start each patrol clear of the door and hold it for a gather, and the player is never caught by something they were given no chance to see.
 
 ## What's next
 
-The keep looks like somewhere now — lit, furnished, composed. But it's silent. A place you believe in has *sound*: footsteps on stone, the creak of a door, a flame's hiss. The next sub-arc, **The Keep Has a Voice**, gives it that. We begin in **Unit 13, "Footsteps and Doors,"** building a small sound-effects driver on the beeper — the one you rang the dusk bells with, turned now to stone and hinges — so the keep is heard as well as seen. Atmosphere reaches the ear.
+The keep is a complete game — and it is lit like a warehouse, every cell the same flat blue. Everything from here is **atmosphere**: making the finished game a place you *feel*. In **Unit 13, "Light and Shadow,"** we hang a torch in each room and let the dithering you met in Unit 2 become lighting — a pool of light that fades into a dark you'll want to hide in. The game is built; now we make it beautiful.

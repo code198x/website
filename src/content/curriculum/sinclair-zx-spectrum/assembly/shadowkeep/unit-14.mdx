@@ -1,114 +1,69 @@
 ---
-title: "The Keep's Gold"
-description: "Give the keep a goal. Scatter gold through the chambers as walkable map cells, lift it on contact — map cell to floor, a chime, a counter down — and declare the keep won when the last coin is gone. The world becomes a game."
-pubDate: 2026-06-02
+title: "Furnishings"
+description: "A lit room is still a bare room. Add the things light falls on — a statue, banners, a scatter of rubble — as tiles in the palette. Bright ones you walk around, dim ones you walk over, and the keep starts to feel inhabited."
+pubDate: 2026-07-04
 game: 2
 unit: 14
-tags: ["assembly", "z80", "game-design", "collection", "win-condition"]
+tags: ["assembly", "z80", "level-design", "tiles", "atmosphere"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
-import AudioClip from "@components/AudioClip.astro";
 
-You can walk the keep, light it, hear it — but you can't *win* it, because there's nothing to win. A place becomes a game the moment it has a goal. This unit gives the keep one, and it costs almost no new engine: gold scattered through the rooms, lifted by the move you already make, and a win when the last coin is gone.
+The keep has light and shadow now, but its rooms are empty — stone, pillars, floor, and nothing to look at. A place you believe in has *things* in it: an altar, a statue, banners on the wall, a heap of rubble where the ceiling came down. This unit furnishes the keep — and it needs almost no new code, because furniture is just more tiles in the palette, placed in the map like everything else.
+
+There's one idea worth naming, and the engine already handles it: the difference between furniture you walk **around** and furniture you walk **over**.
 
 ## What you'll see by the end
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/step-01-hall.png" alt="The Hall with two coins of gold resting on the floor — one high on the left, one low on the right — round and yellow, plainly not torch-flame; the red-cloaked thief stands in the central light, the chambers waiting to be cleared." caption="Gold resting on the stone — two coins here in the Hall, more through the other chambers. Walk onto one and it's yours: a bright chime, and the counter ticks down. Clear all six and the keep is won." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/step-01-furnished.png" alt="The Hall, torch-lit, with a pale stone statue standing in the light below the flame, magenta banners hung on the side walls, and a scatter of rubble at the statue's feet; the hooded thief among the pillars, the pale Warden pacing beyond, coins on the right." caption="The same lit Hall as last unit, now inhabited: a statue in the torchlight, banners on the side walls, rubble at the statue's feet — the thief and Warden moving among them. Walk up to the statue and you stop; walk onto the rubble and you stride over it. Two kinds of furniture, sorted by one rule the keep already had." />
 
-Gold, resting on the stone — round yellow coins, two here in the Hall and more through the other chambers. Walk onto one and it's yours: it vanishes with a bright little chime and a counter ticks down. Clear all six and the keep is won — a victory flourish, and the thief stands still in a keep emptied of its treasure. It's a small goal, but it turns wandering into *playing*.
+The same lit Hall as last unit, but inhabited: a statue stands in the torchlight, banners hang on the walls, broken stone litters the floor at the statue's base. Walk up to the statue and you stop — it's solid. Walk onto the rubble and you stride right over it, and it's still there behind you. Two kinds of furniture, and the keep didn't need a single new rule to tell them apart.
 
-## Gold is just a tile that isn't a wall
+## Blocking is just brightness
 
-The whole trick is that gold lives in the room map like everything else — a `G` cell — and its attribute has **no `BRIGHT` bit**, so the collision test we've used since Unit 4 already treats it as floor you can walk onto:
-
-```
-GOLD_ATTR   equ     %00000110         ; yellow ink, no BRIGHT -> walkable
-```
+Remember how collision works: a cell is solid if it's **BRIGHT**, walkable if it's dim. That one rule, from way back, sorts the furniture for free:
 
 ```
-            defb    'G'
-            defw    gold_tile
-            defb    GOLD_ATTR
+STATUE_ATTR equ     %01001111       ; BRIGHT white  — solid: walk around it
+BANNER_ATTR equ     %01001011       ; BRIGHT magenta — solid: it's on the wall
+RUBBLE_ATTR equ     %00001000       ; dim (like floor) — walkable: walk over it
 ```
 
-Drop `G`s into the maps and they draw as coins and let you stand on them. No new collision rule, no separate list of pickups — the map *is* the level, gold included.
+A statue is a wall that happens to look like a statue. Rubble is a floor that happens to look like broken stone. `wall_at` never knew the difference and never needs to — it just reads the brightness, exactly as it did for stone walls and slate floor. It is the same rule that stops the *Warden* walking through a wall, doing double duty. The furniture sorts itself.
 
-## Lifting it
+## Furniture is glyphs in the map
 
-When the thief steps onto a new cell, we ask one question of the map: is it gold? If so, we turn that map cell into floor — permanently, so the gold is gone for good — repaint the cell, chime, and tick the counter down. At zero, the keep is won:
-
-```
-collect_gold:
-            call    cell_state_addr  ; the map cell we just stepped onto
-            ld      a, (hl)
-            cp      'G'
-            ret     nz               ; not gold — nothing to do
-            ld      (hl), '.'         ; taken: floor from now on
-            call    pos_bc
-            call    draw_floor_cell  ; repaint, so what's "under" us is floor
-            call    sfx_pickup       ; the bright chime
-            ld      hl, gold_remaining
-            dec     (hl)
-            ld      a, (hl)
-            or      a
-            call    z, win           ; last coin? the keep is won
-            ret
-```
-
-It slots into the move between updating the thief's position and saving what's under him — so the "under" we save is the new floor, not the coin, and the gold never comes back when we walk away:
+Each piece is a palette entry — a glyph, a tile, an attribute — and you place it by typing its letter into the room, clear of the coins and the Wardens' routes:
 
 ```
-            ld      a, (trow)
-            ld      (thief_row), a
-            call    collect_gold     ; <- lift it before saving "under"
-            call    save_under
-            call    draw_thief
+            defb    "B..............S...............B"   ; banners flanking a statue
+            defb    "#.............ooo.........G....#"   ; rubble at its feet, a coin beyond
 ```
 
-Because we edit the room's *state* (the working copy), a collected coin stays collected even after you leave the room and return. The keep remembers.
+`S` a statue, `B` a banner, `o` rubble. The Hall now reads as a shrine: a figure in the light, hangings to either side, the floor strewn where time has worked on the stone. None of it is special-cased; it's the same `draw_room`, the same `lookup_tile`, three more rows in the palette.
 
-## Winning
+## Walked-over, and remembered
 
-`win` is almost nothing — a flag the main loop watches, plus a flourish:
+The rubble is the interesting one, because it's *non-blocking* — the thief walks over it. And here the work you did earlier pays off twice. His save-and-restore carries the rubble beneath him just as it carried slate and lit shade, so he crosses it without smearing it. And because rubble is a glyph in the room's state buffer, it *persists*: leave the Hall and come back, and the broken stone is exactly where it lay. Furniture is part of the keep's memory, for free.
 
-```
-win:
-            ld      a, 1
-            ld      (won), a
-            call    sfx_win          ; the ascending victory run
-            ret
-```
+(One honesty: furniture is drawn *flat* — it isn't dimmed by distance to the torch the way the floor is. A statue in the dark is as bright as one in the light. Lighting the furniture too is a fine exercise, and the next unit leans hard on shade; for now, objects keep their own look.)
 
-```
-.loop:
-            halt
-            ld      a, (won)
-            or      a
-            jr      nz, .loop        ; won: freeze, the keep cleared
-            call    player_step
-            call    mark_step
-            jr      .loop
-```
+## Milestone — furnish the keep
 
-A win condition doesn't need a screen or a state machine yet — just "stop responding, you're done." (Unit 16 turns this into a proper title-and-win loop.) The point this unit makes is smaller and more important: **a goal is a counter and a check.** Everything else is dressing.
-
-## Milestone — give the keep a goal
-
-Gold is a walkable `G` tile (no `BRIGHT` bit), so collision already lets the thief
-stand on it. `collect_gold` runs between the move and the save: if the new cell is
-gold, it rewrites that **state** cell to floor (so the coin is gone for good), repaints
-it, chimes, and drops `gold_remaining`. At zero it calls `win`, which sets a flag the
-main loop watches and plays the victory run. A goal is a counter and a check.
+No new engine: furniture is palette entries placed in the maps. A statue and banners
+take a **bright** attribute, so collision already treats them as solid; rubble takes
+the **dim** floor attribute, so it stays walkable. `draw_room`, `lookup_tile`,
+collision and the state buffers are all unchanged — the diff is three palette lines
+and some letters typed into the templates.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/shadowkeep/unit-14/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/shadowkeep/unit-14/steps/step-01.asm"
   lang="z80"
-  title="Step 1: gold tiles, lift-on-contact, and a win at zero"
+  title="Step 1: statue, banner and rubble tiles — bright blocks, dim doesn't"
   context={3}
 />
 
@@ -117,64 +72,43 @@ main loop watches and plays the victory run. A goal is a counter and a check.
 <CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-14/steps/step-01.asm" lang="z80" />
 </details>
 
-Walk onto a coin and it's lifted — it vanishes the instant you stand on it, and the counter drops:
+Walk up to the statue and it turns you back; the rubble at its feet you stride right over, and it stays where it lay behind you. Two kinds of furniture, one collision rule:
 
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/step-01-collect.mp4"
-  caption="The thief crosses to the Hall's upper-left coin and steps onto it — gone, turned to floor, the keep one coin nearer cleared. Because we edit the room's state, it stays gone when you leave and return."
-  autoplay={true}
-  loop={true}
-/>
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/step-01-around-and-over.mp4"
+  caption="Up to the statue — bright, so solid — and the thief stops at its feet, standing on the rubble. Then sideways across the rubble — dim, so walkable — and off it, the broken stone still in place. The keep never needed a new rule to tell the two apart: bright blocks, dim doesn't." />
 
-The lift is a bright chime — the gold's voice, sketched in the last unit:
+## Try this: furnish a room yourself
 
-<AudioClip
-  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/step-01-pickup.wav"
-  title="Lifting a coin — footfalls, then the bright pickup chime"
-  source="ZX Spectrum beeper · port $FE bit 4"
-/>
+Open a room template and dress it. Put a statue at the end of the Gallery; line its walls with banners; pile rubble where a wall has failed. You're set-dressing by typing letters — the fastest art tool there is. Keep the thief's start, the doorways, the coins and the Wardens' routes clear, and remember bright is solid.
 
-And when the last coin is gone, the keep is won — an ascending victory run, and the thief stands still in a keep emptied of its treasure:
+## Try this: rubble you can clear
 
-<AudioClip
-  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-14/step-01-win.wav"
-  title="The keep cleared — the ascending win flourish"
-  source="ZX Spectrum beeper · port $FE bit 4"
-/>
+Rubble is a glyph in the room's state. Add a key that, when the thief stands on rubble, writes `.` over it — he's cleared the debris, and it stays cleared because the state remembers. You've made the world not just furnished but *changeable*: the first step from scenery toward things the player acts on.
 
-Clear the keep — two coins in the Hall, two in the Gallery, two in the Vault, each with a chime, the last one winning the game — and you've played the first complete game you built in assembly: explore, collect, win.
+## Try this: a new piece
 
-## Try this: more gold, harder keep
-
-Scatter more `G`s through the maps and raise `TOTAL_GOLD` to match. The keep takes longer to clear; the goal grows without a line of new logic. (If a coin lands on a wall or a torch it won't draw as floor — keep them on open stone.)
-
-## Try this: gold behind the pillars
-
-Tuck a coin into the dark behind the Hall's pillars or in the Vault's gloom. Now clearing the keep means *searching* it — the lighting you built becomes part of the challenge, hiding what the player must find. Design and atmosphere start working together.
-
-## Try this: a coin you can't reach (yet)
-
-Place a coin in a spot walled off from the rest. The counter can never reach zero — the keep is unwinnable. A useful bug to *make on purpose*: it shows that your win condition trusts the level design completely. Reachability is a level-design promise the code can't check for you.
+Design one more: a well (a dark round hole — solid, you can't cross it), or a rug (a coloured floor — walkable, just decoration). One tile, one palette line, one attribute (bright to block, dim to walk). See how few bytes a new piece of the world costs.
 
 ## When it's wrong, see why
 
-- **Gold is solid — you bump into it.** Its attribute has the `BRIGHT` bit set. Gold must be `%00000110`-style (no bit 6), or the wall test treats it as stone.
-- **The coin comes back when you re-enter the room.** You edited the template, not the state copy — or `collect_gold` runs after `save_under`, so the saved "under" is still the coin. Collect *before* saving.
-- **Collecting never wins.** `TOTAL_GOLD` doesn't match the number of `G`s in the maps. Count them; they must agree, or the counter stops above (or wraps below) zero.
-- **The counter wraps and the game never ends.** A coin was collected twice, or `gold_remaining` started wrong. Each `G` must decrement exactly once — which it does, because the cell becomes floor the instant it's lifted.
-- **It wins the moment you start.** `gold_remaining` initialised to zero. It must start at `TOTAL_GOLD`.
+- **The thief walks through the statue.** Its attribute isn't bright — `wall_at` only blocks bright cells. Statues and banners must have bit 6 set.
+- **The thief can't cross the rubble.** Its attribute *is* bright. Rubble must be dim (share `FLOOR_ATTR`) to stay walkable.
+- **The rubble vanishes when he walks over it.** That's a save/restore fault — but it shouldn't happen, since rubble is in the state buffer and `restore_under` lays back whatever was beneath him. Check you didn't special-case the draw.
+- **A glyph draws as blank or garbage.** It isn't in the palette, so `lookup_tile` scans off the end. Every furniture letter (`S`, `B`, `o`) needs an entry.
+- **A room is shifted.** A furnished template row isn't 32 characters any more — adding a letter means removing a `.`, not pushing the row longer. Count it.
 
 ## Before and after
 
-You started with a keep you could wander but never finish, and ended with a game — gold to find, a chime when you lift it, and a win when the last coin is gone. It cost almost no new engine: gold is a walkable tile, collecting is rewriting that map cell to floor, and the goal is a counter and a check. Because you edit the room's working state, a cleared coin stays cleared across visits — the persistence from Unit 7 paying off again. A win condition turned out to be tiny, and trusting: the code counts, and *you* promise every coin can be reached. Wandering became playing.
+You started with rooms that were lit but bare and finished with a keep that looks inhabited — a statue in the torchlight, banners on the walls, rubble underfoot. None of it took new engine code: furniture is glyphs in the palette, and the brightness rule that already sorts wall from floor (and stops the Warden at a wall) sorts the solid statue from the walkable rubble for nothing. The walkable pieces ride the hero's save/restore and live in the room's state, so he crosses them cleanly and they persist. Set-dressing turned out to be design — letters typed into a map — not engineering.
 
 ## What you've learnt
 
-- **A goal is a counter and a check.** Collectables down, a win at zero — that's the whole shape of an objective, and it's tiny.
-- **The map is the level, pickups included.** Gold is a walkable tile; collecting is editing the map cell to floor. No parallel list, no special case in collision.
-- **Edit state, not the template, and the world remembers.** Because we change the working copy, a cleared coin stays cleared across room visits — persistence for free.
-- **A win condition trusts the level.** The code counts; *you* promise every coin is reachable. Knowing where that line sits is part of designing a game.
+- **Furniture is tiles.** A statue, a banner, rubble — each a glyph, a pattern and a colour in the palette, placed by typing into the map.
+- **Blocking is brightness, again.** The collision rule you already had sorts solid furniture from walkable furniture with no new code: bright blocks, dim doesn't.
+- **Non-blocking scenery is free and persistent.** Walkable decoration rides the hero's save/restore and lives in the room's state, so he crosses it cleanly and it remembers.
+- **Set-dressing is design, not engineering.** Once the palette is rich enough, making a room feel inhabited is something you do in a text editor.
 
 ## What's next
 
-The keep is a complete game now — but it opens in silence and ends in silence. A game announces itself. In **Unit 15, "A Theme in One Voice,"** we go back to the beeper and write *music*: a composed theme for the title, a single voice carrying a melody, built on a little note-table player. One bit, one tune — the keep gets its signature.
+The keep is lit and furnished — now to *compose* with it. In **Unit 15, "Mood through Constraint,"** we stop adding features and start using restraint: dark rooms with a single lit pool, sharp contrast between gloom and flame, the eye led by light. With only two colours a cell and a ramp of dither, the limit itself becomes the vocabulary — and a plain stone room becomes a place with a feeling. Atmosphere is as much what you withhold as what you add.

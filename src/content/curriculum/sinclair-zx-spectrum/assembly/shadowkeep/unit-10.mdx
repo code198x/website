@@ -1,10 +1,10 @@
 ---
-title: "Furnishings"
-description: "A lit room is still a bare room. Add the things light falls on — a statue, banners, a scatter of rubble — as tiles in the palette. Bright ones you walk around, dim ones you walk over, and the keep starts to feel inhabited."
-pubDate: 2026-06-02
+title: "Something in the Dark"
+description: "The keep has never had anyone in it but you. Give it a second figure — a Warden, drawn the same way as the thief, with its own private patch of screen to save and restore — and set it walking a slow, fixed route of its own."
+pubDate: 2026-07-04
 game: 2
 unit: 10
-tags: ["assembly", "z80", "level-design", "tiles", "atmosphere"]
+tags: ["assembly", "z80", "sprites", "movement", "npc"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
@@ -12,106 +12,133 @@ import CodeDiff from "@components/CodeDiff.astro";
 import Figure from "@components/Figure.astro";
 import VideoPlayer from "@components/VideoPlayer.astro";
 
-The keep has light and shadow now, but its rooms are empty — stone, pillars, floor, and nothing to look at. A place you believe in has *things* in it: an altar, a statue, banners on the wall, a heap of rubble where the ceiling came down. This unit furnishes the keep — and it needs almost no new code, because furniture is just more tiles in the palette, placed in the map like everything else.
+The keep can be cleared now — six coins, a win, a reason to move. But you are alone in it, and nothing you do is ever *risky*. You collect at your leisure; the worst that happens is nothing. A keep with treasure and no danger is a shopping trip.
 
-There's one idea worth naming, and the engine already handles it: the difference between furniture you walk **around** and furniture you walk **over**.
+So we put something else in the keep. Not a hazard yet — first, simply an *inhabitant*: a Warden, a second figure that moves in the Hall on business of its own. You already know how to move one figure — the thief is drawn, saved, and restored every step. The whole of this unit is the realisation that **there is nothing special about the thief.** A second mover is the same handful of routines with its own name and its own patch of memory. Build one, and the keep is no longer empty.
 
 ## What you'll see by the end
 
-<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-10/step-01-furnished.png" alt="The Hall, torch-lit, with a pale stone statue standing in the light below the flame, magenta banners hung on the side walls, and a scatter of rubble at the statue's feet; the hooded thief stands in the centre among the pillars." caption="The same lit Hall as last unit, now inhabited: a statue in the torchlight, banners on the side walls, rubble at the statue's feet. Walk up to the statue and you stop; walk onto the rubble and you stride over it. Two kinds of furniture, sorted by one rule the keep already had." />
+<Figure src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-10/step-01-warden.png" alt="The Hall, with the hooded thief near the centre and, to the right, a second figure drawn in pale cyan — a cowled sentinel standing on the same column as the two coins." caption="A second figure in the keep: the Warden, a pale cyan sentinel, standing where the thief cannot. Same drawing routines as the thief, its own patch of screen to keep — one cell, one occupant." />
 
-The same lit Hall as last unit, but inhabited: a statue stands in the torchlight, banners hang on the walls, broken stone litters the floor at the statue's base. Walk up to the statue and you stop — it's solid. Walk onto the rubble and you stride right over it, and it's still there behind you. Two kinds of furniture, and the keep didn't need a single new rule to tell them apart.
+A second figure stands in the Hall, cowled and pale cyan, on the column where the coins hang. Watch a moment and it moves — one slow step, then another, up its column and back down, reversing when it meets a wall. It does not chase you. It does not, yet, even notice you: walk right up to it and nothing happens. It is a presence, a patrol, a thing that shares the room — and building it teaches the pattern every enemy, ally and moving object in every later game is cut from.
 
-## Blocking is just brightness
+## One cell, one occupant
 
-Remember how collision works: a cell is solid if it's **BRIGHT**, walkable if it's dim. That one rule, from way back, sorts the furniture for free:
-
-```
-STATUE_ATTR equ     %01001111       ; BRIGHT white  — solid: walk around it
-BANNER_ATTR equ     %01001011       ; BRIGHT magenta — solid: it's on the wall
-RUBBLE_ATTR equ     %00001000       ; dim (like floor) — walkable: walk over it
-```
-
-A statue is a wall that happens to look like a statue. Rubble is a floor that happens to look like broken stone. `wall_at` never knew the difference and never needs to — it just reads the brightness, exactly as it did for stone walls and slate floor. The furniture sorts itself.
-
-## Furniture is glyphs in the map
-
-Each piece is a palette entry — a glyph, a tile, an attribute — and you place it by typing its letter into the room:
+The thief occupies a cell, and to move he does four things: **save** the eight bytes and one attribute beneath him, **restore** them when he leaves, and **draw** his glyph where he lands. The Warden is the identical dance with its own name and its own nine-byte buffer:
 
 ```
-            defb    "B..............S...............B"   ; banners flanking a statue
-            defb    "#.............ooo..............#"   ; rubble at its feet
+under_warden:
+            defs    9                 ; the ground the Warden stands on
+
+save_warden:    ; grab the screen under the Warden into under_warden
+restore_warden: ; put it back when the Warden moves off
+draw_warden:    ; stamp the Warden's glyph and attribute
 ```
 
-`S` a statue, `B` a banner, `o` rubble. The Hall now reads as a shrine: a figure in the light, hangings to either side, the floor strewn where time has worked on the stone. None of it is special-cased; it's the same `draw_room`, the same `lookup_tile`, three more rows in the palette.
+Nothing here is new — it is `save_under` / `restore_under` / `draw_thief` with `warden` swapped for `thief`. That is the lesson: **the two-mover shape scales.** Give a thing a position, a buffer, and these three routines, and it is a mover. The keep could hold a dozen this way.
 
-## Walked-over, and remembered
+The glyph is its own — a hooded, faceless sentinel, drawn in bright cyan so it reads cold against the warm thief and the yellow gold:
 
-The rubble is the interesting one, because it's *non-blocking* — the thief walks over it. And here the work you did earlier pays off twice. His save-and-restore carries the rubble beneath him just as it carried slate and chalk, so he crosses it without smearing it. And because rubble is a glyph in the room's state buffer, it *persists*: leave the Hall and come back, and the broken stone is exactly where it lay. Furniture is part of the keep's memory, for free.
+```
+warden_glyph:
+            defb    %00111100         ; the cowl
+            defb    %01111110
+            defb    %01100110         ; dark eye-slits
+            defb    %01111110
+            defb    %00111100
+            defb    %01111110
+            defb    %01111110
+            defb    %01011010         ; a ragged hem
+```
 
-(One honesty: furniture is drawn *flat* — it isn't dimmed by distance to the torch the way the floor is. A statue in the dark is as bright as one in the light. Lighting the furniture too is a fine exercise, and the next unit leans hard on shade; for now, objects keep their own look.)
+## A route, not a chase
 
-## Milestone — furnish the keep
+In *The Long Night* the dark **hunted** you — it read your position and came for it. The Warden is deliberately the opposite, and the difference matters: it walks a **fixed route it does not deviate from**, one cell every `WARDEN_SPEED` frames, up its column until a wall turns it back. This is *Sabre Wulf*'s roaming beasts, not a hunter — a pattern you can **learn and time**, not a pursuer you must flee:
 
-No new engine: furniture is palette entries placed in the maps. A statue and banners
-take a **bright** attribute, so collision already treats them as solid; rubble takes
-the **dim** floor attribute, so it stays walkable. `draw_room`, `lookup_tile`,
-collision and the state buffers are all unchanged — the diff is three palette lines
-and some letters typed into the templates.
+```
+warden_step:
+            ; ... once every WARDEN_SPEED frames ...
+            ; propose the next cell up/down the column, in the current direction
+            call    wall_at
+            jr      z, .commit       ; floor ahead — restore, move, save, draw
+            ld      a, (warden_dir)  ; wall ahead — reverse and wait
+            neg
+            ld      (warden_dir), a
+            ret
+```
+
+The step is the thief's move in miniature: propose a cell, ask `wall_at`, and either take it (restoring the old cell, drawing the new) or turn around. Because it reads walls the same way the thief does, it also reads *the thief* as a wall — his cell is bright, and bright means solid — so for now it simply **turns aside** when it meets him. It cannot pass through him, and it cannot yet catch him. That comes next unit; here it is only learning to walk.
+
+## A beat before it begins
+
+When a room is entered, the Warden does not move for `WARDEN_GATHER` frames — a held breath, long enough for you to see where it is before it starts. It is a small courtesy that will matter a great deal once the Warden is dangerous: you should never be caught by something you were given no moment to read.
+
+## Milestone — a second mover, walking
+
+The Warden is the thief's own save / restore / draw, given a second name and a
+nine-byte buffer of its own — proof that a mover is a pattern, not a special case.
+It stands in the Hall (step 1), then walks a fixed column one cell at a time,
+reversing at walls after a gathering beat (step 2). It reads the thief as solid and
+turns aside at him: a presence, not yet a threat.
 
 <CodeDiff
   before="sinclair-zx-spectrum/assembly/shadowkeep/unit-10/steps/step-00.asm"
   after="sinclair-zx-spectrum/assembly/shadowkeep/unit-10/steps/step-01.asm"
   lang="z80"
-  title="Step 1: statue, banner and rubble tiles — bright blocks, dim doesn't"
+  title="Step 1: the Warden's body — a second sprite, saved and drawn"
+  context={3}
+/>
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/shadowkeep/unit-10/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/shadowkeep/unit-10/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: the patrol — one cell at a time, reversing at walls"
   context={3}
 />
 
 <details>
 <summary>The complete program</summary>
-<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-10/steps/step-01.asm" lang="z80" />
+<CodeFromFile src="sinclair-zx-spectrum/assembly/shadowkeep/unit-10/steps/step-02.asm" lang="z80" />
 </details>
 
-Walk up to the statue and it turns you back; the rubble at its feet you stride right over, and it stays where it lay behind you. Two kinds of furniture, one collision rule:
+Watch it walk its column, up and back, while the thief collects around it — and note it never smears the coins or the stone it passes over, because it lays each cell back exactly as the thief does:
 
 <VideoPlayer
-  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-10/step-01-around-and-over.mp4"
-  caption="Up to the statue — bright, so solid — and the thief stops at its feet, standing on the rubble. Then sideways across the rubble — dim, so walkable — and off it, the broken stone still in place. The keep never needed a new rule to tell the two apart: bright blocks, dim doesn't."
-  autoplay={true}
-  loop={true}
-/>
+  src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-10/step-02-patrol.mp4"
+  caption="The Warden walks a fixed column, reversing at the walls, one cell every few frames. It saves and restores the ground beneath it just as the thief does — so the coins it passes over reappear untouched. A route to learn, not a hunter to flee." />
 
-## Try this: furnish a room yourself
+## Try this: send it sideways
 
-Open a room template and dress it. Put a statue at the end of the Gallery; line its walls with banners; pile rubble where a wall has failed. You're set-dressing by typing letters — the fastest art tool there is. Keep the thief's start and the doorways clear, and remember bright is solid.
+The Warden walks a column because its step changes the *row*. Change it to step the *column* instead and it walks a **row** — a sentinel pacing left and right. (You are one unit early: next unit the patrol becomes data, and either direction is a table entry. Here, feel the one-line difference by hand.)
 
-## Try this: rubble you can clear
+## Try this: change its pace
 
-Rubble is a glyph in the room's state. Add a key that, when the thief stands on rubble, writes `.` over it — he's cleared the debris, and it stays cleared because the state remembers. You've made the world not just furnished but *changeable*: the first step from scenery toward things the player acts on.
+`WARDEN_SPEED` is frames per step. Make it small and the Warden strides; make it large and it drifts, ponderous and stately. A slow patrol is easy to time and eerie to watch; a fast one is urgent. The number is a character trait — pick the one that suits a thing that turns you to stone.
 
-## Try this: a new piece
+## Try this: a second Warden, by hand
 
-Design one more: a well (a dark round hole — solid, you can't cross it), or a rug (a coloured floor — walkable, just decoration). One tile, one palette line, one attribute (bright to block, dim to walk). See how few bytes a new piece of the world costs.
+Copy `warden_col` / `warden_row` / the buffer to a `warden2_*` set, give it a start cell, and call its step too. Two patrols in one room. It is clumsy done this way — which is exactly why the next unit but one turns the Warden into a *table*, so a whole keep of them costs no extra code.
 
 ## When it's wrong, see why
 
-- **The thief walks through the statue.** Its attribute isn't bright — `wall_at` only blocks bright cells. Statues and banners must have bit 6 set.
-- **The thief can't cross the rubble.** Its attribute *is* bright. Rubble must be dim (share `FLOOR_ATTR`) to stay walkable.
-- **The rubble vanishes when he walks over it.** That's a save/restore fault — but it shouldn't happen, since rubble is in the state buffer and `restore_under` lays back whatever was beneath him. Check you didn't special-case the draw.
-- **A glyph draws as blank or garbage.** It isn't in the palette, so `lookup_tile` scans off the end. Every furniture letter (`S`, `B`, `o`) needs an entry.
-- **A room is shifted.** A furnished template row isn't 32 characters any more — adding a letter means removing a `.`, not pushing the row longer. Count it.
+- **The Warden smears a trail behind it.** It is drawing without restoring — `restore_warden` isn't called before it moves, so the old cell keeps its glyph. Restore the ground, *then* move.
+- **The Warden eats a coin permanently.** Its buffer and the thief's have been crossed, or `save_warden` runs before the room is drawn, so it saves rubbish and lays rubbish down. Save the ground once the room is painted.
+- **The Warden flies through walls.** `warden_step` isn't consulting `wall_at`, or is testing the current cell instead of the proposed one. It must ask about the cell it is about to enter.
+- **The Warden vanishes when you leave the Hall and return.** It is only redrawn in its own room — re-stamp it on entry, or (next unit) instantiate it from its table.
+- **The Warden and thief flicker over each other.** They are being drawn in the wrong order, or one restores after the other draws. The Warden reads the thief as a wall and should never share his cell in the first place.
 
 ## Before and after
 
-You started with rooms that were lit but bare and finished with a keep that looks inhabited — a statue in the torchlight, banners on the walls, rubble underfoot. None of it took new engine code: furniture is glyphs in the palette, and the brightness rule that already sorted wall from floor sorts the solid statue from the walkable rubble for nothing. The walkable pieces ride the hero's save/restore and live in the room's state, so he crosses them cleanly and they persist. Set-dressing turned out to be design — letters typed into a map — not engineering.
+You began with a keep that held only you, and finished with a keep that holds someone else — a second figure that moves, keeps its own patch of screen, and walks a route you can watch and learn. And you wrote almost nothing new to do it: the Warden is the thief's own movement, renamed. That is the quiet, powerful idea under every crowd of sprites you will ever draw — a mover is a pattern you stamp out, not a hero you hand-build. The keep is inhabited now. Next, it becomes dangerous.
 
 ## What you've learnt
 
-- **Furniture is tiles.** A statue, a banner, rubble — each a glyph, a pattern and a colour in the palette, placed by typing into the map.
-- **Blocking is brightness, again.** The collision rule you already had sorts solid furniture from walkable furniture with no new code: bright blocks, dim doesn't.
-- **Non-blocking scenery is free and persistent.** Walkable decoration rides the hero's save/restore and lives in the room's state, so he crosses it cleanly and it remembers.
-- **Set-dressing is design, not engineering.** Once the palette is rich enough, making a room feel inhabited is something you do in a text editor.
+- **A mover is a pattern, not a special case.** Position, a buffer, save / restore / draw — give any thing those four and it moves like the hero.
+- **A patrol is a route, not a chase.** A fixed path you can learn and time reads utterly differently from a pursuer — and it is far simpler code.
+- **Read walls, reverse at them.** The same `wall_at` the thief uses turns the patrol at the room's edges — and makes it treat the thief, for now, as just another wall.
+- **Give the player a beat to read.** A gather before the patrol begins is the courtesy that makes danger fair.
 
 ## What's next
 
-The keep is lit and furnished — now to *compose* with it. In **Unit 11, "Mood through Constraint,"** we stop adding features and start using restraint: dark rooms with a single lit pool, sharp contrast between gloom and flame, the eye led by light. With only two colours a cell and a ramp of dither, the limit itself becomes the vocabulary — and a plain stone room becomes a place with a feeling. Atmosphere is as much what you withhold as what you add.
+The Warden walks, but it is harmless — it turns aside at you like a wall. That is about to change. In **Unit 11, "Join the Sleepers,"** the Warden's touch becomes the thing the keep has lacked since the beginning: a way to **lose**. Step where it steps, and you join the sleepers — frozen mid-stride, the keep asleep. The moment the Place can be lost is the moment it truly becomes a game.
