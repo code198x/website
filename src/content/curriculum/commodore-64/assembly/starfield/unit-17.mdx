@@ -1,10 +1,10 @@
 ---
 title: "The Curve"
-description: "Starfield works; nothing escalates. A wave counter, a speed table and a live fall speed put a difficulty curve in the game; a SID jingle gives the title a voice; and a dwell on both ends of the loop lets the endings land."
+description: "Starfield works; nothing escalates. A wave counter, a speed table and a live fall speed put a difficulty curve in the game; a SID jingle gives the title a voice; and a dwell on both ends of the loop lets the endings land. And then the winnability gate does its work: the turret park — park under the lane, hold fire, never lose — is closed with a real LFSR spawn, full-field 9-bit enemies, and a hunt that leaves no square safe."
 pubDate: 2026-06-12
 game: 1
 unit: 17
-tags: ["assembly", "6510", "difficulty", "sid", "music", "game-feel"]
+tags: ["assembly", "6510", "difficulty", "sid", "music", "game-feel", "randomness", "debugging"]
 ---
 
 import CodeDiff from "@components/CodeDiff.astro";
@@ -76,6 +76,80 @@ The last change is the smallest and the most felt. In Unit 16, dying with the fi
 <CodeFromFile src="commodore-64/assembly/starfield/unit-17/steps/step-02.asm" lang="6502" />
 </details>
 
+## Milestone 3 — the turret park, closed
+
+Starfield looked finished at step 2. But *finished* has a second test on this course — the one the winnability gate asks of every game: can it be **lost** by a player who's actually trying to win? Drive Starfield the way a bored, clever player does, and it can't.
+
+**Park the ship under the enemies' lane, hold fire, never move.** Every enemy funnels into your bullet stream and dies; you score freely and you are immortal. You needn't even aim — fly to the right third of the screen and *stop*, and enemies never reach there at all. Two ways to switch the danger off, and both are one bug wearing two coats.
+
+The bug is where the enemies come from. The shipped spawn picks a column from the raster line:
+
+```
+        lda $d012           ; the raster line, as "randomness"
+        and #$7f
+        adc #$30            ; X = 48..175
+```
+
+It reads at *the same instant every time* — respawns fire at a fixed point in the frame, so the beam has barely moved — so every enemy appears in a band about a dozen pixels wide, **narrower than the 16-pixel hit box**. One parked, firing ship covers the whole band. And that band (48–175) is far narrower than the ship's own travel (out past 300): everything to the right is a place no enemy can go.
+
+The design-stress pass named it and its fix in one breath: give the spawn a *real* random source, spread it across the *whole* field, and make no square safe.
+
+### A real random column — the LFSR
+
+Raster-as-random was a fair beginner shortcut; the grown-up version is a **linear-feedback shift register** — one byte walking a maximal 255-long pseudo-random cycle, one step per spawn:
+
+```
+advance_rng:
+        lda rng_seed
+        asl                 ; shift left; the bit that falls out -> carry
+        bcc +
+        eor #$1d            ; a 1 fell out: fold the tap back in
++       sta rng_seed
+        rts
+```
+
+Eight bytes, no state but its own, and no pattern you can stand under. Seeded from the raster *once* at the start of each game, it gives every game a different run while keeping the columns scattered within a run.
+
+### Enemies across the whole field — the 9th bit
+
+To threaten the sky the ship can reach, an enemy has to cross X=255 — and a sprite's X is 9 bits: the low eight in its position register, the ninth over in `$d010`. You met that bit in the Primer, on the ship. Now the enemies use it too: an `enemy_xhi_tbl` byte each, written into `$d010` beside the low X, and both collision tests taught to compare the full nine bits instead of skipping the right half. The safe corner is gone — an enemy can be anywhere the ship can.
+
+<Figure src="/images/commodore-64/assembly/starfield/unit-17/step-03-spread.png" alt="Three green enemies at widely different X positions across the whole width of the screen, the white ship near the bottom." caption="The LFSR spawn: the three enemies scatter across the whole field, past the old X=175 ceiling. No single column to park under, and no right-side corner the danger can't reach." />
+
+### No square is safe — the hunt
+
+Spreading the enemies stops you *scoring* from a park, but a still ship can still hide: shoot the one lane it sits under, let the rest fall wide. So the last piece makes the enemies **come to you**. Every other frame, each enemy drifts one pixel toward the ship's column:
+
+```
+drift_enemy_x:
+        ; step this enemy's 9-bit X one pixel toward the ship's 9-bit X
+        ...
+        bmi .drift_right    ; enemy left of the ship -> move right
+        bne .drift_left     ; enemy right of the ship -> move left
+        ...
+```
+
+Slow enough that a moving ship shakes them; fatal to one that doesn't. Parking is a death sentence now: the enemies converge on your column from across the field, and with one bullet in the air at a time a still ship can't clear them all.
+
+<Figure src="/images/commodore-64/assembly/starfield/unit-17/step-03-park-shipped.png" alt="The shipped game: the ship sitting at the bottom centre, three lives, enemies drifting in a lane away from it." caption="The shipped game, thirty seconds of parking and holding fire: three lives, untouched. The turret park." />
+
+<Figure src="/images/commodore-64/assembly/starfield/unit-17/step-03-park-fixed.png" alt="The fixed game: the ship at the bottom centre with enemies converging on its column from above, lives down to 2." caption="The fixed game, the same thirty seconds of the same lazy play: a life already gone, the wave bearing down. Sitting still is no longer a strategy — the game can be lost." />
+
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-17/steps/step-02.asm"
+  after="commodore-64/assembly/starfield/unit-17/steps/step-03.asm"
+  lang="6502"
+  title="Step 3: an LFSR spawn, full-field 9-bit enemies, and a hunt that leaves no square safe"
+  context={3}
+/>
+
+<details>
+<summary>The complete corrected program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-17/steps/step-03.asm" lang="6502" />
+</details>
+
+None of this was invented for a lesson — the turret park shipped, and a scripted "park and hold fire" run found it exactly the way the winnability gate is meant to: by playing to break the game and watching it break. `step-03` is Starfield with the hole closed — the LFSR earns its place, and the game finally can't be won by refusing to play it.
+
 ## When it's wrong, see why
 
 - **The jingle plays its first note and holds it forever.** `jingle_timer` isn't being reloaded, or `jingle_idx` never increments — the tick serves one row and then keeps agreeing with itself.
@@ -84,10 +158,12 @@ The last change is the smallest and the most felt. In Unit 16, dying with the fi
 - **The wave never advances.** `kills` isn't reset in `advance_wave` (it sails past 10 and the `cmp #10` / `bcc` never matches again), or the increment isn't in the hit path at all.
 - **Wave six is absurdly, unplayably fast.** The table index isn't clamped — past the end of `wave_speed_tbl` the lookup reads neighbouring bytes as speeds. `WAVE_TOP` is the wall.
 - **Fire still skips the game-over screen.** `ui_lock` has to be loaded *where the state changes* — in the out-of-lives branch — not in `show_game_over`, which repaints every frame and would reload the lock forever.
+- **A parked, firing ship never dies.** The spawn column is seeded from the raster at a fixed point in the frame, so enemies cluster in a band tighter than the hit box and a still ship clears it. Give the spawn a real LFSR, spread it across the whole 9-bit field, and home the enemies toward the ship — a park has to be punishable.
+- **Enemies vanish at the right edge, or never reach it.** The spawn X tops out at 175 and the collision test skips the ship's 9th-bit half. Carry enemies past X=255 with a per-enemy high bit and compare the full nine bits, or the right of the screen is a no-death zone.
 
 ## Before and after
 
-We started with a finished loop that treated every minute the same and ended with a game that pushes back: waves that quicken on a schedule the data owns, a title with a voice, endings with room to land. None of it touched the systems built in Units 1–16 — the curve is a poked byte, the music is a visited table, the dwell is a counted-down lock. That is what the architecture was for.
+We started with a finished loop that treated every minute the same and ended with a game that pushes back: waves that quicken on a schedule the data owns, a title with a voice, endings with room to land. None of it touched the systems built in Units 1–16 — the curve is a poked byte, the music is a visited table, the dwell is a counted-down lock. That is what the architecture was for. And when the winnability gate went looking, it found a game that pushed back only if you *let* it — a turret park that made losing optional — so a real random spawn, full-field enemies and a hunt closed the last hole: now the pushing-back is not optional.
 
 ## Try this
 
@@ -103,9 +179,10 @@ We started with a finished loop that treated every minute the same and ended wit
 - **A sequencer is a table and a tick** — pitch, duration, rest-as-a-note, a loop marker; the SID holds the notes so the game keeps running.
 - **Shared voices change hands at transitions** — the title lends the laser's voice to the band; both halves of the handover live in `enter_title` and `enter_game`.
 - **Endings need dwell** — a lock the ending screens count down before believing the button; the pause is part of the design.
+- **A game is proven by trying to break it** — a scripted "park and hold fire" run found a dominant strategy the *finished* game shipped with. Randomness you can stand under isn't random; a field the danger can't reach isn't a field. A real LFSR, full-field 9-bit enemies, and a hunt made losing possible again.
 
 ## What's next
 
-*Now* Starfield is finished — opening music, a curve that answers your skill, endings that land, and a number on screen for the wave you died on. The vocabulary list from Unit 16 gains its last three entries: escalation as data, music as a table, and patience as a lock.
+*Now* Starfield is finished — and finished means *losable*: opening music, a curve that answers your skill, endings that land, a number for the wave you died on, and no square left to switch the danger off. The vocabulary list from Unit 16 gains its last entries: escalation as data, music as a table, patience as a lock, and a random source you can't out-park.
 
 The next game on this machine starts from all of it. **Platform Panic** trades the open sky for floors and ladders — and brings the first problem sprites can't solve alone.
