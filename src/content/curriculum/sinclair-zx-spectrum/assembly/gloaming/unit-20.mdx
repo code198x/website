@@ -1,10 +1,10 @@
 ---
 title: "Again"
-description: "The last arrow: win or lose, SPACE returns you to a title that remembers your best night — what persists, what's reborn, and an input lock to make every transition deliberate. The state machine closes, and the module converges on the finished game, byte for byte."
+description: "The last arrow: win or lose, SPACE returns you to a title that remembers your best night — what persists, what's reborn, and an input lock to make every transition deliberate. The state machine closes and the module converges on the shipped game — and then the winnability gate does its job: two bugs the proof found, a tie that steals a win and a wall that kills, closed for good."
 pubDate: 2026-07-03
 game: 1
 unit: 20
-tags: ["assembly", "z80", "state-machine", "persistence", "input", "game-feel"]
+tags: ["assembly", "z80", "state-machine", "persistence", "input", "game-feel", "debugging"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
@@ -89,6 +89,66 @@ It's a humble mechanism and worth being honest about its scope: the lock is a *d
 
 (One tiny idiom in the title's pip loop rewards a close look: `inc c` / `dec c` — an increment immediately undone. Why? `dec` sets the flags; `inc`-then-`dec` *tests C for zero without changing it* — a flags-only read of a register the loop still needs. Z80 programmers collected tricks like this the way the title collects pips.)
 
+## Milestone 3 — the tie that steals a win
+
+Two milestones ago this looked finished. It runs, it loops, it remembers. But *finished* isn't a feeling — this course has said since Unit 16 that a game is not done because it looks done; it's done when you can **drive it to each of its endings and watch them arrive**. So before we call it, we do exactly that: a scripted run to THE NIGHT IS HELD, and a scripted run to NIGHT FALLS. Proving a game is the discipline that turns "I think it works" into "I watched it work" — and the reason the discipline exists is that sometimes you watch it *not*.
+
+Drive the win to its very edge — the eighth lamp lit on your **last life**, the wisp arriving on the **same frame** — and the shipped game does something it has no right to do:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-20/step-03-tie-stolen.png" alt="NIGHT FALLS on a black screen, PRESS SPACE beneath — the loss screen, shown on a frame where the player had just lit the final lamp." caption="The shipped build, on the tie: the last lamp lit, the night held — and NIGHT FALLS anyway. A won game, taken at the buzzer. Rare, but real, and exactly wrong at the moment that matters most." />
+
+Here's why, and it's a single matter of *order*. `play_step` runs the beat like this: move the lamplighter, then move the wisp, then ask if the night is held. On the tie frame the lamplighter lights the eighth lamp — the win is now true — and then the wisp steps onto him; `draught_step` resolves that catch, sets NIGHT FALLS, and the win is **never asked**, because the frame has already ended in a loss. The game checked defeat before it checked victory.
+
+The fix is to ask the better question first:
+
+```
+play_step:
+            call    player_step
+            ; ... if the lamplighter's own move ended the game, stop ...
+            ld      a, (lit_count)      ; the win check, now FIRST
+            cp      NUM_LAMPS
+            jr      z, .night_held      ; the set is complete — held, this instant
+            call    draught_step        ; only now does the wisp get its move
+            ; ...
+```
+
+Lighting the last lamp holds the night *this instant* — before the wisp is allowed its step. A win and a catch on the same frame now resolve as the win, which is the only fair reading: you finished before it reached you. Same tie, same last life — and now:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/gloaming/unit-20/step-03-tie-held.png" alt="THE NIGHT IS HELD over the play field, PRESS SPACE beneath — the win screen, on the identical tie that lost a moment ago." caption="The corrected build, the identical tie: THE NIGHT IS HELD. One reordered check is the whole difference between a game that honours your last lamp and one that robs it." />
+
+### The other wrong the proof found
+
+Push on the loss the same way and a second, subtler fault surfaces. Hug a wall while the wisp is *phasing through it* — the night is not of the town, and stone means nothing to it — and a bump that should cost nothing costs you a life. The wall still looks solid; you die walking into brick.
+
+The culprit is a line we were *proud* of. `wall_at` reads collision straight off the screen — "the answer is already on the screen," every wall cell's attribute carrying the wall bit. Elegant, until two things share a cell. While the wisp is drawn over a wall, that cell's attribute is the *wisp's* (no wall bit), so `wall_at` waves the step through — and the mirror rule, finding the wisp there, prices the harmless bump as fatal contact.
+
+The truth didn't vanish; it moved. The wisp's own buffer, `under_draught`, still holds the ground it stands on — and *that* is what to ask:
+
+```
+            ; the wisp is on the target cell — but is that cell really a wall?
+            ld      a, (under_draught + 8)   ; the ground beneath the wisp
+            bit     WALL_BIT, a
+            ret     nz                       ; brick under the wisp — blocked, harmless
+            call    lose_life                ; open ground — the cold touches, and it costs
+```
+
+The lesson is bigger than the bug: **when two movers can occupy one cell, the screen stops being the ground truth** — the buffer that remembers what lies underneath is. The two-mover pattern you built back in Unit 8 always carried this hazard; it only bites where a mover overlaps a wall, which is why it stayed hidden until the proof went looking.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/gloaming/unit-20/steps/step-02.asm"
+  after="sinclair-zx-spectrum/assembly/gloaming/unit-20/steps/step-03.asm"
+  lang="z80"
+  title="Step 3: the win asked before the wisp moves, and a wall that blocks even with the wisp behind it"
+  context={3}
+/>
+
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/gloaming/unit-20/steps/step-03.asm" lang="z80" />
+</details>
+
+Neither bug was invented for a lesson — both shipped, and both were caught the only way bugs like them ever are: by driving the game to its endings *on purpose* and watching, frame by frame, for the moment the machine does the wrong thing. That is what the winnability gate is *for*, and `step-03` is the game with the gate's findings closed — the build the shipped `gloaming-m1` now becomes.
+
 ## When it's wrong, see why
 
 - **The end screens ignore SPACE forever.** The dispatch never routes WIN/LOSE frames to `end_step` — the Unit 15 "hold" was a dead end by design; the call must replace it, not join it.
@@ -96,10 +156,14 @@ It's a humble mechanism and worth being honest about its scope: the lock is a *d
 - **The best row shows your latest win, not your best.** The update is an unconditional store — it needs the compare: only write when the new night beats the old (`cp (hl)` / `jr c` past the store).
 - **The best row is always full, or garbage.** The pip loop's count is wrong, or `best_lives` got swept *into* `init_game` — in which case it's reborn as zero with everything else, and the title has amnesia. Persistence by omission cuts both ways: what you exclude survives, what you include forgets.
 - **Screens still occasionally blink past.** A transition is missing its `LOCK` arm — all three entries (WIN, LOSE, back-to-TITLE) need it; the one you forget is the one the player finds.
+- **A won game reads NIGHT FALLS.** The win check sits *after* `draught_step`, so a catch on the very frame you complete the set pre-empts a victory you'd earned. Move the `lit_count` test ahead of the wisp's move — finishing beats being reached.
+- **A harmless wall-bump kills you.** `wall_at` read the wisp's own attribute off the screen and waved the step through; the mirror rule then priced the bump as contact. When the target cell holds the wisp, ask `under_draught` for the real ground, not the screen.
 
 ## Before and after — and the module, closed
 
-The unit itself is small: one new step routine, one byte of memory, one byte of patience. But step back, because something bigger just happened. **The final build of this unit is `gloaming-m1` — the shipped game — byte for byte.** Not similar; identical. Every unit of this module ended by proving its code matched a checkpoint of the real game, and tonight the checkpoints ran out: the square you textured in Unit 2, the dance from Unit 8, the veto from Unit 9, the buffer-edit trick from Unit 12, the draught, the embers, the three phrases, the door, and the loop — they were never a teaching copy of Gloaming. They were Gloaming, assembled in an order that let every mistake teach. The game is yours now, in the strongest sense available to a programmer: you built every byte of it, and you know why each one is there.
+The unit itself is small: one new step routine, one byte of memory, one byte of patience — and then two corrections the proof insisted on. But step back, because something bigger just happened. **The build this module converged on is `gloaming-m1` — the shipped game — byte for byte.** Not similar; identical. Every unit ended by proving its code matched a checkpoint of the real game, and at step 2 the checkpoints ran out: the square you textured in Unit 2, the dance from Unit 8, the veto from Unit 9, the buffer-edit trick from Unit 12, the draught, the embers, the three phrases, the door, and the loop — they were never a teaching copy of Gloaming. They were Gloaming, assembled in an order that let every mistake teach. The game is yours now, in the strongest sense available to a programmer: you built every byte of it, and you know why each one is there.
+
+And because you know why, you could do the thing shipped code so rarely gets: go back in and make it *right*. `step-03` closes the two faults the winnability gate turned up — the stolen win, the wall that killed — so the shipped `gloaming-m1` updates to match. "Byte for byte" still holds: the game you built is the game that ships. It's just that the game that ships is now correct at the two edges where it wasn't.
 
 ## Try this: hold the button down
 
@@ -123,7 +187,8 @@ Then *listen* to it. Walk onto a lamp: the blip plays very slightly flat — abo
 - **Persistence by omission**: with beginning centralised in `init_game`, what survives is precisely what it doesn't touch — auditable, deliberate, one byte here.
 - **An input lock makes thresholds deliberate** — half a second of deafness at each entry, guarding the press that lands long.
 - Registers can be **tested without being changed** — `inc`/`dec` as a flags-only read.
-- And the whole of it: **twenty units, one game, zero bytes of difference.**
+- **A game is proven at its endings — and proving finds bugs.** The stolen win and the phase-wall death both hid until a scripted run to each ending went looking. Order the win ahead of the threat; trust the buffer over the screen.
+- And the whole of it: **twenty units, one game** — matched byte for byte to what shipped, then made right where the proof said it wasn't.
 
 ## What's next
 
