@@ -1,10 +1,10 @@
 ---
 title: "The Dawn Phrase"
-description: "Motif discipline: the dawn gets its own voice — dusk's bell answered and reversed — written the way the real one was written: three candidates in notation, auditioned by ear. And with it, your build is the shipped game, byte for byte."
+description: "Motif discipline: the dawn gets its own voice — dusk's bell answered and reversed — auditioned by ear from three candidates in notation. Your build is the shipped game, byte for byte — and then the winnability gate does its work: a fifth-watch tie that denied the dawn, and a wall that killed through the wisp, both inherited from Gloaming's engine, both closed."
 pubDate: 2026-07-03
 game: 1
 unit: 10
-tags: ["assembly", "z80", "audio", "beeper", "music", "tooling"]
+tags: ["assembly", "z80", "audio", "beeper", "music", "tooling", "debugging"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
@@ -82,16 +82,78 @@ The phrase compiles to the same straight-line shape as every voice in the game �
 
 This build is not *like* the shipped game. Assemble your step 1 and compare it against the Long Night this course ships — they are **byte-identical**, the same convergence Gloaming's unit 20 delivered for module 1, now held across an entire redesign: ten units, three new systems, two data tables, one deleted scoreboard, and not a byte of daylight between your file and the real one. Every honest failure you built on the way — the guard that wouldn't take, the restless homecoming, the ghost in the pool, the gapped vein, the camping hunter, the lying ledge, the deaf rests, the expired metric — was the actual path this game took through its fifteen playtest rounds. You didn't follow a tutorial. You re-lived an iteration.
 
+## Milestone 2 — the dawn you earned
+
+The byte gate proves you rebuilt the shipped game. But this course keeps a second promise about *finished*, the one Gloaming's Unit 20 states outright: a game is not done until you can **drive it to its endings and watch them arrive**. The Long Night has the tenderest ending in the module — five watches survived, and DAWN BREAKS. So drive it there: the fifth watch, the eighth lamp, your last life — and the wisp arriving on the very same frame.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-10/step-02-dawn-denied.png" alt="NIGHT FALLS on a black screen, PRESS SPACE beneath — the loss screen, shown on the frame the fifth watch was completed." caption="The shipped build, on the fifth-watch tie: the last lamp of the last watch lit, the whole night held — and NIGHT FALLS anyway. Not a lost game: a stolen dawn." />
+
+The wrong is a matter of *order*, and if it feels familiar it should — this is Gloaming's engine, and it carried Gloaming's bug forward whole. `play_step` moves the lamplighter, then moves the wisp, then asks whether the watch is complete. On the tie frame the eighth lamp lights — the night is held, and on the fifth watch the dawn is *due* — and then the wisp steps onto him; `draught_step` resolves the catch, sets NIGHT FALLS, and the dawn is never asked. The game grants defeat before it grants the morning you survived five watches to earn.
+
+The fix is the one the whole family shares: ask the better question first.
+
+```
+play_step:
+            call    player_step
+            ; ... if the lamplighter's own move ended the night, stop ...
+            ld      a, (lit_count)      ; the watch check, now FIRST
+            cp      NUM_LAMPS
+            jr      z, .watchdone       ; the watch is complete — held, this instant
+            call    draught_step        ; only now does the wisp get its move
+            ; ...
+.watchdone:
+            ; the eighth lamp: is this the last watch of the night?
+```
+
+Complete the watch and the night is held *this instant* — before the wisp is allowed its step. On the last watch, that instant is the dawn. Same tie, same last life:
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/the-long-night/unit-10/step-02-dawn.png" alt="DAWN BREAKS over the gilded field, PRESS SPACE beneath — the win screen, on the identical tie that fell to NIGHT FALLS a moment ago." caption="The corrected build, the identical tie: DAWN BREAKS. One reordered check is the difference between the morning you earned and a dark that takes it at the threshold." />
+
+### The wall the wisp walks through
+
+The proof turns up a second inherited wrong, subtler and just as old. Hug a wall — or a pool of the solid dark — while the wisp is *phasing through it*, and a bump that should cost nothing costs a life. The wisp is not of the town; stone and dark mean nothing to *it*, and it drifts through both. But you shouldn't be able to die walking into a wall that still looks solid.
+
+The culprit is the line the game is proudest of: `wall_at` reads collision straight off the screen. Elegant — until two things share a cell. While the wisp is drawn over a wall (or a dark pool), that cell's attribute is the *wisp's*, so `wall_at` and the `DARK` test are both fooled into waving the step through, and the mirror rule prices the bump as fatal contact. The truth didn't vanish; it moved into the wisp's buffer, `under_draught`, which still holds the ground beneath it — and *that* is what to ask:
+
+```
+            ; the wisp is on the target cell — but what's the real ground beneath it?
+            ld      a, (under_draught + 8)   ; the ground the wisp stands on
+            bit     WALL_BIT, a
+            ret     nz                       ; wall under the wisp — blocked, harmless
+            cp      DARK
+            ret     z                        ; a pool of dark under the wisp — blocked too
+            call    lose_life                ; open ground — the cold touches, and it costs
+```
+
+The lesson outlives the bug: **when two movers can occupy one cell, the screen stops being the ground truth** — the buffer that remembers what lies underneath is. It's the hazard hiding in the two-mover pattern you've used since Gloaming, and it hides until the proof walks you into a wall on purpose.
+
+<CodeDiff
+  before="sinclair-zx-spectrum/assembly/the-long-night/unit-10/steps/step-01.asm"
+  after="sinclair-zx-spectrum/assembly/the-long-night/unit-10/steps/step-02.asm"
+  lang="z80"
+  title="Step 2: the watch asked before the wisp moves, and a wall or pool that blocks with the wisp inside it"
+  context={3}
+/>
+
+<details>
+<summary>The complete corrected program</summary>
+<CodeFromFile src="sinclair-zx-spectrum/assembly/the-long-night/unit-10/steps/step-02.asm" lang="z80" />
+</details>
+
+Both bugs shipped — in this game and in Gloaming before it — one engine, one pair of faults, carried forward together. Both were caught the only way their kind ever is: by driving the game to its endings on purpose and watching for the frame the machine does the wrong thing. `step-02` closes them, and the shipped Long Night becomes this build — the byte gate above still holds, now against a game that grants the dawn it owes you.
+
 ## When it's wrong, see why
 
 - **The dawn hangs forever on one note.** The held G5 is two beeps back to back with `B` at maximum — a loop that reloads `B` without the second explicit beep never terminates the note.
 - **The phrase is out of tune with the bells.** Motif discipline is arithmetic: the chime's C5/E5/G5 must use the same half-period constants as the tune's motif steps. If you transcribe pitches from a different octave table, the conversation becomes two strangers.
 - **The chime plays but the sweep doesn't follow.** Order in `.thedawn` is the phrase, the sweep, the fanfare — a `ret` slipped between calls ends the ceremony early.
 - **Silence at the dawn.** The chime runs before the state flips, inside the win beat — if you've moved it after the `game_state` write, it still plays; if you've moved it into `end_step`, it plays when the player *leaves* the dawn, which is a different (and worse) piece of theatre.
+- **The dawn is denied on the last watch.** The watch check sits *after* `draught_step`, so a catch on the frame you complete the fifth watch steals the morning you earned. Move the `lit_count` test ahead of the wisp's move.
+- **A wall or a dark pool kills you when the wisp is inside it.** `wall_at` and the `DARK` test read the wisp's own attribute off the screen and wave the step through; the mirror rule then prices the bump as fatal. When the target cell holds the wisp, ask `under_draught` for the real ground.
 
 ## Before and after
 
-Module 2 ends where the prototype's own log ends: a five-watch night with behaviour, territory, grudges, escalation, a dawn, and a voice — every addition motivated by a named failure, every failure one you built and felt before you fixed it. That was the module's secret curriculum, and it's yours now: **iteration is the craft**. A finished game is a draft the playtest hasn't answered yet; the answers arrive as complaints ("a pain in the bum", "not very menacing", "lost at watch 2"); and each complaint, taken seriously, is a design lesson with your name on it.
+Module 2 ends where the prototype's own log ends: a five-watch night with behaviour, territory, grudges, escalation, a dawn, and a voice — every addition motivated by a named failure, every failure one you built and felt before you fixed it. That was the module's secret curriculum, and it's yours now: **iteration is the craft**. A finished game is a draft the playtest hasn't answered yet; the answers arrive as complaints ("a pain in the bum", "not very menacing", "lost at watch 2"); and each complaint, taken seriously, is a design lesson with your name on it. The two fixes in Milestone 2 are that lesson's last proof: even *byte-identical to shipped* was a draft, and the winnability gate was the playtest that answered it — a denied dawn and a wall that killed, closed at last.
 
 ## Try this: audition your own dawn
 
@@ -107,7 +169,8 @@ This game fits a 48K Spectrum with room to spare — and nearly half the machine
 - **Audition, don't oracle**: three candidates, one idea each, chosen by ear — the working method for any creative decision a program has to embody.
 - Notation-first tooling: `build198x beeper` turns readable phrases into audition WAVs and phrase assembly — tools emit *content*, engines stay yours.
 - The held-note idiom, second sighting: one byte of duration means long notes are two beeps with a hidden seam.
-- **The byte gate**: your build equals the shipped game exactly — convergence held across a full redesign, and provable with one compare.
+- **The byte gate**: your build equals the shipped game exactly — convergence held across a full redesign, provable with one compare — and then, past the gate, made right where the proof said it wasn't.
+- **A game is proven at its endings — and the proof finds bugs.** The denied dawn and the phase-wall death both hid until a scripted run to the ending went looking. Order the win ahead of the threat; trust the buffer over the screen.
 
 ## What's next
 
