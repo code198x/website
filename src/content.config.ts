@@ -394,8 +394,26 @@ const fieldNotes = defineCollection({
   }),
 });
 
+// What's New — a lightweight project changelog. Short, dated entries ("Dash is
+// a finishable game now", "Flock shows both its endings") that surface on the
+// homepage and collect on /updates. Data, not essays: a summary and a link, so
+// a milestone takes a minute to post. Longer stories belong in Field Notes.
+const updates = defineCollection({
+  loader: glob({ pattern: '**/*.yaml', base: 'src/content/updates' }),
+  schema: z.object({
+    title: z.string(),
+    pubDate: z.coerce.date(),
+    summary: z.string(),               // one or two sentences
+    href: z.string().optional(),       // where the milestone lives on the site
+    linkText: z.string().default('See it'),
+    accent: z.string().optional(),     // platform-tied hex; falls back to house
+    draft: z.boolean().default(false), // never auto-publishes
+  }),
+});
+
 export const collections = {
   systems,
+  updates,
   manufacturers,
   architectures,
   vault,
