@@ -394,19 +394,22 @@ const fieldNotes = defineCollection({
   }),
 });
 
-// What's New — a lightweight project changelog. Short, dated entries ("Dash is
-// a finishable game now", "Flock shows both its endings") that surface on the
-// homepage and collect on /updates. Data, not essays: a summary and a link, so
-// a milestone takes a minute to post. Longer stories belong in Field Notes.
+// What's New — the project changelog. Each entry is a short page of its own: a
+// screenshot, a paragraph or two, and a link to the thing that shipped. Kept
+// deliberately light — the long story of building it belongs in Field Notes,
+// which an update can link to. The `summary` feeds the homepage/hub cards and
+// the RSS teaser; the MDX body is the post.
 const updates = defineCollection({
-  loader: glob({ pattern: '**/*.yaml', base: 'src/content/updates' }),
+  loader: glob({ pattern: '**/*.mdx', base: 'src/content/updates' }),
   schema: z.object({
     title: z.string(),
     pubDate: z.coerce.date(),
-    summary: z.string(),               // one or two sentences
-    href: z.string().optional(),       // where the milestone lives on the site
-    linkText: z.string().default('See it'),
+    summary: z.string(),               // card + RSS teaser (one or two sentences)
     accent: z.string().optional(),     // platform-tied hex; falls back to house
+    href: z.string().optional(),       // the "see it" target — the game/thing
+    linkText: z.string().default('See it'),
+    heroImage: z.string().optional(),  // /images/… screenshot shown at the top
+    heroAlt: z.string().optional(),
     draft: z.boolean().default(false), // never auto-publishes
   }),
 });
