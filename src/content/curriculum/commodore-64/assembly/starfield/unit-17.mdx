@@ -1,6 +1,6 @@
 ---
 title: "The Curve"
-description: "Starfield works; nothing escalates. A wave counter, a speed table and a live fall speed put a difficulty curve in the game; a SID jingle gives the title a voice; and a dwell on both ends of the loop lets the endings land. And then the winnability gate does its work: the turret park — park under the lane, hold fire, never lose — is closed with a real LFSR spawn, full-field 9-bit enemies, and a hunt that leaves no square safe."
+description: "Starfield works; nothing escalates. A wave counter, a speed table and a live fall speed put a difficulty curve in the game; a SID jingle gives the title a voice; and a dwell on both ends of the loop lets the endings land. Then the winnability gate does its work: the turret park — park under the lane, hold fire, never lose — is closed with a real LFSR spawn, full-field 9-bit enemies, and a hunt that leaves no square safe. And finally the game gets a curve worth playing: the swarm grows from three enemies to six over the waves, the hunt tightens late, and a four-digit score can hold a long game."
 pubDate: 2026-06-12
 game: 1
 unit: 17
@@ -150,6 +150,87 @@ Slow enough that a moving ship shakes them; fatal to one that doesn't. Parking i
 
 None of this was invented for a lesson — the turret park shipped, and a scripted "park and hold fire" run found it exactly the way the winnability gate is meant to: by playing to break the game and watching it break. `step-03` is Starfield with the hole closed — the LFSR earns its place, and the game finally can't be won by refusing to play it.
 
+## Milestone 4 — a curve that keeps bending
+
+Closing the turret park made Starfield a game you can lose. It didn't make it a game worth a long sitting. Three enemies, a field of black, a difficulty that stops climbing at wave 5 — the design-stress pass named that too: *minute ten is identical to minute two*. The lanes quicken, then run out of ideas and stop. So this last step gives the game a curve that keeps bending.
+
+### The swarm grows
+
+The speed table ran out of room; the *sprite hardware* did not. The ship is sprite 0, the bullet sprite 1, the enemies 2, 3 and 4 — which leaves **sprites 5, 6 and 7 idle**. The escalation the game was missing sat in the VIC-II the whole time: more enemies.
+
+Turning three enemies into a variable count is the parallel-array pattern you've used since Unit 1, one size larger. The four enemy arrays — X, Y, flash, the 9th bit — widen from three bytes to six, and every loop that walked `#$03` now walks `enemy_count`:
+
+```
+        inx
+        cpx enemy_count         ; every active enemy this wave (3..6)
+        bne enemy_loop
+```
+
+`advance_wave` grows that count — one more enemy every other wave, up to six — switching on the next sprite and dropping it in from the top:
+
+```
+        lda enemy_count
+        cmp #$06
+        bcs no_grow             ; already six
+        tax                     ; X = the new enemy's index
+        inc enemy_count
+        lda enemy_d010_bit,x    ; its sprite's enable bit
+        ora $d015               ; switch the sprite on
+        sta $d015
+        lda #$32
+        jsr spawn_enemy         ; drop it in, LFSR column
+```
+
+<Figure src="/images/commodore-64/assembly/starfield/unit-17/step-04-start.png" alt="Wave 1: three green enemies spread across the screen, the ship near the bottom, score 0001." caption="Wave one, where the curve begins: three enemies, scattered by the LFSR." />
+
+<Figure src="/images/commodore-64/assembly/starfield/unit-17/step-04-swarm.png" alt="Wave 9: six green enemies spread across the field homing on the ship, the readout at W9, score 0016." caption="Nine waves on: six enemies — the idle sprites 5, 6 and 7 pressed into service — and a score four digits deep. The field is no longer empty, and the pressure hasn't stopped rising." />
+
+### The hunt tightens
+
+The count caps at six around wave six, and the speed table topped out at five. Past that the game would go flat again — so the *homing* becomes the late escalator. Early on, enemies drift toward your column every other frame (a gentle half-pixel); from wave seven, three frames in four — firmer, a pull you feel, without the lunge that collapses the swarm onto you at once:
+
+```
+        lda wave
+        cmp #$07
+        bcc drift_slow          ; before wave 7: every other frame (~0.5 px)
+        lda frame_count
+        and #$03
+        bne drift_now           ; wave 7+: three frames in four (~0.75 px)
+```
+
+### A score that can hold a long game
+
+A game you can play for nine waves needs a scoreboard that counts that high. The old score was one BCD byte — two digits, wrapping silently at a hundred. Now it is two bytes, four digits, the carry rippling from the low pair to the high:
+
+```
+        sed
+        lda score
+        clc
+        adc #$01
+        sta score
+        lda score_hi
+        adc #$00                ; the carry ripples up into the top two digits
+        sta score_hi
+        cld
+```
+
+Four digits is room for 9,999 kills — more than any sitting will spend, which is the point: the number never lies to you again.
+
+<CodeDiff
+  before="commodore-64/assembly/starfield/unit-17/steps/step-03.asm"
+  after="commodore-64/assembly/starfield/unit-17/steps/step-04.asm"
+  lang="6502"
+  title="Step 4: enemy count as a difficulty axis, a tightening hunt, and a four-digit score"
+  context={3}
+/>
+
+<details>
+<summary>The complete program</summary>
+<CodeFromFile src="commodore-64/assembly/starfield/unit-17/steps/step-04.asm" lang="6502" />
+</details>
+
+The design-stress pass asked for a second escalation axis once the speed table gave out. Enemy count is that axis, the tightening hunt is a third, and the score finally counts high enough to prove you climbed. Starfield isn't just un-broken now — it's a game with somewhere to go.
+
 ## When it's wrong, see why
 
 - **The jingle plays its first note and holds it forever.** `jingle_timer` isn't being reloaded, or `jingle_idx` never increments — the tick serves one row and then keeps agreeing with itself.
@@ -160,10 +241,13 @@ None of this was invented for a lesson — the turret park shipped, and a script
 - **Fire still skips the game-over screen.** `ui_lock` has to be loaded *where the state changes* — in the out-of-lives branch — not in `show_game_over`, which repaints every frame and would reload the lock forever.
 - **A parked, firing ship never dies.** The spawn column is seeded from the raster at a fixed point in the frame, so enemies cluster in a band tighter than the hit box and a still ship clears it. Give the spawn a real LFSR, spread it across the whole 9-bit field, and home the enemies toward the ship — a park has to be punishable.
 - **Enemies vanish at the right edge, or never reach it.** The spawn X tops out at 175 and the collision test skips the ship's 9th-bit half. Carry enemies past X=255 with a per-enemy high bit and compare the full nine bits, or the right of the screen is a no-death zone.
+- **The swarm never grows past three.** A loop still walks `#$03` instead of `enemy_count`, or `advance_wave` never increments the count. Widen the arrays to six and count with the variable.
+- **A new enemy shows as garbage, or not at all.** Its sprite bit in `$d015` wasn't switched on, or its shape pointer at `$07fd`-`$07ff` wasn't set. Enable the bit and set the pointer before the enemy can appear.
+- **The score still snaps back to zero.** The high byte isn't carried — the `adc #$00` into `score_hi` is missing, so the low pair wraps at a hundred as before.
 
 ## Before and after
 
-We started with a finished loop that treated every minute the same and ended with a game that pushes back: waves that quicken on a schedule the data owns, a title with a voice, endings with room to land. None of it touched the systems built in Units 1–16 — the curve is a poked byte, the music is a visited table, the dwell is a counted-down lock. That is what the architecture was for. And when the winnability gate went looking, it found a game that pushed back only if you *let* it — a turret park that made losing optional — so a real random spawn, full-field enemies and a hunt closed the last hole: now the pushing-back is not optional.
+We started with a finished loop that treated every minute the same and ended with a game that pushes back: waves that quicken on a schedule the data owns, a title with a voice, endings with room to land. None of it touched the systems built in Units 1–16 — the curve is a poked byte, the music is a visited table, the dwell is a counted-down lock. That is what the architecture was for. And when the winnability gate went looking, it found a game that pushed back only if you *let* it — a turret park that made losing optional — so a real random spawn, full-field enemies and a hunt closed the last hole: now the pushing-back is not optional. Then, with the game finally fair, we gave it somewhere to go — a swarm that grows into the idle sprites, a hunt that tightens late, a score that counts a long run — the curve bending on past the point the speed table admitted defeat.
 
 ## Try this
 
@@ -180,9 +264,11 @@ We started with a finished loop that treated every minute the same and ended wit
 - **Shared voices change hands at transitions** — the title lends the laser's voice to the band; both halves of the handover live in `enter_title` and `enter_game`.
 - **Endings need dwell** — a lock the ending screens count down before believing the button; the pause is part of the design.
 - **A game is proven by trying to break it** — a scripted "park and hold fire" run found a dominant strategy the *finished* game shipped with. Randomness you can stand under isn't random; a field the danger can't reach isn't a field. A real LFSR, full-field 9-bit enemies, and a hunt made losing possible again.
+- **Difficulty is more than one axis** — when the speed table topped out, enemy count and homing pressure carried the curve on. Escalation lives in the hardware you haven't used yet (three idle sprites) and the behaviour you can tighten.
+- **The parallel-array pattern scales** — three enemies to six is the same arrays one size wider and one variable in place of a literal; the loops never learn how many there are.
 
 ## What's next
 
-*Now* Starfield is finished — and finished means *losable*: opening music, a curve that answers your skill, endings that land, a number for the wave you died on, and no square left to switch the danger off. The vocabulary list from Unit 16 gains its last entries: escalation as data, music as a table, patience as a lock, and a random source you can't out-park.
+*Now* Starfield is finished — and finished means *losable and worth replaying*: opening music, a curve that keeps bending past where the speed table gave out, a swarm that grows into the idle sprites, endings that land, a four-digit number for the run you died on, and no square left to switch the danger off. The vocabulary list from Unit 16 gains its last entries: escalation as data, music as a table, patience as a lock, a random source you can't out-park, and difficulty spread across more axes than one.
 
 The next game on this machine starts from all of it. **Platform Panic** trades the open sky for floors and ladders — and brings the first problem sprites can't solve alone.
