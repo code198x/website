@@ -60,7 +60,18 @@ export async function GET(context: APIContext) {
     link: `/field-notes/${entry.id}/`,
   }));
 
-  const items = [...unitItems, ...ftmItems, ...fnItems].sort(
+  // What's New — the project changelog; same published-only gate. No per-entry
+  // pages, so each links to its anchor on /updates (a stable, unique guid).
+  const upd = (await getCollection('updates'))
+    .filter((entry) => !entry.data.draft && entry.data.pubDate <= new Date());
+  const updItems: FeedItem[] = upd.map((entry) => ({
+    title: `What's New: ${entry.data.title}`,
+    pubDate: entry.data.pubDate,
+    description: entry.data.summary,
+    link: `/updates/#${entry.id}`,
+  }));
+
+  const items = [...unitItems, ...ftmItems, ...fnItems, ...updItems].sort(
     (a, b) => b.pubDate.getTime() - a.pubDate.getTime()
   );
 
