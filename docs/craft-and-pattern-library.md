@@ -19,9 +19,39 @@ So the honest split is not *recipe vs lesson, some of which move*. It is:
 
 - **Craft** is a **course** — sequenced modules and units, taught front-to-back.
 - **The Pattern Library** is **reference** — standalone, dip-in entries.
+- **Machine and language tracks** are **application** — where transferable ideas meet
+  real syntax, registers, memory maps, chips, timing and toolchains.
 
 Same idea can live in both, in different modes, clasped by `taught_in`. That is exactly
 what the field is for. **Almost nothing moves; the migration is mostly linking.**
+
+## Curriculum shape
+
+The public model is:
+
+1. **Foundations** teach concepts that are true before a machine or language matters:
+   sequence, variables, loops, numbers, bits, source, interpreters, compilers and
+   assemblers.
+2. **Machine/language-specific primers** teach the first concrete vocabulary for a route:
+   how Sinclair BASIC, Commodore BASIC, Z80, 6502, 68000, AMOS, Blitz, or another path says
+   those ideas in practice.
+3. **Craft** teaches transferable game-making techniques with practical backing:
+   movement, timing, collision, fixed-point maths, chance, state, game feel, data, and
+   the tradeoffs old machines make visible.
+4. **Machine/language tracks** show the actual application under one machine's constraints:
+   the syntax, memory layout, registers, ROM calls, video/audio hardware, build process and
+   complete game structure.
+5. **Pattern Library** keeps reusable final forms: recipes and distilled patterns that can
+   point back to the Craft unit, primer unit, or game unit where the idea is taught.
+
+The Craft can be more theoretical than a machine track, but never abstract for its own
+sake. Each module should have proof: runnable examples, tables, diagrams, small programs,
+or direct links to the concrete units where the idea becomes working code.
+
+The primers are not the only language teaching in a route. They establish the initial
+vocabulary; later **mid-language modules** can appear when a real game needs a new concept
+or idiom before it can proceed. That keeps the main games practical without forcing every
+language feature into the first on-ramp.
 
 ## The three tiers (all stay as reference)
 
@@ -44,30 +74,31 @@ what the field is for. **Almost nothing moves; the migration is mostly linking.*
 | `input/edge-detection` | cross-machine recipe | hold — link when a Craft Input unit exists |
 | `framework/state-machine` | cross-machine recipe | hold — link when a Craft Game-Structure unit exists |
 | `audio/making-a-sound` | recipe / comparative essay | hold — future Craft Sound module |
-| `physics/grace-window` | design pattern (wired) | **stay** — add Craft `taught_in` if a Game Feel unit is authored |
-| `framework/ending-dwell` | design pattern (wired) | **stay** — ditto |
-| `rendering/blink-on-a-clock` | design pattern (wired) | **stay** — ditto |
+| `physics/grace-window` | design pattern (wired) | **Linked → Game Feel U3** ✅ |
+| `framework/ending-dwell` | design pattern (wired) | **Linked → Game Feel U4** ✅ |
+| `rendering/blink-on-a-clock` | design pattern (wired) | **Linked → Game Feel U2** ✅ |
 | `framework/escalation-as-data` | design pattern (wired) | **stay** — future Craft Difficulty/Data unit |
 | `framework/three-caps` | design pattern (wired) | **stay** — ditto |
 | `audio/tune-sequencer` | recipe (wired) | **stay** — future Craft Sound module |
 
 ## Executed in this pass
 
-Two `taught_in` links added — the only actions unambiguously correct today, because
-Maths for Games is the only Craft module that exists to point at:
+Five `taught_in` links added — only where a matching Craft module now exists:
 
 - `cross-platform/physics/fixed-point-math` → `Maths for Games, Unit 2 (The Craft)`
 - `cross-platform/framework/lfsr-random` → `Maths for Games, Unit 6 (The Craft)`
+- `cross-platform/rendering/blink-on-a-clock` → `Game Feel, Unit 2 (The Craft)`
+- `cross-platform/physics/grace-window` → `Game Feel, Unit 3 (The Craft)`
+- `cross-platform/framework/ending-dwell` → `Game Feel, Unit 4 (The Craft)`
 
 Nothing deleted, nothing moved.
 
 ## Recommended next step
 
-The design-pattern cluster (`grace-window`, `ending-dwell`, `blink-on-a-clock`) is a
-natural **Craft "Game Feel" module** — a taught progression on forgiveness, feedback and
-timing. Building it is *new authoring*, not a move: the module teaches the cluster, and
-each pattern gains a second `taught_in` (its existing game links, plus the Craft unit).
-The Pattern Library stays whole; Craft grows; the clasp does the work.
+The design-pattern cluster (`grace-window`, `ending-dwell`, `blink-on-a-clock`) now has a
+Craft **Game Feel** module. The next likely migration is a **Difficulty as Data** module
+for `escalation-as-data` and `three-caps`: new authoring, then `taught_in` links, with the
+Pattern Library left whole.
 
 The untaught cross-machine recipes (`aabb-collision`, `state-machine`, `sprite-animation`,
 `edge-detection`) each get their `taught_in` link at the moment their Craft home is
