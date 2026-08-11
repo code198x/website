@@ -15,6 +15,10 @@ export default defineConfig({
   // the Shadowkeep flagship. Cheap insurance, not exhaustive — see
   // decisions/modules-not-games.md.
   redirects: {
+    // people/david-jones held two copies of the DMA Design founder and no entry
+    // for the Mastertronic Magic Knight author of the same name. The bare slug
+    // redirects to the person every existing link meant; the other is qualified.
+    '/vault/people/david-jones': '/vault/people/dave-jones',
     '/sinclair-zx-spectrum/basic/game-01-story-builder': '/sinclair-zx-spectrum/basic/story-builder',
     '/sinclair-zx-spectrum/basic/game-02-lucky-number': '/sinclair-zx-spectrum/basic/lucky-number',
     '/sinclair-zx-spectrum/basic/game-03-oracle-stone': '/sinclair-zx-spectrum/basic/oracle-stone',
