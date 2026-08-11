@@ -15,6 +15,18 @@ export default defineConfig({
   // the Shadowkeep flagship. Cheap insurance, not exhaustive — see
   // decisions/modules-not-games.md.
   redirects: {
+    // Vault duplicate merges: one entry per subject, old slugs preserved as
+    // redirects so existing links and bookmarks still land on the right page.
+    '/vault/companies/delphine': '/vault/companies/delphine-software',
+    '/vault/systems/mega-drive': '/vault/systems/sega-mega-drive',
+    '/vault/magazines/zzap64': '/vault/magazines/zzap-64',
+    '/vault/companies/williams': '/vault/companies/williams-electronics',
+    '/vault/companies/williams-arcade': '/vault/companies/williams-electronics',
+    '/vault/companies/black-isle': '/vault/companies/black-isle-studios',
+    '/vault/companies/camelot': '/vault/companies/camelot-software',
+    '/vault/companies/westwood': '/vault/companies/westwood-studios',
+    '/vault/companies/midway-games': '/vault/companies/midway',
+    '/vault/companies/squaresoft': '/vault/companies/square',
     // people/david-jones held two copies of the DMA Design founder and no entry
     // for the Mastertronic Magic Knight author of the same name. The bare slug
     // redirects to the person every existing link meant; the other is qualified.
