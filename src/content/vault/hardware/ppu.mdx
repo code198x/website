@@ -1,6 +1,6 @@
 ---
 ai_generated: true
-reviewed: true
+reviewed: false
 title: "PPU: The NES Picture Processor"
 subtitle: "Dedicated silicon for smooth scrolling and sprites"
 summary: "The Ricoh 2C02 Picture Processing Unit gave the NES hardware sprites, tile-based backgrounds, and smooth scrolling—defining the look of 8-bit console gaming."
@@ -19,10 +19,25 @@ The Picture Processing Unit (PPU) was Nintendo's secret weapon. While home compu
 ## Fast facts
 
 - **Resolution:** 256×240 pixels (NTSC crops to ~256×224 visible).
-- **Colours:** 64-entry master palette (with several near-duplicates depending on PPU revision); 25 colours on screen simultaneously (1 backdrop + 4 background palettes × 3 + 4 sprite palettes × 3).
+- **Colours:** a 6-bit palette code, so 64 possible values — but only **52 distinct outputs** (48 colours plus 4 greys). 25 on screen simultaneously (1 backdrop + 4 background palettes × 3 + 4 sprite palettes × 3). See [the palette section](#the-palette-is-generated-not-tabulated) below.
 - **Backgrounds:** four logical nametables (32×30 tiles each), backed by 2 KB of CIRAM (two physical pages); cartridge mirroring (horizontal, vertical, single-screen, or four-screen) decides which logical maps where.
 - **Sprites:** 64 sprites in OAM, 8 per scanline maximum (hardware-enforced).
 - **Tile size:** 8×8 backgrounds; sprites are 8×8 or 8×16 (mode set globally via PPUCTRL bit 5).
+
+## The palette is generated, not tabulated
+
+Most descriptions of the NES palette start from a table of 64 colours and then apologise for it — several entries look identical, a few behave oddly, and every emulator's version differs slightly. All of that is a symptom of describing the wrong thing.
+
+**There is no table of colours in the 2C02. There is a generator.** Each palette entry is six bits, split into two fields:
+
+- **Level** — two bits, giving four brightness steps.
+- **Hue** — four bits, selecting one of **twelve phases**. And "phase" is the exact word: the hue value sets the phase of the NTSC colour subcarrier, the signal a television uses to decide what colour a pixel is. Hue value zero is defined as *none*, which is what produces the greyscale column.
+
+So the arithmetic is **12 phases × 4 levels = 48 colours, plus 4 greys at hue "none" = 52**. Sixty-four is the size of the six-bit code, not the number of colours the chip can make. The "near-duplicates" everyone has to explain away are codes that fall outside the defined set.
+
+This is why the twelve hues sit at even intervals around the colour wheel and not in an arbitrary order, and why no two emulators agree on the exact shades: the PPU does not output colours, it outputs a composite television signal, and turning that back into RGB is an act of interpretation. Ricoh's *development specification for the RP2C02* (established October 1982) documents the generator directly, naming the twelve phases and anchoring them to the colour burst — the reference signal a television locks onto at the start of each scanline.
+
+The chip was specified a full year before the Famicom reached shops.
 
 ## Memory architecture
 
@@ -77,7 +92,7 @@ Each of the 64 sprites uses 4 bytes in OAM (Object Attribute Memory):
 
 ## Limitations and workarounds
 
-- **8 sprites per scanline:** exceeded sprites flicker; games cycle priority to spread flicker.
+- **8 sprites per scanline:** exceeded sprites flicker; games cycle priority to spread flicker. This ceiling was **designed in, not stumbled into** — it appears in the chip's own capability summary alongside the 64-sprite total, which is why the hardware has a dedicated overflow flag to report hitting it.
 - **Colour granularity:** 16×16 pixel attribute blocks; design around this constraint.
 - **No line-by-line scroll:** requires sprite 0 hit or mapper assistance.
 - **Pattern table size:** 512 tiles total; mappers add bank switching.
