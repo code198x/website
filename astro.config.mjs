@@ -15,6 +15,8 @@ export default defineConfig({
   // the Shadowkeep flagship. Cheap insurance, not exhaustive — see
   // decisions/modules-not-games.md.
   redirects: {
+    // Deluxe Paint was filed under both games/ and tools/. It is a tool.
+    '/vault/games/deluxe-paint': '/vault/tools/deluxe-paint',
     // Vault duplicate merges: one entry per subject, old slugs preserved as
     // redirects so existing links and bookmarks still land on the right page.
     '/vault/companies/delphine': '/vault/companies/delphine-software',
