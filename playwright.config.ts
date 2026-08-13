@@ -28,7 +28,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    // Astro 7.2 backgrounds `astro dev` automatically in detected agent
+    // environments. Playwright must own a foreground process so it can wait for
+    // readiness and stop the server after the suite.
+    command: 'ASTRO_DEV_BACKGROUND=0 npm run dev -- --ignore-lock',
     url: 'http://localhost:4321',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

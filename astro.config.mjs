@@ -2,9 +2,11 @@
 import { defineConfig, fontProviders } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
-import icon from 'astro-icon';
 import { satteri } from '@astrojs/markdown-satteri';
-import { code198xHighlightPlugin } from './src/lib/satteri-highlight.ts';
+import {
+  code198xHighlightPlugin,
+  code198xTableAccessibilityPlugin,
+} from './src/lib/satteri-highlight.ts';
 
 // https://astro.build/config
 export default defineConfig({
@@ -74,9 +76,14 @@ export default defineConfig({
       fallbacks: ['Bradley Hand', 'cursive'],
     },
   ],
-  integrations: [mdx(), sitemap(), icon()],
+  integrations: [mdx(), sitemap()],
   markdown: {
-    processor: satteri({ hastPlugins: [code198xHighlightPlugin({ mdx: true })] }),
+    processor: satteri({
+      hastPlugins: [
+        code198xHighlightPlugin({ mdx: true }),
+        code198xTableAccessibilityPlugin(),
+      ],
+    }),
     syntaxHighlight: false,
   },
 });

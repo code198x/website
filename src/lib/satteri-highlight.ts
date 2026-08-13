@@ -110,3 +110,17 @@ export function code198xHighlightPlugin({ mdx = false, theme = 'dark-plus', line
     },
   };
 }
+
+/** Make Markdown tables keyboard-focusable when responsive CSS turns them into
+ * horizontal scroll regions on narrow viewports. */
+export function code198xTableAccessibilityPlugin() {
+  return {
+    name: 'code198x-table-accessibility',
+    element: {
+      filter: ['table'],
+      visit(node: any, ctx: any) {
+        ctx.setProperty(node, 'tabIndex', 0);
+      },
+    },
+  };
+}

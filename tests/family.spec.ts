@@ -19,13 +19,14 @@ test.describe('/family', () => {
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
   });
 
-  test('shows the four sibling cards with correct status badges', async ({ page }) => {
+  test('shows the six sibling cards with correct status badges', async ({ page }) => {
     await page.goto('/family');
-    await expect(page.locator('.sibling-card')).toHaveCount(4);
+    await expect(page.locator('.sibling-card')).toHaveCount(6);
     await expect(page.getByRole('heading', { name: 'Emu198x' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Forge198x' })).toBeVisible();
     // Forge198x is planned: no outbound link, just the "in design" note.
-    await expect(page.locator('.sibling-card.status-planned .sibling-link.disabled')).toBeVisible();
+    const forgeCard = page.locator('.sibling-card').filter({ hasText: 'Forge198x' });
+    await expect(forgeCard.locator('.sibling-link.disabled')).toBeVisible();
   });
 
   test('footer family strip links to the sibling orgs', async ({ page }) => {
