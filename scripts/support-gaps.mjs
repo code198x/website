@@ -15,7 +15,11 @@ import { ASM198X_ISAS } from '../src/lib/surfaces.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const systemsDir = join(root, 'src/content/systems');
-const emuCratesDir = join(root, '../../Emu198x/crates');
+// `Emu198x/` is the org *container*; the flagship repo is `Emu198x/emu198x/`
+// inside it, so the crates live one level deeper than this once pointed. The
+// cross-check is guarded by `existsSync`, so the wrong path did not error — it
+// silently skipped, and every core that exists but is unflagged went unreported.
+const emuCratesDir = join(root, '../../Emu198x/emu198x/crates');
 
 // Emu198x machine crates → website system slug. Extend when a new core lands
 // (unmapped crates are listed by the report). Non-machine crates are skipped.
@@ -53,6 +57,7 @@ const NON_MACHINE_CRATES = new Set([
   'emu198x-catalogue',
   'emu198x-native-video',
   'emu198x-shell',
+  'emu198x-test-skip',
   'emu198x-ui',
 ]);
 
