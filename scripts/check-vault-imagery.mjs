@@ -41,6 +41,17 @@ const VAULT_IMAGES = join(IMAGE_ROOT, 'vault');
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif']);
 
 /**
+ * Containers that can carry an audio track, and are therefore excluded from
+ * Vault media outright by capturing-published-software.md. The rule is not
+ * "remember to strip the audio" — it is that the permitted format cannot
+ * carry any, so the format enforces the rule instead of a person doing it.
+ *
+ * Vault media only. Curriculum captures are our own programs and our own
+ * music, and stay MP4 under the same decision.
+ */
+const MUXED_EXT = new Set(['.mp4', '.mov', '.m4v', '.webm', '.mkv', '.avi', '.wav', '.mp3', '.ogg']);
+
+/**
  * Cover art ceiling, in total pixels.
  *
  * publishing-third-party-imagery.md requires cover art to be "large enough to
@@ -55,12 +66,14 @@ const MAX_COVER_PIXELS = 100_000;
 const problems = [];
 const fail = (msg) => problems.push(msg);
 
-function walk(dir) {
+function walk(dir, media = []) {
   let out = [];
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
-    if (statSync(path).isDirectory()) out = out.concat(walk(path));
-    else if (IMAGE_EXT.has(extname(name).toLowerCase())) out.push(path);
+    const ext = extname(name).toLowerCase();
+    if (statSync(path).isDirectory()) out = out.concat(walk(path, media));
+    else if (IMAGE_EXT.has(ext)) out.push(path);
+    else if (MUXED_EXT.has(ext)) media.push(path);
   }
   return out;
 }
@@ -172,10 +185,19 @@ for (const file of manifests) {
 }
 
 let onDisk = [];
+const muxed = [];
 try {
-  onDisk = walk(VAULT_IMAGES);
+  onDisk = walk(VAULT_IMAGES, muxed);
 } catch {
   // No Vault imagery yet is a valid state.
+}
+
+for (const path of muxed) {
+  fail(
+    `images/${relative(IMAGE_ROOT, path)} is a container that can carry audio, which Vault ` +
+    `media may not be. Moving images are silent looping animated WebP — build one with ` +
+    `capture/animate.py from a captured PNG frame sequence.`
+  );
 }
 
 for (const path of onDisk) {
