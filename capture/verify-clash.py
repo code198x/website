@@ -8,21 +8,34 @@ as a broken one; the third was argued from a misidentified sprite. On a page
 whose subject is a visual artefact, an eye that wants to see the artefact is
 not evidence.
 
-The measurement
----------------
-Clash is a cell whose *background art keeps its shape but changes colour*,
-because a sprite moved in and took the cell's single ink with it. So compare
-two frames of the same scene and flag cells where pixels lit in BOTH frames
-are a different colour in each.
+Clash has two sides, and one test cannot see both
+-------------------------------------------------
+A cell holds one ink. When two things share a cell, one of them is repainted
+in the other's colour — but *which* one is repainted decides how you can
+measure it, and the two cases need different instruments.
 
-That test is what makes it specific. Background art that merely scrolled or
-animated fails it, because the lit pixels no longer coincide. A repainted
-attribute passes it, because the shape is identical and only the colour moved.
+**Background side** — the intruder wins the cell and the standing art changes
+colour under it. Measurable by pairing frames: art that keeps its shape but
+changes colour was repainted. `compare()` does this.
+
+**Sprite side** — the standing art wins the cell and the *intruder* is
+repainted, so a character walks past a wall with one limb in the wall's
+colour. This is the famous form, and the pair test is blind to it by
+construction: it only considers pixels lit in BOTH frames, and a moving
+sprite's pixels never coincide with themselves. `compare_sprite()` does this
+instead, by differencing against a baseline frame of the same scene with the
+sprite elsewhere, then asking whether what is left is drawn in more than one
+ink. One object, two colours, split on the character grid.
+
+Missing the second case is not hypothetical: the Dizzy capture session found
+zero background-side clash across ~200 frames and read that as "this game
+does not clash", while a frame in hand showed the player with a red foot.
 
 Usage
 -----
     verify-clash.py FRAME_A FRAME_B          compare two frames
     verify-clash.py --sweep DIR/GLOB         compare every consecutive pair
+    verify-clash.py --sprite BASE FRAME      is the sprite itself recoloured?
     verify-clash.py --self-test              prove the detector still works
 
 Always run --self-test before trusting a negative. A detector that silently
@@ -72,6 +85,65 @@ def compare(path_a, path_b):
     return hits
 
 
+def _sprite_inks(path_base, path_shot):
+    """Cell -> ink, for cells holding pixels the baseline frame does not.
+
+    Differencing against a baseline of the same scene leaves whatever arrived:
+    the sprite, and anything else that moved. Each surviving cell is recorded
+    with the single ink it is drawn in, which is all a Spectrum cell can hold.
+    """
+    base = Image.open(path_base).convert("RGB").crop(ACTIVE).load()
+    shot = Image.open(path_shot).convert("RGB").crop(ACTIVE).load()
+    inks = {}
+    for cy in range(24):
+        for cx in range(32):
+            for y in range(8):
+                for x in range(8):
+                    px, py = cx * 8 + x, cy * 8 + y
+                    here = shot[px, py]
+                    if _lit(here) and not _lit(base[px, py]):
+                        inks.setdefault((cx, cy), here)
+    return inks
+
+
+def _clusters(cells):
+    """Group cells into 8-connected blobs — one blob per moving object.
+
+    Clustering at cell granularity rather than pixel granularity is deliberate.
+    A sprite straddling a cell boundary is often masked to a blank column at
+    the seam, so its two halves are not pixel-connected; they are always cell-
+    adjacent. The artefact lives on the cell grid, so measure on the cell grid.
+    """
+    remaining, blobs = set(cells), []
+    while remaining:
+        stack, blob = [remaining.pop()], []
+        while stack:
+            cx, cy = stack.pop()
+            blob.append((cx, cy))
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    n = (cx + dx, cy + dy)
+                    if n in remaining:
+                        remaining.discard(n)
+                        stack.append(n)
+        blobs.append(sorted(blob))
+    return blobs
+
+
+def compare_sprite(path_base, path_shot):
+    """Moving objects that are drawn in more than one ink — one object whose
+    colour was split by the character grid, which is clash on the sprite side."""
+    inks = _sprite_inks(path_base, path_shot)
+    hits = []
+    for blob in _clusters(inks.keys()):
+        by_ink = {}
+        for cell in blob:
+            by_ink.setdefault(inks[cell], []).append(cell)
+        if len(by_ink) > 1:
+            hits.append((blob, by_ink))
+    return hits
+
+
 def self_test():
     """Repaint one cell of a synthetic frame and check the detector sees it.
 
@@ -95,10 +167,29 @@ def self_test():
     hits = compare("/tmp/_clash_a.png", "/tmp/_clash_b.png")
     expected = [(14, 12)]
     got = [(cx, cy) for cx, cy, _ in hits]
-    if got == expected:
-        print("self-test PASS — detector flags a known repainted cell")
+    if got != expected:
+        print(f"self-test FAIL (background side) — expected {expected}, got {got}")
+        return 1
+    print("self-test PASS — detector flags a known repainted cell")
+
+    # Sprite side needs its own control: the pair test above cannot reach it,
+    # so a working compare() says nothing about compare_sprite().
+    empty = Image.new("RGB", (352, 296), (0, 0, 0))
+    figure = empty.copy()
+    fpx = figure.load()
+    for y in range(10 * 8, 10 * 8 + 8):           # a two-cell figure, one ink
+        for x in range(20 * 8, 22 * 8):           # each side of a cell seam...
+            fpx[48 + x, 48 + y] = (255, 255, 255)
+    for y in range(10 * 8, 10 * 8 + 8):           # ...but the left cell is red
+        for x in range(20 * 8, 21 * 8):
+            fpx[48 + x, 48 + y] = (194, 0, 0)
+    empty.save("/tmp/_clash_c.png")
+    figure.save("/tmp/_clash_d.png")
+    shits = compare_sprite("/tmp/_clash_c.png", "/tmp/_clash_d.png")
+    if len(shits) == 1 and len(shits[0][1]) == 2:
+        print("self-test PASS — detector flags a figure split across two inks")
         return 0
-    print(f"self-test FAIL — expected {expected}, got {got}")
+    print(f"self-test FAIL (sprite side) — expected one two-ink blob, got {shits}")
     return 1
 
 
@@ -114,18 +205,41 @@ def report(path_a, path_b):
     return len(hits)
 
 
+def report_sprite(path_base, path_shot):
+    hits = compare_sprite(path_base, path_shot)
+    label = f"{path_base.split('/')[-1]} -> {path_shot.split('/')[-1]}"
+    if not hits:
+        print(f"{label}: no sprite-side clash — every moving object is one ink")
+        return 0
+    print(f"{label}: {len(hits)} object(s) drawn in more than one ink")
+    for blob, by_ink in hits:
+        print(f"    object spanning {len(blob)} cell(s):")
+        for ink, cells in sorted(by_ink.items(), key=lambda kv: -len(kv[1])):
+            listed = " ".join(f"({cx},{cy})" for cx, cy in cells)
+            print(f"        {str(ink):>18}  {listed}")
+    return len(hits)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("frames", nargs="*", help="two frames, or a glob with --sweep")
     ap.add_argument("--sweep", action="store_true",
                     help="compare every consecutive pair in the given frames")
+    ap.add_argument("--sprite", action="store_true",
+                    help="BASE FRAME: is a moving object itself split across inks?")
     ap.add_argument("--self-test", action="store_true",
                     help="verify the detector against a synthetic clash cell")
     args = ap.parse_args()
 
     if args.self_test:
         return self_test()
+
+    if args.sprite:
+        if len(args.frames) != 2:
+            sys.exit("--sprite needs a baseline frame and a frame to test")
+        report_sprite(*args.frames)
+        return 0
 
     if args.sweep:
         frames = sorted(f for pattern in args.frames for f in glob.glob(pattern))
