@@ -46,6 +46,8 @@ correct run also looks like.
 import argparse
 import glob
 import sys
+import tempfile
+from pathlib import Path
 
 from PIL import Image
 
@@ -144,53 +146,64 @@ def compare_sprite(path_base, path_shot):
     return hits
 
 
-def self_test():
-    """Repaint one cell of a synthetic frame and check the detector sees it.
+def _scene_paths():
+    """Render the entry's diagram scenes to a temp dir and return their paths.
 
-    A negative result is only worth anything if the instrument still works, so
-    this builds its own positive control rather than depending on a fixture.
+    The controls are the same scenes the published diagrams are drawn from
+    (capture/vault/diagrams.py). That is deliberate: a fixture nobody ever
+    looks at rots quietly, and this one is on the page. If the detector stops
+    being able to see clash, this test fails AND the figure visibly changes.
     """
-    base = Image.new("RGB", (352, 296), (0, 0, 0))
-    px = base.load()
-    for y in range(48, 240):                      # a filled green background
-        for x in range(48, 304):
-            px[x, y] = (0, 200, 0) if (x + y) % 3 else (0, 0, 0)
-    control = base.copy()
-    cpx = control.load()
-    for y in range(12 * 8, 12 * 8 + 8):           # one cell repainted yellow
-        for x in range(14 * 8, 14 * 8 + 8):
-            if _lit(px[48 + x, 48 + y]):
-                cpx[48 + x, 48 + y] = (255, 255, 0)
+    here = Path(__file__).resolve().parent
+    sys.path.insert(0, str(here / "vault"))
+    try:
+        import diagrams
+    except ImportError:
+        sys.exit("self-test needs capture/vault/diagrams.py, which is missing")
+    tmp = Path(tempfile.mkdtemp(prefix="clash-selftest-"))
+    paths = {}
+    for name, frame in diagrams.build_scenes().items():
+        paths[name] = str(tmp / f"{name}.png")
+        frame.save(paths[name])
+    return paths
 
-    base.save("/tmp/_clash_a.png")
-    control.save("/tmp/_clash_b.png")
-    hits = compare("/tmp/_clash_a.png", "/tmp/_clash_b.png")
-    expected = [(14, 12)]
-    got = [(cx, cy) for cx, cy, _ in hits]
+
+def self_test():
+    """Prove the instrument can still see each artefact it claims to measure.
+
+    A negative result is only worth anything if the instrument works, so this
+    builds positive controls rather than depending on a fixture — and one
+    negative control, because a detector that flags everything also "finds"
+    clash and is just as useless as one that flags nothing.
+    """
+    s = _scene_paths()
+
+    # Background side: a figure three pixels across the seam, so the two wall
+    # cells it touches repaint while the identical bricks beside them do not.
+    got = [(cx, cy) for cx, cy, _ in compare(s["clear"], s["nudged"])]
+    expected = [(16, 11), (16, 12)]
     if got != expected:
         print(f"self-test FAIL (background side) — expected {expected}, got {got}")
         return 1
-    print("self-test PASS — detector flags a known repainted cell")
+    print("self-test PASS — detector flags art repainted by an intruder")
 
-    # Sprite side needs its own control: the pair test above cannot reach it,
-    # so a working compare() says nothing about compare_sprite().
-    empty = Image.new("RGB", (352, 296), (0, 0, 0))
-    figure = empty.copy()
-    fpx = figure.load()
-    for y in range(10 * 8, 10 * 8 + 8):           # a two-cell figure, one ink
-        for x in range(20 * 8, 22 * 8):           # each side of a cell seam...
-            fpx[48 + x, 48 + y] = (255, 255, 255)
-    for y in range(10 * 8, 10 * 8 + 8):           # ...but the left cell is red
-        for x in range(20 * 8, 21 * 8):
-            fpx[48 + x, 48 + y] = (194, 0, 0)
-    empty.save("/tmp/_clash_c.png")
-    figure.save("/tmp/_clash_d.png")
-    shits = compare_sprite("/tmp/_clash_c.png", "/tmp/_clash_d.png")
-    if len(shits) == 1 and len(shits[0][1]) == 2:
-        print("self-test PASS — detector flags a figure split across two inks")
-        return 0
-    print(f"self-test FAIL (sprite side) — expected one two-ink blob, got {shits}")
-    return 1
+    # Sprite side: the pair test cannot reach this, so a working compare()
+    # says nothing at all about compare_sprite().
+    hits = compare_sprite(s["baseline"], s["scenery_wins"])
+    if not (len(hits) == 1 and len(hits[0][1]) == 2):
+        print(f"self-test FAIL (sprite side) — expected one two-ink object, got {hits}")
+        return 1
+    print("self-test PASS — detector flags a figure split across two inks")
+
+    # Negative control: the same crossing with the figure masked. A black
+    # surround means it shares no cell with the wall, so there is nothing to
+    # find and a correct detector finds nothing.
+    clean = compare_sprite(s["baseline"], s["masked"])
+    if clean:
+        print(f"self-test FAIL (negative control) — masked figure flagged: {clean}")
+        return 1
+    print("self-test PASS — detector stays silent on a masked figure")
+    return 0
 
 
 def report(path_a, path_b):
