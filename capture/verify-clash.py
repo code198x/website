@@ -132,16 +132,47 @@ def _clusters(cells):
     return blobs
 
 
+def _standing_inks(path_base):
+    """Cell -> the ink the standing art is drawn in, for cells that hold any."""
+    base = Image.open(path_base).convert("RGB").crop(ACTIVE).load()
+    inks = {}
+    for cy in range(24):
+        for cx in range(32):
+            for y in range(8):
+                for x in range(8):
+                    here = base[cx * 8 + x, cy * 8 + y]
+                    if _lit(here):
+                        inks.setdefault((cx, cy), here)
+    return inks
+
+
 def compare_sprite(path_base, path_shot):
-    """Moving objects that are drawn in more than one ink — one object whose
-    colour was split by the character grid, which is clash on the sprite side."""
+    """Moving objects recoloured by the standing art they crossed into.
+
+    Two inks in one object is necessary but NOT sufficient, and taking it as
+    sufficient reads a deliberately two-tone sprite as an artefact. La Espada
+    Sagrada (Topo Soft, 1990) draws its hero yellow and his sword white in the
+    neighbouring cell: one object, two inks, and no clash anywhere near it —
+    the game is *using* the grid to buy a second colour.
+
+    Clash is the narrower case where a minority ink matches the ink of the
+    standing art in the very cells carrying it. That is what makes it the
+    scenery's colour rather than the sprite's own: the cell was already that
+    colour before the sprite arrived, and the sprite was drawn in it.
+    """
     inks = _sprite_inks(path_base, path_shot)
+    standing = _standing_inks(path_base)
     hits = []
     for blob in _clusters(inks.keys()):
         by_ink = {}
         for cell in blob:
             by_ink.setdefault(inks[cell], []).append(cell)
-        if len(by_ink) > 1:
+        if len(by_ink) < 2:
+            continue
+        # Which of these inks was already the cell's before the sprite arrived?
+        imposed = {ink: cells for ink, cells in by_ink.items()
+                   if any(standing.get(c) == ink for c in cells)}
+        if imposed and len(imposed) < len(by_ink):
             hits.append((blob, by_ink))
     return hits
 
