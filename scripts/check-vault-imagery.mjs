@@ -133,8 +133,16 @@ for (const file of manifests) {
   }
 
   const published = publishedNames(data);
-  if (published.size === 0) {
-    fail(`${file}: declares no published images. Each capture needs "screenshots" (or "image").`);
+  // A capture that publishes nothing is a capture nobody can find. A MANIFEST
+  // that publishes nothing is fine and useful: an entry may be corrected by
+  // measurement alone, with the record explaining what was measured and what
+  // it changed, and no new frame to show for it.
+  for (const capture of data.captures ?? []) {
+    const names = [capture.screenshots, capture.image].flat().filter(Boolean);
+    if (names.length === 0) {
+      fail(`${file}: capture "${capture.id}" declares no images. Add "screenshots", ` +
+           `or move it out of "captures" if it published nothing.`);
+    }
   }
 
   for (const name of published) {
