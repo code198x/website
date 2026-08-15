@@ -12,9 +12,13 @@ deprecated: 1994
 
 ---
 
+import Figure from '@components/Figure.astro';
+
 ## Overview
 
-Every C64 programmer learns `PRINT` first—it's simple, friendly, and handles all the details for you. But games never use it. They POKE directly to screen memory instead. Why? **Speed.** PRINT is convenient. POKE is fast. The difference isn't subtle—it's the gap between a slideshow and a game.
+Every C64 programmer learns `PRINT` first—it's simple, friendly, and handles all the details for you. But games don't use it, and the usual explanation is that they POKE to screen memory instead because POKE is faster.
+
+Measured, that is not where the difference lives. Filling the screen from BASIC takes seconds whichever statement you use; `POKE` in a `FOR` loop is not quicker than `PRINT`, and can be slower. The gap that actually separates a slideshow from a game is not PRINT against POKE. It is **BASIC against machine code**, and it is three orders of magnitude wide.
 
 ## The Simple Version
 
@@ -72,7 +76,7 @@ Let's fill the screen with the letter 'A' using both methods:
 40 NEXT I
 ```
 
-**Time:** Approximately 18 seconds (PAL C64)
+**Measured:** 125 frames — **2.5 seconds** (PAL C64)
 
 ### Using POKE
 ```basic
@@ -81,9 +85,41 @@ Let's fill the screen with the letter 'A' using both methods:
 30 NEXT I
 ```
 
-**Time:** Approximately 2 seconds (PAL C64)
+**Measured:** 215 frames — **4.3 seconds** (PAL C64)
 
-**Result:** POKE is **9 times faster** for this simple task.
+### Using machine code
+```asm
+        lda #$01
+        ldx #$00
+loop:   sta $0400,x     ; four stores cover 1024 cells
+        sta $0500,x
+        sta $0600,x
+        sta $0700,x
+        inx
+        bne loop
+        rts
+```
+
+**Measured:** about 6,400 cycles — **6.5 milliseconds**, a third of one frame.
+
+### The result
+
+| Method | Time to fill the screen |
+|---|---|
+| BASIC, `PRINT "A";` | 2.5 s |
+| BASIC, `POKE I,1` | 4.3 s |
+| Machine code | 0.0065 s |
+
+`POKE` from BASIC is **not** faster than `PRINT` here — it is slower, because every iteration converts the floating-point loop variable `I` into an address, work that `PRINT` never does. Both are dominated by the BASIC interpreter rather than by the screen write.
+
+Machine code is roughly **660 times faster** than the BASIC `POKE` loop. That is the number worth remembering, and it is the reason games were not written in BASIC.
+
+<Figure
+  src="/images/vault/techniques/print-vs-poke/one-second-in.png"
+  alt="Three C64 screens captured one second after starting the same task. The BASIC PRINT version has filled about a third of the screen; the BASIC POKE version rather less, still showing its own program listing underneath; the machine code version is completely full."
+  frame="none"
+  caption="The same job, one second in — three captures from our own programs, composited. BASIC is still working in both of the first two; the machine code finished before the first frame was drawn."
+/>
 
 ## Real-World Example: Score Display
 
@@ -202,16 +238,18 @@ PRINT goes through the BASIC interpreter, then the KERNAL. Each layer adds overh
 - Cursor management
 - IRQ synchronisation
 
-### Why POKE Is Fast
+### What POKE Actually Costs
 
-POKE is a single BASIC command that compiles to approximately:
+It is tempting to say `POKE` compiles to two instructions:
 
 ```asm
 LDA #value      ; Load value
 STA address     ; Store to address
 ```
 
-Two machine language instructions. Done.
+It does not. BASIC is interpreted, so nothing is compiled at all. Every `POKE` is re-read as text, its two arguments evaluated as floating-point expressions, each converted to an integer, and the address range-checked — and only then does the store happen. In a `FOR` loop the address expression is re-evaluated on every pass.
+
+That is why the benchmark above comes out the way it does. Those two instructions are what the *machine code* version does, once per cell, with nothing in between. The difference between the two is the interpreter, and the interpreter is most of the cost.
 
 ## Advanced: Inline Assembly
 
@@ -324,9 +362,11 @@ Executes in ~5 milliseconds. No visible delay.
 
 **PRINT** taught millions to program. It's friendly, forgiving, and perfect for learning.
 
-**POKE** made the games you loved. It's fast, precise, and essential for real-time software.
+**POKE** is the right tool once you need a specific cell rather than the next one — arbitrary addressing, no cursor, no scrolling, colour under your control. What it is not, from BASIC, is meaningfully faster.
 
-Learn PRINT first. Master POKE next. Use both wisely.
+**Machine code** made the games you loved. Not because it uses a different screen, but because it removes the interpreter between your loop and the write. That is the whole of the 660× difference, and it is why the games on your shelf are not BASIC listings.
+
+Learn PRINT first. Learn POKE for the control it gives you. Reach for machine code when the clock is the constraint.
 
 ## See Also
 
