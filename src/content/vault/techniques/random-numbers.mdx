@@ -34,8 +34,10 @@ Every call to `RND(1)` returns a floating-point number between 0 (inclusive) and
 | Call | Behavior |
 |------|----------|
 | `RND(1)` | Generate next number in sequence |
-| `RND(0)` | Repeat last number generated |
+| `RND(0)` | Generate a number from the hardware timers, outside the sequence |
 | `RND(-TI)` | Reseed generator from system clock |
+
+Any positive argument behaves like `RND(1)`; the value itself is ignored.
 
 **`RND(1)` — Normal use:**
 ```basic
@@ -46,14 +48,24 @@ Every call to `RND(1)` returns a floating-point number between 0 (inclusive) and
 
 Each call advances the sequence, giving you a new "random" value.
 
-**`RND(0)` — Repeat last value:**
+**`RND(0)` — Read the hardware instead of the sequence:**
 ```basic
-10 a=rnd(1)      rem generate number
-20 b=rnd(0)      rem repeat it
-30 print a;b     rem same value twice
+10 print rnd(1)
+20 print rnd(0)
+30 print rnd(0)
+40 print rnd(0)
 ```
 
-Rarely useful, but occasionally handy for debugging or ensuring two systems use the same random value without storing it.
+On a cold C64 that prints four different numbers:
+
+```
+ .185564016
+ .085938096
+ .0585945249
+ .496094823
+```
+
+`RND(0)` does not repeat anything and does not advance the sequence. It builds a value from the CIA timers, so it changes every call and depends on *when* you called it. That makes it the one form of `RND` that is genuinely unpredictable from a cold start — and also the one that will not reproduce, which matters if you are debugging and want the same numbers twice.
 
 **`RND(-TI)` — Reseed:**
 ```basic
@@ -71,9 +83,9 @@ Turn your C64 on. Type:
 print rnd(1)
 ```
 
-You'll get the same number every time. Try it. Power cycle, run again — same sequence.
+You'll get `.185564016` every time. Power cycle, run again — same number, then the same sequence after it.
 
-**Why?** The generator's seed lives at zero-page addresses `$8B-$8F` (139-143 decimal) as a 5-byte BASIC float. The KERNAL initialises this float to a fixed power-on value, so every reset starts the sequence at the same point.
+**Why?** The generator's seed lives at zero-page addresses `$8B-$8F` (139-143 decimal) as a 5-byte BASIC float. Power-on leaves it holding `80 4F C7 52 58`, the copy BASIC's cold-start routine takes from ROM, so every reset starts the sequence at the same point.
 
 **For games, this is terrible.** Imagine a space invaders game where enemies always move the same way. Boring.
 
@@ -149,12 +161,11 @@ n=int(rnd(1)*11)+10
 
 ## Performance Considerations
 
-`RND(1)` is **relatively fast** for BASIC—about 1500 calls per second. Fast enough for most game logic.
+`RND(1)` costs about **4ms a call** on a PAL C64 — roughly 245 calls a second. A `FOR I=1 TO 1000: X=RND(1): NEXT` loop takes 6.9 seconds; the same loop with `X=1` in place of the RND call takes 2.8 seconds, so the generator itself accounts for 4.1 of those seconds and BASIC's loop scaffolding for the rest.
 
-**Slow operations:**
-- `INT()` adds overhead
-- Multiplication and division slow things down
-- Nested loops with RND() can bog down
+**What that means in a game loop.** A PAL frame is 20ms. One `RND(1)` eats a fifth of it before you have done anything with the number, and the `INT()`, multiply and add that turn it into a usable range cost more on top. Two or three random values per frame and the interpreter has no frame left.
+
+This is why the pregeneration advice below is not a micro-optimisation. It is the difference between a game that holds 50fps and one that does not.
 
 **Optimization tips:**
 

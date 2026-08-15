@@ -127,16 +127,19 @@ for (const file of manifests) {
     continue;
   }
 
-  if (!data.image_dir) {
-    fail(`${file}: no "image_dir", so its images cannot be located`);
-    continue;
-  }
-
   const published = publishedNames(data);
+
   // A capture that publishes nothing is a capture nobody can find. A MANIFEST
   // that publishes nothing is fine and useful: an entry may be corrected by
   // measurement alone, with the record explaining what was measured and what
-  // it changed, and no new frame to show for it.
+  // it changed, and no new frame to show for it. Such a manifest has no images
+  // to locate, so it needs no image_dir — but one that DOES publish must say
+  // where, or its claims cannot be checked against the disk.
+  if (published.size > 0 && !data.image_dir) {
+    fail(`${file}: publishes images but has no "image_dir", so they cannot be located`);
+    continue;
+  }
+
   for (const capture of data.captures ?? []) {
     const names = [capture.screenshots, capture.image].flat().filter(Boolean);
     if (names.length === 0) {
