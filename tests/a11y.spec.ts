@@ -39,6 +39,15 @@ const PAGES: Record<string, string> = {
   'commodore-amiga landing': '/commodore-amiga',
   'nintendo landing': '/nintendo-entertainment-system',
   'vault detail': '/vault/hardware/sid-chip',
+  // A Vault entry WITH code blocks. sid-chip has none, so the vault-detail gate
+  // never saw the dark code surface and missed text sitting on it at 1.14:1.
+  'vault detail with code': '/vault/techniques/screen-memory',
+  // The C64 native page is the one that actually uses `.step-note code`; the
+  // Spectrum page has .step-note but never with code inside it.
+  'setup native c64': '/setup/commodore-64/native',
+  // Amiga too: it carries the same ROM link, and Amiga orange is the accent the
+  // a11y notes single out as hardest to keep above AA.
+  'setup native amiga': '/setup/commodore-amiga/native',
 };
 
 const baseline: { allow: { rule: string; fg?: string }[] } = JSON.parse(
