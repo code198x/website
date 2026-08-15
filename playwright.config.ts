@@ -11,6 +11,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  // The full-route sweep takes ~25 minutes over 2,238 routes. It is a deliberate
+  // audit, not a gate, so it is excluded unless asked for by name — testIgnore
+  // is global, so the opt-in has to lift it rather than override it per run.
+  testIgnore: process.env.A11Y_SWEEP ? [] : ['**/a11y-sweep.spec.ts'],
   fullyParallel: true,
   reporter: 'list',
   use: {
