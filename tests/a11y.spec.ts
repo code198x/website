@@ -14,6 +14,10 @@ import { readFileSync } from 'node:fs';
 const PAGES: Record<string, string> = {
   home: '/',
   'system landing': '/sinclair-zx-spectrum',
+  // The `[platform]` stub — 137 machines with no curriculum yet, and the only
+  // surface carrying the Asm198x instruction-reference card. It had no a11y
+  // coverage at all until that card was added to it.
+  'system stub': '/intellivision',
   'module index': '/sinclair-zx-spectrum/basic/touchdown',
   unit: '/sinclair-zx-spectrum/basic/touchdown/unit-03',
   'getting started': '/sinclair-zx-spectrum/getting-started',
