@@ -37,7 +37,95 @@ if (!existsSync('dist')) {
 }
 const ALL = routes('dist').sort();
 const THEMES = ['light', 'dark'] as const;
-const findings: Record<string, string[]> = {};
+/**
+ * One entry per *defect*, not per element instance.
+ *
+ * Keying by the full selector path made one broken CSS rule look like hundreds
+ * of problems: `.context:nth-child(17) > .after.line-num`,
+ * `:nth-child(18)`, `:nth-child(19)` and so on, plus a fresh set under every
+ * generated `#diff-xxxxxxx` id. A run reporting "3001 distinct findings" was
+ * really reporting about two — diff line numbers and "coming soon" cards — and
+ * a list that long reads as hopeless rather than as a morning's work.
+ *
+ * The signature is the failing element itself: the last step of the selector,
+ * with positional pseudo-classes dropped. That is what identifies the rule you
+ * have to go and change.
+ */
+interface Defect {
+  rule: string;
+  element: string;
+  occurrences: number;
+  routes: Set<string>;
+  examples: string[];
+  /** Lowest ratio seen, for contrast failures — the worst case is the one to fix against. */
+  worst?: { ratio: number; required: number; fg: string; bg: string };
+}
+
+const findings = new Map<string, Defect>();
+
+/**
+ * The failing element, named so the same defect on two pages keys the same.
+ *
+ * Its own tag and classes, taken from the element's HTML — that is what a CSS
+ * rule is written against. A selector path is not stable: it carries positions
+ * and generated ids, so `div.diff-container.unified` arrived as forty-six
+ * separate findings, one per `#diff-znbja6w`.
+ */
+function signature(node: { html?: string; target?: unknown[] }): string {
+  const open = String(node.html ?? '').match(/^<([a-z][\w-]*)\b([^>]*)>/i);
+  if (open) {
+    const classes = (open[2].match(/\bclass="([^"]*)"/i)?.[1] ?? '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (classes.length) return `${open[1].toLowerCase()}.${classes.join('.')}`;
+  }
+  // Nothing to identify it by but the selector. Drop positions, and collapse a
+  // generated id suffix so those group rather than splinter.
+  const path = (node.target ?? []).map(String).join(' ');
+  const last = path.split(/\s*[>\s]\s*/).filter(Boolean).pop() ?? path;
+  return last
+    .replace(/:nth-(child|of-type|last-child)\(\d+\)/g, '')
+    .replace(/^#([a-z][\w-]*?)-[a-z0-9]{6,}$/i, '#$1-*');
+}
+
+/** Fold one violating node into its defect, keeping the worst contrast seen. */
+function record(
+  rule: string,
+  element: string,
+  path: string,
+  theme: string,
+  node?: { any?: Array<{ id: string; data?: Record<string, unknown> }> },
+): void {
+  const key = `${rule} | ${element}`;
+  let d = findings.get(key);
+  if (!d) {
+    d = { rule, element, occurrences: 0, routes: new Set(), examples: [] };
+    findings.set(key, d);
+  }
+  d.occurrences += 1;
+  d.routes.add(path);
+  // Distinct routes: three copies of the same URL told you nothing about how
+  // widely a defect had spread.
+  if (d.examples.length < 3 && !d.examples.some((e) => e.startsWith(`${path} [`))) {
+    d.examples.push(`${path} [${theme}]`);
+  }
+
+  const data = node?.any?.find((c) => c.id === 'color-contrast')?.data as
+    | { contrastRatio?: number; expectedContrastRatio?: string; fgColor?: string; bgColor?: string }
+    | undefined;
+  if (data?.contrastRatio !== undefined) {
+    const ratio = data.contrastRatio;
+    if (!d.worst || ratio < d.worst.ratio) {
+      d.worst = {
+        ratio,
+        required: parseFloat(String(data.expectedContrastRatio ?? '')) || 4.5,
+        fg: data.fgColor ?? '?',
+        bg: data.bgColor ?? '?',
+      };
+    }
+  }
+}
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -73,12 +161,11 @@ test(`sweep: ${ALL.length} routes x ${THEMES.length} themes`, async ({ browser }
         for (const v of results.violations) {
           if (v.impact !== 'serious' && v.impact !== 'critical') continue;
           for (const node of v.nodes) {
-            const key = `${v.id} | ${node.target.join(' ')}`;
-            (findings[key] ??= []).push(`${path} [${theme}]`);
+            record(v.id, signature(node), path, theme, node);
           }
         }
       } catch (err) {
-        (findings[`ERROR | ${String(err).slice(0, 120)}`] ??= []).push(`${path} [${theme}]`);
+        record('ERROR', String(err).slice(0, 120), path, theme);
       }
       if (++done % 250 === 0) console.log(`  ${done}/${jobs.length}`);
     }
@@ -87,13 +174,32 @@ test(`sweep: ${ALL.length} routes x ${THEMES.length} themes`, async ({ browser }
 
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
-  // Collapse to one line per distinct violation, with an example and a count.
-  const summary = Object.entries(findings)
-    .map(([k, where]) => ({ violation: k, occurrences: where.length, example: where[0] }))
+  const summary = [...findings.values()]
+    .map((d) => ({
+      rule: d.rule,
+      element: d.element,
+      occurrences: d.occurrences,
+      routes: d.routes.size,
+      examples: d.examples,
+      ...(d.worst ? { contrast: d.worst } : {}),
+    }))
     .sort((a, b) => b.occurrences - a.occurrences);
   writeFileSync('a11y-sweep-report.json', JSON.stringify({ routes: ALL.length, jobs: jobs.length, summary }, null, 2));
-  console.log(`\nSWEEP: ${jobs.length} page-loads, ${summary.length} distinct serious/critical finding(s)`);
-  for (const s of summary.slice(0, 40)) console.log(`  ${s.occurrences}x  ${s.violation}   e.g. ${s.example}`);
+
+  console.log(`\nSWEEP: ${jobs.length} page-loads, ${summary.length} distinct defect(s)`);
+  for (const d of summary) {
+    // The measured ratio is the point of a contrast failure, and the old report
+    // never carried it — you had to go and open the page to find out how far off
+    // it was, or whether it was close enough to fix with a shade.
+    const ratio = d.contrast
+      ? `  ${d.contrast.ratio}:1 needs ${d.contrast.required} (${d.contrast.fg} on ${d.contrast.bg})`
+      : '';
+    console.log(
+      `  ${String(d.occurrences).padStart(5)}x on ${String(d.routes).padStart(4)} route(s)  ` +
+        `${d.rule}  ${d.element}${ratio}`,
+    );
+    console.log(`         e.g. ${d.examples.join(', ')}`);
+  }
 
   expect(summary, `serious/critical a11y findings across ${ALL.length} routes`).toEqual([]);
 });
