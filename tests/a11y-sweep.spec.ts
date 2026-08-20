@@ -25,7 +25,17 @@ function routes(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const ALL = existsSync('dist') ? routes('dist').sort() : [];
+// No `dist`, no sweep. This used to fall back to an empty route list, which
+// meant the audit reported success having measured nothing at all — the worst
+// kind of green. The routes and the pages both come from the build now, so its
+// absence is a hard stop.
+if (!existsSync('dist')) {
+  throw new Error(
+    'a11y sweep: no dist/ — run `npm run build` first. The sweep enumerates ' +
+      'and serves the built site, so without it there is nothing to measure.',
+  );
+}
+const ALL = routes('dist').sort();
 const THEMES = ['light', 'dark'] as const;
 const findings: Record<string, string[]> = {};
 
