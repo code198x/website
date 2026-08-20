@@ -116,16 +116,15 @@ export function inkStyle(color: string): string {
 }
 
 /**
- * The real page surfaces a skill chip sits on, per theme.
+ * A chip is not on a surface — it is on a 12% tint of the brand colour *over*
+ * one — and that difference is enough to matter: the NES red passed 4.51:1
+ * against the bare surface and 4.43:1 against the tint it renders on.
  *
- * Distinct from SURFACE_LIGHT/SURFACE_DARK above, which are deliberately
- * conservative stand-ins for "some surface". A chip is not on a surface — it is
- * on a 12% tint of the brand colour *over* one, and that difference is enough
- * to matter: the NES red passed 4.51:1 against the conservative constant and
- * 4.43:1 against the tint it actually renders on.
+ * The surface beneath the tint is SURFACE_LIGHT/SURFACE_DARK, same as
+ * everything else. Measuring against a darker ground than the real one yields
+ * a darker ink, which is safe on any lighter ground; measuring against a
+ * lighter one does not hold in reverse.
  */
-const CARD_LIGHT = '#fdfcf7';
-const CARD_DARK = '#242019';
 const CHIP_TINT = 0.12;
 
 /**
@@ -139,8 +138,8 @@ const CHIP_TINT = 0.12;
  */
 export function chipInkStyle(color: string): string {
   if (!/^#[0-9a-fA-F]{3,6}$/.test(color)) return '';
-  const light = accessibleInk(color, mix(color, CARD_LIGHT, CHIP_TINT), 4.6);
-  const dark = accessibleInk(color, mix(color, CARD_DARK, CHIP_TINT), 4.6);
+  const light = accessibleInk(color, mix(color, SURFACE_LIGHT, CHIP_TINT), 4.6);
+  const dark = accessibleInk(color, mix(color, SURFACE_DARK, CHIP_TINT), 4.6);
   return `--chip-ink-l: ${light}; --chip-ink-d: ${dark};`;
 }
 
