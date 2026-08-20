@@ -144,6 +144,25 @@ export function chipInkStyle(color: string): string {
 }
 
 /**
+ * A fill dark enough to carry white text.
+ *
+ * **This is not a fourth surface, and must never be folded into
+ * SURFACE_LIGHT.** It is the inverse of the ink problem. An ink is text
+ * measured against a ground; this is a *ground* measured against text, and the
+ * text is always white. Contrast is symmetric, so white is passed where a
+ * background goes — the returned colour is what ends up behind the label.
+ *
+ * It existed as a bare `accessibleInk(colour, '#ffffff')` at four call sites,
+ * which after the surface collapse were the only bare hexes left in an
+ * `accessibleInk` call and looked exactly like the thing that collapse
+ * removed. Anyone tidying them toward `SURFACE_LIGHT` would break every filled
+ * button on the site. Naming it is cheaper than expecting them not to.
+ */
+export function whiteSafeFill(color: string): string {
+  return accessibleInk(color, '#ffffff');
+}
+
+/**
  * Return `fg` adjusted in lightness just enough to meet `ratio` against `bg`,
  * preserving hue/saturation. If `fg` already passes, it's returned unchanged.
  * On a light bg the colour darkens; on a dark bg it lightens.
