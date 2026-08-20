@@ -48,8 +48,15 @@ test(`sweep: ${ALL.length} routes x ${THEMES.length} themes`, async ({ browser }
       const { path, theme } = jobs[i];
       try {
         await page.addInitScript((t) => localStorage.setItem('theme', t), theme);
-        await page.goto(path, { waitUntil: 'domcontentloaded' });
+        await page.goto(path, { waitUntil: 'networkidle' });
         await page.emulateMedia({ colorScheme: theme as 'light' | 'dark' });
+        // Kill animations before measuring. A panel caught mid-fadeIn reports
+        // blended colours, which axe scores as a contrast failure that does not
+        // exist once the animation settles — three such ghosts in the first run.
+        await page.addStyleTag({
+          content: `*, *::before, *::after { animation: none !important;
+                    transition: none !important; }`,
+        });
         const results = await new AxeBuilder({ page })
           .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
           .analyze();
