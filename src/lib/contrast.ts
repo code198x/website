@@ -116,6 +116,35 @@ export function inkStyle(color: string): string {
 }
 
 /**
+ * The real page surfaces a skill chip sits on, per theme.
+ *
+ * Distinct from SURFACE_LIGHT/SURFACE_DARK above, which are deliberately
+ * conservative stand-ins for "some surface". A chip is not on a surface — it is
+ * on a 12% tint of the brand colour *over* one, and that difference is enough
+ * to matter: the NES red passed 4.51:1 against the conservative constant and
+ * 4.43:1 against the tint it actually renders on.
+ */
+const CARD_LIGHT = '#fdfcf7';
+const CARD_DARK = '#242019';
+const CHIP_TINT = 0.12;
+
+/**
+ * Build the `--chip-ink-l` / `--chip-ink-d` pair for text on a tinted chip,
+ * measured against the tint rather than the surface beneath it.
+ *
+ * Targets 4.6 rather than 4.5 so a colour cannot land a hundredth over the line
+ * and fall back under it on a rounding difference — which is exactly how the
+ * one that got through got through. Every platform colour in the fleet clears
+ * 4.60 in both themes.
+ */
+export function chipInkStyle(color: string): string {
+  if (!/^#[0-9a-fA-F]{3,6}$/.test(color)) return '';
+  const light = accessibleInk(color, mix(color, CARD_LIGHT, CHIP_TINT), 4.6);
+  const dark = accessibleInk(color, mix(color, CARD_DARK, CHIP_TINT), 4.6);
+  return `--chip-ink-l: ${light}; --chip-ink-d: ${dark};`;
+}
+
+/**
  * Return `fg` adjusted in lightness just enough to meet `ratio` against `bg`,
  * preserving hue/saturation. If `fg` already passes, it's returned unchanged.
  * On a light bg the colour darkens; on a dark bg it lightens.
