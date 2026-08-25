@@ -102,6 +102,18 @@ const vault = defineCollection({
     title: z.string(),
     subtitle: z.string(),
     summary: z.string(),
+
+    // Provenance, surfaced to readers at the foot of every entry.
+    // These were inert frontmatter until 2026-08-25 — absent from this schema,
+    // read by nothing, and therefore stripped at parse time. An entry could
+    // claim anything, or nothing, and no check would notice.
+    // ai_generated: was the prose machine-written?
+    // reviewed:     has a person checked the claims and signed them off?
+    // They are independent: most entries are true/false, and an entry can be
+    // machine-written and then checked (true/true) or hand-written (false/*).
+    ai_generated: z.boolean(),
+    reviewed: z.boolean(),
+
     category: z.enum([
       'people',
       'companies',
