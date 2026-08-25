@@ -25,6 +25,7 @@ export default defineConfig({
     '/vault/systems/mega-drive': '/vault/systems/sega-mega-drive',
     '/vault/magazines/zzap64': '/vault/magazines/zzap-64',
     '/vault/communities/demo-scene-101': '/vault/communities/demo-scene',
+    '/vault/techniques/raster-tricks-101': '/vault/techniques/raster-tricks',
     '/vault/companies/williams': '/vault/companies/williams-electronics',
     '/vault/companies/williams-arcade': '/vault/companies/williams-electronics',
     '/vault/companies/black-isle': '/vault/companies/black-isle-studios',
