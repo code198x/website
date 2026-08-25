@@ -38,6 +38,8 @@ export default defineConfig({
     // xcom held a second copy of the 1994 original; the reboot era is now
     // x-com-ufo-defense's sibling rather than a section inside it.
     '/vault/games/xcom': '/vault/games/x-com-ufo-defense',
+    // The Quill is software, so it lives in tools/ with PAW and GAC.
+    '/vault/techniques/quill': '/vault/tools/the-quill',
     '/vault/companies/williams': '/vault/companies/williams-electronics',
     '/vault/companies/williams-arcade': '/vault/companies/williams-electronics',
     '/vault/companies/black-isle': '/vault/companies/black-isle-studios',
