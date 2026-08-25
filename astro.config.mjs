@@ -26,6 +26,7 @@ export default defineConfig({
     '/vault/magazines/zzap64': '/vault/magazines/zzap-64',
     '/vault/communities/demo-scene-101': '/vault/communities/demo-scene',
     '/vault/techniques/raster-tricks-101': '/vault/techniques/raster-tricks',
+    '/vault/people/tim-stamper': '/vault/people/stamper-brothers',
     '/vault/companies/williams': '/vault/companies/williams-electronics',
     '/vault/companies/williams-arcade': '/vault/companies/williams-electronics',
     '/vault/companies/black-isle': '/vault/companies/black-isle-studios',
