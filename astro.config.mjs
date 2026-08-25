@@ -27,6 +27,11 @@ export default defineConfig({
     '/vault/communities/demo-scene-101': '/vault/communities/demo-scene',
     '/vault/techniques/raster-tricks-101': '/vault/techniques/raster-tricks',
     '/vault/people/tim-stamper': '/vault/people/stamper-brothers',
+    // Duplicate entries merged 2026-08-25: each game had two pages differing
+    // only in slug punctuation, both AI-drafted and unreviewed.
+    '/vault/games/sonic': '/vault/games/sonic-the-hedgehog',
+    '/vault/games/outrun': '/vault/games/out-run',
+    '/vault/tools/sinclair-basic-tool': '/vault/tools/sinclair-basic',
     '/vault/companies/williams': '/vault/companies/williams-electronics',
     '/vault/companies/williams-arcade': '/vault/companies/williams-electronics',
     '/vault/companies/black-isle': '/vault/companies/black-isle-studios',
