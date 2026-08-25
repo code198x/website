@@ -1,6 +1,6 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Nintendo Entertainment System"
 subtitle: "The console that rebuilt the games industry"
 summary: "Launched as the Famicom in 1983, Nintendo's 8-bit console paired the Ricoh 2A03 CPU with a tile-and-sprite PPU and a strict licensing regime, reviving the crashed console market and selling around 62 million units."
@@ -14,7 +14,7 @@ discontinued: 1995
 
 
 ## Overview
-The Family Computer (Famicom) launched in Japan on 15 July 1983. A redesigned version, the Nintendo Entertainment System, reached North America in 1985 and Europe in 1986. Where the home computers of the era handed you a screen you could write to directly, the NES hid its screen behind a dedicated graphics chip and gave you nothing for free — but in return it offered fast, flicker-free, scrolling tile-and-sprite games at a price arcades could not match at home. Strict licensing kept quality high, and the machine sold around 62 million units worldwide, anchoring a generation of console gaming.
+The Family Computer (Famicom) launched in Japan on 15 July 1983. A redesigned version, the Nintendo Entertainment System, reached North America in 1985 and Europe in 1986. Where the home computers of the era handed you a screen you could write to directly, the NES hid its screen behind a dedicated graphics chip and gave you nothing for free — but in return it offered fast, flicker-free, scrolling tile-and-sprite games at a price arcades could not match at home. Tight control over who could publish kept the shelves from flooding as they had in 1983, and the machine sold around 62 million units worldwide, anchoring a generation of console gaming.
 
 ## Technical Specifications
 
@@ -22,7 +22,7 @@ The Family Computer (Famicom) launched in Japan on 15 July 1983. A redesigned ve
 **Ricoh 2A03 (NTSC) / 2A07 (PAL)** @ ~1.79 MHz (NTSC) / ~1.66 MHz (PAL)
 - A second-source MOS 6502 core with decimal (BCD) mode disabled
 - Integrates the APU (sound) and controller/DMA hardware on the same die
-- Same registers, addressing modes and instruction set as every other 6502 — code skills transfer directly from the C64's 6510
+- Registers and addressing modes as on the C64's 6510, so 6502 skills transfer directly — but **decimal mode does not work**: `SED` and `CLD` still assemble and still set the flag, and `ADC`/`SBC` ignore it
 
 ### Memory
 **2KB internal work RAM** at $0000-$07FF, mirrored through $1FFF
@@ -43,7 +43,7 @@ The CPU has no direct access to video memory. Everything the screen shows is rea
 - Background built from **nametables** (a grid of tile indices) plus **attribute tables** (which sub-palette each region uses)
 - Tile shapes come from **pattern tables** in CHR ROM or CHR RAM, not from a fixed ROM font
 - 64 hardware sprites (8×8 or 8×16), but only 8 per scanline — the source of the NES's signature sprite flicker
-- VRAM is written only through the $2006/$2007 address-and-data ports, and safely only during vertical blank (VBlank), signalled once per frame by the NMI
+- VRAM is reached only through the $2006/$2007 address-and-data ports. **With rendering on, write during vertical blank**; with rendering off, VRAM is free at any time. VBlank occurs every frame, but it only raises an NMI if the enable bit in `$2000` is set
 
 ### Sound: APU
 **Integrated into the 2A03**
@@ -61,7 +61,7 @@ The cartridge is not just storage — it is hardware that extends the machine.
 - **NROM (mapper 0):** the simplest — fixed 16/32KB PRG, 8KB CHR. The Primer builds on this.
 - **MMC1 (1):** serial-loaded banking, common for larger early games
 - **UxROM (2) / CNROM (3):** cheap PRG or CHR banking
-- **MMC3 (4):** PRG/CHR banking plus a scanline IRQ counter for split-screen effects — one of the most-used mappers
+- **MMC3 (4):** PRG/CHR banking plus an IRQ counter for split-screen effects — usually called a scanline counter, though it counts filtered rising edges on PPU address line A12, which under normal pattern-table layout works out at one per rendered scanline. One of the most-used mappers
 - **MMC5 (5):** the most capable — extra RAM, expansion audio, advanced scrolling
 - Battery-backed PRG RAM gave games like *The Legend of Zelda* their save files
 
@@ -81,7 +81,7 @@ Unlike the C64, the NES has no built-in BASIC — a cartridge boots straight int
 3. Run on hardware or an emulator; iterate
 
 ### The frame loop
-NES code is organised around the frame. The NMI fires at the start of VBlank; the handler updates the screen (it is the only safe time to touch VRAM with rendering on), runs the game logic, and returns. The main loop typically just waits for the next NMI. This frame heartbeat has no direct equivalent on a home computer that lets you poke the screen at any time.
+NES code is organised around the frame. With NMI enabled in `$2000`, it fires as VBlank begins; the handler updates the screen — the only safe window to touch VRAM while rendering is on — runs the game logic, and returns. The main loop typically just waits for the next NMI. This frame heartbeat has no direct equivalent on a home computer that lets you poke the screen at any time.
 
 ### Where the picture comes from
 A game must supply its own tile shapes in CHR, build a nametable, choose palettes, and enable rendering before anything appears — there is no resident character set to lean on. That up-front ceremony is the price of the PPU's speed.
@@ -89,7 +89,7 @@ A game must supply its own tile shapes in CHR, build a nametable, choose palette
 ## Why It Mattered
 
 ### Rebuilding a dead market
-The 1983 North American console crash had buried the industry under shovelware. Nintendo's **Seal of Quality** licensing program — limiting how many titles a publisher could ship, enforcing technical and content standards — restored retailer and player confidence. Curation, not raw power, was the NES's masterstroke.
+The 1983 North American console crash had buried the industry under unsold stock, and retailers had stopped believing in the category. Nintendo's licensing regime — a lockout chip, a cap on how many titles a publisher could ship per year, and approval over content — put Nintendo in control of what reached the shelves. ⚠ The **Seal of Quality** was Nintendo's own mark and, as its later wording made explicit, certified that a cartridge was licensed and authentic rather than that the game was any good. What the regime demonstrably restored was *retailer* confidence, by making the shovelware glut structurally impossible to repeat.
 
 ### Design language
 *Super Mario Bros.*, *The Legend of Zelda*, *Metroid* and *Mega Man* set conventions — scrolling worlds, save files, power-up progression, tight platforming — that games still follow. A generation's expectations of what a game *is* were shaped here.
@@ -103,49 +103,27 @@ Even European bedroom coders working on the Spectrum and C64 borrowed the NES's 
 Only 8 sprites draw per scanline. Games with more objects on a line either flicker sprites deliberately (cycling which 8 show) or design around the limit. The flicker became a recognisable part of the NES look.
 
 ### The VBlank window
-VRAM can only be updated safely during the short vertical-blank period each frame. Try to write too much and you run past VBlank into visible rendering, corrupting the picture. NES programmers budget their per-frame updates carefully, often pre-building them in a buffer.
+While rendering is on, VRAM can only be updated safely during the short vertical-blank period each frame. Try to write too much and you run past VBlank into visible rendering, corrupting the picture. NES programmers budget their per-frame updates carefully, often pre-building them in a buffer.
 
-### The 8×8 attribute grid
-Background colour is chosen per 16×16 region via the attribute table, not per tile — so neighbouring tiles must share a sub-palette. Careful tile and colour layout works around the constraint, much as the Spectrum's attribute clash demanded.
+### The 16×16 attribute grid
+Background colour is chosen per 16×16 region via the attribute table, not per 8×8 tile — so each block of four neighbouring tiles must share a sub-palette. One attribute byte covers a 32×32 pixel area, split into four such quadrants. Careful tile and colour layout works around the constraint, much as the Spectrum's attribute clash demanded.
 
 ### No CPU "stop"
-Like every 6502, the 2A03 never halts on its own — it always runs to the next instruction. Programs must loop deliberately; a missing loop runs off into whatever bytes follow.
+The 2A03 has no instruction that waits for an interrupt, so it always runs on to the next opcode. Programs must loop deliberately; a missing loop runs off into whatever bytes follow — and lands, sooner or later, on one of the undocumented KIL opcodes that lock the CPU until reset.
 
 ## Modern Legacy
 
 ### Emulation
-- **Mesen:** highly accurate, debugger-rich
-- **FCEUX:** long-standing, scriptable, widely used for tool-assisted runs
+- **[Mesen](/vault/emulators/mesen):** highly accurate, debugger-rich
+- **[FCEUX](/vault/emulators/fceux):** long-standing, scriptable, widely used for tool-assisted runs
 - **MiSTer FPGA:** hardware-level recreation
 
 ### Homebrew
-- Active toolchains (`cc65`/`ca65`, NESASM) and flash carts (EverDrive) put new games on real hardware
+- Active toolchains (`cc65`/`ca65`, NESASM), trackers such as [FamiTracker](/vault/tools/famitracker), and flash carts (EverDrive) put new games on real hardware
 - A thriving scene around [NESdev](/vault/communities/nesdev) documents the machine to the cycle
 
 ### Reissues
 - The NES Classic Edition and Nintendo Switch Online keep the library in circulation
-
-## Programmer Resources
-
-**Starting out:**
-- A minimal NROM cartridge: iNES header, reset routine, PPU warm-up, a backdrop colour
-- The $2006/$2007 PPU hatch for writing VRAM
-- The NMI as the frame heartbeat
-
-**Intermediate:**
-- Nametable and attribute-table layout; reading the controller at $4016
-- Sprite OAM and the $4014 DMA copy
-- Scrolling via $2005 and the PPU address latch
-
-**Advanced:**
-- Mapper banking for larger worlds; MMC3 scanline IRQs for split effects
-- APU music and DMC samples; cartridge expansion audio
-- Cycle-timed raster tricks within the VBlank budget
-
-**Tools:**
-- **Emulators:** [Mesen](/vault/emulators/mesen), [FCEUX](/vault/emulators/fceux)
-- **Assemblers:** ca65/ld65 (cc65 suite), NESASM
-- **Trackers:** [FamiTracker](/vault/tools/famitracker)
 
 ## See Also
 
