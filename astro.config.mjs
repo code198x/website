@@ -53,6 +53,12 @@ export default defineConfig({
     '/vault/genres/golden-age-arcade': '/vault/phenomena/golden-age-arcade',
     '/vault/genres/fighting-game-community': '/vault/communities/fighting-game-community',
     '/vault/genres/puzzle-game-design': '/vault/techniques/puzzle-game-design',
+    // Duplicates within communities/, which the first pass also missed: both
+    // BBS entries open "before the internet, dial in with a modem" and cite CBBS
+    // 1978; both chiptune entries carry the same sound-chip table.
+    '/vault/communities/bbs-culture': '/vault/communities/bbs-scene',
+    '/vault/communities/chiptune': '/vault/communities/chiptune-scene',
+    '/vault/communities/esports': '/vault/communities/esports-origins',
     // The Quill is software, so it lives in tools/ with PAW and GAC.
     '/vault/techniques/quill': '/vault/tools/the-quill',
     '/vault/companies/williams': '/vault/companies/williams-electronics',
