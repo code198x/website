@@ -18,6 +18,36 @@ import { encodePng } from './png.ts';
  */
 export const MAX_PNG_BYTES = 96 * 1024;
 
+/**
+ * Verify the geometry a decode handed back is usable before anything
+ * downstream trusts it.
+ *
+ * `native-image.ts` reaches `play198x-web` through a `require()` cast, and a
+ * cast checks nothing at runtime. If the decoder ever renamed
+ * `pixel_aspect_w`, the cast would read back `undefined`, `displaySize` would
+ * compute `NaN`, and the build would emit `<img width="NaN" height="NaN">`
+ * successfully — "pixel_aspect is never ignored" failing silently instead of
+ * failing loudly and naming the file.
+ */
+export function assertUsableGeometry(
+  geometry: { width: number; height: number; pixel_aspect_w: number; pixel_aspect_h: number },
+  src: string,
+): void {
+  for (const [name, value] of [
+    ['width', geometry.width],
+    ['height', geometry.height],
+    ['pixel_aspect_w', geometry.pixel_aspect_w],
+    ['pixel_aspect_h', geometry.pixel_aspect_h],
+  ] as const) {
+    if (!Number.isInteger(value) || value < 1) {
+      throw new Error(
+        `\`${src}\` decoded with an unusable ${name} (${value}) — play198x-web's ` +
+          `DecodedImage shape has drifted from what this build expects`,
+      );
+    }
+  }
+}
+
 /** Mode pixels to display pixels, honouring the mode's pixel shape. */
 export function displaySize(
   width: number,
@@ -89,6 +119,8 @@ interface DecodedImage {
   rgba: Uint8Array;
   pixel_aspect_w: number;
   pixel_aspect_h: number;
+  /** Releases the wasm-side struct. `wasm_bindgen` generates this on every class it exports. */
+  free(): void;
 }
 
 interface Wasm {
@@ -165,7 +197,24 @@ export async function renderNativeImage(
     const message = cause instanceof Error ? cause.message : String(cause);
     throw new Error(`\`${src}\` failed to decode as ${declared ?? probed.format}: ${message}`);
   }
-  const png = encodePng(image.rgba, image.width, image.height);
+
+  // `image` crossed the wasm boundary as a cast, not a checked type — a cast
+  // verifies nothing at runtime. Read every field we depend on exactly once
+  // (each read of `rgba` clones 192 KiB across the boundary) and free the
+  // wasm-side struct before validating or using the copies.
+  const { width, height, pixel_aspect_w: aspectW, pixel_aspect_h: aspectH } = image;
+  const rgba = image.rgba;
+  image.free();
+
+  assertUsableGeometry({ width, height, pixel_aspect_w: aspectW, pixel_aspect_h: aspectH }, src);
+
+  let png: Uint8Array;
+  try {
+    png = encodePng(rgba, width, height);
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    throw new Error(`\`${src}\` failed to encode as PNG: ${message}`);
+  }
 
   if (png.length > MAX_PNG_BYTES) {
     throw new Error(
@@ -174,14 +223,14 @@ export async function renderNativeImage(
     );
   }
 
-  const size = displaySize(image.width, image.height, image.pixel_aspect_w, image.pixel_aspect_h);
+  const size = displaySize(width, height, aspectW, aspectH);
   return {
     dataUri: `data:image/png;base64,${Buffer.from(png).toString('base64')}`,
     // The core's own pixels, before PNG encoding — kept on the return value
     // so a caller (the browser-decode test) can compare an independent
     // decode of the PNG against the source of truth it was encoded from,
     // rather than only checking that the PNG container round-trips.
-    rgba: image.rgba,
+    rgba,
     ...size,
   };
 }

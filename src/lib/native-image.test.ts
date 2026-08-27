@@ -7,6 +7,7 @@ import {
   displaySize,
   resolveSource,
   renderNativeImage,
+  assertUsableGeometry,
   MAX_PNG_BYTES,
 } from './native-image.ts';
 
@@ -153,6 +154,40 @@ test('a declared format that contradicts a probable probe fails and names the fi
     'a Probable mismatch must still name the file, not just fail to decode',
   );
 });
+
+test('usable geometry passes silently', () => {
+  assert.doesNotThrow(() =>
+    assertUsableGeometry({ width: 256, height: 192, pixel_aspect_w: 1, pixel_aspect_h: 1 }, 'a.scr'),
+  );
+});
+
+test('a drifted decoder field is caught by name, not left to become NaN', () => {
+  // A cast at the wasm boundary checks nothing at runtime: if play198x-web
+  // ever renamed pixel_aspect_w, this is what the shell would actually see —
+  // `undefined` — and without this guard it would flow silently into
+  // `displaySize` and the build would emit `<img width="NaN" height="NaN">`.
+  const drifted = { width: 256, height: 192, pixel_aspect_w: undefined, pixel_aspect_h: 1 } as {
+    width: number;
+    height: number;
+    pixel_aspect_w: number;
+    pixel_aspect_h: number;
+  };
+  assert.throws(
+    () => assertUsableGeometry(drifted, 'a.scr'),
+    (err: Error) => err.message.includes('a.scr') && err.message.includes('pixel_aspect_w'),
+    'the failure must name both the file and the field that drifted',
+  );
+});
+
+for (const [label, geometry] of [
+  ['a zero width', { width: 0, height: 192, pixel_aspect_w: 1, pixel_aspect_h: 1 }],
+  ['a fractional pixel_aspect_h', { width: 256, height: 192, pixel_aspect_w: 1, pixel_aspect_h: 1.5 }],
+  ['a negative height', { width: 256, height: -1, pixel_aspect_w: 1, pixel_aspect_h: 1 }],
+] as const) {
+  test(`${label} is refused, not passed through as NaN-producing geometry`, () => {
+    assert.throws(() => assertUsableGeometry(geometry, 'a.scr'));
+  });
+}
 
 test('a symlink inside the checkout cannot point outside it', async () => {
   // resolveSource's lexical check on the path string alone would pass this:
