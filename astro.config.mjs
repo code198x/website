@@ -38,6 +38,32 @@ export default defineConfig({
     // xcom held a second copy of the 1994 original; the reboot era is now
     // x-com-ufo-defense's sibling rather than a section inside it.
     '/vault/games/xcom': '/vault/games/x-com-ufo-defense',
+    // "Arcade conversion" is a provenance, not a genre — the entry said so
+    // itself while filed under genres/. It is culture now, and culture/arcade-ports
+    // was the same subject written twice.
+    '/vault/genres/arcade-conversion': '/vault/culture/arcade-conversion',
+    '/vault/culture/arcade-ports': '/vault/culture/arcade-conversion',
+    // Singular/plural duplicates that survived the earlier pass because it only
+    // compared entries within a category.
+    '/vault/culture/racing-games': '/vault/genres/racing-game',
+    '/vault/culture/arcade-games': '/vault/genres/arcade-game',
+    // Filed under genres/ and not genres: a place, a period, a community and a
+    // design topic.
+    '/vault/genres/arcade-culture': '/vault/culture/arcade-culture',
+    '/vault/genres/golden-age-arcade': '/vault/phenomena/golden-age-arcade',
+    '/vault/genres/fighting-game-community': '/vault/communities/fighting-game-community',
+    '/vault/genres/puzzle-game-design': '/vault/techniques/puzzle-game-design',
+    // Duplicates within communities/, which the first pass also missed: both
+    // BBS entries open "before the internet, dial in with a modem" and cite CBBS
+    // 1978; both chiptune entries carry the same sound-chip table.
+    '/vault/communities/bbs-culture': '/vault/communities/bbs-scene',
+    '/vault/communities/chiptune': '/vault/communities/chiptune-scene',
+    '/vault/communities/esports': '/vault/communities/esports-origins',
+    // Found by content similarity rather than by name: all three pairs claim the
+    // same lifespan, so they are one subject written twice, not a rename split.
+    '/vault/games/dune-2': '/vault/games/dune-ii',
+    '/vault/companies/lucasfilm-games': '/vault/companies/lucasarts',
+    '/vault/companies/epic-megagames': '/vault/companies/epic-games',
     // The Quill is software, so it lives in tools/ with PAW and GAC.
     '/vault/techniques/quill': '/vault/tools/the-quill',
     '/vault/companies/williams': '/vault/companies/williams-electronics',
