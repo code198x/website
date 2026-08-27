@@ -96,6 +96,19 @@ const systems = defineCollection({
   }),
 });
 
+// One later entity in a succession — used by `name_reused_by` and
+// `continued_as`. Either `ref` (a Vault entry) or `name` (a successor with no
+// entry) must be present; `from`/`to` bound the period it held the name.
+const successionRef = z.object({
+  ref: z.string().optional(),
+  name: z.string().optional(),
+  from: z.number().optional(),
+  to: z.number().optional(),
+  note: z.string().optional(),
+}).refine(s => s.ref || s.name, {
+  message: 'a succession entry needs either `ref` (a Vault entry) or `name`',
+});
+
 const vault = defineCollection({
   loader: glob({ pattern: '**/*.mdx', base: 'src/content/vault' }),
   schema: z.object({
@@ -193,6 +206,28 @@ const vault = defineCollection({
         message: 'a source needs either `ref` (a Vault entry) or `title`',
       })),
     ).optional(),
+
+    // What became of the name, and what became of the people. Two fields
+    // because they are opposites, and one `successor` would collapse them:
+    //
+    //   name_reused_by  — the NAME went on without this entity. Ocean bought
+    //                     the Imagine label in 1984 and published under it for
+    //                     years; the Liverpool company was already gone.
+    //   continued_as    — THIS ENTITY went on under another name. Zeppelin
+    //                     became Eutechnyx and kept the same people.
+    //
+    // Conflating them is how "Commodore lasted until 2004" gets written.
+    //
+    // Dated, because names change hands repeatedly — Commodore's went to Escom,
+    // then Tulip — and an undated list cannot say which era a reader is looking
+    // at.
+    //
+    // `ref` points at a Vault entry; `name` covers successors that have none and
+    // may never need one. Escom probably earns an entry. Eutechnyx may not.
+    // Requiring an entry for every successor would either break the link check
+    // or force stubs for companies outside this Vault's period.
+    name_reused_by: z.array(successionRef).optional(),
+    continued_as: z.array(successionRef).optional(),
 
     // Games: release year
     released: z.number().nullable().optional(),

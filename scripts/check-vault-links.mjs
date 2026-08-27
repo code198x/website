@@ -99,6 +99,51 @@ for (const f of files(SRC, SCANNED)) {
   }
 }
 
+// --- frontmatter entity references -----------------------------------------
+//
+// `sources[].ref`, `name_reused_by[].ref` and `continued_as[].ref` name a Vault
+// entry as `category/slug`. They are relationships, so they have to resolve for
+// the same reason a prose link does — and they are easier to get wrong, because
+// nothing renders them yet.
+//
+// This is the failure the schema already warns about for `ai_generated` and
+// `reviewed`: frontmatter absent from any check is frontmatter that can claim
+// anything. A ref pointing at a deleted or renamed entry would sit there
+// indefinitely, and the dedup passes of the last week renamed a dozen entries.
+
+const REF = /^\s*(?:-\s*)?ref:\s*["']?([a-z0-9\-]+\/[a-z0-9\-]+)["']?\s*$/gm;
+const badRefs = new Map();
+
+for (const f of files(VAULT, /\.mdx$/)) {
+  const text = readFileSync(f, 'utf8');
+  const end = text.indexOf('\n---', 3);
+  if (!text.startsWith('---') || end === -1) continue;
+  const fm = text.slice(3, end);
+  for (const m of fm.matchAll(REF)) {
+    checked++;
+    if (!resolves(`/vault/${m[1]}`)) {
+      const where = relative(ROOT, f);
+      if (!badRefs.has(m[1])) badRefs.set(m[1], new Set());
+      badRefs.get(m[1]).add(where);
+    }
+  }
+}
+
+if (badRefs.size) {
+  const plural = badRefs.size === 1 ? 'reference that does' : 'references that do';
+  console.error(`\nVault frontmatter: ${badRefs.size} entity ${plural} not exist.\n`);
+  for (const [ref, where] of [...badRefs].sort()) {
+    console.error(`  \u00b7 ${ref}`);
+    for (const w of [...where].sort()) console.error(`      ${w}`);
+  }
+  console.error(
+    `\n  A ref names a Vault entry as category/slug. Fix by repointing it, or —\n` +
+    `  where the successor has no entry and may never need one — use \`name:\`\n` +
+    `  instead, which is free text and deliberately unchecked.\n`
+  );
+  process.exit(1);
+}
+
 // --- report ----------------------------------------------------------------
 
 if (dead.size) {
