@@ -26,6 +26,20 @@ export default defineConfig({
     '/vault/magazines/zzap64': '/vault/magazines/zzap-64',
     '/vault/communities/demo-scene-101': '/vault/communities/demo-scene',
     '/vault/techniques/raster-tricks-101': '/vault/techniques/raster-tricks',
+    '/vault/people/tim-stamper': '/vault/people/stamper-brothers',
+    // Duplicate entries merged 2026-08-25: each game had two pages differing
+    // only in slug punctuation, both AI-drafted and unreviewed.
+    '/vault/games/sonic': '/vault/games/sonic-the-hedgehog',
+    '/vault/games/outrun': '/vault/games/out-run',
+    '/vault/tools/sinclair-basic-tool': '/vault/tools/sinclair-basic',
+    // Second pass 2026-08-25: hyphenated slug wins, richest body wins.
+    '/vault/games/simcity': '/vault/games/sim-city',
+    '/vault/games/rollercoaster-tycoon': '/vault/games/roller-coaster-tycoon',
+    // xcom held a second copy of the 1994 original; the reboot era is now
+    // x-com-ufo-defense's sibling rather than a section inside it.
+    '/vault/games/xcom': '/vault/games/x-com-ufo-defense',
+    // The Quill is software, so it lives in tools/ with PAW and GAC.
+    '/vault/techniques/quill': '/vault/tools/the-quill',
     '/vault/companies/williams': '/vault/companies/williams-electronics',
     '/vault/companies/williams-arcade': '/vault/companies/williams-electronics',
     '/vault/companies/black-isle': '/vault/companies/black-isle-studios',
