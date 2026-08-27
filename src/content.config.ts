@@ -201,6 +201,18 @@ const vault = defineCollection({
     deprecated: z.number().nullable().optional(),
     // Culture, phenomena, events, communities: when it started
     emerged: z.number().nullable().optional(),
+    // These dates bound THE ENTITY THIS ENTRY IS ABOUT, not the name it traded
+    // under. Names outlive companies and get picked up by unrelated buyers:
+    // Commodore was liquidated in 1994 and the name sold on afterwards;
+    // `imagine-software` ended in 1984 and Ocean bought the label and kept
+    // publishing under it. In both cases `ended` is the year the entity stopped,
+    // and what happened to the name afterwards is a separate fact about a
+    // separate entity. Setting `ended: 2004` for Commodore because something
+    // called Commodore existed then would merge two companies into one.
+    //
+    // The reverse case — same people, new name, as Zeppelin became Eutechnyx —
+    // is also an ending for this entity, with `ended_as: renamed`.
+    //
     // The universal end date, whatever the category. Replaced `dissolved` in
     // 2026-08: of the 92 company entries carrying a dissolution year, 39% record
     // an acquisition, 9% an absorption or rename, and 18% nothing the body
