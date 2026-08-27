@@ -68,11 +68,11 @@ const systems = defineCollection({
 
     // Toolchain (optional for coming-soon platforms)
     assembler: z.string().optional(),
+    dialect: z.string().optional(),
     assemblerLanguage: z.enum(['6502', 'z80', 'm68k', 'ca65']).optional(),
     emulator: z.string().optional(),
     buildOutput: z.string().optional(),
     toolchainExtras: z.array(z.string()).default([]),
-    dockerImage: z.string().optional(),
 
     // Family support surfaces — curated per-machine flags, orthogonal to `tier`
     // (umbrella decision: 198x/decisions/support-surfaces.md). Only write the
