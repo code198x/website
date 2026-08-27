@@ -122,7 +122,7 @@ export interface NativeImageOptions {
 
 export async function renderNativeImage(
   options: NativeImageOptions,
-): Promise<{ dataUri: string; width: number; height: number }> {
+): Promise<{ dataUri: string; width: number; height: number; rgba: Uint8Array }> {
   const { src, codeSamplesPath, format: declared } = options;
   const file = await resolveSourceOnDisk(src, codeSamplesPath);
 
@@ -177,6 +177,11 @@ export async function renderNativeImage(
   const size = displaySize(image.width, image.height, image.pixel_aspect_w, image.pixel_aspect_h);
   return {
     dataUri: `data:image/png;base64,${Buffer.from(png).toString('base64')}`,
+    // The core's own pixels, before PNG encoding — kept on the return value
+    // so a caller (the browser-decode test) can compare an independent
+    // decode of the PNG against the source of truth it was encoded from,
+    // rather than only checking that the PNG container round-trips.
+    rgba: image.rgba,
     ...size,
   };
 }
