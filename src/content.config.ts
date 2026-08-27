@@ -232,10 +232,20 @@ const vault = defineCollection({
     // entity. The number is the point — names are reused constantly, and a
     // search for "Acorn Computers" returns four distinct companies.
     //
-    // ⚠ Coverage stops at the 1980s. Companies House keeps a dissolved
-    // company's record for 20 years, so the era's casualties — Bug-Byte,
-    // Ultimate, Denton Designs, Gargoyle — are gone from the register entirely.
-    // What survives is companies that lasted.
+    // ⚠ Coverage stops well short of the 1980s, and the boundary is measured
+    // rather than assumed: across a 126-company sample of dissolved records the
+    // earliest cessation date returned was 2010-04-27, with nothing before it.
+    // A rolling retention window, not an indexing gap.
+    //
+    // So the era's casualties are simply absent. "Bug-Byte" returns exactly one
+    // company in the whole register and "Quicksilva" one, both incorporated
+    // after 1996; Ultimate, Denton Designs and Gargoyle Games return no
+    // plausible pre-1996 candidate at all. The public web search hits the same
+    // register, so searching by hand finds no more than this does.
+    //
+    // What survives is companies that lasted. For everything that died in the
+    // eighties the period press remains the only witness — which is what the
+    // reference library is for.
     company_number: z.string().optional(),
 
     name_reused_by: z.array(successionRef).optional(),
