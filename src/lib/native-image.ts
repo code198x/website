@@ -2,7 +2,7 @@
  * The logic behind `NativeImage.astro`, kept out of the component so every
  * failure it can produce is testable without rendering a page.
  */
-import { readFile } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { encodePng } from './png.ts';
@@ -28,7 +28,14 @@ export function displaySize(
   return { width: width * aspectW, height: height * aspectH };
 }
 
-/** Resolve `src` inside the code-samples checkout, refusing anything outside it. */
+/**
+ * Resolve `src` inside the code-samples checkout, refusing anything outside
+ * it. Purely lexical — `path.resolve` never touches the filesystem — so this
+ * catches a `../` typo with a clear message, but not a symlink: a link inside
+ * the checkout pointing outside it resolves lexically under `root` and would
+ * pass this check. Use `resolveSourceOnDisk` for the syscall-backed guard
+ * that also closes that hole.
+ */
 export function resolveSource(src: string, codeSamplesPath: string): string {
   const root = path.resolve(codeSamplesPath);
   const resolved = path.resolve(root, src);
@@ -36,6 +43,37 @@ export function resolveSource(src: string, codeSamplesPath: string): string {
     throw new Error(`\`${src}\` resolves outside the code-samples checkout`);
   }
   return resolved;
+}
+
+/**
+ * Resolve `src` inside the code-samples checkout, verified against the
+ * filesystem: a symlink inside the checkout whose target lies outside it is
+ * refused, not just a lexically escaping path. Runs `resolveSource`'s cheap
+ * lexical check first — it gives the clearer message for the common typo
+ * case — then resolves symlinks with `fs.realpath` and checks the *real*
+ * path against the *real* root, so neither side can be misled by a link.
+ *
+ * A target that does not exist (a missing file, or a dangling symlink) is
+ * left for the caller's own `readFile` to report — duplicating that failure
+ * here would just be a second, differently-worded error for the same cause.
+ */
+export async function resolveSourceOnDisk(src: string, codeSamplesPath: string): Promise<string> {
+  const lexical = resolveSource(src, codeSamplesPath);
+  const root = await realpath(path.resolve(codeSamplesPath)).catch(
+    () => path.resolve(codeSamplesPath),
+  );
+
+  let real: string;
+  try {
+    real = await realpath(lexical);
+  } catch {
+    return lexical;
+  }
+
+  if (real !== root && !real.startsWith(root + path.sep)) {
+    throw new Error(`\`${src}\` resolves outside the code-samples checkout via a symlink`);
+  }
+  return lexical;
 }
 
 const require_ = createRequire(import.meta.url);
@@ -86,7 +124,7 @@ export async function renderNativeImage(
   options: NativeImageOptions,
 ): Promise<{ dataUri: string; width: number; height: number }> {
   const { src, codeSamplesPath, format: declared } = options;
-  const file = resolveSource(src, codeSamplesPath);
+  const file = await resolveSourceOnDisk(src, codeSamplesPath);
 
   let bytes: Uint8Array;
   try {
@@ -109,13 +147,24 @@ export async function renderNativeImage(
         `can catch a miss, so declare it: format="${probed.format}"`,
     );
   }
-  if (declared && probed.confidence === 'certain' && declared !== probed.format) {
+  // Checked regardless of confidence: a Probable mismatch is exactly as
+  // dangerous as a Certain one — it would hand the wrong decoder to
+  // `decode_image` below, which either throws a message with no file name
+  // attached, or worse, decodes bytes it was never meant to read.
+  if (declared && declared !== probed.format) {
     throw new Error(
-      `\`${src}\` is certainly a ${probed.format}, but format="${declared}" was declared`,
+      `\`${src}\` probes as ${probed.format} (${probed.confidence}), but ` +
+        `format="${declared}" was declared — decode would use the wrong decoder`,
     );
   }
 
-  const image = load().decode_image(bytes, declared ?? probed.format);
+  let image: DecodedImage;
+  try {
+    image = load().decode_image(bytes, declared ?? probed.format);
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    throw new Error(`\`${src}\` failed to decode as ${declared ?? probed.format}: ${message}`);
+  }
   const png = encodePng(image.rgba, image.width, image.height);
 
   if (png.length > MAX_PNG_BYTES) {

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import path from 'node:path';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, writeFile, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import {
   displaySize,
@@ -138,5 +138,35 @@ test('a declared format that contradicts a certain probe is a failure', async ()
     renderNativeImage({ src: 'a.koa', codeSamplesPath: dir, format: 'scr' }),
     /koala/i,
     'the message must name what the bytes certainly are',
+  );
+});
+
+test('a declared format that contradicts a probable probe fails and names the file', async () => {
+  // Art Studio is only ever Probable (no magic number). Before this fix, a
+  // mismatched declaration here was caught late — if at all — by the wasm
+  // shell's own decode error, which never has the source path in scope, so
+  // the build failure did not say which file caused it.
+  const dir = await fixture('a.art', artStudio());
+  await assert.rejects(
+    renderNativeImage({ src: 'a.art', codeSamplesPath: dir, format: 'koala' }),
+    (err: Error) => err.message.includes('a.art'),
+    'a Probable mismatch must still name the file, not just fail to decode',
+  );
+});
+
+test('a symlink inside the checkout cannot point outside it', async () => {
+  // resolveSource's lexical check on the path string alone would pass this:
+  // the symlink's own name sits inside the checkout. Only a filesystem-level
+  // check (fs.realpath) sees that its target does not.
+  const outside = await mkdtemp(path.join(tmpdir(), 'native-image-outside-'));
+  await writeFile(path.join(outside, 'secret.txt'), 'not a picture');
+
+  const dir = await fixture('a.scr', screen());
+  await symlink(path.join(outside, 'secret.txt'), path.join(dir, 'escape.scr'));
+
+  await assert.rejects(
+    renderNativeImage({ src: 'escape.scr', codeSamplesPath: dir }),
+    /outside/,
+    'a symlink escaping the checkout must be refused, not followed',
   );
 });
