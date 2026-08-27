@@ -142,17 +142,76 @@ const vault = defineCollection({
     // People: birth and death years
     born: z.number().nullable().optional(),
     died: z.number().nullable().optional(),
-    // Companies: founding and dissolution/merger
+    // Companies, groups, magazines: when it started
     founded: z.number().nullable().optional(),
-    dissolved: z.number().nullable().optional(),
+    // Evidence for individual facts, keyed by the frontmatter field it supports:
+    //
+    //   sources:
+    //     founded:
+    //       - ref: magazines/crash-magazine
+    //         kind: magazine
+    //         date: "1985-05"
+    //         issue: 16
+    //
+    // `ref` points at the Vault entry for the publication, which makes the
+    // evidence chain a relationship rather than a string — a fact links to the
+    // magazine that carries it, and "which claims rest on one publication?"
+    // becomes answerable. `title` covers sources with no entry of their own.
+    //
+    // A list, not a single value, because independent corroboration is the
+    // thing worth counting: PRINCIPLES.md, "ten websites quoting one incorrect
+    // source remain one incorrect source".
+    //
+    // `kind` follows the evidence hierarchy in PRINCIPLES.md, strongest first,
+    // so relative confidence can be computed rather than argued.
+    //
+    // Absent means not established — never "verified". Populate as entries are
+    // grounded; this is deliberately not a migration.
+    sources: z.record(
+      z.string(),
+      z.array(z.object({
+        ref: z.string().optional(),     // vault path, e.g. "magazines/crash-magazine"
+        title: z.string().optional(),   // free text where no entry exists
+        kind: z.enum([
+          'hardware', 'software', 'source-code', 'manual', 'technical-doc',
+          'book', 'magazine', 'advertisement', 'interview', 'recollection',
+          'modern-book', 'modern-article', 'database',
+        ]).optional(),
+        date: z.string().optional(),    // "1985-05" — a string, because partial
+                                        // dates are not dates and YAML will
+                                        // happily mangle them into one.
+        issue: z.union([z.number(), z.string()]).optional(),
+        page: z.string().optional(),
+        note: z.string().optional(),
+      }).refine(s => s.ref || s.title, {
+        message: 'a source needs either `ref` (a Vault entry) or `title`',
+      })),
+    ).optional(),
+
     // Games: release year
     released: z.number().nullable().optional(),
     // Techniques: when originated and deprecated (if applicable)
     originated: z.number().nullable().optional(),
     deprecated: z.number().nullable().optional(),
-    // Culture: emergence and ending (if applicable)
+    // Culture, phenomena, events, communities: when it started
     emerged: z.number().nullable().optional(),
+    // The universal end date, whatever the category. Replaced `dissolved` in
+    // 2026-08: of the 92 company entries carrying a dissolution year, 39% record
+    // an acquisition, 9% an absorption or rename, and 18% nothing the body
+    // supports. `dissolved` named one ending and was applied to four, and it
+    // rendered as "Active: 1984–1988" — asserting a company stopped when it had
+    // often been bought and carried on.
     ended: z.number().nullable().optional(),
+    // How it ended, where the sources establish it. Optional on purpose: a date
+    // without a mechanism is the common case and the honest one.
+    ended_as: z.enum([
+      'acquired',    // bought; the entity continued under new ownership
+      'absorbed',    // folded into the parent, identity gone
+      'renamed',     // continuous operation under a new name
+      'dissolved',   // wound up deliberately
+      'liquidated',  // wound up by insolvency — receivership, administration
+      'ceased',      // stopped trading, mechanism unrecorded
+    ]).optional(),
     // Hardware/Systems: introduction and discontinuation
     introduced: z.number().nullable().optional(),
     discontinued: z.number().nullable().optional(),
