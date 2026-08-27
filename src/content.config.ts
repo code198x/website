@@ -232,6 +232,14 @@ const vault = defineCollection({
     // entity. The number is the point — names are reused constantly, and a
     // search for "Acorn Computers" returns four distinct companies.
     //
+    // ⚠ A matching name and a matching year are not identification. Company
+    // 01472275 is "CRL Group Ltd", incorporated 1980-01-11 — matching this
+    // Vault's CRL on both, and it was CLWYD REFRIGERATION LIMITED until 2016:
+    // a Conwy refrigeration business that took the name thirty-six years after
+    // Clement Chambers founded the games publisher. Check
+    // `previous_company_names` and the registered office against what the entry
+    // says before believing any match. Both are one request away.
+    //
     // ⚠ Coverage stops well short of the 1980s, and the boundary is measured
     // rather than assumed: across a 126-company sample of dissolved records the
     // earliest cessation date returned was 2010-04-27, with nothing before it.
