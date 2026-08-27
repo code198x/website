@@ -174,6 +174,12 @@ const vault = defineCollection({
         title: z.string().optional(),   // free text where no entry exists
         kind: z.enum([
           'hardware', 'software', 'source-code', 'manual', 'technical-doc',
+          // A statutory register — Companies House and equivalents. Not a
+          // `database`: this is the record made at the time of the event, by
+          // the entity itself, rather than a later compilation about it. For an
+          // incorporation or dissolution date it outranks a magazine reporting
+          // the same thing, which is why it needs its own slot near the top.
+          'public-record',
           'book', 'magazine', 'advertisement', 'interview', 'recollection',
           'modern-book', 'modern-article', 'database',
         ]).optional(),
