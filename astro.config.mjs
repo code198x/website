@@ -59,6 +59,11 @@ export default defineConfig({
     '/vault/communities/bbs-culture': '/vault/communities/bbs-scene',
     '/vault/communities/chiptune': '/vault/communities/chiptune-scene',
     '/vault/communities/esports': '/vault/communities/esports-origins',
+    // Found by content similarity rather than by name: all three pairs claim the
+    // same lifespan, so they are one subject written twice, not a rename split.
+    '/vault/games/dune-2': '/vault/games/dune-ii',
+    '/vault/companies/lucasfilm-games': '/vault/companies/lucasarts',
+    '/vault/companies/epic-megagames': '/vault/companies/epic-games',
     // The Quill is software, so it lives in tools/ with PAW and GAC.
     '/vault/techniques/quill': '/vault/tools/the-quill',
     '/vault/companies/williams': '/vault/companies/williams-electronics',
