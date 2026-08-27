@@ -226,6 +226,18 @@ const vault = defineCollection({
     // may never need one. Escom probably earns an entry. Eutechnyx may not.
     // Requiring an entry for every successor would either break the link check
     // or force stubs for companies outside this Vault's period.
+    // Companies House registration, for entries that ARE a registered company.
+    // Not for labels and imprints: Firebird and Rainbird were inside Telecomsoft
+    // and giving them a number would attach a real identifier to the wrong
+    // entity. The number is the point — names are reused constantly, and a
+    // search for "Acorn Computers" returns four distinct companies.
+    //
+    // ⚠ Coverage stops at the 1980s. Companies House keeps a dissolved
+    // company's record for 20 years, so the era's casualties — Bug-Byte,
+    // Ultimate, Denton Designs, Gargoyle — are gone from the register entirely.
+    // What survives is companies that lasted.
+    company_number: z.string().optional(),
+
     name_reused_by: z.array(successionRef).optional(),
     continued_as: z.array(successionRef).optional(),
 
