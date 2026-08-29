@@ -20,6 +20,39 @@
  *
  * A script cannot check that. What it CAN check is the shape that hides it — an
  * entry tagged for several platforms whose prose only ever discusses one. This
+ *
+ * HOW TO READ A FLAG — and how not to. Checked on 2026-08-29 against the
+ * reference corpus, on all 72 entries then flagged.
+ *
+ * The tempting fix is to trim the platform list, and it is usually wrong. The
+ * flag says the prose is thin, not that the tag is false, and those are
+ * different defects with opposite remedies. Ariolasoft was flagged for
+ * declaring the Spectrum and Amstrad while discussing only the C64 — and the
+ * period press co-locates Ariolasoft with the Spectrum on 110 pages and the
+ * Amstrad on 73. Its own advertising prices Realm of Impossibility on all
+ * three. The tag was right; the entry was incomplete.
+ *
+ * An automated corpus co-occurrence test does NOT settle it either. One was
+ * tried: for each flagged entry, count pages where the title appears within
+ * ~260 characters of a name for the undiscussed platform. It classified 27 of
+ * the 72 as candidates for trimming. Four were then checked by hand and all
+ * four were wrong to flag:
+ *
+ *   Atic Atac / BBC     33 pages, incl. Acorn User 43 reviewing "'Atic Atac',
+ *                       Ultimate, BBC B, £9.95"
+ *   Jetpac / BBC        23 pages, incl. a US Gold BBC compilation
+ *   Xenon 2 / Atari ST  real; the Bitmap Brothers shipped it
+ *   Xenon 2 / Mega Drive real; it appears in 1992 price lists
+ *
+ * The window is too narrow for advertisements, charts and price lists, which
+ * are where a platform is most often named — and the test is meaningless for
+ * `techniques/` entries, whose titles are generic phrases, and weak for
+ * `people/`, where a name near a platform proves little about who worked on
+ * what.
+ *
+ * So: treat every flag as "go and read the entry", never as "go and edit the
+ * frontmatter". Nothing was trimmed on the strength of that sweep.
+ *
  * reports those and leaves the judgement to a person.
  *
  * ⚠ It WARNS, it does not fail the build. A lopsided entry is often perfectly
