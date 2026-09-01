@@ -86,6 +86,21 @@ export default defineConfig({
     '/sinclair-zx-spectrum/basic/game-07-hi-lo': '/sinclair-zx-spectrum/basic/hi-lo',
     '/sinclair-zx-spectrum/basic/game-08-touchdown': '/sinclair-zx-spectrum/basic/touchdown',
     '/sinclair-zx-spectrum/assembly/game-01-shadowkeep': '/sinclair-zx-spectrum/assembly/shadowkeep',
+    // Machines filed under hardware/ moved to systems/, where whole machines
+    // belong. hardware/ keeps components, peripherals and add-ons. Old slugs
+    // redirect so existing links and bookmarks still resolve.
+    '/vault/hardware/dreamcast': '/vault/systems/dreamcast',
+    '/vault/hardware/naomi': '/vault/systems/naomi',
+    '/vault/hardware/vectrex': '/vault/systems/vectrex',
+    '/vault/hardware/sega-saturn': '/vault/systems/sega-saturn',
+    // playstation-hardware duplicated systems/playstation, which covers the same
+    // silicon better from Sony's own manual. Merged; its sound system survives there.
+    '/vault/hardware/playstation-hardware': '/vault/systems/playstation',
+    '/vault/hardware/galaksija': '/vault/systems/galaksija',
+    '/vault/hardware/trs-80-color-computer': '/vault/systems/trs-80-color-computer',
+    '/vault/hardware/famiclone': '/vault/systems/famiclone',
+    '/vault/hardware/game-and-watch': '/vault/systems/game-and-watch',
+    '/vault/hardware/nintendo-ds': '/vault/systems/nintendo-ds',
     // /browse retired — the fleet lenses (era/region/maker/tier) cover its live axes;
     // the genre/technique/difficulty scaffolds were never built. Technique's real home
     // is the Pattern Library.
