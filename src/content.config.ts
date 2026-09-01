@@ -157,13 +157,40 @@ const vault = defineCollection({
     died: z.number().nullable().optional(),
     // Companies, groups, magazines: when it started
     founded: z.number().nullable().optional(),
-    // Magazines: who published it. A field rather than a line of prose, because
-    // the publisher is what groups a masthead into a stable — Argus, Newsfield,
-    // Future, EMAP — and a stable explains house style, staff movement between
-    // titles, and why two magazines died in the same month. Prose mentions cannot
-    // be queried, and cannot be audited for gaps: 9 of 60 magazine entries named
-    // no publisher at all when this was added.
-    publisher: z.string().optional(),
+    // Magazines: who published it, and when. A field rather than a line of prose,
+    // because the publisher is what groups a masthead into a stable — Argus,
+    // Newsfield, Future, EMAP, Ziff Davis — and a stable explains house style,
+    // staff moving between titles, and why two magazines die in the same month.
+    // Prose cannot be queried, and cannot be audited: 51 of 60 magazine entries
+    // mentioned a publisher somewhere and 9 named none, with no way to tell which
+    // without reading all sixty.
+    //
+    // An ARRAY, because for a long-running title the answer changes. Computer
+    // Gaming World began at Golden Empire and ended at Ziff Davis; any single
+    // string is wrong about one end of its life.
+    //
+    // `name` is the entity in the statement of publication — the thing the
+    // magazine itself says publishes it. `group` is the parent or owner where the
+    // magazine names one, which is a different fact and often the more revealing:
+    // Compute!'s Gazette is published by COMPUTE! Publications, which is part of
+    // ABC. (Note this is publisher-and-owner, not imprint: an imprint is a brand a
+    // publisher issues *under*, which is a software-publishing distinction —
+    // Rainbird under Telecomsoft — and does not apply cleanly to mastheads.)
+    //
+    // `from`/`to` are the years the arrangement is ATTESTED, not necessarily the
+    // years it held. Where the corpus shows a publisher in 1981 and 1992 but does
+    // not fix the handover, say so in `note` rather than inventing a date.
+    publishers: z
+      .array(
+        z.object({
+          name: z.string(),
+          group: z.string().optional(),
+          from: z.number().nullable().optional(),
+          to: z.number().nullable().optional(),
+          note: z.string().optional(),
+        })
+      )
+      .optional(),
     // Evidence for individual facts, keyed by the frontmatter field it supports:
     //
     //   sources:
