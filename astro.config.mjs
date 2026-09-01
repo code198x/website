@@ -96,6 +96,11 @@ export default defineConfig({
     // playstation-hardware duplicated systems/playstation, which covers the same
     // silicon better from Sony's own manual. Merged; its sound system survives there.
     '/vault/hardware/playstation-hardware': '/vault/systems/playstation',
+    '/vault/hardware/galaksija': '/vault/systems/galaksija',
+    '/vault/hardware/trs-80-color-computer': '/vault/systems/trs-80-color-computer',
+    '/vault/hardware/famiclone': '/vault/systems/famiclone',
+    '/vault/hardware/game-and-watch': '/vault/systems/game-and-watch',
+    '/vault/hardware/nintendo-ds': '/vault/systems/nintendo-ds',
     // /browse retired — the fleet lenses (era/region/maker/tier) cover its live axes;
     // the genre/technique/difficulty scaffolds were never built. Technique's real home
     // is the Pattern Library.
