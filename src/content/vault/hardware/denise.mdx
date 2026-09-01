@@ -9,7 +9,30 @@ platforms: ['commodore-amiga']
 tags: ['custom-chips', 'graphics', 'video', 'commodore']
 introduced: 1985
 discontinued: 1992
-
+sources:
+  ham:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "102, 110"
+      note: "p.102 describes the mechanism: 'If the 6-5 bit combination is 11, the color of the pixel immediately to the left of this pixel is duplicated and then modified. The bit combinations from planes 4-1 are used to replace the four \"green\" bits.' And the consequence: 'Using hold-and-modify mode, it is possible to get by with defining only one color register, which is COLOR0, the color of the background. You treat the entire screen as a modification of that original color.' p.110 tabulates it — planes 6 and 5 at 00 give 'Normal operation (use color register itself)', 01 'Hold green and red' with B from bitplanes 4-1, 10 'Hold green and blue' with R, 11 'Hold blue and red' with G"
+  ham_conditions:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "102"
+      note: "'Bit 11 of register BPLCON0 selects hold-and-modify mode. The following bits in BPLCON0 must be set for hold-and-modify mode to be active: Bit HOMOD, bit 11, is 1. Bit DBLPF, bit 10, is 0 (single-playfield mode specified). Bit HIRES, bit 15, is 0 (low resolution mode specified). Bits BPU2, BPU1, and BPU0 - bits 14, 13, and 12, are 101 or 110 (five or six bitplanes active)'"
+  manual_contradiction:
+    - title: "⚠ Commodore's manual contradicts itself on the HAM bit"
+      note: "p.110 states 'This mode is in effect only if bit 10 of BPLCON0 = 1'. That is wrong, and the same manual settles it: p.102 says HAM is 'Bit HOMOD, bit 11', and requires 'Bit DBLPF, bit 10, is 0'; p.87 confirms 'Writing a 1 to bit 10 (called DBLPF) of the bitplane control register BPLCON0 selects dual-playfield mode'. Bit 10 is dual playfield, bit 11 is HAM, and following p.110 would select the wrong mode"
+  ehb:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "110"
+      note: "'The Amiga has a special mode called Extra Half Brite or EHB mode which doubles the maximum number of colors that can be displayed at one time. To use EHB mode, you must set up six bitplanes. Then set BPU=6 (bits 12, 13 and 14) in the BPLCON0 register. Set HAM=0 (bit 11) and DPF=0 (bit 10) ... In this mode, the information in bitplane 6 controls an intensity reduction in the other 5 bitplanes'"
+  sprites:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "112, 117"
+      note: "p.112: 'Sprites are produced on-screen by eight special-purpose sprite' DMA channels. p.117: 'The eight sprites use system color registers 16-31. For purposes of color selection, the eight sprites are organized into pairs and each pair uses four of the color registers', and 'When sprites are used individually (that is, not attached ...), each pixel can be one of three colors or transparent'. p.135 on the alternative: 'You can create sprites that have fifteen possible color choices (plus transparent) instead of three (plus transparent), by \"attaching\" two sprites'"
 ---
 
 Denise handled the final stage of Amiga graphics: converting bitplane data into colour values and mixing in sprites. While Agnus fetched the data, Denise determined what appeared on screen. Its flexibility allowed programmers to create effects impossible on contemporary hardware.
@@ -20,6 +43,77 @@ Denise handled the final stage of Amiga graphics: converting bitplane data into 
 - **Versions:** 8362 (OCS), 8373 (ECS), Lisa (AGA).
 - **Palette:** 32 colours from 4096 (OCS/ECS), 256 from 16.7M (AGA).
 - **Resolutions:** 320×200 to 1280×200 (interlaced doubles vertical).
+
+## Hold-and-modify, and why it fringes
+
+HAM is the Amiga's most-quoted display mode and the least well explained. The
+manual gives the mechanism plainly: a HAM pixel does not choose a colour, it
+*edits the pixel to its left*.
+
+Two of the six bitplanes act as an instruction, and the remaining four supply a
+value:
+
+| Plane 6 | Plane 5 | What the pixel does |
+|---|---|---|
+| 0 | 0 | Normal operation — use the colour register itself |
+| 0 | 1 | Hold green and red; **blue** ← bitplanes 4–1 |
+| 1 | 0 | Hold green and blue; **red** ← bitplanes 4–1 |
+| 1 | 1 | Hold blue and red; **green** ← bitplanes 4–1 |
+
+So a pixel can either pick one of the palette entries, or take its neighbour's
+colour and replace exactly one of its three components. Changing all three takes
+three pixels — which is the whole explanation for HAM's characteristic horizontal
+colour fringing at sharp edges. It is not a compression artefact or a palette
+limit; it is the mode working as designed.
+
+The manual draws the striking conclusion itself:
+
+> Using hold-and-modify mode, it is possible to get by with defining only one
+> color register, which is COLOR0, the color of the background. You treat the
+> entire screen as a modification of that original color.
+
+HAM is not a mode with a big palette. It is a mode with almost no palette and a
+rule for editing.
+
+### ⚠ The manual contradicts itself on which bit turns it on
+
+Page 110 says HAM "is in effect only if bit 10 of BPLCON0 = 1". That is wrong,
+and the same manual proves it. Page 102 lists the conditions — "Bit HOMOD, bit
+11, is 1" and "Bit DBLPF, bit 10, is **0** (single-playfield mode specified)" —
+and page 87 confirms that bit 10 "called DBLPF ... selects dual-playfield mode".
+
+Bit 11 is HAM; bit 10 is dual playfield. A programmer following page 110 would
+switch on the wrong mode.
+
+## Sixty-four colours, from thirty-two
+
+The palette is usually given as 32 from 4,096. Six bitplanes and one more mode
+double it:
+
+> The Amiga has a special mode called Extra Half Brite or EHB mode which doubles
+> the maximum number of colors that can be displayed at one time ... the
+> information in bitplane 6 controls an intensity reduction in the other 5
+> bitplanes.
+
+The sixth plane does not select a colour; it halves the brightness of whichever
+of the 32 the other five chose. 32 colours and their 32 shadows, for the cost of
+one extra bitplane's DMA.
+
+## Eight sprites, sharing in pairs
+
+Sprites take the top half of the palette — "the eight sprites use system color
+registers 16–31" — and they do not get those registers individually:
+
+> For purposes of color selection, the eight sprites are organized into pairs and
+> each pair uses four of the color registers.
+
+Four registers per pair, one of which is transparency: used on its own, "each
+pixel can be one of three colors or transparent". Sixteen registers across eight
+sprites is the constraint behind the standard Amiga answer, which the manual
+states as an option rather than a trick — "you can create sprites that have
+fifteen possible color choices (plus transparent) instead of three (plus
+transparent), by 'attaching' two sprites". Two sprite channels spent on one
+object, for five times the colours.
 
 ## Display modes
 
