@@ -96,6 +96,24 @@ export default defineConfig({
     // playstation-hardware duplicated systems/playstation, which covers the same
     // silicon better from Sony's own manual. Merged; its sound system survives there.
     '/vault/hardware/playstation-hardware': '/vault/systems/playstation',
+    // Genre articles filed under culture/ moved to genres/, where a form of game
+    // belongs; culture/ keeps subcultures, practices and business models. Three
+    // more went to the category that describes them rather than the one they were
+    // filed in. mmorpg-history and mud-history are retitled MMORPGs and MUDs,
+    // because the entries describe genres rather than narrate histories.
+    '/vault/culture/action-rpg': '/vault/genres/action-rpg',
+    '/vault/culture/tactical-rpg': '/vault/genres/tactical-rpg',
+    '/vault/culture/metroidvania': '/vault/genres/metroidvania',
+    '/vault/culture/god-games': '/vault/genres/god-games',
+    '/vault/culture/tycoon-games': '/vault/genres/tycoon-games',
+    '/vault/culture/survival-games': '/vault/genres/survival-games',
+    '/vault/culture/racing-simulation': '/vault/genres/racing-simulation',
+    '/vault/culture/rail-shooters': '/vault/genres/rail-shooters',
+    '/vault/culture/mmorpg-history': '/vault/genres/mmorpg-history',
+    '/vault/culture/mud-history': '/vault/genres/mud-history',
+    '/vault/culture/split-screen': '/vault/techniques/split-screen',
+    '/vault/culture/episodic-gaming': '/vault/distribution/episodic-gaming',
+    '/vault/culture/bbs-door-games': '/vault/communities/bbs-door-games',
     // culture/coverdisks and distribution/magazine-cover-disks covered the same
     // subject. Merged into the distribution entry, which is where cover-tapes
     // already lives; the 16-bit material and the £800 commissioning rate survive
