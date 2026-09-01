@@ -1,0 +1,129 @@
+---
+ai_generated: true
+reviewed: false
+title: "Hard restart"
+subtitle: "Working around the SID's ADSR bug"
+summary: "Every C64 music driver silences and resets a SID voice two frames before each note, because the chip's envelope generator can otherwise stall for 1.7 frames. The workaround is older than the explanation."
+category: "techniques"
+platforms: ['commodore-64']
+tags: ['audio', 'sid', 'music', 'hardware-quirk', 'programming']
+originated: 1985
+
+sources:
+  what_the_adsr_bug_is:
+    - title: "mixer, 'ADSR Discussion Notes', Codebase64"
+      kind: technical-doc
+      page: "base:classic_hard-restart_and_about_adsr_in_generally"
+      note: "'SID volume-envelope aka. ADSR has a 15-bit LFSR that acts as a prescaler to ENV counter... ADSR bug occurs, when A,D or R values are changed when the LFSR has already passed the corresponding new comparison value. The LFSR must then run a full cycle before the new comparison value can be reached. Full cycle takes 32768 cycles. That is 1.7 frames in terms of 1/50 fps frames'"
+  which_writes_are_safe:
+    - title: "mixer, 'ADSR Discussion Notes', Codebase64"
+      kind: technical-doc
+      page: "base:classic_hard-restart_and_about_adsr_in_generally"
+      note: "'All cases where one puts lower than previous value to A,D or R registers can cause the bug conditon. Also gate on/gate off can switch between ADSR states A,DS->R or R->A so that the change takes place from larger value to smaller value. Equal or larger values for A,D or R are safe'"
+  why_two_frames:
+    - title: "mixer, 'ADSR Discussion Notes', Codebase64"
+      kind: technical-doc
+      page: "base:classic_hard-restart_and_about_adsr_in_generally"
+      note: "'Classical approach to deal with the bug is to make sure that it does not occur in the beginning of the sound. Sound-routines are often called once per frame... The HR is started 2 full frames before next note to make sure that the 1.7 frames long bug-condition takes place before the next note and to make sure that the bug has been passed before next note starts.' The routine 'stops the oscillator so that no sound is heard, then sets ADSR to some value and gate off in preparation to next note'"
+  the_practice_predates_the_explanation:
+    - title: "mixer, 'ADSR Discussion Notes', Codebase64"
+      kind: technical-doc
+      page: "base:classic_hard-restart_and_about_adsr_in_generally"
+      note: "The article says so directly: 'This is a bit vague, but without hard knowledge this is the level at which hard restart has been previously described.' It is framed as notes on a live argument - 'Few notes about what has been discussed about SID envelopes lately at CSDB and at IRC. Errors are all mine, and this being a Wiki, you can fix them. :)' - and carries a public correction in the body: 'EDITED: it was pointed out to me that the analogue of inner loop is wrong'"
+  the_2011_attempt:
+    - title: "shrydar, with contributions from lft, 'A new kind of hard-restart', Codebase64"
+      kind: technical-doc
+      page: "base:a_new_kind_of_hard-restart"
+      note: "'Back in 2011 I wanted to get the SID envelope generator into a known state to the cycle level, so I could then take some measurements of envelope behaviour. At the time, the best routine I could manage took well over three frames, as I had to twice recapture a potential rate-counter escape'"
+  the_2015_solution:
+    - title: "shrydar, with contributions from lft, 'A new kind of hard-restart', Codebase64"
+      kind: technical-doc
+      page: "base:a_new_kind_of_hard-restart"
+      note: "'Then in early April 2015, lft had a cunning plan... His innovation was to use the safe transition from a slow attack to a fast decay to perform the recapture; if this is all done up around env=$fe, it can be performed in just a couple of hundred cycles. The envelope overflow bug (where an attack triggered when env=$ff causes env to wrap back to $00) can then be used to bring the envelope back down. The CPU intensive part of the process takes a mere ten raster lines'"
+  what_a_stable_version_demands:
+    - title: "shrydar, with contributions from lft, 'A new kind of hard-restart', Codebase64"
+      kind: technical-doc
+      page: "base:a_new_kind_of_hard-restart"
+      note: "The routine's own header states the goal and the cost: 'place SID in a known state, with quiescent env3 and ADSR=0000'; 'All DMA and interrupts must be disabled for the last 600 cycles'. It sets the rate counter to a known value, not merely zeroing the envelope: it 'not only zeros the envelope and captures the envelope rate counter, but it sets RC to a known value'"
+---
+
+Every Commodore 64 music driver silences and resets a SID voice a couple of frames
+before it plays the next note. That is a **hard restart**, and it exists to dodge a
+bug in the chip's envelope generator.
+
+## The bug
+
+SID's ADSR is driven by a 15-bit LFSR acting as a prescaler. Each A, D or R register
+value maps to a comparison value in a table inside the chip; when the LFSR matches it,
+the envelope counter advances.
+
+> ADSR bug occurs, when A, D or R values are changed when the LFSR has already passed
+> the corresponding new comparison value. The LFSR must then run a full cycle before
+> the new comparison value can be reached. Full cycle takes 32768 cycles. That is 1.7
+> frames in terms of 1/50 fps frames.
+
+A note that should attack instantly instead sits silent for most of two frames. On a
+tune driven once per frame, that is audible and irregular.
+
+The rule for avoiding it is one line: **"Equal or larger values for A, D or R are
+safe."** Any write that lowers one can trigger the stall — including gate on and gate
+off, which move between envelope states and can therefore step downward without the
+driver writing a lower number itself.
+
+## The classic workaround
+
+Rather than avoid the condition, drivers provoke it early where it does no harm:
+
+> The HR is started 2 full frames before next note to make sure that the 1.7 frames
+> long bug-condition takes place before the next note and to make sure that the bug
+> has been passed before next note starts.
+
+The routine stops the oscillator so nothing is heard, sets ADSR to a chosen value, and
+gates off. Two frames of budget for 1.7 frames of stall, with the difference as
+margin.
+
+The choice of ADSR value for those two frames is not arbitrary — it determines what
+the LFSR comparison value will be when the note starts, so it decides whether the note
+begins cleanly.
+
+## The practice came first
+
+The article documenting this is candid that the technique was in use long before
+anyone could say precisely why it worked:
+
+> This is a bit vague, but without hard knowledge this is the level at which hard
+> restart has been previously described.
+
+It presents itself as notes on a live argument — "few notes about what has been
+discussed about SID envelopes lately at CSDB and at IRC. Errors are all mine, and this
+being a Wiki, you can fix them. :)" — and carries a correction in its own body where a
+reader disputed an analogy.
+
+## Making it cycle-exact
+
+The classic hard restart gets the envelope quiet. It does not get the chip into a
+*known* state, which is what you need in order to measure the envelope's behaviour at
+all.
+
+**shrydar** set out to do that in **2011** and got stuck: "the best routine I could
+manage took well over three frames, as I had to twice recapture a potential
+rate-counter escape."
+
+**lft** solved it in **early April 2015** by using a transition the chip handles
+safely — a slow attack into a fast decay — to do the recapture near the top of the
+envelope's range:
+
+> if this is all done up around `env=$fe`, it can be performed in just a couple of
+> hundred cycles. The envelope overflow bug (where an attack triggered when `env=$ff`
+> causes env to wrap back to `$00`) can then be used to bring the envelope back down.
+
+One bug is used to escape another. The result takes **ten raster lines** of CPU
+against the original's three-plus frames — with the condition that "all DMA and
+interrupts must be disabled for the last 600 cycles."
+
+## See also
+
+- [SID](/vault/hardware/sid-chip)
+- [Sound drivers](/vault/techniques/sound-drivers)
+- [Interrupt-driven music](/vault/techniques/interrupt-driven-music)
+- [Filter sweeps](/vault/techniques/filter-sweeps)
