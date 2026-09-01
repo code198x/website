@@ -96,6 +96,12 @@ export default defineConfig({
     // playstation-hardware duplicated systems/playstation, which covers the same
     // silicon better from Sony's own manual. Merged; its sound system survives there.
     '/vault/hardware/playstation-hardware': '/vault/systems/playstation',
+    // culture/experimental-games and genres/art-games were the same subject: both
+    // led on Passage, both ran the "are these really games?" debate, and each cited
+    // the other as an overlap without being able to state a distinction. Merged into
+    // art-games, which was the fuller entry; the tooling, distribution route and
+    // later works came across.
+    '/vault/culture/experimental-games': '/vault/genres/art-games',
     // Genre articles filed under culture/ moved to genres/, where a form of game
     // belongs; culture/ keeps subcultures, practices and business models. Three
     // more went to the category that describes them rather than the one they were
