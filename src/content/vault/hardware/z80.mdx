@@ -8,12 +8,111 @@ category: "hardware"
 platforms: ['sinclair-zx-spectrum', 'amstrad-cpc', 'msx', 'game-boy', 'sega-master-system']
 tags: ['cpu', 'processors', 'zilog']
 introduced: 1976
-
+sources:
+  special_registers:
+    - title: "The Z80 Microprocessor: Architecture, Interfacing, Programming and Design (1988)"
+      kind: book
+      page: "73"
+      note: "'The Z80 microprocessor includes two special-purpose registers generally not found in other 8-bit microprocessors ... interrupt vector register (I) and the memory refresh register (R).' On I: 'The I register is used to store the high-order eight bits of the 16-bit address; the low-order eight bits must be supplied by the interrupting device.' On R: 'The memory refresh register (R) is also an 8-bit register which is used as a 7-bit counter to provide an address of memory cells to be refreshed in dynamic memory'"
+  transparent_refresh:
+    - title: "The Z80 Microprocessor: Architecture, Interfacing, Programming and Design (1988)"
+      kind: book
+      page: "491"
+      note: "'The Z80 has a specially built register R which is used as a refresh counter and a signal called RFSH (Refresh) ... The time during T3 and T4, when the Z80 decodes the instruction internally and the address bus would otherwise be idle, is used in Z80-based systems for refreshing the dynamic memories. This process is called transparent refresh.' The register is incremented automatically after each Opcode Fetch cycle (p.491)"
+  i_in_refresh:
+    - title: "Z80 CPU User Manual, Zilog"
+      kind: technical-doc
+      page: "17"
+      note: "The manufacturer's own statement of the dual role: 'During refresh, the contents of the I Register are placed on the upper eight bits of the address bus.' Corroborated by the ZX81 hardware manual, which describes the display address as being formed from the Refresh register with 'the upper eight bits determined by the contents of the I (interrupt vector) register, which are initialised to 1EH'"
+  halt:
+    - title: "The Z80 Microprocessor: Architecture, Interfacing, Programming and Design (1988)"
+      kind: book
+      page: "597"
+      note: "HALT: 'This instruction suspends (halts) all operations, and the microprocessor waits until an interrupt or the reset is received. During the halt, the microprocessor continues to execute NOP instruction to maintain memory refresh cycles'"
+  exx:
+    - title: "The Z80 Microprocessor: Architecture, Interfacing, Programming and Design (1988)"
+      kind: book
+      page: "597"
+      note: "'EXX: EXCHANGE REGISTERS WITH ALTERNATE REGISTERS. Opcode EXX, 1 byte, 4 T-states, hex code D9. Description: The contents of the general-purpose registers BC, DE, and HL are exchanged with the contents of their respective alternate registers BC\", DE\" and HL\". Flags: No flags are affected'"
 ---
 
 The **Zilog Z80** is an 8-bit microprocessor designed by **Federico Faggin** — the engineer who led the Intel 4004 and 8080 projects before leaving Intel in 1974 to co-found Zilog. The Z80 launched in 1976 as a deliberate improvement on the 8080: binary-compatible at the opcode level, but with a richer register file, more addressing modes, simpler interface logic (single 5V supply, single-phase clock), and integrated DRAM refresh — features that, combined with aggressive pricing, made the chip the default choice for European 8-bit home computers and a major presence in 1980s arcades.
 
 The Z80 powered the [ZX Spectrum](/vault/systems/zx-spectrum), [Amstrad CPC](/vault/systems/amstrad-cpc), MSX, Sega Master System, Game Gear, the original Game Boy (Sharp LR35902 — a Z80 variant), TRS-80, and a generation of CP/M business machines. For most British and European bedroom coders of the 1980s, "learning machine code" meant learning Z80.
+
+## Two registers nobody else had
+
+The Z80 carries "two special-purpose registers generally not found in other 8-bit
+microprocessors": the interrupt vector register `I` and the memory refresh
+register `R`. Neither exists for the programmer's benefit. Both were repurposed
+by programmers anyway, and between them they explain a surprising amount of
+British computing.
+
+**`R` counts DRAM refresh, in time that was going spare.** Dynamic memory forgets
+unless every row is re-read periodically, which normally costs a machine external
+counters and stolen cycles. Zilog put the counter on the CPU and paid for it with
+nothing:
+
+> The time during T3 and T4, when the Z80 decodes the instruction internally and
+> the address bus would otherwise be idle, is used in Z80-based systems for
+> refreshing the dynamic memories. This process is called **transparent refresh**.
+
+The refresh happens in the half of each fetch when the processor is thinking
+rather than addressing. It is the same idea the [Amiga](/vault/hardware/agnus)
+would later build a whole machine around — find the cycles a device is not using
+and give them to something else — arriving in 1976 inside a single chip.
+
+`R` is "an 8-bit register which is used as a 7-bit counter", incremented after
+every opcode fetch. That combination — visible to software, changing constantly,
+free to read — made it the 8-bit world's cheapest source of randomness, and on
+the [ZX81](/vault/systems/zx81) it does something stranger still: the display
+hardware watches the refresh address and uses it to fetch the character set. A
+housekeeping counter, generating a television picture.
+
+**`I` supplies half an address.** In the Z80's vectored interrupt mode, "the I
+register is used to store the high-order eight bits of the 16-bit address; the
+low-order eight bits must be supplied by the interrupting device". The processor
+and the peripheral each contribute half a pointer.
+
+And `I` has a second job that Zilog documents plainly: "During refresh, the
+contents of the I Register are placed on the upper eight bits of the address
+bus." The same register that routes interrupts also supplies the top half of
+every refresh address.
+
+That is why, on the [Spectrum](/vault/hardware/ula), where `I` points decides
+whether refresh cycles collide with the ULA's video fetches — the difference
+between a clean display and snow. Zilog designed `I` to vector interrupts;
+Sinclair's hardware made it a graphics setting.
+
+## Halting is not stopping
+
+`HALT` reads as "stop", and does not:
+
+> This instruction suspends (halts) all operations, and the microprocessor waits
+> until an interrupt or the reset is received. During the halt, the microprocessor
+> continues to execute NOP instruction to maintain memory refresh cycles.
+
+A halted Z80 is still fetching — running `NOP` after `NOP` so that `R` keeps
+counting and the DRAM keeps its contents. It is idling loudly rather than
+sleeping, which is exactly what a machine with no refresh hardware of its own
+requires. Nintendo's [Game Boy](/vault/systems/game-boy) manual leans on this
+instruction for power saving; the ZX81 leans on it to wait for the display.
+
+## Sixteen registers in one instruction
+
+The alternate register set is the Z80's most distinctive addition to the 8080,
+and the instruction that reaches it costs almost nothing:
+
+> EXX ... 1 byte, 4 T-states ... The contents of the general-purpose registers
+> BC, DE, and HL are exchanged with the contents of their respective alternate
+> registers BC', DE' and HL'. Flags: No flags are affected.
+
+Three register pairs swapped in a single byte and four T-states, without
+disturbing the flags. An interrupt handler on a 6502 machine has to push
+registers to the stack and pull them back; a Z80 handler can execute `EXX`, work
+in a second set of registers entirely, and `EXX` back. That is why Z80 interrupt
+code can afford to be short, and why fast loaders and raster effects on Z80
+machines are written the way they are.
 
 ## Fast facts
 
