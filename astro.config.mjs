@@ -96,6 +96,11 @@ export default defineConfig({
     // playstation-hardware duplicated systems/playstation, which covers the same
     // silicon better from Sony's own manual. Merged; its sound system survives there.
     '/vault/hardware/playstation-hardware': '/vault/systems/playstation',
+    // culture/coverdisks and distribution/magazine-cover-disks covered the same
+    // subject. Merged into the distribution entry, which is where cover-tapes
+    // already lives; the 16-bit material and the £800 commissioning rate survive
+    // there.
+    '/vault/culture/coverdisks': '/vault/distribution/magazine-cover-disks',
     '/vault/hardware/galaksija': '/vault/systems/galaksija',
     '/vault/hardware/trs-80-color-computer': '/vault/systems/trs-80-color-computer',
     '/vault/hardware/famiclone': '/vault/systems/famiclone',
