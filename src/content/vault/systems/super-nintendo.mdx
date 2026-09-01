@@ -56,9 +56,17 @@ sources:
       kind: database
       page: "§4, §25"
       note: "⚠ Community reference, cited by segment. Register range $2100-$213F; $2105 is BGMODE, 'BG mode and Character size'. On the high-resolution modes: 'Mode 5 and 6 force high resolution on, and automatically divide the background so that the tiles appear at double horizontal density ... If interlacing is enabled (SETINI), the vertical tile density is automatically doubled as well'"
+  sprites:
+    - title: "Super Famicom Development Wiki — Sprites"
+      kind: database
+      note: "⚠ Community reference, from the local mirror of wiki.superfamicom.org. 'There are two per-line limitations applied during the process of rendering. 1. 32 Sprites per Line — 32 sprites can appear on a single scanline, taken from lowest to highest OAM index. When this limit is exceeded, sprites with the highest OAM index will be discarded. Due to a bug in the PPU, off-screen sprites with an X coordinate -256 ($100) will count towards this limit. 2. 34 Slivers per Line — The sprites on a scanline are further decomposed into 8 pixel wide slivers, and there is a second limit of 34 slivers. However, during this phase the 32 sprites will be evaluated in reverse, from highest OAM index to lowest. This means that slivers with the lowest OAM index are discarded first. Within individual sprites, the slivers are evaluated in left-to-right onscreen order (even if flipped), so if the limit of 34 is met mid-sprite its rightmost slivers will be discarded.' OAM is 'a 512 byte low table and a 32 byte high table. It holds the properties of up to all 128 sprites'"
+  mode7:
+    - title: "Super Famicom Development Wiki — Mode 7 transform"
+      kind: database
+      note: "⚠ Community reference. 'Background mode 7 has the ability to perform an affine transformation on its tilemap. Instead of rendering normally, this tilemap (effectively a 1024x1024 pixel square) can be given an arbitrary 2D affine transformation, which means this is a square that can: Translate ... Rotate at any angle. Zoom in and out or be squashed, but the scaling must be uniform along any axis (i.e. it can stretch along a straight line, but it cannot \"bend\"). Shear or skew. It is conceptually similar to texture mapping a single quad on a modern GPU ... The affine transformation can be changed every scanline via HDMA, allowing versatile perspective and distortion effects.' The matrix lives in registers M7A–M7D at $211B–$211E, each 'a signed 16-bit multiplication factor'"
   unverified:
     - title: "⚠ Claims not established from a primary source held here"
-      note: "The main CPU part and clock, colour counts and sprite limits in Fast facts. No Nintendo-published SNES developer documentation is held here — the sources above are a community wiki and the period press, and neither is a manufacturer specification. Ken Kutaragi's authorship of the sound hardware is also unestablished from a primary source: it appears here only in modern secondary accounts (Retro Gamer 51 and the Videogames Hardware Handbook), and no period document held here names him"
+      note: "The main CPU part and clock, and colour counts. The sources here are a community wiki and the period press rather than Nintendo documentation. Ken Kutaragi's authorship of the sound hardware is likewise unestablished: it appears only in modern secondary accounts (Retro Gamer 51 and the Videogames Hardware Handbook), and no period document held here names him"
 ---
 
 The Super Nintendo arrived two years after the Mega Drive and still won. Not through hardware superiority—though it had advantages—but through software. Super Mario World, The Legend of Zelda: A Link to the Past, Super Metroid, Chrono Trigger: the SNES library reads like a hall of fame. Quality trumped timing.
@@ -116,6 +124,63 @@ period press records: the Japanese Super Famicom "was noted for its particularly
 ugly concrete block-like appearance" and was restyled for the West, and the new
 controller's X and Y buttons "have indentations, so the player can distinguish
 between them and the A and B buttons by touch".
+
+## Two sprite limits, running in opposite directions
+
+The entry gives 128 sprites with 32 per scanline. The second half of that is
+true and incomplete — there are *two* per-line limits, and they discard in
+opposite orders.
+
+**32 sprites per line**, "taken from lowest to highest OAM index. When this limit
+is exceeded, sprites with the **highest** OAM index will be discarded."
+
+**34 slivers per line.** Whatever survives the first test is "decomposed into 8
+pixel wide slivers", and there is a second budget of 34 of them. But:
+
+> during this phase the 32 sprites will be evaluated in reverse, from highest OAM
+> index to lowest. This means that slivers with the **lowest** OAM index are
+> discarded first.
+
+The first limit drops the sprites a programmer considers least important. The
+second drops the ones they considered most important. A crowded scanline is
+therefore not simply truncated by priority — it is eaten from both ends, and
+which of two sprites survives depends on which limit you hit.
+
+Within a single sprite the slivers "are evaluated in left-to-right onscreen order
+(even if flipped), so if the limit of 34 is met mid-sprite its rightmost slivers
+will be discarded" — a sprite can lose its right-hand edge and keep the rest.
+
+There is also a documented hardware fault worth knowing:
+
+> Due to a bug in the PPU, off-screen sprites with an X coordinate -256 ($100)
+> will count towards this limit.
+
+A sprite parked entirely off the left of the screen at exactly that coordinate
+still consumes one of the 32.
+
+## Mode 7 is affine, and the perspective is a trick
+
+Mode 7 is remembered for perspective. The hardware does not do perspective. It
+performs "an arbitrary 2D affine transformation" on a tilemap that is "effectively
+a 1024x1024 pixel square", which can translate, "rotate at any angle", zoom or
+squash, and shear — with one stated limit: "the scaling must be uniform along any
+axis (i.e. it can stretch along a straight line, but it cannot 'bend')".
+
+The wiki's own comparison is the clearest: "conceptually similar to texture
+mapping a single quad on a modern GPU."
+
+An affine transform cannot produce a receding horizon, because parallel lines stay
+parallel. What produces one is this:
+
+> The affine transformation can be changed every scanline via HDMA, allowing
+> versatile perspective and distortion effects.
+
+A new matrix on every scanline, applied by DMA during horizontal blanking. The
+perspective in *F-Zero* and *Pilotwings* is not a projection the chip computes —
+it is a stack of a couple of hundred separate flat transforms, one per line,
+scaled progressively so that the eye assembles a ground plane. Which is why Mode 7
+floors are always flat, always single-layer, and always break in the same way when
+a game asks them to do something the stack cannot express.
 
 ## Mode 7 magic
 The SNES's signature capability:
