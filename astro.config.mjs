@@ -93,6 +93,9 @@ export default defineConfig({
     '/vault/hardware/naomi': '/vault/systems/naomi',
     '/vault/hardware/vectrex': '/vault/systems/vectrex',
     '/vault/hardware/sega-saturn': '/vault/systems/sega-saturn',
+    // playstation-hardware duplicated systems/playstation, which covers the same
+    // silicon better from Sony's own manual. Merged; its sound system survives there.
+    '/vault/hardware/playstation-hardware': '/vault/systems/playstation',
     // /browse retired — the fleet lenses (era/region/maker/tier) cover its live axes;
     // the genre/technique/difficulty scaffolds were never built. Technique's real home
     // is the Pattern Library.
