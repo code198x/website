@@ -8,7 +8,22 @@ category: "hardware"
 platforms: ['sinclair-zx-spectrum']
 tags: ['graphics', 'custom-chips', 'ferranti', 'sinclair']
 introduced: 1982
-
+sources:
+  contention:
+    - title: "The ZX Spectrum ULA: How to Design a Microcomputer, Chris Smith"
+      kind: book
+      page: "219, 222"
+      note: "⚠ The scan held here is OCR-damaged — words break mid-token — so the facts below are summarised from it rather than quoted at length. Chapter 18, CPU Clock and Contention: the contention controller 'is divided into two parts: one that detects and controls memory contention, the other that detects and controls I/O contention. These two processes combine to form the clock control signal that gates' the master clock 'to produce the Z80 clock'. Of the earliest part: 'The issue 1 memory contention handler considers A14 and A15, looking for [an] address between 0x4000 and 0x7FFF, and delays /MREQ until the end of the T-state by passing it through a gated D transparent latch clocked by the CPU clock.' The book also records that the controller 'has been the subject of several revisions during the' production run, 'as early ULA versions contained' design errors 'that affected the reliability of the machine'"
+  snow:
+    - title: "The ZX Spectrum ULA: How to Design a Microcomputer, Chris Smith"
+      kind: book
+      page: "268"
+      note: "⚠ Heavily OCR-damaged; mechanism summarised. Chapter 23, Hidden Features and Errors: the snow effect arises because the ULA does not treat a Z80 *refresh* address falling between 0x4000 and 0x7FFF as a contention condition, and so does not halt the executing instruction while it completes its video byte fetch. The book notes this is 'technically correct' — but the CPU /RAS generator reads the same condition as a genuine access to the lower 16K DRAM and asserts CPU /RAS, which collides with the /RAS the video generator is producing and corrupts the video byte fetch in progress"
+  ferranti:
+    - title: "The ZX Spectrum ULA: How to Design a Microcomputer, Chris Smith"
+      kind: book
+      page: "58, 76, 95"
+      note: "On the array itself: 'The number of matrix cells on any given array determines the logic complexity that can be achieved.' On how fully the Spectrum used its allocation: 'very few gates would remain unused, and the analogue video output made use of peripheral cells intended by Ferranti for digital interfacing. Compromise had to' be made"
 ---
 
 The **Uncommitted Logic Array** — the **ULA** — is the custom Ferranti gate array that sits next to the Z80 in every Sinclair Spectrum. It does almost everything that isn't CPU and RAM: video signal generation, memory-bus arbitration, keyboard matrix scanning, tape and beeper I/O, border colour, and (on later models) memory bank switching. The Spectrum's hardware bill of materials is, essentially, "Z80 + 16 KB or 48 KB of RAM + ROM + ULA + RF modulator." That extreme integration is what made the £125 launch price possible in April 1982.
@@ -23,6 +38,58 @@ The ULA is also the source of nearly everything that gives the Spectrum its dist
 - **Video:** PAL composite via RF modulator; 256 × 192 active display in a 32 × 24 attribute grid.
 - **Colour space:** 8 hues × 2 brightnesses = 15 unique colours (BRIGHT 0 black ≡ BRIGHT 1 black).
 - **Timing:** 3.5 MHz CPU clock; **69,888 T-states per frame**; 312 scanlines; ~50.08 Hz refresh.
+
+## Contention, as the silicon does it
+
+Contended memory is usually described by its effect — the Z80 running slower in
+the lower 16K while the screen is being drawn. Chris Smith's reconstruction of
+the ULA gives the mechanism, and it is simpler and stranger than the effect
+suggests.
+
+The contention controller "is divided into two parts: one that detects and
+controls memory contention, the other that detects and controls I/O contention",
+and the two together "combine to form the clock control signal that gates" the
+master clock "to produce the Z80 clock". The ULA does not stall the processor by
+holding a wait line. **It gates the processor's clock.** The Z80 is not waiting;
+for that moment it is not being clocked at all.
+
+The address test is equally direct. On the earliest part, the "issue 1 memory
+contention handler considers A14 and A15, looking for [an] address between
+`0x4000` and `0x7FFF`, and delays `/MREQ` until the end of the T-state". Two
+address lines, one comparison. That is the whole reason contention applies to the
+lower 16K and not the upper 32K of a 48K machine: the ULA is only looking at two
+bits, and those two bits describe exactly that block.
+
+The book also records that this was not settled at launch — the contention
+controller "has been the subject of several revisions" across the production run,
+because "early ULA versions contained" design errors "that affected the
+reliability of the machine". Contention timing is not one behaviour but a family
+of them, which is why timing-exact Spectrum emulation has to name a ULA issue
+number rather than just "the Spectrum".
+
+## Snow, and the refresh register again
+
+The "snow effect" — corrupted pixels crawling up the display — has a precise
+cause, and it involves the part of the Z80 nobody programs.
+
+The ULA does not treat a Z80 **refresh** address as a contention condition. Refresh
+cycles are housekeeping, not memory access, so ignoring them is, as the book puts
+it, "technically correct". But if the refresh address happens to fall between
+`0x4000` and `0x7FFF`, the CPU's `/RAS` generator reads it as a genuine access to
+the lower 16K and asserts `/RAS` anyway — colliding with the `/RAS` the video
+generator is producing, and corrupting the video byte fetch already in progress.
+
+Snow is therefore not a timing bug in the usual sense. It is two pieces of the
+machine disagreeing about whether a refresh cycle counts as an access. It follows
+from the mechanism that the effect depends on where the `I` register happens to
+point, since `I` supplies the high byte of the refresh address — though the book
+as scanned here describes the cause rather than prescribing a remedy.
+
+There is a pleasing symmetry here with the [ZX81](/vault/systems/zx81), where the
+Z80's refresh cycle is deliberately harnessed to address the character set and
+generate the picture. Sinclair's previous machine made the refresh register do
+the display's work. On the Spectrum the same register, left pointing in the wrong
+place, damages it.
 
 ## Chip variants
 
