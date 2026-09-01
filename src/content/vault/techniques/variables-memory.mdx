@@ -7,6 +7,27 @@ summary: "How variables work internally and memory management for BASIC programs
 category: "techniques"
 platforms: ['commodore-64']
 tags: ['reference', 'variables', 'memory', 'basic']
+sources:
+  storage_sizes:
+    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
+      kind: book
+      page: "5, 8"
+      note: "\"Floating-point numbers are stored (using five bytes of memory) and are manipulated in calculations with ten places of accuracy.\" — \"The amount of memory required to store an array can be determined as follows: 5 bytes for the array name + 2 bytes for each dimension of the array + 2 bytes per element for integers OR + 5 bytes per element for floating-point OR + 3 bytes per element for strings AND + 1 byte per character in each string element\""
+  fre:
+    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
+      kind: book
+      page: "48-49"
+      note: "FRE: \"This function tells you how much RAM is available for your program and its variables. If a program tries to use more space than is available, the ?OUT OF MEMORY error results. The number in parentheses can have any value, and it is not used in the calculation. NOTE: If the result of FRE is negative, add 65536 to the FRE number to get the number of bytes available in memory.\" — \"The following always tells you the current available RAM: PRINT FRE(0)-(FRE(0)<0) * 65536\""
+  lowering_the_top:
+    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
+      kind: book
+      page: "108-109"
+      note: "\"To protect your character set from BASIC, you should reduce the amount of memory BASIC thinks it has. The amount of memory in your computer stays the same… it's just that you've told BASIC not to use some of it. Type: PRINT FRE(0)-(SGN(FRE(0))<0)*65535 … Now type the following: POKE 52,48: POKE56,48: CLR\" — \"See the change? BASIC now thinks it has less memory to work with. The memory you just claimed from BASIC is where you are going to put your character set, safe from actions of BASIC.\""
+  memory_maps:
+    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
+      kind: book
+      page: "262-263"
+      note: "LORAM=1, HIRAM=1: \"This is the default BASIC memory map which provides BASIC 2.0 and 38K contiguous bytes of user RAM.\" — LORAM=1, HIRAM=0: \"This map provides 60K bytes of RAM and I/O devices. The user must write his own I/O driver routines.\" — LORAM=0, HIRAM=1: \"This map is intended for use with Softload languages (including CP/M), providing 52K contiguous Bytes of user RAM, I/O devices, And I/O driver routines.\""
 ---
 
 # Variables and Memory
@@ -107,9 +128,7 @@ x=3.14159   rem 7 bytes
 a%=10       rem 7 bytes (not 2!)
 ```
 
-Surprisingly, integer variables still use 7 bytes. The `%` just tells BASIC to truncate values to integers when assigned. There's no memory advantage.
-
-**Performance:** Integer arithmetic is faster, but storage is identical.
+Surprisingly, integer variables still use 7 bytes. The `%` just tells BASIC to truncate values to integers when assigned. There's no memory advantage — the saving only appears in arrays, where the manual's formula gives "2 bytes per element for integers" against 5 for floating-point.
 
 ### String Variables
 
@@ -138,12 +157,12 @@ Arrays consume significant memory. Plan carefully.
 
 ### Numeric Arrays
 
-**Storage:** 5 bytes overhead + (5 bytes × elements)
+**Storage:** 5 bytes for the name + 2 bytes per dimension + (5 bytes × elements) — the Programmer's Reference Guide's own formula
 
 ```basic
-dim a(10)        rem 5 + (5 × 11) = 60 bytes
-dim b(100)       rem 5 + (5 × 101) = 510 bytes
-dim grid(20,20)  rem 5 + (5 × 21 × 21) = 2210 bytes
+dim a(10)        rem 5 + 2 + (5 × 11) = 62 bytes
+dim b(100)       rem 5 + 2 + (5 × 101) = 512 bytes
+dim grid(20,20)  rem 5 + 4 + (5 × 21 × 21) = 2214 bytes
 ```
 
 **Formula:**
@@ -155,11 +174,11 @@ Memory = 5 + (2 × dimensions) + (5 × total_elements)
 
 ### Integer Arrays
 
-**Storage:** 5 bytes overhead + (2 bytes × elements)
+**Storage:** 5 bytes for the name + 2 bytes per dimension + (2 bytes × elements)
 
 ```basic
-dim a%(10)       rem 5 + (2 × 11) = 27 bytes
-dim b%(100)      rem 5 + (2 × 101) = 207 bytes
+dim a%(10)       rem 5 + 2 + (2 × 11) = 29 bytes
+dim b%(100)      rem 5 + 2 + (2 × 101) = 209 bytes
 ```
 
 **Significant savings:** Integer arrays use ~40% of the space of floating-point arrays.
@@ -317,20 +336,18 @@ poke 56,48:poke 55,0:clr    rem set top of BASIC to $3000 (12288)
 
 **Effect:** BASIC now uses RAM from `$0801` up to `$3000`. The region from `$3000` to the next system boundary is yours.
 
-**Common boundaries:**
+This is the manual's own recipe. Its programmable-characters chapter has the reader print `FRE(0)`, type `POKE 52,48: POKE56,48: CLR`, and print it again: "See the change? BASIC now thinks it has less memory to work with. The memory you just claimed from BASIC is where you are going to put your character set, safe from actions of BASIC." (Location 52 is the high byte of the string-storage pointer; `CLR` resets it from the top-of-memory pointer anyway, which is why poking 55 and 56 alone also works.)
 
-The "free" column is what's actually accessible *without* additional bank-switching. With KERNAL banked out via `$01` you can also reclaim the $E000-$FFFF region (8 KB) for RAM, but that's a separate operation.
+**Where the top already is:** the default map gives BASIC "38K contiguous bytes of user RAM", from `$0800` to `$9FFF`, so the top-of-BASIC pointer starts at `$A000`. The 4 KB at `$C000-$CFFF` is already outside BASIC's reach — you do not need to move anything to use it — and there is no sense in setting the pointer higher than `$A000`, since the BASIC ROM sits there. Lowering it is only about carving a hole *below* `$A000`.
 
-| Top of BASIC | POKE values | Free RAM | Notes |
-|--------------|-------------|----------|-------|
-| `$C000` (49152) | `POKE 56,192:POKE 55,0:CLR` | $C000-$CFFF = **4 KB** | $D000+ is I/O; $E000+ is KERNAL |
-| `$A000` (40960) | `POKE 56,160:POKE 55,0:CLR` | $A000-$BFFF + $C000-$CFFF = **8 KB** | Only if BASIC ROM is banked out at $A000 |
-| `$8000` (32768) | `POKE 56,128:POKE 55,0:CLR` | $8000-$9FFF + $A000-$CFFF = **12 KB** | Same caveat about banking |
-| `$3000` (12288) | `POKE 56,48:POKE 55,0:CLR` | $3000-$9FFF = **28 KB** | Common for ML game engines that load high |
+| Top of BASIC | POKE values | Claimed from BASIC | Notes |
+|--------------|-------------|--------------------|-------|
+| `$8000` (32768) | `POKE 56,128:POKE 55,0:CLR` | $8000-$9FFF = **8 KB** | Plus the free 4 KB at `$C000` |
+| `$3000` (12288) | `POKE 56,48:POKE 55,0:CLR` | $3000-$9FFF = **28 KB** | The manual's example; common for ML game engines that load high |
 
 **Warning:** Must do this **before** defining arrays or variables. `CLR` wipes everything.
 
-**To unlock more RAM, bank ROMs out:** `POKE 1,53` clears HIRAM (KERNAL → RAM at $E000-$FFFF) while keeping I/O visible. Combined with a lowered BASIC top, this can free 16 KB+ contiguous, but you lose KERNAL routines (`PRINT`, `GET`, file I/O) until you re-enable HIRAM.
+**Banking the ROMs out is not a BASIC option.** The Programmer's Reference Guide's map for LORAM=1, HIRAM=0 "provides 60K bytes of RAM and I/O devices" — and adds that "the user must write his own I/O driver routines", because in that map the BASIC ROM is gone along with the KERNAL. A running BASIC program that clears HIRAM stops running. Those maps belong to machine-code programs that have taken over the machine.
 
 ## Practical Memory Management
 
