@@ -96,6 +96,12 @@ export default defineConfig({
     // playstation-hardware duplicated systems/playstation, which covers the same
     // silicon better from Sony's own manual. Merged; its sound system survives there.
     '/vault/hardware/playstation-hardware': '/vault/systems/playstation',
+    // culture/uk-games-industry restated culture/british-game-development at summary
+    // length — same subject, a third the size, with its "Industry evolution" and
+    // "Regional strengths" duplicating that entry's fuller "The transitions" and
+    // "Regional clusters". Merged; its tax-relief material had no counterpart there
+    // and survives as a new section.
+    '/vault/culture/uk-games-industry': '/vault/culture/british-game-development',
     // culture/experimental-games and genres/art-games were the same subject: both
     // led on Passage, both ran the "are these really games?" debate, and each cited
     // the other as an overlap without being able to state a distinction. Merged into
