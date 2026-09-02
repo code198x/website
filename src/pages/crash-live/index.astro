@@ -3,51 +3,110 @@ import Layout from '../../layouts/Layout.astro';
 import SystemHero from '../../components/SystemHero.astro';
 import VaultCard from '../../components/VaultCard.astro';
 import SectionHeader from '../../components/SectionHeader.astro';
-import { Binary, BookOpen, Library, Cog } from '@lucide/astro';
+import { getCollection } from 'astro:content';
+import { getModulesWithCounts } from '../../lib/modules';
+import { getPlatformBySlug } from '../../lib/platforms';
 
 const platformColor = '#cc0000';
+const SPECTRUM = 'sinclair-zx-spectrum';
+
+// Every number on this page derives from the catalogues (modules + units +
+// vault collections) so the event page can't drift from what is actually live.
+// See decisions/state-lives-in-catalogues.md.
+const assembly = await getModulesWithCounts(SPECTRUM, 'assembly');
+const basic = await getModulesWithCounts(SPECTRUM, 'basic');
+const isComplete = (m: { status: string }) => m.status === 'complete';
+const isGame = (m: { kind: string }) => m.kind === 'game';
+const assemblyLive = assembly.filter(isComplete);
+const basicLive = basic.filter(isComplete);
+const gamesLive = [...assemblyLive, ...basicLive].filter(isGame).length;
+const unitsLive = [...assemblyLive, ...basicLive].reduce((sum, m) => sum + m.unitsAvailable, 0);
+const gamesComing = [...assembly, ...basic].filter((m) => !isComplete(m)).length;
+const vaultCount = (await getCollection('vault')).length;
+const fmt = (n: number) => n.toLocaleString('en-GB');
 
 const specs = [
   { label: 'PLATFORM', value: 'ZX Spectrum' },
-  { label: 'TRACKS', value: 'BASIC + Z80' },
-  { label: 'VOICE', value: 'CRASH/YS' },
-  { label: 'BAR', value: 'Hewson 1987' },
-  { label: 'STATUS', value: 'October 2026' },
+  { label: 'GAMES LIVE', value: String(gamesLive) },
+  { label: 'UNITS LIVE', value: String(unitsLive) },
+  { label: 'VAULT', value: `${fmt(vaultCount)} entries` },
+  { label: 'LAUNCH', value: 'October 2026' },
 ];
 
-// Four featured cards — the launch artefacts.
-const artefacts = [
+// The games wall: one tile per complete Spectrum module. Where the catalogue
+// carries no thumbnail, the final unit's screenshot stands in.
+const fallbackShot: Record<string, string> = {
+  'bright-spark': '/images/sinclair-zx-spectrum/basic/bright-spark/unit-06/screenshot.png',
+  cipher: '/images/sinclair-zx-spectrum/basic/cipher/unit-06/screenshot.png',
+  crates: '/images/sinclair-zx-spectrum/basic/crates/unit-06/screenshot.png',
+  'dice-roller': '/images/sinclair-zx-spectrum/basic/dice-roller/unit-05/screenshot.png',
+  'hi-lo': '/images/sinclair-zx-spectrum/basic/hi-lo/unit-06/screenshot.png',
+  locksmith: '/images/sinclair-zx-spectrum/basic/locksmith/unit-06/screenshot.png',
+  'quiz-master': '/images/sinclair-zx-spectrum/basic/quiz-master/unit-06/screenshot.png',
+  reflex: '/images/sinclair-zx-spectrum/basic/reflex/unit-06/screenshot.png',
+  sonar: '/images/sinclair-zx-spectrum/basic/sonar/unit-06/screenshot.png',
+  'story-builder': '/images/sinclair-zx-spectrum/basic/story-builder/unit-07/screenshot.png',
+  'the-caverns': '/images/sinclair-zx-spectrum/basic/the-caverns/unit-06/screenshot.png',
+  'three-in-a-row': '/images/sinclair-zx-spectrum/basic/three-in-a-row/unit-06/screenshot.png',
+  touchdown: '/images/sinclair-zx-spectrum/basic/touchdown/unit-08/screenshot.png',
+  yearfall: '/images/sinclair-zx-spectrum/basic/yearfall/unit-06/screenshot.png',
+  shadowkeep: '/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-19/step-01-title.png',
+};
+const tile = (track: 'assembly' | 'basic') => (m: (typeof assembly)[number]) => ({
+  href: `/${SPECTRUM}/${track}/${m.slug}`,
+  title: m.name,
+  track: isGame(m)
+    ? (track === 'assembly' ? 'Z80' : 'BASIC')
+    : `Primer · ${track === 'assembly' ? 'Z80' : 'BASIC'}`,
+  units: m.unitsAvailable,
+  shot: m.thumbnail ?? fallbackShot[m.slug],
+});
+const wall = [...assemblyLive.map(tile('assembly')), ...basicLive.map(tile('basic'))];
+
+// The family strip: the four live machines, Spectrum first, each with its
+// first complete game on screen and its shipped-module count.
+const familyDefs = [
+  { slug: SPECTRUM, game: 'Gloaming', shot: '/images/sinclair-zx-spectrum/assembly/gloaming/unit-19/step-01-title.png' },
+  { slug: 'commodore-64', game: 'Starfield', shot: '/images/commodore-64/assembly/starfield/unit-15/screenshot.png' },
+  { slug: 'nintendo-entertainment-system', game: 'Dash', shot: '/images/nintendo-entertainment-system/assembly/dash/unit-17/screenshot.png' },
+  { slug: 'commodore-amiga', game: 'Flock', shot: '/images/commodore-amiga/assembly/flock/unit-18/screenshot.png' },
+];
+// Complete *games* per platform — the same unit the hero counts, so the two
+// figures can't appear to contradict each other.
+const allModuleEntries = await getCollection('modules');
+const countFor = (platform: string, pick: (m: { kind: string }) => boolean) =>
+  allModuleEntries
+    .filter((e) => e.data.platform === platform)
+    .reduce((n, e) => n + e.data.modules.filter((m) => isComplete(m) && pick(m)).length, 0);
+
+const family = await Promise.all(
+  familyDefs.map(async (d) => {
+    const p = await getPlatformBySlug(d.slug);
+    if (!p) throw new Error(`crash-live: unknown platform ${d.slug}`);
+    return {
+      ...d,
+      href: `/${d.slug}`,
+      name: p.data.name,
+      cpu: p.data.cpu,
+      color: p.data.color,
+      games: countFor(d.slug, isGame),
+      primers: countFor(d.slug, (m) => !isGame(m)),
+    };
+  })
+);
+
+const tools = [
   {
-    href: '/sinclair-zx-spectrum/assembly',
-    icon: Binary,
-    kicker: 'Z80 assembly',
-    title: 'The assembly track',
-    description: 'A gentle ramp in three stages: Meet the Machine eases you onto the Z80, Gloaming is the first complete game you finish, and Shadowkeep is the flagship we are still building. Fifty-three units, all free.',
-    cta: 'Start at Meet the Machine',
+    href: 'https://emu198x.github.io/',
+    kicker: 'Emu198x',
+    title: 'Thirty systems, one emulator suite',
+    description: 'Rust emulators for 30 machines, six with a native window. Scriptable, headless capture, an MCP server on every one. Every screenshot and clip on this site came out of it.',
   },
   {
-    href: '/sinclair-zx-spectrum/basic',
-    icon: BookOpen,
-    kicker: 'On-ramp',
-    title: 'BASIC track',
-    description: 'Seventeen complete games at the Usborne 1984 bar, with more on the way. Type-in listings the way Sinclair Programs and Your Computer published them. No prior experience required.',
-    cta: 'Browse BASIC games',
-  },
-  {
-    href: '/vault',
-    kicker: 'Reference',
-    icon: Library,
-    title: 'The Vault',
-    description: 'Nearly 1,300 illustrated entries — the people, places, games, magazines, hardware, and culture every unit draws from, across every machine in scope. Browse it, or follow the unit links.',
-    cta: 'Open the Vault',
-  },
-  {
-    href: '/setup/sinclair-zx-spectrum/native',
-    icon: Cog,
-    kicker: 'Setup',
-    title: 'Get the toolchain',
-    description: 'Docker image, pasmonext assembler, Fuse emulator, Spectrum Next loader, the lot. One command from "fresh laptop" to "ready to build Shadowkeep."',
-    cta: 'See setup guide',
+    href: 'https://asm198x.github.io/',
+    kicker: 'Asm198x',
+    title: 'One assembler, the dialects you know',
+    description: 'A single binary that assembles and disassembles twenty-odd CPUs and speaks acme, ca65, pasmo, sjasmplus, vasm and lwasm, validated byte-for-byte. There is a playground in your browser.',
   },
 ];
 
@@ -62,7 +121,7 @@ const vaultPicks = [
     href: '/vault/people/oliver-frey',
     kicker: 'People',
     title: 'Oliver Frey',
-    description: "Swiss-born British illustrator whose CRASH and Zzap!64 covers gave the 8-bit era its visual identity.",
+    description: 'Swiss-born British illustrator whose CRASH and Zzap!64 covers gave the 8-bit era its visual identity.',
   },
   {
     href: '/vault/people/tim-follin',
@@ -93,7 +152,7 @@ const vaultPicks = [
 
 <Layout
   title="Code Like It's 198x — Welcome from CRASH! Live"
-  description="Code Like It's 198x is a present-tense revival of the British bedroom-coder pedagogy — teaching Spectrum game development on the platform itself, at the bar of 1987 Hewson Consultants. Welcome to the project's CRASH! Live launch."
+  description={`Code Like It's 198x teaches ZX Spectrum game development on the platform itself: ${gamesLive} complete games across BASIC and Z80 assembly, ${unitsLive} units live, and a ${fmt(vaultCount)}-entry reference Vault. Welcome to the project's CRASH! Live launch.`}
   platformColor={platformColor}
 >
   <style>
@@ -108,6 +167,19 @@ const vaultPicks = [
       :global(:root:not([data-theme])) .crash-live-page { --accent-fg: #ef6b66; }
     }
 
+    .chunky-btn {
+      display: inline-block; font-family: var(--font-family-mono); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 12px 18px; border: 3px solid var(--color-text); box-shadow: var(--shadow-chunky); text-decoration: none;
+      transition: transform var(--transition-base), box-shadow var(--transition-base);
+    }
+    .chunky-btn.primary { background: var(--platform-color); color: #fff; }
+    .chunky-btn.secondary { background: var(--color-surface); color: var(--color-text); }
+    .chunky-btn:hover, .chunky-btn:focus-visible { transform: translate(-3px, -3px); box-shadow: 7px 7px 0 var(--color-text); }
+
+    .kicker {
+      font-family: var(--font-family-mono); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-fg);
+    }
+
     /* welcome */
     .scan-note { max-width: 820px; margin: var(--space-10) auto var(--space-6); padding: 0 var(--space-4); text-align: center; }
     .scan-note .scan-label {
@@ -120,39 +192,60 @@ const vaultPicks = [
     .scan-note p { color: var(--color-text-secondary); font-size: 1.05rem; line-height: 1.7; margin: 0 auto var(--space-3); max-width: 68ch; }
     .scan-note strong { color: var(--color-text); }
 
-    /* flagship */
-    .vertical-slice { padding: var(--space-10) var(--space-4); max-width: 1100px; margin: 0 auto; }
-    .slice-frame {
-      display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: center;
-      margin-top: var(--space-6); padding: var(--space-6);
+    /* the clip */
+    .clip-section { padding: var(--space-6) var(--space-4) var(--space-10); max-width: 1100px; margin: 0 auto; }
+    .clip-frame {
+      display: grid; grid-template-columns: 3fr 2fr; gap: var(--space-6); align-items: center;
+      padding: var(--space-6);
       border: 3px solid var(--color-text); background: var(--color-surface); box-shadow: var(--shadow-chunky);
     }
-    .slice-frame img { width: 100%; height: auto; display: block; border: 3px solid var(--color-text); background: #000; }
-    .slice-text h3 { font-family: var(--font-family-script); font-weight: 700; font-size: 1.9rem; margin: 0 0 var(--space-3); color: var(--color-text); }
-    .slice-text p { color: var(--color-text-secondary); margin: 0 0 var(--space-4); line-height: 1.7; }
-    .slice-cta {
-      display: inline-block; font-family: var(--font-family-mono); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-      padding: 12px 18px; border: 3px solid var(--color-text); background: var(--platform-color); color: #fff;
-      box-shadow: var(--shadow-chunky); text-decoration: none; transition: transform var(--transition-base), box-shadow var(--transition-base);
-    }
-    .slice-cta:hover { transform: translate(-3px, -3px); box-shadow: 7px 7px 0 var(--color-text); }
+    .clip-frame video { width: 100%; height: auto; display: block; border: 3px solid var(--color-text); background: #000; image-rendering: pixelated; }
+    .clip-text h3 { font-family: var(--font-family-script); font-weight: 700; font-size: 1.9rem; margin: var(--space-2) 0 var(--space-3); color: var(--color-text); }
+    .clip-text p { color: var(--color-text-secondary); margin: 0 0 var(--space-4); line-height: 1.7; }
+    .clip-text .chunky-btn + .chunky-btn { margin-left: var(--space-2); }
 
-    /* launch artefacts */
-    .artefacts-section { padding: var(--space-10) var(--space-4); background: var(--color-bg-secondary); border-top: 3px solid var(--color-text); border-bottom: 3px solid var(--color-text); }
-    .artefacts-inner { max-width: 1100px; margin: 0 auto; }
-    .artefacts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4); margin-top: var(--space-6); }
-    .artefact-card {
+    /* the games wall */
+    .wall-section { padding: var(--space-10) var(--space-4); background: var(--color-bg-secondary); border-top: 3px solid var(--color-text); border-bottom: 3px solid var(--color-text); }
+    .wall-inner { max-width: 1100px; margin: 0 auto; }
+    .wall-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-4); margin-top: var(--space-6); }
+    .wall-tile {
+      display: flex; flex-direction: column;
+      border: 3px solid var(--color-text); background: var(--color-surface); box-shadow: var(--shadow-chunky);
+      text-decoration: none; color: inherit; transition: transform var(--transition-base), box-shadow var(--transition-base);
+    }
+    .wall-tile:hover, .wall-tile:focus-visible { transform: translate(-4px, -4px); box-shadow: 8px 8px 0 var(--platform-color); outline: none; }
+    .wall-tile img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: #000; border-bottom: 3px solid var(--color-text); image-rendering: pixelated; }
+    .wall-meta { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); }
+    .wall-title { font-size: 1rem; font-weight: 800; color: var(--color-text); margin: 0; }
+    .wall-units { font-family: var(--font-family-mono); font-size: 0.72rem; color: var(--color-text-secondary); }
+    .wall-note { margin: var(--space-6) 0 0; text-align: center; color: var(--color-text-secondary); }
+
+    /* the family strip */
+    .family-section { padding: var(--space-10) var(--space-4); max-width: 1100px; margin: 0 auto; }
+    .family-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-4); margin-top: var(--space-6); }
+    .family-tile {
+      --pc: var(--platform-color);
+      display: flex; flex-direction: column;
+      border: 3px solid var(--color-text); background: var(--color-surface); box-shadow: var(--shadow-chunky);
+      text-decoration: none; color: inherit; transition: transform var(--transition-base), box-shadow var(--transition-base);
+    }
+    .family-tile:hover, .family-tile:focus-visible { transform: translate(-4px, -4px); box-shadow: 8px 8px 0 var(--pc); outline: none; }
+    .family-tile img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: #000; border-bottom: 3px solid var(--color-text); image-rendering: pixelated; }
+    .family-band { height: 8px; background: var(--pc); border-bottom: 3px solid var(--color-text); }
+    .family-meta { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); }
+    .family-name { font-size: 1.05rem; font-weight: 800; color: var(--color-text); margin: 0; }
+    .family-line { font-family: var(--font-family-mono); font-size: 0.72rem; color: var(--color-text-secondary); }
+    .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
+    .tool-card {
       display: flex; flex-direction: column; gap: var(--space-2);
       padding: var(--space-5); border: 3px solid var(--color-text); background: var(--color-surface); box-shadow: var(--shadow-chunky);
       text-decoration: none; color: inherit; transition: transform var(--transition-base), box-shadow var(--transition-base);
     }
-    .artefact-card:hover, .artefact-card:focus-visible { transform: translate(-4px, -4px); box-shadow: 8px 8px 0 var(--platform-color); outline: none; }
-    .artefact-icon { color: var(--accent-fg); margin-bottom: var(--space-1); }
-    .artefact-kicker { font-family: var(--font-family-mono); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-fg); }
-    .artefact-title { font-size: 1.2rem; font-weight: 800; color: var(--color-text); margin: 0; }
-    .artefact-description { color: var(--color-text-secondary); font-size: 0.92rem; line-height: 1.55; flex-grow: 1; }
-    .artefact-cta { font-family: var(--font-family-mono); color: var(--accent-fg); font-weight: 700; font-size: 0.8rem; margin-top: var(--space-2); }
-    .artefact-cta::after { content: ' →'; }
+    .tool-card:hover, .tool-card:focus-visible { transform: translate(-4px, -4px); box-shadow: 8px 8px 0 var(--platform-color); outline: none; }
+    .tool-title { font-size: 1.2rem; font-weight: 800; color: var(--color-text); margin: 0; }
+    .tool-description { color: var(--color-text-secondary); font-size: 0.92rem; line-height: 1.55; margin: 0; }
+    .tool-cta { font-family: var(--font-family-mono); color: var(--accent-fg); font-weight: 700; font-size: 0.8rem; }
+    .tool-cta::after { content: ' →'; }
 
     /* why */
     .why-section { padding: var(--space-10) var(--space-4); max-width: 800px; margin: 0 auto; }
@@ -173,16 +266,15 @@ const vaultPicks = [
     .footer-cta h2 { font-family: var(--font-family-script); font-weight: 700; font-size: clamp(2rem, 5vw, 3rem); margin: 0 0 var(--space-3); color: var(--color-text); }
     .footer-cta p { color: var(--color-text-secondary); margin: 0 0 var(--space-6); line-height: 1.7; }
     .footer-cta-buttons { display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap; }
-    .footer-cta-buttons a {
-      display: inline-block; font-family: var(--font-family-mono); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-      padding: 12px 18px; border: 3px solid var(--color-text); box-shadow: var(--shadow-chunky); text-decoration: none;
-      transition: transform var(--transition-base), box-shadow var(--transition-base);
-    }
-    .footer-cta-buttons a.primary { background: var(--platform-color); color: #fff; }
-    .footer-cta-buttons a.secondary { background: var(--color-surface); color: var(--color-text); }
-    .footer-cta-buttons a:hover { transform: translate(-3px, -3px); box-shadow: 7px 7px 0 var(--color-text); }
 
-    @media (max-width: 768px) { .slice-frame { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .clip-frame { grid-template-columns: 1fr; }
+      .clip-text .chunky-btn { margin: 0 var(--space-2) var(--space-2) 0; }
+      .clip-text .chunky-btn + .chunky-btn { margin-left: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .chunky-btn, .wall-tile, .family-tile, .tool-card { transition: none; }
+    }
   </style>
 
   <div class="crash-live-page">
@@ -201,77 +293,112 @@ const vaultPicks = [
       <span class="scan-label">Welcome from CRASH! Live</span>
       <h2>The Spectrum is back. So is the bar.</h2>
       <p>
-        Code Like It's 198x is a present-tense revival of the British bedroom-coder pedagogy —
-        teaching ZX Spectrum game development on the platform itself, at the editorial
-        and technical bar of 1987 Hewson Consultants. Type in the listings, modify them,
-        understand them, ship a complete commercial-quality game.
+        Code Like It's 198x teaches ZX Spectrum game development on the platform itself,
+        the way CRASH, Your Sinclair and the Usborne books did: type it in, change it,
+        understand it, ship a complete game. Everything on this page is live today and free.
       </p>
       <p>
-        We launch in October 2026 with a complete <strong>Z80 assembly opening</strong> —
-        an on-ramp (Meet the Machine), the first game you finish (Gloaming), and the
-        Shadowkeep flagship, fifty-three units in all; <strong>seventeen complete BASIC games</strong>
-        at the Usborne 1984 bar, with more in progress; the <strong>Vault</strong>, nearly
-        1,300 illustrated reference entries; and the <strong>Spectrum landing page</strong>
-        you came in through. Everything linked here is real, shipped, and free.
+        <strong>{gamesLive} complete games</strong> across BASIC and Z80 assembly,{' '}
+        <strong>{unitsLive} units</strong> you can start right now, and the{' '}
+        <strong>Vault</strong>, {fmt(vaultCount)} illustrated entries on the people, games,
+        magazines and machines behind them.
       </p>
     </section>
 
-    <!-- The Flagship -->
-    <section class="vertical-slice">
-      <SectionHeader title="The Flagship" platformColor={platformColor} />
-      <div class="slice-frame">
+    <!-- The clip -->
+    <section class="clip-section" aria-labelledby="clip-heading">
+      <div class="clip-frame">
         <div>
-          <img
-            src="/images/sinclair-zx-spectrum/assembly/shadowkeep/unit-13/step-01-hall.png"
-            alt="Shadowkeep running on a ZX Spectrum — a pillared chamber in the keep, the hero lit at its centre"
-          />
+          <video
+            id="hero-clip"
+            src="/videos/sinclair-zx-spectrum/assembly/gloaming/unit-19/begins.mp4"
+            poster="/images/sinclair-zx-spectrum/assembly/gloaming/unit-19/step-01-title.png"
+            muted
+            loop
+            playsinline
+            preload="metadata"
+            aria-label="Gloaming running on a ZX Spectrum: the title screen gives way to the first night"
+          ></video>
         </div>
-        <div class="slice-text">
-          <h3>Shadowkeep</h3>
+        <div class="clip-text">
+          <span class="kicker">Z80 assembly · the first game you finish</span>
+          <h3 id="clip-heading">Gloaming</h3>
           <p>
-            Sixteen units in, and growing. A darkened keep explored room by room —
-            atmosphere, light, and sound — built on the very engine you complete in
-            Gloaming. It's the most ambitious game in the assembly track, and the one
-            we're still building toward its full shape.
+            Light every lamp before the dark wins. Twenty-one units from a blank screen to
+            a complete game, built on the Z80 on-ramp of Meet the Machine and captured here
+            straight out of the project's own emulator.
           </p>
           <p>
-            Want to <em>finish</em> something first? Gloaming is the complete game the
-            ramp lands you on: light every lamp before the dark wins, twenty-one units,
-            done.
+            Then the ramp keeps going: The Long Night and Shadowkeep, the flagship, are
+            built on the same engine.
           </p>
-          <a
-            href="/sinclair-zx-spectrum/assembly/shadowkeep"
-            class="slice-cta"
-          >
-            Follow Shadowkeep →
-          </a>
+          <a href="/sinclair-zx-spectrum/assembly/gloaming" class="chunky-btn primary">Build Gloaming</a>
+          <a href="/sinclair-zx-spectrum/assembly/shadowkeep" class="chunky-btn secondary">See Shadowkeep</a>
         </div>
       </div>
     </section>
 
-    <!-- Launch Artefacts -->
-    <section class="artefacts-section">
-      <div class="artefacts-inner">
+    <!-- The games wall -->
+    <section class="wall-section">
+      <div class="wall-inner">
         <SectionHeader
-          title="What we're shipping"
+          title="Everything you can build today"
           linkHref="/sinclair-zx-spectrum"
           linkText="See the full Spectrum landing"
           platformColor={platformColor}
         />
-        <div class="artefacts-grid">
-          {artefacts.map((a) => {
-            const Icon = a.icon;
-            return (
-              <a href={a.href} class="artefact-card">
-                <Icon size={28} class="artefact-icon" />
-                <span class="artefact-kicker">{a.kicker}</span>
-                <h3 class="artefact-title">{a.title}</h3>
-                <p class="artefact-description">{a.description}</p>
-                <span class="artefact-cta">{a.cta}</span>
-              </a>
-            );
-          })}
+        <div class="wall-grid">
+          {wall.map((g) => (
+            <a href={g.href} class="wall-tile">
+              <img src={g.shot} alt={`${g.title} running on a ZX Spectrum`} loading="lazy" width="512" height="384" />
+              <div class="wall-meta">
+                <span class="kicker">{g.track}</span>
+                <h3 class="wall-title">{g.title}</h3>
+                <span class="wall-units">{g.units} units</span>
+              </div>
+            </a>
+          ))}
         </div>
+        <p class="wall-note">
+          {gamesLive} complete games and {wall.length - gamesLive} primers, with {gamesComing} more games
+          scaffolded and on the way. Nothing above is a mock-up: every screen was captured from the finished code.
+        </p>
+      </div>
+    </section>
+
+    <!-- The family -->
+    <section class="family-section">
+      <SectionHeader
+        title="One project, four machines, two tools"
+        linkHref="/systems"
+        linkText="Every machine in scope"
+        platformColor={platformColor}
+      />
+      <div class="family-grid">
+        {family.map((p) => (
+          <a href={p.href} class="family-tile" style={`--pc: ${p.color};`}>
+            <div class="family-band"></div>
+            <img src={p.shot} alt={`${p.game} running on a ${p.name}`} loading="lazy" width="512" height="384" />
+            <div class="family-meta">
+              <h3 class="family-name">{p.name}</h3>
+              <span class="family-line">{p.cpu} · first game: {p.game}</span>
+              <span class="family-line">
+                {p.games} complete {p.games === 1 ? 'game' : 'games'}
+                {p.primers > 0 && ` · ${p.primers} ${p.primers === 1 ? 'primer' : 'primers'}`}
+              </span>
+            </div>
+          </a>
+        ))}
+      </div>
+      <div class="tools-grid">
+        {tools.map((t) => (
+          <a href={t.href} class="tool-card" rel="noopener">
+            <span class="kicker">{t.kicker}</span>
+            <h3 class="tool-title">{t.title}</h3>
+            <p class="tool-description">{t.description}</p>
+            <span class="tool-cta">Visit {t.kicker}</span>
+          </a>
+        ))}
       </div>
     </section>
 
@@ -282,24 +409,18 @@ const vaultPicks = [
         <p>
           The Spectrum stopped selling new in 1992 and never came back. But the platform
           is still here. The hardware still works. The emulators are excellent.
-          A generation of British teenagers learned what software *was* by typing
+          A generation of British teenagers learned what software was by typing
           listings from <a href="/vault/magazines/crash-magazine">CRASH</a>,
           <a href="/vault/magazines/your-sinclair">Your Sinclair</a>, and
           <a href="/vault/books/usborne-computing-books">Usborne books</a> on
           this machine, in this BASIC, with this beeper.
         </p>
         <p>
-          We think that pedagogy still works. Better, probably, than most of what
-          replaced it. The Spectrum's constraints make programming legible — every
-          byte counts; every clock cycle is felt; every design decision shows up on
-          the screen. A learner who builds a complete Shadowkeep-tier game has done
-          something concrete, finished, and shippable on real 1982 hardware.
-        </p>
-        <p>
-          The full curriculum extends to the Commodore 64, NES, and Amiga — each
-          already has a complete first game (Starfield, Dash, and Flock) you can build
-          today. But the Spectrum is where we launch, on the platform that started
-          Britain.
+          We think that pedagogy still works. The Spectrum's constraints make programming
+          legible: every byte counts, every clock cycle is felt, every design decision shows
+          up on the screen. A learner who finishes Shadowkeep has built something concrete
+          and shippable on real 1982 hardware. The Commodore 64, NES and Amiga tracks are
+          live too, but the Spectrum is where we launch, on the platform that started Britain.
         </p>
       </div>
     </section>
@@ -314,7 +435,7 @@ const vaultPicks = [
           platformColor={platformColor}
         />
         <p class="vault-intro">
-          The Vault is the reference work the curriculum draws from — people, magazines, companies, culture, hardware. Six picks below; nearly 1,300 entries in all.
+          The Vault is the reference work the curriculum draws from: people, magazines, companies, culture, hardware. Six picks below; {fmt(vaultCount)} entries in all.
         </p>
         <div class="vault-grid">
           {vaultPicks.map((article) => (
@@ -336,13 +457,28 @@ const vaultPicks = [
       <p>
         New to programming? Start with BASIC.
         Ready for the metal? Start with Meet the Machine.
-        Just here to read? The Vault has nearly 1,300 entries.
+        Want the toolchain first? The setup guide takes you from a fresh laptop to a built game in one command.
       </p>
       <div class="footer-cta-buttons">
-        <a href="/sinclair-zx-spectrum/assembly" class="primary">Start the assembly track</a>
-        <a href="/sinclair-zx-spectrum/basic" class="secondary">Browse BASIC games</a>
-        <a href="/vault" class="secondary">Open the Vault</a>
+        <a href="/sinclair-zx-spectrum/assembly" class="chunky-btn primary">Start the assembly track</a>
+        <a href="/sinclair-zx-spectrum/basic" class="chunky-btn secondary">Browse BASIC games</a>
+        <a href="/setup/sinclair-zx-spectrum/native" class="chunky-btn secondary">Get the toolchain</a>
+        <a href="/vault" class="chunky-btn secondary">Open the Vault</a>
       </div>
     </section>
   </div>
+
+  <script>
+    // Autoplay the hero clip only for visitors who have not asked for reduced
+    // motion. Those who have keep the poster frame and get controls, so the
+    // clip is still theirs to watch on demand rather than withheld.
+    const clip = document.getElementById('hero-clip') as HTMLVideoElement | null;
+    if (clip) {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        clip.controls = true;
+      } else {
+        clip.play().catch(() => { clip.controls = true; });
+      }
+    }
+  </script>
 </Layout>
