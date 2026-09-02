@@ -9,6 +9,30 @@ platforms: ['commodore-64', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['graphics', 'scrolling', 'optimisation']
 originated: 1977
 
+sources:
+  c64_colour_ram:
+    - title: "Codebase64 — Multidirectional scrolling and the \"game world\" (Rant 4), by Cadaver (Lasse Öörni)"
+      kind: technical-doc
+      note: "\"The color memory is quite ugly to work with because it can't be doublebuffered. So, updating it must be done when the portion being updated isn't being displayed. If you don't care about NTSC compatibility, you'll have enough time to shift about 20-21 lines around during the time it's not being displayed. But having NTSC compatibility included isn't so much harder: you simply have to split the color screen update in two\" — shift the upper half while the lower half is still displayed, then the lower half after the display ends; \"the row at the split point must be buffered into a separate memory location at first (how to do it can be seen in Metal Warrior 2 & 3 source code.)\""
+  c64_per_block_colour:
+    - title: "Codebase64 — Multidirectional scrolling and the \"game world\" (Rant 4), by Cadaver (Lasse Öörni)"
+      kind: technical-doc
+      note: "\"If you don't have a separate char color for each char but rather for each block only (like SEUCK), the color screen update can be tremendously optimized.\" With 4-wide blocks, \"Only every 4th column changes\" on a one-character shift: \"The knowledge of this can cut color memory accesses to 1/4th portion. See Metal Warrior 1 source code for an example, or reverse-engineer some game where you see colors changing rarely - it's likely to be doing this.\""
+    - title: "Codebase64 — Decoding 4x4 tiles, by Achim"
+      kind: technical-doc
+      note: "\"Usually you've got two options: Colour per tile / Colour per char. The first option is very useful when you want to save rastertime for the main program, but is obviously less colourful. The second option is more colourful, but needs more rastertime when it comes to colour RAM shifting.\""
+  c64_colour_lookup:
+    - title: "Codebase64 — Multidirectional scrolling and the \"game world\" (Rant 4), by Cadaver (Lasse Öörni)"
+      kind: technical-doc
+      note: "\"There's also an abominable method of updating the color memory that wastes a lot of time (used in Nobby The Aardwark, Darkman and Cool World at least)\" — `ldy screen,x / lda charcolortable,y / sta colormemory,x` — \"It is wasting 4 cycles each byte, compared to plain shifting! I strongly recommend not to use this method, although it's very easy to use. In fact it's so slow that you can forget about NTSC compatibility when using it.\""
+  c64_spare_colour_map:
+    - title: "Codebase64 — 4 Way Scroll by Malcolm Bamber (parts 1 and 2)"
+      kind: source-code
+      note: "The IRQ outline for a 2×2 tiled map: \"IF UDFLAG=1 THEN COPY COLOUR ODD LINE TO SCREEN COLOUR MAP AND SWAP SCREEN / IF UDFLAG=2 THEN COPE COLOUR EVEN LINE TO SCREEN COLOUR MAP AND SWAP SCREEN\"; the source declares `PtrSparecolour` in zero page and `whichscreen ; which screen we are showing 1024 or 3072`."
+  c64_even_odd_trick:
+    - title: "Codebase64 — Color Ram Double Buffer, by Sokrates"
+      kind: technical-doc
+      note: "\"The Commodore 64 video interface controller II (VIC-II) supports double buffering for bitmaps, character memory, and screen memory - but unfortunately not for the color ram. Thanks to undocumented tricks and side effects of the VIC-II there is a way to address this problem - split the color ram in even and odd lines to implement a double buffer.\" Costs: 8×16 characters from two charsets, 24 rows, linecrunch and invalid text mode, and \"a significant amount of rasterlines in each frame\"."
 ---
 
 Moving a game world pixel-by-pixel by copying screen memory is impossibly slow on 8-bit hardware. Hardware scrolling solves this: dedicated registers shift the display position, and you only update the newly-revealed edge. The result is butter-smooth scrolling at full frame rate.
@@ -74,10 +98,12 @@ smooth_scroll_down:
 
 ### Colour RAM challenge
 
-VIC-II colour RAM doesn't scroll with screen memory. Solutions:
-- Use same colour for scrolling area
-- Copy colour RAM along with screen (slow)
-- Use character colour (bits 8-11 of character data in multicolour mode)
+Colour RAM at `$D800` is a separate chip, and `$D018` cannot page-flip it: "The color memory is quite ugly to work with because it can't be doublebuffered." It has to be shifted in place while the rows being shifted are off-screen. PAL leaves time for 20–21 rows in the border; for NTSC compatibility Cadaver splits the job, shifting the upper half while the lower half is still being drawn and the lower half once the display ends, with the row at the split point buffered first (Metal Warrior 2 and 3). The other ways games cut the cost:
+
+- **One colour per block, not per character** — the SEUCK approach. With 4-character-wide blocks only every fourth column changes on a one-character shift, which "can cut color memory accesses to 1/4th portion" (Metal Warrior 1). Achim's summary: per-tile colour "is very useful when you want to save rastertime for the main program, but is obviously less colourful."
+- **Rebuild it from a lookup table** — read each screen code and look up its colour (`ldy screen,x / lda charcolortable,y / sta colormemory,x`). Cadaver names Nobby the Aardvark, Darkman and Cool World as users and calls the method "abominable": four cycles more per byte than a plain shift, and too slow to leave room for NTSC.
+- **Keep a spare colour map and copy it in halves** — Malcolm Bamber's 4-way scroller copies the odd colour lines from a spare map on one frame and the even lines on the next, alongside its two screens at 1024 and 3072.
+- **Split colour RAM into even and odd lines** — Sokrates' demo-side double buffer, built from 8×16 characters, two charsets and linecrunch. It costs "a significant amount of rasterlines in each frame", which is why it stays a demo technique.
 
 ### Contention impact
 
@@ -262,3 +288,4 @@ update_scroll:
 - [Copper](/vault/hardware/copper)
 - [Software Scroll](/vault/techniques/software-scroll)
 - [Double Buffering](/vault/techniques/double-buffering)
+- [Multidirectional Scrolling](/vault/techniques/multidirectional-scrolling)

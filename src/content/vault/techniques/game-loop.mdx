@@ -9,6 +9,19 @@ platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'nintendo
 tags: ['programming', 'architecture', 'fundamentals']
 originated: 1962
 
+sources:
+  c64_irq_split:
+    - title: "Codebase64 — Frameskipping, interpolation and re-entrant IRQ code (Rant 9), by Cadaver (Lasse Öörni)"
+      kind: technical-doc
+      note: "\"Practically, as I wrote in a previous rant, this design involves making sure that no matter what happens, raster interrupts have enough time to do their screen-update task; in fact their task should be just the immediate setting of VIC registers (like screen-splits and sprite multiplexing) and playing music/sound. All the time-consuming things like movement, AI & scrolling are done in the main program; if it is too 'slow' the screen will nevertheless show correctly.\" — \"If a program has been designed well, going 'over' that 'limit' doesn't involve ugly graphical effects like flickering/jerking of screen, but it's just visible as an overall slowdown.\""
+  c64_common_practice:
+    - title: "Codebase64 — Guide to making C64 games, by Richard Bayliss"
+      kind: technical-doc
+      note: "\"Most important of them all you would need to create routines that will synchronize your game code and loop the game engine continuously. For beginners, it is a bit awkward, but for advanced programmers it is more understandable. Most C64 games also use IRQ raster interrupts to perform various tasks. You may need to do a stable raster if you were to add loads of extreme routines, like sprite multiplexor (More than 8 sprites on screen), background scrolling, etc.\""
+  c64_lower_rate:
+    - title: "Codebase64 — Frameskipping, interpolation and re-entrant IRQ code (Rant 9), by Cadaver (Lasse Öörni)"
+      kind: technical-doc
+      note: "\"The key is to not run your full movement/logic every frame. Run it for example each 2nd or each 4th frame, and you'll have quite a bit of time left over. In the in-between frames, interpolate the movement of sprites with a line equation (linear interpolation).\" — \"I know that some games like Gauntlet 3 or Myth scroll at 50Hz, while updating the movement of sprites at a lower rate\""
 ---
 
 The game loop is the core rhythm that drives every video game. Each frame, the game reads player input, updates the game world, draws the result, and repeats. This simple pattern—running 50 or 60 times per second—creates the illusion of continuous motion and responsiveness.
@@ -76,20 +89,29 @@ The `$D011` bit-7 check waits for the raster to enter the upper border / vblank 
 
 ### Interrupt-driven
 
-```
-; Set up raster interrupt at line 251
-    lda #251
-    sta $d012
+The C64 design Cadaver describes as tried and true keeps the raster interrupts small and the main loop free-running. The interrupts do only what has to land on a particular raster line — "the immediate setting of VIC registers (like screen-splits and sprite multiplexing) and playing music/sound" — and "all the time-consuming things like movement, AI & scrolling are done in the main program". The two halves meet through a frame counter:
 
-    ; IRQ handler runs game logic
+```
+; Raster IRQ at the bottom of the screen: VIC writes and music only
 irq_handler:
+    ; ... set registers for the next frame, play music ...
+    inc frame_count
+    dec $d019         ; acknowledge
+    rti
+
+; Main program: logic, then wait for the next frame
+main_loop:
     jsr read_input
     jsr update_game
     jsr render_graphics
-    rti
+    lda frame_count
+.wait:
+    cmp frame_count
+    beq .wait
+    jmp main_loop
 ```
 
-More efficient—CPU does useful work between frames.
+The payoff is graceful failure. If the main loop overruns, the interrupts still fire on time and the screen still shows correctly; the game slows down as a whole instead of tearing or flickering. Richard Bayliss's guide puts the same thing in fewer words: the routines "that will synchronize your game code and loop the game engine continuously" come first, and "Most C64 games also use IRQ raster interrupts to perform various tasks."
 
 ## Phase structure
 
@@ -127,7 +149,7 @@ Draw everything to screen:
 
 | System | VBlank cycles |
 |--------|---------------|
-| C64 PAL | ~7,800 cycles |
+| C64 PAL | ~7,000 cycles (112 border lines × 63; no badlines outside the display window) |
 | NES | ~2,270 cycles |
 | ZX Spectrum | varies by border |
 
@@ -139,6 +161,7 @@ If update takes too long:
 - Spread AI across multiple frames
 - Update only visible sprites
 - Use dirty rectangle rendering
+- Run the logic every second or fourth frame and interpolate sprite positions in between, as *Metal Warrior 4* does — see [Frameskipping and Interpolation](/vault/techniques/frameskipping-and-interpolation). *Gauntlet III* and *Myth* scroll at 50 Hz while moving their sprites at a lower rate.
 
 ## State machines within the loop
 
@@ -168,7 +191,7 @@ Different states run different logic while sharing the same loop structure.
 
 ### Commodore 64
 
-Use raster interrupts or poll `$D012` for VBlank.
+Use raster interrupts or poll `$D012` for VBlank. The common shape is a bottom-of-screen interrupt that writes the VIC registers and plays the music, with everything else in the main loop, synchronised by a frame counter.
 
 ### ZX Spectrum
 
@@ -187,3 +210,4 @@ Copper can trigger interrupts; also use VBlank interrupt.
 - [State Machine](/vault/techniques/state-machine)
 - [Raster Tricks](/vault/techniques/raster-tricks)
 - [Double Buffering](/vault/techniques/double-buffering)
+- [Frameskipping and Interpolation](/vault/techniques/frameskipping-and-interpolation)
