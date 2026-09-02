@@ -1,30 +1,46 @@
 ---
 title: "What You're Allowed to Call Things"
-description: "Sinclair BASIC forbids a multi-letter string variable; the C64 treats 'score' and 'scones' as the same variable. Neither naming rule is arbitrary — each is the interpreter's memory model, leaking through."
-dek: "On the Spectrum a string variable must be one letter. On the C64, score and scones are the same variable. Both rules are a ROM showing through."
+description: "Sinclair BASIC forbids a multi-letter string variable; the C64 treats 'speed' and 'spell' as the same variable. Neither naming rule is arbitrary — each is the interpreter's memory model, leaking through."
+dek: "On the Spectrum a string variable must be one letter. On the C64, speed and spell are the same variable. Both rules are a ROM showing through."
 kicker: "BASIC · SINCLAIR + C64"
 pubDate: 2026-06-30
 accent: "#166534"
 order: 9
-teaser: "Type LET name$ = \"Sam\" into a Spectrum and it stops with 'Nonsense in BASIC.' The reason is one comparison in the ROM's syntax checker — and it decides what you're allowed to call things."
-draft: true
+teaser: "Type LET name$ = \"Sam\" into a Spectrum and it will not even take the line — just a flashing '?'. The reason is one comparison in the ROM's syntax checker — and it decides what you're allowed to call things."
+draft: false
 ---
 
-Type `LET name$ = "Sam"` into a ZX Spectrum and it stops you cold: **Nonsense in BASIC.** Not a typo, not a missing quote — the machine genuinely will not let a string variable have a name longer than one letter. `n$` is fine. `a$` is fine. `name$` is illegal, and the machine is certain of it. The first time it happens it feels like a bug in the interpreter. It's the opposite: it's the interpreter being ruthlessly consistent about something it decided in 1982.
+import Figure from '@components/Figure.astro';
 
-**[ASSET: a real Spectrum screen showing `LET name$ = "Sam"` and the flashing "Nonsense in BASIC" report — captured through Emu198x. A companion C64 shot proving `score`/`scones` alias (assign one, PRINT the other) would carry the second half.]**
+Type `LET name$ = "Sam"` into a ZX Spectrum and it will not even take the line. The cursor stops at the `$` and turns into a **flashing `?`**, and there it sits. Not a typo, not a missing quote — the machine genuinely will not let a string variable have a name longer than one letter. `n$` is fine. `a$` is fine. `name$` is illegal, and the machine is certain of it. The first time it happens it feels like a bug in the interpreter. It's the opposite: it's the interpreter being ruthlessly consistent about something it decided in 1982.
+
+<Figure
+  src="/images/field-notes/spectrum-long-name-refused.png"
+  alt="A ZX Spectrum screen showing LET name?$=&quot;Sam&quot; with a question mark marking the error before the dollar sign"
+  frame="spectrum"
+  width={480}
+  caption="The line is refused. The ? is the error marker, sitting exactly where the parser gave up, and the trailing L is the mode cursor still waiting. The report behind it is never printed."
+/>
+
+<Figure
+  src="/images/field-notes/spectrum-single-letter-accepted.png"
+  alt="A ZX Spectrum screen showing the report 0 OK, 0:1 after a single-letter string assignment"
+  frame="spectrum"
+  width={480}
+  caption="The same statement with a one-letter name. LET n$ = &quot;Sam&quot; is accepted and runs, and the machine says so."
+/>
 
 ## Two rules that look like fussiness
 
 Sinclair BASIC draws a hard line between numbers and strings. A *numeric* variable can have a long, readable name — `score`, `lives`, `level` all work. A *string* variable cannot: it must be a single letter followed by `$`. There is no `name$`, no `player$`, no `score$`. One letter, or nothing.
 
-The error you get even lies about why. `LET name$ = "Sam"` reports "Nonsense in BASIC" because the parser reads `name` as a perfectly legal long *numeric* name, then hits a `$` it has no grammar for and gives up. Reach for an unassigned long string a different way and you'll instead get "Variable not found" — same underlying rule, different symptom, neither of them saying the actual thing, which is *strings only get one letter*.
+The machine won't say why, and it knows exactly why. The syntax checker reads `name` as a perfectly legal long *numeric* name, hits a `$` it has no grammar for, and raises the error the ROM calls report C — "Nonsense in BASIC". You never see those words. While a line is being syntax-checked the Spectrum prints only the error marker and keeps the report behind it to itself, so the entire diagnosis reaches you as one flashing question mark. Reach for an unassigned long string a different way, at run time, and you'll get "Variable not found" instead — same underlying rule, different symptom, and neither of them ever says the actual thing, which is *strings only get one letter*.
 
-There's a companion rule that feels equally arbitrary until you see it's the same rule. `FOR` loops demand a single-letter control variable too: `FOR i = 1 TO 10` runs, `FOR score = 1 TO 10` is "Nonsense in BASIC." Long numeric names are legal *in general* but not *here*. Why would a `FOR` loop care how long the name is?
+There's a companion rule that feels equally arbitrary until you see it's the same rule. `FOR` loops demand a single-letter control variable too: `FOR i = 1 TO 10` runs; `FOR speed = 1 TO 10` is refused on the spot, same marker, same silence. Long numeric names are legal *in general* but not *here*. Why would a `FOR` loop care how long the name is?
 
 ## All the way down, it's one byte
 
-Because to the ROM, a single-letter variable and a multi-letter variable are **different kinds of thing**, tagged differently the moment they're recognised. The 48K ROM's variable-lookup routine (`LOOK-VARS`, entered around `$1C6C`) classifies every name it reads and stores a discriminator in the `C` register — the top bits encode what *type* of variable this is, and single-letter numerics get their own encoding distinct from long names, string variables, and arrays.
+Because to the ROM, a single-letter variable and a multi-letter variable are **different kinds of thing**, tagged differently the moment they're recognised. The 48K ROM's variable-lookup routine (`LOOK-VARS`, at `$28B2`) classifies every name it reads and stores a discriminator in the `C` register — the top bits encode what *type* of variable this is, and single-letter numerics get their own encoding distinct from long names, string variables, and arrays.
 
 `FOR` loops route their control variable through the syntax class the ROM calls **CLASS-04**, and CLASS-04's check is tiny and unforgiving. It takes that discriminator and does, in effect, `OR $9F` then `INC A` and errors unless the result is zero — which only comes out zero when two specific bits are both set, i.e. when the variable is a *single-letter numeric*. Anything else — a long name, a string — fails the comparison and you get "Nonsense in BASIC." The naming rule you keep tripping over isn't a style guide the manual is enforcing. It's the shape of one bitwise test in a syntax checker, and you can read the exact instructions that make it true.
 
@@ -32,7 +48,15 @@ That's the "see all the way down" moment I keep chasing on these machines: a rul
 
 ## The C64 forgets instead of forbidding
 
-Commodore made the same underlying decision — names cost memory, store them cheaply — and it leaks in the opposite, sneakier direction. The C64 doesn't forbid long names. It *ignores* the ends of them. Only the **first two characters** are significant, so `score` and `scones` are the same variable, silently sharing one slot. So are `lives` and `limit`, `player` and `place`. No error, no warning — you assign to one and read what looks like a different variable and get the first one's value, and the machine considers this a completely reasonable thing to have done to you.
+Commodore made the same underlying decision — names cost memory, store them cheaply — and it leaks in the opposite, sneakier direction. The C64 doesn't forbid long names. It *ignores* the ends of them. Only the **first two characters** are significant, so `speed` and `spell` are the same variable, silently sharing one slot. So are `lives` and `limit`, `player` and `place`. No error, no warning — you assign to one and read what looks like a different variable and get the first one's value, and the machine considers this a completely reasonable thing to have done to you.
+
+<Figure
+  src="/images/field-notes/c64-two-character-alias.png"
+  alt="A Commodore 64 screen where SPEED is set to 5 and PRINT SPELL then prints 5"
+  frame="c64"
+  width={480}
+  caption="Assign to SPEED, print SPELL, get 5. Two names, two letters in common, one variable."
+/>
 
 Two machines, two ways the same fact surfaces. The Spectrum makes the constraint *loud* — it refuses the name outright, so at least you know. The C64 makes it *quiet* — it accepts the name, keeps two letters of it, and lets you find out the hard way when two variables start haunting each other. Neither is arbitrary. Both are a symbol table that was built small, showing through the language that sits on top of it.
 
