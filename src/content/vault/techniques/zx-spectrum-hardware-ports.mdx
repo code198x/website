@@ -3,377 +3,149 @@ ai_generated: true
 reviewed: false
 title: "ZX Spectrum hardware ports"
 subtitle: "Talking to the ULA, the AY chip, and the joystick — one port at a time"
-summary: "The Spectrum's I/O port map: port $FE for keyboard, border, beeper, and tape on every model; port $1F for the Kempston joystick; ports $7FFD and $1FFD for 128K and +2A/+3 memory paging; ports $FFFD and $BFFD for the AY-3-8912 sound chip on 128K+ models. The technical reference Shadowkeep Unit 4 and Unit 7 read from."
+summary: "The Spectrum's I/O port map: port $FE for keyboard, border, beeper, and tape on every model; port $1F for the Kempston joystick; ports $7FFD and $1FFD for 128K and +2A/+3 memory paging; ports $FFFD and $BFFD for the AY-3-8912 sound chip on the 128K models; the +3's disk and printer ports. Bit assignments as the Sinclair and Amstrad manuals and Chris Smith's ULA book give them."
 category: "techniques"
 platforms: ['sinclair-zx-spectrum']
 tags: ['hardware', 'ports', 'i/o', 'ula', 'keyboard', 'reference']
-
+sources:
+  port_fe_read_write:
+    - title: "ZX Spectrum BASIC Programming, Steven Vickers (Sinclair Research, 1982)"
+      kind: manual
+      page: "chapter 23, IN and OUT"
+      note: "The half-row list: \"IN 65278 reads the half row CAPS SHIFT to V\" down to \"IN 32766 reads the half row SPACE to B\", with the rule behind it, \"(These addresses are 254+256*(255-2^n) as n goes from 0 to 7.)\". The read format: \"In the byte read in, bits D0 to D4 stand for the five keys in the given half row - D0 for the outside key, D4 for the one nearest the middle. The bit is 0 if the key is pressed, 1 if it is not. D6 is the value at the EAR socket.\" The write format: \"Port address 254 in output drives the loudspeaker (D4) and the MIC socket (D3), and also sets the border colour (D2, D1 and D0).\" Also \"Port address 251 runs the printer\" and the reservation of 254, 247 and 239 \"for the extra devices mentioned in Chapter 22\""
+    - title: "The ZX Spectrum ULA: How to design a microcomputer, Chris Smith (ZX Design and Media, 2010)"
+      kind: modern-book
+      page: "215-216"
+      note: "Why every even port hits the ULA: \"Port address 0xFE is represented by 1 1 1 1 1 1 1 0 appearing on address bus lines A7-0, and the ULA takes the partial decoding of this address to the extreme by considering only address line A0.\" and \"The consequence of this is that any port address that has A0 low, or put another way, any even numbered address, will select the ULA I/O port. Therefore to avoid accidentally selecting the I/O port of a peripheral connected to the ZX Spectrum, all software must ensure that port 0xFE is addressed so that A7-1 will be at logic 1.\" The scheme \"was inherited from the ZX80\". Table 19-2 gives the bit map: input EAR on bit 6 and keyboard on bits 4-0; output speaker on bit 4, MIC on bit 3, border on bits 2-0"
+    - title: "The ZX Spectrum ULA: How to design a microcomputer, Chris Smith (ZX Design and Media, 2010)"
+      kind: modern-book
+      page: "212-215"
+      note: "The border is a latch, not memory: \"The border colour register is not implemented as a RAM location ... Instead, the register is implemented as a latched three bit I/O output port that directly feeds the display controller.\" The tape bits: \"allocating the first free bit of output port 0xFE to the cassette recorder output, in this case D3, following the border colour bits\"; \"the next free bit of output port 0xFE is assigned to the speaker output, here being D4\"; the cassette input uses \"one of the free input bits of the keyboard I/O port, in this case D6\", and \"D5 is not used, even though it is the logical choice\" - so bits 5 and 7 of a read are not driven by the ULA at all"
+  phantom_keys:
+    - title: "The ZX Spectrum ULA: How to design a microcomputer, Chris Smith (ZX Design and Media, 2010)"
+      kind: modern-book
+      page: "245-246"
+      note: "The ghosting rule with its worked example: \"If the user pressed Q, P and O simultaneously, the read of keyboard half-row Q to T would incorrectly indicate that Q and W were being pressed.\" and the mechanism: \"by pressing the Q key, A10 is connected to K0, which pulls K0 low. By pressing P at the same time, A13 is also connected to K0, which causes A13 to be pulled low. Now, by pressing another key connected to A13 in this example O, its keyboard input, K1, is mistakenly pulled low by A13\". Smith files it under design errors but says it \"is not really a design flaw of the ULA, but arises due to the way the keyboard is multiplexed through the ULA's single I/O port\""
+  rom_key_scan:
+    - ref: books/complete-spectrum-rom-disassembly
+      kind: book
+      page: "KEY-SCAN, $028E"
+      note: "How the ROM reads the matrix: \"LD BC,+FEFE - C = port address, B = counter\", then per half-row \"IN A,(C) ... CPL ... AND +1F - A pressed key in the line will set its respective bit (from bit 0 - outer key, to bit 4 - inner key)\", with \"RLC B\" walking the high byte through $FE, $FD ... $7F. The routine \"is called by both the main keyboard subroutine and the INKEY$ routine\""
+  kempston:
+    - title: "RAM Turbo Interface manual (RAM Electronics)"
+      kind: manual
+      page: "Kempston protocol"
+      note: "The Kempston port from BASIC: \"You can read the Kempston port directly from Basic using IN 31. i.e. 10 LET A = IN 31: PRINT A / 20 GOTO 10\", with the bit values listed as \"1 Right 2 Left 4 Down 8 Up 16 Fire\". The interface \"will automatically respond to Kempston protocol totally transparently\""
+  paging_7ffd:
+    - title: "ZX Spectrum +3 manual (Amstrad, 1987)"
+      kind: manual
+      page: "chapter 8, part 24, memory management"
+      note: "The bit field: \"The hardware switch normally used to select RAM is at I/O address 7FFDh (32765). The bit field for this address is as follows. D0..D2 - RAM select / D3 - Screen select / D4 - ROM select / D5 - Disable paging\". \"D2..D0 is a three bit number that selects which RAM page goes into the C000h to FFFFh slot\". \"D3 switches screens. Screen 0 is held in RAM page 5 (normally beginning at 4000h) and is the one that BASIC uses. Screen 1 is held in RAM 7 (beginning at C000h) and can only be used by machine code programs\". \"D4 determines which ROM is paged into 0000h to 3FFFh (in combination with bit 2 of port 1FFDh)\". \"D5 is a safety feature - once this bit has been set, no further paging operations will work ... It cannot be turned back into a 128K machine other than by switching off or pressing the RESET button\""
+    - title: "ZX Spectrum +3 manual (Amstrad, 1987)"
+      kind: manual
+      page: "chapter 8, part 23, IN and OUT"
+      note: "Why a program must keep its own copy: \"Port address 7FFDh (32765) drives the extra memory. Executing an OUT to this port from BASIC will nearly always cause the computer to crash ... This port is write only, ie, you cannot determine the current state of the paging by an IN instruction. This is why the BANKM system variable is always kept up to date with the last value output to this port\". Also: \"D6 is set by the tape interface, and is effectively random if no tape data is present\""
+    - title: "ZX Spectrum +3 manual (Amstrad, 1987)"
+      kind: manual
+      page: "chapter 8, part 24, memory management"
+      note: "Which banks the ULA slows: \"RAM pages 4 to 7 which are contended (meaning that they share time with the video circuitry), and RAM pages 0 to 3 which are uncontended ... executing NOPs in contended RAM will give an effective clock frequency of 2.66MHz as opposed to the normal 3.53MHz\""
+  paging_1ffd:
+    - title: "ZX Spectrum +3 manual (Amstrad, 1987)"
+      kind: manual
+      page: "chapter 8, part 23 and part 24"
+      note: "\"Port address 1FFDh (8189) controls several aspects of the +3 ... As the port is write only, +3 BASIC maintains a variable, BANK678 ... The bottom three bits (0...2) of this port (1FFDh) are used to switch RAM/ROM ... Bit 3 controls the disk motor (0 is off, 1 is on) ... Bit 4 is the parallel port STROBE which is active low\". The ROM geometry: \"When bit 0 is 0, bit 1 has no effect and bit 2 is a 'vertical' ROM switch (ie. between ROM 0 and ROM 2 or between ROM 1 and ROM 3). Bit 4 in the port at 7FFDh is a 'horizontal' ROM switch (ie. between ROM 0 and ROM 1, or between ROM 2 and ROM 3)\". The all-RAM modes: \"When bit 0 of port 1FFDh is set to 1, bits 1 and 2 switch in various RAM combinations that occupy the full 64K address space. These are not used by +3 BASIC but are provided for authors of operating systems/games\""
+  ay_and_plus3:
+    - title: "ZX Spectrum +3 manual (Amstrad, 1987)"
+      kind: manual
+      page: "chapter 8, part 23, IN and OUT"
+      note: "\"Port address BFFDh (49149) drives the sound chip's data registers. Port address FFFDh (65533) in output writes a register address, and in input reads register\" - and the same chip's I/O port is why \"they also control RS232/MIDI and AUX interfaces\". The +3-only ports: \"Port address 0FFDh (4093) is used for the parallel (Centronics) interface\"; \"Port address 2FFDh (12285) can be used to read the disk controller (uPD765A) chip's main status register\"; \"Port address 3FFDh (16381) is the disk controller's data register ... Random OUTputting to this port will probably confuse the poor disk controller\". The built-in joysticks read as keys: \"For JOYSTICK 1, bit 0 is fire, bit 1 is up, bit 2 is down, bit 3 is right and bit 4 is left. For JOYSTICK 2, bit 0 is left, bit 1 is right, bit 2 is down, bit 3 is up and bit 4 is fire. From BASIC, these read as the number keys\""
 ---
+The Z80 has a separate I/O address space. `IN A,(n)` and `OUT (n),A` put the immediate byte on A7-A0 and the accumulator on A15-A8; `IN A,(C)` and `OUT (C),A` put the whole of BC on the address bus. The Spectrum uses that distinction. The [ULA](/vault/hardware/ula)'s one port lives at the low byte $FE, and the high byte is free to carry data: which keyboard half-row to read, and on the 128K models which memory bank to page. Everything else - joystick, sound chip, disk - is an add-on or a later model, on a port of its own.
 
-The Z80 has a separate I/O address space — 256 ports addressed by the low 8 bits of the address bus on the simplest instructions, or by the full 16 bits when using `IN A,(C)` / `OUT (C),A`. On the Spectrum, almost every I/O operation is one of a small set of well-defined port addresses, decoded by the [ULA](/vault/hardware/ula) or by add-on hardware. This entry catalogues the ports that matter for game development on the platform.
+## The ULA decodes one address line
 
-The most important port, by a long margin, is **$FE** — the ULA's single multi-purpose port. It carries the keyboard, the border colour, the beeper, and the tape interface, all on one address. Almost every Spectrum game touches $FE on every frame.
+Chris Smith's silicon-level study of the ULA states the decoding rule flatly:
 
----
+> Port address 0xFE is represented by 1 1 1 1 1 1 1 0 appearing on address bus lines A7-0, and the ULA takes the partial decoding of this address to the extreme by considering only address line A0.
 
-## Port $FE - The Multi-Purpose Port
+So any even port number selects the ULA, and a peripheral on an even address would fight it. The rule for software follows: address the ULA with A7-A1 all high - $FE, not $00 or $FC - so that a peripheral decoding those lines sees a value it can tell apart from the ULA's. Smith traces the scheme to the ZX80, where every gate saved was a chip not bought.
 
-Port $FE is the most important port on the Spectrum. It controls **border colour**, reads the **keyboard**, controls the **speaker**, and handles **tape I/O**.
+Port $FE is two different things depending on direction. A write latches border, tape output and speaker; a read returns keyboard and tape input. The written value cannot be read back.
 
-### Port $FE Output (Writing)
-
-**Usage:** `OUT ($FE),A`
-
-**Bit Layout:**
+## Port $FE, written
 
 | Bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
 |-----|---|---|---|---|---|---|---|---|
-| **Purpose** | — | — | — | Speaker | Tape | Border | Border | Border |
-| **Value** | x | x | x | MIC | EAR | Border | Border | Border |
+| **Purpose** | - | - | - | Speaker | MIC | Border | Border | Border |
 
-**Bit Functions:**
+The 48K manual gives the same map in a sentence: port 254 "drives the loudspeaker (D4) and the MIC socket (D3), and also sets the border colour (D2, D1 and D0)". Bits 5-7 go nowhere; there is no latch behind them.
 
-- **Bits 0-2:** Border colour (0-7)
-- **Bit 3:** Tape output (EAR socket)
-- **Bit 4:** Speaker control (0 = off, 1 = on)
-- **Bits 5-7:** Not used (but should be preserved)
+The border bits are a three-bit latch feeding the display generator directly, not a memory location - Smith's reason being that the video circuit needs the value on every scanline and fetching it from RAM would cost too much. That is why a border write takes effect instantly, and why border-colour raster effects are possible on a machine with no raster interrupt: the display shows whatever the latch held when it drew each line.
 
-**Example - Change Border:**
 ```nasm
-LD A,2           ; Red border
-OUT ($FE),A
+        ld      a,2            ; red border, MIC low, speaker low
+        out     ($FE),a
 ```
 
-**Example - Make Sound:**
-```nasm
-; Toggle speaker bit for simple beep
-LD A,$10         ; Speaker on, black border
-OUT ($FE),A
-; Delay
-LD A,$00         ; Speaker off
-OUT ($FE),A
-```
+Because nothing can be read back, a program that changes both border and speaker keeps a copy of the last byte it wrote. The ROM does this for BASIC in the system variable BORDCR ($5C48), which the BORDER command updates; a game that has taken over the machine keeps its own. The beeper routines in [beeper music](/vault/techniques/beeper-music) toggle bit 4 while ORing in the border bits from that copy, so the border does not flicker black on every click.
 
-**Example - Preserve Upper Bits:**
-```nasm
-; Read current value, modify border only
-IN A,($FE)       ; Read current port state
-AND $F8          ; Clear border bits (0-2)
-OR 5             ; Set to cyan (5)
-OUT ($FE),A      ; Write back
-```
-
-### Port $FE Input (Reading)
-
-**Usage:** `IN A,($FE)`
-
-**Bit Layout:**
+## Port $FE, read
 
 | Bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
 |-----|---|---|---|---|---|---|---|---|
-| **Purpose** | — | EAR | — | Key | Key | Key | Key | Key |
-| **Active** | reads 1 | tape input | reads 1 | row bit 4 | row bit 3 | row bit 2 | row bit 1 | row bit 0 |
+| **Purpose** | - | EAR | - | Key | Key | Key | Key | Key |
+| **Value** | not driven | tape input | not driven | 0 = pressed | 0 = pressed | 0 = pressed | 0 = pressed | 0 = pressed |
 
-**Bit Functions:**
+The manual: "bits D0 to D4 stand for the five keys in the given half row - D0 for the outside key, D4 for the one nearest the middle. The bit is 0 if the key is pressed, 1 if it is not. D6 is the value at the EAR socket." Bits 5 and 7 are not driven by the ULA at all - Smith notes D5 was "the logical choice" for the tape input but its pin was needed by the analogue cassette circuit, so D6 got the job. Mask with `AND $1F` before testing keys, and expect bit 6 to be noise when no tape is playing: the +3 manual calls it "effectively random if no tape data is present".
 
-- **Bits 0-4:** Keyboard row data (active low - 0 = pressed)
-- **Bit 5:** Not used
-- **Bit 6:** Tape input (EAR socket)
-- **Bit 7:** Not used
+### Which half-row
 
-**Important:** Keyboard reading requires setting the upper byte of BC to select keyboard half-row.
+The 40 keys are wired as eight half-rows of five. The high byte of the port address selects a half-row by pulling one of A8-A15 low; the manual gives the decimal form, `254+256*(255-2^n)` for n = 0 to 7, and lists the rows from "IN 65278 reads the half row CAPS SHIFT to V" to "IN 32766 reads the half row SPACE to B".
 
----
+| High byte | Address line low | Bit 4 | Bit 3 | Bit 2 | Bit 1 | Bit 0 |
+|-----------|------------------|-------|-------|-------|-------|-------|
+| $FE | A8 | V | C | X | Z | CAPS SHIFT |
+| $FD | A9 | G | F | D | S | A |
+| $FB | A10 | T | R | E | W | Q |
+| $F7 | A11 | 5 | 4 | 3 | 2 | 1 |
+| $EF | A12 | 6 | 7 | 8 | 9 | 0 |
+| $DF | A13 | Y | U | I | O | P |
+| $BF | A14 | H | J | K | L | ENTER |
+| $7F | A15 | B | N | M | SYMBOL SHIFT | SPACE |
 
-## Keyboard Reading
+Bit 0 is the key at the outer end of the row - CAPS SHIFT, A, Q, 1 on the left; SPACE, ENTER, P, 0 on the right - and bit 4 the key nearest the middle. The manual's own demonstration prints the raw byte for each row:
 
-The Spectrum keyboard is arranged in a matrix of 8 half-rows × 5 keys each.
-
-### Keyboard Matrix
-
-**To read keyboard:**
-1. Set BC register: High byte selects half-row, low byte = $FE
-2. Read with `IN A,(C)`
-3. Test bits 0-4 (active low: 0 = pressed, 1 = not pressed)
-
-### Keyboard Half-Row Map
-
-| BC High | Half-row | Bit 4 | Bit 3 | Bit 2 | Bit 1 | Bit 0 |
-|---------|----------|-------|-------|-------|-------|-------|
-| $FE | Row 0 | V | C | X | Z | SHIFT |
-| $FD | Row 1 | G | F | D | S | A |
-| $FB | Row 2 | T | R | E | W | Q |
-| $F7 | Row 3 | 5 | 4 | 3 | 2 | 1 |
-| $EF | Row 4 | 6 | 7 | 8 | 9 | 0 |
-| $DF | Row 5 | Y | U | I | O | P |
-| $BF | Row 6 | H | J | K | L | ENTER |
-| $7F | Row 7 | B | N | M | SYM | SPACE |
-
-### Reading Single Key
-
-**Example - Read Q key:**
-```nasm
-        LD BC,$FBFE       ; Half-row $FB (Q-T row)
-        IN A,(C)          ; Read keyboard
-        BIT 0,A           ; Test bit 0 (Q key)
-        JR Z,QPressed     ; Jump if Q pressed (bit = 0)
+```basic
+10 FOR n=0 TO 7: REM half-row number
+20 LET a=254+256*(255-2^n)
+30 PRINT AT 0,0; IN a: GO TO 30
 ```
 
-**Example - Read Arrow Keys (using QAOP):**
-```nasm
-; Read Q (up) key
-        LD BC,$FBFE       ; Q-T row
-        IN A,(C)
-        BIT 0,A
-        JR Z,MoveUp
-
-; Read A (down) key
-        LD BC,$FDFE       ; A-G row
-        IN A,(C)
-        BIT 0,A
-        JR Z,MoveDown
-
-; Read O (right) key
-        LD BC,$DFFE       ; P-Y row
-        IN A,(C)
-        BIT 1,A
-        JR Z,MoveRight
-
-; Read P (left) key
-        LD BC,$DFFE       ; Same row
-        IN A,(C)
-        BIT 0,A
-        JR Z,MoveLeft
-```
-
-### Reading Multiple Keys Simultaneously
-
-The Spectrum supports multiple simultaneous key presses (within matrix limitations).
-
-**Example - Detect multiple keys:**
-```nasm
-; Read Q-T row
-        LD BC,$FBFE
-        IN A,(C)
-        LD D,A            ; Save for later
-
-        BIT 0,D           ; Q pressed?
-        CALL Z,HandleQ
-
-        BIT 1,D           ; W pressed?
-        CALL Z,HandleW
-```
-
-### Scan All Keys
-
-**Example - Detect any key press:**
-```nasm
-ScanKeyboard:
-        LD BC,$FEFE       ; Start with row 0
-        LD D,8            ; 8 rows to scan
-ScanLoop:
-        IN A,(C)          ; Read row
-        AND $1F           ; Mask to key bits
-        CP $1F            ; All bits set = no keys
-        JR NZ,KeyFound    ; Jump if any key pressed
-
-        RLC B             ; Next row (rotate high byte)
-        DEC D
-        JR NZ,ScanLoop
-
-        ; No keys found
-        RET
-
-KeyFound:
-        ; Key detected - A contains key bits
-        RET
-```
-
-### Ghost Keys and Limitations
-
-**Matrix ghosting:** Pressing certain 3-key combinations can register phantom 4th key.
-
-**Example problem:**
-- Press: Q + A + O
-- Ghost: P may appear pressed
-
-**Solution:** Use diagonally opposite keys in your control schemes (e.g., QAOP works well).
-
----
-
-## Speaker/Beeper ($FE Bit 4)
-
-The Spectrum has a simple 1-bit speaker controlled by port $FE bit 4.
-
-### Simple Beep
+In machine code, load BC with the half-row in B and $FE in C, then `IN A,(C)`. This is exactly how the ROM's KEY-SCAN routine at $028E works: it starts with `LD BC,+FEFE`, reads the row, inverts and masks (`CPL` / `AND +1F`) so that a pressed key becomes a set bit, then rotates B (`RLC B`) to walk the low bit through all eight rows.
 
 ```nasm
-Beep:
-        LD B,200          ; Duration counter
-BeepLoop:
-        LD A,$10          ; Speaker on
-        OUT ($FE),A
-
-        LD E,50           ; Frequency delay
-Delay1: DEC E
-        JR NZ,Delay1
-
-        LD A,$00          ; Speaker off
-        OUT ($FE),A
-
-        LD E,50
-Delay2: DEC E
-        JR NZ,Delay2
-
-        DJNZ BeepLoop
-        RET
+; Is P pressed?  Row $DF, bit 0.
+        ld      bc,$DFFE
+        in      a,(c)
+        bit     0,a
+        jr      z,p_pressed    ; bit clear = key down
 ```
 
-### Variable Pitch Beep
+More than one high-byte bit may be low at once; the result is the AND of the selected rows, which is why `IN A,($FE)` with A = 0 (all rows selected) answers "is any key pressed?" in one instruction. The ROM's KEY-SCAN gives up when it finds more than two keys down, but a game reading the matrix directly can track as many keys as it likes - subject to the wiring below.
 
-```nasm
-; HL = pitch (higher = higher pitch)
-; B = duration
-ToneBeep:
-ToneLoop:
-        LD A,$10
-        OUT ($FE),A
-        PUSH HL
-ToneDelay1:
-        DEC HL
-        LD A,H
-        OR L
-        JR NZ,ToneDelay1
-        POP HL
+### Phantom keys
 
-        LD A,$00
-        OUT ($FE),A
-        PUSH HL
-ToneDelay2:
-        DEC HL
-        LD A,H
-        OR L
-        JR NZ,ToneDelay2
-        POP HL
+The matrix has no diodes between keys, so three keys pressed at the right positions read as four. Smith's example is Q, P and O: Q connects A10 to K0; P connects A13 to K0 as well, so when A10 is pulled low to read the Q-T row, K0 pulls A13 low with it; and O, connecting A13 to K1, then pulls K1 low too. A read of the Q-T row reports Q *and W*. The rule: two keys in the same column (same bit) plus a third in the row of either one produces a phantom at the fourth corner.
 
-        DJNZ ToneLoop
-        RET
-```
+That worked example is the classic Q-A-O-P layout with two of its keys held. Any control scheme that expects three simultaneous keys should be checked against the table above for rectangles; putting fire on a key whose bit and row are shared with neither movement key keeps the phantom away.
 
-### Preserving Border Colour with Speaker
+## The speaker: bit 4
 
-**Problem:** Writing to port $FE affects border **and** speaker.
+Sound on a 48K Spectrum is bit 4 of port $FE toggled by the CPU. There is no tone generator; pitch is the time between toggles and volume is fixed. The ROM's BEEPER routine at $03B5 disables interrupts and counts T-states between OUTs, and every beeper engine since has been a more elaborate version of the same loop. [Beeper music](/vault/techniques/beeper-music) covers it.
 
-**Solution:** **Read-modify-write doesn't work** — `IN A,($FE)` returns the keyboard rows + EAR, **not** the last-written border colour. The Spectrum has no readback path for OUT-set ULA state. You must keep a software variable holding the current border value:
+## Kempston joystick: port $1F
 
-```nasm
-; Globally maintained border colour (bits 0-2, MIC bit 3 if you use tape)
-current_border:
-        DEFB    1               ; Blue border, MIC low
-
-play_click:
-        LD HL,current_border
-        LD A,(HL)
-        OR $10                  ; Speaker on, border preserved
-        OUT ($FE),A
-        ; ... delay ...
-        LD A,(HL)               ; Speaker off, border preserved
-        OUT ($FE),A
-        RET
-```
-
-To change the border colour, write to `current_border`; the next speaker toggle picks it up.
-
----
-
-## ULA Port ($FE) - Complete Specification
-
-### Output Bit Summary
-
-| Bit | Function | Effect |
-|-----|----------|--------|
-| 0 | Border LSB | Border colour bit 0 |
-| 1 | Border | Border colour bit 1 |
-| 2 | Border MSB | Border colour bit 2 |
-| 3 | MIC | Tape output (cassette save) |
-| 4 | Speaker | 1-bit speaker output |
-| 5-7 | Unused | No effect (recommended: write 0) |
-
-**Border colours (bits 0-2):**
-```
-%000 = 0 = Black      %100 = 4 = Green
-%001 = 1 = Blue       %101 = 5 = Cyan
-%010 = 2 = Red        %110 = 6 = Yellow
-%011 = 3 = Magenta    %111 = 7 = White
-```
-
-### Input Bit Summary
-
-| Bit | Function | Effect |
-|-----|----------|--------|
-| 0-4 | Keyboard | 5 keys per half-row (active low) |
-| 5 | Unused | Always reads 1 |
-| 6 | EAR | Tape input signal |
-| 7 | Unused | Always reads 1 |
-
----
-
-## Other Spectrum Ports
-
-### Port $7FFD - 128K Memory Paging (128K models only)
-
-Not available on 48K Spectrum. Used for bank switching on 128K, +2, +2A, +3 models.
-
-**Bit layout (write):**
-
-| Bit | Function |
-|-----|----------|
-| 0-2 | RAM bank at $C000 (selects one of 8 banks) |
-| 3 | Screen RAM bank (0 = normal screen at $C000-$DFFF in bank 5; 1 = shadow screen in bank 7) |
-| 4 | ROM select (0 = 128K editor ROM, 1 = 48K BASIC ROM) |
-| 5 | Paging disable — **once set, can only be cleared by reset**. Preserves the current configuration; some games use this to lock memory after setup. |
-| 6-7 | Reserved |
-
-Bank 5 is always at $4000 (regular screen). Bank 2 is always at $8000. Bank 0-7 is selected by bits 0-2 at $C000.
-
-### Port $1FFD - +2A/+3 Special Paging
-
-The +2A/+3 (Amstrad redesign) adds a second paging port. Only relevant for those models — see the +3 technical reference for bit layout.
-
-### Ports $FFFD / $BFFD - AY-3-8912 Sound Chip (128K+ models only)
-
-3-channel programmable sound generator on 128K/+2/+3 models (not on 48K). Two ports work together:
-
-- **`$FFFD`** — register select. Write the AY register number (0-15) here first.
-- **`$BFFD`** — register data. Write or read the value of the previously selected register.
-
-```nasm
-; Write value $0F to AY register 7 (mixer)
-        LD BC,$FFFD
-        LD A,7              ; Select register 7
-        OUT (C),A
-        LD BC,$BFFD
-        LD A,$0F            ; New value
-        OUT (C),A
-```
-
-See the [AY-3-8910](/vault/hardware/ay-3-8910) entry for the register set and channel layout.
-
-### +3 Disk Drive Ports (+3 only)
-
-The Spectrum +3 has a built-in 3-inch floppy drive controlled by an μPD765 disk controller, accessed through:
-
-- **`$2FFD`** — Disk controller status (read) / command (write)
-- **`$3FFD`** — Disk controller data (read/write)
-- **`$1FFD`** bits 3-4 — Drive motor control + ROM/RAM switch combinations
-
-Most +3 software uses the `+3DOS` BIOS rather than poking these ports directly. See the +3 technical manual for the full interface.
-
-### Kempston Joystick - Port $1F
-
-**Not a standard Spectrum feature** - third-party add-on.
-
-**Read:** `IN A,($1F)`
+The Kempston interface puts the joystick on port 31 ($1F). The address is odd, so the ULA ignores it. The RAM Turbo interface manual, which emulates the protocol, gives the reading from BASIC as `IN 31` with the bit values 1 Right, 2 Left, 4 Down, 8 Up, 16 Fire:
 
 | Bit | Function |
 |-----|----------|
@@ -383,17 +155,77 @@ Most +3 software uses the `+3DOS` BIOS rather than poking these ports directly. 
 | 3 | Up |
 | 4 | Fire |
 
----
+Unlike the keyboard, a Kempston bit is 1 when active.
+
+```nasm
+        in      a,($1F)
+        bit     4,a
+        jr      nz,fire
+```
+
+The +2A and +3's built-in joystick ports take a different route: they are wired into the keyboard matrix and read as the number keys. The +3 manual gives the layout - joystick 1 is fire, up, down, right, left on bits 0-4 of the 6-0 row and joystick 2 is left, right, down, up, fire on the 1-5 row - and adds "From BASIC, these read as the number keys". A game that reads the matrix already supports them.
+
+## 128K memory paging: port $7FFD
+
+The 128K models have two 16K ROMs and eight 16K RAM banks, switched through port $7FFD (32765). The +3 manual, which documents the same port for the +2A/+3, gives the bit field:
+
+| Bit | Function |
+|-----|----------|
+| 0-2 | RAM bank paged at $C000-$FFFF (0-7) |
+| 3 | Screen select: 0 = screen 0 in bank 5 ($4000, the one BASIC uses); 1 = screen 1 in bank 7, "can only be used by machine code programs" |
+| 4 | ROM at $0000: 0 = 128K editor, 1 = 48K BASIC |
+| 5 | Disable paging - "once this bit has been set, no further paging operations will work" until reset or power off |
+| 6-7 | Unused |
+
+Bank 5 is always at $4000 and bank 2 at $8000; only the top 16K moves. The two screens are both in banks that can also be paged in at $C000, which is how a program draws into the hidden screen: page bank 7 to $C000, draw, flip bit 3. Bit 5 is the lock the +3 manual suggests for a 48K game that misbehaves: `SPECTRUM` then `OUT 32765,48` leaves the machine in 48K mode with paging dead until reset, sound chip still reachable.
+
+The port is write-only. The manual is explicit about the consequence: "you cannot determine the current state of the paging by an IN instruction. This is why the BANKM system variable is always kept up to date with the last value output to this port". Keep a shadow byte, and disable interrupts around the OUT if the interrupt handler could page.
+
+Banks 4-7 are contended - the +3 manual gives the cost as NOPs in contended RAM running at "an effective clock frequency of 2.66MHz as opposed to the normal 3.53MHz" - and banks 0-3 are not. Time-critical code and sample data belong in 0-3. [Bank switching](/vault/techniques/bank-switching) covers the technique across machines.
+
+## +2A/+3 paging: port $1FFD
+
+The +2A and +3 have four 16K ROMs and a second paging port, $1FFD (8189), which BASIC shadows in the variable BANK678. From the manual:
+
+| Bit | Function |
+|-----|----------|
+| 0 | 0 = normal paging; 1 = one of four all-RAM layouts, chosen by bits 1-2, "provided for authors of operating systems/games" |
+| 1 | No effect when bit 0 is 0; half of the all-RAM layout number when bit 0 is 1 |
+| 2 | With bit 0 clear, the "vertical" ROM switch - ROM 0/2 or ROM 1/3 - combined with $7FFD bit 4, the "horizontal" switch |
+| 3 | Disk motor, 1 = on |
+| 4 | Printer STROBE, active low |
+
+The +3's disk controller, a µPD765A, is read at $2FFD (main status register) and transferred through $3FFD (data register); the Centronics port is $0FFD. All three are +3-only, and, in the manual's words on $3FFD, "Random OUTputting to this port will probably confuse the poor disk controller".
+
+## AY-3-8912 sound: ports $FFFD and $BFFD
+
+The 128K models' [AY-3-8912](/vault/hardware/ay-3-8912) has its registers behind two ports. Write the register number to $FFFD (65533), then the value to $BFFD (49149); reading $FFFD returns the selected register.
+
+```nasm
+        ld      bc,$FFFD
+        ld      a,7            ; mixer register
+        out     (c),a
+        ld      bc,$BFFD
+        ld      a,%00111110    ; tone on channel A only
+        out     (c),a
+```
+
+The chip's own I/O port is what the 128K models hang the RS232/MIDI and AUX sockets off, which is why the manual notes the same two ports "also control RS232/MIDI and AUX interfaces".
+
+## Reserved
+
+The 48K manual reserves ports 254, 247 and 239 for Sinclair's own peripherals and gives 251 to the ZX Printer. Software that assumes a port is free because no hardware is fitted will, on the ULA at least, be talking to the ULA.
 
 ## Why hardware ports matter for Code Like It's 198x
 
-Shadowkeep Unit 4 reads $FBFE (Q-row), $FDFE (A-row), and $DFFE (P-row) to implement QAOP input — three of the eight half-row reads listed above. Unit 7 will write to $FE bit 4 in a tight loop to generate beeper music. The 128K AY ports become relevant in Phase 2+ when the Spectrum 128 is brought online. The single most-used line of platform-specific code in the entire Project is `OUT ($FE), A` — every other Spectrum hardware concern flows downstream of this one port.
+Every Spectrum game reads $FE for the keyboard and writes it for the border and beeper; the 128K games page through $7FFD and play through $FFFD/$BFFD. The two tables for $FE, and the one for $7FFD, are what the curriculum's Spectrum units read from when they touch the hardware directly.
 
 ## See also
 
 - [ZX Spectrum](/vault/systems/zx-spectrum)
-- [ULA](/vault/hardware/ula) — The chip that decodes most of these ports.
-- [Z80](/vault/hardware/z80) — The CPU side of the conversation.
-- [AY-3-8910](/vault/hardware/ay-3-8910) — The 128K+ sound chip.
-- [Beeper music](/vault/techniques/beeper-music) — What port $FE bit 4 is really for.
-- [ZX Spectrum ROM Disassembly](/vault/techniques/zx-spectrum-rom-disassembly)
+- [Z80](/vault/hardware/z80) - the CPU whose I/O instructions this entry is about
+- [ULA](/vault/hardware/ula) - the chip behind port $FE
+- [AY-3-8912](/vault/hardware/ay-3-8912) - the 128K sound chip
+- [Beeper music](/vault/techniques/beeper-music) - what to do with bit 4
+- [Bank switching](/vault/techniques/bank-switching) - the 128K paging technique in context
+- [ZX Spectrum ROM disassembly](/vault/techniques/zx-spectrum-rom-disassembly) - the ROM's own keyboard, border and beeper routines
