@@ -32,6 +32,63 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Checkout play198x
+        uses: actions/checkout@v7
+        with:
+          repository: play198x/play198x
+          path: play198x
+
+      - name: Read pinned toolchain
+        id: toolchain
+        run: echo "channel=$(grep '^channel' play198x/rust-toolchain.toml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.toolchain.outputs.channel }}
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: play198x/crates/play198x-web
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      # Before npm run build, so a Rust failure is attributed to Rust rather
+      # than surfacing as a mystery inside the Astro build.
+      - name: Build the decoder
+        run: node scripts/build-wasm.mjs
+        env:
+          PLAY198X_PATH: ${{ github.workspace }}/play198x
+
+      # Before the site build: a regression in the hand-written PNG encoder or
+      # in native-image's decode logic should fail here, not slip through as a
+      # green build that happens not to exercise the broken path yet. Needs the
+      # wasm built above — two of these tests load it directly.
+      - name: Run unit tests
+        run: npx vitest run
+        env:
+          PLAY198X_WASM_PATH: ${{ github.workspace }}/play198x/crates/play198x-web/pkg-node
+
+      # The unit tests above are entirely self-referential about the
+      # hand-written PNG encoder: the CRC test uses the same node:zlib.crc32
+      # the encoder called, and the round trip is deflateSync checked by
+      # inflateSync. This is the one check where something other than our own
+      # code checks our own code — a real browser decodes the PNG and its
+      # pixels are compared against the core's own output.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser-decode test
+        run: npx playwright test tests/native-image.spec.ts
+        env:
+          CODE_SAMPLES_PATH: ${{ github.workspace }}/code-samples
+          PLAY198X_WASM_PATH: ${{ github.workspace }}/play198x/crates/play198x-web/pkg-node
+
       - name: Build unit artefacts
         run: ./scripts/build-artefacts.sh "${{ github.workspace }}/code-samples"
 
@@ -39,6 +96,7 @@ jobs:
         run: npm run build
         env:
           CODE_SAMPLES_PATH: ${{ github.workspace }}/code-samples
+          PLAY198X_WASM_PATH: ${{ github.workspace }}/play198x/crates/play198x-web/pkg-node
 
       - name: Check internal links
         uses: lycheeverse/lychee-action@v2

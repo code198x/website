@@ -54,11 +54,35 @@ Run commands from this directory:
 | `npm install` | Install dependencies. |
 | `npm run dev` | Start the Astro dev server at `localhost:4321`. |
 | `npm run build` | Build the production site, run redirect noindex marking, and index with Pagefind. |
+| `npm run build:wasm` | Build the `play198x-web` decoder that `NativeImage.astro` reads at build time. Run before `npm run build` on any page using `<NativeImage>`. |
 | `npm run preview` | Preview the production build locally. |
+| `npm test` | Run the Vitest unit tests under `src/**/*.test.ts`. |
 | `npm run test:e2e` | Run Playwright end-to-end tests. |
 | `npm run test:a11y` | Run accessibility-focused Playwright tests. |
 | `npm run prose:check` | Run Vale prose checks and the prose readability report. |
 | `npm run surfaces:gaps` | Report support-surface catalogue gaps. |
+
+### `<NativeImage>` needs a Rust toolchain
+
+A page that imports `src/components/NativeImage.astro` decodes a retro image
+file (ZX Spectrum `SCREEN$`, C64, Amiga) at build time using `play198x-web`, a
+Rust/wasm crate from the sibling `play198x/play198x` repo — it is not an npm
+dependency. Building that page locally needs:
+
+1. A Rust toolchain (see `play198x/play198x/rust-toolchain.toml` for the pinned
+   channel) with the `wasm32-unknown-unknown` target, and `wasm-pack`.
+2. A checkout of `play198x/play198x` somewhere on disk.
+3. Two environment variables: `PLAY198X_PATH` (for `npm run build:wasm`,
+   pointing at that checkout) and `PLAY198X_WASM_PATH` (for `npm run build`
+   and `npm test`, pointing at
+   `<checkout>/crates/play198x-web/pkg-node`, the directory `build:wasm`
+   writes to).
+
+Run `npm run build:wasm` once before `npm run build` or `npm test`. `npm run
+build` runs the unit tests, and some of them load this wasm directly, so the
+decoder is a prerequisite of the build itself rather than only of the pages
+that import the component. Both `ci.yml` and `deploy.yml` build it before
+building the site.
 
 ## Adding or changing content
 

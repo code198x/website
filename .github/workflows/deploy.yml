@@ -55,10 +55,44 @@ jobs:
       - name: Build unit artefacts
         run: ./scripts/build-artefacts.sh "${{ github.workspace }}/code-samples"
 
+      - name: Checkout play198x
+        uses: actions/checkout@v7
+        with:
+          repository: play198x/play198x
+          path: play198x
+
+      - name: Read pinned toolchain
+        id: toolchain
+        run: echo "channel=$(grep '^channel' play198x/rust-toolchain.toml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.toolchain.outputs.channel }}
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: play198x/crates/play198x-web
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      # Before npm run build, which both compiles any page importing
+      # <NativeImage> and runs the unit tests that load this wasm directly.
+      - name: Build the decoder
+        run: node scripts/build-wasm.mjs
+        env:
+          PLAY198X_PATH: ${{ github.workspace }}/play198x
+
       - name: Build site
         run: npm run build
         env:
           CODE_SAMPLES_PATH: ${{ github.workspace }}/code-samples
+          PLAY198X_WASM_PATH: ${{ github.workspace }}/play198x/crates/play198x-web/pkg-node
 
       - name: Work out what became newly live
         run: |
