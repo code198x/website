@@ -17,8 +17,8 @@
 
 set -euo pipefail
 
-ASM198X_VERSION="${ASM198X_VERSION:-v0.0.35}"
-BUILD198X_VERSION="${BUILD198X_VERSION:-v0.2.3}"
+ASM198X_VERSION="${ASM198X_VERSION:-v0.0.57}"
+BUILD198X_VERSION="${BUILD198X_VERSION:-v0.2.6}"
 
 SAMPLES="${1:?usage: build-artefacts.sh <code-samples-path> [output-dir]}"
 OUT="${2:-public/code-samples}"
@@ -44,8 +44,14 @@ install_tool() {
       curl -fsSL -o "$file" "${base}/${file}"
       curl -fsSL -o "${file}.sha256" "${base}/${file}.sha256"
       # A tampered or truncated download must not become a published artefact.
-      if command -v sha256sum >/dev/null 2>&1; then sha256sum -c "${file}.sha256"
-      else shasum -a 256 -c "${file}.sha256"; fi
+      # Blank lines are stripped first: the published .sha256 ends with one, and
+      # both checkers warn about it on every run, which trains a reader to skim
+      # past the line that would matter if the hash ever failed.
+      if command -v sha256sum >/dev/null 2>&1; then
+          grep -v '^[[:space:]]*$' "${file}.sha256" | sha256sum -c -
+      else
+          grep -v '^[[:space:]]*$' "${file}.sha256" | shasum -a 256 -c -
+      fi
       tar xJf "$file"
       install -m 755 "${name}-${target}/${name}" "$TOOLS/${name}" )
     echo "  $name: installed ${tag}"
