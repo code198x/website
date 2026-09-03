@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig, fontProviders } from 'astro/config';
+import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import { satteri } from '@astrojs/markdown-satteri';
@@ -147,31 +147,6 @@ export default defineConfig({
     '/browse/by-difficulty': '/systems',
     '/browse/by-technique': '/patterns',
   },
-  fonts: [
-    {
-      name: 'Inter',
-      cssVariable: '--font-family-sans',
-      provider: fontProviders.fontsource(),
-      fallbacks: ['system-ui', '-apple-system', 'sans-serif'],
-    },
-    {
-      name: 'JetBrains Mono',
-      cssVariable: '--font-family-mono',
-      provider: fontProviders.fontsource(),
-      fallbacks: ['Courier New', 'monospace'],
-    },
-    {
-      // Literata carries display and long-form reading. It replaces Caveat,
-      // retired by 198x/decisions/family-visual-identity.md — the roster is
-      // three faces, and a display script is not one of them. Its
-      // optical-size axis is what gives a display surface its own voice.
-      name: 'Literata',
-      cssVariable: '--font-family-read',
-      provider: fontProviders.fontsource(),
-      weights: [400, 700],
-      fallbacks: ['Georgia', 'Times New Roman', 'serif'],
-    },
-  ],
   integrations: [mdx(), sitemap()],
   markdown: {
     processor: satteri({
