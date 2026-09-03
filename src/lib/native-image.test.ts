@@ -11,6 +11,21 @@ import {
   MAX_PNG_BYTES,
 } from './native-image.ts';
 
+/**
+ * Nine of the tests below reach the play198x decoder through renderNativeImage,
+ * which throws unless PLAY198X_WASM_PATH points at a built wasm bundle.
+ *
+ * CI sets it — ci.yml builds the decoder before running these — so they run for
+ * real on every pull request and nothing is traded away. Locally they skip,
+ * because `npm run build` runs the test suite and a Rust toolchain plus a
+ * sibling-repo checkout should not be a prerequisite for building a site whose
+ * pages do not yet use the component.
+ *
+ * See code198x/website#385
+ */
+const testWithDecoder = process.env.PLAY198X_WASM_PATH ? test : test.skip;
+
+
 test('a square pixel displays at its mode size', () => {
   // ZX Spectrum standard: 256×192 mode pixels, 1:1.
   assert.deepEqual(displaySize(256, 192, 1, 1), { width: 256, height: 192 });
@@ -75,7 +90,7 @@ async function fixture(name: string, bytes: Uint8Array): Promise<string> {
   return dir;
 }
 
-test('a SCREEN$ renders to an inline PNG at its mode size', async () => {
+testWithDecoder('a SCREEN$ renders to an inline PNG at its mode size', async () => {
   // A SCREEN$ is identified by length alone, so it is only ever Probable —
   // the format must be declared, or the next test's rejection fires instead.
   const dir = await fixture('a.scr', screen());
@@ -86,7 +101,7 @@ test('a SCREEN$ renders to an inline PNG at its mode size', async () => {
   assert.match(result.dataUri, /^data:image\/png;base64,/);
 });
 
-test('a SCREEN$ without a declared format is refused, and the message says what to write', async () => {
+testWithDecoder('a SCREEN$ without a declared format is refused, and the message says what to write', async () => {
   const dir = await fixture('a.scr', screen());
   await assert.rejects(
     renderNativeImage({ src: 'a.scr', codeSamplesPath: dir }),
@@ -95,7 +110,7 @@ test('a SCREEN$ without a declared format is refused, and the message says what 
   );
 });
 
-test('a missing file names the file', async () => {
+testWithDecoder('a missing file names the file', async () => {
   const dir = await fixture('a.scr', screen());
   await assert.rejects(
     renderNativeImage({ src: 'absent.scr', codeSamplesPath: dir }),
@@ -103,7 +118,7 @@ test('a missing file names the file', async () => {
   );
 });
 
-test('bytes nothing recognises are refused by name', async () => {
+testWithDecoder('bytes nothing recognises are refused by name', async () => {
   const dir = await fixture('a.scr', new Uint8Array([1, 2, 3]));
   await assert.rejects(
     renderNativeImage({ src: 'a.scr', codeSamplesPath: dir }),
@@ -111,7 +126,7 @@ test('bytes nothing recognises are refused by name', async () => {
   );
 });
 
-test('a module is not an image, and says so', async () => {
+testWithDecoder('a module is not an image, and says so', async () => {
   // 1084 bytes of zeros then "M.K." is a ProTracker module's signature position.
   const mod = new Uint8Array(1084 + 4);
   mod.set([0x4d, 0x2e, 0x4b, 0x2e], 1080);
@@ -122,7 +137,7 @@ test('a module is not an image, and says so', async () => {
   );
 });
 
-test('a weak identification must be declared by the author', async () => {
+testWithDecoder('a weak identification must be declared by the author', async () => {
   // Art Studio has no magic number: probing it returns Probable, and a wrong
   // call shows a wrong-looking picture rather than raising an error. The author
   // has to say so, so a misprobe cannot ship quietly.
@@ -133,7 +148,7 @@ test('a weak identification must be declared by the author', async () => {
   );
 });
 
-test('a declared format that contradicts a certain probe is a failure', async () => {
+testWithDecoder('a declared format that contradicts a certain probe is a failure', async () => {
   const dir = await fixture('a.koa', koala());
   await assert.rejects(
     renderNativeImage({ src: 'a.koa', codeSamplesPath: dir, format: 'scr' }),
@@ -142,7 +157,7 @@ test('a declared format that contradicts a certain probe is a failure', async ()
   );
 });
 
-test('a declared format that contradicts a probable probe fails and names the file', async () => {
+testWithDecoder('a declared format that contradicts a probable probe fails and names the file', async () => {
   // Art Studio is only ever Probable (no magic number). Before this fix, a
   // mismatched declaration here was caught late — if at all — by the wasm
   // shell's own decode error, which never has the source path in scope, so
@@ -189,7 +204,7 @@ for (const [label, geometry] of [
   });
 }
 
-test('a symlink inside the checkout cannot point outside it', async () => {
+testWithDecoder('a symlink inside the checkout cannot point outside it', async () => {
   // resolveSource's lexical check on the path string alone would pass this:
   // the symlink's own name sits inside the checkout. Only a filesystem-level
   // check (fs.realpath) sees that its target does not.
