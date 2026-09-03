@@ -3,184 +3,79 @@ ai_generated: true
 reviewed: false
 title: "Ring Buffer"
 subtitle: "Circular data, fixed memory"
-summary: "A fixed-size data structure that wraps around, enabling efficient FIFO queues without memory allocation—essential for audio, networking, and game mechanics like snake tails."
+summary: "A fixed block of memory used as a queue, with read and write indexes that wrap. BYTE explained it to hobbyists in 1977; Tim Follin's Agent X II engine uses a 16-entry one, wrapped with AND 15, for its echo; Amiga Exec's interrupt handlers fed device tasks through them."
 category: "techniques"
-platforms: ["cross-platform"]
+platforms: ['zx-spectrum', 'commodore-amiga', 'cross-platform']
 tags: ["data-structure", "audio", "networking", "memory", "snake"]
-emerged: 1960
+sources:
+  the_definition:
+    - title: "BYTE, January 1977, \"Using Interrupts to Speed Up an ELM\" by G H Gable"
+      kind: magazine
+      date: "1977-01"
+      page: "107"
+      note: "Figure 2 caption: \"A circular buffer is conceptually a ring although in memory it is actually a region from HEAD to TAIL. Two pointers are maintained for a circular buffer: The IN pointer gives the next available location, and the OUT pointer gives the next location to be used by a processing program. In hardware, a circular buffer corresponds roughly to an integrated circuit called the first in first out memory, sometimes abbreviated FIFO.\" The article is about buffering terminal input and output under interrupts in the author's Eloquent Little Monitor. Page from the folio nearest the figure in the OCR. The earliest explanation of the structure held in the library; the term is older than this."
+  a_game_engine_that_used_one:
+    - title: "Tim Follin, Agent X II Spectrum music engine source (AGEXM.SRC), Software Creations, c. 1987, in Dean Belfield's archive-follin"
+      kind: source-code
+      note: "Z80 source recovered from Tatung Einstein 3-inch disks donated by Tim Follin (Tatung/Source/Disk 05/Side B/AGEXM.SRC; the archive files the assembled binary under Examples/Beeper/Agent X II). The echo delay line is a 16-entry ring: the buffer is declared \"ECTA:DS 49\" and initialised in a 16-iteration loop of three bytes each (\"LD HL,ECTA / LD B,16 / ECF1:LD (HL),85 / INC HL / LD (HL),1 / INC HL / LD (HL),31 / INC HL / DJNZ ECF1\"). The write index wraps with a mask — \"POINT:LD A,000 / INC A / AND 15 / LD (POINT+1),A\" — and the read-back position is the write index minus a delay, masked again: \"LD A,(POINT+1) / DELAY:SUB 015 / AND 15 / LD HL,ECTA\". Each entry holds the note's current state (three bytes copied from the SMCC, SMXC and SCS operands), and the read-back re-injects that state attenuated to make the echo. The index itself lives in the operand byte of the POINT instruction, self-modified each frame. The game is not named in the source; the attribution rests on the archive's own folder name."
+    - ref: magazines/crash-magazine
+      kind: magazine
+      issue: "48"
+      date: "1988-01"
+      page: "169-170"
+      note: "Christmas Special 1987 review of Agent X II, \"Producer: Mastertronic\", \"Retail price: £1.99\": \"Sound: superb tune on the first level, sampled title tune\"; general rating \"a disappointing sequel\". Dates the game and is the only period notice of its music held here; the review does not name the composer."
+  where_a_system_kept_them:
+    - title: "Amiga ROM Kernel Reference Manual: Exec, Commodore-Amiga"
+      kind: technical-doc
+      note: "On calling the Wack debugger from a program, with multitasking disabled but interrupts running: \"many inter-rupts deposit raw data into bounded or circular buffers. These interrupts often signal related device tasks to further process these buffers. If too many interrupts occur, device buffers may begin to overflow or wrap around. You should limit the number of inter-rupt actions (typing keys on the Amiga keyboard for example) you perform while execut-ing in Wack.\" (line-break hyphens as printed; the OCR spaces 'data' as 'd a ta') The held copy's provenance record gives no edition or year."
 ---
 
-## Overview
+A ring buffer is a fixed block of memory used as a queue: a write index and a read index each advance through it and wrap to the start when they reach the end, so the block never has to grow or move. It is old computer-science vocabulary — *BYTE* was explaining it to hobbyists in 1977 — and it turns up in period game code wherever something has to be remembered for a fixed number of frames and then forgotten. The example held here is an echo effect in one of [Tim Follin](/vault/people/tim-follin)'s Spectrum beeper engines.
 
-A **ring buffer** (circular buffer) is a fixed-size array that wraps around from end to beginning, treating the storage as a continuous loop. It enables efficient first-in-first-out (FIFO) operations without memory allocation, making it essential for audio processing, network packets, and game mechanics like snake body segments.
+## Fast facts
 
-## Fast Facts
+- **Definition (BYTE, 1977):** "conceptually a ring although in memory it is actually a region from HEAD to TAIL", with an IN pointer for the next free slot and an OUT pointer for the next slot to process.
+- **Hardware equivalent:** the FIFO memory chip, per the same article.
+- **In a game:** the 16-entry delay line (`ECTA`) in the *Agent X II* music engine, wrapped with `AND 15`.
+- **In a system:** Amiga Exec's device interrupts "deposit raw data into bounded or circular buffers", which "overflow or wrap around" if nobody drains them.
 
-| Aspect | Detail |
-|--------|--------|
-| **Also called** | Circular buffer, cyclic buffer |
-| **Operations** | O(1) read, O(1) write |
-| **Memory** | Fixed, pre-allocated |
-| **Common uses** | Audio, networking, input history |
+## The idea, as BYTE explained it
 
-## How It Works
+G H Gable's January 1977 article on adding interrupt-driven terminal I/O to his monitor program set out the two shapes a buffer can take. A linear buffer is a region from HEAD to TAIL walked once by a single pointer. A circular buffer keeps two pointers: "The IN pointer gives the next available location, and the OUT pointer gives the next location to be used by a processing program." Interrupt handlers write at IN; the program reads at OUT; both wrap. Gable added that "in hardware, a circular buffer corresponds roughly to an integrated circuit called the first in first out memory, sometimes abbreviated FIFO."
 
-| Pointer | Purpose |
-|---------|---------|
-| **Head (write)** | Where the next write goes |
-| **Tail (read)** | Where the next read comes from |
-| **Wrap** | When a pointer reaches `size`, it wraps back to `0` |
+The structure is a good fit for anything produced and consumed at different rates — characters arriving from a keyboard or serial port, samples for an audio device — because the producer never waits for the consumer and the memory cost is fixed in advance. The price is that a full buffer must either refuse new data or overwrite the oldest.
 
-A write puts data at the head's current position and advances the head; a read takes data from the tail's position and advances the tail. Wrap-around is what makes the buffer circular — past the end, the next position is the start.
+## A ring buffer in a Spectrum music engine
+
+Tim Follin's engine for *Agent X II* ([Mastertronic](/vault/companies/mastertronic), £1.99; reviewed in *Crash*'s Christmas 1987 special, which called the first-level tune "superb") produces an echo by remembering what each note was a fixed number of frames ago. The source, recovered from Follin's Tatung Einstein development disks, declares a 49-byte table `ECTA` and fills it as sixteen three-byte entries. Every frame the write index is advanced and masked:
 
 ```
-Initial state (3 items queued):
-Buffer:   [A][B][C][.][.][.][.][.]
-           ^tail        ^head
-           (read here)  (write here)
-
-After write D, write E:
-Buffer:   [A][B][C][D][E][.][.][.]
-           ^tail              ^head
-
-After read A:
-Buffer:   [.][B][C][D][E][.][.][.]
-              ^tail           ^head
-
-After 3 more writes (head wraps past end):
-Buffer:   [H][B][C][D][E][F][G][.]
-              ^tail        ^head
-           (head wrote F, G, H — H landed at index 0)
+POINT:LD A,000
+      INC A
+      AND 15
+      LD (POINT+1),A
 ```
 
-Both pointers chase each other around the ring; the buffer is *empty* when they meet, *full* when the head is one slot behind the tail.
+The current note's state — three bytes taken from the operands of other instructions in the engine — is copied into the slot at that index. The read-back position is the write index minus a delay, masked the same way:
 
-## Implementation
-
-| Operation | Logic |
-|-----------|-------|
-| **Write** | `buffer[head] = value; head = (head + 1) % size` |
-| **Read** | `value = buffer[tail]; tail = (tail + 1) % size` |
-| **Full** | `(head + 1) % size == tail` |
-| **Empty** | `head == tail` |
-
-The "full = head one ahead of tail" convention costs one slot — usable capacity is `size - 1` rather than `size`. The alternative is a separate `count` or `full` flag; faster on RISC, identical on most 8-bit chips. Pick the one that suits your code.
-
-## Gaming Applications
-
-### Snake Body
-
-The snake's body is a ring buffer of segment positions. Confusingly, the *visible* tail of the snake is at the **buffer's tail pointer** (oldest segment, the one that disappears first), and the snake's *head* is at the **buffer's head pointer** (newest segment, the one just added).
-
-| Frame | Head pointer (snake's head) | Tail pointer (snake's tail) |
-|-------|-----------------------------|-----------------------------|
-| Move | Write new position; advance head | Read (erase) old position; advance tail |
-| Grow | Write new position; advance head | Leave the tail alone — the snake gains a segment |
-| Shrink | Don't write | Advance the tail twice — segment falls off |
-
-For an 8-bit *Snake* with a 64-segment maximum body, that's two zero-page bytes of state (head + tail), 64 × 2 bytes for x/y positions, and four AND-masked pointer increments per frame.
-
-### Input Replay
-
-| Use | Benefit |
-|-----|---------|
-| **Fighting games** | Store last N inputs for combos |
-| **Replays** | Record input history |
-| **Undo systems** | Fixed-depth undo stack |
-| **Ghost racing** | Store position history |
-
-### Audio
-
-| Application | Why Ring Buffer |
-|-------------|-----------------|
-| **Streaming** | Producer/consumer decoupling |
-| **Effects** | Delay lines are ring buffers |
-| **Mixing** | Lock-free audio threads |
-| **Amiga Paula** | Each of Paula's four DMA channels reads samples from a hardware-managed ring; the CPU rewrites the sample-pointer / length each VBlank to chain new samples in |
-| **NES DMC** | The DMC (sample) channel reads from a CPU-RAM ring and increments through it, re-firing CPU stalls each fetch |
-
-## Vintage Implementation (6502)
-
-8-bit CPUs have no divide instruction, so the modulo in `(head + 1) % size` is expensive — unless `size` is a power of two, in which case it collapses to a bitwise AND:
-
-| Buffer size | Wrap method | Cycles |
-|-------------|-------------|--------|
-| 256 bytes | Natural 8-bit overflow — no AND needed | 0 |
-| 128 bytes | `AND #$7F` | 2 |
-| 64 bytes | `AND #$3F` | 2 |
-| Non-power-of-two | Compare and branch (`CMP size; BCC ok; SBC size`) | 5-7 |
-
-A 64-byte input ring on the C64:
-
-```asm
-; --- Ring state in zero page ---
-ring_head:    .byte 0
-ring_tail:    .byte 0
-RING_MASK = $3F                ; size = 64
-
-; --- Buffer in main RAM ---
-ring_buffer:  .res 64
-
-; Write A to the ring (caller checks not-full first)
-ring_write:
-    ldx ring_head
-    sta ring_buffer,x
-    inx
-    txa
-    and #RING_MASK
-    sta ring_head
-    rts
-
-; Read from the ring into A (caller checks not-empty first)
-ring_read:
-    ldx ring_tail
-    lda ring_buffer,x
-    inx
-    txa
-    and #RING_MASK
-    sta ring_tail
-    rts
-
-; Empty if head == tail
-ring_empty:
-    lda ring_head
-    cmp ring_tail
-    rts                        ; Z set if empty
+```
+      LD A,(POINT+1)
+DELAY:SUB 015
+      AND 15
+      LD HL,ECTA
 ```
 
-For a 256-byte ring the AND disappears entirely — `INX` wraps naturally on overflow — and the routine drops to about 9 cycles per write.
+What comes back is the note as it was fifteen frames earlier, which the engine re-injects at reduced volume behind the live voice. Two details are characteristic of the period. The index is stored in the operand byte of the `LD A,000` instruction and rewritten in place — [self-modifying code](/vault/techniques/self-modifying-code) standing in for a variable — and the `AND 15` mask does the wrapping, which only works because the entry count is a power of two.
 
-## Modern Applications
+## Where a system kept them
 
-| System | Usage |
-|--------|-------|
-| **FMOD/Wwise** | Audio streaming buffers |
-| **TCP/IP stacks** | Packet receive buffers |
-| **GGPO (rollback)** | Input history for netcode |
-| **Logging** | Circular log files |
+The Amiga's Exec kernel used the same structure between interrupt handlers and the device tasks that served them. The *ROM Kernel Reference Manual* warns programmers calling the Wack debugger — which stops multitasking but leaves interrupts running — that "many interrupts deposit raw data into bounded or circular buffers", that device tasks normally drain them, and that with those tasks halted the buffers "may begin to overflow or wrap around" if the user keeps typing. The keyboard buffer being described is Gable's diagram twenty years on, with the processing program suspended.
 
-## Lock-Free Benefits
+## See also
 
-Ring buffers enable lock-free producer/consumer patterns:
-- Audio thread writes, main thread reads
-- Network thread writes, game thread reads
-- No mutexes needed with single producer/consumer
-
-## Trade-offs
-
-| Advantage | Disadvantage |
-|-----------|--------------|
-| No allocation | Fixed maximum size |
-| O(1) operations | Can overflow if full |
-| Cache-friendly | Must handle wrap-around |
-| Lock-free possible | Power-of-two size optimal |
-
-## Legacy
-
-Ring buffers appear everywhere in systems programming. Understanding them connects game development to audio engineering, networking, and operating systems—fundamental computer science in action.
-
-## See Also
-
-- [Object Pooling](/vault/techniques/object-pooling)
-- [Snake](/vault/games/snake)
-- [Audio Programming](/vault/techniques/audio-programming)
+- [Beeper music](/vault/techniques/beeper-music)
+- [Audio programming](/vault/techniques/audio-programming)
+- [Self-modifying code](/vault/techniques/self-modifying-code)
+- [Object pooling](/vault/techniques/object-pooling)
+- [Tim Follin](/vault/people/tim-follin)
+- [ZX Spectrum](/vault/systems/zx-spectrum)

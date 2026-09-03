@@ -7,6 +7,21 @@ summary: "RND() internals, techniques, and patterns for game development"
 category: "techniques"
 platforms: ['commodore-64']
 tags: ['reference', 'random', 'techniques', 'basic']
+sources:
+  three_modes:
+    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
+      kind: book
+      page: "80"
+      note: "\"RND creates a floating-point random from 0.0 to 1.0. The computer generates a sequence of random numbers by performing calculations on a starting number, which in computer jargon is called a seed. The RND function is seeded on system power-up. The <numeric> argument is a dummy, except for its sign (positive, zero, or negative).\" — \"If the <numeric> argument is positive, the same 'pseudorandom' sequence of numbers is returned, starting from a given seed value… any sequence is repeatable by starting from the same seed number. Having a known sequence of 'random' numbers is useful in testing programs.\" — \"If you choose a <numeric> argument of zero, then RND generates a number directly from a free-running hardware clock (the system 'jiffy clock'). Negative arguments cause the RND function to be re-seeded with each function call.\" — examples include \"100 X=INT(RND(1)*6)+INT(RND(1)*6)+2 (Simulates 2 dice)\""
+  rnd_zero_reads_cia:
+    - title: "Commodore 64 KERNAL ROM (901227-03), RND at $E097"
+      kind: source-code
+      note: "After JSR $BC2B (sign of the argument), the zero branch does JSR $FFF3 (IOBASE, returning $DC00 in X/Y), stores it at $22/$23, then LDA ($22),Y for Y = 4, 5, 8, 9 — CIA#1 timer A low and high, and the time-of-day tenths and seconds — into $62, $64, $63, $65 before jumping to $E0E3 to normalise the result"
+  sid_noise:
+    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
+      kind: book
+      page: "469"
+      note: "SID data sheet, OSC 3/RANDOM (Register $1B): \"This register allows the microprocessor to read the upper 8 output bits of Oscillator 3… Selecting the Noise waveform will produce a series of random numbers, therefore, this register can be used as a random number generator for games.\""
 ---
 
 # Random Numbers
@@ -37,7 +52,7 @@ Every call to `RND(1)` returns a floating-point number between 0 (inclusive) and
 | `RND(0)` | Generate a number from the hardware timers, outside the sequence |
 | `RND(-TI)` | Reseed generator from system clock |
 
-Any positive argument behaves like `RND(1)`; the value itself is ignored.
+Any positive argument behaves like `RND(1)`; the value itself is ignored. The Programmer's Reference Guide puts it the same way — "the `<numeric>` argument is a dummy, except for its sign" — and recommends the positive form's repeatability directly: "having a known sequence of 'random' numbers is useful in testing programs." (The manual describes `RND(0)` as reading "a free-running hardware clock (the system 'jiffy clock')". The ROM routine at `$E097` reads four bytes from CIA#1 — timer A at `$DC04-$DC05` and the time-of-day clock's tenths and seconds at `$DC08-$DC09` — so it is a hardware clock, but not the jiffy counter `TI` reports.)
 
 **`RND(1)` — Normal use:**
 ```basic
@@ -159,7 +174,7 @@ Want 10-20? That's 11 values (10, 11, 12...20), starting at 10:
 n=int(rnd(1)*11)+10
 ```
 
-## Performance Considerations
+## Performance considerations
 
 `RND(1)` costs about **4ms a call** on a PAL C64 — roughly 245 calls a second. A `FOR I=1 TO 1000: X=RND(1): NEXT` loop takes 6.9 seconds; the same loop with `X=1` in place of the RND call takes 2.8 seconds, so the generator itself accounts for 4.1 of those seconds and BASIC's loop scaffolding for the rest.
 
@@ -185,8 +200,8 @@ rem During game loop:
 ```basic
 rem Instead of IF chains:
 100 r=int(rnd(1)*100)
-110 if r&lt;50 then item=1       rem 50% common
-120 if r>=50 and r&lt;80 then item=2    rem 30% uncommon
+110 if r<50 then item=1       rem 50% common
+120 if r>=50 and r<80 then item=2    rem 30% uncommon
 130 if r>=80 then item=3      rem 20% rare
 
 rem Use array:
@@ -206,8 +221,8 @@ Not all outcomes should be equally likely. Rare items, critical hits, special ev
 ```basic
 10 rem 60% enemy type 1, 30% type 2, 10% type 3
 20 r=int(rnd(1)*100)
-30 if r&lt;60 then type=1:goto 60
-40 if r&lt;90 then type=2:goto 60
+30 if r<60 then type=1:goto 60
+40 if r<90 then type=2:goto 60
 50 type=3
 60 rem continue with selected type
 ```
@@ -242,8 +257,8 @@ Difficulty ramping, loot luck, adaptive AI—sometimes probability needs to chan
 
 100 rem loot drop with luck bonus
 110 r=int(rnd(1)*100)+luck
-120 if r&lt;50 then item=1       rem common
-130 if r>=50 and r&lt;80 then item=2    rem uncommon
+120 if r<50 then item=1       rem common
+130 if r>=50 and r<80 then item=2    rem uncommon
 140 if r>=80 then item=3      rem rare (easier with higher luck)
 ```
 
@@ -408,7 +423,7 @@ With a fixed seed, behaviour becomes reproducible. You can debug the same sequen
 
 Print random values as they're generated. Helps spot patterns, bias, or bugs in your formulas.
 
-## Common Patterns
+## Common patterns
 
 ### Random Walk (Drunk Sailor)
 
@@ -428,7 +443,7 @@ Unpredictable movement, organic-looking paths.
 ### Random Event Chance
 
 ```basic
-100 if rnd(1)&lt;0.05 then gosub 5000    rem 5% chance per frame
+100 if rnd(1)<0.05 then gosub 5000    rem 5% chance per frame
 ```
 
 Creates occasional events—power-up spawns, weather changes, random encounters.
@@ -446,7 +461,7 @@ Adds variation to predictable values—enemies with slightly different speeds, d
 
 ```basic
 100 damage=10
-110 if rnd(1)&lt;0.1 then damage=damage*2:print "critical!"
+110 if rnd(1)<0.1 then damage=damage*2:print "critical!"
 ```
 
 10% chance to double damage. Classic RPG mechanic.
@@ -457,9 +472,9 @@ C64 BASIC's `RND()` is a **multiplicative congruential generator** working on th
 
 **Period:** Long enough that no game will exhaust it. Practical reseeding from `TI` is what matters for replay variety, not the raw period.
 
-**Quality:** Adequate for game development — enemy AI, loot tables, dice rolls. Not suitable for cryptography, statistical simulation, or anything where adversarial prediction matters. (For cryptographic randomness on retro hardware, the conventional trick is to read the SID's noise channel via `$D41B`.)
+**Quality:** Adequate for game development — enemy AI, loot tables, dice rolls. Not suitable for cryptography, statistical simulation, or anything where adversarial prediction matters. The other random source on the machine is the SID: register `$D41B` exposes "the upper 8 output bits of Oscillator 3", and with the noise waveform selected it "will produce a series of random numbers, therefore, this register can be used as a random number generator for games" — Commodore's data sheet says so itself.
 
-## See Also
+## See also
 
 - [BASIC V2 Reference](/vault/techniques/basic-v2) — complete command reference
 - [Variables and Memory](/vault/techniques/variables-memory) — where RND seed lives

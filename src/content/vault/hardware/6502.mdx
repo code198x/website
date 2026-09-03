@@ -8,11 +8,28 @@ category: "hardware"
 platforms: ['commodore-64', 'nintendo-entertainment-system', 'atari-2600', 'apple-ii', 'bbc-micro', 'atari-800', 'commodore-vic-20']
 tags: ['cpu', 'processors', 'mos-technology']
 introduced: 1975
-
+sources:
+  zero_page:
+    - title: "MCS6500 Microcomputer Family Programming Manual, MOS Technology"
+      kind: technical-doc
+      page: "79"
+      note: "The mechanism, not just the saving: 'by the end of the second cycle, the microprocessor has decoded the fact that this is a zero page operation and on the next cycle, it outputs address 00, as the effective address high, along with the address low that it just fetched'. And the payoff: 'The advantage of zero page addressing is that it takes only 2 bytes, 1 for the OP CODE and 1 for the effective address low; and only 3 cycles, 1 to fetch the OP CODE, 1 to fetch the address low, and 1 to fetch the data, as opposed to absolute addressing which takes 3 bytes and 4 cycles.' MOS then advises: 'the user should organize his memory so that he is keeping his most freq[uently used data there]'"
+  indexed_overlap:
+    - title: "MCS6500 Microcomputer Family Programming Manual, MOS Technology"
+      kind: technical-doc
+      page: "100"
+      note: "'there is no time savings of Zero Page indexing over absolute indexing without page crossing. In the case of the indexed absolute during cycle 3 the address high is being fetched at the same time as the addition of the index to address low. In the case of the Zero Page, there is no opportunity for this type of overlap; therefore, indexed Zero Page instructions take one cycle longer than non-indexed instructions'"
+  phantom_read:
+    - title: "MCS6500 Microcomputer Family Programming Manual, MOS Technology"
+      kind: technical-doc
+      page: "100"
+      note: "MOS documents the spurious access and the guard around it: 'In both Zero Page indexed and absolute indexed with a page crossing, there are incorrect addresses calculated. Provisions have been made to make certain that, only a READ operation occurs during this time. Memory modifying operations such as STORE, SHIFT, ROTATE, etc. have all been delayed until the correct address is available, thereby prohibiting any possibility of writing data in an incorrect location and destroying the previous data in that location'"
+  stack:
+    - title: "MCS6500 Microcomputer Family Programming Manual, MOS Technology"
+      kind: technical-doc
+      page: "134, 136"
+      note: "'In the MCS6501 through MCS6505, the stack is automatically located in Page One. The microprocessor always puts out the address 0100 plus stack register for every stack operation. By selected memory techniques, the user can either locate the stack in Page Zero or Page One, depending on whether or not Page One exists for his hardware.' p.134 gives the reasoning: page one 'would be the next memory location added if the Zero Page operation requirements exceed Page' zero"
 ---
-
-
-## Overview
 
 The MOS 6502, designed by Chuck Peddle and released in 1975, democratised computing. At $25 when competitors charged $300+, it made personal computers financially viable. Its elegant instruction set and zero-page addressing made assembly programming accessible to bedroom coders worldwide.
 
@@ -23,6 +40,85 @@ The MOS 6502, designed by Chuck Peddle and released in 1975, democratised comput
 - **Registers:** accumulator (A), two index registers (X, Y), stack pointer, status register.
 - **Zero page:** first 256 bytes ($00-$FF) accessed with single-byte addresses for speed.
 - **Stack:** fixed at $0100-$01FF, grows downward.
+
+## Why zero page is fast
+
+Zero page is usually explained as "one byte shorter". MOS's own manual explains
+it as one *cycle* shorter, and says where the cycle goes.
+
+An absolute access needs three bytes and four cycles: opcode, address low,
+address high, data. A zero-page access needs two and three — and the reason is
+that the processor works out what kind of instruction it is holding before it has
+finished reading the operand:
+
+> by the end of the second cycle, the microprocessor has decoded the fact that
+> this is a zero page operation and on the next cycle, it outputs address 00, as
+> the effective address high, along with the address low that it just fetched
+
+The high byte is never fetched because the processor already knows it is zero. A
+quarter of every memory access saved, for the price of confining your variables
+to the first 256 bytes — and MOS says outright that this is how the chip is meant
+to be used: "the user should organize his memory so that he is keeping his most
+freq[uently used data]" there.
+
+This is the design decision that shaped 6502 programming culture. Zero page is
+not a convenience, it is the register file the chip does not have, and the
+scramble for zero-page bytes on machines where the ROM had already claimed most
+of them is a direct consequence.
+
+## Where the cycle comes back
+
+The saving is not uniform, and the manual is honest about it:
+
+> there is no time savings of Zero Page indexing over absolute indexing without
+> page crossing ... In the case of the Zero Page, there is no opportunity for this
+> type of overlap; therefore, indexed Zero Page instructions take one cycle longer
+> than non-indexed instructions.
+
+An absolute indexed access can fetch the address high byte *at the same time* as
+it adds the index to the low byte — two jobs in one cycle. Zero page has no high
+byte to fetch, so there is nothing to overlap with, and the addition costs a cycle
+of its own. The mode that saves a cycle in its simple form gives it back when
+indexed.
+
+## The read that goes to the wrong address
+
+The most consequential paragraph is one the summaries never carry. When an
+indexed access crosses a page boundary, the processor has already put a wrong
+address on the bus:
+
+> In both Zero Page indexed and absolute indexed with a page crossing, there are
+> incorrect addresses calculated. **Provisions have been made to make certain
+> that, only a READ operation occurs during this time.** Memory modifying
+> operations such as STORE, SHIFT, ROTATE, etc. have all been delayed until the
+> correct address is available, thereby prohibiting any possibility of writing
+> data in an incorrect location and destroying the previous data in that location.
+
+So the spurious access is not a defect. MOS knew the address would be wrong for a
+cycle, and made the guarantee that it could: nothing is ever *written* there.
+
+For memory this is invisible — a wasted read costs a cycle and nothing else. For
+memory-mapped hardware it is anything but, because a read of a hardware register
+can clear a flag, advance a pointer or acknowledge an interrupt. A 6502 program
+that indexes across a page boundary near an I/O chip can trigger a side effect at
+an address it never intended to touch, and an emulator that models only the
+*correct* accesses will run that program differently from the machine.
+
+## The stack is next door to zero page
+
+The stack's position is usually given as a fixed fact. The manual gives it as a
+consequence: page one is where the stack sits because page one is what you reach
+when page zero runs out — it "would be the next memory location added if the Zero
+Page operation requirements exceed Page" zero.
+
+The addressing is as simple as it sounds. "The microprocessor always puts out the
+address 0100 plus stack register for every stack operation" — an 8-bit stack
+pointer with a constant `01` bolted on top, which is why the 6502 stack is 256
+bytes and cannot be moved.
+
+Even that was not quite absolute at first: on the earliest parts "the user can
+either locate the stack in Page Zero or Page One, depending on whether or not
+Page One exists for his hardware".
 
 ## Architecture highlights
 

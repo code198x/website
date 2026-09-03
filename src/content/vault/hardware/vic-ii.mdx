@@ -9,10 +9,19 @@ platforms: ['commodore-64']
 tags: ['vic-ii', 'raster-interrupts', 'sprites', 'badlines', 'registers', 'display-modes']
 introduced: 1982
 discontinued: 1994
+sources:
+  technical:
+    - title: "syntheses/commodore-c64/vic-ii-rendering-and-badlines.md"
+      kind: technical-doc
+      note: "the three badline conditions — raster within $30-$F7, the DEN latch sampled once per frame at raster $30, and (raster AND 7) == YSCROLL evaluated at cycle 14 of the line; first badline $33 with the default YSCROLL of 3, then every eight lines to $F3; the 43-cycle steal over cycles 12-54 leaving 20 of a 63-cycle PAL line"
+    - title: "syntheses/commodore-c64/vic-ii-screen-memory-modes-sprites.md"
+      kind: technical-doc
+      note: "the sprite register block: $D000-$D00F positions, $D010 X-MSB, $D015 enable, $D017 Y-expand, $D01B priority, $D01C multicolour, $D01D X-expand"
+    - title: "syntheses/commodore-c64/6510-cpu-and-memory-map.md"
+      kind: technical-doc
+      note: "$D000-$D02E are the registers; $D02F-$D3FF are mirrors repeating every 64 bytes, and writes to a mirror still reach the chip"
 
 ---
-
-## Overview
 
 The MOS Technology VIC-II (6567 NTSC / 6569 PAL) is the Commodore 64's video chip. It paints the 40×25 character screen, drives eight hardware sprites, scrolls backgrounds smoothly in hardware, and exposes 47 registers that let programmers control every aspect of the display. Its quirks — especially **badlines** — defined the timing tricks that demo coders exploited for decades.
 
@@ -34,6 +43,8 @@ Most programming is identical between variants. Timing-critical code (raster int
 ## Register map
 
 The VIC-II's registers live at `$D000-$D02E` (53248-53294 decimal). Writing to these addresses controls display hardware directly.
+
+⚠ The chip decodes only six address bits, so the whole block **repeats every 64 bytes** up to `$D3FF`. `$D040` is `$D000` again, and a write to a mirror reaches the chip exactly as the real address would. Stray writes anywhere in `$D000-$D3FF` land on a register.
 
 | Address | Register | Purpose |
 |---------|----------|---------|
@@ -282,9 +293,17 @@ Most games use bitmap modes for graphics, text mode for UI.
 
 ## Badlines
 
-Every 8th raster line in the visible area, the VIC-II "steals" 40 CPU cycles to fetch screen data. These are **badlines** — they run from raster line 48 to 247, occurring whenever the bottom three bits of `$D012` match the bottom three bits of `$D011` (the YSCROLL register). With the default YSCROLL value of 3, badlines fall on lines 51, 59, 67…251.
+Every 8th raster line in the visible area, the VIC-II refills its 40-entry character-pointer latch and takes the bus to do it. These are **badlines**. A badline needs **three** conditions together, and the third is the one that gets forgotten:
 
-**Effect:** CPU halts for 40 cycles. Code timing becomes unpredictable.
+1. The raster is inside the display window, `$30`–`$F7` (48–247).
+2. The bottom three bits of `$D012` match the bottom three bits of `$D011` (the YSCROLL register). With the default YSCROLL of 3 the first is raster `$33` (51) and the last is `$F3` (243).
+3. **DEN** (`$D011` bit 4) was set at raster `$30`.
+
+That third condition is a latch sampled **once per frame**, on the first line of the display window. Two consequences follow. If DEN was clear at raster `$30`, the entire frame is badline-free and the screen renders as solid border colour. And clearing DEN part-way down a frame does *not* suppress that frame's remaining badlines — it takes effect from the next frame.
+
+The YSCROLL comparison, by contrast, is evaluated **per line, at cycle 14**, against whatever value `$D011` holds at that instant. That is not a detail: it is the entire mechanism FLI runs on.
+
+**Effect:** the chip takes **up to 43 cycles** — the 40 character fetches plus a 3-cycle BA lead-in, cycles 12 to 54 of the line. On a 63-cycle PAL line that leaves the 6510 **twenty**, and with all eight sprites active on the same line, about one. Code timing becomes unpredictable.
 
 **Solutions:**
 
@@ -292,7 +311,7 @@ Every 8th raster line in the visible area, the VIC-II "steals" 40 CPU cycles to 
 - Disable screen during tight loops (`POKE 53265,PEEK(53265) AND 239`)
 - Use raster interrupts to run code in overscan area
 
-Demo coders exploit badlines for FLI (Flexible Line Interpretation): by writing YSCROLL into `$D011` to match the current raster line's low three bits, every line becomes a badline. Then changing `$D018` each line points the VIC-II at a fresh character set per row, yielding 8 colours per 8×8 cell instead of 2.
+Demo coders exploit badlines for FLI (Flexible Line Interpretation): by writing YSCROLL into `$D011` before cycle 14 so it matches the current raster line's low three bits, every line becomes a badline. Then changing `$D018` each line points the VIC-II at a fresh character set per row, yielding 8 colours per 8×8 cell instead of 2.
 
 ## Famous quirks
 

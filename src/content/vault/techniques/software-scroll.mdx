@@ -3,182 +3,80 @@ ai_generated: true
 reviewed: false
 title: "Software Scrolling"
 subtitle: "When hardware won't help"
-summary: "On systems without scroll registers, software must move every byte of screen data—a CPU-intensive technique that defines the feel of ZX Spectrum games."
+summary: "The ZX Spectrum has no scroll hardware, so scrolling means moving screen bytes: character steps, one-pixel rotates, or the stack-pointer \"push-scroll\" Software Creations used for Ghosts 'n' Goblins. The choice shaped how Spectrum games moved."
 category: "techniques"
 platforms: ['sinclair-zx-spectrum']
 tags: ['graphics', 'scrolling', 'zx-spectrum']
-originated: 1982
-
+sources:
+  screen_layout:
+    - title: "ZX Spectrum BASIC Programming (Steven Vickers, Sinclair Research, 1982)"
+      kind: manual
+      note: "Chapter 24: \"The display file stores the television picture. It is rather curiously laid out, so you probably won't want to PEEK or POKE in it ... First come the top scans of lines 0 to 7, then the next scans of lines 0 to 7, and so on to the bottom scans of lines 0 to 7; then the same for lines 8 to 15; and then the same for lines 16 to 23.\" — \"The attributes are the colours and so on for each character position, using the format of ATTR. These are stored line by line in the order you'd expect.\""
+    - ref: magazines/sinclair-user
+      kind: magazine
+      issue: "57"
+      date: "1986-12"
+      note: "Andrew Hewson's column prints pixel-scroll routines in all four directions and notes: \"The up and down routines are a lot longer than the left/right routines because the Spectrum screen is laid out in a seemingly\" illogical way (the sentence breaks across the page in this scan)."
+  push_scroll:
+    - ref: magazines/sinclair-user
+      kind: magazine
+      issue: "92"
+      date: "1989-11"
+      note: "Software Creations on Ghouls 'n' Ghosts: \"Ghosts & Goblins was one of the first games on the Spectrum to use a 'push-scroll' technique. This type of scroll routine is extremely unpleasant to even think about for too long, but does allow movement by any number of pixels in any direction. As used in both the Spectrum original and sequel, a 2-pixel horizontal scroll combined with a 1 pixel scroll can be performed and sprites dumped on the screen in less than 2 TV frames. The effect of this is much smoother than an average 4-pixels-every-3-frames scroll seen in many Spectrum games.\" — \"One drawback of scrolling the screen by smooth 2-pixel increments is that every sprite must then be printable at a 2-pixel resolution. On the Spectrum, this means having 4 shifted images of each sprite animation and background block in memory\" — the routine works by \"using the Z80 processor's 16-bit register SP to do both the scrolling and masking the sprites over the background\" — \"Another drawback of the scroll method is that the processor is uninterruptably tied up for most of the 2-frame game cycle, so music could only be played at a 25Hz rate.\" Credits: \"Programming was by Mike Follin, with music and sound effects by Tim Follin and additional sounds by Geoff Follin.\""
+  who_scrolled:
+    - ref: magazines/crash-magazine
+      kind: magazine
+      issue: "3"
+      date: "1984-04"
+      note: "Richard Wilcox Software's advertisement for Blue Thunder: \"Hi Res Graphics with Pixel Scrolling over 6 screens\"."
+    - ref: magazines/sinclair-user
+      kind: magazine
+      issue: "84"
+      date: "1989-03"
+      note: "Costa Panayi of Vortex on H.A.T.E.: \"In H.A.T.E. we used 18K solely for the scrolling. Two pixel scrolling is a fairly simple bit of programming until you see how it slows down on the screen. Several unconventional techniques had to be employed ... In fact it was the fifth re-write that finally gave us the speed we needed.\""
+    - ref: magazines/crash-magazine
+      kind: magazine
+      issue: "56"
+      date: "1988-09"
+      note: "\"Uridium's smooth scrolling ... Dominic Robinson's conversion of Andrew Braybrook's successful game remains almost unique\"."
+    - ref: magazines/your-sinclair
+      kind: magazine
+      issue: "88"
+      date: "1993-04"
+      note: "A demo review lists \"The obligatory large attribute scrolly\" — by 1993 scrolling the 768-byte attribute file alone was a demo-scene staple."
 ---
 
+The ZX Spectrum has no hardware scroll registers. Moving the screen means moving every byte of it, and the cost shaped Spectrum game design: most games changed screen a whole screen at a time, and those that scrolled either moved a window, moved in character steps, or spent most of the machine on it.
 
-## Overview
+## The cost
 
-The ZX Spectrum has no hardware scroll registers. Moving the screen means copying thousands of bytes every frame. This fundamental limitation shaped Spectrum game design: many games used flip-screen progression, while those that scrolled did so slowly or in limited areas.
-
-## The challenge
-
-The Spectrum screen is 6,144 bytes of pixel data plus 768 bytes of attributes. Moving everything takes thousands of instructions:
+The screen is 6,144 bytes of pixel data plus 768 bytes of attributes. Copying all of it once with `LDIR`:
 
 ```
-6,144 bytes ÷ 21 cycles per LDIR byte = ~129,024 cycles
-At 3.5 MHz, that's ~37 ms—nearly two frames!
+6,144 bytes × 21 T-states per LDIR byte ≈ 129,024 T-states
+At 3.5 MHz, that is ~37 ms — nearly two frames, before drawing anything
 ```
 
-Full-screen software scrolling at 50 fps isn't possible.
+A full-screen copy every frame is out of reach; anything that scrolled had to do less than that.
 
-## Basic horizontal scroll
+## Screen layout
 
-Shift screen data one pixel left:
-
-```z80
-scroll_left:
-    ld hl, $4000        ; screen start
-    ld b, 192           ; 192 lines
-
-.line_loop:
-    push bc
-    ld b, 32            ; 32 bytes per line
-    or a                ; clear carry
-
-.byte_loop:
-    rl (hl)             ; rotate left through carry
-    inc hl
-    djnz .byte_loop
-
-    pop bc
-    djnz .line_loop
-    ret
-```
-
-This shifts pixels left, bringing in zeros from the right.
-
-## Faster alternatives
-
-### Unrolled loops
-
-Remove DJNZ overhead:
-
-```z80
-scroll_line:
-    rl (hl)
-    inc hl
-    rl (hl)
-    inc hl
-    ; ... repeat 32 times
-    ret
-```
-
-### Stack abuse
-
-Use PUSH/POP for 16-bit moves:
-
-```z80
-; Save stack pointer
-    ld (save_sp), sp
-
-; Point stack at screen
-    ld sp, $5800        ; end of screen
-
-; Pop in reverse, shift, push forward
-    pop de
-    ; shift de left
-    push de
-
-; Restore stack
-    ld sp, (save_sp)
-```
-
-## Character-based scrolling
-
-Faster than pixel scrolling—move whole characters. Each pixel row is 32 bytes; a 1-character left scroll copies bytes 1-31 down to bytes 0-30, then clears or refills byte 31:
-
-```z80
-; Scroll screen left by 8 pixels (1 character) — pixel-row by pixel-row
-scroll_char_left:
-    ld a, 192               ; 192 pixel rows
-    ld hl, $4001            ; first row source (1 byte right of dest)
-    ld de, $4000            ; first row destination
-.line_loop:
-    push af
-    ld bc, 31               ; 31 bytes per row (32 - 1)
-    ldir                    ; move this row
-    ; Now HL = $4020, DE = $401F. We want HL/DE = next row's source/dest.
-    ; Pixel row N+1's address jumps by + $0100 within a third, OR
-    ; back to start of third + $0020 when crossing character row.
-    ; The simplest robust approach is to recompute from a row counter.
-    ; (See `y_to_address` below for the formula.)
-    ; Skip-over for inline use: increment to next row by +1 byte (HL was at +31 after LDIR, +1 puts it at +32 = next row's start IN MEMORY ORDER but NOT in display order).
-    inc hl
-    inc de
-    pop af
-    dec a
-    jr nz, .line_loop
-    ret
-```
-
-Note that "next row in memory" and "next row on screen" are different on the Spectrum — see the address-formula section below. A correct char scroll either iterates the row counter through `y_to_address` for each pixel row, or unrolls the third-by-third structure. The simple `inc hl / inc de` form above scrolls memory in linear order, which produces visual artefacts at the third boundaries (lines 64 and 128) unless the screen content is uniform.
-
-## Colour attribute challenges
-
-The attribute grid doesn't align with pixel scrolling:
-
-| Scroll amount | Attribute handling |
-|---------------|-------------------|
-| 8 pixels | Attribute scroll matches |
-| 1-7 pixels | Attributes can't match precisely |
-
-Most games either:
-- Scroll by 8 pixels at a time
-- Accept colour clash at scroll boundaries
-- Use monochrome scrolling areas
-
-## Window scrolling
-
-Scroll only part of the screen:
-
-```z80
-; Scroll a 16-character wide window
-scroll_window:
-    ld hl, window_start
-    ld de, window_start - 1
-    ld bc, 16           ; window width in bytes
-
-    ld a, 192           ; lines
-.loop:
-    push af
-    push bc
-    ldir
-
-    ; Move to next line (Spectrum screen layout)
-    ; ... complex address calculation
-
-    pop bc
-    pop af
-    dec a
-    jr nz, .loop
-    ret
-```
-
-Smaller windows scroll faster.
-
-## Spectrum screen layout
-
-The screen isn't linear—understanding this is crucial:
+The display file is not linear, and the manual says so: it "is rather curiously laid out, so you probably won't want to PEEK or POKE in it". The layout is in thirds of 64 lines, each third stored as "the top scans of lines 0 to 7, then the next scans of lines 0 to 7, and so on":
 
 ```
-Lines 0-7:   $4000, $4100, $4200, $4300, $4400, $4500, $4600, $4700
-Lines 8-15:  $4020, $4120, $4220, ...
-Lines 16-23: $4040, $4140, ...
+Pixel rows 0-7 of character row 0:   $4000, $4100, $4200, ... $4700
+Pixel rows 0-7 of character row 1:   $4020, $4120, $4220, ...
 ...
-Lines 64-71: $4800, $4900, ...
+Character row 8 (second third):      $4800, $4900, ...
 ```
 
-Third of screen = different base address.
+The attributes, by contrast, "are stored line by line in the order you'd expect": 768 bytes from `$5800`, 32 per row.
+
+Two things follow for scrolling. Every 32-byte block in memory *is* one pixel row, so a **horizontal** scroll can walk the 6,144 bytes in memory order and never needs to know which row it is on. A **vertical** scroll has to move pixel row *y* to the address of row *y*−1, which jumps between thirds, character rows and scan lines; Andrew Hewson printed both kinds in *Sinclair User* in 1986 and noted that "the up and down routines are a lot longer than the left/right routines because the Spectrum screen is laid out in a seemingly" illogical way.
 
 ### Address calculation
 
-The full formula: `addr = $4000 | ((y & $C0) << 5) | ((y & $07) << 8) | ((y & $38) << 2)`. Y[7-6] selects which third of the screen (high byte gets +$00, +$08, or +$10). Y[2-0] picks the pixel row within a character row (high byte +$00 to +$07). Y[5-3] picks the character row within a third (low byte +$00 to +$E0 in steps of $20).
+The formula: `addr = $4000 | ((y & $C0) << 5) | ((y & $07) << 8) | ((y & $38) << 2)`. Y[7-6] selects the third (high byte +$00, +$08 or +$10). Y[2-0] picks the pixel row within a character row (high byte +$00 to +$07). Y[5-3] picks the character row within a third (low byte +$00 to +$E0 in steps of $20).
 
 ```z80
 ; Convert Y coordinate to screen address (column 0)
@@ -207,26 +105,101 @@ y_to_address:
     ret
 ```
 
-Verify: Y=0 → HL=$4000 ✓; Y=8 → HL=$4020 ✓; Y=64 → HL=$4800 ✓; Y=191 → HL=$57E0 (last visible row, column 0) ✓.
+Check: Y=0 → `$4000`; Y=8 → `$4020`; Y=64 → `$4800`; Y=191 → `$57E0`.
 
-## Common solutions
+## One-pixel horizontal scroll
 
-| Approach | Speed | Smoothness |
-|----------|-------|------------|
-| Flip-screen | Fast | Instant |
-| Character scroll | Medium | Jerky |
-| Pixel scroll | Slow | Smooth |
-| Window scroll | Variable | Area-limited |
-| Attribute-only | Fast | Colour-based |
+Shifting the whole screen one pixel left means rotating each 32-byte row through the carry flag, right to left, so the bit that falls out of the top of byte *n* lands at the bottom of byte *n*−1:
 
-## Games that scrolled
+```z80
+scroll_left:
+    ld hl, $401F        ; last byte of the first row in memory
+    ld de, 32
+    ld c, 192           ; 192 rows, in memory order
+.row:
+    push hl
+    or a                ; clear carry: zeros come in from the right
+    ld b, 32
+.byte:
+    rl (hl)             ; bit 7 → carry, carry → bit 0
+    dec hl
+    djnz .byte
+    pop hl
+    add hl, de          ; next 32-byte row
+    dec c
+    jr nz, .row
+    ret
+```
 
-| Game | Technique |
-|------|-----------|
-| Deathchase | Full horizontal scroll |
-| Sidewize | Window-based |
-| R-Type | Character-based |
-| Head Over Heels | Flip-screen |
+Walking the bytes from `$401F` downwards is what makes it a *left* scroll; walking upwards with the same `rl` moves the pixels right and back into the wrong byte. Unrolling the inner loop removes the `DJNZ` and `DEC HL` overhead at the cost of thirty-two `rl (hl)` per row.
+
+`rl (hl)` costs 15 T-states, so a one-pixel shift of the full screen is around 92,000 T-states before any loop overhead — cheaper than a copy, but still most of a frame.
+
+## Character scroll
+
+Moving whole characters is the cheap version. Each pixel row is 32 bytes, so an 8-pixel left scroll copies bytes 1 to 31 down to bytes 0 to 30 and refills byte 31:
+
+```z80
+; Scroll the whole screen left by 8 pixels, one pixel row at a time
+scroll_char_left:
+    ld hl, $4001            ; source: one byte right of the destination
+    ld de, $4000            ; destination
+    ld a, 192               ; 192 pixel rows, in memory order
+.row:
+    push af
+    ld bc, 31
+    ldir                    ; HL = $4020, DE = $401F
+    ex de, hl
+    ld (hl), 0              ; refill byte 31 — blank here, or the new column of the map
+    ex de, hl
+    inc hl                  ; HL = $4021: source for the next row
+    inc de                  ; DE = $4020: destination for the next row
+    pop af
+    dec a
+    jr nz, .row
+    ret
+```
+
+Because every 32-byte block is one pixel row, this linear walk is correct for the whole screen; the display-order interleave only matters for vertical movement. This is the "4-pixels-every-3-frames" family Software Creations described as the average Spectrum scroll: move in steps, and draw the new column into the freed edge.
+
+## Push-scroll
+
+The technique the same team called "extremely unpleasant to even think about for too long" uses the stack pointer as a 16-bit copy engine. `POP` reads two bytes and advances `SP` in 10 T-states; `PUSH` writes two in 11. With `SP` pointed into the screen, the game can read a row of screen data two bytes at a time, shift and mask it in registers, and push it back — moving, scrolling and sprite-masking in one pass, with no `LDIR` and no per-byte address arithmetic. It costs the stack: interrupts must be off for the whole pass, and every register pair is spoken for. Software Creations' account of Ghosts 'n' Goblins and Ghouls 'n' Ghosts describes "using the Z80 processor's 16-bit register SP to do both the scrolling and masking the sprites over the background", achieving "a 2-pixel horizontal scroll combined with a 1 pixel scroll ... in less than 2 TV frames" — and paying for it with a processor "uninterruptably tied up for most of the 2-frame game cycle, so music could only be played at a 25Hz rate".
+
+The two-pixel step has a second cost. "Every sprite must then be printable at a 2-pixel resolution. On the Spectrum, this means having 4 shifted images of each sprite animation and background block in memory": pre-shifted copies trade RAM for the shifts that would otherwise happen every frame.
+
+## Attributes
+
+The attribute grid does not move in pixels:
+
+| Scroll amount | Attribute handling |
+|---------------|-------------------|
+| 8 pixels | Scroll the attribute file too: 768 bytes, in order |
+| 1-7 pixels | Attributes cannot follow; the colour stays put while the pixels move |
+
+So a pixel-scrolling game either scrolls a monochrome area, keeps colour to bands that do not need to move, or — as Software Creations put it — accepts that "the design of the backgrounds is severely limited by the scrolling technique". The attribute file on its own, scrolled at 768 bytes a frame, was cheap enough to become a demo-scene fixture: *Your Sinclair* was reviewing "the obligatory large attribute scrolly" in 1993.
+
+## Window scrolling
+
+Scrolling part of the screen scales the cost by the window. A window *w* characters wide on rows *y0* to *y1* is a horizontal scroll of *w* bytes per pixel row, with `y_to_address` (or a memory-order walk, if the window is full height) supplying each row's start. Vortex's H.A.T.E. moved its diagonal playfield two pixels at a time, and Costa Panayi's account gives the scale of the effort: "we used 18K solely for the scrolling ... it was the fifth re-write that finally gave us the speed we needed."
+
+## Summary
+
+| Approach | Cost | Motion |
+|----------|------|--------|
+| Flip-screen | One redraw per screen | Instant |
+| Character scroll | 31 bytes copied per pixel row, plus a new column | 8-pixel steps |
+| Pixel scroll (`rl`) | One rotate per byte | Smooth, one pixel |
+| Push-scroll | One `POP`/`PUSH` pair per two bytes, interrupts off | Smooth, any step |
+| Window scroll | Proportional to window | Area-limited |
+| Attribute-only | 768 bytes | Colour blocks only |
+
+## Who scrolled
+
+- **Blue Thunder** (Richard Wilcox Software, 1984) — advertised as "Hi Res Graphics with Pixel Scrolling over 6 screens" in *CRASH*'s third issue, one of the earliest to sell on the word.
+- **Ghosts 'n' Goblins** (Elite, 1986) and **Ghouls 'n' Ghosts** (US Gold, 1989) — Software Creations' push-scroll, described above; Mike Follin programming.
+- **Uridium** (Hewson, 1986) — Dominic Robinson's conversion, whose smooth scrolling *CRASH* still called "almost unique" two years later.
+- **H.A.T.E.** (Vortex/Gremlin, 1989) — Costa Panayi's two-pixel scroll, five rewrites and 18K of code.
 
 ## See also
 
@@ -234,3 +207,8 @@ Verify: Y=0 → HL=$4000 ✓; Y=8 → HL=$4020 ✓; Y=64 → HL=$4800 ✓; Y=191
 - [ZX Spectrum](/vault/systems/zx-spectrum)
 - [Hardware Scroll](/vault/techniques/hardware-scroll)
 - [Screen Memory](/vault/techniques/screen-memory)
+- [Attribute-aware design](/vault/techniques/attribute-aware-design)
+- [Ghosts 'n' Goblins](/vault/games/ghosts-n-goblins)
+- [Ghouls 'n' Ghosts](/vault/games/ghouls-n-ghosts)
+- [Uridium](/vault/games/uridium)
+- [Costa Panayi](/vault/people/costa-panayi)

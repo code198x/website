@@ -68,11 +68,11 @@ const systems = defineCollection({
 
     // Toolchain (optional for coming-soon platforms)
     assembler: z.string().optional(),
+    dialect: z.string().optional(),
     assemblerLanguage: z.enum(['6502', 'z80', 'm68k', 'ca65']).optional(),
     emulator: z.string().optional(),
     buildOutput: z.string().optional(),
     toolchainExtras: z.array(z.string()).default([]),
-    dockerImage: z.string().optional(),
 
     // Family support surfaces — curated per-machine flags, orthogonal to `tier`
     // (umbrella decision: 198x/decisions/support-surfaces.md). Only write the
@@ -94,6 +94,19 @@ const systems = defineCollection({
     // isActivePlatform() in lib/platforms.ts.
     tier: z.enum(['live', 'next', 'planned', 'edge', 'beyond']),
   }),
+});
+
+// One later entity in a succession — used by `name_reused_by` and
+// `continued_as`. Either `ref` (a Vault entry) or `name` (a successor with no
+// entry) must be present; `from`/`to` bound the period it held the name.
+const successionRef = z.object({
+  ref: z.string().optional(),
+  name: z.string().optional(),
+  from: z.number().optional(),
+  to: z.number().optional(),
+  note: z.string().optional(),
+}).refine(s => s.ref || s.name, {
+  message: 'a succession entry needs either `ref` (a Vault entry) or `name`',
 });
 
 const vault = defineCollection({
@@ -142,17 +155,180 @@ const vault = defineCollection({
     // People: birth and death years
     born: z.number().nullable().optional(),
     died: z.number().nullable().optional(),
-    // Companies: founding and dissolution/merger
+    // Companies, groups, magazines: when it started
     founded: z.number().nullable().optional(),
-    dissolved: z.number().nullable().optional(),
+    // Magazines: who published it, and when. A field rather than a line of prose,
+    // because the publisher is what groups a masthead into a stable — Argus,
+    // Newsfield, Future, EMAP, Ziff Davis — and a stable explains house style,
+    // staff moving between titles, and why two magazines die in the same month.
+    // Prose cannot be queried, and cannot be audited: 51 of 60 magazine entries
+    // mentioned a publisher somewhere and 9 named none, with no way to tell which
+    // without reading all sixty.
+    //
+    // An ARRAY, because for a long-running title the answer changes. Computer
+    // Gaming World began at Golden Empire and ended at Ziff Davis; any single
+    // string is wrong about one end of its life.
+    //
+    // `name` is the entity in the statement of publication — the thing the
+    // magazine itself says publishes it. `group` is the parent or owner where the
+    // magazine names one, which is a different fact and often the more revealing:
+    // Compute!'s Gazette is published by COMPUTE! Publications, which is part of
+    // ABC. (Note this is publisher-and-owner, not imprint: an imprint is a brand a
+    // publisher issues *under*, which is a software-publishing distinction —
+    // Rainbird under Telecomsoft — and does not apply cleanly to mastheads.)
+    //
+    // `from`/`to` are the years the arrangement is ATTESTED, not necessarily the
+    // years it held. Where the corpus shows a publisher in 1981 and 1992 but does
+    // not fix the handover, say so in `note` rather than inventing a date.
+    publishers: z
+      .array(
+        z.object({
+          name: z.string(),
+          group: z.string().optional(),
+          from: z.number().nullable().optional(),
+          to: z.number().nullable().optional(),
+          note: z.string().optional(),
+        })
+      )
+      .optional(),
+    // Evidence for individual facts, keyed by the frontmatter field it supports:
+    //
+    //   sources:
+    //     founded:
+    //       - ref: magazines/crash-magazine
+    //         kind: magazine
+    //         date: "1985-05"
+    //         issue: 16
+    //
+    // `ref` points at the Vault entry for the publication, which makes the
+    // evidence chain a relationship rather than a string — a fact links to the
+    // magazine that carries it, and "which claims rest on one publication?"
+    // becomes answerable. `title` covers sources with no entry of their own.
+    //
+    // A list, not a single value, because independent corroboration is the
+    // thing worth counting: PRINCIPLES.md, "ten websites quoting one incorrect
+    // source remain one incorrect source".
+    //
+    // `kind` follows the evidence hierarchy in PRINCIPLES.md, strongest first,
+    // so relative confidence can be computed rather than argued.
+    //
+    // Absent means not established — never "verified". Populate as entries are
+    // grounded; this is deliberately not a migration.
+    sources: z.record(
+      z.string(),
+      z.array(z.object({
+        ref: z.string().optional(),     // vault path, e.g. "magazines/crash-magazine"
+        title: z.string().optional(),   // free text where no entry exists
+        kind: z.enum([
+          'hardware', 'software', 'source-code', 'manual', 'technical-doc',
+          // A statutory register — Companies House and equivalents. Not a
+          // `database`: this is the record made at the time of the event, by
+          // the entity itself, rather than a later compilation about it. For an
+          // incorporation or dissolution date it outranks a magazine reporting
+          // the same thing, which is why it needs its own slot near the top.
+          'public-record',
+          'book', 'magazine', 'advertisement', 'interview', 'recollection',
+          'modern-book', 'modern-article', 'database',
+        ]).optional(),
+        date: z.string().optional(),    // "1985-05" — a string, because partial
+                                        // dates are not dates and YAML will
+                                        // happily mangle them into one.
+        issue: z.union([z.number(), z.string()]).optional(),
+        page: z.string().optional(),
+        note: z.string().optional(),
+      }).refine(s => s.ref || s.title, {
+        message: 'a source needs either `ref` (a Vault entry) or `title`',
+      })),
+    ).optional(),
+
+    // What became of the name, and what became of the people. Two fields
+    // because they are opposites, and one `successor` would collapse them:
+    //
+    //   name_reused_by  — the NAME went on without this entity. Ocean bought
+    //                     the Imagine label in 1984 and published under it for
+    //                     years; the Liverpool company was already gone.
+    //   continued_as    — THIS ENTITY went on under another name. Zeppelin
+    //                     became Eutechnyx and kept the same people.
+    //
+    // Conflating them is how "Commodore lasted until 2004" gets written.
+    //
+    // Dated, because names change hands repeatedly — Commodore's went to Escom,
+    // then Tulip — and an undated list cannot say which era a reader is looking
+    // at.
+    //
+    // `ref` points at a Vault entry; `name` covers successors that have none and
+    // may never need one. Escom probably earns an entry. Eutechnyx may not.
+    // Requiring an entry for every successor would either break the link check
+    // or force stubs for companies outside this Vault's period.
+    // Companies House registration, for entries that ARE a registered company.
+    // Not for labels and imprints: Firebird and Rainbird were inside Telecomsoft
+    // and giving them a number would attach a real identifier to the wrong
+    // entity. The number is the point — names are reused constantly, and a
+    // search for "Acorn Computers" returns four distinct companies.
+    //
+    // ⚠ A matching name and a matching year are not identification. Company
+    // 01472275 is "CRL Group Ltd", incorporated 1980-01-11 — matching this
+    // Vault's CRL on both, and it was CLWYD REFRIGERATION LIMITED until 2016:
+    // a Conwy refrigeration business that took the name thirty-six years after
+    // Clement Chambers founded the games publisher. Check
+    // `previous_company_names` and the registered office against what the entry
+    // says before believing any match. Both are one request away.
+    //
+    // ⚠ Coverage stops well short of the 1980s, and the boundary is measured
+    // rather than assumed: across a 126-company sample of dissolved records the
+    // earliest cessation date returned was 2010-04-27, with nothing before it.
+    // A rolling retention window, not an indexing gap.
+    //
+    // So the era's casualties are simply absent. "Bug-Byte" returns exactly one
+    // company in the whole register and "Quicksilva" one, both incorporated
+    // after 1996; Ultimate, Denton Designs and Gargoyle Games return no
+    // plausible pre-1996 candidate at all. The public web search hits the same
+    // register, so searching by hand finds no more than this does.
+    //
+    // What survives is companies that lasted. For everything that died in the
+    // eighties the period press remains the only witness — which is what the
+    // reference library is for.
+    company_number: z.string().optional(),
+
+    name_reused_by: z.array(successionRef).optional(),
+    continued_as: z.array(successionRef).optional(),
+
     // Games: release year
     released: z.number().nullable().optional(),
     // Techniques: when originated and deprecated (if applicable)
     originated: z.number().nullable().optional(),
     deprecated: z.number().nullable().optional(),
-    // Culture: emergence and ending (if applicable)
+    // Culture, phenomena, events, communities: when it started
     emerged: z.number().nullable().optional(),
+    // These dates bound THE ENTITY THIS ENTRY IS ABOUT, not the name it traded
+    // under. Names outlive companies and get picked up by unrelated buyers:
+    // Commodore was liquidated in 1994 and the name sold on afterwards;
+    // `imagine-software` ended in 1984 and Ocean bought the label and kept
+    // publishing under it. In both cases `ended` is the year the entity stopped,
+    // and what happened to the name afterwards is a separate fact about a
+    // separate entity. Setting `ended: 2004` for Commodore because something
+    // called Commodore existed then would merge two companies into one.
+    //
+    // The reverse case — same people, new name, as Zeppelin became Eutechnyx —
+    // is also an ending for this entity, with `ended_as: renamed`.
+    //
+    // The universal end date, whatever the category. Replaced `dissolved` in
+    // 2026-08: of the 92 company entries carrying a dissolution year, 39% record
+    // an acquisition, 9% an absorption or rename, and 18% nothing the body
+    // supports. `dissolved` named one ending and was applied to four, and it
+    // rendered as "Active: 1984–1988" — asserting a company stopped when it had
+    // often been bought and carried on.
     ended: z.number().nullable().optional(),
+    // How it ended, where the sources establish it. Optional on purpose: a date
+    // without a mechanism is the common case and the honest one.
+    ended_as: z.enum([
+      'acquired',    // bought; the entity continued under new ownership
+      'absorbed',    // folded into the parent, identity gone
+      'renamed',     // continuous operation under a new name
+      'dissolved',   // wound up deliberately
+      'liquidated',  // wound up by insolvency — receivership, administration
+      'ceased',      // stopped trading, mechanism unrecorded
+    ]).optional(),
     // Hardware/Systems: introduction and discontinuation
     introduced: z.number().nullable().optional(),
     discontinued: z.number().nullable().optional(),
@@ -277,7 +453,7 @@ const modules = defineCollection({
   loader: glob({ pattern: '**/*.yaml', base: 'src/content/modules' }),
   schema: z.object({
     platform: z.string(), // e.g., commodore-64, sinclair-zx-spectrum
-    track: z.enum(['assembly', 'basic', 'amos', 'blitz']),
+    track: z.enum(['assembly', 'basic', 'amos', 'blitz', 'machine']),
     modules: z.array(z.object({
       number: z.number(),
       slug: z.string(),
@@ -302,7 +478,7 @@ const units = defineCollection({
   loader: glob({ pattern: '**/*.yaml', base: 'src/content/units' }),
   schema: z.object({
     platform: z.string(),
-    track: z.enum(['assembly', 'basic', 'amos', 'blitz']),
+    track: z.enum(['assembly', 'basic', 'amos', 'blitz', 'machine']),
     moduleSlug: z.string(),
     phases: z.array(z.object({
       name: z.string(),

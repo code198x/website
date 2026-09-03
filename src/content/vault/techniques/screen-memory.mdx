@@ -7,12 +7,33 @@ summary: "Screen RAM, colour RAM, and the VIC-II—understanding how 1000 bytes 
 category: "techniques"
 platforms: ['commodore-64']
 tags: ['screen-ram', 'vic-ii', 'memory-map', 'direct-screen-access']
-originated: 1982
-deprecated: 1994
-
+sources:
+  screen_and_colour_ram:
+    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
+      kind: book
+      page: "100"
+      note: "\"There are 1000 possible locations on the Commodore 64 screen. Normally, the screen starts at location 1024 ($0400 in HEXadecimal notation) and goes to location 2023.\" — \"Connected with screen memory is a group of 1000 locations called COLOR MEMORY or COLOR RAM. These start at location 55296 ($D800 in HEX) and go up to 56295. Each of the color RAM locations is 4 bits wide\""
+  video_bank:
+    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
+      kind: book
+      page: "101, 103"
+      note: "\"The VIC-II chip can access ('see') 16K of memory at a time… There are 4 possible BANKS\", selected by \"bits 0 and 1 of PORT A of CIA#2 (location 56576 (or $DD00 HEX). These 2 bits must be set to outputs by setting bits 0 and 1 of location 56578 ($DD02 HEX)\" — \"Color memory can NOT move. It is always located at locations 55296 ($D800) through 56295 ($DBE7).\""
+  character_rom:
+    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
+      kind: book
+      page: "107"
+      note: "\"The character memory in ROM begins at location 53248 (when the I/O is switched off). The first 8 bytes from location 53248 ($D000) to 53255 ($D007) contain the pattern for the @ sign, which has a character code value of zero… The next 8 bytes, from location 53256 ($D008) to 53263 ($D00F), contain the information for forming the letter A.\" — the table gives the eight rows as 24, 60, 102, 126, 102, 102, 102, 0"
+    - title: "Commodore 64 character generator ROM (901225-01)"
+      kind: hardware
+      note: "Bytes $008-$00F of the 4K ROM image read 18 3C 66 7E 66 66 66 00 — the crossbar is the fourth row"
+  fli:
+    - title: "Codebase64 — FLI"
+      kind: technical-doc
+      note: "\"FLI is short for Flexible Line Interpretation. What it does it bringing more colors to your bitmap pictures by re-reading color info each pixel-line instead of each char-line (every 8 pixels). This is possible by repeatedly writing to $d011 to re-trigger color fetch\" — \"This method causes a bug on the left side of the screen, the typical 'FLI-bug', where the color info is set to $ff\""
+    - title: "Codebase64 — FLI display routine"
+      kind: source-code
+      note: "\"Following here is the main FLI loop which forces the VIC-II to read new color data each rasterline. The loop is exactly 23 clock cycles long so together with 40 cycles of color DMA this will result in 63 clock cycles which is exactly the length of a PAL C64 rasterline.\" — the loop writes tab18 to $d018 (\"set new color RAM address\") and tab11 to $d011 (\"force new color DMA\")"
 ---
-
-## Overview
 
 The C64's text screen is 40 characters wide by 25 lines tall—exactly 1000 characters. Each character is stored in **screen RAM** (which character to display) and **colour RAM** (what colour to draw it). Change a byte in screen RAM and the display updates instantly—no PRINT statements, no scrolling, just direct hardware control. This is how games draw fast.
 
@@ -51,7 +72,7 @@ COLOUR = 55296 + (ROW * 40) + COL
 
 **Example:** Position (0,0) = 1024. Position (0,39) = 1063. Position (1,0) = 1064. Position (24,39) = 2023.
 
-## How It Works
+## How it works
 
 The VIC-II chip scans screen RAM 50 times per second (PAL) or 60 times per second (NTSC), reading each byte and converting it to pixels on screen. Each screen code points to a character definition in the **character ROM** (or custom character set). The corresponding colour RAM byte tells the VIC-II what colour to draw that character.
 
@@ -108,7 +129,7 @@ Screen code 32 = space. Fills entire screen with spaces (much faster than PRINT)
 30 P=1024+(R*40)+C
 40 FOR I=1 TO LEN(T$)
 50 A=ASC(MID$(T$,I,1))
-60 IF A>=65 AND A&lt;=90 THEN S=A-64 ELSE S=A
+60 IF A>=65 AND A<=90 THEN S=A-64 ELSE S=A
 70 POKE P+I-1,S
 80 POKE 55296+(R*40)+C+I-1,1
 90 NEXT I
@@ -142,14 +163,14 @@ By default, the VIC-II reads character definitions from ROM at $D000-$DFFF. Each
 
 **Character 1 ('A') definition in ROM:**
 ```
-$D008: 00011000  (top row - 2 pixels on)
-$D009: 00111100  (3 pixels either side)
-$D00A: 01100110  (wider)
-$D00B: 01100110  (same)
-$D00C: 01111110  (crossbar)
-$D00D: 01100110  (legs)
-$D00E: 01100110  (legs)
-$D00F: 00000000  (bottom - blank)
+$D008: 00011000  ($18 - top row, 2 pixels on)
+$D009: 00111100  ($3C - 4 pixels)
+$D00A: 01100110  ($66 - two legs)
+$D00B: 01111110  ($7E - crossbar)
+$D00C: 01100110  ($66 - legs)
+$D00D: 01100110  ($66 - legs)
+$D00E: 01100110  ($66 - legs)
+$D00F: 00000000  ($00 - bottom - blank)
 ```
 
 You can point the VIC-II to custom character sets in RAM—that's how games create custom graphics. See VIC-II register $D018 for details.
@@ -210,7 +231,7 @@ For games, **always POKE** when drawing static screens, UI elements, or fast-upd
 - Screen RAM can be moved, but must align to 1KB boundaries ($0400, $0800, $0C00, etc.).
 - Character ROM can't be written to (it's ROM!). Copy to RAM for custom characters.
 
-## Advanced Techniques
+## Advanced techniques
 
 ### Double Buffering
 Draw to hidden screen ($0800), then switch display:
@@ -222,18 +243,18 @@ Draw to hidden screen ($0800), then switch display:
 ```
 
 ### Smooth Scrolling
-Combine screen RAM updates with VIC-II hardware scrolling registers ($D011, $D016) for smooth pixel-perfect scrolling. Games like *Scramble* and *Defender* used this constantly.
+Combine screen RAM updates with VIC-II hardware scrolling registers ($D011, $D016) for smooth pixel-perfect scrolling.
 
 ### Screen Splits
 Use raster interrupts to change $D018 mid-frame, displaying different screen RAM on different parts of the screen. Status bars, split-screen games, and parallax effects all use this.
 
-## Historical Notes
+## What moves and what does not
 
-The C64's screen layout inherited from the PET (1977) and VIC-20 (1981), which both used 1KB screen RAM. The VIC-II's colour RAM being separate from main memory was a cost-saving measure—1KB of fast static RAM was expensive in 1982, so Commodore used cheap 4-bit RAM chips for colour only.
+The Programmer's Reference Guide describes the screen as "1000 possible locations" from 1024 to 2023, paired with "a group of 1000 locations called COLOR MEMORY or COLOR RAM" at 55296, each "4 bits wide". Screen memory can be moved anywhere in the 16K the VIC-II "can access ('see')" at a time, and that 16K window is itself one of four banks chosen by bits 0 and 1 of CIA#2's port A at `$DD00` — after setting those bits to outputs in `$DD02`. Colour memory is the exception: it "can NOT move. It is always located at locations 55296 ($D800) through 56295 ($DBE7)." Every flip-the-display trick on the C64 follows from that split — the screen and character pointers move, the colour nybbles stay put.
 
-Games like *Impossible Mission* and *Beach Head* pioneered double-buffering techniques, updating hidden screens then flipping the display for flicker-free animation. Demo coders pushed screen RAM manipulation to extremes, creating effects like raster bars, multiplexed sprites, and FLI (Flexible Line Interpretation) that displayed different character sets on every scanline.
+Demo coders pushed the same registers further. FLI (Flexible Line Interpretation) rewrites `$D018` and `$D011` on every raster line so the VIC-II re-reads its colour information "each pixel-line instead of each char-line", giving a bitmap eight times the colour resolution — at the cost of the "FLI bug", a strip on the left of the screen where the forced colour fetch reads `$FF`, and of most of the raster time: Codebase64's display loop is timed so that 23 cycles of code plus 40 cycles of colour DMA fill each 63-cycle PAL line exactly.
 
-## See Also
+## See also
 
 - [PETSCII Chart](/vault/techniques/petscii-chart) — character code reference
 - [PRINT vs POKE](/vault/techniques/print-vs-poke) — performance comparison

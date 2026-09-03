@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert';
 import path from 'node:path';
 import { mkdtemp, writeFile, symlink } from 'node:fs/promises';

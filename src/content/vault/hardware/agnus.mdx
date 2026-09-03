@@ -9,11 +9,28 @@ platforms: ['commodore-amiga']
 tags: ['custom-chips', 'dma', 'memory-controller', 'commodore']
 introduced: 1985
 discontinued: 1992
-
+sources:
+  priority:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "209"
+      note: "'Each device that accesses memory has a priority level assigned to it ... Disk DMA, audio DMA, display DMA, and sprite DMA all have the highest priority level. Display DMA has priority over sprite DMA under certain circumstances. Each of these four devices is allocated a group of time slots during each horizontal scan of the video beam. If a device does not request one of its allocated time slots, the slot is open for other uses. These devices are given first priority because missed DMA cycles can cause lost data, noise in the sound output, or on-screen interruptions. The Copper has the next priority because it has to perform its operations at the same time during each display frame to remain synchronized with the display beam ... The lowest priorities are assigned to the blitter and the 68000, in that order. The blitter is given the higher priority because it performs data copying, modifying, and line drawing operations much faster than the 68000'"
+  slots:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "209, 212"
+      note: "'During a horizontal scan line (about 63 microseconds), there are 227.5 \"color clocks\", or memory access cycles. A memory cycle is approximately 280' nanoseconds. 'The time-slot allocation per horizontal line is: 4 cycles for memory refresh, 3 cycles for disk DMA, 4 cycles for audio DMA (2 bytes per channel), 16 cycles for sprite DMA'. p.212 on the cost of a wide display: four hires bitplanes take '40 * 4 = 160 time slots', which 'effectively locks out the 68000 (as well as the blitter or Copper) from any memory access during the display, except during horizontal and' vertical blanking"
+  cpu_cycles:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "211"
+      note: "'The 68000 uses only the even-numbered memory access cycles. The 68000 spends about half of a complete processor instruction time doing internal operations and the other half accessing memory. Therefore, the allocation of alternate memory cycles to the 68000 makes it appear to the 68000 that it has the memory all of the time, and it will run at full speed. Some 68000 instructions do not match perfectly with the allocation of even cycles and cause cycles to be missed. If cycles are missed, the 68000 must wait until its next available memory slot before continuing'"
+  tas:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "211"
+      note: "A boxed warning: 'Avoid the TAS instruction. The 68000 test-and-set instruction (TAS) should never be used in the Amiga; the indivisible read-modify-write cycle that is used only in this instruction will not fit into a DMA memory access slot'"
 ---
-
-
-## Overview
 
 Agnus was the Amiga's traffic controller. Every memory access—from the 68000, the Blitter, the display hardware, audio playback—flowed through Agnus. It allocated time slots fairly, ensuring smooth graphics and audio while letting the CPU work during the gaps.
 
@@ -23,6 +40,88 @@ Agnus was the Amiga's traffic controller. Every memory access—from the 68000, 
 - **Versions:** 8361 (NTSC), 8367 (PAL), 8370/8372 (Fat Agnus), 8375 (Super Agnus).
 - **Chip RAM:** 512KB (original), 1MB (Fat), 2MB (Super/ECS).
 - **DMA channels:** 25 independent channels for different purposes.
+
+## The priority ladder
+
+The entry says Agnus allocated slots "fairly". The manual is more specific, and
+less fair: there is a strict ranking, and the processor is at the bottom of it.
+
+| Priority | Device |
+|---|---|
+| Highest | disk, audio, display and sprite DMA |
+| | the [Copper](/vault/hardware/copper) |
+| | the [blitter](/vault/hardware/blitter) |
+| **Lowest** | **the 68000** |
+
+Commodore explains each placement. The four DMA channels come first "because
+missed DMA cycles can cause lost data, noise in the sound output, or on-screen
+interruptions". The Copper follows "because it has to perform its operations at
+the same time during each display frame to remain synchronized with the display
+beam". And at the bottom:
+
+> The lowest priorities are assigned to the blitter and the 68000, in that order.
+> The blitter is given the higher priority because it performs data copying,
+> modifying, and line drawing operations much faster than the 68000.
+
+The processor is last because it is the slowest thing in the machine at the jobs
+that matter. That is the Amiga's design thesis stated as a scheduling rule.
+
+One line stops this being merely hierarchical: "If a device does not request one
+of its allocated time slots, the slot is open for other uses." Slots are reserved
+but not wasted, which is what lets a narrow display leave room for everything
+else.
+
+## 227.5 cycles, and where they go
+
+A horizontal line is "about 63 microseconds", holding "227.5 'color clocks', or
+memory access cycles", each around 280 nanoseconds. Before any picture is drawn,
+a fixed tithe comes off the top:
+
+| Cycles | Purpose |
+|---:|---|
+| 4 | memory refresh |
+| 3 | disk DMA |
+| 4 | audio DMA (2 bytes per channel) |
+| 16 | sprite DMA |
+
+Then the display takes what it needs, and a wide deep display takes nearly
+everything: four hires bitplanes come to "40 * 4 = 160 time slots", which
+"effectively locks out the 68000 (as well as the blitter or Copper) from any
+memory access during the display".
+
+## Why the 68000 does not notice
+
+The remarkable part is that this is invisible most of the time, and deliberately
+so:
+
+> The 68000 uses only the even-numbered memory access cycles. The 68000 spends
+> about half of a complete processor instruction time doing internal operations
+> and the other half accessing memory. Therefore, the allocation of alternate
+> memory cycles to the 68000 makes it appear to the 68000 that it has the memory
+> all of the time, and it will run at full speed.
+
+The processor is not being starved; it is being *interleaved*. Its own duty cycle
+— half thinking, half fetching — is matched to a bus that hands it every other
+slot. The contention only becomes visible when an instruction "does not match
+perfectly with the allocation of even cycles", or when the display grows large
+enough to take the odd slots as well.
+
+## The instruction the Amiga cannot run
+
+The clearest evidence of how deep this goes is a warning in a box:
+
+> Avoid the TAS instruction. The 68000 test-and-set instruction (TAS) should
+> never be used in the Amiga; the indivisible read-modify-write cycle that is
+> used only in this instruction will not fit into a DMA memory access slot.
+
+`TAS` is a normal 68000 instruction, present on every other machine using the
+chip. On the Amiga it is unusable — not because of an operating system rule or a
+software convention, but because the bus schedule has no room for an access that
+refuses to be interrupted.
+
+Every other system in this Vault negotiates between processor and display for
+memory. The Amiga is the one where the negotiation reaches back into the
+processor's instruction set and removes an entry.
 
 ## DMA slot allocation
 

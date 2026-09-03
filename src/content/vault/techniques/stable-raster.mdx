@@ -8,13 +8,38 @@ category: "techniques"
 platforms: ["commodore-64"]
 tags: ["c64", "vic-ii", "raster", "interrupts", "timing", "demo-scene"]
 emerged: 1986
+
+sources:
+  where_the_jitter_comes_from:
+    - title: "Codebase64, 'STABLE RASTER ROUTINE'"
+      kind: technical-doc
+      page: "base:stable_raster_routine"
+      note: "The arithmetic, exactly as the routine's own comments give it: 'A Raster Compare IRQ is triggered on cycle 0 on the current $d012 line. The MPU needs to finish it's current OP code before starting the Interrupt Handler, meaning a 0 -> 7 cycles delay depending on OP code. Then a 7 cycle delay is spendt invoking the Interrupt Handler (Push SR/PC to stack++). Then 13 cycles for storing registers (pha, txa, pha, tya, pha). CYCLECOUNT: [20 -> 27] cycles after Raster IRQ occurred'"
+  the_double_irq:
+    - title: "Codebase64, 'STABLE RASTER ROUTINE'"
+      kind: technical-doc
+      page: "base:stable_raster_routine"
+      note: "'A Raster Stabbing routine using the double IRQ principle. Insert this code after you have pushed your registers onto the stack inside your IRQ code. The routine doesen't care what the actual $d012 value is so it is flexible.' After the NOP slide: 'At this point the next Raster Compare IRQ has triggered and the jitter is max 1 cycle'"
+  what_breaks_it:
+    - title: "Codebase64, 'STABLE RASTER ROUTINE'"
+      kind: technical-doc
+      page: "base:stable_raster_routine"
+      note: "The routine states its own preconditions bluntly: 'Other Interrupts, $d012 = #$ff, Sprites, Badline and Badline-1 = fuckup.' It also notes 'If you have the KERNAL banked in, you need to modify the IRQ-Vectors'"
+  it_is_region_specific:
+    - title: "Codebase64, 'STABLE RASTER ROUTINE'; 'Shortest Stable Raster code (PAL/NTSC)'"
+      kind: technical-doc
+      page: "base:stable_raster_routine; base:shortest_stable_raster"
+      note: "The NOP slide has to be retuned per region - 'Add one extra nop for 65 cycle NTSC machines' - and the delay loop is given three ways: 'PAL-63 // NTSC-64 // NTSC-65', with ldx #$08 for the first two and ldx #$09 for the third. A separate page gives 'The polling method, half variance technique, in its shortest form. PAL/NTSC', where the NTSC change is a single byte: 'for NTSC, change this to $ea'"
+  it_is_a_prerequisite_not_a_flourish:
+    - title: "Codebase64, 'Introduction to raster IRQs'"
+      kind: technical-doc
+      page: "base:introduction_to_raster_irqs"
+      note: "'The CPU will finish its current instruction before doing so, and as instructions take a different time to complete, and interrupt condition happens within a certain 'random' timeframe. This will introduce a variable amount of delay in jumping to the interrupt handler code. This is the source of all timing problems. To make the interrupt handler code to be always in synch with the horizontal screen refresh, the so called \"stable raster\" approaches are used'"
 ---
 
-## Overview
+**Stable raster** is the Commodore 64 technique for achieving cycle-exact synchronisation with the VIC-II's raster beam. The jitter is not a bus-contention effect: it is that the CPU finishes whatever instruction it is executing before it takes the interrupt, and instructions are different lengths. That costs 0-7 cycles, and everything after it is fixed overhead — 7 cycles to enter the handler, 13 to push the registers, so the effect code starts somewhere in a 20-to-27-cycle window. The stable raster technique eliminates this jitter, enabling perfectly timed mid-screen effects.
 
-**Stable raster** is the Commodore 64 technique for achieving cycle-exact synchronisation with the VIC-II's raster beam. Because the CPU and VIC-II share the bus, interrupt timing has inherent jitter (0-7 cycles). The stable raster technique eliminates this jitter, enabling perfectly timed mid-screen effects.
-
-## Fast Facts
+## Fast facts
 
 | Aspect | Detail |
 |--------|--------|
@@ -87,7 +112,7 @@ second_irq:
 
 The standard idiom is "first IRQ enables nested IRQ, NOP slide gives the second IRQ a known entry point, then a CMP+BEQ trick eliminates the last cycle of jitter." This is the backbone of every cycle-exact C64 effect.
 
-## Why It Works
+## Why it works
 
 | Mechanism | Effect |
 |-----------|--------|
@@ -107,16 +132,26 @@ The standard idiom is "first IRQ enables nested IRQ, NOP slide gives the second 
 | **FLI (Flexible Line Interpretation)** | Per-line `$D018` change combined with forced badlines — yields 8 colours per 8×8 cell |
 | **Tech-tech** | Per-line `$D016` XSCROLL change so text undulates in a sine wave |
 
-## Historical Development
+## What breaks it
 
-| Era | Advancement |
-|-----|-------------|
-| 1986 | Basic double-IRQ discovered |
-| 1987 | Refined techniques |
-| 1990s | Demo scene mastery — Crest's *Wonderland* series, Censor Design's productions |
-| Today | Still essential for C64 effects; modern toolchains (KickAssembler, Acme) treat stable raster as a standard preamble |
+The reference routine states its own preconditions without softening them:
 
-Crest's *Wonderland XII* (1996) is the canonical reference demo for stable raster — every effect in it relies on cycle-exact raster timing.
+> Other Interrupts, `$d012` = `#$ff`, Sprites, Badline and Badline-1 = fuckup.
+
+Sprites and badlines both steal cycles from the CPU, so a stable raster established
+outside them stops being stable inside them. The KERNAL is a further complication:
+"if you have the KERNAL banked in, you need to modify the IRQ-Vectors."
+
+## It is region-specific
+
+The NOP slide is tuned to the line length, so it does not survive the PAL/NTSC
+boundary. Codebase64's routine carries three variants — `PAL-63`, `NTSC-64`,
+`NTSC-65` — differing by a single loop count, and a note to "add one extra nop for
+65 cycle NTSC machines". The shortest known form, "the polling method, half variance
+technique", makes the same switch in one byte.
+
+This is the reason so much C64 demo code is PAL-only. It is not a preference; the
+timing does not carry.
 
 ## Performance Cost
 
@@ -126,7 +161,7 @@ Crest's *Wonderland XII* (1996) is the canonical reference demo for stable raste
 | **Code space** | NOP slides, handler code |
 | **Complexity** | Requires deep understanding |
 
-## Modern Relevance
+## Modern relevance
 
 Understanding stable raster teaches:
 - Interrupt handling fundamentals
@@ -134,7 +169,7 @@ Understanding stable raster teaches:
 - Hardware synchronisation
 - Why modern GPUs use VSync
 
-## See Also
+## See also
 
 - [VIC-II](/vault/hardware/vic-ii)
 - [Raster Tricks](/vault/techniques/raster-tricks)

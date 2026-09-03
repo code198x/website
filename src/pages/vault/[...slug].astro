@@ -43,6 +43,50 @@ const platformNames = Object.fromEntries(
   platforms.map(p => [p.data.shortName.toLowerCase(), p.data.shortName])
 );
 
+// Titles for every Vault entry, so a `sources[].ref` can be shown as the name of
+// the thing rather than a path.
+const vaultTitles = new Map(
+  (await getCollection('vault')).map((e) => [e.id, e.data.title])
+);
+
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+
+/**
+ * Citations for one frontmatter field, from `sources`.
+ *
+ * Only what IS sourced gets marked. Flagging what is not would put "unverified"
+ * on almost every page — 238 of 239 company entries carry a founding year and
+ * one carries a source for it — and a warning that never varies tells a reader
+ * nothing. Manufacturing doubt is the same failure as manufacturing certainty.
+ * A citation that appears as entries are grounded is a positive signal, and it
+ * hands the reader something to check.
+ */
+function citations(data, fields) {
+  const out = [];
+  for (const f of fields ?? []) {
+    for (const s of data.sources?.[f] ?? []) {
+      const name = (s.ref && vaultTitles.get(s.ref)) || s.title || s.ref;
+      if (!name) continue;
+      // "1985-05" is deliberately a string in the schema: partial dates are not
+      // dates, and treating them as one invents a day.
+      let when = '';
+      if (s.date) {
+        const [y, m] = s.date.split('-');
+        when = m ? `, ${MONTHS[Number(m) - 1] ?? m} ${y}` : `, ${y}`;
+      }
+      const issue = s.issue ? `, issue ${s.issue}` : '';
+      const rest = `${when}${issue}`;
+      // A single source often carries several fields — Companies House gives
+      // both the incorporation and the dissolution — and citing it once per
+      // field prints "Companies House; Companies House".
+      if (out.some((o) => o.name === name && o.rest === rest)) continue;
+      out.push({ href: s.ref ? `/vault/${s.ref}` : null, name, rest });
+    }
+  }
+  return out;
+}
+
 // Category-specific date fields helper
 function getDateDisplay(entry) {
   const cat = entry.data.category;
@@ -60,16 +104,32 @@ function getDateDisplay(entry) {
       break;
     case 'companies':
     case 'groups':
-      if (data.founded || data.dissolved) {
+      if (data.founded || data.ended) {
         const founded = data.founded ?? '?';
-        const dissolved = data.dissolved ? data.dissolved : 'present';
-        return { label: 'Active', value: `${founded}–${dissolved}` };
+        // A missing `ended` is not evidence that a company is still trading.
+        // Rendering the range regardless printed "Active: 1980–present" on
+        // Acornsoft and 169 others, asserting survival for companies that were
+        // wound up decades ago — the same confusion `ended` replaced `dissolved`
+        // to fix, running the other way.
+        //
+        // So absence and null are read as the different things they are:
+        //   ended: 1988   an established ending      "Active 1980–1988"
+        //   ended: null   established as still going "Active 1979–present"
+        //   (absent)      not established            "Founded 1980"
+        if (data.ended === undefined) {
+          return { label: 'Founded', value: String(founded), fields: ['founded'] };
+        }
+        const ended = data.ended ? data.ended : 'present';
+        // How it ended, where we know: "1984–1988 (acquired)" rather than a
+        // bare range that reads as a death for a company that was bought.
+        const how = data.ended && data.ended_as ? ` (${data.ended_as})` : '';
+        return { label: 'Active', value: `${founded}–${ended}${how}`, fields: ['founded', 'ended'] };
       }
       break;
     case 'games':
     case 'demos':
       if (data.released) {
-        return { label: 'Released', value: String(data.released) };
+        return { label: 'Released', value: String(data.released), fields: ['released'] };
       }
       break;
     case 'techniques':
@@ -95,10 +155,10 @@ function getDateDisplay(entry) {
       }
       break;
     case 'magazines':
-      if (data.founded || data.dissolved) {
+      if (data.founded || data.ended) {
         const founded = data.founded ?? '?';
-        const dissolved = data.dissolved ? data.dissolved : 'present';
-        return { label: 'Published', value: `${founded}–${dissolved}` };
+        const ended = data.ended ? data.ended : 'present';
+        return { label: 'Published', value: `${founded}–${ended}`, fields: ['founded', 'ended'] };
       }
       break;
     case 'books':
@@ -147,6 +207,7 @@ function getDateDisplay(entry) {
 }
 
 const dateDisplay = getDateDisplay(entry);
+const dateCitations = citations(entry.data, dateDisplay?.fields);
 const hasTags = (entry.data.platforms?.length > 0) || (entry.data.tags?.length > 0) || dateDisplay;
 
 // Build custom breadcrumbs with proper title
@@ -230,6 +291,16 @@ const breadcrumbs = [
               <div class="sidebar-detail">
                 <span class="detail-label">{dateDisplay.label}</span>
                 <span class="detail-value">{dateDisplay.value}</span>
+                {dateCitations.length > 0 && (
+                  <cite class="detail-source">
+                    {dateCitations.map((c, i) => (
+                      <>
+                        {i > 0 && '; '}
+                        {c.href ? <a href={c.href}>{c.name}</a> : c.name}{c.rest}
+                      </>
+                    ))}
+                  </cite>
+                )}
               </div>
             )}
             {entry.data.platforms?.length > 0 && (
@@ -349,11 +420,14 @@ const breadcrumbs = [
     }
 
     .title {
-      font-family: var(--font-family-script);
+      font-family: var(--font-family-read);
       font-weight: 700;
       font-size: clamp(3.2rem, 8vw, 5.25rem);
       margin: var(--space-2) 0 0;
       line-height: 0.82;
+      /* Reserve the descender the tight line-height does not: Literata's ink
+         drops ~0.33em past the box, which collided with the strapline. */
+      padding-bottom: 0.25em;
       color: var(--color-text);
     }
 
@@ -508,32 +582,12 @@ const breadcrumbs = [
       max-width: 62ch;
     }
 
-    .content :global(> p:first-of-type)::first-letter {
-      font-family: var(--font-family-script);
-      font-weight: 700;
-      font-size: 4.5rem;
-      line-height: 0.66;
-      float: left;
-      color: var(--color-house-2);
-      margin: 8px 18px 4px 2px;
-    }
-
     .content :global(h2) {
       font-weight: 800;
       font-size: 1.3rem;
       margin-top: var(--space-8);
       margin-bottom: var(--space-3);
       color: var(--color-text);
-    }
-
-    .content :global(h2)::before {
-      content: "";
-      display: inline-block;
-      width: 20px;
-      height: 3px;
-      background: var(--color-house-2);
-      vertical-align: middle;
-      margin: -4px 11px 0 0;
     }
 
     .content :global(h3) {
@@ -554,7 +608,7 @@ const breadcrumbs = [
     }
 
     .content :global(blockquote) {
-      font-family: var(--font-family-script);
+      font-family: var(--font-family-read);
       font-weight: 600;
       font-size: 1.9rem;
       line-height: 1.12;
@@ -634,6 +688,28 @@ const breadcrumbs = [
     }
 
     /* Sidebar */
+    .detail-source {
+      flex-basis: 100%;
+      text-align: right;
+      margin-top: 0.15rem;
+      font-size: 0.72rem;
+      font-style: normal;
+      line-height: 1.35;
+      color: var(--color-text-muted, #8a8a8a);
+    }
+
+    .detail-source a {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      text-decoration-thickness: 1px;
+    }
+
+    .detail-source a:hover,
+    .detail-source a:focus-visible {
+      color: var(--color-text, inherit);
+    }
+
     .vault-sidebar {
       display: none;
     }
@@ -678,6 +754,10 @@ const breadcrumbs = [
 
     .sidebar-detail {
       display: flex;
+      /* Wraps so a citation can take a full-width line of its own beneath the
+         value it supports, instead of becoming a third item competing for the
+         row with space-between. */
+      flex-wrap: wrap;
       justify-content: space-between;
       font-size: 0.875rem;
       margin-bottom: var(--space-2);

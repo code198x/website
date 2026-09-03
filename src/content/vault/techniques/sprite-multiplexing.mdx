@@ -9,10 +9,49 @@ platforms: ['commodore-64', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['graphics', 'raster', 'advanced']
 originated: 1980
 
+sources:
+  the_information_did_not_exist:
+    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing', mirrored on Codebase64 as 'Rant 3'"
+      kind: technical-doc
+      page: "base:sprite_multiplexing"
+      note: "Why the article exists: 'Sprite multiplexing in its full extent (as seen in games like Green Beret or Ghosts'n Goblins, which allow free usage of over 8 sprites anywhere on the screen, any colors and frames) is a subject seldom discussed in magazines and such. Often they just discuss re-using the sprites or the \"zone split\" technique... I tried to search the net for information but basically came up with nothing, except some programmer diaries, for example Andrew Braybrook's Morpheus diary, which was referring to some of the issues involved quite cryptically. What I had to do was to start reverse-engineering the sprite sorting/multiplexing routines of games like Green Beret, Midnight Resistance etc.'"
+  the_zone_split_worked_example:
+    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
+      kind: technical-doc
+      page: "base:sprite_multiplexing"
+      note: "A named game dissected sprite by sprite: in Turrican's first boss fight there is 'the player character composed of 3 sprites (2 multicolors sprites and a singlecolor white sprite Y-expanded on top of that) and the \"fist\", composed of 5 sprites per row and 4 rows (20 sprites total)'. A raster interrupt before each row rewrites Y-coordinates, frames and colours for sprites 4-8; 'X-coordinates do not change between rows so they can be set beforehand'"
+  the_timing_rule:
+    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
+      kind: technical-doc
+      page: "base:sprite_multiplexing"
+      note: "'The most important hardware feature to take into account: The Y-coordinate for a sprite must have been set before the raster line reaches that Y-position, or the re-used sprite won't display at all!' But it is not tight: 'The Y-coordinate can actually be set well beforehand, right after the previous sprite row has started displaying (modifying the Y-coord in the middle of a sprite display won't \"cut\" it or anything). In fact, more trouble will come from the frames and colors. It will take at least one rasterline to rewrite the frame & color registers'"
+  the_21_pixel_rule:
+    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
+      kind: technical-doc
+      page: "base:sprite_multiplexing"
+      note: "The test for refusing a sprite that would be the ninth on a row, stated exactly: 'if (spry[next_sprite] - sortspry[sorted_sprites - 8] < 21) then reject()' - 'if the difference is less than 21 pixels then the sprite would be too close and couldn't be displayed by the hardware'. The first eight sprites need no test"
+  ocean_sorting_is_named_after_a_publisher:
+    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
+      kind: technical-doc
+      page: "base:sprite_multiplexing"
+      note: "'Named this way because it can be found from many Ocean/Imagine games, like Green Beret or Midnight Resistance. A similar algorithm is also in Dragon Breed.' What makes it different: 'It uses an order-array that is not resetted each time, therefore each sorting operation is a continuation of the previous and if not much changes have happened (sprites not moving past each other in Y-direction much) it will be very fast... However, there's the possibility that on some frame it'll eat a lot of time, when there's a lot of changes in the sprite order'"
+  the_sorts_were_benchmarked:
+    - title: "Falco Paul, 'On sprite sorting methods' (derived from 'Rant 14'), on Codebase64"
+      kind: technical-doc
+      page: "base:sprite_multiplexer_sorting"
+      note: "A test framework run over random Y values 'a million times', alternating extremes, reverse order and 'a typical gaming pattern'. Its conclusions: 'The Ocean sort performs very fast for typical ingame patterns'; 'The Ocean sort performs lousy (bubbesort like) for pure random patterns, and extremly bad for extreme values'; 'The bucket sort performs pretty stable most of the time... only 18% slower than the Ocean sort in the Java version'"
+  where_the_flicker_really_comes_from:
+    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
+      kind: technical-doc
+      page: "base:sprite_multiplexing"
+      note: "Not overlap but a missed interrupt: flicker and slowdown are 'caused by the new raster interrupt being higher or at same position than the current $d012 value'. The guard is to compare against $d012 and jump straight into the next handler if late - 'sta $d012 / sec / sbc #$03 / cmp $d012 ;Late from next IRQ? / bcc go_to_irq_directly'. On the margin: '3 lines feel like paranoidically much \"safety\" for the interrupt but in fact I got flicker in some rare cases if I was subtracting less'"
+  how_to_find_it_in_someone_elses_game:
+    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
+      kind: technical-doc
+      page: "base:sprite_multiplexing"
+      note: "The article closes by teaching the reverse-engineering method it was built on: 'When you look at the indexed accesses made in the sprite display interrupt code, you'll usually notice one memory access whose result doesn't go into any sprite I/O register, but is used as an index... This is likely the sprite order array, and by looking for memory references to it you'll find the sortroutine.' And: 'Remember, when you get your multiplexer running, stress-test it with abnormal amounts of sprites'"
+
 ---
-
-
-## Overview
 
 The VIC-II has 8 sprites. The NES has 64 sprites but only 8 per scanline. The Amiga has 8 sprites. Yet games routinely displayed dozens of moving objects. The trick: reposition sprites after the raster beam has drawn them, allowing the same hardware sprite to appear multiple times per frame.
 
@@ -69,10 +108,43 @@ sorted_indices:         ; Y-sorted order
 
 ### Sorting requirement
 
-Sprites must be Y-sorted because:
-- The raster moves top to bottom
-- A sprite can only be reused after it's been drawn
-- Out-of-order sprites cause flicker or missing objects
+Sprites must be Y-sorted because the raster moves top to bottom and a sprite can only
+be reused after it has been drawn. Two hardware facts set the constraints:
+
+- **The Y-coordinate must be written before the beam reaches it**, or the reused sprite
+  does not appear at all. This is less tight than it sounds — writing Y mid-display
+  "won't 'cut' it or anything", so the value can be set as soon as the previous row
+  starts drawing. Frames and colours are the harder problem: rewriting those registers
+  takes at least a raster line.
+- **Sprites less than 21 pixels apart cannot share a physical sprite.** Cadaver gives
+  the rejection test exactly: `if (spry[next_sprite] - sortspry[sorted_sprites - 8] <
+  21) then reject()`. The first eight sprites need no test, because there is nothing
+  yet to collide with.
+
+### Which sort
+
+The sort is the multiplexer's real cost, and the scene benchmarked the options rather
+than arguing about them. The one that carries a name carries a publisher's:
+
+> **"Ocean" sorting.** Named this way because it can be found from many Ocean/Imagine
+> games, like Green Beret or Midnight Resistance. A similar algorithm is also in Dragon
+> Breed.
+
+It keeps the order array between frames instead of resetting it, so a frame where
+little has moved costs almost nothing — at the price of an occasional frame that costs
+a great deal.
+
+Falco Paul later built a test framework and ran the candidates over a million random
+frames plus deliberately hostile patterns:
+
+| Pattern | Ocean sort | Bucket sort |
+|---|---|---|
+| Typical in-game | "performs very fast" | 18% slower than Ocean |
+| Pure random | "performs lousy (bubbesort like)" | "pretty stable most of the time" |
+| Extreme values | "extremly bad" | stable |
+
+Which is the case for choosing by measurement: the fast sort is fast only on the input
+that games produce.
 
 ## NES sprite considerations
 
@@ -133,20 +205,45 @@ No CPU interrupts needed — the Copper handles repositioning. The Copper can al
 
 ## Games that used multiplexing
 
-| Game | Platform | Virtual sprites |
-|------|----------|-----------------|
-| Commando | C64 | 20+ enemies |
-| Armalyte | C64 | Massive bullet counts |
-| Katakis | C64 | Horizontal shooter |
-| R-Type | Various | Dozens of bullets |
+These are the C64 games named in Cadaver's article, which reverse-engineered them
+because no published account existed:
+
+| Game | What it shows |
+|---|---|
+| *Turrican* | Zone split, dissected sprite by sprite: 3 sprites for the player, 20 for the first boss in 4 rows of 5 |
+| *Green Beret* (Ocean) | The "Ocean" sort, and one of two games named for "free usage of over 8 sprites anywhere on the screen" |
+| *Midnight Resistance* (Ocean) | The "Ocean" sort |
+| *Dragon Breed* | "A similar algorithm" |
+| *Ghosts'n Goblins* | Full multiplexing, "any colors and frames" |
+
+Andrew Braybrook's published *Morpheus* development diary was the only prior written
+source Cadaver could find, and it "was referring to some of the issues involved quite
+cryptically."
 
 ## Flicker management
 
-When multiplexing can't avoid overlap:
+On the C64 the usual cause of flicker is not overlap but a missed interrupt — "the new
+raster interrupt being higher or at same position than the current `$d012` value." The
+fix is to check before returning, and to jump straight into the next handler if you are
+already late:
 
-1. **Alternate visibility:** swap which sprites are hidden each frame
-2. **Priority rotation:** give different sprites priority each frame
-3. **Design:** place enemies at staggered Y positions
+```asm
+    sta $d012
+    sec
+    sbc #$03
+    cmp $d012        ; Late from next IRQ?
+    bcc go_to_irq_directly
+```
+
+Three lines of margin is empirical, not theoretical: "3 lines feel like paranoidically
+much 'safety' for the interrupt but in fact I got flicker in some rare cases if I was
+subtracting less."
+
+Two design measures help before any of that: do not display sprites outside the visible
+screen, and keep sprites clear of the last couple of lines above a score panel.
+
+For platforms without a raster interrupt to miss, the mitigations are different — see
+[sprite flicker](/vault/techniques/sprite-flicker).
 
 ## See also
 

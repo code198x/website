@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert';
 import { inflateSync, crc32 } from 'node:zlib';
 import { encodePng } from './png.ts';

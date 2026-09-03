@@ -8,21 +8,116 @@ category: "hardware"
 platforms: ['commodore-amiga', 'atari-st', 'sega-mega-drive', 'neo-geo']
 tags: ['cpu', 'processors', 'motorola', '16-bit']
 introduced: 1979
-
+sources:
+  move_from_sr:
+    - title: "M68000 Family Programmer's Reference Manual, Motorola (1992)"
+      kind: technical-doc
+      page: "229, 471"
+      note: "The same instruction is documented twice, in two different sections. p.229, under Integer Instructions: 'MOVE from SR — Move from the Status Register (MC68000, MC68008). Operation: SR → Destination', with no privilege test. p.471, under Supervisor (Privileged) Instructions: 'MOVE from SR — Move from the Status Register (MC68EC000, MC68010, MC68020, MC68030, MC68040, CPU32). Operation: If Supervisor State Then SR → Destination Else TRAP'. Appendix A carries the same split as a footnote: 'This instruction is not privileged for the MC68000 and MC68008'"
+  stack_pointers:
+    - title: "M68000 Family Programmer's Reference Manual, Motorola (1992)"
+      kind: technical-doc
+      page: "21, 75, 475"
+      note: "p.21: 'In the supervisor programming model register, A7 refers to the interrupt stack pointer, A7 (ISP) and the master stack pointer, A7 (MSP).' p.75 lists the nomenclature — ISP, MSP, SP (active), SSP, USP. p.475: 'MOVE USP — Move User Stack Pointer ... Operation: If Supervisor State Then USP → An or An → USP Else TRAP', a privileged instruction whose purpose is to reach the stack pointer the current mode is not using"
+  family:
+    - title: "M68000 Family Programmer's Reference Manual, Motorola (1992)"
+      kind: technical-doc
+      page: "12"
+      note: "Motorola's own descriptions of the parts, which name the difference: 'MC68000 — 16-/32-Bit Microprocessor'; 'MC68008 — 16-Bit Microprocessor with 8-Bit Data Bus'; 'MC68010 — 16-/32-Bit Virtual Memory Microprocessor'; 'MC68020 — 32-Bit Virtual Memory Microprocessor'; 'MC68851 — Paged Memory Management Unit'"
+  exception_frames:
+    - title: "M68000 Family Programmer's Reference Manual, Motorola (1992)"
+      kind: technical-doc
+      page: "629, 630, 633"
+      note: "p.630: 'MC68000 Bus or Address Error Exception Stack Frame' — a four-word frame, Format $0, holding the status register, program counter and vector offset. p.633: 'MC68010 Bus and Address Error Stack Frame, Format $8' adds, after the vector offset, an 'INSTRUCTION ADDRESS' and 'INTERNAL REGISTERS 4 WORDS'. p.629 lists the vector assignments, including '3 00C Address Error'"
 ---
-
-
-## Overview
 
 The Motorola 68000 (1979) was revolutionary: a 32-bit internal architecture with 16-bit external data bus. Its clean, orthogonal instruction set and generous registers made it a programmer's dream. Where 8-bit CPUs required clever hacks, the 68000 let you write elegant code.
 
 ## Fast facts
 
-- **Clock speed:** 7.09 MHz (Amiga), 7.67 MHz (Mega Drive), 8 MHz (Atari ST).
+- **Clock speed:** 7.09 MHz (Amiga), 7.67 MHz (Mega Drive), 8 MHz ([Atari ST](/vault/systems/atari-st)).
 - **Data bus:** 16-bit external, 32-bit internal.
 - **Address bus:** 24-bit (16MB addressable).
 - **Registers:** eight 32-bit data (D0-D7), eight 32-bit address (A0-A7).
 - **Instruction set:** orthogonal—most instructions work with most registers and modes.
+
+## A7 is two registers wearing one name
+
+The register list gives eight address registers, A0–A7, and that count is
+slightly false. `A7` is the stack pointer, and which physical register it means
+depends on what mode the processor is in — the supervisor model has its own,
+which is why Motorola's nomenclature has to distinguish `USP`, `SSP`, `ISP` and
+`MSP` where the programming model shows one name.
+
+The consequence is an instruction that exists only to reach the register you are
+not currently using:
+
+> MOVE USP — Move User Stack Pointer ... Operation: **If Supervisor State Then**
+> USP → An or An → USP **Else TRAP**
+
+An operating system needs the user stack pointer in order to set a process up, and
+cannot address it directly, so Motorola provided a privileged instruction to fetch
+it across the boundary.
+
+## The 68000's privilege model was incomplete
+
+The clearest evidence sits in the manual's own structure. `MOVE from SR` — read
+the status register — is documented **twice, in two different sections**.
+
+Under *Integer Instructions*, on page 229:
+
+> MOVE from SR — Move from the Status Register **(MC68000, MC68008)**
+> Operation: SR → Destination
+
+Under *Supervisor (Privileged) Instructions*, on page 471:
+
+> MOVE from SR — Move from the Status Register **(MC68EC000, MC68010, MC68020,
+> MC68030, MC68040, CPU32)**
+> Operation: **If Supervisor State Then** SR → Destination **Else TRAP**
+
+Same mnemonic, same operation, opposite privilege — split by which processor is
+executing it. On a 68000, user code can read the status register freely. On a
+68010 the identical instruction traps.
+
+That is not a documentation quirk but a deliberate correction: a program running
+in user mode should not be able to see the supervisor's flags, and on the first
+68000 it could. Motorola fixed it in the next part, which means any user-mode code
+that had read `SR` on a 68000 stops working the moment it meets a later chip.
+
+## Named for what the 68000 could not do
+
+Motorola's list of the family describes each part in a few words, and the wording
+does the arguing:
+
+| Part | Motorola's description |
+|---|---|
+| MC68000 | "16-/32-Bit Microprocessor" |
+| MC68010 | "16-/32-Bit **Virtual Memory** Microprocessor" |
+| MC68020 | "32-Bit **Virtual Memory** Microprocessor" |
+| MC68851 | "**Paged Memory Management Unit**" |
+
+The 68010 is not described as faster or wider. It is described by a capability the
+68000 is not described as having, and the visible difference in this manual is the
+shape of an exception stack frame.
+
+When a 68000 takes a bus or address error it pushes a four-word frame: status
+register, program counter, vector offset. The 68010's frame for the same
+exception, Format `$8`, adds an instruction address and "**INTERNAL REGISTERS 4
+WORDS**".
+
+The 68000 saves what happened. The 68010 also saves where the processor had got
+to inside the instruction — which is the difference between an exception you can
+report and an exception you can recover from and continue. (That the internal
+state is what makes demand paging possible is the standard reading and follows
+naturally from the two frames, but Motorola states the frames and the part
+descriptions rather than drawing the line between them.)
+
+There is a related limit already recorded elsewhere in this Vault: the Amiga's
+hardware manual warns that `TAS` "should never be used in the Amiga" because its
+indivisible read-modify-write "will not fit into a DMA memory access slot". The
+68000's atomic instruction and the 68000's exception handling are both places
+where the chip's model of an uninterruptible operation ran into what the systems
+around it actually needed.
 
 ## Register architecture
 

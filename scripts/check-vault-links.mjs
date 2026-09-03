@@ -99,6 +99,94 @@ for (const f of files(SRC, SCANNED)) {
   }
 }
 
+// --- frontmatter entity references -----------------------------------------
+//
+// `sources[].ref`, `name_reused_by[].ref` and `continued_as[].ref` name a Vault
+// entry as `category/slug`. They are relationships, so they have to resolve for
+// the same reason a prose link does — and they are easier to get wrong, because
+// nothing renders them yet.
+//
+// This is the failure the schema already warns about for `ai_generated` and
+// `reviewed`: frontmatter absent from any check is frontmatter that can claim
+// anything. A ref pointing at a deleted or renamed entry would sit there
+// indefinitely, and the dedup passes of the last week renamed a dozen entries.
+
+const REF = /^\s*(?:-\s*)?ref:\s*["']?([a-z0-9\-]+\/[a-z0-9\-]+)["']?\s*$/gm;
+const badRefs = new Map();
+
+for (const f of files(VAULT, /\.mdx$/)) {
+  const text = readFileSync(f, 'utf8');
+  const end = text.indexOf('\n---', 3);
+  if (!text.startsWith('---') || end === -1) continue;
+  const fm = text.slice(3, end);
+  for (const m of fm.matchAll(REF)) {
+    checked++;
+    if (!resolves(`/vault/${m[1]}`)) {
+      const where = relative(ROOT, f);
+      if (!badRefs.has(m[1])) badRefs.set(m[1], new Set());
+      badRefs.get(m[1]).add(where);
+    }
+  }
+}
+
+if (badRefs.size) {
+  const plural = badRefs.size === 1 ? 'reference that does' : 'references that do';
+  console.error(`\nVault frontmatter: ${badRefs.size} entity ${plural} not exist.\n`);
+  for (const [ref, where] of [...badRefs].sort()) {
+    console.error(`  \u00b7 ${ref}`);
+    for (const w of [...where].sort()) console.error(`      ${w}`);
+  }
+  console.error(
+    `\n  A ref names a Vault entry as category/slug. Fix by repointing it, or —\n` +
+    `  where the successor has no entry and may never need one — use \`name:\`\n` +
+    `  instead, which is free text and deliberately unchecked.\n`
+  );
+  process.exit(1);
+}
+
+// --- heading casing consistency ---------------------------------------------
+//
+// One heading, one spelling. Before this ran, `See also` and `See Also` both
+// existed (1165 against 249), `Fast facts` and `Fast Facts` (1055 against 230),
+// and 147 more headings carried two casings between them — 3,767 instances.
+//
+// ⚠ This checks CONSISTENCY, not style, and the distinction is deliberate. A
+// blanket "sentence case" rule cannot be automated here: 1,492 headings contain
+// proper nouns, and lowercasing them produces "Manchester united Europe, in
+// greek", "Warren spector's impact" and "Building electronic arts". Machines
+// cannot tell a game title from a common noun, so the rule enforced is the one
+// a machine can settle — that the Vault does not spell the same heading two
+// ways.
+
+const headings = new Map(); // lowercased → Map(exact → [files])
+
+for (const f of files(VAULT, /\.mdx$/)) {
+  const rel = relative(ROOT, f);
+  for (const line of readFileSync(f, 'utf8').split('\n')) {
+    if (!line.startsWith('## ')) continue;
+    const exact = line.slice(3).trim();
+    const key = exact.toLowerCase();
+    if (!headings.has(key)) headings.set(key, new Map());
+    const variants = headings.get(key);
+    if (!variants.has(exact)) variants.set(exact, []);
+    variants.get(exact).push(rel);
+  }
+}
+
+const clashes = [...headings.values()].filter((v) => v.size > 1);
+
+if (clashes.length) {
+  console.error(`\nVault headings: ${clashes.length} spelled more than one way.\n`);
+  for (const v of clashes.slice(0, 20)) {
+    const sorted = [...v].sort((a, b) => b[1].length - a[1].length);
+    console.error(`  \u00b7 ${sorted.map(([h, fs]) => `"${h}" (${fs.length})`).join('  vs  ')}`);
+    console.error(`      e.g. ${sorted[sorted.length - 1][1][0]}`);
+  }
+  if (clashes.length > 20) console.error(`  ... and ${clashes.length - 20} more`);
+  console.error(`\n  Pick one spelling. Sentence case unless the words are proper nouns.\n`);
+  process.exit(1);
+}
+
 // --- report ----------------------------------------------------------------
 
 if (dead.size) {

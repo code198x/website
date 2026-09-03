@@ -8,11 +8,31 @@ category: "hardware"
 platforms: ['nintendo-entertainment-system']
 tags: ['mapper', 'nes', 'nintendo', 'enhancement']
 introduced: 1986
-
+sources:
+  naming:
+    - title: "MMC programming specification, Nintendo (November 1986)"
+      kind: technical-doc
+      page: "1"
+      note: "⚠ Japanese, and the OCR of the katakana is damaged. Page 1 heads the part 'MMC (マル チ デメ定 リ コシットロ ー ラ )' — mangled, but recognisably マルチメモリコントローラ, Multi Memory Controller"
+    - title: "MMC3 programming specification, Nintendo (15 December 1987)"
+      kind: technical-doc
+      page: "11"
+      note: "The cleaner corroboration, because this one renders the expansion in Latin script: '( Multi-Memory Controller 3 )'. Taken together the two specifications settle what the abbreviation meant when the parts were designed"
+    - title: "NESdev Wiki, mapper documentation"
+      kind: database
+      page: "§2"
+      note: "⚠ Community reference, cited by segment. The English-language uncertainty stated from the other side: MMC 'may have originally stood for \"Multi Memory Controller\", at least according to Japanese'"
+  serial:
+    - title: "NESdev Wiki, MMC1"
+      kind: database
+      page: "§12"
+      note: "'Unlike almost all other mappers, the MMC1 is configured through a serial port in order to reduce its pin count. CPU $8000-$FFFF is connected to a common shift register. Writing a value with bit 7 set ($80 through $FF) to any address in $8000-$FFFF clears the shift register to its initial state. To change a register's value, the CPU writes five times with bit 7 clear and one bit of the desired value in bit 0 (starting with the low bit of the value) ... On the fifth write, the MMC1 copies bit 0 and the shift register contents into an internal register selected by bits 14 and 13 of the address, and then it clears the shift register. Only on the fifth write does the address matter, and even then, only bits 14 and 13 of the address matter because the mapper doesn't see the lower address bits'"
+  banks:
+    - title: "NESdev Wiki, MMC1"
+      kind: database
+      page: "§12"
+      note: "'CPU $6000-$7FFF: 8 KB PRG-RAM bank, (optional); CPU $8000-$BFFF: 16 KB PRG-ROM bank, either switchable or fixed to the first bank; CPU $C000-$FFFF: 16 KB PRG-ROM bank, either fixed to the last bank or switchable; PPU $0000-$0FFF: 4 KB switchable CHR bank; PPU $1000-$1FFF: 4 KB switchable CHR bank'"
 ---
-
-
-## Overview
 
 The MMC1 was the first of Nintendo's Multi Memory Controllers and the most widely used mapper on the NES. It gave cartridges bank-switched program and character ROM, software-controlled mirroring, and 8 KB of optionally battery-backed RAM — the combination that made *The Legend of Zelda* and *Metroid* possible on cartridge, saves included.
 
@@ -20,16 +40,46 @@ Nintendo's own documents never call it "MMC1". They call the part **the MMC**, e
 
 That settles a small, long-standing uncertainty. English-language documentation has generally read MMC as *Memory Management Controller*, following how Nintendo described the chips to players in the West, while noting that it **may** have originally meant *Multi* Memory Controller "at least according to Japanese". The Japanese specification spells it out on page one, in 1986: **Multi Memory Controller**. Both names are real — one is what the parts were called when they were designed, the other what they were called when they were explained.
 
+## Configured one bit at a time
+
+The MMC1's defining behaviour is not its banking but how a program talks to it,
+and the reason is a cost decision:
+
+> Unlike almost all other mappers, the MMC1 is configured through a serial port
+> in order to reduce its pin count.
+
+The whole of `$8000-$FFFF` is wired to a single shift register. To set any
+internal register the CPU writes **five times**, each write carrying one bit of
+the value in bit 0, least significant bit first. On the fifth write the mapper
+assembles the five bits and files them into one of four internal registers —
+chosen not by the data but by "bits 14 and 13 of the address", the only address
+lines the chip is connected to.
+
+Two consequences follow, and both shaped how NES games are written.
+
+**A write with bit 7 set resets the sequence.** Any value from `$80` to `$FF`
+anywhere in that range "clears the shift register to its initial state", which is
+how a program recovers if it loses track of where it is in the five.
+
+**An interrupt in the middle of the five is a hazard.** A sequence half-completed
+leaves the mapper holding a partial value, and an interrupt handler that touches
+`$8000-$FFFF` will corrupt it. This is why MMC1 code disables interrupts around
+bank switches, and why an emulator that gets the shift-register state wrong
+produces games that run and then quietly swap the wrong bank.
+
+Five pins' worth of hardware saved, paid for in software discipline for the life
+of the platform.
+
 ## Fast facts
 
-- **Manufacturer:** Nintendo.
+- **Manufacturer:** [Nintendo](/vault/companies/nintendo).
 - **iNES mapper number:** 1 (board family SxROM, including SNROM, SKROM and SLROM).
 - **Programming specification:** dated November 1986, revised March 1987.
 - **PRG ROM:** up to 256 KB, in 16 KB or 32 KB banks.
 - **CHR ROM/RAM:** up to 128 KB, in 4 KB or 8 KB banks.
 - **PRG-RAM:** 8 KB at $6000-$7FFF, battery-backable.
 - **No IRQ.** Unlike the later [MMC3](/vault/hardware/mmc3), MMC1 has no scanline counter — mid-frame effects need sprite-zero hits or cycle counting.
-- **Notable games:** *The Legend of Zelda*, *Metroid*, *Castlevania II: Simon's Quest*, and several hundred others.
+- **Notable games:** *[The Legend of Zelda](/vault/games/legend-of-zelda)*, *[Metroid](/vault/games/metroid)*, *Castlevania II: Simon's Quest*, and several hundred others.
 
 ## Writing to it: one bit at a time
 
