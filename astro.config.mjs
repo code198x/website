@@ -19,6 +19,9 @@ export default defineConfig({
   // decisions/modules-not-games.md.
   redirects: {
     ...legacySystemRedirects(),
+    // Renamed 2026-09-03: the nav said "START HERE" while the page and its URL
+    // said "Who this is for". The nav was the better of the two.
+    '/who-this-is-for': '/start-here',
     // Deluxe Paint was filed under both games/ and tools/. It is a tool.
     '/vault/games/deluxe-paint': '/vault/tools/deluxe-paint',
     // Vault duplicate merges: one entry per subject, old slugs preserved as
