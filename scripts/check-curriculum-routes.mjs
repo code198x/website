@@ -17,6 +17,7 @@ import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { load } from 'js-yaml';
 import {
+  derivedRequires,
   findCycle,
   forwardReferences,
   unresolvedReferences,
@@ -35,8 +36,8 @@ const scopes = globSync('**/*.yaml', { cwd: ROOT }).sort().map((rel) => {
 const errors = [];
 const warnings = [];
 
-for (const { from, ref } of unresolvedReferences(scopes)) {
-  errors.push(`${from} requires ${ref}, which nothing defines`);
+for (const { from, ref, field } of unresolvedReferences(scopes)) {
+  errors.push(`${from} ${field} ${ref}, which nothing defines`);
 }
 
 const cycle = findCycle(scopes);
@@ -104,7 +105,9 @@ const edges = scopes.reduce(
 console.log(`\nCurriculum routes: ${scopes.length} catalogues, ${edges} declared edges.`);
 if (deepest.length) console.log(`  longest route: ${deepest.length} steps, to ${deepest.at}`);
 for (const scope of scopes) {
-  const entries = scope.modules.filter((m) => !(m.requires?.length));
+  const entries = scope.modules.filter(
+    (m) => derivedRequires(scope, m).length + (m.requires?.length ?? 0) === 0,
+  );
   const threads = [...threadVocabulary(scope).keys()];
   console.log(
     `  · ${scope.id} — ${scope.modules.length} modules, ${entries.length} entry points` +
