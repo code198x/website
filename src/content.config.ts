@@ -473,6 +473,9 @@ const modules = defineCollection({
       number: z.number(),
       slug: z.string(),
       name: z.string(),
+      // What sort of module: a buildable game, a teaching module (the Primer),
+      // or an interval. A game can be taught by several modules (revisits) —
+      // `game` ties them together, `pass` orders them. See decisions/modules-not-games.md
       kind: z.enum(['game', 'teaching', 'interval']).default('game'),
       game: z.string().optional(),
       pass: z.number().optional(),
