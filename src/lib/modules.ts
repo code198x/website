@@ -13,7 +13,7 @@ export type ModuleWithCounts = Omit<Module, 'units' | 'unitsAvailable'> & {
 /**
  * Get games for a specific platform and track combination
  */
-export async function getModules(platform: string, track: 'assembly' | 'basic' | 'amos' | 'blitz'): Promise<Module[]> {
+export async function getModules(platform: string, track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine'): Promise<Module[]> {
   const allGames = await getCollection("modules");
   const entry = allGames.find(g => g.data.platform === platform && g.data.track === track);
   return entry?.data.modules ?? [];
@@ -24,7 +24,7 @@ export async function getModules(platform: string, track: 'assembly' | 'basic' |
  */
 export async function getModulesWithCounts(
   platform: string,
-  track: 'assembly' | 'basic' | 'amos' | 'blitz'
+  track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine'
 ): Promise<ModuleWithCounts[]> {
   const games = await getModules(platform, track);
 
@@ -52,7 +52,7 @@ export const getModulesWithAvailability = getModulesWithCounts;
 /**
  * Get the full games entry (includes platform and track metadata)
  */
-export async function getModulesEntry(platform: string, track: 'assembly' | 'basic' | 'amos' | 'blitz'): Promise<ModulesEntry | undefined> {
+export async function getModulesEntry(platform: string, track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine'): Promise<ModulesEntry | undefined> {
   const allGames = await getCollection("modules");
   return allGames.find(g => g.data.platform === platform && g.data.track === track);
 }
@@ -102,7 +102,7 @@ export async function getCompleteModulesForPlatform(platform: string): Promise<n
  */
 export async function getTrackStatCards(
   platform: string,
-  track: 'assembly' | 'basic' | 'amos' | 'blitz'
+  track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine'
 ): Promise<Array<{ value: string; label: string }>> {
   const mods = await getModulesWithCounts(platform, track);
   const complete = mods.filter(m => m.status === 'complete');
