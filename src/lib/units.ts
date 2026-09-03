@@ -9,7 +9,7 @@ export type Unit = UnitsEntry['data']['units'][number];
  */
 export async function getUnitsEntry(
   platform: string,
-  track: 'assembly' | 'basic' | 'amos' | 'blitz',
+  track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine',
   moduleSlug: string
 ): Promise<UnitsEntry | undefined> {
   const allUnits = await getCollection('units');
@@ -25,7 +25,7 @@ export async function getUnitsEntry(
  */
 export async function getUnits(
   platform: string,
-  track: 'assembly' | 'basic' | 'amos' | 'blitz',
+  track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine',
   moduleSlug: string
 ): Promise<Unit[]> {
   const entry = await getUnitsEntry(platform, track, moduleSlug);
@@ -37,7 +37,7 @@ export async function getUnits(
  */
 export async function getPhases(
   platform: string,
-  track: 'assembly' | 'basic' | 'amos' | 'blitz',
+  track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine',
   moduleSlug: string
 ): Promise<Phase[]> {
   const entry = await getUnitsEntry(platform, track, moduleSlug);
@@ -49,7 +49,7 @@ export async function getPhases(
  */
 export async function getTotalUnitsCount(
   platform: string,
-  track: 'assembly' | 'basic' | 'amos' | 'blitz',
+  track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine',
   moduleSlug: string
 ): Promise<number> {
   const units = await getUnits(platform, track, moduleSlug);
@@ -61,7 +61,7 @@ export async function getTotalUnitsCount(
  */
 export async function getUnitsAvailableCount(
   platform: string,
-  track: 'assembly' | 'basic' | 'amos' | 'blitz',
+  track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine',
   moduleSlug: string
 ): Promise<number> {
   const units = await getUnits(platform, track, moduleSlug);
@@ -73,7 +73,7 @@ export async function getUnitsAvailableCount(
  */
 export async function getUnit(
   platform: string,
-  track: 'assembly' | 'basic' | 'amos' | 'blitz',
+  track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine',
   moduleSlug: string,
   unitNumber: number
 ): Promise<Unit | undefined> {
@@ -93,7 +93,7 @@ export async function getAllUnitsEntries(): Promise<UnitsEntry[]> {
  */
 export async function hasUnitsEntry(
   platform: string,
-  track: 'assembly' | 'basic' | 'amos' | 'blitz',
+  track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine',
   moduleSlug: string
 ): Promise<boolean> {
   const entry = await getUnitsEntry(platform, track, moduleSlug);

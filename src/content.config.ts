@@ -453,7 +453,7 @@ const modules = defineCollection({
   loader: glob({ pattern: '**/*.yaml', base: 'src/content/modules' }),
   schema: z.object({
     platform: z.string(), // e.g., commodore-64, sinclair-zx-spectrum
-    track: z.enum(['assembly', 'basic', 'amos', 'blitz']),
+    track: z.enum(['assembly', 'basic', 'amos', 'blitz', 'machine']),
     modules: z.array(z.object({
       number: z.number(),
       slug: z.string(),
@@ -478,7 +478,7 @@ const units = defineCollection({
   loader: glob({ pattern: '**/*.yaml', base: 'src/content/units' }),
   schema: z.object({
     platform: z.string(),
-    track: z.enum(['assembly', 'basic', 'amos', 'blitz']),
+    track: z.enum(['assembly', 'basic', 'amos', 'blitz', 'machine']),
     moduleSlug: z.string(),
     phases: z.array(z.object({
       name: z.string(),
