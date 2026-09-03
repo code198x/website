@@ -60,36 +60,18 @@ const {
 </figure>
 
 <script>
-  import init, { Spectrum } from '@emu198x/zx-spectrum';
+  import { SpectrumRunner } from '../lib/spectrum-runner';
 
   /** Systems this player can run. Anything else is a content error. */
   const SUPPORTED = new Set(['sinclair-zx-spectrum']);
 
-  /**
-   * Frames to wait for the boot prompt before giving up on a tape.
-   *
-   * A cold 48K reaches it in under a hundred; the +2A and +3 take longer to
-   * draw their loader menu. Generous because the cost of being wrong is a
-   * lesson that never loads, and the cost of waiting is nothing when the
-   * machine gets there sooner.
-   */
-  const BOOT_FRAMES = 400;
-
-  /** One wasm instantiation for the page, however many players are on it. */
-  let ready: Promise<unknown> | null = null;
-  const started = () => (ready ??= init());
-
   class Emu198xPlayer extends HTMLElement {
-    #spectrum: Spectrum | null = null;
+    #runner: SpectrumRunner | null = null;
     #canvas!: HTMLCanvasElement;
     #poster: HTMLImageElement | null = null;
     #status!: HTMLParagraphElement;
-    #frame = 0;
-    #last = 0;
     /** Only run while on screen: a lesson page may hold several of these. */
     #observer: IntersectionObserver | null = null;
-    #visible = false;
-    #wanted = false;
 
     connectedCallback() {
       const system = this.dataset.system ?? '';
@@ -101,8 +83,8 @@ const {
       }
 
       this.#observer = new IntersectionObserver((entries) => {
-        this.#visible = entries.some((entry) => entry.isIntersecting);
-        this.#sync();
+        const visible = entries.some((entry) => entry.isIntersecting);
+        if (this.#runner) this.#runner.visible = visible;
       });
       this.#observer.observe(this);
 
@@ -110,7 +92,7 @@ const {
     }
 
     disconnectedCallback() {
-      this.#stop();
+      this.#runner?.stop();
       this.#observer?.disconnect();
     }
 
@@ -152,10 +134,10 @@ const {
         run.type = 'button';
         run.textContent = 'Run';
         run.addEventListener('click', () => {
-          this.#wanted = !this.#wanted;
-          run.textContent = this.#wanted ? 'Stop' : 'Run';
-          if (this.#wanted) void this.#start();
-          else this.#sync();
+          const wanted = !(this.#runner?.wanted ?? false);
+          run.textContent = wanted ? 'Stop' : 'Run';
+          if (wanted) void this.#start();
+          else if (this.#runner) this.#runner.wanted = false;
         });
 
         bar.append(run, this.#status);
@@ -164,14 +146,6 @@ const {
         this.append(this.#status);
       }
 
-      // Keys go to the machine only while the screen has focus, so a reader
-      // scrolling the page with the arrow keys does not drive the Spectrum.
-      this.#canvas.addEventListener('keydown', (event) => {
-        if (this.#spectrum?.keyDown(event.code)) event.preventDefault();
-      });
-      this.#canvas.addEventListener('keyup', (event) => {
-        if (this.#spectrum?.keyUp(event.code)) event.preventDefault();
-      });
     }
 
     #fail(message: string) {
@@ -180,27 +154,25 @@ const {
     }
 
     async #start() {
-      this.#wanted = true;
-      if (this.#spectrum) {
-        this.#sync();
+      if (this.#runner) {
+        this.#runner.wanted = true;
         return;
       }
       try {
         this.#status.textContent = 'Loading…';
-        await started();
         // The ROM is in the package: nothing is fetched for it.
-        this.#spectrum = await Spectrum.createBundled(this.#canvas);
+        this.#runner = await SpectrumRunner.create(this.#canvas, (message) =>
+          this.#fail(message),
+        );
 
         const src = this.dataset.src;
-        if (src) {
-          this.#status.textContent = 'Loading…';
-          await this.#load(src);
-        }
+        if (src) await this.#load(src);
 
         this.#poster?.remove();
         this.#canvas.hidden = false;
         this.#status.textContent = 'Running';
-        this.#sync();
+        this.#runner.visible = true;
+        this.#runner.wanted = true;
       } catch (error) {
         this.#fail(`Could not start the emulator: ${error}`);
       }
@@ -213,54 +185,14 @@ const {
       const extension = src.split('.').pop()?.toLowerCase() ?? '';
 
       if (extension === 'sna' || extension === 'z80') {
-        this.#spectrum!.loadSnapshot(bytes, extension);
+        this.#runner!.load(bytes, 'snapshot', extension);
       } else if (extension === 'tap' || extension === 'tzx') {
-        this.#spectrum!.load('tape-1', 'tape', bytes);
-        // Mounting a tape is not loading it. The machine has to boot, be told
-        // LOAD "", and have the transport started — which the emulator does
-        // through the real ROM rather than by patching it, so the firmware
-        // initialises the machine on the way. That is the whole reason a
-        // lesson uses a tape instead of a snapshot: afterwards the program
-        // can call ROM routines.
-        //
-        // Synchronous, and it runs frames. The boot wait is under a hundred
-        // of them, so this is tens of milliseconds, not a stall worth moving
-        // off the main thread.
-        this.#spectrum!.autoload(BOOT_FRAMES);
+        this.#runner!.load(bytes, 'tape');
       } else {
         throw new Error(`unsupported program "${extension}"`);
       }
     }
 
-    /** Runs only when the reader wants it and can see it. */
-    #sync() {
-      const shouldRun = this.#wanted && this.#visible && this.#spectrum !== null;
-      if (shouldRun && this.#frame === 0) {
-        this.#last = performance.now();
-        this.#frame = requestAnimationFrame(this.#tick);
-      } else if (!shouldRun) {
-        this.#stop();
-      }
-    }
-
-    #stop() {
-      if (this.#frame !== 0) cancelAnimationFrame(this.#frame);
-      this.#frame = 0;
-    }
-
-    // Elapsed real time, not one frame per callback: the Spectrum runs at
-    // 50.08 Hz and the display usually does not.
-    #tick = (now: number) => {
-      try {
-        this.#spectrum?.tick(now - this.#last);
-      } catch (error) {
-        this.#fail(`The machine stopped: ${error}`);
-        this.#stop();
-        return;
-      }
-      this.#last = now;
-      this.#frame = requestAnimationFrame(this.#tick);
-    };
   }
 
   if (!customElements.get('emu198x-player')) {

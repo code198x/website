@@ -1,0 +1,290 @@
+---
+/**
+ * The write → assemble → run loop, in the page.
+ *
+ * Sits *after* a unit's build instructions, never instead of them: the local
+ * toolchain is what the unit teaches, and this is a second way to try it. See
+ * Code198x docs/decisions/lessons-assemble-in-the-page.md.
+ *
+ * The assembler is the same one the lesson tells the reader to install —
+ * @asm198x/z80, producing the bytes `asm198x --tapbas` produces — so this is
+ * the toolchain rather than a simulation of it. It is fetched on the first
+ * assemble, not on page load, so a reader who never touches it pays nothing.
+ *
+ * Usage:
+ *   <AssembleAndRun
+ *     system="sinclair-zx-spectrum"
+ *     src="sinclair-zx-spectrum/assembly/meet-the-machine/unit-01/border.asm"
+ *   />
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+
+interface Props {
+  system: string;
+  /** Path to the starting source, relative to the code-samples root. */
+  src: string;
+  /** Assembler dialect the course's sources are written in. */
+  dialect?: string;
+  /** Rows of source shown before the editor scrolls. */
+  rows?: number;
+}
+
+const { system, src, dialect = 'pasmonext', rows = 16 } = Astro.props;
+
+const codeSamplesPath =
+  process.env.CODE_SAMPLES_PATH || path.resolve(process.cwd(), '../code-samples');
+
+let source: string;
+try {
+  source = fs.readFileSync(path.join(codeSamplesPath, src), 'utf-8');
+} catch {
+  source = `; Could not load ${src}\n`;
+  console.error(`AssembleAndRun: could not read "${src}" under ${codeSamplesPath}`);
+}
+
+// The tape's block header carries this, the way pasmo puts the output path
+// there. It is what the machine prints while loading, so a reader sees a name
+// they recognise rather than a path from someone else's disk.
+const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
+---
+
+<div class="sandbox" data-system={system} data-dialect={dialect} data-tape-name={tapeName}>
+  <div class="sandbox-editor">
+    <label class="sandbox-label" for={`src-${tapeName}`}>Your source</label>
+    <textarea
+      id={`src-${tapeName}`}
+      class="sandbox-source"
+      rows={rows}
+      spellcheck="false"
+      autocomplete="off"
+      autocapitalize="off"
+      wrap="off">{source}</textarea>
+  </div>
+
+  <div class="sandbox-machine">
+    <canvas class="sandbox-screen" width="352" height="296" tabindex="0" aria-label="ZX Spectrum screen"></canvas>
+    <div class="sandbox-controls">
+      <button type="button" class="sandbox-run">Assemble and run</button>
+      <button type="button" class="sandbox-revert" title="Put the original source back">Revert</button>
+      <p class="sandbox-status" role="status">Edit the source, then assemble.</p>
+    </div>
+    <pre class="sandbox-errors" hidden></pre>
+  </div>
+</div>
+
+<script>
+  import { SpectrumRunner } from '../lib/spectrum-runner';
+
+  /** Loaded on the first assemble, never on page load. */
+  let assembler: Promise<typeof import('@asm198x/z80')> | null = null;
+  const loadAssembler = () =>
+    (assembler ??= import('@asm198x/z80').then(async (module) => {
+      await module.default();
+      return module;
+    }));
+
+  for (const root of document.querySelectorAll<HTMLElement>('.sandbox')) {
+    const source = root.querySelector<HTMLTextAreaElement>('.sandbox-source')!;
+    const canvas = root.querySelector<HTMLCanvasElement>('.sandbox-screen')!;
+    const runButton = root.querySelector<HTMLButtonElement>('.sandbox-run')!;
+    const revert = root.querySelector<HTMLButtonElement>('.sandbox-revert')!;
+    const status = root.querySelector<HTMLParagraphElement>('.sandbox-status')!;
+    const errors = root.querySelector<HTMLPreElement>('.sandbox-errors')!;
+
+    const dialect = root.dataset.dialect ?? 'pasmonext';
+    const tapeName = root.dataset.tapeName ?? 'program.tap';
+    const original = source.value;
+
+    let runner: SpectrumRunner | null = null;
+
+    const say = (message: string, state?: string) => {
+      status.textContent = message;
+      if (state) status.dataset.state = state;
+      else delete status.dataset.state;
+    };
+
+    const showErrors = (text: string | null) => {
+      errors.hidden = text === null;
+      errors.textContent = text ?? '';
+    };
+
+    // Only run while on screen: a page may hold several of these, and a
+    // machine nobody can see should not be burning a core.
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.some((entry) => entry.isIntersecting);
+      if (runner) runner.visible = visible;
+    });
+    observer.observe(root);
+
+    async function assembleAndRun() {
+      runButton.disabled = true;
+      showErrors(null);
+      try {
+        say('Assembling…');
+        const asm = await loadAssembler();
+        const text = source.value;
+
+        const bytes = asm.tape(dialect, text, tapeName, 'tap');
+        if (!bytes) {
+          // `tape` returns null and leaves `assemble` to say why, so there is
+          // one place to look for diagnostics rather than two.
+          showErrors(asm.assemble(dialect, text) ?? 'The source did not assemble.');
+          say("That didn't assemble.", 'error');
+          return;
+        }
+
+        // A fresh machine every time. The Spectrum has no reset in this API,
+        // and re-loading a tape into a machine that is already running the last
+        // program would be loading into a running program — which is also how
+        // a reader gets themselves out of having hung it. Disposed rather than
+        // stopped, so the old one's memory goes with it.
+        runner?.dispose();
+        say('Loading…');
+        runner = await SpectrumRunner.create(canvas, (message) => say(message, 'error'));
+        runner.load(bytes, 'tape');
+        runner.visible = true;
+        runner.wanted = true;
+
+        say(`Running — ${bytes.length} bytes on tape.`);
+        canvas.focus({ preventScroll: true });
+      } catch (error) {
+        say(`Could not run it: ${error}`, 'error');
+      } finally {
+        runButton.disabled = false;
+      }
+    }
+
+    runButton.addEventListener('click', () => void assembleAndRun());
+    revert.addEventListener('click', () => {
+      source.value = original;
+      showErrors(null);
+      say('Original source restored.');
+    });
+  }
+</script>
+
+<style>
+  .sandbox {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  @media (min-width: 60rem) {
+    .sandbox {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+    }
+  }
+
+  .sandbox-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .sandbox-label {
+    font-family: var(--font-family-mono, monospace);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary, #555);
+  }
+
+  .sandbox-source {
+    font-family: var(--font-family-mono, monospace);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    tab-size: 4;
+    padding: 0.75rem;
+    color: var(--color-code-text, #d4d4d4);
+    background: var(--color-code-bg, #1e1e1e);
+    border: 1px solid var(--color-border, #444);
+    border-radius: 3px;
+    resize: vertical;
+    overflow: auto;
+    min-width: 0;
+  }
+
+  .sandbox-source:focus-visible {
+    outline: 2px solid var(--color-primary, #e0744a);
+    outline-offset: 1px;
+  }
+
+  .sandbox-machine {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .sandbox-screen {
+    display: block;
+    width: 352px;
+    max-width: 100%;
+    height: auto;
+    /* The machine's pixels are the point; do not let the browser blur them. */
+    image-rendering: pixelated;
+    background: #000;
+    border: 1px solid var(--color-border, #444);
+  }
+
+  .sandbox-screen:focus-visible {
+    outline: 2px solid var(--color-primary, #e0744a);
+    outline-offset: 2px;
+  }
+
+  .sandbox-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .sandbox-controls button {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+    color: var(--color-text, #eee);
+    background: var(--color-surface, #242019);
+    border: 1px solid var(--color-border, #444);
+    border-radius: 3px;
+  }
+
+  .sandbox-controls button:hover:not(:disabled) {
+    border-color: var(--color-primary, #e0744a);
+  }
+
+  .sandbox-controls button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .sandbox-status {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary, #555);
+  }
+
+  .sandbox-status[data-state='error'] {
+    color: var(--color-error, #c33);
+  }
+
+  .sandbox-errors {
+    margin: 0;
+    padding: 0.6rem 0.75rem;
+    font-family: var(--font-family-mono, monospace);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: pre;
+    overflow-x: auto;
+    color: var(--color-error, #c33);
+    background: var(--color-error-muted, rgba(200, 50, 50, 0.08));
+    border: 1px solid var(--color-error, #c33);
+    border-radius: 3px;
+  }
+</style>
