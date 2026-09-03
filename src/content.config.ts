@@ -447,13 +447,28 @@ const vaultCategories = defineCollection({
   }),
 });
 
-// Games catalogue - curriculum games organised by platform and track
-// Note: units and unitsAvailable are computed from the units collection
+// A dependency edge. A bare string is a structural reference with no thread —
+// used by the seam edges between sections and tracks. The object form carries
+// the thread it belongs to and why it is needed, and is what a game-to-game
+// edge uses. See docs/decisions/curriculum-routes.md
+const routeRef = z.union([
+  z.string(),
+  z.object({
+    module: z.string(),
+    thread: z.string().optional(),
+    why: z.string().optional(),
+  }),
+]);
+
+// Curriculum catalogue: either a platform track (platform + track) or a
+// cross-platform section (section). Never both — a section has no language
+// track, and its content sits one level shallower on disk.
 const modules = defineCollection({
   loader: glob({ pattern: '**/*.yaml', base: 'src/content/modules' }),
   schema: z.object({
-    platform: z.string(), // e.g., commodore-64, sinclair-zx-spectrum
-    track: z.enum(['assembly', 'basic', 'amos', 'blitz', 'machine']),
+    platform: z.string().optional(),
+    track: z.enum(['assembly', 'basic', 'amos', 'blitz', 'machine']).optional(),
+    section: z.enum(['foundations', 'craft']).optional(),
     modules: z.array(z.object({
       number: z.number(),
       slug: z.string(),
@@ -469,8 +484,15 @@ const modules = defineCollection({
       status: z.enum(['in-progress', 'coming-soon', 'complete']),
       thumbnail: z.string().optional(),
       phase: z.string().optional(),
+      requires: z.array(routeRef).default([]),
+      suggests: z.array(routeRef).default([]),
     })),
-  }),
+  }).refine(
+    (d) => d.section != null
+      ? d.platform == null && d.track == null
+      : d.platform != null && d.track != null,
+    { message: 'A catalogue needs either section, or both platform and track — never both and never neither.' },
+  ),
 });
 
 // Unit details for each game - phases and individual unit information

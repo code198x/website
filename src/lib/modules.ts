@@ -20,6 +20,16 @@ export async function getModules(platform: string, track: 'assembly' | 'basic' |
 }
 
 /**
+ * Modules for a cross-platform section (Foundations, The Craft). A section
+ * catalogue carries `section` instead of `platform` + `track`.
+ */
+export async function getSectionModules(section: 'foundations' | 'craft'): Promise<Module[]> {
+  const all = await getCollection('modules');
+  const entry = all.find((e) => e.data.section === section);
+  return entry?.data.modules ?? [];
+}
+
+/**
  * Get games with computed unit counts (from units collection)
  */
 export async function getModulesWithCounts(
