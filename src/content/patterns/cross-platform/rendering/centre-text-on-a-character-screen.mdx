@@ -1,0 +1,111 @@
+---
+title: "Centre Text on a Character Screen"
+summary: "Measure a terminated string, divide the unused columns in half, and print it without hard-coded coordinates. Includes a compact 6502 implementation."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "beginner"
+tags: ["text", "layout", "character-mode", "6502", "ui"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: []
+  vault: ["character-graphics"]
+---
+
+## Overview
+
+Centred text is a calculation, not a collection of hand-tuned coordinates:
+
+```text
+left column = (screen width - text length) / 2
+```
+
+Integer division naturally puts an odd spare column on the right. That is
+usually the least surprising convention, and using one convention everywhere
+matters more than moving individual messages until they look approximately
+right.
+
+The routine should also define what happens when text is as wide as, or wider
+than, the screen. Starting at column zero is a safe fallback for fixed-width
+displays: it avoids unsigned subtraction wrapping into a position far beyond
+the visible row.
+
+## 6502 implementation
+
+This ca65-compatible version targets a null-terminated string and a character
+screen whose existing `print_string` routine reads `text_ptr` and advances from
+`cursor_x`, `cursor_y`.
+
+```asm
+SCREEN_WIDTH = 22
+
+; Input: text_ptr = address of null-terminated string
+;        A        = destination row
+; Output: string printed; cursor left immediately after it
+; Clobbers: A, Y, text_length
+print_centered:
+        sta cursor_y
+        ldy #0
+
+count:
+        lda (text_ptr),y
+        beq have_length
+        iny
+        cpy #SCREEN_WIDTH
+        bcs full_width
+        bne count
+
+have_length:
+        sty text_length
+        lda #SCREEN_WIDTH
+        sec
+        sbc text_length
+        lsr                     ; divide unused columns by two
+        sta cursor_x
+        jmp print_string
+
+full_width:
+        lda #0
+        sta cursor_x
+        jmp print_string
+```
+
+Example:
+
+```asm
+        lda #<title
+        sta text_ptr
+        lda #>title
+        sta text_ptr+1
+        lda #4                  ; row
+        jsr print_centered
+
+title:
+        .byte "RACHEL", 0
+```
+
+## Why measure at runtime?
+
+Hard-coding `(width - 6) / 2` for `RACHEL` saves a small loop, but silently
+breaks when a writer changes the text. Runtime measurement keeps content and
+layout independent, which is particularly useful for status, lobby and result
+screens that evolve late in a game's development.
+
+On memory-constrained hardware, store a known length beside each string and pass it to
+the centring routine instead. The positioning formula stays the same; only the
+measurement strategy changes.
+
+## Trade-offs
+
+| Aspect | Cost |
+|---|---|
+| CPU | One linear scan before printing |
+| Memory | Roughly 30 bytes on 6502, plus one temporary byte |
+| Limitation | Centres characters, not proportional pixel widths |
+| Failure policy | Full-width and oversized strings begin at column zero |
+
+**Use it for:** titles, prompts, lobby states, errors and result screens.
+
+**Avoid it when:** multiple values must align by a shared column, or the text is
+part of a dense HUD where stable edges are easier to scan than centred labels.
