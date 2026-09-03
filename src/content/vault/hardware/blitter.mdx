@@ -8,7 +8,27 @@ category: "hardware"
 platforms: ['commodore-amiga']
 tags: ['custom-chips', 'graphics', 'dma', 'commodore']
 introduced: 1985
-
+sources:
+  function_generator:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "189, 196"
+      note: "p.189: 'The blitter can combine the data from the three source DMA channels in up to 256 different ways to generate the values stored by the destination DMA channel ... There are eight possible combinations of values of the three bits, for each of which we need to specify the corresponding destination bit as a zero or one. This can be visualized with a standard truth table', the eight answers forming the minterm byte in BLTCON0. p.196 works the standard case: the 'minterm of AC, yielding our classic cookie-cut function of AB+AC, or $CA'"
+  priority:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "237, 293"
+      note: "p.237, DMACON bit 10: 'BLTPRI Blitter priority. Also known as \"blitter-nasty.\" When this is a 1, the blitter has full (instead of partial) priority over the 680x0.' p.293 gives the mechanism: it 'disables /BLS pin, preventing micro from stealing any bus cycles while blitter DMA is' running"
+  timing:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "204"
+      note: "Commodore declines to guarantee blitter timing: 'This Table is only meant to be an illustration of the typical order of blitter cycles on the bus. Bus cycles are dynamically allocated based on blitter operating mode; competing bus activity from processor, bitplanes, and other DMA channels; and other factors. Commodore Amiga does not guarantee the accuracy of or future adherence to this chart.' On pipelining: 'Typical operation involves fetching all sources twice before the first destination becomes available. This is due to internal pipelining. Care must be taken with overlapping source and destination regions'"
+  line_mode:
+    - title: "Amiga Hardware Reference Manual, 3rd edition, Commodore-Amiga"
+      kind: technical-doc
+      page: "204"
+      note: "'The line draw mode is selected by setting bit 0 (LINEMODE) of BLTCON1, which changes the meaning of some other bits in BLTCON0 and BLTCON1. In line draw mode, the blitter can draw lines up to 1024 pixels long, it can draw them in a variety of modes, with a variety of textures, and can even draw them in a special way for simple area fill'"
 ---
 
 The Blitter (block image transferrer) was a DMA engine inside Agnus that performed graphics operations in hardware. It could copy memory, combine multiple sources with logic operations, fill areas, and draw lines—all while the CPU worked on game logic. This division of labour gave the Amiga its characteristic smooth, fast graphics.
@@ -18,7 +38,28 @@ The Blitter (block image transferrer) was a DMA engine inside Agnus that perform
 - **Location:** integrated into Agnus chip.
 - **Sources:** up to 3 inputs (A, B, C) plus 1 output (D).
 - **Operations:** copy, logic combine, area fill, line draw.
-- **Speed:** moves 1 word (16 pixels) per 4 cycles.
+- **Speed:** not a fixed figure — Commodore states bus cycles are "dynamically allocated" and declines to guarantee its own timing chart.
+
+## 256 ways to combine three sources
+
+The blitter's central trick is not copying but combining. Three source channels
+go in, one destination comes out, and what happens between them is chosen from
+every possible answer:
+
+> The blitter can combine the data from the three source DMA channels in up to
+> 256 different ways to generate the values stored by the destination DMA
+> channel.
+
+The 256 is not a designer's list of useful operations. Three source bits have
+eight possible combinations, and for each the programmer says whether the
+destination bit is 0 or 1 — eight yes/no answers, so 2⁸ = 256, and every one of
+them is available. The eight answers are written as a single byte into `BLTCON0`,
+and that byte *is* the operation.
+
+The manual works the standard case: the "classic cookie-cut function of AB+AC",
+which is the byte **`$CA`**. Masked sprite blitting — the thing the Amiga is
+famous for — is not a mode the hardware provides. It is one value out of 256 in a
+control register.
 
 ## Blitter channels
 
@@ -30,6 +71,39 @@ The Blitter (block image transferrer) was a DMA engine inside Agnus that perform
 | D | Destination write |
 
 Not all channels need be active for every operation.
+
+## Blitter nasty
+
+`DMACON` bit 10 carries a name Commodore printed in its own manual:
+
+> BLTPRI Blitter priority. Also known as "blitter-nasty." When this is a 1, the
+> blitter has full (instead of partial) priority over the 680x0.
+
+The register description elsewhere gives the mechanism: setting it "disables /BLS
+pin, preventing micro from stealing any bus cycles while blitter DMA is" running.
+Normally the processor may take slots the blitter is not using. With this bit
+set, it cannot — the blitter holds the bus until it is finished, and the CPU
+stops.
+
+This is the [Amiga's](/vault/systems/commodore-amiga) contention argument in one
+bit. The machine's other components negotiate for memory; the blitter can be told
+to stop negotiating.
+
+## Speed, which Commodore would not promise
+
+The figure usually quoted for blitter throughput is a fixed number of cycles per
+word. The Hardware Reference Manual prints a timing table and then disclaims it:
+
+> Bus cycles are dynamically allocated based on blitter operating mode; competing
+> bus activity from processor, bitplanes, and other DMA channels; and other
+> factors. Commodore Amiga does not guarantee the accuracy of or future adherence
+> to this chart.
+
+A blit's cost depends on how many bitplanes the display is fetching, what else
+holds DMA slots, and which blitter mode is running. There is also a pipeline to
+account for: "typical operation involves fetching all sources twice before the
+first destination becomes available", with the warning that overlapping source
+and destination regions therefore need care.
 
 ## Basic operations
 

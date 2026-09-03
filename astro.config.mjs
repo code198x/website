@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig, fontProviders } from 'astro/config';
+import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import { satteri } from '@astrojs/markdown-satteri';
@@ -86,6 +86,56 @@ export default defineConfig({
     '/sinclair-zx-spectrum/basic/game-07-hi-lo': '/sinclair-zx-spectrum/basic/hi-lo',
     '/sinclair-zx-spectrum/basic/game-08-touchdown': '/sinclair-zx-spectrum/basic/touchdown',
     '/sinclair-zx-spectrum/assembly/game-01-shadowkeep': '/sinclair-zx-spectrum/assembly/shadowkeep',
+    // Machines filed under hardware/ moved to systems/, where whole machines
+    // belong. hardware/ keeps components, peripherals and add-ons. Old slugs
+    // redirect so existing links and bookmarks still resolve.
+    '/vault/hardware/dreamcast': '/vault/systems/dreamcast',
+    '/vault/hardware/naomi': '/vault/systems/naomi',
+    '/vault/hardware/vectrex': '/vault/systems/vectrex',
+    '/vault/hardware/sega-saturn': '/vault/systems/sega-saturn',
+    // playstation-hardware duplicated systems/playstation, which covers the same
+    // silicon better from Sony's own manual. Merged; its sound system survives there.
+    '/vault/hardware/playstation-hardware': '/vault/systems/playstation',
+    // culture/uk-games-industry restated culture/british-game-development at summary
+    // length — same subject, a third the size, with its "Industry evolution" and
+    // "Regional strengths" duplicating that entry's fuller "The transitions" and
+    // "Regional clusters". Merged; its tax-relief material had no counterpart there
+    // and survives as a new section.
+    '/vault/culture/uk-games-industry': '/vault/culture/british-game-development',
+    // culture/experimental-games and genres/art-games were the same subject: both
+    // led on Passage, both ran the "are these really games?" debate, and each cited
+    // the other as an overlap without being able to state a distinction. Merged into
+    // art-games, which was the fuller entry; the tooling, distribution route and
+    // later works came across.
+    '/vault/culture/experimental-games': '/vault/genres/art-games',
+    // Genre articles filed under culture/ moved to genres/, where a form of game
+    // belongs; culture/ keeps subcultures, practices and business models. Three
+    // more went to the category that describes them rather than the one they were
+    // filed in. mmorpg-history and mud-history are retitled MMORPGs and MUDs,
+    // because the entries describe genres rather than narrate histories.
+    '/vault/culture/action-rpg': '/vault/genres/action-rpg',
+    '/vault/culture/tactical-rpg': '/vault/genres/tactical-rpg',
+    '/vault/culture/metroidvania': '/vault/genres/metroidvania',
+    '/vault/culture/god-games': '/vault/genres/god-games',
+    '/vault/culture/tycoon-games': '/vault/genres/tycoon-games',
+    '/vault/culture/survival-games': '/vault/genres/survival-games',
+    '/vault/culture/racing-simulation': '/vault/genres/racing-simulation',
+    '/vault/culture/rail-shooters': '/vault/genres/rail-shooters',
+    '/vault/culture/mmorpg-history': '/vault/genres/mmorpg-history',
+    '/vault/culture/mud-history': '/vault/genres/mud-history',
+    '/vault/culture/split-screen': '/vault/techniques/split-screen',
+    '/vault/culture/episodic-gaming': '/vault/distribution/episodic-gaming',
+    '/vault/culture/bbs-door-games': '/vault/communities/bbs-door-games',
+    // culture/coverdisks and distribution/magazine-cover-disks covered the same
+    // subject. Merged into the distribution entry, which is where cover-tapes
+    // already lives; the 16-bit material and the £800 commissioning rate survive
+    // there.
+    '/vault/culture/coverdisks': '/vault/distribution/magazine-cover-disks',
+    '/vault/hardware/galaksija': '/vault/systems/galaksija',
+    '/vault/hardware/trs-80-color-computer': '/vault/systems/trs-80-color-computer',
+    '/vault/hardware/famiclone': '/vault/systems/famiclone',
+    '/vault/hardware/game-and-watch': '/vault/systems/game-and-watch',
+    '/vault/hardware/nintendo-ds': '/vault/systems/nintendo-ds',
     // /browse retired — the fleet lenses (era/region/maker/tier) cover its live axes;
     // the genre/technique/difficulty scaffolds were never built. Technique's real home
     // is the Pattern Library.
@@ -97,27 +147,6 @@ export default defineConfig({
     '/browse/by-difficulty': '/systems',
     '/browse/by-technique': '/patterns',
   },
-  fonts: [
-    {
-      name: 'Inter',
-      cssVariable: '--font-family-sans',
-      provider: fontProviders.fontsource(),
-      fallbacks: ['system-ui', '-apple-system', 'sans-serif'],
-    },
-    {
-      name: 'JetBrains Mono',
-      cssVariable: '--font-family-mono',
-      provider: fontProviders.fontsource(),
-      fallbacks: ['Courier New', 'monospace'],
-    },
-    {
-      name: 'Caveat',
-      cssVariable: '--font-family-script',
-      provider: fontProviders.fontsource(),
-      weights: [600, 700],
-      fallbacks: ['Bradley Hand', 'cursive'],
-    },
-  ],
   integrations: [mdx(), sitemap()],
   markdown: {
     processor: satteri({

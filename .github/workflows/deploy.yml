@@ -43,6 +43,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Must happen before the deploy replaces it. This is the feed as readers
+      # see it right now; comparing it with the one built below is what makes
+      # "newly live" computable without keeping any state between runs.
+      # Failure is tolerated and handled downstream: the diff script announces
+      # nothing rather than treating an unreadable feed as an empty one.
+      - name: Fetch the currently live feed
+        run: curl -sS --fail --max-time 30 -o old-rss.xml https://code198x.com/rss.xml || true
+        continue-on-error: true
+
       - name: Build unit artefacts
         run: ./scripts/build-artefacts.sh "${{ github.workspace }}/code-samples"
 
@@ -50,6 +59,22 @@ jobs:
         run: npm run build
         env:
           CODE_SAMPLES_PATH: ${{ github.workspace }}/code-samples
+
+      - name: Work out what became newly live
+        run: |
+          python3 scripts/discord-new-items.py \
+            --old old-rss.xml \
+            --new dist/rss.xml \
+            --out new-items.json
+
+      # Carried to the announce job rather than posted here: nothing should be
+      # announced until the deploy it describes has actually succeeded.
+      - name: Upload the newly-live list
+        uses: actions/upload-artifact@v5
+        with:
+          name: new-items
+          path: new-items.json
+          retention-days: 7
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
@@ -66,3 +91,98 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+  # Announce in Discord what this deploy made live.
+  #
+  # Runs only after a successful deploy, so nothing is announced that readers
+  # cannot yet reach. `if: success()` is implicit in `needs`, but the deploy
+  # job is the gate that matters and is named explicitly for that reason.
+  announce:
+    name: Announce new content in Discord
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Download the newly-live list
+        uses: actions/download-artifact@v5
+        with:
+          name: new-items
+
+      - name: Post to Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+          WEBHOOK_ALL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_ALL }}
+        run: |
+          set -euo pipefail
+
+          # Built with `if` rather than `[ -n "$x" ] && arr+=(...)`: under
+          # `set -e` a failing test at the end of a command list exits the step,
+          # so the shorter form would abort whenever a secret is unset.
+          targets=()
+          if [ -n "${WEBHOOK}" ]; then
+            targets+=("$WEBHOOK")
+          fi
+          # Skip an aggregate pointed at the same channel, so a single-channel
+          # setup that fills both secrets does not post twice.
+          if [ -n "${WEBHOOK_ALL}" ] && [ "${WEBHOOK_ALL}" != "${WEBHOOK}" ]; then
+            targets+=("$WEBHOOK_ALL")
+          fi
+
+          if [ ${#targets[@]} -eq 0 ]; then
+            echo "::notice::no Discord webhook secret set — nothing posted."
+            exit 0
+          fi
+
+          count=$(jq 'length' new-items.json)
+          if [ "$count" = "0" ]; then
+            echo "Nothing became newly live in this deploy."
+            exit 0
+          fi
+
+          # Discord takes at most 10 embeds per message. Five messages is a
+          # deliberate ceiling for a catch-up day; anything beyond it is
+          # reported rather than dropped in silence.
+          posted=0
+          failed=0
+          for offset in 0 10 20 30 40; do
+            chunk=$(jq -c --argjson o "$offset" '.[$o:$o+10]' new-items.json)
+            [ "$(jq 'length' <<<"$chunk")" = "0" ] && break
+
+            # jq builds the payload so titles and descriptions containing
+            # quotes, ampersands and newlines are escaped rather than pasted in.
+            # Colour keys the kind, which is already the title's prefix.
+            jq -n --argjson items "$chunk" '{
+              username: "Code198x",
+              embeds: ($items | map({
+                title: (.title | if length > 250 then .[0:250] + "…" else . end),
+                url: ("https://code198x.com" + .link),
+                description: (.description | if length > 600 then .[0:600] + "…" else . end),
+                color: (
+                  if   (.title | startswith("From the Metal:")) then 3447003
+                  elif (.title | startswith("Field Notes:"))    then 10181046
+                  elif (.title | startswith("What'"'"'s New:"))      then 15844367
+                  else 3066993 end
+                )
+              }))
+            }' > payload.json
+
+            for target in "${targets[@]}"; do
+              if ! curl --silent --show-error --fail-with-body \
+                        --retry 3 --retry-delay 5 --retry-all-errors \
+                        -H "Content-Type: application/json" \
+                        -X POST -d @payload.json "$target"; then
+                failed=1
+              fi
+            done
+            posted=$((posted + $(jq 'length' <<<"$chunk")))
+          done
+
+          if [ "$posted" -lt "$count" ]; then
+            echo "::warning::announced ${posted} of ${count} newly live items; the rest were over the message ceiling."
+          fi
+
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::at least one Discord post failed; see the output above."
+            exit 1
+          fi
+
+          echo "Announced ${posted} item(s) to ${#targets[@]} Discord channel(s)."

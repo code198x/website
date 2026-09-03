@@ -3,78 +3,99 @@ ai_generated: true
 reviewed: false
 title: "Attribute-Aware Design"
 subtitle: "Designing for the ZX Spectrum's two-colours-per-cell rule"
-summary: "How Spectrum designers and programmers worked with — and sometimes weaponised — the platform's attribute system: two colours per 8×8 cell, an entire visual language built from how that constraint is honoured, avoided, or embraced."
+summary: "How Spectrum designers and programmers worked with the platform's two-colours-per-cell rule: monochrome rooms, block alignment, colour pushed to the border, transparent printing, masking, and the attribute byte reused as the level map."
 category: "techniques"
 platforms: ['sinclair-zx-spectrum']
 tags: ['graphics', 'design', 'attribute-clash', 'colour']
-originated: 1982
-
+sources:
+  attributes:
+    - title: "ZX Spectrum BASIC Programming (Steven Vickers, Sinclair Research, 1982)"
+      kind: manual
+      note: "Chapter 16: \"since the ink and paper colours cover a whole character position, you cannot possibly have more than two colours in a given block of 64 dots ... The colours, brightness and flash number at a given position are called attributes.\" — \"flashing is done by swapping the ink and paper colours\" — \"8 can be used in all four statements, and means 'transparent' in the sense that the old attribute shows through.\" — \"9 can be used only with PAPER and INK, and means 'contrast'\"."
+  reviewed_on_it:
+    - ref: magazines/crash-magazine
+      kind: magazine
+      issue: "10"
+      date: "1984-11"
+      note: "Avalon: \"Use of colour: borders very colourful, the playing area is quite simple and avoids messy attribute problems\" — Zombie Zombie: \"Introducing colour has made the game look livelier, but has unfortunately introduced some attribute problems along with it - these do not spoil the game however\" and \"Use of colour: quite nicely used, but not the ideal game because of attribute problems\"."
+    - ref: magazines/crash-magazine
+      kind: magazine
+      issue: "19"
+      date: "1985-08"
+      note: "Komplex: \"Use of colour: excellent once you accept the attribute problems\"."
+    - ref: magazines/sinclair-user
+      kind: magazine
+      issue: "92"
+      date: "1989-11"
+      note: "Software Creations on Ghouls 'n' Ghosts: \"The design of the backgrounds is severely limited by the scrolling technique, but the continuous smooth scrolling adds so much to the gameplay that this limitation can be endured.\""
+  attribute_as_data:
+    - ref: magazines/crash-magazine
+      kind: magazine
+      issue: "24"
+      date: "1986-01"
+      note: "Vectron (Insight for Firebird, Mike Follin): \"Using the attribute file to overlay a map of the maze was an inspired idea\"."
+  masking:
+    - ref: magazines/your-sinclair
+      kind: magazine
+      issue: "8"
+      date: "1986-08"
+      note: "Dark Sceptre preview: \"Look at the size of that mask — no attribute problems here. A Mike Singleton game?\""
 ---
 
 import Figure from '@components/Figure.astro';
 
-The ZX Spectrum's video hardware uses a separate **attribute memory** region (`$5800-$5AFF`) where each 8×8 character cell holds a single byte controlling its colour: 3 bits INK (foreground), 3 bits PAPER (background), 1 bit BRIGHT, 1 bit FLASH. Two colours per cell, no more, no fewer. The pixel data at `$4000-$57FF` says *which* pixels are lit; the attribute byte says *what colour* they're rendered as.
+The ZX Spectrum's video hardware keeps a separate **attribute memory** (`$5800-$5AFF`) in which each 8×8 character cell has one byte: 3 bits INK (foreground), 3 bits PAPER (background), 1 bit BRIGHT, 1 bit FLASH. The pixel data at `$4000-$57FF` says *which* pixels are lit; the attribute byte says what colour they are. The manual puts the consequence plainly: "you cannot possibly have more than two colours in a given block of 64 dots."
 
-This sounds restrictive — and it is — but the entire visual identity of the Spectrum platform emerges from how programmers responded to it. **Attribute-aware design** is the umbrella term for the body of techniques developed across the platform's lifetime to either honour the two-colour rule cleanly, work around it strategically, or embrace its consequences (the famous "attribute clash") as part of the aesthetic.
+**Attribute-aware design** is the umbrella term this vault uses for the body of techniques developed across the platform's lifetime to honour the two-colour rule cleanly, work around it, or accept its consequences — the [colour clash](/vault/techniques/colour-clash) entry covers the artefact itself.
 
-## The clash and what it looks like
+## What the renderer decides
 
-When a multi-coloured sprite moves across a multi-coloured background, the result depends on what the renderer does with attribute memory:
+When a sprite moves across a coloured background, what happens depends on what the renderer does with attribute memory:
 
-- **Naive sprite renderer (clash visible):** when the sprite enters a cell, that cell's attribute is overwritten with the sprite's colour. The pixels behind the sprite take on the sprite's colour too. As the sprite moves, it drags a trail of recoloured background cells behind it — *attribute clash*.
-- **Sprite uses background's INK (no clash):** if the sprite's design uses the same INK colour as the background's PAPER, only the bitmap changes. The cell's attribute stays — no clash. The cost: the sprite is the same colour as everywhere else.
-- **Background cells masked off (no clash):** the renderer detects sprite-cell intersection and leaves attributes alone (paying the cost of the sprite being invisible against same-coloured backgrounds).
+- **Attribute rewritten (clash visible):** when the sprite enters a cell, that cell's attribute is overwritten with the sprite's colour. The background pixels in the cell take the sprite's colour too, and the sprite leaves a trail of recoloured cells. Any game that prints through the ROM gets this for free, because the ROM's print routine always writes the attribute.
+- **Sprite uses the cell's INK (no clash):** the sprite's pixels are drawn in whatever ink the cell already has. Only the bitmap changes. The cost: the sprite is the colour of wherever it is standing.
+- **Attribute left alone (no clash):** the renderer never touches attribute memory during play. The scene's colours are laid down once and the bitmap moves underneath them.
 
-For arcade-style games with moving multi-colour sprites, naive renderers were common and clash was visible. Critics in the 1980s reviewed games partly on how badly clash showed; later writers re-examined clash as an aesthetic in its own right.
+*CRASH* reviewed games partly on which of these they had chosen. From late 1984 its comments box carried a "Use of colour" line, and the same issue could praise Avalon because its playing area "avoids messy attribute problems" and note that Zombie Zombie's new colour "has unfortunately introduced some attribute problems along with it".
 
-## Five strategies for working with attributes
+## Five strategies
 
-**1. Monochrome rooms.** Every cell in a given scene has the same INK and PAPER attribute. The sprite can move anywhere; clash is impossible because every cell already has the sprite's colour scheme. *Knight Lore* (Ultimate, 1984) is the canonical example: every isometric room is a single ink colour on black PAPER, with the sprite's pixels rendered in that one colour. The visual cost is reduced colour variety per scene; the gain is uncompromised motion and isometric occlusion.
+**1. Monochrome rooms.** Every cell in a scene has the same INK and PAPER. The sprite can move anywhere; clash is impossible because every cell already has the sprite's colour scheme. *Knight Lore* (Ultimate, 1984) is the canonical example: each isometric room is a single ink on black, and the sprites are drawn in that ink. The cost is colour variety per scene; the gain is uncompromised motion and isometric occlusion.
 
-**2. Block alignment.** Force all moving sprites to occupy whole 8×8 cells. The sprite snaps to the grid; cell attributes change cleanly as the sprite moves cell-by-cell rather than smoothly. The cost is choppy motion, which is why arcade-style games rarely took it; the gain is that clash becomes impossible rather than merely avoided.
+**2. Block alignment.** Force all moving sprites to occupy whole 8×8 cells. The sprite snaps to the grid, and cell attributes change cleanly as it moves cell by cell. The cost is choppy motion, which is why arcade-style games rarely took it; the gain is that clash becomes impossible rather than avoided.
 
-**3. Colour zones.** Divide the screen into regions with consistent attribute schemes. *Manic Miner*'s individual caverns use this: each room is painted in a few specific INK colours against a black PAPER, with sprites designed to match the room's palette. Sprites moving within a zone don't trigger clash; sprites crossing zones do.
-
-*Sabre Wulf* takes the idea to its limit: the entire playfield is black and every colour is pushed out into an impassable border. The player moves smoothly, three pixels per frame and mid-cell most of the time, and never meets a coloured cell to clash with.
+**3. Colour zones.** Put the colour where the sprites are not. Avalon keeps its "borders very colourful" and its playing area "quite simple"; *Sabre Wulf* takes the idea to its limit, with the entire playfield black and every colour pushed out into an impassable border. The player moves smoothly, mid-cell most of the time, and never meets a coloured cell to clash with.
 
 <Figure
   src="/images/vault/techniques/colour-clash/sabre-wulf-black-arena.png"
   alt="A Sabre Wulf screen: a dense border of multicoloured jungle foliage surrounding a completely black central arena, with a small white figure near the middle."
-  frame="spectrum"
   caption="Sabre Wulf (Ultimate Play The Game, 1984, ZX Spectrum). All the colour is in the border, which cannot be entered; the arena the player moves through is black. Captured from the original tape."
 />
 
-**4. Bitmap-only motion (no attribute change).** The sprite renderer changes ONLY the bitmap bytes at `$4000-$57FF`, never the attribute bytes at `$5800-$5AFF`. The sprite "wears" whatever colour the background already had. *Shadowkeep* uses this approach: the hero's INK/PAPER stays whatever the underlying floor was (white floor + black ink). The cost: the sprite cannot have its own colour independent of the cell it's in.
+**4. Bitmap-only motion.** The sprite renderer changes only the bitmap bytes at `$4000-$57FF`, never the attributes. The sprite wears whatever colour the cell already had. Sinclair BASIC has the same idea built in: `INK 8` and `PAPER 8` mean "transparent" — "the old attribute shows through" — so a BASIC program can print over a coloured scene without recolouring it. [Shadowkeep](/sinclair-zx-spectrum/assembly/shadowkeep) uses this approach in machine code: the hero's INK and PAPER stay whatever the floor was.
 
-**5. Embrace the clash.** Use it as the aesthetic. *Skool Daze* (1984) lets clash happen everywhere — the schoolboy's red sprite drags red attributes across the school's green floors, and the visual feels of-the-era. *Way of the Exploding Fist* (1985) does the same. The platform's distinctive look in many games is *the* clash, not its avoidance.
+**5. Masking.** Give the sprite a black surround wide enough to blank the cells it is entering, so no cell ever holds both sprite and scenery. This is the only strategy that keeps both a coloured background and a freely moving sprite, and *Your Sinclair* spotted it on sight in a 1986 preview of Dark Sceptre: "Look at the size of that mask — no attribute problems here." The cost moves to the scenery, which is punched out around the figure.
 
-## The BRIGHT bit's special role
+There is a sixth position, which is not a strategy: accept the clash and ship. Komplex's "Use of colour: excellent once you accept the attribute problems" is the reviewer's version of it, and Software Creations' account of Ghouls 'n' Ghosts is the programmer's — "The design of the backgrounds is severely limited by the scrolling technique, but the continuous smooth scrolling adds so much to the gameplay that this limitation can be endured."
 
-The BRIGHT bit doubles the effective palette without spending more attribute bits: a cell can be PAPER 4 (green) regular, or PAPER 4 + BRIGHT (vivid green). The same colour at two luminances. Designers use this to differentiate sprites from background within the same colour family: a sprite drawn in BRIGHT 1 red on a PAPER 2 (regular red) background pops out, with both cells still using "red" but one being noticeably brighter.
+## The BRIGHT bit
 
-BLACK has no luminance, so BRIGHT 0 BLACK and BRIGHT 1 BLACK are visually identical. This is exploited by some games to ensure that the BORDER and PAPER black aren't broken by the BRIGHT-bit setting of nearby cells.
+BRIGHT doubles the effective palette without spending more attribute bits: a cell can be PAPER 4 (green) or PAPER 4 with BRIGHT (vivid green). The same colour at two luminances, so a sprite in bright red on a normal red background still reads. Black has no luminance, so bright black and normal black are the same colour; that leaves fifteen distinct colours, not sixteen.
 
 ## The FLASH bit
 
-The FLASH bit causes the cell's INK and PAPER to swap about twice a second in hardware. Useful for:
+FLASH is "done by swapping the ink and paper colours" in hardware, with no work from the program: set the bit and the ULA alternates the two. Games use it for hazards, hit-flashes and "press a key" prompts; loading screens use it to draw the eye to a line of text.
 
-- **Warning indicators** (red FLASH = hazard in many games)
-- **Loading screens** (drawing attention to specific text)
-- **Spell effects, hit-flash** (transient FLASH on the player when damaged)
+## The attribute as data
 
-Excessive FLASH is visually exhausting; designers learned to use it sparingly and for genuine emphasis.
-
-## How this affects gameplay code
-
-For games that encode game rules in attribute bytes (the *Atic Atac* lineage, including [Shadowkeep](/sinclair-zx-spectrum/assembly/shadowkeep)), the attribute byte is doing two things at once: visually presenting the cell to the player AND encoding what the cell *means* (wall, floor, door, treasure). A single `LD A, (HL)` reads both — the rendering and the rule are the same byte.
-
-This is the platform's most beautiful design accident. The Spectrum's two-colour limitation, intended to save attribute memory, ended up making the attribute byte rich enough to be the game's data model.
+Because the attribute byte is one byte per cell, it is also a convenient map of the screen. Vectron (Insight for Firebird, 1986) stored its maze in the attribute file — "Using the attribute file to overlay a map of the maze was an inspired idea", *CRASH* said — and [Shadowkeep](/sinclair-zx-spectrum/assembly/shadowkeep) encodes what each cell *means* (wall, floor, door, treasure) in the same byte that colours it. A single `LD A,(HL)` reads both: the rendering and the rule are the same byte.
 
 ## See also
 
 - [Sinclair ZX Spectrum](/vault/systems/zx-spectrum)
 - [ULA](/vault/hardware/ula)
+- [Colour clash](/vault/techniques/colour-clash) — the artefact these strategies answer.
 - [Knight Lore](/vault/games/knight-lore) — monochrome rooms.
-- [Atic Atac](/vault/games/atic-atac) — block-aligned movement.
-- [Manic Miner](/vault/games/manic-miner) — colour zones per cavern.
+- [Sabre Wulf](/vault/games/sabre-wulf) — colour in the border, black arena.
+- [Ghouls 'n' Ghosts](/vault/games/ghouls-n-ghosts) — backgrounds designed around the scroll.
 - [UDG](/vault/techniques/udg) — programmer-supplied 8×8 character cells.

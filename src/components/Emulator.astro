@@ -3,22 +3,30 @@
  * Embeds a running Emu198x emulator in a lesson page.
  *
  * Usage:
- *   <Emulator system="sinclair-zx-spectrum" src="/code-samples/spectrum/starfield.sna" />
- *   <Emulator system="sinclair-zx-spectrum" src="/code-samples/spectrum/hello.z80" autoplay />
+ *   <Emulator system="sinclair-zx-spectrum" />
+ *   <Emulator system="sinclair-zx-spectrum" src="/code-samples/spectrum/border.sna" autoplay />
  *
  * Props:
- *   system   — system identifier (e.g. "sinclair-zx-spectrum")
- *   src      — path to the binary file (resolved from public/)
- *   width    — display width in CSS pixels (default: 640)
- *   height   — display height in CSS pixels (default: 480)
- *   autoplay — start running immediately
- *   controls — show control bar (default: true)
+ *   system   — system identifier (only "sinclair-zx-spectrum" so far)
+ *   src      — snapshot or media to load, resolved from public/
+ *   poster    — still image shown until the machine starts, so the outcome is
+ *               visible without JavaScript
+ *   width    — display width in CSS pixels (default: 704, i.e. 2x)
+ *   height   — display height in CSS pixels (default: 592)
+ *   autoplay — start without waiting for the reader to press Run
+ *   controls — show the control bar (default: true)
  *   caption  — optional caption below the emulator
+ *
+ * The machine and its ROM travel in the @emu198x/zx-spectrum package, so a
+ * lesson page fetches no firmware. The script below is bundled by Astro
+ * rather than copied in from Emu198x by hand, which is what the old
+ * public/emulator/README.md described.
  */
 
 interface Props {
   system: string;
   src?: string;
+  poster?: string;
   width?: number;
   height?: number;
   autoplay?: boolean;
@@ -29,8 +37,9 @@ interface Props {
 const {
   system,
   src,
-  width = 640,
-  height = 480,
+  poster,
+  width = 704,
+  height = 592,
   autoplay = false,
   controls = true,
   caption,
@@ -39,21 +48,196 @@ const {
 
 <figure class="emulator-figure">
   <emu198x-player
-    system={system}
-    src={src}
-    width={width.toString()}
-    height={height.toString()}
-    controls={controls ? 'true' : 'false'}
-    {...(autoplay ? { autoplay: '' } : {})}
-  />
+    data-system={system}
+    data-src={src}
+    data-poster={poster}
+    data-width={width.toString()}
+    data-height={height.toString()}
+    data-controls={controls ? 'true' : 'false'}
+    data-autoplay={autoplay ? 'true' : 'false'}
+  ></emu198x-player>
   {caption && <figcaption>{caption}</figcaption>}
 </figure>
 
-<script is:inline src="/emulator/emulator.js"></script>
+<script>
+  import { SpectrumRunner } from '../lib/spectrum-runner';
+
+  /** Systems this player can run. Anything else is a content error. */
+  const SUPPORTED = new Set(['sinclair-zx-spectrum']);
+
+  class Emu198xPlayer extends HTMLElement {
+    #runner: SpectrumRunner | null = null;
+    #canvas!: HTMLCanvasElement;
+    #poster: HTMLImageElement | null = null;
+    #status!: HTMLParagraphElement;
+    /** Only run while on screen: a lesson page may hold several of these. */
+    #observer: IntersectionObserver | null = null;
+
+    connectedCallback() {
+      const system = this.dataset.system ?? '';
+      this.#render();
+
+      if (!SUPPORTED.has(system)) {
+        this.#fail(`No browser emulator for "${system}" yet.`);
+        return;
+      }
+
+      this.#observer = new IntersectionObserver((entries) => {
+        const visible = entries.some((entry) => entry.isIntersecting);
+        if (this.#runner) this.#runner.visible = visible;
+      });
+      this.#observer.observe(this);
+
+      if (this.dataset.autoplay === 'true') void this.#start();
+    }
+
+    disconnectedCallback() {
+      this.#runner?.stop();
+      this.#observer?.disconnect();
+    }
+
+    #render() {
+      const width = this.dataset.width ?? '704';
+      const height = this.dataset.height ?? '592';
+
+      this.#canvas = document.createElement('canvas');
+      this.#canvas.className = 'emulator-screen';
+      this.#canvas.style.width = `${width}px`;
+      this.#canvas.style.height = `${height}px`;
+      this.#canvas.tabIndex = 0;
+      this.#canvas.setAttribute('aria-label', 'ZX Spectrum screen');
+
+      const poster = this.dataset.poster;
+      if (poster) {
+        this.#poster = document.createElement('img');
+        this.#poster.src = poster;
+        this.#poster.alt = '';
+        this.#poster.className = 'emulator-poster';
+        this.#poster.style.width = `${width}px`;
+        this.#poster.style.height = `${height}px`;
+        this.append(this.#poster);
+        // The canvas is empty until the machine runs; show the still instead.
+        this.#canvas.hidden = true;
+      }
+
+      this.#status = document.createElement('p');
+      this.#status.className = 'emulator-status';
+      this.#status.textContent = 'Ready';
+
+      this.append(this.#canvas);
+
+      if (this.dataset.controls === 'true') {
+        const bar = document.createElement('div');
+        bar.className = 'emulator-controls';
+
+        const run = document.createElement('button');
+        run.type = 'button';
+        run.textContent = 'Run';
+        run.addEventListener('click', () => {
+          const wanted = !(this.#runner?.wanted ?? false);
+          run.textContent = wanted ? 'Stop' : 'Run';
+          if (wanted) void this.#start();
+          else if (this.#runner) this.#runner.wanted = false;
+        });
+
+        bar.append(run, this.#status);
+        this.append(bar);
+      } else {
+        this.append(this.#status);
+      }
+
+    }
+
+    #fail(message: string) {
+      this.#status.textContent = message;
+      this.#status.dataset.state = 'error';
+    }
+
+    async #start() {
+      if (this.#runner) {
+        this.#runner.wanted = true;
+        return;
+      }
+      try {
+        this.#status.textContent = 'Loading…';
+        // The ROM is in the package: nothing is fetched for it.
+        this.#runner = await SpectrumRunner.create(this.#canvas, (message) =>
+          this.#fail(message),
+        );
+
+        const src = this.dataset.src;
+        if (src) await this.#load(src);
+
+        this.#poster?.remove();
+        this.#canvas.hidden = false;
+        this.#status.textContent = 'Running';
+        this.#runner.visible = true;
+        this.#runner.wanted = true;
+      } catch (error) {
+        this.#fail(`Could not start the emulator: ${error}`);
+      }
+    }
+
+    async #load(src: string) {
+      const response = await fetch(src);
+      if (!response.ok) throw new Error(`${src} returned ${response.status}`);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const extension = src.split('.').pop()?.toLowerCase() ?? '';
+
+      if (extension === 'sna' || extension === 'z80') {
+        this.#runner!.load(bytes, 'snapshot', extension);
+      } else if (extension === 'tap' || extension === 'tzx') {
+        this.#runner!.load(bytes, 'tape');
+      } else {
+        throw new Error(`unsupported program "${extension}"`);
+      }
+    }
+
+  }
+
+  if (!customElements.get('emu198x-player')) {
+    customElements.define('emu198x-player', Emu198xPlayer);
+  }
+</script>
 
 <style>
   .emulator-figure {
     margin: 1.5rem 0;
+  }
+  emu198x-player {
+    display: block;
+  }
+  .emulator-poster {
+    display: block;
+    image-rendering: pixelated;
+    border: 1px solid var(--color-border, #444);
+    max-width: 100%;
+  }
+  .emulator-screen {
+    display: block;
+    /* The machine's pixels are the point; do not let the browser blur them. */
+    image-rendering: pixelated;
+    background: #000;
+    border: 1px solid var(--color-border, #444);
+    max-width: 100%;
+  }
+  .emulator-screen:focus-visible {
+    outline: 2px solid var(--color-accent, #6cf);
+    outline-offset: 2px;
+  }
+  .emulator-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+  .emulator-status {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary, #555);
+  }
+  .emulator-status[data-state='error'] {
+    color: var(--color-error, #c33);
   }
   .emulator-figure figcaption {
     margin-top: 0.5rem;
