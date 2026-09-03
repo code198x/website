@@ -7,6 +7,7 @@ import {
   code198xHighlightPlugin,
   code198xTableAccessibilityPlugin,
 } from './src/lib/satteri-highlight.ts';
+import { legacySystemRedirects } from './src/lib/legacy-system-redirects.mjs';
 
 // https://astro.build/config
 export default defineConfig({
@@ -17,6 +18,7 @@ export default defineConfig({
   // the Shadowkeep flagship. Cheap insurance, not exhaustive — see
   // decisions/modules-not-games.md.
   redirects: {
+    ...legacySystemRedirects(),
     // Deluxe Paint was filed under both games/ and tools/. It is a tool.
     '/vault/games/deluxe-paint': '/vault/tools/deluxe-paint',
     // Vault duplicate merges: one entry per subject, old slugs preserved as
