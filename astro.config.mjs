@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig, fontProviders } from 'astro/config';
+import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import { satteri } from '@astrojs/markdown-satteri';
@@ -147,27 +147,6 @@ export default defineConfig({
     '/browse/by-difficulty': '/systems',
     '/browse/by-technique': '/patterns',
   },
-  fonts: [
-    {
-      name: 'Inter',
-      cssVariable: '--font-family-sans',
-      provider: fontProviders.fontsource(),
-      fallbacks: ['system-ui', '-apple-system', 'sans-serif'],
-    },
-    {
-      name: 'JetBrains Mono',
-      cssVariable: '--font-family-mono',
-      provider: fontProviders.fontsource(),
-      fallbacks: ['Courier New', 'monospace'],
-    },
-    {
-      name: 'Caveat',
-      cssVariable: '--font-family-script',
-      provider: fontProviders.fontsource(),
-      weights: [600, 700],
-      fallbacks: ['Bradley Hand', 'cursive'],
-    },
-  ],
   integrations: [mdx(), sitemap()],
   markdown: {
     processor: satteri({
