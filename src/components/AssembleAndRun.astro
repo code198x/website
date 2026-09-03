@@ -69,7 +69,23 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
       <button type="button" class="sandbox-revert" title="Put the original source back">Revert</button>
       <p class="sandbox-status" role="status">Edit the source, then assemble.</p>
     </div>
-    <pre class="sandbox-errors" hidden></pre>
+  </div>
+
+  <!--
+    Two outcomes, two boxes. A source that will not assemble and a program that
+    assembled and then misbehaved are different problems with different fixes,
+    and the unit's own "When it's wrong, see why" already tells them apart. One
+    shared box said they were the same thing — and rendered an English sentence
+    with `white-space: pre`, so it ran off the side rather than wrapping.
+  -->
+  <div class="sandbox-message sandbox-message--build" hidden>
+    <p class="sandbox-message-label">The assembler refused it</p>
+    <pre class="sandbox-diagnostics"></pre>
+  </div>
+
+  <div class="sandbox-message sandbox-message--run" hidden>
+    <p class="sandbox-message-label">It assembled, then the machine did this</p>
+    <p class="sandbox-verdict"></p>
   </div>
 </div>
 
@@ -109,7 +125,10 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
     const runButton = root.querySelector<HTMLButtonElement>('.sandbox-run')!;
     const revert = root.querySelector<HTMLButtonElement>('.sandbox-revert')!;
     const status = root.querySelector<HTMLParagraphElement>('.sandbox-status')!;
-    const errors = root.querySelector<HTMLPreElement>('.sandbox-errors')!;
+    const buildBox = root.querySelector<HTMLElement>('.sandbox-message--build')!;
+    const runBox = root.querySelector<HTMLElement>('.sandbox-message--run')!;
+    const diagnostics = root.querySelector<HTMLPreElement>('.sandbox-diagnostics')!;
+    const verdictText = root.querySelector<HTMLParagraphElement>('.sandbox-verdict')!;
 
     const dialect = root.dataset.dialect ?? 'pasmonext';
     const tapeName = root.dataset.tapeName ?? 'program.tap';
@@ -123,9 +142,21 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
       else delete status.dataset.state;
     };
 
-    const showErrors = (text: string | null) => {
-      errors.hidden = text === null;
-      errors.textContent = text ?? '';
+    /** The assembler's own output, kept monospace because its columns line up. */
+    const showDiagnostics = (text: string | null) => {
+      buildBox.hidden = text === null;
+      diagnostics.textContent = text ?? '';
+    };
+
+    /** What the machine did, in prose, so it wraps like prose. */
+    const showVerdict = (text: string | null) => {
+      runBox.hidden = text === null;
+      verdictText.textContent = text ?? '';
+    };
+
+    const clearMessages = () => {
+      showDiagnostics(null);
+      showVerdict(null);
     };
 
     // Only run while on screen: a page may hold several of these, and a
@@ -138,7 +169,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
 
     async function assembleAndRun() {
       runButton.disabled = true;
-      showErrors(null);
+      clearMessages();
       try {
         say('Assembling…');
         const asm = await loadAssembler();
@@ -149,8 +180,8 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
         if (!bytes) {
           // `tape` returns null and leaves `assemble` to say why, so there is
           // one place to look for diagnostics rather than two.
-          showErrors(asm.assemble(dialect, text) ?? 'The source did not assemble.');
-          say("That didn't assemble.", 'error');
+          showDiagnostics(asm.assemble(dialect, text) ?? 'The source did not assemble.');
+          say('Nothing to run.', 'error');
           return;
         }
 
@@ -168,8 +199,8 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
         // can say why it stopped rather than offering a reset and moving on.
         if (extentJson) {
           runner.watch(JSON.parse(extentJson), (verdict) => {
-            showErrors(EXPLAIN[verdict.kind](verdict));
-            say('The machine is no longer running your program.', 'error');
+            showVerdict(EXPLAIN[verdict.kind](verdict));
+            say('Stopped running your program.', 'error');
           });
         }
 
@@ -188,7 +219,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
     runButton.addEventListener('click', () => void assembleAndRun());
     revert.addEventListener('click', () => {
       source.value = original;
-      showErrors(null);
+      clearMessages();
       say('Original source restored.');
     });
   }
@@ -304,17 +335,81 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
     color: var(--color-error, #c33);
   }
 
-  .sandbox-errors {
+  /* Both messages span the editor and the machine, so a sentence has the
+     width of the whole component to wrap in rather than the screen's column. */
+  .sandbox-message {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 3px;
+    border: 1px solid;
+    /* A flex item will not shrink below its content by default, so a long
+       diagnostic line pushed the box wider than the page instead of
+       scrolling inside it. */
+    min-width: 0;
+  }
+
+  .sandbox-message-label {
     margin: 0;
-    padding: 0.6rem 0.75rem;
+    font-family: var(--font-family-mono, monospace);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* The source never became a program. Red: nothing ran. */
+  .sandbox-message--build {
+    border-color: var(--color-error, #c33);
+    background: var(--color-error-muted, rgba(200, 50, 50, 0.08));
+  }
+
+  .sandbox-message--build .sandbox-message-label {
+    color: var(--color-error, #c33);
+  }
+
+  /* Scoped through the parent deliberately. The site styles a `pre` inside a
+     unit as a code block — `.unit-content pre` — which outranks a lone class
+     and left this one dark text on a dark ground inside a red box. Naming both
+     elements outranks it back. */
+  .sandbox-message .sandbox-diagnostics {
+    margin: 0;
+    padding: 0;
+    width: auto;
+    max-width: 100%;
     font-family: var(--font-family-mono, monospace);
     font-size: 0.75rem;
     line-height: 1.5;
+    /* The assembler's columns line up; keep them, and scroll rather than wrap. */
     white-space: pre;
     overflow-x: auto;
-    color: var(--color-error, #c33);
-    background: var(--color-error-muted, rgba(200, 50, 50, 0.08));
-    border: 1px solid var(--color-error, #c33);
-    border-radius: 3px;
+    /* Same reason as the container: without this the pre sets the box's width
+       from its longest line rather than scrolling within it. */
+    min-width: 0;
+    /* The site styles `pre` as a code block — a dark ground this box does not
+       have, which left the text unreadable on the red one. */
+    background: none;
+    border: 0;
+    color: var(--color-text, #eee);
+  }
+
+  /* The program ran. Amber: this is an outcome to read, not a build failure —
+     and for a unit teaching against exactly these mistakes, it is the lesson. */
+  .sandbox-message--run {
+    border-color: var(--color-warning, #fbbf24);
+    background: var(--color-warning-muted, rgba(251, 191, 36, 0.1));
+  }
+
+  .sandbox-message--run .sandbox-message-label {
+    color: var(--color-warning, #a86800);
+  }
+
+  .sandbox-verdict {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    max-width: 62ch;
+    color: var(--color-text, #eee);
   }
 </style>
