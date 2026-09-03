@@ -175,18 +175,28 @@ export function forwardReferences(scope: Scope): Array<{ from: string; to: strin
   return out;
 }
 
-/** Every `requires` or `suggests` reference that names a module nothing defines. */
-export function unresolvedReferences(scopes: Scope[]): Array<{ from: string; ref: string }> {
-  const out: Array<{ from: string; ref: string }> = [];
+/**
+ * Every `requires` or `suggests` reference that names a module nothing
+ * defines. `field` names which one, so a bad `suggests` edge is not reported
+ * as a missing `requires` — the two are validated the same way but authored
+ * (and fixed) in different places.
+ */
+export function unresolvedReferences(
+  scopes: Scope[],
+): Array<{ from: string; ref: string; field: 'requires' | 'suggests' }> {
+  const out: Array<{ from: string; ref: string; field: 'requires' | 'suggests' }> = [];
   for (const scope of scopes) {
     for (const module of scope.modules) {
-      const refs = [
-        ...allRefs(scope, module),
-        ...(module.suggests ?? []).map((r) => normaliseRef(r, scope.id)),
+      const refs: Array<{ ref: RouteRef; field: 'requires' | 'suggests' }> = [
+        ...allRefs(scope, module).map((ref) => ({ ref, field: 'requires' as const })),
+        ...(module.suggests ?? []).map((r) => ({
+          ref: normaliseRef(r, scope.id),
+          field: 'suggests' as const,
+        })),
       ];
-      for (const ref of refs) {
+      for (const { ref, field } of refs) {
         if (!lookup(scopes, ref)) {
-          out.push({ from: `${scope.id}/${module.slug}`, ref: `${ref.scope}/${ref.slug}` });
+          out.push({ from: `${scope.id}/${module.slug}`, ref: `${ref.scope}/${ref.slug}`, field });
         }
       }
     }

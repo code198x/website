@@ -152,16 +152,16 @@ describe('forwardReferences', () => {
 describe('unresolvedReferences', () => {
   it('reports a reference to a module that does not exist', () => {
     const scope: Scope = { id: 't', modules: [{ slug: 'a', name: 'A', requires: ['ghost'] }] };
-    expect(unresolvedReferences([scope])).toEqual([{ from: 't/a', ref: 't/ghost' }]);
+    expect(unresolvedReferences([scope])).toEqual([{ from: 't/a', ref: 't/ghost', field: 'requires' }]);
   });
 
   it('reports nothing when every reference resolves', () => {
     expect(unresolvedReferences([basic, machine])).toEqual([]);
   });
 
-  it('checks suggests as well as requires', () => {
+  it('checks suggests as well as requires, and names which field is bad', () => {
     const scope: Scope = { id: 't', modules: [{ slug: 'a', name: 'A', suggests: ['ghost'] }] };
-    expect(unresolvedReferences([scope])).toEqual([{ from: 't/a', ref: 't/ghost' }]);
+    expect(unresolvedReferences([scope])).toEqual([{ from: 't/a', ref: 't/ghost', field: 'suggests' }]);
   });
 });
 
