@@ -485,7 +485,9 @@ const modules = defineCollection({
       suggests: z.array(routeRef).default([]),
     })),
   }).refine(
-    (d) => (d.section != null) !== (d.platform != null && d.track != null),
+    (d) => d.section != null
+      ? d.platform == null && d.track == null
+      : d.platform != null && d.track != null,
     { message: 'A catalogue needs either section, or both platform and track — never both and never neither.' },
   ),
 });
