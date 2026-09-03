@@ -9,6 +9,9 @@
  * machine running 20% fast still looks like a Spectrum.
  */
 import init, { Spectrum } from '@emu198x/zx-spectrum';
+import { classify, type ProgramExtent, type Verdict } from './verdict';
+
+export type { ProgramExtent, Verdict } from './verdict';
 
 /** One wasm instantiation per page, however many machines are on it. */
 let ready: Promise<unknown> | null = null;
@@ -25,59 +28,8 @@ const BOOT_FRAMES = 400;
 
 export type MediaKind = 'tape' | 'snapshot';
 
-/** Where a program was assembled to, so the runner can tell if it is still there. */
-export interface ProgramExtent {
-  origin: number | null;
-  length: number;
-}
-
-/**
- * What the machine is doing, when it is no longer doing what was asked.
- *
- * Each verdict is a mistake a unit teaches against, which is why the runner
- * names them rather than reporting that the machine stopped. Diagnosis is the
- * lesson; a reset button is the absence of one.
- */
-export type Verdict =
-  | { kind: 'ran-off-the-end'; pc: number }
-  | { kind: 'halted-forever' }
-  | { kind: 'reset' };
-
 /** Frames between checks. Half a second — cheap, and faster than a reader reacts. */
 const WATCH_INTERVAL_FRAMES = 25;
-
-/** What the machine looked like at one check. */
-export interface MachineState {
-  pc: number;
-  halted: boolean;
-  interruptsEnabled: boolean;
-  booted: boolean;
-}
-
-/**
- * Decides what to tell the reader, from where the counter is and what the
- * machine is doing.
- *
- * Pure and exported so the ordering can be read and argued with on its own,
- * rather than inferred from a tick loop. The order is the opinion: where the
- * counter is beats what the machine is doing, because where it is explains how
- * it got there. A program that runs off its own end usually ends up halted
- * somewhere in RAM, and telling a reader who just deleted their `halt` that
- * the machine halted is true and useless.
- *
- * `null` means nothing is wrong worth saying: the counter is inside the
- * program, or back in the ROM where a program that ends properly returns to.
- */
-export function classify(state: MachineState, extent: ProgramExtent): Verdict | null {
-  if (extent.origin === null) return null;
-  if (state.pc >= extent.origin && state.pc < extent.origin + extent.length) return null;
-
-  // Outside the ROM: executing memory nobody put anything in.
-  if (state.pc >= 0x4000) return { kind: 'ran-off-the-end', pc: state.pc };
-  if (state.booted) return { kind: 'reset' };
-  if (state.halted && !state.interruptsEnabled) return { kind: 'halted-forever' };
-  return null;
-}
 
 export class SpectrumRunner {
   #spectrum: Spectrum;
