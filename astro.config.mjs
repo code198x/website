@@ -161,11 +161,15 @@ export default defineConfig({
       fallbacks: ['Courier New', 'monospace'],
     },
     {
-      name: 'Caveat',
-      cssVariable: '--font-family-script',
+      // Literata carries display and long-form reading. It replaces Caveat,
+      // retired by 198x/decisions/family-visual-identity.md — the roster is
+      // three faces, and a display script is not one of them. Its
+      // optical-size axis is what gives a display surface its own voice.
+      name: 'Literata',
+      cssVariable: '--font-family-read',
       provider: fontProviders.fontsource(),
-      weights: [600, 700],
-      fallbacks: ['Bradley Hand', 'cursive'],
+      weights: [400, 700],
+      fallbacks: ['Georgia', 'Times New Roman', 'serif'],
     },
   ],
   integrations: [mdx(), sitemap()],
