@@ -74,7 +74,26 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
 </div>
 
 <script>
-  import { SpectrumRunner } from '../lib/spectrum-runner';
+  import { SpectrumRunner, type Verdict } from '../lib/spectrum-runner';
+
+  /**
+   * What each verdict means, in the reader's terms rather than the machine's.
+   *
+   * These are the mistakes unit 1 warns about, which is the point: the reader
+   * meets the explanation at the moment it applies to them, instead of in a
+   * troubleshooting list they read before they had the problem.
+   */
+  const EXPLAIN: Record<Verdict['kind'], (verdict: Verdict) => string> = {
+    'ran-off-the-end': (v) =>
+      `Your program ran past its last instruction and is executing memory at $${(v as { pc: number }).pc
+        .toString(16)
+        .toUpperCase()
+        .padStart(4, '0')} that nobody put anything in. That is what the halt and jr at the bottom prevent.`,
+    'halted-forever': () =>
+      'The machine halted with interrupts disabled, so nothing can wake it again. A halt on its own waits for the next interrupt; with interrupts off, none arrives.',
+    reset: () =>
+      'The machine restarted — your program jumped somewhere that sent it back to the beginning, and the Spectrum booted as if it had just been switched on.',
+  };
 
   /** Loaded on the first assemble, never on page load. */
   let assembler: Promise<typeof import('@asm198x/z80')> | null = null;
@@ -125,6 +144,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
         const asm = await loadAssembler();
         const text = source.value;
 
+        const extentJson = asm.extent(dialect, text);
         const bytes = asm.tape(dialect, text, tapeName, 'tap');
         if (!bytes) {
           // `tape` returns null and leaves `assemble` to say why, so there is
@@ -143,6 +163,16 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
         say('Loading…');
         runner = await SpectrumRunner.create(canvas, (message) => say(message, 'error'));
         runner.load(bytes, 'tape');
+
+        // Watch what the reader's code does once it has control, so the page
+        // can say why it stopped rather than offering a reset and moving on.
+        if (extentJson) {
+          runner.watch(JSON.parse(extentJson), (verdict) => {
+            showErrors(EXPLAIN[verdict.kind](verdict));
+            say('The machine is no longer running your program.', 'error');
+          });
+        }
+
         runner.visible = true;
         runner.wanted = true;
 

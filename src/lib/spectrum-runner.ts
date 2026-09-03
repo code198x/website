@@ -25,6 +25,60 @@ const BOOT_FRAMES = 400;
 
 export type MediaKind = 'tape' | 'snapshot';
 
+/** Where a program was assembled to, so the runner can tell if it is still there. */
+export interface ProgramExtent {
+  origin: number | null;
+  length: number;
+}
+
+/**
+ * What the machine is doing, when it is no longer doing what was asked.
+ *
+ * Each verdict is a mistake a unit teaches against, which is why the runner
+ * names them rather than reporting that the machine stopped. Diagnosis is the
+ * lesson; a reset button is the absence of one.
+ */
+export type Verdict =
+  | { kind: 'ran-off-the-end'; pc: number }
+  | { kind: 'halted-forever' }
+  | { kind: 'reset' };
+
+/** Frames between checks. Half a second — cheap, and faster than a reader reacts. */
+const WATCH_INTERVAL_FRAMES = 25;
+
+/** What the machine looked like at one check. */
+export interface MachineState {
+  pc: number;
+  halted: boolean;
+  interruptsEnabled: boolean;
+  booted: boolean;
+}
+
+/**
+ * Decides what to tell the reader, from where the counter is and what the
+ * machine is doing.
+ *
+ * Pure and exported so the ordering can be read and argued with on its own,
+ * rather than inferred from a tick loop. The order is the opinion: where the
+ * counter is beats what the machine is doing, because where it is explains how
+ * it got there. A program that runs off its own end usually ends up halted
+ * somewhere in RAM, and telling a reader who just deleted their `halt` that
+ * the machine halted is true and useless.
+ *
+ * `null` means nothing is wrong worth saying: the counter is inside the
+ * program, or back in the ROM where a program that ends properly returns to.
+ */
+export function classify(state: MachineState, extent: ProgramExtent): Verdict | null {
+  if (extent.origin === null) return null;
+  if (state.pc >= extent.origin && state.pc < extent.origin + extent.length) return null;
+
+  // Outside the ROM: executing memory nobody put anything in.
+  if (state.pc >= 0x4000) return { kind: 'ran-off-the-end', pc: state.pc };
+  if (state.booted) return { kind: 'reset' };
+  if (state.halted && !state.interruptsEnabled) return { kind: 'halted-forever' };
+  return null;
+}
+
 export class SpectrumRunner {
   #spectrum: Spectrum;
   #canvas: HTMLCanvasElement;
@@ -34,6 +88,25 @@ export class SpectrumRunner {
   #visible = true;
   #disposed = false;
   #onError: (message: string) => void;
+
+  #extent: ProgramExtent | null = null;
+  #onVerdict: ((verdict: Verdict) => void) | null = null;
+  #sinceCheck = 0;
+  /**
+   * Whether a tape has been seen playing, and how long since it stopped.
+   *
+   * Nothing is judged while the tape loads: the program counter is in the
+   * ROM's loader, which is outside the program's bytes and looks exactly like
+   * a program that ran off the end.
+   *
+   * The tape stopping is the start signal rather than sighting the program
+   * counter inside the program, because the programs that fail fastest are the
+   * ones this cannot catch: unit 1's is four bytes, so a check twice a second
+   * would never once find the counter inside it.
+   */
+  #tapePlayed = false;
+  #checksSinceTape = 0;
+  #verdictGiven = false;
 
   private constructor(
     spectrum: Spectrum,
@@ -107,6 +180,67 @@ export class SpectrumRunner {
     this.#spectrum.free();
   }
 
+  /**
+   * Watches a running program and reports the first thing that goes wrong.
+   *
+   * Reports once. A machine that has run off the end goes on being off the
+   * end, and repeating that at two checks a second would bury the reader
+   * rather than tell them anything.
+   */
+  watch(extent: ProgramExtent, onVerdict: (verdict: Verdict) => void) {
+    this.#extent = extent;
+    this.#onVerdict = onVerdict;
+    this.#tapePlayed = false;
+    this.#checksSinceTape = 0;
+    this.#verdictGiven = false;
+    this.#sinceCheck = 0;
+  }
+
+  #ask(path: string): unknown {
+    try {
+      return JSON.parse(this.#spectrum.query(path));
+    } catch {
+      // A machine that cannot answer is not evidence of anything; the next
+      // check asks again.
+      return null;
+    }
+  }
+
+  #check() {
+    const extent = this.#extent;
+    if (!extent || extent.origin === null || this.#verdictGiven) return;
+
+    // Still loading: say nothing.
+    if (this.#ask('tape.playing') === true) {
+      this.#tapePlayed = true;
+      this.#checksSinceTape = 0;
+      return;
+    }
+    if (!this.#tapePlayed) return;
+
+    // The ROM needs a moment after the tape stops to hand over to the program.
+    // Judging inside that window would report every successful load as a
+    // failure.
+    if (++this.#checksSinceTape < 3) return;
+
+    const pc = this.#ask('cpu.pc');
+    if (typeof pc !== 'number') return;
+
+    const verdict = classify(
+      {
+        pc,
+        halted: this.#ask('cpu.halted') === true,
+        interruptsEnabled: this.#ask('cpu.iff1') === true,
+        booted: this.#ask('boot.detected') === true,
+      },
+      extent,
+    );
+    if (verdict) {
+      this.#verdictGiven = true;
+      this.#onVerdict?.(verdict);
+    }
+  }
+
   #sync() {
     if (this.#disposed) return;
     if (this.#wanted && this.#visible) {
@@ -135,6 +269,10 @@ export class SpectrumRunner {
     }
     try {
       this.#spectrum.tick(now - this.#last);
+      if (this.#extent && ++this.#sinceCheck >= WATCH_INTERVAL_FRAMES) {
+        this.#sinceCheck = 0;
+        this.#check();
+      }
     } catch (error) {
       this.#onError(`The machine stopped: ${error}`);
       this.stop();
