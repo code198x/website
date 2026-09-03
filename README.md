@@ -78,11 +78,11 @@ dependency. Building that page locally needs:
    `<checkout>/crates/play198x-web/pkg-node`, the directory `build:wasm`
    writes to).
 
-Run `npm run build:wasm` once before `npm run build` or `npm test`. `npm run
-build` runs the unit tests, and some of them load this wasm directly, so the
-decoder is a prerequisite of the build itself rather than only of the pages
-that import the component. Both `ci.yml` and `deploy.yml` build it before
-building the site.
+You only need any of this to build a page that uses `<NativeImage>`. Without
+`PLAY198X_WASM_PATH` set, `npm run build` and `npm test` both work: the nine
+unit tests that load the decoder skip, and the rest run. CI sets the variable
+and builds the decoder first, so those nine still run for real on every pull
+request — see code198x/website#385.
 
 ## Adding or changing content
 
